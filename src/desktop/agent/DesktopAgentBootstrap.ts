@@ -368,18 +368,26 @@ export class DesktopAgentBootstrap {
     try {
       // Use platform-aware StorageAdapter factory (IndexedDB/SQLite/Node depending on build)
       const { createStorageAdapter } = await import('@/storage/createStorageAdapter');
-      const { SchedulerStorage } = await import('@/core/scheduler/SchedulerStorage');
+      const { ScheduleEventStorage } = await import('@/core/scheduler/ScheduleEventStorage');
+      const { ExecutionStorage } = await import('@/core/scheduler/ExecutionStorage');
+      const { ScheduleManager } = await import('@/core/scheduler/ScheduleManager');
+      const { JobExecutor } = await import('@/core/scheduler/JobExecutor');
 
       const storageAdapter = await createStorageAdapter();
       await storageAdapter.initialize();
 
-      const schedulerStorage = new SchedulerStorage(storageAdapter);
+      const scheduleEventStorage = new ScheduleEventStorage(storageAdapter);
+      const executionStorage = new ExecutionStorage(storageAdapter);
 
       // Create hybrid alarms (in-process timers + OS-level jobs)
       this.schedulerAlarms = new DesktopSchedulerAlarms();
 
-      // Create scheduler
-      this.scheduler = new Scheduler(schedulerStorage, this.schedulerAlarms);
+      // Create new model components directly
+      const scheduleManager = new ScheduleManager(scheduleEventStorage, executionStorage, this.schedulerAlarms);
+      const jobExecutor = new JobExecutor(executionStorage);
+
+      // Create scheduler with new constructor
+      this.scheduler = new Scheduler(scheduleManager, jobExecutor, this.schedulerAlarms);
 
       // Wire alarm handler
       this.schedulerAlarms.setAlarmHandler(async (alarmName) => {
@@ -401,12 +409,10 @@ export class DesktopAgentBootstrap {
       });
 
       // Wire job launcher — show window and submit directly to agent
-      // `registryAgent` is the isolated agent created by AgentRegistry for this job's session.
-      // Falls back to the primary agent when registry is not available.
-      this.scheduler.setJobLauncher(async (jobId, sessionId, registryAgent) => {
-        this.runningSchedulerJobId = jobId;
+      this.scheduler.setJobLauncher(async (executionId, sessionId, registryAgent) => {
+        this.runningSchedulerJobId = executionId;
         this.runningJobStartTime = Date.now();
-        console.log(`[DesktopAgentBootstrap] Scheduled job ${jobId} launched (session: ${sessionId})`);
+        console.log(`[DesktopAgentBootstrap] Scheduled job ${executionId} launched (session: ${sessionId})`);
         // Show the main window
         try {
           const { getCurrentWindow } = await import('@tauri-apps/api/window');
@@ -416,24 +422,24 @@ export class DesktopAgentBootstrap {
         } catch {
           // Non-fatal — window may already be visible
         }
-        // Submit to registry agent (isolated session) or fallback to primary agent
-        const job = await schedulerStorage.getJob(jobId);
-        if (!job) throw new Error(`Job not found: ${jobId}`);
+        // Look up execution record for the input text
+        const execution = await executionStorage.getExecution(executionId);
+        if (!execution) throw new Error(`Execution not found: ${executionId}`);
         const targetAgent = registryAgent ?? this.agent;
         if (!targetAgent) throw new Error('Agent not initialized');
         await targetAgent.submitOperation(
-          { type: 'UserInput', items: [{ type: 'text', text: job.input }] },
+          { type: 'UserInput', items: [{ type: 'text', text: execution.input }] },
           {}
         );
       });
 
       // Wire notification handler via Tauri notification plugin
-      this.scheduler.setNotificationHandler(async (job) => {
+      this.scheduler.setNotificationHandler(async (info) => {
         try {
           const { sendNotification } = await import('@tauri-apps/plugin-notification');
-          const inputPreview = job.input.length > 50
-            ? job.input.slice(0, 50) + '...'
-            : job.input;
+          const inputPreview = info.input.length > 50
+            ? info.input.slice(0, 50) + '...'
+            : info.input;
           sendNotification({
             title: 'Scheduled Job Starting',
             body: inputPreview,
@@ -476,21 +482,24 @@ export class DesktopAgentBootstrap {
       this.schedulerDeepLinkHandler = new DesktopSchedulerDeepLinkHandler(this.scheduler);
       await this.schedulerDeepLinkHandler.initialize();
 
-      // Reconcile OS jobs with in-process timers
+      // Reconcile OS jobs with in-process timers using ScheduleManager
       await this.schedulerAlarms.reconcileOnStartup(async () => {
-        const jobs = await schedulerStorage.getScheduledJobs();
-        return jobs.map(j => ({ id: j.id, scheduledTime: j.scheduledTime }));
+        const events = await scheduleManager.getScheduledEvents();
+        return events.map(e => ({ id: e.id, scheduledTime: e.scheduledTime }));
       });
 
       // Recover stale running jobs from previous app session
       await this.scheduler.recoverStaleRunningJob();
 
       // Detect missed jobs and start queue processor
-      const missedJobs = await this.scheduler.detectMissedJobs();
-      if (missedJobs.length > 0) {
-        console.log(`[DesktopAgentBootstrap] Detected ${missedJobs.length} missed scheduler jobs`);
+      const missed = await this.scheduler.detectMissedJobs();
+      if (missed.length > 0) {
+        console.log(`[DesktopAgentBootstrap] Detected ${missed.length} missed scheduler instances`);
       }
       await this.schedulerAlarms.startJobQueueProcessor();
+
+      // Restore alarms for ScheduleEvents
+      await this.scheduler.restoreScheduleAlarms();
 
       console.log('[DesktopAgentBootstrap] Scheduler initialized');
     } catch (error) {

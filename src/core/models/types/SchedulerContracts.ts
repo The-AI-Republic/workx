@@ -4,7 +4,7 @@
  * Interfaces for storage, alarms, and messaging in the Job Scheduler feature.
  */
 
-import type { SchedulerJobRecord, SchedulerJobStatus, SchedulerState } from './Scheduler';
+import type { RecurrenceRule } from './Scheduler';
 
 // ============================================================================
 // Platform-neutral Alarm Type
@@ -17,49 +17,6 @@ export interface SchedulerAlarm {
   name: string;
   scheduledTime: number;
   periodInMinutes?: number;
-}
-
-// ============================================================================
-// Storage Interface
-// ============================================================================
-
-/**
- * Job count result from getJobCounts()
- */
-export interface SchedulerJobCounts {
-  draftCount: number;
-  scheduledCount: number;
-  missedCount: number;
-  waitingCount: number;
-  runningCount: number;
-}
-
-/**
- * Storage operations interface for scheduler jobs
- */
-export interface ISchedulerStorage {
-  // Job CRUD
-  createJob(input: string, scheduledTime?: number): Promise<SchedulerJobRecord>; // No time = draft
-  getJob(id: string): Promise<SchedulerJobRecord | null>;
-  updateJob(id: string, updates: Partial<SchedulerJobRecord>): Promise<void>;
-  deleteJob(id: string): Promise<void>;
-
-  // Queries
-  getDraftJobs(): Promise<SchedulerJobRecord[]>; // Jobs without time (status: draft)
-  getScheduledJobs(): Promise<SchedulerJobRecord[]>; // Upcoming (status: scheduled)
-  getMissedJobs(): Promise<SchedulerJobRecord[]>; // Overdue jobs (status: missed)
-  getJobQueueJobs(): Promise<SchedulerJobRecord[]>; // Job queue (status: waiting)
-  getArchivedJobs(limit: number, offset: number): Promise<SchedulerJobRecord[]>;
-  getArchivedJobsCount(): Promise<number>;
-  getNextJobInQueue(): Promise<SchedulerJobRecord | null>; // FIFO by createdAt
-  getOverdueScheduledJobs(): Promise<SchedulerJobRecord[]>; // status: scheduled AND scheduledTime < now
-
-  // Scheduler state
-  getSchedulerState(): Promise<SchedulerState>;
-  setSchedulerState(state: Partial<SchedulerState>): Promise<void>;
-
-  // Job counts
-  getJobCounts(): Promise<SchedulerJobCounts>;
 }
 
 // ============================================================================
@@ -172,9 +129,8 @@ export function getJobAlarmName(jobId: string): string {
  */
 export enum SchedulerMessageType {
   // Job Management
-  CREATE_DRAFT_JOB = 'CREATE_DRAFT_JOB',
   SCHEDULE_JOB = 'SCHEDULE_JOB',
-  TRIGGER_JOB = 'TRIGGER_JOB', // Manually trigger draft/scheduled job
+  TRIGGER_JOB = 'TRIGGER_JOB',
   CANCEL_JOB = 'CANCEL_JOB',
 
   // Job Queue Control
@@ -182,10 +138,9 @@ export enum SchedulerMessageType {
   RESUME_JOB_QUEUE = 'RESUME_JOB_QUEUE',
 
   // Queries
-  GET_DRAFT_JOBS = 'GET_DRAFT_JOBS',
   GET_SCHEDULED_JOBS = 'GET_SCHEDULED_JOBS',
-  GET_MISSED_JOBS = 'GET_MISSED_JOBS', // Jobs that missed their scheduled time
-  GET_JOB_QUEUE = 'GET_JOB_QUEUE', // Jobs in waiting status
+  GET_MISSED_JOBS = 'GET_MISSED_JOBS',
+  GET_JOB_QUEUE = 'GET_JOB_QUEUE',
   GET_ARCHIVED_JOBS = 'GET_ARCHIVED_JOBS',
   GET_SCHEDULER_STATE = 'GET_SCHEDULER_STATE',
   GET_JOB_DETAILS = 'GET_JOB_DETAILS',
@@ -199,14 +154,10 @@ export enum SchedulerMessageType {
 // Request Payloads
 // ============================================================================
 
-export interface CreateDraftJobRequest {
-  input: string;
-}
-
 export interface ScheduleJobRequest {
-  input?: string; // For new job with time
-  jobId?: string; // For scheduling existing draft
+  input: string;
   scheduledTime: number; // Unix timestamp in ms
+  recurrence?: RecurrenceRule; // Optional repeat configuration
 }
 
 export interface TriggerJobRequest {
@@ -224,17 +175,32 @@ export interface GetJobDetailsRequest {
 export interface GetArchivedJobsRequest {
   limit?: number; // Default: 50
   offset?: number; // Default: 0
+  sortDirection?: 'newest' | 'oldest';
+  statusFilter?: string[];
+}
+
+export interface RescheduleJobRequest {
+  jobId: string;
+  scheduledTime: number;
+}
+
+export interface RescheduleJobResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface GetAllJobsInRangeRequest {
+  startTime: number;
+  endTime: number;
+}
+
+export interface GetAllJobsInRangeResponse {
+  jobs: SchedulerJobSummary[];
 }
 
 // ============================================================================
 // Response Payloads
 // ============================================================================
-
-export interface CreateDraftJobResponse {
-  success: boolean;
-  jobId?: string;
-  error?: string;
-}
 
 export interface ScheduleJobResponse {
   success: boolean;
@@ -250,10 +216,6 @@ export interface TriggerJobResponse {
 export interface CancelJobResponse {
   success: boolean;
   error?: string;
-}
-
-export interface GetDraftJobsResponse {
-  jobs: SchedulerJobSummary[];
 }
 
 export interface GetScheduledJobsResponse {
@@ -277,15 +239,15 @@ export interface GetArchivedJobsResponse {
 export interface GetSchedulerStateResponse {
   isPaused: boolean;
   currentJobId: string | null;
-  draftCount: number; // Jobs without scheduled time
-  scheduledCount: number; // Jobs waiting for their scheduled time
-  missedCount: number; // Jobs that missed their scheduled time (requires user action)
-  jobQueueCount: number; // Jobs in job queue (waiting status)
+  draftCount: number; // Always 0 (kept for UI compatibility)
+  scheduledCount: number; // Events waiting for their scheduled time
+  missedCount: number; // Instances that missed their scheduled time
+  jobQueueCount: number; // Pending executions in queue
   runningJob: SchedulerJobSummary | null;
 }
 
 export interface GetJobDetailsResponse {
-  job: SchedulerJobFull | null;
+  job: unknown | null;
 }
 
 // ============================================================================
@@ -294,8 +256,8 @@ export interface GetJobDetailsResponse {
 
 export interface JobStatusChangedEvent {
   jobId: string;
-  previousStatus: SchedulerJobStatus;
-  newStatus: SchedulerJobStatus;
+  previousStatus: string;
+  newStatus: string;
   timestamp: number;
 }
 
@@ -311,9 +273,10 @@ export interface SchedulerStateChangedEvent {
 export interface SchedulerJobSummary {
   id: string;
   input: string; // First 100 chars
-  scheduledTime: number | null; // Null for draft jobs
-  status: SchedulerJobStatus;
+  scheduledTime: number | null;
+  status: string;
   createdAt: number;
+  recurrence?: RecurrenceRule | null;
 }
 
 export interface ArchivedJobSummary {
@@ -321,24 +284,14 @@ export interface ArchivedJobSummary {
   input: string; // First 100 chars
   scheduledTime: number | null;
   completedAt: number;
-  status: 'completed' | 'failed';
+  status: 'completed' | 'failed' | 'cancelled';
   sessionId: string | null;
   error?: string;
-}
-
-export interface SchedulerJobFull {
-  id: string;
-  input: string;
-  scheduledTime: number | null; // Null for draft jobs
-  createdAt: number;
-  status: SchedulerJobStatus;
-  sessionId: string | null;
-  completedAt: number | null;
-  error: string | null;
+  recurrence?: RecurrenceRule | null;
 }
 
 // ============================================================================
-// IndexedDB Schema Constants
+// IndexedDB Schema Constants (kept for schema compatibility — do not remove without version bump)
 // ============================================================================
 
 export const SCHEDULER_JOBS_STORE = 'scheduler_jobs';

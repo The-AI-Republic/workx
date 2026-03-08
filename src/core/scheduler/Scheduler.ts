@@ -1,669 +1,442 @@
 /**
- * Scheduler
+ * Scheduler (Facade)
  *
- * Main orchestrator class for the Job Scheduler feature.
- * Manages job lifecycle: creation, scheduling, execution, and completion.
- *
- * Feature 015: Integrates with AgentRegistry to create isolated sessions for scheduled jobs
+ * Delegates to ScheduleManager (when to run) and JobExecutor (how to run).
+ * All legacy SchedulerStorage / SchedulerJobRecord dependencies have been removed.
+ * The single source of truth is now ScheduleEvent + ExecutionRecord.
  */
 
-import { v4 as uuidv4 } from 'uuid';
 import type {
-  SchedulerJobRecord,
-  SchedulerJobStatus,
   JobResultRecord,
+  RecurrenceRule,
 } from '../models/types/Scheduler';
 import type {
-  ISchedulerStorage,
   ISchedulerAlarms,
-  JobStatusChangedEvent,
-  SchedulerStateChangedEvent,
   SchedulerJobSummary,
+  ArchivedJobSummary,
   GetSchedulerStateResponse,
+  SchedulerStateChangedEvent,
 } from '../models/types/SchedulerContracts';
 import {
   parseAlarmName,
 } from '../models/types/SchedulerContracts';
+import type { ScheduleEvent } from '../models/types/ScheduleEvent';
+import type { ExecutionRecord, ExecutionStatus } from '../models/types/ScheduleEvent';
 import type { AgentRegistry } from '../registry/AgentRegistry';
+import type { ScheduleManager } from './ScheduleManager';
+import type { JobExecutor, ExecutionNotificationHandler, ExecutionJobLauncher, ExecutionConnectivityCheck, ExecutionEventEmitter } from './JobExecutor';
+import { recurrenceRuleToRRule } from './rruleAdapter';
 
 /**
  * Event emitter type for scheduler events
  */
 export type SchedulerEventEmitter = (
-  event: JobStatusChangedEvent | SchedulerStateChangedEvent
+  event: Record<string, unknown>
 ) => void;
 
 /**
  * Notification handler callback — platform-specific notification display
  */
-export type NotificationHandler = (job: SchedulerJobRecord) => Promise<void>;
+export type NotificationHandler = (info: { input: string }) => Promise<void>;
 
 /**
- * Job launcher callback — platform-specific job execution (open tab, invoke agent, etc.)
- * When AgentRegistry is used, `agent` is the registry-created agent for this job's session.
- * When no registry is available, `agent` is null and the launcher must use the primary agent.
+ * Job launcher callback — platform-specific job execution
  */
-export type JobLauncher = (jobId: string, sessionId: string, agent: import('../RepublicAgent').RepublicAgent | null) => Promise<void>;
+export type JobLauncher = (
+  executionId: string,
+  sessionId: string,
+  agent: import('../RepublicAgent').RepublicAgent | null
+) => Promise<void>;
 
 /**
- * Connectivity check callback — returns true if the platform is online
+ * Connectivity check callback
  */
 export type ConnectivityCheck = () => boolean;
 
 /**
- * Scheduler - main orchestrator for scheduled job execution
- * Feature 015: Supports isolated AgentSession per scheduled job
+ * Scheduler — facade that delegates to ScheduleManager + JobExecutor.
  */
 export class Scheduler {
   private eventEmitter: SchedulerEventEmitter | null = null;
-  private registry: AgentRegistry | null = null;
-  private jobSessions: Map<string, string> = new Map(); // jobId → sessionId
-  private notificationHandler: NotificationHandler | null = null;
-  private jobLauncher: JobLauncher | null = null;
-  private connectivityCheck: ConnectivityCheck = () => true;
-  private triggeringJobs: Set<string> = new Set(); // guard against concurrent triggers
-  private isExecuting = false; // mutex to prevent concurrent executeJob calls
 
   constructor(
-    private storage: ISchedulerStorage,
-    private alarms: ISchedulerAlarms
-  ) {}
+    private scheduleManager: ScheduleManager,
+    private jobExecutor: JobExecutor,
+    private alarms: ISchedulerAlarms,
+  ) {
+    // Wire ScheduleManager alarm → JobExecutor execution
+    this.scheduleManager.setAlarmFiredHandler(async (eventId, instanceTime, input) => {
+      await this.jobExecutor.execute(eventId, instanceTime, input);
+    });
 
-  /**
-   * Get the storage adapter (for direct queries from message handlers)
-   */
-  getStorage(): ISchedulerStorage {
-    return this.storage;
+    // Wire JobExecutor completion → ScheduleManager alarm re-arming
+    this.jobExecutor.setExecutionCompleteHandler(async (eventId) => {
+      await this.scheduleManager.armNextAlarm(eventId);
+    });
   }
 
-  /**
-   * Feature 015: Set the AgentRegistry for creating isolated sessions
-   */
+  // ==========================================================================
+  // Accessors
+  // ==========================================================================
+
+  getScheduleManager(): ScheduleManager {
+    return this.scheduleManager;
+  }
+
+  getJobExecutor(): JobExecutor {
+    return this.jobExecutor;
+  }
+
+  // ==========================================================================
+  // Configuration setters (pass through to delegates)
+  // ==========================================================================
+
   setRegistry(registry: AgentRegistry): void {
-    this.registry = registry;
+    this.jobExecutor.setRegistry(registry);
   }
 
-  /**
-   * Set event emitter for status change notifications
-   */
   setEventEmitter(emitter: SchedulerEventEmitter): void {
     this.eventEmitter = emitter;
+    // Also wire to JobExecutor for execution status events
+    this.jobExecutor.setEventEmitter((event) => {
+      if (this.eventEmitter) {
+        this.eventEmitter(event);
+      }
+    });
   }
 
-  /**
-   * Set notification handler for job start notifications
-   */
   setNotificationHandler(handler: NotificationHandler): void {
-    this.notificationHandler = handler;
+    this.jobExecutor.setNotificationHandler(async (_eventId, _instanceTime, input) => {
+      await handler({ input });
+    });
   }
 
-  /**
-   * Set job launcher for platform-specific job execution
-   */
   setJobLauncher(launcher: JobLauncher): void {
-    this.jobLauncher = launcher;
+    this.jobExecutor.setJobLauncher(async (executionId, sessionId, agent) => {
+      await launcher(executionId, sessionId, agent);
+    });
   }
 
-  /**
-   * Set connectivity check callback (defaults to () => true)
-   */
   setConnectivityCheck(check: ConnectivityCheck): void {
-    this.connectivityCheck = check;
+    this.jobExecutor.setConnectivityCheck(check);
   }
 
-  /**
-   * Create a draft job (no scheduled time)
-   * @returns The created job ID
-   */
-  async createDraftJob(input: string): Promise<string> {
-    const job = await this.storage.createJob(input);
-    return job.id;
-  }
+  // ==========================================================================
+  // Job Lifecycle
+  // ==========================================================================
 
   /**
-   * Schedule a new job for future execution
-   * @returns The created job ID
+   * Schedule a new job for future execution.
+   * Creates a ScheduleEvent. Recurrence is handled via RRULE.
    */
-  async scheduleJob(input: string, scheduledTime: number): Promise<string> {
-    // Validate scheduled time is in the future
-    const now = Date.now();
-    if (scheduledTime <= now) {
-      throw new Error('Scheduled time must be in the future');
+  async scheduleJob(input: string, scheduledTime: number, recurrence?: RecurrenceRule): Promise<string> {
+    let rruleString: string | null = null;
+    if (recurrence) {
+      rruleString = recurrenceRuleToRRule(recurrence, scheduledTime);
     }
 
-    // Create the job with scheduled status
-    const job = await this.storage.createJob(input, scheduledTime);
+    const event = await this.scheduleManager.createEvent(input, scheduledTime, rruleString);
+    return event.id;
+  }
 
-    // Create alarm for the job — clean up on failure to avoid orphaned jobs
+  /**
+   * Manually trigger an event (execute immediately).
+   */
+  async triggerJob(eventId: string): Promise<void> {
+    const event = await this.scheduleManager.getEvent(eventId);
+    if (!event) {
+      throw new Error(`Schedule event not found: ${eventId}`);
+    }
+
+    // Execute immediately with current time as instance time
+    await this.jobExecutor.execute(eventId, Date.now(), event.input);
+  }
+
+  /**
+   * Cancel a running execution or disable a schedule event.
+   */
+  async cancelJob(id: string): Promise<void> {
+    // Try as execution ID first (cancel running execution)
     try {
-      await this.alarms.createJobAlarm(job.id, scheduledTime);
-    } catch (error) {
-      await this.storage.deleteJob(job.id);
-      throw error;
-    }
-
-    return job.id;
-  }
-
-  /**
-   * Schedule an existing draft job
-   */
-  async scheduleExistingJob(jobId: string, scheduledTime: number): Promise<void> {
-    const job = await this.storage.getJob(jobId);
-    if (!job) {
-      throw new Error(`Job not found: ${jobId}`);
-    }
-
-    if (job.status !== 'draft') {
-      throw new Error(`Cannot schedule job in ${job.status} status`);
-    }
-
-    // Validate scheduled time is in the future
-    const now = Date.now();
-    if (scheduledTime <= now) {
-      throw new Error('Scheduled time must be in the future');
-    }
-
-    const previousStatus = job.status;
-
-    // Update job with scheduled time and status
-    await this.storage.updateJob(jobId, {
-      scheduledTime,
-      status: 'scheduled',
-    });
-
-    // Create alarm for the job
-    await this.alarms.createJobAlarm(jobId, scheduledTime);
-
-    // Emit status change event
-    this.emitStatusChange(jobId, previousStatus, 'scheduled');
-  }
-
-  /**
-   * Manually trigger a job (draft or scheduled)
-   * If another job is running, adds to job queue
-   */
-  async triggerJob(jobId: string): Promise<void> {
-    // Guard against concurrent triggers (in-process timer + OS deep link can both fire)
-    if (this.triggeringJobs.has(jobId)) return;
-    this.triggeringJobs.add(jobId);
-
-    try {
-      const job = await this.storage.getJob(jobId);
-      if (!job) {
-        throw new Error(`Job not found: ${jobId}`);
-      }
-
-      // Only draft, scheduled, or missed jobs can be triggered
-      if (!['draft', 'scheduled', 'missed'].includes(job.status)) {
-        throw new Error(`Cannot trigger job in ${job.status} status`);
-      }
-
-      const previousStatus = job.status;
-
-      // Clear alarm if job was scheduled
-      if (job.status === 'scheduled') {
-        await this.alarms.clearJobAlarm(jobId);
-      }
-
-      // Check if another job is currently running or being started
-      const state = await this.storage.getSchedulerState();
-      if (state.currentJobId || this.isExecuting) {
-        // Add to job queue
-        await this.storage.updateJob(jobId, { status: 'waiting' });
-        this.emitStatusChange(jobId, previousStatus, 'waiting');
-      } else {
-        // Execute immediately
-        await this.executeJob(jobId);
-      }
-    } finally {
-      this.triggeringJobs.delete(jobId);
-    }
-  }
-
-  /**
-   * Cancel a job
-   * Feature 015: Cleans up the isolated AgentSession if job was running
-   */
-  async cancelJob(jobId: string): Promise<void> {
-    const job = await this.storage.getJob(jobId);
-    if (!job) {
-      throw new Error(`Job not found: ${jobId}`);
-    }
-
-    // Cannot cancel completed or failed jobs
-    if (['completed', 'failed', 'cancelled'].includes(job.status)) {
-      throw new Error(`Cannot cancel job in ${job.status} status`);
-    }
-
-    const previousStatus = job.status;
-
-    // Clear alarm if scheduled
-    if (job.status === 'scheduled') {
-      await this.alarms.clearJobAlarm(jobId);
-    }
-
-    // If job is running, need to abort execution and clean up session
-    if (job.status === 'running') {
-      // Feature 015: Clean up the AgentSession for this job
-      await this.cleanupJobSession(jobId);
-      // Clear current job from state (verify it's actually this job)
-      const state = await this.storage.getSchedulerState();
-      if (state.currentJobId === jobId) {
-        await this.storage.setSchedulerState({ currentJobId: null });
-        this.emitStateChange({ isPaused: state.isPaused, currentJobId: null });
-      }
-    }
-
-    // Update job status
-    await this.storage.updateJob(jobId, {
-      status: 'cancelled',
-      completedAt: Date.now(),
-    });
-
-    this.emitStatusChange(jobId, previousStatus, 'cancelled');
-
-    // Process queue if we cancelled the running job
-    if (previousStatus === 'running') {
-      await this.processJobQueue();
-    }
-  }
-
-  /**
-   * Execute a job
-   * Feature 015: Creates an isolated AgentSession for the job
-   * Opens a new browser tab with the job for execution
-   */
-  async executeJob(jobId: string): Promise<void> {
-    // Mutex: prevent concurrent executeJob calls (cross-job race)
-    if (this.isExecuting) {
-      await this.storage.updateJob(jobId, { status: 'waiting' });
+      const execution = await this.jobExecutor.getExecutionHistory(id)
+        .then(() => null)
+        .catch(() => null);
+      // Direct execution lookup — attempt to cancel
+      await this.jobExecutor.cancelExecution(id);
       return;
-    }
-    this.isExecuting = true;
-
-    try {
-      const job = await this.storage.getJob(jobId);
-      if (!job) {
-        throw new Error(`Job not found: ${jobId}`);
-      }
-
-      // Guard: only execute jobs in a valid pre-execution status
-      if (!['draft', 'scheduled', 'missed', 'waiting'].includes(job.status)) {
-        console.warn(`[Scheduler] Cannot execute job ${jobId} in ${job.status} status, skipping`);
-        return;
-      }
-
-      const previousStatus = job.status;
-
-      // Feature 015: Create an isolated AgentSession for this scheduled job
-      let sessionId: string;
-      if (this.registry && this.registry.canCreateSession()) {
-        try {
-          const session = await this.registry.createSession({
-            type: 'scheduled',
-          });
-          sessionId = session.sessionId;
-          this.jobSessions.set(jobId, sessionId);
-          console.log(`[Scheduler] Created AgentSession ${sessionId} for job ${jobId}`);
-        } catch (error) {
-          console.error(`[Scheduler] Failed to create AgentSession for job ${jobId}:`, error);
-          // Fallback to legacy session ID
-          sessionId = `session_${uuidv4()}`;
-        }
-      } else {
-        // Legacy fallback when registry is not available
-        sessionId = `session_${uuidv4()}`;
-        console.log(`[Scheduler] Using legacy session ID ${sessionId} for job ${jobId}`);
-      }
-
-      // Update job to running status
-      await this.storage.updateJob(jobId, {
-        status: 'running',
-        sessionId,
-      });
-
-      // Update scheduler state
-      await this.storage.setSchedulerState({
-        currentJobId: jobId,
-        lastProcessedTime: Date.now(),
-      });
-
-      this.emitStatusChange(jobId, previousStatus, 'running');
-      this.emitStateChange({ isPaused: false, currentJobId: jobId });
-
-      // Show browser notification (T025)
-      await this.showJobStartNotification(job);
-
-      // Launch job for execution (errors are caught in launchJob and mark job as failed)
-      await this.launchJob(jobId, sessionId);
-    } finally {
-      this.isExecuting = false;
-    }
-  }
-
-  /**
-   * Show notification when a scheduled job starts (delegates to platform handler)
-   */
-  private async showJobStartNotification(job: SchedulerJobRecord): Promise<void> {
-    if (this.notificationHandler) {
-      try {
-        await this.notificationHandler(job);
-      } catch (error) {
-        console.warn('[Scheduler] Failed to show notification:', error);
-      }
-    }
-  }
-
-  /**
-   * Launch job execution (delegates to platform handler)
-   * Errors are caught and the job is marked as failed to prevent blocking the queue.
-   */
-  private async launchJob(jobId: string, sessionId: string): Promise<void> {
-    try {
-      if (this.jobLauncher) {
-        // Resolve the agent from the registry session (if available)
-        let agent = null;
-        const registrySessionId = this.jobSessions.get(jobId);
-        if (registrySessionId && this.registry) {
-          const session = this.registry.getSession(registrySessionId);
-          agent = session?.agent ?? null;
-        }
-        await this.jobLauncher(jobId, sessionId, agent);
-      } else {
-        console.warn('[Scheduler] No job launcher configured — job will not execute');
-      }
-    } catch (error) {
-      console.error(`[Scheduler] Job launcher failed for ${jobId}:`, error);
-      await this.failJob(jobId, `Job launcher error: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-
-  /**
-   * Mark a job as completed
-   * Called by the executing tab when job finishes successfully
-   * Feature 015: Cleans up the isolated AgentSession for this job
-   */
-  async completeJob(
-    jobId: string,
-    result: JobResultRecord
-  ): Promise<void> {
-    const job = await this.storage.getJob(jobId);
-    if (!job) {
-      throw new Error(`Job not found: ${jobId}`);
+    } catch {
+      // Not an execution — try as schedule event
     }
 
-    if (job.status !== 'running') {
-      throw new Error(`Cannot complete job in ${job.status} status`);
-    }
-
-    const previousStatus = job.status;
-
-    // Feature 015: Clean up the AgentSession for this job
-    await this.cleanupJobSession(jobId);
-
-    // Update job with completion info
-    await this.storage.updateJob(jobId, {
-      status: 'completed',
-      completedAt: Date.now(),
-      result,
-    });
-
-    // Clear current job from state
-    await this.storage.setSchedulerState({ currentJobId: null });
-
-    this.emitStatusChange(jobId, previousStatus, 'completed');
-    this.emitStateChange({ isPaused: false, currentJobId: null });
-
-    // Process next job in queue
-    await this.processJobQueue();
-  }
-
-  /**
-   * Mark a job as failed
-   * Called by the executing tab when job encounters an error
-   * Feature 015: Cleans up the isolated AgentSession for this job
-   */
-  async failJob(jobId: string, error: string): Promise<void> {
-    const job = await this.storage.getJob(jobId);
-    if (!job) {
-      throw new Error(`Job not found: ${jobId}`);
-    }
-
-    if (job.status !== 'running') {
-      throw new Error(`Cannot fail job in ${job.status} status`);
-    }
-
-    const previousStatus = job.status;
-
-    // Feature 015: Clean up the AgentSession for this job
-    await this.cleanupJobSession(jobId);
-
-    // Update job with failure info
-    await this.storage.updateJob(jobId, {
-      status: 'failed',
-      completedAt: Date.now(),
-      error,
-    });
-
-    // Clear current job from state
-    await this.storage.setSchedulerState({ currentJobId: null });
-
-    this.emitStatusChange(jobId, previousStatus, 'failed');
-    this.emitStateChange({ isPaused: false, currentJobId: null });
-
-    // Process next job in queue
-    await this.processJobQueue();
-  }
-
-  /**
-   * Process the job queue
-   * Executes the next waiting job if no job is currently running
-   */
-  async processJobQueue(): Promise<void> {
-    const state = await this.storage.getSchedulerState();
-
-    // Don't process if paused
-    if (state.isPaused) {
+    // Try as schedule event ID (disable the event)
+    const event = await this.scheduleManager.getEvent(id);
+    if (event) {
+      await this.scheduleManager.setEnabled(id, false);
+      await this.alarms.clearJobAlarm(id);
       return;
     }
 
-    // T042: Don't process if offline
-    if (!this.connectivityCheck()) return;
-
-    // Don't process if a job is already running or being started
-    if (state.currentJobId || this.isExecuting) {
-      return;
-    }
-
-    // Get next job from queue (FIFO)
-    const nextJob = await this.storage.getNextJobInQueue();
-    if (nextJob) {
-      await this.executeJob(nextJob.id);
-    }
+    throw new Error(`Not found: ${id}`);
   }
 
   /**
-   * T042: Check if platform is online
+   * Mark an execution as completed.
    */
-  isOnline(): boolean {
-    return this.connectivityCheck();
+  async completeJob(executionId: string, result: JobResultRecord): Promise<void> {
+    await this.jobExecutor.completeExecution(executionId, result);
   }
 
   /**
-   * Pause job queue processing
+   * Mark an execution as failed.
    */
-  async pauseJobQueue(): Promise<void> {
-    const state = await this.storage.getSchedulerState();
-    await this.storage.setSchedulerState({ isPaused: true });
-    await this.alarms.stopJobQueueProcessor();
-    this.emitStateChange({ isPaused: true, currentJobId: state.currentJobId });
+  async failJob(executionId: string, error: string): Promise<void> {
+    await this.jobExecutor.failExecution(executionId, error);
   }
 
   /**
-   * Resume job queue processing
+   * Reschedule an event to a new time.
    */
-  async resumeJobQueue(): Promise<void> {
-    const state = await this.storage.getSchedulerState();
-    await this.storage.setSchedulerState({ isPaused: false });
-    await this.alarms.startJobQueueProcessor();
-    this.emitStateChange({ isPaused: false, currentJobId: state.currentJobId });
-
-    // Process queue immediately
-    await this.processJobQueue();
+  async rescheduleJob(eventId: string, newScheduledTime: number): Promise<void> {
+    await this.scheduleManager.editSeries(eventId, { scheduledTime: newScheduledTime });
   }
 
+  // ==========================================================================
+  // Alarm Handling
+  // ==========================================================================
+
   /**
-   * Handle alarm event from chrome.alarms
+   * Handle alarm event. Always routes to ScheduleManager (no legacy branch).
    */
   async handleAlarm(alarmName: string): Promise<void> {
     const event = parseAlarmName(alarmName);
     if (!event) return;
 
     if (event.type === 'job') {
-      // Job alarm fired - trigger the job
-      const job = await this.storage.getJob(event.jobId);
-      if (job && job.status === 'scheduled') {
-        await this.triggerJob(event.jobId);
-      }
+      await this.scheduleManager.handleAlarmFired(event.jobId);
     } else if (event.type === 'scheduler-job-queue-processor') {
-      // Queue processor alarm - process the queue
-      await this.processJobQueue();
+      await this.jobExecutor.processQueue();
     }
   }
 
-  /**
-   * Detect and clean up stale running jobs on startup.
-   * If the app was quit/crashed while a job was running, the job is stuck
-   * in 'running' status and currentJobId blocks the queue forever.
-   * Called on startup before detectMissedJobs.
-   */
+  // ==========================================================================
+  // Queue Control
+  // ==========================================================================
+
+  async processJobQueue(): Promise<void> {
+    await this.jobExecutor.processQueue();
+  }
+
+  async pauseJobQueue(): Promise<void> {
+    this.jobExecutor.pauseQueue();
+    await this.alarms.stopJobQueueProcessor();
+    this.emitStateChange({ isPaused: true, currentJobId: null });
+  }
+
+  async resumeJobQueue(): Promise<void> {
+    this.jobExecutor.resumeQueue();
+    await this.alarms.startJobQueueProcessor();
+    this.emitStateChange({ isPaused: false, currentJobId: null });
+    await this.jobExecutor.processQueue();
+  }
+
+  isOnline(): boolean {
+    return this.jobExecutor.isOnline();
+  }
+
+  // ==========================================================================
+  // Startup / Recovery
+  // ==========================================================================
+
   async recoverStaleRunningJob(): Promise<void> {
-    const state = await this.storage.getSchedulerState();
-    if (!state.currentJobId) return;
-
-    const job = await this.storage.getJob(state.currentJobId);
-    if (job && job.status === 'running') {
-      console.log(`[Scheduler] Recovering stale running job ${job.id} — marking as failed`);
-      await this.storage.updateJob(job.id, {
-        status: 'failed',
-        completedAt: Date.now(),
-        error: 'Job interrupted: app was restarted while job was running',
-      });
-      this.emitStatusChange(job.id, 'running', 'failed');
-    }
-
-    // Clear currentJobId regardless (the job reference might be stale)
-    await this.storage.setSchedulerState({ currentJobId: null });
-    this.emitStateChange({ isPaused: state.isPaused, currentJobId: null });
-    console.log('[Scheduler] Cleared stale currentJobId');
-
-    // Drain waiting jobs that were blocked behind the stale job
-    await this.processJobQueue();
+    await this.jobExecutor.recoverStaleExecutions();
   }
 
   /**
-   * Detect and mark overdue jobs as missed
-   * Called on startup
+   * Detect missed instances on startup.
+   * Returns missed instances for logging/notification.
    */
-  async detectMissedJobs(): Promise<SchedulerJobRecord[]> {
-    const overdueJobs = await this.storage.getOverdueScheduledJobs();
-
-    for (const job of overdueJobs) {
-      const previousStatus = job.status;
-      await this.storage.updateJob(job.id, { status: 'missed' });
-      await this.alarms.clearJobAlarm(job.id);
-      this.emitStatusChange(job.id, previousStatus, 'missed');
-    }
-
-    return overdueJobs;
+  async detectMissedJobs(): Promise<Array<{ event: ScheduleEvent; instanceTime: number }>> {
+    return this.scheduleManager.getMissedInstances();
   }
 
+  async restoreScheduleAlarms(): Promise<void> {
+    await this.scheduleManager.restoreAlarms();
+  }
+
+  // ==========================================================================
+  // State Queries (for UI)
+  // ==========================================================================
+
   /**
-   * Get scheduler state for UI
+   * Get scheduler state for UI.
+   * Builds state from new model queries.
    */
   async getSchedulerState(): Promise<GetSchedulerStateResponse> {
-    const state = await this.storage.getSchedulerState();
-    const counts = await this.storage.getJobCounts();
+    const isPaused = this.jobExecutor.getPauseState();
+    const scheduled = await this.scheduleManager.getScheduledEvents();
+    const missed = await this.scheduleManager.getMissedInstances();
+    const pending = await this.jobExecutor['executionStorage'].getExecutionsByStatus('pending');
+    const running = await this.jobExecutor['executionStorage'].getRunningExecutions();
 
     let runningJob: SchedulerJobSummary | null = null;
-    if (state.currentJobId) {
-      const job = await this.storage.getJob(state.currentJobId);
-      if (job) {
-        runningJob = this.toJobSummary(job);
-      }
+    let currentJobId: string | null = null;
+    if (running.length > 0) {
+      const exec = running[0];
+      currentJobId = exec.id;
+      runningJob = {
+        id: exec.id,
+        input: exec.input.slice(0, 100),
+        scheduledTime: exec.instanceTime,
+        status: 'running',
+        createdAt: exec.instanceTime,
+      };
     }
 
     return {
-      isPaused: state.isPaused,
-      currentJobId: state.currentJobId,
-      draftCount: counts.draftCount,
-      scheduledCount: counts.scheduledCount,
-      missedCount: counts.missedCount,
-      jobQueueCount: counts.waitingCount,
+      isPaused,
+      currentJobId,
+      draftCount: 0,
+      scheduledCount: scheduled.length,
+      missedCount: missed.length,
+      jobQueueCount: pending.length,
       runningJob,
     };
   }
 
   /**
-   * Convert job record to summary for UI
+   * Get scheduled events (replaces getScheduledJobs for message handlers).
    */
-  private toJobSummary(job: SchedulerJobRecord): SchedulerJobSummary {
+  async getScheduledJobs(): Promise<SchedulerJobSummary[]> {
+    const events = await this.scheduleManager.getScheduledEvents();
+    return events.map(e => this.eventToJobSummary(e));
+  }
+
+  /**
+   * Get missed instances as job summaries.
+   */
+  async getMissedJobs(): Promise<SchedulerJobSummary[]> {
+    const missed = await this.scheduleManager.getMissedInstances();
+    return missed.map(m => ({
+      id: m.event.id,
+      input: m.event.input.slice(0, 100),
+      scheduledTime: m.instanceTime,
+      status: 'missed' as const,
+      createdAt: m.event.createdAt,
+    }));
+  }
+
+  /**
+   * Get job queue (pending executions).
+   */
+  async getJobQueue(): Promise<SchedulerJobSummary[]> {
+    const pending = await this.jobExecutor['executionStorage'].getExecutionsByStatus('pending');
+    return pending.map(e => this.executionToJobSummary(e, 'waiting'));
+  }
+
+  /**
+   * Get archived executions with pagination.
+   */
+  async getArchivedJobs(
+    limit: number,
+    offset: number,
+    sortDirection?: 'newest' | 'oldest',
+    statusFilter?: string[]
+  ): Promise<{ jobs: ArchivedJobSummary[]; total: number; hasMore: boolean }> {
+    const execStatusFilter = statusFilter as ExecutionStatus[] | undefined;
+    const [executions, total] = await Promise.all([
+      this.jobExecutor['executionStorage'].getArchivedExecutions(limit, offset, sortDirection, execStatusFilter),
+      this.jobExecutor['executionStorage'].getArchivedExecutionsCount(execStatusFilter),
+    ]);
+    const jobs: ArchivedJobSummary[] = executions.map(e => ({
+      id: e.id,
+      input: e.input.slice(0, 100),
+      scheduledTime: e.instanceTime,
+      completedAt: e.completedAt ?? 0,
+      status: e.status as 'completed' | 'failed' | 'cancelled',
+      sessionId: e.sessionId,
+      error: e.error ?? undefined,
+    }));
+    return { jobs, total, hasMore: offset + jobs.length < total };
+  }
+
+  /**
+   * Get job details by event ID or execution ID.
+   */
+  async getJobDetails(jobId: string): Promise<unknown> {
+    // Try as schedule event
+    const event = await this.scheduleManager.getEvent(jobId);
+    if (event) {
+      return {
+        id: event.id,
+        input: event.input,
+        scheduledTime: event.scheduledTime,
+        createdAt: event.createdAt,
+        status: event.enabled ? 'scheduled' : 'cancelled',
+        sessionId: null,
+        completedAt: null,
+        error: null,
+      };
+    }
+
+    // Try as execution
+    const execution = await this.jobExecutor['executionStorage'].getExecution(jobId);
+    if (execution) {
+      return {
+        id: execution.id,
+        input: execution.input,
+        scheduledTime: execution.instanceTime,
+        createdAt: execution.instanceTime,
+        status: execution.status,
+        sessionId: execution.sessionId,
+        completedAt: execution.completedAt,
+        error: execution.error,
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Get all events in a date range (for calendar).
+   */
+  async getAllJobsInRange(startTime: number, endTime: number): Promise<SchedulerJobSummary[]> {
+    const instances = await this.scheduleManager.getInstancesInRange(startTime, endTime);
+    return instances.map(i => ({
+      id: i.scheduleEventId,
+      input: i.input.slice(0, 100),
+      scheduledTime: i.instanceTime,
+      status: i.status as string,
+      createdAt: i.instanceTime,
+    }));
+  }
+
+  // ==========================================================================
+  // Internal Helpers
+  // ==========================================================================
+
+  private eventToJobSummary(event: ScheduleEvent): SchedulerJobSummary {
     return {
-      id: job.id,
-      input: job.input.slice(0, 100),
-      scheduledTime: job.scheduledTime,
-      status: job.status,
-      createdAt: job.createdAt,
+      id: event.id,
+      input: event.input.slice(0, 100),
+      scheduledTime: event.scheduledTime,
+      status: 'scheduled',
+      createdAt: event.createdAt,
     };
   }
 
-  /**
-   * Emit job status change event
-   */
-  private emitStatusChange(
-    jobId: string,
-    previousStatus: SchedulerJobStatus,
-    newStatus: SchedulerJobStatus
-  ): void {
-    if (this.eventEmitter) {
-      this.eventEmitter({
-        jobId,
-        previousStatus,
-        newStatus,
-        timestamp: Date.now(),
-      });
-    }
+  private executionToJobSummary(exec: ExecutionRecord, statusOverride?: string): SchedulerJobSummary {
+    return {
+      id: exec.id,
+      input: exec.input.slice(0, 100),
+      scheduledTime: exec.instanceTime,
+      status: (statusOverride || exec.status) as string,
+      createdAt: exec.instanceTime,
+    };
   }
 
-  /**
-   * Emit scheduler state change event with known values.
-   * Both fields are required to avoid silent data loss from partial objects.
-   */
-  private emitStateChange(state: { isPaused: boolean; currentJobId: string | null }): void {
+  private emitStateChange(state: SchedulerStateChangedEvent): void {
     if (this.eventEmitter) {
-      this.eventEmitter({
-        isPaused: state.isPaused,
-        currentJobId: state.currentJobId,
-      });
-    }
-  }
-
-  /**
-   * Feature 015: Clean up the AgentSession associated with a scheduled job
-   * Called when job completes, fails, or is cancelled
-   */
-  private async cleanupJobSession(jobId: string): Promise<void> {
-    const sessionId = this.jobSessions.get(jobId);
-    if (sessionId && this.registry) {
-      try {
-        await this.registry.removeSession(sessionId);
-        console.log(`[Scheduler] Cleaned up AgentSession ${sessionId} for job ${jobId}`);
-      } catch (error) {
-        console.error(`[Scheduler] Failed to cleanup AgentSession ${sessionId} for job ${jobId}:`, error);
-      } finally {
-        this.jobSessions.delete(jobId);
-      }
+      this.eventEmitter({ ...state });
     }
   }
 }

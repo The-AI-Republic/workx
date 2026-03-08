@@ -1,23 +1,35 @@
 <script lang="ts">
   import { uiTheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
-  import type { SchedulerJobStatus } from '@/core/models/types/Scheduler';
+  import type { RecurrenceRule } from '@/core/models/types/Scheduler';
 
-  let { id, input, scheduledTime, status, createdAt, showActions = true, onTrigger, onCancel, onDetails }: {
+  let {
+    id,
+    input,
+    scheduledTime,
+    status,
+    createdAt,
+    showActions = true,
+    recurrence = undefined,
+    onTrigger,
+    onCancel,
+    onDetails,
+  }: {
     id: string;
     input: string;
     scheduledTime: number | null;
-    status: SchedulerJobStatus;
+    status: string;
     createdAt: number;
     showActions?: boolean;
-    onTrigger?: (value: { jobId: string }) => void;
-    onCancel?: (value: { jobId: string }) => void;
-    onDetails?: (value: { jobId: string }) => void;
+    recurrence?: RecurrenceRule | null | undefined;
+    onTrigger?: (data: { jobId: string }) => void;
+    onCancel?: (data: { jobId: string }) => void;
+    onDetails?: (data: { jobId: string }) => void;
   } = $props();
 
   let currentTheme = $derived($uiTheme);
 
-  function getStatusBadgeClasses(s: SchedulerJobStatus): string {
+  function getStatusBadgeClasses(s: string): string {
     switch (s) {
       case 'running': return 'bg-term-bright-green text-black';
       case 'scheduled': return 'bg-[rgba(0,255,0,0.2)] text-term-bright-green';
@@ -31,13 +43,13 @@
     }
   }
 
-  function getItemBorderClass(s: SchedulerJobStatus): string {
+  function getItemBorderClass(s: string): string {
     if (s === 'running') return 'border-term-bright-green animate-running-pulse';
     if (s === 'missed') return 'border-term-yellow';
     return '';
   }
 
-  function getStatusLabel(status: SchedulerJobStatus): string {
+  function getStatusLabel(status: string): string {
     switch (status) {
       case 'running': return t('Running');
       case 'scheduled': return t('Scheduled');
@@ -91,6 +103,31 @@
     onCancel?.({ jobId: id });
   }
 
+  function formatRecurrenceDisplay(rule: RecurrenceRule): string {
+    let base: string;
+    switch (rule.mode) {
+      case 'daily': base = t('Every day'); break;
+      case 'weekly': base = t('Every week'); break;
+      case 'monthly': base = t('Every month'); break;
+      case 'custom': {
+        const interval = rule.interval || 1;
+        const unit = rule.intervalUnit || 'days';
+        base = interval === 1
+          ? t(`Every ${unit.slice(0, -1)}`)
+          : t(`Every ${interval} ${unit}`);
+        break;
+      }
+      default: return t('Does not repeat');
+    }
+    if (rule.endCondition === 'after' && rule.endAfterCount) {
+      const completed = rule.completedCount || 0;
+      base += `, ${completed} ${t('of')} ${rule.endAfterCount} ${t('completed')}`;
+    } else if (rule.endCondition === 'until' && rule.endUntilDate) {
+      base += `, ${t('until')} ${new Date(rule.endUntilDate).toLocaleDateString()}`;
+    }
+    return base;
+  }
+
   function handleClick() {
     onDetails?.({ jobId: id });
   }
@@ -111,6 +148,22 @@
     <span class="inline-block px-1.5 py-0.5 text-sm font-semibold uppercase rounded mb-1 {getStatusBadgeClasses(status)}">
       {getStatusLabel(status)}
     </span>
+    {#if recurrence}
+      <span
+        class="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-sm rounded mb-1 ml-1
+          {currentTheme === 'modern'
+            ? 'bg-[rgba(96,165,250,0.15)] text-blue-400'
+            : 'bg-[rgba(0,255,0,0.15)] text-term-dim-green'}"
+        title={formatRecurrenceDisplay(recurrence)}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="17 1 21 5 17 9"></polyline>
+          <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+          <polyline points="7 23 3 19 7 15"></polyline>
+          <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+        </svg>
+      </span>
+    {/if}
 
     <!-- Job Input Preview -->
     <p class="m-0 text-sm leading-relaxed overflow-hidden text-ellipsis whitespace-nowrap
