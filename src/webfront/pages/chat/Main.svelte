@@ -134,8 +134,11 @@
       console.log('[App] UIChannelClient initialized');
 
       // Listen for all events from backend (wildcard)
+      // Filter out event types that have their own dedicated handlers
+      const HANDLED_EVENT_TYPES = new Set(['StateUpdate', 'BackgroundEvent', 'ServiceResponse']);
       unsubscribers.push(
         client.onEvent('*', (eventMsg: any) => {
+          if (HANDLED_EVENT_TYPES.has(eventMsg?.type)) return;
           // Wrap EventMsg in Event envelope for handleEvent compatibility
           const event: Event = { id: `evt_${Date.now()}`, msg: eventMsg };
           handleEvent(event);
@@ -154,11 +157,7 @@
       // Handle agent re-initialization and scheduler events via BackgroundEvent
       unsubscribers.push(
         client.onEvent('BackgroundEvent', (data: any) => {
-          if (data?.message === 'Agent reinitialized') {
-            messages = [];
-            processedEvents = [];
-            isProcessing = false;
-            eventProcessor.reset();
+          if (data?.message?.startsWith('Agent reinitialized')) {
             checkConnection();
           } else if (data?.message === 'scheduler_job_status' && data?.schedulerEvent) {
             handleSchedulerEvent(data.schedulerEvent as JobStatusChangedEvent);
