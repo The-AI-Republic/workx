@@ -23,12 +23,7 @@
   } = $props();
 
   let currentTheme = $state<UITheme>('terminal');
-  let currentView = $state(initialView);
-
-  // Track initialView prop changes (e.g., wide mode toggle)
-  $effect(() => {
-    currentView = initialView;
-  });
+  let currentView = $derived(initialView);
 
   $effect(() => {
     const unsub = uiTheme.subscribe((theme) => {

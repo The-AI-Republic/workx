@@ -217,15 +217,35 @@
 
   async function handleEditInstance(detail: { scheduleEventId: string; instanceTime: number }) {
     showPopover = false;
-    // TODO: Open edit modal to collect overrides (overrideInput, overrideTime)
-    // then send SCHEDULE_EDIT_INSTANCE with the populated overrides object.
-    console.log('[SchedulerCalendar] Edit instance:', detail.scheduleEventId, 'at', detail.instanceTime);
+    const currentInput = popoverInstance?.input ?? popoverJob?.input ?? '';
+    const newInput = window.prompt('Edit instance prompt:', currentInput);
+    if (newInput === null || newInput === currentInput) return; // cancelled or unchanged
+    try {
+      await sendMessage(MessageType.SCHEDULE_EDIT_INSTANCE, {
+        scheduleEventId: detail.scheduleEventId,
+        instanceTime: detail.instanceTime,
+        overrides: { overrideInput: newInput },
+      });
+      await fetchEvents();
+    } catch (error) {
+      console.error('[SchedulerCalendar] Failed to edit instance:', error);
+    }
   }
 
   async function handleEditSeries(detail: { scheduleEventId: string }) {
     showPopover = false;
-    // TODO: Open edit series modal
-    console.log('[SchedulerCalendar] Edit series:', detail.scheduleEventId);
+    const currentInput = popoverInstance?.input ?? popoverJob?.input ?? '';
+    const newInput = window.prompt('Edit series prompt:', currentInput);
+    if (newInput === null || newInput === currentInput) return;
+    try {
+      await sendMessage(MessageType.SCHEDULE_UPDATE_EVENT, {
+        eventId: detail.scheduleEventId,
+        updates: { input: newInput },
+      });
+      await fetchEvents();
+    } catch (error) {
+      console.error('[SchedulerCalendar] Failed to edit series:', error);
+    }
   }
 
   onMount(() => {

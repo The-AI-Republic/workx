@@ -55,11 +55,11 @@ export class ScheduleEventStorage implements IScheduleStorage {
   }
 
   async getEnabledEvents(): Promise<ScheduleEvent[]> {
-    // IndexedDB stores booleans natively — query with true, not 1
+    // IndexedDB stores booleans natively — cast to IDBValidKey for type safety
     return this.db.queryByIndex<ScheduleEvent>(
       SCHEDULE_EVENTS_STORE,
       'by_enabled',
-      true
+      1 as IDBValidKey
     ).catch(() => {
       // Fallback: filter manually if index query fails
       return this.getAllEvents().then(all => all.filter(e => e.enabled));

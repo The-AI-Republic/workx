@@ -436,7 +436,7 @@ export class Scheduler {
 
   private emitStateChange(state: SchedulerStateChangedEvent): void {
     if (this.eventEmitter) {
-      this.eventEmitter(state);
+      this.eventEmitter({ ...state });
     }
   }
 }

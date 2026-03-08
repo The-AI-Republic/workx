@@ -88,7 +88,8 @@ export function rruleToDescription(rruleString: string, dtstart: number): string
     options.dtstart = new Date(dtstart);
     const rrule = new RRule(options);
     return rrule.toText();
-  } catch {
+  } catch (error) {
+    console.warn('[rruleAdapter] Failed to parse RRULE for description:', error);
     return rruleString;
   }
 }
