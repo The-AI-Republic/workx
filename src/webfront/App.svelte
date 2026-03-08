@@ -7,6 +7,7 @@
   import SchedulerCalendar from './pages/scheduler/SchedulerCalendar.svelte';
   import AppShell from './components/layout/AppShell.svelte';
   import Skills from './pages/skills/Skills.svelte';
+  import Usage from './pages/usage/Usage.svelte';
   import { userStore } from './stores/userStore';
   import { isAuthenticated } from './lib/utils/cookie';
   import { fetchUserProfile } from './lib/apis';
@@ -37,6 +38,9 @@
 
     // Skills page
     '/skills': Skills,
+
+    // Usage page
+    '/usage': Usage,
 
     // Catch-all route - redirect to chat
     '*': Chat,
