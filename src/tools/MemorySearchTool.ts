@@ -22,7 +22,7 @@ export const SEARCH_MEMORY_TOOL: ToolDefinition = {
         query: {
           type: 'string',
           description:
-            'The search query to find relevant memories (e.g., "React setup instructions", "Alex\'s dog\'s name")',
+            'A short search query to find relevant memories (e.g., "React setup instructions", "Alex\'s dog\'s name"). Keep queries concise — under 200 characters.',
         },
       },
       required: ['query'],

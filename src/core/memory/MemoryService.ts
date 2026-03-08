@@ -104,6 +104,11 @@ function classifyFact(fact: string): MemoryCategory {
   return 'general';
 }
 
+/** Max entries in lastExtractionTime before pruning old keys. */
+const MAX_RATE_LIMIT_ENTRIES = 100;
+/** Max size for core-memory.md content (characters) to prevent unbounded context window usage. */
+const MAX_CORE_MEMORY_CHARS = 50000;
+
 export class MemoryService {
   private store: MemoryStore & MemoryHistoryStore;
   private embeddingProvider: EmbeddingProvider;
@@ -216,10 +221,12 @@ export class MemoryService {
     const now = Date.now();
     const lastTime = this.lastExtractionTime.get(queueKey) ?? 0;
     if (now - lastTime < this.minExtractionIntervalMs) {
-      // Buffer these messages — they will be included in the next extraction
+      // Buffer these messages — they will be included in the next extraction.
+      // Always update scope to the latest caller's scope.
       const existing = this.pendingMessages.get(queueKey);
       if (existing) {
         existing.messages.push(...messages);
+        existing.scope = scope; // #9: use latest scope, not first
       } else {
         this.pendingMessages.set(queueKey, { messages: [...messages], scope });
       }
@@ -232,6 +239,14 @@ export class MemoryService {
       ? [...buffered.messages, ...messages]
       : messages;
     this.pendingMessages.delete(queueKey);
+
+    // #11: Prune stale rate-limit entries to prevent unbounded growth
+    if (this.lastExtractionTime.size > MAX_RATE_LIMIT_ENTRIES) {
+      const cutoff = now - this.minExtractionIntervalMs * 10;
+      for (const [key, time] of this.lastExtractionTime) {
+        if (time < cutoff) this.lastExtractionTime.delete(key);
+      }
+    }
 
     // Chain onto the existing queue for this user
     const previousTask =
@@ -390,13 +405,15 @@ export class MemoryService {
             if (!existing) continue;
 
             const hash = await contentHash(decision.fact);
+            const updateNow = Date.now();
             await this.store.update(
               decision.memoryId,
               {
                 factText: decision.fact,
                 category: classifyFact(decision.fact),
                 contentHash: hash,
-              },
+                updatedAt: updateNow,
+              } as Partial<MemoryFact>,
               embedding
             );
             await this.store.logOperation({
@@ -493,10 +510,16 @@ export class MemoryService {
   formatGlobalMemoryContext(coreMarkdown: string): string {
     if (!coreMarkdown || coreMarkdown.trim().length === 0) return '';
 
+    // #24: Cap core memory to prevent unbounded context window usage
+    let content = coreMarkdown.trim();
+    if (content.length > MAX_CORE_MEMORY_CHARS) {
+      content = content.slice(0, MAX_CORE_MEMORY_CHARS) + '\n\n[... truncated — core memory exceeds size limit]';
+    }
+
     return `<agent_memory>
 The following are core rules and preferences you must always follow for this user:
 
-${coreMarkdown.trim()}
+${content}
 </agent_memory>`;
   }
 
@@ -510,24 +533,62 @@ ${coreMarkdown.trim()}
 
   /**
    * Close the underlying store and release resources.
-   * In-flight extractions will be short-circuited.
+   * Drains buffered messages (best-effort), awaits in-flight work, then closes the store.
+   * Idempotent — safe to call multiple times.
    */
   async close(): Promise<void> {
-    // Drain buffered messages before closing (best-effort).
-    // Must run before setting `closed = true` since _doProcessConversation checks the flag.
+    if (this.closed) return; // idempotent guard
+    // #1: Set closed first to prevent processConversation from enqueuing new work
+    this.closed = true;
+
+    // Drain buffered messages (best-effort).
+    // We temporarily allow _doProcessConversation to run by checking a drain flag.
     for (const [, { messages, scope }] of this.pendingMessages) {
       if (messages.length > 0) {
         try {
-          await this._doProcessConversation(messages, scope);
+          await this._doProcessConversationDrain(messages, scope);
         } catch { /* best-effort; don't fail close */ }
       }
     }
     this.pendingMessages.clear();
-    this.closed = true;
-    // Await in-flight processing before closing the store
+
+    // Await in-flight processing before closing the store.
+    // Snapshot the current queue and then clear — any new promises
+    // are prevented because `closed` is true.
     const inflight = Array.from(this.processingQueues.values());
     this.processingQueues.clear();
     await Promise.allSettled(inflight);
     await this.store.close();
+  }
+
+  /**
+   * Drain variant of _doProcessConversation that runs even when closed.
+   * Only called from close() for best-effort message processing.
+   */
+  private async _doProcessConversationDrain(
+    messages: ConversationMessage[],
+    scope: MemoryScope
+  ): Promise<void> {
+    if (!this.config.enabled) return;
+
+    const facts = await this.factExtractor.extract(messages);
+    if (facts.length === 0) return;
+
+    const coreFacts: string[] = [];
+    const topicalFacts: string[] = [];
+    for (const fact of facts) {
+      const category = classifyFact(fact);
+      if (isCoreCategory(category)) {
+        coreFacts.push(fact);
+      } else {
+        topicalFacts.push(fact);
+      }
+    }
+    if (coreFacts.length > 0) {
+      await this.coreMemoryManager.mergeCoreFacts(coreFacts);
+    }
+    if (topicalFacts.length > 0) {
+      await this._processTopicalFacts(topicalFacts, scope);
+    }
   }
 }

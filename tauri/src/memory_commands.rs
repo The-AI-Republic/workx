@@ -174,8 +174,20 @@ fn f32_vec_to_bytes(vec: &[f32]) -> Vec<u8> {
 // Tauri IPC commands
 // ---------------------------------------------------------------------------
 
+fn validate_dimensions(dimensions: u32) -> Result<(), String> {
+    if dimensions < 1 || dimensions > 10000 {
+        return Err(format!(
+            "Invalid embedding dimensions: {}. Must be between 1 and 10000.",
+            dimensions
+        ));
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn memory_init(db_path: String, dimensions: u32) -> Result<(), String> {
+    validate_dimensions(dimensions)?;
+
     let conn = Connection::open(&db_path)
         .map_err(|e| format!("Failed to open memory DB at {}: {}", db_path, e))?;
 
@@ -211,6 +223,10 @@ pub async fn memory_insert(
     let db = db.as_ref().ok_or("Memory DB not initialized")?;
     let now = now_millis();
 
+    // Safety: unchecked_transaction is used because rusqlite's checked transaction
+    // requires &mut Connection, but we only have &Connection through the Mutex guard.
+    // This is safe because: (1) the Mutex ensures single-threaded access, and
+    // (2) no .await points exist while the lock is held (all ops are synchronous).
     let tx = db.conn.unchecked_transaction()
         .map_err(|e| format!("Transaction start failed: {}", e))?;
 
@@ -245,6 +261,10 @@ pub async fn memory_update(
     let db = db.as_ref().ok_or("Memory DB not initialized")?;
     let now = now_millis();
 
+    // Safety: unchecked_transaction is used because rusqlite's checked transaction
+    // requires &mut Connection, but we only have &Connection through the Mutex guard.
+    // This is safe because: (1) the Mutex ensures single-threaded access, and
+    // (2) no .await points exist while the lock is held (all ops are synchronous).
     let tx = db.conn.unchecked_transaction()
         .map_err(|e| format!("Transaction start failed: {}", e))?;
 
@@ -305,6 +325,10 @@ pub async fn memory_delete(id: String) -> Result<(), String> {
     let db = MEMORY_DB.lock().map_err(|e| e.to_string())?;
     let db = db.as_ref().ok_or("Memory DB not initialized")?;
 
+    // Safety: unchecked_transaction is used because rusqlite's checked transaction
+    // requires &mut Connection, but we only have &Connection through the Mutex guard.
+    // This is safe because: (1) the Mutex ensures single-threaded access, and
+    // (2) no .await points exist while the lock is held (all ops are synchronous).
     let tx = db.conn.unchecked_transaction()
         .map_err(|e| format!("Transaction start failed: {}", e))?;
 
@@ -329,6 +353,10 @@ pub async fn memory_search(
 
     let embedding_bytes = f32_vec_to_bytes(&embedding);
 
+    // #4: Over-fetch when filtering by user_id since vec0 doesn't support WHERE on metadata.
+    // Fetch 3x the requested limit so post-filtering still returns enough results.
+    let fetch_limit = if user_id.is_some() { limit * 3 } else { limit };
+
     // KNN search via sqlite-vec, then JOIN with facts
     let mut stmt = db.conn.prepare(
         "SELECT
@@ -346,7 +374,7 @@ pub async fn memory_search(
     .map_err(|e| format!("Prepare search failed: {}", e))?;
 
     let rows = stmt
-        .query_map(params![embedding_bytes, limit as i64], |row| {
+        .query_map(params![embedding_bytes, fetch_limit as i64], |row| {
             Ok(MemorySearchRow {
                 id: row.get(0)?,
                 fact_text: row.get(1)?,
@@ -375,6 +403,10 @@ pub async fn memory_search(
             }
         }
         results.push(r);
+        // Stop once we have enough results after filtering
+        if results.len() >= limit {
+            break;
+        }
     }
 
     Ok(results)
@@ -545,6 +577,10 @@ pub async fn memory_update_access_stats(ids: Vec<String>) -> Result<(), String> 
     let db = db.as_ref().ok_or("Memory DB not initialized")?;
     let now = now_millis();
 
+    // Safety: unchecked_transaction is used because rusqlite's checked transaction
+    // requires &mut Connection, but we only have &Connection through the Mutex guard.
+    // This is safe because: (1) the Mutex ensures single-threaded access, and
+    // (2) no .await points exist while the lock is held (all ops are synchronous).
     let tx = db.conn.unchecked_transaction()
         .map_err(|e| format!("Transaction start failed: {}", e))?;
 
@@ -605,6 +641,8 @@ pub async fn memory_get_schema_dimensions() -> Result<Option<i64>, String> {
 
 #[tauri::command]
 pub async fn memory_migrate_dimensions(new_dimensions: u32) -> Result<(), String> {
+    validate_dimensions(new_dimensions)?;
+
     let db = MEMORY_DB.lock().map_err(|e| e.to_string())?;
     let db = db.as_ref().ok_or("Memory DB not initialized")?;
 

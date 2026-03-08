@@ -677,8 +677,12 @@ export class TurnManager {
           if (!ms) {
             result = { results: [], message: 'Memory system not available' };
           } else {
+            // #23: Truncate excessively long queries to prevent embedding API token overflow
+            const query = typeof parsedParams.query === 'string'
+              ? parsedParams.query.slice(0, 500)
+              : '';
             const memories = await ms.searchTopical(
-              parsedParams.query,
+              query,
               { userId: 'default-user' }
             );
             // L5: Convert distance (lower=better) to similarity score (higher=better)

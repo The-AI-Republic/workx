@@ -1508,7 +1508,7 @@
     "message": "Remaining:"
   },
   "Remember_facts_across_conversations_Requ_a1b2": {
-    "message": "Remember facts across conversations. Requires an OpenAI API key for embeddings."
+    "message": "Remember facts across conversations. Requires an OpenAI API key. Takes effect on next conversation."
   },
   "Remove": {
     "message": "Remove"

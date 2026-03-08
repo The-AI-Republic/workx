@@ -56,7 +56,7 @@ export class ConflictResolver {
       .replace('{{newFacts}}', () => newFactsText);
 
     try {
-      const response = await this.llm.complete(systemPrompt, '');
+      const response = await this.llm.complete(systemPrompt, 'Analyze the memories and return your decisions as JSON.');
       const decisions = this.parseDecisions(response);
 
       // H3: If parsing returned empty (garbled JSON), default to ADD rather than losing facts
@@ -73,8 +73,12 @@ export class ConflictResolver {
         if (d.memoryId) {
           const realId = indexToId.get(d.memoryId);
           if (!realId) {
-            console.warn(`[Memory] Conflict resolver returned unknown memoryId "${d.memoryId}", discarding`);
+            // #3: Hallucinated memoryId — fall back to ADD to avoid losing the fact
+            console.warn(`[Memory] Conflict resolver returned unknown memoryId "${d.memoryId}", falling back to ADD`);
             d.memoryId = undefined;
+            if (d.action === 'UPDATE' || d.action === 'DELETE') {
+              d.action = 'ADD';
+            }
           } else {
             d.memoryId = realId;
           }

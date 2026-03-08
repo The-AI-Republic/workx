@@ -28,7 +28,7 @@ export interface PlatformCapabilities {
   hasTouchInput: boolean;
 
   /** Platform identifier for analytics/debugging */
-  platformName: 'extension' | 'desktop' | 'mobile';
+  platformName: 'extension' | 'desktop' | 'server' | 'mobile';
 }
 
 /**
@@ -50,5 +50,5 @@ export const platform: PlatformCapabilities = {
   hasTouchInput: false, // Will be: __BUILD_MODE__ === 'mobile'
 
   // Platform identifier
-  platformName: __BUILD_MODE__ as 'extension' | 'desktop' | 'mobile',
+  platformName: __BUILD_MODE__ as 'extension' | 'desktop' | 'server' | 'mobile',
 };

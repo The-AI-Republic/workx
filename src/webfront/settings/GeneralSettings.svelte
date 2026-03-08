@@ -359,7 +359,7 @@
               {currentTheme === 'modern'
                 ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
                 : 'font-terminal text-term-dim-green'}"
-            >{$_t("Remember facts across conversations. Requires an OpenAI API key for embeddings.")}</span>
+            >{$_t("Remember facts across conversations. Requires an OpenAI API key. Takes effect on next conversation.")}</span>
           </div>
           <Switch
             state={currentPreferences.memoryEnabled ?? false}

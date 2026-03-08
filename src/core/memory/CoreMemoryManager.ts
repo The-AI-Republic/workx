@@ -81,7 +81,7 @@ export class CoreMemoryManager {
       .replace('{{newFacts}}', () => newFactsText);
 
     try {
-      const updatedMarkdown = await this.llm.complete(systemPrompt, '');
+      const updatedMarkdown = await this.llm.complete(systemPrompt, 'Merge the new facts into the markdown and return the complete updated file.');
 
       // Strip any markdown code fences the LLM might wrap the response in
       const cleaned = updatedMarkdown

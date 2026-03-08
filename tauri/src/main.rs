@@ -138,7 +138,12 @@ mod tests {
 fn main() {
     // Register sqlite-vec extension globally before any DB connections are opened.
     // This makes vec0 virtual tables available in all rusqlite connections.
-    // Safety: sqlite3_auto_extension is safe to call before any connections are opened.
+    //
+    // Safety: sqlite3_auto_extension requires a function pointer with the SQLite
+    // extension init signature. sqlite_vec::sqlite3_vec_init is guaranteed by the
+    // sqlite-vec crate to match this signature. The transmute converts between
+    // compatible function pointer types. This must be called before any connections
+    // are opened (guaranteed by placement at the start of main).
     unsafe {
         rusqlite::ffi::sqlite3_auto_extension(Some(std::mem::transmute(
             sqlite_vec::sqlite3_vec_init as *const (),

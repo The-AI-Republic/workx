@@ -395,24 +395,29 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
     this.assertValidDimensions(newDimensions);
     const db = this.getDb();
 
-    // Set migration status to PENDING
-    db.prepare(
-      "INSERT OR REPLACE INTO memory_meta (key, value) VALUES ('migration_status', 'PENDING')"
-    ).run();
+    // #18: Wrap in transaction to prevent inconsistent state on crash
+    const migrateFn = db.transaction(() => {
+      // Set migration status to PENDING
+      db.prepare(
+        "INSERT OR REPLACE INTO memory_meta (key, value) VALUES ('migration_status', 'PENDING')"
+      ).run();
 
-    // Drop and recreate vec0 table
-    db.exec('DROP TABLE IF EXISTS memory_embeddings');
-    db.exec(`
-      CREATE VIRTUAL TABLE memory_embeddings USING vec0(
-        memory_id TEXT PRIMARY KEY,
-        embedding float[${newDimensions}]
-      )
-    `);
+      // Drop and recreate vec0 table
+      db.exec('DROP TABLE IF EXISTS memory_embeddings');
+      db.exec(`
+        CREATE VIRTUAL TABLE memory_embeddings USING vec0(
+          memory_id TEXT PRIMARY KEY,
+          embedding float[${newDimensions}]
+        )
+      `);
 
-    // Update dimensions metadata
-    db.prepare(
-      "INSERT OR REPLACE INTO memory_meta (key, value) VALUES ('embedding_dimensions', ?)"
-    ).run(String(newDimensions));
+      // Update dimensions metadata
+      db.prepare(
+        "INSERT OR REPLACE INTO memory_meta (key, value) VALUES ('embedding_dimensions', ?)"
+      ).run(String(newDimensions));
+    });
+
+    migrateFn();
   }
 
   async setMigrationStatus(status: 'COMPLETE' | 'PENDING'): Promise<void> {
