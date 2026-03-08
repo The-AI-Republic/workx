@@ -10,6 +10,7 @@
 
   let currentTheme = $state<UITheme>('terminal');
   let wide = $state(false);
+  let jobRefreshCounter = $state(0);
 
   $effect(() => {
     const unsub = uiTheme.subscribe((theme) => {
@@ -74,23 +75,27 @@
 
   <!-- Modules Layout -->
   {#if wide}
-    <!-- Wide mode: 3-column grid -->
-    <div class="grid grid-cols-3 gap-4 p-4 h-[calc(100vh-52px)]">
-      <div class="overflow-y-auto">
-        <ActiveJobsModule collapsible={false} initialExpanded={true} />
+    <!-- Wide mode: 2-column split -->
+    <div class="grid grid-cols-2 gap-4 p-4 h-[calc(100vh-52px)]">
+      <!-- Left column: NewJob + JobHistory -->
+      <div class="flex flex-col gap-4 overflow-hidden">
+        <div class="shrink-0">
+          <NewJobModule collapsible={false} initialExpanded={true} onscheduled={() => jobRefreshCounter++} />
+        </div>
+        <div class="flex-1 min-h-0 overflow-hidden">
+          <JobHistoryModule collapsible={false} initialExpanded={true} />
+        </div>
       </div>
-      <div class="overflow-y-auto">
-        <NewJobModule collapsible={false} initialExpanded={true} />
-      </div>
-      <div class="overflow-y-auto">
-        <JobHistoryModule collapsible={false} initialExpanded={true} />
+      <!-- Right column: ActiveJobs -->
+      <div class="overflow-hidden">
+        <ActiveJobsModule collapsible={false} initialExpanded={true} refreshTrigger={jobRefreshCounter} />
       </div>
     </div>
   {:else}
     <!-- Narrow mode: vertical stack with collapsible sections -->
     <div class="flex flex-col gap-3 p-3">
-      <NewJobModule collapsible={true} initialExpanded={true} />
-      <ActiveJobsModule collapsible={true} initialExpanded={true} />
+      <NewJobModule collapsible={true} initialExpanded={true} onscheduled={() => jobRefreshCounter++} />
+      <ActiveJobsModule collapsible={true} initialExpanded={true} refreshTrigger={jobRefreshCounter} />
       <JobHistoryModule collapsible={true} initialExpanded={false} />
     </div>
   {/if}

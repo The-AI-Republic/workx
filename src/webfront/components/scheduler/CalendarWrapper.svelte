@@ -48,6 +48,8 @@
     editable: true,
     eventStartEditable: true,
     selectable: true,
+    unselectAuto: true,
+    selectMinDistance: 5,
     nowIndicator: true,
     scrollTime: '08:00:00',
     dateClick: (info: any) => {
