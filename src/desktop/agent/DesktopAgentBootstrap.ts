@@ -234,6 +234,13 @@ export class DesktopAgentBootstrap {
       agent: {
         getAgent: () => this.agent,
         handleConfigUpdate: () => this.handleConfigUpdate(),
+        updateApprovalConfig: async (config: Record<string, unknown>) => {
+          const { TauriConfigStorage } = await import('@/desktop/storage/TauriConfigStorage');
+          const tauriStorage = new TauriConfigStorage();
+          const storedConfig = (await tauriStorage.get<Record<string, any>>('agent_config')) || {};
+          storedConfig.approval = { ...(storedConfig.approval || {}), ...config };
+          await tauriStorage.set('agent_config', storedConfig);
+        },
       },
     });
 

@@ -441,6 +441,13 @@ async function registerServiceHandlers(): Promise<void> {
       },
       agent: {
         getAgent: () => registry?.getPrimarySession()?.agent ?? agent,
+        updateApprovalConfig: async (config: Record<string, unknown>) => {
+          const result = await chrome.storage.local.get(STORAGE_KEYS.CONFIG);
+          const storedConfig = (result[STORAGE_KEYS.CONFIG] || {}) as Record<string, any>;
+          const existing = storedConfig.approval || { ...DEFAULT_APPROVAL_CONFIG };
+          storedConfig.approval = { ...existing, ...config };
+          await chrome.storage.local.set({ [STORAGE_KEYS.CONFIG]: storedConfig });
+        },
       },
       storage: { storageProvider: chromeStorageAdapter },
     });
@@ -598,33 +605,6 @@ function setupMessageHandlers(): void {
       return true;
     }
 
-    // Handle approval config updates (UPDATE_APPROVAL_CONFIG)
-    if (message.type === 'UPDATE_APPROVAL_CONFIG') {
-      (async () => {
-        try {
-          const config = message.config;
-          const result = await chrome.storage.local.get(STORAGE_KEYS.CONFIG);
-          const storedConfig = (result[STORAGE_KEYS.CONFIG] || {}) as Record<string, any>;
-          const existing = storedConfig.approval || { ...DEFAULT_APPROVAL_CONFIG };
-          const merged = { ...existing, ...config };
-          storedConfig.approval = merged;
-          await chrome.storage.local.set({ [STORAGE_KEYS.CONFIG]: storedConfig });
-          const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
-          if (primaryAgent) {
-            const gate = primaryAgent.getToolRegistry().getApprovalGate();
-            if (gate) {
-              if (config.mode) gate.setMode(config.mode);
-              if (config.trustedDomains) gate.setTrustedDomains(config.trustedDomains);
-              if (config.blockedDomains) gate.setBlockedDomains(config.blockedDomains);
-            }
-          }
-          sendResponse({ success: true });
-        } catch (error) {
-          sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
-        }
-      })();
-      return true;
-    }
   });
 }
 

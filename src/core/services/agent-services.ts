@@ -20,6 +20,13 @@ export interface AgentServiceDeps {
     getSession(): {
       abortAllTasks(reason: string): Promise<void>;
     };
+    getToolRegistry(): {
+      getApprovalGate(): {
+        setMode(mode: string): void;
+        setTrustedDomains(domains: string[]): void;
+        setBlockedDomains(domains: string[]): void;
+      } | null | undefined;
+    };
   } | null;
 
   /** Reload configuration and recreate agent */
@@ -30,6 +37,9 @@ export interface AgentServiceDeps {
 
   /** Preserve auth manager for agent recreation */
   setAuthManager?: (authManager: unknown) => void;
+
+  /** Update approval config in storage and in-memory ApprovalGate */
+  updateApprovalConfig?: (config: Record<string, unknown>) => Promise<void>;
 }
 
 export function createAgentServices(deps: AgentServiceDeps): Record<string, ServiceHandler> {
@@ -87,6 +97,25 @@ export function createAgentServices(deps: AgentServiceDeps): Record<string, Serv
       }
 
       return { success: true, isBackendRouting: shouldUseBackend };
+    },
+
+    'approval.updateConfig': async (params) => {
+      const config = params as Record<string, unknown>;
+      // Platform-specific storage update (if provided)
+      if (deps.updateApprovalConfig) {
+        await deps.updateApprovalConfig(config);
+      }
+      // Update in-memory ApprovalGate
+      const agent = getAgent();
+      if (agent) {
+        const gate = agent.getToolRegistry().getApprovalGate();
+        if (gate) {
+          if (config.mode) gate.setMode(config.mode as string);
+          if (config.trustedDomains) gate.setTrustedDomains(config.trustedDomains as string[]);
+          if (config.blockedDomains) gate.setBlockedDomains(config.blockedDomains as string[]);
+        }
+      }
+      return { success: true };
     },
   };
 }
