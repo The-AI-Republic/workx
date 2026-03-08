@@ -30,11 +30,11 @@ describe('MemoryStore Integration (NodeMemoryStore)', () => {
         fs.rmSync(tempDir, { recursive: true, force: true });
     });
 
-    const createMockFact = (id: string, text: string, category: any = 'general', userId?: string): MemoryFact => ({
+    const createMockFact = (id: string, text: string, category: any = 'general'): MemoryFact => ({
         id,
         factText: text,
         category,
-        scope: { userId },
+        scope: {},
         contentHash: `hash-${id}`,
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -103,17 +103,17 @@ describe('MemoryStore Integration (NodeMemoryStore)', () => {
         expect(count).toBe(0);
     });
 
-    it('filters by categories and user scope', async () => {
-        await store.insert(createMockFact('1', 'General fact 1', 'general', 'userA'), new Float32Array([1, 0, 0, 0]));
-        await store.insert(createMockFact('2', 'Preference fact 1', 'preference', 'userA'), new Float32Array([0, 1, 0, 0]));
-        await store.insert(createMockFact('3', 'Preference fact 2', 'preference', 'userB'), new Float32Array([0, 0, 1, 0]));
+    it('filters by categories', async () => {
+        await store.insert(createMockFact('1', 'General fact 1', 'general'), new Float32Array([1, 0, 0, 0]));
+        await store.insert(createMockFact('2', 'Preference fact 1', 'preference'), new Float32Array([0, 1, 0, 0]));
+        await store.insert(createMockFact('3', 'Preference fact 2', 'preference'), new Float32Array([0, 0, 1, 0]));
 
-        const prefsUserA = await store.getByCategories(['preference'], { userId: 'userA' });
-        expect(prefsUserA).toHaveLength(1);
-        expect(prefsUserA[0].id).toBe('2');
+        const prefs = await store.getByCategories(['preference']);
+        expect(prefs).toHaveLength(2);
 
-        const allPrefs = await store.getByCategories(['preference']);
-        expect(allPrefs).toHaveLength(2);
+        const general = await store.getByCategories(['general']);
+        expect(general).toHaveLength(1);
+        expect(general[0].id).toBe('1');
     });
 
     it('updates access stats', async () => {

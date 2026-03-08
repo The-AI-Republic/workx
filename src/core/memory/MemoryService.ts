@@ -25,7 +25,6 @@ import {
   type MemoryCategory,
   type MemoryConfig,
   type MemoryFact,
-  type MemoryScope,
   type MemorySearchResult,
   ALWAYS_INJECT_CATEGORIES,
 } from './types';
@@ -104,8 +103,6 @@ function classifyFact(fact: string): MemoryCategory {
   return 'general';
 }
 
-/** Max entries in lastExtractionTime before pruning old keys. */
-const MAX_RATE_LIMIT_ENTRIES = 100;
 /** Max size for core-memory.md content (characters) to prevent unbounded context window usage. */
 const MAX_CORE_MEMORY_CHARS = 50000;
 
@@ -116,9 +113,9 @@ export class MemoryService {
   private conflictResolver: ConflictResolver;
   private coreMemoryManager: CoreMemoryManager;
   private config: MemoryConfig;
-  private processingQueues = new Map<string, Promise<void>>();
-  private lastExtractionTime = new Map<string, number>();
-  private pendingMessages = new Map<string, { messages: ConversationMessage[]; scope: MemoryScope }>();
+  private processingQueue: Promise<void> = Promise.resolve();
+  private lastExtractionTime = 0;
+  private pendingMessages: ConversationMessage[] = [];
   private minExtractionIntervalMs = 10000; // 10 seconds cooldown
   private migrationReady: Promise<void> = Promise.resolve();
   private migrationReadyResolve: (() => void) | null = null;
@@ -168,7 +165,7 @@ export class MemoryService {
 
       // eslint-disable-next-line no-constant-condition
       while (true) {
-        const page = await this.store.getAll(undefined, PAGE_SIZE, offset);
+        const page = await this.store.getAll(PAGE_SIZE, offset);
         if (page.length === 0) break;
 
         const texts = page.map(f => f.factText);
@@ -206,73 +203,40 @@ export class MemoryService {
 
   /**
    * Process a conversation turn for memory extraction.
-   * Queued per-user to prevent race conditions.
+   * Serialized to prevent race conditions on concurrent calls.
    */
   async processConversation(
-    messages: ConversationMessage[],
-    scope: MemoryScope
+    messages: ConversationMessage[]
   ): Promise<void> {
     // Wait for any in-flight migration to complete before writing
     await this.migrationReady;
 
-    const queueKey = scope.userId ?? 'default';
-
     // Rate-limit: buffer messages instead of dropping them
     const now = Date.now();
-    const lastTime = this.lastExtractionTime.get(queueKey) ?? 0;
-    if (now - lastTime < this.minExtractionIntervalMs) {
-      // Buffer these messages — they will be included in the next extraction.
-      // Always update scope to the latest caller's scope.
-      const existing = this.pendingMessages.get(queueKey);
-      if (existing) {
-        existing.messages.push(...messages);
-        existing.scope = scope; // #9: use latest scope, not first
-      } else {
-        this.pendingMessages.set(queueKey, { messages: [...messages], scope });
-      }
+    if (now - this.lastExtractionTime < this.minExtractionIntervalMs) {
+      this.pendingMessages.push(...messages);
       return;
     }
 
     // Drain any buffered messages and combine with current
-    const buffered = this.pendingMessages.get(queueKey);
-    const allMessages = buffered && buffered.messages.length > 0
-      ? [...buffered.messages, ...messages]
+    const allMessages = this.pendingMessages.length > 0
+      ? [...this.pendingMessages, ...messages]
       : messages;
-    this.pendingMessages.delete(queueKey);
+    this.pendingMessages = [];
 
-    // #11: Prune stale rate-limit entries to prevent unbounded growth
-    if (this.lastExtractionTime.size > MAX_RATE_LIMIT_ENTRIES) {
-      const cutoff = now - this.minExtractionIntervalMs * 10;
-      for (const [key, time] of this.lastExtractionTime) {
-        if (time < cutoff) this.lastExtractionTime.delete(key);
-      }
-    }
-
-    // Chain onto the existing queue for this user
-    const previousTask =
-      this.processingQueues.get(queueKey) ?? Promise.resolve();
-    const currentTask = previousTask
+    // Chain onto the processing queue
+    this.processingQueue = this.processingQueue
       .then(() => {
-        this.lastExtractionTime.set(queueKey, Date.now());
-        return this._doProcessConversation(allMessages, scope);
+        this.lastExtractionTime = Date.now();
+        return this._doProcessConversation(allMessages);
       })
       .catch((err) =>
         console.warn('[Memory] Extraction failed (non-critical):', err)
       );
-
-    this.processingQueues.set(queueKey, currentTask);
-
-    // Cleanup when chain is idle
-    currentTask.then(() => {
-      if (this.processingQueues.get(queueKey) === currentTask) {
-        this.processingQueues.delete(queueKey);
-      }
-    });
   }
 
   private async _doProcessConversation(
-    messages: ConversationMessage[],
-    scope: MemoryScope
+    messages: ConversationMessage[]
   ): Promise<void> {
     if (!this.config.enabled || this.closed) return;
 
@@ -300,13 +264,12 @@ export class MemoryService {
 
     // Step 4: Process topical facts through sqlite-vec
     if (topicalFacts.length > 0) {
-      await this._processTopicalFacts(topicalFacts, scope);
+      await this._processTopicalFacts(topicalFacts);
     }
   }
 
   private async _processTopicalFacts(
-    facts: string[],
-    scope: MemoryScope
+    facts: string[]
   ): Promise<void> {
     // Batch embed all facts
     const embeddings = await this.embeddingProvider.embedBatch(facts);
@@ -314,7 +277,7 @@ export class MemoryService {
     // Find similar existing memories for each fact
     const allExistingMemories = new Map<string, MemoryFact>();
     for (let i = 0; i < facts.length; i++) {
-      const results = await this.store.search(embeddings[i], 5, scope);
+      const results = await this.store.search(embeddings[i], 5);
       for (const r of results) {
         allExistingMemories.set(r.fact.id, r.fact);
       }
@@ -356,7 +319,7 @@ export class MemoryService {
         switch (decision.action) {
           case 'ADD': {
             // Check maxMemories limit
-            const count = await this.store.count(scope);
+            const count = await this.store.count();
             if (count >= this.config.maxMemories) {
               console.warn(
                 `[Memory] Memory limit reached (${this.config.maxMemories}). Skipping ADD.`
@@ -368,7 +331,7 @@ export class MemoryService {
             const hash = await contentHash(decision.fact);
 
             // Duplicate check: skip if nearest neighbor has the same content hash
-            const nearest = await this.store.search(embedding, 1, scope);
+            const nearest = await this.store.search(embedding, 1);
             if (nearest.length > 0 && nearest[0].fact.contentHash === hash) {
               continue;
             }
@@ -379,7 +342,7 @@ export class MemoryService {
               id,
               factText: decision.fact,
               category,
-              scope,
+              scope: {},
               contentHash: hash,
               createdAt: now,
               updatedAt: now,
@@ -475,7 +438,6 @@ export class MemoryService {
    */
   async searchTopical(
     query: string,
-    scope: MemoryScope,
     limit?: number
   ): Promise<MemorySearchResult[]> {
     // Wait for any in-flight migration to complete before searching
@@ -483,8 +445,7 @@ export class MemoryService {
     const embedding = await this.embeddingProvider.embed(query);
     const results = await this.store.search(
       embedding,
-      limit ?? this.config.recallLimit,
-      scope
+      limit ?? this.config.recallLimit
     );
 
     // Exclude always-inject categories (they're in core-memory.md)
@@ -538,26 +499,19 @@ ${content}
    */
   async close(): Promise<void> {
     if (this.closed) return; // idempotent guard
-    // #1: Set closed first to prevent processConversation from enqueuing new work
+    // Set closed first to prevent processConversation from enqueuing new work
     this.closed = true;
 
     // Drain buffered messages (best-effort).
-    // We temporarily allow _doProcessConversation to run by checking a drain flag.
-    for (const [, { messages, scope }] of this.pendingMessages) {
-      if (messages.length > 0) {
-        try {
-          await this._doProcessConversationDrain(messages, scope);
-        } catch { /* best-effort; don't fail close */ }
-      }
+    if (this.pendingMessages.length > 0) {
+      try {
+        await this._doProcessConversationDrain(this.pendingMessages);
+      } catch { /* best-effort; don't fail close */ }
+      this.pendingMessages = [];
     }
-    this.pendingMessages.clear();
 
     // Await in-flight processing before closing the store.
-    // Snapshot the current queue and then clear — any new promises
-    // are prevented because `closed` is true.
-    const inflight = Array.from(this.processingQueues.values());
-    this.processingQueues.clear();
-    await Promise.allSettled(inflight);
+    await this.processingQueue.catch(() => {});
     await this.store.close();
   }
 
@@ -566,8 +520,7 @@ ${content}
    * Only called from close() for best-effort message processing.
    */
   private async _doProcessConversationDrain(
-    messages: ConversationMessage[],
-    scope: MemoryScope
+    messages: ConversationMessage[]
   ): Promise<void> {
     if (!this.config.enabled) return;
 
@@ -588,7 +541,7 @@ ${content}
       await this.coreMemoryManager.mergeCoreFacts(coreFacts);
     }
     if (topicalFacts.length > 0) {
-      await this._processTopicalFacts(topicalFacts, scope);
+      await this._processTopicalFacts(topicalFacts);
     }
   }
 }

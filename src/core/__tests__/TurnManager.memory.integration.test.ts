@@ -115,8 +115,7 @@ describe('TurnManager Memory Integration', () => {
             [
                 { role: 'user', content: 'Hello agent, my name is Alice.' },
                 { role: 'assistant', content: 'Hello Alice! I will remember that.' }
-            ],
-            { userId: 'default-user' }  // C5: stable user ID
+            ]
         );
     });
 

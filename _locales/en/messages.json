@@ -1510,6 +1510,9 @@
   "Remember_facts_across_conversations_Requ_a1b2": {
     "message": "Remember facts across conversations. Requires an OpenAI API key. Takes effect on next conversation."
   },
+  "Memory_is_enabled_but_no_OpenAI_API_key__c3d4": {
+    "message": "Memory is enabled but no OpenAI API key is configured. Add one in Model Settings to activate memory."
+  },
   "Remove": {
     "message": "Remove"
   },

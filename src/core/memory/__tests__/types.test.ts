@@ -162,7 +162,7 @@ describe('Type shapes', () => {
       id: 'test-id',
       factText: 'User likes TypeScript',
       category: 'preference',
-      scope: { userId: 'u1' },
+      scope: {},
       contentHash: 'abc123',
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -172,7 +172,6 @@ describe('Type shapes', () => {
     expect(fact.id).toBe('test-id');
     expect(fact.factText).toBe('User likes TypeScript');
     expect(fact.category).toBe('preference');
-    expect(fact.scope.userId).toBe('u1');
     expect(fact.accessCount).toBe(0);
   });
 
@@ -194,7 +193,6 @@ describe('Type shapes', () => {
 
   it('MemoryScope fields are all optional', () => {
     const scope: MemoryScope = {};
-    expect(scope.userId).toBeUndefined();
     expect(scope.agentId).toBeUndefined();
     expect(scope.sessionId).toBeUndefined();
   });

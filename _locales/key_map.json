@@ -195,6 +195,7 @@
   "Refreshes in": "Refreshes_in",
   "Remaining:": "Remaining",
   "Remember facts across conversations. Requires an OpenAI API key. Takes effect on next conversation.": "Remember_facts_across_conversations_Requ_a1b2",
+  "Memory is enabled but no OpenAI API key is configured. Add one in Model Settings to activate memory.": "Memory_is_enabled_but_no_OpenAI_API_key__c3d4",
   "Remove": "Remove",
   "Remove API Key": "Remove_API_Key",
   "Request timeout in milliseconds (5000-120000)": "Request_timeout_in_milliseconds_5000_120_0f28",

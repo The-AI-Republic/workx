@@ -3,7 +3,6 @@ import type {
   MemoryConfig,
   MemoryFact,
   MemoryOperation,
-  MemoryScope,
   MemorySearchResult,
 } from './types';
 
@@ -26,22 +25,20 @@ export interface MemoryStore {
 
   search(
     embedding: Float32Array,
-    limit: number,
-    scope?: MemoryScope
+    limit: number
   ): Promise<MemorySearchResult[]>;
 
   getByCategories(
-    categories: MemoryCategory[],
-    scope?: MemoryScope
+    categories: MemoryCategory[]
   ): Promise<MemoryFact[]>;
 
   getById(id: string): Promise<MemoryFact | null>;
 
-  getAll(scope?: MemoryScope, limit?: number, offset?: number): Promise<MemoryFact[]>;
+  getAll(limit?: number, offset?: number): Promise<MemoryFact[]>;
 
   updateAccessStats(ids: string[]): Promise<void>;
 
-  count(scope?: MemoryScope): Promise<number>;
+  count(): Promise<number>;
 
   getSchemaDimensions(): Promise<number | null>;
 

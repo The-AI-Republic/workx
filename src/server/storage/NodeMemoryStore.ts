@@ -4,7 +4,6 @@ import type {
   MemoryConfig,
   MemoryFact,
   MemoryOperation,
-  MemoryScope,
   MemorySearchResult,
 } from '@/core/memory/types';
 
@@ -16,7 +15,6 @@ function rowToFact(row: Record<string, unknown>): MemoryFact {
     factText: row.fact_text as string,
     category: row.category as MemoryCategory,
     scope: {
-      userId: (row.user_id as string) || undefined,
       agentId: (row.agent_id as string) || undefined,
       sessionId: (row.session_id as string) || undefined,
     },
@@ -117,7 +115,6 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
         id TEXT PRIMARY KEY,
         fact_text TEXT NOT NULL,
         category TEXT NOT NULL DEFAULT 'general',
-        user_id TEXT,
         agent_id TEXT,
         session_id TEXT,
         content_hash TEXT NOT NULL,
@@ -128,7 +125,6 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
         metadata TEXT
       );
 
-      CREATE INDEX IF NOT EXISTS idx_memory_facts_user ON memory_facts(user_id);
       CREATE INDEX IF NOT EXISTS idx_memory_facts_category ON memory_facts(category);
       CREATE INDEX IF NOT EXISTS idx_memory_facts_hash ON memory_facts(content_hash);
 
@@ -185,13 +181,12 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
 
     const insertFn = db.transaction(() => {
       db.prepare(
-        `INSERT INTO memory_facts (id, fact_text, category, user_id, agent_id, session_id, content_hash, created_at, updated_at, last_accessed_at, access_count, metadata)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`
+        `INSERT INTO memory_facts (id, fact_text, category, agent_id, session_id, content_hash, created_at, updated_at, last_accessed_at, access_count, metadata)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`
       ).run(
         fact.id,
         fact.factText,
         fact.category,
-        fact.scope.userId ?? null,
         fact.scope.agentId ?? null,
         fact.scope.sessionId ?? null,
         fact.contentHash,
@@ -255,18 +250,16 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
 
   async search(
     embedding: Float32Array,
-    limit: number,
-    _scope?: MemoryScope
+    limit: number
   ): Promise<MemorySearchResult[]> {
     const db = this.getDb();
     const embeddingBuf = float32ToBuffer(embedding);
 
-    // M6: Single-user system — no userId filtering needed
     const rows = db
       .prepare(
         `SELECT
           mf.id, mf.fact_text, mf.category,
-          mf.user_id, mf.agent_id, mf.session_id,
+          mf.agent_id, mf.session_id,
           mf.content_hash, mf.created_at, mf.updated_at,
           mf.last_accessed_at, mf.access_count, mf.metadata,
           me.distance
@@ -285,24 +278,16 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
   }
 
   async getByCategories(
-    categories: MemoryCategory[],
-    scope?: MemoryScope
+    categories: MemoryCategory[]
   ): Promise<MemoryFact[]> {
     if (categories.length === 0) return [];
 
     const db = this.getDb();
     const placeholders = categories.map(() => '?').join(', ');
-    let query = `SELECT id, fact_text, category, user_id, agent_id, session_id, content_hash, created_at, updated_at, last_accessed_at, access_count, metadata
+    const query = `SELECT id, fact_text, category, agent_id, session_id, content_hash, created_at, updated_at, last_accessed_at, access_count, metadata
                  FROM memory_facts WHERE category IN (${placeholders})`;
 
-    const params: unknown[] = [...categories];
-
-    if (scope?.userId) {
-      query += ' AND user_id = ?';
-      params.push(scope.userId);
-    }
-
-    const rows = db.prepare(query).all(...params) as Array<
+    const rows = db.prepare(query).all(...categories) as Array<
       Record<string, unknown>
     >;
     return rows.map(rowToFact);
@@ -312,23 +297,18 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
     const db = this.getDb();
     const row = db
       .prepare(
-        'SELECT id, fact_text, category, user_id, agent_id, session_id, content_hash, created_at, updated_at, last_accessed_at, access_count, metadata FROM memory_facts WHERE id = ?'
+        'SELECT id, fact_text, category, agent_id, session_id, content_hash, created_at, updated_at, last_accessed_at, access_count, metadata FROM memory_facts WHERE id = ?'
       )
       .get(id) as Record<string, unknown> | undefined;
     return row ? rowToFact(row) : null;
   }
 
-  async getAll(scope?: MemoryScope, limit?: number, offset?: number): Promise<MemoryFact[]> {
+  async getAll(limit?: number, offset?: number): Promise<MemoryFact[]> {
     const db = this.getDb();
     let query =
-      'SELECT id, fact_text, category, user_id, agent_id, session_id, content_hash, created_at, updated_at, last_accessed_at, access_count, metadata FROM memory_facts';
+      'SELECT id, fact_text, category, agent_id, session_id, content_hash, created_at, updated_at, last_accessed_at, access_count, metadata FROM memory_facts';
 
     const params: unknown[] = [];
-
-    if (scope?.userId) {
-      query += ' WHERE user_id = ?';
-      params.push(scope.userId);
-    }
 
     query += ' ORDER BY updated_at DESC';
 
@@ -365,16 +345,8 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
     updateFn();
   }
 
-  async count(scope?: MemoryScope): Promise<number> {
+  async count(): Promise<number> {
     const db = this.getDb();
-
-    if (scope?.userId) {
-      const row = db
-        .prepare('SELECT COUNT(*) as cnt FROM memory_facts WHERE user_id = ?')
-        .get(scope.userId) as { cnt: number };
-      return row.cnt;
-    }
-
     const row = db
       .prepare('SELECT COUNT(*) as cnt FROM memory_facts')
       .get() as { cnt: number };

@@ -681,10 +681,7 @@ export class TurnManager {
             const query = typeof parsedParams.query === 'string'
               ? parsedParams.query.slice(0, 500)
               : '';
-            const memories = await ms.searchTopical(
-              query,
-              { userId: 'default-user' }
-            );
+            const memories = await ms.searchTopical(query);
             // L5: Convert distance (lower=better) to similarity score (higher=better)
             result = memories.map(m => ({
               fact: m.fact.factText,
@@ -1198,11 +1195,8 @@ export class TurnManager {
 
     if (messages.length === 0) return;
 
-    // C5: Use stable user ID ('default-user') instead of ephemeral sessionId
     void memoryService
-      .processConversation(messages, {
-        userId: 'default-user',
-      })
+      .processConversation(messages)
       .catch((err) =>
         console.warn('[TurnManager] Memory extraction failed (non-critical):', err)
       );

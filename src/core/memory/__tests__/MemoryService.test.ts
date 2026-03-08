@@ -10,7 +10,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MemoryService } from '../MemoryService';
 import type { MemoryStore, MemoryHistoryStore } from '../MemoryStore';
 import type { EmbeddingProvider } from '../EmbeddingClient';
-import type { MemoryFact, MemoryConfig, MemoryScope, MemorySearchResult } from '../types';
+import type { MemoryFact, MemoryConfig, MemorySearchResult } from '../types';
 import { DEFAULT_MEMORY_CONFIG, ALWAYS_INJECT_CATEGORIES } from '../types';
 import type { ConversationMessage } from '../FactExtractor';
 
@@ -23,7 +23,7 @@ function makeFact(overrides: Partial<MemoryFact> = {}): MemoryFact {
     id: 'fact-001',
     factText: 'User likes TypeScript',
     category: 'general',
-    scope: { userId: 'u1' },
+    scope: {},
     contentHash: 'hash1',
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -90,7 +90,6 @@ function createMockFS(files: Record<string, string> = {}) {
 
 const MEMORY_DIR = '/test/.memory';
 const CORE_FILE = `${MEMORY_DIR}/core-memory.md`;
-const DEFAULT_SCOPE: MemoryScope = { userId: 'user-1' };
 
 function createService(overrides: {
   store?: MemoryStore & MemoryHistoryStore;
@@ -198,7 +197,7 @@ describe('MemoryService.searchTopical', () => {
 
     const { service, embedding } = createService({ store });
 
-    const results = await service.searchTopical('test query', DEFAULT_SCOPE);
+    const results = await service.searchTopical('test query');
 
     expect(embedding.embed).toHaveBeenCalledWith('test query');
     expect(store.search).toHaveBeenCalled();
@@ -209,7 +208,7 @@ describe('MemoryService.searchTopical', () => {
     const store = createMockStore();
     const { service } = createService({ store, config: { recallLimit: 5 } });
 
-    await service.searchTopical('query', DEFAULT_SCOPE);
+    await service.searchTopical('query');
 
     const [, limit] = (store.search as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(limit).toBe(5);
@@ -219,7 +218,7 @@ describe('MemoryService.searchTopical', () => {
     const store = createMockStore();
     const { service } = createService({ store });
 
-    await service.searchTopical('query', DEFAULT_SCOPE, 3);
+    await service.searchTopical('query', 3);
 
     const [, limit] = (store.search as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(limit).toBe(3);
@@ -237,7 +236,7 @@ describe('MemoryService.searchTopical', () => {
     (store.search as ReturnType<typeof vi.fn>).mockResolvedValue(results);
 
     const { service } = createService({ store });
-    const filtered = await service.searchTopical('query', DEFAULT_SCOPE);
+    const filtered = await service.searchTopical('query');
 
     // Only project and general should remain
     expect(filtered).toHaveLength(2);
@@ -254,7 +253,7 @@ describe('MemoryService.searchTopical', () => {
     (store.search as ReturnType<typeof vi.fn>).mockResolvedValue(results);
 
     const { service } = createService({ store });
-    await service.searchTopical('query', DEFAULT_SCOPE);
+    await service.searchTopical('query');
 
     expect(store.updateAccessStats).toHaveBeenCalledWith(['id-1', 'id-2']);
   });
@@ -264,7 +263,7 @@ describe('MemoryService.searchTopical', () => {
     (store.search as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
     const { service } = createService({ store });
-    await service.searchTopical('query', DEFAULT_SCOPE);
+    await service.searchTopical('query');
 
     expect(store.updateAccessStats).not.toHaveBeenCalled();
   });
@@ -285,7 +284,7 @@ describe('MemoryService._doProcessConversation (write path)', () => {
     });
 
     const messages = [userMsg('My name is Alex and I live in Paris.')];
-    await (service as any)._doProcessConversation(messages, DEFAULT_SCOPE);
+    await (service as any)._doProcessConversation(messages);
 
     expect(store.insert).not.toHaveBeenCalled();
   });
@@ -300,7 +299,7 @@ describe('MemoryService._doProcessConversation (write path)', () => {
     const { service } = createService({ store, llm });
 
     const messages = [userMsg('I work at Google as a software engineer.')];
-    await (service as any)._doProcessConversation(messages, DEFAULT_SCOPE);
+    await (service as any)._doProcessConversation(messages);
 
     // "works at" → professional category → topical → store.insert
     // store.search returns empty → no conflict resolution LLM call → all ADD
@@ -324,7 +323,7 @@ describe('MemoryService._doProcessConversation (write path)', () => {
     const { service } = createService({ store, llm, fs });
 
     const messages = [userMsg('I prefer dark mode for everything.')];
-    await (service as any)._doProcessConversation(messages, DEFAULT_SCOPE);
+    await (service as any)._doProcessConversation(messages);
 
     // Core facts should NOT go to the vector store
     expect(store.insert).not.toHaveBeenCalled();
@@ -348,7 +347,7 @@ describe('MemoryService._doProcessConversation (write path)', () => {
     });
 
     const messages = [userMsg('Some new information about my project setup.')];
-    await (service as any)._doProcessConversation(messages, DEFAULT_SCOPE);
+    await (service as any)._doProcessConversation(messages);
 
     // insert should NOT have been called because we're at the limit
     expect(store.insert).not.toHaveBeenCalled();
@@ -381,7 +380,7 @@ describe('MemoryService._doProcessConversation (write path)', () => {
     const { service } = createService({ store, llm });
 
     const messages = [userMsg('I just turned 31, it was my birthday yesterday.')];
-    await (service as any)._doProcessConversation(messages, DEFAULT_SCOPE);
+    await (service as any)._doProcessConversation(messages);
 
     expect(store.update).toHaveBeenCalledWith(
       'existing-uuid',
@@ -427,7 +426,7 @@ describe('MemoryService._doProcessConversation (write path)', () => {
     const { service } = createService({ store, llm });
 
     const messages = [userMsg('Actually I was not born in 1992, remove that.')];
-    await (service as any)._doProcessConversation(messages, DEFAULT_SCOPE);
+    await (service as any)._doProcessConversation(messages);
 
     expect(store.delete).toHaveBeenCalledWith('delete-uuid');
     expect(store.logOperation).toHaveBeenCalledWith(
@@ -459,7 +458,7 @@ describe('MemoryService._doProcessConversation (write path)', () => {
     const { service } = createService({ store, llm });
 
     const messages = [userMsg('Some fact that triggers update path test.')];
-    await (service as any)._doProcessConversation(messages, DEFAULT_SCOPE);
+    await (service as any)._doProcessConversation(messages);
 
     expect(store.update).not.toHaveBeenCalled();
   });
@@ -485,7 +484,7 @@ describe('MemoryService._doProcessConversation (write path)', () => {
     const { service } = createService({ store, llm });
 
     const messages = [userMsg('Some context for the delete path test scenario.')];
-    await (service as any)._doProcessConversation(messages, DEFAULT_SCOPE);
+    await (service as any)._doProcessConversation(messages);
 
     expect(store.delete).not.toHaveBeenCalled();
   });
@@ -495,7 +494,7 @@ describe('MemoryService._doProcessConversation (write path)', () => {
 
     // Default LLM returns '{"facts": []}' → empty facts
     const messages = [userMsg('My name is Alex and I work at Google.')];
-    await (service as any)._doProcessConversation(messages, DEFAULT_SCOPE);
+    await (service as any)._doProcessConversation(messages);
 
     expect(store.insert).not.toHaveBeenCalled();
   });
@@ -520,14 +519,14 @@ describe('MemoryService.processConversation - rate-limiting', () => {
     const messages = [userMsg('My name is Alex and I work at Google.')];
 
     // First call — should proceed (100000 - 0 >= 10000)
-    await service.processConversation(messages, DEFAULT_SCOPE);
+    await service.processConversation(messages);
     // Wait for internal promises to settle
     await vi.advanceTimersByTimeAsync(0);
 
     const callCount1 = llm.complete.mock.calls.length;
 
     // Second call immediately — should be rate-limited
-    await service.processConversation(messages, DEFAULT_SCOPE);
+    await service.processConversation(messages);
     await vi.advanceTimersByTimeAsync(0);
 
     expect(llm.complete.mock.calls.length).toBe(callCount1);
@@ -538,7 +537,7 @@ describe('MemoryService.processConversation - rate-limiting', () => {
 
     const messages = [userMsg('My name is Alex and I work at Google.')];
 
-    await service.processConversation(messages, DEFAULT_SCOPE);
+    await service.processConversation(messages);
     await vi.advanceTimersByTimeAsync(0);
 
     const callCount1 = llm.complete.mock.calls.length;
@@ -546,7 +545,7 @@ describe('MemoryService.processConversation - rate-limiting', () => {
     // Advance time past cooldown (10 seconds)
     vi.advanceTimersByTime(11000);
 
-    await service.processConversation(messages, DEFAULT_SCOPE);
+    await service.processConversation(messages);
     await vi.advanceTimersByTimeAsync(0);
 
     expect(llm.complete.mock.calls.length).toBeGreaterThan(callCount1);

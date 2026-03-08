@@ -5,7 +5,6 @@ import type {
   MemoryConfig,
   MemoryFact,
   MemoryOperation,
-  MemoryScope,
   MemorySearchResult,
 } from '@/core/memory/types';
 
@@ -14,7 +13,6 @@ interface TauriMemoryFactRow {
   id: string;
   factText: string;
   category: string;
-  userId: string | null;
   agentId: string | null;
   sessionId: string | null;
   contentHash: string;
@@ -44,7 +42,6 @@ function rowToFact(row: TauriMemoryFactRow): MemoryFact {
     factText: row.factText,
     category: row.category as MemoryCategory,
     scope: {
-      userId: row.userId ?? undefined,
       agentId: row.agentId ?? undefined,
       sessionId: row.sessionId ?? undefined,
     },
@@ -92,7 +89,6 @@ export class TauriMemoryStore implements MemoryStore, MemoryHistoryStore {
       embedding: Array.from(embedding),
       factText: fact.factText,
       category: fact.category,
-      userId: fact.scope.userId ?? null,
       agentId: fact.scope.agentId ?? null,
       sessionId: fact.scope.sessionId ?? null,
       contentHash: fact.contentHash,
@@ -121,13 +117,11 @@ export class TauriMemoryStore implements MemoryStore, MemoryHistoryStore {
 
   async search(
     embedding: Float32Array,
-    limit: number,
-    scope?: MemoryScope
+    limit: number
   ): Promise<MemorySearchResult[]> {
     const rows = await invoke<TauriMemorySearchRow[]>('memory_search', {
       embedding: Array.from(embedding),
       limit,
-      userId: scope?.userId ?? null,
     });
 
     return rows.map((row) => ({
@@ -137,14 +131,12 @@ export class TauriMemoryStore implements MemoryStore, MemoryHistoryStore {
   }
 
   async getByCategories(
-    categories: MemoryCategory[],
-    scope?: MemoryScope
+    categories: MemoryCategory[]
   ): Promise<MemoryFact[]> {
     const rows = await invoke<TauriMemoryFactRow[]>(
       'memory_get_by_categories',
       {
         categories,
-        userId: scope?.userId ?? null,
       }
     );
     return rows.map(rowToFact);
@@ -157,9 +149,8 @@ export class TauriMemoryStore implements MemoryStore, MemoryHistoryStore {
     return row ? rowToFact(row) : null;
   }
 
-  async getAll(scope?: MemoryScope, limit?: number, offset?: number): Promise<MemoryFact[]> {
+  async getAll(limit?: number, offset?: number): Promise<MemoryFact[]> {
     const rows = await invoke<TauriMemoryFactRow[]>('memory_get_all', {
-      userId: scope?.userId ?? null,
       limit: limit ?? null,
       offset: offset ?? null,
     });
@@ -171,10 +162,8 @@ export class TauriMemoryStore implements MemoryStore, MemoryHistoryStore {
     await invoke('memory_update_access_stats', { ids });
   }
 
-  async count(scope?: MemoryScope): Promise<number> {
-    return invoke<number>('memory_count', {
-      userId: scope?.userId ?? null,
-    });
+  async count(): Promise<number> {
+    return invoke<number>('memory_count');
   }
 
   async getSchemaDimensions(): Promise<number | null> {

@@ -38,7 +38,7 @@ function makeFact(overrides: Partial<MemoryFact> = {}): MemoryFact {
     id: 'fact-uuid-001',
     factText: 'User likes Python',
     category: 'preference',
-    scope: { userId: 'u1' },
+    scope: {},
     contentHash: 'hash1',
     createdAt: Date.now(),
     updatedAt: Date.now(),

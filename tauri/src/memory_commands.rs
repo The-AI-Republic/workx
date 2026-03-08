@@ -34,7 +34,6 @@ pub struct MemoryFactRow {
     pub id: String,
     pub fact_text: String,
     pub category: String,
-    pub user_id: Option<String>,
     pub agent_id: Option<String>,
     pub session_id: Option<String>,
     pub content_hash: String,
@@ -51,7 +50,6 @@ pub struct MemorySearchRow {
     pub id: String,
     pub fact_text: String,
     pub category: String,
-    pub user_id: Option<String>,
     pub agent_id: Option<String>,
     pub session_id: Option<String>,
     pub content_hash: String,
@@ -85,7 +83,6 @@ fn run_migration(conn: &Connection, dimensions: u32) -> Result<(), String> {
             id TEXT PRIMARY KEY,
             fact_text TEXT NOT NULL,
             category TEXT NOT NULL DEFAULT 'general',
-            user_id TEXT,
             agent_id TEXT,
             session_id TEXT,
             content_hash TEXT NOT NULL,
@@ -96,8 +93,6 @@ fn run_migration(conn: &Connection, dimensions: u32) -> Result<(), String> {
             metadata TEXT
         );
 
-        CREATE INDEX IF NOT EXISTS idx_memory_facts_user
-            ON memory_facts(user_id);
         CREATE INDEX IF NOT EXISTS idx_memory_facts_category
             ON memory_facts(category);
         CREATE INDEX IF NOT EXISTS idx_memory_facts_hash
@@ -213,7 +208,6 @@ pub async fn memory_insert(
     embedding: Vec<f32>,
     fact_text: String,
     category: String,
-    user_id: Option<String>,
     agent_id: Option<String>,
     session_id: Option<String>,
     content_hash: String,
@@ -231,9 +225,9 @@ pub async fn memory_insert(
         .map_err(|e| format!("Transaction start failed: {}", e))?;
 
     tx.execute(
-        "INSERT INTO memory_facts (id, fact_text, category, user_id, agent_id, session_id, content_hash, created_at, updated_at, last_accessed_at, access_count, metadata)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 0, ?11)",
-        params![id, fact_text, category, user_id, agent_id, session_id, content_hash, now, now, now, metadata],
+        "INSERT INTO memory_facts (id, fact_text, category, agent_id, session_id, content_hash, created_at, updated_at, last_accessed_at, access_count, metadata)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 0, ?10)",
+        params![id, fact_text, category, agent_id, session_id, content_hash, now, now, now, metadata],
     )
     .map_err(|e| format!("Insert into memory_facts failed: {}", e))?;
 
@@ -346,22 +340,17 @@ pub async fn memory_delete(id: String) -> Result<(), String> {
 pub async fn memory_search(
     embedding: Vec<f32>,
     limit: usize,
-    user_id: Option<String>,
 ) -> Result<Vec<MemorySearchRow>, String> {
     let db = MEMORY_DB.lock().map_err(|e| e.to_string())?;
     let db = db.as_ref().ok_or("Memory DB not initialized")?;
 
     let embedding_bytes = f32_vec_to_bytes(&embedding);
 
-    // #4: Over-fetch when filtering by user_id since vec0 doesn't support WHERE on metadata.
-    // Fetch 3x the requested limit so post-filtering still returns enough results.
-    let fetch_limit = if user_id.is_some() { limit * 3 } else { limit };
-
     // KNN search via sqlite-vec, then JOIN with facts
     let mut stmt = db.conn.prepare(
         "SELECT
             mf.id, mf.fact_text, mf.category,
-            mf.user_id, mf.agent_id, mf.session_id,
+            mf.agent_id, mf.session_id,
             mf.content_hash, mf.created_at, mf.updated_at,
             mf.last_accessed_at, mf.access_count, mf.metadata,
             me.distance
@@ -374,48 +363,31 @@ pub async fn memory_search(
     .map_err(|e| format!("Prepare search failed: {}", e))?;
 
     let rows = stmt
-        .query_map(params![embedding_bytes, fetch_limit as i64], |row| {
+        .query_map(params![embedding_bytes, limit as i64], |row| {
             Ok(MemorySearchRow {
                 id: row.get(0)?,
                 fact_text: row.get(1)?,
                 category: row.get(2)?,
-                user_id: row.get(3)?,
-                agent_id: row.get(4)?,
-                session_id: row.get(5)?,
-                content_hash: row.get(6)?,
-                created_at: row.get(7)?,
-                updated_at: row.get(8)?,
-                last_accessed_at: row.get(9)?,
-                access_count: row.get(10)?,
-                metadata: row.get(11)?,
-                distance: row.get(12)?,
+                agent_id: row.get(3)?,
+                session_id: row.get(4)?,
+                content_hash: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+                last_accessed_at: row.get(8)?,
+                access_count: row.get(9)?,
+                metadata: row.get(10)?,
+                distance: row.get(11)?,
             })
         })
         .map_err(|e| format!("Search query failed: {}", e))?;
 
-    let mut results: Vec<MemorySearchRow> = Vec::new();
-    for row in rows {
-        let r = row.map_err(|e| format!("Row read failed: {}", e))?;
-        // Post-filter by user_id if specified (vec0 doesn't support WHERE on metadata)
-        if let Some(ref uid) = user_id {
-            if r.user_id.as_ref() != Some(uid) {
-                continue;
-            }
-        }
-        results.push(r);
-        // Stop once we have enough results after filtering
-        if results.len() >= limit {
-            break;
-        }
-    }
-
-    Ok(results)
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("Row read failed: {}", e))
 }
 
 #[tauri::command]
 pub async fn memory_get_by_categories(
     categories: Vec<String>,
-    user_id: Option<String>,
 ) -> Result<Vec<MemoryFactRow>, String> {
     let db = MEMORY_DB.lock().map_err(|e| e.to_string())?;
     let db = db.as_ref().ok_or("Memory DB not initialized")?;
@@ -425,28 +397,19 @@ pub async fn memory_get_by_categories(
     }
 
     let placeholders: Vec<String> = categories.iter().enumerate().map(|(i, _)| format!("?{}", i + 1)).collect();
-    let mut query = format!(
-        "SELECT id, fact_text, category, user_id, agent_id, session_id, content_hash, created_at, updated_at, last_accessed_at, access_count, metadata
+    let query = format!(
+        "SELECT id, fact_text, category, agent_id, session_id, content_hash, created_at, updated_at, last_accessed_at, access_count, metadata
          FROM memory_facts WHERE category IN ({})",
         placeholders.join(", ")
     );
 
-    let param_offset = categories.len();
-    if user_id.is_some() {
-        query.push_str(&format!(" AND user_id = ?{}", param_offset + 1));
-    }
-
     let mut stmt = db.conn.prepare(&query)
         .map_err(|e| format!("Prepare get_by_categories failed: {}", e))?;
 
-    let mut params_vec: Vec<Box<dyn rusqlite::types::ToSql>> = categories
+    let params_vec: Vec<Box<dyn rusqlite::types::ToSql>> = categories
         .iter()
         .map(|c| Box::new(c.clone()) as Box<dyn rusqlite::types::ToSql>)
         .collect();
-
-    if let Some(uid) = user_id {
-        params_vec.push(Box::new(uid));
-    }
 
     let params_refs: Vec<&dyn rusqlite::types::ToSql> = params_vec.iter().map(|p| p.as_ref()).collect();
 
@@ -456,15 +419,14 @@ pub async fn memory_get_by_categories(
                 id: row.get(0)?,
                 fact_text: row.get(1)?,
                 category: row.get(2)?,
-                user_id: row.get(3)?,
-                agent_id: row.get(4)?,
-                session_id: row.get(5)?,
-                content_hash: row.get(6)?,
-                created_at: row.get(7)?,
-                updated_at: row.get(8)?,
-                last_accessed_at: row.get(9)?,
-                access_count: row.get(10)?,
-                metadata: row.get(11)?,
+                agent_id: row.get(3)?,
+                session_id: row.get(4)?,
+                content_hash: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+                last_accessed_at: row.get(8)?,
+                access_count: row.get(9)?,
+                metadata: row.get(10)?,
             })
         })
         .map_err(|e| format!("Query failed: {}", e))?;
@@ -479,7 +441,7 @@ pub async fn memory_get_by_id(id: String) -> Result<Option<MemoryFactRow>, Strin
     let db = db.as_ref().ok_or("Memory DB not initialized")?;
 
     let result = db.conn.query_row(
-        "SELECT id, fact_text, category, user_id, agent_id, session_id, content_hash, created_at, updated_at, last_accessed_at, access_count, metadata
+        "SELECT id, fact_text, category, agent_id, session_id, content_hash, created_at, updated_at, last_accessed_at, access_count, metadata
          FROM memory_facts WHERE id = ?1",
         params![id],
         |row| {
@@ -487,15 +449,14 @@ pub async fn memory_get_by_id(id: String) -> Result<Option<MemoryFactRow>, Strin
                 id: row.get(0)?,
                 fact_text: row.get(1)?,
                 category: row.get(2)?,
-                user_id: row.get(3)?,
-                agent_id: row.get(4)?,
-                session_id: row.get(5)?,
-                content_hash: row.get(6)?,
-                created_at: row.get(7)?,
-                updated_at: row.get(8)?,
-                last_accessed_at: row.get(9)?,
-                access_count: row.get(10)?,
-                metadata: row.get(11)?,
+                agent_id: row.get(3)?,
+                session_id: row.get(4)?,
+                content_hash: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+                last_accessed_at: row.get(8)?,
+                access_count: row.get(9)?,
+                metadata: row.get(10)?,
             })
         },
     );
@@ -509,7 +470,6 @@ pub async fn memory_get_by_id(id: String) -> Result<Option<MemoryFactRow>, Strin
 
 #[tauri::command]
 pub async fn memory_get_all(
-    user_id: Option<String>,
     limit: Option<usize>,
     offset: Option<usize>,
 ) -> Result<Vec<MemoryFactRow>, String> {
@@ -517,17 +477,11 @@ pub async fn memory_get_all(
     let db = db.as_ref().ok_or("Memory DB not initialized")?;
 
     let mut query = String::from(
-        "SELECT id, fact_text, category, user_id, agent_id, session_id, content_hash, created_at, updated_at, last_accessed_at, access_count, metadata FROM memory_facts"
+        "SELECT id, fact_text, category, agent_id, session_id, content_hash, created_at, updated_at, last_accessed_at, access_count, metadata FROM memory_facts"
     );
 
     let mut params_vec: Vec<Box<dyn rusqlite::types::ToSql>> = Vec::new();
     let mut param_idx = 1;
-
-    if let Some(ref uid) = user_id {
-        query.push_str(&format!(" WHERE user_id = ?{}", param_idx));
-        params_vec.push(Box::new(uid.clone()));
-        param_idx += 1;
-    }
 
     query.push_str(" ORDER BY updated_at DESC");
 
@@ -554,15 +508,14 @@ pub async fn memory_get_all(
                 id: row.get(0)?,
                 fact_text: row.get(1)?,
                 category: row.get(2)?,
-                user_id: row.get(3)?,
-                agent_id: row.get(4)?,
-                session_id: row.get(5)?,
-                content_hash: row.get(6)?,
-                created_at: row.get(7)?,
-                updated_at: row.get(8)?,
-                last_accessed_at: row.get(9)?,
-                access_count: row.get(10)?,
-                metadata: row.get(11)?,
+                agent_id: row.get(3)?,
+                session_id: row.get(4)?,
+                content_hash: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+                last_accessed_at: row.get(8)?,
+                access_count: row.get(9)?,
+                metadata: row.get(10)?,
             })
         })
         .map_err(|e| format!("Query failed: {}", e))?;
@@ -597,23 +550,13 @@ pub async fn memory_update_access_stats(ids: Vec<String>) -> Result<(), String> 
 }
 
 #[tauri::command]
-pub async fn memory_count(user_id: Option<String>) -> Result<i64, String> {
+pub async fn memory_count() -> Result<i64, String> {
     let db = MEMORY_DB.lock().map_err(|e| e.to_string())?;
     let db = db.as_ref().ok_or("Memory DB not initialized")?;
 
-    let count: i64 = if let Some(uid) = user_id {
-        db.conn
-            .query_row(
-                "SELECT COUNT(*) FROM memory_facts WHERE user_id = ?1",
-                params![uid],
-                |row| row.get(0),
-            )
-            .map_err(|e| format!("Count query failed: {}", e))?
-    } else {
-        db.conn
-            .query_row("SELECT COUNT(*) FROM memory_facts", [], |row| row.get(0))
-            .map_err(|e| format!("Count query failed: {}", e))?
-    };
+    let count: i64 = db.conn
+        .query_row("SELECT COUNT(*) FROM memory_facts", [], |row| row.get(0))
+        .map_err(|e| format!("Count query failed: {}", e))?;
 
     Ok(count)
 }

@@ -31,7 +31,6 @@ export const TOPICAL_CATEGORIES: readonly MemoryCategory[] = [
 ] as const;
 
 export interface MemoryScope {
-  userId?: string;
   agentId?: string;
   sessionId?: string;
 }
