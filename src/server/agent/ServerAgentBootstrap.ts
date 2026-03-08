@@ -107,10 +107,20 @@ export class ServerAgentBootstrap {
 
     try {
       // 0. Initialize StorageProvider (used by subsystems)
-      const { isStorageProviderInitialized, initializeStorageProvider } = await import('@/core/storage');
+      const { isStorageProviderInitialized, initializeStorageProvider, isCredentialStoreInitialized, initializeCredentialStore } = await import('@/core/storage');
       if (!isStorageProviderInitialized()) {
         await initializeStorageProvider();
         console.log('[ServerAgentBootstrap] StorageProvider initialized (SQLite)');
+      }
+
+      // 0b. Initialize credential store (for secure API key storage)
+      if (!isCredentialStoreInitialized()) {
+        try {
+          await initializeCredentialStore();
+          console.log('[ServerAgentBootstrap] CredentialStore initialized (FileCredentialStore)');
+        } catch (error) {
+          console.warn('[ServerAgentBootstrap] CredentialStore initialization failed (non-fatal):', error);
+        }
       }
 
       // 1. Initialize config storage (must happen before AgentConfig)
