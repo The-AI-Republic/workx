@@ -40,10 +40,12 @@ export function getUIClient(): UIChannelClient {
 
   let transport: import('./transports/types').UIChannelTransport;
 
-  if (typeof chrome !== 'undefined' && typeof chrome?.runtime?.sendMessage === 'function') {
-    transport = new ChromeExtensionTransport();
-  } else if (typeof (globalThis as any).__TAURI__ !== 'undefined') {
+  // Check Tauri first — in desktop mode the chromePolyfill also provides
+  // chrome.runtime.sendMessage, so we must prefer TauriTransport.
+  if (typeof (globalThis as any).__TAURI__ !== 'undefined') {
     transport = new TauriTransport();
+  } else if (typeof chrome !== 'undefined' && typeof chrome?.runtime?.sendMessage === 'function') {
+    transport = new ChromeExtensionTransport();
   } else {
     throw new Error('No suitable transport found for UIChannelClient');
   }
