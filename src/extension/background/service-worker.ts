@@ -564,6 +564,26 @@ async function registerServiceHandlers(): Promise<void> {
       }
     });
 
+    serviceRegistry.register('agent.initAuth', async (params) => {
+      const { backendBaseUrl, useOwnApiKey } = params as {
+        backendBaseUrl?: string | null;
+        useOwnApiKey?: boolean;
+      };
+
+      const shouldUseBackend = useOwnApiKey === false;
+      const authManager = new AuthManager(shouldUseBackend, shouldUseBackend ? (backendBaseUrl ?? null) : null);
+      currentAuthManager = authManager;
+
+      const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
+      if (primaryAgent) {
+        const factory = primaryAgent.getModelClientFactory();
+        factory.setAuthManager(authManager);
+        await primaryAgent.refreshModelClient();
+      }
+
+      return { success: true, isBackendRouting: shouldUseBackend };
+    });
+
     serviceRegistry.register('session.setMaxConcurrent', async (params) => {
       const { maxConcurrent } = params as { maxConcurrent: number };
       if (registry && typeof maxConcurrent === 'number') {
