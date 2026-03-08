@@ -31,16 +31,19 @@ export function createMcpServices(deps: MCPServiceDeps): Record<string, ServiceH
 
   return {
     'mcp.getServers': async () => {
-      return mcpManager.getServers();
+      const data = await mcpManager.getServers();
+      return { success: true, data };
     },
 
     'mcp.addServer': async (params) => {
-      return mcpManager.addServer(params);
+      await mcpManager.addServer(params);
+      return { success: true };
     },
 
     'mcp.updateServer': async (params) => {
       const { id, update } = params as { id: string; update: unknown };
-      return mcpManager.updateServer(id, update);
+      await mcpManager.updateServer(id, update);
+      return { success: true };
     },
 
     'mcp.removeServer': async (params) => {
@@ -63,15 +66,18 @@ export function createMcpServices(deps: MCPServiceDeps): Record<string, ServiceH
 
     'mcp.getConnection': async (params) => {
       const { id } = params as { id: string };
-      return mcpManager.getConnection(id);
+      const data = await mcpManager.getConnection(id);
+      return { success: true, data };
     },
 
     'mcp.getConnections': async () => {
-      return mcpManager.getConnections();
+      const data = await mcpManager.getConnections();
+      return { success: true, data };
     },
 
     'mcp.getAllTools': async () => {
-      return mcpManager.getAllTools();
+      const data = await mcpManager.getAllTools();
+      return { success: true, data };
     },
 
     'mcp.executeTool': async (params) => {
@@ -79,16 +85,19 @@ export function createMcpServices(deps: MCPServiceDeps): Record<string, ServiceH
         prefixedName: string;
         args: Record<string, unknown>;
       };
-      return mcpManager.executeTool(prefixedName, args);
+      const data = await mcpManager.executeTool(prefixedName, args);
+      return { success: true, data };
     },
 
     'mcp.getAllResources': async () => {
-      return mcpManager.getAllResources();
+      const data = await mcpManager.getAllResources();
+      return { success: true, data };
     },
 
     'mcp.readResource': async (params) => {
       const { serverName, uri } = params as { serverName: string; uri: string };
-      return mcpManager.readResource(serverName, uri);
+      const data = await mcpManager.readResource(serverName, uri);
+      return { success: true, data };
     },
   };
 }

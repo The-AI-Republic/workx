@@ -39,6 +39,7 @@ export function createVaultServices(deps: VaultServiceDeps): Record<string, Serv
 
     'vault.lock': async () => {
       await vaultManager.lock();
+      return { success: true };
     },
 
     'vault.pin.set': async (params) => {
@@ -50,6 +51,7 @@ export function createVaultServices(deps: VaultServiceDeps): Record<string, Serv
         throw new Error('PINs do not match');
       }
       await vaultManager.enablePin(pin);
+      return { success: true };
     },
 
     'vault.pin.change': async (params) => {
@@ -76,6 +78,7 @@ export function createVaultServices(deps: VaultServiceDeps): Record<string, Serv
         );
       }
       await vaultManager.changePin(currentPin, newPin);
+      return { success: true };
     },
 
     'vault.pin.remove': async (params) => {
@@ -92,6 +95,7 @@ export function createVaultServices(deps: VaultServiceDeps): Record<string, Serv
         );
       }
       await vaultManager.removePin(pin);
+      return { success: true };
     },
 
     'vault.pin.forgot': async (params) => {
@@ -100,6 +104,7 @@ export function createVaultServices(deps: VaultServiceDeps): Record<string, Serv
         throw new Error('Confirmation required');
       }
       await vaultManager.reset();
+      return { success: true };
     },
   };
 }

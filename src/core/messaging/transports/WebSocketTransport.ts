@@ -16,7 +16,7 @@ export interface WebSocketTransportConfig {
 
 export class WebSocketTransport implements UIChannelTransport {
   private ws: WebSocket | null = null;
-  private listeners: Array<(event: EventMsg) => void> = [];
+  private listeners = new Set<(event: EventMsg) => void>();
   private config: WebSocketTransportConfig;
 
   constructor(config: WebSocketTransportConfig) {
@@ -35,9 +35,9 @@ export class WebSocketTransport implements UIChannelTransport {
   }
 
   onEvent(handler: (event: EventMsg) => void): () => void {
-    this.listeners.push(handler);
+    this.listeners.add(handler);
     return () => {
-      this.listeners = this.listeners.filter((h) => h !== handler);
+      this.listeners.delete(handler);
     };
   }
 
@@ -45,7 +45,17 @@ export class WebSocketTransport implements UIChannelTransport {
     return new Promise((resolve, reject) => {
       this.ws = new WebSocket(this.config.url);
 
-      this.ws.onopen = () => resolve();
+      this.ws.onopen = () => {
+        // Set up runtime error/close handlers after connection is established
+        this.ws!.onerror = (err) => {
+          console.error('[WebSocketTransport] Connection error:', err);
+        };
+        this.ws!.onclose = (event) => {
+          console.warn(`[WebSocketTransport] Connection closed: code=${event.code} reason=${event.reason}`);
+          this.ws = null;
+        };
+        resolve();
+      };
       this.ws.onerror = (err) => reject(err);
 
       this.ws.onmessage = (rawEvent) => {
@@ -56,7 +66,11 @@ export class WebSocketTransport implements UIChannelTransport {
           if (data.type === 'event' && data.payload?.msg) {
             const eventMsg = data.payload.msg as EventMsg;
             for (const handler of this.listeners) {
-              handler(eventMsg);
+              try {
+                handler(eventMsg);
+              } catch (err) {
+                console.error('[WebSocketTransport] Event handler threw:', err);
+              }
             }
           }
         } catch {
@@ -71,6 +85,6 @@ export class WebSocketTransport implements UIChannelTransport {
       this.ws.close();
       this.ws = null;
     }
-    this.listeners = [];
+    this.listeners.clear();
   }
 }

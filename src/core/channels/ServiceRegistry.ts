@@ -36,6 +36,9 @@ export class ServiceRegistry {
    * Register a handler for a service path
    */
   register(servicePath: string, handler: ServiceHandler): void {
+    if (this.handlers.has(servicePath)) {
+      console.warn(`[ServiceRegistry] Overwriting existing handler for '${servicePath}'`);
+    }
     this.handlers.set(servicePath, handler);
   }
 

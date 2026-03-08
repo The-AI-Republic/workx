@@ -28,29 +28,36 @@ export class UIChannelClient {
   private eventHandlers = new Map<string, Set<(data: any) => void>>();
   private unlistenTransport: (() => void) | null = null;
   private initialized = false;
+  private initPromise: Promise<void> | null = null;
 
   constructor(transport: UIChannelTransport) {
     this.transport = transport;
   }
 
   /**
-   * Initialize the client and transport
+   * Initialize the client and transport.
+   * Concurrency-safe: multiple concurrent calls share the same init promise.
    */
   async initialize(): Promise<void> {
     if (this.initialized) return;
+    if (!this.initPromise) {
+      this.initPromise = this.doInitialize().catch((err) => {
+        this.initPromise = null;
+        throw err;
+      });
+    }
+    return this.initPromise;
+  }
 
-    console.log('[UIChannelClient] Initializing transport...');
+  private async doInitialize(): Promise<void> {
     await this.transport.initialize();
-    console.log('[UIChannelClient] Transport initialized');
 
     // Listen for all events from the transport
     this.unlistenTransport = this.transport.onEvent((event: EventMsg) => {
-      console.log('[UIChannelClient] Received event from transport:', event.type, 'data' in event ? JSON.stringify((event as any).data).slice(0, 200) : '');
       this.handleEvent(event);
     });
 
     this.initialized = true;
-    console.log('[UIChannelClient] Initialization complete');
   }
 
   /**
@@ -86,16 +93,25 @@ export class UIChannelClient {
       });
     });
 
-    // Send the ServiceRequest Op through the transport
-    console.log(`[UIChannelClient] Sending ServiceRequest: ${service} (${requestId})`);
-    await this.transport.sendOp(
-      {
-        type: 'ServiceRequest',
-        requestId,
-        service,
-        params,
-      } as Op,
-    );
+    // Send the ServiceRequest Op through the transport.
+    // If sendOp throws, clean up the pending request to avoid leaks.
+    try {
+      await this.transport.sendOp(
+        {
+          type: 'ServiceRequest',
+          requestId,
+          service,
+          params,
+        } as Op,
+      );
+    } catch (error) {
+      const pending = this.pendingRequests.get(requestId);
+      if (pending) {
+        clearTimeout(pending.timeout);
+        this.pendingRequests.delete(requestId);
+      }
+      throw error;
+    }
 
     return promise;
   }
@@ -126,7 +142,7 @@ export class UIChannelClient {
    */
   async destroy(): Promise<void> {
     // Reject all pending requests
-    for (const [requestId, pending] of this.pendingRequests) {
+    for (const [, pending] of this.pendingRequests) {
       clearTimeout(pending.timeout);
       pending.reject(new Error('UIChannelClient destroyed'));
     }
@@ -140,6 +156,7 @@ export class UIChannelClient {
 
     await this.transport.destroy();
     this.initialized = false;
+    this.initPromise = null;
   }
 
   /**
@@ -175,7 +192,11 @@ export class UIChannelClient {
     if (handlers) {
       const eventData = 'data' in event ? (event as any).data : undefined;
       for (const handler of handlers) {
-        handler(eventData);
+        try {
+          handler(eventData);
+        } catch (err) {
+          console.error('[UIChannelClient] Event handler threw:', err);
+        }
       }
     }
 
@@ -183,7 +204,11 @@ export class UIChannelClient {
     const wildcardHandlers = this.eventHandlers.get('*');
     if (wildcardHandlers) {
       for (const handler of wildcardHandlers) {
-        handler(event);
+        try {
+          handler(event);
+        } catch (err) {
+          console.error('[UIChannelClient] Wildcard event handler threw:', err);
+        }
       }
     }
   }

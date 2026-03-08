@@ -74,3 +74,15 @@ export async function getInitializedUIClient(): Promise<UIChannelClient> {
   await _uiClientInitPromise;
   return client;
 }
+
+/**
+ * Destroy the UIChannelClient singleton and reset state.
+ * Useful for cleanup during hot-reload or shutdown.
+ */
+export async function destroyUIClient(): Promise<void> {
+  if (_uiClient) {
+    await _uiClient.destroy();
+    _uiClient = null;
+    _uiClientInitPromise = null;
+  }
+}

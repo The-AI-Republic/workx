@@ -226,7 +226,18 @@ export class DesktopAgentBootstrap {
     const { registerAllServices } = await import('@/core/services');
     const registry = channelManager.getServiceRegistry();
 
+    // Get MCPManager instance (already created during setupMCPToolRegistration)
+    let mcpDeps: import('@/core/services').MCPServiceDeps | undefined;
+    try {
+      const { MCPManager } = await import('@/core/mcp/MCPManager');
+      const mcpManager = await MCPManager.getInstance('desktop');
+      mcpDeps = { mcpManager: mcpManager as any };
+    } catch (error) {
+      console.warn('[DesktopAgentBootstrap] MCPManager not available for service registration:', error);
+    }
+
     const count = registerAllServices(registry, {
+      mcp: mcpDeps,
       skills: this.skillRegistry ? { skillRegistry: this.skillRegistry } : undefined,
       session: {
         getAgent: () => this.agent,

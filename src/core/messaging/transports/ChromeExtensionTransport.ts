@@ -12,7 +12,7 @@ import type { EventMsg } from '@/core/protocol/events';
 import type { UIChannelTransport } from './types';
 
 export class ChromeExtensionTransport implements UIChannelTransport {
-  private listeners: Array<(event: EventMsg) => void> = [];
+  private listeners = new Set<(event: EventMsg) => void>();
   private messageListener: ((message: any) => void) | null = null;
 
   async sendOp(op: Op, context?: Record<string, unknown>): Promise<void> {
@@ -21,12 +21,16 @@ export class ChromeExtensionTransport implements UIChannelTransport {
       op,
       ...context,
     });
+    // Defensive check: in some edge cases sendMessage resolves but sets lastError
+    if (chrome.runtime.lastError) {
+      throw new Error(`sendOp failed: ${chrome.runtime.lastError.message}`);
+    }
   }
 
   onEvent(handler: (event: EventMsg) => void): () => void {
-    this.listeners.push(handler);
+    this.listeners.add(handler);
     return () => {
-      this.listeners = this.listeners.filter((h) => h !== handler);
+      this.listeners.delete(handler);
     };
   }
 
@@ -46,7 +50,11 @@ export class ChromeExtensionTransport implements UIChannelTransport {
 
       if (eventMsg) {
         for (const handler of this.listeners) {
-          handler(eventMsg);
+          try {
+            handler(eventMsg);
+          } catch (err) {
+            console.error('[ChromeExtensionTransport] Event handler threw:', err);
+          }
         }
       }
     };
@@ -59,6 +67,6 @@ export class ChromeExtensionTransport implements UIChannelTransport {
       chrome.runtime.onMessage.removeListener(this.messageListener);
       this.messageListener = null;
     }
-    this.listeners = [];
+    this.listeners.clear();
   }
 }

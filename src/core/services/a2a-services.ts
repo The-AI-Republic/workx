@@ -30,16 +30,19 @@ export function createA2AServices(deps: A2AServiceDeps): Record<string, ServiceH
 
   return {
     'a2a.getAgents': async () => {
-      return a2aManager.getAgents();
+      const data = await a2aManager.getAgents();
+      return { success: true, data };
     },
 
     'a2a.addAgent': async (params) => {
-      return a2aManager.addAgent(params.config);
+      await a2aManager.addAgent(params);
+      return { success: true };
     },
 
     'a2a.updateAgent': async (params) => {
       const { id, update } = params as { id: string; update: unknown };
-      return a2aManager.updateAgent(id, update);
+      await a2aManager.updateAgent(id, update);
+      return { success: true };
     },
 
     'a2a.removeAgent': async (params) => {
@@ -62,15 +65,18 @@ export function createA2AServices(deps: A2AServiceDeps): Record<string, ServiceH
 
     'a2a.getConnection': async (params) => {
       const { id } = params as { id: string };
-      return a2aManager.getConnection(id);
+      const data = await a2aManager.getConnection(id);
+      return { success: true, data };
     },
 
     'a2a.getConnections': async () => {
-      return a2aManager.getConnections();
+      const data = await a2aManager.getConnections();
+      return { success: true, data };
     },
 
     'a2a.getAllSkills': async () => {
-      return a2aManager.getAllSkills();
+      const data = await a2aManager.getAllSkills();
+      return { success: true, data };
     },
 
     'a2a.executeSkill': async (params) => {
@@ -78,7 +84,8 @@ export function createA2AServices(deps: A2AServiceDeps): Record<string, ServiceH
         prefixedName: string;
         args: Record<string, unknown>;
       };
-      return a2aManager.executeSkill(prefixedName, args);
+      const data = await a2aManager.executeSkill(prefixedName, args);
+      return { success: true, data };
     },
 
     'a2a.cancelTask': async (params) => {

@@ -186,18 +186,22 @@ export class ChannelManager {
         context.userId
       );
     } catch (error) {
-      await channel.sendEvent(
-        {
-          type: 'ServiceResponse',
-          data: {
-            requestId: op.requestId,
-            service: op.service,
-            success: false,
-            error: error instanceof Error ? error.message : String(error),
+      try {
+        await channel.sendEvent(
+          {
+            type: 'ServiceResponse',
+            data: {
+              requestId: op.requestId,
+              service: op.service,
+              success: false,
+              error: error instanceof Error ? error.message : String(error),
+            },
           },
-        },
-        context.userId
-      );
+          context.userId
+        );
+      } catch (sendError) {
+        console.error(`[ChannelManager] Failed to send error response for ${op.service}:`, sendError);
+      }
     }
   }
 
