@@ -485,12 +485,12 @@ describe('SchedulerStorage', () => {
   // getArchivedJobs
   // =========================================================================
   describe('getArchivedJobs()', () => {
-    it('should query both completed and failed statuses', async () => {
+    it('should query completed, failed, and cancelled statuses', async () => {
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
       await storage.getArchivedJobs(10, 0);
 
-      expect(mockDB.queryByIndex).toHaveBeenCalledTimes(2);
+      expect(mockDB.queryByIndex).toHaveBeenCalledTimes(3);
       expect(mockDB.queryByIndex).toHaveBeenCalledWith(
         STORE_NAMES.SCHEDULER_JOBS,
         INDEX_NAMES.SCHEDULER_BY_STATUS,
@@ -500,6 +500,11 @@ describe('SchedulerStorage', () => {
         STORE_NAMES.SCHEDULER_JOBS,
         INDEX_NAMES.SCHEDULER_BY_STATUS,
         'failed'
+      );
+      expect(mockDB.queryByIndex).toHaveBeenCalledWith(
+        STORE_NAMES.SCHEDULER_JOBS,
+        INDEX_NAMES.SCHEDULER_BY_STATUS,
+        'cancelled'
       );
     });
 
