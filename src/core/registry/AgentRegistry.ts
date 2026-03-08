@@ -148,7 +148,7 @@ export class AgentRegistry {
     try {
       if (this._registryConfig.agentFactory) {
         // Server/Desktop path: use provided factory for agent creation
-        agent = await this._registryConfig.agentFactory(this._config, this._router);
+        agent = await this._registryConfig.agentFactory(this._config);
 
         // Set event dispatcher via factory if provided
         if (this._registryConfig.eventDispatcherFactory) {

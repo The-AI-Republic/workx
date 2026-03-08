@@ -422,7 +422,7 @@ async function registerServiceHandlers(): Promise<void> {
 
     const count = registerAllServices(serviceRegistry, {
       mcp: mcpManager ? { mcpManager } : undefined,
-      scheduler: scheduler && schedulerStorage ? { scheduler, schedulerStorage } : undefined,
+      // scheduler: wired separately via Scheduler class (not through service registry yet)
       skills: skillRegistry ? { skillRegistry } : undefined,
       vault: {
         vaultManager: (await import('@/core/crypto/VaultManager')) as any,
@@ -515,7 +515,7 @@ async function registerServiceHandlers(): Promise<void> {
           agent = primarySession.agent;
 
           // Wire event dispatch through channel
-          agent.setEventDispatcher((event) => {
+          agent!.setEventDispatcher((event) => {
             channelManager.dispatchEvent(event.msg, 'sidepanel-main').catch(() => {});
           });
 

@@ -523,8 +523,8 @@ export class ServerAgentBootstrap {
         const agentConfig = await AgentConfig.getInstance();
         const registry = new AgentRegistry({
           maxConcurrent: 1,
-          agentFactory: async (config, router) => {
-            const agent = new RepublicAgent(config, router);
+          agentFactory: async (config) => {
+            const agent = new RepublicAgent(config);
             await agent.initialize();
             return agent;
           },
@@ -534,7 +534,7 @@ export class ServerAgentBootstrap {
             this.handleSchedulerEventCompletion(event.msg);
           },
         });
-        registry.initialize(agentConfig, this.messageRouter! as any);
+        registry.initialize(agentConfig);
         this.scheduler.setRegistry(registry);
         console.log('[ServerAgentBootstrap] AgentRegistry initialized for session isolation');
       } catch (error) {

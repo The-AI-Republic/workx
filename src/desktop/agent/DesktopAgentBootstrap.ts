@@ -449,7 +449,7 @@ export class DesktopAgentBootstrap {
         try {
           const { emit } = await import('@tauri-apps/api/event');
           await emit('pi:message', {
-            type: MessageType.SCHEDULER_EVENT,
+            type: 'SCHEDULER_EVENT',
             payload: event,
           });
         } catch (error) {
@@ -510,8 +510,8 @@ export class DesktopAgentBootstrap {
         const channelManager = getChannelManager();
         const registry = new AgentRegistry({
           maxConcurrent: 1,
-          agentFactory: async (config, router) => {
-            const agent = new RepublicAgent(config, router, undefined, undefined, new UserNotifier());
+          agentFactory: async (config) => {
+            const agent = new RepublicAgent(config, undefined, undefined, new UserNotifier());
             await agent.initialize();
             return agent;
           },
@@ -520,7 +520,7 @@ export class DesktopAgentBootstrap {
             this.handleSchedulerEventCompletion(event.msg);
           },
         });
-        registry.initialize(agentConfig, this.messageRouter! as any);
+        registry.initialize(agentConfig);
         this.scheduler.setRegistry(registry);
         console.log('[DesktopAgentBootstrap] AgentRegistry initialized for session isolation');
       } catch (error) {
