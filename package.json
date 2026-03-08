@@ -89,6 +89,7 @@
     "fuse.js": "^7.1.0",
     "marked": "^17.0.0",
     "openai": "^6.6.0",
+    "rrule": "^2.8.1",
     "svelte-spa-router": "^4.0.1",
     "tippy.js": "^6.3.7",
     "uuid": "^13.0.0",

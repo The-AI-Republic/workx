@@ -5,6 +5,7 @@
   import { sendMessage, MessageType } from '../../lib/messaging';
   import { tryGetMessageService } from '@/core/messaging';
   import SchedulerJobItem from './SchedulerJobItem.svelte';
+  import JobDetailModal from './JobDetailModal.svelte';
   import StatusFilter from './StatusFilter.svelte';
   import type { ArchivedJobSummary } from '@/core/models/types/SchedulerContracts';
 
@@ -30,6 +31,10 @@
   let selectedStatuses = $state(new Set(['completed', 'failed', 'cancelled']));
   let searchDebounceTimer: ReturnType<typeof setTimeout> | undefined;
   let eventDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+
+  // Detail modal state
+  let showDetailModal = $state(false);
+  let detailJob = $state<ArchivedJobSummary | null>(null);
 
   // Fuse.js instance
   let fuse = $state<Fuse<ArchivedJobSummary> | null>(null);
@@ -180,16 +185,22 @@
       localUnsubs.forEach(fn => fn());
     };
   });
+
+  function handleDetails(data: { jobId: string }) {
+    const found = filteredJobs.find(j => j.id === data.jobId) || archivedJobs.find(j => j.id === data.jobId) || null;
+    detailJob = found;
+    showDetailModal = true;
+  }
 </script>
 
-<div class="flex flex-col rounded-lg overflow-hidden
+<div class="h-full flex flex-col rounded-lg overflow-hidden
   {currentTheme === 'modern'
     ? 'bg-chat-bg dark:bg-chat-bg-dark border border-chat-border dark:border-chat-border-dark'
     : 'bg-[#0a0a0a] border border-term-dim-green'}">
 
   <!-- Header -->
   <button
-    class="flex items-center justify-between w-full px-4 py-3 border-none text-left
+    class="flex items-center justify-between w-full px-4 py-3 border-none text-left shrink-0
       {collapsible ? 'cursor-pointer' : 'cursor-default'}
       {currentTheme === 'modern'
         ? 'bg-chat-surface dark:bg-chat-surface-dark text-chat-text dark:text-chat-text-dark font-chat'
@@ -216,7 +227,7 @@
   <!-- Content -->
   {#if expanded}
     <!-- Search/Sort/Filter Controls -->
-    <div class="px-3 pt-2 flex flex-col gap-2">
+    <div class="px-3 pt-2 flex flex-col gap-2 shrink-0">
       <!-- Search -->
       <input
         type="text"
@@ -257,7 +268,7 @@
     </div>
 
     <!-- Job List -->
-    <div class="px-3 py-2 flex flex-col gap-2 max-h-[400px] overflow-y-auto">
+    <div class="px-3 py-2 flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto">
       {#if isLoading && archivedJobs.length === 0}
         <div class="text-center py-4 text-sm
           {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Loading...')}</div>
@@ -269,7 +280,7 @@
       {:else}
         {#each filteredJobs as job (job.id)}
           <div class="relative">
-            <SchedulerJobItem {...job} showActions={false} />
+            <SchedulerJobItem {...job} showActions={false} ondetails={handleDetails} />
             {#if job.completedAt}
               <div class="absolute top-2 right-2 text-xs opacity-70
                 {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
@@ -295,3 +306,9 @@
     </div>
   {/if}
 </div>
+
+<JobDetailModal
+  show={showDetailModal}
+  job={detailJob}
+  onclose={() => { showDetailModal = false; detailJob = null; }}
+/>

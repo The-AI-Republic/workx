@@ -1,88 +1,77 @@
 <script lang="ts">
-  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { Calendar, DayGrid, TimeGrid, Interaction } from '@event-calendar/core';
-  import '@event-calendar/core/dist/index.css';
+  import '@event-calendar/core/index.css';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import type { CalendarEvent } from '../../lib/calendarUtils';
 
-  export let events: CalendarEvent[] = [];
-  export let initialView: string = 'timeGridWeek';
+  let {
+    events = [],
+    initialView = 'timeGridWeek',
+    ondatesset,
+    ondateclick,
+    oneventclick,
+    oneventdrop,
+    onselect,
+  }: {
+    events?: CalendarEvent[];
+    initialView?: string;
+    ondatesset?: (detail: { start: Date; end: Date; view: any }) => void;
+    ondateclick?: (detail: { date: Date; dateStr: string }) => void;
+    oneventclick?: (detail: { event: any; el: any; jsEvent: MouseEvent }) => void;
+    oneventdrop?: (detail: { event: any; oldEvent: any }) => void;
+    onselect?: (detail: { start: Date; end: Date; startStr: string; endStr: string }) => void;
+  } = $props();
 
-  const dispatch = createEventDispatcher();
+  let currentTheme = $state<UITheme>('terminal');
+  let currentView = $derived(initialView);
 
-  let currentTheme: UITheme = 'terminal';
-  let calendarEl: HTMLDivElement;
-  let calendarComponent: any;
-
-  const unsubTheme = uiTheme.subscribe((theme) => {
-    currentTheme = theme;
+  $effect(() => {
+    const unsub = uiTheme.subscribe((theme) => {
+      currentTheme = theme;
+    });
+    return unsub;
   });
 
-  function getCalendarOptions() {
-    return {
-      view: initialView,
-      events: events,
-      headerToolbar: {
-        start: 'prev,next today',
-        center: 'title',
-        end: 'dayGridMonth,timeGridWeek,timeGridDay',
-      },
-      editable: true,
-      eventStartEditable: true,
-      selectable: true,
-      nowIndicator: true,
-      scrollTime: '08:00:00',
-      dateClick: (info: any) => {
-        dispatch('dateClick', { date: info.date, dateStr: info.dateStr });
-      },
-      eventClick: (info: any) => {
-        dispatch('eventClick', { event: info.event, el: info.el, jsEvent: info.jsEvent });
-      },
-      eventDrop: (info: any) => {
-        dispatch('eventDrop', { event: info.event, oldEvent: info.oldEvent });
-      },
-      datesSet: (info: any) => {
-        dispatch('datesSet', { start: info.start, end: info.end, view: info.view });
-      },
-      select: (info: any) => {
-        dispatch('select', { start: info.start, end: info.end, startStr: info.startStr, endStr: info.endStr });
-      },
-    };
-  }
-
-  onMount(() => {
-    if (calendarEl) {
-      calendarComponent = new Calendar({
-        target: calendarEl,
-        props: {
-          plugins: [DayGrid, TimeGrid, Interaction],
-          options: getCalendarOptions(),
-        },
-      });
-    }
+  let calendarOptions = $derived({
+    view: currentView,
+    events: events,
+    headerToolbar: {
+      start: 'prev,next today',
+      center: 'title',
+      end: 'dayGridMonth,timeGridWeek,timeGridDay',
+    },
+    editable: true,
+    eventStartEditable: true,
+    selectable: true,
+    unselectAuto: true,
+    selectMinDistance: 5,
+    nowIndicator: true,
+    scrollTime: '08:00:00',
+    dateClick: (info: any) => {
+      ondateclick?.({ date: info.date, dateStr: info.dateStr });
+    },
+    eventClick: (info: any) => {
+      oneventclick?.({ event: info.event, el: info.el, jsEvent: info.jsEvent });
+    },
+    eventDrop: (info: any) => {
+      oneventdrop?.({ event: info.event, oldEvent: info.oldEvent });
+    },
+    datesSet: (info: any) => {
+      // Track user's view selection so it doesn't reset on data refresh
+      if (info.view?.type) {
+        currentView = info.view.type;
+      }
+      ondatesset?.({ start: info.start, end: info.end, view: info.view });
+    },
+    select: (info: any) => {
+      onselect?.({ start: info.start, end: info.end, startStr: info.startStr, endStr: info.endStr });
+    },
   });
-
-  onDestroy(() => {
-    unsubTheme();
-    if (calendarComponent) {
-      calendarComponent.$destroy();
-    }
-  });
-
-  // Update events when they change
-  $: if (calendarComponent) {
-    calendarComponent.setOption('events', events);
-  }
-
-  export function getApi() {
-    return calendarComponent;
-  }
 </script>
 
-<div
-  class="calendar-wrapper {currentTheme === 'terminal' ? 'calendar-terminal' : 'calendar-modern'}"
-  bind:this={calendarEl}
-></div>
+<div class="calendar-wrapper {currentTheme === 'terminal' ? 'calendar-terminal' : 'calendar-modern'}">
+  <Calendar plugins={[DayGrid, TimeGrid, Interaction]} options={calendarOptions} />
+</div>
 
 <style>
   .calendar-wrapper {
@@ -98,12 +87,12 @@
     --ec-today-bg-color: rgba(0, 255, 0, 0.05);
     --ec-highlight-color: rgba(0, 255, 0, 0.1);
     --ec-active-bg-color: rgba(0, 255, 0, 0.15);
-    --ec-btn-bg-color: transparent;
-    --ec-btn-border-color: rgba(0, 255, 0, 0.3);
-    --ec-btn-text-color: #00ff00;
-    --ec-btn-hover-bg-color: rgba(0, 255, 0, 0.1);
-    --ec-btn-active-bg-color: rgba(0, 255, 0, 0.2);
-    --ec-btn-active-border-color: #00ff00;
+    --ec-button-bg-color: transparent;
+    --ec-button-border-color: rgba(0, 255, 0, 0.3);
+    --ec-button-text-color: #00ff00;
+    --ec-button-active-bg-color: rgba(0, 255, 0, 0.2);
+    --ec-button-active-border-color: #00ff00;
+    --ec-button-active-text-color: #00ff00;
     --ec-now-indicator-color: #00ff00;
     --ec-event-text-color: #000;
     --ec-list-day-bg-color: rgba(0, 255, 0, 0.05);
@@ -134,5 +123,11 @@
     --ec-bg-color: var(--color-chat-bg-dark, #1a1a2e);
     --ec-border-color: var(--color-chat-border-dark, #374151);
     --ec-text-color: var(--color-chat-text-dark, #e5e7eb);
+    --ec-button-bg-color: var(--color-chat-bg-dark, #1a1a2e);
+    --ec-button-border-color: var(--color-chat-border-dark, #374151);
+    --ec-button-text-color: var(--color-chat-text-dark, #e5e7eb);
+    --ec-button-active-bg-color: rgba(96, 165, 250, 0.2);
+    --ec-button-active-border-color: #3b82f6;
+    --ec-button-active-text-color: #e5e7eb;
   }
 </style>

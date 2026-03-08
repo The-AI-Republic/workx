@@ -40,7 +40,13 @@ export const STORE_NAMES = {
   /** Feature 015: Agent session persistence */
   AGENT_SESSIONS: 'agent_sessions',
   /** Token usage records per task */
-  TOKEN_USAGE_RECORDS: 'token_usage_records'
+  TOKEN_USAGE_RECORDS: 'token_usage_records',
+  /** Schedule events (new schedule/execution model) */
+  SCHEDULE_EVENTS: 'schedule_events',
+  /** Schedule exceptions (per-instance overrides) */
+  SCHEDULE_EXCEPTIONS: 'schedule_exceptions',
+  /** Execution records (one per actual job run) */
+  EXECUTION_RECORDS: 'execution_records',
 } as const;
 
 /**
@@ -61,7 +67,18 @@ export const INDEX_NAMES = {
   /** Token usage indexes */
   TOKEN_USAGE_BY_SESSION: 'by_session',
   TOKEN_USAGE_BY_TIMESTAMP: 'by_timestamp',
-  TOKEN_USAGE_BY_MODEL: 'by_model'
+  TOKEN_USAGE_BY_MODEL: 'by_model',
+  /** Schedule event indexes */
+  SCHEDULE_BY_ENABLED: 'by_enabled',
+  SCHEDULE_BY_SCHEDULED_TIME: 'by_scheduled_time',
+  /** Schedule exception indexes */
+  EXCEPTION_BY_EVENT_INSTANCE: 'by_event_instance',
+  EXCEPTION_BY_EVENT_ID: 'by_event_id',
+  /** Execution record indexes */
+  EXECUTION_BY_EVENT_ID: 'by_event_id',
+  EXECUTION_BY_STATUS: 'by_status',
+  EXECUTION_BY_EVENT_INSTANCE: 'by_event_instance',
+  EXECUTION_BY_INSTANCE_TIME: 'by_instance_time',
 } as const;
 
 /**
@@ -237,7 +254,7 @@ export class IndexedDBAdapter implements StorageAdapter {
         }
 
         // Version 3: Feature 015 - Add agent_sessions object store for session persistence
-        if (oldVersion < 3) {
+        if (oldVersion < 3 ) {
           if (!db.objectStoreNames.contains(STORE_NAMES.AGENT_SESSIONS)) {
             const agentSessionsStore = db.createObjectStore(STORE_NAMES.AGENT_SESSIONS, {
               keyPath: 'sessionId'
@@ -259,7 +276,7 @@ export class IndexedDBAdapter implements StorageAdapter {
           }
         }
 
-        // Version 4: Token usage records store
+        // Version 4: Token usage records + schedule_events, schedule_exceptions, execution_records
         if (oldVersion < 4) {
           if (!db.objectStoreNames.contains(STORE_NAMES.TOKEN_USAGE_RECORDS)) {
             const tokenUsageStore = db.createObjectStore(STORE_NAMES.TOKEN_USAGE_RECORDS, {
@@ -283,6 +300,35 @@ export class IndexedDBAdapter implements StorageAdapter {
               'model',
               { unique: false }
             );
+          }
+
+          // Schedule events store
+          if (!db.objectStoreNames.contains(STORE_NAMES.SCHEDULE_EVENTS)) {
+            const eventsStore = db.createObjectStore(STORE_NAMES.SCHEDULE_EVENTS, {
+              keyPath: 'id'
+            });
+            eventsStore.createIndex('by_enabled', 'enabled', { unique: false });
+            eventsStore.createIndex('by_scheduled_time', 'scheduledTime', { unique: false });
+          }
+
+          // Schedule exceptions store
+          if (!db.objectStoreNames.contains(STORE_NAMES.SCHEDULE_EXCEPTIONS)) {
+            const exceptionsStore = db.createObjectStore(STORE_NAMES.SCHEDULE_EXCEPTIONS, {
+              keyPath: 'id'
+            });
+            exceptionsStore.createIndex('by_event_instance', ['scheduleEventId', 'instanceTime'], { unique: true });
+            exceptionsStore.createIndex('by_event_id', 'scheduleEventId', { unique: false });
+          }
+
+          // Execution records store
+          if (!db.objectStoreNames.contains(STORE_NAMES.EXECUTION_RECORDS)) {
+            const execStore = db.createObjectStore(STORE_NAMES.EXECUTION_RECORDS, {
+              keyPath: 'id'
+            });
+            execStore.createIndex('by_event_id', 'scheduleEventId', { unique: false });
+            execStore.createIndex('by_status', 'status', { unique: false });
+            execStore.createIndex('by_event_instance', ['scheduleEventId', 'instanceTime'], { unique: false });
+            execStore.createIndex('by_instance_time', 'instanceTime', { unique: false });
           }
         }
 

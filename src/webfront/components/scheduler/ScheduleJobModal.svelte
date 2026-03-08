@@ -186,8 +186,8 @@
   >
     <div class="w-[90%] max-w-[400px] max-h-[90vh] overflow-hidden flex flex-col rounded-lg animate-slide-in
       {currentTheme === 'modern'
-        ? 'bg-chat-bg dark:bg-chat-bg-dark border-none shadow-[0_4px_24px_rgba(0,0,0,0.2)] rounded-xl'
-        : 'bg-[#0a0a0a] border border-term-dim-green'}">
+        ? 'bg-chat-bg dark:bg-chat-bg-dark border-none shadow-[0_4px_24px_rgba(0,0,0,0.2)] rounded-xl modal-modern'
+        : 'bg-[#0a0a0a] border border-term-dim-green modal-terminal'}">
       <!-- Header -->
       <div class="flex justify-between items-center p-4
         {currentTheme === 'modern'
@@ -378,6 +378,20 @@
 
   .animate-slide-in {
     animation: slideIn 0.2s ease-out;
+  }
+
+  /* color-scheme tells the browser to render native form controls (select, option,
+     date/time pickers) in the correct light/dark appearance */
+  .modal-terminal {
+    color-scheme: dark;
+  }
+
+  .modal-modern {
+    color-scheme: light;
+  }
+
+  :global(.dark) .modal-modern {
+    color-scheme: dark;
   }
 
   /* Style the date/time picker icons - green filter for terminal theme */
