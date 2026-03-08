@@ -35,13 +35,8 @@
   } = $props();
 
   // Local state
-  let collapsed: boolean = $state(event.collapsed ?? false);
+  let collapsed: boolean = $derived(event.collapsed ?? false);
   let currentTheme = $derived($uiTheme);
-
-  // Update collapsed state when event changes
-  $effect(() => {
-    collapsed = event.collapsed ?? false;
-  });
 
   function handleClick() {
     if (onClick) {
