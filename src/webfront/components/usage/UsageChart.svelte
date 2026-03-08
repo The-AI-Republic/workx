@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount, onDestroy, afterUpdate } from 'svelte';
   import {
     Chart,
     BarController,
@@ -14,10 +13,9 @@
 
   Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
-  export let dailySummaries: DailyUsageSummary[] = [];
-  export let theme: string = 'modern';
+  let { dailySummaries = [], theme = 'modern' }: { dailySummaries?: DailyUsageSummary[]; theme?: string; } = $props();
 
-  let canvas: HTMLCanvasElement;
+  let canvas = $state<HTMLCanvasElement>();
   let chart: Chart | null = null;
 
   const TERMINAL_COLORS = ['#00ff00', '#00cccc', '#66ff66', '#33ffcc', '#00ff99', '#99ff66'];
@@ -91,35 +89,25 @@
     };
   }
 
-  function createChart() {
+  $effect(() => {
     if (!canvas || dailySummaries.length === 0) return;
-    if (chart) chart.destroy();
-    chart = new Chart(canvas, {
-      type: 'bar',
-      data: buildChartData(),
-      options: getChartOptions() as any,
-    });
-  }
-
-  onMount(() => {
-    createChart();
-  });
-
-  afterUpdate(() => {
     if (chart) {
       chart.data = buildChartData();
       chart.options = getChartOptions() as any;
       chart.update();
     } else {
-      createChart();
+      chart = new Chart(canvas, {
+        type: 'bar',
+        data: buildChartData(),
+        options: getChartOptions() as any,
+      });
     }
-  });
-
-  onDestroy(() => {
-    if (chart) {
-      chart.destroy();
-      chart = null;
-    }
+    return () => {
+      if (chart) {
+        chart.destroy();
+        chart = null;
+      }
+    };
   });
 </script>
 

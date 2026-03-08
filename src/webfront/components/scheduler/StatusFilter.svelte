@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import { t } from '../../lib/i18n';
 
   let {
@@ -12,14 +12,7 @@
     onchange?: (next: Set<string>) => void;
   } = $props();
 
-  let currentTheme = $state<UITheme>('terminal');
-
-  $effect(() => {
-    const unsub = uiTheme.subscribe((theme) => {
-      currentTheme = theme;
-    });
-    return unsub;
-  });
+  let currentTheme = $derived($uiTheme);
 
   function getStatusColor(status: string): string {
     switch (status) {

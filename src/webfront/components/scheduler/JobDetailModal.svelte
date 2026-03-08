@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
   import type { RecurrenceRule } from '@/core/models/types/Scheduler';
 
@@ -19,28 +19,21 @@
   let {
     show = false,
     job = null,
-    onclose,
-    ontrigger,
-    oncancel,
+    onClose,
+    onTrigger,
+    onCancel,
   }: {
     show?: boolean;
     job?: JobDetail | null;
-    onclose?: () => void;
-    ontrigger?: (data: { jobId: string }) => void;
-    oncancel?: (data: { jobId: string }) => void;
+    onClose?: () => void;
+    onTrigger?: (data: { jobId: string }) => void;
+    onCancel?: (data: { jobId: string }) => void;
   } = $props();
 
-  let currentTheme = $state<UITheme>('terminal');
-
-  $effect(() => {
-    const unsub = uiTheme.subscribe((theme) => {
-      currentTheme = theme;
-    });
-    return unsub;
-  });
+  let currentTheme = $derived($uiTheme);
 
   function handleClose() {
-    onclose?.();
+    onClose?.();
   }
 
   function handleBackdropClick(e: MouseEvent) {
@@ -283,7 +276,7 @@
                 ? 'bg-[rgba(16,185,129,0.15)] border border-emerald-500/30 text-emerald-500 font-chat hover:bg-[rgba(16,185,129,0.25)]'
                 : 'bg-[rgba(0,255,0,0.1)] border border-term-dim-green text-term-bright-green font-terminal hover:bg-[rgba(0,255,0,0.2)]'}"
             onclick={() => {
-              ontrigger?.({ jobId: job!.id });
+              onTrigger?.({ jobId: job!.id });
               handleClose();
             }}
           >
@@ -296,7 +289,7 @@
             class="py-2 px-4 text-sm rounded cursor-pointer transition-all duration-200
               bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.3)] text-[#ff6b6b] hover:bg-[rgba(239,68,68,0.2)]"
             onclick={() => {
-              oncancel?.({ jobId: job!.id });
+              onCancel?.({ jobId: job!.id });
               handleClose();
             }}
           >

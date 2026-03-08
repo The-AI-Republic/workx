@@ -1,7 +1,6 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
   import { push } from 'svelte-spa-router';
-  import { uiTheme, themePreference, type UITheme } from '../../stores/themeStore';
+  import { uiTheme, themePreference } from '../../stores/themeStore';
   import { isWideMode } from '../../stores/layoutStore';
   import { AgentConfig } from '@/config/AgentConfig';
   import { _t } from '../../lib/i18n';
@@ -12,10 +11,9 @@
   import ScheduleJobModal from '../../components/scheduler/ScheduleJobModal.svelte';
   import EventPopover from '../../components/scheduler/EventPopover.svelte';
 
-  let currentTheme = $state<UITheme>('terminal');
+  let currentTheme = $derived($uiTheme);
   let calendarEvents = $state<CalendarEvent[]>([]);
-  let initialView = $state('timeGridWeek');
-  let eventUnsubscribers: Array<() => void> = [];
+  let initialView = $derived($isWideMode ? 'timeGridWeek' : 'timeGridDay');
 
   // Date range for current view
   let viewStart = $state(0);
@@ -39,20 +37,6 @@
         themePreference.initialize(preferences.uiTheme);
       }
     });
-  });
-
-  $effect(() => {
-    const unsub = uiTheme.subscribe((theme) => {
-      currentTheme = theme;
-    });
-    return unsub;
-  });
-
-  $effect(() => {
-    const unsub = isWideMode.subscribe((wide) => {
-      initialView = wide ? 'timeGridWeek' : 'timeGridDay';
-    });
-    return unsub;
   });
 
   function handleSchedulerEvent(message: { type: string }) {
@@ -248,22 +232,22 @@
     }
   }
 
-  onMount(() => {
+  $effect(() => {
+    const localUnsubs: Array<() => void> = [];
     if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
       chrome.runtime.onMessage.addListener(handleSchedulerEvent);
     }
     const service = tryGetMessageService();
     if (service) {
       const unsub = service.on(MessageType.SCHEDULER_EVENT, () => fetchEvents());
-      if (unsub) eventUnsubscribers.push(unsub);
+      if (unsub) localUnsubs.push(unsub);
     }
-  });
-
-  onDestroy(() => {
-    if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
-      chrome.runtime.onMessage.removeListener(handleSchedulerEvent);
-    }
-    eventUnsubscribers.forEach(fn => fn());
+    return () => {
+      if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+        chrome.runtime.onMessage.removeListener(handleSchedulerEvent);
+      }
+      localUnsubs.forEach(fn => fn());
+    };
   });
 </script>
 
@@ -315,8 +299,8 @@
   input=""
   {prefillDate}
   {prefillTime}
-  onclose={() => showScheduleModal = false}
-  onschedule={handleSchedule}
+  onClose={() => showScheduleModal = false}
+  onSchedule={handleSchedule}
 />
 
 <!-- Event Popover -->

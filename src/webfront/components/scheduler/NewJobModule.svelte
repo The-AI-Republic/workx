@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
   import { sendMessage, MessageType } from '../../lib/messaging';
   import RecurrenceSelector from './RecurrenceSelector.svelte';
@@ -15,7 +15,7 @@
     onscheduled?: () => void;
   } = $props();
 
-  let currentTheme = $state<UITheme>('terminal');
+  let currentTheme = $derived($uiTheme);
   let expanded = $state(initialExpanded);
   let editableInput = $state('');
   let selectedDate = $state('');
@@ -23,13 +23,6 @@
   let errorMessage = $state('');
   let isScheduling = $state(false);
   let recurrence = $state<RecurrenceRule | null>(null);
-
-  $effect(() => {
-    const unsub = uiTheme.subscribe((theme) => {
-      currentTheme = theme;
-    });
-    return unsub;
-  });
 
   // Initialize defaults
   initializeDefaults();

@@ -38,7 +38,7 @@
   let inputText: string = $state('');
   let isConnected: boolean = $state(false);
   let isProcessing: boolean = $state(false);
-  let showWelcome: boolean = $state(false);
+  let showWelcome = $derived(!isProcessing && processedEvents.length === 0 && messages.length === 0);
   let scrollContainer: HTMLDivElement;
   let currentTabId: number = $state(-1); // Track current session's bound tab
   let agentReady: boolean = $state(false);
@@ -71,11 +71,6 @@
   let scheduledSessionId: string | null = $state(null);
   let isScheduledJobMode: boolean = $state(false);
 
-  // Derived showWelcome
-  $effect(() => {
-    showWelcome =
-      !isProcessing && processedEvents.length === 0 && messages.length === 0;
-  });
 
   onMount(async () => {
     // Listen for zoom level changes

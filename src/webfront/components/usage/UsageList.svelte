@@ -2,10 +2,17 @@
   import type { SessionUsageSummary } from '@/storage/types';
   import { _t } from '../../lib/i18n';
 
-  export let summaries: SessionUsageSummary[] = [];
-  export let modelSummaries: Record<string, { total_tokens: number; taskCount: number }> = {};
-  export let groupByModel: boolean = false;
-  export let theme: string = 'modern';
+  let {
+    summaries = [],
+    modelSummaries = {},
+    groupByModel = false,
+    theme = 'modern',
+  }: {
+    summaries?: SessionUsageSummary[];
+    modelSummaries?: Record<string, { total_tokens: number; taskCount: number }>;
+    groupByModel?: boolean;
+    theme?: string;
+  } = $props();
 
   function formatDate(iso: string): string {
     const d = new Date(iso);
@@ -21,7 +28,7 @@
     return n.toLocaleString();
   }
 
-  $: modelEntries = Object.entries(modelSummaries).sort((a, b) => b[1].total_tokens - a[1].total_tokens);
+  let modelEntries = $derived(Object.entries(modelSummaries).sort((a, b) => b[1].total_tokens - a[1].total_tokens));
 </script>
 
 {#if groupByModel && modelEntries.length > 0}

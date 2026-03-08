@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import Tooltip from '../common/Tooltip.svelte';
   import { uiTheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
@@ -13,8 +12,8 @@
   let jobCount = $state(0);
   let hasRunningJob = $state(false);
 
-  onMount(async () => {
-    await fetchSchedulerState();
+  $effect(() => {
+    fetchSchedulerState();
 
     // Poll for updates periodically
     const interval = setInterval(fetchSchedulerState, 10000);
