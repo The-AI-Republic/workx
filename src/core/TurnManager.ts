@@ -681,6 +681,10 @@ export class TurnManager {
             const query = typeof parsedParams.query === 'string'
               ? parsedParams.query.slice(0, 500)
               : '';
+            if (!query.trim()) {
+              result = { results: [], message: 'Empty search query' };
+              break;
+            }
             const memories = await ms.searchTopical(query);
             // L5: Convert distance (lower=better) to similarity score (higher=better)
             result = memories.map(m => ({

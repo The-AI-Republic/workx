@@ -93,7 +93,9 @@ function classifyFact(fact: string): MemoryCategory {
           return category as MemoryCategory;
         }
       } else {
-        const pattern = new RegExp(`\\b${keyword}\\b`);
+        // Escape regex special characters in keyword to prevent RegExp errors
+        const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const pattern = new RegExp(`\\b${escaped}\\b`);
         if (pattern.test(lower)) {
           return category as MemoryCategory;
         }
@@ -208,6 +210,9 @@ export class MemoryService {
   async processConversation(
     messages: ConversationMessage[]
   ): Promise<void> {
+    // Reject new work after close() has been called
+    if (this.closed) return;
+
     // Wait for any in-flight migration to complete before writing
     await this.migrationReady;
 
@@ -336,6 +341,14 @@ export class MemoryService {
               continue;
             }
             const category = classifyFact(decision.fact);
+
+            // If conflict resolver rewrote the fact into a core category,
+            // route it to core-memory.md instead of the topical store.
+            if (isCoreCategory(category)) {
+              await this.coreMemoryManager.mergeCoreFacts([decision.fact]);
+              continue;
+            }
+
             const now = Date.now();
 
             const fact: MemoryFact = {

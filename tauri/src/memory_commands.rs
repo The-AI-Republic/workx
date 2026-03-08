@@ -20,7 +20,7 @@ struct MemoryDb {
 fn now_millis() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap()
+        .unwrap_or_default()
         .as_millis() as i64
 }
 
@@ -70,6 +70,32 @@ pub struct MemoryHistoryRow {
     pub old_content: Option<String>,
     pub new_content: Option<String>,
     pub timestamp: i64,
+}
+
+/// Read the expected embedding dimensions from memory_meta.
+/// Returns None if the DB is not yet initialized or the key is missing.
+fn get_expected_dimensions(conn: &Connection) -> Option<usize> {
+    conn.query_row(
+        "SELECT value FROM memory_meta WHERE key = 'embedding_dimensions'",
+        [],
+        |row| row.get::<_, String>(0),
+    )
+    .ok()
+    .and_then(|s| s.parse::<usize>().ok())
+}
+
+/// Validate that an embedding vector matches the expected dimensions stored in memory_meta.
+fn validate_embedding_dims(conn: &Connection, embedding: &[f32]) -> Result<(), String> {
+    if let Some(expected) = get_expected_dimensions(conn) {
+        if embedding.len() != expected {
+            return Err(format!(
+                "Embedding dimension mismatch: expected {}, got {}",
+                expected,
+                embedding.len()
+            ));
+        }
+    }
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -127,6 +153,9 @@ fn run_migration(conn: &Connection, dimensions: u32) -> Result<(), String> {
         .unwrap_or(false);
 
     if !table_exists {
+        // Note: vec0 DDL requires literal integer dimensions in the column definition;
+        // parameterized queries cannot be used here. The value is pre-validated by
+        // validate_dimensions() which ensures it is a positive u32.
         let create_vec = format!(
             "CREATE VIRTUAL TABLE memory_embeddings USING vec0(
                 memory_id TEXT PRIMARY KEY,
@@ -217,6 +246,9 @@ pub async fn memory_insert(
     let db = db.as_ref().ok_or("Memory DB not initialized")?;
     let now = now_millis();
 
+    // Validate embedding dimensions match the expected size stored in memory_meta
+    validate_embedding_dims(&db.conn, &embedding)?;
+
     // Safety: unchecked_transaction is used because rusqlite's checked transaction
     // requires &mut Connection, but we only have &Connection through the Mutex guard.
     // This is safe because: (1) the Mutex ensures single-threaded access, and
@@ -254,6 +286,9 @@ pub async fn memory_update(
     let db = MEMORY_DB.lock().map_err(|e| e.to_string())?;
     let db = db.as_ref().ok_or("Memory DB not initialized")?;
     let now = now_millis();
+
+    // Validate embedding dimensions match the expected size
+    validate_embedding_dims(&db.conn, &embedding)?;
 
     // Safety: unchecked_transaction is used because rusqlite's checked transaction
     // requires &mut Connection, but we only have &Connection through the Mutex guard.
@@ -343,6 +378,12 @@ pub async fn memory_search(
 ) -> Result<Vec<MemorySearchRow>, String> {
     let db = MEMORY_DB.lock().map_err(|e| e.to_string())?;
     let db = db.as_ref().ok_or("Memory DB not initialized")?;
+
+    // Validate embedding dimensions match the expected size
+    validate_embedding_dims(&db.conn, &embedding)?;
+
+    // Clamp limit to prevent excessively large result sets
+    let limit = limit.min(1000);
 
     let embedding_bytes = f32_vec_to_bytes(&embedding);
 

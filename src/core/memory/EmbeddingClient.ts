@@ -79,6 +79,11 @@ class BackendEmbeddingProvider implements EmbeddingProvider {
     if (texts.length === 0) return [];
 
     const data = await this.callBackend(texts);
+    if (!Array.isArray(data.data) || data.data.length !== texts.length) {
+      throw new Error(
+        `Backend embedding API returned ${data.data?.length ?? 0} results for ${texts.length} inputs`,
+      );
+    }
     const sorted = [...data.data].sort(
       (a: { index: number }, b: { index: number }) => a.index - b.index,
     );
@@ -95,13 +100,16 @@ class BackendEmbeddingProvider implements EmbeddingProvider {
     input: string | string[],
   ): Promise<{ data: Array<{ index: number; embedding: number[] }> }> {
     const token = await this.getAccessToken();
+    if (!token) {
+      throw new Error(
+        'No access token available for backend memory embeddings. Please log in.',
+      );
+    }
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
     };
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
 
     const response = await fetch(`${this.backendBaseUrl}/openai/embeddings`, {
       method: 'POST',

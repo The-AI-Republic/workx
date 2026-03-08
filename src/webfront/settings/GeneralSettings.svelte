@@ -184,6 +184,8 @@
   }
 
   function handleMemoryUseOwnKeyChange(event: CustomEvent<boolean>) {
+    // Only paid users can toggle this; free users are forced to use own key
+    if (!isPaidUser) return;
     currentPreferences.memoryUseOwnApiKey = event.detail;
     autoSave();
   }

@@ -28,7 +28,8 @@ export class CachedEmbeddingProvider implements EmbeddingProvider {
       // Move to end (most recently used) by re-inserting
       this.cache.delete(key);
       this.cache.set(key, cached);
-      return cached;
+      // Return a copy to prevent callers from mutating the cached array
+      return new Float32Array(cached);
     }
 
     this.misses++;
@@ -53,7 +54,8 @@ export class CachedEmbeddingProvider implements EmbeddingProvider {
         // Move to end (LRU)
         this.cache.delete(keys[i]);
         this.cache.set(keys[i], cached);
-        results[i] = cached;
+        // Return a copy to prevent callers from mutating the cached array
+        results[i] = new Float32Array(cached);
       } else {
         this.misses++;
         uncachedIndices.push(i);

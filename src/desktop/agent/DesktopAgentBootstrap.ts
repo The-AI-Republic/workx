@@ -786,6 +786,9 @@ export class DesktopAgentBootstrap {
     import('@/core/memory/createMemoryService').then(({ setMemoryTokenGetter }) => {
       if (shouldUseBackend && tokenGetter) {
         setMemoryTokenGetter(tokenGetter);
+      } else {
+        // Clear stale token getter when switching away from backend routing
+        setMemoryTokenGetter(() => Promise.resolve(null));
       }
     }).catch(() => {
       // Memory module may not be available in all builds
