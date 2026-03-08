@@ -35,6 +35,7 @@ const ALLOWED_COLLECTIONS: &[&str] = &[
     "schedule_events",
     "schedule_exceptions",
     "execution_records",
+    "token_usage_records",
 ];
 
 struct DbStorage {
