@@ -1045,9 +1045,10 @@ export class Session {
           complete: async (systemPrompt: string, userPrompt: string) => {
             const client = this.turnContext?.getModelClient?.();
             if (!client) {
-              throw new Error(
-                'No model client available yet. Memory LLM calls require at least one turn to have started.'
-              );
+              // No model client yet (e.g. before first turn). Return empty JSON array
+              // so FactExtractor parses it as zero facts rather than throwing.
+              console.warn('[Memory] No model client available for memory LLM call, skipping extraction');
+              return '[]';
             }
             const response = await client.complete({
               model: client.getModel(),
@@ -1078,6 +1079,16 @@ export class Session {
           backendRouting,
           backendBaseUrl,
         });
+
+        if (memoryEnabled && !memoryService) {
+          if (useBackendForMemory && !backendRouting) {
+            console.warn('[Memory] Memory is enabled but backend routing URL is not available. Memory will not work this session.');
+          } else if (!useBackendForMemory && !openaiApiKey) {
+            console.warn('[Memory] Memory is enabled but no OpenAI API key is configured. Add one in Model Settings.');
+          } else {
+            console.warn('[Memory] Memory is enabled but failed to initialize. Check logs for details.');
+          }
+        }
 
         this.setMemoryService(memoryService);
       }

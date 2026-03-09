@@ -794,6 +794,15 @@ export class DesktopAgentBootstrap {
       // Memory module may not be available in all builds
     });
 
+    // Close existing memory service so it doesn't attempt embeddings with
+    // stale credentials. A fresh service will be created on the next session.
+    const session = this.agent.getSession();
+    const existingMemory = session?.getMemoryService?.();
+    if (existingMemory) {
+      existingMemory.close().catch(() => {});
+      session.setMemoryService(null);
+    }
+
     console.log('[DesktopAgentBootstrap] Auth mode set, isBackendRouting:', factory.isBackendRouting());
 
     await this.agent.refreshModelClient();
