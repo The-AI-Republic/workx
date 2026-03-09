@@ -35,6 +35,7 @@ export interface SessionServiceDeps {
     removeSession(sessionId: string): Promise<void>;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     getSession(sessionId: string): any;
+    setMaxConcurrent(limit: number): void;
   } | null;
 
   /** Callback for platform-specific tab reset (extension-only) */
@@ -135,6 +136,18 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
         sessionId: session.sessionId,
         sessionLetter: session.sessionLetter,
       };
+    },
+
+    'session.setMaxConcurrent': async (params) => {
+      if (!registry) {
+        throw new Error('Registry not initialized');
+      }
+      const { maxConcurrent } = params as { maxConcurrent: number };
+      if (typeof maxConcurrent !== 'number') {
+        throw new Error('maxConcurrent must be a number');
+      }
+      registry.setMaxConcurrent(maxConcurrent);
+      return { success: true };
     },
 
     'session.close': async (params) => {
