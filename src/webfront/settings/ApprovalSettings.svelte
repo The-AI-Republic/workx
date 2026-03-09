@@ -7,6 +7,7 @@
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { IApprovalConfig, ApprovalMode } from '@/core/approval/types';
   import { DEFAULT_APPROVAL_CONFIG } from '@/core/approval/types';
+  import { getConfigStorage } from '@/core/storage/ConfigStorageProvider';
   import { getInitializedUIClient } from '@/core/messaging';
   import { t, _t } from '../lib/i18n';
   import { highlightSetting } from './utils/highlightSetting';
@@ -69,8 +70,8 @@
 
   async function loadFromStorage(): Promise<IApprovalConfig | null> {
     try {
-      const result = await chrome.storage.local.get('agent_config');
-      return result['agent_config']?.approval || null;
+      const agentConfig = await getConfigStorage().get<Record<string, any>>('agent_config');
+      return agentConfig?.approval || null;
     } catch {
       return null;
     }

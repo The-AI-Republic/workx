@@ -229,11 +229,11 @@ Simply provide coordinates based on visual analysis of the screenshot image.
         ? await screenshotService.captureWithScroll(request.scroll_offset)
         : await screenshotService.captureViewport();
 
-      // Save screenshot to chrome.storage.local
+      // Save screenshot to ConfigStorageProvider
       await ScreenshotFileManager.saveScreenshot(base64Data);
 
       return {
-        image_file_id: 'screenshot_cache', // Fixed ID - screenshot stored at chrome.storage.local key
+        image_file_id: 'screenshot_cache', // Fixed ID - screenshot stored at ConfigStorageProvider key
         width: viewport.width,
         height: viewport.height,
         format: 'png',

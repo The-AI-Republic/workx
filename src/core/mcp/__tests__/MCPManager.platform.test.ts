@@ -6,20 +6,36 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MCPManager } from '../MCPManager';
 import type { IMCPServerConfig, IMCPServerConfigCreate } from '../types';
+import { setConfigStorage, type ConfigStorageProvider } from '../../storage/ConfigStorageProvider';
 
-// Mock chrome.storage.local
-const mockStorage: Record<string, any> = {};
-const mockChromeStorage = {
-  storage: {
-    local: {
-      get: vi.fn((key: string) => Promise.resolve({ [key]: mockStorage[key] })),
-      set: vi.fn((data: Record<string, any>) => {
-        Object.assign(mockStorage, data);
-        return Promise.resolve();
-      }),
-    },
-  },
-};
+// Map-based ConfigStorageProvider mock
+const store = new Map<string, any>();
+
+function createMockConfigStorage(): ConfigStorageProvider {
+  return {
+    get: vi.fn(async (key: string) => store.get(key) ?? null) as any,
+    set: vi.fn(async (key: string, value: any) => { store.set(key, value); }) as any,
+    remove: vi.fn(async (key: string) => { store.delete(key); }),
+    getMany: vi.fn(async (keys: string[]) => {
+      const result: Record<string, any> = {};
+      for (const key of keys) {
+        if (store.has(key)) result[key] = store.get(key);
+      }
+      return result;
+    }) as any,
+    setMany: vi.fn(async (items: Record<string, any>) => {
+      for (const [key, value] of Object.entries(items)) {
+        store.set(key, value);
+      }
+    }) as any,
+    removeMany: vi.fn(async (keys: string[]) => {
+      for (const key of keys) store.delete(key);
+    }),
+    getAll: vi.fn(async () => Object.fromEntries(store)),
+    clear: vi.fn(async () => { store.clear(); }),
+    getBytesInUse: vi.fn(async () => null),
+  };
+}
 
 // Mock crypto.randomUUID
 let uuidCounter = 0;
@@ -66,17 +82,21 @@ vi.mock('../../utils/encryption', () => ({
 }));
 
 describe('MCPManager Platform Features', () => {
+  let mockStorage: ConfigStorageProvider;
+
   beforeEach(() => {
-    (globalThis as any).chrome = mockChromeStorage;
+    // Clear mock storage and install ConfigStorageProvider
+    store.clear();
+    mockStorage = createMockConfigStorage();
+    setConfigStorage(mockStorage);
+
     vi.spyOn(crypto, 'randomUUID').mockImplementation(mockRandomUUID as any);
-    Object.keys(mockStorage).forEach((key) => delete mockStorage[key]);
     uuidCounter = 0;
     vi.clearAllMocks();
     MCPManager.resetInstance();
   });
 
   afterEach(() => {
-    (globalThis as any).chrome = undefined;
     MCPManager.resetInstance();
   });
 
@@ -154,9 +174,7 @@ describe('MCPManager Platform Features', () => {
       });
 
       // Check that storage only has the user server, not the builtin
-      const storageCall = mockChromeStorage.storage.local.set.mock.calls;
-      const lastCall = storageCall[storageCall.length - 1];
-      const savedServers = lastCall?.[0]?.mcpServers || [];
+      const savedServers = store.get('mcpServers') || [];
 
       const builtinInStorage = savedServers.find(
         (s: IMCPServerConfig) => s.builtin === true
@@ -255,7 +273,7 @@ describe('MCPManager Platform Features', () => {
         },
       ];
 
-      mockStorage.mcpServers = legacyServers;
+      store.set('mcpServers', legacyServers);
 
       const manager = await MCPManager.getInstance();
       const servers = manager.getServers();

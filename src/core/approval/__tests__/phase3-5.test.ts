@@ -13,26 +13,39 @@ import { ApprovalGate } from '../ApprovalGate';
 import { PolicyRulesEngine } from '../PolicyRulesEngine';
 import { RiskLevel, scoreToRiskLevel, DEFAULT_APPROVAL_CONFIG } from '../types';
 import type { RiskAssessment, ApprovalContext, IRiskAssessor, ApprovalHistoryEntry, IApprovalConfig } from '../types';
+import type { ConfigStorageProvider } from '../../storage/ConfigStorageProvider';
 
 // ============================================================================
 // Mock Storage
 // ============================================================================
 
 function createMockStorage() {
-  const store: Record<string, any> = {};
-  return {
-    get: vi.fn(async (keys: string[]) => {
+  const store = new Map<string, any>();
+  const mockStorage: ConfigStorageProvider & { _store: Map<string, any> } = {
+    get: vi.fn(async (key: string) => store.get(key) ?? null) as any,
+    set: vi.fn(async (key: string, value: any) => { store.set(key, value); }) as any,
+    remove: vi.fn(async (key: string) => { store.delete(key); }),
+    getMany: vi.fn(async (keys: string[]) => {
       const result: Record<string, any> = {};
       for (const key of keys) {
-        if (store[key] !== undefined) result[key] = store[key];
+        if (store.has(key)) result[key] = store.get(key);
       }
       return result;
+    }) as any,
+    setMany: vi.fn(async (items: Record<string, any>) => {
+      for (const [key, value] of Object.entries(items)) {
+        store.set(key, value);
+      }
+    }) as any,
+    removeMany: vi.fn(async (keys: string[]) => {
+      for (const key of keys) store.delete(key);
     }),
-    set: vi.fn(async (items: Record<string, any>) => {
-      Object.assign(store, items);
-    }),
+    getAll: vi.fn(async () => Object.fromEntries(store)),
+    clear: vi.fn(async () => { store.clear(); }),
+    getBytesInUse: vi.fn(async (): Promise<number | null> => null),
     _store: store,
   };
+  return mockStorage;
 }
 
 function createMockApprovalManager() {
@@ -77,7 +90,7 @@ describe('ApprovalConfigStorage', () => {
     });
 
     it('should merge stored config with defaults', async () => {
-      mockStorage._store['agent_config'] = { approval: { mode: 'high_speed' } };
+      mockStorage._store.set('agent_config', { approval: { mode: 'high_speed' } });
       const config = await configStorage.loadConfig();
       expect(config.mode).toBe('high_speed');
       expect(config.version).toBe('1.0.0'); // from defaults
@@ -85,12 +98,12 @@ describe('ApprovalConfigStorage', () => {
     });
 
     it('should preserve stored timeout overrides', async () => {
-      mockStorage._store['agent_config'] = {
+      mockStorage._store.set('agent_config', {
         approval: {
           mode: 'balanced',
           timeouts: { low: 10000, medium: 20000 },
         },
-      };
+      });
       const config = await configStorage.loadConfig();
       expect(config.timeouts.low).toBe(10000);
       expect(config.timeouts.medium).toBe(20000);
@@ -105,9 +118,8 @@ describe('ApprovalConfigStorage', () => {
         mode: 'high_speed',
       };
       await configStorage.saveConfig(config);
-      expect(mockStorage.set).toHaveBeenCalledWith({
-        agent_config: { approval: config },
-      });
+      const saved = mockStorage._store.get('agent_config');
+      expect(saved.approval).toEqual(config);
     });
   });
 
@@ -129,7 +141,7 @@ describe('ApprovalConfigStorage', () => {
           factors: ['Dangerous command'],
         },
       ];
-      mockStorage._store['approval_history'] = entries;
+      mockStorage._store.set('approval_history', entries);
       const history = await configStorage.loadHistory();
       expect(history).toHaveLength(1);
       expect(history[0].toolName).toBe('terminal');
@@ -145,7 +157,7 @@ describe('ApprovalConfigStorage', () => {
         source: 'auto' as const,
         factors: [],
       }));
-      mockStorage._store['approval_history'] = entries;
+      mockStorage._store.set('approval_history', entries);
       const history = await configStorage.loadHistory(3);
       expect(history).toHaveLength(3);
     });
@@ -176,14 +188,14 @@ describe('ApprovalConfigStorage', () => {
       await vi.advanceTimersByTimeAsync(3000);
 
       expect(mockStorage.set).toHaveBeenCalled();
-      const savedHistory = mockStorage._store['approval_history'];
+      const savedHistory = mockStorage._store.get('approval_history');
       expect(savedHistory).toHaveLength(1);
       expect(savedHistory[0].toolName).toBe('terminal');
     });
 
     it('should cap history at 100 entries', async () => {
       // Pre-fill with 100 entries
-      mockStorage._store['approval_history'] = Array.from({ length: 100 }, (_, i) => ({
+      mockStorage._store.set('approval_history', Array.from({ length: 100 }, (_, i) => ({
         timestamp: i,
         toolName: 'tool',
         riskScore: 0,
@@ -191,7 +203,7 @@ describe('ApprovalConfigStorage', () => {
         decision: 'auto_approve' as const,
         source: 'auto' as const,
         factors: [],
-      }));
+      })));
 
       const entry: ApprovalHistoryEntry = {
         timestamp: 200,
@@ -207,7 +219,7 @@ describe('ApprovalConfigStorage', () => {
       // Advance timer to trigger flush
       await vi.advanceTimersByTimeAsync(3000);
 
-      const savedHistory = mockStorage._store['approval_history'];
+      const savedHistory = mockStorage._store.get('approval_history');
       expect(savedHistory).toHaveLength(100); // capped
       expect(savedHistory[savedHistory.length - 1].toolName).toBe('new_tool');
     });
@@ -416,7 +428,7 @@ describe('ApprovalGate history tracking', () => {
     await gate.check('planning_tool', {}, makeAssessor(5));
     await vi.advanceTimersByTimeAsync(3000);
     expect(mockStorage.set).toHaveBeenCalled();
-    const history = mockStorage._store['approval_history'];
+    const history = mockStorage._store.get('approval_history');
     expect(history).toHaveLength(1);
     expect(history[0].decision).toBe('auto_approve');
     expect(history[0].source).toBe('auto');
@@ -426,7 +438,7 @@ describe('ApprovalGate history tracking', () => {
     await gate.check('test_tool', {}, makeAssessor(50));
     await vi.advanceTimersByTimeAsync(3000);
     expect(mockStorage.set).toHaveBeenCalled();
-    const history = mockStorage._store['approval_history'];
+    const history = mockStorage._store.get('approval_history');
     expect(history).toHaveLength(1);
     expect(history[0].decision).toBe('auto_approve'); // manager returned approve
     expect(history[0].source).toBe('user');
@@ -436,7 +448,7 @@ describe('ApprovalGate history tracking', () => {
     mockManager.requestApproval.mockResolvedValue({ decision: 'reject', id: 'test' });
     await gate.check('test_tool', {}, makeAssessor(50));
     await vi.advanceTimersByTimeAsync(3000);
-    const history = mockStorage._store['approval_history'];
+    const history = mockStorage._store.get('approval_history');
     expect(history).toHaveLength(1);
     expect(history[0].decision).toBe('deny');
     expect(history[0].source).toBe('user');
@@ -446,7 +458,7 @@ describe('ApprovalGate history tracking', () => {
     gate.setBlockedDomains(['evil.com']);
     await gate.check('dom_tool', {}, makeAssessor(10), { currentDomain: 'evil.com' });
     await vi.advanceTimersByTimeAsync(3000);
-    const history = mockStorage._store['approval_history'];
+    const history = mockStorage._store.get('approval_history');
     expect(history).toHaveLength(1);
     expect(history[0].decision).toBe('deny');
     expect(history[0].factors).toContain('Blocked domain');
@@ -456,7 +468,7 @@ describe('ApprovalGate history tracking', () => {
     gate.setTrustedDomains(['safe.com']);
     await gate.check('dom_tool', {}, makeAssessor(50), { currentDomain: 'safe.com' });
     await vi.advanceTimersByTimeAsync(3000);
-    const history = mockStorage._store['approval_history'];
+    const history = mockStorage._store.get('approval_history');
     expect(history).toHaveLength(1);
     expect(history[0].decision).toBe('auto_approve');
     expect(history[0].factors).toContain('Trusted domain');
@@ -466,7 +478,7 @@ describe('ApprovalGate history tracking', () => {
     gate.setMode('yolo');
     await gate.check('test_tool', {}, makeAssessor(90));
     await vi.advanceTimersByTimeAsync(3000);
-    const history = mockStorage._store['approval_history'];
+    const history = mockStorage._store.get('approval_history');
     expect(history).toHaveLength(1);
     expect(history[0].factors).toContain('YOLO mode');
   });
@@ -508,7 +520,7 @@ describe('ApprovalGate session memory', () => {
 
     it('should NOT match same action + different domain', async () => {
       gate.rememberDecision('browser_dom', { action: 'click' }, 'auto_approve', 'linkedin.com', 30);
-      // Different domain → memory miss → goes through pipeline
+      // Different domain -> memory miss -> goes through pipeline
       const decision = await gate.check('browser_dom', { action: 'click' }, makeAssessor(5), { currentDomain: 'bank.com' });
       // Score 5 auto-approves via threshold, not memory
       expect(decision).toBe('auto_approve');
@@ -518,7 +530,7 @@ describe('ApprovalGate session memory', () => {
 
     it('should NOT match different action + same domain', async () => {
       gate.rememberDecision('browser_dom', { action: 'click' }, 'auto_approve', 'linkedin.com', 30);
-      // Different action → memory miss
+      // Different action -> memory miss
       await gate.check('browser_dom', { action: 'type' }, makeAssessor(5), { currentDomain: 'linkedin.com' });
       expect(gate.getMemorySize()).toBe(1); // only original entry
     });
@@ -532,14 +544,14 @@ describe('ApprovalGate session memory', () => {
       expect(mockManager.requestApproval).not.toHaveBeenCalled();
     });
 
-    it('should NOT match different command with same base (npm install ≠ npm test)', async () => {
+    it('should NOT match different command with same base (npm install != npm test)', async () => {
       gate.rememberDecision('terminal', { command: 'npm install' }, 'auto_approve', undefined, 20);
-      // Different command → memory miss
+      // Different command -> memory miss
       await gate.check('terminal', { command: 'npm test' }, makeAssessor(5));
       expect(gate.getMemorySize()).toBe(1); // only original entry
     });
 
-    it('should NOT match different command entirely (npm ≠ rm)', async () => {
+    it('should NOT match different command entirely (npm != rm)', async () => {
       gate.rememberDecision('terminal', { command: 'npm install' }, 'auto_approve', undefined, 20);
       await gate.check('terminal', { command: 'rm -rf /' }, makeAssessor(5));
       expect(gate.getMemorySize()).toBe(1);
@@ -565,7 +577,7 @@ describe('ApprovalGate session memory', () => {
 
     it('should NOT match browser__click on different domain', async () => {
       gate.rememberDecision('browser__click', {}, 'auto_approve', 'linkedin.com', 30);
-      // Different domain → no memory hit
+      // Different domain -> no memory hit
       await gate.check('browser__click', {}, makeAssessor(5), { currentDomain: 'bank.com' });
       expect(gate.getMemorySize()).toBe(1);
     });
@@ -586,7 +598,7 @@ describe('ApprovalGate session memory', () => {
       gate.rememberDecision('browser_dom', { action: 'click' }, 'auto_approve', 'example.com', 30);
       // New score 60 exceeds margin (30 + 25 = 55)
       const decision = await gate.check('browser_dom', { action: 'click' }, makeAssessor(60), { currentDomain: 'example.com' });
-      // Should fall through to policy evaluation → score 60 > threshold 30 → ask_user → manager approves
+      // Should fall through to policy evaluation -> score 60 > threshold 30 -> ask_user -> manager approves
       expect(mockManager.requestApproval).toHaveBeenCalled();
     });
 

@@ -2,27 +2,13 @@
  * Chrome API Polyfill for Desktop Mode
  *
  * Provides minimal chrome API stubs for desktop mode so that shared components
- * using chrome.storage, chrome.tabs, chrome.runtime.getURL, etc. don't crash.
+ * using chrome.tabs, chrome.runtime.getURL, etc. don't crash.
  *
- * Message routing (chrome.runtime.sendMessage / onMessage) is NOT polyfilled —
- * desktop mode uses UIChannelClient → TauriTransport for all messaging.
+ * Storage is handled by ConfigStorageProvider (not polyfilled here).
+ * Message routing is handled by UIChannelClient → TauriTransport (not polyfilled here).
  *
  * @module desktop/polyfills/chromePolyfill
  */
-
-// Tauri core API module (loaded dynamically for storage commands)
-let tauriCore: { invoke: <T>(cmd: string, args?: Record<string, unknown>) => Promise<T> } | null = null;
-
-/**
- * Load Tauri core API for storage operations
- */
-async function loadTauriApis(): Promise<void> {
-  try {
-    tauriCore = await import('@tauri-apps/api/core');
-  } catch (error) {
-    console.warn('[chromePolyfill] Tauri core API not available:', error);
-  }
-}
 
 /**
  * Chrome runtime polyfill (non-messaging stubs only)
@@ -36,116 +22,6 @@ const runtimePolyfill = {
   },
 
   id: 'pi-desktop',
-};
-
-// In-memory storage fallback when Tauri storage isn't available
-const memoryStorage: Record<string, unknown> = {};
-
-/**
- * Chrome storage polyfill using Tauri commands or memory fallback
- */
-const storagePolyfill = {
-  local: {
-    async get(keys: string | string[] | Record<string, unknown> | null): Promise<Record<string, unknown>> {
-      const keyArray = typeof keys === 'string'
-        ? [keys]
-        : Array.isArray(keys)
-          ? keys
-          : keys ? Object.keys(keys) : [];
-
-      const defaults = typeof keys === 'object' && !Array.isArray(keys) ? keys : {};
-
-      // If no Tauri core API, use memory storage
-      if (!tauriCore) {
-        const result: Record<string, unknown> = { ...defaults };
-        for (const key of keyArray) {
-          if (key in memoryStorage) {
-            result[key] = memoryStorage[key];
-          }
-        }
-        return result;
-      }
-
-      try {
-        // Try to get values from Tauri storage
-        const result = await tauriCore.invoke<Record<string, unknown>>('storage_get', { keys: keyArray });
-        return { ...defaults, ...result };
-      } catch {
-        // Return defaults if storage fails
-        return defaults || {};
-      }
-    },
-
-    async set(items: Record<string, unknown>): Promise<void> {
-      // If no Tauri core API, use memory storage
-      if (!tauriCore) {
-        Object.assign(memoryStorage, items);
-        return;
-      }
-
-      try {
-        await tauriCore.invoke('storage_set', { items });
-      } catch (error) {
-        console.warn('[chromePolyfill] storage.set failed:', error);
-        // Fall back to memory storage
-        Object.assign(memoryStorage, items);
-      }
-    },
-
-    async remove(keys: string | string[]): Promise<void> {
-      const keyArray = typeof keys === 'string' ? [keys] : keys;
-
-      // If no Tauri core API, use memory storage
-      if (!tauriCore) {
-        for (const key of keyArray) {
-          delete memoryStorage[key];
-        }
-        return;
-      }
-
-      try {
-        await tauriCore.invoke('storage_remove', { keys: keyArray });
-      } catch (error) {
-        console.warn('[chromePolyfill] storage.remove failed:', error);
-        // Fall back to memory storage
-        for (const key of keyArray) {
-          delete memoryStorage[key];
-        }
-      }
-    },
-
-    async clear(): Promise<void> {
-      // If no Tauri core API, clear memory storage
-      if (!tauriCore) {
-        Object.keys(memoryStorage).forEach(key => delete memoryStorage[key]);
-        return;
-      }
-
-      try {
-        await tauriCore.invoke('storage_clear');
-      } catch (error) {
-        console.warn('[chromePolyfill] storage.clear failed:', error);
-        // Fall back to memory storage
-        Object.keys(memoryStorage).forEach(key => delete memoryStorage[key]);
-      }
-    },
-  },
-
-  sync: {
-    // Sync storage uses same implementation as local for desktop
-    async get(keys: string | string[] | Record<string, unknown> | null): Promise<Record<string, unknown>> {
-      return storagePolyfill.local.get(keys);
-    },
-    async set(items: Record<string, unknown>): Promise<void> {
-      return storagePolyfill.local.set(items);
-    },
-    async remove(keys: string | string[]): Promise<void> {
-      return storagePolyfill.local.remove(keys);
-    },
-    async clear(): Promise<void> {
-      return storagePolyfill.local.clear();
-    },
-  },
 };
 
 // Tab event listener registry
@@ -258,7 +134,6 @@ const windowsPolyfill = {
  */
 export const chromePolyfill = {
   runtime: runtimePolyfill,
-  storage: storagePolyfill,
   tabs: tabsPolyfill,
   tabGroups: tabGroupsPolyfill,
   windows: windowsPolyfill,
@@ -275,10 +150,5 @@ export function installChromePolyfill(): void {
   if (typeof window !== 'undefined' && !('chrome' in window)) {
     console.log('[chromePolyfill] Installing chrome API polyfill for desktop mode');
     (window as unknown as { chrome: typeof chromePolyfill }).chrome = chromePolyfill;
-
-    // Load Tauri APIs for storage operations
-    loadTauriApis().catch((error) => {
-      console.error('[chromePolyfill] Failed to load Tauri APIs:', error);
-    });
   }
 }

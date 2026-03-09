@@ -15,6 +15,7 @@ import type {
 } from './types';
 import { ConfigValidationError } from './types';
 import { ConfigStorage } from '../storage/ConfigStorage';
+import { getConfigStorage } from '../core/storage/ConfigStorageProvider';
 import {
   getDefaultAgentConfig,
   buildRuntimeConfig,
@@ -71,7 +72,7 @@ export class AgentConfig implements IConfigService {
     }
 
     // One-time migration: move legacy `approval_config` into `agent_config.approval`
-    // Only runs in extension mode — uses chrome.storage.local directly
+    // Only runs in extension mode — uses ConfigStorageProvider
     if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'extension') {
       await this.migrateApprovalConfig();
     }
@@ -181,7 +182,8 @@ export class AgentConfig implements IConfigService {
    */
   private async migrateApprovalConfig(): Promise<void> {
     try {
-      const result = await chrome.storage.local.get(['approval_config', 'agent_config']);
+      const storage = getConfigStorage();
+      const result = await storage.getMany<any>(['approval_config', 'agent_config']);
       const legacyApproval = result['approval_config'];
       if (!legacyApproval) return; // Nothing to migrate
 
@@ -189,8 +191,8 @@ export class AgentConfig implements IConfigService {
       // Merge: legacy values fill in, but don't overwrite if already migrated
       agentConfig.approval = { ...legacyApproval, ...(agentConfig.approval || {}) };
 
-      await chrome.storage.local.set({ agent_config: agentConfig });
-      await chrome.storage.local.remove('approval_config');
+      await storage.set('agent_config', agentConfig);
+      await storage.remove('approval_config');
       console.log('[AgentConfig] Migrated legacy approval_config into agent_config.approval');
     } catch (error) {
       console.warn('[AgentConfig] approval_config migration failed (non-fatal):', error);

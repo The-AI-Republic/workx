@@ -23,6 +23,7 @@ import { getDefaultRules } from '@/core/approval/defaultRules';
 import { DomainSensitivityEnhancer } from '@/core/approval/enhancers/DomainSensitivityEnhancer';
 import { SensitivePathEnhancer } from '@/core/approval/enhancers/SensitivePathEnhancer';
 import { ApprovalConfigStorage } from '@/core/approval/ApprovalConfigStorage';
+import { getConfigStorage } from '@/core/storage/ConfigStorageProvider';
 import { AgentConfig } from '@/config/AgentConfig';
 import { configurePromptComposer, registerPromptExtension } from '@/core/PromptLoader';
 import type { RuntimeContext } from '@/prompts/PromptComposer';
@@ -193,13 +194,8 @@ export class DesktopAgentBootstrap {
     approvalGate.addEnhancer(new DomainSensitivityEnhancer());
     approvalGate.addEnhancer(new SensitivePathEnhancer());
 
-    // Desktop mode uses TauriConfigStorage for approval config
-    const { TauriConfigStorage } = await import('@/desktop/storage/TauriConfigStorage');
-    const tauriStorage = new TauriConfigStorage();
-    const configStorage = new ApprovalConfigStorage(() => ({
-      get: (keys: string[]) => tauriStorage.getMany(keys),
-      set: (items: Record<string, unknown>) => tauriStorage.setMany(items),
-    }));
+    // Desktop mode uses ConfigStorageProvider (TauriConfigStorage already initialized)
+    const configStorage = new ApprovalConfigStorage(() => getConfigStorage());
     approvalGate.setConfigStorage(configStorage);
 
     try {
