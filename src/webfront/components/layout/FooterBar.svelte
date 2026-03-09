@@ -27,13 +27,7 @@
 </script>
 
 {#if $isWideMode}
-  <!-- Wide mode: minimal footer -->
-  <div class="flex items-center p-4
-    {currentTheme === 'modern'
-      ? 'gap-2 py-2 px-4 border-t border-chat-border dark:border-chat-border-dark'
-      : 'gap-3 border-t border-term-dim-green/30'}">
-    <div class="grow"></div>
-  </div>
+  <!-- Wide mode: navigation is in LeftPanel, no footer needed -->
 {:else}
   <!-- Narrow mode: full footer with nav icons -->
   <div class="flex items-center p-4

@@ -7,7 +7,7 @@
   import type { Event } from '@/core/protocol/types';
   import type { ProcessedEvent } from '@/types/ui';
   import { STYLE_PRESETS } from '@/types/ui';
-  import TerminalContainer from '../../components/TerminalContainer.svelte';
+
   import TerminalMessage from '../../components/TerminalMessage.svelte';
   import MessageInput from '../../components/MessageInput.svelte';
   import EventDisplay from '../../components/event_display/EventDisplay.svelte';
@@ -936,9 +936,14 @@
 </script>
 
 <!-- Single UI with theme-aware styling -->
-<div class="flex flex-col overflow-hidden {currentTheme}">
-  <TerminalContainer theme={currentTheme}>
-    <div class="flex flex-col flex-1 min-h-0 max-w-[1200px] mx-auto w-full">
+<div class="flex flex-col overflow-hidden p-4 {currentTheme}
+    {currentTheme === 'modern'
+      ? 'font-chat bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
+      : 'font-terminal bg-term-bg text-term-green'}"
+  role="log"
+  aria-label="Terminal output"
+>
+    <div class="flex flex-col flex-1 min-h-0 max-w-[1500px] mx-auto w-full">
         <!-- Status Line -->
         <div class="shrink-0 flex justify-between mb-2">
           <div class="flex items-center space-x-2">
@@ -1082,7 +1087,6 @@
 
         </div>
       </div>
-    </TerminalContainer>
   </div>
 
 <style>
