@@ -12,7 +12,7 @@
 import { ServerChannel } from '../channels/ServerChannel';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
 import { RepublicAgent } from '@/core/RepublicAgent';
-import { AgentConfig } from '@/config/AgentConfig';
+import { AgentConfig, CREDENTIAL_SECURED_MARKER } from '@/config/AgentConfig';
 import { setConfigStorage } from '@/core/storage/ConfigStorageProvider';
 import { FileConfigStorageProvider } from '../storage/FileConfigStorageProvider';
 import { configurePromptComposer } from '@/core/PromptLoader';
@@ -50,6 +50,7 @@ import { registerToolsHandlers } from '../handlers/tools';
 import { registerLogsHandlers } from '../handlers/logs';
 import { registerExecHandlers } from '../handlers/exec';
 import { registerSchedulerHandlers } from '../handlers/scheduler';
+import { registerCredentialsHandlers } from '../handlers/credentials';
 
 // Scheduler
 import { ServerScheduleStorage } from '../scheduler/ServerScheduleStorage';
@@ -401,6 +402,26 @@ export class ServerAgentBootstrap {
     registerExecHandlers({
       resolveApproval: async (id, decision, reason) => {
         return this.approvalManager?.resolveApproval(id, decision, reason) ?? false;
+      },
+    });
+
+    registerCredentialsHandlers({
+      setProviderApiKey: async (providerId, apiKey) => {
+        const agentConfig = await AgentConfig.getInstance();
+        return agentConfig.setProviderApiKey(providerId, apiKey);
+      },
+      deleteProviderApiKey: async (providerId) => {
+        const agentConfig = await AgentConfig.getInstance();
+        await agentConfig.deleteProviderApiKey(providerId);
+      },
+      listProviders: async () => {
+        const agentConfig = await AgentConfig.getInstance();
+        const providers = agentConfig.getProviders();
+        return Object.entries(providers).map(([id, p]) => ({
+          id,
+          name: p.name,
+          hasKey: p.apiKey === CREDENTIAL_SECURED_MARKER,
+        }));
       },
     });
 
