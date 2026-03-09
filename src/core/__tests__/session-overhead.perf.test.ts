@@ -8,10 +8,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AgentRegistry } from '@/core/registry/AgentRegistry';
 
-// Mock PiAgent with class
-vi.mock('@/core/PiAgent', () => {
+// Mock RepublicAgent with class
+vi.mock('@/core/RepublicAgent', () => {
   return {
-    PiAgent: class MockPiAgent {
+    RepublicAgent: class MockRepublicAgent {
       config: any;
       constructor(config: any, router: any) {
         this.config = config;
@@ -36,8 +36,11 @@ vi.mock('@/core/PiAgent', () => {
       async submitOperation() {
         return 'op_123';
       }
+      getApprovalManager() {
+        return {};
+      }
       getToolRegistry() {
-        return { getTool: vi.fn() };
+        return { getTool: vi.fn(), setApprovalGate: vi.fn() };
       }
     },
   };
@@ -71,7 +74,6 @@ describe('Session Creation Performance (SC-006)', () => {
     getConfig: vi.fn().mockReturnValue({}),
     getModelConfig: vi.fn().mockReturnValue({ modelKey: 'test' }),
   };
-  const mockRouter = {};
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -79,7 +81,7 @@ describe('Session Creation Performance (SC-006)', () => {
     global.chrome = mockChrome as any;
 
     registry = AgentRegistry.getInstance({ maxConcurrent: 10 });
-    registry.initialize(mockConfig as any, mockRouter as any);
+    registry.initialize(mockConfig as any);
   });
 
   afterEach(() => {
@@ -101,8 +103,8 @@ describe('Session Creation Performance (SC-006)', () => {
     const start = performance.now();
 
     await registry.createSession({ type: 'primary' });
-    await registry.createSession({ type: 'scheduled', scheduledTaskId: 't1' });
-    await registry.createSession({ type: 'scheduled', scheduledTaskId: 't2' });
+    await registry.createSession({ type: 'scheduled' });
+    await registry.createSession({ type: 'scheduled' });
 
     const elapsed = performance.now() - start;
 
@@ -121,7 +123,7 @@ describe('Session Creation Performance (SC-006)', () => {
 
     for (let i = 0; i < 5; i++) {
       const start = performance.now();
-      await registry.createSession({ type: 'scheduled', scheduledTaskId: `task_${i}` });
+      await registry.createSession({ type: 'scheduled' });
       const elapsed = performance.now() - start;
       overheads.push(elapsed);
     }
@@ -133,7 +135,7 @@ describe('Session Creation Performance (SC-006)', () => {
     console.log(`[Performance] Per-session overheads: ${overheads.map(o => o.toFixed(2)).join('ms, ')}ms`);
 
     // Registry operations should have minimal overhead (map insertions, event emissions)
-    // The main time should be PiAgent.initialize() which we mocked to ~5ms
+    // The main time should be RepublicAgent.initialize() which we mocked to ~5ms
     expect(avgOverhead).toBeLessThan(50); // Allow some variance in test environment
   });
 
@@ -141,7 +143,7 @@ describe('Session Creation Performance (SC-006)', () => {
     // Create sessions
     const sessions: string[] = [];
     for (let i = 0; i < 5; i++) {
-      const session = await registry.createSession({ type: 'scheduled', scheduledTaskId: `task_${i}` });
+      const session = await registry.createSession({ type: 'scheduled' });
       sessions.push(session.sessionId);
     }
 
@@ -162,7 +164,7 @@ describe('Session Creation Performance (SC-006)', () => {
   it('should list sessions efficiently', async () => {
     // Create several sessions
     for (let i = 0; i < 5; i++) {
-      await registry.createSession({ type: 'scheduled', scheduledTaskId: `task_${i}` });
+      await registry.createSession({ type: 'scheduled' });
     }
 
     // Measure list operation
@@ -183,7 +185,7 @@ describe('Session Creation Performance (SC-006)', () => {
   it('should check canCreateSession efficiently', async () => {
     // Create sessions up to near limit
     for (let i = 0; i < 5; i++) {
-      await registry.createSession({ type: 'scheduled', scheduledTaskId: `task_${i}` });
+      await registry.createSession({ type: 'scheduled' });
     }
 
     // Measure check operation

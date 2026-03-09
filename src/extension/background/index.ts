@@ -4,8 +4,7 @@
  */
 
 export * from './service-worker';
-export { PiAgent } from '../../core/PiAgent';
-export { MessageRouter, MessageType } from '../../core/MessageRouter';
+export { RepublicAgent } from '../../core/RepublicAgent';
 export { ModelClientFactory } from '../../core/models/ModelClientFactory';
 export { ToolRegistry } from '../../tools/ToolRegistry';
 

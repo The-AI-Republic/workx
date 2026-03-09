@@ -158,6 +158,13 @@ const ShutdownOpSchema = z.object({
   type: z.literal('Shutdown'),
 });
 
+const ServiceRequestOpSchema = z.object({
+  type: z.literal('ServiceRequest'),
+  requestId: z.string(),
+  service: z.string(),
+  params: z.record(z.unknown()),
+});
+
 export const OpSchema = z.discriminatedUnion('type', [
   InterruptOpSchema,
   UserInputOpSchema,
@@ -173,6 +180,7 @@ export const OpSchema = z.discriminatedUnion('type', [
   CompactOpSchema,
   ReviewOpSchema,
   ShutdownOpSchema,
+  ServiceRequestOpSchema,
 ]);
 
 // Submission schema

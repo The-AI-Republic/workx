@@ -166,7 +166,7 @@ describe('MessageInput Component', () => {
     });
 
     it('should update when value changes', async () => {
-      const { component } = render(MessageInput, {
+      const { rerender } = render(MessageInput, {
         props: {
           value: 'initial',
           onSubmit: () => {},
@@ -177,7 +177,7 @@ describe('MessageInput Component', () => {
       expect(textarea.value).toBe('initial');
 
       // Update prop
-      await component.$set({ value: 'updated' });
+      await rerender({ value: 'updated', onSubmit: () => {} });
       expect(textarea.value).toBe('updated');
     });
   });

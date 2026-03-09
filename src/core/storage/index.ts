@@ -26,6 +26,38 @@ export {
 } from './ConfigStorageProvider';
 export * from './types';
 
+// ============================================================================
+// StorageProvider Singleton
+// ============================================================================
+
+let _storageProvider: StorageProvider | null = null;
+
+/**
+ * Set the global StorageProvider instance
+ */
+export function setStorageProvider(provider: StorageProvider): void {
+  _storageProvider = provider;
+}
+
+/**
+ * Get the global StorageProvider instance
+ * @throws if not initialized
+ */
+export function getStorageProvider(): StorageProvider {
+  if (!_storageProvider) {
+    throw new Error('StorageProvider not initialized. Call initializeStorageProvider() first.');
+  }
+  return _storageProvider;
+}
+
+/**
+ * Check if the StorageProvider has been initialized
+ */
+export function isStorageProviderInitialized(): boolean {
+  return _storageProvider !== null;
+}
+
+
 /**
  * Create the appropriate StorageProvider for the current build mode.
  *
@@ -47,12 +79,21 @@ export async function createStorageProvider(
       '@/extension/storage/IndexedDBStorageProvider'
     );
     return new IndexedDBStorageProvider();
-  } else {
+  }
+  if (__BUILD_MODE__ === 'desktop') {
     const { SQLiteStorageProvider } = await import(
       '@/desktop/storage/SQLiteStorageProvider'
     );
     return new SQLiteStorageProvider();
   }
+  if (__BUILD_MODE__ === 'server') {
+    const { getDataDir } = await import('@/server/config/server-config');
+    const { ServerStorageProvider } = await import(
+      '@/server/storage/ServerStorageProvider'
+    );
+    return new ServerStorageProvider(getDataDir());
+  }
+  throw new Error(`Unsupported build mode: ${__BUILD_MODE__}`);
 }
 
 /**
@@ -72,12 +113,21 @@ export async function createCredentialStore(): Promise<CredentialStore> {
       '@/extension/storage/ChromeCredentialStore'
     );
     return new ChromeCredentialStore();
-  } else {
+  }
+  if (__BUILD_MODE__ === 'desktop') {
     const { KeytarCredentialStore } = await import(
       '@/desktop/storage/KeytarCredentialStore'
     );
     return new KeytarCredentialStore();
   }
+  if (__BUILD_MODE__ === 'server') {
+    const { getDataDir } = await import('@/server/config/server-config');
+    const { FileCredentialStore } = await import(
+      '@/server/storage/FileCredentialStore'
+    );
+    return new FileCredentialStore(getDataDir());
+  }
+  throw new Error(`Unsupported build mode for CredentialStore: ${__BUILD_MODE__}`);
 }
 
 /**
@@ -98,13 +148,23 @@ export async function createConfigStorage(): Promise<ConfigStorageProvider> {
       '@/extension/storage/ChromeConfigStorage'
     );
     return new ChromeConfigStorage();
-  } else {
+  }
+  if (__BUILD_MODE__ === 'desktop') {
     const { TauriConfigStorage } = await import(
       '@/desktop/storage/TauriConfigStorage'
     );
     return new TauriConfigStorage();
   }
+  if (__BUILD_MODE__ === 'server') {
+    const { getDataDir } = await import('@/server/config/server-config');
+    const { FileConfigStorageProvider } = await import(
+      '@/server/storage/FileConfigStorageProvider'
+    );
+    return new FileConfigStorageProvider(getDataDir());
+  }
+  throw new Error(`Unsupported build mode for ConfigStorage: ${__BUILD_MODE__}`);
 }
+
 
 /**
  * Initialize config storage for the current platform.
@@ -124,4 +184,14 @@ export async function initializeCredentialStore(): Promise<void> {
   const { setCredentialStore } = await import('./CredentialStore');
   const store = await createCredentialStore();
   setCredentialStore(store);
+}
+
+/**
+ * Initialize the StorageProvider for the current platform.
+ * Should be called early in the app initialization.
+ */
+export async function initializeStorageProvider(): Promise<void> {
+  const provider = await createStorageProvider();
+  await provider.initialize();
+  setStorageProvider(provider);
 }

@@ -135,3 +135,137 @@ impl SandboxExecutor for MacSandbox {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_escape_sbpl_path_valid() {
+        let result = escape_sbpl_path("/usr/bin/test");
+        assert_eq!(result.unwrap(), "/usr/bin/test");
+    }
+
+    #[test]
+    fn test_escape_sbpl_path_with_spaces() {
+        let result = escape_sbpl_path("/usr/local/My App");
+        assert_eq!(result.unwrap(), "/usr/local/My App");
+    }
+
+    #[test]
+    fn test_escape_sbpl_path_rejects_double_quote() {
+        let result = escape_sbpl_path("/usr/bin/\"evil\"");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("illegal character"));
+    }
+
+    fn make_profile(
+        workspace_access: WorkspaceAccess,
+        network_mode: NetworkMode,
+    ) -> SandboxProfile {
+        SandboxProfile {
+            workspace_dir: PathBuf::from("/workspace"),
+            workspace_access,
+            standard_writable: vec![PathBuf::from("/tmp"), PathBuf::from("/home/user/.cache")],
+            bind_mounts: vec![],
+            network_mode,
+            timeout_ms: 30000,
+        }
+    }
+
+    #[test]
+    fn test_generate_sbpl_has_version_and_deny_default() {
+        let profile = make_profile(WorkspaceAccess::Rw, NetworkMode::Host);
+        let sbpl = MacSandbox::generate_sbpl(&profile).unwrap();
+        assert!(sbpl.contains("(version 1)"));
+        assert!(sbpl.contains("(deny default)"));
+    }
+
+    #[test]
+    fn test_generate_sbpl_rw_workspace() {
+        let profile = make_profile(WorkspaceAccess::Rw, NetworkMode::Host);
+        let sbpl = MacSandbox::generate_sbpl(&profile).unwrap();
+        assert!(sbpl.contains("(allow file-write* (subpath \"/workspace\"))"));
+    }
+
+    #[test]
+    fn test_generate_sbpl_ro_workspace_no_write_rule() {
+        let profile = make_profile(WorkspaceAccess::Ro, NetworkMode::Host);
+        let sbpl = MacSandbox::generate_sbpl(&profile).unwrap();
+        // Should NOT have a file-write rule for workspace
+        assert!(!sbpl.contains("file-write* (subpath \"/workspace\")"));
+    }
+
+    #[test]
+    fn test_generate_sbpl_none_workspace_denies_read() {
+        let profile = make_profile(WorkspaceAccess::None, NetworkMode::Host);
+        let sbpl = MacSandbox::generate_sbpl(&profile).unwrap();
+        assert!(sbpl.contains("(deny file-read* (subpath \"/workspace\"))"));
+    }
+
+    #[test]
+    fn test_generate_sbpl_host_network() {
+        let profile = make_profile(WorkspaceAccess::Rw, NetworkMode::Host);
+        let sbpl = MacSandbox::generate_sbpl(&profile).unwrap();
+        assert!(sbpl.contains("(allow network*)"));
+    }
+
+    #[test]
+    fn test_generate_sbpl_sandbox_network() {
+        let profile = make_profile(WorkspaceAccess::Rw, NetworkMode::Sandbox);
+        let sbpl = MacSandbox::generate_sbpl(&profile).unwrap();
+        assert!(!sbpl.contains("(allow network*)"));
+    }
+
+    #[test]
+    fn test_generate_sbpl_standard_writable_paths() {
+        let profile = make_profile(WorkspaceAccess::Rw, NetworkMode::Host);
+        let sbpl = MacSandbox::generate_sbpl(&profile).unwrap();
+        assert!(sbpl.contains("(allow file-write* (subpath \"/tmp\"))"));
+        assert!(sbpl.contains("(allow file-write* (subpath \"/home/user/.cache\"))"));
+    }
+
+    #[test]
+    fn test_generate_sbpl_macos_temp_paths() {
+        let profile = make_profile(WorkspaceAccess::Rw, NetworkMode::Host);
+        let sbpl = MacSandbox::generate_sbpl(&profile).unwrap();
+        assert!(sbpl.contains("(allow file-write* (subpath \"/private/var/folders\"))"));
+        assert!(sbpl.contains("(allow file-write* (subpath \"/private/tmp\"))"));
+    }
+
+    #[test]
+    fn test_generate_sbpl_bind_mount_rw() {
+        let mut profile = make_profile(WorkspaceAccess::Rw, NetworkMode::Host);
+        profile.bind_mounts.push(super::super::BindMount {
+            host_path: "/extra/path".to_string(),
+            access: "rw".to_string(),
+        });
+        let sbpl = MacSandbox::generate_sbpl(&profile).unwrap();
+        assert!(sbpl.contains("(allow file-write* (subpath \"/extra/path\"))"));
+    }
+
+    #[test]
+    fn test_generate_sbpl_bind_mount_ro() {
+        let mut profile = make_profile(WorkspaceAccess::Rw, NetworkMode::Host);
+        profile.bind_mounts.push(super::super::BindMount {
+            host_path: "/extra/ro".to_string(),
+            access: "ro".to_string(),
+        });
+        let sbpl = MacSandbox::generate_sbpl(&profile).unwrap();
+        // RO bind mount should NOT add a file-write rule for /extra/ro
+        assert!(!sbpl.contains("(allow file-write* (subpath \"/extra/ro\"))"));
+    }
+
+    #[test]
+    fn test_generate_sbpl_bind_mount_with_double_quote_errors() {
+        let mut profile = make_profile(WorkspaceAccess::Rw, NetworkMode::Host);
+        profile.bind_mounts.push(super::super::BindMount {
+            host_path: "/extra/\"injected".to_string(),
+            access: "rw".to_string(),
+        });
+        let result = MacSandbox::generate_sbpl(&profile);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("illegal character"));
+    }
+}

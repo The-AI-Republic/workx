@@ -68,12 +68,6 @@
   "API_key_for_authentication_stored_encryp_0d20": {
     "message": "API-sleutel voor authenticatie (versleuteld opgeslagen)"
   },
-  "API_key_has_expired": {
-    "message": "API-sleutel is verlopen"
-  },
-  "API_key_has_insufficient_permissions": {
-    "message": "API-sleutel heeft onvoldoende rechten"
-  },
   "API_key_saved_successfully": {
     "message": "API-sleutel succesvol opgeslagen!"
   },
@@ -122,9 +116,6 @@
   "Agent_Execution_Tools": {
     "message": "Agent-uitvoeringshulpmiddelen"
   },
-  "Agent_Turn_Complete": {
-    "message": "Agentbeurt voltooid"
-  },
   "Agent_URL_is_required": {
     "message": "Agent-URL is vereist"
   },
@@ -143,11 +134,11 @@
   "Agent_removed_successfully": {
     "message": "Agent succesvol verwijderd"
   },
-  "Agent_turn_completed_successfully": {
-    "message": "Agentbeurt succesvol voltooid"
-  },
   "Agent_updated_successfully": {
     "message": "Agent succesvol bijgewerkt"
+  },
+  "All_API_keys_are_encrypted_at_rest_using_ca92": {
+    "message": "Alle API-sleutels zijn opgeslagen versleuteld met AES-256-GCM. Schakel PIN-bescherming in voor extra beveiliging."
   },
   "All_actions_are_auto_approved_on_these_d_ffda": {
     "message": "Alle acties worden automatisch goedgekeurd op deze domeinen."
@@ -179,6 +170,12 @@
   "Always_Approve": {
     "message": "Altijd goedkeuren"
   },
+  "Always_dark": {
+    "message": "Altijd donker"
+  },
+  "Always_light": {
+    "message": "Altijd licht"
+  },
   "Apple_Pi_Your_personal_AI_Alpha": {
     "message": "Apple Pi: jouw persoonlijke AI (Alpha)"
   },
@@ -200,14 +197,16 @@
   "Approve": {
     "message": "Goedkeuren"
   },
-  "Approve_changes_to_eventMsg_data_path": {
-    "message": "Wijzigingen goedkeuren voor: ${eventMsg.data.path}"
-  },
-  "Approve_execution_eventMsg_data_command": {
-    "message": "Uitvoering goedkeuren: ${eventMsg.data.command}"
-  },
   "Are_you_sure_you_want_to_cancel_this_tas_8573": {
     "message": "Weet je zeker dat je deze taak wilt annuleren?"
+  },
+  "Are_you_sure_you_want_to_delete_the_skil_3268": {
+    "message": "Weet je zeker dat je de skill \"/$1$\" wilt verwijderen?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Are_you_sure_you_want_to_remove_this_age_b9ba": {
     "message": "Weet je zeker dat je deze agent wilt verwijderen?"
@@ -234,9 +233,6 @@
   },
   "Authentication_credential_stored_encrypt_c46a": {
     "message": "Authenticatiegegevens (versleuteld opgeslagen)"
-  },
-  "Authentication_failed": {
-    "message": "Authenticatie mislukt"
   },
   "Authentication_method_for_the_agent": {
     "message": "Authenticatiemethode voor de agent"
@@ -280,9 +276,6 @@
   "Backend_not_available_Please_wait_a_mome_9218": {
     "message": "Backend niet beschikbaar. Even wachten en opnieuw proberen."
   },
-  "Backend_server_error_please_try_again_la_0515": {
-    "message": "Backend serverfout - probeer later opnieuw"
-  },
   "Backoff_Multiplier": {
     "message": "Backoff-multiplier"
   },
@@ -306,6 +299,9 @@
   },
   "Blocked_Domains": {
     "message": "Geblokkeerde domeinen"
+  },
+  "Body_Markdown": {
+    "message": "Inhoud (Markdown)"
   },
   "Browser_Tools": {
     "message": "Browserhulpmiddelen"
@@ -340,9 +336,6 @@
   "Cancelled": {
     "message": "Geannuleerd"
   },
-  "Cannot_execute_task_No_API_key_configure_c622": {
-    "message": "Kan taak niet uitvoeren: geen API-sleutel geconfigureerd voor ${providerName}. Ga naar Instellingen → Modelconfiguratie en voeg uw API-sleutel toe."
-  },
   "Cannot_select_model_1": {
     "message": "Kan model niet selecteren: $1$",
     "placeholders": {
@@ -362,8 +355,20 @@
   "Capabilities": {
     "message": "Mogelijkheden"
   },
+  "Change_PIN": {
+    "message": "PIN wijzigen"
+  },
+  "Changing": {
+    "message": "Wijzigen..."
+  },
   "Chat_History": {
     "message": "Chatgeschiedenis"
+  },
+  "ChatGPT_Subscription": {
+    "message": "ChatGPT-abonnement"
+  },
+  "ChatGPT_session_expired_Please_sign_in_a_f393": {
+    "message": "ChatGPT-sessie verlopen. Log opnieuw in."
   },
   "Checking_agent_status": {
     "message": "Agentstatus controleren..."
@@ -377,11 +382,8 @@
   "Choose_which_update_channel_to_follow": {
     "message": "Kies welk updatekanaal te volgen"
   },
-  "Classic_terminal_style_with_green_text_o_02cc": {
-    "message": "Klassieke terminalstijl met groene tekst op zwarte achtergrond"
-  },
-  "Clean_modern_chat_interface_similar_to_C_2401": {
-    "message": "Schone, moderne chatinterface vergelijkbaar met ChatGPT"
+  "Clear_search": {
+    "message": "Zoekopdracht wissen"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Klik op het Browserx-pictogram in uw werkbalk of druk op Alt+Shift+C"
@@ -395,14 +397,17 @@
   "Close": {
     "message": "Sluiten"
   },
+  "Close_scheduler": {
+    "message": "Planner sluiten"
+  },
   "Close_settings": {
     "message": "Instellingen sluiten"
   },
+  "Close_skills": {
+    "message": "Skills sluiten"
+  },
   "Collapse": {
     "message": "Inklappen"
-  },
-  "Command_Approval_Required": {
-    "message": "Goedkeuring van opdracht vereist"
   },
   "Command_completed": {
     "message": "Opdracht voltooid"
@@ -415,9 +420,6 @@
   },
   "Completed": {
     "message": "Voltooid"
-  },
-  "Completed_lastAssistantMessage_substring_40c8": {
-    "message": "Voltooid: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Cachegegevens comprimeren om opslagruimte te besparen"
@@ -436,6 +438,12 @@
   },
   "Configured_Servers": {
     "message": "Geconfigureerde servers"
+  },
+  "Confirm_New_PIN": {
+    "message": "Nieuwe PIN bevestigen"
+  },
+  "Confirm_PIN": {
+    "message": "PIN bevestigen"
   },
   "Connect": {
     "message": "Verbinden"
@@ -460,6 +468,9 @@
   },
   "Connected_successfully": {
     "message": "Succesvol verbonden"
+  },
+  "Connected_via_ChatGPT": {
+    "message": "Verbonden via ChatGPT"
   },
   "Connecting": {
     "message": "Verbinden..."
@@ -501,15 +512,6 @@
   "Connection_test_successful_API_key_is_va_3e34": {
     "message": "Connectietest geslaagd! (API-sleutel is geldig)"
   },
-  "Connection_was_refused": {
-    "message": "Verbinding geweigerd"
-  },
-  "Connection_was_reset": {
-    "message": "Verbinding gereset"
-  },
-  "Content_violates_policy_contentType_cont_2034": {
-    "message": "Inhoud schendt beleid: ${contentType} inhoud is niet toegestaan"
-  },
   "Context_Window": {
     "message": "Contextvenster"
   },
@@ -524,23 +526,47 @@
   "Controls_how_aggressively_the_agent_asks_d3ba": {
     "message": "Bepaalt hoe agressief de agent om goedkeuring vraagt."
   },
+  "Create": {
+    "message": "Aanmaken"
+  },
+  "Create_New_Skill": {
+    "message": "Nieuwe skill aanmaken"
+  },
   "Create_New_Tab": {
     "message": "Nieuw tabblad maken"
+  },
+  "Create_Skill": {
+    "message": "Skill aanmaken"
+  },
+  "Create_a_6_digit_PIN_to_protect_your_API_2b1a": {
+    "message": "Maak een 6-cijferige PIN aan om je API-sleutels te beschermen. Je hebt deze PIN nodig na het opnieuw starten van de browser."
+  },
+  "Create_a_skill_to_add_custom_commands_or_cb10": {
+    "message": "Maak een skill om aangepaste /-commando's of automatisch aanroepbare agentgedragingen toe te voegen."
   },
   "Created": {
     "message": "Aangemaakt"
   },
+  "Creating": {
+    "message": "Bezig met aanmaken..."
+  },
   "Creator": {
     "message": "Maker"
+  },
+  "Credential_Encryption": {
+    "message": "Versleuteling van inloggegevens"
+  },
+  "Credential_encryption_and_PIN_protection": {
+    "message": "Versleuteling van inloggegevens en PIN-beveiliging"
   },
   "Credit_Details": {
     "message": "Creditdetails"
   },
+  "Current_PIN": {
+    "message": "Huidige PIN"
+  },
   "Current_Plan": {
     "message": "Huidig plan:"
-  },
-  "DNS_lookup_failed": {
-    "message": "DNS-lookup mislukt"
   },
   "DOM_Tool": {
     "message": "DOM-tool"
@@ -566,6 +592,9 @@
   "Default": {
     "message": "Standaard"
   },
+  "Delete": {
+    "message": "Verwijderen"
+  },
   "Deny": {
     "message": "Weigeren"
   },
@@ -583,6 +612,9 @@
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "Ontwikkeld en ondersteund door AI Republic"
+  },
+  "Disabled": {
+    "message": "Uitgeschakeld"
   },
   "Discard_Changes": {
     "message": "Wijzigingen negeren"
@@ -638,6 +670,12 @@
   "Enable_Model_Context_Protocol_tools_from_29ac": {
     "message": "Model Context Protocol-tools inschakelen van verbonden MCP-servers"
   },
+  "Enable_PIN": {
+    "message": "PIN inschakelen"
+  },
+  "Enable_PIN_Protection": {
+    "message": "PIN-beveiliging inschakelen"
+  },
   "Enable_auto_connect_when_browserx_starts": {
     "message": "Automatisch verbinden inschakelen wanneer Browserx start"
   },
@@ -659,8 +697,14 @@
   "Enter_API_key_or_bearer_token": {
     "message": "Voer API-sleutel of bearer-token in"
   },
+  "Enter_your_6_digit_PIN_to_unlock_your_AP_1fff": {
+    "message": "Voer uw 6-cijferige PIN in om uw API-sleutels te ontgrendelen."
+  },
   "Enter_your_LLM_API_key": {
     "message": "Voer uw LLM API-sleutel in"
+  },
+  "Enter_your_current_PIN_to_remove_protect_8b75": {
+    "message": "Voer uw huidige PIN in om de bescherming te verwijderen. API-sleutels blijven versleuteld met de standaard sleutel."
   },
   "Enter_your_task": {
     "message": "Voer uw taak in..."
@@ -691,6 +735,9 @@
   },
   "Explain_with_Browserx": {
     "message": "Uitleg met Browserx"
+  },
+  "Export": {
+    "message": "Exporteren"
   },
   "Extension_Permission": {
     "message": "Extensie & toestemming"
@@ -743,12 +790,6 @@
         "content": "$1"
       }
     }
-  },
-  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
-    "message": "Kan geen nieuw tabblad maken. Probeer het opnieuw."
-  },
-  "Failed_to_create_browser_tab_errorMsg": {
-    "message": "Kan geen browsertabblad maken: ${errorMsg}"
   },
   "Failed_to_disconnect_1": {
     "message": "Kan niet verbreken: $1$",
@@ -820,9 +861,6 @@
   "Failed_to_stop_the_task_Please_try_again": {
     "message": "Kan taak niet stoppen. Probeer het opnieuw."
   },
-  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
-    "message": "Kan niet overschakelen naar tabblad ${newTabId}: ${errorMsg}"
-  },
   "Failed_to_test_connection": {
     "message": "Testen van verbinding mislukt"
   },
@@ -837,9 +875,6 @@
       }
     }
   },
-  "File_Change_Approval_Required": {
-    "message": "Goedkeuring voor bestandswijziging vereist"
-  },
   "File_Operations_Not_Available": {
     "message": "Bestandsbewerkingen (niet beschikbaar)"
   },
@@ -848,6 +883,12 @@
   },
   "Flex": {
     "message": "Flex"
+  },
+  "Follows_system_theme": {
+    "message": "Volgt systeemthema"
+  },
+  "Forgot_PIN": {
+    "message": "PIN vergeten?"
   },
   "Form_Automation_Tool": {
     "message": "Tool voor formulierautomatisering"
@@ -869,6 +910,9 @@
   },
   "Get_Started": {
     "message": "Aan de slag"
+  },
+  "Green_text_terminal": {
+    "message": "Groene tekstterminal"
   },
   "Hello_NAME": {
     "message": "Hallo $NAME$",
@@ -892,6 +936,21 @@
   },
   "Image_Input": {
     "message": "Afbeeldingsinvoer"
+  },
+  "Import": {
+    "message": "Importeren"
+  },
+  "Import_Skill_from_URL": {
+    "message": "Skill importeren vanaf URL"
+  },
+  "Import_from_URL": {
+    "message": "Importeren vanaf URL"
+  },
+  "Imported_skills_are_untrusted_by_default_561a": {
+    "message": "Geïmporteerde skills zijn standaard niet vertrouwd en kunnen niet automatisch worden aangeroepen."
+  },
+  "Importing": {
+    "message": "Importeren..."
   },
   "Improve_this_text_info_selectionText": {
     "message": "Verbeter deze tekst: ${info.selectionText}"
@@ -928,9 +987,6 @@
   "Invalid_API_key": {
     "message": "Ongeldige API-sleutel"
   },
-  "Invalid_API_key_provided": {
-    "message": "Ongeldige API-sleutel opgegeven"
-  },
   "Invalid_URL_format": {
     "message": "Ongeldig URL-formaat"
   },
@@ -939,6 +995,9 @@
   },
   "Invalid_submission_format_op_missing_typ_0fc0": {
     "message": "Ongeldig indieningsformaat: op mist type-veld"
+  },
+  "Invocation_Mode": {
+    "message": "Aanroepmodus"
   },
   "Keyboard_Shortcuts": {
     "message": "Sneltoetsen"
@@ -981,6 +1040,9 @@
   },
   "Loading_settings": {
     "message": "Instellingen laden..."
+  },
+  "Loading_skills": {
+    "message": "Vaardigheden laden..."
   },
   "Loading_tabs": {
     "message": "Tabbladen laden..."
@@ -1104,16 +1166,16 @@
   "Model_and_provider_settings_loaded_from__55a3": {
     "message": "Model- en providerinstellingen geladen vanuit standaardconfiguratie (alleen-lezen)"
   },
-  "Model_changed_to_1_Please_configure_your_1c81": {
-    "message": "Model gewijzigd naar $1$. Configureer uw API-sleutel.",
+  "Model_changed_to_1_Conversation_preserve_2db6": {
+    "message": "Model gewijzigd naar $1$. Gesprek behouden.",
     "placeholders": {
       "1": {
         "content": "$1"
       }
     }
   },
-  "Model_changed_to_1_Session_will_be_reini_e2ce": {
-    "message": "Model gewijzigd naar $1$. Sessie wordt opnieuw geïnitialiseerd.",
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "Model gewijzigd naar $1$. Configureer uw API-sleutel.",
     "placeholders": {
       "1": {
         "content": "$1"
@@ -1131,8 +1193,14 @@
       }
     }
   },
-  "Modern_Chat": {
-    "message": "Moderne chat"
+  "Modern_Chat_Auto": {
+    "message": "Modern Chat Auto"
+  },
+  "Modern_Chat_Dark": {
+    "message": "Modern Chat Donker"
+  },
+  "Modern_Chat_Light": {
+    "message": "Modern Chat Licht"
   },
   "Monthly_Credits": {
     "message": "Maandelijkse credits"
@@ -1158,14 +1226,14 @@
   "Network_error": {
     "message": "Netwerkfout"
   },
-  "Network_error_occurred": {
-    "message": "Er is een netwerkfout opgetreden"
-  },
   "Never_expire_permanent": {
     "message": "Nooit verlopen (permanent)"
   },
   "New_Conversation": {
     "message": "Nieuw gesprek"
+  },
+  "New_PIN": {
+    "message": "Nieuwe pincode"
   },
   "No_A2A_agents_configured_yet": {
     "message": "Nog geen A2A-agenten geconfigureerd."
@@ -1203,14 +1271,23 @@
   "No_scheduled_time": {
     "message": "Geen geplande tijd"
   },
+  "No_settings_found": {
+    "message": "Geen instellingen gevonden"
+  },
   "No_skills_available": {
     "message": "Geen vaardigheden beschikbaar."
+  },
+  "No_skills_configured_yet": {
+    "message": "Nog geen vaardigheden geconfigureerd."
   },
   "No_steps_in_plan": {
     "message": "Geen stappen in plan"
   },
   "No_tabs_available": {
     "message": "Geen tabbladen beschikbaar"
+  },
+  "No_tasks_in_plan": {
+    "message": "Geen taken in plan"
   },
   "No_time_set": {
     "message": "Geen tijd ingesteld"
@@ -1273,6 +1350,12 @@
       }
     }
   },
+  "PIN": {
+    "message": "Pincode"
+  },
+  "PIN_Protection": {
+    "message": "Pincodebeveiliging"
+  },
   "Page_Action_Tool": {
     "message": "Pagina-actietool"
   },
@@ -1305,17 +1388,6 @@
   "Persist_Cache_to_Storage": {
     "message": "Cache persistent maken"
   },
-  "Plan_1_step_s": {
-    "message": "Plan: $1$ stap(pen)",
-    "placeholders": {
-      "1": {
-        "content": "$1"
-      }
-    }
-  },
-  "Please_check_your_API_key_in_settings": {
-    "message": "Controleer uw API-sleutel in de instellingen."
-  },
   "Please_enter_a_task_description": {
     "message": "Voer een taakbeschrijving in"
   },
@@ -1325,9 +1397,6 @@
   "Please_input_a_valid_API_key": {
     "message": "Voer een geldige API-sleutel in."
   },
-  "Please_log_in_again_to_continue_using_th_3d8f": {
-    "message": "Log opnieuw in om de AI-agent te blijven gebruiken."
-  },
   "Please_select_a_provider": {
     "message": "Selecteer een provider"
   },
@@ -1336,6 +1405,9 @@
   },
   "Please_upgrade_the_plan_to_unblock_world_9fed": {
     "message": "Upgrade het abonnement om 's werelds meest geavanceerde modellen te ontgrendelen"
+  },
+  "Port_1455_is_in_use_Please_close_any_app_a809": {
+    "message": "Poort 1455 is in gebruik. Sluit eventuele applicaties die deze poort gebruiken en probeer het opnieuw."
   },
   "Power": {
     "message": "Vermogen"
@@ -1420,9 +1492,6 @@
   "Refreshes_in": {
     "message": "Vernieuwt over:"
   },
-  "Reject": {
-    "message": "Afwijzen"
-  },
   "Release_Date": {
     "message": "Uitgavedatum"
   },
@@ -1441,10 +1510,13 @@
   "Remove_API_Key": {
     "message": "API-sleutel verwijderen"
   },
-  "Request_Timeout": {
-    "message": "Aanvraag time-out"
+  "Remove_PIN": {
+    "message": "Pincode verwijderen"
   },
-  "Request_timed_out": {
+  "Removing": {
+    "message": "Verwijderen..."
+  },
+  "Request_Timeout": {
     "message": "Aanvraag time-out"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
@@ -1453,11 +1525,11 @@
   "Request_timeout_in_milliseconds_5000_180_5766": {
     "message": "Time-out aanvraag in milliseconden (5000-180000)"
   },
-  "Request_was_aborted": {
-    "message": "Aanvraag is afgebroken"
+  "Reset_Vault": {
+    "message": "Kluis resetten"
   },
-  "Response_failed": {
-    "message": "Respons mislukt"
+  "Resetting": {
+    "message": "Resetten..."
   },
   "Restricted": {
     "message": "Beperkt"
@@ -1488,6 +1560,9 @@
   },
   "Running": {
     "message": "Bezig"
+  },
+  "SKILL_md_URL": {
+    "message": "SKILL.md URL"
   },
   "STREAM_ERROR": {
     "message": "STROOMFOUT"
@@ -1522,9 +1597,6 @@
   "Scheduled_Task": {
     "message": "Geplande taak"
   },
-  "Scheduled_Task_Starting": {
-    "message": "Geplande taak start"
-  },
   "Scheduled_Tasks": {
     "message": "Geplande taken"
   },
@@ -1534,8 +1606,14 @@
   "Search_complete": {
     "message": "Zoeken voltooid"
   },
+  "Search_settings": {
+    "message": "Instellingen zoeken..."
+  },
   "Searching": {
     "message": "Zoeken..."
+  },
+  "Security": {
+    "message": "Beveiliging"
   },
   "Security_Privacy": {
     "message": "Beveiliging & privacy"
@@ -1583,14 +1661,14 @@
   "Session_error": {
     "message": "Sessie‑fout"
   },
-  "Session_expired_please_log_in_again_to_c_5d31": {
-    "message": "Sessie verlopen - log opnieuw in om de AI-agent te blijven gebruiken"
-  },
   "Session_limit_reached_New_tasks_will_que_2877": {
     "message": "Sessielimiet bereikt. Nieuwe taken worden in de wachtrij geplaatst."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Instellen wanneer rolloutgegevens moeten verlopen"
+  },
+  "Setting_up": {
+    "message": "Instellen..."
   },
   "Settings": {
     "message": "Instellingen"
@@ -1613,8 +1691,17 @@
   "Show_warning_when_storage_usage_exceeds__7c40": {
     "message": "Toon waarschuwing wanneer opslaggebruik dit percentage overschrijdt (standaard: 90%)"
   },
+  "Sign_in_failed": {
+    "message": "Aanmelden mislukt"
+  },
   "Sign_in_to_your_account": {
     "message": "Meld u aan bij uw account"
+  },
+  "Sign_in_with_ChatGPT": {
+    "message": "Aanmelden met ChatGPT"
+  },
+  "Signing_in": {
+    "message": "Aanmelden..."
   },
   "Skills": {
     "message": "Vaardigheden"
@@ -1688,9 +1775,6 @@
   "Task_Details": {
     "message": "Taakdetails"
   },
-  "Task_Failed": {
-    "message": "Taak mislukt"
-  },
   "Task_History": {
     "message": "Taakgeschiedenis"
   },
@@ -1716,6 +1800,14 @@
   },
   "Task_failed": {
     "message": "Taak mislukt"
+  },
+  "Task_scheduled_for_1": {
+    "message": "Taak gepland voor $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Task_started": {
     "message": "Taak gestart"
@@ -1744,11 +1836,8 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "De agent gebruikt momenteel de backend‑modus. LLM‑verzoeken worden via de AI Republic‑server geleid. Uw gesprekken worden veilig verwerkt via onze infrastructuur."
   },
-  "The_model_switch_will_clear_the_current__3cd7": {
-    "message": "Het wisselen van model zal het huidige gesprek wissen. Wilt u doorgaan?"
-  },
-  "The_server_encountered_an_error_Please_t_9ecc": {
-    "message": "De server heeft een fout aangetroffen. Probeer later opnieuw."
+  "This_will_permanently_delete_all_stored__7eee": {
+    "message": "Dit zal alle opgeslagen API‑sleutels permanent verwijderen en de kluis resetten. U moet uw API‑sleutels opnieuw invoeren."
   },
   "Time": {
     "message": "Tijd"
@@ -1785,6 +1874,9 @@
       }
     }
   },
+  "Too_many_failed_attempts_Try_again_in": {
+    "message": "Te veel mislukte pogingen. Probeer opnieuw over"
+  },
   "Tool_Timeout_ms": {
     "message": "Tool-timeout (ms)"
   },
@@ -1799,6 +1891,9 @@
   },
   "Tools_Settings": {
     "message": "Tools-instellingen"
+  },
+  "Trust": {
+    "message": "Vertrouwen"
   },
   "Trusted": {
     "message": "Vertrouwd"
@@ -1830,26 +1925,11 @@
   "Unable_to_load_credit_information": {
     "message": "Kan creditinformatie niet laden"
   },
-  "Unable_to_reach_the_backend_server_pleas_3350": {
-    "message": "Kan backendserver niet bereiken - controleer uw verbinding"
-  },
-  "Unable_to_reach_the_server_Please_check__e5d0": {
-    "message": "Kan de server niet bereiken. Controleer uw verbinding en probeer het opnieuw."
-  },
   "Unknown_Event": {
     "message": "Onbekende gebeurtenis"
   },
   "Unknown_error": {
     "message": "Onbekende fout"
-  },
-  "Unknown_error_checking_agent_status": {
-    "message": "Onbekende fout bij het controleren van de agentstatus"
-  },
-  "Unknown_error_occurred": {
-    "message": "Onbekende fout opgetreden"
-  },
-  "Unknown_error_occurred_during_task_execu_c6be": {
-    "message": "Onbekende fout opgetreden tijdens taakuitvoering"
   },
   "Unknown_error_processing_submission": {
     "message": "Onbekende fout bij het verwerken van de inzending"
@@ -1862,11 +1942,20 @@
       }
     }
   },
+  "Unlock": {
+    "message": "Ontgrendelen"
+  },
+  "Unlocking": {
+    "message": "Ontgrendelen..."
+  },
   "Unsaved_Changes": {
     "message": "Niet-opgeslagen wijzigingen"
   },
   "Untitled": {
     "message": "Naamloos"
+  },
+  "Untrusted": {
+    "message": "Niet vertrouwd"
   },
   "Upcoming": {
     "message": "Komend"
@@ -1895,6 +1984,9 @@
   "Use_Own_API_Key": {
     "message": "Gebruik eigen API-sleutel"
   },
+  "Use_your_ChatGPT_Plus_Pro_subscription_i_e8b8": {
+    "message": "Gebruik uw ChatGPT Plus/Pro-abonnement in plaats van een API‑sleutel"
+  },
   "User_Center": {
     "message": "Gebruikerscentrum"
   },
@@ -1906,6 +1998,9 @@
   },
   "Using_extra_credits": {
     "message": "Extra credits gebruiken"
+  },
+  "Vault_Locked": {
+    "message": "Kluis vergrendeld"
   },
   "Verbosity": {
     "message": "Uitvoerigheid"
@@ -1979,9 +2074,6 @@
   "Your_personal_AI_assistant": {
     "message": "Jouw persoonlijke AI-assistent"
   },
-  "Your_session_has_expired_Please_log_in_a_c52a": {
-    "message": "Uw sessie is verlopen. Log opnieuw in."
-  },
   "DISCONNECTED": {
     "message": "[VERBINDING VERBROKEN]"
   },
@@ -2015,8 +2107,14 @@
   "exec_unknown_command": {
     "message": "exec (onbekende opdracht)"
   },
+  "more_results": {
+    "message": "meer resultaten..."
+  },
   "optional": {
     "message": "optioneel"
+  },
+  "or": {
+    "message": "of"
   },
   "remaining": {
     "message": "resterend"

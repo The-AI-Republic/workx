@@ -11,6 +11,8 @@
   import { t, _t } from '../../lib/i18n';
   import type { ApprovalMode, IApprovalConfig } from '@/core/approval/types';
   import { STORAGE_KEYS } from '@/config/defaults';
+  import { getConfigStorage } from '@/core/storage/ConfigStorageProvider';
+  import { getInitializedUIClient } from '@/core/messaging';
 
   let currentTheme: UITheme = 'terminal';
   let currentMode: ApprovalMode = 'balanced';
@@ -32,8 +34,8 @@
 
   async function loadMode() {
     try {
-      const result = await chrome.storage.local.get(STORAGE_KEYS.APPROVAL_CONFIG);
-      const config = result[STORAGE_KEYS.APPROVAL_CONFIG] as IApprovalConfig | undefined;
+      const agentConfig = await getConfigStorage().get<Record<string, any>>(STORAGE_KEYS.CONFIG);
+      const config = agentConfig?.approval as IApprovalConfig | undefined;
       if (config?.mode) {
         currentMode = config.mode;
       }
@@ -47,7 +49,8 @@
     showPopup = false;
 
     try {
-      chrome.runtime.sendMessage({ type: 'UPDATE_APPROVAL_CONFIG', config: { mode } });
+      const client = await getInitializedUIClient();
+      await client.serviceRequest('approval.updateConfig', { mode });
     } catch (error) {
       console.error('[ApprovalModeIndicator] Failed to send config update:', error);
     }
@@ -79,7 +82,7 @@
         aria-haspopup="true"
         aria-expanded={showPopup}
       >
-        <span class="w-3 h-3 rounded-full block transition-colors duration-200" style="background-color: {currentColor};"></span>
+        <span class="w-4 h-4 rounded-full block transition-colors duration-200" style="background-color: {currentColor};"></span>
       </button>
     </Tooltip>
   </div>

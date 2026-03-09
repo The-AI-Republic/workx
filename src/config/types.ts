@@ -3,6 +3,8 @@
  * Type definitions for the centralized config system
  */
 
+import type { IApprovalConfig } from '../core/approval/types';
+
 /**
  * Main centralized configuration interface for the agent (RUNTIME)
  *
@@ -10,7 +12,7 @@
  * It contains the complete configuration including static provider/model metadata.
  *
  * Relationship with IStoredConfig:
- * - IStoredConfig: Minimal data persisted to chrome.storage.local (user-changeable only)
+ * - IStoredConfig: Minimal data persisted to ConfigStorageProvider (user-changeable only)
  * - IAgentConfig: Full runtime config = IStoredConfig + static metadata from default.json
  *
  * At startup, the config service:
@@ -46,6 +48,7 @@ export interface IAgentConfig {
   extension: IExtensionSettings;
   tools?: IToolsConfig;
   storage?: IStorageConfig;
+  approval?: IApprovalConfig;
 }
 
 // Model pricing information
@@ -147,6 +150,13 @@ export interface IModelConfig {
   supportsImage?: boolean;
 
   /**
+   * Whether model supports native web search (optional)
+   * If true, the provider handles web search server-side (e.g., OpenAI web_search tool, Gemini grounding)
+   * If false/undefined, falls back to CDP-based Google scraping
+   */
+  supportsWebSearch?: boolean;
+
+  /**
    * Model release date (optional)
    * ISO 8601 date string (YYYY-MM-DD) indicating when the model was released
    */
@@ -232,6 +242,12 @@ export interface IProviderConfig {
   retryConfig?: IRetryConfig;
 
   /**
+   * Active authentication method for this provider (optional)
+   * When set, determines whether API key or ChatGPT OAuth is used
+   */
+  authMethod?: 'api_key' | 'chatgpt_oauth';
+
+  /**
    * Models hosted by this provider
    * Array of models available through this provider's API
    * MUST contain at least one model
@@ -295,6 +311,7 @@ export interface IUserPreferences {
    * User's preferred language code (e.g., 'en', 'es', 'zh')
    */
   language?: string;
+  zoomLevel?: number;
   shortcuts?: Record<string, string>;
   experimental?: Record<string, boolean>;
 }
@@ -370,9 +387,19 @@ export interface IToolsConfig {
   page_action_tool?: boolean;
   page_vision_tool?: boolean;
 
+  // Setting tool toggle (LLM settings access)
+  setting_tool?: boolean;
+
   // Agent execution tool toggles
   execCommand?: boolean;
   webSearch?: boolean;
+  /**
+   * Whether to use native provider web search when the model supports it.
+   * - When true (default): Uses provider-side web search for capable models,
+   *   falls back to CDP-based Google scraping for models without native support
+   * - When false: Forces CDP-based Google scraping for all models
+   */
+  useNativeWebSearch?: boolean;
   fileOperations?: boolean;
   mcpTools?: boolean;
   customTools?: Record<string, boolean>;
@@ -396,10 +423,12 @@ export interface IStoredProviderConfig {
   apiKey: string;
   /** Provider-specific organization ID (optional) */
   organization?: string | null;
+  /** Active authentication method for this provider (optional) */
+  authMethod?: 'api_key' | 'chatgpt_oauth';
 }
 
 /**
- * Minimal configuration stored in chrome.storage.local (PERSISTENCE)
+ * Minimal configuration stored in ConfigStorageProvider (PERSISTENCE)
  *
  * This is the SERIALIZATION format for persisting user configuration.
  * Only user-changeable data is stored; static model/provider metadata is NOT persisted.
@@ -442,6 +471,8 @@ export interface IStoredConfig {
   tools?: IToolsConfig;
   /** Storage configuration */
   storage?: IStorageConfig;
+  /** Approval system configuration */
+  approval?: IApprovalConfig;
 }
 
 // Storage interfaces
@@ -499,7 +530,7 @@ export interface IExportData {
 // Event interfaces for config changes
 export interface IConfigChangeEvent {
   type: 'config-changed';
-  section: 'model' | 'provider' | 'profile' | 'preferences' | 'cache' | 'extension' | 'security';
+  section: 'model' | 'provider' | 'profile' | 'preferences' | 'cache' | 'extension' | 'security' | 'approval';
   oldValue?: any;
   newValue: any;
   timestamp: number;

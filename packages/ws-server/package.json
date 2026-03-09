@@ -1,0 +1,17 @@
+{
+    "name": "@applepi/ws-server",
+    "version": "1.0.0",
+    "description": "Apple Pi Server WebSocket Protocol and Logic",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsc",
+        "type-check": "tsc --noEmit"
+    },
+    "dependencies": {
+        "zod": "^3.23.8"
+    },
+    "devDependencies": {
+        "typescript": "^5.9.2"
+    }
+}

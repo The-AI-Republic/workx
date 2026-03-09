@@ -1,10 +1,10 @@
 /**
- * AgentSession - Wrapper around PiAgent providing lifecycle management
+ * AgentSession - Wrapper around RepublicAgent providing lifecycle management
  * Feature: 015-multi-agent-instances
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import type { PiAgent } from '../PiAgent';
+import type { RepublicAgent } from '../RepublicAgent';
 import type { Op } from '../protocol/types';
 import type {
   SessionState,
@@ -18,7 +18,7 @@ import { VALID_STATE_TRANSITIONS, SESSION_LETTERS } from './types';
 import type { SessionStorage } from './SessionStorage';
 
 /**
- * AgentSession wraps a PiAgent instance and provides:
+ * AgentSession wraps a RepublicAgent instance and provides:
  * - Lifecycle state management (initializing → idle ↔ active → terminated)
  * - Tab binding and tab group management
  * - Event emission for state changes
@@ -29,7 +29,7 @@ export class AgentSession {
   private _sessionId: string;
   private _sessionLetter: string;
   private _state: SessionState = 'initializing';
-  private _agent: PiAgent | null = null;
+  private _agent: RepublicAgent | null = null;
   private _metadata: SessionMetadata;
   private _eventListeners: Set<SessionEventListener> = new Set();
   private _tabClosureUnsubscribe: (() => void) | null = null;
@@ -57,8 +57,7 @@ export class AgentSession {
       lastActivityAt: now,
       tabId: config.tabId ?? null,
       tabGroupId: null,
-      tabGroupName: `pi_s_${this._sessionLetter}`,
-      scheduledTaskId: config.scheduledTaskId ?? null,
+      tabGroupName: `browserx_s_${this._sessionLetter}`,
     };
   }
 
@@ -91,8 +90,8 @@ export class AgentSession {
     return this._internal;
   }
 
-  /** Underlying PiAgent instance */
-  get agent(): PiAgent | null {
+  /** Underlying RepublicAgent instance */
+  get agent(): RepublicAgent | null {
     return this._agent;
   }
 
@@ -101,10 +100,10 @@ export class AgentSession {
   // ==========================================================================
 
   /**
-   * Attach a PiAgent instance to this session
+   * Attach a RepublicAgent instance to this session
    * @param agent The agent instance to attach
    */
-  attachAgent(agent: PiAgent): void {
+  attachAgent(agent: RepublicAgent): void {
     if (this._agent) {
       throw new Error(`Session ${this._sessionId} already has an agent attached`);
     }
@@ -224,7 +223,7 @@ export class AgentSession {
 
   /**
    * T027: Create a Chrome tab group for this session
-   * Creates a tab group with name pi_s_<letter> and a distinct color
+   * Creates a tab group with name browserx_s_<letter> and a distinct color
    * @returns The created tab group ID, or null if creation failed
    */
   async createTabGroup(): Promise<number | null> {

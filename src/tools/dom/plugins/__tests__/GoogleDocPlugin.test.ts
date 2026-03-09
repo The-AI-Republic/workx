@@ -649,7 +649,7 @@ describe('GoogleDocPlugin', () => {
       const wrapper = body.children![0];
       expect(wrapper.nodeName).toBe('DIV');
       expect(wrapper.attributes).toContain('google-doc-content');
-      expect(wrapper.attributes).toContain('data-pi-injected');
+      expect(wrapper.attributes).toContain('data-applepi-injected');
       expect(wrapper.attributes).toContain('true');
       // The wrapper should contain the text node
       expect(wrapper.children).toHaveLength(1);

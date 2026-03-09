@@ -1,7 +1,7 @@
 /**
  * MCP Server Integration Type Definitions
  *
- * These types define the contracts for MCP server integration in Pi.
+ * These types define the contracts for MCP server integration in ApplePi.
  * They are used for configuration, runtime state, and tool integration.
  */
 
@@ -23,16 +23,17 @@ export type MCPTransportType = 'sse' | 'stdio';
  * - 'shared': Visible on both extension and desktop
  * - 'extension': Only visible in Chrome extension mode
  * - 'desktop': Only visible in desktop (Tauri) mode
+ * - 'server': Only visible in server (headless) mode
  */
-export type MCPPlatformScope = 'shared' | 'extension' | 'desktop';
+export type MCPPlatformScope = 'shared' | 'extension' | 'desktop' | 'server';
 
 // =============================================================================
-// Configuration Types (Persisted in chrome.storage.local)
+// Configuration Types (Persisted via ConfigStorageProvider)
 // =============================================================================
 
 /**
  * Configuration for a single MCP server connection.
- * Persisted in chrome.storage.local under 'mcpServers' key.
+ * Persisted via ConfigStorageProvider under 'mcpServers' key.
  */
 export interface IMCPServerConfig {
   /** UUID v4 identifier */
@@ -377,7 +378,7 @@ export interface IMCPManager {
 // =============================================================================
 
 /**
- * Adapts MCP tools to Pi ToolDefinition format.
+ * Adapts MCP tools to ApplePi ToolDefinition format.
  */
 export interface IMCPToolAdapter {
   /**

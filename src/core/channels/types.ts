@@ -17,6 +17,7 @@ export type ChannelType =
   | 'tabpage' // Chrome extension tab page
   | 'tauri' // Tauri desktop frontend
   | 'websocket' // Remote WebSocket API
+  | 'server' // Server mode (headless Node.js)
   | 'telegram' // Telegram bot (future)
   | 'cli'; // Terminal UI (future)
 
@@ -30,6 +31,8 @@ export interface ChannelCapabilities {
   approvals: boolean;
   /** Can display images/media */
   media: boolean;
+  /** Can send service requests (e.g., MCP, scheduler, vault) */
+  services: boolean;
 }
 
 /**

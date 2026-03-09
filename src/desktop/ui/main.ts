@@ -5,10 +5,9 @@
  * with desktop-specific styling and initialization.
  *
  * Architecture:
- * 1. Initialize agent bootstrap (PiAgent + TauriChannel + ChannelManager)
- * 2. Initialize messaging service (TauriMessageService for UI communication)
- * 3. Initialize desktop services (tray, hotkeys)
- * 4. Mount the UI app
+ * 1. Initialize agent bootstrap (RepublicAgent + TauriChannel + ChannelManager)
+ * 2. Initialize desktop services (tray, hotkeys)
+ * 3. Mount the UI app
  *
  * @module desktop/ui/main
  */
@@ -23,9 +22,9 @@ installFetchProxy();
 
 import './desktop.css';
 import '../../webfront/styles.css';
+import { mount } from 'svelte';
 import App from '../../webfront/App.svelte';
 import { initializeDesktop } from '../main';
-import { initializeMessaging, TauriMessageService } from '@/core/messaging';
 import { initializeDesktopAgent } from '../agent/DesktopAgentBootstrap';
 import { initLocale } from '../../webfront/lib/i18n';
 import { AgentConfig } from '@/config/AgentConfig';
@@ -58,7 +57,7 @@ async function init() {
   }
 
   // 1. Initialize the agent bootstrap first
-  // This creates PiAgent + TauriChannel + ChannelManager
+  // This creates RepublicAgent + TauriChannel + ChannelManager
   try {
     await initializeDesktopAgent();
     console.log('[Desktop] Agent bootstrap initialized');
@@ -67,18 +66,7 @@ async function init() {
     // Continue anyway - the app will show error state
   }
 
-  // 2. Initialize messaging service (Tauri-specific)
-  // This provides the UI-side abstraction for sending messages to the agent
-  try {
-    const messageService = new TauriMessageService();
-    await initializeMessaging(messageService);
-    console.log('[Desktop] Messaging service initialized');
-  } catch (error) {
-    console.warn('[Desktop] Failed to initialize messaging service:', error);
-    // Continue anyway - the app will show connection error state
-  }
-
-  // 3. Initialize desktop services (tray, hotkeys)
+  // 2. Initialize desktop services (tray, hotkeys)
   try {
     await initializeDesktop();
     console.log('[Desktop] Desktop services initialized');
@@ -97,14 +85,14 @@ async function init() {
   }
 
   // 5. Mount the main app
-  const app = new App({
+  const app = mount(App, {
     target: document.getElementById('app')!,
   });
 
   console.log('[Desktop] App mounted');
 
   // Listen for focus input events from hotkeys
-  window.addEventListener('pi:focus-input', () => {
+  window.addEventListener('applepi:focus-input', () => {
     const inputElement = document.querySelector('textarea, input[type="text"]');
     if (inputElement instanceof HTMLElement) {
       inputElement.focus();
@@ -112,7 +100,7 @@ async function init() {
   });
 
   // Listen for quick action events from hotkeys
-  window.addEventListener('pi:quick-action', () => {
+  window.addEventListener('applepi:quick-action', () => {
     console.log('[Desktop] Quick action requested');
   });
 

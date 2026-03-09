@@ -20,8 +20,9 @@ import { registerTools } from './index';
  */
 function detectPlatform(): Platform {
   // __BUILD_MODE__ is defined at build time by Vite
-  if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop') {
-    return 'desktop';
+  if (typeof __BUILD_MODE__ !== 'undefined') {
+    if (__BUILD_MODE__ === 'desktop') return 'desktop';
+    if (__BUILD_MODE__ === 'server') return 'server';
   }
   return 'extension';
 }
@@ -65,7 +66,11 @@ export async function registerPlatformTools(
 
   console.log(`[registerPlatformTools] Platform: ${platform}`);
 
-  if (platform === 'desktop') {
+  if (platform === 'server') {
+    // Server tools are registered separately by ServerAgentBootstrap
+    console.log('[registerPlatformTools] Server mode — skipping browser tool registration');
+    return;
+  } else if (platform === 'desktop') {
     await registerDesktopTools(registry, toolsConfig, modelConfig);
   } else {
     await registerExtensionTools(registry, toolsConfig, modelConfig);

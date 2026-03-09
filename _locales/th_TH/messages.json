@@ -68,12 +68,6 @@
   "API_key_for_authentication_stored_encryp_0d20": {
     "message": "คีย์APIสำหรับการยืนยันตัวตน(เก็บแบบเข้ารหัส)"
   },
-  "API_key_has_expired": {
-    "message": "คีย์APIหมดอายุ"
-  },
-  "API_key_has_insufficient_permissions": {
-    "message": "คีย์APIไม่มีสิทธิ์เพียงพอ"
-  },
   "API_key_saved_successfully": {
     "message": "บันทึกคีย์APIสำเร็จ!"
   },
@@ -122,9 +116,6 @@
   "Agent_Execution_Tools": {
     "message": "เครื่องมือดำเนินการเอเจนต์"
   },
-  "Agent_Turn_Complete": {
-    "message": "รอบเอเจนต์เสร็จสิ้น"
-  },
   "Agent_URL_is_required": {
     "message": "ต้องการURLของเอเจนต์"
   },
@@ -143,11 +134,11 @@
   "Agent_removed_successfully": {
     "message": "ลบเอเจนต์สำเร็จ"
   },
-  "Agent_turn_completed_successfully": {
-    "message": "รอบเอเจนต์เสร็จสมบูรณ์"
-  },
   "Agent_updated_successfully": {
     "message": "อัปเดตเอเจนต์สำเร็จ"
+  },
+  "All_API_keys_are_encrypted_at_rest_using_ca92": {
+    "message": "คีย์APIทั้งหมดถูกเข้ารหัสขณะพักโดยใช้AES-256-GCM.เปิดการป้องกันด้วยPINเพื่อความปลอดภัยเพิ่มเติม."
   },
   "All_actions_are_auto_approved_on_these_d_ffda": {
     "message": "การกระทำทั้งหมดได้รับการอนุมัติอัตโนมัติบนโดเมนเหล่านี้."
@@ -179,6 +170,12 @@
   "Always_Approve": {
     "message": "อนุมัติเสมอ"
   },
+  "Always_dark": {
+    "message": "มืดเสมอ"
+  },
+  "Always_light": {
+    "message": "สว่างเสมอ"
+  },
   "Apple_Pi_Your_personal_AI_Alpha": {
     "message": "Apple Pi:ปัญญาประดิษฐ์ส่วนตัวของคุณ(Alpha)"
   },
@@ -200,14 +197,16 @@
   "Approve": {
     "message": "อนุมัติ"
   },
-  "Approve_changes_to_eventMsg_data_path": {
-    "message": "อนุมัติการเปลี่ยนแปลงไปยัง:${eventMsg.data.path}"
-  },
-  "Approve_execution_eventMsg_data_command": {
-    "message": "อนุมัติการดำเนินการ:${eventMsg.data.command}"
-  },
   "Are_you_sure_you_want_to_cancel_this_tas_8573": {
     "message": "คุณแน่ใจหรือว่าต้องการยกเลิกงานนี้?"
+  },
+  "Are_you_sure_you_want_to_delete_the_skil_3268": {
+    "message": "คุณแน่ใจหรือว่าต้องการลบสกิล\"$1$\"?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Are_you_sure_you_want_to_remove_this_age_b9ba": {
     "message": "คุณแน่ใจหรือว่าต้องการลบเอเจนต์นี้?"
@@ -234,9 +233,6 @@
   },
   "Authentication_credential_stored_encrypt_c46a": {
     "message": "ข้อมูลรับรองการตรวจสอบ(เก็บเป็นการเข้ารหัส)"
-  },
-  "Authentication_failed": {
-    "message": "การตรวจสอบล้มเหลว"
   },
   "Authentication_method_for_the_agent": {
     "message": "วิธีการตรวจสอบสิทธิ์สำหรับเอเจนต์"
@@ -280,9 +276,6 @@
   "Backend_not_available_Please_wait_a_mome_9218": {
     "message": "แบ็กเอนด์ไม่พร้อมใช้งาน.กรุณารอสักครู่แล้วลองใหม่"
   },
-  "Backend_server_error_please_try_again_la_0515": {
-    "message": "ข้อผิดพลาดเซิร์ฟเวอร์แบ็กเอนด์-กรุณาลองใหม่ภายหลัง"
-  },
   "Backoff_Multiplier": {
     "message": "ตัวคูณการถอยหลัง"
   },
@@ -306,6 +299,9 @@
   },
   "Blocked_Domains": {
     "message": "โดเมนที่ถูกบล็อก"
+  },
+  "Body_Markdown": {
+    "message": "เนื้อหา(Markdown)"
   },
   "Browser_Tools": {
     "message": "เครื่องมือเบราว์เซอร์"
@@ -340,9 +336,6 @@
   "Cancelled": {
     "message": "ยกเลิกแล้ว"
   },
-  "Cannot_execute_task_No_API_key_configure_c622": {
-    "message": "ไม่สามารถดำเนินการงานได้:ไม่มีคีย์APIที่กำหนดสำหรับ${providerName}.โปรดไปที่การตั้งค่า→การกำหนดค่าโมเดลและเพิ่มคีย์APIของคุณ."
-  },
   "Cannot_select_model_1": {
     "message": "ไม่สามารถเลือกโมเดล:$1$",
     "placeholders": {
@@ -362,8 +355,20 @@
   "Capabilities": {
     "message": "ความสามารถ"
   },
+  "Change_PIN": {
+    "message": "เปลี่ยนPIN"
+  },
+  "Changing": {
+    "message": "กำลังเปลี่ยน..."
+  },
   "Chat_History": {
     "message": "ประวัติแชท"
+  },
+  "ChatGPT_Subscription": {
+    "message": "การสมัครChatGPT"
+  },
+  "ChatGPT_session_expired_Please_sign_in_a_f393": {
+    "message": "เซสชันChatGPTหมดอายุ.กรุณาเข้าสู่ระบบใหม่."
   },
   "Checking_agent_status": {
     "message": "กำลังตรวจสอบสถานะเอเจนต์..."
@@ -377,11 +382,8 @@
   "Choose_which_update_channel_to_follow": {
     "message": "เลือกช่องอัปเดตที่ต้องการติดตาม"
   },
-  "Classic_terminal_style_with_green_text_o_02cc": {
-    "message": "สไตล์เทอร์มินัลคลาสสิก ข้อความสีเขียวบนพื้นหลังสีดำ"
-  },
-  "Clean_modern_chat_interface_similar_to_C_2401": {
-    "message": "อินเทอร์เฟซแชทสมัยใหม่สะอาด คล้าย ChatGPT"
+  "Clear_search": {
+    "message": "ล้างการค้นหา"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "คลิกไอคอนBrowserxในแถบเครื่องมือของคุณหรือกดAlt+Shift+C"
@@ -395,14 +397,17 @@
   "Close": {
     "message": "ปิด"
   },
+  "Close_scheduler": {
+    "message": "ปิดตัวจัดตาราง"
+  },
   "Close_settings": {
     "message": "ปิดการตั้งค่า"
   },
+  "Close_skills": {
+    "message": "ปิดสกิล"
+  },
   "Collapse": {
     "message": "ย่อ"
-  },
-  "Command_Approval_Required": {
-    "message": "ต้องการการอนุมัติคำสั่ง"
   },
   "Command_completed": {
     "message": "คำสั่งเสร็จสมบูรณ์"
@@ -415,9 +420,6 @@
   },
   "Completed": {
     "message": "เสร็จแล้ว"
-  },
-  "Completed_lastAssistantMessage_substring_40c8": {
-    "message": "เสร็จสมบูรณ์:${lastAssistantMessage.substring(0,100)}${lastAssistantMessage.length>100?'...':''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "บีบอัดข้อมูลแคชเพื่อประหยัดพื้นที่จัดเก็บ"
@@ -436,6 +438,12 @@
   },
   "Configured_Servers": {
     "message": "เซิร์ฟเวอร์ที่กำหนดค่าแล้ว"
+  },
+  "Confirm_New_PIN": {
+    "message": "ยืนยันPINใหม่"
+  },
+  "Confirm_PIN": {
+    "message": "ยืนยันPIN"
   },
   "Connect": {
     "message": "เชื่อมต่อ"
@@ -460,6 +468,9 @@
   },
   "Connected_successfully": {
     "message": "เชื่อมต่อสำเร็จ"
+  },
+  "Connected_via_ChatGPT": {
+    "message": "เชื่อมต่อผ่านChatGPT"
   },
   "Connecting": {
     "message": "กำลังเชื่อมต่อ..."
@@ -501,15 +512,6 @@
   "Connection_test_successful_API_key_is_va_3e34": {
     "message": "การทดสอบการเชื่อมต่อสำเร็จ! (API key ถูกต้อง)"
   },
-  "Connection_was_refused": {
-    "message": "การเชื่อมต่อถูกปฏิเสธ"
-  },
-  "Connection_was_reset": {
-    "message": "การเชื่อมต่อถูกรีเซ็ต"
-  },
-  "Content_violates_policy_contentType_cont_2034": {
-    "message": "เนื้อหาละเมิดนโยบาย: เนื้อหา ${contentType} ไม่ได้รับอนุญาต"
-  },
   "Context_Window": {
     "message": "หน้าต่างบริบท"
   },
@@ -524,23 +526,47 @@
   "Controls_how_aggressively_the_agent_asks_d3ba": {
     "message": "ควบคุมความรุนแรงที่เอเจนต์ขออนุมัติ"
   },
+  "Create": {
+    "message": "สร้าง"
+  },
+  "Create_New_Skill": {
+    "message": "สร้างสกิลใหม่"
+  },
   "Create_New_Tab": {
     "message": "สร้างแท็บใหม่"
+  },
+  "Create_Skill": {
+    "message": "สร้างสกิล"
+  },
+  "Create_a_6_digit_PIN_to_protect_your_API_2b1a": {
+    "message": "สร้างPINหกหลักเพื่อปกป้องคีย์APIของคุณ.คุณจะต้องใช้PINนี้หลังจากรีสตาร์ทเบราว์เซอร์."
+  },
+  "Create_a_skill_to_add_custom_commands_or_cb10": {
+    "message": "สร้างสกิลเพื่อเพิ่มคำสั่ง/แบบกำหนดเองหรือพฤติกรรมเอเจนต์ที่เรียกใช้อัตโนมัติ."
   },
   "Created": {
     "message": "สร้าง"
   },
+  "Creating": {
+    "message": "กำลังสร้าง..."
+  },
   "Creator": {
     "message": "ผู้สร้าง"
+  },
+  "Credential_Encryption": {
+    "message": "การเข้ารหัสข้อมูลรับรอง"
+  },
+  "Credential_encryption_and_PIN_protection": {
+    "message": "การเข้ารหัสข้อมูลรับรองและการป้องกันด้วยPIN"
   },
   "Credit_Details": {
     "message": "รายละเอียดเครดิต"
   },
+  "Current_PIN": {
+    "message": "PINปัจจุบัน"
+  },
   "Current_Plan": {
     "message": "แผนปัจจุบัน:"
-  },
-  "DNS_lookup_failed": {
-    "message": "การค้นหาDNSล้มเหลว"
   },
   "DOM_Tool": {
     "message": "เครื่องมือ DOM"
@@ -566,6 +592,9 @@
   "Default": {
     "message": "ค่าเริ่มต้น"
   },
+  "Delete": {
+    "message": "ลบ"
+  },
   "Deny": {
     "message": "ปฏิเสธ"
   },
@@ -583,6 +612,9 @@
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "พัฒนาและสนับสนุนโดยเอไอรีพับลิก"
+  },
+  "Disabled": {
+    "message": "ปิดการทำงาน"
   },
   "Discard_Changes": {
     "message": "ละทิ้งการเปลี่ยนแปลง"
@@ -638,6 +670,12 @@
   "Enable_Model_Context_Protocol_tools_from_29ac": {
     "message": "เปิดใช้งานเครื่องมือModel Context Protocolจากเซิร์ฟเวอร์MCPที่เชื่อมต่อ"
   },
+  "Enable_PIN": {
+    "message": "เปิดใช้งานPIN"
+  },
+  "Enable_PIN_Protection": {
+    "message": "เปิดการป้องกันPIN"
+  },
   "Enable_auto_connect_when_browserx_starts": {
     "message": "เปิดใช้งานการเชื่อมต่ออัตโนมัติเมื่อbrowserxเริ่มทำงาน"
   },
@@ -659,8 +697,14 @@
   "Enter_API_key_or_bearer_token": {
     "message": "ป้อนAPIคีย์หรือBearer token"
   },
+  "Enter_your_6_digit_PIN_to_unlock_your_AP_1fff": {
+    "message": "ป้อนPINหกหลักของคุณเพื่อปลดล็อกคีย์APIของคุณ."
+  },
   "Enter_your_LLM_API_key": {
     "message": "ป้อนคีย์ API ของ LLM ของคุณ"
+  },
+  "Enter_your_current_PIN_to_remove_protect_8b75": {
+    "message": "ป้อนPINปัจจุบันของคุณเพื่อยกเลิกการป้องกัน.คีย์APIยังคงถูกเข้ารหัสด้วยคีย์เริ่มต้น."
   },
   "Enter_your_task": {
     "message": "ป้อนงานของคุณ..."
@@ -696,6 +740,9 @@
   },
   "Explain_with_Browserx": {
     "message": "อธิบายด้วยBrowserx"
+  },
+  "Export": {
+    "message": "ส่งออก"
   },
   "Extension_Permission": {
     "message": "ส่วนขยายและสิทธิ์"
@@ -748,12 +795,6 @@
         "content": "$1"
       }
     }
-  },
-  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
-    "message": "ไม่สามารถสร้างแท็บใหม่ได้. โปรดลองอีกครั้ง"
-  },
-  "Failed_to_create_browser_tab_errorMsg": {
-    "message": "ไม่สามารถสร้างแท็บเบราว์เซอร์ได้: ${errorMsg}"
   },
   "Failed_to_disconnect_1": {
     "message": "ไม่สามารถตัดการเชื่อมต่อได้: $1$",
@@ -825,9 +866,6 @@
   "Failed_to_stop_the_task_Please_try_again": {
     "message": "ไม่สามารถหยุดงานได้. โปรดลองอีกครั้ง"
   },
-  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
-    "message": "ไม่สามารถสลับไปยังแท็บ ${newTabId}: ${errorMsg}"
-  },
   "Failed_to_test_connection": {
     "message": "ไม่สามารถทดสอบการเชื่อมต่อ"
   },
@@ -842,9 +880,6 @@
       }
     }
   },
-  "File_Change_Approval_Required": {
-    "message": "ต้องการการอนุมัติการเปลี่ยนแปลงไฟล์"
-  },
   "File_Operations_Not_Available": {
     "message": "การดำเนินการไฟล์ (ไม่พร้อมใช้งาน)"
   },
@@ -853,6 +888,12 @@
   },
   "Flex": {
     "message": "ยืดหยุ่น"
+  },
+  "Follows_system_theme": {
+    "message": "ตามธีมระบบ"
+  },
+  "Forgot_PIN": {
+    "message": "ลืมPIN?"
   },
   "Form_Automation_Tool": {
     "message": "เครื่องมือทำแบบฟอร์มอัตโนมัติ"
@@ -874,6 +915,9 @@
   },
   "Get_Started": {
     "message": "เริ่มต้น"
+  },
+  "Green_text_terminal": {
+    "message": "เทอร์มินัลข้อความสีเขียว"
   },
   "Hello_NAME": {
     "message": "สวัสดี$NAME$",
@@ -897,6 +941,21 @@
   },
   "Image_Input": {
     "message": "อินพุตภาพ"
+  },
+  "Import": {
+    "message": "นำเข้า"
+  },
+  "Import_Skill_from_URL": {
+    "message": "นำเข้าSkillจากURL"
+  },
+  "Import_from_URL": {
+    "message": "นำเข้าจากURL"
+  },
+  "Imported_skills_are_untrusted_by_default_561a": {
+    "message": "สกิลที่นำเข้าจะไม่เชื่อถือโดยค่าเริ่มต้นและไม่สามารถเรียกใช้อัตโนมัติได้."
+  },
+  "Importing": {
+    "message": "กำลังนำเข้า..."
   },
   "Improve_this_text_info_selectionText": {
     "message": "ปรับปรุงข้อความนี้: ${info.selectionText}"
@@ -933,9 +992,6 @@
   "Invalid_API_key": {
     "message": "คีย์APIไม่ถูกต้อง"
   },
-  "Invalid_API_key_provided": {
-    "message": "คีย์APIไม่ถูกต้อง"
-  },
   "Invalid_URL_format": {
     "message": "รูปแบบURLไม่ถูกต้อง"
   },
@@ -944,6 +1000,9 @@
   },
   "Invalid_submission_format_op_missing_typ_0fc0": {
     "message": "รูปแบบการส่งไม่ถูกต้อง:opขาดฟิลด์type"
+  },
+  "Invocation_Mode": {
+    "message": "โหมดการเรียกใช้"
   },
   "Keyboard_Shortcuts": {
     "message": "ทางลัดแป้นพิมพ์"
@@ -986,6 +1045,9 @@
   },
   "Loading_settings": {
     "message": "กำลังโหลดการตั้งค่า..."
+  },
+  "Loading_skills": {
+    "message": "กำลังโหลดทักษะ..."
   },
   "Loading_tabs": {
     "message": "กำลังโหลดแท็บ..."
@@ -1109,16 +1171,16 @@
   "Model_and_provider_settings_loaded_from__55a3": {
     "message": "การตั้งค่าโมเดลและผู้ให้บริการโหลดจากการกำหนดค่าเริ่มต้น(อ่านอย่างเดียว)"
   },
-  "Model_changed_to_1_Please_configure_your_1c81": {
-    "message": "เปลี่ยนโมเดลเป็น $1$.กรุณาตั้งค่าคีย์APIของคุณ.",
+  "Model_changed_to_1_Conversation_preserve_2db6": {
+    "message": "เปลี่ยนโมเดลเป็น$1$การสนทนาถูกเก็บไว้.",
     "placeholders": {
       "1": {
         "content": "$1"
       }
     }
   },
-  "Model_changed_to_1_Session_will_be_reini_e2ce": {
-    "message": "เปลี่ยนโมเดลเป็น $1$.เซสชันจะถูกเริ่มต้นใหม่.",
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "เปลี่ยนโมเดลเป็น $1$.กรุณาตั้งค่าคีย์APIของคุณ.",
     "placeholders": {
       "1": {
         "content": "$1"
@@ -1136,8 +1198,14 @@
       }
     }
   },
-  "Modern_Chat": {
-    "message": "แชทสมัยใหม่"
+  "Modern_Chat_Auto": {
+    "message": "แชทสมัยใหม่อัตโนมัติ"
+  },
+  "Modern_Chat_Dark": {
+    "message": "แชทสมัยใหม่มืด"
+  },
+  "Modern_Chat_Light": {
+    "message": "แชทสมัยใหม่สว่าง"
   },
   "Monthly_Credits": {
     "message": "เครดิตรายเดือน"
@@ -1163,14 +1231,14 @@
   "Network_error": {
     "message": "ข้อผิดพลาดเครือข่าย"
   },
-  "Network_error_occurred": {
-    "message": "เกิดข้อผิดพลาดเครือข่าย"
-  },
   "Never_expire_permanent": {
     "message": "ไม่มีวันหมดอายุ(ถาวร)"
   },
   "New_Conversation": {
     "message": "การสนทนาใหม่"
+  },
+  "New_PIN": {
+    "message": "พินใหม่"
   },
   "No_A2A_agents_configured_yet": {
     "message": "ยังไม่มีตัวแทนA2Aที่กำหนดค่า"
@@ -1208,14 +1276,23 @@
   "No_scheduled_time": {
     "message": "ไม่มีเวลาที่กำหนด"
   },
+  "No_settings_found": {
+    "message": "ไม่พบการตั้งค่า"
+  },
   "No_skills_available": {
     "message": "ไม่มีทักษะที่พร้อมใช้งาน."
+  },
+  "No_skills_configured_yet": {
+    "message": "ยังไม่ได้กำหนดทักษะ."
   },
   "No_steps_in_plan": {
     "message": "ไม่มีขั้นตอนในแผน"
   },
   "No_tabs_available": {
     "message": "ไม่มีแท็บพร้อมใช้งาน"
+  },
+  "No_tasks_in_plan": {
+    "message": "ไม่มีงานในแผน"
   },
   "No_time_set": {
     "message": "ไม่มีการตั้งเวลา"
@@ -1278,6 +1355,12 @@
       }
     }
   },
+  "PIN": {
+    "message": "พิน"
+  },
+  "PIN_Protection": {
+    "message": "การป้องกันพิน"
+  },
   "Page_Action_Tool": {
     "message": "เครื่องมือดำเนินการกับหน้า"
   },
@@ -1310,17 +1393,6 @@
   "Persist_Cache_to_Storage": {
     "message": "บันทึกแคชลงที่เก็บข้อมูล"
   },
-  "Plan_1_step_s": {
-    "message": "แผน:$1$ขั้นตอน",
-    "placeholders": {
-      "1": {
-        "content": "$1"
-      }
-    }
-  },
-  "Please_check_your_API_key_in_settings": {
-    "message": "กรุณาตรวจสอบคีย์APIของคุณในการตั้งค่า."
-  },
   "Please_enter_a_task_description": {
     "message": "กรุณากรอกคำอธิบายงาน"
   },
@@ -1330,9 +1402,6 @@
   "Please_input_a_valid_API_key": {
     "message": "กรุณาใส่คีย์APIที่ถูกต้อง"
   },
-  "Please_log_in_again_to_continue_using_th_3d8f": {
-    "message": "กรุณาเข้าสู่ระบบใหม่เพื่อใช้ตัวแทนAIต่อไป"
-  },
   "Please_select_a_provider": {
     "message": "กรุณาเลือกผู้ให้บริการ"
   },
@@ -1341,6 +1410,9 @@
   },
   "Please_upgrade_the_plan_to_unblock_world_9fed": {
     "message": "กรุณาอัปเกรดแผนเพื่อปลดบล็อกโมเดลที่ก้าวหน้าที่สุดของโลก"
+  },
+  "Port_1455_is_in_use_Please_close_any_app_a809": {
+    "message": "พอร์ต1455กำลังใช้งานอยู่โปรดปิดแอปพลิเคชันที่ใช้พอร์ตนี้และลองใหม่อีกครั้ง."
   },
   "Power": {
     "message": "พลัง"
@@ -1425,9 +1497,6 @@
   "Refreshes_in": {
     "message": "จะรีเฟรชใน"
   },
-  "Reject": {
-    "message": "ปฏิเสธ"
-  },
   "Release_Date": {
     "message": "วันที่ปล่อย"
   },
@@ -1446,10 +1515,13 @@
   "Remove_API_Key": {
     "message": "ลบ API Key"
   },
-  "Request_Timeout": {
-    "message": "การร้องขอหมดเวลา"
+  "Remove_PIN": {
+    "message": "ลบพิน"
   },
-  "Request_timed_out": {
+  "Removing": {
+    "message": "กำลังลบ..."
+  },
+  "Request_Timeout": {
     "message": "การร้องขอหมดเวลา"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
@@ -1458,11 +1530,11 @@
   "Request_timeout_in_milliseconds_5000_180_5766": {
     "message": "การหมดเวลาในการร้องขอเป็นมิลลิวินาที(5000-180000)"
   },
-  "Request_was_aborted": {
-    "message": "การร้องขอถูกยกเลิก"
+  "Reset_Vault": {
+    "message": "รีเซ็ตคลังข้อมูล"
   },
-  "Response_failed": {
-    "message": "การตอบสนองล้มเหลว"
+  "Resetting": {
+    "message": "กำลังรีเซ็ต..."
   },
   "Restricted": {
     "message": "จำกัด"
@@ -1493,6 +1565,9 @@
   },
   "Running": {
     "message": "กำลังทำงาน"
+  },
+  "SKILL_md_URL": {
+    "message": "URLของSKILL.md"
   },
   "STREAM_ERROR": {
     "message": "ข้อผิดพลาดสตรีม"
@@ -1527,9 +1602,6 @@
   "Scheduled_Task": {
     "message": "งานที่กำหนดเวลา"
   },
-  "Scheduled_Task_Starting": {
-    "message": "กำลังเริ่มงานที่กำหนดเวลา"
-  },
   "Scheduled_Tasks": {
     "message": "งานที่กำหนดเวลา"
   },
@@ -1539,8 +1611,14 @@
   "Search_complete": {
     "message": "ค้นหาเสร็จสิ้น"
   },
+  "Search_settings": {
+    "message": "ค้นหาการตั้งค่า..."
+  },
   "Searching": {
     "message": "กำลังค้นหา..."
+  },
+  "Security": {
+    "message": "ความปลอดภัย"
   },
   "Security_Privacy": {
     "message": "ความปลอดภัยและความเป็นส่วนตัว"
@@ -1588,14 +1666,14 @@
   "Session_error": {
     "message": "ข้อผิดพลาดเซสชัน"
   },
-  "Session_expired_please_log_in_again_to_c_5d31": {
-    "message": "เซสชันหมดอายุ-กรุณาเข้าสู่ระบบใหม่เพื่อใช้เอเจนต์AIต่อไป"
-  },
   "Session_limit_reached_New_tasks_will_que_2877": {
     "message": "ถึงขีดจำกัดเซสชันแล้ว.งานใหม่จะอยู่ในคิว"
   },
   "Set_when_rollout_data_should_expire": {
     "message": "ตั้งเวลาหมดอายุของข้อมูลการนำออกใช้"
+  },
+  "Setting_up": {
+    "message": "กำลังตั้งค่า..."
   },
   "Settings": {
     "message": "การตั้งค่า"
@@ -1618,8 +1696,17 @@
   "Show_warning_when_storage_usage_exceeds__7c40": {
     "message": "แสดงคำเตือนเมื่อการใช้พื้นที่เกินเปอร์เซ็นต์นี้ (ค่าเริ่มต้น: 90%)"
   },
+  "Sign_in_failed": {
+    "message": "เข้าสู่ระบบล้มเหลว"
+  },
   "Sign_in_to_your_account": {
     "message": "เข้าสู่ระบบบัญชีของคุณ"
+  },
+  "Sign_in_with_ChatGPT": {
+    "message": "เข้าสู่ระบบด้วยChatGPT"
+  },
+  "Signing_in": {
+    "message": "กำลังเข้าสู่ระบบ..."
   },
   "Skills": {
     "message": "ทักษะ"
@@ -1693,9 +1780,6 @@
   "Task_Details": {
     "message": "รายละเอียดงาน"
   },
-  "Task_Failed": {
-    "message": "งานล้มเหลว"
-  },
   "Task_History": {
     "message": "ประวัติงาน"
   },
@@ -1721,6 +1805,14 @@
   },
   "Task_failed": {
     "message": "งานล้มเหลว"
+  },
+  "Task_scheduled_for_1": {
+    "message": "งานกำหนดเวลาไว้สำหรับ$1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Task_started": {
     "message": "งานเริ่มต้น"
@@ -1749,11 +1841,8 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "ตัวแทนกำลังใช้โหมดแบ็กเอนด์ คำขอ LLM จะถูกส่งผ่านเซิร์ฟเวอร์ AI Republic การสนทนาของคุณจะถูกประมวลผลอย่างปลอดภัยผ่านโครงสร้างพื้นฐานของเรา"
   },
-  "The_model_switch_will_clear_the_current__3cd7": {
-    "message": "การสลับโมเดลจะลบการสนทนาปัจจุบันคุณต้องการดำเนินต่อหรือไม่"
-  },
-  "The_server_encountered_an_error_Please_t_9ecc": {
-    "message": "เซิร์ฟเวอร์พบข้อผิดพลาดโปรดลองใหม่ภายหลัง"
+  "This_will_permanently_delete_all_stored__7eee": {
+    "message": "การดำเนินการนี้จะลบคีย์APIที่เก็บไว้ทั้งหมดอย่างถาวรและรีเซ็ตคลังข้อมูลคุณจะต้องป้อนคีย์APIใหม่อีกครั้ง"
   },
   "Time": {
     "message": "เวลา"
@@ -1790,6 +1879,9 @@
       }
     }
   },
+  "Too_many_failed_attempts_Try_again_in": {
+    "message": "พยายามล้มเหลวเกินจำนวนครั้งลองใหม่อีกครั้งใน"
+  },
   "Tool_Timeout_ms": {
     "message": "เครื่องมือหมดเวลา(ms)"
   },
@@ -1804,6 +1896,9 @@
   },
   "Tools_Settings": {
     "message": "การตั้งค่าเครื่องมือ"
+  },
+  "Trust": {
+    "message": "เชื่อถือ"
   },
   "Trusted": {
     "message": "เชื่อถือได้"
@@ -1835,26 +1930,11 @@
   "Unable_to_load_credit_information": {
     "message": "ไม่สามารถโหลดข้อมูลเครดิต"
   },
-  "Unable_to_reach_the_backend_server_pleas_3350": {
-    "message": "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์แบ็กเอนด์-กรุณาตรวจสอบการเชื่อมต่อของคุณ"
-  },
-  "Unable_to_reach_the_server_Please_check__e5d0": {
-    "message": "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์.กรุณาตรวจสอบการเชื่อมต่อของคุณและลองใหม่อีกครั้ง"
-  },
   "Unknown_Event": {
     "message": "เหตุการณ์ที่ไม่รู้จัก"
   },
   "Unknown_error": {
     "message": "ข้อผิดพลาดที่ไม่รู้จัก"
-  },
-  "Unknown_error_checking_agent_status": {
-    "message": "ข้อผิดพลาดที่ไม่รู้จักขณะตรวจสอบสถานะตัวแทน"
-  },
-  "Unknown_error_occurred": {
-    "message": "เกิดข้อผิดพลาดที่ไม่รู้จัก"
-  },
-  "Unknown_error_occurred_during_task_execu_c6be": {
-    "message": "เกิดข้อผิดพลาดที่ไม่รู้จักระหว่างการดำเนินงาน"
   },
   "Unknown_error_processing_submission": {
     "message": "ข้อผิดพลาดที่ไม่รู้จักขณะประมวลผลการส่ง"
@@ -1867,11 +1947,20 @@
       }
     }
   },
+  "Unlock": {
+    "message": "ปลดล็อก"
+  },
+  "Unlocking": {
+    "message": "กำลังปลดล็อก..."
+  },
   "Unsaved_Changes": {
     "message": "การเปลี่ยนแปลงที่ยังไม่ได้บันทึก"
   },
   "Untitled": {
     "message": "ไม่มีชื่อ"
+  },
+  "Untrusted": {
+    "message": "ไม่เชื่อถือ"
   },
   "Upcoming": {
     "message": "กำลังจะมา"
@@ -1900,6 +1989,9 @@
   "Use_Own_API_Key": {
     "message": "ใช้คีย์APIของคุณ"
   },
+  "Use_your_ChatGPT_Plus_Pro_subscription_i_e8b8": {
+    "message": "ใช้การสมัครสมาชิกChatGPTPlus/Proของคุณแทนคีย์API"
+  },
   "User_Center": {
     "message": "ศูนย์ผู้ใช้"
   },
@@ -1911,6 +2003,9 @@
   },
   "Using_extra_credits": {
     "message": "กำลังใช้เครดิตพิเศษ"
+  },
+  "Vault_Locked": {
+    "message": "คลังข้อมูลถูกล็อก"
   },
   "Verbosity": {
     "message": "ความละเอียด"
@@ -1984,9 +2079,6 @@
   "Your_personal_AI_assistant": {
     "message": "ผู้ช่วย AI ส่วนบุคคลของคุณ"
   },
-  "Your_session_has_expired_Please_log_in_a_c52a": {
-    "message": "เซสชันของคุณหมดอายุ.กรุณาเข้าสู่ระบบอีกครั้ง"
-  },
   "DISCONNECTED": {
     "message": "[ตัดการเชื่อมต่อ]"
   },
@@ -2020,8 +2112,14 @@
   "exec_unknown_command": {
     "message": "exec (คำสั่งที่ไม่รู้จัก)"
   },
+  "more_results": {
+    "message": "ผลลัพธ์เพิ่มเติม..."
+  },
   "optional": {
     "message": "ไม่บังคับ"
+  },
+  "or": {
+    "message": "หรือ"
   },
   "remaining": {
     "message": "เหลือ"

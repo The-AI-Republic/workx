@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "outDir": "dist/server",
+    "rootDir": "src",
+    "paths": {
+      "@/*": ["src/*"],
+      "@/core/*": ["src/core/*"],
+      "@/server/*": ["src/server/*"],
+      "@/desktop/*": ["src/desktop/*"],
+      "@/storage/rollout": ["src/storage/rollout/index.ts"],
+      "@/storage/rollout/*": ["src/storage/rollout/*"]
+    }
+  },
+  "include": ["src/server/**/*", "src/core/**/*", "src/config/**/*", "src/prompts/**/*"],
+  "exclude": ["node_modules", "dist", "src/extension/**/*", "src/webfront/**/*", "src/desktop/**/*"]
+}

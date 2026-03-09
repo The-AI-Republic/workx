@@ -73,7 +73,9 @@
       const errMsg = err instanceof Error ? err.message : String(err);
       if (errMsg.includes('Timeout')) {
         error = 'Loading timed out';
-      } else if (errMsg.includes('database')) {
+      } else if (errMsg.includes('provider') || errMsg.includes('tauri') || errMsg.includes('invoke')) {
+        error = 'Storage not available';
+      } else if (errMsg.includes('database') || errMsg.includes('Database') || errMsg.includes('IDB') || errMsg.includes('SQL')) {
         error = 'Database error';
       } else {
         error = 'Failed to load';

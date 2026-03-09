@@ -7,7 +7,7 @@ export const USER_INSTRUCTIONS_OPEN_TAG = '<user_instructions>';
 export const USER_INSTRUCTIONS_CLOSE_TAG = '</user_instructions>';
 export const ENVIRONMENT_CONTEXT_OPEN_TAG = '<environment_context>';
 export const ENVIRONMENT_CONTEXT_CLOSE_TAG = '</environment_context>';
-export const USER_MESSAGE_BEGIN = '## My request for Pi:';
+export const USER_MESSAGE_BEGIN = '## My request for Apple Pi:';
 
 /**
  * Submission Queue Entry - requests from user
@@ -23,8 +23,6 @@ export interface Submission {
     tabId?: number;
     /** Feature 015: Session ID for multi-agent routing */
     sessionId?: string;
-    /** Scheduled task ID (for scheduled task execution) */
-    scheduledTaskId?: string;
   };
 }
 
@@ -107,11 +105,20 @@ export type Op =
     type: 'Review';
     review_request: ReviewRequest;
   }
-  | { type: 'Shutdown' };
+  | { type: 'Shutdown' }
+  | {
+    type: 'ServiceRequest';
+    /** UUID for response correlation */
+    requestId: string;
+    /** Dotted service path: 'mcp.getServers', 'vault.status', etc. */
+    service: string;
+    /** Request parameters */
+    params: Record<string, unknown>;
+  };
 
 /**
  * Determines the conditions under which the user is consulted to approve
- * running the command proposed by Pi.
+ * running the command proposed by ApplePi.
  */
 export type AskForApproval =
   | 'untrusted'

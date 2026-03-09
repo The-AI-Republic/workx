@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { push } from 'svelte-spa-router';
-  import { MessageType } from '@/core/MessageRouter';
-  import { messageService, connectionState, getMessageService, type IMessageService } from '@/core/messaging';
-  import type { TaskStatusChangedEvent } from '@/core/models/types/SchedulerContracts';
+  import { getInitializedUIClient } from '@/core/messaging';
+  import type { UIChannelClient } from '@/core/messaging';
+  import type { JobStatusChangedEvent } from '@/core/models/types/SchedulerContracts';
   import type { Event } from '@/core/protocol/types';
   import type { ProcessedEvent } from '@/types/ui';
   import { STYLE_PRESETS } from '@/types/ui';
@@ -29,15 +29,12 @@
   import { schedulerStore } from '../../stores/schedulerStore';
   // i18n
   import { t, _t } from '../../lib/i18n';
-  // Scheduler components
-  import ScheduleTaskModal from '../../components/scheduler/ScheduleTaskModal.svelte';
   // Multi-chat support
   import { get } from 'svelte/store';
   import ChatBar from '../../components/chats/ChatBar.svelte';
   import { chatStore, type SidePanelChat } from '../../stores/chatStore';
-
-  // Message service (platform-agnostic)
-  let service: IMessageService | null = null;
+  // UI channel client (platform-agnostic)
+  let client: UIChannelClient | null = null;
   let unsubscribers: Array<() => void> = [];
   let eventProcessor: EventProcessor;
   let messages: Array<{ type: 'user' | 'agent'; content: string; timestamp: number }> = [];
@@ -50,6 +47,21 @@
   let currentTabId: number = -1; // Track current session's bound tab
   let agentReady = false;
   let healthStatus: { ready: boolean; message?: string; provider?: string; model?: string; authMode?: 'login' | 'api_key' | 'none' } = { ready: false, authMode: 'none' };
+  let zoomLevel = parseInt(document.documentElement.style.fontSize) || 100;
+
+  function onZoomChanged(e: Event) {
+    zoomLevel = (e as CustomEvent<number>).detail;
+  }
+
+  function resetZoom() {
+    document.documentElement.style.fontSize = '100%';
+    zoomLevel = 100;
+    window.dispatchEvent(new CustomEvent('zoom-changed', { detail: 100 }));
+    AgentConfig.getInstance().then((config) => {
+      const agentConfig = config.getConfig();
+      config.updateConfig({ preferences: { ...agentConfig.preferences, zoomLevel: 100 } });
+    }).catch(() => {});
+  }
   let compactionNotification: { show: boolean; tokensSaved: number; compactionCount: number; isWarning: boolean } = {
     show: false,
     tokensSaved: 0,
@@ -58,10 +70,10 @@
   };
   // Current UI theme (reactive from store)
   let currentTheme: UITheme = 'terminal';
-  // Scheduled task execution state (US3)
-  let scheduledTaskId: string | null = null;
+  // Scheduled job execution state (US3)
+  let scheduledJobId: string | null = null;
   let scheduledSessionId: string | null = null;
-  let isScheduledTaskMode = false;
+  let isScheduledJobMode = false;
 
   // Multi-chat state
   interface ChatConversationState {
@@ -86,6 +98,9 @@
   });
 
   onMount(async () => {
+    // Listen for zoom level changes
+    window.addEventListener('zoom-changed', onZoomChanged);
+
     // Clear messages from previous session
     messages = [];
     processedEvents = [];
@@ -130,110 +145,69 @@
       console.warn('[App] Failed to load UI preferences:', error);
     }
 
-    // Get the message service (initialized by entry point)
+    // Initialize UIChannelClient for event listening
     try {
-      service = getMessageService();
-      console.log('[App] Using message service');
+      client = await getInitializedUIClient();
+      console.log('[App] UIChannelClient initialized');
+
+      // Listen for all events from backend (wildcard)
+      // Filter out event types that have their own dedicated handlers
+      const HANDLED_EVENT_TYPES = new Set(['StateUpdate', 'BackgroundEvent', 'ServiceResponse']);
+      unsubscribers.push(
+        client.onEvent('*', (eventMsg: any) => {
+          if (HANDLED_EVENT_TYPES.has(eventMsg?.type)) return;
+          // Wrap EventMsg in Event envelope for handleEvent compatibility
+          const event: Event = { id: `evt_${Date.now()}`, msg: eventMsg };
+          handleEvent(event);
+        })
+      );
+
+      // Listen for state updates
+      unsubscribers.push(
+        client.onEvent('StateUpdate', (data: any) => {
+          if (data && 'tabId' in data) {
+            currentTabId = data.tabId!;
+          }
+        })
+      );
+
+      // Handle agent re-initialization and scheduler events via BackgroundEvent
+      unsubscribers.push(
+        client.onEvent('BackgroundEvent', (data: any) => {
+          if (data?.message?.startsWith('Agent reinitialized')) {
+            checkConnection();
+          } else if (data?.message === 'scheduler_job_status' && data?.schedulerEvent) {
+            handleSchedulerEvent(data.schedulerEvent as JobStatusChangedEvent);
+          }
+        })
+      );
     } catch (error) {
-      console.error('[App] Message service not initialized:', error);
-      // Service not available - UI will show disconnected state
-    }
-
-    // Setup event handlers if service is available
-    if (service) {
-      // Listen for events from backend
-      unsubscribers.push(
-        service.on(MessageType.EVENT, (payload) => {
-          const eventPayload = payload as Event & { sessionId?: string };
-          const event: Event = { id: eventPayload.id, msg: eventPayload.msg };
-          const eventSessionId = eventPayload.sessionId;
-
-          if (eventSessionId && activeSessionId && eventSessionId !== activeSessionId) {
-            handleEventForSession(event, eventSessionId);
-          } else {
-            handleEvent(event);
-          }
-        })
-      );
-
-      // Listen for state updates (only apply if for the active session)
-      unsubscribers.push(
-        service.on(MessageType.STATE_UPDATE, (payload) => {
-          const state = payload as { tabId?: number; sessionId?: string };
-          // Only update if this is for the active session or has no sessionId (backward compat)
-          if (state && 'tabId' in state) {
-            if (!state.sessionId || state.sessionId === activeSessionId) {
-              currentTabId = state.tabId!;
-            }
-          }
-        })
-      );
-
-      // Listen for session events (termination, etc.)
-      unsubscribers.push(
-        service.on(MessageType.SESSION_EVENT, (payload) => {
-          const sessionEvent = payload as { type?: string; sessionId?: string };
-          if (sessionEvent?.type === 'session:terminated') {
-            handleSessionTerminated(sessionEvent.sessionId!);
-          }
-        })
-      );
-
-      // Handle agent re-initialization (e.g., when model is changed)
-      unsubscribers.push(
-        service.on(MessageType.AGENT_REINITIALIZED, () => {
-          // Clear active chat state
-          messages = [];
-          processedEvents = [];
-          isProcessing = false;
-          eventProcessor.reset();
-
-          // Also clear all background chat states (model change affects all sessions)
-          chatStates.clear();
-
-          // Re-check connection/auth status since agent was reinitialized
-          checkConnection();
-        })
-      );
-
-      // Listen for scheduler events (for task cancellation)
-      unsubscribers.push(
-        service.on(MessageType.SCHEDULER_EVENT, (payload) => {
-          handleSchedulerEvent(payload as TaskStatusChangedEvent);
-        })
-      );
+      console.error('[App] UIChannelClient initialization failed:', error);
     }
 
     // Check connection
     checkConnection();
 
-    // Check if this is a scheduled task execution (US3: T022)
+    // Check if this is a scheduled job execution (US3: T022)
+    // Extension: detected via URL params from chrome.tabs.create
+    // Desktop: detected via DOM event from DesktopAgentBootstrap job launcher
     const urlParams = new URLSearchParams(window.location.search);
-    const taskIdParam = urlParams.get('scheduledTask');
+    const jobIdParam = urlParams.get('scheduledJob');
     const sessionIdParam = urlParams.get('sessionId');
 
-    if (taskIdParam && sessionIdParam) {
-      console.log('[App] Scheduled task mode detected:', taskIdParam);
-      scheduledTaskId = taskIdParam;
+    if (jobIdParam && sessionIdParam) {
+      console.log('[App] Scheduled job mode detected:', jobIdParam);
+      scheduledJobId = jobIdParam;
       scheduledSessionId = sessionIdParam;
-      isScheduledTaskMode = true;
+      isScheduledJobMode = true;
 
-      // Load and execute the scheduled task
-      await loadAndExecuteSchedulerTask(taskIdParam, sessionIdParam);
-      return; // Skip normal initialization for scheduled task mode
+      // Load and execute the scheduled job
+      await loadAndExecuteSchedulerJob(jobIdParam, sessionIdParam);
+      return; // Skip normal initialization for scheduled job mode
     }
-
-    // Initialize multi-chat system
-    await initializeChats();
 
     // Fetch current session's tabId from storage
     await fetchCurrentTabId();
-
-    // Save active chat state after history restoration so it persists across tab switches
-    const activeChatAfterInit = chatStore.getActiveChat();
-    if (activeChatAfterInit) {
-      saveChatState(activeChatAfterInit.id);
-    }
 
     // ========================================================================
     // KEEP-ALIVE: Send periodic pings to prevent service worker termination
@@ -241,10 +215,10 @@
     // Keep-alive ping for Chrome extension (service worker stays awake)
     // Only needed for extension mode - Tauri doesn't have this limitation
     let keepAliveInterval: ReturnType<typeof setInterval> | null = null;
-    if (platform.platformName === 'extension' && service) {
+    if (platform.platformName === 'extension' && client) {
       keepAliveInterval = setInterval(async () => {
         try {
-          await service!.send(MessageType.PING);
+          await (await getInitializedUIClient()).serviceRequest('agent.ping');
           console.log('[App] Keep-alive ping sent');
         } catch (error) {
           console.warn('[App] Keep-alive ping failed:', error);
@@ -265,16 +239,16 @@
     };
   });
 
-  // T035: Handle scheduled task cancellation events
-  function handleSchedulerEvent(event: TaskStatusChangedEvent) {
-    // Check if this is a cancellation for our running task
+  // T035: Handle scheduled job cancellation events
+  function handleSchedulerEvent(event: JobStatusChangedEvent) {
+    // Check if this is a cancellation for our running job
     if (
-      isScheduledTaskMode &&
-      scheduledTaskId &&
-      event?.taskId === scheduledTaskId &&
+      isScheduledJobMode &&
+      scheduledJobId &&
+      event?.jobId === scheduledJobId &&
       event?.newStatus === 'cancelled'
     ) {
-      console.log('[App] Scheduled task cancelled, aborting execution:', scheduledTaskId);
+      console.log('[App] Scheduled job cancelled, aborting execution:', scheduledJobId);
 
       // Stop processing
       isProcessing = false;
@@ -285,18 +259,16 @@
         category: 'system',
         timestamp: new Date(),
         title: 'system',
-        content: t('Task cancelled by user'),
+        content: t('Job cancelled by user'),
         style: { textColor: 'text-yellow-400' },
         streaming: false,
         collapsible: false,
       };
       processedEvents = [...processedEvents, cancelNotice];
 
-      // Request agent to abort via message service (pass sessionId to target correct session)
-      if (service) {
-        service.send(MessageType.INTERRUPT, {
-          sessionId: activeSessionId ?? scheduledSessionId ?? undefined,
-        }).catch((err) => {
+      // Request agent to abort via message service
+      if (client) {
+        getInitializedUIClient().then(c => c.serviceRequest('agent.interrupt')).catch((err) => {
           console.warn('[App] Failed to send interrupt on cancel:', err);
         });
       }
@@ -304,7 +276,7 @@
   }
 
   onDestroy(() => {
-    // Cleanup is handled by the onMount return function
+    window.removeEventListener('zoom-changed', onZoomChanged);
   });
 
   /**
@@ -314,17 +286,15 @@
    * Also restores conversation history to sync UI with backend state
    */
   async function fetchCurrentTabId() {
-    if (!service) {
+    if (!client) {
       console.warn('[App] Service not available for fetchCurrentTabId');
       currentTabId = -1;
       return;
     }
 
     try {
-      // Request current session state from backend (pass sessionId to route to correct agent)
-      const response = await service.send<{ tabId?: number; history?: unknown[] }>(MessageType.GET_STATE, {
-        sessionId: activeSessionId ?? undefined,
-      });
+      // Request current session state from backend
+      const response = await (await getInitializedUIClient()).serviceRequest<{ tabId?: number; history?: unknown[] }>('session.getState');
       console.log('[App] Fetched session state:', response);
 
       const stateData = response || {};
@@ -484,24 +454,28 @@
   }
 
   async function checkConnection() {
+    console.log('[App] checkConnection called, client:', !!client);
     try {
-      if (!service) {
+      if (!client) {
+        console.warn('[App] checkConnection: no client available');
         isConnected = false;
         agentReady = false;
         healthStatus = { ready: false, message: t('Message service not available'), authMode: 'none' };
         return;
       }
 
-      const response = await service.send<{
+      console.log('[App] Sending agent.healthCheck serviceRequest...');
+      const response = await (await getInitializedUIClient()).serviceRequest<{
         type?: string;
         ready?: boolean;
         message?: string;
         provider?: string;
         model?: string;
         authMode?: 'login' | 'api_key' | 'none';
-      }>(MessageType.HEALTH_CHECK);
+      }>('agent.healthCheck');
 
-      isConnected = response?.type === MessageType.HEALTH_STATUS || response?.ready !== undefined;
+      console.log('[App] healthCheck response:', JSON.stringify(response));
+      isConnected = response?.ready !== undefined;
 
       if (response?.ready !== undefined) {
         agentReady = response.ready === true;
@@ -586,9 +560,11 @@
     } else if (msg.type === 'TaskComplete' || msg.type === 'TaskFailed') {
       isProcessing = false;
 
-      // If this is a scheduled task execution, notify the scheduler (US3)
-      if (isScheduledTaskMode && scheduledTaskId) {
-        notifySchedulerTaskCompletion(msg.type === 'TaskComplete', msg);
+      // If this is a scheduled job execution, notify the scheduler (US3)
+      // Desktop/server: completion is handled at the bootstrap level (event interception)
+      // Extension: still relies on UI-level notification via message service
+      if (isScheduledJobMode && scheduledJobId && platform.platformName === 'extension') {
+        notifySchedulerJobCompletion(msg.type === 'TaskComplete', msg);
       }
     }
 
@@ -677,23 +653,18 @@
     };
     processedEvents = [...processedEvents, userEvent];
 
-    // Update chat title from first message
-    updateChatTitleFromMessage(text);
-
-    // Send to agent with browser tab context and session ID
+    // Send to agent with tab context
     try {
-      if (!service) throw new Error('Message service not available');
-      await service.send(MessageType.SUBMISSION, {
-        id: `user_${Date.now()}`,
-        op: {
+      if (!client) throw new Error('Message service not available');
+      await client.submitOp(
+        {
           type: 'UserInput',
           items: [{ type: 'text', text }],
         },
-        context: {
+        {
           tabId: currentTabId, // Include current tab selection in context
-          sessionId: activeSessionId ?? undefined, // Route to correct session
         },
-      });
+      );
 
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -762,15 +733,13 @@
     // Reset tab context
     currentTabId = -1;
 
-    // Re-initialize event processor to prevent aliasing
-    eventProcessor = new EventProcessor();
+    // Reset event processor
+    eventProcessor.reset();
 
-    // Request session reset from backend (pass sessionId to reset the correct session)
+    // Request session reset from backend
     try {
-      if (!service) throw new Error('Message service not available');
-      await service.send(MessageType.SESSION_RESET, {
-        sessionId: activeSessionId ?? undefined,
-      });
+      if (!client) throw new Error('Message service not available');
+      await (await getInitializedUIClient()).serviceRequest('session.reset');
 
       // After session reset, auto-bind to the active tab
       // This ensures the new conversation starts with the current tab
@@ -796,11 +765,9 @@
     if (!isProcessing) return;
 
     try {
-      if (!service) throw new Error('Message service not available');
-      // Send stop message to backend (pass sessionId to stop the correct session)
-      await service.send(MessageType.INTERRUPT, {
-        sessionId: activeSessionId ?? undefined,
-      });
+      if (!client) throw new Error('Message service not available');
+      // Send stop message to backend
+      await (await getInitializedUIClient()).serviceRequest('agent.interrupt');
       isProcessing = false;
       console.log('[App] Agent session stopped');
     } catch (error) {
@@ -831,9 +798,9 @@
     eventProcessor.reset();
 
     try {
-      if (!service) throw new Error('Message service not available');
+      if (!client) throw new Error('Message service not available');
       // Request session resume from backend
-      const response = await service.send<{ history?: unknown[] }>(MessageType.RESUME_SESSION, { conversationId });
+      const response = await (await getInitializedUIClient()).serviceRequest<{ history?: unknown[] }>('session.resume', { conversationId });
 
       const historyItems = response?.history;
       console.log('[App] Conversation resumed:', conversationId, 'with', historyItems?.length || 0, 'items');
@@ -854,82 +821,82 @@
   }
 
   /**
-   * Notify scheduler of task completion (US3)
-   * Called when a scheduled task finishes executing
+   * Notify scheduler of job completion (US3)
+   * Called when a scheduled job finishes executing
    */
-  async function notifySchedulerTaskCompletion(success: boolean, msg: any) {
-    if (!scheduledTaskId || !service) return;
+  async function notifySchedulerJobCompletion(success: boolean, msg: any) {
+    if (!scheduledJobId || !client) return;
 
     try {
       if (success) {
         // Extract result summary from the processed events
         const lastAgentEvent = processedEvents.filter(e => e.title === 'browserx').pop();
-        const resultSummary = lastAgentEvent?.content?.slice(0, 500) || 'Task completed';
+        const resultSummary = lastAgentEvent?.content?.slice(0, 500) || 'Job completed';
 
-        await service.send(MessageType.SCHEDULER_COMPLETE_TASK, {
-          taskId: scheduledTaskId,
+        await (await getInitializedUIClient()).serviceRequest('scheduler.complete', {
+          jobId: scheduledJobId,
           result: {
             summary: resultSummary,
             completedAt: Date.now(),
           },
         });
-        console.log('[App] Notified scheduler of task completion:', scheduledTaskId);
+        console.log('[App] Notified scheduler of job completion:', scheduledJobId);
       } else {
-        const errorMessage = msg?.data?.message || 'Task failed';
-        await service.send(MessageType.SCHEDULER_FAIL_TASK, {
-          taskId: scheduledTaskId,
+        const errorMessage = msg?.data?.message || 'Job failed';
+        await (await getInitializedUIClient()).serviceRequest('scheduler.fail', {
+          jobId: scheduledJobId,
           error: errorMessage,
         });
-        console.log('[App] Notified scheduler of task failure:', scheduledTaskId);
+        console.log('[App] Notified scheduler of job failure:', scheduledJobId);
       }
     } catch (error) {
-      console.error('[App] Failed to notify scheduler of task completion:', error);
+      console.error('[App] Failed to notify scheduler of job completion:', error);
     }
   }
 
   /**
-   * Load and execute a scheduled task (US3: T023)
-   * Called when the page is opened with scheduledTask URL parameter
+   * Load and execute a scheduled job (US3: T023)
+   * Called when the page is opened with scheduledJob URL parameter
    */
-  async function loadAndExecuteSchedulerTask(taskId: string, sessionId: string) {
-    console.log('[App] Loading scheduled task:', taskId, 'with session:', sessionId);
+  async function loadAndExecuteSchedulerJob(jobId: string, sessionId: string) {
+    console.log('[App] Loading scheduled job:', jobId, 'with session:', sessionId);
 
     try {
-      if (!service) throw new Error('Message service not available');
-      // Fetch task details from scheduler
-      const response = await service.send<{ task?: { input: string; scheduledTime?: number } }>(
-        MessageType.SCHEDULER_GET_TASK_DETAILS,
-        { taskId }
+      if (!client) throw new Error('Message service not available');
+      // Fetch job details from scheduler
+      const response = await (await getInitializedUIClient()).serviceRequest<{ job?: { input: string; scheduledTime?: number } }>(
+        'scheduler.getJobDetails',
+        { jobId }
       );
 
-      const taskData = response?.data || response;
-      if (!taskData || !taskData.task) {
-        throw new Error('Task not found or invalid response');
+      const jobData = response?.data || response;
+      if (!jobData || !jobData.job) {
+        throw new Error('Job not found or invalid response');
       }
 
-      const task = taskData.task;
-      console.log('[App] Scheduled task loaded:', task);
+      const job = jobData.job;
+      console.log('[App] Scheduled job loaded:', job);
 
-      // Display task input as user message
+      // Display job input as user message
       const userEvent: ProcessedEvent = {
         id: `scheduled_user_${Date.now()}`,
         category: 'message',
         timestamp: new Date(),
         title: 'user',
-        content: task.input,
+        content: job.input,
         style: { textColor: 'text-cyan-400' },
         streaming: false,
         collapsible: false,
       };
       processedEvents = [userEvent];
 
-      // Add a system notification showing this is a scheduled task
+      // Add a system notification showing this is a scheduled job
       const scheduleNotification: ProcessedEvent = {
         id: `scheduled_notice_${Date.now()}`,
         category: 'system',
         timestamp: new Date(),
         title: 'system',
-        content: `Executing scheduled task (${task.scheduledTime ? new Date(task.scheduledTime).toLocaleString() : 'manual trigger'})`,
+        content: `Executing scheduled job (${job.scheduledTime ? new Date(job.scheduledTime).toLocaleString() : 'manual trigger'})`,
         style: { textColor: 'text-yellow-400' },
         streaming: false,
         collapsible: false,
@@ -942,35 +909,33 @@
         throw new Error('Agent is not ready. Please configure your API key.');
       }
 
-      // Execute the task via the agent
+      // Execute the job via the agent
       // Feature 015: Include sessionId in context for multi-agent routing
       isProcessing = true;
-      await service.send(MessageType.SUBMISSION, {
-        id: `scheduled_${taskId}_${Date.now()}`,
-        op: {
+      await client!.submitOp(
+        {
           type: 'UserInput',
-          items: [{ type: 'text', text: task.input }],
+          items: [{ type: 'text', text: job.input }],
         },
-        context: {
+        {
           tabId: currentTabId,
           sessionId: sessionId, // Feature 015: Route to correct agent session
-          scheduledTaskId: taskId,
         },
-      });
+      );
 
     } catch (error) {
-      console.error('[App] Failed to execute scheduled task:', error);
+      console.error('[App] Failed to execute scheduled job:', error);
 
       // Notify scheduler of failure
       try {
-        if (service) {
-          await service.send(MessageType.SCHEDULER_FAIL_TASK, {
-            taskId,
+        if (client) {
+          await (await getInitializedUIClient()).serviceRequest('scheduler.fail', {
+            jobId,
             error: error instanceof Error ? error.message : 'Unknown error',
           });
         }
       } catch (notifyError) {
-        console.error('[App] Failed to notify scheduler of task failure:', notifyError);
+        console.error('[App] Failed to notify scheduler of job failure:', notifyError);
       }
 
       // Show error in UI
@@ -989,73 +954,17 @@
     }
   }
 
-  // ============================================================================
-  // Multi-Chat Management Functions
-  // ============================================================================
-
-  /**
-   * Initialize the multi-chat system
-   * Restores persisted chats and validates against active sessions
-   */
-  async function initializeChats() {
-    try {
-      // Restore chats from storage
-      const restoredState = await chatStore.restoreChats();
-
-      // Get list of active primary sessions from backend
-      const response = await service!.send(MessageType.SIDEPANEL_LIST_SESSIONS);
-      const activeSessions = response?.sessions || [];
-      canCreateChat = response?.canCreateSession ?? true;
-      maxSessionsReached = !canCreateChat;
-
-      // Match chats to sessions, remove orphaned chats
-      const validChats: SidePanelChat[] = [];
-      for (const chat of restoredState.chats) {
-        const session = activeSessions.find((s: any) => s.sessionId === chat.sessionId);
-        if (session) {
-          validChats.push(chat);
-        } else {
-          console.log(`[App] Removing orphaned chat: ${chat.id} (session ${chat.sessionId} not found)`);
-        }
-      }
-
-      // If no valid chats, clear stale persisted state and create a default one
-      if (validChats.length === 0) {
-        chatStore.clear();
-        await createNewChat();
-      } else {
-        // Update store with valid chats only
-        chatStore.setState({
-          chats: validChats,
-          activeChatId: validChats.some(c => c.id === restoredState.activeChatId)
-            ? restoredState.activeChatId
-            : validChats[0]?.id || null,
-        });
-
-        // Load state for the active chat
-        const activeChat = chatStore.getActiveChat();
-        if (activeChat) {
-          activeSessionId = activeChat.sessionId;
-          loadChatState(activeChat.id);
-        }
-      }
-
-      console.log(`[App] Initialized ${validChats.length} chats, can create: ${canCreateChat}`);
-    } catch (error) {
-      console.error('[App] Failed to initialize chats:', error);
-      // Fallback: clear any stale state and create a default chat
-      chatStore.clear();
-      await createNewChat();
-    }
-  }
+  // =========================================================================
+  // Multi-chat functions
+  // =========================================================================
 
   /**
    * Create a new chat with a new session
    */
   async function createNewChat() {
     try {
-      // Request new session from backend
-      const response = await service!.send(MessageType.SIDEPANEL_CREATE_SESSION);
+      const c = await getInitializedUIClient();
+      const response = await c.serviceRequest<{ success: boolean; sessionId?: string; error?: string }>('session.create');
 
       if (!response?.success) {
         console.error('[App] Failed to create session:', response?.error);
@@ -1064,6 +973,7 @@
       }
 
       const { sessionId } = response;
+      if (!sessionId) return;
 
       // Create chat in store
       const newChat = chatStore.createChat(sessionId, 'New Chat');
@@ -1166,14 +1076,11 @@
     }
 
     // Reset scroll position after loading new chat state
-    // Use setTimeout to ensure DOM has updated with new content
     if (scrollContainer) {
       setTimeout(() => {
         if (messages.length === 0 && processedEvents.length === 0) {
-          // New/empty chat: scroll to top to reveal welcome screen
           scrollContainer.scrollTop = 0;
         } else {
-          // Chat with history: scroll to bottom to show latest messages
           scrollContainer.scrollTop = scrollContainer.scrollHeight;
         }
       }, 0);
@@ -1192,7 +1099,6 @@
    * Close a chat and terminate its session
    */
   async function closeChat(chatId: string) {
-    // Find the chat to close
     const state = get(chatStore);
     const chatToClose = state.chats.find(c => c.id === chatId);
 
@@ -1211,9 +1117,8 @@
 
     // Terminate the session in backend
     try {
-      await service!.send(MessageType.SIDEPANEL_CLOSE_SESSION, {
-        sessionId: chatToClose.sessionId,
-      });
+      const c = await getInitializedUIClient();
+      await c.serviceRequest('session.close', { sessionId: chatToClose.sessionId });
     } catch (error) {
       console.error(`[App] Failed to close session ${chatToClose.sessionId}:`, error);
     }
@@ -1241,7 +1146,6 @@
    * Handle new chat button click from ChatBar
    */
   async function handleNewChat() {
-    // Save current chat state before creating a new one
     const currentChat = chatStore.getActiveChat();
     if (currentChat) {
       saveChatState(currentChat.id);
@@ -1253,11 +1157,9 @@
    * Handle event for a specific session (background chat)
    */
   function handleEventForSession(event: Event, sessionId: string) {
-    // Find the chat with this session
     const chat = chatStore.getChatBySessionId(sessionId);
     if (!chat) return;
 
-    // Get or create state for this chat
     let state = chatStates.get(chat.id);
     if (!state) {
       state = {
@@ -1295,25 +1197,18 @@
     const chat = chatStore.getChatBySessionId(sessionId);
     if (chat) {
       console.log(`[App] Session ${sessionId} terminated, removing chat ${chat.id}`);
-
-      // Remove chat state
       chatStates.delete(chat.id);
-
-      // Close chat in store
       chatStore.closeChat(chat.id);
 
-      // If this was the active chat, load state for the new active chat
       const newActiveChat = chatStore.getActiveChat();
       if (newActiveChat) {
         activeSessionId = newActiveChat.sessionId;
         loadChatState(newActiveChat.id);
       } else {
-        // No chats left, create a new one
         createNewChat();
       }
     }
 
-    // Update session limits
     updateSessionLimits();
   }
 
@@ -1322,7 +1217,8 @@
    */
   async function updateSessionLimits() {
     try {
-      const response = await service!.send(MessageType.SESSION_GET_ACTIVE_COUNT);
+      const c = await getInitializedUIClient();
+      const response = await c.serviceRequest<{ canCreateSession?: boolean }>('session.getActiveCount');
       canCreateChat = response?.canCreateSession ?? true;
       maxSessionsReached = !canCreateChat;
     } catch (error) {
@@ -1336,7 +1232,6 @@
   function updateChatTitleFromMessage(message: string) {
     const activeChat = chatStore.getActiveChat();
     if (activeChat && activeChat.title === 'New Chat') {
-      // Use first 30 chars of message as title
       const title = message.length > 30 ? message.substring(0, 30) + '...' : message;
       chatStore.updateChatTitle(activeChat.id, title);
     }
@@ -1348,7 +1243,7 @@
   <TerminalContainer theme={currentTheme}>
     <div class="flex flex-col h-full min-h-0 max-w-[1200px] mx-auto w-full">
         <!-- Multi-Chat Bar -->
-        {#if !isScheduledTaskMode}
+        {#if !isScheduledJobMode}
           <ChatBar
             {canCreateChat}
             {maxSessionsReached}
@@ -1360,7 +1255,14 @@
 
         <!-- Status Line -->
         <div class="shrink-0 flex justify-between mb-2">
-          <TerminalMessage type="system" content={platform.platformName === 'extension' ? $_t("Browserx (Alpha)") : $_t("Apple Pi: Your personal AI (Alpha)")} />
+          <div class="flex items-center space-x-2">
+            <TerminalMessage type="system" content={platform.platformName === 'extension' ? $_t("Browserx (Alpha)") : $_t("Apple Pi: Your personal AI (Alpha)")} />
+            {#if zoomLevel !== 100}
+              <button on:click={resetZoom} class="text-sm leading-relaxed font-[inherit] opacity-70 hover:opacity-100 cursor-pointer {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}" title="Reset zoom to 100%">
+                [{zoomLevel}%] ✕
+              </button>
+            {/if}
+          </div>
           <div class="flex items-center space-x-2">
             {#if isProcessing}
               <TerminalMessage type="warning" content={$_t("[PROCESSING]")} />
@@ -1434,8 +1336,7 @@
           </div>
         {/if}
 
-        <!-- Messages - scrollable area (keyed on active chat to force full DOM recreation) -->
-        {#key $chatStore.activeChatId}
+        <!-- Messages - scrollable area -->
         <div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-4" bind:this={scrollContainer}>
           {#if showWelcome}
             <div class="welcome-screen mb-6 max-w-full
@@ -1448,11 +1349,7 @@
                 <p class="m-0 mb-2 font-semibold text-lg
                   {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark text-xl' : 'text-term-bright-green'}">{$_t("Hello $NAME$", { substitutions: [$userStore.userName || $userStore.userEmail] })}</p>
               {/if}
-              <pre class="welcome-ascii m-0 font-terminal text-[0.4rem] leading-none whitespace-pre">
-                {#each welcomeAsciiLines as line, index (index)}
-                  <span class={line.color}>{line.text}</span>
-                {/each}
-              </pre>
+              <pre class="welcome-ascii m-0 font-terminal text-[0.4rem] leading-none whitespace-pre">{#each welcomeAsciiLines as line, index (index)}<span class={line.color}>{line.text}</span>{/each}</pre>
               <p class="m-0 text-[0.95rem] text-term-blue">
                 {platform.platformName === 'extension' ? $_t("General in-browser AI agent for work tasks") : $_t("Your personal AI assistant")}
               </p>
@@ -1478,7 +1375,6 @@
             <EventDisplay {event} />
           {/each}
         </div>
-        {/key}
 
         <!-- Fixed bottom controls container -->
         <div class="shrink-0 border-t {currentTheme === 'modern' ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">

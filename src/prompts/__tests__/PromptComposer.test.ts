@@ -15,7 +15,7 @@ describe('PromptComposer', () => {
     });
 
     it('should include approval policies fragment for pi agent', () => {
-      const prompt = composer.composeMainInstruction('pi');
+      const prompt = composer.composeMainInstruction('applepi');
       expect(prompt).toContain('Action Approval System');
     });
 

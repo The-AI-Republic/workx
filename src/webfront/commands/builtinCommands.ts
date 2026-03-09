@@ -1,6 +1,6 @@
 import { commandRegistry } from './CommandRegistry';
 import type { SkillMeta } from '@/core/skills/types';
-import { sendMessage as sendIpcMessage, MessageType } from '../lib/messaging';
+import { getInitializedUIClient } from '@/core/messaging';
 
 export interface BuiltinCommandCallbacks {
   onNewConversation: () => void;
@@ -8,14 +8,23 @@ export interface BuiltinCommandCallbacks {
   onOpenSettings: () => void;
 }
 
+/** Mutable reference that always points to the live component's callbacks. */
+let activeCallbacks: BuiltinCommandCallbacks | null = null;
+
 export function initBuiltinCommands(callbacks: BuiltinCommandCallbacks): void {
+  // Always update the reference so command actions use the live component,
+  // even after a remount (the singleton registry survives component destroy).
+  activeCallbacks = callbacks;
+
+  // Only register once — the actions read from activeCallbacks, not from
+  // the captured `callbacks` parameter, so they stay current.
   if (commandRegistry.has('new')) return;
 
   commandRegistry.register({
     name: 'new',
     description: 'Reset the current conversation',
     action: () => {
-      callbacks.onNewConversation();
+      activeCallbacks?.onNewConversation();
     },
   });
 
@@ -28,7 +37,7 @@ export function initBuiltinCommands(callbacks: BuiltinCommandCallbacks): void {
         const hint = cmd.argumentHint ? ` ${cmd.argumentHint}` : '';
         return `**/${cmd.name}**${hint} — ${cmd.description}`;
       });
-      callbacks.onCommandOutput('Available Commands', lines.join('\n'));
+      activeCallbacks?.onCommandOutput('Available Commands', lines.join('\n'));
     },
   });
 
@@ -36,7 +45,7 @@ export function initBuiltinCommands(callbacks: BuiltinCommandCallbacks): void {
     name: 'settings',
     description: 'Open the settings panel',
     action: () => {
-      callbacks.onOpenSettings();
+      activeCallbacks?.onOpenSettings();
     },
   });
 }
@@ -72,7 +81,7 @@ async function syncSkillCommands(
   onSubmitText: (text: string) => void
 ): Promise<void> {
   try {
-    const skills = await sendIpcMessage<SkillMeta[]>(MessageType.SKILLS_LIST);
+    const skills = await (await getInitializedUIClient()).serviceRequest<SkillMeta[]>('skills.list');
     const currentSkillNames = new Set<string>();
 
     if (skills?.length) {
@@ -102,7 +111,7 @@ async function syncSkillCommands(
         description: skill.description,
         argumentHint: '$ARGUMENTS',
         action: (args?: string) => {
-          onSubmitText(`/${name}${args ? ' ' + args : ''}`);
+          storedOnSubmitText?.(`/${name}${args ? ' ' + args : ''}`);
         },
       });
       registeredSkillNames.add(name);

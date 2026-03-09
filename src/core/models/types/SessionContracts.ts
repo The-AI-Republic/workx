@@ -34,7 +34,7 @@ export {
  * Messages can optionally include sessionId for routing to specific sessions
  */
 export interface SessionAwareMessage {
-  /** Message type from MessageType enum */
+  /** Message type identifier */
   type: string | number;
 
   /** Target session ID (defaults to primary if omitted) */
@@ -99,7 +99,6 @@ export interface SessionMetadataSummary {
   state: 'initializing' | 'active' | 'idle' | 'terminated';
   tabId: number | null;
   tabGroupName: string;
-  scheduledTaskId: string | null;
   createdAt: number;
   lastActivityAt: number;
 }

@@ -68,12 +68,6 @@
   "API_key_for_authentication_stored_encryp_0d20": {
     "message": "Kunci API untuk otentikasi (disimpan terenkripsi)"
   },
-  "API_key_has_expired": {
-    "message": "Kunci API telah kedaluwarsa"
-  },
-  "API_key_has_insufficient_permissions": {
-    "message": "Kunci API tidak memiliki izin yang cukup"
-  },
   "API_key_saved_successfully": {
     "message": "Kunci API berhasil disimpan!"
   },
@@ -122,9 +116,6 @@
   "Agent_Execution_Tools": {
     "message": "Alat Eksekusi Agen"
   },
-  "Agent_Turn_Complete": {
-    "message": "Giliran Agen Selesai"
-  },
   "Agent_URL_is_required": {
     "message": "URL Agen diperlukan"
   },
@@ -143,11 +134,11 @@
   "Agent_removed_successfully": {
     "message": "Agen berhasil dihapus"
   },
-  "Agent_turn_completed_successfully": {
-    "message": "Giliran agen berhasil diselesaikan"
-  },
   "Agent_updated_successfully": {
     "message": "Agen berhasil diperbarui"
+  },
+  "All_API_keys_are_encrypted_at_rest_using_ca92": {
+    "message": "Semua kunci API dienkripsi saat disimpan menggunakan AES-256-GCM. Aktifkan perlindungan PIN untuk keamanan tambahan."
   },
   "All_actions_are_auto_approved_on_these_d_ffda": {
     "message": "Semua tindakan otomatis disetujui pada domain ini."
@@ -179,6 +170,12 @@
   "Always_Approve": {
     "message": "Selalu Setujui"
   },
+  "Always_dark": {
+    "message": "Selalu gelap"
+  },
+  "Always_light": {
+    "message": "Selalu terang"
+  },
   "Apple_Pi_Your_personal_AI_Alpha": {
     "message": "Apple Pi: AI pribadi Anda (Alpha)"
   },
@@ -200,14 +197,16 @@
   "Approve": {
     "message": "Setujui"
   },
-  "Approve_changes_to_eventMsg_data_path": {
-    "message": "Setujui perubahan pada: ${eventMsg.data.path}"
-  },
-  "Approve_execution_eventMsg_data_command": {
-    "message": "Setujui eksekusi: ${eventMsg.data.command}"
-  },
   "Are_you_sure_you_want_to_cancel_this_tas_8573": {
     "message": "Apakah Anda yakin ingin membatalkan tugas ini?"
+  },
+  "Are_you_sure_you_want_to_delete_the_skil_3268": {
+    "message": "Apakah Anda yakin ingin menghapus skill \"/$1$\"?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Are_you_sure_you_want_to_remove_this_age_b9ba": {
     "message": "Apakah Anda yakin ingin menghapus agen ini?"
@@ -234,9 +233,6 @@
   },
   "Authentication_credential_stored_encrypt_c46a": {
     "message": "Kredensial autentikasi (disimpan terenkripsi)"
-  },
-  "Authentication_failed": {
-    "message": "Autentikasi gagal"
   },
   "Authentication_method_for_the_agent": {
     "message": "Metode autentikasi untuk agen"
@@ -280,9 +276,6 @@
   "Backend_not_available_Please_wait_a_mome_9218": {
     "message": "Backend tidak tersedia. Silakan tunggu sebentar dan coba lagi."
   },
-  "Backend_server_error_please_try_again_la_0515": {
-    "message": "Kesalahan server backend - silakan coba lagi nanti"
-  },
   "Backoff_Multiplier": {
     "message": "Pengali Penundaan"
   },
@@ -306,6 +299,9 @@
   },
   "Blocked_Domains": {
     "message": "Domain yang Diblokir"
+  },
+  "Body_Markdown": {
+    "message": "Isi (Markdown)"
   },
   "Browser_Tools": {
     "message": "Alat Peramban"
@@ -340,9 +336,6 @@
   "Cancelled": {
     "message": "Dibatalkan"
   },
-  "Cannot_execute_task_No_API_key_configure_c622": {
-    "message": "Tidak dapat mengeksekusi tugas: Tidak ada kunci API yang dikonfigurasi untuk ${providerName}. Silakan pergi ke Pengaturan → Konfigurasi Model dan tambahkan kunci API Anda."
-  },
   "Cannot_select_model_1": {
     "message": "Tidak dapat memilih model: $1$",
     "placeholders": {
@@ -362,8 +355,20 @@
   "Capabilities": {
     "message": "Kemampuan"
   },
+  "Change_PIN": {
+    "message": "Ubah PIN"
+  },
+  "Changing": {
+    "message": "Mengubah..."
+  },
   "Chat_History": {
     "message": "Riwayat Chat"
+  },
+  "ChatGPT_Subscription": {
+    "message": "Langganan ChatGPT"
+  },
+  "ChatGPT_session_expired_Please_sign_in_a_f393": {
+    "message": "Sesi ChatGPT telah kedaluwarsa. Silakan masuk kembali."
   },
   "Checking_agent_status": {
     "message": "Memeriksa status agen..."
@@ -377,11 +382,8 @@
   "Choose_which_update_channel_to_follow": {
     "message": "Pilih saluran pembaruan yang diikuti"
   },
-  "Classic_terminal_style_with_green_text_o_02cc": {
-    "message": "Gaya terminal klasik dengan teks hijau di latar belakang hitam"
-  },
-  "Clean_modern_chat_interface_similar_to_C_2401": {
-    "message": "Antarmuka chat bersih dan modern seperti ChatGPT"
+  "Clear_search": {
+    "message": "Bersihkan pencarian"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Klik ikon Browserx di bilah alat atau tekan Alt+Shift+C"
@@ -395,14 +397,17 @@
   "Close": {
     "message": "Tutup"
   },
+  "Close_scheduler": {
+    "message": "Tutup penjadwal"
+  },
   "Close_settings": {
     "message": "Tutup pengaturan"
   },
+  "Close_skills": {
+    "message": "Tutup skill"
+  },
   "Collapse": {
     "message": "Ciutkan"
-  },
-  "Command_Approval_Required": {
-    "message": "Persetujuan Perintah Diperlukan"
   },
   "Command_completed": {
     "message": "Perintah selesai"
@@ -415,9 +420,6 @@
   },
   "Completed": {
     "message": "Selesai"
-  },
-  "Completed_lastAssistantMessage_substring_40c8": {
-    "message": "Selesai: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Kompres data cache untuk menghemat ruang penyimpanan"
@@ -436,6 +438,12 @@
   },
   "Configured_Servers": {
     "message": "Server yang Dikonfigurasi"
+  },
+  "Confirm_New_PIN": {
+    "message": "Konfirmasi PIN Baru"
+  },
+  "Confirm_PIN": {
+    "message": "Konfirmasi PIN"
   },
   "Connect": {
     "message": "Hubungkan"
@@ -460,6 +468,9 @@
   },
   "Connected_successfully": {
     "message": "Berhasil terhubung"
+  },
+  "Connected_via_ChatGPT": {
+    "message": "Terhubung via ChatGPT"
   },
   "Connecting": {
     "message": "Menyambungkan..."
@@ -501,15 +512,6 @@
   "Connection_test_successful_API_key_is_va_3e34": {
     "message": "Pengujian koneksi berhasil! (Kunci API valid)"
   },
-  "Connection_was_refused": {
-    "message": "Koneksi ditolak"
-  },
-  "Connection_was_reset": {
-    "message": "Koneksi direset"
-  },
-  "Content_violates_policy_contentType_cont_2034": {
-    "message": "Konten melanggar kebijakan: konten ${contentType} tidak diizinkan"
-  },
   "Context_Window": {
     "message": "Jendela Konteks"
   },
@@ -524,23 +526,47 @@
   "Controls_how_aggressively_the_agent_asks_d3ba": {
     "message": "Mengontrol seberapa agresif agen meminta persetujuan."
   },
+  "Create": {
+    "message": "Buat"
+  },
+  "Create_New_Skill": {
+    "message": "Buat Skill Baru"
+  },
   "Create_New_Tab": {
     "message": "Buat Tab Baru"
+  },
+  "Create_Skill": {
+    "message": "Buat Skill"
+  },
+  "Create_a_6_digit_PIN_to_protect_your_API_2b1a": {
+    "message": "Buat PIN 6 digit untuk melindungi kunci API Anda. Anda akan memerlukan PIN ini setelah memulai ulang browser."
+  },
+  "Create_a_skill_to_add_custom_commands_or_cb10": {
+    "message": "Buat skill untuk menambahkan perintah / khusus atau perilaku agen yang dapat dipanggil otomatis."
   },
   "Created": {
     "message": "Dibuat"
   },
+  "Creating": {
+    "message": "Membuat..."
+  },
   "Creator": {
     "message": "Pembuat"
+  },
+  "Credential_Encryption": {
+    "message": "Enkripsi Kredensial"
+  },
+  "Credential_encryption_and_PIN_protection": {
+    "message": "Enkripsi kredensial dan perlindungan PIN"
   },
   "Credit_Details": {
     "message": "Detail Kredit"
   },
+  "Current_PIN": {
+    "message": "PIN Saat Ini"
+  },
   "Current_Plan": {
     "message": "Paket Saat Ini:"
-  },
-  "DNS_lookup_failed": {
-    "message": "Pencarian DNS gagal"
   },
   "DOM_Tool": {
     "message": "Alat DOM"
@@ -566,6 +592,9 @@
   "Default": {
     "message": "Bawaan"
   },
+  "Delete": {
+    "message": "Hapus"
+  },
   "Deny": {
     "message": "Tolak"
   },
@@ -583,6 +612,9 @@
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "Dikembangkan dan didukung oleh AI Republic"
+  },
+  "Disabled": {
+    "message": "Dinonaktifkan"
   },
   "Discard_Changes": {
     "message": "Buang Perubahan"
@@ -638,6 +670,12 @@
   "Enable_Model_Context_Protocol_tools_from_29ac": {
     "message": "Aktifkan alat Model Context Protocol dari server MCP yang terhubung"
   },
+  "Enable_PIN": {
+    "message": "Aktifkan PIN"
+  },
+  "Enable_PIN_Protection": {
+    "message": "Aktifkan Perlindungan PIN"
+  },
   "Enable_auto_connect_when_browserx_starts": {
     "message": "Aktifkan sambungan otomatis saat browserx dimulai"
   },
@@ -659,8 +697,14 @@
   "Enter_API_key_or_bearer_token": {
     "message": "Masukkan kunci API atau token bearer"
   },
+  "Enter_your_6_digit_PIN_to_unlock_your_AP_1fff": {
+    "message": "Masukkan PIN 6 digit Anda untuk membuka kunci API key Anda."
+  },
   "Enter_your_LLM_API_key": {
     "message": "Masukkan kunci API LLM Anda"
+  },
+  "Enter_your_current_PIN_to_remove_protect_8b75": {
+    "message": "Masukkan PIN saat ini Anda untuk menghapus perlindungan. API key tetap akan dienkripsi dengan kunci default."
   },
   "Enter_your_task": {
     "message": "Masukkan tugas Anda..."
@@ -691,6 +735,9 @@
   },
   "Explain_with_Browserx": {
     "message": "Jelaskan dengan Browserx"
+  },
+  "Export": {
+    "message": "Ekspor"
   },
   "Extension_Permission": {
     "message": "Ekstensi & Izin"
@@ -743,12 +790,6 @@
         "content": "$1"
       }
     }
-  },
-  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
-    "message": "Gagal membuat tab baru. Silakan coba lagi."
-  },
-  "Failed_to_create_browser_tab_errorMsg": {
-    "message": "Gagal membuat tab browser: ${errorMsg}"
   },
   "Failed_to_disconnect_1": {
     "message": "Gagal memutuskan sambungan: $1$",
@@ -820,9 +861,6 @@
   "Failed_to_stop_the_task_Please_try_again": {
     "message": "Gagal menghentikan tugas. Silakan coba lagi."
   },
-  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
-    "message": "Gagal beralih ke tab ${newTabId}: ${errorMsg}"
-  },
   "Failed_to_test_connection": {
     "message": "Gagal menguji koneksi"
   },
@@ -837,9 +875,6 @@
       }
     }
   },
-  "File_Change_Approval_Required": {
-    "message": "Persetujuan Perubahan File Diperlukan"
-  },
   "File_Operations_Not_Available": {
     "message": "Operasi File (Tidak Tersedia)"
   },
@@ -848,6 +883,12 @@
   },
   "Flex": {
     "message": "Flex"
+  },
+  "Follows_system_theme": {
+    "message": "Mengikuti tema sistem"
+  },
+  "Forgot_PIN": {
+    "message": "Lupa PIN?"
   },
   "Form_Automation_Tool": {
     "message": "Alat Otomatisasi Formulir"
@@ -869,6 +910,9 @@
   },
   "Get_Started": {
     "message": "Mulai"
+  },
+  "Green_text_terminal": {
+    "message": "Terminal teks hijau"
   },
   "Hello_NAME": {
     "message": "Halo $NAME$",
@@ -892,6 +936,21 @@
   },
   "Image_Input": {
     "message": "Input Gambar"
+  },
+  "Import": {
+    "message": "Impor"
+  },
+  "Import_Skill_from_URL": {
+    "message": "Impor Skill dari URL"
+  },
+  "Import_from_URL": {
+    "message": "Impor dari URL"
+  },
+  "Imported_skills_are_untrusted_by_default_561a": {
+    "message": "Skill yang diimpor tidak dipercaya secara default dan tidak dapat dipanggil otomatis."
+  },
+  "Importing": {
+    "message": "Mengimpor..."
   },
   "Improve_this_text_info_selectionText": {
     "message": "Tingkatkan teks ini: ${info.selectionText}"
@@ -928,9 +987,6 @@
   "Invalid_API_key": {
     "message": "Kunci API tidak valid"
   },
-  "Invalid_API_key_provided": {
-    "message": "Kunci API tidak valid"
-  },
   "Invalid_URL_format": {
     "message": "Format URL tidak valid"
   },
@@ -939,6 +995,9 @@
   },
   "Invalid_submission_format_op_missing_typ_0fc0": {
     "message": "Format pengiriman tidak valid: op tidak memiliki field type"
+  },
+  "Invocation_Mode": {
+    "message": "Mode Pemanggilan"
   },
   "Keyboard_Shortcuts": {
     "message": "Pintasan Keyboard"
@@ -981,6 +1040,9 @@
   },
   "Loading_settings": {
     "message": "Memuat pengaturan..."
+  },
+  "Loading_skills": {
+    "message": "Memuat keterampilan..."
   },
   "Loading_tabs": {
     "message": "Memuat tab..."
@@ -1104,16 +1166,16 @@
   "Model_and_provider_settings_loaded_from__55a3": {
     "message": "Pengaturan model dan penyedia dimuat dari konfigurasi default (hanya baca)"
   },
-  "Model_changed_to_1_Please_configure_your_1c81": {
-    "message": "Model diubah menjadi $1$. Silakan konfigurasikan kunci API Anda.",
+  "Model_changed_to_1_Conversation_preserve_2db6": {
+    "message": "Model diubah menjadi $1$. Percakapan dipertahankan.",
     "placeholders": {
       "1": {
         "content": "$1"
       }
     }
   },
-  "Model_changed_to_1_Session_will_be_reini_e2ce": {
-    "message": "Model diubah menjadi $1$. Sesi akan diinisialisasi ulang.",
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "Model diubah menjadi $1$. Silakan konfigurasikan kunci API Anda.",
     "placeholders": {
       "1": {
         "content": "$1"
@@ -1131,8 +1193,14 @@
       }
     }
   },
-  "Modern_Chat": {
-    "message": "Obrolan Modern"
+  "Modern_Chat_Auto": {
+    "message": "Chat Modern Otomatis"
+  },
+  "Modern_Chat_Dark": {
+    "message": "Chat Modern Gelap"
+  },
+  "Modern_Chat_Light": {
+    "message": "Chat Modern Terang"
   },
   "Monthly_Credits": {
     "message": "Kredit Bulanan"
@@ -1158,14 +1226,14 @@
   "Network_error": {
     "message": "Kesalahan jaringan"
   },
-  "Network_error_occurred": {
-    "message": "Terjadi kesalahan jaringan"
-  },
   "Never_expire_permanent": {
     "message": "Tidak pernah kedaluwarsa (permanen)"
   },
   "New_Conversation": {
     "message": "Percakapan Baru"
+  },
+  "New_PIN": {
+    "message": "PIN Baru"
   },
   "No_A2A_agents_configured_yet": {
     "message": "Belum ada agen A2A yang dikonfigurasi."
@@ -1203,14 +1271,23 @@
   "No_scheduled_time": {
     "message": "Tidak ada waktu terjadwal"
   },
+  "No_settings_found": {
+    "message": "Tidak ada pengaturan ditemukan"
+  },
   "No_skills_available": {
     "message": "Tidak ada keterampilan yang tersedia."
+  },
+  "No_skills_configured_yet": {
+    "message": "Belum ada keterampilan yang dikonfigurasi."
   },
   "No_steps_in_plan": {
     "message": "Tidak ada langkah dalam rencana"
   },
   "No_tabs_available": {
     "message": "Tidak ada tab yang tersedia"
+  },
+  "No_tasks_in_plan": {
+    "message": "Tidak ada tugas dalam rencana"
   },
   "No_time_set": {
     "message": "Tidak ada waktu yang diatur"
@@ -1273,6 +1350,12 @@
       }
     }
   },
+  "PIN": {
+    "message": "PIN"
+  },
+  "PIN_Protection": {
+    "message": "Proteksi PIN"
+  },
   "Page_Action_Tool": {
     "message": "Alat Aksi Halaman"
   },
@@ -1305,17 +1388,6 @@
   "Persist_Cache_to_Storage": {
     "message": "Simpan Cache ke Penyimpanan"
   },
-  "Plan_1_step_s": {
-    "message": "Rencana: $1$ langkah",
-    "placeholders": {
-      "1": {
-        "content": "$1"
-      }
-    }
-  },
-  "Please_check_your_API_key_in_settings": {
-    "message": "Silakan periksa kunci API Anda di pengaturan."
-  },
   "Please_enter_a_task_description": {
     "message": "Masukkan deskripsi tugas"
   },
@@ -1325,9 +1397,6 @@
   "Please_input_a_valid_API_key": {
     "message": "Silakan masukkan kunci API yang valid."
   },
-  "Please_log_in_again_to_continue_using_th_3d8f": {
-    "message": "Silakan masuk lagi untuk melanjutkan penggunaan agen AI."
-  },
   "Please_select_a_provider": {
     "message": "Pilih penyedia"
   },
@@ -1336,6 +1405,9 @@
   },
   "Please_upgrade_the_plan_to_unblock_world_9fed": {
     "message": "Upgrade paket untuk membuka model paling canggih di dunia"
+  },
+  "Port_1455_is_in_use_Please_close_any_app_a809": {
+    "message": "Port 1455 sedang digunakan. Harap tutup aplikasi apa pun yang menggunakan port ini dan coba lagi."
   },
   "Power": {
     "message": "Daya"
@@ -1420,9 +1492,6 @@
   "Refreshes_in": {
     "message": "Penyegaran dalam"
   },
-  "Reject": {
-    "message": "Tolak"
-  },
   "Release_Date": {
     "message": "Tanggal Rilis"
   },
@@ -1441,11 +1510,14 @@
   "Remove_API_Key": {
     "message": "Hapus Kunci API"
   },
+  "Remove_PIN": {
+    "message": "Hapus PIN"
+  },
+  "Removing": {
+    "message": "Menghapus..."
+  },
   "Request_Timeout": {
     "message": "Batas Waktu Permintaan"
-  },
-  "Request_timed_out": {
-    "message": "Permintaan melebihi batas waktu"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": "Batas waktu permintaan dalam milidetik (5000-120000)"
@@ -1453,11 +1525,11 @@
   "Request_timeout_in_milliseconds_5000_180_5766": {
     "message": "Batas waktu permintaan dalam milidetik (5000-180000)"
   },
-  "Request_was_aborted": {
-    "message": "Permintaan dibatalkan"
+  "Reset_Vault": {
+    "message": "Setel Ulang Vault"
   },
-  "Response_failed": {
-    "message": "Respons gagal"
+  "Resetting": {
+    "message": "Menyetel ulang..."
   },
   "Restricted": {
     "message": "Terbatas"
@@ -1488,6 +1560,9 @@
   },
   "Running": {
     "message": "Berjalan"
+  },
+  "SKILL_md_URL": {
+    "message": "URL SKILL.md"
   },
   "STREAM_ERROR": {
     "message": "KESALAHAN STREAM"
@@ -1522,9 +1597,6 @@
   "Scheduled_Task": {
     "message": "Tugas Terjadwal"
   },
-  "Scheduled_Task_Starting": {
-    "message": "Tugas Terjadwal Dimulai"
-  },
   "Scheduled_Tasks": {
     "message": "Tugas Terjadwal"
   },
@@ -1534,8 +1606,14 @@
   "Search_complete": {
     "message": "Pencarian selesai"
   },
+  "Search_settings": {
+    "message": "Cari pengaturan..."
+  },
   "Searching": {
     "message": "Mencari..."
+  },
+  "Security": {
+    "message": "Keamanan"
   },
   "Security_Privacy": {
     "message": "Keamanan & Privasi"
@@ -1583,14 +1661,14 @@
   "Session_error": {
     "message": "Kesalahan sesi"
   },
-  "Session_expired_please_log_in_again_to_c_5d31": {
-    "message": "Sesi kedaluwarsa - silakan masuk kembali untuk melanjutkan penggunaan agen AI"
-  },
   "Session_limit_reached_New_tasks_will_que_2877": {
     "message": "Batas sesi tercapai. Tugas baru akan masuk antrian."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Atur kapan data rollout harus berakhir"
+  },
+  "Setting_up": {
+    "message": "Menyiapkan..."
   },
   "Settings": {
     "message": "Pengaturan"
@@ -1613,8 +1691,17 @@
   "Show_warning_when_storage_usage_exceeds__7c40": {
     "message": "Tampilkan peringatan ketika penggunaan penyimpanan melebihi persentase ini (default: 90%)"
   },
+  "Sign_in_failed": {
+    "message": "Masuk gagal"
+  },
   "Sign_in_to_your_account": {
     "message": "Masuk ke akun Anda"
+  },
+  "Sign_in_with_ChatGPT": {
+    "message": "Masuk dengan ChatGPT"
+  },
+  "Signing_in": {
+    "message": "Sedang masuk..."
   },
   "Skills": {
     "message": "Keterampilan"
@@ -1688,9 +1775,6 @@
   "Task_Details": {
     "message": "Detail Tugas"
   },
-  "Task_Failed": {
-    "message": "Tugas Gagal"
-  },
   "Task_History": {
     "message": "Riwayat Tugas"
   },
@@ -1716,6 +1800,14 @@
   },
   "Task_failed": {
     "message": "Tugas gagal"
+  },
+  "Task_scheduled_for_1": {
+    "message": "Tugas dijadwalkan untuk $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Task_started": {
     "message": "Tugas dimulai"
@@ -1744,11 +1836,8 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Agen saat ini menggunakan mode backend. Permintaan LLM akan diarahkan melalui server AI Republic. Percakapan Anda diproses secara aman melalui infrastruktur kami."
   },
-  "The_model_switch_will_clear_the_current__3cd7": {
-    "message": "Mengganti model akan menghapus percakapan saat ini. Apakah Anda ingin melanjutkan?"
-  },
-  "The_server_encountered_an_error_Please_t_9ecc": {
-    "message": "Server mengalami kesalahan. Silakan coba lagi nanti."
+  "This_will_permanently_delete_all_stored__7eee": {
+    "message": "Ini akan secara permanen menghapus semua kunci API yang disimpan dan mereset vault. Anda harus memasukkan kembali kunci API Anda."
   },
   "Time": {
     "message": "Waktu"
@@ -1785,6 +1874,9 @@
       }
     }
   },
+  "Too_many_failed_attempts_Try_again_in": {
+    "message": "Terlalu banyak percobaan gagal. Coba lagi dalam"
+  },
   "Tool_Timeout_ms": {
     "message": "Batas Waktu Alat (ms)"
   },
@@ -1799,6 +1891,9 @@
   },
   "Tools_Settings": {
     "message": "Pengaturan Alat"
+  },
+  "Trust": {
+    "message": "Percaya"
   },
   "Trusted": {
     "message": "Dipercaya"
@@ -1830,26 +1925,11 @@
   "Unable_to_load_credit_information": {
     "message": "Tidak dapat memuat informasi kredit"
   },
-  "Unable_to_reach_the_backend_server_pleas_3350": {
-    "message": "Tidak dapat terhubung ke server backend - silakan periksa koneksi Anda"
-  },
-  "Unable_to_reach_the_server_Please_check__e5d0": {
-    "message": "Tidak dapat terhubung ke server. Silakan periksa koneksi Anda dan coba lagi."
-  },
   "Unknown_Event": {
     "message": "Peristiwa Tidak Dikenal"
   },
   "Unknown_error": {
     "message": "Kesalahan tidak diketahui"
-  },
-  "Unknown_error_checking_agent_status": {
-    "message": "Kesalahan tidak diketahui saat memeriksa status agen"
-  },
-  "Unknown_error_occurred": {
-    "message": "Terjadi kesalahan tidak diketahui"
-  },
-  "Unknown_error_occurred_during_task_execu_c6be": {
-    "message": "Terjadi kesalahan tidak diketahui selama pelaksanaan tugas"
   },
   "Unknown_error_processing_submission": {
     "message": "Kesalahan tidak diketahui saat memproses pengiriman"
@@ -1862,11 +1942,20 @@
       }
     }
   },
+  "Unlock": {
+    "message": "Buka kunci"
+  },
+  "Unlocking": {
+    "message": "Membuka kunci..."
+  },
   "Unsaved_Changes": {
     "message": "Perubahan Belum Disimpan"
   },
   "Untitled": {
     "message": "Tanpa Judul"
+  },
+  "Untrusted": {
+    "message": "Tidak terpercaya"
   },
   "Upcoming": {
     "message": "Akan Datang"
@@ -1895,6 +1984,9 @@
   "Use_Own_API_Key": {
     "message": "Gunakan Kunci API Sendiri"
   },
+  "Use_your_ChatGPT_Plus_Pro_subscription_i_e8b8": {
+    "message": "Gunakan langganan ChatGPT Plus/Pro Anda alih-alih kunci API"
+  },
   "User_Center": {
     "message": "Pusat Pengguna"
   },
@@ -1906,6 +1998,9 @@
   },
   "Using_extra_credits": {
     "message": "Menggunakan kredit tambahan"
+  },
+  "Vault_Locked": {
+    "message": "Vault Terkunci"
   },
   "Verbosity": {
     "message": "Kelengkapan"
@@ -1979,9 +2074,6 @@
   "Your_personal_AI_assistant": {
     "message": "Asisten AI pribadi Anda"
   },
-  "Your_session_has_expired_Please_log_in_a_c52a": {
-    "message": "Sesi Anda telah kedaluwarsa. Silakan masuk kembali."
-  },
   "DISCONNECTED": {
     "message": "[TERPUTUS]"
   },
@@ -2015,8 +2107,14 @@
   "exec_unknown_command": {
     "message": "exec (perintah tidak dikenal)"
   },
+  "more_results": {
+    "message": "hasil lainnya..."
+  },
   "optional": {
     "message": "opsional"
+  },
+  "or": {
+    "message": "atau"
   },
   "remaining": {
     "message": "tersisa"

@@ -396,7 +396,7 @@ describe('TabContext Component', () => {
         url: 'https://example.com',
       });
 
-      const { component } = render(TabContext, {
+      const { rerender } = render(TabContext, {
         props: {
           tabId: 123,
         },
@@ -414,7 +414,7 @@ describe('TabContext Component', () => {
         url: 'https://example2.com',
       });
 
-      component.$set({ tabId: 456 });
+      await rerender({ tabId: 456 });
 
       await waitFor(() => {
         const display = screen.getByTestId('tab-context-display');

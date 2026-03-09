@@ -56,7 +56,7 @@ export class Session {
   private _mockCwd = '/'; // For backward compatibility in tests
   private eventEmitter: ((event: Event) => Promise<void>) | null = null;
   private isPersistent: boolean = true;
-  private toolRegistry: ToolRegistry | null = null; // Tool registry from PiAgent
+  private toolRegistry: ToolRegistry | null = null; // Tool registry from RepublicAgent
 
   // Runtime state (not persisted, lives in Session only)
   private toolUsageStats: Map<string, number> = new Map();
@@ -81,7 +81,7 @@ export class Session {
     } else {
       this.conversationId = uuidv4();
       if (!this.conversationId) {
-        this.conversationId = `session-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+        this.conversationId = crypto.randomUUID();
       }
     }
 
@@ -98,7 +98,7 @@ export class Session {
 
     // Initialize session state
     this.sessionState = new SessionState(); // Pure data state
-    this.toolRegistry = toolRegistry ?? null; // Tool registry from PiAgent
+    this.toolRegistry = toolRegistry ?? null; // Tool registry from RepublicAgent
     this.compactService = new CompactService(); // Initialize compaction service
     this.titleGenerator = new TitleGenerator(); // Initialize title generation service
 
@@ -892,7 +892,7 @@ export class Session {
   }
 
   /**
-   * Set tool registry (called by PiAgent)
+   * Set tool registry (called by RepublicAgent)
    */
   setToolRegistry(toolRegistry: ToolRegistry): void {
     this.toolRegistry = toolRegistry;

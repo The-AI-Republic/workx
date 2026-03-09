@@ -82,6 +82,7 @@ export class TurnManager {
   private toolRegistry: ToolRegistry;
   private config: TurnConfig;
   private cancelled = false;
+  private nativeWebSearchEnabled = false;
 
   constructor(
     session: Session,
@@ -253,8 +254,9 @@ export class TurnManager {
 
           case 'ReasoningSummaryDelta':
             // Reasoning summary delta (for o1/o3 models)
+            // Map to AgentReasoningDelta so the UI can accumulate into a single reasoning block
             await this.emitEvent({
-              type: 'ReasoningSummaryDelta',
+              type: 'AgentReasoningDelta',
               data: { delta: event.delta },
             });
             break;
@@ -262,15 +264,15 @@ export class TurnManager {
           case 'ReasoningContentDelta':
             // Reasoning content delta (for o1/o3 models)
             await this.emitEvent({
-              type: 'ReasoningContentDelta',
+              type: 'AgentReasoningDelta',
               data: { delta: event.delta },
             });
             break;
 
           case 'ReasoningSummaryPartAdded':
-            // Reasoning summary part added
+            // Reasoning summary section break - UI handles accumulation
             await this.emitEvent({
-              type: 'ReasoningSummaryPartAdded',
+              type: 'AgentReasoningSectionBreak',
               data: {},
             });
             break;
@@ -336,27 +338,36 @@ export class TurnManager {
 
     // Add agent execution tools based on config
     // Only add web_search if not already registered in ToolRegistry
-    const hasWebSearch = tools.some(t => t.type === 'function' && t.function.name === 'web_search');
+    const hasWebSearch = tools.some(t =>
+      (t.type === 'function' && t.function.name === 'web_search') || t.type === 'web_search'
+    );
     if (!hasWebSearch && (enableAllTools || toolsConfig.webSearch)) {
-      tools.push({
-        type: 'function',
-        function: {
-          name: 'web_search',
-          description: 'Search the web for information',
-          strict: false,
-          parameters: {
-            type: 'object',
-            properties: {
-              query: { type: 'string', description: 'Search query' },
-            },
-            required: ['query'],
-          },
-        },
-      });
-    }
+      const modelClient = this.turnContext.getModelClient();
+      const useNative = toolsConfig.useNativeWebSearch !== false;
+      this.nativeWebSearchEnabled = useNative && modelClient.supportsNativeWebSearch();
 
-    // Note: planning_tool is registered via ToolRegistry in src/tools/index.ts
-    // It will be picked up automatically from registeredTools above
+      if (this.nativeWebSearchEnabled) {
+        // Native provider web search — handled server-side
+        tools.push({ type: 'web_search' });
+      } else {
+        // CDP fallback — function tool triggers local scraping
+        tools.push({
+          type: 'function',
+          function: {
+            name: 'web_search',
+            description: 'Search the web for information',
+            strict: false,
+            parameters: {
+              type: 'object',
+              properties: {
+                query: { type: 'string', description: 'Search query' },
+              },
+              required: ['query'],
+            },
+          },
+        });
+      }
+    }
 
     // Add MCP tools if enabled and available
     // Guard MCP calls with capability check to prevent "is not a function" errors
@@ -573,19 +584,33 @@ export class TurnManager {
 
       // Handle web search response if needed
       if (item.type === 'web_search_call') {
-        const { call_id, action } = item;
+        if (this.nativeWebSearchEnabled) {
+          // Native web search — results are already in the model response
+          await this.emitEvent({
+            type: 'WebSearchEnd',
+            data: {
+              query: item.action?.query || '',
+              results_count: 0,
+            },
+          });
+          return undefined;
+        }
+
+        // CDP fallback — execute local scraping
+        const callId = item.id || item.call_id;
+        const { action } = item;
         if (action?.type === 'search') {
           try {
             const result = await this.executeWebSearch(action.query);
             return {
               type: 'function_call_output',
-              call_id,
+              call_id: callId,
               output: JSON.stringify(result),
             };
           } catch (error) {
             return {
               type: 'function_call_output',
-              call_id,
+              call_id: callId,
               output: `Error: ${error instanceof Error ? error.message : String(error)}`,
             };
           }
@@ -619,11 +644,6 @@ export class TurnManager {
       switch (toolName) {
         case 'web_search':
           result = await this.executeWebSearch(parsedParams.query);
-          break;
-
-        case 'planning_tool':
-          // Planning tool - emit PlanUpdate event and return success
-          result = await this.updatePlan(parsedParams.plan, parsedParams.explanation);
           break;
 
         default: {
@@ -727,18 +747,6 @@ export class TurnManager {
       });
       throw error;
     }
-  }
-
-  /**
-   * Update task plan
-   */
-  private async updatePlan(plan: any[], explanation?: string): Promise<any> {
-    await this.emitEvent({
-      type: 'PlanUpdate',
-      data: { plan, explanation },
-    });
-
-    return { success: true, plan };
   }
 
   /**
@@ -847,6 +855,14 @@ export class TurnManager {
           success: true,
         },
       });
+
+      // Emit TaskUpdate through platform-agnostic event path
+      if (toolName === 'planning_tool' && response.data?._taskEvent) {
+        await this.emitEvent({
+          type: 'TaskUpdate',
+          data: response.data._taskEvent,
+        });
+      }
 
       return response.data;
     } catch (error) {

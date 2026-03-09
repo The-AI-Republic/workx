@@ -12,12 +12,14 @@ import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
 import type { Cursor, ConversationsPage, RolloutMetadataRecord, SessionMetaLine } from '@/storage/rollout/types';
 import { listConversations } from '@/storage/rollout/listing';
+import { IndexedDBRolloutStorageProvider } from '@/storage/rollout/provider/IndexedDBRolloutStorageProvider';
+import { RolloutRecorder } from '@/storage/rollout/RolloutRecorder';
 
 // ============================================================================
 // Helpers for setting up test data in IndexedDB
 // ============================================================================
 
-const DB_NAME = 'PiRollouts';
+const DB_NAME = 'ApplePiRollouts';
 const STORE_ROLLOUTS = 'rollouts';
 const STORE_ROLLOUT_ITEMS = 'rollout_items';
 
@@ -58,7 +60,7 @@ function makeRecord(
 }
 
 /**
- * Open/create the PiRollouts database with proper stores,
+ * Open/create the ApplePiRollouts database with proper stores,
  * and seed it with given records.
  */
 async function seedDatabase(records: RolloutMetadataRecord[]): Promise<void> {
@@ -180,9 +182,17 @@ async function readAllRecords(): Promise<RolloutMetadataRecord[]> {
 // ============================================================================
 
 describe('Conversation Listing', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     // Reset fake-indexeddb before each test
     globalThis.indexedDB = new IDBFactory();
+    // Inject IndexedDB provider for tests
+    const provider = new IndexedDBRolloutStorageProvider();
+    await provider.initialize();
+    RolloutRecorder.setProvider(provider);
+  });
+
+  afterEach(() => {
+    RolloutRecorder.resetProvider();
   });
 
   // ========================================================================
@@ -646,39 +656,16 @@ describe('Conversation Listing', () => {
   // ========================================================================
 
   describe('error handling', () => {
-    it('should return empty result on database error (graceful)', async () => {
+    it('should throw on database error so UI can display it', async () => {
       vi.spyOn(console, 'error').mockImplementation(() => {});
-      vi.spyOn(console, 'log').mockImplementation(() => {});
 
-      // Provide a broken indexedDB that fails on open
-      const origIDB = globalThis.indexedDB;
-      const brokenIDB = {
-        open: () => {
-          const req: any = {};
-          setTimeout(() => {
-            if (req.onerror) {
-              req.error = new DOMException('Broken');
-              req.onerror(new Event('error'));
-            }
-          }, 0);
-          return req;
-        },
+      // Mock the provider to throw a database error
+      const mockProvider = {
+        listConversations: vi.fn().mockRejectedValue(new Error('Database connection failed')),
       };
-      Object.defineProperty(globalThis, 'indexedDB', {
-        value: brokenIDB,
-        writable: true,
-        configurable: true,
-      });
+      vi.spyOn(RolloutRecorder, 'getProvider').mockResolvedValue(mockProvider as any);
 
-      const page = await listConversations(10);
-      // Should gracefully return empty
-      expect(page.items).toHaveLength(0);
-
-      Object.defineProperty(globalThis, 'indexedDB', {
-        value: origIDB,
-        writable: true,
-        configurable: true,
-      });
+      await expect(listConversations(10)).rejects.toThrow('Database connection failed');
     });
 
     it('should still throw for invalid input even when DB is unavailable', async () => {

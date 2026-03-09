@@ -63,32 +63,14 @@ if (!mapping) {
   process.exit(1);
 }
 
-const { triple, pkgTarget, ext } = mapping;
 const binDir = path.resolve(root, 'tauri/binaries');
 fs.mkdirSync(binDir, { recursive: true });
 
-const outputPath = path.join(binDir, `chrome-devtools-mcp-${triple}${ext}`);
-
-// Temp build directory — cleaned up at the end
-const buildDir = path.join(binDir, '_pkgbuild');
-fs.rmSync(buildDir, { recursive: true, force: true });
-fs.mkdirSync(buildDir, { recursive: true });
-
-console.log(`Building chrome-devtools-mcp sidecar`);
-console.log(`  Platform : ${key}`);
-console.log(`  Triple   : ${triple}`);
-console.log(`  CDMCP src: ${cdmcpSrcDir}`);
-console.log(`  Output   : ${outputPath}`);
-console.log('');
-
-// ── Step 1: copy launcher script ─────────────────────────────────────────────
-console.log('Step 1: Copying launcher...');
-const launcherSrc = path.join(__dirname, 'sidecar-launcher.cjs');
-const launcherDst = path.join(buildDir, 'launcher.cjs');
-fs.copyFileSync(launcherSrc, launcherDst);
-
-// ── Step 2: copy chrome-devtools-mcp build/src → buildDir/cdmcp ─────────────
-console.log('Step 2: Copying chrome-devtools-mcp files...');
+// On macOS, build for BOTH architectures so that universal builds
+// (--target universal-apple-darwin) succeed.
+const targets = process.platform === 'darwin'
+  ? [PLATFORM_MAP['darwin-arm64'], PLATFORM_MAP['darwin-x64']]
+  : [mapping];
 
 function copyDir(src, dst) {
   fs.mkdirSync(dst, { recursive: true });
@@ -103,11 +85,6 @@ function copyDir(src, dst) {
   }
 }
 
-copyDir(cdmcpSrcDir, path.join(buildDir, 'cdmcp'));
-
-// Generate a flat file list so the launcher can enumerate assets at runtime.
-// pkg intercepts fs.readFileSync for snapshot files but NOT fs.readdirSync,
-// so the launcher needs to know exact paths ahead of time.
 function gatherFiles(dir, base) {
   const result = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -121,40 +98,80 @@ function gatherFiles(dir, base) {
   }
   return result;
 }
-const cdmcpFiles = gatherFiles(path.join(buildDir, 'cdmcp'), path.join(buildDir, 'cdmcp'));
-fs.writeFileSync(path.join(buildDir, 'cdmcp-files.json'), JSON.stringify(cdmcpFiles));
-console.log(`  Found ${cdmcpFiles.length} files to bundle`);
 
-// ── Step 3: write package.json with pkg assets config ────────────────────────
-console.log('Step 3: Writing pkg config...');
-fs.writeFileSync(
-  path.join(buildDir, 'package.json'),
-  JSON.stringify({
-    name: 'chrome-devtools-mcp-launcher',
-    version: '1.0.0',
-    pkg: {
-      // Include chrome-devtools-mcp JS files and the file-list manifest.
-      // fs.readFileSync works for snapshot assets; readdirSync does NOT.
-      // The launcher uses cdmcp-files.json to know which paths to extract.
-      assets: ['cdmcp/**/*', 'cdmcp-files.json'],
-    },
-  })
-);
+for (const target of targets) {
+  const { triple, pkgTarget, ext } = target;
+  const outputPath = path.join(binDir, `chrome-devtools-mcp-${triple}${ext}`);
 
-// ── Step 4: compile with pkg ─────────────────────────────────────────────────
-console.log(`\nStep 4: Compiling with pkg (${pkgTarget})...`);
-execSync(
-  `npx @yao-pkg/pkg launcher.cjs --target ${pkgTarget} --output "${outputPath}"`,
-  { stdio: 'inherit', cwd: buildDir }
-);
+  // Temp build directory — cleaned up at the end
+  const buildDir = path.join(binDir, '_pkgbuild');
+  fs.rmSync(buildDir, { recursive: true, force: true });
+  fs.mkdirSync(buildDir, { recursive: true });
 
-// ── Cleanup ───────────────────────────────────────────────────────────────────
-fs.rmSync(buildDir, { recursive: true, force: true });
+  console.log(`Building chrome-devtools-mcp sidecar`);
+  console.log(`  Platform : ${key}`);
+  console.log(`  Triple   : ${triple}`);
+  console.log(`  CDMCP src: ${cdmcpSrcDir}`);
+  console.log(`  Output   : ${outputPath}`);
+  console.log('');
 
-// Make executable on Unix
-if (ext === '') {
-  fs.chmodSync(outputPath, 0o755);
+  // ── Step 1: copy launcher script ───────────────────────────────────────────
+  console.log('Step 1: Copying launcher...');
+  const launcherSrc = path.join(__dirname, 'sidecar-launcher.cjs');
+  const launcherDst = path.join(buildDir, 'launcher.cjs');
+  fs.copyFileSync(launcherSrc, launcherDst);
+
+  // ── Step 2: copy chrome-devtools-mcp build/src → buildDir/cdmcp ────────────
+  console.log('Step 2: Copying chrome-devtools-mcp files...');
+  copyDir(cdmcpSrcDir, path.join(buildDir, 'cdmcp'));
+
+  // Generate a flat file list so the launcher can enumerate assets at runtime.
+  // pkg intercepts fs.readFileSync for snapshot files but NOT fs.readdirSync,
+  // so the launcher needs to know exact paths ahead of time.
+  const cdmcpFiles = gatherFiles(path.join(buildDir, 'cdmcp'), path.join(buildDir, 'cdmcp'));
+  fs.writeFileSync(path.join(buildDir, 'cdmcp-files.json'), JSON.stringify(cdmcpFiles));
+  console.log(`  Found ${cdmcpFiles.length} files to bundle`);
+
+  // ── Step 3: write package.json with pkg assets config ──────────────────────
+  console.log('Step 3: Writing pkg config...');
+  fs.writeFileSync(
+    path.join(buildDir, 'package.json'),
+    JSON.stringify({
+      name: 'chrome-devtools-mcp-launcher',
+      version: '1.0.0',
+      pkg: {
+        assets: ['cdmcp/**/*', 'cdmcp-files.json'],
+      },
+    })
+  );
+
+  // ── Step 4: compile with pkg ───────────────────────────────────────────────
+  console.log(`\nStep 4: Compiling with pkg (${pkgTarget})...`);
+  execSync(
+    `npx @yao-pkg/pkg launcher.cjs --target ${pkgTarget} --output "${outputPath}"`,
+    { stdio: 'inherit', cwd: buildDir }
+  );
+
+  // ── Cleanup ────────────────────────────────────────────────────────────────
+  fs.rmSync(buildDir, { recursive: true, force: true });
+
+  // Make executable on Unix
+  if (ext === '') {
+    fs.chmodSync(outputPath, 0o755);
+  }
+
+  console.log(`\n✓ Sidecar built: ${outputPath}`);
+  console.log('  (Launcher extracts chrome-devtools-mcp at runtime and runs it with system Node.js)\n');
 }
 
-console.log(`\n✓ Sidecar built: ${outputPath}`);
-console.log('  (Launcher extracts chrome-devtools-mcp at runtime and runs it with system Node.js)');
+// On macOS, create a universal binary via lipo for Tauri's bundler
+// (--target universal-apple-darwin expects a binary named with that triple).
+if (process.platform === 'darwin') {
+  const arm64Bin = path.join(binDir, 'chrome-devtools-mcp-aarch64-apple-darwin');
+  const x64Bin = path.join(binDir, 'chrome-devtools-mcp-x86_64-apple-darwin');
+  const universalBin = path.join(binDir, 'chrome-devtools-mcp-universal-apple-darwin');
+  console.log('Creating universal binary via lipo...');
+  execSync(`lipo -create -output "${universalBin}" "${arm64Bin}" "${x64Bin}"`, { stdio: 'inherit' });
+  fs.chmodSync(universalBin, 0o755);
+  console.log(`✓ Universal sidecar: ${universalBin}`);
+}

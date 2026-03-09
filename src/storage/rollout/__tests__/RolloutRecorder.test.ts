@@ -15,6 +15,7 @@ import type {
   IAgentConfigWithStorage,
   Cursor,
 } from '@/storage/rollout/types';
+import { IndexedDBRolloutStorageProvider } from '@/storage/rollout/provider/IndexedDBRolloutStorageProvider';
 
 // Note: Import will fail until RolloutRecorder.ts is implemented
 let RolloutRecorder: any;
@@ -34,12 +35,57 @@ try {
 describe('RolloutRecorder', () => {
   const conversationId: ConversationId = '5973b6c0-94b8-4f7b-a530-2aeb6098ae0e';
 
-  beforeEach(() => {
+  beforeEach(async () => {
     indexedDB = new IDBFactory();
+    // Inject IndexedDB provider for tests
+    const provider = new IndexedDBRolloutStorageProvider();
+    await provider.initialize();
+    RolloutRecorder.setProvider(provider);
   });
 
   afterEach(() => {
+    RolloutRecorder.resetProvider();
     vi.restoreAllMocks();
+  });
+
+  describe('Provider Singleton', () => {
+    it('should retry after provider creation failure', async () => {
+      // Reset so getProvider() uses the factory
+      RolloutRecorder.resetProvider();
+
+      // Mock the factory to fail on first call, succeed on second
+      const createRolloutStorageProviderModule = await import(
+        '@/storage/rollout/provider/createRolloutStorageProvider'
+      );
+      const createSpy = vi
+        .spyOn(createRolloutStorageProviderModule, 'createRolloutStorageProvider')
+        .mockRejectedValueOnce(new Error('DB init failed'));
+
+      // First call should reject
+      await expect(RolloutRecorder.getProvider()).rejects.toThrow('DB init failed');
+
+      // Restore mock so second call succeeds with a real provider
+      createSpy.mockRestore();
+
+      // Re-inject a working provider for the retry
+      const workingProvider = new IndexedDBRolloutStorageProvider();
+      await workingProvider.initialize();
+      RolloutRecorder.setProvider(workingProvider);
+
+      // Second call should succeed (not stuck on rejected promise)
+      const provider = await RolloutRecorder.getProvider();
+      expect(provider).toBeDefined();
+    });
+
+    it('should return same provider instance on concurrent calls', async () => {
+      const [p1, p2, p3] = await Promise.all([
+        RolloutRecorder.getProvider(),
+        RolloutRecorder.getProvider(),
+        RolloutRecorder.getProvider(),
+      ]);
+      expect(p1).toBe(p2);
+      expect(p2).toBe(p3);
+    });
   });
 
   describe('Section 1: Constructor (create mode) - T010', () => {
@@ -54,7 +100,7 @@ describe('RolloutRecorder', () => {
       expect(recorder.getRolloutId()).toBe(conversationId);
     });
 
-    it('should create IndexedDB database "PiRollouts"', async () => {
+    it('should create IndexedDB database "ApplePiRollouts"', async () => {
       const params: RolloutRecorderParams = {
         type: 'create',
         conversationId,
@@ -63,7 +109,7 @@ describe('RolloutRecorder', () => {
       await RolloutRecorder.create(params);
 
       const dbs = await indexedDB.databases();
-      const dbExists = dbs.some((db: any) => db.name === 'PiRollouts');
+      const dbExists = dbs.some((db: any) => db.name === 'ApplePiRollouts');
       expect(dbExists).toBe(true);
     });
 
@@ -493,6 +539,59 @@ describe('RolloutRecorder', () => {
 
       const history = await RolloutRecorder.getRolloutHistory(conversationId);
       expect(history.type).toBe('resumed');
+    });
+  });
+
+  describe('getStorageStats() static method', () => {
+    it('should return zeroed stats for empty database', async () => {
+      const stats = await RolloutRecorder.getStorageStats();
+      expect(stats).toBeDefined();
+      expect(stats.rolloutCount).toBe(0);
+      expect(stats.itemCount).toBe(0);
+      expect(stats.rolloutBytes).toBe(0);
+      expect(stats.itemBytes).toBe(0);
+    });
+
+    it('should return correct counts after recording items', async () => {
+      const params: RolloutRecorderParams = {
+        type: 'create',
+        conversationId,
+      };
+      const recorder = await RolloutRecorder.create(params);
+      await recorder.recordItems([
+        { type: 'response_item', payload: { type: 'message', content: 'Hello' } },
+        { type: 'response_item', payload: { type: 'message', content: 'World' } },
+      ]);
+      await recorder.shutdown();
+
+      const stats = await RolloutRecorder.getStorageStats();
+      expect(stats.rolloutCount).toBe(1);
+      // session_meta (1) + 2 response_items = 3
+      expect(stats.itemCount).toBe(3);
+      expect(stats.rolloutBytes).toBeGreaterThan(0);
+      expect(stats.itemBytes).toBeGreaterThan(0);
+    });
+
+    it('should aggregate stats across multiple rollouts', async () => {
+      const id1 = conversationId;
+      const id2 = '1111b6c0-94b8-4f7b-a530-2aeb6098ae0e';
+
+      const rec1 = await RolloutRecorder.create({ type: 'create', conversationId: id1 });
+      await rec1.recordItems([
+        { type: 'response_item', payload: { type: 'message', content: 'A' } },
+      ]);
+      await rec1.shutdown();
+
+      const rec2 = await RolloutRecorder.create({ type: 'create', conversationId: id2 });
+      await rec2.recordItems([
+        { type: 'response_item', payload: { type: 'message', content: 'B' } },
+      ]);
+      await rec2.shutdown();
+
+      const stats = await RolloutRecorder.getStorageStats();
+      expect(stats.rolloutCount).toBe(2);
+      // Each rollout: 1 session_meta + 1 response_item = 2; total = 4
+      expect(stats.itemCount).toBe(4);
     });
   });
 

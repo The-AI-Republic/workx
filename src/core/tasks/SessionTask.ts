@@ -1,7 +1,7 @@
 /**
  * SessionTask Interface
  *
- * Defines the contract for task execution in the PiAgent system.
+ * Defines the contract for task execution in the RepublicAgent system.
  */
 
 import type { Session } from '../Session';

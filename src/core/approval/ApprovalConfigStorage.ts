@@ -3,12 +3,14 @@
  *
  * Cross-platform persistence for approval configuration and history.
  * Uses a storage getter function for platform abstraction
- * (chrome.storage.local on extension, Tauri config storage on desktop).
+ * (ConfigStorageProvider — backed by ChromeConfigStorage on extension,
+ * TauriConfigStorage on desktop).
  */
 
 import type { IApprovalConfig, ApprovalHistoryEntry } from './types';
 import { DEFAULT_APPROVAL_CONFIG } from './types';
 import { STORAGE_KEYS } from '../../config/defaults';
+import type { ConfigStorageProvider } from '../storage/ConfigStorageProvider';
 
 /** Maximum number of history entries to retain */
 const MAX_HISTORY_ENTRIES = 100;
@@ -17,10 +19,7 @@ const MAX_HISTORY_ENTRIES = 100;
 const HISTORY_WRITE_INTERVAL_MS = 2000;
 
 /** Storage adapter interface */
-type StorageGetter = () => {
-  get(keys: string[]): Promise<Record<string, any>>;
-  set(items: Record<string, any>): Promise<void>;
-};
+type StorageGetter = () => ConfigStorageProvider;
 
 export class ApprovalConfigStorage {
   private getStorage: StorageGetter;
@@ -33,12 +32,13 @@ export class ApprovalConfigStorage {
 
   /**
    * Load approval config from storage, merged with defaults.
+   * Reads from the nested `approval` property of agent_config.
    */
   async loadConfig(): Promise<IApprovalConfig> {
     try {
       const storage = this.getStorage();
-      const result = await storage.get([STORAGE_KEYS.APPROVAL_CONFIG]);
-      const stored = result[STORAGE_KEYS.APPROVAL_CONFIG];
+      const agentConfig = await storage.get<Record<string, any>>(STORAGE_KEYS.CONFIG);
+      const stored = agentConfig?.approval;
 
       if (!stored) return { ...DEFAULT_APPROVAL_CONFIG };
 
@@ -59,11 +59,14 @@ export class ApprovalConfigStorage {
 
   /**
    * Save approval config to storage.
+   * Reads the full agent_config, merges the approval property, writes back.
    */
   async saveConfig(config: IApprovalConfig): Promise<void> {
     try {
       const storage = this.getStorage();
-      await storage.set({ [STORAGE_KEYS.APPROVAL_CONFIG]: config });
+      const agentConfig = await storage.get<Record<string, any>>(STORAGE_KEYS.CONFIG) ?? {};
+      agentConfig.approval = config;
+      await storage.set(STORAGE_KEYS.CONFIG, agentConfig);
     } catch (error) {
       console.error('[ApprovalConfigStorage] Failed to save config:', error);
       throw error;
@@ -76,8 +79,7 @@ export class ApprovalConfigStorage {
   async loadHistory(limit?: number): Promise<ApprovalHistoryEntry[]> {
     try {
       const storage = this.getStorage();
-      const result = await storage.get([STORAGE_KEYS.APPROVAL_HISTORY]);
-      const history: ApprovalHistoryEntry[] = result[STORAGE_KEYS.APPROVAL_HISTORY] || [];
+      const history: ApprovalHistoryEntry[] = await storage.get<ApprovalHistoryEntry[]>(STORAGE_KEYS.APPROVAL_HISTORY) || [];
 
       if (limit && limit > 0) {
         return history.slice(-limit);
@@ -116,8 +118,7 @@ export class ApprovalConfigStorage {
 
     try {
       const storage = this.getStorage();
-      const result = await storage.get([STORAGE_KEYS.APPROVAL_HISTORY]);
-      const history: ApprovalHistoryEntry[] = result[STORAGE_KEYS.APPROVAL_HISTORY] || [];
+      const history: ApprovalHistoryEntry[] = await storage.get<ApprovalHistoryEntry[]>(STORAGE_KEYS.APPROVAL_HISTORY) || [];
 
       history.push(...entriesToWrite);
 
@@ -126,7 +127,7 @@ export class ApprovalConfigStorage {
         ? history.slice(-MAX_HISTORY_ENTRIES)
         : history;
 
-      await storage.set({ [STORAGE_KEYS.APPROVAL_HISTORY]: trimmed });
+      await storage.set(STORAGE_KEYS.APPROVAL_HISTORY, trimmed);
     } catch (error) {
       console.error('[ApprovalConfigStorage] Failed to flush history:', error);
     }

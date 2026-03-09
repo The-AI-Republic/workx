@@ -3,7 +3,7 @@
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { IToolsConfig } from '@/config/types';
   import { t, _t } from '../lib/i18n';
-  import { notifyConfigUpdate } from '../lib/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
   import { uiTheme, type UITheme } from '../stores/themeStore';
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
@@ -171,7 +171,7 @@
       await settingsConfig.updateConfig({ tools: currentTools });
 
       // Notify backend of config update
-      notifyConfigUpdate();
+      getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(e => console.warn('[messaging] config update failed:', e));
 
       originalTools = { ...currentTools };
       isDirty = false;

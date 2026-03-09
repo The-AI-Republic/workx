@@ -119,12 +119,6 @@ export class ApprovalGate {
       }
     }
 
-    // YOLO mode: auto-approve everything (deny rules still checked above)
-    if (this.mode === 'yolo') {
-      await this.recordHistory(toolName, 0, RiskLevel.None, 'auto_approve', 'auto', ['YOLO mode']);
-      return 'auto_approve';
-    }
-
     // 1. Assess risk
     let assessment: RiskAssessment;
     if (assessor) {
@@ -147,7 +141,22 @@ export class ApprovalGate {
     // Recalculate level after enhancement
     assessment.level = scoreToRiskLevel(assessment.score);
 
-    // 3. Check session memory with risk ceiling guard
+    // 3. Evaluate policy deny rules (enforced even in YOLO mode)
+    const effectiveScore = assessment.score;
+    const ruleDecision = this.policyEngine.evaluate(toolName, parameters, effectiveScore);
+
+    if (ruleDecision === 'deny') {
+      await this.recordHistory(toolName, assessment.score, assessment.level, 'deny', 'auto', assessment.factors);
+      return 'deny';
+    }
+
+    // YOLO mode: auto-approve everything not denied by policy rules
+    if (this.mode === 'yolo') {
+      await this.recordHistory(toolName, assessment.score, assessment.level, 'auto_approve', 'auto', ['YOLO mode']);
+      return 'auto_approve';
+    }
+
+    // 4. Check session memory with risk ceiling guard
     const RISK_CEILING_MARGIN = 25;
     const memoryKey = this.buildMemoryKey(toolName, parameters, domain);
     const remembered = this.sessionMemory.get(memoryKey);
@@ -161,12 +170,8 @@ export class ApprovalGate {
       // Risk escalated beyond margin — fall through to normal policy evaluation
     }
 
-    // 4. Apply mode-based threshold adjustment
-    const effectiveScore = assessment.score;
+    // 5. Apply mode-based threshold
     const askThreshold = this.getAskThreshold();
-
-    // 5. Evaluate policy rules
-    const ruleDecision = this.policyEngine.evaluate(toolName, parameters, effectiveScore);
 
     // Use rule decision if available, otherwise apply mode-based threshold
     let decision: ApprovalDecision;
@@ -185,12 +190,8 @@ export class ApprovalGate {
       return 'auto_approve';
     }
 
-    if (decision === 'deny') {
-      await this.recordHistory(toolName, assessment.score, assessment.level, 'deny', 'auto', assessment.factors);
-      return 'deny';
-    }
-
     // decision === 'ask_user': delegate to ApprovalManager
+    // ('deny' is already handled by the early return after ruleDecision check above)
     const approvalRequest: ApprovalRequest = {
       id: `approval_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       type: this.mapToolToApprovalType(toolName),

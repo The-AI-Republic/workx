@@ -68,12 +68,6 @@
   "API_key_for_authentication_stored_encryp_0d20": {
     "message": "அங்கீகாரத்திற்கு API key (மறைமுகமாக சேமிக்கப்பட்டது)"
   },
-  "API_key_has_expired": {
-    "message": "API key காலாவதியாகியுள்ளது"
-  },
-  "API_key_has_insufficient_permissions": {
-    "message": "API key போதிய அனுமதிகள் இல்லை"
-  },
   "API_key_saved_successfully": {
     "message": "API key வெற்றிகரமாக சேமிக்கப்பட்டது!"
   },
@@ -122,9 +116,6 @@
   "Agent_Execution_Tools": {
     "message": "ஏஜெண்ட் நிறைவேற்று கருவிகள்"
   },
-  "Agent_Turn_Complete": {
-    "message": "ஏஜெண்ட் முறை முடிந்தது"
-  },
   "Agent_URL_is_required": {
     "message": "ஏஜெண்ட் URL அவசியம்"
   },
@@ -143,11 +134,11 @@
   "Agent_removed_successfully": {
     "message": "ஏஜெண்ட் வெற்றிகரமாக நீக்கப்பட்டது"
   },
-  "Agent_turn_completed_successfully": {
-    "message": "ஏஜெண்ட் முறை வெற்றிகரமாக முடிந்தது"
-  },
   "Agent_updated_successfully": {
     "message": "ஏஜெண்ட் வெற்றிகரமாக புதுப்பிக்கப்பட்டது"
+  },
+  "All_API_keys_are_encrypted_at_rest_using_ca92": {
+    "message": "அனைத்து API விசைகள் AES-256-GCM பயன்படுத்தி ஓய்வில் குறியாக்கம் செய்யப்படுகின்றன. கூடுதல் பாதுகாப்பிற்காக PIN பாதுகாப்பை செயல்படுத்தவும்."
   },
   "All_actions_are_auto_approved_on_these_d_ffda": {
     "message": "இந்த டொமைன்களில் அனைத்து செயல்களும் தானாக ஒப்புதல் பெறும்."
@@ -179,6 +170,12 @@
   "Always_Approve": {
     "message": "எப்போதும் அங்கீகரி"
   },
+  "Always_dark": {
+    "message": "எப்போதும் இருண்ட"
+  },
+  "Always_light": {
+    "message": "எப்போதும் ஒளி"
+  },
   "Apple_Pi_Your_personal_AI_Alpha": {
     "message": "Apple Pi: உங்கள் தனிப்பட்ட AI (Alpha)"
   },
@@ -200,14 +197,16 @@
   "Approve": {
     "message": "அனுமதி"
   },
-  "Approve_changes_to_eventMsg_data_path": {
-    "message": "மாற்றங்களை அங்கீகரி: ${eventMsg.data.path}"
-  },
-  "Approve_execution_eventMsg_data_command": {
-    "message": "இயக்கத்தை அங்கீகரி: ${eventMsg.data.command}"
-  },
   "Are_you_sure_you_want_to_cancel_this_tas_8573": {
     "message": "இந்த பணியை ரத்து செய்ய உறுதியாக இருக்கிறீர்களா?"
+  },
+  "Are_you_sure_you_want_to_delete_the_skil_3268": {
+    "message": "நீங்கள் உண்மையாகவே \"/$1$\" திறனை நீக்க விரும்புகிறீர்களா?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Are_you_sure_you_want_to_remove_this_age_b9ba": {
     "message": "இந்த முகவரை நீக்க உறுதியாக இருக்கிறீர்களா?"
@@ -234,9 +233,6 @@
   },
   "Authentication_credential_stored_encrypt_c46a": {
     "message": "அங்கீகார சான்று (மறையாக்கப்பட்டு சேமிக்கப்பட்டது)"
-  },
-  "Authentication_failed": {
-    "message": "அங்கீகாரம் தோல்வியுற்றது"
   },
   "Authentication_method_for_the_agent": {
     "message": "ஏஜெண்டுக்கான அங்கீகார முறை"
@@ -280,9 +276,6 @@
   "Backend_not_available_Please_wait_a_mome_9218": {
     "message": "பின்புலம் கிடைக்கவில்லை. ஒரு நிமிடம் காத்திருந்து மீண்டும் முயற்சிக்கவும்."
   },
-  "Backend_server_error_please_try_again_la_0515": {
-    "message": "பின்புல சேவையக பிழை - பின்னர் மீண்டும் முயற்சிக்கவும்"
-  },
   "Backoff_Multiplier": {
     "message": "பின்வாங்கல் பெருக்கி"
   },
@@ -306,6 +299,9 @@
   },
   "Blocked_Domains": {
     "message": "தடைசெய்யப்பட்ட டொமைன்கள்"
+  },
+  "Body_Markdown": {
+    "message": "உடல் (Markdown)"
   },
   "Browser_Tools": {
     "message": "உலாவி கருவிகள்"
@@ -340,9 +336,6 @@
   "Cancelled": {
     "message": "ரத்து செய்யப்பட்டது"
   },
-  "Cannot_execute_task_No_API_key_configure_c622": {
-    "message": "பணி இயக்க முடியவில்லை: ${providerName} க்காக API விசை அமைக்கப்படவில்லை. தயவுசெய்து Settings → Model Configuration இற்கு சென்று உங்கள் API விசையை சேர்க்கவும்."
-  },
   "Cannot_select_model_1": {
     "message": "மாதிரியை தேர்வு செய்ய முடியவில்லை: $1$",
     "placeholders": {
@@ -362,8 +355,20 @@
   "Capabilities": {
     "message": "செயல்திறன்கள்"
   },
+  "Change_PIN": {
+    "message": "PIN மாற்றவும்"
+  },
+  "Changing": {
+    "message": "மாற்றுகிறது..."
+  },
   "Chat_History": {
     "message": "உரையாடல் வரலாறு"
+  },
+  "ChatGPT_Subscription": {
+    "message": "ChatGPT சந்தா"
+  },
+  "ChatGPT_session_expired_Please_sign_in_a_f393": {
+    "message": "ChatGPT அமர்வு காலாவதியானது. மீண்டும் உள்நுழையவும்."
   },
   "Checking_agent_status": {
     "message": "ஏஜெண்ட் நிலை சரிபார்க்கப்படுகிறது..."
@@ -377,11 +382,8 @@
   "Choose_which_update_channel_to_follow": {
     "message": "புதுப்பிப்பு சேனலைத் தேர்ந்தெடு"
   },
-  "Classic_terminal_style_with_green_text_o_02cc": {
-    "message": "கருப்பு பின்னணியில் பச்சை உரையுள்ள பாரம்பரிய முனையப் பாணி"
-  },
-  "Clean_modern_chat_interface_similar_to_C_2401": {
-    "message": "ChatGPT போன்ற சுத்தமான, நவீன அரட்டை இடைமுகம்"
+  "Clear_search": {
+    "message": "தேடலை அழிக்கவும்"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "உங்கள் கருவிப்பட்டியில் உள்ள Browserx ஐகானைக் கிளிக் செய்யவும் அல்லது Alt+Shift+C ஐ அழுத்தவும்"
@@ -395,14 +397,17 @@
   "Close": {
     "message": "மூடு"
   },
+  "Close_scheduler": {
+    "message": "அட்டவணையாளர் மூடு"
+  },
   "Close_settings": {
     "message": "அமைப்புகளை மூடு"
   },
+  "Close_skills": {
+    "message": "திறன்களை மூடு"
+  },
   "Collapse": {
     "message": "சுருக்கு"
-  },
-  "Command_Approval_Required": {
-    "message": "கட்டளை அங்கீகாரம் தேவையுள்ளது"
   },
   "Command_completed": {
     "message": "கட்டளை முடிந்தது"
@@ -415,9 +420,6 @@
   },
   "Completed": {
     "message": "முடிந்தது"
-  },
-  "Completed_lastAssistantMessage_substring_40c8": {
-    "message": "முடிந்தது: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "சேமிப்பு இடத்தைச் சேமிக்க கேச் செய்யப்பட்ட தரவை சுருக்கவும்"
@@ -436,6 +438,12 @@
   },
   "Configured_Servers": {
     "message": "அமைக்கப்பட்ட சேவையகங்கள்"
+  },
+  "Confirm_New_PIN": {
+    "message": "புதிய PIN ஐ உறுதிப்படுத்தவும்"
+  },
+  "Confirm_PIN": {
+    "message": "PIN ஐ உறுதிப்படுத்தவும்"
   },
   "Connect": {
     "message": "இணை"
@@ -460,6 +468,9 @@
   },
   "Connected_successfully": {
     "message": "வெற்றிகரமாக இணைக்கப்பட்டது"
+  },
+  "Connected_via_ChatGPT": {
+    "message": "ChatGPT மூலம் இணைக்கப்பட்டது"
   },
   "Connecting": {
     "message": "இணைக்கப்படுகிறது..."
@@ -501,15 +512,6 @@
   "Connection_test_successful_API_key_is_va_3e34": {
     "message": "இணைப்பு சோதனை வெற்றிகரமாக முடிந்தது! (API விசை செல்லுபடியாகும்)"
   },
-  "Connection_was_refused": {
-    "message": "இணைப்பு மறுக்கப்பட்டது"
-  },
-  "Connection_was_reset": {
-    "message": "இணைப்பு மீட்டமைக்கப்பட்டது"
-  },
-  "Content_violates_policy_contentType_cont_2034": {
-    "message": "உள்ளடக்கம் கொள்கையை மீறுகிறது: ${contentType} உள்ளடக்கம் அனுமதிக்கப்படவில்லை"
-  },
   "Context_Window": {
     "message": "சூழல் சாளரம்"
   },
@@ -524,23 +526,47 @@
   "Controls_how_aggressively_the_agent_asks_d3ba": {
     "message": "ஏஜெண்ட் ஒப்புதலை எவ்வளவு தீவிரமாக கோருகிறது என்பதை கட்டுப்படுத்துகிறது."
   },
+  "Create": {
+    "message": "உருவாக்கு"
+  },
+  "Create_New_Skill": {
+    "message": "புதிய திறனை உருவாக்கவும்"
+  },
   "Create_New_Tab": {
     "message": "புதிய தாவலை உருவாக்கவும்"
+  },
+  "Create_Skill": {
+    "message": "திறனை உருவாக்கவும்"
+  },
+  "Create_a_6_digit_PIN_to_protect_your_API_2b1a": {
+    "message": "உங்கள் API விசைகளை பாதுகாக்க 6 இலக்க PIN ஐ உருவாக்கவும். உலாவியை மீண்டும் தொடங்கிய பிறகு இந்த PIN தேவைப்படும்."
+  },
+  "Create_a_skill_to_add_custom_commands_or_cb10": {
+    "message": "தனிப்பயன் / கட்டளைகள் அல்லது தானாக அழைக்கக்கூடிய முகவர் நடத்தைகளை சேர்க்க ஒரு திறனை உருவாக்கவும்."
   },
   "Created": {
     "message": "உருவாக்கப்பட்டது"
   },
+  "Creating": {
+    "message": "உருவாக்குகிறது..."
+  },
   "Creator": {
     "message": "உருவாக்குபவர்"
+  },
+  "Credential_Encryption": {
+    "message": "அங்கீகார குறியாக்கம்"
+  },
+  "Credential_encryption_and_PIN_protection": {
+    "message": "அங்கீகார குறியாக்கம் மற்றும் PIN பாதுகாப்பு"
   },
   "Credit_Details": {
     "message": "கிரெடிட் விவரங்கள்"
   },
+  "Current_PIN": {
+    "message": "தற்போதைய PIN"
+  },
   "Current_Plan": {
     "message": "தற்போதைய திட்டம்:"
-  },
-  "DNS_lookup_failed": {
-    "message": "DNS தேடல் தோல்வியுற்றது"
   },
   "DOM_Tool": {
     "message": "DOM கருவி"
@@ -566,6 +592,9 @@
   "Default": {
     "message": "இயல்புநிலை"
   },
+  "Delete": {
+    "message": "நீக்கு"
+  },
   "Deny": {
     "message": "மறுக்கவும்"
   },
@@ -583,6 +612,9 @@
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "AI Republic ஆல் உருவாக்கப்பட்டு ஆதரிக்கப்படுகிறது"
+  },
+  "Disabled": {
+    "message": "முடக்கப்பட்டது"
   },
   "Discard_Changes": {
     "message": "மாற்றங்களை நிராகரி"
@@ -638,6 +670,12 @@
   "Enable_Model_Context_Protocol_tools_from_29ac": {
     "message": "இணைக்கப்பட்ட MCP சர்வர்களிலிருந்து Model Context Protocol கருவிகளை இயக்கு"
   },
+  "Enable_PIN": {
+    "message": "PIN ஐ இயக்கு"
+  },
+  "Enable_PIN_Protection": {
+    "message": "PIN பாதுகாப்பை இயக்கு"
+  },
   "Enable_auto_connect_when_browserx_starts": {
     "message": "browserx தொடங்கும் போது auto-connect ஐ இயக்கு"
   },
@@ -659,8 +697,14 @@
   "Enter_API_key_or_bearer_token": {
     "message": "API key அல்லது bearer token ஐ உள்ளிடவும்"
   },
+  "Enter_your_6_digit_PIN_to_unlock_your_AP_1fff": {
+    "message": "உங்கள் API விசைகளை திறக்க 6 இலக்க PIN ஐ உள்ளிடவும்."
+  },
   "Enter_your_LLM_API_key": {
     "message": "உங்கள் LLM API கீயை உள்ளிடவும்"
+  },
+  "Enter_your_current_PIN_to_remove_protect_8b75": {
+    "message": "பாதுகாப்பை நீக்க உங்கள் தற்போதைய PIN ஐ உள்ளிடவும். API விசைகள் இயல்புநிலை விசையால் இன்னும் குறியாக்கம் செய்யப்படும்."
   },
   "Enter_your_task": {
     "message": "உங்கள் பணியை உள்ளிடவும்..."
@@ -691,6 +735,9 @@
   },
   "Explain_with_Browserx": {
     "message": "Browserx மூலம் விளக்கவும்"
+  },
+  "Export": {
+    "message": "ஏற்றுமதி"
   },
   "Extension_Permission": {
     "message": "விரிவாக்கம் & அனுமதி"
@@ -743,12 +790,6 @@
         "content": "$1"
       }
     }
-  },
-  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
-    "message": "புதிய தாவலை உருவாக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்."
-  },
-  "Failed_to_create_browser_tab_errorMsg": {
-    "message": "உலாவி தாவலை உருவாக்க முடியவில்லை: ${errorMsg}"
   },
   "Failed_to_disconnect_1": {
     "message": "துண்டிக்க முடியவில்லை: $1$",
@@ -820,9 +861,6 @@
   "Failed_to_stop_the_task_Please_try_again": {
     "message": "பணியை நிறுத்த முடியவில்லை. மீண்டும் முயற்சிக்கவும்."
   },
-  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
-    "message": "தாவலை ${newTabId}க்கு மாற்ற முடியவில்லை: ${errorMsg}"
-  },
   "Failed_to_test_connection": {
     "message": "இணைப்பை சோதிக்க முடியவில்லை"
   },
@@ -837,9 +875,6 @@
       }
     }
   },
-  "File_Change_Approval_Required": {
-    "message": "கோப்பு மாற்ற அங்கீகாரம் தேவை"
-  },
   "File_Operations_Not_Available": {
     "message": "கோப்பு செயல்பாடுகள் (கிடைக்கவில்லை)"
   },
@@ -848,6 +883,12 @@
   },
   "Flex": {
     "message": "Flex"
+  },
+  "Follows_system_theme": {
+    "message": "கணினி தீமைக் கடைபிடிக்கிறது"
+  },
+  "Forgot_PIN": {
+    "message": "PIN மறந்துவிட்டதா?"
   },
   "Form_Automation_Tool": {
     "message": "படிவ தானியங்கி கருவி"
@@ -869,6 +910,9 @@
   },
   "Get_Started": {
     "message": "தொடங்குங்கள்"
+  },
+  "Green_text_terminal": {
+    "message": "பச்சை உரை டெர்மினல்"
   },
   "Hello_NAME": {
     "message": "வணக்கம் $NAME$",
@@ -892,6 +936,21 @@
   },
   "Image_Input": {
     "message": "பட உள்ளீடு"
+  },
+  "Import": {
+    "message": "இறக்குமதி"
+  },
+  "Import_Skill_from_URL": {
+    "message": "URL இலிருந்து திறனை இறக்குமதி செய்யவும்"
+  },
+  "Import_from_URL": {
+    "message": "URL இலிருந்து இறக்குமதி செய்யவும்"
+  },
+  "Imported_skills_are_untrusted_by_default_561a": {
+    "message": "இறக்குமதி செய்யப்பட்ட திறன்கள் இயல்பாக நம்பகமற்றவை, தானாக அழைக்கப்பட முடியாது."
+  },
+  "Importing": {
+    "message": "இறக்குமதி செய்யப்படுகிறது..."
   },
   "Improve_this_text_info_selectionText": {
     "message": "இந்த உரையை மேம்படுத்தவும்: ${info.selectionText}"
@@ -928,9 +987,6 @@
   "Invalid_API_key": {
     "message": "தவறான API விசை"
   },
-  "Invalid_API_key_provided": {
-    "message": "தவறான API விசை வழங்கப்பட்டது"
-  },
   "Invalid_URL_format": {
     "message": "தவறான URL வடிவம்"
   },
@@ -939,6 +995,9 @@
   },
   "Invalid_submission_format_op_missing_typ_0fc0": {
     "message": "தவறான சமர்ப்பிப்பு வடிவம்: op இல் type புலம் காணவில்லை"
+  },
+  "Invocation_Mode": {
+    "message": "அழைப்பு முறை"
   },
   "Keyboard_Shortcuts": {
     "message": "விசைப்பலகை குறுக்குவழிகள்"
@@ -981,6 +1040,9 @@
   },
   "Loading_settings": {
     "message": "அமைப்புகள் ஏற்றுகிறது..."
+  },
+  "Loading_skills": {
+    "message": "திறன்களை ஏற்றுகிறது..."
   },
   "Loading_tabs": {
     "message": "தாவல்களை ஏற்றுகிறது..."
@@ -1104,16 +1166,16 @@
   "Model_and_provider_settings_loaded_from__55a3": {
     "message": "மாதிரி மற்றும் வழங்குநர் அமைப்புகள் இயல்புநிலை கட்டமைப்பிலிருந்து ஏற்றப்பட்டுள்ளன (வாசிக்க மட்டும்)"
   },
-  "Model_changed_to_1_Please_configure_your_1c81": {
-    "message": "மாதிரி $1$ ஆக மாற்றப்பட்டது. தயவுசெய்து உங்கள் API விசையை அமைக்கவும்.",
+  "Model_changed_to_1_Conversation_preserve_2db6": {
+    "message": "மாதிரி $1$ ஆக மாற்றப்பட்டது. உரையாடல் பாதுகாக்கப்பட்டது.",
     "placeholders": {
       "1": {
         "content": "$1"
       }
     }
   },
-  "Model_changed_to_1_Session_will_be_reini_e2ce": {
-    "message": "மாதிரி $1$ ஆக மாற்றப்பட்டது. அமர்வு மீண்டும் தொடங்கப்படும்.",
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "மாதிரி $1$ ஆக மாற்றப்பட்டது. தயவுசெய்து உங்கள் API விசையை அமைக்கவும்.",
     "placeholders": {
       "1": {
         "content": "$1"
@@ -1131,8 +1193,14 @@
       }
     }
   },
-  "Modern_Chat": {
-    "message": "நவீன அரட்டை"
+  "Modern_Chat_Auto": {
+    "message": "மாடர்ன் அரட்டை ஆட்டோ"
+  },
+  "Modern_Chat_Dark": {
+    "message": "மாடர்ன் அரட்டை இருண்ட"
+  },
+  "Modern_Chat_Light": {
+    "message": "மாடர்ன் அரட்டை ஒளி"
   },
   "Monthly_Credits": {
     "message": "மாதாந்திர கிரெடிட்கள்"
@@ -1158,14 +1226,14 @@
   "Network_error": {
     "message": "நெட்வொர்க் பிழை"
   },
-  "Network_error_occurred": {
-    "message": "நெட்வொர்க் பிழை ஏற்பட்டது"
-  },
   "Never_expire_permanent": {
     "message": "எப்போதும் காலாவதியில்லை (நிரந்தர)"
   },
   "New_Conversation": {
     "message": "புதிய உரையாடல்"
+  },
+  "New_PIN": {
+    "message": "புதிய PIN"
   },
   "No_A2A_agents_configured_yet": {
     "message": "இன்னும் A2A முகவர்கள் அமைக்கப்படவில்லை."
@@ -1203,14 +1271,23 @@
   "No_scheduled_time": {
     "message": "அட்டவணை செய்யப்பட்ட நேரம் இல்லை"
   },
+  "No_settings_found": {
+    "message": "அமைப்புகள் எதுவும் கிடைக்கவில்லை"
+  },
   "No_skills_available": {
     "message": "திறன்கள் கிடைக்கவில்லை."
+  },
+  "No_skills_configured_yet": {
+    "message": "இன்னும் திறன்கள் அமைக்கப்படவில்லை."
   },
   "No_steps_in_plan": {
     "message": "திட்டத்தில் படிகள் இல்லை"
   },
   "No_tabs_available": {
     "message": "தாவல்கள் கிடைக்கவில்லை"
+  },
+  "No_tasks_in_plan": {
+    "message": "திட்டத்தில் பணிகள் இல்லை"
   },
   "No_time_set": {
     "message": "நேரம் அமைக்கப்படவில்லை"
@@ -1273,6 +1350,12 @@
       }
     }
   },
+  "PIN": {
+    "message": "PIN"
+  },
+  "PIN_Protection": {
+    "message": "PIN பாதுகாப்பு"
+  },
   "Page_Action_Tool": {
     "message": "பக்க செயல் கருவி"
   },
@@ -1305,17 +1388,6 @@
   "Persist_Cache_to_Storage": {
     "message": "கேச்-ஐ சேமிப்பகத்தில் நிலைநிறுத்தவும்"
   },
-  "Plan_1_step_s": {
-    "message": "திட்டம்: $1$ படி(கள்)",
-    "placeholders": {
-      "1": {
-        "content": "$1"
-      }
-    }
-  },
-  "Please_check_your_API_key_in_settings": {
-    "message": "அமைப்புகளில் உங்கள் API விசையைச் சரிபார்க்கவும்."
-  },
   "Please_enter_a_task_description": {
     "message": "தயவுசெய்து ஒரு பணியின் விளக்கத்தை உள்ளிடவும்"
   },
@@ -1325,9 +1397,6 @@
   "Please_input_a_valid_API_key": {
     "message": "தயவுசெய்து செல்லுபடியாகும் API விசையை உள்ளிடவும்."
   },
-  "Please_log_in_again_to_continue_using_th_3d8f": {
-    "message": "AI முகவரியை பயன்படுத்த தொடர மீண்டும் உள்நுழையவும்."
-  },
   "Please_select_a_provider": {
     "message": "தயவுசெய்து வழங்குநரை தேர்ந்தெடுக்கவும்"
   },
@@ -1336,6 +1405,9 @@
   },
   "Please_upgrade_the_plan_to_unblock_world_9fed": {
     "message": "உலகின் மிகவும் முன்னேற்றமான மாதிரிகளைத் திறக்க திட்டத்தை மேம்படுத்தவும்"
+  },
+  "Port_1455_is_in_use_Please_close_any_app_a809": {
+    "message": "போர்ட் 1455 பயன்பாட்டில் உள்ளது. இந்த போர்டை பயன்படுத்தும் பயன்பாட்டை மூடி மீண்டும் முயற்சிக்கவும்."
   },
   "Power": {
     "message": "சக்தி"
@@ -1420,9 +1492,6 @@
   "Refreshes_in": {
     "message": "புதுப்பித்தல்:"
   },
-  "Reject": {
-    "message": "நிராகரிக்க"
-  },
   "Release_Date": {
     "message": "வெளியீட்டு தேதி"
   },
@@ -1441,10 +1510,13 @@
   "Remove_API_Key": {
     "message": "API Key-ஐ நீக்கு"
   },
-  "Request_Timeout": {
-    "message": "கோரிக்கை நேரம் முடிந்தது"
+  "Remove_PIN": {
+    "message": "PIN ஐ நீக்கு"
   },
-  "Request_timed_out": {
+  "Removing": {
+    "message": "நீக்குகிறது..."
+  },
+  "Request_Timeout": {
     "message": "கோரிக்கை நேரம் முடிந்தது"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
@@ -1453,11 +1525,11 @@
   "Request_timeout_in_milliseconds_5000_180_5766": {
     "message": "மில்லி விநாடிகளில் கோரிக்கை நேரம் முடிவு (5000-180000)"
   },
-  "Request_was_aborted": {
-    "message": "கோரிக்கை நிறுத்தப்பட்டது"
+  "Reset_Vault": {
+    "message": "வால்ட் மீட்டமை"
   },
-  "Response_failed": {
-    "message": "பதில் தோல்வியுற்றது"
+  "Resetting": {
+    "message": "மீட்டமைக்கிறது..."
   },
   "Restricted": {
     "message": "வரையறுக்கப்பட்டது"
@@ -1488,6 +1560,9 @@
   },
   "Running": {
     "message": "இயங்குகிறது"
+  },
+  "SKILL_md_URL": {
+    "message": "SKILL.md URL"
   },
   "STREAM_ERROR": {
     "message": "ஸ்ட்ரீம் பிழை"
@@ -1522,9 +1597,6 @@
   "Scheduled_Task": {
     "message": "அட்டவணை செய்யப்பட்ட பணி"
   },
-  "Scheduled_Task_Starting": {
-    "message": "அட்டவணை செய்யப்பட்ட பணி தொடங்குகிறது"
-  },
   "Scheduled_Tasks": {
     "message": "அட்டவணை செய்யப்பட்ட பணிகள்"
   },
@@ -1534,8 +1606,14 @@
   "Search_complete": {
     "message": "தேடல் முடிந்தது"
   },
+  "Search_settings": {
+    "message": "அமைப்புகளை தேடு..."
+  },
   "Searching": {
     "message": "தேடுகிறது..."
+  },
+  "Security": {
+    "message": "பாதுகாப்பு"
   },
   "Security_Privacy": {
     "message": "பாதுகாப்பும் தனியுரிமையும்"
@@ -1583,14 +1661,14 @@
   "Session_error": {
     "message": "அமர்வு பிழை"
   },
-  "Session_expired_please_log_in_again_to_c_5d31": {
-    "message": "அமர்வு காலாவதியாகியுள்ளது - AI முகவரியை பயன்படுத்த தொடர மீண்டும் உள்நுழையவும்"
-  },
   "Session_limit_reached_New_tasks_will_que_2877": {
     "message": "அமர்வு வரம்பை அடைந்தது. புதிய பணிகள் வரிசையில் சேர்க்கப்படும்."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "படிப்படியான வெளியீட்டுத் தரவு எப்போது காலாவதியாகும் என்பதை அமைக்கவும்"
+  },
+  "Setting_up": {
+    "message": "அமைக்கப்படுகிறது..."
   },
   "Settings": {
     "message": "அமைப்புகள்"
@@ -1613,8 +1691,17 @@
   "Show_warning_when_storage_usage_exceeds__7c40": {
     "message": "சேமிப்பு பயன்பாடு இந்த சதவீதத்தை மீறும்போது எச்சரிக்கையை காட்டவும் (இயல்புநிலை: 90%)"
   },
+  "Sign_in_failed": {
+    "message": "உள்நுழைவு தோல்வியுற்றது"
+  },
   "Sign_in_to_your_account": {
     "message": "உங்கள் கணக்கில் உள்நுழையவும்"
+  },
+  "Sign_in_with_ChatGPT": {
+    "message": "ChatGPT மூலம் உள்நுழை"
+  },
+  "Signing_in": {
+    "message": "உள்நுழைகிறது..."
   },
   "Skills": {
     "message": "திறன்கள்"
@@ -1688,9 +1775,6 @@
   "Task_Details": {
     "message": "பணி விவரங்கள்"
   },
-  "Task_Failed": {
-    "message": "பணி தோல்வியடைந்தது"
-  },
   "Task_History": {
     "message": "பணி வரலாறு"
   },
@@ -1716,6 +1800,14 @@
   },
   "Task_failed": {
     "message": "பணி தோல்வியுற்றது"
+  },
+  "Task_scheduled_for_1": {
+    "message": "பணி $1$ க்காக திட்டமிடப்பட்டது",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Task_started": {
     "message": "பணி தொடங்கப்பட்டது"
@@ -1744,11 +1836,8 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "ஏஜெண்ட் தற்போது பின்புல முறையை பயன்படுத்துகிறது. LLM கோரிக்கைகள் AI Republic சேவையகத்தின் வழியாக வழிமாற்றப்படும். உங்கள் உரையாடல்கள் எங்கள் உட்கட்டமைப்பின் மூலம் பாதுகாப்பாக செயலாக்கப்படும்."
   },
-  "The_model_switch_will_clear_the_current__3cd7": {
-    "message": "மாதிரி மாற்றம் தற்போதைய உரையாடலை அழிக்கும். நீங்கள் தொடர விரும்புகிறீர்களா?"
-  },
-  "The_server_encountered_an_error_Please_t_9ecc": {
-    "message": "சேவையகம் ஒரு பிழையை சந்தித்தது. பின்னர் மீண்டும் முயற்சிக்கவும்."
+  "This_will_permanently_delete_all_stored__7eee": {
+    "message": "இது அனைத்து சேமிக்கப்பட்ட API விசைகளையும் நிரந்தரமாக நீக்கி, வால்டை மீட்டமைக்கும். நீங்கள் உங்கள் API விசைகளை மீண்டும் உள்ளிட வேண்டும்."
   },
   "Time": {
     "message": "நேரம்"
@@ -1785,6 +1874,9 @@
       }
     }
   },
+  "Too_many_failed_attempts_Try_again_in": {
+    "message": "மிக அதிகமான தோல்வியுற்ற முயற்சிகள். மீண்டும் முயற்சிக்கவும்"
+  },
   "Tool_Timeout_ms": {
     "message": "கருவி காலவரம்பு (ms)"
   },
@@ -1799,6 +1891,9 @@
   },
   "Tools_Settings": {
     "message": "கருவிகள் அமைப்புகள்"
+  },
+  "Trust": {
+    "message": "நம்பு"
   },
   "Trusted": {
     "message": "நம்பகமான"
@@ -1830,26 +1925,11 @@
   "Unable_to_load_credit_information": {
     "message": "கிரெடிட் தகவலை ஏற்ற முடியவில்லை"
   },
-  "Unable_to_reach_the_backend_server_pleas_3350": {
-    "message": "பின்புல சேவையகத்தை அணுக முடியவில்லை - உங்கள் இணைப்பைச் சரிபார்க்கவும்"
-  },
-  "Unable_to_reach_the_server_Please_check__e5d0": {
-    "message": "சேவையகத்தை அணுக முடியவில்லை. உங்கள் இணைப்பைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்."
-  },
   "Unknown_Event": {
     "message": "அறியப்படாத நிகழ்வு"
   },
   "Unknown_error": {
     "message": "அறியப்படாத பிழை"
-  },
-  "Unknown_error_checking_agent_status": {
-    "message": "ஏஜெண்ட் நிலையை சரிபார்க்கும் போது அறியப்படாத பிழை"
-  },
-  "Unknown_error_occurred": {
-    "message": "அறியப்படாத பிழை ஏற்பட்டது"
-  },
-  "Unknown_error_occurred_during_task_execu_c6be": {
-    "message": "பணி செயல்பாட்டின் போது அறியப்படாத பிழை ஏற்பட்டது"
   },
   "Unknown_error_processing_submission": {
     "message": "சமர்ப்பிப்பை செயலாக்கும் போது அறியப்படாத பிழை"
@@ -1862,11 +1942,20 @@
       }
     }
   },
+  "Unlock": {
+    "message": "திற"
+  },
+  "Unlocking": {
+    "message": "திறக்கப்படுகிறது..."
+  },
   "Unsaved_Changes": {
     "message": "சேமிக்கப்படாத மாற்றங்கள்"
   },
   "Untitled": {
     "message": "தலைப்பு இல்லாதது"
+  },
+  "Untrusted": {
+    "message": "நம்பமுடியாத"
   },
   "Upcoming": {
     "message": "வரவிருக்கும்"
@@ -1895,6 +1984,9 @@
   "Use_Own_API_Key": {
     "message": "உங்கள் API சாவியைப் பயன்படுத்தவும்"
   },
+  "Use_your_ChatGPT_Plus_Pro_subscription_i_e8b8": {
+    "message": "API விசைக்கு பதிலாக உங்கள் ChatGPT Plus/Pro சந்தாவைப் பயன்படுத்தவும்"
+  },
   "User_Center": {
     "message": "பயனர் மையம்"
   },
@@ -1906,6 +1998,9 @@
   },
   "Using_extra_credits": {
     "message": "கூடுதல் கிரெடிட்களைப் பயன்படுத்துகிறது"
+  },
+  "Vault_Locked": {
+    "message": "வால்ட் பூட்டப்பட்டுள்ளது"
   },
   "Verbosity": {
     "message": "விரிவாக்கம்"
@@ -1979,9 +2074,6 @@
   "Your_personal_AI_assistant": {
     "message": "உங்கள் தனிப்பட்ட AI உதவியாளர்"
   },
-  "Your_session_has_expired_Please_log_in_a_c52a": {
-    "message": "உங்கள் அமர்வு காலாவதியாகியுள்ளது. மீண்டும் உள்நுழையவும்."
-  },
   "DISCONNECTED": {
     "message": "[துண்டிக்கப்பட்டது]"
   },
@@ -2015,8 +2107,14 @@
   "exec_unknown_command": {
     "message": "exec (அறியப்படாத கட்டளை)"
   },
+  "more_results": {
+    "message": "மேலும் முடிவுகள்..."
+  },
   "optional": {
     "message": "விருப்பமான"
+  },
+  "or": {
+    "message": "அல்லது"
   },
   "remaining": {
     "message": "மீதம்"

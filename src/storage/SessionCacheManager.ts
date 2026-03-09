@@ -12,6 +12,7 @@
  * - Outdated cleanup (configurable, default 30 days)
  */
 
+import type { StorageAdapter } from './StorageAdapter';
 import { IndexedDBAdapter, STORE_NAMES, INDEX_NAMES } from './IndexedDBAdapter';
 import { ConfigStorage } from './ConfigStorage';
 import type {
@@ -147,10 +148,10 @@ export class CorruptedDataError extends CacheError {
  * SessionCacheManager - Main cache management class
  */
 export class SessionCacheManager {
-  private dbAdapter: IndexedDBAdapter;
+  private dbAdapter: StorageAdapter;
   private configStorage: ConfigStorage;
 
-  constructor(dbAdapter?: IndexedDBAdapter, configStorage?: ConfigStorage) {
+  constructor(dbAdapter?: StorageAdapter, configStorage?: ConfigStorage) {
     this.dbAdapter = dbAdapter || new IndexedDBAdapter();
     this.configStorage = configStorage || new ConfigStorage();
   }

@@ -56,7 +56,7 @@ export async function initializeHotkeys(): Promise<void> {
       await appWindow.setFocus();
     }
     // Emit an event to focus the input field
-    window.dispatchEvent(new CustomEvent('pi:focus-input'));
+    window.dispatchEvent(new CustomEvent('applepi:focus-input'));
   });
 
   // Register quick action hotkey
@@ -68,7 +68,7 @@ export async function initializeHotkeys(): Promise<void> {
       await appWindow.setFocus();
     }
     // Emit an event to open quick action menu
-    window.dispatchEvent(new CustomEvent('pi:quick-action'));
+    window.dispatchEvent(new CustomEvent('applepi:quick-action'));
   });
 
   console.log('[Hotkeys] Global hotkeys initialized');

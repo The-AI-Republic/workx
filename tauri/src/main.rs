@@ -3,10 +3,14 @@
 
 mod browser_commands;
 mod commands;
+mod db_storage;
 mod http_commands;
 mod keychain_commands;
 mod mcp_manager;
+mod oauth_server;
 mod sandbox;
+mod rollout_db;
+mod scheduler_commands;
 mod skills_commands;
 mod storage_commands;
 mod terminal_commands;
@@ -110,6 +114,23 @@ fn get_theme_icon(is_dark: bool) -> Option<Image<'static>> {
         }
     } else {
         load_png_image(ICON_LIGHT)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_load_png_image_invalid_data() {
+        let result = load_png_image(b"not a png file");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_load_png_image_empty() {
+        let result = load_png_image(b"");
+        assert!(result.is_none());
     }
 }
 
@@ -356,12 +377,49 @@ fn main() {
             keychain_commands::keychain_set,
             keychain_commands::keychain_delete,
             keychain_commands::keychain_list_accounts,
+            // Rollout database commands
+            rollout_db::rollout_db_init,
+            rollout_db::rollout_db_put_metadata,
+            rollout_db::rollout_db_get_metadata,
+            rollout_db::rollout_db_delete_metadata,
+            rollout_db::rollout_db_get_all_metadata,
+            rollout_db::rollout_db_add_items,
+            rollout_db::rollout_db_get_items,
+            rollout_db::rollout_db_get_last_sequence,
+            rollout_db::rollout_db_delete_items_by_rollout_ids,
+            rollout_db::rollout_db_cleanup_expired,
+            rollout_db::rollout_db_get_stats,
+            rollout_db::rollout_db_list_conversations,
+            rollout_db::rollout_db_close,
+            // OAuth callback server
+            oauth_server::start_oauth_callback_server,
             // Skills filesystem commands
             skills_commands::skills_ensure_dir,
             skills_commands::skills_list_dirs,
             skills_commands::skills_read_file,
             skills_commands::skills_write_file,
             skills_commands::skills_remove_dir,
+            // SQLite storage commands
+            db_storage::storage_init,
+            db_storage::storage_close,
+            db_storage::storage_get,
+            db_storage::storage_set,
+            db_storage::storage_delete,
+            db_storage::storage_get_many,
+            db_storage::storage_set_many,
+            db_storage::storage_delete_many,
+            db_storage::storage_list,
+            db_storage::storage_query,
+            db_storage::storage_count,
+            db_storage::storage_clear,
+            db_storage::storage_vacuum,
+            db_storage::storage_batch,
+            // Scheduler OS-level job commands
+            scheduler_commands::scheduler_register_os_job,
+            scheduler_commands::scheduler_remove_os_job,
+            scheduler_commands::scheduler_list_os_jobs,
+            scheduler_commands::scheduler_has_os_job,
+            scheduler_commands::scheduler_clear_os_jobs,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

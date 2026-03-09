@@ -68,12 +68,6 @@
   "API_key_for_authentication_stored_encryp_0d20": {
     "message": "API-avain todennukseen (tallennettu salattuna)"
   },
-  "API_key_has_expired": {
-    "message": "API-avain on vanhentunut"
-  },
-  "API_key_has_insufficient_permissions": {
-    "message": "API-avaimella on riittämättömät oikeudet"
-  },
   "API_key_saved_successfully": {
     "message": "API-avain tallennettu onnistuneesti!"
   },
@@ -122,9 +116,6 @@
   "Agent_Execution_Tools": {
     "message": "Agentin suoritustyökalut"
   },
-  "Agent_Turn_Complete": {
-    "message": "Agentin vuoro valmis"
-  },
   "Agent_URL_is_required": {
     "message": "Agentin URL on pakollinen"
   },
@@ -143,11 +134,11 @@
   "Agent_removed_successfully": {
     "message": "Agentti poistettu onnistuneesti"
   },
-  "Agent_turn_completed_successfully": {
-    "message": "Agentin vuoro suoritettu onnistuneesti"
-  },
   "Agent_updated_successfully": {
     "message": "Agentti päivitetty onnistuneesti"
+  },
+  "All_API_keys_are_encrypted_at_rest_using_ca92": {
+    "message": "Kaikki API-avaimet on salattu levossa käyttäen AES-256-GCM‑salausta. Ota PIN-suojaus käyttöön lisäturvaa varten."
   },
   "All_actions_are_auto_approved_on_these_d_ffda": {
     "message": "Kaikki toiminnot hyväksytään automaattisesti näillä domaineilla."
@@ -179,6 +170,12 @@
   "Always_Approve": {
     "message": "Hyväksy aina"
   },
+  "Always_dark": {
+    "message": "Aina tumma"
+  },
+  "Always_light": {
+    "message": "Aina vaalea"
+  },
   "Apple_Pi_Your_personal_AI_Alpha": {
     "message": "Apple Pi: Henkilökohtainen AI (Alpha)"
   },
@@ -200,14 +197,16 @@
   "Approve": {
     "message": "Hyväksy"
   },
-  "Approve_changes_to_eventMsg_data_path": {
-    "message": "Hyväksy muutokset kohteeseen: ${eventMsg.data.path}"
-  },
-  "Approve_execution_eventMsg_data_command": {
-    "message": "Hyväksy suoritus: ${eventMsg.data.command}"
-  },
   "Are_you_sure_you_want_to_cancel_this_tas_8573": {
     "message": "Haluatko varmasti peruuttaa tämän tehtävän?"
+  },
+  "Are_you_sure_you_want_to_delete_the_skil_3268": {
+    "message": "Haluatko varmasti poistaa taidon \"/$1$\"?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Are_you_sure_you_want_to_remove_this_age_b9ba": {
     "message": "Haluatko varmasti poistaa tämän agentin?"
@@ -234,9 +233,6 @@
   },
   "Authentication_credential_stored_encrypt_c46a": {
     "message": "Todennustunniste (salaamalla tallennettu)"
-  },
-  "Authentication_failed": {
-    "message": "Todennus epäonnistui"
   },
   "Authentication_method_for_the_agent": {
     "message": "Agentin todennusmenetelmä"
@@ -280,9 +276,6 @@
   "Backend_not_available_Please_wait_a_mome_9218": {
     "message": "Taustajärjestelmä ei ole käytettävissä. Odota hetki ja yritä uudelleen."
   },
-  "Backend_server_error_please_try_again_la_0515": {
-    "message": "Taustapalvelimen virhe – yritä myöhemmin uudelleen"
-  },
   "Backoff_Multiplier": {
     "message": "Takaisinkytkentäkerroin"
   },
@@ -306,6 +299,9 @@
   },
   "Blocked_Domains": {
     "message": "Estetyt verkkotunnukset"
+  },
+  "Body_Markdown": {
+    "message": "Sisältö (Markdown)"
   },
   "Browser_Tools": {
     "message": "Selaintyökalut"
@@ -340,9 +336,6 @@
   "Cancelled": {
     "message": "Peruutettu"
   },
-  "Cannot_execute_task_No_API_key_configure_c622": {
-    "message": "Tehtävää ei voida suorittaa: ${providerName}-palvelulle ei ole määritetty API-avainta. Siirry Asetuksiin → Mallin määritys ja lisää API-avaimesi."
-  },
   "Cannot_select_model_1": {
     "message": "Mallia ei voi valita: $1$",
     "placeholders": {
@@ -362,8 +355,20 @@
   "Capabilities": {
     "message": "Ominaisuudet"
   },
+  "Change_PIN": {
+    "message": "Vaihda PIN"
+  },
+  "Changing": {
+    "message": "Muutetaan..."
+  },
   "Chat_History": {
     "message": "Keskusteluhistoria"
+  },
+  "ChatGPT_Subscription": {
+    "message": "ChatGPT-tilaus"
+  },
+  "ChatGPT_session_expired_Please_sign_in_a_f393": {
+    "message": "ChatGPT-istunto on vanhentunut. Kirjaudu sisään uudelleen."
   },
   "Checking_agent_status": {
     "message": "Tarkistetaan agentin tila..."
@@ -377,11 +382,8 @@
   "Choose_which_update_channel_to_follow": {
     "message": "Valitse, mitä päivityskanavaa seurata"
   },
-  "Classic_terminal_style_with_green_text_o_02cc": {
-    "message": "Klassinen terminaalityyli, jossa vihreä teksti mustalla taustalla"
-  },
-  "Clean_modern_chat_interface_similar_to_C_2401": {
-    "message": "Selkeä, moderni chat-käyttöliittymä, joka muistuttaa ChatGPT:tä"
+  "Clear_search": {
+    "message": "Tyhjennä haku"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Napsauta Browserx-kuvaketta työkalupalkissa tai paina Alt+Shift+C"
@@ -395,14 +397,17 @@
   "Close": {
     "message": "Sulje"
   },
+  "Close_scheduler": {
+    "message": "Sulje aikatauluttaja"
+  },
   "Close_settings": {
     "message": "Sulje asetukset"
   },
+  "Close_skills": {
+    "message": "Sulje taidot"
+  },
   "Collapse": {
     "message": "Tiivistä"
-  },
-  "Command_Approval_Required": {
-    "message": "Komennon hyväksyntä vaaditaan"
   },
   "Command_completed": {
     "message": "Komento suoritettu"
@@ -415,9 +420,6 @@
   },
   "Completed": {
     "message": "Valmis"
-  },
-  "Completed_lastAssistantMessage_substring_40c8": {
-    "message": "Valmis: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Pakkaa välimuistitiedot tallennustilan säästämiseksi"
@@ -436,6 +438,12 @@
   },
   "Configured_Servers": {
     "message": "Määritetyt palvelimet"
+  },
+  "Confirm_New_PIN": {
+    "message": "Vahvista uusi PIN"
+  },
+  "Confirm_PIN": {
+    "message": "Vahvista PIN"
   },
   "Connect": {
     "message": "Yhdistä"
@@ -460,6 +468,9 @@
   },
   "Connected_successfully": {
     "message": "Yhteys muodostettu onnistuneesti"
+  },
+  "Connected_via_ChatGPT": {
+    "message": "Yhdistetty ChatGPT:n kautta"
   },
   "Connecting": {
     "message": "Yhdistetään..."
@@ -501,15 +512,6 @@
   "Connection_test_successful_API_key_is_va_3e34": {
     "message": "Yhteystesti onnistui! (API-avain on kelvollinen)"
   },
-  "Connection_was_refused": {
-    "message": "Yhteys hylättiin"
-  },
-  "Connection_was_reset": {
-    "message": "Yhteys nollattiin"
-  },
-  "Content_violates_policy_contentType_cont_2034": {
-    "message": "Sisältö rikkoo käytäntöä: ${contentType}-sisältö ei ole sallittu"
-  },
   "Context_Window": {
     "message": "Kontekstin ikkuna"
   },
@@ -524,23 +526,47 @@
   "Controls_how_aggressively_the_agent_asks_d3ba": {
     "message": "Säätää, kuinka aggressiivisesti agentti pyytää hyväksyntää."
   },
+  "Create": {
+    "message": "Luo"
+  },
+  "Create_New_Skill": {
+    "message": "Luo uusi taito"
+  },
   "Create_New_Tab": {
     "message": "Luo uusi välilehti"
+  },
+  "Create_Skill": {
+    "message": "Luo taito"
+  },
+  "Create_a_6_digit_PIN_to_protect_your_API_2b1a": {
+    "message": "Luo 6‑numeroinen PIN suojataksesi API-avaimesi. Tarvitset tätä PIN‑koodia selaimen uudelleenkäynnistyksen jälkeen."
+  },
+  "Create_a_skill_to_add_custom_commands_or_cb10": {
+    "message": "Luo taito lisätäksesi mukautettuja /‑komentoja tai automaattisesti kutsuttavia agenttikäyttäytymisiä."
   },
   "Created": {
     "message": "Luotu"
   },
+  "Creating": {
+    "message": "Luodaan..."
+  },
   "Creator": {
     "message": "Tekijä"
+  },
+  "Credential_Encryption": {
+    "message": "Tunnistetietojen salaus"
+  },
+  "Credential_encryption_and_PIN_protection": {
+    "message": "Tunnistetietojen salaus ja PIN-suojaus"
   },
   "Credit_Details": {
     "message": "Krediittitiedot"
   },
+  "Current_PIN": {
+    "message": "Nykyinen PIN"
+  },
   "Current_Plan": {
     "message": "Nykyinen suunnitelma:"
-  },
-  "DNS_lookup_failed": {
-    "message": "DNS-haku epäonnistui"
   },
   "DOM_Tool": {
     "message": "DOM-työkalu"
@@ -566,6 +592,9 @@
   "Default": {
     "message": "Oletus"
   },
+  "Delete": {
+    "message": "Poista"
+  },
   "Deny": {
     "message": "Hylkää"
   },
@@ -583,6 +612,9 @@
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "AI Republicin kehittämä ja tukema"
+  },
+  "Disabled": {
+    "message": "Ei käytössä"
   },
   "Discard_Changes": {
     "message": "Hylkää muutokset"
@@ -638,6 +670,12 @@
   "Enable_Model_Context_Protocol_tools_from_29ac": {
     "message": "Ota käyttöön Model Context Protocol -työkalut yhdistetyistä MCP-palvelimista"
   },
+  "Enable_PIN": {
+    "message": "Ota PIN käyttöön"
+  },
+  "Enable_PIN_Protection": {
+    "message": "Ota PIN-suojaus käyttöön"
+  },
   "Enable_auto_connect_when_browserx_starts": {
     "message": "Ota automaattinen yhdistäminen käyttöön, kun browserx käynnistyy"
   },
@@ -659,8 +697,14 @@
   "Enter_API_key_or_bearer_token": {
     "message": "Syötä API-avain tai kantaja-token"
   },
+  "Enter_your_6_digit_PIN_to_unlock_your_AP_1fff": {
+    "message": "Syötä 6‑numeroinen PIN-koodisi avataksesi API-avaimet."
+  },
   "Enter_your_LLM_API_key": {
     "message": "Syötä LLM API -avaimesi"
+  },
+  "Enter_your_current_PIN_to_remove_protect_8b75": {
+    "message": "Syötä nykyinen PIN-koodisi poistaaksesi suojauksen. API-avaimet pysyvät silti salattuina oletusavaimella."
   },
   "Enter_your_task": {
     "message": "Syötä tehtäväsi..."
@@ -691,6 +735,9 @@
   },
   "Explain_with_Browserx": {
     "message": "Selitä Browserxilla"
+  },
+  "Export": {
+    "message": "Vie"
   },
   "Extension_Permission": {
     "message": "Laajennus ja oikeudet"
@@ -743,12 +790,6 @@
         "content": "$1"
       }
     }
-  },
-  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
-    "message": "Uuden välilehden luominen epäonnistui. Yritä uudelleen."
-  },
-  "Failed_to_create_browser_tab_errorMsg": {
-    "message": "Selaimen välilehden luominen epäonnistui: ${errorMsg}"
   },
   "Failed_to_disconnect_1": {
     "message": "Yhteyden katkaisu epäonnistui: $1$",
@@ -820,9 +861,6 @@
   "Failed_to_stop_the_task_Please_try_again": {
     "message": "Tehtävän pysäyttäminen epäonnistui. Yritä uudelleen."
   },
-  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
-    "message": "Välilehden vaihtaminen ${newTabId} epäonnistui: ${errorMsg}"
-  },
   "Failed_to_test_connection": {
     "message": "Yhteyden testaus epäonnistui"
   },
@@ -837,9 +875,6 @@
       }
     }
   },
-  "File_Change_Approval_Required": {
-    "message": "Tiedoston muutoksen hyväksyntä vaaditaan"
-  },
   "File_Operations_Not_Available": {
     "message": "Tiedostotoiminnot (Ei saatavilla)"
   },
@@ -848,6 +883,12 @@
   },
   "Flex": {
     "message": "Joustava"
+  },
+  "Follows_system_theme": {
+    "message": "Seuraa järjestelmän teemaa"
+  },
+  "Forgot_PIN": {
+    "message": "Unohditko PIN-koodin?"
   },
   "Form_Automation_Tool": {
     "message": "Lomakeautomatisointityökalu"
@@ -869,6 +910,9 @@
   },
   "Get_Started": {
     "message": "Aloita"
+  },
+  "Green_text_terminal": {
+    "message": "Vihreä tekstiterminaali"
   },
   "Hello_NAME": {
     "message": "Hei $NAME$",
@@ -892,6 +936,21 @@
   },
   "Image_Input": {
     "message": "Kuvan syöte"
+  },
+  "Import": {
+    "message": "Tuo"
+  },
+  "Import_Skill_from_URL": {
+    "message": "Tuo taito URL-osoitteesta"
+  },
+  "Import_from_URL": {
+    "message": "Tuo URL-osoitteesta"
+  },
+  "Imported_skills_are_untrusted_by_default_561a": {
+    "message": "Tuodut taidot eivät ole oletuksena luotettuja eikä niitä voi kutsua automaattisesti."
+  },
+  "Importing": {
+    "message": "Tuodaan..."
   },
   "Improve_this_text_info_selectionText": {
     "message": "Paranna tätä tekstiä: ${info.selectionText}"
@@ -928,9 +987,6 @@
   "Invalid_API_key": {
     "message": "Virheellinen API-avain"
   },
-  "Invalid_API_key_provided": {
-    "message": "Virheellinen API-avain"
-  },
   "Invalid_URL_format": {
     "message": "Virheellinen URL-osoitteen muoto"
   },
@@ -939,6 +995,9 @@
   },
   "Invalid_submission_format_op_missing_typ_0fc0": {
     "message": "Virheellinen lähetysmuoto: op-kentästä puuttuu type-kenttä"
+  },
+  "Invocation_Mode": {
+    "message": "Kutsumismoodi"
   },
   "Keyboard_Shortcuts": {
     "message": "Pikanäppäimet"
@@ -981,6 +1040,9 @@
   },
   "Loading_settings": {
     "message": "Ladataan asetuksia..."
+  },
+  "Loading_skills": {
+    "message": "Ladataan taitoja..."
   },
   "Loading_tabs": {
     "message": "Ladataan välilehtiä..."
@@ -1104,16 +1166,16 @@
   "Model_and_provider_settings_loaded_from__55a3": {
     "message": "Mallin ja tarjoajan asetukset ladattu oletusasetuksista (vain luku)"
   },
-  "Model_changed_to_1_Please_configure_your_1c81": {
-    "message": "Malli vaihdettiin $1$:ksi. Määritä API-avaimesi.",
+  "Model_changed_to_1_Conversation_preserve_2db6": {
+    "message": "Malli vaihdettiin kohteeseen $1$. Keskustelu säilytetty.",
     "placeholders": {
       "1": {
         "content": "$1"
       }
     }
   },
-  "Model_changed_to_1_Session_will_be_reini_e2ce": {
-    "message": "Malli vaihdettiin $1$:ksi. Istunto alustetaan uudelleen.",
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "Malli vaihdettiin $1$:ksi. Määritä API-avaimesi.",
     "placeholders": {
       "1": {
         "content": "$1"
@@ -1131,8 +1193,14 @@
       }
     }
   },
-  "Modern_Chat": {
-    "message": "Moderni keskustelu"
+  "Modern_Chat_Auto": {
+    "message": "Moderni chat automaattinen"
+  },
+  "Modern_Chat_Dark": {
+    "message": "Moderni chat tumma"
+  },
+  "Modern_Chat_Light": {
+    "message": "Moderni chat vaalea"
   },
   "Monthly_Credits": {
     "message": "Kuukausikrediitit"
@@ -1158,14 +1226,14 @@
   "Network_error": {
     "message": "Verkkovirhe"
   },
-  "Network_error_occurred": {
-    "message": "Verkkovirhe tapahtui"
-  },
   "Never_expire_permanent": {
     "message": "Ei koskaan vanhene (pysyvä)"
   },
   "New_Conversation": {
     "message": "Uusi keskustelu"
+  },
+  "New_PIN": {
+    "message": "Uusi PIN"
   },
   "No_A2A_agents_configured_yet": {
     "message": "A2A-agentteja ei ole vielä määritetty."
@@ -1203,14 +1271,23 @@
   "No_scheduled_time": {
     "message": "Ei aikataulutettua aikaa"
   },
+  "No_settings_found": {
+    "message": "Asetuksia ei löytynyt"
+  },
   "No_skills_available": {
     "message": "Ei käytettävissä olevia taitoja."
+  },
+  "No_skills_configured_yet": {
+    "message": "Taitoja ei ole vielä määritetty."
   },
   "No_steps_in_plan": {
     "message": "Suunnitelmassa ei ole vaiheita"
   },
   "No_tabs_available": {
     "message": "Välilehtiä ei ole saatavilla"
+  },
+  "No_tasks_in_plan": {
+    "message": "Suunnitelmassa ei ole tehtäviä"
   },
   "No_time_set": {
     "message": "Aikaa ei asetettu"
@@ -1273,6 +1350,12 @@
       }
     }
   },
+  "PIN": {
+    "message": "PIN"
+  },
+  "PIN_Protection": {
+    "message": "PIN-suojaus"
+  },
   "Page_Action_Tool": {
     "message": "Sivun toimintotyökalu"
   },
@@ -1305,17 +1388,6 @@
   "Persist_Cache_to_Storage": {
     "message": "Tallenna välimuisti pysyvästi"
   },
-  "Plan_1_step_s": {
-    "message": "Suunnitelma: $1$ vaihetta",
-    "placeholders": {
-      "1": {
-        "content": "$1"
-      }
-    }
-  },
-  "Please_check_your_API_key_in_settings": {
-    "message": "Tarkista API-avaimesi asetuksissa."
-  },
   "Please_enter_a_task_description": {
     "message": "Syötä tehtävän kuvaus"
   },
@@ -1325,9 +1397,6 @@
   "Please_input_a_valid_API_key": {
     "message": "Syötä kelvollinen API-avain."
   },
-  "Please_log_in_again_to_continue_using_th_3d8f": {
-    "message": "Kirjaudu uudelleen jatkaaksesi AI-agentin käyttöä."
-  },
   "Please_select_a_provider": {
     "message": "Valitse palveluntarjoaja"
   },
@@ -1336,6 +1405,9 @@
   },
   "Please_upgrade_the_plan_to_unblock_world_9fed": {
     "message": "Päivitä suunnitelma avataksesi maailman kehittyneimmät mallit"
+  },
+  "Port_1455_is_in_use_Please_close_any_app_a809": {
+    "message": "Portti 1455 on käytössä. Sulje kaikki sovellukset, jotka käyttävät tätä porttia, ja yritä uudelleen."
   },
   "Power": {
     "message": "Teho"
@@ -1420,9 +1492,6 @@
   "Refreshes_in": {
     "message": "Päivittyy pian"
   },
-  "Reject": {
-    "message": "Hylkää"
-  },
   "Release_Date": {
     "message": "Julkaisupäivä"
   },
@@ -1441,11 +1510,14 @@
   "Remove_API_Key": {
     "message": "Poista API-avain"
   },
+  "Remove_PIN": {
+    "message": "Poista PIN"
+  },
+  "Removing": {
+    "message": "Poistetaan..."
+  },
   "Request_Timeout": {
     "message": "Pyyntö aikakatkaisu"
-  },
-  "Request_timed_out": {
-    "message": "Pyyntö aikakatkaistiin"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": "Pyynnön aikakatkaisu millisekunneissa (5000-120000)"
@@ -1453,11 +1525,11 @@
   "Request_timeout_in_milliseconds_5000_180_5766": {
     "message": "Pyynnön aikakatkaisu millisekunneissa (5000-180000)"
   },
-  "Request_was_aborted": {
-    "message": "Pyyntö keskeytettiin"
+  "Reset_Vault": {
+    "message": "Nollaa holvi"
   },
-  "Response_failed": {
-    "message": "Vastaus epäonnistui"
+  "Resetting": {
+    "message": "Nollataan..."
   },
   "Restricted": {
     "message": "Rajoitettu"
@@ -1488,6 +1560,9 @@
   },
   "Running": {
     "message": "Suoritetaan"
+  },
+  "SKILL_md_URL": {
+    "message": "SKILL.md URL"
   },
   "STREAM_ERROR": {
     "message": "STREAM-virhe"
@@ -1522,9 +1597,6 @@
   "Scheduled_Task": {
     "message": "Aikataulutettu tehtävä"
   },
-  "Scheduled_Task_Starting": {
-    "message": "Aikataulutettu tehtävä käynnistyy"
-  },
   "Scheduled_Tasks": {
     "message": "Aikataulutetut tehtävät"
   },
@@ -1534,8 +1606,14 @@
   "Search_complete": {
     "message": "Haku valmis"
   },
+  "Search_settings": {
+    "message": "Etsi asetuksia..."
+  },
   "Searching": {
     "message": "Haetaan..."
+  },
+  "Security": {
+    "message": "Turvallisuus"
   },
   "Security_Privacy": {
     "message": "Turvallisuus ja yksityisyys"
@@ -1583,14 +1661,14 @@
   "Session_error": {
     "message": "Istuntovirhe"
   },
-  "Session_expired_please_log_in_again_to_c_5d31": {
-    "message": "Istunto on vanhentunut – kirjaudu uudelleen jatkaaksesi AI‑agentin käyttöä"
-  },
   "Session_limit_reached_New_tasks_will_que_2877": {
     "message": "Istuntoraja saavutettu. Uudet tehtävät asetetaan jonoon."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Aseta, milloin jakeludata vanhenee"
+  },
+  "Setting_up": {
+    "message": "Asetetaan..."
   },
   "Settings": {
     "message": "Asetukset"
@@ -1613,8 +1691,17 @@
   "Show_warning_when_storage_usage_exceeds__7c40": {
     "message": "Näytä varoitus, kun tallennustilan käyttö ylittää tämän prosenttiosuuden (oletus: 90 %)"
   },
+  "Sign_in_failed": {
+    "message": "Kirjautuminen epäonnistui"
+  },
   "Sign_in_to_your_account": {
     "message": "Kirjaudu sisään tilillesi"
+  },
+  "Sign_in_with_ChatGPT": {
+    "message": "Kirjaudu sisään ChatGPT:llä"
+  },
+  "Signing_in": {
+    "message": "Kirjaudutaan..."
   },
   "Skills": {
     "message": "Taidot"
@@ -1688,9 +1775,6 @@
   "Task_Details": {
     "message": "Tehtävän tiedot"
   },
-  "Task_Failed": {
-    "message": "Tehtävä epäonnistui"
-  },
   "Task_History": {
     "message": "Tehtävähistoria"
   },
@@ -1716,6 +1800,14 @@
   },
   "Task_failed": {
     "message": "Tehtävä epäonnistui"
+  },
+  "Task_scheduled_for_1": {
+    "message": "Tehtävä ajoitettu $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Task_started": {
     "message": "Tehtävä aloitettu"
@@ -1744,11 +1836,8 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Agentti käyttää tällä hetkellä taustapalvelutilaa. LLM-pyynnöt reititetään AI Republic -palvelimen kautta. Keskustelusi käsitellään turvallisesti infrastruktuurimme kautta."
   },
-  "The_model_switch_will_clear_the_current__3cd7": {
-    "message": "Mallin vaihtaminen tyhjentää nykyisen keskustelun. Haluatko jatkaa?"
-  },
-  "The_server_encountered_an_error_Please_t_9ecc": {
-    "message": "Palvelin kohtasi virheen. Yritä myöhemmin uudelleen."
+  "This_will_permanently_delete_all_stored__7eee": {
+    "message": "Tämä poistaa pysyvästi kaikki tallennetut API-avaimet ja nollaa holvin. Sinun täytyy syöttää API-avaimet uudelleen."
   },
   "Time": {
     "message": "Aika"
@@ -1785,6 +1874,9 @@
       }
     }
   },
+  "Too_many_failed_attempts_Try_again_in": {
+    "message": "Liian monta epäonnistunutta yritystä. Yritä uudelleen"
+  },
   "Tool_Timeout_ms": {
     "message": "Työkalun aikakatkaisu (ms)"
   },
@@ -1799,6 +1891,9 @@
   },
   "Tools_Settings": {
     "message": "Työkalujen asetukset"
+  },
+  "Trust": {
+    "message": "Luota"
   },
   "Trusted": {
     "message": "Luotettu"
@@ -1830,26 +1925,11 @@
   "Unable_to_load_credit_information": {
     "message": "Luottotietoja ei voida ladata"
   },
-  "Unable_to_reach_the_backend_server_pleas_3350": {
-    "message": "Taustapalvelimeen ei saada yhteyttä – tarkista yhteys"
-  },
-  "Unable_to_reach_the_server_Please_check__e5d0": {
-    "message": "Palvelimeen ei saada yhteyttä. Tarkista yhteys ja yritä uudelleen."
-  },
   "Unknown_Event": {
     "message": "Tuntematon tapahtuma"
   },
   "Unknown_error": {
     "message": "Tuntematon virhe"
-  },
-  "Unknown_error_checking_agent_status": {
-    "message": "Tuntematon virhe tarkistettaessa agentin tilaa"
-  },
-  "Unknown_error_occurred": {
-    "message": "Tuntematon virhe tapahtui"
-  },
-  "Unknown_error_occurred_during_task_execu_c6be": {
-    "message": "Tuntematon virhe tapahtui tehtävän suorituksen aikana"
   },
   "Unknown_error_processing_submission": {
     "message": "Tuntematon virhe käsiteltäessä lähetystä"
@@ -1862,11 +1942,20 @@
       }
     }
   },
+  "Unlock": {
+    "message": "Avaa lukko"
+  },
+  "Unlocking": {
+    "message": "Avataan lukkoa..."
+  },
   "Unsaved_Changes": {
     "message": "Tallentamattomat muutokset"
   },
   "Untitled": {
     "message": "Nimetön"
+  },
+  "Untrusted": {
+    "message": "Ei luotettu"
   },
   "Upcoming": {
     "message": "Tuleva"
@@ -1895,6 +1984,9 @@
   "Use_Own_API_Key": {
     "message": "Käytä omaa API-avainta"
   },
+  "Use_your_ChatGPT_Plus_Pro_subscription_i_e8b8": {
+    "message": "Käytä ChatGPT Plus/Pro -tilaustasi API-avaimen sijaan"
+  },
   "User_Center": {
     "message": "Käyttäjäkeskus"
   },
@@ -1906,6 +1998,9 @@
   },
   "Using_extra_credits": {
     "message": "Käytetään lisäluottoja"
+  },
+  "Vault_Locked": {
+    "message": "Holvi lukittu"
   },
   "Verbosity": {
     "message": "Yksityiskohtaisuus"
@@ -1979,9 +2074,6 @@
   "Your_personal_AI_assistant": {
     "message": "Henkilökohtainen AI-avustajasi"
   },
-  "Your_session_has_expired_Please_log_in_a_c52a": {
-    "message": "Istuntosi on vanhentunut. Kirjaudu sisään uudelleen."
-  },
   "DISCONNECTED": {
     "message": "[YHDISTÄMÄTÖN]"
   },
@@ -2015,8 +2107,14 @@
   "exec_unknown_command": {
     "message": "exec (tuntematon komento)"
   },
+  "more_results": {
+    "message": "lisää tuloksia..."
+  },
   "optional": {
     "message": "valinnainen"
+  },
+  "or": {
+    "message": "tai"
   },
   "remaining": {
     "message": "jäljellä"

@@ -1,7 +1,7 @@
 /**
  * MCP Configuration Module
  *
- * Provides Zod validation schemas and chrome.storage.local helpers
+ * Provides Zod validation schemas and ConfigStorageProvider helpers
  * for MCP server configurations.
  */
 
@@ -9,7 +9,6 @@ import { z } from 'zod';
 import type { IMCPServerConfig, IMCPServerConfigCreate, IMCPServerConfigUpdate, MCPTransportType, MCPPlatformScope } from './types';
 import {
   getConfigStorage,
-  isConfigStorageInitialized,
   type ConfigStorageProvider
 } from '../storage/ConfigStorageProvider';
 
@@ -64,7 +63,7 @@ export const MCPTransportTypeSchema = z.enum(['sse', 'stdio']);
 /**
  * Schema for platform scope.
  */
-export const MCPPlatformScopeSchema = z.enum(['shared', 'extension', 'desktop']);
+export const MCPPlatformScopeSchema = z.enum(['shared', 'extension', 'desktop', 'server']);
 
 /**
  * Full schema for a persisted MCP server configuration.
@@ -140,7 +139,7 @@ export const MCPServerConfigUpdateSchema = z.object({
 });
 
 /**
- * Schema for the array of server configurations stored in chrome.storage.local.
+ * Schema for the array of server configurations stored via ConfigStorageProvider.
  */
 export const MCPServersArraySchema = z.array(MCPServerConfigSchema);
 
@@ -159,46 +158,10 @@ const STORAGE_KEY = 'mcpServers';
 const DEBUG_LOGGING_KEY = 'mcpDebugLogging';
 
 /**
- * Get storage provider with fallback
+ * Get storage provider (throws if not initialized).
  */
-async function getStorage(): Promise<ConfigStorageProvider | null> {
-  if (isConfigStorageInitialized()) {
-    return getConfigStorage();
-  }
-  // Fallback to chrome.storage.local if provider not initialized
-  if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-    return {
-      async get<T>(key: string): Promise<T | null> {
-        const result = await chrome.storage.local.get(key);
-        return (result[key] as T) ?? null;
-      },
-      async set<T>(key: string, value: T): Promise<void> {
-        await chrome.storage.local.set({ [key]: value });
-      },
-      async remove(key: string): Promise<void> {
-        await chrome.storage.local.remove(key);
-      },
-      async getMany<T>(keys: string[]): Promise<Record<string, T>> {
-        return await chrome.storage.local.get(keys) as Record<string, T>;
-      },
-      async setMany<T>(items: Record<string, T>): Promise<void> {
-        await chrome.storage.local.set(items);
-      },
-      async removeMany(keys: string[]): Promise<void> {
-        await chrome.storage.local.remove(keys);
-      },
-      async getAll(): Promise<Record<string, unknown>> {
-        return await chrome.storage.local.get(null);
-      },
-      async clear(): Promise<void> {
-        await chrome.storage.local.clear();
-      },
-      async getBytesInUse(): Promise<number | null> {
-        return null;
-      }
-    };
-  }
-  return null;
+function getStorage(): ConfigStorageProvider {
+  return getConfigStorage();
 }
 
 /**
@@ -235,12 +198,7 @@ function migrateServerConfig(server: Record<string, unknown>): Record<string, un
  */
 export async function loadServers(): Promise<IMCPServerConfig[]> {
   try {
-    const storage = await getStorage();
-    if (!storage) {
-      console.warn('[MCPConfig] Storage not available');
-      return [];
-    }
-
+    const storage = getStorage();
     const rawServers = await storage.get<IMCPServerConfig[]>(STORAGE_KEY);
 
     if (!rawServers || !Array.isArray(rawServers)) {
@@ -289,11 +247,7 @@ export async function loadServers(): Promise<IMCPServerConfig[]> {
  */
 export async function saveServers(servers: IMCPServerConfig[]): Promise<void> {
   try {
-    const storage = await getStorage();
-    if (!storage) {
-      throw new Error('Storage not available');
-    }
-
+    const storage = getStorage();
     // Validate all servers before saving
     const validatedServers = MCPServersArraySchema.parse(servers);
     await storage.set(STORAGE_KEY, validatedServers);
@@ -396,8 +350,7 @@ export function updateServerConfig(
  */
 export async function isDebugLoggingEnabled(): Promise<boolean> {
   try {
-    const storage = await getStorage();
-    if (!storage) return false;
+    const storage = getStorage();
     const value = await storage.get<boolean>(DEBUG_LOGGING_KEY);
     return value === true;
   } catch {
@@ -409,10 +362,7 @@ export async function isDebugLoggingEnabled(): Promise<boolean> {
  * Set MCP debug logging enabled/disabled.
  */
 export async function setDebugLogging(enabled: boolean): Promise<void> {
-  const storage = await getStorage();
-  if (!storage) {
-    throw new Error('Storage not available');
-  }
+  const storage = getStorage();
   await storage.set(DEBUG_LOGGING_KEY, enabled);
 }
 

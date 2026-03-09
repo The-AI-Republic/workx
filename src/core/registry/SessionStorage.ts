@@ -5,7 +5,8 @@
  * Feature: 015-multi-agent-instances (T035, T036, T037)
  */
 
-import { IndexedDBAdapter, STORE_NAMES } from '../../storage/IndexedDBAdapter';
+import type { StorageAdapter } from '../../storage/StorageAdapter';
+import { STORE_NAMES } from '../../storage/IndexedDBAdapter';
 import type { SessionMetadata, SessionType, SessionState } from './types';
 
 /**
@@ -22,7 +23,6 @@ export interface PersistedSession {
   tabId: number | null;
   tabGroupId: number | null;
   tabGroupName: string;
-  scheduledTaskId: string | null;
   /** Timestamp when session was persisted */
   persistedAt: number;
 }
@@ -31,7 +31,7 @@ export interface PersistedSession {
  * Storage implementation for agent sessions
  */
 export class SessionStorage {
-  constructor(private db: IndexedDBAdapter) {}
+  constructor(private db: StorageAdapter) {}
 
   /**
    * T035: Persist session metadata to IndexedDB
@@ -48,7 +48,6 @@ export class SessionStorage {
       tabId: metadata.tabId,
       tabGroupId: metadata.tabGroupId,
       tabGroupName: metadata.tabGroupName,
-      scheduledTaskId: metadata.scheduledTaskId,
       persistedAt: Date.now(),
     };
 

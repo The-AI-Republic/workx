@@ -47,7 +47,7 @@ describe('PromptLoader', () => {
   it('composes pi agent prompt with runtime context', async () => {
     const { loadPrompt, configurePromptComposer } = await import('@/core/PromptLoader');
 
-    configurePromptComposer('pi', {
+    configurePromptComposer('applepi', {
       os: 'linux',
       arch: 'x86_64',
       shell: 'bash',
@@ -57,8 +57,8 @@ describe('PromptLoader', () => {
 
     const prompt = await loadPrompt();
 
-    // Pi-specific content
-    expect(prompt).toContain('Pi');
+    // Apple Pi-specific content
+    expect(prompt).toContain('Apple Pi');
     expect(prompt).toContain('desktop automation agent');
     expect(prompt).toContain('TerminalTool');
 
@@ -139,7 +139,9 @@ describe('PromptLoader', () => {
 
     // In test/extension mode (__BUILD_MODE__ is undefined), fallback should be browserx
     expect(prompt).toContain('BrowserX');
-    expect(prompt).not.toContain('Pi');
+    // Must not contain "ApplePi" or standalone "Pi" (only "BrowserX" identity)
+    expect(prompt).not.toMatch(/\bApplePi\b/);
+    expect(prompt).not.toMatch(/\bPi\b/);
     expect(prompt).not.toContain('desktop automation agent');
   });
 });

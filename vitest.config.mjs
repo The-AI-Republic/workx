@@ -30,13 +30,18 @@ export default defineConfig({
     },
     include: [
       'src/**/__tests__/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
+      'packages/**/__tests__/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
       'tests/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'
     ],
     mockReset: true,
     restoreMocks: true
   },
   resolve: {
+    conditions: ['browser'],
     alias: {
+      // better-sqlite3 is a native addon not in node_modules (server-only dep).
+      // Map to a stub so Vite's import analysis doesn't fail during tests.
+      'better-sqlite3': resolve(__dirname, 'src/__test-utils__/better-sqlite3-stub.ts'),
       '@': resolve(__dirname, 'src'),
       '@config': resolve(__dirname, 'src/config'),
       '@storage': resolve(__dirname, 'src/storage'),
@@ -44,7 +49,8 @@ export default defineConfig({
       '@core': resolve(__dirname, 'src/core'),
       '@tools': resolve(__dirname, 'src/tools'),
       '@protocol': resolve(__dirname, 'src/protocol'),
-      '@types': resolve(__dirname, 'src/types')
+      '@types': resolve(__dirname, 'src/types'),
+      '@applepi/ws-server': resolve(__dirname, 'packages/ws-server/src')
     }
   }
 });

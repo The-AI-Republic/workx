@@ -174,11 +174,11 @@ export class TabManager {
 
 
   /**
-   * Ensure Pi tab group exists (merged from TabGroupManager)
-   * Finds or prepares to create the "pi" tab group
+   * Ensure ApplePi tab group exists (merged from TabGroupManager)
+   * Finds or prepares to create the "applepi" tab group
    * Gracefully degrades if chrome.tabGroups API is unavailable
    */
-  private async ensurePiGroup(): Promise<void> {
+  private async ensureApplePiGroup(): Promise<void> {
     // Check if tab groups API is available
     if (typeof chrome === 'undefined' || !chrome.tabGroups) {
       console.warn('[TabManager] Tab Groups API not available, grouping disabled');
@@ -187,13 +187,13 @@ export class TabManager {
     }
 
     try {
-      // Try to find existing Pi group
+      // Try to find existing ApplePi group
       const groups = await chrome.tabGroups.query({ title: this.groupTitle });
 
       if (groups.length > 0) {
         // Use existing group
         this.groupId = groups[0].id;
-        console.log(`[TabManager] Found existing Pi tab group: ${this.groupId}`);
+        console.log(`[TabManager] Found existing ApplePi tab group: ${this.groupId}`);
 
         // Ensure it has the correct color
         await chrome.tabGroups.update(this.groupId, {
@@ -201,7 +201,7 @@ export class TabManager {
           color: this.groupColor as chrome.tabGroups.Color,
         });
       } else {
-        console.log('[TabManager] No existing Pi tab group found, will create on first tab');
+        console.log('[TabManager] No existing ApplePi tab group found, will create on first tab');
       }
     } catch (error) {
       console.error('[TabManager] Failed to initialize tab group:', error);
@@ -210,10 +210,10 @@ export class TabManager {
   }
 
   /**
-   * Create Pi tab group (merged from TabGroupManager)
+   * Create ApplePi tab group (merged from TabGroupManager)
    * @param tabId - Initial tab to add to the group
    */
-  private async createPiGroup(tabId: number): Promise<void> {
+  private async createApplePiGroup(tabId: number): Promise<void> {
     try {
       // Ensure tab is in a normal window
       let tab = await chrome.tabs.get(tabId);
@@ -224,7 +224,7 @@ export class TabManager {
 
       const normalizedTab = await this.ensureTabInNormalWindow(tab);
       if (!normalizedTab) {
-        console.warn(`[TabManager] Cannot create Pi group: tab ${tabId} could not be moved to a normal window`);
+        console.warn(`[TabManager] Cannot create ApplePi group: tab ${tabId} could not be moved to a normal window`);
         return;
       }
       tab = normalizedTab;
@@ -241,7 +241,7 @@ export class TabManager {
       });
 
       this.groupId = groupId;
-      console.log(`[TabManager] Created Pi tab group: ${this.groupId}`);
+      console.log(`[TabManager] Created ApplePi tab group: ${this.groupId}`);
     } catch (error) {
       console.error('[TabManager] Failed to create tab group:', error);
       this.groupId = null;
@@ -389,7 +389,7 @@ export class TabManager {
   }
 
   /**
-   * Add tab to Pi group
+   * Add tab to ApplePi group
    * Gracefully degrades if tab groups API is unavailable
    * @param tabId - Tab ID to add to group
    * @returns The group ID, or null if grouping failed
@@ -432,7 +432,7 @@ export class TabManager {
 
       // If we don't have a group yet, create one
       if (this.groupId === null) {
-        await this.createPiGroup(tabId);
+        await this.createApplePiGroup(tabId);
         return this.groupId;
       }
 
@@ -442,7 +442,7 @@ export class TabManager {
         groupId: this.groupId,
       });
 
-      console.log(`[TabManager] Added tab ${tabId} to Pi group ${this.groupId}`);
+      console.log(`[TabManager] Added tab ${tabId} to ApplePi group ${this.groupId}`);
       return this.groupId;
     } catch (error) {
       console.error(`[TabManager] Failed to add tab ${tabId} to group:`, error);
@@ -451,7 +451,7 @@ export class TabManager {
   }
 
   /**
-   * Remove tab from Pi group
+   * Remove tab from ApplePi group
    * Gracefully degrades if tab groups API is unavailable
    * @param tabId - Tab ID to remove from group
    */
@@ -476,10 +476,10 @@ export class TabManager {
         return;
       }
 
-      // Only remove from our Pi group
+      // Only remove from our ApplePi group
       if (this.groupId !== null && tab.groupId === this.groupId) {
         await chrome.tabs.ungroup(tabId);
-        console.log(`[TabManager] Removed tab ${tabId} from Pi group ${this.groupId}`);
+        console.log(`[TabManager] Removed tab ${tabId} from ApplePi group ${this.groupId}`);
       } else {
         console.log(`[TabManager] Tab ${tabId} is in a different group (${tab.groupId}), not removing`);
       }
@@ -489,9 +489,9 @@ export class TabManager {
   }
 
   /**
-   * Reset TabManager by ungrouping all tabs from "pi" groups (tabs stay open)
-   * All "pi" groups (both collapsed and expanded) will be deleted after ungrouping their tabs
-   * Called during session reset and initialization to clean up all pi groups
+   * Reset TabManager by ungrouping all tabs from "applepi" groups (tabs stay open)
+   * All "applepi" groups (both collapsed and expanded) will be deleted after ungrouping their tabs
+   * Called during session reset and initialization to clean up all applepi groups
    */
   async reset(): Promise<void> {
     // Skip if API is unavailable
@@ -532,7 +532,7 @@ export class TabManager {
           await chrome.tabs.ungroup(tabIds as [number, ...number[]]);
         }
       } catch (error) {
-        console.error(`[TabManager] Failed to reset pi group ${group.id}:`, error);
+        console.error(`[TabManager] Failed to reset applepi group ${group.id}:`, error);
       }
     }
 
@@ -540,7 +540,7 @@ export class TabManager {
   }
 
   /**
-   * Remove all tabs from all Pi groups (ungroup without closing)
+   * Remove all tabs from all ApplePi groups (ungroup without closing)
    * Used when switching tabs to ensure consistency
    */
   async clearAllTabsFromGroup(): Promise<void> {
@@ -574,7 +574,7 @@ export class TabManager {
 
       this.groupId = null;
     } catch (error) {
-      console.error('[TabManager] Failed to clear tabs from Pi groups:', error);
+      console.error('[TabManager] Failed to clear tabs from ApplePi groups:', error);
     }
   }
 

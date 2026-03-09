@@ -3,7 +3,7 @@
  *
  * Enforces the three-tier naming convention from spec 022-project-rename-pi:
  *
- *   Tier 1 — Shared / Core    → uses "pi"
+ *   Tier 1 — Shared / Core    → uses "applepi"
  *   Tier 2 — Extension-specific → retains "browserx"
  *   Tier 3 — Desktop user-facing → uses "Apple Pi"
  *
@@ -50,52 +50,47 @@ function stripImportsAndComments(source: string): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Tier 1: Shared / Core → must use "pi"
+// Tier 1: Shared / Core → must use "applepi"
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('Tier 1: Shared/Core uses "pi"', () => {
-  it('IndexedDB cache DB name is "pi_cache"', () => {
-    expect(CACHE_DB_NAME).toBe('pi_cache');
+describe('Tier 1: Shared/Core uses "applepi"', () => {
+  it('IndexedDB cache DB name is "applepi_cache"', () => {
+    expect(CACHE_DB_NAME).toBe('applepi_cache');
   });
 
-  it('Rollout DB name is "PiRollouts"', () => {
-    expect(ROLLOUT_DB_NAME).toBe('PiRollouts');
+  it('Rollout DB name is "ApplePiRollouts"', () => {
+    expect(ROLLOUT_DB_NAME).toBe('ApplePiRollouts');
   });
 
-  it('PiAgent class is exported from src/core/PiAgent.ts', () => {
-    const src = readSource('src/core/PiAgent.ts');
-    expect(src).toContain('export class PiAgent');
+  it('RepublicAgent class is exported from src/core/RepublicAgent.ts', () => {
+    const src = readSource('src/core/RepublicAgent.ts');
+    expect(src).toContain('export class RepublicAgent');
   });
 
-  it('AgentConfig credential service is "pi"', () => {
+  it('AgentConfig credential service is "applepi"', () => {
     const src = readSource('src/config/AgentConfig.ts');
-    expect(src).toMatch(/CREDENTIAL_SERVICE\s*=\s*['"]pi['"]/);
+    expect(src).toMatch(/CREDENTIAL_SERVICE\s*=\s*['"]applepi['"]/);
   });
 
-  it('KeytarCredentialStore service prefix is "pi"', () => {
+  it('KeytarCredentialStore service prefix is "applepi"', () => {
     const src = readSource('src/desktop/storage/KeytarCredentialStore.ts');
-    expect(src).toMatch(/SERVICE_PREFIX\s*=\s*['"]pi['"]/);
+    expect(src).toMatch(/SERVICE_PREFIX\s*=\s*['"]applepi['"]/);
   });
 
-  it('AgentSession tab group uses "pi_s_" prefix', () => {
-    const src = readSource('src/core/registry/AgentSession.ts');
-    expect(src).toContain('pi_s_');
-  });
-
-  it('Desktop hotkeys use "pi:" event prefix', () => {
+  it('Desktop hotkeys use "applepi:" event prefix', () => {
     const src = readSource('src/desktop/hotkeys.ts');
-    expect(src).toContain("'pi:focus-input'");
-    expect(src).toContain("'pi:quick-action'");
+    expect(src).toContain("'applepi:focus-input'");
+    expect(src).toContain("'applepi:quick-action'");
   });
 
-  it('PromptComposer AgentType includes "pi"', () => {
+  it('PromptComposer AgentType includes "applepi"', () => {
     const src = readSource('src/prompts/PromptComposer.ts');
-    expect(src).toMatch(/AgentType\s*=.*['"]pi['"]/);
+    expect(src).toMatch(/AgentType\s*=.*['"]applepi['"]/);
   });
 
-  it('GoogleDocPlugin uses "data-pi-injected" attribute', () => {
+  it('GoogleDocPlugin uses "data-applepi-injected" attribute', () => {
     const src = readSource('src/tools/dom/plugins/GoogleDocPlugin.ts');
-    expect(src).toContain('data-pi-injected');
+    expect(src).toContain('data-applepi-injected');
   });
 });
 
@@ -128,6 +123,11 @@ describe('Tier 2: Extension-specific retains "browserx"', () => {
     const src = readSource('src/core/TabManager.ts');
     expect(src).toMatch(/groupTitle\s*=\s*['"]browserx['"]/);
   });
+
+  it('AgentSession tab group uses "browserx_s_" prefix', () => {
+    const src = readSource('src/core/registry/AgentSession.ts');
+    expect(src).toContain('browserx_s_');
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -141,7 +141,7 @@ describe('Tier 3: Desktop user-facing uses "Apple Pi"', () => {
   });
 
   it('default agent prompt identifies as "Apple Pi"', () => {
-    const src = readSource('src/prompts/default_pi_agent_prompt.md');
+    const src = readSource('src/prompts/default_applepi_agent_prompt.md');
     expect(src).toContain('Apple Pi');
   });
 
@@ -181,12 +181,13 @@ describe('Guard-rails: no cross-tier naming leaks', () => {
     });
   }
 
-  // Extension code should not use 'pi' for extension-specific identifiers
+  // Extension code should not use 'applepi' or 'pi' for extension-specific identifiers
   // (only checking extension-layer files that should use 'browserx')
-  it('ChromeCredentialStore does not use "pi" for its credential prefix', () => {
+  it('ChromeCredentialStore does not use "applepi" or "pi" for its credential prefix', () => {
     const src = readSource('src/extension/storage/ChromeCredentialStore.ts');
     const cleaned = stripImportsAndComments(src);
-    // Should not have pi-credential: prefix
+    // Should not have applepi-credential: or pi-credential: prefix
+    expect(cleaned).not.toMatch(/['"]applepi-credential:/);
     expect(cleaned).not.toMatch(/['"]pi-credential:/);
   });
 

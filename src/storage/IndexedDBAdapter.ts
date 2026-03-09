@@ -15,12 +15,13 @@ import type {
   LLMCacheConfig,
   CacheEntry
 } from '../types/storage';
+import type { StorageAdapter } from './StorageAdapter';
 
 /**
  * IndexedDB database constants
  */
-export const DB_NAME = 'pi_cache';
-export const DB_VERSION = 3;
+export const DB_NAME = 'applepi_cache';
+export const DB_VERSION = 4;
 
 /**
  * Object store names
@@ -34,10 +35,18 @@ export const STORE_NAMES = {
   CONFIG: 'config',
   /** Rollout cache entries (for backward compatibility) */
   ROLLOUT_CACHE: 'rollout_cache',
-  /** Scheduler tasks */
-  SCHEDULER_TASKS: 'scheduler_tasks',
+  /** Scheduler jobs */
+  SCHEDULER_JOBS: 'scheduler_jobs',
   /** Feature 015: Agent session persistence */
-  AGENT_SESSIONS: 'agent_sessions'
+  AGENT_SESSIONS: 'agent_sessions',
+  /** Token usage records per task */
+  TOKEN_USAGE_RECORDS: 'token_usage_records',
+  /** Schedule events (new schedule/execution model) */
+  SCHEDULE_EVENTS: 'schedule_events',
+  /** Schedule exceptions (per-instance overrides) */
+  SCHEDULE_EXCEPTIONS: 'schedule_exceptions',
+  /** Execution records (one per actual job run) */
+  EXECUTION_RECORDS: 'execution_records',
 } as const;
 
 /**
@@ -50,11 +59,26 @@ export const INDEX_NAMES = {
   BY_SESSION_TIMESTAMP: 'by_session_timestamp',
   /** Index on timestamp for global timestamp queries (outdated cleanup) */
   BY_TIMESTAMP: 'by_timestamp',
-  /** Scheduler task indexes */
+  /** Scheduler job indexes */
   SCHEDULER_BY_STATUS: 'by_status',
   SCHEDULER_BY_SCHEDULED_TIME: 'by_scheduled_time',
   SCHEDULER_BY_STATUS_TIME: 'by_status_time',
-  SCHEDULER_BY_CREATED_AT: 'by_created_at'
+  SCHEDULER_BY_CREATED_AT: 'by_created_at',
+  /** Token usage indexes */
+  TOKEN_USAGE_BY_SESSION: 'by_session',
+  TOKEN_USAGE_BY_TIMESTAMP: 'by_timestamp',
+  TOKEN_USAGE_BY_MODEL: 'by_model',
+  /** Schedule event indexes */
+  SCHEDULE_BY_ENABLED: 'by_enabled',
+  SCHEDULE_BY_SCHEDULED_TIME: 'by_scheduled_time',
+  /** Schedule exception indexes */
+  EXCEPTION_BY_EVENT_INSTANCE: 'by_event_instance',
+  EXCEPTION_BY_EVENT_ID: 'by_event_id',
+  /** Execution record indexes */
+  EXECUTION_BY_EVENT_ID: 'by_event_id',
+  EXECUTION_BY_STATUS: 'by_status',
+  EXECUTION_BY_EVENT_INSTANCE: 'by_event_instance',
+  EXECUTION_BY_INSTANCE_TIME: 'by_instance_time',
 } as const;
 
 /**
@@ -85,7 +109,7 @@ export class StorageUnavailableError extends IndexedDBError {
 /**
  * IndexedDB Adapter - provides Promise-based CRUD operations
  */
-export class IndexedDBAdapter {
+export class IndexedDBAdapter implements StorageAdapter {
   private db: IDBDatabase | null = null;
   private initPromise: Promise<void> | null = null;
 
@@ -192,14 +216,14 @@ export class IndexedDBAdapter {
           });
         }
 
-        // Version 2: Add scheduler_tasks object store
+        // Version 2: Add scheduler_jobs object store
         if (oldVersion < 2) {
-          if (!db.objectStoreNames.contains(STORE_NAMES.SCHEDULER_TASKS)) {
-            const schedulerStore = db.createObjectStore(STORE_NAMES.SCHEDULER_TASKS, {
+          if (!db.objectStoreNames.contains(STORE_NAMES.SCHEDULER_JOBS)) {
+            const schedulerStore = db.createObjectStore(STORE_NAMES.SCHEDULER_JOBS, {
               keyPath: 'id'
             });
 
-            // Index for querying tasks by status (draft, scheduled, waiting, running, etc.)
+            // Index for querying jobs by status (draft, scheduled, waiting, running, etc.)
             schedulerStore.createIndex(
               INDEX_NAMES.SCHEDULER_BY_STATUS,
               'status',
@@ -230,7 +254,7 @@ export class IndexedDBAdapter {
         }
 
         // Version 3: Feature 015 - Add agent_sessions object store for session persistence
-        if (oldVersion < 3) {
+        if (oldVersion < 3 ) {
           if (!db.objectStoreNames.contains(STORE_NAMES.AGENT_SESSIONS)) {
             const agentSessionsStore = db.createObjectStore(STORE_NAMES.AGENT_SESSIONS, {
               keyPath: 'sessionId'
@@ -251,6 +275,63 @@ export class IndexedDBAdapter {
             );
           }
         }
+
+        // Version 4: Token usage records + schedule_events, schedule_exceptions, execution_records
+        if (oldVersion < 4) {
+          if (!db.objectStoreNames.contains(STORE_NAMES.TOKEN_USAGE_RECORDS)) {
+            const tokenUsageStore = db.createObjectStore(STORE_NAMES.TOKEN_USAGE_RECORDS, {
+              keyPath: 'id'
+            });
+
+            tokenUsageStore.createIndex(
+              INDEX_NAMES.TOKEN_USAGE_BY_SESSION,
+              'sessionId',
+              { unique: false }
+            );
+
+            tokenUsageStore.createIndex(
+              INDEX_NAMES.TOKEN_USAGE_BY_TIMESTAMP,
+              'timestamp',
+              { unique: false }
+            );
+
+            tokenUsageStore.createIndex(
+              INDEX_NAMES.TOKEN_USAGE_BY_MODEL,
+              'model',
+              { unique: false }
+            );
+          }
+
+          // Schedule events store
+          if (!db.objectStoreNames.contains(STORE_NAMES.SCHEDULE_EVENTS)) {
+            const eventsStore = db.createObjectStore(STORE_NAMES.SCHEDULE_EVENTS, {
+              keyPath: 'id'
+            });
+            eventsStore.createIndex('by_enabled', 'enabled', { unique: false });
+            eventsStore.createIndex('by_scheduled_time', 'scheduledTime', { unique: false });
+          }
+
+          // Schedule exceptions store
+          if (!db.objectStoreNames.contains(STORE_NAMES.SCHEDULE_EXCEPTIONS)) {
+            const exceptionsStore = db.createObjectStore(STORE_NAMES.SCHEDULE_EXCEPTIONS, {
+              keyPath: 'id'
+            });
+            exceptionsStore.createIndex('by_event_instance', ['scheduleEventId', 'instanceTime'], { unique: true });
+            exceptionsStore.createIndex('by_event_id', 'scheduleEventId', { unique: false });
+          }
+
+          // Execution records store
+          if (!db.objectStoreNames.contains(STORE_NAMES.EXECUTION_RECORDS)) {
+            const execStore = db.createObjectStore(STORE_NAMES.EXECUTION_RECORDS, {
+              keyPath: 'id'
+            });
+            execStore.createIndex('by_event_id', 'scheduleEventId', { unique: false });
+            execStore.createIndex('by_status', 'status', { unique: false });
+            execStore.createIndex('by_event_instance', ['scheduleEventId', 'instanceTime'], { unique: false });
+            execStore.createIndex('by_instance_time', 'instanceTime', { unique: false });
+          }
+        }
+
       };
     });
   }
