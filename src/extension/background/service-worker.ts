@@ -17,6 +17,7 @@ import { getDefaultRules } from '../../core/approval/defaultRules';
 import { DomainSensitivityEnhancer } from '../../core/approval/enhancers/DomainSensitivityEnhancer';
 import { SemanticElementEnhancer } from '../../core/approval/enhancers/SemanticElementEnhancer';
 import { ApprovalConfigStorage } from '../../core/approval/ApprovalConfigStorage';
+import { getConfigStorage } from '../../core/storage/ConfigStorageProvider';
 import { AuthManager } from '../../core/models/types/Auth';
 import { CacheManager } from '../../storage/CacheManager';
 import { StorageQuotaManager } from '../../storage/StorageQuotaManager';
@@ -94,8 +95,8 @@ async function configureExtensionPlatform(targetAgent: RepublicAgent): Promise<v
   approvalGate.addEnhancer(new DomainSensitivityEnhancer());
   approvalGate.addEnhancer(new SemanticElementEnhancer());
 
-  // Extension mode uses chrome.storage.local for approval config
-  const configStorage = new ApprovalConfigStorage(() => chrome.storage.local);
+  // Extension mode uses ConfigStorageProvider for approval config
+  const configStorage = new ApprovalConfigStorage(() => getConfigStorage());
   approvalGate.setConfigStorage(configStorage);
 
   try {
