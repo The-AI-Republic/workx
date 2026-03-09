@@ -50,11 +50,15 @@
 
   let channelClient: UIChannelClient | null = null;
   let eventUnsubscribers: Array<() => void> = [];
+  let destroyed = false;
 
   $effect(() => {
+    destroyed = false;
+
     (async () => {
       try {
         channelClient = await getInitializedUIClient();
+        if (destroyed) return;
         eventUnsubscribers.push(
           channelClient.onEvent('BackgroundEvent', (data: any) => {
             if (data?.message === 'scheduler_job_status') {
@@ -70,6 +74,7 @@
     fetchAllData();
 
     return () => {
+      destroyed = true;
       clearTimeout(eventDebounceTimer);
       eventUnsubscribers.forEach(fn => fn());
       eventUnsubscribers = [];
