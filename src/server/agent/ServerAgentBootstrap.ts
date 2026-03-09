@@ -490,17 +490,8 @@ export class ServerAgentBootstrap {
         await this.scheduler!.handleAlarm(alarmName);
       });
 
-      // 6. Wire event emitter → broadcast to WebSocket clients
-      this.scheduler.setEventEmitter((event) => {
-        if (this.channel) {
-          channelManager.dispatchEvent(
-            { type: 'scheduler.event', ...event } as any,
-            this.channel.channelId
-          ).catch((error) => {
-            console.error('[ServerAgentBootstrap] Failed to dispatch scheduler event:', error);
-          });
-        }
-      });
+      // 6. Wire event emitter → unified channel dispatch
+      this.scheduler.connectToChannel(() => channelManager, this.channel!.channelId);
 
       // 7. Wire job launcher → submit job input to agent
       this.scheduler.setJobLauncher(async (executionId, sessionId, registryAgent) => {

@@ -105,6 +105,35 @@ export class Scheduler {
     });
   }
 
+  /**
+   * Connect scheduler events to a ChannelManager channel.
+   * This is the unified way to wire scheduler event dispatch — all platforms
+   * should use this instead of calling setEventEmitter() with custom logic.
+   *
+   * Events are dispatched as BackgroundEvent with message 'scheduler_job_status',
+   * matching the format the UI listens for.
+   *
+   * @param getChannelManager - returns the ChannelManager (called per-event for lazy resolution)
+   * @param channelId - target channel ID
+   */
+  connectToChannel(
+    getChannelManager: () => { dispatchEvent(event: any, channelId: string): Promise<void> },
+    channelId: string
+  ): void {
+    this.setEventEmitter((event) => {
+      try {
+        getChannelManager().dispatchEvent(
+          { type: 'BackgroundEvent', data: { message: 'scheduler_job_status', level: 'info', schedulerEvent: event } },
+          channelId
+        ).catch((error) => {
+          console.error('[Scheduler] Failed to dispatch event:', error);
+        });
+      } catch {
+        // ChannelManager not available yet — silently ignore
+      }
+    });
+  }
+
   setNotificationHandler(handler: NotificationHandler): void {
     this.jobExecutor.setNotificationHandler(async (_eventId, _instanceTime, input) => {
       await handler({ input });

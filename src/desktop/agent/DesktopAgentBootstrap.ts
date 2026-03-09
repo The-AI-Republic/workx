@@ -444,19 +444,8 @@ export class DesktopAgentBootstrap {
         await this.scheduler!.handleAlarm(alarmName);
       });
 
-      // Wire event emitter → dispatch via pi:message so TauriMessageService
-      // routes it to SCHEDULER_EVENT handlers in the UI (Main.svelte)
-      this.scheduler.setEventEmitter(async (event) => {
-        try {
-          const { emit } = await import('@tauri-apps/api/event');
-          await emit('pi:message', {
-            type: 'SCHEDULER_EVENT',
-            payload: event,
-          });
-        } catch (error) {
-          console.error('[DesktopAgentBootstrap] Failed to emit scheduler event:', error);
-        }
-      });
+      // Wire event emitter → unified channel dispatch
+      this.scheduler.connectToChannel(() => getChannelManager(), this.channel!.channelId);
 
       // Wire job launcher — show window and submit directly to agent
       this.scheduler.setJobLauncher(async (executionId, sessionId, registryAgent) => {
