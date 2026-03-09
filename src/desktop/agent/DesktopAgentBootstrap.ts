@@ -264,6 +264,7 @@ export class DesktopAgentBootstrap {
       scheduler: this.scheduler ? { scheduler: this.scheduler } : undefined,
       session: {
         getAgent: () => this.agent,
+        registry: this.registry ?? undefined,
       },
       agent: {
         getAgent: () => this.agent,

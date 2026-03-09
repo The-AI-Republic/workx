@@ -30,6 +30,11 @@ export interface SessionServiceDeps {
     getMaxConcurrent(): number;
     getActiveCount(): number;
     canCreateSession(): boolean;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    createSession(config: any): Promise<{ sessionId: string; sessionLetter: string; agent: unknown }>;
+    removeSession(sessionId: string): Promise<void>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    getSession(sessionId: string): any;
   } | null;
 
   /** Callback for platform-specific tab reset (extension-only) */
@@ -104,6 +109,46 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
         maxConcurrent: registry.getMaxConcurrent(),
         canCreateSession: registry.canCreateSession(),
       };
+    },
+
+    'session.create': async () => {
+      if (!registry) {
+        return { success: false, error: 'Registry not initialized' };
+      }
+
+      if (!registry.canCreateSession()) {
+        return { success: false, error: 'Maximum concurrent sessions reached' };
+      }
+
+      const session = await registry.createSession({ type: 'primary' });
+
+      // Ensure backend routing configured properly for this new session
+      if (session?.agent) {
+        const agentSession = registry.getSession(session.sessionId);
+        if (agentSession?.agent) {
+          await agentSession.agent.refreshModelClient();
+        }
+      }
+
+      return {
+        success: true,
+        sessionId: session.sessionId,
+        sessionLetter: session.sessionLetter,
+      };
+    },
+
+    'session.close': async (params) => {
+      if (!registry) {
+        return { success: false, error: 'Registry not initialized' };
+      }
+
+      const { sessionId } = params as { sessionId: string };
+      if (!sessionId) {
+        return { success: false, error: 'sessionId is required' };
+      }
+
+      await registry.removeSession(sessionId);
+      return { success: true };
     },
   };
 }
