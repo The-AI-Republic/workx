@@ -1,7 +1,7 @@
 /**
  * Server Agent Bootstrap
  *
- * Main orchestrator for server mode. Creates RepublicAgent, ServerMessageRouter,
+ * Main orchestrator for server mode. Creates RepublicAgent,
  * ServerChannel, ChannelManager, plugin loader, and maintenance timers.
  *
  * Pattern follows DesktopAgentBootstrap.
@@ -10,7 +10,6 @@
  */
 
 import { ServerChannel } from '../channels/ServerChannel';
-import { ServerMessageRouter } from '../channels/ServerMessageRouter';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
 import { RepublicAgent } from '@/core/RepublicAgent';
 import { AgentConfig } from '@/config/AgentConfig';
@@ -76,7 +75,6 @@ let _instance: ServerAgentBootstrap | null = null;
 export class ServerAgentBootstrap {
   private agent: RepublicAgent | null = null;
   private channel: ServerChannel | null = null;
-  private messageRouter: ServerMessageRouter | null = null;
   private sessionIndex: SessionIndex | null = null;
   private transcriptStore: TranscriptStore | null = null;
   private backupManager: BackupManager | null = null;
@@ -107,23 +105,30 @@ export class ServerAgentBootstrap {
 
     try {
       // 0. Initialize StorageProvider (used by subsystems)
-      const { isStorageProviderInitialized, initializeStorageProvider } = await import('@/core/storage');
+      const { isStorageProviderInitialized, initializeStorageProvider, isCredentialStoreInitialized, initializeCredentialStore } = await import('@/core/storage');
       if (!isStorageProviderInitialized()) {
         await initializeStorageProvider();
         console.log('[ServerAgentBootstrap] StorageProvider initialized (SQLite)');
       }
 
+      // 0b. Initialize credential store (for secure API key storage)
+      if (!isCredentialStoreInitialized()) {
+        try {
+          await initializeCredentialStore();
+          console.log('[ServerAgentBootstrap] CredentialStore initialized (FileCredentialStore)');
+        } catch (error) {
+          console.warn('[ServerAgentBootstrap] CredentialStore initialization failed (non-fatal):', error);
+        }
+      }
+
       // 1. Initialize config storage (must happen before AgentConfig)
       setConfigStorage(new FileConfigStorageProvider(dataDir));
 
-      // 2. Create message router
-      this.messageRouter = new ServerMessageRouter('background');
-
-      // 3. Get agent config
+      // 2. Get agent config
       const agentConfig = await AgentConfig.getInstance();
 
       // 3. Create RepublicAgent
-      this.agent = new RepublicAgent(agentConfig, this.messageRouter as any);
+      this.agent = new RepublicAgent(agentConfig);
 
       // 4. Configure PromptComposer with server platform context
       await this.configurePrompt();
@@ -232,12 +237,78 @@ export class ServerAgentBootstrap {
         }
       });
 
+      // 14. Register service handlers on ChannelManager (message_routing_v2)
+      await this.registerServices(channelManager);
+
       this.initialized = true;
       console.log('[ServerAgentBootstrap] Initialization complete');
     } catch (error) {
       console.error('[ServerAgentBootstrap] Initialization failed:', error);
       throw error;
     }
+  }
+
+  /**
+   * Register service handlers on ChannelManager (message_routing_v2).
+   * Gives server mode full service parity with the extension.
+   */
+  private async registerServices(channelManager: ReturnType<typeof getChannelManager>): Promise<void> {
+    const { registerAllServices } = await import('@/core/services');
+    const serviceRegistry = channelManager.getServiceRegistry();
+
+    // Get MCPManager instance
+    let mcpDeps: import('@/core/services').MCPServiceDeps | undefined;
+    try {
+      const { MCPManager } = await import('@/core/mcp/MCPManager');
+      const mcpManager = await MCPManager.getInstance('server');
+      mcpDeps = { mcpManager: mcpManager as any };
+    } catch (error) {
+      console.warn('[ServerAgentBootstrap] MCPManager not available for service registration:', error);
+    }
+
+    // Get A2AManager instance
+    let a2aDeps: import('@/core/services').A2AServiceDeps | undefined;
+    try {
+      const { A2AManager } = await import('@/core/a2a/A2AManager');
+      const a2aManager = await A2AManager.getInstance('server');
+      a2aDeps = { a2aManager: a2aManager as any };
+    } catch (error) {
+      console.warn('[ServerAgentBootstrap] A2AManager not available for service registration:', error);
+    }
+
+    // Get SkillRegistry with StorageProvider-backed skill provider
+    let skillsDeps: import('@/core/services').SkillsServiceDeps | undefined;
+    try {
+      const { getStorageProvider } = await import('@/core/storage');
+      const { IndexedDBSkillProvider } = await import('@/extension/storage/IndexedDBSkillProvider');
+      const { SkillRegistry } = await import('@/core/skills/SkillRegistry');
+
+      const storageProvider = getStorageProvider();
+      const skillProvider = new IndexedDBSkillProvider(storageProvider);
+      await skillProvider.initialize();
+
+      const skillRegistry = new SkillRegistry(skillProvider);
+      await skillRegistry.discover();
+      skillsDeps = { skillRegistry };
+
+      console.log(`[ServerAgentBootstrap] Skills initialized, found ${skillRegistry.getSkillMetas().length} skills`);
+    } catch (error) {
+      console.warn('[ServerAgentBootstrap] SkillRegistry not available for service registration:', error);
+    }
+
+    const count = registerAllServices(serviceRegistry, {
+      mcp: mcpDeps,
+      a2a: a2aDeps,
+      skills: skillsDeps,
+      session: {
+        getAgent: () => this.agent,
+      },
+      agent: {
+        getAgent: () => this.agent,
+      },
+    });
+
+    console.log(`[ServerAgentBootstrap] Registered ${count} service handlers`);
   }
 
   /**
@@ -462,8 +533,8 @@ export class ServerAgentBootstrap {
         const agentConfig = await AgentConfig.getInstance();
         const registry = new AgentRegistry({
           maxConcurrent: 1,
-          agentFactory: async (config, router) => {
-            const agent = new RepublicAgent(config, router);
+          agentFactory: async (config) => {
+            const agent = new RepublicAgent(config);
             await agent.initialize();
             return agent;
           },
@@ -473,7 +544,7 @@ export class ServerAgentBootstrap {
             this.handleSchedulerEventCompletion(event.msg);
           },
         });
-        registry.initialize(agentConfig, this.messageRouter! as any);
+        registry.initialize(agentConfig);
         this.scheduler.setRegistry(registry);
         console.log('[ServerAgentBootstrap] AgentRegistry initialized for session isolation');
       } catch (error) {
@@ -618,12 +689,6 @@ export class ServerAgentBootstrap {
     if (this.agent) {
       await this.agent.cleanup();
       this.agent = null;
-    }
-
-    // Cleanup message router
-    if (this.messageRouter) {
-      this.messageRouter.destroy();
-      this.messageRouter = null;
     }
 
     this.channel = null;

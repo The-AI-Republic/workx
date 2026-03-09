@@ -3,7 +3,7 @@
   import Tooltip from '../common/Tooltip.svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
-  import { sendMessage, MessageType } from '../../lib/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
 
   const dispatch = createEventDispatcher<{
     click: void;
@@ -28,8 +28,8 @@
 
   async function fetchSchedulerState() {
     try {
-      const response = await sendMessage<{ data?: { scheduledCount?: number; jobQueueCount?: number; missedCount?: number; currentJobId?: string | null }; scheduledCount?: number; jobQueueCount?: number; missedCount?: number; currentJobId?: string | null }>(
-        MessageType.SCHEDULER_GET_STATE
+      const response = await (await getInitializedUIClient()).serviceRequest<{ data?: { scheduledCount?: number; jobQueueCount?: number; missedCount?: number; currentJobId?: string | null }; scheduledCount?: number; jobQueueCount?: number; missedCount?: number; currentJobId?: string | null }>(
+        'scheduler.getState'
       );
 
       const data = response?.data || response;

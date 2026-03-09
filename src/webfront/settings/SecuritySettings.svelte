@@ -6,7 +6,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
   import { t } from '../lib/i18n';
-  import { sendMessage, MessageType } from '../lib/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
   import PinSetupDialog from '../components/vault/PinSetupDialog.svelte';
   import { vaultStore, refreshVaultStatus } from '../stores/vaultStore';
 
@@ -64,7 +64,7 @@
 
     changePinSubmitting = true;
     try {
-      await sendMessage(MessageType.PIN_CHANGE, {
+      await (await getInitializedUIClient()).serviceRequest('vault.pin.change', {
         currentPin: currentPinInput,
         newPin: newPinInput,
         newPinConfirm: newPinConfirmInput,
@@ -91,7 +91,7 @@
 
     removePinSubmitting = true;
     try {
-      await sendMessage(MessageType.PIN_REMOVE, { pin: removePinInput });
+      await (await getInitializedUIClient()).serviceRequest('vault.pin.remove', { pin: removePinInput });
       showRemovePinForm = false;
       removePinInput = '';
       statusMessage = 'PIN protection removed';

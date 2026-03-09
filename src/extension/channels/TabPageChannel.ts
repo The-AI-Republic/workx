@@ -161,11 +161,16 @@ export class TabPageChannel implements ChannelAdapter {
     return true;
   }
 
+  supportsServices(): boolean {
+    return true;
+  }
+
   getCapabilities(): ChannelCapabilities {
     return {
       streaming: this.supportsStreaming(),
       approvals: this.supportsApprovals(),
       media: this.supportsMedia(),
+      services: this.supportsServices(),
     };
   }
 

@@ -9,4 +9,6 @@
 export type { ChannelAdapter } from './ChannelAdapter';
 export { ChannelManager, getChannelManager } from './ChannelManager';
 export type { AgentHandler } from './ChannelManager';
+export { ServiceRegistry } from './ServiceRegistry';
+export type { ServiceHandler } from './ServiceRegistry';
 export * from './types';

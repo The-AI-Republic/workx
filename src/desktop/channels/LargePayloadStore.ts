@@ -2,7 +2,7 @@
  * LargePayloadStore
  *
  * Workaround for WebView2's postMessage size limit (~1MB).
- * Since TauriChannel and TauriMessageService both run in the same WebView
+ * Since TauriChannel and the UI both run in the same WebView
  * process, large payloads can be stored here and referenced by ID instead
  * of being serialized through Tauri's IPC postMessage.
  */

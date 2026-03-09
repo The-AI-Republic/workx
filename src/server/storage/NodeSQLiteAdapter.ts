@@ -21,6 +21,10 @@ const ADAPTER_STORES = [
   'rollout_cache',
   'scheduler_jobs',
   'agent_sessions',
+  'schedule_events',
+  'schedule_exceptions',
+  'execution_records',
+  'token_usage_records',
 ];
 
 export class NodeSQLiteAdapter implements StorageAdapter {
@@ -50,7 +54,8 @@ export class NodeSQLiteAdapter implements StorageAdapter {
     const STORE_INDEXES: Record<string, string[]> = {
       cache_items: ['by_session', 'by_session_timestamp', 'by_timestamp'],
       scheduler_jobs: ['by_status', 'by_scheduled_time', 'by_status_time', 'by_created_at'],
-      agent_sessions: ['by_type', 'by_state']
+      agent_sessions: ['by_type', 'by_state'],
+      token_usage_records: ['by_session', 'by_timestamp', 'by_model'],
     };
 
     // Create tables for all adapter stores
