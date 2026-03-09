@@ -155,22 +155,14 @@ export class AgentRegistry {
           agent.setEventDispatcher(this._registryConfig.eventDispatcherFactory(session.sessionId));
         }
       } else {
-        // Extension path: hardcoded chrome extension logic (existing behavior)
-        // Event dispatcher is set by the platform bootstrap (service-worker or DesktopAgentBootstrap)
-        // after session creation, routing events through the appropriate channel.
+        // Extension path: create agent and wire events through ChannelManager
         agent = new RepublicAgent(this._config, undefined, undefined, new UserNotifier());
 
-        // Set up event dispatcher for chrome extension mode
-        // Events are sent via chrome.runtime to the UI
+        // Route events through ChannelManager (unified across all platforms)
         agent.setEventDispatcher((event) => {
-          if (typeof chrome !== 'undefined' && chrome.runtime) {
-            chrome.runtime.sendMessage({
-              type: 'EVENT',
-              payload: event,
-            }).catch(() => {
-              // Ignore errors if no listeners
-            });
-          }
+          import('@/core/channels/ChannelManager').then(({ getChannelManager }) => {
+            getChannelManager().broadcastEvent(event.msg).catch(() => {});
+          }).catch(() => {});
         });
 
         await agent.initialize();

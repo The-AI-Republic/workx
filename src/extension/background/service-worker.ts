@@ -420,9 +420,14 @@ async function registerServiceHandlers(): Promise<void> {
       },
     };
 
+    // Wire scheduler events to ChannelManager (unified dispatch)
+    if (scheduler) {
+      scheduler.connectToChannel(() => channelManager, 'sidepanel-main');
+    }
+
     const count = registerAllServices(serviceRegistry, {
       mcp: mcpManager ? { mcpManager } : undefined,
-      // scheduler: wired separately via Scheduler class (not through service registry yet)
+      scheduler: scheduler ? { scheduler } : undefined,
       skills: skillRegistry ? { skillRegistry } : undefined,
       vault: {
         vaultManager: (await import('@/core/crypto/VaultManager')) as any,
@@ -677,18 +682,7 @@ async function initializeScheduler(): Promise<void> {
 
     scheduler.setConnectivityCheck(() => navigator.onLine);
 
-    // Set up event emitter to broadcast scheduler events via channel system (T020)
-    scheduler.setEventEmitter(async (event) => {
-      try {
-        const { getChannelManager } = await import('@/core/channels/ChannelManager');
-        getChannelManager().dispatchEvent(
-          { type: 'BackgroundEvent', data: { message: 'scheduler_task_status', level: 'info', schedulerEvent: event } },
-          'sidepanel-main'
-        ).catch(() => {});
-      } catch {
-        // Channel not available yet
-      }
-    });
+    // Event emitter is wired in registerServiceHandlers() where ChannelManager is available
 
     // Recover stale running jobs from previous app session
     await scheduler.recoverStaleRunningJob();

@@ -490,22 +490,11 @@ export class ServerAgentBootstrap {
         await this.scheduler!.handleAlarm(alarmName);
       });
 
-      // 6. Wire event emitter → broadcast to WebSocket clients
-      this.scheduler.setEventEmitter((event) => {
-        if (this.channel) {
-          channelManager.dispatchEvent(
-            { type: 'scheduler.event', ...event } as any,
-            this.channel.channelId
-          ).catch((error) => {
-            console.error('[ServerAgentBootstrap] Failed to dispatch scheduler event:', error);
-          });
-        }
-      });
+      // 6. Wire event emitter → unified channel dispatch
+      this.scheduler.connectToChannel(() => channelManager, this.channel!.channelId);
 
       // 7. Wire job launcher → submit job input to agent
       this.scheduler.setJobLauncher(async (executionId, sessionId, registryAgent) => {
-        this.runningSchedulerJobId = executionId;
-        this.runningJobStartTime = Date.now();
         console.log(`[ServerAgentBootstrap] Scheduled job ${executionId} launched (session: ${sessionId})`);
         const execution = await executionStorage.getExecution(executionId);
         if (!execution) {
@@ -517,6 +506,10 @@ export class ServerAgentBootstrap {
           throw new Error('Agent not initialized — cannot execute scheduled job');
         }
 
+        // submitOperation is fire-and-forget: it queues the operation, may abort
+        // a previous task (emitting TurnAborted), and returns before the new task
+        // completes. We set runningSchedulerJobId AFTER to avoid false-triggering
+        // handleSchedulerEventCompletion on the previous task's TurnAborted event.
         await targetAgent.submitOperation(
           {
             type: 'UserInput',
@@ -524,6 +517,8 @@ export class ServerAgentBootstrap {
           },
           {}
         );
+        this.runningSchedulerJobId = executionId;
+        this.runningJobStartTime = Date.now();
       });
 
       // 7a. Connectivity check — ensure agent is initialized before executing jobs
@@ -536,6 +531,12 @@ export class ServerAgentBootstrap {
           maxConcurrent: 1,
           agentFactory: async (config) => {
             const agent = new RepublicAgent(config);
+            // Copy auth manager from primary agent so registry agents use
+            // the same API key / backend routing as the user's session
+            const primaryAuth = this.agent?.getModelClientFactory().getAuthManager();
+            if (primaryAuth) {
+              agent.getModelClientFactory().setAuthManager(primaryAuth);
+            }
             await agent.initialize();
             return agent;
           },
@@ -580,8 +581,11 @@ export class ServerAgentBootstrap {
   }
 
   /**
-   * Intercept TaskComplete/TaskFailed events from the agent to complete/fail
+   * Intercept task lifecycle events from the agent to complete/fail
    * the currently running scheduled job at the bootstrap level.
+   *
+   * Handles: TaskComplete (normal), TurnAborted (abort/interrupt),
+   * Error (task errors), TaskFailed (protocol-defined, currently unused).
    */
   private handleSchedulerEventCompletion(msg: EventMsg): void {
     if (!this.runningSchedulerJobId || !this.scheduler) return;
@@ -591,7 +595,6 @@ export class ServerAgentBootstrap {
     if (msg.type === 'TaskComplete') {
       this.runningSchedulerJobId = null;
       this.runningJobStartTime = 0;
-      // EventMsg.data shape for TaskComplete: { last_agent_message?: string, token_usage?: { total?: { input_tokens, output_tokens, total_tokens } } }
       const data = (msg as EventMsg & { data?: Record<string, any> }).data;
       const summary = data?.last_agent_message?.slice(0, 500) || 'Job completed';
       const tokenData = data?.token_usage?.total;
@@ -606,11 +609,14 @@ export class ServerAgentBootstrap {
       }).catch((error) => {
         console.error(`[ServerAgentBootstrap] Failed to complete scheduler job ${jobId}:`, error);
       });
-    } else if (msg.type === 'TaskFailed') {
+    } else if (msg.type === 'TaskFailed' || msg.type === 'TurnAborted' || msg.type === 'Error') {
+      // TaskFailed: protocol-defined failure (currently not emitted by TaskRunner)
+      // TurnAborted: task aborted (user interrupt, automatic_abort after MAX_TURNS)
+      // Error: task execution error (API error, model error, submission error)
       this.runningSchedulerJobId = null;
       this.runningJobStartTime = 0;
       const data = (msg as EventMsg & { data?: Record<string, any> }).data;
-      const error = data?.error || data?.reason || 'Job failed';
+      const error = data?.error || data?.reason || data?.message || 'Job failed';
       this.scheduler.failJob(jobId, error).catch((err) => {
         console.error(`[ServerAgentBootstrap] Failed to fail scheduler job ${jobId}:`, err);
       });
