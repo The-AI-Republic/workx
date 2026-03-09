@@ -41,6 +41,9 @@ export function registerSchedulerHandlers(deps: SchedulerHandlerDeps): void {
   registerMethodHandler('scheduler.getState', handleGetState);
   registerMethodHandler('scheduler.getJobDetails', handleGetJobDetails);
 
+  registerMethodHandler('scheduler.reschedule', handleReschedule);
+  registerMethodHandler('scheduler.getAllJobsInRange', handleGetAllJobsInRange);
+
   // New schedule event handlers
   registerMethodHandler('schedule.createEvent', handleCreateEvent);
   registerMethodHandler('schedule.updateEvent', handleUpdateEvent);
@@ -220,6 +223,33 @@ async function handleGetJobDetails(
 
   const job = await scheduler.getJobDetails(jobId);
   return { job };
+}
+
+async function handleReschedule(
+  params: Record<string, unknown> | undefined,
+  _ctx: MethodContext
+): Promise<unknown> {
+  const { scheduler } = getDeps();
+  const jobId = params?.jobId as string;
+  const scheduledTime = params?.scheduledTime as number;
+  if (!jobId) throw invalidRequest('"jobId" is required');
+  if (typeof scheduledTime !== 'number' || scheduledTime <= 0) throw invalidRequest('"scheduledTime" must be a positive number');
+
+  await scheduler.rescheduleJob(jobId, scheduledTime);
+  return { success: true };
+}
+
+async function handleGetAllJobsInRange(
+  params: Record<string, unknown> | undefined,
+  _ctx: MethodContext
+): Promise<unknown> {
+  const { scheduler } = getDeps();
+  const startTime = params?.startTime as number;
+  const endTime = params?.endTime as number;
+  if (typeof startTime !== 'number' || typeof endTime !== 'number') throw invalidRequest('"startTime" and "endTime" must be numbers');
+
+  const jobs = await scheduler.getAllJobsInRange(startTime, endTime);
+  return { jobs };
 }
 
 // ─────────────────────────────────────────────────────────────────────────

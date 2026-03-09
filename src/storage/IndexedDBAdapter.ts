@@ -39,6 +39,8 @@ export const STORE_NAMES = {
   SCHEDULER_JOBS: 'scheduler_jobs',
   /** Feature 015: Agent session persistence */
   AGENT_SESSIONS: 'agent_sessions',
+  /** Token usage records per task */
+  TOKEN_USAGE_RECORDS: 'token_usage_records',
   /** Schedule events (new schedule/execution model) */
   SCHEDULE_EVENTS: 'schedule_events',
   /** Schedule exceptions (per-instance overrides) */
@@ -62,6 +64,10 @@ export const INDEX_NAMES = {
   SCHEDULER_BY_SCHEDULED_TIME: 'by_scheduled_time',
   SCHEDULER_BY_STATUS_TIME: 'by_status_time',
   SCHEDULER_BY_CREATED_AT: 'by_created_at',
+  /** Token usage indexes */
+  TOKEN_USAGE_BY_SESSION: 'by_session',
+  TOKEN_USAGE_BY_TIMESTAMP: 'by_timestamp',
+  TOKEN_USAGE_BY_MODEL: 'by_model',
   /** Schedule event indexes */
   SCHEDULE_BY_ENABLED: 'by_enabled',
   SCHEDULE_BY_SCHEDULED_TIME: 'by_scheduled_time',
@@ -270,8 +276,32 @@ export class IndexedDBAdapter implements StorageAdapter {
           }
         }
 
-        // Version 4: Add schedule_events, schedule_exceptions, execution_records stores
+        // Version 4: Token usage records + schedule_events, schedule_exceptions, execution_records
         if (oldVersion < 4) {
+          if (!db.objectStoreNames.contains(STORE_NAMES.TOKEN_USAGE_RECORDS)) {
+            const tokenUsageStore = db.createObjectStore(STORE_NAMES.TOKEN_USAGE_RECORDS, {
+              keyPath: 'id'
+            });
+
+            tokenUsageStore.createIndex(
+              INDEX_NAMES.TOKEN_USAGE_BY_SESSION,
+              'sessionId',
+              { unique: false }
+            );
+
+            tokenUsageStore.createIndex(
+              INDEX_NAMES.TOKEN_USAGE_BY_TIMESTAMP,
+              'timestamp',
+              { unique: false }
+            );
+
+            tokenUsageStore.createIndex(
+              INDEX_NAMES.TOKEN_USAGE_BY_MODEL,
+              'model',
+              { unique: false }
+            );
+          }
+
           // Schedule events store
           if (!db.objectStoreNames.contains(STORE_NAMES.SCHEDULE_EVENTS)) {
             const eventsStore = db.createObjectStore(STORE_NAMES.SCHEDULE_EVENTS, {

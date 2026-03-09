@@ -1,8 +1,8 @@
 <script lang="ts">
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
-  import { sendMessage, MessageType } from '../../lib/messaging';
-  import { tryGetMessageService } from '@/core/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
+  import type { UIChannelClient } from '@/core/messaging';
   import SchedulerJobItem from './SchedulerJobItem.svelte';
   import ArchivedJobsView from './ArchivedJobsView.svelte';
   import ScheduleJobModal from './ScheduleJobModal.svelte';
@@ -68,34 +68,9 @@
     }
   });
 
-  // T020: Real-time status updates via chrome.runtime.onMessage
-  function handleSchedulerEvent(message: { type: string; payload?: unknown }) {
-    if (message.type === MessageType.SCHEDULER_EVENT && show) {
-      // Refresh data when scheduler events occur
-      fetchAllData();
-    }
-    // Feature 015 (T051): Real-time session status updates
-    if (message.type === MessageType.SESSION_EVENT && show) {
-      const payload = message.payload as { type?: string; sessionId?: string; error?: string; timestamp?: number } | undefined;
-
-      // T057: Handle session:error events for graceful degradation feedback
-      if (payload?.type === 'session:error') {
-        lastSessionError = {
-          message: payload.error || 'Unknown session error',
-          sessionId: payload.sessionId || 'unknown',
-          timestamp: payload.timestamp || Date.now()
-        };
-        // Auto-clear error after 5 seconds
-        setTimeout(() => {
-          if (lastSessionError?.timestamp === payload.timestamp) {
-            lastSessionError = null;
-          }
-        }, 5000);
-      }
-
-      fetchSessionData();
-    }
-  }
+  // UIChannelClient for event subscriptions
+  let channelClient: UIChannelClient | null = null;
+  let eventUnsubscribers: Array<() => void> = [];
 
   // T042: Handle online/offline events
   function handleOnline() {
@@ -108,53 +83,56 @@
 
   // Event listeners setup and cleanup
   $effect(() => {
-    // Listen for scheduler events from service worker (extension mode)
-    if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
-      chrome.runtime.onMessage.addListener(handleSchedulerEvent);
-    }
+    // Subscribe to scheduler and session events via UIChannelClient (extension mode)
+    (async () => {
+      try {
+        channelClient = await getInitializedUIClient();
 
-    // Listen for scheduler events via message service (desktop/server mode)
-    const localUnsubs: Array<() => void> = [];
-    const service = tryGetMessageService();
-    if (service) {
-      const u1 = service.on(MessageType.SCHEDULER_EVENT, () => {
-        if (show) fetchAllData();
-      });
-      if (u1) localUnsubs.push(u1);
+        // T020: Real-time scheduler status updates
+        eventUnsubscribers.push(
+          channelClient.onEvent('BackgroundEvent', (data: any) => {
+            if (data?.message === 'scheduler_job_status' && show) {
+              fetchAllData();
+            }
+          })
+        );
 
-      const u2 = service.on(MessageType.SESSION_EVENT, (payload) => {
-        if (show) {
-          const p = payload as { type?: string; sessionId?: string; error?: string; timestamp?: number } | undefined;
-          if (p?.type === 'session:error') {
-            lastSessionError = {
-              message: p.error || 'Unknown session error',
-              sessionId: p.sessionId || 'unknown',
-              timestamp: p.timestamp || Date.now()
-            };
-            setTimeout(() => {
-              if (lastSessionError?.timestamp === p.timestamp) {
-                lastSessionError = null;
+        // Feature 015 (T051): Real-time session status updates
+        eventUnsubscribers.push(
+          channelClient.onEvent('BackgroundEvent', (data: any) => {
+            if (data?.message === 'session_event' && show) {
+              const payload = data?.sessionEvent as { type?: string; sessionId?: string; error?: string; timestamp?: number } | undefined;
+              if (payload?.type === 'session:error') {
+                lastSessionError = {
+                  message: payload.error || 'Unknown session error',
+                  sessionId: payload.sessionId || 'unknown',
+                  timestamp: payload.timestamp || Date.now()
+                };
+                setTimeout(() => {
+                  if (lastSessionError?.timestamp === payload.timestamp) {
+                    lastSessionError = null;
+                  }
+                }, 5000);
               }
-            }, 5000);
-          }
-          fetchSessionData();
-        }
-      });
-      if (u2) localUnsubs.push(u2);
-    }
+              fetchSessionData();
+            }
+          })
+        );
+      } catch (error) {
+        console.warn('[SchedulerPopup] Failed to initialize UIChannelClient:', error);
+      }
+    })();
 
     // T042: Listen for online/offline events
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
     return () => {
-      // Clean up extension event listener
-      if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
-        chrome.runtime.onMessage.removeListener(handleSchedulerEvent);
+      // Clean up UIChannelClient event subscriptions
+      for (const unsub of eventUnsubscribers) {
+        unsub();
       }
-
-      // Clean up message service listeners
-      localUnsubs.forEach(fn => fn());
+      eventUnsubscribers = [];
 
       // T042: Clean up online/offline listeners
       window.removeEventListener('online', handleOnline);
@@ -162,14 +140,16 @@
     };
   });
 
+
   async function fetchAllData() {
     isLoading = true;
     try {
+      const client = await getInitializedUIClient();
       const [stateRes, missedRes, scheduledRes, queueRes] = await Promise.all([
-        sendMessage(MessageType.SCHEDULER_GET_STATE),
-        sendMessage(MessageType.SCHEDULER_GET_MISSED_JOBS),
-        sendMessage(MessageType.SCHEDULER_GET_SCHEDULED_JOBS),
-        sendMessage(MessageType.SCHEDULER_GET_QUEUE),
+        client.serviceRequest('scheduler.getState'),
+        client.serviceRequest('scheduler.getMissedJobs'),
+        client.serviceRequest('scheduler.getScheduledJobs'),
+        client.serviceRequest('scheduler.getQueue'),
       ]);
 
       isPaused = (stateRes as any)?.isPaused || false;
@@ -191,7 +171,7 @@
   // Feature 015 (T050): Fetch session status
   async function fetchSessionData() {
     try {
-      const sessionRes = await sendMessage<{ data?: { sessions?: typeof sessions; activeCount?: number; maxConcurrent?: number }; sessions?: typeof sessions; activeCount?: number; maxConcurrent?: number }>(MessageType.SESSION_LIST);
+      const sessionRes = await (await getInitializedUIClient()).serviceRequest<{ data?: { sessions?: typeof sessions; activeCount?: number; maxConcurrent?: number }; sessions?: typeof sessions; activeCount?: number; maxConcurrent?: number }>('session.list');
       const sessionData = sessionRes?.data || sessionRes;
 
       sessions = sessionData?.sessions || [];
@@ -204,7 +184,7 @@
 
   async function handleTriggerJob(data: { jobId: string }) {
     try {
-      await sendMessage(MessageType.SCHEDULER_TRIGGER_JOB, { jobId: data.jobId });
+      await (await getInitializedUIClient()).serviceRequest('scheduler.trigger', { jobId: data.jobId });
       await fetchAllData();
     } catch (error) {
       console.error('[SchedulerPopup] Failed to trigger job:', error);
@@ -215,7 +195,7 @@
     if (!confirm(t('Are you sure you want to cancel this job?'))) return;
 
     try {
-      await sendMessage(MessageType.SCHEDULER_CANCEL_JOB, { jobId: data.jobId });
+      await (await getInitializedUIClient()).serviceRequest('scheduler.cancel', { jobId: data.jobId });
       await fetchAllData();
     } catch (error) {
       console.error('[SchedulerPopup] Failed to cancel job:', error);
@@ -224,11 +204,8 @@
 
   async function togglePause() {
     try {
-      const messageType = isPaused
-        ? MessageType.SCHEDULER_RESUME_QUEUE
-        : MessageType.SCHEDULER_PAUSE_QUEUE;
-
-      await sendMessage(messageType);
+      const servicePath = isPaused ? 'scheduler.resumeQueue' : 'scheduler.pauseQueue';
+      await (await getInitializedUIClient()).serviceRequest(servicePath);
       isPaused = !isPaused;
     } catch (error) {
       console.error('[SchedulerPopup] Failed to toggle pause:', error);
@@ -256,7 +233,7 @@
       if (recurrence) {
         payload.recurrence = recurrence;
       }
-      await sendMessage(MessageType.SCHEDULER_SCHEDULE_JOB, payload);
+      await (await getInitializedUIClient()).serviceRequest('scheduler.schedule', payload);
       // Refresh the job list
       await fetchAllData();
     } catch (error) {
@@ -279,8 +256,8 @@
     isLoadingDetails = true;
 
     try {
-      const response = await sendMessage<Record<string, any>>(
-        MessageType.SCHEDULER_GET_JOB_DETAILS,
+      const response = await (await getInitializedUIClient()).serviceRequest<Record<string, any>>(
+        'scheduler.getJobDetails',
         { jobId }
       );
       // Handler returns { job: ... }, unwrap accordingly

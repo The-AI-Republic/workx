@@ -3,7 +3,7 @@
  *
  * Both ServerAgentBootstrap and DesktopAgentBootstrap use the same pattern:
  * - Track `runningSchedulerJobId` and `runningJobStartTime` when a job launches
- * - Intercept TaskComplete/TaskFailed events from the agent
+ * - Intercept TaskComplete/TurnAborted/Error events from the agent
  * - Call scheduler.completeJob() / scheduler.failJob() with extracted data
  *
  * This test validates the logic in isolation without requiring full bootstrap init.
@@ -46,11 +46,11 @@ function handleSchedulerEventCompletion(state: CompletionHandlerState, msg: Even
       },
       duration,
     }).catch(() => {});
-  } else if (msg.type === 'TaskFailed') {
+  } else if (msg.type === 'TaskFailed' || msg.type === 'TurnAborted' || msg.type === 'Error') {
     state.runningSchedulerJobId = null;
     state.runningJobStartTime = 0;
     const data = (msg as EventMsg & { data?: Record<string, any> }).data;
-    const error = data?.error || data?.reason || 'Job failed';
+    const error = data?.error || data?.reason || data?.message || 'Job failed';
     state.scheduler.failJob(jobId, error).catch(() => {});
   }
 }
@@ -248,6 +248,114 @@ describe('handleSchedulerEventCompletion (bootstrap pattern)', () => {
   });
 
   // =========================================================================
+  // TurnAborted (task abort/interrupt — previously unhandled, caused stuck jobs)
+  // =========================================================================
+
+  describe('TurnAborted', () => {
+    it('should call scheduler.failJob with abort reason', () => {
+      const msg: EventMsg = {
+        type: 'TurnAborted',
+        data: { reason: 'user_interrupt', submission_id: 'sub-1', turn_count: 3 },
+      };
+
+      handleSchedulerEventCompletion(state, msg);
+
+      expect(state.scheduler!.failJob).toHaveBeenCalledWith('job-123', 'user_interrupt');
+    });
+
+    it('should handle automatic_abort reason', () => {
+      const msg: EventMsg = {
+        type: 'TurnAborted',
+        data: { reason: 'automatic_abort', submission_id: 'sub-1', turn_count: 10 },
+      };
+
+      handleSchedulerEventCompletion(state, msg);
+
+      expect(state.scheduler!.failJob).toHaveBeenCalledWith('job-123', 'automatic_abort');
+    });
+
+    it('should use default message when reason is missing', () => {
+      const msg: EventMsg = {
+        type: 'TurnAborted',
+        data: {} as any,
+      };
+
+      handleSchedulerEventCompletion(state, msg);
+
+      expect(state.scheduler!.failJob).toHaveBeenCalledWith('job-123', 'Job failed');
+    });
+
+    it('should clear runningSchedulerJobId and runningJobStartTime', () => {
+      const msg: EventMsg = {
+        type: 'TurnAborted',
+        data: { reason: 'user_interrupt' },
+      };
+
+      handleSchedulerEventCompletion(state, msg);
+
+      expect(state.runningSchedulerJobId).toBeNull();
+      expect(state.runningJobStartTime).toBe(0);
+    });
+  });
+
+  // =========================================================================
+  // Error (task execution error — previously unhandled, caused stuck jobs)
+  // =========================================================================
+
+  describe('Error', () => {
+    it('should call scheduler.failJob with error message', () => {
+      const msg: EventMsg = {
+        type: 'Error',
+        data: { message: 'No API key configured for OpenAI' },
+      };
+
+      handleSchedulerEventCompletion(state, msg);
+
+      expect(state.scheduler!.failJob).toHaveBeenCalledWith(
+        'job-123',
+        'No API key configured for OpenAI'
+      );
+    });
+
+    it('should handle task execution failure message', () => {
+      const msg: EventMsg = {
+        type: 'Error',
+        data: { message: 'Task execution failed: connection timeout' },
+      };
+
+      handleSchedulerEventCompletion(state, msg);
+
+      expect(state.scheduler!.failJob).toHaveBeenCalledWith(
+        'job-123',
+        'Task execution failed: connection timeout'
+      );
+    });
+
+    it('should use default message when data is empty', () => {
+      const msg: EventMsg = {
+        type: 'Error',
+        data: {} as any,
+      };
+
+      handleSchedulerEventCompletion(state, msg);
+
+      expect(state.scheduler!.failJob).toHaveBeenCalledWith('job-123', 'Job failed');
+    });
+
+    it('should clear runningSchedulerJobId and runningJobStartTime', () => {
+      const msg: EventMsg = {
+        type: 'Error',
+        data: { message: 'Something went wrong' },
+      };
+
+      handleSchedulerEventCompletion(state, msg);
+
+      expect(state.runningSchedulerJobId).toBeNull();
+      expect(state.runningJobStartTime).toBe(0);
+    });
+  });
+
+  // =========================================================================
   // Guard conditions
   // =========================================================================
 
@@ -302,6 +410,24 @@ describe('handleSchedulerEventCompletion (bootstrap pattern)', () => {
       handleSchedulerEventCompletion(state, msg); // Second call — jobId is now null
 
       expect(state.scheduler!.completeJob).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not double-fail on TurnAborted followed by Error', () => {
+      // TaskRunner error path emits TurnAborted then Error — only first should trigger
+      const abortMsg: EventMsg = {
+        type: 'TurnAborted',
+        data: { reason: 'user_interrupt' },
+      };
+      const errorMsg: EventMsg = {
+        type: 'Error',
+        data: { message: 'Task execution failed' },
+      };
+
+      handleSchedulerEventCompletion(state, abortMsg);
+      handleSchedulerEventCompletion(state, errorMsg); // runningSchedulerJobId already null
+
+      expect(state.scheduler!.failJob).toHaveBeenCalledTimes(1);
+      expect(state.scheduler!.failJob).toHaveBeenCalledWith('job-123', 'user_interrupt');
     });
   });
 });

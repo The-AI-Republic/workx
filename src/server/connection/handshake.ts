@@ -208,6 +208,7 @@ export async function handleConnectRequest(
     scopes,
     userId: authResult.userId,
     authenticated: true,
+    isLoopback: ws.isLoopback,
   });
 
   // Build session key

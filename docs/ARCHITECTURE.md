@@ -324,3 +324,47 @@ scripts/                     # Build & i18n scripts
 tests/                       # E2E tests
 docs/                        # Documentation
 ```
+
+## Server Mode Credential Storage
+
+Server mode uses `FileCredentialStore` (AES-256-GCM encrypted file) for secure API key persistence.
+
+### How Credentials Are Stored
+
+- **Encryption:** AES-256-GCM with scrypt key derivation from `VITE_VAULT_SECRET`
+- **File location:** `$APPLEPI_DATA_DIR/credentials.enc`
+- **Key format:** Each credential is stored as `service:account` → encrypted value
+
+### Setup
+
+1. Generate a vault secret:
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+   ```
+2. Pass it to the server:
+   ```bash
+   # Docker
+   docker run -e VITE_VAULT_SECRET=<your-secret> ...
+
+   # docker-compose — set in .env file
+   VITE_VAULT_SECRET=<your-secret>
+   ```
+
+### API Methods
+
+| Method | Scope | Description |
+|--------|-------|-------------|
+| `credentials.list` | `credentials.read` | List providers with `hasKey` boolean (no secrets exposed) |
+| `credentials.set` | `credentials.write` | Store an API key for a provider (requires TLS or loopback) |
+| `credentials.delete` | `credentials.write` | Remove an API key for a provider (requires TLS or loopback) |
+
+### Security Model
+
+- **Scopes:** `credentials.read` and `credentials.write` are granted only to the `operator` role
+- **Transport:** `credentials.set` and `credentials.delete` require TLS or loopback connection to prevent plaintext key transmission
+- **No key exposure:** `credentials.list` returns metadata only (`id`, `name`, `hasKey`) — never the actual key
+- **Audit logging:** All set/delete operations are logged with connection ID (visible via `logs.tail`)
+
+### Graceful Degradation
+
+If `VITE_VAULT_SECRET` is not set, the server starts normally with a warning. Credential operations log a warning but do not error — the server remains functional for non-credential features.

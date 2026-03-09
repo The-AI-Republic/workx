@@ -7,12 +7,13 @@
   import SchedulerCalendar from './pages/scheduler/SchedulerCalendar.svelte';
   import AppShell from './components/layout/AppShell.svelte';
   import Skills from './pages/skills/Skills.svelte';
+  import Usage from './pages/usage/Usage.svelte';
   import { userStore } from './stores/userStore';
   import { isAuthenticated } from './lib/utils/cookie';
   import { fetchUserProfile } from './lib/apis';
   import { LLM_API_URL } from './lib/constants';
   import { AgentConfig } from '@/config/AgentConfig';
-  import { sendMessage, MessageType } from './lib/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
   import { platform } from './stores/platformStore';
   import { vaultStore, refreshVaultStatus } from './stores/vaultStore';
   import PinUnlockOverlay from './components/vault/PinUnlockOverlay.svelte';
@@ -37,6 +38,9 @@
 
     // Skills page
     '/skills': Skills,
+
+    // Usage page
+    '/usage': Usage,
 
     // Catch-all route - redirect to chat
     '*': Chat,
@@ -177,7 +181,7 @@
         useOwnApiKey: useOwnApiKey,
       };
       console.log('[App] Sending INIT_AUTH:', authPayload);
-      await sendMessage(MessageType.INIT_AUTH, authPayload);
+      await (await getInitializedUIClient()).serviceRequest('agent.initAuth', authPayload);
       console.log('[App] INIT_AUTH sent successfully');
     } catch (authError) {
       console.warn('[App] Failed to send INIT_AUTH:', authError);

@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import '../../__test-utils__/chrome-storage-mock';
 import { AgentConfig } from '@/config/AgentConfig';
 import type { IProfileConfig, IConfigChangeEvent } from '@/config/types';
 
@@ -36,7 +35,6 @@ describe('AgentConfig', () => {
   beforeEach(async () => {
     // Reset singleton between tests
     (AgentConfig as any).instance = null;
-    await chrome.storage.local.clear();
     // Clear in-memory ConfigStorageProvider between tests
     for (const k of Object.keys(_memStore)) delete _memStore[k];
   });

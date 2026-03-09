@@ -1,6 +1,6 @@
 import { commandRegistry } from './CommandRegistry';
 import type { SkillMeta } from '@/core/skills/types';
-import { sendMessage as sendIpcMessage, MessageType } from '../lib/messaging';
+import { getInitializedUIClient } from '@/core/messaging';
 
 export interface BuiltinCommandCallbacks {
   onNewConversation: () => void;
@@ -81,7 +81,7 @@ async function syncSkillCommands(
   onSubmitText: (text: string) => void
 ): Promise<void> {
   try {
-    const skills = await sendIpcMessage<SkillMeta[]>(MessageType.SKILLS_LIST);
+    const skills = await (await getInitializedUIClient()).serviceRequest<SkillMeta[]>('skills.list');
     const currentSkillNames = new Set<string>();
 
     if (skills?.length) {

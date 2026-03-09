@@ -10,7 +10,7 @@ import { mount } from 'svelte';
 import App from './App.svelte';
 import { initLocale } from './lib/i18n';
 import { AgentConfig } from '@/config/AgentConfig';
-import { initializeMessaging, ChromeMessageService } from '@/core/messaging';
+import { initializeConfigStorage } from '@/core/storage';
 
 // Add terminal-mode class to body for terminal styling
 document.body.classList.add('terminal-mode');
@@ -21,14 +21,11 @@ document.body.classList.add('terminal-mode');
 async function init() {
   console.log('[Extension] Initializing sidepanel...');
 
-  // Initialize messaging service (Chrome-specific)
+  // Initialize config storage (needed for components that call getConfigStorage())
   try {
-    const messageService = new ChromeMessageService();
-    await initializeMessaging(messageService);
-    console.log('[Extension] Messaging service initialized');
+    await initializeConfigStorage();
   } catch (error) {
-    console.error('[Extension] Failed to initialize messaging service:', error);
-    // Continue anyway - the app will show connection error state
+    console.warn('[Extension] Failed to initialize config storage:', error);
   }
 
   // Initialize locale

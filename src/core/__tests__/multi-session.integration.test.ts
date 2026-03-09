@@ -32,10 +32,6 @@ vi.mock('@/config/AgentConfig', () => ({
   },
 }));
 
-vi.mock('@/core/MessageRouter', () => ({
-  MessageRouter: vi.fn().mockImplementation(() => ({})),
-}));
-
 vi.mock('@/core/TabManager', () => ({
   TabManager: {
     getInstance: vi.fn(() => ({
@@ -54,7 +50,6 @@ global.chrome = {
 
 describe('Multi-Session Integration', () => {
   let mockConfig: any;
-  let mockRouter: any;
 
   beforeEach(() => {
     AgentRegistry.resetInstance();
@@ -73,7 +68,6 @@ describe('Multi-Session Integration', () => {
       getConfig: vi.fn().mockReturnValue({}),
       getModelConfig: vi.fn().mockReturnValue({ modelKey: 'test' }),
     };
-    mockRouter = {};
   });
 
   afterEach(() => {
@@ -83,7 +77,7 @@ describe('Multi-Session Integration', () => {
   describe('US2: Agent Registry Manages Multiple Sessions', () => {
     it('creates multiple sessions with independent state', async () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       // Create primary session
       const primarySession = await registry.createSession({ type: 'primary' });
@@ -123,7 +117,7 @@ describe('Multi-Session Integration', () => {
 
     it('enforces concurrent session limit', async () => {
       const registry = AgentRegistry.getInstance({ maxConcurrent: 2 });
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       // Create sessions up to limit
       await registry.createSession({ type: 'primary' });
@@ -141,7 +135,7 @@ describe('Multi-Session Integration', () => {
 
     it('allows new sessions after removal', async () => {
       const registry = AgentRegistry.getInstance({ maxConcurrent: 2 });
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       // Create sessions up to limit
       const session1 = await registry.createSession({ type: 'primary' });
@@ -162,7 +156,7 @@ describe('Multi-Session Integration', () => {
 
     it('emits lifecycle events for session operations', async () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       const events: any[] = [];
       registry.on((event) => events.push(event));
@@ -206,7 +200,7 @@ describe('Multi-Session Integration', () => {
 
     it('lists all sessions with metadata', async () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       await registry.createSession({ type: 'primary', tabId: 42 });
       await registry.createSession({
@@ -233,7 +227,7 @@ describe('Multi-Session Integration', () => {
 
     it('getOrCreatePrimarySession returns existing or creates new', async () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       // First call creates primary session
       const session1 = await registry.getOrCreatePrimarySession();

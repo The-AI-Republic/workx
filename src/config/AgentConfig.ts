@@ -31,6 +31,7 @@ import {
 // Credential store constants
 const CREDENTIAL_SERVICE = 'applepi';
 const CREDENTIAL_ACCOUNT_PREFIX = 'provider-apikey-';
+export const CREDENTIAL_SECURED_MARKER = '[SECURED]';
 
 export class AgentConfig implements IConfigService {
   private static instance: AgentConfig | null = null;
@@ -429,10 +430,12 @@ export class AgentConfig implements IConfigService {
     const credentials = this.getCredentials();
     if (credentials) {
       await credentials.set(CREDENTIAL_SERVICE, `${CREDENTIAL_ACCOUNT_PREFIX}${providerId}`, apiKey);
+    } else {
+      console.warn(`[AgentConfig] Credential store not available — cannot persist API key for ${providerId}`);
     }
 
     // Mark that this provider has an API key configured (without storing the actual key)
-    provider.apiKey = '[SECURED]';
+    provider.apiKey = CREDENTIAL_SECURED_MARKER;
     this.currentConfig.providers[providerId] = provider;
 
     await this.storage.set(extractStoredConfig(this.currentConfig));
@@ -461,6 +464,8 @@ export class AgentConfig implements IConfigService {
       if (apiKey) {
         return apiKey;
       }
+    } else {
+      console.warn(`[AgentConfig] Credential store not available — cannot retrieve API key for ${providerId}`);
     }
 
     return null;
@@ -486,6 +491,8 @@ export class AgentConfig implements IConfigService {
     const credentials = this.getCredentials();
     if (credentials) {
       await credentials.delete(CREDENTIAL_SERVICE, `${CREDENTIAL_ACCOUNT_PREFIX}${providerId}`);
+    } else {
+      console.warn(`[AgentConfig] Credential store not available — cannot delete API key for ${providerId}`);
     }
 
     // Clear the marker
