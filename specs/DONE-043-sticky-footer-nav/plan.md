@@ -1,0 +1,144 @@
+# Implementation Plan: Sticky Footer Navigation Bar
+
+**Branch**: `043-sticky-footer-nav` | **Date**: 2026-03-07 | **Spec**: [spec.md](./spec.md)
+**Input**: Feature specification from `/specs/043-sticky-footer-nav/spec.md`
+
+## Summary
+
+Move the `FooterBar` component from its current position inside the Chat page to the `AppShell` layout component, so it renders persistently across all pages in narrow mode. This is a layout restructuring — no new components or logic needed, just relocating where `FooterBar` is rendered and adjusting page layouts to account for the footer height.
+
+## Technical Context
+
+**Language/Version**: TypeScript 5.9.2 (strict mode) + Svelte 4
+**Primary Dependencies**: Svelte 4.2.20, svelte-spa-router, Tailwind CSS 4.1.13
+**Storage**: N/A (no data changes)
+**Testing**: Manual visual testing across pages and responsive breakpoints
+**Target Platform**: Chrome extension + Tauri desktop (both narrow and wide viewports)
+**Project Type**: Single project (Svelte frontend)
+**Performance Goals**: No performance impact — just moving a component in the render tree
+**Constraints**: Must not change wide-mode behavior at all
+**Scale/Scope**: 3 files modified (AppShell, FooterBar, Chat/Main)
+
+## Constitution Check
+
+*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+
+No constitution defined — using default project conventions. This is a small UI layout change with no new dependencies, patterns, or abstractions introduced.
+
+## Architecture
+
+### Current State
+
+```
+App.svelte
+└── AppShell
+    ├── [wide] LeftPanel (sidebar nav)
+    └── <slot> (Router content)
+        ├── Chat/Main.svelte
+        │   ├── ...messages...
+        │   ├── MessageInput
+        │   └── FooterBar  ← ONLY here, not on other pages
+        ├── Scheduler.svelte  ← NO footer
+        └── Skills.svelte     ← NO footer
+```
+
+### Target State
+
+```
+App.svelte
+└── AppShell
+    ├── [wide] LeftPanel (sidebar nav)
+    ├── <slot> (Router content)
+    │   ├── Chat/Main.svelte (no FooterBar)
+    │   ├── Scheduler.svelte
+    │   └── Skills.svelte
+    └── [always] FooterBar  ← Moved here, visible on ALL pages
+```
+
+### Changes Required
+
+#### 1. `AppShell.svelte` — Add FooterBar below the content slot
+
+The AppShell currently has a simple two-part layout: optional sidebar + content slot. We add FooterBar as a third element, below the content area, inside the main content column (not alongside the sidebar).
+
+```svelte
+<!-- Current: -->
+<div class="flex flex-row h-screen overflow-hidden">
+  {#if $isWideMode} <LeftPanel /> {/if}
+  <div class="flex-1 overflow-hidden">
+    <slot />
+  </div>
+</div>
+
+<!-- New: -->
+<div class="flex flex-row h-screen overflow-hidden">
+  {#if $isWideMode} <LeftPanel /> {/if}
+  <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 min-h-0 overflow-hidden">
+      <slot />
+    </div>
+    <div class="shrink-0">
+      <FooterBar />
+    </div>
+  </div>
+</div>
+```
+
+Key points:
+- The content column becomes `flex flex-col` to stack content + footer vertically
+- Content area gets `flex-1 min-h-0` to fill remaining space and allow scrolling
+- Footer gets `shrink-0` to maintain its height
+
+#### 2. `Chat/Main.svelte` — Remove FooterBar
+
+Remove the `<FooterBar />` component from the Chat page's bottom controls section. The footer is now rendered by AppShell.
+
+Delete: The `import FooterBar` and the `<FooterBar />` usage in the template.
+
+The "Fixed bottom controls container" div still keeps `MessageInput` but loses `FooterBar`.
+
+#### 3. `FooterBar.svelte` — No changes needed
+
+The component already handles both wide and narrow modes correctly. Its internal logic (nav items, active route detection, theme support) works regardless of where it's rendered in the component tree.
+
+### Pages Impact Assessment
+
+| Page | Current Footer | After Change | Layout Adjustment Needed |
+|------|---------------|--------------|-------------------------|
+| Chat | Has FooterBar | Remove (AppShell provides it) | Remove FooterBar from template |
+| Scheduler | No footer | Gets footer from AppShell | Adjust height calc from `100vh - 52px` to `100%` (parent handles it) |
+| Skills | No footer | Gets footer from AppShell | May need `h-full` instead of `h-screen` |
+| Settings | No footer (modal) | Footer visible under overlay | No changes needed |
+| SchedulerCalendar | No footer | Gets footer from AppShell | Same as Scheduler |
+
+### Scheduler/Skills Height Adjustment
+
+Currently Scheduler uses `h-screen` and manages its own full-viewport height. With the footer now being rendered by AppShell at the shell level, the content slot already has constrained height (flex-1). Pages should use `h-full` to fill the available space rather than `h-screen` which would extend behind the footer.
+
+## Project Structure
+
+### Documentation (this feature)
+
+```text
+specs/043-sticky-footer-nav/
+├── spec.md              # Feature specification
+├── plan.md              # This file
+└── tasks.md             # Task list (generated by /rr.tasks)
+```
+
+### Source Code (files to modify)
+
+```text
+src/webfront/
+├── components/layout/
+│   ├── AppShell.svelte      # ADD FooterBar rendering
+│   └── FooterBar.svelte     # NO CHANGES
+└── pages/
+    ├── chat/Main.svelte     # REMOVE FooterBar import & usage
+    ├── scheduler/
+    │   ├── Scheduler.svelte         # Adjust height from h-screen to h-full
+    │   └── SchedulerCalendar.svelte # Adjust height from h-screen to h-full
+    └── skills/Skills.svelte         # Adjust height if using h-screen
+```
+
+**Structure Decision**: Existing project structure, modifying 4-5 existing files. No new files needed.

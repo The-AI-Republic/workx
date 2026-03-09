@@ -221,7 +221,7 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="h-screen flex items-center justify-center {currentTheme === 'modern' ? 'bg-black/30' : 'bg-black/50'}">
+<div class="h-full flex items-center justify-center {currentTheme === 'modern' ? 'bg-black/30' : 'bg-black/50'}">
   <div class="w-full max-w-[42rem] max-h-[80vh] overflow-y-auto rounded-lg flex flex-col
     {currentTheme === 'modern'
       ? 'rounded-2xl shadow-2xl bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark border-none'

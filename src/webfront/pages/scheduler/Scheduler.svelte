@@ -157,7 +157,7 @@
   }
 </script>
 
-<div class="h-screen overflow-y-auto {currentTheme}
+<div class="h-full overflow-y-auto {currentTheme}
   {currentTheme === 'modern'
     ? 'font-chat bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
     : 'font-terminal bg-term-bg text-term-green'}">
@@ -196,7 +196,7 @@
   <!-- Modules Layout -->
   {#if wide}
     <!-- Wide mode: 2-column split -->
-    <div class="grid grid-cols-2 gap-4 p-4 h-[calc(100vh-52px)]">
+    <div class="grid grid-cols-2 gap-4 p-4 h-[calc(100%-52px)]">
       <!-- Left column: NewJob + JobHistory -->
       <div class="flex flex-col gap-4 overflow-hidden">
         <div class="shrink-0">

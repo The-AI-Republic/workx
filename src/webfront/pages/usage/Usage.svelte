@@ -30,7 +30,7 @@
   });
 </script>
 
-<div class="h-screen overflow-y-auto {currentTheme}
+<div class="h-full overflow-y-auto {currentTheme}
   {currentTheme === 'modern'
     ? 'bg-chat-bg dark:bg-chat-bg-dark'
     : 'bg-term-bg'}">

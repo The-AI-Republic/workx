@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/svelte';
-import TerminalContainer from '../webfront/components/TerminalContainer.svelte';
+import TestApp from './TestApp.svelte';
 import TerminalMessage from '../webfront/components/TerminalMessage.svelte';
 import TerminalInput from '../webfront/components/TerminalInput.svelte';
 
@@ -30,7 +30,7 @@ describe('Accessibility', () => {
   });
 
   it('should have proper ARIA attributes on container', () => {
-    const { container } = render(TerminalContainer);
+    const { container } = render(TestApp);
     const terminalDiv = container.querySelector('[role="log"]');
     expect(terminalDiv).toBeTruthy();
     expect(terminalDiv?.getAttribute('aria-label')).toBe('Terminal output');
