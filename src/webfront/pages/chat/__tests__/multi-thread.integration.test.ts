@@ -1,11 +1,11 @@
 /**
- * Multi-chat integration tests
+ * Multi-thread integration tests
  *
  * Tests the UI-side state management logic extracted from Main.svelte:
- * saveChatState, loadChatState, handleEventForSession, switchToChat,
+ * saveThreadState, loadThreadState, handleEventForSession, switchToThread,
  * welcome screen condition, and full independence scenarios.
  *
- * Uses a MultiChatStateManager class that replicates Main.svelte's
+ * Uses a MultiThreadStateManager class that replicates Main.svelte's
  * pure state logic so we can test without mounting the full component.
  */
 
@@ -24,7 +24,7 @@ vi.mock('@/core/storage/ConfigStorageProvider', () => ({
   getConfigStorage: vi.fn(() => mockConfigStorage),
 }));
 
-import { chatStore } from '@/webfront/stores/chatStore';
+import { threadStore } from '@/webfront/stores/threadStore';
 import { isConfigStorageInitialized } from '@/core/storage/ConfigStorageProvider';
 
 // ---------- Types matching Main.svelte ----------
@@ -44,7 +44,7 @@ interface MockEventProcessor {
   processEvent: (event: any) => ProcessedEvent | null;
 }
 
-interface ChatConversationState {
+interface ThreadConversationState {
   messages: Message[];
   processedEvents: ProcessedEvent[];
   inputText: string;
@@ -53,7 +53,7 @@ interface ChatConversationState {
   eventProcessor: MockEventProcessor;
 }
 
-// ---------- MultiChatStateManager (replicates Main.svelte logic) ----------
+// ---------- MultiThreadStateManager (replicates Main.svelte logic) ----------
 
 function createMockEventProcessor(): MockEventProcessor {
   return {
@@ -65,8 +65,8 @@ function createMockEventProcessor(): MockEventProcessor {
   };
 }
 
-class MultiChatStateManager {
-  chatStates = new Map<string, ChatConversationState>();
+class MultiThreadStateManager {
+  threadStates = new Map<string, ThreadConversationState>();
   activeSessionId: string | null = null;
 
   // "UI state" — mimics the reactive variables in Main.svelte
@@ -77,9 +77,9 @@ class MultiChatStateManager {
   currentTabId: number = -1;
   eventProcessor: MockEventProcessor = createMockEventProcessor();
 
-  /** Save current UI state to the chatStates map */
-  saveChatState(chatId: string) {
-    const state: ChatConversationState = {
+  /** Save current UI state to the threadStates map */
+  saveThreadState(threadId: string) {
+    const state: ThreadConversationState = {
       messages: [...this.messages],
       processedEvents: [...this.processedEvents],
       inputText: this.inputText,
@@ -87,12 +87,12 @@ class MultiChatStateManager {
       currentTabId: this.currentTabId,
       eventProcessor: this.eventProcessor,
     };
-    this.chatStates.set(chatId, state);
+    this.threadStates.set(threadId, state);
   }
 
-  /** Load chat state from map to UI */
-  loadChatState(chatId: string) {
-    const state = this.chatStates.get(chatId);
+  /** Load thread state from map to UI */
+  loadThreadState(threadId: string) {
+    const state = this.threadStates.get(threadId);
     if (state) {
       this.messages = [...state.messages];
       this.processedEvents = [...state.processedEvents];
@@ -110,12 +110,12 @@ class MultiChatStateManager {
     }
   }
 
-  /** Handle incoming event for a specific session (background chat) */
+  /** Handle incoming event for a specific session (background thread) */
   handleEventForSession(event: { id: string; msg: { type: string; [key: string]: any } }, sessionId: string) {
-    const chat = chatStore.getChatBySessionId(sessionId);
-    if (!chat) return;
+    const thread = threadStore.getThreadBySessionId(sessionId);
+    if (!thread) return;
 
-    let state = this.chatStates.get(chat.id);
+    let state = this.threadStates.get(thread.id);
     if (!state) {
       state = {
         messages: [],
@@ -125,7 +125,7 @@ class MultiChatStateManager {
         currentTabId: -1,
         eventProcessor: createMockEventProcessor(),
       };
-      this.chatStates.set(chat.id, state);
+      this.threadStates.set(thread.id, state);
     }
 
     const processed = state.eventProcessor.processEvent(event);
@@ -140,24 +140,24 @@ class MultiChatStateManager {
       state.isProcessing = false;
     }
 
-    this.chatStates.set(chat.id, state);
+    this.threadStates.set(thread.id, state);
   }
 
-  /** Switch to a specific chat (replicates switchToChat in Main.svelte) */
-  switchToChat(chatId: string) {
-    const currentActiveChat = chatStore.getActiveChat();
-    if (currentActiveChat) {
-      this.saveChatState(currentActiveChat.id);
+  /** Switch to a specific thread (replicates switchToThread in Main.svelte) */
+  switchToThread(threadId: string) {
+    const currentActiveThread = threadStore.getActiveThread();
+    if (currentActiveThread) {
+      this.saveThreadState(currentActiveThread.id);
     }
 
-    chatStore.setActiveChat(chatId);
+    threadStore.setActiveThread(threadId);
 
-    const newChat = chatStore.getActiveChat();
-    if (newChat) {
-      this.activeSessionId = newChat.sessionId;
+    const newThread = threadStore.getActiveThread();
+    if (newThread) {
+      this.activeSessionId = newThread.sessionId;
     }
 
-    this.loadChatState(chatId);
+    this.loadThreadState(threadId);
   }
 
   /** Welcome screen condition */
@@ -168,26 +168,26 @@ class MultiChatStateManager {
 
 // ---------- Tests ----------
 
-describe('Multi-chat integration (UI state management)', () => {
-  let mgr: MultiChatStateManager;
+describe('Multi-thread integration (UI state management)', () => {
+  let mgr: MultiThreadStateManager;
 
   beforeEach(() => {
-    chatStore.clear();
+    threadStore.clear();
     vi.clearAllMocks();
     vi.mocked(isConfigStorageInitialized).mockReturnValue(true);
     mockConfigStorage.get.mockResolvedValue(null);
     mockConfigStorage.set.mockResolvedValue(undefined);
 
-    mgr = new MultiChatStateManager();
+    mgr = new MultiThreadStateManager();
   });
 
   // =========================================================================
-  // saveChatState / loadChatState roundtrip
+  // saveThreadState / loadThreadState roundtrip
   // =========================================================================
 
-  describe('saveChatState / loadChatState roundtrip', () => {
+  describe('saveThreadState / loadThreadState roundtrip', () => {
     it('preserves all fields', () => {
-      const chat = chatStore.createChat('s1');
+      const thread = threadStore.createThread('s1');
 
       mgr.messages = [{ type: 'user', content: 'hi', timestamp: 1 }];
       mgr.processedEvents = [{ id: 'pe1', type: 'AgentMessage' }];
@@ -195,7 +195,7 @@ describe('Multi-chat integration (UI state management)', () => {
       mgr.isProcessing = true;
       mgr.currentTabId = 42;
 
-      mgr.saveChatState(chat.id);
+      mgr.saveThreadState(thread.id);
 
       // Nuke UI state
       mgr.messages = [];
@@ -204,7 +204,7 @@ describe('Multi-chat integration (UI state management)', () => {
       mgr.isProcessing = false;
       mgr.currentTabId = -1;
 
-      mgr.loadChatState(chat.id);
+      mgr.loadThreadState(thread.id);
 
       expect(mgr.messages).toEqual([{ type: 'user', content: 'hi', timestamp: 1 }]);
       expect(mgr.processedEvents).toEqual([{ id: 'pe1', type: 'AgentMessage' }]);
@@ -214,34 +214,34 @@ describe('Multi-chat integration (UI state management)', () => {
     });
 
     it('produces defensive copies (mutating UI state does not corrupt saved state)', () => {
-      const chat = chatStore.createChat('s1');
+      const thread = threadStore.createThread('s1');
 
       mgr.messages = [{ type: 'user', content: 'original', timestamp: 1 }];
-      mgr.saveChatState(chat.id);
+      mgr.saveThreadState(thread.id);
 
       // Mutate the current UI array
       mgr.messages.push({ type: 'agent', content: 'extra', timestamp: 2 });
 
       // Reload — should get the original snapshot
-      mgr.loadChatState(chat.id);
+      mgr.loadThreadState(thread.id);
       expect(mgr.messages).toHaveLength(1);
       expect(mgr.messages[0].content).toBe('original');
     });
 
-    it('gives each chat its own EventProcessor instance', () => {
-      const c1 = chatStore.createChat('s1');
-      const c2 = chatStore.createChat('s2');
+    it('gives each thread its own EventProcessor instance', () => {
+      const t1 = threadStore.createThread('s1');
+      const t2 = threadStore.createThread('s2');
 
-      mgr.saveChatState(c1.id);
+      mgr.saveThreadState(t1.id);
       const ep1 = mgr.eventProcessor;
 
       mgr.eventProcessor = createMockEventProcessor();
-      mgr.saveChatState(c2.id);
+      mgr.saveThreadState(t2.id);
 
-      mgr.loadChatState(c1.id);
+      mgr.loadThreadState(t1.id);
       const ep1Loaded = mgr.eventProcessor;
 
-      mgr.loadChatState(c2.id);
+      mgr.loadThreadState(t2.id);
       const ep2Loaded = mgr.eventProcessor;
 
       expect(ep1Loaded).toBe(ep1);
@@ -250,14 +250,14 @@ describe('Multi-chat integration (UI state management)', () => {
   });
 
   // =========================================================================
-  // loadChatState for missing chat
+  // loadThreadState for missing thread
   // =========================================================================
 
-  describe('loadChatState for missing chat', () => {
+  describe('loadThreadState for missing thread', () => {
     it('initializes fresh state when no saved state exists', () => {
       mgr.messages = [{ type: 'user', content: 'stale', timestamp: 99 }];
 
-      mgr.loadChatState('nonexistent-id');
+      mgr.loadThreadState('nonexistent-id');
 
       expect(mgr.messages).toEqual([]);
       expect(mgr.processedEvents).toEqual([]);
@@ -272,22 +272,22 @@ describe('Multi-chat integration (UI state management)', () => {
   // =========================================================================
 
   describe('handleEventForSession', () => {
-    it('stores event in the correct background chat', () => {
-      const chat1 = chatStore.createChat('session_1');
-      const chat2 = chatStore.createChat('session_2');
+    it('stores event in the correct background thread', () => {
+      const thread1 = threadStore.createThread('session_1');
+      const thread2 = threadStore.createThread('session_2');
 
       const event = { id: 'evt_1', msg: { type: 'AgentMessage', data: {} } };
       mgr.handleEventForSession(event, 'session_1');
 
-      const state1 = mgr.chatStates.get(chat1.id);
-      const state2 = mgr.chatStates.get(chat2.id);
+      const state1 = mgr.threadStates.get(thread1.id);
+      const state2 = mgr.threadStates.get(thread2.id);
 
       expect(state1?.processedEvents).toHaveLength(1);
       expect(state2).toBeUndefined(); // Not touched
     });
 
     it('does not affect active UI state', () => {
-      chatStore.createChat('session_bg');
+      threadStore.createThread('session_bg');
 
       mgr.messages = [{ type: 'user', content: 'current', timestamp: 1 }];
       mgr.processedEvents = [];
@@ -301,16 +301,16 @@ describe('Multi-chat integration (UI state management)', () => {
       expect(mgr.processedEvents).toHaveLength(0);
     });
 
-    it('creates state on demand for a chat without prior state', () => {
-      const chat = chatStore.createChat('session_new');
+    it('creates state on demand for a thread without prior state', () => {
+      const thread = threadStore.createThread('session_new');
 
       mgr.handleEventForSession(
         { id: 'e1', msg: { type: 'AgentMessage', data: {} } },
         'session_new'
       );
 
-      expect(mgr.chatStates.has(chat.id)).toBe(true);
-      expect(mgr.chatStates.get(chat.id)?.processedEvents).toHaveLength(1);
+      expect(mgr.threadStates.has(thread.id)).toBe(true);
+      expect(mgr.threadStates.get(thread.id)?.processedEvents).toHaveLength(1);
     });
 
     it('ignores unknown sessionId', () => {
@@ -319,22 +319,22 @@ describe('Multi-chat integration (UI state management)', () => {
         'unknown_session'
       );
 
-      expect(mgr.chatStates.size).toBe(0);
+      expect(mgr.threadStates.size).toBe(0);
     });
 
     it('sets isProcessing=true on TaskStarted', () => {
-      const chat = chatStore.createChat('session_x');
+      const thread = threadStore.createThread('session_x');
 
       mgr.handleEventForSession(
         { id: 'e1', msg: { type: 'TaskStarted', data: {} } },
         'session_x'
       );
 
-      expect(mgr.chatStates.get(chat.id)?.isProcessing).toBe(true);
+      expect(mgr.threadStates.get(thread.id)?.isProcessing).toBe(true);
     });
 
     it('sets isProcessing=false on TaskComplete', () => {
-      const chat = chatStore.createChat('session_x');
+      const thread = threadStore.createThread('session_x');
 
       mgr.handleEventForSession(
         { id: 'e1', msg: { type: 'TaskStarted', data: {} } },
@@ -345,11 +345,11 @@ describe('Multi-chat integration (UI state management)', () => {
         'session_x'
       );
 
-      expect(mgr.chatStates.get(chat.id)?.isProcessing).toBe(false);
+      expect(mgr.threadStates.get(thread.id)?.isProcessing).toBe(false);
     });
 
     it('sets isProcessing=false on TaskFailed', () => {
-      const chat = chatStore.createChat('session_x');
+      const thread = threadStore.createThread('session_x');
 
       mgr.handleEventForSession(
         { id: 'e1', msg: { type: 'TaskStarted', data: {} } },
@@ -360,47 +360,47 @@ describe('Multi-chat integration (UI state management)', () => {
         'session_x'
       );
 
-      expect(mgr.chatStates.get(chat.id)?.isProcessing).toBe(false);
+      expect(mgr.threadStates.get(thread.id)?.isProcessing).toBe(false);
     });
   });
 
   // =========================================================================
-  // switchToChat
+  // switchToThread
   // =========================================================================
 
-  describe('switchToChat', () => {
+  describe('switchToThread', () => {
     it('saves old state and loads new state', () => {
-      const c1 = chatStore.createChat('s1');
-      const c2 = chatStore.createChat('s2');
+      const t1 = threadStore.createThread('s1');
+      const t2 = threadStore.createThread('s2');
 
-      // Put some state on c1
-      chatStore.setActiveChat(c1.id);
+      // Put some state on t1
+      threadStore.setActiveThread(t1.id);
       mgr.activeSessionId = 's1';
-      mgr.messages = [{ type: 'user', content: 'chat1 msg', timestamp: 1 }];
+      mgr.messages = [{ type: 'user', content: 'thread1 msg', timestamp: 1 }];
       mgr.inputText = 'draft1';
 
-      // Switch to c2
-      mgr.switchToChat(c2.id);
+      // Switch to t2
+      mgr.switchToThread(t2.id);
 
-      // c2 should have fresh state
+      // t2 should have fresh state
       expect(mgr.messages).toEqual([]);
       expect(mgr.inputText).toBe('');
       expect(mgr.activeSessionId).toBe('s2');
 
-      // Switch back to c1 — should restore saved state
-      mgr.switchToChat(c1.id);
+      // Switch back to t1 — should restore saved state
+      mgr.switchToThread(t1.id);
 
-      expect(mgr.messages).toEqual([{ type: 'user', content: 'chat1 msg', timestamp: 1 }]);
+      expect(mgr.messages).toEqual([{ type: 'user', content: 'thread1 msg', timestamp: 1 }]);
       expect(mgr.inputText).toBe('draft1');
       expect(mgr.activeSessionId).toBe('s1');
     });
 
     it('updates activeSessionId', () => {
-      const c1 = chatStore.createChat('s1');
-      const c2 = chatStore.createChat('s2');
+      const t1 = threadStore.createThread('s1');
+      const t2 = threadStore.createThread('s2');
 
-      chatStore.setActiveChat(c1.id);
-      mgr.switchToChat(c2.id);
+      threadStore.setActiveThread(t1.id);
+      mgr.switchToThread(t2.id);
 
       expect(mgr.activeSessionId).toBe('s2');
     });
@@ -411,7 +411,7 @@ describe('Multi-chat integration (UI state management)', () => {
   // =========================================================================
 
   describe('welcome screen condition', () => {
-    it('shows welcome when chat is empty and not processing', () => {
+    it('shows welcome when thread is empty and not processing', () => {
       expect(mgr.showWelcome).toBe(true);
     });
 
@@ -436,74 +436,74 @@ describe('Multi-chat integration (UI state management)', () => {
   // =========================================================================
 
   describe('full independence', () => {
-    it('two chats maintain independent message histories', () => {
-      const c1 = chatStore.createChat('s1');
-      const c2 = chatStore.createChat('s2');
+    it('two threads maintain independent message histories', () => {
+      const t1 = threadStore.createThread('s1');
+      const t2 = threadStore.createThread('s2');
 
-      // Start on c1
-      chatStore.setActiveChat(c1.id);
+      // Start on t1
+      threadStore.setActiveThread(t1.id);
       mgr.activeSessionId = 's1';
-      mgr.messages = [{ type: 'user', content: 'msg_c1', timestamp: 1 }];
-      mgr.saveChatState(c1.id);
+      mgr.messages = [{ type: 'user', content: 'msg_t1', timestamp: 1 }];
+      mgr.saveThreadState(t1.id);
 
-      // Switch to c2, add different messages
-      mgr.switchToChat(c2.id);
-      mgr.messages = [{ type: 'agent', content: 'msg_c2', timestamp: 2 }];
-      mgr.saveChatState(c2.id);
+      // Switch to t2, add different messages
+      mgr.switchToThread(t2.id);
+      mgr.messages = [{ type: 'agent', content: 'msg_t2', timestamp: 2 }];
+      mgr.saveThreadState(t2.id);
 
-      // Load c1 — should see c1's messages
-      mgr.loadChatState(c1.id);
-      expect(mgr.messages).toEqual([{ type: 'user', content: 'msg_c1', timestamp: 1 }]);
+      // Load t1 — should see t1's messages
+      mgr.loadThreadState(t1.id);
+      expect(mgr.messages).toEqual([{ type: 'user', content: 'msg_t1', timestamp: 1 }]);
 
-      // Load c2 — should see c2's messages
-      mgr.loadChatState(c2.id);
-      expect(mgr.messages).toEqual([{ type: 'agent', content: 'msg_c2', timestamp: 2 }]);
+      // Load t2 — should see t2's messages
+      mgr.loadThreadState(t2.id);
+      expect(mgr.messages).toEqual([{ type: 'agent', content: 'msg_t2', timestamp: 2 }]);
     });
 
-    it('processing state does not cross between chats', () => {
-      const c1 = chatStore.createChat('s1');
-      const c2 = chatStore.createChat('s2');
+    it('processing state does not cross between threads', () => {
+      const t1 = threadStore.createThread('s1');
+      const t2 = threadStore.createThread('s2');
 
-      // Start processing on c1 via background event
+      // Start processing on t1 via background event
       mgr.handleEventForSession(
         { id: 'e1', msg: { type: 'TaskStarted', data: {} } },
         's1'
       );
 
-      // c1 should be processing
-      expect(mgr.chatStates.get(c1.id)?.isProcessing).toBe(true);
+      // t1 should be processing
+      expect(mgr.threadStates.get(t1.id)?.isProcessing).toBe(true);
 
-      // c2 should NOT be processing (state doesn't even exist yet)
-      expect(mgr.chatStates.get(c2.id)?.isProcessing).toBeUndefined();
+      // t2 should NOT be processing (state doesn't even exist yet)
+      expect(mgr.threadStates.get(t2.id)?.isProcessing).toBeUndefined();
     });
 
-    it('background events accumulate correctly for each chat', () => {
-      const c1 = chatStore.createChat('s1');
-      const c2 = chatStore.createChat('s2');
+    it('background events accumulate correctly for each thread', () => {
+      const t1 = threadStore.createThread('s1');
+      const t2 = threadStore.createThread('s2');
 
-      // Send events to both chats in background
+      // Send events to both threads in background
       mgr.handleEventForSession({ id: 'e1', msg: { type: 'AgentMessage', data: {} } }, 's1');
       mgr.handleEventForSession({ id: 'e2', msg: { type: 'AgentMessage', data: {} } }, 's1');
       mgr.handleEventForSession({ id: 'e3', msg: { type: 'AgentMessage', data: {} } }, 's2');
 
-      expect(mgr.chatStates.get(c1.id)?.processedEvents).toHaveLength(2);
-      expect(mgr.chatStates.get(c2.id)?.processedEvents).toHaveLength(1);
+      expect(mgr.threadStates.get(t1.id)?.processedEvents).toHaveLength(2);
+      expect(mgr.threadStates.get(t2.id)?.processedEvents).toHaveLength(1);
     });
 
-    it('switching chats reveals accumulated background events', () => {
-      const c1 = chatStore.createChat('s1');
-      const c2 = chatStore.createChat('s2');
+    it('switching threads reveals accumulated background events', () => {
+      const t1 = threadStore.createThread('s1');
+      const t2 = threadStore.createThread('s2');
 
-      // Simulate: active on c1, background events arrive for c2
-      chatStore.setActiveChat(c1.id);
+      // Simulate: active on t1, background events arrive for t2
+      threadStore.setActiveThread(t1.id);
       mgr.activeSessionId = 's1';
-      mgr.messages = [{ type: 'user', content: 'active chat', timestamp: 1 }];
+      mgr.messages = [{ type: 'user', content: 'active thread', timestamp: 1 }];
 
       mgr.handleEventForSession({ id: 'bg1', msg: { type: 'AgentMessage', data: {} } }, 's2');
       mgr.handleEventForSession({ id: 'bg2', msg: { type: 'AgentMessage', data: {} } }, 's2');
 
-      // Switch to c2
-      mgr.switchToChat(c2.id);
+      // Switch to t2
+      mgr.switchToThread(t2.id);
 
       // Should see the 2 accumulated events
       expect(mgr.processedEvents).toHaveLength(2);

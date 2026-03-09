@@ -1,40 +1,40 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import type { SidePanelChat } from '../../stores/chatStore';
+  import type { SidePanelThread } from '../../stores/threadStore';
   import { uiTheme } from '../../stores/themeStore';
 
   /**
-   * ChatTab Component
+   * ThreadTab Component
    *
-   * Individual chat tab in the chat bar with:
+   * Individual thread tab in the thread bar with:
    * - Truncated title (max 20 chars)
    * - Close button (x) on hover
    * - Active state styling
    * - Theme-aware styles (terminal/chatgpt)
    */
 
-  export let chat: SidePanelChat;
+  export let thread: SidePanelThread;
   export let isActive: boolean = false;
   export let showClose: boolean = true;
 
   const dispatch = createEventDispatcher<{
-    select: { chatId: string };
-    close: { chatId: string };
+    select: { threadId: string };
+    close: { threadId: string };
   }>();
 
   // Current theme (auto-subscription via $store syntax)
   $: currentTheme = $uiTheme;
 
   // Truncate title to 20 characters
-  $: displayTitle = chat.title.length > 20 ? chat.title.substring(0, 20) + '...' : chat.title;
+  $: displayTitle = thread.title.length > 20 ? thread.title.substring(0, 20) + '...' : thread.title;
 
   function handleSelect() {
-    dispatch('select', { chatId: chat.id });
+    dispatch('select', { threadId: thread.id });
   }
 
   function handleClose(event: MouseEvent) {
     event.stopPropagation();
-    dispatch('close', { chatId: chat.id });
+    dispatch('close', { threadId: thread.id });
   }
 
   function handleKeydown(event: KeyboardEvent) {
@@ -48,26 +48,26 @@
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       event.stopPropagation();
-      dispatch('close', { chatId: chat.id });
+      dispatch('close', { threadId: thread.id });
     }
   }
 </script>
 
 <div
-  class="chat-tab {currentTheme}"
+  class="thread-tab {currentTheme}"
   class:active={isActive}
   role="tab"
   tabindex="0"
   aria-selected={isActive}
-  title={chat.title}
+  title={thread.title}
   on:click={handleSelect}
   on:keydown={handleKeydown}
 >
-  <span class="chat-tab-title">{displayTitle}</span>
+  <span class="thread-tab-title">{displayTitle}</span>
   {#if showClose}
     <button
-      class="chat-tab-close"
-      aria-label="Close chat"
+      class="thread-tab-close"
+      aria-label="Close thread"
       on:click={handleClose}
       on:keydown={handleCloseKeydown}
     >
@@ -83,7 +83,7 @@
      Terminal Theme (default)
      ============================================ */
 
-  .chat-tab {
+  .thread-tab {
     display: flex;
     align-items: center;
     gap: 4px;
@@ -103,12 +103,12 @@
     transition: background-color 0.15s ease, border-color 0.15s ease;
   }
 
-  .chat-tab:hover {
+  .thread-tab:hover {
     background: rgba(0, 255, 0, 0.05);
     border-color: var(--color-term-dim-green, #00cc00);
   }
 
-  .chat-tab.active {
+  .thread-tab.active {
     background: var(--color-term-bg, #000000);
     border-color: var(--color-term-dim-green, #00cc00);
     color: var(--color-term-bright-green, #00ff00);
@@ -116,14 +116,14 @@
     margin-bottom: -1px;
   }
 
-  .chat-tab-title {
+  .thread-tab-title {
     flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .chat-tab-close {
+  .thread-tab-close {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -139,17 +139,17 @@
     transition: opacity 0.15s ease, background-color 0.15s ease;
   }
 
-  .chat-tab:hover .chat-tab-close {
+  .thread-tab:hover .thread-tab-close {
     opacity: 0.7;
   }
 
-  .chat-tab-close:hover {
+  .thread-tab-close:hover {
     opacity: 1 !important;
     background: rgba(255, 0, 0, 0.2);
     color: var(--color-term-dim-red, #ff0000);
   }
 
-  .chat-tab.active .chat-tab-close {
+  .thread-tab.active .thread-tab-close {
     opacity: 0.7;
   }
 
@@ -157,30 +157,30 @@
      ChatGPT Theme
      ============================================ */
 
-  .chat-tab.chatgpt {
+  .thread-tab.chatgpt {
     font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
     color: var(--chat-text-secondary, #6e6e80);
     border-radius: 8px 8px 0 0;
     padding: 8px 12px 8px 12px;
   }
 
-  .chat-tab.chatgpt:hover {
+  .thread-tab.chatgpt:hover {
     background: var(--chat-card-hover, #f7f7f8);
     border-color: var(--chat-border, #e5e5e5);
   }
 
-  .chat-tab.chatgpt.active {
+  .thread-tab.chatgpt.active {
     background: var(--chat-bg, #ffffff);
     border-color: var(--chat-border, #e5e5e5);
     color: var(--chat-text, #0d0d0d);
     border-bottom: 1px solid var(--chat-bg, #ffffff);
   }
 
-  .chat-tab.chatgpt .chat-tab-close {
+  .thread-tab.chatgpt .thread-tab-close {
     color: var(--chat-text-secondary, #6e6e80);
   }
 
-  .chat-tab.chatgpt .chat-tab-close:hover {
+  .thread-tab.chatgpt .thread-tab-close:hover {
     background: rgba(239, 68, 68, 0.1);
     color: var(--chat-error, #ef4444);
   }

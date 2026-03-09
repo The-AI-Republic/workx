@@ -29,10 +29,10 @@
   import { schedulerStore } from '../../stores/schedulerStore';
   // i18n
   import { t, _t } from '../../lib/i18n';
-  // Multi-chat support
+  // Multi-thread support
   import { get } from 'svelte/store';
-  import ChatBar from '../../components/chats/ChatBar.svelte';
-  import { chatStore, type SidePanelChat } from '../../stores/chatStore';
+  import ThreadBar from '../../components/threads/ThreadBar.svelte';
+  import { threadStore } from '../../stores/threadStore';
   // UI channel client (platform-agnostic)
   let client: UIChannelClient | null = null;
   let unsubscribers: Array<() => void> = [];
@@ -75,8 +75,8 @@
   let scheduledSessionId: string | null = null;
   let isScheduledJobMode = false;
 
-  // Multi-chat state
-  interface ChatConversationState {
+  // Multi-thread state
+  interface ThreadConversationState {
     messages: Array<{ type: 'user' | 'agent'; content: string; timestamp: number }>;
     processedEvents: ProcessedEvent[];
     inputText: string;
@@ -84,9 +84,9 @@
     currentTabId: number;
     eventProcessor: EventProcessor;
   }
-  let chatStates: Map<string, ChatConversationState> = new Map();
+  let threadStates: Map<string, ThreadConversationState> = new Map();
   let activeSessionId: string | null = null;
-  let canCreateChat: boolean = true;
+  let canCreateThread: boolean = true;
   let maxSessionsReached: boolean = false;
 
   $: showWelcome =
@@ -955,13 +955,13 @@
   }
 
   // =========================================================================
-  // Multi-chat functions
+  // Multi-thread functions
   // =========================================================================
 
   /**
-   * Create a new chat with a new session
+   * Create a new thread with a new session
    */
-  async function createNewChat() {
+  async function createNewThread() {
     try {
       const c = await getInitializedUIClient();
       const response = await c.serviceRequest<{ success: boolean; sessionId?: string; error?: string }>('session.create');
@@ -975,11 +975,11 @@
       const { sessionId } = response;
       if (!sessionId) return;
 
-      // Create chat in store
-      const newChat = chatStore.createChat(sessionId, 'New Chat');
+      // Create thread in store
+      const newThread = threadStore.createThread(sessionId, 'New Thread');
 
-      // Initialize state for new chat
-      const newState: ChatConversationState = {
+      // Initialize state for new thread
+      const newState: ThreadConversationState = {
         messages: [],
         processedEvents: [],
         inputText: '',
@@ -987,11 +987,11 @@
         currentTabId: -1,
         eventProcessor: new EventProcessor(),
       };
-      chatStates.set(newChat.id, newState);
+      threadStates.set(newThread.id, newState);
 
-      // Switch to the new chat
+      // Switch to the new thread
       activeSessionId = sessionId;
-      loadChatState(newChat.id);
+      loadThreadState(newThread.id);
 
       // Update session limits
       await updateSessionLimits();
@@ -999,50 +999,50 @@
       // Auto-bind to active browser tab
       await bindToActiveTab();
 
-      console.log(`[App] Created new chat: ${newChat.id} with session: ${sessionId}`);
+      console.log(`[App] Created new thread: ${newThread.id} with session: ${sessionId}`);
     } catch (error) {
-      console.error('[App] Failed to create new chat:', error);
+      console.error('[App] Failed to create new thread:', error);
     }
   }
 
   /**
-   * Handle chat selection from ChatBar
+   * Handle thread selection from ThreadBar
    */
-  function handleChatSelect(event: CustomEvent<{ chatId: string }>) {
-    const { chatId } = event.detail;
-    switchToChat(chatId);
+  function handleThreadSelect(event: CustomEvent<{ threadId: string }>) {
+    const { threadId } = event.detail;
+    switchToThread(threadId);
   }
 
   /**
-   * Switch to a specific chat
+   * Switch to a specific thread
    */
-  function switchToChat(chatId: string) {
-    const currentActiveChat = chatStore.getActiveChat();
+  function switchToThread(threadId: string) {
+    const currentActiveThread = threadStore.getActiveThread();
 
-    // Save current chat state before switching
-    if (currentActiveChat) {
-      saveChatState(currentActiveChat.id);
+    // Save current thread state before switching
+    if (currentActiveThread) {
+      saveThreadState(currentActiveThread.id);
     }
 
-    // Set new active chat
-    chatStore.setActiveChat(chatId);
+    // Set new active thread
+    threadStore.setActiveThread(threadId);
 
     // Update active session ID BEFORE loading state so that events arriving
-    // during the transition are routed to the correct chat
-    const newChat = chatStore.getActiveChat();
-    if (newChat) {
-      activeSessionId = newChat.sessionId;
+    // during the transition are routed to the correct thread
+    const newThread = threadStore.getActiveThread();
+    if (newThread) {
+      activeSessionId = newThread.sessionId;
     }
 
-    // Load state for new chat
-    loadChatState(chatId);
+    // Load state for new thread
+    loadThreadState(threadId);
   }
 
   /**
-   * Save current UI state to chat state map
+   * Save current UI state to thread state map
    */
-  function saveChatState(chatId: string) {
-    const state: ChatConversationState = {
+  function saveThreadState(threadId: string) {
+    const state: ThreadConversationState = {
       messages: [...messages],
       processedEvents: [...processedEvents],
       inputText,
@@ -1050,14 +1050,14 @@
       currentTabId,
       eventProcessor: eventProcessor,
     };
-    chatStates.set(chatId, state);
+    threadStates.set(threadId, state);
   }
 
   /**
-   * Load chat state from map to UI
+   * Load thread state from map to UI
    */
-  function loadChatState(chatId: string) {
-    const state = chatStates.get(chatId);
+  function loadThreadState(threadId: string) {
+    const state = threadStates.get(threadId);
     if (state) {
       messages = [...state.messages];
       processedEvents = [...state.processedEvents];
@@ -1075,7 +1075,7 @@
       eventProcessor = new EventProcessor();
     }
 
-    // Reset scroll position after loading new chat state
+    // Reset scroll position after loading new thread state
     if (scrollContainer) {
       setTimeout(() => {
         if (messages.length === 0 && processedEvents.length === 0) {
@@ -1088,29 +1088,29 @@
   }
 
   /**
-   * Handle chat close from ChatBar
+   * Handle thread close from ThreadBar
    */
-  async function handleChatClose(event: CustomEvent<{ chatId: string }>) {
-    const { chatId } = event.detail;
-    await closeChat(chatId);
+  async function handleThreadClose(event: CustomEvent<{ threadId: string }>) {
+    const { threadId } = event.detail;
+    await closeThread(threadId);
   }
 
   /**
-   * Close a chat and terminate its session
+   * Close a thread and terminate its session
    */
-  async function closeChat(chatId: string) {
-    const state = get(chatStore);
-    const chatToClose = state.chats.find(c => c.id === chatId);
+  async function closeThread(threadId: string) {
+    const state = get(threadStore);
+    const threadToClose = state.threads.find(t => t.id === threadId);
 
-    if (!chatToClose) return;
+    if (!threadToClose) return;
 
-    // If this is the last chat, create a new one first
-    if (state.chats.length <= 1) {
-      const countBefore = get(chatStore).chats.length;
-      await createNewChat();
-      const countAfter = get(chatStore).chats.length;
+    // If this is the last thread, create a new one first
+    if (state.threads.length <= 1) {
+      const countBefore = get(threadStore).threads.length;
+      await createNewThread();
+      const countAfter = get(threadStore).threads.length;
       if (countAfter <= countBefore) {
-        console.error('[App] Failed to create replacement chat, aborting close');
+        console.error('[App] Failed to create replacement thread, aborting close');
         return;
       }
     }
@@ -1118,49 +1118,49 @@
     // Terminate the session in backend
     try {
       const c = await getInitializedUIClient();
-      await c.serviceRequest('session.close', { sessionId: chatToClose.sessionId });
+      await c.serviceRequest('session.close', { sessionId: threadToClose.sessionId });
     } catch (error) {
-      console.error(`[App] Failed to close session ${chatToClose.sessionId}:`, error);
+      console.error(`[App] Failed to close session ${threadToClose.sessionId}:`, error);
     }
 
-    // Remove chat state
-    chatStates.delete(chatId);
+    // Remove thread state
+    threadStates.delete(threadId);
 
-    // Close chat in store (this handles switching to another chat)
-    chatStore.closeChat(chatId);
+    // Close thread in store (this handles switching to another thread)
+    threadStore.closeThread(threadId);
 
     // Update active session
-    const newActiveChat = chatStore.getActiveChat();
-    if (newActiveChat) {
-      activeSessionId = newActiveChat.sessionId;
-      loadChatState(newActiveChat.id);
+    const newActiveThread = threadStore.getActiveThread();
+    if (newActiveThread) {
+      activeSessionId = newActiveThread.sessionId;
+      loadThreadState(newActiveThread.id);
     }
 
     // Update session limits
     await updateSessionLimits();
 
-    console.log(`[App] Closed chat: ${chatId}`);
+    console.log(`[App] Closed thread: ${threadId}`);
   }
 
   /**
-   * Handle new chat button click from ChatBar
+   * Handle new thread button click from ThreadBar
    */
-  async function handleNewChat() {
-    const currentChat = chatStore.getActiveChat();
-    if (currentChat) {
-      saveChatState(currentChat.id);
+  async function handleNewThread() {
+    const currentThread = threadStore.getActiveThread();
+    if (currentThread) {
+      saveThreadState(currentThread.id);
     }
-    await createNewChat();
+    await createNewThread();
   }
 
   /**
-   * Handle event for a specific session (background chat)
+   * Handle event for a specific session (background thread)
    */
   function handleEventForSession(event: Event, sessionId: string) {
-    const chat = chatStore.getChatBySessionId(sessionId);
-    if (!chat) return;
+    const thread = threadStore.getThreadBySessionId(sessionId);
+    if (!thread) return;
 
-    let state = chatStates.get(chat.id);
+    let state = threadStates.get(thread.id);
     if (!state) {
       state = {
         messages: [],
@@ -1170,10 +1170,10 @@
         currentTabId: -1,
         eventProcessor: new EventProcessor(),
       };
-      chatStates.set(chat.id, state);
+      threadStates.set(thread.id, state);
     }
 
-    // Process event for this chat's state
+    // Process event for this thread's state
     const processed = state.eventProcessor.processEvent(event);
     if (processed) {
       state.processedEvents = [...state.processedEvents, processed];
@@ -1187,25 +1187,25 @@
       state.isProcessing = false;
     }
 
-    chatStates.set(chat.id, state);
+    threadStates.set(thread.id, state);
   }
 
   /**
    * Handle session terminated event
    */
   function handleSessionTerminated(sessionId: string) {
-    const chat = chatStore.getChatBySessionId(sessionId);
-    if (chat) {
-      console.log(`[App] Session ${sessionId} terminated, removing chat ${chat.id}`);
-      chatStates.delete(chat.id);
-      chatStore.closeChat(chat.id);
+    const thread = threadStore.getThreadBySessionId(sessionId);
+    if (thread) {
+      console.log(`[App] Session ${sessionId} terminated, removing thread ${thread.id}`);
+      threadStates.delete(thread.id);
+      threadStore.closeThread(thread.id);
 
-      const newActiveChat = chatStore.getActiveChat();
-      if (newActiveChat) {
-        activeSessionId = newActiveChat.sessionId;
-        loadChatState(newActiveChat.id);
+      const newActiveThread = threadStore.getActiveThread();
+      if (newActiveThread) {
+        activeSessionId = newActiveThread.sessionId;
+        loadThreadState(newActiveThread.id);
       } else {
-        createNewChat();
+        createNewThread();
       }
     }
 
@@ -1219,21 +1219,21 @@
     try {
       const c = await getInitializedUIClient();
       const response = await c.serviceRequest<{ canCreateSession?: boolean }>('session.getActiveCount');
-      canCreateChat = response?.canCreateSession ?? true;
-      maxSessionsReached = !canCreateChat;
+      canCreateThread = response?.canCreateSession ?? true;
+      maxSessionsReached = !canCreateThread;
     } catch (error) {
       console.error('[App] Failed to update session limits:', error);
     }
   }
 
   /**
-   * Update chat title based on first user message
+   * Update thread title based on first user message
    */
-  function updateChatTitleFromMessage(message: string) {
-    const activeChat = chatStore.getActiveChat();
-    if (activeChat && activeChat.title === 'New Chat') {
+  function updateThreadTitleFromMessage(message: string) {
+    const activeThread = threadStore.getActiveThread();
+    if (activeThread && activeThread.title === 'New Thread') {
       const title = message.length > 30 ? message.substring(0, 30) + '...' : message;
-      chatStore.updateChatTitle(activeChat.id, title);
+      threadStore.updateThreadTitle(activeThread.id, title);
     }
   }
 </script>
@@ -1242,14 +1242,14 @@
 <div class="h-screen overflow-hidden {currentTheme}">
   <TerminalContainer theme={currentTheme}>
     <div class="flex flex-col h-full min-h-0 max-w-[1200px] mx-auto w-full">
-        <!-- Multi-Chat Bar -->
+        <!-- Multi-Thread Bar -->
         {#if !isScheduledJobMode}
-          <ChatBar
-            {canCreateChat}
+          <ThreadBar
+            {canCreateThread}
             {maxSessionsReached}
-            on:chatSelect={handleChatSelect}
-            on:chatClose={handleChatClose}
-            on:newChat={handleNewChat}
+            on:threadSelect={handleThreadSelect}
+            on:threadClose={handleThreadClose}
+            on:newThread={handleNewThread}
           />
         {/if}
 
