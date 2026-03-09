@@ -49,6 +49,8 @@ function requireSecureTransport(ctx: MethodContext): void {
 // Handlers
 // ─────────────────────────────────────────────────────────────────────────
 
+// No requireSecureTransport — list returns metadata only (id, name, hasKey boolean),
+// never actual secrets. Keep this read-only and safe for non-TLS connections.
 async function handleCredentialsList(
   _params: Record<string, unknown> | undefined,
   _ctx: MethodContext
@@ -74,8 +76,14 @@ async function handleCredentialsSet(
   if (!apiKey) throw invalidRequest('"apiKey" is required');
 
   console.log(`[credentials] Setting API key for provider "${providerId}" (connection: ${ctx.connectionId})`);
-  await _deps.setProviderApiKey(providerId, apiKey);
+  try {
+    await _deps.setProviderApiKey(providerId, apiKey);
+  } catch (error) {
+    console.error(`[credentials] Failed to set API key for provider "${providerId}":`, error);
+    throw error;
+  }
 
+  console.log(`[credentials] API key set for provider "${providerId}"`);
   return { status: 'ok', providerId };
 }
 
@@ -91,7 +99,13 @@ async function handleCredentialsDelete(
   if (!providerId) throw invalidRequest('"providerId" is required');
 
   console.log(`[credentials] Deleting API key for provider "${providerId}" (connection: ${ctx.connectionId})`);
-  await _deps.deleteProviderApiKey(providerId);
+  try {
+    await _deps.deleteProviderApiKey(providerId);
+  } catch (error) {
+    console.error(`[credentials] Failed to delete API key for provider "${providerId}":`, error);
+    throw error;
+  }
 
+  console.log(`[credentials] API key deleted for provider "${providerId}"`);
   return { status: 'ok', providerId };
 }

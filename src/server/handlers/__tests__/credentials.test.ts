@@ -210,11 +210,9 @@ describe('credentials handlers', () => {
   // ── deps not initialized ──────────────────────────────────────────────
 
   describe('deps not initialized', () => {
-    it('throws when handlers called before registration', async () => {
-      // Re-import a fresh module to get uninitialized state
+    it('handlers are not registered before registerCredentialsHandlers is called', async () => {
       vi.resetModules();
 
-      // Re-mock before re-importing
       vi.doMock('@applepi/ws-server', () => {
         const handlers = new Map<string, Function>();
         return {
@@ -233,17 +231,49 @@ describe('credentials handlers', () => {
         getServerConfig: vi.fn(),
       }));
 
-      const mod = await import('../credentials');
-      // Register to get the handler reference, then clear deps by re-registering with a trick
-      // Instead, just call the handler directly via the module
-      // Actually, the simplest approach: the handlers are registered via registerMethodHandler,
-      // but _deps is null in the fresh module. We need to call a handler without registering deps.
-      // Since we can't easily access the raw handler without registration, test via the pattern:
+      // Import fresh module — no handlers registered yet
+      await import('../credentials');
+      const { getMethodHandler: freshGet } = await import('@applepi/ws-server');
 
-      // Register with deps to get handler refs
-      const freshGetMethodHandler = (await import('@applepi/ws-server')).getMethodHandler;
-      // Handlers aren't registered yet in fresh module, so getMethodHandler returns undefined
-      expect(freshGetMethodHandler('credentials.list')).toBeUndefined();
+      expect(freshGet('credentials.list')).toBeUndefined();
+      expect(freshGet('credentials.set')).toBeUndefined();
+      expect(freshGet('credentials.delete')).toBeUndefined();
+    });
+
+    it('throws "not initialized" when deps are forced to null', async () => {
+      vi.resetModules();
+
+      vi.doMock('@applepi/ws-server', () => {
+        const handlers = new Map<string, Function>();
+        return {
+          registerMethodHandler: vi.fn((method: string, handler: Function) => {
+            handlers.set(method, handler);
+          }),
+          getMethodHandler: (method: string) => handlers.get(method),
+          invalidRequest: (msg: string) => ({ code: 'INVALID_REQUEST', message: msg, retryable: false }),
+          unauthorized: (msg: string) => ({ code: 'UNAUTHORIZED', message: msg, retryable: false }),
+        };
+      });
+      vi.doMock('../../auth/authorize', () => ({
+        getConnectionAuth: vi.fn().mockReturnValue({ isLoopback: true }),
+      }));
+      vi.doMock('../../config/server-config', () => ({
+        getServerConfig: vi.fn().mockReturnValue({ server: { tls: { enabled: false } } }),
+      }));
+
+      const { registerCredentialsHandlers: freshRegister } = await import('../credentials');
+      const { getMethodHandler: freshGet } = await import('@applepi/ws-server');
+
+      // Register with null deps (cast) to get handler refs while _deps stays null
+      freshRegister(null as any);
+
+      const listHandler = freshGet('credentials.list')!;
+      const setHandler = freshGet('credentials.set')!;
+      const deleteHandler = freshGet('credentials.delete')!;
+
+      await expect(listHandler({}, makeCtx())).rejects.toThrow('Credential handlers not initialized');
+      await expect(setHandler({ providerId: 'x', apiKey: 'y' }, makeCtx())).rejects.toThrow('Credential handlers not initialized');
+      await expect(deleteHandler({ providerId: 'x' }, makeCtx())).rejects.toThrow('Credential handlers not initialized');
     });
   });
 });

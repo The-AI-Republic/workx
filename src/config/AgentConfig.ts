@@ -30,6 +30,7 @@ import {
 // Credential store constants
 const CREDENTIAL_SERVICE = 'applepi';
 const CREDENTIAL_ACCOUNT_PREFIX = 'provider-apikey-';
+export const CREDENTIAL_SECURED_MARKER = '[SECURED]';
 
 export class AgentConfig implements IConfigService {
   private static instance: AgentConfig | null = null;
@@ -432,7 +433,7 @@ export class AgentConfig implements IConfigService {
     }
 
     // Mark that this provider has an API key configured (without storing the actual key)
-    provider.apiKey = '[SECURED]';
+    provider.apiKey = CREDENTIAL_SECURED_MARKER;
     this.currentConfig.providers[providerId] = provider;
 
     await this.storage.set(extractStoredConfig(this.currentConfig));

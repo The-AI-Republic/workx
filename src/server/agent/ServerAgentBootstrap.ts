@@ -12,7 +12,7 @@
 import { ServerChannel } from '../channels/ServerChannel';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
 import { RepublicAgent } from '@/core/RepublicAgent';
-import { AgentConfig } from '@/config/AgentConfig';
+import { AgentConfig, CREDENTIAL_SECURED_MARKER } from '@/config/AgentConfig';
 import { setConfigStorage } from '@/core/storage/ConfigStorageProvider';
 import { FileConfigStorageProvider } from '../storage/FileConfigStorageProvider';
 import { configurePromptComposer } from '@/core/PromptLoader';
@@ -419,7 +419,7 @@ export class ServerAgentBootstrap {
         return Object.entries(providers).map(([id, p]) => ({
           id,
           name: p.name,
-          hasKey: p.apiKey === '[SECURED]',
+          hasKey: p.apiKey === CREDENTIAL_SECURED_MARKER,
         }));
       },
     });
