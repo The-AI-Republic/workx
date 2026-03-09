@@ -10,7 +10,7 @@
 
 import { RepublicAgent } from '../../core/RepublicAgent';
 import { UserNotifier } from '../../core/UserNotifier';
-import { MessageRouter, MessageType } from '../../core/MessageRouter';
+import type { Submission } from '../../core/protocol/types';
 import { ApprovalGate } from '../../core/approval/ApprovalGate';
 import { PolicyRulesEngine } from '../../core/approval/PolicyRulesEngine';
 import { getDefaultRules } from '../../core/approval/defaultRules';
@@ -18,8 +18,6 @@ import { DomainSensitivityEnhancer } from '../../core/approval/enhancers/DomainS
 import { SemanticElementEnhancer } from '../../core/approval/enhancers/SemanticElementEnhancer';
 import { ApprovalConfigStorage } from '../../core/approval/ApprovalConfigStorage';
 import { AuthManager } from '../../core/models/types/Auth';
-import type { Submission } from '../../core/protocol/types';
-import { validateSubmission } from '../../core/protocol/schemas';
 import { CacheManager } from '../../storage/CacheManager';
 import { StorageQuotaManager } from '../../storage/StorageQuotaManager';
 import { RolloutRecorder } from '../../storage/rollout';
@@ -30,28 +28,19 @@ import { TabManager } from '../../core/TabManager';
 import { LLM_API_URL } from '../../config/constants';
 import { MCPManager } from '../../core/mcp/MCPManager';
 import { registerMCPTools, unregisterMCPTools } from '../../core/mcp/MCPToolAdapter';
-import type {
-  IMCPServerConfigCreate,
-  IMCPServerConfigUpdate,
-  MCPManagerEvent,
-} from '../../core/mcp/types';
+import type { MCPManagerEvent } from '../../core/mcp/types';
 import { A2AManager } from '../../core/a2a/A2AManager';
 import { registerA2ASkills, unregisterA2ASkills } from '../../core/a2a/A2AToolAdapter';
-import type {
-  IA2AAgentConfigCreate,
-  IA2AAgentConfigUpdate,
-  A2AManagerEvent,
-} from '../../core/a2a/types';
+import type { A2AManagerEvent } from '../../core/a2a/types';
 
 // Skills imports
 import { SkillRegistry } from '../../core/skills';
 import { IndexedDBSkillProvider } from '../../extension/storage/IndexedDBSkillProvider';
 import { IndexedDBStorageProvider } from '../../extension/storage/IndexedDBStorageProvider';
-import type { Skill, InvocationMode } from '../../core/skills/types';
 import { registerPromptExtension } from '../../core/PromptLoader';
 
-// Task Scheduler imports
-import { Scheduler, SchedulerStorage } from '../../core/scheduler';
+// Scheduler imports
+import { Scheduler, ScheduleManager, JobExecutor, ScheduleEventStorage, ExecutionStorage } from '../../core/scheduler';
 import { SchedulerAlarms } from './scheduler-alarms';
 import { createStorageAdapter } from '../../storage/createStorageAdapter';
 import { parseAlarmName } from '../../core/models/types/SchedulerContracts';
@@ -64,16 +53,6 @@ import { setStorageProvider, isStorageProviderInitialized } from '../../core/sto
 import { ChromeConfigStorage } from '../../extension/storage/ChromeConfigStorage';
 import { ChromeCredentialStore } from '../../extension/storage/ChromeCredentialStore';
 import * as VaultManager from '../../core/crypto/VaultManager';
-import type {
-  CreateDraftTaskRequest,
-  ScheduleTaskRequest,
-  TriggerTaskRequest,
-  CancelTaskRequest,
-  GetTaskDetailsRequest,
-  GetArchivedTasksRequest,
-} from '../../core/models/types/SchedulerContracts';
-import type { TaskResultRecord } from '../../core/models/types/Scheduler';
-
 // Multi-agent registry imports (Feature 015)
 import { AgentRegistry, SessionStorage } from '../../core/registry';
 import type { SessionConfig } from '../../core/registry/types';
@@ -88,15 +67,13 @@ import { t } from '../../webfront/lib/i18n';
  */
 let agent: RepublicAgent | null = null;
 let registry: AgentRegistry | null = null; // Feature 015: Multi-agent registry
-let router: MessageRouter | null = null;
 let cacheManager: CacheManager | null = null;
 let storageQuotaManager: StorageQuotaManager | null = null;
 let agentConfig: AgentConfig | null = null;
 let mcpManager: MCPManager | null = null; // MCP server connection manager
 let a2aManager: A2AManager | null = null; // A2A agent connection manager
 let currentAuthManager: AuthManager | null = null; // Preserve auth state across agent recreation
-let scheduler: Scheduler | null = null; // Task scheduler
-let schedulerStorage: SchedulerStorage | null = null;
+let scheduler: Scheduler | null = null; // Job scheduler
 let schedulerAlarms: SchedulerAlarms | null = null;
 let sessionStorage: SessionStorage | null = null; // Feature 015: Session persistence
 let skillRegistry: SkillRegistry | null = null; // Agent skills
@@ -185,9 +162,6 @@ async function doInitialize(): Promise<void> {
   // Initialize configuration singleton first
   agentConfig = await AgentConfig.getInstance();
 
-  // Create message router (must be created before agent)
-  router = new MessageRouter('background');
-
   // Initialize ONLY StorageProvider early — PlanningTool requires it via getTaskStore()
   // during tool registration in registry.createSession().
   // The rest of storage init (ConfigStorage, CredentialStore, CacheManager, etc.)
@@ -207,7 +181,7 @@ async function doInitialize(): Promise<void> {
   const config = agentConfig!.getConfig();
   const maxConcurrentSessions = config.preferences?.maxConcurrentSessions ?? 3;
   registry = AgentRegistry.getInstance({ maxConcurrent: maxConcurrentSessions });
-  registry.initialize(agentConfig!, router);
+  registry.initialize(agentConfig!);
 
   // Feature 015 (T039): Initialize session persistence
   await initializeSessionPersistence();
@@ -235,12 +209,6 @@ async function doInitialize(): Promise<void> {
   // Setup message handlers
   setupMessageHandlers();
 
-  // Setup Vault message handlers (Feature 034: Credential Security)
-  setupVaultMessageHandlers();
-
-  // Setup MCP message handlers
-  setupMCPMessageHandlers();
-
   // Initialize A2A manager
   a2aManager = await A2AManager.getInstance();
 
@@ -250,20 +218,14 @@ async function doInitialize(): Promise<void> {
   // Auto-connect enabled A2A agents
   await autoConnectEnabledA2AAgents();
 
-  // Setup A2A message handlers
-  setupA2AMessageHandlers();
-
   // Initialize Skills
   await initializeSkills();
 
-  // Setup Skills message handlers
-  setupSkillsMessageHandlers();
-
-  // Initialize Task Scheduler
+  // Initialize Scheduler
   await initializeScheduler();
 
-  // Setup Scheduler message handlers
-  setupSchedulerMessageHandlers();
+  // Register service handlers on ChannelManager (message_routing_v2)
+  await registerServiceHandlers();
 
   // Setup Chrome event listeners
   setupChromeListeners();
@@ -411,191 +373,251 @@ function getAgentForMessage(message: { payload?: { sessionId?: string; context?:
 /**
  * Setup message handlers
  */
-function setupMessageHandlers(): void {
-  if (!router || !registry) return;
+/**
+ * Register service handlers on ChannelManager (message_routing_v2).
+ * Uses the SidePanelChannel + ChannelManager path for ServiceRequest Ops.
+ */
+async function registerServiceHandlers(): Promise<void> {
+  try {
+    const { getChannelManager } = await import('@/core/channels/ChannelManager');
+    const { registerAllServices } = await import('@/core/services');
+    const { SidePanelChannel } = await import('@/extension/channels/SidePanelChannel');
 
-  // Handle submissions from UI (Feature 015: session-aware routing)
-  router.on(MessageType.SUBMISSION, async (message) => {
-    const submission = message.payload as Submission & { sessionId?: string };
+    const channelManager = getChannelManager();
 
-    if (!validateSubmission(submission)) {
-      return;
+    // Register SidePanelChannel if not already registered
+    if (!channelManager.getChannel('sidepanel-main')) {
+      const sidePanelChannel = new SidePanelChannel();
+
+      // Set the agent handler to route non-ServiceRequest Ops to the agent
+      channelManager.setAgentHandler(async (op, context) => {
+        const targetAgent = agent ?? registry?.getPrimarySession()?.agent;
+        if (!targetAgent) throw new Error('No agent available');
+        await targetAgent.submitOperation(op, { tabId: context.tabId });
+      });
+
+      await channelManager.registerChannel(sidePanelChannel);
+
+      // Wire event forwarding from agent to channel
+      const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
+      if (primaryAgent) {
+        primaryAgent.setEventDispatcher((event) => {
+          channelManager.dispatchEvent(event.msg, 'sidepanel-main').catch(() => {});
+        });
+      }
     }
 
-    // Feature 015: Route to correct agent based on sessionId
-    const targetAgent = getAgentForMessage(message);
-    if (!targetAgent) {
-      throw new Error('No agent available for submission');
-    }
+    const serviceRegistry = channelManager.getServiceRegistry();
 
-    try {
-      // Pass the submission context to the agent
-      // The agent will handle tab binding/creation based on context.tabId
-      const id = await targetAgent.submitOperation(submission.op, submission.context);
-
-      return { submissionId: id };
-    } catch (error) {
-      throw error;
-    }
-  });
-
-  // Handle state queries (Feature 015: session-aware routing)
-  router.on(MessageType.GET_STATE, async (message) => {
-    // Feature 015: Route to correct agent based on sessionId
-    const targetAgent = getAgentForMessage(message);
-    if (!targetAgent) return null;
-
-    const session = targetAgent.getSession();
-
-    // Get current tab ID from session (SessionState is the source of truth)
-    const tabId = session.getTabId();
-
-    // Get conversation history to sync UI with backend state
-    const conversationHistory = session.getConversationHistory();
-
-    return {
-      sessionId: session.conversationId,
-      isActiveTurn: session.isActiveTurn(), // Include active turn status
-      tabId: tabId, // US3: Include current tab binding
-      history: conversationHistory.items, // Include history for UI sync on sidepanel reopen
-      // Feature 015: Include registry info
-      activeSessionCount: registry?.getActiveCount() ?? 0,
-      maxConcurrentSessions: registry?.getMaxConcurrent() ?? 3,
+    // Wrap chrome.storage for the storage service
+    const chromeStorageAdapter = {
+      get: async (key: string) => {
+        const result = await chrome.storage.local.get(key);
+        return result[key];
+      },
+      set: async (key: string, value: unknown) => {
+        await chrome.storage.local.set({ [key]: value });
+      },
     };
-  });
 
-  // Handle ping/pong for connection testing
-  router.on(MessageType.PING, async () => {
-    return { type: MessageType.PONG, timestamp: Date.now() };
-  });
-
-  // Handle health check - validates agent is ready with API key
-  router.on(MessageType.HEALTH_CHECK, async (message) => {
-    // Feature 015: Route to correct agent based on sessionId
-    const targetAgent = getAgentForMessage(message);
-    if (!targetAgent) {
-      return {
-        type: MessageType.HEALTH_STATUS,
-        ready: false,
-        message: t('Agent not initialized'),
-        timestamp: Date.now(),
-      };
+    // Wire scheduler events to ChannelManager (unified dispatch)
+    if (scheduler) {
+      scheduler.connectToChannel(() => channelManager, 'sidepanel-main');
     }
 
-    const status = await targetAgent.isReady();
-    return {
-      type: MessageType.HEALTH_STATUS,
-      ...status,
-      timestamp: Date.now(),
-    };
-  });
-
-  // Handle session reset (Feature 015: session-aware routing)
-  router.on(MessageType.SESSION_RESET, async (message) => {
-    // Feature 015: Route to correct agent based on sessionId
-    const targetAgent = getAgentForMessage(message);
-    if (targetAgent) {
-      // Get the current session
-      const session = targetAgent.getSession();
-
-      // Abort all running tasks before resetting
-      await session.abortAllTasks('UserInterrupt');
-
-      // Reset TabManager - close all browserx tab groups
-      const tabManager = TabManager.getInstance();
-      await tabManager.reset();
-
-      // Reset the session (this will also reset tabId to -1 in session and turnContext)
-      await session.reset();
-
-      return { type: MessageType.SESSION_RESET_COMPLETE, timestamp: Date.now() };
-    }
-    throw new Error('Agent not initialized');
-  });
-
-  // Handle session resume from chat history
-  router.on(MessageType.RESUME_SESSION, async (message) => {
-    if (!agent) {
-      throw new Error('Agent not initialized');
-    }
-
-    const { conversationId } = message.payload as { conversationId: string };
-    console.log('[ServiceWorker] Resuming session:', conversationId);
-
-    // Get current session and abort any running tasks
-    const currentSession = agent.getSession();
-    await currentSession.abortAllTasks('UserInterrupt');
-
-    // Reset TabManager
-    const tabManager = TabManager.getInstance();
-    await tabManager.reset();
-
-    // Close current session
-    await currentSession.close();
-
-    // Load history from rollout storage
-    const initialHistory = await RolloutRecorder.getRolloutHistory(conversationId);
-
-    if (initialHistory.type !== 'resumed' || !initialHistory.payload?.history) {
-      throw new Error('Conversation not found or has no history');
-    }
-
-    // Recreate agent with resumed session
-    agent = new RepublicAgent(agentConfig!, router!, {
-      mode: 'resumed' as const,
-      conversationId,
-      rolloutItems: initialHistory.payload.history,
-    }, undefined, new UserNotifier());
-
-    // Set up event dispatcher for chrome extension mode
-    agent.setEventDispatcher((event) => {
-      chrome.runtime.sendMessage({
-        type: 'EVENT',
-        payload: event,
-      }).catch(() => {});
+    const count = registerAllServices(serviceRegistry, {
+      mcp: mcpManager ? { mcpManager } : undefined,
+      scheduler: scheduler ? { scheduler } : undefined,
+      skills: skillRegistry ? { skillRegistry } : undefined,
+      vault: {
+        vaultManager: (await import('@/core/crypto/VaultManager')) as any,
+      },
+      a2a: a2aManager ? { a2aManager } : undefined,
+      session: {
+        getAgent: () => {
+          const targetAgent = registry?.getPrimarySession()?.agent ?? agent;
+          return targetAgent;
+        },
+        registry: registry ?? undefined,
+        resetTabs: async () => {
+          const tabManager = TabManager.getInstance();
+          await tabManager.reset();
+        },
+      },
+      agent: {
+        getAgent: () => registry?.getPrimarySession()?.agent ?? agent,
+        updateApprovalConfig: async (config: Record<string, unknown>) => {
+          const result = await chrome.storage.local.get(STORAGE_KEYS.CONFIG);
+          const storedConfig = (result[STORAGE_KEYS.CONFIG] || {}) as Record<string, any>;
+          const existing = storedConfig.approval || { ...DEFAULT_APPROVAL_CONFIG };
+          storedConfig.approval = { ...existing, ...config };
+          await chrome.storage.local.set({ [STORAGE_KEYS.CONFIG]: storedConfig });
+        },
+      },
+      storage: { storageProvider: chromeStorageAdapter },
     });
 
-    // Restore auth manager before initialization
-    if (currentAuthManager) {
-      const factory = agent.getModelClientFactory();
-      factory.setAuthManager(currentAuthManager);
-    }
+    // Extension-specific overrides: session.resume and agent.configUpdate
+    // These need access to service-worker closures (agent, registry, currentAuthManager, etc.)
+    serviceRegistry.register('session.resume', async (params) => {
+      if (!agent) throw new Error('Agent not initialized');
 
-    await agent.initialize();
-    await configureExtensionPlatform(agent);
+      const { conversationId } = params as { conversationId: string };
+      console.log('[ServiceWorker] Resuming session:', conversationId);
 
-    // Get the reconstructed history from the new session
-    const session = agent.getSession();
+      const currentSession = agent.getSession();
+      await currentSession.abortAllTasks('UserInterrupt');
 
-    // Wait for session initialization to complete (history reconstruction is async)
-    await session.initialize();
+      const tabManager = TabManager.getInstance();
+      await tabManager.reset();
+      await currentSession.close();
 
-    const history = session.getConversationHistory();
+      const initialHistory = await RolloutRecorder.getRolloutHistory(conversationId);
+      if (initialHistory.type !== 'resumed' || !initialHistory.payload?.history) {
+        throw new Error('Conversation not found or has no history');
+      }
 
-    console.log('[ServiceWorker] Session resumed with', history.items.length, 'items');
+      agent = new RepublicAgent(agentConfig!, {
+        mode: 'resumed' as const,
+        conversationId,
+        rolloutItems: initialHistory.payload.history,
+      }, undefined, new UserNotifier());
 
-    return {
-      type: MessageType.RESUME_SESSION_COMPLETE,
-      timestamp: Date.now(),
-      conversationId,
-      history: history.items,
-    };
-  });
+      // Wire event dispatch through channel
+      agent.setEventDispatcher((event) => {
+        channelManager.dispatchEvent(event.msg, 'sidepanel-main').catch(() => {});
+      });
 
-  // Handle stop agent session (from visual effects Stop Agent button)
-  // Feature 015: session-aware routing
+      if (currentAuthManager) {
+        const factory = agent.getModelClientFactory();
+        factory.setAuthManager(currentAuthManager);
+      }
+
+      await agent.initialize();
+      await configureExtensionPlatform(agent);
+
+      const session = agent.getSession();
+      await session.initialize();
+      const history = session.getConversationHistory();
+
+      console.log('[ServiceWorker] Session resumed with', history.items.length, 'items');
+      return { conversationId, history: history.items };
+    });
+
+    serviceRegistry.register('agent.configUpdate', async () => {
+      try {
+        if (agentConfig) {
+          await agentConfig.reload();
+        } else {
+          agentConfig = await AgentConfig.getInstance();
+        }
+
+        if (registry) {
+          await registry.cleanup();
+          registry.initialize(agentConfig);
+
+          const primarySession = await registry.createSession({ type: 'primary' });
+          agent = primarySession.agent;
+
+          // Wire event dispatch through channel
+          agent!.setEventDispatcher((event) => {
+            channelManager.dispatchEvent(event.msg, 'sidepanel-main').catch(() => {});
+          });
+
+          if (currentAuthManager && agent) {
+            const factory = agent.getModelClientFactory();
+            factory.setAuthManager(currentAuthManager);
+            await agent.refreshModelClient();
+          } else if (!currentAuthManager) {
+            await initializeAuthFromConfig();
+          }
+        } else {
+          if (agent) {
+            const session = agent.getSession();
+            await session.close();
+            await agent.cleanup();
+          }
+
+          agent = new RepublicAgent(agentConfig, undefined, undefined, new UserNotifier());
+          agent.setEventDispatcher((event) => {
+            channelManager.dispatchEvent(event.msg, 'sidepanel-main').catch(() => {});
+          });
+
+          if (currentAuthManager) {
+            const factory = agent.getModelClientFactory();
+            factory.setAuthManager(currentAuthManager);
+          }
+          await agent.initialize();
+          await configureExtensionPlatform(agent);
+          if (!currentAuthManager) {
+            await initializeAuthFromConfig();
+          } else {
+            await agent.refreshModelClient();
+          }
+        }
+
+        // Notify UI via channel
+        channelManager.dispatchEvent(
+          { type: 'BackgroundEvent', data: { message: 'Agent reinitialized', level: 'info' } },
+          'sidepanel-main'
+        ).catch(() => {});
+
+        return { success: true, message: 'Configuration reloaded and agent recreated' };
+      } catch (error) {
+        console.error('Failed to reload configuration:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      }
+    });
+
+    serviceRegistry.register('agent.initAuth', async (params) => {
+      const { backendBaseUrl, useOwnApiKey } = params as {
+        backendBaseUrl?: string | null;
+        useOwnApiKey?: boolean;
+      };
+
+      const shouldUseBackend = useOwnApiKey === false;
+      const authManager = new AuthManager(shouldUseBackend, shouldUseBackend ? (backendBaseUrl ?? null) : null);
+      currentAuthManager = authManager;
+
+      const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
+      if (primaryAgent) {
+        const factory = primaryAgent.getModelClientFactory();
+        factory.setAuthManager(authManager);
+        await primaryAgent.refreshModelClient();
+      }
+
+      return { success: true, isBackendRouting: shouldUseBackend };
+    });
+
+    serviceRegistry.register('session.setMaxConcurrent', async (params) => {
+      const { maxConcurrent } = params as { maxConcurrent: number };
+      if (registry && typeof maxConcurrent === 'number') {
+        registry.setMaxConcurrent(maxConcurrent);
+        return { success: true };
+      }
+      throw new Error('Invalid request or registry not initialized');
+    });
+
+    console.log(`[ServiceWorker] Registered ${count} service handlers on ChannelManager (+ extension overrides)`);
+  } catch (error) {
+    console.error('[ServiceWorker] Failed to register service handlers:', error);
+  }
+}
+
+function setupMessageHandlers(): void {
+  if (!registry) return;
+
+  // Handle inline chrome.runtime messages for extension-specific operations
+  // that don't go through ServiceRegistry (e.g., content script messages)
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    // Stop agent session (from visual effects Stop Agent button)
     if (message.type === 'STOP_AGENT_SESSION') {
       (async () => {
         try {
-          // Feature 015: Route to correct agent based on sessionId
           const targetAgent = getAgentForMessage(message);
           if (targetAgent) {
             const session = targetAgent.getSession();
-
-            // Abort all running tasks
             await session.abortAllTasks('UserInterrupt');
-
             sendResponse({ success: true });
           } else {
             sendResponse({ success: false, error: 'Agent not initialized' });
@@ -605,252 +627,14 @@ function setupMessageHandlers(): void {
           sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
         }
       })();
-
-      return true; // Keep channel open for async response
-    }
-
-    // Feature 015: Handle max concurrent sessions update from settings
-    if (message.type === 'SET_MAX_CONCURRENT_SESSIONS') {
-      const { maxConcurrent } = message.payload || {};
-      if (registry && typeof maxConcurrent === 'number') {
-        registry.setMaxConcurrent(maxConcurrent);
-        console.log(`[ServiceWorker] Max concurrent sessions updated to: ${maxConcurrent}`);
-        sendResponse({ success: true });
-      } else {
-        sendResponse({ success: false, error: 'Invalid request or registry not initialized' });
-      }
       return true;
     }
 
-    // Handle approval config updates (UPDATE_APPROVAL_CONFIG)
-    // Uses "double write" pattern: saves to storage AND updates ApprovalGate directly.
-    // This avoids reliance on chrome.storage.onChanged which is not available in desktop mode.
-    if (message.type === 'UPDATE_APPROVAL_CONFIG') {
-      (async () => {
-        try {
-          const config = message.config;
-          // 1. Save to storage (nested under agent_config.approval)
-          const result = await chrome.storage.local.get(STORAGE_KEYS.CONFIG);
-          const agentConfig = (result[STORAGE_KEYS.CONFIG] || {}) as Record<string, any>;
-          const existing = agentConfig.approval || { ...DEFAULT_APPROVAL_CONFIG };
-          const merged = { ...existing, ...config };
-          agentConfig.approval = merged;
-          await chrome.storage.local.set({ [STORAGE_KEYS.CONFIG]: agentConfig });
-          // 2. Update ApprovalGate directly
-          const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
-          if (primaryAgent) {
-            const gate = primaryAgent.getToolRegistry().getApprovalGate();
-            if (gate) {
-              if (config.mode) gate.setMode(config.mode);
-              if (config.trustedDomains) gate.setTrustedDomains(config.trustedDomains);
-              if (config.blockedDomains) gate.setBlockedDomains(config.blockedDomains);
-            }
-          }
-          sendResponse({ success: true });
-        } catch (error) {
-          sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
-        }
-      })();
-      return true;
-    }
-
-    // Note: Approval decisions (EXEC_APPROVAL) are now handled through the unified
-    // SUBMISSION pipeline. EventProcessor sends { type: 'SUBMISSION', payload: { op: { type: 'ExecApproval' } } }
-    // which routes through MessageRouter → agent.submitOperation() → handleExecApproval()
-    // on both extension and desktop platforms.
   });
-
-  // Handle storage operations
-  router.on(MessageType.STORAGE_GET, async (message) => {
-    const { key } = message.payload;
-    const result = await chrome.storage.local.get(key);
-    return result[key];
-  });
-
-  router.on(MessageType.STORAGE_SET, async (message) => {
-    const { key, value } = message.payload;
-    await chrome.storage.local.set({ [key]: value });
-    return { success: true };
-  });
-
-  // Handle tool execution messages (Feature 015: session-aware routing)
-  router.on(MessageType.TOOL_EXECUTE, async (message) => {
-    const targetAgent = getAgentForMessage(message);
-    if (!targetAgent) throw new Error('Agent not initialized');
-
-    const { toolName, args } = message.payload;
-    const toolRegistry = targetAgent.getToolRegistry();
-    const tool = toolRegistry.getTool(toolName);
-
-    if (!tool) {
-      throw new Error(`Tool not found: ${toolName}`);
-    }
-
-    // For now, just return a placeholder result
-    return { success: true, message: `Tool ${toolName} executed` };
-  });
-
-  // Handle approval requests (Feature 015: session-aware routing)
-  router.on(MessageType.APPROVAL_REQUEST, async (message) => {
-    const targetAgent = getAgentForMessage(message);
-    if (!targetAgent) throw new Error('Agent not initialized');
-
-    const { approvalId, type, details } = message.payload;
-    const approvalManager = targetAgent.getApprovalManager();
-
-    // For now, just return a placeholder approval response
-    return { approved: false, message: 'Approval system not fully integrated yet' };
-  });
-
-  // Handle configuration updates (Feature 015: registry-aware)
-  router.on(MessageType.CONFIG_UPDATE, async () => {
-    try {
-      // Reload AgentConfig from storage
-      if (agentConfig) {
-        await agentConfig.reload();
-      } else {
-        // Initialize a new configuration singleton
-        agentConfig = await AgentConfig.getInstance();
-      }
-
-      // Feature 015: Clean up all sessions and recreate primary
-      if (registry) {
-        await registry.cleanup();
-        registry.initialize(agentConfig, router!);
-
-        // Recreate primary session
-        const primarySession = await registry.createSession({ type: 'primary' });
-        agent = primarySession.agent;
-
-        // Restore auth manager if preserved
-        if (currentAuthManager && agent) {
-          const factory = agent.getModelClientFactory();
-          factory.setAuthManager(currentAuthManager);
-          console.log('[ServiceWorker] Restored auth manager after CONFIG_UPDATE');
-          await agent.refreshModelClient();
-        } else if (!currentAuthManager) {
-          await initializeAuthFromConfig();
-        }
-      } else {
-        /**
-         * @deprecated Legacy fallback for CONFIG_UPDATE - should rarely execute.
-         * Feature 015: This path exists only for edge cases where registry
-         * is not available. All normal operation goes through AgentRegistry.
-         * TODO: Remove this fallback once Feature 015 is fully validated.
-         */
-        console.warn('[ServiceWorker] Using legacy agent recreation fallback - this path should be rare');
-        if (agent) {
-          const session = agent.getSession();
-          await session.close();
-          await agent.cleanup();
-        }
-
-        agent = new RepublicAgent(agentConfig, router!, undefined, undefined, new UserNotifier());
-
-        // Set up event dispatcher for chrome extension mode
-        agent.setEventDispatcher((event) => {
-          chrome.runtime.sendMessage({
-            type: 'EVENT',
-            payload: event,
-          }).catch(() => {});
-        });
-
-        if (currentAuthManager) {
-          const factory = agent.getModelClientFactory();
-          factory.setAuthManager(currentAuthManager);
-        }
-        await agent.initialize();
-        await configureExtensionPlatform(agent);
-        if (!currentAuthManager) {
-          await initializeAuthFromConfig();
-        } else {
-          await agent.refreshModelClient();
-        }
-      }
-
-      // Notify all clients (sidepanel, etc.) that agent was reinitialized
-      chrome.runtime.sendMessage({
-        type: MessageType.AGENT_REINITIALIZED,
-        payload: {
-          timestamp: Date.now()
-        }
-      }).catch(() => {
-        // Ignore errors if no listeners (e.g., sidepanel not open)
-      });
-
-      return { success: true, message: 'Configuration reloaded and agent recreated' };
-    } catch (error) {
-      console.error('Failed to reload configuration:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-    }
-  });
-
-  // Handle auth initialization from sidepanel
-  router.on(MessageType.INIT_AUTH, async (message) => {
-    const { backendBaseUrl, useOwnApiKey } = message.payload as {
-      isLoggedIn?: boolean; // deprecated, kept for backwards compatibility
-      backendBaseUrl: string | null;
-      useOwnApiKey?: boolean;
-    };
-
-    // useOwnApiKey determines routing:
-    // - false (or undefined) = use backend routing
-    // - true = use direct API with user's own key
-    const shouldUseBackend = useOwnApiKey === false;
-
-    console.log('[ServiceWorker] Received INIT_AUTH:', { useOwnApiKey, shouldUseBackend, backendBaseUrl });
-
-    // Create AuthManager based on useOwnApiKey setting
-    const authManager = new AuthManager(shouldUseBackend, shouldUseBackend ? backendBaseUrl : null);
-
-    // Preserve the auth manager for agent recreation (e.g., after CONFIG_UPDATE)
-    currentAuthManager = authManager;
-
-    // Feature 015: Update auth manager for all sessions via primary agent
-    const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
-    if (primaryAgent) {
-      const factory = primaryAgent.getModelClientFactory();
-      factory.setAuthManager(authManager);
-      console.log('[ServiceWorker] Auth manager updated, isBackendRouting:', factory.isBackendRouting(), 'useOwnApiKey:', useOwnApiKey);
-
-      // Refresh the model client to use the new auth routing
-      await primaryAgent.refreshModelClient();
-    }
-
-    return { success: true, isBackendRouting: authManager.shouldUseBackend() };
-  });
-
-  // Handle diff events (Feature 015: session-aware routing)
-  router.on(MessageType.DIFF_GENERATED, async (message) => {
-    const targetAgent = getAgentForMessage(message);
-    if (!targetAgent) throw new Error('Agent not initialized');
-
-    // Broadcast diff to UI
-    if (router) {
-      await router.broadcast(MessageType.DIFF_GENERATED, message.payload);
-    }
-  });
-
-  // Handle tab commands
-  router.on(MessageType.TAB_COMMAND, async (message) => {
-    const { command, args } = message.payload;
-    const tabId = message.tabId;
-
-    if (!tabId) {
-      throw new Error('Tab ID required for tab command');
-    }
-
-    return executeTabCommand(tabId, command, args);
-  });
-
-  // NOTE: PageAction execution logic removed from here.
-  // All PageAction tool execution now flows through:
-  // TurnManager.executeBrowserTool() → ToolRegistry.execute() → PageActionTool.executeImpl()
-  // See src/core/TurnManager.ts:774-822 for the execution entry point.
 }
 
 /**
- * Initialize Task Scheduler
+ * Initialize Scheduler
  */
 async function initializeScheduler(): Promise<void> {
   try {
@@ -858,10 +642,15 @@ async function initializeScheduler(): Promise<void> {
     const storageAdapter = await createStorageAdapter();
     await storageAdapter.initialize();
 
-    // Create scheduler components
-    schedulerStorage = new SchedulerStorage(storageAdapter);
+    // Create new model components
     schedulerAlarms = new SchedulerAlarms();
-    scheduler = new Scheduler(schedulerStorage, schedulerAlarms);
+    const scheduleEventStorage = new ScheduleEventStorage(storageAdapter);
+    const executionStorage = new ExecutionStorage(storageAdapter);
+    const scheduleManager = new ScheduleManager(scheduleEventStorage, executionStorage, schedulerAlarms);
+    const jobExecutor = new JobExecutor(executionStorage);
+
+    // Create scheduler with new constructor
+    scheduler = new Scheduler(scheduleManager, jobExecutor, schedulerAlarms);
 
     // Feature 015: Connect scheduler to AgentRegistry for isolated session creation
     if (registry) {
@@ -869,332 +658,70 @@ async function initializeScheduler(): Promise<void> {
       console.log('[ServiceWorker] Scheduler connected to AgentRegistry');
     }
 
-    // Set up event emitter to broadcast scheduler events to all clients (T020)
-    scheduler.setEventEmitter((event) => {
-      // Broadcast to all extension pages (sidepanel, popup, etc.)
-      chrome.runtime.sendMessage({
-        type: MessageType.SCHEDULER_EVENT,
-        payload: event,
-      }).catch(() => {
-        // Ignore errors when no listeners (e.g., popup not open)
+    // Wire platform-specific callbacks for Chrome extension
+    scheduler.setNotificationHandler(async (info) => {
+      const inputPreview = info.input.length > 50
+        ? info.input.slice(0, 50) + '...'
+        : info.input;
+      await chrome.notifications.create(`scheduler-job-${Date.now()}`, {
+        type: 'basic',
+        iconUrl: chrome.runtime.getURL('icons/icon128.png'),
+        title: 'Scheduled Job Starting',
+        message: inputPreview,
+        priority: 2,
+        requireInteraction: false,
       });
     });
 
-    // Start the SchedulerTaskQueue processor
-    await schedulerAlarms.startSchedulerTaskQueueProcessor();
+    scheduler.setJobLauncher(async (executionId, sessionId) => {
+      const extensionUrl = chrome.runtime.getURL(
+        `sidepanel/index.html?scheduledJob=${executionId}&sessionId=${sessionId}`
+      );
+      await chrome.tabs.create({ url: extensionUrl, active: true });
+    });
 
-    // Detect missed tasks on startup
-    const missedTasks = await scheduler.detectMissedTasks();
-    if (missedTasks.length > 0) {
-      console.log(`[ServiceWorker] Detected ${missedTasks.length} missed scheduler tasks`);
-      // Show notification for missed tasks
+    scheduler.setConnectivityCheck(() => navigator.onLine);
+
+    // Event emitter is wired in registerServiceHandlers() where ChannelManager is available
+
+    // Recover stale running jobs from previous app session
+    await scheduler.recoverStaleRunningJob();
+
+    // Start the job queue processor
+    await schedulerAlarms.startJobQueueProcessor();
+
+    // Detect missed jobs on startup
+    const missed = await scheduler.detectMissedJobs();
+    if (missed.length > 0) {
+      console.log(`[ServiceWorker] Detected ${missed.length} missed scheduler instances`);
+      // Show notification for missed jobs
       chrome.notifications.create({
         type: 'basic',
         iconUrl: chrome.runtime.getURL('icons/icon128.png'),
-        title: t('Missed Scheduled Tasks'),
-        message: t(`${missedTasks.length} task(s) missed their scheduled time while the browser was closed.`),
+        title: t('Missed Scheduled Jobs'),
+        message: t(`${missed.length} job(s) missed their scheduled time while the browser was closed.`),
         priority: 2,
       });
     }
 
-    // T042: Resume task processing when connectivity is restored
+    // Restore alarms for ScheduleEvents
+    await scheduler.restoreScheduleAlarms();
+
+    // T042: Resume job processing when connectivity is restored
     self.addEventListener('online', async () => {
-      console.log('[ServiceWorker] Online - resuming scheduler task processing');
+      console.log('[ServiceWorker] Online - resuming scheduler job processing');
       if (scheduler) {
-        await scheduler.processSchedulerTaskQueue();
+        await scheduler.processJobQueue();
       }
     });
 
-    console.log('[ServiceWorker] Task Scheduler initialized');
+    console.log('[ServiceWorker] Scheduler initialized');
   } catch (error) {
     console.error('[ServiceWorker] Failed to initialize scheduler:', error);
   }
 }
 
-/**
- * Setup Scheduler message handlers
- */
-function setupSchedulerMessageHandlers(): void {
-  if (!router || !scheduler) return;
 
-  // Create draft task
-  router.on(MessageType.SCHEDULER_CREATE_DRAFT_TASK, async (message) => {
-    const { input } = message.payload as CreateDraftTaskRequest;
-    const taskId = await scheduler!.createDraftTask(input);
-    return { success: true, taskId };
-  });
-
-  // Schedule a task
-  router.on(MessageType.SCHEDULER_SCHEDULE_TASK, async (message) => {
-    const { input, taskId, scheduledTime } = message.payload as ScheduleTaskRequest;
-
-    if (taskId) {
-      // Schedule existing draft
-      await scheduler!.scheduleExistingTask(taskId, scheduledTime);
-      return { success: true, taskId };
-    } else if (input) {
-      // Create new scheduled task
-      const newTaskId = await scheduler!.scheduleTask(input, scheduledTime);
-      return { success: true, taskId: newTaskId };
-    } else {
-      return { success: false, error: 'Either input or taskId is required' };
-    }
-  });
-
-  // Trigger a task manually
-  router.on(MessageType.SCHEDULER_TRIGGER_TASK, async (message) => {
-    const { taskId } = message.payload as TriggerTaskRequest;
-    await scheduler!.triggerTask(taskId);
-    return { success: true };
-  });
-
-  // Cancel a task
-  router.on(MessageType.SCHEDULER_CANCEL_TASK, async (message) => {
-    const { taskId } = message.payload as CancelTaskRequest;
-    await scheduler!.cancelTask(taskId);
-    return { success: true };
-  });
-
-  // Complete a task (called by executing tab)
-  router.on(MessageType.SCHEDULER_COMPLETE_TASK, async (message) => {
-    const { taskId, result } = message.payload as { taskId: string; result: TaskResultRecord };
-    await scheduler!.completeTask(taskId, result);
-    return { success: true };
-  });
-
-  // Fail a task (called by executing tab)
-  router.on(MessageType.SCHEDULER_FAIL_TASK, async (message) => {
-    const { taskId, error } = message.payload as { taskId: string; error: string };
-    await scheduler!.failTask(taskId, error);
-    return { success: true };
-  });
-
-  // Pause SchedulerTaskQueue
-  router.on(MessageType.SCHEDULER_PAUSE_QUEUE, async () => {
-    await scheduler!.pauseSchedulerTaskQueue();
-    return { success: true };
-  });
-
-  // Resume SchedulerTaskQueue
-  router.on(MessageType.SCHEDULER_RESUME_QUEUE, async () => {
-    await scheduler!.resumeSchedulerTaskQueue();
-    return { success: true };
-  });
-
-  // Get draft tasks
-  router.on(MessageType.SCHEDULER_GET_DRAFT_TASKS, async () => {
-    const tasks = await schedulerStorage!.getDraftTasks();
-    return {
-      tasks: tasks.map((t) => ({
-        id: t.id,
-        input: t.input.slice(0, 100),
-        scheduledTime: t.scheduledTime,
-        status: t.status,
-        createdAt: t.createdAt,
-      })),
-    };
-  });
-
-  // Get scheduled tasks
-  router.on(MessageType.SCHEDULER_GET_SCHEDULED_TASKS, async () => {
-    const tasks = await schedulerStorage!.getScheduledTasks();
-    return {
-      tasks: tasks.map((t) => ({
-        id: t.id,
-        input: t.input.slice(0, 100),
-        scheduledTime: t.scheduledTime,
-        status: t.status,
-        createdAt: t.createdAt,
-      })),
-    };
-  });
-
-  // Get missed tasks
-  router.on(MessageType.SCHEDULER_GET_MISSED_TASKS, async () => {
-    const tasks = await schedulerStorage!.getMissedTasks();
-    return {
-      tasks: tasks.map((t) => ({
-        id: t.id,
-        input: t.input.slice(0, 100),
-        scheduledTime: t.scheduledTime,
-        status: t.status,
-        createdAt: t.createdAt,
-      })),
-    };
-  });
-
-  // Get SchedulerTaskQueue
-  router.on(MessageType.SCHEDULER_GET_QUEUE, async () => {
-    const tasks = await schedulerStorage!.getSchedulerTaskQueueTasks();
-    return {
-      tasks: tasks.map((t) => ({
-        id: t.id,
-        input: t.input.slice(0, 100),
-        scheduledTime: t.scheduledTime,
-        status: t.status,
-        createdAt: t.createdAt,
-      })),
-    };
-  });
-
-  // Get archived tasks
-  router.on(MessageType.SCHEDULER_GET_ARCHIVED_TASKS, async (message) => {
-    const { limit = 50, offset = 0 } = (message.payload || {}) as GetArchivedTasksRequest;
-    const tasks = await schedulerStorage!.getArchivedTasks(limit, offset);
-    return {
-      tasks: tasks.map((t) => ({
-        id: t.id,
-        input: t.input.slice(0, 100),
-        scheduledTime: t.scheduledTime,
-        completedAt: t.completedAt,
-        status: t.status,
-        sessionId: t.sessionId,
-        error: t.error,
-      })),
-      total: tasks.length,
-      hasMore: tasks.length === limit,
-    };
-  });
-
-  // Get scheduler state
-  router.on(MessageType.SCHEDULER_GET_STATE, async () => {
-    return scheduler!.getSchedulerState();
-  });
-
-  // Get task details
-  router.on(MessageType.SCHEDULER_GET_TASK_DETAILS, async (message) => {
-    const { taskId } = message.payload as GetTaskDetailsRequest;
-    const task = await schedulerStorage!.getTask(taskId);
-    return { task };
-  });
-
-  console.log('[ServiceWorker] Scheduler message handlers registered');
-
-  // Feature 015: Session management message handlers (T048, T049)
-  setupSessionMessageHandlers();
-}
-
-/**
- * Feature 034: Setup vault message handlers for credential security
- *
- * Handlers return raw data (MessageRouter adds the { success, data } envelope).
- * For errors, handlers throw (MessageRouter returns { success: false, error }).
- * Exception: VAULT_UNLOCK returns VaultUnlockResult directly (has its own success field
- * with structured error info like attemptsRemaining).
- */
-function setupVaultMessageHandlers(): void {
-  if (!router) return;
-
-  // VAULT_STATUS: Get current vault state
-  router.on(MessageType.VAULT_STATUS, async () => {
-    return VaultManager.getStatus();
-  });
-
-  // VAULT_UNLOCK: Unlock vault with PIN
-  // Returns VaultUnlockResult (always resolves — error info in the result object)
-  router.on(MessageType.VAULT_UNLOCK, async (message) => {
-    const { pin } = message.payload || {};
-    if (!pin || typeof pin !== 'string') {
-      throw new Error('PIN is required');
-    }
-    return await VaultManager.unlock(pin);
-  });
-
-  // VAULT_LOCK: Lock vault (clear session)
-  router.on(MessageType.VAULT_LOCK, async () => {
-    await VaultManager.lock();
-  });
-
-  // PIN_SET: Enable PIN protection
-  router.on(MessageType.PIN_SET, async (message) => {
-    const { pin, pinConfirm } = message.payload || {};
-    if (!pin || typeof pin !== 'string' || !/^\d{6}$/.test(pin)) {
-      throw new Error('PIN must be exactly 6 digits');
-    }
-    if (pin !== pinConfirm) {
-      throw new Error('PINs do not match');
-    }
-    await VaultManager.enablePin(pin);
-  });
-
-  // PIN_CHANGE: Change existing PIN (with lockout protection)
-  router.on(MessageType.PIN_CHANGE, async (message) => {
-    const { currentPin, newPin, newPinConfirm } = message.payload || {};
-    if (!currentPin || typeof currentPin !== 'string') {
-      throw new Error('Current PIN is required');
-    }
-    if (!newPin || !/^\d{6}$/.test(newPin)) {
-      throw new Error('New PIN must be exactly 6 digits');
-    }
-    if (newPin !== newPinConfirm) {
-      throw new Error('New PINs do not match');
-    }
-    // Use unlock() to verify current PIN with lockout protection,
-    // then change the PIN. This prevents brute-force via PIN_CHANGE.
-    const unlockResult = await VaultManager.unlock(currentPin);
-    if (!unlockResult.success) {
-      throw new Error(unlockResult.error === 'locked_out'
-        ? `Too many attempts. Try again in ${unlockResult.lockoutSecondsRemaining}s`
-        : 'Current PIN is incorrect');
-    }
-    await VaultManager.changePin(currentPin, newPin);
-  });
-
-  // PIN_REMOVE: Remove PIN protection (with lockout protection)
-  router.on(MessageType.PIN_REMOVE, async (message) => {
-    const { pin } = message.payload || {};
-    if (!pin || typeof pin !== 'string') {
-      throw new Error('PIN is required');
-    }
-    // Use unlock() to verify PIN with lockout protection,
-    // then remove the PIN. This prevents brute-force via PIN_REMOVE.
-    const unlockResult = await VaultManager.unlock(pin);
-    if (!unlockResult.success) {
-      throw new Error(unlockResult.error === 'locked_out'
-        ? `Too many attempts. Try again in ${unlockResult.lockoutSecondsRemaining}s`
-        : 'PIN is incorrect');
-    }
-    await VaultManager.removePin(pin);
-  });
-
-  // PIN_FORGOT: Reset vault (clear all credentials)
-  router.on(MessageType.PIN_FORGOT, async (message) => {
-    const { confirmReset } = message.payload || {};
-    if (!confirmReset) {
-      throw new Error('Confirmation required');
-    }
-    await VaultManager.reset();
-  });
-
-  console.log('[ServiceWorker] Vault message handlers registered');
-}
-
-/**
- * Feature 015 (T048, T049): Setup session management message handlers
- */
-function setupSessionMessageHandlers(): void {
-  if (!router || !registry) return;
-
-  // T048: Get list of all sessions
-  router.on(MessageType.SESSION_LIST, async () => {
-    return {
-      sessions: registry!.listSessions(),
-      maxConcurrent: registry!.getMaxConcurrent(),
-      activeCount: registry!.getActiveCount(),
-    };
-  });
-
-  // T049: Get active session count
-  router.on(MessageType.SESSION_GET_ACTIVE_COUNT, async () => {
-    return {
-      activeCount: registry!.getActiveCount(),
-      maxConcurrent: registry!.getMaxConcurrent(),
-      canCreateSession: registry!.canCreateSession(),
-    };
-  });
-
-  console.log('[ServiceWorker] Session message handlers registered');
-}
 
 /**
  * Auto-connect enabled MCP servers on service worker startup (T064)
@@ -1312,88 +839,6 @@ function setupMCPToolRegistration(): void {
   console.log('[ServiceWorker] MCP tool registration handler setup complete');
 }
 
-/**
- * Setup MCP server integration message handlers
- */
-function setupMCPMessageHandlers(): void {
-  if (!router || !mcpManager) return;
-
-  // Get all MCP server configurations
-  router.on(MessageType.MCP_GET_SERVERS, async () => {
-    return mcpManager!.getServers();
-  });
-
-  // Add a new MCP server
-  router.on(MessageType.MCP_ADD_SERVER, async (message) => {
-    const config = message.payload as IMCPServerConfigCreate;
-    return mcpManager!.addServer(config);
-  });
-
-  // Update an existing MCP server
-  router.on(MessageType.MCP_UPDATE_SERVER, async (message) => {
-    const { id, update } = message.payload as { id: string; update: IMCPServerConfigUpdate };
-    return mcpManager!.updateServer(id, update);
-  });
-
-  // Remove an MCP server
-  router.on(MessageType.MCP_REMOVE_SERVER, async (message) => {
-    const { id } = message.payload as { id: string };
-    await mcpManager!.removeServer(id);
-    return { success: true };
-  });
-
-  // Connect to an MCP server
-  router.on(MessageType.MCP_CONNECT, async (message) => {
-    const { id } = message.payload as { id: string };
-    await mcpManager!.connect(id);
-    return { success: true };
-  });
-
-  // Disconnect from an MCP server
-  router.on(MessageType.MCP_DISCONNECT, async (message) => {
-    const { id } = message.payload as { id: string };
-    await mcpManager!.disconnect(id);
-    return { success: true };
-  });
-
-  // Get connection state for a specific server
-  router.on(MessageType.MCP_GET_CONNECTION, async (message) => {
-    const { id } = message.payload as { id: string };
-    return mcpManager!.getConnection(id);
-  });
-
-  // Get all connections
-  router.on(MessageType.MCP_GET_CONNECTIONS, async () => {
-    return mcpManager!.getConnections();
-  });
-
-  // Get all available tools from all connected servers
-  router.on(MessageType.MCP_GET_ALL_TOOLS, async () => {
-    return mcpManager!.getAllTools();
-  });
-
-  // Execute an MCP tool
-  router.on(MessageType.MCP_EXECUTE_TOOL, async (message) => {
-    const { prefixedName, args } = message.payload as {
-      prefixedName: string;
-      args: Record<string, unknown>;
-    };
-    return mcpManager!.executeTool(prefixedName, args);
-  });
-
-  // Get all available resources from all connected servers
-  router.on(MessageType.MCP_GET_ALL_RESOURCES, async () => {
-    return mcpManager!.getAllResources();
-  });
-
-  // Read a resource from a server
-  router.on(MessageType.MCP_READ_RESOURCE, async (message) => {
-    const { serverName, uri } = message.payload as { serverName: string; uri: string };
-    return mcpManager!.readResource(serverName, uri);
-  });
-
-  console.log('[ServiceWorker] MCP message handlers registered');
-}
 
 // ==========================================================================
 // A2A Integration (Feature 021)
@@ -1512,84 +957,6 @@ async function autoConnectEnabledA2AAgents(): Promise<void> {
   }
 }
 
-/**
- * Setup A2A agent integration message handlers
- */
-function setupA2AMessageHandlers(): void {
-  if (!router || !a2aManager) return;
-
-  // Get all A2A agent configurations
-  router.on(MessageType.A2A_GET_AGENTS, async () => {
-    return a2aManager!.getAgents();
-  });
-
-  // Add a new A2A agent
-  router.on(MessageType.A2A_ADD_AGENT, async (message) => {
-    const config = message.payload as IA2AAgentConfigCreate;
-    return a2aManager!.addAgent(config);
-  });
-
-  // Update an existing A2A agent
-  router.on(MessageType.A2A_UPDATE_AGENT, async (message) => {
-    const { id, update } = message.payload as { id: string; update: IA2AAgentConfigUpdate };
-    return a2aManager!.updateAgent(id, update);
-  });
-
-  // Remove an A2A agent
-  router.on(MessageType.A2A_REMOVE_AGENT, async (message) => {
-    const { id } = message.payload as { id: string };
-    await a2aManager!.removeAgent(id);
-    return { success: true };
-  });
-
-  // Connect to an A2A agent
-  router.on(MessageType.A2A_CONNECT, async (message) => {
-    const { id } = message.payload as { id: string };
-    await a2aManager!.connect(id);
-    return { success: true };
-  });
-
-  // Disconnect from an A2A agent
-  router.on(MessageType.A2A_DISCONNECT, async (message) => {
-    const { id } = message.payload as { id: string };
-    await a2aManager!.disconnect(id);
-    return { success: true };
-  });
-
-  // Get connection state for a specific agent
-  router.on(MessageType.A2A_GET_CONNECTION, async (message) => {
-    const { id } = message.payload as { id: string };
-    return a2aManager!.getConnection(id);
-  });
-
-  // Get all connections
-  router.on(MessageType.A2A_GET_CONNECTIONS, async () => {
-    return a2aManager!.getConnections();
-  });
-
-  // Get all available skills from all connected agents
-  router.on(MessageType.A2A_GET_ALL_SKILLS, async () => {
-    return a2aManager!.getAllSkills();
-  });
-
-  // Execute an A2A skill
-  router.on(MessageType.A2A_EXECUTE_SKILL, async (message) => {
-    const { prefixedName, args } = message.payload as {
-      prefixedName: string;
-      args: Record<string, unknown>;
-    };
-    return a2aManager!.executeSkill(prefixedName, args);
-  });
-
-  // Cancel an A2A task
-  router.on(MessageType.A2A_CANCEL_TASK, async (message) => {
-    const { agentName, taskId } = message.payload as { agentName: string; taskId: string };
-    await a2aManager!.cancelTask(agentName, taskId);
-    return { success: true };
-  });
-
-  console.log('[ServiceWorker] A2A message handlers registered');
-}
 
 // ── Skills ────────────────────────────────────────────────────────────────
 
@@ -1615,81 +982,6 @@ async function initializeSkills(): Promise<void> {
   }
 }
 
-/**
- * Setup Skills message handlers
- */
-function setupSkillsMessageHandlers(): void {
-  if (!router || !skillRegistry) return;
-
-  // List all skill metadata
-  router.on(MessageType.SKILLS_LIST, async () => {
-    return skillRegistry!.getSkillMetas();
-  });
-
-  // Load full skill content (with optional argument substitution)
-  router.on(MessageType.SKILLS_LOAD, async (message) => {
-    const { name, args } = message.payload as { name: string; args?: string };
-    return skillRegistry!.invoke(name, args ? args.split(/\s+/) : []);
-  });
-
-  // Save a skill (create or update)
-  router.on(MessageType.SKILLS_SAVE, async (message) => {
-    const skill = message.payload as Skill;
-    await skillRegistry!.save(skill);
-    return { success: true };
-  });
-
-  // Delete a skill
-  router.on(MessageType.SKILLS_DELETE, async (message) => {
-    const { name } = message.payload as { name: string };
-    await skillRegistry!.delete(name);
-    return { success: true };
-  });
-
-  // Update invocation mode
-  router.on(MessageType.SKILLS_UPDATE_MODE, async (message) => {
-    const { name, mode } = message.payload as { name: string; mode: InvocationMode };
-    await skillRegistry!.updateInvocationMode(name, mode);
-    return { success: true };
-  });
-
-  // Import skill from URL
-  router.on(MessageType.SKILLS_IMPORT, async (message) => {
-    const { url } = message.payload as { url: string };
-
-    // Validate URL scheme at the platform boundary
-    const parsed = new URL(url);
-    if (!['http:', 'https:'].includes(parsed.protocol)) {
-      throw new Error('Only HTTP/HTTPS URLs are supported for skill import');
-    }
-
-    // Fetch is a transport concern — handled here, not in core SkillRegistry
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch skill from ${url}: ${response.statusText}`);
-    }
-    const content = await response.text();
-
-    const skill = await skillRegistry!.importFromContent(content, url);
-    return { success: true, skill };
-  });
-
-  // Export skill as SKILL.md
-  router.on(MessageType.SKILLS_EXPORT, async (message) => {
-    const { name } = message.payload as { name: string };
-    const content = await skillRegistry!.export(name);
-    return { success: true, content };
-  });
-
-  // Trust an imported skill
-  router.on(MessageType.SKILLS_TRUST, async (message) => {
-    const { name } = message.payload as { name: string };
-    await skillRegistry!.trustSkill(name);
-    return { success: true };
-  });
-
-  console.log('[ServiceWorker] Skills message handlers registered');
-}
 
 /**
  * Setup Chrome API event listeners
@@ -1996,16 +1288,20 @@ function setupPeriodicTasks(): void {
 
   // Process event queue periodically (Feature 015: process all sessions)
   setInterval(async () => {
-    if (!router) return;
-
     // Feature 015: Process events from all sessions
     if (registry) {
+      let channelManager: import('@/core/channels/ChannelManager').ChannelManager | null = null;
+      try {
+        const { getChannelManager } = await import('@/core/channels/ChannelManager');
+        channelManager = getChannelManager();
+      } catch { /* channel not ready */ }
+
       for (const sessionMeta of registry.listSessions()) {
         const session = registry.getSession(sessionMeta.sessionId);
         if (session?.agent) {
           const event = await session.agent.getNextEvent();
-          if (event) {
-            await router.broadcast(MessageType.EVENT, event);
+          if (event && channelManager) {
+            await channelManager.broadcastEvent(event.msg);
           }
         }
       }
@@ -2013,7 +1309,10 @@ function setupPeriodicTasks(): void {
       // Legacy fallback
       const event = await agent.getNextEvent();
       if (event) {
-        await router.broadcast(MessageType.EVENT, event);
+        try {
+          const { getChannelManager } = await import('@/core/channels/ChannelManager');
+          await getChannelManager().broadcastEvent(event.msg);
+        } catch { /* channel not ready */ }
       }
     }
   }, 100); // Check every 100ms
@@ -2030,7 +1329,7 @@ function setupPeriodicTasks(): void {
 
       // Handle alarms
       chrome.alarms.onAlarm?.addListener(async (alarm) => {
-        // Handle scheduler alarms first (task alarms and queue processor)
+        // Handle scheduler alarms first (job alarms and queue processor)
         const schedulerEvent = parseAlarmName(alarm.name);
         if (schedulerEvent && scheduler) {
           await scheduler.handleAlarm(alarm.name);
@@ -2188,10 +1487,6 @@ chrome.runtime.onSuspend.addListener(async () => {
     await agent.cleanup();
   }
 
-  if (router) {
-    router.cleanup();
-  }
-
   if (cacheManager) {
     cacheManager.destroy();
   }
@@ -2259,7 +1554,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
     return true; // Keep message port open
   }
-  // Don't return true - let MessageRouter handle the response
   return false;
 });
 
@@ -2267,4 +1561,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 initialize();
 
 // Export for testing (Feature 015: include registry and sessionStorage)
-export { agent, router, registry, sessionStorage, initialize };
+export { agent, registry, sessionStorage, initialize };

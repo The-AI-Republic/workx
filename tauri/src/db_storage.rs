@@ -30,8 +30,12 @@ const ALLOWED_COLLECTIONS: &[&str] = &[
     "sessions",
     "config",
     "rollout_cache",
-    "scheduler_tasks",
+    "scheduler_jobs",
     "agent_sessions",
+    "schedule_events",
+    "schedule_exceptions",
+    "execution_records",
+    "token_usage_records",
 ];
 
 struct DbStorage {
@@ -954,10 +958,10 @@ mod tests {
         let val = storage_get("cache_items".into(), "sk1".into()).unwrap();
         assert!(val.is_some());
 
-        // scheduler_tasks
-        storage_set("scheduler_tasks".into(), "t1".into(), r#"{"id":"t1","status":"draft"}"#.into()).unwrap();
+        // scheduler_jobs
+        storage_set("scheduler_jobs".into(), "t1".into(), r#"{"id":"t1","status":"draft"}"#.into()).unwrap();
         let rows = storage_query(
-            "scheduler_tasks".into(),
+            "scheduler_jobs".into(),
             Some(r#"{"status":"draft"}"#.into()),
             None, None, None, None,
         ).unwrap();

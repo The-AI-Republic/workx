@@ -88,11 +88,11 @@ describe('TauriSQLiteAdapter', () => {
       });
     });
 
-    it('should extract key from scheduler_tasks using "id" keyPath', async () => {
+    it('should extract key from scheduler_jobs using "id" keyPath', async () => {
       mockInvoke.mockResolvedValueOnce(undefined);
-      await adapter.put('scheduler_tasks', { id: 'task-1', status: 'pending' });
+      await adapter.put('scheduler_jobs', { id: 'task-1', status: 'pending' });
       expect(mockInvoke).toHaveBeenCalledWith('storage_set', {
-        collection: 'scheduler_tasks',
+        collection: 'scheduler_jobs',
         key: 'task-1',
         value: JSON.stringify({ id: 'task-1', status: 'pending' }),
       });
@@ -132,9 +132,9 @@ describe('TauriSQLiteAdapter', () => {
         { key: 'k1', value: '{"id":"1"}', created_at: 1000, updated_at: 1000 },
         { key: 'k2', value: '{"id":"2"}', created_at: 2000, updated_at: 2000 },
       ]);
-      const result = await adapter.getAll<{ id: string }>('scheduler_tasks');
+      const result = await adapter.getAll<{ id: string }>('scheduler_jobs');
       expect(mockInvoke).toHaveBeenCalledWith('storage_list', {
-        collection: 'scheduler_tasks',
+        collection: 'scheduler_jobs',
       });
       expect(result).toEqual([{ id: '1' }, { id: '2' }]);
     });
@@ -145,9 +145,9 @@ describe('TauriSQLiteAdapter', () => {
       mockInvoke.mockResolvedValueOnce([
         { key: 'k1', value: '{"status":"pending"}', created_at: 1, updated_at: 1 },
       ]);
-      const result = await adapter.queryByIndex('scheduler_tasks', 'by_status', 'pending');
+      const result = await adapter.queryByIndex('scheduler_jobs', 'by_status', 'pending');
       expect(mockInvoke).toHaveBeenCalledWith('storage_query', {
-        collection: 'scheduler_tasks',
+        collection: 'scheduler_jobs',
         where: JSON.stringify({ status: 'pending' }),
       });
       expect(result).toEqual([{ status: 'pending' }]);

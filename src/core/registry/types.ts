@@ -29,9 +29,6 @@ export interface SessionConfig {
   /** Initial tab binding (optional) */
   tabId?: number | null;
 
-  /** Associated scheduled task ID (required for 'scheduled' type) */
-  scheduledTaskId?: string | null;
-
   /** Conversation ID to resume from (optional) */
   resumeFrom?: string | null;
 }
@@ -69,9 +66,6 @@ export interface SessionMetadata {
 
   /** Tab group name: browserx_s_<letter> */
   tabGroupName: string;
-
-  /** Associated scheduled task ID (if any) */
-  scheduledTaskId: string | null;
 }
 
 /**
@@ -145,6 +139,12 @@ export type SessionEventListener = (event: SessionEvent) => void;
 export interface RegistryConfig {
   /** Maximum number of concurrent sessions (default: 3) */
   maxConcurrent?: number;
+
+  /** Optional factory to create RepublicAgent instances (replaces hardcoded extension logic) */
+  agentFactory?: (config: import('../../config/AgentConfig').AgentConfig) => Promise<import('../RepublicAgent').RepublicAgent>;
+
+  /** Optional factory to create event dispatchers per session (replaces chrome.runtime.sendMessage) */
+  eventDispatcherFactory?: (sessionId: string) => ((event: { msg: import('../protocol/events').EventMsg }) => void);
 }
 
 /**

@@ -1,565 +1,471 @@
 /**
- * Scheduler
+ * Scheduler (Facade)
  *
- * Main orchestrator class for the Task Scheduler feature.
- * Manages task lifecycle: creation, scheduling, execution, and completion.
- *
- * Feature 015: Integrates with AgentRegistry to create isolated sessions for scheduled tasks
+ * Delegates to ScheduleManager (when to run) and JobExecutor (how to run).
+ * All legacy SchedulerStorage / SchedulerJobRecord dependencies have been removed.
+ * The single source of truth is now ScheduleEvent + ExecutionRecord.
  */
 
-import { v4 as uuidv4 } from 'uuid';
-import type { SchedulerStorage } from './SchedulerStorage';
-import type { SchedulerAlarms } from '../../extension/background/scheduler-alarms';
 import type {
-  SchedulerTaskRecord,
-  SchedulerTaskStatus,
-  TaskResultRecord,
+  JobResultRecord,
+  RecurrenceRule,
 } from '../models/types/Scheduler';
 import type {
-  ISchedulerStorage,
   ISchedulerAlarms,
-  TaskStatusChangedEvent,
-  SchedulerStateChangedEvent,
-  SchedulerTaskSummary,
+  SchedulerJobSummary,
+  ArchivedJobSummary,
   GetSchedulerStateResponse,
+  SchedulerStateChangedEvent,
 } from '../models/types/SchedulerContracts';
 import {
   parseAlarmName,
-  DEFAULT_ALARM_CONFIG,
 } from '../models/types/SchedulerContracts';
+import type { ScheduleEvent } from '../models/types/ScheduleEvent';
+import type { ExecutionRecord, ExecutionStatus } from '../models/types/ScheduleEvent';
 import type { AgentRegistry } from '../registry/AgentRegistry';
-import type { AgentSession } from '../registry/AgentSession';
+import type { ScheduleManager } from './ScheduleManager';
+import type { JobExecutor, ExecutionNotificationHandler, ExecutionJobLauncher, ExecutionConnectivityCheck, ExecutionEventEmitter } from './JobExecutor';
+import { recurrenceRuleToRRule } from './rruleAdapter';
 
 /**
  * Event emitter type for scheduler events
  */
 export type SchedulerEventEmitter = (
-  event: TaskStatusChangedEvent | SchedulerStateChangedEvent
+  event: Record<string, unknown>
 ) => void;
 
 /**
- * Scheduler - main orchestrator for scheduled task execution
- * Feature 015: Supports isolated AgentSession per scheduled task
+ * Notification handler callback — platform-specific notification display
+ */
+export type NotificationHandler = (info: { input: string }) => Promise<void>;
+
+/**
+ * Job launcher callback — platform-specific job execution
+ */
+export type JobLauncher = (
+  executionId: string,
+  sessionId: string,
+  agent: import('../RepublicAgent').RepublicAgent | null
+) => Promise<void>;
+
+/**
+ * Connectivity check callback
+ */
+export type ConnectivityCheck = () => boolean;
+
+/**
+ * Scheduler — facade that delegates to ScheduleManager + JobExecutor.
  */
 export class Scheduler {
   private eventEmitter: SchedulerEventEmitter | null = null;
-  private registry: AgentRegistry | null = null;
-  private taskSessions: Map<string, string> = new Map(); // taskId → sessionId
 
   constructor(
-    private storage: ISchedulerStorage,
-    private alarms: ISchedulerAlarms
-  ) {}
+    private scheduleManager: ScheduleManager,
+    private jobExecutor: JobExecutor,
+    private alarms: ISchedulerAlarms,
+  ) {
+    // Wire ScheduleManager alarm → JobExecutor execution
+    this.scheduleManager.setAlarmFiredHandler(async (eventId, instanceTime, input) => {
+      await this.jobExecutor.execute(eventId, instanceTime, input);
+    });
 
-  /**
-   * Feature 015: Set the AgentRegistry for creating isolated sessions
-   */
-  setRegistry(registry: AgentRegistry): void {
-    this.registry = registry;
+    // Wire JobExecutor completion → ScheduleManager alarm re-arming
+    this.jobExecutor.setExecutionCompleteHandler(async (eventId) => {
+      await this.scheduleManager.armNextAlarm(eventId);
+    });
   }
 
-  /**
-   * Set event emitter for status change notifications
-   */
+  // ==========================================================================
+  // Accessors
+  // ==========================================================================
+
+  getScheduleManager(): ScheduleManager {
+    return this.scheduleManager;
+  }
+
+  getJobExecutor(): JobExecutor {
+    return this.jobExecutor;
+  }
+
+  // ==========================================================================
+  // Configuration setters (pass through to delegates)
+  // ==========================================================================
+
+  setRegistry(registry: AgentRegistry): void {
+    this.jobExecutor.setRegistry(registry);
+  }
+
   setEventEmitter(emitter: SchedulerEventEmitter): void {
     this.eventEmitter = emitter;
-  }
-
-  /**
-   * Create a draft task (no scheduled time)
-   * @returns The created task ID
-   */
-  async createDraftTask(input: string): Promise<string> {
-    const task = await this.storage.createTask(input);
-    return task.id;
-  }
-
-  /**
-   * Schedule a new task for future execution
-   * @returns The created task ID
-   */
-  async scheduleTask(input: string, scheduledTime: number): Promise<string> {
-    // Validate scheduled time is in the future
-    const now = Date.now();
-    if (scheduledTime <= now) {
-      throw new Error('Scheduled time must be in the future');
-    }
-
-    // Create the task with scheduled status
-    const task = await this.storage.createTask(input, scheduledTime);
-
-    // Create alarm for the task
-    await this.alarms.createTaskAlarm(task.id, scheduledTime);
-
-    return task.id;
-  }
-
-  /**
-   * Schedule an existing draft task
-   */
-  async scheduleExistingTask(taskId: string, scheduledTime: number): Promise<void> {
-    const task = await this.storage.getTask(taskId);
-    if (!task) {
-      throw new Error(`Task not found: ${taskId}`);
-    }
-
-    if (task.status !== 'draft') {
-      throw new Error(`Cannot schedule task in ${task.status} status`);
-    }
-
-    // Validate scheduled time is in the future
-    const now = Date.now();
-    if (scheduledTime <= now) {
-      throw new Error('Scheduled time must be in the future');
-    }
-
-    const previousStatus = task.status;
-
-    // Update task with scheduled time and status
-    await this.storage.updateTask(taskId, {
-      scheduledTime,
-      status: 'scheduled',
-    });
-
-    // Create alarm for the task
-    await this.alarms.createTaskAlarm(taskId, scheduledTime);
-
-    // Emit status change event
-    this.emitStatusChange(taskId, previousStatus, 'scheduled');
-  }
-
-  /**
-   * Manually trigger a task (draft or scheduled)
-   * If another task is running, adds to SchedulerTaskQueue
-   */
-  async triggerTask(taskId: string): Promise<void> {
-    const task = await this.storage.getTask(taskId);
-    if (!task) {
-      throw new Error(`Task not found: ${taskId}`);
-    }
-
-    // Only draft, scheduled, or missed tasks can be triggered
-    if (!['draft', 'scheduled', 'missed'].includes(task.status)) {
-      throw new Error(`Cannot trigger task in ${task.status} status`);
-    }
-
-    const previousStatus = task.status;
-
-    // Clear alarm if task was scheduled
-    if (task.status === 'scheduled') {
-      await this.alarms.clearTaskAlarm(taskId);
-    }
-
-    // Check if another task is currently running
-    const state = await this.storage.getSchedulerState();
-    if (state.currentTaskId) {
-      // Add to SchedulerTaskQueue
-      await this.storage.updateTask(taskId, { status: 'waiting' });
-      this.emitStatusChange(taskId, previousStatus, 'waiting');
-    } else {
-      // Execute immediately
-      await this.executeTask(taskId);
-    }
-  }
-
-  /**
-   * Cancel a task
-   * Feature 015: Cleans up the isolated AgentSession if task was running
-   */
-  async cancelTask(taskId: string): Promise<void> {
-    const task = await this.storage.getTask(taskId);
-    if (!task) {
-      throw new Error(`Task not found: ${taskId}`);
-    }
-
-    // Cannot cancel completed or failed tasks
-    if (['completed', 'failed', 'cancelled'].includes(task.status)) {
-      throw new Error(`Cannot cancel task in ${task.status} status`);
-    }
-
-    const previousStatus = task.status;
-
-    // Clear alarm if scheduled
-    if (task.status === 'scheduled') {
-      await this.alarms.clearTaskAlarm(taskId);
-    }
-
-    // If task is running, need to abort execution and clean up session
-    if (task.status === 'running') {
-      // Feature 015: Clean up the AgentSession for this task
-      await this.cleanupTaskSession(taskId);
-      // Clear current task from state
-      await this.storage.setSchedulerState({ currentTaskId: null });
-      this.emitStateChange();
-    }
-
-    // Update task status
-    await this.storage.updateTask(taskId, {
-      status: 'cancelled',
-      completedAt: Date.now(),
-    });
-
-    this.emitStatusChange(taskId, previousStatus, 'cancelled');
-
-    // Process queue if we cancelled the running task
-    if (previousStatus === 'running') {
-      await this.processSchedulerTaskQueue();
-    }
-  }
-
-  /**
-   * Execute a task
-   * Feature 015: Creates an isolated AgentSession for the task
-   * Opens a new browser tab with the task for execution
-   */
-  async executeTask(taskId: string): Promise<void> {
-    const task = await this.storage.getTask(taskId);
-    if (!task) {
-      throw new Error(`Task not found: ${taskId}`);
-    }
-
-    const previousStatus = task.status;
-
-    // Feature 015: Create an isolated AgentSession for this scheduled task
-    let sessionId: string;
-    if (this.registry && this.registry.canCreateSession()) {
-      try {
-        const session = await this.registry.createSession({
-          type: 'scheduled',
-          scheduledTaskId: taskId,
-        });
-        sessionId = session.sessionId;
-        this.taskSessions.set(taskId, sessionId);
-        console.log(`[Scheduler] Created AgentSession ${sessionId} for task ${taskId}`);
-      } catch (error) {
-        console.error(`[Scheduler] Failed to create AgentSession for task ${taskId}:`, error);
-        // Fallback to legacy session ID
-        sessionId = `session_${uuidv4()}`;
+    // Also wire to JobExecutor for execution status events
+    this.jobExecutor.setEventEmitter((event) => {
+      if (this.eventEmitter) {
+        this.eventEmitter(event);
       }
-    } else {
-      // Legacy fallback when registry is not available
-      sessionId = `session_${uuidv4()}`;
-      console.log(`[Scheduler] Using legacy session ID ${sessionId} for task ${taskId}`);
-    }
-
-    // Update task to running status
-    await this.storage.updateTask(taskId, {
-      status: 'running',
-      sessionId,
     });
-
-    // Update scheduler state
-    await this.storage.setSchedulerState({
-      currentTaskId: taskId,
-      lastProcessedTime: Date.now(),
-    });
-
-    this.emitStatusChange(taskId, previousStatus, 'running');
-    this.emitStateChange();
-
-    // Show browser notification (T025)
-    await this.showTaskStartNotification(task);
-
-    // Open a new browser tab for task execution
-    await this.openSchedulerTaskTab(taskId, sessionId);
   }
 
   /**
-   * Show browser notification when a scheduled task starts
+   * Connect scheduler events to a ChannelManager channel.
+   * This is the unified way to wire scheduler event dispatch — all platforms
+   * should use this instead of calling setEventEmitter() with custom logic.
+   *
+   * Events are dispatched as BackgroundEvent with message 'scheduler_job_status',
+   * matching the format the UI listens for.
+   *
+   * @param getChannelManager - returns the ChannelManager (called per-event for lazy resolution)
+   * @param channelId - target channel ID
    */
-  private async showTaskStartNotification(task: SchedulerTaskRecord): Promise<void> {
+  connectToChannel(
+    getChannelManager: () => { dispatchEvent(event: any, channelId: string): Promise<void> },
+    channelId: string
+  ): void {
+    this.setEventEmitter((event) => {
+      try {
+        getChannelManager().dispatchEvent(
+          { type: 'BackgroundEvent', data: { message: 'scheduler_job_status', level: 'info', schedulerEvent: event } },
+          channelId
+        ).catch((error) => {
+          console.error('[Scheduler] Failed to dispatch event:', error);
+        });
+      } catch {
+        // ChannelManager not available yet — silently ignore
+      }
+    });
+  }
+
+  setNotificationHandler(handler: NotificationHandler): void {
+    this.jobExecutor.setNotificationHandler(async (_eventId, _instanceTime, input) => {
+      await handler({ input });
+    });
+  }
+
+  setJobLauncher(launcher: JobLauncher): void {
+    this.jobExecutor.setJobLauncher(async (executionId, sessionId, agent) => {
+      await launcher(executionId, sessionId, agent);
+    });
+  }
+
+  setConnectivityCheck(check: ConnectivityCheck): void {
+    this.jobExecutor.setConnectivityCheck(check);
+  }
+
+  // ==========================================================================
+  // Job Lifecycle
+  // ==========================================================================
+
+  /**
+   * Schedule a new job for future execution.
+   * Creates a ScheduleEvent. Recurrence is handled via RRULE.
+   */
+  async scheduleJob(input: string, scheduledTime: number, recurrence?: RecurrenceRule): Promise<string> {
+    let rruleString: string | null = null;
+    if (recurrence) {
+      rruleString = recurrenceRuleToRRule(recurrence, scheduledTime);
+    }
+
+    const event = await this.scheduleManager.createEvent(input, scheduledTime, rruleString);
+    return event.id;
+  }
+
+  /**
+   * Manually trigger an event (execute immediately).
+   */
+  async triggerJob(eventId: string): Promise<void> {
+    const event = await this.scheduleManager.getEvent(eventId);
+    if (!event) {
+      throw new Error(`Schedule event not found: ${eventId}`);
+    }
+
+    // Execute immediately with current time as instance time
+    await this.jobExecutor.execute(eventId, Date.now(), event.input);
+  }
+
+  /**
+   * Cancel a running execution or disable a schedule event.
+   */
+  async cancelJob(id: string): Promise<void> {
+    // Try as execution ID first (cancel running execution)
     try {
-      const inputPreview = task.input.length > 50
-        ? task.input.slice(0, 50) + '...'
-        : task.input;
-
-      await chrome.notifications.create(`scheduler-task-${task.id}`, {
-        type: 'basic',
-        iconUrl: chrome.runtime.getURL('icons/icon128.png'),
-        title: 'Scheduled Task Starting',
-        message: inputPreview,
-        priority: 2,
-        requireInteraction: false,
-      });
-    } catch (error) {
-      // Notification permission may not be granted - log and continue
-      console.warn('[Scheduler] Failed to show notification:', error);
-    }
-  }
-
-  /**
-   * Open a new browser tab for scheduled task execution
-   */
-  private async openSchedulerTaskTab(taskId: string, sessionId: string): Promise<void> {
-    // Get the extension's sidepanel URL with scheduled task parameters
-    const extensionUrl = chrome.runtime.getURL(
-      `sidepanel/index.html?scheduledTask=${taskId}&sessionId=${sessionId}`
-    );
-
-    // Create a new tab with the sidepanel page
-    await chrome.tabs.create({
-      url: extensionUrl,
-      active: true,
-    });
-  }
-
-  /**
-   * Mark a task as completed
-   * Called by the executing tab when task finishes successfully
-   * Feature 015: Cleans up the isolated AgentSession for this task
-   */
-  async completeTask(
-    taskId: string,
-    result: TaskResultRecord
-  ): Promise<void> {
-    const task = await this.storage.getTask(taskId);
-    if (!task) {
-      throw new Error(`Task not found: ${taskId}`);
+      const execution = await this.jobExecutor.getExecutionHistory(id)
+        .then(() => null)
+        .catch(() => null);
+      // Direct execution lookup — attempt to cancel
+      await this.jobExecutor.cancelExecution(id);
+      return;
+    } catch {
+      // Not an execution — try as schedule event
     }
 
-    if (task.status !== 'running') {
-      throw new Error(`Cannot complete task in ${task.status} status`);
-    }
-
-    const previousStatus = task.status;
-
-    // Feature 015: Clean up the AgentSession for this task
-    await this.cleanupTaskSession(taskId);
-
-    // Update task with completion info
-    await this.storage.updateTask(taskId, {
-      status: 'completed',
-      completedAt: Date.now(),
-      result,
-    });
-
-    // Clear current task from state
-    await this.storage.setSchedulerState({ currentTaskId: null });
-
-    this.emitStatusChange(taskId, previousStatus, 'completed');
-    this.emitStateChange();
-
-    // Process next task in queue
-    await this.processSchedulerTaskQueue();
-  }
-
-  /**
-   * Mark a task as failed
-   * Called by the executing tab when task encounters an error
-   * Feature 015: Cleans up the isolated AgentSession for this task
-   */
-  async failTask(taskId: string, error: string): Promise<void> {
-    const task = await this.storage.getTask(taskId);
-    if (!task) {
-      throw new Error(`Task not found: ${taskId}`);
-    }
-
-    if (task.status !== 'running') {
-      throw new Error(`Cannot fail task in ${task.status} status`);
-    }
-
-    const previousStatus = task.status;
-
-    // Feature 015: Clean up the AgentSession for this task
-    await this.cleanupTaskSession(taskId);
-
-    // Update task with failure info
-    await this.storage.updateTask(taskId, {
-      status: 'failed',
-      completedAt: Date.now(),
-      error,
-    });
-
-    // Clear current task from state
-    await this.storage.setSchedulerState({ currentTaskId: null });
-
-    this.emitStatusChange(taskId, previousStatus, 'failed');
-    this.emitStateChange();
-
-    // Process next task in queue
-    await this.processSchedulerTaskQueue();
-  }
-
-  /**
-   * Process the SchedulerTaskQueue
-   * Executes the next waiting task if no task is currently running
-   */
-  async processSchedulerTaskQueue(): Promise<void> {
-    const state = await this.storage.getSchedulerState();
-
-    // Don't process if paused
-    if (state.isPaused) {
+    // Try as schedule event ID (disable the event)
+    const event = await this.scheduleManager.getEvent(id);
+    if (event) {
+      await this.scheduleManager.setEnabled(id, false);
+      await this.alarms.clearJobAlarm(id);
       return;
     }
 
-    // T042: Don't process if offline
-    if (!navigator.onLine) {
-      console.log('[Scheduler] Offline - deferring task execution until connectivity restored');
-      return;
-    }
-
-    // Don't process if a task is already running
-    if (state.currentTaskId) {
-      return;
-    }
-
-    // Get next task from queue (FIFO)
-    const nextTask = await this.storage.getNextTaskInSchedulerTaskQueue();
-    if (nextTask) {
-      await this.executeTask(nextTask.id);
-    }
+    throw new Error(`Not found: ${id}`);
   }
 
   /**
-   * T042: Check if browser is online
+   * Mark an execution as completed.
    */
-  isOnline(): boolean {
-    return navigator.onLine;
+  async completeJob(executionId: string, result: JobResultRecord): Promise<void> {
+    await this.jobExecutor.completeExecution(executionId, result);
   }
 
   /**
-   * Pause SchedulerTaskQueue processing
+   * Mark an execution as failed.
    */
-  async pauseSchedulerTaskQueue(): Promise<void> {
-    await this.storage.setSchedulerState({ isPaused: true });
-    await this.alarms.stopSchedulerTaskQueueProcessor();
-    this.emitStateChange();
+  async failJob(executionId: string, error: string): Promise<void> {
+    await this.jobExecutor.failExecution(executionId, error);
   }
 
   /**
-   * Resume SchedulerTaskQueue processing
+   * Reschedule an event to a new time.
    */
-  async resumeSchedulerTaskQueue(): Promise<void> {
-    await this.storage.setSchedulerState({ isPaused: false });
-    await this.alarms.startSchedulerTaskQueueProcessor();
-    this.emitStateChange();
-
-    // Process queue immediately
-    await this.processSchedulerTaskQueue();
+  async rescheduleJob(eventId: string, newScheduledTime: number): Promise<void> {
+    await this.scheduleManager.editSeries(eventId, { scheduledTime: newScheduledTime });
   }
 
+  // ==========================================================================
+  // Alarm Handling
+  // ==========================================================================
+
   /**
-   * Handle alarm event from chrome.alarms
+   * Handle alarm event. Always routes to ScheduleManager (no legacy branch).
    */
   async handleAlarm(alarmName: string): Promise<void> {
     const event = parseAlarmName(alarmName);
-    if (!event) {
-      return;
-    }
+    if (!event) return;
 
-    if (event.type === 'task') {
-      // Task alarm fired - trigger the task
-      const task = await this.storage.getTask(event.taskId);
-      if (task && task.status === 'scheduled') {
-        await this.triggerTask(event.taskId);
-      }
-    } else if (event.type === 'scheduler-task-queue-processor') {
-      // Queue processor alarm - process the queue
-      await this.processSchedulerTaskQueue();
+    if (event.type === 'job') {
+      await this.scheduleManager.handleAlarmFired(event.jobId);
+    } else if (event.type === 'scheduler-job-queue-processor') {
+      await this.jobExecutor.processQueue();
     }
   }
 
+  // ==========================================================================
+  // Queue Control
+  // ==========================================================================
+
+  async processJobQueue(): Promise<void> {
+    await this.jobExecutor.processQueue();
+  }
+
+  async pauseJobQueue(): Promise<void> {
+    this.jobExecutor.pauseQueue();
+    await this.alarms.stopJobQueueProcessor();
+    this.emitStateChange({ isPaused: true, currentJobId: null });
+  }
+
+  async resumeJobQueue(): Promise<void> {
+    this.jobExecutor.resumeQueue();
+    await this.alarms.startJobQueueProcessor();
+    this.emitStateChange({ isPaused: false, currentJobId: null });
+    await this.jobExecutor.processQueue();
+  }
+
+  isOnline(): boolean {
+    return this.jobExecutor.isOnline();
+  }
+
+  // ==========================================================================
+  // Startup / Recovery
+  // ==========================================================================
+
+  async recoverStaleRunningJob(): Promise<void> {
+    await this.jobExecutor.recoverStaleExecutions();
+  }
+
   /**
-   * Detect and mark overdue tasks as missed
-   * Called on browser startup
+   * Detect missed instances on startup.
+   * Returns missed instances for logging/notification.
    */
-  async detectMissedTasks(): Promise<SchedulerTaskRecord[]> {
-    const overdueTasks = await this.storage.getOverdueScheduledTasks();
-
-    for (const task of overdueTasks) {
-      const previousStatus = task.status;
-      await this.storage.updateTask(task.id, { status: 'missed' });
-      await this.alarms.clearTaskAlarm(task.id);
-      this.emitStatusChange(task.id, previousStatus, 'missed');
-    }
-
-    return overdueTasks;
+  async detectMissedJobs(): Promise<Array<{ event: ScheduleEvent; instanceTime: number }>> {
+    return this.scheduleManager.getMissedInstances();
   }
 
+  async restoreScheduleAlarms(): Promise<void> {
+    await this.scheduleManager.restoreAlarms();
+  }
+
+  // ==========================================================================
+  // State Queries (for UI)
+  // ==========================================================================
+
   /**
-   * Get scheduler state for UI
+   * Get scheduler state for UI.
+   * Builds state from new model queries.
    */
   async getSchedulerState(): Promise<GetSchedulerStateResponse> {
-    const state = await this.storage.getSchedulerState();
-    const counts = await (this.storage as SchedulerStorage).getTaskCounts();
+    const isPaused = this.jobExecutor.getPauseState();
+    const scheduled = await this.scheduleManager.getScheduledEvents();
+    const missed = await this.scheduleManager.getMissedInstances();
+    const pending = await this.jobExecutor['executionStorage'].getExecutionsByStatus('pending');
+    const running = await this.jobExecutor['executionStorage'].getRunningExecutions();
 
-    let runningTask: SchedulerTaskSummary | null = null;
-    if (state.currentTaskId) {
-      const task = await this.storage.getTask(state.currentTaskId);
-      if (task) {
-        runningTask = this.toTaskSummary(task);
-      }
+    let runningJob: SchedulerJobSummary | null = null;
+    let currentJobId: string | null = null;
+    if (running.length > 0) {
+      const exec = running[0];
+      currentJobId = exec.id;
+      runningJob = {
+        id: exec.id,
+        input: exec.input.slice(0, 100),
+        scheduledTime: exec.instanceTime,
+        status: 'running',
+        createdAt: exec.instanceTime,
+      };
     }
 
     return {
-      isPaused: state.isPaused,
-      currentTaskId: state.currentTaskId,
-      draftCount: counts.draftCount,
-      scheduledCount: counts.scheduledCount,
-      missedCount: counts.missedCount,
-      schedulerTaskQueueCount: counts.waitingCount,
-      runningTask,
+      isPaused,
+      currentJobId,
+      draftCount: 0,
+      scheduledCount: scheduled.length,
+      missedCount: missed.length,
+      jobQueueCount: pending.length,
+      runningJob,
     };
   }
 
   /**
-   * Convert task record to summary for UI
+   * Get scheduled events (replaces getScheduledJobs for message handlers).
    */
-  private toTaskSummary(task: SchedulerTaskRecord): SchedulerTaskSummary {
+  async getScheduledJobs(): Promise<SchedulerJobSummary[]> {
+    const events = await this.scheduleManager.getScheduledEvents();
+    return events.map(e => this.eventToJobSummary(e));
+  }
+
+  /**
+   * Get missed instances as job summaries.
+   */
+  async getMissedJobs(): Promise<SchedulerJobSummary[]> {
+    const missed = await this.scheduleManager.getMissedInstances();
+    return missed.map(m => ({
+      id: m.event.id,
+      input: m.event.input.slice(0, 100),
+      scheduledTime: m.instanceTime,
+      status: 'missed' as const,
+      createdAt: m.event.createdAt,
+    }));
+  }
+
+  /**
+   * Get job queue (pending executions).
+   */
+  async getJobQueue(): Promise<SchedulerJobSummary[]> {
+    const pending = await this.jobExecutor['executionStorage'].getExecutionsByStatus('pending');
+    return pending.map(e => this.executionToJobSummary(e, 'waiting'));
+  }
+
+  /**
+   * Get archived executions with pagination.
+   */
+  async getArchivedJobs(
+    limit: number,
+    offset: number,
+    sortDirection?: 'newest' | 'oldest',
+    statusFilter?: string[]
+  ): Promise<{ jobs: ArchivedJobSummary[]; total: number; hasMore: boolean }> {
+    const execStatusFilter = statusFilter as ExecutionStatus[] | undefined;
+    const [executions, total] = await Promise.all([
+      this.jobExecutor['executionStorage'].getArchivedExecutions(limit, offset, sortDirection, execStatusFilter),
+      this.jobExecutor['executionStorage'].getArchivedExecutionsCount(execStatusFilter),
+    ]);
+    const jobs: ArchivedJobSummary[] = executions.map(e => ({
+      id: e.id,
+      input: e.input.slice(0, 100),
+      scheduledTime: e.instanceTime,
+      completedAt: e.completedAt ?? 0,
+      status: e.status as 'completed' | 'failed' | 'cancelled',
+      sessionId: e.sessionId,
+      error: e.error ?? undefined,
+    }));
+    return { jobs, total, hasMore: offset + jobs.length < total };
+  }
+
+  /**
+   * Get job details by event ID or execution ID.
+   */
+  async getJobDetails(jobId: string): Promise<unknown> {
+    // Try as schedule event
+    const event = await this.scheduleManager.getEvent(jobId);
+    if (event) {
+      return {
+        id: event.id,
+        input: event.input,
+        scheduledTime: event.scheduledTime,
+        createdAt: event.createdAt,
+        status: event.enabled ? 'scheduled' : 'cancelled',
+        sessionId: null,
+        completedAt: null,
+        error: null,
+      };
+    }
+
+    // Try as execution
+    const execution = await this.jobExecutor['executionStorage'].getExecution(jobId);
+    if (execution) {
+      return {
+        id: execution.id,
+        input: execution.input,
+        scheduledTime: execution.instanceTime,
+        createdAt: execution.instanceTime,
+        status: execution.status,
+        sessionId: execution.sessionId,
+        completedAt: execution.completedAt,
+        error: execution.error,
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Get all events in a date range (for calendar).
+   */
+  async getAllJobsInRange(startTime: number, endTime: number): Promise<SchedulerJobSummary[]> {
+    const instances = await this.scheduleManager.getInstancesInRange(startTime, endTime);
+    return instances.map(i => ({
+      id: i.scheduleEventId,
+      input: i.input.slice(0, 100),
+      scheduledTime: i.instanceTime,
+      status: i.status as string,
+      createdAt: i.instanceTime,
+    }));
+  }
+
+  // ==========================================================================
+  // Internal Helpers
+  // ==========================================================================
+
+  private eventToJobSummary(event: ScheduleEvent): SchedulerJobSummary {
     return {
-      id: task.id,
-      input: task.input.slice(0, 100),
-      scheduledTime: task.scheduledTime,
-      status: task.status,
-      createdAt: task.createdAt,
+      id: event.id,
+      input: event.input.slice(0, 100),
+      scheduledTime: event.scheduledTime,
+      status: 'scheduled',
+      createdAt: event.createdAt,
     };
   }
 
-  /**
-   * Emit task status change event
-   */
-  private emitStatusChange(
-    taskId: string,
-    previousStatus: SchedulerTaskStatus,
-    newStatus: SchedulerTaskStatus
-  ): void {
-    if (this.eventEmitter) {
-      this.eventEmitter({
-        taskId,
-        previousStatus,
-        newStatus,
-        timestamp: Date.now(),
-      });
-    }
+  private executionToJobSummary(exec: ExecutionRecord, statusOverride?: string): SchedulerJobSummary {
+    return {
+      id: exec.id,
+      input: exec.input.slice(0, 100),
+      scheduledTime: exec.instanceTime,
+      status: (statusOverride || exec.status) as string,
+      createdAt: exec.instanceTime,
+    };
   }
 
-  /**
-   * Emit scheduler state change event
-   */
-  private async emitStateChange(): Promise<void> {
+  private emitStateChange(state: SchedulerStateChangedEvent): void {
     if (this.eventEmitter) {
-      const state = await this.storage.getSchedulerState();
-      this.eventEmitter({
-        isPaused: state.isPaused,
-        currentTaskId: state.currentTaskId,
-      });
-    }
-  }
-
-  /**
-   * Feature 015: Clean up the AgentSession associated with a scheduled task
-   * Called when task completes, fails, or is cancelled
-   */
-  private async cleanupTaskSession(taskId: string): Promise<void> {
-    const sessionId = this.taskSessions.get(taskId);
-    if (sessionId && this.registry) {
-      try {
-        await this.registry.removeSession(sessionId);
-        this.taskSessions.delete(taskId);
-        console.log(`[Scheduler] Cleaned up AgentSession ${sessionId} for task ${taskId}`);
-      } catch (error) {
-        console.error(`[Scheduler] Failed to cleanup AgentSession ${sessionId} for task ${taskId}:`, error);
-      }
+      this.eventEmitter({ ...state });
     }
   }
 }

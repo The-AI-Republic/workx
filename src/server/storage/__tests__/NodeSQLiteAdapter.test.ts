@@ -65,11 +65,13 @@ describe('NodeSQLiteAdapter', () => {
 
     it('should create tables and indexes for all adapter stores', async () => {
       await adapter.initialize();
-      // 6 table creations + 9 index creations (3 for cache_items, 4 for scheduler_tasks, 2 for agent_sessions)
-      expect(mockExec).toHaveBeenCalledTimes(15);
+      // 10 table creations + 12 index creations
+      // (3 for cache_items, 4 for scheduler_jobs, 2 for agent_sessions, 3 for token_usage_records)
+      expect(mockExec).toHaveBeenCalledTimes(22);
       expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('"cache_items"'));
-      expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('"scheduler_tasks"'));
+      expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('"scheduler_jobs"'));
       expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('"agent_sessions"'));
+      expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('"token_usage_records"'));
     });
 
     it('should be idempotent', async () => {
@@ -158,11 +160,11 @@ describe('NodeSQLiteAdapter', () => {
       );
     });
 
-    it('should extract key from id for scheduler_tasks', async () => {
+    it('should extract key from id for scheduler_jobs', async () => {
       await adapter.initialize();
       mockRun.mockReturnValueOnce({ changes: 1 });
 
-      await adapter.put('scheduler_tasks', { id: 'task-1', status: 'running' });
+      await adapter.put('scheduler_jobs', { id: 'task-1', status: 'running' });
       expect(mockRun).toHaveBeenCalledWith(
         'task-1',
         expect.any(String),
@@ -210,7 +212,7 @@ describe('NodeSQLiteAdapter', () => {
         { value: '{"id":"2"}' },
       ]);
 
-      const result = await adapter.getAll<{ id: string }>('scheduler_tasks');
+      const result = await adapter.getAll<{ id: string }>('scheduler_jobs');
       expect(result).toEqual([{ id: '1' }, { id: '2' }]);
     });
   });
@@ -222,7 +224,7 @@ describe('NodeSQLiteAdapter', () => {
         { value: '{"status":"pending","id":"t1"}' },
       ]);
 
-      const result = await adapter.queryByIndex('scheduler_tasks', 'by_status', 'pending');
+      const result = await adapter.queryByIndex('scheduler_jobs', 'by_status', 'pending');
       expect(mockPrepare).toHaveBeenCalledWith(
         expect.stringContaining("json_extract(value, '$.status')")
       );

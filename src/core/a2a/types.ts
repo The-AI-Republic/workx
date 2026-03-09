@@ -9,7 +9,7 @@
 // ============================================================================
 
 export type A2AAuthType = 'apiKey' | 'bearer' | 'none';
-export type A2APlatformScope = 'shared' | 'extension' | 'desktop';
+export type A2APlatformScope = 'shared' | 'extension' | 'desktop' | 'server';
 export type A2AConnectionStatus =
   | 'disconnected'
   | 'connecting'

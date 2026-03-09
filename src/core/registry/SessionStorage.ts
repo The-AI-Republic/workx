@@ -23,7 +23,6 @@ export interface PersistedSession {
   tabId: number | null;
   tabGroupId: number | null;
   tabGroupName: string;
-  scheduledTaskId: string | null;
   /** Timestamp when session was persisted */
   persistedAt: number;
 }
@@ -49,7 +48,6 @@ export class SessionStorage {
       tabId: metadata.tabId,
       tabGroupId: metadata.tabGroupId,
       tabGroupName: metadata.tabGroupName,
-      scheduledTaskId: metadata.scheduledTaskId,
       persistedAt: Date.now(),
     };
 

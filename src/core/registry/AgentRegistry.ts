@@ -15,7 +15,6 @@ import { getDefaultRules } from '../approval/defaultRules';
 import { DomainSensitivityEnhancer } from '../approval/enhancers/DomainSensitivityEnhancer';
 import { SemanticElementEnhancer } from '../approval/enhancers/SemanticElementEnhancer';
 import { ApprovalConfigStorage } from '../approval/ApprovalConfigStorage';
-import { MessageRouter } from '../MessageRouter';
 import { TabManager } from '../TabManager';
 import type {
   SessionConfig,
@@ -50,14 +49,15 @@ export class AgentRegistry {
   private _eventListeners: Set<SessionEventListener> = new Set();
   private _usedLetters: Set<string> = new Set();
   private _config: AgentConfig | null = null;
-  private _router: MessageRouter | null = null;
   private _storage: SessionStorage | null = null;
+  private _registryConfig: RegistryConfig;
 
   /**
    * Create a new AgentRegistry
    * @param config Registry configuration
    */
   constructor(config: RegistryConfig = {}) {
+    this._registryConfig = config;
     this._maxConcurrent = config.maxConcurrent ?? DEFAULT_MAX_CONCURRENT;
 
     // Clamp to valid range
@@ -101,11 +101,9 @@ export class AgentRegistry {
   /**
    * Initialize the registry with required dependencies
    * @param config AgentConfig instance
-   * @param router MessageRouter instance
    */
-  initialize(config: AgentConfig, router: MessageRouter): void {
+  initialize(config: AgentConfig): void {
     this._config = config;
-    this._router = router;
   }
 
   // ==========================================================================
@@ -132,7 +130,7 @@ export class AgentRegistry {
     }
 
     // Ensure dependencies are initialized
-    if (!this._config || !this._router) {
+    if (!this._config) {
       throw new Error('AgentRegistry not initialized. Call initialize() first.');
     }
 
@@ -148,41 +146,46 @@ export class AgentRegistry {
     // T057: Wrap agent creation in try-catch for graceful error handling
     let agent: RepublicAgent;
     try {
-      agent = new RepublicAgent(this._config, this._router, undefined, undefined, new UserNotifier());
+      if (this._registryConfig.agentFactory) {
+        // Server/Desktop path: use provided factory for agent creation
+        agent = await this._registryConfig.agentFactory(this._config);
 
-      // Set up event dispatcher for chrome extension mode
-      // Events are sent via chrome.runtime to the UI
-      agent.setEventDispatcher((event) => {
-        if (typeof chrome !== 'undefined' && chrome.runtime) {
-          chrome.runtime.sendMessage({
-            type: 'EVENT',
-            payload: event,
-          }).catch(() => {
-            // Ignore errors if no listeners
-          });
+        // Set event dispatcher via factory if provided
+        if (this._registryConfig.eventDispatcherFactory) {
+          agent.setEventDispatcher(this._registryConfig.eventDispatcherFactory(session.sessionId));
         }
-      });
+      } else {
+        // Extension path: create agent and wire events through ChannelManager
+        agent = new RepublicAgent(this._config, undefined, undefined, new UserNotifier());
 
-      await agent.initialize();
+        // Route events through ChannelManager (unified across all platforms)
+        agent.setEventDispatcher((event) => {
+          import('@/core/channels/ChannelManager').then(({ getChannelManager }) => {
+            getChannelManager().broadcastEvent(event.msg).catch(() => {});
+          }).catch(() => {});
+        });
 
-      // Configure extension-specific approval gate
-      const approvalManager = agent.getApprovalManager();
-      const toolRegistry = agent.getToolRegistry();
-      const policyEngine = new PolicyRulesEngine(getDefaultRules('extension'));
-      const approvalGate = new ApprovalGate(approvalManager, policyEngine);
-      approvalGate.addEnhancer(new DomainSensitivityEnhancer());
-      approvalGate.addEnhancer(new SemanticElementEnhancer());
-      const configStorage = new ApprovalConfigStorage(() => chrome.storage.local);
-      approvalGate.setConfigStorage(configStorage);
-      try {
-        const storedConfig = await configStorage.loadConfig();
-        approvalGate.setMode(storedConfig.mode);
-        approvalGate.setTrustedDomains(storedConfig.trustedDomains || []);
-        approvalGate.setBlockedDomains(storedConfig.blockedDomains || []);
-      } catch (error) {
-        console.warn('[AgentRegistry] Failed to load approval config, using defaults:', error);
+        await agent.initialize();
+
+        // Configure extension-specific approval gate
+        const approvalManager = agent.getApprovalManager();
+        const toolRegistry = agent.getToolRegistry();
+        const policyEngine = new PolicyRulesEngine(getDefaultRules('extension'));
+        const approvalGate = new ApprovalGate(approvalManager, policyEngine);
+        approvalGate.addEnhancer(new DomainSensitivityEnhancer());
+        approvalGate.addEnhancer(new SemanticElementEnhancer());
+        const configStorage = new ApprovalConfigStorage(() => chrome.storage.local);
+        approvalGate.setConfigStorage(configStorage);
+        try {
+          const storedConfig = await configStorage.loadConfig();
+          approvalGate.setMode(storedConfig.mode);
+          approvalGate.setTrustedDomains(storedConfig.trustedDomains || []);
+          approvalGate.setBlockedDomains(storedConfig.blockedDomains || []);
+        } catch (error) {
+          console.warn('[AgentRegistry] Failed to load approval config, using defaults:', error);
+        }
+        toolRegistry.setApprovalGate(approvalGate);
       }
-      toolRegistry.setApprovalGate(approvalGate);
     } catch (initError) {
       // Agent initialization failed - clean up and emit error event
       console.error(`[AgentRegistry] Failed to initialize agent for session ${session.sessionId}:`, initError);
@@ -215,11 +218,14 @@ export class AgentRegistry {
     }
 
     // T057: Wrap tab closure handling setup in try-catch
-    try {
-      this._setupTabClosureHandling(session);
-    } catch (tabError) {
-      console.warn(`[AgentRegistry] Tab closure handling setup failed:`, tabError);
-      // Non-critical - session can still function without tab closure handling
+    // Skip for server/desktop (no Chrome tab management)
+    if (!this._registryConfig.agentFactory) {
+      try {
+        this._setupTabClosureHandling(session);
+      } catch (tabError) {
+        console.warn(`[AgentRegistry] Tab closure handling setup failed:`, tabError);
+        // Non-critical - session can still function without tab closure handling
+      }
     }
 
     // Subscribe to session events and forward to registry listeners
@@ -397,15 +403,13 @@ export class AgentRegistry {
       }
     }
 
-    // Broadcast to extension (for UI updates)
-    if (typeof chrome !== 'undefined' && chrome.runtime) {
-      chrome.runtime.sendMessage({
-        type: 'SESSION_EVENT',
-        payload: event,
-      }).catch(() => {
-        // Ignore errors if no listeners
-      });
-    }
+    // Broadcast to UI via channel
+    import('@/core/channels/ChannelManager').then(({ getChannelManager }) => {
+      getChannelManager().broadcastEvent({
+        type: 'BackgroundEvent' as any,
+        data: { message: 'session_event', level: 'info', sessionEvent: event },
+      } as any).catch(() => {});
+    }).catch(() => {});
   }
 
   // ==========================================================================
@@ -499,7 +503,7 @@ export class AgentRegistry {
     }
 
     // Ensure dependencies are initialized
-    if (!this._config || !this._router) {
+    if (!this._config) {
       console.warn(`[AgentRegistry] Cannot resume session: registry not initialized`);
       return null;
     }
@@ -517,7 +521,6 @@ export class AgentRegistry {
       const sessionConfig: SessionConfig = {
         type: persistedSession.type,
         tabId: persistedSession.tabId ?? undefined,
-        scheduledTaskId: persistedSession.scheduledTaskId ?? undefined,
       };
 
       // Create new session (this will allocate a new letter if needed)

@@ -39,6 +39,7 @@ which = "7"
 tempfile = "3"
 log = "0.4"
 async-trait = "0.1"
+chrono = "0.4"
 dirs = "5"
 portable-pty = "0.8"
 sandbox-types = { path = "sandbox-types" }

@@ -1,37 +1,22 @@
 /**
  * Scheduler Contract Interfaces
  *
- * Interfaces for storage, alarms, and messaging in the Task Scheduler feature.
+ * Interfaces for storage, alarms, and messaging in the Job Scheduler feature.
  */
 
-import type { SchedulerTaskRecord, SchedulerTaskStatus, SchedulerState } from './Scheduler';
+import type { RecurrenceRule } from './Scheduler';
 
 // ============================================================================
-// Storage Interface
+// Platform-neutral Alarm Type
 // ============================================================================
 
 /**
- * Storage operations interface for scheduler tasks
+ * Platform-neutral alarm type (structurally compatible with chrome.alarms.Alarm)
  */
-export interface ISchedulerStorage {
-  // Task CRUD
-  createTask(input: string, scheduledTime?: number): Promise<SchedulerTaskRecord>; // No time = draft
-  getTask(id: string): Promise<SchedulerTaskRecord | null>;
-  updateTask(id: string, updates: Partial<SchedulerTaskRecord>): Promise<void>;
-  deleteTask(id: string): Promise<void>;
-
-  // Queries
-  getDraftTasks(): Promise<SchedulerTaskRecord[]>; // Tasks without time (status: draft)
-  getScheduledTasks(): Promise<SchedulerTaskRecord[]>; // Upcoming (status: scheduled)
-  getMissedTasks(): Promise<SchedulerTaskRecord[]>; // Overdue tasks (status: missed)
-  getSchedulerTaskQueueTasks(): Promise<SchedulerTaskRecord[]>; // SchedulerTaskQueue (status: waiting)
-  getArchivedTasks(limit: number, offset: number): Promise<SchedulerTaskRecord[]>;
-  getNextTaskInSchedulerTaskQueue(): Promise<SchedulerTaskRecord | null>; // FIFO by createdAt
-  getOverdueScheduledTasks(): Promise<SchedulerTaskRecord[]>; // status: scheduled AND scheduledTime < now
-
-  // Scheduler state
-  getSchedulerState(): Promise<SchedulerState>;
-  setSchedulerState(state: Partial<SchedulerState>): Promise<void>;
+export interface SchedulerAlarm {
+  name: string;
+  scheduledTime: number;
+  periodInMinutes?: number;
 }
 
 // ============================================================================
@@ -39,30 +24,30 @@ export interface ISchedulerStorage {
 // ============================================================================
 
 /**
- * Alarm name prefix for scheduled tasks.
- * Format: scheduler-task-{taskId}
+ * Alarm name prefix for scheduled jobs.
+ * Format: scheduler-job-{jobId}
  */
-export const SCHEDULER_ALARM_PREFIX = 'scheduler-task-';
+export const SCHEDULER_ALARM_PREFIX = 'scheduler-job-';
 
 /**
- * Alarm name for SchedulerTaskQueue processing check.
- * Fires periodically to process tasks in the SchedulerTaskQueue (waiting status).
+ * Alarm name for job queue processing check.
+ * Fires periodically to process jobs in the job queue (waiting status).
  */
-export const SCHEDULER_TASK_QUEUE_PROCESSOR_ALARM = 'scheduler-task-queue-processor';
+export const SCHEDULER_JOB_QUEUE_PROCESSOR_ALARM = 'scheduler-job-queue-processor';
 
 /**
  * Alarm configuration
  */
 export interface SchedulerAlarmConfig {
-  /** Interval for SchedulerTaskQueue processor alarm (minutes) */
-  schedulerTaskQueueProcessorInterval: number;
+  /** Interval for job queue processor alarm (minutes) */
+  jobQueueProcessorInterval: number;
 
-  /** Minimum delay before task execution (ms) - chrome.alarms minimum is 1 minute */
+  /** Minimum delay before job execution (ms) - chrome.alarms minimum is 1 minute */
   minScheduleDelay: number;
 }
 
 export const DEFAULT_ALARM_CONFIG: SchedulerAlarmConfig = {
-  schedulerTaskQueueProcessorInterval: 1, // 1 minute
+  jobQueueProcessorInterval: 1, // 1 minute
   minScheduleDelay: 60000, // 1 minute (chrome.alarms minimum)
 };
 
@@ -71,68 +56,68 @@ export const DEFAULT_ALARM_CONFIG: SchedulerAlarmConfig = {
  */
 export interface ISchedulerAlarms {
   /**
-   * Create an alarm for a scheduled task.
-   * @param taskId - The task ID
-   * @param scheduledTime - Unix timestamp when task should execute
+   * Create an alarm for a scheduled job.
+   * @param jobId - The job ID
+   * @param scheduledTime - Unix timestamp when job should execute
    */
-  createTaskAlarm(taskId: string, scheduledTime: number): Promise<void>;
+  createJobAlarm(jobId: string, scheduledTime: number): Promise<void>;
 
   /**
-   * Clear an alarm for a scheduled task (e.g., when cancelled).
-   * @param taskId - The task ID
+   * Clear an alarm for a scheduled job (e.g., when cancelled).
+   * @param jobId - The job ID
    */
-  clearTaskAlarm(taskId: string): Promise<void>;
+  clearJobAlarm(jobId: string): Promise<void>;
 
   /**
-   * Check if an alarm exists for a task.
-   * @param taskId - The task ID
+   * Check if an alarm exists for a job.
+   * @param jobId - The job ID
    */
-  hasTaskAlarm(taskId: string): Promise<boolean>;
+  hasJobAlarm(jobId: string): Promise<boolean>;
 
   /**
-   * Start the SchedulerTaskQueue processor alarm.
-   * Called on extension startup. Periodically checks for tasks to execute.
+   * Start the job queue processor alarm.
+   * Called on extension startup. Periodically checks for jobs to execute.
    */
-  startSchedulerTaskQueueProcessor(): Promise<void>;
+  startJobQueueProcessor(): Promise<void>;
 
   /**
-   * Stop the SchedulerTaskQueue processor alarm.
+   * Stop the job queue processor alarm.
    * Called when scheduler is paused.
    */
-  stopSchedulerTaskQueueProcessor(): Promise<void>;
+  stopJobQueueProcessor(): Promise<void>;
 
   /**
    * Get all active scheduler alarms.
    */
-  getAllAlarms(): Promise<chrome.alarms.Alarm[]>;
+  getAllAlarms(): Promise<SchedulerAlarm[]>;
 }
 
 /**
  * Alarm event types
  */
 export type SchedulerAlarmEvent =
-  | { type: 'task'; taskId: string }
-  | { type: 'scheduler-task-queue-processor' };
+  | { type: 'job'; jobId: string }
+  | { type: 'scheduler-job-queue-processor' };
 
 /**
  * Parse alarm name to determine event type.
  */
 export function parseAlarmName(alarmName: string): SchedulerAlarmEvent | null {
-  if (alarmName === SCHEDULER_TASK_QUEUE_PROCESSOR_ALARM) {
-    return { type: 'scheduler-task-queue-processor' };
+  if (alarmName === SCHEDULER_JOB_QUEUE_PROCESSOR_ALARM) {
+    return { type: 'scheduler-job-queue-processor' };
   }
   if (alarmName.startsWith(SCHEDULER_ALARM_PREFIX)) {
-    const taskId = alarmName.slice(SCHEDULER_ALARM_PREFIX.length);
-    return { type: 'task', taskId };
+    const jobId = alarmName.slice(SCHEDULER_ALARM_PREFIX.length);
+    return { type: 'job', jobId };
   }
   return null;
 }
 
 /**
- * Generate alarm name for a task.
+ * Generate alarm name for a job.
  */
-export function getTaskAlarmName(taskId: string): string {
-  return `${SCHEDULER_ALARM_PREFIX}${taskId}`;
+export function getJobAlarmName(jobId: string): string {
+  return `${SCHEDULER_ALARM_PREFIX}${jobId}`;
 }
 
 // ============================================================================
@@ -143,27 +128,25 @@ export function getTaskAlarmName(taskId: string): string {
  * Scheduler message types for UI-background communication
  */
 export enum SchedulerMessageType {
-  // Task Management
-  CREATE_DRAFT_TASK = 'CREATE_DRAFT_TASK',
-  SCHEDULE_TASK = 'SCHEDULE_TASK',
-  TRIGGER_TASK = 'TRIGGER_TASK', // Manually trigger draft/scheduled task
-  CANCEL_TASK = 'CANCEL_TASK',
+  // Job Management
+  SCHEDULE_JOB = 'SCHEDULE_JOB',
+  TRIGGER_JOB = 'TRIGGER_JOB',
+  CANCEL_JOB = 'CANCEL_JOB',
 
-  // SchedulerTaskQueue Control
-  PAUSE_SCHEDULER_TASK_QUEUE = 'PAUSE_SCHEDULER_TASK_QUEUE',
-  RESUME_SCHEDULER_TASK_QUEUE = 'RESUME_SCHEDULER_TASK_QUEUE',
+  // Job Queue Control
+  PAUSE_JOB_QUEUE = 'PAUSE_JOB_QUEUE',
+  RESUME_JOB_QUEUE = 'RESUME_JOB_QUEUE',
 
   // Queries
-  GET_DRAFT_TASKS = 'GET_DRAFT_TASKS',
-  GET_SCHEDULED_TASKS = 'GET_SCHEDULED_TASKS',
-  GET_MISSED_TASKS = 'GET_MISSED_TASKS', // Tasks that missed their scheduled time
-  GET_SCHEDULER_TASK_QUEUE = 'GET_SCHEDULER_TASK_QUEUE', // Tasks in waiting status
-  GET_ARCHIVED_TASKS = 'GET_ARCHIVED_TASKS',
+  GET_SCHEDULED_JOBS = 'GET_SCHEDULED_JOBS',
+  GET_MISSED_JOBS = 'GET_MISSED_JOBS',
+  GET_JOB_QUEUE = 'GET_JOB_QUEUE',
+  GET_ARCHIVED_JOBS = 'GET_ARCHIVED_JOBS',
   GET_SCHEDULER_STATE = 'GET_SCHEDULER_STATE',
-  GET_TASK_DETAILS = 'GET_TASK_DETAILS',
+  GET_JOB_DETAILS = 'GET_JOB_DETAILS',
 
   // Events (background -> UI)
-  TASK_STATUS_CHANGED = 'TASK_STATUS_CHANGED',
+  JOB_STATUS_CHANGED = 'JOB_STATUS_CHANGED',
   SCHEDULER_STATE_CHANGED = 'SCHEDULER_STATE_CHANGED',
 }
 
@@ -171,151 +154,149 @@ export enum SchedulerMessageType {
 // Request Payloads
 // ============================================================================
 
-export interface CreateDraftTaskRequest {
+export interface ScheduleJobRequest {
   input: string;
-}
-
-export interface ScheduleTaskRequest {
-  input?: string; // For new task with time
-  taskId?: string; // For scheduling existing draft
   scheduledTime: number; // Unix timestamp in ms
+  recurrence?: RecurrenceRule; // Optional repeat configuration
 }
 
-export interface TriggerTaskRequest {
-  taskId: string; // Manually trigger a draft or scheduled task
+export interface TriggerJobRequest {
+  jobId: string; // Manually trigger a draft or scheduled job
 }
 
-export interface CancelTaskRequest {
-  taskId: string;
+export interface CancelJobRequest {
+  jobId: string;
 }
 
-export interface GetTaskDetailsRequest {
-  taskId: string;
+export interface GetJobDetailsRequest {
+  jobId: string;
 }
 
-export interface GetArchivedTasksRequest {
+export interface GetArchivedJobsRequest {
   limit?: number; // Default: 50
   offset?: number; // Default: 0
+  sortDirection?: 'newest' | 'oldest';
+  statusFilter?: string[];
+}
+
+export interface RescheduleJobRequest {
+  jobId: string;
+  scheduledTime: number;
+}
+
+export interface RescheduleJobResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface GetAllJobsInRangeRequest {
+  startTime: number;
+  endTime: number;
+}
+
+export interface GetAllJobsInRangeResponse {
+  jobs: SchedulerJobSummary[];
 }
 
 // ============================================================================
 // Response Payloads
 // ============================================================================
 
-export interface CreateDraftTaskResponse {
+export interface ScheduleJobResponse {
   success: boolean;
-  taskId?: string;
+  jobId?: string;
   error?: string;
 }
 
-export interface ScheduleTaskResponse {
-  success: boolean;
-  taskId?: string;
-  error?: string;
-}
-
-export interface TriggerTaskResponse {
+export interface TriggerJobResponse {
   success: boolean;
   error?: string;
 }
 
-export interface CancelTaskResponse {
+export interface CancelJobResponse {
   success: boolean;
   error?: string;
 }
 
-export interface GetDraftTasksResponse {
-  tasks: SchedulerTaskSummary[];
+export interface GetScheduledJobsResponse {
+  jobs: SchedulerJobSummary[];
 }
 
-export interface GetScheduledTasksResponse {
-  tasks: SchedulerTaskSummary[];
+export interface GetMissedJobsResponse {
+  jobs: SchedulerJobSummary[]; // Jobs with 'missed' status
 }
 
-export interface GetMissedTasksResponse {
-  tasks: SchedulerTaskSummary[]; // Tasks with 'missed' status
+export interface GetJobQueueResponse {
+  jobs: SchedulerJobSummary[]; // Jobs in 'waiting' status (FIFO)
 }
 
-export interface GetSchedulerTaskQueueResponse {
-  tasks: SchedulerTaskSummary[]; // Tasks in 'waiting' status (FIFO)
-}
-
-export interface GetArchivedTasksResponse {
-  tasks: ArchivedTaskSummary[];
+export interface GetArchivedJobsResponse {
+  jobs: ArchivedJobSummary[];
   total: number;
   hasMore: boolean;
 }
 
 export interface GetSchedulerStateResponse {
   isPaused: boolean;
-  currentTaskId: string | null;
-  draftCount: number; // Tasks without scheduled time
-  scheduledCount: number; // Tasks waiting for their scheduled time
-  missedCount: number; // Tasks that missed their scheduled time (requires user action)
-  schedulerTaskQueueCount: number; // Tasks in SchedulerTaskQueue (waiting status)
-  runningTask: SchedulerTaskSummary | null;
+  currentJobId: string | null;
+  draftCount: number; // Always 0 (kept for UI compatibility)
+  scheduledCount: number; // Events waiting for their scheduled time
+  missedCount: number; // Instances that missed their scheduled time
+  jobQueueCount: number; // Pending executions in queue
+  runningJob: SchedulerJobSummary | null;
 }
 
-export interface GetTaskDetailsResponse {
-  task: SchedulerTaskFull | null;
+export interface GetJobDetailsResponse {
+  job: unknown | null;
 }
 
 // ============================================================================
 // Event Payloads
 // ============================================================================
 
-export interface TaskStatusChangedEvent {
-  taskId: string;
-  previousStatus: SchedulerTaskStatus;
-  newStatus: SchedulerTaskStatus;
+export interface JobStatusChangedEvent {
+  jobId: string;
+  previousStatus: string;
+  newStatus: string;
   timestamp: number;
 }
 
 export interface SchedulerStateChangedEvent {
   isPaused: boolean;
-  currentTaskId: string | null;
+  currentJobId: string | null;
 }
 
 // ============================================================================
 // Shared Types for Messages
 // ============================================================================
 
-export interface SchedulerTaskSummary {
+export interface SchedulerJobSummary {
   id: string;
   input: string; // First 100 chars
-  scheduledTime: number | null; // Null for draft tasks
-  status: SchedulerTaskStatus;
+  scheduledTime: number | null;
+  status: string;
   createdAt: number;
+  recurrence?: RecurrenceRule | null;
 }
 
-export interface ArchivedTaskSummary {
+export interface ArchivedJobSummary {
   id: string;
   input: string; // First 100 chars
   scheduledTime: number | null;
   completedAt: number;
-  status: 'completed' | 'failed';
+  status: 'completed' | 'failed' | 'cancelled';
   sessionId: string | null;
   error?: string;
-}
-
-export interface SchedulerTaskFull {
-  id: string;
-  input: string;
-  scheduledTime: number | null; // Null for draft tasks
-  createdAt: number;
-  status: SchedulerTaskStatus;
-  sessionId: string | null;
-  completedAt: number | null;
-  error: string | null;
+  recurrence?: RecurrenceRule | null;
 }
 
 // ============================================================================
-// IndexedDB Schema Constants
+// IndexedDB Schema Constants (kept for schema compatibility — do not remove without version bump)
 // ============================================================================
 
-export const SCHEDULER_TASKS_STORE = 'scheduler_tasks';
+export const SCHEDULER_JOBS_STORE = 'scheduler_jobs';
 
-export const SCHEDULER_TASKS_INDEXES = [
+export const SCHEDULER_JOBS_INDEXES = [
   { name: 'by_status', keyPath: 'status', unique: false },
   { name: 'by_scheduled_time', keyPath: 'scheduledTime', unique: false },
   { name: 'by_status_time', keyPath: ['status', 'scheduledTime'], unique: false },

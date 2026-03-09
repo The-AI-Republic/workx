@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { push } from 'svelte-spa-router';
-  import { MessageType } from '@/core/MessageRouter';
-  import { messageService, connectionState, getMessageService, type IMessageService } from '@/core/messaging';
-  import type { TaskStatusChangedEvent } from '@/core/models/types/SchedulerContracts';
+  import { getInitializedUIClient } from '@/core/messaging';
+  import type { UIChannelClient } from '@/core/messaging';
+  import type { JobStatusChangedEvent } from '@/core/models/types/SchedulerContracts';
   import type { Event } from '@/core/protocol/types';
   import type { ProcessedEvent } from '@/types/ui';
   import { STYLE_PRESETS } from '@/types/ui';
@@ -29,8 +29,8 @@
   import { schedulerStore } from '../../stores/schedulerStore';
   // i18n
   import { t, _t } from '../../lib/i18n';
-  // Message service (platform-agnostic)
-  let service: IMessageService | null = null;
+  // UI channel client (platform-agnostic)
+  let client: UIChannelClient | null = null;
   let unsubscribers: Array<() => void> = [];
   let eventProcessor: EventProcessor;
   let messages: Array<{ type: 'user' | 'agent'; content: string; timestamp: number }> = [];
@@ -66,10 +66,10 @@
   };
   // Current UI theme (reactive from store)
   let currentTheme: UITheme = 'terminal';
-  // Scheduled task execution state (US3)
-  let scheduledTaskId: string | null = null;
+  // Scheduled job execution state (US3)
+  let scheduledJobId: string | null = null;
   let scheduledSessionId: string | null = null;
-  let isScheduledTaskMode = false;
+  let isScheduledJobMode = false;
   $: showWelcome =
     !isProcessing && processedEvents.length === 0 && messages.length === 0;
 
@@ -126,74 +126,65 @@
       console.warn('[App] Failed to load UI preferences:', error);
     }
 
-    // Get the message service (initialized by entry point)
+    // Initialize UIChannelClient for event listening
     try {
-      service = getMessageService();
-      console.log('[App] Using message service');
-    } catch (error) {
-      console.error('[App] Message service not initialized:', error);
-      // Service not available - UI will show disconnected state
-    }
+      client = await getInitializedUIClient();
+      console.log('[App] UIChannelClient initialized');
 
-    // Setup event handlers if service is available
-    if (service) {
-      // Listen for events from backend
+      // Listen for all events from backend (wildcard)
+      // Filter out event types that have their own dedicated handlers
+      const HANDLED_EVENT_TYPES = new Set(['StateUpdate', 'BackgroundEvent', 'ServiceResponse']);
       unsubscribers.push(
-        service.on(MessageType.EVENT, (payload) => {
-          const event = payload as Event;
+        client.onEvent('*', (eventMsg: any) => {
+          if (HANDLED_EVENT_TYPES.has(eventMsg?.type)) return;
+          // Wrap EventMsg in Event envelope for handleEvent compatibility
+          const event: Event = { id: `evt_${Date.now()}`, msg: eventMsg };
           handleEvent(event);
         })
       );
 
       // Listen for state updates
       unsubscribers.push(
-        service.on(MessageType.STATE_UPDATE, (payload) => {
-          const state = payload as { tabId?: number };
-          if (state && 'tabId' in state) {
-            currentTabId = state.tabId!;
+        client.onEvent('StateUpdate', (data: any) => {
+          if (data && 'tabId' in data) {
+            currentTabId = data.tabId!;
           }
         })
       );
 
-      // Handle agent re-initialization (e.g., when model is changed)
+      // Handle agent re-initialization and scheduler events via BackgroundEvent
       unsubscribers.push(
-        service.on(MessageType.AGENT_REINITIALIZED, () => {
-          // Clear all messages and events for fresh start with new agent
-          messages = [];
-          processedEvents = [];
-          isProcessing = false;
-          eventProcessor.reset();
-
-          // Re-check connection/auth status since agent was reinitialized
-          checkConnection();
+        client.onEvent('BackgroundEvent', (data: any) => {
+          if (data?.message?.startsWith('Agent reinitialized')) {
+            checkConnection();
+          } else if (data?.message === 'scheduler_job_status' && data?.schedulerEvent) {
+            handleSchedulerEvent(data.schedulerEvent as JobStatusChangedEvent);
+          }
         })
       );
-
-      // Listen for scheduler events (for task cancellation)
-      unsubscribers.push(
-        service.on(MessageType.SCHEDULER_EVENT, (payload) => {
-          handleSchedulerEvent(payload as TaskStatusChangedEvent);
-        })
-      );
+    } catch (error) {
+      console.error('[App] UIChannelClient initialization failed:', error);
     }
 
     // Check connection
     checkConnection();
 
-    // Check if this is a scheduled task execution (US3: T022)
+    // Check if this is a scheduled job execution (US3: T022)
+    // Extension: detected via URL params from chrome.tabs.create
+    // Desktop: detected via DOM event from DesktopAgentBootstrap job launcher
     const urlParams = new URLSearchParams(window.location.search);
-    const taskIdParam = urlParams.get('scheduledTask');
+    const jobIdParam = urlParams.get('scheduledJob');
     const sessionIdParam = urlParams.get('sessionId');
 
-    if (taskIdParam && sessionIdParam) {
-      console.log('[App] Scheduled task mode detected:', taskIdParam);
-      scheduledTaskId = taskIdParam;
+    if (jobIdParam && sessionIdParam) {
+      console.log('[App] Scheduled job mode detected:', jobIdParam);
+      scheduledJobId = jobIdParam;
       scheduledSessionId = sessionIdParam;
-      isScheduledTaskMode = true;
+      isScheduledJobMode = true;
 
-      // Load and execute the scheduled task
-      await loadAndExecuteSchedulerTask(taskIdParam, sessionIdParam);
-      return; // Skip normal initialization for scheduled task mode
+      // Load and execute the scheduled job
+      await loadAndExecuteSchedulerJob(jobIdParam, sessionIdParam);
+      return; // Skip normal initialization for scheduled job mode
     }
 
     // Fetch current session's tabId from storage
@@ -205,10 +196,10 @@
     // Keep-alive ping for Chrome extension (service worker stays awake)
     // Only needed for extension mode - Tauri doesn't have this limitation
     let keepAliveInterval: ReturnType<typeof setInterval> | null = null;
-    if (platform.platformName === 'extension' && service) {
+    if (platform.platformName === 'extension' && client) {
       keepAliveInterval = setInterval(async () => {
         try {
-          await service!.send(MessageType.PING);
+          await (await getInitializedUIClient()).serviceRequest('agent.ping');
           console.log('[App] Keep-alive ping sent');
         } catch (error) {
           console.warn('[App] Keep-alive ping failed:', error);
@@ -229,16 +220,16 @@
     };
   });
 
-  // T035: Handle scheduled task cancellation events
-  function handleSchedulerEvent(event: TaskStatusChangedEvent) {
-    // Check if this is a cancellation for our running task
+  // T035: Handle scheduled job cancellation events
+  function handleSchedulerEvent(event: JobStatusChangedEvent) {
+    // Check if this is a cancellation for our running job
     if (
-      isScheduledTaskMode &&
-      scheduledTaskId &&
-      event?.taskId === scheduledTaskId &&
+      isScheduledJobMode &&
+      scheduledJobId &&
+      event?.jobId === scheduledJobId &&
       event?.newStatus === 'cancelled'
     ) {
-      console.log('[App] Scheduled task cancelled, aborting execution:', scheduledTaskId);
+      console.log('[App] Scheduled job cancelled, aborting execution:', scheduledJobId);
 
       // Stop processing
       isProcessing = false;
@@ -249,7 +240,7 @@
         category: 'system',
         timestamp: new Date(),
         title: 'system',
-        content: t('Task cancelled by user'),
+        content: t('Job cancelled by user'),
         style: { textColor: 'text-yellow-400' },
         streaming: false,
         collapsible: false,
@@ -257,8 +248,8 @@
       processedEvents = [...processedEvents, cancelNotice];
 
       // Request agent to abort via message service
-      if (service) {
-        service.send(MessageType.INTERRUPT).catch((err) => {
+      if (client) {
+        getInitializedUIClient().then(c => c.serviceRequest('agent.interrupt')).catch((err) => {
           console.warn('[App] Failed to send interrupt on cancel:', err);
         });
       }
@@ -276,7 +267,7 @@
    * Also restores conversation history to sync UI with backend state
    */
   async function fetchCurrentTabId() {
-    if (!service) {
+    if (!client) {
       console.warn('[App] Service not available for fetchCurrentTabId');
       currentTabId = -1;
       return;
@@ -284,7 +275,7 @@
 
     try {
       // Request current session state from backend
-      const response = await service.send<{ tabId?: number; history?: unknown[] }>(MessageType.GET_STATE);
+      const response = await (await getInitializedUIClient()).serviceRequest<{ tabId?: number; history?: unknown[] }>('session.getState');
       console.log('[App] Fetched session state:', response);
 
       const stateData = response || {};
@@ -444,24 +435,28 @@
   }
 
   async function checkConnection() {
+    console.log('[App] checkConnection called, client:', !!client);
     try {
-      if (!service) {
+      if (!client) {
+        console.warn('[App] checkConnection: no client available');
         isConnected = false;
         agentReady = false;
         healthStatus = { ready: false, message: t('Message service not available'), authMode: 'none' };
         return;
       }
 
-      const response = await service.send<{
+      console.log('[App] Sending agent.healthCheck serviceRequest...');
+      const response = await (await getInitializedUIClient()).serviceRequest<{
         type?: string;
         ready?: boolean;
         message?: string;
         provider?: string;
         model?: string;
         authMode?: 'login' | 'api_key' | 'none';
-      }>(MessageType.HEALTH_CHECK);
+      }>('agent.healthCheck');
 
-      isConnected = response?.type === MessageType.HEALTH_STATUS || response?.ready !== undefined;
+      console.log('[App] healthCheck response:', JSON.stringify(response));
+      isConnected = response?.ready !== undefined;
 
       if (response?.ready !== undefined) {
         agentReady = response.ready === true;
@@ -546,9 +541,11 @@
     } else if (msg.type === 'TaskComplete' || msg.type === 'TaskFailed') {
       isProcessing = false;
 
-      // If this is a scheduled task execution, notify the scheduler (US3)
-      if (isScheduledTaskMode && scheduledTaskId) {
-        notifySchedulerTaskCompletion(msg.type === 'TaskComplete', msg);
+      // If this is a scheduled job execution, notify the scheduler (US3)
+      // Desktop/server: completion is handled at the bootstrap level (event interception)
+      // Extension: still relies on UI-level notification via message service
+      if (isScheduledJobMode && scheduledJobId && platform.platformName === 'extension') {
+        notifySchedulerJobCompletion(msg.type === 'TaskComplete', msg);
       }
     }
 
@@ -639,17 +636,16 @@
 
     // Send to agent with tab context
     try {
-      if (!service) throw new Error('Message service not available');
-      await service.send(MessageType.SUBMISSION, {
-        id: `user_${Date.now()}`,
-        op: {
+      if (!client) throw new Error('Message service not available');
+      await client.submitOp(
+        {
           type: 'UserInput',
           items: [{ type: 'text', text }],
         },
-        context: {
+        {
           tabId: currentTabId, // Include current tab selection in context
         },
-      });
+      );
 
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -723,8 +719,8 @@
 
     // Request session reset from backend
     try {
-      if (!service) throw new Error('Message service not available');
-      await service.send(MessageType.SESSION_RESET);
+      if (!client) throw new Error('Message service not available');
+      await (await getInitializedUIClient()).serviceRequest('session.reset');
 
       // After session reset, auto-bind to the active tab
       // This ensures the new conversation starts with the current tab
@@ -750,9 +746,9 @@
     if (!isProcessing) return;
 
     try {
-      if (!service) throw new Error('Message service not available');
+      if (!client) throw new Error('Message service not available');
       // Send stop message to backend
-      await service.send(MessageType.INTERRUPT);
+      await (await getInitializedUIClient()).serviceRequest('agent.interrupt');
       isProcessing = false;
       console.log('[App] Agent session stopped');
     } catch (error) {
@@ -783,9 +779,9 @@
     eventProcessor.reset();
 
     try {
-      if (!service) throw new Error('Message service not available');
+      if (!client) throw new Error('Message service not available');
       // Request session resume from backend
-      const response = await service.send<{ history?: unknown[] }>(MessageType.RESUME_SESSION, { conversationId });
+      const response = await (await getInitializedUIClient()).serviceRequest<{ history?: unknown[] }>('session.resume', { conversationId });
 
       const historyItems = response?.history;
       console.log('[App] Conversation resumed:', conversationId, 'with', historyItems?.length || 0, 'items');
@@ -806,82 +802,82 @@
   }
 
   /**
-   * Notify scheduler of task completion (US3)
-   * Called when a scheduled task finishes executing
+   * Notify scheduler of job completion (US3)
+   * Called when a scheduled job finishes executing
    */
-  async function notifySchedulerTaskCompletion(success: boolean, msg: any) {
-    if (!scheduledTaskId || !service) return;
+  async function notifySchedulerJobCompletion(success: boolean, msg: any) {
+    if (!scheduledJobId || !client) return;
 
     try {
       if (success) {
         // Extract result summary from the processed events
         const lastAgentEvent = processedEvents.filter(e => e.title === 'browserx').pop();
-        const resultSummary = lastAgentEvent?.content?.slice(0, 500) || 'Task completed';
+        const resultSummary = lastAgentEvent?.content?.slice(0, 500) || 'Job completed';
 
-        await service.send(MessageType.SCHEDULER_COMPLETE_TASK, {
-          taskId: scheduledTaskId,
+        await (await getInitializedUIClient()).serviceRequest('scheduler.complete', {
+          jobId: scheduledJobId,
           result: {
             summary: resultSummary,
             completedAt: Date.now(),
           },
         });
-        console.log('[App] Notified scheduler of task completion:', scheduledTaskId);
+        console.log('[App] Notified scheduler of job completion:', scheduledJobId);
       } else {
-        const errorMessage = msg?.data?.message || 'Task failed';
-        await service.send(MessageType.SCHEDULER_FAIL_TASK, {
-          taskId: scheduledTaskId,
+        const errorMessage = msg?.data?.message || 'Job failed';
+        await (await getInitializedUIClient()).serviceRequest('scheduler.fail', {
+          jobId: scheduledJobId,
           error: errorMessage,
         });
-        console.log('[App] Notified scheduler of task failure:', scheduledTaskId);
+        console.log('[App] Notified scheduler of job failure:', scheduledJobId);
       }
     } catch (error) {
-      console.error('[App] Failed to notify scheduler of task completion:', error);
+      console.error('[App] Failed to notify scheduler of job completion:', error);
     }
   }
 
   /**
-   * Load and execute a scheduled task (US3: T023)
-   * Called when the page is opened with scheduledTask URL parameter
+   * Load and execute a scheduled job (US3: T023)
+   * Called when the page is opened with scheduledJob URL parameter
    */
-  async function loadAndExecuteSchedulerTask(taskId: string, sessionId: string) {
-    console.log('[App] Loading scheduled task:', taskId, 'with session:', sessionId);
+  async function loadAndExecuteSchedulerJob(jobId: string, sessionId: string) {
+    console.log('[App] Loading scheduled job:', jobId, 'with session:', sessionId);
 
     try {
-      if (!service) throw new Error('Message service not available');
-      // Fetch task details from scheduler
-      const response = await service.send<{ task?: { input: string; scheduledTime?: number } }>(
-        MessageType.SCHEDULER_GET_TASK_DETAILS,
-        { taskId }
+      if (!client) throw new Error('Message service not available');
+      // Fetch job details from scheduler
+      const response = await (await getInitializedUIClient()).serviceRequest<{ job?: { input: string; scheduledTime?: number } }>(
+        'scheduler.getJobDetails',
+        { jobId }
       );
 
-      const taskData = response?.data || response;
-      if (!taskData || !taskData.task) {
-        throw new Error('Task not found or invalid response');
+      const jobData = response?.data || response;
+      if (!jobData || !jobData.job) {
+        throw new Error('Job not found or invalid response');
       }
 
-      const task = taskData.task;
-      console.log('[App] Scheduled task loaded:', task);
+      const job = jobData.job;
+      console.log('[App] Scheduled job loaded:', job);
 
-      // Display task input as user message
+      // Display job input as user message
       const userEvent: ProcessedEvent = {
         id: `scheduled_user_${Date.now()}`,
         category: 'message',
         timestamp: new Date(),
         title: 'user',
-        content: task.input,
+        content: job.input,
         style: { textColor: 'text-cyan-400' },
         streaming: false,
         collapsible: false,
       };
       processedEvents = [userEvent];
 
-      // Add a system notification showing this is a scheduled task
+      // Add a system notification showing this is a scheduled job
       const scheduleNotification: ProcessedEvent = {
         id: `scheduled_notice_${Date.now()}`,
         category: 'system',
         timestamp: new Date(),
         title: 'system',
-        content: `Executing scheduled task (${task.scheduledTime ? new Date(task.scheduledTime).toLocaleString() : 'manual trigger'})`,
+        content: `Executing scheduled job (${job.scheduledTime ? new Date(job.scheduledTime).toLocaleString() : 'manual trigger'})`,
         style: { textColor: 'text-yellow-400' },
         streaming: false,
         collapsible: false,
@@ -894,35 +890,33 @@
         throw new Error('Agent is not ready. Please configure your API key.');
       }
 
-      // Execute the task via the agent
+      // Execute the job via the agent
       // Feature 015: Include sessionId in context for multi-agent routing
       isProcessing = true;
-      await service.send(MessageType.SUBMISSION, {
-        id: `scheduled_${taskId}_${Date.now()}`,
-        op: {
+      await client!.submitOp(
+        {
           type: 'UserInput',
-          items: [{ type: 'text', text: task.input }],
+          items: [{ type: 'text', text: job.input }],
         },
-        context: {
+        {
           tabId: currentTabId,
           sessionId: sessionId, // Feature 015: Route to correct agent session
-          scheduledTaskId: taskId,
         },
-      });
+      );
 
     } catch (error) {
-      console.error('[App] Failed to execute scheduled task:', error);
+      console.error('[App] Failed to execute scheduled job:', error);
 
       // Notify scheduler of failure
       try {
-        if (service) {
-          await service.send(MessageType.SCHEDULER_FAIL_TASK, {
-            taskId,
+        if (client) {
+          await (await getInitializedUIClient()).serviceRequest('scheduler.fail', {
+            jobId,
             error: error instanceof Error ? error.message : 'Unknown error',
           });
         }
       } catch (notifyError) {
-        console.error('[App] Failed to notify scheduler of task failure:', notifyError);
+        console.error('[App] Failed to notify scheduler of job failure:', notifyError);
       }
 
       // Show error in UI

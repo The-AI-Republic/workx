@@ -91,12 +91,6 @@ const mockAgentConfig = {
   getProviderApiKey: vi.fn().mockResolvedValue('test-api-key'),
 };
 
-// Mock MessageRouter
-const mockRouter = {
-  on: vi.fn(),
-  broadcast: vi.fn(),
-};
-
 // Mock Chrome APIs
 const mockChrome = {
   tabs: {
@@ -151,7 +145,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
 
     // Create registry
     registry = AgentRegistry.getInstance();
-    registry.initialize(mockAgentConfig as any, mockRouter as any);
+    registry.initialize(mockAgentConfig as any);
     registry.setStorage(sessionStorage);
   });
 
@@ -162,12 +156,11 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
 
   describe('T035: Session Persistence to IndexedDB', () => {
     it('should persist session metadata when session is created', async () => {
-      const session = await registry.createSession({ type: 'scheduled', scheduledTaskId: 'task_1' });
+      const session = await registry.createSession({ type: 'scheduled' });
 
       // Session should be created
       expect(session).toBeDefined();
       expect(session.metadata.type).toBe('scheduled');
-      expect(session.metadata.scheduledTaskId).toBe('task_1');
 
       // markReady() is called during createSession, which calls setState('idle')
       // which triggers auto-persist
@@ -205,7 +198,6 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
           tabId: 100,
           tabGroupId: null,
           tabGroupName: 'browserx_s_a',
-          scheduledTaskId: 'task_1',
           persistedAt: Date.now(),
         },
         {
@@ -219,7 +211,6 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
           tabId: 101,
           tabGroupId: null,
           tabGroupName: 'browserx_s_b',
-          scheduledTaskId: 'task_2',
           persistedAt: Date.now() - 1000,
         },
       ];
@@ -246,7 +237,6 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
           tabId: null,
           tabGroupId: null,
           tabGroupName: 'browserx_s_a',
-          scheduledTaskId: null,
           persistedAt: Date.now(),
         },
         {
@@ -260,7 +250,6 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
           tabId: null,
           tabGroupId: null,
           tabGroupName: 'browserx_s_b',
-          scheduledTaskId: null,
           persistedAt: Date.now(),
         },
       ];
@@ -288,7 +277,6 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         tabId: 200,
         tabGroupId: null,
         tabGroupName: 'browserx_s_c',
-        scheduledTaskId: 'task_resume',
         persistedAt: Date.now() - 1000,
       };
 
@@ -296,13 +284,12 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
 
       expect(resumed).toBeDefined();
       expect(resumed!.metadata.type).toBe('scheduled');
-      expect(resumed!.metadata.scheduledTaskId).toBe('task_resume');
       expect(resumed!.state).toBe('idle');
     });
 
     it('should not resume if session is already active', async () => {
       // Create an active session first
-      const activeSession = await registry.createSession({ type: 'scheduled', scheduledTaskId: 'task_active' });
+      const activeSession = await registry.createSession({ type: 'scheduled' });
 
       const persistedSession: PersistedSession = {
         sessionId: activeSession.sessionId, // Same ID as active session
@@ -315,7 +302,6 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         tabId: null,
         tabGroupId: null,
         tabGroupName: 'browserx_s_a',
-        scheduledTaskId: 'task_active',
         persistedAt: Date.now(),
       };
 
@@ -344,7 +330,6 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         tabId: null,
         tabGroupId: null,
         tabGroupName: 'browserx_s_d',
-        scheduledTaskId: null,
         persistedAt: Date.now(),
       };
 
@@ -419,7 +404,6 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         tabId: null,
         tabGroupId: null,
         tabGroupName: 'browserx_s_a',
-        scheduledTaskId: null,
         persistedAt: now - 48 * 60 * 60 * 1000,
       };
 
@@ -434,7 +418,6 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         tabId: null,
         tabGroupId: null,
         tabGroupName: 'browserx_s_b',
-        scheduledTaskId: null,
         persistedAt: now - 1 * 60 * 60 * 1000,
       };
 
@@ -463,7 +446,6 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         tabId: null,
         tabGroupId: null,
         tabGroupName: 'browserx_s_a',
-        scheduledTaskId: null,
         persistedAt: Date.now() - 1000,
       };
 
@@ -481,7 +463,6 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
       // 1. Create a session with scheduled task
       const session = await registry.createSession({
         type: 'scheduled',
-        scheduledTaskId: 'task_integration_test',
         tabId: 500,
       });
 
@@ -505,7 +486,6 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         tabId: 500,
         tabGroupId: null,
         tabGroupName: `browserx_s_${session.sessionLetter}`,
-        scheduledTaskId: 'task_integration_test',
         persistedAt: Date.now(),
       };
 
@@ -513,7 +493,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
 
       // 5. Reinitialize registry
       const newRegistry = AgentRegistry.getInstance();
-      newRegistry.initialize(mockAgentConfig as any, mockRouter as any);
+      newRegistry.initialize(mockAgentConfig as any);
 
       const newStorage = new SessionStorage(mockIndexedDBAdapter as any);
       newRegistry.setStorage(newStorage);
@@ -521,14 +501,12 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
       // 6. Load persisted sessions
       const loadedSessions = await newRegistry.loadPersistedSessions();
       expect(loadedSessions).toHaveLength(1);
-      expect(loadedSessions[0].scheduledTaskId).toBe('task_integration_test');
 
       // 7. Resume the session
       const resumedSession = await newRegistry.resumeSession(loadedSessions[0]);
 
       expect(resumedSession).toBeDefined();
       expect(resumedSession!.metadata.type).toBe('scheduled');
-      expect(resumedSession!.metadata.scheduledTaskId).toBe('task_integration_test');
       expect(resumedSession!.state).toBe('idle');
     });
 
@@ -545,7 +523,6 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         tabId: null,
         tabGroupId: null,
         tabGroupName: 'browserx_s_a',
-        scheduledTaskId: null,
         persistedAt: Date.now(),
       };
 
@@ -585,7 +562,6 @@ describe('SessionStorage Unit Tests', () => {
       tabId: null,
       tabGroupId: null,
       tabGroupName: 'browserx_s_a',
-      scheduledTaskId: 'task_unit',
     };
 
     await storage.persistSession(metadata);
@@ -613,7 +589,6 @@ describe('SessionStorage Unit Tests', () => {
       tabId: 100,
       tabGroupId: null,
       tabGroupName: 'browserx_s_b',
-      scheduledTaskId: null,
       persistedAt: Date.now(),
     };
 
@@ -644,7 +619,6 @@ describe('SessionStorage Unit Tests', () => {
         tabId: null,
         tabGroupId: null,
         tabGroupName: 'browserx_s_a',
-        scheduledTaskId: null,
         persistedAt: Date.now(),
       },
     ];

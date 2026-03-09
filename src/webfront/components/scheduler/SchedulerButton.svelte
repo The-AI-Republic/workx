@@ -3,15 +3,15 @@
   import Tooltip from '../common/Tooltip.svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
-  import { sendMessage, MessageType } from '../../lib/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
 
   const dispatch = createEventDispatcher<{
     click: void;
   }>();
 
   let currentTheme: UITheme = 'terminal';
-  let taskCount = 0;
-  let hasRunningTask = false;
+  let jobCount = 0;
+  let hasRunningJob = false;
 
   // Subscribe to theme store
   uiTheme.subscribe((theme) => {
@@ -28,15 +28,15 @@
 
   async function fetchSchedulerState() {
     try {
-      const response = await sendMessage<{ data?: { scheduledCount?: number; schedulerTaskQueueCount?: number; missedCount?: number; currentTaskId?: string | null }; scheduledCount?: number; schedulerTaskQueueCount?: number; missedCount?: number; currentTaskId?: string | null }>(
-        MessageType.SCHEDULER_GET_STATE
+      const response = await (await getInitializedUIClient()).serviceRequest<{ data?: { scheduledCount?: number; jobQueueCount?: number; missedCount?: number; currentJobId?: string | null }; scheduledCount?: number; jobQueueCount?: number; missedCount?: number; currentJobId?: string | null }>(
+        'scheduler.getState'
       );
 
       const data = response?.data || response;
       if (data) {
-        // Count all active tasks (scheduled + waiting + missed)
-        taskCount = (data.scheduledCount || 0) + (data.schedulerTaskQueueCount || 0) + (data.missedCount || 0);
-        hasRunningTask = data.currentTaskId !== null;
+        // Count all active jobs (scheduled + waiting + missed)
+        jobCount = (data.scheduledCount || 0) + (data.jobQueueCount || 0) + (data.missedCount || 0);
+        hasRunningJob = data.currentJobId !== null;
       }
     } catch (error) {
       console.warn('[SchedulerButton] Failed to fetch state:', error);
@@ -49,34 +49,34 @@
 </script>
 
 <div class="relative">
-  <Tooltip content={$_t("Scheduled Tasks")}>
+  <Tooltip content={$_t("Scheduled Jobs")}>
     <button
       class="relative p-2 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200
         {currentTheme === 'modern'
           ? 'bg-transparent border-none rounded-lg text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:!transform-none'
           : 'bg-black border border-term-dim-green text-term-dim-green hover:scale-110 hover:bg-term-dim-green/10 active:scale-95'}
-        {taskCount > 0 && currentTheme !== 'modern' ? 'border-term-bright-green text-term-bright-green' : ''}
-        {taskCount > 0 && currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark' : ''}
-        {hasRunningTask ? 'animate-pulse' : ''}"
+        {jobCount > 0 && currentTheme !== 'modern' ? 'border-term-bright-green text-term-bright-green' : ''}
+        {jobCount > 0 && currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark' : ''}
+        {hasRunningJob ? 'animate-pulse' : ''}"
       on:click={handleClick}
-      aria-label={$_t("Scheduled Tasks")}
+      aria-label={$_t("Scheduled Jobs")}
     >
       <!-- Calendar/Clock Icon -->
       <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
       </svg>
 
-      <!-- Task Count Badge -->
-      {#if taskCount > 0}
+      <!-- Job Count Badge -->
+      {#if jobCount > 0}
         <span
           class="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 text-sm font-semibold leading-4 text-center rounded-full
             {currentTheme === 'modern'
               ? 'bg-chat-primary dark:bg-chat-primary-dark text-white'
               : 'bg-term-dim-green text-black'}
-            {hasRunningTask && currentTheme === 'modern' ? '!bg-emerald-500' : ''}
-            {hasRunningTask && currentTheme !== 'modern' ? '!bg-term-bright-green animate-badge-pulse' : ''}"
+            {hasRunningJob && currentTheme === 'modern' ? '!bg-emerald-500' : ''}
+            {hasRunningJob && currentTheme !== 'modern' ? '!bg-term-bright-green animate-badge-pulse' : ''}"
         >
-          {taskCount > 99 ? '99+' : taskCount}
+          {jobCount > 99 ? '99+' : jobCount}
         </span>
       {/if}
     </button>

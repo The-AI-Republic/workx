@@ -16,6 +16,8 @@ export type Scope =
   | 'sessions.write'
   | 'config.read'
   | 'config.write'
+  | 'credentials.read'
+  | 'credentials.write'
   | 'operator.approvals'
   | 'operator.pairing'
   | 'admin'
@@ -61,6 +63,11 @@ export const METHOD_REGISTRY: Record<string, MethodSpec> = {
 
   // Logs
   'logs.tail': { scope: 'admin', streaming: true },
+
+  // Credentials
+  'credentials.list': { scope: 'credentials.read' },
+  'credentials.set': { scope: 'credentials.write' },
+  'credentials.delete': { scope: 'credentials.write' },
 
   // Execution approvals
   'exec.approval.resolve': { scope: 'operator.approvals' },
