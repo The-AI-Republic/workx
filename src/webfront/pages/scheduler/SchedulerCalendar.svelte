@@ -110,26 +110,31 @@
     fetchEvents();
   }
 
-  function handleDateClick(detail: { date: Date; dateStr: string }) {
-    const date = detail.date;
+  function openScheduleModal(date: Date, time?: { hours: string; minutes: string }) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     prefillDate = `${year}-${month}-${day}`;
+    prefillTime = time
+      ? `${time.hours}:${time.minutes}`
+      : `${String(date.getHours()).padStart(2, '0')}:00`;
+    showPopover = false;
+    showScheduleModal = true;
+  }
 
+  function handleDateClick(detail: { date: Date; dateStr: string }) {
+    const date = detail.date;
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
+
     if (hours === '00' && minutes === '00') {
       // Month view click — default to next rounded hour
       const now = new Date();
       now.setHours(now.getHours() + 1, 0, 0, 0);
-      prefillTime = `${String(now.getHours()).padStart(2, '0')}:00`;
+      openScheduleModal(now);
     } else {
-      prefillTime = `${hours}:${minutes}`;
+      openScheduleModal(date, { hours, minutes });
     }
-
-    showPopover = false;
-    showScheduleModal = true;
   }
 
   // Instance popover state
@@ -251,13 +256,7 @@
   function handleNewClick() {
     const now = new Date();
     now.setHours(now.getHours() + 1, 0, 0, 0);
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    prefillDate = `${year}-${month}-${day}`;
-    prefillTime = `${String(now.getHours()).padStart(2, '0')}:00`;
-    showPopover = false;
-    showScheduleModal = true;
+    openScheduleModal(now);
   }
 
   onMount(() => {
