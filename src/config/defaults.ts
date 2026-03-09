@@ -320,7 +320,7 @@ export function getDefaultProviders(): Record<string, IProviderConfig> {
 }
 
 /**
- * Get default stored config (minimal data for chrome.storage.local)
+ * Get default stored config (minimal data for ConfigStorageProvider)
  */
 export function getDefaultStoredConfig(): IStoredConfig {
   return {
@@ -340,7 +340,7 @@ export function getDefaultStoredConfig(): IStoredConfig {
 
 /**
  * Build full runtime config by merging stored config with default providers/models
- * @param stored - Minimal stored config from chrome.storage.local
+ * @param stored - Minimal stored config from ConfigStorageProvider
  * @returns Full IAgentConfig with providers/models from default.json and API keys from storage
  */
 export function buildRuntimeConfig(stored: IStoredConfig | null): IAgentConfig {
@@ -439,7 +439,7 @@ export function buildRuntimeConfig(stored: IStoredConfig | null): IAgentConfig {
 /**
  * Extract minimal stored config from full runtime config
  * @param config - Full runtime IAgentConfig
- * @returns Minimal IStoredConfig for chrome.storage.local
+ * @returns Minimal IStoredConfig for ConfigStorageProvider
  */
 export function extractStoredConfig(config: IAgentConfig): IStoredConfig {
   // Extract only id, API keys and organization from providers

@@ -12,7 +12,7 @@ import type { IApprovalConfig } from '../core/approval/types';
  * It contains the complete configuration including static provider/model metadata.
  *
  * Relationship with IStoredConfig:
- * - IStoredConfig: Minimal data persisted to chrome.storage.local (user-changeable only)
+ * - IStoredConfig: Minimal data persisted to ConfigStorageProvider (user-changeable only)
  * - IAgentConfig: Full runtime config = IStoredConfig + static metadata from default.json
  *
  * At startup, the config service:
@@ -428,7 +428,7 @@ export interface IStoredProviderConfig {
 }
 
 /**
- * Minimal configuration stored in chrome.storage.local (PERSISTENCE)
+ * Minimal configuration stored in ConfigStorageProvider (PERSISTENCE)
  *
  * This is the SERIALIZATION format for persisting user configuration.
  * Only user-changeable data is stored; static model/provider metadata is NOT persisted.

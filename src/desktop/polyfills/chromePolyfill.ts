@@ -2,27 +2,13 @@
  * Chrome API Polyfill for Desktop Mode
  *
  * Provides minimal chrome API stubs for desktop mode so that shared components
- * using chrome.storage, chrome.tabs, chrome.runtime.getURL, etc. don't crash.
+ * using chrome.tabs, chrome.runtime.getURL, etc. don't crash.
  *
- * Message routing (chrome.runtime.sendMessage / onMessage) is NOT polyfilled —
- * desktop mode uses UIChannelClient → TauriTransport for all messaging.
+ * Storage is handled by ConfigStorageProvider (not polyfilled here).
+ * Message routing is handled by UIChannelClient → TauriTransport (not polyfilled here).
  *
  * @module desktop/polyfills/chromePolyfill
  */
-
-// Tauri core API module (loaded dynamically for storage commands)
-let tauriCore: { invoke: <T>(cmd: string, args?: Record<string, unknown>) => Promise<T> } | null = null;
-
-/**
- * Load Tauri core API for storage operations
- */
-async function loadTauriApis(): Promise<void> {
-  try {
-    tauriCore = await import('@tauri-apps/api/core');
-  } catch (error) {
-    console.warn('[chromePolyfill] Tauri core API not available:', error);
-  }
-}
 
 /**
  * Chrome runtime polyfill (non-messaging stubs only)
@@ -164,10 +150,5 @@ export function installChromePolyfill(): void {
   if (typeof window !== 'undefined' && !('chrome' in window)) {
     console.log('[chromePolyfill] Installing chrome API polyfill for desktop mode');
     (window as unknown as { chrome: typeof chromePolyfill }).chrome = chromePolyfill;
-
-    // Load Tauri APIs for storage operations
-    loadTauriApis().catch((error) => {
-      console.error('[chromePolyfill] Failed to load Tauri APIs:', error);
-    });
   }
 }

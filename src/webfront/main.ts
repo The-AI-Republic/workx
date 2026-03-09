@@ -10,6 +10,7 @@ import { mount } from 'svelte';
 import App from './App.svelte';
 import { initLocale } from './lib/i18n';
 import { AgentConfig } from '@/config/AgentConfig';
+import { initializeConfigStorage } from '@/core/storage';
 
 // Add terminal-mode class to body for terminal styling
 document.body.classList.add('terminal-mode');
@@ -19,6 +20,13 @@ document.body.classList.add('terminal-mode');
  */
 async function init() {
   console.log('[Extension] Initializing sidepanel...');
+
+  // Initialize config storage (needed for components that call getConfigStorage())
+  try {
+    await initializeConfigStorage();
+  } catch (error) {
+    console.warn('[Extension] Failed to initialize config storage:', error);
+  }
 
   // Initialize locale
   try {
