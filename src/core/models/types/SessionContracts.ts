@@ -34,7 +34,7 @@ export {
  * Messages can optionally include sessionId for routing to specific sessions
  */
 export interface SessionAwareMessage {
-  /** Message type from MessageType enum */
+  /** Message type identifier */
   type: string | number;
 
   /** Target session ID (defaults to primary if omitted) */

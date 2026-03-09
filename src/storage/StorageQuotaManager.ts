@@ -204,25 +204,9 @@ export class StorageQuotaManager {
         console.warn(`Storage critical: ${quota.percentage.toFixed(2)}%. Running cleanup...`);
         const results = await this.cleanup(this.warningThreshold);
         console.log('Cleanup results:', results);
-
-        // Notify user if supported (chrome is global in service workers)
-        if (typeof chrome !== 'undefined' && chrome.runtime) {
-          chrome.runtime.sendMessage({
-            type: 'storage-critical',
-            quota,
-            cleanupResults: results
-          });
-        }
       } else if (quota.percentage >= this.warningThreshold) {
         // Warning: Notify but don't cleanup automatically
         console.warn(`Storage warning: ${quota.percentage.toFixed(2)}% used`);
-
-        if (typeof chrome !== 'undefined' && chrome.runtime) {
-          chrome.runtime.sendMessage({
-            type: 'storage-warning',
-            quota
-          });
-        }
       }
     }, intervalMinutes * 60 * 1000) as unknown as number;
 

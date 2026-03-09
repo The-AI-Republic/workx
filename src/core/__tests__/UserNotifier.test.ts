@@ -50,9 +50,6 @@ function installChromeNotificationsMock() {
     notifications: notifMock,
   };
 
-  // Ensure sendMessage still returns a Promise after spreading
-  ensureSendMessageReturnsPromise();
-
   return notifMock;
 }
 
@@ -75,25 +72,10 @@ function makeEvent(type: string, data?: any): Event {
 }
 
 // ---------------------------------------------------------------------------
-// Ensure chrome.runtime.sendMessage returns a Promise so that the
-// `.catch()` in showFallbackNotification does not blow up.
-// ---------------------------------------------------------------------------
-
-function ensureSendMessageReturnsPromise() {
-  const chrome = (globalThis as any).chrome;
-  if (chrome?.runtime) {
-    chrome.runtime.sendMessage = vi.fn().mockReturnValue(Promise.resolve());
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 describe('UserNotifier', () => {
-  beforeEach(() => {
-    ensureSendMessageReturnsPromise();
-  });
 
   // -----------------------------------------------------------------------
   // 1. Constructor and initialization

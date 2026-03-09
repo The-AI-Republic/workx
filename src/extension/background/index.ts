@@ -5,7 +5,6 @@
 
 export * from './service-worker';
 export { RepublicAgent } from '../../core/RepublicAgent';
-export { MessageRouter, MessageType } from '../../core/MessageRouter';
 export { ModelClientFactory } from '../../core/models/ModelClientFactory';
 export { ToolRegistry } from '../../tools/ToolRegistry';
 

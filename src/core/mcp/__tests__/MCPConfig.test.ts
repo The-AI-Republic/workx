@@ -195,10 +195,11 @@ describe('MCPConfig Validation Schemas', () => {
   });
 
   describe('MCPPlatformScopeSchema', () => {
-    it('should accept shared, extension, and desktop', () => {
+    it('should accept shared, extension, desktop, and server', () => {
       expect(() => MCPPlatformScopeSchema.parse('shared')).not.toThrow();
       expect(() => MCPPlatformScopeSchema.parse('extension')).not.toThrow();
       expect(() => MCPPlatformScopeSchema.parse('desktop')).not.toThrow();
+      expect(() => MCPPlatformScopeSchema.parse('server')).not.toThrow();
     });
 
     it('should reject invalid platform scopes', () => {

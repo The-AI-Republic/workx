@@ -12,6 +12,7 @@
   import type { ApprovalMode, IApprovalConfig } from '@/core/approval/types';
   import { STORAGE_KEYS } from '@/config/defaults';
   import { getConfigStorage } from '@/core/storage/ConfigStorageProvider';
+  import { getInitializedUIClient } from '@/core/messaging';
 
   let currentTheme: UITheme = 'terminal';
   let currentMode: ApprovalMode = 'balanced';
@@ -48,7 +49,8 @@
     showPopup = false;
 
     try {
-      chrome.runtime.sendMessage({ type: 'UPDATE_APPROVAL_CONFIG', config: { mode } });
+      const client = await getInitializedUIClient();
+      await client.serviceRequest('approval.updateConfig', { mode });
     } catch (error) {
       console.error('[ApprovalModeIndicator] Failed to send config update:', error);
     }

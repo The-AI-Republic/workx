@@ -7,7 +7,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { t } from '../../lib/i18n';
-  import { sendMessage, MessageType } from '../../lib/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
   import { vaultStore, refreshVaultStatus } from '../../stores/vaultStore';
   import type { VaultUnlockResult } from '@/core/crypto/types';
 
@@ -59,7 +59,7 @@
 
     isSubmitting = true;
     try {
-      const result = await sendMessage<VaultUnlockResult>(MessageType.VAULT_UNLOCK, { pin });
+      const result = await (await getInitializedUIClient()).serviceRequest<VaultUnlockResult>('vault.unlock', { pin });
 
       if (result?.success) {
         pin = '';
@@ -88,7 +88,7 @@
   async function handleForgotPinConfirm() {
     forgotSubmitting = true;
     try {
-      await sendMessage(MessageType.PIN_FORGOT, { confirmReset: true });
+      await (await getInitializedUIClient()).serviceRequest('vault.pin.forgot', { confirmReset: true });
       showForgotConfirm = false;
       await refreshVaultStatus();
       dispatch('unlocked');
