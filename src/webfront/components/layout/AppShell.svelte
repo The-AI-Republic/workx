@@ -26,13 +26,19 @@
     </div>
   {/if}
   <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
-    <div class="flex-1 min-h-0 relative">
-      <div class="absolute inset-0 overflow-hidden">
-        <slot />
-      </div>
+    <div class="content-area flex-1 flex flex-col min-h-0 overflow-hidden">
+      <slot />
     </div>
     <div class="shrink-0">
       <FooterBar />
     </div>
   </div>
 </div>
+
+<style>
+  .content-area > :global(*) {
+    flex: 1 1 0%;
+    min-height: 0;
+    overflow: hidden;
+  }
+</style>
