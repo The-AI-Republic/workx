@@ -60,18 +60,6 @@
     });
   });
 
-  // Clear store after reading
-  schedulerStore.clear();
-
-  // Get UIChannelClient
-  try {
-    client = await getInitializedUIClient();
-  } catch (error) {
-    console.error('[Scheduler] UIChannelClient not initialized:', error);
-  }
-
-  // Initialize defaults
-  initializeDefaults();
 
   function initializeDefaults() {
     // Default to 1 hour from now
