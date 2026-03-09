@@ -6,7 +6,7 @@
 
 import { writable } from 'svelte/store';
 import type { VaultState } from '@/core/crypto/types';
-import { sendMessage, MessageType } from '../lib/messaging';
+import { getInitializedUIClient } from '@/core/messaging';
 
 const defaultState: VaultState = {
   isInitialized: false,
@@ -24,7 +24,7 @@ export const vaultStore = writable<VaultState>(defaultState);
  */
 export async function refreshVaultStatus(): Promise<void> {
   try {
-    const status = await sendMessage<VaultState>(MessageType.VAULT_STATUS);
+    const status = await (await getInitializedUIClient()).serviceRequest<VaultState>('vault.status');
     if (status) {
       vaultStore.set(status);
     }

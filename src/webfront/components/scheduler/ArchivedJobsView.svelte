@@ -1,7 +1,7 @@
 <script lang="ts">
   import { uiTheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
-  import { sendMessage, MessageType } from '../../lib/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
   import SchedulerJobItem from './SchedulerJobItem.svelte';
   import type { ArchivedJobSummary } from '@/core/models/types/SchedulerContracts';
 
@@ -32,8 +32,8 @@
   async function fetchArchivedJobs() {
     isLoading = true;
     try {
-      const response = await sendMessage<{ data?: { jobs?: ArchivedJobSummary[]; hasMore?: boolean }; jobs?: ArchivedJobSummary[]; hasMore?: boolean }>(
-        MessageType.SCHEDULER_GET_ARCHIVED_JOBS,
+      const response = await (await getInitializedUIClient()).serviceRequest<{ data?: { jobs?: ArchivedJobSummary[]; hasMore?: boolean }; jobs?: ArchivedJobSummary[]; hasMore?: boolean }>(
+        'scheduler.getArchivedJobs',
         { limit, offset }
       );
 

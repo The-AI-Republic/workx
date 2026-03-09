@@ -1,7 +1,7 @@
 <script lang="ts">
   import { uiTheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
-  import { sendMessage, MessageType } from '../../lib/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
   import RecurrenceSelector from './RecurrenceSelector.svelte';
   import type { RecurrenceRule } from '@/core/models/types/Scheduler';
 
@@ -118,8 +118,9 @@
       if (recurrence) {
         payload.recurrence = recurrence;
       }
-      const response = await sendMessage<{ success: boolean; error?: string }>(
-        MessageType.SCHEDULER_SCHEDULE_JOB,
+      const client = await getInitializedUIClient();
+      const response = await client.serviceRequest<{ success: boolean; error?: string; data?: { success: boolean; error?: string } }>(
+        'scheduler.schedule',
         payload
       );
       const data = response?.data || response;

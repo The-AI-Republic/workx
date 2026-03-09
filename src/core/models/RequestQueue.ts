@@ -9,7 +9,6 @@
 import type { CompletionRequest } from './ModelClient';
 import {
   getConfigStorage,
-  isConfigStorageInitialized,
   type ConfigStorageProvider
 } from '../storage/ConfigStorageProvider';
 
@@ -490,46 +489,10 @@ export class RequestQueue {
   }
 
   /**
-   * Get storage provider with fallback
+   * Get storage provider (throws if not initialized).
    */
-  private async getStorage(): Promise<ConfigStorageProvider | null> {
-    if (isConfigStorageInitialized()) {
-      return getConfigStorage();
-    }
-    // Fallback to chrome.storage.local if provider not initialized
-    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-      return {
-        async get<T>(key: string): Promise<T | null> {
-          const result = await chrome.storage.local.get(key);
-          return (result[key] as T) ?? null;
-        },
-        async set<T>(key: string, value: T): Promise<void> {
-          await chrome.storage.local.set({ [key]: value });
-        },
-        async remove(key: string): Promise<void> {
-          await chrome.storage.local.remove(key);
-        },
-        async getMany<T>(keys: string[]): Promise<Record<string, T>> {
-          return await chrome.storage.local.get(keys) as Record<string, T>;
-        },
-        async setMany<T>(items: Record<string, T>): Promise<void> {
-          await chrome.storage.local.set(items);
-        },
-        async removeMany(keys: string[]): Promise<void> {
-          await chrome.storage.local.remove(keys);
-        },
-        async getAll(): Promise<Record<string, unknown>> {
-          return await chrome.storage.local.get(null);
-        },
-        async clear(): Promise<void> {
-          await chrome.storage.local.clear();
-        },
-        async getBytesInUse(): Promise<number | null> {
-          return null;
-        }
-      };
-    }
-    return null;
+  private getStorage(): ConfigStorageProvider {
+    return getConfigStorage();
   }
 
   /**
@@ -537,12 +500,7 @@ export class RequestQueue {
    */
   private async loadFromStorage(): Promise<void> {
     try {
-      const storage = await this.getStorage();
-      if (!storage) {
-        console.warn('Storage not available, starting with empty queue');
-        return;
-      }
-
+      const storage = this.getStorage();
       const result = await storage.getMany<string>([this.STORAGE_KEY, this.HISTORY_KEY]);
 
       if (result[this.STORAGE_KEY]) {
@@ -574,9 +532,7 @@ export class RequestQueue {
    */
   private async persistToStorage(): Promise<void> {
     try {
-      const storage = await this.getStorage();
-      if (!storage) return;
-
+      const storage = this.getStorage();
       const data = {
         queue: this.queue,
         metrics: this.metrics,
@@ -594,9 +550,7 @@ export class RequestQueue {
    */
   private async persistHistory(): Promise<void> {
     try {
-      const storage = await this.getStorage();
-      if (!storage) return;
-
+      const storage = this.getStorage();
       await storage.set(this.HISTORY_KEY, JSON.stringify(this.requestHistory));
     } catch (error) {
       console.warn('Failed to persist request history to storage:', error);

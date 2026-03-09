@@ -11,7 +11,7 @@
   import { userStore } from '../stores/userStore';
   import { LLM_API_URL } from '../lib/constants';
   import { t, _t } from '../lib/i18n';
-  import { sendMessage, notifyConfigUpdate, MessageType } from '../lib/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
   import { platform } from '../stores/platformStore';
@@ -156,7 +156,7 @@
           });
         }
       }
-      notifyConfigUpdate();
+      getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(err => console.warn('[ModelSettings] Failed to send configUpdate:', err));
     } catch (err: any) {
       if (err?.message?.includes('Failed to bind port 1455')) {
         chatgptOAuthError = t('Port 1455 is in use. Please close any application using this port and try again.');
@@ -201,7 +201,7 @@
           });
         }
       }
-      notifyConfigUpdate();
+      getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(err => console.warn('[ModelSettings] Failed to send configUpdate:', err));
     } catch (err: any) {
       console.error('[ModelSettings] ChatGPT disconnect failed:', err);
     }
@@ -416,7 +416,7 @@
 
       showMessage(t('API key saved successfully!'), 'success');
 
-      notifyConfigUpdate();
+      getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(err => console.warn('[ModelSettings] Failed to send configUpdate:', err));
 
       onAuthUpdated?.({ isAuthenticated: true, mode: 'api_key' });
     } catch (error) {
@@ -570,7 +570,7 @@
       }
 
       showMessage(t('$1$ API key removed successfully', { substitutions: [providerName] }), 'info');
-      notifyConfigUpdate();
+      getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(err => console.warn('[ModelSettings] Failed to send configUpdate:', err));
       onAuthUpdated?.({ isAuthenticated: false, mode: null });
     } catch (error) {
       showMessage(t('Failed to remove API key'), 'error');
@@ -620,9 +620,9 @@
         useOwnApiKey: newValue,
       };
 
-      await sendMessage(MessageType.INIT_AUTH, authPayload);
+      await (await getInitializedUIClient()).serviceRequest('agent.initAuth', authPayload);
 
-      notifyConfigUpdate();
+      getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(err => console.warn('[ModelSettings] Failed to send configUpdate:', err));
 
       const message = newValue
         ? t('Switched to direct API mode. Please configure your API key.')
@@ -680,7 +680,7 @@
       }));
 
       await settingsConfig.setSelectedModel(modelId);
-      notifyConfigUpdate();
+      getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(err => console.warn('[ModelSettings] Failed to send configUpdate:', err));
 
       const message = apiKey
         ? t('Model changed to $1$. Conversation preserved.', { substitutions: [selectedItem.modelName] })
@@ -719,7 +719,7 @@
           if (modelIndex !== -1) {
             provider.models[modelIndex].serviceTier = serviceTier;
             settingsConfig.updateProvider(modelData.provider.id, { models: provider.models });
-            notifyConfigUpdate();
+            getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(err => console.warn('[ModelSettings] Failed to send configUpdate:', err));
             showMessage(t('Service tier updated to $1$', { substitutions: [serviceTier || 'default'] }), 'success');
           }
         }

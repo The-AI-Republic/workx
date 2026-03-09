@@ -1,8 +1,8 @@
 <script lang="ts">
   import { uiTheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
-  import { sendMessage, MessageType } from '../../lib/messaging';
-  import { tryGetMessageService } from '@/core/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
+  import type { UIChannelClient } from '@/core/messaging';
   import SchedulerJobItem from './SchedulerJobItem.svelte';
   import JobDetailModal from './JobDetailModal.svelte';
   import type { SchedulerJobSummary } from '@/core/models/types/SchedulerContracts';
@@ -41,26 +41,36 @@
     }
   });
 
-  $effect(() => {
-    if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
-      chrome.runtime.onMessage.addListener(handleSchedulerEvent);
-    }
+  let channelClient: UIChannelClient | null = null;
+  let eventUnsubscribers: Array<() => void> = [];
+  let destroyed = false;
 
-    const localUnsubs: Array<() => void> = [];
-    const service = tryGetMessageService();
-    if (service) {
-      const unsub = service.on(MessageType.SCHEDULER_EVENT, () => debouncedFetch());
-      if (unsub) localUnsubs.push(unsub);
-    }
+  $effect(() => {
+    destroyed = false;
+
+    (async () => {
+      try {
+        await getClient();
+        if (destroyed) return;
+        eventUnsubscribers.push(
+          channelClient.onEvent('BackgroundEvent', (data: any) => {
+            if (data?.message === 'scheduler_job_status') {
+              debouncedFetch();
+            }
+          })
+        );
+      } catch {
+        // UIChannelClient not available
+      }
+    })();
 
     fetchAllData();
 
     return () => {
+      destroyed = true;
       clearTimeout(eventDebounceTimer);
-      if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
-        chrome.runtime.onMessage.removeListener(handleSchedulerEvent);
-      }
-      localUnsubs.forEach(fn => fn());
+      eventUnsubscribers.forEach(fn => fn());
+      eventUnsubscribers = [];
     };
   });
 
@@ -69,20 +79,21 @@
     eventDebounceTimer = setTimeout(() => fetchAllData(), 150);
   }
 
-  function handleSchedulerEvent(message: { type: string }) {
-    if (message.type === MessageType.SCHEDULER_EVENT) {
-      debouncedFetch();
-    }
+  async function getClient(): Promise<UIChannelClient> {
+    if (channelClient) return channelClient;
+    channelClient = await getInitializedUIClient();
+    return channelClient;
   }
 
   async function fetchAllData() {
     isLoading = true;
     try {
+      const client = await getClient();
       const [stateRes, scheduledRes, missedRes, queueRes] = await Promise.all([
-        sendMessage<{ runningJob?: SchedulerJobSummary | null }>(MessageType.SCHEDULER_GET_STATE, {}),
-        sendMessage<{ jobs?: SchedulerJobSummary[] }>(MessageType.SCHEDULER_GET_SCHEDULED_JOBS, {}),
-        sendMessage<{ jobs?: SchedulerJobSummary[] }>(MessageType.SCHEDULER_GET_MISSED_JOBS, {}),
-        sendMessage<{ jobs?: SchedulerJobSummary[] }>(MessageType.SCHEDULER_GET_QUEUE, {}),
+        client.serviceRequest<any>('scheduler.getState'),
+        client.serviceRequest<any>('scheduler.getScheduledJobs'),
+        client.serviceRequest<any>('scheduler.getMissedJobs'),
+        client.serviceRequest<any>('scheduler.getQueue'),
       ]);
 
       const stateData = stateRes?.data || stateRes;
@@ -99,7 +110,7 @@
 
   async function handleTrigger(data: { jobId: string }) {
     try {
-      await sendMessage(MessageType.SCHEDULER_TRIGGER_JOB, { jobId: data.jobId });
+      await (await getClient()).serviceRequest('scheduler.trigger', { jobId: data.jobId });
     } catch (error) {
       console.error('[ActiveJobsModule] Failed to trigger job:', error);
     }
@@ -107,7 +118,7 @@
 
   async function handleCancel(data: { jobId: string }) {
     try {
-      await sendMessage(MessageType.SCHEDULER_CANCEL_JOB, { jobId: data.jobId });
+      await (await getClient()).serviceRequest('scheduler.cancel', { jobId: data.jobId });
     } catch (error) {
       console.error('[ActiveJobsModule] Failed to cancel job:', error);
     }

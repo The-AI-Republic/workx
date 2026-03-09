@@ -11,6 +11,8 @@
   import { t, _t } from '../../lib/i18n';
   import type { ApprovalMode, IApprovalConfig } from '@/core/approval/types';
   import { STORAGE_KEYS } from '@/config/defaults';
+  import { getConfigStorage } from '@/core/storage/ConfigStorageProvider';
+  import { getInitializedUIClient } from '@/core/messaging';
 
   let currentMode: ApprovalMode = $state('balanced');
   let showPopup = $state(false);
@@ -27,8 +29,7 @@
 
   async function loadMode() {
     try {
-      const result = await chrome.storage.local.get(STORAGE_KEYS.CONFIG);
-      const agentConfig = result[STORAGE_KEYS.CONFIG] as Record<string, any> | undefined;
+      const agentConfig = await getConfigStorage().get<Record<string, any>>(STORAGE_KEYS.CONFIG);
       const config = agentConfig?.approval as IApprovalConfig | undefined;
       if (config?.mode) {
         currentMode = config.mode;
@@ -43,7 +44,8 @@
     showPopup = false;
 
     try {
-      chrome.runtime.sendMessage({ type: 'UPDATE_APPROVAL_CONFIG', config: { mode } });
+      const client = await getInitializedUIClient();
+      await client.serviceRequest('approval.updateConfig', { mode });
     } catch (error) {
       console.error('[ApprovalModeIndicator] Failed to send config update:', error);
     }

@@ -101,6 +101,9 @@ export type EventMsg =
   | { type: 'DOMActionStart'; data: DOMActionStartEvent }
   | { type: 'StorageActionStart'; data: StorageActionStartEvent }
   | { type: 'NavigationActionStart'; data: NavigationActionStartEvent }
+  // Service routing events
+  | { type: 'ServiceResponse'; data: ServiceResponseEvent }
+  | { type: 'StateUpdate'; data: StateUpdateEvent }
 ;
 
 // Individual event payload types
@@ -281,6 +284,7 @@ export interface ApplyPatchApprovalRequestEvent {
 export interface BackgroundEventEvent {
   message: string;
   level?: 'info' | 'warning' | 'error';
+  schedulerEvent?: unknown;
 }
 
 export interface StreamErrorEvent {
@@ -642,5 +646,26 @@ export interface NavigationActionStartEvent {
   action: string;
   url?: string;
   options?: Record<string, unknown>;
+}
+
+// Service routing event payloads
+
+export interface ServiceResponseEvent {
+  /** Correlates to ServiceRequest.requestId */
+  requestId: string;
+  /** Echo of the service path */
+  service: string;
+  /** Whether the service call succeeded */
+  success: boolean;
+  /** Response payload (on success) */
+  data?: unknown;
+  /** Error message (on failure) */
+  error?: string;
+}
+
+export interface StateUpdateEvent {
+  sessionId?: string;
+  tabId?: number;
+  [key: string]: unknown;
 }
 

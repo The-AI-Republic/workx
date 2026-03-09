@@ -20,6 +20,7 @@ export interface ConnectionAuth {
   scopes: string[];
   userId?: string;
   authenticated: boolean;
+  isLoopback?: boolean;
 }
 
 const _connections = new Map<string, ConnectionAuth>();

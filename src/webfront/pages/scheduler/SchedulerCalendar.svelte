@@ -4,8 +4,8 @@
   import { isWideMode } from '../../stores/layoutStore';
   import { AgentConfig } from '@/config/AgentConfig';
   import { _t } from '../../lib/i18n';
-  import { sendMessage, MessageType } from '../../lib/messaging';
-  import { tryGetMessageService } from '@/core/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
+  import type { UIChannelClient } from '@/core/messaging';
   import { jobsToCalendarEvents, instancesToCalendarEvents, type CalendarEvent } from '../../lib/calendarUtils';
   import CalendarWrapper from '../../components/scheduler/CalendarWrapper.svelte';
   import ScheduleJobModal from '../../components/scheduler/ScheduleJobModal.svelte';
@@ -14,6 +14,15 @@
   let currentTheme = $derived($uiTheme);
   let calendarEvents = $state<CalendarEvent[]>([]);
   let initialView = $derived($isWideMode ? 'timeGridWeek' : 'timeGridDay');
+  let eventUnsubscribers: Array<() => void> = [];
+  let channelClient: UIChannelClient | null = null;
+  let destroyed = false;
+
+  async function getClient(): Promise<UIChannelClient> {
+    if (channelClient) return channelClient;
+    channelClient = await getInitializedUIClient();
+    return channelClient;
+  }
 
   // Date range for current view
   let viewStart = $state(0);
@@ -39,22 +48,18 @@
     });
   });
 
-  function handleSchedulerEvent(message: { type: string }) {
-    if (message.type === MessageType.SCHEDULER_EVENT) {
-      fetchEvents();
-    }
-  }
 
   async function fetchEvents() {
     if (!viewStart || !viewEnd) return;
     try {
+      const client = await getClient();
       const theme = currentTheme === 'modern' ? 'modern' : 'terminal';
 
-      // Try new model first (SCHEDULE_GET_EVENTS_IN_RANGE returns CalendarInstances)
+      // Try new model first (schedule.getEventsInRange returns CalendarInstances)
       let newModelEvents: CalendarEvent[] = [];
       try {
-        const instanceResponse = await sendMessage<{ data?: { instances?: any[] }; instances?: any[] }>(
-          MessageType.SCHEDULE_GET_EVENTS_IN_RANGE,
+        const instanceResponse = await client.serviceRequest<any>(
+          'schedule.getEventsInRange',
           { startTime: viewStart, endTime: viewEnd }
         );
         const instanceData = instanceResponse?.data || instanceResponse;
@@ -66,9 +71,9 @@
         // New model not available yet — fall through to legacy
       }
 
-      // Legacy model (SCHEDULER_GET_ALL_JOBS_IN_RANGE returns SchedulerJobRecords)
-      const response = await sendMessage<{ data?: { jobs?: any[] }; jobs?: any[] }>(
-        MessageType.SCHEDULER_GET_ALL_JOBS_IN_RANGE,
+      // Legacy model (scheduler.getAllJobsInRange returns SchedulerJobRecords)
+      const response = await client.serviceRequest<any>(
+        'scheduler.getAllJobsInRange',
         { startTime: viewStart, endTime: viewEnd }
       );
       const data = response?.data || response;
@@ -94,26 +99,31 @@
     fetchEvents();
   }
 
-  function handleDateClick(detail: { date: Date; dateStr: string }) {
-    const date = detail.date;
+  function openScheduleModal(date: Date, time?: { hours: string; minutes: string }) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     prefillDate = `${year}-${month}-${day}`;
+    prefillTime = time
+      ? `${time.hours}:${time.minutes}`
+      : `${String(date.getHours()).padStart(2, '0')}:00`;
+    showPopover = false;
+    showScheduleModal = true;
+  }
 
+  function handleDateClick(detail: { date: Date; dateStr: string }) {
+    const date = detail.date;
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
+
     if (hours === '00' && minutes === '00') {
       // Month view click — default to next rounded hour
       const now = new Date();
       now.setHours(now.getHours() + 1, 0, 0, 0);
-      prefillTime = `${String(now.getHours()).padStart(2, '0')}:00`;
+      openScheduleModal(now);
     } else {
-      prefillTime = `${hours}:${minutes}`;
+      openScheduleModal(date, { hours, minutes });
     }
-
-    showPopover = false;
-    showScheduleModal = true;
   }
 
   // Instance popover state
@@ -137,16 +147,17 @@
     const instance = event.extendedProps?.instance;
 
     try {
+      const client = await getClient();
       if (instance) {
         // New model: edit instance with overrideTime
-        await sendMessage(MessageType.SCHEDULE_EDIT_INSTANCE, {
+        await client.serviceRequest('schedule.editInstance', {
           scheduleEventId: instance.scheduleEventId,
           instanceTime: instance.instanceTime,
           overrides: { overrideTime: newTime },
         });
       } else {
         // Legacy model: reschedule job
-        await sendMessage(MessageType.SCHEDULER_RESCHEDULE_JOB, { jobId: eventId, scheduledTime: newTime });
+        await client.serviceRequest('scheduler.reschedule', { jobId: eventId, scheduledTime: newTime });
       }
       await fetchEvents();
     } catch (error) {
@@ -162,7 +173,7 @@
     try {
       const payload: any = { input, scheduledTime };
       if (recurrence) payload.recurrence = recurrence;
-      await sendMessage(MessageType.SCHEDULER_SCHEDULE_JOB, payload);
+      await (await getClient()).serviceRequest('scheduler.schedule', payload);
       await fetchEvents();
     } catch (error) {
       console.error('[SchedulerCalendar] Failed to schedule job:', error);
@@ -172,7 +183,7 @@
   async function handlePopoverTrigger(detail: { jobId: string }) {
     showPopover = false;
     try {
-      await sendMessage(MessageType.SCHEDULER_TRIGGER_JOB, { jobId: detail.jobId });
+      await (await getClient()).serviceRequest('scheduler.trigger', { jobId: detail.jobId });
       await fetchEvents();
     } catch (error) {
       console.error('[SchedulerCalendar] Failed to trigger job:', error);
@@ -182,7 +193,7 @@
   async function handlePopoverCancel(detail: { jobId: string }) {
     showPopover = false;
     try {
-      await sendMessage(MessageType.SCHEDULER_CANCEL_JOB, { jobId: detail.jobId });
+      await (await getClient()).serviceRequest('scheduler.cancel', { jobId: detail.jobId });
       await fetchEvents();
     } catch (error) {
       console.error('[SchedulerCalendar] Failed to cancel job:', error);
@@ -192,7 +203,7 @@
   async function handleDeleteInstance(detail: { scheduleEventId: string; instanceTime: number }) {
     showPopover = false;
     try {
-      await sendMessage(MessageType.SCHEDULE_DELETE_INSTANCE, detail);
+      await (await getClient()).serviceRequest('schedule.deleteInstance', detail);
       await fetchEvents();
     } catch (error) {
       console.error('[SchedulerCalendar] Failed to delete instance:', error);
@@ -205,7 +216,7 @@
     const newInput = window.prompt('Edit instance prompt:', currentInput);
     if (newInput === null || newInput === currentInput) return; // cancelled or unchanged
     try {
-      await sendMessage(MessageType.SCHEDULE_EDIT_INSTANCE, {
+      await (await getClient()).serviceRequest('schedule.editInstance', {
         scheduleEventId: detail.scheduleEventId,
         instanceTime: detail.instanceTime,
         overrides: { overrideInput: newInput },
@@ -222,7 +233,7 @@
     const newInput = window.prompt('Edit series prompt:', currentInput);
     if (newInput === null || newInput === currentInput) return;
     try {
-      await sendMessage(MessageType.SCHEDULE_UPDATE_EVENT, {
+      await (await getClient()).serviceRequest('schedule.updateEvent', {
         eventId: detail.scheduleEventId,
         updates: { input: newInput },
       });
@@ -232,21 +243,35 @@
     }
   }
 
+  function handleNewClick() {
+    const now = new Date();
+    now.setHours(now.getHours() + 1, 0, 0, 0);
+    openScheduleModal(now);
+  }
+
   $effect(() => {
-    const localUnsubs: Array<() => void> = [];
-    if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
-      chrome.runtime.onMessage.addListener(handleSchedulerEvent);
-    }
-    const service = tryGetMessageService();
-    if (service) {
-      const unsub = service.on(MessageType.SCHEDULER_EVENT, () => fetchEvents());
-      if (unsub) localUnsubs.push(unsub);
-    }
-    return () => {
-      if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
-        chrome.runtime.onMessage.removeListener(handleSchedulerEvent);
+    destroyed = false;
+
+    (async () => {
+      try {
+        const client = await getClient();
+        if (destroyed) return;
+        eventUnsubscribers.push(
+          client.onEvent('BackgroundEvent', (data: any) => {
+            if (data?.message === 'scheduler_job_status') {
+              fetchEvents();
+            }
+          })
+        );
+      } catch {
+        // UIChannelClient not available
       }
-      localUnsubs.forEach(fn => fn());
+    })();
+
+    return () => {
+      destroyed = true;
+      eventUnsubscribers.forEach(fn => fn());
+      eventUnsubscribers = [];
     };
   });
 </script>
@@ -289,6 +314,7 @@
       ondateclick={handleDateClick}
       oneventclick={handleEventClick}
       oneventdrop={handleEventDrop}
+      onnewclick={handleNewClick}
     />
   </div>
 </div>

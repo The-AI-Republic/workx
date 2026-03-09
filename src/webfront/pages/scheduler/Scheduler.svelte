@@ -3,7 +3,10 @@
   import { isWideMode } from '../../stores/layoutStore';
   import { push } from 'svelte-spa-router';
   import { AgentConfig } from '@/config/AgentConfig';
-  import { _t } from '../../lib/i18n';
+  import { getInitializedUIClient } from '@/core/messaging';
+  import type { UIChannelClient } from '@/core/messaging';
+  import { schedulerStore } from '../../stores/schedulerStore';
+  import { t, _t } from '../../lib/i18n';
   import ActiveJobsModule from '../../components/scheduler/ActiveJobsModule.svelte';
   import NewJobModule from '../../components/scheduler/NewJobModule.svelte';
   import JobHistoryModule from '../../components/scheduler/JobHistoryModule.svelte';
@@ -11,6 +14,27 @@
   let currentTheme = $derived($uiTheme);
   let wide = $derived($isWideMode);
   let jobRefreshCounter: number = $state(0);
+  let selectedDate: string = $state('');
+  let selectedTime: string = $state('');
+  let errorMessage: string = $state('');
+  let editableInput: string = $state('');
+  let pendingInput: string = $state('');
+  let client: UIChannelClient | null = $state(null);
+
+  $effect(() => {
+    // Clear store after reading
+    schedulerStore.clear();
+
+    // Get UIChannelClient
+    getInitializedUIClient()
+      .then((c) => { client = c; })
+      .catch((error) => {
+        console.error('[Scheduler] UIChannelClient not initialized:', error);
+      });
+
+    // Initialize defaults
+    initializeDefaults();
+  });
 
   // Initialize theme from saved config (same as chat page)
   $effect(() => {
@@ -21,6 +45,116 @@
       }
     });
   });
+
+
+  function initializeDefaults() {
+    // Default to 1 hour from now
+    const now = new Date();
+    now.setHours(now.getHours() + 1);
+    now.setMinutes(0);
+    now.setSeconds(0);
+    now.setMilliseconds(0);
+
+    selectedDate = formatDateForInput(now);
+    selectedTime = formatTimeForInput(now);
+    errorMessage = '';
+    editableInput = pendingInput || '';
+  }
+
+  function formatDateForInput(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  function formatTimeForInput(date: Date): string {
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }
+
+  function getScheduledTimestamp(): number {
+    const [year, month, day] = selectedDate.split('-').map(Number);
+    const [hours, minutes] = selectedTime.split(':').map(Number);
+    const date = new Date(year, month - 1, day, hours, minutes);
+    return date.getTime();
+  }
+
+  function getScheduledDateDisplay(): string {
+    if (!selectedDate || !selectedTime) return '';
+    const timestamp = getScheduledTimestamp();
+    const date = new Date(timestamp);
+    return date.toLocaleString(undefined, {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  function getRelativeTime(): string {
+    if (!selectedDate || !selectedTime) return '';
+    const scheduledTime = getScheduledTimestamp();
+    const now = Date.now();
+    const diff = scheduledTime - now;
+
+    if (diff < 0) return 'in the past';
+
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) {
+      return `in ${days} day${days > 1 ? 's' : ''}`;
+    } else if (hours > 0) {
+      const remainingMinutes = minutes % 60;
+      return remainingMinutes > 0
+        ? `in ${hours}h ${remainingMinutes}m`
+        : `in ${hours} hour${hours > 1 ? 's' : ''}`;
+    } else if (minutes > 0) {
+      return `in ${minutes} minute${minutes > 1 ? 's' : ''}`;
+    } else {
+      return 'in less than a minute';
+    }
+  }
+
+  async function validateAndSchedule() {
+    const taskInput = isEditable ? editableInput.trim() : pendingInput;
+
+    // Validate input
+    if (!taskInput) {
+      errorMessage = t('Please enter a task description');
+      return;
+    }
+
+    const scheduledTime = getScheduledTimestamp();
+    const now = Date.now();
+
+    // Must be at least 1 minute in the future
+    if (scheduledTime <= now + 60000) {
+      errorMessage = t('Scheduled time must be at least 1 minute in the future');
+      return;
+    }
+
+    try {
+      if (!client) throw new Error('Message service not available');
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean }>('scheduler.schedule', {
+        input: taskInput,
+        scheduledTime,
+      });
+
+      if (response?.success) {
+        schedulerStore.setResult({ taskInput, scheduledTime });
+        push('/');
+      } else {
+        throw new Error(response?.error || 'Failed to schedule task');
+      }
+    } catch (err) {
+      errorMessage = err instanceof Error ? err.message : 'Failed to schedule task';
+    }
+  }
 </script>
 
 <div class="h-screen overflow-y-auto {currentTheme}

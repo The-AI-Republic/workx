@@ -3,7 +3,7 @@
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { IExtensionSettings, IPermissionSettings } from '@/config/types';
   import { _t } from '../lib/i18n';
-  import { notifyConfigUpdate } from '../lib/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
 
@@ -100,7 +100,7 @@
       await settingsConfig.updateConfig({ extension: currentExtension });
 
       // Notify backend of config update
-      notifyConfigUpdate();
+      getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(e => console.warn('[messaging] config update failed:', e));
 
       originalExtension = { ...currentExtension };
       isDirty = false;

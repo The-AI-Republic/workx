@@ -14,17 +14,16 @@
  */
 
 import { TauriChannel } from '../channels/TauriChannel';
-import { DesktopMessageRouter } from '../channels/DesktopMessageRouter';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
 import { RepublicAgent } from '@/core/RepublicAgent';
 import { UserNotifier } from '@/core/UserNotifier';
-import { MessageType } from '@/core/MessageRouter';
 import { ApprovalGate } from '@/core/approval/ApprovalGate';
 import { PolicyRulesEngine } from '@/core/approval/PolicyRulesEngine';
 import { getDefaultRules } from '@/core/approval/defaultRules';
 import { DomainSensitivityEnhancer } from '@/core/approval/enhancers/DomainSensitivityEnhancer';
 import { SensitivePathEnhancer } from '@/core/approval/enhancers/SensitivePathEnhancer';
 import { ApprovalConfigStorage } from '@/core/approval/ApprovalConfigStorage';
+import { getConfigStorage } from '@/core/storage/ConfigStorageProvider';
 import { AgentConfig } from '@/config/AgentConfig';
 import { configurePromptComposer, registerPromptExtension } from '@/core/PromptLoader';
 import type { RuntimeContext } from '@/prompts/PromptComposer';
@@ -54,7 +53,6 @@ let _instance: DesktopAgentBootstrap | null = null;
 export class DesktopAgentBootstrap {
   private agent: RepublicAgent | null = null;
   private channel: TauriChannel | null = null;
-  private messageRouter: DesktopMessageRouter | null = null;
   private skillRegistry: SkillRegistry | null = null;
   private scheduler: Scheduler | null = null;
   private schedulerAlarms: DesktopSchedulerAlarms | null = null;
@@ -76,16 +74,11 @@ export class DesktopAgentBootstrap {
     console.log('[DesktopAgentBootstrap] Initializing...');
 
     try {
-      // 1. Create the message router for RepublicAgent
-      this.messageRouter = new DesktopMessageRouter('background');
-
-      // 2. Get agent config
+      // 1. Get agent config
       const config = await AgentConfig.getInstance();
 
-      // 3. Create RepublicAgent
-      // RepublicAgent expects a MessageRouter with updateState method
-      // DesktopMessageRouter provides this compatibility
-      this.agent = new RepublicAgent(config, this.messageRouter as any, undefined, undefined, new UserNotifier());
+      // 2. Create RepublicAgent
+      this.agent = new RepublicAgent(config, undefined, undefined, new UserNotifier());
 
       // 4. Configure PromptComposer with platform context BEFORE agent.initialize()
       // This must happen first so RepublicAgent.configurePromptComposition() sees
@@ -158,9 +151,12 @@ export class DesktopAgentBootstrap {
         console.log('[DesktopAgentBootstrap] Auth state changed, reloading auth mode...');
         await this.restoreAuthFromKeychain(config);
 
-        // Also notify the UI that auth has changed so it re-runs health check
-        if (this.messageRouter) {
-          this.messageRouter.send(MessageType.AGENT_REINITIALIZED);
+        // Notify the UI that auth has changed so it re-runs health check
+        if (this.agent && this.channel) {
+          channelManager.dispatchEvent(
+            { type: 'BackgroundEvent', data: { message: 'Agent reinitialized after auth change', level: 'info' } },
+            this.channel.channelId
+          ).catch(() => {});
         }
       });
 
@@ -171,6 +167,9 @@ export class DesktopAgentBootstrap {
 
       // 9. Initialize scheduler
       await this.initializeScheduler();
+
+      // 10. Register service handlers on ChannelManager (message_routing_v2)
+      await this.registerServices(channelManager);
 
       this.initialized = true;
       console.log('[DesktopAgentBootstrap] Initialization complete');
@@ -195,13 +194,8 @@ export class DesktopAgentBootstrap {
     approvalGate.addEnhancer(new DomainSensitivityEnhancer());
     approvalGate.addEnhancer(new SensitivePathEnhancer());
 
-    // Desktop mode uses TauriConfigStorage for approval config
-    const { TauriConfigStorage } = await import('@/desktop/storage/TauriConfigStorage');
-    const tauriStorage = new TauriConfigStorage();
-    const configStorage = new ApprovalConfigStorage(() => ({
-      get: (keys: string[]) => tauriStorage.getMany(keys),
-      set: (items: Record<string, unknown>) => tauriStorage.setMany(items),
-    }));
+    // Desktop mode uses ConfigStorageProvider (TauriConfigStorage already initialized)
+    const configStorage = new ApprovalConfigStorage(() => getConfigStorage());
     approvalGate.setConfigStorage(configStorage);
 
     try {
@@ -218,6 +212,58 @@ export class DesktopAgentBootstrap {
     // Desktop mode: browser tools come from MCP — enable mcpTools
     const agentConfig = await AgentConfig.getInstance();
     agentConfig.updateToolsConfig({ mcpTools: true });
+  }
+
+  /**
+   * Register service handlers on ChannelManager (message_routing_v2).
+   * Gives desktop mode full service parity with the extension.
+   */
+  private async registerServices(channelManager: ReturnType<typeof getChannelManager>): Promise<void> {
+    const { registerAllServices } = await import('@/core/services');
+    const registry = channelManager.getServiceRegistry();
+
+    // Get MCPManager instance (already created during setupMCPToolRegistration)
+    let mcpDeps: import('@/core/services').MCPServiceDeps | undefined;
+    try {
+      const { MCPManager } = await import('@/core/mcp/MCPManager');
+      const mcpManager = await MCPManager.getInstance('desktop');
+      mcpDeps = { mcpManager: mcpManager as any };
+    } catch (error) {
+      console.warn('[DesktopAgentBootstrap] MCPManager not available for service registration:', error);
+    }
+
+    // Get A2AManager instance
+    let a2aDeps: import('@/core/services').A2AServiceDeps | undefined;
+    try {
+      const { A2AManager } = await import('@/core/a2a/A2AManager');
+      const a2aManager = await A2AManager.getInstance('desktop');
+      a2aDeps = { a2aManager: a2aManager as any };
+    } catch (error) {
+      console.warn('[DesktopAgentBootstrap] A2AManager not available for service registration:', error);
+    }
+
+    const count = registerAllServices(registry, {
+      mcp: mcpDeps,
+      a2a: a2aDeps,
+      skills: this.skillRegistry ? { skillRegistry: this.skillRegistry } : undefined,
+      scheduler: this.scheduler ? { scheduler: this.scheduler } : undefined,
+      session: {
+        getAgent: () => this.agent,
+      },
+      agent: {
+        getAgent: () => this.agent,
+        handleConfigUpdate: () => this.handleConfigUpdate(),
+        updateApprovalConfig: async (config: Record<string, unknown>) => {
+          const { TauriConfigStorage } = await import('@/desktop/storage/TauriConfigStorage');
+          const tauriStorage = new TauriConfigStorage();
+          const storedConfig = (await tauriStorage.get<Record<string, any>>('agent_config')) || {};
+          storedConfig.approval = { ...(storedConfig.approval || {}), ...config };
+          await tauriStorage.set('agent_config', storedConfig);
+        },
+      },
+    });
+
+    console.log(`[DesktopAgentBootstrap] Registered ${count} service handlers`);
   }
 
   /**
@@ -394,24 +440,11 @@ export class DesktopAgentBootstrap {
         await this.scheduler!.handleAlarm(alarmName);
       });
 
-      // Wire event emitter → dispatch via pi:message so TauriMessageService
-      // routes it to SCHEDULER_EVENT handlers in the UI (Main.svelte)
-      this.scheduler.setEventEmitter(async (event) => {
-        try {
-          const { emit } = await import('@tauri-apps/api/event');
-          await emit('pi:message', {
-            type: MessageType.SCHEDULER_EVENT,
-            payload: event,
-          });
-        } catch (error) {
-          console.error('[DesktopAgentBootstrap] Failed to emit scheduler event:', error);
-        }
-      });
+      // Wire event emitter → unified channel dispatch
+      this.scheduler.connectToChannel(() => getChannelManager(), this.channel!.channelId);
 
       // Wire job launcher — show window and submit directly to agent
       this.scheduler.setJobLauncher(async (executionId, sessionId, registryAgent) => {
-        this.runningSchedulerJobId = executionId;
-        this.runningJobStartTime = Date.now();
         console.log(`[DesktopAgentBootstrap] Scheduled job ${executionId} launched (session: ${sessionId})`);
         // Show the main window
         try {
@@ -427,10 +460,16 @@ export class DesktopAgentBootstrap {
         if (!execution) throw new Error(`Execution not found: ${executionId}`);
         const targetAgent = registryAgent ?? this.agent;
         if (!targetAgent) throw new Error('Agent not initialized');
+        // submitOperation is fire-and-forget: it queues the operation, may abort
+        // a previous task (emitting TurnAborted), and returns before the new task
+        // completes. We set runningSchedulerJobId AFTER to avoid false-triggering
+        // handleSchedulerEventCompletion on the previous task's TurnAborted event.
         await targetAgent.submitOperation(
           { type: 'UserInput', items: [{ type: 'text', text: execution.input }] },
           {}
         );
+        this.runningSchedulerJobId = executionId;
+        this.runningJobStartTime = Date.now();
       });
 
       // Wire notification handler via Tauri notification plugin
@@ -461,8 +500,14 @@ export class DesktopAgentBootstrap {
         const channelManager = getChannelManager();
         const registry = new AgentRegistry({
           maxConcurrent: 1,
-          agentFactory: async (config, router) => {
-            const agent = new RepublicAgent(config, router, undefined, undefined, new UserNotifier());
+          agentFactory: async (config) => {
+            const agent = new RepublicAgent(config, undefined, undefined, new UserNotifier());
+            // Copy auth manager from primary agent so registry agents use
+            // the same API key / backend routing as the user's session
+            const primaryAuth = this.agent?.getModelClientFactory().getAuthManager();
+            if (primaryAuth) {
+              agent.getModelClientFactory().setAuthManager(primaryAuth);
+            }
             await agent.initialize();
             return agent;
           },
@@ -471,7 +516,7 @@ export class DesktopAgentBootstrap {
             this.handleSchedulerEventCompletion(event.msg);
           },
         });
-        registry.initialize(agentConfig, this.messageRouter! as any);
+        registry.initialize(agentConfig);
         this.scheduler.setRegistry(registry);
         console.log('[DesktopAgentBootstrap] AgentRegistry initialized for session isolation');
       } catch (error) {
@@ -508,8 +553,11 @@ export class DesktopAgentBootstrap {
   }
 
   /**
-   * Intercept TaskComplete/TaskFailed events from the agent to complete/fail
+   * Intercept task lifecycle events from the agent to complete/fail
    * the currently running scheduled job at the bootstrap level.
+   *
+   * Handles: TaskComplete (normal), TurnAborted (abort/interrupt),
+   * Error (task errors), TaskFailed (protocol-defined, currently unused).
    */
   private handleSchedulerEventCompletion(msg: EventMsg): void {
     if (!this.runningSchedulerJobId || !this.scheduler) return;
@@ -519,7 +567,6 @@ export class DesktopAgentBootstrap {
     if (msg.type === 'TaskComplete') {
       this.runningSchedulerJobId = null;
       this.runningJobStartTime = 0;
-      // EventMsg.data shape for TaskComplete: { last_agent_message?: string, token_usage?: { total?: { input_tokens, output_tokens, total_tokens } } }
       const data = (msg as EventMsg & { data?: Record<string, any> }).data;
       const summary = data?.last_agent_message?.slice(0, 500) || 'Job completed';
       const tokenData = data?.token_usage?.total;
@@ -534,11 +581,14 @@ export class DesktopAgentBootstrap {
       }).catch((error) => {
         console.error(`[DesktopAgentBootstrap] Failed to complete scheduler job ${jobId}:`, error);
       });
-    } else if (msg.type === 'TaskFailed') {
+    } else if (msg.type === 'TaskFailed' || msg.type === 'TurnAborted' || msg.type === 'Error') {
+      // TaskFailed: protocol-defined failure (currently not emitted by TaskRunner)
+      // TurnAborted: task aborted (user interrupt, automatic_abort after MAX_TURNS)
+      // Error: task execution error (API error, model error, submission error)
       this.runningSchedulerJobId = null;
       this.runningJobStartTime = 0;
       const data = (msg as EventMsg & { data?: Record<string, any> }).data;
-      const error = data?.error || data?.reason || 'Job failed';
+      const error = data?.error || data?.reason || data?.message || 'Job failed';
       this.scheduler.failJob(jobId, error).catch((err) => {
         console.error(`[DesktopAgentBootstrap] Failed to fail scheduler job ${jobId}:`, err);
       });
@@ -617,7 +667,7 @@ export class DesktopAgentBootstrap {
 
     // 5. Create a new RepublicAgent with the resumed initial history
     const config = await AgentConfig.getInstance();
-    this.agent = new RepublicAgent(config, this.messageRouter as any, {
+    this.agent = new RepublicAgent(config, {
       mode: 'resumed' as const,
       conversationId,
       rolloutItems: initialHistory.payload.history,
@@ -849,12 +899,6 @@ export class DesktopAgentBootstrap {
     if (this.agent) {
       await this.agent.cleanup();
       this.agent = null;
-    }
-
-    // Cleanup message router
-    if (this.messageRouter) {
-      this.messageRouter.destroy();
-      this.messageRouter = null;
     }
 
     this.channel = null;

@@ -10,6 +10,7 @@
 import type { Op, EventMsg } from '@/core/protocol/types';
 import type { ChannelAdapter } from './ChannelAdapter';
 import type { SubmissionContext, ChannelInfo } from './types';
+import { ServiceRegistry } from './ServiceRegistry';
 
 /**
  * Agent handler function type
@@ -42,6 +43,7 @@ export type AgentHandler = (op: Op, context: SubmissionContext) => Promise<void>
 export class ChannelManager {
   private channels: Map<string, ChannelAdapter> = new Map();
   private agentHandler: AgentHandler | null = null;
+  private serviceRegistry = new ServiceRegistry();
 
   /**
    * Register a channel adapter
@@ -55,7 +57,10 @@ export class ChannelManager {
 
     // Set up submission routing
     channel.onSubmission(async (op, context) => {
-      if (this.agentHandler) {
+      console.log(`[ChannelManager] Received submission: op.type=${op.type} from channel ${channel.channelId}`);
+      if (op.type === 'ServiceRequest') {
+        await this.handleServiceRequest(op, context, channel);
+      } else if (this.agentHandler) {
         await this.agentHandler(op, context);
       } else {
         console.warn('No agent handler registered, dropping submission');
@@ -147,6 +152,57 @@ export class ChannelManager {
       capabilities: channel.getCapabilities(),
       connectedAt: Date.now(), // Could track actual connection time
     }));
+  }
+
+  /**
+   * Get the service registry for registering service handlers
+   */
+  getServiceRegistry(): ServiceRegistry {
+    return this.serviceRegistry;
+  }
+
+  /**
+   * Handle a ServiceRequest Op by routing to the ServiceRegistry
+   */
+  private async handleServiceRequest(
+    op: Op & { type: 'ServiceRequest' },
+    context: SubmissionContext,
+    channel: ChannelAdapter
+  ): Promise<void> {
+    console.log(`[ChannelManager] handleServiceRequest: ${op.service} (${op.requestId}) via channel ${channel.channelId}`);
+    try {
+      const result = await this.serviceRegistry.handle(op.service, op.params, context);
+      console.log(`[ChannelManager] ServiceRequest ${op.service} succeeded, sending response`);
+      await channel.sendEvent(
+        {
+          type: 'ServiceResponse',
+          data: {
+            requestId: op.requestId,
+            service: op.service,
+            success: true,
+            data: result,
+          },
+        },
+        context.userId
+      );
+    } catch (error) {
+      try {
+        await channel.sendEvent(
+          {
+            type: 'ServiceResponse',
+            data: {
+              requestId: op.requestId,
+              service: op.service,
+              success: false,
+              error: error instanceof Error ? error.message : String(error),
+            },
+          },
+          context.userId
+        );
+      } catch (sendError) {
+        console.error(`[ChannelManager] Failed to send error response for ${op.service}:`, sendError);
+      }
+    }
   }
 
   /**

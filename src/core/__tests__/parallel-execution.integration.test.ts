@@ -43,10 +43,6 @@ vi.mock('@/config/AgentConfig', () => ({
   },
 }));
 
-vi.mock('@/core/MessageRouter', () => ({
-  MessageRouter: vi.fn().mockImplementation(() => ({})),
-}));
-
 vi.mock('@/core/TabManager', () => ({
   TabManager: {
     getInstance: vi.fn(() => ({
@@ -65,7 +61,6 @@ global.chrome = {
 
 describe('Parallel Execution Integration', () => {
   let mockConfig: any;
-  let mockRouter: any;
 
   beforeEach(() => {
     AgentRegistry.resetInstance();
@@ -84,7 +79,6 @@ describe('Parallel Execution Integration', () => {
       getConfig: vi.fn().mockReturnValue({}),
       getModelConfig: vi.fn().mockReturnValue({ modelKey: 'test' }),
     };
-    mockRouter = {};
   });
 
   afterEach(() => {
@@ -94,7 +88,7 @@ describe('Parallel Execution Integration', () => {
   describe('US1: Scheduled Task Runs Without Interrupting Active Session', () => {
     it('allows creating multiple sessions for parallel execution', async () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       // Create primary session (user's active conversation)
       const primarySession = await registry.createSession({ type: 'primary' });
@@ -119,7 +113,7 @@ describe('Parallel Execution Integration', () => {
 
     it('maintains session isolation during parallel operations', async () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       // Create both sessions
       const primarySession = await registry.createSession({ type: 'primary' });
@@ -151,7 +145,7 @@ describe('Parallel Execution Integration', () => {
 
     it('allows scheduled session termination without affecting primary', async () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       // Create both sessions
       const primarySession = await registry.createSession({ type: 'primary' });
@@ -172,7 +166,7 @@ describe('Parallel Execution Integration', () => {
 
     it('reuses session letters after removal', async () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       // Create primary session (letter 'a')
       const primarySession = await registry.createSession({ type: 'primary' });
@@ -196,7 +190,7 @@ describe('Parallel Execution Integration', () => {
 
     it('tracks scheduled task sessions', async () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       // Create multiple scheduled task sessions
       const sessions = await Promise.all(
@@ -217,7 +211,7 @@ describe('Parallel Execution Integration', () => {
 
     it('emits proper events for session lifecycle', async () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       const events: any[] = [];
       registry.on((event) => events.push(event));
@@ -253,7 +247,7 @@ describe('Parallel Execution Integration', () => {
   describe('Concurrent Limits for Scheduled Tasks', () => {
     it('respects max concurrent sessions for scheduled tasks', async () => {
       const registry = AgentRegistry.getInstance({ maxConcurrent: 3 });
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       // Create primary session
       await registry.createSession({ type: 'primary' });
@@ -274,7 +268,7 @@ describe('Parallel Execution Integration', () => {
 
     it('allows new scheduled tasks after existing ones complete', async () => {
       const registry = AgentRegistry.getInstance({ maxConcurrent: 2 });
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       // Fill to capacity
       const session1 = await registry.createSession({

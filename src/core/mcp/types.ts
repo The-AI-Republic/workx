@@ -28,12 +28,12 @@ export type MCPTransportType = 'sse' | 'stdio';
 export type MCPPlatformScope = 'shared' | 'extension' | 'desktop' | 'server';
 
 // =============================================================================
-// Configuration Types (Persisted in chrome.storage.local)
+// Configuration Types (Persisted via ConfigStorageProvider)
 // =============================================================================
 
 /**
  * Configuration for a single MCP server connection.
- * Persisted in chrome.storage.local under 'mcpServers' key.
+ * Persisted via ConfigStorageProvider under 'mcpServers' key.
  */
 export interface IMCPServerConfig {
   /** UUID v4 identifier */

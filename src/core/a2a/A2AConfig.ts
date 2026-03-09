@@ -1,7 +1,7 @@
 /**
  * A2A Configuration Module
  *
- * Provides Zod validation schemas and chrome.storage.local helpers
+ * Provides Zod validation schemas and ConfigStorageProvider helpers
  * for A2A agent configurations.
  */
 
@@ -9,7 +9,6 @@ import { z } from 'zod';
 import type { IA2AAgentConfig, IA2AAgentConfigCreate, IA2AAgentConfigUpdate, A2AAuthType, A2APlatformScope } from './types';
 import {
   getConfigStorage,
-  isConfigStorageInitialized,
   type ConfigStorageProvider
 } from '../storage/ConfigStorageProvider';
 
@@ -64,7 +63,7 @@ export const A2AAuthTypeSchema = z.enum(['apiKey', 'bearer', 'none']);
 /**
  * Schema for platform scope.
  */
-export const A2APlatformScopeSchema = z.enum(['shared', 'extension', 'desktop']);
+export const A2APlatformScopeSchema = z.enum(['shared', 'extension', 'desktop', 'server']);
 
 /**
  * Full schema for a persisted A2A agent configuration.
@@ -114,7 +113,7 @@ export const A2AAgentConfigUpdateSchema = z.object({
 });
 
 /**
- * Schema for the array of agent configurations stored in chrome.storage.local.
+ * Schema for the array of agent configurations stored via ConfigStorageProvider.
  */
 export const A2AAgentsArraySchema = z.array(A2AAgentConfigSchema);
 
@@ -133,46 +132,10 @@ const STORAGE_KEY = 'a2aAgents';
 const DEBUG_LOGGING_KEY = 'a2aDebugLogging';
 
 /**
- * Get storage provider with fallback
+ * Get storage provider (throws if not initialized).
  */
-async function getStorage(): Promise<ConfigStorageProvider | null> {
-  if (isConfigStorageInitialized()) {
-    return getConfigStorage();
-  }
-  // Fallback to chrome.storage.local if provider not initialized
-  if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-    return {
-      async get<T>(key: string): Promise<T | null> {
-        const result = await chrome.storage.local.get(key);
-        return (result[key] as T) ?? null;
-      },
-      async set<T>(key: string, value: T): Promise<void> {
-        await chrome.storage.local.set({ [key]: value });
-      },
-      async remove(key: string): Promise<void> {
-        await chrome.storage.local.remove(key);
-      },
-      async getMany<T>(keys: string[]): Promise<Record<string, T>> {
-        return await chrome.storage.local.get(keys) as Record<string, T>;
-      },
-      async setMany<T>(items: Record<string, T>): Promise<void> {
-        await chrome.storage.local.set(items);
-      },
-      async removeMany(keys: string[]): Promise<void> {
-        await chrome.storage.local.remove(keys);
-      },
-      async getAll(): Promise<Record<string, unknown>> {
-        return await chrome.storage.local.get(null);
-      },
-      async clear(): Promise<void> {
-        await chrome.storage.local.clear();
-      },
-      async getBytesInUse(): Promise<number | null> {
-        return null;
-      }
-    };
-  }
-  return null;
+function getStorage(): ConfigStorageProvider {
+  return getConfigStorage();
 }
 
 /**
@@ -182,11 +145,7 @@ async function getStorage(): Promise<ConfigStorageProvider | null> {
  */
 export async function loadAgents(): Promise<IA2AAgentConfig[]> {
   try {
-    const storage = await getStorage();
-    if (!storage) {
-      console.warn('[A2AConfig] Storage not available');
-      return [];
-    }
+    const storage = getStorage();
 
     const rawAgents = await storage.get<IA2AAgentConfig[]>(STORAGE_KEY);
 
@@ -219,11 +178,7 @@ export async function loadAgents(): Promise<IA2AAgentConfig[]> {
  */
 export async function saveAgents(agents: IA2AAgentConfig[]): Promise<void> {
   try {
-    const storage = await getStorage();
-    if (!storage) {
-      throw new Error('Storage not available');
-    }
-
+    const storage = getStorage();
     // Validate all agents before saving
     const validatedAgents = A2AAgentsArraySchema.parse(agents);
     await storage.set(STORAGE_KEY, validatedAgents);
@@ -319,8 +274,7 @@ export function updateAgentConfig(
  */
 export async function isDebugLoggingEnabled(): Promise<boolean> {
   try {
-    const storage = await getStorage();
-    if (!storage) return false;
+    const storage = getStorage();
     const value = await storage.get<boolean>(DEBUG_LOGGING_KEY);
     return value === true;
   } catch {
@@ -332,10 +286,7 @@ export async function isDebugLoggingEnabled(): Promise<boolean> {
  * Set A2A debug logging enabled/disabled.
  */
 export async function setDebugLogging(enabled: boolean): Promise<void> {
-  const storage = await getStorage();
-  if (!storage) {
-    throw new Error('Storage not available');
-  }
+  const storage = getStorage();
   await storage.set(DEBUG_LOGGING_KEY, enabled);
 }
 

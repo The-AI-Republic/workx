@@ -5,13 +5,27 @@ import type { CompletionRequest } from '../ModelClient.js';
 
 // ---------------------------------------------------------------------------
 // Mock the storage layer so the constructor's loadFromStorage() is inert.
-// The mock returns a result whose property access yields undefined, which
-// the source code handles via its try/catch in loadFromStorage.
+// Returns a no-op ConfigStorageProvider that resolves every method to a
+// sensible empty value, so loadFromStorage / persistToStorage succeed but
+// do nothing.
 // ---------------------------------------------------------------------------
-vi.mock('../../storage/ConfigStorageProvider', () => ({
-  isConfigStorageInitialized: () => false,
-  getConfigStorage: () => null,
-}));
+vi.mock('../../storage/ConfigStorageProvider', () => {
+  const noopStorage = {
+    get: async () => null,
+    set: async () => {},
+    remove: async () => {},
+    getMany: async () => ({}),
+    setMany: async () => {},
+    removeMany: async () => {},
+    getAll: async () => ({}),
+    clear: async () => {},
+    getBytesInUse: async () => null,
+  };
+  return {
+    isConfigStorageInitialized: () => true,
+    getConfigStorage: () => noopStorage,
+  };
+});
 
 // ---------------------------------------------------------------------------
 // Helpers

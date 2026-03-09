@@ -7,7 +7,7 @@
   import { onMount } from 'svelte';
   import { push } from 'svelte-spa-router';
   import type { SkillMeta, InvocationMode } from '@/core/skills/types';
-  import { sendMessage, MessageType } from '../../lib/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
   import { refreshSkillCommands } from '../../commands/builtinCommands';
   import { t, _t } from '../../lib/i18n';
   import { uiTheme } from '../../stores/themeStore';
@@ -41,7 +41,7 @@
   async function loadSkills() {
     isLoading = true;
     try {
-      const response = await sendMessage<SkillMeta[]>(MessageType.SKILLS_LIST);
+      const response = await (await getInitializedUIClient()).serviceRequest<SkillMeta[]>('skills.list');
       skills = Array.isArray(response) ? response : [];
     } catch (error) {
       console.error('[Skills] Failed to load skills:', error);
@@ -89,7 +89,7 @@
     isSaving = true;
     try {
       const now = new Date().toISOString();
-      await sendMessage(MessageType.SKILLS_SAVE, {
+      await (await getInitializedUIClient()).serviceRequest('skills.save', {
         name: formName.trim(),
         description: formDescription.trim(),
         body: formBody,
@@ -115,7 +115,7 @@
       return;
     }
     try {
-      await sendMessage(MessageType.SKILLS_DELETE, { name });
+      await (await getInitializedUIClient()).serviceRequest('skills.delete', { name });
       await loadSkills();
       await refreshSkillCommands();
       showNotification('Skill deleted', 'success');
@@ -127,7 +127,7 @@
   async function handleModeChange(name: string, modeValue: string) {
     const mode = modeValue as InvocationMode;
     try {
-      await sendMessage(MessageType.SKILLS_UPDATE_MODE, { name, mode });
+      await (await getInitializedUIClient()).serviceRequest('skills.updateMode', { name, mode });
       await loadSkills();
       await refreshSkillCommands();
     } catch (error) {
@@ -137,7 +137,7 @@
 
   async function handleTrust(name: string) {
     try {
-      await sendMessage(MessageType.SKILLS_TRUST, { name });
+      await (await getInitializedUIClient()).serviceRequest('skills.trust', { name });
       await loadSkills();
       await refreshSkillCommands();
       showNotification('Skill trusted', 'success');
@@ -148,8 +148,8 @@
 
   async function handleExport(name: string) {
     try {
-      const response = await sendMessage<{ success: boolean; content: string }>(
-        MessageType.SKILLS_EXPORT,
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; content: string }>(
+        'skills.export',
         { name }
       );
       if (response?.content) {
@@ -175,7 +175,7 @@
 
     isImporting = true;
     try {
-      await sendMessage(MessageType.SKILLS_IMPORT, { url: importUrl.trim() });
+      await (await getInitializedUIClient()).serviceRequest('skills.import', { url: importUrl.trim() });
       closeImportForm();
       await loadSkills();
       await refreshSkillCommands();

@@ -2,8 +2,8 @@
   import Fuse from 'fuse.js';
   import { uiTheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
-  import { sendMessage, MessageType } from '../../lib/messaging';
-  import { tryGetMessageService } from '@/core/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
+  import type { UIChannelClient } from '@/core/messaging';
   import SchedulerJobItem from './SchedulerJobItem.svelte';
   import JobDetailModal from './JobDetailModal.svelte';
   import StatusFilter from './StatusFilter.svelte';
@@ -97,22 +97,27 @@
     selectedStatuses = statuses;
   }
 
-  function handleSchedulerEvent(message: { type: string }) {
-    if (message.type === MessageType.SCHEDULER_EVENT) {
-      clearTimeout(eventDebounceTimer);
-      eventDebounceTimer = setTimeout(() => {
-        offset = 0;
-        archivedJobs = [];
-        fetchArchivedJobs();
-      }, 150);
-    }
+  function debouncedRefresh() {
+    clearTimeout(eventDebounceTimer);
+    eventDebounceTimer = setTimeout(() => {
+      offset = 0;
+      archivedJobs = [];
+      fetchArchivedJobs();
+    }, 150);
+  }
+
+  async function getClient(): Promise<UIChannelClient> {
+    if (channelClient) return channelClient;
+    channelClient = await getInitializedUIClient();
+    return channelClient;
   }
 
   async function fetchArchivedJobs() {
     isLoading = true;
     try {
-      const response = await sendMessage<{ data?: { jobs?: ArchivedJobSummary[]; hasMore?: boolean }; jobs?: ArchivedJobSummary[]; hasMore?: boolean }>(
-        MessageType.SCHEDULER_GET_ARCHIVED_JOBS,
+      const client = await getClient();
+      const response = await client.serviceRequest<any>(
+        'scheduler.getArchivedJobs',
         {
           limit,
           offset,
@@ -148,34 +153,37 @@
     });
   }
 
-  $effect(() => {
-    if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
-      chrome.runtime.onMessage.addListener(handleSchedulerEvent);
-    }
+  let channelClient: UIChannelClient | null = null;
+  let eventUnsubscribers: Array<() => void> = [];
+  let destroyed = false;
 
-    const localUnsubs: Array<() => void> = [];
-    const service = tryGetMessageService();
-    if (service) {
-      const unsub = service.on(MessageType.SCHEDULER_EVENT, () => {
-        clearTimeout(eventDebounceTimer);
-        eventDebounceTimer = setTimeout(() => {
-          offset = 0;
-          archivedJobs = [];
-          fetchArchivedJobs();
-        }, 150);
-      });
-      if (unsub) localUnsubs.push(unsub);
-    }
+  $effect(() => {
+    destroyed = false;
+
+    (async () => {
+      try {
+        await getClient();
+        if (destroyed) return;
+        eventUnsubscribers.push(
+          channelClient.onEvent('BackgroundEvent', (data: any) => {
+            if (data?.message === 'scheduler_job_status') {
+              debouncedRefresh();
+            }
+          })
+        );
+      } catch {
+        // UIChannelClient not available
+      }
+    })();
 
     fetchArchivedJobs();
 
     return () => {
+      destroyed = true;
       clearTimeout(searchDebounceTimer);
       clearTimeout(eventDebounceTimer);
-      if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
-        chrome.runtime.onMessage.removeListener(handleSchedulerEvent);
-      }
-      localUnsubs.forEach(fn => fn());
+      eventUnsubscribers.forEach(fn => fn());
+      eventUnsubscribers = [];
     };
   });
 

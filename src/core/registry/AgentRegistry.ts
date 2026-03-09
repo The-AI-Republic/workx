@@ -15,7 +15,7 @@ import { getDefaultRules } from '../approval/defaultRules';
 import { DomainSensitivityEnhancer } from '../approval/enhancers/DomainSensitivityEnhancer';
 import { SemanticElementEnhancer } from '../approval/enhancers/SemanticElementEnhancer';
 import { ApprovalConfigStorage } from '../approval/ApprovalConfigStorage';
-import { MessageRouter } from '../MessageRouter';
+import { getConfigStorage } from '../storage/ConfigStorageProvider';
 import { TabManager } from '../TabManager';
 import type {
   SessionConfig,
@@ -50,7 +50,6 @@ export class AgentRegistry {
   private _eventListeners: Set<SessionEventListener> = new Set();
   private _usedLetters: Set<string> = new Set();
   private _config: AgentConfig | null = null;
-  private _router: MessageRouter | null = null;
   private _storage: SessionStorage | null = null;
   private _registryConfig: RegistryConfig;
 
@@ -103,11 +102,9 @@ export class AgentRegistry {
   /**
    * Initialize the registry with required dependencies
    * @param config AgentConfig instance
-   * @param router MessageRouter instance
    */
-  initialize(config: AgentConfig, router: MessageRouter): void {
+  initialize(config: AgentConfig): void {
     this._config = config;
-    this._router = router;
   }
 
   // ==========================================================================
@@ -134,7 +131,7 @@ export class AgentRegistry {
     }
 
     // Ensure dependencies are initialized
-    if (!this._config || !this._router) {
+    if (!this._config) {
       throw new Error('AgentRegistry not initialized. Call initialize() first.');
     }
 
@@ -152,27 +149,21 @@ export class AgentRegistry {
     try {
       if (this._registryConfig.agentFactory) {
         // Server/Desktop path: use provided factory for agent creation
-        agent = await this._registryConfig.agentFactory(this._config, this._router);
+        agent = await this._registryConfig.agentFactory(this._config);
 
         // Set event dispatcher via factory if provided
         if (this._registryConfig.eventDispatcherFactory) {
           agent.setEventDispatcher(this._registryConfig.eventDispatcherFactory(session.sessionId));
         }
       } else {
-        // Extension path: hardcoded chrome extension logic (existing behavior)
-        agent = new RepublicAgent(this._config, this._router, undefined, undefined, new UserNotifier());
+        // Extension path: create agent and wire events through ChannelManager
+        agent = new RepublicAgent(this._config, undefined, undefined, new UserNotifier());
 
-        // Set up event dispatcher for chrome extension mode
-        // Events are sent via chrome.runtime to the UI
+        // Route events through ChannelManager (unified across all platforms)
         agent.setEventDispatcher((event) => {
-          if (typeof chrome !== 'undefined' && chrome.runtime) {
-            chrome.runtime.sendMessage({
-              type: 'EVENT',
-              payload: event,
-            }).catch(() => {
-              // Ignore errors if no listeners
-            });
-          }
+          import('@/core/channels/ChannelManager').then(({ getChannelManager }) => {
+            getChannelManager().broadcastEvent(event.msg).catch(() => {});
+          }).catch(() => {});
         });
 
         await agent.initialize();
@@ -184,7 +175,7 @@ export class AgentRegistry {
         const approvalGate = new ApprovalGate(approvalManager, policyEngine);
         approvalGate.addEnhancer(new DomainSensitivityEnhancer());
         approvalGate.addEnhancer(new SemanticElementEnhancer());
-        const configStorage = new ApprovalConfigStorage(() => chrome.storage.local);
+        const configStorage = new ApprovalConfigStorage(() => getConfigStorage());
         approvalGate.setConfigStorage(configStorage);
         try {
           const storedConfig = await configStorage.loadConfig();
@@ -413,15 +404,13 @@ export class AgentRegistry {
       }
     }
 
-    // Broadcast to extension (for UI updates)
-    if (typeof chrome !== 'undefined' && chrome.runtime) {
-      chrome.runtime.sendMessage({
-        type: 'SESSION_EVENT',
-        payload: event,
-      }).catch(() => {
-        // Ignore errors if no listeners
-      });
-    }
+    // Broadcast to UI via channel
+    import('@/core/channels/ChannelManager').then(({ getChannelManager }) => {
+      getChannelManager().broadcastEvent({
+        type: 'BackgroundEvent' as any,
+        data: { message: 'session_event', level: 'info', sessionEvent: event },
+      } as any).catch(() => {});
+    }).catch(() => {});
   }
 
   // ==========================================================================
@@ -515,7 +504,7 @@ export class AgentRegistry {
     }
 
     // Ensure dependencies are initialized
-    if (!this._config || !this._router) {
+    if (!this._config) {
       console.warn(`[AgentRegistry] Cannot resume session: registry not initialized`);
       return null;
     }

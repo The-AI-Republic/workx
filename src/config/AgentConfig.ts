@@ -15,6 +15,7 @@ import type {
 } from './types';
 import { ConfigValidationError } from './types';
 import { ConfigStorage } from '../storage/ConfigStorage';
+import { getConfigStorage } from '../core/storage/ConfigStorageProvider';
 import {
   getDefaultAgentConfig,
   buildRuntimeConfig,
@@ -30,6 +31,7 @@ import {
 // Credential store constants
 const CREDENTIAL_SERVICE = 'applepi';
 const CREDENTIAL_ACCOUNT_PREFIX = 'provider-apikey-';
+export const CREDENTIAL_SECURED_MARKER = '[SECURED]';
 
 export class AgentConfig implements IConfigService {
   private static instance: AgentConfig | null = null;
@@ -70,7 +72,7 @@ export class AgentConfig implements IConfigService {
     }
 
     // One-time migration: move legacy `approval_config` into `agent_config.approval`
-    // Only runs in extension mode — uses chrome.storage.local directly
+    // Only runs in extension mode — uses ConfigStorageProvider
     if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'extension') {
       await this.migrateApprovalConfig();
     }
@@ -180,7 +182,8 @@ export class AgentConfig implements IConfigService {
    */
   private async migrateApprovalConfig(): Promise<void> {
     try {
-      const result = await chrome.storage.local.get(['approval_config', 'agent_config']);
+      const storage = getConfigStorage();
+      const result = await storage.getMany<any>(['approval_config', 'agent_config']);
       const legacyApproval = result['approval_config'];
       if (!legacyApproval) return; // Nothing to migrate
 
@@ -188,8 +191,8 @@ export class AgentConfig implements IConfigService {
       // Merge: legacy values fill in, but don't overwrite if already migrated
       agentConfig.approval = { ...legacyApproval, ...(agentConfig.approval || {}) };
 
-      await chrome.storage.local.set({ agent_config: agentConfig });
-      await chrome.storage.local.remove('approval_config');
+      await storage.set('agent_config', agentConfig);
+      await storage.remove('approval_config');
       console.log('[AgentConfig] Migrated legacy approval_config into agent_config.approval');
     } catch (error) {
       console.warn('[AgentConfig] approval_config migration failed (non-fatal):', error);
@@ -427,10 +430,12 @@ export class AgentConfig implements IConfigService {
     const credentials = this.getCredentials();
     if (credentials) {
       await credentials.set(CREDENTIAL_SERVICE, `${CREDENTIAL_ACCOUNT_PREFIX}${providerId}`, apiKey);
+    } else {
+      console.warn(`[AgentConfig] Credential store not available — cannot persist API key for ${providerId}`);
     }
 
     // Mark that this provider has an API key configured (without storing the actual key)
-    provider.apiKey = '[SECURED]';
+    provider.apiKey = CREDENTIAL_SECURED_MARKER;
     this.currentConfig.providers[providerId] = provider;
 
     await this.storage.set(extractStoredConfig(this.currentConfig));
@@ -459,6 +464,8 @@ export class AgentConfig implements IConfigService {
       if (apiKey) {
         return apiKey;
       }
+    } else {
+      console.warn(`[AgentConfig] Credential store not available — cannot retrieve API key for ${providerId}`);
     }
 
     return null;
@@ -484,6 +491,8 @@ export class AgentConfig implements IConfigService {
     const credentials = this.getCredentials();
     if (credentials) {
       await credentials.delete(CREDENTIAL_SERVICE, `${CREDENTIAL_ACCOUNT_PREFIX}${providerId}`);
+    } else {
+      console.warn(`[AgentConfig] Credential store not available — cannot delete API key for ${providerId}`);
     }
 
     // Clear the marker

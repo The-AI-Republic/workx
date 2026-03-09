@@ -74,7 +74,6 @@ describe('Session Creation Performance (SC-006)', () => {
     getConfig: vi.fn().mockReturnValue({}),
     getModelConfig: vi.fn().mockReturnValue({ modelKey: 'test' }),
   };
-  const mockRouter = {};
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -82,7 +81,7 @@ describe('Session Creation Performance (SC-006)', () => {
     global.chrome = mockChrome as any;
 
     registry = AgentRegistry.getInstance({ maxConcurrent: 10 });
-    registry.initialize(mockConfig as any, mockRouter as any);
+    registry.initialize(mockConfig as any);
   });
 
   afterEach(() => {

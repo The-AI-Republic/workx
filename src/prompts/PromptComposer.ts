@@ -10,6 +10,7 @@
 // Build-time fragment imports
 import browserxIntro from './fragments/browserx_intro.md?raw';
 import piIntro from './fragments/applepi_intro.md?raw';
+import piServerIntro from './fragments/applepi_server_intro.md?raw';
 import safety from './fragments/safety.md?raw';
 import browserxTools from './fragments/browserx_tools.md?raw';
 import piTools from './fragments/pi_tools.md?raw';
@@ -18,7 +19,7 @@ import approvalPolicies from './fragments/approval_policies.md?raw';
 import compactSummarization from './fragments/compact_summarization.md?raw';
 import compactSummaryPrefix from './fragments/compact_summary_prefix.md?raw';
 
-export type AgentType = 'browserx' | 'applepi';
+export type AgentType = 'browserx' | 'applepi' | 'applepi-server';
 
 export interface RuntimeContext {
   /** Operating system: 'linux' | 'macos' | 'windows' */
@@ -56,7 +57,12 @@ export class PromptComposer {
     const sections: string[] = [];
 
     // 1. Agent identity & mission
-    sections.push(agentType === 'browserx' ? browserxIntro : piIntro);
+    const intro = agentType === 'browserx'
+      ? browserxIntro
+      : agentType === 'applepi-server'
+        ? piServerIntro
+        : piIntro;
+    sections.push(intro);
 
     // 2. Runtime metadata
     sections.push(this.buildRuntimeMetadata(agentType, context));
@@ -105,7 +111,7 @@ export class PromptComposer {
       lines.push(`- Current date/time: ${context.currentDateTime}`);
     }
 
-    if (agentType === 'applepi') {
+    if (agentType === 'applepi' || agentType === 'applepi-server') {
       // Desktop agent gets OS/platform details
       if (context.os) {
         const osLabel: Record<string, string> = {

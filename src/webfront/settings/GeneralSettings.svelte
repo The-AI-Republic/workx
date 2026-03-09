@@ -7,7 +7,7 @@
   import Switch from '../components/common/Switch.svelte';
   import { t, _t, getCurrentLocale, setLocale } from '../lib/i18n';
   import supportedLanguages from '../../../_locales/supported_languages.json';
-  import { sendMessage, notifyConfigUpdate, MessageType } from '../lib/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
   import { platform } from '../stores/platformStore';
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
@@ -103,7 +103,7 @@
       await settingsConfig.updateConfig({ preferences: currentPreferences });
 
       // Notify backend of config update
-      notifyConfigUpdate();
+      getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(e => console.warn('[messaging] config update failed:', e));
 
       originalPreferences = { ...currentPreferences };
       saveMessage = t('Settings saved successfully');
@@ -155,7 +155,7 @@
     currentPreferences.maxConcurrentSessions = value;
 
     // Notify backend to update AgentRegistry limit
-    sendMessage(MessageType.SET_MAX_CONCURRENT_SESSIONS, { maxConcurrent: value }).catch(() => {
+    getInitializedUIClient().then(c => c.serviceRequest('session.setMaxConcurrent', { maxConcurrent: value })).catch(() => {
       console.warn('[GeneralSettings] Failed to update max concurrent sessions');
     });
 

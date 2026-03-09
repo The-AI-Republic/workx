@@ -11,6 +11,7 @@ import { GroqClient } from './client/GroqClient';
 import { FireworksChatCompletionClient } from './client/FireworksChatCompletionClient';
 import { TogetherChatCompletionClient } from './client/TogetherChatCompletionClient';
 import { AgentConfig } from '../../config/AgentConfig';
+import { getConfigStorage } from '../storage/ConfigStorageProvider';
 import type { IAuthManager } from './types/Auth';
 
 /**
@@ -36,7 +37,7 @@ export interface ModelClientConfig {
 }
 
 /**
- * Storage keys for Chrome storage
+ * Storage keys for default provider persistence
  */
 const STORAGE_KEYS = {
   DEFAULT_PROVIDER: 'default_provider',
@@ -366,7 +367,7 @@ export class ModelClientFactory {
    */
   async setDefaultProvider(provider: ModelProvider): Promise<void> {
     try {
-      await chrome.storage.sync.set({ [STORAGE_KEYS.DEFAULT_PROVIDER]: provider });
+      await getConfigStorage().set(STORAGE_KEYS.DEFAULT_PROVIDER, provider);
     } catch (error) {
       console.warn(`[ModelClientFactory] Failed to set default provider:`, error);
     }
@@ -378,8 +379,8 @@ export class ModelClientFactory {
    */
   async getDefaultProvider(): Promise<ModelProvider> {
     try {
-      const result = await chrome.storage.sync.get([STORAGE_KEYS.DEFAULT_PROVIDER]);
-      return (result[STORAGE_KEYS.DEFAULT_PROVIDER] as ModelProvider) || 'openai';
+      const stored = await getConfigStorage().get<ModelProvider>(STORAGE_KEYS.DEFAULT_PROVIDER);
+      return stored || 'openai';
     } catch (error) {
       console.warn(`[ModelClientFactory] Failed to get default provider:`, error);
       return 'openai';
@@ -578,7 +579,7 @@ export class ModelClientFactory {
     const modelFamily = {
       family: selectedModel,
       base_instructions: providerName === 'google-ai-studio'
-        ? 'You are Gemini 2.5 Pro integrated with the ApplePi agent. Provide accurate answers and suggest tool usage when relevant.'
+        ? 'You are Gemini 2.5 Pro integrated with the Apple Pi agent. Provide accurate answers and suggest tool usage when relevant.'
         : 'You are a helpful coding assistant.',
       supports_reasoning: supportsReasoning,
       supports_reasoning_summaries: supportsReasoningSummaries,

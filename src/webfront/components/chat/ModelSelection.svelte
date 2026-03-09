@@ -11,7 +11,7 @@
   import Tooltip from '../common/Tooltip.svelte';
   import PopupCard from '../common/PopupCard.svelte';
   import { t, _t } from '../../lib/i18n';
-  import { notifyConfigUpdate } from '../../lib/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
 
   let { onModelChanged }: {
     onModelChanged?: (value: { modelId: string; modelName: string }) => void;
@@ -199,7 +199,7 @@
       isOpen = false;
 
       // Notify backend of config update
-      notifyConfigUpdate();
+      getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(e => console.warn('[messaging] config update failed:', e));
 
       onModelChanged?.({ modelId, modelName });
     } catch (error) {

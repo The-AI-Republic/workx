@@ -146,11 +146,16 @@ export class ServerChannel implements ChannelAdapter {
     return false; // WebSocket clients typically don't render media directly
   }
 
+  supportsServices(): boolean {
+    return true;
+  }
+
   getCapabilities(): ChannelCapabilities {
     return {
       streaming: this.supportsStreaming(),
       approvals: this.supportsApprovals(),
       media: this.supportsMedia(),
+      services: this.supportsServices(),
     };
   }
 
@@ -196,6 +201,14 @@ export class ServerChannel implements ChannelAdapter {
     // Health events
     if (event.type === 'Error' || event.type === 'StreamError') {
       return 'health';
+    }
+
+    // Service routing events (message_routing_v2)
+    if (event.type === 'ServiceResponse') {
+      return 'service.response';
+    }
+    if (event.type === 'StateUpdate') {
+      return 'state.update';
     }
 
     // Default: use the raw type as event name

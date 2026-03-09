@@ -44,6 +44,10 @@ ENV APPLEPI_SERVER_BIND=auto
 ENV APPLEPI_DATA_DIR=/data
 ENV NODE_ENV=production
 
+# Credential encryption requires VITE_VAULT_SECRET at runtime:
+#   docker run -e VITE_VAULT_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64'))") ...
+# Without it, API key storage is disabled (server starts but keys won't persist).
+
 # Create data directory
 RUN mkdir -p /data/sessions/transcripts /data/sessions/backups
 

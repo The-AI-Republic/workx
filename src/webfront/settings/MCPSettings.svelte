@@ -13,7 +13,7 @@
     IMCPTool,
   } from '@/core/mcp/types';
   import { isDebugLoggingEnabled, setDebugLogging } from '@/core/mcp/MCPConfig';
-  import { sendMessage, MessageType } from '../lib/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
   import { _t } from '../lib/i18n';
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
@@ -126,8 +126,8 @@
 
   async function loadServers() {
     try {
-      const response = await sendMessage<{ success: boolean; data?: IMCPServerConfig[] }>(
-        MessageType.MCP_GET_SERVERS
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; data?: IMCPServerConfig[] }>(
+        'mcp.getServers'
       );
       if (response?.success) {
         servers = response.data || [];
@@ -139,8 +139,8 @@
 
   async function loadConnections() {
     try {
-      const response = await sendMessage<{ success: boolean; data?: IMCPConnection[] }>(
-        MessageType.MCP_GET_CONNECTIONS
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; data?: IMCPConnection[] }>(
+        'mcp.getConnections'
       );
       if (response?.success) {
         connections = response.data || [];
@@ -152,8 +152,8 @@
 
   async function loadTools() {
     try {
-      const response = await sendMessage<{ success: boolean; data?: IMCPTool[] }>(
-        MessageType.MCP_GET_ALL_TOOLS
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; data?: IMCPTool[] }>(
+        'mcp.getAllTools'
       );
       if (response?.success) {
         allTools = response.data || [];
@@ -258,8 +258,8 @@
           updatePayload.apiKey = formApiKey.trim();
         }
 
-        const response = await sendMessage<{ success: boolean; error?: string }>(
-          MessageType.MCP_UPDATE_SERVER,
+        const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; error?: string }>(
+          'mcp.updateServer',
           {
             id: editingServerId,
             update: updatePayload,
@@ -281,8 +281,8 @@
           createPayload.apiKey = formApiKey.trim();
         }
 
-        const response = await sendMessage<{ success: boolean; error?: string }>(
-          MessageType.MCP_ADD_SERVER,
+        const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; error?: string }>(
+          'mcp.addServer',
           createPayload
         );
 
@@ -314,8 +314,8 @@
     }
 
     try {
-      const response = await sendMessage<{ success: boolean; error?: string }>(
-        MessageType.MCP_REMOVE_SERVER,
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; error?: string }>(
+        'mcp.removeServer',
         { id: serverId }
       );
 
@@ -342,8 +342,8 @@
 
   async function handleConnect(serverId: string) {
     try {
-      const response = await sendMessage<{ success: boolean; error?: string }>(
-        MessageType.MCP_CONNECT,
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; error?: string }>(
+        'mcp.connect',
         { id: serverId }
       );
 
@@ -369,8 +369,8 @@
 
   async function handleDisconnect(serverId: string) {
     try {
-      const response = await sendMessage<{ success: boolean; error?: string }>(
-        MessageType.MCP_DISCONNECT,
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; error?: string }>(
+        'mcp.disconnect',
         { id: serverId }
       );
 
