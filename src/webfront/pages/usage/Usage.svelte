@@ -6,24 +6,12 @@
   import UsageChart from '../../components/usage/UsageChart.svelte';
 
   let currentTheme = $derived($uiTheme);
-  let loading = $state(false);
-  let error: string | null = $state(null);
-  let sessionSummaries: import('@/storage/types').SessionUsageSummary[] = $state([]);
-  let dailySummaries: import('@/storage/types').DailyUsageSummary[] = $state([]);
-  let modelSummaries: Record<string, { total_tokens: number; taskCount: number }> = $state({});
-  let groupByModel = $state(false);
-
-  $effect(() => {
-    const unsubStore = usageStore.subscribe((state) => {
-      loading = state.loading;
-      error = state.error;
-      sessionSummaries = state.sessionSummaries;
-      dailySummaries = state.dailySummaries;
-      modelSummaries = state.modelSummaries;
-      groupByModel = state.groupByModel;
-    });
-    return unsubStore;
-  });
+  let loading = $derived($usageStore.loading);
+  let error = $derived($usageStore.error);
+  let sessionSummaries = $derived($usageStore.sessionSummaries);
+  let dailySummaries = $derived($usageStore.dailySummaries);
+  let modelSummaries = $derived($usageStore.modelSummaries);
+  let groupByModel = $derived($usageStore.groupByModel);
 
   $effect(() => {
     usageStore.loadAll();
