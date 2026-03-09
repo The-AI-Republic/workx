@@ -19,6 +19,7 @@ import type {
 } from '@/types/ui';
 import { STYLE_PRESETS } from '@/types/ui';
 import { t } from '../../lib/i18n';
+import { agentDisplayName } from '../../stores/platformStore';
 import { getInitializedUIClient } from '@/core/messaging';
 
 /**
@@ -234,7 +235,7 @@ export class EventProcessor {
         id: event.id,
         category: 'message',
         timestamp: new Date(),
-        title: t('browserx'),
+        title: agentDisplayName,
         content: content,
         style: STYLE_PRESETS.agent_message,
         streaming: false,

@@ -477,7 +477,7 @@ export class ServerAgentBootstrap {
       homeDir: os.homedir(),
     };
 
-    configurePromptComposer('applepi', staticContext);
+    configurePromptComposer('applepi-server', staticContext);
     console.log('[ServerAgentBootstrap] PromptComposer configured for server mode');
   }
 

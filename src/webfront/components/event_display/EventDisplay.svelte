@@ -10,6 +10,7 @@
   import { formatTime } from '@/utils/formatters';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
+  import { agentDisplayName } from '../../stores/platformStore';
   import Tooltip from '../common/Tooltip.svelte';
   import MessageEvent from './MessageEvent.svelte';
   import ErrorEvent from './ErrorEvent.svelte';
@@ -164,7 +165,7 @@
           : 'font-medium text-chat-text dark:text-chat-text-dark')
         : (event.title === 'user'
           ? 'font-semibold text-cyan-400'
-          : 'font-semibold text-violet-400')}">{event.title === 'user' ? t('You') : t('BrowserX')}:</span>
+          : 'font-semibold text-violet-400')}">{event.title === 'user' ? t('You') : agentDisplayName}:</span>
       {#if event.title !== 'user' && event.modelKey}
         <span class="text-sm italic
           {currentTheme === 'modern'
