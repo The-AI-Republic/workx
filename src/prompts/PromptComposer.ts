@@ -71,7 +71,7 @@ export class PromptComposer {
     sections.push(safety);
 
     // 4. Tool guidance (static listing for MVP)
-    sections.push(agentType === 'browserx' ? browserxTools : piTools); // server uses piTools too
+    sections.push(agentType === 'browserx' ? browserxTools : piTools);
 
     // 5. Task execution policies
     sections.push(taskPolicies);
