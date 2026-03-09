@@ -203,16 +203,6 @@ export class UserNotifier implements IUserNotifier {
       `${typeIcon} [${notification.type.toUpperCase()}]${priorityIndicator} ${notification.title}: ${notification.message}${progressInfo}`
     );
 
-    // Also emit to content script or popup if available
-    if (typeof chrome !== 'undefined' && chrome.runtime) {
-      chrome.runtime.sendMessage({
-        type: 'FALLBACK_NOTIFICATION',
-        payload: notification,
-      }).catch(() => {
-        // Ignore errors if no listeners
-      });
-    }
-
     // Store in sessionStorage for popup/content script access
     if (typeof sessionStorage !== 'undefined') {
       try {

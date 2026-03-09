@@ -1,7 +1,7 @@
 /**
  * Server Agent Bootstrap
  *
- * Main orchestrator for server mode. Creates RepublicAgent, ServerMessageRouter,
+ * Main orchestrator for server mode. Creates RepublicAgent,
  * ServerChannel, ChannelManager, plugin loader, and maintenance timers.
  *
  * Pattern follows DesktopAgentBootstrap.
@@ -10,7 +10,6 @@
  */
 
 import { ServerChannel } from '../channels/ServerChannel';
-import { ServerMessageRouter } from '../channels/ServerMessageRouter';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
 import { RepublicAgent } from '@/core/RepublicAgent';
 import { AgentConfig } from '@/config/AgentConfig';
@@ -54,9 +53,12 @@ import { registerSchedulerHandlers } from '../handlers/scheduler';
 import { registerCredentialsHandlers } from '../handlers/credentials';
 
 // Scheduler
-import { ServerSchedulerStorage } from '../scheduler/ServerSchedulerStorage';
+import { ServerScheduleStorage } from '../scheduler/ServerScheduleStorage';
+import { ServerExecutionStorage } from '../scheduler/ServerExecutionStorage';
 import { ServerSchedulerAlarms } from '../scheduler/ServerSchedulerAlarms';
 import { Scheduler } from '@/core/scheduler/Scheduler';
+import { ScheduleManager } from '@/core/scheduler/ScheduleManager';
+import { JobExecutor } from '@/core/scheduler/JobExecutor';
 
 // Session isolation
 import { AgentRegistry } from '@/core/registry/AgentRegistry';
@@ -74,7 +76,6 @@ let _instance: ServerAgentBootstrap | null = null;
 export class ServerAgentBootstrap {
   private agent: RepublicAgent | null = null;
   private channel: ServerChannel | null = null;
-  private messageRouter: ServerMessageRouter | null = null;
   private sessionIndex: SessionIndex | null = null;
   private transcriptStore: TranscriptStore | null = null;
   private backupManager: BackupManager | null = null;
@@ -82,7 +83,8 @@ export class ServerAgentBootstrap {
   private pluginRegistry: PluginRegistry | null = null;
   private healthMonitor: HealthMonitor | null = null;
   private scheduler: Scheduler | null = null;
-  private schedulerStorage: ServerSchedulerStorage | null = null;
+  private scheduleEventStorage: ServerScheduleStorage | null = null;
+  private executionRecordStorage: ServerExecutionStorage | null = null;
   private schedulerAlarms: ServerSchedulerAlarms | null = null;
   private runningSchedulerJobId: string | null = null;
   private runningJobStartTime: number = 0;
@@ -104,32 +106,30 @@ export class ServerAgentBootstrap {
 
     try {
       // 0. Initialize StorageProvider (used by subsystems)
-      const { isStorageProviderInitialized, initializeStorageProvider } = await import('@/core/storage');
+      const { isStorageProviderInitialized, initializeStorageProvider, isCredentialStoreInitialized, initializeCredentialStore } = await import('@/core/storage');
       if (!isStorageProviderInitialized()) {
         await initializeStorageProvider();
         console.log('[ServerAgentBootstrap] StorageProvider initialized (SQLite)');
       }
 
+      // 0b. Initialize credential store (for secure API key storage)
+      if (!isCredentialStoreInitialized()) {
+        try {
+          await initializeCredentialStore();
+          console.log('[ServerAgentBootstrap] CredentialStore initialized (FileCredentialStore)');
+        } catch (error) {
+          console.warn('[ServerAgentBootstrap] CredentialStore initialization failed (non-fatal):', error);
+        }
+      }
+
       // 1. Initialize config storage (must happen before AgentConfig)
       setConfigStorage(new FileConfigStorageProvider(dataDir));
 
-      // 1.5. Initialize credential store (for secure API key storage)
-      try {
-        const { initializeCredentialStore } = await import('@/core/storage');
-        await initializeCredentialStore();
-        console.log('[ServerAgentBootstrap] Credential store initialized');
-      } catch (error) {
-        console.warn('[ServerAgentBootstrap] Credential store not available — API keys will not persist:', error);
-      }
-
-      // 2. Create message router
-      this.messageRouter = new ServerMessageRouter('background');
-
-      // 3. Get agent config
+      // 2. Get agent config
       const agentConfig = await AgentConfig.getInstance();
 
       // 3. Create RepublicAgent
-      this.agent = new RepublicAgent(agentConfig, this.messageRouter as any);
+      this.agent = new RepublicAgent(agentConfig);
 
       // 4. Configure PromptComposer with server platform context
       await this.configurePrompt();
@@ -238,12 +238,78 @@ export class ServerAgentBootstrap {
         }
       });
 
+      // 14. Register service handlers on ChannelManager (message_routing_v2)
+      await this.registerServices(channelManager);
+
       this.initialized = true;
       console.log('[ServerAgentBootstrap] Initialization complete');
     } catch (error) {
       console.error('[ServerAgentBootstrap] Initialization failed:', error);
       throw error;
     }
+  }
+
+  /**
+   * Register service handlers on ChannelManager (message_routing_v2).
+   * Gives server mode full service parity with the extension.
+   */
+  private async registerServices(channelManager: ReturnType<typeof getChannelManager>): Promise<void> {
+    const { registerAllServices } = await import('@/core/services');
+    const serviceRegistry = channelManager.getServiceRegistry();
+
+    // Get MCPManager instance
+    let mcpDeps: import('@/core/services').MCPServiceDeps | undefined;
+    try {
+      const { MCPManager } = await import('@/core/mcp/MCPManager');
+      const mcpManager = await MCPManager.getInstance('server');
+      mcpDeps = { mcpManager: mcpManager as any };
+    } catch (error) {
+      console.warn('[ServerAgentBootstrap] MCPManager not available for service registration:', error);
+    }
+
+    // Get A2AManager instance
+    let a2aDeps: import('@/core/services').A2AServiceDeps | undefined;
+    try {
+      const { A2AManager } = await import('@/core/a2a/A2AManager');
+      const a2aManager = await A2AManager.getInstance('server');
+      a2aDeps = { a2aManager: a2aManager as any };
+    } catch (error) {
+      console.warn('[ServerAgentBootstrap] A2AManager not available for service registration:', error);
+    }
+
+    // Get SkillRegistry with StorageProvider-backed skill provider
+    let skillsDeps: import('@/core/services').SkillsServiceDeps | undefined;
+    try {
+      const { getStorageProvider } = await import('@/core/storage');
+      const { IndexedDBSkillProvider } = await import('@/extension/storage/IndexedDBSkillProvider');
+      const { SkillRegistry } = await import('@/core/skills/SkillRegistry');
+
+      const storageProvider = getStorageProvider();
+      const skillProvider = new IndexedDBSkillProvider(storageProvider);
+      await skillProvider.initialize();
+
+      const skillRegistry = new SkillRegistry(skillProvider);
+      await skillRegistry.discover();
+      skillsDeps = { skillRegistry };
+
+      console.log(`[ServerAgentBootstrap] Skills initialized, found ${skillRegistry.getSkillMetas().length} skills`);
+    } catch (error) {
+      console.warn('[ServerAgentBootstrap] SkillRegistry not available for service registration:', error);
+    }
+
+    const count = registerAllServices(serviceRegistry, {
+      mcp: mcpDeps,
+      a2a: a2aDeps,
+      skills: skillsDeps,
+      session: {
+        getAgent: () => this.agent,
+      },
+      agent: {
+        getAgent: () => this.agent,
+      },
+    });
+
+    console.log(`[ServerAgentBootstrap] Registered ${count} service handlers`);
   }
 
   /**
@@ -422,22 +488,29 @@ export class ServerAgentBootstrap {
     channelManager: ReturnType<typeof getChannelManager>
   ): Promise<void> {
     try {
-      // 1. Create storage and initialize
-      this.schedulerStorage = new ServerSchedulerStorage(dataDir);
-      await this.schedulerStorage.initialize();
+      // 1. Create new model storage (schedule events + executions)
+      this.scheduleEventStorage = new ServerScheduleStorage(dataDir);
+      await this.scheduleEventStorage.initialize();
+      this.executionRecordStorage = new ServerExecutionStorage(dataDir);
+      await this.executionRecordStorage.initialize();
+      const executionStorage = this.executionRecordStorage;
 
       // 2. Create alarms (Node.js timers)
       this.schedulerAlarms = new ServerSchedulerAlarms();
 
-      // 3. Create scheduler
-      this.scheduler = new Scheduler(this.schedulerStorage, this.schedulerAlarms);
+      // 3. Create new model components directly
+      const scheduleManager = new ScheduleManager(this.scheduleEventStorage, executionStorage, this.schedulerAlarms);
+      const jobExecutor = new JobExecutor(executionStorage);
 
-      // 4. Wire alarm handler → scheduler.handleAlarm()
+      // 4. Create scheduler with new constructor
+      this.scheduler = new Scheduler(scheduleManager, jobExecutor, this.schedulerAlarms);
+
+      // 5. Wire alarm handler → scheduler.handleAlarm()
       this.schedulerAlarms.setAlarmHandler(async (alarmName) => {
         await this.scheduler!.handleAlarm(alarmName);
       });
 
-      // 5. Wire event emitter → broadcast to WebSocket clients
+      // 6. Wire event emitter → broadcast to WebSocket clients
       this.scheduler.setEventEmitter((event) => {
         if (this.channel) {
           channelManager.dispatchEvent(
@@ -449,16 +522,14 @@ export class ServerAgentBootstrap {
         }
       });
 
-      // 6. Wire job launcher → submit job input to agent
-      // `registryAgent` is the isolated agent created by AgentRegistry for this job's session.
-      // Falls back to the primary agent when registry is not available.
-      this.scheduler.setJobLauncher(async (jobId, sessionId, registryAgent) => {
-        this.runningSchedulerJobId = jobId;
+      // 7. Wire job launcher → submit job input to agent
+      this.scheduler.setJobLauncher(async (executionId, sessionId, registryAgent) => {
+        this.runningSchedulerJobId = executionId;
         this.runningJobStartTime = Date.now();
-        console.log(`[ServerAgentBootstrap] Scheduled job ${jobId} launched (session: ${sessionId})`);
-        const job = await this.schedulerStorage!.getJob(jobId);
-        if (!job) {
-          throw new Error(`Job not found for execution: ${jobId}`);
+        console.log(`[ServerAgentBootstrap] Scheduled job ${executionId} launched (session: ${sessionId})`);
+        const execution = await executionStorage.getExecution(executionId);
+        if (!execution) {
+          throw new Error(`Execution not found: ${executionId}`);
         }
 
         const targetAgent = registryAgent ?? this.agent;
@@ -469,22 +540,22 @@ export class ServerAgentBootstrap {
         await targetAgent.submitOperation(
           {
             type: 'UserInput',
-            items: [{ type: 'text', text: job.input }],
+            items: [{ type: 'text', text: execution.input }],
           },
           {}
         );
       });
 
-      // 6a. Connectivity check — ensure agent is initialized before executing jobs
+      // 7a. Connectivity check — ensure agent is initialized before executing jobs
       this.scheduler.setConnectivityCheck(() => this.agent !== null && this.initialized);
 
-      // 6b. Initialize AgentRegistry for session isolation
+      // 7b. Initialize AgentRegistry for session isolation
       try {
         const agentConfig = await AgentConfig.getInstance();
         const registry = new AgentRegistry({
           maxConcurrent: 1,
-          agentFactory: async (config, router) => {
-            const agent = new RepublicAgent(config, router);
+          agentFactory: async (config) => {
+            const agent = new RepublicAgent(config);
             await agent.initialize();
             return agent;
           },
@@ -494,37 +565,31 @@ export class ServerAgentBootstrap {
             this.handleSchedulerEventCompletion(event.msg);
           },
         });
-        registry.initialize(agentConfig, this.messageRouter! as any);
+        registry.initialize(agentConfig);
         this.scheduler.setRegistry(registry);
         console.log('[ServerAgentBootstrap] AgentRegistry initialized for session isolation');
       } catch (error) {
         console.warn('[ServerAgentBootstrap] AgentRegistry init failed (non-fatal, using legacy sessions):', error);
       }
 
-      // 7. Start queue processor
+      // 8. Start queue processor
       await this.schedulerAlarms.startJobQueueProcessor();
 
-      // 7b. Recover stale running jobs from previous server session
+      // 8b. Recover stale running jobs from previous server session
       await this.scheduler.recoverStaleRunningJob();
 
-      // 8. Detect missed jobs
-      const missedJobs = await this.scheduler.detectMissedJobs();
-      if (missedJobs.length > 0) {
-        console.log(`[ServerAgentBootstrap] Detected ${missedJobs.length} missed scheduler jobs`);
+      // 9. Detect missed jobs
+      const missed = await this.scheduler.detectMissedJobs();
+      if (missed.length > 0) {
+        console.log(`[ServerAgentBootstrap] Detected ${missed.length} missed scheduler instances`);
       }
 
-      // 9. Restore timers for future scheduled jobs
-      const scheduledJobs = await this.schedulerStorage.getScheduledJobs();
-      for (const job of scheduledJobs) {
-        if (job.scheduledTime && job.scheduledTime > Date.now()) {
-          await this.schedulerAlarms.createJobAlarm(job.id, job.scheduledTime);
-        }
-      }
+      // 10. Restore alarms for ScheduleEvents
+      await this.scheduler.restoreScheduleAlarms();
 
-      // 10. Register handlers
+      // 11. Register handlers
       registerSchedulerHandlers({
         scheduler: this.scheduler,
-        storage: this.schedulerStorage,
       });
 
       console.log('[ServerAgentBootstrap] Scheduler initialized');
@@ -625,7 +690,8 @@ export class ServerAgentBootstrap {
 
     // Shutdown scheduler
     this.schedulerAlarms?.shutdown();
-    this.schedulerStorage?.close();
+    this.scheduleEventStorage?.close();
+    this.executionRecordStorage?.close();
 
     // Stop backup manager
     this.backupManager?.stop();
@@ -644,12 +710,6 @@ export class ServerAgentBootstrap {
     if (this.agent) {
       await this.agent.cleanup();
       this.agent = null;
-    }
-
-    // Cleanup message router
-    if (this.messageRouter) {
-      this.messageRouter.destroy();
-      this.messageRouter = null;
     }
 
     this.channel = null;

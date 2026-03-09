@@ -3,7 +3,7 @@
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { ICacheSettings, IStorageConfig } from '@/config/types';
   import { _t } from '../lib/i18n';
-  import { notifyConfigUpdate } from '../lib/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
 
@@ -103,7 +103,7 @@
       });
 
       // Notify backend of config update
-      notifyConfigUpdate();
+      getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(e => console.warn('[messaging] config update failed:', e));
 
       originalCache = { ...currentCache };
       originalStorage = { ...currentStorage };

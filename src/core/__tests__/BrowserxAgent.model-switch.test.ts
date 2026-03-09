@@ -97,7 +97,6 @@ declare const __BUILD_MODE__: string;
 
 import { RepublicAgent as BrowserxAgent } from '@/core/RepublicAgent';
 import { AgentConfig } from '@/config/AgentConfig';
-import { MessageRouter } from '@/core/MessageRouter';
 import type { IConfigChangeEvent } from '@/config/types';
 
 // ---------------------------------------------------------------------------
@@ -154,17 +153,6 @@ function createMockConfig(): AgentConfig & {
 }
 
 // ---------------------------------------------------------------------------
-// Helper: create mock MessageRouter
-// ---------------------------------------------------------------------------
-
-function createMockRouter(): MessageRouter {
-  return {
-    updateState: vi.fn().mockResolvedValue(undefined),
-    send: vi.fn().mockResolvedValue(undefined),
-  } as unknown as MessageRouter;
-}
-
-// ---------------------------------------------------------------------------
 // Helper: create a config-changed event for model switching
 // ---------------------------------------------------------------------------
 
@@ -200,7 +188,6 @@ function makeMockModelClient(label: string) {
 
 describe('BrowserxAgent - handleModelConfigChange', () => {
   let config: ReturnType<typeof createMockConfig>;
-  let router: MessageRouter;
   let agent: BrowserxAgent;
 
   beforeEach(() => {
@@ -302,8 +289,7 @@ describe('BrowserxAgent - handleModelConfigChange', () => {
     };
 
     config = createMockConfig();
-    router = createMockRouter();
-    agent = new BrowserxAgent(config as unknown as AgentConfig, router);
+    agent = new BrowserxAgent(config as unknown as AgentConfig);
   });
 
   // =========================================================================

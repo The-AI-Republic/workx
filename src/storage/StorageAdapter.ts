@@ -21,6 +21,10 @@ export const STORE_KEY_PATHS: Record<string, string> = {
   rollout_cache: 'key',
   scheduler_jobs: 'id',
   agent_sessions: 'sessionId',
+  token_usage_records: 'id',
+  schedule_events: 'id',
+  schedule_exceptions: 'id',
+  execution_records: 'id',
 };
 
 /**
@@ -53,6 +57,11 @@ export const INDEX_FIELD_MAP: Record<string, string | string[]> = {
   by_created_at: 'createdAt',
   by_type: 'type',
   by_state: 'state',
+  by_model: 'model',
+  by_enabled: 'enabled',
+  by_event_instance: ['scheduleEventId', 'instanceTime'],
+  by_event_id: 'scheduleEventId',
+  by_instance_time: 'instanceTime',
 };
 
 /**

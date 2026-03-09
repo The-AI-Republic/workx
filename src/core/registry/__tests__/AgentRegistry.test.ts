@@ -44,10 +44,6 @@ vi.mock('@/config/AgentConfig', () => ({
   },
 }));
 
-vi.mock('@/core/MessageRouter', () => ({
-  MessageRouter: vi.fn().mockImplementation(() => ({})),
-}));
-
 vi.mock('@/core/TabManager', () => ({
   TabManager: {
     getInstance: vi.fn(() => ({
@@ -58,7 +54,6 @@ vi.mock('@/core/TabManager', () => ({
 
 describe('AgentRegistry', () => {
   let mockConfig: any;
-  let mockRouter: any;
 
   beforeEach(() => {
     AgentRegistry.resetInstance();
@@ -75,7 +70,6 @@ describe('AgentRegistry', () => {
     });
 
     mockConfig = {};
-    mockRouter = {};
   });
 
   afterEach(() => {
@@ -102,7 +96,7 @@ describe('AgentRegistry', () => {
   describe('initialization', () => {
     it('initializes with config and router', () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       // Should not throw
       expect(registry.getActiveCount()).toBe(0);
@@ -112,7 +106,7 @@ describe('AgentRegistry', () => {
   describe('createSession', () => {
     it('creates a primary session', async () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       const session = await registry.createSession({ type: 'primary' });
 
@@ -123,7 +117,7 @@ describe('AgentRegistry', () => {
 
     it('creates a scheduled session', async () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       const session = await registry.createSession({
         type: 'scheduled',
@@ -134,7 +128,7 @@ describe('AgentRegistry', () => {
 
     it('assigns unique letters to sessions', async () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       const session1 = await registry.createSession({ type: 'primary' });
       const session2 = await registry.createSession({ type: 'scheduled' });
@@ -147,7 +141,7 @@ describe('AgentRegistry', () => {
 
     it('throws when max sessions reached', async () => {
       const registry = AgentRegistry.getInstance({ maxConcurrent: 2 });
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       await registry.createSession({ type: 'primary' });
       await registry.createSession({ type: 'scheduled' });
@@ -167,7 +161,7 @@ describe('AgentRegistry', () => {
 
     it('emits session:created event', async () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       const listener = vi.fn();
       registry.on(listener);
@@ -187,7 +181,7 @@ describe('AgentRegistry', () => {
   describe('getSession', () => {
     it('returns session by ID', async () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       const created = await registry.createSession({ type: 'primary' });
       const retrieved = registry.getSession(created.sessionId);
@@ -205,7 +199,7 @@ describe('AgentRegistry', () => {
   describe('getPrimarySession', () => {
     it('returns primary session when exists', async () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       const primary = await registry.createSession({ type: 'primary' });
 
@@ -214,7 +208,7 @@ describe('AgentRegistry', () => {
 
     it('returns undefined when no primary session', async () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       await registry.createSession({ type: 'scheduled' });
 
@@ -225,7 +219,7 @@ describe('AgentRegistry', () => {
   describe('getOrCreatePrimarySession', () => {
     it('returns existing primary session', async () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       const existing = await registry.createSession({ type: 'primary' });
       const retrieved = await registry.getOrCreatePrimarySession();
@@ -235,7 +229,7 @@ describe('AgentRegistry', () => {
 
     it('creates primary session if none exists', async () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       const session = await registry.getOrCreatePrimarySession();
 
@@ -246,7 +240,7 @@ describe('AgentRegistry', () => {
   describe('removeSession', () => {
     it('removes session from registry', async () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       const session = await registry.createSession({ type: 'primary' });
       expect(registry.getSession(session.sessionId)).toBeDefined();
@@ -257,7 +251,7 @@ describe('AgentRegistry', () => {
 
     it('frees letter for reuse', async () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       const session1 = await registry.createSession({ type: 'primary' });
       expect(session1.sessionLetter).toBe('a');
@@ -279,7 +273,7 @@ describe('AgentRegistry', () => {
   describe('listSessions', () => {
     it('returns all session metadata', async () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       await registry.createSession({ type: 'primary' });
       await registry.createSession({ type: 'scheduled' });
@@ -295,7 +289,7 @@ describe('AgentRegistry', () => {
   describe('getActiveCount', () => {
     it('counts non-terminated sessions', async () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       expect(registry.getActiveCount()).toBe(0);
 
@@ -336,7 +330,7 @@ describe('AgentRegistry', () => {
 
     it('canCreateSession respects limit', async () => {
       const registry = AgentRegistry.getInstance({ maxConcurrent: 1 });
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       expect(registry.canCreateSession()).toBe(true);
 
@@ -348,7 +342,7 @@ describe('AgentRegistry', () => {
   describe('event handling', () => {
     it('registers and unregisters listeners', async () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       const listener = vi.fn();
       const unsubscribe = registry.on(listener);
@@ -367,7 +361,7 @@ describe('AgentRegistry', () => {
   describe('cleanup', () => {
     it('terminates all sessions', async () => {
       const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       await registry.createSession({ type: 'primary' });
       await registry.createSession({ type: 'scheduled' });
