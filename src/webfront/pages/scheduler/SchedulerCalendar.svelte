@@ -1,7 +1,6 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
   import { push } from 'svelte-spa-router';
-  import { uiTheme, themePreference, type UITheme } from '../../stores/themeStore';
+  import { uiTheme, themePreference } from '../../stores/themeStore';
   import { isWideMode } from '../../stores/layoutStore';
   import { AgentConfig } from '@/config/AgentConfig';
   import { _t } from '../../lib/i18n';
@@ -12,9 +11,9 @@
   import ScheduleJobModal from '../../components/scheduler/ScheduleJobModal.svelte';
   import EventPopover from '../../components/scheduler/EventPopover.svelte';
 
-  let currentTheme = $state<UITheme>('terminal');
+  let currentTheme = $derived($uiTheme);
   let calendarEvents = $state<CalendarEvent[]>([]);
-  let initialView = $state('timeGridWeek');
+  let initialView = $derived($isWideMode ? 'timeGridWeek' : 'timeGridDay');
   let eventUnsubscribers: Array<() => void> = [];
   let channelClient: UIChannelClient | null = null;
   let destroyed = false;
@@ -49,19 +48,6 @@
     });
   });
 
-  $effect(() => {
-    const unsub = uiTheme.subscribe((theme) => {
-      currentTheme = theme;
-    });
-    return unsub;
-  });
-
-  $effect(() => {
-    const unsub = isWideMode.subscribe((wide) => {
-      initialView = wide ? 'timeGridWeek' : 'timeGridDay';
-    });
-    return unsub;
-  });
 
   async function fetchEvents() {
     if (!viewStart || !viewEnd) return;
@@ -263,25 +249,30 @@
     openScheduleModal(now);
   }
 
-  onMount(async () => {
-    try {
-      const client = await getClient();
-      if (destroyed) return;
-      eventUnsubscribers.push(
-        client.onEvent('BackgroundEvent', (data: any) => {
-          if (data?.message === 'scheduler_job_status') {
-            fetchEvents();
-          }
-        })
-      );
-    } catch {
-      // UIChannelClient not available
-    }
-  });
+  $effect(() => {
+    destroyed = false;
 
-  onDestroy(() => {
-    destroyed = true;
-    eventUnsubscribers.forEach(fn => fn());
+    (async () => {
+      try {
+        const client = await getClient();
+        if (destroyed) return;
+        eventUnsubscribers.push(
+          client.onEvent('BackgroundEvent', (data: any) => {
+            if (data?.message === 'scheduler_job_status') {
+              fetchEvents();
+            }
+          })
+        );
+      } catch {
+        // UIChannelClient not available
+      }
+    })();
+
+    return () => {
+      destroyed = true;
+      eventUnsubscribers.forEach(fn => fn());
+      eventUnsubscribers = [];
+    };
   });
 </script>
 
@@ -334,8 +325,8 @@
   input=""
   {prefillDate}
   {prefillTime}
-  onclose={() => showScheduleModal = false}
-  onschedule={handleSchedule}
+  onClose={() => showScheduleModal = false}
+  onSchedule={handleSchedule}
 />
 
 <!-- Event Popover -->

@@ -1,20 +1,30 @@
 <script lang="ts">
   import { onMount } from 'svelte';
 
-  export let testConfigInjection = false;
-  export let showLoadingState = false;
-  export let enableValidation = false;
-  export let showProfileSelector = false;
-  export let showProfileManagement = false;
-  export let showErrors = false;
-  export let handleErrors = false;
+  let {
+    testConfigInjection = false,
+    showLoadingState = false,
+    enableValidation = false,
+    showProfileSelector = false,
+    showProfileManagement = false,
+    showErrors = false,
+    handleErrors = false,
+  }: {
+    testConfigInjection?: boolean;
+    showLoadingState?: boolean;
+    enableValidation?: boolean;
+    showProfileSelector?: boolean;
+    showProfileManagement?: boolean;
+    showErrors?: boolean;
+    handleErrors?: boolean;
+  } = $props();
 
-  let currentModel = 'claude-3-5-sonnet-20241022';
-  let currentApproval = 'on-request';
-  let loading = showLoadingState;
-  let validationError = '';
-  let configError = '';
-  let showFallback = false;
+  let currentModel = $state('claude-3-5-sonnet-20241022');
+  let currentApproval = $state('on-request');
+  let loading = $state(showLoadingState);
+  let validationError = $state('');
+  let configError = $state('');
+  let showFallback = $state(false);
 
   onMount(() => {
     if (showLoadingState) {
@@ -71,14 +81,14 @@
     <div data-testid="current-approval">{currentApproval}</div>
 
     {#if enableValidation}
-      <input data-testid="model-input" on:input={handleModelInput} />
+      <input data-testid="model-input" oninput={handleModelInput} />
       {#if validationError}
         <div data-testid="validation-error">{validationError}</div>
       {/if}
     {/if}
 
     {#if showProfileSelector}
-      <select data-testid="profile-select" on:change={handleProfileChange}>
+      <select data-testid="profile-select" onchange={handleProfileChange}>
         <option value="default">Default</option>
         <option value="development" data-testid="profile-option">development</option>
       </select>
@@ -91,7 +101,7 @@
           <option value="claude-3-haiku-20240307">Haiku</option>
           <option value="claude-3-opus-20240229">Opus</option>
         </select>
-        <button data-testid="create-profile-button" on:click={createProfile}>Create Profile</button>
+        <button data-testid="create-profile-button" onclick={createProfile}>Create Profile</button>
         <div data-testid="profile-option">production</div>
       </div>
     {/if}

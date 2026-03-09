@@ -5,29 +5,29 @@
    * User Story 1: Model Selection in Settings
    * User Story 2: Model Information Display
    */
-  import { createEventDispatcher } from 'svelte';
   import type { ModelMetadata, ConfiguredFeatures } from '@/config/types.js';
   import ModelInfoTooltip from './ModelInfoTooltip.svelte';
   import { _t } from '../../lib/i18n';
 
-  export let model: ModelMetadata;
-  export let isSelected = false;
-  export let isFocused = false;
-  export let configuredFeatures: ConfiguredFeatures;
-
-  const dispatch = createEventDispatcher();
+  let { model, isSelected = false, isFocused = false, configuredFeatures, onClick }: {
+    model: ModelMetadata;
+    isSelected?: boolean;
+    isFocused?: boolean;
+    configuredFeatures: ConfiguredFeatures;
+    onClick?: () => void;
+  } = $props();
 
   // Simplified validation - both GPT-5 and Grok 4 support all features
-  $: validation = { valid: true, modelId: model.id };
-  $: isCompatible = true;
-  $: hasErrors = false;
+  let validation = $derived({ valid: true, modelId: model.id });
+  let isCompatible = $derived(true);
+  let hasErrors = $derived(false);
 
   // Tooltip state
-  let showTooltip = false;
+  let showTooltip = $state(false);
   let buttonElement: HTMLButtonElement;
 
   function handleClick() {
-    dispatch('click');
+    onClick?.();
   }
 
   // Show tooltip on hover
@@ -74,11 +74,11 @@
   class:opacity-50={hasErrors}
   class:cursor-not-allowed={hasErrors}
   class:grayscale={hasErrors}
-  on:click={handleClick}
-  on:mouseenter={handleMouseEnter}
-  on:mouseleave={handleMouseLeave}
-  on:focus={handleFocus}
-  on:blur={handleBlur}
+  onclick={handleClick}
+  onmouseenter={handleMouseEnter}
+  onmouseleave={handleMouseLeave}
+  onfocus={handleFocus}
+  onblur={handleBlur}
   disabled={hasErrors}
   role="option"
   aria-selected={isSelected}

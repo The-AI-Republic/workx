@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
   import RecurrenceSelector from './RecurrenceSelector.svelte';
   import type { RecurrenceRule } from '@/core/models/types/Scheduler';
@@ -10,34 +10,26 @@
     input = '',
     prefillDate = '',
     prefillTime = '',
-    onclose,
-    onschedule,
+    onClose,
+    onSchedule,
   }: {
     show?: boolean;
     input?: string;
     prefillDate?: string;
     prefillTime?: string;
-    onclose?: () => void;
-    onschedule?: (detail: { input: string; scheduledTime: number; recurrence?: RecurrenceRule }) => void;
+    onClose?: () => void;
+    onSchedule?: (detail: { input: string; scheduledTime: number; recurrence?: RecurrenceRule }) => void;
   } = $props();
 
-  let currentTheme = $state<UITheme>('terminal');
-  let selectedDate = $state('');
-  let selectedTime = $state('');
-  let errorMessage = $state('');
-  let editableInput = $state('');
+  let currentTheme = $derived($uiTheme);
+  let selectedDate: string = $state('');
+  let selectedTime: string = $state('');
+  let errorMessage: string = $state('');
+  let editableInput: string = $state('');
   let recurrence = $state<RecurrenceRule | null>(null);
 
   // Determine if input should be editable (when opened without pre-filled input)
   let isEditable = $derived(!input.trim());
-
-  // Subscribe to theme
-  $effect(() => {
-    const unsub = uiTheme.subscribe((theme) => {
-      currentTheme = theme;
-    });
-    return unsub;
-  });
 
   // Initialize with defaults when modal opens
   $effect(() => {
@@ -145,11 +137,11 @@
     if (recurrence) {
       detail.recurrence = recurrence;
     }
-    onschedule?.(detail);
+    onSchedule?.(detail);
   }
 
   function handleClose() {
-    onclose?.();
+    onClose?.();
   }
 
   function handleBackdropClick(e: MouseEvent) {

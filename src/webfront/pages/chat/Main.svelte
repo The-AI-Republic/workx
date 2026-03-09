@@ -29,20 +29,20 @@
   // i18n
   import { t, _t } from '../../lib/i18n';
   // UI channel client (platform-agnostic)
-  let client: UIChannelClient | null = null;
-  let unsubscribers: Array<() => void> = [];
+  let client: UIChannelClient | null = $state(null);
+  let unsubscribers: Array<() => void> = $state([]);
   let eventProcessor: EventProcessor;
-  let messages: Array<{ type: 'user' | 'agent'; content: string; timestamp: number }> = [];
-  let processedEvents: ProcessedEvent[] = [];
-  let inputText = '';
-  let isConnected = false;
-  let isProcessing = false;
-  let showWelcome = false;
+  let messages: Array<{ type: 'user' | 'agent'; content: string; timestamp: number }> = $state([]);
+  let processedEvents: ProcessedEvent[] = $state([]);
+  let inputText: string = $state('');
+  let isConnected: boolean = $state(false);
+  let isProcessing: boolean = $state(false);
+  let showWelcome = $derived(!isProcessing && processedEvents.length === 0 && messages.length === 0);
   let scrollContainer: HTMLDivElement;
-  let currentTabId: number = -1; // Track current session's bound tab
-  let agentReady = false;
-  let healthStatus: { ready: boolean; message?: string; provider?: string; model?: string; authMode?: 'login' | 'api_key' | 'none' } = { ready: false, authMode: 'none' };
-  let zoomLevel = parseInt(document.documentElement.style.fontSize) || 100;
+  let currentTabId: number = $state(-1); // Track current session's bound tab
+  let agentReady: boolean = $state(false);
+  let healthStatus: { ready: boolean; message?: string; provider?: string; model?: string; authMode?: 'login' | 'api_key' | 'none' } = $state({ ready: false, authMode: 'none' });
+  let zoomLevel: number = $state(parseInt(document.documentElement.style.fontSize) || 100);
 
   function onZoomChanged(e: Event) {
     zoomLevel = (e as CustomEvent<number>).detail;
@@ -57,25 +57,19 @@
       config.updateConfig({ preferences: { ...agentConfig.preferences, zoomLevel: 100 } });
     }).catch(() => {});
   }
-  let compactionNotification: { show: boolean; tokensSaved: number; compactionCount: number; isWarning: boolean } = {
+  let compactionNotification: { show: boolean; tokensSaved: number; compactionCount: number; isWarning: boolean } = $state({
     show: false,
     tokensSaved: 0,
     compactionCount: 0,
     isWarning: false,
-  };
-  // Current UI theme (reactive from store)
-  let currentTheme: UITheme = 'terminal';
-  // Scheduled job execution state (US3)
-  let scheduledJobId: string | null = null;
-  let scheduledSessionId: string | null = null;
-  let isScheduledJobMode = false;
-  $: showWelcome =
-    !isProcessing && processedEvents.length === 0 && messages.length === 0;
-
-  // Subscribe to theme store
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
   });
+  // Current UI theme (reactive from store)
+  let currentTheme = $derived($uiTheme);
+  // Scheduled job execution state (US3)
+  let scheduledJobId: string | null = $state(null);
+  let scheduledSessionId: string | null = $state(null);
+  let isScheduledJobMode: boolean = $state(false);
+
 
   onMount(async () => {
     // Listen for zoom level changes
@@ -494,8 +488,8 @@
    * Handle manual tab selection from TabContext dropdown
    * Updates local state only - actual binding happens when user sends a message
    */
-  async function handleTabSelected(event: CustomEvent<{ tabId: number }>) {
-    const newTabId = event.detail.tabId;
+  async function handleTabSelected(value: { tabId: number }) {
+    const newTabId = value.tabId;
     console.log(`[App] Tab selected: ${newTabId} (will bind on next message)`);
 
     // Update local state immediately for responsiveness
@@ -688,8 +682,8 @@
    * Handle command output from slash commands (e.g., /help)
    * Creates a system ProcessedEvent and appends it to the chat
    */
-  function handleCommandOutput(event: CustomEvent<{ title: string; content: string }>) {
-    const { title, content } = event.detail;
+  function handleCommandOutput(value: { title: string; content: string }) {
+    const { title, content } = value;
     const cmdEvent: ProcessedEvent = {
       id: `cmd_${Date.now()}`,
       category: 'system',
@@ -949,7 +943,7 @@
           <div class="flex items-center space-x-2">
             <TerminalMessage type="system" content={platform.platformName === 'extension' ? $_t("Browserx (Alpha)") : $_t("Apple Pi: Your personal AI (Alpha)")} />
             {#if zoomLevel !== 100}
-              <button on:click={resetZoom} class="text-sm leading-relaxed font-[inherit] opacity-70 hover:opacity-100 cursor-pointer {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}" title="Reset zoom to 100%">
+              <button onclick={resetZoom} class="text-sm leading-relaxed font-[inherit] opacity-70 hover:opacity-100 cursor-pointer {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}" title="Reset zoom to 100%">
                 [{zoomLevel}%] ✕
               </button>
             {/if}
@@ -991,7 +985,7 @@
             </span>
             <button
               class="shrink-0 bg-transparent border-none text-inherit cursor-pointer px-1 text-lg opacity-70 hover:opacity-100"
-              on:click={() => compactionNotification = { ...compactionNotification, show: false }}
+              onclick={() => compactionNotification = { ...compactionNotification, show: false }}
               aria-label={t("Dismiss notification")}
             >×</button>
           </div>
@@ -1018,7 +1012,7 @@
                 </a>
               </li>
               <li class="mb-1">
-                <button on:click={() => push('/settings')}
+                <button onclick={() => push('/settings')}
                   class="bg-none border-none p-0 underline cursor-pointer text-[inherit] {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-bright-green hover:text-term-yellow'}">
                   {$_t("Configure an API key in Settings")}
                 </button>
@@ -1080,8 +1074,8 @@
               tabId={currentTabId}
               {isProcessing}
               placeholder={$_t(">> Enter command...")}
-              on:tabSelected={handleTabSelected}
-              on:commandOutput={handleCommandOutput}
+              onTabSelected={handleTabSelected}
+              onCommandOutput={handleCommandOutput}
             />
           </div>
 

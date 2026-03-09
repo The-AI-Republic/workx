@@ -1,30 +1,28 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { RolloutRecorder, type ConversationItem, type Cursor } from '@/storage/rollout';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
 
   // Props
-  export let onSelectConversation: (conversationId: string) => void = () => {};
-  export let onClose: () => void = () => {};
+  let { onSelectConversation = () => {}, onClose = () => {} }: {
+    onSelectConversation?: (conversationId: string) => void;
+    onClose?: () => void;
+  } = $props();
 
   // State
-  let conversations: ConversationItem[] = [];
-  let isLoading = true;
-  let error: string | null = null;
-  let nextCursor: Cursor | undefined;
-  let hasMoreOlder = false;
-  let isLoadingMore = false;
-  let currentTheme: UITheme = 'terminal';
+  let conversations: ConversationItem[] = $state([]);
+  let isLoading = $state(true);
+  let error: string | null = $state(null);
+  let nextCursor: Cursor | undefined = $state(undefined);
+  let hasMoreOlder = $state(false);
+  let isLoadingMore = $state(false);
+
+  let currentTheme = $derived($uiTheme);
 
   // Time category constants
   const MS_PER_HOUR = 1000 * 60 * 60;
   const MS_PER_DAY = MS_PER_HOUR * 24;
-
-  // Subscribe to theme store
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
 
   // Categorized conversations
   interface CategorizedConversations {
@@ -35,7 +33,7 @@
     older: ConversationItem[];
   }
 
-  $: categorized = categorizeConversations(conversations);
+  let categorized = $derived(categorizeConversations(conversations));
 
   onMount(async () => {
     await loadConversations();
@@ -222,7 +220,7 @@
                 {currentTheme === 'modern'
                   ? 'border-b border-white/5 hover:bg-white/[0.08] active:bg-white/[0.12]'
                   : 'border-b border-term-dim-green/10 hover:bg-term-green/[0.08] active:bg-term-green/[0.12]'}"
-              on:click={() => handleSelectConversation(item.id)}
+              onclick={() => handleSelectConversation(item.id)}
             >
               <span class="flex-1 text-sm whitespace-nowrap overflow-hidden text-ellipsis
                 {currentTheme === 'modern'
@@ -250,7 +248,7 @@
                 {currentTheme === 'modern'
                   ? 'border-b border-white/5 hover:bg-white/[0.08] active:bg-white/[0.12]'
                   : 'border-b border-term-dim-green/10 hover:bg-term-green/[0.08] active:bg-term-green/[0.12]'}"
-              on:click={() => handleSelectConversation(item.id)}
+              onclick={() => handleSelectConversation(item.id)}
             >
               <span class="flex-1 text-sm whitespace-nowrap overflow-hidden text-ellipsis
                 {currentTheme === 'modern'
@@ -278,7 +276,7 @@
                 {currentTheme === 'modern'
                   ? 'border-b border-white/5 hover:bg-white/[0.08] active:bg-white/[0.12]'
                   : 'border-b border-term-dim-green/10 hover:bg-term-green/[0.08] active:bg-term-green/[0.12]'}"
-              on:click={() => handleSelectConversation(item.id)}
+              onclick={() => handleSelectConversation(item.id)}
             >
               <span class="flex-1 text-sm whitespace-nowrap overflow-hidden text-ellipsis
                 {currentTheme === 'modern'
@@ -306,7 +304,7 @@
                 {currentTheme === 'modern'
                   ? 'border-b border-white/5 hover:bg-white/[0.08] active:bg-white/[0.12]'
                   : 'border-b border-term-dim-green/10 hover:bg-term-green/[0.08] active:bg-term-green/[0.12]'}"
-              on:click={() => handleSelectConversation(item.id)}
+              onclick={() => handleSelectConversation(item.id)}
             >
               <span class="flex-1 text-sm whitespace-nowrap overflow-hidden text-ellipsis
                 {currentTheme === 'modern'
@@ -334,7 +332,7 @@
                 {currentTheme === 'modern'
                   ? 'border-b border-white/5 hover:bg-white/[0.08] active:bg-white/[0.12]'
                   : 'border-b border-term-dim-green/10 hover:bg-term-green/[0.08] active:bg-term-green/[0.12]'}"
-              on:click={() => handleSelectConversation(item.id)}
+              onclick={() => handleSelectConversation(item.id)}
             >
               <span class="flex-1 text-sm whitespace-nowrap overflow-hidden text-ellipsis
                 {currentTheme === 'modern'
@@ -353,7 +351,7 @@
                 {currentTheme === 'modern'
                   ? 'border border-dashed border-white/20 rounded-lg text-chat-text-secondary dark:text-chat-text-secondary-dark font-chat hover:bg-white/[0.08] hover:border-white/30 hover:text-chat-tooltip-text dark:hover:text-chat-tooltip-text-dark'
                   : 'border border-dashed border-term-dim-green rounded text-term-dim-green font-terminal hover:bg-term-green/[0.08] hover:border-term-bright-green hover:text-term-bright-green'}"
-              on:click={loadMoreOlder}
+              onclick={loadMoreOlder}
               disabled={isLoadingMore}
             >
               {#if isLoadingMore}

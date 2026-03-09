@@ -1,32 +1,33 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
   import { getInitializedUIClient } from '@/core/messaging';
   import SchedulerJobItem from './SchedulerJobItem.svelte';
   import type { ArchivedJobSummary } from '@/core/models/types/SchedulerContracts';
 
-  export let show: boolean = false;
-  export let onClose: () => void = () => {};
+  let {
+    show = false,
+    onClose = () => {},
+  }: {
+    show?: boolean;
+    onClose?: () => void;
+  } = $props();
 
-  let currentTheme: UITheme = 'terminal';
-  let isLoading = true;
-  let archivedJobs: ArchivedJobSummary[] = [];
-  let hasMore = false;
-  let offset = 0;
+  let currentTheme = $derived($uiTheme);
+  let isLoading: boolean = $state(true);
+  let archivedJobs: ArchivedJobSummary[] = $state([]);
+  let hasMore: boolean = $state(false);
+  let offset: number = $state(0);
   const limit = 20;
 
-  // Subscribe to theme
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
-
   // Fetch data when view opens
-  $: if (show) {
-    offset = 0;
-    archivedJobs = [];
-    fetchArchivedJobs();
-  }
+  $effect(() => {
+    if (show) {
+      offset = 0;
+      archivedJobs = [];
+      fetchArchivedJobs();
+    }
+  });
 
   async function fetchArchivedJobs() {
     isLoading = true;
@@ -78,7 +79,7 @@
   }
 </script>
 
-<svelte:window on:click={handleClickOutside} />
+<svelte:window onclick={handleClickOutside} />
 
 {#if show}
   <div class="archived-view fixed bottom-[70px] left-4 right-4 max-w-[400px] max-h-[70vh] rounded-lg z-[10000] flex flex-col animate-slide-up
@@ -95,7 +96,7 @@
           {currentTheme === 'modern'
             ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
             : 'text-term-dim-green hover:text-term-bright-green hover:bg-[rgba(0,255,0,0.1)]'}"
-        on:click={onClose}
+        onclick={onClose}
         aria-label="Back"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -150,7 +151,7 @@
               {currentTheme === 'modern'
                 ? 'border border-chat-border dark:border-chat-border-dark text-chat-text-muted dark:text-chat-text-muted-dark hover:enabled:bg-chat-button-hover dark:hover:enabled:bg-chat-button-hover-dark hover:enabled:text-chat-text dark:hover:enabled:text-chat-text-dark'
                 : 'border border-term-dim-green text-term-dim-green hover:enabled:bg-[rgba(0,255,0,0.1)] hover:enabled:text-term-bright-green'}"
-            on:click={loadMore}
+            onclick={loadMore}
             disabled={isLoading}
           >
             {isLoading ? $_t('Loading...') : $_t('Load More')}

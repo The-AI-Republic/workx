@@ -4,33 +4,40 @@
    * Groups models by name and shows provider capsule buttons when multiple providers exist
    * Now uses pre-built modelSelectionItems from parent
    */
-  import { createEventDispatcher } from 'svelte';
   import type { ConfiguredFeatures } from '@/config/types';
   import { userStore } from '../../stores/userStore';
   import Tooltip from '../../components/common/Tooltip.svelte';
   import { t, _t } from '../../lib/i18n';
 
   // Props
-  export let selectedModel: string;
-  export let modelSelectionItems: Array<{
-    modelId: string;
-    modelName: string;
-    modelKey: string;
-    providerId: string;
-    providerName: string;
-    organization: string | null;
-    apiKey: string | null;
-    contextWindow: number;
-    maxOutputTokens: number;
-    baseUrl: string;
-    selected: boolean;
-    pricing?: {
-      inputToken: string;
-      outputToken: string;
-      link: string;
-    };
-  }> = [];
-  export let disabled = false;
+  let {
+    selectedModel,
+    modelSelectionItems = [],
+    disabled = false,
+    onModelChange,
+  }: {
+    selectedModel: string;
+    modelSelectionItems?: Array<{
+      modelId: string;
+      modelName: string;
+      modelKey: string;
+      providerId: string;
+      providerName: string;
+      organization: string | null;
+      apiKey: string | null;
+      contextWindow: number;
+      maxOutputTokens: number;
+      baseUrl: string;
+      selected: boolean;
+      pricing?: {
+        inputToken: string;
+        outputToken: string;
+        link: string;
+      };
+    }>;
+    disabled?: boolean;
+    onModelChange?: (data: { modelId: string }) => void;
+  } = $props();
 
   // Free user model restriction
   // FREE_USER_DEFAULT_MODEL: Simple model name pattern for matching
@@ -39,23 +46,21 @@
   const FREE_USER_DEFAULT_COMPOUND_KEY = 'fireworks:fireworks/models/kimi-k2-thinking';
 
   // Subscribe to user store
-  $: isUserLoggedIn = $userStore.isLoggedIn;
-  $: isFreeUser = $userStore.userType === 0;
+  let isUserLoggedIn = $derived($userStore.isLoggedIn);
+  let isFreeUser = $derived($userStore.userType === 0);
 
   // Check if a model is available for free users
   function isModelAvailableForFreeUser(modelKey: string): boolean {
     return modelKey.toLowerCase().includes(FREE_USER_DEFAULT_MODEL);
   }
 
-  const dispatch = createEventDispatcher();
-
-  let isOpen = false;
-  let focusedIndex = -1;
+  let isOpen = $state(false);
+  let focusedIndex = $state(-1);
   let selectorRef: HTMLDivElement;
 
   // Track pending provider selection per model name (when user clicks model row but hasn't selected provider)
-  let pendingSelectionModelName: string | null = null;
-  let pendingProviderErrors: Map<string, boolean> = new Map();
+  let pendingSelectionModelName: string | null = $state(null);
+  let pendingProviderErrors: Map<string, boolean> = $state(new Map());
 
   // Group models by model name for UI display
   interface GroupedModel {
@@ -78,7 +83,7 @@
   }
 
   // Computed: group models by name
-  $: groupedModels = (() => {
+  let groupedModels = $derived((() => {
     const groups = new Map<string, GroupedModel>();
 
     for (const item of modelSelectionItems) {
@@ -126,12 +131,12 @@
     }
 
     return Array.from(groups.values());
-  })();
+  })());
 
   // Get selected model's name and provider
-  $: selectedModelData = modelSelectionItems.find((m) => m.modelId === selectedModel);
-  $: selectedModelName = selectedModelData?.modelName || '';
-  $: selectedProviderId = selectedModelData?.providerId || '';
+  let selectedModelData = $derived(modelSelectionItems.find((m) => m.modelId === selectedModel));
+  let selectedModelName = $derived(selectedModelData?.modelName || '');
+  let selectedProviderId = $derived(selectedModelData?.providerId || '');
 
   function toggleDropdown() {
     if (disabled) return;
@@ -204,7 +209,7 @@
     if (disabled) return;
 
     // Dispatch model change event
-    dispatch('modelChange', { modelId });
+    onModelChange?.({ modelId });
     isOpen = false;
   }
 
@@ -266,22 +271,29 @@
   }
 
   // Get current model with provider name for display
-  $: currentModelData = modelSelectionItems.find((m) => m.modelId === selectedModel);
-  $: currentModelDisplay = currentModelData
+  let currentModelData = $derived(modelSelectionItems.find((m) => m.modelId === selectedModel));
+  let currentModelDisplay = $derived(currentModelData
     ? `${currentModelData.modelName} - ${currentModelData.providerName}`
     : disabled && modelSelectionItems.length === 0
       ? t('Loading...')
       : modelSelectionItems.length > 0
         ? t('Unknown model ($1$)', { substitutions: [selectedModel] })
-        : t('No models available');
+        : t('No models available'));
 
-  $: if (typeof window !== 'undefined') {
-    if (isOpen) {
-      document.addEventListener('click', handleClickOutside);
-    } else {
-      document.removeEventListener('click', handleClickOutside);
+  $effect(() => {
+    if (typeof window !== 'undefined') {
+      if (isOpen) {
+        document.addEventListener('click', handleClickOutside);
+      } else {
+        document.removeEventListener('click', handleClickOutside);
+      }
     }
-  }
+    return () => {
+      if (typeof window !== 'undefined') {
+        document.removeEventListener('click', handleClickOutside);
+      }
+    };
+  });
 </script>
 
 <!-- Model selector with grouped providers -->
@@ -292,7 +304,7 @@
   aria-expanded={isOpen}
   aria-label={$_t('Select model: $1$', { substitutions: [currentModelDisplay] })}
   aria-disabled={disabled}
-  on:keydown={handleKeyDown}
+  onkeydown={handleKeyDown}
   tabindex={disabled ? -1 : 0}
 >
   <!-- Trigger button -->
@@ -304,7 +316,7 @@
     class:hover:bg-gray-700={!disabled}
     class:ring-2={isOpen}
     class:ring-cyan-400={isOpen}
-    on:click={toggleDropdown}
+    onclick={toggleDropdown}
     {disabled}
   >
     <span class="flex items-center gap-2">
@@ -358,8 +370,8 @@
               role="option"
               aria-selected={isSelectedModelName}
               aria-disabled={isLockedForFreeUser}
-              on:click={() => handleModelRowClick(group)}
-              on:keydown={(e) => e.key === 'Enter' && handleModelRowClick(group)}
+              onclick={() => handleModelRowClick(group)}
+              onkeydown={(e) => e.key === 'Enter' && handleModelRowClick(group)}
               tabindex={isLockedForFreeUser ? -1 : 0}
             >
               <!-- Model name with providers: "<Model Name> - <provider1> <provider2> ..." format -->
@@ -406,7 +418,7 @@
                           class:provider-unselected={!isProviderSelected && !isLockedForFreeUser}
                           class:provider-locked={isLockedForFreeUser}
                           aria-disabled={isLockedForFreeUser}
-                          on:click={(e) =>
+                          onclick={(e) =>
                             handleProviderClick(
                               e,
                               provider.modelId,
@@ -498,7 +510,7 @@
                         target="_blank"
                         rel="noopener noreferrer"
                         class="flex-shrink-0 text-cyan-400 hover:text-cyan-300 transition-colors"
-                        on:click={(e) => e.stopPropagation()}
+                        onclick={(e) => e.stopPropagation()}
                         aria-label={$_t("View pricing details")}
                       >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -527,7 +539,7 @@
                       target="_blank"
                       rel="noopener noreferrer"
                       class="flex-shrink-0 text-cyan-400 hover:text-cyan-300 transition-colors"
-                      on:click={(e) => e.stopPropagation()}
+                      onclick={(e) => e.stopPropagation()}
                       aria-label={$_t("View pricing details")}
                     >
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

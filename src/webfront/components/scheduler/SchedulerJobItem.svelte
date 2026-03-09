@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
   import type { RecurrenceRule } from '@/core/models/types/Scheduler';
 
@@ -11,9 +11,9 @@
     createdAt,
     showActions = true,
     recurrence = undefined,
-    ontrigger,
-    oncancel,
-    ondetails,
+    onTrigger,
+    onCancel,
+    onDetails,
   }: {
     id: string;
     input: string;
@@ -22,19 +22,12 @@
     createdAt: number;
     showActions?: boolean;
     recurrence?: RecurrenceRule | null | undefined;
-    ontrigger?: (data: { jobId: string }) => void;
-    oncancel?: (data: { jobId: string }) => void;
-    ondetails?: (data: { jobId: string }) => void;
+    onTrigger?: (data: { jobId: string }) => void;
+    onCancel?: (data: { jobId: string }) => void;
+    onDetails?: (data: { jobId: string }) => void;
   } = $props();
 
-  let currentTheme = $state<UITheme>('terminal');
-
-  $effect(() => {
-    const unsub = uiTheme.subscribe((theme) => {
-      currentTheme = theme;
-    });
-    return unsub;
-  });
+  let currentTheme = $derived($uiTheme);
 
   function getStatusBadgeClasses(s: string): string {
     switch (s) {
@@ -103,11 +96,11 @@
   }
 
   function handleTrigger() {
-    ontrigger?.({ jobId: id });
+    onTrigger?.({ jobId: id });
   }
 
   function handleCancel() {
-    oncancel?.({ jobId: id });
+    onCancel?.({ jobId: id });
   }
 
   function formatRecurrenceDisplay(rule: RecurrenceRule): string {
@@ -136,7 +129,7 @@
   }
 
   function handleClick() {
-    ondetails?.({ jobId: id });
+    onDetails?.({ jobId: id });
   }
 </script>
 
@@ -199,7 +192,7 @@
             {currentTheme === 'modern'
               ? 'bg-[rgba(16,185,129,0.1)] text-emerald-500 hover:bg-[rgba(16,185,129,0.2)]'
               : 'bg-[rgba(0,255,0,0.1)] text-term-bright-green hover:bg-[rgba(0,255,0,0.2)]'}"
-          onclick={(e) => { e.stopPropagation(); handleTrigger(); }}
+          onclick={(e: MouseEvent) => { e.stopPropagation(); handleTrigger(); }}
           title={$_t("Run Now")}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -212,7 +205,7 @@
         <button
           class="p-1.5 border-none rounded cursor-pointer flex items-center justify-center transition-all duration-200
             bg-[rgba(239,68,68,0.1)] text-[#ff6b6b] hover:bg-[rgba(239,68,68,0.2)]"
-          onclick={(e) => { e.stopPropagation(); handleCancel(); }}
+          onclick={(e: MouseEvent) => { e.stopPropagation(); handleCancel(); }}
           title={$_t("Cancel")}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

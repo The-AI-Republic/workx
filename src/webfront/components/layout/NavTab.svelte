@@ -1,25 +1,19 @@
 <script lang="ts">
-  import { createEventDispatcher, onDestroy } from 'svelte';
   import type { NavItem } from '../../stores/layoutStore';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
 
-  export let item: NavItem;
-  export let active: boolean;
-  export let compact: boolean = false;
+  let { item, active, compact = false, onNavigate }: {
+    item: NavItem;
+    active: boolean;
+    compact?: boolean;
+    onNavigate?: (value: { route: string }) => void;
+  } = $props();
 
-  let currentTheme: UITheme = 'terminal';
-
-  const unsubTheme = uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
-
-  onDestroy(unsubTheme);
-
-  const dispatch = createEventDispatcher();
+  let currentTheme = $derived($uiTheme);
 
   function handleClick() {
-    dispatch('navigate', { route: item.route });
+    onNavigate?.({ route: item.route });
   }
 </script>
 
@@ -33,7 +27,7 @@
       : active
         ? 'text-term-green bg-term-green/5'
         : 'text-term-dim-green hover:bg-term-green/10'}"
-  on:click={handleClick}
+  onclick={handleClick}
   aria-current={active ? 'page' : undefined}
 >
   <span class="icon">{@html item.icon}</span>

@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
   import type { CalendarInstance } from '@/core/models/types/ScheduleEvent';
 
@@ -36,15 +35,8 @@
     ondeleteinstance?: (detail: { scheduleEventId: string; instanceTime: number }) => void;
   } = $props();
 
-  let currentTheme = $state<UITheme>('terminal');
+  let currentTheme = $derived($uiTheme);
   let popoverEl = $state<HTMLDivElement>();
-
-  $effect(() => {
-    const unsub = uiTheme.subscribe((theme) => {
-      currentTheme = theme;
-    });
-    return unsub;
-  });
 
   function handleClickOutside(e: MouseEvent) {
     if (popoverEl && !popoverEl.contains(e.target as Node)) {
@@ -75,15 +67,15 @@
   let clampedX = $derived(Math.min(position.x, (typeof window !== 'undefined' ? window.innerWidth : 400) - 280));
   let clampedY = $derived(Math.min(position.y, (typeof window !== 'undefined' ? window.innerHeight : 600) - 200));
 
-  onMount(() => {
+  $effect(() => {
     // Defer listener to next frame to avoid the same click that opened the popover
-    requestAnimationFrame(() => {
+    const frameId = requestAnimationFrame(() => {
       window.addEventListener('click', handleClickOutside);
     });
-  });
-
-  onDestroy(() => {
-    window.removeEventListener('click', handleClickOutside);
+    return () => {
+      cancelAnimationFrame(frameId);
+      window.removeEventListener('click', handleClickOutside);
+    };
   });
 </script>
 
