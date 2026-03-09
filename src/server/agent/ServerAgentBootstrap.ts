@@ -300,6 +300,7 @@ export class ServerAgentBootstrap {
       mcp: mcpDeps,
       a2a: a2aDeps,
       skills: skillsDeps,
+      scheduler: this.scheduler ? { scheduler: this.scheduler } : undefined,
       session: {
         getAgent: () => this.agent,
       },

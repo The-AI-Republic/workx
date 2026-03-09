@@ -250,6 +250,7 @@ export class DesktopAgentBootstrap {
       mcp: mcpDeps,
       a2a: a2aDeps,
       skills: this.skillRegistry ? { skillRegistry: this.skillRegistry } : undefined,
+      scheduler: this.scheduler ? { scheduler: this.scheduler } : undefined,
       session: {
         getAgent: () => this.agent,
       },
