@@ -5,7 +5,7 @@
 </script>
 
 <div
-  class="terminal-container {theme} flex flex-col h-full overflow-hidden
+  class="terminal-container {theme} flex flex-col flex-1 min-h-0 overflow-hidden
     {theme === 'modern'
       ? 'font-chat bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
       : 'font-terminal bg-term-bg text-term-green'}"
