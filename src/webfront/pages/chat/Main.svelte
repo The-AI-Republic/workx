@@ -1,8 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { push } from 'svelte-spa-router';
-  import { MessageType } from '@/core/MessageRouter';
-  import { messageService, connectionState, getMessageService, type IMessageService } from '@/core/messaging';
   import { getInitializedUIClient } from '@/core/messaging';
   import type { UIChannelClient } from '@/core/messaging';
   import type { JobStatusChangedEvent } from '@/core/models/types/SchedulerContracts';
