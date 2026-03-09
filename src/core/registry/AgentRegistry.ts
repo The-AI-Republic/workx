@@ -16,6 +16,7 @@ import { DomainSensitivityEnhancer } from '../approval/enhancers/DomainSensitivi
 import { SemanticElementEnhancer } from '../approval/enhancers/SemanticElementEnhancer';
 import { ApprovalConfigStorage } from '../approval/ApprovalConfigStorage';
 import { getConfigStorage } from '../storage/ConfigStorageProvider';
+import { getChannelManager } from '../channels/ChannelManager';
 import { TabManager } from '../TabManager';
 import type {
   SessionConfig,
@@ -161,9 +162,9 @@ export class AgentRegistry {
 
         // Route events through ChannelManager (unified across all platforms)
         agent.setEventDispatcher((event) => {
-          import('@/core/channels/ChannelManager').then(({ getChannelManager }) => {
+          try {
             getChannelManager().broadcastEvent(event.msg).catch(() => {});
-          }).catch(() => {});
+          } catch { /* channel not ready */ }
         });
 
         await agent.initialize();
@@ -405,12 +406,12 @@ export class AgentRegistry {
     }
 
     // Broadcast to UI via channel
-    import('@/core/channels/ChannelManager').then(({ getChannelManager }) => {
+    try {
       getChannelManager().broadcastEvent({
         type: 'BackgroundEvent' as any,
         data: { message: 'session_event', level: 'info', sessionEvent: event },
       } as any).catch(() => {});
-    }).catch(() => {});
+    } catch { /* channel not ready */ }
   }
 
   // ==========================================================================

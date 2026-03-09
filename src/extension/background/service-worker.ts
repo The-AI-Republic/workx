@@ -22,6 +22,7 @@ import { AuthManager } from '../../core/models/types/Auth';
 import { CacheManager } from '../../storage/CacheManager';
 import { StorageQuotaManager } from '../../storage/StorageQuotaManager';
 import { RolloutRecorder } from '../../storage/rollout';
+import { IndexedDBRolloutStorageProvider } from '../../storage/rollout/provider/IndexedDBRolloutStorageProvider';
 import { AgentConfig } from '../../config/AgentConfig';
 import { STORAGE_KEYS } from '../../config/defaults';
 import { DEFAULT_APPROVAL_CONFIG } from '../../core/approval/types';
@@ -43,17 +44,25 @@ import { registerPromptExtension } from '../../core/PromptLoader';
 // Scheduler imports
 import { Scheduler, ScheduleManager, JobExecutor, ScheduleEventStorage, ExecutionStorage } from '../../core/scheduler';
 import { SchedulerAlarms } from './scheduler-alarms';
-import { createStorageAdapter } from '../../storage/createStorageAdapter';
 import { parseAlarmName } from '../../core/models/types/SchedulerContracts';
 
-// Storage initialization — static imports required because dynamic import()
-// is banned in Chrome extension service workers by the HTML specification.
+// Static imports required because dynamic import() is banned in Chrome
+// extension service workers by the HTML specification.
+// See: https://github.com/w3c/ServiceWorker/issues/1356
 import { setConfigStorage } from '../../core/storage/ConfigStorageProvider';
 import { setCredentialStore } from '../../core/storage/CredentialStore';
 import { setStorageProvider, isStorageProviderInitialized } from '../../core/storage';
 import { ChromeConfigStorage } from '../../extension/storage/ChromeConfigStorage';
 import { ChromeCredentialStore } from '../../extension/storage/ChromeCredentialStore';
 import * as VaultManager from '../../core/crypto/VaultManager';
+// Modules previously loaded via dynamic import() — must be static in service workers
+import { IndexedDBAdapter } from '../../storage/IndexedDBAdapter';
+import { TokenUsageStore } from '../../storage/TokenUsageStore';
+import { getChannelManager } from '../../core/channels/ChannelManager';
+import { registerAllServices } from '../../core/services';
+import { SidePanelChannel } from '../../extension/channels/SidePanelChannel';
+import { ChatGPTOAuthExtensionStorage } from '../auth/ChatGPTOAuthExtensionStorage';
+import { ChatGPTOAuthService } from '../../core/auth/ChatGPTOAuthService';
 // Multi-agent registry imports (Feature 015)
 import { AgentRegistry, SessionStorage } from '../../core/registry';
 import type { SessionConfig } from '../../core/registry/types';
@@ -159,6 +168,32 @@ async function doInitialize(): Promise<void> {
   // Initialize TabManager at service worker level (before agent)
   const tabManager = TabManager.getInstance();
   await tabManager.initialize();
+
+  // Initialize ConfigStorage and CredentialStore BEFORE any code that needs them.
+  // AgentConfig, MCPManager, A2AManager, ApprovalConfigStorage all depend on ConfigStorage.
+  try {
+    setConfigStorage(new ChromeConfigStorage());
+    console.log('[ServiceWorker] Config storage initialized (early)');
+  } catch (error) {
+    console.warn('[ServiceWorker] Failed to initialize config storage:', error);
+  }
+
+  try {
+    setCredentialStore(new ChromeCredentialStore());
+    console.log('[ServiceWorker] Credential store initialized (early)');
+  } catch (error) {
+    console.warn('[ServiceWorker] Failed to initialize credential store:', error);
+  }
+
+  // Inject RolloutRecorder provider before any session creation triggers it.
+  // Direct instantiation avoids dynamic import() which is banned in service workers.
+  try {
+    const rolloutProvider = new IndexedDBRolloutStorageProvider();
+    await rolloutProvider.initialize();
+    RolloutRecorder.setProvider(rolloutProvider);
+  } catch (error) {
+    console.warn('[ServiceWorker] Failed to initialize rollout provider:', error);
+  }
 
   // Initialize configuration singleton first
   agentConfig = await AgentConfig.getInstance();
@@ -272,9 +307,6 @@ async function initializeAuthFromConfig(): Promise<void> {
 
     // Check for ChatGPT OAuth tokens and configure token getter
     try {
-      const { ChatGPTOAuthExtensionStorage } = await import('../auth/ChatGPTOAuthExtensionStorage');
-      const { ChatGPTOAuthService } = await import('@/core/auth/ChatGPTOAuthService');
-
       const oauthStorage = new ChatGPTOAuthExtensionStorage();
       const oauthService = new ChatGPTOAuthService(oauthStorage);
 
@@ -303,9 +335,12 @@ async function initializeSessionPersistence(): Promise<void> {
   }
 
   try {
-    // Initialize storage adapter (IndexedDB on extension, SQLite on desktop/server)
-    const storageAdapter = await createStorageAdapter();
+    // Initialize storage adapter (IndexedDB — static import for service worker compatibility)
+    const storageAdapter = new IndexedDBAdapter();
     await storageAdapter.initialize();
+
+    // Share adapter with TokenUsageStore
+    TokenUsageStore.setAdapter(storageAdapter);
 
     // Create session storage
     sessionStorage = new SessionStorage(storageAdapter);
@@ -380,10 +415,6 @@ function getAgentForMessage(message: { payload?: { sessionId?: string; context?:
  */
 async function registerServiceHandlers(): Promise<void> {
   try {
-    const { getChannelManager } = await import('@/core/channels/ChannelManager');
-    const { registerAllServices } = await import('@/core/services');
-    const { SidePanelChannel } = await import('@/extension/channels/SidePanelChannel');
-
     const channelManager = getChannelManager();
 
     // Register SidePanelChannel if not already registered
@@ -431,7 +462,7 @@ async function registerServiceHandlers(): Promise<void> {
       scheduler: scheduler ? { scheduler } : undefined,
       skills: skillRegistry ? { skillRegistry } : undefined,
       vault: {
-        vaultManager: (await import('@/core/crypto/VaultManager')) as any,
+        vaultManager: VaultManager as any,
       },
       a2a: a2aManager ? { a2aManager } : undefined,
       session: {
@@ -639,8 +670,8 @@ function setupMessageHandlers(): void {
  */
 async function initializeScheduler(): Promise<void> {
   try {
-    // Initialize storage adapter (IndexedDB on extension, SQLite on desktop/server)
-    const storageAdapter = await createStorageAdapter();
+    // Initialize storage adapter (IndexedDB — static import for service worker compatibility)
+    const storageAdapter = new IndexedDBAdapter();
     await storageAdapter.initialize();
 
     // Create new model components
@@ -1185,23 +1216,8 @@ async function executeTabCommand(
  * Initialize storage layer
  */
 async function initializeStorage(): Promise<void> {
-  // Initialize config storage provider
-  // NOTE: Static imports used — dynamic import() is banned in service workers.
-  try {
-    setConfigStorage(new ChromeConfigStorage());
-    console.log('[ServiceWorker] Config storage initialized');
-  } catch (error) {
-    console.warn('[ServiceWorker] Failed to initialize config storage:', error);
-    // Continue - will fall back to chrome.storage.local directly
-  }
-
-  // Initialize credential store (for secure API key storage)
-  try {
-    setCredentialStore(new ChromeCredentialStore());
-    console.log('[ServiceWorker] Credential store initialized');
-  } catch (error) {
-    console.warn('[ServiceWorker] Failed to initialize credential store:', error);
-  }
+  // ConfigStorage and CredentialStore are initialized early in doInitialize()
+  // (before AgentConfig.getInstance()) so they're available when needed.
 
   // Initialize vault encryption (Feature 034: Credential Security)
   try {
@@ -1291,18 +1307,17 @@ function setupPeriodicTasks(): void {
   setInterval(async () => {
     // Feature 015: Process events from all sessions
     if (registry) {
-      let channelManager: import('@/core/channels/ChannelManager').ChannelManager | null = null;
+      let channelMgr: ReturnType<typeof getChannelManager> | null = null;
       try {
-        const { getChannelManager } = await import('@/core/channels/ChannelManager');
-        channelManager = getChannelManager();
+        channelMgr = getChannelManager();
       } catch { /* channel not ready */ }
 
       for (const sessionMeta of registry.listSessions()) {
         const session = registry.getSession(sessionMeta.sessionId);
         if (session?.agent) {
           const event = await session.agent.getNextEvent();
-          if (event && channelManager) {
-            await channelManager.broadcastEvent(event.msg);
+          if (event && channelMgr) {
+            await channelMgr.broadcastEvent(event.msg);
           }
         }
       }
@@ -1311,7 +1326,6 @@ function setupPeriodicTasks(): void {
       const event = await agent.getNextEvent();
       if (event) {
         try {
-          const { getChannelManager } = await import('@/core/channels/ChannelManager');
           await getChannelManager().broadcastEvent(event.msg);
         } catch { /* channel not ready */ }
       }

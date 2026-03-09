@@ -6,24 +6,9 @@
  */
 
 import type { StorageAdapter } from './StorageAdapter';
-import { createStorageAdapter } from './createStorageAdapter';
 import type { TokenUsageRecord, SessionUsageSummary, DailyUsageSummary } from './types';
 
 const STORE_NAME = 'token_usage_records';
-
-let adapterPromise: Promise<StorageAdapter> | null = null;
-let adapterInstance: StorageAdapter | null = null;
-
-function getAdapter(): Promise<StorageAdapter> {
-  if (adapterInstance) return Promise.resolve(adapterInstance);
-  if (!adapterPromise) {
-    adapterPromise = createStorageAdapter().then((adapter) => {
-      adapterInstance = adapter;
-      return adapter;
-    });
-  }
-  return adapterPromise;
-}
 
 export class TokenUsageStore {
   private static instance: TokenUsageStore | null = null;
@@ -31,6 +16,15 @@ export class TokenUsageStore {
 
   constructor(adapter?: StorageAdapter) {
     this.adapter = adapter || null;
+  }
+
+  /**
+   * Inject a StorageAdapter for the singleton instance.
+   * Each platform bootstrap should call this early with the appropriate adapter.
+   */
+  static setAdapter(adapter: StorageAdapter): void {
+    const store = TokenUsageStore.getInstance();
+    store.adapter = adapter;
   }
 
   static getInstance(): TokenUsageStore {
@@ -41,8 +35,10 @@ export class TokenUsageStore {
   }
 
   private async db(): Promise<StorageAdapter> {
-    if (this.adapter) return this.adapter;
-    return getAdapter();
+    if (!this.adapter) {
+      throw new Error('TokenUsageStore not initialized. Call TokenUsageStore.setAdapter() first.');
+    }
+    return this.adapter;
   }
 
   async save(record: TokenUsageRecord): Promise<void> {

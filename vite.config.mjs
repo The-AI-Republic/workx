@@ -41,33 +41,31 @@ function stripModulePreloadPolyfill() {
         const chunk = bundle[fileName];
         if (chunk.type !== 'chunk') continue;
 
+        // Only process chunks that contain the Vite preload polyfill
+        if (!code_has_preload_polyfill(chunk.code)) continue;
+
         let code = chunk.code;
 
-        // Check if this chunk contains the modulepreload polyfill
-        if (!code.includes('modulepreload') || !code.includes('document.head.appendChild')) {
-          continue;
-        }
-
         // Replace the feature detection IIFE that accesses document
-        // Pattern: const xx=function(){const e=typeof document<"u"&&document.createElement("link")...}()
+        // Matches: const XX=(function(){const e=typeof document<"u"&&document.createElement("link").relList;...}())
         code = code.replace(
-          /const (\w+)=function\(\)\{const \w+=typeof document<"u"&&document\.createElement\("link"\)\.relList;return \w+&&\w+\.supports&&\w+\.supports\("modulepreload"\)\?"modulepreload":"preload"\}\(\)/g,
-          'const $1="modulepreload"'
+          /\(function\(\)\{const \w+=typeof document<"u"&&document\.createElement\("link"\)\.relList;return \w+&&\w+\.supports&&\w+\.supports\("modulepreload"\)\?"modulepreload":"preload"\}\)\(\)/g,
+          '"modulepreload"'
         );
 
-        // Find and replace the preload function that uses document
-        // We need to find the function that starts with document.getElementsByTagName("link")
-        // and replace it with a simple passthrough
-        const preloadFnMatch = code.match(/,(\w+)=function\((\w+),(\w+),(\w+)\)\{let \w+=Promise\.resolve\(\);if\(\w+&&\w+\.length>0\)\{document\.getElementsByTagName/);
-        if (preloadFnMatch) {
+        // Replace the preload function that uses document.getElementsByTagName, document.head.appendChild,
+        // and the error handler that uses window.dispatchEvent.
+        // Strategy: find the function assigned to a variable that contains document.getElementsByTagName("link"),
+        // then replace the entire assignment (from the variable assignment through the closing brace)
+        // with a simple passthrough that just calls the first argument (the import function).
+        const preloadFnMatch = code.match(/[,;](\w+)=function\((\w+),(\w+),(\w+)\)\{let \w+=Promise\.resolve\(\);if\(\w+&&\w+\.length>0\)\{/);
+        if (preloadFnMatch && code.includes('document.getElementsByTagName("link")')) {
           const fnName = preloadFnMatch[1];
           const arg1 = preloadFnMatch[2];
-          const arg2 = preloadFnMatch[3];
-          const arg3 = preloadFnMatch[4];
 
-          // Find the end of this function (it ends with returning the promise chain)
-          // and replace the entire function
+          // Find the start of this function assignment
           const fnStart = code.indexOf(preloadFnMatch[0]);
+          // Walk through braces to find the function body end
           let braceCount = 0;
           let fnEnd = fnStart;
           let inFunction = false;
@@ -85,7 +83,9 @@ function stripModulePreloadPolyfill() {
             }
           }
 
-          const replacement = `,${fnName}=async(${arg1},${arg2},${arg3})=>${arg1}()`;
+          // Replace with a simple passthrough: just call the import function and return the result
+          const separator = code[fnStart]; // preserve the original , or ;
+          const replacement = `${separator}${fnName}=function(${arg1}){return ${arg1}()}`;
           code = code.slice(0, fnStart) + replacement + code.slice(fnEnd);
         }
 
@@ -93,6 +93,14 @@ function stripModulePreloadPolyfill() {
       }
     }
   };
+}
+
+/** Check if a chunk contains the Vite modulepreload polyfill */
+function code_has_preload_polyfill(code) {
+  return code.includes('modulepreload') && (
+    code.includes('document.head.appendChild') ||
+    code.includes('window.dispatchEvent')
+  );
 }
 
 // Main build config - excludes content script (built separately with vite.config.content.mjs)
