@@ -449,8 +449,6 @@ export class DesktopAgentBootstrap {
 
       // Wire job launcher — show window and submit directly to agent
       this.scheduler.setJobLauncher(async (executionId, sessionId, registryAgent) => {
-        this.runningSchedulerJobId = executionId;
-        this.runningJobStartTime = Date.now();
         console.log(`[DesktopAgentBootstrap] Scheduled job ${executionId} launched (session: ${sessionId})`);
         // Show the main window
         try {
@@ -466,10 +464,16 @@ export class DesktopAgentBootstrap {
         if (!execution) throw new Error(`Execution not found: ${executionId}`);
         const targetAgent = registryAgent ?? this.agent;
         if (!targetAgent) throw new Error('Agent not initialized');
+        // submitOperation is fire-and-forget: it queues the operation, may abort
+        // a previous task (emitting TurnAborted), and returns before the new task
+        // completes. We set runningSchedulerJobId AFTER to avoid false-triggering
+        // handleSchedulerEventCompletion on the previous task's TurnAborted event.
         await targetAgent.submitOperation(
           { type: 'UserInput', items: [{ type: 'text', text: execution.input }] },
           {}
         );
+        this.runningSchedulerJobId = executionId;
+        this.runningJobStartTime = Date.now();
       });
 
       // Wire notification handler via Tauri notification plugin
@@ -502,6 +506,12 @@ export class DesktopAgentBootstrap {
           maxConcurrent: 1,
           agentFactory: async (config) => {
             const agent = new RepublicAgent(config, undefined, undefined, new UserNotifier());
+            // Copy auth manager from primary agent so registry agents use
+            // the same API key / backend routing as the user's session
+            const primaryAuth = this.agent?.getModelClientFactory().getAuthManager();
+            if (primaryAuth) {
+              agent.getModelClientFactory().setAuthManager(primaryAuth);
+            }
             await agent.initialize();
             return agent;
           },
@@ -547,8 +557,11 @@ export class DesktopAgentBootstrap {
   }
 
   /**
-   * Intercept TaskComplete/TaskFailed events from the agent to complete/fail
+   * Intercept task lifecycle events from the agent to complete/fail
    * the currently running scheduled job at the bootstrap level.
+   *
+   * Handles: TaskComplete (normal), TurnAborted (abort/interrupt),
+   * Error (task errors), TaskFailed (protocol-defined, currently unused).
    */
   private handleSchedulerEventCompletion(msg: EventMsg): void {
     if (!this.runningSchedulerJobId || !this.scheduler) return;
@@ -558,7 +571,6 @@ export class DesktopAgentBootstrap {
     if (msg.type === 'TaskComplete') {
       this.runningSchedulerJobId = null;
       this.runningJobStartTime = 0;
-      // EventMsg.data shape for TaskComplete: { last_agent_message?: string, token_usage?: { total?: { input_tokens, output_tokens, total_tokens } } }
       const data = (msg as EventMsg & { data?: Record<string, any> }).data;
       const summary = data?.last_agent_message?.slice(0, 500) || 'Job completed';
       const tokenData = data?.token_usage?.total;
@@ -573,11 +585,14 @@ export class DesktopAgentBootstrap {
       }).catch((error) => {
         console.error(`[DesktopAgentBootstrap] Failed to complete scheduler job ${jobId}:`, error);
       });
-    } else if (msg.type === 'TaskFailed') {
+    } else if (msg.type === 'TaskFailed' || msg.type === 'TurnAborted' || msg.type === 'Error') {
+      // TaskFailed: protocol-defined failure (currently not emitted by TaskRunner)
+      // TurnAborted: task aborted (user interrupt, automatic_abort after MAX_TURNS)
+      // Error: task execution error (API error, model error, submission error)
       this.runningSchedulerJobId = null;
       this.runningJobStartTime = 0;
       const data = (msg as EventMsg & { data?: Record<string, any> }).data;
-      const error = data?.error || data?.reason || 'Job failed';
+      const error = data?.error || data?.reason || data?.message || 'Job failed';
       this.scheduler.failJob(jobId, error).catch((err) => {
         console.error(`[DesktopAgentBootstrap] Failed to fail scheduler job ${jobId}:`, err);
       });
