@@ -6,6 +6,7 @@
   import { AgentConfig } from '@/config/AgentConfig';
   import { _t } from '../../lib/i18n';
   import { getInitializedUIClient } from '@/core/messaging';
+  import type { UIChannelClient } from '@/core/messaging';
   import { jobsToCalendarEvents, instancesToCalendarEvents, type CalendarEvent } from '../../lib/calendarUtils';
   import CalendarWrapper from '../../components/scheduler/CalendarWrapper.svelte';
   import ScheduleJobModal from '../../components/scheduler/ScheduleJobModal.svelte';
@@ -15,6 +16,14 @@
   let calendarEvents = $state<CalendarEvent[]>([]);
   let initialView = $state('timeGridWeek');
   let eventUnsubscribers: Array<() => void> = [];
+  let channelClient: UIChannelClient | null = null;
+  let destroyed = false;
+
+  async function getClient(): Promise<UIChannelClient> {
+    if (channelClient) return channelClient;
+    channelClient = await getClient();
+    return channelClient;
+  }
 
   // Date range for current view
   let viewStart = $state(0);
@@ -57,7 +66,7 @@
   async function fetchEvents() {
     if (!viewStart || !viewEnd) return;
     try {
-      const client = await getInitializedUIClient();
+      const client = await getClient();
       const theme = currentTheme === 'modern' ? 'modern' : 'terminal';
 
       // Try new model first (schedule.getEventsInRange returns CalendarInstances)
@@ -147,7 +156,7 @@
     const instance = event.extendedProps?.instance;
 
     try {
-      const client = await getInitializedUIClient();
+      const client = await getClient();
       if (instance) {
         // New model: edit instance with overrideTime
         await client.serviceRequest('schedule.editInstance', {
@@ -173,7 +182,7 @@
     try {
       const payload: any = { input, scheduledTime };
       if (recurrence) payload.recurrence = recurrence;
-      await (await getInitializedUIClient()).serviceRequest('scheduler.schedule', payload);
+      await (await getClient()).serviceRequest('scheduler.schedule', payload);
       await fetchEvents();
     } catch (error) {
       console.error('[SchedulerCalendar] Failed to schedule job:', error);
@@ -183,7 +192,7 @@
   async function handlePopoverTrigger(detail: { jobId: string }) {
     showPopover = false;
     try {
-      await (await getInitializedUIClient()).serviceRequest('scheduler.trigger', { jobId: detail.jobId });
+      await (await getClient()).serviceRequest('scheduler.trigger', { jobId: detail.jobId });
       await fetchEvents();
     } catch (error) {
       console.error('[SchedulerCalendar] Failed to trigger job:', error);
@@ -193,7 +202,7 @@
   async function handlePopoverCancel(detail: { jobId: string }) {
     showPopover = false;
     try {
-      await (await getInitializedUIClient()).serviceRequest('scheduler.cancel', { jobId: detail.jobId });
+      await (await getClient()).serviceRequest('scheduler.cancel', { jobId: detail.jobId });
       await fetchEvents();
     } catch (error) {
       console.error('[SchedulerCalendar] Failed to cancel job:', error);
@@ -203,7 +212,7 @@
   async function handleDeleteInstance(detail: { scheduleEventId: string; instanceTime: number }) {
     showPopover = false;
     try {
-      await (await getInitializedUIClient()).serviceRequest('schedule.deleteInstance', detail);
+      await (await getClient()).serviceRequest('schedule.deleteInstance', detail);
       await fetchEvents();
     } catch (error) {
       console.error('[SchedulerCalendar] Failed to delete instance:', error);
@@ -216,7 +225,7 @@
     const newInput = window.prompt('Edit instance prompt:', currentInput);
     if (newInput === null || newInput === currentInput) return; // cancelled or unchanged
     try {
-      await (await getInitializedUIClient()).serviceRequest('schedule.editInstance', {
+      await (await getClient()).serviceRequest('schedule.editInstance', {
         scheduleEventId: detail.scheduleEventId,
         instanceTime: detail.instanceTime,
         overrides: { overrideInput: newInput },
@@ -233,7 +242,7 @@
     const newInput = window.prompt('Edit series prompt:', currentInput);
     if (newInput === null || newInput === currentInput) return;
     try {
-      await (await getInitializedUIClient()).serviceRequest('schedule.updateEvent', {
+      await (await getClient()).serviceRequest('schedule.updateEvent', {
         eventId: detail.scheduleEventId,
         updates: { input: newInput },
       });
@@ -245,7 +254,8 @@
 
   onMount(async () => {
     try {
-      const client = await getInitializedUIClient();
+      const client = await getClient();
+      if (destroyed) return;
       eventUnsubscribers.push(
         client.onEvent('BackgroundEvent', (data: any) => {
           if (data?.message === 'scheduler_job_status') {
@@ -259,6 +269,7 @@
   });
 
   onDestroy(() => {
+    destroyed = true;
     eventUnsubscribers.forEach(fn => fn());
   });
 </script>

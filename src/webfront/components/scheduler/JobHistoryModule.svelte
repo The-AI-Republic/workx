@@ -113,10 +113,16 @@
     }, 150);
   }
 
+  async function getClient(): Promise<UIChannelClient> {
+    if (channelClient) return channelClient;
+    channelClient = await getInitializedUIClient();
+    return channelClient;
+  }
+
   async function fetchArchivedJobs() {
     isLoading = true;
     try {
-      const client = await getInitializedUIClient();
+      const client = await getClient();
       const response = await client.serviceRequest<any>(
         'scheduler.getArchivedJobs',
         {
@@ -163,7 +169,7 @@
 
     (async () => {
       try {
-        channelClient = await getInitializedUIClient();
+        await getClient();
         if (destroyed) return;
         eventUnsubscribers.push(
           channelClient.onEvent('BackgroundEvent', (data: any) => {

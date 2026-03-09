@@ -57,7 +57,7 @@
 
     (async () => {
       try {
-        channelClient = await getInitializedUIClient();
+        await getClient();
         if (destroyed) return;
         eventUnsubscribers.push(
           channelClient.onEvent('BackgroundEvent', (data: any) => {
@@ -86,10 +86,16 @@
     eventDebounceTimer = setTimeout(() => fetchAllData(), 150);
   }
 
+  async function getClient(): Promise<UIChannelClient> {
+    if (channelClient) return channelClient;
+    channelClient = await getInitializedUIClient();
+    return channelClient;
+  }
+
   async function fetchAllData() {
     isLoading = true;
     try {
-      const client = await getInitializedUIClient();
+      const client = await getClient();
       const [stateRes, scheduledRes, missedRes, queueRes] = await Promise.all([
         client.serviceRequest<any>('scheduler.getState'),
         client.serviceRequest<any>('scheduler.getScheduledJobs'),
@@ -111,7 +117,7 @@
 
   async function handleTrigger(data: { jobId: string }) {
     try {
-      await (await getInitializedUIClient()).serviceRequest('scheduler.trigger', { jobId: data.jobId });
+      await (await getClient()).serviceRequest('scheduler.trigger', { jobId: data.jobId });
     } catch (error) {
       console.error('[ActiveJobsModule] Failed to trigger job:', error);
     }
@@ -119,7 +125,7 @@
 
   async function handleCancel(data: { jobId: string }) {
     try {
-      await (await getInitializedUIClient()).serviceRequest('scheduler.cancel', { jobId: data.jobId });
+      await (await getClient()).serviceRequest('scheduler.cancel', { jobId: data.jobId });
     } catch (error) {
       console.error('[ActiveJobsModule] Failed to cancel job:', error);
     }
