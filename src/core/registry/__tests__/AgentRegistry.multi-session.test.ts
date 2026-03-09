@@ -1,7 +1,7 @@
 /**
  * Multi-session isolation tests for AgentRegistry
  *
- * Verifies that each session gets its own PiAgent,
+ * Verifies that each session gets its own RepublicAgent,
  * events don't leak between sessions, concurrent limits
  * are enforced, and freed letters are recycled.
  */
@@ -10,9 +10,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AgentRegistry } from '@/core/registry/AgentRegistry';
 import { DEFAULT_MAX_CONCURRENT } from '@/core/registry/types';
 
-// Mock PiAgent
-vi.mock('@/core/PiAgent', () => ({
-  PiAgent: class MockPiAgent {
+// Mock RepublicAgent
+vi.mock('@/core/RepublicAgent', () => ({
+  RepublicAgent: class MockRepublicAgent {
     initialize = vi.fn().mockResolvedValue(undefined);
     getSession = vi.fn(() => ({
       conversationId: 'conv_' + Math.random().toString(36).slice(2),
@@ -32,8 +32,10 @@ vi.mock('@/config/AgentConfig', () => ({
   AgentConfig: { getInstance: vi.fn().mockResolvedValue({}) },
 }));
 
-vi.mock('@/core/MessageRouter', () => ({
-  MessageRouter: vi.fn().mockImplementation(() => ({})),
+vi.mock('@/core/channels/ChannelManager', () => ({
+  getChannelManager: vi.fn(() => ({
+    broadcastEvent: vi.fn().mockResolvedValue(undefined),
+  })),
 }));
 
 vi.mock('@/core/TabManager', () => ({
@@ -47,7 +49,6 @@ vi.mock('@/core/TabManager', () => ({
 describe('AgentRegistry — multi-session isolation', () => {
   let registry: AgentRegistry;
   let mockConfig: any;
-  let mockRouter: any;
 
   beforeEach(() => {
     AgentRegistry.resetInstance();
@@ -62,9 +63,8 @@ describe('AgentRegistry — multi-session isolation', () => {
     });
 
     mockConfig = {};
-    mockRouter = {};
     registry = new AgentRegistry({ maxConcurrent: DEFAULT_MAX_CONCURRENT });
-    registry.initialize(mockConfig, mockRouter);
+    registry.initialize(mockConfig);
   });
 
   afterEach(() => {
@@ -93,7 +93,7 @@ describe('AgentRegistry — multi-session isolation', () => {
       expect(letters).toEqual(['a', 'b', 'c']);
     });
 
-    it('creates distinct PiAgent instances per session', async () => {
+    it('creates distinct RepublicAgent instances per session', async () => {
       const s1 = await registry.createSession({ type: 'primary' });
       const s2 = await registry.createSession({ type: 'primary' });
 
@@ -165,7 +165,7 @@ describe('AgentRegistry — multi-session isolation', () => {
   describe('concurrent limits', () => {
     it('allows up to maxConcurrent sessions', async () => {
       const reg = new AgentRegistry({ maxConcurrent: 5 });
-      reg.initialize(mockConfig, mockRouter);
+      reg.initialize(mockConfig);
 
       for (let i = 0; i < 5; i++) {
         await reg.createSession({ type: 'primary' });
@@ -176,7 +176,7 @@ describe('AgentRegistry — multi-session isolation', () => {
 
     it('rejects the session that exceeds the limit', async () => {
       const reg = new AgentRegistry({ maxConcurrent: 5 });
-      reg.initialize(mockConfig, mockRouter);
+      reg.initialize(mockConfig);
 
       for (let i = 0; i < 5; i++) {
         await reg.createSession({ type: 'primary' });
@@ -189,7 +189,7 @@ describe('AgentRegistry — multi-session isolation', () => {
 
     it('allows creation after removal frees a slot', async () => {
       const reg = new AgentRegistry({ maxConcurrent: 2 });
-      reg.initialize(mockConfig, mockRouter);
+      reg.initialize(mockConfig);
 
       const s1 = await reg.createSession({ type: 'primary' });
       await reg.createSession({ type: 'primary' });
