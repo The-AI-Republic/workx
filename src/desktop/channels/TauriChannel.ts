@@ -187,6 +187,10 @@ export class TauriChannel implements ChannelAdapter {
     return true;
   }
 
+  supportsServices(): boolean {
+    return true;
+  }
+
   /**
    * Get all capabilities as an object
    */
@@ -195,6 +199,7 @@ export class TauriChannel implements ChannelAdapter {
       streaming: this.supportsStreaming(),
       approvals: this.supportsApprovals(),
       media: this.supportsMedia(),
+      services: this.supportsServices(),
     };
   }
 

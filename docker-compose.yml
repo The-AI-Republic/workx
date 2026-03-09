@@ -18,6 +18,9 @@ services:
       - APPLEPI_DATA_DIR=/data
       - APPLEPI_CONFIG_PATH=/app/config.json
       - NODE_ENV=production
+      # Required for credential encryption (API key storage)
+      # Generate: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+      - VITE_VAULT_SECRET=${VITE_VAULT_SECRET}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:18100/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"]

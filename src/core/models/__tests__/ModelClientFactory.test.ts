@@ -9,6 +9,16 @@ import { ModelClientFactory, type ModelProvider, type ModelClientConfig } from '
 import { ModelClientError } from '../ModelClient';
 import type { IAuthManager } from '../types/Auth';
 
+// Mock ConfigStorageProvider for setDefaultProvider / getDefaultProvider
+const _providerStore = new Map<string, any>();
+vi.mock('../../storage/ConfigStorageProvider', () => ({
+  getConfigStorage: vi.fn(() => ({
+    get: async (key: string) => _providerStore.get(key) ?? null,
+    set: async (key: string, value: any) => { _providerStore.set(key, value); },
+    remove: async (key: string) => { _providerStore.delete(key); },
+  })),
+}));
+
 // ---------------------------------------------------------------------------
 // Mock all concrete client modules so instantiation doesn't trigger real logic
 // ---------------------------------------------------------------------------
@@ -118,6 +128,7 @@ describe('ModelClientFactory', () => {
 
   beforeEach(() => {
     setupClientMocks();
+    _providerStore.clear();
     factory = new ModelClientFactory();
   });
 

@@ -31,6 +31,8 @@ export interface ChannelCapabilities {
   approvals: boolean;
   /** Can display images/media */
   media: boolean;
+  /** Can send service requests (e.g., MCP, scheduler, vault) */
+  services: boolean;
 }
 
 /**

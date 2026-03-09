@@ -53,8 +53,8 @@ const STATUS_COLORS_TERMINAL: Record<string, string> = {
   upcoming: '#00ff00',
 };
 
-/** Visual duration for calendar event blocks (15 minutes). */
-const EVENT_DISPLAY_DURATION_MS = 15 * 60 * 1000;
+/** Visual duration for calendar event blocks (30 minutes). */
+const EVENT_DISPLAY_DURATION_MS = 30 * 60 * 1000;
 
 export function statusToColor(status: string, theme: 'modern' | 'terminal'): string {
   const colors = theme === 'modern' ? STATUS_COLORS_MODERN : STATUS_COLORS_TERMINAL;

@@ -35,10 +35,6 @@ vi.mock('@/config/AgentConfig', () => ({
   AgentConfig: { getInstance: vi.fn().mockResolvedValue({}) },
 }));
 
-vi.mock('@/core/MessageRouter', () => ({
-  MessageRouter: vi.fn().mockImplementation(() => ({})),
-}));
-
 vi.mock('@/core/TabManager', () => ({
   TabManager: {
     getInstance: vi.fn(() => ({
@@ -75,7 +71,6 @@ function createFactoryAgent() {
 
 describe('AgentRegistry — factory path (server/desktop)', () => {
   let mockConfig: any;
-  let mockRouter: any;
 
   beforeEach(() => {
     AgentRegistry.resetInstance();
@@ -90,7 +85,6 @@ describe('AgentRegistry — factory path (server/desktop)', () => {
     });
 
     mockConfig = {};
-    mockRouter = {};
   });
 
   afterEach(() => {
@@ -110,17 +104,17 @@ describe('AgentRegistry — factory path (server/desktop)', () => {
         maxConcurrent: 3,
         agentFactory,
       });
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       const session = await registry.createSession({ type: 'scheduled' });
 
-      expect(agentFactory).toHaveBeenCalledWith(mockConfig, mockRouter);
+      expect(agentFactory).toHaveBeenCalledWith(mockConfig);
       expect(session.agent).toBe(factoryAgent);
     });
 
     it('should not call agentFactory for extension path (no factory provided)', async () => {
       const registry = new AgentRegistry({ maxConcurrent: 3 });
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       const session = await registry.createSession({ type: 'primary' });
 
@@ -136,7 +130,7 @@ describe('AgentRegistry — factory path (server/desktop)', () => {
         maxConcurrent: 3,
         agentFactory,
       });
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       await expect(registry.createSession({ type: 'scheduled' })).rejects.toThrow(
         'Factory init failed'
@@ -150,7 +144,7 @@ describe('AgentRegistry — factory path (server/desktop)', () => {
         maxConcurrent: 3,
         agentFactory,
       });
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       const s1 = await registry.createSession({ type: 'scheduled' });
       const s2 = await registry.createSession({ type: 'scheduled' });
@@ -175,7 +169,7 @@ describe('AgentRegistry — factory path (server/desktop)', () => {
         agentFactory,
         eventDispatcherFactory,
       });
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       const session = await registry.createSession({ type: 'scheduled' });
 
@@ -196,7 +190,7 @@ describe('AgentRegistry — factory path (server/desktop)', () => {
         agentFactory,
         // No eventDispatcherFactory
       });
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       await registry.createSession({ type: 'scheduled' });
 
@@ -218,7 +212,7 @@ describe('AgentRegistry — factory path (server/desktop)', () => {
         agentFactory,
         eventDispatcherFactory,
       });
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       const s1 = await registry.createSession({ type: 'scheduled' });
       const s2 = await registry.createSession({ type: 'scheduled' });
@@ -244,7 +238,7 @@ describe('AgentRegistry — factory path (server/desktop)', () => {
         maxConcurrent: 3,
         agentFactory: vi.fn().mockResolvedValue(createFactoryAgent()),
       });
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       await registry.createSession({ type: 'scheduled' });
 
@@ -258,7 +252,7 @@ describe('AgentRegistry — factory path (server/desktop)', () => {
       (TabManager.getInstance as any).mockReturnValue({ onTabClosure });
 
       const registry = new AgentRegistry({ maxConcurrent: 3 });
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       await registry.createSession({ type: 'primary' });
 
@@ -277,7 +271,7 @@ describe('AgentRegistry — factory path (server/desktop)', () => {
         maxConcurrent: 3,
         agentFactory: vi.fn().mockResolvedValue(createFactoryAgent()),
       });
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       const listener = vi.fn();
       registry.on(listener);
@@ -298,7 +292,7 @@ describe('AgentRegistry — factory path (server/desktop)', () => {
         maxConcurrent: 3,
         agentFactory: vi.fn().mockResolvedValue(createFactoryAgent()),
       });
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       const session = await registry.createSession({ type: 'scheduled' });
       expect(registry.getActiveCount()).toBe(1);
@@ -313,7 +307,7 @@ describe('AgentRegistry — factory path (server/desktop)', () => {
         maxConcurrent: 1,
         agentFactory: vi.fn().mockResolvedValue(createFactoryAgent()),
       });
-      registry.initialize(mockConfig, mockRouter);
+      registry.initialize(mockConfig);
 
       await registry.createSession({ type: 'scheduled' });
 

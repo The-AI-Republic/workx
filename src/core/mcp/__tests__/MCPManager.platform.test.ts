@@ -13,27 +13,27 @@ const store = new Map<string, any>();
 
 function createMockConfigStorage(): ConfigStorageProvider {
   return {
-    get: vi.fn(async <T>(key: string): Promise<T | null> => (store.get(key) as T) ?? null),
-    set: vi.fn(async <T>(key: string, value: T): Promise<void> => { store.set(key, value); }),
-    remove: vi.fn(async (key: string): Promise<void> => { store.delete(key); }),
-    getMany: vi.fn(async <T>(keys: string[]): Promise<Record<string, T>> => {
-      const result: Record<string, T> = {};
+    get: vi.fn(async (key: string) => store.get(key) ?? null) as any,
+    set: vi.fn(async (key: string, value: any) => { store.set(key, value); }) as any,
+    remove: vi.fn(async (key: string) => { store.delete(key); }),
+    getMany: vi.fn(async (keys: string[]) => {
+      const result: Record<string, any> = {};
       for (const key of keys) {
         if (store.has(key)) result[key] = store.get(key);
       }
       return result;
-    }),
-    setMany: vi.fn(async <T>(items: Record<string, T>): Promise<void> => {
+    }) as any,
+    setMany: vi.fn(async (items: Record<string, any>) => {
       for (const [key, value] of Object.entries(items)) {
         store.set(key, value);
       }
-    }),
-    removeMany: vi.fn(async (keys: string[]): Promise<void> => {
+    }) as any,
+    removeMany: vi.fn(async (keys: string[]) => {
       for (const key of keys) store.delete(key);
     }),
-    getAll: vi.fn(async (): Promise<Record<string, unknown>> => Object.fromEntries(store)),
-    clear: vi.fn(async (): Promise<void> => { store.clear(); }),
-    getBytesInUse: vi.fn(async (): Promise<number | null> => null),
+    getAll: vi.fn(async () => Object.fromEntries(store)),
+    clear: vi.fn(async () => { store.clear(); }),
+    getBytesInUse: vi.fn(async () => null),
   };
 }
 

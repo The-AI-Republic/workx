@@ -12,6 +12,7 @@
     oneventclick,
     oneventdrop,
     onselect,
+    onnewclick,
   }: {
     events?: CalendarEvent[];
     initialView?: string;
@@ -20,6 +21,7 @@
     oneventclick?: (detail: { event: any; el: any; jsEvent: MouseEvent }) => void;
     oneventdrop?: (detail: { event: any; oldEvent: any }) => void;
     onselect?: (detail: { start: Date; end: Date; startStr: string; endStr: string }) => void;
+    onnewclick?: () => void;
   } = $props();
 
   let currentTheme = $state<UITheme>('terminal');
@@ -35,10 +37,26 @@
   let calendarOptions = $derived({
     view: currentView,
     events: events,
+    customButtons: {
+      newEvent: {
+        text: '+ New',
+        click: () => onnewclick?.(),
+      },
+    },
     headerToolbar: {
-      start: 'prev,next today',
+      start: 'prev,next today newEvent',
       center: 'title',
       end: 'dayGridMonth,timeGridWeek,timeGridDay',
+    },
+    displayEventEnd: false,
+    eventContent: (info: { event: any; timeText: string }) => {
+      const time = document.createElement('div');
+      time.className = 'ec-event-time';
+      time.textContent = `start: ${info.timeText}`;
+      const title = document.createElement('div');
+      title.className = 'ec-event-title';
+      title.textContent = info.event.title;
+      return { domNodes: [time, title] };
     },
     editable: true,
     eventStartEditable: true,
@@ -103,6 +121,13 @@
     color: #00ff00;
   }
 
+  .calendar-terminal :global(.ec-newEvent) {
+    border-color: #00ff00;
+    color: #00ff00;
+    font-weight: 600;
+    margin-left: 0.5rem;
+  }
+
   .calendar-terminal :global(.ec-day-head) {
     color: rgba(0, 255, 0, 0.7);
   }
@@ -117,6 +142,20 @@
     --ec-active-bg-color: rgba(96, 165, 250, 0.15);
     --ec-now-indicator-color: #3b82f6;
     --ec-event-text-color: #fff;
+  }
+
+  .calendar-modern :global(.ec-newEvent) {
+    background-color: var(--color-chat-primary, #3b82f6);
+    border-color: var(--color-chat-primary, #3b82f6);
+    color: #fff;
+    font-weight: 600;
+    margin-left: 0.5rem;
+  }
+
+  :global(.dark) .calendar-modern :global(.ec-newEvent) {
+    background-color: var(--color-chat-primary-dark, #2563eb);
+    border-color: var(--color-chat-primary-dark, #2563eb);
+    color: #fff;
   }
 
   :global(.dark) .calendar-modern :global(.ec) {

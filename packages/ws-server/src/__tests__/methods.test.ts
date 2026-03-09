@@ -42,6 +42,12 @@ describe('METHOD_REGISTRY', () => {
     expect(METHOD_REGISTRY['logs.tail']).toEqual({ scope: 'admin', streaming: true });
   });
 
+  it('contains credential methods', () => {
+    expect(METHOD_REGISTRY['credentials.list'].scope).toBe('credentials.read');
+    expect(METHOD_REGISTRY['credentials.set'].scope).toBe('credentials.write');
+    expect(METHOD_REGISTRY['credentials.delete'].scope).toBe('credentials.write');
+  });
+
   it('contains approval method', () => {
     expect(METHOD_REGISTRY['exec.approval.resolve'].scope).toBe('operator.approvals');
   });
