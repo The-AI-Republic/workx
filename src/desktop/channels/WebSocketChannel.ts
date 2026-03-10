@@ -113,7 +113,7 @@ export class WebSocketChannel implements ChannelAdapter {
     }
 
     // Convert event to WebSocket message format
-    const wsMessage = this.eventToWSMessage(event.msg);
+    const wsMessage = this.eventToWSMessage(event.msg, event.sessionId);
     if (!wsMessage) {
       return;
     }
@@ -293,7 +293,8 @@ export class WebSocketChannel implements ChannelAdapter {
    * are relevant for WebSocket clients; the rest return null.
    */
   private eventToWSMessage(
-    event: EventMsg
+    event: EventMsg,
+    sessionId?: string
   ): WSOutboundMessage | null {
     const timestamp = Date.now();
     const turnId = this.lastActiveTurnId;
@@ -309,6 +310,7 @@ export class WebSocketChannel implements ChannelAdapter {
           type: 'assistant_chunk',
           turnId,
           content: event.data.delta,
+          sessionId,
           timestamp,
         } as WSAssistantChunk;
 
@@ -320,6 +322,7 @@ export class WebSocketChannel implements ChannelAdapter {
           tool: event.data.tool_name,
           input: event.data.params || {},
           toolUseId,
+          sessionId,
           timestamp,
         } as WSToolUse;
       }
@@ -332,6 +335,7 @@ export class WebSocketChannel implements ChannelAdapter {
           toolUseId,
           result: event.data.success ? 'success' : 'failed',
           success: event.data.success,
+          sessionId,
           timestamp,
         } as WSToolResult;
       }
@@ -346,6 +350,7 @@ export class WebSocketChannel implements ChannelAdapter {
           type: 'assistant_turn_complete',
           turnId,
           content: event.data.last_agent_message || '',
+          sessionId,
           timestamp,
         } as WSAssistantTurnComplete;
 
@@ -355,6 +360,7 @@ export class WebSocketChannel implements ChannelAdapter {
           code: event.data.code || 'ERROR',
           message: event.data.message,
           turnId,
+          sessionId,
           timestamp,
         } as WSError;
 
