@@ -1,24 +1,20 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onDestroy } from 'svelte';
   import ThreadTab from './ThreadTab.svelte';
-  import { threadStore, type SidePanelThread } from '../../stores/threadStore';
-  import { uiTheme } from '../../stores/themeStore';
+  import { threadStore } from '../../stores/threadStore';
+  import { uiTheme, type UITheme } from '../../stores/themeStore';
   import Tooltip from '../common/Tooltip.svelte';
-
-  /**
-   * ThreadBar Component
-   *
-   * Horizontal thread bar at top of side panel:
-   * - Row of thread tabs
-   * - Each thread: title (truncated), close button
-   * - "+" button to create new thread
-   * - Active thread highlighted
-   * - Theme-aware (terminal/chatgpt styles)
-   * - Disabled "+" when max sessions reached
-   */
 
   export let canCreateThread: boolean = true;
   export let maxSessionsReached: boolean = false;
+
+  let currentTheme: UITheme = 'terminal';
+
+  const unsubTheme = uiTheme.subscribe((theme) => {
+    currentTheme = theme;
+  });
+
+  onDestroy(unsubTheme);
 
   const dispatch = createEventDispatcher<{
     threadSelect: { threadId: string };
@@ -26,10 +22,6 @@
     newThread: void;
   }>();
 
-  // Current theme (auto-subscription via $store syntax)
-  $: currentTheme = $uiTheme;
-
-  // Thread store (auto-subscription via $store syntax)
   $: threads = $threadStore.threads;
   $: activeThreadId = $threadStore.activeThreadId;
 
@@ -55,8 +47,15 @@
   }
 </script>
 
-<div class="thread-bar {currentTheme}" role="tablist" aria-label="Conversation threads">
-  <div class="threads-container">
+<div
+  class="flex items-end gap-0.5 px-2 mb-1.5 bg-transparent min-h-[40px] overflow-x-auto overflow-y-hidden border-b
+    {currentTheme === 'modern'
+      ? 'px-3 border-chat-border dark:border-chat-border-dark'
+      : 'border-term-dim-green'}"
+  role="tablist"
+  aria-label="Conversation threads"
+>
+  <div class="flex items-end gap-0.5 flex-1 min-w-0">
     {#each threads as thread (thread.id)}
       <ThreadTab
         {thread}
@@ -73,8 +72,11 @@
     disabled={false}
   >
     <button
-      class="new-thread-button"
-      class:disabled={!canCreateThread || maxSessionsReached}
+      class="flex items-center justify-center w-9 h-9 p-0 mb-1 border border-transparent bg-transparent cursor-pointer shrink-0 transition-colors duration-150
+        {!canCreateThread || maxSessionsReached ? 'opacity-40 cursor-not-allowed' : ''}
+        {currentTheme === 'modern'
+          ? 'rounded-md text-chat-text-secondary dark:text-chat-text-secondary-dark hover:not-disabled:bg-chat-button-hover hover:not-disabled:dark:bg-chat-button-hover-dark hover:not-disabled:border-chat-border hover:not-disabled:dark:border-chat-border-dark hover:not-disabled:text-chat-text hover:not-disabled:dark:text-chat-text-dark'
+          : 'rounded text-term-dim-green hover:not-disabled:bg-term-green/10 hover:not-disabled:border-term-dim-green hover:not-disabled:text-term-bright-green'}"
       aria-label="New thread"
       on:click={handleNewThread}
       on:keydown={handleNewThreadKeydown}
@@ -86,96 +88,3 @@
     </button>
   </Tooltip>
 </div>
-
-<style>
-  /* ============================================
-     Terminal Theme (default)
-     ============================================ */
-
-  .thread-bar {
-    display: flex;
-    align-items: flex-end;
-    gap: 2px;
-    padding: 0 8px;
-    margin-bottom: 6px;
-    background: transparent;
-    border-bottom: 1px solid var(--color-term-dim-green, #00cc00);
-    min-height: 40px;
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
-
-  .thread-bar::-webkit-scrollbar {
-    height: 4px;
-  }
-
-  .thread-bar::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .thread-bar::-webkit-scrollbar-thumb {
-    background: var(--color-term-dim-green, #00cc00);
-    border-radius: 2px;
-  }
-
-  .threads-container {
-    display: flex;
-    align-items: flex-end;
-    gap: 2px;
-    flex: 1;
-    min-width: 0;
-  }
-
-  .new-thread-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    padding: 0;
-    margin-bottom: 4px;
-    border: 1px solid transparent;
-    border-radius: 4px;
-    background: transparent;
-    color: var(--color-term-dim-green, #00cc00);
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-  }
-
-  .new-thread-button:hover:not(.disabled) {
-    background: rgba(0, 255, 0, 0.1);
-    border-color: var(--color-term-dim-green, #00cc00);
-    color: var(--color-term-bright-green, #00ff00);
-  }
-
-  .new-thread-button.disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  /* ============================================
-     ChatGPT Theme
-     ============================================ */
-
-  .thread-bar.chatgpt {
-    background: transparent;
-    border-bottom: 1px solid var(--chat-border, #e5e5e5);
-    padding: 0 12px;
-  }
-
-  .thread-bar.chatgpt::-webkit-scrollbar-thumb {
-    background: var(--chat-text-secondary, #6e6e80);
-  }
-
-  .thread-bar.chatgpt .new-thread-button {
-    color: var(--chat-text-secondary, #6e6e80);
-    border-radius: 6px;
-  }
-
-  .thread-bar.chatgpt .new-thread-button:hover:not(.disabled) {
-    background: var(--chat-card-hover, rgba(0, 0, 0, 0.05));
-    border-color: var(--chat-border, #e5e5e5);
-    color: var(--chat-text, #0d0d0d);
-  }
-</style>
