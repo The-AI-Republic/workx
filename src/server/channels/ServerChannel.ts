@@ -91,7 +91,8 @@ export class ServerChannel implements ChannelAdapter {
     this.eventSeq++;
     const eventMsg = event.msg;
     const eventName = this.eventMsgToName(eventMsg);
-    const frame = JSON.stringify(makeEvent(eventName, eventMsg, this.eventSeq));
+    const payload = event.sessionId ? { ...eventMsg, sessionId: event.sessionId } : eventMsg;
+    const frame = JSON.stringify(makeEvent(eventName, payload, this.eventSeq));
 
     const connections = getTrackedConnections();
     for (const conn of connections) {

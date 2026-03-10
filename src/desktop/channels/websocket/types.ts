@@ -73,6 +73,8 @@ export interface WSAssistantChunk extends WSMessage {
   turnId: string;
   /** Text content chunk */
   content: string;
+  /** Session ID for multi-session routing */
+  sessionId?: string;
 }
 
 /**
@@ -88,6 +90,8 @@ export interface WSToolUse extends WSMessage {
   input: Record<string, unknown>;
   /** Tool use ID */
   toolUseId: string;
+  /** Session ID for multi-session routing */
+  sessionId?: string;
 }
 
 /**
@@ -105,6 +109,8 @@ export interface WSToolResult extends WSMessage {
   success: boolean;
   /** Error message if failed */
   error?: string;
+  /** Session ID for multi-session routing */
+  sessionId?: string;
 }
 
 /**
@@ -121,6 +127,8 @@ export interface WSAssistantTurnComplete extends WSMessage {
     inputTokens: number;
     outputTokens: number;
   };
+  /** Session ID for multi-session routing */
+  sessionId?: string;
 }
 
 /**
@@ -134,6 +142,8 @@ export interface WSError extends WSMessage {
   message: string;
   /** Related turn ID if applicable */
   turnId?: string;
+  /** Session ID for multi-session routing */
+  sessionId?: string;
 }
 
 /**
