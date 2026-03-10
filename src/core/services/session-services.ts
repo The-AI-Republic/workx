@@ -2,7 +2,9 @@
  * Session Service Handlers
  *
  * Platform-agnostic service handlers for session management.
- * Extracted from extension service-worker setupMessageHandlers() and setupSessionMessageHandlers().
+ * All per-session services require a sessionId parameter — there is no
+ * concept of a "primary" or "default" session.  The registry is the
+ * single source of truth for active sessions.
  *
  * @module core/services/session-services
  */
@@ -10,22 +12,8 @@
 import type { ServiceHandler } from '@/core/channels/ServiceRegistry';
 
 export interface SessionServiceDeps {
-  getAgent: () => {
-    getSession(): {
-      sessionId: string;
-      isActiveTurn(): boolean;
-      getTabId(): number;
-      getConversationHistory(): { items: unknown[] };
-      abortAllTasks(reason: string): Promise<void>;
-      reset(): Promise<void>;
-      close(): Promise<void>;
-      initialize(): Promise<void>;
-    };
-    isReady(): Promise<unknown>;
-  } | null;
-
-  /** Registry for multi-session management (Feature 015). Optional. */
-  registry?: {
+  /** Registry for multi-session management (required). */
+  registry: {
     listSessions(): unknown[];
     getMaxConcurrent(): number;
     getActiveCount(): number;
@@ -36,7 +24,7 @@ export interface SessionServiceDeps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     getSession(sessionId: string): any;
     setMaxConcurrent(limit: number): void;
-  } | null;
+  };
 
   /** Callback for platform-specific tab reset (extension-only) */
   resetTabs?: () => Promise<void>;
@@ -45,55 +33,75 @@ export interface SessionServiceDeps {
   resumeSession?: (sessionId: string) => Promise<{ sessionId: string; history: unknown[] }>;
 }
 
+/**
+ * Helper: look up session by ID, throw if missing.
+ */
+function requireSession(deps: SessionServiceDeps, sessionId: string | undefined) {
+  if (!sessionId) {
+    throw new Error('sessionId is required');
+  }
+  const agentSession = deps.registry.getSession(sessionId);
+  if (!agentSession?.agent) {
+    throw new Error(`Session not found: ${sessionId}`);
+  }
+  return agentSession;
+}
+
 export function createSessionServices(deps: SessionServiceDeps): Record<string, ServiceHandler> {
-  const { getAgent, registry, resetTabs } = deps;
+  const { registry, resetTabs } = deps;
 
   return {
-    'session.getState': async () => {
-      const agent = getAgent();
-      if (!agent) return null;
-
-      const session = agent.getSession();
-      const tabId = session.getTabId();
-      const conversationHistory = session.getConversationHistory();
+    /**
+     * Get state for a specific session.
+     * Requires: { sessionId: string }
+     */
+    'session.getState': async (params) => {
+      const { sessionId } = (params ?? {}) as { sessionId?: string };
+      const agentSession = requireSession(deps, sessionId);
 
       return {
-        sessionId: session.sessionId,
-        isActiveTurn: session.isActiveTurn(),
-        tabId,
-        history: conversationHistory.items,
-        activeSessionCount: registry?.getActiveCount() ?? 0,
-        maxConcurrentSessions: registry?.getMaxConcurrent() ?? 3,
+        ...agentSession.getState(),
+        activeSessionCount: registry.getActiveCount(),
+        maxConcurrentSessions: registry.getMaxConcurrent(),
       };
     },
 
-    'session.reset': async () => {
-      const agent = getAgent();
-      if (!agent) throw new Error('Agent not initialized');
+    /**
+     * Reset a specific session.
+     * Requires: { sessionId: string }
+     */
+    'session.reset': async (params) => {
+      const { sessionId } = (params ?? {}) as { sessionId?: string };
+      const agentSession = requireSession(deps, sessionId);
 
-      const session = agent.getSession();
-      await session.abortAllTasks('UserInterrupt');
+      await agentSession.reset();
 
       if (resetTabs) {
         await resetTabs();
       }
 
-      await session.reset();
       return { timestamp: Date.now() };
     },
 
+    /**
+     * Resume a session from stored history.
+     * Requires: { sessionId: string }
+     */
     'session.resume': async (params) => {
       if (!deps.resumeSession) {
         throw new Error('Session resume not supported on this platform');
       }
       const { sessionId } = params as { sessionId: string };
+      if (!sessionId) {
+        throw new Error('sessionId is required');
+      }
       return deps.resumeSession(sessionId);
     },
 
+    /**
+     * List all active sessions (no sessionId needed — registry-level query).
+     */
     'session.list': async () => {
-      if (!registry) {
-        return { sessions: [], maxConcurrent: 1, activeCount: 0 };
-      }
       return {
         sessions: registry.listSessions(),
         maxConcurrent: registry.getMaxConcurrent(),
@@ -101,10 +109,10 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
       };
     },
 
+    /**
+     * Get active session count (registry-level query).
+     */
     'session.getActiveCount': async () => {
-      if (!registry) {
-        return { activeCount: 0, maxConcurrent: 1, canCreateSession: false };
-      }
       return {
         activeCount: registry.getActiveCount(),
         maxConcurrent: registry.getMaxConcurrent(),
@@ -112,11 +120,10 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
       };
     },
 
+    /**
+     * Create a new session.
+     */
     'session.create': async () => {
-      if (!registry) {
-        return { success: false, error: 'Registry not initialized' };
-      }
-
       if (!registry.canCreateSession()) {
         return { success: false, error: 'Maximum concurrent sessions reached' };
       }
@@ -138,10 +145,10 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
       };
     },
 
+    /**
+     * Set max concurrent session limit (registry-level).
+     */
     'session.setMaxConcurrent': async (params) => {
-      if (!registry) {
-        throw new Error('Registry not initialized');
-      }
       const { maxConcurrent } = params as { maxConcurrent: number };
       if (typeof maxConcurrent !== 'number') {
         throw new Error('maxConcurrent must be a number');
@@ -150,12 +157,12 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
       return { success: true };
     },
 
+    /**
+     * Close/terminate a specific session.
+     * Requires: { sessionId: string }
+     */
     'session.close': async (params) => {
-      if (!registry) {
-        return { success: false, error: 'Registry not initialized' };
-      }
-
-      const { sessionId } = params as { sessionId: string };
+      const { sessionId } = (params ?? {}) as { sessionId?: string };
       if (!sessionId) {
         return { success: false, error: 'sessionId is required' };
       }

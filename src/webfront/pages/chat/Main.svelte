@@ -193,9 +193,6 @@
       console.error('[App] UIChannelClient initialization failed:', error);
     }
 
-    // Check connection
-    checkConnection();
-
     // Check if this is a scheduled job execution (US3: T022)
     // Extension: detected via URL params from chrome.tabs.create
     // Desktop: detected via DOM event from DesktopAgentBootstrap job launcher
@@ -214,11 +211,14 @@
       return; // Skip normal initialization for scheduled job mode
     }
 
-    // Fetch current session's tabId from storage
-    await fetchCurrentTabId();
-
-    // Sync thread store with backend sessions
+    // Sync thread store with backend sessions (also restores history per thread)
     await syncThreadsWithSessions();
+
+    // Check connection (after sync so activeSessionId is set)
+    checkConnection();
+
+    // Fetch current session's tabId (after sync so activeSessionId is set)
+    await fetchCurrentTabId();
 
     // ========================================================================
     // KEEP-ALIVE: Send periodic pings to prevent service worker termination
@@ -278,8 +278,8 @@
       processedEvents = [...processedEvents, cancelNotice];
 
       // Request agent to abort via message service
-      if (client) {
-        getInitializedUIClient().then(c => c.serviceRequest('agent.interrupt')).catch((err) => {
+      if (client && activeSessionId) {
+        getInitializedUIClient().then(c => c.serviceRequest('agent.interrupt', { sessionId: activeSessionId })).catch((err) => {
           console.warn('[App] Failed to send interrupt on cancel:', err);
         });
       }
@@ -287,14 +287,20 @@
   }
 
   onDestroy(() => {
+    // Save active thread state so it can be restored if component remounts
+    // (Note: threadStates is in-memory and won't survive remount, but the backend
+    // is the source of truth — restoreAllThreadHistories() handles remount recovery)
+    if (activeSessionId) {
+      saveThreadState(activeSessionId);
+    }
     window.removeEventListener('zoom-changed', onZoomChanged);
   });
 
   /**
-   * Fetch the current session's tabId and conversation history from BrowserAgent session
+   * Fetch the current session's tabId from BrowserAgent session
    * US3: Get tabId from session on mount
    * If tabId is -1, automatically bind to the current active tab (extension only)
-   * Also restores conversation history to sync UI with backend state
+   * Note: Conversation history restoration is handled by restoreAllThreadHistories()
    */
   async function fetchCurrentTabId() {
     if (!client) {
@@ -304,9 +310,11 @@
     }
 
     try {
-      // Request current session state from backend
-      const response = await (await getInitializedUIClient()).serviceRequest<{ tabId?: number; history?: unknown[] }>('session.getState');
-      console.log('[App] Fetched session state:', response);
+      // Request current session state from backend (uses active session if available)
+      const response = await (await getInitializedUIClient()).serviceRequest<{ tabId?: number }>(
+        'session.getState',
+        activeSessionId ? { sessionId: activeSessionId } : undefined
+      );
 
       const stateData = response || {};
 
@@ -335,13 +343,6 @@
           currentTabId = fetchedTabId;
         }
       }
-
-      // Restore conversation history from backend to sync UI state
-      const historyItems = stateData?.history;
-      if (historyItems && Array.isArray(historyItems) && historyItems.length > 0) {
-        console.log('[App] Restoring conversation history:', historyItems.length, 'items');
-        restoreConversationHistory(historyItems);
-      }
     } catch (error) {
       console.error('[App] Failed to fetch current tabId from session:', error);
 
@@ -367,69 +368,114 @@
   }
 
   /**
-   * Restore conversation history from backend to UI
-   * Converts history items to ProcessedEvent objects for display
+   * Parse history items into processedEvents and messages for display.
+   * Shared by restoreConversationHistory (single-thread) and
+   * restoreAllThreadHistories (multi-thread).
    */
-  function restoreConversationHistory(historyItems: any[]) {
-    const restoredEvents: ProcessedEvent[] = [];
+  function parseHistoryItems(historyItems: any[], idPrefix: string = 'restored'): {
+    events: ProcessedEvent[];
+    firstUserMessage: string | null;
+  } {
+    const events: ProcessedEvent[] = [];
+    let firstUserMessage: string | null = null;
 
     for (let i = 0; i < historyItems.length; i++) {
       const item = historyItems[i];
-      if (item.type === 'message') {
-        const isUser = item.role === 'user';
-        let text = '';
+      if (item.type !== 'message') continue;
 
-        // Extract text from content
-        if (Array.isArray(item.content)) {
-          for (const content of item.content) {
-            if (content.type === 'input_text' || content.type === 'output_text' || content.type === 'text') {
-              let contentText = content.text || '';
+      const isUser = item.role === 'user';
+      let text = '';
 
-              // Handle JSON-stringified input items (e.g., '{"type":"text","text":"actual message"}')
-              if (contentText.startsWith('{') && contentText.includes('"text"')) {
-                try {
-                  const parsed = JSON.parse(contentText);
-                  if (parsed.text) {
-                    contentText = parsed.text;
-                  }
-                } catch {
-                  // Not valid JSON, use as-is
+      // Extract text from content items
+      if (Array.isArray(item.content)) {
+        for (const content of item.content) {
+          if (content.type === 'input_text' || content.type === 'output_text' || content.type === 'text') {
+            let contentText = content.text || '';
+
+            // Handle JSON-stringified input items (e.g., '{"type":"text","text":"actual message"}')
+            if (contentText.startsWith('{') && contentText.includes('"text"')) {
+              try {
+                const parsed = JSON.parse(contentText);
+                if (parsed.text) {
+                  contentText = parsed.text;
                 }
+              } catch {
+                // Not valid JSON, use as-is
               }
-
-              text += contentText;
             }
+
+            text += contentText;
           }
-        } else if (typeof item.content === 'string') {
-          text = item.content;
         }
+      } else if (typeof item.content === 'string') {
+        text = item.content;
+      }
 
-        if (text.trim()) {
-          // Create ProcessedEvent with proper styling
-          const processedEvent: ProcessedEvent = {
-            id: `restored_${i}_${Date.now()}`,
-            category: 'message',
-            timestamp: new Date(),
-            title: isUser ? 'user' : 'browserx',
-            content: text,
-            style: isUser ? { textColor: 'text-cyan-400' } : STYLE_PRESETS.agent_message,
-            streaming: false,
-            collapsible: false,
-          };
+      if (!text.trim()) continue;
 
-          // Carry modelKey from assistant messages for model indicator display
-          if (!isUser && item.modelKey) {
-            processedEvent.modelKey = item.modelKey;
-          }
+      const event: ProcessedEvent = {
+        id: `${idPrefix}_${i}_${Date.now()}`,
+        category: 'message',
+        timestamp: new Date(),
+        title: isUser ? 'user' : 'browserx',
+        content: text,
+        style: isUser ? { textColor: 'text-cyan-400' } : STYLE_PRESETS.agent_message,
+        streaming: false,
+        collapsible: false,
+      };
 
-          restoredEvents.push(processedEvent);
-        }
+      // Carry modelKey from assistant messages for model indicator display
+      if (!isUser && item.modelKey) {
+        event.modelKey = item.modelKey;
+      }
+
+      events.push(event);
+
+      if (isUser && firstUserMessage === null) {
+        firstUserMessage = text;
       }
     }
 
-    if (restoredEvents.length > 0) {
-      processedEvents = restoredEvents;
-      console.log('[App] Restored', processedEvents.length, 'events to UI');
+    return { events, firstUserMessage };
+  }
+
+  /**
+   * Fetch and restore conversation history for a single session.
+   * Stores the result in threadStates and optionally loads it into the active UI.
+   */
+  async function restoreConversationHistory(sessionId: string): Promise<void> {
+    const c = await getInitializedUIClient();
+    const response = await c.serviceRequest<{
+      sessionId?: string;
+      tabId?: number;
+      history?: unknown[];
+    }>('session.getState', { sessionId });
+    const historyItems = response?.history as any[] | undefined;
+    const tabId = response?.tabId ?? -1;
+
+    const { events, firstUserMessage } = historyItems && Array.isArray(historyItems)
+      ? parseHistoryItems(historyItems, `restored_${sessionId}`)
+      : { events: [], firstUserMessage: null };
+
+    // Update thread title from first user message if still default
+    const thread = get(threadStore).threads.find(t => t.sessionId === sessionId);
+    if (thread?.title === 'New Thread' && firstUserMessage) {
+      const title = firstUserMessage.length > 30 ? firstUserMessage.substring(0, 30) + '...' : firstUserMessage;
+      threadStore.updateThreadTitle(sessionId, title);
+    }
+
+    threadStates.set(sessionId, {
+      messages: [],
+      processedEvents: events,
+      inputText: '',
+      isProcessing: false,
+      currentTabId: tabId,
+      eventProcessor: new EventProcessor(),
+    });
+
+    // If this is the active thread, load into the UI
+    if (sessionId === activeSessionId) {
+      loadThreadState(sessionId);
     }
   }
 
@@ -483,7 +529,7 @@
         provider?: string;
         model?: string;
         authMode?: 'login' | 'api_key' | 'none';
-      }>('agent.healthCheck');
+      }>('agent.healthCheck', activeSessionId ? { sessionId: activeSessionId } : undefined);
 
       console.log('[App] healthCheck response:', JSON.stringify(response));
       isConnected = response?.ready !== undefined;
@@ -751,7 +797,7 @@
     // Request session reset from backend
     try {
       if (!client) throw new Error('Message service not available');
-      await (await getInitializedUIClient()).serviceRequest('session.reset');
+      await (await getInitializedUIClient()).serviceRequest('session.reset', { sessionId: activeSessionId });
 
       // After session reset, auto-bind to the active tab
       // This ensures the new conversation starts with the current tab
@@ -779,7 +825,7 @@
     try {
       if (!client) throw new Error('Message service not available');
       // Send stop message to backend
-      await (await getInitializedUIClient()).serviceRequest('agent.interrupt');
+      await (await getInitializedUIClient()).serviceRequest('agent.interrupt', { sessionId: activeSessionId });
       isProcessing = false;
       console.log('[App] Agent session stopped');
     } catch (error) {
@@ -814,13 +860,10 @@
       // Request session resume from backend
       const response = await (await getInitializedUIClient()).serviceRequest<{ history?: unknown[] }>('session.resume', { sessionId });
 
-      const historyItems = response?.history;
-      console.log('[App] Conversation resumed:', sessionId, 'with', historyItems?.length || 0, 'items');
+      console.log('[App] Conversation resumed:', sessionId);
 
-      // Restore history to UI using shared helper
-      if (historyItems && Array.isArray(historyItems)) {
-        restoreConversationHistory(historyItems);
-      }
+      // Restore history to UI
+      await restoreConversationHistory(sessionId);
     } catch (error) {
       console.error('[App] Failed to resume conversation:', error);
 
@@ -993,23 +1036,23 @@
         const currentState = get(threadStore);
         const existingSessionIds = new Set(currentState.threads.map(t => t.sessionId));
 
+        // Also remove threads whose sessions no longer exist in the backend
+        const backendSessionIds = new Set(backendSessions.map(s => s.sessionId));
+        for (const thread of currentState.threads) {
+          if (!backendSessionIds.has(thread.sessionId)) {
+            threadStore.closeThread(thread.sessionId);
+          }
+        }
+
         for (const session of backendSessions) {
           if (!existingSessionIds.has(session.sessionId)) {
             threadStore.createThread(session.sessionId, 'New Thread');
           }
         }
       } else {
-        // No registry sessions — fall back to primary session via getState
-        const stateResponse = await c.serviceRequest<{ sessionId?: string }>('session.getState');
-        const primarySessionId = stateResponse?.sessionId;
-
-        if (primarySessionId) {
-          const currentState = get(threadStore);
-          const hasThread = currentState.threads.some(t => t.sessionId === primarySessionId);
-          if (!hasThread) {
-            threadStore.createThread(primarySessionId, 'New Thread');
-          }
-        }
+        // No active sessions — create one
+        console.log('[App] No active sessions found, creating initial session');
+        await createNewThread();
       }
 
       // Ensure we have an active thread
@@ -1024,6 +1067,9 @@
         activeSessionId = activeThread.sessionId;
       }
 
+      // Restore conversation history for each thread from backend
+      await restoreAllThreadHistories();
+
       // Update session limits
       await updateSessionLimits();
 
@@ -1031,6 +1077,23 @@
     } catch (error) {
       console.error('[App] Failed to sync threads with sessions:', error);
     }
+  }
+
+  /**
+   * Fetch and restore conversation history for all threads from the backend.
+   */
+  async function restoreAllThreadHistories() {
+    const allThreads = get(threadStore).threads;
+
+    await Promise.all(
+      allThreads.map(async (thread) => {
+        try {
+          await restoreConversationHistory(thread.sessionId);
+        } catch (error) {
+          console.warn(`[App] Failed to restore history for thread ${thread.sessionId}:`, error);
+        }
+      })
+    );
   }
 
   /**

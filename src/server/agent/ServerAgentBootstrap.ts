@@ -1,10 +1,12 @@
 /**
  * Server Agent Bootstrap
  *
- * Main orchestrator for server mode. Creates RepublicAgent,
- * ServerChannel, ChannelManager, plugin loader, and maintenance timers.
+ * Main orchestrator for server mode. Creates AgentRegistry with
+ * session-aware agent management, ServerChannel, ChannelManager,
+ * plugin loader, and maintenance timers.
  *
- * Pattern follows DesktopAgentBootstrap.
+ * Pattern follows the extension service worker: no singleton agent,
+ * all operations routed through AgentRegistry by sessionId.
  *
  * @module server/agent/ServerAgentBootstrap
  */
@@ -74,7 +76,7 @@ let _instance: ServerAgentBootstrap | null = null;
 // ─────────────────────────────────────────────────────────────────────────
 
 export class ServerAgentBootstrap {
-  private agent: RepublicAgent | null = null;
+  private registry: AgentRegistry | null = null;
   private channel: ServerChannel | null = null;
   private sessionIndex: SessionIndex | null = null;
   private transcriptStore: TranscriptStore | null = null;
@@ -128,44 +130,78 @@ export class ServerAgentBootstrap {
       // 2. Get agent config
       const agentConfig = await AgentConfig.getInstance();
 
-      // 3. Create RepublicAgent
-      this.agent = new RepublicAgent(agentConfig);
-
-      // 4. Configure PromptComposer with server platform context
+      // 3. Configure PromptComposer with server platform context
+      // (must happen before agent.initialize() inside agentFactory)
       await this.configurePrompt();
 
-      // 5. Create ServerChannel and wire up
+      // 4. Create ServerChannel and wire up
       this.channel = new ServerChannel();
       const channelManager = getChannelManager();
 
-      // Set agent handler
+      // 5. Create AgentRegistry with factories
+      this.registry = new AgentRegistry({
+        maxConcurrent: 3,
+        agentFactory: async (cfg) => {
+          const agent = new RepublicAgent(cfg);
+          await agent.initialize();
+
+          // Register server-mode tools on each new agent
+          try {
+            const toolRegistry = agent.getToolRegistry();
+            await registerServerTools(toolRegistry as any);
+            console.log('[ServerAgentBootstrap] Server tools registered on new session agent');
+          } catch (err) {
+            console.warn('[ServerAgentBootstrap] Tool registration failed (non-fatal):', err);
+          }
+
+          return agent;
+        },
+        eventDispatcherFactory: (sessionId) => (event) => {
+          // Dispatch to ServerChannel -> WebSocket clients with sessionId
+          channelManager.dispatchEvent({ msg: event.msg, sessionId }, this.channel!.channelId).catch((error) => {
+            console.error('[ServerAgentBootstrap] Failed to dispatch event:', error);
+          });
+
+          // Also log to transcript store
+          if (this.transcriptStore) {
+            this.transcriptStore.append('__active__', {
+              ts: Date.now(),
+              type: event.msg.type,
+              data: event.msg,
+            });
+          }
+
+          // Intercept completion events for scheduler
+          this.handleSchedulerEventCompletion(event.msg);
+        },
+      });
+      this.registry.initialize(agentConfig);
+
+      // 6. Create initial primary session
+      const initialSession = await this.registry.createSession({ type: 'primary' });
+      console.log(`[ServerAgentBootstrap] Initial session created: ${initialSession.sessionId}`);
+
+      // 7. Set agent handler — requires sessionId, no fallback
       const agentHandler: AgentHandler = async (op: Op, context: SubmissionContext) => {
-        if (!this.agent) throw new Error('Agent not initialized');
-        console.log('[ServerAgentBootstrap] Processing submission:', op.type);
-        await this.agent.submitOperation(op, { tabId: context.tabId });
+        if (!context.sessionId) {
+          throw new Error('No sessionId in submission context — cannot route operation');
+        }
+        if (!this.registry) {
+          throw new Error('AgentRegistry not initialized');
+        }
+        const targetSession = this.registry.getSession(context.sessionId);
+        if (!targetSession?.agent) {
+          throw new Error(`Session not found: ${context.sessionId}`);
+        }
+        console.log('[ServerAgentBootstrap] Processing submission:', op.type, 'session:', context.sessionId);
+        await targetSession.agent.submitOperation(op, { tabId: context.tabId });
       };
 
       channelManager.setAgentHandler(agentHandler);
       await channelManager.registerChannel(this.channel);
       console.log('[ServerAgentBootstrap] Channel registered');
 
-      // Wire event forwarding
-      this.setupEventForwarding(channelManager);
-
-      // 6. Initialize the agent
-      await this.agent.initialize();
-      console.log('[ServerAgentBootstrap] Agent initialized');
-
-      // 6b. Register server-mode tools (browser MCP, planning, web search)
-      try {
-        const toolRegistry = this.agent.getToolRegistry();
-        await registerServerTools(toolRegistry as any);
-        console.log('[ServerAgentBootstrap] Server tools registered');
-      } catch (err) {
-        console.warn('[ServerAgentBootstrap] Tool registration failed (non-fatal):', err);
-      }
-
-      // 7. Initialize persistence
+      // 8. Initialize persistence
       this.sessionIndex = new SessionIndex(dataDir);
       await this.sessionIndex.initialize();
       console.log('[ServerAgentBootstrap] Session index initialized');
@@ -174,17 +210,17 @@ export class ServerAgentBootstrap {
       await this.transcriptStore.initialize();
       console.log('[ServerAgentBootstrap] Transcript store initialized');
 
-      // 8. Initialize backup manager
+      // 9. Initialize backup manager
       this.backupManager = new BackupManager(dataDir, config.server.backup.retention);
       this.backupManager.start();
 
-      // 9. Initialize approval manager
+      // 10. Initialize approval manager
       this.approvalManager = new ApprovalManager();
 
-      // 9b. Initialize scheduler
+      // 10b. Initialize scheduler
       await this.initializeScheduler(dataDir, channelManager);
 
-      // 10. Wire handshake snapshot providers
+      // 11. Wire handshake snapshot providers
       setHandshakeSnapshotProviders({
         getSessionSummaries: async () => {
           if (!this.sessionIndex) return [];
@@ -192,26 +228,38 @@ export class ServerAgentBootstrap {
         },
       });
 
-      // 11. Register method handlers
+      // 12. Register method handlers
       this.registerHandlers();
 
-      // 11. Initialize plugins
+      // 12b. Initialize plugins
       await this.initializePlugins(channelManager);
 
-      // 12. Start health monitoring
+      // 13. Start health monitoring
       this.healthMonitor = new HealthMonitor();
       this.healthMonitor.start();
       resetHealthStartTime();
 
-      // Update health status
-      const readyState = await this.agent.isReady();
-      setHealthAgentStatus(readyState.ready);
+      // Update health status via first session in registry
+      const primarySession = this.registry.getPrimarySession();
+      if (primarySession?.agent) {
+        const readyState = await primarySession.agent.isReady();
+        setHealthAgentStatus(readyState.ready);
+      }
 
-      // Populate tool names for health endpoint
+      // Populate tool names for health endpoint (aggregate from all sessions)
       try {
-        const registry = this.agent.getToolRegistry();
-        const tools = registry.listTools().map((t: any) => t.function?.name ?? t.name ?? 'unknown');
-        setHealthAgentTools(tools);
+        const allTools: string[] = [];
+        const sessions = this.registry.listSessions();
+        for (const s of sessions) {
+          const agentSession = this.registry.getSession(s.sessionId);
+          if (agentSession?.agent) {
+            const registry = agentSession.agent.getToolRegistry();
+            const tools = registry.listTools().map((t: any) => t.function?.name ?? t.name ?? 'unknown');
+            allTools.push(...tools);
+          }
+        }
+        // Deduplicate
+        setHealthAgentTools([...new Set(allTools)]);
       } catch {
         // Non-fatal
       }
@@ -226,19 +274,17 @@ export class ServerAgentBootstrap {
         }
       }
 
-      // 13. Start config file watcher
+      // 14. Start config file watcher
       watchConfig();
-      onConfigReload((newConfig) => {
+      onConfigReload((_newConfig) => {
         console.log('[ServerAgentBootstrap] Config reloaded');
-        // Hot-reload non-sensitive settings
-        if (this.agent) {
-          this.agent.refreshModelClient().catch((err) => {
-            console.error('[ServerAgentBootstrap] Failed to refresh model client:', err);
-          });
-        }
+        // Hot-reload: iterate all sessions for refreshModelClient
+        this.handleConfigUpdate().catch((err) => {
+          console.error('[ServerAgentBootstrap] Failed to handle config update:', err);
+        });
       });
 
-      // 14. Register service handlers on ChannelManager (message_routing_v2)
+      // 15. Register service handlers on ChannelManager (message_routing_v2)
       await this.registerServices(channelManager);
 
       this.initialized = true;
@@ -246,6 +292,24 @@ export class ServerAgentBootstrap {
     } catch (error) {
       console.error('[ServerAgentBootstrap] Initialization failed:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Handle configuration updates by iterating all sessions and hot-swapping
+   * their model clients.
+   */
+  private async handleConfigUpdate(): Promise<void> {
+    if (!this.registry) return;
+    const config = await AgentConfig.getInstance();
+    await config.reload();
+    const sessions = this.registry.listSessions();
+    for (const s of sessions) {
+      if (s.state === 'terminated') continue;
+      const agentSession = this.registry.getSession(s.sessionId);
+      if (agentSession?.agent) {
+        await agentSession.agent.hotSwapModelClient();
+      }
     }
   }
 
@@ -302,43 +366,14 @@ export class ServerAgentBootstrap {
       a2a: a2aDeps,
       skills: skillsDeps,
       scheduler: this.scheduler ? { scheduler: this.scheduler } : undefined,
-      session: {
-        getAgent: () => this.agent,
-      },
-      agent: {
-        getAgent: () => this.agent,
-      },
+      session: this.registry ? { registry: this.registry } : undefined,
+      agent: this.registry ? {
+        registry: this.registry,
+        handleConfigUpdate: () => this.handleConfigUpdate(),
+      } : undefined,
     });
 
     console.log(`[ServerAgentBootstrap] Registered ${count} service handlers`);
-  }
-
-  /**
-   * Set up event forwarding from agent to channel.
-   */
-  private setupEventForwarding(channelManager: ReturnType<typeof getChannelManager>): void {
-    if (!this.agent || !this.channel) return;
-
-    this.agent.setEventDispatcher((event) => {
-      // Dispatch to ServerChannel → WebSocket clients
-      channelManager.dispatchEvent({ msg: event.msg }, this.channel!.channelId).catch((error) => {
-        console.error('[ServerAgentBootstrap] Failed to dispatch event:', error);
-      });
-
-      // Also log to transcript store
-      if (this.transcriptStore) {
-        this.transcriptStore.append('__active__', {
-          ts: Date.now(),
-          type: event.msg.type,
-          data: event.msg,
-        });
-      }
-
-      // Intercept completion events for scheduler
-      this.handleSchedulerEventCompletion(event.msg);
-    });
-
-    console.log('[ServerAgentBootstrap] Event forwarding configured');
   }
 
   /**
@@ -347,8 +382,13 @@ export class ServerAgentBootstrap {
   private registerHandlers(): void {
     registerChatHandlers({
       submitOp: async (op, context) => {
-        if (!this.agent) throw new Error('Agent not initialized');
-        await this.agent.submitOperation(op, { tabId: context.tabId });
+        if (!context.sessionId) {
+          throw new Error('No sessionId — cannot route chat submission');
+        }
+        if (!this.registry) throw new Error('AgentRegistry not initialized');
+        const targetSession = this.registry.getSession(context.sessionId);
+        if (!targetSession?.agent) throw new Error(`Session not found: ${context.sessionId}`);
+        await targetSession.agent.submitOperation(op, { tabId: context.tabId });
       },
       getHistory: async (sessionKey) => {
         if (!this.transcriptStore) return [];
@@ -376,9 +416,18 @@ export class ServerAgentBootstrap {
         this.transcriptStore?.delete(key);
       },
       compactSession: async (key) => {
-        // Trigger compaction on the agent
-        if (this.agent) {
-          await this.agent.submitOperation({ type: 'ManualCompact' }, {});
+        // Route compaction to the specific session by key
+        if (this.registry) {
+          const targetSession = this.registry.getSession(key);
+          if (targetSession?.agent) {
+            await targetSession.agent.submitOperation({ type: 'ManualCompact' }, {});
+            return { status: 'compacted' };
+          }
+        }
+        // Fallback: try primary session
+        const primary = this.registry?.getPrimarySession();
+        if (primary?.agent) {
+          await primary.agent.submitOperation({ type: 'ManualCompact' }, {});
         }
         return { status: 'compacted' };
       },
@@ -390,12 +439,28 @@ export class ServerAgentBootstrap {
 
     registerToolsHandlers({
       getToolCatalog: async () => {
-        if (!this.agent) return [];
-        const registry = this.agent.getToolRegistry();
-        return registry.listTools().map((t: any) => ({
-          name: t.function?.name ?? t.name ?? 'unknown',
-          description: t.function?.description ?? t.description ?? '',
-        }));
+        if (!this.registry) return [];
+        // Aggregate tools from all sessions
+        const allTools: Array<{ name: string; description: string }> = [];
+        const seen = new Set<string>();
+        const sessions = this.registry.listSessions();
+        for (const s of sessions) {
+          const agentSession = this.registry.getSession(s.sessionId);
+          if (agentSession?.agent) {
+            const registry = agentSession.agent.getToolRegistry();
+            const tools = registry.listTools().map((t: any) => ({
+              name: t.function?.name ?? t.name ?? 'unknown',
+              description: t.function?.description ?? t.description ?? '',
+            }));
+            for (const tool of tools) {
+              if (!seen.has(tool.name)) {
+                seen.add(tool.name);
+                allTools.push(tool);
+              }
+            }
+          }
+        }
+        return allTools;
       },
     });
 
@@ -506,15 +571,15 @@ export class ServerAgentBootstrap {
       // 4. Create scheduler with new constructor
       this.scheduler = new Scheduler(scheduleManager, jobExecutor, this.schedulerAlarms);
 
-      // 5. Wire alarm handler → scheduler.handleAlarm()
+      // 5. Wire alarm handler -> scheduler.handleAlarm()
       this.schedulerAlarms.setAlarmHandler(async (alarmName) => {
         await this.scheduler!.handleAlarm(alarmName);
       });
 
-      // 6. Wire event emitter → unified channel dispatch
+      // 6. Wire event emitter -> unified channel dispatch
       this.scheduler.connectToChannel(() => channelManager, this.channel!.channelId);
 
-      // 7. Wire job launcher → submit job input to agent
+      // 7. Wire job launcher -> submit job input to agent via registry
       this.scheduler.setJobLauncher(async (executionId, sessionId, registryAgent) => {
         console.log(`[ServerAgentBootstrap] Scheduled job ${executionId} launched (session: ${sessionId})`);
         const execution = await executionStorage.getExecution(executionId);
@@ -522,9 +587,14 @@ export class ServerAgentBootstrap {
           throw new Error(`Execution not found: ${executionId}`);
         }
 
-        const targetAgent = registryAgent ?? this.agent;
+        // Use the registry agent provided by the scheduler, or look up from registry
+        let targetAgent = registryAgent;
+        if (!targetAgent && this.registry) {
+          const primary = this.registry.getPrimarySession();
+          targetAgent = primary?.agent ?? null;
+        }
         if (!targetAgent) {
-          throw new Error('Agent not initialized — cannot execute scheduled job');
+          throw new Error('No agent available — cannot execute scheduled job');
         }
 
         // submitOperation is fire-and-forget: it queues the operation, may abort
@@ -542,36 +612,13 @@ export class ServerAgentBootstrap {
         this.runningJobStartTime = Date.now();
       });
 
-      // 7a. Connectivity check — ensure agent is initialized before executing jobs
-      this.scheduler.setConnectivityCheck(() => this.agent !== null && this.initialized);
+      // 7a. Connectivity check — ensure registry is initialized before executing jobs
+      this.scheduler.setConnectivityCheck(() => this.registry !== null && this.initialized);
 
-      // 7b. Initialize AgentRegistry for session isolation
-      try {
-        const agentConfig = await AgentConfig.getInstance();
-        const registry = new AgentRegistry({
-          maxConcurrent: 1,
-          agentFactory: async (config) => {
-            const agent = new RepublicAgent(config);
-            // Copy auth manager from primary agent so registry agents use
-            // the same API key / backend routing as the user's session
-            const primaryAuth = this.agent?.getModelClientFactory().getAuthManager();
-            if (primaryAuth) {
-              agent.getModelClientFactory().setAuthManager(primaryAuth);
-            }
-            await agent.initialize();
-            return agent;
-          },
-          eventDispatcherFactory: (sessionId) => (event) => {
-            // Forward events to WebSocket clients AND intercept completions
-            channelManager.dispatchEvent({ msg: event.msg, sessionId }, this.channel!.channelId).catch(() => {});
-            this.handleSchedulerEventCompletion(event.msg);
-          },
-        });
-        registry.initialize(agentConfig);
-        this.scheduler.setRegistry(registry);
-        console.log('[ServerAgentBootstrap] AgentRegistry initialized for session isolation');
-      } catch (error) {
-        console.warn('[ServerAgentBootstrap] AgentRegistry init failed (non-fatal, using legacy sessions):', error);
+      // 7b. Wire registry for session isolation in scheduled jobs
+      if (this.registry) {
+        this.scheduler.setRegistry(this.registry);
+        console.log('[ServerAgentBootstrap] AgentRegistry wired for scheduler session isolation');
       }
 
       // 8. Start queue processor
@@ -648,8 +695,8 @@ export class ServerAgentBootstrap {
   // Accessors
   // ─────────────────────────────────────────────────────────────────────
 
-  getAgent(): RepublicAgent | null {
-    return this.agent;
+  getRegistry(): AgentRegistry | null {
+    return this.registry;
   }
 
   getChannel(): ServerChannel | null {
@@ -713,10 +760,10 @@ export class ServerAgentBootstrap {
     // Close session index
     this.sessionIndex?.close();
 
-    // Cleanup agent
-    if (this.agent) {
-      await this.agent.cleanup();
-      this.agent = null;
+    // Cleanup all sessions via registry
+    if (this.registry) {
+      await this.registry.cleanup();
+      this.registry = null;
     }
 
     this.channel = null;

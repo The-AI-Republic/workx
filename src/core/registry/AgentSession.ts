@@ -177,8 +177,53 @@ export class AgentSession {
   }
 
   // ==========================================================================
+  // State Query
+  // ==========================================================================
+
+  /**
+   * Get the current session state snapshot.
+   * Returns per-session data (history, tabId, active turn).
+   * Registry-level aggregates (activeSessionCount, maxConcurrent) are added
+   * by the service handler — they don't belong on a single session.
+   */
+  getState(): { sessionId: string; isActiveTurn: boolean; tabId: number | null; history: unknown[] } {
+    if (!this._agent) {
+      return {
+        sessionId: this._sessionId,
+        isActiveTurn: false,
+        tabId: this._metadata.tabId,
+        history: [],
+      };
+    }
+
+    const session = this._agent.getSession();
+    const conversationHistory = session.getConversationHistory();
+
+    return {
+      sessionId: this._sessionId,
+      isActiveTurn: session.isActiveTurn(),
+      tabId: session.getTabId(),
+      history: conversationHistory.items,
+    };
+  }
+
+  // ==========================================================================
   // Operations
   // ==========================================================================
+
+  /**
+   * Reset the session: abort running tasks and clear conversation history.
+   * Platform-specific cleanup (e.g. tab reset) is handled by the caller.
+   */
+  async reset(): Promise<void> {
+    if (!this._agent) {
+      throw new Error(`Session ${this._sessionId} has no agent attached`);
+    }
+
+    const session = this._agent.getSession();
+    await session.abortAllTasks('UserInterrupt');
+    await session.reset();
+  }
 
   /**
    * Submit an operation to the agent

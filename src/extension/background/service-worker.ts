@@ -61,13 +61,7 @@ import { PRIMARY_SESSION_ALIAS } from '../../core/models/types/SessionContracts'
 import { t } from '../../webfront/lib/i18n';
 
 // Global instances
-/**
- * @deprecated Feature 015: Use registry.getPrimarySession().agent instead.
- * This variable is kept only for backward compatibility during migration.
- * All new code should use AgentRegistry to access agent instances.
- */
-let agent: RepublicAgent | null = null;
-let registry: AgentRegistry | null = null; // Feature 015: Multi-agent registry
+let registry: AgentRegistry | null = null;
 let cacheManager: CacheManager | null = null;
 let storageQuotaManager: StorageQuotaManager | null = null;
 let agentConfig: AgentConfig | null = null;
@@ -187,12 +181,10 @@ async function doInitialize(): Promise<void> {
   // Feature 015 (T039): Initialize session persistence
   await initializeSessionPersistence();
 
-  // Create primary session (replaces singleton agent creation)
-  // This maintains backward compatibility - agent variable points to primary session's agent
-  const primarySession = await registry.createSession({ type: 'primary' });
-  agent = primarySession.agent;
+  // Create initial session (always at least one)
+  const initialSession = await registry.createSession({ type: 'primary' });
 
-  console.log(`[ServiceWorker] Primary session created: ${primarySession.sessionId}`);
+  console.log(`[ServiceWorker] Initial session created: ${initialSession.sessionId}`);
 
   // Initialize auth manager from stored config preferences
   // This ensures backend routing is set up correctly on service worker startup
@@ -244,7 +236,7 @@ async function doInitialize(): Promise<void> {
  * This ensures useOwnApiKey setting is respected on service worker startup
  */
 async function initializeAuthFromConfig(): Promise<void> {
-  if (!agentConfig || !agent) return;
+  if (!agentConfig || !registry) return;
 
   try {
     const config = agentConfig.getConfig();
@@ -265,10 +257,18 @@ async function initializeAuthFromConfig(): Promise<void> {
     const authManager = new AuthManager(shouldUseBackend, backendBaseUrl);
     currentAuthManager = authManager;
 
-    const factory = agent.getModelClientFactory();
-    factory.setAuthManager(authManager);
+    // Apply auth to all active sessions
+    const sessions = registry.listSessions() as Array<{ sessionId: string; state: string }>;
+    for (const s of sessions) {
+      if (s.state === 'terminated') continue;
+      const agentSession = registry.getSession(s.sessionId);
+      if (agentSession?.agent) {
+        const factory = agentSession.agent.getModelClientFactory();
+        factory.setAuthManager(authManager);
+      }
+    }
 
-    console.log('[ServiceWorker] Auth initialized, isBackendRouting:', factory.isBackendRouting());
+    console.log('[ServiceWorker] Auth initialized, shouldUseBackend:', shouldUseBackend);
 
     // Check for ChatGPT OAuth tokens and configure token getter
     try {
@@ -280,7 +280,14 @@ async function initializeAuthFromConfig(): Promise<void> {
 
       if (await oauthService.isAuthenticated()) {
         authManager.setChatGPTOAuth(() => oauthService.getValidAccessToken());
-        factory.setAuthManager(authManager);
+        // Re-apply auth with OAuth to all sessions
+        for (const s of sessions) {
+          if (s.state === 'terminated') continue;
+          const agentSession = registry.getSession(s.sessionId);
+          if (agentSession?.agent) {
+            agentSession.agent.getModelClientFactory().setAuthManager(authManager);
+          }
+        }
         console.log('[ServiceWorker] ChatGPT OAuth restored from storage');
       }
     } catch (oauthError) {
@@ -348,27 +355,26 @@ async function initializeSessionPersistence(): Promise<void> {
  * @returns The agent to use for this message
  */
 function getAgentForMessage(message: { payload?: { sessionId?: string; context?: { sessionId?: string } } }): RepublicAgent | null {
-  // Feature 015: Route by sessionId if provided, otherwise use primary session
-  // Check both payload.sessionId (direct) and payload.context.sessionId (from Submission)
+  // Route by sessionId — no fallback to a "primary" session
   const sessionId = message.payload?.sessionId ?? message.payload?.context?.sessionId;
 
-  if (sessionId && registry) {
-    const agentSession = registry.getSession(sessionId);
-    if (agentSession?.agent) {
-      return agentSession.agent;
-    }
-    // If specific session not found, fall back to primary
-    console.warn(`[ServiceWorker] Session ${sessionId} not found, using primary`);
+  if (!sessionId) {
+    console.warn('[ServiceWorker] No sessionId in message, cannot route');
+    return null;
   }
 
-  // Default to primary session (backward compatibility)
-  if (registry) {
-    const primarySession = registry.getPrimarySession();
-    return primarySession?.agent ?? null;
+  if (!registry) {
+    console.warn('[ServiceWorker] Registry not initialized');
+    return null;
   }
 
-  // Legacy fallback to global agent variable
-  return agent;
+  const agentSession = registry.getSession(sessionId);
+  if (agentSession?.agent) {
+    return agentSession.agent;
+  }
+
+  console.warn(`[ServiceWorker] Session ${sessionId} not found`);
+  return null;
 }
 
 /**
@@ -392,32 +398,23 @@ async function registerServiceHandlers(): Promise<void> {
 
       // Set the agent handler to route non-ServiceRequest Ops to the correct session
       channelManager.setAgentHandler(async (op, context) => {
-        // Route to specific session if sessionId provided and registry available
-        if (context.sessionId && registry) {
-          const targetSession = registry.getSession(context.sessionId);
-          if (targetSession?.agent) {
-            await targetSession.agent.submitOperation(op, { tabId: context.tabId });
-            return;
-          }
+        if (!context.sessionId) {
+          throw new Error('No sessionId in submission context — cannot route operation');
+        }
+        if (!registry) {
+          throw new Error('AgentRegistry not initialized');
         }
 
-        // Fallback to primary agent
-        const targetAgent = agent ?? registry?.getPrimarySession()?.agent;
-        if (!targetAgent) throw new Error('No agent available');
-        await targetAgent.submitOperation(op, { tabId: context.tabId });
+        const targetSession = registry.getSession(context.sessionId);
+        if (!targetSession?.agent) {
+          throw new Error(`Session not found: ${context.sessionId}`);
+        }
+
+        await targetSession.agent.submitOperation(op, { tabId: context.tabId });
       });
 
       await channelManager.registerChannel(sidePanelChannel);
-
-      // Wire event forwarding from agent to channel (with sessionId for multi-session routing)
-      const primarySession = registry?.getPrimarySession();
-      const primaryAgent = primarySession?.agent ?? agent;
-      if (primaryAgent) {
-        const sessionId = primarySession?.sessionId;
-        primaryAgent.setEventDispatcher((event) => {
-          channelManager.dispatchEvent({ msg: event.msg, sessionId }, 'sidepanel-main').catch(() => {});
-        });
-      }
+      // Note: event dispatchers are wired per-session in AgentRegistry.createSession()
     }
 
     const serviceRegistry = channelManager.getServiceRegistry();
@@ -438,6 +435,8 @@ async function registerServiceHandlers(): Promise<void> {
       scheduler.connectToChannel(() => channelManager, 'sidepanel-main');
     }
 
+    if (!registry) throw new Error('AgentRegistry not initialized');
+
     const count = registerAllServices(serviceRegistry, {
       mcp: mcpManager ? { mcpManager } : undefined,
       scheduler: scheduler ? { scheduler } : undefined,
@@ -447,18 +446,14 @@ async function registerServiceHandlers(): Promise<void> {
       },
       a2a: a2aManager ? { a2aManager } : undefined,
       session: {
-        getAgent: () => {
-          const targetAgent = registry?.getPrimarySession()?.agent ?? agent;
-          return targetAgent;
-        },
-        registry: registry ?? undefined,
+        registry,
         resetTabs: async () => {
           const tabManager = TabManager.getInstance();
           await tabManager.reset();
         },
       },
       agent: {
-        getAgent: () => registry?.getPrimarySession()?.agent ?? agent,
+        registry,
         updateApprovalConfig: async (config: Record<string, unknown>) => {
           const result = await chrome.storage.local.get(STORAGE_KEYS.CONFIG);
           const storedConfig = (result[STORAGE_KEYS.CONFIG] || {}) as Record<string, any>;
@@ -471,45 +466,35 @@ async function registerServiceHandlers(): Promise<void> {
     });
 
     // Extension-specific overrides: session.resume and agent.configUpdate
-    // These need access to service-worker closures (agent, registry, currentAuthManager, etc.)
+    // These need access to service-worker closures (registry, currentAuthManager, etc.)
     serviceRegistry.register('session.resume', async (params) => {
-      if (!agent) throw new Error('Agent not initialized');
+      if (!registry) throw new Error('Registry not initialized');
 
       const { sessionId } = params as { sessionId: string };
+      if (!sessionId) throw new Error('sessionId is required');
       console.log('[ServiceWorker] Resuming session:', sessionId);
-
-      const currentSession = agent.getSession();
-      await currentSession.abortAllTasks('UserInterrupt');
-
-      const tabManager = TabManager.getInstance();
-      await tabManager.reset();
-      await currentSession.close();
 
       const initialHistory = await RolloutRecorder.getRolloutHistory(sessionId);
       if (initialHistory.type !== 'resumed' || !initialHistory.payload?.history) {
         throw new Error('Conversation not found or has no history');
       }
 
-      agent = new RepublicAgent(agentConfig!, {
+      // Create a new session with resumed history
+      const resumedAgent = new RepublicAgent(agentConfig!, {
         mode: 'resumed' as const,
         sessionId,
         rolloutItems: initialHistory.payload.history,
       }, undefined, new UserNotifier());
 
-      // Wire event dispatch through channel
-      agent.setEventDispatcher((event) => {
-        channelManager.dispatchEvent({ msg: event.msg }, 'sidepanel-main').catch(() => {});
-      });
-
       if (currentAuthManager) {
-        const factory = agent.getModelClientFactory();
+        const factory = resumedAgent.getModelClientFactory();
         factory.setAuthManager(currentAuthManager);
       }
 
-      await agent.initialize();
-      await configureExtensionPlatform(agent);
+      await resumedAgent.initialize();
+      await configureExtensionPlatform(resumedAgent);
 
-      const session = agent.getSession();
+      const session = resumedAgent.getSession();
       await session.initialize();
       const history = session.getConversationHistory();
 
@@ -525,48 +510,25 @@ async function registerServiceHandlers(): Promise<void> {
           agentConfig = await AgentConfig.getInstance();
         }
 
-        if (registry) {
-          await registry.cleanup();
-          registry.initialize(agentConfig);
+        if (!registry) {
+          throw new Error('AgentRegistry not initialized');
+        }
 
-          const primarySession = await registry.createSession({ type: 'primary' });
-          agent = primarySession.agent;
+        // Cleanup all sessions and re-create them with new config
+        await registry.cleanup();
+        registry.initialize(agentConfig);
 
-          // Wire event dispatch through channel
-          agent!.setEventDispatcher((event) => {
-            channelManager.dispatchEvent({ msg: event.msg }, 'sidepanel-main').catch(() => {});
-          });
+        const newSession = await registry.createSession({ type: 'primary' });
 
-          if (currentAuthManager && agent) {
-            const factory = agent.getModelClientFactory();
+        if (currentAuthManager && newSession.agent) {
+          const agentSession = registry.getSession(newSession.sessionId);
+          if (agentSession?.agent) {
+            const factory = agentSession.agent.getModelClientFactory();
             factory.setAuthManager(currentAuthManager);
-            await agent.refreshModelClient();
-          } else if (!currentAuthManager) {
-            await initializeAuthFromConfig();
+            await agentSession.agent.refreshModelClient();
           }
-        } else {
-          if (agent) {
-            const session = agent.getSession();
-            await session.close();
-            await agent.cleanup();
-          }
-
-          agent = new RepublicAgent(agentConfig, undefined, undefined, new UserNotifier());
-          agent.setEventDispatcher((event) => {
-            channelManager.dispatchEvent({ msg: event.msg }, 'sidepanel-main').catch(() => {});
-          });
-
-          if (currentAuthManager) {
-            const factory = agent.getModelClientFactory();
-            factory.setAuthManager(currentAuthManager);
-          }
-          await agent.initialize();
-          await configureExtensionPlatform(agent);
-          if (!currentAuthManager) {
-            await initializeAuthFromConfig();
-          } else {
-            await agent.refreshModelClient();
-          }
+        } else if (!currentAuthManager) {
+          await initializeAuthFromConfig();
         }
 
         // Notify UI via channel
@@ -592,23 +554,21 @@ async function registerServiceHandlers(): Promise<void> {
       const authManager = new AuthManager(shouldUseBackend, shouldUseBackend ? (backendBaseUrl ?? null) : null);
       currentAuthManager = authManager;
 
-      const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
-      if (primaryAgent) {
-        const factory = primaryAgent.getModelClientFactory();
-        factory.setAuthManager(authManager);
-        await primaryAgent.refreshModelClient();
+      // Apply auth to all active sessions
+      if (registry) {
+        const sessions = registry.listSessions() as Array<{ sessionId: string; state: string }>;
+        for (const s of sessions) {
+          if (s.state === 'terminated') continue;
+          const agentSession = registry.getSession(s.sessionId);
+          if (agentSession?.agent) {
+            const factory = agentSession.agent.getModelClientFactory();
+            factory.setAuthManager(authManager);
+            await agentSession.agent.refreshModelClient();
+          }
+        }
       }
 
       return { success: true, isBackendRouting: shouldUseBackend };
-    });
-
-    serviceRegistry.register('session.setMaxConcurrent', async (params) => {
-      const { maxConcurrent } = params as { maxConcurrent: number };
-      if (registry && typeof maxConcurrent === 'number') {
-        registry.setMaxConcurrent(maxConcurrent);
-        return { success: true };
-      }
-      throw new Error('Invalid request or registry not initialized');
     });
 
     console.log(`[ServiceWorker] Registered ${count} service handlers on ChannelManager (+ extension overrides)`);
@@ -773,17 +733,28 @@ async function autoConnectEnabledMCPServers(): Promise<void> {
 /**
  * Setup MCP tool registration event handling
  * Registers/unregisters MCP tools with ToolRegistry when connections change
- * Feature 015: Uses primary session's tool registry
+ * Applies to all active sessions' tool registries.
  */
 function setupMCPToolRegistration(): void {
-  // Feature 015: Get tool registry from primary session
-  const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
-  if (!mcpManager || !primaryAgent) {
-    console.warn('[ServiceWorker] Cannot setup MCP tool registration - manager or agent not ready');
+  if (!mcpManager || !registry) {
+    console.warn('[ServiceWorker] Cannot setup MCP tool registration - manager or registry not ready');
     return;
   }
 
-  const toolRegistry = primaryAgent.getToolRegistry();
+  /** Get tool registries from all active sessions */
+  function getAllToolRegistries() {
+    const registries: ReturnType<RepublicAgent['getToolRegistry']>[] = [];
+    for (const meta of registry!.listSessions() as Array<{ sessionId: string; state: string }>) {
+      if (meta.state === 'terminated') continue;
+      const s = registry!.getSession(meta.sessionId);
+      if (s?.agent) registries.push(s.agent.getToolRegistry());
+    }
+    return registries;
+  }
+
+  // Use the first active session's registry for the tracked-tools map
+  // (tool names are the same across sessions)
+  const getAnyToolRegistry = () => getAllToolRegistries()[0];
 
   // Track registered tools per server for cleanup
   const registeredServerTools = new Map<string, string[]>();
@@ -802,18 +773,18 @@ function setupMCPToolRegistration(): void {
         // First unregister any previously registered tools for this server
         const previousTools = registeredServerTools.get(serverName);
         if (previousTools) {
-          for (const toolName of previousTools) {
-            try {
-              await toolRegistry.unregister(toolName);
-            } catch (e) {
-              // Ignore - tool might not be registered
+          for (const tr of getAllToolRegistries()) {
+            for (const toolName of previousTools) {
+              try { await tr.unregister(toolName); } catch { /* ignore */ }
             }
           }
         }
 
-        // Register new tools
+        // Register new tools on all sessions
         try {
-          await registerMCPTools(mcpManager!, serverName, tools, toolRegistry);
+          for (const tr of getAllToolRegistries()) {
+            await registerMCPTools(mcpManager!, serverName, tools, tr);
+          }
           // Track registered tool names
           registeredServerTools.set(
             serverName,
@@ -831,15 +802,13 @@ function setupMCPToolRegistration(): void {
 
       const serverName = server.name;
 
-      // If disconnecting or error, unregister tools
+      // If disconnecting or error, unregister tools from all sessions
       if (status === 'disconnected' || status === 'error') {
         const previousTools = registeredServerTools.get(serverName);
         if (previousTools) {
-          for (const toolName of previousTools) {
-            try {
-              await toolRegistry.unregister(toolName);
-            } catch (e) {
-              // Ignore - tool might not be registered
+          for (const tr of getAllToolRegistries()) {
+            for (const toolName of previousTools) {
+              try { await tr.unregister(toolName); } catch { /* ignore */ }
             }
           }
           registeredServerTools.delete(serverName);
@@ -863,44 +832,51 @@ function setupMCPToolRegistration(): void {
  * Mirrors the setupMCPToolRegistration() pattern.
  */
 function setupA2AToolRegistration(): void {
-  const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
-  if (!a2aManager || !primaryAgent) {
-    console.warn('[ServiceWorker] Cannot setup A2A tool registration - manager or agent not ready');
+  if (!a2aManager || !registry) {
+    console.warn('[ServiceWorker] Cannot setup A2A tool registration - manager or registry not ready');
     return;
   }
 
-  const toolRegistry = primaryAgent.getToolRegistry();
+  /** Get tool registries from all active sessions */
+  function getAllToolRegistries() {
+    const registries: ReturnType<RepublicAgent['getToolRegistry']>[] = [];
+    for (const meta of registry!.listSessions() as Array<{ sessionId: string; state: string }>) {
+      if (meta.state === 'terminated') continue;
+      const s = registry!.getSession(meta.sessionId);
+      if (s?.agent) registries.push(s.agent.getToolRegistry());
+    }
+    return registries;
+  }
 
-  // Track registered skill names per agent for cleanup
+  // Track registered skill names per a2a agent for cleanup
   const registeredAgentSkills = new Map<string, string[]>();
 
   a2aManager.on('event', async (event: A2AManagerEvent) => {
     if (event.type === 'skills-updated') {
       const { configId, skills } = event;
-      const agentConfig = a2aManager!.getAgent(configId);
-      if (!agentConfig) return;
+      const a2aAgentConfig = a2aManager!.getAgent(configId);
+      if (!a2aAgentConfig) return;
 
-      const agentName = agentConfig.name;
+      const agentName = a2aAgentConfig.name;
       const connection = a2aManager!.getConnection(configId);
 
       // If connected and skills available, register them
       if (connection?.status === 'connected' && skills.length > 0) {
-        // First unregister any previously registered skills for this agent
+        // First unregister any previously registered skills
         const previousSkills = registeredAgentSkills.get(agentName);
         if (previousSkills) {
-          for (const toolName of previousSkills) {
-            try {
-              await toolRegistry.unregister(toolName);
-            } catch {
-              // Ignore - tool might not be registered
+          for (const tr of getAllToolRegistries()) {
+            for (const toolName of previousSkills) {
+              try { await tr.unregister(toolName); } catch { /* ignore */ }
             }
           }
         }
 
-        // Register new skills
+        // Register new skills on all sessions
         try {
-          await registerA2ASkills(a2aManager!, agentName, skills, toolRegistry, agentConfig.trusted);
-          // Track registered tool names
+          for (const tr of getAllToolRegistries()) {
+            await registerA2ASkills(a2aManager!, agentName, skills, tr, a2aAgentConfig.trusted);
+          }
           registeredAgentSkills.set(
             agentName,
             skills.map((s) => `${agentName}__${s.id}`)
@@ -912,20 +888,18 @@ function setupA2AToolRegistration(): void {
       }
     } else if (event.type === 'connection-status-changed') {
       const { configId, status } = event;
-      const agentConfig = a2aManager!.getAgent(configId);
-      if (!agentConfig) return;
+      const a2aAgentConfig = a2aManager!.getAgent(configId);
+      if (!a2aAgentConfig) return;
 
-      const agentName = agentConfig.name;
+      const agentName = a2aAgentConfig.name;
 
-      // If disconnecting or error, unregister skills
+      // If disconnecting or error, unregister skills from all sessions
       if (status === 'disconnected' || status === 'error') {
         const previousSkills = registeredAgentSkills.get(agentName);
         if (previousSkills) {
-          for (const toolName of previousSkills) {
-            try {
-              await toolRegistry.unregister(toolName);
-            } catch {
-              // Ignore - tool might not be registered
+          for (const tr of getAllToolRegistries()) {
+            for (const toolName of previousSkills) {
+              try { await tr.unregister(toolName); } catch { /* ignore */ }
             }
           }
           registeredAgentSkills.delete(agentName);
@@ -1074,16 +1048,30 @@ function handleCommand(command: string): void {
 }
 
 /**
+ * Get the most recently active session's agent.
+ * Used by context menu and quick action which don't have a UI-selected sessionId.
+ */
+function getMostRecentAgent(): RepublicAgent | null {
+  if (!registry) return null;
+  const sessions = registry.listSessions() as Array<{ sessionId: string; state: string; lastActivityAt: number }>;
+  const active = sessions
+    .filter(s => s.state !== 'terminated')
+    .sort((a, b) => (b.lastActivityAt ?? 0) - (a.lastActivityAt ?? 0));
+  if (active.length === 0) return null;
+  const session = registry.getSession(active[0].sessionId);
+  return session?.agent ?? null;
+}
+
+/**
  * Handle context menu clicks
- * Feature 015: Uses primary session
+ * Routes to most recently active session.
  */
 async function handleContextMenuClick(
   info: chrome.contextMenus.OnClickData,
   tab?: chrome.tabs.Tab
 ): Promise<void> {
-  // Feature 015: Get primary agent
-  const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
-  if (!tab?.id || !primaryAgent) return;
+  const targetAgent = getMostRecentAgent();
+  if (!tab?.id || !targetAgent) return;
 
   const submission: Partial<Submission> = {
     id: `ctx_${Date.now()}`,
@@ -1139,9 +1127,9 @@ async function handleContextMenuClick(
       break;
   }
 
-  // Submit to agent (Feature 015: uses primary agent from above)
+  // Submit to agent
   if (submission.op) {
-    await primaryAgent.submitOperation(submission.op);
+    await targetAgent.submitOperation(submission.op);
 
     // Open side panel to show results
     chrome.sidePanel.open({ tabId: tab.id });
@@ -1266,12 +1254,11 @@ async function executeQuickAction(tabId: number): Promise<void> {
   // Get current page context
   const tab = await chrome.tabs.get(tabId);
 
-  // Feature 015: Get primary agent
-  const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
-  if (!primaryAgent) return;
+  const targetAgent = getMostRecentAgent();
+  if (!targetAgent) return;
 
   // Submit quick analysis request
-  await primaryAgent.submitOperation({
+  await targetAgent.submitOperation({
     type: 'UserInput',
     items: [
       {
@@ -1317,15 +1304,6 @@ function setupPeriodicTasks(): void {
             await channelManager.broadcastEvent({ msg: event.msg, sessionId: sessionMeta.sessionId });
           }
         }
-      }
-    } else if (agent) {
-      // Legacy fallback
-      const event = await agent.getNextEvent();
-      if (event) {
-        try {
-          const { getChannelManager } = await import('@/core/channels/ChannelManager');
-          await getChannelManager().broadcastEvent({ msg: event.msg });
-        } catch { /* channel not ready */ }
       }
     }
   }, 100); // Check every 100ms
@@ -1486,18 +1464,9 @@ chrome.runtime.onInstalled.addListener(async () => {
  * Feature 015: Clean up registry instead of singleton agent
  */
 chrome.runtime.onSuspend.addListener(async () => {
-  // Feature 015: Cleanup registry (which cleans up all sessions)
+  // Cleanup registry (which cleans up all sessions)
   if (registry) {
     await registry.cleanup();
-  } else if (agent) {
-    /**
-     * @deprecated Legacy fallback for shutdown - should rarely execute.
-     * Feature 015: This path exists only if registry failed to initialize.
-     */
-    console.warn('[ServiceWorker] Using legacy cleanup fallback - registry not available');
-    const session = agent.getSession();
-    await session.close();
-    await agent.cleanup();
   }
 
   if (cacheManager) {
@@ -1512,7 +1481,6 @@ chrome.runtime.onSuspend.addListener(async () => {
   isInitialized = false;
   initializationPromise = null;
   registry = null;
-  agent = null;
 });
 
 // ============================================================================
@@ -1574,4 +1542,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 initialize();
 
 // Export for testing (Feature 015: include registry and sessionStorage)
-export { agent, registry, sessionStorage, initialize };
+export { registry, sessionStorage, initialize };
