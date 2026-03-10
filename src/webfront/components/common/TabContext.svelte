@@ -275,11 +275,11 @@
   }
 
   div[data-testid="tab-dropdown-menu"]::-webkit-scrollbar-thumb {
-    background: var(--color-term-dim-green);
+    background: var(--color-bx-border);
     border-radius: 4px;
   }
 
   div[data-testid="tab-dropdown-menu"]::-webkit-scrollbar-thumb:hover {
-    background: var(--color-term-green);
+    background: var(--color-bx-text-secondary);
   }
 </style>

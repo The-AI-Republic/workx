@@ -349,17 +349,16 @@
 
 <div class="w-full">
   <!-- Tab Context Display -->
-  <div class="mb-2 flex items-center gap-2">
+  <div class="mb-2 flex flex-wrap items-center gap-2">
     {#if platform.hasTabSelection}
       <!-- Only apply mousedown preventDefault to TabContext area for drag behavior -->
       <div class="contents" onmousedown={(e) => e.preventDefault()}>
         <TabContext {tabId} onTabSelected={handleTabSelected} />
       </div>
     {/if}
-    <ApprovalModeIndicator />
-    <div class="flex-1"></div>
+    <div class="flex-1 min-w-0"></div>
     <!-- Top Right Button Group - NOT inside mousedown preventDefault area -->
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-2 shrink-0">
       <ChatHistoryPopup onSelectConversation={onSelectConversation} />
       <Tooltip content={$_t("New Conversation")} placement="left">
         <button
@@ -424,6 +423,7 @@
         <div class="shrink-0">
           <ModelSelection onModelChanged={handleModelChanged} />
         </div>
+        <ApprovalModeIndicator />
 
         <!-- Spacer to push button to the right -->
         <div class="flex-1"></div>
