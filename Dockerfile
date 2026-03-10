@@ -9,6 +9,19 @@
 #    docker build --build-arg INSTALL_CHROME=false -t applepi-server-slim .
 #    Then set CHROME_REMOTE_URL=http://chrome-pool:9222 at runtime
 
+# Stage 1: Build the server bundle
+FROM node:22-slim AS builder
+
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+COPY packages/ws-server/package.json packages/ws-server/package.json
+RUN npm ci
+
+COPY . .
+RUN npx vite build --config vite.config.server.mts
+
+# Stage 2: Production image
 FROM node:22-slim
 
 ARG INSTALL_CHROME=true
@@ -31,12 +44,12 @@ ENV CHROME_BIN=${INSTALL_CHROME:+/usr/bin/chromium}
 
 WORKDIR /app
 
-# Copy package files and install deps
+# Copy package files and install production deps only
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev
 
-# Copy bundled server (single file from Vite SSR build)
-COPY dist/server ./dist/server
+# Copy built server from builder stage
+COPY --from=builder /app/dist/server ./dist/server
 
 # Default configuration
 ENV APPLEPI_SERVER_PORT=18100
