@@ -35,6 +35,7 @@ export class AgentSession {
   private _tabClosureUnsubscribe: (() => void) | null = null;
   private _storage: SessionStorage | null = null;
   private _internal: boolean;
+  private _submitting = false;
 
   /**
    * Create a new AgentSession
@@ -239,18 +240,27 @@ export class AgentSession {
       throw new Error(`Session ${this._sessionId} is terminated`);
     }
 
-    // Mark as active before submitting
-    if (this._state === 'idle') {
-      this.markActive();
+    if (this._submitting) {
+      throw new Error(`Session ${this._sessionId} is already processing a submission`);
     }
 
-    this._updateActivity();
+    this._submitting = true;
+    try {
+      // Mark as active before submitting
+      if (this._state === 'idle') {
+        this.markActive();
+      }
 
-    const submissionId = await this._agent.submitOperation(operation, {
-      tabId: this._metadata.tabId ?? undefined,
-    });
+      this._updateActivity();
 
-    return submissionId;
+      const submissionId = await this._agent.submitOperation(operation, {
+        tabId: this._metadata.tabId ?? undefined,
+      });
+
+      return submissionId;
+    } finally {
+      this._submitting = false;
+    }
   }
 
   /**

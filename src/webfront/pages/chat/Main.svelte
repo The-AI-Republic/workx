@@ -160,13 +160,14 @@
           const event: Event = { id: `evt_${Date.now()}`, msg: eventMsg };
           const eventSessionId = channelEvent?.sessionId;
 
-          if (!eventSessionId || eventSessionId === activeSessionId) {
+          if (eventSessionId && eventSessionId === activeSessionId) {
             // Active thread — render immediately
             handleEvent(event);
-          } else {
+          } else if (eventSessionId) {
             // Background thread — buffer in threadStates
             handleEventForSession(event, eventSessionId);
           }
+          // Events without sessionId are dropped — all agent events should include one
         })
       );
 
@@ -182,7 +183,7 @@
       // Handle agent re-initialization and scheduler events via BackgroundEvent
       unsubscribers.push(
         client.onEvent('BackgroundEvent', (data: any) => {
-          if (data?.message?.startsWith('Agent reinitialized')) {
+          if (data?.message?.startsWith('Agent reinitialized') && activeSessionId) {
             checkConnection();
           } else if (data?.message === 'scheduler_job_status' && data?.schedulerEvent) {
             handleSchedulerEvent(data.schedulerEvent as JobStatusChangedEvent);

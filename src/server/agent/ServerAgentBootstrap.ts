@@ -416,19 +416,14 @@ export class ServerAgentBootstrap {
         this.transcriptStore?.delete(key);
       },
       compactSession: async (key) => {
-        // Route compaction to the specific session by key
-        if (this.registry) {
-          const targetSession = this.registry.getSession(key);
-          if (targetSession?.agent) {
-            await targetSession.agent.submitOperation({ type: 'ManualCompact' }, {});
-            return { status: 'compacted' };
-          }
+        if (!this.registry) {
+          throw new Error('Registry not initialized');
         }
-        // Fallback: try primary session
-        const primary = this.registry?.getPrimarySession();
-        if (primary?.agent) {
-          await primary.agent.submitOperation({ type: 'ManualCompact' }, {});
+        const targetSession = this.registry.getSession(key);
+        if (!targetSession?.agent) {
+          throw new Error(`Session not found: ${key}`);
         }
+        await targetSession.agent.submitOperation({ type: 'ManualCompact' }, {});
         return { status: 'compacted' };
       },
     });
@@ -587,12 +582,7 @@ export class ServerAgentBootstrap {
           throw new Error(`Execution not found: ${executionId}`);
         }
 
-        // Use the registry agent provided by the scheduler, or look up from registry
-        let targetAgent = registryAgent;
-        if (!targetAgent && this.registry) {
-          const primary = this.registry.getPrimarySession();
-          targetAgent = primary?.agent ?? null;
-        }
+        const targetAgent = registryAgent;
         if (!targetAgent) {
           throw new Error('No agent available — cannot execute scheduled job');
         }

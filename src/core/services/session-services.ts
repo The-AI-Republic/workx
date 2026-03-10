@@ -91,7 +91,7 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
       if (!deps.resumeSession) {
         throw new Error('Session resume not supported on this platform');
       }
-      const { sessionId } = params as { sessionId: string };
+      const { sessionId } = (params ?? {}) as { sessionId?: string };
       if (!sessionId) {
         throw new Error('sessionId is required');
       }
