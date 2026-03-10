@@ -293,7 +293,223 @@ The `conversationId` property on `Session` is accessed by:
 
 All are mechanical renames from `conversationId` → `sessionId`.
 
-## 7. Summary
+## 7. Event Routing with `sessionId` (Channel Envelope)
+
+### 7.1 Problem
+
+Events flow from agent to UI without any session identification:
+
+```
+RepublicAgent.emitEvent()
+  → EventDispatcher(event: Event)           // Event = { id, msg: EventMsg }
+    → channelManager.dispatchEvent(event.msg)  // EventMsg = { type, data }
+      → channel.sendEvent(eventMsg)
+        → UI receives EventMsg               // no sessionId — can't route to thread
+```
+
+`EventMsg` is a core protocol type (discriminated union of ~30 event types). It describes *what happened* (agent message, task started, tool call, etc.). Session routing is a *transport concern*, not a protocol concern. `EventMsg` should stay pure.
+
+### 7.2 Design: `ChannelEvent` Envelope
+
+Introduce a `ChannelEvent` wrapper at the channel layer that adds routing metadata around `EventMsg`:
+
+```typescript
+// src/core/channels/types.ts
+
+/**
+ * Event envelope for channel transport.
+ * Wraps EventMsg with routing metadata (sessionId, channelId, etc.).
+ * EventMsg stays pure protocol; ChannelEvent adds transport concerns.
+ */
+export interface ChannelEvent {
+  /** The protocol event payload */
+  msg: EventMsg;
+  /** Session that produced this event (for multi-session routing) */
+  sessionId?: string;
+}
+```
+
+### 7.3 Changes to Channel Layer
+
+**`ChannelAdapter.sendEvent()`** — change signature:
+
+```typescript
+// Before:
+sendEvent(event: EventMsg, targetClientId?: string): Promise<void>;
+
+// After:
+sendEvent(event: ChannelEvent, targetClientId?: string): Promise<void>;
+```
+
+**`ChannelManager.dispatchEvent()` / `broadcastEvent()`** — change signature:
+
+```typescript
+// Before:
+async dispatchEvent(event: EventMsg, channelId: string): Promise<void>;
+async broadcastEvent(event: EventMsg): Promise<void>;
+
+// After:
+async dispatchEvent(event: ChannelEvent, channelId: string): Promise<void>;
+async broadcastEvent(event: ChannelEvent): Promise<void>;
+```
+
+**All callers** wrap `EventMsg` in `ChannelEvent` before dispatching:
+
+```typescript
+// Before (DesktopAgentBootstrap.setupEventForwarding):
+agent.setEventDispatcher((event) => {
+  channelManager.dispatchEvent(event.msg, channelId);
+});
+
+// After:
+agent.setEventDispatcher((event) => {
+  channelManager.dispatchEvent({ msg: event.msg, sessionId }, channelId);
+});
+```
+
+### 7.4 Changes to Transport Layer
+
+**`TauriChannel.sendEvent()`** — wraps `ChannelEvent` into the `pi:event` Tauri event:
+
+```typescript
+// Before:
+async sendEvent(event: EventMsg): Promise<void> {
+  await emit('pi:event', event);
+}
+
+// After:
+async sendEvent(event: ChannelEvent): Promise<void> {
+  await emit('pi:event', event);  // ChannelEvent { msg, sessionId } sent to UI
+}
+```
+
+**`TauriTransport.onEvent()`** — receives `ChannelEvent`, passes to listeners:
+
+```typescript
+// Before:
+onEvent(handler: (event: EventMsg) => void): () => void;
+
+// After:
+onEvent(handler: (event: ChannelEvent) => void): () => void;
+```
+
+**`UIChannelClient.onEvent()`** — receives `ChannelEvent`:
+
+```typescript
+// Before:
+onEvent(type: string, handler: (data: any) => void): () => void;
+
+// After:
+onEvent(type: string, handler: (event: ChannelEvent) => void): () => void;
+// Or keep backward compat: handler receives ChannelEvent, can destructure { msg, sessionId }
+```
+
+### 7.5 Changes to UI (Main.svelte)
+
+```typescript
+// Before:
+client.onEvent('*', (eventMsg: any) => {
+  const event: Event = { id: `evt_${Date.now()}`, msg: eventMsg };
+  handleEvent(event);  // always routes to active thread
+});
+
+// After:
+client.onEvent('*', (channelEvent: ChannelEvent) => {
+  const { msg, sessionId } = channelEvent;
+  const event: Event = { id: `evt_${Date.now()}`, msg };
+
+  if (!sessionId || sessionId === activeSessionId) {
+    // Active thread — render immediately
+    handleEvent(event);
+  } else {
+    // Background thread — buffer in threadStates
+    handleEventForSession(event, sessionId);
+  }
+});
+```
+
+This connects the existing dead code (`handleEventForSession`) to the event flow.
+
+### 7.6 AgentRegistry Event Dispatcher Wiring
+
+**Desktop path** — `eventDispatcherFactory` now includes `sessionId`:
+
+```typescript
+// DesktopAgentBootstrap — registry config
+this.registry = AgentRegistry.getInstance({
+  maxConcurrent: maxConcurrentSessions,
+  agentFactory: async (config) => { ... },
+  eventDispatcherFactory: (sessionId) => (event) => {
+    channelManager.dispatchEvent(
+      { msg: event.msg, sessionId },
+      this.channel!.channelId
+    );
+  },
+});
+```
+
+**Extension path** — `AgentRegistry.createSession()` wraps with sessionId:
+
+```typescript
+// Before (no sessionId):
+agent.setEventDispatcher((event) => {
+  getChannelManager().broadcastEvent(event.msg);
+});
+
+// After:
+agent.setEventDispatcher((event) => {
+  getChannelManager().broadcastEvent({ msg: event.msg, sessionId: session.sessionId });
+});
+```
+
+**Primary agent** — `setupEventForwarding()` uses primary session's ID:
+
+```typescript
+// DesktopAgentBootstrap.setupEventForwarding():
+this.agent.setEventDispatcher((event) => {
+  channelManager.dispatchEvent(
+    { msg: event.msg, sessionId: this.agent.getSession().sessionId },
+    this.channel!.channelId
+  );
+});
+```
+
+### 7.7 Submission Side Fix
+
+`Main.svelte.sendMessage()` must also include `activeSessionId` in the submission context:
+
+```typescript
+// Before:
+await client.submitOp(op, { tabId: currentTabId });
+
+// After:
+await client.submitOp(op, { tabId: currentTabId, sessionId: activeSessionId });
+```
+
+This ensures the `agentHandler` in `DesktopAgentBootstrap` routes the message to the correct session's agent.
+
+### 7.8 Affected Implementations
+
+All `ChannelAdapter` implementations need signature update for `sendEvent`:
+
+| File | Channel | Change |
+|------|---------|--------|
+| `src/desktop/channels/TauriChannel.ts` | TauriChannel | `EventMsg` → `ChannelEvent` |
+| `src/extension/channels/SidePanelChannel.ts` | SidePanelChannel | `EventMsg` → `ChannelEvent` |
+| `src/extension/channels/TabPageChannel.ts` | TabPageChannel | `EventMsg` → `ChannelEvent` |
+| `src/server/channels/ServerChannel.ts` | ServerChannel | `EventMsg` → `ChannelEvent` |
+
+All transport implementations:
+
+| File | Transport | Change |
+|------|-----------|--------|
+| `src/core/messaging/transports/TauriTransport.ts` | TauriTransport | `EventMsg` → `ChannelEvent` |
+| `src/core/messaging/transports/ChromeExtensionTransport.ts` | ChromeExtensionTransport | `EventMsg` → `ChannelEvent` |
+| `src/core/messaging/transports/WebSocketTransport.ts` | WebSocketTransport | `EventMsg` → `ChannelEvent` |
+
+## 8. Summary
+
+### ID Unification
 
 | Aspect | Before | After |
 |--------|--------|-------|
@@ -305,4 +521,14 @@ All are mechanical renames from `conversationId` → `sessionId`.
 | `SessionMetadata` fields | `sessionId`, `conversationId`, ... | `sessionId`, ... |
 | Resume complexity | Preserve conversationId + generate new sessionId | Reuse sessionId |
 
-One name. One value. Every layer.
+### Event Routing
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Event type | `EventMsg` (protocol + routing mixed) | `ChannelEvent { msg: EventMsg, sessionId? }` (separated) |
+| Session in events | Not present | `ChannelEvent.sessionId` |
+| Session in submissions | Not sent by UI | `submitOp(op, { sessionId })` |
+| Background thread events | Lost (routed to active thread) | Buffered in `threadStates` via `handleEventForSession()` |
+| `EventMsg` purity | N/A | Unchanged — stays as pure protocol type |
+
+One ID. One name. Clean routing. Protocol and transport separated.
