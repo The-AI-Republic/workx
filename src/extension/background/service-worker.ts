@@ -390,8 +390,18 @@ async function registerServiceHandlers(): Promise<void> {
     if (!channelManager.getChannel('sidepanel-main')) {
       const sidePanelChannel = new SidePanelChannel();
 
-      // Set the agent handler to route non-ServiceRequest Ops to the agent
+      // Set the agent handler to route non-ServiceRequest Ops to the correct session
       channelManager.setAgentHandler(async (op, context) => {
+        // Route to specific session if sessionId provided and registry available
+        if (context.sessionId && registry) {
+          const targetSession = registry.getSession(context.sessionId);
+          if (targetSession?.agent) {
+            await targetSession.agent.submitOperation(op, { tabId: context.tabId });
+            return;
+          }
+        }
+
+        // Fallback to primary agent
         const targetAgent = agent ?? registry?.getPrimarySession()?.agent;
         if (!targetAgent) throw new Error('No agent available');
         await targetAgent.submitOperation(op, { tabId: context.tabId });
@@ -399,11 +409,13 @@ async function registerServiceHandlers(): Promise<void> {
 
       await channelManager.registerChannel(sidePanelChannel);
 
-      // Wire event forwarding from agent to channel
-      const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
+      // Wire event forwarding from agent to channel (with sessionId for multi-session routing)
+      const primarySession = registry?.getPrimarySession();
+      const primaryAgent = primarySession?.agent ?? agent;
       if (primaryAgent) {
+        const sessionId = primarySession?.sessionId;
         primaryAgent.setEventDispatcher((event) => {
-          channelManager.dispatchEvent({ msg: event.msg }, 'sidepanel-main').catch(() => {});
+          channelManager.dispatchEvent({ msg: event.msg, sessionId }, 'sidepanel-main').catch(() => {});
         });
       }
     }
