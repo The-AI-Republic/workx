@@ -57,6 +57,7 @@ import { ChromeCredentialStore } from '../../extension/storage/ChromeCredentialS
 import * as VaultManager from '../../core/crypto/VaultManager';
 // Modules previously loaded via dynamic import() — must be static in service workers
 import { IndexedDBAdapter } from '../../storage/IndexedDBAdapter';
+import type { StorageAdapter } from '../../storage/StorageAdapter';
 import { TokenUsageStore } from '../../storage/TokenUsageStore';
 import { getChannelManager } from '../../core/channels/ChannelManager';
 import { registerAllServices } from '../../core/services';
@@ -219,8 +220,18 @@ async function doInitialize(): Promise<void> {
   registry = AgentRegistry.getInstance({ maxConcurrent: maxConcurrentSessions });
   registry.initialize(agentConfig!);
 
-  // Feature 015 (T039): Initialize session persistence
-  await initializeSessionPersistence();
+  // Initialize IndexedDB storage adapter early — shared by session persistence and TokenUsageStore.
+  // Created here so TokenUsageStore works even if session persistence fails.
+  try {
+    const storageAdapter = new IndexedDBAdapter();
+    await storageAdapter.initialize();
+    TokenUsageStore.setAdapter(storageAdapter);
+
+    // Feature 015 (T039): Initialize session persistence (uses same adapter)
+    await initializeSessionPersistence(storageAdapter);
+  } catch (error) {
+    console.error('[ServiceWorker] Failed to initialize IndexedDB adapter:', error);
+  }
 
   // Create primary session (replaces singleton agent creation)
   // This maintains backward compatibility - agent variable points to primary session's agent
@@ -328,20 +339,13 @@ async function initializeAuthFromConfig(): Promise<void> {
  * Feature 015 (T039): Initialize session persistence
  * Sets up IndexedDB storage for session persistence and loads any persisted sessions
  */
-async function initializeSessionPersistence(): Promise<void> {
+async function initializeSessionPersistence(storageAdapter: StorageAdapter): Promise<void> {
   if (!registry) {
     console.warn('[ServiceWorker] Cannot initialize session persistence - registry not ready');
     return;
   }
 
   try {
-    // Initialize storage adapter (IndexedDB — static import for service worker compatibility)
-    const storageAdapter = new IndexedDBAdapter();
-    await storageAdapter.initialize();
-
-    // Share adapter with TokenUsageStore
-    TokenUsageStore.setAdapter(storageAdapter);
-
     // Create session storage
     sessionStorage = new SessionStorage(storageAdapter);
 

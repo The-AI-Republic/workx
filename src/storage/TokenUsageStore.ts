@@ -34,16 +34,18 @@ export class TokenUsageStore {
     return TokenUsageStore.instance;
   }
 
-  private async db(): Promise<StorageAdapter> {
+  private db(): StorageAdapter | null {
     if (!this.adapter) {
-      throw new Error('TokenUsageStore not initialized. Call TokenUsageStore.setAdapter() first.');
+      console.warn('[TokenUsageStore] Adapter not set. Call TokenUsageStore.setAdapter() first.');
+      return null;
     }
     return this.adapter;
   }
 
   async save(record: TokenUsageRecord): Promise<void> {
+    const adapter = this.db();
+    if (!adapter) return;
     try {
-      const adapter = await this.db();
       await adapter.put(STORE_NAME, record);
     } catch (err) {
       console.warn('[TokenUsageStore] Save failed:', err);
@@ -51,24 +53,28 @@ export class TokenUsageStore {
   }
 
   async getAll(): Promise<TokenUsageRecord[]> {
-    const adapter = await this.db();
+    const adapter = this.db();
+    if (!adapter) return [];
     return adapter.getAll<TokenUsageRecord>(STORE_NAME);
   }
 
   async getBySession(sessionId: string): Promise<TokenUsageRecord[]> {
-    const adapter = await this.db();
+    const adapter = this.db();
+    if (!adapter) return [];
     return adapter.queryByIndex<TokenUsageRecord>(STORE_NAME, 'by_session', sessionId);
   }
 
   async getByDateRange(start: string, end: string): Promise<TokenUsageRecord[]> {
-    const adapter = await this.db();
+    const adapter = this.db();
+    if (!adapter) return [];
     return adapter.queryByIndex<TokenUsageRecord>(
       STORE_NAME, 'by_timestamp', IDBKeyRange.bound(start, end)
     );
   }
 
   async getByModel(model: string): Promise<TokenUsageRecord[]> {
-    const adapter = await this.db();
+    const adapter = this.db();
+    if (!adapter) return [];
     return adapter.queryByIndex<TokenUsageRecord>(STORE_NAME, 'by_model', model);
   }
 

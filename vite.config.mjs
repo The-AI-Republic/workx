@@ -30,8 +30,13 @@ function enforceVaultSecret() {
 
 /**
  * Custom plugin to strip Vite's modulepreload polyfill from service worker builds.
- * The polyfill uses `document` which doesn't exist in service workers.
+ * The polyfill uses `document` and `window` which don't exist in service workers.
  * See: https://github.com/vitejs/vite/issues/15305
+ *
+ * TODO: This uses fragile regex matching on minified output. If Vite changes its
+ * output format, the regex will stop matching (as happened before). Consider
+ * replacing with an AST-based approach using Vite's renderChunk hook, or remove
+ * entirely if Vite fixes modulePreload: false to actually suppress the polyfill.
  */
 function stripModulePreloadPolyfill() {
   return {
