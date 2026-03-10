@@ -209,6 +209,9 @@
     // Fetch current session's tabId from storage
     await fetchCurrentTabId();
 
+    // Sync thread store with backend sessions
+    await syncThreadsWithSessions();
+
     // ========================================================================
     // KEEP-ALIVE: Send periodic pings to prevent service worker termination
     // ========================================================================
@@ -957,6 +960,70 @@
   // =========================================================================
   // Multi-thread functions
   // =========================================================================
+
+  /**
+   * Sync thread store with backend sessions on startup.
+   * Ensures every backend session has a corresponding thread,
+   * and the primary session always has a thread entry.
+   */
+  async function syncThreadsWithSessions() {
+    try {
+      const c = await getInitializedUIClient();
+
+      // Try to get session list from registry
+      const listResponse = await c.serviceRequest<{
+        sessions: Array<{ sessionId: string; conversationId: string; type: string; state: string }>;
+        maxConcurrent: number;
+        activeCount: number;
+      }>('session.list');
+
+      const backendSessions = listResponse?.sessions?.filter(s => s.state !== 'terminated' && s.type !== 'scheduled') ?? [];
+
+      if (backendSessions.length > 0) {
+        // Create threads for backend sessions that don't have one
+        const currentState = get(threadStore);
+        const existingSessionIds = new Set(currentState.threads.map(t => t.sessionId));
+
+        for (const session of backendSessions) {
+          const sid = session.sessionId || session.conversationId;
+          if (!existingSessionIds.has(sid)) {
+            threadStore.createThread(sid, 'New Thread');
+          }
+        }
+      } else {
+        // No registry sessions — fall back to primary session via getState
+        const stateResponse = await c.serviceRequest<{ sessionId?: string }>('session.getState');
+        const primarySessionId = stateResponse?.sessionId;
+
+        if (primarySessionId) {
+          const currentState = get(threadStore);
+          const hasThread = currentState.threads.some(t => t.sessionId === primarySessionId);
+          if (!hasThread) {
+            threadStore.createThread(primarySessionId, 'New Thread');
+          }
+        }
+      }
+
+      // Ensure we have an active thread
+      const finalState = get(threadStore);
+      if (finalState.threads.length > 0 && !finalState.activeThreadId) {
+        threadStore.setActiveThread(finalState.threads[0].id);
+      }
+
+      // Set active session ID for event routing
+      const activeThread = threadStore.getActiveThread();
+      if (activeThread) {
+        activeSessionId = activeThread.sessionId;
+      }
+
+      // Update session limits
+      await updateSessionLimits();
+
+      console.log(`[App] Thread sync complete: ${get(threadStore).threads.length} thread(s)`);
+    } catch (error) {
+      console.error('[App] Failed to sync threads with sessions:', error);
+    }
+  }
 
   /**
    * Create a new thread with a new session
