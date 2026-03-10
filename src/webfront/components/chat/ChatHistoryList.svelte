@@ -5,7 +5,7 @@
   import { _t } from '../../lib/i18n';
 
   // Props
-  export let onSelectConversation: (conversationId: string) => void = () => {};
+  export let onSelectConversation: (sessionId: string) => void = () => {};
   export let onClose: () => void = () => {};
 
   // State
@@ -176,8 +176,8 @@
     }
   }
 
-  function handleSelectConversation(conversationId: string) {
-    onSelectConversation(conversationId);
+  function handleSelectConversation(sessionId: string) {
+    onSelectConversation(sessionId);
     onClose();
   }
 </script>

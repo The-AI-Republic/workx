@@ -95,7 +95,7 @@ const DEFAULT_CONFIG: WebSocketServerConfig = {
  *     await server.send(clientId, {
  *       type: 'assistant_turn_start',
  *       turnId: 'turn-123',
- *       conversationId: 'conv-456',
+ *       sessionId: 'conv-456',
  *     });
  *   }
  * });

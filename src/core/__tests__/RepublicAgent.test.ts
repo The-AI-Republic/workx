@@ -142,7 +142,7 @@ describe('RepublicAgent', () => {
 
     // Recreate shared mock instances before each test
     mockSessionInstance = {
-      conversationId: 'conv-123',
+      sessionId: 'conv-123',
       setEventEmitter: vi.fn(),
       setTurnContext: vi.fn(),
       getTurnContext: vi.fn().mockReturnValue({
@@ -250,7 +250,7 @@ describe('RepublicAgent', () => {
     it('should expose the session via getSession()', () => {
       const session = agent.getSession();
       expect(session).toBeDefined();
-      expect(session.conversationId).toBe('conv-123');
+      expect(session.sessionId).toBe('conv-123');
     });
 
     it('should expose the tool registry via getToolRegistry()', () => {

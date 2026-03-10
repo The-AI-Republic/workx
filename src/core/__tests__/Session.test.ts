@@ -2,7 +2,7 @@
  * Unit Tests: Session
  *
  * Comprehensive tests for the Session class covering:
- * - Constructor (old/new signatures, isPersistent, conversationId)
+ * - Constructor (old/new signatures, isPersistent, sessionId)
  * - initialize()
  * - addToHistory() / getConversationHistory() / clearHistory()
  * - export() / import()
@@ -125,38 +125,38 @@ describe('Session', () => {
   // Constructor
   // =========================================================================
   describe('Constructor', () => {
-    it('should generate a unique conversationId', () => {
+    it('should generate a unique sessionId', () => {
       const session = new Session(undefined, false);
-      expect(session.conversationId).toBe('test-uuid-1');
+      expect(session.sessionId).toBe('test-uuid-1');
     });
 
     it('should accept old boolean-only signature for backward compatibility', () => {
       const session = new Session(false);
       // isPersistent should be false
-      expect(session.conversationId).toBeTruthy();
+      expect(session.sessionId).toBeTruthy();
     });
 
     it('should default isPersistent to true when no arguments', () => {
       // We can verify by checking that initializeSession is called (persistent path)
-      // Just verify construction succeeds and conversationId is set
+      // Just verify construction succeeds and sessionId is set
       const session = new Session();
-      expect(session.conversationId).toBeTruthy();
+      expect(session.sessionId).toBeTruthy();
     });
 
-    it('should use provided conversationId for resumed mode', () => {
+    it('should use provided sessionId for resumed mode', () => {
       const session = new Session(undefined, false, undefined, undefined, {
         mode: 'resumed',
-        conversationId: 'my-custom-id',
+        sessionId: 'my-custom-id',
         rolloutItems: [],
       });
-      expect(session.conversationId).toBe('my-custom-id');
+      expect(session.sessionId).toBe('my-custom-id');
     });
 
-    it('should generate new conversationId for new mode', () => {
+    it('should generate new sessionId for new mode', () => {
       const session = new Session(undefined, false, undefined, undefined, {
         mode: 'new',
       });
-      expect(session.conversationId).toBe('test-uuid-1');
+      expect(session.sessionId).toBe('test-uuid-1');
     });
 
     it('should set tabId to -1 initially', () => {
@@ -407,7 +407,7 @@ describe('Session', () => {
 
       const exported = session.export();
 
-      expect(exported.id).toBe(session.conversationId);
+      expect(exported.id).toBe(session.sessionId);
       expect(exported.state).toBeDefined();
       expect(exported.state.history).toBeDefined();
       expect(exported.state.history.items).toHaveLength(1);
@@ -430,14 +430,14 @@ describe('Session', () => {
       expect((history.items[1] as any).role).toBe('assistant');
     });
 
-    it('should preserve conversationId through import', async () => {
+    it('should preserve sessionId through import', async () => {
       const session = new Session(undefined, false);
-      const originalId = session.conversationId;
+      const originalId = session.sessionId;
 
       const exported = session.export();
       const imported = Session.import(exported);
 
-      expect(imported.conversationId).toBe(originalId);
+      expect(imported.sessionId).toBe(originalId);
     });
 
     it('should accept optional services and toolRegistry in import', () => {
@@ -925,14 +925,14 @@ describe('Session', () => {
   // Session ID accessors
   // =========================================================================
   describe('Session ID accessors', () => {
-    it('getSessionId() should return conversationId', () => {
+    it('getSessionId() should return sessionId', () => {
       const session = new Session(undefined, false);
-      expect(session.getSessionId()).toBe(session.conversationId);
+      expect(session.getSessionId()).toBe(session.sessionId);
     });
 
-    it('getId() should return conversationId', () => {
+    it('getId() should return sessionId', () => {
       const session = new Session(undefined, false);
-      expect(session.getId()).toBe(session.conversationId);
+      expect(session.getId()).toBe(session.sessionId);
     });
   });
 
@@ -959,12 +959,12 @@ describe('Session', () => {
       expect(session.getTurnContext()).toBe(newContext);
     });
 
-    it('setTurnContext should align the context sessionId to conversationId', () => {
+    it('setTurnContext should align the context sessionId to sessionId', () => {
       const newContext = makeMockTurnContext();
-      // The mock context has sessionId 'test-session', which differs from the session's conversationId
+      // The mock context has sessionId 'test-session', which differs from the session's sessionId
       session.setTurnContext(newContext);
 
-      expect(newContext.getSessionId()).toBe(session.conversationId);
+      expect(newContext.getSessionId()).toBe(session.sessionId);
     });
 
     it('should allow updating turn context', () => {

@@ -9,7 +9,7 @@ import type { SessionConfig } from '@/core/registry/types';
 
 // Mock RepublicAgent session - shared object so spies work correctly
 const mockSession = {
-  conversationId: 'conv_test_123',
+  sessionId: 'conv_test_123',
   abortAllTasks: vi.fn(),
   close: vi.fn(),
   setTabId: vi.fn(),
@@ -139,12 +139,12 @@ describe('AgentSession', () => {
   });
 
   describe('agent attachment', () => {
-    it('attaches agent and updates conversationId', () => {
+    it('attaches agent and updates sessionId', () => {
       const session = new AgentSession({ type: 'primary' }, 0);
       session.attachAgent(mockAgent as any);
 
       expect(session.agent).toBe(mockAgent);
-      expect(session.metadata.conversationId).toBe('conv_test_123');
+      expect(session.metadata.sessionId).toBe('conv_test_123');
     });
 
     it('throws when attaching agent twice', () => {

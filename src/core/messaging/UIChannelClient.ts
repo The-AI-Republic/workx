@@ -12,6 +12,7 @@
 
 import type { Op } from '@/core/protocol/types';
 import type { EventMsg } from '@/core/protocol/events';
+import type { ChannelEvent } from '@/core/channels/types';
 import type { UIChannelTransport } from './transports/types';
 
 const SERVICE_REQUEST_TIMEOUT_MS = 30_000;
@@ -53,8 +54,8 @@ export class UIChannelClient {
     await this.transport.initialize();
 
     // Listen for all events from the transport
-    this.unlistenTransport = this.transport.onEvent((event: EventMsg) => {
-      this.handleEvent(event);
+    this.unlistenTransport = this.transport.onEvent((channelEvent: ChannelEvent) => {
+      this.handleChannelEvent(channelEvent);
     });
 
     this.initialized = true;
@@ -160,9 +161,11 @@ export class UIChannelClient {
   }
 
   /**
-   * Handle an incoming event from the transport
+   * Handle an incoming ChannelEvent from the transport
    */
-  private handleEvent(event: EventMsg): void {
+  private handleChannelEvent(channelEvent: ChannelEvent): void {
+    const event = channelEvent.msg;
+
     // Check if this is a ServiceResponse that matches a pending request
     if (event.type === 'ServiceResponse') {
       const data = (event as any).data as {
@@ -187,7 +190,7 @@ export class UIChannelClient {
       }
     }
 
-    // Dispatch to event handlers
+    // Dispatch to event handlers (pass full ChannelEvent so handlers can access sessionId)
     const handlers = this.eventHandlers.get(event.type);
     if (handlers) {
       const eventData = 'data' in event ? (event as any).data : undefined;
@@ -200,12 +203,12 @@ export class UIChannelClient {
       }
     }
 
-    // Also dispatch to wildcard handlers
+    // Also dispatch to wildcard handlers (pass full ChannelEvent)
     const wildcardHandlers = this.eventHandlers.get('*');
     if (wildcardHandlers) {
       for (const handler of wildcardHandlers) {
         try {
-          handler(event);
+          handler(channelEvent);
         } catch (err) {
           console.error('[UIChannelClient] Wildcard event handler threw:', err);
         }

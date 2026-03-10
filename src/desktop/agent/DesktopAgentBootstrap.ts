@@ -169,7 +169,7 @@ export class DesktopAgentBootstrap {
         // Notify the UI that auth has changed so it re-runs health check
         if (this.agent && this.channel) {
           channelManager.dispatchEvent(
-            { type: 'BackgroundEvent', data: { message: 'Agent reinitialized after auth change', level: 'info' } },
+            { msg: { type: 'BackgroundEvent', data: { message: 'Agent reinitialized after auth change', level: 'info' } } as any },
             this.channel.channelId
           ).catch(() => {});
         }
@@ -297,8 +297,8 @@ export class DesktopAgentBootstrap {
     // Set the event dispatcher on RepublicAgent
     // Events will be routed through ChannelManager to TauriChannel
     this.agent.setEventDispatcher((event) => {
-      // Dispatch event to the Tauri channel
-      channelManager.dispatchEvent(event.msg, this.channel!.channelId).catch((error) => {
+      // Dispatch event to the Tauri channel as ChannelEvent with sessionId
+      channelManager.dispatchEvent({ msg: event.msg, sessionId: this.agent!.getSession().sessionId }, this.channel!.channelId).catch((error) => {
         console.error('[DesktopAgentBootstrap] Failed to dispatch event:', error);
       });
 
@@ -528,7 +528,7 @@ export class DesktopAgentBootstrap {
             return agent;
           },
           eventDispatcherFactory: (sessionId) => (event) => {
-            channelManager.dispatchEvent(event.msg, this.channel!.channelId).catch(() => {});
+            channelManager.dispatchEvent({ msg: event.msg, sessionId }, this.channel!.channelId).catch(() => {});
             this.handleSchedulerEventCompletion(event.msg);
           },
         });
@@ -656,12 +656,12 @@ export class DesktopAgentBootstrap {
    * creates a fresh RepublicAgent with the resumed history, and returns the
    * reconstructed conversation items.
    */
-  async resumeSession(conversationId: string): Promise<unknown[]> {
+  async resumeSession(sessionId: string): Promise<unknown[]> {
     if (!this.agent) {
       throw new Error('Agent not initialized');
     }
 
-    console.log('[DesktopAgentBootstrap] Resuming session:', conversationId);
+    console.log('[DesktopAgentBootstrap] Resuming session:', sessionId);
 
     // 1. Preserve auth manager from the current agent
     const authManager = this.agent.getModelClientFactory().getAuthManager();
@@ -675,7 +675,7 @@ export class DesktopAgentBootstrap {
 
     // 4. Load rollout history from storage
     const { RolloutRecorder } = await import('@/storage/rollout/RolloutRecorder');
-    const initialHistory = await RolloutRecorder.getRolloutHistory(conversationId);
+    const initialHistory = await RolloutRecorder.getRolloutHistory(sessionId);
 
     if (initialHistory.type !== 'resumed' || !initialHistory.payload?.history) {
       throw new Error('Conversation not found or has no history');
@@ -685,7 +685,7 @@ export class DesktopAgentBootstrap {
     const config = await AgentConfig.getInstance();
     this.agent = new RepublicAgent(config, {
       mode: 'resumed' as const,
-      conversationId,
+      sessionId,
       rolloutItems: initialHistory.payload.history,
     }, undefined, new UserNotifier());
 

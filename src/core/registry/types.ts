@@ -49,9 +49,6 @@ export interface SessionMetadata {
   /** Single letter identifier (a, b, c...) for tab group naming */
   sessionLetter: string;
 
-  /** Conversation ID for history lookup */
-  conversationId: string;
-
   /** Session type */
   type: SessionType;
 

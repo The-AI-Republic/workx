@@ -403,7 +403,7 @@ async function registerServiceHandlers(): Promise<void> {
       const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
       if (primaryAgent) {
         primaryAgent.setEventDispatcher((event) => {
-          channelManager.dispatchEvent(event.msg, 'sidepanel-main').catch(() => {});
+          channelManager.dispatchEvent({ msg: event.msg }, 'sidepanel-main').catch(() => {});
         });
       }
     }
@@ -463,8 +463,8 @@ async function registerServiceHandlers(): Promise<void> {
     serviceRegistry.register('session.resume', async (params) => {
       if (!agent) throw new Error('Agent not initialized');
 
-      const { conversationId } = params as { conversationId: string };
-      console.log('[ServiceWorker] Resuming session:', conversationId);
+      const { sessionId } = params as { sessionId: string };
+      console.log('[ServiceWorker] Resuming session:', sessionId);
 
       const currentSession = agent.getSession();
       await currentSession.abortAllTasks('UserInterrupt');
@@ -473,20 +473,20 @@ async function registerServiceHandlers(): Promise<void> {
       await tabManager.reset();
       await currentSession.close();
 
-      const initialHistory = await RolloutRecorder.getRolloutHistory(conversationId);
+      const initialHistory = await RolloutRecorder.getRolloutHistory(sessionId);
       if (initialHistory.type !== 'resumed' || !initialHistory.payload?.history) {
         throw new Error('Conversation not found or has no history');
       }
 
       agent = new RepublicAgent(agentConfig!, {
         mode: 'resumed' as const,
-        conversationId,
+        sessionId,
         rolloutItems: initialHistory.payload.history,
       }, undefined, new UserNotifier());
 
       // Wire event dispatch through channel
       agent.setEventDispatcher((event) => {
-        channelManager.dispatchEvent(event.msg, 'sidepanel-main').catch(() => {});
+        channelManager.dispatchEvent({ msg: event.msg }, 'sidepanel-main').catch(() => {});
       });
 
       if (currentAuthManager) {
@@ -502,7 +502,7 @@ async function registerServiceHandlers(): Promise<void> {
       const history = session.getConversationHistory();
 
       console.log('[ServiceWorker] Session resumed with', history.items.length, 'items');
-      return { conversationId, history: history.items };
+      return { sessionId, history: history.items };
     });
 
     serviceRegistry.register('agent.configUpdate', async () => {
@@ -522,7 +522,7 @@ async function registerServiceHandlers(): Promise<void> {
 
           // Wire event dispatch through channel
           agent!.setEventDispatcher((event) => {
-            channelManager.dispatchEvent(event.msg, 'sidepanel-main').catch(() => {});
+            channelManager.dispatchEvent({ msg: event.msg }, 'sidepanel-main').catch(() => {});
           });
 
           if (currentAuthManager && agent) {
@@ -541,7 +541,7 @@ async function registerServiceHandlers(): Promise<void> {
 
           agent = new RepublicAgent(agentConfig, undefined, undefined, new UserNotifier());
           agent.setEventDispatcher((event) => {
-            channelManager.dispatchEvent(event.msg, 'sidepanel-main').catch(() => {});
+            channelManager.dispatchEvent({ msg: event.msg }, 'sidepanel-main').catch(() => {});
           });
 
           if (currentAuthManager) {
@@ -559,7 +559,7 @@ async function registerServiceHandlers(): Promise<void> {
 
         // Notify UI via channel
         channelManager.dispatchEvent(
-          { type: 'BackgroundEvent', data: { message: 'Agent reinitialized', level: 'info' } },
+          { msg: { type: 'BackgroundEvent', data: { message: 'Agent reinitialized', level: 'info' } } },
           'sidepanel-main'
         ).catch(() => {});
 
@@ -1302,7 +1302,7 @@ function setupPeriodicTasks(): void {
         if (session?.agent) {
           const event = await session.agent.getNextEvent();
           if (event && channelManager) {
-            await channelManager.broadcastEvent(event.msg);
+            await channelManager.broadcastEvent({ msg: event.msg, sessionId: sessionMeta.sessionId });
           }
         }
       }
@@ -1312,7 +1312,7 @@ function setupPeriodicTasks(): void {
       if (event) {
         try {
           const { getChannelManager } = await import('@/core/channels/ChannelManager');
-          await getChannelManager().broadcastEvent(event.msg);
+          await getChannelManager().broadcastEvent({ msg: event.msg });
         } catch { /* channel not ready */ }
       }
     }

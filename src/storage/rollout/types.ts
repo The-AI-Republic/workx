@@ -32,7 +32,7 @@ export type ConversationId = string;
 export type RolloutRecorderParams =
   | {
     type: 'create';
-    conversationId: ConversationId;
+    sessionId: ConversationId;
     instructions?: string;
   }
   | {
@@ -227,7 +227,7 @@ export interface ConversationsPage {
  */
 export interface ResumedHistory {
   /** Conversation ID */
-  conversationId: ConversationId;
+  sessionId: ConversationId;
   /** All rollout items in chronological order */
   history: RolloutItem[];
   /** IndexedDB rollout identifier */

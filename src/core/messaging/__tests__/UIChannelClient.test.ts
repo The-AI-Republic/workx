@@ -3,24 +3,25 @@ import { UIChannelClient } from '../UIChannelClient';
 import type { UIChannelTransport } from '../transports/types';
 import type { Op } from '@/core/protocol/types';
 import type { EventMsg } from '@/core/protocol/events';
+import type { ChannelEvent } from '@/core/channels/types';
 
 // ---------------------------------------------------------------------------
 // Mock Transport
 // ---------------------------------------------------------------------------
 
 function createMockTransport(): UIChannelTransport & {
-  _handlers: Array<(event: EventMsg) => void>;
+  _handlers: Array<(event: ChannelEvent) => void>;
   _simulateEvent(event: EventMsg): void;
 } {
-  const handlers: Array<(event: EventMsg) => void> = [];
+  const handlers: Array<(event: ChannelEvent) => void> = [];
 
   return {
     _handlers: handlers,
     _simulateEvent(event: EventMsg) {
-      for (const h of handlers) h(event);
+      for (const h of handlers) h({ msg: event });
     },
     sendOp: vi.fn().mockResolvedValue(undefined),
-    onEvent: vi.fn((handler: (event: EventMsg) => void) => {
+    onEvent: vi.fn((handler: (event: ChannelEvent) => void) => {
       handlers.push(handler);
       return () => {
         const idx = handlers.indexOf(handler);

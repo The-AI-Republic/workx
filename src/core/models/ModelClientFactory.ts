@@ -240,7 +240,7 @@ export class ModelClientFactory {
     };
 
     // Generate conversation ID
-    const conversationId = this.generateConversationId();
+    const sessionId = this.generateConversationId();
 
     // Get reasoning effort if supported
     let reasoningEffort: string | undefined;
@@ -279,7 +279,7 @@ export class ModelClientFactory {
       return new OpenAIResponsesClient({
         apiKey,
         baseUrl: openAIClientBackendBaseUrl,
-        conversationId,
+        sessionId,
         modelFamily,
         provider: backendProvider,
         modelConfig,
@@ -293,7 +293,7 @@ export class ModelClientFactory {
     return new OpenAIChatCompletionClient({
       apiKey,
       baseUrl: openAIClientBackendBaseUrl,
-      conversationId,
+      sessionId,
       modelFamily,
       provider: backendProvider,
       modelConfig,
@@ -609,7 +609,7 @@ export class ModelClientFactory {
     };
 
     // Generate a conversation ID for prompt_cache_key usage
-    const conversationId = this.generateConversationId();
+    const sessionId = this.generateConversationId();
 
     // Get reasoning effort from model config
     // Default to 'medium' for models that support reasoning
@@ -626,7 +626,7 @@ export class ModelClientFactory {
           apiKey: config.apiKey,
           baseUrl: resolvedBaseUrl,
           organization,
-          conversationId,
+          sessionId,
           modelFamily,
           provider,
           modelConfig,
@@ -637,7 +637,7 @@ export class ModelClientFactory {
           apiKey: config.apiKey,
           baseUrl: resolvedBaseUrl,
           organization,
-          conversationId,
+          sessionId,
           modelFamily,
           provider,
           modelConfig,
@@ -648,7 +648,7 @@ export class ModelClientFactory {
           apiKey: config.apiKey,
           baseUrl: resolvedBaseUrl,
           organization,
-          conversationId,
+          sessionId,
           modelFamily,
           provider,
           modelConfig,
@@ -667,7 +667,7 @@ export class ModelClientFactory {
           apiKey: config.apiKey,
           baseUrl: resolvedBaseUrl,
           organization,
-          conversationId,
+          sessionId,
           modelFamily,
           provider,
           modelConfig,
@@ -683,7 +683,7 @@ export class ModelClientFactory {
           apiKey: config.apiKey,
           baseUrl: resolvedBaseUrl,
           organization,
-          conversationId,
+          sessionId,
           modelFamily,
           provider,
           modelConfig,

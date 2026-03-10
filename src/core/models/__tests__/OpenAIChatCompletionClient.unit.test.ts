@@ -37,7 +37,7 @@ describe('OpenAIChatCompletionClient - Text Accumulation', () => {
     client = new OpenAIChatCompletionClient({
       apiKey: 'test-api-key',
       baseUrl: 'https://api.openai.com/v1',
-      conversationId: 'test-conversation',
+      sessionId: 'test-conversation',
       modelFamily: {
         family: 'gpt-4o',
         base_instructions: 'You are a helpful assistant.',
@@ -202,7 +202,7 @@ describe('OpenAIChatCompletionClient - Event Conversion Integration', () => {
     client = new OpenAIChatCompletionClient({
       apiKey: 'test-api-key',
       baseUrl: 'https://api.openai.com/v1',
-      conversationId: 'test-conversation',
+      sessionId: 'test-conversation',
       modelFamily: {
         family: 'gpt-4o',
         base_instructions: 'You are a helpful assistant.',
@@ -246,7 +246,7 @@ describe('OpenAIChatCompletionClient - Tool Call Handling', () => {
     client = new OpenAIChatCompletionClient({
       apiKey: 'test-api-key',
       baseUrl: 'https://api.openai.com/v1',
-      conversationId: 'test-conversation',
+      sessionId: 'test-conversation',
       modelFamily: {
         family: 'gpt-4o',
         base_instructions: 'You are a helpful assistant.',
@@ -390,7 +390,7 @@ describe('OpenAIChatCompletionClient - Multi-Turn Mixed Content', () => {
     client = new OpenAIChatCompletionClient({
       apiKey: 'test-api-key',
       baseUrl: 'https://api.openai.com/v1',
-      conversationId: 'test-conversation',
+      sessionId: 'test-conversation',
       modelFamily: {
         family: 'gpt-4o',
         base_instructions: 'You are a helpful assistant.',
@@ -475,7 +475,7 @@ describe('OpenAIChatCompletionClient - Payload Conversion', () => {
     client = new OpenAIChatCompletionClient({
       apiKey: 'test-api-key',
       baseUrl: 'https://api.openai.com/v1',
-      conversationId: 'test-conversation',
+      sessionId: 'test-conversation',
       modelFamily: {
         family: 'gpt-4o',
         base_instructions: 'You are a helpful assistant.',

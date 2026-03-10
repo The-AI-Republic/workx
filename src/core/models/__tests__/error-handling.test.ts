@@ -800,7 +800,7 @@ describe('Error Handling and Retries Integration', () => {
     client = new OpenAIChatCompletionClient(
       {
         apiKey: 'test-api-key',
-        conversationId: 'error-test',
+        sessionId: 'error-test',
         modelFamily: mockModelFamily,
         provider: mockProvider,
       },

@@ -44,7 +44,7 @@ describe('Rollout Integration Tests', () => {
       // Step 1: Create new rollout
       const createParams: RolloutRecorderParams = {
         type: 'create',
-        conversationId,
+        sessionId: conversationId,
         instructions: 'Test integration',
       };
       const recorder1 = await RolloutRecorder.create(createParams);
@@ -104,7 +104,7 @@ describe('Rollout Integration Tests', () => {
       // Session 1: Create and add some items
       const rec1 = await RolloutRecorder.create({
         type: 'create',
-        conversationId: id1,
+        sessionId: id1,
       });
       await rec1.recordItems([
         { type: 'response_item', payload: { type: 'message', content: 'First' } },
@@ -135,7 +135,7 @@ describe('Rollout Integration Tests', () => {
 
       const recorder = await RolloutRecorder.create({
         type: 'create',
-        conversationId: id1,
+        sessionId: id1,
       });
 
       // Queue multiple record operations
@@ -161,7 +161,7 @@ describe('Rollout Integration Tests', () => {
 
       // Create expired rollout (TTL=0 means expiresAt = now, already expired)
       const expiredRecorder = await RolloutRecorder.create(
-        { type: 'create', conversationId: expiredId },
+        { type: 'create', sessionId: expiredId },
         { storage: { rolloutTTL: 0 } }
       );
       await expiredRecorder.recordItems([
@@ -174,7 +174,7 @@ describe('Rollout Integration Tests', () => {
 
       // Create permanent rollout
       const permanentRecorder = await RolloutRecorder.create(
-        { type: 'create', conversationId: permanentId },
+        { type: 'create', sessionId: permanentId },
         { storage: { rolloutTTL: 'permanent' } }
       );
       await permanentRecorder.recordItems([
@@ -200,7 +200,7 @@ describe('Rollout Integration Tests', () => {
 
       // Create rollout with items, set to expire immediately (TTL=0)
       const recorder = await RolloutRecorder.create(
-        { type: 'create', conversationId: id },
+        { type: 'create', sessionId: id },
         { storage: { rolloutTTL: 0 } }
       );
       await recorder.recordItems([
@@ -228,7 +228,7 @@ describe('Rollout Integration Tests', () => {
         const id = `${i.toString().padStart(8, '0')}-7777-4777-8777-777777777777`;
         const recorder = await RolloutRecorder.create({
           type: 'create',
-          conversationId: id,
+          sessionId: id,
         });
         await recorder.recordItems([
           { type: 'response_item', payload: { type: 'message', content: `Item ${i}` } },

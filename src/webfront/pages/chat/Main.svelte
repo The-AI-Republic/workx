@@ -151,14 +151,22 @@
       console.log('[App] UIChannelClient initialized');
 
       // Listen for all events from backend (wildcard)
-      // Filter out event types that have their own dedicated handlers
+      // Wildcard handler receives ChannelEvent { msg, sessionId }
       const HANDLED_EVENT_TYPES = new Set(['StateUpdate', 'BackgroundEvent', 'ServiceResponse']);
       unsubscribers.push(
-        client.onEvent('*', (eventMsg: any) => {
+        client.onEvent('*', (channelEvent: any) => {
+          const eventMsg = channelEvent?.msg ?? channelEvent;
           if (HANDLED_EVENT_TYPES.has(eventMsg?.type)) return;
-          // Wrap EventMsg in Event envelope for handleEvent compatibility
           const event: Event = { id: `evt_${Date.now()}`, msg: eventMsg };
-          handleEvent(event);
+          const eventSessionId = channelEvent?.sessionId;
+
+          if (!eventSessionId || eventSessionId === activeSessionId) {
+            // Active thread — render immediately
+            handleEvent(event);
+          } else {
+            // Background thread — buffer in threadStates
+            handleEventForSession(event, eventSessionId);
+          }
         })
       );
 
@@ -666,6 +674,7 @@
         },
         {
           tabId: currentTabId, // Include current tab selection in context
+          sessionId: activeSessionId, // Route to correct agent session
         },
       );
 
@@ -788,8 +797,8 @@
    * Resume a conversation from chat history
    * Loads the selected conversation and restores its state
    */
-  async function resumeConversation(conversationId: string) {
-    console.log('[App] Resuming conversation:', conversationId);
+  async function resumeConversation(sessionId: string) {
+    console.log('[App] Resuming conversation:', sessionId);
 
     // Clear current UI state
     messages = [];
@@ -803,10 +812,10 @@
     try {
       if (!client) throw new Error('Message service not available');
       // Request session resume from backend
-      const response = await (await getInitializedUIClient()).serviceRequest<{ history?: unknown[] }>('session.resume', { conversationId });
+      const response = await (await getInitializedUIClient()).serviceRequest<{ history?: unknown[] }>('session.resume', { sessionId });
 
       const historyItems = response?.history;
-      console.log('[App] Conversation resumed:', conversationId, 'with', historyItems?.length || 0, 'items');
+      console.log('[App] Conversation resumed:', sessionId, 'with', historyItems?.length || 0, 'items');
 
       // Restore history to UI using shared helper
       if (historyItems && Array.isArray(historyItems)) {
@@ -972,7 +981,7 @@
 
       // Try to get session list from registry
       const listResponse = await c.serviceRequest<{
-        sessions: Array<{ sessionId: string; conversationId: string; type: string; state: string }>;
+        sessions: Array<{ sessionId: string; type: string; state: string }>;
         maxConcurrent: number;
         activeCount: number;
       }>('session.list');
@@ -985,9 +994,8 @@
         const existingSessionIds = new Set(currentState.threads.map(t => t.sessionId));
 
         for (const session of backendSessions) {
-          const sid = session.sessionId || session.conversationId;
-          if (!existingSessionIds.has(sid)) {
-            threadStore.createThread(sid, 'New Thread');
+          if (!existingSessionIds.has(session.sessionId)) {
+            threadStore.createThread(session.sessionId, 'New Thread');
           }
         }
       } else {
@@ -1006,8 +1014,8 @@
 
       // Ensure we have an active thread
       const finalState = get(threadStore);
-      if (finalState.threads.length > 0 && !finalState.activeThreadId) {
-        threadStore.setActiveThread(finalState.threads[0].id);
+      if (finalState.threads.length > 0 && !finalState.activeSessionId) {
+        threadStore.setActiveThread(finalState.threads[0].sessionId);
       }
 
       // Set active session ID for event routing
@@ -1054,11 +1062,11 @@
         currentTabId: -1,
         eventProcessor: new EventProcessor(),
       };
-      threadStates.set(newThread.id, newState);
+      threadStates.set(sessionId, newState);
 
       // Switch to the new thread
       activeSessionId = sessionId;
-      loadThreadState(newThread.id);
+      loadThreadState(sessionId);
 
       // Update session limits
       await updateSessionLimits();
@@ -1066,7 +1074,7 @@
       // Auto-bind to active browser tab
       await bindToActiveTab();
 
-      console.log(`[App] Created new thread: ${newThread.id} with session: ${sessionId}`);
+      console.log(`[App] Created new thread with session: ${sessionId}`);
     } catch (error) {
       console.error('[App] Failed to create new thread:', error);
     }
@@ -1075,40 +1083,35 @@
   /**
    * Handle thread selection from ThreadBar
    */
-  function handleThreadSelect(event: CustomEvent<{ threadId: string }>) {
-    const { threadId } = event.detail;
-    switchToThread(threadId);
+  function handleThreadSelect(event: CustomEvent<{ sessionId: string }>) {
+    const { sessionId } = event.detail;
+    switchToThread(sessionId);
   }
 
   /**
-   * Switch to a specific thread
+   * Switch to a specific thread by sessionId
    */
-  function switchToThread(threadId: string) {
-    const currentActiveThread = threadStore.getActiveThread();
-
+  function switchToThread(sessionId: string) {
     // Save current thread state before switching
-    if (currentActiveThread) {
-      saveThreadState(currentActiveThread.id);
+    if (activeSessionId) {
+      saveThreadState(activeSessionId);
     }
 
     // Set new active thread
-    threadStore.setActiveThread(threadId);
+    threadStore.setActiveThread(sessionId);
 
     // Update active session ID BEFORE loading state so that events arriving
     // during the transition are routed to the correct thread
-    const newThread = threadStore.getActiveThread();
-    if (newThread) {
-      activeSessionId = newThread.sessionId;
-    }
+    activeSessionId = sessionId;
 
     // Load state for new thread
-    loadThreadState(threadId);
+    loadThreadState(sessionId);
   }
 
   /**
    * Save current UI state to thread state map
    */
-  function saveThreadState(threadId: string) {
+  function saveThreadState(sessionId: string) {
     const state: ThreadConversationState = {
       messages: [...messages],
       processedEvents: [...processedEvents],
@@ -1117,14 +1120,14 @@
       currentTabId,
       eventProcessor: eventProcessor,
     };
-    threadStates.set(threadId, state);
+    threadStates.set(sessionId, state);
   }
 
   /**
    * Load thread state from map to UI
    */
-  function loadThreadState(threadId: string) {
-    const state = threadStates.get(threadId);
+  function loadThreadState(sessionId: string) {
+    const state = threadStates.get(sessionId);
     if (state) {
       messages = [...state.messages];
       processedEvents = [...state.processedEvents];
@@ -1157,17 +1160,17 @@
   /**
    * Handle thread close from ThreadBar
    */
-  async function handleThreadClose(event: CustomEvent<{ threadId: string }>) {
-    const { threadId } = event.detail;
-    await closeThread(threadId);
+  async function handleThreadClose(event: CustomEvent<{ sessionId: string }>) {
+    const { sessionId } = event.detail;
+    await closeThread(sessionId);
   }
 
   /**
    * Close a thread and terminate its session
    */
-  async function closeThread(threadId: string) {
+  async function closeThread(sessionId: string) {
     const state = get(threadStore);
-    const threadToClose = state.threads.find(t => t.id === threadId);
+    const threadToClose = state.threads.find(t => t.sessionId === sessionId);
 
     if (!threadToClose) return;
 
@@ -1185,37 +1188,36 @@
     // Terminate the session in backend
     try {
       const c = await getInitializedUIClient();
-      await c.serviceRequest('session.close', { sessionId: threadToClose.sessionId });
+      await c.serviceRequest('session.close', { sessionId });
     } catch (error) {
-      console.error(`[App] Failed to close session ${threadToClose.sessionId}:`, error);
+      console.error(`[App] Failed to close session ${sessionId}:`, error);
     }
 
     // Remove thread state
-    threadStates.delete(threadId);
+    threadStates.delete(sessionId);
 
     // Close thread in store (this handles switching to another thread)
-    threadStore.closeThread(threadId);
+    threadStore.closeThread(sessionId);
 
     // Update active session
     const newActiveThread = threadStore.getActiveThread();
     if (newActiveThread) {
       activeSessionId = newActiveThread.sessionId;
-      loadThreadState(newActiveThread.id);
+      loadThreadState(newActiveThread.sessionId);
     }
 
     // Update session limits
     await updateSessionLimits();
 
-    console.log(`[App] Closed thread: ${threadId}`);
+    console.log(`[App] Closed thread: ${sessionId}`);
   }
 
   /**
    * Handle new thread button click from ThreadBar
    */
   async function handleNewThread() {
-    const currentThread = threadStore.getActiveThread();
-    if (currentThread) {
-      saveThreadState(currentThread.id);
+    if (activeSessionId) {
+      saveThreadState(activeSessionId);
     }
     await createNewThread();
   }
@@ -1224,10 +1226,10 @@
    * Handle event for a specific session (background thread)
    */
   function handleEventForSession(event: Event, sessionId: string) {
-    const thread = threadStore.getThreadBySessionId(sessionId);
+    const thread = threadStore.getThread(sessionId);
     if (!thread) return;
 
-    let state = threadStates.get(thread.id);
+    let state = threadStates.get(sessionId);
     if (!state) {
       state = {
         messages: [],
@@ -1237,7 +1239,7 @@
         currentTabId: -1,
         eventProcessor: new EventProcessor(),
       };
-      threadStates.set(thread.id, state);
+      threadStates.set(sessionId, state);
     }
 
     // Process event for this thread's state
@@ -1254,23 +1256,23 @@
       state.isProcessing = false;
     }
 
-    threadStates.set(thread.id, state);
+    threadStates.set(sessionId, state);
   }
 
   /**
    * Handle session terminated event
    */
   function handleSessionTerminated(sessionId: string) {
-    const thread = threadStore.getThreadBySessionId(sessionId);
+    const thread = threadStore.getThread(sessionId);
     if (thread) {
-      console.log(`[App] Session ${sessionId} terminated, removing thread ${thread.id}`);
-      threadStates.delete(thread.id);
-      threadStore.closeThread(thread.id);
+      console.log(`[App] Session ${sessionId} terminated, removing thread`);
+      threadStates.delete(sessionId);
+      threadStore.closeThread(sessionId);
 
       const newActiveThread = threadStore.getActiveThread();
       if (newActiveThread) {
         activeSessionId = newActiveThread.sessionId;
-        loadThreadState(newActiveThread.id);
+        loadThreadState(newActiveThread.sessionId);
       } else {
         createNewThread();
       }
@@ -1300,7 +1302,7 @@
     const activeThread = threadStore.getActiveThread();
     if (activeThread && activeThread.title === 'New Thread') {
       const title = message.length > 30 ? message.substring(0, 30) + '...' : message;
-      threadStore.updateThreadTitle(activeThread.id, title);
+      threadStore.updateThreadTitle(activeThread.sessionId, title);
     }
   }
 </script>

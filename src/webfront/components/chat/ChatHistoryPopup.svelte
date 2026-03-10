@@ -5,7 +5,7 @@
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
 
-  export let onSelectConversation: (conversationId: string) => void = () => {};
+  export let onSelectConversation: (sessionId: string) => void = () => {};
 
   let showPopup = false;
   let currentTheme: UITheme = 'terminal';
@@ -22,8 +22,8 @@
     showPopup = false;
   }
 
-  function handleSelectConversation(conversationId: string) {
-    onSelectConversation(conversationId);
+  function handleSelectConversation(sessionId: string) {
+    onSelectConversation(sessionId);
     closePopup();
   }
 </script>

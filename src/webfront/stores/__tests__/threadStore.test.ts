@@ -39,7 +39,6 @@ describe('threadStore', () => {
       const thread = threadStore.createThread('session_abc');
 
       expect(thread.sessionId).toBe('session_abc');
-      expect(thread.id).toBeTruthy();
       expect(thread.title).toBe('New Thread');
       expect(thread.createdAt).toBeGreaterThan(0);
     });
@@ -48,14 +47,14 @@ describe('threadStore', () => {
       const thread = threadStore.createThread('session_abc');
       const state = get(threadStore);
 
-      expect(state.activeThreadId).toBe(thread.id);
+      expect(state.activeSessionId).toBe(thread.sessionId);
     });
 
-    it('assigns unique IDs to each thread', () => {
+    it('assigns unique sessionIds to each thread', () => {
       const thread1 = threadStore.createThread('session_1');
       const thread2 = threadStore.createThread('session_2');
 
-      expect(thread1.id).not.toBe(thread2.id);
+      expect(thread1.sessionId).not.toBe(thread2.sessionId);
     });
 
     it('uses a custom title when provided', () => {
@@ -83,7 +82,7 @@ describe('threadStore', () => {
       const thread2 = threadStore.createThread('s2');
       const state = get(threadStore);
 
-      expect(state.activeThreadId).toBe(thread2.id);
+      expect(state.activeSessionId).toBe(thread2.sessionId);
     });
   });
 
@@ -95,10 +94,10 @@ describe('threadStore', () => {
     it('removes the specified thread', () => {
       const thread = threadStore.createThread('s1');
       threadStore.createThread('s2');
-      threadStore.closeThread(thread.id);
+      threadStore.closeThread(thread.sessionId);
 
       const state = get(threadStore);
-      expect(state.threads.find((t) => t.id === thread.id)).toBeUndefined();
+      expect(state.threads.find((t) => t.sessionId === thread.sessionId)).toBeUndefined();
     });
 
     it('selects an adjacent thread when closing the active thread', () => {
@@ -107,21 +106,21 @@ describe('threadStore', () => {
       threadStore.createThread('s3');
 
       // thread3 is active (last created). Switch to thread2, then close it.
-      threadStore.setActiveThread(thread2.id);
-      threadStore.closeThread(thread2.id);
+      threadStore.setActiveThread(thread2.sessionId);
+      threadStore.closeThread(thread2.sessionId);
 
       const state = get(threadStore);
       // Should pick the thread at the same index or previous
-      expect(state.activeThreadId).not.toBe(thread2.id);
-      expect(state.threads.some((t) => t.id === state.activeThreadId)).toBe(true);
+      expect(state.activeSessionId).not.toBe(thread2.sessionId);
+      expect(state.threads.some((t) => t.sessionId === state.activeSessionId)).toBe(true);
     });
 
-    it('sets activeThreadId to null when closing the last thread', () => {
+    it('sets activeSessionId to null when closing the last thread', () => {
       const thread = threadStore.createThread('s1');
-      threadStore.closeThread(thread.id);
+      threadStore.closeThread(thread.sessionId);
 
       const state = get(threadStore);
-      expect(state.activeThreadId).toBeNull();
+      expect(state.activeSessionId).toBeNull();
       expect(state.threads).toHaveLength(0);
     });
 
@@ -139,18 +138,18 @@ describe('threadStore', () => {
       const thread1 = threadStore.createThread('s1');
       const thread2 = threadStore.createThread('s2');
       // Activate and close the first thread
-      threadStore.setActiveThread(thread1.id);
-      threadStore.closeThread(thread1.id);
+      threadStore.setActiveThread(thread1.sessionId);
+      threadStore.closeThread(thread1.sessionId);
 
       const state = get(threadStore);
-      expect(state.activeThreadId).toBe(thread2.id);
+      expect(state.activeSessionId).toBe(thread2.sessionId);
     });
 
     it('persists after closing', () => {
       const thread = threadStore.createThread('s1');
       vi.mocked(mockConfigStorage.set).mockClear();
 
-      threadStore.closeThread(thread.id);
+      threadStore.closeThread(thread.sessionId);
       expect(mockConfigStorage.set).toHaveBeenCalled();
     });
   });
@@ -164,10 +163,10 @@ describe('threadStore', () => {
       const thread1 = threadStore.createThread('s1');
       threadStore.createThread('s2');
 
-      threadStore.setActiveThread(thread1.id);
+      threadStore.setActiveThread(thread1.sessionId);
       const state = get(threadStore);
 
-      expect(state.activeThreadId).toBe(thread1.id);
+      expect(state.activeSessionId).toBe(thread1.sessionId);
     });
 
     it('is a no-op for a nonexistent thread ID', () => {
@@ -177,7 +176,7 @@ describe('threadStore', () => {
       threadStore.setActiveThread('nonexistent');
       const stateAfter = get(threadStore);
 
-      expect(stateAfter.activeThreadId).toBe(stateBefore.activeThreadId);
+      expect(stateAfter.activeSessionId).toBe(stateBefore.activeSessionId);
     });
   });
 
@@ -188,38 +187,38 @@ describe('threadStore', () => {
   describe('updateThreadTitle', () => {
     it('updates the title of the specified thread', () => {
       const thread = threadStore.createThread('s1');
-      threadStore.updateThreadTitle(thread.id, 'Renamed Thread');
+      threadStore.updateThreadTitle(thread.sessionId, 'Renamed Thread');
 
       const state = get(threadStore);
-      expect(state.threads.find((t) => t.id === thread.id)?.title).toBe('Renamed Thread');
+      expect(state.threads.find((t) => t.sessionId === thread.sessionId)?.title).toBe('Renamed Thread');
     });
 
     it('does not affect other threads', () => {
       const thread1 = threadStore.createThread('s1', 'Thread A');
       const thread2 = threadStore.createThread('s2', 'Thread B');
 
-      threadStore.updateThreadTitle(thread1.id, 'Updated A');
+      threadStore.updateThreadTitle(thread1.sessionId, 'Updated A');
 
       const state = get(threadStore);
-      expect(state.threads.find((t) => t.id === thread2.id)?.title).toBe('Thread B');
+      expect(state.threads.find((t) => t.sessionId === thread2.sessionId)?.title).toBe('Thread B');
     });
   });
 
   // =========================================================================
-  // getThreadBySessionId
+  // getThread
   // =========================================================================
 
-  describe('getThreadBySessionId', () => {
+  describe('getThread', () => {
     it('returns the thread matching the sessionId', () => {
       const thread = threadStore.createThread('session_123');
-      const found = threadStore.getThreadBySessionId('session_123');
+      const found = threadStore.getThread('session_123');
 
-      expect(found?.id).toBe(thread.id);
+      expect(found?.sessionId).toBe(thread.sessionId);
     });
 
     it('returns undefined for an unknown sessionId', () => {
       threadStore.createThread('session_abc');
-      const found = threadStore.getThreadBySessionId('unknown');
+      const found = threadStore.getThread('unknown');
 
       expect(found).toBeUndefined();
     });
@@ -234,7 +233,7 @@ describe('threadStore', () => {
       const thread = threadStore.createThread('s1');
       const active = threadStore.getActiveThread();
 
-      expect(active?.id).toBe(thread.id);
+      expect(active?.sessionId).toBe(thread.sessionId);
     });
 
     it('returns undefined when no threads exist', () => {
@@ -250,15 +249,15 @@ describe('threadStore', () => {
   });
 
   // =========================================================================
-  // removeThreadBySessionId
+  // removeThread
   // =========================================================================
 
-  describe('removeThreadBySessionId', () => {
+  describe('removeThread', () => {
     it('finds and removes the thread by sessionId', () => {
       threadStore.createThread('session_to_remove');
       threadStore.createThread('session_to_keep');
 
-      threadStore.removeThreadBySessionId('session_to_remove');
+      threadStore.removeThread('session_to_remove');
 
       const state = get(threadStore);
       expect(state.threads).toHaveLength(1);
@@ -269,7 +268,7 @@ describe('threadStore', () => {
       threadStore.createThread('s1');
       const before = get(threadStore);
 
-      threadStore.removeThreadBySessionId('nonexistent');
+      threadStore.removeThread('nonexistent');
 
       const after = get(threadStore);
       expect(after.threads).toHaveLength(before.threads.length);
@@ -284,9 +283,9 @@ describe('threadStore', () => {
     it('restores threads from config storage', async () => {
       const stored: ThreadStoreState = {
         threads: [
-          { id: 't1', sessionId: 's1', title: 'Restored', createdAt: 1000 },
+          { sessionId: 's1', title: 'Restored', createdAt: 1000 },
         ],
-        activeThreadId: 't1',
+        activeSessionId: 's1',
       };
       mockConfigStorage.get.mockResolvedValue(stored);
 
@@ -304,11 +303,11 @@ describe('threadStore', () => {
       const result = await threadStore.restoreThreads();
 
       expect(result.threads).toHaveLength(0);
-      expect(result.activeThreadId).toBeNull();
+      expect(result.activeSessionId).toBeNull();
     });
 
     it('returns initial state when storage has empty threads array', async () => {
-      mockConfigStorage.get.mockResolvedValue({ threads: [], activeThreadId: null });
+      mockConfigStorage.get.mockResolvedValue({ threads: [], activeSessionId: null });
 
       const result = await threadStore.restoreThreads();
 
@@ -338,14 +337,14 @@ describe('threadStore', () => {
   // =========================================================================
 
   describe('clear', () => {
-    it('resets all threads and activeThreadId', () => {
+    it('resets all threads and activeSessionId', () => {
       threadStore.createThread('s1');
       threadStore.createThread('s2');
       threadStore.clear();
 
       const state = get(threadStore);
       expect(state.threads).toHaveLength(0);
-      expect(state.activeThreadId).toBeNull();
+      expect(state.activeSessionId).toBeNull();
     });
   });
 
@@ -355,22 +354,22 @@ describe('threadStore', () => {
 
       const newState: ThreadStoreState = {
         threads: [
-          { id: 'x1', sessionId: 'sx1', title: 'Set', createdAt: 500 },
-          { id: 'x2', sessionId: 'sx2', title: 'State', createdAt: 600 },
+          { sessionId: 'sx1', title: 'Set', createdAt: 500 },
+          { sessionId: 'sx2', title: 'State', createdAt: 600 },
         ],
-        activeThreadId: 'x2',
+        activeSessionId: 'sx2',
       };
 
       threadStore.setState(newState);
 
       const state = get(threadStore);
       expect(state.threads).toHaveLength(2);
-      expect(state.activeThreadId).toBe('x2');
+      expect(state.activeSessionId).toBe('sx2');
     });
 
     it('persists the new state', () => {
       vi.mocked(mockConfigStorage.set).mockClear();
-      threadStore.setState({ threads: [], activeThreadId: null });
+      threadStore.setState({ threads: [], activeSessionId: null });
 
       expect(mockConfigStorage.set).toHaveBeenCalled();
     });
@@ -385,7 +384,7 @@ describe('threadStore', () => {
       const thread = threadStore.createThread('s1');
       const active = get(activeThread);
 
-      expect(active?.id).toBe(thread.id);
+      expect(active?.sessionId).toBe(thread.sessionId);
     });
 
     it('is undefined when no threads exist', () => {
@@ -408,7 +407,7 @@ describe('threadStore', () => {
       const thread = threadStore.createThread('s1');
       threadStore.createThread('s2');
 
-      threadStore.closeThread(thread.id);
+      threadStore.closeThread(thread.sessionId);
       expect(get(threadCount)).toBe(1);
     });
   });
