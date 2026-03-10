@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { onMount } from 'svelte';
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { IExtensionSettings, IPermissionSettings } from '@/config/types';
   import { _t } from '../lib/i18n';
@@ -7,33 +7,40 @@
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
 
-  export let settingsConfig: AgentConfig;
-  export let highlightSettingId: string | undefined = undefined;
-
-  const dispatch = createEventDispatcher<{
-    back: void;
-    saved: { success: boolean; error?: string };
-  }>();
+  let {
+    settingsConfig,
+    highlightSettingId = undefined,
+    isDirty = $bindable(false),
+    onBack,
+    onSaved,
+  }: {
+    settingsConfig: AgentConfig;
+    highlightSettingId?: string | undefined;
+    isDirty?: boolean;
+    onBack?: () => void;
+    onSaved?: (detail: { success: boolean; error?: string }) => void;
+  } = $props();
 
   // Form state
-  let originalExtension: IExtensionSettings = {
+  let originalExtension: IExtensionSettings = $state({
     permissions: {}
-  };
-  let currentExtension: IExtensionSettings = {
+  });
+  let currentExtension: IExtensionSettings = $state({
     permissions: {}
-  };
-  let isDirty = false;
-  let isSaving = false;
-  let saveMessage = '';
-  let saveMessageType: 'success' | 'error' | '' = '';
+  });
+  let isSaving = $state(false);
+  let saveMessage = $state('');
+  let saveMessageType: 'success' | 'error' | '' = $state('');
 
   // For allowed origins input
-  let allowedOriginsText = '';
+  let allowedOriginsText = $state('');
 
-  $: if (highlightSettingId) {
-    highlightSetting(highlightSettingId);
-    highlightSettingId = undefined;
-  }
+  $effect(() => {
+    if (highlightSettingId) {
+      highlightSetting(highlightSettingId);
+      highlightSettingId = undefined;
+    }
+  });
 
   onMount(async () => {
     await loadSettings();
@@ -78,7 +85,7 @@
   }
 
   function handleBack() {
-    dispatch('back');
+    onBack?.();
   }
 
   async function handleSave() {
@@ -100,7 +107,7 @@
       saveMessage = 'Settings saved successfully';
       saveMessageType = 'success';
 
-      dispatch('saved', { success: true });
+      onSaved?.({ success: true });
 
       // Clear message after 3 seconds
       setTimeout(() => {
@@ -113,7 +120,7 @@
       saveMessage = `Failed to save settings: ${errorMsg}`;
       saveMessageType = 'error';
 
-      dispatch('saved', { success: false, error: errorMsg });
+      onSaved?.({ success: false, error: errorMsg });
     } finally {
       isSaving = false;
     }
@@ -121,7 +128,7 @@
 </script>
 
 <div class="extension-settings">
-  <button class="back-button" on:click={handleBack}>← {$_t("Back")}</button>
+  <button class="back-button" onclick={handleBack}>← {$_t("Back")}</button>
 
   <h2 class="settings-title">{$_t("Extension & Permission Settings")}</h2>
 
@@ -136,7 +143,7 @@
           <input
             type="checkbox"
             bind:checked={currentExtension.enabled}
-            on:input={handleInput}
+            oninput={handleInput}
             class="form-checkbox"
           />
           <span>{$_t("Enable Extension")}</span>
@@ -150,7 +157,7 @@
           <input
             type="checkbox"
             bind:checked={currentExtension.contentScriptEnabled}
-            on:input={handleInput}
+            oninput={handleInput}
             class="form-checkbox"
           />
           <span>{$_t("Enable Content Scripts")}</span>
@@ -164,7 +171,7 @@
         <select
           id="update-channel"
           bind:value={currentExtension.updateChannel}
-          on:input={handleInput}
+          oninput={handleInput}
           class="form-select"
         >
           <option value="stable">{$_t("Stable")}</option>
@@ -182,7 +189,7 @@
           min="50"
           max="100"
           bind:value={currentExtension.storageQuotaWarning}
-          on:input={handleInput}
+          oninput={handleInput}
           class="form-input"
           placeholder="90"
         />
@@ -195,7 +202,7 @@
         <textarea
           id="allowed-origins"
           bind:value={allowedOriginsText}
-          on:input={handleOriginsInput}
+          oninput={handleOriginsInput}
           class="form-textarea"
           rows="5"
           placeholder="https://example.com&#10;https://api.example.com&#10;https://*.example.org"
@@ -208,7 +215,7 @@
     <div class="button-group">
       <button
         class="btn btn-primary"
-        on:click={handleSave}
+        onclick={handleSave}
         disabled={!isDirty || isSaving}
       >
         {isSaving ? $_t('Saving...') : $_t('Save Settings')}

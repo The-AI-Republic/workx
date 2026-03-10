@@ -1,6 +1,6 @@
 <script lang="ts">
   import Fuse from 'fuse.js';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
   import { getInitializedUIClient } from '@/core/messaging';
   import type { UIChannelClient } from '@/core/messaging';
@@ -17,7 +17,7 @@
     initialExpanded?: boolean;
   } = $props();
 
-  let currentTheme = $state<UITheme>('terminal');
+  let currentTheme = $derived($uiTheme);
   let expanded = $state(initialExpanded);
   let isLoading = $state(true);
   let archivedJobs = $state<ArchivedJobSummary[]>([]);
@@ -38,13 +38,6 @@
 
   // Fuse.js instance
   let fuse = $state<Fuse<ArchivedJobSummary> | null>(null);
-
-  $effect(() => {
-    const unsub = uiTheme.subscribe((theme) => {
-      currentTheme = theme;
-    });
-    return unsub;
-  });
 
   // Build Fuse index when jobs change
   $effect(() => {
@@ -288,7 +281,7 @@
       {:else}
         {#each filteredJobs as job (job.id)}
           <div class="relative">
-            <SchedulerJobItem {...job} showActions={false} ondetails={handleDetails} />
+            <SchedulerJobItem {...job} showActions={false} onDetails={handleDetails} />
             {#if job.completedAt}
               <div class="absolute top-2 right-2 text-xs opacity-70
                 {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
@@ -318,5 +311,5 @@
 <JobDetailModal
   show={showDetailModal}
   job={detailJob}
-  onclose={() => { showDetailModal = false; detailJob = null; }}
+  onClose={() => { showDetailModal = false; detailJob = null; }}
 />

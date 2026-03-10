@@ -114,6 +114,17 @@ export class ServerAgentBootstrap {
         console.log('[ServerAgentBootstrap] StorageProvider initialized (SQLite)');
       }
 
+      // 0a. Initialize TokenUsageStore with NodeSQLiteAdapter
+      try {
+        const { NodeSQLiteAdapter } = await import('@/server/storage/NodeSQLiteAdapter');
+        const { TokenUsageStore } = await import('@/storage/TokenUsageStore');
+        const tokenAdapter = new NodeSQLiteAdapter(dataDir);
+        await tokenAdapter.initialize();
+        TokenUsageStore.setAdapter(tokenAdapter);
+      } catch (error) {
+        console.warn('[ServerAgentBootstrap] TokenUsageStore initialization failed (non-fatal):', error);
+      }
+
       // 0b. Initialize credential store (for secure API key storage)
       if (!isCredentialStoreInitialized()) {
         try {

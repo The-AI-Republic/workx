@@ -4,23 +4,17 @@
    * Hides task completion card entirely when showTokenUsage setting is disabled
    */
   import type { ProcessedEvent } from '@/types/ui';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import { showTokenUsage } from '../../stores/tokenUsageStore';
   import { _t } from '../../lib/i18n';
 
-  export let event: ProcessedEvent;
+  let { event }: {
+    event: ProcessedEvent;
+  } = $props();
 
-  let currentTheme: UITheme = 'terminal';
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
-
-  let shouldShowTokenUsage = false;
-  showTokenUsage.subscribe((show) => {
-    shouldShowTokenUsage = show;
-  });
-
-  $: shouldHideCard = !shouldShowTokenUsage;
+  let currentTheme = $derived($uiTheme);
+  let shouldShowTokenUsage = $derived($showTokenUsage);
+  let shouldHideCard = $derived(!shouldShowTokenUsage);
 </script>
 
 {#if !shouldHideCard}

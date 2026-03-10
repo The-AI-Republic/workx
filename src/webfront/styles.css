@@ -172,6 +172,7 @@ body.terminal-mode {
   overflow: auto;
 }
 
+
 .terminal-message {
   white-space: pre-wrap;
   word-break: break-word;

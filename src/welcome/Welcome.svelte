@@ -71,7 +71,7 @@
 
     <div class="mt-8 flex justify-center">
       <button
-        on:click={handleGetStarted}
+        onclick={handleGetStarted}
         class="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
       >
         {$_t("Get Started")}

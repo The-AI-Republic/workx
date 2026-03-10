@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
   import { getInitializedUIClient } from '@/core/messaging';
   import type { UIChannelClient } from '@/core/messaging';
@@ -17,7 +17,7 @@
     refreshTrigger?: number;
   } = $props();
 
-  let currentTheme = $state<UITheme>('terminal');
+  let currentTheme = $derived($uiTheme);
   let expanded = $state(initialExpanded);
   let isLoading = $state(true);
 
@@ -39,13 +39,6 @@
     if (refreshTrigger > 0) {
       fetchAllData();
     }
-  });
-
-  $effect(() => {
-    const unsub = uiTheme.subscribe((theme) => {
-      currentTheme = theme;
-    });
-    return unsub;
   });
 
   let channelClient: UIChannelClient | null = null;
@@ -189,7 +182,7 @@
           <div class="mb-1">
             <span class="block text-xs uppercase tracking-wider mb-1
               {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Running')}</span>
-            <SchedulerJobItem {...runningJob} ontrigger={handleTrigger} oncancel={handleCancel} ondetails={handleDetails} />
+            <SchedulerJobItem {...runningJob} onTrigger={handleTrigger} onCancel={handleCancel} onDetails={handleDetails} />
           </div>
         {/if}
 
@@ -198,7 +191,7 @@
             <span class="block text-xs uppercase tracking-wider mb-1
               {currentTheme === 'modern' ? 'text-term-yellow' : 'text-term-yellow'}">{$_t('Missed')}</span>
             {#each missedJobs as job (job.id)}
-              <SchedulerJobItem {...job} ontrigger={handleTrigger} oncancel={handleCancel} ondetails={handleDetails} />
+              <SchedulerJobItem {...job} onTrigger={handleTrigger} onCancel={handleCancel} onDetails={handleDetails} />
             {/each}
           </div>
         {/if}
@@ -208,7 +201,7 @@
             <span class="block text-xs uppercase tracking-wider mb-1
               {currentTheme === 'modern' ? 'text-blue-400' : 'text-blue-400'}">{$_t('Queued')}</span>
             {#each queuedJobs as job (job.id)}
-              <SchedulerJobItem {...job} ontrigger={handleTrigger} oncancel={handleCancel} ondetails={handleDetails} />
+              <SchedulerJobItem {...job} onTrigger={handleTrigger} onCancel={handleCancel} onDetails={handleDetails} />
             {/each}
           </div>
         {/if}
@@ -218,7 +211,7 @@
             <span class="block text-xs uppercase tracking-wider mb-1
               {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Scheduled')}</span>
             {#each scheduledJobs as job (job.id)}
-              <SchedulerJobItem {...job} ontrigger={handleTrigger} oncancel={handleCancel} ondetails={handleDetails} />
+              <SchedulerJobItem {...job} onTrigger={handleTrigger} onCancel={handleCancel} onDetails={handleDetails} />
             {/each}
           </div>
         {/if}
@@ -230,7 +223,7 @@
 <JobDetailModal
   show={showDetailModal}
   job={detailJob}
-  onclose={() => { showDetailModal = false; detailJob = null; }}
-  ontrigger={handleTrigger}
-  oncancel={handleCancel}
+  onClose={() => { showDetailModal = false; detailJob = null; }}
+  onTrigger={handleTrigger}
+  onCancel={handleCancel}
 />

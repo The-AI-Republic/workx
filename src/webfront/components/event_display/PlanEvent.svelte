@@ -17,19 +17,19 @@
   import { StepStatus } from '@/core/protocol/events';
   import { _t } from '../../lib/i18n';
 
-  export let event: ProcessedEvent;
+  let { event }: { event: ProcessedEvent } = $props();
 
   // Detect format: TaskUpdateEvent has allTasks, PlanToolArgs has plan
-  $: rawData = event.content as unknown as (PlanToolArgs | TaskUpdateEvent);
-  $: isTaskFormat = 'allTasks' in (rawData || {});
+  let rawData = $derived(event.content as unknown as (PlanToolArgs | TaskUpdateEvent));
+  let isTaskFormat = $derived('allTasks' in (rawData || {}));
 
   // Legacy PlanToolArgs
-  $: legacyPlan = !isTaskFormat ? (rawData as PlanToolArgs)?.plan || [] : [];
-  $: explanation = !isTaskFormat ? (rawData as PlanToolArgs)?.explanation : undefined;
+  let legacyPlan = $derived(!isTaskFormat ? (rawData as PlanToolArgs)?.plan || [] : []);
+  let explanation = $derived(!isTaskFormat ? (rawData as PlanToolArgs)?.explanation : undefined);
 
   // New TaskUpdateEvent
-  $: taskData = isTaskFormat ? (rawData as TaskUpdateEvent) : null;
-  $: tasks = taskData?.allTasks || [];
+  let taskData = $derived(isTaskFormat ? (rawData as TaskUpdateEvent) : null);
+  let tasks = $derived(taskData?.allTasks || []);
 
   // Status helpers for legacy format
   function getLegacyStatusMarker(status: StepStatus | string): string {

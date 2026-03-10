@@ -1,19 +1,20 @@
 <!--
   PinSetupDialog - PIN creation/change dialog for vault security
-  Dispatches: success, cancel
 -->
 
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
   import { t } from '../../lib/i18n';
   import { getInitializedUIClient } from '@/core/messaging';
 
-  const dispatch = createEventDispatcher<{ success: void; cancel: void }>();
+  let { onSuccess, onCancel }: {
+    onSuccess?: () => void;
+    onCancel?: () => void;
+  } = $props();
 
-  let pin = '';
-  let pinConfirm = '';
-  let error = '';
-  let isSubmitting = false;
+  let pin = $state('');
+  let pinConfirm = $state('');
+  let error = $state('');
+  let isSubmitting = $state(false);
 
   function validatePin(value: string): string {
     if (value.length !== 6) return 'PIN must be exactly 6 digits';
@@ -38,7 +39,7 @@
     isSubmitting = true;
     try {
       await (await getInitializedUIClient()).serviceRequest('vault.pin.set', { pin, pinConfirm });
-      dispatch('success');
+      onSuccess?.();
     } catch (err) {
       error = (err as Error).message || 'Failed to set PIN';
     } finally {
@@ -47,7 +48,7 @@
   }
 
   function handleCancel() {
-    dispatch('cancel');
+    onCancel?.();
   }
 
   function handlePinInput(event: Event) {
@@ -63,14 +64,14 @@
   }
 </script>
 
-<div class="pin-dialog-overlay" on:click|self={handleCancel}>
+<div class="pin-dialog-overlay" onclick={(e) => { if (e.target === e.currentTarget) handleCancel(); }}>
   <div class="pin-dialog">
     <h3 class="pin-dialog-title">{t("Enable PIN Protection")}</h3>
     <p class="pin-dialog-description">
       {t("Create a 6-digit PIN to protect your API keys. You'll need this PIN after restarting the browser.")}
     </p>
 
-    <form on:submit|preventDefault={handleSubmit}>
+    <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
       <div class="pin-field">
         <label for="pin-input">{t("PIN")}</label>
         <input
@@ -80,7 +81,7 @@
           maxlength="6"
           placeholder="------"
           value={pin}
-          on:input={handlePinInput}
+          oninput={handlePinInput}
           autocomplete="off"
           disabled={isSubmitting}
         />
@@ -95,7 +96,7 @@
           maxlength="6"
           placeholder="------"
           value={pinConfirm}
-          on:input={handleConfirmInput}
+          oninput={handleConfirmInput}
           autocomplete="off"
           disabled={isSubmitting}
         />
@@ -106,7 +107,7 @@
       {/if}
 
       <div class="pin-actions">
-        <button type="button" class="btn-cancel" on:click={handleCancel} disabled={isSubmitting}>
+        <button type="button" class="btn-cancel" onclick={handleCancel} disabled={isSubmitting}>
           {t("Cancel")}
         </button>
         <button type="submit" class="btn-submit" disabled={isSubmitting || pin.length !== 6}>

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { uiTheme, themePreference, type UITheme } from '../../stores/themeStore';
+  import { uiTheme, themePreference } from '../../stores/themeStore';
   import { isWideMode } from '../../stores/layoutStore';
   import { push } from 'svelte-spa-router';
   import { AgentConfig } from '@/config/AgentConfig';
@@ -11,20 +11,17 @@
   import NewJobModule from '../../components/scheduler/NewJobModule.svelte';
   import JobHistoryModule from '../../components/scheduler/JobHistoryModule.svelte';
 
-  let currentTheme = $state<UITheme>('terminal');
-  let wide = $state(false);
-  let jobRefreshCounter = $state(0);
-  let selectedDate: string = '';
-  let selectedTime: string = '';
-  let errorMessage: string = '';
-  let editableInput: string = '';
-  let pendingInput: string = '';
-  let client: UIChannelClient | null = null;
+  let currentTheme = $derived($uiTheme);
+  let wide = $derived($isWideMode);
+  let jobRefreshCounter: number = $state(0);
+  let selectedDate: string = $state('');
+  let selectedTime: string = $state('');
+  let errorMessage: string = $state('');
+  let editableInput: string = $state('');
+  let pendingInput: string = $state('');
+  let client: UIChannelClient | null = $state(null);
 
   $effect(() => {
-    const unsub = uiTheme.subscribe((theme) => {
-      currentTheme = theme;
-    });
     // Clear store after reading
     schedulerStore.clear();
 
@@ -37,17 +34,6 @@
 
     // Initialize defaults
     initializeDefaults();
-
-    return () => {
-      unsub();
-    };
-  });
-
-  $effect(() => {
-    const unsub = isWideMode.subscribe((value) => {
-      wide = value;
-    });
-    return unsub;
   });
 
   // Initialize theme from saved config (same as chat page)
@@ -171,7 +157,7 @@
   }
 </script>
 
-<div class="h-screen overflow-y-auto {currentTheme}
+<div class="h-full overflow-y-auto {currentTheme}
   {currentTheme === 'modern'
     ? 'font-chat bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
     : 'font-terminal bg-term-bg text-term-green'}">
@@ -194,7 +180,7 @@
           {currentTheme === 'modern'
             ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
             : 'bg-transparent border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
-        on:click={() => push('/scheduler/calendar')}
+        onclick={() => push('/scheduler/calendar')}
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -210,7 +196,7 @@
   <!-- Modules Layout -->
   {#if wide}
     <!-- Wide mode: 2-column split -->
-    <div class="grid grid-cols-2 gap-4 p-4 h-[calc(100vh-52px)]">
+    <div class="grid grid-cols-2 gap-4 p-4 h-[calc(100%-52px)]">
       <!-- Left column: NewJob + JobHistory -->
       <div class="flex flex-col gap-4 overflow-hidden">
         <div class="shrink-0">

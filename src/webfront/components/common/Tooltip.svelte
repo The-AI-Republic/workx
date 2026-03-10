@@ -4,41 +4,52 @@
    * Usage: <Tooltip content="Tooltip text"><button>Hover me</button></Tooltip>
    */
   import { onMount, onDestroy } from 'svelte';
+  import type { Snippet } from 'svelte';
   import tippy, { type Instance, type Placement } from 'tippy.js';
   import 'tippy.js/dist/tippy.css';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
 
   // Props
-  export let className: string = '';
-  export let style: string = '';
-  export let fill: boolean = false;
-  export let zIndex: number = 9999;
-  export let content: string = '';
-  export let placement: Placement = 'top';
-  export let delay: number | [number, number] = [200, 0];
-  export let duration: number | [number, number] = [200, 150];
-  export let arrow: boolean = true;
-  export let interactive: boolean = false;
-  export let disabled: boolean = false;
-  export let maxWidth: number | string = 300;
-  export let offset: [number, number] = [0, 8];
-  export let trigger: string = 'mouseenter focus'; // 'mouseenter', 'focus', 'click', or combinations
-  export let hideOnClick: boolean | 'toggle' = true;
-  export let fixedPosition: boolean = false; // When true, tooltip stays at initial position on scroll
+  let {
+    className = '',
+    style = '',
+    fill = false,
+    zIndex = 9999,
+    content = '',
+    placement = 'top' as Placement,
+    delay = [200, 0] as number | [number, number],
+    duration = [200, 150] as number | [number, number],
+    arrow = true,
+    interactive = false,
+    disabled = false,
+    maxWidth = 300 as number | string,
+    offset = [0, 8] as [number, number],
+    trigger = 'mouseenter focus',
+    hideOnClick = true as boolean | 'toggle',
+    fixedPosition = false,
+    children,
+  }: {
+    className?: string;
+    style?: string;
+    fill?: boolean;
+    zIndex?: number;
+    content?: string;
+    placement?: Placement;
+    delay?: number | [number, number];
+    duration?: number | [number, number];
+    arrow?: boolean;
+    interactive?: boolean;
+    disabled?: boolean;
+    maxWidth?: number | string;
+    offset?: [number, number];
+    trigger?: string;
+    hideOnClick?: boolean | 'toggle';
+    fixedPosition?: boolean;
+    children?: Snippet;
+  } = $props();
 
   let containerRef: HTMLSpanElement;
   let tippyInstance: Instance | null = null;
-  let currentTheme: UITheme = 'terminal';
-
-  // Subscribe to theme store
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-    if (tippyInstance) {
-      tippyInstance.setProps({
-        theme: theme === 'modern' ? 'modern' : 'terminal',
-      });
-    }
-  });
 
   onMount(() => {
     if (containerRef) {
@@ -54,7 +65,7 @@
         trigger,
         hideOnClick,
         zIndex,
-        theme: currentTheme === 'modern' ? 'modern' : 'terminal',
+        theme: $uiTheme === 'modern' ? 'modern' : 'terminal',
         // Append to body to escape overflow constraints
         appendTo: () => document.body,
         ...(fixedPosition ? {
@@ -83,33 +94,50 @@
     }
   });
 
-  // Reactive updates
-  $: if (tippyInstance) {
-    tippyInstance.setContent(content);
-  }
-
-  $: if (tippyInstance) {
-    if (disabled) {
-      tippyInstance.disable();
-    } else {
-      tippyInstance.enable();
+  // Reactive updates - update theme when store changes
+  $effect(() => {
+    if (tippyInstance) {
+      tippyInstance.setProps({
+        theme: $uiTheme === 'modern' ? 'modern' : 'terminal',
+      });
     }
-  }
+  });
 
-  $: if (tippyInstance) {
-    tippyInstance.setProps({
-      placement,
-      delay,
-      duration,
-      arrow,
-      interactive,
-      maxWidth,
-      offset,
-      trigger,
-      hideOnClick,
-      zIndex,
-    });
-  }
+  // Update content reactively
+  $effect(() => {
+    if (tippyInstance) {
+      tippyInstance.setContent(content);
+    }
+  });
+
+  // Update disabled state reactively
+  $effect(() => {
+    if (tippyInstance) {
+      if (disabled) {
+        tippyInstance.disable();
+      } else {
+        tippyInstance.enable();
+      }
+    }
+  });
+
+  // Update other props reactively
+  $effect(() => {
+    if (tippyInstance) {
+      tippyInstance.setProps({
+        placement,
+        delay,
+        duration,
+        arrow,
+        interactive,
+        maxWidth,
+        offset,
+        trigger,
+        hideOnClick,
+        zIndex,
+      });
+    }
+  });
 </script>
 
 <span
@@ -117,7 +145,7 @@
   style="{fill ? 'width: 100%; height: 100%; ' : ''}{style}"
   bind:this={containerRef}
 >
-  <slot />
+  {@render children?.()}
 </span>
 
 <style>

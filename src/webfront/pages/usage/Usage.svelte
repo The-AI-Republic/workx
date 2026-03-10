@@ -1,43 +1,24 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
   import { usageStore } from '../../stores/usageStore';
   import UsageList from '../../components/usage/UsageList.svelte';
   import UsageChart from '../../components/usage/UsageChart.svelte';
 
-  let currentTheme: UITheme = 'terminal';
-  let loading = false;
-  let error: string | null = null;
-  let sessionSummaries: import('@/storage/types').SessionUsageSummary[] = [];
-  let dailySummaries: import('@/storage/types').DailyUsageSummary[] = [];
-  let modelSummaries: Record<string, { total_tokens: number; taskCount: number }> = {};
-  let groupByModel = false;
+  let currentTheme = $derived($uiTheme);
+  let loading = $derived($usageStore.loading);
+  let error = $derived($usageStore.error);
+  let sessionSummaries = $derived($usageStore.sessionSummaries);
+  let dailySummaries = $derived($usageStore.dailySummaries);
+  let modelSummaries = $derived($usageStore.modelSummaries);
+  let groupByModel = $derived($usageStore.groupByModel);
 
-  const unsubTheme = uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
-
-  const unsubStore = usageStore.subscribe((state) => {
-    loading = state.loading;
-    error = state.error;
-    sessionSummaries = state.sessionSummaries;
-    dailySummaries = state.dailySummaries;
-    modelSummaries = state.modelSummaries;
-    groupByModel = state.groupByModel;
-  });
-
-  onMount(() => {
+  $effect(() => {
     usageStore.loadAll();
-  });
-
-  onDestroy(() => {
-    unsubTheme();
-    unsubStore();
   });
 </script>
 
-<div class="h-screen overflow-y-auto {currentTheme}
+<div class="h-full overflow-y-auto {currentTheme}
   {currentTheme === 'modern'
     ? 'bg-chat-bg dark:bg-chat-bg-dark'
     : 'bg-term-bg'}">
@@ -63,7 +44,7 @@
             ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
             : 'bg-transparent border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}
           {groupByModel ? 'ring-1 ring-current' : ''}"
-        on:click={() => usageStore.toggleGroupByModel()}
+        onclick={() => usageStore.toggleGroupByModel()}
       >
         {$_t('By Model')}
       </button>
@@ -72,7 +53,7 @@
           {currentTheme === 'modern'
             ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
             : 'bg-transparent border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
-        on:click={() => usageStore.refresh()}
+        onclick={() => usageStore.refresh()}
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M1 4v6h6"></path>

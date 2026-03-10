@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
   import type { RecurrenceRule, RecurrenceMode, RecurrenceIntervalUnit, RecurrenceEndCondition } from '@/core/models/types/Scheduler';
 
@@ -12,14 +12,7 @@
     onchange?: (rule: RecurrenceRule | null) => void;
   } = $props();
 
-  let currentTheme = $state<UITheme>('terminal');
-
-  $effect(() => {
-    const unsub = uiTheme.subscribe((theme) => {
-      currentTheme = theme;
-    });
-    return unsub;
-  });
+  let currentTheme = $derived($uiTheme);
 
   // Local state derived from prop
   let mode = $state<RecurrenceMode | 'none'>(recurrence?.mode || 'none');
@@ -81,11 +74,11 @@
     onchange?.(rule);
   }
 
-  const inputClass = (theme: UITheme) => theme === 'modern'
+  const inputClass = (theme: string) => theme === 'modern'
     ? 'bg-chat-input dark:bg-chat-input-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat focus:outline-none focus:border-chat-input-focus dark:focus:border-chat-input-focus-dark'
     : 'bg-black/50 border border-term-dim-green text-term-green font-terminal focus:outline-none focus:border-term-green';
 
-  const labelClass = (theme: UITheme) => theme === 'modern'
+  const labelClass = (theme: string) => theme === 'modern'
     ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark'
     : 'text-term-dim-green';
 </script>

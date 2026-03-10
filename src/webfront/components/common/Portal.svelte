@@ -12,12 +12,16 @@
    *   </Portal>
    */
   import { onMount, onDestroy, tick } from 'svelte';
+  import type { Snippet } from 'svelte';
 
-  export let show: boolean = false;
+  let { show = false, children }: {
+    show?: boolean;
+    children?: Snippet;
+  } = $props();
 
   let portalContainer: HTMLDivElement | null = null;
   let contentWrapper: HTMLDivElement;
-  let isMounted = false;
+  let isMounted = $state(false);
 
   onMount(() => {
     // Create portal container at body level
@@ -46,9 +50,11 @@
     }
   }
 
-  $: if (show && isMounted) {
-    moveToPortal();
-  }
+  $effect(() => {
+    if (show && isMounted) {
+      moveToPortal();
+    }
+  });
 </script>
 
 {#if show}
@@ -56,6 +62,6 @@
     bind:this={contentWrapper}
     class="portal-content pointer-events-auto"
   >
-    <slot />
+    {@render children?.()}
   </div>
 {/if}

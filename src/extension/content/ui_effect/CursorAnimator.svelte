@@ -17,6 +17,7 @@
    */
 
   import { onMount, onDestroy } from 'svelte';
+  import { get } from 'svelte/store';
   import { cursorPosition, animationState, effectQueue } from './stores';
   import { POINTING_HAND_SVG } from './assets';
   import { easeInOutCubic, easeOutQuad, linear } from './utils/easingFunctions';
@@ -24,14 +25,14 @@
   import type { CursorPosition } from './contracts/visual-effect-controller';
 
   // Current cursor position
-  let x = 0;
-  let y = 0;
+  let x: number = $state(0);
+  let y: number = $state(0);
 
   // Animation state
-  let isAnimating = false;
-  let animationFrameId: number | null = null;
+  let isAnimating: boolean = $state(false);
+  let animationFrameId: number | null = $state(null);
 
-  // Subscribe to stores
+  // Store the cleanup functions
   const unsubscribers: Array<() => void> = [];
 
   onMount(() => {
@@ -86,11 +87,7 @@
   function startAnimation() {
     console.log('[CursorAnimator] startAnimation called');
 
-    let state: any;
-    const unsubscribe = animationState.subscribe(s => {
-      state = s;
-    });
-    unsubscribe();
+    const state = get(animationState);
 
     console.log('[CursorAnimator] Animation state:', state);
 
@@ -201,11 +198,7 @@
     );
 
     // Apply speed boost if queue is deep
-    let queue: any;
-    const unsubscribe = effectQueue.subscribe(q => {
-      queue = q;
-    });
-    unsubscribe();
+    const queue = get(effectQueue);
 
     const processingRate = queue?.getProcessingRate() ?? 1.0;
     const duration = baseDuration / processingRate;

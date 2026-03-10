@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { push } from 'svelte-spa-router';
   import { userStore, userInitials, getLoginPageUrl } from '../../stores/userStore';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import { platform } from '../../stores/platformStore';
   import { HOME_PAGE_BASE_URL, LLM_API_URL } from '../../lib/constants';
   import Tooltip from './Tooltip.svelte';
@@ -10,27 +10,23 @@
   import { _t } from '../../lib/i18n';
   import { fetchUserProfile } from '../../lib/apis';
 
-  let isLoggingIn = false;
-  let cancelLogin: (() => void) | null = null;
+  let isLoggingIn = $state(false);
+  let cancelLogin: (() => void) | null = $state(null);
 
-  let currentTheme: UITheme = 'terminal';
-  let showMenu = false;
-  let showPromoTooltip = false;
+  let showMenu = $state(false);
+  let showPromoTooltip = $state(false);
   let promoTooltipTimer: ReturnType<typeof setTimeout> | null = null;
-  let hasShownPromoTooltip = false; // Track if we've already shown it once
-
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
+  let hasShownPromoTooltip = $state(false);
 
   // Watch for user state changes to show promo tooltip when not logged in (only once)
-  $: if (!$userStore.isLoading && !$userStore.isLoggedIn && !hasShownPromoTooltip) {
-    showPromoTooltipWithTimer();
-  } else if ($userStore.isLoggedIn) {
-    // User logged in, hide tooltip and reset flag for next session
-    hidePromoTooltip();
-    hasShownPromoTooltip = false;
-  }
+  $effect(() => {
+    if (!$userStore.isLoading && !$userStore.isLoggedIn && !hasShownPromoTooltip) {
+      showPromoTooltipWithTimer();
+    } else if ($userStore.isLoggedIn) {
+      hidePromoTooltip();
+      hasShownPromoTooltip = false;
+    }
+  });
 
   function showPromoTooltipWithTimer() {
     // Only show once per session
@@ -186,86 +182,86 @@
     <!-- Loading state -->
     <div class="w-8 h-8 flex items-center justify-center">
       <span class="loading-dot w-2 h-2 rounded-full
-        {currentTheme === 'modern'
+        {$uiTheme === 'modern'
           ? 'bg-chat-text-muted dark:bg-chat-text-muted-dark'
           : 'bg-term-dim-green'}"></span>
     </div>
   {:else if $userStore.isLoggedIn}
     <!-- Logged in state - show user avatar with initials -->
     <PopupCard title="" show={showMenu} onClose={closeMenu}>
-      <div slot="trigger">
+      {#snippet trigger()}<div>
         <Tooltip content={$_t("User Center")} disabled={showMenu}>
           <div
             class="relative w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200
-              {currentTheme === 'modern'
+              {$uiTheme === 'modern'
                 ? 'bg-chat-primary dark:bg-chat-primary-dark border-none hover:shadow-[0_2px_8px_rgba(96,165,250,0.3)]'
                 : 'bg-term-bg border border-term-green hover:border-term-bright-green hover:shadow-[0_0_8px_rgba(0,255,0,0.3)]'}"
-            on:click={toggleMenu}
-            on:keydown={handleKeydown}
+            onclick={toggleMenu}
+            onkeydown={handleKeydown}
             role="button"
             tabindex="0"
             aria-haspopup="true"
             aria-expanded={showMenu}
           >
             <span class="text-sm font-semibold uppercase
-              {currentTheme === 'modern'
+              {$uiTheme === 'modern'
                 ? 'text-white font-chat'
                 : 'text-term-green font-terminal'}">{$userInitials}</span>
           </div>
         </Tooltip>
-      </div>
+      </div>{/snippet}
 
-      <div slot="content" class="min-w-[180px]">
+      {#snippet content()}<div class="min-w-[180px]">
         <!-- User Info Section -->
         <a
           href="{HOME_PAGE_BASE_URL}/user-center/info"
           class="flex items-center gap-3 p-3 no-underline cursor-pointer rounded transition-colors duration-150
-            {currentTheme === 'modern'
+            {$uiTheme === 'modern'
               ? 'hover:bg-white/10'
               : 'hover:bg-term-green/10'}"
-          on:click={openUserCenter}
+          onclick={openUserCenter}
         >
           <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0
-            {currentTheme === 'modern'
+            {$uiTheme === 'modern'
               ? 'bg-chat-primary dark:bg-chat-primary-dark border-none'
               : 'bg-term-green/10 border border-term-dim-green'}">
             <span class="text-base font-semibold uppercase
-              {currentTheme === 'modern'
+              {$uiTheme === 'modern'
                 ? 'text-white font-chat'
                 : 'text-term-green font-terminal'}">{$userInitials}</span>
           </div>
           <div class="flex flex-col gap-0.5 overflow-hidden">
             {#if $userStore.userName}
               <span class="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis
-                {currentTheme === 'modern'
+                {$uiTheme === 'modern'
                   ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat'
                   : 'text-term-bright-green'}">{$userStore.userName}</span>
             {/if}
             {#if $userStore.userEmail}
               <span class="text-sm whitespace-nowrap overflow-hidden text-ellipsis
-                {currentTheme === 'modern'
+                {$uiTheme === 'modern'
                   ? 'text-white/70 font-chat'
                   : 'text-term-dim-green'}">{$userStore.userEmail}</span>
             {:else if !$userStore.userName}
               <span class="text-sm
-                {currentTheme === 'modern'
+                {$uiTheme === 'modern'
                   ? 'text-white/70 font-chat'
                   : 'text-term-dim-green'}">{$_t("Logged in")}</span>
             {/if}
           </div>
         </a>
 
-        <div class="{currentTheme === 'modern'
+        <div class="{$uiTheme === 'modern'
           ? 'h-px bg-white/15'
           : 'h-px bg-term-dim-green/30'}"></div>
 
         <!-- Menu Items -->
         <button
           class="flex items-center gap-2.5 w-full py-2.5 px-3 bg-transparent border-none cursor-pointer text-sm text-left transition-colors duration-150
-            {currentTheme === 'modern'
+            {$uiTheme === 'modern'
               ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat rounded-md m-1 w-[calc(100%-8px)] hover:bg-white/10'
               : 'text-term-green font-terminal hover:bg-term-green/10'}"
-          on:click={openSettings}
+          onclick={openSettings}
           role="menuitem"
         >
           <svg class="w-[18px] h-[18px] shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -274,18 +270,18 @@
           </svg>
           <span>{$_t("Settings")}</span>
         </button>
-      </div>
+      </div>{/snippet}
     </PopupCard>
   {:else}
     <!-- Not logged in state - show login link -->
     <Tooltip content={isLoggingIn ? $_t("Click to cancel login") : (showPromoTooltip ? $_t("Login to get free credits") : $_t("Sign in to your account"))}>
       <button
         class="relative cursor-pointer text-sm transition-all duration-200
-          {currentTheme === 'modern'
+          {$uiTheme === 'modern'
             ? 'bg-transparent border-none text-chat-primary dark:text-chat-primary-dark font-chat font-medium py-1.5 px-3 rounded-lg hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark'
             : 'bg-transparent border border-term-green text-term-green font-terminal py-1.5 px-3 rounded hover:bg-term-green/10 hover:border-term-bright-green hover:text-term-bright-green'}
           {isLoggingIn ? 'hover:!bg-red-500/10 hover:!border-red-400 hover:!text-red-400' : ''}"
-        on:click={handleLoginClick}
+        onclick={handleLoginClick}
       >
         {#if isLoggingIn}
           <span class="login-spinner"></span>

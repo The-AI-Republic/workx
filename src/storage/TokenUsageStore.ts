@@ -6,24 +6,9 @@
  */
 
 import type { StorageAdapter } from './StorageAdapter';
-import { createStorageAdapter } from './createStorageAdapter';
 import type { TokenUsageRecord, SessionUsageSummary, DailyUsageSummary } from './types';
 
 const STORE_NAME = 'token_usage_records';
-
-let adapterPromise: Promise<StorageAdapter> | null = null;
-let adapterInstance: StorageAdapter | null = null;
-
-function getAdapter(): Promise<StorageAdapter> {
-  if (adapterInstance) return Promise.resolve(adapterInstance);
-  if (!adapterPromise) {
-    adapterPromise = createStorageAdapter().then((adapter) => {
-      adapterInstance = adapter;
-      return adapter;
-    });
-  }
-  return adapterPromise;
-}
 
 export class TokenUsageStore {
   private static instance: TokenUsageStore | null = null;
@@ -33,6 +18,15 @@ export class TokenUsageStore {
     this.adapter = adapter || null;
   }
 
+  /**
+   * Inject a StorageAdapter for the singleton instance.
+   * Each platform bootstrap should call this early with the appropriate adapter.
+   */
+  static setAdapter(adapter: StorageAdapter): void {
+    const store = TokenUsageStore.getInstance();
+    store.adapter = adapter;
+  }
+
   static getInstance(): TokenUsageStore {
     if (!TokenUsageStore.instance) {
       TokenUsageStore.instance = new TokenUsageStore();
@@ -40,14 +34,18 @@ export class TokenUsageStore {
     return TokenUsageStore.instance;
   }
 
-  private async db(): Promise<StorageAdapter> {
-    if (this.adapter) return this.adapter;
-    return getAdapter();
+  private db(): StorageAdapter | null {
+    if (!this.adapter) {
+      console.warn('[TokenUsageStore] Adapter not set. Call TokenUsageStore.setAdapter() first.');
+      return null;
+    }
+    return this.adapter;
   }
 
   async save(record: TokenUsageRecord): Promise<void> {
+    const adapter = this.db();
+    if (!adapter) return;
     try {
-      const adapter = await this.db();
       await adapter.put(STORE_NAME, record);
     } catch (err) {
       console.warn('[TokenUsageStore] Save failed:', err);
@@ -55,24 +53,28 @@ export class TokenUsageStore {
   }
 
   async getAll(): Promise<TokenUsageRecord[]> {
-    const adapter = await this.db();
+    const adapter = this.db();
+    if (!adapter) return [];
     return adapter.getAll<TokenUsageRecord>(STORE_NAME);
   }
 
   async getBySession(sessionId: string): Promise<TokenUsageRecord[]> {
-    const adapter = await this.db();
+    const adapter = this.db();
+    if (!adapter) return [];
     return adapter.queryByIndex<TokenUsageRecord>(STORE_NAME, 'by_session', sessionId);
   }
 
   async getByDateRange(start: string, end: string): Promise<TokenUsageRecord[]> {
-    const adapter = await this.db();
+    const adapter = this.db();
+    if (!adapter) return [];
     return adapter.queryByIndex<TokenUsageRecord>(
       STORE_NAME, 'by_timestamp', IDBKeyRange.bound(start, end)
     );
   }
 
   async getByModel(model: string): Promise<TokenUsageRecord[]> {
-    const adapter = await this.db();
+    const adapter = this.db();
+    if (!adapter) return [];
     return adapter.queryByIndex<TokenUsageRecord>(STORE_NAME, 'by_model', model);
   }
 

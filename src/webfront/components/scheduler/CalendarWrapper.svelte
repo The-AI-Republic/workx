@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Calendar, DayGrid, TimeGrid, Interaction } from '@event-calendar/core';
   import '@event-calendar/core/index.css';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import type { CalendarEvent } from '../../lib/calendarUtils';
 
   let {
@@ -24,15 +24,8 @@
     onnewclick?: () => void;
   } = $props();
 
-  let currentTheme = $state<UITheme>('terminal');
+  let currentTheme = $derived($uiTheme);
   let currentView = $derived(initialView);
-
-  $effect(() => {
-    const unsub = uiTheme.subscribe((theme) => {
-      currentTheme = theme;
-    });
-    return unsub;
-  });
 
   let calendarOptions = $derived({
     view: currentView,

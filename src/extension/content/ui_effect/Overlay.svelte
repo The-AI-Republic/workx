@@ -16,12 +16,15 @@
   import { overlayState } from './stores';
 
   // Subscribe to overlay state
-  let visible = false;
-  let takeoverActive = false;
+  let visible: boolean = $state(false);
+  let takeoverActive: boolean = $state(false);
 
-  overlayState.subscribe(state => {
-    visible = state.visible;
-    takeoverActive = state.takeoverActive;
+  $effect(() => {
+    const unsub = overlayState.subscribe(state => {
+      visible = state.visible;
+      takeoverActive = state.takeoverActive;
+    });
+    return unsub;
   });
 </script>
 

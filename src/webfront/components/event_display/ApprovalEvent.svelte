@@ -7,16 +7,18 @@
   import type { ProcessedEvent } from '@/types/ui';
   import { t, _t } from '../../lib/i18n';
 
-  export let event: ProcessedEvent;
+  let { event }: {
+    event: ProcessedEvent;
+  } = $props();
 
-  let processing = false;
-  let alternativeText = '';
-  let showAlternativeInput = false;
+  let processing = $state(false);
+  let alternativeText = $state('');
+  let showAlternativeInput = $state(false);
 
   // Countdown timer
   // countdown=0 means no timeout (balanced mode — wait indefinitely for user)
-  let timeRemaining = event.requiresApproval?.countdown ?? 0;
-  let timedOut = false;
+  let timeRemaining = $state(event.requiresApproval?.countdown ?? 0);
+  let timedOut = $state(false);
   const hasCountdown = timeRemaining > 0;
   let countdownInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -123,8 +125,8 @@
     }
   }
 
-  $: riskLevel = event.requiresApproval?.riskLevel;
-  $: borderClass = getBorderClass(riskLevel);
+  let riskLevel = $derived(event.requiresApproval?.riskLevel);
+  let borderClass = $derived(getBorderClass(riskLevel));
 </script>
 
 <div class="approval-event border {borderClass} bg-yellow-500/10 rounded p-3">
@@ -193,7 +195,7 @@
         <button
           class="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={processing || timedOut}
-          on:click={handleApprove}
+          onclick={handleApprove}
         >
           {processing ? t('Processing...') : t('Approve')}
         </button>
@@ -202,7 +204,7 @@
           <button
             class="px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={processing || timedOut}
-            on:click={handleAlwaysApprove}
+            onclick={handleAlwaysApprove}
           >
             {$_t("Always Approve")}
           </button>
@@ -211,7 +213,7 @@
         <button
           class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={processing || timedOut}
-          on:click={handleDeny}
+          onclick={handleDeny}
         >
           {$_t("Deny")}
         </button>
@@ -220,7 +222,7 @@
           <button
             class="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={processing || timedOut}
-            on:click={() => { showAlternativeInput = !showAlternativeInput; }}
+            onclick={() => { showAlternativeInput = !showAlternativeInput; }}
           >
             {$_t("Suggest Alternative")}
           </button>
@@ -232,7 +234,7 @@
           <input
             type="text"
             bind:value={alternativeText}
-            on:keydown={handleAlternativeKeydown}
+            onkeydown={handleAlternativeKeydown}
             placeholder={t("Type alternative instructions...")}
             class="flex-1 px-2 py-1.5 bg-gray-800 border border-gray-600 rounded text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
             disabled={processing}
@@ -240,7 +242,7 @@
           <button
             class="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={processing || !alternativeText.trim()}
-            on:click={handleSendAlternative}
+            onclick={handleSendAlternative}
           >
             {$_t("Send")}
           </button>

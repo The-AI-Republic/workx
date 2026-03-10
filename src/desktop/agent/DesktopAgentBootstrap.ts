@@ -448,15 +448,19 @@ export class DesktopAgentBootstrap {
    */
   private async initializeScheduler(): Promise<void> {
     try {
-      // Use platform-aware StorageAdapter factory (IndexedDB/SQLite/Node depending on build)
-      const { createStorageAdapter } = await import('@/storage/createStorageAdapter');
+      // Directly instantiate TauriSQLiteAdapter — desktop always uses SQLite via Tauri
+      const { TauriSQLiteAdapter } = await import('@/desktop/storage/TauriSQLiteAdapter');
       const { ScheduleEventStorage } = await import('@/core/scheduler/ScheduleEventStorage');
       const { ExecutionStorage } = await import('@/core/scheduler/ExecutionStorage');
       const { ScheduleManager } = await import('@/core/scheduler/ScheduleManager');
       const { JobExecutor } = await import('@/core/scheduler/JobExecutor');
 
-      const storageAdapter = await createStorageAdapter();
+      const storageAdapter = new TauriSQLiteAdapter();
       await storageAdapter.initialize();
+
+      // Share adapter with TokenUsageStore
+      const { TokenUsageStore } = await import('@/storage/TokenUsageStore');
+      TokenUsageStore.setAdapter(storageAdapter);
 
       const scheduleEventStorage = new ScheduleEventStorage(storageAdapter);
       const executionStorage = new ExecutionStorage(storageAdapter);
