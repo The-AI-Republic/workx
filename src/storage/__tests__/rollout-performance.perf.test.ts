@@ -25,7 +25,7 @@ describe('Rollout Performance Tests', () => {
       const conversationId: ConversationId = '5973b6c0-94b8-4f7b-a530-2aeb6098ae0e';
       const params: RolloutRecorderParams = {
         type: 'create',
-        conversationId,
+        sessionId: conversationId,
       };
 
       const recorder = await RolloutRecorder.create(params);
@@ -50,7 +50,7 @@ describe('Rollout Performance Tests', () => {
       const conversationId: ConversationId = '1111b6c0-94b8-4f7b-a530-2aeb6098ae0e';
       const params: RolloutRecorderParams = {
         type: 'create',
-        conversationId,
+        sessionId: conversationId,
       };
 
       const recorder = await RolloutRecorder.create(params);
@@ -77,7 +77,7 @@ describe('Rollout Performance Tests', () => {
       const conversationId: ConversationId = '2222b6c0-94b8-4f7b-a530-2aeb6098ae0e';
       const params: RolloutRecorderParams = {
         type: 'create',
-        conversationId,
+        sessionId: conversationId,
       };
 
       const recorder = await RolloutRecorder.create(params);
@@ -115,7 +115,7 @@ describe('Rollout Performance Tests', () => {
         const id = `${i.toString().padStart(8, '0')}-0000-4000-8000-000000000000`;
         const params: RolloutRecorderParams = {
           type: 'create',
-          conversationId: id,
+          sessionId: id,
         };
         createPromises.push(
           RolloutRecorder.create(params).then(async (recorder) => {
@@ -148,7 +148,7 @@ describe('Rollout Performance Tests', () => {
         const id = `${i.toString().padStart(8, '0')}-1111-4111-8111-111111111111`;
         const params: RolloutRecorderParams = {
           type: 'create',
-          conversationId: id,
+          sessionId: id,
         };
         const config = {
           storage: { rolloutTTL: 0 }, // Expire immediately
@@ -185,7 +185,7 @@ describe('Rollout Performance Tests', () => {
       const conversationId: ConversationId = '3333b6c0-94b8-4f7b-a530-2aeb6098ae0e';
       const params: RolloutRecorderParams = {
         type: 'create',
-        conversationId,
+        sessionId: conversationId,
       };
 
       const recorder = await RolloutRecorder.create(params);

@@ -30,7 +30,7 @@ describe('calculateBackoff', () => {
 
     return new OpenAIResponsesClient({
       apiKey: 'test-key',
-      conversationId: 'test-conv',
+      sessionId: 'test-conv',
       modelFamily,
       provider,
     });

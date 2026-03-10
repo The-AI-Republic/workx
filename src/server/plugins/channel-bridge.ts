@@ -12,6 +12,7 @@
 import type { ChannelAdapter } from '@/core/channels/ChannelAdapter';
 import type {
   ChannelType,
+  ChannelEvent,
   SubmissionHandler,
   SubmissionContext,
   ChannelCapabilities,
@@ -146,16 +147,17 @@ export class ChannelPluginBridge implements ChannelAdapter {
     this.submissionHandler = handler;
   }
 
-  async sendEvent(event: EventMsg, _targetClientId?: string): Promise<void> {
+  async sendEvent(event: ChannelEvent, _targetClientId?: string): Promise<void> {
+    const msg = event.msg;
     // Convert agent events to outbound plugin messages
-    if (event.type === 'AgentMessage' && this.plugin.outbound) {
+    if (msg.type === 'AgentMessage' && this.plugin.outbound) {
       const outboundCtx: ChannelOutboundContext = {
         accountId: this.accountId,
         target: '', // Set by the submission context's replyCallback
       };
 
       try {
-        await this.plugin.outbound.sendText(outboundCtx, event.data.message);
+        await this.plugin.outbound.sendText(outboundCtx, msg.data.message);
       } catch (err) {
         console.error(`[ChannelBridge] ${this.channelId} outbound error:`, err);
       }
@@ -235,14 +237,14 @@ export class ChannelPluginBridge implements ChannelAdapter {
       channelType: this.channelType,
       userId: msg.senderId,
       sessionId: sessionKey,
-      replyCallback: async (event: EventMsg) => {
-        if (event.type === 'AgentMessage') {
+      replyCallback: async (event: ChannelEvent) => {
+        if (event.msg.type === 'AgentMessage') {
           const outCtx: ChannelOutboundContext = {
             accountId: this.accountId,
             target: msg.channelId,
             threadId: msg.threadId,
           };
-          await this.plugin.outbound.sendText(outCtx, event.data.message);
+          await this.plugin.outbound.sendText(outCtx, event.msg.data.message);
         }
       },
     };

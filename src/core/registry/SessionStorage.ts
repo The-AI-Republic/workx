@@ -15,7 +15,6 @@ import type { SessionMetadata, SessionType, SessionState } from './types';
 export interface PersistedSession {
   sessionId: string;
   sessionLetter: string;
-  conversationId: string;
   type: SessionType;
   state: SessionState;
   createdAt: number;
@@ -40,7 +39,6 @@ export class SessionStorage {
     const record: PersistedSession = {
       sessionId: metadata.sessionId,
       sessionLetter: metadata.sessionLetter,
-      conversationId: metadata.conversationId,
       type: metadata.type,
       state: metadata.state,
       createdAt: metadata.createdAt,

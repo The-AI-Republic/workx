@@ -47,7 +47,7 @@ export type ExecutionState =
  * Session class managing conversation state
  */
 export class Session {
-  readonly conversationId: string;
+  readonly sessionId: string;
   private config?: AgentConfig;
   private sessionState: SessionState; // Pure data state
   private services: SessionServices | null = null; // Service collection
@@ -75,13 +75,13 @@ export class Session {
     toolRegistry?: ToolRegistry,
     initialHistory?: InitialHistory
   ) {
-    // For resumed mode, use the provided conversationId; otherwise generate a new one
-    if (initialHistory?.mode === 'resumed' && initialHistory.conversationId) {
-      this.conversationId = initialHistory.conversationId;
+    // For resumed mode, use the provided sessionId; otherwise generate a new one
+    if (initialHistory?.mode === 'resumed' && initialHistory.sessionId) {
+      this.sessionId = initialHistory.sessionId;
     } else {
-      this.conversationId = uuidv4();
-      if (!this.conversationId) {
-        this.conversationId = crypto.randomUUID();
+      this.sessionId = uuidv4();
+      if (!this.sessionId) {
+        this.sessionId = crypto.randomUUID();
       }
     }
 
@@ -122,7 +122,7 @@ export class Session {
       setReasoningSummary: () => { },
     } as any;
     this.turnContext = new TurnContext(dummyClient, {
-      sessionId: this.conversationId,
+      sessionId: this.sessionId,
       approvalPolicy: 'on-request',
       sandboxPolicy: { mode: 'workspace-write' },
     });
@@ -143,7 +143,7 @@ export class Session {
     // The initialization happens in the background
     if (this.isPersistent && (historyMode.mode === 'new' || historyMode.mode === 'forked')) {
       // Create new rollout
-      this.initializationPromise = this.initializeSession('create', this.conversationId, this.config).then(() => {
+      this.initializationPromise = this.initializeSession('create', this.sessionId, this.config).then(() => {
         // For forked mode, persist the forked history after rollout is created
         if (historyMode.mode === 'forked') {
           const history = this.sessionState.historySnapshot();
@@ -154,7 +154,7 @@ export class Session {
       });
     } else if (this.isPersistent && historyMode.mode === 'resumed') {
       // Resume from existing rollout (note: initializeSession will also reconstruct history)
-      this.initializationPromise = this.initializeSession('resume', this.conversationId, this.config).catch(err => {
+      this.initializationPromise = this.initializeSession('resume', this.sessionId, this.config).catch(err => {
         console.error('Failed to resume session:', err);
       });
     }
@@ -166,12 +166,12 @@ export class Session {
    */
   private async getOrCreateConversation(): Promise<string> {
     if (!this.services?.rollout) {
-      return this.conversationId;
+      return this.sessionId;
     }
 
     // For RolloutRecorder, we don't need to list/find conversations
-    // The conversationId is already set and RolloutRecorder handles persistence
-    return this.conversationId;
+    // The sessionId is already set and RolloutRecorder handles persistence
+    return this.sessionId;
   }
 
   /**
@@ -187,7 +187,7 @@ export class Session {
     const sessionMetaItems: RolloutItem[] = [{
       type: 'session_meta',
       payload: {
-        id: this.conversationId,
+        id: this.sessionId,
         timestamp: new Date().toISOString(),
         ...(tabId > 0 ? { tabId } : {}),
         originator: 'chrome-extension',
@@ -207,8 +207,8 @@ export class Session {
    */
   setTurnContext(context: TurnContext): void {
     // Ensure the turn context has the correct session ID
-    if (context.getSessionId() !== this.conversationId) {
-      context.update({ sessionId: this.conversationId });
+    if (context.getSessionId() !== this.sessionId) {
+      context.update({ sessionId: this.sessionId });
     }
     this.turnContext = context;
   }
@@ -298,7 +298,7 @@ export class Session {
     };
   } {
     return {
-      id: this.conversationId,
+      id: this.sessionId,
       state: this.sessionState.export(),
       metadata: {
         created: this.sessionState.getConversationHistory().metadata?.startTime || Date.now(),
@@ -328,7 +328,7 @@ export class Session {
     session.sessionState = SessionState.import(data.state);
 
     Object.assign(session, {
-      conversationId: data.id,
+      sessionId: data.id,
     });
 
     return session;
@@ -386,7 +386,7 @@ export class Session {
    * Get session ID (conversation ID)
    */
   getSessionId(): string {
-    return this.conversationId;
+    return this.sessionId;
   }
 
   /**
@@ -654,7 +654,7 @@ export class Session {
       // RolloutRecorder might have a getStatistics method or similar
       // For now, we'll return basic info
       rolloutStats = {
-        conversationId: this.conversationId,
+        sessionId: this.sessionId,
         messageCount: this.getMessageCount(),
         hasRollout: true
       };
@@ -686,7 +686,7 @@ export class Session {
     this.clearHistory();
 
     // Create new conversation ID
-    Object.assign(this, { conversationId: uuidv4() });
+    Object.assign(this, { sessionId: uuidv4() });
 
     // Reset tab binding to -1 (unbound)
     // Tab will be auto-bound by UI when side panel reopens
@@ -694,7 +694,7 @@ export class Session {
 
     // Initialize new RolloutRecorder for the new conversation
     if (this.isPersistent) {
-      await this.initializeSession('create', this.conversationId, this.config);
+      await this.initializeSession('create', this.sessionId, this.config);
     }
   }
 
@@ -708,7 +708,7 @@ export class Session {
         const closeEvent: EventMsg = {
           type: 'BackgroundEvent',
           data: {
-            message: `Session closed: ${this.conversationId} (${this.getMessageCount()} messages)`
+            message: `Session closed: ${this.sessionId} (${this.getMessageCount()} messages)`
           }
         };
 
@@ -731,7 +731,7 @@ export class Session {
    * Get session ID (conversation ID)
    */
   getId(): string {
-    return this.conversationId;
+    return this.sessionId;
   }
 
   /**
@@ -903,18 +903,18 @@ export class Session {
    */
   async initializeSession(
     mode: 'create' | 'resume',
-    conversationId: string,
+    sessionId: string,
     config?: AgentConfig
   ): Promise<void> {
     try {
-      const uuid = conversationId;
+      const uuid = sessionId;
 
       if (mode === 'create') {
         // Create new rollout
         const rollout = await RolloutRecorder.create(
           {
             type: 'create',
-            conversationId: uuid,
+            sessionId: uuid,
           },
           config as any
         );

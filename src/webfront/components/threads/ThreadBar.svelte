@@ -17,20 +17,20 @@
   onDestroy(unsubTheme);
 
   const dispatch = createEventDispatcher<{
-    threadSelect: { threadId: string };
-    threadClose: { threadId: string };
+    threadSelect: { sessionId: string };
+    threadClose: { sessionId: string };
     newThread: void;
   }>();
 
   $: threads = $threadStore.threads;
-  $: activeThreadId = $threadStore.activeThreadId;
+  $: activeSessionId = $threadStore.activeSessionId;
 
-  function handleThreadSelect(event: CustomEvent<{ threadId: string }>) {
-    dispatch('threadSelect', { threadId: event.detail.threadId });
+  function handleThreadSelect(event: CustomEvent<{ sessionId: string }>) {
+    dispatch('threadSelect', { sessionId: event.detail.sessionId });
   }
 
-  function handleThreadClose(event: CustomEvent<{ threadId: string }>) {
-    dispatch('threadClose', { threadId: event.detail.threadId });
+  function handleThreadClose(event: CustomEvent<{ sessionId: string }>) {
+    dispatch('threadClose', { sessionId: event.detail.sessionId });
   }
 
   function handleNewThread() {
@@ -56,10 +56,10 @@
   aria-label="Conversation threads"
 >
   <div class="flex items-end gap-0.5 flex-1 min-w-0">
-    {#each threads as thread (thread.id)}
+    {#each threads as thread (thread.sessionId)}
       <ThreadTab
         {thread}
-        isActive={thread.id === activeThreadId}
+        isActive={thread.sessionId === activeSessionId}
         showClose={threads.length > 1}
         on:select={handleThreadSelect}
         on:close={handleThreadClose}

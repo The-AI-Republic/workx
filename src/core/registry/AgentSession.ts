@@ -41,16 +41,15 @@ export class AgentSession {
    * @param config Session configuration
    * @param letterIndex Index for session letter assignment (0-25)
    */
-  constructor(config: SessionConfig, letterIndex: number = 0) {
+  constructor(config: SessionConfig & { sessionId?: string }, letterIndex: number = 0) {
     this._internal = config.internal ?? false;
-    this._sessionId = `session_${uuidv4()}`;
+    this._sessionId = config.sessionId ?? uuidv4();
     this._sessionLetter = SESSION_LETTERS[letterIndex % SESSION_LETTERS.length];
 
     const now = Date.now();
     this._metadata = {
       sessionId: this._sessionId,
       sessionLetter: this._sessionLetter,
-      conversationId: '', // Set when agent is attached
       type: config.type,
       state: 'initializing',
       createdAt: now,
@@ -109,7 +108,6 @@ export class AgentSession {
     }
 
     this._agent = agent;
-    this._metadata.conversationId = agent.getSession().conversationId;
     this._updateActivity();
   }
 
@@ -211,10 +209,10 @@ export class AgentSession {
   }
 
   /**
-   * Get the underlying agent's conversation ID
+   * Get the session ID (same across all layers)
    */
-  getConversationId(): string {
-    return this._metadata.conversationId;
+  getSessionId(): string {
+    return this._sessionId;
   }
 
   // ==========================================================================

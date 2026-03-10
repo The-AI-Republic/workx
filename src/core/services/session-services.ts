@@ -12,7 +12,7 @@ import type { ServiceHandler } from '@/core/channels/ServiceRegistry';
 export interface SessionServiceDeps {
   getAgent: () => {
     getSession(): {
-      conversationId: string;
+      sessionId: string;
       isActiveTurn(): boolean;
       getTabId(): number;
       getConversationHistory(): { items: unknown[] };
@@ -42,7 +42,7 @@ export interface SessionServiceDeps {
   resetTabs?: () => Promise<void>;
 
   /** Resume a session from stored history */
-  resumeSession?: (conversationId: string) => Promise<{ conversationId: string; history: unknown[] }>;
+  resumeSession?: (sessionId: string) => Promise<{ sessionId: string; history: unknown[] }>;
 }
 
 export function createSessionServices(deps: SessionServiceDeps): Record<string, ServiceHandler> {
@@ -58,7 +58,7 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
       const conversationHistory = session.getConversationHistory();
 
       return {
-        sessionId: session.conversationId,
+        sessionId: session.sessionId,
         isActiveTurn: session.isActiveTurn(),
         tabId,
         history: conversationHistory.items,
@@ -86,8 +86,8 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
       if (!deps.resumeSession) {
         throw new Error('Session resume not supported on this platform');
       }
-      const { conversationId } = params as { conversationId: string };
-      return deps.resumeSession(conversationId);
+      const { sessionId } = params as { sessionId: string };
+      return deps.resumeSession(sessionId);
     },
 
     'session.list': async () => {

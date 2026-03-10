@@ -48,7 +48,7 @@ export interface WSUserTurn extends WSMessage {
   /** User message content */
   content: string;
   /** Optional conversation ID */
-  conversationId?: string;
+  sessionId?: string;
   /** Attached images (base64) */
   images?: string[];
 }
@@ -61,7 +61,7 @@ export interface WSAssistantTurnStart extends WSMessage {
   /** Turn ID */
   turnId: string;
   /** Conversation ID */
-  conversationId: string;
+  sessionId: string;
 }
 
 /**

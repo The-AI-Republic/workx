@@ -3,6 +3,7 @@
  *
  * Manages sidepanel thread UI state using Svelte store.
  * Each thread corresponds to an AgentRegistry session.
+ * sessionId is the universal key — same value used in UI, registry, and runtime.
  * Persists thread state via ConfigStorageProvider.
  */
 
@@ -11,11 +12,10 @@ import { getConfigStorage, isConfigStorageInitialized } from '@/core/storage/Con
 
 /**
  * Sidepanel thread representation
+ * sessionId is the universal identifier (same as AgentSession.sessionId and Session.sessionId)
  */
 export interface SidePanelThread {
-  /** Unique thread ID (uuid) */
-  id: string;
-  /** AgentRegistry session ID */
+  /** Universal session ID (same across UI, registry, and runtime) */
   sessionId: string;
   /** Display title */
   title: string;
@@ -28,7 +28,7 @@ export interface SidePanelThread {
  */
 export interface ThreadStoreState {
   threads: SidePanelThread[];
-  activeThreadId: string | null;
+  activeSessionId: string | null;
 }
 
 /**
@@ -37,23 +37,12 @@ export interface ThreadStoreState {
 const STORAGE_KEY = 'browserx_sidepanel_threads';
 
 /**
- * Generate a UUID v4
- */
-function generateUUID(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
-
-/**
  * Create the thread store
  */
 function createThreadStore() {
   const initialState: ThreadStoreState = {
     threads: [],
-    activeThreadId: null,
+    activeSessionId: null,
   };
 
   const { subscribe, set, update }: Writable<ThreadStoreState> = writable(initialState);
@@ -63,13 +52,12 @@ function createThreadStore() {
 
     /**
      * Create a new thread for a session
-     * @param sessionId The AgentRegistry session ID
+     * @param sessionId The universal session ID
      * @param title Optional initial title (defaults to "New Thread")
      * @returns The created thread
      */
     createThread: (sessionId: string, title: string = 'New Thread'): SidePanelThread => {
       const newThread: SidePanelThread = {
-        id: generateUUID(),
         sessionId,
         title,
         createdAt: Date.now(),
@@ -77,7 +65,7 @@ function createThreadStore() {
 
       update((state) => ({
         threads: [...state.threads, newThread],
-        activeThreadId: newThread.id,
+        activeSessionId: newThread.sessionId,
       }));
 
       persistThreads();
@@ -86,27 +74,27 @@ function createThreadStore() {
     },
 
     /**
-     * Close a thread by ID
-     * @param threadId The thread ID to close
+     * Close a thread by session ID
+     * @param sessionId The session ID to close
      */
-    closeThread: (threadId: string): void => {
+    closeThread: (sessionId: string): void => {
       update((state) => {
-        const threadIndex = state.threads.findIndex((t) => t.id === threadId);
+        const threadIndex = state.threads.findIndex((t) => t.sessionId === sessionId);
         if (threadIndex === -1) return state;
 
-        const newThreads = state.threads.filter((t) => t.id !== threadId);
+        const newThreads = state.threads.filter((t) => t.sessionId !== sessionId);
 
-        let newActiveId = state.activeThreadId;
-        if (state.activeThreadId === threadId && newThreads.length > 0) {
+        let newActiveId = state.activeSessionId;
+        if (state.activeSessionId === sessionId && newThreads.length > 0) {
           const newIndex = Math.min(threadIndex, newThreads.length - 1);
-          newActiveId = newThreads[newIndex]?.id || null;
+          newActiveId = newThreads[newIndex]?.sessionId || null;
         } else if (newThreads.length === 0) {
           newActiveId = null;
         }
 
         return {
           threads: newThreads,
-          activeThreadId: newActiveId,
+          activeSessionId: newActiveId,
         };
       });
 
@@ -114,13 +102,13 @@ function createThreadStore() {
     },
 
     /**
-     * Set the active thread
-     * @param threadId The thread ID to activate
+     * Set the active thread by session ID
+     * @param sessionId The session ID to activate
      */
-    setActiveThread: (threadId: string): void => {
+    setActiveThread: (sessionId: string): void => {
       update((state) => {
-        if (state.threads.some((t) => t.id === threadId)) {
-          return { ...state, activeThreadId: threadId };
+        if (state.threads.some((t) => t.sessionId === sessionId)) {
+          return { ...state, activeSessionId: sessionId };
         }
         return state;
       });
@@ -130,24 +118,24 @@ function createThreadStore() {
 
     /**
      * Update a thread's title
-     * @param threadId The thread ID to update
+     * @param sessionId The session ID of the thread to update
      * @param title The new title
      */
-    updateThreadTitle: (threadId: string, title: string): void => {
+    updateThreadTitle: (sessionId: string, title: string): void => {
       update((state) => ({
         ...state,
-        threads: state.threads.map((t) => (t.id === threadId ? { ...t, title } : t)),
+        threads: state.threads.map((t) => (t.sessionId === sessionId ? { ...t, title } : t)),
       }));
 
       persistThreads();
     },
 
     /**
-     * Get a thread by its session ID
+     * Get a thread by session ID (direct lookup)
      * @param sessionId The session ID to find
      * @returns The thread or undefined
      */
-    getThreadBySessionId: (sessionId: string): SidePanelThread | undefined => {
+    getThread: (sessionId: string): SidePanelThread | undefined => {
       const state = get({ subscribe });
       return state.threads.find((t) => t.sessionId === sessionId);
     },
@@ -158,19 +146,15 @@ function createThreadStore() {
      */
     getActiveThread: (): SidePanelThread | undefined => {
       const state = get({ subscribe });
-      return state.threads.find((t) => t.id === state.activeThreadId);
+      return state.threads.find((t) => t.sessionId === state.activeSessionId);
     },
 
     /**
-     * Remove a thread by session ID (for external session termination)
+     * Remove a thread by session ID
      * @param sessionId The session ID
      */
-    removeThreadBySessionId: (sessionId: string): void => {
-      const state = get({ subscribe });
-      const thread = state.threads.find((t) => t.sessionId === sessionId);
-      if (thread) {
-        threadStore.closeThread(thread.id);
-      }
+    removeThread: (sessionId: string): void => {
+      threadStore.closeThread(sessionId);
     },
 
     /**
@@ -235,7 +219,7 @@ export const threadStore = createThreadStore();
 
 // Derived store for the active thread
 export const activeThread = derived(threadStore, ($threadStore) =>
-  $threadStore.threads.find((t) => t.id === $threadStore.activeThreadId)
+  $threadStore.threads.find((t) => t.sessionId === $threadStore.activeSessionId)
 );
 
 // Derived store for thread count

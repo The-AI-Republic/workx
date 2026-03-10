@@ -7,8 +7,7 @@
  * @module core/channels/ChannelAdapter
  */
 
-import type { EventMsg } from '@/core/protocol/types';
-import type { ChannelType, ChannelCapabilities, SubmissionHandler } from './types';
+import type { ChannelType, ChannelCapabilities, SubmissionHandler, ChannelEvent } from './types';
 
 /**
  * Channel Adapter Interface
@@ -99,7 +98,7 @@ export interface ChannelAdapter {
    * @param event - Event message to send
    * @param targetClientId - Optional specific client (for multi-client channels)
    */
-  sendEvent(event: EventMsg, targetClientId?: string): Promise<void>;
+  sendEvent(event: ChannelEvent, targetClientId?: string): Promise<void>;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Capabilities

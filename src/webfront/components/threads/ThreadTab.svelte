@@ -16,19 +16,19 @@
   onDestroy(unsubTheme);
 
   const dispatch = createEventDispatcher<{
-    select: { threadId: string };
-    close: { threadId: string };
+    select: { sessionId: string };
+    close: { sessionId: string };
   }>();
 
   $: displayTitle = thread.title.length > 20 ? thread.title.substring(0, 20) + '...' : thread.title;
 
   function handleSelect() {
-    dispatch('select', { threadId: thread.id });
+    dispatch('select', { sessionId: thread.sessionId });
   }
 
   function handleClose(event: MouseEvent) {
     event.stopPropagation();
-    dispatch('close', { threadId: thread.id });
+    dispatch('close', { sessionId: thread.sessionId });
   }
 
   function handleKeydown(event: KeyboardEvent) {
@@ -42,7 +42,7 @@
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       event.stopPropagation();
-      dispatch('close', { threadId: thread.id });
+      dispatch('close', { sessionId: thread.sessionId });
     }
   }
 </script>

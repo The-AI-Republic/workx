@@ -20,7 +20,7 @@
   export let placeholder: string = t('>> Enter command...');
   export let onSubmit: (value: string) => void = () => {};
   export let onStop: () => void = () => {};
-  export let onSelectConversation: (conversationId: string) => void = () => {};
+  export let onSelectConversation: (sessionId: string) => void = () => {};
   export let onNewConversation: () => void = () => {};
   export let tabId: number = -1;
   export let isProcessing: boolean = false;

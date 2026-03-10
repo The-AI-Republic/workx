@@ -133,11 +133,11 @@ export function isValidUUID(uuid: string): boolean {
 
 /**
  * Validate conversation ID (must be valid UUID).
- * @param conversationId - Conversation ID to validate
+ * @param sessionId - Conversation ID to validate
  * @returns True if valid
  */
-export function isValidConversationId(conversationId: ConversationId): boolean {
-  return isValidUUID(conversationId);
+export function isValidConversationId(sessionId: ConversationId): boolean {
+  return isValidUUID(sessionId);
 }
 
 // ============================================================================
@@ -146,11 +146,11 @@ export function isValidConversationId(conversationId: ConversationId): boolean {
 
 /**
  * Create an error for invalid conversation ID.
- * @param conversationId - The invalid ID
+ * @param sessionId - The invalid ID
  * @returns Error object
  */
-export function createInvalidIdError(conversationId: string): Error {
-  return new Error(`Invalid conversation ID: ${conversationId}. Must be a valid UUID.`);
+export function createInvalidIdError(sessionId: string): Error {
+  return new Error(`Invalid conversation ID: ${sessionId}. Must be a valid UUID.`);
 }
 
 /**

@@ -62,7 +62,7 @@ describe('Full Stream Lifecycle Integration', () => {
     client = new OpenAIChatCompletionClient(
       {
         apiKey: 'test-api-key',
-        conversationId: 'integration-test',
+        sessionId: 'integration-test',
         modelFamily: mockModelFamily,
         provider: mockProvider,
       },

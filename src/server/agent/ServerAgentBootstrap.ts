@@ -321,7 +321,7 @@ export class ServerAgentBootstrap {
 
     this.agent.setEventDispatcher((event) => {
       // Dispatch to ServerChannel → WebSocket clients
-      channelManager.dispatchEvent(event.msg, this.channel!.channelId).catch((error) => {
+      channelManager.dispatchEvent({ msg: event.msg }, this.channel!.channelId).catch((error) => {
         console.error('[ServerAgentBootstrap] Failed to dispatch event:', error);
       });
 
@@ -563,7 +563,7 @@ export class ServerAgentBootstrap {
           },
           eventDispatcherFactory: (sessionId) => (event) => {
             // Forward events to WebSocket clients AND intercept completions
-            channelManager.dispatchEvent(event.msg, this.channel!.channelId).catch(() => {});
+            channelManager.dispatchEvent({ msg: event.msg, sessionId }, this.channel!.channelId).catch(() => {});
             this.handleSchedulerEventCompletion(event.msg);
           },
         });

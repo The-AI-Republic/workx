@@ -112,10 +112,10 @@ class MultiThreadStateManager {
 
   /** Handle incoming event for a specific session (background thread) */
   handleEventForSession(event: { id: string; msg: { type: string; [key: string]: any } }, sessionId: string) {
-    const thread = threadStore.getThreadBySessionId(sessionId);
+    const thread = threadStore.getThread(sessionId);
     if (!thread) return;
 
-    let state = this.threadStates.get(thread.id);
+    let state = this.threadStates.get(thread.sessionId);
     if (!state) {
       state = {
         messages: [],
@@ -125,7 +125,7 @@ class MultiThreadStateManager {
         currentTabId: -1,
         eventProcessor: createMockEventProcessor(),
       };
-      this.threadStates.set(thread.id, state);
+      this.threadStates.set(thread.sessionId, state);
     }
 
     const processed = state.eventProcessor.processEvent(event);
@@ -140,14 +140,14 @@ class MultiThreadStateManager {
       state.isProcessing = false;
     }
 
-    this.threadStates.set(thread.id, state);
+    this.threadStates.set(thread.sessionId, state);
   }
 
   /** Switch to a specific thread (replicates switchToThread in Main.svelte) */
   switchToThread(threadId: string) {
     const currentActiveThread = threadStore.getActiveThread();
     if (currentActiveThread) {
-      this.saveThreadState(currentActiveThread.id);
+      this.saveThreadState(currentActiveThread.sessionId);
     }
 
     threadStore.setActiveThread(threadId);
@@ -195,7 +195,7 @@ describe('Multi-thread integration (UI state management)', () => {
       mgr.isProcessing = true;
       mgr.currentTabId = 42;
 
-      mgr.saveThreadState(thread.id);
+      mgr.saveThreadState(thread.sessionId);
 
       // Nuke UI state
       mgr.messages = [];
@@ -204,7 +204,7 @@ describe('Multi-thread integration (UI state management)', () => {
       mgr.isProcessing = false;
       mgr.currentTabId = -1;
 
-      mgr.loadThreadState(thread.id);
+      mgr.loadThreadState(thread.sessionId);
 
       expect(mgr.messages).toEqual([{ type: 'user', content: 'hi', timestamp: 1 }]);
       expect(mgr.processedEvents).toEqual([{ id: 'pe1', type: 'AgentMessage' }]);
@@ -217,13 +217,13 @@ describe('Multi-thread integration (UI state management)', () => {
       const thread = threadStore.createThread('s1');
 
       mgr.messages = [{ type: 'user', content: 'original', timestamp: 1 }];
-      mgr.saveThreadState(thread.id);
+      mgr.saveThreadState(thread.sessionId);
 
       // Mutate the current UI array
       mgr.messages.push({ type: 'agent', content: 'extra', timestamp: 2 });
 
       // Reload — should get the original snapshot
-      mgr.loadThreadState(thread.id);
+      mgr.loadThreadState(thread.sessionId);
       expect(mgr.messages).toHaveLength(1);
       expect(mgr.messages[0].content).toBe('original');
     });
@@ -232,16 +232,16 @@ describe('Multi-thread integration (UI state management)', () => {
       const t1 = threadStore.createThread('s1');
       const t2 = threadStore.createThread('s2');
 
-      mgr.saveThreadState(t1.id);
+      mgr.saveThreadState(t1.sessionId);
       const ep1 = mgr.eventProcessor;
 
       mgr.eventProcessor = createMockEventProcessor();
-      mgr.saveThreadState(t2.id);
+      mgr.saveThreadState(t2.sessionId);
 
-      mgr.loadThreadState(t1.id);
+      mgr.loadThreadState(t1.sessionId);
       const ep1Loaded = mgr.eventProcessor;
 
-      mgr.loadThreadState(t2.id);
+      mgr.loadThreadState(t2.sessionId);
       const ep2Loaded = mgr.eventProcessor;
 
       expect(ep1Loaded).toBe(ep1);
@@ -279,8 +279,8 @@ describe('Multi-thread integration (UI state management)', () => {
       const event = { id: 'evt_1', msg: { type: 'AgentMessage', data: {} } };
       mgr.handleEventForSession(event, 'session_1');
 
-      const state1 = mgr.threadStates.get(thread1.id);
-      const state2 = mgr.threadStates.get(thread2.id);
+      const state1 = mgr.threadStates.get(thread1.sessionId);
+      const state2 = mgr.threadStates.get(thread2.sessionId);
 
       expect(state1?.processedEvents).toHaveLength(1);
       expect(state2).toBeUndefined(); // Not touched
@@ -309,8 +309,8 @@ describe('Multi-thread integration (UI state management)', () => {
         'session_new'
       );
 
-      expect(mgr.threadStates.has(thread.id)).toBe(true);
-      expect(mgr.threadStates.get(thread.id)?.processedEvents).toHaveLength(1);
+      expect(mgr.threadStates.has(thread.sessionId)).toBe(true);
+      expect(mgr.threadStates.get(thread.sessionId)?.processedEvents).toHaveLength(1);
     });
 
     it('ignores unknown sessionId', () => {
@@ -330,7 +330,7 @@ describe('Multi-thread integration (UI state management)', () => {
         'session_x'
       );
 
-      expect(mgr.threadStates.get(thread.id)?.isProcessing).toBe(true);
+      expect(mgr.threadStates.get(thread.sessionId)?.isProcessing).toBe(true);
     });
 
     it('sets isProcessing=false on TaskComplete', () => {
@@ -345,7 +345,7 @@ describe('Multi-thread integration (UI state management)', () => {
         'session_x'
       );
 
-      expect(mgr.threadStates.get(thread.id)?.isProcessing).toBe(false);
+      expect(mgr.threadStates.get(thread.sessionId)?.isProcessing).toBe(false);
     });
 
     it('sets isProcessing=false on TaskFailed', () => {
@@ -360,7 +360,7 @@ describe('Multi-thread integration (UI state management)', () => {
         'session_x'
       );
 
-      expect(mgr.threadStates.get(thread.id)?.isProcessing).toBe(false);
+      expect(mgr.threadStates.get(thread.sessionId)?.isProcessing).toBe(false);
     });
   });
 
@@ -374,13 +374,13 @@ describe('Multi-thread integration (UI state management)', () => {
       const t2 = threadStore.createThread('s2');
 
       // Put some state on t1
-      threadStore.setActiveThread(t1.id);
+      threadStore.setActiveThread(t1.sessionId);
       mgr.activeSessionId = 's1';
       mgr.messages = [{ type: 'user', content: 'thread1 msg', timestamp: 1 }];
       mgr.inputText = 'draft1';
 
       // Switch to t2
-      mgr.switchToThread(t2.id);
+      mgr.switchToThread(t2.sessionId);
 
       // t2 should have fresh state
       expect(mgr.messages).toEqual([]);
@@ -388,7 +388,7 @@ describe('Multi-thread integration (UI state management)', () => {
       expect(mgr.activeSessionId).toBe('s2');
 
       // Switch back to t1 — should restore saved state
-      mgr.switchToThread(t1.id);
+      mgr.switchToThread(t1.sessionId);
 
       expect(mgr.messages).toEqual([{ type: 'user', content: 'thread1 msg', timestamp: 1 }]);
       expect(mgr.inputText).toBe('draft1');
@@ -399,8 +399,8 @@ describe('Multi-thread integration (UI state management)', () => {
       const t1 = threadStore.createThread('s1');
       const t2 = threadStore.createThread('s2');
 
-      threadStore.setActiveThread(t1.id);
-      mgr.switchToThread(t2.id);
+      threadStore.setActiveThread(t1.sessionId);
+      mgr.switchToThread(t2.sessionId);
 
       expect(mgr.activeSessionId).toBe('s2');
     });
@@ -441,22 +441,22 @@ describe('Multi-thread integration (UI state management)', () => {
       const t2 = threadStore.createThread('s2');
 
       // Start on t1
-      threadStore.setActiveThread(t1.id);
+      threadStore.setActiveThread(t1.sessionId);
       mgr.activeSessionId = 's1';
       mgr.messages = [{ type: 'user', content: 'msg_t1', timestamp: 1 }];
-      mgr.saveThreadState(t1.id);
+      mgr.saveThreadState(t1.sessionId);
 
       // Switch to t2, add different messages
-      mgr.switchToThread(t2.id);
+      mgr.switchToThread(t2.sessionId);
       mgr.messages = [{ type: 'agent', content: 'msg_t2', timestamp: 2 }];
-      mgr.saveThreadState(t2.id);
+      mgr.saveThreadState(t2.sessionId);
 
       // Load t1 — should see t1's messages
-      mgr.loadThreadState(t1.id);
+      mgr.loadThreadState(t1.sessionId);
       expect(mgr.messages).toEqual([{ type: 'user', content: 'msg_t1', timestamp: 1 }]);
 
       // Load t2 — should see t2's messages
-      mgr.loadThreadState(t2.id);
+      mgr.loadThreadState(t2.sessionId);
       expect(mgr.messages).toEqual([{ type: 'agent', content: 'msg_t2', timestamp: 2 }]);
     });
 
@@ -471,10 +471,10 @@ describe('Multi-thread integration (UI state management)', () => {
       );
 
       // t1 should be processing
-      expect(mgr.threadStates.get(t1.id)?.isProcessing).toBe(true);
+      expect(mgr.threadStates.get(t1.sessionId)?.isProcessing).toBe(true);
 
       // t2 should NOT be processing (state doesn't even exist yet)
-      expect(mgr.threadStates.get(t2.id)?.isProcessing).toBeUndefined();
+      expect(mgr.threadStates.get(t2.sessionId)?.isProcessing).toBeUndefined();
     });
 
     it('background events accumulate correctly for each thread', () => {
@@ -486,8 +486,8 @@ describe('Multi-thread integration (UI state management)', () => {
       mgr.handleEventForSession({ id: 'e2', msg: { type: 'AgentMessage', data: {} } }, 's1');
       mgr.handleEventForSession({ id: 'e3', msg: { type: 'AgentMessage', data: {} } }, 's2');
 
-      expect(mgr.threadStates.get(t1.id)?.processedEvents).toHaveLength(2);
-      expect(mgr.threadStates.get(t2.id)?.processedEvents).toHaveLength(1);
+      expect(mgr.threadStates.get(t1.sessionId)?.processedEvents).toHaveLength(2);
+      expect(mgr.threadStates.get(t2.sessionId)?.processedEvents).toHaveLength(1);
     });
 
     it('switching threads reveals accumulated background events', () => {
@@ -495,7 +495,7 @@ describe('Multi-thread integration (UI state management)', () => {
       const t2 = threadStore.createThread('s2');
 
       // Simulate: active on t1, background events arrive for t2
-      threadStore.setActiveThread(t1.id);
+      threadStore.setActiveThread(t1.sessionId);
       mgr.activeSessionId = 's1';
       mgr.messages = [{ type: 'user', content: 'active thread', timestamp: 1 }];
 
@@ -503,7 +503,7 @@ describe('Multi-thread integration (UI state management)', () => {
       mgr.handleEventForSession({ id: 'bg2', msg: { type: 'AgentMessage', data: {} } }, 's2');
 
       // Switch to t2
-      mgr.switchToThread(t2.id);
+      mgr.switchToThread(t2.sessionId);
 
       // Should see the 2 accumulated events
       expect(mgr.processedEvents).toHaveLength(2);

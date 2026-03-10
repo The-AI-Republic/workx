@@ -12,6 +12,7 @@ import type {
   ChannelType,
   ConnectionState,
   SubmissionContext,
+  ChannelEvent,
 } from '@/core/channels/types';
 import type { EventMsg } from '@/core/protocol/events';
 
@@ -106,13 +107,13 @@ export class WebSocketChannel implements ChannelAdapter {
   /**
    * Send an event to a specific client or broadcast
    */
-  async sendEvent(event: EventMsg, targetClientId?: string): Promise<void> {
+  async sendEvent(event: ChannelEvent, targetClientId?: string): Promise<void> {
     if (!this.initialized) {
       throw new Error('WebSocketChannel not initialized');
     }
 
     // Convert event to WebSocket message format
-    const wsMessage = this.eventToWSMessage(event);
+    const wsMessage = this.eventToWSMessage(event.msg);
     if (!wsMessage) {
       return;
     }
@@ -179,7 +180,7 @@ export class WebSocketChannel implements ChannelAdapter {
     message: WSUserTurn
   ): Promise<void> {
     const turnId = `turn-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const conversationId = message.conversationId || `conv-${clientId}`;
+    const sessionId = message.sessionId || `conv-${clientId}`;
 
     // Track the turn
     this.currentTurns.set(turnId, { clientId, turnId });
@@ -194,7 +195,7 @@ export class WebSocketChannel implements ChannelAdapter {
         type: 'user_turn',
         content: message.content,
         images: message.images,
-        conversationId,
+        sessionId,
         turnId,
       },
       timestamp: Date.now(),
@@ -204,7 +205,7 @@ export class WebSocketChannel implements ChannelAdapter {
     await this.server.send(clientId, {
       type: 'assistant_turn_start',
       turnId,
-      conversationId,
+      sessionId,
       timestamp: Date.now(),
     } as WSAssistantTurnStart);
 
