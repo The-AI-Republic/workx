@@ -88,9 +88,6 @@
   let canCreateThread: boolean = true;
   let maxSessionsReached: boolean = false;
 
-  let showWelcome = $derived(
-    !isProcessing && processedEvents.length === 0 && messages.length === 0);
-
 
   onMount(async () => {
     // Listen for zoom level changes
