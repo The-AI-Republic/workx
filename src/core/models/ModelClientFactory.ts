@@ -752,7 +752,10 @@ export class ModelClientFactory {
     if (typeof crypto !== 'undefined' && typeof (crypto as any).randomUUID === 'function') {
       return (crypto as any).randomUUID();
     }
-    return Math.random().toString(36).slice(2);
+    // Fallback using cryptographically secure random values
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
   }
 
   /**
