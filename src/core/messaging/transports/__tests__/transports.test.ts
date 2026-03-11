@@ -325,10 +325,11 @@ describe('WebSocketTransport', () => {
     transport = new WebSocketTransport({ url: 'ws://localhost:8080' });
 
     const OrigCtor = (globalThis as any).WebSocket;
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     (globalThis as any).WebSocket = class extends MockWebSocket {
       constructor(url: string) {
         super(url);
-        mockWs = this;
+        mockWs = this; // eslint-disable-line @typescript-eslint/no-this-alias
       }
     };
     Object.assign((globalThis as any).WebSocket, OrigCtor);
