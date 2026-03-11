@@ -67,6 +67,7 @@ import { ChatGPTOAuthService } from '../../core/auth/ChatGPTOAuthService';
 // Multi-agent registry imports (Feature 015)
 import { AgentRegistry, SessionStorage } from '../../core/registry';
 import type { SessionConfig } from '../../core/registry/types';
+import { DEFAULT_MAX_CONCURRENT } from '../../core/registry/types';
 import { PRIMARY_SESSION_ALIAS } from '../../core/models/types/SessionContracts';
 import { t } from '../../webfront/lib/i18n';
 
@@ -210,7 +211,7 @@ async function doInitialize(): Promise<void> {
   // Feature 015: Initialize AgentRegistry instead of singleton agent
   // Load max concurrent sessions from user preferences
   const config = agentConfig!.getConfig();
-  const maxConcurrentSessions = config.preferences?.maxConcurrentSessions ?? 3;
+  const maxConcurrentSessions = config.preferences?.maxConcurrentSessions ?? DEFAULT_MAX_CONCURRENT;
   registry = AgentRegistry.getInstance({ maxConcurrent: maxConcurrentSessions });
   registry.initialize(agentConfig!);
 
