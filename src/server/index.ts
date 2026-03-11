@@ -138,7 +138,15 @@ function handleHttpRequest(req: IncomingMessage, res: ServerResponse): void {
 
     if (existsSync(filePath) && statSync(filePath).isFile()) {
       const ext = extname(filePath);
-      res.writeHead(200, { 'Content-Type': MIME_TYPES[ext] ?? 'application/octet-stream' });
+      // Hashed assets (chunks/*-[hash].js, assets/*-[hash].css) are immutable
+      const isHashed = /[-\.][a-f0-9]{8,}\.\w+$/.test(filePath);
+      const cacheControl = isHashed
+        ? 'public, max-age=31536000, immutable'
+        : 'no-cache';
+      res.writeHead(200, {
+        'Content-Type': MIME_TYPES[ext] ?? 'application/octet-stream',
+        'Cache-Control': cacheControl,
+      });
       createReadStream(filePath).pipe(res);
       return;
     }
@@ -146,7 +154,10 @@ function handleHttpRequest(req: IncomingMessage, res: ServerResponse): void {
     // SPA fallback: serve index.html for unmatched routes
     const indexPath = join(WEB_ROOT, 'index.html');
     if (existsSync(indexPath)) {
-      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.writeHead(200, {
+        'Content-Type': 'text/html',
+        'Cache-Control': 'no-cache',
+      });
       createReadStream(indexPath).pipe(res);
       return;
     }

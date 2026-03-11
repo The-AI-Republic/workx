@@ -38,13 +38,24 @@ export function verifyAuth(
 
   switch (mode) {
     case 'none':
-      // Allow loopback and same-origin browser connections (web UI served by this server)
-      if (isLoopback || headers?.origin) {
+      // Allow loopback connections unconditionally
+      if (isLoopback) {
         return { authenticated: true };
+      }
+      // Allow browser connections from the server's own origin (web UI)
+      if (headers?.origin) {
+        const expectedOrigins = buildExpectedOrigins(config);
+        if (expectedOrigins.has(headers.origin)) {
+          return { authenticated: true };
+        }
+        return {
+          authenticated: false,
+          error: unauthorized('Origin not allowed'),
+        };
       }
       return {
         authenticated: false,
-        error: unauthorized('Auth mode "none" only allowed on loopback or browser connections'),
+        error: unauthorized('Auth mode "none" only allowed on loopback or same-origin connections'),
       };
 
     case 'token':
@@ -139,6 +150,27 @@ function verifyTrustedProxy(
   // We trust the user header if it arrives at all (proxy IP validation
   // happens at the connection/accept level, not here).
   return { authenticated: true, userId: user };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Origin helpers
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Build the set of origins that the server considers "self".
+ * Covers http/https on localhost and the configured port.
+ */
+function buildExpectedOrigins(config: ServerConfig): Set<string> {
+  const port = config.server.port;
+  const origins = new Set<string>();
+  origins.add(`http://localhost:${port}`);
+  origins.add(`http://127.0.0.1:${port}`);
+  origins.add(`https://localhost:${port}`);
+  origins.add(`https://127.0.0.1:${port}`);
+  // Standard ports omit the port in the Origin header
+  if (port === 80) origins.add('http://localhost');
+  if (port === 443) origins.add('https://localhost');
+  return origins;
 }
 
 // ─────────────────────────────────────────────────────────────────────────

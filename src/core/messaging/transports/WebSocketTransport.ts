@@ -49,6 +49,10 @@ export class WebSocketTransport implements UIChannelTransport {
   private connectionId: string | null = null;
   private pendingRpcs = new Map<string, PendingRpc>();
 
+  // Handshake callbacks — set during initialize(), cleared after handshake
+  private handshakeResolve: (() => void) | null = null;
+  private handshakeReject: ((err: Error) => void) | null = null;
+
   constructor(config: WebSocketTransportConfig) {
     this.config = config;
   }
@@ -70,37 +74,26 @@ export class WebSocketTransport implements UIChannelTransport {
       // Map UI service names to server method names
       const serverMethod = SERVICE_METHOD_MAP[svcOp.service] ?? svcOp.service;
 
-      let result: unknown;
-      let success = true;
-      let error: string | undefined;
+      // Send the RPC but don't use the transport-level timeout —
+      // UIChannelClient already has its own timeout for ServiceRequests.
+      // We fire-and-forget the req frame and let the response arrive
+      // through handleResponseFrame → dispatchServiceResponse.
+      const id = crypto.randomUUID();
 
-      try {
-        result = await this.rpc(serverMethod, svcOp.params);
-      } catch (err) {
-        success = false;
-        error = err instanceof Error ? err.message : 'RPC failed';
-        console.warn(`[WebSocketTransport] ServiceRequest '${svcOp.service}' failed:`, error);
-      }
-
-      // Synthesize a ServiceResponse EventMsg back to the UIChannelClient
-      const responseEvent: EventMsg = {
-        type: 'ServiceResponse',
-        data: {
-          requestId: svcOp.requestId,
-          service: svcOp.service,
-          success,
-          data: result,
-          error,
+      this.pendingRpcs.set(id, {
+        resolve: (result) => {
+          this.dispatchServiceResponse(svcOp, true, result);
         },
-      } as EventMsg;
+        reject: (err) => {
+          this.dispatchServiceResponse(svcOp, false, undefined, err.message);
+        },
+        // No transport-level timeout for ServiceRequests — UIChannelClient handles it
+        timeout: setTimeout(() => {}, 0),
+      });
+      // Clear the no-op timeout immediately
+      clearTimeout(this.pendingRpcs.get(id)!.timeout);
 
-      for (const handler of this.listeners) {
-        try {
-          handler(responseEvent);
-        } catch (err) {
-          console.error('[WebSocketTransport] Event handler threw:', err);
-        }
-      }
+      this.send({ type: 'req', id, method: serverMethod, params: svcOp.params });
       return;
     }
 
@@ -122,9 +115,15 @@ export class WebSocketTransport implements UIChannelTransport {
 
   async initialize(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
+      this.handshakeResolve = resolve;
+      this.handshakeReject = reject;
+
       this.ws = new WebSocket(this.config.url);
 
-      this.ws.onerror = (err) => reject(err);
+      this.ws.onerror = (err) => {
+        this.clearHandshake();
+        reject(err);
+      };
 
       this.ws.onmessage = (rawEvent) => {
         try {
@@ -134,27 +133,6 @@ export class WebSocketTransport implements UIChannelTransport {
           // Ignore malformed messages
         }
       };
-
-      // Wait for the handshake to complete
-      const onHandshakeComplete = (event: EventMsg) => {
-        if ((event as any)._handshakeComplete) {
-          this.listeners.delete(onHandshakeComplete);
-          // Set up post-init error/close handlers
-          this.ws!.onerror = (err) => {
-            console.error('[WebSocketTransport] Connection error:', err);
-          };
-          this.ws!.onclose = (event) => {
-            console.warn(`[WebSocketTransport] Connection closed: code=${event.code} reason=${event.reason}`);
-            this.ws = null;
-          };
-          resolve();
-        }
-        if ((event as any)._handshakeFailed) {
-          this.listeners.delete(onHandshakeComplete);
-          reject(new Error((event as any)._handshakeFailed));
-        }
-      };
-      this.listeners.add(onHandshakeComplete);
     });
   }
 
@@ -165,6 +143,8 @@ export class WebSocketTransport implements UIChannelTransport {
       pending.reject(new Error('Transport destroyed'));
       this.pendingRpcs.delete(id);
     }
+
+    this.clearHandshake();
 
     if (this.ws) {
       this.ws.close();
@@ -177,6 +157,40 @@ export class WebSocketTransport implements UIChannelTransport {
   // ─────────────────────────────────────────────────────────────────
   // Private
   // ─────────────────────────────────────────────────────────────────
+
+  private clearHandshake(): void {
+    this.handshakeResolve = null;
+    this.handshakeReject = null;
+  }
+
+  /**
+   * Dispatch a synthesized ServiceResponse EventMsg to listeners.
+   */
+  private dispatchServiceResponse(
+    svcOp: { requestId: string; service: string },
+    success: boolean,
+    data?: unknown,
+    error?: string,
+  ): void {
+    const responseEvent: EventMsg = {
+      type: 'ServiceResponse',
+      data: {
+        requestId: svcOp.requestId,
+        service: svcOp.service,
+        success,
+        data,
+        error,
+      },
+    } as EventMsg;
+
+    for (const handler of this.listeners) {
+      try {
+        handler(responseEvent);
+      } catch (err) {
+        console.error('[WebSocketTransport] Event handler threw:', err);
+      }
+    }
+  }
 
   private send(frame: Record<string, unknown>): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -261,11 +275,21 @@ export class WebSocketTransport implements UIChannelTransport {
         this.connectionId = frame.payload.server?.connId;
         console.log('[WebSocketTransport] Handshake complete, connId:', this.connectionId);
 
-        // Signal handshake completion
-        const signal = { _handshakeComplete: true } as unknown as EventMsg;
-        for (const handler of this.listeners) {
-          try { handler(signal); } catch { /* ignore */ }
+        // Signal handshake completion via dedicated callback
+        if (this.handshakeResolve) {
+          this.handshakeResolve();
+          this.clearHandshake();
+
+          // Set up post-init error/close handlers
+          this.ws!.onerror = (err) => {
+            console.error('[WebSocketTransport] Connection error:', err);
+          };
+          this.ws!.onclose = (event) => {
+            console.warn(`[WebSocketTransport] Connection closed: code=${event.code} reason=${event.reason}`);
+            this.ws = null;
+          };
         }
+
         pending.resolve(frame.payload);
         return;
       }
@@ -302,9 +326,9 @@ export class WebSocketTransport implements UIChannelTransport {
     // Use rpc() so we can track the hello-ok response
     this.rpc('connect', connectParams).catch((err) => {
       console.error('[WebSocketTransport] Handshake failed:', err);
-      const signal = { _handshakeFailed: err.message } as unknown as EventMsg;
-      for (const handler of this.listeners) {
-        try { handler(signal); } catch { /* ignore */ }
+      if (this.handshakeReject) {
+        this.handshakeReject(new Error(err.message));
+        this.clearHandshake();
       }
     });
   }

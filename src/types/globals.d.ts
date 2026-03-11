@@ -9,6 +9,7 @@
  * - 'extension': Chrome extension build
  * - 'desktop': Tauri desktop application build
  * - 'server': Headless server build
+ * - 'web': Web UI served by the server (browser SPA)
  * - 'mobile': Mobile application build (future)
  */
 declare const __BUILD_MODE__: 'extension' | 'desktop' | 'server' | 'web' | 'mobile';

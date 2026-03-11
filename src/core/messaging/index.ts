@@ -53,7 +53,7 @@ export function getUIClient(): UIChannelClient {
   } else if (__BUILD_MODE__ === 'web') {
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const url = `${proto}//${location.host}`;
-    console.log('[messaging] Selected WebSocketTransport (server mode)', url);
+    console.log('[messaging] Selected WebSocketTransport (web mode)', url);
     transport = new WebSocketTransport({ url });
   } else {
     throw new Error(`No suitable transport for build mode: ${__BUILD_MODE__}`);
