@@ -38,13 +38,13 @@ export function verifyAuth(
 
   switch (mode) {
     case 'none':
-      // Only allow on loopback
-      if (isLoopback) {
+      // Allow loopback and same-origin browser connections (web UI served by this server)
+      if (isLoopback || headers?.origin) {
         return { authenticated: true };
       }
       return {
         authenticated: false,
-        error: unauthorized('Auth mode "none" only allowed on loopback connections'),
+        error: unauthorized('Auth mode "none" only allowed on loopback or browser connections'),
       };
 
     case 'token':

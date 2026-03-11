@@ -65,6 +65,9 @@
       if (platform.platformName === 'desktop') {
         // Desktop: update userStore from keychain (agent auth already set by bootstrap)
         await updateDesktopUserStore();
+      } else if (platform.platformName === 'web') {
+        // Web: auth handled at WebSocket handshake level, skip UI-level auth
+        userStore.setNotLoggedIn();
       } else {
         // Extension: check cookies, update userStore, send INIT_AUTH
         await checkExtensionAuth();

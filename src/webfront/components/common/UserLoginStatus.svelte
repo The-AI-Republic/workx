@@ -121,6 +121,10 @@
           cancelLogin = null;
         }
       }
+    } else if (platform.platformName === 'web') {
+      // Web mode: open login page in a new window
+      const loginUrl = getLoginPageUrl();
+      window.open(loginUrl, '_blank');
     } else {
       // Extension mode: open login page in a new tab
       const loginUrl = getLoginPageUrl();

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   applepi-server:
     build:
@@ -13,7 +11,7 @@ services:
     environment:
       - APPLEPI_SERVER_PORT=18100
       - APPLEPI_SERVER_BIND=auto
-      - APPLEPI_SERVER_AUTH_MODE=token
+      - APPLEPI_SERVER_AUTH_MODE=${APPLEPI_SERVER_AUTH_MODE:-none}
       - APPLEPI_SERVER_TOKEN=${APPLEPI_SERVER_TOKEN}
       - APPLEPI_DATA_DIR=/data
       - APPLEPI_CONFIG_PATH=/app/config.json
