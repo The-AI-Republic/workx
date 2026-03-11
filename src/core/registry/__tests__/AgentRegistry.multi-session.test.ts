@@ -13,16 +13,19 @@ import { DEFAULT_MAX_CONCURRENT } from '@/core/registry/types';
 // Mock RepublicAgent
 vi.mock('@/core/RepublicAgent', () => ({
   RepublicAgent: class MockRepublicAgent {
-    initialize = vi.fn().mockResolvedValue(undefined);
-    getSession = vi.fn(() => ({
-      conversationId: 'conv_' + Math.random().toString(36).slice(2),
+    private _session = {
+      sessionId: 'session_' + Math.random().toString(36).slice(2),
       abortAllTasks: vi.fn(),
       close: vi.fn(),
       setTabId: vi.fn(),
-    }));
+    };
+    initialize = vi.fn().mockResolvedValue(undefined);
+    getSession = vi.fn(() => this._session);
     submitOperation = vi.fn().mockResolvedValue('sub_123');
     cleanup = vi.fn();
     setEventDispatcher = vi.fn();
+    getApprovalManager = vi.fn().mockReturnValue({});
+    getToolRegistry = vi.fn().mockReturnValue({ setApprovalGate: vi.fn() });
     refreshModelClient = vi.fn().mockResolvedValue(undefined);
     agentId = 'agent_mock';
   },

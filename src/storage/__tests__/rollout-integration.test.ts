@@ -85,7 +85,7 @@ describe('Rollout Integration Tests', () => {
       expect(history.type).toBe('resumed');
 
       if (history.type === 'resumed') {
-        expect(history.payload.conversationId).toBe(conversationId);
+        expect(history.payload.sessionId).toBe(conversationId);
         expect(history.payload.history.length).toBeGreaterThan(0);
 
         // Should include SessionMeta + recorded items

@@ -39,13 +39,14 @@ vi.mock('@/core/RepublicAgent', () => {
         return undefined;
       }
       setEventDispatcher = vi.fn();
+      private _session = {
+        sessionId: `session_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        abortAllTasks: vi.fn().mockResolvedValue(undefined),
+        close: vi.fn().mockResolvedValue(undefined),
+        setTabId: vi.fn(),
+      };
       getSession() {
-        return {
-          sessionId: `conv_${Date.now()}`,
-          abortAllTasks: vi.fn().mockResolvedValue(undefined),
-          close: vi.fn().mockResolvedValue(undefined),
-          setTabId: vi.fn(),
-        };
+        return this._session;
       }
       async submitOperation() {
         return 'op_123';
@@ -306,7 +307,9 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
     });
 
     it('should return null when max concurrent sessions reached', async () => {
-      // Fill up to max concurrent (default 3)
+      // Set a low limit to test the constraint
+      registry.setMaxConcurrent(3);
+      // Fill up to max concurrent
       await registry.createSession({ type: 'primary' });
       await registry.createSession({ type: 'scheduled' });
       await registry.createSession({ type: 'scheduled' });

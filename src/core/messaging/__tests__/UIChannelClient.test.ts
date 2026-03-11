@@ -191,14 +191,15 @@ describe('UIChannelClient', () => {
       expect(handler).not.toHaveBeenCalled();
     });
 
-    it('dispatches wildcard events', () => {
+    it('dispatches wildcard events as full ChannelEvent', () => {
       const handler = vi.fn();
       client.onEvent('*', handler);
 
       const event = { type: 'TaskComplete', data: { submission_id: '1' } } as any;
       transport._simulateEvent(event);
 
-      expect(handler).toHaveBeenCalledWith(event);
+      // Wildcard handlers receive the full ChannelEvent envelope
+      expect(handler).toHaveBeenCalledWith({ msg: event });
     });
   });
 
@@ -245,6 +246,75 @@ describe('UIChannelClient', () => {
 
       expect(await promise1).toBe('A');
       expect(await promise2).toBe('B');
+    });
+  });
+
+  describe('ChannelEvent sessionId propagation', () => {
+    it('wildcard handler receives sessionId from envelope', () => {
+      const handler = vi.fn();
+      client.onEvent('*', handler);
+
+      // Simulate event with sessionId in the envelope
+      const channelEvent: ChannelEvent = {
+        msg: { type: 'AgentMessage', data: { message: 'hello' } } as any,
+        sessionId: 'session-abc',
+      };
+      for (const h of transport._handlers) h(channelEvent);
+
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({ sessionId: 'session-abc' })
+      );
+    });
+
+    it('wildcard handler receives events without sessionId', () => {
+      const handler = vi.fn();
+      client.onEvent('*', handler);
+
+      // Simulate event without sessionId
+      const channelEvent: ChannelEvent = {
+        msg: { type: 'AgentMessage', data: { message: 'hello' } } as any,
+      };
+      for (const h of transport._handlers) h(channelEvent);
+
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({ msg: expect.objectContaining({ type: 'AgentMessage' }) })
+      );
+      expect(handler.mock.calls[0][0].sessionId).toBeUndefined();
+    });
+
+    it('typed handlers receive data regardless of sessionId', () => {
+      const handler = vi.fn();
+      client.onEvent('AgentMessage', handler);
+
+      // Simulate event with sessionId — typed handler still gets event data
+      const channelEvent: ChannelEvent = {
+        msg: { type: 'AgentMessage', data: { message: 'world' } } as any,
+        sessionId: 'session-xyz',
+      };
+      for (const h of transport._handlers) h(channelEvent);
+
+      // Typed handlers receive event.data, not the full envelope
+      expect(handler).toHaveBeenCalledWith({ message: 'world' });
+    });
+
+    it('dispatches both typed and wildcard for same event', () => {
+      const typedHandler = vi.fn();
+      const wildcardHandler = vi.fn();
+      client.onEvent('AgentMessage', typedHandler);
+      client.onEvent('*', wildcardHandler);
+
+      const channelEvent: ChannelEvent = {
+        msg: { type: 'AgentMessage', data: { message: 'dual' } } as any,
+        sessionId: 'session-dual',
+      };
+      for (const h of transport._handlers) h(channelEvent);
+
+      // Typed handler gets event data
+      expect(typedHandler).toHaveBeenCalledWith({ message: 'dual' });
+      // Wildcard handler gets full ChannelEvent envelope with sessionId
+      expect(wildcardHandler).toHaveBeenCalledWith(
+        expect.objectContaining({ sessionId: 'session-dual' })
+      );
     });
   });
 });
