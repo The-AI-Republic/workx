@@ -7,6 +7,9 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createSessionServices, type SessionServiceDeps } from '../session-services';
+import type { SubmissionContext } from '@/core/channels/types';
+
+const ctx = { channelId: 'test', channelType: 'sidepanel' } as SubmissionContext;
 
 function createMockDeps(overrides: Partial<SessionServiceDeps> = {}): SessionServiceDeps {
   // Cache session mocks so getSession returns the same reference
@@ -58,7 +61,7 @@ describe('session-services', () => {
 
   describe('session.getState', () => {
     it('returns state for a valid sessionId', async () => {
-      const result = await services['session.getState']({ sessionId: 's1' });
+      const result = await services['session.getState']({ sessionId: 's1' }, ctx);
 
       expect(result).toMatchObject({
         sessionId: 's1',
@@ -70,11 +73,11 @@ describe('session-services', () => {
     });
 
     it('throws when sessionId is missing', async () => {
-      await expect(services['session.getState']({})).rejects.toThrow('sessionId is required');
+      await expect(services['session.getState']({}, ctx)).rejects.toThrow('sessionId is required');
     });
 
     it('throws when session not found', async () => {
-      await expect(services['session.getState']({ sessionId: 'unknown' })).rejects.toThrow(
+      await expect(services['session.getState']({ sessionId: 'unknown' }, ctx)).rejects.toThrow(
         'Session not found: unknown'
       );
     });
@@ -88,7 +91,7 @@ describe('session-services', () => {
 
       // Grab the session mock before calling reset (getSession returns same ref)
       const session = deps.registry.getSession('s1');
-      const result = await services['session.reset']({ sessionId: 's1' });
+      const result = await services['session.reset']({ sessionId: 's1' }, ctx);
 
       expect(session.reset).toHaveBeenCalled();
       expect(resetTabs).toHaveBeenCalled();
@@ -96,12 +99,12 @@ describe('session-services', () => {
     });
 
     it('works without resetTabs callback', async () => {
-      const result = await services['session.reset']({ sessionId: 's1' });
+      const result = await services['session.reset']({ sessionId: 's1' }, ctx);
       expect(result).toHaveProperty('timestamp');
     });
 
     it('throws for missing sessionId', async () => {
-      await expect(services['session.reset']({})).rejects.toThrow('sessionId is required');
+      await expect(services['session.reset']({}, ctx)).rejects.toThrow('sessionId is required');
     });
   });
 
@@ -111,14 +114,14 @@ describe('session-services', () => {
       deps = createMockDeps({ resumeSession });
       services = createSessionServices(deps);
 
-      const result = await services['session.resume']({ sessionId: 's1' });
+      const result = await services['session.resume']({ sessionId: 's1' }, ctx);
 
       expect(resumeSession).toHaveBeenCalledWith('s1');
       expect(result).toEqual({ sessionId: 's1', history: [] });
     });
 
     it('throws when resume not supported', async () => {
-      await expect(services['session.resume']({ sessionId: 's1' })).rejects.toThrow(
+      await expect(services['session.resume']({ sessionId: 's1' }, ctx)).rejects.toThrow(
         'Session resume not supported'
       );
     });
@@ -128,13 +131,13 @@ describe('session-services', () => {
       deps = createMockDeps({ resumeSession });
       services = createSessionServices(deps);
 
-      await expect(services['session.resume']({})).rejects.toThrow('sessionId is required');
+      await expect(services['session.resume']({}, ctx)).rejects.toThrow('sessionId is required');
     });
   });
 
   describe('session.list', () => {
     it('returns all sessions with registry metadata', async () => {
-      const result = await services['session.list']();
+      const result = await services['session.list']({}, ctx);
 
       expect(result).toEqual({
         sessions: [
@@ -149,7 +152,7 @@ describe('session-services', () => {
 
   describe('session.getActiveCount', () => {
     it('returns count and capacity info', async () => {
-      const result = await services['session.getActiveCount']();
+      const result = await services['session.getActiveCount']({}, ctx);
 
       expect(result).toEqual({
         activeCount: 2,
@@ -171,7 +174,7 @@ describe('session-services', () => {
         return undefined;
       });
 
-      const result = await services['session.create']();
+      const result = await services['session.create']({}, ctx);
 
       expect(deps.registry.createSession).toHaveBeenCalledWith({ type: 'primary' });
       expect(result).toEqual({
@@ -184,7 +187,7 @@ describe('session-services', () => {
     it('returns error when at capacity', async () => {
       (deps.registry.canCreateSession as any).mockReturnValue(false);
 
-      const result = await services['session.create']();
+      const result = await services['session.create']({}, ctx);
 
       expect(result).toEqual({
         success: false,
@@ -196,7 +199,7 @@ describe('session-services', () => {
 
   describe('session.setMaxConcurrent', () => {
     it('updates the limit', async () => {
-      const result = await services['session.setMaxConcurrent']({ maxConcurrent: 8 });
+      const result = await services['session.setMaxConcurrent']({ maxConcurrent: 8 }, ctx);
 
       expect(deps.registry.setMaxConcurrent).toHaveBeenCalledWith(8);
       expect(result).toEqual({ success: true });
@@ -204,21 +207,21 @@ describe('session-services', () => {
 
     it('throws for non-numeric value', async () => {
       await expect(
-        services['session.setMaxConcurrent']({ maxConcurrent: 'five' })
+        services['session.setMaxConcurrent']({ maxConcurrent: 'five' }, ctx)
       ).rejects.toThrow('maxConcurrent must be a number');
     });
   });
 
   describe('session.close', () => {
     it('removes the session', async () => {
-      const result = await services['session.close']({ sessionId: 's1' });
+      const result = await services['session.close']({ sessionId: 's1' }, ctx);
 
       expect(deps.registry.removeSession).toHaveBeenCalledWith('s1');
       expect(result).toEqual({ success: true });
     });
 
     it('returns error for missing sessionId', async () => {
-      const result = await services['session.close']({});
+      const result = await services['session.close']({}, ctx);
 
       expect(result).toEqual({ success: false, error: 'sessionId is required' });
       expect(deps.registry.removeSession).not.toHaveBeenCalled();
