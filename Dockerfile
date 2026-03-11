@@ -19,7 +19,8 @@ COPY packages/ws-server/package.json packages/ws-server/package.json
 RUN npm ci
 
 COPY . .
-RUN npx vite build --config vite.config.server.mts
+RUN npx vite build --config vite.config.server.mts && \
+    npx vite build --config vite.config.web.mts
 
 # Stage 2: Production image
 FROM node:22-slim
@@ -50,6 +51,7 @@ RUN npm ci --omit=dev
 
 # Copy built server from builder stage
 COPY --from=builder /app/dist/server ./dist/server
+COPY --from=builder /app/dist/web ./dist/web
 
 # Default configuration
 ENV APPLEPI_SERVER_PORT=18100

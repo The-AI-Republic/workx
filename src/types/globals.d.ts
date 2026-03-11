@@ -11,13 +11,13 @@
  * - 'server': Headless server build
  * - 'mobile': Mobile application build (future)
  */
-declare const __BUILD_MODE__: 'extension' | 'desktop' | 'server' | 'mobile';
+declare const __BUILD_MODE__: 'extension' | 'desktop' | 'server' | 'web' | 'mobile';
 
 /**
  * Augment the global scope
  */
 declare global {
-  const __BUILD_MODE__: 'extension' | 'desktop' | 'server' | 'mobile';
+  const __BUILD_MODE__: 'extension' | 'desktop' | 'server' | 'web' | 'mobile';
 }
 
 export {};

@@ -27,7 +27,8 @@
     "dev:server": "docker compose up --build applepi-server",
     "dev:server:no-container": "node --experimental-vm-modules --loader ts-node/esm src/server/index.ts",
     "build:server": "docker compose build applepi-server",
-    "build:server:no-container": "vite build --config vite.config.server.mts",
+    "build:server:no-container": "vite build --config vite.config.server.mts && vite build --config vite.config.web.mts",
+    "build:web": "vite build --config vite.config.web.mts",
     "start:server": "docker compose up applepi-server",
     "start:server:no-container": "node dist/server/index.mjs",
     "type-check:server": "tsc --noEmit -p tsconfig.server.json"

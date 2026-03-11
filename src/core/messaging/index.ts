@@ -18,11 +18,12 @@
 import { UIChannelClient } from './UIChannelClient';
 import { ChromeExtensionTransport } from './transports/ChromeExtensionTransport';
 import { TauriTransport } from './transports/TauriTransport';
+import { WebSocketTransport } from './transports/WebSocketTransport';
 export { UIChannelClient };
 export type { UIChannelTransport } from './transports/types';
 export { ChromeExtensionTransport };
 export { TauriTransport };
-export { WebSocketTransport } from './transports/WebSocketTransport';
+export { WebSocketTransport };
 
 // ---------------------------------------------------------------------------
 // UIChannelClient singleton
@@ -49,6 +50,11 @@ export function getUIClient(): UIChannelClient {
   } else if (__BUILD_MODE__ === 'extension') {
     console.log('[messaging] Selected ChromeExtensionTransport (extension mode)');
     transport = new ChromeExtensionTransport();
+  } else if (__BUILD_MODE__ === 'web') {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const url = `${proto}//${location.host}`;
+    console.log('[messaging] Selected WebSocketTransport (server mode)', url);
+    transport = new WebSocketTransport({ url });
   } else {
     throw new Error(`No suitable transport for build mode: ${__BUILD_MODE__}`);
   }

@@ -25,7 +25,7 @@ export interface PlatformCapabilities {
   hasTouchInput: boolean;
 
   /** Platform identifier for analytics/debugging */
-  platformName: 'extension' | 'desktop' | 'server' | 'mobile';
+  platformName: 'extension' | 'desktop' | 'server' | 'web' | 'mobile';
 }
 
 /**
@@ -44,7 +44,7 @@ export const platform: PlatformCapabilities = {
   hasTouchInput: false, // Will be: __BUILD_MODE__ === 'mobile'
 
   // Platform identifier
-  platformName: __BUILD_MODE__ as 'extension' | 'desktop' | 'server' | 'mobile',
+  platformName: __BUILD_MODE__ as 'extension' | 'desktop' | 'server' | 'web' | 'mobile',
 };
 
 /**
@@ -54,6 +54,6 @@ export const platform: PlatformCapabilities = {
 export const agentDisplayName: string =
   __BUILD_MODE__ === 'desktop'
     ? 'Apple Pi'
-    : __BUILD_MODE__ === 'server'
+    : __BUILD_MODE__ === 'server' || __BUILD_MODE__ === 'web'
       ? 'Apple Pi Server'
       : 'BrowserX';
