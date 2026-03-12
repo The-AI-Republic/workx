@@ -390,7 +390,8 @@ describe('DesktopAgentBootstrap.resumeSession', () => {
 
     expect(RepublicAgent).toHaveBeenCalled();
     const lastCall = piAgentConstructorCalls[piAgentConstructorCalls.length - 1];
-    const initialHistory = lastCall[1];
+    // Constructor: (config, platformAdapter, initialHistory, agentId, userNotifier)
+    const initialHistory = lastCall[2];
     expect(initialHistory).toEqual({
       mode: 'resumed',
       sessionId: conversationId,

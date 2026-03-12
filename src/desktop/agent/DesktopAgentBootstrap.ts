@@ -112,7 +112,9 @@ export class DesktopAgentBootstrap {
       this.registry = AgentRegistry.getInstance({
         maxConcurrent: maxConcurrentSessions,
         agentFactory: async (agentConfig) => {
-          const agent = new RepublicAgent(agentConfig, undefined, undefined, new UserNotifier());
+          const { DesktopPlatformAdapter } = await import('../platform/DesktopPlatformAdapter');
+          const platformAdapter = new DesktopPlatformAdapter();
+          const agent = new RepublicAgent(agentConfig, platformAdapter, undefined, undefined, new UserNotifier());
 
           // Copy auth manager from an existing session for consistency
           const existingAuth = this.getFirstAuthManager();
@@ -685,7 +687,9 @@ export class DesktopAgentBootstrap {
     // 4. Create a new agent with the resumed history, then register it as a session.
     // We create the agent manually because we need to pass initialHistory to the constructor.
     const config = await AgentConfig.getInstance();
-    const agent = new RepublicAgent(config, {
+    const { DesktopPlatformAdapter } = await import('../platform/DesktopPlatformAdapter');
+    const platformAdapter = new DesktopPlatformAdapter();
+    const agent = new RepublicAgent(config, platformAdapter, {
       mode: 'resumed' as const,
       sessionId,
       rolloutItems: initialHistory.payload.history,

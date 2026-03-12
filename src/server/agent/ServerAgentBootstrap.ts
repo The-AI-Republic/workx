@@ -153,7 +153,9 @@ export class ServerAgentBootstrap {
       this.registry = new AgentRegistry({
         maxConcurrent: 3,
         agentFactory: async (cfg) => {
-          const agent = new RepublicAgent(cfg);
+          const { ServerPlatformAdapter } = await import('../platform/ServerPlatformAdapter');
+          const platformAdapter = new ServerPlatformAdapter();
+          const agent = new RepublicAgent(cfg, platformAdapter);
           await agent.initialize();
 
           // Register server-mode tools on each new agent

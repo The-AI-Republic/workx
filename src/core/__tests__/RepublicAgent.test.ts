@@ -21,6 +21,7 @@ let mockUserNotifierInstance: Record<string, any>;
 let mockApprovalManagerInstance: Record<string, any>;
 let mockDiffTrackerInstance: Record<string, any>;
 let mockTabManagerInstance: Record<string, any>;
+let mockPlatformAdapter: Record<string, any>;
 let uuidCounter: number;
 
 // ---------------------------------------------------------------------------
@@ -187,6 +188,7 @@ describe('RepublicAgent', () => {
       cleanup: vi.fn().mockResolvedValue(undefined),
       clear: vi.fn(),
       setApprovalGate: vi.fn(),
+      getApprovalGate: vi.fn().mockReturnValue(undefined),
     };
 
     mockModelClientFactoryInstance = {
@@ -229,8 +231,26 @@ describe('RepublicAgent', () => {
       clearAllTabsFromGroup: vi.fn().mockResolvedValue(undefined),
     };
 
+    mockPlatformAdapter = {
+      platformId: 'extension',
+      hasRealTabs: true,
+      hasBrowserTools: true,
+      initialize: vi.fn().mockResolvedValue(undefined),
+      createTab: vi.fn().mockResolvedValue(100),
+      closeTab: vi.fn().mockResolvedValue(undefined),
+      validateTab: vi.fn().mockResolvedValue({ valid: true }),
+      switchTab: vi.fn().mockResolvedValue(undefined),
+      getBrowserController: vi.fn().mockResolvedValue(null),
+      registerPlatformTools: vi.fn().mockResolvedValue(undefined),
+      getConfigStorage: vi.fn().mockReturnValue({ get: vi.fn(), set: vi.fn() }),
+      getCredentialStore: vi.fn().mockReturnValue({ get: vi.fn(), set: vi.fn(), delete: vi.fn() }),
+      getStorageProvider: vi.fn().mockReturnValue({ get: vi.fn(), set: vi.fn(), delete: vi.fn() }),
+      createScheduler: vi.fn().mockReturnValue({ schedule: vi.fn(), cancel: vi.fn() }),
+      dispose: vi.fn().mockResolvedValue(undefined),
+    };
+
     config = createMockConfig();
-    agent = new RepublicAgent(config, undefined, undefined, mockUserNotifierInstance as any);
+    agent = new RepublicAgent(config, mockPlatformAdapter as any, undefined, undefined, mockUserNotifierInstance as any);
   });
 
   // =========================================================================
@@ -243,7 +263,7 @@ describe('RepublicAgent', () => {
     });
 
     it('should use the provided agentId when one is supplied', () => {
-      const custom = new RepublicAgent(config, undefined, 'my-agent');
+      const custom = new RepublicAgent(config, mockPlatformAdapter as any, undefined, 'my-agent');
       expect(custom.agentId).toBe('my-agent');
     });
 

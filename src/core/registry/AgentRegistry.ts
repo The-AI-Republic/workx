@@ -153,7 +153,10 @@ export class AgentRegistry {
         agent = await this._registryConfig.agentFactory(this._config, initialHistory);
       } else {
         // Extension path: create agent and wire events through ChannelManager
-        agent = new RepublicAgent(this._config, initialHistory, undefined, new UserNotifier());
+        const { ExtensionPlatformAdapter } = await import('../../extension/platform/ExtensionPlatformAdapter');
+        const platformAdapter = new ExtensionPlatformAdapter();
+        await platformAdapter.initialize();
+        agent = new RepublicAgent(this._config, platformAdapter, initialHistory, undefined, new UserNotifier());
         await agent.initialize();
 
         // Configure extension-specific approval gate

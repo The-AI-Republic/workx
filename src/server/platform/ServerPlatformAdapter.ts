@@ -6,7 +6,6 @@ import type {
   TabValidationResult,
   ModelCapabilities,
   IToolsConfig,
-  ApprovalPolicies,
   IConfigStorage,
   ICredentialStore,
   IStorageProvider,
@@ -21,11 +20,9 @@ export class ServerPlatformAdapter implements IPlatformAdapter {
   hasBrowserTools = false;
 
   async initialize(): Promise<void> {
-    // Attempt to connect to external browser MCP
     try {
       const browserEndpoint = this.getBrowserEndpoint();
       if (browserEndpoint) {
-        // Connect to remote browser
         this.hasBrowserTools = true;
       }
     } catch (error) {
@@ -60,24 +57,18 @@ export class ServerPlatformAdapter implements IPlatformAdapter {
     _toolsConfig: IToolsConfig,
     _capabilities: ModelCapabilities
   ): Promise<void> {
-    // Server-specific tool registration
-    // MCP browser tools (if available), web search, planning
-  }
-
-  getApprovalPolicies(): ApprovalPolicies {
-    return {
-      enhancers: [],
-      assessors: {},
-    };
+    // Server tools are registered separately by ServerAgentBootstrap
+    // (MCP tools, A2A tools, etc.) — no-op here matches existing behavior
+    console.log('[ServerPlatformAdapter] Server mode — skipping browser tool registration');
   }
 
   getConfigStorage(): IConfigStorage {
     return {
       async get(_key: string): Promise<unknown> {
-        return undefined; // File-based config
+        return undefined;
       },
       async set(_key: string, _value: unknown): Promise<void> {
-        // Write to file
+        // File-based config
       },
     };
   }
@@ -85,10 +76,10 @@ export class ServerPlatformAdapter implements IPlatformAdapter {
   getCredentialStore(): ICredentialStore {
     return {
       async get(_key: string): Promise<string | null> {
-        return null; // File-based credentials
+        return null;
       },
       async set(_key: string, _value: string): Promise<void> {
-        // Write to file
+        // File-based credentials
       },
       async delete(_key: string): Promise<void> {
         // Delete from file
@@ -99,10 +90,10 @@ export class ServerPlatformAdapter implements IPlatformAdapter {
   getStorageProvider(): IStorageProvider {
     return {
       async get(_key: string): Promise<unknown> {
-        return undefined; // SQLite storage
+        return undefined;
       },
       async set(_key: string, _value: unknown): Promise<void> {
-        // Write to SQLite
+        // SQLite storage
       },
       async delete(_key: string): Promise<void> {
         // Delete from SQLite

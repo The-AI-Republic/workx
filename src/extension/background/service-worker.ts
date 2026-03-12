@@ -516,7 +516,10 @@ async function registerServiceHandlers(): Promise<void> {
       }
 
       // Create a new session with resumed history
-      const resumedAgent = new RepublicAgent(agentConfig!, {
+      const { ExtensionPlatformAdapter } = await import('../platform/ExtensionPlatformAdapter');
+      const platformAdapter = new ExtensionPlatformAdapter();
+      await platformAdapter.initialize();
+      const resumedAgent = new RepublicAgent(agentConfig!, platformAdapter, {
         mode: 'resumed' as const,
         sessionId,
         rolloutItems: initialHistory.payload.history,

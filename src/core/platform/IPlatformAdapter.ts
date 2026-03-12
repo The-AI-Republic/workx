@@ -1,6 +1,9 @@
 // File: src/core/platform/IPlatformAdapter.ts
 
 import type { ToolRegistry } from '../../tools/ToolRegistry';
+import type { IToolsConfig } from '../../config/types';
+
+export type { IToolsConfig };
 
 export interface TabOptions {
   url?: string;
@@ -16,25 +19,6 @@ export interface TabValidationResult {
 export interface ModelCapabilities {
   supportsImage: boolean;
   supportsReasoning?: boolean;
-}
-
-export interface IToolsConfig {
-  webSearch?: { enabled: boolean };
-  execCommand?: { enabled: boolean };
-  [key: string]: unknown;
-}
-
-export interface ApprovalPolicies {
-  enhancers: IRiskEnhancer[];
-  assessors: Record<string, IRiskAssessor>;
-}
-
-export interface IRiskEnhancer {
-  enhance(context: unknown): unknown;
-}
-
-export interface IRiskAssessor {
-  assess(request: unknown): unknown;
 }
 
 export interface IConfigStorage {
@@ -87,9 +71,6 @@ export interface IPlatformAdapter {
     toolsConfig: IToolsConfig,
     capabilities: ModelCapabilities
   ): Promise<void>;
-
-  // Approval
-  getApprovalPolicies(): ApprovalPolicies;
 
   // Storage
   getConfigStorage(): IConfigStorage;
