@@ -430,6 +430,14 @@ export class ToolRegistry {
   }
 
   /**
+   * Iterate over all registered tool entries.
+   * Returns [toolName, entry] pairs for cloning/filtering.
+   */
+  entries(): IterableIterator<[string, { definition: ToolDefinition; handler: ToolHandler; riskAssessor?: IRiskAssessor }]> {
+    return this.tools.entries();
+  }
+
+  /**
    * List all registered tools
    */
   listTools(): ToolDefinition[] {

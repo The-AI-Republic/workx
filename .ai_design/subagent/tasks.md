@@ -1,248 +1,251 @@
-# Sub-Agent Implementation Tasks
+# RepublicAgent Refactoring Tasks
 
-## Phase 0: AgentExecutor Refactoring (Prerequisite)
+> Implementation tasks for the RepublicAgentEngine & Platform Abstraction refactoring.
+> See [refactor-republic-agent.md](./refactor-republic-agent.md) for full design details.
 
-See `refactor-republic-agent.md` for full design.
+## Overview
 
-### R01: AgentExecutorConfig types
-**File:** `src/core/AgentExecutorConfig.ts` (new)
-- [ ] Define `AgentExecutorConfig` interface
-- [ ] Define `ExecutorResult` interface
-- [ ] Define `RunOptions` interface
-**Blocked by:** nothing
+| Phase | Description | Tasks | Critical Path |
+|-------|-------------|-------|---------------|
+| Phase 1 | Core Engine (Foundation) | E1.1 - E1.5 | ✅ Yes |
+| Phase 2 | Platform Abstraction | P2.1 - P2.5 | ✅ Yes |
+| Phase 3 | RepublicAgent Refactoring | R3.1 - R3.4 | ✅ Yes |
+| Phase 4 | Tool Registry Cloning | T4.1 - T4.3 | No |
+| Phase 5 | Sub-Agent Integration | S5.1 - S5.7 | ✅ Yes |
 
-### R02: AgentExecutor implementation
-**File:** `src/core/AgentExecutor.ts` (new, ~150 lines)
-- [ ] Constructor: create non-persistent Session with injected ToolRegistry
-- [ ] `initialize()`: create ModelClient via shared factory, set up TurnContext with system prompt
-- [ ] `run(input, options)`: create RegularTask, call task.run() directly (awaitable), return ExecutorResult
-- [ ] `cancel()`: abort session tasks
-- [ ] Handle AbortSignal wiring
-- [ ] Wire onEvent callback for event observation
-**Blocked by:** R01
-
-### R03: ToolRegistry.getToolEntry()
-**File:** `src/tools/ToolRegistry.ts` (modify, ~5 lines)
-- [ ] Add `getToolEntry(name: string): ToolRegistryEntry | undefined`
-- [ ] Unit test
-**Blocked by:** nothing
-
-### R04: RepublicAgent.createExecutor()
-**File:** `src/core/RepublicAgent.ts` (modify, ~15 lines)
-- [ ] Add `createExecutor(config)` factory method
-- [ ] Passes shared AgentConfig, ModelClientFactory
-- [ ] Allows override of ToolRegistry, systemPrompt, model
-**Blocked by:** R02
-
-### R05: AgentExecutor unit tests
-- [ ] Test: run() returns final assistant message
-- [ ] Test: restricted ToolRegistry is respected (only allowed tools available)
-- [ ] Test: cancel() aborts execution
-- [ ] Test: non-persistent Session doesn't write to disk
-- [ ] Test: onEvent callback receives events
-**Blocked by:** R02
-
-### R06: Integration test — createExecutor()
-- [ ] Test: parentAgent.createExecutor() produces working executor
-- [ ] Test: executor shares parent's ModelClientFactory
-- [ ] Test: executor uses injected ToolRegistry
-- [ ] Test: executor runs independently of parent's session
-**Blocked by:** R04
-
-**Phase 0 dependency graph:**
-```
-R01 ── R02 ── R04 ── R06
-              R05
-R03 (parallel)
-```
-**Critical path:** R01 → R02 → R04 → R06
+**Critical Path:** `E1.1 → E1.4 → R3.1 → R3.2 → S5.5`
 
 ---
 
-## Phase 1: Core Sub-Agent (Foreground Only)
+## Phase 1: Core Engine (Foundation)
 
-### T01: Sub-Agent Type Definitions
-**File:** `src/core/subagent/types.ts`
-- [ ] Define `SubAgentTypeConfig` interface
-- [ ] Define `SubAgentToolParams` interface
-- [ ] Define `SubAgentResult` interface
-- [ ] Export all types
-**Blocked by:** R01 (uses ExecutorResult as reference)
+| Task | Status | File | Description | Blocked By |
+|------|--------|------|-------------|------------|
+| E1.1 | ✅ | `src/core/engine/RepublicAgentEngineConfig.ts` | Define config + result + operation types | — |
+| E1.2 | ✅ | `src/core/events/IEventRouter.ts` | Define event routing interface | — |
+| E1.3 | ✅ | `src/core/events/SubAgentEventRouter.ts` | Implement sub-agent router | E1.2 |
+| E1.4 | ✅ | `src/core/engine/RepublicAgentEngine.ts` | Implement engine with SQ/EQ | E1.1, E1.3 |
+| E1.5 | ⬜ | — | Unit tests for RepublicAgentEngine | E1.4 |
 
-### T02: Built-in Sub-Agent Types
-**File:** `src/core/subagent/builtinTypes.ts`
-- [ ] Define `researcher` type config (read-only tools, concise prompt)
-- [ ] Define `planner` type config (read + planning tools)
-- [ ] Define `worker` type config (full tools minus sub_agent)
-- [ ] Export `BUILTIN_SUBAGENT_TYPES` array
-- [ ] Verify deny list tool names match actual registered tool names
-**Blocked by:** T01
+### E1.1 Details: RepublicAgentEngineConfig.ts
+- `RepublicAgentEngineConfig` interface
+- `EngineResult` interface
+- `EngineOp` union type (UserInput, UserTurn, Interrupt, ExecApproval, PatchApproval, Compact, ClearHistory)
+- `RunOptions` interface
+- `ExecutionContext` interface
+- `Submission` interface
 
-### T03: Tool Subsetting
-**File:** `src/core/subagent/toolSubset.ts`
-- [ ] Implement `createSubAgentToolRegistry(parentRegistry, config)`
-- [ ] Apply allowlist logic
-- [ ] Apply denylist logic
-- [ ] Always exclude `sub_agent` tool (no nesting)
-- [ ] Unit test: allowlist filters correctly
-- [ ] Unit test: denylist filters correctly
-- [ ] Unit test: sub_agent always excluded
-**Blocked by:** T01, R03
-
-### T04: SubAgentTool Definition
-**File:** `src/core/subagent/SubAgentTool.ts`
-- [ ] Implement `buildSubAgentToolDefinition(types)` — returns ToolDefinition
-- [ ] Dynamic enum from registered type IDs
-- [ ] Description includes type descriptions for LLM
-- [ ] Do NOT include `background` param in Phase 1
-- [ ] Unit test: schema is valid
-**Blocked by:** T01, T02
-
-### T05: Sub-Agent Event Types
-**File:** `src/core/protocol/events.ts`
-- [ ] Add `SubAgentStart` event type (runId, type, description)
-- [ ] Add `SubAgentComplete` event type (runId, type, turnCount, tokenUsage, duration)
-- [ ] Add `SubAgentError` event type (runId, type, error)
-- [ ] Add to EventMsg union type
-**Blocked by:** nothing
-
-### T06: SubAgentRunner
-**File:** `src/core/subagent/SubAgentRunner.ts`
-- [ ] Implement `run(params, parentAgent, typeConfig)` method
-- [ ] Create restricted ToolRegistry via `createSubAgentToolRegistry()`
-- [ ] Create AgentExecutor via `parentAgent.createExecutor()`
-- [ ] Call `executor.initialize()`
-- [ ] Call `executor.run(input, { maxTurns, signal })`
-- [ ] Wrap with `Promise.race()` for maxDurationMs timeout (default: 120s)
-- [ ] Map ExecutorResult → SubAgentResult
-- [ ] Emit SubAgentStart event to parent before run
-- [ ] Emit SubAgentComplete/Error event to parent after run
-- [ ] Handle cancellation (parent's AbortSignal → executor.cancel())
-**Blocked by:** T01, T03, T05, R04
-
-### T07: Registration Helper
-**File:** `src/core/subagent/register.ts`
-- [ ] Implement `registerSubAgentTool(agent, options)`
-- [ ] Build tool definition from types
-- [ ] Create handler that delegates to SubAgentRunner
-- [ ] Register tool in agent's ToolRegistry
-- [ ] Set risk assessor (low risk — internal delegation)
-**Blocked by:** T04, T06
-
-### T08: Bootstrap Integration
-**Files:** `ServerAgentBootstrap.ts`, `DesktopAgentBootstrap.ts`, `service-worker.ts`
-- [ ] Import and call `registerSubAgentTool()` after platform tools
-- [ ] Pass built-in types
-- [ ] Server mode: verify sub-agent spawning works
-- [ ] Desktop mode: verify sub-agent spawning works
-- [ ] Extension mode: verify sub-agent spawning works
-**Blocked by:** T07
-
-### T09: System Prompt Guidance
-**File:** PromptComposer / base prompt
-- [ ] Add guidance for when to use sub_agent vs doing work directly
-- [ ] Emphasize: include ALL context in the prompt (sub-agent has no history)
-- [ ] Emphasize: only for self-contained tasks, not interactive ones
-- [ ] Make `description` required in prompt guidance
-**Blocked by:** T08
-
-### T10: Integration Tests
-- [ ] E2E: parent delegates research task to researcher sub-agent
-- [ ] E2E: parent delegates coding task to worker sub-agent
-- [ ] E2E: sub-agent maxTurns enforcement
-- [ ] E2E: sub-agent tool restriction (cannot use denied tools)
-- [ ] E2E: sub-agent cannot spawn sub-agent (no nesting)
-- [ ] E2E: parent cancellation propagates to sub-agent
-- [ ] E2E: model override works (sub-agent uses different model)
-- [ ] E2E: maxDurationMs timeout works
-- [ ] E2E: token usage from sub-agent appears in parent's totals
-**Blocked by:** T08
-
-### T11: Index/Exports
-**File:** `src/core/subagent/index.ts`
-- [ ] Export public API: types, register, builtinTypes
-**Blocked by:** T07
+### E1.4 Details: RepublicAgentEngine.ts (~400 lines)
+- Submission Queue (SQ) management
+- Event Queue (EQ) management
+- `initialize()` - create model client, TurnContext, wire session
+- `submitOperation()` - add to SQ, trigger processing
+- `getNextEvent()` - pull from EQ (blocking)
+- `run()` - awaitable single-prompt execution
+- `runMultiple()` - awaitable multi-prompt execution
+- `createChildEngine()` - factory for sub-agent engines
+- Approval routing (if `approvalGate` provided)
+- Lifecycle management (`dispose()`)
 
 ---
 
-## Phase 2: Background Execution & Resume
+## Phase 2: Platform Abstraction
 
-### T20: Background SubAgentRunner
-- [ ] Implement `runBackground()` — returns immediately with runId
-- [ ] Store result in a Map keyed by runId on completion
-- [ ] Emit SubAgentComplete notification to parent event stream
-- [ ] Add `background` param to tool schema
+| Task | Status | File | Description | Blocked By |
+|------|--------|------|-------------|------------|
+| P2.1 | ✅ | `src/core/platform/IPlatformAdapter.ts` | Define interface + types | — |
+| P2.2 | ✅ | `src/extension/platform/ExtensionPlatformAdapter.ts` | Implement for extension | P2.1 |
+| P2.3 | ✅ | `src/desktop/platform/DesktopPlatformAdapter.ts` | Implement for desktop | P2.1 |
+| P2.4 | ✅ | `src/server/platform/ServerPlatformAdapter.ts` | Implement for server | P2.1 |
+| P2.5 | ⬜ | — | Unit tests for each adapter | P2.2, P2.3, P2.4 |
 
-### T21: sub_agent_status Tool
-- [ ] New tool: query sub-agent status by runId
-- [ ] Returns: status, result (if complete), turn count, elapsed time
+### P2.1 Details: IPlatformAdapter.ts
+- `platformId`: 'extension' | 'desktop' | 'server'
+- `hasRealTabs`: boolean
+- `hasBrowserTools`: boolean
+- Tab management: `createTab()`, `closeTab()`, `validateTab()`, `switchTab()`
+- Browser: `getBrowserController()`
+- Tools: `registerPlatformTools()`, `getApprovalPolicies()`
+- Storage: `getConfigStorage()`, `getCredentialStore()`, `getStorageProvider()`
+- Lifecycle: `initialize()`, `dispose()`
 
-### T22: Sub-Agent Resume
-- [ ] Persist sub-agent session state (switch to persistent: true)
-- [ ] Implement resume by runId (load history, continue)
+### P2.2 Details: ExtensionPlatformAdapter.ts
+- Uses `chrome.tabs` API for real tab management
+- Uses `ChromeDebuggerClient` for browser control
+- Registers extension-specific browser tools (DOM, screenshot)
+- Risk enhancers: DomainSensitivity, SemanticElement, SensitivePath
 
-### T23: Token Budget
-- [ ] Add `maxTokens` to SubAgentTypeConfig
-- [ ] Track cumulative token usage during sub-agent run
-- [ ] Stop sub-agent when budget exceeded
+### P2.3 Details: DesktopPlatformAdapter.ts
+- Sentinel tabId (MCP manages tabs internally)
+- Uses `MCPBrowserController` via chrome-devtools-mcp
+- Registers terminal tool, settings tool
+- MCP connection handling in `initialize()`
 
----
-
-## Phase 3: User-Defined Types & Memory
-
-### T30: UI for Custom Sub-Agent Types
-- [ ] Settings panel for creating/editing sub-agent types
-- [ ] Custom system prompt editor
-- [ ] Tool allow/deny list picker
-- [ ] Model selector
-
-### T31: Sub-Agent Memory
-- [ ] Persistent storage per sub-agent type
-- [ ] MEMORY.md loaded into sub-agent system prompt
-- [ ] Read/Write tools for memory files
-
-### T32: Sub-Agent Streaming to UI
-- [ ] Forward sub-agent AgentMessageDelta events to parent UI
-- [ ] Show sub-agent progress in real-time
-- [ ] Collapsible sub-agent output in chat
+### P2.4 Details: ServerPlatformAdapter.ts
+- Sentinel tabId (no real tabs)
+- Optional external browser MCP connection
+- Registers user MCP servers via plugin system
+- Environment-based browser endpoint configuration
 
 ---
 
-## Full Dependency Graph
+## Phase 3: RepublicAgent Refactoring
+
+| Task | Status | File | Description | Blocked By |
+|------|--------|------|-------------|------------|
+| R3.1 | ⬜ | `src/core/RepublicAgent.ts` | Refactor to use RepublicAgentEngine internally | E1.4, P2.2, P2.3, P2.4 |
+| R3.2 | ⬜ | `src/core/RepublicAgent.ts` | Add `createChildEngine()` method | R3.1 |
+| R3.3 | ⬜ | `src/*/bootstrap/*.ts` | Update bootstraps to create adapters | R3.1 |
+| R3.4 | ⬜ | — | Integration tests for RepublicAgent | R3.2 |
+
+### R3.1 Details: RepublicAgent Refactoring (~350 lines)
+- Accept `IPlatformAdapter` in constructor
+- Create internal `RepublicAgentEngine` instance
+- Delegate all execution operations to engine
+- Keep orchestration concerns:
+  - Tab binding (via platform adapter)
+  - Config subscriptions (model hot-swap)
+  - Channel dispatch (setEventDispatcher)
+  - Session queries (history, compaction, isReady)
+- Remove all `__BUILD_MODE__` checks
+
+### R3.2 Details: createChildEngine()
+- Clone tool registry with restrictions
+- Create child engine with:
+  - No `approvalGate` (auto-approve)
+  - Ephemeral session (`persistent: false`)
+  - Optional browser context
+  - Event router for namespacing
+
+### R3.3 Details: Bootstrap Updates
+- `src/extension/bootstrap/*.ts` → use `ExtensionPlatformAdapter`
+- `src/desktop/bootstrap/*.ts` → use `DesktopPlatformAdapter`
+- `src/server/bootstrap/*.ts` → use `ServerPlatformAdapter`
+
+---
+
+## Phase 4: Tool Registry Cloning
+
+| Task | Status | File | Description | Blocked By |
+|------|--------|------|-------------|------------|
+| T4.1 | ✅ | `src/tools/ToolRegistry.ts` | Add `entries()` method | — |
+| T4.2 | ✅ | `src/tools/ToolRegistryCloner.ts` | Implement cloning utilities | T4.1 |
+| T4.3 | ⬜ | — | Unit tests for cloning | T4.2 |
+
+### T4.2 Details: ToolRegistryCloner.ts
+- `cloneForSubAgent(registry, options)`:
+  - `allow?: string[]` - only include these tools
+  - `deny?: string[]` - exclude these tools
+  - Always exclude `sub_agent` tool (prevent nesting)
+- Shallow clone tool definitions (handlers reference parent context)
+
+---
+
+## Phase 5: Sub-Agent Integration
+
+| Task | Status | File | Description | Blocked By |
+|------|--------|------|-------------|------------|
+| S5.1 | ✅ | `src/core/subagent/types.ts` | Define type config interface | — |
+| S5.2 | ✅ | `src/core/subagent/builtinTypes.ts` | Define built-in sub-agent types | S5.1 |
+| S5.3 | ✅ | `src/core/subagent/SubAgentTool.ts` | Build tool definition | S5.2 |
+| S5.4 | ✅ | `src/core/subagent/SubAgentRegistry.ts` | Track active sub-agents | — |
+| S5.5 | ✅ | `src/core/subagent/SubAgentRunner.ts` | Implement runner | R3.2, T4.2, S5.3, S5.4 |
+| S5.6 | ✅ | `src/core/subagent/register.ts` | Bootstrap registration helper | S5.5 |
+| S5.7 | ⬜ | — | Integration tests | S5.6 |
+
+### S5.1 Details: types.ts
+```typescript
+interface SubAgentTypeConfig {
+  name: string;
+  description: string;
+  systemPromptTemplate: string;
+  tools?: { allow?: string[]; deny?: string[] };
+  maxTurns?: number;
+  model?: string;
+}
+
+interface SubAgentResult {
+  success: boolean;
+  response: string | null;
+  turnCount: number;
+  tokenUsage?: TokenUsage;
+  error?: string;
+}
+```
+
+### S5.2 Details: builtinTypes.ts
+- `researcher`: Web search + read-only tools, high maxTurns
+- `planner`: Planning + reasoning tools, low maxTurns
+- `worker`: Full tool access except sub_agent, medium maxTurns
+
+### S5.3 Details: SubAgentTool.ts
+- Tool name: `sub_agent`
+- Parameters: `type`, `prompt`, `maxTurns?`, `model?`
+- Returns: `SubAgentResult` as JSON string
+
+### S5.4 Details: SubAgentRegistry.ts
+- Track active sub-agents by ID
+- Concurrency limiting (`maxConcurrent`)
+- Cleanup on completion/error
+
+### S5.5 Details: SubAgentRunner.ts
+- Resolve type config
+- Clone tool registry with restrictions
+- Create child engine via `createChildEngine()`
+- Execute with `engine.run()`
+- Route events to parent
+- Return result
+
+---
+
+## Dependency Graph
 
 ```
-Phase 0 (Prerequisite):
-  R01 ── R02 ── R04 ── R06
-                R05
-  R03 (parallel)
+Phase 1 (Engine):
+E1.1 ──┬── E1.4 ── E1.5
+E1.2 ──┼── E1.3 ──┘
+       └──────────┘
 
-Phase 1 (after Phase 0 complete):
-  T01 ─┬─ T02 ─── T04 ─┐
-       └─ T03 ──────────┤
-  T05 ─── T06 ───────────┼─ T07 ─── T08 ─── T09 ─── T10
-  R04 ─── T06            │
-                          └─ T11
+Phase 2 (Platform) - parallel with Phase 1:
+P2.1 ─┬─ P2.2 ─┐
+      ├─ P2.3 ─┼─ P2.5
+      └─ P2.4 ─┘
+
+Phase 3 (RepublicAgent):
+E1.4 + P2.2/3/4 ─── R3.1 ── R3.2 ── R3.3 ── R3.4
+
+Phase 4 (Cloning) - can start anytime:
+T4.1 ── T4.2 ── T4.3
+
+Phase 5 (Sub-Agent):
+S5.1 ── S5.2 ── S5.3 ─┐
+S5.4 ─────────────────┼── S5.5 ── S5.6 ── S5.7
+R3.2 + T4.2 ──────────┘
 ```
 
-**Critical path:** R01 → R02 → R04 → T06 → T07 → T08 → T10
+---
 
-## File Structure (Final)
+## Parallelization Opportunities
 
-```
-src/core/
-  ├── AgentExecutor.ts           # NEW — core execution engine
-  ├── AgentExecutorConfig.ts     # NEW — types
-  ├── RepublicAgent.ts           # MODIFIED — add createExecutor()
-  ├── subagent/                  # NEW — sub-agent system
-  │   ├── types.ts
-  │   ├── builtinTypes.ts
-  │   ├── SubAgentTool.ts
-  │   ├── SubAgentRunner.ts
-  │   ├── toolSubset.ts
-  │   ├── register.ts
-  │   └── index.ts
-  └── ... (unchanged)
+| Parallel Track | Tasks |
+|----------------|-------|
+| Track A | E1.1, E1.2, E1.3, E1.4, E1.5 |
+| Track B | P2.1, P2.2, P2.3, P2.4, P2.5 |
+| Track C | T4.1, T4.2, T4.3 |
+| Track D | S5.1, S5.2, S5.3, S5.4 |
 
-src/tools/
-  └── ToolRegistry.ts            # MODIFIED — add getToolEntry()
-```
+**Sync Points:**
+- R3.1 requires E1.4 + P2.2/3/4
+- S5.5 requires R3.2 + T4.2 + S5.3 + S5.4
+
+---
+
+## Status Legend
+
+| Symbol | Meaning |
+|--------|---------|
+| ⬜ | Not started |
+| 🔄 | In progress |
+| ✅ | Completed |
+| ⏸️ | Blocked |
+| ❌ | Cancelled |
