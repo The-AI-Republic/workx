@@ -110,7 +110,7 @@ describe('AgentRegistry — factory path (server/desktop)', () => {
 
       const session = await registry.createSession({ type: 'scheduled' });
 
-      expect(agentFactory).toHaveBeenCalledWith(mockConfig);
+      expect(agentFactory).toHaveBeenCalledWith(mockConfig, undefined);
       expect(session.agent).toBe(factoryAgent);
     });
 
