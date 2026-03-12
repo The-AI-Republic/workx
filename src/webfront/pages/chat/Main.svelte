@@ -32,6 +32,7 @@
   import { get } from 'svelte/store';
   import ThreadBar from '../../components/threads/ThreadBar.svelte';
   import { threadStore } from '../../stores/threadStore';
+  import { ThreadEventRouter } from '../../routing/ThreadEventRouter';
   // UI channel client (platform-agnostic)
   let client: UIChannelClient | null = $state(null);
   let unsubscribers: Array<() => void> = $state([]);
@@ -85,6 +86,7 @@
   }
   let threadStates: Map<string, ThreadConversationState> = new Map();
   let activeSessionId: string | null = null;
+  const threadRouter = new ThreadEventRouter();
   let canCreateThread: boolean = true;
   let maxSessionsReached: boolean = false;
 
@@ -142,45 +144,39 @@
       client = await getInitializedUIClient();
       console.log('[App] UIChannelClient initialized');
 
-      // Listen for all events from backend (wildcard)
-      // Wildcard handler receives ChannelEvent { msg, sessionId }
-      const HANDLED_EVENT_TYPES = new Set(['StateUpdate', 'BackgroundEvent', 'ServiceResponse']);
-      unsubscribers.push(
-        client.onEvent('*', (channelEvent: any) => {
-          const eventMsg = channelEvent?.msg ?? channelEvent;
-          if (HANDLED_EVENT_TYPES.has(eventMsg?.type)) return;
-          const event: Event = { id: `evt_${Date.now()}`, msg: eventMsg };
-          const eventSessionId = channelEvent?.sessionId;
+      // Configure thread event router
+      threadRouter.setActiveSession(activeSessionId);
 
-          if (eventSessionId && eventSessionId === activeSessionId) {
-            // Active thread — render immediately
-            handleEvent(event);
-          } else if (eventSessionId) {
-            // Background thread — buffer in threadStates
-            handleEventForSession(event, eventSessionId);
-          }
-          // Events without sessionId are dropped — all agent events should include one
-        })
-      );
+      threadRouter.onActiveThread((channelEvent) => {
+        const event: Event = { id: `evt_${Date.now()}`, msg: channelEvent.msg };
+        handleEvent(event);
+      });
 
-      // Listen for state updates
-      unsubscribers.push(
-        client.onEvent('StateUpdate', (data: any) => {
+      threadRouter.onBackgroundThread((channelEvent) => {
+        const event: Event = { id: `evt_${Date.now()}`, msg: channelEvent.msg };
+        handleEventForSession(event, channelEvent.sessionId!);
+      });
+
+      threadRouter.onChannel((channelEvent) => {
+        const { msg } = channelEvent;
+        if (msg.type === 'StateUpdate' && 'data' in msg) {
+          const data = (msg as any).data;
           if (data && 'tabId' in data) {
             currentTabId = data.tabId!;
           }
-        })
-      );
-
-      // Handle agent re-initialization and scheduler events via BackgroundEvent
-      unsubscribers.push(
-        client.onEvent('BackgroundEvent', (data: any) => {
+        } else if (msg.type === 'BackgroundEvent' && 'data' in msg) {
+          const data = (msg as any).data;
           if (data?.message?.startsWith('Agent reinitialized') && activeSessionId) {
             checkConnection();
           } else if (data?.message === 'scheduler_job_status' && data?.schedulerEvent) {
             handleSchedulerEvent(data.schedulerEvent as JobStatusChangedEvent);
           }
-        })
+        }
+      });
+
+      // Single wildcard handler feeds the router
+      unsubscribers.push(
+        client.onEvent('*', (channelEvent) => threadRouter.route(channelEvent))
       );
     } catch (error) {
       console.error('[App] UIChannelClient initialization failed:', error);
@@ -1058,6 +1054,7 @@
       const activeThread = threadStore.getActiveThread();
       if (activeThread) {
         activeSessionId = activeThread.sessionId;
+        threadRouter.setActiveSession(activeSessionId);
       }
 
       // Restore conversation history for each thread from backend
@@ -1122,6 +1119,7 @@
 
       // Switch to the new thread
       activeSessionId = sessionId;
+      threadRouter.setActiveSession(sessionId);
       loadThreadState(sessionId);
 
       // Update session limits
@@ -1156,9 +1154,10 @@
     // Set new active thread
     threadStore.setActiveThread(sessionId);
 
-    // Update active session ID BEFORE loading state so that events arriving
-    // during the transition are routed to the correct thread
+    // Update active session ID and router BEFORE loading state so that events
+    // arriving during the transition are routed to the correct thread
     activeSessionId = sessionId;
+    threadRouter.setActiveSession(sessionId);
 
     // Load state for new thread
     loadThreadState(sessionId);
@@ -1259,6 +1258,7 @@
     const newActiveThread = threadStore.getActiveThread();
     if (newActiveThread) {
       activeSessionId = newActiveThread.sessionId;
+      threadRouter.setActiveSession(activeSessionId);
       loadThreadState(newActiveThread.sessionId);
     }
 
@@ -1328,6 +1328,7 @@
       const newActiveThread = threadStore.getActiveThread();
       if (newActiveThread) {
         activeSessionId = newActiveThread.sessionId;
+        threadRouter.setActiveSession(activeSessionId);
         loadThreadState(newActiveThread.sessionId);
       } else {
         createNewThread();

@@ -156,7 +156,10 @@ describe('UIChannelClient end-to-end', () => {
     // Access transport's event dispatch (via sendOp won't work for events, simulate directly)
     (transport as any).eventListeners.forEach((listener: any) => listener({ msg: stateEvent }));
 
-    expect(handler).toHaveBeenCalledWith({ sessionId: 'sess-1', tabId: 42 });
+    // Typed handler now receives full ChannelEvent envelope
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({ msg: stateEvent })
+    );
   });
 
   it('cleans up pending requests on destroy', async () => {

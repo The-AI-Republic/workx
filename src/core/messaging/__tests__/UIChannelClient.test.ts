@@ -165,16 +165,18 @@ describe('UIChannelClient', () => {
   });
 
   describe('onEvent', () => {
-    it('dispatches non-ServiceResponse events to handlers', () => {
+    it('dispatches non-ServiceResponse events as full ChannelEvent', () => {
       const handler = vi.fn();
       client.onEvent('AgentMessageDelta', handler);
 
-      transport._simulateEvent({
+      const eventMsg = {
         type: 'AgentMessageDelta',
         data: { delta: 'hello' },
-      } as any);
+      } as any;
+      transport._simulateEvent(eventMsg);
 
-      expect(handler).toHaveBeenCalledWith({ delta: 'hello' });
+      // Typed handlers now receive the full ChannelEvent envelope
+      expect(handler).toHaveBeenCalledWith({ msg: eventMsg });
     });
 
     it('returns an unsubscribe function', () => {
@@ -282,22 +284,25 @@ describe('UIChannelClient', () => {
       expect(handler.mock.calls[0][0].sessionId).toBeUndefined();
     });
 
-    it('typed handlers receive data regardless of sessionId', () => {
+    it('typed handlers receive full ChannelEvent with sessionId', () => {
       const handler = vi.fn();
       client.onEvent('AgentMessage', handler);
 
-      // Simulate event with sessionId — typed handler still gets event data
+      // Simulate event with sessionId — typed handler gets full envelope
       const channelEvent: ChannelEvent = {
         msg: { type: 'AgentMessage', data: { message: 'world' } } as any,
         sessionId: 'session-xyz',
       };
       for (const h of transport._handlers) h(channelEvent);
 
-      // Typed handlers receive event.data, not the full envelope
-      expect(handler).toHaveBeenCalledWith({ message: 'world' });
+      // Typed handlers now receive full ChannelEvent with sessionId
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({ sessionId: 'session-xyz' })
+      );
+      expect(handler.mock.calls[0][0].msg.data).toEqual({ message: 'world' });
     });
 
-    it('dispatches both typed and wildcard for same event', () => {
+    it('dispatches both typed and wildcard with same ChannelEvent', () => {
       const typedHandler = vi.fn();
       const wildcardHandler = vi.fn();
       client.onEvent('AgentMessage', typedHandler);
@@ -309,9 +314,10 @@ describe('UIChannelClient', () => {
       };
       for (const h of transport._handlers) h(channelEvent);
 
-      // Typed handler gets event data
-      expect(typedHandler).toHaveBeenCalledWith({ message: 'dual' });
-      // Wildcard handler gets full ChannelEvent envelope with sessionId
+      // Both typed and wildcard handlers get full ChannelEvent envelope
+      expect(typedHandler).toHaveBeenCalledWith(
+        expect.objectContaining({ sessionId: 'session-dual' })
+      );
       expect(wildcardHandler).toHaveBeenCalledWith(
         expect.objectContaining({ sessionId: 'session-dual' })
       );

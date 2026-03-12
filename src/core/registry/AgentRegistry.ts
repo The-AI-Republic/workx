@@ -18,6 +18,7 @@ import { ApprovalConfigStorage } from '../approval/ApprovalConfigStorage';
 import { getConfigStorage } from '../storage/ConfigStorageProvider';
 import { getChannelManager } from '../channels/ChannelManager';
 import { TabManager } from '../TabManager';
+import type { InitialHistory } from '../session/state/types';
 import type {
   SessionConfig,
   SessionMetadata,
@@ -139,15 +140,20 @@ export class AgentRegistry {
     // Allocate a session letter
     const letterIndex = this._allocateLetterIndex();
 
+    // Build InitialHistory if resume data is present
+    const initialHistory: InitialHistory | undefined = sessionConfig.resume
+      ? { mode: 'resumed', sessionId: sessionConfig.resume.sessionId, rolloutItems: sessionConfig.resume.rolloutItems }
+      : undefined;
+
     // T057: Wrap agent creation in try-catch for graceful error handling
     let agent: RepublicAgent;
     try {
       if (this._registryConfig.agentFactory) {
         // Server/Desktop path: use provided factory for agent creation
-        agent = await this._registryConfig.agentFactory(this._config);
+        agent = await this._registryConfig.agentFactory(this._config, initialHistory);
       } else {
         // Extension path: create agent and wire events through ChannelManager
-        agent = new RepublicAgent(this._config, undefined, undefined, new UserNotifier());
+        agent = new RepublicAgent(this._config, initialHistory, undefined, new UserNotifier());
         await agent.initialize();
 
         // Configure extension-specific approval gate
@@ -235,6 +241,11 @@ export class AgentRegistry {
 
     // Subscribe to session events and forward to registry listeners
     session.on((event) => this._emitEvent(event));
+
+    // If resuming, initialize the agent's session to replay history
+    if (sessionConfig.resume) {
+      await agent.getSession().initialize();
+    }
 
     // Mark session as ready
     session.markReady();
@@ -408,12 +419,14 @@ export class AgentRegistry {
       }
     }
 
-    // Broadcast to UI via channel
+    // Broadcast to UI via channel (channel-scoped, no sessionId)
     try {
       getChannelManager().broadcastEvent({
-        type: 'BackgroundEvent' as any,
-        data: { message: 'session_event', level: 'info', sessionEvent: event },
-      } as any).catch(() => {});
+        msg: {
+          type: 'BackgroundEvent',
+          data: { message: 'session_event', level: 'info', sessionEvent: event },
+        },
+      }).catch(() => {});
     } catch { /* channel not ready */ }
   }
 

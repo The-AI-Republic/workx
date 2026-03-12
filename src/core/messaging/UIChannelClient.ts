@@ -11,7 +11,6 @@
  */
 
 import type { Op } from '@/core/protocol/types';
-import type { EventMsg } from '@/core/protocol/events';
 import type { ChannelEvent } from '@/core/channels/types';
 import type { UIChannelTransport } from './transports/types';
 
@@ -26,7 +25,7 @@ interface PendingRequest {
 export class UIChannelClient {
   private transport: UIChannelTransport;
   private pendingRequests = new Map<string, PendingRequest>();
-  private eventHandlers = new Map<string, Set<(data: any) => void>>();
+  private eventHandlers = new Map<string, Set<(event: ChannelEvent) => void>>();
   private unlistenTransport: (() => void) | null = null;
   private initialized = false;
   private initPromise: Promise<void> | null = null;
@@ -120,9 +119,13 @@ export class UIChannelClient {
   /**
    * Listen for events by type.
    *
+   * Both typed and wildcard handlers receive the full ChannelEvent
+   * envelope, which includes `msg` (the EventMsg) and `sessionId`
+   * for thread-level routing.
+   *
    * @returns Unsubscribe function
    */
-  onEvent(type: string, handler: (data: any) => void): () => void {
+  onEvent(type: string, handler: (event: ChannelEvent) => void): () => void {
     let handlers = this.eventHandlers.get(type);
     if (!handlers) {
       handlers = new Set();
@@ -190,20 +193,19 @@ export class UIChannelClient {
       }
     }
 
-    // Dispatch to event handlers (pass full ChannelEvent so handlers can access sessionId)
+    // Dispatch to typed event handlers (full ChannelEvent for thread routing)
     const handlers = this.eventHandlers.get(event.type);
     if (handlers) {
-      const eventData = 'data' in event ? (event as any).data : undefined;
       for (const handler of handlers) {
         try {
-          handler(eventData);
+          handler(channelEvent);
         } catch (err) {
           console.error('[UIChannelClient] Event handler threw:', err);
         }
       }
     }
 
-    // Also dispatch to wildcard handlers (pass full ChannelEvent)
+    // Also dispatch to wildcard handlers (full ChannelEvent)
     const wildcardHandlers = this.eventHandlers.get('*');
     if (wildcardHandlers) {
       for (const handler of wildcardHandlers) {
