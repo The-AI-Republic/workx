@@ -124,7 +124,7 @@ export class RepublicAgent {
 
     // Register platform tools via adapter (replaces __BUILD_MODE__-based detection)
     await this.platformAdapter.registerPlatformTools(this.toolRegistry, this.config.getToolsConfig(), {
-      supportsImage: modelData.model.supportsImage
+      supportsImage: modelData.model.supportsImage ?? false
     });
 
     // Create model client and turn context during initialization

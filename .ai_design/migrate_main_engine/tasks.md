@@ -7,9 +7,9 @@
 
 | Phase | Description | Tasks | Critical Path |
 |-------|-------------|-------|---------------|
-| Phase 1 | Wire Engine to Real Session | M1.1 - M1.4 | Yes |
-| Phase 2 | Move Execution Handlers to Engine | M2.1 - M2.5 | Yes |
-| Phase 3 | RepublicAgent Delegates to Engine | M3.1 - M3.5 | Yes |
+| Phase 1 | Wire Engine to Real Session | M1.1 - M1.4 | ✅ Yes |
+| Phase 2 | Move Execution Handlers to Engine | M2.1 - M2.5 | ✅ Yes |
+| Phase 3 | RepublicAgent Delegates to Engine | M3.1 - M3.5 | ✅ Yes |
 | Phase 4 | Remove Duplicate Queue | M4.1 - M4.3 | No |
 | Phase 5 | Sub-Agent End-to-End Validation | M5.1 - M5.3 | No |
 
@@ -21,9 +21,9 @@
 
 | Task | Status | File(s) | Description | Blocked By |
 |------|--------|---------|-------------|------------|
-| M1.1 | ⬜ | `src/core/engine/RepublicAgentEngineConfig.ts` | Add `session?` and `ownsSession?` to config type | — |
-| M1.2 | ⬜ | `src/core/engine/RepublicAgentEngine.ts` | Accept external Session in `initialize()`, create internal Session when none provided | M1.1 |
-| M1.3 | ⬜ | `src/core/engine/RepublicAgentEngine.ts` | Replace `handleUserInput()` stub with `Session.spawnTask()` delegation | M1.2 |
+| M1.1 | ✅ | `src/core/engine/RepublicAgentEngineConfig.ts` | Add `session?` and `ownsSession?` to config type | — |
+| M1.2 | ✅ | `src/core/engine/RepublicAgentEngine.ts` | Accept external Session in `initialize()`, create internal Session when none provided | M1.1 |
+| M1.3 | ✅ | `src/core/engine/RepublicAgentEngine.ts` | Replace `handleUserInput()` stub with `Session.spawnTask()` delegation | M1.2 |
 | M1.4 | ⬜ | `src/core/engine/__tests__/RepublicAgentEngine.test.ts` | Unit tests: engine with injected mock Session spawns real tasks | M1.3 |
 
 ### M1.1 Details
@@ -68,10 +68,10 @@
 
 | Task | Status | File(s) | Description | Blocked By |
 |------|--------|---------|-------------|------------|
-| M2.1 | ⬜ | `src/core/engine/RepublicAgentEngine.ts` | Implement real `handleInterrupt()` — clear SQ, abort tasks via Session | M1.3 |
-| M2.2 | ⬜ | `src/core/engine/RepublicAgentEngine.ts` | Implement real `handleExecApproval()` — dual routing (ApprovalManager + Session) | M1.3 |
-| M2.3 | ⬜ | `src/core/engine/RepublicAgentEngine.ts` | Implement real `handleCompact()` — delegate to Session.compact() | M1.3 |
-| M2.4 | ⬜ | `src/core/engine/RepublicAgentEngine.ts` | Implement `handleAddToHistory()` and `handlePatchApproval()` | M1.3 |
+| M2.1 | ✅ | `src/core/engine/RepublicAgentEngine.ts` | Implement real `handleInterrupt()` — clear SQ, abort tasks via Session | M1.3 |
+| M2.2 | ✅ | `src/core/engine/RepublicAgentEngine.ts` | Implement real `handleExecApproval()` — dual routing (ApprovalManager + Session) | M1.3 |
+| M2.3 | ✅ | `src/core/engine/RepublicAgentEngine.ts` | Implement real `handleCompact()` — delegate to Session.compact() | M1.3 |
+| M2.4 | ✅ | `src/core/engine/RepublicAgentEngine.ts` | Implement `handleAddToHistory()` and `handlePatchApproval()` | M1.3 |
 | M2.5 | ⬜ | `src/core/engine/__tests__/RepublicAgentEngine.test.ts` | Unit tests for all moved handlers | M2.1, M2.2, M2.3, M2.4 |
 
 ### M2.1 Details
@@ -119,11 +119,11 @@
 
 | Task | Status | File(s) | Description | Blocked By |
 |------|--------|---------|-------------|------------|
-| M3.1 | ⬜ | `src/core/RepublicAgent.ts` | Create engine in `initialize()`, pass shared Session | M2.3 |
-| M3.2 | ⬜ | `src/core/RepublicAgent.ts` | Wire engine events to `eventDispatcher` (event bridge) | M3.1 |
-| M3.3 | ⬜ | `src/core/RepublicAgent.ts` | Replace `submitOperation()` dispatch — route to engine for execution ops, keep local for orchestration ops | M3.2 |
-| M3.4 | ⬜ | `src/core/RepublicAgent.ts` | Extract `preSubmitHooks()` — tab binding + pending model switch before forwarding UserInput to engine | M3.3 |
-| M3.5 | ⬜ | `src/core/__tests__/RepublicAgent.test.ts` | Update tests: verify delegation to engine, mock engine where needed | M3.4 |
+| M3.1 | ✅ | `src/core/RepublicAgent.ts` | Create engine in `initialize()`, pass shared Session | M2.3 |
+| M3.2 | ✅ | `src/core/RepublicAgent.ts` | Wire engine events to `eventDispatcher` (event bridge) | M3.1 |
+| M3.3 | ✅ | `src/core/RepublicAgent.ts` | Replace `submitOperation()` dispatch — route to engine for execution ops, keep local for orchestration ops | M3.2 |
+| M3.4 | ✅ | `src/core/RepublicAgent.ts` | Extract `preSubmitHooks()` — tab binding + pending model switch before forwarding UserInput to engine | M3.3 |
+| M3.5 | ✅ | `src/core/__tests__/RepublicAgent.test.ts` | Update tests: verify delegation to engine, mock engine where needed | M3.4 |
 
 ### M3.1 Details
 - In `RepublicAgent.initialize()`:
