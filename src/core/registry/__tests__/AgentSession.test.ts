@@ -9,7 +9,7 @@ import type { SessionConfig } from '@/core/registry/types';
 
 // Mock RepublicAgent session - shared object so spies work correctly
 const mockSession = {
-  conversationId: 'conv_test_123',
+  sessionId: 'conv_test_123',
   abortAllTasks: vi.fn(),
   close: vi.fn(),
   setTabId: vi.fn(),
@@ -44,7 +44,8 @@ describe('AgentSession', () => {
       const config: SessionConfig = { type: 'primary' };
       const session = new AgentSession(config, 0);
 
-      expect(session.sessionId).toMatch(/^session_/);
+      // sessionId is a UUID when not provided via config
+      expect(session.sessionId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
       expect(session.sessionLetter).toBe('a');
       expect(session.state).toBe('initializing');
       expect(session.metadata.type).toBe('primary');
@@ -139,12 +140,14 @@ describe('AgentSession', () => {
   });
 
   describe('agent attachment', () => {
-    it('attaches agent and updates conversationId', () => {
+    it('attaches agent without changing sessionId', () => {
       const session = new AgentSession({ type: 'primary' }, 0);
+      const originalSessionId = session.sessionId;
       session.attachAgent(mockAgent as any);
 
       expect(session.agent).toBe(mockAgent);
-      expect(session.metadata.conversationId).toBe('conv_test_123');
+      // sessionId is set at construction, attachAgent does not change it
+      expect(session.metadata.sessionId).toBe(originalSessionId);
     });
 
     it('throws when attaching agent twice', () => {
@@ -289,6 +292,166 @@ describe('AgentSession', () => {
       unsubscribe();
       session.markActive();
       expect(listener).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('unified sessionId', () => {
+    it('uses provided sessionId from config', () => {
+      const session = new AgentSession({ type: 'primary', sessionId: 'agent-abc-123' } as any, 0);
+
+      expect(session.sessionId).toBe('agent-abc-123');
+      expect(session.metadata.sessionId).toBe('agent-abc-123');
+      expect(session.getSessionId()).toBe('agent-abc-123');
+    });
+
+    it('generates UUID when sessionId not provided', () => {
+      const session = new AgentSession({ type: 'primary' }, 0);
+
+      expect(session.sessionId).toMatch(/^[0-9a-f]{8}-/);
+    });
+
+    it('sessionId is consistent via getter and metadata', () => {
+      const session = new AgentSession({ type: 'primary' }, 0);
+
+      expect(session.sessionId).toBe(session.metadata.sessionId);
+      expect(session.sessionId).toBe(session.getSessionId());
+    });
+  });
+
+  describe('getState', () => {
+    it('returns empty state when no agent attached', () => {
+      const session = new AgentSession({ type: 'primary', tabId: 10 }, 0);
+
+      const state = session.getState();
+
+      expect(state.sessionId).toBe(session.sessionId);
+      expect(state.isActiveTurn).toBe(false);
+      expect(state.tabId).toBe(10);
+      expect(state.history).toEqual([]);
+    });
+
+    it('delegates to agent session when agent attached', () => {
+      const agentSession = {
+        sessionId: 'test',
+        abortAllTasks: vi.fn(),
+        close: vi.fn(),
+        setTabId: vi.fn(),
+        getConversationHistory: vi.fn().mockReturnValue({ items: [{ role: 'user' }, { role: 'assistant' }] }),
+        isActiveTurn: vi.fn().mockReturnValue(true),
+        getTabId: vi.fn().mockReturnValue(42),
+      };
+      const agent = {
+        getSession: vi.fn(() => agentSession),
+        submitOperation: vi.fn(),
+        cleanup: vi.fn(),
+      };
+
+      const session = new AgentSession({ type: 'primary' }, 0);
+      session.attachAgent(agent as any);
+
+      const state = session.getState();
+
+      expect(state.sessionId).toBe(session.sessionId);
+      expect(state.isActiveTurn).toBe(true);
+      expect(state.tabId).toBe(42);
+      expect(state.history).toHaveLength(2);
+    });
+  });
+
+  describe('reset', () => {
+    it('aborts tasks and resets conversation', async () => {
+      const agentSession = {
+        sessionId: 'test',
+        abortAllTasks: vi.fn().mockResolvedValue(undefined),
+        close: vi.fn(),
+        setTabId: vi.fn(),
+        reset: vi.fn().mockResolvedValue(undefined),
+      };
+      const agent = {
+        getSession: vi.fn(() => agentSession),
+        submitOperation: vi.fn(),
+        cleanup: vi.fn(),
+      };
+
+      const session = new AgentSession({ type: 'primary' }, 0);
+      session.attachAgent(agent as any);
+
+      await session.reset();
+
+      expect(agentSession.abortAllTasks).toHaveBeenCalledWith('UserInterrupt');
+      expect(agentSession.reset).toHaveBeenCalled();
+    });
+
+    it('throws when no agent attached', async () => {
+      const session = new AgentSession({ type: 'primary' }, 0);
+
+      await expect(session.reset()).rejects.toThrow('has no agent attached');
+    });
+  });
+
+  describe('concurrent submit guard', () => {
+    it('prevents concurrent submissions', async () => {
+      // Create a slow agent that doesn't resolve immediately
+      let resolveSubmit: (value: string) => void;
+      const slowAgent = {
+        getSession: vi.fn(() => mockSession),
+        submitOperation: vi.fn(() => new Promise<string>((resolve) => { resolveSubmit = resolve; })),
+        cleanup: vi.fn(),
+      };
+
+      const session = new AgentSession({ type: 'primary' }, 0);
+      session.attachAgent(slowAgent as any);
+      session.markReady();
+
+      // First submit starts
+      const submit1 = session.submit({ type: 'UserInput', items: [] });
+
+      // Second submit should be rejected while first is in flight
+      await expect(
+        session.submit({ type: 'UserInput', items: [] })
+      ).rejects.toThrow('already processing a submission');
+
+      // Resolve the first submit
+      resolveSubmit!('sub_1');
+      await submit1;
+
+      // Now a third submit should work
+      resolveSubmit = undefined as any;
+      slowAgent.submitOperation.mockResolvedValue('sub_2');
+      const result = await session.submit({ type: 'UserInput', items: [] });
+      expect(result).toBe('sub_2');
+    });
+
+    it('clears submitting flag even when submit throws', async () => {
+      const failingAgent = {
+        getSession: vi.fn(() => mockSession),
+        submitOperation: vi.fn().mockRejectedValue(new Error('submission failed')),
+        cleanup: vi.fn(),
+      };
+
+      const session = new AgentSession({ type: 'primary' }, 0);
+      session.attachAgent(failingAgent as any);
+      session.markReady();
+
+      // First submit fails
+      await expect(session.submit({ type: 'UserInput', items: [] })).rejects.toThrow('submission failed');
+
+      // Should be able to submit again (flag was cleared)
+      failingAgent.submitOperation.mockResolvedValue('sub_retry');
+      const result = await session.submit({ type: 'UserInput', items: [] });
+      expect(result).toBe('sub_retry');
+    });
+  });
+
+  describe('internal flag', () => {
+    it('defaults to false', () => {
+      const session = new AgentSession({ type: 'primary' }, 0);
+      expect(session.internal).toBe(false);
+    });
+
+    it('can be set to true via config', () => {
+      const session = new AgentSession({ type: 'primary', internal: true }, 0);
+      expect(session.internal).toBe(true);
     });
   });
 

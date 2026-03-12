@@ -44,7 +44,7 @@ describe('Edge Case: Missing Rate Limit Headers', () => {
   beforeEach(() => {
     client = new TestableOpenAIResponsesClient({
       apiKey: 'test-key',
-      conversationId: 'test-conv-1',
+      sessionId: 'test-conv-1',
       modelFamily: createModelFamily(),
       provider: createProvider(),
     });

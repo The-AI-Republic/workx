@@ -8,6 +8,7 @@
 
 import type { Op } from '@/core/protocol/types';
 import type { EventMsg } from '@/core/protocol/events';
+import type { ChannelEvent } from '@/core/channels/types';
 import type { UIChannelTransport } from './types';
 
 export interface WebSocketTransportConfig {
@@ -16,7 +17,7 @@ export interface WebSocketTransportConfig {
 
 export class WebSocketTransport implements UIChannelTransport {
   private ws: WebSocket | null = null;
-  private listeners = new Set<(event: EventMsg) => void>();
+  private listeners = new Set<(event: ChannelEvent) => void>();
   private config: WebSocketTransportConfig;
 
   constructor(config: WebSocketTransportConfig) {
@@ -34,7 +35,7 @@ export class WebSocketTransport implements UIChannelTransport {
     }));
   }
 
-  onEvent(handler: (event: EventMsg) => void): () => void {
+  onEvent(handler: (event: ChannelEvent) => void): () => void {
     this.listeners.add(handler);
     return () => {
       this.listeners.delete(handler);
@@ -64,10 +65,13 @@ export class WebSocketTransport implements UIChannelTransport {
 
           // Handle event frames from the server
           if (data.type === 'event' && data.payload?.msg) {
-            const eventMsg = data.payload.msg as EventMsg;
+            const channelEvent: ChannelEvent = {
+              msg: data.payload.msg as EventMsg,
+              sessionId: data.payload.sessionId,
+            };
             for (const handler of this.listeners) {
               try {
-                handler(eventMsg);
+                handler(channelEvent);
               } catch (err) {
                 console.error('[WebSocketTransport] Event handler threw:', err);
               }

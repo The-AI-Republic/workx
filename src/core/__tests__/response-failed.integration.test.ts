@@ -19,7 +19,7 @@ describe('Edge Case: response.failed SSE Event', () => {
   beforeEach(() => {
     client = new OpenAIResponsesClient({
       apiKey: 'test-key',
-      conversationId: 'test',
+      sessionId: 'test',
       modelFamily: {
         family: 'gpt-4',
         base_instructions: '',

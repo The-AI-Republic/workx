@@ -107,7 +107,7 @@ export type TurnAbortReason = 'Replaced' | 'UserInterrupt' | 'Error' | 'Timeout'
  */
 export interface ConfigureSession {
   /** Conversation ID for this session */
-  conversationId: string;
+  sessionId: string;
 
   /** Initial instructions for the agent */
   instructions?: string;
@@ -134,7 +134,7 @@ export interface ConfigureSession {
  */
 export type InitialHistory =
   | { mode: 'new' }
-  | { mode: 'resumed'; conversationId: string; rolloutItems: any[] } // RolloutItem[] from rollout
+  | { mode: 'resumed'; sessionId: string; rolloutItems: any[] } // RolloutItem[] from rollout
   | { mode: 'forked'; rolloutItems: any[]; sourceConversationId: string };
 
 /**
@@ -144,7 +144,7 @@ export function isNewHistory(history: InitialHistory): history is { mode: 'new' 
   return history.mode === 'new';
 }
 
-export function isResumedHistory(history: InitialHistory): history is { mode: 'resumed'; conversationId: string; rolloutItems: any[] } {
+export function isResumedHistory(history: InitialHistory): history is { mode: 'resumed'; sessionId: string; rolloutItems: any[] } {
   return history.mode === 'resumed';
 }
 

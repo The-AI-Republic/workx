@@ -11,7 +11,7 @@
  */
 
 import type { Op } from '@/core/protocol/types';
-import type { EventMsg } from '@/core/protocol/events';
+import type { ChannelEvent } from '@/core/channels/types';
 import type { UIChannelTransport } from './transports/types';
 
 const SERVICE_REQUEST_TIMEOUT_MS = 30_000;
@@ -25,7 +25,7 @@ interface PendingRequest {
 export class UIChannelClient {
   private transport: UIChannelTransport;
   private pendingRequests = new Map<string, PendingRequest>();
-  private eventHandlers = new Map<string, Set<(data: any) => void>>();
+  private eventHandlers = new Map<string, Set<(event: ChannelEvent) => void>>();
   private unlistenTransport: (() => void) | null = null;
   private initialized = false;
   private initPromise: Promise<void> | null = null;
@@ -53,8 +53,8 @@ export class UIChannelClient {
     await this.transport.initialize();
 
     // Listen for all events from the transport
-    this.unlistenTransport = this.transport.onEvent((event: EventMsg) => {
-      this.handleEvent(event);
+    this.unlistenTransport = this.transport.onEvent((channelEvent: ChannelEvent) => {
+      this.handleChannelEvent(channelEvent);
     });
 
     this.initialized = true;
@@ -119,9 +119,13 @@ export class UIChannelClient {
   /**
    * Listen for events by type.
    *
+   * Both typed and wildcard handlers receive the full ChannelEvent
+   * envelope, which includes `msg` (the EventMsg) and `sessionId`
+   * for thread-level routing.
+   *
    * @returns Unsubscribe function
    */
-  onEvent(type: string, handler: (data: any) => void): () => void {
+  onEvent(type: string, handler: (event: ChannelEvent) => void): () => void {
     let handlers = this.eventHandlers.get(type);
     if (!handlers) {
       handlers = new Set();
@@ -160,9 +164,11 @@ export class UIChannelClient {
   }
 
   /**
-   * Handle an incoming event from the transport
+   * Handle an incoming ChannelEvent from the transport
    */
-  private handleEvent(event: EventMsg): void {
+  private handleChannelEvent(channelEvent: ChannelEvent): void {
+    const event = channelEvent.msg;
+
     // Check if this is a ServiceResponse that matches a pending request
     if (event.type === 'ServiceResponse') {
       const data = (event as any).data as {
@@ -187,25 +193,24 @@ export class UIChannelClient {
       }
     }
 
-    // Dispatch to event handlers
+    // Dispatch to typed event handlers (full ChannelEvent for thread routing)
     const handlers = this.eventHandlers.get(event.type);
     if (handlers) {
-      const eventData = 'data' in event ? (event as any).data : undefined;
       for (const handler of handlers) {
         try {
-          handler(eventData);
+          handler(channelEvent);
         } catch (err) {
           console.error('[UIChannelClient] Event handler threw:', err);
         }
       }
     }
 
-    // Also dispatch to wildcard handlers
+    // Also dispatch to wildcard handlers (full ChannelEvent)
     const wildcardHandlers = this.eventHandlers.get('*');
     if (wildcardHandlers) {
       for (const handler of wildcardHandlers) {
         try {
-          handler(event);
+          handler(channelEvent);
         } catch (err) {
           console.error('[UIChannelClient] Wildcard event handler threw:', err);
         }

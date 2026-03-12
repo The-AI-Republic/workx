@@ -74,10 +74,9 @@ describe('Server Channels Integration (OpenClaw Plugins)', () => {
     expect(submissionCtx.userId).toBe('U_OWNER');
     expect(submissionCtx.sessionId).toBe('slack:test-account:C123');
 
-    // Simulate an outbound event via the replyCallback
+    // Simulate an outbound event via the replyCallback (ChannelEvent envelope)
     const replyEvent = {
-      type: 'AgentMessage',
-      data: { message: 'Hello from agent' }
+      msg: { type: 'AgentMessage', data: { message: 'Hello from agent' } }
     };
 
     await submissionCtx.replyCallback(replyEvent as any);

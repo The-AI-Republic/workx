@@ -27,7 +27,7 @@ import type { ListOptions, QueryFilter, Transaction } from './types';
  * const provider = new SQLiteStorageProvider({ path: '~/.pi/data/pi.db' });
  * await provider.initialize();
  * const messages = await provider.query('messages', {
- *   where: { conversationId: 'conv-123' },
+ *   where: { sessionId: 'conv-123' },
  *   orderBy: 'timestamp',
  *   order: 'asc'
  * });

@@ -82,7 +82,8 @@
 
         // T020: Real-time scheduler status updates
         eventUnsubscribers.push(
-          channelClient.onEvent('BackgroundEvent', (data: any) => {
+          channelClient.onEvent('BackgroundEvent', (channelEvent) => {
+            const data = 'data' in channelEvent.msg ? (channelEvent.msg as any).data : undefined;
             if (data?.message === 'scheduler_job_status' && show) {
               fetchAllData();
             }
@@ -91,7 +92,8 @@
 
         // Feature 015 (T051): Real-time session status updates
         eventUnsubscribers.push(
-          channelClient.onEvent('BackgroundEvent', (data: any) => {
+          channelClient.onEvent('BackgroundEvent', (channelEvent) => {
+            const data = 'data' in channelEvent.msg ? (channelEvent.msg as any).data : undefined;
             if (data?.message === 'session_event' && show) {
               const payload = data?.sessionEvent as { type?: string; sessionId?: string; error?: string; timestamp?: number } | undefined;
               if (payload?.type === 'session:error') {

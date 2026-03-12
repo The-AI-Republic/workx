@@ -11,13 +11,14 @@ import { UIChannelClient } from '../UIChannelClient';
 import type { UIChannelTransport } from '../transports/types';
 import type { Op } from '@/core/protocol/types';
 import type { EventMsg } from '@/core/protocol/events';
+import type { ChannelEvent } from '@/core/channels/types';
 
 // ---------------------------------------------------------------------------
 // In-memory transport that simulates backend service handling
 // ---------------------------------------------------------------------------
 
 class InMemoryTransport implements UIChannelTransport {
-  private eventListeners: Array<(event: EventMsg) => void> = [];
+  private eventListeners: Array<(event: ChannelEvent) => void> = [];
   private serviceHandlers = new Map<string, (params: Record<string, unknown>) => unknown>();
 
   /** Register a mock service handler (simulates ServiceRegistry) */
@@ -55,13 +56,13 @@ class InMemoryTransport implements UIChannelTransport {
         }
 
         for (const listener of this.eventListeners) {
-          listener(responseEvent);
+          listener({ msg: responseEvent });
         }
       });
     }
   }
 
-  onEvent(handler: (event: EventMsg) => void): () => void {
+  onEvent(handler: (event: ChannelEvent) => void): () => void {
     this.eventListeners.push(handler);
     return () => {
       this.eventListeners = this.eventListeners.filter((h) => h !== handler);
@@ -153,9 +154,12 @@ describe('UIChannelClient end-to-end', () => {
     } as EventMsg;
 
     // Access transport's event dispatch (via sendOp won't work for events, simulate directly)
-    (transport as any).eventListeners.forEach((listener: any) => listener(stateEvent));
+    (transport as any).eventListeners.forEach((listener: any) => listener({ msg: stateEvent }));
 
-    expect(handler).toHaveBeenCalledWith({ sessionId: 'sess-1', tabId: 42 });
+    // Typed handler now receives full ChannelEvent envelope
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({ msg: stateEvent })
+    );
   });
 
   it('cleans up pending requests on destroy', async () => {

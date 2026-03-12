@@ -8,8 +8,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ChannelManager, getChannelManager } from '../ChannelManager';
 import type { ChannelAdapter } from '../ChannelAdapter';
-import type { Op, EventMsg } from '@/core/protocol/types';
-import type { SubmissionContext } from '../types';
+import type { Op } from '@/core/protocol/types';
+import type { SubmissionContext, ChannelEvent } from '../types';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -27,8 +27,8 @@ function createMockChannel(id: string, type: string = 'test'): ChannelAdapter {
   } as any;
 }
 
-function makeEvent(label: string): EventMsg {
-  return { type: 'AgentMessage', data: { message: label } } as any;
+function makeEvent(label: string): ChannelEvent {
+  return { msg: { type: 'AgentMessage', data: { message: label } } as any };
 }
 
 function makeOp(): Op {

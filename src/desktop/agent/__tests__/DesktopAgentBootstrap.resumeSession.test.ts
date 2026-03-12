@@ -15,6 +15,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 let piAgentConstructorCalls: any[] = [];
 
 const mockNewSession = {
+  sessionId: 'new-session-id',
   getConversationHistory: vi.fn().mockReturnValue({
     items: [
       { role: 'user', content: 'resumed msg 1' },
@@ -27,6 +28,7 @@ const mockNewSession = {
 };
 
 const mockOldSession = {
+  sessionId: 'old-session-id',
   abortAllTasks: vi.fn().mockResolvedValue(undefined),
   close: vi.fn().mockResolvedValue(undefined),
   getConversationHistory: vi.fn().mockReturnValue({ items: [] }),
@@ -81,7 +83,7 @@ vi.mock('@/config/AgentConfig', () => ({
   },
 }));
 
-// Mock approval modules used by configureDesktopPlatform
+// Mock approval modules used by configureDesktopPlatformForAgent
 vi.mock('@/core/approval/ApprovalGate', () => ({
   ApprovalGate: vi.fn().mockImplementation(() => ({
     addEnhancer: vi.fn(),
@@ -230,14 +232,31 @@ import { ApprovalConfigStorage } from '@/core/approval/ApprovalConfigStorage';
 import { AgentConfig } from '@/config/AgentConfig';
 
 // ---------------------------------------------------------------------------
-// Helper: create an initialized bootstrap with the old agent injected
+// Helper: create an initialized bootstrap with a mock registry containing the old agent
 // ---------------------------------------------------------------------------
+
+// Mock AgentSession wrapper for registry
+const mockOldAgentSession = {
+  sessionId: 'old-session-id',
+  agent: mockOldAgent,
+  state: 'idle',
+  metadata: { sessionId: 'old-session-id', type: 'primary' },
+  terminate: vi.fn().mockResolvedValue(undefined),
+};
 
 function createInitializedBootstrap(): DesktopAgentBootstrap {
   const bootstrap = new DesktopAgentBootstrap();
   // Bypass the full initialize() — directly inject the private fields that
   // resumeSession() depends on.
-  (bootstrap as any).agent = mockOldAgent;
+  const mockRegistry = {
+    listSessions: vi.fn().mockReturnValue([{ sessionId: 'old-session-id' }]),
+    getSession: vi.fn().mockReturnValue(mockOldAgentSession),
+    getPrimarySession: vi.fn().mockReturnValue(mockOldAgentSession),
+    removeSession: vi.fn().mockResolvedValue(undefined),
+    createSession: vi.fn().mockResolvedValue(mockOldAgentSession),
+    cleanup: vi.fn().mockResolvedValue(undefined),
+  };
+  (bootstrap as any).registry = mockRegistry;
   (bootstrap as any).channel = { channelId: 'tauri-test-channel' };
   (bootstrap as any).initialized = true;
   currentAgent = 'old';
@@ -293,6 +312,10 @@ describe('DesktopAgentBootstrap.resumeSession', () => {
 
     mockNewModelClientFactory.getAuthManager.mockReturnValue(null);
     mockNewModelClientFactory.setAuthManager.mockImplementation(() => {});
+
+    // Re-establish mock session
+    mockOldAgentSession.agent = mockOldAgent as any;
+    mockOldAgentSession.terminate.mockResolvedValue(undefined);
 
     // Re-establish approval module mocks after clearAllMocks
     (ApprovalGate as any).mockImplementation(() => ({
@@ -370,18 +393,17 @@ describe('DesktopAgentBootstrap.resumeSession', () => {
     const initialHistory = lastCall[1];
     expect(initialHistory).toEqual({
       mode: 'resumed',
-      conversationId,
+      sessionId: conversationId,
       rolloutItems,
     });
   });
 
-  it('should replace this.agent with the new RepublicAgent', async () => {
+  it('should remove the old primary session from the registry', async () => {
     const bootstrap = createInitializedBootstrap();
-    expect(bootstrap.getAgent()).toBe(mockOldAgent);
-
+    const registry = (bootstrap as any).registry;
     await bootstrap.resumeSession(conversationId);
 
-    expect(bootstrap.getAgent()).toBe(mockNewAgent);
+    expect(registry.removeSession).toHaveBeenCalledWith('old-session-id');
   });
 
   it('should re-wire event forwarding on the new agent', async () => {
@@ -466,10 +488,10 @@ describe('DesktopAgentBootstrap.resumeSession', () => {
   // Error cases
   // ========================================================================
 
-  it('should throw when agent is not initialized', async () => {
+  it('should throw when registry is not initialized', async () => {
     const bootstrap = new DesktopAgentBootstrap();
     await expect(bootstrap.resumeSession(conversationId)).rejects.toThrow(
-      'Agent not initialized',
+      'AgentRegistry not initialized',
     );
   });
 
@@ -535,10 +557,6 @@ describe('DesktopAgentBootstrap.resumeSession', () => {
 
     // First resume
     await bootstrap.resumeSession(conversationId);
-    expect(bootstrap.getAgent()).toBe(mockNewAgent);
-
-    // Prepare for second resume — the "new" agent becomes the "old" agent
-    (bootstrap as any).agent = mockOldAgent;
 
     const secondId = '11111111-2222-3333-4444-555555555555';
     mockGetRolloutHistory.mockResolvedValue({

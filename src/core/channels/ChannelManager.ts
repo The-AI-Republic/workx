@@ -7,9 +7,9 @@
  * @module core/channels/ChannelManager
  */
 
-import type { Op, EventMsg } from '@/core/protocol/types';
+import type { Op } from '@/core/protocol/types';
 import type { ChannelAdapter } from './ChannelAdapter';
-import type { SubmissionContext, ChannelInfo } from './types';
+import type { SubmissionContext, ChannelInfo, ChannelEvent } from './types';
 import { ServiceRegistry } from './ServiceRegistry';
 
 /**
@@ -102,7 +102,7 @@ export class ChannelManager {
    * @param channelId - Target channel ID
    * @param clientId - Optional specific client within the channel
    */
-  async dispatchEvent(event: EventMsg, channelId: string, clientId?: string): Promise<void> {
+  async dispatchEvent(event: ChannelEvent, channelId: string, clientId?: string): Promise<void> {
     const channel = this.channels.get(channelId);
     if (channel) {
       await channel.sendEvent(event, clientId);
@@ -116,7 +116,7 @@ export class ChannelManager {
    *
    * @param event - Event to broadcast
    */
-  async broadcastEvent(event: EventMsg): Promise<void> {
+  async broadcastEvent(event: ChannelEvent): Promise<void> {
     const promises = Array.from(this.channels.values()).map((channel) =>
       channel.sendEvent(event).catch((error) => {
         console.error(`Failed to send event to ${channel.channelId}:`, error);
@@ -175,13 +175,16 @@ export class ChannelManager {
       console.log(`[ChannelManager] ServiceRequest ${op.service} succeeded, sending response`);
       await channel.sendEvent(
         {
-          type: 'ServiceResponse',
-          data: {
-            requestId: op.requestId,
-            service: op.service,
-            success: true,
-            data: result,
+          msg: {
+            type: 'ServiceResponse',
+            data: {
+              requestId: op.requestId,
+              service: op.service,
+              success: true,
+              data: result,
+            },
           },
+          sessionId: context.sessionId,
         },
         context.userId
       );
@@ -189,13 +192,16 @@ export class ChannelManager {
       try {
         await channel.sendEvent(
           {
-            type: 'ServiceResponse',
-            data: {
-              requestId: op.requestId,
-              service: op.service,
-              success: false,
-              error: error instanceof Error ? error.message : String(error),
+            msg: {
+              type: 'ServiceResponse',
+              data: {
+                requestId: op.requestId,
+                service: op.service,
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              },
             },
+            sessionId: context.sessionId,
           },
           context.userId
         );
