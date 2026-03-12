@@ -24,7 +24,7 @@
 | M1.1 | ✅ | `src/core/engine/RepublicAgentEngineConfig.ts` | Add `session?` and `ownsSession?` to config type | — |
 | M1.2 | ✅ | `src/core/engine/RepublicAgentEngine.ts` | Accept external Session in `initialize()`, create internal Session when none provided | M1.1 |
 | M1.3 | ✅ | `src/core/engine/RepublicAgentEngine.ts` | Replace `handleUserInput()` stub with `Session.spawnTask()` delegation | M1.2 |
-| M1.4 | ⬜ | `src/core/engine/__tests__/RepublicAgentEngine.test.ts` | Unit tests: engine with injected mock Session spawns real tasks | M1.3 |
+| M1.4 | ✅ | `src/core/engine/__tests__/RepublicAgentEngine.test.ts` | Unit tests: engine with injected mock Session spawns real tasks | M1.3 |
 
 ### M1.1 Details
 - Add to `RepublicAgentEngineConfig`:
@@ -72,7 +72,7 @@
 | M2.2 | ✅ | `src/core/engine/RepublicAgentEngine.ts` | Implement real `handleExecApproval()` — dual routing (ApprovalManager + Session) | M1.3 |
 | M2.3 | ✅ | `src/core/engine/RepublicAgentEngine.ts` | Implement real `handleCompact()` — delegate to Session.compact() | M1.3 |
 | M2.4 | ✅ | `src/core/engine/RepublicAgentEngine.ts` | Implement `handleAddToHistory()` and `handlePatchApproval()` | M1.3 |
-| M2.5 | ⬜ | `src/core/engine/__tests__/RepublicAgentEngine.test.ts` | Unit tests for all moved handlers | M2.1, M2.2, M2.3, M2.4 |
+| M2.5 | ✅ | `src/core/engine/__tests__/RepublicAgentEngine.test.ts` | Unit tests for all moved handlers | M2.1, M2.2, M2.3, M2.4 |
 
 ### M2.1 Details
 - Move interrupt logic from `RepublicAgent.handleInterrupt()`:
@@ -177,9 +177,9 @@
 
 | Task | Status | File(s) | Description | Blocked By |
 |------|--------|---------|-------------|------------|
-| M4.1 | ⬜ | `src/core/RepublicAgent.ts` | Remove `submissionQueue`, `eventQueue`, `isProcessing`, `processSubmissionQueue()`, `handleSubmission()` | M3.5 |
-| M4.2 | ⬜ | `src/core/RepublicAgent.ts` | Remove handler methods that were moved to engine (`handleInterrupt`, `handleExecApproval`, `handleCompact`, etc.) | M4.1 |
-| M4.3 | ⬜ | `src/core/__tests__/RepublicAgent.test.ts` | Clean up tests that tested removed internal methods | M4.2 |
+| M4.1 | ✅ | `src/core/RepublicAgent.ts` | Remove `submissionQueue`, `eventQueue`, `isProcessing`, `processSubmissionQueue()`, `handleSubmission()` | M3.5 |
+| M4.2 | ✅ | `src/core/RepublicAgent.ts` | Remove handler methods that were moved to engine (`handleInterrupt`, `handleExecApproval`, `handleCompact`, etc.) | M4.1 |
+| M4.3 | ✅ | `src/core/__tests__/RepublicAgent.test.ts` | Clean up tests that tested removed internal methods | M4.2 |
 
 ### M4.1 Details
 - Delete fields: `submissionQueue`, `eventQueue`, `isProcessing`, `nextId`
@@ -213,9 +213,9 @@
 
 | Task | Status | File(s) | Description | Blocked By |
 |------|--------|---------|-------------|------------|
-| M5.1 | ⬜ | `src/core/engine/__tests__/RepublicAgentEngine.integration.test.ts` | Integration test: engine with real Session + mocked ModelClient executes multi-turn task | M3.5 |
-| M5.2 | ⬜ | `src/core/__tests__/RepublicAgent.createChildEngine.test.ts` | Test: `createChildEngine()` returns engine that runs real tasks | M5.1 |
-| M5.3 | ⬜ | `src/core/subagent/__tests__/SubAgentRunner.integration.test.ts` | Test: SubAgentRunner uses engine to execute sub-agent tasks end-to-end | M5.2 |
+| M5.1 | ✅ | `src/core/engine/__tests__/RepublicAgentEngine.integration.test.ts` | Integration test: engine with real Session + mocked ModelClient executes multi-turn task | M3.5 |
+| M5.2 | ✅ | `src/core/engine/__tests__/RepublicAgentEngine.integration.test.ts` | Test: `createChildEngine()` returns engine that runs real tasks | M5.1 |
+| M5.3 | ✅ | `src/core/engine/__tests__/RepublicAgentEngine.integration.test.ts` | Test: SubAgentRunner uses engine to execute sub-agent tasks end-to-end | M5.2 |
 
 ### M5.1 Details
 - Create integration test with:

@@ -5,9 +5,9 @@
  * and delegates all execution to the engine's single SQ/EQ loop.
  */
 
-import type { Submission, Op, InputItem, AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSummaryConfig, ReviewDecision } from './protocol/types';
+import type { Op, ReviewDecision } from './protocol/types';
 import type { Event, EventMsg } from './protocol/events';
-import type { IConfigChangeEvent, IToolsConfig, IModelConfig } from '../config/types';
+import type { IConfigChangeEvent } from '../config/types';
 import type { AgentReadyState } from './models/types/Auth';
 import type { InitialHistory } from './session/state/types';
 import type { EngineEvent, EngineOp } from './engine/RepublicAgentEngineConfig';
@@ -21,7 +21,6 @@ import { RepublicAgentEngine } from './engine/RepublicAgentEngine';
 import { type IUserNotifier, NoOpNotifier } from './IUserNotifier';
 import { v4 as uuidv4 } from 'uuid';
 import { loadPrompt, loadUserInstructions, configurePromptComposer, isComposerConfigured } from './PromptLoader';
-import { RegularTask } from './tasks/RegularTask';
 import type { IPlatformAdapter } from './platform/IPlatformAdapter';
 import type { DesktopPlatformAdapter } from '../desktop/platform/DesktopPlatformAdapter';
 
@@ -333,85 +332,51 @@ export class RepublicAgent {
         case 'UserInput':
         case 'UserTurn': {
           await this.preSubmitHooks(op, context);
-          const engineOp = this.toEngineOp(op);
-          if (this.engine) {
-            this.engine.submitOperation(engineOp);
-          } else {
-            // Fallback: direct execution if engine not yet initialized
-            await this.fallbackSubmit(op, context);
-          }
+          this.engine!.submitOperation(this.toEngineOp(op));
           break;
         }
 
         // === Forward execution ops to engine ===
         case 'ExecApproval':
-          if (this.engine) {
-            this.engine.submitOperation({
-              type: 'ExecApproval',
-              callId: op.id,
-              approved: op.decision === 'approve',
-              remember: op.remember,
-            });
-          } else {
-            await this.handleExecApproval(op);
-          }
+          this.engine!.submitOperation({
+            type: 'ExecApproval',
+            callId: op.id,
+            approved: op.decision === 'approve',
+            remember: op.remember,
+          });
           break;
 
         case 'PatchApproval':
-          if (this.engine) {
-            this.engine.submitOperation({
-              type: 'PatchApproval',
-              patchId: op.id,
-              approved: op.decision === 'approve',
-            });
-          } else {
-            await this.handlePatchApproval(op);
-          }
+          this.engine!.submitOperation({
+            type: 'PatchApproval',
+            patchId: op.id,
+            approved: op.decision === 'approve',
+          });
           break;
 
         case 'Interrupt':
-          if (this.engine) {
-            await this.userNotifier.notifyWarning(
-              'Task Interrupted',
-              'The current task has been interrupted by user request'
-            );
-            this.engine.submitOperation({ type: 'Interrupt', reason: 'user_interrupt' });
-          } else {
-            await this.handleInterrupt();
-          }
+          await this.userNotifier.notifyWarning(
+            'Task Interrupted',
+            'The current task has been interrupted by user request'
+          );
+          this.engine!.submitOperation({ type: 'Interrupt', reason: 'user_interrupt' });
           break;
 
         case 'Compact':
-          if (this.engine) {
-            this.engine.submitOperation({ type: 'Compact', mode: 'auto' });
-          } else {
-            await this.handleCompact('auto');
-          }
+          this.engine!.submitOperation({ type: 'Compact', mode: 'auto' });
           break;
 
         case 'ManualCompact':
-          if (this.engine) {
-            this.engine.submitOperation({ type: 'ManualCompact' });
-          } else {
-            await this.handleCompact('manual');
-          }
+          this.engine!.submitOperation({ type: 'ManualCompact' });
           break;
 
         case 'AddToHistory':
-          if (this.engine) {
-            this.engine.submitOperation({ type: 'AddToHistory', text: op.text });
-          } else {
-            await this.handleAddToHistory(op);
-          }
+          this.engine!.submitOperation({ type: 'AddToHistory', text: op.text });
           break;
 
         case 'Shutdown':
-          if (this.engine) {
-            this.engine.submitOperation({ type: 'Shutdown' });
-            await this.engine.dispose();
-          } else {
-            await this.handleShutdown();
-          }
+          this.engine!.submitOperation({ type: 'Shutdown' });
+          await this.engine!.dispose();
           break;
 
         default:
@@ -495,33 +460,6 @@ export class RepublicAgent {
     };
   }
 
-  /**
-   * Fallback submission path when engine is not initialized.
-   * Uses the old direct-to-session approach for backward compatibility.
-   */
-  private async fallbackSubmit(op: Op, context?: { tabId?: number }): Promise<string> {
-    const id = `sub_${this.nextId++}`;
-    try {
-      if (op.type === 'UserInput') {
-        this.session.addPendingInput(op.items);
-        await this.processUserInputWithTask(op.items, undefined, true, context);
-      } else if (op.type === 'UserTurn') {
-        await this.processUserInputWithTask(op.items, {
-          approval_policy: op.approval_policy,
-          sandbox_policy: op.sandbox_policy,
-          model: op.model,
-          effort: op.effort,
-          summary: op.summary,
-        }, true, { tabId: op.tabId });
-      }
-    } catch (error) {
-      this.emitEvent({
-        type: 'Error',
-        data: { message: error instanceof Error ? error.message : 'Unknown error' },
-      });
-    }
-    return id;
-  }
 
   /**
    * Get the next event from the event queue
@@ -646,102 +584,6 @@ export class RepublicAgent {
     });
   }
 
-  /**
-   * Process user input with SessionTask (fallback path when engine not available)
-   */
-  private async processUserInputWithTask(
-    items: Array<any>,
-    contextOverrides?: {
-      cwd?: string;
-      approval_policy?: AskForApproval;
-      sandbox_policy?: SandboxPolicy;
-      model?: string;
-      effort?: ReasoningEffortConfig;
-      summary?: ReasoningSummaryConfig;
-      final_output_json_schema?: any;
-    },
-    newTask: boolean = false,
-    submissionContext?: { tabId?: number }
-  ): Promise<void> {
-    try {
-
-      // Handle tab binding/creation/switching
-      await this.handleTabBinding(submissionContext);
-
-      // Apply pending model switch before processing the new submission
-      if (this.pendingModelKey !== null) {
-        const deferredKey = this.pendingModelKey;
-        this.pendingModelKey = null;
-        try {
-          const newClient = await this.modelClientFactory.createClientForCurrentModel();
-          const turnCtx = this.session.getTurnContext();
-          turnCtx.setModelClient(newClient);
-          turnCtx.setSelectedModelKey(deferredKey);
-        } catch (error) {
-          console.error('Failed to apply pending model switch:', error);
-        }
-      }
-
-      // Convert input items to InputItem format for SessionTask
-      const inputItems: InputItem[] = items.map(item => ({
-        type: item.type || 'text',
-        text: item.type === 'text' ? item.text || '' : undefined,
-      }));
-
-      // Get existing turn context (created during initialize())
-      let taskContext = this.session.getTurnContext();
-
-      // If context overrides are provided, update the turn context
-      if (contextOverrides) {
-        if (taskContext) {
-          this.session.updateTurnContext(contextOverrides);
-        }
-      }
-
-      if (!taskContext) {
-        throw new Error('Turn context not initialized');
-      }
-
-      // Create RegularTask instance
-      const task = new RegularTask();
-
-      // Generate submission ID
-      const submissionId = uuidv4();
-
-      // Delegate to Session.spawnTask()
-      await this.session.spawnTask(task, taskContext, submissionId, inputItems);
-
-    } catch (error) {
-      console.error('Error processing user input:', error);
-
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred during task execution';
-      const isApiKeyError = errorMessage.includes('No API key configured');
-
-      let providerName = 'the selected provider';
-      try {
-        const configData = this.config.getConfig();
-        const modelData = this.config.getModelByKey(configData.selectedModelKey);
-        if (modelData) {
-          providerName = modelData.provider.name;
-        }
-      } catch (e) {
-        // Ignore error getting provider name
-      }
-
-      const userFriendlyMessage = isApiKeyError
-        ? `Cannot execute task: No API key configured for ${providerName}. Please go to Settings → Model Configuration and add your API key.`
-        : errorMessage;
-
-      this.emitEvent({
-        type: 'Error',
-        data: {
-          message: userFriendlyMessage,
-        },
-      });
-
-      throw error;
-    }
-  }
 
   /**
    * Cancel a running task
@@ -770,100 +612,6 @@ export class RepublicAgent {
     this.session.updateTurnContext(updates);
   }
 
-  /**
-   * Handle exec approval (fallback when engine not available)
-   */
-  private async handleExecApproval(op: Extract<Op, { type: 'ExecApproval' }>): Promise<void> {
-    const decision = op.decision === 'approve' ? 'approve' : 'reject';
-
-    let toolName = '';
-    let params: Record<string, any> = {};
-    let domain: string | undefined;
-    let riskScore: number | undefined;
-    if (op.remember) {
-      const pending = this.approvalManager.getApproval(op.id);
-      if (pending) {
-        toolName = pending.request?.metadata?.toolName || '';
-        params = pending.request?.details?.parameters || {};
-        domain = pending.request?.metadata?.domain;
-        riskScore = pending.request?.metadata?.riskScore;
-      } else {
-        console.warn(`[RepublicAgent] Cannot remember decision - no pending approval for id: ${op.id}`);
-      }
-    }
-
-    let riskBasedResolved = false;
-    try {
-      await this.approvalManager.handleDecision({
-        id: op.id,
-        decision,
-        timestamp: Date.now(),
-        reason: op.alternativeText || (decision === 'reject' ? 'Denied by user' : undefined),
-      });
-      riskBasedResolved = true;
-    } catch (error) {
-      console.warn(`[RepublicAgent] ApprovalManager.handleDecision failed for ${op.id}:`, error);
-    }
-
-    let protocolResolved = false;
-    try {
-      await this.session.notifyApproval(op.id, op.decision);
-      protocolResolved = true;
-    } catch (error) {
-      console.warn(`[RepublicAgent] Session.notifyApproval failed for ${op.id}:`, error);
-    }
-
-    if (!riskBasedResolved && !protocolResolved) {
-      console.error(`[RepublicAgent] Approval decision could not be routed for id: ${op.id} — no pending request found in either subsystem`);
-    }
-
-    if (op.remember && toolName) {
-      const approvalGate = this.toolRegistry.getApprovalGate();
-      if (approvalGate) {
-        approvalGate.rememberDecision(
-          toolName,
-          params,
-          decision === 'approve' ? 'auto_approve' : 'deny',
-          domain,
-          riskScore,
-        );
-      }
-    }
-
-    this.emitEvent({
-      type: 'BackgroundEvent',
-      data: {
-        message: `Execution ${decision === 'approve' ? 'approved' : 'rejected'}: ${op.id}`,
-        level: 'info',
-      },
-    });
-  }
-
-  /**
-   * Handle patch approval (fallback when engine not available)
-   */
-  private async handlePatchApproval(op: Extract<Op, { type: 'PatchApproval' }>): Promise<void> {
-    await this.session.notifyApproval(op.id, op.decision);
-
-    this.emitEvent({
-      type: 'BackgroundEvent',
-      data: {
-        message: `Patch ${op.decision === 'approve' ? 'approved' : 'rejected'}: ${op.id}`,
-        level: 'info',
-      },
-    });
-  }
-
-  /**
-   * Handle add to history (fallback when engine not available)
-   */
-  private async handleAddToHistory(op: Extract<Op, { type: 'AddToHistory' }>): Promise<void> {
-    this.session.addToHistory({
-      timestamp: Date.now(),
-      text: op.text,
-      type: 'user',
-    });
-  }
 
   /**
    * Handle get path request
@@ -879,63 +627,6 @@ export class RepublicAgent {
     });
   }
 
-  /**
-   * Handle shutdown (fallback when engine not available)
-   */
-  private async handleShutdown(): Promise<void> {
-    this.emitEvent({
-      type: 'ShutdownComplete',
-    });
-  }
-
-  /**
-   * Handle compact operation (fallback when engine not available)
-   */
-  private async handleCompact(trigger: 'auto' | 'manual' = 'auto'): Promise<void> {
-    try {
-      this.emitEvent({
-        type: 'BackgroundEvent',
-        data: {
-          message: `History compaction started (${trigger})`,
-          level: 'info',
-        },
-      });
-
-      const historyBefore = this.session.getConversationHistory().items.length;
-      const modelClient = await this.modelClientFactory.createClientForCurrentModel();
-      const result = await this.session.compact(trigger, modelClient);
-      const historyAfter = this.session.getConversationHistory().items.length;
-
-      this.emitEvent({
-        type: 'CompactionCompleted',
-        data: {
-          success: result.success,
-          tokensBefore: result.tokensBefore,
-          tokensAfter: result.tokensAfter,
-          itemsTrimmed: result.itemsTrimmed,
-          compactionCount: this.session.getCompactionCount(),
-          triggerReason: trigger,
-          error: result.error,
-        },
-      });
-
-      this.emitEvent({
-        type: 'BackgroundEvent',
-        data: {
-          message: `History compaction completed: ${historyBefore} → ${historyAfter} items (saved ~${result.tokensBefore - result.tokensAfter} tokens)`,
-          level: 'info',
-        },
-      });
-    } catch (error) {
-      this.emitEvent({
-        type: 'Error',
-        data: {
-          message: `History compaction failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        },
-      });
-      throw error;
-    }
-  }
 
   /**
    * Handle get history entry request
@@ -973,27 +664,6 @@ export class RepublicAgent {
     }
   }
 
-  /**
-   * Handle interrupt (fallback when engine not available)
-   */
-  private async handleInterrupt(): Promise<void> {
-    this.session.requestInterrupt();
-
-    await this.userNotifier.notifyWarning(
-      'Task Interrupted',
-      'The current task has been interrupted by user request'
-    );
-
-    this.emitEvent({
-      type: 'TurnAborted',
-      data: {
-        reason: 'user_interrupt',
-      },
-    });
-
-    await this.session.abortAllTasks('UserInterrupt');
-    this.session.clearInterrupt();
-  }
 
   /**
    * Wire engine events to the RepublicAgent's eventDispatcher.

@@ -260,7 +260,21 @@ export class RepublicAgentEngine {
     try {
       while (this.submissionQueue.length > 0) {
         const submission = this.submissionQueue.shift()!;
-        await this.handleSubmission(submission);
+        try {
+          await this.handleSubmission(submission);
+        } catch (error) {
+          console.error('[RepublicAgentEngine] Error handling submission:', error);
+          this.pushEvent({
+            id: crypto.randomUUID(),
+            msg: {
+              type: 'Error',
+              data: {
+                message: error instanceof Error ? error.message : String(error),
+                submissionId: submission.id,
+              },
+            },
+          });
+        }
       }
     } finally {
       this.processingSubmission = false;
