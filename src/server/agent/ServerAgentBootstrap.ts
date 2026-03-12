@@ -152,8 +152,8 @@ export class ServerAgentBootstrap {
       // 5. Create AgentRegistry with factories
       this.registry = new AgentRegistry({
         maxConcurrent: 3,
-        agentFactory: async (cfg) => {
-          const agent = new RepublicAgent(cfg);
+        agentFactory: async (cfg, initialHistory) => {
+          const agent = new RepublicAgent(cfg, initialHistory);
           await agent.initialize();
 
           // Register server-mode tools on each new agent

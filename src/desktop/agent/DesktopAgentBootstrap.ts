@@ -111,8 +111,8 @@ export class DesktopAgentBootstrap {
       const maxConcurrentSessions = config.getConfig().preferences?.maxConcurrentSessions ?? DEFAULT_MAX_CONCURRENT;
       this.registry = AgentRegistry.getInstance({
         maxConcurrent: maxConcurrentSessions,
-        agentFactory: async (agentConfig) => {
-          const agent = new RepublicAgent(agentConfig, undefined, undefined, new UserNotifier());
+        agentFactory: async (agentConfig, initialHistory) => {
+          const agent = new RepublicAgent(agentConfig, initialHistory, undefined, new UserNotifier());
 
           // Copy auth manager from an existing session for consistency
           const existingAuth = this.getFirstAuthManager();
@@ -281,6 +281,12 @@ export class DesktopAgentBootstrap {
       scheduler: this.scheduler ? { scheduler: this.scheduler } : undefined,
       session: this.registry ? {
         registry: this.registry,
+        loadRolloutHistory: async (sessionId: string) => {
+          const { RolloutRecorder } = await import('@/storage/rollout/RolloutRecorder');
+          const history = await RolloutRecorder.getRolloutHistory(sessionId);
+          if (history.type !== 'resumed' || !history.payload?.history) return null;
+          return { sessionId, rolloutItems: history.payload.history };
+        },
       } : undefined,
       agent: this.registry ? {
         registry: this.registry,
@@ -647,78 +653,6 @@ export class DesktopAgentBootstrap {
 
     configurePromptComposer('applepi', staticContext);
     console.log('[DesktopAgentBootstrap] PromptComposer configured for pi with platform context');
-  }
-
-  /**
-   * Resume a previous conversation by its ID.
-   *
-   * Creates a new session in the registry with the resumed conversation history.
-   * The old session (if any) should be removed by the caller via the registry.
-   */
-  async resumeSession(sessionId: string): Promise<unknown[]> {
-    if (!this.registry) {
-      throw new Error('AgentRegistry not initialized');
-    }
-
-    console.log('[DesktopAgentBootstrap] Resuming session:', sessionId);
-
-    // 1. Preserve auth manager from an existing session
-    const authManager = this.getFirstAuthManager();
-
-    // 2. Abort and remove any existing primary session
-    const primarySession = this.registry.getPrimarySession();
-    if (primarySession?.agent) {
-      const currentSession = primarySession.agent.getSession();
-      await currentSession.abortAllTasks('UserInterrupt');
-      await currentSession.close();
-      await this.registry.removeSession(primarySession.sessionId);
-    }
-
-    // 3. Load rollout history from storage
-    const { RolloutRecorder } = await import('@/storage/rollout/RolloutRecorder');
-    const initialHistory = await RolloutRecorder.getRolloutHistory(sessionId);
-
-    if (initialHistory.type !== 'resumed' || !initialHistory.payload?.history) {
-      throw new Error('Conversation not found or has no history');
-    }
-
-    // 4. Create a new agent with the resumed history, then register it as a session.
-    // We create the agent manually because we need to pass initialHistory to the constructor.
-    const config = await AgentConfig.getInstance();
-    const agent = new RepublicAgent(config, {
-      mode: 'resumed' as const,
-      sessionId,
-      rolloutItems: initialHistory.payload.history,
-    }, undefined, new UserNotifier());
-
-    // Restore auth manager on the new agent's ModelClientFactory
-    if (authManager) {
-      agent.getModelClientFactory().setAuthManager(authManager);
-    }
-
-    // Initialize the agent
-    await agent.initialize();
-    await this.configureDesktopPlatformForAgent(agent);
-    await this.registerSkillsToolOnAgent(agent);
-
-    // Wire event dispatcher
-    const channelManager = getChannelManager();
-    agent.setEventDispatcher((event) => {
-      const agentSessionId = agent.getSession().sessionId;
-      channelManager.dispatchEvent({ msg: event.msg, sessionId: agentSessionId }, this.channel!.channelId).catch((error) => {
-        console.error('[DesktopAgentBootstrap] Failed to dispatch event:', error);
-      });
-      this.handleSchedulerEventCompletion(event.msg);
-    });
-
-    // Initialize the agent's session
-    const session = agent.getSession();
-    await session.initialize();
-
-    // 5. Return the reconstructed conversation history
-    const history = session.getConversationHistory();
-    console.log('[DesktopAgentBootstrap] Session resumed with', history.items.length, 'items');
-    return history.items;
   }
 
   /**

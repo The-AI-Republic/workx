@@ -15,8 +15,14 @@ function createMockDeps(overrides: Partial<SessionServiceDeps> = {}): SessionSer
   // Cache session mocks so getSession returns the same reference
   const sessionMocks: Record<string, any> = {
     s1: {
+      sessionId: 's1',
       agent: {
         refreshModelClient: vi.fn().mockResolvedValue(undefined),
+        getSession: vi.fn().mockReturnValue({
+          abortAllTasks: vi.fn().mockResolvedValue(undefined),
+          close: vi.fn().mockResolvedValue(undefined),
+          getConversationHistory: vi.fn().mockReturnValue({ items: [{ role: 'user', content: 'hi' }] }),
+        }),
       },
       getState: vi.fn().mockReturnValue({
         sessionId: 's1',
@@ -40,7 +46,12 @@ function createMockDeps(overrides: Partial<SessionServiceDeps> = {}): SessionSer
       createSession: vi.fn().mockResolvedValue({
         sessionId: 's-new',
         sessionLetter: 'c',
-        agent: { refreshModelClient: vi.fn().mockResolvedValue(undefined) },
+        agent: {
+          refreshModelClient: vi.fn().mockResolvedValue(undefined),
+          getSession: vi.fn().mockReturnValue({
+            getConversationHistory: vi.fn().mockReturnValue({ items: [{ role: 'user', content: 'resumed' }] }),
+          }),
+        },
       }),
       removeSession: vi.fn().mockResolvedValue(undefined),
       getSession: vi.fn().mockImplementation((id: string) => sessionMocks[id]),
@@ -109,26 +120,57 @@ describe('session-services', () => {
   });
 
   describe('session.resume', () => {
-    it('delegates to resumeSession callback', async () => {
-      const resumeSession = vi.fn().mockResolvedValue({ sessionId: 's1', history: [] });
-      deps = createMockDeps({ resumeSession });
+    it('loads history and creates session with resume config', async () => {
+      const loadRolloutHistory = vi.fn().mockResolvedValue({
+        sessionId: 'conv-123',
+        rolloutItems: [{ type: 'event_msg', payload: {} }],
+      });
+      deps = createMockDeps({ loadRolloutHistory });
       services = createSessionServices(deps);
 
-      const result = await services['session.resume']({ sessionId: 's1' }, ctx);
+      const result = await services['session.resume']({ sessionId: 'conv-123' }, ctx);
 
-      expect(resumeSession).toHaveBeenCalledWith('s1');
-      expect(result).toEqual({ sessionId: 's1', history: [] });
+      // Should load rollout history
+      expect(loadRolloutHistory).toHaveBeenCalledWith('conv-123');
+
+      // Should create new session with resume data
+      expect(deps.registry.createSession).toHaveBeenCalledWith({
+        type: 'primary',
+        resume: {
+          sessionId: 'conv-123',
+          rolloutItems: [{ type: 'event_msg', payload: {} }],
+        },
+      });
+
+      // Should NOT touch existing sessions (caller is responsible for closing)
+      expect(deps.registry.removeSession).not.toHaveBeenCalled();
+
+      // Should return history from the new session
+      expect(result).toEqual({
+        sessionId: 'conv-123',
+        history: [{ role: 'user', content: 'resumed' }],
+      });
     });
 
-    it('throws when resume not supported', async () => {
+    it('throws when loadRolloutHistory not provided', async () => {
       await expect(services['session.resume']({ sessionId: 's1' }, ctx)).rejects.toThrow(
         'Session resume not supported'
       );
     });
 
+    it('throws when history not found (returns null)', async () => {
+      const loadRolloutHistory = vi.fn().mockResolvedValue(null);
+      deps = createMockDeps({ loadRolloutHistory });
+      services = createSessionServices(deps);
+
+      await expect(services['session.resume']({ sessionId: 'unknown' }, ctx)).rejects.toThrow(
+        'Conversation not found or has no history'
+      );
+    });
+
     it('throws for missing sessionId', async () => {
-      const resumeSession = vi.fn();
-      deps = createMockDeps({ resumeSession });
+      const loadRolloutHistory = vi.fn();
+      deps = createMockDeps({ loadRolloutHistory });
       services = createSessionServices(deps);
 
       await expect(services['session.resume']({}, ctx)).rejects.toThrow('sessionId is required');

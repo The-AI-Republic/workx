@@ -29,8 +29,8 @@ export interface SessionServiceDeps {
   /** Callback for platform-specific tab reset (extension-only) */
   resetTabs?: () => Promise<void>;
 
-  /** Resume a session from stored history */
-  resumeSession?: (sessionId: string) => Promise<{ sessionId: string; history: unknown[] }>;
+  /** Load rollout history for a session ID (platform-specific storage) */
+  loadRolloutHistory?: (sessionId: string) => Promise<{ sessionId: string; rolloutItems: unknown[] } | null>;
 }
 
 /**
@@ -85,17 +85,39 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
 
     /**
      * Resume a session from stored history.
+     * Loads rollout history and creates a new session via the registry.
+     * The caller is responsible for closing any existing session first
+     * (via session.close) if they want to replace it.
      * Requires: { sessionId: string }
      */
     'session.resume': async (params) => {
-      if (!deps.resumeSession) {
+      if (!deps.loadRolloutHistory) {
         throw new Error('Session resume not supported on this platform');
       }
       const { sessionId } = (params ?? {}) as { sessionId?: string };
       if (!sessionId) {
         throw new Error('sessionId is required');
       }
-      return deps.resumeSession(sessionId);
+
+      // Load rollout history from platform storage
+      const rolloutData = await deps.loadRolloutHistory(sessionId);
+      if (!rolloutData) {
+        throw new Error('Conversation not found or has no history');
+      }
+
+      // Create new session with resume data
+      const newSession = await registry.createSession({
+        type: 'primary',
+        resume: {
+          sessionId: rolloutData.sessionId,
+          rolloutItems: rolloutData.rolloutItems,
+        },
+      });
+
+      // Read history from the new session's agent
+      const agent = newSession.agent as any;
+      const history = agent?.getSession().getConversationHistory();
+      return { sessionId: rolloutData.sessionId, history: history?.items ?? [] };
     },
 
     /**
