@@ -135,7 +135,7 @@ export class RepublicAgent {
 
     // Create initial TurnContext with the model client
     const taskContext = new TurnContext(modelClient, {
-      sessionId: this.session.conversationId
+      sessionId: this.session.sessionId
     });
 
     // Configure PromptComposer for dynamic system prompt composition
@@ -958,7 +958,7 @@ export class RepublicAgent {
     this.emitEvent({
       type: 'ConversationPath',
       data: {
-        path: this.session.conversationId,
+        path: this.session.sessionId,
         messages_count: conversationHistory.items.length,
       },
     });

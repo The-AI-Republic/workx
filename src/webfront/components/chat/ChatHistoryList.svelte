@@ -6,7 +6,7 @@
 
   // Props
   let { onSelectConversation = () => {}, onClose = () => {} }: {
-    onSelectConversation?: (conversationId: string) => void;
+    onSelectConversation?: (sessionId: string) => void;
     onClose?: () => void;
   } = $props();
 
@@ -174,8 +174,8 @@
     }
   }
 
-  function handleSelectConversation(conversationId: string) {
-    onSelectConversation(conversationId);
+  function handleSelectConversation(sessionId: string) {
+    onSelectConversation(sessionId);
     onClose();
   }
 </script>

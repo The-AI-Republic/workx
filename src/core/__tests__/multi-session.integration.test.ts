@@ -10,14 +10,15 @@ import type { SessionConfig } from '@/core/registry/types';
 // Mock dependencies
 vi.mock('@/core/RepublicAgent', () => ({
   RepublicAgent: class MockRepublicAgent {
-    initialize = async () => undefined;
-    setEventDispatcher = (_fn: any) => {};
-    getSession = () => ({
-      conversationId: 'conv_test_' + Math.random().toString(36).slice(2),
+    private _session = {
+      sessionId: 'session_test_' + Math.random().toString(36).slice(2),
       abortAllTasks: () => {},
       close: () => {},
       setTabId: () => {},
-    });
+    };
+    initialize = async () => undefined;
+    setEventDispatcher = (_fn: any) => {};
+    getSession = () => this._session;
     submitOperation = async () => 'sub_123';
     cleanup = () => {};
     getApprovalManager = () => ({});
@@ -244,6 +245,49 @@ describe('Multi-Session Integration', () => {
       const session3 = await registry.getOrCreatePrimarySession();
       expect(session3).not.toBe(session1);
       expect(session3.metadata.type).toBe('primary');
+    });
+
+    it('internal sessions bypass concurrent limit and are excluded from count', async () => {
+      const registry = AgentRegistry.getInstance({ maxConcurrent: 2 });
+      registry.initialize(mockConfig);
+
+      // Fill user-facing slots
+      await registry.createSession({ type: 'primary' });
+      await registry.createSession({ type: 'scheduled' });
+      expect(registry.getActiveCount()).toBe(2);
+      expect(registry.canCreateSession()).toBe(false);
+
+      // Internal session bypasses the limit
+      const internal = await registry.createSession({ type: 'primary', internal: true });
+      expect(internal).toBeDefined();
+      expect(internal.internal).toBe(true);
+
+      // Internal session is NOT counted in active count
+      expect(registry.getActiveCount()).toBe(2);
+      expect(registry.canCreateSession()).toBe(false);
+
+      // Regular session still fails
+      await expect(
+        registry.createSession({ type: 'scheduled' })
+      ).rejects.toThrow('Max concurrent sessions reached');
+    });
+
+    it('each session gets a unique sessionId from its agent', async () => {
+      const registry = AgentRegistry.getInstance();
+      registry.initialize(mockConfig);
+
+      const s1 = await registry.createSession({ type: 'primary' });
+      const s2 = await registry.createSession({ type: 'scheduled' });
+      const s3 = await registry.createSession({ type: 'scheduled' });
+
+      // Each session should have a unique ID from its agent's session
+      const ids = new Set([s1.sessionId, s2.sessionId, s3.sessionId]);
+      expect(ids.size).toBe(3);
+
+      // sessionId should match what's used to retrieve the session
+      expect(registry.getSession(s1.sessionId)).toBe(s1);
+      expect(registry.getSession(s2.sessionId)).toBe(s2);
+      expect(registry.getSession(s3.sessionId)).toBe(s3);
     });
   });
 });

@@ -33,7 +33,7 @@ export interface OpenAIChatCompletionConfig {
   /** Organization ID */
   organization?: string;
   /** Conversation ID for session tracking */
-  conversationId: string;
+  sessionId: string;
   /** Model family configuration */
   modelFamily: ModelFamily;
   /** Model provider information */
@@ -80,7 +80,7 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
       apiKey: config.apiKey,
       baseUrl: config.baseUrl,
       organization: config.organization,
-      conversationId: config.conversationId,
+      sessionId: config.sessionId,
       modelFamily: config.modelFamily,
       provider: config.provider,
       modelConfig: config.modelConfig,

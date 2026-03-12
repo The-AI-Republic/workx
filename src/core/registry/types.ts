@@ -31,6 +31,12 @@ export interface SessionConfig {
 
   /** Conversation ID to resume from (optional) */
   resumeFrom?: string | null;
+
+  /**
+   * Mark as an internal infrastructure session (e.g. bootstrap fallback agent).
+   * Internal sessions bypass the concurrent limit and are excluded from user-facing counts.
+   */
+  internal?: boolean;
 }
 
 /**
@@ -42,9 +48,6 @@ export interface SessionMetadata {
 
   /** Single letter identifier (a, b, c...) for tab group naming */
   sessionLetter: string;
-
-  /** Conversation ID for history lookup */
-  conversationId: string;
 
   /** Session type */
   type: SessionType;
@@ -166,7 +169,7 @@ export const SESSION_LETTERS = 'abcdefghijklmnopqrstuvwxyz'.split('');
 /**
  * Default maximum concurrent sessions
  */
-export const DEFAULT_MAX_CONCURRENT = 3;
+export const DEFAULT_MAX_CONCURRENT = 5;
 
 /**
  * Maximum allowed concurrent sessions

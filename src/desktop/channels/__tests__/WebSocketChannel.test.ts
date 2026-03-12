@@ -27,6 +27,7 @@ vi.mock('../websocket/WebSocketServer', () => ({
 
 import { WebSocketChannel } from '../WebSocketChannel';
 import type { EventMsg } from '@/core/protocol/events';
+import type { ChannelEvent } from '@/core/channels/types';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -83,7 +84,7 @@ describe('WebSocketChannel', () => {
         data: { delta: 'hello' },
       };
 
-      await channel.sendEvent(event);
+      await channel.sendEvent({ msg: event });
 
       // No turn active → event is dropped (not sent)
       expect(mockServer.send).not.toHaveBeenCalled();
@@ -104,7 +105,7 @@ describe('WebSocketChannel', () => {
         type: 'AgentMessageDelta',
         data: { delta: 'response' },
       };
-      await channel.sendEvent(event);
+      await channel.sendEvent({ msg: event });
 
       // broadcast is used when no targetClientId
       const broadcastCall = mockServer.broadcast.mock.calls[0];
@@ -120,7 +121,7 @@ describe('WebSocketChannel', () => {
         type: 'TaskComplete',
         data: { last_agent_message: 'done' },
       };
-      await channel.sendEvent(completeEvent);
+      await channel.sendEvent({ msg: completeEvent });
 
       // The TaskComplete itself should be sent
       expect(mockServer.broadcast).toHaveBeenCalledTimes(1);
@@ -131,7 +132,7 @@ describe('WebSocketChannel', () => {
         type: 'AgentMessageDelta',
         data: { delta: 'orphan' },
       };
-      await channel.sendEvent(deltaEvent);
+      await channel.sendEvent({ msg: deltaEvent });
       expect(mockServer.broadcast).not.toHaveBeenCalled();
     });
 
@@ -151,7 +152,7 @@ describe('WebSocketChannel', () => {
         type: 'AgentMessageDelta',
         data: { delta: 'orphan' },
       };
-      await channel.sendEvent(event);
+      await channel.sendEvent({ msg: event });
       expect(mockServer.broadcast).not.toHaveBeenCalled();
     });
   });
@@ -175,7 +176,7 @@ describe('WebSocketChannel', () => {
           start_time: 1000,
         },
       };
-      await channel.sendEvent(startEvent);
+      await channel.sendEvent({ msg: startEvent });
 
       const startMsg = mockServer.broadcast.mock.calls[0][0];
       expect(startMsg.type).toBe('tool_use');
@@ -193,7 +194,7 @@ describe('WebSocketChannel', () => {
           success: true,
         },
       };
-      await channel.sendEvent(endEvent);
+      await channel.sendEvent({ msg: endEvent });
 
       const endMsg = mockServer.broadcast.mock.calls[0][0];
       expect(endMsg.type).toBe('tool_result');
@@ -210,7 +211,7 @@ describe('WebSocketChannel', () => {
         type: 'ToolExecutionStart',
         data: { tool_name: 'web_search' },
       };
-      await channel.sendEvent(startEvent);
+      await channel.sendEvent({ msg: startEvent });
 
       const startMsg = mockServer.broadcast.mock.calls[0][0];
       const startToolUseId = startMsg.toolUseId;
@@ -223,7 +224,7 @@ describe('WebSocketChannel', () => {
         type: 'ToolExecutionEnd',
         data: { tool_name: 'web_search', success: true },
       };
-      await channel.sendEvent(endEvent);
+      await channel.sendEvent({ msg: endEvent });
 
       const endMsg = mockServer.broadcast.mock.calls[0][0];
       expect(endMsg.toolUseId).toBe(startToolUseId);
@@ -239,7 +240,7 @@ describe('WebSocketChannel', () => {
         type: 'ToolExecutionEnd',
         data: { tool_name: 'orphan_tool', success: false },
       };
-      await channel.sendEvent(endEvent);
+      await channel.sendEvent({ msg: endEvent });
 
       const endMsg = mockServer.broadcast.mock.calls[0][0];
       expect(endMsg.toolUseId).toBe('tool-orphan_tool-unknown');
@@ -263,7 +264,7 @@ describe('WebSocketChannel', () => {
           params: { selector: '#btn', button: 'left' },
         },
       };
-      await channel.sendEvent(startEvent);
+      await channel.sendEvent({ msg: startEvent });
 
       const msg = mockServer.broadcast.mock.calls[0][0];
       expect(msg.input).toEqual({ selector: '#btn', button: 'left' });
@@ -278,7 +279,7 @@ describe('WebSocketChannel', () => {
         type: 'ToolExecutionStart',
         data: { tool_name: 'screenshot' },
       };
-      await channel.sendEvent(startEvent);
+      await channel.sendEvent({ msg: startEvent });
 
       const msg = mockServer.broadcast.mock.calls[0][0];
       expect(msg.input).toEqual({});
@@ -297,10 +298,10 @@ describe('WebSocketChannel', () => {
     });
 
     it('maps AgentMessageDelta to assistant_chunk', async () => {
-      await channel.sendEvent({
+      await channel.sendEvent({ msg: {
         type: 'AgentMessageDelta',
         data: { delta: 'hello world' },
-      });
+      } });
 
       const msg = mockServer.broadcast.mock.calls[0][0];
       expect(msg.type).toBe('assistant_chunk');
@@ -309,10 +310,10 @@ describe('WebSocketChannel', () => {
     });
 
     it('maps TaskComplete to assistant_turn_complete', async () => {
-      await channel.sendEvent({
+      await channel.sendEvent({ msg: {
         type: 'TaskComplete',
         data: { last_agent_message: 'All done.' },
-      });
+      } });
 
       const msg = mockServer.broadcast.mock.calls[0][0];
       expect(msg.type).toBe('assistant_turn_complete');
@@ -320,10 +321,10 @@ describe('WebSocketChannel', () => {
     });
 
     it('maps Error to error with code', async () => {
-      await channel.sendEvent({
+      await channel.sendEvent({ msg: {
         type: 'Error',
         data: { message: 'something broke', code: 'RATE_LIMIT' },
-      });
+      } });
 
       const msg = mockServer.broadcast.mock.calls[0][0];
       expect(msg.type).toBe('error');
@@ -332,20 +333,20 @@ describe('WebSocketChannel', () => {
     });
 
     it('defaults error code to ERROR when not provided', async () => {
-      await channel.sendEvent({
+      await channel.sendEvent({ msg: {
         type: 'Error',
         data: { message: 'unknown failure' },
-      });
+      } });
 
       const msg = mockServer.broadcast.mock.calls[0][0];
       expect(msg.code).toBe('ERROR');
     });
 
     it('drops unknown event types silently', async () => {
-      await channel.sendEvent({
+      await channel.sendEvent({ msg: {
         type: 'AgentReasoning',
         data: { content: 'thinking...' },
-      } as EventMsg);
+      } as EventMsg });
 
       expect(mockServer.broadcast).not.toHaveBeenCalled();
       expect(mockServer.send).not.toHaveBeenCalled();
@@ -366,7 +367,7 @@ describe('WebSocketChannel', () => {
 
       // After close, events should be dropped (no active turn, not initialized)
       await expect(
-        channel.sendEvent({ type: 'AgentMessageDelta', data: { delta: 'after close' } }),
+        channel.sendEvent({ msg: { type: 'AgentMessageDelta', data: { delta: 'after close' } } }),
       ).rejects.toThrow('WebSocketChannel not initialized');
     });
   });

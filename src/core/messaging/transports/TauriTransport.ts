@@ -9,10 +9,11 @@
 
 import type { Op } from '@/core/protocol/types';
 import type { EventMsg } from '@/core/protocol/events';
+import type { ChannelEvent } from '@/core/channels/types';
 import type { UIChannelTransport } from './types';
 
 export class TauriTransport implements UIChannelTransport {
-  private listeners: Array<(event: EventMsg) => void> = [];
+  private listeners: Array<(event: ChannelEvent) => void> = [];
   private unlistenFn: (() => void) | null = null;
   private emit: ((event: string, payload?: unknown) => Promise<void>) | null = null;
 
@@ -25,7 +26,7 @@ export class TauriTransport implements UIChannelTransport {
     console.log('[TauriTransport] sendOp emitted successfully');
   }
 
-  onEvent(handler: (event: EventMsg) => void): () => void {
+  onEvent(handler: (event: ChannelEvent) => void): () => void {
     this.listeners.push(handler);
     return () => {
       this.listeners = this.listeners.filter((h) => h !== handler);
@@ -40,19 +41,24 @@ export class TauriTransport implements UIChannelTransport {
 
     // Listen for events from the agent
     this.unlistenFn = await listen('pi:event', (event: { payload: unknown }) => {
-      const payload = event.payload as { msg?: EventMsg } | EventMsg;
+      const payload = event.payload as { msg?: EventMsg; sessionId?: string } | EventMsg;
       console.log('[TauriTransport] Received pi:event, payload type:', typeof payload, 'keys:', payload && typeof payload === 'object' ? Object.keys(payload).join(',') : 'n/a');
 
-      // Handle both wrapped { msg: EventMsg } and direct EventMsg formats
-      const eventMsg = ('msg' in payload && payload.msg) ? payload.msg : payload as EventMsg;
-
-      if (eventMsg && typeof eventMsg === 'object' && 'type' in eventMsg) {
-        console.log('[TauriTransport] Dispatching event:', (eventMsg as any).type);
-        for (const handler of this.listeners) {
-          handler(eventMsg);
-        }
+      // Handle both ChannelEvent { msg, sessionId } and direct EventMsg formats
+      let channelEvent: ChannelEvent;
+      if (payload && typeof payload === 'object' && 'msg' in payload && payload.msg) {
+        channelEvent = payload as ChannelEvent;
+      } else if (payload && typeof payload === 'object' && 'type' in payload) {
+        // Legacy: bare EventMsg without envelope
+        channelEvent = { msg: payload as EventMsg };
       } else {
         console.warn('[TauriTransport] Received pi:event but could not extract EventMsg:', JSON.stringify(payload).slice(0, 200));
+        return;
+      }
+
+      console.log('[TauriTransport] Dispatching event:', channelEvent.msg.type, 'sessionId:', channelEvent.sessionId);
+      for (const handler of this.listeners) {
+        handler(channelEvent);
       }
     });
     console.log('[TauriTransport] Initialized, listening on pi:event');
