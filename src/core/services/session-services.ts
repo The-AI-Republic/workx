@@ -10,6 +10,7 @@
  */
 
 import type { ServiceHandler } from '@/core/channels/ServiceRegistry';
+import type { RepublicAgent } from '@/core/RepublicAgent';
 
 export interface SessionServiceDeps {
   /** Registry for multi-session management (required). */
@@ -19,10 +20,11 @@ export interface SessionServiceDeps {
     getActiveCount(): number;
     canCreateSession(): boolean;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    createSession(config: any): Promise<{ sessionId: string; sessionLetter: string; agent: unknown }>;
+    createSession(config: any): Promise<{ sessionId: string; sessionLetter: string; agent: RepublicAgent | null }>;
     removeSession(sessionId: string): Promise<void>;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     getSession(sessionId: string): any;
+    getPrimarySession(): { sessionId: string } | undefined;
     setMaxConcurrent(limit: number): void;
   };
 
@@ -85,9 +87,8 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
 
     /**
      * Resume a session from stored history.
-     * Loads rollout history and creates a new session via the registry.
-     * The caller is responsible for closing any existing session first
-     * (via session.close) if they want to replace it.
+     * Loads rollout history, closes the current primary session if one exists,
+     * and creates a new session via the registry.
      * Requires: { sessionId: string }
      */
     'session.resume': async (params) => {
@@ -105,6 +106,12 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
         throw new Error('Conversation not found or has no history');
       }
 
+      // Close existing primary session before creating the resumed one
+      const primarySession = registry.getPrimarySession();
+      if (primarySession) {
+        await registry.removeSession(primarySession.sessionId);
+      }
+
       // Create new session with resume data
       const newSession = await registry.createSession({
         type: 'primary',
@@ -115,8 +122,10 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
       });
 
       // Read history from the new session's agent
-      const agent = newSession.agent as any;
-      const history = agent?.getSession().getConversationHistory();
+      if (!newSession.agent) {
+        throw new Error('Failed to create agent for resumed session');
+      }
+      const history = newSession.agent.getSession().getConversationHistory();
       return { sessionId: rolloutData.sessionId, history: history?.items ?? [] };
     },
 

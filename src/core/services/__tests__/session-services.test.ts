@@ -55,6 +55,7 @@ function createMockDeps(overrides: Partial<SessionServiceDeps> = {}): SessionSer
       }),
       removeSession: vi.fn().mockResolvedValue(undefined),
       getSession: vi.fn().mockImplementation((id: string) => sessionMocks[id]),
+      getPrimarySession: vi.fn().mockReturnValue({ sessionId: 's1' }),
       setMaxConcurrent: vi.fn(),
     },
     ...overrides,
@@ -120,7 +121,7 @@ describe('session-services', () => {
   });
 
   describe('session.resume', () => {
-    it('loads history and creates session with resume config', async () => {
+    it('loads history, closes primary, and creates session with resume config', async () => {
       const loadRolloutHistory = vi.fn().mockResolvedValue({
         sessionId: 'conv-123',
         rolloutItems: [{ type: 'event_msg', payload: {} }],
@@ -133,6 +134,9 @@ describe('session-services', () => {
       // Should load rollout history
       expect(loadRolloutHistory).toHaveBeenCalledWith('conv-123');
 
+      // Should close the existing primary session first
+      expect(deps.registry.removeSession).toHaveBeenCalledWith('s1');
+
       // Should create new session with resume data
       expect(deps.registry.createSession).toHaveBeenCalledWith({
         type: 'primary',
@@ -142,14 +146,26 @@ describe('session-services', () => {
         },
       });
 
-      // Should NOT touch existing sessions (caller is responsible for closing)
-      expect(deps.registry.removeSession).not.toHaveBeenCalled();
-
       // Should return history from the new session
       expect(result).toEqual({
         sessionId: 'conv-123',
         history: [{ role: 'user', content: 'resumed' }],
       });
+    });
+
+    it('skips closing when no primary session exists', async () => {
+      const loadRolloutHistory = vi.fn().mockResolvedValue({
+        sessionId: 'conv-123',
+        rolloutItems: [{ type: 'event_msg', payload: {} }],
+      });
+      deps = createMockDeps({ loadRolloutHistory });
+      (deps.registry.getPrimarySession as any).mockReturnValue(undefined);
+      services = createSessionServices(deps);
+
+      await services['session.resume']({ sessionId: 'conv-123' }, ctx);
+
+      expect(deps.registry.removeSession).not.toHaveBeenCalled();
+      expect(deps.registry.createSession).toHaveBeenCalled();
     });
 
     it('throws when loadRolloutHistory not provided', async () => {

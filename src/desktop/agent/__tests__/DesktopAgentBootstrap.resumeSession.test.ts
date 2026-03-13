@@ -119,6 +119,7 @@ describe('Desktop session resume via session-services', () => {
           if (id === 'old-session-id') return oldSession;
           return undefined;
         }),
+        getPrimarySession: vi.fn().mockReturnValue({ sessionId: 'old-session-id' }),
         setMaxConcurrent: vi.fn(),
       },
       loadRolloutHistory: vi.fn().mockResolvedValue({
@@ -135,7 +136,14 @@ describe('Desktop session resume via session-services', () => {
     expect(deps.loadRolloutHistory).toHaveBeenCalledWith(conversationId);
   });
 
-  it('should not touch existing sessions (caller closes them)', async () => {
+  it('should close existing primary session before creating resumed one', async () => {
+    await services['session.resume']({ sessionId: conversationId }, ctx);
+
+    expect(deps.registry.removeSession).toHaveBeenCalledWith('old-session-id');
+  });
+
+  it('should skip closing when no primary session exists', async () => {
+    (deps.registry.getPrimarySession as any).mockReturnValue(undefined);
     await services['session.resume']({ sessionId: conversationId }, ctx);
 
     expect(deps.registry.removeSession).not.toHaveBeenCalled();
