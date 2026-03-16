@@ -257,7 +257,8 @@
         const client = await getClient();
         if (destroyed) return;
         eventUnsubscribers.push(
-          client.onEvent('BackgroundEvent', (data: any) => {
+          client.onEvent('BackgroundEvent', (channelEvent) => {
+            const data = 'data' in channelEvent.msg ? (channelEvent.msg as any).data : undefined;
             if (data?.message === 'scheduler_job_status') {
               fetchEvents();
             }

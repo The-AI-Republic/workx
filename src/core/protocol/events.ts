@@ -285,6 +285,7 @@ export interface BackgroundEventEvent {
   message: string;
   level?: 'info' | 'warning' | 'error';
   schedulerEvent?: unknown;
+  sessionEvent?: unknown;
 }
 
 export interface StreamErrorEvent {

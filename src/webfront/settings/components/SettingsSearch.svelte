@@ -81,14 +81,19 @@
     });
   }
 
-  // Reactively rebuild index when $_t store changes (locale change)
+  // Reactively rebuild index when $_t store changes (locale change).
+  // Use local variables to avoid reading $state we just wrote (which would
+  // cause Svelte 5's effect to re-subscribe and loop infinitely).
   $effect(() => {
     const translate = $_t;
-    searchableItems = buildSearchableItems(translate);
-    fuseIndex = buildFuseIndex(searchableItems);
+    const items = buildSearchableItems(translate);
+    const fuse = buildFuseIndex(items);
+    searchableItems = items;
+    fuseIndex = fuse;
     // Re-run search with current query if index was rebuilt
-    if (query.trim()) {
-      performSearch(query);
+    const q = query.trim();
+    if (q) {
+      results = fuse.search(q);
     }
   });
 

@@ -53,7 +53,7 @@ describe('isNewHistory', () => {
   it('should return false for resumed history', () => {
     const history: InitialHistory = {
       mode: 'resumed',
-      conversationId: 'conv-1',
+      sessionId: 'conv-1',
       rolloutItems: [],
     };
     expect(isNewHistory(history)).toBe(false);
@@ -81,7 +81,7 @@ describe('isResumedHistory', () => {
   it('should return true for resumed history', () => {
     const history: InitialHistory = {
       mode: 'resumed',
-      conversationId: 'conv-123',
+      sessionId: 'conv-123',
       rolloutItems: [{ id: '1' }],
     };
     expect(isResumedHistory(history)).toBe(true);
@@ -101,14 +101,14 @@ describe('isResumedHistory', () => {
     expect(isResumedHistory(history)).toBe(false);
   });
 
-  it('should narrow type to include conversationId and rolloutItems', () => {
+  it('should narrow type to include sessionId and rolloutItems', () => {
     const history: InitialHistory = {
       mode: 'resumed',
-      conversationId: 'conv-abc',
+      sessionId: 'conv-abc',
       rolloutItems: [{ data: 'test' }],
     };
     if (isResumedHistory(history)) {
-      expect(history.conversationId).toBe('conv-abc');
+      expect(history.sessionId).toBe('conv-abc');
       expect(history.rolloutItems).toEqual([{ data: 'test' }]);
     }
   });
@@ -116,7 +116,7 @@ describe('isResumedHistory', () => {
   it('should handle empty rolloutItems', () => {
     const history: InitialHistory = {
       mode: 'resumed',
-      conversationId: 'conv-empty',
+      sessionId: 'conv-empty',
       rolloutItems: [],
     };
     expect(isResumedHistory(history)).toBe(true);
@@ -141,7 +141,7 @@ describe('isForkedHistory', () => {
   it('should return false for resumed history', () => {
     const history: InitialHistory = {
       mode: 'resumed',
-      conversationId: 'conv-1',
+      sessionId: 'conv-1',
       rolloutItems: [],
     };
     expect(isForkedHistory(history)).toBe(false);
@@ -180,7 +180,7 @@ describe('Type guard mutual exclusivity', () => {
   it('resumed history: only isResumedHistory returns true', () => {
     const history: InitialHistory = {
       mode: 'resumed',
-      conversationId: 'conv-1',
+      sessionId: 'conv-1',
       rolloutItems: [],
     };
     expect(isNewHistory(history)).toBe(false);
@@ -289,21 +289,21 @@ describe('Interface structure verification', () => {
 
   it('should create a valid ConfigureSession', () => {
     const config: ConfigureSession = {
-      conversationId: 'conv-1',
+      sessionId: 'conv-1',
       instructions: 'You are a helpful assistant',
       cwd: '/home/user',
       model: 'gpt-4',
     };
-    expect(config.conversationId).toBe('conv-1');
+    expect(config.sessionId).toBe('conv-1');
     expect(config.instructions).toBe('You are a helpful assistant');
     expect(config.model).toBe('gpt-4');
   });
 
-  it('should allow minimal ConfigureSession with only conversationId', () => {
+  it('should allow minimal ConfigureSession with only sessionId', () => {
     const config: ConfigureSession = {
-      conversationId: 'conv-minimal',
+      sessionId: 'conv-minimal',
     };
-    expect(config.conversationId).toBe('conv-minimal');
+    expect(config.sessionId).toBe('conv-minimal');
     expect(config.instructions).toBeUndefined();
     expect(config.cwd).toBeUndefined();
     expect(config.model).toBeUndefined();
