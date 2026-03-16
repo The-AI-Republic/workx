@@ -17,21 +17,32 @@ export interface SubAgentTypeConfig {
   /** System prompt for this sub-agent type */
   systemPrompt: string;
 
-  /** Tool access control */
+  /**
+   * Tool access control.
+   *
+   * - `allow` only: only the listed tools are available (allowlist).
+   * - `deny` only: all parent tools except the listed ones are available (denylist).
+   * - Both: `allow` is applied first to select tools, then `deny` removes from that set.
+   * - Neither: all parent tools are available (minus `sub_agent` which is always denied).
+   */
   tools?: {
-    /** If set, only these tools are available (allowlist) */
+    /** If set, only these tools are available (allowlist). Applied first. */
     allow?: string[];
-    /** If set, these tools are removed (denylist) */
+    /** If set, these tools are removed (denylist). Applied after allow filter. */
     deny?: string[];
   };
 
   /** Model override. If omitted, inherits parent's model */
   model?: string;
 
-  /** Max turns before forced stop. Default: 25 */
+  /** Max turns before forced stop. Must be >= 1. Default: 25 */
   maxTurns?: number;
 
-  /** Approval policy. Default: 'never' (auto-approve) */
+  /**
+   * Approval policy for tool execution.
+   * - `'never'`: auto-approve all tool calls (default for sub-agents)
+   * - `'inherit'`: use the parent agent's approval gate (prompts user for risky tools)
+   */
   approvalPolicy?: 'never' | 'inherit';
 
   /** Whether this type always runs in background. Default: false */

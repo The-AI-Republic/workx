@@ -338,7 +338,7 @@ describe('RepublicAgentEngine', () => {
       engine.submitOperation({
         type: 'ExecApproval',
         callId: 'call-1',
-        approved: true,
+        decision: 'approve' as const,
       });
       await new Promise(r => setTimeout(r, 10));
 
@@ -352,7 +352,7 @@ describe('RepublicAgentEngine', () => {
       engine.submitOperation({
         type: 'ExecApproval',
         callId: 'call-2',
-        approved: false,
+        decision: 'reject' as const,
       });
       await new Promise(r => setTimeout(r, 10));
 
@@ -369,7 +369,7 @@ describe('RepublicAgentEngine', () => {
       engine.submitOperation({
         type: 'ExecApproval',
         callId: 'call-3',
-        approved: true,
+        decision: 'approve' as const,
       });
       await new Promise(r => setTimeout(r, 10));
 
@@ -407,7 +407,7 @@ describe('RepublicAgentEngine', () => {
       engine.submitOperation({
         type: 'ExecApproval',
         callId: 'call-4',
-        approved: true,
+        decision: 'approve' as const,
         remember: true,
       });
       await new Promise(r => setTimeout(r, 10));
@@ -431,13 +431,13 @@ describe('RepublicAgentEngine', () => {
       engine.submitOperation({
         type: 'ExecApproval',
         callId: 'call-5',
-        approved: true,
+        decision: 'approve' as const,
       });
       await new Promise(r => setTimeout(r, 10));
 
       const bgEvent = events.find(
         e => e.msg.type === 'BackgroundEvent' &&
-          (e.msg.data?.message as string)?.includes('approved')
+          (e.msg.data?.message as string)?.includes('approve')
       );
       expect(bgEvent).toBeDefined();
     });
@@ -451,7 +451,7 @@ describe('RepublicAgentEngine', () => {
       engine.submitOperation({
         type: 'PatchApproval',
         patchId: 'patch-1',
-        approved: true,
+        decision: 'approve' as const,
       });
       await new Promise(r => setTimeout(r, 10));
 
@@ -465,7 +465,7 @@ describe('RepublicAgentEngine', () => {
       engine.submitOperation({
         type: 'PatchApproval',
         patchId: 'patch-2',
-        approved: false,
+        decision: 'reject' as const,
       });
       await new Promise(r => setTimeout(r, 10));
 
@@ -651,28 +651,49 @@ describe('RepublicAgentEngine', () => {
       expect(events.length).toBeGreaterThan(0);
     });
 
-    it('should support replacing the event listener', async () => {
+    it('should support multiple concurrent event listeners', async () => {
       const { engine } = createEngine();
       await engine.initialize();
 
       const events1: EngineEvent[] = [];
       const events2: EngineEvent[] = [];
 
-      // Interrupt emits TurnAborted event
       engine.onEvent((e) => events1.push(e));
-      engine.submitOperation({ type: 'Interrupt' });
-      await new Promise(r => setTimeout(r, 10));
-
       engine.onEvent((e) => events2.push(e));
+
       engine.submitOperation({ type: 'Interrupt' });
       await new Promise(r => setTimeout(r, 10));
 
+      // Both listeners should receive events
       expect(events1.length).toBeGreaterThan(0);
       expect(events2.length).toBeGreaterThan(0);
-      // After replacing, events1 should not receive new events
-      const events1CountAfterReplace = events1.length;
-      expect(events2.length).toBeGreaterThan(0);
-      // events1 got events before the replace, events2 got events after
+      expect(events1.length).toBe(events2.length);
+    });
+
+    it('should support unsubscribing an event listener', async () => {
+      const { engine } = createEngine();
+      await engine.initialize();
+
+      const events1: EngineEvent[] = [];
+      const events2: EngineEvent[] = [];
+
+      const unsub1 = engine.onEvent((e) => events1.push(e));
+      engine.onEvent((e) => events2.push(e));
+
+      engine.submitOperation({ type: 'Interrupt' });
+      await new Promise(r => setTimeout(r, 10));
+      const events1CountBefore = events1.length;
+
+      // Unsubscribe first listener
+      unsub1();
+
+      engine.submitOperation({ type: 'Interrupt' });
+      await new Promise(r => setTimeout(r, 10));
+
+      // events1 should not have received new events after unsubscribe
+      expect(events1.length).toBe(events1CountBefore);
+      // events2 should have received events from both operations
+      expect(events2.length).toBeGreaterThan(events1.length);
     });
   });
 });

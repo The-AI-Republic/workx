@@ -239,7 +239,7 @@ describe('M5.1: Engine integration with Session', () => {
     engine.submitOperation({
       type: 'ExecApproval',
       callId: 'tool-call-1',
-      approved: true,
+      decision: 'approve' as const,
     });
     await new Promise(r => setTimeout(r, 10));
 
@@ -333,6 +333,7 @@ describe('M5.2: createChildEngine creates working engine', () => {
             },
           });
         },
+        shouldEmit: () => true,
       },
       parentEngineId: parentEngine.engineId,
     });
@@ -471,7 +472,7 @@ describe('M5.3: SubAgentRunner end-to-end', () => {
       name: 'Custom Analyzer',
       description: 'Analyzes custom data',
       systemPrompt: 'You are a custom analyzer',
-      toolAccess: { mode: 'deny', tools: [] },
+      tools: { deny: [] },
       maxTurns: 10,
     };
 

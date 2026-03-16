@@ -56,6 +56,13 @@ export interface IPlatformAdapter {
   readonly hasRealTabs: boolean;
   readonly hasBrowserTools: boolean;
 
+  // Browser Readiness
+  /**
+   * Called before the first tab operation. Adapters that need lazy browser
+   * setup (e.g., desktop MCP connection) do it here. Default: no-op.
+   */
+  ensureBrowserReady?(): Promise<void>;
+
   // Tab Management
   createTab(options?: TabOptions): Promise<number>;
   closeTab(tabId: number): Promise<void>;

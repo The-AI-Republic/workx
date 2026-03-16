@@ -54,6 +54,7 @@ export class AgentRegistry {
   private _config: AgentConfig | null = null;
   private _storage: SessionStorage | null = null;
   private _registryConfig: RegistryConfig;
+  private _cachedExtensionAdapter: import('../../extension/platform/ExtensionPlatformAdapter').ExtensionPlatformAdapter | null = null;
 
   /**
    * Create a new AgentRegistry
@@ -153,9 +154,13 @@ export class AgentRegistry {
         agent = await this._registryConfig.agentFactory(this._config, initialHistory);
       } else {
         // Extension path: create agent and wire events through ChannelManager
-        const { ExtensionPlatformAdapter } = await import('../../extension/platform/ExtensionPlatformAdapter');
-        const platformAdapter = new ExtensionPlatformAdapter();
-        await platformAdapter.initialize();
+        // Cache the adapter — it's stateless and safe to share across sessions
+        if (!this._cachedExtensionAdapter) {
+          const { ExtensionPlatformAdapter } = await import('../../extension/platform/ExtensionPlatformAdapter');
+          this._cachedExtensionAdapter = new ExtensionPlatformAdapter();
+          await this._cachedExtensionAdapter.initialize();
+        }
+        const platformAdapter = this._cachedExtensionAdapter;
         agent = new RepublicAgent(this._config, platformAdapter, initialHistory, undefined, new UserNotifier());
         await agent.initialize();
 

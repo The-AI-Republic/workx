@@ -2,7 +2,6 @@
 
 import type { ToolRegistry } from '../../tools/ToolRegistry';
 import type { Session } from '../Session';
-import type { ReviewDecision } from '../protocol/types';
 import type { Event as AgentEvent } from '../protocol/events';
 import type {
   RepublicAgentEngineConfig,
@@ -38,8 +37,8 @@ export class RepublicAgentEngine {
     resolve: (result: EngineResult) => void;
   }>();
 
-  // Event listener callback
-  private eventListener: ((event: EngineEvent) => void) | null = null;
+  // Event listener callbacks (supports multiple listeners)
+  private eventListeners: Array<(event: EngineEvent) => void> = [];
 
   constructor(config: RepublicAgentEngineConfig) {
     this.engineId = crypto.randomUUID();
@@ -155,11 +154,11 @@ export class RepublicAgentEngine {
   // ---------------------------------------------------------------------------
 
   approveExecution(callId: string, remember?: boolean): void {
-    this.submitOperation({ type: 'ExecApproval', callId, approved: true, remember });
+    this.submitOperation({ type: 'ExecApproval', callId, decision: 'approve', remember });
   }
 
   rejectExecution(callId: string): void {
-    this.submitOperation({ type: 'ExecApproval', callId, approved: false });
+    this.submitOperation({ type: 'ExecApproval', callId, decision: 'reject' });
   }
 
   // ---------------------------------------------------------------------------
@@ -202,6 +201,7 @@ export class RepublicAgentEngine {
     };
     this.eventWaiters.forEach((resolve) => resolve(disposeEvent));
     this.eventWaiters.length = 0;
+    this.eventListeners.length = 0;
   }
 
   // ---------------------------------------------------------------------------
@@ -210,10 +210,15 @@ export class RepublicAgentEngine {
 
   /**
    * Register a callback that is invoked for every event pushed to the engine.
+   * Supports multiple listeners. Returns an unsubscribe function.
    * Used by RepublicAgent to bridge engine events to its eventDispatcher.
    */
-  onEvent(listener: (event: EngineEvent) => void): void {
-    this.eventListener = listener;
+  onEvent(listener: (event: EngineEvent) => void): () => void {
+    this.eventListeners.push(listener);
+    return () => {
+      const idx = this.eventListeners.indexOf(listener);
+      if (idx !== -1) this.eventListeners.splice(idx, 1);
+    };
   }
 
   // ---------------------------------------------------------------------------
@@ -411,8 +416,7 @@ export class RepublicAgentEngine {
   private async handleExecApproval(op: Extract<EngineOp, { type: 'ExecApproval' }>): Promise<void> {
     if (!this.session) return;
 
-    const { callId, approved, remember } = op;
-    const decision: ReviewDecision = approved ? 'approve' : 'reject';
+    const { callId, decision, remember, alternativeText } = op;
 
     // Capture pending approval data before handleDecision removes it
     let toolName = '';
@@ -428,6 +432,8 @@ export class RepublicAgentEngine {
         params = pending.request?.details?.parameters || {};
         domain = pending.request?.metadata?.domain;
         riskScore = pending.request?.metadata?.riskScore;
+      } else {
+        console.warn(`[RepublicAgentEngine] Cannot remember decision - no pending approval for id: ${callId}`);
       }
     }
 
@@ -439,7 +445,7 @@ export class RepublicAgentEngine {
           id: callId,
           decision,
           timestamp: Date.now(),
-          reason: !approved ? 'Denied by user' : undefined,
+          reason: alternativeText || (decision === 'reject' ? 'Denied by user' : undefined),
         });
         riskBasedResolved = true;
       } catch (error) {
@@ -456,7 +462,7 @@ export class RepublicAgentEngine {
     }
 
     if (!riskBasedResolved && !protocolResolved) {
-      console.error(`[RepublicAgentEngine] Approval decision could not be routed for id: ${callId}`);
+      console.error(`[RepublicAgentEngine] Approval decision could not be routed for id: ${callId} — no pending request found in either subsystem`);
     }
 
     // Remember decision if requested
@@ -466,7 +472,7 @@ export class RepublicAgentEngine {
         approvalGate.rememberDecision(
           toolName,
           params,
-          approved ? 'auto_approve' : 'deny',
+          decision === 'approve' ? 'auto_approve' : 'deny',
           domain,
           riskScore,
         );
@@ -478,7 +484,7 @@ export class RepublicAgentEngine {
       msg: {
         type: 'BackgroundEvent',
         data: {
-          message: `Execution ${approved ? 'approved' : 'rejected'}: ${callId}`,
+          message: `Execution ${decision}: ${callId}`,
           level: 'info',
         },
       },
@@ -492,15 +498,14 @@ export class RepublicAgentEngine {
   private async handlePatchApproval(op: Extract<EngineOp, { type: 'PatchApproval' }>): Promise<void> {
     if (!this.session) return;
 
-    const decision: ReviewDecision = op.approved ? 'approve' : 'reject';
-    this.session.notifyApproval(op.patchId, decision);
+    this.session.notifyApproval(op.patchId, op.decision);
 
     this.pushEvent({
       id: crypto.randomUUID(),
       msg: {
         type: 'BackgroundEvent',
         data: {
-          message: `Patch ${op.approved ? 'approved' : 'rejected'}: ${op.patchId}`,
+          message: `Patch ${op.decision}: ${op.patchId}`,
           level: 'info',
         },
       },
@@ -607,9 +612,9 @@ export class RepublicAgentEngine {
   // ---------------------------------------------------------------------------
 
   pushEvent(event: EngineEvent): void {
-    // Notify listener (used by RepublicAgent event bridge)
-    if (this.eventListener) {
-      this.eventListener(event);
+    // Notify all listeners (used by RepublicAgent event bridge)
+    for (const listener of this.eventListeners) {
+      listener(event);
     }
 
     if (this.config.eventRouter) {
@@ -634,6 +639,7 @@ export class RepublicAgentEngine {
     options?: RunOptions,
   ): Promise<EngineResult> {
     const abortController = new AbortController();
+    const timeoutMs = options?.timeoutMs ?? 10 * 60 * 1000; // Default 10 minutes
 
     if (options?.signal) {
       options.signal.addEventListener('abort', () => {
@@ -642,8 +648,40 @@ export class RepublicAgentEngine {
       });
     }
 
+    const deadline = Date.now() + timeoutMs;
+
     while (true) {
-      const event = await this.getNextEvent();
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) {
+        this.interrupt('Timeout');
+        return {
+          success: false,
+          response: null,
+          turnCount: 0,
+          stopReason: 'error',
+          error: `Timed out after ${timeoutMs}ms`,
+          engineId: this.engineId,
+          submissionId,
+        };
+      }
+
+      const event = await Promise.race([
+        this.getNextEvent(),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), remaining)),
+      ]);
+
+      if (event === null) {
+        this.interrupt('Timeout');
+        return {
+          success: false,
+          response: null,
+          turnCount: 0,
+          stopReason: 'error',
+          error: `Timed out after ${timeoutMs}ms`,
+          engineId: this.engineId,
+          submissionId,
+        };
+      }
 
       if (event.msg.type === 'TaskComplete' && event.msg.data?.submissionId === submissionId) {
         return {

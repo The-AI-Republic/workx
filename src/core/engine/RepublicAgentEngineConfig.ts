@@ -8,6 +8,7 @@ import type { ModelClientFactory } from '../models/ModelClientFactory';
 import type { ModelClient } from '../models/ModelClient';
 import type { Session } from '../Session';
 import type { ApprovalManager } from '../ApprovalManager';
+import type { ReviewDecision } from '../protocol/types';
 
 export interface RepublicAgentEngineConfig {
   /** AgentConfig instance (shared — for credentials and provider info) */
@@ -129,6 +130,9 @@ export interface RunOptions {
 
   /** Context for the execution (tabId, etc.) */
   context?: ExecutionContext;
+
+  /** Timeout in milliseconds for awaitable mode. Default: 600000 (10 minutes) */
+  timeoutMs?: number;
 }
 
 export interface ExecutionContext {
@@ -142,8 +146,8 @@ export type EngineOp =
   | { type: 'UserInput'; items: InputItem[]; context?: ExecutionContext; contextOverrides?: Record<string, unknown> }
   | { type: 'UserTurn'; items: InputItem[]; context?: ExecutionContext; contextOverrides?: Record<string, unknown> }
   | { type: 'Interrupt'; reason?: string }
-  | { type: 'ExecApproval'; callId: string; approved: boolean; remember?: boolean }
-  | { type: 'PatchApproval'; patchId: string; approved: boolean }
+  | { type: 'ExecApproval'; callId: string; decision: ReviewDecision; remember?: boolean; alternativeText?: string }
+  | { type: 'PatchApproval'; patchId: string; decision: ReviewDecision }
   | { type: 'Compact'; mode?: 'auto' | 'manual' }
   | { type: 'ManualCompact' }
   | { type: 'AddToHistory'; text: string }

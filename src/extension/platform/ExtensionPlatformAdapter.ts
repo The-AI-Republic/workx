@@ -56,7 +56,7 @@ export class ExtensionPlatformAdapter implements IPlatformAdapter {
     if (validation.status === 'invalid') {
       return { valid: false, reason: validation.reason as TabValidationResult['reason'] };
     }
-    if (validation.status === 'pending') {
+    if (validation.status === 'checking') {
       return { valid: false, reason: 'not_found' };
     }
     return { valid: true };

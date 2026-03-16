@@ -458,8 +458,9 @@ describe('RepublicAgent', () => {
       expect(mockEngineInstance.submitOperation).toHaveBeenCalledWith({
         type: 'ExecApproval',
         callId: 'exec-1',
-        approved: true,
+        decision: 'approve',
         remember: undefined,
+        alternativeText: undefined,
       });
     });
 
@@ -476,7 +477,7 @@ describe('RepublicAgent', () => {
       expect(mockEngineInstance.submitOperation).toHaveBeenCalledWith({
         type: 'PatchApproval',
         patchId: 'patch-1',
-        approved: false,
+        decision: 'reject',
       });
     });
 

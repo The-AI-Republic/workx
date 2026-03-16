@@ -22,7 +22,6 @@ import { type IUserNotifier, NoOpNotifier } from './IUserNotifier';
 import { v4 as uuidv4 } from 'uuid';
 import { loadPrompt, loadUserInstructions, configurePromptComposer, isComposerConfigured } from './PromptLoader';
 import type { IPlatformAdapter } from './platform/IPlatformAdapter';
-import type { DesktopPlatformAdapter } from '../desktop/platform/DesktopPlatformAdapter';
 
 /**
  * Event dispatcher function type
@@ -125,6 +124,14 @@ export class RepublicAgent {
     await this.platformAdapter.registerPlatformTools(this.toolRegistry, this.config.getToolsConfig(), {
       supportsImage: modelData.model.supportsImage ?? false
     });
+
+    // Wire tool context for adapters that need lazy browser connection (desktop MCP)
+    if ('setToolContext' in this.platformAdapter) {
+      (this.platformAdapter as any).setToolContext(
+        this.toolRegistry,
+        (msg: EventMsg) => this.emitEvent(msg),
+      );
+    }
 
     // Create model client and turn context during initialization
     // API key can be null - validation happens when making API requests
@@ -314,6 +321,14 @@ export class RepublicAgent {
     const id = `sub_${this.nextId++}`;
 
     try {
+      // Guard: engine must be initialized before forwarding execution ops
+      const requireEngine = () => {
+        if (!this.engine) {
+          throw new Error('RepublicAgent not initialized. Call initialize() before submitOperation().');
+        }
+        return this.engine;
+      };
+
       switch (op.type) {
         // === Orchestration-only ops (handled locally, no engine involvement) ===
         case 'GetPath':
@@ -332,25 +347,26 @@ export class RepublicAgent {
         case 'UserInput':
         case 'UserTurn': {
           await this.preSubmitHooks(op, context);
-          this.engine!.submitOperation(this.toEngineOp(op));
+          requireEngine().submitOperation(this.toEngineOp(op));
           break;
         }
 
         // === Forward execution ops to engine ===
         case 'ExecApproval':
-          this.engine!.submitOperation({
+          requireEngine().submitOperation({
             type: 'ExecApproval',
             callId: op.id,
-            approved: op.decision === 'approve',
+            decision: op.decision,
             remember: op.remember,
+            alternativeText: op.alternativeText,
           });
           break;
 
         case 'PatchApproval':
-          this.engine!.submitOperation({
+          requireEngine().submitOperation({
             type: 'PatchApproval',
             patchId: op.id,
-            approved: op.decision === 'approve',
+            decision: op.decision,
           });
           break;
 
@@ -359,24 +375,24 @@ export class RepublicAgent {
             'Task Interrupted',
             'The current task has been interrupted by user request'
           );
-          this.engine!.submitOperation({ type: 'Interrupt', reason: 'user_interrupt' });
+          requireEngine().submitOperation({ type: 'Interrupt', reason: 'user_interrupt' });
           break;
 
         case 'Compact':
-          this.engine!.submitOperation({ type: 'Compact', mode: 'auto' });
+          requireEngine().submitOperation({ type: 'Compact', mode: 'auto' });
           break;
 
         case 'ManualCompact':
-          this.engine!.submitOperation({ type: 'ManualCompact' });
+          requireEngine().submitOperation({ type: 'ManualCompact' });
           break;
 
         case 'AddToHistory':
-          this.engine!.submitOperation({ type: 'AddToHistory', text: op.text });
+          requireEngine().submitOperation({ type: 'AddToHistory', text: op.text });
           break;
 
         case 'Shutdown':
-          this.engine!.submitOperation({ type: 'Shutdown' });
-          await this.engine!.dispose();
+          requireEngine().submitOperation({ type: 'Shutdown' });
+          await requireEngine().dispose();
           break;
 
         default:
@@ -481,13 +497,8 @@ export class RepublicAgent {
     // ================================================================
     if (newTabId === -1) {
       try {
-        // Desktop: ensure MCP browser connection before first use
-        if (this.platformAdapter.platformId === 'desktop') {
-          await (this.platformAdapter as DesktopPlatformAdapter).ensureBrowserConnection(
-            this.toolRegistry,
-            (msg) => this.emitEvent(msg as EventMsg),
-          );
-        }
+        // Lazy browser setup (e.g., desktop MCP connection)
+        await this.platformAdapter.ensureBrowserReady?.();
 
         // Extension: clear old tab group before creating new tab
         if (this.platformAdapter.hasRealTabs && currentTabId !== -1) {

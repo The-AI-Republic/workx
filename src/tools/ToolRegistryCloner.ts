@@ -33,8 +33,9 @@ export async function cloneToolRegistry(
       continue;
     }
 
-    // Register the tool in the clone
-    await clone.register(entry.definition, entry.handler, entry.riskAssessor);
+    // Deep-clone the definition to prevent cross-registry mutation
+    const clonedDefinition = structuredClone(entry.definition);
+    await clone.register(clonedDefinition, entry.handler, entry.riskAssessor);
   }
 
   return clone;

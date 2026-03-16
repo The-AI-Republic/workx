@@ -34,8 +34,16 @@ export class SubAgentRegistry {
     this.maxConcurrent = options.maxConcurrent ?? 3;
   }
 
+  /**
+   * Atomically check concurrency limit and register a sub-agent.
+   * Counts running agents directly to avoid TOCTOU race conditions.
+   */
   register(agent: ActiveSubAgent): void {
-    if (this.getActive().length >= this.maxConcurrent) {
+    let activeCount = 0;
+    for (const a of this.activeAgents.values()) {
+      if (a.status === 'running') activeCount++;
+    }
+    if (activeCount >= this.maxConcurrent) {
       throw new Error(`Max concurrent sub-agents (${this.maxConcurrent}) reached`);
     }
     this.activeAgents.set(agent.runId, agent);
@@ -61,8 +69,12 @@ export class SubAgentRegistry {
   async cancelAll(): Promise<void> {
     const running = this.getActive();
     await Promise.all(running.map(async (agent) => {
+      try {
+        await agent.engine.dispose();
+      } catch (error) {
+        console.warn(`[SubAgentRegistry] Error disposing sub-agent ${agent.runId}:`, error);
+      }
       agent.status = 'cancelled';
-      await agent.engine.dispose();
     }));
     this.activeAgents.clear();
   }

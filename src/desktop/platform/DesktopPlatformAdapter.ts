@@ -20,22 +20,38 @@ export class DesktopPlatformAdapter implements IPlatformAdapter {
   readonly hasBrowserTools = true;
 
   private browserConnected = false;
+  private toolRegistry: ToolRegistry | null = null;
+  private emitEvent: ((msg: { type: string; data: Record<string, unknown> }) => void) | null = null;
 
   async initialize(): Promise<void> {
-    // MCP browser connection is handled lazily in ensureBrowserConnection()
+    // MCP browser connection is handled lazily in createTab()
     // rather than eagerly here, to preserve existing timing behavior.
   }
 
   /**
-   * Lazily connect to the builtin browser MCP server.
-   * Called on first tab creation to match existing RepublicAgent behavior
-   * where MCP connection happens in handleTabBinding().
+   * Set the tool registry and event emitter for lazy MCP browser connection.
+   * Must be called before the first createTab() so that MCP tools can be
+   * registered and warnings can be emitted to the UI.
    */
-  async ensureBrowserConnection(
+  setToolContext(
     toolRegistry: ToolRegistry,
     emitEvent: (msg: { type: string; data: Record<string, unknown> }) => void
-  ): Promise<void> {
+  ): void {
+    this.toolRegistry = toolRegistry;
+    this.emitEvent = emitEvent;
+  }
+
+  /**
+   * Lazily connect to the builtin browser MCP server.
+   * Called before the first tab operation to match existing RepublicAgent
+   * behavior where MCP connection happens during tab binding.
+   */
+  async ensureBrowserReady(): Promise<void> {
     if (this.browserConnected) return;
+    if (!this.toolRegistry || !this.emitEvent) return;
+
+    const toolRegistry = this.toolRegistry;
+    const emitEvent = this.emitEvent;
 
     try {
       const { MCPManager } = await import('../../core/mcp/MCPManager');

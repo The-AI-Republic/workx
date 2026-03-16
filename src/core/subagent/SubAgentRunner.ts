@@ -55,6 +55,18 @@ export class SubAgentRunner {
       };
     }
 
+    // Validate maxTurns
+    if (typeConfig.maxTurns !== undefined && typeConfig.maxTurns < 1) {
+      return {
+        success: false,
+        response: '',
+        runId: '',
+        turnCount: 0,
+        stopReason: 'error',
+        error: `Invalid maxTurns (${typeConfig.maxTurns}) for sub-agent type: ${params.type}`,
+      };
+    }
+
     if (!this.registry.canSpawn()) {
       return {
         success: false,
@@ -195,7 +207,11 @@ export class SubAgentRunner {
         error: errorMsg,
       };
     } finally {
-      await engine.dispose();
+      try {
+        await engine.dispose();
+      } catch (disposeError) {
+        console.warn(`[SubAgentRunner] Error disposing engine for run ${runId}:`, disposeError);
+      }
     }
   }
 
