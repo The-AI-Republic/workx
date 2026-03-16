@@ -29,8 +29,11 @@ export interface SessionConfig {
   /** Initial tab binding (optional) */
   tabId?: number | null;
 
-  /** Conversation ID to resume from (optional) */
-  resumeFrom?: string | null;
+  /** Resume data for restoring a previous session */
+  resume?: {
+    sessionId: string;
+    rolloutItems: unknown[];
+  };
 
   /**
    * Mark as an internal infrastructure session (e.g. bootstrap fallback agent).
@@ -144,7 +147,10 @@ export interface RegistryConfig {
   maxConcurrent?: number;
 
   /** Optional factory to create RepublicAgent instances (replaces hardcoded extension logic) */
-  agentFactory?: (config: import('../../config/AgentConfig').AgentConfig) => Promise<import('../RepublicAgent').RepublicAgent>;
+  agentFactory?: (
+    config: import('../../config/AgentConfig').AgentConfig,
+    initialHistory?: import('../session/state/types').InitialHistory,
+  ) => Promise<import('../RepublicAgent').RepublicAgent>;
 
   /** Optional factory to create event dispatchers per session (replaces chrome.runtime.sendMessage) */
   eventDispatcherFactory?: (sessionId: string) => ((event: { msg: import('../protocol/events').EventMsg }) => void);

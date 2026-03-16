@@ -487,6 +487,11 @@ async function registerServiceHandlers(): Promise<void> {
           const tabManager = TabManager.getInstance();
           await tabManager.reset();
         },
+        loadRolloutHistory: async (sessionId: string) => {
+          const initialHistory = await RolloutRecorder.getRolloutHistory(sessionId);
+          if (initialHistory.type !== 'resumed' || !initialHistory.payload?.history) return null;
+          return { sessionId, rolloutItems: initialHistory.payload.history };
+        },
       },
       agent: {
         registry,
@@ -501,46 +506,8 @@ async function registerServiceHandlers(): Promise<void> {
       storage: { storageProvider: chromeStorageAdapter },
     });
 
-    // Extension-specific overrides: session.resume and agent.configUpdate
-    // These need access to service-worker closures (registry, currentAuthManager, etc.)
-    serviceRegistry.register('session.resume', async (params) => {
-      if (!registry) throw new Error('Registry not initialized');
-
-      const { sessionId } = params as { sessionId: string };
-      if (!sessionId) throw new Error('sessionId is required');
-      console.log('[ServiceWorker] Resuming session:', sessionId);
-
-      const initialHistory = await RolloutRecorder.getRolloutHistory(sessionId);
-      if (initialHistory.type !== 'resumed' || !initialHistory.payload?.history) {
-        throw new Error('Conversation not found or has no history');
-      }
-
-      // Create a new session with resumed history
-      const { ExtensionPlatformAdapter } = await import('../platform/ExtensionPlatformAdapter');
-      const platformAdapter = new ExtensionPlatformAdapter();
-      await platformAdapter.initialize();
-      const resumedAgent = new RepublicAgent(agentConfig!, platformAdapter, {
-        mode: 'resumed' as const,
-        sessionId,
-        rolloutItems: initialHistory.payload.history,
-      }, undefined, new UserNotifier());
-
-      if (currentAuthManager) {
-        const factory = resumedAgent.getModelClientFactory();
-        factory.setAuthManager(currentAuthManager);
-      }
-
-      await resumedAgent.initialize();
-      await configureExtensionPlatform(resumedAgent);
-
-      const session = resumedAgent.getSession();
-      await session.initialize();
-      const history = session.getConversationHistory();
-
-      console.log('[ServiceWorker] Session resumed with', history.items.length, 'items');
-      return { sessionId, history: history.items };
-    });
-
+    // Extension-specific override: agent.configUpdate
+    // Needs access to service-worker closures (registry, agentConfig, etc.)
     serviceRegistry.register('agent.configUpdate', async () => {
       try {
         if (agentConfig) {

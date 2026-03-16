@@ -54,6 +54,7 @@ function createFactoryAgent() {
     abortAllTasks: () => {},
     close: () => {},
     setTabId: () => {},
+    initialize: vi.fn().mockResolvedValue(undefined),
   };
   return {
     initialize: vi.fn().mockResolvedValue(undefined),
@@ -112,6 +113,30 @@ describe('AgentRegistry — factory path (server/desktop)', () => {
 
       expect(agentFactory).toHaveBeenCalledWith(mockConfig, undefined);
       expect(session.agent).toBe(factoryAgent);
+    });
+
+    it('should pass initialHistory to agentFactory when resume config is present', async () => {
+      const factoryAgent = createFactoryAgent();
+      const agentFactory = vi.fn().mockResolvedValue(factoryAgent);
+
+      const registry = new AgentRegistry({
+        maxConcurrent: 3,
+        agentFactory,
+      });
+      registry.initialize(mockConfig);
+
+      const resumeData = {
+        sessionId: 'conv-123',
+        rolloutItems: [{ type: 'event_msg', payload: {} }],
+      };
+
+      await registry.createSession({ type: 'primary', resume: resumeData });
+
+      expect(agentFactory).toHaveBeenCalledWith(mockConfig, {
+        mode: 'resumed',
+        sessionId: 'conv-123',
+        rolloutItems: [{ type: 'event_msg', payload: {} }],
+      });
     });
 
     it('should not call agentFactory for extension path (no factory provided)', async () => {
