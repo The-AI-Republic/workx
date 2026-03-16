@@ -1,15 +1,18 @@
 <script lang="ts">
   import Fuse from 'fuse.js';
-  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+  import { onDestroy } from 'svelte';
   import { settingsRegistry, type SettingsSearchItem } from '../settingsSearchRegistry';
   import { _t } from '../../lib/i18n';
 
-  export let isDesktop: boolean = false;
-
-  const dispatch = createEventDispatcher<{
-    resultSelected: { categoryId: string; scrollToId: string };
-    searchActive: { active: boolean };
-  }>();
+  let {
+    isDesktop = false,
+    onResultSelected,
+    onSearchActive,
+  }: {
+    isDesktop?: boolean;
+    onResultSelected?: (data: { categoryId: string; scrollToId: string }) => void;
+    onSearchActive?: (data: { active: boolean }) => void;
+  } = $props();
 
   interface SearchableItem {
     id: string;
@@ -21,14 +24,14 @@
     elementId: string;
   }
 
-  let query = '';
-  let results: Fuse.FuseResult<SearchableItem>[] = [];
-  let searchableItems: SearchableItem[] = [];
-  let fuseIndex: Fuse<SearchableItem> | null = null;
+  let query = $state('');
+  let results: Fuse.FuseResult<SearchableItem>[] = $state([]);
+  let searchableItems: SearchableItem[] = $state([]);
+  let fuseIndex: Fuse<SearchableItem> | null = $state(null);
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let inputElement: HTMLInputElement;
   let resultsContainer: HTMLElement;
-  let focusedIndex: number = -1;
+  let focusedIndex: number = $state(-1);
 
   const MAX_VISIBLE_RESULTS = 10;
 
@@ -78,16 +81,21 @@
     });
   }
 
-  // Reactively rebuild index when $_t store changes (locale change)
-  $: {
+  // Reactively rebuild index when $_t store changes (locale change).
+  // Use local variables to avoid reading $state we just wrote (which would
+  // cause Svelte 5's effect to re-subscribe and loop infinitely).
+  $effect(() => {
     const translate = $_t;
-    searchableItems = buildSearchableItems(translate);
-    fuseIndex = buildFuseIndex(searchableItems);
+    const items = buildSearchableItems(translate);
+    const fuse = buildFuseIndex(items);
+    searchableItems = items;
+    fuseIndex = fuse;
     // Re-run search with current query if index was rebuilt
-    if (query.trim()) {
-      performSearch(query);
+    const q = query.trim();
+    if (q) {
+      results = fuse.search(q);
     }
-  }
+  });
 
   /**
    * Execute the fuzzy search against the Fuse index.
@@ -111,7 +119,7 @@
     debounceTimer = setTimeout(() => {
       performSearch(query);
       focusedIndex = -1;
-      dispatch('searchActive', { active: query.trim().length > 0 });
+      onSearchActive?.({ active: query.trim().length > 0 });
     }, 150);
   }
 
@@ -122,7 +130,7 @@
     query = '';
     results = [];
     focusedIndex = -1;
-    dispatch('searchActive', { active: false });
+    onSearchActive?.({ active: false });
     if (inputElement) {
       inputElement.focus();
     }
@@ -132,7 +140,7 @@
    * Handle selecting a search result.
    */
   function selectResult(item: SearchableItem) {
-    dispatch('resultSelected', {
+    onResultSelected?.({
       categoryId: item.navigationTarget,
       scrollToId: item.elementId,
     });
@@ -185,10 +193,10 @@
     });
   }
 
-  $: visibleResults = results.slice(0, MAX_VISIBLE_RESULTS);
-  $: remainingCount = Math.max(0, results.length - MAX_VISIBLE_RESULTS);
-  $: hasQuery = query.trim().length > 0;
-  $: hasNoMatches = hasQuery && results.length === 0;
+  let visibleResults = $derived(results.slice(0, MAX_VISIBLE_RESULTS));
+  let remainingCount = $derived(Math.max(0, results.length - MAX_VISIBLE_RESULTS));
+  let hasQuery = $derived(query.trim().length > 0);
+  let hasNoMatches = $derived(hasQuery && results.length === 0);
 </script>
 
 <div class="settings-search">
@@ -210,8 +218,8 @@
     <input
       bind:this={inputElement}
       bind:value={query}
-      on:input={handleInput}
-      on:keydown={handleKeydown}
+      oninput={handleInput}
+      onkeydown={handleKeydown}
       type="text"
       class="search-input"
       placeholder={$_t("Search settings...")}
@@ -225,7 +233,7 @@
     {#if hasQuery}
       <button
         class="clear-button"
-        on:click={clearSearch}
+        onclick={clearSearch}
         aria-label={$_t("Clear search")}
       >
         <svg
@@ -263,7 +271,7 @@
             >
               <button
                 class="result-button"
-                on:click={() => selectResult(result.item)}
+                onclick={() => selectResult(result.item)}
               >
                 <div class="result-header">
                   <span class="result-label">{result.item.searchableLabel}</span>

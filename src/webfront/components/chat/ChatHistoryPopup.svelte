@@ -2,17 +2,17 @@
   import PopupCard from '../common/PopupCard.svelte';
   import ChatHistoryList from './ChatHistoryList.svelte';
   import Tooltip from '../common/Tooltip.svelte';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
 
-  export let onSelectConversation: (conversationId: string) => void = () => {};
+  let {
+    onSelectConversation = () => {},
+  }: {
+    onSelectConversation?: (sessionId: string) => void;
+  } = $props();
 
-  let showPopup = false;
-  let currentTheme: UITheme = 'terminal';
-
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
+  let showPopup: boolean = $state(false);
+  let currentTheme = $derived($uiTheme);
 
   function togglePopup() {
     showPopup = !showPopup;
@@ -22,8 +22,8 @@
     showPopup = false;
   }
 
-  function handleSelectConversation(conversationId: string) {
-    onSelectConversation(conversationId);
+  function handleSelectConversation(sessionId: string) {
+    onSelectConversation(sessionId);
     closePopup();
   }
 </script>
@@ -33,14 +33,14 @@
   show={showPopup}
   onClose={closePopup}
 >
-  <div slot="trigger">
+  {#snippet trigger()}
     <Tooltip content={$_t("Chat History")}>
       <button
         class="flex items-center justify-center p-1 cursor-pointer transition-all duration-200 active:scale-95
           {currentTheme === 'modern'
             ? 'bg-transparent border-none rounded-md text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark'
             : 'bg-transparent border border-gray-500/50 text-gray-500/80 rounded hover:border-gray-500/80 hover:text-gray-400 hover:bg-gray-500/10'}"
-        on:click|stopPropagation={togglePopup}
+        onclick={(e) => { e.stopPropagation(); togglePopup(); }}
         aria-label={$_t("View Chat History")}
         aria-expanded={showPopup}
       >
@@ -56,12 +56,12 @@
         </svg>
       </button>
     </Tooltip>
-  </div>
+  {/snippet}
 
-  <div slot="content">
+  {#snippet content()}
     <ChatHistoryList
       onSelectConversation={handleSelectConversation}
       onClose={closePopup}
     />
-  </div>
+  {/snippet}
 </PopupCard>

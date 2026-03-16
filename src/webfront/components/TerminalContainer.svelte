@@ -1,7 +1,11 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import type { UITheme } from '../stores/themeStore';
 
-  export let theme: UITheme = 'terminal';
+  let { theme = 'terminal' as UITheme, children }: {
+    theme?: UITheme;
+    children?: Snippet;
+  } = $props();
 </script>
 
 <div
@@ -12,5 +16,5 @@
   role="log"
   aria-label="Terminal output"
 >
-  <slot />
+  {@render children?.()}
 </div>

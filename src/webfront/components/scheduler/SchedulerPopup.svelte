@@ -1,88 +1,68 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
-  import { sendMessage, MessageType } from '../../lib/messaging';
-  import { tryGetMessageService } from '@/core/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
+  import type { UIChannelClient } from '@/core/messaging';
   import SchedulerJobItem from './SchedulerJobItem.svelte';
   import ArchivedJobsView from './ArchivedJobsView.svelte';
   import ScheduleJobModal from './ScheduleJobModal.svelte';
   import type { SchedulerJobSummary } from '@/core/models/types/SchedulerContracts';
-  import type { SchedulerJobRecord } from '@/core/models/types/Scheduler';
+  import type { RecurrenceRule } from '@/core/models/types/Scheduler';
 
-  export let show: boolean = false;
-  export let onClose: () => void = () => {};
+  let {
+    show = false,
+    onClose = () => {},
+  }: {
+    show?: boolean;
+    onClose?: () => void;
+  } = $props();
 
-  let currentTheme: UITheme = 'terminal';
-  let isLoading = true;
-  let isPaused = false;
-  let showArchivedView = false;
-  let showScheduleModal = false;
+  let currentTheme = $derived($uiTheme);
+  let isLoading: boolean = $state(true);
+  let isPaused: boolean = $state(false);
+  let showArchivedView: boolean = $state(false);
+  let showScheduleModal: boolean = $state(false);
 
   // Job lists
-  let missedJobs: SchedulerJobSummary[] = [];
-  let scheduledJobs: SchedulerJobSummary[] = [];
-  let queuedJobs: SchedulerJobSummary[] = [];
-  let runningJob: SchedulerJobSummary | null = null;
+  let missedJobs: SchedulerJobSummary[] = $state([]);
+  let scheduledJobs: SchedulerJobSummary[] = $state([]);
+  let queuedJobs: SchedulerJobSummary[] = $state([]);
+  let runningJob: SchedulerJobSummary | null = $state(null);
 
   // Job details expansion (T019)
-  let expandedJobId: string | null = null;
-  let expandedJobDetails: SchedulerJobRecord | null = null;
-  let isLoadingDetails = false;
+  let expandedJobId: string | null = $state(null);
+  let expandedJobDetails: Record<string, any> | null = $state(null);
+  let isLoadingDetails: boolean = $state(false);
 
   // T042: Offline status tracking
-  let isOffline = !navigator.onLine;
+  let isOffline: boolean = $state(!navigator.onLine);
 
   // Feature 015 (T050-T053): Session status tracking
-  let sessionCount = 0;
-  let maxSessions = 3;
+  let sessionCount: number = $state(0);
+  let maxSessions: number = $state(3);
   let sessions: Array<{
     sessionId: string;
     sessionLetter: string;
     type: string;
     state: string;
-  }> = [];
-  let showSessionDetails = false;
+  }> = $state([]);
+  let showSessionDetails: boolean = $state(false);
 
   // T057: Session error display for graceful degradation feedback
-  let lastSessionError: { message: string; sessionId: string; timestamp: number } | null = null;
+  let lastSessionError: { message: string; sessionId: string; timestamp: number } | null = $state(null);
 
-  // Event listener cleanup for desktop/server mode
-  let eventUnsubscribers: Array<() => void> = [];
+  let totalJobs = $derived(missedJobs.length + scheduledJobs.length + queuedJobs.length + (runningJob ? 1 : 0));
 
-  // Subscribe to theme
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
-
-  // T020: Real-time status updates via chrome.runtime.onMessage
-  function handleSchedulerEvent(message: { type: string; payload?: unknown }) {
-    if (message.type === MessageType.SCHEDULER_EVENT && show) {
-      // Refresh data when scheduler events occur
+  // Fetch data when popup opens
+  $effect(() => {
+    if (show) {
       fetchAllData();
     }
-    // Feature 015 (T051): Real-time session status updates
-    if (message.type === MessageType.SESSION_EVENT && show) {
-      const payload = message.payload as { type?: string; sessionId?: string; error?: string; timestamp?: number } | undefined;
+  });
 
-      // T057: Handle session:error events for graceful degradation feedback
-      if (payload?.type === 'session:error') {
-        lastSessionError = {
-          message: payload.error || 'Unknown session error',
-          sessionId: payload.sessionId || 'unknown',
-          timestamp: payload.timestamp || Date.now()
-        };
-        // Auto-clear error after 5 seconds
-        setTimeout(() => {
-          if (lastSessionError?.timestamp === payload.timestamp) {
-            lastSessionError = null;
-          }
-        }, 5000);
-      }
-
-      fetchSessionData();
-    }
-  }
+  // UIChannelClient for event subscriptions
+  let channelClient: UIChannelClient | null = null;
+  let eventUnsubscribers: Array<() => void> = [];
 
   // T042: Handle online/offline events
   function handleOnline() {
@@ -93,77 +73,76 @@
     isOffline = true;
   }
 
-  onMount(() => {
-    // Listen for scheduler events from service worker (extension mode)
-    if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
-      chrome.runtime.onMessage.addListener(handleSchedulerEvent);
-    }
+  // Event listeners setup and cleanup
+  $effect(() => {
+    // Subscribe to scheduler and session events via UIChannelClient (extension mode)
+    (async () => {
+      try {
+        channelClient = await getInitializedUIClient();
 
-    // Listen for scheduler events via message service (desktop/server mode)
-    const service = tryGetMessageService();
-    if (service) {
-      eventUnsubscribers.push(
-        service.on(MessageType.SCHEDULER_EVENT, () => {
-          if (show) fetchAllData();
-        })
-      );
-      eventUnsubscribers.push(
-        service.on(MessageType.SESSION_EVENT, (payload) => {
-          if (show) {
-            const p = payload as { type?: string; sessionId?: string; error?: string; timestamp?: number } | undefined;
-            if (p?.type === 'session:error') {
-              lastSessionError = {
-                message: p.error || 'Unknown session error',
-                sessionId: p.sessionId || 'unknown',
-                timestamp: p.timestamp || Date.now()
-              };
-              setTimeout(() => {
-                if (lastSessionError?.timestamp === p.timestamp) {
-                  lastSessionError = null;
-                }
-              }, 5000);
+        // T020: Real-time scheduler status updates
+        eventUnsubscribers.push(
+          channelClient.onEvent('BackgroundEvent', (channelEvent) => {
+            const data = 'data' in channelEvent.msg ? (channelEvent.msg as any).data : undefined;
+            if (data?.message === 'scheduler_job_status' && show) {
+              fetchAllData();
             }
-            fetchSessionData();
-          }
-        })
-      );
-    }
+          })
+        );
 
-    // T042: Listen for online/offline events
+        // Feature 015 (T051): Real-time session status updates
+        eventUnsubscribers.push(
+          channelClient.onEvent('BackgroundEvent', (channelEvent) => {
+            const data = 'data' in channelEvent.msg ? (channelEvent.msg as any).data : undefined;
+            if (data?.message === 'session_event' && show) {
+              const payload = data?.sessionEvent as { type?: string; sessionId?: string; error?: string; timestamp?: number } | undefined;
+              if (payload?.type === 'session:error') {
+                lastSessionError = {
+                  message: payload.error || 'Unknown session error',
+                  sessionId: payload.sessionId || 'unknown',
+                  timestamp: payload.timestamp || Date.now()
+                };
+                setTimeout(() => {
+                  if (lastSessionError?.timestamp === payload.timestamp) {
+                    lastSessionError = null;
+                  }
+                }, 5000);
+              }
+              fetchSessionData();
+            }
+          })
+        );
+      } catch (error) {
+        console.warn('[SchedulerPopup] Failed to initialize UIChannelClient:', error);
+      }
+    })();
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+
+    return () => {
+      // Clean up UIChannelClient event subscriptions
+      for (const unsub of eventUnsubscribers) {
+        unsub();
+      }
+      eventUnsubscribers = [];
+
+      // T042: Clean up online/offline listeners
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   });
 
-  onDestroy(() => {
-    // Clean up extension event listener
-    if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
-      chrome.runtime.onMessage.removeListener(handleSchedulerEvent);
-    }
-
-    // Clean up message service listeners
-    for (const unsub of eventUnsubscribers) {
-      unsub();
-    }
-    eventUnsubscribers = [];
-
-    // T042: Clean up online/offline listeners
-    window.removeEventListener('online', handleOnline);
-    window.removeEventListener('offline', handleOffline);
-  });
-
-  // Fetch data when popup opens
-  $: if (show) {
-    fetchAllData();
-  }
 
   async function fetchAllData() {
     isLoading = true;
     try {
+      const client = await getInitializedUIClient();
       const [stateRes, missedRes, scheduledRes, queueRes] = await Promise.all([
-        sendMessage(MessageType.SCHEDULER_GET_STATE),
-        sendMessage(MessageType.SCHEDULER_GET_MISSED_JOBS),
-        sendMessage(MessageType.SCHEDULER_GET_SCHEDULED_JOBS),
-        sendMessage(MessageType.SCHEDULER_GET_QUEUE),
+        client.serviceRequest('scheduler.getState'),
+        client.serviceRequest('scheduler.getMissedJobs'),
+        client.serviceRequest('scheduler.getScheduledJobs'),
+        client.serviceRequest('scheduler.getQueue'),
       ]);
 
       isPaused = (stateRes as any)?.isPaused || false;
@@ -173,7 +152,6 @@
       scheduledJobs = (scheduledRes as any)?.jobs || [];
       queuedJobs = (queueRes as any)?.jobs || [];
 
-      // Feature 015: Fetch session data
       await fetchSessionData();
     } catch (error) {
       console.error('[SchedulerPopup] Failed to fetch data:', error);
@@ -182,10 +160,9 @@
     }
   }
 
-  // Feature 015 (T050): Fetch session status
   async function fetchSessionData() {
     try {
-      const sessionRes = await sendMessage<{ data?: { sessions?: typeof sessions; activeCount?: number; maxConcurrent?: number }; sessions?: typeof sessions; activeCount?: number; maxConcurrent?: number }>(MessageType.SESSION_LIST);
+      const sessionRes = await (await getInitializedUIClient()).serviceRequest<{ data?: { sessions?: typeof sessions; activeCount?: number; maxConcurrent?: number }; sessions?: typeof sessions; activeCount?: number; maxConcurrent?: number }>('session.list');
       const sessionData = sessionRes?.data || sessionRes;
 
       sessions = sessionData?.sessions || [];
@@ -196,20 +173,20 @@
     }
   }
 
-  async function handleTriggerJob(event: CustomEvent<{ jobId: string }>) {
+  async function handleTriggerJob(data: { jobId: string }) {
     try {
-      await sendMessage(MessageType.SCHEDULER_TRIGGER_JOB, { jobId: event.detail.jobId });
+      await (await getInitializedUIClient()).serviceRequest('scheduler.trigger', { jobId: data.jobId });
       await fetchAllData();
     } catch (error) {
       console.error('[SchedulerPopup] Failed to trigger job:', error);
     }
   }
 
-  async function handleCancelJob(event: CustomEvent<{ jobId: string }>) {
+  async function handleCancelJob(data: { jobId: string }) {
     if (!confirm(t('Are you sure you want to cancel this job?'))) return;
 
     try {
-      await sendMessage(MessageType.SCHEDULER_CANCEL_JOB, { jobId: event.detail.jobId });
+      await (await getInitializedUIClient()).serviceRequest('scheduler.cancel', { jobId: data.jobId });
       await fetchAllData();
     } catch (error) {
       console.error('[SchedulerPopup] Failed to cancel job:', error);
@@ -218,11 +195,8 @@
 
   async function togglePause() {
     try {
-      const messageType = isPaused
-        ? MessageType.SCHEDULER_RESUME_QUEUE
-        : MessageType.SCHEDULER_PAUSE_QUEUE;
-
-      await sendMessage(messageType);
+      const servicePath = isPaused ? 'scheduler.resumeQueue' : 'scheduler.pauseQueue';
+      await (await getInitializedUIClient()).serviceRequest(servicePath);
       isPaused = !isPaused;
     } catch (error) {
       console.error('[SchedulerPopup] Failed to toggle pause:', error);
@@ -241,26 +215,25 @@
     showScheduleModal = true;
   }
 
-  async function handleScheduleJob(event: CustomEvent<{ input: string; scheduledTime: number }>) {
-    const { input, scheduledTime } = event.detail;
+  async function handleScheduleJob(detail: { input: string; scheduledTime: number; recurrence?: RecurrenceRule }) {
+    const { input, scheduledTime, recurrence } = detail;
     showScheduleModal = false;
 
     try {
-      await sendMessage(MessageType.SCHEDULER_SCHEDULE_JOB, { input, scheduledTime });
-      // Refresh the job list
+      const payload: { input: string; scheduledTime: number; recurrence?: RecurrenceRule } = { input, scheduledTime };
+      if (recurrence) {
+        payload.recurrence = recurrence;
+      }
+      await (await getInitializedUIClient()).serviceRequest('scheduler.schedule', payload);
       await fetchAllData();
     } catch (error) {
       console.error('[SchedulerPopup] Failed to schedule job:', error);
     }
   }
 
-  $: totalJobs = missedJobs.length + scheduledJobs.length + queuedJobs.length + (runningJob ? 1 : 0);
+  async function handleJobDetails(data: { jobId: string }) {
+    const { jobId } = data;
 
-  // T019: Handle job details expansion
-  async function handleJobDetails(event: CustomEvent<{ jobId: string }>) {
-    const { jobId } = event.detail;
-
-    // Toggle off if clicking same job
     if (expandedJobId === jobId) {
       expandedJobId = null;
       expandedJobDetails = null;
@@ -271,13 +244,12 @@
     isLoadingDetails = true;
 
     try {
-      const response = await sendMessage<{ job?: SchedulerJobRecord; data?: SchedulerJobRecord } | SchedulerJobRecord>(
-        MessageType.SCHEDULER_GET_JOB_DETAILS,
+      const response = await (await getInitializedUIClient()).serviceRequest<Record<string, any>>(
+        'scheduler.getJobDetails',
         { jobId }
       );
-      // Handler returns { job: ... }, unwrap accordingly
-      const r = response as { job?: SchedulerJobRecord; data?: SchedulerJobRecord };
-      expandedJobDetails = r?.job || r?.data || response as SchedulerJobRecord;
+      const r = response as Record<string, any>;
+      expandedJobDetails = r?.job || r?.data || response;
     } catch (error) {
       console.error('[SchedulerPopup] Failed to fetch job details:', error);
       expandedJobDetails = null;
@@ -286,21 +258,18 @@
     }
   }
 
-  // Navigate to job session for completed jobs
   function navigateToSession(sessionId: string) {
-    // Open side panel with the session ID
     window.location.href = `index.html?sessionId=${sessionId}`;
     onClose();
   }
 
-  // Close expanded details
   function closeDetails() {
     expandedJobId = null;
     expandedJobDetails = null;
   }
 </script>
 
-<svelte:window on:click={handleClickOutside} />
+<svelte:window onclick={handleClickOutside} />
 
 {#if show}
   <div class="scheduler-popup fixed bottom-[70px] left-4 right-4 max-w-[400px] max-h-[60vh] rounded-lg z-[9999] flex flex-col animate-slide-up
@@ -318,7 +287,6 @@
             ? 'text-chat-text dark:text-chat-text-dark font-chat'
             : 'text-term-bright-green font-terminal'}"
         >{$_t('Scheduled Jobs')}</h3>
-        <!-- Feature 015 (T052): Session capacity badge -->
         <button
           class="flex items-center gap-1 py-0.5 px-2 rounded-xl cursor-pointer transition-all duration-200 text-sm
             {currentTheme === 'modern'
@@ -329,7 +297,7 @@
                 ? '!bg-amber-500/10 !border-amber-500 !text-amber-500 dark:!bg-amber-400/10 dark:!border-amber-400 dark:!text-amber-400'
                 : '!bg-[rgba(255,255,0,0.1)] !border-term-yellow !text-term-yellow')
               : ''}"
-          on:click={() => showSessionDetails = !showSessionDetails}
+          onclick={() => showSessionDetails = !showSessionDetails}
           title={$_t('Active Sessions')}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -347,7 +315,7 @@
             {currentTheme === 'modern'
               ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
               : 'text-term-dim-green hover:text-term-bright-green hover:bg-[rgba(0,255,0,0.1)]'}"
-          on:click={handleAddJob}
+          onclick={handleAddJob}
           title={$_t('Add Job')}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -362,7 +330,7 @@
               : 'text-term-dim-green hover:text-term-bright-green hover:bg-[rgba(0,255,0,0.1)]'}
             {isPaused && currentTheme === 'modern' ? '!text-amber-500' : ''}
             {isPaused && currentTheme !== 'modern' ? '!text-term-yellow' : ''}"
-          on:click={togglePause}
+          onclick={togglePause}
           title={isPaused ? $_t('Resume Queue') : $_t('Pause Queue')}
         >
           {#if isPaused}
@@ -381,7 +349,7 @@
             {currentTheme === 'modern'
               ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
               : 'text-term-dim-green hover:text-term-bright-green hover:bg-[rgba(0,255,0,0.1)]'}"
-          on:click={onClose}
+          onclick={onClose}
           aria-label="Close"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -409,7 +377,6 @@
           <p class="text-sm opacity-70 mt-2">{$_t('Long-press the send button to schedule a job')}</p>
         </div>
       {:else}
-        <!-- Feature 015 (T052, T053): Session Details Panel -->
         {#if showSessionDetails}
           <div class="rounded overflow-hidden mb-3
             {currentTheme === 'modern'
@@ -429,7 +396,7 @@
                   {currentTheme === 'modern'
                     ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark'
                     : 'text-term-dim-green hover:text-term-bright-green'}"
-                on:click={() => showSessionDetails = false}
+                onclick={() => showSessionDetails = false}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -452,7 +419,7 @@
                       : 'bg-[rgba(0,0,0,0.3)]' + (session.type === 'primary' ? ' !bg-[rgba(0,255,255,0.1)] border border-[rgba(0,255,255,0.3)]' : '')}">
                     <span class="flex items-center justify-center w-5 h-5 text-sm font-bold rounded
                       {currentTheme === 'modern'
-                        ? 'bg-chat-button dark:bg-chat-button-dark text-white' + (session.type === 'primary' ? '' : '')
+                        ? 'bg-chat-button dark:bg-chat-button-dark text-white'
                         : 'bg-term-dim-green text-black' + (session.type === 'primary' ? ' !bg-[#00ffff]' : '')}"
                     >{session.sessionLetter.toUpperCase()}</span>
                     <div class="flex-1 flex flex-col gap-0.5">
@@ -471,7 +438,6 @@
                 {/each}
               </div>
             {/if}
-            <!-- T053: Capacity warning -->
             {#if sessionCount >= maxSessions}
               <div class="flex items-center gap-1.5 py-2 px-2.5 text-sm
                 {currentTheme === 'modern'
@@ -488,7 +454,6 @@
           </div>
         {/if}
 
-        <!-- T057: Session Error Notification -->
         {#if lastSessionError}
           <div class="flex items-center gap-2 py-2 px-3 my-2 rounded text-sm animate-slide-in
             {currentTheme === 'modern'
@@ -504,7 +469,7 @@
             <span>{$_t('Session error')}: {lastSessionError.message}</span>
             <button
               class="ml-auto p-0.5 bg-transparent border-none text-inherit cursor-pointer opacity-70 transition-opacity duration-200 hover:opacity-100"
-              on:click={() => lastSessionError = null}
+              onclick={() => lastSessionError = null}
               aria-label={$_t('Dismiss')}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -515,7 +480,6 @@
           </div>
         {/if}
 
-        <!-- Paused Warning -->
         {#if isPaused}
           <div class="flex items-center gap-2 py-2 px-3 rounded text-sm mb-3
             {currentTheme === 'modern'
@@ -531,7 +495,6 @@
           </div>
         {/if}
 
-        <!-- T042: Offline Warning -->
         {#if isOffline}
           <div class="flex items-center gap-2 py-2 px-3 rounded text-sm mb-3
             {currentTheme === 'modern'
@@ -552,7 +515,6 @@
           </div>
         {/if}
 
-        <!-- Job Details Panel (T019) -->
         {#if expandedJobId && expandedJobDetails}
           <div class="rounded overflow-hidden
             {currentTheme === 'modern'
@@ -572,7 +534,7 @@
                   {currentTheme === 'modern'
                     ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark'
                     : 'text-term-dim-green hover:text-term-bright-green'}"
-                on:click={closeDetails}
+                onclick={closeDetails}
                 aria-label="Close details"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -583,110 +545,40 @@
             </div>
             <div class="p-3">
               <div class="flex gap-2 mb-2 text-sm">
-                <span class="shrink-0
-                  {currentTheme === 'modern'
-                    ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
-                    : 'text-term-dim-green'}"
-                >{$_t('Status')}:</span>
-                <span class="break-words
-                  {currentTheme === 'modern'
-                    ? 'text-chat-text dark:text-chat-text-dark'
-                    : (expandedJobDetails.status === 'running' ? 'text-term-bright-green'
-                      : expandedJobDetails.status === 'completed' ? 'text-[#00ffff]'
-                      : expandedJobDetails.status === 'failed' ? 'text-term-red'
-                      : expandedJobDetails.status === 'missed' ? 'text-term-yellow'
-                      : 'text-term-bright-green')}"
-                >{expandedJobDetails.status}</span>
+                <span class="shrink-0 {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Status')}:</span>
+                <span class="break-words {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark' : (expandedJobDetails.status === 'running' ? 'text-term-bright-green' : expandedJobDetails.status === 'completed' ? 'text-[#00ffff]' : expandedJobDetails.status === 'failed' ? 'text-term-red' : expandedJobDetails.status === 'missed' ? 'text-term-yellow' : 'text-term-bright-green')}">{expandedJobDetails.status}</span>
               </div>
               <div class="flex gap-2 mb-2 text-sm">
-                <span class="shrink-0
-                  {currentTheme === 'modern'
-                    ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
-                    : 'text-term-dim-green'}"
-                >{$_t('Created')}:</span>
-                <span class="break-words
-                  {currentTheme === 'modern'
-                    ? 'text-chat-text dark:text-chat-text-dark'
-                    : 'text-term-bright-green'}"
-                >{new Date(expandedJobDetails.createdAt).toLocaleString()}</span>
+                <span class="shrink-0 {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Created')}:</span>
+                <span class="break-words {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-bright-green'}">{new Date(expandedJobDetails.createdAt).toLocaleString()}</span>
               </div>
               {#if expandedJobDetails.scheduledTime}
                 <div class="flex gap-2 mb-2 text-sm">
-                  <span class="shrink-0
-                    {currentTheme === 'modern'
-                      ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
-                      : 'text-term-dim-green'}"
-                  >{$_t('Scheduled')}:</span>
-                  <span class="break-words
-                    {currentTheme === 'modern'
-                      ? 'text-chat-text dark:text-chat-text-dark'
-                      : 'text-term-bright-green'}"
-                  >{new Date(expandedJobDetails.scheduledTime).toLocaleString()}</span>
+                  <span class="shrink-0 {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Scheduled')}:</span>
+                  <span class="break-words {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-bright-green'}">{new Date(expandedJobDetails.scheduledTime).toLocaleString()}</span>
                 </div>
               {/if}
               {#if expandedJobDetails.completedAt}
                 <div class="flex gap-2 mb-2 text-sm">
-                  <span class="shrink-0
-                    {currentTheme === 'modern'
-                      ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
-                      : 'text-term-dim-green'}"
-                  >{$_t('Completed')}:</span>
-                  <span class="break-words
-                    {currentTheme === 'modern'
-                      ? 'text-chat-text dark:text-chat-text-dark'
-                      : 'text-term-bright-green'}"
-                  >{new Date(expandedJobDetails.completedAt).toLocaleString()}</span>
+                  <span class="shrink-0 {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Completed')}:</span>
+                  <span class="break-words {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-bright-green'}">{new Date(expandedJobDetails.completedAt).toLocaleString()}</span>
                 </div>
               {/if}
-              <div class="mt-3 pt-3 border-t border-dashed
-                {currentTheme === 'modern'
-                  ? 'border-chat-border dark:border-chat-border-dark'
-                  : 'border-[rgba(0,255,0,0.2)]'}">
-                <span class="shrink-0 text-sm
-                  {currentTheme === 'modern'
-                    ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
-                    : 'text-term-dim-green'}"
-                >{$_t('Full Input')}:</span>
-                <pre class="mt-2 mb-0 p-2 rounded text-sm font-terminal whitespace-pre-wrap break-words max-h-[150px] overflow-y-auto
-                  {currentTheme === 'modern'
-                    ? 'bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
-                    : 'bg-[rgba(0,0,0,0.4)] text-term-bright-green'}"
-                >{expandedJobDetails.input}</pre>
+              <div class="mt-3 pt-3 border-t border-dashed {currentTheme === 'modern' ? 'border-chat-border dark:border-chat-border-dark' : 'border-[rgba(0,255,0,0.2)]'}">
+                <span class="shrink-0 text-sm {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Full Input')}:</span>
+                <pre class="mt-2 mb-0 p-2 rounded text-sm font-terminal whitespace-pre-wrap break-words max-h-[150px] overflow-y-auto {currentTheme === 'modern' ? 'bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark' : 'bg-[rgba(0,0,0,0.4)] text-term-bright-green'}">{expandedJobDetails.input}</pre>
               </div>
               {#if expandedJobDetails.error}
-                <div class="mt-3 pt-3 border-t border-dashed
-                  {currentTheme === 'modern'
-                    ? 'border-chat-border dark:border-chat-border-dark'
-                    : 'border-[rgba(0,255,0,0.2)]'}">
-                  <span class="shrink-0 text-sm
-                    {currentTheme === 'modern'
-                      ? 'text-chat-error dark:text-chat-error-dark'
-                      : 'text-term-red'}">{$_t('Error')}:</span>
-                  <pre class="mt-2 mb-0 p-2 rounded text-sm font-terminal whitespace-pre-wrap break-words max-h-[150px] overflow-y-auto
-                    {currentTheme === 'modern'
-                      ? 'bg-chat-error/5 dark:bg-chat-error-dark/10 text-chat-error dark:text-chat-error-dark border border-chat-error/20 dark:border-chat-error-dark/20'
-                      : 'bg-[rgba(0,0,0,0.4)] text-term-red border border-[rgba(255,0,0,0.3)]'}">{expandedJobDetails.error}</pre>
+                <div class="mt-3 pt-3 border-t border-dashed {currentTheme === 'modern' ? 'border-chat-border dark:border-chat-border-dark' : 'border-[rgba(0,255,0,0.2)]'}">
+                  <span class="shrink-0 text-sm {currentTheme === 'modern' ? 'text-chat-error dark:text-chat-error-dark' : 'text-term-red'}">{$_t('Error')}:</span>
+                  <pre class="mt-2 mb-0 p-2 rounded text-sm font-terminal whitespace-pre-wrap break-words max-h-[150px] overflow-y-auto {currentTheme === 'modern' ? 'bg-chat-error/5 dark:bg-chat-error-dark/10 text-chat-error dark:text-chat-error-dark border border-chat-error/20 dark:border-chat-error-dark/20' : 'bg-[rgba(0,0,0,0.4)] text-term-red border border-[rgba(255,0,0,0.3)]'}">{expandedJobDetails.error}</pre>
                 </div>
               {/if}
               {#if expandedJobDetails.result}
-                <div class="mt-3 pt-3 border-t border-dashed
-                  {currentTheme === 'modern'
-                    ? 'border-chat-border dark:border-chat-border-dark'
-                    : 'border-[rgba(0,255,0,0.2)]'}">
-                  <span class="shrink-0 text-sm
-                    {currentTheme === 'modern'
-                      ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
-                      : 'text-term-dim-green'}"
-                  >{$_t('Result Summary')}:</span>
-                  <pre class="mt-2 mb-0 p-2 rounded text-sm font-terminal whitespace-pre-wrap break-words max-h-[150px] overflow-y-auto
-                    {currentTheme === 'modern'
-                      ? 'bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
-                      : 'bg-[rgba(0,0,0,0.4)] text-term-bright-green'}"
-                  >{expandedJobDetails.result.summary}</pre>
-                  <div class="flex gap-4 mt-2 text-sm
-                    {currentTheme === 'modern'
-                      ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
-                      : 'text-term-dim-green'}">
+                <div class="mt-3 pt-3 border-t border-dashed {currentTheme === 'modern' ? 'border-chat-border dark:border-chat-border-dark' : 'border-[rgba(0,255,0,0.2)]'}">
+                  <span class="shrink-0 text-sm {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Result Summary')}:</span>
+                  <pre class="mt-2 mb-0 p-2 rounded text-sm font-terminal whitespace-pre-wrap break-words max-h-[150px] overflow-y-auto {currentTheme === 'modern' ? 'bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark' : 'bg-[rgba(0,0,0,0.4)] text-term-bright-green'}">{expandedJobDetails.result.summary}</pre>
+                  <div class="flex gap-4 mt-2 text-sm {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
                     <span>{$_t('Tokens')}: {expandedJobDetails.result.tokenUsage.totalTokens}</span>
                     <span>{$_t('Duration')}: {(expandedJobDetails.result.duration / 1000).toFixed(1)}s</span>
                   </div>
@@ -698,7 +590,7 @@
                     {currentTheme === 'modern'
                       ? 'bg-chat-button dark:bg-chat-button-dark border-none text-white hover:opacity-90'
                       : 'bg-[rgba(0,255,0,0.1)] border border-term-dim-green text-term-bright-green hover:bg-[rgba(0,255,0,0.2)]'}"
-                  on:click={() => navigateToSession(expandedJobDetails.sessionId)}
+                  onclick={() => navigateToSession(expandedJobDetails.sessionId)}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
@@ -709,94 +601,69 @@
             </div>
           </div>
         {:else if isLoadingDetails}
-          <div class="text-center py-6 text-sm
-            {currentTheme === 'modern'
-              ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
-              : 'text-term-dim-green'}"
-          >{$_t('Loading details...')}</div>
+          <div class="text-center py-6 text-sm {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Loading details...')}</div>
         {:else}
-          <!-- Running Job -->
           {#if runningJob}
             <div class="mb-4">
-              <h4 class="m-0 mb-2 text-sm uppercase tracking-wider
-                {currentTheme === 'modern'
-                  ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
-                  : 'text-term-dim-green'}"
-              >{$_t('Running')}</h4>
+              <h4 class="m-0 mb-2 text-sm uppercase tracking-wider {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Running')}</h4>
               <SchedulerJobItem
                 {...runningJob}
                 showActions={true}
-                on:cancel={handleCancelJob}
-                on:details={handleJobDetails}
+                onCancel={handleCancelJob}
+                onDetails={handleJobDetails}
               />
             </div>
           {/if}
 
-          <!-- Missed Jobs -->
           {#if missedJobs.length > 0}
             <div class="mb-4">
-              <h4 class="m-0 mb-2 text-sm uppercase tracking-wider
-                {currentTheme === 'modern'
-                  ? 'text-amber-500'
-                  : 'text-term-yellow'}"
-              >{$_t('Missed')} ({missedJobs.length})</h4>
+              <h4 class="m-0 mb-2 text-sm uppercase tracking-wider {currentTheme === 'modern' ? 'text-amber-500' : 'text-term-yellow'}">{$_t('Missed')} ({missedJobs.length})</h4>
               {#each missedJobs as job (job.id)}
                 <SchedulerJobItem
                   {...job}
-                  on:trigger={handleTriggerJob}
-                  on:cancel={handleCancelJob}
-                  on:details={handleJobDetails}
+                  onTrigger={handleTriggerJob}
+                  onCancel={handleCancelJob}
+                  onDetails={handleJobDetails}
                 />
               {/each}
             </div>
           {/if}
 
-          <!-- Queued Jobs -->
           {#if queuedJobs.length > 0}
             <div class="mb-4">
-              <h4 class="m-0 mb-2 text-sm uppercase tracking-wider
-                {currentTheme === 'modern'
-                  ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
-                  : 'text-term-dim-green'}"
-              >{$_t('Queued')} ({queuedJobs.length})</h4>
+              <h4 class="m-0 mb-2 text-sm uppercase tracking-wider {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Queued')} ({queuedJobs.length})</h4>
               {#each queuedJobs as job (job.id)}
                 <SchedulerJobItem
                   {...job}
-                  on:trigger={handleTriggerJob}
-                  on:cancel={handleCancelJob}
-                  on:details={handleJobDetails}
+                  onTrigger={handleTriggerJob}
+                  onCancel={handleCancelJob}
+                  onDetails={handleJobDetails}
                 />
               {/each}
             </div>
           {/if}
 
-          <!-- Scheduled Jobs -->
           {#if scheduledJobs.length > 0}
             <div class="mb-4 last:mb-0">
-              <h4 class="m-0 mb-2 text-sm uppercase tracking-wider
-                {currentTheme === 'modern'
-                  ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
-                  : 'text-term-dim-green'}"
-              >{$_t('Upcoming')} ({scheduledJobs.length})</h4>
+              <h4 class="m-0 mb-2 text-sm uppercase tracking-wider {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Upcoming')} ({scheduledJobs.length})</h4>
               {#each scheduledJobs as job (job.id)}
                 <SchedulerJobItem
                   {...job}
-                  on:trigger={handleTriggerJob}
-                  on:cancel={handleCancelJob}
-                  on:details={handleJobDetails}
+                  onTrigger={handleTriggerJob}
+                  onCancel={handleCancelJob}
+                  onDetails={handleJobDetails}
                 />
               {/each}
             </div>
           {/if}
         {/if}
 
-        <!-- View History Link -->
         <button
           class="flex items-center justify-center gap-1.5 w-full mt-3 py-2 bg-transparent rounded cursor-pointer text-sm transition-all duration-200
             {currentTheme === 'modern'
               ? 'border border-dashed border-chat-border dark:border-chat-border-dark text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:border-solid'
               : 'border border-dashed border-term-dim-green text-term-dim-green hover:bg-[rgba(0,255,0,0.05)] hover:border-solid hover:text-term-bright-green'}"
-          on:click={() => showArchivedView = true}
+          onclick={() => showArchivedView = true}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"></circle>
@@ -809,18 +676,16 @@
   </div>
 {/if}
 
-<!-- Archived Jobs View -->
 <ArchivedJobsView
   show={showArchivedView}
   onClose={() => showArchivedView = false}
 />
 
-<!-- Schedule Job Modal -->
 <ScheduleJobModal
   show={showScheduleModal}
   input=""
-  on:close={() => showScheduleModal = false}
-  on:schedule={handleScheduleJob}
+  onClose={() => showScheduleModal = false}
+  onSchedule={handleScheduleJob}
 />
 
 <style>

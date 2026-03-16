@@ -10,6 +10,18 @@ import type { Op } from '@/core/protocol/types';
 import type { EventMsg } from '@/core/protocol/events';
 
 /**
+ * Event envelope for channel transport.
+ * Wraps EventMsg with routing metadata (sessionId, etc.).
+ * EventMsg stays pure protocol; ChannelEvent adds transport concerns.
+ */
+export interface ChannelEvent {
+  /** The protocol event payload */
+  msg: EventMsg;
+  /** Session that produced this event (for multi-session routing) */
+  sessionId?: string;
+}
+
+/**
  * Channel type discriminator
  */
 export type ChannelType =
@@ -31,6 +43,8 @@ export interface ChannelCapabilities {
   approvals: boolean;
   /** Can display images/media */
   media: boolean;
+  /** Can send service requests (e.g., MCP, scheduler, vault) */
+  services: boolean;
 }
 
 /**
@@ -48,7 +62,7 @@ export interface SubmissionContext {
   /** Browser tab ID (extension mode) */
   tabId?: number;
   /** Direct reply function (messaging channels) */
-  replyCallback?: (event: EventMsg) => Promise<void>;
+  replyCallback?: (event: ChannelEvent) => Promise<void>;
 }
 
 /**
@@ -69,7 +83,7 @@ export interface ChannelAdapter {
   readonly channelType: ChannelType;
   initialize(): Promise<void>;
   onSubmission(handler: SubmissionHandler | ((...args: any[]) => Promise<void>)): void;
-  sendEvent(event: EventMsg, targetClientId?: string): Promise<void>;
+  sendEvent(event: ChannelEvent, targetClientId?: string): Promise<void>;
   getConnectionState(): ConnectionState;
   close(): Promise<void>;
 }

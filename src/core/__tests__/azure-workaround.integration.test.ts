@@ -61,7 +61,7 @@ describe('Edge Case: Azure Endpoint Detection', () => {
     const azureClient = new TestableOpenAIResponsesClient({
       apiKey: 'test-key',
       baseUrl: 'https://my-resource.openai.azure.com',
-      conversationId: 'test-conv-1',
+      sessionId: 'test-conv-1',
       modelFamily: createModelFamily(),
       provider: createProvider({
         base_url: 'https://my-resource.openai.azure.com',
@@ -78,7 +78,7 @@ describe('Edge Case: Azure Endpoint Detection', () => {
     const client = new TestableOpenAIResponsesClient({
       apiKey: 'test-key',
       baseUrl: 'https://api.openai.com/v1',
-      conversationId: 'test-conv-2',
+      sessionId: 'test-conv-2',
       modelFamily: createModelFamily(),
       provider: createProvider({
         base_url: 'https://api.openai.com/v1',
@@ -103,7 +103,7 @@ describe('Edge Case: Azure Endpoint Detection', () => {
       const azureClient = new TestableOpenAIResponsesClient({
         apiKey: 'test-key',
         baseUrl,
-        conversationId: 'test-conv-3',
+        sessionId: 'test-conv-3',
         modelFamily: createModelFamily(),
         provider: createProvider({
           base_url: baseUrl,
@@ -121,7 +121,7 @@ describe('Edge Case: Azure Endpoint Detection', () => {
     const azureClient = new TestableOpenAIResponsesClient({
       baseUrl: 'https://my-resource.openai.azure.com',
       apiKey: 'test-key',
-      conversationId: 'test-conv-4',
+      sessionId: 'test-conv-4',
       modelFamily: createModelFamily(),
       provider: createProvider({
         base_url: 'https://my-resource.openai.azure.com',
@@ -142,7 +142,7 @@ describe('Edge Case: Azure Endpoint Detection', () => {
     const azureClient = new TestableOpenAIResponsesClient({
       apiKey: 'test-key',
       baseUrl: 'https://my-resource.openai.azure.com',
-      conversationId: 'test-conv-5',
+      sessionId: 'test-conv-5',
       modelFamily: createModelFamily(),
       provider: createProvider({
         base_url: 'https://my-resource.openai.azure.com',
@@ -160,7 +160,7 @@ describe('Edge Case: Azure Endpoint Detection', () => {
     const client = new TestableOpenAIResponsesClient({
       apiKey: 'test-key',
       baseUrl: 'https://api.example.com/azure-proxy',
-      conversationId: 'test-conv-6',
+      sessionId: 'test-conv-6',
       modelFamily: createModelFamily(),
       provider: createProvider({
         base_url: 'https://api.example.com/azure-proxy',
@@ -177,7 +177,7 @@ describe('Edge Case: Azure Endpoint Detection', () => {
     const azureClient = new TestableOpenAIResponsesClient({
       apiKey: 'test-key',
       baseUrl: 'https://my-resource.openai.azure.com',
-      conversationId: 'test-conv-7',
+      sessionId: 'test-conv-7',
       modelFamily: createModelFamily({
         supports_reasoning: true,
         supports_reasoning_summaries: true,

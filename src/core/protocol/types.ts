@@ -7,7 +7,7 @@ export const USER_INSTRUCTIONS_OPEN_TAG = '<user_instructions>';
 export const USER_INSTRUCTIONS_CLOSE_TAG = '</user_instructions>';
 export const ENVIRONMENT_CONTEXT_OPEN_TAG = '<environment_context>';
 export const ENVIRONMENT_CONTEXT_CLOSE_TAG = '</environment_context>';
-export const USER_MESSAGE_BEGIN = '## My request for ApplePi:';
+export const USER_MESSAGE_BEGIN = '## My request for Apple Pi:';
 
 /**
  * Submission Queue Entry - requests from user
@@ -105,7 +105,16 @@ export type Op =
     type: 'Review';
     review_request: ReviewRequest;
   }
-  | { type: 'Shutdown' };
+  | { type: 'Shutdown' }
+  | {
+    type: 'ServiceRequest';
+    /** UUID for response correlation */
+    requestId: string;
+    /** Dotted service path: 'mcp.getServers', 'vault.status', etc. */
+    service: string;
+    /** Request parameters */
+    params: Record<string, unknown>;
+  };
 
 /**
  * Determines the conditions under which the user is consulted to approve

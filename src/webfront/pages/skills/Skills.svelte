@@ -7,47 +7,41 @@
   import { onMount } from 'svelte';
   import { push } from 'svelte-spa-router';
   import type { SkillMeta, InvocationMode } from '@/core/skills/types';
-  import { sendMessage, MessageType } from '../../lib/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
   import { refreshSkillCommands } from '../../commands/builtinCommands';
   import { t, _t } from '../../lib/i18n';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
 
-  let currentTheme: UITheme = 'terminal';
-  const unsubTheme = uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
+  let currentTheme = $derived($uiTheme);
 
   // State
-  let skills: SkillMeta[] = [];
-  let isLoading = true;
-  let saveMessage = '';
-  let saveMessageType: 'success' | 'error' | '' = '';
+  let skills: SkillMeta[] = $state([]);
+  let isLoading: boolean = $state(true);
+  let saveMessage: string = $state('');
+  let saveMessageType: 'success' | 'error' | '' = $state('');
 
   // Create form state
-  let showCreateForm = false;
-  let formName = '';
-  let formDescription = '';
-  let formBody = '';
-  let formMode: InvocationMode = 'manual';
-  let formError = '';
-  let isSaving = false;
+  let showCreateForm: boolean = $state(false);
+  let formName: string = $state('');
+  let formDescription: string = $state('');
+  let formBody: string = $state('');
+  let formMode: InvocationMode = $state('manual');
+  let formError: string = $state('');
+  let isSaving: boolean = $state(false);
 
   // Import form state
-  let showImportForm = false;
-  let importUrl = '';
-  let isImporting = false;
+  let showImportForm: boolean = $state(false);
+  let importUrl: string = $state('');
+  let isImporting: boolean = $state(false);
 
   onMount(async () => {
     await loadSkills();
-    return () => {
-      unsubTheme();
-    };
   });
 
   async function loadSkills() {
     isLoading = true;
     try {
-      const response = await sendMessage<SkillMeta[]>(MessageType.SKILLS_LIST);
+      const response = await (await getInitializedUIClient()).serviceRequest<SkillMeta[]>('skills.list');
       skills = Array.isArray(response) ? response : [];
     } catch (error) {
       console.error('[Skills] Failed to load skills:', error);
@@ -95,7 +89,7 @@
     isSaving = true;
     try {
       const now = new Date().toISOString();
-      await sendMessage(MessageType.SKILLS_SAVE, {
+      await (await getInitializedUIClient()).serviceRequest('skills.save', {
         name: formName.trim(),
         description: formDescription.trim(),
         body: formBody,
@@ -121,7 +115,7 @@
       return;
     }
     try {
-      await sendMessage(MessageType.SKILLS_DELETE, { name });
+      await (await getInitializedUIClient()).serviceRequest('skills.delete', { name });
       await loadSkills();
       await refreshSkillCommands();
       showNotification('Skill deleted', 'success');
@@ -133,7 +127,7 @@
   async function handleModeChange(name: string, modeValue: string) {
     const mode = modeValue as InvocationMode;
     try {
-      await sendMessage(MessageType.SKILLS_UPDATE_MODE, { name, mode });
+      await (await getInitializedUIClient()).serviceRequest('skills.updateMode', { name, mode });
       await loadSkills();
       await refreshSkillCommands();
     } catch (error) {
@@ -143,7 +137,7 @@
 
   async function handleTrust(name: string) {
     try {
-      await sendMessage(MessageType.SKILLS_TRUST, { name });
+      await (await getInitializedUIClient()).serviceRequest('skills.trust', { name });
       await loadSkills();
       await refreshSkillCommands();
       showNotification('Skill trusted', 'success');
@@ -154,8 +148,8 @@
 
   async function handleExport(name: string) {
     try {
-      const response = await sendMessage<{ success: boolean; content: string }>(
-        MessageType.SKILLS_EXPORT,
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; content: string }>(
+        'skills.export',
         { name }
       );
       if (response?.content) {
@@ -181,7 +175,7 @@
 
     isImporting = true;
     try {
-      await sendMessage(MessageType.SKILLS_IMPORT, { url: importUrl.trim() });
+      await (await getInitializedUIClient()).serviceRequest('skills.import', { url: importUrl.trim() });
       closeImportForm();
       await loadSkills();
       await refreshSkillCommands();
@@ -225,9 +219,9 @@
   }
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
-<div class="h-screen flex items-center justify-center {currentTheme === 'modern' ? 'bg-black/30' : 'bg-black/50'}">
+<div class="h-full flex items-center justify-center {currentTheme === 'modern' ? 'bg-black/30' : 'bg-black/50'}">
   <div class="w-full max-w-[42rem] max-h-[80vh] overflow-y-auto rounded-lg flex flex-col
     {currentTheme === 'modern'
       ? 'rounded-2xl shadow-2xl bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark border-none'
@@ -242,7 +236,7 @@
           {currentTheme === 'modern'
             ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:bg-chat-surface dark:hover:bg-chat-surface-dark'
             : 'text-term-dim-green hover:text-term-green hover:bg-[#0a0a0a]'}"
-        on:click={handleClose}
+        onclick={handleClose}
         aria-label={t("Close skills")}
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -253,7 +247,6 @@
     </div>
 
     <div class="px-6 py-4 overflow-y-auto flex-1">
-      <!-- Notification -->
       {#if saveMessage}
         <div class="px-4 py-3 rounded-md mb-4 text-sm
           {saveMessageType === 'success'
@@ -265,25 +258,23 @@
                 : 'bg-term-red/15 text-term-red border border-term-red/30')}">{saveMessage}</div>
       {/if}
 
-      <!-- Actions -->
       <div class="flex gap-2 mb-6">
         <button
           class="px-4 py-2 rounded-md text-sm cursor-pointer border transition-all duration-200
             {currentTheme === 'modern'
               ? 'bg-chat-primary dark:bg-chat-primary-dark text-white border-chat-primary dark:border-chat-primary-dark hover:opacity-90'
               : 'bg-term-green text-white border-term-green hover:opacity-90'}"
-          on:click={openCreateForm}
+          onclick={openCreateForm}
         >{$_t('Create Skill')}</button>
         <button
           class="px-4 py-2 rounded-md text-sm cursor-pointer border transition-all duration-200
             {currentTheme === 'modern'
               ? 'bg-chat-surface dark:bg-chat-surface-dark text-chat-text dark:text-chat-text-dark border-chat-border dark:border-chat-border-dark hover:opacity-80'
               : 'bg-[#0a0a0a] text-term-green border-term-dim-green hover:opacity-80'}"
-          on:click={openImportForm}
+          onclick={openImportForm}
         >{$_t('Import from URL')}</button>
       </div>
 
-      <!-- Create Form -->
       {#if showCreateForm}
         <div class="rounded-lg p-5 mb-6 border
           {currentTheme === 'modern'
@@ -362,14 +353,14 @@
                 {currentTheme === 'modern'
                   ? 'bg-chat-surface dark:bg-chat-surface-dark text-chat-text dark:text-chat-text-dark border-chat-border dark:border-chat-border-dark hover:opacity-80'
                   : 'bg-[#0a0a0a] text-term-green border-term-dim-green hover:opacity-80'}"
-              on:click={closeCreateForm}
+              onclick={closeCreateForm}
             >{$_t('Cancel')}</button>
             <button
               class="px-4 py-2 rounded-md text-sm cursor-pointer border transition-all duration-200
                 {currentTheme === 'modern'
                   ? 'bg-chat-primary dark:bg-chat-primary-dark text-white border-chat-primary dark:border-chat-primary-dark hover:opacity-90'
                   : 'bg-term-green text-white border-term-green hover:opacity-90'}"
-              on:click={handleCreate}
+              onclick={handleCreate}
               disabled={isSaving}
             >
               {isSaving ? $_t('Creating...') : $_t('Create')}
@@ -378,7 +369,6 @@
         </div>
       {/if}
 
-      <!-- Import Form -->
       {#if showImportForm}
         <div class="rounded-lg p-5 mb-6 border
           {currentTheme === 'modern'
@@ -410,14 +400,14 @@
                 {currentTheme === 'modern'
                   ? 'bg-chat-surface dark:bg-chat-surface-dark text-chat-text dark:text-chat-text-dark border-chat-border dark:border-chat-border-dark hover:opacity-80'
                   : 'bg-[#0a0a0a] text-term-green border-term-dim-green hover:opacity-80'}"
-              on:click={closeImportForm}
+              onclick={closeImportForm}
             >{$_t('Cancel')}</button>
             <button
               class="px-4 py-2 rounded-md text-sm cursor-pointer border transition-all duration-200
                 {currentTheme === 'modern'
                   ? 'bg-chat-primary dark:bg-chat-primary-dark text-white border-chat-primary dark:border-chat-primary-dark hover:opacity-90'
                   : 'bg-term-green text-white border-term-green hover:opacity-90'}"
-              on:click={handleImport}
+              onclick={handleImport}
               disabled={isImporting}
             >
               {isImporting ? $_t('Importing...') : $_t('Import')}
@@ -426,7 +416,6 @@
         </div>
       {/if}
 
-      <!-- Skills List -->
       {#if isLoading}
         <div class="flex flex-col items-center gap-3 py-12
           {currentTheme === 'modern' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">
@@ -479,7 +468,7 @@
                       ? 'border-chat-border dark:border-chat-border-dark'
                       : 'border-term-dim-green'}"
                   value={skill.invocationMode}
-                  on:change={(e) => handleModeChange(skill.name, e.currentTarget.value)}
+                  onchange={(e) => handleModeChange(skill.name, (e.target as HTMLSelectElement).value)}
                 >
                   <option value="manual">Manual</option>
                   <option value="auto">Auto</option>
@@ -492,7 +481,7 @@
                       {currentTheme === 'modern'
                         ? 'bg-chat-surface dark:bg-chat-surface-dark text-bx-success dark:text-bx-success-dark border-bx-success dark:border-bx-success-dark hover:text-chat-text dark:hover:text-chat-text-dark'
                         : 'bg-[#0a0a0a] text-term-green border-term-green hover:text-term-bright-green'}"
-                    on:click={() => handleTrust(skill.name)}
+                    onclick={() => handleTrust(skill.name)}
                   >
                     {$_t('Trust')}
                   </button>
@@ -503,7 +492,7 @@
                     {currentTheme === 'modern'
                       ? 'bg-chat-surface dark:bg-chat-surface-dark text-chat-text-secondary dark:text-chat-text-secondary-dark border-chat-border dark:border-chat-border-dark hover:text-chat-text dark:hover:text-chat-text-dark'
                       : 'bg-[#0a0a0a] text-term-dim-green border-term-dim-green hover:text-term-green'}"
-                  on:click={() => handleExport(skill.name)}
+                  onclick={() => handleExport(skill.name)}
                 >
                   {$_t('Export')}
                 </button>
@@ -513,7 +502,7 @@
                     {currentTheme === 'modern'
                       ? 'bg-chat-surface dark:bg-chat-surface-dark text-chat-text-secondary dark:text-chat-text-secondary-dark border-chat-border dark:border-chat-border-dark hover:text-chat-error dark:hover:text-chat-error-dark hover:border-chat-error dark:hover:border-chat-error-dark'
                       : 'bg-[#0a0a0a] text-term-dim-green border-term-dim-green hover:text-term-red hover:border-term-red'}"
-                  on:click={() => handleDelete(skill.name)}
+                  onclick={() => handleDelete(skill.name)}
                 >
                   {$_t('Delete')}
                 </button>
@@ -535,7 +524,6 @@
     animation: spin 0.8s linear infinite;
   }
 
-  /* Let <select> use system rendering so dropdown options are visible in dark themes */
   .color-scheme-inherit {
     background: revert;
     color: revert;

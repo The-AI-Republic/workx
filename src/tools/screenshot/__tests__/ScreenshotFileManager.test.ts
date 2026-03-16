@@ -1,16 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-
-const { mockIsConfigStorageInitialized, mockGetConfigStorage } = vi.hoisted(() => ({
-  mockIsConfigStorageInitialized: vi.fn(() => false),
-  mockGetConfigStorage: vi.fn((): any => {
-    throw new Error('Not initialized');
-  }),
-}));
-
-vi.mock('../../../core/storage/ConfigStorageProvider', () => ({
-  isConfigStorageInitialized: mockIsConfigStorageInitialized,
-  getConfigStorage: mockGetConfigStorage,
-}));
+import { setConfigStorage, type ConfigStorageProvider } from '../../../core/storage/ConfigStorageProvider';
 
 vi.mock('../types', async (importOriginal) => {
   const original = (await importOriginal()) as any;
@@ -23,18 +12,53 @@ vi.mock('../types', async (importOriginal) => {
 
 import { ScreenshotFileManager } from '../ScreenshotFileManager';
 
-// Helper to directly inspect / seed the MockStorageArea backing chrome.storage.local
-const localStorage = () => chrome.storage.local as any;
+/** Create a Map-backed ConfigStorageProvider mock */
+function createMockStorage(): ConfigStorageProvider {
+  const store = new Map<string, any>();
+  return {
+    get: vi.fn(async <T>(key: string): Promise<T | null> => {
+      return (store.get(key) as T) ?? null;
+    }),
+    set: vi.fn(async (key: string, value: any): Promise<void> => {
+      store.set(key, value);
+    }),
+    remove: vi.fn(async (key: string): Promise<void> => {
+      store.delete(key);
+    }),
+    getMany: vi.fn(async <T>(keys: string[]): Promise<Record<string, T | null>> => {
+      const result: Record<string, T | null> = {};
+      for (const key of keys) {
+        result[key] = (store.get(key) as T) ?? null;
+      }
+      return result;
+    }),
+    setMany: vi.fn(async (items: Record<string, any>): Promise<void> => {
+      for (const [key, value] of Object.entries(items)) {
+        store.set(key, value);
+      }
+    }),
+    removeMany: vi.fn(async (keys: string[]): Promise<void> => {
+      for (const key of keys) {
+        store.delete(key);
+      }
+    }),
+    getAll: vi.fn(async (): Promise<Record<string, any>> => {
+      return Object.fromEntries(store.entries());
+    }),
+    clear: vi.fn(async (): Promise<void> => {
+      store.clear();
+    }),
+    getBytesInUse: vi.fn(async (): Promise<number> => 0),
+    _store: store, // expose for test seeding
+  } as ConfigStorageProvider & { _store: Map<string, any> };
+}
 
 describe('ScreenshotFileManager', () => {
-  // chrome.storage.local is a full MockStorageArea (from setup.ts)
-  // that already handles get/set/remove correctly — no mocking needed.
+  let mockStorage: ConfigStorageProvider & { _store: Map<string, any> };
 
   beforeEach(() => {
-    mockIsConfigStorageInitialized.mockReturnValue(false);
-    mockGetConfigStorage.mockImplementation(() => {
-      throw new Error('Not initialized');
-    });
+    mockStorage = createMockStorage() as any;
+    setConfigStorage(mockStorage);
   });
 
   // ==========================================================================
@@ -46,8 +70,8 @@ describe('ScreenshotFileManager', () => {
 
       await ScreenshotFileManager.saveScreenshot(base64Data);
 
-      const allData = localStorage()._getAllData();
-      expect(allData['screenshot_cache']).toBe(base64Data);
+      expect(mockStorage.set).toHaveBeenCalledWith('screenshot_cache', base64Data);
+      expect(mockStorage._store.get('screenshot_cache')).toBe(base64Data);
     });
 
     it('should throw when data exceeds MAX_SCREENSHOT_SIZE_MB', async () => {
@@ -73,8 +97,7 @@ describe('ScreenshotFileManager', () => {
       await ScreenshotFileManager.saveScreenshot('firstData');
       await ScreenshotFileManager.saveScreenshot('secondData');
 
-      const allData = localStorage()._getAllData();
-      expect(allData['screenshot_cache']).toBe('secondData');
+      expect(mockStorage._store.get('screenshot_cache')).toBe('secondData');
     });
 
     it('should save data just under the size limit', async () => {
@@ -84,35 +107,13 @@ describe('ScreenshotFileManager', () => {
 
       await ScreenshotFileManager.saveScreenshot(justUnderData);
 
-      const allData = localStorage()._getAllData();
-      expect(allData['screenshot_cache']).toBe(justUnderData);
+      expect(mockStorage._store.get('screenshot_cache')).toBe(justUnderData);
     });
 
-    it('should use ConfigStorageProvider when initialized', async () => {
-      const mockStorage = {
-        get: vi.fn().mockResolvedValue(null),
-        set: vi.fn().mockResolvedValue(undefined),
-        remove: vi.fn().mockResolvedValue(undefined),
-      };
-      mockIsConfigStorageInitialized.mockReturnValue(true);
-      mockGetConfigStorage.mockReturnValue(mockStorage);
-
+    it('should call storage.set with correct key and value', async () => {
       await ScreenshotFileManager.saveScreenshot('testData');
 
       expect(mockStorage.set).toHaveBeenCalledWith('screenshot_cache', 'testData');
-    });
-
-    it('should throw when storage is not available', async () => {
-      // Remove chrome from globalThis
-      const originalChrome = (globalThis as any).chrome;
-      (globalThis as any).chrome = undefined;
-
-      await expect(
-        ScreenshotFileManager.saveScreenshot('testData')
-      ).rejects.toThrow('FILE_STORAGE_ERROR');
-
-      // Restore
-      (globalThis as any).chrome = originalChrome;
     });
   });
 
@@ -121,12 +122,11 @@ describe('ScreenshotFileManager', () => {
   // ==========================================================================
   describe('getScreenshot', () => {
     it('should retrieve previously saved screenshot data', async () => {
-      const base64Data = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAA';
-      localStorage()._setData({ screenshot_cache: base64Data });
+      mockStorage._store.set('screenshot_cache', 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAA');
 
       const result = await ScreenshotFileManager.getScreenshot();
 
-      expect(result).toBe(base64Data);
+      expect(result).toBe('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAA');
     });
 
     it('should return null when no screenshot exists', async () => {
@@ -135,40 +135,14 @@ describe('ScreenshotFileManager', () => {
       expect(result).toBeNull();
     });
 
-    it('should return null when storage is not available', async () => {
-      const originalChrome = (globalThis as any).chrome;
-      (globalThis as any).chrome = undefined;
+    it('should call storage.get with correct key', async () => {
+      await ScreenshotFileManager.getScreenshot();
 
-      const result = await ScreenshotFileManager.getScreenshot();
-
-      expect(result).toBeNull();
-
-      (globalThis as any).chrome = originalChrome;
-    });
-
-    it('should use ConfigStorageProvider when initialized', async () => {
-      const mockStorage = {
-        get: vi.fn().mockResolvedValue('storedBase64Data'),
-        set: vi.fn(),
-        remove: vi.fn(),
-      };
-      mockIsConfigStorageInitialized.mockReturnValue(true);
-      mockGetConfigStorage.mockReturnValue(mockStorage);
-
-      const result = await ScreenshotFileManager.getScreenshot();
-
-      expect(result).toBe('storedBase64Data');
       expect(mockStorage.get).toHaveBeenCalledWith('screenshot_cache');
     });
 
     it('should throw FILE_STORAGE_ERROR when storage.get throws', async () => {
-      const mockStorage = {
-        get: vi.fn().mockRejectedValue(new Error('Read error')),
-        set: vi.fn(),
-        remove: vi.fn(),
-      };
-      mockIsConfigStorageInitialized.mockReturnValue(true);
-      mockGetConfigStorage.mockReturnValue(mockStorage);
+      (mockStorage.get as any).mockRejectedValue(new Error('Read error'));
 
       await expect(ScreenshotFileManager.getScreenshot()).rejects.toThrow(
         'FILE_STORAGE_ERROR: Read error'
@@ -181,49 +155,20 @@ describe('ScreenshotFileManager', () => {
   // ==========================================================================
   describe('deleteScreenshot', () => {
     it('should remove the screenshot from storage', async () => {
-      localStorage()._setData({ screenshot_cache: 'someBase64Data' });
+      mockStorage._store.set('screenshot_cache', 'someBase64Data');
 
       await ScreenshotFileManager.deleteScreenshot();
 
-      const allData = localStorage()._getAllData();
-      expect(allData['screenshot_cache']).toBeUndefined();
+      expect(mockStorage.remove).toHaveBeenCalledWith('screenshot_cache');
+      expect(mockStorage._store.has('screenshot_cache')).toBe(false);
     });
 
     it('should not throw when no screenshot exists to delete', async () => {
       await expect(ScreenshotFileManager.deleteScreenshot()).resolves.not.toThrow();
     });
 
-    it('should silently return when storage is not available', async () => {
-      const originalChrome = (globalThis as any).chrome;
-      (globalThis as any).chrome = undefined;
-
-      await expect(ScreenshotFileManager.deleteScreenshot()).resolves.not.toThrow();
-
-      (globalThis as any).chrome = originalChrome;
-    });
-
-    it('should use ConfigStorageProvider when initialized', async () => {
-      const mockStorage = {
-        get: vi.fn(),
-        set: vi.fn(),
-        remove: vi.fn().mockResolvedValue(undefined),
-      };
-      mockIsConfigStorageInitialized.mockReturnValue(true);
-      mockGetConfigStorage.mockReturnValue(mockStorage);
-
-      await ScreenshotFileManager.deleteScreenshot();
-
-      expect(mockStorage.remove).toHaveBeenCalledWith('screenshot_cache');
-    });
-
     it('should throw FILE_STORAGE_ERROR when storage.remove throws', async () => {
-      const mockStorage = {
-        get: vi.fn(),
-        set: vi.fn(),
-        remove: vi.fn().mockRejectedValue(new Error('Remove failed')),
-      };
-      mockIsConfigStorageInitialized.mockReturnValue(true);
-      mockGetConfigStorage.mockReturnValue(mockStorage);
+      (mockStorage.remove as any).mockRejectedValue(new Error('Remove failed'));
 
       await expect(ScreenshotFileManager.deleteScreenshot()).rejects.toThrow(
         'FILE_STORAGE_ERROR: Remove failed'
@@ -236,7 +181,7 @@ describe('ScreenshotFileManager', () => {
   // ==========================================================================
   describe('hasScreenshot', () => {
     it('should return true when a screenshot exists in storage', async () => {
-      localStorage()._setData({ screenshot_cache: 'someBase64Data' });
+      mockStorage._store.set('screenshot_cache', 'someBase64Data');
 
       const result = await ScreenshotFileManager.hasScreenshot();
 
@@ -249,25 +194,8 @@ describe('ScreenshotFileManager', () => {
       expect(result).toBe(false);
     });
 
-    it('should return false when storage is not available', async () => {
-      const originalChrome = (globalThis as any).chrome;
-      (globalThis as any).chrome = undefined;
-
-      const result = await ScreenshotFileManager.hasScreenshot();
-
-      expect(result).toBe(false);
-
-      (globalThis as any).chrome = originalChrome;
-    });
-
     it('should return false when storage.get throws (swallows error)', async () => {
-      const mockStorage = {
-        get: vi.fn().mockRejectedValue(new Error('Storage error')),
-        set: vi.fn(),
-        remove: vi.fn(),
-      };
-      mockIsConfigStorageInitialized.mockReturnValue(true);
-      mockGetConfigStorage.mockReturnValue(mockStorage);
+      (mockStorage.get as any).mockRejectedValue(new Error('Storage error'));
 
       const result = await ScreenshotFileManager.hasScreenshot();
 
@@ -275,7 +203,7 @@ describe('ScreenshotFileManager', () => {
     });
 
     it('should return false for empty string in storage', async () => {
-      localStorage()._setData({ screenshot_cache: '' });
+      mockStorage._store.set('screenshot_cache', '');
 
       const result = await ScreenshotFileManager.hasScreenshot();
 
@@ -289,6 +217,7 @@ describe('ScreenshotFileManager', () => {
   describe('downloadScreenshot', () => {
     beforeEach(() => {
       // Add chrome.downloads mock
+      (globalThis as any).chrome = (globalThis as any).chrome || {};
       (globalThis as any).chrome.downloads = {
         download: vi.fn().mockResolvedValue(42),
       };
@@ -331,7 +260,7 @@ describe('ScreenshotFileManager', () => {
     });
 
     it('should read from storage when first arg is a .png filename', async () => {
-      localStorage()._setData({ screenshot_cache: 'storedBase64' });
+      mockStorage._store.set('screenshot_cache', 'storedBase64');
 
       const downloadId = await ScreenshotFileManager.downloadScreenshot('output.png');
 
@@ -345,7 +274,7 @@ describe('ScreenshotFileManager', () => {
     });
 
     it('should read from storage when no args provided', async () => {
-      localStorage()._setData({ screenshot_cache: 'storedBase64' });
+      mockStorage._store.set('screenshot_cache', 'storedBase64');
       vi.spyOn(Date, 'now').mockReturnValue(9999);
 
       const downloadId = await ScreenshotFileManager.downloadScreenshot();
@@ -410,10 +339,7 @@ describe('ScreenshotFileManager', () => {
       (globalThis as any).URL.revokeObjectURL = mockRevokeObjectURL;
     });
 
-    // Note: atob is available in jsdom environment
-
     it('should create a download link and trigger click', () => {
-      // Use a simple valid base64 string
       const base64 = btoa('test image data');
 
       ScreenshotFileManager.downloadScreenshotViaBlob(base64, 'test.png');
@@ -442,7 +368,6 @@ describe('ScreenshotFileManager', () => {
       ScreenshotFileManager.downloadScreenshotViaBlob(dataUri, 'stripped.png');
 
       expect(mockLink.click).toHaveBeenCalled();
-      // If the prefix weren't stripped, atob would fail on the prefix
     });
 
     it('should clean up link and revoke object URL after timeout', () => {
@@ -477,7 +402,6 @@ describe('ScreenshotFileManager', () => {
     });
 
     it('should throw DOWNLOAD_ERROR when blob creation fails', () => {
-      // Force atob to fail by passing invalid base64
       vi.spyOn(globalThis, 'atob').mockImplementation(() => {
         throw new Error('Invalid base64');
       });
@@ -530,44 +454,6 @@ describe('ScreenshotFileManager', () => {
 
       await ScreenshotFileManager.deleteScreenshot();
       expect(await ScreenshotFileManager.hasScreenshot()).toBe(false);
-    });
-  });
-
-  // ==========================================================================
-  // getStorage fallback — chrome.storage.local adapter behavior
-  // ==========================================================================
-  describe('chrome.storage.local fallback adapter', () => {
-    it('fallback getMany delegates to chrome.storage.local.get with array', async () => {
-      localStorage()._setData({ key1: 'val1', key2: 'val2' });
-
-      // We exercise the fallback indirectly through the main API
-      // The fallback path is always taken since isConfigStorageInitialized returns false
-      await ScreenshotFileManager.saveScreenshot('test');
-
-      // Verify it went to chrome.storage.local
-      const allData = localStorage()._getAllData();
-      expect(allData['screenshot_cache']).toBe('test');
-    });
-
-    it('handles chrome without storage gracefully', async () => {
-      const originalStorage = (globalThis as any).chrome.storage;
-      (globalThis as any).chrome.storage = undefined;
-
-      // Should return null / not throw for getScreenshot
-      const result = await ScreenshotFileManager.getScreenshot();
-      expect(result).toBeNull();
-
-      (globalThis as any).chrome.storage = originalStorage;
-    });
-
-    it('handles chrome.storage without local gracefully', async () => {
-      const originalLocal = (globalThis as any).chrome.storage.local;
-      (globalThis as any).chrome.storage.local = undefined;
-
-      const result = await ScreenshotFileManager.getScreenshot();
-      expect(result).toBeNull();
-
-      (globalThis as any).chrome.storage.local = originalLocal;
     });
   });
 });

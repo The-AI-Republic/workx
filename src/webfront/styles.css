@@ -167,10 +167,11 @@ body.terminal-mode {
   background-color: var(--color-term-bg);
   color: var(--color-term-green);
   font-family: var(--font-terminal);
-  padding: 1rem;
+  padding: 0 1rem 1rem;
   min-height: 100vh;
   overflow: auto;
 }
+
 
 .terminal-message {
   white-space: pre-wrap;

@@ -4,7 +4,7 @@
 -->
 
 <script lang="ts">
-  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import type { AgentConfig } from '@/config/AgentConfig';
   import type {
     IMCPServerConfig,
@@ -13,55 +13,62 @@
     IMCPTool,
   } from '@/core/mcp/types';
   import { isDebugLoggingEnabled, setDebugLogging } from '@/core/mcp/MCPConfig';
-  import { sendMessage, MessageType } from '../lib/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
   import { _t } from '../lib/i18n';
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
 
-  export let settingsConfig: AgentConfig;
-  export let highlightSettingId: string | undefined = undefined;
-
-  const dispatch = createEventDispatcher<{
-    back: void;
-    saved: { success: boolean; error?: string };
-  }>();
+  let {
+    settingsConfig,
+    highlightSettingId = undefined,
+    isDirty = $bindable(false),
+    onBack,
+    onSaved,
+  }: {
+    settingsConfig: AgentConfig;
+    highlightSettingId?: string | undefined;
+    isDirty?: boolean;
+    onBack?: () => void;
+    onSaved?: (detail: { success: boolean; error?: string }) => void;
+  } = $props();
 
   // Form state
-  let servers: IMCPServerConfig[] = [];
-  let connections: IMCPConnection[] = [];
-  let allTools: IMCPTool[] = [];
-  let isDirty = false;
-  let isLoading = true;
-  let isSaving = false;
-  let saveMessage = '';
-  let saveMessageType: 'success' | 'error' | '' = '';
+  let servers: IMCPServerConfig[] = $state([]);
+  let connections: IMCPConnection[] = $state([]);
+  let allTools: IMCPTool[] = $state([]);
+  let isLoading = $state(true);
+  let isSaving = $state(false);
+  let saveMessage = $state('');
+  let saveMessageType: 'success' | 'error' | '' = $state('');
 
   // Add/Edit server form state
-  let showServerForm = false;
-  let editingServerId: string | null = null;
-  let formName = '';
-  let formUrl = '';
-  let formApiKey = '';
-  let formTimeout = 30000;
-  let formEnabled = true;
-  let formError = '';
+  let showServerForm = $state(false);
+  let editingServerId: string | null = $state(null);
+  let formName = $state('');
+  let formUrl = $state('');
+  let formApiKey = $state('');
+  let formTimeout = $state(30000);
+  let formEnabled = $state(true);
+  let formError = $state('');
 
   // Collapsible sections state
-  let serversExpanded = true;
-  let toolsExpanded = false;
-  let advancedExpanded = false;
+  let serversExpanded = $state(true);
+  let toolsExpanded = $state(false);
+  let advancedExpanded = $state(false);
 
-  $: if (highlightSettingId) {
-    highlightSetting(highlightSettingId, async () => {
-      serversExpanded = true;
-      toolsExpanded = true;
-      advancedExpanded = true;
-    });
-    highlightSettingId = undefined;
-  }
+  $effect(() => {
+    if (highlightSettingId) {
+      highlightSetting(highlightSettingId, async () => {
+        serversExpanded = true;
+        toolsExpanded = true;
+        advancedExpanded = true;
+      });
+      highlightSettingId = undefined;
+    }
+  });
 
   // Debug logging state (T061)
-  let debugLogging = false;
+  let debugLogging = $state(false);
 
   // Polling interval for connection status
   let statusPollInterval: ReturnType<typeof setInterval> | null = null;
@@ -119,8 +126,8 @@
 
   async function loadServers() {
     try {
-      const response = await sendMessage<{ success: boolean; data?: IMCPServerConfig[] }>(
-        MessageType.MCP_GET_SERVERS
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; data?: IMCPServerConfig[] }>(
+        'mcp.getServers'
       );
       if (response?.success) {
         servers = response.data || [];
@@ -132,8 +139,8 @@
 
   async function loadConnections() {
     try {
-      const response = await sendMessage<{ success: boolean; data?: IMCPConnection[] }>(
-        MessageType.MCP_GET_CONNECTIONS
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; data?: IMCPConnection[] }>(
+        'mcp.getConnections'
       );
       if (response?.success) {
         connections = response.data || [];
@@ -145,8 +152,8 @@
 
   async function loadTools() {
     try {
-      const response = await sendMessage<{ success: boolean; data?: IMCPTool[] }>(
-        MessageType.MCP_GET_ALL_TOOLS
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; data?: IMCPTool[] }>(
+        'mcp.getAllTools'
       );
       if (response?.success) {
         allTools = response.data || [];
@@ -174,7 +181,7 @@
   }
 
   function handleBack() {
-    dispatch('back');
+    onBack?.();
   }
 
   function openAddServerForm() {
@@ -251,8 +258,8 @@
           updatePayload.apiKey = formApiKey.trim();
         }
 
-        const response = await sendMessage<{ success: boolean; error?: string }>(
-          MessageType.MCP_UPDATE_SERVER,
+        const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; error?: string }>(
+          'mcp.updateServer',
           {
             id: editingServerId,
             update: updatePayload,
@@ -274,8 +281,8 @@
           createPayload.apiKey = formApiKey.trim();
         }
 
-        const response = await sendMessage<{ success: boolean; error?: string }>(
-          MessageType.MCP_ADD_SERVER,
+        const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; error?: string }>(
+          'mcp.addServer',
           createPayload
         );
 
@@ -307,8 +314,8 @@
     }
 
     try {
-      const response = await sendMessage<{ success: boolean; error?: string }>(
-        MessageType.MCP_REMOVE_SERVER,
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; error?: string }>(
+        'mcp.removeServer',
         { id: serverId }
       );
 
@@ -335,8 +342,8 @@
 
   async function handleConnect(serverId: string) {
     try {
-      const response = await sendMessage<{ success: boolean; error?: string }>(
-        MessageType.MCP_CONNECT,
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; error?: string }>(
+        'mcp.connect',
         { id: serverId }
       );
 
@@ -362,8 +369,8 @@
 
   async function handleDisconnect(serverId: string) {
     try {
-      const response = await sendMessage<{ success: boolean; error?: string }>(
-        MessageType.MCP_DISCONNECT,
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; error?: string }>(
+        'mcp.disconnect',
         { id: serverId }
       );
 
@@ -413,7 +420,7 @@
 </script>
 
 <div class="mcp-settings">
-  <button class="back-button" on:click={handleBack}>← {$_t("Back")}</button>
+  <button class="back-button" onclick={handleBack}>← {$_t("Back")}</button>
 
   <h2 class="settings-title">{$_t("MCP Servers")}</h2>
   <p class="settings-description">
@@ -431,7 +438,7 @@
       <div class="collapsible-section settings-card" data-setting-id="mcp-configured-servers">
         <button
           class="section-header"
-          on:click={() => toggleSection('servers')}
+          onclick={() => toggleSection('servers')}
           aria-expanded={serversExpanded}
         >
           <svg
@@ -483,7 +490,7 @@
                       {#if connection?.status === 'connected'}
                         <button
                           class="btn btn-small btn-secondary"
-                          on:click={() => handleDisconnect(server.id)}
+                          onclick={() => handleDisconnect(server.id)}
                         >
                           {$_t("Disconnect")}
                         </button>
@@ -494,14 +501,14 @@
                       {:else}
                         <button
                           class="btn btn-small btn-primary"
-                          on:click={() => handleConnect(server.id)}
+                          onclick={() => handleConnect(server.id)}
                         >
                           {$_t("Connect")}
                         </button>
                       {/if}
                       <button
                         class="btn btn-small btn-icon"
-                        on:click={() => openEditServerForm(server)}
+                        onclick={() => openEditServerForm(server)}
                         title={$_t("Edit")}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -511,7 +518,7 @@
                       </button>
                       <button
                         class="btn btn-small btn-icon btn-danger"
-                        on:click={() => handleRemoveServer(server.id)}
+                        onclick={() => handleRemoveServer(server.id)}
                         title={$_t("Remove")}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -526,7 +533,7 @@
             {/if}
 
             {#if servers.length < 5}
-              <button class="btn btn-secondary add-server-btn" on:click={openAddServerForm}>
+              <button class="btn btn-secondary add-server-btn" onclick={openAddServerForm}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <line x1="12" y1="5" x2="12" y2="19"></line>
                   <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -544,7 +551,7 @@
       <div class="collapsible-section settings-card" data-setting-id="mcp-available-tools">
         <button
           class="section-header"
-          on:click={() => toggleSection('tools')}
+          onclick={() => toggleSection('tools')}
           aria-expanded={toolsExpanded}
         >
           <svg
@@ -593,7 +600,7 @@
       <div class="collapsible-section settings-card">
         <button
           class="section-header"
-          on:click={() => toggleSection('advanced')}
+          onclick={() => toggleSection('advanced')}
           aria-expanded={advancedExpanded}
         >
           <svg
@@ -617,7 +624,7 @@
                 <input
                   type="checkbox"
                   checked={debugLogging}
-                  on:change={handleDebugLoggingChange}
+                  onchange={handleDebugLoggingChange}
                   class="form-checkbox"
                 />
                 <span>{$_t("Enable debug logging")}</span>
@@ -651,12 +658,12 @@
   <!-- Add/Edit Server Modal -->
   {#if showServerForm}
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->
-    <div class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title" on:click={closeServerForm} on:keydown={(e) => e.key === 'Escape' && closeServerForm()}>
-      <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-      <div class="modal-content" on:click|stopPropagation on:keydown|stopPropagation>
+    <div class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title" onclick={closeServerForm} onkeydown={(e) => e.key === 'Escape' && closeServerForm()}>
+      <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+      <div class="modal-content" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
         <div class="modal-header">
           <h3 id="modal-title">{editingServerId ? $_t("Edit Server") : $_t("Add Server")}</h3>
-          <button class="close-btn" on:click={closeServerForm}>
+          <button class="close-btn" onclick={closeServerForm}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -740,12 +747,12 @@
         </div>
 
         <div class="modal-footer">
-          <button class="btn btn-secondary" on:click={closeServerForm}>
+          <button class="btn btn-secondary" onclick={closeServerForm}>
             {$_t("Cancel")}
           </button>
           <button
             class="btn btn-primary"
-            on:click={handleSaveServer}
+            onclick={handleSaveServer}
             disabled={isSaving}
           >
             {isSaving ? $_t("Saving...") : editingServerId ? $_t("Update") : $_t("Add")}

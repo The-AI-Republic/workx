@@ -39,13 +39,14 @@ vi.mock('@/core/RepublicAgent', () => {
         return undefined;
       }
       setEventDispatcher = vi.fn();
+      private _session = {
+        sessionId: `session_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        abortAllTasks: vi.fn().mockResolvedValue(undefined),
+        close: vi.fn().mockResolvedValue(undefined),
+        setTabId: vi.fn(),
+      };
       getSession() {
-        return {
-          conversationId: `conv_${Date.now()}`,
-          abortAllTasks: vi.fn().mockResolvedValue(undefined),
-          close: vi.fn().mockResolvedValue(undefined),
-          setTabId: vi.fn(),
-        };
+        return this._session;
       }
       async submitOperation() {
         return 'op_123';
@@ -89,12 +90,6 @@ vi.mock('@/core/TabManager', () => ({
 const mockAgentConfig = {
   getConfig: vi.fn().mockReturnValue({}),
   getProviderApiKey: vi.fn().mockResolvedValue('test-api-key'),
-};
-
-// Mock MessageRouter
-const mockRouter = {
-  on: vi.fn(),
-  broadcast: vi.fn(),
 };
 
 // Mock Chrome APIs
@@ -151,7 +146,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
 
     // Create registry
     registry = AgentRegistry.getInstance();
-    registry.initialize(mockAgentConfig as any, mockRouter as any);
+    registry.initialize(mockAgentConfig as any);
     registry.setStorage(sessionStorage);
   });
 
@@ -196,7 +191,6 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         {
           sessionId: 'session_1',
           sessionLetter: 'a',
-          conversationId: 'conv_1',
           type: 'scheduled',
           state: 'idle',
           createdAt: Date.now() - 1000,
@@ -209,7 +203,6 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         {
           sessionId: 'session_2',
           sessionLetter: 'b',
-          conversationId: 'conv_2',
           type: 'scheduled',
           state: 'idle',
           createdAt: Date.now() - 2000,
@@ -235,7 +228,6 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         {
           sessionId: 'session_active',
           sessionLetter: 'a',
-          conversationId: 'conv_1',
           type: 'scheduled',
           state: 'idle',
           createdAt: Date.now(),
@@ -248,7 +240,6 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         {
           sessionId: 'session_terminated',
           sessionLetter: 'b',
-          conversationId: 'conv_2',
           type: 'scheduled',
           state: 'terminated',
           createdAt: Date.now(),
@@ -275,7 +266,6 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
       const persistedSession: PersistedSession = {
         sessionId: 'session_to_resume',
         sessionLetter: 'c',
-        conversationId: 'conv_resume',
         type: 'scheduled',
         state: 'idle',
         createdAt: Date.now() - 5000,
@@ -300,7 +290,6 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
       const persistedSession: PersistedSession = {
         sessionId: activeSession.sessionId, // Same ID as active session
         sessionLetter: 'a',
-        conversationId: 'conv_active',
         type: 'scheduled',
         state: 'idle',
         createdAt: Date.now(),
@@ -318,7 +307,9 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
     });
 
     it('should return null when max concurrent sessions reached', async () => {
-      // Fill up to max concurrent (default 3)
+      // Set a low limit to test the constraint
+      registry.setMaxConcurrent(3);
+      // Fill up to max concurrent
       await registry.createSession({ type: 'primary' });
       await registry.createSession({ type: 'scheduled' });
       await registry.createSession({ type: 'scheduled' });
@@ -328,7 +319,6 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
       const persistedSession: PersistedSession = {
         sessionId: 'session_overflow',
         sessionLetter: 'd',
-        conversationId: 'conv_overflow',
         type: 'scheduled',
         state: 'idle',
         createdAt: Date.now(),
@@ -402,7 +392,6 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
       const oldSession: PersistedSession = {
         sessionId: 'old_session',
         sessionLetter: 'a',
-        conversationId: 'conv_old',
         type: 'scheduled',
         state: 'idle',
         createdAt: now - 48 * 60 * 60 * 1000, // 48 hours ago
@@ -416,7 +405,6 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
       const recentSession: PersistedSession = {
         sessionId: 'recent_session',
         sessionLetter: 'b',
-        conversationId: 'conv_recent',
         type: 'scheduled',
         state: 'idle',
         createdAt: now - 1 * 60 * 60 * 1000, // 1 hour ago
@@ -444,7 +432,6 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
       const terminatedSession: PersistedSession = {
         sessionId: 'terminated_session',
         sessionLetter: 'a',
-        conversationId: 'conv_terminated',
         type: 'scheduled',
         state: 'terminated',
         createdAt: Date.now() - 1000, // Very recent
@@ -484,7 +471,6 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
       const persistedSession: PersistedSession = {
         sessionId: originalSessionId,
         sessionLetter: session.sessionLetter,
-        conversationId: session.metadata.conversationId,
         type: 'scheduled',
         state: 'idle',
         createdAt: session.metadata.createdAt,
@@ -499,7 +485,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
 
       // 5. Reinitialize registry
       const newRegistry = AgentRegistry.getInstance();
-      newRegistry.initialize(mockAgentConfig as any, mockRouter as any);
+      newRegistry.initialize(mockAgentConfig as any);
 
       const newStorage = new SessionStorage(mockIndexedDBAdapter as any);
       newRegistry.setStorage(newStorage);
@@ -521,7 +507,6 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
       const primarySession: PersistedSession = {
         sessionId: 'primary_old',
         sessionLetter: 'a',
-        conversationId: 'conv_primary',
         type: 'primary',
         state: 'idle',
         createdAt: Date.now(),
@@ -560,7 +545,6 @@ describe('SessionStorage Unit Tests', () => {
     const metadata: SessionMetadata = {
       sessionId: 'session_unit',
       sessionLetter: 'a',
-      conversationId: 'conv_unit',
       type: 'scheduled',
       state: 'idle',
       createdAt: Date.now(),
@@ -587,7 +571,6 @@ describe('SessionStorage Unit Tests', () => {
     const mockSession: PersistedSession = {
       sessionId: 'session_get',
       sessionLetter: 'b',
-      conversationId: 'conv_get',
       type: 'scheduled',
       state: 'active',
       createdAt: Date.now(),
@@ -617,7 +600,6 @@ describe('SessionStorage Unit Tests', () => {
       {
         sessionId: 'scheduled_1',
         sessionLetter: 'a',
-        conversationId: 'conv_1',
         type: 'scheduled',
         state: 'idle',
         createdAt: Date.now(),

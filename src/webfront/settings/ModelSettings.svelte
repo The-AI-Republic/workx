@@ -4,14 +4,14 @@
 -->
 
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { onMount } from 'svelte';
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { ConfiguredFeatures } from '@/config/types';
   import ModelSelector from './components/ModelSelector.svelte';
   import { userStore } from '../stores/userStore';
   import { LLM_API_URL } from '../lib/constants';
   import { t, _t } from '../lib/i18n';
-  import { sendMessage, notifyConfigUpdate, MessageType } from '../lib/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
   import { platform } from '../stores/platformStore';
@@ -20,55 +20,105 @@
   // Format: providerId:modelKey (compound key, not a raw model key)
   const FREE_USER_DEFAULT_COMPOUND_KEY = 'fireworks:fireworks/models/kimi-k2-thinking';
 
-  export let settingsConfig: AgentConfig | null;
-
-  const dispatch = createEventDispatcher<{
-    back: void;
-    saved: { success: boolean; error?: string };
-    authUpdated: { isAuthenticated: boolean; mode: 'login' | 'api_key' | null };
-    navigateToAdvanced: { modelId: string; providerId: string };
-  }>();
-
-  // Exported for parent to bind
-  export let isDirty = false;
-  export let highlightSettingId: string | undefined = undefined;
+  let {
+    settingsConfig,
+    isDirty = $bindable(false),
+    highlightSettingId = undefined as string | undefined,
+    onBack,
+    onSaved,
+    onAuthUpdated,
+    onNavigateToAdvanced,
+  }: {
+    settingsConfig: AgentConfig | null;
+    isDirty?: boolean;
+    highlightSettingId?: string | undefined;
+    onBack?: () => void;
+    onSaved?: (detail: { success: boolean; error?: string }) => void;
+    onAuthUpdated?: (detail: { isAuthenticated: boolean; mode: 'login' | 'api_key' | null }) => void;
+    onNavigateToAdvanced?: (detail: { modelId: string; providerId: string }) => void;
+  } = $props();
 
   // Component state
-  let apiKey = '';
-  let maskedApiKey = '';
-  let showApiKey = false;
-  let isInitializing = true;
-  let isSaving = false;
-  let isTesting = false;
-  let isModelSwitching = false;
-  let isClearingAuth = false;
-  let saveMessage = '';
-  let saveMessageType: 'success' | 'error' | 'info' | '' = '';
-  let testResult: { valid: boolean; error?: string } | null = null;
-  let isAuthenticated = false;
+  let apiKey = $state('');
+  let maskedApiKey = $state('');
+  let showApiKey = $state(false);
+  let isInitializing = $state(true);
+  let isSaving = $state(false);
+  let isTesting = $state(false);
+  let isModelSwitching = $state(false);
+  let isClearingAuth = $state(false);
+  let saveMessage = $state('');
+  let saveMessageType: 'success' | 'error' | 'info' | '' = $state('');
+  let testResult: { valid: boolean; error?: string } | null = $state(null);
+  let isAuthenticated = $state(false);
 
   // Model configuration state - uses composite key format: "providerId:modelKey"
-  let selectedModelKey = '';
-  let configuredFeatures: ConfiguredFeatures = {};
-  let modelValidationError = '';
-  let serviceTier: 'default' | 'flex' | 'priority' | undefined;
+  let selectedModelKey = $state('');
+  let configuredFeatures: ConfiguredFeatures = $state({});
+  let modelValidationError = $state('');
+  let serviceTier: 'default' | 'flex' | 'priority' | undefined = $state(undefined);
 
   // Provider-aware API key display
-  let currentProvider = 'openai';
-  let currentProviderName = 'OpenAI';
-  let currentProviderOrganization: string | null = null;
+  let currentProvider = $state('openai');
+  let currentProviderName = $state('OpenAI');
+  let currentProviderOrganization: string | null = $state(null);
 
   // Backend mode toggle
-  let useOwnApiKey = false;
-  let isUserLoggedIn = false;
+  let useOwnApiKey = $state(false);
 
   // API key validation warning (only show after save attempt)
-  let showApiKeyWarning = false;
+  let showApiKeyWarning = $state(false);
 
   // ChatGPT OAuth state
-  let chatgptOAuthConnected = false;
-  let chatgptOAuthSigningIn = false;
-  let chatgptOAuthError = '';
+  let chatgptOAuthConnected = $state(false);
+  let chatgptOAuthSigningIn = $state(false);
+  let chatgptOAuthError = $state('');
+
+  // Derived state from user store
+  let isUserLoggedIn = $derived($userStore.isLoggedIn);
+  let isFreeUser = $derived($userStore.userType === 0);
+
+  // Model selection array
+  interface ModelSelectionItem {
+    modelId: string; // Composite key: "providerId:modelKey"
+    modelName: string;
+    modelKey: string;
+    providerId: string;
+    providerName: string;
+    organization: string | null;
+    apiKey: string | null;
+    contextWindow: number;
+    maxOutputTokens: number;
+    baseUrl: string;
+    supportsImage: boolean;
+    selected: boolean;
+    serviceTier?: 'default' | 'flex' | 'priority';
+    supportsReasoning?: boolean;
+    reasoningEfforts?: string[];
+    pricing?: {
+      inputToken: string;
+      outputToken: string;
+      link: string;
+    };
+    supportBackendMode?: number;
+  }
+  let modelSelectionItems: ModelSelectionItem[] = $state([]);
+
+  // Filtered model items based on backend mode
+  // supportBackendMode > 0 means the model supports backend routing
+  let filteredModelItems = $derived(
+    isUserLoggedIn && !useOwnApiKey
+      ? modelSelectionItems.filter(item => (item.supportBackendMode ?? 0) > 0)
+      : modelSelectionItems
+  );
+
+  // Highlight setting effect
+  $effect(() => {
+    if (highlightSettingId) {
+      highlightSetting(highlightSettingId);
+      highlightSettingId = undefined;
+    }
+  });
 
   async function handleChatGPTSignIn() {
     chatgptOAuthSigningIn = true;
@@ -106,7 +156,7 @@
           });
         }
       }
-      notifyConfigUpdate();
+      getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(err => console.warn('[ModelSettings] Failed to send configUpdate:', err));
     } catch (err: any) {
       if (err?.message?.includes('Failed to bind port 1455')) {
         chatgptOAuthError = t('Port 1455 is in use. Please close any application using this port and try again.');
@@ -151,7 +201,7 @@
           });
         }
       }
-      notifyConfigUpdate();
+      getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(err => console.warn('[ModelSettings] Failed to send configUpdate:', err));
     } catch (err: any) {
       console.error('[ModelSettings] ChatGPT disconnect failed:', err);
     }
@@ -178,47 +228,6 @@
       chatgptOAuthConnected = false;
     }
   }
-
-  $: if (highlightSettingId) {
-    highlightSetting(highlightSettingId);
-    highlightSettingId = undefined;
-  }
-
-  // Subscribe to user store
-  $: isUserLoggedIn = $userStore.isLoggedIn;
-  $: isFreeUser = $userStore.userType === 0;
-
-  // Model selection array
-  interface ModelSelectionItem {
-    modelId: string; // Composite key: "providerId:modelKey"
-    modelName: string;
-    modelKey: string;
-    providerId: string;
-    providerName: string;
-    organization: string | null;
-    apiKey: string | null;
-    contextWindow: number;
-    maxOutputTokens: number;
-    baseUrl: string;
-    supportsImage: boolean;
-    selected: boolean;
-    serviceTier?: 'default' | 'flex' | 'priority';
-    supportsReasoning?: boolean;
-    reasoningEfforts?: string[];
-    pricing?: {
-      inputToken: string;
-      outputToken: string;
-      link: string;
-    };
-    supportBackendMode?: number;
-  }
-  let modelSelectionItems: ModelSelectionItem[] = [];
-
-  // Filtered model items based on backend mode
-  // supportBackendMode > 0 means the model supports backend routing
-  $: filteredModelItems = isUserLoggedIn && !useOwnApiKey
-    ? modelSelectionItems.filter(item => (item.supportBackendMode ?? 0) > 0)
-    : modelSelectionItems;
 
   // Load settings on mount
   onMount(() => {
@@ -407,9 +416,9 @@
 
       showMessage(t('API key saved successfully!'), 'success');
 
-      notifyConfigUpdate();
+      getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(err => console.warn('[ModelSettings] Failed to send configUpdate:', err));
 
-      dispatch('authUpdated', { isAuthenticated: true, mode: 'api_key' });
+      onAuthUpdated?.({ isAuthenticated: true, mode: 'api_key' });
     } catch (error) {
       console.error('[ModelSettings] Failed to save API key:', error);
       showMessage(t('Failed to save API key'), 'error');
@@ -561,8 +570,8 @@
       }
 
       showMessage(t('$1$ API key removed successfully', { substitutions: [providerName] }), 'info');
-      notifyConfigUpdate();
-      dispatch('authUpdated', { isAuthenticated: false, mode: null });
+      getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(err => console.warn('[ModelSettings] Failed to send configUpdate:', err));
+      onAuthUpdated?.({ isAuthenticated: false, mode: null });
     } catch (error) {
       showMessage(t('Failed to remove API key'), 'error');
     } finally {
@@ -570,11 +579,13 @@
     }
   }
 
-  function showMessage(message: string, type: 'success' | 'error' | 'info') {
+  function showMessageFn(message: string, type: 'success' | 'error' | 'info') {
     saveMessage = message;
     saveMessageType = type;
     setTimeout(clearMessage, 5000);
   }
+  // Keep the original name for all internal callers
+  const showMessage = showMessageFn;
 
   function clearMessage() {
     saveMessage = '';
@@ -582,7 +593,7 @@
   }
 
   function handleBack() {
-    dispatch('back');
+    onBack?.();
   }
 
   async function handleUseOwnApiKeyToggle() {
@@ -609,16 +620,16 @@
         useOwnApiKey: newValue,
       };
 
-      await sendMessage(MessageType.INIT_AUTH, authPayload);
+      await (await getInitializedUIClient()).serviceRequest('agent.initAuth', authPayload);
 
-      notifyConfigUpdate();
+      getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(err => console.warn('[ModelSettings] Failed to send configUpdate:', err));
 
       const message = newValue
         ? t('Switched to direct API mode. Please configure your API key.')
         : t('Switched to backend mode. LLM requests will route through AI Republic server.');
       showMessage(message, 'success');
 
-      dispatch('authUpdated', {
+      onAuthUpdated?.({
         isAuthenticated: isAuthenticated,
         mode: newValue ? 'api_key' : 'login',
       });
@@ -641,12 +652,12 @@
     }
   }
 
-  async function handleModelChange(event: CustomEvent<{ modelId: string }>) {
+  async function handleModelChange(data: { modelId: string }) {
     if (!settingsConfig) return;
 
     try {
       isModelSwitching = true;
-      const { modelId } = event.detail;
+      const { modelId } = data;
 
       const selectedItem = modelSelectionItems.find((item) => item.modelId === modelId);
       if (!selectedItem) throw new Error('Model not found');
@@ -669,7 +680,7 @@
       }));
 
       await settingsConfig.setSelectedModel(modelId);
-      notifyConfigUpdate();
+      getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(err => console.warn('[ModelSettings] Failed to send configUpdate:', err));
 
       const message = apiKey
         ? t('Model changed to $1$. Conversation preserved.', { substitutions: [selectedItem.modelName] })
@@ -708,7 +719,7 @@
           if (modelIndex !== -1) {
             provider.models[modelIndex].serviceTier = serviceTier;
             settingsConfig.updateProvider(modelData.provider.id, { models: provider.models });
-            notifyConfigUpdate();
+            getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(err => console.warn('[ModelSettings] Failed to send configUpdate:', err));
             showMessage(t('Service tier updated to $1$', { substitutions: [serviceTier || 'default'] }), 'success');
           }
         }
@@ -720,12 +731,12 @@
   }
 
   function navigateToAdvancedConfig() {
-    dispatch('navigateToAdvanced', { modelId: selectedModelKey, providerId: currentProvider });
+    onNavigateToAdvanced?.({ modelId: selectedModelKey, providerId: currentProvider });
   }
 </script>
 
 <div class="model-settings">
-  <button class="back-button" on:click={handleBack}>← {t("Back")}</button>
+  <button class="back-button" onclick={handleBack}>{@html '&#8592;'} {t("Back")}</button>
 
   <!-- Model Selection -->
   <div class="settings-section settings-card" data-setting-id="model-selection">
@@ -736,8 +747,7 @@
         selectedModel={selectedModelKey}
         modelSelectionItems={filteredModelItems}
         disabled={isInitializing || isSaving}
-        on:modelChange={handleModelChange}
-        on:validationError={handleValidationError}
+        onModelChange={handleModelChange}
       />
       <div class="help-text">{t("Select the AI model to use for conversations.")}</div>
 
@@ -759,7 +769,7 @@
             <span class="provider-info-label">{t("Provider")}:</span>
             <span class="provider-info-value">{currentProviderName}</span>
           </span>
-          <button class="more-config-btn" on:click={navigateToAdvancedConfig}>
+          <button class="more-config-btn" onclick={navigateToAdvancedConfig}>
             {t("More Config")} >>
           </button>
         </div>
@@ -789,7 +799,7 @@
         </div>
         <button
           class="toggle-switch {useOwnApiKey ? 'active' : ''}"
-          on:click={handleUseOwnApiKeyToggle}
+          onclick={handleUseOwnApiKeyToggle}
           aria-label={t("Toggle use own API key")}
         >
           <span class="toggle-slider"></span>
@@ -839,7 +849,7 @@
               <polyline points="22 4 12 14.01 9 11.01"></polyline>
             </svg>
             <span>{t("Connected via ChatGPT")}</span>
-            <button class="btn btn-secondary btn-sm" on:click={handleChatGPTDisconnect}>
+            <button class="btn btn-secondary btn-sm" onclick={handleChatGPTDisconnect}>
               {t("Disconnect")}
             </button>
           </div>
@@ -852,7 +862,7 @@
           </div>
         {:else}
           <div class="chatgpt-oauth-status disconnected">
-            <button class="btn btn-primary" on:click={handleChatGPTSignIn} disabled={isInitializing}>
+            <button class="btn btn-primary" onclick={handleChatGPTSignIn} disabled={isInitializing}>
               {t("Sign in with ChatGPT")}
             </button>
             <div class="help-text">{t("Use your ChatGPT Plus/Pro subscription instead of an API key")}</div>
@@ -889,8 +899,8 @@
             id="api-key"
             type="text"
             bind:value={apiKey}
-            on:input={handleApiKeyInput}
-            on:keydown={handleKeydown}
+            oninput={handleApiKeyInput}
+            onkeydown={handleKeydown}
             placeholder={isAuthenticated
               ? maskedApiKey
               : currentProvider === 'xai'
@@ -910,8 +920,8 @@
             id="api-key"
             type="password"
             bind:value={apiKey}
-            on:input={handleApiKeyInput}
-            on:keydown={handleKeydown}
+            oninput={handleApiKeyInput}
+            onkeydown={handleKeydown}
             placeholder={isAuthenticated
               ? maskedApiKey
               : currentProvider === 'xai'
@@ -930,7 +940,7 @@
         <button
           type="button"
           class="visibility-toggle"
-          on:click={toggleApiKeyVisibility}
+          onclick={toggleApiKeyVisibility}
           aria-label={showApiKey ? t('Hide API key') : t('Show API key')}
         >
           {#if showApiKey}
@@ -969,7 +979,7 @@
         <select
           id="service-tier"
           bind:value={serviceTier}
-          on:change={handleServiceTierChange}
+          onchange={handleServiceTierChange}
           class="form-select"
           disabled={isInitializing || isSaving || (isUserLoggedIn && !useOwnApiKey)}
         >
@@ -987,7 +997,7 @@
     <div class="button-group">
       <button
         class="btn btn-primary"
-        on:click={saveApiKey}
+        onclick={saveApiKey}
         disabled={isInitializing || isSaving || !apiKey.trim() || (isUserLoggedIn && !useOwnApiKey)}
       >
         {#if isSaving}
@@ -1025,7 +1035,7 @@
 
       <button
         class="btn btn-secondary"
-        on:click={testConnection}
+        onclick={testConnection}
         disabled={isTesting || !apiKey.trim() || (isUserLoggedIn && !useOwnApiKey)}
       >
         {#if isTesting}
@@ -1064,7 +1074,7 @@
       {#if isAuthenticated && (!isUserLoggedIn || useOwnApiKey)}
         <button
           class="btn btn-danger"
-          on:click={clearAuth}
+          onclick={clearAuth}
           disabled={isInitializing || isSaving || (isUserLoggedIn && !useOwnApiKey)}
         >
           {t("Remove API Key")}

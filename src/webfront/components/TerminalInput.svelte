@@ -1,7 +1,9 @@
 <script lang="ts">
-  export let value: string = '';
-  export let placeholder: string = '';
-  export let onSubmit: (value: string) => void = () => {};
+  let { value = $bindable(''), placeholder = '', onSubmit = (value: string) => {} }: {
+    value?: string;
+    placeholder?: string;
+    onSubmit?: (value: string) => void;
+  } = $props();
 
   function handleKeyPress(event: KeyboardEvent) {
     if (event.key === 'Enter') {
@@ -14,7 +16,7 @@
   type="text"
   bind:value
   {placeholder}
-  on:keypress={handleKeyPress}
+  onkeypress={handleKeyPress}
   class="terminal-input"
   aria-label="Terminal input"
 />

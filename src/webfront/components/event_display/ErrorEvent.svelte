@@ -4,7 +4,7 @@
    */
   import type { ProcessedEvent } from '@/types/ui';
 
-  export let event: ProcessedEvent;
+  let { event }: { event: ProcessedEvent } = $props();
 </script>
 
 <div class="error-event border border-red-400/30 bg-red-500/10 rounded p-2">

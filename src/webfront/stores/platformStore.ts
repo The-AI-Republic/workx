@@ -52,3 +52,14 @@ export const platform: PlatformCapabilities = {
   // Platform identifier
   platformName: __BUILD_MODE__ as 'extension' | 'desktop' | 'server' | 'mobile',
 };
+
+/**
+ * Agent display name based on build mode.
+ * Product names are proper nouns — not translated via i18n.
+ */
+export const agentDisplayName: string =
+  __BUILD_MODE__ === 'desktop'
+    ? 'Apple Pi'
+    : __BUILD_MODE__ === 'server'
+      ? 'Apple Pi Server'
+      : 'BrowserX';

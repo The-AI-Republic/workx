@@ -7,30 +7,33 @@
  * Flow:
  * 1. Create ChannelManager (routes submissions to agent, events to channels)
  * 2. Create TauriChannel (receives submissions from UI, sends events to UI)
- * 3. Create RepublicAgent (processes submissions, emits events)
- * 4. Wire them together
+ * 3. Create AgentRegistry with agentFactory and eventDispatcherFactory
+ * 4. Create initial session via registry.createSession()
+ * 5. Wire them together
+ *
+ * The registry is the single source of truth — there is no primary agent concept.
+ * All per-session operations require a sessionId. Global operations iterate all sessions.
  *
  * @module desktop/agent/DesktopAgentBootstrap
  */
 
 import { TauriChannel } from '../channels/TauriChannel';
-import { DesktopMessageRouter } from '../channels/DesktopMessageRouter';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
 import { RepublicAgent } from '@/core/RepublicAgent';
 import { UserNotifier } from '@/core/UserNotifier';
-import { MessageType } from '@/core/MessageRouter';
 import { ApprovalGate } from '@/core/approval/ApprovalGate';
 import { PolicyRulesEngine } from '@/core/approval/PolicyRulesEngine';
 import { getDefaultRules } from '@/core/approval/defaultRules';
 import { DomainSensitivityEnhancer } from '@/core/approval/enhancers/DomainSensitivityEnhancer';
 import { SensitivePathEnhancer } from '@/core/approval/enhancers/SensitivePathEnhancer';
 import { ApprovalConfigStorage } from '@/core/approval/ApprovalConfigStorage';
+import { getConfigStorage } from '@/core/storage/ConfigStorageProvider';
 import { AgentConfig } from '@/config/AgentConfig';
 import { configurePromptComposer, registerPromptExtension } from '@/core/PromptLoader';
 import type { RuntimeContext } from '@/prompts/PromptComposer';
 import { SkillRegistry } from '@/core/skills/SkillRegistry';
 import { FilesystemSkillProvider } from '../storage/FilesystemSkillProvider';
-import { AuthManager } from '@/core/models/types/Auth';
+import { AuthManager, type IAuthManager } from '@/core/models/types/Auth';
 import type { Op } from '@/core/protocol/types';
 import type { SubmissionContext } from '@/core/channels/types';
 import type { EventMsg } from '@/core/protocol/events';
@@ -40,6 +43,8 @@ import { Scheduler } from '@/core/scheduler/Scheduler';
 import { DesktopSchedulerAlarms } from '../scheduler/DesktopSchedulerAlarms';
 import { DesktopSchedulerDeepLinkHandler } from '../scheduler/DesktopSchedulerDeepLinkHandler';
 import { AgentRegistry } from '@/core/registry/AgentRegistry';
+import { DEFAULT_MAX_CONCURRENT } from '@/core/registry/types';
+import type { ToolRegistry } from '@/tools/ToolRegistry';
 
 /**
  * Singleton instance
@@ -50,11 +55,11 @@ let _instance: DesktopAgentBootstrap | null = null;
  * Desktop Agent Bootstrap
  *
  * Manages the lifecycle of the agent and channel system in desktop mode.
+ * The AgentRegistry is the single source of truth for all agent sessions.
  */
 export class DesktopAgentBootstrap {
-  private agent: RepublicAgent | null = null;
+  private registry: AgentRegistry | null = null;
   private channel: TauriChannel | null = null;
-  private messageRouter: DesktopMessageRouter | null = null;
   private skillRegistry: SkillRegistry | null = null;
   private scheduler: Scheduler | null = null;
   private schedulerAlarms: DesktopSchedulerAlarms | null = null;
@@ -76,52 +81,15 @@ export class DesktopAgentBootstrap {
     console.log('[DesktopAgentBootstrap] Initializing...');
 
     try {
-      // 1. Create the message router for RepublicAgent
-      this.messageRouter = new DesktopMessageRouter('background');
-
-      // 2. Get agent config
+      // 1. Get agent config
       const config = await AgentConfig.getInstance();
 
-      // 3. Create RepublicAgent
-      // RepublicAgent expects a MessageRouter with updateState method
-      // DesktopMessageRouter provides this compatibility
-      this.agent = new RepublicAgent(config, this.messageRouter as any, undefined, undefined, new UserNotifier());
-
-      // 4. Configure PromptComposer with platform context BEFORE agent.initialize()
+      // 2. Configure PromptComposer with platform context BEFORE any agent.initialize()
       // This must happen first so RepublicAgent.configurePromptComposition() sees
       // the composer is already configured and skips re-configuration.
       await this.configurePromptWithPlatformInfo();
 
-      // 5. Create TauriChannel and wire up event forwarding BEFORE agent.initialize()
-      // agent.initialize() may emit warning events (e.g. "No API key configured"),
-      // so the event dispatcher must be set first to avoid losing those events.
-      this.channel = new TauriChannel();
-
-      const channelManager = getChannelManager();
-
-      // Set up the agent handler on ChannelManager
-      // This routes submissions from channels to the agent
-      const agentHandler: AgentHandler = async (op: Op, context: SubmissionContext) => {
-        if (!this.agent) {
-          throw new Error(t('Agent not initialized'));
-        }
-
-        console.log('[DesktopAgentBootstrap] Processing submission:', op.type);
-
-        // Submit the operation to the agent
-        await this.agent.submitOperation(op, { tabId: context.tabId });
-      };
-
-      channelManager.setAgentHandler(agentHandler);
-
-      // Register the TauriChannel with ChannelManager
-      await channelManager.registerChannel(this.channel);
-      console.log('[DesktopAgentBootstrap] Channel registered');
-
-      // Wire up agent events to be dispatched through the channel
-      this.setupEventForwarding(channelManager);
-
-      // 5b. Initialize StorageProvider before agent — PlanningTool requires it
+      // 3. Initialize StorageProvider before agent — PlanningTool requires it
       // via getTaskStore() during tool registration in agent.initialize().
       // Uses SQLiteStorageProvider via the factory (routes through Tauri Rust commands).
       const { isStorageProviderInitialized, initializeStorageProvider } = await import('@/core/storage');
@@ -135,18 +103,76 @@ export class DesktopAgentBootstrap {
         }
       }
 
-      // 6. Initialize the agent (loads model client, tools, etc.)
-      // Event dispatcher is already set, so any warning events reach the channel.
-      await this.agent.initialize();
-      console.log('[DesktopAgentBootstrap] Agent initialized');
+      // 4. Create TauriChannel
+      this.channel = new TauriChannel();
+      const channelManager = getChannelManager();
 
-      // 6a. Configure desktop-specific approval gate
-      await this.configureDesktopPlatform();
+      // 5. Create AgentRegistry with factories that encapsulate per-session setup
+      const maxConcurrentSessions = config.getConfig().preferences?.maxConcurrentSessions ?? DEFAULT_MAX_CONCURRENT;
+      this.registry = AgentRegistry.getInstance({
+        maxConcurrent: maxConcurrentSessions,
+        agentFactory: async (agentConfig, initialHistory) => {
+          const agent = new RepublicAgent(agentConfig, initialHistory, undefined, new UserNotifier());
 
-      // 6b. Initialize skills (filesystem-backed, prompt extension)
+          // Copy auth manager from an existing session for consistency
+          const existingAuth = this.getFirstAuthManager();
+          if (existingAuth) {
+            agent.getModelClientFactory().setAuthManager(existingAuth);
+          }
+
+          await agent.initialize();
+
+          // Configure desktop-specific approval gate
+          await this.configureDesktopPlatformForAgent(agent);
+
+          // Register skills tool
+          await this.registerSkillsToolOnAgent(agent);
+
+          return agent;
+        },
+        eventDispatcherFactory: (sessionId) => (event) => {
+          channelManager.dispatchEvent({ msg: event.msg, sessionId }, this.channel!.channelId).catch((error) => {
+            console.error('[DesktopAgentBootstrap] Failed to dispatch event:', error);
+          });
+
+          // Intercept completion events for scheduler
+          this.handleSchedulerEventCompletion(event.msg);
+        },
+      });
+      this.registry.initialize(config);
+
+      // 6. Set up the agent handler on ChannelManager
+      // This routes submissions from channels to the correct session in the registry
+      const agentHandler: AgentHandler = async (op: Op, context: SubmissionContext) => {
+        if (!context.sessionId) {
+          throw new Error('No sessionId in submission context — cannot route operation');
+        }
+        if (!this.registry) {
+          throw new Error('AgentRegistry not initialized');
+        }
+        const targetSession = this.registry.getSession(context.sessionId);
+        if (!targetSession?.agent) {
+          throw new Error(`Session not found: ${context.sessionId}`);
+        }
+
+        console.log('[DesktopAgentBootstrap] Processing submission:', op.type, 'for session:', context.sessionId);
+        await targetSession.agent.submitOperation(op, { tabId: context.tabId });
+      };
+
+      channelManager.setAgentHandler(agentHandler);
+
+      // Register the TauriChannel with ChannelManager
+      await channelManager.registerChannel(this.channel);
+      console.log('[DesktopAgentBootstrap] Channel registered');
+
+      // 7. Initialize skills registry (prompt extension + discovery)
       await this.initializeSkills();
 
-      // 7. Restore auth mode from keychain and listen for changes
+      // 8. Create the initial session via registry
+      await this.registry.createSession({ type: 'primary' });
+      console.log('[DesktopAgentBootstrap] Initial session created via registry');
+
+      // 9. Restore auth mode from keychain and listen for changes
       // Same business logic as extension: logged in → backend routing, not logged in → api_key
       const { getDesktopAuthService } = await import('../auth/DesktopAuthService');
       const { HOME_PAGE_BASE_URL } = await import('@/webfront/lib/constants');
@@ -158,19 +184,25 @@ export class DesktopAgentBootstrap {
         console.log('[DesktopAgentBootstrap] Auth state changed, reloading auth mode...');
         await this.restoreAuthFromKeychain(config);
 
-        // Also notify the UI that auth has changed so it re-runs health check
-        if (this.messageRouter) {
-          this.messageRouter.send(MessageType.AGENT_REINITIALIZED);
+        // Notify the UI that auth has changed so it re-runs health check
+        if (this.registry && this.registry.listSessions().length > 0 && this.channel) {
+          channelManager.dispatchEvent(
+            { msg: { type: 'BackgroundEvent', data: { message: 'Agent reinitialized after auth change', level: 'info' } } as any },
+            this.channel.channelId
+          ).catch(() => {});
         }
       });
 
       await this.restoreAuthFromKeychain(config);
 
-      // 8. Set up MCP tool registration events
+      // 10. Set up MCP tool registration events
       await this.setupMCPToolRegistration();
 
-      // 9. Initialize scheduler
+      // 11. Initialize scheduler
       await this.initializeScheduler();
+
+      // 12. Register service handlers on ChannelManager (message_routing_v2)
+      await this.registerServices(channelManager);
 
       this.initialized = true;
       console.log('[DesktopAgentBootstrap] Initialization complete');
@@ -181,13 +213,12 @@ export class DesktopAgentBootstrap {
   }
 
   /**
-   * Configure desktop-specific approval gate, MCP tools, and tab closure handler.
+   * Configure desktop-specific approval gate on a specific agent.
+   * Called by the agentFactory for every new session.
    */
-  private async configureDesktopPlatform(): Promise<void> {
-    if (!this.agent) throw new Error('Agent not initialized');
-
-    const approvalManager = this.agent.getApprovalManager();
-    const toolRegistry = this.agent.getToolRegistry();
+  private async configureDesktopPlatformForAgent(agent: RepublicAgent): Promise<void> {
+    const approvalManager = agent.getApprovalManager();
+    const toolRegistry = agent.getToolRegistry();
 
     // Approval gate with desktop-specific enhancers
     const policyEngine = new PolicyRulesEngine(getDefaultRules('desktop'));
@@ -195,13 +226,8 @@ export class DesktopAgentBootstrap {
     approvalGate.addEnhancer(new DomainSensitivityEnhancer());
     approvalGate.addEnhancer(new SensitivePathEnhancer());
 
-    // Desktop mode uses TauriConfigStorage for approval config
-    const { TauriConfigStorage } = await import('@/desktop/storage/TauriConfigStorage');
-    const tauriStorage = new TauriConfigStorage();
-    const configStorage = new ApprovalConfigStorage(() => ({
-      get: (keys: string[]) => tauriStorage.getMany(keys),
-      set: (items: Record<string, unknown>) => tauriStorage.setMany(items),
-    }));
+    // Desktop mode uses ConfigStorageProvider (TauriConfigStorage already initialized)
+    const configStorage = new ApprovalConfigStorage(() => getConfigStorage());
     approvalGate.setConfigStorage(configStorage);
 
     try {
@@ -221,39 +247,86 @@ export class DesktopAgentBootstrap {
   }
 
   /**
-   * Set up event forwarding from agent to channel
-   *
-   * Uses RepublicAgent's setEventDispatcher to route events through
-   * ChannelManager instead of chrome.runtime.sendMessage.
+   * Register service handlers on ChannelManager (message_routing_v2).
+   * Gives desktop mode full service parity with the extension.
    */
-  private setupEventForwarding(channelManager: ReturnType<typeof getChannelManager>): void {
-    if (!this.agent || !this.channel) {
-      console.warn('[DesktopAgentBootstrap] Cannot setup event forwarding: agent or channel not initialized');
-      return;
+  private async registerServices(channelManager: ReturnType<typeof getChannelManager>): Promise<void> {
+    const { registerAllServices } = await import('@/core/services');
+    const registry = channelManager.getServiceRegistry();
+
+    // Get MCPManager instance (already created during setupMCPToolRegistration)
+    let mcpDeps: import('@/core/services').MCPServiceDeps | undefined;
+    try {
+      const { MCPManager } = await import('@/core/mcp/MCPManager');
+      const mcpManager = await MCPManager.getInstance('desktop');
+      mcpDeps = { mcpManager: mcpManager as any };
+    } catch (error) {
+      console.warn('[DesktopAgentBootstrap] MCPManager not available for service registration:', error);
     }
 
-    // Set the event dispatcher on RepublicAgent
-    // Events will be routed through ChannelManager to TauriChannel
-    this.agent.setEventDispatcher((event) => {
-      // Dispatch event to the Tauri channel
-      channelManager.dispatchEvent(event.msg, this.channel!.channelId).catch((error) => {
-        console.error('[DesktopAgentBootstrap] Failed to dispatch event:', error);
-      });
+    // Get A2AManager instance
+    let a2aDeps: import('@/core/services').A2AServiceDeps | undefined;
+    try {
+      const { A2AManager } = await import('@/core/a2a/A2AManager');
+      const a2aManager = await A2AManager.getInstance('desktop');
+      a2aDeps = { a2aManager: a2aManager as any };
+    } catch (error) {
+      console.warn('[DesktopAgentBootstrap] A2AManager not available for service registration:', error);
+    }
 
-      // Intercept completion events for scheduler
-      this.handleSchedulerEventCompletion(event.msg);
+    const count = registerAllServices(registry, {
+      mcp: mcpDeps,
+      a2a: a2aDeps,
+      skills: this.skillRegistry ? { skillRegistry: this.skillRegistry } : undefined,
+      scheduler: this.scheduler ? { scheduler: this.scheduler } : undefined,
+      session: this.registry ? {
+        registry: this.registry,
+        loadRolloutHistory: async (sessionId: string) => {
+          const { RolloutRecorder } = await import('@/storage/rollout/RolloutRecorder');
+          const history = await RolloutRecorder.getRolloutHistory(sessionId);
+          if (history.type !== 'resumed' || !history.payload?.history) return null;
+          return { sessionId, rolloutItems: history.payload.history };
+        },
+      } : undefined,
+      agent: this.registry ? {
+        registry: this.registry,
+        handleConfigUpdate: () => this.handleConfigUpdate(),
+        updateApprovalConfig: async (config: Record<string, unknown>) => {
+          const { TauriConfigStorage } = await import('@/desktop/storage/TauriConfigStorage');
+          const tauriStorage = new TauriConfigStorage();
+          const storedConfig = (await tauriStorage.get<Record<string, any>>('agent_config')) || {};
+          storedConfig.approval = { ...(storedConfig.approval || {}), ...config };
+          await tauriStorage.set('agent_config', storedConfig);
+        },
+      } : undefined,
     });
 
-    console.log('[DesktopAgentBootstrap] Event forwarding configured via ChannelManager');
+    console.log(`[DesktopAgentBootstrap] Registered ${count} service handlers`);
+  }
+
+  /**
+   * Get all tool registries from all active sessions in the registry.
+   */
+  private getAllToolRegistries(): ToolRegistry[] {
+    if (!this.registry) return [];
+    const registries: ToolRegistry[] = [];
+    for (const sessionMeta of this.registry.listSessions()) {
+      const session = this.registry.getSession(sessionMeta.sessionId);
+      if (session?.agent) {
+        registries.push(session.agent.getToolRegistry());
+      }
+    }
+    return registries;
   }
 
   /**
    * Set up MCP tool registration events for desktop.
    * Subscribes to MCPManager 'tools-updated' events so tools are
    * auto-registered/unregistered when MCP servers connect/disconnect.
+   * Registers/unregisters on ALL active sessions' tool registries.
    */
   private async setupMCPToolRegistration(): Promise<void> {
-    if (!this.agent) {
+    if (!this.registry) {
       return;
     }
 
@@ -261,7 +334,6 @@ export class DesktopAgentBootstrap {
       const { MCPManager } = await import('@/core/mcp/MCPManager');
       const { registerMCPTools, unregisterMCPTools } = await import('@/core/mcp/MCPToolAdapter');
       const mcpManager = await MCPManager.getInstance('desktop');
-      const registry = this.agent.getToolRegistry();
 
       // Track registered tools per server so we can unregister them on disconnect.
       // MCPManager clears connection.tools before emitting the event, so we
@@ -274,20 +346,26 @@ export class DesktopAgentBootstrap {
         const config = mcpManager.getServer(event.configId);
         if (!config) return;
 
+        const allRegistries = this.getAllToolRegistries();
+
         // Unregister previously registered tools first (handles both disconnect and reconnect)
         const previousTools = registeredToolsByServer.get(event.configId);
         if (previousTools && previousTools.length > 0) {
-          unregisterMCPTools(config.name, previousTools, registry).catch((error) => {
-            console.error('[DesktopAgentBootstrap] Failed to unregister MCP tools:', error);
-          });
+          for (const registry of allRegistries) {
+            unregisterMCPTools(config.name, previousTools, registry).catch((error) => {
+              console.error('[DesktopAgentBootstrap] Failed to unregister MCP tools:', error);
+            });
+          }
           registeredToolsByServer.delete(event.configId);
         }
 
         if (event.tools.length > 0) {
-          // Tools discovered — register them and track for later unregistration
-          registerMCPTools(mcpManager, config.name, event.tools, registry).catch((error) => {
-            console.error('[DesktopAgentBootstrap] Failed to register MCP tools:', error);
-          });
+          // Tools discovered — register them on all sessions and track for later unregistration
+          for (const registry of allRegistries) {
+            registerMCPTools(mcpManager, config.name, event.tools, registry).catch((error) => {
+              console.error('[DesktopAgentBootstrap] Failed to register MCP tools:', error);
+            });
+          }
           registeredToolsByServer.set(event.configId, event.tools);
         }
       });
@@ -299,6 +377,8 @@ export class DesktopAgentBootstrap {
   /**
    * Initialize the skill registry with filesystem-backed provider.
    * Discovers existing skills and registers a prompt extension for auto-invocable skills.
+   * Note: The use_skill tool is registered per-session via registerSkillsToolOnAgent(),
+   * called from the agentFactory.
    */
   private async initializeSkills(): Promise<void> {
     try {
@@ -310,50 +390,6 @@ export class DesktopAgentBootstrap {
 
       registerPromptExtension(() => this.skillRegistry!.buildSkillsSystemPrompt());
 
-      // Register use_skill tool if there are any skills
-      const allSkills = this.skillRegistry.getSkillMetas();
-      if (allSkills.length > 0 && this.agent) {
-        const registry = this.agent.getToolRegistry();
-
-        await registry.register(
-          {
-            type: 'function',
-            function: {
-              name: 'use_skill',
-              description: 'Invoke a user-defined skill by name. When the user types /skill-name, call this tool with that name. Also use proactively when an auto-invocable skill is relevant. Returns the skill body with instructions to follow.',
-              strict: false,
-              parameters: {
-                type: 'object',
-                properties: {
-                  name: { type: 'string', description: 'The skill name to invoke' },
-                  arguments: { type: 'string', description: 'Optional space-separated arguments for the skill' },
-                },
-                required: ['name'],
-              },
-            },
-          },
-          async (params) => {
-            const skillName = params.name as string;
-            const args = params.arguments as string | undefined;
-
-            const knownNames = new Set(this.skillRegistry!.getSkillMetas().map((s) => s.name));
-            if (!knownNames.has(skillName)) {
-              return { error: `Skill "${skillName}" not found. Available skills: ${[...knownNames].join(', ')}` };
-            }
-
-            const body = await this.skillRegistry!.invoke(skillName, args ? args.split(/\s+/) : []);
-            if (!body) {
-              return { error: `Failed to load skill "${skillName}"` };
-            }
-
-            return body;
-          },
-          new StaticRiskAssessor(0)
-        );
-
-        console.log('[DesktopAgentBootstrap] use_skill tool registered for', allSkills.length, 'skills');
-      }
-
       console.log('[DesktopAgentBootstrap] Skills initialized, found', this.skillRegistry.getSkillMetas().length, 'skills');
     } catch (error) {
       console.warn('[DesktopAgentBootstrap] Could not initialize skills:', error);
@@ -361,52 +397,101 @@ export class DesktopAgentBootstrap {
   }
 
   /**
+   * Register the use_skill tool on a specific agent's tool registry.
+   * Called by the agentFactory for every new session.
+   */
+  private async registerSkillsToolOnAgent(agent: RepublicAgent): Promise<void> {
+    if (!this.skillRegistry) return;
+
+    const allSkills = this.skillRegistry.getSkillMetas();
+    if (allSkills.length === 0) return;
+
+    const registry = agent.getToolRegistry();
+
+    await registry.register(
+      {
+        type: 'function',
+        function: {
+          name: 'use_skill',
+          description: 'Invoke a user-defined skill by name. When the user types /skill-name, call this tool with that name. Also use proactively when an auto-invocable skill is relevant. Returns the skill body with instructions to follow.',
+          strict: false,
+          parameters: {
+            type: 'object',
+            properties: {
+              name: { type: 'string', description: 'The skill name to invoke' },
+              arguments: { type: 'string', description: 'Optional space-separated arguments for the skill' },
+            },
+            required: ['name'],
+          },
+        },
+      },
+      async (params) => {
+        const skillName = params.name as string;
+        const args = params.arguments as string | undefined;
+
+        const knownNames = new Set(this.skillRegistry!.getSkillMetas().map((s) => s.name));
+        if (!knownNames.has(skillName)) {
+          return { error: `Skill "${skillName}" not found. Available skills: ${[...knownNames].join(', ')}` };
+        }
+
+        const body = await this.skillRegistry!.invoke(skillName, args ? args.split(/\s+/) : []);
+        if (!body) {
+          return { error: `Failed to load skill "${skillName}"` };
+        }
+
+        return body;
+      },
+      new StaticRiskAssessor(0)
+    );
+
+    console.log('[DesktopAgentBootstrap] use_skill tool registered for', allSkills.length, 'skills');
+  }
+
+  /**
    * Initialize the scheduler for desktop mode.
    * Uses platform-aware StorageAdapter + hybrid DesktopSchedulerAlarms.
+   * Uses the same this.registry for session isolation (no duplicate registry).
    */
   private async initializeScheduler(): Promise<void> {
     try {
-      // Use platform-aware StorageAdapter factory (IndexedDB/SQLite/Node depending on build)
-      const { createStorageAdapter } = await import('@/storage/createStorageAdapter');
-      const { SchedulerStorage } = await import('@/core/scheduler/SchedulerStorage');
+      // Directly instantiate TauriSQLiteAdapter — desktop always uses SQLite via Tauri
+      const { TauriSQLiteAdapter } = await import('@/desktop/storage/TauriSQLiteAdapter');
+      const { ScheduleEventStorage } = await import('@/core/scheduler/ScheduleEventStorage');
+      const { ExecutionStorage } = await import('@/core/scheduler/ExecutionStorage');
+      const { ScheduleManager } = await import('@/core/scheduler/ScheduleManager');
+      const { JobExecutor } = await import('@/core/scheduler/JobExecutor');
 
-      const storageAdapter = await createStorageAdapter();
+      const storageAdapter = new TauriSQLiteAdapter();
       await storageAdapter.initialize();
 
-      const schedulerStorage = new SchedulerStorage(storageAdapter);
+      // Share adapter with TokenUsageStore
+      const { TokenUsageStore } = await import('@/storage/TokenUsageStore');
+      TokenUsageStore.setAdapter(storageAdapter);
+
+      const scheduleEventStorage = new ScheduleEventStorage(storageAdapter);
+      const executionStorage = new ExecutionStorage(storageAdapter);
 
       // Create hybrid alarms (in-process timers + OS-level jobs)
       this.schedulerAlarms = new DesktopSchedulerAlarms();
 
-      // Create scheduler
-      this.scheduler = new Scheduler(schedulerStorage, this.schedulerAlarms);
+      // Create new model components directly
+      const scheduleManager = new ScheduleManager(scheduleEventStorage, executionStorage, this.schedulerAlarms);
+      const jobExecutor = new JobExecutor(executionStorage);
+
+      // Create scheduler with new constructor
+      this.scheduler = new Scheduler(scheduleManager, jobExecutor, this.schedulerAlarms);
 
       // Wire alarm handler
       this.schedulerAlarms.setAlarmHandler(async (alarmName) => {
         await this.scheduler!.handleAlarm(alarmName);
       });
 
-      // Wire event emitter → dispatch via pi:message so TauriMessageService
-      // routes it to SCHEDULER_EVENT handlers in the UI (Main.svelte)
-      this.scheduler.setEventEmitter(async (event) => {
-        try {
-          const { emit } = await import('@tauri-apps/api/event');
-          await emit('pi:message', {
-            type: MessageType.SCHEDULER_EVENT,
-            payload: event,
-          });
-        } catch (error) {
-          console.error('[DesktopAgentBootstrap] Failed to emit scheduler event:', error);
-        }
-      });
+      // Wire event emitter → unified channel dispatch
+      this.scheduler.connectToChannel(() => getChannelManager(), this.channel!.channelId);
 
       // Wire job launcher — show window and submit directly to agent
-      // `registryAgent` is the isolated agent created by AgentRegistry for this job's session.
-      // Falls back to the primary agent when registry is not available.
-      this.scheduler.setJobLauncher(async (jobId, sessionId, registryAgent) => {
-        this.runningSchedulerJobId = jobId;
-        this.runningJobStartTime = Date.now();
-        console.log(`[DesktopAgentBootstrap] Scheduled job ${jobId} launched (session: ${sessionId})`);
+      this.scheduler.setJobLauncher(async (executionId, sessionId, registryAgent) => {
+        console.log(`[DesktopAgentBootstrap] Scheduled job ${executionId} launched (session: ${sessionId})`);
         // Show the main window
         try {
           const { getCurrentWindow } = await import('@tauri-apps/api/window');
@@ -416,24 +501,29 @@ export class DesktopAgentBootstrap {
         } catch {
           // Non-fatal — window may already be visible
         }
-        // Submit to registry agent (isolated session) or fallback to primary agent
-        const job = await schedulerStorage.getJob(jobId);
-        if (!job) throw new Error(`Job not found: ${jobId}`);
-        const targetAgent = registryAgent ?? this.agent;
-        if (!targetAgent) throw new Error('Agent not initialized');
-        await targetAgent.submitOperation(
-          { type: 'UserInput', items: [{ type: 'text', text: job.input }] },
+        // Look up execution record for the input text
+        const execution = await executionStorage.getExecution(executionId);
+        if (!execution) throw new Error(`Execution not found: ${executionId}`);
+        if (!registryAgent) throw new Error('No agent provided for scheduled job');
+        // submitOperation is fire-and-forget: it queues the operation, may abort
+        // a previous task (emitting TurnAborted), and returns before the new task
+        // completes. We set runningSchedulerJobId AFTER to avoid false-triggering
+        // handleSchedulerEventCompletion on the previous task's TurnAborted event.
+        await registryAgent.submitOperation(
+          { type: 'UserInput', items: [{ type: 'text', text: execution.input }] },
           {}
         );
+        this.runningSchedulerJobId = executionId;
+        this.runningJobStartTime = Date.now();
       });
 
       // Wire notification handler via Tauri notification plugin
-      this.scheduler.setNotificationHandler(async (job) => {
+      this.scheduler.setNotificationHandler(async (info) => {
         try {
           const { sendNotification } = await import('@tauri-apps/plugin-notification');
-          const inputPreview = job.input.length > 50
-            ? job.input.slice(0, 50) + '...'
-            : job.input;
+          const inputPreview = info.input.length > 50
+            ? info.input.slice(0, 50) + '...'
+            : info.input;
           sendNotification({
             title: 'Scheduled Job Starting',
             body: inputPreview,
@@ -446,51 +536,38 @@ export class DesktopAgentBootstrap {
       // Wire connectivity check — require both network and agent readiness
       this.scheduler.setConnectivityCheck(() => {
         const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
-        return online && this.agent !== null && this.initialized;
+        const hasActiveSessions = this.registry !== null && this.registry.listSessions().length > 0;
+        return online && hasActiveSessions && this.initialized;
       });
 
-      // Initialize AgentRegistry for session isolation
-      try {
-        const agentConfig = await AgentConfig.getInstance();
-        const channelManager = getChannelManager();
-        const registry = new AgentRegistry({
-          maxConcurrent: 1,
-          agentFactory: async (config, router) => {
-            const agent = new RepublicAgent(config, router, undefined, undefined, new UserNotifier());
-            await agent.initialize();
-            return agent;
-          },
-          eventDispatcherFactory: (sessionId) => (event) => {
-            channelManager.dispatchEvent(event.msg, this.channel!.channelId).catch(() => {});
-            this.handleSchedulerEventCompletion(event.msg);
-          },
-        });
-        registry.initialize(agentConfig, this.messageRouter! as any);
-        this.scheduler.setRegistry(registry);
-        console.log('[DesktopAgentBootstrap] AgentRegistry initialized for session isolation');
-      } catch (error) {
-        console.warn('[DesktopAgentBootstrap] AgentRegistry init failed (non-fatal, using legacy sessions):', error);
+      // Use the same registry for session isolation (no duplicate registry)
+      if (this.registry) {
+        this.scheduler.setRegistry(this.registry);
+        console.log('[DesktopAgentBootstrap] Scheduler using shared AgentRegistry for session isolation');
       }
 
       // Set up deep link handler for OS-level job triggers
       this.schedulerDeepLinkHandler = new DesktopSchedulerDeepLinkHandler(this.scheduler);
       await this.schedulerDeepLinkHandler.initialize();
 
-      // Reconcile OS jobs with in-process timers
+      // Reconcile OS jobs with in-process timers using ScheduleManager
       await this.schedulerAlarms.reconcileOnStartup(async () => {
-        const jobs = await schedulerStorage.getScheduledJobs();
-        return jobs.map(j => ({ id: j.id, scheduledTime: j.scheduledTime }));
+        const events = await scheduleManager.getScheduledEvents();
+        return events.map(e => ({ id: e.id, scheduledTime: e.scheduledTime }));
       });
 
       // Recover stale running jobs from previous app session
       await this.scheduler.recoverStaleRunningJob();
 
       // Detect missed jobs and start queue processor
-      const missedJobs = await this.scheduler.detectMissedJobs();
-      if (missedJobs.length > 0) {
-        console.log(`[DesktopAgentBootstrap] Detected ${missedJobs.length} missed scheduler jobs`);
+      const missed = await this.scheduler.detectMissedJobs();
+      if (missed.length > 0) {
+        console.log(`[DesktopAgentBootstrap] Detected ${missed.length} missed scheduler instances`);
       }
       await this.schedulerAlarms.startJobQueueProcessor();
+
+      // Restore alarms for ScheduleEvents
+      await this.scheduler.restoreScheduleAlarms();
 
       console.log('[DesktopAgentBootstrap] Scheduler initialized');
     } catch (error) {
@@ -499,8 +576,11 @@ export class DesktopAgentBootstrap {
   }
 
   /**
-   * Intercept TaskComplete/TaskFailed events from the agent to complete/fail
+   * Intercept task lifecycle events from the agent to complete/fail
    * the currently running scheduled job at the bootstrap level.
+   *
+   * Handles: TaskComplete (normal), TurnAborted (abort/interrupt),
+   * Error (task errors), TaskFailed (protocol-defined, currently unused).
    */
   private handleSchedulerEventCompletion(msg: EventMsg): void {
     if (!this.runningSchedulerJobId || !this.scheduler) return;
@@ -510,7 +590,6 @@ export class DesktopAgentBootstrap {
     if (msg.type === 'TaskComplete') {
       this.runningSchedulerJobId = null;
       this.runningJobStartTime = 0;
-      // EventMsg.data shape for TaskComplete: { last_agent_message?: string, token_usage?: { total?: { input_tokens, output_tokens, total_tokens } } }
       const data = (msg as EventMsg & { data?: Record<string, any> }).data;
       const summary = data?.last_agent_message?.slice(0, 500) || 'Job completed';
       const tokenData = data?.token_usage?.total;
@@ -525,11 +604,14 @@ export class DesktopAgentBootstrap {
       }).catch((error) => {
         console.error(`[DesktopAgentBootstrap] Failed to complete scheduler job ${jobId}:`, error);
       });
-    } else if (msg.type === 'TaskFailed') {
+    } else if (msg.type === 'TaskFailed' || msg.type === 'TurnAborted' || msg.type === 'Error') {
+      // TaskFailed: protocol-defined failure (currently not emitted by TaskRunner)
+      // TurnAborted: task aborted (user interrupt, automatic_abort after MAX_TURNS)
+      // Error: task execution error (API error, model error, submission error)
       this.runningSchedulerJobId = null;
       this.runningJobStartTime = 0;
       const data = (msg as EventMsg & { data?: Record<string, any> }).data;
-      const error = data?.error || data?.reason || 'Job failed';
+      const error = data?.error || data?.reason || data?.message || 'Job failed';
       this.scheduler.failJob(jobId, error).catch((err) => {
         console.error(`[DesktopAgentBootstrap] Failed to fail scheduler job ${jobId}:`, err);
       });
@@ -574,72 +656,10 @@ export class DesktopAgentBootstrap {
   }
 
   /**
-   * Resume a previous conversation by its ID.
-   *
-   * Mirrors the service-worker's RESUME_SESSION logic:
-   * aborts current tasks, tears down the old session, loads rollout history,
-   * creates a fresh RepublicAgent with the resumed history, and returns the
-   * reconstructed conversation items.
+   * Get the active registry (for multi-session support)
    */
-  async resumeSession(conversationId: string): Promise<unknown[]> {
-    if (!this.agent) {
-      throw new Error('Agent not initialized');
-    }
-
-    console.log('[DesktopAgentBootstrap] Resuming session:', conversationId);
-
-    // 1. Preserve auth manager from the current agent
-    const authManager = this.agent.getModelClientFactory().getAuthManager();
-
-    // 2. Abort any running tasks on the current session
-    const currentSession = this.agent.getSession();
-    await currentSession.abortAllTasks('UserInterrupt');
-
-    // 3. Close the current session
-    await currentSession.close();
-
-    // 4. Load rollout history from storage
-    const { RolloutRecorder } = await import('@/storage/rollout/RolloutRecorder');
-    const initialHistory = await RolloutRecorder.getRolloutHistory(conversationId);
-
-    if (initialHistory.type !== 'resumed' || !initialHistory.payload?.history) {
-      throw new Error('Conversation not found or has no history');
-    }
-
-    // 5. Create a new RepublicAgent with the resumed initial history
-    const config = await AgentConfig.getInstance();
-    this.agent = new RepublicAgent(config, this.messageRouter as any, {
-      mode: 'resumed' as const,
-      conversationId,
-      rolloutItems: initialHistory.payload.history,
-    }, undefined, new UserNotifier());
-
-    // 6. Re-wire event forwarding via ChannelManager
-    const channelManager = getChannelManager();
-    this.setupEventForwarding(channelManager);
-
-    // 7. Restore auth manager on the new agent's ModelClientFactory
-    if (authManager) {
-      this.agent.getModelClientFactory().setAuthManager(authManager);
-    }
-
-    // 8. Initialize agent and session
-    await this.agent.initialize();
-    await this.configureDesktopPlatform();
-    const session = this.agent.getSession();
-    await session.initialize();
-
-    // 9. Return the reconstructed conversation history
-    const history = session.getConversationHistory();
-    console.log('[DesktopAgentBootstrap] Session resumed with', history.items.length, 'items');
-    return history.items;
-  }
-
-  /**
-   * Get the agent instance
-   */
-  getAgent(): RepublicAgent | null {
-    return this.agent;
+  getRegistry(): AgentRegistry | null {
+    return this.registry;
   }
 
   /**
@@ -650,12 +670,12 @@ export class DesktopAgentBootstrap {
    * singleton) so changes are persisted to storage but the agent's in-memory
    * config is stale.  We must reload from storage before refreshing.
    *
-   * Uses hot-swap to update the model client in-place, preserving
-   * conversation history and agent run state.
+   * Uses hot-swap to update the model client in-place on ALL sessions,
+   * preserving conversation history and agent run state.
    */
   async handleConfigUpdate(): Promise<void> {
-    if (!this.agent) {
-      console.warn('[DesktopAgentBootstrap] Cannot handle config update: agent not initialized');
+    if (!this.registry || this.registry.listSessions().length === 0) {
+      console.warn('[DesktopAgentBootstrap] Cannot handle config update: no active sessions');
       return;
     }
 
@@ -673,10 +693,13 @@ export class DesktopAgentBootstrap {
       const config = await AgentConfig.getInstance();
       await config.reload();
 
-      // Hot-swap the model client in-place — preserves conversation and run state.
-      // This handles model changes, API key changes, and routing mode changes
-      // without reinitializing the agent.
-      await this.agent.hotSwapModelClient();
+      // Hot-swap the model client in-place on ALL sessions
+      for (const sessionMeta of this.registry.listSessions()) {
+        const session = this.registry.getSession(sessionMeta.sessionId);
+        if (session?.agent) {
+          await session.agent.hotSwapModelClient();
+        }
+      }
 
       console.log('[DesktopAgentBootstrap] Config update handled successfully');
     } catch (error) {
@@ -734,7 +757,7 @@ export class DesktopAgentBootstrap {
   /**
    * Restore ChatGPT OAuth session from keychain.
    * If valid ChatGPT OAuth tokens exist, configure the auth manager
-   * with a token getter that auto-refreshes.
+   * on ALL active sessions.
    */
   private async restoreChatGPTOAuth(): Promise<void> {
     try {
@@ -745,20 +768,24 @@ export class DesktopAgentBootstrap {
       const oauthService = new ChatGPTOAuthService(storage);
 
       if (await oauthService.isAuthenticated()) {
-        // Create an AuthManager with ChatGPT OAuth token getter
-        const factory = this.agent?.getModelClientFactory();
-        if (factory) {
-          const currentAuthManager = factory.getAuthManager?.() ?? null;
-          const shouldUseBackend = currentAuthManager?.shouldUseBackend() ?? false;
-          const backendBaseUrl = currentAuthManager?.getBackendBaseUrl() ?? null;
-          const tokenGetter = currentAuthManager ? (() => currentAuthManager.getAccessToken()) : undefined;
+        if (!this.registry) return;
 
-          const authManager = new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter);
-          authManager.setChatGPTOAuth(() => oauthService.getValidAccessToken());
+        for (const sessionMeta of this.registry.listSessions()) {
+          const session = this.registry.getSession(sessionMeta.sessionId);
+          const factory = session?.agent?.getModelClientFactory();
+          if (factory) {
+            const currentAuthManager = factory.getAuthManager?.() ?? null;
+            const shouldUseBackend = currentAuthManager?.shouldUseBackend() ?? false;
+            const backendBaseUrl = currentAuthManager?.getBackendBaseUrl() ?? null;
+            const tokenGetter = currentAuthManager ? (() => currentAuthManager.getAccessToken()) : undefined;
 
-          factory.setAuthManager(authManager);
-          console.log('[DesktopAgentBootstrap] ChatGPT OAuth restored from keychain');
+            const authManager = new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter);
+            authManager.setChatGPTOAuth(() => oauthService.getValidAccessToken());
+
+            factory.setAuthManager(authManager);
+          }
         }
+        console.log('[DesktopAgentBootstrap] ChatGPT OAuth restored from keychain');
       }
     } catch (error) {
       console.warn('[DesktopAgentBootstrap] Could not restore ChatGPT OAuth:', error);
@@ -766,21 +793,38 @@ export class DesktopAgentBootstrap {
   }
 
   /**
-   * Set the authentication mode on the agent's ModelClientFactory.
+   * Set the authentication mode on ALL sessions' ModelClientFactory.
    * Called directly by UI code after login or on startup.
    * @param tokenGetter - Optional async function to retrieve access token (desktop keychain)
    */
   async setAuthMode(useOwnApiKey: boolean, backendBaseUrl: string | null, tokenGetter?: () => Promise<string | null>): Promise<void> {
-    if (!this.agent) {
-      console.warn('[DesktopAgentBootstrap] Cannot set auth mode: agent not initialized');
+    if (!this.registry || this.registry.listSessions().length === 0) {
+      console.warn('[DesktopAgentBootstrap] Cannot set auth mode: no active sessions');
       return;
     }
 
     const shouldUseBackend = !useOwnApiKey;
-    const authManager = new AuthManager(shouldUseBackend, shouldUseBackend ? backendBaseUrl : null, tokenGetter);
 
-    const factory = this.agent.getModelClientFactory();
-    factory.setAuthManager(authManager);
+    for (const sessionMeta of this.registry.listSessions()) {
+      const session = this.registry.getSession(sessionMeta.sessionId);
+      if (session?.agent) {
+        const authManager = new AuthManager(shouldUseBackend, shouldUseBackend ? backendBaseUrl : null, tokenGetter);
+        const factory = session.agent.getModelClientFactory();
+        factory.setAuthManager(authManager);
+
+        // Close existing memory service so it doesn't attempt embeddings with
+        // stale credentials. A fresh service will be created on the next session.
+        const existingMemory = session.agent.getSession()?.getMemoryService?.();
+        if (existingMemory) {
+          existingMemory.close().catch(() => {});
+          session.agent.getSession()?.setMemoryService(null);
+        }
+
+        console.log('[DesktopAgentBootstrap] Auth mode set on session', sessionMeta.sessionId, ', isBackendRouting:', factory.isBackendRouting());
+
+        await session.agent.refreshModelClient();
+      }
+    }
 
     // Register/clear memory token getter for backend-routed embeddings
     import('@/core/memory/createMemoryService').then(({ setMemoryTokenGetter }) => {
@@ -793,19 +837,6 @@ export class DesktopAgentBootstrap {
     }).catch(() => {
       // Memory module may not be available in all builds
     });
-
-    // Close existing memory service so it doesn't attempt embeddings with
-    // stale credentials. A fresh service will be created on the next session.
-    const session = this.agent.getSession();
-    const existingMemory = session?.getMemoryService?.();
-    if (existingMemory) {
-      existingMemory.close().catch(() => {});
-      session.setMemoryService(null);
-    }
-
-    console.log('[DesktopAgentBootstrap] Auth mode set, isBackendRouting:', factory.isBackendRouting());
-
-    await this.agent.refreshModelClient();
   }
 
   /**
@@ -816,28 +847,42 @@ export class DesktopAgentBootstrap {
   }
 
   /**
-   * Check if the agent is ready
+   * Check if the agent system is ready (any active session is ready)
    */
   async isReady(): Promise<boolean> {
-    if (!this.agent) {
-      return false;
+    if (!this.registry) return false;
+    for (const sessionMeta of this.registry.listSessions()) {
+      const session = this.registry.getSession(sessionMeta.sessionId);
+      if (session?.agent) {
+        const readyState = await session.agent.isReady();
+        if (readyState.ready) return true;
+      }
     }
-    const readyState = await this.agent.isReady();
-    return readyState.ready;
+    return false;
   }
 
   /**
-   * Get agent ready state with details
+   * Get agent ready state with details (from the first active session)
    */
   async getReadyState() {
-    if (!this.agent) {
+    if (!this.registry) {
       return {
         ready: false,
         message: t('Agent not initialized'),
         authMode: 'none' as const,
       };
     }
-    return await this.agent.isReady();
+    for (const sessionMeta of this.registry.listSessions()) {
+      const session = this.registry.getSession(sessionMeta.sessionId);
+      if (session?.agent) {
+        return await session.agent.isReady();
+      }
+    }
+    return {
+      ready: false,
+      message: t('Agent not initialized'),
+      authMode: 'none' as const,
+    };
   }
 
   /**
@@ -861,22 +906,30 @@ export class DesktopAgentBootstrap {
     const channelManager = getChannelManager();
     await channelManager.shutdown();
 
-    // Cleanup agent
-    if (this.agent) {
-      await this.agent.cleanup();
-      this.agent = null;
-    }
-
-    // Cleanup message router
-    if (this.messageRouter) {
-      this.messageRouter.destroy();
-      this.messageRouter = null;
+    // Cleanup all sessions via registry
+    if (this.registry) {
+      await this.registry.cleanup();
+      this.registry = null;
     }
 
     this.channel = null;
     this.initialized = false;
 
     console.log('[DesktopAgentBootstrap] Shutdown complete');
+  }
+
+  /**
+   * Get the auth manager from the first active session (for copying to new sessions).
+   * Returns null if no sessions exist or none have an auth manager.
+   */
+  private getFirstAuthManager(): IAuthManager | null {
+    if (!this.registry) return null;
+    for (const sessionMeta of this.registry.listSessions()) {
+      const session = this.registry.getSession(sessionMeta.sessionId);
+      const authManager = session?.agent?.getModelClientFactory().getAuthManager();
+      if (authManager) return authManager;
+    }
+    return null;
   }
 }
 

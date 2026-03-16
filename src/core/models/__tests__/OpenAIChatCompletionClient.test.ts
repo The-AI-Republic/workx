@@ -57,7 +57,7 @@ describe('OpenAIChatCompletionClient', () => {
   beforeEach(() => {
     config = {
       apiKey: 'test-api-key',
-      conversationId: 'conv-123',
+      sessionId: 'conv-123',
       modelFamily: mockModelFamily,
       provider: mockProvider,
     };

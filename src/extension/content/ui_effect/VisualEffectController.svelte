@@ -15,6 +15,7 @@
    */
 
   import { onMount, onDestroy } from 'svelte';
+  import { get } from 'svelte/store';
   import Overlay from './Overlay.svelte';
   import CursorAnimator from './CursorAnimator.svelte';
   import ControlButtons from './ControlButtons.svelte';
@@ -46,20 +47,23 @@
   import { DEFAULT_CONFIG } from './contracts/visual-effect-controller';
 
   // Component refs
-  let cursorAnimatorRef: any = null;
-  let mountComplete = false;
+  let cursorAnimatorRef: any = $state(null);
+  let mountComplete: boolean = $state(false);
 
   // Water ripple effect instance
-  let waterRipple: any = null;
+  let waterRipple: any = $state(null);
 
   // Control buttons visibility state
-  let showControlButtons = false;
-  let takeoverActive = false;
+  let showControlButtons: boolean = $state(false);
+  let takeoverActive: boolean = $state(false);
 
   // Subscribe to overlay state for control buttons visibility
-  overlayState.subscribe(state => {
-    showControlButtons = state.visible && state.agentSessionActive;
-    takeoverActive = state.takeoverActive;
+  $effect(() => {
+    const unsub = overlayState.subscribe(state => {
+      showControlButtons = state.visible && state.agentSessionActive;
+      takeoverActive = state.takeoverActive;
+    });
+    return unsub;
   });
 
   // Configuration
@@ -71,8 +75,8 @@
   const errorCallbacks: ErrorCallback[] = [];
 
   // Event listener cleanup
-  let eventListenerCleanup: (() => void) | null = null;
-  let storeCleanup: (() => void) | null = null;
+  let eventListenerCleanup: (() => void) | null = $state(null);
+  let storeCleanup: (() => void) | null = $state(null);
 
   onMount(async () => {
     try {
@@ -415,11 +419,7 @@
     }
 
     // Enqueue event
-    let queue: any;
-    const unsubscribe = effectQueue.subscribe(q => {
-      queue = q;
-    });
-    unsubscribe();
+    const queue = get(effectQueue);
 
     queue.enqueue(event);
 
@@ -496,11 +496,7 @@
   function handleViewportResize() {
     // Cancel ongoing animations since coordinates may be invalid
     if (cursorAnimatorRef) {
-      let state: any;
-      const unsubscribe = animationState.subscribe(s => {
-        state = s;
-      });
-      unsubscribe();
+      const state = get(animationState);
 
       if (state.isAnimating) {
         // Skip to target position to avoid animation to wrong coordinates
@@ -544,11 +540,7 @@
    * Notify state change callbacks
    */
   function notifyStateChange() {
-    let state: VisualEffectState;
-    const unsubscribe = visualEffectState.subscribe(s => {
-      state = s;
-    });
-    unsubscribe();
+    const state = get(visualEffectState);
 
     stateChangeCallbacks.forEach(callback => {
       try {
@@ -570,12 +562,7 @@
   }
 
   export function getState(): Readonly<VisualEffectState> {
-    let state: VisualEffectState;
-    const unsubscribe = visualEffectState.subscribe(s => {
-      state = s;
-    });
-    unsubscribe();
-    return state!;
+    return get(visualEffectState);
   }
 
   export function startAgentSession(): void {
@@ -642,8 +629,8 @@
   {#if showControlButtons && !takeoverActive}
     <div class="control-buttons-wrapper">
       <ControlButtons
-        on:takeover={handleTakeOver}
-        on:stopagent={handleStopAgentButton}
+        onTakeover={handleTakeOver}
+        onStopagent={handleStopAgentButton}
       />
     </div>
   {/if}

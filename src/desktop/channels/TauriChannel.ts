@@ -22,8 +22,8 @@ import type {
   SubmissionHandler,
   SubmissionContext,
   ChannelCapabilities,
+  ChannelEvent,
 } from '@/core/channels/types';
-import type { EventMsg } from '@/core/protocol/events';
 import type { Op } from '@/core/protocol/types';
 import { t } from '@/webfront/lib/i18n';
 
@@ -60,8 +60,8 @@ interface SubmissionMessage {
  * });
  *
  * await channel.sendEvent({
- *   type: 'AssistantTextDelta',
- *   data: { delta: 'Hello!' }
+ *   msg: { type: 'AssistantTextDelta', data: { delta: 'Hello!' } },
+ *   sessionId: 'abc-123',
  * });
  * ```
  */
@@ -146,7 +146,7 @@ export class TauriChannel implements ChannelAdapter {
   /**
    * Send an event to the UI via Tauri event system
    */
-  async sendEvent(event: EventMsg, _targetClientId?: string): Promise<void> {
+  async sendEvent(event: ChannelEvent, _targetClientId?: string): Promise<void> {
     if (!this.initialized) {
       throw new Error('TauriChannel not initialized');
     }
@@ -187,6 +187,10 @@ export class TauriChannel implements ChannelAdapter {
     return true;
   }
 
+  supportsServices(): boolean {
+    return true;
+  }
+
   /**
    * Get all capabilities as an object
    */
@@ -195,6 +199,7 @@ export class TauriChannel implements ChannelAdapter {
       streaming: this.supportsStreaming(),
       approvals: this.supportsApprovals(),
       media: this.supportsMedia(),
+      services: this.supportsServices(),
     };
   }
 
@@ -218,9 +223,11 @@ export class TauriChannel implements ChannelAdapter {
     if (!message || !message.op) {
       console.error('[TauriChannel] Invalid submission: missing op field', message);
       await this.sendEvent({
-        type: 'Error',
-        data: {
-          message: t('Invalid submission format: missing op field'),
+        msg: {
+          type: 'Error',
+          data: {
+            message: t('Invalid submission format: missing op field'),
+          },
         },
       });
       return;
@@ -229,9 +236,11 @@ export class TauriChannel implements ChannelAdapter {
     if (!message.op.type) {
       console.error('[TauriChannel] Invalid submission: op missing type field', message);
       await this.sendEvent({
-        type: 'Error',
-        data: {
-          message: t('Invalid submission format: op missing type field'),
+        msg: {
+          type: 'Error',
+          data: {
+            message: t('Invalid submission format: op missing type field'),
+          },
         },
       });
       return;
@@ -250,9 +259,11 @@ export class TauriChannel implements ChannelAdapter {
       console.error('[TauriChannel] Handler error:', error);
       // Emit error event back to UI
       await this.sendEvent({
-        type: 'Error',
-        data: {
-          message: error instanceof Error ? error.message : t('Unknown error processing submission'),
+        msg: {
+          type: 'Error',
+          data: {
+            message: error instanceof Error ? error.message : t('Unknown error processing submission'),
+          },
         },
       });
     }

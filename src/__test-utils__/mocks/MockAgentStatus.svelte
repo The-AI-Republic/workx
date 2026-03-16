@@ -1,23 +1,27 @@
 <script lang="ts">
   import type { BrowserxAgent } from '../../src/core/BrowserxAgent';
 
-  export let agent: BrowserxAgent;
-  export let reactive = false;
-  export let showStatus = false;
+  let { agent, reactive = false, showStatus = false }: {
+    agent: BrowserxAgent;
+    reactive?: boolean;
+    showStatus?: boolean;
+  } = $props();
 
-  let agentModel = 'claude-3-5-sonnet-20241022';
-  let approvalPolicy = 'on-request';
-  let agentStatus = 'ready';
+  let agentModel = $state('claude-3-5-sonnet-20241022');
+  let approvalPolicy = $state('on-request');
+  let agentStatus = $state('ready');
 
-  $: if (agent && reactive) {
-    const config = agent.getConfig();
-    agentModel = config.model;
-    approvalPolicy = config.approval_policy;
+  $effect(() => {
+    if (agent && reactive) {
+      const config = agent.getConfig();
+      agentModel = config.model;
+      approvalPolicy = config.approval_policy;
 
-    if (config.sandbox_policy?.mode === 'read-only') {
-      agentStatus = 'restricted';
+      if (config.sandbox_policy?.mode === 'read-only') {
+        agentStatus = 'restricted';
+      }
     }
-  }
+  });
 </script>
 
 <div class="agent-status">

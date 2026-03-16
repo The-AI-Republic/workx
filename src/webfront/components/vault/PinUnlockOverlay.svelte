@@ -1,23 +1,24 @@
 <!--
   PinUnlockOverlay - Full-screen vault unlock overlay
   Blocks all interaction until correct PIN entered.
-  Dispatches: unlocked
 -->
 
 <script lang="ts">
-  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { t } from '../../lib/i18n';
-  import { sendMessage, MessageType } from '../../lib/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
   import { vaultStore, refreshVaultStatus } from '../../stores/vaultStore';
   import type { VaultUnlockResult } from '@/core/crypto/types';
 
-  const dispatch = createEventDispatcher<{ unlocked: void }>();
+  let { onUnlocked }: {
+    onUnlocked?: () => void;
+  } = $props();
 
-  let pin = '';
-  let error = '';
-  let isSubmitting = false;
-  let showForgotConfirm = false;
-  let forgotSubmitting = false;
+  let pin = $state('');
+  let error = $state('');
+  let isSubmitting = $state(false);
+  let showForgotConfirm = $state(false);
+  let forgotSubmitting = $state(false);
 
   // Lockout countdown
   let countdownInterval: ReturnType<typeof setInterval> | null = null;
@@ -59,12 +60,12 @@
 
     isSubmitting = true;
     try {
-      const result = await sendMessage<VaultUnlockResult>(MessageType.VAULT_UNLOCK, { pin });
+      const result = await (await getInitializedUIClient()).serviceRequest<VaultUnlockResult>('vault.unlock', { pin });
 
       if (result?.success) {
         pin = '';
         await refreshVaultStatus();
-        dispatch('unlocked');
+        onUnlocked?.();
       } else if (result?.isLockedOut) {
         error = 'Too many attempts';
         vaultStore.update((s) => ({
@@ -88,10 +89,10 @@
   async function handleForgotPinConfirm() {
     forgotSubmitting = true;
     try {
-      await sendMessage(MessageType.PIN_FORGOT, { confirmReset: true });
+      await (await getInitializedUIClient()).serviceRequest('vault.pin.forgot', { confirmReset: true });
       showForgotConfirm = false;
       await refreshVaultStatus();
-      dispatch('unlocked');
+      onUnlocked?.();
     } catch (err) {
       error = (err as Error).message || 'Failed to reset vault';
     } finally {
@@ -122,7 +123,7 @@
     </p>
 
     {#if !showForgotConfirm}
-      <form on:submit|preventDefault={handleSubmit}>
+      <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
         {#if $vaultStore.isLockedOut}
           <div class="lockout-message">
             {t("Too many failed attempts. Try again in")}
@@ -136,7 +137,7 @@
               maxlength="6"
               placeholder="------"
               value={pin}
-              on:input={handlePinInput}
+              oninput={handlePinInput}
               autocomplete="off"
               disabled={isSubmitting}
             />
@@ -152,7 +153,7 @@
         {/if}
       </form>
 
-      <button class="btn-forgot" on:click={() => { showForgotConfirm = true; error = ''; }}>
+      <button class="btn-forgot" onclick={() => { showForgotConfirm = true; error = ''; }}>
         {t("Forgot PIN?")}
       </button>
     {:else}
@@ -161,10 +162,10 @@
           {t("This will permanently delete all stored API keys and reset the vault. You will need to re-enter your API keys.")}
         </p>
         <div class="forgot-actions">
-          <button class="btn-cancel" on:click={() => (showForgotConfirm = false)} disabled={forgotSubmitting}>
+          <button class="btn-cancel" onclick={() => (showForgotConfirm = false)} disabled={forgotSubmitting}>
             {t("Cancel")}
           </button>
-          <button class="btn-danger" on:click={handleForgotPinConfirm} disabled={forgotSubmitting}>
+          <button class="btn-danger" onclick={handleForgotPinConfirm} disabled={forgotSubmitting}>
             {forgotSubmitting ? t("Resetting...") : t("Reset Vault")}
           </button>
         </div>

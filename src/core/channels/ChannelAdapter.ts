@@ -7,8 +7,7 @@
  * @module core/channels/ChannelAdapter
  */
 
-import type { EventMsg } from '@/core/protocol/types';
-import type { ChannelType, ChannelCapabilities, SubmissionHandler } from './types';
+import type { ChannelType, ChannelCapabilities, SubmissionHandler, ChannelEvent } from './types';
 
 /**
  * Channel Adapter Interface
@@ -99,7 +98,7 @@ export interface ChannelAdapter {
    * @param event - Event message to send
    * @param targetClientId - Optional specific client (for multi-client channels)
    */
-  sendEvent(event: EventMsg, targetClientId?: string): Promise<void>;
+  sendEvent(event: ChannelEvent, targetClientId?: string): Promise<void>;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Capabilities
@@ -119,6 +118,11 @@ export interface ChannelAdapter {
    * Check if this channel can display media (images, etc.)
    */
   supportsMedia(): boolean;
+
+  /**
+   * Check if this channel can send service requests (MCP, scheduler, vault, etc.)
+   */
+  supportsServices(): boolean;
 
   /**
    * Get all capabilities as an object

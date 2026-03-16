@@ -18,6 +18,7 @@ import type {
   ChannelCapabilities,
 } from '@/core/channels/types';
 import type { EventMsg } from '@/core/protocol/events';
+import type { ChannelEvent } from '@/core/channels/types';
 import type { Op } from '@/core/protocol/types';
 import { shouldReceiveEvent } from '../auth/authorize';
 import { makeEvent } from '@applepi/ws-server';
@@ -82,14 +83,16 @@ export class ServerChannel implements ChannelAdapter {
    * If targetClientId is specified, send only to that connection.
    * Otherwise, broadcast to all eligible connections (filtered by scope).
    */
-  async sendEvent(event: EventMsg, targetClientId?: string): Promise<void> {
+  async sendEvent(event: ChannelEvent, targetClientId?: string): Promise<void> {
     if (!this.initialized) {
       throw new Error('ServerChannel not initialized');
     }
 
     this.eventSeq++;
-    const eventName = this.eventMsgToName(event);
-    const frame = JSON.stringify(makeEvent(eventName, event, this.eventSeq));
+    const eventMsg = event.msg;
+    const eventName = this.eventMsgToName(eventMsg);
+    const payload = event.sessionId ? { ...eventMsg, sessionId: event.sessionId } : eventMsg;
+    const frame = JSON.stringify(makeEvent(eventName, payload, this.eventSeq));
 
     const connections = getTrackedConnections();
     for (const conn of connections) {
@@ -146,11 +149,16 @@ export class ServerChannel implements ChannelAdapter {
     return false; // WebSocket clients typically don't render media directly
   }
 
+  supportsServices(): boolean {
+    return true;
+  }
+
   getCapabilities(): ChannelCapabilities {
     return {
       streaming: this.supportsStreaming(),
       approvals: this.supportsApprovals(),
       media: this.supportsMedia(),
+      services: this.supportsServices(),
     };
   }
 
@@ -196,6 +204,14 @@ export class ServerChannel implements ChannelAdapter {
     // Health events
     if (event.type === 'Error' || event.type === 'StreamError') {
       return 'health';
+    }
+
+    // Service routing events (message_routing_v2)
+    if (event.type === 'ServiceResponse') {
+      return 'service.response';
+    }
+    if (event.type === 'StateUpdate') {
+      return 'state.update';
     }
 
     // Default: use the raw type as event name

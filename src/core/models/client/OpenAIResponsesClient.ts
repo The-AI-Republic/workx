@@ -75,7 +75,7 @@ export interface OpenAIResponsesConfig {
   /** Organization ID */
   organization?: string;
   /** Conversation ID for session tracking */
-  conversationId: string;
+  sessionId: string;
   /** Model family configuration */
   modelFamily: ModelFamily;
   /** Model provider information */
@@ -102,7 +102,7 @@ export class OpenAIResponsesClient extends ModelClient {
   protected readonly apiKey: string | null;
   protected readonly baseUrl: string;
   protected readonly organization?: string;
-  protected readonly conversationId: string;
+  protected readonly sessionId: string;
   protected readonly modelFamily: ModelFamily;
   protected readonly provider: ModelProviderInfo;
   protected reasoningEffort?: ReasoningEffortConfig;
@@ -143,7 +143,7 @@ export class OpenAIResponsesClient extends ModelClient {
     }
 
     this.organization = config.organization;
-    this.conversationId = config.conversationId;
+    this.sessionId = config.sessionId;
     this.modelFamily = config.modelFamily;
     this.provider = config.provider;
     this.modelConfig = config.modelConfig;
@@ -437,7 +437,7 @@ export class OpenAIResponsesClient extends ModelClient {
       ...(storeValue !== undefined && { store: storeValue }), // Conditionally include store
       stream: true,
       ...(include !== undefined && include.length > 0 && { include }), // Conditionally include
-      prompt_cache_key: this.conversationId,
+      prompt_cache_key: this.sessionId,
       text: textControls,
       ...(this.serviceTier && { service_tier: this.serviceTier }), // Conditionally include service_tier
     };
@@ -1088,8 +1088,8 @@ export class OpenAIResponsesClient extends ModelClient {
       const options: any = {};
       if (this.provider.name === 'openai') {
         options.headers = {
-          'conversation_id': this.conversationId,
-          'session_id': this.conversationId,
+          'conversation_id': this.sessionId,
+          'session_id': this.sessionId,
         };
       }
 

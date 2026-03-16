@@ -23,57 +23,51 @@
 
   // Navigation state - includes 'advanced-model-config' for 3rd level menu
   type NavigationView = 'menu' | 'model-config' | 'advanced-model-config' | 'general' | 'storage' | 'tools' | 'mcp-servers' | 'extension' | 'approval' | 'security';
-  let currentView: NavigationView = 'menu';
-  let hasUnsavedChanges = false;
-  let showUnsavedDialog = false;
-  let pendingNavigation: NavigationView | null = null;
+  let currentView: NavigationView = $state('menu');
+  let hasUnsavedChanges: boolean = $state(false);
+  let showUnsavedDialog: boolean = $state(false);
+  let pendingNavigation: NavigationView | null = $state(null);
 
   // Highlight setting after navigation from search
-  let highlightSettingId: string | undefined = undefined;
+  let highlightSettingId: string | undefined = $state(undefined);
 
   // Advanced config context (for 3rd level menu)
-  let advancedConfigModelId = '';
-  let advancedConfigProviderId = '';
+  let advancedConfigModelId: string = $state('');
+  let advancedConfigProviderId: string = $state('');
 
   // Settings component has its own AgentConfig instance (not shared with agent)
-  let settingsConfig: AgentConfig | null = null;
-  let isInitializing = true;
+  let settingsConfig: AgentConfig | null = $state(null);
+  let isInitializing: boolean = $state(true);
 
   // Theme from store
-  let currentTheme: string;
-  const unsubTheme = uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
+  let currentTheme = $derived($uiTheme);
 
   // Load existing settings on mount
   onMount(async () => {
     await loadSettings();
-    return () => {
-      unsubTheme();
-    };
   });
 
   /**
-   * Load settings from chrome.storage.local with isolated AgentConfig
+   * Load settings from ConfigStorageProvider with isolated AgentConfig
    */
   async function loadSettings() {
+    let configInstance: any = null;
     try {
-    isInitializing = true;
-    const configInstance = new (AgentConfig as any)();
+      isInitializing = true;
+      configInstance = new (AgentConfig as any)();
 
-    if (!configInstance) {
-      throw new Error('Failed to initialize AgentConfig');
-    }
-    await configInstance.initialize();
-
-    // Only expose the instance to children once it is fully initialized
-    settingsConfig = configInstance;
-
-    // Debug: log loaded selectedModelKey
-    const config = configInstance.getConfig();
-      console.log('[Settings] Loaded config, selectedModelKey:', config.selectedModelKey);
+      if (!configInstance) {
+        throw new Error('Failed to initialize AgentConfig');
+      }
+      await configInstance.initialize();
+      settingsConfig = configInstance;
     } catch (error) {
       console.error('[Settings] Failed to load settings:', error);
+      // Even on error, expose the instance if it exists — AgentConfig.initialize()
+      // internally falls back to defaults, so the instance is still usable.
+      if (configInstance && !settingsConfig) {
+        settingsConfig = configInstance;
+      }
     } finally {
       isInitializing = false;
     }
@@ -99,9 +93,9 @@
     }
   }
 
-  function handleCategorySelected(event: CustomEvent<{ categoryId: string; scrollToId?: string }>) {
-    highlightSettingId = event.detail.scrollToId;
-    navigateTo(event.detail.categoryId as NavigationView);
+  function handleCategorySelected(value: { categoryId: string; scrollToId?: string }) {
+    highlightSettingId = value.scrollToId;
+    navigateTo(value.categoryId as NavigationView);
   }
 
   function handleBack() {
@@ -113,9 +107,9 @@
     navigateTo('model-config');
   }
 
-  function handleNavigateToAdvanced(event: CustomEvent<{ modelId: string; providerId: string }>) {
-    advancedConfigModelId = event.detail.modelId;
-    advancedConfigProviderId = event.detail.providerId;
+  function handleNavigateToAdvanced(value: { modelId: string; providerId: string }) {
+    advancedConfigModelId = value.modelId;
+    advancedConfigProviderId = value.providerId;
     navigateTo('advanced-model-config');
   }
 
@@ -138,7 +132,7 @@
   <div class="settings-container">
     <div class="settings-header">
       <h2 class="settings-title">{t("Settings")}</h2>
-      <button class="close-button" on:click={closeSettings} aria-label={t("Close settings")}>
+      <button class="close-button" onclick={closeSettings} aria-label={t("Close settings")}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <line x1="18" y1="6" x2="6" y2="18"></line>
           <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -148,7 +142,7 @@
 
     <div class="settings-content">
       {#if currentView === 'menu'}
-        <SettingsMenu on:categorySelected={handleCategorySelected} />
+        <SettingsMenu onCategorySelected={handleCategorySelected} />
       {:else if isInitializing || !settingsConfig}
         <!-- Wait for AgentConfig to be fully initialized before rendering settings components -->
         <div class="settings-loading">
@@ -159,10 +153,10 @@
         <ModelSettings
           {settingsConfig}
           {highlightSettingId}
-          on:back={handleBack}
-          on:saved={() => {}}
-          on:authUpdated={() => {}}
-          on:navigateToAdvanced={handleNavigateToAdvanced}
+          onBack={handleBack}
+          onSaved={() => {}}
+          onAuthUpdated={() => {}}
+          onNavigateToAdvanced={handleNavigateToAdvanced}
           bind:isDirty={hasUnsavedChanges}
         />
       {:else if currentView === 'advanced-model-config'}
@@ -170,62 +164,62 @@
           {settingsConfig}
           modelId={advancedConfigModelId}
           providerId={advancedConfigProviderId}
-          on:back={handleBackFromAdvanced}
-          on:saved={() => {}}
+          onBack={handleBackFromAdvanced}
+          onSaved={() => {}}
           bind:isDirty={hasUnsavedChanges}
         />
       {:else if currentView === 'general'}
         <GeneralSettings
           {settingsConfig}
           {highlightSettingId}
-          on:back={handleBack}
-          on:saved={() => {}}
+          onBack={handleBack}
+          onSaved={() => {}}
           bind:isDirty={hasUnsavedChanges}
         />
       {:else if currentView === 'storage'}
         <StorageSettings
           {settingsConfig}
           {highlightSettingId}
-          on:back={handleBack}
-          on:saved={() => {}}
+          onBack={handleBack}
+          onSaved={() => {}}
           bind:isDirty={hasUnsavedChanges}
         />
       {:else if currentView === 'tools'}
         <ToolsSettings
           {settingsConfig}
           {highlightSettingId}
-          on:back={handleBack}
-          on:saved={() => {}}
+          onBack={handleBack}
+          onSaved={() => {}}
           bind:isDirty={hasUnsavedChanges}
         />
       {:else if currentView === 'mcp-servers'}
         <MCPSettings
           {settingsConfig}
           {highlightSettingId}
-          on:back={handleBack}
-          on:saved={() => {}}
+          onBack={handleBack}
+          onSaved={() => {}}
           bind:isDirty={hasUnsavedChanges}
         />
       {:else if currentView === 'extension'}
         <ExtensionSettings
           {settingsConfig}
           {highlightSettingId}
-          on:back={handleBack}
-          on:saved={() => {}}
+          onBack={handleBack}
+          onSaved={() => {}}
           bind:isDirty={hasUnsavedChanges}
         />
       {:else if currentView === 'approval'}
         <ApprovalSettings
           {settingsConfig}
           {highlightSettingId}
-          on:back={handleBack}
-          on:saved={() => {}}
+          onBack={handleBack}
+          onSaved={() => {}}
           bind:isDirty={hasUnsavedChanges}
         />
       {:else if currentView === 'security'}
         <SecuritySettings
-          on:back={handleBack}
-          on:saved={() => {}}
+          onBack={handleBack}
+          onSaved={() => {}}
           bind:isDirty={hasUnsavedChanges}
         />
       {/if}
@@ -234,8 +228,8 @@
     <!-- Unsaved Changes Dialog -->
     <UnsavedChangesDialog
       isOpen={showUnsavedDialog}
-      on:confirm={handleDialogConfirm}
-      on:cancel={handleDialogCancel}
+      onConfirm={handleDialogConfirm}
+      onCancel={handleDialogCancel}
     />
   </div>
 </div>
@@ -246,6 +240,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    /* Override AppShell's .content-area > * { overflow: hidden } which has equal
+       specificity but appears later in the compiled CSS. The settings page needs
+       visible overflow so the centered modal container isn't clipped. */
+    overflow: visible !important;
     background: rgba(0, 0, 0, 0.5);
     /* Terminal theme (default) */
     --browserx-primary: #00ff00;

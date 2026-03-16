@@ -3,7 +3,7 @@
  *
  * Covers the public API of RepublicAgent with fully mocked dependencies.
  * All external modules (AgentConfig, Session, ModelClientFactory, ToolRegistry,
- * MessageRouter, UserNotifier, ApprovalManager, DiffTracker, TurnContext,
+ * UserNotifier, ApprovalManager, DiffTracker, TurnContext,
  * RegularTask, PromptLoader, registerPlatformTools, TabManager) are mocked
  * so the tests are deterministic and have no external side effects.
  */
@@ -96,7 +96,6 @@ declare const __BUILD_MODE__: string;
 
 import { RepublicAgent } from '../RepublicAgent';
 import { AgentConfig } from '../../config/AgentConfig';
-import { MessageRouter } from '../MessageRouter';
 import type { Op } from '../protocol/types';
 import type { Event } from '../protocol/events';
 
@@ -131,23 +130,11 @@ function createMockConfig(): AgentConfig {
 }
 
 // ---------------------------------------------------------------------------
-// Helper: create mock MessageRouter (plain object, not through vi.mock)
-// ---------------------------------------------------------------------------
-
-function createMockRouter(): MessageRouter {
-  return {
-    updateState: vi.fn().mockResolvedValue(undefined),
-    send: vi.fn().mockResolvedValue(undefined),
-  } as unknown as MessageRouter;
-}
-
-// ---------------------------------------------------------------------------
 // Test Suite
 // ---------------------------------------------------------------------------
 
 describe('RepublicAgent', () => {
   let config: AgentConfig;
-  let router: MessageRouter;
   let agent: RepublicAgent;
 
   beforeEach(() => {
@@ -155,7 +142,7 @@ describe('RepublicAgent', () => {
 
     // Recreate shared mock instances before each test
     mockSessionInstance = {
-      conversationId: 'conv-123',
+      sessionId: 'conv-123',
       setEventEmitter: vi.fn(),
       setTurnContext: vi.fn(),
       getTurnContext: vi.fn().mockReturnValue({
@@ -243,8 +230,7 @@ describe('RepublicAgent', () => {
     };
 
     config = createMockConfig();
-    router = createMockRouter();
-    agent = new RepublicAgent(config, router, undefined, undefined, mockUserNotifierInstance as any);
+    agent = new RepublicAgent(config, undefined, undefined, mockUserNotifierInstance as any);
   });
 
   // =========================================================================
@@ -257,14 +243,14 @@ describe('RepublicAgent', () => {
     });
 
     it('should use the provided agentId when one is supplied', () => {
-      const custom = new RepublicAgent(config, router, undefined, 'my-agent');
+      const custom = new RepublicAgent(config, undefined, 'my-agent');
       expect(custom.agentId).toBe('my-agent');
     });
 
     it('should expose the session via getSession()', () => {
       const session = agent.getSession();
       expect(session).toBeDefined();
-      expect(session.conversationId).toBe('conv-123');
+      expect(session.sessionId).toBe('conv-123');
     });
 
     it('should expose the tool registry via getToolRegistry()', () => {

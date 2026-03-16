@@ -32,6 +32,10 @@ const ALLOWED_COLLECTIONS: &[&str] = &[
     "rollout_cache",
     "scheduler_jobs",
     "agent_sessions",
+    "schedule_events",
+    "schedule_exceptions",
+    "execution_records",
+    "token_usage_records",
 ];
 
 struct DbStorage {

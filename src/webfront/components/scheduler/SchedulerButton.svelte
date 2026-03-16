@@ -1,25 +1,19 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
   import Tooltip from '../common/Tooltip.svelte';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
-  import { sendMessage, MessageType } from '../../lib/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
 
-  const dispatch = createEventDispatcher<{
-    click: void;
-  }>();
+  let { onClick }: {
+    onClick?: () => void;
+  } = $props();
 
-  let currentTheme: UITheme = 'terminal';
-  let jobCount = 0;
-  let hasRunningJob = false;
+  let currentTheme = $derived($uiTheme);
+  let jobCount = $state(0);
+  let hasRunningJob = $state(false);
 
-  // Subscribe to theme store
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
-
-  onMount(async () => {
-    await fetchSchedulerState();
+  $effect(() => {
+    fetchSchedulerState();
 
     // Poll for updates periodically
     const interval = setInterval(fetchSchedulerState, 10000);
@@ -28,8 +22,8 @@
 
   async function fetchSchedulerState() {
     try {
-      const response = await sendMessage<{ data?: { scheduledCount?: number; jobQueueCount?: number; missedCount?: number; currentJobId?: string | null }; scheduledCount?: number; jobQueueCount?: number; missedCount?: number; currentJobId?: string | null }>(
-        MessageType.SCHEDULER_GET_STATE
+      const response = await (await getInitializedUIClient()).serviceRequest<{ data?: { scheduledCount?: number; jobQueueCount?: number; missedCount?: number; currentJobId?: string | null }; scheduledCount?: number; jobQueueCount?: number; missedCount?: number; currentJobId?: string | null }>(
+        'scheduler.getState'
       );
 
       const data = response?.data || response;
@@ -44,7 +38,7 @@
   }
 
   function handleClick() {
-    dispatch('click');
+    onClick?.();
   }
 </script>
 
@@ -58,7 +52,7 @@
         {jobCount > 0 && currentTheme !== 'modern' ? 'border-term-bright-green text-term-bright-green' : ''}
         {jobCount > 0 && currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark' : ''}
         {hasRunningJob ? 'animate-pulse' : ''}"
-      on:click={handleClick}
+      onclick={handleClick}
       aria-label={$_t("Scheduled Jobs")}
     >
       <!-- Calendar/Clock Icon -->

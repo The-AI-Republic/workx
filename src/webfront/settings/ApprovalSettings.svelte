@@ -3,37 +3,46 @@
 -->
 
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { onMount } from 'svelte';
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { IApprovalConfig, ApprovalMode } from '@/core/approval/types';
   import { DEFAULT_APPROVAL_CONFIG } from '@/core/approval/types';
+  import { getConfigStorage } from '@/core/storage/ConfigStorageProvider';
+  import { getInitializedUIClient } from '@/core/messaging';
   import { t, _t } from '../lib/i18n';
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
 
-  export let settingsConfig: AgentConfig;
-  export let isDirty = false;
-  export let highlightSettingId: string | undefined = undefined;
+  let {
+    settingsConfig,
+    isDirty = $bindable(false),
+    highlightSettingId = undefined as string | undefined,
+    onBack,
+    onSaved,
+  }: {
+    settingsConfig: AgentConfig;
+    isDirty?: boolean;
+    highlightSettingId?: string | undefined;
+    onBack?: () => void;
+    onSaved?: (detail: { success: boolean; error?: string }) => void;
+  } = $props();
 
-  const dispatch = createEventDispatcher<{
-    back: void;
-    saved: { success: boolean; error?: string };
-  }>();
-
-  let config: IApprovalConfig = { ...DEFAULT_APPROVAL_CONFIG };
-  let isLoading = true;
-  let isSaving = false;
-  let saveMessage = '';
-  let saveMessageType: 'success' | 'error' | '' = '';
+  let config: IApprovalConfig = $state({ ...DEFAULT_APPROVAL_CONFIG });
+  let isLoading = $state(true);
+  let isSaving = $state(false);
+  let saveMessage = $state('');
+  let saveMessageType: 'success' | 'error' | '' = $state('');
 
   // Domain input state
-  let newTrustedDomain = '';
-  let newBlockedDomain = '';
+  let newTrustedDomain = $state('');
+  let newBlockedDomain = $state('');
 
-  $: if (highlightSettingId) {
-    highlightSetting(highlightSettingId);
-    highlightSettingId = undefined;
-  }
+  $effect(() => {
+    if (highlightSettingId) {
+      highlightSetting(highlightSettingId);
+      highlightSettingId = undefined;
+    }
+  });
 
   const APPROVAL_MODES: ApprovalMode[] = ['balanced', 'high_speed', 'yolo'];
 
@@ -68,8 +77,8 @@
 
   async function loadFromStorage(): Promise<IApprovalConfig | null> {
     try {
-      const result = await chrome.storage.local.get('agent_config');
-      return result['agent_config']?.approval || null;
+      const agentConfig = await getConfigStorage().get<Record<string, any>>('agent_config');
+      return agentConfig?.approval || null;
     } catch {
       return null;
     }
@@ -78,20 +87,14 @@
   async function handleSave() {
     try {
       isSaving = true;
-      // Use UPDATE_APPROVAL_CONFIG message to save to storage AND update ApprovalGate in-memory
-      await new Promise<void>((resolve, reject) => {
-        chrome.runtime.sendMessage(
-          { type: 'UPDATE_APPROVAL_CONFIG', config },
-          (response: any) => {
-            if (response?.success) resolve();
-            else reject(new Error(response?.error || 'Failed to update config'));
-          }
-        );
-      });
+      // Save to storage AND update ApprovalGate in-memory via service request
+      const client = await getInitializedUIClient();
+      const result = await client.serviceRequest<{ success: boolean; error?: string }>('approval.updateConfig', config);
+      if (!result.success) throw new Error(result.error || 'Failed to update config');
       isDirty = false;
       saveMessage = t('Settings saved successfully');
       saveMessageType = 'success';
-      dispatch('saved', { success: true });
+      onSaved?.({ success: true });
     } catch (error) {
       saveMessage = t('Failed to save: $1$', { substitutions: [error instanceof Error ? error.message : 'Unknown error'] });
       saveMessageType = 'error';
@@ -135,7 +138,7 @@
 
 <div class="approval-settings">
   <div class="settings-nav">
-    <button class="back-button" on:click={() => dispatch('back')}>
+    <button class="back-button" onclick={() => onBack?.()}>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M19 12H5M12 19l-7-7 7-7"></path>
       </svg>
@@ -161,7 +164,7 @@
                 name="approval-mode"
                 value={mode}
                 checked={config.mode === mode}
-                on:change={() => handleModeChange(mode)}
+                onchange={() => handleModeChange(mode)}
               />
               <div class="mode-content">
                 <span class="mode-label">{formatModeLabel(mode)}</span>
@@ -183,9 +186,9 @@
             bind:value={newTrustedDomain}
             placeholder="example.com"
             class="domain-input"
-            on:keydown={(e) => e.key === 'Enter' && addTrustedDomain()}
+            onkeydown={(e) => e.key === 'Enter' && addTrustedDomain()}
           />
-          <button class="add-button" on:click={addTrustedDomain}>{$_t("Add")}</button>
+          <button class="add-button" onclick={addTrustedDomain}>{$_t("Add")}</button>
         </div>
 
         {#if config.trustedDomains.length > 0}
@@ -193,7 +196,7 @@
             {#each config.trustedDomains as domain}
               <div class="domain-tag trusted">
                 <span>{domain}</span>
-                <button class="remove-tag" on:click={() => removeTrustedDomain(domain)}>x</button>
+                <button class="remove-tag" onclick={() => removeTrustedDomain(domain)}>x</button>
               </div>
             {/each}
           </div>
@@ -211,9 +214,9 @@
             bind:value={newBlockedDomain}
             placeholder="dangerous-site.com"
             class="domain-input"
-            on:keydown={(e) => e.key === 'Enter' && addBlockedDomain()}
+            onkeydown={(e) => e.key === 'Enter' && addBlockedDomain()}
           />
-          <button class="add-button" on:click={addBlockedDomain}>{$_t("Add")}</button>
+          <button class="add-button" onclick={addBlockedDomain}>{$_t("Add")}</button>
         </div>
 
         {#if config.blockedDomains.length > 0}
@@ -221,7 +224,7 @@
             {#each config.blockedDomains as domain}
               <div class="domain-tag blocked">
                 <span>{domain}</span>
-                <button class="remove-tag" on:click={() => removeBlockedDomain(domain)}>x</button>
+                <button class="remove-tag" onclick={() => removeBlockedDomain(domain)}>x</button>
               </div>
             {/each}
           </div>
@@ -233,7 +236,7 @@
         <button
           class="save-button"
           disabled={!isDirty || isSaving}
-          on:click={handleSave}
+          onclick={handleSave}
         >
           {isSaving ? $_t('Saving...') : $_t('Save Changes')}
         </button>

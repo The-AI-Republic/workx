@@ -1,38 +1,49 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { onMount } from 'svelte';
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { ICacheSettings, IStorageConfig } from '@/config/types';
   import { _t } from '../lib/i18n';
-  import { notifyConfigUpdate } from '../lib/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
 
-  export let settingsConfig: AgentConfig;
-  export let highlightSettingId: string | undefined = undefined;
-
-  const dispatch = createEventDispatcher<{
-    back: void;
-    saved: { success: boolean; error?: string };
-  }>();
+  let {
+    settingsConfig,
+    highlightSettingId = undefined as string | undefined,
+    isDirty = $bindable(false),
+    onBack,
+    onSaved,
+  }: {
+    settingsConfig: AgentConfig;
+    highlightSettingId?: string | undefined;
+    isDirty?: boolean;
+    onBack?: () => void;
+    onSaved?: (detail: { success: boolean; error?: string }) => void;
+  } = $props();
 
   // Form state
-  let originalCache: ICacheSettings = {};
-  let currentCache: ICacheSettings = {};
-  let originalStorage: IStorageConfig = {};
-  let currentStorage: IStorageConfig = {};
-  let isDirty = false;
-  let isSaving = false;
-  let saveMessage = '';
-  let saveMessageType: 'success' | 'error' | '' = '';
+  let originalCache: ICacheSettings = $state({});
+  let currentCache: ICacheSettings = $state({});
+  let originalStorage: IStorageConfig = $state({});
+  let currentStorage: IStorageConfig = $state({});
+  let isSaving = $state(false);
+  let saveMessage = $state('');
+  let saveMessageType: 'success' | 'error' | '' = $state('');
 
   // For rolloutTTL input
-  let rolloutTTLValue = '';
-  let rolloutTTLUnit: 'days' | 'permanent' = 'days';
+  let rolloutTTLValue = $state('');
+  let rolloutTTLUnit: 'days' | 'permanent' = $state('days');
 
-  $: if (highlightSettingId) {
-    highlightSetting(highlightSettingId);
-    highlightSettingId = undefined;
-  }
+  // Reactive statement for disabling dependent fields
+  let cacheFieldsDisabled = $derived(!currentCache.enabled);
+
+  // Highlight setting effect
+  $effect(() => {
+    if (highlightSettingId) {
+      highlightSetting(highlightSettingId);
+      highlightSettingId = undefined;
+    }
+  });
 
   onMount(async () => {
     await loadSettings();
@@ -80,7 +91,7 @@
   }
 
   function handleBack() {
-    dispatch('back');
+    onBack?.();
   }
 
   async function handleSave() {
@@ -103,7 +114,7 @@
       });
 
       // Notify backend of config update
-      notifyConfigUpdate();
+      getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(e => console.warn('[messaging] config update failed:', e));
 
       originalCache = { ...currentCache };
       originalStorage = { ...currentStorage };
@@ -111,7 +122,7 @@
       saveMessage = 'Settings saved successfully';
       saveMessageType = 'success';
 
-      dispatch('saved', { success: true });
+      onSaved?.({ success: true });
 
       // Clear message after 3 seconds
       setTimeout(() => {
@@ -124,18 +135,15 @@
       saveMessage = `Failed to save settings: ${errorMsg}`;
       saveMessageType = 'error';
 
-      dispatch('saved', { success: false, error: errorMsg });
+      onSaved?.({ success: false, error: errorMsg });
     } finally {
       isSaving = false;
     }
   }
-
-  // Reactive statement for disabling dependent fields
-  $: cacheFieldsDisabled = !currentCache.enabled;
 </script>
 
 <div class="storage-settings">
-  <button class="back-button" on:click={handleBack}>← {$_t("Back")}</button>
+  <button class="back-button" onclick={handleBack}>{@html '&#8592;'} {$_t("Back")}</button>
 
   <h2 class="settings-title">{$_t("Storage & Cache Settings")}</h2>
 
@@ -150,7 +158,7 @@
           <input
             type="checkbox"
             bind:checked={currentCache.enabled}
-            on:input={handleInput}
+            oninput={handleInput}
             class="form-checkbox"
           />
           <span>{$_t("Enable Cache")}</span>
@@ -166,7 +174,7 @@
           type="number"
           min="1"
           bind:value={currentCache.ttl}
-          on:input={handleInput}
+          oninput={handleInput}
           disabled={cacheFieldsDisabled}
           class="form-input"
           placeholder="3600"
@@ -182,7 +190,7 @@
           type="number"
           min="1"
           bind:value={currentCache.maxSize}
-          on:input={handleInput}
+          oninput={handleInput}
           disabled={cacheFieldsDisabled}
           class="form-input"
           placeholder="100"
@@ -196,7 +204,7 @@
           <input
             type="checkbox"
             bind:checked={currentCache.compressionEnabled}
-            on:input={handleInput}
+            oninput={handleInput}
             disabled={cacheFieldsDisabled}
             class="form-checkbox"
           />
@@ -211,7 +219,7 @@
           <input
             type="checkbox"
             bind:checked={currentCache.persistToStorage}
-            on:input={handleInput}
+            oninput={handleInput}
             disabled={cacheFieldsDisabled}
             class="form-checkbox"
           />
@@ -231,7 +239,7 @@
         <select
           id="rollout-ttl-unit"
           bind:value={rolloutTTLUnit}
-          on:change={handleRolloutTTLChange}
+          onchange={handleRolloutTTLChange}
           class="form-select"
         >
           <option value="days">{$_t("Expire after days")}</option>
@@ -248,7 +256,7 @@
             type="number"
             min="1"
             bind:value={rolloutTTLValue}
-            on:input={handleRolloutTTLChange}
+            oninput={handleRolloutTTLChange}
             class="form-input"
             placeholder="60"
           />
@@ -261,7 +269,7 @@
     <div class="button-group">
       <button
         class="btn btn-primary"
-        on:click={handleSave}
+        onclick={handleSave}
         disabled={!isDirty || isSaving}
       >
         {isSaving ? $_t('Saving...') : $_t('Save Settings')}

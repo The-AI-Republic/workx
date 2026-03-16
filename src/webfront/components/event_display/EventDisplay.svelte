@@ -8,8 +8,9 @@
 
   import type { ProcessedEvent } from '@/types/ui';
   import { formatTime } from '@/utils/formatters';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
+  import { agentDisplayName } from '../../stores/platformStore';
   import Tooltip from '../common/Tooltip.svelte';
   import MessageEvent from './MessageEvent.svelte';
   import ErrorEvent from './ErrorEvent.svelte';
@@ -22,23 +23,21 @@
   import SystemEvent from './SystemEvent.svelte';
 
   // Props
-  export let event: ProcessedEvent;
-  export let selected: boolean = false;
-  export let onClick: ((event: ProcessedEvent) => void) | undefined = undefined;
-  export let onToggleCollapse:
-    | ((event: ProcessedEvent, collapsed: boolean) => void)
-    | undefined = undefined;
+  let {
+    event,
+    selected = false,
+    onClick,
+    onToggleCollapse,
+  }: {
+    event: ProcessedEvent;
+    selected?: boolean;
+    onClick?: (event: ProcessedEvent) => void;
+    onToggleCollapse?: (event: ProcessedEvent, collapsed: boolean) => void;
+  } = $props();
 
   // Local state
-  let collapsed = event.collapsed ?? false;
-  let currentTheme: UITheme = 'terminal';
-
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
-
-  // Update collapsed state when event changes
-  $: collapsed = event.collapsed ?? false;
+  let collapsed: boolean = $derived(event.collapsed ?? false);
+  let currentTheme = $derived($uiTheme);
 
   function handleClick() {
     if (onClick) {
@@ -164,7 +163,7 @@
           : 'font-medium text-chat-text dark:text-chat-text-dark')
         : (event.title === 'user'
           ? 'font-semibold text-cyan-400'
-          : 'font-semibold text-violet-400')}">{event.title === 'user' ? t('You') : t('BrowserX')}:</span>
+          : 'font-semibold text-violet-400')}">{event.title === 'user' ? t('You') : agentDisplayName}:</span>
       {#if event.title !== 'user' && event.modelKey}
         <span class="text-sm italic
           {currentTheme === 'modern'
@@ -200,8 +199,8 @@
     role="article"
     aria-label={`${event.category} event: ${event.title}`}
     aria-expanded={event.collapsible ? !collapsed : undefined}
-    on:click={handleClick}
-    on:keydown={handleKeyDown}
+    onclick={handleClick}
+    onkeydown={handleKeyDown}
   >
     <!-- Event Header -->
     <div class="flex items-center justify-between mb-1">
@@ -213,7 +212,7 @@
               {currentTheme === 'modern'
                 ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark'
                 : 'text-gray-400 hover:text-gray-200'}"
-            on:click|stopPropagation={handleToggle}
+            onclick={(e) => { e.stopPropagation(); handleToggle(); }}
             aria-label={collapsed ? t('Expand') : t('Collapse')}
           >
             {#if collapsed}

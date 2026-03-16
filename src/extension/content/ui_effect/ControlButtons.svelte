@@ -11,20 +11,19 @@
    * @component
    */
 
-  import { createEventDispatcher } from 'svelte';
   import { _t } from '../../../webfront/lib/i18n';
 
-  const dispatch = createEventDispatcher<{
-    takeover: void;
-    stopagent: void;
-  }>();
+  let { onTakeover, onStopagent }: {
+    onTakeover?: () => void;
+    onStopagent?: () => void;
+  } = $props();
 
   function handleTakeOver() {
-    dispatch('takeover');
+    onTakeover?.();
   }
 
   function handleStopAgent() {
-    dispatch('stopagent');
+    onStopagent?.();
   }
 </script>
 
@@ -32,7 +31,7 @@
   <button
     class="control-button control-button--takeover"
     data-testid="takeover-button"
-    on:click={handleTakeOver}
+    onclick={handleTakeOver}
   >
     <svg
       width="16"
@@ -63,7 +62,7 @@
   <button
     class="control-button control-button--stop"
     data-testid="stop-agent-button"
-    on:click={handleStopAgent}
+    onclick={handleStopAgent}
   >
     <svg
       width="16"

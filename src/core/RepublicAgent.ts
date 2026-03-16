@@ -15,7 +15,6 @@ import { ApprovalManager } from './ApprovalManager';
 import { ToolRegistry } from '../tools/ToolRegistry';
 import { ModelClientFactory } from './models/ModelClientFactory';
 import { type IUserNotifier, NoOpNotifier } from './IUserNotifier';
-import { MessageRouter } from './MessageRouter';
 import { v4 as uuidv4 } from 'uuid';
 import { loadPrompt, loadUserInstructions, configurePromptComposer, isComposerConfigured } from './PromptLoader';
 import { RegularTask } from './tasks/RegularTask';
@@ -45,20 +44,18 @@ export class RepublicAgent {
   private toolRegistry: ToolRegistry;
   private modelClientFactory: ModelClientFactory;
   private userNotifier: IUserNotifier;
-  private messageRouter: MessageRouter;
   private eventDispatcher: EventDispatcher | null = null;
   // Non-null signals a deferred model switch. The actual model is resolved from
   // AgentConfig.selectedModelKey (which is updated before the config-changed event
   // fires), so the stored value is only used as a "switch pending" flag.
   private pendingModelKey: string | null = null;
 
-  constructor(config: AgentConfig, router: MessageRouter, initialHistory?: InitialHistory, agentId?: string, userNotifier?: IUserNotifier) {
+  constructor(config: AgentConfig, initialHistory?: InitialHistory, agentId?: string, userNotifier?: IUserNotifier) {
     // Generate or use provided agentId for multi-instance tracking (Feature 015)
     this._agentId = agentId ?? `agent_${uuidv4()}`;
 
     // Config must be provided (use await AgentConfig.getInstance() if needed)
     this.config = config;
-    this.messageRouter = router;
 
     // Initialize components with config
     this.modelClientFactory = new ModelClientFactory();
@@ -138,7 +135,7 @@ export class RepublicAgent {
 
     // Create initial TurnContext with the model client
     const taskContext = new TurnContext(modelClient, {
-      sessionId: this.session.conversationId
+      sessionId: this.session.sessionId
     });
 
     // Configure PromptComposer for dynamic system prompt composition
@@ -467,9 +464,9 @@ export class RepublicAgent {
         // Server mode: no real tabs — use sentinel tabId
         if (__BUILD_MODE__ === 'server') {
           this.session.setTabId(1);
-          await this.messageRouter.updateState({
-            sessionId: this.session.getId(),
-            tabId: 1,
+          this.emitEvent({
+            type: 'StateUpdate',
+            data: { sessionId: this.session.getId(), tabId: 1 },
           });
         }
         // Desktop mode: ensure chrome-devtools-mcp is connected.
@@ -526,9 +523,9 @@ export class RepublicAgent {
 
           this.session.setTabId(createdTabId);
 
-          await this.messageRouter.updateState({
-            sessionId: this.session.getId(),
-            tabId: createdTabId,
+          this.emitEvent({
+            type: 'StateUpdate',
+            data: { sessionId: this.session.getId(), tabId: createdTabId },
           });
         } else {
           // Extension mode: use Chrome extension TabManager
@@ -549,9 +546,9 @@ export class RepublicAgent {
             await tabManager.addTabToGroup(createdTabId);
 
             // Notify UI of tab binding update
-            await this.messageRouter.updateState({
-              sessionId: this.session.getId(),
-              tabId: createdTabId,
+            this.emitEvent({
+              type: 'StateUpdate',
+              data: { sessionId: this.session.getId(), tabId: createdTabId },
             });
           } else {
             const errorMsg = 'Failed to create tab for session: tab creation returned null';
@@ -961,7 +958,7 @@ export class RepublicAgent {
     this.emitEvent({
       type: 'ConversationPath',
       data: {
-        path: this.session.conversationId,
+        path: this.session.sessionId,
         messages_count: conversationHistory.items.length,
       },
     });

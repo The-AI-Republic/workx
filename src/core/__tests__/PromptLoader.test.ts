@@ -57,8 +57,8 @@ describe('PromptLoader', () => {
 
     const prompt = await loadPrompt();
 
-    // ApplePi-specific content
-    expect(prompt).toContain('ApplePi');
+    // Apple Pi-specific content
+    expect(prompt).toContain('Apple Pi');
     expect(prompt).toContain('desktop automation agent');
     expect(prompt).toContain('TerminalTool');
 

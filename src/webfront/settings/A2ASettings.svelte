@@ -4,7 +4,7 @@
 -->
 
 <script lang="ts">
-  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import type { AgentConfig } from '@/config/AgentConfig';
   import type {
     IA2AAgentConfig,
@@ -13,45 +13,49 @@
     IA2ASkill,
   } from '@/core/a2a/types';
   import { isDebugLoggingEnabled, setDebugLogging } from '@/core/a2a/A2AConfig';
-  import { sendMessage, MessageType } from '../lib/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
   import { t, _t } from '../lib/i18n';
 
-  export let settingsConfig: AgentConfig;
-
-  const dispatch = createEventDispatcher<{
-    back: void;
-    saved: { success: boolean; error?: string };
-  }>();
+  let {
+    settingsConfig,
+    isDirty = $bindable(false),
+    onBack,
+    onSaved,
+  }: {
+    settingsConfig: AgentConfig;
+    isDirty?: boolean;
+    onBack?: () => void;
+    onSaved?: (detail: { success: boolean; error?: string }) => void;
+  } = $props();
 
   // State
-  let agents: IA2AAgentConfig[] = [];
-  let connections: IA2AConnection[] = [];
-  let allSkills: Array<{ agentName: string; skill: IA2ASkill }> = [];
-  let isDirty = false;
-  let isLoading = true;
-  let isSaving = false;
-  let saveMessage = '';
-  let saveMessageType: 'success' | 'error' | '' = '';
+  let agents: IA2AAgentConfig[] = $state([]);
+  let connections: IA2AConnection[] = $state([]);
+  let allSkills: Array<{ agentName: string; skill: IA2ASkill }> = $state([]);
+  let isLoading = $state(true);
+  let isSaving = $state(false);
+  let saveMessage = $state('');
+  let saveMessageType: 'success' | 'error' | '' = $state('');
 
   // Add/Edit agent form state
-  let showAgentForm = false;
-  let editingAgentId: string | null = null;
-  let formName = '';
-  let formUrl = '';
-  let formApiKey = '';
-  let formAuthType: 'none' | 'apiKey' | 'bearer' = 'none';
-  let formTimeout = 30000;
-  let formEnabled = true;
-  let formTrusted = false;
-  let formError = '';
+  let showAgentForm = $state(false);
+  let editingAgentId: string | null = $state(null);
+  let formName = $state('');
+  let formUrl = $state('');
+  let formApiKey = $state('');
+  let formAuthType: 'none' | 'apiKey' | 'bearer' = $state('none');
+  let formTimeout = $state(30000);
+  let formEnabled = $state(true);
+  let formTrusted = $state(false);
+  let formError = $state('');
 
   // Collapsible sections state
-  let agentsExpanded = true;
-  let skillsExpanded = false;
-  let advancedExpanded = false;
+  let agentsExpanded = $state(true);
+  let skillsExpanded = $state(false);
+  let advancedExpanded = $state(false);
 
   // Debug logging state
-  let debugLogging = false;
+  let debugLogging = $state(false);
 
   // Polling interval for connection status
   let statusPollInterval: ReturnType<typeof setInterval> | null = null;
@@ -109,8 +113,8 @@
 
   async function loadAgents() {
     try {
-      const response = await sendMessage<{ success: boolean; data?: IA2AAgentConfig[] }>(
-        MessageType.A2A_GET_AGENTS
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; data?: IA2AAgentConfig[] }>(
+        'a2a.getAgents'
       );
       if (response?.success) {
         agents = response.data || [];
@@ -122,8 +126,8 @@
 
   async function loadConnections() {
     try {
-      const response = await sendMessage<{ success: boolean; data?: IA2AConnection[] }>(
-        MessageType.A2A_GET_CONNECTIONS
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; data?: IA2AConnection[] }>(
+        'a2a.getConnections'
       );
       if (response?.success) {
         connections = response.data || [];
@@ -135,8 +139,8 @@
 
   async function loadSkills() {
     try {
-      const response = await sendMessage<{ success: boolean; data?: Array<{ agentName: string; skill: IA2ASkill }> }>(
-        MessageType.A2A_GET_ALL_SKILLS
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; data?: Array<{ agentName: string; skill: IA2ASkill }> }>(
+        'a2a.getAllSkills'
       );
       if (response?.success) {
         allSkills = response.data || [];
@@ -164,7 +168,7 @@
   }
 
   function handleBack() {
-    dispatch('back');
+    onBack?.();
   }
 
   function openAddAgentForm() {
@@ -247,8 +251,8 @@
           updatePayload.apiKey = formApiKey.trim();
         }
 
-        const response = await sendMessage<{ success: boolean; error?: string }>(
-          MessageType.A2A_UPDATE_AGENT,
+        const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; error?: string }>(
+          'a2a.updateAgent',
           {
             id: editingAgentId,
             update: updatePayload,
@@ -272,8 +276,8 @@
           createPayload.apiKey = formApiKey.trim();
         }
 
-        const response = await sendMessage<{ success: boolean; error?: string }>(
-          MessageType.A2A_ADD_AGENT,
+        const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; error?: string }>(
+          'a2a.addAgent',
           createPayload
         );
 
@@ -305,8 +309,8 @@
     }
 
     try {
-      const response = await sendMessage<{ success: boolean; error?: string }>(
-        MessageType.A2A_REMOVE_AGENT,
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; error?: string }>(
+        'a2a.removeAgent',
         { id: agentId }
       );
 
@@ -333,8 +337,8 @@
 
   async function handleConnect(agentId: string) {
     try {
-      const response = await sendMessage<{ success: boolean; error?: string }>(
-        MessageType.A2A_CONNECT,
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; error?: string }>(
+        'a2a.connect',
         { id: agentId }
       );
 
@@ -360,8 +364,8 @@
 
   async function handleDisconnect(agentId: string) {
     try {
-      const response = await sendMessage<{ success: boolean; error?: string }>(
-        MessageType.A2A_DISCONNECT,
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; error?: string }>(
+        'a2a.disconnect',
         { id: agentId }
       );
 
@@ -393,7 +397,7 @@
 </script>
 
 <div class="a2a-settings">
-  <button class="back-button" on:click={handleBack}>← {$_t("Back")}</button>
+  <button class="back-button" onclick={handleBack}>← {$_t("Back")}</button>
 
   <h2 class="settings-title">{$_t("A2A Agents")}</h2>
   <p class="settings-description">
@@ -411,7 +415,7 @@
       <div class="collapsible-section settings-card">
         <button
           class="section-header"
-          on:click={() => toggleSection('agents')}
+          onclick={() => toggleSection('agents')}
           aria-expanded={agentsExpanded}
         >
           <svg
@@ -477,7 +481,7 @@
                       {#if connection?.status === 'connected'}
                         <button
                           class="btn btn-small btn-secondary"
-                          on:click={() => handleDisconnect(agent.id)}
+                          onclick={() => handleDisconnect(agent.id)}
                         >
                           {$_t("Disconnect")}
                         </button>
@@ -488,14 +492,14 @@
                       {:else}
                         <button
                           class="btn btn-small btn-primary"
-                          on:click={() => handleConnect(agent.id)}
+                          onclick={() => handleConnect(agent.id)}
                         >
                           {$_t("Connect")}
                         </button>
                       {/if}
                       <button
                         class="btn btn-small btn-icon"
-                        on:click={() => openEditAgentForm(agent)}
+                        onclick={() => openEditAgentForm(agent)}
                         title={$_t("Edit")}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -505,7 +509,7 @@
                       </button>
                       <button
                         class="btn btn-small btn-icon btn-danger"
-                        on:click={() => handleRemoveAgent(agent.id)}
+                        onclick={() => handleRemoveAgent(agent.id)}
                         title={$_t("Remove")}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -520,7 +524,7 @@
             {/if}
 
             {#if agents.length < 5}
-              <button class="btn btn-secondary add-agent-btn" on:click={openAddAgentForm}>
+              <button class="btn btn-secondary add-agent-btn" onclick={openAddAgentForm}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <line x1="12" y1="5" x2="12" y2="19"></line>
                   <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -538,7 +542,7 @@
       <div class="collapsible-section settings-card">
         <button
           class="section-header"
-          on:click={() => toggleSection('skills')}
+          onclick={() => toggleSection('skills')}
           aria-expanded={skillsExpanded}
         >
           <svg
@@ -594,7 +598,7 @@
       <div class="collapsible-section settings-card">
         <button
           class="section-header"
-          on:click={() => toggleSection('advanced')}
+          onclick={() => toggleSection('advanced')}
           aria-expanded={advancedExpanded}
         >
           <svg
@@ -618,7 +622,7 @@
                 <input
                   type="checkbox"
                   checked={debugLogging}
-                  on:change={handleDebugLoggingChange}
+                  onchange={handleDebugLoggingChange}
                   class="form-checkbox"
                 />
                 <span>{$_t("Enable debug logging")}</span>
@@ -652,12 +656,12 @@
   <!-- Add/Edit Agent Modal -->
   {#if showAgentForm}
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->
-    <div class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title" on:click={closeAgentForm} on:keydown={(e) => e.key === 'Escape' && closeAgentForm()}>
-      <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-      <div class="modal-content" on:click|stopPropagation on:keydown|stopPropagation>
+    <div class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title" onclick={closeAgentForm} onkeydown={(e) => e.key === 'Escape' && closeAgentForm()}>
+      <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+      <div class="modal-content" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
         <div class="modal-header">
           <h3 id="modal-title">{editingAgentId ? $_t("Edit Agent") : $_t("Add Agent")}</h3>
-          <button class="close-btn" on:click={closeAgentForm}>
+          <button class="close-btn" onclick={closeAgentForm}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -771,12 +775,12 @@
         </div>
 
         <div class="modal-footer">
-          <button class="btn btn-secondary" on:click={closeAgentForm}>
+          <button class="btn btn-secondary" onclick={closeAgentForm}>
             {$_t("Cancel")}
           </button>
           <button
             class="btn btn-primary"
-            on:click={handleSaveAgent}
+            onclick={handleSaveAgent}
             disabled={isSaving}
           >
             {isSaving ? $_t("Saving...") : editingAgentId ? $_t("Update") : $_t("Add")}

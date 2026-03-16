@@ -1,13 +1,13 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { push } from 'svelte-spa-router';
-  import { MessageType } from '@/core/MessageRouter';
-  import { messageService, connectionState, getMessageService, type IMessageService } from '@/core/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
+  import type { UIChannelClient } from '@/core/messaging';
   import type { JobStatusChangedEvent } from '@/core/models/types/SchedulerContracts';
   import type { Event } from '@/core/protocol/types';
   import type { ProcessedEvent } from '@/types/ui';
   import { STYLE_PRESETS } from '@/types/ui';
-  import TerminalContainer from '../../components/TerminalContainer.svelte';
+
   import TerminalMessage from '../../components/TerminalMessage.svelte';
   import MessageInput from '../../components/MessageInput.svelte';
   import EventDisplay from '../../components/event_display/EventDisplay.svelte';
@@ -22,28 +22,32 @@
   import { AgentConfig } from '@/config/AgentConfig';
   // User components and store
   import { getLoginPageUrl, userStore } from '../../stores/userStore';
-  import FooterBar from '../../components/layout/FooterBar.svelte';
   // Agent store for auth mode tracking
   import { agentStore } from '../../stores/agentStore';
   // Scheduler store (for scheduling result feedback)
   import { schedulerStore } from '../../stores/schedulerStore';
   // i18n
   import { t, _t } from '../../lib/i18n';
-  // Message service (platform-agnostic)
-  let service: IMessageService | null = null;
-  let unsubscribers: Array<() => void> = [];
+  // Multi-thread support
+  import { get } from 'svelte/store';
+  import ThreadBar from '../../components/threads/ThreadBar.svelte';
+  import { threadStore } from '../../stores/threadStore';
+  import { ThreadEventRouter } from '../../routing/ThreadEventRouter';
+  // UI channel client (platform-agnostic)
+  let client: UIChannelClient | null = $state(null);
+  let unsubscribers: Array<() => void> = $state([]);
   let eventProcessor: EventProcessor;
-  let messages: Array<{ type: 'user' | 'agent'; content: string; timestamp: number }> = [];
-  let processedEvents: ProcessedEvent[] = [];
-  let inputText = '';
-  let isConnected = false;
-  let isProcessing = false;
-  let showWelcome = false;
+  let messages: Array<{ type: 'user' | 'agent'; content: string; timestamp: number }> = $state([]);
+  let processedEvents: ProcessedEvent[] = $state([]);
+  let inputText: string = $state('');
+  let isConnected: boolean = $state(false);
+  let isProcessing: boolean = $state(false);
+  let showWelcome = $derived(!isProcessing && processedEvents.length === 0 && messages.length === 0);
   let scrollContainer: HTMLDivElement;
-  let currentTabId: number = -1; // Track current session's bound tab
-  let agentReady = false;
-  let healthStatus: { ready: boolean; message?: string; provider?: string; model?: string; authMode?: 'login' | 'api_key' | 'none' } = { ready: false, authMode: 'none' };
-  let zoomLevel = parseInt(document.documentElement.style.fontSize) || 100;
+  let currentTabId: number = $state(-1); // Track current session's bound tab
+  let agentReady: boolean = $state(false);
+  let healthStatus: { ready: boolean; message?: string; provider?: string; model?: string; authMode?: 'login' | 'api_key' | 'none' } = $state({ ready: false, authMode: 'none' });
+  let zoomLevel: number = $state(parseInt(document.documentElement.style.fontSize) || 100);
 
   function onZoomChanged(e: Event) {
     zoomLevel = (e as CustomEvent<number>).detail;
@@ -58,25 +62,34 @@
       config.updateConfig({ preferences: { ...agentConfig.preferences, zoomLevel: 100 } });
     }).catch(() => {});
   }
-  let compactionNotification: { show: boolean; tokensSaved: number; compactionCount: number; isWarning: boolean } = {
+  let compactionNotification: { show: boolean; tokensSaved: number; compactionCount: number; isWarning: boolean } = $state({
     show: false,
     tokensSaved: 0,
     compactionCount: 0,
     isWarning: false,
-  };
-  // Current UI theme (reactive from store)
-  let currentTheme: UITheme = 'terminal';
-  // Scheduled job execution state (US3)
-  let scheduledJobId: string | null = null;
-  let scheduledSessionId: string | null = null;
-  let isScheduledJobMode = false;
-  $: showWelcome =
-    !isProcessing && processedEvents.length === 0 && messages.length === 0;
-
-  // Subscribe to theme store
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
   });
+  // Current UI theme (reactive from store)
+  let currentTheme = $derived($uiTheme);
+  // Scheduled job execution state (US3)
+  let scheduledJobId: string | null = $state(null);
+  let scheduledSessionId: string | null = $state(null);
+  let isScheduledJobMode: boolean = $state(false);
+
+  // Multi-thread state
+  interface ThreadConversationState {
+    messages: Array<{ type: 'user' | 'agent'; content: string; timestamp: number }>;
+    processedEvents: ProcessedEvent[];
+    inputText: string;
+    isProcessing: boolean;
+    currentTabId: number;
+    eventProcessor: EventProcessor;
+  }
+  let threadStates: Map<string, ThreadConversationState> = new Map();
+  let activeSessionId: string | null = null;
+  const threadRouter = new ThreadEventRouter();
+  let canCreateThread: boolean = true;
+  let maxSessionsReached: boolean = false;
+
 
   onMount(async () => {
     // Listen for zoom level changes
@@ -126,59 +139,48 @@
       console.warn('[App] Failed to load UI preferences:', error);
     }
 
-    // Get the message service (initialized by entry point)
+    // Initialize UIChannelClient for event listening
     try {
-      service = getMessageService();
-      console.log('[App] Using message service');
-    } catch (error) {
-      console.error('[App] Message service not initialized:', error);
-      // Service not available - UI will show disconnected state
-    }
+      client = await getInitializedUIClient();
+      console.log('[App] UIChannelClient initialized');
 
-    // Setup event handlers if service is available
-    if (service) {
-      // Listen for events from backend
-      unsubscribers.push(
-        service.on(MessageType.EVENT, (payload) => {
-          const event = payload as Event;
-          handleEvent(event);
-        })
-      );
+      // Configure thread event router
+      threadRouter.setActiveSession(activeSessionId);
 
-      // Listen for state updates
-      unsubscribers.push(
-        service.on(MessageType.STATE_UPDATE, (payload) => {
-          const state = payload as { tabId?: number };
-          if (state && 'tabId' in state) {
-            currentTabId = state.tabId!;
+      threadRouter.onActiveThread((channelEvent) => {
+        const event: Event = { id: `evt_${Date.now()}`, msg: channelEvent.msg };
+        handleEvent(event);
+      });
+
+      threadRouter.onBackgroundThread((channelEvent) => {
+        const event: Event = { id: `evt_${Date.now()}`, msg: channelEvent.msg };
+        handleEventForSession(event, channelEvent.sessionId!);
+      });
+
+      threadRouter.onChannel((channelEvent) => {
+        const { msg } = channelEvent;
+        if (msg.type === 'StateUpdate' && 'data' in msg) {
+          const data = (msg as any).data;
+          if (data && 'tabId' in data) {
+            currentTabId = data.tabId!;
           }
-        })
-      );
+        } else if (msg.type === 'BackgroundEvent' && 'data' in msg) {
+          const data = (msg as any).data;
+          if (data?.message?.startsWith('Agent reinitialized') && activeSessionId) {
+            checkConnection();
+          } else if (data?.message === 'scheduler_job_status' && data?.schedulerEvent) {
+            handleSchedulerEvent(data.schedulerEvent as JobStatusChangedEvent);
+          }
+        }
+      });
 
-      // Handle agent re-initialization (e.g., when model is changed)
+      // Single wildcard handler feeds the router
       unsubscribers.push(
-        service.on(MessageType.AGENT_REINITIALIZED, () => {
-          // Clear all messages and events for fresh start with new agent
-          messages = [];
-          processedEvents = [];
-          isProcessing = false;
-          eventProcessor.reset();
-
-          // Re-check connection/auth status since agent was reinitialized
-          checkConnection();
-        })
+        client.onEvent('*', (channelEvent) => threadRouter.route(channelEvent))
       );
-
-      // Listen for scheduler events (for job cancellation)
-      unsubscribers.push(
-        service.on(MessageType.SCHEDULER_EVENT, (payload) => {
-          handleSchedulerEvent(payload as JobStatusChangedEvent);
-        })
-      );
+    } catch (error) {
+      console.error('[App] UIChannelClient initialization failed:', error);
     }
-
-    // Check connection
-    checkConnection();
 
     // Check if this is a scheduled job execution (US3: T022)
     // Extension: detected via URL params from chrome.tabs.create
@@ -198,7 +200,13 @@
       return; // Skip normal initialization for scheduled job mode
     }
 
-    // Fetch current session's tabId from storage
+    // Sync thread store with backend sessions (also restores history per thread)
+    await syncThreadsWithSessions();
+
+    // Check connection (after sync so activeSessionId is set)
+    checkConnection();
+
+    // Fetch current session's tabId (after sync so activeSessionId is set)
     await fetchCurrentTabId();
 
     // ========================================================================
@@ -207,10 +215,10 @@
     // Keep-alive ping for Chrome extension (service worker stays awake)
     // Only needed for extension mode - Tauri doesn't have this limitation
     let keepAliveInterval: ReturnType<typeof setInterval> | null = null;
-    if (platform.platformName === 'extension' && service) {
+    if (platform.platformName === 'extension' && client) {
       keepAliveInterval = setInterval(async () => {
         try {
-          await service!.send(MessageType.PING);
+          await (await getInitializedUIClient()).serviceRequest('agent.ping');
           console.log('[App] Keep-alive ping sent');
         } catch (error) {
           console.warn('[App] Keep-alive ping failed:', error);
@@ -259,8 +267,8 @@
       processedEvents = [...processedEvents, cancelNotice];
 
       // Request agent to abort via message service
-      if (service) {
-        service.send(MessageType.INTERRUPT).catch((err) => {
+      if (client && activeSessionId) {
+        getInitializedUIClient().then(c => c.serviceRequest('agent.interrupt', { sessionId: activeSessionId })).catch((err) => {
           console.warn('[App] Failed to send interrupt on cancel:', err);
         });
       }
@@ -268,26 +276,34 @@
   }
 
   onDestroy(() => {
+    // Save active thread state so it can be restored if component remounts
+    // (Note: threadStates is in-memory and won't survive remount, but the backend
+    // is the source of truth — restoreAllThreadHistories() handles remount recovery)
+    if (activeSessionId) {
+      saveThreadState(activeSessionId);
+    }
     window.removeEventListener('zoom-changed', onZoomChanged);
   });
 
   /**
-   * Fetch the current session's tabId and conversation history from BrowserAgent session
+   * Fetch the current session's tabId from BrowserAgent session
    * US3: Get tabId from session on mount
    * If tabId is -1, automatically bind to the current active tab (extension only)
-   * Also restores conversation history to sync UI with backend state
+   * Note: Conversation history restoration is handled by restoreAllThreadHistories()
    */
   async function fetchCurrentTabId() {
-    if (!service) {
+    if (!client) {
       console.warn('[App] Service not available for fetchCurrentTabId');
       currentTabId = -1;
       return;
     }
 
     try {
-      // Request current session state from backend
-      const response = await service.send<{ tabId?: number; history?: unknown[] }>(MessageType.GET_STATE);
-      console.log('[App] Fetched session state:', response);
+      // Request current session state from backend (uses active session if available)
+      const response = await (await getInitializedUIClient()).serviceRequest<{ tabId?: number }>(
+        'session.getState',
+        activeSessionId ? { sessionId: activeSessionId } : undefined
+      );
 
       const stateData = response || {};
 
@@ -316,13 +332,6 @@
           currentTabId = fetchedTabId;
         }
       }
-
-      // Restore conversation history from backend to sync UI state
-      const historyItems = stateData?.history;
-      if (historyItems && Array.isArray(historyItems) && historyItems.length > 0) {
-        console.log('[App] Restoring conversation history:', historyItems.length, 'items');
-        restoreConversationHistory(historyItems);
-      }
     } catch (error) {
       console.error('[App] Failed to fetch current tabId from session:', error);
 
@@ -348,69 +357,114 @@
   }
 
   /**
-   * Restore conversation history from backend to UI
-   * Converts history items to ProcessedEvent objects for display
+   * Parse history items into processedEvents and messages for display.
+   * Shared by restoreConversationHistory (single-thread) and
+   * restoreAllThreadHistories (multi-thread).
    */
-  function restoreConversationHistory(historyItems: any[]) {
-    const restoredEvents: ProcessedEvent[] = [];
+  function parseHistoryItems(historyItems: any[], idPrefix: string = 'restored'): {
+    events: ProcessedEvent[];
+    firstUserMessage: string | null;
+  } {
+    const events: ProcessedEvent[] = [];
+    let firstUserMessage: string | null = null;
 
     for (let i = 0; i < historyItems.length; i++) {
       const item = historyItems[i];
-      if (item.type === 'message') {
-        const isUser = item.role === 'user';
-        let text = '';
+      if (item.type !== 'message') continue;
 
-        // Extract text from content
-        if (Array.isArray(item.content)) {
-          for (const content of item.content) {
-            if (content.type === 'input_text' || content.type === 'output_text' || content.type === 'text') {
-              let contentText = content.text || '';
+      const isUser = item.role === 'user';
+      let text = '';
 
-              // Handle JSON-stringified input items (e.g., '{"type":"text","text":"actual message"}')
-              if (contentText.startsWith('{') && contentText.includes('"text"')) {
-                try {
-                  const parsed = JSON.parse(contentText);
-                  if (parsed.text) {
-                    contentText = parsed.text;
-                  }
-                } catch {
-                  // Not valid JSON, use as-is
+      // Extract text from content items
+      if (Array.isArray(item.content)) {
+        for (const content of item.content) {
+          if (content.type === 'input_text' || content.type === 'output_text' || content.type === 'text') {
+            let contentText = content.text || '';
+
+            // Handle JSON-stringified input items (e.g., '{"type":"text","text":"actual message"}')
+            if (contentText.startsWith('{') && contentText.includes('"text"')) {
+              try {
+                const parsed = JSON.parse(contentText);
+                if (parsed.text) {
+                  contentText = parsed.text;
                 }
+              } catch {
+                // Not valid JSON, use as-is
               }
-
-              text += contentText;
             }
+
+            text += contentText;
           }
-        } else if (typeof item.content === 'string') {
-          text = item.content;
         }
+      } else if (typeof item.content === 'string') {
+        text = item.content;
+      }
 
-        if (text.trim()) {
-          // Create ProcessedEvent with proper styling
-          const processedEvent: ProcessedEvent = {
-            id: `restored_${i}_${Date.now()}`,
-            category: 'message',
-            timestamp: new Date(),
-            title: isUser ? 'user' : 'browserx',
-            content: text,
-            style: isUser ? { textColor: 'text-cyan-400' } : STYLE_PRESETS.agent_message,
-            streaming: false,
-            collapsible: false,
-          };
+      if (!text.trim()) continue;
 
-          // Carry modelKey from assistant messages for model indicator display
-          if (!isUser && item.modelKey) {
-            processedEvent.modelKey = item.modelKey;
-          }
+      const event: ProcessedEvent = {
+        id: `${idPrefix}_${i}_${Date.now()}`,
+        category: 'message',
+        timestamp: new Date(),
+        title: isUser ? 'user' : 'browserx',
+        content: text,
+        style: isUser ? { textColor: 'text-cyan-400' } : STYLE_PRESETS.agent_message,
+        streaming: false,
+        collapsible: false,
+      };
 
-          restoredEvents.push(processedEvent);
-        }
+      // Carry modelKey from assistant messages for model indicator display
+      if (!isUser && item.modelKey) {
+        event.modelKey = item.modelKey;
+      }
+
+      events.push(event);
+
+      if (isUser && firstUserMessage === null) {
+        firstUserMessage = text;
       }
     }
 
-    if (restoredEvents.length > 0) {
-      processedEvents = restoredEvents;
-      console.log('[App] Restored', processedEvents.length, 'events to UI');
+    return { events, firstUserMessage };
+  }
+
+  /**
+   * Fetch and restore conversation history for a single session.
+   * Stores the result in threadStates and optionally loads it into the active UI.
+   */
+  async function restoreConversationHistory(sessionId: string): Promise<void> {
+    const c = await getInitializedUIClient();
+    const response = await c.serviceRequest<{
+      sessionId?: string;
+      tabId?: number;
+      history?: unknown[];
+    }>('session.getState', { sessionId });
+    const historyItems = response?.history as any[] | undefined;
+    const tabId = response?.tabId ?? -1;
+
+    const { events, firstUserMessage } = historyItems && Array.isArray(historyItems)
+      ? parseHistoryItems(historyItems, `restored_${sessionId}`)
+      : { events: [], firstUserMessage: null };
+
+    // Update thread title from first user message if still default
+    const thread = get(threadStore).threads.find(t => t.sessionId === sessionId);
+    if (thread?.title === 'New Thread' && firstUserMessage) {
+      const title = firstUserMessage.length > 30 ? firstUserMessage.substring(0, 30) + '...' : firstUserMessage;
+      threadStore.updateThreadTitle(sessionId, title);
+    }
+
+    threadStates.set(sessionId, {
+      messages: [],
+      processedEvents: events,
+      inputText: '',
+      isProcessing: false,
+      currentTabId: tabId,
+      eventProcessor: new EventProcessor(),
+    });
+
+    // If this is the active thread, load into the UI
+    if (sessionId === activeSessionId) {
+      loadThreadState(sessionId);
     }
   }
 
@@ -446,24 +500,28 @@
   }
 
   async function checkConnection() {
+    console.log('[App] checkConnection called, client:', !!client);
     try {
-      if (!service) {
+      if (!client) {
+        console.warn('[App] checkConnection: no client available');
         isConnected = false;
         agentReady = false;
         healthStatus = { ready: false, message: t('Message service not available'), authMode: 'none' };
         return;
       }
 
-      const response = await service.send<{
+      console.log('[App] Sending agent.healthCheck serviceRequest...');
+      const response = await (await getInitializedUIClient()).serviceRequest<{
         type?: string;
         ready?: boolean;
         message?: string;
         provider?: string;
         model?: string;
         authMode?: 'login' | 'api_key' | 'none';
-      }>(MessageType.HEALTH_CHECK);
+      }>('agent.healthCheck', activeSessionId ? { sessionId: activeSessionId } : undefined);
 
-      isConnected = response?.type === MessageType.HEALTH_STATUS || response?.ready !== undefined;
+      console.log('[App] healthCheck response:', JSON.stringify(response));
+      isConnected = response?.ready !== undefined;
 
       if (response?.ready !== undefined) {
         agentReady = response.ready === true;
@@ -502,8 +560,8 @@
    * Handle manual tab selection from TabContext dropdown
    * Updates local state only - actual binding happens when user sends a message
    */
-  async function handleTabSelected(event: CustomEvent<{ tabId: number }>) {
-    const newTabId = event.detail.tabId;
+  async function handleTabSelected(value: { tabId: number }) {
+    const newTabId = value.tabId;
     console.log(`[App] Tab selected: ${newTabId} (will bind on next message)`);
 
     // Update local state immediately for responsiveness
@@ -643,17 +701,17 @@
 
     // Send to agent with tab context
     try {
-      if (!service) throw new Error('Message service not available');
-      await service.send(MessageType.SUBMISSION, {
-        id: `user_${Date.now()}`,
-        op: {
+      if (!client) throw new Error('Message service not available');
+      await client.submitOp(
+        {
           type: 'UserInput',
           items: [{ type: 'text', text }],
         },
-        context: {
+        {
           tabId: currentTabId, // Include current tab selection in context
+          sessionId: activeSessionId, // Route to correct agent session
         },
-      });
+      );
 
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -697,8 +755,8 @@
    * Handle command output from slash commands (e.g., /help)
    * Creates a system ProcessedEvent and appends it to the chat
    */
-  function handleCommandOutput(event: CustomEvent<{ title: string; content: string }>) {
-    const { title, content } = event.detail;
+  function handleCommandOutput(value: { title: string; content: string }) {
+    const { title, content } = value;
     const cmdEvent: ProcessedEvent = {
       id: `cmd_${Date.now()}`,
       category: 'system',
@@ -727,8 +785,8 @@
 
     // Request session reset from backend
     try {
-      if (!service) throw new Error('Message service not available');
-      await service.send(MessageType.SESSION_RESET);
+      if (!client) throw new Error('Message service not available');
+      await (await getInitializedUIClient()).serviceRequest('session.reset', { sessionId: activeSessionId });
 
       // After session reset, auto-bind to the active tab
       // This ensures the new conversation starts with the current tab
@@ -754,9 +812,9 @@
     if (!isProcessing) return;
 
     try {
-      if (!service) throw new Error('Message service not available');
+      if (!client) throw new Error('Message service not available');
       // Send stop message to backend
-      await service.send(MessageType.INTERRUPT);
+      await (await getInitializedUIClient()).serviceRequest('agent.interrupt', { sessionId: activeSessionId });
       isProcessing = false;
       console.log('[App] Agent session stopped');
     } catch (error) {
@@ -774,8 +832,8 @@
    * Resume a conversation from chat history
    * Loads the selected conversation and restores its state
    */
-  async function resumeConversation(conversationId: string) {
-    console.log('[App] Resuming conversation:', conversationId);
+  async function resumeConversation(sessionId: string) {
+    console.log('[App] Resuming conversation:', sessionId);
 
     // Clear current UI state
     messages = [];
@@ -787,17 +845,14 @@
     eventProcessor.reset();
 
     try {
-      if (!service) throw new Error('Message service not available');
+      if (!client) throw new Error('Message service not available');
       // Request session resume from backend
-      const response = await service.send<{ history?: unknown[] }>(MessageType.RESUME_SESSION, { conversationId });
+      const response = await (await getInitializedUIClient()).serviceRequest<{ history?: unknown[] }>('session.resume', { sessionId });
 
-      const historyItems = response?.history;
-      console.log('[App] Conversation resumed:', conversationId, 'with', historyItems?.length || 0, 'items');
+      console.log('[App] Conversation resumed:', sessionId);
 
-      // Restore history to UI using shared helper
-      if (historyItems && Array.isArray(historyItems)) {
-        restoreConversationHistory(historyItems);
-      }
+      // Restore history to UI
+      await restoreConversationHistory(sessionId);
     } catch (error) {
       console.error('[App] Failed to resume conversation:', error);
 
@@ -814,7 +869,7 @@
    * Called when a scheduled job finishes executing
    */
   async function notifySchedulerJobCompletion(success: boolean, msg: any) {
-    if (!scheduledJobId || !service) return;
+    if (!scheduledJobId || !client) return;
 
     try {
       if (success) {
@@ -822,7 +877,7 @@
         const lastAgentEvent = processedEvents.filter(e => e.title === 'browserx').pop();
         const resultSummary = lastAgentEvent?.content?.slice(0, 500) || 'Job completed';
 
-        await service.send(MessageType.SCHEDULER_COMPLETE_JOB, {
+        await (await getInitializedUIClient()).serviceRequest('scheduler.complete', {
           jobId: scheduledJobId,
           result: {
             summary: resultSummary,
@@ -832,7 +887,7 @@
         console.log('[App] Notified scheduler of job completion:', scheduledJobId);
       } else {
         const errorMessage = msg?.data?.message || 'Job failed';
-        await service.send(MessageType.SCHEDULER_FAIL_JOB, {
+        await (await getInitializedUIClient()).serviceRequest('scheduler.fail', {
           jobId: scheduledJobId,
           error: errorMessage,
         });
@@ -851,10 +906,10 @@
     console.log('[App] Loading scheduled job:', jobId, 'with session:', sessionId);
 
     try {
-      if (!service) throw new Error('Message service not available');
+      if (!client) throw new Error('Message service not available');
       // Fetch job details from scheduler
-      const response = await service.send<{ job?: { input: string; scheduledTime?: number } }>(
-        MessageType.SCHEDULER_GET_JOB_DETAILS,
+      const response = await (await getInitializedUIClient()).serviceRequest<{ job?: { input: string; scheduledTime?: number } }>(
+        'scheduler.getJobDetails',
         { jobId }
       );
 
@@ -901,25 +956,24 @@
       // Execute the job via the agent
       // Feature 015: Include sessionId in context for multi-agent routing
       isProcessing = true;
-      await service.send(MessageType.SUBMISSION, {
-        id: `scheduled_${jobId}_${Date.now()}`,
-        op: {
+      await client!.submitOp(
+        {
           type: 'UserInput',
           items: [{ type: 'text', text: job.input }],
         },
-        context: {
+        {
           tabId: currentTabId,
           sessionId: sessionId, // Feature 015: Route to correct agent session
         },
-      });
+      );
 
     } catch (error) {
       console.error('[App] Failed to execute scheduled job:', error);
 
       // Notify scheduler of failure
       try {
-        if (service) {
-          await service.send(MessageType.SCHEDULER_FAIL_JOB, {
+        if (client) {
+          await (await getInitializedUIClient()).serviceRequest('scheduler.fail', {
             jobId,
             error: error instanceof Error ? error.message : 'Unknown error',
           });
@@ -943,18 +997,399 @@
       isProcessing = false;
     }
   }
+
+  // =========================================================================
+  // Multi-thread functions
+  // =========================================================================
+
+  /**
+   * Sync thread store with backend sessions on startup.
+   * Ensures every backend session has a corresponding thread,
+   * and the primary session always has a thread entry.
+   */
+  async function syncThreadsWithSessions() {
+    try {
+      const c = await getInitializedUIClient();
+
+      // Try to get session list from registry
+      const listResponse = await c.serviceRequest<{
+        sessions: Array<{ sessionId: string; type: string; state: string }>;
+        maxConcurrent: number;
+        activeCount: number;
+      }>('session.list');
+
+      const backendSessions = listResponse?.sessions?.filter(s => s.state !== 'terminated' && s.type !== 'scheduled') ?? [];
+
+      if (backendSessions.length > 0) {
+        // Create threads for backend sessions that don't have one
+        const currentState = get(threadStore);
+        const existingSessionIds = new Set(currentState.threads.map(t => t.sessionId));
+
+        // Also remove threads whose sessions no longer exist in the backend
+        const backendSessionIds = new Set(backendSessions.map(s => s.sessionId));
+        for (const thread of currentState.threads) {
+          if (!backendSessionIds.has(thread.sessionId)) {
+            threadStore.closeThread(thread.sessionId);
+          }
+        }
+
+        for (const session of backendSessions) {
+          if (!existingSessionIds.has(session.sessionId)) {
+            threadStore.createThread(session.sessionId, 'New Thread');
+          }
+        }
+      } else {
+        // No active sessions — create one
+        console.log('[App] No active sessions found, creating initial session');
+        await createNewThread();
+      }
+
+      // Ensure we have an active thread
+      const finalState = get(threadStore);
+      if (finalState.threads.length > 0 && !finalState.activeSessionId) {
+        threadStore.setActiveThread(finalState.threads[0].sessionId);
+      }
+
+      // Set active session ID for event routing
+      const activeThread = threadStore.getActiveThread();
+      if (activeThread) {
+        activeSessionId = activeThread.sessionId;
+        threadRouter.setActiveSession(activeSessionId);
+      }
+
+      // Restore conversation history for each thread from backend
+      await restoreAllThreadHistories();
+
+      // Update session limits
+      await updateSessionLimits();
+
+      console.log(`[App] Thread sync complete: ${get(threadStore).threads.length} thread(s)`);
+    } catch (error) {
+      console.error('[App] Failed to sync threads with sessions:', error);
+    }
+  }
+
+  /**
+   * Fetch and restore conversation history for all threads from the backend.
+   */
+  async function restoreAllThreadHistories() {
+    const allThreads = get(threadStore).threads;
+
+    await Promise.all(
+      allThreads.map(async (thread) => {
+        try {
+          await restoreConversationHistory(thread.sessionId);
+        } catch (error) {
+          console.warn(`[App] Failed to restore history for thread ${thread.sessionId}:`, error);
+        }
+      })
+    );
+  }
+
+  /**
+   * Create a new thread with a new session
+   */
+  async function createNewThread() {
+    try {
+      const c = await getInitializedUIClient();
+      const response = await c.serviceRequest<{ success: boolean; sessionId?: string; error?: string }>('session.create');
+
+      if (!response?.success) {
+        console.error('[App] Failed to create session:', response?.error);
+        maxSessionsReached = response?.error?.includes('Maximum') ?? false;
+        return;
+      }
+
+      const { sessionId } = response;
+      if (!sessionId) return;
+
+      // Create thread in store
+      const newThread = threadStore.createThread(sessionId, 'New Thread');
+
+      // Initialize state for new thread
+      const newState: ThreadConversationState = {
+        messages: [],
+        processedEvents: [],
+        inputText: '',
+        isProcessing: false,
+        currentTabId: -1,
+        eventProcessor: new EventProcessor(),
+      };
+      threadStates.set(sessionId, newState);
+
+      // Switch to the new thread
+      activeSessionId = sessionId;
+      threadRouter.setActiveSession(sessionId);
+      loadThreadState(sessionId);
+
+      // Update session limits
+      await updateSessionLimits();
+
+      // Auto-bind to active browser tab
+      await bindToActiveTab();
+
+      console.log(`[App] Created new thread with session: ${sessionId}`);
+    } catch (error) {
+      console.error('[App] Failed to create new thread:', error);
+    }
+  }
+
+  /**
+   * Handle thread selection from ThreadBar
+   */
+  function handleThreadSelect(event: CustomEvent<{ sessionId: string }>) {
+    const { sessionId } = event.detail;
+    switchToThread(sessionId);
+  }
+
+  /**
+   * Switch to a specific thread by sessionId
+   */
+  function switchToThread(sessionId: string) {
+    // Save current thread state before switching
+    if (activeSessionId) {
+      saveThreadState(activeSessionId);
+    }
+
+    // Set new active thread
+    threadStore.setActiveThread(sessionId);
+
+    // Update active session ID and router BEFORE loading state so that events
+    // arriving during the transition are routed to the correct thread
+    activeSessionId = sessionId;
+    threadRouter.setActiveSession(sessionId);
+
+    // Load state for new thread
+    loadThreadState(sessionId);
+  }
+
+  /**
+   * Save current UI state to thread state map
+   */
+  function saveThreadState(sessionId: string) {
+    const state: ThreadConversationState = {
+      messages: [...messages],
+      processedEvents: [...processedEvents],
+      inputText,
+      isProcessing,
+      currentTabId,
+      eventProcessor: eventProcessor,
+    };
+    threadStates.set(sessionId, state);
+  }
+
+  /**
+   * Load thread state from map to UI
+   */
+  function loadThreadState(sessionId: string) {
+    const state = threadStates.get(sessionId);
+    if (state) {
+      messages = [...state.messages];
+      processedEvents = [...state.processedEvents];
+      inputText = state.inputText;
+      isProcessing = state.isProcessing;
+      currentTabId = state.currentTabId;
+      eventProcessor = state.eventProcessor;
+    } else {
+      // Initialize fresh state
+      messages = [];
+      processedEvents = [];
+      inputText = '';
+      isProcessing = false;
+      currentTabId = -1;
+      eventProcessor = new EventProcessor();
+    }
+
+    // Reset scroll position after loading new thread state
+    if (scrollContainer) {
+      setTimeout(() => {
+        if (messages.length === 0 && processedEvents.length === 0) {
+          scrollContainer.scrollTop = 0;
+        } else {
+          scrollContainer.scrollTop = scrollContainer.scrollHeight;
+        }
+      }, 0);
+    }
+  }
+
+  /**
+   * Handle thread close from ThreadBar
+   */
+  async function handleThreadClose(event: CustomEvent<{ sessionId: string }>) {
+    const { sessionId } = event.detail;
+    await closeThread(sessionId);
+  }
+
+  /**
+   * Close a thread and terminate its session
+   */
+  async function closeThread(sessionId: string) {
+    const state = get(threadStore);
+    const threadToClose = state.threads.find(t => t.sessionId === sessionId);
+
+    if (!threadToClose) return;
+
+    // If this is the last thread, create a new one first
+    if (state.threads.length <= 1) {
+      const countBefore = get(threadStore).threads.length;
+      await createNewThread();
+      const countAfter = get(threadStore).threads.length;
+      if (countAfter <= countBefore) {
+        console.error('[App] Failed to create replacement thread, aborting close');
+        return;
+      }
+    }
+
+    // Terminate the session in backend
+    try {
+      const c = await getInitializedUIClient();
+      await c.serviceRequest('session.close', { sessionId });
+    } catch (error) {
+      console.error(`[App] Failed to close session ${sessionId}:`, error);
+    }
+
+    // Remove thread state
+    threadStates.delete(sessionId);
+
+    // Close thread in store (this handles switching to another thread)
+    threadStore.closeThread(sessionId);
+
+    // Update active session
+    const newActiveThread = threadStore.getActiveThread();
+    if (newActiveThread) {
+      activeSessionId = newActiveThread.sessionId;
+      threadRouter.setActiveSession(activeSessionId);
+      loadThreadState(newActiveThread.sessionId);
+    }
+
+    // Update session limits
+    await updateSessionLimits();
+
+    console.log(`[App] Closed thread: ${sessionId}`);
+  }
+
+  /**
+   * Handle new thread button click from ThreadBar
+   */
+  async function handleNewThread() {
+    if (activeSessionId) {
+      saveThreadState(activeSessionId);
+    }
+    await createNewThread();
+  }
+
+  /**
+   * Handle event for a specific session (background thread)
+   */
+  function handleEventForSession(event: Event, sessionId: string) {
+    const thread = threadStore.getThread(sessionId);
+    if (!thread) return;
+
+    let state = threadStates.get(sessionId);
+    if (!state) {
+      state = {
+        messages: [],
+        processedEvents: [],
+        inputText: '',
+        isProcessing: false,
+        currentTabId: -1,
+        eventProcessor: new EventProcessor(),
+      };
+      threadStates.set(sessionId, state);
+    }
+
+    // Process event for this thread's state
+    const processed = state.eventProcessor.processEvent(event);
+    if (processed) {
+      state.processedEvents = [...state.processedEvents, processed];
+    }
+
+    // Update processing state
+    const msg = event.msg;
+    if (msg.type === 'TaskStarted') {
+      state.isProcessing = true;
+    } else if (msg.type === 'TaskComplete' || msg.type === 'TaskFailed') {
+      state.isProcessing = false;
+    }
+
+    threadStates.set(sessionId, state);
+  }
+
+  /**
+   * Handle session terminated event
+   */
+  function handleSessionTerminated(sessionId: string) {
+    const thread = threadStore.getThread(sessionId);
+    if (thread) {
+      console.log(`[App] Session ${sessionId} terminated, removing thread`);
+      threadStates.delete(sessionId);
+      threadStore.closeThread(sessionId);
+
+      const newActiveThread = threadStore.getActiveThread();
+      if (newActiveThread) {
+        activeSessionId = newActiveThread.sessionId;
+        threadRouter.setActiveSession(activeSessionId);
+        loadThreadState(newActiveThread.sessionId);
+      } else {
+        createNewThread();
+      }
+    }
+
+    updateSessionLimits();
+  }
+
+  /**
+   * Update session limit state
+   */
+  async function updateSessionLimits() {
+    try {
+      const c = await getInitializedUIClient();
+      const response = await c.serviceRequest<{ canCreateSession?: boolean }>('session.getActiveCount');
+      canCreateThread = response?.canCreateSession ?? true;
+      maxSessionsReached = !canCreateThread;
+    } catch (error) {
+      console.error('[App] Failed to update session limits:', error);
+    }
+  }
+
+  /**
+   * Update thread title based on first user message
+   */
+  function updateThreadTitleFromMessage(message: string) {
+    const activeThread = threadStore.getActiveThread();
+    if (activeThread && activeThread.title === 'New Thread') {
+      const title = message.length > 30 ? message.substring(0, 30) + '...' : message;
+      threadStore.updateThreadTitle(activeThread.sessionId, title);
+    }
+  }
 </script>
 
 <!-- Single UI with theme-aware styling -->
-<div class="h-screen overflow-hidden {currentTheme}">
-  <TerminalContainer theme={currentTheme}>
-    <div class="flex flex-col h-full min-h-0 max-w-[1200px] mx-auto w-full">
+<div class="flex flex-col overflow-hidden p-4 {currentTheme}
+    {currentTheme === 'modern'
+      ? 'font-chat bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
+      : 'font-terminal bg-term-bg text-term-green'}"
+  role="log"
+  aria-label="Terminal output"
+>
+        <!-- Multi-Thread Bar -->
+        {#if !isScheduledJobMode}
+          <ThreadBar
+            {canCreateThread}
+            {maxSessionsReached}
+            on:threadSelect={handleThreadSelect}
+            on:threadClose={handleThreadClose}
+            on:newThread={handleNewThread}
+          />
+        {/if}
+
+    <div class="flex flex-col flex-1 min-h-0 max-w-[1500px] mx-auto w-full">
         <!-- Status Line -->
         <div class="shrink-0 flex justify-between mb-2">
           <div class="flex items-center space-x-2">
             <TerminalMessage type="system" content={platform.platformName === 'extension' ? $_t("Browserx (Alpha)") : $_t("Apple Pi: Your personal AI (Alpha)")} />
             {#if zoomLevel !== 100}
-              <button on:click={resetZoom} class="text-sm leading-relaxed font-[inherit] opacity-70 hover:opacity-100 cursor-pointer {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}" title="Reset zoom to 100%">
+              <button onclick={resetZoom} class="text-sm leading-relaxed font-[inherit] opacity-70 hover:opacity-100 cursor-pointer {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}" title="Reset zoom to 100%">
                 [{zoomLevel}%] ✕
               </button>
             {/if}
@@ -996,7 +1431,7 @@
             </span>
             <button
               class="shrink-0 bg-transparent border-none text-inherit cursor-pointer px-1 text-lg opacity-70 hover:opacity-100"
-              on:click={() => compactionNotification = { ...compactionNotification, show: false }}
+              onclick={() => compactionNotification = { ...compactionNotification, show: false }}
               aria-label={t("Dismiss notification")}
             >×</button>
           </div>
@@ -1023,7 +1458,7 @@
                 </a>
               </li>
               <li class="mb-1">
-                <button on:click={() => push('/settings')}
+                <button onclick={() => push('/settings')}
                   class="bg-none border-none p-0 underline cursor-pointer text-[inherit] {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-bright-green hover:text-term-yellow'}">
                   {$_t("Configure an API key in Settings")}
                 </button>
@@ -1085,16 +1520,13 @@
               tabId={currentTabId}
               {isProcessing}
               placeholder={$_t(">> Enter command...")}
-              on:tabSelected={handleTabSelected}
-              on:commandOutput={handleCommandOutput}
+              onTabSelected={handleTabSelected}
+              onCommandOutput={handleCommandOutput}
             />
           </div>
 
-          <!-- Footer Bar -->
-          <FooterBar />
         </div>
       </div>
-    </TerminalContainer>
   </div>
 
 <style>

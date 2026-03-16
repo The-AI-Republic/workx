@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { uiTheme } from '../../stores/themeStore';
   import Tooltip from './Tooltip.svelte';
   import PopupCard from './PopupCard.svelte';
@@ -18,32 +18,34 @@
    * - Theme-aware styling (terminal vs modern)
    */
 
-  export let tabId: number = -1;
-  export let clickable: boolean = true;
+  let {
+    tabId = -1,
+    clickable = true,
+    onTabSelected,
+  }: {
+    tabId?: number;
+    clickable?: boolean;
+    onTabSelected?: (data: { tabId: number }) => void;
+  } = $props();
 
-  let currentTheme: 'terminal' | 'modern' = 'terminal';
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
+  let currentTheme = $derived($uiTheme);
 
-  const dispatch = createEventDispatcher();
+  let fullTitle: string = $state('');
+  let displayTitle: string = $state('');
+  let isLoading: boolean = $state(false);
+  let error: string | null = $state(null);
 
-  let fullTitle: string = '';
-  let displayTitle: string = '';
-  let isLoading: boolean = false;
-  let error: string | null = null;
-
-  let isDropdownOpen: boolean = false;
-  let availableTabs: chrome.tabs.Tab[] = [];
-  let loadingTabs: boolean = false;
+  let isDropdownOpen: boolean = $state(false);
+  let availableTabs: chrome.tabs.Tab[] = $state([]);
+  let loadingTabs: boolean = $state(false);
 
   let tabUpdateListener: ((tabId: number, changeInfo: { title?: string }, tab: chrome.tabs.Tab) => void) | null = null;
-  let activeTabId: number = -1;
+  let activeTabId: number = $state(-1);
   let activeTabListener: ((activeInfo: chrome.tabs.TabActiveInfo) => void) | null = null;
 
-  $: createNewTabLabel = $_t("Create New Tab");
+  let createNewTabLabel = $derived($_t("Create New Tab"));
 
-  $: {
+  $effect(() => {
     if (tabId !== -1) {
       fetchTabTitle(tabId);
     } else {
@@ -51,7 +53,7 @@
       displayTitle = createNewTabLabel;
       error = null;
     }
-  }
+  });
 
   async function fetchTabTitle(id: number): Promise<void> {
     if (id === -1) return;
@@ -154,7 +156,7 @@
   }
 
   function selectTab(selectedTabId: number): void {
-    dispatch('tabSelected', { tabId: selectedTabId });
+    onTabSelected?.({ tabId: selectedTabId });
     isDropdownOpen = false;
   }
 
@@ -168,7 +170,7 @@
 
 <div class="relative inline-block">
   <PopupCard title="" show={isDropdownOpen} onClose={closeDropdown}>
-    <div slot="trigger">
+    {#snippet trigger()}
       <Tooltip content={fullTitle} disabled={isDropdownOpen || !fullTitle}>
         <div
           class="inline-flex items-center gap-2 max-w-[300px] py-1 px-2 text-sm whitespace-nowrap overflow-hidden text-ellipsis
@@ -180,8 +182,8 @@
             {clickable && currentTheme !== 'modern' ? 'hover:border-term-green hover:bg-term-green/5' : ''}"
           data-testid="tab-context-display"
           aria-label="Current tab context"
-          on:click={toggleDropdown}
-          on:keydown={(e) => e.key === 'Enter' && toggleDropdown()}
+          onclick={toggleDropdown}
+          onkeydown={(e) => e.key === 'Enter' && toggleDropdown()}
           role={clickable ? 'button' : undefined}
           tabindex={clickable ? 0 : undefined}
         >
@@ -198,9 +200,10 @@
           {/if}
         </div>
       </Tooltip>
-    </div>
+    {/snippet}
 
-    <div slot="content" class="w-[calc(100vw-4rem)] max-w-[300px] max-h-[250px] overflow-y-auto" data-testid="tab-dropdown-menu">
+    {#snippet content()}
+      <div class="w-[calc(100vw-4rem)] max-w-[300px] max-h-[250px] overflow-y-auto" data-testid="tab-dropdown-menu">
       {#if loadingTabs}
         <div class="flex items-center justify-between py-2 px-3 text-sm italic cursor-default
           {currentTheme === 'modern' ? 'font-chat text-white/60' : 'font-mono text-term-yellow'}">{$_t("Loading tabs...")}</div>
@@ -214,8 +217,8 @@
               ? 'font-chat text-chat-primary dark:text-chat-primary-dark hover:bg-white/10'
               : 'font-mono text-term-green hover:bg-term-green/10'}
             {tabId === -1 ? (currentTheme === 'modern' ? 'bg-blue-500/20' : 'bg-term-green/15 font-bold') : ''}"
-          on:click={() => selectTab(-1)}
-          on:keydown={(e) => e.key === 'Enter' && selectTab(-1)}
+          onclick={() => selectTab(-1)}
+          onkeydown={(e) => e.key === 'Enter' && selectTab(-1)}
           role="button"
           tabindex="0"
           data-testid="tab-dropdown-new-tab"
@@ -239,8 +242,8 @@
                 {tab.id === tabId
                   ? (currentTheme === 'modern' ? 'bg-blue-500/20 text-chat-primary dark:text-chat-primary-dark' : 'bg-term-green/15 text-term-green font-bold')
                   : ''}"
-              on:click={() => tab.id && selectTab(tab.id)}
-              on:keydown={(e) => e.key === 'Enter' && tab.id && selectTab(tab.id)}
+              onclick={() => tab.id && selectTab(tab.id)}
+              onkeydown={(e) => e.key === 'Enter' && tab.id && selectTab(tab.id)}
               role="button"
               tabindex="0"
               data-testid="tab-dropdown-item"
@@ -255,7 +258,8 @@
           </Tooltip>
         {/each}
       {/if}
-    </div>
+      </div>
+    {/snippet}
   </PopupCard>
 </div>
 
@@ -271,11 +275,11 @@
   }
 
   div[data-testid="tab-dropdown-menu"]::-webkit-scrollbar-thumb {
-    background: var(--color-term-dim-green);
+    background: var(--color-bx-border);
     border-radius: 4px;
   }
 
   div[data-testid="tab-dropdown-menu"]::-webkit-scrollbar-thumb:hover {
-    background: var(--color-term-green);
+    background: var(--color-bx-text-secondary);
   }
 </style>

@@ -10,6 +10,7 @@
  */
 
 // VISUAL EFFECTS v4.0 - CDP-triggered
+import { mount, unmount } from 'svelte';
 import VisualEffectController from './ui_effect/VisualEffectController.svelte';
 
 // Unique instance ID for debugging
@@ -117,7 +118,7 @@ function initializeVisualEffects(): void {
 		const shadowRoot = visualEffectShadowHost.attachShadow({ mode: 'closed' });
 
 		// Mount Visual Effect Controller Svelte component
-		visualEffectController = new VisualEffectController({
+		visualEffectController = mount(VisualEffectController, {
 			target: shadowRoot,
 		});
 
@@ -175,7 +176,7 @@ window.addEventListener('pagehide', () => {
 
 	// Clean up visual effects
 	if (visualEffectController) {
-		visualEffectController.$destroy();
+		unmount(visualEffectController);
 		visualEffectController = null;
 		console.log(`[Browserx] Instance ${INSTANCE_ID} - Visual effects destroyed`);
 	}

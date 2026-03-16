@@ -1,50 +1,51 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { uiTheme, themePreference } from '../../stores/themeStore';
+  import { isWideMode } from '../../stores/layoutStore';
   import { push } from 'svelte-spa-router';
-  import { MessageType } from '@/core/MessageRouter';
-  import { getMessageService, type IMessageService } from '@/core/messaging';
+  import { AgentConfig } from '@/config/AgentConfig';
+  import { getInitializedUIClient } from '@/core/messaging';
+  import type { UIChannelClient } from '@/core/messaging';
   import { schedulerStore } from '../../stores/schedulerStore';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
+  import ActiveJobsModule from '../../components/scheduler/ActiveJobsModule.svelte';
+  import NewJobModule from '../../components/scheduler/NewJobModule.svelte';
+  import JobHistoryModule from '../../components/scheduler/JobHistoryModule.svelte';
 
-  let currentTheme: UITheme = 'terminal';
-  let selectedDate: string = '';
-  let selectedTime: string = '';
-  let errorMessage: string = '';
-  let editableInput: string = '';
-  let pendingInput: string = '';
-  let service: IMessageService | null = null;
+  let currentTheme = $derived($uiTheme);
+  let wide = $derived($isWideMode);
+  let jobRefreshCounter: number = $state(0);
+  let selectedDate: string = $state('');
+  let selectedTime: string = $state('');
+  let errorMessage: string = $state('');
+  let editableInput: string = $state('');
+  let pendingInput: string = $state('');
+  let client: UIChannelClient | null = $state(null);
 
-  const unsubTheme = uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
-
-  // Determine if input should be editable (when opened without pre-filled input)
-  $: isEditable = !pendingInput.trim();
-
-  onMount(() => {
-    // Read pending input from store
-    const unsubStore = schedulerStore.subscribe((value) => {
-      pendingInput = value;
-    });
+  $effect(() => {
     // Clear store after reading
     schedulerStore.clear();
 
-    // Get message service
-    try {
-      service = getMessageService();
-    } catch (error) {
-      console.error('[Scheduler] Message service not initialized:', error);
-    }
+    // Get UIChannelClient
+    getInitializedUIClient()
+      .then((c) => { client = c; })
+      .catch((error) => {
+        console.error('[Scheduler] UIChannelClient not initialized:', error);
+      });
 
     // Initialize defaults
     initializeDefaults();
-
-    return () => {
-      unsubStore();
-      unsubTheme();
-    };
   });
+
+  // Initialize theme from saved config (same as chat page)
+  $effect(() => {
+    AgentConfig.getInstance().then((config) => {
+      const preferences = config.getConfig().preferences;
+      if (preferences?.uiTheme) {
+        themePreference.initialize(preferences.uiTheme);
+      }
+    });
+  });
+
 
   function initializeDefaults() {
     // Default to 1 hour from now
@@ -131,15 +132,15 @@
     const scheduledTime = getScheduledTimestamp();
     const now = Date.now();
 
-    // Must be at least 30 seconds in the future
-    if (scheduledTime <= now + 30000) {
-      errorMessage = t('Scheduled time must be at least 30 seconds in the future');
+    // Must be at least 1 minute in the future
+    if (scheduledTime <= now + 60000) {
+      errorMessage = t('Scheduled time must be at least 1 minute in the future');
       return;
     }
 
     try {
-      if (!service) throw new Error('Message service not available');
-      const response = await service.send<{ success: boolean }>(MessageType.SCHEDULER_SCHEDULE_JOB, {
+      if (!client) throw new Error('Message service not available');
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean }>('scheduler.schedule', {
         input: taskInput,
         scheduledTime,
       });
@@ -150,193 +151,72 @@
       } else {
         throw new Error(response?.error || 'Failed to schedule task');
       }
-    } catch (error) {
-      console.error('[Scheduler] Failed to schedule task:', error);
-      errorMessage = `Failed to schedule task: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    } catch (err) {
+      errorMessage = err instanceof Error ? err.message : 'Failed to schedule task';
     }
-  }
-
-  function handleClose() {
-    push('/');
-  }
-
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') {
-      handleClose();
-    }
-  }
-
-  // Quick schedule buttons
-  function scheduleIn(minutes: number) {
-    const date = new Date();
-    date.setMinutes(date.getMinutes() + minutes);
-    selectedDate = formatDateForInput(date);
-    selectedTime = formatTimeForInput(date);
-    errorMessage = '';
   }
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<div class="h-full overflow-y-auto {currentTheme}
+  {currentTheme === 'modern'
+    ? 'font-chat bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
+    : 'font-terminal bg-term-bg text-term-green'}">
 
-<div class="h-screen flex items-center justify-center {currentTheme === 'modern' ? 'bg-black/30' : 'bg-black/50'}">
-  <div class="w-[90%] max-w-[28rem] max-h-[90vh] overflow-y-auto rounded-lg flex flex-col
+  <!-- Page Header -->
+  <div class="px-4 py-3 flex items-center gap-2
     {currentTheme === 'modern'
-      ? 'rounded-2xl border-none shadow-2xl bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark font-chat'
-      : 'border border-term-dim-green bg-term-bg text-term-green font-terminal'}">
-    <!-- Header -->
-    <div class="flex justify-between items-center px-6 py-4 border-b
-      {currentTheme === 'modern' ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
-      <h2 class="m-0 text-base font-semibold
-        {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark font-chat' : 'text-term-green'}">{$_t('Schedule A New Task')}</h2>
+      ? 'border-b border-chat-border dark:border-chat-border-dark'
+      : 'border-b border-term-dim-green'}">
+    <svg class="w-5 h-5 {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-green'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    </svg>
+    <h1 class="m-0 text-base font-semibold
+      {currentTheme === 'modern'
+        ? 'text-chat-text dark:text-chat-text-dark font-chat'
+        : 'text-term-green font-terminal'}">{$_t('Scheduler')}</h1>
+    <div class="ml-auto">
       <button
-        class="bg-none border-none cursor-pointer p-1 rounded-md flex items-center justify-center transition-all duration-200
+        class="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded cursor-pointer transition-all duration-200
           {currentTheme === 'modern'
-            ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:bg-chat-surface dark:hover:bg-chat-surface-dark'
-            : 'text-term-dim-green hover:text-term-green hover:bg-[#0a0a0a]'}"
-        on:click={handleClose}
-        aria-label={t("Close scheduler")}
+            ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
+            : 'bg-transparent border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
+        onclick={() => push('/scheduler/calendar')}
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
         </svg>
-      </button>
-    </div>
-
-    <!-- Content -->
-    <div class="px-6 py-4 overflow-y-auto flex-1">
-      <!-- Task Input/Preview -->
-      <div class="mb-4 p-3 rounded
-        {currentTheme === 'modern'
-          ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark'
-          : 'bg-[rgba(0,255,0,0.05)] border border-[rgba(0,255,0,0.2)]'}">
-        <span class="text-sm uppercase tracking-wide
-          {currentTheme === 'modern' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">{$_t('Task')}:</span>
-        {#if isEditable}
-          <textarea
-            class="w-full mt-2 p-2 rounded text-sm leading-relaxed resize-y outline-none
-              {currentTheme === 'modern'
-                ? 'bg-chat-input dark:bg-chat-input-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat placeholder:text-chat-text-secondary/60 dark:placeholder:text-chat-text-secondary-dark/60 focus:border-chat-input-focus dark:focus:border-chat-input-focus-dark'
-                : 'bg-black/50 border border-term-dim-green text-term-green font-terminal placeholder:text-term-dim-green/60 focus:border-term-green'}"
-            bind:value={editableInput}
-            placeholder={$_t('Enter your task...')}
-            rows="3"
-          ></textarea>
-        {:else}
-          <p class="mt-1 mb-0 text-sm leading-relaxed break-words
-            {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark font-chat' : 'text-term-green font-terminal'}">{pendingInput.slice(0, 100)}{pendingInput.length > 100 ? '...' : ''}</p>
-        {/if}
-      </div>
-
-      <!-- Quick Schedule Buttons -->
-      <div class="mb-4">
-        <span class="block text-sm mb-2
-          {currentTheme === 'modern' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">{$_t('Quick Schedule')}:</span>
-        <div class="flex gap-2 flex-wrap">
-          {#each [{ label: '2m', min: 2 }, { label: '5m', min: 5 }, { label: '15m', min: 15 }, { label: '30m', min: 30 }, { label: '1h', min: 60 }, { label: '3h', min: 180 }, { label: '24h', min: 1440 }] as item}
-            <button
-              class="px-3 py-1.5 text-sm rounded cursor-pointer transition-all duration-200
-                {currentTheme === 'modern'
-                  ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:border-chat-text-secondary dark:hover:border-chat-text-secondary-dark'
-                  : 'bg-transparent border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)] hover:border-term-green'}"
-              on:click={() => scheduleIn(item.min)}
-            >{item.label}</button>
-          {/each}
-        </div>
-      </div>
-
-      <!-- Date/Time Picker -->
-      <div class="flex gap-3 mb-4">
-        <div class="flex-1">
-          <label for="schedule-date" class="block text-sm mb-1
-            {currentTheme === 'modern' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">{$_t('Date')}</label>
-          <input
-            id="schedule-date"
-            type="date"
-            class="w-full px-3 py-2 text-sm rounded picker-input
-              {currentTheme === 'modern'
-                ? 'bg-chat-input dark:bg-chat-input-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat focus:outline-none focus:border-chat-input-focus dark:focus:border-chat-input-focus-dark'
-                : 'bg-black border border-term-dim-green text-term-green font-terminal focus:outline-none focus:border-term-green'}"
-            bind:value={selectedDate}
-            min={formatDateForInput(new Date())}
-          />
-        </div>
-        <div class="flex-1">
-          <label for="schedule-time" class="block text-sm mb-1
-            {currentTheme === 'modern' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">{$_t('Time')}</label>
-          <input
-            id="schedule-time"
-            type="time"
-            class="w-full px-3 py-2 text-sm rounded picker-input
-              {currentTheme === 'modern'
-                ? 'bg-chat-input dark:bg-chat-input-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat focus:outline-none focus:border-chat-input-focus dark:focus:border-chat-input-focus-dark'
-                : 'bg-black border border-term-dim-green text-term-green font-terminal focus:outline-none focus:border-term-green'}"
-            bind:value={selectedTime}
-          />
-        </div>
-      </div>
-
-      <!-- Schedule Preview -->
-      {#if selectedDate && selectedTime}
-        <div class="flex items-center gap-2 p-3 rounded mb-3
-          {currentTheme === 'modern' ? 'bg-[rgba(96,165,250,0.1)]' : 'bg-[rgba(0,255,0,0.1)]'}">
-          <span class="flex {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark' : 'text-term-dim-green'}">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
-          </span>
-          <span class="text-sm {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark font-chat' : 'text-term-green font-terminal'}">{getScheduledDateDisplay()}</span>
-          <span class="text-sm {currentTheme === 'modern' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">({getRelativeTime()})</span>
-        </div>
-      {/if}
-
-      <!-- Error Message -->
-      {#if errorMessage}
-        <div class="px-3 py-2 mt-2 rounded text-sm bg-[rgba(255,0,0,0.1)] border border-[rgba(255,0,0,0.3)] text-red-400">{errorMessage}</div>
-      {/if}
-    </div>
-
-    <!-- Footer -->
-    <div class="flex justify-end gap-3 px-6 py-4 border-t
-      {currentTheme === 'modern' ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
-      <button
-        class="px-5 py-2.5 text-sm rounded cursor-pointer transition-all duration-200
-          {currentTheme === 'modern'
-            ? 'bg-transparent border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
-            : 'bg-transparent border border-term-dim-green text-term-dim-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
-        on:click={handleClose}
-      >
-        {$_t('Cancel')}
-      </button>
-      <button
-        class="px-5 py-2.5 text-sm rounded cursor-pointer font-semibold transition-all duration-200
-          {currentTheme === 'modern'
-            ? 'bg-chat-send dark:bg-chat-send-dark border border-chat-send dark:border-chat-send-dark text-chat-send-text dark:text-chat-send-text-dark font-chat hover:bg-chat-send-hover dark:hover:bg-chat-send-hover-dark hover:border-chat-send-hover dark:hover:border-chat-send-hover-dark'
-            : 'bg-term-dim-green border border-term-dim-green text-black font-terminal hover:bg-term-green hover:border-term-green'}"
-        on:click={validateAndSchedule}
-      >
-        {$_t('Schedule')}
+        {$_t('Calendar View')}
       </button>
     </div>
   </div>
+
+  <!-- Modules Layout -->
+  {#if wide}
+    <!-- Wide mode: 2-column split -->
+    <div class="grid grid-cols-2 gap-4 p-4 h-[calc(100%-52px)]">
+      <!-- Left column: NewJob + JobHistory -->
+      <div class="flex flex-col gap-4 overflow-hidden">
+        <div class="shrink-0">
+          <NewJobModule collapsible={false} initialExpanded={true} onscheduled={() => jobRefreshCounter++} />
+        </div>
+        <div class="flex-1 min-h-0 overflow-hidden">
+          <JobHistoryModule collapsible={false} initialExpanded={true} />
+        </div>
+      </div>
+      <!-- Right column: ActiveJobs -->
+      <div class="overflow-hidden">
+        <ActiveJobsModule collapsible={false} initialExpanded={true} refreshTrigger={jobRefreshCounter} />
+      </div>
+    </div>
+  {:else}
+    <!-- Narrow mode: vertical stack with collapsible sections -->
+    <div class="flex flex-col gap-3 p-3">
+      <NewJobModule collapsible={true} initialExpanded={true} onscheduled={() => jobRefreshCounter++} />
+      <ActiveJobsModule collapsible={true} initialExpanded={true} refreshTrigger={jobRefreshCounter} />
+      <JobHistoryModule collapsible={true} initialExpanded={false} />
+    </div>
+  {/if}
 </div>
-
-<style>
-  /* Calendar picker indicator styling - requires pseudo-element selectors */
-  .picker-input::-webkit-calendar-picker-indicator {
-    cursor: pointer;
-  }
-
-  :global(.terminal) .picker-input::-webkit-calendar-picker-indicator {
-    filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(86deg) brightness(118%) contrast(119%);
-  }
-
-  :global(.modern) .picker-input::-webkit-calendar-picker-indicator {
-    filter: none;
-  }
-
-  :global(.dark) :global(.modern) .picker-input::-webkit-calendar-picker-indicator {
-    filter: invert(1);
-  }
-</style>

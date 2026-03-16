@@ -19,6 +19,8 @@ import type {
 } from '@/types/ui';
 import { STYLE_PRESETS } from '@/types/ui';
 import { t } from '../../lib/i18n';
+import { agentDisplayName } from '../../stores/platformStore';
+import { getInitializedUIClient } from '@/core/messaging';
 
 /**
  * EventProcessor Implementation
@@ -233,7 +235,7 @@ export class EventProcessor {
         id: event.id,
         category: 'message',
         timestamp: new Date(),
-        title: t('browserx'),
+        title: agentDisplayName,
         content: content,
         style: STYLE_PRESETS.agent_message,
         streaming: false,
@@ -767,8 +769,8 @@ export class EventProcessor {
   }
 
   /**
-   * Send approval decision as a standard SUBMISSION.
-   * This routes through the same pipeline for both extension and desktop,
+   * Send approval decision via UIChannelClient.
+   * Routes through the channel system for both extension and desktop,
    * reaching RepublicAgent.handleExecApproval() on all platforms.
    */
   private sendApprovalDecision(
@@ -777,23 +779,19 @@ export class EventProcessor {
     remember?: boolean,
     alternativeText?: string
   ): void {
-    try {
-      chrome.runtime.sendMessage({
-        type: 'SUBMISSION',
-        payload: {
-          id: `approval_${Date.now()}`,
-          op: {
-            type: 'ExecApproval',
-            id,
-            decision,
-            ...(remember !== undefined && { remember }),
-            ...(alternativeText && { alternativeText }),
-          },
-        },
+    getInitializedUIClient()
+      .then((client) => {
+        client.submitOp({
+          type: 'ExecApproval',
+          id,
+          decision,
+          ...(remember !== undefined && { remember }),
+          ...(alternativeText && { alternativeText }),
+        });
+      })
+      .catch((error) => {
+        console.error('[EventProcessor] Failed to send approval decision:', error);
       });
-    } catch (error) {
-      console.error('[EventProcessor] Failed to send approval decision:', error);
-    }
   }
 
   /**
