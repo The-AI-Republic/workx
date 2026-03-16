@@ -1041,26 +1041,6 @@ export class Session {
         // Get OpenAI key (needed for own-key mode; may be empty for backend mode)
         const openaiApiKey = await agentConfig.getProviderApiKey('openai');
 
-        const llmCaller = {
-          complete: async (systemPrompt: string, userPrompt: string) => {
-            const client = this.turnContext?.getModelClient?.();
-            if (!client) {
-              // No model client yet (e.g. before first turn). Return empty JSON array
-              // so FactExtractor parses it as zero facts rather than throwing.
-              console.warn('[Memory] No model client available for memory LLM call, skipping extraction');
-              return '[]';
-            }
-            const response = await client.complete({
-              model: client.getModel(),
-              messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt }
-              ]
-            });
-            return response.choices[0]?.message?.content || '';
-          }
-        };
-
         // Build backend routing config if applicable
         let backendRouting = false;
         let backendBaseUrl: string | undefined;
@@ -1070,6 +1050,52 @@ export class Session {
             backendRouting = true;
             backendBaseUrl = LLM_API_URL;
           }
+        }
+
+        // Create a dedicated model client for memory extraction/conflict resolution.
+        // Uses a cheap model (gpt-4o-mini by default) independent of the user's
+        // selected LLM, so model switches don't affect memory and costs stay low.
+        const { OpenAIChatCompletionClient } = await import('./models/client/OpenAIChatCompletionClient');
+        const { DEFAULT_EXTRACTION_MODEL } = await import('./memory/types');
+        const extractionModel = preferences?.extractionModel ?? DEFAULT_EXTRACTION_MODEL;
+
+        const memoryApiKey = useBackendForMemory
+          ? (openaiApiKey || 'backend-routed')
+          : (openaiApiKey || '');
+
+        let llmCaller = null;
+        if (memoryApiKey) {
+          const memoryLLMClient = new OpenAIChatCompletionClient({
+            apiKey: memoryApiKey,
+            baseUrl: backendRouting ? backendBaseUrl + '/openai' : undefined,
+            sessionId: 'memory-extraction',
+            modelFamily: {
+              family: extractionModel,
+              base_instructions: '',
+              supports_reasoning: false,
+              supports_reasoning_summaries: false,
+              needs_special_apply_patch_instructions: false,
+            },
+            provider: {
+              name: 'OpenAI',
+              wire_api: 'Chat' as const,
+              requires_openai_auth: true,
+            },
+            ...(backendRouting && { useCredentials: true }),
+          });
+
+          llmCaller = {
+            complete: async (systemPrompt: string, userPrompt: string) => {
+              const response = await memoryLLMClient.complete({
+                model: extractionModel,
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: userPrompt }
+                ]
+              });
+              return response.choices[0]?.message?.content || '';
+            }
+          };
         }
 
         const memoryService = await createMemoryService({

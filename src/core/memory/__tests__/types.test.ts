@@ -110,8 +110,11 @@ describe('DEFAULT_MEMORY_CONFIG', () => {
     expect(DEFAULT_MEMORY_CONFIG.recallLimit).toBe(10);
   });
 
-  it('does not set optional fields', () => {
-    expect(DEFAULT_MEMORY_CONFIG.extractionModel).toBeUndefined();
+  it('sets extractionModel to gpt-4o-mini by default', () => {
+    expect(DEFAULT_MEMORY_CONFIG.extractionModel).toBe('gpt-4o-mini');
+  });
+
+  it('does not set other optional fields', () => {
     expect(DEFAULT_MEMORY_CONFIG.customExtractionPrompt).toBeUndefined();
     expect(DEFAULT_MEMORY_CONFIG.customConflictPrompt).toBeUndefined();
     expect(DEFAULT_MEMORY_CONFIG.excludeCategories).toBeUndefined();

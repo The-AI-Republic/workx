@@ -153,8 +153,13 @@ describe('FactExtractor.extract', () => {
     expect(llm.complete).not.toHaveBeenCalled();
   });
 
-  it('calls LLM and returns parsed facts', async () => {
-    const response = '{"facts": ["User\'s name is Alex", "User works at Google"]}';
+  it('calls LLM and returns parsed categorized facts', async () => {
+    const response = JSON.stringify({
+      facts: [
+        { text: "User's name is Alex", category: 'personal' },
+        { text: 'User works at Google', category: 'professional' },
+      ],
+    });
     const { extractor, llm } = createExtractor(response);
 
     const messages = [
@@ -163,11 +168,17 @@ describe('FactExtractor.extract', () => {
     const result = await extractor.extract(messages);
 
     expect(llm.complete).toHaveBeenCalledOnce();
-    expect(result).toEqual(["User's name is Alex", 'User works at Google']);
+    expect(result).toEqual([
+      { text: "User's name is Alex", category: 'personal' },
+      { text: 'User works at Google', category: 'professional' },
+    ]);
   });
 
   it('passes system prompt and conversation text to LLM', async () => {
-    const { extractor, llm } = createExtractor('{"facts": ["Fact 1"]}');
+    const response = JSON.stringify({
+      facts: [{ text: 'Fact 1', category: 'general' }],
+    });
+    const { extractor, llm } = createExtractor(response);
 
     const messages = [
       userMsg('I like TypeScript for web development.'),
@@ -210,7 +221,10 @@ describe('FactExtractor.extract', () => {
 
   it('uses custom extraction prompt when configured', async () => {
     const customPrompt = 'Custom prompt with {{currentDate}}';
-    const { extractor, llm } = createExtractor('{"facts": ["custom fact"]}', {
+    const response = JSON.stringify({
+      facts: [{ text: 'custom fact', category: 'general' }],
+    });
+    const { extractor, llm } = createExtractor(response, {
       customExtractionPrompt: customPrompt,
     });
 
@@ -248,23 +262,66 @@ describe('FactExtractor.extract', () => {
     expect(result).toEqual([]);
   });
 
-  it('filters out non-string and empty facts', async () => {
-    const response = '{"facts": ["Valid fact", "", 42, null, "Another valid"]}';
+  it('filters out entries with non-string or empty text', async () => {
+    const response = JSON.stringify({
+      facts: [
+        { text: 'Valid fact', category: 'general' },
+        { text: '', category: 'general' },
+        { text: 42, category: 'general' },
+        null,
+        { text: 'Another valid', category: 'personal' },
+      ],
+    });
     const { extractor } = createExtractor(response);
 
     const result = await extractor.extract([
       userMsg('My name is Alex and I have some data.'),
     ]);
-    expect(result).toEqual(['Valid fact', 'Another valid']);
+    expect(result).toEqual([
+      { text: 'Valid fact', category: 'general' },
+      { text: 'Another valid', category: 'personal' },
+    ]);
   });
 
   it('extracts JSON from response with surrounding text', async () => {
-    const response = 'Here are the facts:\n{"facts": ["Fact A"]}\nEnd.';
+    const response = 'Here are the facts:\n' + JSON.stringify({
+      facts: [{ text: 'Fact A', category: 'project' }],
+    }) + '\nEnd.';
     const { extractor } = createExtractor(response);
 
     const result = await extractor.extract([
       userMsg('Tell me something about this text here.'),
     ]);
-    expect(result).toEqual(['Fact A']);
+    expect(result).toEqual([{ text: 'Fact A', category: 'project' }]);
+  });
+
+  it('falls back to general for invalid categories', async () => {
+    const response = JSON.stringify({
+      facts: [
+        { text: 'Some fact', category: 'invalid_category' },
+        { text: 'Another fact', category: 'preference' },
+      ],
+    });
+    const { extractor } = createExtractor(response);
+
+    const result = await extractor.extract([
+      userMsg('My name is Alex and I have some data.'),
+    ]);
+    expect(result).toEqual([
+      { text: 'Some fact', category: 'general' },
+      { text: 'Another fact', category: 'preference' },
+    ]);
+  });
+
+  it('ignores plain string entries in facts array', async () => {
+    const response = '{"facts": ["Plain string", {"text": "Valid fact", "category": "personal"}]}';
+    const { extractor } = createExtractor(response);
+
+    const result = await extractor.extract([
+      userMsg('My name is Alex and I have some data.'),
+    ]);
+    expect(result).toEqual([
+      { text: 'Valid fact', category: 'personal' },
+    ]);
   });
 });

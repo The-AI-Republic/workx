@@ -1,15 +1,27 @@
 /**
  * LLM-based fact extraction from conversations.
- * Extracts atomic personal facts about the user from conversation messages.
+ * Extracts atomic personal facts about the user from conversation messages,
+ * each classified into a memory category by the LLM.
  */
 
 import extractionPrompt from './prompts/extraction.md?raw';
-import type { LLMCaller, MemoryConfig } from './types';
+import type { LLMCaller, MemoryCategory, MemoryConfig } from './types';
 
 export interface ConversationMessage {
   role: 'user' | 'assistant' | 'system' | 'tool';
   content: string;
 }
+
+/** A fact extracted by the LLM, with its category. */
+export interface ExtractedFact {
+  text: string;
+  category: MemoryCategory;
+}
+
+const VALID_CATEGORIES = new Set<string>([
+  'preference', 'personal', 'professional', 'project',
+  'behavior', 'instruction', 'general',
+]);
 
 export class FactExtractor {
   private llm: LLMCaller;
@@ -61,9 +73,9 @@ export class FactExtractor {
 
   /**
    * Extract facts from conversation messages.
-   * Returns an array of atomic fact strings.
+   * Returns an array of categorized facts.
    */
-  async extract(messages: ConversationMessage[]): Promise<string[]> {
+  async extract(messages: ConversationMessage[]): Promise<ExtractedFact[]> {
     if (!this.shouldExtract(messages)) {
       return [];
     }
@@ -93,13 +105,27 @@ export class FactExtractor {
     }
   }
 
-  private parseFacts(response: string): string[] {
+  private parseFacts(response: string): ExtractedFact[] {
     const MAX_FACTS = 50;
 
-    const filterFacts = (facts: unknown[]): string[] =>
+    const filterFacts = (facts: unknown[]): ExtractedFact[] =>
       facts
-        .filter((f: unknown) => typeof f === 'string' && f.length > 0)
-        .slice(0, MAX_FACTS) as string[];
+        .map((f: unknown) => {
+          if (
+            f != null && typeof f === 'object' &&
+            typeof (f as Record<string, unknown>).text === 'string' &&
+            (f as Record<string, unknown>).text !== ''
+          ) {
+            const obj = f as Record<string, unknown>;
+            const category = VALID_CATEGORIES.has(obj.category as string)
+              ? (obj.category as MemoryCategory)
+              : 'general';
+            return { text: obj.text as string, category };
+          }
+          return null;
+        })
+        .filter((f): f is ExtractedFact => f !== null)
+        .slice(0, MAX_FACTS);
 
     try {
       // Strategy 1: Try parsing the entire response as JSON

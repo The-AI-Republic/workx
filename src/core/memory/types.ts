@@ -87,12 +87,16 @@ export interface MemoryConfig {
   excludeCategories?: MemoryCategory[];
 }
 
+/** Default cheap model for memory extraction/conflict resolution. */
+export const DEFAULT_EXTRACTION_MODEL = 'gpt-4o-mini';
+
 export const DEFAULT_MEMORY_CONFIG: MemoryConfig = {
   enabled: false,
   embeddingModel: 'text-embedding-3-small',
   embeddingDimensions: 1536,
   maxMemories: 10000,
   recallLimit: 10,
+  extractionModel: DEFAULT_EXTRACTION_MODEL,
 };
 
 /** Check whether a category belongs to the core (always-inject) set. */

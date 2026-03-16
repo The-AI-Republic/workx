@@ -52,7 +52,8 @@ export interface MemoryServiceInit {
   /** OpenAI API key — required for direct-mode embeddings. Can be empty for backend routing. */
   openaiApiKey: string;
   config?: Partial<MemoryConfig>;
-  llmCaller: LLMCaller;
+  /** Dedicated LLM caller for memory extraction/conflict resolution. Null disables memory. */
+  llmCaller: LLMCaller | null;
   /**
    * Whether to route embedding requests through the AI Republic backend.
    * When true, uses the registered token getter and backend URL instead of the OpenAI API key.
@@ -86,6 +87,11 @@ export async function createMemoryService(
     };
 
     if (!config.enabled) return null;
+
+    if (!init.llmCaller) {
+      console.warn('[Memory] Memory system disabled: no LLM caller available for extraction.');
+      return null;
+    }
 
     // Determine embedding provider based on routing mode
     let rawProvider;
@@ -129,7 +135,7 @@ export async function createMemoryService(
     const memoryService = new MemoryService(
       store as MemoryStore & MemoryHistoryStore,
       embeddingProvider,
-      init.llmCaller,
+      init.llmCaller!,
       fs,
       memoryDir,
       config

@@ -290,7 +290,9 @@ describe('MemoryService._doProcessConversation (write path)', () => {
   });
 
   it('extracts facts and inserts topical ones into the store', async () => {
-    const extractResponse = '{"facts": ["User works at Google"]}';
+    const extractResponse = JSON.stringify({
+      facts: [{ text: 'User works at Google', category: 'professional' }],
+    });
     const llm = {
       complete: vi.fn().mockResolvedValueOnce(extractResponse),
     };
@@ -301,15 +303,17 @@ describe('MemoryService._doProcessConversation (write path)', () => {
     const messages = [userMsg('I work at Google as a software engineer.')];
     await (service as any)._doProcessConversation(messages);
 
-    // "works at" → professional category → topical → store.insert
+    // professional category → topical → store.insert
     // store.search returns empty → no conflict resolution LLM call → all ADD
     expect(store.insert).toHaveBeenCalled();
     expect(store.logOperation).toHaveBeenCalled();
   });
 
   it('routes core facts to CoreMemoryManager', async () => {
-    // 'prefer' keyword → preference category → core
-    const extractResponse = '{"facts": ["User prefers dark mode"]}';
+    // preference category → core
+    const extractResponse = JSON.stringify({
+      facts: [{ text: 'User prefers dark mode', category: 'preference' }],
+    });
     const mergedMarkdown = '# User Profile\n# Preferences\n- Dark mode';
 
     const llm = {
@@ -333,7 +337,9 @@ describe('MemoryService._doProcessConversation (write path)', () => {
   });
 
   it('enforces maxMemories limit on ADD', async () => {
-    const extractResponse = '{"facts": ["New fact"]}';
+    const extractResponse = JSON.stringify({
+      facts: [{ text: 'New fact', category: 'general' }],
+    });
     const llm = { complete: vi.fn().mockResolvedValueOnce(extractResponse) };
 
     const store = createMockStore();
@@ -354,7 +360,9 @@ describe('MemoryService._doProcessConversation (write path)', () => {
   });
 
   it('handles UPDATE decisions correctly', async () => {
-    const extractResponse = '{"facts": ["User is 31 years old"]}';
+    const extractResponse = JSON.stringify({
+      facts: [{ text: 'User is 31 years old', category: 'personal' }],
+    });
     const conflictResponse = JSON.stringify({
       decisions: [{ fact: 'User is 31 years old', action: 'UPDATE', memoryId: '0' }],
     });
@@ -397,8 +405,9 @@ describe('MemoryService._doProcessConversation (write path)', () => {
   });
 
   it('handles DELETE decisions correctly', async () => {
-    // Use a fact that classifies as topical (not core) — "born in" → personal
-    const extractResponse = '{"facts": ["User was born in 1990"]}';
+    const extractResponse = JSON.stringify({
+      facts: [{ text: 'User was born in 1990', category: 'personal' }],
+    });
     const conflictResponse = JSON.stringify({
       decisions: [
         { fact: 'User was born in 1990', action: 'DELETE', memoryId: '0' },
@@ -439,7 +448,9 @@ describe('MemoryService._doProcessConversation (write path)', () => {
   });
 
   it('skips UPDATE when memoryId is missing', async () => {
-    const extractResponse = '{"facts": ["Updated fact"]}';
+    const extractResponse = JSON.stringify({
+      facts: [{ text: 'Updated fact', category: 'general' }],
+    });
     const conflictResponse = JSON.stringify({
       decisions: [{ fact: 'Updated fact', action: 'UPDATE' }], // no memoryId
     });
@@ -464,7 +475,9 @@ describe('MemoryService._doProcessConversation (write path)', () => {
   });
 
   it('skips DELETE when getById returns null', async () => {
-    const extractResponse = '{"facts": ["Remove this"]}';
+    const extractResponse = JSON.stringify({
+      facts: [{ text: 'Remove this', category: 'general' }],
+    });
     const conflictResponse = JSON.stringify({
       decisions: [{ fact: 'Remove this', action: 'DELETE', memoryId: '0' }],
     });

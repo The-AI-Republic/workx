@@ -15,6 +15,7 @@ import type { EmbeddingProvider } from './EmbeddingClient';
 import {
   FactExtractor,
   type ConversationMessage,
+  type ExtractedFact,
 } from './FactExtractor';
 import { ConflictResolver } from './ConflictResolver';
 import { CoreMemoryManager } from './CoreMemoryManager';
@@ -51,59 +52,6 @@ async function contentHash(text: string): Promise<string> {
   }
 }
 
-// Simple category classifier based on keywords
-const CATEGORY_KEYWORDS: Record<MemoryCategory, string[]> = {
-  preference: [
-    'prefer', 'like', 'dislike', 'favorite', 'rather', 'want',
-    'always use', 'style', 'font', 'color', 'theme', 'mode',
-  ],
-  instruction: [
-    'always', 'never', 'must', 'should', 'don\'t', 'do not',
-    'make sure', 'remember to', 'rule',
-  ],
-  behavior: [
-    'concise', 'verbose', 'brief', 'detailed', 'format',
-    'communicate', 'respond', 'answer', 'tone',
-  ],
-  personal: [
-    'name is', 'birthday', 'born', 'live in', 'married',
-    'family', 'age', 'pet', 'dog', 'cat',
-  ],
-  professional: [
-    'work at', 'job', 'engineer', 'developer', 'manager',
-    'company', 'role', 'title', 'career', 'team',
-  ],
-  project: [
-    'project', 'codebase', 'repository', 'repo', 'stack',
-    'framework', 'architecture', 'deploy', 'build',
-  ],
-  general: [],
-};
-
-function classifyFact(fact: string): MemoryCategory {
-  const lower = fact.toLowerCase();
-  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    if (category === 'general') continue;
-    for (const keyword of keywords) {
-      // Use word-boundary matching to avoid false positives
-      // (e.g. "information" matching "format", "stubborn" matching "born")
-      if (keyword.includes(' ')) {
-        // Multi-word phrases: exact substring match
-        if (lower.includes(keyword)) {
-          return category as MemoryCategory;
-        }
-      } else {
-        // Escape regex special characters in keyword to prevent RegExp errors
-        const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const pattern = new RegExp(`\\b${escaped}\\b`);
-        if (pattern.test(lower)) {
-          return category as MemoryCategory;
-        }
-      }
-    }
-  }
-  return 'general';
-}
 
 /** Max size for core-memory.md content (characters) to prevent unbounded context window usage. */
 const MAX_CORE_MEMORY_CHARS = 50000;
@@ -241,22 +189,22 @@ export class MemoryService {
   }
 
   private async _doProcessConversation(
-    messages: ConversationMessage[]
+    messages: ConversationMessage[],
+    isDrain = false
   ): Promise<void> {
-    if (!this.config.enabled || this.closed) return;
+    if (!this.config.enabled || (!isDrain && this.closed)) return;
 
-    // Step 1: Extract facts
+    // Step 1: Extract facts (LLM returns each fact with its category)
     const facts = await this.factExtractor.extract(messages);
     if (facts.length === 0) return;
 
-    // Step 2: Classify facts into core vs topical
+    // Step 2: Route facts by LLM-assigned category
     const coreFacts: string[] = [];
-    const topicalFacts: string[] = [];
+    const topicalFacts: ExtractedFact[] = [];
 
     for (const fact of facts) {
-      const category = classifyFact(fact);
-      if (isCoreCategory(category)) {
-        coreFacts.push(fact);
+      if (isCoreCategory(fact.category)) {
+        coreFacts.push(fact.text);
       } else {
         topicalFacts.push(fact);
       }
@@ -274,14 +222,22 @@ export class MemoryService {
   }
 
   private async _processTopicalFacts(
-    facts: string[]
+    facts: ExtractedFact[]
   ): Promise<void> {
+    const factTexts = facts.map(f => f.text);
+
+    // Build a text → category lookup from the LLM-assigned categories
+    const factCategoryMap = new Map<string, MemoryCategory>();
+    for (const f of facts) {
+      factCategoryMap.set(f.text, f.category);
+    }
+
     // Batch embed all facts
-    const embeddings = await this.embeddingProvider.embedBatch(facts);
+    const embeddings = await this.embeddingProvider.embedBatch(factTexts);
 
     // Find similar existing memories for each fact
     const allExistingMemories = new Map<string, MemoryFact>();
-    for (let i = 0; i < facts.length; i++) {
+    for (let i = 0; i < factTexts.length; i++) {
       const results = await this.store.search(embeddings[i], 5);
       for (const r of results) {
         allExistingMemories.set(r.fact.id, r.fact);
@@ -292,7 +248,7 @@ export class MemoryService {
 
     // Resolve conflicts
     const decisions = await this.conflictResolver.resolve(
-      facts,
+      factTexts,
       existingMemoriesArray
     );
 
@@ -300,8 +256,8 @@ export class MemoryService {
     // The decisions array can differ in length from facts (LLM may combine/split),
     // so we match by fact text rather than index.
     const factToEmbedding = new Map<string, Float32Array>();
-    for (let i = 0; i < facts.length; i++) {
-      factToEmbedding.set(facts[i], embeddings[i]);
+    for (let i = 0; i < factTexts.length; i++) {
+      factToEmbedding.set(factTexts[i], embeddings[i]);
     }
 
     // Execute decisions
@@ -340,7 +296,10 @@ export class MemoryService {
             if (nearest.length > 0 && nearest[0].fact.contentHash === hash) {
               continue;
             }
-            const category = classifyFact(decision.fact);
+
+            // Use the LLM-assigned category if available, otherwise fall back to 'general'.
+            // The conflict resolver may rewrite facts, so the text may not match the original.
+            const category = factCategoryMap.get(decision.fact) ?? 'general';
 
             // If conflict resolver rewrote the fact into a core category,
             // route it to core-memory.md instead of the topical store.
@@ -382,11 +341,13 @@ export class MemoryService {
 
             const hash = await contentHash(decision.fact);
             const updateNow = Date.now();
+            // Preserve the existing category on UPDATE — the conflict resolver
+            // only refines the text, not the category.
             await this.store.update(
               decision.memoryId,
               {
                 factText: decision.fact,
-                category: classifyFact(decision.fact),
+                category: existing.category,
                 contentHash: hash,
                 updatedAt: updateNow,
               } as Partial<MemoryFact>,
@@ -518,7 +479,7 @@ ${content}
     // Drain buffered messages (best-effort).
     if (this.pendingMessages.length > 0) {
       try {
-        await this._doProcessConversationDrain(this.pendingMessages);
+        await this._doProcessConversation(this.pendingMessages, true);
       } catch { /* best-effort; don't fail close */ }
       this.pendingMessages = [];
     }
@@ -528,33 +489,4 @@ ${content}
     await this.store.close();
   }
 
-  /**
-   * Drain variant of _doProcessConversation that runs even when closed.
-   * Only called from close() for best-effort message processing.
-   */
-  private async _doProcessConversationDrain(
-    messages: ConversationMessage[]
-  ): Promise<void> {
-    if (!this.config.enabled) return;
-
-    const facts = await this.factExtractor.extract(messages);
-    if (facts.length === 0) return;
-
-    const coreFacts: string[] = [];
-    const topicalFacts: string[] = [];
-    for (const fact of facts) {
-      const category = classifyFact(fact);
-      if (isCoreCategory(category)) {
-        coreFacts.push(fact);
-      } else {
-        topicalFacts.push(fact);
-      }
-    }
-    if (coreFacts.length > 0) {
-      await this.coreMemoryManager.mergeCoreFacts(coreFacts);
-    }
-    if (topicalFacts.length > 0) {
-      await this._processTopicalFacts(topicalFacts);
-    }
-  }
 }
