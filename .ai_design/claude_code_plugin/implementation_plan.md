@@ -6,11 +6,18 @@
 |---|---|---|---|
 | 1 | Foundation | None | Types, manifest loader, plugin manager, cache |
 | 2 | Skills | Phase 1 | Namespaced skill loading from plugins |
-| 3 | Hooks | Phase 1 | Hook config parsing, event dispatch, hook runners |
+| 3 | ~~Hooks~~ | ~~Phase 1~~ | **Deferred — separate branch** |
 | 4 | MCP | Phase 1 | Auto-start plugin MCP servers |
 | 5 | Agents | Phase 1 | Markdown agent definitions from plugins |
 | 6 | Marketplace | Phase 1 | Discovery, install, update from marketplace repos |
 | 7 | LSP | Phase 1 | LSP server configs (desktop + server only) |
+
+> **Note:** Phase 3 (Hooks) has been moved out of scope for this implementation.
+> The hook system (HookDispatcher, HookRunner, platform adapters, TurnManager/Session
+> injection points) will be designed and implemented on a separate branch ahead of
+> this work. The plugin manifest schema retains the `hooks` field for forward
+> compatibility, but `PluginManager` will skip hook loading until the hook system
+> is available.
 
 ---
 
@@ -125,7 +132,18 @@ Load skills from plugin directories with namespace prefixing.
 
 ---
 
-## Phase 3 — Hooks
+## Phase 3 — Hooks (DEFERRED)
+
+> **This phase has been moved out of scope.** The hook system will be designed
+> and implemented on a separate branch ahead of the plugin system implementation.
+> See the original design below for reference.
+>
+> When the hook system is ready, `PluginManager` will integrate with it by
+> calling `HookDispatcher.register(plugin)` during plugin loading — the same
+> pattern used for skills, MCP, and agents.
+
+<details>
+<summary>Original Phase 3 design (for reference)</summary>
 
 ### Goal
 Execute shell commands, LLM prompts, or agent verifiers in response to
@@ -178,6 +196,8 @@ agent lifecycle events, driven by plugin `hooks.json` configuration.
 - Unit test: prompt hook execution (mock model)
 - Integration test: PostToolUse hook fires after tool execution
 - Platform test: verify extension skips command hooks gracefully
+
+</details>
 
 ---
 
@@ -321,7 +341,7 @@ Support `.lsp.json` for language server integration (desktop + server only).
 |---|---|---|---|
 | 1 — Foundation | ~10 | ~5 | Medium-High |
 | 2 — Skills | ~2 | ~4 | Medium |
-| 3 — Hooks | ~6 | ~4 | High |
+| 3 — ~~Hooks~~ | — | — | **Deferred** |
 | 4 — MCP | ~1 | ~2 | Medium-Low |
 | 5 — Agents | ~2 | ~2 | Medium-Low |
 | 6 — Marketplace | ~3 | ~3 | Medium |
@@ -338,16 +358,15 @@ Support `.lsp.json` for language server integration (desktop + server only).
 - Surface errors in UI (plugin status indicators)
 
 ### Security
-- Plugin hooks execute arbitrary code — require user consent on install
-- `command` hooks restricted by platform sandbox (extension can't run them)
 - MCP servers from plugins should go through existing approval gate
 - Plugin cache integrity — detect tampering via version/hash checks
+- Hook security (arbitrary code execution, user consent) deferred to hook system design
 
 ### Performance
 - Lazy-load plugin components (don't parse all skills on startup if not needed)
 - Cache parsed manifests
 - MCP servers: connect on first use, not on plugin load (option)
-- Hook dispatch should be fast — don't block tool execution on slow hooks
+- Hook performance considerations deferred to hook system design
 
 ### Backward Compatibility
 - Existing standalone `.claude/` skills continue to work unchanged

@@ -30,7 +30,6 @@ so that:
 - Plugin manifest loading (`.claude-plugin/plugin.json`)
 - Plugin lifecycle management (install, enable, load, disable, uninstall)
 - Namespaced skills from plugins
-- Hook system (pre/post tool use, session events, etc.)
 - Agent definitions from plugins
 - MCP server auto-start from plugins
 - Plugin caching and file resolution
@@ -41,6 +40,11 @@ so that:
 
 ### Out of Scope (for now)
 
+- **Hook system** (pre/post tool use, session events, hook dispatch pipeline) —
+  will be designed and implemented on a separate branch ahead of plugin system
+  implementation. The plugin manifest schema retains the `hooks` field for
+  forward compatibility, but `PluginManager` will skip hook loading until the
+  hook system is ready.
 - Modifying the existing OpenClaw `ChannelPlugin` system (server channel adapters)
 - Building a BrowserX-hosted marketplace registry service
 - Plugin signing or verification beyond what Claude Code specifies
