@@ -142,7 +142,6 @@ export async function createMemoryService(
     );
 
     // Run background migration check (non-blocking).
-    memoryService.beginMigration();
     memoryService.checkAndRunMigration().catch(err => {
       console.error('[Memory] Background migration check failed:', err);
     });

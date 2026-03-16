@@ -51,6 +51,8 @@ export class ConflictResolver {
     const newFactsText = newFacts.map((f, i) => `${i + 1}. ${f}`).join('\n');
 
     const prompt = this.config.customConflictPrompt ?? conflictPrompt;
+    // Arrow functions as replacement values prevent String.replace from
+    // interpreting $ sequences (e.g. $1, $$) in the memory/fact text.
     const systemPrompt = prompt
       .replace('{{existingMemories}}', () => existingText)
       .replace('{{newFacts}}', () => newFactsText);

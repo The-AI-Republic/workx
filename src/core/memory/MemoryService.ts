@@ -32,29 +32,34 @@ import {
 
 /**
  * Compute SHA-256 content hash of a string.
+ * Uses Web Crypto API with Node.js crypto fallback.
  */
 async function contentHash(text: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(text);
+  const data = new TextEncoder().encode(text);
 
+  // Web Crypto API — available in browsers and modern Node (≥15)
   if (typeof crypto !== 'undefined' && crypto.subtle) {
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+    return Array.from(new Uint8Array(hashBuffer), b => b.toString(16).padStart(2, '0')).join('');
   }
 
-  // Node.js fallback (crypto.subtle may not be available in older Node)
-  try {
-    const { createHash } = await import('crypto');
-    return createHash('sha256').update(text).digest('hex');
-  } catch {
-    throw new Error('No SHA-256 implementation available (crypto.subtle or node:crypto required)');
-  }
+  // Node.js fallback
+  const { createHash } = await import('crypto');
+  return createHash('sha256').update(text).digest('hex');
 }
 
 
-/** Max size for core-memory.md content (characters) to prevent unbounded context window usage. */
-const MAX_CORE_MEMORY_CHARS = 50000;
+/**
+ * Max size for core-memory.md content (characters) to prevent unbounded context window usage.
+ * ~8000 chars ≈ 2000 tokens — keeps core memory's prompt overhead reasonable.
+ */
+const MAX_CORE_MEMORY_CHARS = 8000;
+
+/** Max number of messages that can be buffered while rate-limited. */
+const MAX_PENDING_MESSAGES = 100;
+
+/** Max number of facts to embed in a single API call. */
+const EMBED_BATCH_SIZE = 20;
 
 export class MemoryService {
   private store: MemoryStore & MemoryHistoryStore;
@@ -69,6 +74,7 @@ export class MemoryService {
   private minExtractionIntervalMs = 10000; // 10 seconds cooldown
   private migrationReady: Promise<void> = Promise.resolve();
   private migrationReadyResolve: (() => void) | null = null;
+  private drainTimer: ReturnType<typeof setTimeout> | null = null;
   private closed = false;
 
   constructor(
@@ -88,19 +94,15 @@ export class MemoryService {
   }
 
   /**
-   * Mark the service as migration-pending. Callers of search/processConversation
-   * will wait until the migration gate is released.
+   * Check if a schema migration is pending, and run re-embedding in background if so.
+   * Locks a gate so that search/processConversation block until migration completes.
    */
-  beginMigration(): void {
+  async checkAndRunMigration(): Promise<void> {
+    // Lock the gate — search and processConversation will await this promise.
     this.migrationReady = new Promise<void>((resolve) => {
       this.migrationReadyResolve = resolve;
     });
-  }
 
-  /**
-   * Check if a schema migration is pending, and run re-embedding in background if so.
-   */
-  async checkAndRunMigration(): Promise<void> {
     try {
       if (!this.config.enabled) return;
       const status = await this.store.getMigrationStatus();
@@ -167,15 +169,50 @@ export class MemoryService {
     // Rate-limit: buffer messages instead of dropping them
     const now = Date.now();
     if (now - this.lastExtractionTime < this.minExtractionIntervalMs) {
-      this.pendingMessages.push(...messages);
+      // Cap buffer to prevent unbounded growth
+      if (this.pendingMessages.length < MAX_PENDING_MESSAGES) {
+        this.pendingMessages.push(...messages);
+      }
+      // Schedule a drain after the cooldown expires so buffered messages
+      // are processed even if the user goes idle.
+      this.scheduleDrain();
       return;
     }
 
-    // Drain any buffered messages and combine with current
+    this.clearDrainTimer();
+    this.drainPendingAndProcess(messages);
+  }
+
+  /**
+   * Schedule a timer to drain buffered messages after the cooldown expires.
+   */
+  private scheduleDrain(): void {
+    if (this.drainTimer || this.closed) return;
+    const remaining = this.minExtractionIntervalMs - (Date.now() - this.lastExtractionTime);
+    this.drainTimer = setTimeout(() => {
+      this.drainTimer = null;
+      if (this.closed || this.pendingMessages.length === 0) return;
+      this.drainPendingAndProcess([]);
+    }, Math.max(remaining, 0));
+  }
+
+  private clearDrainTimer(): void {
+    if (this.drainTimer) {
+      clearTimeout(this.drainTimer);
+      this.drainTimer = null;
+    }
+  }
+
+  /**
+   * Drain buffered messages, combine with new ones, and enqueue processing.
+   */
+  private drainPendingAndProcess(messages: ConversationMessage[]): void {
     const allMessages = this.pendingMessages.length > 0
       ? [...this.pendingMessages, ...messages]
       : messages;
     this.pendingMessages = [];
+
+    if (allMessages.length === 0) return;
 
     // Chain onto the processing queue
     this.processingQueue = this.processingQueue
@@ -232,8 +269,13 @@ export class MemoryService {
       factCategoryMap.set(f.text, f.category);
     }
 
-    // Batch embed all facts
-    const embeddings = await this.embeddingProvider.embedBatch(factTexts);
+    // Batch embed all facts, chunked to stay within API token limits
+    const embeddings: Float32Array[] = [];
+    for (let i = 0; i < factTexts.length; i += EMBED_BATCH_SIZE) {
+      const chunk = factTexts.slice(i, i + EMBED_BATCH_SIZE);
+      const chunkEmbeddings = await this.embeddingProvider.embedBatch(chunk);
+      embeddings.push(...chunkEmbeddings);
+    }
 
     // Find similar existing memories for each fact
     const allExistingMemories = new Map<string, MemoryFact>();
@@ -475,6 +517,7 @@ ${content}
     if (this.closed) return; // idempotent guard
     // Set closed first to prevent processConversation from enqueuing new work
     this.closed = true;
+    this.clearDrainTimer();
 
     // Drain buffered messages (best-effort).
     if (this.pendingMessages.length > 0) {

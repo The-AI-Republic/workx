@@ -1,16 +1,25 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { NodeMemoryStore } from '@/server/storage/NodeMemoryStore';
 import type { MemoryFact, MemoryConfig } from '@/core/memory/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
-describe('MemoryStore Integration (NodeMemoryStore)', () => {
-    let store: NodeMemoryStore;
+// sqlite-vec is a native module that may not be available in all environments.
+let sqliteVecAvailable = false;
+try {
+  require('sqlite-vec');
+  sqliteVecAvailable = true;
+} catch { /* not available */ }
+
+describe.skipIf(!sqliteVecAvailable)('MemoryStore Integration (NodeMemoryStore)', () => {
+    let store: any;
     let tempDir: string;
     let config: MemoryConfig;
 
     beforeEach(async () => {
+        // Dynamic require inside beforeEach to avoid module-load errors
+        // when sqlite-vec is missing (describe.skipIf still evaluates the body).
+        const { NodeMemoryStore } = require('@/server/storage/NodeMemoryStore');
         tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memory-store-test-'));
         store = new NodeMemoryStore(tempDir);
         config = {

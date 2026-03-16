@@ -1197,7 +1197,12 @@ export class TurnManager {
       }
     }
 
-    if (messages.length === 0) return;
+    if (messages.length === 0) {
+      if (input.length > 0) {
+        console.warn('[TurnManager] Memory extraction found no messages from non-empty input — input format may have changed');
+      }
+      return;
+    }
 
     void memoryService
       .processConversation(messages)

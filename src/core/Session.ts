@@ -678,15 +678,7 @@ export class Session {
    * Reset session to initial state (for new conversation) using RolloutRecorder
    */
   async reset(): Promise<void> {
-    // Close memory service before re-initialization to avoid leaking DB connections
-    if (this._memoryService) {
-      try {
-        await this._memoryService.close();
-      } catch (error) {
-        console.error('Failed to close memory service:', error);
-      }
-      this._memoryService = null;
-    }
+    await this.closeMemoryService();
 
     // Shutdown old RolloutRecorder if it exists
     if (this.services?.rollout) {
@@ -717,15 +709,7 @@ export class Session {
    * Close session and cleanup resources using RolloutRecorder
    */
   async close(): Promise<void> {
-    // Close memory service to release DB connections
-    if (this._memoryService) {
-      try {
-        await this._memoryService.close();
-      } catch (error) {
-        console.error('Failed to close memory service:', error);
-      }
-      this._memoryService = null;
-    }
+    await this.closeMemoryService();
 
     if (this.services?.rollout) {
       try {
@@ -785,6 +769,20 @@ export class Session {
    */
   setMemoryService(service: MemoryService | null): void {
     this._memoryService = service;
+  }
+
+  /**
+   * Close memory service and release its resources.
+   */
+  private async closeMemoryService(): Promise<void> {
+    if (this._memoryService) {
+      try {
+        await this._memoryService.close();
+      } catch (error) {
+        console.error('Failed to close memory service:', error);
+      }
+      this._memoryService = null;
+    }
   }
 
   /**
@@ -1143,14 +1141,7 @@ export class Session {
    * Graceful shutdown
    */
   async shutdown(): Promise<void> {
-    if (this._memoryService) {
-      try {
-        await this._memoryService.close();
-      } catch (e) {
-        console.error('Failed to close memory service:', e);
-      }
-      this._memoryService = null;
-    }
+    await this.closeMemoryService();
 
     if (this.services?.rollout) {
       try {

@@ -15,7 +15,7 @@ export const SEARCH_MEMORY_TOOL: ToolDefinition = {
     name: 'search_memory',
     description:
       "Search the user's long-term memory for facts, past conversations, or context relevant to the current task. Use this when you need to recall project details, past decisions, or specific facts the user mentioned previously.",
-    strict: false,
+    strict: true,
     parameters: {
       type: 'object',
       properties: {
@@ -26,6 +26,7 @@ export const SEARCH_MEMORY_TOOL: ToolDefinition = {
         },
       },
       required: ['query'],
+      additionalProperties: false,
     },
   },
 };
