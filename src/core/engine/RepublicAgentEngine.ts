@@ -342,8 +342,14 @@ export class RepublicAgentEngine {
         msg: { type: 'TaskStarted', data: { submissionId } },
       });
 
-      // Add pending input to session (cast to protocol InputItem type)
-      this.session.addPendingInput(items as any);
+      // Normalize input items to ensure they conform to InputItem format
+      const normalizedItems: InputItem[] = items.map(item => ({
+        type: item.type || 'text',
+        text: item.type === 'text' ? (item.text || '') : item.text,
+      }));
+
+      // Add pending input to session
+      this.session.addPendingInput(normalizedItems as any);
 
       // Apply context overrides if provided
       if (contextOverrides) {
@@ -359,7 +365,7 @@ export class RepublicAgentEngine {
       const { RegularTask } = await import('../tasks/RegularTask');
       const task = new RegularTask();
 
-      await this.session.spawnTask(task, turnContext, submissionId, items as any);
+      await this.session.spawnTask(task, turnContext, submissionId, normalizedItems as any);
 
       // Session.spawnTask() is fire-and-forget.
       // Task completion/abort events are emitted by Session via the event emitter
@@ -367,13 +373,31 @@ export class RepublicAgentEngine {
     } catch (error) {
       console.error('[RepublicAgentEngine] Error processing user input:', error);
 
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      // Provide user-friendly message for common errors
+      let userFriendlyMessage = errorMessage;
+      if (errorMessage.includes('No API key configured')) {
+        let providerName = 'the selected provider';
+        try {
+          const configData = this.config.agentConfig.getConfig();
+          const modelData = this.config.agentConfig.getModelByKey(configData.selectedModelKey);
+          if (modelData) {
+            providerName = modelData.provider.name;
+          }
+        } catch (_e) {
+          // Ignore error getting provider name
+        }
+        userFriendlyMessage = `Cannot execute task: No API key configured for ${providerName}. Please go to Settings → Model Configuration and add your API key.`;
+      }
+
       this.pushEvent({
         id: crypto.randomUUID(),
         msg: {
           type: 'TaskError',
           data: {
             submissionId,
-            error: error instanceof Error ? error.message : String(error),
+            error: userFriendlyMessage,
           },
         },
       });

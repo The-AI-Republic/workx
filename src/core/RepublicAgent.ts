@@ -680,14 +680,29 @@ export class RepublicAgent {
    * Wire engine events to the RepublicAgent's eventDispatcher.
    * The engine emits EngineEvents; we convert and dispatch them to the UI.
    */
+  /**
+   * Engine-only event types that don't originate from session's event emitter.
+   * These need to be forwarded explicitly to the RepublicAgent event system.
+   */
+  private static readonly ENGINE_ONLY_EVENTS = new Set([
+    'ShutdownComplete',
+    'EngineDisposed',
+    'TaskStarted',
+    'TaskError',
+    'CompactionCompleted',
+    'TurnAborted',
+    'HistoryCleared',
+  ]);
+
   private wireEngineEvents(): void {
     if (!this.engine) return;
     this.engine.onEvent((engineEvent: EngineEvent) => {
-      // Engine events already flow through session's event emitter
-      // which is wired to emitEvent() in the constructor.
-      // The onEvent listener here is for any engine-only events
-      // that don't originate from session (e.g., ShutdownComplete, EngineDisposed).
-      // Session-originated events are already dispatched via the session's emitter.
+      // Session-originated events are already dispatched via the session's emitter
+      // (wired in the constructor). Only forward engine-only events that don't
+      // originate from session to avoid duplicate dispatching.
+      if (RepublicAgent.ENGINE_ONLY_EVENTS.has(engineEvent.msg.type)) {
+        this.emitEvent(engineEvent.msg as EventMsg);
+      }
     });
   }
 

@@ -212,6 +212,7 @@ export class SubAgentRunner {
       } catch (disposeError) {
         console.warn(`[SubAgentRunner] Error disposing engine for run ${runId}:`, disposeError);
       }
+      this.registry.unregister(runId);
     }
   }
 
