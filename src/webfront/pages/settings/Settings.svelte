@@ -183,6 +183,7 @@
           {highlightSettingId}
           onBack={handleBack}
           onSaved={() => {}}
+          onNavigateTo={(view) => navigateTo(view as NavigationView)}
           bind:isDirty={hasUnsavedChanges}
         />
       {:else if currentView === 'storage'}

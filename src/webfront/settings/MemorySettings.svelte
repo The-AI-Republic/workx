@@ -16,12 +16,14 @@
     isDirty = $bindable(false),
     onBack,
     onSaved,
+    onNavigateTo,
   }: {
     settingsConfig: AgentConfig;
     highlightSettingId?: string | undefined;
     isDirty?: boolean;
     onBack?: () => void;
     onSaved?: (detail: { success: boolean; error?: string }) => void;
+    onNavigateTo?: (view: string) => void;
   } = $props();
 
   let currentTheme = $derived($uiTheme);
@@ -226,7 +228,14 @@
                 <line x1="12" y1="9" x2="12" y2="13"/>
                 <line x1="12" y1="17" x2="12.01" y2="17"/>
               </svg>
-              <span>{$_t("Memory is enabled but no OpenAI API key is configured. Add one in Model Settings to activate memory.")}</span>
+              <span>{$_t("Memory will not work until an OpenAI API key is configured. Enable \"Use Own API Key\" in Model Settings and add your OpenAI key.")}
+                {#if onNavigateTo}
+                  <button
+                    class="inline underline font-medium cursor-pointer bg-transparent border-none p-0 text-inherit"
+                    onclick={() => onNavigateTo?.('model-config')}
+                  >{$_t("Go to Model Settings →")}</button>
+                {/if}
+              </span>
             </div>
           {/if}
         {/if}
@@ -252,6 +261,7 @@
             : 'font-terminal text-term-dim-green'}"
         >
           <p class="m-0">{$_t("The agent automatically extracts and remembers important facts from your conversations — preferences, project details, and personal context.")}</p>
+          <p class="m-0">{$_t("All memory data is stored locally on your device. Nothing is sent to our servers.")}</p>
           <p class="m-0">{$_t("Core preferences (like 'always use dark mode') are injected into every conversation. Other facts are searchable on demand.")}</p>
           <p class="m-0">{$_t("Memory requires an OpenAI API key for embeddings (text-embedding-3-small). Extraction uses gpt-4o-mini for low cost.")}</p>
           <p class="m-0">{$_t("Multi model support is coming soon for memory.")}</p>
