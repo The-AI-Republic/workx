@@ -4,24 +4,34 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
-// sqlite-vec is a native module that may not be available in all environments.
-let sqliteVecAvailable = false;
+// NodeMemoryStore depends on better-sqlite3 + sqlite-vec (native addons).
+// These may not be available in all environments (e.g. the vitest config stubs
+// better-sqlite3).  Probe availability by trying a dynamic import.
+let NodeMemoryStoreClass: any = null;
 try {
-  require('sqlite-vec');
-  sqliteVecAvailable = true;
-} catch { /* not available */ }
+  const mod = await import('@/server/storage/NodeMemoryStore');
+  // Verify the real module loaded (not the better-sqlite3 stub) by checking
+  // that the constructor doesn't immediately throw.
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'memory-probe-'));
+  try {
+    const probe = new mod.NodeMemoryStore(tmp);
+    await probe.close();
+    NodeMemoryStoreClass = mod.NodeMemoryStore;
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+} catch {
+  // Native deps not available — tests will be skipped.
+}
 
-describe.skipIf(!sqliteVecAvailable)('MemoryStore Integration (NodeMemoryStore)', () => {
+describe.skipIf(!NodeMemoryStoreClass)('MemoryStore Integration (NodeMemoryStore)', () => {
     let store: any;
     let tempDir: string;
     let config: MemoryConfig;
 
     beforeEach(async () => {
-        // Dynamic require inside beforeEach to avoid module-load errors
-        // when sqlite-vec is missing (describe.skipIf still evaluates the body).
-        const { NodeMemoryStore } = require('@/server/storage/NodeMemoryStore');
         tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memory-store-test-'));
-        store = new NodeMemoryStore(tempDir);
+        store = new NodeMemoryStoreClass(tempDir);
         config = {
             enabled: true,
             embeddingProvider: 'openai',
