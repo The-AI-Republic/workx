@@ -325,6 +325,11 @@ export interface IUserPreferences {
    * - Default: true (own key); set to false by UI for logged-in paid-tier users
    */
   memoryUseOwnApiKey?: boolean;
+  /**
+   * LLM model used for memory fact extraction and conflict resolution.
+   * Defaults to gpt-4o-mini for low cost. Independent of the user's selected chat model.
+   */
+  extractionModel?: string;
   zoomLevel?: number;
   shortcuts?: Record<string, string>;
   experimental?: Record<string, boolean>;

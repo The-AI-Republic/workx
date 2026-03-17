@@ -41,14 +41,14 @@
   let hasOpenAIKey = false;
 
   // User tier (reactive)
-  $: isLoggedIn = $userStore.isLoggedIn;
-  $: isFreeUser = $userStore.userType === 0;
-  $: isPaidUser = isLoggedIn && !isFreeUser;
+  let isLoggedIn = $derived($userStore.isLoggedIn);
+  let isFreeUser = $derived($userStore.userType === 0);
+  let isPaidUser = $derived(isLoggedIn && !isFreeUser);
   // For free users (or not logged in), memory always requires own OpenAI API key
   // For paid users, backend routing is the default but user can opt for own key
-  $: memoryUseOwnApiKey = currentPreferences.memoryUseOwnApiKey ?? true;
+  let memoryUseOwnApiKey = $derived(currentPreferences.memoryUseOwnApiKey ?? true);
   // Show OpenAI key warning only when using own key and no key is configured
-  $: showMemoryKeyWarning = currentPreferences.memoryEnabled && memoryUseOwnApiKey && !hasOpenAIKey;
+  let showMemoryKeyWarning = $derived(currentPreferences.memoryEnabled && memoryUseOwnApiKey && !hasOpenAIKey);
 
   // Language state
   let selectedLanguage = $state(getCurrentLocale());
