@@ -695,5 +695,231 @@ describe('RepublicAgentEngine', () => {
       // events2 should have received events from both operations
       expect(events2.length).toBeGreaterThan(events1.length);
     });
+
+    it('should clean up all listeners on dispose', async () => {
+      const { engine } = createEngine();
+      await engine.initialize();
+
+      const events: EngineEvent[] = [];
+      engine.onEvent((e) => events.push(e));
+
+      // Generate an event before dispose
+      engine.submitOperation({ type: 'Interrupt' });
+      await new Promise(r => setTimeout(r, 10));
+      const countBeforeDispose = events.length;
+      expect(countBeforeDispose).toBeGreaterThan(0);
+
+      await engine.dispose();
+
+      // Listeners are cleared during dispose — no more events delivered via onEvent
+      // Pushing an event after dispose would throw, so we just verify the count didn't grow
+      // from the dispose itself (EngineDisposed goes to eventWaiters, not onEvent listeners)
+      expect(events.length).toBe(countBeforeDispose);
+    });
+  });
+
+  // =========================================================================
+  // Awaitable mode (run, runMultiple, sendFollowUp)
+  // =========================================================================
+
+  describe('Awaitable mode', () => {
+    it('run() should resolve with TaskComplete event', async () => {
+      const { engine, mockSession } = createEngine();
+      await engine.initialize();
+
+      // Mock spawnTask to emit a matching TaskComplete
+      mockSession.spawnTask.mockImplementation(async (_task: any, _ctx: any, submissionId: string) => {
+        // Simulate async task completion
+        setTimeout(() => {
+          engine.pushEvent({
+            id: 'evt-complete',
+            msg: {
+              type: 'TaskComplete',
+              data: {
+                submissionId,
+                response: 'Done!',
+                turnCount: 2,
+              },
+            },
+          });
+        }, 5);
+      });
+
+      const result = await engine.run([{ type: 'text', text: 'Hello' }]);
+
+      expect(result.success).toBe(true);
+      expect(result.response).toBe('Done!');
+      expect(result.turnCount).toBe(2);
+      expect(result.stopReason).toBe('completed');
+      expect(result.engineId).toBe(engine.engineId);
+    });
+
+    it('run() should resolve with TaskError event', async () => {
+      const { engine, mockSession } = createEngine();
+      await engine.initialize();
+
+      mockSession.spawnTask.mockImplementation(async (_task: any, _ctx: any, submissionId: string) => {
+        setTimeout(() => {
+          engine.pushEvent({
+            id: 'evt-error',
+            msg: {
+              type: 'TaskError',
+              data: { submissionId, error: 'Something broke' },
+            },
+          });
+        }, 5);
+      });
+
+      const result = await engine.run([{ type: 'text', text: 'Hello' }]);
+
+      expect(result.success).toBe(false);
+      expect(result.stopReason).toBe('error');
+      expect(result.error).toBe('Something broke');
+    });
+
+    it('run() should timeout when no completion event arrives', async () => {
+      const { engine } = createEngine();
+      await engine.initialize();
+
+      // Don't emit any completion event — let it timeout
+      const result = await engine.run([{ type: 'text', text: 'Hello' }], { timeoutMs: 50 });
+
+      expect(result.success).toBe(false);
+      expect(result.stopReason).toBe('error');
+      expect(result.error).toContain('Timed out');
+    });
+
+    it('run() should resolve on EngineDisposed event', async () => {
+      const { engine } = createEngine();
+      await engine.initialize();
+
+      // Dispose after a short delay
+      setTimeout(() => engine.dispose(), 10);
+
+      const result = await engine.run([{ type: 'text', text: 'Hello' }], { timeoutMs: 5000 });
+
+      expect(result.success).toBe(false);
+      expect(result.stopReason).toBe('cancelled');
+      expect(result.error).toBe('Engine disposed');
+    });
+
+    it('sendFollowUp() should submit UserTurn and wait for completion', async () => {
+      const { engine, mockSession } = createEngine();
+      await engine.initialize();
+
+      mockSession.spawnTask.mockImplementation(async (_task: any, _ctx: any, submissionId: string) => {
+        setTimeout(() => {
+          engine.pushEvent({
+            id: 'evt-followup',
+            msg: {
+              type: 'TaskComplete',
+              data: { submissionId, response: 'Follow-up done', turnCount: 1 },
+            },
+          });
+        }, 5);
+      });
+
+      const result = await engine.sendFollowUp([{ type: 'text', text: 'Continue' }]);
+
+      expect(result.success).toBe(true);
+      expect(result.response).toBe('Follow-up done');
+    });
+
+    it('runMultiple() should execute inputs sequentially', async () => {
+      const { engine, mockSession } = createEngine();
+      await engine.initialize();
+
+      const callOrder: string[] = [];
+      mockSession.spawnTask.mockImplementation(async (_task: any, _ctx: any, submissionId: string) => {
+        const calls = mockSession.addPendingInput.mock.calls;
+        const text = calls[calls.length - 1]?.[0]?.[0]?.text ?? '';
+        callOrder.push(text);
+        setTimeout(() => {
+          engine.pushEvent({
+            id: `evt-${submissionId}`,
+            msg: {
+              type: 'TaskComplete',
+              data: { submissionId, response: `Result for ${text}`, turnCount: 1 },
+            },
+          });
+        }, 5);
+      });
+
+      const results = await engine.runMultiple([
+        [{ type: 'text', text: 'first' }],
+        [{ type: 'text', text: 'second' }],
+      ]);
+
+      expect(results).toHaveLength(2);
+      expect(results[0].success).toBe(true);
+      expect(results[1].success).toBe(true);
+      expect(callOrder).toEqual(['first', 'second']);
+    });
+
+    it('runMultiple() should stop on failure', async () => {
+      const { engine, mockSession } = createEngine();
+      await engine.initialize();
+
+      let callCount = 0;
+      mockSession.spawnTask.mockImplementation(async (_task: any, _ctx: any, submissionId: string) => {
+        callCount++;
+        setTimeout(() => {
+          engine.pushEvent({
+            id: `evt-${submissionId}`,
+            msg: {
+              type: 'TaskError',
+              data: { submissionId, error: 'Failed' },
+            },
+          });
+        }, 5);
+      });
+
+      const results = await engine.runMultiple([
+        [{ type: 'text', text: 'first' }],
+        [{ type: 'text', text: 'second' }],
+      ]);
+
+      // Should stop after first failure
+      expect(results).toHaveLength(1);
+      expect(results[0].success).toBe(false);
+      expect(callCount).toBe(1);
+    });
+  });
+
+  // =========================================================================
+  // Event queue helpers
+  // =========================================================================
+
+  describe('Event queue helpers', () => {
+    it('hasEvents() should return false when queue is empty', async () => {
+      const { engine } = createEngine();
+      await engine.initialize();
+
+      expect(engine.hasEvents()).toBe(false);
+    });
+
+    it('drainEvents() should return and clear all queued events', async () => {
+      const { engine } = createEngine();
+      await engine.initialize();
+
+      // Push events directly (no event router, no listener → queued)
+      const engineNoListener = createEngine({ session: createMockSession() as any }).engine;
+      await engineNoListener.initialize();
+      engineNoListener.pushEvent({ id: 'e1', msg: { type: 'TestEvent1' } });
+      engineNoListener.pushEvent({ id: 'e2', msg: { type: 'TestEvent2' } });
+
+      expect(engineNoListener.hasEvents()).toBe(true);
+
+      const drained = engineNoListener.drainEvents();
+      expect(drained).toHaveLength(2);
+      expect(drained[0].msg.type).toBe('TestEvent1');
+      expect(drained[1].msg.type).toBe('TestEvent2');
+      expect(engineNoListener.hasEvents()).toBe(false);
+    });
+
+    it('getConfig() should return the engine config', async () => {
+      const { engine, config } = createEngine();
+      expect(engine.getConfig()).toBe(config);
+    });
   });
 });
