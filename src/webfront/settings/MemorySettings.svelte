@@ -107,21 +107,21 @@
     }
   }
 
-  function handleMemoryEnabledChange(event: CustomEvent<boolean>) {
-    currentPreferences.memoryEnabled = event.detail;
+  function handleMemoryEnabledChange(value: boolean) {
+    currentPreferences.memoryEnabled = value;
 
-    if (event.detail && isPaidUser) {
+    if (value && isPaidUser) {
       currentPreferences.memoryUseOwnApiKey = false;
-    } else if (event.detail && (isFreeUser || !isLoggedIn)) {
+    } else if (value && (isFreeUser || !isLoggedIn)) {
       currentPreferences.memoryUseOwnApiKey = true;
     }
 
     autoSave();
   }
 
-  function handleMemoryUseOwnKeyChange(event: CustomEvent<boolean>) {
+  function handleMemoryUseOwnKeyChange(value: boolean) {
     if (!isPaidUser) return;
-    currentPreferences.memoryUseOwnApiKey = event.detail;
+    currentPreferences.memoryUseOwnApiKey = value;
     autoSave();
   }
 
@@ -170,7 +170,7 @@
           </div>
           <Switch
             state={currentPreferences.memoryEnabled ?? false}
-            on:change={handleMemoryEnabledChange}
+            onChange={handleMemoryEnabledChange}
           />
         </div>
 
@@ -196,7 +196,7 @@
               </div>
               <Switch
                 state={memoryUseOwnApiKey}
-                on:change={handleMemoryUseOwnKeyChange}
+                onChange={handleMemoryUseOwnKeyChange}
               />
             </div>
           {:else if isLoggedIn && isFreeUser}
@@ -254,6 +254,7 @@
           <p class="m-0">{$_t("The agent automatically extracts and remembers important facts from your conversations — preferences, project details, and personal context.")}</p>
           <p class="m-0">{$_t("Core preferences (like 'always use dark mode') are injected into every conversation. Other facts are searchable on demand.")}</p>
           <p class="m-0">{$_t("Memory requires an OpenAI API key for embeddings (text-embedding-3-small). Extraction uses gpt-4o-mini for low cost.")}</p>
+          <p class="m-0">{$_t("Multi model support is coming soon for memory.")}</p>
         </div>
       </div>
     </div>
