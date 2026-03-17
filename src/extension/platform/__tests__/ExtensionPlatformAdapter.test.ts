@@ -25,7 +25,7 @@ vi.mock('../../../core/TabManager', () => ({
   },
 }));
 
-vi.mock('../../../tools/index', () => ({
+vi.mock('../../tools/registerExtensionTools', () => ({
   registerExtensionTools: vi.fn().mockResolvedValue(undefined),
 }));
 

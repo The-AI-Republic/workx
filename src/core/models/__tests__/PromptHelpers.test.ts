@@ -11,7 +11,7 @@ import type { Prompt, ModelFamily } from '@/core/models/types/ResponsesAPI';
 import type { ResponseItem } from '@/core/protocol/types';
 
 // Mock the ScreenshotFileManager dependency
-vi.mock('@/tools/screenshot/ScreenshotFileManager', () => ({
+vi.mock('@/extension/tools/screenshot/ScreenshotFileManager', () => ({
   ScreenshotFileManager: {
     getScreenshot: vi.fn(),
   },
