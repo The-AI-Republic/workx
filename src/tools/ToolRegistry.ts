@@ -21,7 +21,7 @@ import type {
 } from './BaseTool';
 import type { ApprovalGate } from '../core/approval/ApprovalGate';
 import type { IRiskAssessor } from '../core/approval/types';
-import { parseNodeId } from './dom/utils';
+import { parseNodeId } from '../extension/tools/dom/utils';
 
 /**
  * Interface for event collection (used for testing)
@@ -480,7 +480,7 @@ export class ToolRegistry {
   ): Promise<Record<string, any>> {
     try {
       // Dynamic import to avoid circular dependency at module load time
-      const { DomService } = await import('./dom/DomService');
+      const { DomService } = await import('../extension/tools/dom/DomService');
       const domService = await DomService.forTab(tabId);
       const snapshot = domService.getCurrentSnapshot();
       if (!snapshot) return parameters;

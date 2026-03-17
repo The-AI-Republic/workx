@@ -13,7 +13,7 @@ import {
   type RequestModification,
   type ResponseModification,
   type MonitoringConfig,
-} from '@/tools/NetworkInterceptTool';
+} from '@/extension/tools/NetworkInterceptTool';
 
 // ---------------------------------------------------------------------------
 // Chrome API mocks

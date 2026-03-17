@@ -12,13 +12,13 @@ import type {
 } from './types';
 import { NODE_ID_DOCUMENT } from './types';
 import { computeHeuristics, classifyNode, determineInteractionType, detectFramework, serializedNodeToHtml, computeScrollable, parseNodeId } from './utils';
-import type { TypeOptions } from '../../types/domTool';
+import type { TypeOptions } from '../../../types/domTool';
 import { DomPlugin, type DomPluginContext } from './plugins/DomPlugin';
 import { googleDocPlugin } from './plugins/GoogleDocPlugin';
-import type { DebuggerClient, CDPEventCallback } from '../../core/tools/browser/DebuggerClient';
+import type { DebuggerClient, CDPEventCallback } from '../../../core/tools/browser/DebuggerClient';
 // Static import — forTab() is only used in extension builds where DOMTool is registered.
 // Dynamic import() is banned in Chrome extension service workers.
-import { ChromeDebuggerClient } from '../../extension/tools/browser/ChromeDebuggerClient';
+import { ChromeDebuggerClient } from '../browser/ChromeDebuggerClient';
 
 export class DomService {
   private static instances = new Map<string, DomService>();

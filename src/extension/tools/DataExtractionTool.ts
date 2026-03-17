@@ -1,4 +1,4 @@
-import { BaseTool, type ToolDefinition } from './BaseTool';
+import { BaseTool, type ToolDefinition } from '../../tools/BaseTool';
 
 /** Extraction mode */
 export type ExportFormat = 'json' | 'csv' | 'xml' | 'markdown';

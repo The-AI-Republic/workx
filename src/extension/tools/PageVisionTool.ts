@@ -5,7 +5,7 @@
  * to DOM-based page operations.
  */
 
-import { BaseTool, createToolDefinition, type BaseToolRequest, type BaseToolOptions, type ToolDefinition } from './BaseTool';
+import { BaseTool, createToolDefinition, type BaseToolRequest, type BaseToolOptions, type ToolDefinition } from '../../tools/BaseTool';
 import type {
   ScreenshotToolRequest,
   ScreenshotResponseData,

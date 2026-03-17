@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DomService } from '../DomService';
 import { NODE_TYPE_ELEMENT, NODE_TYPE_TEXT, NODE_ID_DOCUMENT } from '../types';
-import type { DebuggerClient, CDPEventCallback } from '../../../core/tools/browser/DebuggerClient';
+import type { DebuggerClient, CDPEventCallback } from '../../../../core/tools/browser/DebuggerClient';
 
 // Mock ChromeDebuggerClient
 vi.mock('@/extension/tools/browser/ChromeDebuggerClient', () => ({

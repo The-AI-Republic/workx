@@ -18,7 +18,7 @@ vi.mock('@/tools/screenshot/ScreenshotFileManager', () => ({
 }));
 
 // Import the mocked module so we can control its behavior per-test
-import { ScreenshotFileManager } from '@/tools/screenshot/ScreenshotFileManager';
+import { ScreenshotFileManager } from '@/extension/tools/screenshot/ScreenshotFileManager';
 
 const mockedGetScreenshot = vi.mocked(ScreenshotFileManager.getScreenshot);
 

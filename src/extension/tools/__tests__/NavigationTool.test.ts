@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { NavigationTool } from '@/tools/NavigationTool';
+import { NavigationTool } from '@/extension/tools/NavigationTool';
 import type { BaseToolOptions } from '@/tools/BaseTool';
 
 // ---------------------------------------------------------------------------

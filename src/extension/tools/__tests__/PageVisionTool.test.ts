@@ -28,19 +28,19 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('@/tools/screenshot/ScreenshotService', () => ({
+vi.mock('@/extension/tools/screenshot/ScreenshotService', () => ({
   ScreenshotService: {
     forTab: mocks.screenshotServiceForTab,
   },
 }));
 
-vi.mock('@/tools/screenshot/ScreenshotFileManager', () => ({
+vi.mock('@/extension/tools/screenshot/ScreenshotFileManager', () => ({
   ScreenshotFileManager: {
     saveScreenshot: mocks.screenshotFileManagerSaveScreenshot,
   },
 }));
 
-vi.mock('@/tools/screenshot/CoordinateActionService', () => ({
+vi.mock('@/extension/tools/screenshot/CoordinateActionService', () => ({
   CoordinateActionService: {
     forTab: mocks.coordinateActionServiceForTab,
   },
@@ -50,7 +50,7 @@ vi.mock('@/tools/screenshot/CoordinateActionService', () => ({
 // Import after mocks
 // ---------------------------------------------------------------------------
 
-import { PageVisionTool } from '@/tools/PageVisionTool';
+import { PageVisionTool } from '@/extension/tools/PageVisionTool';
 
 // ---------------------------------------------------------------------------
 // Helpers

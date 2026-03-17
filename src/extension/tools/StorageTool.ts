@@ -8,16 +8,16 @@
  * Refactored: Complete replacement of Chrome Storage API with IndexedDB-based cache
  */
 
-import { BaseTool, type BaseToolRequest, type BaseToolOptions } from './BaseTool';
-import { SessionCacheManager } from '../storage/SessionCacheManager';
-import { IndexedDBAdapter } from '../storage/IndexedDBAdapter';
+import { BaseTool, type BaseToolRequest, type BaseToolOptions } from '../../tools/BaseTool';
+import { SessionCacheManager } from '../../storage/SessionCacheManager';
+import { IndexedDBAdapter } from '../../storage/IndexedDBAdapter';
 import {
   QuotaExceededError as SessionQuotaExceededError,
   DataTooLargeError as SessionDataTooLargeError,
   ItemNotFoundError as SessionItemNotFoundError,
   CorruptedDataError as SessionCorruptedDataError,
   CACHE_CONSTANTS
-} from '../storage/SessionCacheManager';
+} from '../../storage/SessionCacheManager';
 
 // ============================================================================
 // Cache Tool API Types (Tool Definition Data Structures)

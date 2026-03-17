@@ -6,8 +6,8 @@
 
 import type { Prompt, ModelFamily, ResponseItem } from './types/ResponsesAPI';
 import type { ContentItem } from '../protocol/types';
-import { ScreenshotFileManager } from '../../tools/screenshot/ScreenshotFileManager';
-import { SCREENSHOT_CACHE_KEY } from '@/tools/screenshot/types';
+import { ScreenshotFileManager } from '../../extension/tools/screenshot/ScreenshotFileManager';
+import { SCREENSHOT_CACHE_KEY } from '@/extension/tools/screenshot/types';
 
 /**
  * Get full instructions by combining base instructions with user instructions.

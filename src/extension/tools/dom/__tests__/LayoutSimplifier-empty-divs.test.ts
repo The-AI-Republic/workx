@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { LayoutSimplifier } from '@/tools/dom/serializers/simplifiers/LayoutSimplifier';
-import type { VirtualNode } from '@/tools/dom/types';
+import { LayoutSimplifier } from '@/extension/tools/dom/serializers/simplifiers/LayoutSimplifier';
+import type { VirtualNode } from '@/extension/tools/dom/types';
 
 describe('LayoutSimplifier - Empty Div Removal', () => {
   const simplifier = new LayoutSimplifier();

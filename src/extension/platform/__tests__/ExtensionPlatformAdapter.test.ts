@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ExtensionPlatformAdapter } from '../ExtensionPlatformAdapter';
 import { TabManager } from '../../../core/TabManager';
-import { registerTools } from '../../../tools/index';
+import { registerExtensionTools } from '../../tools/registerExtensionTools';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -26,7 +26,7 @@ vi.mock('../../../core/TabManager', () => ({
 }));
 
 vi.mock('../../../tools/index', () => ({
-  registerTools: vi.fn().mockResolvedValue(undefined),
+  registerExtensionTools: vi.fn().mockResolvedValue(undefined),
 }));
 
 // ---------------------------------------------------------------------------
@@ -39,7 +39,7 @@ describe('ExtensionPlatformAdapter', () => {
 
     // Re-establish mock implementations after mockReset clears them
     vi.mocked(TabManager.getInstance).mockReturnValue(mockTabManagerInstance as any);
-    vi.mocked(registerTools).mockResolvedValue(undefined);
+    vi.mocked(registerExtensionTools).mockResolvedValue(undefined);
     mockCreateTab.mockReset();
     mockAddTabToGroup.mockReset();
     mockValidateTab.mockReset();
@@ -215,14 +215,14 @@ describe('ExtensionPlatformAdapter', () => {
 
   // ── registerPlatformTools ─────────────────────────────────────────────
 
-  it('registerPlatformTools() calls registerTools', async () => {
+  it('registerPlatformTools() calls registerExtensionTools', async () => {
     const registry = {} as any;
     const toolsConfig = {} as any;
     const capabilities = { supportsImage: true };
 
     await adapter.registerPlatformTools(registry, toolsConfig, capabilities);
 
-    expect(registerTools).toHaveBeenCalledWith(registry, toolsConfig, {
+    expect(registerExtensionTools).toHaveBeenCalledWith(registry, toolsConfig, {
       name: '',
       supportsImage: true,
     });

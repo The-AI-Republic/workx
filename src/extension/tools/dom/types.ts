@@ -1,5 +1,5 @@
 // Import types from canonical location for use within this file
-import type { SerializedDom, SerializedNode, ActionResult } from '../../types/domTool';
+import type { SerializedDom, SerializedNode, ActionResult } from '../../../types/domTool';
 
 // Re-export types for external consumers
 export type { SerializedDom, SerializedNode, ActionResult };
