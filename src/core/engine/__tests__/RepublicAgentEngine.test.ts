@@ -183,24 +183,6 @@ describe('RepublicAgentEngine', () => {
       expect(mockSession.spawnTask).toHaveBeenCalled();
     });
 
-    it('should emit TaskStarted event when processing UserInput', async () => {
-      const { engine } = createEngine();
-      await engine.initialize();
-
-      const events: EngineEvent[] = [];
-      engine.onEvent((e) => events.push(e));
-
-      engine.submitOperation({
-        type: 'UserInput',
-        items: [{ type: 'text', text: 'test' }],
-      });
-
-      await new Promise(r => setTimeout(r, 10));
-
-      const taskStarted = events.find(e => e.msg.type === 'TaskStarted');
-      expect(taskStarted).toBeDefined();
-    });
-
     it('should emit TaskError event when spawnTask throws', async () => {
       const { engine, mockSession } = createEngine();
       await engine.initialize();

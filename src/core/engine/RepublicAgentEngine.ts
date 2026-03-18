@@ -337,11 +337,6 @@ export class RepublicAgentEngine {
     }
 
     try {
-      this.pushEvent({
-        id: crypto.randomUUID(),
-        msg: { type: 'TaskStarted', data: { submissionId } },
-      });
-
       // Normalize input items to ensure they conform to InputItem format
       const normalizedItems: InputItem[] = items.map(item => ({
         type: item.type || 'text',

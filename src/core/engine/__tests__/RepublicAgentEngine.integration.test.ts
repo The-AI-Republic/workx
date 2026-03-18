@@ -138,9 +138,7 @@ describe('M5.1: Engine integration with Session', () => {
     );
     expect(mockSession.spawnTask).toHaveBeenCalled();
 
-    // Verify lifecycle event emitted
-    const taskStarted = events.find(e => e.msg.type === 'TaskStarted');
-    expect(taskStarted).toBeDefined();
+    // TaskStarted is emitted by TaskRunner (not the engine directly)
   });
 
   it('should handle multi-turn interaction (multiple UserInput submissions)', async () => {
