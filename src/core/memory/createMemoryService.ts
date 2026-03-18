@@ -68,10 +68,18 @@ export async function createMemoryService(
     // Create filesystem adapter
     const { fs, memoryDir } = await createMemoryFileSystem();
 
+    // Ensure memory directory exists on startup
+    await fs.ensureDir(memoryDir);
+
     // Wire everything together
     const dailyStore = new DailyMemoryStore(fs, memoryDir);
     const searcher = new MemorySearcher(init.llmCaller, dailyStore);
     const coreMemoryManager = new CoreMemoryManager(init.llmCaller, fs, memoryDir);
+
+    // Ensure core-memory.md exists with default template
+    await coreMemoryManager.ensureFile();
+
+    console.log(`[Memory] File-based memory system initialized at ${memoryDir}`);
 
     return new MemoryService(dailyStore, searcher, coreMemoryManager, config);
   } catch (err) {
