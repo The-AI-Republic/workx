@@ -1,6 +1,6 @@
 # Enable External-Facing Agent — Implementation Design
 
-**Status:** Ready to implement
+**Status:** Revised for MVP implementation
 **Date:** 2026-03-16
 **Decision:** Monorepo, Path A (clean core first, then build agent)
 
@@ -56,10 +56,10 @@ This document specifies how to:
 ### Goals
 
 - Extract a platform-agnostic `@browserx/core` package from the existing codebase
-- Build `digitalme-agent` that implements the DigitalMe platform agent endpoint protocol
+- Build `digitalme-agent` MVP that implements the DigitalMe platform agent endpoint protocol in Docker/server mode only
 - Support per-fan conversation isolation with creator-controlled tool access
 - Enable creators to deploy agents via Docker with minimal configuration
-- Maintain full BrowserX functionality (extension, desktop, server) after extraction
+- Preserve BrowserX server functionality during the extraction
 
 ### Non-Goals
 
@@ -67,6 +67,17 @@ This document specifies how to:
 - Building a UI for digitalme-agent — the DigitalMe mobile app IS the UI
 - Supporting non-DigitalMe protocols in digitalme-agent (generic REST API, etc.)
 - Merging BrowserX server mode and digitalme-agent into one binary
+- Delivering extension/desktop parity as part of the MVP
+- Finalizing long-term storage backend choices beyond an MVP-safe default
+
+### MVP scope boundary
+
+This document now targets the **MVP only**:
+
+- **In scope:** monorepo setup, shared runtime extraction, BrowserX server compatibility, DigitalMe Docker/server package, HMAC auth, SSE streaming, fan isolation, restart-safe persistence, strict tool restrictions
+- **Out of scope for MVP:** BrowserX extension refactor completion, BrowserX desktop refactor completion, creator dashboard APIs, Postgres migration, vector database migration, sandboxed browser automation
+
+The key implementation rule for MVP is: **do not block DigitalMe server delivery on fully cleaning up extension/desktop packaging**. Shared runtime extraction should proceed only as far as required to support BrowserX server mode plus DigitalMe.
 
 ---
 
@@ -765,6 +776,18 @@ Create `packages/digitalme-agent/package.json`:
 }
 ```
 
+### 6.1.1 MVP runtime constraints
+
+For MVP, `digitalme-agent` is a **headless Node server only**:
+
+- No Chrome extension shell
+- No desktop/Tauri shell
+- No creator-local browser control
+- No file system or shell execution tools exposed to fan traffic
+- No arbitrary MCP server spawning from unreviewed config
+
+This package may reuse BrowserX server-mode runtime pieces, but it is a distinct binary with its own config, auth, storage, and safety policy.
+
 ### 6.2 Server entry point
 
 `packages/digitalme-agent/src/server/index.ts`:
@@ -781,6 +804,13 @@ HTTP server (Node.js `http` module or lightweight framework like Hono) exposing:
 | `POST` | `/conversations/:id/messages` | Send message (SSE stream response) |
 
 All endpoints except `/health` are protected by HMAC-SHA256 middleware.
+
+The server must also enforce:
+
+- request body size limits
+- per-fan rate limiting
+- request idempotency for side-effecting POSTs
+- SSE heartbeat/flush behavior so the platform does not treat slow responses as dead connections
 
 ### 6.3 HMAC authentication
 
@@ -811,29 +841,74 @@ export function verifyHMAC(
 
 Middleware extracts `X-DigitalMe-Key`, `X-DigitalMe-Signature`, `X-DigitalMe-Timestamp` headers and verifies against stored credentials.
 
+For MVP, the middleware must additionally enforce:
+
+- timestamp skew window, default `±300s`
+- replay/idempotency cache keyed by `(api_key, signature)` or explicit request id
+- canonical body handling: HMAC is computed from the raw request body bytes, not re-serialized JSON
+
+### 6.3.1 Idempotency and replay handling
+
+Platform retries make `POST /conversations` and `POST /conversations/:id/messages` unsafe unless the agent deduplicates requests.
+
+MVP requirement:
+
+- Every side-effecting request must carry a stable idempotency key.
+- Preferred: platform sends `X-DigitalMe-Request-Id`.
+- Fallback: derive a replay key from `(api_key, timestamp, signature)` and reject duplicates within the replay window.
+
+Behavior:
+
+- If the same `POST /conversations` request is retried, return the original conversation response without creating a second conversation.
+- If the same `POST /messages` request is retried after processing started, do not create a second fan message or execute tools twice.
+- Store replay metadata in persistent storage so a short server restart does not drop dedupe protection immediately.
+
 ### 6.4 Conversation manager
 
 `packages/digitalme-agent/src/conversations/ConversationManager.ts`:
 
-Maps the DigitalMe conversation model to browserx core sessions:
+Maps the DigitalMe conversation model to BrowserX shared runtime sessions:
 
 ```typescript
 import { RepublicAgent } from '@browserx/core/agent/RepublicAgent';
 import { Session } from '@browserx/core/session/Session';
 
 export class ConversationManager {
-  private agents: Map<string, RepublicAgent> = new Map(); // conversationId → agent
+  private activeRuntimes: Map<string, RepublicAgent> = new Map(); // conversationId → runtime
 
   async createConversation(fanUserId: string): Promise<string> {
     const conversationId = uuid();
+    const agent = await this.createRuntimeForConversation(conversationId, fanUserId);
+    await this.store.createConversation(conversationId, fanUserId);
+    this.activeRuntimes.set(conversationId, agent);
+    return conversationId;
+  }
+
+  async getOrCreateRuntime(conversationId: string, fanUserId: string): Promise<RepublicAgent> {
+    const existing = this.activeRuntimes.get(conversationId);
+    if (existing) return existing;
+
+    const conversation = await this.store.getConversation(conversationId);
+    if (!conversation) throw new ConversationNotFoundError(conversationId);
+    if (conversation.fanUserId !== fanUserId) throw new ConversationAccessDeniedError();
+
+    const agent = await this.createRuntimeForConversation(conversationId, fanUserId);
+    await this.resumeConversationState(agent, conversationId);
+    this.activeRuntimes.set(conversationId, agent);
+    return agent;
+  }
+
+  private async createRuntimeForConversation(
+    conversationId: string,
+    fanUserId: string
+  ): Promise<RepublicAgent> {
     const agent = new RepublicAgent(this.config, {
       toolRegistry: this.createFanToolRegistry(),
       platformContext: this.platformContext,
+      sessionMetadata: { conversationId, fanUserId, principalType: 'fan' },
     });
     await agent.initialize();
-    this.agents.set(conversationId, agent);
-    this.store.createConversation(conversationId, fanUserId);
-    return conversationId;
+    return agent;
   }
 
   async sendMessage(
@@ -841,8 +916,7 @@ export class ConversationManager {
     fanUserId: string,
     content: string
   ): AsyncGenerator<SSEEvent> {
-    const agent = this.agents.get(conversationId);
-    if (!agent) throw new ConversationNotFoundError(conversationId);
+    const agent = await this.getOrCreateRuntime(conversationId, fanUserId);
 
     // Safety filter on input
     const filtered = await this.inputFilter.filter(content);
@@ -860,6 +934,9 @@ export class ConversationManager {
       summary: { enabled: false },
     };
 
+    // Persist the inbound message before execution using an idempotent write.
+    await this.store.appendFanMessage({ conversationId, fanUserId, content: filtered.content });
+
     // Collect events and yield SSE
     yield* this.streamAgentResponse(agent, op);
   }
@@ -872,10 +949,13 @@ export class ConversationManager {
 
 Adapts browserx sessions for per-fan isolation:
 
-- Each conversation gets its own `RepublicAgent` instance (or pooled for efficiency)
+- Each conversation has durable stored state and can be lazily rehydrated into a runtime after process restart
+- A live `RepublicAgent` instance is an in-memory execution cache, not the source of truth
 - Session history is scoped to `(fan_user_id, conversation_id)`
 - Creator persona prompt is shared, prepended to every session
 - Tool registry is creator-configured, same for all fans
+
+MVP rule: do not introduce runtime pooling until single-conversation rehydration is correct and idempotent.
 
 ### 6.6 SSE stream adapter
 
@@ -892,21 +972,23 @@ export function eventToSSE(event: EventMsg): SSEEvent | null {
         content: event.data.delta,
       };
     case 'TaskComplete':
-      return {
-        type: 'done',
-      };
+      return { type: 'done' };
     case 'Error':
     case 'TaskFailed':
-      return {
-        type: 'done',
-        status: 'error',
-      };
+      return { type: 'done', status: 'error' };
     default:
       // Internal events (tool execution, reasoning, etc.) — don't expose to fans
       return null;
   }
 }
 ```
+
+MVP streaming requirements:
+
+- flush each SSE event immediately
+- emit heartbeat comments every few seconds during long tool/model waits
+- terminate with exactly one final `done`
+- on disconnect, stop further writes and mark the run state so retries can be handled safely
 
 ### 6.7 Persona configuration
 
@@ -923,8 +1005,8 @@ export interface PersonaConfig {
   // Tool access control
   tools: {
     allowWebSearch: boolean;
-    allowBrowser: boolean;              // Sandboxed browser, NOT creator's desktop
-    mcpServers?: MCPServerConfig[];     // Creator-approved MCP tools
+    allowBrowser: boolean;              // Reserved for future sandboxed browser support
+    mcpServers?: MCPServerConfig[];     // Restricted MVP allowlist only
     customTools?: ToolDefinition[];
   };
 
@@ -960,10 +1042,7 @@ persona:
   tools:
     allow_web_search: true
     allow_browser: false
-    mcp_servers:
-      - name: alice-knowledge-base
-        command: npx
-        args: ["-y", "@alice/kb-mcp-server"]
+    mcp_servers: []
 
   safety:
     blocked_topics: ["financial advice", "medical advice"]
@@ -1031,11 +1110,45 @@ export class ToolAllowlist {
 }
 ```
 
+MVP tool policy:
+
+- `allow_browser` must remain `false`
+- shell tools are forbidden
+- local filesystem tools are forbidden
+- MCP is disabled by default
+- if MCP is enabled for MVP, only a reviewed static allowlist of read-only capability classes is permitted
+
+Examples of allowed MVP capability classes:
+
+- knowledge retrieval
+- public web fetch/search
+- read-only structured query against creator-owned remote data
+
+Examples of forbidden MVP capability classes:
+
+- arbitrary process spawn
+- shell execution
+- local file read/write
+- browser profile/session access
+- outbound messaging, purchases, account actions
+
 ### 6.9 Storage
 
 `packages/digitalme-agent/src/storage/ConversationStore.ts`:
 
-SQLite database with fan-scoped conversation persistence:
+MVP default: SQLite database with fan-scoped conversation persistence.
+
+This is an implementation default, not a long-term architecture commitment. The shared runtime must depend on storage interfaces only so DigitalMe can later move to Postgres and a different vector/memory backend without affecting BrowserX.
+
+Required repository contracts:
+
+- `ConversationStore`
+- `MessageStore`
+- `IdempotencyStore`
+- `UsageEventStore`
+- `RuntimeStateStore` or equivalent resume source
+
+The MVP SQLite implementation may satisfy all of these contracts in one package.
 
 ```sql
 CREATE TABLE conversations (
@@ -1067,6 +1180,17 @@ CREATE TABLE usage_events (
   tokens_in INTEGER DEFAULT 0,
   tokens_out INTEGER DEFAULT 0,
   created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE idempotency_keys (
+  idempotency_key TEXT PRIMARY KEY,
+  route TEXT NOT NULL,
+  conversation_id TEXT,
+  request_hash TEXT NOT NULL,
+  response_snapshot TEXT,
+  status TEXT NOT NULL, -- 'processing' | 'completed' | 'failed'
+  created_at TEXT DEFAULT (datetime('now')),
+  expires_at TEXT NOT NULL
 );
 ```
 
@@ -1120,7 +1244,7 @@ export class DigitalMeStorageProviderFactory implements StorageProviderFactory {
 
 ## 7. DigitalMe Platform Protocol Specification
 
-This is the exact protocol the agent must implement, derived from the platform source code.
+This is the MVP protocol contract the agent must implement. Before coding starts, it must be reconciled once against the platform source so the status codes, retry rules, and SSE framing are exact.
 
 ### 7.1 Authentication
 
@@ -1151,6 +1275,12 @@ For GET requests with no body, use empty string: `"{timestamp}:"`
 { "status": "ok" }
 ```
 
+For MVP, `/health` should return degraded status if:
+
+- the model provider is unreachable
+- the database is unavailable
+- the idempotency store is unavailable
+
 #### `POST /verify`
 
 **Request body:**
@@ -1180,6 +1310,10 @@ For GET requests with no body, use empty string: `"{timestamp}:"`
 }
 ```
 
+**Headers:**
+
+- `X-DigitalMe-Request-Id` preferred for idempotency
+
 **Response (200):**
 
 ```json
@@ -1188,6 +1322,8 @@ For GET requests with no body, use empty string: `"{timestamp}:"`
   "status": "active"
 }
 ```
+
+If the request is retried with the same idempotency key, return the original response body.
 
 #### `GET /conversations?fan_user_id={uuid}`
 
@@ -1230,6 +1366,10 @@ For GET requests with no body, use empty string: `"{timestamp}:"`
 }
 ```
 
+**Headers:**
+
+- `X-DigitalMe-Request-Id` preferred for idempotency
+
 **Response:** `Content-Type: text/event-stream`
 
 ```
@@ -1241,11 +1381,43 @@ data: {"type": "done"}
 
 ```
 
+Required validation:
+
+- `fan_user_id` must match the stored conversation owner
+- duplicate request ids must not append a second fan message
+- if a duplicate request is still in progress, return the existing stream or a deterministic retry response
+
+### 7.2.1 Error contract
+
+The platform-facing agent must define explicit error behavior before implementation:
+
+| Case | Status | Body |
+|------|--------|------|
+| Invalid HMAC / bad API key | `401` | `{ "error": "unauthorized" }` |
+| Expired timestamp / replay rejected | `401` | `{ "error": "replay_rejected" }` |
+| Unknown conversation | `404` | `{ "error": "conversation_not_found" }` |
+| `fan_user_id` mismatch | `403` | `{ "error": "conversation_access_denied" }` |
+| Input blocked by safety layer | `422` | `{ "error": "input_blocked", "reason": "..." }` |
+| Rate limit exceeded | `429` | `{ "error": "rate_limited" }` |
+| Internal failure before stream starts | `500` | `{ "error": "internal_error" }` |
+
+Once SSE has started, terminal failures should be emitted as:
+
+```text
+data: {"type": "done", "status": "error"}
+```
+
 ### 7.3 Timeouts and retries
 
 - Platform timeout per request: 12 seconds (`agent_request_timeout_seconds`)
 - Platform retries: up to 2 (`agent_max_retries`)
 - If all retries fail, connection status set to `offline`
+
+MVP implication:
+
+- the agent must emit first SSE bytes quickly, ideally within 1-2 seconds
+- long-running work must stream progress/heartbeats rather than waiting for full completion
+- retries are expected behavior, not exceptional behavior
 
 ### 7.4 Connection lifecycle
 
@@ -1285,7 +1457,7 @@ active → (revoke) → revoked
 | Browser automation | Full access (user's browser) | **Sandboxed only** — isolated headless browser, no access to creator's sessions |
 | File system | User's files | **Blocked** — no file system access |
 | Shell commands | Available with approval | **Blocked** |
-| MCP tools | User-configured | Creator-configured, fan cannot add |
+| MCP tools | User-configured | Disabled by default; reviewed read-only integrations only |
 | Custom tools | User-defined | Creator-defined, fan cannot add |
 
 ### 8.4 HMAC verification
@@ -1304,11 +1476,11 @@ The agent must verify every request from the platform:
 
 ### 9.1 Conversation storage (agent-side)
 
-The agent stores all conversation data locally. The platform only stores routing metadata.
+The agent stores all conversation data locally for MVP. The platform only stores routing metadata.
 
 ```
 data/
-├── conversations.db          # SQLite: conversation + message metadata
+├── conversations.db          # MVP SQLite: conversation, messages, idempotency metadata
 ├── rollouts/                 # Per-conversation agent history (for session resume)
 │   ├── {conversation_id_1}.jsonl
 │   ├── {conversation_id_2}.jsonl
@@ -1318,7 +1490,23 @@ data/
 └── config.json               # Runtime config cache
 ```
 
-### 9.2 Creator dashboard queries
+### 9.2 Runtime reconstruction requirements
+
+Restart safety is an MVP requirement.
+
+The persisted state must be sufficient to:
+
+- reopen an existing conversation after process restart
+- reload prior message history
+- recover in-flight idempotency records
+- reconstruct enough runtime state for the next turn without requiring a permanently resident in-memory `RepublicAgent`
+
+Design rule:
+
+- database + rollout state is the source of truth
+- in-memory runtime instances are disposable caches
+
+### 9.3 Creator dashboard queries
 
 The agent should support queries that enable a creator dashboard (future API):
 
@@ -1366,6 +1554,11 @@ storage:
   data_dir: ./data
   max_conversations_per_fan: 10
   message_retention_days: 90
+
+security:
+  hmac_tolerance_seconds: 300
+  idempotency_ttl_seconds: 900
+  enable_mcp: false
 
 model:
   api_key: ${MODEL_API_KEY}                 # LLM provider API key
@@ -1431,6 +1624,11 @@ export const DigitalMeConfigSchema = z.object({
     max_message_length: z.number().default(4000),
     rate_limit_per_fan: z.number().default(20),
   }).default({}),
+  security: z.object({
+    hmac_tolerance_seconds: z.number().default(300),
+    idempotency_ttl_seconds: z.number().default(900),
+    enable_mcp: z.boolean().default(false),
+  }).default({}),
 });
 ```
 
@@ -1494,14 +1692,18 @@ volumes:
 
 ### 11.2 Minimal deployment
 
-For creators who just want to run the agent:
+For MVP, Docker deployment is the primary supported path.
+
+The global npm install flow is optional and should not be treated as the primary operational path until packaging, native dependency handling, and config bootstrap are verified.
+
+If a simple local run path is needed for development:
 
 ```bash
-# 1. Install
-npm install -g @browserx/digitalme-agent
+# 1. Install repo dependencies
+npm install
 
 # 2. Configure
-digitalme-agent init          # Creates config.yaml template
+cp packages/digitalme-agent/config.example.yaml ./config.yaml
 
 # 3. Set secrets
 export DIGITALME_API_KEY="..."
@@ -1509,7 +1711,7 @@ export DIGITALME_SIGNING_SECRET="..."
 export MODEL_API_KEY="..."
 
 # 4. Run
-digitalme-agent start
+npm run dev --workspace=@browserx/digitalme-agent
 ```
 
 ### 11.3 Health monitoring
@@ -1546,18 +1748,21 @@ The agent exposes `/health` for the platform's periodic checks. Internally it sh
 **Unit tests:**
 
 - HMAC verification (valid signature, invalid signature, expired timestamp, replay)
+- Idempotency store (dedupe hit, in-progress retry, completed retry, expiration)
 - Input filter (blocked topics, injection detection, length limits)
 - Output filter (PII detection, blocked content)
 - Tool allowlist (allowed tool passes, blocked tool rejected)
 - SSE stream adapter (event conversion, null for internal events)
 - Conversation store (CRUD operations, fan isolation)
+- Runtime reconstruction (resume after process restart)
 - Config validation (valid config, missing fields, invalid values)
 
 **Integration tests:**
 
 - Full request cycle: `POST /conversations/{id}/messages` → HMAC verify → create session → run agent → stream SSE → persist
 - Conversation isolation: two fans, verify no cross-contamination
-- Tool execution: creator-allowed tool executes, non-allowed tool rejected
+- Duplicate POST retry: same request id does not duplicate message persistence or tool execution
+- Tool execution: creator-allowed read-only tool executes, blocked tool rejected
 - Session resume: conversation persists across agent restart
 - Concurrent conversations: multiple fans chatting simultaneously
 
@@ -1566,6 +1771,15 @@ The agent exposes `/health` for the platform's periodic checks. Internally it sh
 - Verification handshake matches platform expectations
 - SSE format matches platform's parser
 - Error responses match platform's error handling
+
+### 12.4 MVP implementation gate
+
+Do not start Phase 3 implementation until these design questions are closed:
+
+- exact idempotency header and retry semantics with platform
+- exact SSE framing and timeout expectations with platform
+- whether MVP allows any MCP integrations at all
+- minimum restart/resume behavior required after container restart
 
 ---
 
@@ -1602,7 +1816,30 @@ The agent exposes `/health` for the platform's periodic checks. Internally it sh
 - [ ] Verify: zero `chrome.*` in `src/core/`
 - [ ] Verify: zero `@tauri-apps` in `src/core/`
 - [ ] Verify: all tests pass
-- [ ] Verify: extension, desktop, server builds succeed
+- [ ] Verify: BrowserX server build succeeds
+- [ ] Verify: extension/desktop remain untouched or separately green if they are in active scope
+
+### Phase 2: Monorepo Setup
+
+- [ ] Create root workspace config
+- [ ] Create `packages/core/`
+- [ ] Create `packages/browserx/`
+- [ ] Move BrowserX server-mode code first
+- [ ] Validate BrowserX server build and tests in new workspace layout
+- [ ] Defer extension/desktop moves until needed for shared runtime extraction
+
+### Phase 3: DigitalMe Agent MVP
+
+- [ ] Create `packages/digitalme-agent/`
+- [ ] Implement HMAC middleware using raw request body bytes
+- [ ] Implement persistent idempotency store
+- [ ] Implement `POST /conversations` with idempotent create semantics
+- [ ] Implement `POST /conversations/:id/messages` with owner check and idempotent append semantics
+- [ ] Implement restart-safe runtime reconstruction from persisted state
+- [ ] Implement SSE adapter with heartbeat and final `done`
+- [ ] Implement strict MVP tool policy: no browser, no shell, no filesystem, MCP off by default
+- [ ] Add contract tests against platform expectations
+- [ ] Ship Docker-first deployment path
 
 ### Phase 2: Monorepo Setup
 
