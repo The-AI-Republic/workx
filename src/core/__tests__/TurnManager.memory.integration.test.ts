@@ -29,7 +29,6 @@ describe('TurnManager Memory Integration', () => {
 
         mockMemoryService = {
             getFormattedGlobalContext: vi.fn().mockResolvedValue('Global Memory Facts here.'),
-            processConversation: vi.fn().mockResolvedValue(undefined),
         };
 
         mockSession = {
@@ -88,56 +87,7 @@ describe('TurnManager Memory Integration', () => {
         warnSpy.mockRestore();
     });
 
-    it('fires fireMemoryExtraction asynchronously after the turn completes', async () => {
-        // C4: User messages now come from the input array, assistant from stream output
-        const streamItems = [
-            {
-                type: 'OutputItemDone',
-                item: { type: 'message', role: 'assistant', content: 'Hello Alice! I will remember that.' }
-            },
-            { type: 'Completed', tokenUsage: { inputTokens: 10, outputTokens: 10 } }
-        ];
-
-        mockModelClient.stream.mockResolvedValue((async function* () {
-            for (const event of streamItems) {
-                yield event;
-            }
-        })());
-
-        // Pass user message as input (C4 fix: input is now the source of user messages)
-        await turnManager.runTurn(['Hello agent, my name is Alice.']);
-
-        // Memory extraction is fire-and-forget, so it takes a microtask.
-        await new Promise(resolve => setTimeout(resolve, 0));
-
-        expect(mockMemoryService.processConversation).toHaveBeenCalledTimes(1);
-        expect(mockMemoryService.processConversation).toHaveBeenCalledWith(
-            [
-                { role: 'user', content: 'Hello agent, my name is Alice.' },
-                { role: 'assistant', content: 'Hello Alice! I will remember that.' }
-            ]
-        );
-    });
-
-    it('tolerates processConversation extraction failures without crashing', async () => {
-        mockMemoryService.processConversation.mockRejectedValue(new Error('Extraction failed'));
-
-        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
-
-        mockModelClient.stream.mockResolvedValue((async function* () {
-            yield { type: 'Completed', tokenUsage: { inputTokens: 10, outputTokens: 10 } };
-        })());
-
-        // C4: Pass user message via input array
-        await expect(turnManager.runTurn(['Hello'])).resolves.not.toThrow();
-
-        await new Promise(resolve => setTimeout(resolve, 0));
-
-        expect(warnSpy).toHaveBeenCalledWith(
-            '[TurnManager] Memory extraction failed (non-critical):',
-            expect.any(Error)
-        );
-
-        warnSpy.mockRestore();
-    });
+    // Note: processConversation has been removed from MemoryService.
+    // Memory extraction is now handled via LLM tool calls (save_memory, search_memory, forget_memory)
+    // rather than automatic post-turn extraction.
 });

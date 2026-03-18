@@ -1,67 +1,44 @@
 /**
- * Factory to create and initialize the full MemoryService.
- * Wires together: MemoryStore, EmbeddingProvider, FactExtractor,
- * ConflictResolver, CoreMemoryManager.
+ * Factory to create and initialize the simplified file-based MemoryService.
+ * Wires together: DailyMemoryStore, MemorySearcher, CoreMemoryManager.
  *
- * The embedding model is always OpenAI text-embedding-3-small,
- * independent of the user's LLM provider choice.
- *
- * Embedding routing:
- * - Direct mode (default): calls OpenAI API with user's own API key
- * - Backend mode: proxies through AI Republic backend (paid-tier users)
+ * No embedding provider, no sqlite-vec, no background extraction.
+ * The main LLM controls memory via save_memory / search_memory / forget_memory tools.
+ * A cheap LLM (gpt-4o-mini) handles keyword generation and relevance filtering.
  */
 
-import { createMemoryStore } from './createMemoryStore';
-import {
-  createEmbeddingProvider,
-  createBackendEmbeddingProvider,
-  EMBEDDING_CONFIG,
-} from './EmbeddingClient';
-import { CachedEmbeddingProvider } from './EmbeddingCache';
+import { DailyMemoryStore } from './DailyMemoryStore';
+import { MemorySearcher } from './MemorySearcher';
+import { CoreMemoryManager } from './CoreMemoryManager';
 import { MemoryService } from './MemoryService';
-import type { MemoryStore, MemoryHistoryStore } from './MemoryStore';
 import { createMemoryFileSystem } from './MemoryFileSystem';
 import { DEFAULT_MEMORY_CONFIG, type LLMCaller, type MemoryConfig } from './types';
 
 declare const __BUILD_MODE__: 'desktop' | 'server' | 'extension';
 
 // ---------------------------------------------------------------------------
-// Module-level token getter for backend-routed memory embeddings.
-// Set by bootstrap code (DesktopAgentBootstrap, service-worker) after auth
-// is established. Read lazily at embed time by BackendEmbeddingProvider.
+// Legacy token getter stubs -- retained so existing bootstrap code
+// (DesktopAgentBootstrap) does not break. No-ops in the file-based system.
 // ---------------------------------------------------------------------------
-let _memoryTokenGetter: (() => Promise<string | null>) | null = null;
 
 /**
- * Register the access-token getter used for backend-routed memory embeddings.
- * Called by bootstrap code after authentication is established.
+ * @deprecated No longer needed. Embeddings are not used by the file-based memory system.
  */
-export function setMemoryTokenGetter(getter: () => Promise<string | null>): void {
-  _memoryTokenGetter = getter;
+export function setMemoryTokenGetter(_getter: () => Promise<string | null>): void {
+  // no-op
 }
 
 /**
- * Get the currently registered access-token getter.
- * Returns null if no getter has been registered (non-logged-in users).
+ * @deprecated No longer needed. Embeddings are not used by the file-based memory system.
  */
 export function getMemoryTokenGetter(): (() => Promise<string | null>) | null {
-  return _memoryTokenGetter;
+  return null;
 }
 
 export interface MemoryServiceInit {
-  /** OpenAI API key — required for direct-mode embeddings. Can be empty for backend routing. */
-  openaiApiKey: string;
   config?: Partial<MemoryConfig>;
-  /** Dedicated LLM caller for memory extraction/conflict resolution. Null disables memory. */
+  /** Dedicated LLM caller for keyword generation and relevance filtering. Null disables memory. */
   llmCaller: LLMCaller | null;
-  /**
-   * Whether to route embedding requests through the AI Republic backend.
-   * When true, uses the registered token getter and backend URL instead of the OpenAI API key.
-   * Requires a paid-tier account and prior call to setMemoryTokenGetter().
-   */
-  backendRouting?: boolean;
-  /** Backend LLM API URL. Required when backendRouting is true. */
-  backendBaseUrl?: string;
 }
 
 /**
@@ -76,77 +53,27 @@ export async function createMemoryService(
   }
 
   try {
-    // Embedding config is fixed — always OpenAI text-embedding-3-small.
-    // Strip any user-supplied embedding overrides to prevent dimension mismatches.
-    const { embeddingDimensions: _d, embeddingModel: _m, ...userConfig } = init.config ?? {};
     const config: MemoryConfig = {
       ...DEFAULT_MEMORY_CONFIG,
-      ...userConfig,
-      embeddingDimensions: EMBEDDING_CONFIG.dimensions,
-      embeddingModel: EMBEDDING_CONFIG.model,
+      ...init.config,
     };
 
     if (!config.enabled) return null;
 
     if (!init.llmCaller) {
-      console.warn('[Memory] Memory system disabled: no LLM caller available for extraction.');
+      console.warn('[Memory] Memory system disabled: no LLM caller available.');
       return null;
     }
 
-    // Determine embedding provider based on routing mode
-    let rawProvider;
-
-    if (init.backendRouting && init.backendBaseUrl) {
-      // Backend routing: token getter must be registered (may be registered later, called lazily)
-      const tokenGetter = () => {
-        const getter = getMemoryTokenGetter();
-        if (!getter) {
-          return Promise.reject(new Error(
-            'Memory backend routing configured but no access token getter registered. ' +
-            'Ensure setMemoryTokenGetter() is called during bootstrap.'
-          ));
-        }
-        return getter();
-      };
-
-      rawProvider = createBackendEmbeddingProvider(init.backendBaseUrl, tokenGetter);
-    } else {
-      // Direct mode: requires OpenAI API key
-      if (!init.openaiApiKey) {
-        console.warn('[Memory] Memory system disabled: no OpenAI API key configured for embeddings.');
-        return null;
-      }
-      rawProvider = await createEmbeddingProvider(init.openaiApiKey);
-    }
-
-    const embeddingProvider = new CachedEmbeddingProvider(rawProvider);
-
-    const store = await createMemoryStore();
-    if (!('logOperation' in store)) {
-      console.warn('[Memory] Store does not implement MemoryHistoryStore');
-      return null;
-    }
-    await store.initialize(config);
-
-    // Create filesystem adapter for CoreMemoryManager
+    // Create filesystem adapter
     const { fs, memoryDir } = await createMemoryFileSystem();
 
     // Wire everything together
-    const memoryService = new MemoryService(
-      store as MemoryStore & MemoryHistoryStore,
-      embeddingProvider,
-      init.llmCaller!,
-      fs,
-      memoryDir,
-      config
-    );
+    const dailyStore = new DailyMemoryStore(fs, memoryDir);
+    const searcher = new MemorySearcher(init.llmCaller, dailyStore);
+    const coreMemoryManager = new CoreMemoryManager(init.llmCaller, fs, memoryDir);
 
-    // Run background migration check (non-blocking).
-    memoryService.checkAndRunMigration().catch(err => {
-      console.error('[Memory] Background migration check failed:', err);
-    });
-
-    return memoryService;
+    return new MemoryService(dailyStore, searcher, coreMemoryManager, config);
   } catch (err) {
     console.warn('[Memory] Failed to initialize memory system:', err);
     return null;

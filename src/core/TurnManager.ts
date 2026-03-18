@@ -18,7 +18,7 @@ import type { IToolsConfig } from '../config/types';
 import { mapResponseItemToEventMessages } from './events/EventMapping';
 import type { ResponseItem } from './protocol/types';
 import { WebSearchTool } from '../tools/WebSearchTool';
-import { SEARCH_MEMORY_TOOL } from '../tools/MemorySearchTool';
+import { SAVE_MEMORY_TOOL, SEARCH_MEMORY_TOOL, FORGET_MEMORY_TOOL } from '../tools/MemoryTools';
 
 /**
  * Optional MCP capability interface for sessions that support MCP tools.
@@ -253,9 +253,6 @@ export class TurnManager {
             // Stream completed with final token usage
             totalTokenUsage = event.tokenUsage;
 
-            // Fire-and-forget memory extraction (write path)
-            this.fireMemoryExtraction(prompt.input, processedItems);
-
             return {
               processedItems,
               totalTokenUsage,
@@ -387,12 +384,12 @@ export class TurnManager {
       }
     }
 
-    // Add search_memory tool if memory service is available
+    // Add memory tools if memory service is available
     if (this.session.getMemoryService()) {
-      const hasSearchMemory = tools.some(t => t.type === 'function' && t.function.name === 'search_memory');
-      if (!hasSearchMemory) {
-        tools.push(SEARCH_MEMORY_TOOL);
-      }
+      const hasMemoryTool = (name: string) => tools.some(t => t.type === 'function' && t.function.name === name);
+      if (!hasMemoryTool('save_memory')) tools.push(SAVE_MEMORY_TOOL);
+      if (!hasMemoryTool('search_memory')) tools.push(SEARCH_MEMORY_TOOL);
+      if (!hasMemoryTool('forget_memory')) tools.push(FORGET_MEMORY_TOOL);
     }
 
     // Add MCP tools if enabled and available
@@ -672,12 +669,28 @@ export class TurnManager {
           result = await this.executeWebSearch(parsedParams.query);
           break;
 
+        case 'save_memory': {
+          const ms = this.session.getMemoryService();
+          if (!ms) {
+            result = { success: false, message: 'Memory system not available' };
+          } else {
+            const text = typeof parsedParams.text === 'string' ? parsedParams.text.trim() : '';
+            const category = parsedParams.category || 'general';
+            if (!text) {
+              result = { success: false, message: 'Empty text' };
+              break;
+            }
+            await ms.saveFact(text, category);
+            result = { success: true, message: `Saved to ${category} memory` };
+          }
+          break;
+        }
+
         case 'search_memory': {
           const ms = this.session.getMemoryService();
           if (!ms) {
             result = { results: [], message: 'Memory system not available' };
           } else {
-            // #23: Truncate excessively long queries to prevent embedding API token overflow
             const query = typeof parsedParams.query === 'string'
               ? parsedParams.query.slice(0, 500)
               : '';
@@ -686,12 +699,28 @@ export class TurnManager {
               break;
             }
             const memories = await ms.searchTopical(query);
-            // L5: Convert distance (lower=better) to similarity score (higher=better)
             result = memories.map(m => ({
-              fact: m.fact.factText,
-              category: m.fact.category,
-              similarity: 1 / (1 + m.distance),
+              fact: m.fact,
+              category: m.category,
+              sourceDate: m.sourceDate,
+              relevance: m.relevance,
             }));
+          }
+          break;
+        }
+
+        case 'forget_memory': {
+          const ms = this.session.getMemoryService();
+          if (!ms) {
+            result = { success: false, message: 'Memory system not available' };
+          } else {
+            const query = typeof parsedParams.query === 'string' ? parsedParams.query.trim() : '';
+            if (!query) {
+              result = { success: false, message: 'Empty query' };
+              break;
+            }
+            const removed = await ms.forgetFact(query);
+            result = { success: true, removed, message: `Removed ${removed} matching entries` };
           }
           break;
         }
@@ -1149,66 +1178,6 @@ export class TurnManager {
     }
 
     return undefined;
-  }
-
-  /**
-   * Fire-and-forget memory extraction from the completed turn's items.
-   * Extracts user and assistant messages, sends them to MemoryService.
-   */
-  private fireMemoryExtraction(input: any[], processedItems: ProcessedResponseItem[]): void {
-    const memoryService = this.session.getMemoryService();
-    if (!memoryService) return;
-
-    const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
-
-    // C4: Extract user messages from the input array (the primary source of facts)
-    for (const item of input) {
-      if (typeof item === 'string') {
-        messages.push({ role: 'user', content: item });
-      } else if (item?.role === 'user' && typeof item.content === 'string') {
-        messages.push({ role: 'user', content: item.content });
-      } else if (item?.type === 'message' && item.role === 'user') {
-        const text = typeof item.content === 'string'
-          ? item.content
-          : Array.isArray(item.content)
-            ? item.content
-                .filter((c: any) => c.type === 'input_text' || c.type === 'text')
-                .map((c: any) => c.text ?? c.content ?? '')
-                .join('\n')
-            : '';
-        if (text) messages.push({ role: 'user', content: text });
-      }
-    }
-
-    // Collect assistant messages from processedItems
-    for (const pi of processedItems) {
-      const item = pi.item;
-      if (item?.type === 'message' && item.role === 'assistant' && typeof item.content === 'string') {
-        messages.push({ role: 'assistant', content: item.content });
-      }
-      if (item?.type === 'message' && item.role === 'assistant' && Array.isArray(item.content)) {
-        const text = item.content
-          .filter((c: any) => c.type === 'output_text' || c.type === 'input_text')
-          .map((c: any) => c.text ?? c.content ?? '')
-          .join('\n');
-        if (text) {
-          messages.push({ role: 'assistant', content: text });
-        }
-      }
-    }
-
-    if (messages.length === 0) {
-      if (input.length > 0) {
-        console.warn('[TurnManager] Memory extraction found no messages from non-empty input — input format may have changed');
-      }
-      return;
-    }
-
-    void memoryService
-      .processConversation(messages)
-      .catch((err) =>
-        console.warn('[TurnManager] Memory extraction failed (non-critical):', err)
-      );
   }
 
   /**

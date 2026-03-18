@@ -1023,36 +1023,30 @@ export class Session {
     }
 
     // Initialize memory service (for desktop/server only)
-    // Memory requires either:
-    // - An OpenAI API key for direct embeddings (own API key mode)
-    // - Backend routing through AI Republic backend (paid-tier logged-in users)
+    // Memory uses file-based storage with a cheap LLM for search operations.
     try {
       if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ !== 'extension') {
         const agentConfig = config || await AgentConfig.getInstance();
         const preferences = agentConfig.getConfig().preferences;
         const memoryEnabled = preferences?.memoryEnabled ?? false;
 
-        // Determine memory routing: own API key vs backend
+        // Determine API key source for the cheap memory LLM
         const memoryUseOwnApiKey = preferences?.memoryUseOwnApiKey ?? true;
         const useBackendForMemory = !memoryUseOwnApiKey;
 
-        // Get OpenAI key (needed for own-key mode; may be empty for backend mode)
         const openaiApiKey = await agentConfig.getProviderApiKey('openai');
 
         // Build backend routing config if applicable
-        let backendRouting = false;
         let backendBaseUrl: string | undefined;
         if (useBackendForMemory) {
           const { LLM_API_URL } = await import('../config/constants');
           if (LLM_API_URL) {
-            backendRouting = true;
             backendBaseUrl = LLM_API_URL;
           }
         }
 
-        // Create a dedicated model client for memory extraction/conflict resolution.
-        // Uses a cheap model (gpt-4o-mini by default) independent of the user's
-        // selected LLM, so model switches don't affect memory and costs stay low.
+        // Create a dedicated LLM caller for memory keyword generation and relevance filtering.
+        // Uses a cheap model (gpt-4o-mini) independent of the user's selected LLM.
         const { OpenAIChatCompletionClient } = await import('./models/client/OpenAIChatCompletionClient');
         const { DEFAULT_EXTRACTION_MODEL } = await import('./memory/types');
         const extractionModel = preferences?.extractionModel ?? DEFAULT_EXTRACTION_MODEL;
@@ -1065,8 +1059,8 @@ export class Session {
         if (memoryApiKey) {
           const memoryLLMClient = new OpenAIChatCompletionClient({
             apiKey: memoryApiKey,
-            baseUrl: backendRouting ? backendBaseUrl + '/openai' : undefined,
-            sessionId: 'memory-extraction',
+            baseUrl: useBackendForMemory && backendBaseUrl ? backendBaseUrl + '/openai' : undefined,
+            sessionId: 'memory-search',
             modelFamily: {
               family: extractionModel,
               base_instructions: '',
@@ -1079,7 +1073,7 @@ export class Session {
               wire_api: 'Chat' as const,
               requires_openai_auth: true,
             },
-            ...(backendRouting && { useCredentials: true }),
+            ...(useBackendForMemory && backendBaseUrl && { useCredentials: true }),
           });
 
           llmCaller = {
@@ -1097,18 +1091,13 @@ export class Session {
         }
 
         const memoryService = await createMemoryService({
-          openaiApiKey: openaiApiKey || '',
           config: { enabled: memoryEnabled },
           llmCaller,
-          backendRouting,
-          backendBaseUrl,
         });
 
         if (memoryEnabled && !memoryService) {
-          if (useBackendForMemory && !backendRouting) {
-            console.warn('[Memory] Memory is enabled but backend routing URL is not available. Memory will not work this session.');
-          } else if (!useBackendForMemory && !openaiApiKey) {
-            console.warn('[Memory] Memory is enabled but no OpenAI API key is configured. Add one in Model Settings.');
+          if (!memoryApiKey) {
+            console.warn('[Memory] Memory is enabled but no API key is configured for the memory LLM. Add one in Model Settings.');
           } else {
             console.warn('[Memory] Memory is enabled but failed to initialize. Check logs for details.');
           }

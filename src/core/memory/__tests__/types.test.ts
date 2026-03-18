@@ -94,16 +94,16 @@ describe('DEFAULT_MEMORY_CONFIG', () => {
     expect(DEFAULT_MEMORY_CONFIG.enabled).toBe(false);
   });
 
-  it('uses text-embedding-3-small as default model', () => {
-    expect(DEFAULT_MEMORY_CONFIG.embeddingModel).toBe('text-embedding-3-small');
+  it('does not set deprecated embeddingModel by default', () => {
+    expect(DEFAULT_MEMORY_CONFIG.embeddingModel).toBeUndefined();
   });
 
-  it('uses 1536 dimensions', () => {
-    expect(DEFAULT_MEMORY_CONFIG.embeddingDimensions).toBe(1536);
+  it('does not set deprecated embeddingDimensions by default', () => {
+    expect(DEFAULT_MEMORY_CONFIG.embeddingDimensions).toBeUndefined();
   });
 
-  it('has maxMemories of 10000', () => {
-    expect(DEFAULT_MEMORY_CONFIG.maxMemories).toBe(10000);
+  it('does not set deprecated maxMemories by default', () => {
+    expect(DEFAULT_MEMORY_CONFIG.maxMemories).toBeUndefined();
   });
 
   it('has recallLimit of 10', () => {

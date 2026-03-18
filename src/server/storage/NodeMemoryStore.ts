@@ -88,15 +88,16 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
     }
 
     // Run schema migration
-    this.runMigration(config.embeddingDimensions);
+    const dimensions = config.embeddingDimensions ?? 1536;
+    this.runMigration(dimensions);
 
     // Check for dimension mismatch
     const schemaDims = await this.getSchemaDimensions();
-    if (schemaDims && schemaDims !== config.embeddingDimensions) {
+    if (schemaDims && schemaDims !== dimensions) {
       console.warn(
-        `[Memory] Dimension mismatch: schema=${schemaDims}, config=${config.embeddingDimensions}. Migrating...`
+        `[Memory] Dimension mismatch: schema=${schemaDims}, config=${dimensions}. Migrating...`
       );
-      await this.migrateDimensions(config.embeddingDimensions);
+      await this.migrateDimensions(dimensions);
     }
   }
 

@@ -68,18 +68,19 @@ export class TauriMemoryStore implements MemoryStore, MemoryHistoryStore {
     const { join } = await import('@tauri-apps/api/path');
     this.dbPath = await join(dataDir, 'memory.db');
 
+    const dimensions = config.embeddingDimensions ?? 1536;
     await invoke('memory_init', {
       dbPath: this.dbPath,
-      dimensions: config.embeddingDimensions,
+      dimensions,
     });
 
     // Check for dimension mismatch
     const schemaDims = await this.getSchemaDimensions();
-    if (schemaDims && schemaDims !== config.embeddingDimensions) {
+    if (schemaDims && schemaDims !== dimensions) {
       console.warn(
-        `[Memory] Dimension mismatch: schema=${schemaDims}, config=${config.embeddingDimensions}. Migrating...`
+        `[Memory] Dimension mismatch: schema=${schemaDims}, config=${dimensions}. Migrating...`
       );
-      await this.migrateDimensions(config.embeddingDimensions);
+      await this.migrateDimensions(dimensions);
     }
   }
 
