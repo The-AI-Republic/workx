@@ -150,5 +150,6 @@ export async function registerExtensionTools(
     console.log('[registerExtensionTools] Extension tool registration completed');
   } catch (error) {
     console.error('[registerExtensionTools] Failed to register extension tools:', error);
+    throw error;
   }
 }

@@ -63,6 +63,15 @@ export interface IPlatformAdapter {
    */
   ensureBrowserReady?(): Promise<void>;
 
+  /**
+   * Set the tool registry and event emitter for lazy browser connection.
+   * Must be called before the first tab operation for adapters that need it.
+   */
+  setToolContext?(
+    toolRegistry: ToolRegistry,
+    emitEvent: (msg: { type: string; data: Record<string, unknown> }) => void
+  ): void;
+
   // Tab Management
   createTab(options?: TabOptions): Promise<number>;
   closeTab(tabId: number): Promise<void>;

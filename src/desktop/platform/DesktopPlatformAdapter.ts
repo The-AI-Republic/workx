@@ -48,7 +48,10 @@ export class DesktopPlatformAdapter implements IPlatformAdapter {
    */
   async ensureBrowserReady(): Promise<void> {
     if (this.browserConnected) return;
-    if (!this.toolRegistry || !this.emitEvent) return;
+    if (!this.toolRegistry || !this.emitEvent) {
+      console.warn('[DesktopPlatformAdapter] ensureBrowserReady() called before setToolContext() — browser tools will not be available');
+      return;
+    }
 
     const toolRegistry = this.toolRegistry;
     const emitEvent = this.emitEvent;
@@ -184,5 +187,7 @@ export class DesktopPlatformAdapter implements IPlatformAdapter {
 
   async dispose(): Promise<void> {
     this.browserConnected = false;
+    this.toolRegistry = null;
+    this.emitEvent = null;
   }
 }

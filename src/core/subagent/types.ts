@@ -45,9 +45,6 @@ export interface SubAgentTypeConfig {
    */
   approvalPolicy?: 'never' | 'inherit';
 
-  /** Whether this type always runs in background. Default: false */
-  background?: boolean;
-
   /** Event types to suppress when routing to parent */
   suppressedEvents?: string[];
 }
@@ -64,9 +61,6 @@ export interface SubAgentToolParams {
 
   /** Short description of what the sub-agent will do */
   description?: string;
-
-  /** Run in background. Default: false */
-  background?: boolean;
 
   /** AbortSignal for cancellation */
   signal?: AbortSignal;

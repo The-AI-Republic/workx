@@ -304,8 +304,10 @@ export class RepublicAgentEngine {
         await this.handlePatchApproval(op);
         break;
       case 'Compact':
+        await this.handleCompact(op.mode ?? 'auto');
+        break;
       case 'ManualCompact':
-        await this.handleCompact(op.type === 'ManualCompact' ? 'manual' : ((op as any).mode ?? 'auto'));
+        await this.handleCompact('manual');
         break;
       case 'AddToHistory':
         await this.handleAddToHistory(op);
@@ -707,12 +709,19 @@ export class RepublicAgentEngine {
         };
       }
 
-      if (event.msg.type === 'TaskComplete' && event.msg.data?.submissionId === submissionId) {
+      // Protocol uses snake_case fields: submission_id, last_agent_message, turn_count, token_usage
+      if (event.msg.type === 'TaskComplete' && event.msg.data?.submission_id === submissionId) {
+        const data = event.msg.data;
+        const tokenUsage = data.token_usage as { total?: { input_tokens?: number; output_tokens?: number } } | undefined;
         return {
           success: true,
-          response: (event.msg.data.response as string | null) ?? null,
-          turnCount: (event.msg.data.turnCount as number) ?? 0,
-          tokenUsage: event.msg.data.tokenUsage as EngineResult['tokenUsage'],
+          response: (data.last_agent_message as string | null) ?? null,
+          turnCount: (data.turn_count as number) ?? 0,
+          tokenUsage: tokenUsage?.total ? {
+            input_tokens: tokenUsage.total.input_tokens ?? 0,
+            output_tokens: tokenUsage.total.output_tokens ?? 0,
+            total_tokens: (tokenUsage.total.input_tokens ?? 0) + (tokenUsage.total.output_tokens ?? 0),
+          } : undefined,
           stopReason: 'completed',
           engineId: this.engineId,
           submissionId,
@@ -732,11 +741,12 @@ export class RepublicAgentEngine {
         };
       }
 
-      if (event.msg.type === 'TaskAborted') {
+      // Session emits TurnAborted (not TaskAborted) on interruption/error
+      if (event.msg.type === 'TurnAborted') {
         return {
           success: false,
           response: null,
-          turnCount: 0,
+          turnCount: (event.msg.data?.turn_count as number) ?? 0,
           tokenUsage: undefined,
           stopReason: abortController.signal.aborted ? 'cancelled' : 'interrupted',
           engineId: this.engineId,

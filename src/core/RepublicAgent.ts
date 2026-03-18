@@ -126,8 +126,8 @@ export class RepublicAgent {
     });
 
     // Wire tool context for adapters that need lazy browser connection (desktop MCP)
-    if ('setToolContext' in this.platformAdapter) {
-      (this.platformAdapter as any).setToolContext(
+    if (this.platformAdapter.setToolContext) {
+      this.platformAdapter.setToolContext(
         this.toolRegistry,
         (msg: EventMsg) => this.emitEvent(msg),
       );
@@ -344,11 +344,11 @@ export class RepublicAgent {
           break;
 
         // === UserInput/UserTurn: run pre-submit hooks, then delegate to engine ===
+        // Return the engine's submission ID so callers can correlate with lifecycle events
         case 'UserInput':
         case 'UserTurn': {
           await this.preSubmitHooks(op, context);
-          requireEngine().submitOperation(this.toEngineOp(op));
-          break;
+          return requireEngine().submitOperation(this.toEngineOp(op));
         }
 
         // === Forward execution ops to engine ===
@@ -462,17 +462,19 @@ export class RepublicAgent {
         items: op.items as any,
       };
     }
-    // UserTurn with context overrides
+    // UserTurn with context overrides — only include defined values
+    // to avoid overwriting existing context with undefined
+    const overrides: Record<string, unknown> = {};
+    if (op.approval_policy !== undefined) overrides.approval_policy = op.approval_policy;
+    if (op.sandbox_policy !== undefined) overrides.sandbox_policy = op.sandbox_policy;
+    if (op.model !== undefined) overrides.model = op.model;
+    if (op.effort !== undefined) overrides.effort = op.effort;
+    if (op.summary !== undefined) overrides.summary = op.summary;
+
     return {
       type: 'UserTurn',
       items: op.items as any,
-      contextOverrides: {
-        approval_policy: op.approval_policy,
-        sandbox_policy: op.sandbox_policy,
-        model: op.model,
-        effort: op.effort,
-        summary: op.summary,
-      },
+      contextOverrides: Object.keys(overrides).length > 0 ? overrides : undefined,
     };
   }
 
@@ -692,6 +694,10 @@ export class RepublicAgent {
     'CompactionCompleted',
     'TurnAborted',
     'HistoryCleared',
+    'BackgroundEvent',
+    'SubAgentStart',
+    'SubAgentComplete',
+    'SubAgentError',
   ]);
 
   private wireEngineEvents(): void {

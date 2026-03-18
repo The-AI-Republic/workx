@@ -67,18 +67,8 @@ export class SubAgentRunner {
       };
     }
 
-    if (!this.registry.canSpawn()) {
-      return {
-        success: false,
-        response: '',
-        runId: '',
-        turnCount: 0,
-        stopReason: 'error',
-        error: 'Max concurrent sub-agents reached',
-      };
-    }
-
     const runId = crypto.randomUUID();
+    const startTime = Date.now();
 
     // Create restricted tool registry
     const childRegistry = await createSubAgentToolRegistry(
@@ -109,16 +99,27 @@ export class SubAgentRunner {
 
     const engine = new RepublicAgentEngine(childConfig);
 
-    // Register in tracking registry
-    this.registry.register({
-      runId,
-      type: params.type,
-      description: params.description ?? params.prompt.slice(0, 50),
-      parentSessionId: this.parentEngine.engineId,
-      engine,
-      startTime: Date.now(),
-      status: 'running',
-    });
+    // Atomically check concurrency and register — prevents TOCTOU race
+    try {
+      this.registry.register({
+        runId,
+        type: params.type,
+        description: params.description ?? params.prompt.slice(0, 50),
+        parentSessionId: this.parentEngine.engineId,
+        engine,
+        startTime,
+        status: 'running',
+      });
+    } catch {
+      return {
+        success: false,
+        response: '',
+        runId: '',
+        turnCount: 0,
+        stopReason: 'error',
+        error: 'Max concurrent sub-agents reached',
+      };
+    }
 
     // Emit start event
     this.parentEngine.pushEvent({
@@ -129,7 +130,6 @@ export class SubAgentRunner {
           runId,
           subAgentType: params.type,
           description: params.description ?? params.prompt.slice(0, 50),
-          background: params.background ?? false,
         },
       },
     });
@@ -159,7 +159,7 @@ export class SubAgentRunner {
               output: result.tokenUsage.output_tokens,
               total: result.tokenUsage.total_tokens,
             } : undefined,
-            duration: Date.now() - (this.registry.get(runId)?.startTime ?? Date.now()),
+            duration: Date.now() - startTime,
           },
         },
       });

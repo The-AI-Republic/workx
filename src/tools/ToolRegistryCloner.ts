@@ -8,8 +8,6 @@ export interface ToolCloneOptions {
   include?: string[];
   /** Tools to exclude (denylist). Applied after include filter. */
   exclude?: string[];
-  /** Default risk level for tools without assessors. */
-  defaultRiskLevel?: 'low' | 'medium' | 'high';
 }
 
 /**
@@ -57,6 +55,5 @@ export async function createSubAgentToolRegistry(
       ...defaultDenyList,
       ...(subAgentType.tools?.deny ?? []),
     ],
-    defaultRiskLevel: 'low',
   });
 }

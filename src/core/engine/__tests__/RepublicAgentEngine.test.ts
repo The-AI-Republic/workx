@@ -709,7 +709,7 @@ describe('RepublicAgentEngine', () => {
       const { engine, mockSession } = createEngine();
       await engine.initialize();
 
-      // Mock spawnTask to emit a matching TaskComplete
+      // Mock spawnTask to emit a matching TaskComplete (protocol uses snake_case)
       mockSession.spawnTask.mockImplementation(async (_task: any, _ctx: any, submissionId: string) => {
         // Simulate async task completion
         setTimeout(() => {
@@ -718,9 +718,9 @@ describe('RepublicAgentEngine', () => {
             msg: {
               type: 'TaskComplete',
               data: {
-                submissionId,
-                response: 'Done!',
-                turnCount: 2,
+                submission_id: submissionId,
+                last_agent_message: 'Done!',
+                turn_count: 2,
               },
             },
           });
@@ -795,7 +795,7 @@ describe('RepublicAgentEngine', () => {
             id: 'evt-followup',
             msg: {
               type: 'TaskComplete',
-              data: { submissionId, response: 'Follow-up done', turnCount: 1 },
+              data: { submission_id: submissionId, last_agent_message: 'Follow-up done', turn_count: 1 },
             },
           });
         }, 5);
@@ -821,7 +821,7 @@ describe('RepublicAgentEngine', () => {
             id: `evt-${submissionId}`,
             msg: {
               type: 'TaskComplete',
-              data: { submissionId, response: `Result for ${text}`, turnCount: 1 },
+              data: { submission_id: submissionId, last_agent_message: `Result for ${text}`, turn_count: 1 },
             },
           });
         }, 5);

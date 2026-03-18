@@ -22,7 +22,7 @@ export async function registerSubAgentTool(
   engine: RepublicAgentEngine,
   options: RegisterSubAgentOptions = {}
 ): Promise<SubAgentRunner> {
-  const types = options.types ?? BUILTIN_SUBAGENT_TYPES;
+  const customTypes = options.types;
   const registry = new SubAgentRegistry({
     maxConcurrent: options.maxConcurrent ?? 3,
   });
@@ -30,11 +30,13 @@ export async function registerSubAgentTool(
   const runner = new SubAgentRunner({
     parentEngine: engine,
     registry,
-    customTypes: types,
+    customTypes,
   });
 
-  // Build tool definition
-  const toolDefinition = buildSubAgentToolDefinition(types);
+  // Build tool definition with all types (builtins + custom) to match
+  // what the runner actually accepts at runtime
+  const allTypes = mergeTypes(customTypes);
+  const toolDefinition = buildSubAgentToolDefinition(allTypes);
 
   // Register the tool in the engine's registry
   const toolRegistry = engine.getToolRegistry();
@@ -53,7 +55,6 @@ export async function registerSubAgentTool(
         type: params.type,
         prompt: params.prompt,
         description: typeof params.description === 'string' ? params.description : undefined,
-        background: typeof params.background === 'boolean' ? params.background : undefined,
       };
 
       const result = await runner.run(toolParams);
@@ -62,4 +63,21 @@ export async function registerSubAgentTool(
   );
 
   return runner;
+}
+
+/**
+ * Merge builtins with optional custom types.
+ * Custom types with the same ID override builtins.
+ */
+function mergeTypes(customTypes?: SubAgentTypeConfig[]): SubAgentTypeConfig[] {
+  const merged = new Map<string, SubAgentTypeConfig>();
+  for (const t of BUILTIN_SUBAGENT_TYPES) {
+    merged.set(t.id, t);
+  }
+  if (customTypes) {
+    for (const t of customTypes) {
+      merged.set(t.id, t);
+    }
+  }
+  return Array.from(merged.values());
 }

@@ -5,10 +5,10 @@ import type { ToolRegistry } from '../../tools/ToolRegistry';
 import type { IEventRouter } from '../events/IEventRouter';
 import type { ApprovalGate } from '../approval/ApprovalGate';
 import type { ModelClientFactory } from '../models/ModelClientFactory';
-import type { ModelClient } from '../models/ModelClient';
 import type { Session } from '../Session';
 import type { ApprovalManager } from '../ApprovalManager';
 import type { ReviewDecision } from '../protocol/types';
+import type { IBrowserController } from '../platform/IPlatformAdapter';
 
 export interface RepublicAgentEngineConfig {
   /** AgentConfig instance (shared — for credentials and provider info) */
@@ -196,16 +196,8 @@ export interface EngineEvent {
   };
 }
 
-/**
- * Interface for browser controller.
- * Actual implementations vary by platform.
- */
-export interface IBrowserController {
-  navigate(url: string): Promise<void>;
-  getPageContent(): Promise<string>;
-  screenshot(): Promise<string>;
-  executeScript(script: string): Promise<unknown>;
-}
+// Re-export IBrowserController from the canonical definition
+export type { IBrowserController };
 
 /**
  * Conversation history entry for session recovery.

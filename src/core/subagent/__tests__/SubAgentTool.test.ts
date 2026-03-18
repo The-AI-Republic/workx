@@ -140,16 +140,16 @@ describe('buildSubAgentToolDefinition', () => {
     expect(params.required).toEqual(['type', 'prompt']);
   });
 
-  it('includes all parameter properties (type, prompt, description, background)', () => {
+  it('includes all parameter properties (type, prompt, description)', () => {
     const fn = assertFunctionTool(buildSubAgentToolDefinition(sampleTypes()));
     const params = fn.parameters as {
       type: 'object';
       properties: Record<string, any>;
     };
     expect(Object.keys(params.properties)).toEqual(
-      expect.arrayContaining(['type', 'prompt', 'description', 'background']),
+      expect.arrayContaining(['type', 'prompt', 'description']),
     );
-    expect(Object.keys(params.properties)).toHaveLength(4);
+    expect(Object.keys(params.properties)).toHaveLength(3);
   });
 
   it('works with empty types array', () => {
@@ -284,7 +284,6 @@ describe('registerSubAgentTool', () => {
       type: 'alpha',
       prompt: 'do the thing',
       description: undefined,
-      background: undefined,
     });
   });
 
@@ -308,7 +307,7 @@ describe('registerSubAgentTool', () => {
     expect(parsed).toEqual(mockResult);
   });
 
-  it('handles type-safe optional params (description, background)', async () => {
+  it('handles type-safe optional params (description)', async () => {
     const mockResult = {
       success: true,
       response: 'ok',
@@ -328,7 +327,6 @@ describe('registerSubAgentTool', () => {
         type: 'alpha',
         prompt: 'research this',
         description: 'quick research',
-        background: true,
       },
       {},
     );
@@ -337,7 +335,6 @@ describe('registerSubAgentTool', () => {
       type: 'alpha',
       prompt: 'research this',
       description: 'quick research',
-      background: true,
     });
 
     // With wrong types for optional params — they should be coerced to undefined
@@ -347,7 +344,6 @@ describe('registerSubAgentTool', () => {
         type: 'beta',
         prompt: 'do stuff',
         description: 123, // not a string
-        background: 'yes', // not a boolean
       },
       {},
     );
@@ -356,7 +352,6 @@ describe('registerSubAgentTool', () => {
       type: 'beta',
       prompt: 'do stuff',
       description: undefined,
-      background: undefined,
     });
   });
 });
