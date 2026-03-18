@@ -3,9 +3,12 @@
  *
  * Tests that TurnManager correctly:
  * - Injects global memory context into system prompt
- * - Registers search_memory tool when service is available
- * - Does NOT register search_memory tool when service is null
+ * - Includes search_memory tool from ToolRegistry when it is registered
+ * - Does NOT include search_memory tool when it is not in the registry
  * - Fires memory extraction after completed turns
+ *
+ * Note: Memory tools are now registered in the ToolRegistry by RepublicAgent
+ * during initialization, not dynamically injected by TurnManager.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -16,7 +19,9 @@ import { SEARCH_MEMORY_TOOL } from '@/tools/MemorySearchTool';
 // Shared helpers (matching existing TurnManager.coverage.test.ts pattern)
 // ---------------------------------------------------------------------------
 
-function createMocks(memoryService: any = null) {
+function createMocks(options: { memoryService?: any; registryTools?: any[] } = {}) {
+  const { memoryService = null, registryTools = [] } = options;
+
   const session = {
     getSessionId: vi.fn().mockReturnValue('test-session-id'),
     getTabId: vi.fn().mockReturnValue(1),
@@ -43,28 +48,31 @@ function createMocks(memoryService: any = null) {
   const toolRegistry = {
     getTool: vi.fn().mockReturnValue(undefined),
     execute: vi.fn(),
-    listTools: vi.fn().mockReturnValue([]),
+    listTools: vi.fn().mockReturnValue(registryTools),
   } as any;
 
   return { session, turnContext, toolRegistry };
 }
 
 // ---------------------------------------------------------------------------
-// search_memory tool registration
+// search_memory tool via ToolRegistry
 // ---------------------------------------------------------------------------
 
-describe('TurnManager - search_memory tool registration', () => {
-  it('includes search_memory tool when memoryService is available', async () => {
+describe('TurnManager - search_memory tool from ToolRegistry', () => {
+  it('includes search_memory tool when it is registered in the ToolRegistry', async () => {
     const memoryService = {
       searchTopical: vi.fn().mockResolvedValue([]),
       getFormattedGlobalContext: vi.fn().mockResolvedValue(''),
       processConversation: vi.fn().mockResolvedValue(undefined),
     };
 
-    const { session, turnContext, toolRegistry } = createMocks(memoryService);
+    // Memory tools are now pre-registered in the ToolRegistry by RepublicAgent
+    const { session, turnContext, toolRegistry } = createMocks({
+      memoryService,
+      registryTools: [SEARCH_MEMORY_TOOL],
+    });
     const tm = new TurnManager(session, turnContext, toolRegistry);
 
-    // Access the private async buildToolsFromContext method
     const tools = await (tm as any).buildToolsFromContext();
 
     const hasMemoryTool = tools.some(
@@ -73,8 +81,8 @@ describe('TurnManager - search_memory tool registration', () => {
     expect(hasMemoryTool).toBe(true);
   });
 
-  it('does NOT include search_memory tool when memoryService is null', async () => {
-    const { session, turnContext, toolRegistry } = createMocks(null);
+  it('does NOT include search_memory tool when it is not in the ToolRegistry', async () => {
+    const { session, turnContext, toolRegistry } = createMocks();
     const tm = new TurnManager(session, turnContext, toolRegistry);
 
     const tools = await (tm as any).buildToolsFromContext();

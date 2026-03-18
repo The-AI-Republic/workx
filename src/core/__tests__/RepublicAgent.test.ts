@@ -54,6 +54,10 @@ vi.mock('../tasks/RegularTask', () => ({
   RegularTask: vi.fn(() => ({})),
 }));
 
+vi.mock('../../tools/MemoryTools', () => ({
+  registerMemoryTools: vi.fn(async () => undefined),
+}));
+
 vi.mock('../TurnContext', () => ({
   TurnContext: vi.fn(() => ({
     setUserInstructions: vi.fn(),
@@ -180,6 +184,7 @@ describe('RepublicAgent', () => {
       getDefaultModel: vi.fn().mockReturnValue('test-model'),
       getDefaultCwd: vi.fn().mockReturnValue('/'),
       isStorageEnabled: vi.fn().mockReturnValue(true),
+      getMemoryService: vi.fn().mockReturnValue(null),
     };
 
     mockToolRegistryInstance = {

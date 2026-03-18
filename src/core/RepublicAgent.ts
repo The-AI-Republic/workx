@@ -131,6 +131,14 @@ export class RepublicAgent {
       supportsImage: modelData.model.supportsImage
     });
 
+    // Register memory tools if memory service is available
+    // Uses a getter so handlers always access the current MemoryService
+    // instance (survives refreshMemoryService cycles).
+    if (this.session.getMemoryService()) {
+      const { registerMemoryTools } = await import('../tools/MemoryTools');
+      await registerMemoryTools(this.toolRegistry, () => this.session.getMemoryService());
+    }
+
     // Create model client and turn context during initialization
     // API key can be null - validation happens when making API requests
     // Use createClientForCurrentModel() to properly use selectedModelKey from config

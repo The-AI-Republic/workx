@@ -1,8 +1,12 @@
 /**
- * Memory tool definitions -- save_memory, search_memory, forget_memory.
- * Registered as function tools for the main agent LLM.
+ * Memory tool definitions and registration.
+ * Registers save_memory, search_memory, forget_memory in the ToolRegistry
+ * so they are managed centrally like all other tools.
  */
-import type { ToolDefinition } from './BaseTool';
+import type { ToolDefinition, ToolHandler } from './BaseTool';
+import type { ToolRegistry } from './ToolRegistry';
+import type { MemoryService } from '../core/memory/MemoryService';
+import type { MemoryCategory } from '../core/memory/types';
 
 export const SAVE_MEMORY_TOOL: ToolDefinition = {
   type: 'function',
@@ -55,3 +59,53 @@ export const FORGET_MEMORY_TOOL: ToolDefinition = {
 };
 
 export { SEARCH_MEMORY_TOOL } from './MemorySearchTool';
+import { SEARCH_MEMORY_TOOL } from './MemorySearchTool';
+
+/**
+ * Register memory tools in the ToolRegistry with handlers that delegate
+ * to the MemoryService. Uses a getter so the handler always accesses the
+ * current MemoryService instance (survives refreshMemoryService cycles).
+ */
+export async function registerMemoryTools(
+  registry: ToolRegistry,
+  getMemoryService: () => MemoryService | null
+): Promise<void> {
+  const saveHandler: ToolHandler = async (params) => {
+    const ms = getMemoryService();
+    if (!ms) return { success: false, message: 'Memory system not available' };
+    const text = typeof params.text === 'string' ? params.text.trim() : '';
+    const category = (params.category || 'general') as MemoryCategory;
+    if (!text) return { success: false, message: 'Empty text' };
+    await ms.saveFact(text, category);
+    return { success: true, message: `Saved to memory: "${text}"` };
+  };
+
+  const searchHandler: ToolHandler = async (params) => {
+    const ms = getMemoryService();
+    if (!ms) return { results: [], message: 'Memory system not available' };
+    const query = typeof params.query === 'string' ? params.query.slice(0, 500).trim() : '';
+    if (!query) return { results: [], message: 'Empty search query' };
+    const memories = await ms.searchTopical(query);
+    return memories.map(m => ({
+      fact: m.fact,
+      category: m.category,
+      sourceDate: m.sourceDate,
+      relevance: m.relevance,
+    }));
+  };
+
+  const forgetHandler: ToolHandler = async (params) => {
+    const ms = getMemoryService();
+    if (!ms) return { success: false, message: 'Memory system not available' };
+    const query = typeof params.query === 'string' ? params.query.trim() : '';
+    if (!query) return { success: false, message: 'Empty query' };
+    const removed = await ms.forgetFact(query);
+    return { success: true, removed, message: `Removed ${removed} matching entries` };
+  };
+
+  await registry.register(SAVE_MEMORY_TOOL, saveHandler);
+  await registry.register(SEARCH_MEMORY_TOOL, searchHandler);
+  await registry.register(FORGET_MEMORY_TOOL, forgetHandler);
+
+  console.log('[Memory] Memory tools registered: save_memory, search_memory, forget_memory');
+}

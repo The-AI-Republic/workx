@@ -18,7 +18,6 @@ import type { IToolsConfig } from '../config/types';
 import { mapResponseItemToEventMessages } from './events/EventMapping';
 import type { ResponseItem } from './protocol/types';
 import { WebSearchTool } from '../tools/WebSearchTool';
-import { SAVE_MEMORY_TOOL, SEARCH_MEMORY_TOOL, FORGET_MEMORY_TOOL } from '../tools/MemoryTools';
 
 /**
  * Optional MCP capability interface for sessions that support MCP tools.
@@ -384,16 +383,8 @@ export class TurnManager {
       }
     }
 
-    // Add memory tools if memory service is available
-    const memSvc = this.session.getMemoryService();
-    console.log(`[TurnManager] Memory service check: ${memSvc ? 'available' : 'null'}`);
-    if (memSvc) {
-      const hasMemoryTool = (name: string) => tools.some(t => t.type === 'function' && t.function.name === name);
-      if (!hasMemoryTool('save_memory')) tools.push(SAVE_MEMORY_TOOL);
-      if (!hasMemoryTool('search_memory')) tools.push(SEARCH_MEMORY_TOOL);
-      if (!hasMemoryTool('forget_memory')) tools.push(FORGET_MEMORY_TOOL);
-      console.log('[TurnManager] Memory tools registered: save_memory, search_memory, forget_memory');
-    }
+    // Memory tools are registered in the ToolRegistry by RepublicAgent.initialize()
+    // and will be included automatically via the registry tool collection above.
 
     // Add MCP tools if enabled and available
     // Guard MCP calls with capability check to prevent "is not a function" errors
@@ -671,62 +662,6 @@ export class TurnManager {
         case 'web_search':
           result = await this.executeWebSearch(parsedParams.query);
           break;
-
-        case 'save_memory': {
-          const ms = this.session.getMemoryService();
-          if (!ms) {
-            result = { success: false, message: 'Memory system not available' };
-          } else {
-            const text = typeof parsedParams.text === 'string' ? parsedParams.text.trim() : '';
-            const category = parsedParams.category || 'general';
-            if (!text) {
-              result = { success: false, message: 'Empty text' };
-              break;
-            }
-            await ms.saveFact(text, category);
-            result = { success: true, message: `Saved to ${category} memory` };
-          }
-          break;
-        }
-
-        case 'search_memory': {
-          const ms = this.session.getMemoryService();
-          if (!ms) {
-            result = { results: [], message: 'Memory system not available' };
-          } else {
-            const query = typeof parsedParams.query === 'string'
-              ? parsedParams.query.slice(0, 500)
-              : '';
-            if (!query.trim()) {
-              result = { results: [], message: 'Empty search query' };
-              break;
-            }
-            const memories = await ms.searchTopical(query);
-            result = memories.map(m => ({
-              fact: m.fact,
-              category: m.category,
-              sourceDate: m.sourceDate,
-              relevance: m.relevance,
-            }));
-          }
-          break;
-        }
-
-        case 'forget_memory': {
-          const ms = this.session.getMemoryService();
-          if (!ms) {
-            result = { success: false, message: 'Memory system not available' };
-          } else {
-            const query = typeof parsedParams.query === 'string' ? parsedParams.query.trim() : '';
-            if (!query) {
-              result = { success: false, message: 'Empty query' };
-              break;
-            }
-            const removed = await ms.forgetFact(query);
-            result = { success: true, removed, message: `Removed ${removed} matching entries` };
-          }
-          break;
-        }
 
         default: {
           // Check ToolRegistry for browser tools BEFORE falling back to MCP
