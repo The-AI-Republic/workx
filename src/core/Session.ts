@@ -768,7 +768,118 @@ export class Session {
    * Set the memory service (called during initialization)
    */
   setMemoryService(service: MemoryService | null): void {
+    console.log(`[Memory] setMemoryService called with: ${service ? 'MemoryService instance' : 'null'}`, new Error().stack?.split('\n').slice(1, 4).join('\n'));
     this._memoryService = service;
+  }
+
+  /**
+   * Rebuild the memory service from current config/auth state.
+   * Used on startup and after runtime config/auth changes.
+   */
+  async refreshMemoryService(configOverride?: AgentConfig): Promise<void> {
+    await this.closeMemoryService();
+
+    // Initialize memory service (for desktop/server only)
+    // Memory uses file-based storage with a cheap LLM for search operations.
+    try {
+      if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ !== 'extension') {
+        const agentConfig = configOverride || this.config || await AgentConfig.getInstance();
+        const preferences = agentConfig.getConfig().preferences;
+        const memoryEnabled = preferences?.memoryEnabled ?? false;
+
+        console.log(`[Memory] Init check: BUILD_MODE=${__BUILD_MODE__}, memoryEnabled=${memoryEnabled}, preferences=`, JSON.stringify({ memoryEnabled: preferences?.memoryEnabled, memoryUseOwnApiKey: preferences?.memoryUseOwnApiKey }));
+
+        // Determine API key source for the cheap memory LLM
+        const memoryUseOwnApiKey = preferences?.memoryUseOwnApiKey ?? true;
+        const useBackendForMemory = !memoryUseOwnApiKey;
+
+        const openaiApiKey = await agentConfig.getProviderApiKey('openai');
+
+        // Build backend routing config if applicable
+        let backendBaseUrl: string | undefined;
+        if (useBackendForMemory) {
+          const { LLM_API_URL } = await import('../config/constants');
+          if (LLM_API_URL) {
+            backendBaseUrl = LLM_API_URL;
+          }
+        }
+
+        // Create a dedicated LLM caller for memory keyword generation and relevance filtering.
+        // Prefers a cheap model (gpt-4o-mini) via OpenAI API key. Falls back to the
+        // user's current main LLM provider/model when no OpenAI key is available.
+        const { OpenAIChatCompletionClient } = await import('./models/client/OpenAIChatCompletionClient');
+        const { DEFAULT_EXTRACTION_MODEL } = await import('./memory/types');
+        const extractionModel = preferences?.extractionModel ?? DEFAULT_EXTRACTION_MODEL;
+
+        const memoryApiKey = useBackendForMemory
+          ? (openaiApiKey || 'backend-routed')
+          : (openaiApiKey || '');
+
+        let llmCaller = null;
+
+        if (memoryApiKey) {
+          // Preferred path: dedicated gpt-4o-mini client via OpenAI key
+          const memoryLLMClient = new OpenAIChatCompletionClient({
+            apiKey: memoryApiKey,
+            baseUrl: useBackendForMemory && backendBaseUrl ? backendBaseUrl + '/openai' : undefined,
+            sessionId: 'memory-search',
+            modelFamily: {
+              family: extractionModel,
+              base_instructions: '',
+              supports_reasoning: false,
+              supports_reasoning_summaries: false,
+              needs_special_apply_patch_instructions: false,
+            },
+            provider: {
+              name: 'OpenAI',
+              wire_api: 'Chat' as const,
+              requires_openai_auth: true,
+            },
+            ...(useBackendForMemory && backendBaseUrl && { useCredentials: true }),
+          });
+
+          llmCaller = {
+            complete: async (systemPrompt: string, userPrompt: string) => {
+              const response = await memoryLLMClient.complete({
+                model: extractionModel,
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: userPrompt }
+                ]
+              });
+              return response.choices[0]?.message?.content || '';
+            }
+          };
+        }
+
+        // Fallback: if no OpenAI key available, use the user's selected main LLM
+        // for memory operations (search keyword generation, relevance filtering).
+        // This ensures memory works regardless of which provider the user chose.
+        if (!llmCaller) {
+          llmCaller = await this.createFallbackMemoryLLMCaller(agentConfig);
+          if (llmCaller) {
+            console.info('[Memory] No OpenAI API key — using main LLM provider for memory operations.');
+          }
+        }
+
+        console.log(`[Memory] llmCaller=${llmCaller ? 'available' : 'null'}, memoryApiKey=${memoryApiKey ? 'set' : 'empty'}, openaiApiKey=${openaiApiKey ? 'set' : 'empty'}`);
+
+        const memoryService = await createMemoryService({
+          config: { enabled: memoryEnabled },
+          llmCaller,
+        });
+
+        console.log(`[Memory] createMemoryService result: ${memoryService ? 'initialized' : 'null'}`);
+
+        if (memoryEnabled && !memoryService) {
+          console.warn('[Memory] Memory is enabled but failed to initialize. Check logs for details.');
+        }
+
+        this.setMemoryService(memoryService);
+      }
+    } catch (err) {
+      console.error('[Memory] Initialization failed:', err);
+    }
   }
 
   /**
@@ -1022,107 +1133,7 @@ export class Session {
       }
     }
 
-    // Initialize memory service (for desktop/server only)
-    // Memory uses file-based storage with a cheap LLM for search operations.
-    try {
-      if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ !== 'extension') {
-        const agentConfig = config || await AgentConfig.getInstance();
-        const preferences = agentConfig.getConfig().preferences;
-        const memoryEnabled = preferences?.memoryEnabled ?? false;
-
-        console.log(`[Memory] Init check: BUILD_MODE=${__BUILD_MODE__}, memoryEnabled=${memoryEnabled}, preferences=`, JSON.stringify({ memoryEnabled: preferences?.memoryEnabled, memoryUseOwnApiKey: preferences?.memoryUseOwnApiKey }));
-
-        // Determine API key source for the cheap memory LLM
-        const memoryUseOwnApiKey = preferences?.memoryUseOwnApiKey ?? true;
-        const useBackendForMemory = !memoryUseOwnApiKey;
-
-        const openaiApiKey = await agentConfig.getProviderApiKey('openai');
-
-        // Build backend routing config if applicable
-        let backendBaseUrl: string | undefined;
-        if (useBackendForMemory) {
-          const { LLM_API_URL } = await import('../config/constants');
-          if (LLM_API_URL) {
-            backendBaseUrl = LLM_API_URL;
-          }
-        }
-
-        // Create a dedicated LLM caller for memory keyword generation and relevance filtering.
-        // Prefers a cheap model (gpt-4o-mini) via OpenAI API key. Falls back to the
-        // user's current main LLM provider/model when no OpenAI key is available.
-        const { OpenAIChatCompletionClient } = await import('./models/client/OpenAIChatCompletionClient');
-        const { DEFAULT_EXTRACTION_MODEL } = await import('./memory/types');
-        const extractionModel = preferences?.extractionModel ?? DEFAULT_EXTRACTION_MODEL;
-
-        const memoryApiKey = useBackendForMemory
-          ? (openaiApiKey || 'backend-routed')
-          : (openaiApiKey || '');
-
-        let llmCaller = null;
-
-        if (memoryApiKey) {
-          // Preferred path: dedicated gpt-4o-mini client via OpenAI key
-          const memoryLLMClient = new OpenAIChatCompletionClient({
-            apiKey: memoryApiKey,
-            baseUrl: useBackendForMemory && backendBaseUrl ? backendBaseUrl + '/openai' : undefined,
-            sessionId: 'memory-search',
-            modelFamily: {
-              family: extractionModel,
-              base_instructions: '',
-              supports_reasoning: false,
-              supports_reasoning_summaries: false,
-              needs_special_apply_patch_instructions: false,
-            },
-            provider: {
-              name: 'OpenAI',
-              wire_api: 'Chat' as const,
-              requires_openai_auth: true,
-            },
-            ...(useBackendForMemory && backendBaseUrl && { useCredentials: true }),
-          });
-
-          llmCaller = {
-            complete: async (systemPrompt: string, userPrompt: string) => {
-              const response = await memoryLLMClient.complete({
-                model: extractionModel,
-                messages: [
-                  { role: 'system', content: systemPrompt },
-                  { role: 'user', content: userPrompt }
-                ]
-              });
-              return response.choices[0]?.message?.content || '';
-            }
-          };
-        }
-
-        // Fallback: if no OpenAI key available, use the user's selected main LLM
-        // for memory operations (search keyword generation, relevance filtering).
-        // This ensures memory works regardless of which provider the user chose.
-        if (!llmCaller) {
-          llmCaller = await this.createFallbackMemoryLLMCaller(agentConfig);
-          if (llmCaller) {
-            console.info('[Memory] No OpenAI API key — using main LLM provider for memory operations.');
-          }
-        }
-
-        console.log(`[Memory] llmCaller=${llmCaller ? 'available' : 'null'}, memoryApiKey=${memoryApiKey ? 'set' : 'empty'}, openaiApiKey=${openaiApiKey ? 'set' : 'empty'}`);
-
-        const memoryService = await createMemoryService({
-          config: { enabled: memoryEnabled },
-          llmCaller,
-        });
-
-        console.log(`[Memory] createMemoryService result: ${memoryService ? 'initialized' : 'null'}`);
-
-        if (memoryEnabled && !memoryService) {
-          console.warn('[Memory] Memory is enabled but failed to initialize. Check logs for details.');
-        }
-
-        this.setMemoryService(memoryService);
-      }
-    } catch (err) {
-      console.error('[Memory] Initialization failed:', err);
-    }
+    await this.refreshMemoryService(config);
   }
 
   /**

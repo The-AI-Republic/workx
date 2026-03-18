@@ -264,6 +264,7 @@ export class RepublicAgent {
 
       // Update session with new turn context
       this.session.setTurnContext(taskContext);
+      await this.session.refreshMemoryService(this.config);
     } catch (error) {
       console.error('[RepublicAgent] Failed to refresh model client:', error);
     }
@@ -290,6 +291,7 @@ export class RepublicAgent {
     turnCtx.setUserInstructions(userInstructions);
     const baseInstructions = await loadPrompt();
     turnCtx.setBaseInstructions(baseInstructions);
+    await this.session.refreshMemoryService(this.config);
   }
 
   /**

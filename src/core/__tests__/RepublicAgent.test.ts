@@ -166,6 +166,7 @@ describe('RepublicAgent', () => {
       getHistoryEntry: vi.fn(),
       clearHistory: vi.fn(),
       shutdown: vi.fn().mockResolvedValue(undefined),
+      refreshMemoryService: vi.fn().mockResolvedValue(undefined),
       initialize: vi.fn().mockResolvedValue(undefined),
       initializeSession: vi.fn().mockResolvedValue(undefined),
       notifyApproval: vi.fn(),
@@ -823,6 +824,12 @@ describe('RepublicAgent', () => {
       expect(mockSessionInstance.setTurnContext).toHaveBeenCalled();
     });
 
+    it('should refresh the memory service after replacing the model client', async () => {
+      await agent.refreshModelClient();
+
+      expect(mockSessionInstance.refreshMemoryService).toHaveBeenCalledWith(config);
+    });
+
     it('should not throw if createClientForCurrentModel fails', async () => {
       mockModelClientFactoryInstance.createClientForCurrentModel.mockRejectedValue(
         new Error('network error')
@@ -923,6 +930,12 @@ describe('RepublicAgent', () => {
 
       const turnCtx = mockSessionInstance.getTurnContext();
       expect(turnCtx.setBaseInstructions).toHaveBeenCalledWith('base-instructions');
+    });
+
+    it('should refresh the memory service after hot-swapping the model client', async () => {
+      await agent.hotSwapModelClient();
+
+      expect(mockSessionInstance.refreshMemoryService).toHaveBeenCalledWith(config);
     });
 
     it('should reuse existing TurnContext unlike refreshModelClient which creates a new one', async () => {
