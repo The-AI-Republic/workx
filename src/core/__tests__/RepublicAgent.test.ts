@@ -166,6 +166,7 @@ describe('RepublicAgent', () => {
       getHistoryEntry: vi.fn(),
       clearHistory: vi.fn(),
       shutdown: vi.fn().mockResolvedValue(undefined),
+      initialize: vi.fn().mockResolvedValue(undefined),
       initializeSession: vi.fn().mockResolvedValue(undefined),
       notifyApproval: vi.fn(),
       compact: vi.fn().mockResolvedValue({

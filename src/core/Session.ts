@@ -1030,6 +1030,8 @@ export class Session {
         const preferences = agentConfig.getConfig().preferences;
         const memoryEnabled = preferences?.memoryEnabled ?? false;
 
+        console.log(`[Memory] Init check: BUILD_MODE=${__BUILD_MODE__}, memoryEnabled=${memoryEnabled}, preferences=`, JSON.stringify({ memoryEnabled: preferences?.memoryEnabled, memoryUseOwnApiKey: preferences?.memoryUseOwnApiKey }));
+
         // Determine API key source for the cheap memory LLM
         const memoryUseOwnApiKey = preferences?.memoryUseOwnApiKey ?? true;
         const useBackendForMemory = !memoryUseOwnApiKey;
@@ -1103,10 +1105,14 @@ export class Session {
           }
         }
 
+        console.log(`[Memory] llmCaller=${llmCaller ? 'available' : 'null'}, memoryApiKey=${memoryApiKey ? 'set' : 'empty'}, openaiApiKey=${openaiApiKey ? 'set' : 'empty'}`);
+
         const memoryService = await createMemoryService({
           config: { enabled: memoryEnabled },
           llmCaller,
         });
+
+        console.log(`[Memory] createMemoryService result: ${memoryService ? 'initialized' : 'null'}`);
 
         if (memoryEnabled && !memoryService) {
           console.warn('[Memory] Memory is enabled but failed to initialize. Check logs for details.');

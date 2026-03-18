@@ -88,6 +88,9 @@ export class RepublicAgent {
    * Creates model client during initialization with nullable API key
    */
   async initialize(): Promise<void> {
+    // Wait for session background initialization (memory service, rollout, etc.)
+    await this.session.initialize();
+
     // Initialize model client factory with config
     await this.modelClientFactory.initialize(this.config);
 

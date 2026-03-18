@@ -385,11 +385,14 @@ export class TurnManager {
     }
 
     // Add memory tools if memory service is available
-    if (this.session.getMemoryService()) {
+    const memSvc = this.session.getMemoryService();
+    console.log(`[TurnManager] Memory service check: ${memSvc ? 'available' : 'null'}`);
+    if (memSvc) {
       const hasMemoryTool = (name: string) => tools.some(t => t.type === 'function' && t.function.name === name);
       if (!hasMemoryTool('save_memory')) tools.push(SAVE_MEMORY_TOOL);
       if (!hasMemoryTool('search_memory')) tools.push(SEARCH_MEMORY_TOOL);
       if (!hasMemoryTool('forget_memory')) tools.push(FORGET_MEMORY_TOOL);
+      console.log('[TurnManager] Memory tools registered: save_memory, search_memory, forget_memory');
     }
 
     // Add MCP tools if enabled and available
