@@ -131,20 +131,8 @@ export class RepublicAgent {
       supportsImage: modelData.model.supportsImage
     });
 
-    // Register memory tools and prompt extension if memory service is available.
-    // Uses a getter so handlers always access the current MemoryService
-    // instance (survives refreshMemoryService cycles).
-    if (this.session.getMemoryService()) {
-      const { registerMemoryTools } = await import('../tools/MemoryTools');
-      await registerMemoryTools(this.toolRegistry, () => this.session.getMemoryService());
-
-      // Register prompt extension so core memory is injected into every system prompt
-      // via the standard PromptLoader pipeline (no special-casing in TurnManager).
-      registerPromptExtension(() => {
-        const ms = this.session.getMemoryService();
-        return ms ? ms.getCachedGlobalContext() : '';
-      });
-    }
+    // Register/unregister memory tools based on current memory service state
+    await this.syncMemoryTools();
 
     // Create model client and turn context during initialization
     // API key can be null - validation happens when making API requests
@@ -262,6 +250,44 @@ export class RepublicAgent {
   }
 
   /**
+   * Sync memory tools in the ToolRegistry with the current memory service state.
+   * Registers tools if memory is enabled, unregisters if disabled.
+   * Safe to call repeatedly — idempotent.
+   */
+  private memoryPromptExtensionRegistered = false;
+
+  private async syncMemoryTools(): Promise<void> {
+    const ms = this.session.getMemoryService();
+    const MEMORY_TOOL_NAMES = ['save_memory', 'search_memory', 'forget_memory'];
+
+    if (ms) {
+      // Register tools if not already present
+      const hasMemoryTools = this.toolRegistry.getTool('save_memory') !== null;
+      if (!hasMemoryTools) {
+        const { registerMemoryTools } = await import('../tools/MemoryTools');
+        await registerMemoryTools(this.toolRegistry, () => this.session.getMemoryService());
+      }
+
+      // Register prompt extension once (it uses a getter, so it's always current)
+      if (!this.memoryPromptExtensionRegistered) {
+        registerPromptExtension(() => {
+          const svc = this.session.getMemoryService();
+          return svc ? svc.getCachedGlobalContext() : '';
+        });
+        this.memoryPromptExtensionRegistered = true;
+      }
+    } else {
+      // Unregister tools if memory is disabled
+      for (const name of MEMORY_TOOL_NAMES) {
+        if (this.toolRegistry.getTool(name) !== null) {
+          await this.toolRegistry.unregister(name);
+        }
+      }
+      // Prompt extension stays registered but returns '' when service is null — harmless
+    }
+  }
+
+  /**
    * Refresh the model client when auth state changes
    * Called when INIT_AUTH is received to update the client with new routing
    */
@@ -280,6 +306,7 @@ export class RepublicAgent {
       // Update session with new turn context
       this.session.setTurnContext(taskContext);
       await this.session.refreshMemoryService(this.config);
+      await this.syncMemoryTools();
     } catch (error) {
       console.error('[RepublicAgent] Failed to refresh model client:', error);
     }
@@ -307,6 +334,7 @@ export class RepublicAgent {
     const baseInstructions = await loadPrompt();
     turnCtx.setBaseInstructions(baseInstructions);
     await this.session.refreshMemoryService(this.config);
+    await this.syncMemoryTools();
   }
 
   /**

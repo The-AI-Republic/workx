@@ -189,7 +189,8 @@ describe('RepublicAgent', () => {
 
     mockToolRegistryInstance = {
       register: vi.fn(),
-      getTool: vi.fn(),
+      unregister: vi.fn().mockResolvedValue(undefined),
+      getTool: vi.fn().mockReturnValue(null),
       getAllTools: vi.fn().mockReturnValue([]),
       cleanup: vi.fn().mockResolvedValue(undefined),
       clear: vi.fn(),
