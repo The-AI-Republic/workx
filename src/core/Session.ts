@@ -1091,8 +1091,12 @@ export class Session {
               return response.choices[0]?.message?.content || '';
             }
           };
-        } else {
-          // Fallback: use the same provider/model as the main conversation LLM
+        }
+
+        // Fallback: if no OpenAI key available, use the user's selected main LLM
+        // for memory operations (search keyword generation, relevance filtering).
+        // This ensures memory works regardless of which provider the user chose.
+        if (!llmCaller) {
           llmCaller = await this.createFallbackMemoryLLMCaller(agentConfig);
           if (llmCaller) {
             console.info('[Memory] No OpenAI API key — using main LLM provider for memory operations.');
