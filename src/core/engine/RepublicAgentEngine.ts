@@ -292,7 +292,7 @@ export class RepublicAgentEngine {
     switch (op.type) {
       case 'UserInput':
       case 'UserTurn':
-        await this.handleUserInput(submission.id, op.items, op.context, op.contextOverrides);
+        await this.handleUserInput(submission.id, op.type, op.items, op.context, op.contextOverrides);
         break;
       case 'Interrupt':
         await this.handleInterrupt(op.reason);
@@ -328,6 +328,7 @@ export class RepublicAgentEngine {
 
   private async handleUserInput(
     submissionId: string,
+    opType: 'UserInput' | 'UserTurn',
     items: InputItem[],
     _context?: ExecutionContext,
     contextOverrides?: Record<string, unknown>,
@@ -343,8 +344,12 @@ export class RepublicAgentEngine {
         text: item.type === 'text' ? (item.text || '') : item.text,
       }));
 
-      // Add pending input to session
-      this.session.addPendingInput(normalizedItems as any);
+      // Only add pending input for UserInput (interactive user input that may
+      // interrupt an ongoing turn). UserTurn is a programmatic submission that
+      // should not push pending input to the active turn.
+      if (opType === 'UserInput') {
+        this.session.addPendingInput(normalizedItems as any);
+      }
 
       // Apply context overrides if provided
       if (contextOverrides) {
