@@ -30,10 +30,10 @@ async function createTauriFileSystem(): Promise<{
   memoryDir: string;
 }> {
   const { invoke } = await import('@tauri-apps/api/core');
-  const { appDataDir, join } = await import('@tauri-apps/api/path');
+  const { homeDir, join } = await import('@tauri-apps/api/path');
 
-  const dataDir = await appDataDir();
-  const memoryDir = await join(dataDir, 'memory');
+  const home = await homeDir();
+  const memoryDir = await join(home, '.airepublic-pi', 'memory');
 
   const fs: FileSystem = {
     readFile: async (path: string) => {
