@@ -966,7 +966,7 @@ async function initializeSkills(): Promise<void> {
     await skillRegistry.discover();
 
     // Register dynamic prompt extension for auto-invocable skills
-    registerPromptExtension(() => skillRegistry?.buildSkillsSystemPrompt() ?? '');
+    registerPromptExtension('skills', () => skillRegistry?.buildSkillsSystemPrompt() ?? '');
 
     console.log('[ServiceWorker] Skills initialized');
   } catch (error) {

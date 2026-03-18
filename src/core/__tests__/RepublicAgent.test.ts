@@ -38,6 +38,8 @@ vi.mock('../PromptLoader', () => ({
   loadUserInstructions: vi.fn(async () => 'user-instructions'),
   isComposerConfigured: vi.fn(() => false),
   configurePromptComposer: vi.fn(),
+  registerPromptExtension: vi.fn(),
+  unregisterPromptExtension: vi.fn(),
 }));
 
 vi.mock('../../tools/registerPlatformTools', () => ({

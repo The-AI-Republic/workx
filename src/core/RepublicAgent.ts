@@ -16,7 +16,7 @@ import { ToolRegistry } from '../tools/ToolRegistry';
 import { ModelClientFactory } from './models/ModelClientFactory';
 import { type IUserNotifier, NoOpNotifier } from './IUserNotifier';
 import { v4 as uuidv4 } from 'uuid';
-import { loadPrompt, loadUserInstructions, configurePromptComposer, isComposerConfigured, registerPromptExtension } from './PromptLoader';
+import { loadPrompt, loadUserInstructions, configurePromptComposer, isComposerConfigured, registerPromptExtension, unregisterPromptExtension } from './PromptLoader';
 import { RegularTask } from './tasks/RegularTask';
 import { registerPlatformTools } from '../tools/registerPlatformTools';
 import { TabManager } from './TabManager';
@@ -254,11 +254,11 @@ export class RepublicAgent {
    * Registers tools if memory is enabled, unregisters if disabled.
    * Safe to call repeatedly — idempotent.
    */
-  private memoryPromptExtensionRegistered = false;
+  private static readonly MEMORY_TOOL_NAMES = ['save_memory', 'search_memory', 'forget_memory'];
+  private static readonly MEMORY_PROMPT_EXTENSION = 'memory';
 
   private async syncMemoryTools(): Promise<void> {
     const ms = this.session.getMemoryService();
-    const MEMORY_TOOL_NAMES = ['save_memory', 'search_memory', 'forget_memory'];
 
     if (ms) {
       // Register tools if not already present
@@ -268,22 +268,21 @@ export class RepublicAgent {
         await registerMemoryTools(this.toolRegistry, () => this.session.getMemoryService());
       }
 
-      // Register prompt extension once (it uses a getter, so it's always current)
-      if (!this.memoryPromptExtensionRegistered) {
-        registerPromptExtension(() => {
-          const svc = this.session.getMemoryService();
-          return svc ? svc.getCachedGlobalContext() : '';
-        });
-        this.memoryPromptExtensionRegistered = true;
-      }
+      // Register prompt extension for core memory injection
+      registerPromptExtension(RepublicAgent.MEMORY_PROMPT_EXTENSION, () => {
+        const svc = this.session.getMemoryService();
+        return svc ? svc.getCachedGlobalContext() : '';
+      });
     } else {
-      // Unregister tools if memory is disabled
-      for (const name of MEMORY_TOOL_NAMES) {
+      // Unregister tools
+      for (const name of RepublicAgent.MEMORY_TOOL_NAMES) {
         if (this.toolRegistry.getTool(name) !== null) {
           await this.toolRegistry.unregister(name);
         }
       }
-      // Prompt extension stays registered but returns '' when service is null — harmless
+
+      // Unregister prompt extension
+      unregisterPromptExtension(RepublicAgent.MEMORY_PROMPT_EXTENSION);
     }
   }
 

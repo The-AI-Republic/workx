@@ -388,7 +388,7 @@ export class DesktopAgentBootstrap {
       this.skillRegistry = new SkillRegistry(provider);
       await this.skillRegistry.discover();
 
-      registerPromptExtension(() => this.skillRegistry!.buildSkillsSystemPrompt());
+      registerPromptExtension('skills', () => this.skillRegistry!.buildSkillsSystemPrompt());
 
       console.log('[DesktopAgentBootstrap] Skills initialized, found', this.skillRegistry.getSkillMetas().length, 'skills');
     } catch (error) {
