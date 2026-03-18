@@ -1,6 +1,8 @@
 // File: src/core/engine/RepublicAgentEngine.ts
 
 import type { ToolRegistry } from '../../tools/ToolRegistry';
+import type { Session } from '../Session';
+import type { Event as AgentEvent } from '../protocol/events';
 import type {
   RepublicAgentEngineConfig,
   EngineResult,
@@ -17,6 +19,8 @@ export class RepublicAgentEngine {
 
   private config: RepublicAgentEngineConfig;
   private toolRegistry: ToolRegistry;
+  private session: Session | null = null;
+  private ownsSession: boolean;
 
   // Queue state
   private submissionQueue: Submission[] = [];
@@ -33,14 +37,42 @@ export class RepublicAgentEngine {
     resolve: (result: EngineResult) => void;
   }>();
 
+  // Event listener callbacks (supports multiple listeners)
+  private eventListeners: Array<(event: EngineEvent) => void> = [];
+
   constructor(config: RepublicAgentEngineConfig) {
     this.engineId = crypto.randomUUID();
     this.config = config;
     this.toolRegistry = config.toolRegistry;
+    this.ownsSession = config.ownsSession ?? (config.session == null);
   }
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
+
+    // Use externally-provided session or create a new one
+    if (this.config.session) {
+      this.session = this.config.session;
+      // External session: event emitter is already wired by the caller (RepublicAgent).
+      // Don't re-wire it — the caller's emitter dispatches events to the UI.
+    } else {
+      // Sub-agent path: create a lightweight non-persistent session
+      const { Session: SessionClass } = await import('../Session');
+      this.session = new SessionClass(
+        this.config.agentConfig,
+        this.config.persistent ?? false,
+        undefined,
+        this.toolRegistry,
+      );
+
+      // Wire session events to the engine's event system (only for internally-owned sessions)
+      this.session.setEventEmitter(async (event: AgentEvent) => {
+        this.pushEvent({
+          id: event.id,
+          msg: event.msg as EngineEvent['msg'],
+        });
+      });
+    }
 
     // Setup approval system
     this.setupApprovalSystem();
@@ -122,11 +154,11 @@ export class RepublicAgentEngine {
   // ---------------------------------------------------------------------------
 
   approveExecution(callId: string, remember?: boolean): void {
-    this.submitOperation({ type: 'ExecApproval', callId, approved: true, remember });
+    this.submitOperation({ type: 'ExecApproval', callId, decision: 'approve', remember });
   }
 
   rejectExecution(callId: string): void {
-    this.submitOperation({ type: 'ExecApproval', callId, approved: false });
+    this.submitOperation({ type: 'ExecApproval', callId, decision: 'reject' });
   }
 
   // ---------------------------------------------------------------------------
@@ -158,12 +190,35 @@ export class RepublicAgentEngine {
     this.disposed = true;
     this.cancel();
 
+    // Shutdown session if we own it
+    if (this.ownsSession && this.session) {
+      await this.session.shutdown();
+    }
+
     const disposeEvent: EngineEvent = {
       id: crypto.randomUUID(),
       msg: { type: 'EngineDisposed', data: { engineId: this.engineId } },
     };
     this.eventWaiters.forEach((resolve) => resolve(disposeEvent));
     this.eventWaiters.length = 0;
+    this.eventListeners.length = 0;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Event Listener
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Register a callback that is invoked for every event pushed to the engine.
+   * Supports multiple listeners. Returns an unsubscribe function.
+   * Used by RepublicAgent to bridge engine events to its eventDispatcher.
+   */
+  onEvent(listener: (event: EngineEvent) => void): () => void {
+    this.eventListeners.push(listener);
+    return () => {
+      const idx = this.eventListeners.indexOf(listener);
+      if (idx !== -1) this.eventListeners.splice(idx, 1);
+    };
   }
 
   // ---------------------------------------------------------------------------
@@ -172,6 +227,10 @@ export class RepublicAgentEngine {
 
   getToolRegistry(): ToolRegistry {
     return this.toolRegistry;
+  }
+
+  getSession(): Session | null {
+    return this.session;
   }
 
   isReady(): boolean {
@@ -206,7 +265,21 @@ export class RepublicAgentEngine {
     try {
       while (this.submissionQueue.length > 0) {
         const submission = this.submissionQueue.shift()!;
-        await this.handleSubmission(submission);
+        try {
+          await this.handleSubmission(submission);
+        } catch (error) {
+          console.error('[RepublicAgentEngine] Error handling submission:', error);
+          this.pushEvent({
+            id: crypto.randomUUID(),
+            msg: {
+              type: 'Error',
+              data: {
+                message: error instanceof Error ? error.message : String(error),
+                submissionId: submission.id,
+              },
+            },
+          });
+        }
       }
     } finally {
       this.processingSubmission = false;
@@ -219,25 +292,26 @@ export class RepublicAgentEngine {
     switch (op.type) {
       case 'UserInput':
       case 'UserTurn':
-        await this.handleUserInput(submission.id, op.items, op.context);
+        await this.handleUserInput(submission.id, op.type, op.items, op.context, op.contextOverrides);
         break;
       case 'Interrupt':
-        this.pushEvent({
-          id: crypto.randomUUID(),
-          msg: { type: 'TaskAborted', data: { reason: op.reason } },
-        });
+        await this.handleInterrupt(op.reason);
         break;
       case 'ExecApproval':
-        this.handleExecApproval(op);
+        await this.handleExecApproval(op);
         break;
       case 'PatchApproval':
-        // Protocol-level patch approval — placeholder for future implementation
+        await this.handlePatchApproval(op);
         break;
       case 'Compact':
-        this.pushEvent({
-          id: crypto.randomUUID(),
-          msg: { type: 'CompactComplete', data: { mode: op.mode ?? 'manual' } },
-        });
+      case 'ManualCompact':
+        await this.handleCompact(op.type === 'ManualCompact' ? 'manual' : ((op as any).mode ?? 'auto'));
+        break;
+      case 'AddToHistory':
+        await this.handleAddToHistory(op);
+        break;
+      case 'Shutdown':
+        await this.handleShutdown();
         break;
       case 'ClearHistory':
         this.pushEvent({
@@ -248,32 +322,270 @@ export class RepublicAgentEngine {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Handler: UserInput — delegates to Session.spawnTask()
+  // ---------------------------------------------------------------------------
+
   private async handleUserInput(
     submissionId: string,
+    opType: 'UserInput' | 'UserTurn',
     items: InputItem[],
     _context?: ExecutionContext,
+    contextOverrides?: Record<string, unknown>,
   ): Promise<void> {
-    try {
-      this.pushEvent({
-        id: crypto.randomUUID(),
-        msg: { type: 'TaskStarted', data: { submissionId } },
-      });
+    if (!this.session) {
+      throw new Error('Engine session not initialized');
+    }
 
-      // Build response from items
-      const textContent = items
-        .filter((item) => item.type === 'text' && item.text)
-        .map((item) => item.text)
-        .join('\n');
+    try {
+      // Normalize input items to ensure they conform to InputItem format
+      const normalizedItems: InputItem[] = items.map(item => ({
+        type: item.type || 'text',
+        text: item.type === 'text' ? (item.text || '') : item.text,
+      }));
+
+      // Only add pending input for UserInput (interactive user input that may
+      // interrupt an ongoing turn). UserTurn is a programmatic submission that
+      // should not push pending input to the active turn.
+      if (opType === 'UserInput') {
+        this.session.addPendingInput(normalizedItems as any);
+      }
+
+      // Apply context overrides if provided
+      if (contextOverrides) {
+        this.session.updateTurnContext(contextOverrides);
+      }
+
+      const turnContext = this.session.getTurnContext();
+      if (!turnContext) {
+        throw new Error('Turn context not initialized');
+      }
+
+      // Create RegularTask and delegate to Session.spawnTask()
+      const { RegularTask } = await import('../tasks/RegularTask');
+      const task = new RegularTask();
+
+      await this.session.spawnTask(task, turnContext, submissionId, normalizedItems as any);
+
+      // Session.spawnTask() is fire-and-forget.
+      // Task completion/abort events are emitted by Session via the event emitter
+      // we wired in initialize().
+    } catch (error) {
+      console.error('[RepublicAgentEngine] Error processing user input:', error);
+
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      // Provide user-friendly message for common errors
+      let userFriendlyMessage = errorMessage;
+      if (errorMessage.includes('No API key configured')) {
+        let providerName = 'the selected provider';
+        try {
+          const configData = this.config.agentConfig.getConfig();
+          const modelData = this.config.agentConfig.getModelByKey(configData.selectedModelKey);
+          if (modelData) {
+            providerName = modelData.provider.name;
+          }
+        } catch (_e) {
+          // Ignore error getting provider name
+        }
+        userFriendlyMessage = `Cannot execute task: No API key configured for ${providerName}. Please go to Settings → Model Configuration and add your API key.`;
+      }
 
       this.pushEvent({
         id: crypto.randomUUID(),
         msg: {
-          type: 'TaskComplete',
+          type: 'TaskError',
           data: {
             submissionId,
-            response: textContent || null,
-            turnCount: 0,
-            tokenUsage: undefined,
+            error: userFriendlyMessage,
+          },
+        },
+      });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Handler: Interrupt — abort all tasks
+  // ---------------------------------------------------------------------------
+
+  private async handleInterrupt(reason?: string): Promise<void> {
+    if (!this.session) return;
+
+    // Set interrupt flag
+    this.session.requestInterrupt();
+
+    // Clear pending submissions
+    this.submissionQueue.length = 0;
+
+    // Emit abort event
+    this.pushEvent({
+      id: crypto.randomUUID(),
+      msg: {
+        type: 'TurnAborted',
+        data: { reason: reason ?? 'user_interrupt' },
+      },
+    });
+
+    // Delegate to Session.abortAllTasks()
+    await this.session.abortAllTasks('UserInterrupt');
+
+    // Clear interrupt flag
+    this.session.clearInterrupt();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Handler: ExecApproval — dual routing (ApprovalManager + Session)
+  // ---------------------------------------------------------------------------
+
+  private async handleExecApproval(op: Extract<EngineOp, { type: 'ExecApproval' }>): Promise<void> {
+    if (!this.session) return;
+
+    const { callId, decision, remember, alternativeText } = op;
+
+    // Capture pending approval data before handleDecision removes it
+    let toolName = '';
+    let params: Record<string, any> = {};
+    let domain: string | undefined;
+    let riskScore: number | undefined;
+
+    const approvalManager = this.config.approvalManager;
+    if (remember && approvalManager) {
+      const pending = approvalManager.getApproval(callId);
+      if (pending) {
+        toolName = pending.request?.metadata?.toolName || '';
+        params = pending.request?.details?.parameters || {};
+        domain = pending.request?.metadata?.domain;
+        riskScore = pending.request?.metadata?.riskScore;
+      } else {
+        console.warn(`[RepublicAgentEngine] Cannot remember decision - no pending approval for id: ${callId}`);
+      }
+    }
+
+    // Dual routing: ApprovalManager (risk-based) + Session (protocol-level)
+    let riskBasedResolved = false;
+    if (approvalManager) {
+      try {
+        await approvalManager.handleDecision({
+          id: callId,
+          decision,
+          timestamp: Date.now(),
+          reason: alternativeText || (decision === 'reject' ? 'Denied by user' : undefined),
+        });
+        riskBasedResolved = true;
+      } catch (error) {
+        console.warn(`[RepublicAgentEngine] ApprovalManager.handleDecision failed for ${callId}:`, error);
+      }
+    }
+
+    let protocolResolved = false;
+    try {
+      this.session.notifyApproval(callId, decision);
+      protocolResolved = true;
+    } catch (error) {
+      console.warn(`[RepublicAgentEngine] Session.notifyApproval failed for ${callId}:`, error);
+    }
+
+    if (!riskBasedResolved && !protocolResolved) {
+      console.error(`[RepublicAgentEngine] Approval decision could not be routed for id: ${callId} — no pending request found in either subsystem`);
+    }
+
+    // Remember decision if requested
+    if (remember && toolName) {
+      const approvalGate = this.toolRegistry.getApprovalGate();
+      if (approvalGate) {
+        approvalGate.rememberDecision(
+          toolName,
+          params,
+          decision === 'approve' ? 'auto_approve' : 'deny',
+          domain,
+          riskScore,
+        );
+      }
+    }
+
+    this.pushEvent({
+      id: crypto.randomUUID(),
+      msg: {
+        type: 'BackgroundEvent',
+        data: {
+          message: `Execution ${decision}: ${callId}`,
+          level: 'info',
+        },
+      },
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Handler: PatchApproval — protocol-level only
+  // ---------------------------------------------------------------------------
+
+  private async handlePatchApproval(op: Extract<EngineOp, { type: 'PatchApproval' }>): Promise<void> {
+    if (!this.session) return;
+
+    this.session.notifyApproval(op.patchId, op.decision);
+
+    this.pushEvent({
+      id: crypto.randomUUID(),
+      msg: {
+        type: 'BackgroundEvent',
+        data: {
+          message: `Patch ${op.decision}: ${op.patchId}`,
+          level: 'info',
+        },
+      },
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Handler: Compact — delegate to Session.compact()
+  // ---------------------------------------------------------------------------
+
+  private async handleCompact(mode: 'auto' | 'manual'): Promise<void> {
+    if (!this.session) return;
+
+    try {
+      this.pushEvent({
+        id: crypto.randomUUID(),
+        msg: {
+          type: 'BackgroundEvent',
+          data: {
+            message: `History compaction started (${mode})`,
+            level: 'info',
+          },
+        },
+      });
+
+      const historyBefore = this.session.getConversationHistory().items.length;
+
+      // Get model client for LLM-based summarization
+      const modelClient = await this.config.modelClientFactory.createClientForCurrentModel();
+      const result = await this.session.compact(mode, modelClient);
+
+      const historyAfter = this.session.getConversationHistory().items.length;
+
+      this.pushEvent({
+        id: crypto.randomUUID(),
+        msg: {
+          type: 'CompactionCompleted',
+          data: {
+            success: result.success,
+            tokensBefore: result.tokensBefore,
+            tokensAfter: result.tokensAfter,
+            itemsTrimmed: result.itemsTrimmed,
+            compactionCount: this.session.getCompactionCount(),
+            triggerReason: mode,
+            error: result.error,
+          },
+        },
+      });
+
+      this.pushEvent({
+        id: crypto.randomUUID(),
+        msg: {
+          type: 'BackgroundEvent',
+          data: {
+            message: `History compaction completed: ${historyBefore} → ${historyAfter} items (saved ~${result.tokensBefore - result.tokensAfter} tokens)`,
+            level: 'info',
           },
         },
       });
@@ -281,29 +593,42 @@ export class RepublicAgentEngine {
       this.pushEvent({
         id: crypto.randomUUID(),
         msg: {
-          type: 'TaskError',
+          type: 'Error',
           data: {
-            submissionId,
-            error: error instanceof Error ? error.message : String(error),
+            message: `History compaction failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
           },
         },
       });
+      throw error;
     }
   }
 
-  private handleExecApproval(op: Extract<EngineOp, { type: 'ExecApproval' }>): void {
-    const { callId, approved } = op;
+  // ---------------------------------------------------------------------------
+  // Handler: AddToHistory
+  // ---------------------------------------------------------------------------
 
-    // Route to ApprovalGate's approval manager for risk-based decisions
-    if (this.config.approvalGate) {
-      this.pushEvent({
-        id: crypto.randomUUID(),
-        msg: {
-          type: 'ExecApprovalHandled',
-          data: { callId, approved },
-        },
-      });
-    }
+  private async handleAddToHistory(op: Extract<EngineOp, { type: 'AddToHistory' }>): Promise<void> {
+    if (!this.session) return;
+
+    this.session.addToHistory({
+      timestamp: Date.now(),
+      text: op.text,
+      type: 'user',
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Handler: Shutdown
+  // ---------------------------------------------------------------------------
+
+  private async handleShutdown(): Promise<void> {
+    this.submissionQueue.length = 0;
+    this.eventQueue.length = 0;
+
+    this.pushEvent({
+      id: crypto.randomUUID(),
+      msg: { type: 'ShutdownComplete' },
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -311,6 +636,11 @@ export class RepublicAgentEngine {
   // ---------------------------------------------------------------------------
 
   pushEvent(event: EngineEvent): void {
+    // Notify all listeners (used by RepublicAgent event bridge)
+    for (const listener of this.eventListeners) {
+      listener(event);
+    }
+
     if (this.config.eventRouter) {
       this.config.eventRouter.routeEvent(event, {
         engineId: this.engineId,
@@ -333,6 +663,7 @@ export class RepublicAgentEngine {
     options?: RunOptions,
   ): Promise<EngineResult> {
     const abortController = new AbortController();
+    const timeoutMs = options?.timeoutMs ?? 10 * 60 * 1000; // Default 10 minutes
 
     if (options?.signal) {
       options.signal.addEventListener('abort', () => {
@@ -341,8 +672,40 @@ export class RepublicAgentEngine {
       });
     }
 
+    const deadline = Date.now() + timeoutMs;
+
     while (true) {
-      const event = await this.getNextEvent();
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) {
+        this.interrupt('Timeout');
+        return {
+          success: false,
+          response: null,
+          turnCount: 0,
+          stopReason: 'error',
+          error: `Timed out after ${timeoutMs}ms`,
+          engineId: this.engineId,
+          submissionId,
+        };
+      }
+
+      const event = await Promise.race([
+        this.getNextEvent(),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), remaining)),
+      ]);
+
+      if (event === null) {
+        this.interrupt('Timeout');
+        return {
+          success: false,
+          response: null,
+          turnCount: 0,
+          stopReason: 'error',
+          error: `Timed out after ${timeoutMs}ms`,
+          engineId: this.engineId,
+          submissionId,
+        };
+      }
 
       if (event.msg.type === 'TaskComplete' && event.msg.data?.submissionId === submissionId) {
         return {

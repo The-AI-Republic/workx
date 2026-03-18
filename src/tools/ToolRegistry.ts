@@ -21,8 +21,6 @@ import type {
 } from './BaseTool';
 import type { ApprovalGate } from '../core/approval/ApprovalGate';
 import type { IRiskAssessor } from '../core/approval/types';
-import { parseNodeId } from './dom/utils';
-
 /**
  * Interface for event collection (used for testing)
  * The actual EventCollector class is in tests/utils/test-helpers.ts
@@ -479,8 +477,9 @@ export class ToolRegistry {
     tabId: number
   ): Promise<Record<string, any>> {
     try {
-      // Dynamic import to avoid circular dependency at module load time
-      const { DomService } = await import('./dom/DomService');
+      // Dynamic imports to avoid pulling extension-only code into desktop/server builds
+      const { DomService } = await import('../extension/tools/dom/DomService');
+      const { parseNodeId } = await import('../extension/tools/dom/utils');
       const domService = await DomService.forTab(tabId);
       const snapshot = domService.getCurrentSnapshot();
       if (!snapshot) return parameters;

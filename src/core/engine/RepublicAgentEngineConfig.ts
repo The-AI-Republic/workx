@@ -4,6 +4,11 @@ import type { AgentConfig } from '../../config/AgentConfig';
 import type { ToolRegistry } from '../../tools/ToolRegistry';
 import type { IEventRouter } from '../events/IEventRouter';
 import type { ApprovalGate } from '../approval/ApprovalGate';
+import type { ModelClientFactory } from '../models/ModelClientFactory';
+import type { ModelClient } from '../models/ModelClient';
+import type { Session } from '../Session';
+import type { ApprovalManager } from '../ApprovalManager';
+import type { ReviewDecision } from '../protocol/types';
 
 export interface RepublicAgentEngineConfig {
   /** AgentConfig instance (shared — for credentials and provider info) */
@@ -37,6 +42,28 @@ export interface RepublicAgentEngineConfig {
    * RepublicAgent injects its ApprovalGate; sub-agents typically omit this.
    */
   approvalGate?: ApprovalGate;
+
+  /**
+   * Optional ApprovalManager for risk-based approval routing.
+   * Required for dual-path approval resolution (ApprovalManager + Session).
+   * If not provided, approvals only route through Session.notifyApproval().
+   */
+  approvalManager?: ApprovalManager;
+
+  /**
+   * Externally-managed Session instance.
+   * If provided, the engine uses this session for task execution.
+   * If omitted, the engine creates its own Session during initialize().
+   */
+  session?: Session;
+
+  /**
+   * Whether this engine manages the session lifecycle (dispose on engine dispose).
+   * true when session is internally created (sub-agents).
+   * false when session is externally provided (main agent).
+   * Default: true if session is not provided, false if session is provided.
+   */
+  ownsSession?: boolean;
 
   /**
    * Optional browser context for sub-agents that need browser tools.
@@ -103,6 +130,9 @@ export interface RunOptions {
 
   /** Context for the execution (tabId, etc.) */
   context?: ExecutionContext;
+
+  /** Timeout in milliseconds for awaitable mode. Default: 600000 (10 minutes) */
+  timeoutMs?: number;
 }
 
 export interface ExecutionContext {
@@ -113,12 +143,15 @@ export interface ExecutionContext {
 
 /** Operations handled by RepublicAgentEngine */
 export type EngineOp =
-  | { type: 'UserInput'; items: InputItem[]; context?: ExecutionContext }
-  | { type: 'UserTurn'; items: InputItem[]; context?: ExecutionContext }
+  | { type: 'UserInput'; items: InputItem[]; context?: ExecutionContext; contextOverrides?: Record<string, unknown> }
+  | { type: 'UserTurn'; items: InputItem[]; context?: ExecutionContext; contextOverrides?: Record<string, unknown> }
   | { type: 'Interrupt'; reason?: string }
-  | { type: 'ExecApproval'; callId: string; approved: boolean; remember?: boolean }
-  | { type: 'PatchApproval'; patchId: string; approved: boolean }
+  | { type: 'ExecApproval'; callId: string; decision: ReviewDecision; remember?: boolean; alternativeText?: string }
+  | { type: 'PatchApproval'; patchId: string; decision: ReviewDecision }
   | { type: 'Compact'; mode?: 'auto' | 'manual' }
+  | { type: 'ManualCompact' }
+  | { type: 'AddToHistory'; text: string }
+  | { type: 'Shutdown' }
   | { type: 'ClearHistory' };
 
 /** Operations that stay in RepublicAgent (orchestration-specific) */
@@ -172,22 +205,6 @@ export interface IBrowserController {
   getPageContent(): Promise<string>;
   screenshot(): Promise<string>;
   executeScript(script: string): Promise<unknown>;
-}
-
-/**
- * Interface for model client factory.
- */
-export interface ModelClientFactory {
-  createClient(modelKey: string): Promise<ModelClient>;
-  createClientForCurrentModel(): Promise<ModelClient>;
-  initialize(config: AgentConfig): Promise<void>;
-}
-
-/**
- * Interface for model client.
- */
-export interface ModelClient {
-  chat(messages: unknown[], options?: unknown): Promise<unknown>;
 }
 
 /**

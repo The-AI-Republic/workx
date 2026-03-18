@@ -41,11 +41,19 @@ export async function registerSubAgentTool(
   await toolRegistry.register(
     toolDefinition,
     async (params: Record<string, unknown>, _context: unknown) => {
+      // Validate required parameters
+      if (typeof params.type !== 'string' || !params.type) {
+        return JSON.stringify({ success: false, error: 'Missing required parameter: type' });
+      }
+      if (typeof params.prompt !== 'string' || !params.prompt) {
+        return JSON.stringify({ success: false, error: 'Missing required parameter: prompt' });
+      }
+
       const toolParams: SubAgentToolParams = {
-        type: params.type as string,
-        prompt: params.prompt as string,
-        description: params.description as string | undefined,
-        background: params.background as boolean | undefined,
+        type: params.type,
+        prompt: params.prompt,
+        description: typeof params.description === 'string' ? params.description : undefined,
+        background: typeof params.background === 'boolean' ? params.background : undefined,
       };
 
       const result = await runner.run(toolParams);

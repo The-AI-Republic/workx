@@ -51,23 +51,23 @@
    * Load settings from ConfigStorageProvider with isolated AgentConfig
    */
   async function loadSettings() {
+    let configInstance: any = null;
     try {
-    isInitializing = true;
-    const configInstance = new (AgentConfig as any)();
+      isInitializing = true;
+      configInstance = new (AgentConfig as any)();
 
-    if (!configInstance) {
-      throw new Error('Failed to initialize AgentConfig');
-    }
-    await configInstance.initialize();
-
-    // Only expose the instance to children once it is fully initialized
-    settingsConfig = configInstance;
-
-    // Debug: log loaded selectedModelKey
-    const config = configInstance.getConfig();
-      console.log('[Settings] Loaded config, selectedModelKey:', config.selectedModelKey);
+      if (!configInstance) {
+        throw new Error('Failed to initialize AgentConfig');
+      }
+      await configInstance.initialize();
+      settingsConfig = configInstance;
     } catch (error) {
       console.error('[Settings] Failed to load settings:', error);
+      // Even on error, expose the instance if it exists — AgentConfig.initialize()
+      // internally falls back to defaults, so the instance is still usable.
+      if (configInstance && !settingsConfig) {
+        settingsConfig = configInstance;
+      }
     } finally {
       isInitializing = false;
     }
@@ -240,6 +240,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    /* Override AppShell's .content-area > * { overflow: hidden } which has equal
+       specificity but appears later in the compiled CSS. The settings page needs
+       visible overflow so the centered modal container isn't clipped. */
+    overflow: visible !important;
     background: rgba(0, 0, 0, 0.5);
     /* Terminal theme (default) */
     --browserx-primary: #00ff00;

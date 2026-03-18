@@ -70,7 +70,7 @@ describe('Edge Case: Invalid API Key', () => {
   it('should throw on 401 without retry (FR-033)', async () => {
     const client = new TestableOpenAIResponsesClient({
       apiKey: 'invalid-key',
-      conversationId: 'test-conv-1',
+      sessionId: 'test-conv-1',
       modelFamily: createModelFamily(),
       provider: createProvider(),
     });
@@ -108,7 +108,7 @@ describe('Edge Case: Invalid API Key', () => {
   it('should not retry on 403 forbidden error', async () => {
     const client = new TestableOpenAIResponsesClient({
       apiKey: 'api-key-without-permissions',
-      conversationId: 'test-conv-2',
+      sessionId: 'test-conv-2',
       modelFamily: createModelFamily(),
       provider: createProvider(),
     });
@@ -133,7 +133,7 @@ describe('Edge Case: Invalid API Key', () => {
   it('should retry on 429 rate limit error', async () => {
     const client = new TestableOpenAIResponsesClient({
       apiKey: 'valid-key',
-      conversationId: 'test-conv-3',
+      sessionId: 'test-conv-3',
       modelFamily: createModelFamily(),
       provider: createProvider(),
     });
@@ -174,7 +174,7 @@ describe('Edge Case: Invalid API Key', () => {
   it('should match quickstart edge case 1 example', async () => {
     const client = new TestableOpenAIResponsesClient({
       apiKey: 'invalid-key',
-      conversationId: 'test-conv-4',
+      sessionId: 'test-conv-4',
       modelFamily: createModelFamily(),
       provider: createProvider(),
     });

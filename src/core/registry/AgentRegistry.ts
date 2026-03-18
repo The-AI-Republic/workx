@@ -18,6 +18,7 @@ import { ApprovalConfigStorage } from '../approval/ApprovalConfigStorage';
 import { getConfigStorage } from '../storage/ConfigStorageProvider';
 import { getChannelManager } from '../channels/ChannelManager';
 import { TabManager } from '../TabManager';
+import type { InitialHistory } from '../session/state/types';
 import type {
   SessionConfig,
   SessionMetadata,
@@ -53,6 +54,7 @@ export class AgentRegistry {
   private _config: AgentConfig | null = null;
   private _storage: SessionStorage | null = null;
   private _registryConfig: RegistryConfig;
+  private _cachedExtensionAdapter: import('../../extension/platform/ExtensionPlatformAdapter').ExtensionPlatformAdapter | null = null;
 
   /**
    * Create a new AgentRegistry
@@ -123,11 +125,11 @@ export class AgentRegistry {
    * with additional context.
    */
   async createSession(sessionConfig: SessionConfig): Promise<AgentSession> {
-    // Check if we can create a new session
-    if (!this.canCreateSession()) {
+    // Internal sessions (e.g. bootstrap fallback) bypass the concurrent limit
+    if (!sessionConfig.internal && !this.canCreateSession()) {
       throw new Error(
         `Max concurrent sessions reached (${this._maxConcurrent}). ` +
-          `Cannot create new ${sessionConfig.type} session.`
+        `Cannot create new ${sessionConfig.type} session.`
       );
     }
 
@@ -138,35 +140,28 @@ export class AgentRegistry {
 
     // Allocate a session letter
     const letterIndex = this._allocateLetterIndex();
-    const session = new AgentSession(sessionConfig, letterIndex);
 
-    // Set up persistence if storage is configured
-    if (this._storage) {
-      session.setStorage(this._storage);
-    }
+    // Build InitialHistory if resume data is present
+    const initialHistory: InitialHistory | undefined = sessionConfig.resume
+      ? { mode: 'resumed', sessionId: sessionConfig.resume.sessionId, rolloutItems: sessionConfig.resume.rolloutItems }
+      : undefined;
 
     // T057: Wrap agent creation in try-catch for graceful error handling
     let agent: RepublicAgent;
     try {
       if (this._registryConfig.agentFactory) {
         // Server/Desktop path: use provided factory for agent creation
-        agent = await this._registryConfig.agentFactory(this._config);
-
-        // Set event dispatcher via factory if provided
-        if (this._registryConfig.eventDispatcherFactory) {
-          agent.setEventDispatcher(this._registryConfig.eventDispatcherFactory(session.sessionId));
-        }
+        agent = await this._registryConfig.agentFactory(this._config, initialHistory);
       } else {
         // Extension path: create agent and wire events through ChannelManager
-        agent = new RepublicAgent(this._config, undefined, undefined, new UserNotifier());
-
-        // Route events through ChannelManager (unified across all platforms)
-        agent.setEventDispatcher((event) => {
-          try {
-            getChannelManager().broadcastEvent(event.msg).catch(() => {});
-          } catch { /* channel not ready */ }
-        });
-
+        // Cache the adapter — it's stateless and safe to share across sessions
+        if (!this._cachedExtensionAdapter) {
+          const { ExtensionPlatformAdapter } = await import('../../extension/platform/ExtensionPlatformAdapter');
+          this._cachedExtensionAdapter = new ExtensionPlatformAdapter();
+          await this._cachedExtensionAdapter.initialize();
+        }
+        const platformAdapter = this._cachedExtensionAdapter;
+        agent = new RepublicAgent(this._config, platformAdapter, initialHistory, undefined, new UserNotifier());
         await agent.initialize();
 
         // Configure extension-specific approval gate
@@ -190,12 +185,13 @@ export class AgentRegistry {
       }
     } catch (initError) {
       // Agent initialization failed - clean up and emit error event
-      console.error(`[AgentRegistry] Failed to initialize agent for session ${session.sessionId}:`, initError);
+      const tempId = `failed_${Date.now()}`;
+      console.error(`[AgentRegistry] Failed to initialize agent:`, initError);
 
       // Emit failure event for monitoring/UI feedback
       this._emitEvent({
         type: 'session:error',
-        sessionId: session.sessionId,
+        sessionId: tempId,
         error: initError instanceof Error ? initError.message : 'Agent initialization failed',
         timestamp: Date.now(),
       });
@@ -203,8 +199,29 @@ export class AgentRegistry {
       // Re-throw with context
       throw new Error(
         `Failed to create ${sessionConfig.type} session: ` +
-          `${initError instanceof Error ? initError.message : 'Agent initialization failed'}`
+        `${initError instanceof Error ? initError.message : 'Agent initialization failed'}`
       );
+    }
+
+    // Create AgentSession with the agent's sessionId (Session is the single source of truth)
+    const agentSessionId = agent.getSession().sessionId;
+    const session = new AgentSession({ ...sessionConfig, sessionId: agentSessionId }, letterIndex);
+
+    // Set up persistence if storage is configured
+    if (this._storage) {
+      session.setStorage(this._storage);
+    }
+
+    // Wire event dispatcher with the unified sessionId
+    if (this._registryConfig.eventDispatcherFactory) {
+      agent.setEventDispatcher(this._registryConfig.eventDispatcherFactory(session.sessionId));
+    } else {
+      // Extension path: route events through ChannelManager
+      agent.setEventDispatcher((event) => {
+        import('@/core/channels/ChannelManager').then(({ getChannelManager }) => {
+          getChannelManager().broadcastEvent({ msg: event.msg, sessionId: session.sessionId }).catch(() => {});
+        }).catch(() => {});
+      });
     }
 
     // Attach agent to session
@@ -233,6 +250,11 @@ export class AgentRegistry {
     // Subscribe to session events and forward to registry listeners
     session.on((event) => this._emitEvent(event));
 
+    // If resuming, initialize the agent's session to replay history
+    if (sessionConfig.resume) {
+      await agent.getSession().initialize();
+    }
+
     // Mark session as ready
     session.markReady();
 
@@ -246,7 +268,7 @@ export class AgentRegistry {
 
     console.log(
       `[AgentRegistry] Created ${sessionConfig.type} session: ${session.sessionId} ` +
-        `(letter: ${session.sessionLetter}, active: ${this.getActiveCount()}/${this._maxConcurrent})`
+      `(letter: ${session.sessionLetter}, active: ${this.getActiveCount()}/${this._maxConcurrent})`
     );
 
     return session;
@@ -319,7 +341,7 @@ export class AgentRegistry {
 
     console.log(
       `[AgentRegistry] Removed session: ${sessionId} ` +
-        `(active: ${this.getActiveCount()}/${this._maxConcurrent})`
+      `(active: ${this.getActiveCount()}/${this._maxConcurrent})`
     );
   }
 
@@ -333,12 +355,12 @@ export class AgentRegistry {
 
   /**
    * Get count of active (non-terminated) sessions
-   * @returns Number of active sessions
+   * @returns Number of active sessions (excludes internal sessions)
    */
   getActiveCount(): number {
     let count = 0;
     for (const session of this._sessions.values()) {
-      if (session.state !== 'terminated') {
+      if (session.state !== 'terminated' && !session.internal) {
         count++;
       }
     }
@@ -405,12 +427,14 @@ export class AgentRegistry {
       }
     }
 
-    // Broadcast to UI via channel
+    // Broadcast to UI via channel (channel-scoped, no sessionId)
     try {
       getChannelManager().broadcastEvent({
-        type: 'BackgroundEvent' as any,
-        data: { message: 'session_event', level: 'info', sessionEvent: event },
-      } as any).catch(() => {});
+        msg: {
+          type: 'BackgroundEvent',
+          data: { message: 'session_event', level: 'info', sessionEvent: event },
+        },
+      }).catch(() => {});
     } catch { /* channel not ready */ }
   }
 

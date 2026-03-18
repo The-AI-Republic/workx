@@ -3,7 +3,7 @@
  *
  * Verifies the config hot-reload path:
  * 1. Reloads AgentConfig from storage before swapping
- * 2. Calls agent.hotSwapModelClient() (not refreshModelClient)
+ * 2. Calls agent.hotSwapModelClient() on all sessions (not refreshModelClient)
  * 3. Does NOT emit AGENT_REINITIALIZED
  */
 
@@ -70,14 +70,25 @@ import { AgentConfig } from '@/config/AgentConfig';
 // ---------------------------------------------------------------------------
 
 /**
- * Create a bootstrap instance with a pre-set agent (bypassing initialize()).
- * We reach into the private field directly since initialize() would pull in
- * too many unrelated dependencies (Tauri APIs, channels, etc.).
+ * Create a bootstrap instance with a mock registry containing one session
+ * with the mock agent (bypassing initialize()).
  */
-function createBootstrapWithAgent() {
+function createBootstrapWithRegistry() {
   const bootstrap = new DesktopAgentBootstrap();
-  // Inject mock agent via private field
-  (bootstrap as any).agent = mockAgent;
+  // Inject mock registry with one session containing the mock agent
+  const mockSession = {
+    sessionId: 'test-session-id',
+    agent: mockAgent,
+    state: 'idle',
+    metadata: { sessionId: 'test-session-id', type: 'primary' },
+  };
+  const mockRegistry = {
+    listSessions: vi.fn().mockReturnValue([{ sessionId: 'test-session-id' }]),
+    getSession: vi.fn().mockReturnValue(mockSession),
+    getPrimarySession: vi.fn().mockReturnValue(mockSession),
+    cleanup: vi.fn().mockResolvedValue(undefined),
+  };
+  (bootstrap as any).registry = mockRegistry;
   (bootstrap as any).initialized = true;
   return bootstrap;
 }
@@ -96,7 +107,7 @@ describe('DesktopAgentBootstrap.handleConfigUpdate()', () => {
   });
 
   it('should reload AgentConfig from storage before hot-swapping', async () => {
-    const bootstrap = createBootstrapWithAgent();
+    const bootstrap = createBootstrapWithRegistry();
     const callOrder: string[] = [];
 
     mockConfig.reload.mockImplementation(async () => {
@@ -112,7 +123,7 @@ describe('DesktopAgentBootstrap.handleConfigUpdate()', () => {
   });
 
   it('should call agent.hotSwapModelClient() NOT refreshModelClient()', async () => {
-    const bootstrap = createBootstrapWithAgent();
+    const bootstrap = createBootstrapWithRegistry();
 
     await bootstrap.handleConfigUpdate();
 
@@ -120,16 +131,16 @@ describe('DesktopAgentBootstrap.handleConfigUpdate()', () => {
     expect(mockAgent.refreshModelClient).not.toHaveBeenCalled();
   });
 
-  it('should return early when agent is not initialized (no error)', async () => {
+  it('should return early when no active sessions exist (no error)', async () => {
     const bootstrap = new DesktopAgentBootstrap();
-    // agent is null (not initialized)
+    // registry is null (not initialized)
 
     await expect(bootstrap.handleConfigUpdate()).resolves.toBeUndefined();
     expect(mockConfig.reload).not.toHaveBeenCalled();
   });
 
   it('should handle errors from config.reload() gracefully', async () => {
-    const bootstrap = createBootstrapWithAgent();
+    const bootstrap = createBootstrapWithRegistry();
     mockConfig.reload.mockRejectedValue(new Error('storage corrupt'));
 
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -146,7 +157,7 @@ describe('DesktopAgentBootstrap.handleConfigUpdate()', () => {
   });
 
   it('should handle errors from hotSwapModelClient() gracefully', async () => {
-    const bootstrap = createBootstrapWithAgent();
+    const bootstrap = createBootstrapWithRegistry();
     mockAgent.hotSwapModelClient.mockRejectedValue(new Error('client creation failed'));
 
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -167,7 +178,7 @@ describe('DesktopAgentBootstrap.handleConfigUpdate()', () => {
   // -------------------------------------------------------------------------
 
   it('should skip concurrent calls — only the first executes', async () => {
-    const bootstrap = createBootstrapWithAgent();
+    const bootstrap = createBootstrapWithRegistry();
 
     // Make config.reload block so the second call arrives while the first is still running
     let resolveReload!: () => void;
@@ -188,7 +199,7 @@ describe('DesktopAgentBootstrap.handleConfigUpdate()', () => {
   });
 
   it('should allow sequential calls — guard clears after completion', async () => {
-    const bootstrap = createBootstrapWithAgent();
+    const bootstrap = createBootstrapWithRegistry();
 
     await bootstrap.handleConfigUpdate();
     await bootstrap.handleConfigUpdate();
@@ -197,7 +208,7 @@ describe('DesktopAgentBootstrap.handleConfigUpdate()', () => {
   });
 
   it('should clear guard even when hotSwapModelClient() throws', async () => {
-    const bootstrap = createBootstrapWithAgent();
+    const bootstrap = createBootstrapWithRegistry();
     mockAgent.hotSwapModelClient.mockRejectedValueOnce(new Error('boom'));
 
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});

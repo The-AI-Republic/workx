@@ -33,7 +33,7 @@
     placeholder?: string;
     onSubmit?: (value: string) => void;
     onStop?: () => void;
-    onSelectConversation?: (conversationId: string) => void;
+    onSelectConversation?: (sessionId: string) => void;
     onNewConversation?: () => void;
     tabId?: number;
     isProcessing?: boolean;

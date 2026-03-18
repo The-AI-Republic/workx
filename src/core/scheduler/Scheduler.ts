@@ -123,7 +123,7 @@ export class Scheduler {
     this.setEventEmitter((event) => {
       try {
         getChannelManager().dispatchEvent(
-          { type: 'BackgroundEvent', data: { message: 'scheduler_job_status', level: 'info', schedulerEvent: event } },
+          { msg: { type: 'BackgroundEvent', data: { message: 'scheduler_job_status', level: 'info', schedulerEvent: event } } },
           channelId
         ).catch((error) => {
           console.error('[Scheduler] Failed to dispatch event:', error);

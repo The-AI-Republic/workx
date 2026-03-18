@@ -6,7 +6,6 @@ import type {
   TabValidationResult,
   ModelCapabilities,
   IToolsConfig,
-  ApprovalPolicies,
   IConfigStorage,
   ICredentialStore,
   IStorageProvider,
@@ -21,20 +20,80 @@ export class DesktopPlatformAdapter implements IPlatformAdapter {
   readonly hasBrowserTools = true;
 
   private browserConnected = false;
+  private toolRegistry: ToolRegistry | null = null;
+  private emitEvent: ((msg: { type: string; data: Record<string, unknown> }) => void) | null = null;
 
   async initialize(): Promise<void> {
-    // Attempt to connect to builtin browser MCP server
+    // MCP browser connection is handled lazily in createTab()
+    // rather than eagerly here, to preserve existing timing behavior.
+  }
+
+  /**
+   * Set the tool registry and event emitter for lazy MCP browser connection.
+   * Must be called before the first createTab() so that MCP tools can be
+   * registered and warnings can be emitted to the UI.
+   */
+  setToolContext(
+    toolRegistry: ToolRegistry,
+    emitEvent: (msg: { type: string; data: Record<string, unknown> }) => void
+  ): void {
+    this.toolRegistry = toolRegistry;
+    this.emitEvent = emitEvent;
+  }
+
+  /**
+   * Lazily connect to the builtin browser MCP server.
+   * Called before the first tab operation to match existing RepublicAgent
+   * behavior where MCP connection happens during tab binding.
+   */
+  async ensureBrowserReady(): Promise<void> {
+    if (this.browserConnected) return;
+    if (!this.toolRegistry || !this.emitEvent) return;
+
+    const toolRegistry = this.toolRegistry;
+    const emitEvent = this.emitEvent;
+
     try {
-      // MCP connection would be established here
-      this.browserConnected = false; // Will be set to true when MCP connects
-    } catch (error) {
-      console.warn('Desktop browser MCP not available:', error);
-      this.browserConnected = false;
+      const { MCPManager } = await import('../../core/mcp/MCPManager');
+      const { registerMCPTools } = await import('../../core/mcp/MCPToolAdapter');
+      const mcpManager = await MCPManager.getInstance('desktop');
+      const browserServer = mcpManager.getServerByName('browser');
+
+      if (browserServer) {
+        await mcpManager.connect(browserServer.id);
+
+        const connection = mcpManager.getConnection(browserServer.id);
+        if (connection && connection.tools.length > 0) {
+          // Lazily register tools if they weren't registered at startup
+          if (!toolRegistry.getTool(`browser__${connection.tools[0].name}`)) {
+            const { McpBrowserRiskAssessor } = await import('../../core/approval/assessors/McpBrowserRiskAssessor');
+            await registerMCPTools(mcpManager, 'browser', connection.tools, toolRegistry, new McpBrowserRiskAssessor());
+          }
+          this.browserConnected = true;
+        } else {
+          const warnMsg = 'Browser MCP server connected but no tools were discovered. Browser automation will not work.';
+          console.warn(`[DesktopPlatformAdapter] ${warnMsg}`);
+          emitEvent({ type: 'BackgroundEvent', data: { message: warnMsg, level: 'warning' } });
+        }
+      } else {
+        const warnMsg = 'Builtin browser server not found in MCPManager. Browser tools will be unavailable.';
+        console.warn(`[DesktopPlatformAdapter] ${warnMsg}`);
+        emitEvent({ type: 'BackgroundEvent', data: { message: warnMsg, level: 'warning' } });
+      }
+    } catch (mcpError) {
+      const errorMsg = mcpError instanceof Error ? mcpError.message : String(mcpError);
+      console.error(`[DesktopPlatformAdapter] Browser MCP server connection failed: ${errorMsg}`);
+      emitEvent({
+        type: 'BackgroundEvent',
+        data: { message: `Browser tools unavailable: ${errorMsg}`, level: 'warning' },
+      });
+      // Don't fail — tools will return errors to the LLM
     }
   }
 
   async createTab(_options?: TabOptions): Promise<number> {
     // Desktop doesn't manage tabs directly — MCP handles it
+    // Return sentinel tabId=1 since MCP manages page state internally
     return 1;
   }
 
@@ -56,28 +115,24 @@ export class DesktopPlatformAdapter implements IPlatformAdapter {
   }
 
   async registerPlatformTools(
-    _registry: ToolRegistry,
-    _toolsConfig: IToolsConfig,
-    _capabilities: ModelCapabilities
+    registry: ToolRegistry,
+    toolsConfig: IToolsConfig,
+    capabilities: ModelCapabilities
   ): Promise<void> {
-    // Desktop-specific tool registration
-    // MCP browser tools, terminal tool, settings tool
-  }
-
-  getApprovalPolicies(): ApprovalPolicies {
-    return {
-      enhancers: [],
-      assessors: {},
-    };
+    const { registerDesktopToolsImpl } = await import('../../desktop/tools/registerDesktopTools');
+    await registerDesktopToolsImpl(registry, toolsConfig, {
+      name: '',
+      supportsImage: capabilities.supportsImage,
+    });
   }
 
   getConfigStorage(): IConfigStorage {
     return {
       async get(_key: string): Promise<unknown> {
-        return undefined; // Filesystem-based config storage
+        return undefined;
       },
       async set(_key: string, _value: unknown): Promise<void> {
-        // Write to filesystem
+        // Filesystem-based config storage
       },
     };
   }
@@ -85,10 +140,10 @@ export class DesktopPlatformAdapter implements IPlatformAdapter {
   getCredentialStore(): ICredentialStore {
     return {
       async get(_key: string): Promise<string | null> {
-        return null; // Keychain-based credential store
+        return null;
       },
       async set(_key: string, _value: string): Promise<void> {
-        // Store in keychain
+        // Keychain-based credential store
       },
       async delete(_key: string): Promise<void> {
         // Remove from keychain
@@ -99,10 +154,10 @@ export class DesktopPlatformAdapter implements IPlatformAdapter {
   getStorageProvider(): IStorageProvider {
     return {
       async get(_key: string): Promise<unknown> {
-        return undefined; // SQLite storage
+        return undefined;
       },
       async set(_key: string, _value: unknown): Promise<void> {
-        // Write to SQLite
+        // SQLite storage
       },
       async delete(_key: string): Promise<void> {
         // Delete from SQLite
@@ -128,7 +183,6 @@ export class DesktopPlatformAdapter implements IPlatformAdapter {
   }
 
   async dispose(): Promise<void> {
-    // Disconnect MCP connections
     this.browserConnected = false;
   }
 }

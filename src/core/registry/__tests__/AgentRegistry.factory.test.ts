@@ -15,13 +15,14 @@ import { AgentRegistry } from '@/core/registry/AgentRegistry';
 
 vi.mock('@/core/RepublicAgent', () => ({
   RepublicAgent: class MockRepublicAgent {
-    initialize = vi.fn().mockResolvedValue(undefined);
-    getSession = vi.fn().mockReturnValue({
-      conversationId: 'conv_ext',
+    private _session = {
+      sessionId: 'session_ext_' + Math.random().toString(36).slice(2),
       abortAllTasks: () => {},
       close: () => {},
       setTabId: () => {},
-    });
+    };
+    initialize = vi.fn().mockResolvedValue(undefined);
+    getSession = vi.fn(() => this._session);
     submitOperation = vi.fn().mockResolvedValue('sub_ext');
     cleanup = vi.fn();
     setEventDispatcher = vi.fn();
@@ -48,14 +49,16 @@ vi.mock('@/core/TabManager', () => ({
 // ---------------------------------------------------------------------------
 
 function createFactoryAgent() {
+  const session = {
+    sessionId: 'session_factory_' + Math.random().toString(36).slice(2),
+    abortAllTasks: () => {},
+    close: () => {},
+    setTabId: () => {},
+    initialize: vi.fn().mockResolvedValue(undefined),
+  };
   return {
     initialize: vi.fn().mockResolvedValue(undefined),
-    getSession: vi.fn().mockReturnValue({
-      conversationId: 'conv_factory_' + Math.random().toString(36).slice(2),
-      abortAllTasks: () => {},
-      close: () => {},
-      setTabId: () => {},
-    }),
+    getSession: vi.fn(() => session),
     submitOperation: vi.fn().mockResolvedValue('sub_factory'),
     cleanup: vi.fn(),
     setEventDispatcher: vi.fn(),
@@ -108,8 +111,32 @@ describe('AgentRegistry — factory path (server/desktop)', () => {
 
       const session = await registry.createSession({ type: 'scheduled' });
 
-      expect(agentFactory).toHaveBeenCalledWith(mockConfig);
+      expect(agentFactory).toHaveBeenCalledWith(mockConfig, undefined);
       expect(session.agent).toBe(factoryAgent);
+    });
+
+    it('should pass initialHistory to agentFactory when resume config is present', async () => {
+      const factoryAgent = createFactoryAgent();
+      const agentFactory = vi.fn().mockResolvedValue(factoryAgent);
+
+      const registry = new AgentRegistry({
+        maxConcurrent: 3,
+        agentFactory,
+      });
+      registry.initialize(mockConfig);
+
+      const resumeData = {
+        sessionId: 'conv-123',
+        rolloutItems: [{ type: 'event_msg', payload: {} }],
+      };
+
+      await registry.createSession({ type: 'primary', resume: resumeData });
+
+      expect(agentFactory).toHaveBeenCalledWith(mockConfig, {
+        mode: 'resumed',
+        sessionId: 'conv-123',
+        rolloutItems: [{ type: 'event_msg', payload: {} }],
+      });
     });
 
     it('should not call agentFactory for extension path (no factory provided)', async () => {
@@ -181,7 +208,7 @@ describe('AgentRegistry — factory path (server/desktop)', () => {
       );
     });
 
-    it('should not call eventDispatcherFactory when not provided', async () => {
+    it('should use extension event dispatcher when eventDispatcherFactory not provided', async () => {
       const factoryAgent = createFactoryAgent();
       const agentFactory = vi.fn().mockResolvedValue(factoryAgent);
 
@@ -194,8 +221,8 @@ describe('AgentRegistry — factory path (server/desktop)', () => {
 
       await registry.createSession({ type: 'scheduled' });
 
-      // setEventDispatcher should NOT be called on the factory path without a dispatcher factory
-      expect(factoryAgent.setEventDispatcher).not.toHaveBeenCalled();
+      // setEventDispatcher IS called even without eventDispatcherFactory (extension fallback path)
+      expect(factoryAgent.setEventDispatcher).toHaveBeenCalled();
     });
 
     it('should create unique dispatchers per session', async () => {

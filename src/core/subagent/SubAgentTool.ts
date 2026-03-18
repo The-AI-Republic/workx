@@ -1,19 +1,7 @@
 // File: src/core/subagent/SubAgentTool.ts
 
 import type { SubAgentTypeConfig } from './types';
-
-export interface ToolDefinition {
-  type: 'function';
-  function: {
-    name: string;
-    description: string;
-    parameters: {
-      type: 'object';
-      properties: Record<string, unknown>;
-      required: string[];
-    };
-  };
-}
+import type { ToolDefinition } from '../../tools/BaseTool';
 
 /**
  * Build the sub_agent tool definition.
@@ -34,6 +22,7 @@ export function buildSubAgentToolDefinition(
 
 Available types:
 ${typeDescriptions}`,
+      strict: false,
       parameters: {
         type: 'object',
         properties: {

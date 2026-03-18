@@ -6,7 +6,6 @@ import type {
   TabValidationResult,
   ModelCapabilities,
   IToolsConfig,
-  ApprovalPolicies,
   IConfigStorage,
   ICredentialStore,
   IStorageProvider,
@@ -14,22 +13,33 @@ import type {
   IBrowserController,
 } from '../../core/platform/IPlatformAdapter';
 import type { ToolRegistry } from '../../tools/ToolRegistry';
+import { TabManager } from '../../core/TabManager';
 
 export class ExtensionPlatformAdapter implements IPlatformAdapter {
   readonly platformId = 'extension' as const;
   readonly hasRealTabs = true;
   readonly hasBrowserTools = true;
 
+  private tabManager!: TabManager;
+
   async initialize(): Promise<void> {
-    // TabManager initialization handled by existing singleton
+    this.tabManager = TabManager.getInstance();
   }
 
   async createTab(options?: TabOptions): Promise<number> {
-    const tab = await chrome.tabs.create({
+    const createdTabId = await this.tabManager.createTab({
       url: options?.url ?? 'about:blank',
-      active: options?.active ?? true,
+      active: options?.active ?? false,
     });
-    return tab.id!;
+
+    if (!createdTabId) {
+      throw new Error('Failed to create tab: tab creation returned null');
+    }
+
+    // Manage tab groups (extension-specific behavior)
+    await this.tabManager.addTabToGroup(createdTabId);
+
+    return createdTabId;
   }
 
   async closeTab(tabId: number): Promise<void> {
@@ -41,30 +51,27 @@ export class ExtensionPlatformAdapter implements IPlatformAdapter {
   }
 
   async validateTab(tabId: number): Promise<TabValidationResult> {
-    try {
-      const tab = await chrome.tabs.get(tabId);
-      if (!tab) {
-        return { valid: false, reason: 'not_found' };
-      }
-      if (tab.status === 'unloaded') {
-        return { valid: false, reason: 'crashed' };
-      }
-      const hasPermission = await this.checkTabPermission(tabId);
-      if (!hasPermission) {
-        return { valid: false, reason: 'no_permission' };
-      }
-      return { valid: true };
-    } catch {
-      return { valid: false, reason: 'closed' };
+    const validation = await this.tabManager.validateTab(tabId);
+
+    if (validation.status === 'invalid') {
+      return { valid: false, reason: validation.reason as TabValidationResult['reason'] };
     }
+    if (validation.status === 'checking') {
+      return { valid: false, reason: 'not_found' };
+    }
+    return { valid: true };
   }
 
   async switchTab(fromTabId: number, toTabId: number): Promise<void> {
-    await chrome.tabs.update(toTabId, { active: true });
+    // Clear old tab from group
+    if (fromTabId !== -1) {
+      await this.tabManager.clearAllTabsFromGroup();
+    }
+    // Add new tab to group
+    await this.tabManager.addTabToGroup(toTabId);
   }
 
   async getBrowserController(tabId: number): Promise<IBrowserController | null> {
-    // Extension browser controller wraps Chrome Debugger API
     return {
       async navigate(url: string): Promise<void> {
         await chrome.tabs.update(tabId, { url });
@@ -90,19 +97,15 @@ export class ExtensionPlatformAdapter implements IPlatformAdapter {
   }
 
   async registerPlatformTools(
-    _registry: ToolRegistry,
-    _toolsConfig: IToolsConfig,
-    _capabilities: ModelCapabilities
+    registry: ToolRegistry,
+    toolsConfig: IToolsConfig,
+    capabilities: ModelCapabilities
   ): Promise<void> {
-    // Extension-specific browser tools registration
-    // Delegates to existing tool registration functions
-  }
-
-  getApprovalPolicies(): ApprovalPolicies {
-    return {
-      enhancers: [],
-      assessors: {},
-    };
+    const { registerExtensionTools } = await import('../tools/registerExtensionTools');
+    await registerExtensionTools(registry, toolsConfig, {
+      name: '',
+      supportsImage: capabilities.supportsImage,
+    });
   }
 
   getConfigStorage(): IConfigStorage {
@@ -166,17 +169,5 @@ export class ExtensionPlatformAdapter implements IPlatformAdapter {
 
   async dispose(): Promise<void> {
     // Cleanup tab listeners
-  }
-
-  private async checkTabPermission(tabId: number): Promise<boolean> {
-    try {
-      await chrome.scripting.executeScript({
-        target: { tabId },
-        func: () => true,
-      });
-      return true;
-    } catch {
-      return false;
-    }
   }
 }

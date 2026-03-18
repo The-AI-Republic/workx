@@ -29,8 +29,17 @@ export interface SessionConfig {
   /** Initial tab binding (optional) */
   tabId?: number | null;
 
-  /** Conversation ID to resume from (optional) */
-  resumeFrom?: string | null;
+  /** Resume data for restoring a previous session */
+  resume?: {
+    sessionId: string;
+    rolloutItems: unknown[];
+  };
+
+  /**
+   * Mark as an internal infrastructure session (e.g. bootstrap fallback agent).
+   * Internal sessions bypass the concurrent limit and are excluded from user-facing counts.
+   */
+  internal?: boolean;
 }
 
 /**
@@ -42,9 +51,6 @@ export interface SessionMetadata {
 
   /** Single letter identifier (a, b, c...) for tab group naming */
   sessionLetter: string;
-
-  /** Conversation ID for history lookup */
-  conversationId: string;
 
   /** Session type */
   type: SessionType;
@@ -141,7 +147,10 @@ export interface RegistryConfig {
   maxConcurrent?: number;
 
   /** Optional factory to create RepublicAgent instances (replaces hardcoded extension logic) */
-  agentFactory?: (config: import('../../config/AgentConfig').AgentConfig) => Promise<import('../RepublicAgent').RepublicAgent>;
+  agentFactory?: (
+    config: import('../../config/AgentConfig').AgentConfig,
+    initialHistory?: import('../session/state/types').InitialHistory,
+  ) => Promise<import('../RepublicAgent').RepublicAgent>;
 
   /** Optional factory to create event dispatchers per session (replaces chrome.runtime.sendMessage) */
   eventDispatcherFactory?: (sessionId: string) => ((event: { msg: import('../protocol/events').EventMsg }) => void);
@@ -166,7 +175,7 @@ export const SESSION_LETTERS = 'abcdefghijklmnopqrstuvwxyz'.split('');
 /**
  * Default maximum concurrent sessions
  */
-export const DEFAULT_MAX_CONCURRENT = 3;
+export const DEFAULT_MAX_CONCURRENT = 5;
 
 /**
  * Maximum allowed concurrent sessions

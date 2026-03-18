@@ -10,7 +10,5 @@ export type {
   InputItem,
   EngineEvent,
   IBrowserController,
-  ModelClientFactory,
-  ModelClient,
   ConversationEntry,
 } from './RepublicAgentEngineConfig';
