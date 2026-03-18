@@ -63,16 +63,26 @@ function createService(overrides: {
 // ---------------------------------------------------------------------------
 
 describe('MemoryService.formatGlobalMemoryContext', () => {
-  it('returns empty string for empty/whitespace markdown', () => {
+  it('always includes memory instructions', () => {
     const { service } = createService();
-    expect(service.formatGlobalMemoryContext('')).toBe('');
-    expect(service.formatGlobalMemoryContext('   ')).toBe('');
-    expect(service.formatGlobalMemoryContext('\n\n')).toBe('');
+    const result = service.formatGlobalMemoryContext('');
+    expect(result).toContain('Long-Term Memory');
+    expect(result).toContain('save_memory');
+    expect(result).not.toContain('<agent_memory>');
   });
 
-  it('wraps non-empty markdown in agent_memory XML tags', () => {
+  it('includes instructions without agent_memory block for empty/whitespace markdown', () => {
+    const { service } = createService();
+    const empty = service.formatGlobalMemoryContext('');
+    const whitespace = service.formatGlobalMemoryContext('   ');
+    expect(empty).not.toContain('<agent_memory>');
+    expect(whitespace).not.toContain('<agent_memory>');
+  });
+
+  it('wraps non-empty markdown in agent_memory XML tags after instructions', () => {
     const { service } = createService();
     const result = service.formatGlobalMemoryContext('# User Profile\n- Likes cats');
+    expect(result).toContain('Long-Term Memory');
     expect(result).toContain('<agent_memory>');
     expect(result).toContain('</agent_memory>');
     expect(result).toContain('# User Profile');
@@ -122,13 +132,14 @@ describe('MemoryService.getFormattedGlobalContext', () => {
     expect(result).toContain('# Profile');
   });
 
-  it('returns empty string when core memory is empty', async () => {
+  it('returns instructions without agent_memory block when core memory is empty', async () => {
     const coreManager = createMockCoreManager();
     (coreManager.getCoreMemoryContent as ReturnType<typeof vi.fn>).mockResolvedValue('');
     const { service } = createService({ coreManager });
 
     const result = await service.getFormattedGlobalContext();
-    expect(result).toBe('');
+    expect(result).toContain('Long-Term Memory');
+    expect(result).not.toContain('<agent_memory>');
   });
 });
 

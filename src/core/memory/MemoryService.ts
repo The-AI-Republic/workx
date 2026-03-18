@@ -18,6 +18,7 @@ import {
   type MemoryCategory,
   type MemoryConfig,
 } from './types';
+import memoryInstructions from './prompts/memory_instructions.md?raw';
 
 /**
  * Max size for core-memory.md content (characters) to prevent unbounded context window usage.
@@ -89,21 +90,21 @@ export class MemoryService {
 
   /**
    * Format global memory context for injection into system prompt.
+   * Includes behavioral instructions for the LLM on how to use memory,
+   * followed by the core memory content.
    */
   formatGlobalMemoryContext(coreMarkdown: string): string {
-    if (!coreMarkdown || coreMarkdown.trim().length === 0) return '';
-
     // Cap core memory to prevent unbounded context window usage
-    let content = coreMarkdown.trim();
+    let content = (coreMarkdown ?? '').trim();
     if (content.length > MAX_CORE_MEMORY_CHARS) {
       content = content.slice(0, MAX_CORE_MEMORY_CHARS) + '\n\n[... truncated -- core memory exceeds size limit]';
     }
 
-    return `<agent_memory>
-The following are core rules and preferences you must always follow for this user:
+    const coreMemoryBlock = content.length > 0
+      ? `\n<agent_memory>\nThe following are core rules and preferences you must always follow for this user:\n\n${content}\n</agent_memory>`
+      : '';
 
-${content}
-</agent_memory>`;
+    return `${memoryInstructions}${coreMemoryBlock}`;
   }
 
   /**

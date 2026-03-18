@@ -216,19 +216,19 @@
             </div>
           {/if}
 
-          <!-- Warning: own key mode but no key configured -->
+          <!-- Info: own key mode but no OpenAI key configured — will fall back to main LLM -->
           {#if showMemoryKeyWarning}
             <div class="mt-3 flex items-start gap-2 p-2.5 rounded-lg text-sm
               {currentTheme === 'modern'
-                ? 'font-chat text-amber-600 dark:text-amber-400 bg-amber-500/10 dark:bg-amber-400/10'
-                : 'font-terminal text-yellow-400 bg-yellow-400/10'}"
+                ? 'font-chat text-blue-600 dark:text-blue-400 bg-blue-500/10 dark:bg-blue-400/10'
+                : 'font-terminal text-cyan-400 bg-cyan-400/10'}"
             >
               <svg class="mt-0.5 shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                <line x1="12" y1="9" x2="12" y2="13"/>
-                <line x1="12" y1="17" x2="12.01" y2="17"/>
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="16" x2="12" y2="12"/>
+                <line x1="12" y1="8" x2="12.01" y2="8"/>
               </svg>
-              <span>{$_t("Memory will not work until an OpenAI API key is configured. Enable \"Use Own API Key\" in Model Settings and add your OpenAI key.")}
+              <span>{$_t("No OpenAI API key found. Memory will use your current LLM provider and model. For lower cost, add an OpenAI API key to use gpt-4o-mini instead.")}
                 {#if onNavigateTo}
                   <button
                     class="inline underline font-medium cursor-pointer bg-transparent border-none p-0 text-inherit"
@@ -263,8 +263,7 @@
           <p class="m-0">{$_t("The agent automatically extracts and remembers important facts from your conversations — preferences, project details, and personal context.")}</p>
           <p class="m-0">{$_t("All memory data is stored locally on your device. Nothing is sent to our servers.")}</p>
           <p class="m-0">{$_t("Core preferences (like 'always use dark mode') are injected into every conversation. Other facts are searchable on demand.")}</p>
-          <p class="m-0">{$_t("Memory requires an OpenAI API key for embeddings (text-embedding-3-small). Extraction uses gpt-4o-mini for low cost.")}</p>
-          <p class="m-0">{$_t("Multi model support is coming soon for memory.")}</p>
+          <p class="m-0">{$_t("Memory works with any LLM provider. When an OpenAI API key is available, it uses gpt-4o-mini for lower cost. Otherwise it uses your current model.")}</p>
         </div>
       </div>
     </div>

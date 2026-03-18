@@ -1046,7 +1046,8 @@ export class Session {
         }
 
         // Create a dedicated LLM caller for memory keyword generation and relevance filtering.
-        // Uses a cheap model (gpt-4o-mini) independent of the user's selected LLM.
+        // Prefers a cheap model (gpt-4o-mini) via OpenAI API key. Falls back to the
+        // user's current main LLM provider/model when no OpenAI key is available.
         const { OpenAIChatCompletionClient } = await import('./models/client/OpenAIChatCompletionClient');
         const { DEFAULT_EXTRACTION_MODEL } = await import('./memory/types');
         const extractionModel = preferences?.extractionModel ?? DEFAULT_EXTRACTION_MODEL;
@@ -1056,7 +1057,9 @@ export class Session {
           : (openaiApiKey || '');
 
         let llmCaller = null;
+
         if (memoryApiKey) {
+          // Preferred path: dedicated gpt-4o-mini client via OpenAI key
           const memoryLLMClient = new OpenAIChatCompletionClient({
             apiKey: memoryApiKey,
             baseUrl: useBackendForMemory && backendBaseUrl ? backendBaseUrl + '/openai' : undefined,
@@ -1088,6 +1091,12 @@ export class Session {
               return response.choices[0]?.message?.content || '';
             }
           };
+        } else {
+          // Fallback: use the same provider/model as the main conversation LLM
+          llmCaller = await this.createFallbackMemoryLLMCaller(agentConfig);
+          if (llmCaller) {
+            console.info('[Memory] No OpenAI API key — using main LLM provider for memory operations.');
+          }
         }
 
         const memoryService = await createMemoryService({
@@ -1096,17 +1105,103 @@ export class Session {
         });
 
         if (memoryEnabled && !memoryService) {
-          if (!memoryApiKey) {
-            console.warn('[Memory] Memory is enabled but no API key is configured for the memory LLM. Add one in Model Settings.');
-          } else {
-            console.warn('[Memory] Memory is enabled but failed to initialize. Check logs for details.');
-          }
+          console.warn('[Memory] Memory is enabled but failed to initialize. Check logs for details.');
         }
 
         this.setMemoryService(memoryService);
       }
     } catch (err) {
       console.error('[Memory] Initialization failed:', err);
+    }
+  }
+
+  /**
+   * Create a memory LLM caller that mirrors the user's current main LLM provider/model.
+   * Used as a fallback when no OpenAI API key is available.
+   */
+  private async createFallbackMemoryLLMCaller(
+    agentConfig: AgentConfig
+  ): Promise<{ complete: (systemPrompt: string, userPrompt: string) => Promise<string> } | null> {
+    try {
+      const fullConfig = agentConfig.getConfig();
+      const modelData = agentConfig.getModelByKey(fullConfig.selectedModelKey);
+      if (!modelData) return null;
+
+      const providerId = modelData.provider.id;
+      const providerApiKey = await agentConfig.getProviderApiKey(providerId);
+      if (!providerApiKey) return null;
+
+      const modelKey = modelData.model.modelKey;
+      const baseUrl = modelData.provider.baseUrl || undefined;
+
+      if (providerId === 'google-ai-studio') {
+        const { GoogleCompletionClient } = await import('./models/client/GoogleCompletionClient');
+        const client = new GoogleCompletionClient({
+          apiKey: providerApiKey,
+          baseUrl,
+          provider: {
+            name: 'Google AI Studio',
+            wire_api: 'Chat' as const,
+            requires_openai_auth: false,
+          },
+          modelFamily: {
+            family: modelKey,
+            base_instructions: '',
+            supports_reasoning: false,
+            supports_reasoning_summaries: false,
+            needs_special_apply_patch_instructions: false,
+          },
+        });
+
+        return {
+          complete: async (systemPrompt: string, userPrompt: string) => {
+            const response = await client.complete({
+              model: modelKey,
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt }
+              ]
+            });
+            return response.choices[0]?.message?.content || '';
+          }
+        };
+      }
+
+      // All other providers use OpenAI-compatible Chat Completions API
+      const { OpenAIChatCompletionClient } = await import('./models/client/OpenAIChatCompletionClient');
+      const client = new OpenAIChatCompletionClient({
+        apiKey: providerApiKey,
+        baseUrl,
+        sessionId: 'memory-search',
+        modelFamily: {
+          family: modelKey,
+          base_instructions: '',
+          supports_reasoning: false,
+          supports_reasoning_summaries: false,
+          needs_special_apply_patch_instructions: false,
+        },
+        provider: {
+          name: modelData.provider.name || providerId,
+          wire_api: 'Chat' as const,
+          requires_openai_auth: true,
+        },
+      });
+
+      return {
+        complete: async (systemPrompt: string, userPrompt: string) => {
+          const response = await client.complete({
+            model: modelKey,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ]
+          });
+          return response.choices[0]?.message?.content || '';
+        }
+      };
+    } catch (err) {
+      console.warn('[Memory] Failed to create fallback memory LLM caller:', err);
+      return null;
     }
   }
 

@@ -3,6 +3,8 @@
  */
 import type { LLMCaller } from './types';
 import type { DailyMemoryStore, MemoryEntry } from './DailyMemoryStore';
+import keywordExtractionPrompt from './prompts/keyword_extraction.md?raw';
+import relevanceRankingPrompt from './prompts/relevance_ranking.md?raw';
 
 export interface SearchResult {
   fact: string;
@@ -55,14 +57,7 @@ export class MemorySearcher {
   private async generateKeywords(query: string): Promise<string[]> {
     try {
       const response = await this.llm.complete(
-        `You are a keyword extraction system. Given a user's search query, generate a list of search keywords and synonyms that would help find relevant facts in a memory store.
-
-Rules:
-- Return 3-8 keywords, one per line
-- Include synonyms and related terms
-- Include both specific and general terms
-- Do NOT include common words like "the", "a", "is", "what", "my"
-- Return ONLY the keywords, one per line, nothing else`,
+        keywordExtractionPrompt,
         `Query: "${query}"`
       );
 
@@ -88,15 +83,9 @@ Rules:
       .join('\n');
 
     try {
+      const systemPrompt = relevanceRankingPrompt.replace('{{limit}}', String(limit));
       const response = await this.llm.complete(
-        `You are a memory relevance filter. Given a search query and a list of memory entries, select the most relevant entries and assign relevance scores.
-
-Rules:
-- Select up to ${limit} most relevant entries
-- Assign a relevance score from 0.0 to 1.0 for each selected entry
-- Return ONLY a JSON array of objects: [{"index": <number>, "relevance": <number>}]
-- Order by relevance (highest first)
-- If no entries are relevant, return an empty array: []`,
+        systemPrompt,
         `Query: "${query}"\n\nMemory entries:\n${candidateList}`
       );
 
