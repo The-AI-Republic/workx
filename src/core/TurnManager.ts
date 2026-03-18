@@ -122,19 +122,8 @@ export class TurnManager {
     // Build tools list from turn context
     const tools = await this.buildToolsFromContext();
 
-    // Inject global memory context into base instructions (read path)
-    let baseInstructions = this.turnContext.getBaseInstructions();
-    const memoryService = this.session.getMemoryService();
-    if (memoryService) {
-      try {
-        const memoryContext = await memoryService.getFormattedGlobalContext();
-        if (memoryContext) {
-          baseInstructions = (baseInstructions ?? '') + '\n\n' + memoryContext;
-        }
-      } catch (err) {
-        console.warn('[TurnManager] Memory recall failed (non-critical):', err);
-      }
-    }
+    // Memory context is injected via PromptLoader prompt extension (registered in RepublicAgent).
+    const baseInstructions = this.turnContext.getBaseInstructions();
 
     const prompt: ModelPrompt = {
       input,

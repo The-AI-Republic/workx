@@ -16,7 +16,7 @@ import { ToolRegistry } from '../tools/ToolRegistry';
 import { ModelClientFactory } from './models/ModelClientFactory';
 import { type IUserNotifier, NoOpNotifier } from './IUserNotifier';
 import { v4 as uuidv4 } from 'uuid';
-import { loadPrompt, loadUserInstructions, configurePromptComposer, isComposerConfigured } from './PromptLoader';
+import { loadPrompt, loadUserInstructions, configurePromptComposer, isComposerConfigured, registerPromptExtension } from './PromptLoader';
 import { RegularTask } from './tasks/RegularTask';
 import { registerPlatformTools } from '../tools/registerPlatformTools';
 import { TabManager } from './TabManager';
@@ -131,12 +131,19 @@ export class RepublicAgent {
       supportsImage: modelData.model.supportsImage
     });
 
-    // Register memory tools if memory service is available
+    // Register memory tools and prompt extension if memory service is available.
     // Uses a getter so handlers always access the current MemoryService
     // instance (survives refreshMemoryService cycles).
     if (this.session.getMemoryService()) {
       const { registerMemoryTools } = await import('../tools/MemoryTools');
       await registerMemoryTools(this.toolRegistry, () => this.session.getMemoryService());
+
+      // Register prompt extension so core memory is injected into every system prompt
+      // via the standard PromptLoader pipeline (no special-casing in TurnManager).
+      registerPromptExtension(() => {
+        const ms = this.session.getMemoryService();
+        return ms ? ms.getCachedGlobalContext() : '';
+      });
     }
 
     // Create model client and turn context during initialization

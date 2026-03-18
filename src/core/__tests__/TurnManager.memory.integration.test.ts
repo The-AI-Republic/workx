@@ -1,17 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { TurnManager } from '../TurnManager';
-import { TurnContext } from '../TurnContext';
-import { Session } from '../Session';
 
 describe('TurnManager Memory Integration', () => {
     let mockTurnContext: any;
     let mockSession: any;
-    let mockMemoryService: any;
     let mockModelClient: any;
     let turnManager: TurnManager;
 
     beforeEach(() => {
-
         mockModelClient = {
             stream: vi.fn(),
             getSelectedModelKey: vi.fn().mockReturnValue('openai:test-model'),
@@ -27,12 +23,8 @@ describe('TurnManager Memory Integration', () => {
             getSessionId: vi.fn().mockReturnValue('test-session-id'),
         };
 
-        mockMemoryService = {
-            getFormattedGlobalContext: vi.fn().mockResolvedValue('Global Memory Facts here.'),
-        };
-
         mockSession = {
-            getMemoryService: vi.fn().mockReturnValue(mockMemoryService),
+            getMemoryService: vi.fn().mockReturnValue(null),
             getToolRegistry: vi.fn().mockReturnValue(null),
             showRawAgentReasoning: vi.fn().mockReturnValue(false),
         };
@@ -48,46 +40,24 @@ describe('TurnManager Memory Integration', () => {
         vi.clearAllMocks();
     });
 
-    it('injects core memories into the prompt before execution', async () => {
+    // Note: Core memory injection is now handled via PromptLoader prompt extensions
+    // registered by RepublicAgent.initialize(), not by TurnManager directly.
+    // Memory tools (save_memory, search_memory, forget_memory) are registered in
+    // the ToolRegistry by RepublicAgent.initialize() and flow through the standard
+    // tool execution path.
+
+    it('does not inject memory context directly (handled by PromptLoader)', async () => {
         mockModelClient.stream.mockResolvedValue((async function* () {
             yield { type: 'Completed', tokenUsage: { inputTokens: 10, outputTokens: 10 } };
         })());
 
         await turnManager.runTurn([]);
 
-        expect(mockMemoryService.getFormattedGlobalContext).toHaveBeenCalledTimes(1);
-
-        // Verify stream was called with the injected instructions
-        expect(mockModelClient.stream).toHaveBeenCalledWith(
-            expect.objectContaining({
-                base_instructions_override: 'Base instructions.\n\nGlobal Memory Facts here.',
-            })
-        );
-    });
-
-    it('tolerates getFormattedGlobalContext failures without crashing', async () => {
-        mockMemoryService.getFormattedGlobalContext.mockRejectedValue(new Error('Memory load failed'));
-
-        // Mute console.warn for the test
-        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
-
-        mockModelClient.stream.mockResolvedValue((async function* () {
-            yield { type: 'Completed', tokenUsage: { inputTokens: 10, outputTokens: 10 } };
-        })());
-
-        await turnManager.runTurn([]);
-
-        // Stream should still be called with default base instructions
+        // TurnManager passes base instructions as-is — no memory injection
         expect(mockModelClient.stream).toHaveBeenCalledWith(
             expect.objectContaining({
                 base_instructions_override: 'Base instructions.',
             })
         );
-
-        warnSpy.mockRestore();
     });
-
-    // Note: processConversation has been removed from MemoryService.
-    // Memory extraction is now handled via LLM tool calls (save_memory, search_memory, forget_memory)
-    // rather than automatic post-turn extraction.
 });

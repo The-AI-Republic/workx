@@ -79,9 +79,14 @@ export async function createMemoryService(
     // Ensure core-memory.md exists with default template
     await coreMemoryManager.ensureFile();
 
+    const service = new MemoryService(dailyStore, searcher, coreMemoryManager, config);
+
+    // Load core memory into cache so it's available synchronously for prompt extensions
+    await service.refreshGlobalContextCache();
+
     console.log(`[Memory] File-based memory system initialized at ${memoryDir}`);
 
-    return new MemoryService(dailyStore, searcher, coreMemoryManager, config);
+    return service;
   } catch (err) {
     console.warn('[Memory] Failed to initialize memory system:', err);
     return null;

@@ -31,6 +31,7 @@ export class MemoryService {
   private searcher: MemorySearcher;
   private coreMemoryManager: CoreMemoryManager;
   private config: MemoryConfig;
+  private cachedGlobalContext: string = '';
 
   constructor(
     dailyStore: DailyMemoryStore,
@@ -42,6 +43,23 @@ export class MemoryService {
     this.searcher = searcher;
     this.coreMemoryManager = coreMemoryManager;
     this.config = config;
+  }
+
+  /**
+   * Load core memory and cache the formatted context.
+   * Called once during initialization and after core fact saves.
+   */
+  async refreshGlobalContextCache(): Promise<void> {
+    const markdown = await this.getGlobalContextText();
+    this.cachedGlobalContext = this.formatGlobalMemoryContext(markdown);
+  }
+
+  /**
+   * Get the cached formatted global context (sync).
+   * Used by prompt extensions which require a sync callback.
+   */
+  getCachedGlobalContext(): string {
+    return this.cachedGlobalContext;
   }
 
   // ---------------------------------------------------------------------------
@@ -58,6 +76,8 @@ export class MemoryService {
     if (isCoreCategory(category)) {
       // Route to core-memory.md via LLM merge
       await this.coreMemoryManager.mergeCoreFacts([text]);
+      // Refresh cached context so next prompt includes the new fact
+      await this.refreshGlobalContextCache();
     } else {
       // Append to today's daily file
       await this.dailyStore.appendFact(text, category);
