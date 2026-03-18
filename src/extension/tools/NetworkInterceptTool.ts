@@ -5,7 +5,7 @@
  * and API mocking capabilities using Chrome's declarativeNetRequest API.
  */
 
-import { BaseTool, createToolDefinition, type BaseToolRequest, type BaseToolOptions, type ToolDefinition } from './BaseTool';
+import { BaseTool, createToolDefinition, type BaseToolRequest, type BaseToolOptions, type ToolDefinition } from '../../tools/BaseTool';
 
 /**
  * Network pattern configuration

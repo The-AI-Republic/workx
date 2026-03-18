@@ -9,7 +9,7 @@ import { SCREENSHOT_CACHE_KEY, MAX_SCREENSHOT_SIZE_MB } from './types';
 import {
   getConfigStorage,
   type ConfigStorageProvider
-} from '../../core/storage/ConfigStorageProvider';
+} from '../../../core/storage/ConfigStorageProvider';
 
 export class ScreenshotFileManager {
   /**

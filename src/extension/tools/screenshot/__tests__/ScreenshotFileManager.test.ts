@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { setConfigStorage, type ConfigStorageProvider } from '../../../core/storage/ConfigStorageProvider';
+import { setConfigStorage, type ConfigStorageProvider } from '../../../../core/storage/ConfigStorageProvider';
 
 vi.mock('../types', async (importOriginal) => {
   const original = (await importOriginal()) as any;

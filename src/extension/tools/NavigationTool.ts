@@ -5,7 +5,7 @@
  * and navigation event handling. Supports waiting for page loads and navigation error handling.
  */
 
-import { BaseTool, createToolDefinition, type BaseToolRequest, type BaseToolOptions, type ToolDefinition } from './BaseTool';
+import { BaseTool, createToolDefinition, type BaseToolRequest, type BaseToolOptions, type ToolDefinition } from '../../tools/BaseTool';
 
 /**
  * Navigation tool request interface

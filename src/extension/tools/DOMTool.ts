@@ -8,7 +8,7 @@
  * in favor of comprehensive DOM capture with selector_map for element lookup.
  */
 
-import { BaseTool, createToolDefinition, type BaseToolRequest, type BaseToolOptions, type ToolDefinition } from './BaseTool';
+import { BaseTool, createToolDefinition, type BaseToolRequest, type BaseToolOptions, type ToolDefinition } from '../../tools/BaseTool';
 import type {
   SerializationOptions,
   SerializedDom,
@@ -16,7 +16,7 @@ import type {
   TypeOptions,
   KeyPressOptions,
   ActionResult,
-} from '../types/domTool';
+} from '../../types/domTool';
 import { DomService } from './dom/DomService';
 
 // ============================================================================

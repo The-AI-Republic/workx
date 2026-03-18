@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { DOMTool, DOMToolErrorCode } from '@/tools/DOMTool';
+import { DOMTool, DOMToolErrorCode } from '@/extension/tools/DOMTool';
 import type { BaseToolOptions } from '@/tools/BaseTool';
 
 // ---------------------------------------------------------------------------
@@ -32,7 +32,7 @@ const { mockDomServiceInstance, mockForTab } = vi.hoisted(() => {
   return { mockDomServiceInstance, mockForTab };
 });
 
-vi.mock('@/tools/dom/DomService', () => ({
+vi.mock('@/extension/tools/dom/DomService', () => ({
   DomService: {
     forTab: mockForTab,
   },

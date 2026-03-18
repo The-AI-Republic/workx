@@ -7,10 +7,10 @@ import type {
   PageContext,
   FrameMetadata
 } from './types';
-import type { SerializationOptions } from '../../types/domTool';
+import type { SerializationOptions } from '../../../types/domTool';
 import { getTextContent, serializedNodeToHtml } from './utils';
 import { SerializationPipeline } from './serializers/SerializationPipeline';
-import { DEFAULT_SERIALIZATION_OPTIONS } from '../../types/domTool';
+import { DEFAULT_SERIALIZATION_OPTIONS } from '../../../types/domTool';
 import type { ViewportBounds } from '../screenshot/ViewportDetector';
 
 /**

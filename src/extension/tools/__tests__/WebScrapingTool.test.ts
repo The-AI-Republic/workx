@@ -16,7 +16,7 @@ import {
   PatternLibrary,
   type ScrapingPattern,
   type ScrapingConfig,
-} from '@/tools/WebScrapingTool';
+} from '@/extension/tools/WebScrapingTool';
 
 // ---------------------------------------------------------------------------
 // Helpers

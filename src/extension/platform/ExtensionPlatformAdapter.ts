@@ -101,9 +101,8 @@ export class ExtensionPlatformAdapter implements IPlatformAdapter {
     toolsConfig: IToolsConfig,
     capabilities: ModelCapabilities
   ): Promise<void> {
-    // Use static import to avoid Vite's modulepreload polyfill in service workers
-    const { registerTools } = await import('../../tools/index');
-    await registerTools(registry, toolsConfig, {
+    const { registerExtensionTools } = await import('../tools/registerExtensionTools');
+    await registerExtensionTools(registry, toolsConfig, {
       name: '',
       supportsImage: capabilities.supportsImage,
     });

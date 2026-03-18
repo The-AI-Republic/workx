@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { DataExtractionTool } from '@/tools/DataExtractionTool';
+import { DataExtractionTool } from '@/extension/tools/DataExtractionTool';
 
 // ---------------------------------------------------------------------------
 // Helpers

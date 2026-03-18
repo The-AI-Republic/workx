@@ -14,8 +14,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { FormAutomationTool } from '@/tools/FormAutomationTool';
-import type { FormAutomationTask } from '@/tools/FormAutomationTool';
+import { FormAutomationTool } from '@/extension/tools/FormAutomationTool';
+import type { FormAutomationTask } from '@/extension/tools/FormAutomationTool';
 
 // ---------------------------------------------------------------------------
 // Chrome API helpers
