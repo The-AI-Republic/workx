@@ -129,7 +129,7 @@ export class RepublicAgent {
     if (this.platformAdapter.setToolContext) {
       this.platformAdapter.setToolContext(
         this.toolRegistry,
-        (msg: EventMsg) => this.emitEvent(msg),
+        (msg: { type: string; data: Record<string, unknown> }) => this.emitEvent(msg as EventMsg),
       );
     }
 
