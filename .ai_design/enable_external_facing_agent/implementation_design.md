@@ -400,32 +400,64 @@ These are too coupled to BrowserX internals but carry useful architectural patte
 
 ## 5. Core Agent Design
 
-### SQ/EQ Architecture (adapted from BrowserX)
+### Class hierarchy (adapted from BrowserX)
 
-The agent uses BrowserX's **Submission Queue / Event Queue** pattern, adapted for concurrent multi-fan handling. One long-lived Agent instance per creator accepts fan messages via the SQ, dispatches them concurrently, and routes events back through per-request EQs.
+BrowserX separates concerns across `RepublicAgent` → `Session` → `TurnManager` → `TurnContext`. We adopt the same layering, adapted for concurrent multi-fan dispatch:
 
 ```
-                         ┌─────────────────────────────────┐
-                         │     Agent (long-lived, 1/creator) │
-                         │                                   │
-  Fan A msg ──→ ┌────────┤  Submission Queue                 │
-  Fan B msg ──→ │  SQ    │  (concurrent dispatch, not serial)│
-  Fan C msg ──→ └────────┤                                   │
-                         │     ┌──────────┬──────────┐       │
-                         │     ▼          ▼          ▼       │
-                         │  Turn(A)    Turn(B)    Turn(C)    │
-                         │  load hist  load hist  load hist  │
-                         │  LLM call   LLM call   LLM call  │
-                         │  tools      tools      tools     │
-                         │     │          │          │       │
-                         │     ▼          ▼          ▼       │
-                         │  EQ(A)      EQ(B)      EQ(C)     │
-                         └─────┬──────────┬──────────┬───────┘
-                               ▼          ▼          ▼
-                          SSE(A)     SSE(B)     SSE(C)
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Agent (long-lived, 1 per creator)                                       │
+│  Adapted from: RepublicAgent                                             │
+│  Holds: config, modelClient, tools, db — all shared, read-only          │
+│                                                                          │
+│  submit(FanSubmission) → AsyncIterable<AgentEvent>                      │
+│  cancel(requestId)     → void                                           │
+│  drain()               → Promise (graceful shutdown)                    │
+│                                                                          │
+│  ┌────────────────────────────────────────────────────────────────────┐ │
+│  │  Per-request (concurrent, isolated)                                 │ │
+│  │                                                                     │ │
+│  │  RequestContext                                                      │ │
+│  │  Adapted from: Session + ActiveTurn                                 │ │
+│  │  Holds: requestId, conversationId, abortController                 │ │
+│  │  Manages: turn lifecycle, cancellation, event emission              │ │
+│  │                                                                     │ │
+│  │  ┌──────────────────────────────────────────────────────────────┐  │ │
+│  │  │  TurnExecutor                                                 │  │ │
+│  │  │  Adapted from: TurnManager                                    │  │ │
+│  │  │  Runs: ReAct loop (model stream → tool calls → repeat)       │  │ │
+│  │  │  Uses: TurnContext for per-request state                      │  │ │
+│  │  │  Has: retry logic with exponential backoff                    │  │ │
+│  │  └──────────────────────────────────────────────────────────────┘  │ │
+│  │                                                                     │ │
+│  │  ┌──────────────────────────────────────────────────────────────┐  │ │
+│  │  │  TurnContext                                                  │  │ │
+│  │  │  Adapted from: TurnContext + SessionState                     │  │ │
+│  │  │  Holds: modelClient ref, tools ref, history, messages array  │  │ │
+│  │  │  Pure data — no business logic                                │  │ │
+│  │  └──────────────────────────────────────────────────────────────┘  │ │
+│  │                                                                     │ │
+│  │  ┌──────────────────────────────────────────────────────────────┐  │ │
+│  │  │  EventQueue                                                   │  │ │
+│  │  │  New (BrowserX uses single eventQueue on agent)               │  │ │
+│  │  │  Per-request async iterable: producer → consumer              │  │ │
+│  │  └──────────────────────────────────────────────────────────────┘  │ │
+│  └────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Key difference from BrowserX:** BrowserX's SQ processes submissions serially (one user, one turn at a time). digitalme-agent's SQ dispatches concurrently — many fans in flight simultaneously on the same Node.js event loop, since LLM calls are I/O-bound.
+### BrowserX → digitalme-agent mapping
+
+| BrowserX class | digitalme-agent class | What changes |
+|---------------|----------------------|-------------|
+| `RepublicAgent` (1,318 lines) | `Agent` (~150 lines) | Serial SQ → concurrent dispatch. Remove ApprovalManager, ChannelManager, tab binding. Add backpressure, cancel, drain. |
+| `Session` (1,836 lines) | `RequestContext` (~80 lines) | Remove stateful history, compaction, title generation, task spawning. Keep: request lifecycle, abort handling, event emission. |
+| `TurnManager` (1,110 lines) | `TurnExecutor` (~250 lines) | **Core transplant.** Keep: ReAct loop, model streaming, tool execution, retry with backoff. Remove: browser tools, MCP dispatch, approval gate, tab context. |
+| `TurnContext` (500 lines) | `TurnContext` (~40 lines) | Keep: model client ref, tools config. Remove: approval/sandbox policies, browser env policy, review mode. Add: history, conversationId. |
+| `SessionState` (344 lines) | Folded into `TurnContext` | History is ephemeral (loaded from DB per request), not accumulated in memory. |
+| `ActiveTurn` (129 lines) | Folded into `RequestContext` | Single task per request (no multi-task). AbortController for cancellation. |
+| `QueueProcessor` (344 lines) | Not used | BrowserX doesn't actually use these classes (RepublicAgent uses plain arrays). We use concurrent dispatch instead. |
+| `ModelClient` system (~3,400 lines) | Copy directly | ModelClient, ModelClientFactory, ResponseStream, SSEEventParser, RequestQueue, provider clients. |
 
 ### Why SQ/EQ (not plain request handlers)
 
@@ -439,41 +471,42 @@ The agent uses BrowserX's **Submission Queue / Event Queue** pattern, adapted fo
 | Graceful shutdown (drain in-flight) | Manual tracking | `agent.drain()` |
 | Future: rate limiting per fan | Separate middleware | Integrated with dispatch |
 
-SQ/EQ provides the operational infrastructure that plain async handlers would need to build piecemeal over time.
-
 ### Types
 
 ```typescript
 // src/agent/types.ts
 
 export interface FanSubmission {
-  requestId: string;           // Unique per-request, for event routing
-  fanUserId: string;           // Fan identity
+  requestId: string;           // Unique per-request, for event routing + cancellation
   conversationId: string;      // Conversation to continue
   content: string;             // Fan's message (already filtered)
+  // Note: fanUserId is NOT here — fan identity is handled by the HTTP/coordinator
+  // layer (auth, ownership verification, rate limiting, persistence).
+  // The agent only needs a conversationId to load history.
 }
 
 export type AgentEvent =
   | { type: 'text_delta'; content: string }
-  | { type: 'tool_start'; name: string }
-  | { type: 'tool_end'; name: string }
-  | { type: 'done' }
+  | { type: 'tool_start'; name: string; callId: string }
+  | { type: 'tool_end'; name: string; callId: string; success: boolean }
+  | { type: 'turn_started'; turnNumber: number }
+  | { type: 'stream_error'; error: string; retrying: boolean; attempt: number }
+  | { type: 'done'; tokenUsage?: TokenUsage }
   | { type: 'error'; message: string }
   | { type: 'cancelled' };
 
-export interface TurnContext {
-  requestId: string;
-  fanUserId: string;
-  conversationId: string;
-  history: Message[];          // Loaded from DB at dispatch time
-  events: EventQueue;          // Per-request event sink
+export interface TokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
 }
 ```
 
-### The Agent class
+### Agent (orchestrator)
 
 ```typescript
 // src/agent/Agent.ts
+// Adapted from: RepublicAgent (src/core/RepublicAgent.ts)
 
 export interface AgentConfig {
   systemPrompt: string;
@@ -481,24 +514,25 @@ export interface AgentConfig {
   modelProvider: 'openai' | 'anthropic';
   maxTurns?: number;           // Prevent infinite tool loops (default: 10)
   maxConcurrent?: number;      // Max concurrent fan requests (default: 50)
+  retryConfig?: RetryConfig;   // From BrowserX ModelClient
 }
 
 /**
  * Long-lived agent instance — one per creator, serving many fans concurrently.
  *
- * Uses SQ/EQ pattern from BrowserX:
- * - Submission Queue: accepts fan messages, dispatches concurrently
- * - Event Queue: per-request, routes events back to the fan's SSE stream
+ * Adapted from BrowserX's RepublicAgent:
+ * - RepublicAgent processes submissions serially (one user)
+ * - Agent dispatches concurrently (many fans in flight)
  *
- * Shared (creator-scoped, read-only):  model client, persona, tools, DB pool
- * Isolated (per-request, ephemeral):   TurnContext, conversation history, EQ
+ * Shared (creator-scoped):   config, modelClient, tools, db
+ * Isolated (per-request):    RequestContext → TurnExecutor → TurnContext → EventQueue
  */
 export class Agent {
   private readonly config: AgentConfig;
-  private readonly modelClient: ModelClient;
+  private readonly modelClient: ModelClient;     // From BrowserX, copied directly
   private readonly tools: Tool[];
   private readonly db: Database;
-  private readonly activeRequests = new Map<string, TurnContext>();
+  private readonly activeRequests = new Map<string, RequestContext>();
 
   constructor(config: AgentConfig, modelClient: ModelClient, tools: Tool[], db: Database) {
     this.config = config;
@@ -508,20 +542,21 @@ export class Agent {
   }
 
   /**
-   * Submit a fan message. Returns an async iterable of events for this request.
-   * The turn executes concurrently — other fans are not blocked.
+   * Submit a fan message. Returns an async iterable of events.
+   * Dispatches concurrently — other fans are not blocked.
    */
   submit(submission: FanSubmission): AsyncIterable<AgentEvent> {
-    // Backpressure check
     const maxConcurrent = this.config.maxConcurrent ?? 50;
     if (this.activeRequests.size >= maxConcurrent) {
-      return toAsyncIterable({ type: 'error' as const, message: 'Agent at capacity, retry later' });
+      return singleEvent({ type: 'error', message: 'Agent at capacity, retry later' });
     }
 
     const events = new EventQueue<AgentEvent>();
+    const reqCtx = new RequestContext(submission, events);
+    this.activeRequests.set(submission.requestId, reqCtx);
 
     // Dispatch concurrently — do NOT await
-    this.dispatchTurn(submission, events)
+    this.dispatchTurn(reqCtx, submission.content)
       .catch(err => events.push({ type: 'error', message: err.message }))
       .finally(() => {
         events.close();
@@ -531,26 +566,17 @@ export class Agent {
     return events;
   }
 
-  /**
-   * Cancel an in-flight request (e.g., fan disconnected).
-   */
   cancel(requestId: string): void {
-    const ctx = this.activeRequests.get(requestId);
-    if (ctx) {
-      ctx.events.push({ type: 'cancelled' });
-      ctx.events.close();
+    const reqCtx = this.activeRequests.get(requestId);
+    if (reqCtx) {
+      reqCtx.abort();
       this.activeRequests.delete(requestId);
     }
   }
 
-  /**
-   * Drain all in-flight requests (graceful shutdown).
-   */
   async drain(): Promise<void> {
     await Promise.all(
-      [...this.activeRequests.values()].map(ctx =>
-        ctx.events.waitUntilClosed()
-      )
+      [...this.activeRequests.values()].map(ctx => ctx.events.waitUntilClosed())
     );
   }
 
@@ -558,81 +584,124 @@ export class Agent {
     return this.activeRequests.size;
   }
 
-  // --- Private: turn execution ---
+  // --- Private ---
 
-  private async dispatchTurn(submission: FanSubmission, events: EventQueue<AgentEvent>): Promise<void> {
+  private async dispatchTurn(reqCtx: RequestContext, userMessage: string): Promise<void> {
     // 1. Load conversation history from DB
-    const history = await this.db.getMessages(submission.conversationId);
+    const history = await this.db.getMessages(reqCtx.conversationId);
 
-    // 2. Create isolated turn context
-    const ctx: TurnContext = {
-      requestId: submission.requestId,
-      fanUserId: submission.fanUserId,
-      conversationId: submission.conversationId,
+    // 2. Create turn context (per-request state)
+    const turnCtx = new TurnContext({
+      modelClient: this.modelClient,
+      tools: this.tools,
+      systemPrompt: this.config.systemPrompt,
+      model: this.config.model,
       history,
-      events,
-    };
-    this.activeRequests.set(submission.requestId, ctx);
+      maxTurns: this.config.maxTurns ?? 10,
+    });
 
-    // 3. Execute turn (ReAct loop)
-    await this.executeTurn(ctx, submission.content);
+    // 3. Create turn executor and run
+    const executor = new TurnExecutor(turnCtx, reqCtx);
+    await executor.run(userMessage);
+  }
+}
+```
+
+### RequestContext (per-request lifecycle)
+
+```typescript
+// src/agent/RequestContext.ts
+// Adapted from: Session + ActiveTurn (simplified — no stateful history, no multi-task)
+
+/**
+ * Per-request lifecycle manager. Created when a fan submits a message,
+ * destroyed when the response completes or the fan disconnects.
+ *
+ * In BrowserX, Session manages stateful conversation history, task spawning,
+ * compaction, and title generation. We don't need any of that — history comes
+ * from DB, and each request is a single task.
+ *
+ * What we keep from Session: event emission, abort handling.
+ * What we keep from ActiveTurn: AbortController for cancellation.
+ */
+export class RequestContext {
+  readonly requestId: string;
+  readonly conversationId: string;
+  readonly events: EventQueue<AgentEvent>;
+  readonly abortController = new AbortController();
+  readonly startTime = Date.now();
+
+  constructor(submission: FanSubmission, events: EventQueue<AgentEvent>) {
+    this.requestId = submission.requestId;
+    this.conversationId = submission.conversationId;
+    this.events = events;
   }
 
-  private async executeTurn(ctx: TurnContext, userMessage: string): Promise<void> {
-    const messages: ChatMessage[] = [
-      { role: 'system', content: this.config.systemPrompt },
-      ...this.formatHistory(ctx.history),
-      { role: 'user', content: userMessage },
-    ];
+  get abortSignal(): AbortSignal {
+    return this.abortController.signal;
+  }
 
-    let turns = 0;
-    const maxTurns = this.config.maxTurns ?? 10;
+  get isCancelled(): boolean {
+    return this.abortController.signal.aborted;
+  }
 
-    while (turns < maxTurns) {
-      turns++;
-
-      const response = await this.modelClient.chat({
-        model: this.config.model,
-        messages,
-        tools: this.tools.map(t => t.definition),
-        stream: true,
-      });
-
-      // Stream text response
-      if (response.type === 'text') {
-        for await (const chunk of response.stream) {
-          ctx.events.push({ type: 'text_delta', content: chunk });
-        }
-        ctx.events.push({ type: 'done' });
-        return;
-      }
-
-      // Handle tool calls (ReAct loop)
-      if (response.type === 'tool_calls') {
-        for (const call of response.toolCalls) {
-          ctx.events.push({ type: 'tool_start', name: call.name });
-
-          const tool = this.tools.find(t => t.name === call.name);
-          if (!tool) throw new Error(`Unknown tool: ${call.name}`);
-
-          const result = await tool.execute(call.arguments);
-          ctx.events.push({ type: 'tool_end', name: call.name });
-
-          messages.push({
-            role: 'assistant',
-            tool_calls: [{ id: call.id, name: call.name, arguments: call.arguments }],
-          });
-          messages.push({
-            role: 'tool',
-            tool_call_id: call.id,
-            content: result,
-          });
-        }
-        continue;  // Next turn with tool results
-      }
+  emitEvent(event: AgentEvent): void {
+    if (!this.isCancelled) {
+      this.events.push(event);
     }
+  }
 
-    ctx.events.push({ type: 'error', message: 'Max turns exceeded' });
+  abort(): void {
+    this.abortController.abort();
+    this.events.push({ type: 'cancelled' });
+    this.events.close();
+  }
+}
+```
+
+### TurnContext (per-request state)
+
+```typescript
+// src/agent/TurnContext.ts
+// Adapted from: TurnContext + SessionState (dramatically simplified)
+//
+// BrowserX TurnContext (500 lines): model client, approval policy, sandbox policy,
+//   browser env policy, review mode, tools config, instructions, export/import.
+// Ours (~40 lines): model client ref, tools ref, history, system prompt.
+//
+// BrowserX SessionState (344 lines): in-memory history, token tracking, compaction,
+//   tab binding, approved commands.
+// Ours: history loaded from DB, held here for the duration of the request.
+
+export class TurnContext {
+  readonly modelClient: ModelClient;
+  readonly tools: Tool[];
+  readonly systemPrompt: string;
+  readonly model: string;
+  readonly history: Message[];         // Loaded from DB, read-only for this request
+  readonly maxTurns: number;
+  readonly messages: ChatMessage[];    // Local ReAct accumulator (grows during turn)
+
+  constructor(config: {
+    modelClient: ModelClient;
+    tools: Tool[];
+    systemPrompt: string;
+    model: string;
+    history: Message[];
+    maxTurns: number;
+  }) {
+    this.modelClient = config.modelClient;
+    this.tools = config.tools;
+    this.systemPrompt = config.systemPrompt;
+    this.model = config.model;
+    this.history = config.history;
+    this.maxTurns = config.maxTurns;
+
+    // Initialize the message array that grows during the ReAct loop
+    this.messages = [
+      { role: 'system', content: this.systemPrompt },
+      ...this.formatHistory(this.history),
+    ];
   }
 
   private formatHistory(history: Message[]): ChatMessage[] {
@@ -644,14 +713,183 @@ export class Agent {
 }
 ```
 
-### EventQueue
+### TurnExecutor (ReAct loop)
+
+```typescript
+// src/agent/TurnExecutor.ts
+// Adapted from: TurnManager (src/core/TurnManager.ts, 1,110 lines → ~250 lines)
+//
+// What we keep from TurnManager:
+//   - ReAct loop: model.stream() → process events → execute tools → repeat
+//   - Streaming: forward OutputTextDelta as text_delta events
+//   - Tool execution: find tool → execute → append result → next turn
+//   - Retry logic: exponential backoff on retryable errors
+//   - Cancellation: check abortSignal between turns
+//
+// What we remove:
+//   - Browser tool execution (DOMTool, NavigationTool, etc.)
+//   - MCP tool dispatch (Session.executeMcpTool)
+//   - Approval gate checks (ApprovalManager)
+//   - Tab context (tabId, currentUrl)
+//   - Web search handler (native vs fallback modes)
+//   - Review mode
+
+export class TurnExecutor {
+  private readonly turnCtx: TurnContext;
+  private readonly reqCtx: RequestContext;
+
+  constructor(turnCtx: TurnContext, reqCtx: RequestContext) {
+    this.turnCtx = turnCtx;
+    this.reqCtx = reqCtx;
+  }
+
+  /**
+   * Execute the full turn with retry logic.
+   * Adapted from TurnManager.runTurn() (retry loop) + tryRunTurn() (single attempt).
+   */
+  async run(userMessage: string): Promise<void> {
+    // Append the fan's message
+    this.turnCtx.messages.push({ role: 'user', content: userMessage });
+
+    let turnNumber = 0;
+
+    while (turnNumber < this.turnCtx.maxTurns) {
+      if (this.reqCtx.isCancelled) return;
+
+      turnNumber++;
+      this.reqCtx.emitEvent({ type: 'turn_started', turnNumber });
+
+      const result = await this.executeOneTurn();
+
+      if (result === 'done') {
+        return;
+      }
+      // result === 'continue' means tool calls were made, loop for next turn
+    }
+
+    this.reqCtx.emitEvent({ type: 'error', message: 'Max turns exceeded' });
+  }
+
+  /**
+   * Execute a single model call + tool handling.
+   * Adapted from TurnManager.tryRunTurn().
+   */
+  private async executeOneTurn(): Promise<'done' | 'continue'> {
+    // Stream model response (adapted from TurnManager line 184+)
+    const stream = await this.streamWithRetry();
+
+    let hasToolCalls = false;
+
+    for await (const event of stream) {
+      if (this.reqCtx.isCancelled) return 'done';
+
+      switch (event.type) {
+        case 'OutputTextDelta':
+          this.reqCtx.emitEvent({ type: 'text_delta', content: event.delta });
+          break;
+
+        case 'OutputItemDone':
+          if (event.item.type === 'function_call') {
+            hasToolCalls = true;
+            await this.executeToolCall(event.item);
+          }
+          break;
+
+        case 'Completed':
+          this.reqCtx.emitEvent({
+            type: 'done',
+            tokenUsage: event.usage ? {
+              inputTokens: event.usage.input_tokens,
+              outputTokens: event.usage.output_tokens,
+              totalTokens: event.usage.total_tokens,
+            } : undefined,
+          });
+          if (!hasToolCalls) return 'done';
+          break;
+      }
+    }
+
+    return hasToolCalls ? 'continue' : 'done';
+  }
+
+  /**
+   * Execute a tool call and append result to messages.
+   * Adapted from TurnManager.executeToolCall().
+   */
+  private async executeToolCall(call: FunctionCallItem): Promise<void> {
+    this.reqCtx.emitEvent({ type: 'tool_start', name: call.name, callId: call.call_id });
+
+    const tool = this.turnCtx.tools.find(t => t.name === call.name);
+    if (!tool) {
+      this.turnCtx.messages.push(
+        { role: 'assistant', tool_calls: [{ id: call.call_id, name: call.name, arguments: call.arguments }] },
+        { role: 'tool', tool_call_id: call.call_id, content: `Error: unknown tool "${call.name}"` },
+      );
+      this.reqCtx.emitEvent({ type: 'tool_end', name: call.name, callId: call.call_id, success: false });
+      return;
+    }
+
+    try {
+      const result = await tool.execute(JSON.parse(call.arguments));
+      this.turnCtx.messages.push(
+        { role: 'assistant', tool_calls: [{ id: call.call_id, name: call.name, arguments: call.arguments }] },
+        { role: 'tool', tool_call_id: call.call_id, content: JSON.stringify(result) },
+      );
+      this.reqCtx.emitEvent({ type: 'tool_end', name: call.name, callId: call.call_id, success: true });
+    } catch (err) {
+      this.turnCtx.messages.push(
+        { role: 'assistant', tool_calls: [{ id: call.call_id, name: call.name, arguments: call.arguments }] },
+        { role: 'tool', tool_call_id: call.call_id, content: `Error: ${err.message}` },
+      );
+      this.reqCtx.emitEvent({ type: 'tool_end', name: call.name, callId: call.call_id, success: false });
+    }
+  }
+
+  /**
+   * Stream with retry logic.
+   * Adapted from TurnManager.runTurn() retry loop (lines 134-168).
+   *
+   * - Max 3 retries with exponential backoff
+   * - Retryable: 5xx, 429, network errors
+   * - Non-retryable: 401, 400, cancelled
+   */
+  private async streamWithRetry(maxRetries = 3): Promise<ResponseStream> {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await this.turnCtx.modelClient.stream({
+          model: this.turnCtx.model,
+          messages: this.turnCtx.messages,
+          tools: this.turnCtx.tools.map(t => t.definition),
+        });
+      } catch (err) {
+        if (this.reqCtx.isCancelled) throw err;
+        if (attempt === maxRetries || !isRetryableError(err)) throw err;
+
+        const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
+        this.reqCtx.emitEvent({
+          type: 'stream_error',
+          error: err.message,
+          retrying: true,
+          attempt: attempt + 1,
+        });
+        await sleep(delay);
+      }
+    }
+    throw new Error('Unreachable');
+  }
+}
+```
+
+### EventQueue (per-request event routing)
 
 ```typescript
 // src/agent/EventQueue.ts
+// New — BrowserX uses a single eventQueue array on RepublicAgent.
+// We need one per fan request for concurrent isolation.
 
 /**
- * Per-request event queue. The producer (turn execution) pushes events;
- * the consumer (SSE stream) async-iterates over them.
+ * Per-request event queue. Producer (TurnExecutor) pushes events;
+ * consumer (SSE stream handler) async-iterates over them.
  */
 export class EventQueue<T> implements AsyncIterable<T> {
   private queue: T[] = [];
@@ -687,17 +925,59 @@ export class EventQueue<T> implements AsyncIterable<T> {
 }
 ```
 
+### Message flow (complete lifecycle)
+
+```
+1. HTTP POST /conversations/:id/messages
+   │
+2. Route handler validates auth, filters input, persists fan message
+   │
+3. agent.submit({ requestId, conversationId, content })
+   │  ├── Backpressure check (activeRequests < maxConcurrent?)
+   │  ├── Create EventQueue (per-request)
+   │  ├── Create RequestContext (per-request lifecycle + abort)
+   │  └── Dispatch concurrently (no await)
+   │
+4. Agent.dispatchTurn()
+   │  ├── db.getMessages(conversationId)    ← load history from DB
+   │  ├── new TurnContext(modelClient, tools, history, systemPrompt)
+   │  └── new TurnExecutor(turnCtx, reqCtx).run(userMessage)
+   │
+5. TurnExecutor.run() — ReAct loop
+   │  ├── Turn 1: modelClient.stream(messages)
+   │  │   ├── OutputTextDelta → reqCtx.emitEvent(text_delta) → EventQueue
+   │  │   ├── OutputItemDone(function_call) → executeToolCall()
+   │  │   │   ├── tool_start event → EventQueue
+   │  │   │   ├── tool.execute(args)
+   │  │   │   ├── Append tool call + result to messages array
+   │  │   │   └── tool_end event → EventQueue
+   │  │   └── Completed → continue to Turn 2
+   │  │
+   │  ├── Turn 2: modelClient.stream(messages + tool results)
+   │  │   ├── OutputTextDelta → text_delta → EventQueue
+   │  │   └── Completed → done event → EventQueue
+   │  │
+   │  └── EventQueue.close()
+   │
+6. Route handler consumes EventQueue → SSE stream
+   │  ├── for await (const event of events)
+   │  ├── stream.writeSSE(event)
+   │  └── On 'done': persist agent response to DB
+   │
+7. RequestContext is GC'd, TurnContext is GC'd, history discarded
+```
+
 ### Key design decisions
 
-1. **SQ/EQ pattern** — Proven in BrowserX, adapted for concurrent multi-fan dispatch
-2. **Long-lived instance** — One Agent per creator; shared model client, config, DB pool
-3. **Concurrent dispatch** — SQ fires turns without awaiting; Node.js event loop handles I/O concurrency
-4. **Per-request isolation** — Each fan gets own TurnContext + EventQueue; no shared mutable state
-5. **Built-in backpressure** — `maxConcurrent` rejects when at capacity
-6. **Cancellation** — `agent.cancel(requestId)` when fan disconnects mid-stream
-7. **Graceful shutdown** — `agent.drain()` waits for all in-flight turns to complete
-8. **Stateless turns** — History loaded from DB per request; no in-memory state between requests
-9. **ReAct loop** — Tool calls followed by LLM reasoning, capped by `maxTurns`
+1. **Class separation** — Agent (orchestrator) → RequestContext (lifecycle) → TurnExecutor (ReAct loop) → TurnContext (state), following BrowserX's RepublicAgent → Session → TurnManager → TurnContext layering
+2. **TurnExecutor is the core transplant** — adapted from BrowserX's TurnManager with browser/approval code stripped, retry logic preserved
+3. **RequestContext replaces Session** — BrowserX's Session is 1,836 lines of stateful history management; RequestContext is ~80 lines of lifecycle + abort handling
+4. **TurnContext replaces SessionState** — history is ephemeral (from DB), not accumulated in memory
+5. **Per-request EventQueue** — BrowserX has one eventQueue on the agent; we have one per fan request for concurrent isolation
+6. **Concurrent dispatch** — Agent fires TurnExecutor without awaiting; Node.js event loop handles I/O concurrency
+7. **Built-in backpressure** — `maxConcurrent` rejects when at capacity
+8. **Cancellation via AbortController** — same pattern as BrowserX's ActiveTurn, propagated to model stream
+9. **Retry with backoff** — transplanted from TurnManager: max 3 retries, exponential backoff, retryable error classification from ModelClientError hierarchy
 
 ---
 
@@ -720,8 +1000,7 @@ export class EventQueue<T> implements AsyncIterable<T> {
 │                                                              │
 │  Concurrent TurnContexts (isolated, ephemeral):              │
 │  ┌──────────────────┐  ┌──────────────────┐                 │
-│  │ TurnContext(A)    │  │ TurnContext(B)    │                 │
-│  │ fan_user_id: aaa  │  │ fan_user_id: bbb  │                │
+│  │ RequestContext(A) │  │ RequestContext(B) │                 │
 │  │ conv_id: conv-1   │  │ conv_id: conv-2   │                │
 │  │ history: [...]    │  │ history: [...]    │                │
 │  │ events: EQ(A)     │  │ events: EQ(B)     │                │
@@ -799,7 +1078,6 @@ app.post('/conversations/:id/messages', async (c) => {
   const requestId = generateRequestId();
   const events = agent.submit({
     requestId,
-    fanUserId: fan_user_id,
     conversationId,
     content: filtered.content,
   });
