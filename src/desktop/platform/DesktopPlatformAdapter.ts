@@ -186,6 +186,19 @@ export class DesktopPlatformAdapter implements IPlatformAdapter {
   }
 
   async dispose(): Promise<void> {
+    // Disconnect MCP browser connection if it was established
+    if (this.browserConnected) {
+      try {
+        const { MCPManager } = await import('../../core/mcp/MCPManager');
+        const mcpManager = await MCPManager.getInstance('desktop');
+        const browserServer = mcpManager.getServerByName('browser');
+        if (browserServer) {
+          await mcpManager.disconnect(browserServer.id);
+        }
+      } catch (error) {
+        console.warn('[DesktopPlatformAdapter] Error disconnecting MCP browser:', error);
+      }
+    }
     this.browserConnected = false;
     this.toolRegistry = null;
     this.emitEvent = null;

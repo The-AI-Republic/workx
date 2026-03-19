@@ -65,6 +65,21 @@ export class RepublicAgentEngine {
         this.toolRegistry,
       );
 
+      // Apply config values (systemPrompt, userInstructions, model) to the session's TurnContext.
+      // Without this, sub-agents would run with bare defaults instead of the
+      // systemPrompt/model specified in SubAgentTypeConfig.
+      const modelClient = await this.config.modelClientFactory.createClientForCurrentModel();
+      const { TurnContext } = await import('../TurnContext');
+      const turnContext = new TurnContext(modelClient, {
+        sessionId: this.session.sessionId,
+        baseInstructions: this.config.systemPrompt,
+        userInstructions: this.config.userInstructions,
+      });
+      if (this.config.model) {
+        turnContext.setSelectedModelKey(this.config.model);
+      }
+      this.session.setTurnContext(turnContext);
+
       // Wire session events to the engine's event system (only for internally-owned sessions)
       this.session.setEventEmitter(async (event: AgentEvent) => {
         this.pushEvent({
@@ -340,11 +355,19 @@ export class RepublicAgentEngine {
     }
 
     try {
-      // Normalize input items to ensure they conform to InputItem format
-      const normalizedItems: InputItem[] = items.map(item => ({
-        type: item.type || 'text',
-        text: item.type === 'text' ? (item.text || '') : item.text,
-      }));
+      // Normalize input items, preserving all fields (text, data, path, mimeType)
+      const normalizedItems: InputItem[] = items.map(item => {
+        const normalized: InputItem = { type: item.type || 'text' };
+        if (item.text !== undefined) normalized.text = item.text;
+        if (item.data !== undefined) normalized.data = item.data;
+        if (item.mimeType !== undefined) normalized.mimeType = item.mimeType;
+        if (item.path !== undefined) normalized.path = item.path;
+        // Ensure text items have at least an empty string
+        if (normalized.type === 'text' && normalized.text === undefined) {
+          normalized.text = '';
+        }
+        return normalized;
+      });
 
       // Only add pending input for UserInput (interactive user input that may
       // interrupt an ongoing turn). UserTurn is a programmatic submission that
@@ -678,6 +701,8 @@ export class RepublicAgentEngine {
     }
 
     const deadline = Date.now() + timeoutMs;
+    const maxTurns = options?.maxTurns ?? this.config.maxTurns;
+    let observedTurns = 0;
 
     while (true) {
       const remaining = deadline - Date.now();
@@ -712,6 +737,22 @@ export class RepublicAgentEngine {
         };
       }
 
+      // Track turns for maxTurns enforcement (sub-agents)
+      if (event.msg.type === 'TurnComplete') {
+        observedTurns++;
+        if (maxTurns && observedTurns >= maxTurns) {
+          this.interrupt('max_turns');
+          return {
+            success: false,
+            response: null,
+            turnCount: observedTurns,
+            stopReason: 'max_turns',
+            engineId: this.engineId,
+            submissionId,
+          };
+        }
+      }
+
       // Protocol uses snake_case fields: submission_id, last_agent_message, turn_count, token_usage
       if (event.msg.type === 'TaskComplete' && event.msg.data?.submission_id === submissionId) {
         const data = event.msg.data;
@@ -731,9 +772,15 @@ export class RepublicAgentEngine {
         };
       }
 
-      // Session emits TurnAborted on interruption/error
+      // Session emits TurnAborted on interruption/error.
+      // Only match aborts for this submission (or aborts with no submission_id,
+      // which are broadcast interrupts like user_interrupt that affect all awaiters).
       if (event.msg.type === 'TurnAborted') {
         const data = event.msg.data as { reason?: string; submission_id?: string; message?: string; turn_count?: number } | undefined;
+        // Skip TurnAborted events targeted at a different submission
+        if (data?.submission_id && data.submission_id !== submissionId) {
+          continue;
+        }
         if (data?.reason === 'error') {
           return {
             success: false,

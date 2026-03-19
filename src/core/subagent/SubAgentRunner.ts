@@ -111,10 +111,22 @@ export class SubAgentRunner {
         status: 'running',
       });
     } catch {
+      // Emit error event so lifecycle consumers have visibility
+      this.parentEngine.pushEvent({
+        id: crypto.randomUUID(),
+        msg: {
+          type: 'SubAgentError',
+          data: {
+            runId,
+            subAgentType: params.type,
+            error: 'Max concurrent sub-agents reached',
+          },
+        },
+      });
       return {
         success: false,
         response: '',
-        runId: '',
+        runId,
         turnCount: 0,
         stopReason: 'error',
         error: 'Max concurrent sub-agents reached',
@@ -177,6 +189,7 @@ export class SubAgentRunner {
         stopReason: result.stopReason === 'completed' ? 'completed'
           : result.stopReason === 'max_turns' ? 'max_turns'
           : result.stopReason === 'cancelled' ? 'cancelled'
+          : result.stopReason === 'interrupted' ? 'interrupted'
           : 'error',
         error: result.error,
       };

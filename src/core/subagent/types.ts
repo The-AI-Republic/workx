@@ -90,7 +90,7 @@ export interface SubAgentResult {
   turnCount: number;
 
   /** Why the sub-agent stopped */
-  stopReason: 'completed' | 'max_turns' | 'error' | 'cancelled';
+  stopReason: 'completed' | 'max_turns' | 'error' | 'cancelled' | 'interrupted';
 
   /** Error message if stopReason is 'error' */
   error?: string;

@@ -694,6 +694,7 @@ export class RepublicAgent {
     'TurnAborted',
     'HistoryCleared',
     'BackgroundEvent',
+    'Error',
     'SubAgentStart',
     'SubAgentComplete',
     'SubAgentError',
