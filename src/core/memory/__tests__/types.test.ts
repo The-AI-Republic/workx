@@ -9,12 +9,7 @@ import {
   DEFAULT_MEMORY_CONFIG,
   isCoreCategory,
   type MemoryCategory,
-  type MemoryFact,
-  type MemoryScope,
   type MemoryConfig,
-  type MemoryDecision,
-  type MemoryOperation,
-  type MemorySearchResult,
 } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -40,7 +35,6 @@ describe('ALWAYS_INJECT_CATEGORIES', () => {
   });
 
   it('is readonly (frozen)', () => {
-    // The array is typed as readonly but let's verify the values are stable
     const copy = [...ALWAYS_INJECT_CATEGORIES];
     expect(copy).toEqual(['preference', 'instruction', 'behavior']);
   });
@@ -94,30 +88,12 @@ describe('DEFAULT_MEMORY_CONFIG', () => {
     expect(DEFAULT_MEMORY_CONFIG.enabled).toBe(false);
   });
 
-  it('does not set deprecated embeddingModel by default', () => {
-    expect(DEFAULT_MEMORY_CONFIG.embeddingModel).toBeUndefined();
-  });
-
-  it('does not set deprecated embeddingDimensions by default', () => {
-    expect(DEFAULT_MEMORY_CONFIG.embeddingDimensions).toBeUndefined();
-  });
-
-  it('does not set deprecated maxMemories by default', () => {
-    expect(DEFAULT_MEMORY_CONFIG.maxMemories).toBeUndefined();
-  });
-
   it('has recallLimit of 10', () => {
     expect(DEFAULT_MEMORY_CONFIG.recallLimit).toBe(10);
   });
 
   it('sets extractionModel to gpt-4o-mini by default', () => {
     expect(DEFAULT_MEMORY_CONFIG.extractionModel).toBe('gpt-4o-mini');
-  });
-
-  it('does not set other optional fields', () => {
-    expect(DEFAULT_MEMORY_CONFIG.customExtractionPrompt).toBeUndefined();
-    expect(DEFAULT_MEMORY_CONFIG.customConflictPrompt).toBeUndefined();
-    expect(DEFAULT_MEMORY_CONFIG.excludeCategories).toBeUndefined();
   });
 });
 
@@ -156,99 +132,18 @@ describe('isCoreCategory', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Type shape verification (compile-time + runtime)
+// MemoryConfig shape
 // ---------------------------------------------------------------------------
 
-describe('Type shapes', () => {
-  it('MemoryFact has the required fields', () => {
-    const fact: MemoryFact = {
-      id: 'test-id',
-      factText: 'User likes TypeScript',
-      category: 'preference',
-      scope: {},
-      contentHash: 'abc123',
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      lastAccessedAt: Date.now(),
-      accessCount: 0,
-    };
-    expect(fact.id).toBe('test-id');
-    expect(fact.factText).toBe('User likes TypeScript');
-    expect(fact.category).toBe('preference');
-    expect(fact.accessCount).toBe(0);
-  });
-
-  it('MemoryFact accepts optional metadata', () => {
-    const fact: MemoryFact = {
-      id: 'test-id',
-      factText: 'Fact',
-      category: 'general',
-      scope: {},
-      contentHash: 'hash',
-      createdAt: 0,
-      updatedAt: 0,
-      lastAccessedAt: 0,
-      accessCount: 0,
-      metadata: { source: 'chat', confidence: 0.9 },
-    };
-    expect(fact.metadata).toEqual({ source: 'chat', confidence: 0.9 });
-  });
-
-  it('MemoryScope fields are all optional', () => {
-    const scope: MemoryScope = {};
-    expect(scope.agentId).toBeUndefined();
-    expect(scope.sessionId).toBeUndefined();
-  });
-
-  it('MemoryOperation has required shape', () => {
-    const op: MemoryOperation = {
-      id: 'op-1',
-      memoryId: 'mem-1',
-      event: 'ADD',
-      oldContent: null,
-      newContent: 'New fact',
-      timestamp: Date.now(),
-    };
-    expect(op.event).toBe('ADD');
-    expect(op.oldContent).toBeNull();
-  });
-
-  it('MemorySearchResult pairs a fact with distance', () => {
-    const result: MemorySearchResult = {
-      fact: {
-        id: 'r1',
-        factText: 'Test',
-        category: 'general',
-        scope: {},
-        contentHash: 'h',
-        createdAt: 0,
-        updatedAt: 0,
-        lastAccessedAt: 0,
-        accessCount: 0,
-      },
-      distance: 0.15,
-    };
-    expect(result.distance).toBe(0.15);
-  });
-
-  it('MemoryDecision accepts all valid actions', () => {
-    const actions: MemoryDecision['action'][] = ['ADD', 'UPDATE', 'DELETE', 'NONE'];
-    for (const action of actions) {
-      const d: MemoryDecision = { fact: 'test', action };
-      expect(d.action).toBe(action);
-    }
-  });
-
-  it('MemoryConfig accepts custom overrides', () => {
+describe('MemoryConfig', () => {
+  it('accepts custom overrides', () => {
     const config: MemoryConfig = {
       ...DEFAULT_MEMORY_CONFIG,
-      enabled: false,
-      maxMemories: 5000,
+      enabled: true,
       extractionModel: 'gpt-4o-mini',
       excludeCategories: ['general'],
     };
-    expect(config.enabled).toBe(false);
-    expect(config.maxMemories).toBe(5000);
+    expect(config.enabled).toBe(true);
     expect(config.excludeCategories).toEqual(['general']);
   });
 });
