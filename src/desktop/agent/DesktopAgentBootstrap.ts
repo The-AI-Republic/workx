@@ -130,6 +130,9 @@ export class DesktopAgentBootstrap {
           // Register skills tool
           await this.registerSkillsToolOnAgent(agent);
 
+          // Register sub-agent tool
+          await this.registerSubAgentToolOnAgent(agent);
+
           return agent;
         },
         eventDispatcherFactory: (sessionId) => (event) => {
@@ -447,6 +450,26 @@ export class DesktopAgentBootstrap {
     );
 
     console.log('[DesktopAgentBootstrap] use_skill tool registered for', allSkills.length, 'skills');
+  }
+
+  /**
+   * Register the sub_agent tool on a specific agent's engine.
+   * Called by the agentFactory for every new session.
+   */
+  private async registerSubAgentToolOnAgent(agent: RepublicAgent): Promise<void> {
+    const engine = agent.getEngine();
+    if (!engine) {
+      console.warn('[DesktopAgentBootstrap] Cannot register sub_agent tool: engine not initialized');
+      return;
+    }
+
+    try {
+      const { registerSubAgentTool } = await import('@/core/subagent/register');
+      await registerSubAgentTool(engine);
+      console.log('[DesktopAgentBootstrap] sub_agent tool registered');
+    } catch (error) {
+      console.warn('[DesktopAgentBootstrap] Could not register sub_agent tool:', error);
+    }
   }
 
   /**

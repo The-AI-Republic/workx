@@ -182,6 +182,17 @@ export class AgentRegistry {
           console.warn('[AgentRegistry] Failed to load approval config, using defaults:', error);
         }
         toolRegistry.setApprovalGate(approvalGate);
+
+        // Register sub-agent tool on extension path
+        const engine = agent.getEngine();
+        if (engine) {
+          try {
+            const { registerSubAgentTool } = await import('../subagent/register');
+            await registerSubAgentTool(engine);
+          } catch (err) {
+            console.warn('[AgentRegistry] sub_agent tool registration failed (non-fatal):', err);
+          }
+        }
       }
     } catch (initError) {
       // Agent initialization failed - clean up and emit error event

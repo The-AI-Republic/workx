@@ -167,6 +167,18 @@ export class ServerAgentBootstrap {
             console.warn('[ServerAgentBootstrap] Tool registration failed (non-fatal):', err);
           }
 
+          // Register sub-agent tool
+          const engine = agent.getEngine();
+          if (engine) {
+            try {
+              const { registerSubAgentTool } = await import('@/core/subagent/register');
+              await registerSubAgentTool(engine);
+              console.log('[ServerAgentBootstrap] sub_agent tool registered');
+            } catch (err) {
+              console.warn('[ServerAgentBootstrap] sub_agent tool registration failed (non-fatal):', err);
+            }
+          }
+
           return agent;
         },
         eventDispatcherFactory: (sessionId) => (event) => {

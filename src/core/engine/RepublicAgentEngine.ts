@@ -265,6 +265,31 @@ export class RepublicAgentEngine {
     return this.config;
   }
 
+  /**
+   * Create a child engine for sub-agent execution.
+   * Shares parent's model client factory and agent config.
+   * Caller provides restricted tool registry, event router, etc.
+   */
+  createChildEngine(childConfig: {
+    toolRegistry: ToolRegistry;
+    systemPrompt: string;
+    model?: string;
+    maxTurns?: number;
+    eventRouter?: RepublicAgentEngineConfig['eventRouter'];
+  }): RepublicAgentEngine {
+    return new RepublicAgentEngine({
+      agentConfig: this.config.agentConfig,
+      modelClientFactory: this.config.modelClientFactory,
+      toolRegistry: childConfig.toolRegistry,
+      systemPrompt: childConfig.systemPrompt,
+      model: childConfig.model ?? this.config.model,
+      maxTurns: childConfig.maxTurns,
+      persistent: false,
+      eventRouter: childConfig.eventRouter,
+      parentEngineId: this.engineId,
+    });
+  }
+
   // ---------------------------------------------------------------------------
   // Internal: Approval System Setup
   // ---------------------------------------------------------------------------

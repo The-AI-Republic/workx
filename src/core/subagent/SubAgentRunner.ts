@@ -1,7 +1,7 @@
 // File: src/core/subagent/SubAgentRunner.ts
 
 import { RepublicAgentEngine } from '../engine/RepublicAgentEngine';
-import type { RepublicAgentEngineConfig, InputItem } from '../engine/RepublicAgentEngineConfig';
+import type { InputItem } from '../engine/RepublicAgentEngineConfig';
 import { SubAgentEventRouter } from '../events/SubAgentEventRouter';
 import { createSubAgentToolRegistry } from '../../tools/ToolRegistryCloner';
 import { SubAgentRegistry } from './SubAgentRegistry';
@@ -83,21 +83,14 @@ export class SubAgentRunner {
       suppressedTypes: typeConfig.suppressedEvents,
     });
 
-    // Create child engine config
-    const parentConfig = this.parentEngine.getConfig();
-    const childConfig: RepublicAgentEngineConfig = {
-      agentConfig: parentConfig.agentConfig,
-      modelClientFactory: parentConfig.modelClientFactory,
+    // Create child engine via parent's factory method
+    const engine = this.parentEngine.createChildEngine({
       toolRegistry: childRegistry,
       systemPrompt: typeConfig.systemPrompt,
-      model: typeConfig.model ?? parentConfig.model,
+      model: typeConfig.model,
       maxTurns: typeConfig.maxTurns ?? 25,
-      persistent: false,
       eventRouter,
-      parentEngineId: this.parentEngine.engineId,
-    };
-
-    const engine = new RepublicAgentEngine(childConfig);
+    });
 
     // Atomically check concurrency and register — prevents TOCTOU race
     try {

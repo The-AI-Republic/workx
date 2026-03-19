@@ -818,28 +818,6 @@ export class RepublicAgent {
   }
 
   /**
-   * Create a child RepublicAgentEngine for sub-agents.
-   * The child engine shares the parent's model client factory and config
-   * but gets its own tool registry (optionally restricted) and session.
-   */
-  createChildEngine(config: {
-    toolRegistry?: ToolRegistry;
-    systemPrompt?: string;
-    model?: string;
-    maxTurns?: number;
-  }): RepublicAgentEngine {
-    return new RepublicAgentEngine({
-      agentConfig: this.config,
-      modelClientFactory: this.modelClientFactory,
-      toolRegistry: config.toolRegistry ?? new ToolRegistry(),
-      systemPrompt: config.systemPrompt ?? '',
-      model: config.model,
-      maxTurns: config.maxTurns,
-      persistent: false,
-    });
-  }
-
-  /**
    * Cleanup resources
    */
   async cleanup(): Promise<void> {
