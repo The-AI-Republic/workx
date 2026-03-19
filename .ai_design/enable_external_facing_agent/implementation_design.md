@@ -2,7 +2,7 @@
 
 **Status:** Ready for implementation
 **Date:** 2026-03-18
-**Decision:** Build from scratch in TypeScript, copy only model clients from BrowserX
+**Decision:** New repo in TypeScript, transplant SQ/EQ architecture and model clients from BrowserX
 
 ---
 
@@ -29,23 +29,30 @@
 
 **digitalme-agent** is an external-facing AI agent that creators deploy behind the DigitalMe platform. Fans interact with creator-controlled AI personas through the DigitalMe mobile app.
 
-### Why build from scratch
+### Why a new repo (not a fork)
 
-We considered forking BrowserX but decided to build fresh:
+digitalme-agent is a **new repository** that transplants key patterns from BrowserX while stripping everything that doesn't apply. We don't fork because BrowserX's multi-platform build system, extension/desktop code, and UI would be dead weight — but we adopt its proven architecture:
 
-| BrowserX | digitalme-agent |
-|----------|-----------------|
-| Complex state machine (RepublicAgent) | Simple request handler |
-| Multi-platform (extension, desktop, server) | Server only |
-| Single user (trusted) | Multi-tenant (fans untrusted) |
-| Session/Turn management | Stateless per-request |
-| Tool registry with risk assessment | Simple allowlist |
-| Approval workflows | Creator pre-approves |
-| MCP support | Future, with restrictions |
+| What | From BrowserX | Adapted for digitalme-agent |
+|------|--------------|----------------------------|
+| **SQ/EQ pattern** | Serial processing (one user) | **Concurrent dispatch** (many fans) |
+| **Model clients** | OpenAI, Anthropic, Google, etc. | Same, copied directly |
+| Platform support | Extension, desktop, server | **Server only** |
+| Trust model | Single user (trusted) | Multi-tenant (fans untrusted) |
+| Turn execution | Complex state machine (Session, TurnManager) | Lightweight per-submission turn |
+| Tool system | Registry with risk assessment + approval | Simple allowlist |
+| Approval | Interactive workflows | Creator pre-approves at deploy time |
+| MCP | Full support | Future, with restrictions |
 
-**BrowserX is ~15,000+ lines. digitalme-agent needs ~1,500 lines.**
+**BrowserX is ~15,000+ lines. digitalme-agent will be ~6,000 lines (~3,500 copied directly, ~1,200 adapted, ~1,300 new).**
 
-The only code worth copying: **model clients** (OpenAI, Anthropic, etc.)
+### What we transplant from BrowserX
+
+| Component | Lines | Adaptation needed |
+|-----------|-------|-------------------|
+| **SQ/EQ architecture** | Pattern, not code | Serial → concurrent dispatch, add backpressure/cancellation |
+| **Model clients** | ~500 | Remove approval hooks, keep streaming + tool call handling |
+| **EventQueue concept** | ~30 | Simplified — per-request async iterable, no channel routing |
 
 ### Why TypeScript
 
@@ -62,20 +69,48 @@ For I/O-bound LLM API calls, both TypeScript and Python have equivalent async mo
 
 ### Core insight
 
-digitalme-agent is fundamentally a **stateless request handler**:
+**LLMs are stateless.** The model has no memory between API calls. Every response from ChatGPT, Claude, or any LLM service works the same way:
 
 ```
-Fan message → Safety filter → LLM call → Stream response → Persist
+Fan: "What's the latest news about Taylor Swift?"
+
+1. Server loads conversation history from database
+2. Server sends [system prompt + full history + fan message] to the model
+3. Model decides to use a tool → calls web_search("Taylor Swift news")     ← LLM call 1
+4. Server executes tool, appends result to local message array
+5. Server sends [same context + tool result] back to model
+6. Model decides to fetch more → calls web_fetch(url)                      ← LLM call 2
+7. Server executes tool, appends result to local message array
+8. Server sends [same context + both tool results] back to model
+9. Model generates final text response → streamed to fan                   ← LLM call 3
+10. Server persists fan message + final response to database
+11. Server discards local message array, TurnContext — everything
 ```
 
-Each request:
-1. Loads conversation history from DB
-2. Creates fresh agent instance
-3. Calls LLM with history + new message
-4. Streams response
-5. Persists to DB
+A single fan message can trigger **multiple LLM calls** (the ReAct loop: Reason → Act → Observe → repeat). The intermediate state — tool calls and tool results — accumulates in a **local `messages` array** inside the TurnContext. This local state exists only for the duration of the request.
 
-**No shared state between requests = isolation is automatic.**
+**Two levels of statelessness:**
+- **Between requests** — fully stateless. History loaded from DB, nothing kept in memory. This is how ChatGPT serves 100M+ users.
+- **Within a request** — local state accumulates during the ReAct loop (tool calls + results), then is discarded. Capped by `maxTurns` (default: 10) to prevent runaway chains.
+
+Only the fan message and final response are persisted to the database. The intermediate tool calls are streamed to the fan as events (`tool_start`, `tool_end`) so the UI can show progress, but they don't need to be stored.
+
+### Architecture: SQ/EQ with concurrent dispatch
+
+On top of that stateless foundation, digitalme-agent adds BrowserX's SQ/EQ pattern for operational control:
+
+```
+Fan message → Submission Queue → Concurrent Dispatch → Turn Execution (ReAct loop) → Event Queue → SSE stream
+```
+
+The agent instance is long-lived but each fan request is stateless:
+1. Fan message enters the Submission Queue
+2. SQ dispatches concurrently (not serial — many fans in flight)
+3. Turn execution loads conversation history from DB, runs the ReAct loop (multiple LLM calls + tool executions as needed)
+4. Events (text deltas, tool status, done) route through the Event Queue back to the fan's SSE stream
+5. Fan message + final response persisted to DB, TurnContext discarded
+
+**Shared infrastructure (model clients, config, DB pool) + isolated execution (per-request TurnContext with local ReAct state) = efficiency + safety.**
 
 ---
 
@@ -83,7 +118,7 @@ Each request:
 
 ### Goals
 
-- Build `digitalme-agent` from scratch as a new repository
+- Build `digitalme-agent` as a new repository, transplanting SQ/EQ pattern and model clients from BrowserX
 - **Docker/server mode only** — no browser extension, no desktop app
 - Implement the DigitalMe platform agent endpoint protocol
 - **Multi-tenant by design** — one deployment serves many fans
@@ -100,6 +135,7 @@ Each request:
 - Building a UI — the DigitalMe mobile app IS the UI
 - MCP support in MVP (future consideration)
 - Complex tool orchestration
+- Cross-conversation memory (per-fan fact extraction + injection — future design)
 - Running untrusted creator code (MVP)
 
 ### Runtime constraint
@@ -119,32 +155,30 @@ The DigitalMe mobile app provides the user interface. The agent is a backend ser
 
 ### Deployment model
 
-**One agent instance per creator, serving many fans:**
+**One long-lived agent instance per creator, serving many fans concurrently via SQ/EQ:**
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│              ONE Agent Instance (per Creator)                    │
+│              ONE Agent Instance (per Creator, long-lived)        │
 │                                                                  │
 │   ┌─────────────────────────────────────────────────────────┐   │
-│   │                   Shared Runtime                         │   │
-│   │  • HTTP server (stateless)                               │   │
-│   │  • Model client (stateless API calls)                    │   │
-│   │  • Persona config (read-only)                            │   │
-│   │  • Tool definitions (read-only)                          │   │
+│   │              Agent (shared, read-only / stateless)        │   │
+│   │  • Model client (pooled connections, stateless calls)    │   │
+│   │  • Persona config + system prompt (read-only)            │   │
+│   │  • Tool definitions (read-only allowlist)                │   │
+│   │  • DB connection pool                                    │   │
 │   └─────────────────────────────────────────────────────────┘   │
 │                              │                                   │
+│                    Submission Queue (SQ)                         │
 │              ┌───────────────┼───────────────┐                  │
 │              ▼               ▼               ▼                  │
-│         Request A       Request B       Request C               │
-│         (Fan A)         (Fan B)         (Fan A)                 │
-│              │               │               │                  │
-│              ▼               ▼               ▼                  │
 │   ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
-│   │ Agent inst.  │  │ Agent inst.  │  │ Agent inst.  │         │
-│   │ (ephemeral)  │  │ (ephemeral)  │  │ (ephemeral)  │         │
-│   │              │  │              │  │              │         │
-│   │ History from │  │ History from │  │ History from │         │
-│   │ conv_id=aaa  │  │ conv_id=bbb  │  │ conv_id=ccc  │         │
+│   │ TurnContext   │  │ TurnContext   │  │ TurnContext   │        │
+│   │ (Fan A)       │  │ (Fan B)       │  │ (Fan A)       │        │
+│   │ conv_id=aaa   │  │ conv_id=bbb   │  │ conv_id=ccc   │        │
+│   │ history:[...] │  │ history:[...] │  │ history:[...] │        │
+│   │ ↓             │  │ ↓             │  │ ↓             │        │
+│   │ EQ(A) → SSE   │  │ EQ(B) → SSE   │  │ EQ(C) → SSE   │        │
 │   └──────────────┘  └──────────────┘  └──────────────┘         │
 │              │               │               │                  │
 │              └───────────────┴───────────────┘                  │
@@ -153,7 +187,7 @@ The DigitalMe mobile app provides the user interface. The agent is a backend ser
 │   ┌─────────────────────────────────────────────────────────┐   │
 │   │                   Shared Storage                         │   │
 │   │  • SQLite/Postgres (all conversations, all fans)         │   │
-│   │  • Isolated by conversation_id in queries                │   │
+│   │  • Isolated by conversation_id / fan_user_id in queries  │   │
 │   └─────────────────────────────────────────────────────────┘   │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
@@ -165,9 +199,11 @@ The DigitalMe mobile app provides the user interface. The agent is a backend ser
 |------|----------|
 | Docker container | 1 per creator |
 | HTTP server | 1 per container |
+| **Agent instance** | **1 per container (long-lived)** |
 | Database | 1 per container (all fans' data) |
-| Agent instance | 1 per request (ephemeral, GC'd after) |
-| Fans | Many, sharing the same container |
+| TurnContext | 1 per request (ephemeral, GC'd after) |
+| EventQueue | 1 per request (routes events → SSE stream) |
+| Fans | Many, concurrent via SQ dispatch |
 
 ### Three principals
 
@@ -205,7 +241,7 @@ The DigitalMe mobile app provides the user interface. The agent is a backend ser
 ```
 digitalme-agent/
 ├── src/
-│   ├── index.ts                 # Entry point
+│   ├── index.ts                 # Entry point, bootstrap agent + server
 │   ├── server.ts                # Hono HTTP server
 │   │
 │   ├── routes/
@@ -218,17 +254,30 @@ digitalme-agent/
 │   │   └── rate-limit.ts        # Per-fan rate limiting
 │   │
 │   ├── agent/
-│   │   ├── Agent.ts             # Core agent (simple!)
-│   │   └── types.ts
+│   │   ├── Agent.ts             # Long-lived agent instance (SQ/EQ)
+│   │   ├── SubmissionQueue.ts   # Fan message intake + concurrent dispatch
+│   │   ├── EventQueue.ts        # Per-request event routing to SSE stream
+│   │   ├── TurnExecutor.ts      # Stateless turn: history → LLM → tools → events
+│   │   ├── TurnContext.ts       # Per-request isolation boundary
+│   │   ├── shutdown.ts          # Graceful shutdown (drain + close)
+│   │   └── types.ts             # Submission, AgentEvent, TurnContext types
 │   │
 │   ├── models/
-│   │   ├── index.ts             # Model client factory
-│   │   ├── openai.ts            # OpenAI client (from browserx)
-│   │   ├── anthropic.ts         # Anthropic client (from browserx)
+│   │   ├── ModelClient.ts       # Base interface (from browserx)
+│   │   ├── ModelClientFactory.ts # Provider factory (from browserx)
+│   │   ├── ModelClientError.ts  # Error types (from browserx)
+│   │   ├── ResponseStream.ts    # Streaming response handler (from browserx)
+│   │   ├── SSEEventParser.ts    # SSE parsing from LLM APIs (from browserx)
+│   │   ├── RequestQueue.ts      # Rate limiting + backoff (from browserx)
+│   │   ├── client/              # Provider implementations (from browserx)
+│   │   │   ├── openai.ts
+│   │   │   ├── anthropic.ts
+│   │   │   ├── google.ts
+│   │   │   └── ...
 │   │   └── types.ts
 │   │
 │   ├── tools/
-│   │   ├── index.ts             # Tool registry (static allowlist)
+│   │   ├── registry.ts          # Tool registry (static allowlist)
 │   │   ├── web-search.ts        # Web search tool
 │   │   └── types.ts
 │   │
@@ -240,14 +289,27 @@ digitalme-agent/
 │   │   ├── db.ts                # Database interface
 │   │   ├── sqlite.ts            # SQLite implementation (MVP)
 │   │   ├── postgres.ts          # Postgres implementation (scale)
+│   │   ├── TenantDB.ts          # Per-fan scoped DB wrapper
+│   │   ├── TokenUsageStore.ts   # Token tracking (from browserx)
 │   │   └── types.ts
 │   │
 │   ├── streaming/
-│   │   └── sse.ts               # SSE formatting + heartbeat
+│   │   ├── sse.ts               # SSE formatting + heartbeat
+│   │   └── chat-stream.ts       # Delta throttling (from browserx)
+│   │
+│   ├── limits/
+│   │   └── resource-limits.ts   # Concurrency + queue limits (from browserx)
+│   │
+│   ├── health/
+│   │   └── health-monitor.ts    # CPU/memory/event-loop (from browserx)
+│   │
+│   ├── prompts/
+│   │   ├── PromptComposer.ts    # Fragment-based composition (pattern from browserx)
+│   │   └── fragments/           # Creator persona, safety, policies
 │   │
 │   └── config/
-│       ├── schema.ts            # Zod validation
-│       └── loader.ts            # YAML + env var loading
+│       ├── schema.ts            # Zod validation (pattern from browserx)
+│       └── loader.ts            # YAML + env var loading (pattern from browserx)
 │
 ├── config.example.yaml
 ├── Dockerfile
@@ -256,62 +318,157 @@ digitalme-agent/
 └── tsconfig.json
 ```
 
-### What to copy from BrowserX
+### What to transplant from BrowserX
 
-Only model client implementations (~500 lines):
+After thorough inspection of the BrowserX codebase, here is the complete transplant map organized by reusability tier.
 
-```
-browserx/src/core/models/
-├── OpenAIModelClient.ts      → digitalme-agent/src/models/openai.ts
-├── AnthropicModelClient.ts   → digitalme-agent/src/models/anthropic.ts
-├── GoogleModelClient.ts      → digitalme-agent/src/models/google.ts (optional)
-└── types.ts                  → digitalme-agent/src/models/types.ts
-```
+#### Tier 1: Copy directly (~3,500 lines, minimal changes)
 
-Simplify during copy:
-- Remove approval/risk assessment hooks
-- Remove BrowserX-specific event types
-- Keep streaming and tool call handling
+These files are platform-agnostic and production-grade. Copy with minor cleanup.
+
+| BrowserX source | digitalme-agent target | Lines | Changes needed |
+|-----------------|----------------------|-------|----------------|
+| `src/core/models/ModelClient.ts` | `src/models/ModelClient.ts` | 488 | None — base interface |
+| `src/core/models/ModelClientFactory.ts` | `src/models/ModelClientFactory.ts` | 783 | Remove unused providers if desired |
+| `src/core/models/ModelClientError.ts` | `src/models/ModelClientError.ts` | 517 | None |
+| `src/core/models/ResponseStream.ts` | `src/models/ResponseStream.ts` | 372 | None |
+| `src/core/models/SSEEventParser.ts` | `src/models/SSEEventParser.ts` | 472 | None |
+| `src/core/models/RequestQueue.ts` | `src/models/RequestQueue.ts` | 604 | None — rate limiting + backoff |
+| `src/core/models/client/*.ts` | `src/models/client/*.ts` | ~500 | Remove approval hooks |
+| `src/server/streaming/chat-stream.ts` | `src/streaming/chat-stream.ts` | 199 | None — delta throttling |
+| `src/server/connection/rate-limiter.ts` | `src/middleware/rate-limit.ts` | 155 | None — sliding window |
+| `src/server/limits/resource-limits.ts` | `src/limits/resource-limits.ts` | 133 | Drop subagent tracking |
+| `src/server/connection/auth.ts` | `src/middleware/auth.ts` | 156 | None — token/password modes |
+| `src/server/agent/shutdown.ts` | `src/agent/shutdown.ts` | 92 | Adapt for SQ/EQ drain |
+| `src/server/handlers/health.ts` | `src/routes/health.ts` | 125 | Simplify metrics |
+
+#### Tier 2: Adapt significantly (~1,500 lines, keep core logic)
+
+These need meaningful changes but carry proven patterns worth preserving.
+
+| BrowserX source | digitalme-agent target | Lines | Adaptation |
+|-----------------|----------------------|-------|------------|
+| `src/core/TurnManager.ts` | `src/agent/TurnExecutor.ts` | 1,110 | **Keep**: turn loop, model streaming, tool execution, retry logic. **Strip**: browser tab context, MCP capability checks, approval gate calls, web search handlers. **Result**: ~400 lines |
+| `src/core/QueueProcessor.ts` | `src/agent/SubmissionQueue.ts` + `EventQueue.ts` | 343 | **Keep**: PriorityQueue, async queue primitives. **Adapt**: serial dispatch → concurrent dispatch. **Split**: into two focused files |
+| `src/core/TurnContext.ts` | `src/agent/TurnContext.ts` | 499 | **Keep**: model client getter, tools config. **Strip**: approval/sandbox policies, browser env policy, review mode. **Result**: ~100 lines |
+| `src/server/config/server-config.ts` | `src/config/loader.ts` | 248 | **Keep**: env/file loading, Zod validation, hot-reload. **Adapt**: schema for creator config (persona, model, tools) |
+| `src/server/streaming/agent-events.ts` | `src/streaming/sse.ts` | 170 | **Keep**: event → wire format conversion. **Adapt**: for SSE instead of WebSocket frames |
+| `src/server/health/health-monitor.ts` | `src/health/health-monitor.ts` | 84 | **Keep**: CPU/memory/event-loop checks. **Adapt**: broadcast via SSE, add SQ depth metric |
+| `src/core/prompts/PromptComposer.ts` | `src/prompts/PromptComposer.ts` | 143 | **Keep**: fragment-based composition pattern. **Rewrite**: all fragments for creator persona context |
+| `src/storage/TokenUsageStore.ts` | `src/storage/TokenUsageStore.ts` | 148 | **Keep**: token tracking. **Adapt**: per-fan + per-creator aggregation |
+| `src/core/protocol/types.ts` | `src/agent/types.ts` | 384 | **Cherry-pick**: Submission, InputItem, ResponseItem types. **Strip**: approval ops, sandbox policy, browser-specific types |
+
+#### Tier 3: Pattern only (inspire, don't copy)
+
+These are too coupled to BrowserX internals but carry useful architectural patterns.
+
+| BrowserX source | Pattern to adopt | Why not copy directly |
+|-----------------|-----------------|----------------------|
+| `src/core/RepublicAgent.ts` (1,318 lines) | SQ/EQ lifecycle: queue intake → dispatch → event emission | Deeply coupled to Session, ApprovalManager, ChannelManager, serial execution |
+| `src/core/Session.ts` (1,836 lines) | Event emission pattern | Stateful (accumulates history in memory), compaction, title generation |
+| `src/core/tools/ToolRegistry.ts` (727 lines) | Registry + dispatch pattern | Tied to approval gate, risk assessment, browser tools |
+| `src/server/agent/ServerAgentBootstrap.ts` (792 lines) | Startup/shutdown sequencing | Too complex (plugins, scheduler, multi-session registry) |
+| `src/server/channels/ServerChannel.ts` (221 lines) | Event broadcasting | ChannelAdapter abstraction not needed for HTTP/SSE |
+
+#### Tier 4: Do not transplant
+
+| BrowserX module | Lines | Why |
+|-----------------|-------|-----|
+| `src/core/ApprovalManager.ts` | 546 | No approval workflows |
+| `src/core/approval/*` | 990 | No risk assessment |
+| `src/core/tools/DOMTool.ts`, `FormAutomationTool.ts`, `NavigationTool.ts`, etc. | 8,400+ | Browser-only tools |
+| `src/core/scheduler/*` | 1,834 | No scheduled tasks |
+| `src/core/compact/*` | 1,054 | No stateful history compaction |
+| `src/core/TabManager.ts` | 581 | No browser tabs |
+| `src/core/DiffTracker.ts` | 831 | No rollback workflows |
+| `src/core/mcp/RustMCPBridge.ts` | 418 | Desktop-only Rust FFI |
+| `src/server/plugins/*` | ~400 | Plugin system not needed |
+| `src/server/persistence/SessionIndex.ts` | 206 | Multi-session registry not needed |
+| `src/extension/*`, `src/desktop/*`, `src/webfront/*` | ~10,000+ | Wrong platform |
+
+### Transplant summary
+
+| Tier | Lines from BrowserX | Lines in digitalme-agent | Effort |
+|------|--------------------|-----------------------|--------|
+| **Tier 1** (copy) | ~3,500 | ~3,500 | Low — copy + minor cleanup |
+| **Tier 2** (adapt) | ~3,100 | ~1,200 | Medium — keep core, strip platform specifics |
+| **Tier 3** (pattern) | ~4,900 | ~500 | Medium — write new code following patterns |
+| **New code** | — | ~800 | Routes, safety, TenantDB, docker config |
+| **Total** | | **~6,000** | |
 
 ---
 
 ## 5. Core Agent Design
 
-### Stateless design (like ChatGPT/Claude backends)
+### SQ/EQ Architecture (adapted from BrowserX)
 
-The Agent is **completely stateless**. All conversation context is passed in via parameters, not stored in the instance. This matches how ChatGPT and Claude backends work at scale:
+The agent uses BrowserX's **Submission Queue / Event Queue** pattern, adapted for concurrent multi-fan handling. One long-lived Agent instance per creator accepts fan messages via the SQ, dispatches them concurrently, and routes events back through per-request EQs.
 
 ```
-ChatGPT/Claude pattern:
-├── 100M+ users, 500M+ conversations
-├── Cannot keep agent instance per conversation (memory impossible)
-├── Solution: stateless servers + database
-│
-│   On each request:
-│   1. Load conversation history from DB
-│   2. Pass full context to LLM (LLM is also stateless)
-│   3. Stream response
-│   4. Persist to DB
-│   5. No server-side state kept
+                         ┌─────────────────────────────────┐
+                         │     Agent (long-lived, 1/creator) │
+                         │                                   │
+  Fan A msg ──→ ┌────────┤  Submission Queue                 │
+  Fan B msg ──→ │  SQ    │  (concurrent dispatch, not serial)│
+  Fan C msg ──→ └────────┤                                   │
+                         │     ┌──────────┬──────────┐       │
+                         │     ▼          ▼          ▼       │
+                         │  Turn(A)    Turn(B)    Turn(C)    │
+                         │  load hist  load hist  load hist  │
+                         │  LLM call   LLM call   LLM call  │
+                         │  tools      tools      tools     │
+                         │     │          │          │       │
+                         │     ▼          ▼          ▼       │
+                         │  EQ(A)      EQ(B)      EQ(C)     │
+                         └─────┬──────────┬──────────┬───────┘
+                               ▼          ▼          ▼
+                          SSE(A)     SSE(B)     SSE(C)
 ```
 
-**Why stateless works:**
-- Agent state = System prompt + History + Tools
-- System prompt → Config (shared, read-only)
-- History → Database (loaded per request)
-- Tools → Config (shared, read-only)
+**Key difference from BrowserX:** BrowserX's SQ processes submissions serially (one user, one turn at a time). digitalme-agent's SQ dispatches concurrently — many fans in flight simultaneously on the same Node.js event loop, since LLM calls are I/O-bound.
 
-There's no "agent memory" beyond conversation history. The LLM receives full context on every call.
+### Why SQ/EQ (not plain request handlers)
 
-**Implementation options:**
+| Capability | Plain handler | SQ/EQ |
+|------------|--------------|-------|
+| Concurrent fan requests | ✓ (implicit via async) | ✓ (explicit, trackable) |
+| Backpressure / max concurrency | Manual | Built-in (queue depth) |
+| Request cancellation (fan disconnect) | Ad-hoc AbortController | `agent.cancel(requestId)` |
+| Observability (active requests, queue depth) | Manual counters | `agent.activeRequestCount` |
+| Priority handling (paid fans first) | Not possible | Queue ordering |
+| Graceful shutdown (drain in-flight) | Manual tracking | `agent.drain()` |
+| Future: rate limiting per fan | Separate middleware | Integrated with dispatch |
 
-| Approach | Code | Notes |
-|----------|------|-------|
-| Instance per request | `new Agent(config, client, tools)` | Clear isolation, easy testing |
-| Single shared instance | One `Agent` reused | Works because stateless |
-| Just a function | `chat(config, client, tools, history, msg)` | Simplest, obviously stateless |
+SQ/EQ provides the operational infrastructure that plain async handlers would need to build piecemeal over time.
 
-We use instance-per-request for clarity, but any approach works since there's no mutable state.
+### Types
+
+```typescript
+// src/agent/types.ts
+
+export interface FanSubmission {
+  requestId: string;           // Unique per-request, for event routing
+  fanUserId: string;           // Fan identity
+  conversationId: string;      // Conversation to continue
+  content: string;             // Fan's message (already filtered)
+}
+
+export type AgentEvent =
+  | { type: 'text_delta'; content: string }
+  | { type: 'tool_start'; name: string }
+  | { type: 'tool_end'; name: string }
+  | { type: 'done' }
+  | { type: 'error'; message: string }
+  | { type: 'cancelled' };
+
+export interface TurnContext {
+  requestId: string;
+  fanUserId: string;
+  conversationId: string;
+  history: Message[];          // Loaded from DB at dispatch time
+  events: EventQueue;          // Per-request event sink
+}
+```
 
 ### The Agent class
 
@@ -322,35 +479,109 @@ export interface AgentConfig {
   systemPrompt: string;
   model: string;
   modelProvider: 'openai' | 'anthropic';
-  maxTurns?: number;  // Prevent infinite tool loops
+  maxTurns?: number;           // Prevent infinite tool loops (default: 10)
+  maxConcurrent?: number;      // Max concurrent fan requests (default: 50)
 }
 
 /**
- * Agent is stateless - all conversation context is passed in via parameters.
- * A new instance can be created per request, or a single instance can be
- * shared across requests since there is no mutable state.
+ * Long-lived agent instance — one per creator, serving many fans concurrently.
  *
- * This design matches how ChatGPT/Claude backends work at scale:
- * - No per-user agent instances
- * - No per-conversation agent instances
- * - History loaded from DB on each request
- * - LLM receives full context each time
+ * Uses SQ/EQ pattern from BrowserX:
+ * - Submission Queue: accepts fan messages, dispatches concurrently
+ * - Event Queue: per-request, routes events back to the fan's SSE stream
+ *
+ * Shared (creator-scoped, read-only):  model client, persona, tools, DB pool
+ * Isolated (per-request, ephemeral):   TurnContext, conversation history, EQ
  */
 export class Agent {
-  private readonly modelClient: ModelClient;   // Shared, stateless API client
-  private readonly tools: Tool[];              // Shared, read-only definitions
-  private readonly config: AgentConfig;        // Shared, read-only config
+  private readonly config: AgentConfig;
+  private readonly modelClient: ModelClient;
+  private readonly tools: Tool[];
+  private readonly db: Database;
+  private readonly activeRequests = new Map<string, TurnContext>();
 
-  constructor(config: AgentConfig, modelClient: ModelClient, tools: Tool[]) {
+  constructor(config: AgentConfig, modelClient: ModelClient, tools: Tool[], db: Database) {
     this.config = config;
     this.modelClient = modelClient;
     this.tools = tools;
+    this.db = db;
   }
 
-  async *chat(history: Message[], userMessage: string): AsyncGenerator<AgentEvent> {
+  /**
+   * Submit a fan message. Returns an async iterable of events for this request.
+   * The turn executes concurrently — other fans are not blocked.
+   */
+  submit(submission: FanSubmission): AsyncIterable<AgentEvent> {
+    // Backpressure check
+    const maxConcurrent = this.config.maxConcurrent ?? 50;
+    if (this.activeRequests.size >= maxConcurrent) {
+      return toAsyncIterable({ type: 'error' as const, message: 'Agent at capacity, retry later' });
+    }
+
+    const events = new EventQueue<AgentEvent>();
+
+    // Dispatch concurrently — do NOT await
+    this.dispatchTurn(submission, events)
+      .catch(err => events.push({ type: 'error', message: err.message }))
+      .finally(() => {
+        events.close();
+        this.activeRequests.delete(submission.requestId);
+      });
+
+    return events;
+  }
+
+  /**
+   * Cancel an in-flight request (e.g., fan disconnected).
+   */
+  cancel(requestId: string): void {
+    const ctx = this.activeRequests.get(requestId);
+    if (ctx) {
+      ctx.events.push({ type: 'cancelled' });
+      ctx.events.close();
+      this.activeRequests.delete(requestId);
+    }
+  }
+
+  /**
+   * Drain all in-flight requests (graceful shutdown).
+   */
+  async drain(): Promise<void> {
+    await Promise.all(
+      [...this.activeRequests.values()].map(ctx =>
+        ctx.events.waitUntilClosed()
+      )
+    );
+  }
+
+  get activeRequestCount(): number {
+    return this.activeRequests.size;
+  }
+
+  // --- Private: turn execution ---
+
+  private async dispatchTurn(submission: FanSubmission, events: EventQueue<AgentEvent>): Promise<void> {
+    // 1. Load conversation history from DB
+    const history = await this.db.getMessages(submission.conversationId);
+
+    // 2. Create isolated turn context
+    const ctx: TurnContext = {
+      requestId: submission.requestId,
+      fanUserId: submission.fanUserId,
+      conversationId: submission.conversationId,
+      history,
+      events,
+    };
+    this.activeRequests.set(submission.requestId, ctx);
+
+    // 3. Execute turn (ReAct loop)
+    await this.executeTurn(ctx, submission.content);
+  }
+
+  private async executeTurn(ctx: TurnContext, userMessage: string): Promise<void> {
     const messages: ChatMessage[] = [
       { role: 'system', content: this.config.systemPrompt },
-      ...this.formatHistory(history),
+      ...this.formatHistory(ctx.history),
       { role: 'user', content: userMessage },
     ];
 
@@ -370,26 +601,23 @@ export class Agent {
       // Stream text response
       if (response.type === 'text') {
         for await (const chunk of response.stream) {
-          yield { type: 'text_delta', content: chunk };
+          ctx.events.push({ type: 'text_delta', content: chunk });
         }
-        yield { type: 'done' };
+        ctx.events.push({ type: 'done' });
         return;
       }
 
       // Handle tool calls (ReAct loop)
       if (response.type === 'tool_calls') {
         for (const call of response.toolCalls) {
-          yield { type: 'tool_start', name: call.name };
+          ctx.events.push({ type: 'tool_start', name: call.name });
 
           const tool = this.tools.find(t => t.name === call.name);
-          if (!tool) {
-            throw new Error(`Unknown tool: ${call.name}`);
-          }
+          if (!tool) throw new Error(`Unknown tool: ${call.name}`);
 
           const result = await tool.execute(call.arguments);
-          yield { type: 'tool_end', name: call.name };
+          ctx.events.push({ type: 'tool_end', name: call.name });
 
-          // Add to message history for next turn
           messages.push({
             role: 'assistant',
             tool_calls: [{ id: call.id, name: call.name, arguments: call.arguments }],
@@ -404,7 +632,7 @@ export class Agent {
       }
     }
 
-    yield { type: 'error', message: 'Max turns exceeded' };
+    ctx.events.push({ type: 'error', message: 'Max turns exceeded' });
   }
 
   private formatHistory(history: Message[]): ChatMessage[] {
@@ -416,27 +644,60 @@ export class Agent {
 }
 ```
 
-### Agent events
+### EventQueue
 
 ```typescript
-// src/agent/types.ts
+// src/agent/EventQueue.ts
 
-export type AgentEvent =
-  | { type: 'text_delta'; content: string }
-  | { type: 'tool_start'; name: string }
-  | { type: 'tool_end'; name: string }
-  | { type: 'done' }
-  | { type: 'error'; message: string };
+/**
+ * Per-request event queue. The producer (turn execution) pushes events;
+ * the consumer (SSE stream) async-iterates over them.
+ */
+export class EventQueue<T> implements AsyncIterable<T> {
+  private queue: T[] = [];
+  private resolve: (() => void) | null = null;
+  private closed = false;
+
+  push(event: T): void {
+    if (this.closed) return;
+    this.queue.push(event);
+    this.resolve?.();
+  }
+
+  close(): void {
+    this.closed = true;
+    this.resolve?.();
+  }
+
+  async waitUntilClosed(): Promise<void> {
+    while (!this.closed) {
+      await new Promise<void>(r => { this.resolve = r; });
+    }
+  }
+
+  async *[Symbol.asyncIterator](): AsyncIterator<T> {
+    while (true) {
+      while (this.queue.length > 0) {
+        yield this.queue.shift()!;
+      }
+      if (this.closed) return;
+      await new Promise<void>(r => { this.resolve = r; });
+    }
+  }
+}
 ```
 
 ### Key design decisions
 
-1. **Stateless** — No mutable instance state; history passed as parameter
-2. **Scalable** — Same pattern as ChatGPT/Claude backends (100M+ users)
-3. **Simple ReAct loop** — Tool calls followed by LLM reasoning, max turns limit
-4. **Streaming first** — All responses stream via AsyncGenerator
-5. **No internal history** — History loaded from DB, passed in
-6. **Flexible instantiation** — Can create per-request or share single instance
+1. **SQ/EQ pattern** — Proven in BrowserX, adapted for concurrent multi-fan dispatch
+2. **Long-lived instance** — One Agent per creator; shared model client, config, DB pool
+3. **Concurrent dispatch** — SQ fires turns without awaiting; Node.js event loop handles I/O concurrency
+4. **Per-request isolation** — Each fan gets own TurnContext + EventQueue; no shared mutable state
+5. **Built-in backpressure** — `maxConcurrent` rejects when at capacity
+6. **Cancellation** — `agent.cancel(requestId)` when fan disconnects mid-stream
+7. **Graceful shutdown** — `agent.drain()` waits for all in-flight turns to complete
+8. **Stateless turns** — History loaded from DB per request; no in-memory state between requests
+9. **ReAct loop** — Tool calls followed by LLM reasoning, capped by `maxTurns`
 
 ---
 
@@ -445,25 +706,28 @@ export type AgentEvent =
 ### Isolation by design, not enforcement
 
 **Traditional approach:** Shared state + access control checks
-**Our approach:** No shared state to leak
+**Our approach:** Shared agent instance with isolated per-request TurnContexts — no mutable state crosses request boundaries
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        Request 1 (Fan A)                     │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │  Agent instance (created for this request)          │    │
-│  │  ├── History: loaded from DB WHERE conv_id = 'aaa'  │    │
-│  │  └── No reference to any other conversation         │    │
-│  └─────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────┐
-│                        Request 2 (Fan B)                     │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │  Agent instance (created for this request)          │    │
-│  │  ├── History: loaded from DB WHERE conv_id = 'bbb'  │    │
-│  │  └── No reference to any other conversation         │    │
-│  └─────────────────────────────────────────────────────┘    │
+│              Agent Instance (long-lived, 1/creator)          │
+│                                                              │
+│  Shared (read-only / stateless):                             │
+│  ├── Creator persona config                                  │
+│  ├── Model client (stateless API calls)                      │
+│  ├── Tool definitions                                        │
+│  └── DB connection pool                                      │
+│                                                              │
+│  Concurrent TurnContexts (isolated, ephemeral):              │
+│  ┌──────────────────┐  ┌──────────────────┐                 │
+│  │ TurnContext(A)    │  │ TurnContext(B)    │                 │
+│  │ fan_user_id: aaa  │  │ fan_user_id: bbb  │                │
+│  │ conv_id: conv-1   │  │ conv_id: conv-2   │                │
+│  │ history: [...]    │  │ history: [...]    │                │
+│  │ events: EQ(A)     │  │ events: EQ(B)     │                │
+│  │ ↓                 │  │ ↓                 │                │
+│  │ No reference to B │  │ No reference to A │                │
+│  └──────────────────┘  └──────────────────┘                 │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -471,12 +735,14 @@ export type AgentEvent =
 
 | Layer | Shared or Isolated | Mechanism |
 |-------|-------------------|-----------|
-| Container | Shared (all fans) | N/A |
-| Process | Shared (all fans) | N/A |
+| Container | Shared (all fans) | 1 per creator |
+| Process | Shared (all fans) | 1 per container |
 | HTTP server | Shared (all fans) | Stateless routing |
-| Model client | Shared (all fans) | Stateless API calls |
-| Database connection | Shared (all fans) | Parameterized queries |
-| **Agent instance** | **Isolated per request** | Created fresh, GC'd after |
+| **Agent instance** | **Shared (all fans)** | Long-lived, no mutable fan state |
+| Model client | Shared (all fans) | Stateless API calls, pooled connections |
+| Database pool | Shared (all fans) | Parameterized queries |
+| **TurnContext** | **Isolated per request** | Ephemeral, GC'd after response |
+| **EventQueue** | **Isolated per request** | Scoped to one fan's SSE stream |
 | **Conversation data** | **Isolated per fan** | `WHERE fan_user_id = ?` |
 | **Rate limits** | **Isolated per fan** | Keyed by `fan_user_id` |
 
@@ -484,31 +750,34 @@ export type AgentEvent =
 
 | Component | Why it's safe |
 |-----------|---------------|
-| HTTP server | Stateless request routing |
-| Persona config | Read-only, same for all fans |
-| Model client | Stateless API calls, no caching |
+| Agent instance | No mutable fan state; only holds read-only config + stateless clients |
+| Persona config | Read-only, loaded at startup, same for all fans |
+| Model client | Stateless HTTP API calls, connection pooling is transparent |
 | Tool definitions | Read-only function references |
-| DB connection | Queries parameterized by conversation_id |
+| DB connection pool | Queries parameterized by conversation_id / fan_user_id |
+| `activeRequests` map | Keyed by requestId; entries only reference their own TurnContext |
 
 ### What's isolated (per-request)
 
 | Component | Isolation mechanism |
 |-----------|---------------------|
-| Agent instance | Created fresh per request, GC'd after |
-| Conversation history | Loaded from DB with `WHERE conversation_id = ?` |
-| Tool execution context | Passed conversation_id, cannot query others |
-| Response stream | Scoped to HTTP response object |
+| TurnContext | Created at dispatch, contains only this fan's data, GC'd after |
+| EventQueue | Per-request; producer = turn execution, consumer = this fan's SSE |
+| Conversation history | Loaded from DB with `WHERE conversation_id = ?` at dispatch time |
+| Tool execution context | Receives only this fan's conversation_id |
+| SSE response stream | Scoped to HTTP response, fed by this request's EventQueue |
 
-### Request flow with isolation
+### Request flow with isolation (SQ/EQ)
 
 ```typescript
 // src/routes/conversations.ts
+// Note: `agent` is the long-lived Agent instance, created at startup
 
 app.post('/conversations/:id/messages', async (c) => {
   const conversationId = c.req.param('id');
   const { fan_user_id, content } = await c.req.json();
 
-  // 1. Verify ownership (only check, not shared state)
+  // 1. Verify ownership
   const conversation = await db.getConversation(conversationId);
   if (!conversation) {
     return c.json({ error: 'conversation_not_found' }, 404);
@@ -523,26 +792,34 @@ app.post('/conversations/:id/messages', async (c) => {
     return c.json({ error: 'input_blocked', reason: filtered.reason }, 422);
   }
 
-  // 3. Load ONLY this conversation's history
-  const history = await db.getMessages(conversationId);
-
-  // 4. Create FRESH agent instance (no shared state)
-  const agent = new Agent(persona, modelClient, tools);
-
-  // 5. Persist fan message
+  // 3. Persist fan message
   await db.appendMessage(conversationId, 'fan', filtered.content);
 
-  // 6. Stream response
+  // 4. Submit to agent's SQ — returns EventQueue (async iterable)
+  const requestId = generateRequestId();
+  const events = agent.submit({
+    requestId,
+    fanUserId: fan_user_id,
+    conversationId,
+    content: filtered.content,
+  });
+
+  // 5. Stream events from EQ → SSE
   return streamSSE(c, async (stream) => {
     let fullResponse = '';
 
-    for await (const event of agent.chat(history, filtered.content)) {
+    // Handle fan disconnect → cancel the in-flight turn
+    c.req.raw.signal.addEventListener('abort', () => agent.cancel(requestId));
+
+    for await (const event of events) {
       if (event.type === 'text_delta') {
         fullResponse += event.content;
         await stream.writeSSE({ data: JSON.stringify(event) });
       } else if (event.type === 'done') {
         await db.appendMessage(conversationId, 'agent', fullResponse);
         await stream.writeSSE({ data: JSON.stringify({ type: 'done' }) });
+      } else if (event.type === 'error') {
+        await stream.writeSSE({ data: JSON.stringify(event) });
       }
     }
   });
@@ -1348,11 +1625,11 @@ volumes:
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| Build vs Fork | Build from scratch | Simpler, faster, isolation by design |
+| Build vs Fork | New repo, transplant SQ/EQ + model clients | Proven patterns from BrowserX, no multi-platform baggage |
 | Language | TypeScript | MCP ecosystem, browserx model clients |
 | Database MVP | SQLite | Simple, single file, good enough |
 | Database scale | Postgres | Proven, horizontal scaling |
 | Multi-tenancy | Logical isolation | Stateless requests, parameterized queries |
-| Agent architecture | Ephemeral per-request | No shared state = automatic isolation |
+| Agent architecture | SQ/EQ, long-lived instance per creator | Concurrent fan dispatch, shared infra, isolated turns |
 | Tool policy | Static allowlist | No dynamic registration, no untrusted code |
 | Scaling approach | Horizontal + shared DB | Stateless design enables this |
