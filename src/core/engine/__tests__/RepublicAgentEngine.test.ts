@@ -183,7 +183,7 @@ describe('RepublicAgentEngine', () => {
       expect(mockSession.spawnTask).toHaveBeenCalled();
     });
 
-    it('should emit TaskError event when spawnTask throws', async () => {
+    it('should emit TurnAborted and Error events when spawnTask throws', async () => {
       const { engine, mockSession } = createEngine();
       await engine.initialize();
       mockSession.spawnTask.mockRejectedValue(new Error('spawn failed'));
@@ -198,9 +198,15 @@ describe('RepublicAgentEngine', () => {
 
       await new Promise(r => setTimeout(r, 10));
 
-      const taskError = events.find(e => e.msg.type === 'TaskError');
-      expect(taskError).toBeDefined();
-      expect(taskError!.msg.data?.error).toBe('spawn failed');
+      const turnAborted = events.find(e => e.msg.type === 'TurnAborted');
+      expect(turnAborted).toBeDefined();
+      expect(turnAborted!.msg.data?.reason).toBe('error');
+      expect(turnAborted!.msg.data?.message).toBe('spawn failed');
+
+      // Re-thrown error also produces an Error event for user-facing consumers
+      const errorEvent = events.find(e => e.msg.type === 'Error');
+      expect(errorEvent).toBeDefined();
+      expect(errorEvent!.msg.data?.message).toBe('spawn failed');
     });
 
     it('should apply context overrides when provided', async () => {
@@ -736,7 +742,7 @@ describe('RepublicAgentEngine', () => {
       expect(result.engineId).toBe(engine.engineId);
     });
 
-    it('run() should resolve with TaskError event', async () => {
+    it('run() should resolve with TurnAborted error event', async () => {
       const { engine, mockSession } = createEngine();
       await engine.initialize();
 
@@ -745,8 +751,8 @@ describe('RepublicAgentEngine', () => {
           engine.pushEvent({
             id: 'evt-error',
             msg: {
-              type: 'TaskError',
-              data: { submissionId, error: 'Something broke' },
+              type: 'TurnAborted',
+              data: { reason: 'error', submission_id: submissionId, message: 'Something broke' },
             },
           });
         }, 5);
@@ -849,8 +855,8 @@ describe('RepublicAgentEngine', () => {
           engine.pushEvent({
             id: `evt-${submissionId}`,
             msg: {
-              type: 'TaskError',
-              data: { submissionId, error: 'Failed' },
+              type: 'TurnAborted',
+              data: { reason: 'error', submission_id: submissionId, message: 'Failed' },
             },
           });
         }, 5);

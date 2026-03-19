@@ -396,13 +396,17 @@ export class RepublicAgentEngine {
       this.pushEvent({
         id: crypto.randomUUID(),
         msg: {
-          type: 'TaskError',
+          type: 'TurnAborted',
           data: {
-            submissionId,
-            error: userFriendlyMessage,
+            reason: 'error' as const,
+            submission_id: submissionId,
+            message: userFriendlyMessage,
           },
         },
       });
+      // Re-throw so processSubmissionQueue's outer catch emits the Error event,
+      // matching the old two-event pattern (TurnAborted + Error) that consumers rely on.
+      throw error;
     }
   }
 
@@ -648,7 +652,6 @@ export class RepublicAgentEngine {
         engineId: this.engineId,
         parentEngineId: this.config.parentEngineId,
       });
-      return;
     }
 
     this.eventQueue.push(event);
@@ -728,25 +731,25 @@ export class RepublicAgentEngine {
         };
       }
 
-      if (event.msg.type === 'TaskError' && event.msg.data?.submissionId === submissionId) {
-        return {
-          success: false,
-          response: null,
-          turnCount: 0,
-          tokenUsage: undefined,
-          stopReason: 'error',
-          error: event.msg.data.error as string,
-          engineId: this.engineId,
-          submissionId,
-        };
-      }
-
-      // Session emits TurnAborted (not TaskAborted) on interruption/error
+      // Session emits TurnAborted on interruption/error
       if (event.msg.type === 'TurnAborted') {
+        const data = event.msg.data as { reason?: string; submission_id?: string; message?: string; turn_count?: number } | undefined;
+        if (data?.reason === 'error') {
+          return {
+            success: false,
+            response: null,
+            turnCount: 0,
+            tokenUsage: undefined,
+            stopReason: 'error',
+            error: data.message as string,
+            engineId: this.engineId,
+            submissionId,
+          };
+        }
         return {
           success: false,
           response: null,
-          turnCount: (event.msg.data?.turn_count as number) ?? 0,
+          turnCount: (data?.turn_count as number) ?? 0,
           tokenUsage: undefined,
           stopReason: abortController.signal.aborted ? 'cancelled' : 'interrupted',
           engineId: this.engineId,

@@ -690,7 +690,6 @@ export class RepublicAgent {
     'ShutdownComplete',
     'EngineDisposed',
     'TaskStarted',
-    'TaskError',
     'CompactionCompleted',
     'TurnAborted',
     'HistoryCleared',
