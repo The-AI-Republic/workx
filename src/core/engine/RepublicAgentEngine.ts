@@ -3,6 +3,7 @@
 import type { ToolRegistry } from '../../tools/ToolRegistry';
 import type { Session } from '../Session';
 import type { Event as AgentEvent } from '../protocol/events';
+import type { InputItem as ProtocolInputItem } from '../protocol/types';
 import type {
   RepublicAgentEngineConfig,
   EngineResult,
@@ -359,25 +360,29 @@ export class RepublicAgentEngine {
     }
 
     try {
-      // Normalize input items, preserving all fields (text, data, path, mimeType)
-      const normalizedItems: InputItem[] = items.map(item => {
-        const normalized: InputItem = { type: item.type || 'text' };
-        if (item.text !== undefined) normalized.text = item.text;
-        if (item.data !== undefined) normalized.data = item.data;
-        if (item.mimeType !== undefined) normalized.mimeType = item.mimeType;
-        if (item.path !== undefined) normalized.path = item.path;
-        // Ensure text items have at least an empty string
-        if (normalized.type === 'text' && normalized.text === undefined) {
-          normalized.text = '';
+      // Convert engine InputItem[] to protocol InputItem[] for Session compatibility.
+      // Engine types: text/image(data,mimeType)/file(path)
+      // Protocol types: text/image(image_url)/clipboard(content)/context(path)
+      const protocolItems: ProtocolInputItem[] = items.map(item => {
+        switch (item.type) {
+          case 'image': {
+            const mimeType = item.mimeType ?? 'image/png';
+            const data = item.data ?? '';
+            return { type: 'image' as const, image_url: `data:${mimeType};base64,${data}` };
+          }
+          case 'file':
+            return { type: 'context' as const, path: item.path };
+          case 'text':
+          default:
+            return { type: 'text' as const, text: item.text ?? '' };
         }
-        return normalized;
       });
 
       // Only add pending input for UserInput (interactive user input that may
       // interrupt an ongoing turn). UserTurn is a programmatic submission that
       // should not push pending input to the active turn.
       if (opType === 'UserInput') {
-        this.session.addPendingInput(normalizedItems as any);
+        this.session.addPendingInput(protocolItems);
       }
 
       // Apply context overrides if provided
@@ -395,7 +400,7 @@ export class RepublicAgentEngine {
       const { RegularTask } = await import('../tasks/RegularTask');
       const task = new RegularTask({ maxTurns: this.config.maxTurns });
 
-      await this.session.spawnTask(task, turnContext, submissionId, normalizedItems as any);
+      await this.session.spawnTask(task, turnContext, submissionId, protocolItems);
 
       // Session.spawnTask() is fire-and-forget.
       // Task completion/abort events are emitted by Session via the event emitter

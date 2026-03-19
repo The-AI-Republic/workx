@@ -5,12 +5,12 @@
  * and delegates all execution to the engine's single SQ/EQ loop.
  */
 
-import type { Op, ReviewDecision } from './protocol/types';
+import type { Op, ReviewDecision, InputItem as ProtocolInputItem } from './protocol/types';
 import type { Event, EventMsg } from './protocol/events';
 import type { IConfigChangeEvent } from '../config/types';
 import type { AgentReadyState } from './models/types/Auth';
 import type { InitialHistory } from './session/state/types';
-import type { EngineEvent, EngineOp } from './engine/RepublicAgentEngineConfig';
+import type { EngineEvent, EngineOp, InputItem as EngineInputItem } from './engine/RepublicAgentEngineConfig';
 import { AgentConfig } from '../config/AgentConfig';
 import { Session } from './Session';
 import { TurnContext } from './TurnContext';
@@ -453,14 +453,44 @@ export class RepublicAgent {
   }
 
   /**
+   * Convert a protocol InputItem to an engine InputItem.
+   * Protocol types: text, image (image_url), clipboard (content), context (path)
+   * Engine types:   text (text), image (data, mimeType), file (path)
+   */
+  private static convertInputItem(item: ProtocolInputItem): EngineInputItem {
+    switch (item.type) {
+      case 'text':
+        return { type: 'text', text: item.text };
+      case 'image': {
+        // Protocol uses image_url (data URI), engine expects data + mimeType
+        const dataUri = item.image_url;
+        const match = dataUri.match(/^data:([^;]+);base64,(.+)$/);
+        if (match) {
+          return { type: 'image', data: match[2], mimeType: match[1] };
+        }
+        // Fallback: pass the whole URI as data
+        return { type: 'image', data: dataUri, mimeType: 'image/png' };
+      }
+      case 'clipboard':
+        // Clipboard content is text-like; convert to text item
+        return { type: 'text', text: item.content ?? '' };
+      case 'context':
+        // Context with a path maps to the engine's file type
+        return { type: 'file', path: item.path };
+      default:
+        // Exhaustiveness guard — treat unknown types as text
+        return { type: 'text', text: '' };
+    }
+  }
+
+  /**
    * Convert a RepublicAgent Op to an EngineOp for forwarding to the engine.
    */
   private toEngineOp(op: Extract<Op, { type: 'UserInput' }> | Extract<Op, { type: 'UserTurn' }>): EngineOp {
+    const items = op.items.map(RepublicAgent.convertInputItem);
+
     if (op.type === 'UserInput') {
-      return {
-        type: 'UserInput',
-        items: op.items as any,
-      };
+      return { type: 'UserInput', items };
     }
     // UserTurn with context overrides — only include defined values
     // to avoid overwriting existing context with undefined
@@ -473,7 +503,7 @@ export class RepublicAgent {
 
     return {
       type: 'UserTurn',
-      items: op.items as any,
+      items,
       contextOverrides: Object.keys(overrides).length > 0 ? overrides : undefined,
     };
   }
