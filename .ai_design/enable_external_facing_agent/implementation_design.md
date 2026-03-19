@@ -1,8 +1,8 @@
 # Enable External-Facing Agent — Implementation Design
 
-**Status:** Revised for MVP implementation
-**Date:** 2026-03-16
-**Decision:** Monorepo, Path A (clean core first, then build agent)
+**Status:** Ready for implementation
+**Date:** 2026-03-18
+**Decision:** Build from scratch in TypeScript, copy only model clients from BrowserX
 
 ---
 
@@ -10,44 +10,72 @@
 
 1. [Overview](#1-overview)
 2. [Goals & Non-Goals](#2-goals--non-goals)
-3. [Architecture](#3-architecture)
-4. [Phase 1: Core Extraction Refactoring](#4-phase-1-core-extraction-refactoring)
-5. [Phase 2: Monorepo Setup](#5-phase-2-monorepo-setup)
-6. [Phase 3: DigitalMe Agent Implementation](#6-phase-3-digitalme-agent-implementation)
-7. [DigitalMe Platform Protocol Specification](#7-digitalme-platform-protocol-specification)
-8. [Security Model](#8-security-model)
-9. [Data Model](#9-data-model)
-10. [Configuration](#10-configuration)
-11. [Deployment](#11-deployment)
-12. [Testing Strategy](#12-testing-strategy)
-13. [Migration Checklist](#13-migration-checklist)
+3. [User & Tenancy Model](#3-user--tenancy-model)
+4. [Architecture](#4-architecture)
+5. [Core Agent Design](#5-core-agent-design)
+6. [Multi-Tenant Isolation](#6-multi-tenant-isolation)
+7. [Resource Access Control](#7-resource-access-control)
+8. [API Specification](#8-api-specification)
+9. [Security](#9-security)
+10. [Storage](#10-storage)
+11. [Scaling Strategy](#11-scaling-strategy)
+12. [Configuration](#12-configuration)
+13. [Deployment](#13-deployment)
+14. [Implementation Checklist](#14-implementation-checklist)
 
 ---
 
 ## 1. Overview
 
-BrowserX is a tri-platform personal AI assistant (Chrome extension, desktop, headless server). We are building a second product — **digitalme-agent** — an external-facing AI agent that creators deploy behind the DigitalMe platform so fans can interact with creator-controlled AI personas.
+**digitalme-agent** is an external-facing AI agent that creators deploy behind the DigitalMe platform. Fans interact with creator-controlled AI personas through the DigitalMe mobile app.
 
-The two products share a common agent engine (model clients, turn management, tool execution, streaming) but differ fundamentally in trust model, session management, and transport protocol.
+### Why build from scratch
 
-This document specifies how to:
+We considered forking BrowserX but decided to build fresh:
 
-1. Extract the shared engine from BrowserX into `@browserx/core`
-2. Set up a monorepo with npm workspaces
-3. Build the digitalme-agent as a new package consuming the shared core
+| BrowserX | digitalme-agent |
+|----------|-----------------|
+| Complex state machine (RepublicAgent) | Simple request handler |
+| Multi-platform (extension, desktop, server) | Server only |
+| Single user (trusted) | Multi-tenant (fans untrusted) |
+| Session/Turn management | Stateless per-request |
+| Tool registry with risk assessment | Simple allowlist |
+| Approval workflows | Creator pre-approves |
+| MCP support | Future, with restrictions |
 
-### Why monorepo, not separate repos
+**BrowserX is ~15,000+ lines. digitalme-agent needs ~1,500 lines.**
 
-- **Shared engine improvements flow automatically** — new model providers, streaming fixes, MCP updates benefit both products in one PR.
-- **Boundary isn't proven yet** — we'll discover what belongs in core vs. shell as we build. Monorepo makes moves trivial; cross-repo moves require publish cycles.
-- **Forks rot** — duplicated code never converges back. Every bug fix becomes two patches.
-- **Workspace infrastructure exists** — `packages/ws-server` already works as a workspace package.
+The only code worth copying: **model clients** (OpenAI, Anthropic, etc.)
 
-### Why Path A (clean core first), not Path B (build agent first, converge later)
+### Why TypeScript
 
-- Duplicated code accumulates tech debt that never gets paid down.
-- The refactoring (removing platform code from core) is good hygiene regardless — `chrome.tabs` calls in core is a design smell.
-- DigitalMe provides the forcing function to do it now.
+| Consideration | TypeScript | Python | Rust |
+|---------------|------------|--------|------|
+| MCP servers available | ~100+ | ~20-30 | ~5-10 |
+| LLM SDK maturity | Good | Best | Limited |
+| BrowserX model clients | Ready to copy | Rewrite | Rewrite |
+| Development speed | Fast | Fast | Slower |
+| Concurrency for I/O | async/await | asyncio | Native threads |
+| Our workload (I/O bound) | Fine | Fine | Overkill |
+
+For I/O-bound LLM API calls, both TypeScript and Python have equivalent async models. TypeScript wins on MCP ecosystem and code reuse.
+
+### Core insight
+
+digitalme-agent is fundamentally a **stateless request handler**:
+
+```
+Fan message → Safety filter → LLM call → Stream response → Persist
+```
+
+Each request:
+1. Loads conversation history from DB
+2. Creates fresh agent instance
+3. Calls LLM with history + new message
+4. Streams response
+5. Persists to DB
+
+**No shared state between requests = isolation is automatic.**
 
 ---
 
@@ -55,1200 +83,642 @@ This document specifies how to:
 
 ### Goals
 
-- Extract a platform-agnostic `@browserx/core` package from the existing codebase
-- Build `digitalme-agent` MVP that implements the DigitalMe platform agent endpoint protocol in Docker/server mode only
-- Support per-fan conversation isolation with creator-controlled tool access
-- Enable creators to deploy agents via Docker with minimal configuration
-- Preserve BrowserX server functionality during the extraction
+- Build `digitalme-agent` from scratch as a new repository
+- **Docker/server mode only** — no browser extension, no desktop app
+- Implement the DigitalMe platform agent endpoint protocol
+- **Multi-tenant by design** — one deployment serves many fans
+- **Isolation by architecture** — not by access control checks
+- Per-fan conversation isolation with strict resource boundaries
+- Enable creators to deploy via Docker with minimal configuration
+- Ship MVP in days, not weeks
+- **Design for horizontal scaling** from day one
 
 ### Non-Goals
 
-- Rewriting BrowserX — this is a refactor + extraction, not a rewrite
-- Building a UI for digitalme-agent — the DigitalMe mobile app IS the UI
-- Supporting non-DigitalMe protocols in digitalme-agent (generic REST API, etc.)
-- Merging BrowserX server mode and digitalme-agent into one binary
-- Delivering extension/desktop parity as part of the MVP
-- Finalizing long-term storage backend choices beyond an MVP-safe default
+- Code sharing with BrowserX at package level
+- Browser extension or desktop app
+- Building a UI — the DigitalMe mobile app IS the UI
+- MCP support in MVP (future consideration)
+- Complex tool orchestration
+- Running untrusted creator code (MVP)
 
-### MVP scope boundary
+### Runtime constraint
 
-This document now targets the **MVP only**:
+**digitalme-agent runs as a headless Docker/Node.js server only.**
 
-- **In scope:** monorepo setup, shared runtime extraction, BrowserX server compatibility, DigitalMe Docker/server package, HMAC auth, SSE streaming, fan isolation, restart-safe persistence, strict tool restrictions
-- **Out of scope for MVP:** BrowserX extension refactor completion, BrowserX desktop refactor completion, creator dashboard APIs, Postgres migration, vector database migration, sandboxed browser automation
+The DigitalMe mobile app provides the user interface. The agent is a backend service that creators deploy and the platform connects to.
 
-The key implementation rule for MVP is: **do not block DigitalMe server delivery on fully cleaning up extension/desktop packaging**. Shared runtime extraction should proceed only as far as required to support BrowserX server mode plus DigitalMe.
+### MVP scope
+
+- **In scope:** HTTP server, HMAC auth, SSE streaming, multi-tenant isolation, conversation persistence, web search tool, Docker deployment
+- **Out of scope:** Creator dashboard, sandboxed browser, MCP, custom creator code, horizontal scaling infrastructure (but designed for it)
 
 ---
 
-## 3. Architecture
+## 3. User & Tenancy Model
 
-### Target monorepo structure
+### Deployment model
+
+**One agent instance per creator, serving many fans:**
 
 ```
-browserx/
-├── packages/
-│   ├── core/                         # @browserx/core — shared agent engine
-│   │   ├── src/
-│   │   │   ├── agent/                # RepublicAgent, TaskRunner, QueueProcessor
-│   │   │   ├── session/              # Session, SessionState, ActiveTurn, TurnManager
-│   │   │   ├── models/               # ModelClientFactory, all provider clients
-│   │   │   ├── tools/                # ToolRegistry, BaseTool (abstractions)
-│   │   │   ├── channels/             # ChannelAdapter, ChannelManager (interfaces)
-│   │   │   ├── protocol/             # Op, Event, ResponseItem, schemas, guards
-│   │   │   ├── mcp/                  # MCPManager (platform-agnostic parts)
-│   │   │   ├── storage/              # Abstract providers (interfaces only)
-│   │   │   ├── approval/             # Risk assessment framework
-│   │   │   ├── streaming/            # StreamProcessor, delta handling
-│   │   │   ├── compact/              # History compaction
-│   │   │   ├── config/               # AgentConfig, types, defaults
-│   │   │   ├── prompts/              # PromptComposer
-│   │   │   ├── types/                # Shared type definitions
-│   │   │   ├── utils/                # Shared utilities
-│   │   │   └── platform/             # Platform abstraction interfaces (NEW)
-│   │   │       ├── TabProvider.ts
-│   │   │       ├── NotificationProvider.ts
-│   │   │       ├── MCPBridgeProvider.ts
-│   │   │       └── StorageProviderFactory.ts
-│   │   ├── package.json
-│   │   └── tsconfig.json
+┌─────────────────────────────────────────────────────────────────┐
+│              ONE Agent Instance (per Creator)                    │
+│                                                                  │
+│   ┌─────────────────────────────────────────────────────────┐   │
+│   │                   Shared Runtime                         │   │
+│   │  • HTTP server (stateless)                               │   │
+│   │  • Model client (stateless API calls)                    │   │
+│   │  • Persona config (read-only)                            │   │
+│   │  • Tool definitions (read-only)                          │   │
+│   └─────────────────────────────────────────────────────────┘   │
+│                              │                                   │
+│              ┌───────────────┼───────────────┐                  │
+│              ▼               ▼               ▼                  │
+│         Request A       Request B       Request C               │
+│         (Fan A)         (Fan B)         (Fan A)                 │
+│              │               │               │                  │
+│              ▼               ▼               ▼                  │
+│   ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
+│   │ Agent inst.  │  │ Agent inst.  │  │ Agent inst.  │         │
+│   │ (ephemeral)  │  │ (ephemeral)  │  │ (ephemeral)  │         │
+│   │              │  │              │  │              │         │
+│   │ History from │  │ History from │  │ History from │         │
+│   │ conv_id=aaa  │  │ conv_id=bbb  │  │ conv_id=ccc  │         │
+│   └──────────────┘  └──────────────┘  └──────────────┘         │
+│              │               │               │                  │
+│              └───────────────┴───────────────┘                  │
+│                              │                                   │
+│                              ▼                                   │
+│   ┌─────────────────────────────────────────────────────────┐   │
+│   │                   Shared Storage                         │   │
+│   │  • SQLite/Postgres (all conversations, all fans)         │   │
+│   │  • Isolated by conversation_id in queries                │   │
+│   └─────────────────────────────────────────────────────────┘   │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Resource allocation
+
+| What | How many |
+|------|----------|
+| Docker container | 1 per creator |
+| HTTP server | 1 per container |
+| Database | 1 per container (all fans' data) |
+| Agent instance | 1 per request (ephemeral, GC'd after) |
+| Fans | Many, sharing the same container |
+
+### Three principals
+
+| Principal | Role | Trust level |
+|-----------|------|-------------|
+| **Creator** | Configures agent at deploy time | Trusted — full control |
+| **Platform** | Routes messages, enforces auth | Trusted intermediary |
+| **Fan** | Sends messages, receives responses | **Untrusted — sandboxed tenant** |
+
+### What fans CAN do
+
+- Start new conversations
+- Send messages in their conversations
+- View their own conversation history
+- Use creator-approved tools (within sandbox)
+
+### What fans CANNOT do
+
+| Forbidden action | Why | Enforcement |
+|------------------|-----|-------------|
+| See other fans' conversations | Privacy | DB queries scoped by `fan_user_id` |
+| Access creator's resources | Security | No filesystem/shell/browser tools |
+| Modify agent behavior | Security | System prompt is read-only |
+| Bypass rate limits | Fairness | Rate limit by `fan_user_id` |
+| Execute arbitrary tools | Security | Tool allowlist, no dynamic registration |
+| Inject prompts | Security | Input filtering |
+| Access agent internals | Security | Only expose text responses via SSE |
+
+---
+
+## 4. Architecture
+
+### Repository structure
+
+```
+digitalme-agent/
+├── src/
+│   ├── index.ts                 # Entry point
+│   ├── server.ts                # Hono HTTP server
 │   │
-│   ├── browserx/                     # BrowserX — personal assistant
-│   │   ├── src/
-│   │   │   ├── extension/            # Chrome extension shell
-│   │   │   ├── desktop/              # Tauri desktop shell
-│   │   │   ├── server/               # WebSocket server shell
-│   │   │   ├── tools/                # Browser tools (DOM, CDP, screenshots)
-│   │   │   ├── webfront/             # Svelte UI
-│   │   │   └── platform/             # Platform interface implementations
-│   │   │       ├── ChromeTabProvider.ts
-│   │   │       ├── ChromeNotificationProvider.ts
-│   │   │       ├── TauriMCPBridge.ts
-│   │   │       ├── RustMCPBridge.ts
-│   │   │       └── storage/          # IndexedDB, Tauri, SQLite providers
-│   │   ├── package.json              # depends on @browserx/core
-│   │   └── tsconfig.json
+│   ├── routes/
+│   │   ├── health.ts            # GET /health
+│   │   ├── verify.ts            # POST /verify
+│   │   └── conversations.ts     # Conversation endpoints
 │   │
-│   ├── digitalme-agent/              # DigitalMe — external-facing agent (NEW)
-│   │   ├── src/
-│   │   │   ├── server/               # HTTP server (REST+SSE)
-│   │   │   │   ├── index.ts          # Entry point
-│   │   │   │   ├── routes/           # DigitalMe protocol endpoints
-│   │   │   │   │   ├── health.ts
-│   │   │   │   │   ├── verify.ts
-│   │   │   │   │   └── conversations.ts
-│   │   │   │   └── middleware/
-│   │   │   │       ├── hmac-auth.ts
-│   │   │   │       └── rate-limit.ts
-│   │   │   ├── auth/                 # HMAC-SHA256 verification
-│   │   │   │   └── hmac.ts
-│   │   │   ├── conversations/        # Per-fan session management
-│   │   │   │   ├── ConversationManager.ts
-│   │   │   │   ├── FanSessionAdapter.ts
-│   │   │   │   └── types.ts
-│   │   │   ├── persona/              # Creator persona configuration
-│   │   │   │   ├── PersonaConfig.ts
-│   │   │   │   └── PersonaPromptComposer.ts
-│   │   │   ├── safety/               # Fan input/output filtering
-│   │   │   │   ├── InputFilter.ts
-│   │   │   │   ├── OutputFilter.ts
-│   │   │   │   └── ToolAllowlist.ts
-│   │   │   ├── streaming/            # SSE response streaming
-│   │   │   │   └── SSEStreamAdapter.ts
-│   │   │   ├── storage/              # Fan-scoped persistence
-│   │   │   │   ├── ConversationStore.ts
-│   │   │   │   └── SQLiteProvider.ts
-│   │   │   └── platform/             # Platform interface implementations
-│   │   │       ├── NoOpTabProvider.ts
-│   │   │       ├── NoOpNotificationProvider.ts
-│   │   │       └── NodeMCPBridge.ts
-│   │   ├── config.example.yaml
-│   │   ├── Dockerfile
-│   │   ├── docker-compose.yml
-│   │   ├── package.json              # depends on @browserx/core
-│   │   └── tsconfig.json
+│   ├── middleware/
+│   │   ├── hmac.ts              # HMAC-SHA256 auth
+│   │   └── rate-limit.ts        # Per-fan rate limiting
 │   │
-│   └── ws-server/                    # @applepi/ws-server (existing)
+│   ├── agent/
+│   │   ├── Agent.ts             # Core agent (simple!)
+│   │   └── types.ts
+│   │
+│   ├── models/
+│   │   ├── index.ts             # Model client factory
+│   │   ├── openai.ts            # OpenAI client (from browserx)
+│   │   ├── anthropic.ts         # Anthropic client (from browserx)
+│   │   └── types.ts
+│   │
+│   ├── tools/
+│   │   ├── index.ts             # Tool registry (static allowlist)
+│   │   ├── web-search.ts        # Web search tool
+│   │   └── types.ts
+│   │
+│   ├── safety/
+│   │   ├── input-filter.ts      # Fan input validation
+│   │   └── output-filter.ts     # Response filtering
+│   │
+│   ├── storage/
+│   │   ├── db.ts                # Database interface
+│   │   ├── sqlite.ts            # SQLite implementation (MVP)
+│   │   ├── postgres.ts          # Postgres implementation (scale)
+│   │   └── types.ts
+│   │
+│   ├── streaming/
+│   │   └── sse.ts               # SSE formatting + heartbeat
+│   │
+│   └── config/
+│       ├── schema.ts            # Zod validation
+│       └── loader.ts            # YAML + env var loading
 │
-├── package.json                      # workspaces: ["packages/*"]
-├── tsconfig.base.json                # shared TS config
-└── turbo.json                        # build orchestration (optional)
+├── config.example.yaml
+├── Dockerfile
+├── docker-compose.yml
+├── package.json
+└── tsconfig.json
 ```
 
-### Dependency graph
+### What to copy from BrowserX
+
+Only model client implementations (~500 lines):
 
 ```
-@browserx/core (no platform dependencies)
-    ▲                    ▲
-    │                    │
-packages/browserx    packages/digitalme-agent
-(chrome, tauri,      (REST+SSE, HMAC auth,
- node platform       fan isolation,
- implementations)    persona config)
+browserx/src/core/models/
+├── OpenAIModelClient.ts      → digitalme-agent/src/models/openai.ts
+├── AnthropicModelClient.ts   → digitalme-agent/src/models/anthropic.ts
+├── GoogleModelClient.ts      → digitalme-agent/src/models/google.ts (optional)
+└── types.ts                  → digitalme-agent/src/models/types.ts
 ```
 
-Core depends on nothing platform-specific. Both shells depend on core and provide their own platform implementations via dependency injection.
+Simplify during copy:
+- Remove approval/risk assessment hooks
+- Remove BrowserX-specific event types
+- Keep streaming and tool call handling
 
 ---
 
-## 4. Phase 1: Core Extraction Refactoring
+## 5. Core Agent Design
 
-Before extracting `@browserx/core`, we must remove all platform-specific code from `src/core/`. This phase modifies the existing codebase in-place — no file moves yet.
+### Stateless design (like ChatGPT/Claude backends)
 
-### 4.1 Create platform abstraction interfaces
+The Agent is **completely stateless**. All conversation context is passed in via parameters, not stored in the instance. This matches how ChatGPT and Claude backends work at scale:
 
-Create new file: `src/core/platform/types.ts`
+```
+ChatGPT/Claude pattern:
+├── 100M+ users, 500M+ conversations
+├── Cannot keep agent instance per conversation (memory impossible)
+├── Solution: stateless servers + database
+│
+│   On each request:
+│   1. Load conversation history from DB
+│   2. Pass full context to LLM (LLM is also stateless)
+│   3. Stream response
+│   4. Persist to DB
+│   5. No server-side state kept
+```
+
+**Why stateless works:**
+- Agent state = System prompt + History + Tools
+- System prompt → Config (shared, read-only)
+- History → Database (loaded per request)
+- Tools → Config (shared, read-only)
+
+There's no "agent memory" beyond conversation history. The LLM receives full context on every call.
+
+**Implementation options:**
+
+| Approach | Code | Notes |
+|----------|------|-------|
+| Instance per request | `new Agent(config, client, tools)` | Clear isolation, easy testing |
+| Single shared instance | One `Agent` reused | Works because stateless |
+| Just a function | `chat(config, client, tools, history, msg)` | Simplest, obviously stateless |
+
+We use instance-per-request for clarity, but any approach works since there's no mutable state.
+
+### The Agent class
 
 ```typescript
-/**
- * Platform abstraction interfaces.
- * Core depends on these interfaces. Each platform provides implementations.
- */
+// src/agent/Agent.ts
 
-export interface TabProvider {
-  getTab(tabId: number): Promise<TabInfo | null>;
-  queryActiveTabs(): Promise<TabInfo[]>;
-  groupTabs(tabIds: number[], options?: TabGroupOptions): Promise<number>;
-  ungroupTabs(tabIds: number[]): Promise<void>;
-}
-
-export interface NotificationProvider {
-  create(id: string, options: NotificationOptions): Promise<void>;
-  clear(id: string): Promise<void>;
-  update(id: string, options: Partial<NotificationOptions>): Promise<void>;
-  onClicked(callback: (id: string) => void): void;
-}
-
-export interface MCPBridgeFactory {
-  createBridge(config: MCPBridgeConfig): MCPBridge;
-}
-
-export interface StorageProviderFactory {
-  createStorageProvider(): Promise<StorageProvider>;
-  createCredentialStore(): Promise<CredentialStore>;
-  createConfigStorage(): Promise<ConfigStorage>;
-  createRolloutStorageProvider(): Promise<RolloutStorageProvider>;
-}
-
-export interface PlatformContext {
-  readonly platformType: 'extension' | 'desktop' | 'server' | 'digitalme';
-  readonly tabProvider: TabProvider;
-  readonly notificationProvider: NotificationProvider;
-  readonly mcpBridgeFactory: MCPBridgeFactory;
-  readonly storageProviderFactory: StorageProviderFactory;
-}
-
-/** No-op defaults for platforms that don't need certain features */
-export class NoOpTabProvider implements TabProvider {
-  async getTab(): Promise<null> { return null; }
-  async queryActiveTabs(): Promise<TabInfo[]> { return []; }
-  async groupTabs(): Promise<number> { return -1; }
-  async ungroupTabs(): Promise<void> {}
-}
-
-export class NoOpNotificationProvider implements NotificationProvider {
-  async create(): Promise<void> {}
-  async clear(): Promise<void> {}
-  async update(): Promise<void> {}
-  onClicked(): void {}
-}
-```
-
-### 4.2 Remove `__BUILD_MODE__` from core (23+ locations)
-
-Each file needs its platform branching replaced with calls to the injected `PlatformContext`.
-
-#### 4.2.1 `src/core/storage/index.ts` (lines 77-165)
-
-**Current:** Three factory functions with `__BUILD_MODE__` switches for StorageProvider, CredentialStore, ConfigStorage.
-
-**Change:** Replace with delegation to `PlatformContext.storageProviderFactory`:
-
-```typescript
-// BEFORE
-export async function createStorageProvider(): Promise<StorageProvider> {
-  if (__BUILD_MODE__ === 'extension') {
-    const { IndexedDBStorageProvider } = await import('...');
-    return new IndexedDBStorageProvider();
-  }
-  // ...
-}
-
-// AFTER
-import { getPlatformContext } from '../platform';
-
-export async function createStorageProvider(): Promise<StorageProvider> {
-  return getPlatformContext().storageProviderFactory.createStorageProvider();
-}
-```
-
-Apply the same pattern for `createCredentialStore()` and `createConfigStorage()`.
-
-#### 4.2.2 `src/core/RepublicAgent.ts` (lines 173, 465, 475, 587, 611)
-
-**Current:** Five `__BUILD_MODE__` checks for:
-- Line 173: Agent type selection (`'applepi'` vs `'browserx'`)
-- Line 465: Server-mode sentinel tabId
-- Line 475: Desktop MCP setup
-- Line 587: Extension-only tab validation
-- Line 611: Platform-specific tab handling
-
-**Change:** Replace with `PlatformContext`:
-
-```typescript
-// BEFORE
-const agentType = (__BUILD_MODE__ === 'desktop') ? 'applepi' : 'browserx';
-
-// AFTER
-const agentType = this.platformContext.platformType === 'desktop' ? 'applepi' : 'browserx';
-```
-
-For tab handling, delegate to `TabProvider`:
-
-```typescript
-// BEFORE
-if (__BUILD_MODE__ !== 'desktop' && __BUILD_MODE__ !== 'server') {
-  // Extension-only tab validation via TabManager
-}
-
-// AFTER
-const tab = await this.platformContext.tabProvider.getTab(tabId);
-if (!tab) {
-  // Handle no-tab case (server, digitalme)
-}
-```
-
-#### 4.2.3 `src/core/messaging/index.ts` (lines 46-53)
-
-**Current:** Transport selection via `__BUILD_MODE__`.
-
-**Change:** Transport must be provided by the platform bootstrap, not selected in core. Make `createTransport()` accept a factory or remove it entirely — each platform creates its own transport and passes it in.
-
-#### 4.2.4 `src/core/mcp/MCPManager.ts` (lines 71-74, 533)
-
-**Current:** Platform detection in constructor, server-specific NodeMCPBridge creation.
-
-**Change:** Accept `MCPBridgeFactory` via constructor injection:
-
-```typescript
-// BEFORE
-if (__BUILD_MODE__ === 'server') {
-  const { NodeMCPBridge } = await import('@/server/mcp/NodeMCPBridge');
-  bridge = new NodeMCPBridge(config);
-}
-
-// AFTER
-bridge = this.mcpBridgeFactory.createBridge(config);
-```
-
-#### 4.2.5 `src/core/mcp/transports/index.ts` (line 90)
-
-**Current:** `return __BUILD_MODE__ === 'desktop' ? 'stdio' : 'sse'`
-
-**Change:** Accept default transport type from `PlatformContext`:
-
-```typescript
-export function getDefaultTransportType(platformType: string): 'stdio' | 'sse' {
-  return platformType === 'desktop' ? 'stdio' : 'sse';
-}
-```
-
-#### 4.2.6 `src/core/a2a/A2AManager.ts` (lines 72-76)
-
-**Current:** Constructor platform detection with nested ternaries.
-
-**Change:** Accept platform type from `PlatformContext`.
-
-#### 4.2.7 `src/core/PromptLoader.ts` (line 85)
-
-**Current:** `__BUILD_MODE__` check to select default prompt.
-
-**Change:** Accept agent type / prompt selection from `PlatformContext.platformType`.
-
-#### 4.2.8 `src/core/tools/browser/index.ts` (lines 29, 61)
-
-**Current:** `__BUILD_MODE__ === 'extension'` for browser controller creation.
-
-**Change:** Browser controller must be injected, not created by core. The tools/browser module should accept a `DebuggerClient` interface, not create one.
-
-### 4.3 Remove Chrome APIs from core (3 files, 20+ lines)
-
-#### 4.3.1 `src/core/TurnManager.ts` (lines 816-817, 965-967, 980-982)
-
-**Current:** Direct `chrome.tabs.get(tabId)` and `chrome.tabs.query()` calls.
-
-**Change:** Use injected `TabProvider`:
-
-```typescript
-// BEFORE
-if (tabId && tabId > 0 && typeof chrome !== 'undefined' && chrome.tabs) {
-  const tab = await chrome.tabs.get(tabId);
-}
-
-// AFTER
-const tab = await this.platformContext.tabProvider.getTab(tabId);
-```
-
-#### 4.3.2 `src/core/UserNotifier.ts` (lines 92-596)
-
-**Current:** 10+ direct `chrome.notifications.*` calls.
-
-**Change:** Use injected `NotificationProvider`:
-
-```typescript
-// BEFORE
-chrome.notifications.create(notification.id, chromeOptions, callback);
-
-// AFTER
-await this.platformContext.notificationProvider.create(notification.id, options);
-```
-
-#### 4.3.3 `src/core/registry/AgentSession.ts` (lines 295-414)
-
-**Current:** 10+ direct `chrome.tabs.*` and `chrome.tabGroups.*` calls.
-
-**Change:** Use injected `TabProvider`:
-
-```typescript
-// BEFORE
-const groupId = await chrome.tabs.group({ tabIds: this._metadata.tabId });
-await chrome.tabGroups.update(groupId, { title, color, collapsed });
-
-// AFTER
-const groupId = await this.platformContext.tabProvider.groupTabs([this._metadata.tabId], { title, color, collapsed });
-```
-
-### 4.4 Remove Tauri APIs from core (3 files, 10+ lines)
-
-#### 4.4.1 `src/core/messaging/transports/TauriTransport.ts`
-
-**Change:** Move to `packages/browserx/src/platform/`. Core should not contain platform-specific transport implementations. The transport interface stays in core; the Tauri implementation moves out.
-
-#### 4.4.2 `src/core/mcp/RustMCPBridge.ts` (8 Tauri invoke calls)
-
-**Change:** Move to `packages/browserx/src/platform/`. MCPManager uses `MCPBridgeFactory` interface; `RustMCPBridge` is the desktop implementation.
-
-#### 4.4.3 `src/core/mcp/MCPManager.ts` (line 581)
-
-**Change:** Already covered by 4.2.4 — delegate to `MCPBridgeFactory`.
-
-### 4.5 Break circular dependency: config ↔ core
-
-**Current state:**
-- `src/config/AgentConfig.ts` imports from `src/core/storage/ConfigStorageProvider`
-- `src/config/AgentConfig.ts` imports from `src/core/approval/types`
-- `src/core/RepublicAgent.ts`, `Session.ts`, `TurnManager.ts` all import from `src/config/`
-
-**Solution:** Merge `src/config/` into core. Config is small (~5 files) and tightly coupled to core. The circular dependency exists because they're artificially separated.
-
-Move:
-- `src/config/AgentConfig.ts` → `src/core/config/AgentConfig.ts`
-- `src/config/types.ts` → `src/core/config/types.ts`
-- `src/config/defaults.ts` → `src/core/config/defaults.ts`
-- `src/config/validators.ts` → `src/core/config/validators.ts`
-
-Update all imports accordingly.
-
-### 4.6 Convert RolloutRecorder to pure dependency injection
-
-**Current:** `RolloutRecorder.getProvider()` calls `createRolloutStorageProvider()` which uses `__BUILD_MODE__`.
-
-**Change:** Remove lazy factory initialization. Require `setProvider()` before any use.
-
-```typescript
-// BEFORE (in RolloutRecorder.ts, lines 60-75)
-static async getProvider(): Promise<RolloutStorageProvider> {
-  if (!RolloutRecorder._provider) {
-    if (!RolloutRecorder._providerPromise) {
-      RolloutRecorder._providerPromise = createRolloutStorageProvider().then(...)
-    }
-  }
-}
-
-// AFTER
-static async getProvider(): Promise<RolloutStorageProvider> {
-  if (!RolloutRecorder._provider) {
-    throw new Error('RolloutStorageProvider not initialized. Call RolloutRecorder.setProvider() at startup.');
-  }
-  return RolloutRecorder._provider;
-}
-```
-
-Each platform bootstrap calls `setProvider()`:
-- Extension: `RolloutRecorder.setProvider(new IndexedDBRolloutStorageProvider())` (already does this)
-- Desktop: `RolloutRecorder.setProvider(new TauriRolloutStorageProvider())`
-- Server: `RolloutRecorder.setProvider(new TSRolloutStorageProvider(dataDir))`
-- DigitalMe: `RolloutRecorder.setProvider(new FanConversationStorageProvider(dataDir))`
-
-Delete `src/storage/rollout/provider/createRolloutStorageProvider.ts` entirely.
-
-### 4.7 Move `registerPlatformTools` out of core imports
-
-**Current:** `RepublicAgent.ts` line 21 imports `registerPlatformTools` from `../tools/registerPlatformTools`.
-
-**Change:** `registerPlatformTools` is platform-specific (registers different tools per build mode). It should be called by the platform bootstrap and the resulting `ToolRegistry` passed into `RepublicAgent`.
-
-```typescript
-// BEFORE (in RepublicAgent.ts)
-import { registerPlatformTools } from '../tools/registerPlatformTools';
-// ... later in initialize():
-await registerPlatformTools(this.toolRegistry);
-
-// AFTER
-// RepublicAgent receives a pre-configured ToolRegistry
-constructor(config: AgentConfig, options: AgentOptions) {
-  this.toolRegistry = options.toolRegistry; // already has platform tools registered
-}
-```
-
-### 4.8 Remove `__BUILD_MODE__` from `src/config/AgentConfig.ts`
-
-**Current:** Line 76 checks `__BUILD_MODE__ === 'extension'` for approval config migration.
-
-**Change:** After merging config into core (4.5), accept platform type from `PlatformContext`:
-
-```typescript
-if (platformContext.platformType === 'extension') {
-  await this.migrateApprovalConfig();
-}
-```
-
-### 4.9 Fix storage/rollout importing from core/title
-
-**Current:** `src/storage/rollout/RolloutRecorder.ts` imports `generatePlaceholderTitle` from `../../core/title`.
-
-**Change:** Move `generatePlaceholderTitle` into the storage/rollout module, or into a shared utils module. It's a pure function with no dependencies — it doesn't need to live in core/title.
-
-### 4.10 Validation
-
-After all refactoring:
-
-- `src/core/` must contain **zero** occurrences of:
-  - `__BUILD_MODE__`
-  - `chrome.` (browser API)
-  - `@tauri-apps`
-  - imports from `../extension/`, `../desktop/`, `../server/`
-- All existing tests must pass
-- All three builds (extension, desktop, server) must work
-
-Run verification:
-
-```bash
-# No platform APIs in core
-grep -r "__BUILD_MODE__" src/core/ && echo "FAIL" || echo "PASS"
-grep -r "chrome\." src/core/ --include="*.ts" | grep -v "// " | grep -v "test" && echo "FAIL" || echo "PASS"
-grep -r "@tauri-apps" src/core/ && echo "FAIL" || echo "PASS"
-
-# All tests pass
-npm test
-
-# All builds succeed
-npm run build:extension
-npm run build:desktop
-npm run build:server
-```
-
----
-
-## 5. Phase 2: Monorepo Setup
-
-After Phase 1, core is platform-agnostic. Now we move files into the workspace structure.
-
-### 5.1 Create shared TypeScript config
-
-Create `tsconfig.base.json` at repo root:
-
-```json
-{
-  "compilerOptions": {
-    "target": "ES2020",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "composite": true
-  }
-}
-```
-
-### 5.2 Create `packages/core/`
-
-```bash
-mkdir -p packages/core/src
-```
-
-Move files:
-
-```
-src/core/**          → packages/core/src/          # Agent engine
-src/config/**        → packages/core/src/config/   # Already merged in Phase 1
-src/types/**         → packages/core/src/types/
-src/utils/**         → packages/core/src/utils/
-src/prompts/**       → packages/core/src/prompts/
-src/tools/BaseTool.ts        → packages/core/src/tools/BaseTool.ts
-src/tools/ToolRegistry.ts    → packages/core/src/tools/ToolRegistry.ts
-src/tools/WebSearchTool.ts   → packages/core/src/tools/WebSearchTool.ts
-src/storage/rollout/RolloutRecorder.ts    → packages/core/src/storage/rollout/
-src/storage/rollout/RolloutWriter.ts      → packages/core/src/storage/rollout/
-src/storage/rollout/types.ts              → packages/core/src/storage/rollout/
-src/storage/rollout/listing.ts            → packages/core/src/storage/rollout/
-src/storage/rollout/cleanup.ts            → packages/core/src/storage/rollout/
-src/storage/rollout/helpers.ts            → packages/core/src/storage/rollout/
-src/storage/rollout/policy.ts             → packages/core/src/storage/rollout/
-src/storage/rollout/provider/RolloutStorageProvider.ts  → packages/core/src/storage/rollout/provider/
-src/storage/TokenUsageStore.ts            → packages/core/src/storage/
-src/storage/ConfigStorage.ts              → packages/core/src/storage/
-src/storage/CacheManager.ts              → packages/core/src/storage/
-```
-
-Do NOT move:
-- `src/storage/rollout/provider/createRolloutStorageProvider.ts` (deleted in Phase 1)
-- `src/storage/rollout/provider/IndexedDBRolloutStorageProvider.ts` → stays in `packages/browserx/`
-- `src/storage/rollout/provider/TauriRolloutStorageProvider.ts` → stays in `packages/browserx/`
-- `src/storage/rollout/provider/TSRolloutStorageProvider.ts` → stays in `packages/browserx/`
-
-Create `packages/core/package.json`:
-
-```json
-{
-  "name": "@browserx/core",
-  "version": "0.1.0",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": "./dist/index.js",
-    "./*": "./dist/*.js"
-  },
-  "scripts": {
-    "build": "tsc -b",
-    "test": "vitest run"
-  },
-  "dependencies": {
-    "uuid": "^13.0.0",
-    "zod": "^3.23.8"
-  },
-  "peerDependencies": {
-    "openai": "^4.0.0"
-  }
-}
-```
-
-Create `packages/core/tsconfig.json`:
-
-```json
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": "./src"
-  },
-  "include": ["src/**/*"]
-}
-```
-
-### 5.3 Move BrowserX into `packages/browserx/`
-
-Move remaining source:
-
-```
-src/extension/**     → packages/browserx/src/extension/
-src/desktop/**       → packages/browserx/src/desktop/
-src/server/**        → packages/browserx/src/server/
-src/tools/**         → packages/browserx/src/tools/     (except what moved to core)
-src/webfront/**      → packages/browserx/src/webfront/
-src/storage/rollout/provider/{IndexedDB,Tauri,TS}*.ts → packages/browserx/src/storage/
-```
-
-Create `packages/browserx/package.json`:
-
-```json
-{
-  "name": "@browserx/app",
-  "version": "0.1.0",
-  "type": "module",
-  "dependencies": {
-    "@browserx/core": "workspace:*",
-    "@applepi/ws-server": "workspace:*"
-  }
-}
-```
-
-### 5.4 Update all imports (569 `@/` alias imports across 212 files)
-
-This is the largest mechanical change. Strategy:
-
-1. In `packages/core/`, replace all `@/core/` → relative imports within the package
-2. In `packages/core/`, replace `@/config/`, `@/types/`, `@/utils/`, `@/prompts/`, `@/storage/` → relative imports (these are now inside core)
-3. In `packages/browserx/`, replace `@/core/` → `@browserx/core`
-4. In `packages/browserx/`, keep `@/` aliases for within-package imports, update tsconfig paths
-
-Automate with a codemod script:
-
-```bash
-# Example: replace @/core/ imports in packages/browserx/
-find packages/browserx/src -name "*.ts" -exec sed -i \
-  "s|from '@/core/|from '@browserx/core/|g" {} \;
-```
-
-### 5.5 Update Vite configs
-
-Each build target keeps its own vite config but with updated paths:
-
-- `vite.config.mjs` (extension) → `packages/browserx/vite.config.extension.mjs`
-- `vite.config.desktop.mts` → `packages/browserx/vite.config.desktop.mts`
-- `vite.config.server.mts` → `packages/browserx/vite.config.server.mts`
-
-Key changes in each:
-- Update `resolve.alias` to point to new package locations
-- Remove `__BUILD_MODE__` from `@browserx/core` bundle (it's no longer used there)
-- Keep `__BUILD_MODE__` in `packages/browserx/` build configs for platform bootstrap code
-
-### 5.6 Update build scripts
-
-Update `scripts/build.js` paths from `src/` to `packages/browserx/src/`.
-
-### 5.7 Update test configs
-
-Update `vitest.config.mjs`:
-
-```typescript
-resolve: {
-  alias: {
-    '@browserx/core': resolve(__dirname, 'packages/core/src'),
-    '@': resolve(__dirname, 'packages/browserx/src'),
-  }
-}
-```
-
-### 5.8 Validation
-
-```bash
-# Workspace resolution works
-npm install
-
-# Core builds independently
-cd packages/core && npm run build
-
-# All BrowserX builds work
-npm run build:extension
-npm run build:desktop
-npm run build:server
-
-# All tests pass
-npm test
-```
-
----
-
-## 6. Phase 3: DigitalMe Agent Implementation
-
-### 6.1 Package setup
-
-Create `packages/digitalme-agent/package.json`:
-
-```json
-{
-  "name": "@browserx/digitalme-agent",
-  "version": "0.1.0",
-  "type": "module",
-  "main": "./dist/index.js",
-  "bin": {
-    "digitalme-agent": "./dist/index.js"
-  },
-  "scripts": {
-    "build": "tsc -b && vite build",
-    "start": "node dist/index.js",
-    "dev": "tsx src/server/index.ts"
-  },
-  "dependencies": {
-    "@browserx/core": "workspace:*",
-    "better-sqlite3": "^11.0.0",
-    "uuid": "^13.0.0",
-    "zod": "^3.23.8"
-  }
-}
-```
-
-### 6.1.1 MVP runtime constraints
-
-For MVP, `digitalme-agent` is a **headless Node server only**:
-
-- No Chrome extension shell
-- No desktop/Tauri shell
-- No creator-local browser control
-- No file system or shell execution tools exposed to fan traffic
-- No arbitrary MCP server spawning from unreviewed config
-
-This package may reuse BrowserX server-mode runtime pieces, but it is a distinct binary with its own config, auth, storage, and safety policy.
-
-### 6.2 Server entry point
-
-`packages/digitalme-agent/src/server/index.ts`:
-
-HTTP server (Node.js `http` module or lightweight framework like Hono) exposing:
-
-| Method | Path | Purpose |
-|--------|------|---------|
-| `GET` | `/health` | Health check |
-| `POST` | `/verify` | HMAC challenge verification |
-| `POST` | `/conversations` | Create conversation |
-| `GET` | `/conversations` | List conversations (query: `fan_user_id`) |
-| `GET` | `/conversations/:id/messages` | Get message history |
-| `POST` | `/conversations/:id/messages` | Send message (SSE stream response) |
-
-All endpoints except `/health` are protected by HMAC-SHA256 middleware.
-
-The server must also enforce:
-
-- request body size limits
-- per-fan rate limiting
-- request idempotency for side-effecting POSTs
-- SSE heartbeat/flush behavior so the platform does not treat slow responses as dead connections
-
-### 6.3 HMAC authentication
-
-`packages/digitalme-agent/src/auth/hmac.ts`:
-
-```typescript
-import { createHmac, timingSafeEqual } from 'crypto';
-
-export function verifyHMAC(
-  signingSecret: string,
-  timestamp: string,
-  body: string,
-  receivedSignature: string
-): boolean {
-  const message = `${timestamp}:${body}`;
-  const expected = createHmac('sha256', signingSecret)
-    .update(message)
-    .digest('hex');
-
-  // Timing-safe comparison
-  if (expected.length !== receivedSignature.length) return false;
-  return timingSafeEqual(
-    Buffer.from(expected),
-    Buffer.from(receivedSignature)
-  );
-}
-```
-
-Middleware extracts `X-DigitalMe-Key`, `X-DigitalMe-Signature`, `X-DigitalMe-Timestamp` headers and verifies against stored credentials.
-
-For MVP, the middleware must additionally enforce:
-
-- timestamp skew window, default `±300s`
-- replay/idempotency cache keyed by `(api_key, signature)` or explicit request id
-- canonical body handling: HMAC is computed from the raw request body bytes, not re-serialized JSON
-
-### 6.3.1 Idempotency and replay handling
-
-Platform retries make `POST /conversations` and `POST /conversations/:id/messages` unsafe unless the agent deduplicates requests.
-
-MVP requirement:
-
-- Every side-effecting request must carry a stable idempotency key.
-- Preferred: platform sends `X-DigitalMe-Request-Id`.
-- Fallback: derive a replay key from `(api_key, timestamp, signature)` and reject duplicates within the replay window.
-
-Behavior:
-
-- If the same `POST /conversations` request is retried, return the original conversation response without creating a second conversation.
-- If the same `POST /messages` request is retried after processing started, do not create a second fan message or execute tools twice.
-- Store replay metadata in persistent storage so a short server restart does not drop dedupe protection immediately.
-
-### 6.4 Conversation manager
-
-`packages/digitalme-agent/src/conversations/ConversationManager.ts`:
-
-Maps the DigitalMe conversation model to BrowserX shared runtime sessions:
-
-```typescript
-import { RepublicAgent } from '@browserx/core/agent/RepublicAgent';
-import { Session } from '@browserx/core/session/Session';
-
-export class ConversationManager {
-  private activeRuntimes: Map<string, RepublicAgent> = new Map(); // conversationId → runtime
-
-  async createConversation(fanUserId: string): Promise<string> {
-    const conversationId = uuid();
-    const agent = await this.createRuntimeForConversation(conversationId, fanUserId);
-    await this.store.createConversation(conversationId, fanUserId);
-    this.activeRuntimes.set(conversationId, agent);
-    return conversationId;
-  }
-
-  async getOrCreateRuntime(conversationId: string, fanUserId: string): Promise<RepublicAgent> {
-    const existing = this.activeRuntimes.get(conversationId);
-    if (existing) return existing;
-
-    const conversation = await this.store.getConversation(conversationId);
-    if (!conversation) throw new ConversationNotFoundError(conversationId);
-    if (conversation.fanUserId !== fanUserId) throw new ConversationAccessDeniedError();
-
-    const agent = await this.createRuntimeForConversation(conversationId, fanUserId);
-    await this.resumeConversationState(agent, conversationId);
-    this.activeRuntimes.set(conversationId, agent);
-    return agent;
-  }
-
-  private async createRuntimeForConversation(
-    conversationId: string,
-    fanUserId: string
-  ): Promise<RepublicAgent> {
-    const agent = new RepublicAgent(this.config, {
-      toolRegistry: this.createFanToolRegistry(),
-      platformContext: this.platformContext,
-      sessionMetadata: { conversationId, fanUserId, principalType: 'fan' },
-    });
-    await agent.initialize();
-    return agent;
-  }
-
-  async sendMessage(
-    conversationId: string,
-    fanUserId: string,
-    content: string
-  ): AsyncGenerator<SSEEvent> {
-    const agent = await this.getOrCreateRuntime(conversationId, fanUserId);
-
-    // Safety filter on input
-    const filtered = await this.inputFilter.filter(content);
-    if (filtered.blocked) throw new InputBlockedError(filtered.reason);
-
-    // Submit to agent
-    const op: Op = {
-      type: 'UserTurn',
-      items: [{ type: 'text', text: filtered.content }],
-      tabId: 0,   // No tab concept for digitalme
-      approval_policy: 'never',  // Creator pre-approved tools
-      sandbox_policy: this.persona.sandboxPolicy,
-      model: this.persona.model,
-      effort: this.persona.reasoningEffort,
-      summary: { enabled: false },
-    };
-
-    // Persist the inbound message before execution using an idempotent write.
-    await this.store.appendFanMessage({ conversationId, fanUserId, content: filtered.content });
-
-    // Collect events and yield SSE
-    yield* this.streamAgentResponse(agent, op);
-  }
-}
-```
-
-### 6.5 Fan session adapter
-
-`packages/digitalme-agent/src/conversations/FanSessionAdapter.ts`:
-
-Adapts browserx sessions for per-fan isolation:
-
-- Each conversation has durable stored state and can be lazily rehydrated into a runtime after process restart
-- A live `RepublicAgent` instance is an in-memory execution cache, not the source of truth
-- Session history is scoped to `(fan_user_id, conversation_id)`
-- Creator persona prompt is shared, prepended to every session
-- Tool registry is creator-configured, same for all fans
-
-MVP rule: do not introduce runtime pooling until single-conversation rehydration is correct and idempotent.
-
-### 6.6 SSE stream adapter
-
-`packages/digitalme-agent/src/streaming/SSEStreamAdapter.ts`:
-
-Converts browserx `EventMsg` to DigitalMe SSE format:
-
-```typescript
-export function eventToSSE(event: EventMsg): SSEEvent | null {
-  switch (event.type) {
-    case 'AgentMessageDelta':
-      return {
-        type: 'text_delta',
-        content: event.data.delta,
-      };
-    case 'TaskComplete':
-      return { type: 'done' };
-    case 'Error':
-    case 'TaskFailed':
-      return { type: 'done', status: 'error' };
-    default:
-      // Internal events (tool execution, reasoning, etc.) — don't expose to fans
-      return null;
-  }
-}
-```
-
-MVP streaming requirements:
-
-- flush each SSE event immediately
-- emit heartbeat comments every few seconds during long tool/model waits
-- terminate with exactly one final `done`
-- on disconnect, stop further writes and mark the run state so retries can be handled safely
-
-### 6.7 Persona configuration
-
-`packages/digitalme-agent/src/persona/PersonaConfig.ts`:
-
-```typescript
-export interface PersonaConfig {
-  name: string;
+export interface AgentConfig {
   systemPrompt: string;
-  model: string;                        // e.g. 'gpt-4o', 'claude-sonnet-4-6'
-  modelProvider: ModelProvider;          // e.g. 'openai', 'anthropic'
-  reasoningEffort?: ReasoningEffortConfig;
-
-  // Tool access control
-  tools: {
-    allowWebSearch: boolean;
-    allowBrowser: boolean;              // Reserved for future sandboxed browser support
-    mcpServers?: MCPServerConfig[];     // Restricted MVP allowlist only
-    customTools?: ToolDefinition[];
-  };
-
-  // Safety
-  safety: {
-    blockedTopics?: string[];
-    maxResponseLength?: number;
-    outputModeration: boolean;
-  };
-
-  // Sandbox policy — enforced for ALL fan interactions
-  sandboxPolicy: SandboxPolicy;
+  model: string;
+  modelProvider: 'openai' | 'anthropic';
+  maxTurns?: number;  // Prevent infinite tool loops
 }
-```
 
-Loaded from `config.yaml`:
+/**
+ * Agent is stateless - all conversation context is passed in via parameters.
+ * A new instance can be created per request, or a single instance can be
+ * shared across requests since there is no mutable state.
+ *
+ * This design matches how ChatGPT/Claude backends work at scale:
+ * - No per-user agent instances
+ * - No per-conversation agent instances
+ * - History loaded from DB on each request
+ * - LLM receives full context each time
+ */
+export class Agent {
+  private readonly modelClient: ModelClient;   // Shared, stateless API client
+  private readonly tools: Tool[];              // Shared, read-only definitions
+  private readonly config: AgentConfig;        // Shared, read-only config
 
-```yaml
-persona:
-  name: "Alice's Digital Self"
-  system_prompt: |
-    You are Alice's digital representative. You help Alice's fans
-    learn about her work, answer questions about her content, and
-    assist with general inquiries. You are friendly, knowledgeable,
-    and always represent Alice's values.
+  constructor(config: AgentConfig, modelClient: ModelClient, tools: Tool[]) {
+    this.config = config;
+    this.modelClient = modelClient;
+    this.tools = tools;
+  }
 
-    You do NOT have access to Alice's personal accounts, files, or
-    devices. You cannot make purchases, send messages, or take
-    actions on Alice's behalf.
-  model: gpt-4o
-  model_provider: openai
+  async *chat(history: Message[], userMessage: string): AsyncGenerator<AgentEvent> {
+    const messages: ChatMessage[] = [
+      { role: 'system', content: this.config.systemPrompt },
+      ...this.formatHistory(history),
+      { role: 'user', content: userMessage },
+    ];
 
-  tools:
-    allow_web_search: true
-    allow_browser: false
-    mcp_servers: []
+    let turns = 0;
+    const maxTurns = this.config.maxTurns ?? 10;
 
-  safety:
-    blocked_topics: ["financial advice", "medical advice"]
-    max_response_length: 4000
-    output_moderation: true
+    while (turns < maxTurns) {
+      turns++;
 
-server:
-  port: 8080
-  hmac:
-    api_key: ${DIGITALME_API_KEY}
-    signing_secret: ${DIGITALME_SIGNING_SECRET}
+      const response = await this.modelClient.chat({
+        model: this.config.model,
+        messages,
+        tools: this.tools.map(t => t.definition),
+        stream: true,
+      });
 
-storage:
-  data_dir: ./data
-  max_conversations_per_fan: 10
-  message_retention_days: 90
-```
+      // Stream text response
+      if (response.type === 'text') {
+        for await (const chunk of response.stream) {
+          yield { type: 'text_delta', content: chunk };
+        }
+        yield { type: 'done' };
+        return;
+      }
 
-### 6.8 Safety layer
+      // Handle tool calls (ReAct loop)
+      if (response.type === 'tool_calls') {
+        for (const call of response.toolCalls) {
+          yield { type: 'tool_start', name: call.name };
 
-`packages/digitalme-agent/src/safety/InputFilter.ts`:
+          const tool = this.tools.find(t => t.name === call.name);
+          if (!tool) {
+            throw new Error(`Unknown tool: ${call.name}`);
+          }
 
-```typescript
-export class InputFilter {
-  constructor(private config: PersonaConfig['safety']) {}
+          const result = await tool.execute(call.arguments);
+          yield { type: 'tool_end', name: call.name };
 
-  async filter(content: string): Promise<FilterResult> {
-    // Length check
-    if (content.length > 4000) {
-      return { blocked: true, reason: 'message_too_long' };
-    }
-
-    // Blocked topics
-    for (const topic of this.config.blockedTopics ?? []) {
-      if (this.matchesTopic(content, topic)) {
-        return { blocked: true, reason: `blocked_topic:${topic}` };
+          // Add to message history for next turn
+          messages.push({
+            role: 'assistant',
+            tool_calls: [{ id: call.id, name: call.name, arguments: call.arguments }],
+          });
+          messages.push({
+            role: 'tool',
+            tool_call_id: call.id,
+            content: result,
+          });
+        }
+        continue;  // Next turn with tool results
       }
     }
 
-    // Prompt injection detection (basic)
-    if (this.detectsInjection(content)) {
-      return { blocked: true, reason: 'injection_detected' };
-    }
+    yield { type: 'error', message: 'Max turns exceeded' };
+  }
 
-    return { blocked: false, content };
+  private formatHistory(history: Message[]): ChatMessage[] {
+    return history.map(m => ({
+      role: m.sender_type === 'fan' ? 'user' : 'assistant',
+      content: m.content,
+    }));
   }
 }
 ```
 
-`packages/digitalme-agent/src/safety/ToolAllowlist.ts`:
+### Agent events
 
 ```typescript
-export class ToolAllowlist {
-  constructor(private allowed: Set<string>) {}
+// src/agent/types.ts
 
-  createRestrictedRegistry(fullRegistry: ToolRegistry): ToolRegistry {
-    const restricted = new ToolRegistry();
-    for (const tool of fullRegistry.listTools()) {
-      if (this.allowed.has(tool.function?.name ?? '')) {
-        restricted.register(tool, fullRegistry.getHandler(tool), fullRegistry.getRiskAssessor(tool));
+export type AgentEvent =
+  | { type: 'text_delta'; content: string }
+  | { type: 'tool_start'; name: string }
+  | { type: 'tool_end'; name: string }
+  | { type: 'done' }
+  | { type: 'error'; message: string };
+```
+
+### Key design decisions
+
+1. **Stateless** — No mutable instance state; history passed as parameter
+2. **Scalable** — Same pattern as ChatGPT/Claude backends (100M+ users)
+3. **Simple ReAct loop** — Tool calls followed by LLM reasoning, max turns limit
+4. **Streaming first** — All responses stream via AsyncGenerator
+5. **No internal history** — History loaded from DB, passed in
+6. **Flexible instantiation** — Can create per-request or share single instance
+
+---
+
+## 6. Multi-Tenant Isolation
+
+### Isolation by design, not enforcement
+
+**Traditional approach:** Shared state + access control checks
+**Our approach:** No shared state to leak
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        Request 1 (Fan A)                     │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  Agent instance (created for this request)          │    │
+│  │  ├── History: loaded from DB WHERE conv_id = 'aaa'  │    │
+│  │  └── No reference to any other conversation         │    │
+│  └─────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                        Request 2 (Fan B)                     │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  Agent instance (created for this request)          │    │
+│  │  ├── History: loaded from DB WHERE conv_id = 'bbb'  │    │
+│  │  └── No reference to any other conversation         │    │
+│  └─────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Isolation layers
+
+| Layer | Shared or Isolated | Mechanism |
+|-------|-------------------|-----------|
+| Container | Shared (all fans) | N/A |
+| Process | Shared (all fans) | N/A |
+| HTTP server | Shared (all fans) | Stateless routing |
+| Model client | Shared (all fans) | Stateless API calls |
+| Database connection | Shared (all fans) | Parameterized queries |
+| **Agent instance** | **Isolated per request** | Created fresh, GC'd after |
+| **Conversation data** | **Isolated per fan** | `WHERE fan_user_id = ?` |
+| **Rate limits** | **Isolated per fan** | Keyed by `fan_user_id` |
+
+### What's shared (safe)
+
+| Component | Why it's safe |
+|-----------|---------------|
+| HTTP server | Stateless request routing |
+| Persona config | Read-only, same for all fans |
+| Model client | Stateless API calls, no caching |
+| Tool definitions | Read-only function references |
+| DB connection | Queries parameterized by conversation_id |
+
+### What's isolated (per-request)
+
+| Component | Isolation mechanism |
+|-----------|---------------------|
+| Agent instance | Created fresh per request, GC'd after |
+| Conversation history | Loaded from DB with `WHERE conversation_id = ?` |
+| Tool execution context | Passed conversation_id, cannot query others |
+| Response stream | Scoped to HTTP response object |
+
+### Request flow with isolation
+
+```typescript
+// src/routes/conversations.ts
+
+app.post('/conversations/:id/messages', async (c) => {
+  const conversationId = c.req.param('id');
+  const { fan_user_id, content } = await c.req.json();
+
+  // 1. Verify ownership (only check, not shared state)
+  const conversation = await db.getConversation(conversationId);
+  if (!conversation) {
+    return c.json({ error: 'conversation_not_found' }, 404);
+  }
+  if (conversation.fan_user_id !== fan_user_id) {
+    return c.json({ error: 'conversation_access_denied' }, 403);
+  }
+
+  // 2. Filter input
+  const filtered = await inputFilter.filter(content);
+  if (filtered.blocked) {
+    return c.json({ error: 'input_blocked', reason: filtered.reason }, 422);
+  }
+
+  // 3. Load ONLY this conversation's history
+  const history = await db.getMessages(conversationId);
+
+  // 4. Create FRESH agent instance (no shared state)
+  const agent = new Agent(persona, modelClient, tools);
+
+  // 5. Persist fan message
+  await db.appendMessage(conversationId, 'fan', filtered.content);
+
+  // 6. Stream response
+  return streamSSE(c, async (stream) => {
+    let fullResponse = '';
+
+    for await (const event of agent.chat(history, filtered.content)) {
+      if (event.type === 'text_delta') {
+        fullResponse += event.content;
+        await stream.writeSSE({ data: JSON.stringify(event) });
+      } else if (event.type === 'done') {
+        await db.appendMessage(conversationId, 'agent', fullResponse);
+        await stream.writeSSE({ data: JSON.stringify({ type: 'done' }) });
       }
     }
-    return restricted;
-  }
-}
+  });
+});
 ```
 
-MVP tool policy:
-
-- `allow_browser` must remain `false`
-- shell tools are forbidden
-- local filesystem tools are forbidden
-- MCP is disabled by default
-- if MCP is enabled for MVP, only a reviewed static allowlist of read-only capability classes is permitted
-
-Examples of allowed MVP capability classes:
-
-- knowledge retrieval
-- public web fetch/search
-- read-only structured query against creator-owned remote data
-
-Examples of forbidden MVP capability classes:
-
-- arbitrary process spawn
-- shell execution
-- local file read/write
-- browser profile/session access
-- outbound messaging, purchases, account actions
-
-### 6.9 Storage
-
-`packages/digitalme-agent/src/storage/ConversationStore.ts`:
-
-MVP default: SQLite database with fan-scoped conversation persistence.
-
-This is an implementation default, not a long-term architecture commitment. The shared runtime must depend on storage interfaces only so DigitalMe can later move to Postgres and a different vector/memory backend without affecting BrowserX.
-
-Required repository contracts:
-
-- `ConversationStore`
-- `MessageStore`
-- `IdempotencyStore`
-- `UsageEventStore`
-- `RuntimeStateStore` or equivalent resume source
-
-The MVP SQLite implementation may satisfy all of these contracts in one package.
-
-```sql
-CREATE TABLE conversations (
-  conversation_id TEXT PRIMARY KEY,
-  fan_user_id TEXT NOT NULL,
-  status TEXT DEFAULT 'active',
-  created_at TEXT DEFAULT (datetime('now')),
-  last_message_at TEXT
-);
-
-CREATE INDEX idx_conversations_fan ON conversations(fan_user_id);
-
-CREATE TABLE messages (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  conversation_id TEXT NOT NULL REFERENCES conversations(conversation_id),
-  sender_type TEXT NOT NULL,  -- 'fan' | 'agent' | 'system'
-  content TEXT NOT NULL,
-  sequence_no INTEGER NOT NULL,
-  moderation_state TEXT DEFAULT 'allow',
-  created_at TEXT DEFAULT (datetime('now'))
-);
-
-CREATE INDEX idx_messages_conversation ON messages(conversation_id);
-
-CREATE TABLE usage_events (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  conversation_id TEXT NOT NULL,
-  event_type TEXT DEFAULT 'token_out',
-  tokens_in INTEGER DEFAULT 0,
-  tokens_out INTEGER DEFAULT 0,
-  created_at TEXT DEFAULT (datetime('now'))
-);
-
-CREATE TABLE idempotency_keys (
-  idempotency_key TEXT PRIMARY KEY,
-  route TEXT NOT NULL,
-  conversation_id TEXT,
-  request_hash TEXT NOT NULL,
-  response_snapshot TEXT,
-  status TEXT NOT NULL, -- 'processing' | 'completed' | 'failed'
-  created_at TEXT DEFAULT (datetime('now')),
-  expires_at TEXT NOT NULL
-);
-```
-
-### 6.10 Platform implementations for core interfaces
-
-`packages/digitalme-agent/src/platform/`:
+### Tenant-scoped database access
 
 ```typescript
-// NoOpTabProvider.ts — digitalme agents don't use tabs
-export class NoOpTabProvider implements TabProvider {
-  async getTab(): Promise<null> { return null; }
-  async queryActiveTabs(): Promise<TabInfo[]> { return []; }
-  async groupTabs(): Promise<number> { return -1; }
-  async ungroupTabs(): Promise<void> {}
-}
+// src/storage/TenantDB.ts
 
-// NoOpNotificationProvider.ts — no notifications for headless agent
-export class NoOpNotificationProvider implements NotificationProvider {
-  async create(): Promise<void> {}
-  async clear(): Promise<void> {}
-  async update(): Promise<void> {}
-  onClicked(): void {}
-}
+// Pattern: Create tenant-scoped DB wrapper per request
+export class TenantDB {
+  constructor(
+    private db: Database,
+    private fanUserId: string
+  ) {}
 
-// NodeMCPBridge.ts — reuse server's MCP bridge for stdio MCP servers
-// (can be copied/adapted from packages/browserx/src/server/mcp/NodeMCPBridge.ts)
-
-// DigitalMeStorageProviderFactory.ts
-export class DigitalMeStorageProviderFactory implements StorageProviderFactory {
-  constructor(private dataDir: string) {}
-
-  async createStorageProvider(): Promise<StorageProvider> {
-    return new SQLiteStorageProvider(this.dataDir);
+  // All queries automatically scoped - can't forget tenant filter
+  async getConversations(): Promise<Conversation[]> {
+    return this.db.query(
+      'SELECT * FROM conversations WHERE fan_user_id = ?',
+      [this.fanUserId]
+    );
   }
 
-  async createCredentialStore(): Promise<CredentialStore> {
-    return new FileCredentialStore(path.join(this.dataDir, 'credentials'));
-  }
+  async getMessages(conversationId: string): Promise<Message[]> {
+    // Double-check: conversation must belong to this fan
+    const conv = await this.db.query(
+      'SELECT * FROM conversations WHERE id = ? AND fan_user_id = ?',
+      [conversationId, this.fanUserId]
+    );
+    if (!conv) throw new ConversationAccessDeniedError();
 
-  async createConfigStorage(): Promise<ConfigStorage> {
-    return new FileConfigStorage(path.join(this.dataDir, 'config.json'));
-  }
-
-  async createRolloutStorageProvider(): Promise<RolloutStorageProvider> {
-    return new TSRolloutStorageProvider(this.dataDir);
+    return this.db.query(
+      'SELECT * FROM messages WHERE conversation_id = ?',
+      [conversationId]
+    );
   }
 }
 ```
 
 ---
 
-## 7. DigitalMe Platform Protocol Specification
+## 7. Resource Access Control
 
-This is the MVP protocol contract the agent must implement. Before coding starts, it must be reconciled once against the platform source so the status codes, retry rules, and SSE framing are exact.
+### Resource domains
 
-### 7.1 Authentication
+```
+┌─────────────────────────────────────────────────────────────┐
+│                         CREATOR DOMAIN                       │
+│                    (configured at deploy time)               │
+├─────────────────────────────────────────────────────────────┤
+│  ✓ System prompt         (read-only for fans)               │
+│  ✓ Model selection       (read-only for fans)               │
+│  ✓ Tool allowlist        (read-only for fans)               │
+│  ✓ Safety rules          (enforced on fans)                 │
+│  ✓ Rate limits           (enforced on fans)                 │
+└─────────────────────────────────────────────────────────────┘
 
-All requests include three headers:
+┌─────────────────────────────────────────────────────────────┐
+│                          FAN DOMAIN                          │
+│                    (per-fan, strictly isolated)              │
+├─────────────────────────────────────────────────────────────┤
+│  ✓ Own conversations     (can create, read, continue)       │
+│  ✓ Own messages          (can send, view history)           │
+│  ✓ Own rate limit quota  (tracked per fan)                  │
+│  ✗ Other fans' data      (NEVER accessible)                 │
+│  ✗ Creator's resources   (NEVER accessible)                 │
+│  ✗ Agent configuration   (NEVER modifiable)                 │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                        TOOL DOMAIN                           │
+│                    (what tools can access)                   │
+├─────────────────────────────────────────────────────────────┤
+│  ✓ Public internet       (web search, if enabled)           │
+│  ✓ Creator's knowledge   (via approved MCP, future)         │
+│  ✗ Local filesystem      (BLOCKED - not implemented)        │
+│  ✗ Shell/processes       (BLOCKED - not implemented)        │
+│  ✗ Creator's browser     (BLOCKED - not implemented)        │
+│  ✗ Other fans' contexts  (BLOCKED - no access path)         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Tool capability classes
+
+**MVP allowed:**
+- Public web search
+- Public web fetch (read-only)
+
+**Future (with restrictions):**
+- Creator's knowledge base (read-only MCP)
+- Approved read-only integrations
+
+**Forever forbidden:**
+- Arbitrary process spawn
+- Shell execution
+- Local file read/write
+- Browser profile/session access
+- Outbound messaging, purchases, account actions
+
+### Tool implementation
+
+```typescript
+// src/tools/types.ts
+
+export interface ToolContext {
+  conversationId: string;
+  fanUserId: string;
+  // Tools receive context for logging but cannot access other conversations
+}
+
+export interface Tool {
+  name: string;
+  description: string;
+  definition: ToolDefinition;
+  execute: (args: unknown, ctx: ToolContext) => Promise<string>;
+}
+```
+
+```typescript
+// src/tools/web-search.ts
+
+export const webSearchTool: Tool = {
+  name: 'web_search',
+  description: 'Search the web for information',
+  definition: {
+    type: 'function',
+    function: {
+      name: 'web_search',
+      description: 'Search the web for information',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Search query' },
+        },
+        required: ['query'],
+      },
+    },
+  },
+  execute: async (args: { query: string }, ctx: ToolContext) => {
+    // Stateless - just performs search
+    // ctx available for logging/auditing only
+    const results = await searchProvider.search(args.query);
+    return JSON.stringify(results);
+  },
+};
+```
+
+### Tool registry (static allowlist)
+
+```typescript
+// src/tools/index.ts
+
+export function createToolRegistry(config: PersonaConfig): Tool[] {
+  const tools: Tool[] = [];
+
+  if (config.tools.allowWebSearch) {
+    tools.push(webSearchTool);
+  }
+
+  // MVP: Dangerous tools are simply not implemented
+  // No filesystem, no shell, no browser
+
+  return tools;
+}
+```
+
+---
+
+## 8. API Specification
+
+### Authentication
+
+All requests (except `/health`) include:
 
 | Header | Value |
 |--------|-------|
@@ -1256,426 +726,498 @@ All requests include three headers:
 | `X-DigitalMe-Signature` | HMAC-SHA256 hex digest |
 | `X-DigitalMe-Timestamp` | Unix timestamp (seconds) |
 
-**Signature computation:**
+Signature: `HMAC-SHA256(signing_secret, "{timestamp}:{body}")`
 
-```
-message = "{timestamp}:{request_body}"
-signature = HMAC-SHA256(signing_secret, message).hexdigest()
-```
-
-For GET requests with no body, use empty string: `"{timestamp}:"`
-
-### 7.2 Endpoints
+### Endpoints
 
 #### `GET /health`
-
-**Response (200):**
 
 ```json
 { "status": "ok" }
 ```
 
-For MVP, `/health` should return degraded status if:
-
-- the model provider is unreachable
-- the database is unavailable
-- the idempotency store is unavailable
+Returns degraded status if model provider or database unavailable.
 
 #### `POST /verify`
 
-**Request body:**
-
+Request:
 ```json
-{
-  "type": "verification",
-  "challenge": "{32-char-urlsafe-base64}"
-}
+{ "type": "verification", "challenge": "{32-char}" }
 ```
 
-**Response (200):**
-
+Response:
 ```json
-{
-  "challenge": "{echo-same-value}"
-}
+{ "challenge": "{echo-same-value}" }
 ```
 
 #### `POST /conversations`
 
-**Request body:**
-
+Request:
 ```json
-{
-  "fan_user_id": "{uuid}"
-}
+{ "fan_user_id": "{uuid}" }
 ```
 
-**Headers:**
+Headers: `X-DigitalMe-Request-Id` for idempotency
 
-- `X-DigitalMe-Request-Id` preferred for idempotency
-
-**Response (200):**
-
+Response:
 ```json
-{
-  "id": "{conversation_id}",
-  "status": "active"
-}
+{ "id": "{conversation_id}", "status": "active" }
 ```
-
-If the request is retried with the same idempotency key, return the original response body.
 
 #### `GET /conversations?fan_user_id={uuid}`
 
-**Response (200):**
-
+Response:
 ```json
-[
-  {
-    "id": "{conversation_id}",
-    "fan_user_id": "{uuid}",
-    "status": "active"
-  }
-]
+[{ "id": "{id}", "fan_user_id": "{uuid}", "status": "active" }]
 ```
 
-#### `GET /conversations/{conversation_id}/messages`
+#### `GET /conversations/:id/messages`
 
-**Response (200):**
-
+Response:
 ```json
-[
-  {
-    "id": "{message_id}",
-    "sender_type": "fan",
-    "content": "Hello!",
-    "sequence_no": 1,
-    "moderation_state": "allow"
-  }
-]
+[{ "id": "{id}", "sender_type": "fan", "content": "Hello!", "sequence_no": 1 }]
 ```
 
-#### `POST /conversations/{conversation_id}/messages`
+#### `POST /conversations/:id/messages`
 
-**Request body:**
-
+Request:
 ```json
-{
-  "fan_user_id": "{uuid}",
-  "content": "Hello!"
-}
+{ "fan_user_id": "{uuid}", "content": "Hello!" }
 ```
 
-**Headers:**
+Headers: `X-DigitalMe-Request-Id` for idempotency
 
-- `X-DigitalMe-Request-Id` preferred for idempotency
-
-**Response:** `Content-Type: text/event-stream`
-
+Response: `Content-Type: text/event-stream`
 ```
-data: {"type": "text_delta", "content": "Hi"}
+data: {"type":"text_delta","content":"Hi"}
 
-data: {"type": "text_delta", "content": " there!"}
+data: {"type":"text_delta","content":" there!"}
 
-data: {"type": "done"}
+data: {"type":"done"}
 
 ```
 
-Required validation:
-
-- `fan_user_id` must match the stored conversation owner
-- duplicate request ids must not append a second fan message
-- if a duplicate request is still in progress, return the existing stream or a deterministic retry response
-
-### 7.2.1 Error contract
-
-The platform-facing agent must define explicit error behavior before implementation:
+### Error responses
 
 | Case | Status | Body |
 |------|--------|------|
-| Invalid HMAC / bad API key | `401` | `{ "error": "unauthorized" }` |
-| Expired timestamp / replay rejected | `401` | `{ "error": "replay_rejected" }` |
-| Unknown conversation | `404` | `{ "error": "conversation_not_found" }` |
-| `fan_user_id` mismatch | `403` | `{ "error": "conversation_access_denied" }` |
-| Input blocked by safety layer | `422` | `{ "error": "input_blocked", "reason": "..." }` |
-| Rate limit exceeded | `429` | `{ "error": "rate_limited" }` |
-| Internal failure before stream starts | `500` | `{ "error": "internal_error" }` |
+| Invalid HMAC | `401` | `{ "error": "unauthorized" }` |
+| Replay rejected | `401` | `{ "error": "replay_rejected" }` |
+| Conversation not found | `404` | `{ "error": "conversation_not_found" }` |
+| Wrong fan | `403` | `{ "error": "conversation_access_denied" }` |
+| Input blocked | `422` | `{ "error": "input_blocked", "reason": "..." }` |
+| Rate limited | `429` | `{ "error": "rate_limited" }` |
 
-Once SSE has started, terminal failures should be emitted as:
+---
 
-```text
-data: {"type": "done", "status": "error"}
+## 9. Security
+
+### HMAC middleware
+
+```typescript
+// src/middleware/hmac.ts
+
+export function hmacMiddleware(config: {
+  apiKey: string;
+  signingSecret: string;
+  toleranceSeconds: number;
+}) {
+  return async (c: Context, next: Next) => {
+    const key = c.req.header('X-DigitalMe-Key');
+    const signature = c.req.header('X-DigitalMe-Signature');
+    const timestamp = c.req.header('X-DigitalMe-Timestamp');
+
+    if (!key || !signature || !timestamp) {
+      return c.json({ error: 'unauthorized' }, 401);
+    }
+
+    // Check API key
+    if (key !== config.apiKey) {
+      return c.json({ error: 'unauthorized' }, 401);
+    }
+
+    // Check timestamp (prevent replay)
+    const now = Math.floor(Date.now() / 1000);
+    const ts = parseInt(timestamp, 10);
+    if (Math.abs(now - ts) > config.toleranceSeconds) {
+      return c.json({ error: 'replay_rejected' }, 401);
+    }
+
+    // Verify HMAC
+    const body = await c.req.text();
+    const message = `${timestamp}:${body}`;
+    const expected = createHmac('sha256', config.signingSecret)
+      .update(message)
+      .digest('hex');
+
+    if (!timingSafeEqual(Buffer.from(expected), Buffer.from(signature))) {
+      return c.json({ error: 'unauthorized' }, 401);
+    }
+
+    c.set('rawBody', body);
+    await next();
+  };
+}
 ```
 
-### 7.3 Timeouts and retries
+### Input filtering
 
-- Platform timeout per request: 12 seconds (`agent_request_timeout_seconds`)
-- Platform retries: up to 2 (`agent_max_retries`)
-- If all retries fail, connection status set to `offline`
+```typescript
+// src/safety/input-filter.ts
 
-MVP implication:
+export class InputFilter {
+  constructor(private config: { blockedTopics: string[]; maxLength: number }) {}
 
-- the agent must emit first SSE bytes quickly, ideally within 1-2 seconds
-- long-running work must stream progress/heartbeats rather than waiting for full completion
-- retries are expected behavior, not exceptional behavior
+  async filter(content: string): Promise<FilterResult> {
+    // Length check
+    if (content.length > this.config.maxLength) {
+      return { blocked: true, reason: 'message_too_long' };
+    }
 
-### 7.4 Connection lifecycle
+    // Blocked topics
+    for (const topic of this.config.blockedTopics) {
+      if (content.toLowerCase().includes(topic.toLowerCase())) {
+        return { blocked: true, reason: `blocked_topic:${topic}` };
+      }
+    }
 
+    // Basic injection detection
+    const injectionPatterns = [
+      /ignore previous instructions/i,
+      /you are now/i,
+      /forget your instructions/i,
+      /new system prompt/i,
+    ];
+    for (const pattern of injectionPatterns) {
+      if (pattern.test(content)) {
+        return { blocked: true, reason: 'injection_detected' };
+      }
+    }
+
+    return { blocked: false, content };
+  }
+}
 ```
-pending_verification → (verify success) → active
-active → (verify fail / relay fail after retries) → offline
-active → (rotate keys) → pending_verification
-active → (revoke) → revoked
+
+### Rate limiting (per-fan)
+
+```typescript
+// src/middleware/rate-limit.ts
+
+// MVP: In-memory (single instance)
+// Scale: Replace with Redis
+
+const fanLimits = new Map<string, { count: number; resetAt: number }>();
+
+export function rateLimitMiddleware(config: { perMinute: number }) {
+  return async (c: Context, next: Next) => {
+    const fanUserId = c.get('fanUserId');
+    const now = Date.now();
+
+    let limit = fanLimits.get(fanUserId);
+    if (!limit || now > limit.resetAt) {
+      limit = { count: 0, resetAt: now + 60_000 };
+      fanLimits.set(fanUserId, limit);
+    }
+
+    if (limit.count >= config.perMinute) {
+      return c.json({ error: 'rate_limited' }, 429);
+    }
+
+    limit.count++;
+    await next();
+  };
+}
 ```
 
 ---
 
-## 8. Security Model
+## 10. Storage
 
-### 8.1 Principal separation
+### Database interface
 
-| Principal | Role | Trust level |
-|-----------|------|-------------|
-| **Creator** | Configures agent, defines persona, selects tools | Trusted — full control |
-| **Fan** | Sends messages, receives responses | Untrusted — sandboxed |
-| **Platform** | Routes messages, enforces rate limits, moderates | Trusted intermediary |
+```typescript
+// src/storage/types.ts
 
-### 8.2 Fan isolation guarantees
+export interface Database {
+  // Conversations
+  createConversation(id: string, fanUserId: string): Promise<void>;
+  getConversation(id: string): Promise<Conversation | null>;
+  getConversationsByFan(fanUserId: string): Promise<Conversation[]>;
 
-1. **No cross-fan data access** — fan A's conversation history is never visible to fan B
-2. **No creator resource access** — fan input cannot access creator's filesystem, browser, desktop, or credentials
-3. **Tool allowlist** — only creator-approved tools execute; all others are rejected
-4. **Input filtering** — fan messages are filtered for injection attacks, blocked topics before reaching the agent
-5. **Output filtering** — agent responses are filtered for PII leakage, blocked content before reaching the fan
-6. **Sandbox policy** — all fan interactions run under the creator's defined sandbox policy (default: `read-only`)
+  // Messages
+  getMessages(conversationId: string): Promise<Message[]>;
+  appendMessage(conversationId: string, senderType: string, content: string): Promise<void>;
 
-### 8.3 Tool safety rules
+  // Idempotency
+  checkIdempotency(key: string): Promise<IdempotencyRecord | null>;
+  setIdempotency(key: string, conversationId: string, response: string, ttlSeconds: number): Promise<void>;
+}
+```
 
-| Tool | BrowserX (personal) | DigitalMe (external) |
-|------|---------------------|---------------------|
-| Web search | Allowed by default | Allowed if creator enables |
-| Browser automation | Full access (user's browser) | **Sandboxed only** — isolated headless browser, no access to creator's sessions |
-| File system | User's files | **Blocked** — no file system access |
-| Shell commands | Available with approval | **Blocked** |
-| MCP tools | User-configured | Disabled by default; reviewed read-only integrations only |
-| Custom tools | User-defined | Creator-defined, fan cannot add |
+### SQLite implementation (MVP)
 
-### 8.4 HMAC verification
+```sql
+-- src/storage/schema.sql
 
-The agent must verify every request from the platform:
+CREATE TABLE conversations (
+  id TEXT PRIMARY KEY,
+  fan_user_id TEXT NOT NULL,
+  status TEXT DEFAULT 'active',
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX idx_conv_fan ON conversations(fan_user_id);
 
-1. Check `X-DigitalMe-Timestamp` is within acceptable window (e.g., ±300 seconds) to prevent replay attacks
-2. Recompute HMAC-SHA256 signature using stored `signing_secret`
-3. Compare with `X-DigitalMe-Signature` using timing-safe comparison
-4. Check `X-DigitalMe-Key` matches stored `api_key`
-5. Reject if any check fails (401)
+CREATE TABLE messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  conversation_id TEXT NOT NULL REFERENCES conversations(id),
+  sender_type TEXT NOT NULL,  -- 'fan' | 'agent'
+  content TEXT NOT NULL,
+  sequence_no INTEGER NOT NULL,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX idx_msg_conv ON messages(conversation_id);
+
+CREATE TABLE idempotency (
+  key TEXT PRIMARY KEY,
+  conversation_id TEXT,
+  response TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  expires_at TEXT NOT NULL
+);
+
+CREATE TABLE usage (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  conversation_id TEXT NOT NULL,
+  tokens_in INTEGER DEFAULT 0,
+  tokens_out INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+```
+
+### Postgres implementation (scale)
+
+Same schema, swap driver:
+
+```typescript
+// src/storage/postgres.ts
+
+import { Pool } from 'pg';
+
+export class PostgresDB implements Database {
+  private pool: Pool;
+
+  constructor(connectionString: string) {
+    this.pool = new Pool({ connectionString });
+  }
+
+  async getMessages(conversationId: string): Promise<Message[]> {
+    const result = await this.pool.query(
+      'SELECT * FROM messages WHERE conversation_id = $1 ORDER BY sequence_no',
+      [conversationId]
+    );
+    return result.rows;
+  }
+
+  // ... same interface, different driver
+}
+```
 
 ---
 
-## 9. Data Model
+## 11. Scaling Strategy
 
-### 9.1 Conversation storage (agent-side)
-
-The agent stores all conversation data locally for MVP. The platform only stores routing metadata.
+### Single instance limits
 
 ```
-data/
-├── conversations.db          # MVP SQLite: conversation, messages, idempotency metadata
-├── rollouts/                 # Per-conversation agent history (for session resume)
-│   ├── {conversation_id_1}.jsonl
-│   ├── {conversation_id_2}.jsonl
-│   └── ...
-├── credentials/              # Encrypted API keys
-│   └── credentials.json
-└── config.json               # Runtime config cache
+┌─────────────────────────────────────────────────────────────┐
+│              Single Instance Capacity                        │
+├─────────────────────────────────────────────────────────────┤
+│  Concurrent requests: ~50-100 (limited by connections)      │
+│  SQLite writes: ~1000/sec (good enough for MVP)             │
+│  Memory: ~10-50MB per active request                        │
+│  Bottleneck: LLM API rate limits, not our code              │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### 9.2 Runtime reconstruction requirements
+### Horizontal scaling architecture
 
-Restart safety is an MVP requirement.
+```
+                         ┌─────────────────┐
+                         │  Load Balancer  │
+                         └────────┬────────┘
+                                  │
+          ┌───────────────────────┼───────────────────────┐
+          ▼                       ▼                       ▼
+   ┌─────────────┐         ┌─────────────┐         ┌─────────────┐
+   │  Instance 1 │         │  Instance 2 │         │  Instance N │
+   │  (stateless)│         │  (stateless)│         │  (stateless)│
+   └──────┬──────┘         └──────┬──────┘         └──────┬──────┘
+          │                       │                       │
+          └───────────────────────┼───────────────────────┘
+                                  │
+                    ┌─────────────┼─────────────┐
+                    ▼             ▼             ▼
+             ┌──────────┐  ┌──────────┐  ┌──────────┐
+             │ Postgres │  │  Redis   │  │  Queue   │
+             │  (data)  │  │ (cache/  │  │ (async)  │
+             │          │  │  limits) │  │          │
+             └──────────┘  └──────────┘  └──────────┘
+```
 
-The persisted state must be sufficient to:
+### Scaling tiers
 
-- reopen an existing conversation after process restart
-- reload prior message history
-- recover in-flight idempotency records
-- reconstruct enough runtime state for the next turn without requiring a permanently resident in-memory `RepublicAgent`
+| Tier | Fans | Req/sec | Changes needed |
+|------|------|---------|----------------|
+| **MVP** | 1-1,000 | 10-20 | None (SQLite, single instance) |
+| **Growth** | 1,000-10,000 | 50-100 | Bigger instance, maybe Redis |
+| **Scale** | 10,000-100,000 | 200+ | Postgres, multiple instances, LB |
+| **Hot creator** | 100,000-1M+ | 500+ | LLM gateway, queue, caching, multi-key |
 
-Design rule:
+### What changes per tier
 
-- database + rollout state is the source of truth
-- in-memory runtime instances are disposable caches
+| Component | MVP | Growth | Scale | Hot |
+|-----------|-----|--------|-------|-----|
+| Database | SQLite | SQLite | Postgres | Postgres + replicas |
+| Rate limiting | In-memory | Redis | Redis cluster | Redis cluster |
+| Idempotency | SQLite | SQLite | Redis | Redis |
+| Instances | 1 | 1 | 3+ | 10+ |
+| LLM keys | 1 | 1 | 1-2 | Multiple + gateway |
 
-### 9.3 Creator dashboard queries
+### Why our design scales
 
-The agent should support queries that enable a creator dashboard (future API):
+**Stateless requests = any instance can handle any request**
 
-- List all conversations (across all fans)
-- List conversations for a specific fan
-- Get message count / token usage per fan
-- Get total token usage across all fans
+```typescript
+// Every request is independent
+app.post('/messages', async (c) => {
+  const agent = new Agent(...);           // Fresh instance
+  const history = await db.getMessages(); // From shared DB
+  const response = await agent.chat();    // Stateless LLM call
+  await db.saveMessage();                 // To shared DB
+});
+```
+
+No sticky sessions. No instance affinity. Just add more containers.
+
+### The real bottleneck
+
+LLM API rate limits, not our architecture:
+
+```
+OpenAI rate limits:
+├── GPT-4o: ~10,000 RPM = ~166 req/sec
+└── Shared across ALL instances
+
+Anthropic rate limits:
+├── Claude: 1,000-4,000 RPM = ~16-66 req/sec
+└── Depends on tier
+```
+
+For truly hot creators:
+- Negotiate higher API limits
+- Multiple API keys with load balancing
+- Or self-hosted models
 
 ---
 
-## 10. Configuration
+## 12. Configuration
 
-### 10.1 Config file (`config.yaml`)
+### config.yaml
 
 ```yaml
-# DigitalMe Agent Configuration
-
 persona:
   name: "Agent Name"
   system_prompt: |
-    Your persona prompt here...
+    You are a helpful assistant representing the creator.
+    Be friendly and informative.
   model: gpt-4o
   model_provider: openai
-  reasoning_effort: medium    # low | medium | high (optional)
 
   tools:
     allow_web_search: true
-    allow_browser: false
-    mcp_servers: []
 
   safety:
-    blocked_topics: []
+    blocked_topics: ["financial advice", "medical advice"]
     max_response_length: 4000
-    output_moderation: true
 
 server:
   port: 8080
   bind: "0.0.0.0"
 
 auth:
-  api_key: ${DIGITALME_API_KEY}             # From env var
-  signing_secret: ${DIGITALME_SIGNING_SECRET}  # From env var
+  api_key: ${DIGITALME_API_KEY}
+  signing_secret: ${DIGITALME_SIGNING_SECRET}
+
+model:
+  api_key: ${MODEL_API_KEY}
 
 storage:
-  data_dir: ./data
-  max_conversations_per_fan: 10
-  message_retention_days: 90
+  type: sqlite  # or postgres
+  data_dir: ./data  # for sqlite
+  # connection_string: ${DATABASE_URL}  # for postgres
+
+limits:
+  max_message_length: 4000
+  rate_limit_per_fan: 20  # per minute
+  max_turns: 10  # prevent infinite tool loops
+  max_conversations_per_fan: 50
 
 security:
   hmac_tolerance_seconds: 300
   idempotency_ttl_seconds: 900
-  enable_mcp: false
-
-model:
-  api_key: ${MODEL_API_KEY}                 # LLM provider API key
-
-limits:
-  max_concurrent_conversations: 20
-  max_message_length: 4000
-  rate_limit_per_fan: 20         # messages per minute per fan
 ```
 
-### 10.2 Environment variables
+### Environment variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `DIGITALME_API_KEY` | Yes | Platform-issued API key |
-| `DIGITALME_SIGNING_SECRET` | Yes | Platform-issued signing secret |
-| `MODEL_API_KEY` | Yes | LLM provider API key (OpenAI, Anthropic, etc.) |
+| `DIGITALME_API_KEY` | Yes | Platform API key |
+| `DIGITALME_SIGNING_SECRET` | Yes | Platform signing secret |
+| `MODEL_API_KEY` | Yes | LLM provider API key |
+| `DATABASE_URL` | For Postgres | Postgres connection string |
+| `REDIS_URL` | For scale | Redis connection string |
 | `DIGITALME_PORT` | No | Server port (default: 8080) |
-| `DIGITALME_DATA_DIR` | No | Data directory (default: ./data) |
-| `DIGITALME_CONFIG_PATH` | No | Config file path (default: ./config.yaml) |
-
-### 10.3 Config validation
-
-Use Zod schema (following browserx server pattern):
-
-```typescript
-export const DigitalMeConfigSchema = z.object({
-  persona: z.object({
-    name: z.string().min(1).max(80),
-    system_prompt: z.string().min(1),
-    model: z.string(),
-    model_provider: z.enum(['openai', 'anthropic', 'google-ai-studio', 'groq', 'fireworks', 'together']),
-    reasoning_effort: z.enum(['low', 'medium', 'high']).optional(),
-    tools: z.object({
-      allow_web_search: z.boolean().default(true),
-      allow_browser: z.boolean().default(false),
-      mcp_servers: z.array(MCPServerConfigSchema).default([]),
-    }).default({}),
-    safety: z.object({
-      blocked_topics: z.array(z.string()).default([]),
-      max_response_length: z.number().default(4000),
-      output_moderation: z.boolean().default(true),
-    }).default({}),
-  }),
-  server: z.object({
-    port: z.number().default(8080),
-    bind: z.string().default('0.0.0.0'),
-  }).default({}),
-  auth: z.object({
-    api_key: z.string(),
-    signing_secret: z.string(),
-  }),
-  storage: z.object({
-    data_dir: z.string().default('./data'),
-    max_conversations_per_fan: z.number().default(10),
-    message_retention_days: z.number().default(90),
-  }).default({}),
-  model: z.object({
-    api_key: z.string(),
-  }),
-  limits: z.object({
-    max_concurrent_conversations: z.number().default(20),
-    max_message_length: z.number().default(4000),
-    rate_limit_per_fan: z.number().default(20),
-  }).default({}),
-  security: z.object({
-    hmac_tolerance_seconds: z.number().default(300),
-    idempotency_ttl_seconds: z.number().default(900),
-    enable_mcp: z.boolean().default(false),
-  }).default({}),
-});
-```
 
 ---
 
-## 11. Deployment
+## 13. Deployment
 
-### 11.1 Docker
-
-`packages/digitalme-agent/Dockerfile`:
+### Dockerfile
 
 ```dockerfile
 FROM node:20-slim
 
 WORKDIR /app
 
-# Copy built artifacts
-COPY packages/core/dist ./packages/core/dist
-COPY packages/core/package.json ./packages/core/
-COPY packages/digitalme-agent/dist ./packages/digitalme-agent/dist
-COPY packages/digitalme-agent/package.json ./packages/digitalme-agent/
-COPY package.json ./
+# Install dependencies
+COPY package.json package-lock.json ./
+RUN npm ci --production
 
-# Install production dependencies
-RUN npm install --production --workspace=packages/digitalme-agent
+# Copy built code
+COPY dist ./dist
 
 # Create data directory
 RUN mkdir -p /app/data
 
 EXPOSE 8080
 
+ENV NODE_ENV=production
 ENV DIGITALME_DATA_DIR=/app/data
 ENV DIGITALME_PORT=8080
 
-CMD ["node", "packages/digitalme-agent/dist/index.js"]
+CMD ["node", "dist/index.js"]
 ```
 
-`packages/digitalme-agent/docker-compose.yml`:
+### docker-compose.yml (MVP)
 
 ```yaml
 version: '3.8'
 
 services:
   agent:
-    build:
-      context: ../..
-      dockerfile: packages/digitalme-agent/Dockerfile
+    build: .
     ports:
       - "8080:8080"
     environment:
@@ -1685,194 +1227,132 @@ services:
     volumes:
       - agent-data:/app/data
       - ./config.yaml:/app/config.yaml:ro
+    restart: unless-stopped
 
 volumes:
   agent-data:
 ```
 
-### 11.2 Minimal deployment
+### docker-compose.yml (scaled)
 
-For MVP, Docker deployment is the primary supported path.
+```yaml
+version: '3.8'
 
-The global npm install flow is optional and should not be treated as the primary operational path until packaging, native dependency handling, and config bootstrap are verified.
+services:
+  agent:
+    build: .
+    deploy:
+      replicas: 3
+    environment:
+      - DIGITALME_API_KEY=${DIGITALME_API_KEY}
+      - DIGITALME_SIGNING_SECRET=${DIGITALME_SIGNING_SECRET}
+      - MODEL_API_KEY=${MODEL_API_KEY}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+    depends_on:
+      - postgres
+      - redis
 
-If a simple local run path is needed for development:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: digitalme
+      POSTGRES_USER: digitalme
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
 
-```bash
-# 1. Install repo dependencies
-npm install
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
 
-# 2. Configure
-cp packages/digitalme-agent/config.example.yaml ./config.yaml
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - agent
 
-# 3. Set secrets
-export DIGITALME_API_KEY="..."
-export DIGITALME_SIGNING_SECRET="..."
-export MODEL_API_KEY="..."
-
-# 4. Run
-npm run dev --workspace=@browserx/digitalme-agent
+volumes:
+  postgres-data:
+  redis-data:
 ```
 
-### 11.3 Health monitoring
+---
 
-The agent exposes `/health` for the platform's periodic checks. Internally it should track:
+## 14. Implementation Checklist
 
-- Active conversation count
-- Memory usage
-- Model API latency (last request)
-- Error rate (last 5 minutes)
+### Phase 1: Project setup (Day 1)
+
+- [ ] Create repository
+- [ ] Initialize npm project with TypeScript
+- [ ] Add dependencies: hono, better-sqlite3, zod, uuid
+- [ ] Set up build (tsup or esbuild)
+- [ ] Create config loader with Zod validation
+- [ ] Set up ESLint + Prettier
+
+### Phase 2: Core agent (Day 1-2)
+
+- [ ] Copy model clients from browserx (OpenAI, Anthropic)
+- [ ] Simplify model clients (remove browserx-specific code)
+- [ ] Implement `Agent` class with ReAct loop
+- [ ] Implement web search tool
+- [ ] Test agent standalone (no HTTP)
+
+### Phase 3: HTTP server (Day 2-3)
+
+- [ ] Set up Hono server
+- [ ] Implement HMAC middleware
+- [ ] Implement rate limit middleware
+- [ ] Implement `/health` endpoint
+- [ ] Implement `/verify` endpoint
+- [ ] Implement `POST /conversations`
+- [ ] Implement `GET /conversations`
+- [ ] Implement `GET /conversations/:id/messages`
+- [ ] Implement `POST /conversations/:id/messages` with SSE
+
+### Phase 4: Storage & safety (Day 3-4)
+
+- [ ] Implement Database interface
+- [ ] Implement SQLite storage
+- [ ] Implement TenantDB wrapper for scoped access
+- [ ] Implement idempotency handling
+- [ ] Implement input filter
+- [ ] Implement SSE streaming with heartbeat
+
+### Phase 5: Testing & deployment (Day 4-5)
+
+- [ ] Write unit tests (HMAC, input filter, storage, tenant isolation)
+- [ ] Write integration tests (full request cycle)
+- [ ] Create Dockerfile
+- [ ] Create docker-compose.yml
+- [ ] Test with DigitalMe platform
+- [ ] Document deployment
+
+### Future phases (post-MVP)
+
+- [ ] Postgres storage implementation
+- [ ] Redis rate limiting
+- [ ] Redis idempotency
+- [ ] Horizontal scaling setup
+- [ ] MCP integration (restricted)
+- [ ] Output filtering
+- [ ] Usage tracking / analytics
 
 ---
 
-## 12. Testing Strategy
+## Appendix: Design Decisions Summary
 
-### 12.1 Phase 1 tests (core refactoring)
-
-**Goal:** No regressions in existing functionality.
-
-- Run all existing BrowserX tests after each refactoring step
-- Add unit tests for new `PlatformContext` interfaces
-- Add integration tests verifying DI wiring for each platform bootstrap
-
-### 12.2 Phase 2 tests (monorepo setup)
-
-**Goal:** All builds and tests pass from new locations.
-
-- `packages/core` builds independently and passes its own tests
-- `packages/browserx` builds all three targets (extension, desktop, server)
-- All existing tests pass with updated imports
-
-### 12.3 Phase 3 tests (digitalme-agent)
-
-**Unit tests:**
-
-- HMAC verification (valid signature, invalid signature, expired timestamp, replay)
-- Idempotency store (dedupe hit, in-progress retry, completed retry, expiration)
-- Input filter (blocked topics, injection detection, length limits)
-- Output filter (PII detection, blocked content)
-- Tool allowlist (allowed tool passes, blocked tool rejected)
-- SSE stream adapter (event conversion, null for internal events)
-- Conversation store (CRUD operations, fan isolation)
-- Runtime reconstruction (resume after process restart)
-- Config validation (valid config, missing fields, invalid values)
-
-**Integration tests:**
-
-- Full request cycle: `POST /conversations/{id}/messages` → HMAC verify → create session → run agent → stream SSE → persist
-- Conversation isolation: two fans, verify no cross-contamination
-- Duplicate POST retry: same request id does not duplicate message persistence or tool execution
-- Tool execution: creator-allowed read-only tool executes, blocked tool rejected
-- Session resume: conversation persists across agent restart
-- Concurrent conversations: multiple fans chatting simultaneously
-
-**Contract tests (against platform):**
-
-- Verification handshake matches platform expectations
-- SSE format matches platform's parser
-- Error responses match platform's error handling
-
-### 12.4 MVP implementation gate
-
-Do not start Phase 3 implementation until these design questions are closed:
-
-- exact idempotency header and retry semantics with platform
-- exact SSE framing and timeout expectations with platform
-- whether MVP allows any MCP integrations at all
-- minimum restart/resume behavior required after container restart
-
----
-
-## 13. Migration Checklist
-
-### Phase 1: Core Extraction Refactoring
-
-- [ ] Create `src/core/platform/types.ts` with `PlatformContext`, `TabProvider`, `NotificationProvider`, `MCPBridgeFactory`, `StorageProviderFactory` interfaces
-- [ ] Create `src/core/platform/index.ts` with `setPlatformContext()` / `getPlatformContext()` global accessor
-- [ ] Implement `ChromeTabProvider` in `src/extension/platform/`
-- [ ] Implement `ChromeNotificationProvider` in `src/extension/platform/`
-- [ ] Implement `NoOpTabProvider`, `NoOpNotificationProvider` in `src/core/platform/` (defaults)
-- [ ] Refactor `src/core/storage/index.ts` — replace `__BUILD_MODE__` with `StorageProviderFactory`
-- [ ] Refactor `src/core/RepublicAgent.ts` — replace 5 `__BUILD_MODE__` checks with `PlatformContext`
-- [ ] Refactor `src/core/messaging/index.ts` — remove `__BUILD_MODE__` transport selection
-- [ ] Refactor `src/core/mcp/MCPManager.ts` — replace `__BUILD_MODE__` with `MCPBridgeFactory`
-- [ ] Refactor `src/core/mcp/transports/index.ts` — replace `__BUILD_MODE__` with platform parameter
-- [ ] Refactor `src/core/a2a/A2AManager.ts` — replace `__BUILD_MODE__` with platform parameter
-- [ ] Refactor `src/core/PromptLoader.ts` — replace `__BUILD_MODE__` with platform parameter
-- [ ] Refactor `src/core/tools/browser/index.ts` — replace `__BUILD_MODE__` with injected factory
-- [ ] Refactor `src/core/TurnManager.ts` — replace `chrome.tabs.*` calls (lines 816, 965, 980) with `TabProvider`
-- [ ] Refactor `src/core/UserNotifier.ts` — replace `chrome.notifications.*` (10+ calls) with `NotificationProvider`
-- [ ] Refactor `src/core/registry/AgentSession.ts` — replace `chrome.tabs.*` / `chrome.tabGroups.*` (10+ calls) with `TabProvider`
-- [ ] Move `src/core/messaging/transports/TauriTransport.ts` → `src/desktop/platform/`
-- [ ] Move `src/core/mcp/RustMCPBridge.ts` → `src/desktop/platform/`
-- [ ] Merge `src/config/` into `src/core/config/`
-- [ ] Remove `__BUILD_MODE__` from `AgentConfig.ts`
-- [ ] Convert `RolloutRecorder.getProvider()` to require `setProvider()` (remove lazy factory)
-- [ ] Delete `src/storage/rollout/provider/createRolloutStorageProvider.ts`
-- [ ] Update desktop/server bootstrap to call `RolloutRecorder.setProvider()` explicitly
-- [ ] Move `registerPlatformTools` out of core — pass pre-configured `ToolRegistry` to `RepublicAgent`
-- [ ] Move `generatePlaceholderTitle` from `core/title` to `storage/rollout` or `utils`
-- [ ] Verify: zero `__BUILD_MODE__` in `src/core/`
-- [ ] Verify: zero `chrome.*` in `src/core/`
-- [ ] Verify: zero `@tauri-apps` in `src/core/`
-- [ ] Verify: all tests pass
-- [ ] Verify: BrowserX server build succeeds
-- [ ] Verify: extension/desktop remain untouched or separately green if they are in active scope
-
-### Phase 2: Monorepo Setup
-
-- [ ] Create root workspace config
-- [ ] Create `packages/core/`
-- [ ] Create `packages/browserx/`
-- [ ] Move BrowserX server-mode code first
-- [ ] Validate BrowserX server build and tests in new workspace layout
-- [ ] Defer extension/desktop moves until needed for shared runtime extraction
-
-### Phase 3: DigitalMe Agent MVP
-
-- [ ] Create `packages/digitalme-agent/`
-- [ ] Implement HMAC middleware using raw request body bytes
-- [ ] Implement persistent idempotency store
-- [ ] Implement `POST /conversations` with idempotent create semantics
-- [ ] Implement `POST /conversations/:id/messages` with owner check and idempotent append semantics
-- [ ] Implement restart-safe runtime reconstruction from persisted state
-- [ ] Implement SSE adapter with heartbeat and final `done`
-- [ ] Implement strict MVP tool policy: no browser, no shell, no filesystem, MCP off by default
-- [ ] Add contract tests against platform expectations
-- [ ] Ship Docker-first deployment path
-
-### Phase 2: Monorepo Setup
-
-- [ ] Create `tsconfig.base.json`
-- [ ] Create `packages/core/` directory with `package.json`, `tsconfig.json`
-- [ ] Move core files to `packages/core/src/`
-- [ ] Create `packages/browserx/` directory with `package.json`, `tsconfig.json`
-- [ ] Move remaining source to `packages/browserx/src/`
-- [ ] Update all imports (569 `@/` aliases across 212 files)
-- [ ] Move and update vite configs
-- [ ] Update `scripts/build.js` paths
-- [ ] Update `vitest.config.mjs` aliases
-- [ ] Update `eslint.config.js`
-- [ ] Verify: `npm install` succeeds (workspace resolution)
-- [ ] Verify: `packages/core` builds independently
-- [ ] Verify: all BrowserX builds succeed
-- [ ] Verify: all tests pass
-
-### Phase 3: DigitalMe Agent
-
-- [ ] Create `packages/digitalme-agent/` with `package.json`, `tsconfig.json`
-- [ ] Implement HMAC auth middleware
-- [ ] Implement HTTP server with protocol endpoints
-- [ ] Implement `ConversationManager` with per-fan session isolation
-- [ ] Implement `SSEStreamAdapter`
-- [ ] Implement `PersonaConfig` loader (YAML + env vars)
-- [ ] Implement `InputFilter` and `OutputFilter`
-- [ ] Implement `ToolAllowlist`
-- [ ] Implement `ConversationStore` (SQLite)
-- [ ] Implement platform providers (`NoOpTabProvider`, `NoOpNotificationProvider`, `NodeMCPBridge`, `DigitalMeStorageProviderFactory`)
-- [ ] Implement Dockerfile and docker-compose.yml
-- [ ] Implement `digitalme-agent init` CLI command
-- [ ] Write unit tests (HMAC, filters, allowlist, SSE adapter, store, config)
-- [ ] Write integration tests (full request cycle, fan isolation, concurrent conversations)
-- [ ] Write contract tests (platform protocol compliance)
-- [ ] End-to-end test with running DigitalMe platform instance
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Build vs Fork | Build from scratch | Simpler, faster, isolation by design |
+| Language | TypeScript | MCP ecosystem, browserx model clients |
+| Database MVP | SQLite | Simple, single file, good enough |
+| Database scale | Postgres | Proven, horizontal scaling |
+| Multi-tenancy | Logical isolation | Stateless requests, parameterized queries |
+| Agent architecture | Ephemeral per-request | No shared state = automatic isolation |
+| Tool policy | Static allowlist | No dynamic registration, no untrusted code |
+| Scaling approach | Horizontal + shared DB | Stateless design enables this |
