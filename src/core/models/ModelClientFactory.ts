@@ -137,6 +137,26 @@ export class ModelClientFactory {
 
 
   /**
+   * Create a model client for a specific model key (e.g., 'openai:gpt-4o').
+   * Used by sub-agents to honor model overrides from SubAgentTypeConfig.
+   * Falls back to createClientForCurrentModel() if modelKey is not provided.
+   */
+  async createClientForModelKey(modelKey?: string): Promise<ModelClient> {
+    if (!modelKey) {
+      return this.createClientForCurrentModel();
+    }
+    if (!this.config) {
+      throw new ModelClientError('ModelClientFactory not initialized - call initialize() first');
+    }
+    const modelData = this.config.getModelByKey(modelKey);
+    if (!modelData) {
+      throw new ModelClientError(`Model ${modelKey} not found`);
+    }
+    const provider = this.mapProviderIdToType(modelData.provider.id);
+    return this.createClient(provider);
+  }
+
+  /**
    * Map provider ID from config to ModelProvider type
    * @param providerId Provider ID from config (e.g., 'openai', 'xai', 'anthropic', 'groq')
    * @returns ModelProvider type

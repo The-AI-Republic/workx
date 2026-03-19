@@ -21,6 +21,53 @@ vi.mock('../../tasks/RegularTask', () => ({
   RegularTask: vi.fn(() => ({ type: 'regular' })),
 }));
 
+// Mock Session for child engine (sub-agent) path
+vi.mock('../../Session', () => ({
+  Session: vi.fn(() => ({
+    sessionId: 'child-session-1',
+    setEventEmitter: vi.fn(),
+    setTurnContext: vi.fn(),
+    getTurnContext: vi.fn().mockReturnValue({
+      setUserInstructions: vi.fn(),
+      setBaseInstructions: vi.fn(),
+      setModelClient: vi.fn(),
+      setSelectedModelKey: vi.fn(),
+    }),
+    updateTurnContext: vi.fn(),
+    getTabId: vi.fn().mockReturnValue(-1),
+    setTabId: vi.fn(),
+    getId: vi.fn().mockReturnValue('child-session-id'),
+    getSessionId: vi.fn().mockReturnValue('child-session-id'),
+    getConversationHistory: vi.fn().mockReturnValue({ items: [] }),
+    addPendingInput: vi.fn(),
+    spawnTask: vi.fn().mockResolvedValue(undefined),
+    requestInterrupt: vi.fn(),
+    clearInterrupt: vi.fn(),
+    abortAllTasks: vi.fn().mockResolvedValue(undefined),
+    hasRunningTask: vi.fn().mockReturnValue(false),
+    addToHistory: vi.fn(),
+    getHistoryEntry: vi.fn(),
+    clearHistory: vi.fn(),
+    shutdown: vi.fn().mockResolvedValue(undefined),
+    notifyApproval: vi.fn(),
+    compact: vi.fn().mockResolvedValue({ success: true, tokensBefore: 1000, tokensAfter: 500, itemsTrimmed: 5 }),
+    getCompactionCount: vi.fn().mockReturnValue(0),
+    getToolRegistry: vi.fn().mockReturnValue(null),
+  })),
+}));
+
+// Mock TurnContext for child engine initialization
+vi.mock('../../TurnContext', () => ({
+  TurnContext: vi.fn(() => ({
+    setSelectedModelKey: vi.fn(),
+    setBaseInstructions: vi.fn(),
+    setUserInstructions: vi.fn(),
+    setModelClient: vi.fn(),
+    getSessionId: vi.fn().mockReturnValue(''),
+    update: vi.fn(),
+  })),
+}));
+
 // Mock ToolRegistryCloner to return a simple registry clone
 vi.mock('../../../tools/ToolRegistryCloner', () => ({
   createSubAgentToolRegistry: vi.fn(async (parentRegistry: any) => {
@@ -92,13 +139,15 @@ function createMockToolRegistry() {
 }
 
 function createMockModelClientFactory() {
+  const mockClient = {
+    getModel: vi.fn().mockReturnValue('test-model'),
+    setModel: vi.fn(),
+    getModelContextWindow: vi.fn().mockReturnValue(128000),
+  };
   return {
     initialize: vi.fn().mockResolvedValue(undefined),
-    createClientForCurrentModel: vi.fn().mockResolvedValue({
-      getModel: vi.fn().mockReturnValue('test-model'),
-      setModel: vi.fn(),
-      getModelContextWindow: vi.fn().mockReturnValue(128000),
-    }),
+    createClientForCurrentModel: vi.fn().mockResolvedValue(mockClient),
+    createClientForModelKey: vi.fn().mockResolvedValue(mockClient),
     clearCache: vi.fn(),
     isBackendRouting: vi.fn().mockReturnValue(false),
   };

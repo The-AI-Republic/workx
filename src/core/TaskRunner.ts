@@ -61,6 +61,8 @@ export interface TaskOptions {
   timeoutMs?: number;
   /** Auto-compact when token limit reached */
   autoCompact?: boolean;
+  /** Max turns before forced stop. Overrides the static MAX_TURNS (500) default. */
+  maxTurns?: number;
 }
 
 interface LoopOutcome {
@@ -211,8 +213,9 @@ export class TaskRunner {
         this.state.status = 'cancelled';
         this.state.abortReason = outcome.abortedReason;
         if (outcome.abortedReason === 'automatic_abort') {
+          const maxTurns = this.options.maxTurns ?? TaskRunner.MAX_TURNS;
           await this.emitBackgroundEvent(
-            `Task stopped after reaching the maximum of ${TaskRunner.MAX_TURNS} turns`,
+            `Task stopped after reaching the maximum of ${maxTurns} turns`,
             'warning'
           );
         }
@@ -280,7 +283,8 @@ export class TaskRunner {
         });
       }
 
-      if (turnCount >= TaskRunner.MAX_TURNS) {
+      const effectiveMaxTurns = this.options.maxTurns ?? TaskRunner.MAX_TURNS;
+      if (turnCount >= effectiveMaxTurns) {
         return this.buildLoopOutcome({
           turnCount,
           compactionPerformed,

@@ -68,7 +68,11 @@ export class RepublicAgentEngine {
       // Apply config values (systemPrompt, userInstructions, model) to the session's TurnContext.
       // Without this, sub-agents would run with bare defaults instead of the
       // systemPrompt/model specified in SubAgentTypeConfig.
-      const modelClient = await this.config.modelClientFactory.createClientForCurrentModel();
+      // Use createClientForModelKey to honor model overrides (e.g., sub-agent configured
+      // to use a different model than the parent's globally selected model).
+      const modelClient = await this.config.modelClientFactory.createClientForModelKey(
+        this.config.model,
+      );
       const { TurnContext } = await import('../TurnContext');
       const turnContext = new TurnContext(modelClient, {
         sessionId: this.session.sessionId,
@@ -387,8 +391,9 @@ export class RepublicAgentEngine {
       }
 
       // Create RegularTask and delegate to Session.spawnTask()
+      // Pass maxTurns from engine config so sub-agents enforce their turn limits.
       const { RegularTask } = await import('../tasks/RegularTask');
-      const task = new RegularTask();
+      const task = new RegularTask({ maxTurns: this.config.maxTurns });
 
       await this.session.spawnTask(task, turnContext, submissionId, normalizedItems as any);
 
@@ -701,8 +706,6 @@ export class RepublicAgentEngine {
     }
 
     const deadline = Date.now() + timeoutMs;
-    const maxTurns = options?.maxTurns ?? this.config.maxTurns;
-    let observedTurns = 0;
 
     while (true) {
       const remaining = deadline - Date.now();
@@ -735,22 +738,6 @@ export class RepublicAgentEngine {
           engineId: this.engineId,
           submissionId,
         };
-      }
-
-      // Track turns for maxTurns enforcement (sub-agents)
-      if (event.msg.type === 'TurnComplete') {
-        observedTurns++;
-        if (maxTurns && observedTurns >= maxTurns) {
-          this.interrupt('max_turns');
-          return {
-            success: false,
-            response: null,
-            turnCount: observedTurns,
-            stopReason: 'max_turns',
-            engineId: this.engineId,
-            submissionId,
-          };
-        }
       }
 
       // Protocol uses snake_case fields: submission_id, last_agent_message, turn_count, token_usage

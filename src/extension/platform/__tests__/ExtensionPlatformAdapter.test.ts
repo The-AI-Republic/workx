@@ -29,6 +29,16 @@ vi.mock('../../tools/registerExtensionTools', () => ({
   registerExtensionTools: vi.fn().mockResolvedValue(undefined),
 }));
 
+// Mock ChromeCredentialStore so tests don't need VaultManager/VITE_VAULT_SECRET
+const credentialStorage = new Map<string, string>();
+vi.mock('../../storage/ChromeCredentialStore', () => ({
+  ChromeCredentialStore: vi.fn().mockImplementation(() => ({
+    get: vi.fn(async (_service: string, account: string) => credentialStorage.get(account) ?? null),
+    set: vi.fn(async (_service: string, account: string, value: string) => { credentialStorage.set(account, value); }),
+    delete: vi.fn(async (_service: string, account: string) => { credentialStorage.delete(account); }),
+  })),
+}));
+
 // ---------------------------------------------------------------------------
 
 describe('ExtensionPlatformAdapter', () => {
@@ -44,6 +54,7 @@ describe('ExtensionPlatformAdapter', () => {
     mockAddTabToGroup.mockReset();
     mockValidateTab.mockReset();
     mockClearAllTabsFromGroup.mockReset();
+    credentialStorage.clear();
 
     // Enrich the global chrome mock provided by setup.ts with additional
     // APIs that ExtensionPlatformAdapter uses.
@@ -245,14 +256,12 @@ describe('ExtensionPlatformAdapter', () => {
 
   // ── Credential store ──────────────────────────────────────────────────
 
-  it('getCredentialStore() prefixes keys with "credential:"', async () => {
-    const setSpy = vi.spyOn(chrome.storage.local, 'set');
-    const removeSpy = vi.spyOn(chrome.storage.local, 'remove');
+  it('getCredentialStore() delegates to ChromeCredentialStore for encrypted storage', async () => {
+    credentialStorage.clear();
     const store = adapter.getCredentialStore();
 
     // set
     await store.set('apiKey', 'secret123');
-    expect(setSpy).toHaveBeenCalledWith({ 'credential:apiKey': 'secret123' });
 
     // get round-trip
     const value = await store.get('apiKey');
@@ -260,7 +269,8 @@ describe('ExtensionPlatformAdapter', () => {
 
     // delete
     await store.delete('apiKey');
-    expect(removeSpy).toHaveBeenCalledWith('credential:apiKey');
+    const deleted = await store.get('apiKey');
+    expect(deleted).toBeNull();
   });
 
   // ── Storage provider ──────────────────────────────────────────────────

@@ -121,16 +121,24 @@ export class ExtensionPlatformAdapter implements IPlatformAdapter {
   }
 
   getCredentialStore(): ICredentialStore {
+    // Delegate to ChromeCredentialStore which encrypts via VaultManager,
+    // consistent with the established encrypted credential storage path.
+    // The ICredentialStore key is mapped to (service='platform', account=key).
     return {
       async get(key: string): Promise<string | null> {
-        const result = await chrome.storage.local.get(`credential:${key}`);
-        return (result[`credential:${key}`] as string) ?? null;
+        const { ChromeCredentialStore } = await import('../storage/ChromeCredentialStore');
+        const store = new ChromeCredentialStore();
+        return store.get('platform', key);
       },
       async set(key: string, value: string): Promise<void> {
-        await chrome.storage.local.set({ [`credential:${key}`]: value });
+        const { ChromeCredentialStore } = await import('../storage/ChromeCredentialStore');
+        const store = new ChromeCredentialStore();
+        await store.set('platform', key, value);
       },
       async delete(key: string): Promise<void> {
-        await chrome.storage.local.remove(`credential:${key}`);
+        const { ChromeCredentialStore } = await import('../storage/ChromeCredentialStore');
+        const store = new ChromeCredentialStore();
+        await store.delete('platform', key);
       },
     };
   }
