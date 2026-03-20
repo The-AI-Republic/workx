@@ -23,6 +23,7 @@ vi.mock('@/core/RepublicAgent', () => ({
     cleanup = () => {};
     getApprovalManager = () => ({});
     getToolRegistry = () => ({ setApprovalGate: () => {} });
+    getEngine = () => null;
     agentId = 'agent_mock';
   },
 }));
