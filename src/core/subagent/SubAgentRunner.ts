@@ -83,12 +83,24 @@ export class SubAgentRunner {
       suppressedTypes: typeConfig.suppressedEvents,
     });
 
+    const parentConfig = this.parentEngine.getConfig();
+    const parentSession = this.parentEngine.getSession();
+    const approvalGate = typeConfig.approvalPolicy === 'inherit'
+      ? this.parentEngine.getToolRegistry().getApprovalGate()
+      : undefined;
+    const approvalPolicy = typeConfig.approvalPolicy === 'inherit'
+      ? parentSession?.getTurnContext?.().getApprovalPolicy?.() ?? 'on-request'
+      : 'never';
+
     // Create child engine via parent's factory method
     const engine = this.parentEngine.createChildEngine({
       toolRegistry: childRegistry,
       systemPrompt: typeConfig.systemPrompt,
-      model: typeConfig.model,
+      model: typeConfig.model ?? parentConfig.model,
       maxTurns: typeConfig.maxTurns ?? 25,
+      approvalPolicy,
+      approvalGate,
+      browserContext: parentConfig.browserContext,
       eventRouter,
     });
 

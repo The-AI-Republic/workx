@@ -12,6 +12,7 @@ import { SubAgentRunner } from '../../subagent/SubAgentRunner';
 import { SubAgentRegistry } from '../../subagent/SubAgentRegistry';
 import type { RepublicAgentEngineConfig, EngineEvent, InputItem } from '../RepublicAgentEngineConfig';
 import type { SubAgentTypeConfig } from '../../subagent/types';
+import { TurnContext } from '../../TurnContext';
 
 // ---------------------------------------------------------------------------
 // Mock: RegularTask (avoid importing the full task system)
@@ -346,6 +347,39 @@ describe('M5.2: createChildEngine creates working engine', () => {
     expect(childEngine.isDisposed()).toBe(true);
   });
 
+  it('should apply child approval policy and browserContext to internally-owned sessions', async () => {
+    const parentEngine = new RepublicAgentEngine({
+      agentConfig: {} as any,
+      toolRegistry: createMockToolRegistry() as any,
+      systemPrompt: 'parent',
+      modelClientFactory: createMockModelClientFactory() as any,
+      session: createMockSession() as any,
+      ownsSession: false,
+    });
+    await parentEngine.initialize();
+
+    const childEngine = parentEngine.createChildEngine({
+      toolRegistry: createMockToolRegistry() as any,
+      systemPrompt: 'child',
+      approvalPolicy: 'never',
+      browserContext: {
+        tabId: 321,
+        controller: {} as any,
+      },
+    });
+
+    await childEngine.initialize();
+
+    const childSession = childEngine.getSession() as any;
+    expect(childSession.setTabId).toHaveBeenCalledWith(321);
+    expect(vi.mocked(TurnContext)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        approvalPolicy: 'never',
+      }),
+    );
+  });
+
   it('should support event routing through parent', async () => {
     const parentEvents: EngineEvent[] = [];
     const parentEngine = new RepublicAgentEngine({
@@ -530,6 +564,71 @@ describe('M5.3: SubAgentRunner end-to-end', () => {
 
     const types = runner.getTypes();
     expect(types.find(t => t.id === 'custom-analyzer')).toBeDefined();
+  });
+
+  it('should inherit approval policy and browserContext when requested', async () => {
+    const approvalGate = { gate: 'parent' } as any;
+    const parentSession = createMockSession();
+    parentSession.getTurnContext.mockReturnValue({
+      getApprovalPolicy: vi.fn().mockReturnValue('on-request'),
+      setUserInstructions: vi.fn(),
+      setBaseInstructions: vi.fn(),
+      setModelClient: vi.fn(),
+      setSelectedModelKey: vi.fn(),
+    });
+
+    const parentRegistry = createMockToolRegistry();
+    parentRegistry.getApprovalGate.mockReturnValue(approvalGate);
+
+    const parentEngine = new RepublicAgentEngine({
+      agentConfig: {} as any,
+      toolRegistry: parentRegistry as any,
+      systemPrompt: 'parent',
+      modelClientFactory: createMockModelClientFactory() as any,
+      session: parentSession as any,
+      ownsSession: false,
+      browserContext: {
+        tabId: 99,
+        controller: {} as any,
+      },
+    });
+    await parentEngine.initialize();
+    parentEngine.onEvent((e) => parentEvents.push(e));
+
+    const originalRun = RepublicAgentEngine.prototype.run;
+    RepublicAgentEngine.prototype.run = vi.fn().mockResolvedValue({
+      success: true,
+      response: 'test response',
+      turnCount: 1,
+      stopReason: 'completed',
+      engineId: 'child-engine',
+      submissionId: 'sub-1',
+    });
+
+    try {
+      const runner = new SubAgentRunner({
+        parentEngine,
+        customTypes: [{
+          id: 'inherits-approval',
+          name: 'Inherits Approval',
+          description: 'Uses parent approval settings',
+          systemPrompt: 'inherit settings',
+          approvalPolicy: 'inherit',
+        }],
+      });
+
+      await runner.run({
+        type: 'inherits-approval',
+        prompt: 'test prompt',
+      });
+
+      const childEngine = (RepublicAgentEngine.prototype.run as ReturnType<typeof vi.fn>).mock.instances[0] as RepublicAgentEngine;
+      expect(childEngine.getConfig().approvalGate).toBe(approvalGate);
+      expect(childEngine.getConfig().approvalPolicy).toBe('on-request');
+      expect(childEngine.getConfig().browserContext?.tabId).toBe(99);
+    } finally {
+      RepublicAgentEngine.prototype.run = originalRun;
+    }
   });
 
   it('should cancel all running sub-agents', async () => {

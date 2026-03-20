@@ -7,7 +7,7 @@ import type { ApprovalGate } from '../approval/ApprovalGate';
 import type { ModelClientFactory } from '../models/ModelClientFactory';
 import type { Session } from '../Session';
 import type { ApprovalManager } from '../ApprovalManager';
-import type { ReviewDecision } from '../protocol/types';
+import type { AskForApproval, ReviewDecision } from '../protocol/types';
 import type { IBrowserController } from '../platform/IPlatformAdapter';
 
 export interface RepublicAgentEngineConfig {
@@ -31,6 +31,9 @@ export interface RepublicAgentEngineConfig {
 
   /** Max turns before forced stop. Default: 500 (TaskRunner.MAX_TURNS) */
   maxTurns?: number;
+
+  /** Approval policy applied to the engine's TurnContext */
+  approvalPolicy?: AskForApproval;
 
   /** Whether to persist session history. Default: false for sub-agents */
   persistent?: boolean;

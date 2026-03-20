@@ -79,11 +79,15 @@ export class RepublicAgentEngine {
         sessionId: this.session.sessionId,
         baseInstructions: this.config.systemPrompt,
         userInstructions: this.config.userInstructions,
+        approvalPolicy: this.config.approvalPolicy,
       });
       if (this.config.model) {
         turnContext.setSelectedModelKey(this.config.model);
       }
       this.session.setTurnContext(turnContext);
+      if (this.config.browserContext) {
+        this.session.setTabId(this.config.browserContext.tabId);
+      }
 
       // Wire session events to the engine's event system (only for internally-owned sessions)
       this.session.setEventEmitter(async (event: AgentEvent) => {
@@ -275,6 +279,9 @@ export class RepublicAgentEngine {
     systemPrompt: string;
     model?: string;
     maxTurns?: number;
+    approvalPolicy?: RepublicAgentEngineConfig['approvalPolicy'];
+    approvalGate?: RepublicAgentEngineConfig['approvalGate'];
+    browserContext?: RepublicAgentEngineConfig['browserContext'];
     eventRouter?: RepublicAgentEngineConfig['eventRouter'];
   }): RepublicAgentEngine {
     return new RepublicAgentEngine({
@@ -284,7 +291,10 @@ export class RepublicAgentEngine {
       systemPrompt: childConfig.systemPrompt,
       model: childConfig.model ?? this.config.model,
       maxTurns: childConfig.maxTurns,
+      approvalPolicy: childConfig.approvalPolicy,
+      approvalGate: childConfig.approvalGate,
       persistent: false,
+      browserContext: childConfig.browserContext,
       eventRouter: childConfig.eventRouter,
       parentEngineId: this.engineId,
     });
