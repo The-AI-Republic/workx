@@ -38,6 +38,7 @@ function createMockSearcher(): MemorySearcher {
 function createMockCoreManager(): CoreMemoryManager {
   return {
     mergeCoreFacts: vi.fn().mockResolvedValue(undefined),
+    removeFacts: vi.fn().mockResolvedValue(0),
     getCoreMemoryContent: vi.fn().mockResolvedValue('# User Profile'),
     ensureFile: vi.fn().mockResolvedValue(undefined),
   } as unknown as CoreMemoryManager;
@@ -253,47 +254,69 @@ describe('MemoryService.searchTopical', () => {
 // ---------------------------------------------------------------------------
 
 describe('MemoryService.forgetFact', () => {
-  it('delegates to DailyMemoryStore.removeEntries', async () => {
+  it('removes matches from both core and daily memory', async () => {
     const dailyStore = createMockDailyStore();
     (dailyStore.removeEntries as ReturnType<typeof vi.fn>).mockResolvedValue(2);
-    const { service } = createService({ dailyStore });
+    const coreManager = createMockCoreManager();
+    (coreManager.removeFacts as ReturnType<typeof vi.fn>).mockResolvedValue(1);
+    const { service } = createService({ dailyStore, coreManager });
 
     const removed = await service.forgetFact('Google work');
 
+    expect(coreManager.removeFacts).toHaveBeenCalledWith(['Google', 'work']);
     expect(dailyStore.removeEntries).toHaveBeenCalledWith(['Google', 'work']);
-    expect(removed).toBe(2);
+    expect(removed).toBe(3);
   });
 
   it('returns 0 when config is disabled', async () => {
     const dailyStore = createMockDailyStore();
-    const { service } = createService({ dailyStore, config: { enabled: false } });
+    const coreManager = createMockCoreManager();
+    const { service } = createService({ dailyStore, coreManager, config: { enabled: false } });
 
     const removed = await service.forgetFact('something');
 
     expect(removed).toBe(0);
+    expect(coreManager.removeFacts).not.toHaveBeenCalled();
     expect(dailyStore.removeEntries).not.toHaveBeenCalled();
   });
 
   it('returns 0 when query has no meaningful terms', async () => {
     const dailyStore = createMockDailyStore();
-    const { service } = createService({ dailyStore });
+    const coreManager = createMockCoreManager();
+    const { service } = createService({ dailyStore, coreManager });
 
     const removed = await service.forgetFact('is a');
 
     expect(removed).toBe(0);
+    expect(coreManager.removeFacts).not.toHaveBeenCalled();
     expect(dailyStore.removeEntries).not.toHaveBeenCalled();
   });
 
   it('filters out short words (<=2 chars)', async () => {
     const dailyStore = createMockDailyStore();
     (dailyStore.removeEntries as ReturnType<typeof vi.fn>).mockResolvedValue(1);
-    const { service } = createService({ dailyStore });
+    const coreManager = createMockCoreManager();
+    const { service } = createService({ dailyStore, coreManager });
 
     const removed = await service.forgetFact('my big cat');
 
     // "my" is 2 chars -> filtered out, "big" and "cat" are 3 chars -> kept
+    expect(coreManager.removeFacts).toHaveBeenCalledWith(['big', 'cat']);
     expect(dailyStore.removeEntries).toHaveBeenCalledWith(['big', 'cat']);
     expect(removed).toBe(1);
+  });
+
+  it('refreshes cached prompt memory when core facts are removed', async () => {
+    const dailyStore = createMockDailyStore();
+    const coreManager = createMockCoreManager();
+    (coreManager.removeFacts as ReturnType<typeof vi.fn>).mockResolvedValue(1);
+    (coreManager.getCoreMemoryContent as ReturnType<typeof vi.fn>).mockResolvedValue('# Preferences\n- Likes light mode');
+    const { service } = createService({ dailyStore, coreManager });
+    const refreshSpy = vi.spyOn(service, 'refreshGlobalContextCache');
+
+    await service.forgetFact('dark mode');
+
+    expect(refreshSpy).toHaveBeenCalledOnce();
   });
 });
 

@@ -11,6 +11,17 @@ export interface MemoryEntry {
   sourceDate: string;  // YYYY-MM-DD
 }
 
+/**
+ * Format a Date as a local calendar date stamp (YYYY-MM-DD).
+ * This keeps file sharding aligned with the displayed local time.
+ */
+export function formatLocalDateStamp(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export class DailyMemoryStore {
   private fs: FileSystem;
   private memoryDir: string;
@@ -196,7 +207,7 @@ export class DailyMemoryStore {
 
   /** Format a Date as YYYY-MM-DD */
   private formatDate(d: Date): string {
-    return d.toISOString().slice(0, 10);
+    return formatLocalDateStamp(d);
   }
 
   /** Format a Date as HH:MM */

@@ -61,6 +61,47 @@ export class CoreMemoryManager {
   }
 
   /**
+   * Remove core-memory lines matching the given search terms.
+   * Headings are preserved so the template structure stays intact.
+   */
+  async removeFacts(terms: string[]): Promise<number> {
+    if (terms.length === 0) return 0;
+
+    const content = await this.getCoreMemoryContent();
+    if (!content) return 0;
+
+    const lowerTerms = terms.map(term => term.toLowerCase());
+    let removed = 0;
+
+    const filteredLines = content
+      .split('\n')
+      .filter((line) => {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) {
+          return true;
+        }
+
+        const shouldRemove = lowerTerms.some(term => trimmed.toLowerCase().includes(term));
+        if (shouldRemove) {
+          removed++;
+          return false;
+        }
+
+        return true;
+      });
+
+    if (removed === 0) return 0;
+
+    const cleaned = filteredLines
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trimEnd();
+
+    await this.fs.writeFile(this.filePath, cleaned + '\n');
+    return removed;
+  }
+
+  /**
    * Merge new core facts into the existing core-memory.md using LLM.
    */
   async mergeCoreFacts(facts: string[]): Promise<void> {

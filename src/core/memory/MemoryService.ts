@@ -150,7 +150,16 @@ export class MemoryService {
     const terms = query.split(/\s+/).filter(w => w.length > 2);
     if (terms.length === 0) return 0;
 
-    return this.dailyStore.removeEntries(terms);
+    const [coreRemoved, dailyRemoved] = await Promise.all([
+      this.coreMemoryManager.removeFacts(terms),
+      this.dailyStore.removeEntries(terms),
+    ]);
+
+    if (coreRemoved > 0) {
+      await this.refreshGlobalContextCache();
+    }
+
+    return coreRemoved + dailyRemoved;
   }
 
   /**

@@ -108,6 +108,40 @@ describe('CoreMemoryManager.getCoreMemoryContent', () => {
 });
 
 // ---------------------------------------------------------------------------
+// removeFacts
+// ---------------------------------------------------------------------------
+
+describe('CoreMemoryManager.removeFacts', () => {
+  it('removes matching non-heading lines and preserves headings', async () => {
+    const fs = createMockFS({
+      [CORE_FILE]: '# Preferences\n- Prefers dark mode\n- Uses vim\n\n# Behavior\n- Be concise\n',
+    });
+    const llm = createMockLLM();
+    const manager = new CoreMemoryManager(llm, fs, MEMORY_DIR);
+
+    const removed = await manager.removeFacts(['dark mode', 'concise']);
+
+    expect(removed).toBe(2);
+    expect(fs.writeFile).toHaveBeenCalledWith(
+      CORE_FILE,
+      '# Preferences\n- Uses vim\n\n# Behavior\n'
+    );
+  });
+
+  it('returns 0 and does not rewrite when nothing matches', async () => {
+    const original = '# Preferences\n- Uses vim\n';
+    const fs = createMockFS({ [CORE_FILE]: original });
+    const llm = createMockLLM();
+    const manager = new CoreMemoryManager(llm, fs, MEMORY_DIR);
+
+    const removed = await manager.removeFacts(['dark mode']);
+
+    expect(removed).toBe(0);
+    expect(fs.writeFile).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // mergeCoreFacts
 // ---------------------------------------------------------------------------
 
