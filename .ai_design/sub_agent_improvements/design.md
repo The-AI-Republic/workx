@@ -36,8 +36,10 @@ Claudy has three distinct agent concepts built on a single shared ReAct loop (`q
 | Concept | Context | System Prompt | Tools | Async? | Cache Sharing |
 |---------|---------|---------------|-------|--------|---------------|
 | **Sub-agent** | Fresh (prompt only) | Agent's own | Filtered per type | Optional | No |
-| **Forked agent** | Full parent history | Parent's (byte-identical) | Parent's exact set | Always | Yes (all forks share prefix) |
+| **Forked agent** | Parent's full prefix (cache-shaped)* | Parent's rendered bytes | Parent's exact set | Always | Yes (all forks share prefix) |
 | **Coordinator mode** | N/A (modifier) | N/A | N/A | Forces async | N/A |
+
+*Forked agents don't just "inherit parent history" — they are **cache-shape engineered**. The parent's rendered system prompt bytes, exact tool array, thinking config, and synthetic placeholder tool results are all specifically shaped to produce byte-identical API request prefixes across all fork children, maximizing prompt cache hits. Context inheritance is a side effect of the cache engineering, not its purpose.
 
 Key capabilities BrowserX lacks:
 1. **Background/async execution** - parent blocks until sub-agent completes
@@ -92,8 +94,9 @@ When `background: true`:
 When `background: false` (default, current behavior):
 - No change. Parent awaits result synchronously.
 
-**Approval policy for background agents:**
-- Background agents must use `approvalPolicy: 'never'` — they cannot prompt for approval since the parent has moved on. If a type has `approvalPolicy: 'inherit'`, override to `'never'` when running in background and log a warning.
+**Approval policy for background agents (BrowserX design choice):**
+- Background agents use `approvalPolicy: 'never'` — they cannot prompt for approval since the parent has moved on. If a type has `approvalPolicy: 'inherit'`, override to `'never'` when running in background and log a warning.
+- Note: Claudy uses a finer-grained mechanism (`shouldAvoidPermissionPrompts: true`) that suppresses the interactive prompt dialog but still allows automated approval via permission hooks and classifiers. Async agents with `permissionMode: 'bubble'` can even surface prompts to the parent terminal. BrowserX simplifies to a hard `'never'` since we lack permission hooks and classifiers. If those are added later, revisit this to allow hook-based auto-approval for background agents.
 
 **AbortController strategy:**
 - Background agents get a **new, unlinked** `AbortController`. Parent aborting does not kill background children.
@@ -112,9 +115,11 @@ These are simple tools registered alongside `sub_agent`. They query/mutate `SubA
 
 **Problem:** When a background sub-agent completes, there is no mechanism to inform the parent LLM of the result. The parent would need to poll.
 
-**What Claudy does:** `enqueuePendingNotification()` enqueues an XML `<task-notification>` into the parent's message queue with `priority: 'later'`. The parent LLM sees it as a user message on its next turn.
+**What Claudy does:** Claudy uses a process-global command queue (`messageQueueManager.ts`). `enqueuePendingNotification()` enqueues notifications with `priority: 'later'` into a singleton queue. The `query()` loop drains this queue between turns, filtering by `agentId` so notifications reach only the intended parent. Notifications are converted to attachment blocks in the API request. This decouples the completing agent from needing a reference to the parent — it just enqueues to the global queue and the parent's loop picks it up.
 
-**Proposed design:**
+**Proposed design (BrowserX simplification):**
+
+BrowserX uses direct parent-engine injection rather than a global queue. This is simpler and sufficient for our scope (single parent, max 3 sub-agents, no multi-parent coordination). If BrowserX later needs notification routing across multiple independent parents, a queue-based model closer to Claudy's should be considered.
 
 Add a notification injection mechanism to `RepublicAgentEngine`:
 
@@ -170,7 +175,7 @@ interface TaskNotification {
 
 **Problem:** Once a sub-agent is spawned, there is no way to send follow-up instructions. The parent cannot steer a running background agent.
 
-**What Claudy does:** `SendMessageTool` routes messages by agent name/ID. Running agents receive messages via `pendingMessages` queue, drained at tool-round boundaries. Stopped agents can be resumed.
+**What Claudy does:** Claudy has two separate messaging paths. Background local agents use a per-task `pendingMessages` array drained at tool-round boundaries via the attachment pipeline. In-process teammates use a separate `pendingUserMessages` queue drained by a 500ms polling idle loop in `inProcessRunner.ts`. BrowserX has no in-process teammates, so we adopt the local agent pattern (drain at tool-round boundaries).
 
 **Proposed design:**
 
@@ -202,9 +207,11 @@ if (pendingMessages?.length) {
 
 **Scope limitation:** No broadcast (`*`), no structured messages, no agent resume in this phase. Keep it simple: send a text message to a running background agent by ID.
 
-### 2.4 Recursion Depth Enforcement
+### 2.4 Recursion Depth Enforcement (BrowserX-specific)
 
 **Problem:** The `worker` built-in type only denies `sub_agent` in its tool list. But if a custom type allows it (or if the deny is accidentally removed), unbounded recursion is possible. The `_subAgent.depth` metadata exists in events but is not enforced.
+
+**Note:** This is a BrowserX-original safety measure, not adopted from Claudy. Claudy prevents recursion through tool deny lists (`AgentTool` is removed from sub-agent tool pools via `ALL_AGENT_DISALLOWED_TOOLS`) and fork-specific guards (`isInForkChild`). It tracks `queryTracking.depth` but only for telemetry, not enforcement. BrowserX adds an explicit depth cap as defense-in-depth alongside tool deny lists.
 
 **Proposed design:**
 
@@ -348,9 +355,9 @@ These are explicitly **out of scope** for this improvement phase:
 
 | Non-Goal | Reason |
 |----------|--------|
-| Forked agent (inherited context + cache optimization) | Requires prompt cache infrastructure that doesn't exist in BrowserX. The API cost optimization is less relevant for browser automation (shorter conversations, fewer parallel research tasks than CLI coding). Revisit when usage patterns justify it. |
+| Forked agent (cache-shape engineered spawning) | Claudy's fork path is cache-shape engineering: it threads the parent's rendered system prompt bytes, exact tool array, thinking config, and synthetic placeholder tool results to produce byte-identical API request prefixes across all fork children, maximizing prompt cache hits. This requires prompt cache infrastructure that doesn't exist in BrowserX. The optimization is less relevant for browser automation (shorter conversations, fewer parallel research tasks than CLI coding). Revisit when usage patterns justify it. |
 | Tab-per-agent isolation | Tab management is a browser tool concern, not a sub-agent concern. A sub-agent may or may not use a browser tab depending on its tools. Don't couple these concepts. If a sub-agent needs a specific tab, it should use existing tab management tools. |
-| Agent resume from disk | Requires transcript persistence, sidechain storage, and session reconstruction. Significant complexity for marginal value in browser automation where sub-agent tasks are typically short-lived. |
+| Agent resume from disk | Claudy supports full agent lifecycle: eviction to disk, transcript sidechain persistence (`subagents/<agentId>.jsonl`), auto-resume from `SendMessage` (reconstructs replacement state, restores worktree metadata, continues in background), and re-warm of evicted agents. This requires transcript persistence, sidechain storage, and session reconstruction — significant infrastructure. BrowserX sub-agent tasks are typically short-lived browser automation steps where resume provides marginal value. Revisit if long-running background agents become a usage pattern. |
 | Coordinator mode | A modifier that forces async on all spawns. Useful for CLI orchestration with many parallel workers. Browser automation patterns are more sequential. Can be added trivially later (just set `background: true` by default). |
 
 ---
@@ -461,12 +468,13 @@ These are explicitly **out of scope** for this improvement phase:
 
 ### 6.1 Why no forked agent?
 
-Claudy's fork path exists to solve a **cost optimization problem**: when the LLM makes multiple tool calls in one turn and each needs independent execution, forking with a cache-identical prefix avoids re-processing the full conversation for each child.
+Claudy's fork path is **cache-shape engineering**, not just "inherit parent context." It threads the parent's rendered system prompt bytes, exact tool array, thinking config, and synthetic placeholder tool results to produce byte-identical API request prefixes. All fork children share a single prompt cache entry, dramatically cutting API costs for parallel spawns. The context inheritance is a side effect — the purpose is cache optimization.
 
-BrowserX's usage patterns differ:
-- Browser automation conversations are typically shorter (fewer turns, less history)
+BrowserX's usage patterns don't justify this complexity:
+- Browser automation conversations are typically shorter (fewer turns, less history to cache)
 - Parallel research across multiple tabs is less common than sequential navigation
 - BrowserX doesn't have prompt caching infrastructure at the engine level
+- The engineering cost of maintaining byte-identical prefixes across tool serialization, system prompt rendering, and thinking config is high
 
 The sub-agent path (fresh context + self-contained prompt) is sufficient. If prompt cache optimization becomes necessary, it can be added as a separate concern at the `ModelClient` layer without changing the sub-agent architecture.
 
@@ -490,3 +498,5 @@ Background execution (Phase 2) is a prerequisite for cross-agent messaging (Phas
 ### 6.4 Notification injection via AddToHistory
 
 Using the existing `AddToHistory` operation in `RepublicAgentEngine` to inject notifications keeps the change minimal. The notification becomes part of the conversation history, so the LLM sees it naturally on its next turn. No new event types or special handling needed in the Session/TurnManager layer.
+
+This is a deliberate simplification over Claudy's approach (process-global command queue with agentId-scoped drainage and priority ordering). Direct injection is sufficient when there is a single parent engine with a small number of sub-agents (max 3). If BrowserX later supports multiple independent parent agents or needs notification priority ordering, a queue-based delivery model should be considered.
