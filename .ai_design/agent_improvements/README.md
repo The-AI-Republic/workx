@@ -21,6 +21,7 @@ BrowserX is a multi-platform browser automation agent. Claudy is a terminal-nati
 | 05 | [Session Memory](./05_session_memory/design.md) | P2 | Medium | Cross-session context, automatic summarization |
 | 06 | [Multi-Agent Coordination](./06_multi_agent_coordination/design.md) | P2 | Large | Coordinator mode, worker delegation |
 | 07 | [Centralized State](./07_centralized_state/design.md) | P1 | Medium | Unified state, selectors, side-effect handlers |
+| 08 | [Centralized Message Queue](./08_centralized_message_queue/design.md) | P1 | Medium | Unified event bus, semantic command queue, replay |
 
 ## Dependency Graph
 
@@ -32,6 +33,8 @@ BrowserX is a multi-platform browser automation agent. Claudy is a terminal-nati
 02_tool_metadata_concurrency ──> multiple_tools_call (existing)
 
 07_centralized_state ──> (independent, can proceed in parallel)
+
+08_centralized_message_queue ──> (independent, enhances 01, 04, 06, 07)
 ```
 
 ## Existing Work
