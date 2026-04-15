@@ -85,10 +85,13 @@ export class SubAgentRunner {
 
     const parentConfig = this.parentEngine.getConfig();
     const parentSession = this.parentEngine.getSession();
-    const approvalGate = typeConfig.approvalPolicy === 'inherit'
+    // Default to 'inherit' when approvalPolicy is not explicitly set.
+    // Only 'never' explicitly opts out of approval — prevents accidental bypass.
+    const effectiveApprovalPolicy = typeConfig.approvalPolicy ?? 'inherit';
+    const approvalGate = effectiveApprovalPolicy === 'inherit'
       ? this.parentEngine.getToolRegistry().getApprovalGate()
       : undefined;
-    const approvalPolicy = typeConfig.approvalPolicy === 'inherit'
+    const approvalPolicy = effectiveApprovalPolicy === 'inherit'
       ? parentSession?.getTurnContext?.().getApprovalPolicy?.() ?? 'on-request'
       : 'never';
 

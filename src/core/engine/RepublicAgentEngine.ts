@@ -561,6 +561,17 @@ export class RepublicAgentEngine {
 
     if (!riskBasedResolved && !protocolResolved) {
       console.error(`[RepublicAgentEngine] Approval decision could not be routed for id: ${callId} — no pending request found in either subsystem`);
+      // Emit TurnAborted so waitForCompletion() unblocks instead of hanging
+      this.pushEvent({
+        id: crypto.randomUUID(),
+        msg: {
+          type: 'TurnAborted',
+          data: {
+            reason: 'error' as const,
+            message: `Approval could not be routed for call ${callId} — no pending request found`,
+          },
+        },
+      });
     }
 
     // Remember decision if requested
@@ -780,6 +791,21 @@ export class RepublicAgentEngine {
         };
       }
 
+      // Re-queue events targeted at a different submission so concurrent
+      // waitForCompletion() callers don't lose their completion signals.
+      const eventSubmissionId = (event.msg.data as { submission_id?: string } | undefined)?.submission_id;
+      if (eventSubmissionId && eventSubmissionId !== submissionId &&
+          (event.msg.type === 'TaskComplete' || event.msg.type === 'TurnAborted')) {
+        this.eventQueue.push(event);
+        // Wake any other waiter blocked on getNextEvent()
+        if (this.eventWaiters.length > 0) {
+          const waiter = this.eventWaiters.shift()!;
+          const queuedEvent = this.eventQueue.shift()!;
+          waiter(queuedEvent);
+        }
+        continue;
+      }
+
       // Protocol uses snake_case fields: submission_id, last_agent_message, turn_count, token_usage
       if (event.msg.type === 'TaskComplete' && event.msg.data?.submission_id === submissionId) {
         const data = event.msg.data;
@@ -804,10 +830,7 @@ export class RepublicAgentEngine {
       // which are broadcast interrupts like user_interrupt that affect all awaiters).
       if (event.msg.type === 'TurnAborted') {
         const data = event.msg.data as { reason?: string; submission_id?: string; message?: string; turn_count?: number } | undefined;
-        // Skip TurnAborted events targeted at a different submission
-        if (data?.submission_id && data.submission_id !== submissionId) {
-          continue;
-        }
+        // Events for other submissions are already re-queued above
         if (data?.reason === 'error') {
           return {
             success: false,

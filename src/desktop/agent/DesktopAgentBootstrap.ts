@@ -468,7 +468,12 @@ export class DesktopAgentBootstrap {
       await registerSubAgentTool(engine);
       console.log('[DesktopAgentBootstrap] sub_agent tool registered');
     } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
       console.warn('[DesktopAgentBootstrap] Could not register sub_agent tool:', error);
+      engine.pushEvent({
+        id: crypto.randomUUID(),
+        msg: { type: 'BackgroundEvent', data: { message: `Sub-agent tool registration failed: ${errMsg}`, level: 'error' } },
+      });
     }
   }
 

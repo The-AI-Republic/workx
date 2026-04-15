@@ -172,7 +172,7 @@ export class RepublicAgent {
     // Bridge engine events to the RepublicAgent event system
     this.wireEngineEvents();
 
-    console.log('[RepublicAgent] DEBUG: initialize() complete');
+    // initialization complete
   }
 
   /**
@@ -188,7 +188,6 @@ export class RepublicAgent {
   private async configurePromptComposition(): Promise<void> {
     // Skip if already configured (desktop bootstrap provides platform context)
     if (isComposerConfigured()) {
-      console.log('[RepublicAgent] PromptComposer already configured (by bootstrap)');
       return;
     }
 
@@ -199,7 +198,7 @@ export class RepublicAgent {
     configurePromptComposer(agentType, {
       browserConnection: this.platformAdapter.platformId === 'extension' ? 'extension' : 'mcp',
     });
-    console.log(`[RepublicAgent] PromptComposer configured for agent type: ${agentType}`);
+    // PromptComposer configured
   }
 
   /**

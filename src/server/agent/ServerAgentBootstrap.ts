@@ -164,7 +164,12 @@ export class ServerAgentBootstrap {
             await registerServerTools(toolRegistry as any);
             console.log('[ServerAgentBootstrap] Server tools registered on new session agent');
           } catch (err) {
+            const errMsg = err instanceof Error ? err.message : String(err);
             console.warn('[ServerAgentBootstrap] Tool registration failed (non-fatal):', err);
+            agent.getEngine()?.pushEvent({
+              id: crypto.randomUUID(),
+              msg: { type: 'BackgroundEvent', data: { message: `Server tool registration failed: ${errMsg}`, level: 'error' } },
+            });
           }
 
           // Register sub-agent tool
@@ -175,7 +180,12 @@ export class ServerAgentBootstrap {
               await registerSubAgentTool(engine);
               console.log('[ServerAgentBootstrap] sub_agent tool registered');
             } catch (err) {
+              const errMsg = err instanceof Error ? err.message : String(err);
               console.warn('[ServerAgentBootstrap] sub_agent tool registration failed (non-fatal):', err);
+              engine.pushEvent({
+                id: crypto.randomUUID(),
+                msg: { type: 'BackgroundEvent', data: { message: `Sub-agent tool registration failed: ${errMsg}`, level: 'error' } },
+              });
             }
           }
 

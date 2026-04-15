@@ -53,7 +53,7 @@ Rules:
       deny: ['sub_agent'],
     },
     maxTurns: 25,
-    approvalPolicy: 'never',
+    approvalPolicy: 'inherit',
     suppressedEvents: ['AgentMessageDelta'],
   },
 ];
