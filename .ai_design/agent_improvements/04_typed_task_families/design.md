@@ -2,15 +2,35 @@
 
 ## Problem
 
-BrowserX has a basic `TaskRunner` with a single task type and no disk persistence. There is no:
+BrowserX has **substantial task infrastructure** that must be extended, not replaced. The existing system includes:
+
+**`TaskRunner`** (`src/core/TaskRunner.ts`, ~765 lines) — a sophisticated multi-turn executor:
+- Multi-turn loop with `MAX_TURNS = 500` (`runLoop()`, lines 262-372)
+- Auto-compaction at `COMPACTION_THRESHOLD = 0.85` of context window (`shouldCompactBeforeRequest()` lines 708-734, `attemptAutoCompact()` lines 739-765)
+- Multi-path abort handling: signal-based, mid-loop cancellation checks, `cancel()` method (lines 143-158)
+- Persisted token usage via `TokenUsageStore` (`persistTokenUsage()` lines 469-487)
+- Task state with `submissionId`, `status`, `currentTurnIndex`, `tokenUsage`, `compactionPerformed`, `abortReason`
+
+**`Session.spawnTask()`** (`src/core/Session.ts:1316`) — turn-scoped task orchestration:
+- Creates `AbortController` per task for cancellation
+- Wraps execution with `onTaskFinished()`/`onTaskAborted()` callbacks
+- Registers `RunningTask` (kind, abortController, task, promise, startTime) via `registerNewActiveTask()`
+- Fire-and-forget async pattern (tasks run without blocking the session)
+
+**`ActiveTurn`** (`src/core/session/state/ActiveTurn.ts:13`) — per-turn task tracking:
+- `Map<string, RunningTask>` for all running tasks in the current turn
+- `addTask()`, `removeTask()`, `hasTask()`, `getTasks()`, `drain()`, `abort()` lifecycle methods
+- `TurnState` delegation for approval and input management
+
+What BrowserX is **still missing**:
 
 - Typed task families (browser automation vs. background agent vs. scheduled)
-- Disk persistence for task output (results lost on crash/restart)
-- Background/foreground transitions (tasks always block the main loop)
-- Progress tracking with delta reads
-- Task state machine with terminal state protection
+- Disk persistence for task output (append-only with delta reads)
+- Background/foreground transitions (tasks currently run fire-and-forget but without UI lifecycle)
+- Progress tracking with delta reporting
+- Task state machine with terminal state protection and `notified` flag
 
-Claudy has 7 typed task families with append-only disk output, background/foreground transitions, progress delta tracking, and a protected state machine.
+Claudy has 7 typed task families with append-only disk output, background/foreground transitions, progress delta tracking, and a protected state machine. BrowserX should build these on top of the existing `TaskRunner`/`Session`/`ActiveTurn` abstractions.
 
 ## What Claudy Does
 
@@ -118,10 +138,10 @@ Notifications are atomically guarded (`notified` flag prevents duplicates).
 
 ## BrowserX Mapping
 
-### Current State
+### Current State (Existing Infrastructure)
 
 ```typescript
-// TaskRunner.ts - Basic task execution
+// TaskRunner.ts — Existing task state (already used, extends with new families)
 type TaskState = {
   submissionId: string
   status: 'idle' | 'running' | 'completed' | 'failed' | 'cancelled'
@@ -130,15 +150,29 @@ type TaskState = {
   compactionPerformed: boolean
   abortReason?: string
 }
+
+// Session.ts:1344 — Existing RunningTask structure
+type RunningTask = {
+  kind: string                    // Task classification (extension point for families)
+  abortController: AbortController
+  task: SessionTask
+  promise: Promise<void>
+  startTime: number
+}
+
+// ActiveTurn.ts — Existing per-turn task map
+class ActiveTurn {
+  private tasks: Map<string, RunningTask>   // All running tasks for this turn
+  addTask(taskId, task): void
+  removeTask(taskId): boolean               // Returns true if turn is now empty
+  abort(): void                             // Aborts all tasks, clears state
+  drain(): RunningTask[]                    // Drain all tasks
+}
 ```
 
-- Single task type
-- No disk persistence (results in memory only)
-- No background execution (always blocks main loop)
-- No progress tracking
-- No task family discrimination
+The existing `RunningTask.kind` field is the natural extension point for task family discrimination. New task families should be defined as discriminated unions that extend this base, not as a parallel structure.
 
-### Proposed Task Families for BrowserX
+### Proposed Task Families for BrowserX (Extending Existing Abstractions)
 
 ```typescript
 type BrowserXTaskState =
@@ -190,29 +224,32 @@ type TabWatcherTaskState = TaskStateBase & {
 
 ### Phase Plan
 
-**Phase 1: Task State Machine** (Week 1-2)
-- Define discriminated union `BrowserXTaskState`
+**Phase 1: Extend Existing Task State Machine** (Week 1-2)
+- Define discriminated union `BrowserXTaskState` extending existing `RunningTask.kind`
+- Add `TaskStateBase` interface compatible with existing `TaskState` in `TaskRunner.ts`
 - Implement state machine with terminal state protection
 - Add `notified` flag for atomic notification guard
-- Implement `TaskRegistry` for tracking active tasks
+- Extend `ActiveTurn`'s task map to support typed task families (use `kind` field for discrimination)
 
 **Phase 2: Disk Persistence** (Week 2-3)
 - Implement `DiskTaskOutput` class (append-only, queue-based)
 - Add session-scoped output directory
 - Implement delta reads via offset tracking
 - Add size cap (configurable, default 1GB)
+- Integrate with existing `RolloutRecorder` for session persistence
 
 **Phase 3: Background Execution** (Week 3-4)
-- Add `isBackgrounded` flag and background/foreground transitions
-- Implement `retain` and `evictAfter` for UI lifecycle
+- Extend `Session.spawnTask()` to support background/foreground transitions
+- Add `isBackgrounded` flag and `retain`/`evictAfter` for UI lifecycle
 - Add `pendingMessages` queue for mid-turn messages
-- Wire background tasks into EventBus for progress notifications
+- Wire background tasks into existing EventMsg types for progress notifications
+- Coordinate with `TaskRunner`'s existing compaction logic for long-running background tasks
 
 **Phase 4: Progress & Notifications** (Week 4-5)
 - Implement `AgentProgress` type with delta tracking
 - Add task notification protocol (XML or JSON to parent session)
-- Wire progress events to UI components
-- Add task summary generation (background LLM summarization)
+- Wire progress events to UI components via existing `Session`/`TurnManager` event paths
+- Add task summary generation using existing `SummaryGenerator` pattern from `CompactService`
 
 ## BrowserX-Specific Task Types
 

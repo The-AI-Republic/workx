@@ -220,18 +220,80 @@ This is NOT a rewrite. The approach is:
 
 1. **Create AgentStateStore as a thin facade** over existing services
 2. **Existing services continue to own their state** (SessionState, AgentConfig, etc.)
-3. **AgentStateStore reads from services** and provides a unified view
+3. **AgentStateStore reads from services** via defined adapter interfaces (see below)
 4. **Selectors compute derived state** without duplicating storage
 5. **Effects replace ad-hoc state propagation** (currently in config subscriptions)
 
 Over time, state ownership can migrate from individual services to AgentStateStore as the codebase evolves.
 
+### Adapter Interfaces
+
+Each existing service must expose a state surface for the central store to read from. These adapters define what state is available and how it's accessed (pull vs. push):
+
+```typescript
+// Adapter for SessionState (src/core/session/state/SessionState.ts)
+// Method: Pull — SessionState is a pure data container with getters
+interface SessionStateAdapter {
+  getHistory(): ResponseItem[]
+  getApprovedCommands(): Set<string>
+  getTokenInfo(): TokenUsageInfo | undefined
+  getTabId(): number
+  getCompactionCount(): number
+  getLastCompactionTime(): number | undefined
+}
+
+// Adapter for ApprovalManager / ApprovalGate (src/core/approval/)
+// Method: Pull + Event — read current state, subscribe to approval events
+interface ApprovalStateAdapter {
+  getPendingApprovals(): number
+  getApprovalMode(): ApprovalMode
+  getApprovedDomains(): Set<string>
+  onApprovalDecision(handler: (event: ApprovalEvent) => void): void
+}
+
+// Adapter for ToolRegistry (src/tools/ToolRegistry.ts)
+// Method: Pull — registry is relatively static after initialization
+interface ToolRegistryAdapter {
+  getRegisteredTools(): Set<string>
+  getEnabledTools(): Set<string>
+  getDisabledTools(): Set<string>
+  getMcpServers(): string[]
+}
+
+// Adapter for TaskRunner (src/core/TaskRunner.ts)
+// Method: Pull + Event — read current task state, subscribe to task lifecycle events
+interface TaskRunnerAdapter {
+  getActiveTaskCount(): number
+  getBackgroundTaskCount(): number
+  getTaskSummary(): Record<string, TaskStatus>
+  onTaskStateChange(handler: (event: TaskLifecycleEvent) => void): void
+}
+
+// Adapter for AgentConfig (src/config/AgentConfig.ts)
+// Method: Event — already has config-changed event via RepublicAgent.setupConfigSubscriptions()
+interface AgentConfigAdapter {
+  getSelectedModel(): string
+  getSelectedProvider(): string
+  onConfigChange(handler: (event: IConfigChangeEvent) => void): void
+}
+```
+
+**Pull vs. Event strategy:**
+- **Pull** (getter calls): For state that changes infrequently or where the central store can afford to read on demand. SessionState, ToolRegistry.
+- **Event** (subscription): For state that changes frequently or must trigger side effects. AgentConfig already has `config-changed` events via `RepublicAgent.setupConfigSubscriptions()` (line 186). TaskRunner should emit lifecycle events.
+- **Pull + Event** (hybrid): Initial read via getter, then subscribe for updates. ApprovalManager, TaskRunner.
+
+The central store updates its internal snapshot when:
+1. An event fires from a subscribed adapter
+2. A selector is accessed and the underlying adapter state has changed (lazy pull)
+
 ### Phase Plan
 
-**Phase 1: State Type & Store** (Week 1)
+**Phase 1: State Type, Adapters & Store** (Week 1)
 - Define `AgentState` interface
+- Implement adapter interfaces for each existing service (SessionState, ApprovalManager, ToolRegistry, TaskRunner, AgentConfig)
 - Implement `AgentStateStore` with getters and setters
-- Wire store to read from existing services (facade pattern)
+- Wire store to read from existing services via adapters (pull for static state, event subscription for dynamic state)
 - Add state snapshot for debugging (`getFullState()`)
 
 **Phase 2: Selectors** (Week 2)

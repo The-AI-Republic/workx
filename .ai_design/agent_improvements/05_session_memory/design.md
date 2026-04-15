@@ -88,13 +88,35 @@ On session start, the memory file content is prepended to the system prompt as a
 
 ## BrowserX Mapping
 
-### Current State
+### Current State (Existing Infrastructure)
 
-BrowserX has:
-- `CompactService` with `SummaryGenerator` for history compression
-- `HistoryReconstructor` for rebuilding compacted history
-- `RolloutRecorder` for session persistence (append-only journal)
+BrowserX has several systems that session memory must integrate with:
+
+- **`CompactService`** with `SummaryGenerator` for history compression — compaction triggers at `COMPACTION_THRESHOLD = 0.85` in `TaskRunner.ts` (lines 708-734), with LLM-based summarization in `attemptAutoCompact()` (lines 739-765). **Memory extraction must coordinate with this path** to avoid losing context that should be persisted to memory.
+- **`HistoryReconstructor`** for rebuilding compacted history
+- **`RolloutRecorder`** for session persistence (append-only journal) — should capture memory snapshots as part of session recording
+- **`PromptLoader.registerPromptExtension()`** (`src/core/PromptLoader.ts:25-58`) — a module-level registry of callback functions that are appended to the system prompt on every `loadPrompt()` call. **Memory injection should use this existing mechanism** rather than building a custom `SessionMemoryInjector`.
+- **`TokenUsageStore`** — already tracks token usage per-session, can be used for extraction threshold checks
 - No cross-session memory file
+
+### Integration Protocol
+
+**Extraction-before-compaction ordering:** Memory extraction must run *before* compaction discards context. When `TaskRunner.shouldCompactBeforeRequest()` returns true:
+1. Trigger memory extraction first (extract important context from current history)
+2. Then proceed with compaction (which may discard the detailed history)
+3. This prevents the scenario where compaction summarizes context away before memory has a chance to capture it
+
+**Memory injection via `registerPromptExtension()`:** Instead of a custom `SessionMemoryInjector`, register a prompt extension callback:
+```typescript
+// On session start:
+registerPromptExtension(() => {
+  const memory = loadMemoryFile(sessionMemoryPath);
+  return memory ? `\n\n<session-memory>\n${memory}\n</session-memory>` : '';
+});
+```
+This integrates naturally with existing prompt loading and other extensions (e.g., skill prompts from `SkillRegistry.buildSkillsSystemPrompt()`).
+
+**Rollout persistence:** `RolloutRecorder` should capture memory snapshots as part of session recording, allowing session replay to include memory state at each point.
 
 ### Proposed Architecture
 
@@ -103,9 +125,10 @@ src/core/memory/
 ├── SessionMemory.ts          # Extraction orchestration
 ├── SessionMemoryConfig.ts    # Threshold configuration
 ├── SessionMemoryTemplate.ts  # Memory file template and sections
-├── SessionMemoryExtractor.ts # LLM-based extraction logic
-└── SessionMemoryInjector.ts  # Inject memory into system prompt
+└── SessionMemoryExtractor.ts # LLM-based extraction logic
 ```
+
+> **Note:** No `SessionMemoryInjector` is needed — memory injection uses the existing `PromptLoader.registerPromptExtension()` mechanism (see Integration Protocol above).
 
 ### Memory Sections for BrowserX
 
@@ -156,20 +179,23 @@ BrowserX operates in a browser context, so the memory template should reflect th
 
 **Phase 2: Extraction Triggers** (Week 2)
 - Implement `SessionMemoryConfig` with configurable thresholds
-- Add token counting integration (from existing TokenUsageStore)
+- Add token counting integration (from existing `TokenUsageStore`)
 - Add tool call counting since last extraction
 - Implement `shouldExtractMemory()` logic
+- **Coordinate thresholds with `TaskRunner.COMPACTION_THRESHOLD` (0.85)**: extraction should trigger before compaction to avoid data loss. E.g., extract at 0.70 context usage, compact at 0.85.
 
 **Phase 3: Extraction Engine** (Week 3)
 - Implement `SessionMemoryExtractor` using LLM summarization
 - Use existing `SummaryGenerator` pattern as foundation
 - Run extraction non-blocking (async, with timeout)
 - Restrict tool access during extraction (read-only on memory file)
+- **Hook into `TaskRunner.runLoop()`**: add extraction check before the compaction check at line 298, ensuring memory is captured before context is summarized
 
 **Phase 4: Injection & Continuity** (Week 4)
-- Implement `SessionMemoryInjector` to prepend memory to system prompt
+- Register memory injection via `PromptLoader.registerPromptExtension()` (no custom injector needed)
 - Load previous session memory on new session start
 - Merge memories from multiple sessions (deduplicate, update stale sections)
+- Capture memory snapshots in `RolloutRecorder` for session replay
 - Add `/memory` command to view/edit current memory
 
 ## Risks

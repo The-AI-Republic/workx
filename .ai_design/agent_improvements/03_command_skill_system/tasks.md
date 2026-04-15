@@ -12,30 +12,26 @@
 - [ ] Add command deduplication (same name from different sources → highest precedence wins)
 - [ ] Write tests for command registration with source precedence
 
-## Phase 2: Skill Frontmatter
+## Phase 2: Extend Existing Skill Frontmatter
 
-- [ ] Implement YAML frontmatter parser in `src/core/skills/SkillFrontmatter.ts`
-  - Parse `---` delimited YAML header from markdown files
-  - Return { frontmatter: object, body: string }
-- [ ] Define frontmatter schema with zod:
-  - description: string
-  - when-to-use: string
-  - arguments: string | string[]
-  - argument-hint: string
-  - allowed-tools: string | string[]
-  - user-invocable: boolean (default: true)
+> **Note:** BrowserX already has YAML frontmatter parsing (`SkillParser.parseSkillMd()` in `src/core/skills/SkillParser.ts:17`), typed skill schemas (`types.ts:51`), and Zod validation. This phase extends the existing system, not rebuilds it.
+
+- [ ] ~~Implement YAML frontmatter parser~~ **ALREADY EXISTS**: `SkillParser.parseSkillMd()` handles `---` delimited YAML parsing with the `yaml` library
+- [ ] ~~Define base frontmatter schema with zod~~ **ALREADY EXISTS**: `skillFrontmatterSchema` in `types.ts` validates `name`, `description`, `metadata`, `allowed-tools`, `compatibility`
+- [ ] Extend existing `SkillFrontmatter` interface in `types.ts` with new fields:
   - model: string (sonnet/opus/haiku/inherit)
   - effort: string (low/medium/high/max)
   - context: 'inline' | 'fork'
   - agent: string
   - domains: string[] (BrowserX-specific: website domains)
   - hooks: object (depends on Track 01)
-- [ ] Extend `SkillLoader.ts` to parse frontmatter from .md files in skills/ directories
-- [ ] Support skill discovery from: project `.browserx/skills/`, user `~/.browserx/skills/`
+  - when-to-use: string (alias for existing description, for Claudy compatibility)
+  - argument-hint: string
+- [ ] Update existing Zod schema `skillFrontmatterSchema` to validate new fields
+- [ ] Update `SkillParser.parseSkillMd()` to pass through new fields (should work automatically if schema is updated)
 - [ ] Convert loaded skills into PromptCommand objects
-- [ ] Add `allowedTools` enforcement: restrict ToolRegistry during skill execution
 - [ ] Add `model` override: switch model for skill execution
-- [ ] Write tests for frontmatter parsing with various field combinations
+- [ ] Write tests for extended frontmatter fields
 
 ## Phase 3: Source Precedence & Loading
 
@@ -51,18 +47,18 @@
 - [ ] Re-evaluate command visibility on tab change (domain filter refresh)
 - [ ] Write integration tests for multi-source loading with precedence
 
-## Phase 4: Model Invocation
+## Phase 4: Extend Model Invocation
 
-- [ ] Implement `SkillTool.ts` as a registered tool in ToolRegistry
-  - Input: { skill: string, args?: string }
-  - Lists available skills in tool description
-  - Invokes skill's getPromptForCommand with args
-- [ ] Generate skill descriptions for model system prompt:
-  - Only include user-invocable skills where isEnabled() = true
-  - Include whenToUse for model decision-making
-- [ ] Implement inline execution: expand skill prompt into current conversation
-- [ ] Implement forked execution: spawn skill as sub-agent with isolated context
-- [ ] Enforce allowed-tools restriction during skill execution
-- [ ] Ensure skill tool calls go through ApprovalGate (same approval as direct tool use)
+> **Note:** BrowserX already has a `use_skill` tool registered in `DesktopAgentBootstrap.ts:403` via `registerSkillsToolOnAgent()`. This phase extends it, not replaces it.
+
+- [ ] ~~Implement SkillTool as a registered tool~~ **ALREADY EXISTS**: `use_skill` tool is registered with `name` and `arguments` parameters
+- [ ] ~~Generate skill descriptions for model system prompt~~ **ALREADY EXISTS**: `SkillRegistry.buildSkillsSystemPrompt()` generates model-facing instructions for auto/hybrid trusted skills
+- [ ] Extend existing `use_skill` handler in `DesktopAgentBootstrap.ts` to support `context: 'fork'`:
+  - When skill has `context: 'fork'`, spawn sub-agent with isolated context
+  - Pass skill prompt as sub-agent's initial prompt
+- [ ] Add `allowed-tools` enforcement to existing `use_skill` handler:
+  - Read skill's `allowed-tools` from frontmatter
+  - Restrict ToolRegistry for the skill execution scope
+- [ ] Ensure skill tool calls go through ApprovalGate (already uses `StaticRiskAssessor(0)` — review if this is sufficient for forked execution)
 - [ ] Add skill invocation events to protocol (SkillInvoked, SkillCompleted, SkillFailed)
-- [ ] Write tests for model-invoked skill execution
+- [ ] Write tests for extended skill execution (forked context, tool restriction)

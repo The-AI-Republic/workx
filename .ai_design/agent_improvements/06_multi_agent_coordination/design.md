@@ -124,15 +124,17 @@ type WorkerContext = {
 
 **2. Tool Restriction by Worker Role**
 
+> **Note:** Tool names below use function-definition names (what the LLM sees). See Track 02 for the full name mapping where registry keys differ.
+
 ```typescript
 // Research worker: read-only tools
-const RESEARCH_TOOLS = ['web_scraping_tool', 'data_extraction_tool', 'web_search_tool', 'page_vision_tool']
+const RESEARCH_TOOLS = ['web_scraping', 'data_extraction', 'page_vision', 'planning_tool']
 
 // Automation worker: full browser tools
-const AUTOMATION_TOOLS = ['dom_tool', 'navigation_tool', 'form_automation_tool', 'web_scraping_tool']
+const AUTOMATION_TOOLS = ['browser_dom', 'browser_navigation', 'form_automation', 'web_scraping']
 
 // Analysis worker: data processing tools
-const ANALYSIS_TOOLS = ['data_extraction_tool', 'web_scraping_tool', 'planning_tool']
+const ANALYSIS_TOOLS = ['data_extraction', 'web_scraping', 'planning_tool']
 ```
 
 **3. Coordinator-Specific Tools**
@@ -196,7 +198,7 @@ Coordinator: "Submit this job application to LinkedIn, Indeed, and Glassdoor"
 ## Dependencies
 
 - **Track 01** (Hook System): Notifications use event system
-- **Track 04** (Typed Tasks): Workers are `BackgroundAgentTask` instances
+- **Track 04** (Typed Tasks): Workers are `BackgroundAgentTask` instances. **Important:** Track 04's task families must be built as extensions of the existing `Session.spawnTask()` / `ActiveTurn` / `TaskRunner` infrastructure, not as a parallel system. Worker spawning here should use `Session.spawnTask()` as the underlying mechanism.
 - **Track 07** (Centralized State): Worker state tracked centrally
 
 ## Risks

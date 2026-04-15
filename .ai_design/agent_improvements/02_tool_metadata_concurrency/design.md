@@ -137,21 +137,24 @@ interface ExtendedToolDefinition extends ToolDefinition {
 
 ### Concrete BrowserX Tool Mapping
 
+> **Note on tool naming:** Some tools have different function-definition names (what the LLM sees) vs. registry keys (internal dispatch). This table uses function-definition names. Where they differ, the registry key is noted in parentheses.
+
 | Tool | Concurrent-Safe | Read-Only | Destructive | Progress |
 |------|----------------|-----------|-------------|----------|
-| `dom_tool` (read) | Yes | Yes | No | DOM tree size |
-| `dom_tool` (click) | No | No | No | Click target |
-| `dom_tool` (type) | No | No | No | Input content |
-| `navigation_tool` | No | No | No | URL loading |
-| `web_scraping_tool` | Yes | Yes | No | Content extraction |
-| `form_automation_tool` | No | No | No | Form fields filled |
-| `data_extraction_tool` | Yes | Yes | No | Data rows extracted |
-| `storage_tool` (read) | Yes | Yes | No | - |
-| `storage_tool` (write) | No | No | No | - |
-| `page_vision_tool` | Yes | Yes | No | Screenshot capture |
-| `network_intercept_tool` | No | No | No | Requests intercepted |
+| `browser_dom` (snapshot) [registry: `dom_tool`] | Yes | Yes | No | DOM tree size |
+| `browser_dom` (click) | No | No | No | Click target |
+| `browser_dom` (type) | No | No | No | Input content |
+| `browser_navigation` [registry: `navigation_tool`] | No | No | No | URL loading |
+| `web_scraping` | Yes | Yes | No | Content extraction |
+| `form_automation` | No | No | No | Form fields filled |
+| `data_extraction` | Yes | Yes | No | Data rows extracted |
+| `cache_storage_tool` (read) [registry: `storage_tool`] | Yes | Yes | No | - |
+| `cache_storage_tool` (write) | No | No | No | - |
+| `page_vision` | Yes | Yes | No | Screenshot capture |
+| `network_intercept` | **No** | **No** | No | Requests intercepted |
 | `planning_tool` | Yes | No | No | - |
-| `web_search_tool` | Yes | Yes | No | Results count |
+
+> **`network_intercept` is NOT read-only.** Despite monitoring network traffic, this tool calls `chrome.declarativeNetRequest.updateDynamicRules()` to add/remove interception rules, tracks `modifiedRequests` in its metrics, and has a stateful start/stop lifecycle. It must be classified as a write operation that is not concurrency-safe.
 
 ### Integration with Existing Parallel Tool Call Design
 
@@ -170,18 +173,19 @@ This track directly feeds into the existing `multiple_tools_call/` design:
 
 **Phase 2: Annotate Existing Tools** (Week 2)
 - Add concurrency metadata to all 11 registered tools
-- Implement per-input checks for `dom_tool` (read vs. click vs. type)
-- Implement per-input checks for `storage_tool` (read vs. write)
+- Implement per-input checks for `browser_dom` / `dom_tool` (read vs. click vs. type)
+- Implement per-input checks for `cache_storage_tool` / `storage_tool` (read vs. write)
+- Mark `network_intercept` as non-concurrent, non-read-only (stateful interception rules)
 - Add `getActivityDescription()` to all tools
 
 **Phase 3: Progress Reporting** (Week 3)
 - Define tool-specific progress types (DOMProgress, NavigationProgress, etc.)
 - Thread `onProgress` callback through `ToolRegistry.execute()`
-- Implement progress emission in dom_tool, navigation_tool, web_scraping_tool
+- Implement progress emission in `browser_dom`, `browser_navigation`, `web_scraping`
 - Connect progress events to existing EventMsg types
 
 **Phase 4: Result Management** (Week 4)
-- Add `maxResultSizeChars` to tools with large outputs (web_scraping, data_extraction)
+- Add `maxResultSizeChars` to tools with large outputs (`web_scraping`, `data_extraction`)
 - Implement disk persistence for oversized results
 - Add result reference in conversation (pointer to disk file instead of inline content)
 

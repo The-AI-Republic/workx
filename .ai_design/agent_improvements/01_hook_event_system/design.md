@@ -101,10 +101,12 @@ type HookResponse = {
 
 ### What BrowserX Has Today
 
-- **Events**: 80+ event types in `core/protocol/events.ts`, but callback-only (no subscriber pattern)
-- **No hook registration**: Tools execute atomically via `ToolRegistry.execute()`
+- **Events**: 80+ event types in `core/protocol/events.ts`, structured emission through `Session`/`TurnManager` — not a blank callback world
+- **Approval pipeline**: `ApprovalGate.check()` (`src/core/approval/ApprovalGate.ts:92`) implements a multi-step pipeline: fast-path domain checking (blocked/trusted at lines 105-120) → risk assessment → policy evaluation → decision. This is not a simple boolean gate.
+- **Tool execution entry point**: `ToolRegistry.execute()` (`src/tools/ToolRegistry.ts:236`) handles tool lookup, validation, and dispatch
+- **No hook registration**: Tools execute atomically via `ToolRegistry.execute()` with no extensibility points
 - **No hook configuration**: No settings.json or frontmatter-based hook definitions
-- **Approval as only interceptor**: `ApprovalGate.check()` is the sole pre-execution gate
+- **Existing skill infrastructure**: `SkillRegistry` already exists (see Track 03) and could host skill-scoped hooks via frontmatter
 
 ### Proposed Architecture
 
@@ -122,12 +124,37 @@ src/core/hooks/
 
 ### Integration Points
 
+> **Critical: Hook execution ordering must be precisely defined relative to the existing approval pipeline.** The `ApprovalGate.check()` pipeline is multi-step (domain check → risk assessment → policy evaluation → decision). Hooks must slot into specific positions, not just "before" or "after" the gate.
+
 1. **ToolRegistry.execute()** - Wire PreToolUse/PostToolUse/PostToolUseFailure
+
+   **Execution order within `ToolRegistry.execute()`:**
+   ```
+   1. Tool lookup + validation (existing)
+   2. PreToolUse hooks fire (NEW) — can modify input via updatedInput, or block via continue=false
+   3. ApprovalGate.check() (existing) — domain check → risk assessment → policy → decision
+   4. PermissionRequest hooks fire (NEW) — only if approval decision is 'ask'
+   5. Tool execution (existing)
+   6. PostToolUse hooks fire (NEW) — receive tool result, can modify output
+   7. On failure: PostToolUseFailure hooks fire (NEW) — before any retry logic
+   ```
+
+   **On retry:** If tool execution fails and the system retries, PreToolUse hooks fire again for the retry attempt. PostToolUseFailure hooks see each failure independently.
+
 2. **RepublicAgent.processSubmission()** - Wire UserPromptSubmit
 3. **RepublicAgent.initialize()/shutdown()** - Wire SessionStart/SessionEnd
-4. **ApprovalGate.check()** - Wire PermissionRequest/PermissionDenied
+4. **ApprovalGate.check()** - Wire PermissionRequest/PermissionDenied (fires within the approval pipeline, after risk assessment but before the user prompt)
 5. **Session.recordItems()** - Wire FileChanged (for DOM mutations)
 6. **TaskRunner** - Wire TaskCreated/TaskCompleted
+
+### Event Protocol Reconciliation
+
+BrowserX already has structured event emission through `Session`/`TurnManager` using `EventMsg` types. The hook system should **not** replace this protocol but should integrate with it:
+
+- **Hook events** (PreToolUse, PostToolUse, etc.) are interceptors that can modify behavior — they are NOT the same as observation events
+- **EventMsg events** (existing) are notifications for UI and persistence — they are downstream consumers
+- **Ordering**: Hook execution → EventMsg emission. A hook that blocks a tool call should also suppress the corresponding EventMsg.
+- **Future EventBus migration** (Phase 4): When converting to pub/sub, existing `EventMsg` consumers become subscribers. Hook handlers remain a separate mechanism (middleware, not pub/sub) because they can modify/block execution.
 
 ### Phase Plan
 

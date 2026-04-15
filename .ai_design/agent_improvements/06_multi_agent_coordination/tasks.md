@@ -11,10 +11,10 @@
   - Directive: verify results (prove, don't rubber-stamp)
 - [ ] Define `WorkerContext` type: { workerId, tabId, allowedTools, parentSessionId, role }
 - [ ] Define worker roles: 'research' | 'automation' | 'analysis' | 'general'
-- [ ] Define tool restriction sets per role:
-  - research: web_scraping, data_extraction, web_search, page_vision
-  - automation: dom_tool, navigation, form_automation, web_scraping
-  - analysis: data_extraction, web_scraping, planning
+- [ ] Define tool restriction sets per role (using function-definition names):
+  - research: `web_scraping`, `data_extraction`, `page_vision`, `planning_tool`
+  - automation: `browser_dom`, `browser_navigation`, `form_automation`, `web_scraping`
+  - analysis: `data_extraction`, `web_scraping`, `planning_tool`
   - general: all tools
 - [ ] Add coordinator mode entry command: `/coordinate`
 - [ ] Write tests for coordinator mode activation and tool restriction

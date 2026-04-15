@@ -1,16 +1,18 @@
 # Track 04: Typed Task Families - Tasks
 
-## Phase 1: Task State Machine
+> **Important:** BrowserX already has substantial task infrastructure that must be extended, not replaced. `TaskRunner` (~765 lines) handles multi-turn loops, auto-compaction, abort handling, and token persistence. `Session.spawnTask()` creates `RunningTask` instances with `kind`, `abortController`, `task`, `promise`, `startTime`. `ActiveTurn` maintains `Map<string, RunningTask>` with full lifecycle management. All new task families must build on these existing abstractions.
 
-- [ ] Define `TaskStateBase` interface with: id, type, status, description, startTime, endTime, outputFile, outputOffset, notified
-- [ ] Define `TaskStatus` type: 'pending' | 'running' | 'completed' | 'failed' | 'killed'
-- [ ] Define `BrowserXTaskState` discriminated union with type field as discriminator
+## Phase 1: Extend Existing Task State Machine
+
+- [ ] Define `TaskStateBase` interface **compatible with existing `TaskState` in `TaskRunner.ts`** — extend, don't replace the existing status enum
+- [ ] Define `TaskStatus` type: 'pending' | 'running' | 'completed' | 'failed' | 'killed' (superset of existing 'idle' | 'running' | 'completed' | 'failed' | 'cancelled')
+- [ ] Define `BrowserXTaskState` discriminated union using `RunningTask.kind` as the discriminator field
 - [ ] Define `BrowserAutomationTaskState` with: tabId, steps, currentStepIndex, screenshots, progress
 - [ ] Define `BackgroundAgentTaskState` with: prompt, model, isBackgrounded, progress, pendingMessages, retain, evictAfter
 - [ ] Define `ScheduledTaskState` with: cronExpression, lastRunAt, nextRunAt, runCount
 - [ ] Define `TabWatcherTaskState` with: tabId, watchCondition, checkIntervalMs, lastCheckedAt, matchFound
 - [ ] Implement `isTerminalTaskStatus()` guard function
-- [ ] Implement `TaskRegistry` class: register, unregister, get, list, update
+- [ ] Implement `TaskRegistry` class that integrates with existing `ActiveTurn` task map: register, unregister, get, list, update
 - [ ] Add terminal state protection: reject transitions from completed/failed/killed
 - [ ] Add `notified` flag with atomic check-and-set to prevent duplicate notifications
 - [ ] Add type guard functions: `isBrowserAutomationTask()`, `isBackgroundAgentTask()`, etc.
@@ -36,6 +38,7 @@
 ## Phase 3: Background Execution
 
 - [ ] Add `isBackgrounded` field to BackgroundAgentTaskState
+- [ ] Extend `Session.spawnTask()` to support background/foreground transitions (it already uses fire-and-forget async pattern with `AbortController`)
 - [ ] Implement `backgroundTask(taskId)`: set isBackgrounded = true, release main loop
 - [ ] Implement `foregroundTask(taskId)`: set isBackgrounded = false, attach to UI
 - [ ] Add `retain` field: set to true when user views task, blocks eviction
@@ -45,9 +48,9 @@
   - Drain at tool-round boundaries (between tool calls)
 - [ ] Wire background task execution into RepublicAgent:
   - New submission type: BackgroundTaskSubmission
-  - TaskRunner processes in separate execution context
-- [ ] Add AbortController per task for cancellation
-- [ ] Wire task lifecycle events: TaskStarted, TaskBackgrounded, TaskForegrounded, TaskCompleted
+  - `TaskRunner` processes in separate execution context (coordinate with existing compaction logic for long-running tasks)
+- [ ] ~~Add AbortController per task~~ **ALREADY EXISTS**: `Session.spawnTask()` creates `AbortController` per task (line 1326)
+- [ ] Wire task lifecycle events via existing `Session`/`TurnManager` event emission: TaskStarted, TaskBackgrounded, TaskForegrounded, TaskCompleted
 - [ ] Write tests for background/foreground transitions
 
 ## Phase 4: Progress & Notifications

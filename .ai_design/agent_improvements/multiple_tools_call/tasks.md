@@ -12,14 +12,16 @@
 - [ ] Extend `register()` signature with optional concurrency param
 
 ### 1.3 Tag existing tools with concurrency metadata
-- [ ] `browser_dom`: `isConcurrencySafe: (p) => p.action === 'snapshot'`, `isReadOnly: (p) => p.action === 'snapshot'`
-- [ ] `browser_navigation`: `isConcurrencySafe: false`, `isReadOnly: false`
-- [ ] `browser_storage`: `isConcurrencySafe: (p) => p.action === 'get'`, `isReadOnly: (p) => p.action === 'get'`
-- [ ] `browser_form_automation`: `isConcurrencySafe: false`
-- [ ] `browser_data_extraction`: `isConcurrencySafe: true`, `isReadOnly: true`
-- [ ] `browser_web_scraping`: `isConcurrencySafe: true`, `isReadOnly: true`
-- [ ] `browser_network_intercept`: `isConcurrencySafe: true`, `isReadOnly: true`
-- [ ] `web_search`: `isConcurrencySafe: true`, `isReadOnly: true`
+> Tool names: function-definition name (LLM-facing). Registry key noted where it differs.
+- [ ] `browser_dom` [registry: `dom_tool`]: `isConcurrencySafe: (p) => p.action === 'snapshot'`, `isReadOnly: (p) => p.action === 'snapshot'`
+- [ ] `browser_navigation` [registry: `navigation_tool`]: `isConcurrencySafe: false`, `isReadOnly: false`
+- [ ] `cache_storage_tool` [registry: `storage_tool`]: `isConcurrencySafe: (p) => p.action === 'get'`, `isReadOnly: (p) => p.action === 'get'`
+- [ ] `form_automation`: `isConcurrencySafe: false`
+- [ ] `data_extraction`: `isConcurrencySafe: true`, `isReadOnly: true`
+- [ ] `web_scraping`: `isConcurrencySafe: true`, `isReadOnly: true`
+- [ ] `network_intercept`: `isConcurrencySafe: false`, `isReadOnly: false` (stateful: modifies declarativeNetRequest rules)
+- [ ] `page_vision`: `isConcurrencySafe: true`, `isReadOnly: true`
+- [ ] `planning_tool`: `isConcurrencySafe: true`, `isReadOnly: false`
 - [ ] MCP tools: default `isConcurrencySafe: false`
 
 ### 1.4 Create ToolOrchestrator

@@ -126,21 +126,24 @@ interface ToolConcurrencyMetadata {
 
 **Classification of existing BrowserX tools:**
 
+> **Tool naming convention:** The names below are the function-definition names (what the LLM sees when invoking tools). Some tools have different internal registry keys — see Track 02 design doc for the full mapping. Registry keys are noted where they differ.
+
 | Tool | isConcurrencySafe | isReadOnly | Rationale |
 |------|-------------------|-----------|-----------|
-| `browser_dom` (snapshot) | true | true | Read-only DOM observation |
+| `browser_dom` (snapshot) [registry: `dom_tool`] | true | true | Read-only DOM observation |
 | `browser_dom` (click) | false | false | Mutates page state |
 | `browser_dom` (type) | false | false | Mutates input fields |
 | `browser_dom` (scroll) | false | false | Changes viewport |
 | `browser_dom` (keypress) | false | false | Sends input events |
-| `browser_navigation` | false | false | Changes page URL |
-| `browser_storage` (get) | true | true | Read-only storage access |
-| `browser_storage` (set) | false | false | Mutates storage |
-| `browser_form_automation` | false | false | Mutates forms |
-| `browser_data_extraction` | true | true | Read-only scraping |
-| `browser_web_scraping` | true | true | Read-only scraping |
-| `browser_network_intercept` | true | true | Passive network monitoring |
-| `web_search` | true | true | External API, no local side effects |
+| `browser_navigation` [registry: `navigation_tool`] | false | false | Changes page URL |
+| `cache_storage_tool` (get) [registry: `storage_tool`] | true | true | Read-only storage access |
+| `cache_storage_tool` (set) | false | false | Mutates storage |
+| `form_automation` | false | false | Mutates forms |
+| `data_extraction` | true | true | Read-only scraping |
+| `web_scraping` | true | true | Read-only scraping |
+| `network_intercept` | **false** | **false** | **Stateful**: calls `chrome.declarativeNetRequest.updateDynamicRules()`, tracks `modifiedRequests`, has start/stop lifecycle |
+| `page_vision` | true | true | Read-only screenshot capture |
+| `planning_tool` | true | false | Internal state tracking |
 | MCP tools | false | false | Unknown side effects (conservative default) |
 
 **Note on `browser_dom`**: This tool uses an `action` parameter. Concurrency safety depends on the action:
