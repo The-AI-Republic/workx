@@ -54,7 +54,7 @@ export class MemorySearcher {
     return this.filterAndRank(query, capped, limit);
   }
 
-  private async generateKeywords(query: string): Promise<string[]> {
+  async generateKeywords(query: string): Promise<string[]> {
     try {
       const response = await this.llm.complete(
         keywordExtractionPrompt,
@@ -102,14 +102,8 @@ export class MemorySearcher {
           relevance: Math.min(1, Math.max(0, p.relevance)),
         }));
     } catch (err) {
-      console.warn('[MemorySearcher] Relevance filtering failed, returning all candidates:', err);
-      // Fallback: return all candidates with neutral relevance
-      return candidates.slice(0, limit).map(c => ({
-        fact: c.text,
-        category: c.category,
-        sourceDate: c.sourceDate,
-        relevance: 0.5,
-      }));
+      console.warn('[MemorySearcher] Relevance filtering failed, returning empty results:', err);
+      return [];
     }
   }
 }

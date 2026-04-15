@@ -7,7 +7,6 @@ mod db_storage;
 mod http_commands;
 mod keychain_commands;
 mod mcp_manager;
-mod memory_commands;
 mod oauth_server;
 mod sandbox;
 mod rollout_db;
@@ -136,20 +135,6 @@ mod tests {
 }
 
 fn main() {
-    // Register sqlite-vec extension globally before any DB connections are opened.
-    // This makes vec0 virtual tables available in all rusqlite connections.
-    //
-    // Safety: sqlite3_auto_extension requires a function pointer with the SQLite
-    // extension init signature. sqlite_vec::sqlite3_vec_init is guaranteed by the
-    // sqlite-vec crate to match this signature. The transmute converts between
-    // compatible function pointer types. This must be called before any connections
-    // are opened (guaranteed by placement at the start of main).
-    unsafe {
-        rusqlite::ffi::sqlite3_auto_extension(Some(std::mem::transmute(
-            sqlite_vec::sqlite3_vec_init as *const (),
-        )));
-    }
-
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -429,24 +414,6 @@ fn main() {
             db_storage::storage_clear,
             db_storage::storage_vacuum,
             db_storage::storage_batch,
-            // Memory system commands
-            memory_commands::memory_init,
-            memory_commands::memory_insert,
-            memory_commands::memory_update,
-            memory_commands::memory_delete,
-            memory_commands::memory_search,
-            memory_commands::memory_get_by_categories,
-            memory_commands::memory_get_by_id,
-            memory_commands::memory_get_all,
-            memory_commands::memory_update_access_stats,
-            memory_commands::memory_count,
-            memory_commands::memory_get_schema_dimensions,
-            memory_commands::memory_migrate_dimensions,
-            memory_commands::memory_set_migration_status,
-            memory_commands::memory_get_migration_status,
-            memory_commands::memory_log_operation,
-            memory_commands::memory_get_history,
-            memory_commands::memory_close,
             // Scheduler OS-level job commands
             scheduler_commands::scheduler_register_os_job,
             scheduler_commands::scheduler_remove_os_job,

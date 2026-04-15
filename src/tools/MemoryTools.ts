@@ -6,7 +6,7 @@
 import type { ToolDefinition, ToolHandler } from './BaseTool';
 import type { ToolRegistry } from './ToolRegistry';
 import type { MemoryService } from '../core/memory/MemoryService';
-import type { MemoryCategory } from '../core/memory/types';
+import { isMemoryCategory, type MemoryCategory } from '../core/memory/types';
 
 export const SAVE_MEMORY_TOOL: ToolDefinition = {
   type: 'function',
@@ -74,8 +74,12 @@ export async function registerMemoryTools(
     const ms = getMemoryService();
     if (!ms) return { success: false, message: 'Memory system not available' };
     const text = typeof params.text === 'string' ? params.text.trim() : '';
-    const category = (params.category || 'general') as MemoryCategory;
     if (!text) return { success: false, message: 'Empty text' };
+    const rawCategory = typeof params.category === 'string' ? params.category : 'general';
+    if (!isMemoryCategory(rawCategory)) {
+      return { success: false, message: `Invalid category: "${rawCategory}"` };
+    }
+    const category: MemoryCategory = rawCategory;
     await ms.saveFact(text, category);
     return { success: true, message: `Saved to memory: "${text}"` };
   };

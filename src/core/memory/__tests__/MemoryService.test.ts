@@ -32,6 +32,10 @@ function createMockDailyStore(): DailyMemoryStore {
 function createMockSearcher(): MemorySearcher {
   return {
     search: vi.fn().mockResolvedValue([]),
+    generateKeywords: vi.fn().mockImplementation(async (query: string) => {
+      // Default mock: return the full query as a single keyword
+      return [query];
+    }),
   } as unknown as MemorySearcher;
 }
 
@@ -263,8 +267,8 @@ describe('MemoryService.forgetFact', () => {
 
     const removed = await service.forgetFact('Google work');
 
-    expect(coreManager.removeFacts).toHaveBeenCalledWith(['Google', 'work']);
-    expect(dailyStore.removeEntries).toHaveBeenCalledWith(['Google', 'work']);
+    expect(coreManager.removeFacts).toHaveBeenCalledWith(['Google work']);
+    expect(dailyStore.removeEntries).toHaveBeenCalledWith(['Google work']);
     expect(removed).toBe(3);
   });
 
@@ -280,30 +284,47 @@ describe('MemoryService.forgetFact', () => {
     expect(dailyStore.removeEntries).not.toHaveBeenCalled();
   });
 
-  it('returns 0 when query has no meaningful terms', async () => {
+  it('returns 0 when query is empty or whitespace', async () => {
     const dailyStore = createMockDailyStore();
     const coreManager = createMockCoreManager();
     const { service } = createService({ dailyStore, coreManager });
 
-    const removed = await service.forgetFact('is a');
+    const removed = await service.forgetFact('   ');
 
     expect(removed).toBe(0);
     expect(coreManager.removeFacts).not.toHaveBeenCalled();
     expect(dailyStore.removeEntries).not.toHaveBeenCalled();
   });
 
-  it('filters out short words (<=2 chars)', async () => {
+  it('falls back to full query when keyword generation fails', async () => {
     const dailyStore = createMockDailyStore();
     (dailyStore.removeEntries as ReturnType<typeof vi.fn>).mockResolvedValue(1);
     const coreManager = createMockCoreManager();
-    const { service } = createService({ dailyStore, coreManager });
+    const searcher = createMockSearcher();
+    (searcher.generateKeywords as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('LLM error'));
+    const { service } = createService({ dailyStore, coreManager, searcher });
 
     const removed = await service.forgetFact('my big cat');
 
-    // "my" is 2 chars -> filtered out, "big" and "cat" are 3 chars -> kept
-    expect(coreManager.removeFacts).toHaveBeenCalledWith(['big', 'cat']);
-    expect(dailyStore.removeEntries).toHaveBeenCalledWith(['big', 'cat']);
+    // Falls back to the full query as a single term
+    expect(coreManager.removeFacts).toHaveBeenCalledWith(['my big cat']);
+    expect(dailyStore.removeEntries).toHaveBeenCalledWith(['my big cat']);
     expect(removed).toBe(1);
+  });
+
+  it('uses LLM-generated keywords for precise matching', async () => {
+    const dailyStore = createMockDailyStore();
+    (dailyStore.removeEntries as ReturnType<typeof vi.fn>).mockResolvedValue(2);
+    const coreManager = createMockCoreManager();
+    const searcher = createMockSearcher();
+    (searcher.generateKeywords as ReturnType<typeof vi.fn>).mockResolvedValue(['Python', 'programming']);
+    const { service } = createService({ dailyStore, coreManager, searcher });
+
+    const removed = await service.forgetFact('user likes Python programming');
+
+    expect(coreManager.removeFacts).toHaveBeenCalledWith(['Python', 'programming']);
+    expect(dailyStore.removeEntries).toHaveBeenCalledWith(['Python', 'programming']);
+    expect(removed).toBe(2);
   });
 
   it('refreshes cached prompt memory when core facts are removed', async () => {

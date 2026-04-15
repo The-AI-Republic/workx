@@ -49,15 +49,12 @@ export class CoreMemoryManager {
 
   /**
    * Read the current core memory content.
+   * Throws on read failure so callers (e.g. mergeCoreFacts) can abort
+   * rather than treating a transient error as an empty document.
    */
   async getCoreMemoryContent(): Promise<string> {
-    try {
-      await this.ensureFile();
-      return await this.fs.readFile(this.filePath);
-    } catch (err) {
-      console.warn('[Memory] Failed to read core-memory.md:', err);
-      return '';
-    }
+    await this.ensureFile();
+    return await this.fs.readFile(this.filePath);
   }
 
   /**
@@ -109,7 +106,9 @@ export class CoreMemoryManager {
 
     // Serialize concurrent merges to prevent lost-update races on core-memory.md
     const task = this.mergeQueue.then(() => this._doMergeCoreFacts(facts));
-    this.mergeQueue = task.catch(() => { /* swallow to keep chain alive */ });
+    this.mergeQueue = task.catch((err) => {
+      console.warn('[Memory] Core memory merge chain error (swallowed to keep queue alive):', err);
+    });
     return task;
   }
 

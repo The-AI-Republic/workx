@@ -93,7 +93,7 @@ describe('CoreMemoryManager.getCoreMemoryContent', () => {
     expect(result).toContain('# User Profile');
   });
 
-  it('returns empty string when readFile throws', async () => {
+  it('throws when readFile fails (prevents silent overwrite)', async () => {
     const fs = createMockFS();
     // Override readFile to always throw
     fs.readFile.mockRejectedValue(new Error('disk error'));
@@ -102,8 +102,7 @@ describe('CoreMemoryManager.getCoreMemoryContent', () => {
     const llm = createMockLLM();
     const manager = new CoreMemoryManager(llm, fs, MEMORY_DIR);
 
-    const result = await manager.getCoreMemoryContent();
-    expect(result).toBe('');
+    await expect(manager.getCoreMemoryContent()).rejects.toThrow('disk error');
   });
 });
 

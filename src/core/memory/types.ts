@@ -30,6 +30,17 @@ export const TOPICAL_CATEGORIES: readonly MemoryCategory[] = [
   'general',
 ] as const;
 
+/** All valid memory categories as a set for runtime validation. */
+const VALID_CATEGORIES = new Set<string>([
+  'preference', 'personal', 'professional', 'project',
+  'behavior', 'instruction', 'general',
+]);
+
+/** Runtime guard: check whether a string is a valid MemoryCategory. */
+export function isMemoryCategory(s: string): s is MemoryCategory {
+  return VALID_CATEGORIES.has(s);
+}
+
 /** Check whether a category belongs to the core (always-inject) set. */
 export function isCoreCategory(category: MemoryCategory): boolean {
   return (ALWAYS_INJECT_CATEGORIES as readonly string[]).includes(category);
@@ -39,14 +50,6 @@ export interface MemoryConfig {
   enabled: boolean;
   recallLimit: number;
   extractionModel?: string;
-  /** @deprecated Retained for legacy store compatibility. Not used by file-based memory. */
-  embeddingModel?: string;
-  /** @deprecated Retained for legacy store compatibility. Not used by file-based memory. */
-  embeddingDimensions?: number;
-  /** @deprecated Retained for legacy store compatibility. Not used by file-based memory. */
-  maxMemories?: number;
-  customExtractionPrompt?: string;
-  customConflictPrompt?: string;
   excludeCategories?: MemoryCategory[];
 }
 

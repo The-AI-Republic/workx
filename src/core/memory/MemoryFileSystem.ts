@@ -47,8 +47,12 @@ async function createTauriFileSystem(): Promise<{
       await invoke('skills_ensure_dir', { path });
     },
     exists: async (path: string) => {
-      const content = await invoke<string | null>('skills_read_file', { path });
-      return content !== null;
+      try {
+        const content = await invoke<string | null>('skills_read_file', { path });
+        return content !== null;
+      } catch {
+        return false;
+      }
     },
   };
 

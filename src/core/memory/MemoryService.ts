@@ -140,15 +140,28 @@ export class MemoryService {
   // ---------------------------------------------------------------------------
 
   /**
-   * Remove facts matching the given query from daily files.
+   * Remove facts matching the given query from daily files and core memory.
+   * Uses LLM keyword extraction to generate precise search terms,
+   * falling back to the full query as a single term.
    * Returns number of entries removed.
    */
   async forgetFact(query: string): Promise<number> {
     if (!this.config.enabled) return 0;
 
-    // Split query into search terms for matching
-    const terms = query.split(/\s+/).filter(w => w.length > 2);
-    if (terms.length === 0) return 0;
+    const trimmed = query.trim();
+    if (!trimmed) return 0;
+
+    // Use LLM-generated keywords for precise matching (same approach as search).
+    // Fall back to the full query as a single term to avoid naive word splitting
+    // that could over-delete unrelated entries (e.g. "user likes Python" would
+    // otherwise match any entry containing "user", "likes", or "Python").
+    let terms: string[];
+    try {
+      terms = await this.searcher.generateKeywords(trimmed);
+    } catch {
+      terms = [trimmed];
+    }
+    if (terms.length === 0) terms = [trimmed];
 
     const [coreRemoved, dailyRemoved] = await Promise.all([
       this.coreMemoryManager.removeFacts(terms),

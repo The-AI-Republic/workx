@@ -44,8 +44,6 @@ dirs = "5"
 portable-pty = "0.8"
 sandbox-types = { path = "sandbox-types" }
 strip-ansi-escapes = "0.2"
-sqlite-vec = "0.1"
-zerocopy = { version = "0.7", features = ["derive"] }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.58", features = [

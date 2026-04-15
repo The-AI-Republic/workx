@@ -2,7 +2,7 @@
  * DailyMemoryStore -- read/write/search/delete entries in date-sharded markdown files.
  * Each day has one file: YYYY-MM-DD.md in the memory directory.
  */
-import type { FileSystem, MemoryCategory } from './types';
+import { isMemoryCategory, type FileSystem, type MemoryCategory } from './types';
 
 export interface MemoryEntry {
   time: string;       // HH:MM
@@ -25,6 +25,8 @@ export function formatLocalDateStamp(d: Date): string {
 export class DailyMemoryStore {
   private fs: FileSystem;
   private memoryDir: string;
+  /** Serialize write operations to prevent lost-update races on daily files. */
+  private writeQueue: Promise<void> = Promise.resolve();
 
   constructor(fs: FileSystem, memoryDir: string) {
     this.fs = fs;
@@ -49,6 +51,12 @@ export class DailyMemoryStore {
 
   /** Append a fact to today's daily file */
   async appendFact(text: string, category: MemoryCategory): Promise<void> {
+    const task = this.writeQueue.then(() => this._doAppendFact(text, category));
+    this.writeQueue = task.catch(() => { /* keep chain alive */ });
+    return task;
+  }
+
+  private async _doAppendFact(text: string, category: MemoryCategory): Promise<void> {
     await this.ensureDir();
     const now = new Date();
     const date = this.formatDate(now);
@@ -153,12 +161,21 @@ export class DailyMemoryStore {
 
   /** Remove entries matching specific text from daily files */
   async removeEntries(textsToRemove: string[]): Promise<number> {
+    const task = this.writeQueue.then(() => this._doRemoveEntries(textsToRemove));
+    this.writeQueue = task.catch(() => { /* keep chain alive */ });
+    return task;
+  }
+
+  private async _doRemoveEntries(textsToRemove: string[]): Promise<number> {
     const days = await this.listDays();
     let removed = 0;
     const lowerTexts = textsToRemove.map(t => t.toLowerCase());
 
     for (const day of days) {
       const path = this.filePath(day);
+      const exists = await this.fs.exists(path);
+      if (!exists) continue;
+
       const content = await this.fs.readFile(path);
       const entries = this.parseEntries(content, day);
       const remaining = entries.filter(e => {
@@ -193,10 +210,10 @@ export class DailyMemoryStore {
     while ((match = sectionRegex.exec(content)) !== null) {
       const [, time, category, text] = match;
       const trimmed = text.trim();
-      if (trimmed) {
+      if (trimmed && isMemoryCategory(category)) {
         entries.push({
           time,
-          category: category as MemoryCategory,
+          category,
           text: trimmed,
           sourceDate: date,
         });
