@@ -1,0 +1,46 @@
+# BrowserX Agent Improvements: Learning from Claudy
+
+Date: 2026-04-14
+
+## Context
+
+BrowserX and Claudy (Claude Code) are both AI agents with significant overlap in core capabilities: tool execution, permission management, conversation handling, and extensibility. This directory contains implementation plans organized as **improvement tracks**, each targeting a specific area where Claudy's design offers concrete advantages BrowserX can adopt.
+
+## Guiding Principle
+
+BrowserX is a multi-platform browser automation agent. Claudy is a terminal-native coding agent. We are NOT cloning Claudy. We are selectively importing architectural patterns that improve BrowserX's extensibility, operability, and runtime quality without breaking its product identity.
+
+## Improvement Tracks
+
+| # | Track | Priority | Effort | Value |
+|---|-------|----------|--------|-------|
+| 01 | [Hook & Event System](./01_hook_event_system/design.md) | P0 | Large | Unlocks extensibility for all other tracks |
+| 02 | [Tool Metadata & Concurrency](./02_tool_metadata_concurrency/design.md) | P0 | Medium | Enables parallel tool execution, progress UX |
+| 03 | [Command & Skill System](./03_command_skill_system/design.md) | P1 | Medium | User-facing extensibility, plugin ecosystem |
+| 04 | [Typed Task Families](./04_typed_task_families/design.md) | P1 | Large | Background agents, disk persistence, progress |
+| 05 | [Session Memory](./05_session_memory/design.md) | P2 | Medium | Cross-session context, automatic summarization |
+| 06 | [Multi-Agent Coordination](./06_multi_agent_coordination/design.md) | P2 | Large | Coordinator mode, worker delegation |
+| 07 | [Centralized State](./07_centralized_state/design.md) | P1 | Medium | Unified state, selectors, side-effect handlers |
+
+## Dependency Graph
+
+```
+01_hook_event_system ──┬──> 03_command_skill_system
+                       ├──> 04_typed_task_families ──> 06_multi_agent_coordination
+                       └──> 05_session_memory
+
+02_tool_metadata_concurrency ──> multiple_tools_call (existing)
+
+07_centralized_state ──> (independent, can proceed in parallel)
+```
+
+## Existing Work
+
+- `plan.md` - Original comparison analysis (2026-04-07)
+- `multiple_tools_call/` - Parallel tool execution design (builds on Track 02)
+
+## How to Use
+
+Each track folder contains:
+- `design.md` - Architecture design, claudy patterns to adopt, browserx mapping
+- `tasks.md` - Concrete implementation tasks with ordering and dependencies
