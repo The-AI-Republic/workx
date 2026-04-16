@@ -1,1042 +1,873 @@
 # Track 02: Tool Metadata & Concurrency
 
-## Problem
+## Goal
 
-BrowserX tools have minimal metadata: a name, description, parameters, and an optional loosely-typed `ToolMetadata` bag. There is no standard way to declare:
+Bring the useful parts of Claudy's tool metadata and safe parallel execution model into BrowserX, but adapt them to BrowserX's actual architecture instead of doing a literal port.
 
-- Whether a tool is safe to run concurrently with other tools
-- Whether a tool is read-only vs. write (mutation)
-- Whether a tool is destructive (irreversible)
-- How a tool reports progress during execution
-- How to classify a tool for UI display (search vs. action vs. read)
+The output of this track is:
 
-Claudy tools carry 40+ properties including concurrency safety, progress reporting via typed callbacks, read/write/destructive classification, and activity descriptions for spinner display.
+- a runtime metadata model for tools that is fail-closed
+- per-input concurrency/read-only/destructive classification
+- a safe batching executor for multiple tool calls returned in one assistant message
+- progress events that can be consumed by BrowserX's existing event pipeline
+- enough detail to implement the change without rediscovering architecture decisions
 
-## What Claudy Does
+## Non-goals
 
-### Concurrency Metadata (Per-Input)
-
-```typescript
-// Each tool declares these methods:
-isConcurrencySafe(input: ToolInput): boolean   // Safe to run in parallel?
-isReadOnly(input: ToolInput): boolean          // Doesn't mutate state?
-isDestructive(input: ToolInput): boolean       // Irreversible operation?
-
-// Examples:
-// FileReadTool: always concurrency-safe, always read-only
-// BashTool: depends on command analysis (read-only commands are concurrent-safe)
-// FileEditTool: never concurrency-safe (writes to files)
-// MCPTool: reads from server annotations (readOnlyHint, destructiveHint)
-```
-
-Key insight: concurrency safety is **per-input**, not per-tool. A BashTool running `ls` is read-only; running `rm -rf` is destructive. Claudy's BashTool parses the command AST to determine this.
-
-### Progress Reporting
-
-```typescript
-type ToolCallProgress<P extends ToolProgressData> = (
-  progress: ToolProgress<P>
-) => void
-
-// Each tool type has its own progress type:
-type BashProgress = { type: 'bash_progress'; lines: number; bytes: number; ... }
-type MCPProgress = { type: 'mcp_progress'; status: 'started'|'completed'|'failed'; ... }
-
-// Progress callback passed at call time:
-tool.call(input, context, canUse, parentMsg, onProgress)
-```
-
-### Tool Classification
-
-```typescript
-// For UI: collapsible sections, spinners, search results
-isSearchOrReadCommand(input): { isSearch: boolean; isRead: boolean; isList: boolean }
-getActivityDescription(input): string | null  // "Reading src/foo.ts", "Running tests"
-
-// For deduplication:
-inputsEquivalent(a, b): boolean  // Same file read? Skip duplicate.
-```
-
-### Tool Defaults (Fail-Closed)
-
-```typescript
-const TOOL_DEFAULTS = {
-  isConcurrencySafe: () => false,   // Assume NOT safe
-  isReadOnly: () => false,          // Assume writes
-  isDestructive: () => false,       // Assume reversible
-  isEnabled: () => true,
-}
-```
-
-### Result Size Management
-
-```typescript
-maxResultSizeChars: number  // Threshold before result persisted to disk
-// BashTool: 30,000 chars
-// FileEditTool: 100,000 chars
-// Prevents large tool results from bloating conversation context
-```
+- Do not rewrite BrowserX's tool system into Claudy's `buildTool()` object model
+- Do not change model prompting or provider flags in the first pass unless required
+- Do not introduce context-modifier semantics unless a BrowserX tool actually needs them
+- Do not store runtime execution metadata in the API-facing `ToolDefinition.metadata` bag
 
 ---
 
-## Deep Dive: Claudy Implementation Details
+## Claudy Patterns Worth Porting
 
-> These details were extracted from claudy source code to guide BrowserX implementation.
+Claudy's relevant design is sound and should be copied conceptually:
 
-### `buildTool()` Pattern (claudy `src/Tool.ts:783-792`)
+1. Concurrency is evaluated per input, not per tool class.
+2. Defaults are fail-closed:
+   - `isConcurrencySafe() -> false`
+   - `isReadOnly() -> false`
+   - `isDestructive() -> false`
+3. Safe calls are partitioned into consecutive batches and only those batches run in parallel.
+4. Progress is callback-based and optional.
+5. Tools expose UI-oriented metadata such as activity descriptions and search/read classification.
+6. Large outputs are bounded by per-tool limits.
 
-Claudy uses a **builder function** that merges fail-closed defaults with tool-specific overrides. This eliminates `?.() ?? default` checks everywhere:
+Relevant Claudy code paths:
 
-```typescript
-// claudy src/Tool.ts
-const TOOL_DEFAULTS = {
-  isEnabled: () => true,
-  isConcurrencySafe: (_input?: unknown) => false,    // FAIL-CLOSED
-  isReadOnly: (_input?: unknown) => false,            // FAIL-CLOSED
-  isDestructive: (_input?: unknown) => false,
-  checkPermissions: (input) => Promise.resolve({ behavior: 'allow', updatedInput: input }),
-  toAutoClassifierInput: (_input?: unknown) => '',
-  userFacingName: (_input?: unknown) => '',
-}
+- `src/Tool.ts`
+- `src/services/tools/toolOrchestration.ts`
+- `src/services/tools/toolExecution.ts`
+- `src/utils/toolResultStorage.ts`
+- `src/services/mcp/client.ts`
 
-export function buildTool<D extends AnyToolDef>(def: D): BuiltTool<D> {
-  return {
-    ...TOOL_DEFAULTS,          // defaults first
-    userFacingName: () => def.name,
-    ...def,                     // tool overrides win
-  } as BuiltTool<D>
-}
-```
-
-**BrowserX equivalent**: We don't have `buildTool()` — our tools are class-based (`BaseTool` subclasses). The defaults must live in `ToolRegistry.register()` or in a `ToolRegistryEntry` wrapper.
-
-### Orchestrator: `partitionToolCalls()` (claudy `src/services/tools/toolOrchestration.ts:91-116`)
-
-The core concurrency decision happens by **partitioning** tool calls into batches:
-
-```typescript
-function partitionToolCalls(toolUseMessages, toolUseContext): Batch[] {
-  return toolUseMessages.reduce((acc: Batch[], toolUse) => {
-    const tool = findToolByName(toolUseContext.options.tools, toolUse.name)
-    const parsedInput = tool?.inputSchema.safeParse(toolUse.input)
-
-    // Call isConcurrencySafe — catch-wrapped, fail-closed
-    const isConcurrencySafe = parsedInput?.success
-      ? (() => {
-          try { return Boolean(tool?.isConcurrencySafe(parsedInput.data)) }
-          catch { return false }  // parse failure → not safe
-        })()
-      : false
-
-    // Merge consecutive safe tools into one batch
-    if (isConcurrencySafe && acc[acc.length - 1]?.isConcurrencySafe) {
-      acc[acc.length - 1]!.blocks.push(toolUse)
-    } else {
-      acc.push({ isConcurrencySafe, blocks: [toolUse] })
-    }
-    return acc
-  }, [])
-}
-```
-
-**Decision flow:**
-```
-LLM returns [tool_A, tool_B, tool_C, tool_D, tool_E]
-                ↓
-partitionToolCalls() checks each:
-  tool_A: isConcurrencySafe(input_A) → true
-  tool_B: isConcurrencySafe(input_B) → true
-  tool_C: isConcurrencySafe(input_C) → false  ← batch break
-  tool_D: isConcurrencySafe(input_D) → true
-  tool_E: isConcurrencySafe(input_E) → true
-                ↓
-Result: [
-  { safe: true,  blocks: [A, B] },      ← run A+B in parallel
-  { safe: false, blocks: [C] },          ← run C alone
-  { safe: true,  blocks: [D, E] },      ← run D+E in parallel
-]
-                ↓
-Batches execute sequentially, but tools within a safe batch run concurrently
-```
-
-### Concurrent Execution with Context Modifiers (claudy `toolOrchestration.ts:30-63`)
-
-```typescript
-if (isConcurrencySafe) {
-  const queuedContextModifiers: Record<string, ((ctx) => ctx)[]> = {}
-  
-  // Run batch concurrently — but QUEUE context modifiers (don't apply mid-flight)
-  for await (const update of runToolsConcurrently(blocks, ...)) {
-    if (update.contextModifier) {
-      const { toolUseID, modifyContext } = update.contextModifier
-      queuedContextModifiers[toolUseID] ??= []
-      queuedContextModifiers[toolUseID].push(modifyContext)
-    }
-    yield { message: update.message, newContext: currentContext }  // unchanged context
-  }
-  
-  // AFTER all concurrent tools complete, apply modifiers IN ORDER of original blocks
-  for (const block of blocks) {
-    for (const modifier of queuedContextModifiers[block.id] ?? []) {
-      currentContext = modifier(currentContext)
-    }
-  }
-  yield { newContext: currentContext }
-}
-```
-
-**Key pattern**: Context modifiers from concurrent tools are **queued** and applied **after** the batch completes, in the original tool order. This prevents race conditions.
-
-### Max Concurrency (claudy `toolOrchestration.ts:8-12`)
-
-```typescript
-function getMaxToolUseConcurrency(): number {
-  return parseInt(process.env.CLAUDE_CODE_MAX_TOOL_USE_CONCURRENCY || '', 10) || 10
-}
-```
-
-Default: **10 parallel tools max**. Configurable via env var.
-
-### Async Generator Interleaving (`all()` utility)
-
-Claudy uses `all()` from `src/utils/generators.ts` to run multiple async generators concurrently with bounded parallelism. Each generator yields progress/messages independently and `all()` interleaves them:
-
-```typescript
-async function* runToolsConcurrently(blocks, ...) {
-  yield* all(
-    blocks.map(async function* (toolUse) {
-      yield* runToolUse(toolUse, ...)  // each tool is its own async generator
-    }),
-    getMaxToolUseConcurrency(),        // max concurrent generators
-  )
-}
-```
-
-### Concrete Tool Metadata Examples
-
-**FileReadTool** (always safe):
-```typescript
-isConcurrencySafe() { return true },
-isReadOnly() { return true },
-isSearchOrReadCommand() { return { isSearch: false, isRead: true } },
-maxResultSizeChars: Infinity,  // Never persisted — already self-bounded
-```
-
-**BashTool** (input-dependent safety, `src/tools/BashTool/BashTool.tsx:285-315`):
-```typescript
-isConcurrencySafe(input) {
-  return this.isReadOnly?.(input) ?? false  // Safe IFF read-only
-},
-isReadOnly(input) {
-  const compoundCommandHasCd = commandHasAnyCd(input.command)
-  const result = checkReadOnlyConstraints(input, compoundCommandHasCd)
-  return result.behavior === 'allow'
-},
-maxResultSizeChars: 30_000,
-getActivityDescription(input) { return `Running: ${truncate(input.command, 60)}` },
-```
-
-**FileEditTool** (never safe, `src/tools/FileEditTool/FileEditTool.ts:86-102`):
-```typescript
-// Omits isConcurrencySafe and isReadOnly → TOOL_DEFAULTS (false, false)
-maxResultSizeChars: 100_000,
-getActivityDescription(input) {
-  const summary = getToolUseSummary(input)
-  return summary ? `Editing ${summary}` : 'Editing file'
-},
-inputsEquivalent(input1, input2) {
-  return areFileEditsInputsEquivalent(...)  // Deduplicates identical edits
-},
-```
-
-**ExitWorktreeTool** (conditionally destructive):
-```typescript
-isDestructive(input) {
-  return input.action === 'remove'  // Only destructive when removing
-}
-```
-
-### Result Size Persistence (claudy `src/utils/toolResultStorage.ts`)
-
-When a tool result exceeds `maxResultSizeChars`:
-1. Result written to `/{projectDir}/{sessionId}/tool-results/{toolUseId}.{txt|json}`
-2. Model receives a **preview** (first ~2000 bytes) + file path reference wrapped in `<persisted-output>` XML
-3. Global cap: `DEFAULT_MAX_RESULT_SIZE_CHARS = 50_000` — tools declare their own, but the system clamps to this global max
-
-### Progress Callback Threading (claudy BashTool example)
-
-```typescript
-async call(input, toolUseContext, _canUseTool, parentMessage, onProgress) {
-  const commandGenerator = runShellCommand({...})
-  let progressCounter = 0
-  let generatorResult
-  do {
-    generatorResult = await commandGenerator.next()
-    if (!generatorResult.done && onProgress) {
-      onProgress({
-        toolUseID: `bash-progress-${progressCounter++}`,
-        data: {
-          type: 'bash_progress',
-          output: progress.output,
-          fullOutput: progress.fullOutput,
-          elapsedTimeSeconds: progress.elapsedTimeSeconds,
-          totalLines: progress.totalLines,
-          totalBytes: progress.totalBytes,
-        }
-      })
-    }
-  } while (!generatorResult.done)
-}
-```
-
-**Key**: Progress is opt-in — the callback is only called when `onProgress` is provided. No overhead for callers that don't need it.
+The key difference is where those concepts live. In Claudy they live on the tool object itself. In BrowserX they need to live in registration/runtime metadata around `ToolRegistry`, because BrowserX tools are class-based `BaseTool` subclasses and MCP tools are adapted dynamically.
 
 ---
 
-## BrowserX Mapping
+## BrowserX Findings
 
-### Current Tool Contract
+### 1. The current extension point is `ToolRegistry`, not `BaseTool`
 
-```typescript
-// From BaseTool.ts (src/tools/BaseTool.ts:67-77)
-type ToolDefinition =
-  | { type: 'function'; function: ResponsesApiTool; metadata?: ToolMetadata }
-  | { type: 'local_shell' }
-  | { type: 'web_search' }
-  | { type: 'custom'; custom: FreeformTool }
+BrowserX's current execution path is:
 
-interface ToolMetadata {
-  capabilities?: string[]
-  permissions?: string[]
-  platforms?: Platform[]
-  [key: string]: unknown  // Loosely typed bag
-}
-```
+1. `TurnManager.handleResponseItem()` inspects `item.tool_calls`
+2. `TurnManager.executeToolCall()` parses arguments and routes execution
+3. Browser tools call `executeBrowserTool()`
+4. `ToolRegistry.execute()` validates, approval-checks, emits events, and invokes the handler
+5. The handler usually calls `toolInstance.execute(params, options)`
 
-### Current Tool Execution Flow
+Relevant files:
 
-Understanding the existing flow is critical to knowing where to inject concurrency decisions:
+- `src/core/TurnManager.ts`
+- `src/tools/ToolRegistry.ts`
+- `src/tools/BaseTool.ts`
+- `src/tools/index.ts`
 
-```
-1. LLM returns response items (may include tool_calls)
-         ↓
-2. TurnManager.processResponseItem() (src/core/TurnManager.ts:551-583)
-   - Iterates item.tool_calls array
-   - Calls executeToolCall() for EACH call SEQUENTIALLY (for loop)
-         ↓
-3. TurnManager.executeToolCall() (TurnManager.ts:630-707)
-   - Parses parameters (JSON string → object)
-   - Routes: web_search → WebSearchTool, registry tools → executeBrowserTool(), MCP → executeMcpTool()
-         ↓
-4. TurnManager.executeBrowserTool() (TurnManager.ts:795-870)
-   - Creates ToolExecutionRequest { toolName, parameters, sessionId, turnId, tabId, timeout }
-   - Calls toolRegistry.execute(request)
-         ↓
-5. ToolRegistry.execute() (src/tools/ToolRegistry.ts:236-420)
-   - Validates tool exists + parameter schema
-   - Approval gate check (enriches DOM params for risk assessment)
-   - Emits ToolExecutionStart event
-   - Calls handler(parameters, context) with Promise.race timeout (default 120s)
-   - Emits ToolExecutionEnd/Error/Timeout event
-   - Returns ToolExecutionResponse { success, data, error, duration }
-         ↓
-6. Result formatted as { type: 'function_call_output', call_id, output: JSON.stringify(result) }
-```
+This means the metadata defaults and lookup helpers should be introduced at registration time in `ToolRegistry`, not by trying to retrofit a Claudy-style `buildTool()` across all BrowserX tools.
 
-**Current parallel tool call handling (TurnManager.ts:555-583):**
-```typescript
-// CURRENT: Sequential execution of all tool calls
-if (item.type === 'message' && item.tool_calls?.length > 0) {
-  const toolCallResults: any[] = [];
-  for (const toolCall of item.tool_calls) {      // ← sequential for-loop
-    const result = await this.executeToolCall(
-      toolCall.function.name,
-      toolCall.function.arguments,
-      toolCall.id
-    );
-    toolCallResults.push(result);
-  }
-  return toolCallResults.length === 1 ? toolCallResults[0] : toolCallResults;
-}
-```
+### 2. BrowserX already receives multi-tool responses, but still executes them sequentially
 
-**This is the exact point where we inject the partitioning logic.**
+`TurnManager.handleResponseItem()` currently loops sequentially over `item.tool_calls`.
 
-### Current ToolRegistryEntry (src/tools/ToolRegistry.ts:37-42)
+That is the exact insertion point for batch partitioning and bounded concurrent execution.
 
-```typescript
-interface ToolRegistryEntry {
-  definition: ToolDefinition;
-  handler: ToolHandler;           // (params, context) => Promise<any>
-  registrationTime: number;
-  riskAssessor?: IRiskAssessor;
-}
-```
+Important nuance:
 
-### Current Event Types for Tools (src/core/protocol/events.ts:84-90)
+- BrowserX currently sets `parallel_tool_calls: false` in the OpenAI clients:
+  - `src/core/models/client/OpenAIChatCompletionClient.ts`
+  - `src/core/models/client/OpenAIResponsesClient.ts`
+- Despite that, the code already documents that Gemini can still return multiple tool calls in one message.
 
-```typescript
-| { type: 'ToolExecutionStart'; data: ToolExecutionStartEvent }
-| { type: 'ToolExecutionEnd'; data: ToolExecutionEndEvent }
-| { type: 'ToolExecutionError'; data: ToolExecutionErrorEvent }
-| { type: 'ToolExecutionTimeout'; data: ToolExecutionTimeoutEvent }
-```
+So the first implementation should make execution safe for multi-call responses without immediately changing provider request flags.
 
-These events already have `tool_name`, `session_id`, `duration`. We add `ToolExecutionProgress` alongside.
+### 3. `ToolDefinition.metadata` is the wrong place for runtime execution metadata
 
-### Existing Browser Action Events (events.ts:100-103)
+`ToolDefinition.metadata` today is a loose bag used for capabilities, permissions, and platforms. It is part of the tool definition surface and conceptually belongs to discovery and prompting.
 
-```typescript
-| { type: 'DOMActionStart'; data: DOMActionStartEvent }
-| { type: 'StorageActionStart'; data: StorageActionStartEvent }
-| { type: 'NavigationActionStart'; data: NavigationActionStartEvent }
-```
+Concurrency/read-only/destructive/activity/result-limit data are runtime execution concerns. They should live on `ToolRegistryEntry`, not inside the schema-definition bag.
 
-These can be repurposed as progress events rather than duplicating.
+### 4. MCP annotation data is currently lossy
+
+BrowserX already receives MCP tool annotations in:
+
+- `src/core/mcp/MCPClient.ts`
+- `src/server/mcp/NodeMCPBridge.ts`
+
+But it currently maps:
+
+- `readOnlyHint -> annotations.audience = ['user']`
+- `destructiveHint -> annotations.costLevel = 'high'`
+
+That translation loses the raw semantics needed for concurrency classification. BrowserX needs to preserve raw MCP hints in its own `IMCPTool.annotations` shape so `MCPToolAdapter` can derive runtime metadata correctly.
+
+### 5. Browser tool lifecycle events are already duplicated
+
+`TurnManager.executeBrowserTool()` emits:
+
+- `ToolExecutionStart`
+- `ToolExecutionEnd`
+- `ToolExecutionError`
+
+`ToolRegistry.execute()` also emits:
+
+- `ToolExecutionStart`
+- `ToolExecutionEnd`
+- `ToolExecutionError`
+- `ToolExecutionTimeout`
+
+Adding progress on top of that without consolidating ownership will make the event stream worse. The design should make `ToolRegistry` the single owner of browser-tool lifecycle emission.
+
+### 6. `web_search` is special-cased outside the registry
+
+`TurnManager.executeToolCall()` handles `web_search` before consulting `ToolRegistry`.
+
+That matters because concurrency lookup through the registry will not see `web_search` unless we either:
+
+- remove the special case, or
+- teach `TurnManager` to classify built-ins like `web_search` directly
+
+For the first implementation, keeping the special case is fine, but `TurnManager` must have a synthetic execution profile for `web_search`.
+
+### 7. Several tools need a more careful classification than the current draft assumes
+
+The current draft overgeneralizes some tools. Based on the actual BrowserX code:
+
+- `browser_dom`
+  - `snapshot` is read-only and concurrency-safe
+  - `click`, `type`, `keypress`, `scroll` are not
+- `browser_navigation`
+  - `navigate`, `reload`, `goBack`, `goForward`, `stop` are not safe
+  - `getHistory`, `getCurrentUrl` are read-only and safe
+  - `waitForLoad` should remain non-safe because it coordinates with page lifecycle
+- `web_scraping`
+  - read-only only when operating on the already-bound tab
+  - if `url` is provided, it may create a new tab, so initial implementation should treat `url != null` as non-safe
+- `form_automation`
+  - mutative by nature
+  - if `url` is provided it may also create/navigate a tab
+- `data_extraction`
+  - should not be marked concurrency-safe until it is fixed to use the session tab from execution context
+  - current implementation queries the active tab directly instead of using `options.metadata.tabId`
+- `page_vision`
+  - `screenshot` is read-only and safe
+  - `click`, `type`, `scroll`, `keypress` are not
+- `cache_storage_tool`
+  - `read`, `list` are safe
+  - `write`, `update`, `delete` are not
+  - `delete` is destructive
+- `planning_tool`
+  - `list`, `get`, `get_plan` are safe
+  - `plan`, `update` are not
+- `setting_tool`
+  - `get`, `list` are safe
+  - `set` is not
+- `network_intercept`
+  - never concurrency-safe
+  - stateful lifecycle through shared browser rule state
+- `web_search`
+  - effectively read-only from the session's point of view and may be marked safe
+  - implementation still creates a hidden/minimized window, so this should remain bounded by the global concurrency cap
 
 ---
 
-## Proposed Changes — Implementation Details
+## Target Design
 
-### Phase 1: Type Definitions
+## 1. Runtime Metadata Model
 
-#### 1A. New Interfaces in `src/tools/types.ts` (new file)
+Add a new runtime-only metadata module, for example:
 
-```typescript
-// src/tools/types.ts
+- `src/tools/runtimeMetadata.ts`
 
-/**
- * Per-input concurrency metadata.
- * Methods receive the parsed tool input and return concurrency classification.
- * All methods are synchronous — concurrency decisions must be fast.
- */
-export interface ToolConcurrencyInfo {
+This module should define:
+
+```ts
+export interface ToolConcurrencyProfile {
   isConcurrencySafe(input: Record<string, unknown>): boolean
   isReadOnly(input: Record<string, unknown>): boolean
   isDestructive(input: Record<string, unknown>): boolean
 }
 
-/**
- * Fail-closed defaults. Applied by ToolRegistry when a tool doesn't declare
- * its own concurrency info. Mirrors claudy's TOOL_DEFAULTS pattern.
- */
-export const TOOL_CONCURRENCY_DEFAULTS: ToolConcurrencyInfo = {
-  isConcurrencySafe: () => false,   // Assume NOT safe to run in parallel
-  isReadOnly: () => false,          // Assume it mutates state
-  isDestructive: () => false,       // Assume it's reversible
-}
-
-/**
- * Base type for tool-specific progress data.
- * Each tool defines its own progress shape extending this.
- */
-export interface ToolProgressData {
-  type: string  // Discriminant: 'dom_progress' | 'navigation_progress' | etc.
-}
-
-/**
- * Progress event wrapper (matches claudy's ToolProgress<P>)
- */
-export interface ToolProgress<P extends ToolProgressData = ToolProgressData> {
-  toolUseID: string
-  data: P
-}
-
-/**
- * Progress callback type (matches claudy's ToolCallProgress<P>)
- */
-export type ToolProgressCallback<P extends ToolProgressData = ToolProgressData> = (
-  progress: ToolProgress<P>
-) => void
-
-/**
- * Activity description and UI classification for tools.
- */
-export interface ToolUIInfo {
-  /** Human-readable description for spinner/status display.
-   *  e.g., "Clicking element #submit-btn", "Navigating to https://..." */
-  getActivityDescription(input: Record<string, unknown>): string | null
-
-  /** Classification for UI display (collapsible sections, search results) */
+export interface ToolUIProfile {
+  getActivityDescription?(input: Record<string, unknown>): string | null
   isSearchOrReadCommand?(input: Record<string, unknown>): {
     isSearch: boolean
     isRead: boolean
-    isList: boolean
+    isList?: boolean
   }
 }
 
-/**
- * Result size management for tools with potentially large outputs.
- */
-export interface ToolResultInfo {
-  /** Max chars before result is truncated/summarized instead of kept in full context.
-   *  In browser extension context, we truncate + summarize rather than persist to disk
-   *  (unlike claudy which writes to filesystem). */
-  maxResultSizeChars: number
-
-  /** Check if two inputs would produce equivalent results (for deduplication).
-   *  e.g., two identical DOM snapshots → skip the second one. */
+export interface ToolResultProfile {
+  maxResultSizeChars?: number
   inputsEquivalent?(a: Record<string, unknown>, b: Record<string, unknown>): boolean
 }
 
-// ============================================================================
-// Tool-specific progress types
-// ============================================================================
-
-export interface DOMToolProgress extends ToolProgressData {
-  type: 'dom_progress'
-  action: 'snapshot' | 'click' | 'type' | 'keypress' | 'scroll'
-  selector?: string
-  status: 'started' | 'serializing' | 'executing' | 'completed' | 'failed'
-  /** For snapshot: number of DOM nodes serialized so far */
-  nodeCount?: number
+export interface ToolRuntimeMetadata {
+  concurrency: ToolConcurrencyProfile
+  ui?: ToolUIProfile
+  result?: ToolResultProfile
 }
 
-export interface NavigationProgress extends ToolProgressData {
-  type: 'navigation_progress'
-  url: string
-  status: 'loading' | 'loaded' | 'failed'
-}
-
-export interface WebScrapingProgress extends ToolProgressData {
-  type: 'scraping_progress'
-  contentType: string
-  bytesExtracted: number
-  status: 'started' | 'extracting' | 'completed' | 'failed'
-}
-
-export interface DataExtractionProgress extends ToolProgressData {
-  type: 'extraction_progress'
-  mode: string
-  rowsExtracted: number
-  status: 'started' | 'extracting' | 'completed' | 'failed'
-}
-
-export interface PageVisionProgress extends ToolProgressData {
-  type: 'vision_progress'
-  status: 'capturing' | 'captured' | 'failed'
-  screenshotSizeBytes?: number
-}
-
-export interface NetworkInterceptProgress extends ToolProgressData {
-  type: 'intercept_progress'
-  action: string
-  status: 'started' | 'rule_applied' | 'monitoring' | 'completed' | 'failed'
-  requestsIntercepted?: number
+export const DEFAULT_TOOL_CONCURRENCY_PROFILE: ToolConcurrencyProfile = {
+  isConcurrencySafe: () => false,
+  isReadOnly: () => false,
+  isDestructive: () => false,
 }
 ```
 
-#### 1B. Extend ToolRegistryEntry (modify `src/tools/ToolRegistry.ts:37-42`)
+### Why registry-side metadata is the right shape
 
-```typescript
-// BEFORE
+- It preserves `BaseTool` subclassing
+- It works for dynamically-adapted MCP tools
+- It allows backward-compatible registration defaults
+- It avoids leaking runtime policy into the model-facing tool definition
+
+## 2. Extend `ToolRegistryEntry`
+
+Change `ToolRegistryEntry` in `src/tools/ToolRegistry.ts` to store the runtime metadata:
+
+```ts
 interface ToolRegistryEntry {
-  definition: ToolDefinition;
-  handler: ToolHandler;
-  registrationTime: number;
-  riskAssessor?: IRiskAssessor;
-}
-
-// AFTER
-interface ToolRegistryEntry {
-  definition: ToolDefinition;
-  handler: ToolHandler;
-  registrationTime: number;
-  riskAssessor?: IRiskAssessor;
-  // NEW: Concurrency and metadata fields
-  concurrency: ToolConcurrencyInfo;        // Always present (defaults applied at registration)
-  ui?: ToolUIInfo;                          // Optional UI classification
-  result?: ToolResultInfo;                  // Optional result size management
+  definition: ToolDefinition
+  handler: ToolHandler
+  registrationTime: number
+  riskAssessor?: IRiskAssessor
+  runtime: ToolRuntimeMetadata
 }
 ```
 
-#### 1C. Extend `ToolRegistry.register()` Signature
+## 3. Registration API
 
-```typescript
-// BEFORE (ToolRegistry.ts:77)
-async register(tool: ToolDefinition, handler: ToolHandler, riskAssessor?: IRiskAssessor): Promise<void>
+Extend `ToolRegistry.register()` to accept either the existing risk assessor or a structured registration options object.
 
-// AFTER
-interface ToolRegistrationOptions {
-  riskAssessor?: IRiskAssessor;
-  concurrency?: Partial<ToolConcurrencyInfo>;   // Partial → defaults fill gaps
-  ui?: ToolUIInfo;
-  result?: ToolResultInfo;
-}
-
-async register(
-  tool: ToolDefinition,
-  handler: ToolHandler,
-  options?: ToolRegistrationOptions | IRiskAssessor  // Backward compat: bare IRiskAssessor still works
-): Promise<void> {
-  // Normalize options
-  const opts: ToolRegistrationOptions = options && 'assessRisk' in options
-    ? { riskAssessor: options }  // Legacy: bare IRiskAssessor
-    : (options ?? {});
-
-  const entry: ToolRegistryEntry = {
-    definition: tool,
-    handler,
-    registrationTime: Date.now(),
-    riskAssessor: opts.riskAssessor,
-    concurrency: { ...TOOL_CONCURRENCY_DEFAULTS, ...opts.concurrency },  // Fail-closed merge
-    ui: opts.ui,
-    result: opts.result,
-  };
-  // ... rest of registration
+```ts
+export interface ToolRegistrationOptions {
+  riskAssessor?: IRiskAssessor
+  runtime?: Partial<{
+    concurrency: Partial<ToolConcurrencyProfile>
+    ui: ToolUIProfile
+    result: ToolResultProfile
+  }>
 }
 ```
 
-#### 1D. Extend `ToolRegistry.execute()` to Accept Progress Callback
+Backward compatibility rule:
 
-```typescript
-// BEFORE (ToolRegistry.ts:236)
-async execute(request: ToolExecutionRequest): Promise<ToolExecutionResponse>
+- if the third argument has `assessRisk`, treat it as `IRiskAssessor`
+- otherwise treat it as `ToolRegistrationOptions`
 
-// AFTER
-async execute(
-  request: ToolExecutionRequest,
-  onProgress?: ToolProgressCallback,
-): Promise<ToolExecutionResponse> {
-  // ... existing validation, approval gate ...
+Registration behavior:
 
-  const context: ToolContext = {
-    sessionId: request.sessionId,
-    turnId: request.turnId,
-    toolName: request.toolName,
-    metadata: {
-      tabId: request.tabId,
-      onProgress,  // Thread progress callback to handler
-    },
-  };
-
-  result = await entry.handler(request.parameters, context);
-  // ... rest unchanged
-}
-```
-
-#### 1E. New Event Type: `ToolExecutionProgress` (modify `src/core/protocol/events.ts`)
-
-```typescript
-// Add to EventMsg union:
-| { type: 'ToolExecutionProgress'; data: ToolExecutionProgressEvent }
-
-// New event payload:
-export interface ToolExecutionProgressEvent {
-  tool_name: string;
-  call_id?: string;
-  session_id?: string;
-  progress_data: ToolProgressData;  // Discriminated union by .type field
-  timestamp: number;
-}
-```
-
-#### 1F. New Method on ToolRegistry for Concurrency Queries
-
-```typescript
-// Add to ToolRegistry class
-/**
- * Check if a tool call is concurrency-safe given its input.
- * Returns false (fail-closed) if tool not found or check throws.
- */
-isConcurrencySafe(toolName: string, input: Record<string, unknown>): boolean {
-  const entry = this.tools.get(toolName);
-  if (!entry) return false;
-  try {
-    return entry.concurrency.isConcurrencySafe(input);
-  } catch {
-    return false;  // Fail-closed on error (mirrors claudy's catch block)
-  }
-}
-
-isReadOnly(toolName: string, input: Record<string, unknown>): boolean {
-  const entry = this.tools.get(toolName);
-  if (!entry) return false;
-  try {
-    return entry.concurrency.isReadOnly(input);
-  } catch {
-    return false;
-  }
-}
-
-isDestructive(toolName: string, input: Record<string, unknown>): boolean {
-  const entry = this.tools.get(toolName);
-  if (!entry) return false;
-  try {
-    return entry.concurrency.isDestructive(input);
-  } catch {
-    return false;
-  }
-}
-
-getActivityDescription(toolName: string, input: Record<string, unknown>): string | null {
-  const entry = this.tools.get(toolName);
-  return entry?.ui?.getActivityDescription(input) ?? null;
-}
-```
-
-### Phase 2: Annotate Existing Tools
-
-#### 2A. Modify Tool Registration in `src/tools/index.ts`
-
-Each tool registration call gains concurrency/ui/result metadata. Example for DOM tool:
-
-```typescript
-// BEFORE (index.ts:146-148)
-const domTool = new DOMTool();
-await registerTool('dom_tool', domTool, domRiskAssessor);
-
-// AFTER
-const domTool = new DOMTool();
-await registry.register(domTool.getDefinition(), async (params, context) => {
-  return domTool.execute(params, { metadata: { ...context.metadata, sessionId: context.sessionId, turnId: context.turnId, toolName: context.toolName } });
-}, {
-  riskAssessor: domRiskAssessor,
+```ts
+const runtime: ToolRuntimeMetadata = {
   concurrency: {
-    isConcurrencySafe(input) {
-      // snapshot is read-only → safe. All mutation actions → not safe.
-      return input.action === 'snapshot';
-    },
-    isReadOnly(input) {
-      return input.action === 'snapshot';
-    },
-    isDestructive(_input) {
-      return false;  // DOM mutations are reversible (page reload resets)
-    },
+    ...DEFAULT_TOOL_CONCURRENCY_PROFILE,
+    ...(opts.runtime?.concurrency ?? {}),
   },
-  ui: {
-    getActivityDescription(input) {
-      switch (input.action) {
-        case 'snapshot': return 'Capturing DOM snapshot';
-        case 'click': return `Clicking element ${input.node_id ?? ''}`.trim();
-        case 'type': return `Typing into element ${input.node_id ?? ''}`.trim();
-        case 'keypress': return `Pressing key ${input.key ?? ''}`.trim();
-        case 'scroll': return 'Scrolling page';
-        default: return null;
-      }
-    },
-  },
-  result: {
-    maxResultSizeChars: 100_000,  // DOM snapshots can be very large
-  },
-});
-```
-
-#### 2B. Complete Tool Annotation Table
-
-| Tool (registry key) | `isConcurrencySafe(input)` | `isReadOnly(input)` | `isDestructive(input)` | `getActivityDescription(input)` | `maxResultSizeChars` |
-|---|---|---|---|---|---|
-| `dom_tool` | `input.action === 'snapshot'` | `input.action === 'snapshot'` | `false` | Action-based (see 2A) | 100,000 |
-| `navigation_tool` | `false` | `false` (changes URL) | `false` | `"Navigating to {url}"` | 10,000 |
-| `web_scraping` | `true` | `true` | `false` | `"Scraping content from page"` | 50,000 |
-| `form_automation` | `false` | `false` (fills forms) | `false` | `"Filling form fields"` | 10,000 |
-| `data_extraction` | `true` | `true` | `false` | `"Extracting {mode} data"` | 30,000 |
-| `storage_tool` | `['read','list'].includes(input.action)` | `['read','list'].includes(input.action)` | `input.action === 'delete'` | Action-based | 50,000 |
-| `page_vision` | `true` | `true` | `false` | `"Capturing screenshot"` | 50,000 |
-| `network_intercept` | `false` | `false` (modifies rules) | `false` | `"Configuring network intercept"` | 10,000 |
-| `planning_tool` | `true` | `false` (modifies plan) | `false` | `"Updating plan"` | 10,000 |
-| `setting_tool` | `input.action === 'get'` | `input.action === 'get'` | `false` | `"Reading settings"` / `"Updating settings"` | 10,000 |
-| `web_search` | `true` | `true` | `false` | `"Searching for {query}"` | 30,000 |
-
-#### 2C. Storage Tool Per-Input Logic (example)
-
-```typescript
-concurrency: {
-  isConcurrencySafe(input) {
-    const action = input.action as string;
-    return action === 'read' || action === 'list';
-  },
-  isReadOnly(input) {
-    const action = input.action as string;
-    return action === 'read' || action === 'list';
-  },
-  isDestructive(input) {
-    return input.action === 'delete';
-  },
-},
-```
-
-### Phase 3: Parallel Execution in TurnManager
-
-#### 3A. New Helper: `partitionToolCalls()` (new file `src/core/toolOrchestration.ts`)
-
-This is the core change — adapted from claudy's `toolOrchestration.ts`:
-
-```typescript
-// src/core/toolOrchestration.ts
-
-import type { ToolRegistry } from '../tools/ToolRegistry';
-import type { ToolProgressCallback } from '../tools/types';
-
-interface ToolCall {
-  id: string;
-  function: { name: string; arguments: any };
-}
-
-interface Batch {
-  isConcurrencySafe: boolean;
-  calls: ToolCall[];
-}
-
-const MAX_TOOL_CONCURRENCY = 5;  // Conservative default for browser context
-// (claudy uses 10, but browser tools are heavier — DOM, navigation, etc.)
-
-/**
- * Partition tool calls into batches of consecutive concurrency-safe tools
- * and single non-safe tools. Mirrors claudy's partitionToolCalls().
- */
-export function partitionToolCalls(
-  toolCalls: ToolCall[],
-  registry: ToolRegistry,
-): Batch[] {
-  return toolCalls.reduce((acc: Batch[], call) => {
-    let parsedArgs = call.function.arguments;
-    if (typeof parsedArgs === 'string') {
-      try { parsedArgs = JSON.parse(parsedArgs); } catch { parsedArgs = {}; }
-    }
-
-    const isSafe = registry.isConcurrencySafe(call.function.name, parsedArgs);
-
-    // Merge consecutive safe calls into one batch
-    if (isSafe && acc.length > 0 && acc[acc.length - 1]!.isConcurrencySafe) {
-      acc[acc.length - 1]!.calls.push(call);
-    } else {
-      acc.push({ isConcurrencySafe: isSafe, calls: [call] });
-    }
-
-    return acc;
-  }, []);
-}
-
-/**
- * Execute a batch of tool calls concurrently using Promise.all with bounded concurrency.
- */
-export async function executeToolCallsConcurrently(
-  calls: ToolCall[],
-  executor: (call: ToolCall) => Promise<any>,
-): Promise<any[]> {
-  // Simple bounded concurrency with chunking
-  const results: any[] = [];
-  for (let i = 0; i < calls.length; i += MAX_TOOL_CONCURRENCY) {
-    const chunk = calls.slice(i, i + MAX_TOOL_CONCURRENCY);
-    const chunkResults = await Promise.all(chunk.map(executor));
-    results.push(...chunkResults);
-  }
-  return results;
+  ui: opts.runtime?.ui,
+  result: opts.runtime?.result,
 }
 ```
 
-#### 3B. Modify TurnManager.processResponseItem() (src/core/TurnManager.ts:555-583)
+This gives BrowserX the same fail-closed guarantee Claudy gets from `buildTool()`.
 
-```typescript
-// BEFORE: Sequential for-loop
-if (item.type === 'message' && item.tool_calls?.length > 0) {
-  const toolCallResults: any[] = [];
-  for (const toolCall of item.tool_calls) {
-    const result = await this.executeToolCall(...);
-    toolCallResults.push(result);
-  }
-  return ...;
-}
+## 4. Add ToolRegistry query helpers
 
-// AFTER: Partition + concurrent/sequential execution
-if (item.type === 'message' && item.tool_calls?.length > 0) {
-  const batches = partitionToolCalls(item.tool_calls, this.toolRegistry);
-  const allResults: any[] = [];
+Add these methods to `ToolRegistry`:
 
-  for (const batch of batches) {
-    if (batch.isConcurrencySafe) {
-      // Run batch concurrently
-      const batchResults = await executeToolCallsConcurrently(
-        batch.calls,
-        (call) => this.executeToolCall(call.function.name, call.function.arguments, call.id),
-      );
-      allResults.push(...batchResults);
-    } else {
-      // Run batch sequentially (single non-safe tool per batch)
-      for (const call of batch.calls) {
-        const result = await this.executeToolCall(call.function.name, call.function.arguments, call.id);
-        allResults.push(result);
-      }
-    }
-  }
+- `isConcurrencySafe(toolName, input): boolean`
+- `isReadOnly(toolName, input): boolean`
+- `isDestructive(toolName, input): boolean`
+- `getActivityDescription(toolName, input): string | null`
+- `getResultProfile(toolName): ToolResultProfile | undefined`
 
-  return allResults.length === 1 ? allResults[0] : allResults;
+All of them should be fail-closed and catch exceptions:
+
+- unknown tool -> false / null / undefined
+- thrown classifier -> false / null
+
+This mirrors Claudy's conservative behavior and keeps orchestration logic small.
+
+---
+
+## Execution Model
+
+## 5. Extend execution request/context for correlation and progress
+
+### `ToolExecutionRequest`
+
+Add to `src/tools/BaseTool.ts`:
+
+```ts
+export interface ToolExecutionRequest {
+  toolName: string
+  parameters: Record<string, any>
+  sessionId: string
+  turnId: string
+  callId?: string
+  tabId?: number
+  timeout?: number
+  metadata?: Record<string, any>
+  onProgress?: ToolProgressCallback
 }
 ```
 
-#### 3C. Progress Event Emission (modify ToolRegistry.execute)
+### `ToolContext`
 
-```typescript
-// In ToolRegistry.execute(), after handler completes OR during execution:
+Add:
 
-// Option 1: Handler calls onProgress directly
-const context: ToolContext = {
-  ...existingContext,
-  metadata: {
-    ...existingMetadata,
-    onProgress: onProgress ? (progressData: ToolProgressData) => {
-      // Wrap in event and emit
+```ts
+export interface ToolContext {
+  sessionId: string
+  turnId: string
+  toolName: string
+  callId?: string
+  metadata?: Record<string, any>
+  onProgress?: ToolProgressCallback
+}
+```
+
+### `BaseToolOptions`
+
+Add:
+
+```ts
+export interface BaseToolOptions {
+  timeout?: number
+  retries?: number
+  metadata?: Record<string, any>
+  onProgress?: ToolProgressCallback
+  callId?: string
+}
+```
+
+This is the least invasive threading path:
+
+- `ToolRegistry.execute()` receives `onProgress`
+- passes it into `ToolContext`
+- tool registration wrappers pass `context.onProgress` and `context.callId` into `toolInstance.execute(...)`
+- tools that care can emit progress through `options.onProgress`
+
+This is better than smuggling callbacks through `metadata`.
+
+## 6. Centralize browser-tool lifecycle events in `ToolRegistry`
+
+`ToolRegistry.execute()` should remain the single owner of:
+
+- `ToolExecutionStart`
+- `ToolExecutionProgress`
+- `ToolExecutionEnd`
+- `ToolExecutionError`
+- `ToolExecutionTimeout`
+
+`TurnManager.executeBrowserTool()` should stop emitting those same browser-tool lifecycle events directly.
+
+Reason:
+
+- avoids duplicate start/end/error events
+- makes progress emission consistent
+- keeps all browser-tool execution bookkeeping in one place
+
+`ToolExecutionStartEvent` should now include `call_id` when available.
+
+Add a new event:
+
+```ts
+export interface ToolExecutionProgressEvent {
+  tool_name: string
+  call_id?: string
+  session_id?: string
+  turn_id?: string
+  progress_data: ToolProgressData
+  timestamp: number
+}
+```
+
+and add it to:
+
+- `src/core/protocol/events.ts`
+- `src/core/protocol/event-scope.ts`
+- `src/server/streaming/agent-events.ts`
+- `src/server/channels/ServerChannel.ts`
+- any UI event categorization code that groups tool events
+
+## 7. Progress callback behavior
+
+Progress should be optional and cheap when unused.
+
+`ToolRegistry.execute()` should wrap the request callback:
+
+```ts
+const emitProgress: ToolProgressCallback | undefined = request.onProgress
+  ? progress => {
+      request.onProgress?.(progress)
       this.emitEvent({
-        id: `evt_progress_${request.toolName}_${Date.now()}`,
+        id: ...,
         msg: {
           type: 'ToolExecutionProgress',
           data: {
             tool_name: request.toolName,
+            call_id: request.callId,
             session_id: request.sessionId,
-            progress_data: progressData,
+            turn_id: request.turnId,
+            progress_data: progress.data,
             timestamp: Date.now(),
           },
         },
-      });
-      // Also forward to caller's callback
-      onProgress({ toolUseID: request.toolName, data: progressData });
-    } : undefined,
+      })
+    }
+  : undefined
+```
+
+Initial implementation should support lightweight progress from:
+
+- `browser_dom`
+- `browser_navigation`
+- `web_scraping`
+- `page_vision`
+
+But tool execution must not depend on progress support.
+
+---
+
+## Orchestration
+
+## 8. New orchestration helper in `src/core/toolOrchestration.ts`
+
+Add a new helper module that works on already-parsed tool calls.
+
+Recommended types:
+
+```ts
+type PreparedToolCall = {
+  id: string
+  name: string
+  rawArguments: string | Record<string, unknown>
+  parsedArguments: Record<string, unknown>
+  isConcurrencySafe: boolean
+}
+
+type ToolCallBatch = {
+  isConcurrencySafe: boolean
+  calls: PreparedToolCall[]
+}
+```
+
+### Step 1: prepare calls
+
+Parse JSON arguments once in `TurnManager`, not repeatedly.
+
+If parsing fails:
+
+- preserve the existing error behavior for execution
+- classify the call as non-safe during partitioning
+
+### Step 2: classify calls
+
+Classification source should be:
+
+1. synthetic built-in profile for `web_search`
+2. `toolRegistry.isConcurrencySafe(name, parsedArguments)` for everything registered, including MCP tools
+3. fail-closed for unknown tools
+
+That means MCP concurrency should be available through registration metadata, not by adding a separate orchestration-only MCP lookup path.
+
+### Step 3: partition into consecutive batches
+
+Use Claudy's same rule:
+
+- merge consecutive safe calls into one batch
+- every non-safe call becomes a singleton batch
+- batches run in original order
+
+### Step 4: execute each batch
+
+For non-safe batch:
+
+- execute sequentially
+
+For safe batch:
+
+- execute concurrently with bounded parallelism
+- preserve result ordering in the returned `function_call_output[]`
+- allow progress events to interleave naturally
+
+Bounded parallelism:
+
+```ts
+export const MAX_SAFE_TOOL_CALL_CONCURRENCY = 5
+```
+
+Five is a better BrowserX default than Claudy's ten because BrowserX tools frequently use Chrome APIs, debugger sessions, DOM serialization, screenshots, or hidden tabs/windows.
+
+If later made configurable, the setting should be internal-only at first. It does not need public config surface in the first implementation.
+
+## 9. `TurnManager` integration
+
+Modify `src/core/TurnManager.ts`:
+
+- extract argument parsing into a small helper
+- replace the sequential tool-call loop in `handleResponseItem()`
+- pass the original `toolCall.id` through as `callId`
+- keep output ordering identical to the input order
+
+Important detail:
+
+`executeToolCall()` currently reparses JSON strings. After introducing `PreparedToolCall`, either:
+
+- add a second overload that accepts already-parsed args, or
+- make `executeToolCall()` tolerate both string and object input and skip reparsing when it already has an object
+
+That avoids duplicate parse work and avoids inconsistent classification vs execution.
+
+## 10. Provider flags
+
+Do not flip `parallel_tool_calls` to `true` in the first implementation.
+
+First ship:
+
+- metadata model
+- safe partitioning
+- bounded concurrent execution
+- progress events
+
+Then add a follow-up experiment to enable provider-side parallel tool planning per model/provider once:
+
+- event ordering is verified
+- UI handling is verified
+- browser tool safety annotations are complete
+
+This avoids coupling two behavior changes into one rollout.
+
+---
+
+## MCP Integration
+
+## 11. Preserve raw MCP tool hints
+
+Extend `IMCPTool.annotations` in `src/core/mcp/types.ts` to preserve raw hints BrowserX actually needs:
+
+```ts
+annotations?: {
+  readOnlyHint?: boolean
+  destructiveHint?: boolean
+  openWorldHint?: boolean
+  audience?: ('user' | 'assistant')[]
+  priority?: number
+  costLevel?: 'low' | 'medium' | 'high'
+}
+```
+
+Then update:
+
+- `src/core/mcp/MCPClient.ts`
+- `src/server/mcp/NodeMCPBridge.ts`
+
+to populate the raw hint fields rather than only translating them into `audience` and `costLevel`.
+
+## 12. Register MCP runtime metadata in `MCPToolAdapter`
+
+Update `src/core/mcp/MCPToolAdapter.ts` so `registerMCPTools()` passes `ToolRegistrationOptions` into `registry.register(...)`.
+
+Derived profile:
+
+```ts
+runtime: {
+  concurrency: {
+    isConcurrencySafe: () => tool.annotations?.readOnlyHint ?? false,
+    isReadOnly: () => tool.annotations?.readOnlyHint ?? false,
+    isDestructive: () => tool.annotations?.destructiveHint ?? false,
   },
-};
-```
-
-### Phase 4: Result Size Management
-
-#### 4A. Result Truncation in ToolRegistry.execute()
-
-In browser extension context, we can't write to filesystem like claudy does. Instead, we **truncate + summarize**:
-
-```typescript
-// After handler returns result, before returning ToolExecutionResponse:
-const entry = this.tools.get(request.toolName)!;
-const maxChars = entry.result?.maxResultSizeChars;
-
-if (maxChars && result) {
-  const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
-  if (resultStr.length > maxChars) {
-    // Truncate and add summary marker
-    const truncated = resultStr.slice(0, maxChars);
-    const summary = `[Result truncated: ${resultStr.length} chars → ${maxChars} chars. ` +
-      `Full result was ${Math.round(resultStr.length / 1024)}KB]`;
-    result = truncated + '\n\n' + summary;
-  }
+  result: {
+    maxResultSizeChars: 50_000,
+  },
 }
 ```
 
-#### 4B. Storage-Based Result Persistence (Server Mode Only)
+This gives BrowserX the same benefit Claudy gets from MCP annotations, but through BrowserX's registry.
 
-For server mode (which has filesystem access), implement claudy-style disk persistence:
+---
 
-```typescript
-// src/tools/resultStorage.ts (new file, server mode only)
+## Tool-by-Tool Metadata Plan
 
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
+## 13. Built-in BrowserX tool classification matrix
 
-const RESULT_STORAGE_DIR = '.browserx/tool-results';
+These are the implementation decisions the code should follow.
 
-export async function persistOversizedResult(
-  sessionId: string,
-  toolUseId: string,
-  result: string,
-  previewChars: number = 2000,
-): Promise<{ preview: string; filePath: string }> {
-  const dir = join(RESULT_STORAGE_DIR, sessionId);
-  await mkdir(dir, { recursive: true });
+### `browser_dom`
 
-  const filePath = join(dir, `${toolUseId}.txt`);
-  await writeFile(filePath, result, 'utf-8');
+- `snapshot`:
+  - concurrency-safe: true
+  - read-only: true
+  - destructive: false
+- `click`, `type`, `keypress`, `scroll`:
+  - concurrency-safe: false
+  - read-only: false
+  - destructive: false
+- activity descriptions:
+  - `snapshot` -> `Capturing DOM snapshot`
+  - `click` -> `Clicking DOM node ${node_id}`
+  - `type` -> `Typing into DOM node ${node_id}`
+  - `keypress` -> `Pressing ${key}`
+  - `scroll` -> `Scrolling DOM node ${node_id}`
+- result limit:
+  - `100_000`
 
-  const preview = result.slice(0, previewChars);
-  return {
-    preview: `${preview}\n\n<persisted-output path="${filePath}" size="${result.length}" />`,
-    filePath,
-  };
+### `browser_navigation`
+
+- `getHistory`, `getCurrentUrl`:
+  - concurrency-safe: true
+  - read-only: true
+- `navigate`, `reload`, `goBack`, `goForward`, `stop`, `waitForLoad`:
+  - concurrency-safe: false
+  - read-only: false
+- destructive: false for all
+- result limit:
+  - `10_000`
+
+### `web_scraping`
+
+- if `input.url` is provided:
+  - concurrency-safe: false
+  - read-only: false for the first implementation
+  - reason: may create a new tab via `getTab(tabId, url)`
+- otherwise:
+  - concurrency-safe: true
+  - read-only: true
+- destructive: false
+- result limit:
+  - `50_000`
+
+### `form_automation`
+
+- always:
+  - concurrency-safe: false
+  - read-only: false
+  - destructive: false
+- result limit:
+  - `10_000`
+
+### `data_extraction`
+
+Before classification, fix the tool to use the bound session tab from execution context rather than querying the active tab directly.
+
+After that fix:
+
+- concurrency-safe: true
+- read-only: true
+- destructive: false
+- result limit:
+  - `30_000`
+
+Until that fix lands, treat it as non-safe.
+
+### `page_vision`
+
+- `screenshot`:
+  - concurrency-safe: true
+  - read-only: true
+- `click`, `type`, `scroll`, `keypress`:
+  - concurrency-safe: false
+  - read-only: false
+- destructive: false
+- result limit:
+  - `50_000`
+
+### `network_intercept`
+
+- always:
+  - concurrency-safe: false
+  - read-only: false
+  - destructive: false
+- reason:
+  - global mutable rule state
+  - start/stop lifecycle is shared
+  - monitoring listeners are shared
+- result limit:
+  - `10_000`
+
+### `cache_storage_tool`
+
+- `read`, `list`:
+  - concurrency-safe: true
+  - read-only: true
+- `write`, `update`, `delete`:
+  - concurrency-safe: false
+  - read-only: false
+- `delete`:
+  - destructive: true
+- result limit:
+  - `50_000`
+
+### `planning_tool`
+
+- `list`, `get`, `get_plan`:
+  - concurrency-safe: true
+  - read-only: true
+- `plan`, `update`:
+  - concurrency-safe: false
+  - read-only: false
+- destructive: false
+- result limit:
+  - `10_000`
+
+### `setting_tool`
+
+- `get`, `list`:
+  - concurrency-safe: true
+  - read-only: true
+- `set`:
+  - concurrency-safe: false
+  - read-only: false
+- destructive: false
+- result limit:
+  - `10_000`
+
+### `web_search`
+
+This remains a special-case built-in in `TurnManager` for now.
+
+- concurrency-safe: true
+- read-only: true
+- destructive: false
+- activity description:
+  - `Searching the web for "${query}"`
+- result limit:
+  - `30_000`
+
+---
+
+## Result Size Handling
+
+## 14. First implementation: truncate in-memory, do not add filesystem persistence
+
+Claudy persists oversized outputs to disk because it is a local CLI with a stable filesystem contract.
+
+BrowserX spans extension, desktop, and server modes. A direct filesystem persistence port is not the right first move.
+
+First implementation:
+
+- support `maxResultSizeChars`
+- truncate oversized string results in `ToolRegistry.execute()`
+- attach metadata showing truncation occurred
+
+Behavior:
+
+```ts
+if (typeof result === 'string' && limit && result.length > limit) {
+  result = result.slice(0, limit) +
+    `\n\n[Result truncated from ${originalLength} to ${limit} chars]`
 }
 ```
 
----
+For object results:
 
-### Concrete BrowserX Tool Mapping
+- do not attempt deep truncation in the first pass
+- rely on tool-specific result shaping
+- optionally apply truncation after `JSON.stringify()` in `TurnManager` when producing `function_call_output`
 
-> **Note on tool naming:** Some tools have different function-definition names (what the LLM sees) vs. registry keys (internal dispatch). This table uses function-definition names. Where they differ, the registry key is noted in parentheses.
-
-| Tool | Concurrent-Safe | Read-Only | Destructive | Progress |
-|------|----------------|-----------|-------------|----------|
-| `browser_dom` (snapshot) [registry: `dom_tool`] | Yes | Yes | No | DOM tree size |
-| `browser_dom` (click) | No | No | No | Click target |
-| `browser_dom` (type) | No | No | No | Input content |
-| `browser_navigation` [registry: `navigation_tool`] | No | No | No | URL loading |
-| `web_scraping` | Yes | Yes | No | Content extraction |
-| `form_automation` | No | No | No | Form fields filled |
-| `data_extraction` | Yes | Yes | No | Data rows extracted |
-| `cache_storage_tool` (read) [registry: `storage_tool`] | Yes | Yes | No | - |
-| `cache_storage_tool` (write) | No | No | No | - |
-| `page_vision` | Yes | Yes | No | Screenshot capture |
-| `network_intercept` | **No** | **No** | No | Requests intercepted |
-| `planning_tool` | Yes | No | No | - |
-
-> **`network_intercept` is NOT read-only.** Despite monitoring network traffic, this tool calls `chrome.declarativeNetRequest.updateDynamicRules()` to add/remove interception rules, tracks `modifiedRequests` in its metrics, and has a stateful start/stop lifecycle. It must be classified as a write operation that is not concurrency-safe.
-
-### Integration with Existing Parallel Tool Call Design
-
-This track directly feeds into the existing `multiple_tools_call/` design:
-
-1. **Concurrency metadata** tells the parallel tool orchestrator which tools can run together
-2. **Progress callbacks** enable the UI to show status for concurrent tools
-3. **Result size management** prevents context bloat when multiple tools return large results
+Filesystem-backed persistence can be a later server/desktop enhancement if it proves necessary.
 
 ---
 
-## Phase Plan
+## Implementation Notes By File
 
-**Phase 1: Type Definitions** (Week 1)
-- Create `src/tools/types.ts` with all interfaces defined in section 1A
-- Extend `ToolRegistryEntry` per section 1B
-- Extend `ToolRegistry.register()` per section 1C (backward-compatible)
-- Extend `ToolRegistry.execute()` per section 1D (add `onProgress` parameter)
-- Add `ToolExecutionProgress` event type per section 1E
-- Add concurrency query methods per section 1F
+### Files to change
 
-**Phase 2: Annotate Existing Tools** (Week 2)
-- Modify `src/tools/index.ts` to pass concurrency/ui/result metadata per section 2A-2C
-- Add metadata for all 11 tools per the table in section 2B
-- Write unit tests for per-input checks:
-  - `dom_tool`: snapshot → safe, click/type/keypress/scroll → not safe
-  - `storage_tool`: read/list → safe, write/delete → not safe
-  - `setting_tool`: get → safe, set → not safe
-  - All tools: verify fail-closed defaults when no metadata provided
+- `src/tools/BaseTool.ts`
+- `src/tools/ToolRegistry.ts`
+- `src/tools/index.ts`
+- `src/core/TurnManager.ts`
+- `src/core/protocol/events.ts`
+- `src/core/protocol/event-scope.ts`
+- `src/server/streaming/agent-events.ts`
+- `src/server/channels/ServerChannel.ts`
+- `src/core/mcp/types.ts`
+- `src/core/mcp/MCPClient.ts`
+- `src/server/mcp/NodeMCPBridge.ts`
+- `src/core/mcp/MCPToolAdapter.ts`
+- `src/tools/DataExtractionTool.ts`
+- new `src/tools/runtimeMetadata.ts`
+- new `src/core/toolOrchestration.ts`
 
-**Phase 3: Parallel Execution** (Week 3)
-- Create `src/core/toolOrchestration.ts` per section 3A
-- Modify `TurnManager.processResponseItem()` per section 3B
-- Wire progress events per section 3C
-- Add integration tests:
-  - 2 concurrent-safe tools → run in parallel (timing assertion)
-  - 1 non-safe tool between safe tools → creates 3 batches
-  - Tool that throws in isConcurrencySafe → falls back to sequential
+### Registration helper cleanup
 
-**Phase 4: Result Management** (Week 4)
-- Add result truncation in `ToolRegistry.execute()` per section 4A
-- Add disk persistence for server mode per section 4B
-- Set `maxResultSizeChars` per the table in section 2B
-- Add tests for truncation at boundary
+`src/tools/index.ts` currently has repeated registration wrappers. This is a good place to add a small helper:
+
+```ts
+async function registerBaseTool(
+  registry: ToolRegistry,
+  tool: BaseTool,
+  opts?: ToolRegistrationOptions
+) { ... }
+```
+
+That helper should:
+
+- read `tool.getDefinition()`
+- register the handler
+- pass `context.callId`, `context.onProgress`, and metadata into `tool.execute(...)`
+- apply runtime metadata options in one place
+
+This will keep metadata rollout consistent across all tools.
 
 ---
 
-## Key Differences from Claudy
+## Risks and Mitigations
 
-| Aspect | Claudy | BrowserX |
-|--------|--------|----------|
-| Tool definition | Functional (`buildTool()`) | Class-based (`BaseTool` subclass) |
-| Metadata location | On the tool object itself | In `ToolRegistryEntry` (separate from tool) |
-| Execution model | Async generators (`yield*`) | Promise-based (`async/await`) |
-| Result persistence | Filesystem (project dir) | Truncation (extension), filesystem (server) |
-| Max concurrency | 10 (env configurable) | 5 (conservative for browser context) |
-| Context modifiers | Queued during concurrent batch, applied after | Not needed (BrowserX tools don't modify execution context) |
-| Input validation | Zod schemas | JSON Schema validation in ToolRegistry |
-| Progress format | Typed per-tool (BashProgress, MCPProgress, etc.) | Typed per-tool (DOMToolProgress, NavigationProgress, etc.) |
+### Risk: unsafe tool marked safe
 
-## Risks
+Mitigation:
 
-- **Input analysis complexity**: Per-input concurrency checks for dom_tool require understanding the action parameter. Start with action-type dispatch (read actions = safe, mutation actions = unsafe).
-- **Progress overhead**: Progress callbacks on every tool call add overhead. Use opt-in (only emit when onProgress callback is provided).
-- **Browser tab contention**: Even "read-only" tools like `page_vision` and `web_scraping` may contend for the same browser tab's CDP connection. Phase 3 should validate that CDP handles concurrent reads without race conditions.
-- **Backward compatibility**: The `register()` signature change must accept both `IRiskAssessor` (legacy) and `ToolRegistrationOptions` (new). Section 1C handles this with a type guard.
-- **Extension vs Server mode**: Result persistence strategy differs by platform. Extension mode truncates; server mode can write to disk. Use platform detection from `registerPlatformTools.ts`.
+- fail-closed defaults
+- explicit per-action classification
+- keep `parallel_tool_calls: false` initially
+- bounded concurrency cap
+
+### Risk: event stream regressions
+
+Mitigation:
+
+- centralize lifecycle emission in `ToolRegistry`
+- preserve `call_id`
+- add dedicated progress event instead of overloading unrelated action events
+
+### Risk: MCP metadata drift
+
+Mitigation:
+
+- preserve raw `readOnlyHint` and `destructiveHint`
+- derive registry runtime metadata from the raw hints at registration time
+
+### Risk: tool result ordering changes
+
+Mitigation:
+
+- run safe tools concurrently
+- store results by original index
+- return `function_call_output[]` in original call order
+
+### Risk: hidden browser resources contend under concurrency
+
+Mitigation:
+
+- default cap of `5`
+- conservative classification for tools that create tabs, attach debugger sessions, or touch shared browser state
+
+---
+
+## Ready-to-Implement Decisions
+
+These decisions should be treated as settled for implementation:
+
+1. Runtime execution metadata lives on `ToolRegistryEntry`, not `ToolDefinition.metadata`.
+2. Metadata defaults are fail-closed and applied during registration.
+3. `ToolRegistry` owns browser-tool lifecycle and progress event emission.
+4. `TurnManager` gets a new batching helper and stops executing multi-tool messages purely sequentially.
+5. Provider request flags remain unchanged in the first pass.
+6. MCP raw hints must be preserved and converted into registry runtime metadata.
+7. `data_extraction` must be fixed to use the bound session tab before it can be classified as concurrency-safe.
+
+With those constraints, the implementation can proceed directly.
