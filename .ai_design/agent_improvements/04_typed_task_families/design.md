@@ -1,280 +1,672 @@
 # Track 04: Typed Task Families
 
-## Problem
+## Readiness
 
-BrowserX has **substantial task infrastructure** that must be extended, not replaced. The existing system includes:
+The original design was **not ready to implement**.
 
-**`TaskRunner`** (`src/core/TaskRunner.ts`, ~765 lines) — a sophisticated multi-turn executor:
-- Multi-turn loop with `MAX_TURNS = 500` (`runLoop()`, lines 262-372)
-- Auto-compaction at `COMPACTION_THRESHOLD = 0.85` of context window (`shouldCompactBeforeRequest()` lines 708-734, `attemptAutoCompact()` lines 739-765)
-- Multi-path abort handling: signal-based, mid-loop cancellation checks, `cancel()` method (lines 143-158)
-- Persisted token usage via `TokenUsageStore` (`persistTokenUsage()` lines 469-487)
-- Task state with `submissionId`, `status`, `currentTurnIndex`, `tokenUsage`, `compactionPerformed`, `abortReason`
+It had the right direction, but it still had several gaps that would have created churn during coding:
 
-**`Session.spawnTask()`** (`src/core/Session.ts:1316`) — turn-scoped task orchestration:
-- Creates `AbortController` per task for cancellation
-- Wraps execution with `onTaskFinished()`/`onTaskAborted()` callbacks
-- Registers `RunningTask` (kind, abortController, task, promise, startTime) via `registerNewActiveTask()`
-- Fire-and-forget async pattern (tasks run without blocking the session)
+- It assumed BrowserX already had multiple `SessionTask` implementations. It does not. Today there is only [`RegularTask`](/home/rich/dev/airepublic/open_source/s1/browserx/src/core/tasks/RegularTask.ts).
+- It treated concurrent tasks as a pure type-system change, but the real blocking seam is [`Session.spawnTask()`](/home/rich/dev/airepublic/open_source/s1/browserx/src/core/Session.ts:1316), which currently aborts all tasks before every spawn.
+- It described storage as if adding one IndexedDB store were enough. In BrowserX, a new store must be reflected across `StorageAdapter`, [`IndexedDBAdapter`](/home/rich/dev/airepublic/open_source/s1/browserx/src/storage/IndexedDBAdapter.ts), [`NodeSQLiteAdapter`](/home/rich/dev/airepublic/open_source/s1/browserx/src/server/storage/NodeSQLiteAdapter.ts), and [`TauriSQLiteAdapter`](/home/rich/dev/airepublic/open_source/s1/browserx/src/desktop/storage/TauriSQLiteAdapter.ts).
+- It proposed task events through `session.emitEvent(...)`, but BrowserX also has [`Session.sendEvent()`](/home/rich/dev/airepublic/open_source/s1/browserx/src/core/Session.ts:1061) for rollout persistence. The design must specify which path to use.
+- It assumed output persistence could be modeled like filesystem append logs. In BrowserX the closest equivalent is append-only chunk aggregation in IndexedDB/SQLite, with quota pressure handled by [`StorageQuotaManager`](/home/rich/dev/airepublic/open_source/s1/browserx/src/storage/StorageQuotaManager.ts).
 
-**`ActiveTurn`** (`src/core/session/state/ActiveTurn.ts:13`) — per-turn task tracking:
-- `Map<string, RunningTask>` for all running tasks in the current turn
-- `addTask()`, `removeTask()`, `hasTask()`, `getTasks()`, `drain()`, `abort()` lifecycle methods
-- `TurnState` delegation for approval and input management
+After the research below, the track is now ready to implement as a **vertical slice**:
 
-What BrowserX is **still missing**:
+1. Define the generic typed-task state model and registry.
+2. Implement one real family first: `background_agent`.
+3. Wire storage, polling, and lifecycle events for that family.
+4. Add the remaining families on top of the same registry once the concurrency path is proven.
 
-- Typed task families (browser automation vs. background agent vs. scheduled)
-- Disk persistence for task output (append-only with delta reads)
-- Background/foreground transitions (tasks currently run fire-and-forget but without UI lifecycle)
-- Progress tracking with delta reporting
-- Task state machine with terminal state protection and `notified` flag
+That sequencing matches the current codebase much better than trying to land all four families at once.
 
-Claudy has 7 typed task families with append-only disk output, background/foreground transitions, progress delta tracking, and a protected state machine. BrowserX should build these on top of the existing `TaskRunner`/`Session`/`ActiveTurn` abstractions.
+## Goal
 
-## What Claudy Does
+Add typed task families to BrowserX without replacing its current execution stack.
 
-### Typed Task Families (Discriminated Union)
+The implementation must extend the existing:
 
-```typescript
-type TaskState =
-  | LocalShellTaskState        // Background shell commands
-  | LocalAgentTaskState        // Background AI agents
-  | RemoteAgentTaskState       // Cloud-hosted agents
-  | InProcessTeammateTaskState // In-process team members (swarm)
-  | LocalWorkflowTaskState     // YAML workflow scripts
-  | MonitorMcpTaskState        // Long-running MCP monitoring
-  | DreamTaskState             // Speculative pre-computation
+- [`TaskRunner`](/home/rich/dev/airepublic/open_source/s1/browserx/src/core/TaskRunner.ts)
+- [`AgentTask`](/home/rich/dev/airepublic/open_source/s1/browserx/src/core/AgentTask.ts)
+- [`Session`](/home/rich/dev/airepublic/open_source/s1/browserx/src/core/Session.ts)
+- [`ActiveTurn`](/home/rich/dev/airepublic/open_source/s1/browserx/src/core/session/state/ActiveTurn.ts)
+- [`TurnManager`](/home/rich/dev/airepublic/open_source/s1/browserx/src/core/TurnManager.ts)
+
+The design target is not "copy Claudy". The target is "borrow the parts of Claudy that fit BrowserX's browser-extension runtime".
+
+## Claudy Findings That Matter
+
+The useful Claudy patterns are these:
+
+### 1. Typed task state is a discriminated union
+
+Claudy defines a shared base task shape in `/home/rich/dev/study/claudy/src/Task.ts` and then unions concrete families in `/home/rich/dev/study/claudy/src/tasks/types.ts`.
+
+The important properties are:
+
+- Stable task ID independent from transport submission ID
+- `type` discriminator
+- terminal-state guard
+- append-only output offset for delta reads
+- `notified` flag for atomic completion notification
+
+That pattern maps cleanly to BrowserX.
+
+### 2. Terminal-state protection is explicit
+
+Claudy's `isTerminalTaskStatus()` and its update helpers consistently reject terminal to non-terminal transitions. That matters because BrowserX already has multiple async paths:
+
+- normal completion from `TaskRunner`
+- abort from `AbortController`
+- UI-driven interruption
+- future background polling updates
+
+Without terminal guards, the same task can be "completed" and then "aborted" afterward by a stale callback.
+
+### 3. Background visibility is separate from task existence
+
+Claudy distinguishes:
+
+- task exists
+- task is running
+- task is background-visible
+- UI is retaining task details
+
+The `isBackgrounded`, `retain`, `evictAfter`, and `pendingMessages` fields are the right pattern for BrowserX too, especially once sidepanel UI starts switching between foreground and background task views.
+
+### 4. Output is append-only with delta polling
+
+Claudy's filesystem implementation is not portable to BrowserX, but the behavior is:
+
+- append asynchronously
+- keep caller non-blocking
+- track read offset
+- return deltas
+- evict in-memory buffers while preserving persisted output
+
+BrowserX should keep those semantics and swap filesystem append for IndexedDB/SQLite chunk append.
+
+### 5. Re-registration preserves UI-held state
+
+Claudy's registry preserves `retain`, pending messages, and viewed transcript state on re-registration. BrowserX should do the same. Otherwise a resumed or reattached background task will flash, lose its UI state, or duplicate work.
+
+## BrowserX Findings That Matter
+
+### Current execution stack
+
+BrowserX already has substantial task plumbing:
+
+- [`TaskRunner`](/home/rich/dev/airepublic/open_source/s1/browserx/src/core/TaskRunner.ts:90) owns the multi-turn execution loop, compaction, token accounting, and `TaskStarted` / `TaskComplete` / `TurnAborted` emission.
+- [`AgentTask`](/home/rich/dev/airepublic/open_source/s1/browserx/src/core/AgentTask.ts:29) is a thin coordinator around `TaskRunner`.
+- [`RegularTask`](/home/rich/dev/airepublic/open_source/s1/browserx/src/core/tasks/RegularTask.ts:21) is the only concrete `SessionTask` implementation today.
+- [`Session.spawnTask()`](/home/rich/dev/airepublic/open_source/s1/browserx/src/core/Session.ts:1316) is the real concurrency bottleneck because it always calls `abortAllTasks('UserInterrupt')` first.
+- [`ActiveTurn`](/home/rich/dev/airepublic/open_source/s1/browserx/src/core/session/state/ActiveTurn.ts:13) is foreground-turn state, not a general task registry.
+
+### Important repo mismatches versus the old draft
+
+- The doc previously mentioned `CompactTask`, but there is no `src/core/tasks/CompactTask.ts` in this repo.
+- `TaskKind` currently has `Regular`, `Review`, and `Compact`, but only `RegularTask` actually exists as a concrete implementation right now.
+- `Session.emitEvent()` exists, but BrowserX also has `Session.sendEvent()` for persisted event emission. New task lifecycle events should use `sendEvent()` when they matter to rollout history.
+- `TurnManager` already has a clear tool-round seam in [`executeToolCall()`](/home/rich/dev/airepublic/open_source/s1/browserx/src/core/TurnManager.ts:622). That is the right insertion point for draining queued background-task messages between tool rounds.
+
+### Storage implications
+
+Adding task output persistence is a multi-backend change, not just an IndexedDB change.
+
+At minimum this track must update:
+
+- [`src/storage/StorageAdapter.ts`](/home/rich/dev/airepublic/open_source/s1/browserx/src/storage/StorageAdapter.ts)
+- [`src/storage/IndexedDBAdapter.ts`](/home/rich/dev/airepublic/open_source/s1/browserx/src/storage/IndexedDBAdapter.ts)
+- [`src/server/storage/NodeSQLiteAdapter.ts`](/home/rich/dev/airepublic/open_source/s1/browserx/src/server/storage/NodeSQLiteAdapter.ts)
+- [`src/desktop/storage/TauriSQLiteAdapter.ts`](/home/rich/dev/airepublic/open_source/s1/browserx/src/desktop/storage/TauriSQLiteAdapter.ts)
+
+For the extension build, a new IndexedDB object store requires a DB version bump and `onupgradeneeded` migration.
+
+For the server build, the store name must be added to `ADAPTER_STORES`.
+
+For the desktop build, the Tauri storage backend must accept the new collection name, even if no schema migration is needed in TypeScript.
+
+## Decision
+
+Implement typed task families in two layers:
+
+### Layer 1: Generic registry and persistence
+
+This layer introduces the shared typed-task model, storage, polling, notification guards, and UI retention semantics.
+
+### Layer 2: Family-specific executors
+
+This layer adds concrete execution behavior. Only `background_agent` is required in the first vertical slice. The other families should be typed and registrable immediately, but their execution adapters can land later.
+
+That keeps the first implementation tractable and aligned with current BrowserX code.
+
+## Proposed BrowserX Task Model
+
+### Family types
+
+```ts
+export type BrowserXTaskType =
+  | 'background_agent'
+  | 'browser_automation'
+  | 'tab_watcher'
+  | 'data_extraction';
+
+export type BrowserXTaskStatus =
+  | 'pending'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'killed';
 ```
 
-Each family has unique fields but shares a base:
-```typescript
-type TaskStateBase = {
-  id: string
-  type: TaskType
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'killed'
-  description: string
-  startTime: number
-  endTime?: number
-  outputFile?: string        // Path to disk output
-  outputOffset?: number      // Current read offset for delta reads
-  notified: boolean          // Has parent been notified of completion?
-}
-```
+### Base state
 
-### Disk Persistence (Append-Only)
-
-```typescript
-class DiskTaskOutput {
-  #path: string
-  #fileHandle: FileHandle | null
-  #queue: string[] = []         // Flat array write queue (GC-friendly)
-  #bytesWritten = 0
-  #capped = false               // 5GB max per task
-
-  append(content: string): void    // Queue content (non-blocking)
-  flush(): Promise<void>          // Wait for writes to complete
-  cancel(): void                  // Discard pending writes
-}
-```
-
-Key patterns:
-- Session-scoped directory: `${tempDir}/${sessionId}/tasks/${taskId}.output`
-- Append-only (no seek/truncate)
-- Delta reads via `outputOffset` (never loads full file)
-- 5GB cap per task (prevents runaway output)
-- Queue-splice pattern for aggressive GC
-
-### Background/Foreground Transitions
-
-```typescript
-type LocalAgentTaskState = TaskStateBase & {
-  isBackgrounded: boolean       // true = running in background
-  retain: boolean               // true = block eviction (user viewing)
-  diskLoaded: boolean           // bootstrap sync complete?
-  evictAfter?: number           // grace period timestamp
-  pendingMessages: string[]     // messages queued mid-turn
-  progress?: AgentProgress      // {toolUseCount, tokenCount, lastActivity, summary}
-}
-```
-
-Lifecycle:
-1. **Spawn**: `isBackgrounded = true` (starts in background)
-2. **User views**: `retain = true` (block eviction, stream to UI)
-3. **User exits view**: `evictAfter = now + 30s` (grace period)
-4. **Terminal state + grace expired**: evict from memory (disk output preserved)
-
-### Progress Delta Tracking
-
-```typescript
-type AgentProgress = {
-  toolUseCount: number
-  tokenCount: number
-  lastActivity: string         // "Reading src/foo.ts"
-  recentActivities: string[]   // Last 5 activities
-  summary?: string             // 1-2 sentence progress (from background summarization)
-}
-```
-
-Delta computed from `lastReportedToolCount` / `lastReportedTokenCount` to avoid sending full state on every update.
-
-### Task Notifications (to parent/coordinator)
-
-```xml
-<task-notification>
-  <task-id>{taskId}</task-id>
-  <status>completed</status>
-  <summary>{human-readable summary}</summary>
-  <result>{final response}</result>
-  <usage>
-    <total_tokens>N</total_tokens>
-    <tool_uses>N</tool_uses>
-    <duration_ms>N</duration_ms>
-  </usage>
-</task-notification>
-```
-
-Notifications are atomically guarded (`notified` flag prevents duplicates).
-
-## BrowserX Mapping
-
-### Current State (Existing Infrastructure)
-
-```typescript
-// TaskRunner.ts — Existing task state (already used, extends with new families)
-type TaskState = {
-  submissionId: string
-  status: 'idle' | 'running' | 'completed' | 'failed' | 'cancelled'
-  currentTurnIndex: number
-  tokenUsage: { used: number; max: number }
-  compactionPerformed: boolean
-  abortReason?: string
-}
-
-// Session.ts:1344 — Existing RunningTask structure
-type RunningTask = {
-  kind: string                    // Task classification (extension point for families)
-  abortController: AbortController
-  task: SessionTask
-  promise: Promise<void>
-  startTime: number
-}
-
-// ActiveTurn.ts — Existing per-turn task map
-class ActiveTurn {
-  private tasks: Map<string, RunningTask>   // All running tasks for this turn
-  addTask(taskId, task): void
-  removeTask(taskId): boolean               // Returns true if turn is now empty
-  abort(): void                             // Aborts all tasks, clears state
-  drain(): RunningTask[]                    // Drain all tasks
-}
-```
-
-The existing `RunningTask.kind` field is the natural extension point for task family discrimination. New task families should be defined as discriminated unions that extend this base, not as a parallel structure.
-
-### Proposed Task Families for BrowserX (Extending Existing Abstractions)
-
-```typescript
-type BrowserXTaskState =
-  | BrowserAutomationTaskState   // Multi-step browser automation
-  | BackgroundAgentTaskState     // Background AI agent (research, analysis)
-  | ScheduledTaskState           // Cron-style scheduled tasks
-  | TabWatcherTaskState          // Monitor tab for changes
-  | DataExtractionTaskState      // Long-running data extraction
-```
-
-```typescript
-type BrowserAutomationTaskState = TaskStateBase & {
-  type: 'browser_automation'
-  tabId: number
-  steps: AutomationStep[]
-  currentStepIndex: number
-  screenshots: string[]           // Paths to step screenshots
-  progress: BrowserAutomationProgress
-}
-
-type BackgroundAgentTaskState = TaskStateBase & {
-  type: 'background_agent'
-  prompt: string
-  model?: string
-  isBackgrounded: boolean
-  progress?: AgentProgress
-  pendingMessages: string[]
-  retain: boolean
-  evictAfter?: number
-}
-
-type ScheduledTaskState = TaskStateBase & {
-  type: 'scheduled'
-  cronExpression: string
-  lastRunAt?: number
-  nextRunAt: number
-  runCount: number
-}
-
-type TabWatcherTaskState = TaskStateBase & {
-  type: 'tab_watcher'
-  tabId: number
-  watchCondition: string          // "price < $100", "status changed"
-  checkIntervalMs: number
-  lastCheckedAt?: number
-  matchFound: boolean
+```ts
+export interface TaskStateBase {
+  id: string;
+  type: BrowserXTaskType;
+  status: BrowserXTaskStatus;
+  description: string;
+  submissionId: string;
+  sessionId: string;
+  startTime: number;
+  endTime?: number;
+  outputStoreKey?: string;
+  outputOffset: number;
+  notified: boolean;
 }
 ```
 
-### Phase Plan
+Notes:
 
-**Phase 1: Extend Existing Task State Machine** (Week 1-2)
-- Define discriminated union `BrowserXTaskState` extending existing `RunningTask.kind`
-- Add `TaskStateBase` interface compatible with existing `TaskState` in `TaskRunner.ts`
-- Implement state machine with terminal state protection
-- Add `notified` flag for atomic notification guard
-- Extend `ActiveTurn`'s task map to support typed task families (use `kind` field for discrimination)
+- `id` is the task-family ID. It is separate from `submissionId`, which stays aligned with `TaskRunner`.
+- `sessionId` must be stored explicitly so output cleanup can query by session.
+- `outputStoreKey` should equal `id` initially. Keeping it separate allows future transcript sharding without changing task identity.
 
-**Phase 2: Disk Persistence** (Week 2-3)
-- Implement `DiskTaskOutput` class (append-only, queue-based)
-- Add session-scoped output directory
-- Implement delta reads via offset tracking
-- Add size cap (configurable, default 1GB)
-- Integrate with existing `RolloutRecorder` for session persistence
+### Concrete states
 
-**Phase 3: Background Execution** (Week 3-4)
-- Extend `Session.spawnTask()` to support background/foreground transitions
-- Add `isBackgrounded` flag and `retain`/`evictAfter` for UI lifecycle
-- Add `pendingMessages` queue for mid-turn messages
-- Wire background tasks into existing EventMsg types for progress notifications
-- Coordinate with `TaskRunner`'s existing compaction logic for long-running background tasks
+```ts
+export interface BackgroundAgentTaskState extends TaskStateBase {
+  type: 'background_agent';
+  prompt: string;
+  model?: string;
+  isBackgrounded: boolean;
+  retain: boolean;
+  evictAfter?: number;
+  pendingMessages: string[];
+  progress?: AgentProgress;
+  lastReportedToolCount: number;
+  lastReportedTokenCount: number;
+}
 
-**Phase 4: Progress & Notifications** (Week 4-5)
-- Implement `AgentProgress` type with delta tracking
-- Add task notification protocol (XML or JSON to parent session)
-- Wire progress events to UI components via existing `Session`/`TurnManager` event paths
-- Add task summary generation using existing `SummaryGenerator` pattern from `CompactService`
+export interface BrowserAutomationTaskState extends TaskStateBase {
+  type: 'browser_automation';
+  tabId: number;
+  steps: AutomationStep[];
+  currentStepIndex: number;
+  screenshotKeys: string[];
+  progress?: BrowserAutomationProgress;
+}
 
-## BrowserX-Specific Task Types
+export interface TabWatcherTaskState extends TaskStateBase {
+  type: 'tab_watcher';
+  tabId: number;
+  watchCondition: string;
+  checkIntervalMs: number;
+  lastCheckedAt?: number;
+  matchFound: boolean;
+}
 
-### BrowserAutomationTask
+export interface DataExtractionTaskState extends TaskStateBase {
+  type: 'data_extraction';
+  tabId: number;
+  extractionConfig: ExtractionConfig;
+  pagesProcessed: number;
+  rowsExtracted: number;
+  dataStoreKey?: string;
+}
 
-Multi-step browser workflows (e.g., "fill out this form, submit, verify confirmation"):
-- Step tracking with screenshot at each step
-- Rollback capability (navigate back if step fails)
-- Parallel tab operations (open multiple tabs, compare)
+export type BrowserXTaskState =
+  | BackgroundAgentTaskState
+  | BrowserAutomationTaskState
+  | TabWatcherTaskState
+  | DataExtractionTaskState;
+```
 
-### TabWatcherTask
+### State machine
 
-Monitor a tab for changes (e.g., "notify me when the price drops"):
-- Periodic DOM checks against condition
-- Background execution with configurable interval
-- Notification on match
+Allowed transitions:
 
-### DataExtractionTask
+- `pending -> running`
+- `running -> completed | failed | killed`
 
-Long-running data extraction across paginated results:
-- Progress tracking (pages processed, rows extracted)
-- Disk persistence for extracted data
-- Resume capability after interruption
+Rejected transitions:
+
+- any terminal to anything else
+- `pending -> completed` except through an explicit registry helper used by setup failures
+
+Helper:
+
+```ts
+export function isTerminalTaskStatus(status: BrowserXTaskStatus): boolean {
+  return status === 'completed' || status === 'failed' || status === 'killed';
+}
+```
+
+### ID generation
+
+Use the Claudy pattern with Web Crypto:
+
+```ts
+const TASK_ID_PREFIXES: Record<BrowserXTaskType, string> = {
+  background_agent: 'a',
+  browser_automation: 'b',
+  tab_watcher: 'w',
+  data_extraction: 'x',
+};
+```
+
+Implementation detail:
+
+- Use `crypto.getRandomValues(new Uint8Array(8))`
+- Lowercase base36 alphabet only
+- shape: `${prefix}${8 chars}`
+
+## Registry Design
+
+New file: `src/core/tasks/TaskRegistry.ts`
+
+Responsibilities:
+
+- own typed-task state for the session
+- protect terminal transitions
+- atomically mark notifications
+- poll output deltas
+- manage UI retention / eviction timing
+
+### API
+
+```ts
+class TaskRegistry {
+  register(task: BrowserXTaskState): void;
+  update<T extends BrowserXTaskState>(taskId: string, updater: (task: T) => T): void;
+  transitionToRunning(taskId: string): boolean;
+  transitionToTerminal(taskId: string, status: 'completed' | 'failed' | 'killed'): boolean;
+  markNotified(taskId: string): boolean;
+  tryEvict(taskId: string): boolean;
+  poll(): Promise<TaskAttachment[]>;
+  get(taskId: string): BrowserXTaskState | undefined;
+  list(): BrowserXTaskState[];
+  listBackground(): BrowserXTaskState[];
+}
+```
+
+### Required behavior
+
+- Preserve `retain`, `pendingMessages`, and `startTime` on re-registration when replacing the same task ID.
+- Skip no-op updates when the updater returns the same object reference.
+- Set `endTime` only once, at terminal transition.
+- Eviction requires all three:
+  - terminal state
+  - `notified === true`
+  - if `retain` exists, `evictAfter <= Date.now()`
+
+### Attachment payload
+
+```ts
+export interface TaskAttachment {
+  taskId: string;
+  taskType: BrowserXTaskType;
+  status: BrowserXTaskStatus;
+  description: string;
+  deltaSummary: string | null;
+}
+```
+
+### Polling constants
+
+Carry over Claudy's timings:
+
+- `POLL_INTERVAL_MS = 1000`
+- `PANEL_GRACE_MS = 30000`
+- `STOPPED_DISPLAY_MS = 3000`
+
+## Output Persistence Design
+
+New file: `src/core/tasks/TaskOutputStore.ts`
+
+### Storage schema
+
+Add a new store named `task_outputs`.
+
+Record shape:
+
+```ts
+export interface TaskOutputRecord {
+  taskId: string;
+  sessionId: string;
+  chunks: string[];
+  totalBytes: number;
+  capped: boolean;
+  updatedAt: number;
+}
+```
+
+### Backend changes required
+
+#### `StorageAdapter`
+
+- add `task_outputs: 'taskId'` to `STORE_KEY_PATHS`
+- add `by_session` support for this store
+
+#### `IndexedDBAdapter`
+
+- add `STORE_NAMES.TASK_OUTPUTS`
+- bump `DB_VERSION`
+- create object store with keyPath `taskId`
+- create `by_session` index on `sessionId`
+
+#### `NodeSQLiteAdapter`
+
+- add `task_outputs` to `ADAPTER_STORES`
+- include `by_session` index generation for the new store
+
+#### `TauriSQLiteAdapter`
+
+- no new TS schema object, but all calls must permit `task_outputs` as a valid collection
+
+### Runtime behavior
+
+`append(taskId, content)` must be non-blocking.
+
+Use Claudy's queue-drain semantics, adapted for string chunks:
+
+- maintain `writeQueues: Map<string, string[]>`
+- splice the queue during drain so memory can be released early
+- append to persisted `chunks`
+- if more content arrives during drain, immediately schedule another drain
+
+### Size cap
+
+Use `100 MB` per task by default, not Claudy's `5 GB`.
+
+Reason:
+
+- extension quotas are much smaller
+- BrowserX already has quota monitoring
+- large outputs must not crowd out rollouts and cache
+
+When the cap is exceeded, append one truncation marker and stop accepting new chunks for that task.
+
+### Read APIs
+
+Required methods:
+
+- `append(taskId, sessionId, content): void`
+- `flush(taskId): Promise<void>`
+- `getOutputDelta(taskId, fromOffset): Promise<{ content: string; newOffset: number }>`
+- `getOutput(taskId, maxBytes?): Promise<string>`
+- `evict(taskId): void`
+- `cleanup(taskId): Promise<void>`
+- `cleanupSession(sessionId): Promise<void>`
+
+### Quota integration
+
+`TaskOutputStore` should accept an optional `StorageQuotaManager`.
+
+Required behavior:
+
+- call quota manager only on drain boundaries, not per append
+- if quota is already critical, reject new large writes with a truncation marker instead of continuing to grow
+
+## Session Integration
+
+This is the core implementation seam.
+
+### Keep `ActiveTurn` as foreground-only state
+
+Do not try to make `ActiveTurn` the general concurrent task store.
+
+`ActiveTurn` already bundles:
+
+- running foreground tasks
+- pending approvals
+- pending input
+
+That is good foreground-turn state, but it is the wrong abstraction for long-lived background tasks.
+
+### Add a second task container to `Session`
+
+Add:
+
+```ts
+private backgroundTasks: Map<string, RunningTask> = new Map();
+private taskRegistry: TaskRegistry;
+```
+
+### Change `spawnTask`
+
+New signature:
+
+```ts
+async spawnTask(
+  task: SessionTask,
+  context: TurnContext,
+  subId: string,
+  input: InputItem[],
+  options?: { background?: boolean; taskId?: string }
+): Promise<void>
+```
+
+Rules:
+
+- foreground spawn:
+  - call `abortForegroundTasks()`
+  - register in `ActiveTurn`
+- background spawn:
+  - do not abort current foreground turn
+  - store in `backgroundTasks`
+
+### Do not remove `abortAllTasks()`
+
+Keep it for shutdown / hard interrupt semantics.
+
+Add:
+
+- `abortForegroundTasks()`
+- `abortBackgroundTask(taskId)`
+- `getBackgroundTasks()`
+
+### RunningTask shape
+
+Extend `RunningTask` with typed-task linkage:
+
+```ts
+interface RunningTask {
+  kind: TaskKind;
+  abortController: AbortController;
+  task: SessionTask;
+  promise: Promise<string | null>;
+  startTime: number;
+  taskId?: string;
+  background?: boolean;
+}
+```
+
+That lets `Session.onTaskFinished()` and `onTaskAborted()` update the registry correctly.
+
+### Completion path
+
+On successful completion:
+
+- remove from `ActiveTurn` or `backgroundTasks`
+- transition the typed task to `completed`
+- schedule `evictAfter` if relevant
+- emit completion event through `Session.sendEvent()`
+
+On failure or abort:
+
+- remove from the correct container
+- transition to `failed` or `killed`
+- preserve terminal guard
+
+## `background_agent` Vertical Slice
+
+This is the only family that must be executable in the first implementation.
+
+### New task kind
+
+Extend [`TaskKind`](/home/rich/dev/airepublic/open_source/s1/browserx/src/core/session/state/types.ts) with:
+
+- `BackgroundAgent`
+- `BrowserAutomation`
+- `TabWatcher`
+- `DataExtraction`
+
+### New concrete executor
+
+Create `src/core/tasks/BackgroundAgentTask.ts`.
+
+Implementation approach:
+
+- mirror `RegularTask`
+- still use `AgentTask -> TaskRunner`
+- register a `BackgroundAgentTaskState` before starting
+- mark it running when execution begins
+- append output / progress during execution
+- on completion, update registry and emit typed lifecycle event
+
+### Why this works
+
+It reuses the current tested execution path instead of inventing a second runner.
+
+## Tool-Round Message Injection
+
+Queued user messages for background agents should drain at tool boundaries.
+
+Integration point:
+
+- [`TurnManager.executeToolCall()`](/home/rich/dev/airepublic/open_source/s1/browserx/src/core/TurnManager.ts:622)
+
+Required behavior:
+
+- after each tool execution, check whether the running task has queued `pendingMessages`
+- if yes, hand them back to the active task loop through a small injected-input API on `AgentTask` / `TaskRunner`
+
+Important note:
+
+`AgentTask.injectUserInput()` currently exists only as a stub in [`AgentTask`](/home/rich/dev/airepublic/open_source/s1/browserx/src/core/AgentTask.ts:121). This track must either implement it or explicitly defer queued-message draining. The previous doc did not call that out.
+
+## Event Design
+
+Use [`Session.sendEvent()`](/home/rich/dev/airepublic/open_source/s1/browserx/src/core/Session.ts:1061) for new typed-task lifecycle events so they are both emitted and rollout-persisted.
+
+New event types in [`src/core/protocol/events.ts`](/home/rich/dev/airepublic/open_source/s1/browserx/src/core/protocol/events.ts):
+
+- `BackgroundTaskRegistered`
+- `BackgroundTaskProgress`
+- `BackgroundTaskCompleted`
+- `BackgroundTaskKilled`
+- `TaskBackgrounded`
+- `TaskForegrounded`
+
+Suggested payloads:
+
+```ts
+interface BackgroundTaskRegisteredEvent {
+  taskId: string;
+  taskType: BrowserXTaskType;
+  description: string;
+  submissionId: string;
+}
+
+interface BackgroundTaskProgressEvent {
+  taskId: string;
+  taskType: BrowserXTaskType;
+  summary?: string;
+  toolUseCount?: number;
+  tokenCount?: number;
+}
+
+interface BackgroundTaskCompletedEvent {
+  taskId: string;
+  taskType: BrowserXTaskType;
+  status: 'completed' | 'failed' | 'killed';
+  summary: string;
+  durationMs: number;
+}
+```
+
+## UI Lifecycle Semantics
+
+Carry over Claudy's behavior for background agents:
+
+- `isBackgrounded`
+  - `false` for foreground-running task
+  - `true` once detached to background
+- `retain`
+  - `true` while sidepanel is actively holding the task detail view
+- `evictAfter`
+  - `undefined` while running or retained
+  - `Date.now() + PANEL_GRACE_MS` when terminal and not retained
+
+This is a registry concern, not a `TaskRunner` concern.
+
+## What Is Explicitly Out Of Scope For The First Slice
+
+- implementing all family-specific executors at once
+- full service-worker restart recovery for in-flight background tasks
+- scheduler-triggered spawning of every family
+- a second execution engine besides `TaskRunner`
+
+Those can come after the `background_agent` path is stable.
+
+## Implementation Sequence
+
+### Phase 1: Generic types and tests
+
+- add `src/core/tasks/types.ts`
+- add ID generation, status helpers, and type guards
+- extend `RunningTask` and `TaskKind`
+
+### Phase 2: Registry and output store
+
+- add `TaskRegistry`
+- add `TaskOutputStore`
+- wire `task_outputs` into all storage backends
+
+### Phase 3: Session concurrency seam
+
+- add `backgroundTasks` map to `Session`
+- split `abortForegroundTasks()` from `abortAllTasks()`
+- update `spawnTask()` to accept `background`
+
+### Phase 4: `background_agent` executor
+
+- add `BackgroundAgentTask`
+- register typed state before running
+- update terminal status and events on completion
+
+### Phase 5: UI retention and polling
+
+- add `retain` / `evictAfter`
+- start registry polling on session init
+- expose background task list to sidepanel
+
+### Phase 6: queued-message drain
+
+- implement actual `AgentTask.injectUserInput()` / runner support
+- drain `pendingMessages` between tool rounds
 
 ## Risks
 
-- **Memory**: Multiple background tasks with message buffers can consume significant memory. Use the `evictAfter` pattern with message caps (50 messages for UI, full on disk).
-- **Tab conflicts**: Multiple tasks operating on the same tab can conflict. Add tab locking or use separate tabs for concurrent tasks.
+- **Concurrency regression**: the highest-risk change is relaxing the current "abort before spawn" rule in `Session.spawnTask()`.
+- **Storage pressure**: task outputs compete with rollout persistence and cache.
+- **Stale async callbacks**: without terminal guards, completion and abort paths will race.
+- **UI drift**: if `retain` and eviction rules are not centralized in the registry, the sidepanel will become inconsistent quickly.
+- **Tool-round injection complexity**: queued-message support touches `AgentTask`, `TaskRunner`, and `TurnManager`; it should not be mixed into the first concurrency PR unless the boundary is clean.
+
+## Start Condition
+
+After this research, the track is ready to start implementation **only if we begin with the `background_agent` vertical slice** and treat the other families as typed placeholders until the registry and concurrency seam are proven.
