@@ -170,6 +170,36 @@ describe('executeBatchConcurrently', () => {
 
     expect(maxConcurrent).toBeLessThanOrEqual(MAX_SAFE_TOOL_CALL_CONCURRENCY);
   });
+
+  it('avoids chunk-level head-of-line blocking by refilling slots as tasks finish', async () => {
+    let current = 0;
+    let maxConcurrent = 0;
+    const starts: string[] = [];
+
+    const calls: PreparedToolCall[] = Array.from({ length: 7 }, (_, i) => ({
+      id: `c${i}`,
+      name: `t${i}`,
+      rawArguments: {},
+      parsedArguments: {},
+      isConcurrencySafe: true,
+    }));
+
+    const delays = [50, 50, 50, 50, 50, 5, 5];
+
+    await executeBatchConcurrently(calls, async (call) => {
+      starts.push(call.id);
+      current++;
+      maxConcurrent = Math.max(maxConcurrent, current);
+      const index = Number(call.id.slice(1));
+      await new Promise(r => setTimeout(r, delays[index]));
+      current--;
+      return call.id;
+    });
+
+    expect(maxConcurrent).toBe(MAX_SAFE_TOOL_CALL_CONCURRENCY);
+    expect(starts.slice(0, MAX_SAFE_TOOL_CALL_CONCURRENCY)).toEqual(['c0', 'c1', 'c2', 'c3', 'c4']);
+    expect(starts[5]).toBe('c5');
+  });
 });
 
 describe('executeToolCallBatches', () => {

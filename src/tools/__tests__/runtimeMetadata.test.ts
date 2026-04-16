@@ -279,6 +279,36 @@ describe('ToolRegistry runtime metadata', () => {
       expect(progressEvt.msg.data.progress_data.type).toBe('test_progress');
     });
 
+    it('uses unique event ids for multiple progress updates in the same execution', async () => {
+      const events: any[] = [];
+      const collector = { collect: (e: any) => events.push(e) };
+      const registry = new ToolRegistry(collector);
+
+      await registry.register(makeTool('multi_progress_tool'), async (_params, context) => {
+        context.onProgress?.({
+          toolUseID: 'p1',
+          data: { type: 'test_progress', status: 'first' } as any,
+        });
+        context.onProgress?.({
+          toolUseID: 'p2',
+          data: { type: 'test_progress', status: 'second' } as any,
+        });
+        return 'done';
+      });
+
+      await registry.execute({
+        toolName: 'multi_progress_tool',
+        parameters: {},
+        sessionId: 's1',
+        turnId: 't1',
+        onProgress: () => {},
+      });
+
+      const progressEvts = events.filter(e => e.msg?.type === 'ToolExecutionProgress');
+      expect(progressEvts).toHaveLength(2);
+      expect(new Set(progressEvts.map((e: any) => e.id)).size).toBe(2);
+    });
+
     it('does not emit progress events when onProgress is absent', async () => {
       const events: any[] = [];
       const collector = { collect: (e: any) => events.push(e) };

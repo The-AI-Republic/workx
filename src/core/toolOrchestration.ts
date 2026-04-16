@@ -109,12 +109,26 @@ export async function executeBatchConcurrently<T>(
   calls: PreparedToolCall[],
   executor: (call: PreparedToolCall) => Promise<T>,
 ): Promise<T[]> {
-  const results: T[] = [];
-  for (let i = 0; i < calls.length; i += MAX_SAFE_TOOL_CALL_CONCURRENCY) {
-    const chunk = calls.slice(i, i + MAX_SAFE_TOOL_CALL_CONCURRENCY);
-    const chunkResults = await Promise.all(chunk.map(executor));
-    results.push(...chunkResults);
+  if (calls.length === 0) {
+    return [];
   }
+
+  const results = new Array<T>(calls.length);
+  let nextIndex = 0;
+
+  const runWorker = async (): Promise<void> => {
+    while (true) {
+      const currentIndex = nextIndex++;
+      if (currentIndex >= calls.length) {
+        return;
+      }
+
+      results[currentIndex] = await executor(calls[currentIndex]!);
+    }
+  };
+
+  const workerCount = Math.min(MAX_SAFE_TOOL_CALL_CONCURRENCY, calls.length);
+  await Promise.all(Array.from({ length: workerCount }, () => runWorker()));
   return results;
 }
 

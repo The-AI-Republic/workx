@@ -73,6 +73,7 @@ export class ToolRegistry {
   private tools: Map<string, ToolRegistryEntry> = new Map();
   private eventCollector?: IEventCollector;
   private approvalGate?: ApprovalGate;
+  private progressEventCounter = 0;
 
   constructor(eventCollector?: IEventCollector) {
     this.eventCollector = eventCollector;
@@ -374,7 +375,7 @@ export class ToolRegistry {
         ? (progress) => {
             request.onProgress?.(progress);
             this.emitEvent({
-              id: `evt_exec_progress_${request.toolName}_${Date.now()}`,
+              id: `evt_exec_progress_${request.toolName}_${++this.progressEventCounter}`,
               msg: {
                 type: 'ToolExecutionProgress',
                 data: {
