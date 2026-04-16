@@ -20,6 +20,11 @@ import { loadPrompt, loadUserInstructions, configurePromptComposer, isComposerCo
 import { RegularTask } from './tasks/RegularTask';
 import { registerPlatformTools } from '../tools/registerPlatformTools';
 import { TabManager } from './TabManager';
+import { HookRegistry } from './hooks/HookRegistry';
+import { HookExecutor } from './hooks/HookExecutor';
+import { HookDispatcher } from './hooks/HookDispatcher';
+import { ConfigHookLoader } from './hooks/loaders/ConfigHookLoader';
+import type { HookInput } from './hooks/types';
 
 /**
  * Main agent class managing the submission and event queues
@@ -49,6 +54,10 @@ export class RepublicAgent {
   // AgentConfig.selectedModelKey (which is updated before the config-changed event
   // fires), so the stored value is only used as a "switch pending" flag.
   private pendingModelKey: string | null = null;
+  // Hook system
+  private hookRegistry: HookRegistry;
+  private hookExecutor: HookExecutor;
+  private hookDispatcher: HookDispatcher;
 
   constructor(config: AgentConfig, initialHistory?: InitialHistory, agentId?: string, userNotifier?: IUserNotifier) {
     // Generate or use provided agentId for multi-instance tracking (Feature 015)
@@ -67,6 +76,13 @@ export class RepublicAgent {
     this.session = new Session(this.config, true, undefined, this.toolRegistry, initialHistory);
     // Wire up session event emitter to RepublicAgent's event queue
     this.session.setEventEmitter(async (event: Event) => this.emitEvent(event.msg));
+
+    // Initialize hook system
+    this.hookRegistry = new HookRegistry();
+    this.hookExecutor = new HookExecutor();
+    this.hookDispatcher = new HookDispatcher(this.hookRegistry, this.hookExecutor);
+    this.hookDispatcher.setEventEmitter((msg) => this.emitEvent(msg));
+    this.session.setHookDispatcher(this.hookDispatcher);
 
     // Setup event processing for notifications
     this.setupNotificationHandlers();
@@ -149,6 +165,19 @@ export class RepublicAgent {
 
     // Set the turn context on the session
     this.session.setTurnContext(taskContext);
+
+    // Load hooks from config and watch for changes
+    ConfigHookLoader.load(this.config as any, this.hookRegistry);
+    ConfigHookLoader.watch(this.config as any, this.hookRegistry);
+
+    // Fire SessionStart hooks (non-blocking)
+    this.hookDispatcher.fire('SessionStart', {
+      hook_event_name: 'SessionStart',
+      session_id: this.session.sessionId,
+      session_start_source: 'startup',
+    }).catch((err) => {
+      console.warn('[RepublicAgent] SessionStart hook failed:', err);
+    });
 
     console.log('[RepublicAgent] DEBUG: initialize() complete');
   }
@@ -343,6 +372,33 @@ export class RepublicAgent {
    */
   private async handleSubmission(submission: Submission): Promise<void> {
     try {
+      // Fire UserPromptSubmit hooks for user input operations
+      if (submission.op.type === 'UserInput' || submission.op.type === 'UserTurn') {
+        const items = submission.op.items;
+        const textContent = items
+          .filter((i: InputItem) => i.type === 'text')
+          .map((i: any) => i.text ?? '')
+          .join('\n');
+
+        if (textContent) {
+          const hookInput: HookInput = {
+            hook_event_name: 'UserPromptSubmit',
+            session_id: this.session.sessionId,
+            user_prompt: textContent,
+          };
+          const hookResult = await this.hookDispatcher.fire('UserPromptSubmit', hookInput);
+          if (!hookResult.shouldContinue) {
+            this.emitEvent({
+              type: 'Error',
+              data: {
+                message: hookResult.stopReason ?? 'UserPromptSubmit hook blocked this input',
+              },
+            });
+            return;
+          }
+        }
+      }
+
       switch (submission.op.type) {
         case 'Interrupt':
           await this.handleInterrupt();
@@ -968,6 +1024,17 @@ export class RepublicAgent {
    * Handle shutdown
    */
   private async handleShutdown(): Promise<void> {
+    // Fire SessionEnd hooks with short timeout (1.5s)
+    try {
+      await this.hookDispatcher.fire('SessionEnd', {
+        hook_event_name: 'SessionEnd',
+        session_id: this.session.sessionId,
+        session_end_reason: 'shutdown',
+      }, { timeoutOverride: 1.5 });
+    } catch {
+      // Don't let hook failures block shutdown
+    }
+
     // Clean up and emit shutdown complete
     this.submissionQueue = [];
     this.eventQueue = [];
