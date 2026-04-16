@@ -12,6 +12,15 @@ import type {
 } from './types';
 import { HookMatcher } from './HookMatcher';
 
+const VALID_HOOK_EVENTS: ReadonlySet<string> = new Set([
+  'PreToolUse', 'PostToolUse', 'PostToolUseFailure',
+  'SessionStart', 'SessionEnd',
+  'UserPromptSubmit', 'Stop',
+  'PermissionRequest', 'PermissionDenied',
+  'TaskCreated', 'TaskCompleted',
+  'PreCompact', 'PostCompact', 'ConfigChange',
+]);
+
 export class HookRegistry {
   private hooks: Map<HookEvent, RegisteredHook[]> = new Map();
 
@@ -46,6 +55,10 @@ export class HookRegistry {
   registerFromConfig(config: HooksConfig, source: HookSource): string[] {
     const ids: string[] = [];
     for (const [eventName, matcherEntries] of Object.entries(config)) {
+      if (!VALID_HOOK_EVENTS.has(eventName)) {
+        console.warn(`[HookRegistry] Unknown hook event "${eventName}", skipping`);
+        continue;
+      }
       const event = eventName as HookEvent;
       for (const entry of matcherEntries) {
         for (const hookCmd of entry.hooks) {

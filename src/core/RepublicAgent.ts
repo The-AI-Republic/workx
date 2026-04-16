@@ -167,8 +167,8 @@ export class RepublicAgent {
     this.session.setTurnContext(taskContext);
 
     // Load hooks from config and watch for changes
-    ConfigHookLoader.load(this.config as any, this.hookRegistry);
-    ConfigHookLoader.watch(this.config as any, this.hookRegistry);
+    ConfigHookLoader.load(this.config, this.hookRegistry);
+    ConfigHookLoader.watch(this.config, this.hookRegistry);
 
     // Fire SessionStart hooks (non-blocking)
     this.hookDispatcher.fire('SessionStart', {

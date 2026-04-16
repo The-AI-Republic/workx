@@ -728,20 +728,8 @@ export class TurnManager {
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
 
-      // ── PostToolUseFailure hooks ──
-      if (this.hookDispatcher) {
-        const failHookInput: HookInput = {
-          hook_event_name: 'PostToolUseFailure',
-          session_id: this.session.sessionId,
-          tool_name: toolName,
-          tool_input: typeof parameters === 'object' ? parameters : {},
-          tool_error: errorMsg,
-        };
-        // Fire-and-forget: don't let hook errors mask the original tool error
-        this.hookDispatcher.fire('PostToolUseFailure', failHookInput).catch(() => {});
-      }
-
       // Handle approval denial with a descriptive message for the LLM
+      // Check this first — denials are normal control flow, not tool failures.
       if (errorMsg.includes('denied by the approval system')) {
         const reason = (error as any).reason;
         console.warn(`[TurnManager] executeToolCall ${toolName} denied by approval system${reason ? `: ${reason}` : ''}`);
@@ -753,6 +741,18 @@ export class TurnManager {
           call_id: callId,
           output,
         };
+      }
+
+      // ── PostToolUseFailure hooks (real failures only, not denials) ──
+      if (this.hookDispatcher) {
+        const failHookInput: HookInput = {
+          hook_event_name: 'PostToolUseFailure',
+          session_id: this.session.sessionId,
+          tool_name: toolName,
+          tool_input: typeof parameters === 'object' ? parameters : {},
+          tool_error: errorMsg,
+        };
+        this.hookDispatcher.fire('PostToolUseFailure', failHookInput).catch(() => {});
       }
 
       console.error(`[TurnManager] executeToolCall ${toolName} failed:`, errorMsg);

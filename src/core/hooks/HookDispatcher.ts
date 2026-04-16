@@ -10,6 +10,7 @@ import type { EventMsg } from '../protocol/events';
 import type {
   HookEvent,
   HookInput,
+  HookResult,
   AggregatedHookResult,
   RegisteredHook,
 } from './types';
@@ -35,7 +36,7 @@ const EMPTY_RESULT: AggregatedHookResult = Object.freeze({
   shouldContinue: true,
   additionalContext: Object.freeze([]) as readonly string[],
   systemMessages: Object.freeze([]) as readonly string[],
-  results: Object.freeze([]) as readonly any[],
+  results: Object.freeze([]) as readonly HookResult[],
   totalDuration: 0,
 });
 
@@ -108,12 +109,13 @@ export class HookDispatcher {
       this.fireAndForget(hook, input, options?.signal);
     }
 
-    // Execute sync hooks in parallel and aggregate
+    // Execute sync hooks in parallel and aggregate.
+    // Use allSettled so one failing hook doesn't cancel the rest.
     let aggregated: AggregatedHookResult;
     if (syncHooks.length === 0) {
       aggregated = EMPTY_RESULT;
     } else {
-      const results = await Promise.all(
+      const settled = await Promise.allSettled(
         syncHooks.map((hook) => {
           const cmd =
             options?.timeoutOverride !== undefined
@@ -121,6 +123,19 @@ export class HookDispatcher {
               : hook.command;
           return this.executor.execute(cmd, input, options?.signal);
         }),
+      );
+      const results: HookResult[] = settled.map((s, i) =>
+        s.status === 'fulfilled'
+          ? s.value
+          : {
+              hookId: `failed_${syncHooks[i].id}`,
+              outcome: 'non_blocking_error' as const,
+              stderr:
+                s.reason instanceof Error
+                  ? s.reason.message
+                  : String(s.reason),
+              duration: 0,
+            },
       );
       aggregated = HookAggregator.aggregate(results);
     }

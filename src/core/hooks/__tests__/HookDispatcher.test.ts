@@ -124,17 +124,17 @@ describe('HookDispatcher', () => {
   });
 
   describe('fire — hook failure isolation', () => {
-    it('treats executor rejection as non-blocking', async () => {
+    it('treats executor rejection as non-blocking error result', async () => {
       vi.spyOn(executor, 'execute').mockRejectedValue(new Error('crash'));
 
       registry.register('PreToolUse', { type: 'command', command: 'bad' }, 'config');
 
-      // Promise.all will reject — HookDispatcher must handle this
-      // Actually, since we mock at the executor level and fire calls Promise.all,
-      // this will cause the fire to reject. Let's verify it doesn't crash.
-      await expect(
-        dispatcher.fire('PreToolUse', makeInput()),
-      ).rejects.toThrow('crash');
+      // allSettled catches the rejection and maps it to a non_blocking_error
+      const result = await dispatcher.fire('PreToolUse', makeInput());
+      expect(result.shouldContinue).toBe(true);
+      expect(result.results).toHaveLength(1);
+      expect(result.results[0].outcome).toBe('non_blocking_error');
+      expect(result.results[0].stderr).toBe('crash');
     });
   });
 

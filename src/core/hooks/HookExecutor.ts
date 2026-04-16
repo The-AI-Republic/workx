@@ -25,21 +25,23 @@ const DEFAULT_HTTP_TIMEOUT_S = 30;
 const MAX_RECURSION_DEPTH = 3;
 
 export class HookExecutor {
-  private static recursionDepth = 0;
-
   /**
    * Execute a single hook command with the given input context.
+   *
+   * @param depth Current recursion depth. Callers should not set this;
+   *              it is used internally to guard against infinite loops.
    */
   async execute(
     hook: HookCommand,
     input: HookInput,
     signal?: AbortSignal,
+    depth = 0,
   ): Promise<HookResult> {
     const hookId = `hexec_${uuidv4()}`;
     const start = Date.now();
 
     // Recursion guard
-    if (HookExecutor.recursionDepth >= MAX_RECURSION_DEPTH) {
+    if (depth >= MAX_RECURSION_DEPTH) {
       return {
         hookId,
         outcome: 'non_blocking_error',
@@ -53,13 +55,12 @@ export class HookExecutor {
       return { hookId, outcome: 'cancelled', duration: 0 };
     }
 
-    HookExecutor.recursionDepth++;
     try {
       switch (hook.type) {
         case 'command':
           return await this.executeCommand(hook, input, hookId, start, signal);
         case 'prompt':
-          return await this.executePrompt(hook, input, hookId, start, signal);
+          return await this.executePrompt(hook, input, hookId, start);
         case 'http':
           return await this.executeHttp(hook, input, hookId, start, signal);
         default:
@@ -77,8 +78,6 @@ export class HookExecutor {
         stderr: error instanceof Error ? error.message : String(error),
         duration: Date.now() - start,
       };
-    } finally {
-      HookExecutor.recursionDepth--;
     }
   }
 
@@ -115,7 +114,7 @@ export class HookExecutor {
       };
     }
 
-    const substituted = HookExecutor.substituteVariables(hook.command, input);
+    const substituted = HookExecutor.substituteVariables(hook.command, input, hook.shell);
     const timeoutMs = (hook.timeout ?? DEFAULT_COMMAND_TIMEOUT_S) * 1000;
     const inputJson = JSON.stringify(input);
 
@@ -171,7 +170,6 @@ export class HookExecutor {
     input: HookInput,
     hookId: string,
     start: number,
-    _signal?: AbortSignal,
   ): Promise<HookResult> {
     if (!hook.prompt) {
       return {
@@ -183,11 +181,9 @@ export class HookExecutor {
     }
 
     const substituted = HookExecutor.substituteVariables(hook.prompt, input);
-    const _timeoutMs = (hook.timeout ?? DEFAULT_PROMPT_TIMEOUT_S) * 1000;
 
-    // Prompt hooks require a model client which is not available in the
-    // current architecture without coupling to ModelClientFactory.
-    // Phase 2 will add model client injection. For now, return unsupported.
+    // TODO(Phase 2): Prompt hooks require a model client which is not available
+    // in the current architecture without coupling to ModelClientFactory.
     return {
       hookId,
       outcome: 'non_blocking_error',
@@ -287,25 +283,54 @@ export class HookExecutor {
 
   /**
    * Substitute variables in a hook command string.
+   * All values are shell-escaped to prevent command injection.
    */
-  static substituteVariables(template: string, input: HookInput): string {
+  static substituteVariables(
+    template: string,
+    input: HookInput,
+    shell?: 'bash' | 'powershell',
+  ): string {
+    const esc = shell === 'powershell'
+      ? HookExecutor.escapePowerShell
+      : HookExecutor.escapeBash;
+
     return template
-      .replace(/\$TOOL_NAME/g, input.tool_name ?? '')
+      .replace(/\$TOOL_NAME/g, esc(input.tool_name ?? ''))
       .replace(
         /\$FILE_PATH/g,
-        (input.tool_input?.file_path as string) ??
-          (input.tool_input?.path as string) ??
-          '',
+        esc(
+          (input.tool_input?.file_path as string) ??
+            (input.tool_input?.path as string) ??
+            '',
+        ),
       )
       .replace(
         /\$ARGUMENTS/g,
-        input.tool_input ? JSON.stringify(input.tool_input) : '',
+        esc(input.tool_input ? JSON.stringify(input.tool_input) : ''),
       )
-      .replace(/\$SESSION_ID/g, input.session_id ?? '')
-      .replace(/\$CWD/g, input.cwd ?? '')
-      .replace(/\$CURRENT_URL/g, input.current_url ?? '')
-      .replace(/\$CURRENT_DOMAIN/g, input.current_domain ?? '')
-      .replace(/\$TAB_ID/g, input.tab_id !== undefined ? String(input.tab_id) : '');
+      .replace(/\$SESSION_ID/g, esc(input.session_id ?? ''))
+      .replace(/\$CWD/g, esc(input.cwd ?? ''))
+      .replace(/\$CURRENT_URL/g, esc(input.current_url ?? ''))
+      .replace(/\$CURRENT_DOMAIN/g, esc(input.current_domain ?? ''))
+      .replace(/\$TAB_ID/g, esc(input.tab_id !== undefined ? String(input.tab_id) : ''));
+  }
+
+  /**
+   * Escape a string for safe inclusion in a bash command.
+   * Wraps in single quotes and escapes internal single quotes.
+   */
+  static escapeBash(value: string): string {
+    if (value === '') return "''";
+    return "'" + value.replace(/'/g, "'\\''") + "'";
+  }
+
+  /**
+   * Escape a string for safe inclusion in a PowerShell command.
+   * Wraps in single quotes and doubles internal single quotes.
+   */
+  static escapePowerShell(value: string): string {
+    if (value === '') return "''";
+    return "'" + value.replace(/'/g, "''") + "'";
   }
 
   /**
