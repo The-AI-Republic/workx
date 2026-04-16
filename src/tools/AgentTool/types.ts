@@ -1,4 +1,4 @@
-// File: src/core/subagent/types.ts
+// File: src/tools/AgentTool/types.ts
 
 /**
  * Configuration for a sub-agent type.

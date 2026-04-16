@@ -1,6 +1,6 @@
-// File: src/core/subagent/SubAgentRegistry.ts
+// File: src/tools/AgentTool/SubAgentRegistry.ts
 
-import type { RepublicAgentEngine } from '../engine/RepublicAgentEngine';
+import type { RepublicAgentEngine } from '@/core/engine/RepublicAgentEngine';
 
 /**
  * Tracks an active sub-agent within a parent session

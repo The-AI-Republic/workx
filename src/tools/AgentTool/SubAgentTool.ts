@@ -1,7 +1,7 @@
-// File: src/core/subagent/SubAgentTool.ts
+// File: src/tools/AgentTool/SubAgentTool.ts
 
 import type { SubAgentTypeConfig } from './types';
-import type { ToolDefinition } from '../../tools/BaseTool';
+import type { ToolDefinition } from '../BaseTool';
 
 /**
  * Build the sub_agent tool definition.

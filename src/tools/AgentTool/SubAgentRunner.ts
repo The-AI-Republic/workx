@@ -1,9 +1,9 @@
-// File: src/core/subagent/SubAgentRunner.ts
+// File: src/tools/AgentTool/SubAgentRunner.ts
 
-import { RepublicAgentEngine } from '../engine/RepublicAgentEngine';
-import type { InputItem } from '../engine/RepublicAgentEngineConfig';
-import { SubAgentEventRouter } from '../events/SubAgentEventRouter';
-import { createSubAgentToolRegistry } from '../../tools/ToolRegistryCloner';
+import { RepublicAgentEngine } from '@/core/engine/RepublicAgentEngine';
+import type { InputItem } from '@/core/engine/RepublicAgentEngineConfig';
+import { SubAgentEventRouter } from '@/core/events/SubAgentEventRouter';
+import { createSubAgentToolRegistry } from '../ToolRegistryCloner';
 import { SubAgentRegistry } from './SubAgentRegistry';
 import { BUILTIN_SUBAGENT_TYPES } from './builtinTypes';
 import type { SubAgentTypeConfig, SubAgentToolParams, SubAgentResult } from './types';

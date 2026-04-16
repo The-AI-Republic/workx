@@ -1,4 +1,4 @@
-// File: src/core/subagent/builtinTypes.ts
+// File: src/tools/AgentTool/builtinTypes.ts
 
 import type { SubAgentTypeConfig } from './types';
 

@@ -14,7 +14,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SubAgentRegistry, type ActiveSubAgent } from '../SubAgentRegistry';
-import type { RepublicAgentEngine } from '../../engine/RepublicAgentEngine';
+import type { RepublicAgentEngine } from '@/core/engine/RepublicAgentEngine';
 
 // ---------------------------------------------------------------------------
 // Helpers

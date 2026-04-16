@@ -176,7 +176,7 @@ export class ServerAgentBootstrap {
           const engine = agent.getEngine();
           if (engine) {
             try {
-              const { registerSubAgentTool } = await import('@/core/subagent/register');
+              const { registerSubAgentTool } = await import('@/tools/AgentTool/register');
               await registerSubAgentTool(engine);
               console.log('[ServerAgentBootstrap] sub_agent tool registered');
             } catch (err) {

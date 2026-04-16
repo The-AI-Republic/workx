@@ -187,7 +187,7 @@ export class AgentRegistry {
         const engine = agent.getEngine();
         if (engine) {
           try {
-            const { registerSubAgentTool } = await import('../subagent/register');
+            const { registerSubAgentTool } = await import('@/tools/AgentTool/register');
             await registerSubAgentTool(engine);
           } catch (err) {
             console.warn('[AgentRegistry] sub_agent tool registration failed (non-fatal):', err);

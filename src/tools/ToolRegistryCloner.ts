@@ -1,7 +1,7 @@
 // File: src/tools/ToolRegistryCloner.ts
 
 import { ToolRegistry } from './ToolRegistry';
-import type { SubAgentTypeConfig } from '../core/subagent/types';
+import type { SubAgentTypeConfig } from './AgentTool/types';
 
 export interface ToolCloneOptions {
   /** Tools to include (allowlist). If undefined, include all tools. */

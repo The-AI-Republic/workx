@@ -1,4 +1,4 @@
-// File: src/core/subagent/index.ts
+// File: src/tools/AgentTool/index.ts
 
 export type {
   SubAgentTypeConfig,

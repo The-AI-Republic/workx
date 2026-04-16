@@ -8,7 +8,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ToolRegistry } from '@/tools/ToolRegistry';
 import type { ToolDefinition, ToolHandler } from '@/tools/BaseTool';
 import type { IRiskAssessor } from '@/core/approval/types';
-import type { SubAgentTypeConfig } from '@/core/subagent/types';
+import type { SubAgentTypeConfig } from '@/tools/AgentTool/types';
 import {
   cloneToolRegistry,
   createSubAgentToolRegistry,

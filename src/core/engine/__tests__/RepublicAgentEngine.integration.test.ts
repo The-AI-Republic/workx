@@ -8,10 +8,10 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { RepublicAgentEngine } from '../RepublicAgentEngine';
-import { SubAgentRunner } from '../../subagent/SubAgentRunner';
-import { SubAgentRegistry } from '../../subagent/SubAgentRegistry';
+import { SubAgentRunner } from '@/tools/AgentTool/SubAgentRunner';
+import { SubAgentRegistry } from '@/tools/AgentTool/SubAgentRegistry';
 import type { RepublicAgentEngineConfig, EngineEvent, InputItem } from '../RepublicAgentEngineConfig';
-import type { SubAgentTypeConfig } from '../../subagent/types';
+import type { SubAgentTypeConfig } from '@/tools/AgentTool/types';
 import { TurnContext } from '../../TurnContext';
 
 // ---------------------------------------------------------------------------

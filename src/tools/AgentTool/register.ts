@@ -1,6 +1,6 @@
-// File: src/core/subagent/register.ts
+// File: src/tools/AgentTool/register.ts
 
-import type { RepublicAgentEngine } from '../engine/RepublicAgentEngine';
+import type { RepublicAgentEngine } from '@/core/engine/RepublicAgentEngine';
 import { SubAgentRunner } from './SubAgentRunner';
 import { SubAgentRegistry } from './SubAgentRegistry';
 import { buildSubAgentToolDefinition } from './SubAgentTool';

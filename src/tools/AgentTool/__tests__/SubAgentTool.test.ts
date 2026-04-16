@@ -11,7 +11,7 @@ import { buildSubAgentToolDefinition } from '../SubAgentTool';
 import { registerSubAgentTool } from '../register';
 import { BUILTIN_SUBAGENT_TYPES } from '../builtinTypes';
 import type { SubAgentTypeConfig } from '../types';
-import type { ToolDefinition } from '../../../tools/BaseTool';
+import type { ToolDefinition } from '../../BaseTool';
 
 // ---------------------------------------------------------------------------
 // Mock SubAgentRunner — avoid pulling in real engine dependencies
