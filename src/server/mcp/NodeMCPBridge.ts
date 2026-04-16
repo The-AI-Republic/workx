@@ -158,6 +158,9 @@ export class NodeMCPBridge implements IMCPClientAdapter {
       inputSchema: tool.inputSchema as IMCPTool['inputSchema'],
       outputSchema: tool.outputSchema as IMCPTool['outputSchema'],
       annotations: tool.annotations ? {
+        readOnlyHint: tool.annotations.readOnlyHint,
+        destructiveHint: tool.annotations.destructiveHint,
+        openWorldHint: tool.annotations.openWorldHint,
         audience: tool.annotations.readOnlyHint ? ['user' as const] : undefined,
         priority: undefined,
         costLevel: tool.annotations.destructiveHint ? 'high' as const : undefined,

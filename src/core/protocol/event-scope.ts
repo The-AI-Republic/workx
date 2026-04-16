@@ -38,6 +38,7 @@ const EVENT_SCOPE_MAP: Record<string, EventScope> = {
   'ToolExecutionEnd': 'thread',
   'ToolExecutionError': 'thread',
   'ToolExecutionTimeout': 'thread',
+  'ToolExecutionProgress': 'thread',
   'McpToolCallBegin': 'thread',
   'McpToolCallEnd': 'thread',
   'ExecCommandBegin': 'thread',

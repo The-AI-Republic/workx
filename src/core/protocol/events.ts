@@ -88,6 +88,7 @@ export type EventMsg =
   | { type: 'ToolExecutionEnd'; data: ToolExecutionEndEvent }
   | { type: 'ToolExecutionError'; data: ToolExecutionErrorEvent }
   | { type: 'ToolExecutionTimeout'; data: ToolExecutionTimeoutEvent }
+  | { type: 'ToolExecutionProgress'; data: ToolExecutionProgressEvent }
   // Reasoning stream events
   | { type: 'ReasoningSummaryDelta'; data: ReasoningSummaryDeltaEvent }
   | { type: 'ReasoningContentDelta'; data: ReasoningContentDeltaEvent }
@@ -587,6 +588,15 @@ export interface ToolExecutionTimeoutEvent {
   tool_name: string;
   session_id?: string;
   timeout_ms: number;
+}
+
+export interface ToolExecutionProgressEvent {
+  tool_name: string;
+  call_id?: string;
+  session_id?: string;
+  turn_id?: string;
+  progress_data: import('../../tools/runtimeMetadata').ToolProgressData;
+  timestamp: number;
 }
 
 // Reasoning stream event payloads

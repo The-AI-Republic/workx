@@ -2,7 +2,7 @@
  * Tool registration and management for pi
  */
 
-import { ToolRegistry } from './ToolRegistry';
+import { ToolRegistry, type ToolRegistrationOptions } from './ToolRegistry';
 import type { IToolsConfig } from '../config/types';
 import { WebScrapingTool } from './WebScrapingTool';
 import { FormAutomationTool } from './FormAutomationTool';
@@ -19,12 +19,22 @@ import { SettingTool } from './SettingTool';
 import { DomToolRiskAssessor } from '../core/approval/assessors/DomToolRiskAssessor';
 import { StaticRiskAssessor } from '../core/approval/assessors/StaticRiskAssessor';
 import { SettingToolRiskAssessor } from '../core/approval/assessors/SettingToolRiskAssessor';
-import type { IRiskAssessor } from '../core/approval/types';
+import type { BaseTool } from './BaseTool';
 
 // Re-export core tools (non-DOM tools for service worker compatibility)
-export { ToolRegistry } from './ToolRegistry';
+export { ToolRegistry, type ToolRegistrationOptions } from './ToolRegistry';
 export { BaseTool, createFunctionTool, createObjectSchema, createToolDefinition } from './BaseTool';
 export type { ToolDefinition, JsonSchema, ResponsesApiTool, FreeformTool, FreeformToolFormat, ToolMetadata, Platform } from './BaseTool';
+export type {
+  ToolConcurrencyProfile,
+  ToolUIProfile,
+  ToolResultProfile,
+  ToolRuntimeMetadata,
+  ToolProgressData,
+  ToolProgress,
+  ToolProgressCallback,
+} from './runtimeMetadata';
+export { DEFAULT_TOOL_CONCURRENCY_PROFILE } from './runtimeMetadata';
 export { WebScrapingTool } from './WebScrapingTool';
 export { FormAutomationTool } from './FormAutomationTool';
 export { NetworkInterceptTool } from './NetworkInterceptTool';
@@ -87,92 +97,241 @@ export async function registerTools(
     const domRiskAssessor = new DomToolRiskAssessor();
     const staticRiskAssessor = new StaticRiskAssessor();
 
-    // Helper function to register a tool with error handling
-    const registerTool = async (toolName: string, toolInstance: any, riskAssessor?: IRiskAssessor) => {
-      if (!registry.getTool(toolName)) {
-        const definition = toolInstance.getDefinition();
-        console.log(`Registering ${toolName}...`);
+    /**
+     * Register a BaseTool instance with runtime metadata.
+     * Creates a handler that threads callId, onProgress, and metadata into tool.execute().
+     */
+    const registerBaseTool = async (
+      toolName: string,
+      toolInstance: BaseTool,
+      opts: ToolRegistrationOptions,
+    ) => {
+      if (registry.getTool(toolName)) {
+        console.log(`${toolName} already registered, skipping...`);
+        return;
+      }
+      const definition = toolInstance.getDefinition();
+      console.log(`Registering ${toolName}...`);
 
-        await registry.register(definition, async (params, context) => {
-          // Flatten context: pass metadata directly, with sessionId/turnId/toolName alongside
+      await registry.register(
+        definition,
+        async (params, context) => {
           return toolInstance.execute(params, {
             metadata: {
-              ...context.metadata,  // tabId and other metadata fields
+              ...context.metadata,
               sessionId: context.sessionId,
               turnId: context.turnId,
               toolName: context.toolName,
-            }
+            },
+            callId: context.callId,
+            onProgress: context.onProgress,
           });
-        }, riskAssessor);
-      } else {
-        console.log(`${toolName} already registered, skipping...`);
-      }
+        },
+        opts,
+      );
     };
 
-    // Web Scraping Tool
-    if (isToolEnabled('web_scraping')) {
-      const webScrapingTool = new WebScrapingTool();
-      await registerTool('web_scraping', webScrapingTool, staticRiskAssessor);
-    } else {
-      console.log('WebScrapingTool disabled in configuration, skipping...');
-    }
-
-    // Form Automation Tool
-    if (isToolEnabled('form_automation')) {
-      const formAutomationTool = new FormAutomationTool();
-      await registerTool('form_automation', formAutomationTool, staticRiskAssessor);
-    } else {
-      console.log('FormAutomationTool disabled in configuration, skipping...');
-    }
-
-    // Network Intercept Tool
-    if (isToolEnabled('network_intercept')) {
-      const networkInterceptTool = new NetworkInterceptTool();
-      await registerTool('network_intercept', networkInterceptTool, staticRiskAssessor);
-    } else {
-      console.log('NetworkInterceptTool disabled in configuration, skipping...');
-    }
-
-    // Data Extraction Tool
-    if (isToolEnabled('data_extraction')) {
-      const dataExtractionTool = new DataExtractionTool();
-      await registerTool('data_extraction', dataExtractionTool, staticRiskAssessor);
-    } else {
-      console.log('DataExtractionTool disabled in configuration, skipping...');
-    }
-
-    // DOM Tool
+    // ── browser_dom (registry key: dom_tool) ────────────────────────────
     if (isToolEnabled('dom_tool')) {
-      const domTool = new DOMTool();
-      await registerTool('dom_tool', domTool, domRiskAssessor);
+      await registerBaseTool('dom_tool', new DOMTool(), {
+        riskAssessor: domRiskAssessor,
+        runtime: {
+          concurrency: {
+            isConcurrencySafe: (input) => input.action === 'snapshot',
+            isReadOnly: (input) => input.action === 'snapshot',
+            isDestructive: () => false,
+          },
+          ui: {
+            getActivityDescription: (input) => {
+              switch (input.action) {
+                case 'snapshot': return 'Capturing DOM snapshot';
+                case 'click': return `Clicking DOM node ${input.node_id ?? ''}`.trim();
+                case 'type': return `Typing into DOM node ${input.node_id ?? ''}`.trim();
+                case 'keypress': return `Pressing ${input.key ?? ''}`.trim();
+                case 'scroll': return `Scrolling DOM node ${input.node_id ?? ''}`.trim();
+                default: return null;
+              }
+            },
+          },
+          result: { maxResultSizeChars: 100_000 },
+        },
+      });
     } else {
       console.log('DOMTool disabled in configuration, skipping...');
     }
 
-    // Navigation Tool
+    // ── browser_navigation (registry key: navigation_tool) ──────────────
     if (isToolEnabled('navigation_tool')) {
-      const navigationTool = new NavigationTool();
-      await registerTool('navigation_tool', navigationTool, staticRiskAssessor);
+      const READ_NAV_ACTIONS = new Set(['getHistory', 'getCurrentUrl']);
+      await registerBaseTool('navigation_tool', new NavigationTool(), {
+        riskAssessor: staticRiskAssessor,
+        runtime: {
+          concurrency: {
+            isConcurrencySafe: (input) => READ_NAV_ACTIONS.has(input.action as string),
+            isReadOnly: (input) => READ_NAV_ACTIONS.has(input.action as string),
+            isDestructive: () => false,
+          },
+          ui: {
+            getActivityDescription: (input) => {
+              switch (input.action) {
+                case 'navigate': return `Navigating to ${input.url ?? ''}`.trim();
+                case 'reload': return 'Reloading page';
+                case 'goBack': return 'Going back';
+                case 'goForward': return 'Going forward';
+                case 'stop': return 'Stopping navigation';
+                case 'waitForLoad': return 'Waiting for page load';
+                case 'getHistory': return 'Getting navigation history';
+                case 'getCurrentUrl': return 'Getting current URL';
+                default: return null;
+              }
+            },
+          },
+          result: { maxResultSizeChars: 10_000 },
+        },
+      });
     } else {
       console.log('NavigationTool disabled in configuration, skipping...');
     }
 
-    // Storage Tool
+    // ── web_scraping ────────────────────────────────────────────────────
+    if (isToolEnabled('web_scraping')) {
+      await registerBaseTool('web_scraping', new WebScrapingTool(), {
+        riskAssessor: staticRiskAssessor,
+        runtime: {
+          concurrency: {
+            isConcurrencySafe: (input) => !input.url, // url present → may create new tab
+            isReadOnly: (input) => !input.url,
+            isDestructive: () => false,
+          },
+          ui: {
+            getActivityDescription: () => 'Scraping content from page',
+          },
+          result: { maxResultSizeChars: 50_000 },
+        },
+      });
+    } else {
+      console.log('WebScrapingTool disabled in configuration, skipping...');
+    }
+
+    // ── form_automation ─────────────────────────────────────────────────
+    if (isToolEnabled('form_automation')) {
+      await registerBaseTool('form_automation', new FormAutomationTool(), {
+        riskAssessor: staticRiskAssessor,
+        runtime: {
+          concurrency: {
+            isConcurrencySafe: () => false,
+            isReadOnly: () => false,
+            isDestructive: () => false,
+          },
+          ui: {
+            getActivityDescription: () => 'Filling form fields',
+          },
+          result: { maxResultSizeChars: 10_000 },
+        },
+      });
+    } else {
+      console.log('FormAutomationTool disabled in configuration, skipping...');
+    }
+
+    // ── network_intercept ───────────────────────────────────────────────
+    if (isToolEnabled('network_intercept')) {
+      await registerBaseTool('network_intercept', new NetworkInterceptTool(), {
+        riskAssessor: staticRiskAssessor,
+        runtime: {
+          concurrency: {
+            isConcurrencySafe: () => false, // stateful shared browser rule state
+            isReadOnly: () => false,
+            isDestructive: () => false,
+          },
+          ui: {
+            getActivityDescription: () => 'Configuring network intercept',
+          },
+          result: { maxResultSizeChars: 10_000 },
+        },
+      });
+    } else {
+      console.log('NetworkInterceptTool disabled in configuration, skipping...');
+    }
+
+    // ── data_extraction ─────────────────────────────────────────────────
+    // NOTE: Marked non-safe until the tool is fixed to use bound session tab
+    // instead of querying active tab directly (see design doc finding #7).
+    if (isToolEnabled('data_extraction')) {
+      await registerBaseTool('data_extraction', new DataExtractionTool(), {
+        riskAssessor: staticRiskAssessor,
+        runtime: {
+          concurrency: {
+            isConcurrencySafe: () => false, // TODO: mark safe after tab binding fix
+            isReadOnly: () => true,
+            isDestructive: () => false,
+          },
+          ui: {
+            getActivityDescription: (input) =>
+              `Extracting ${input.mode ?? 'structured'} data`,
+          },
+          result: { maxResultSizeChars: 30_000 },
+        },
+      });
+    } else {
+      console.log('DataExtractionTool disabled in configuration, skipping...');
+    }
+
+    // ── storage_tool (cache_storage_tool) ───────────────────────────────
     if (isToolEnabled('storage_tool')) {
-      const storageTool = new StorageTool();
-      await registerTool('storage_tool', storageTool, staticRiskAssessor);
+      const READ_STORAGE_ACTIONS = new Set(['read', 'list']);
+      await registerBaseTool('storage_tool', new StorageTool(), {
+        riskAssessor: staticRiskAssessor,
+        runtime: {
+          concurrency: {
+            isConcurrencySafe: (input) => READ_STORAGE_ACTIONS.has(input.action as string),
+            isReadOnly: (input) => READ_STORAGE_ACTIONS.has(input.action as string),
+            isDestructive: (input) => input.action === 'delete',
+          },
+          ui: {
+            getActivityDescription: (input) => {
+              switch (input.action) {
+                case 'read': return 'Reading cache';
+                case 'list': return 'Listing cache entries';
+                case 'write': return 'Writing to cache';
+                case 'update': return 'Updating cache entry';
+                case 'delete': return 'Deleting cache entry';
+                default: return null;
+              }
+            },
+          },
+          result: { maxResultSizeChars: 50_000 },
+        },
+      });
     } else {
       console.log('StorageTool disabled in configuration, skipping...');
     }
 
-    // Tab management is automatic via TabManager (FR-023) - no TabTool needed
-
-    // PageVision Tool - Only register if model supports image input
+    // ── page_vision ─────────────────────────────────────────────────────
     if (isToolEnabled('page_vision_tool')) {
-      // Check if model supports image input
       if (!modelConfig || modelConfig.supportsImage !== false) {
-        const pageVisionTool = new PageVisionTool();
-        await registerTool('page_vision', pageVisionTool, staticRiskAssessor);
+        await registerBaseTool('page_vision', new PageVisionTool(), {
+          riskAssessor: staticRiskAssessor,
+          runtime: {
+            concurrency: {
+              isConcurrencySafe: (input) => input.action === 'screenshot',
+              isReadOnly: (input) => input.action === 'screenshot',
+              isDestructive: () => false,
+            },
+            ui: {
+              getActivityDescription: (input) => {
+                switch (input.action) {
+                  case 'screenshot': return 'Capturing screenshot';
+                  case 'click': return `Clicking at (${input.x}, ${input.y})`;
+                  case 'type': return 'Typing text';
+                  case 'scroll': return 'Scrolling page';
+                  case 'keypress': return `Pressing ${input.key ?? ''}`.trim();
+                  default: return null;
+                }
+              },
+            },
+            result: { maxResultSizeChars: 50_000 },
+          },
+        });
       } else {
         console.log(`PageVisionTool disabled: Model "${modelConfig.name}" does not support image input`);
       }
@@ -180,21 +339,54 @@ export async function registerTools(
       console.log('PageVisionTool disabled in configuration, skipping...');
     }
 
-    // Page Action Tool - REMOVED: Functionality merged into DOMTool v3.0
-    // Use DOMTool with action parameter instead
-
-    // Planning Tool - Always enabled for task planning and progress tracking
+    // ── planning_tool ───────────────────────────────────────────────────
     try {
-      const planningTool = new PlanningTool(getTaskStore());
-      await registerTool('planning_tool', planningTool, new StaticRiskAssessor(0));
+      const READ_PLAN_COMMANDS = new Set(['list', 'get', 'get_plan']);
+      await registerBaseTool('planning_tool', new PlanningTool(getTaskStore()), {
+        riskAssessor: new StaticRiskAssessor(0),
+        runtime: {
+          concurrency: {
+            isConcurrencySafe: (input) => READ_PLAN_COMMANDS.has(input.command as string),
+            isReadOnly: (input) => READ_PLAN_COMMANDS.has(input.command as string),
+            isDestructive: () => false,
+          },
+          ui: {
+            getActivityDescription: (input) => {
+              switch (input.command) {
+                case 'plan': return 'Creating plan';
+                case 'update': return 'Updating plan';
+                case 'list': return 'Listing plans';
+                case 'get': return 'Getting plan';
+                case 'get_plan': return 'Getting plan details';
+                default: return null;
+              }
+            },
+          },
+          result: { maxResultSizeChars: 10_000 },
+        },
+      });
       console.log('PlanningTool registered (always enabled)');
     } catch (planError) {
       console.error('[registerTools] Failed to register PlanningTool (StorageProvider unavailable):', planError);
     }
 
-    // Setting Tool - Always enabled for reading/writing allowlisted settings via chat
-    const settingTool = new SettingTool();
-    await registerTool('setting_tool', settingTool, new SettingToolRiskAssessor());
+    // ── setting_tool ────────────────────────────────────────────────────
+    const READ_SETTING_ACTIONS = new Set(['get', 'list']);
+    await registerBaseTool('setting_tool', new SettingTool(), {
+      riskAssessor: new SettingToolRiskAssessor(),
+      runtime: {
+        concurrency: {
+          isConcurrencySafe: (input) => READ_SETTING_ACTIONS.has(input.action as string),
+          isReadOnly: (input) => READ_SETTING_ACTIONS.has(input.action as string),
+          isDestructive: () => false,
+        },
+        ui: {
+          getActivityDescription: (input) =>
+            READ_SETTING_ACTIONS.has(input.action as string) ? 'Reading settings' : 'Updating settings',
+        },
+        result: { maxResultSizeChars: 10_000 },
+      },
+    });
     console.log('SettingTool registered (always enabled)');
 
     console.log('Advanced browser tools registration completed');
