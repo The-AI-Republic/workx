@@ -252,10 +252,40 @@ src/core/hooks/
 ├── HookMatcher.ts           # Pattern matching for tool names and parameters
 ├── HookAggregator.ts        # Merge multiple hook results into AggregatedHookResult
 ├── AsyncHookTracker.ts      # Track background async hooks
+├── HookDispatcher.ts        # Match + execute + aggregate + observability orchestration
 └── loaders/
     ├── ConfigHookLoader.ts  # Load hooks from AgentConfig / IStoredConfig
     └── SessionHookStore.ts  # In-memory session-scoped hook storage
 ```
+
+### BrowserX-Specific Implementation Decisions
+
+Claudy's model is useful, but BrowserX needs a different ownership split because its execution graph is different.
+
+**Hook firing ownership**
+
+| Hook Event | Owner | Why |
+|-----------|-------|-----|
+| `SessionStart`, `SessionEnd`, `UserPromptSubmit` | `RepublicAgent` | These are session/submission lifecycle concerns |
+| `PreToolUse`, `PostToolUse`, `PostToolUseFailure` | `TurnManager` | `TurnManager.executeToolCall()` is the only funnel that sees registry tools, `web_search`, and MCP tools together |
+| `PermissionRequest`, `PermissionDenied` | `ApprovalGate` | Approval decisions already centralize risk scoring, policy rules, session memory, and user prompting |
+| `TaskCreated`, `TaskCompleted` | `Session` | Task lifecycle lives in `Session.spawnTask()` |
+| `PreCompact`, `PostCompact` | compaction call sites | Compaction is not a tool operation |
+
+**Non-goal for Phase 1**
+
+- Do not fire tool lifecycle hooks inside `ToolRegistry.execute()`. That would miss `web_search` and MCP, and it would overlap with `TurnManager.executeBrowserTool()` which already wraps registry execution and emits its own tool events.
+- Do not turn hooks into a replacement for `EventMsg`. Hooks are control-plane middleware; `EventMsg` remains the observation plane.
+
+**Runtime-specific execution**
+
+| Runtime | Command hooks | Prompt hooks | HTTP hooks |
+|--------|---------------|--------------|------------|
+| Extension | Unsupported | Supported | Supported subject to extension fetch/CORS rules |
+| Desktop | Supported via Tauri invoke/Rust backend | Supported | Supported |
+| Server | Supported via Node process APIs | Supported | Supported |
+
+This is important for implementation: BrowserX desktop is a Tauri app, so the design should not assume desktop can just call Node `child_process.spawn`. Desktop command hooks need the same runtime class as the existing terminal tool and Tauri terminal commands.
 
 ---
 
@@ -720,23 +750,21 @@ export class HookExecutor {
 }
 ```
 
-**Platform considerations**: BrowserX runs in three environments:
-- **Extension mode** (Chrome): No child_process access. Command hooks are unavailable. HTTP hooks work but are CORS-restricted. Prompt hooks work via the existing ModelClientFactory.
-- **Desktop mode** (Tauri): Full child_process access via Tauri's shell API. All hook types work.
-- **Server mode** (Node.js): Full child_process access. All hook types work.
+**Platform considerations**: BrowserX runs in three environments and the command execution path differs by runtime:
+- **Extension mode**: command hooks are unsupported and should return a structured non-blocking result. Prompt hooks work through the existing model stack. HTTP hooks work subject to extension fetch/CORS rules.
+- **Desktop mode**: command hooks must execute through a Tauri invoke/Rust backend path, analogous to the existing desktop terminal tool.
+- **Server mode**: command hooks can execute through normal Node process APIs.
 
-The executor must detect the runtime environment and gracefully degrade:
+The executor should branch using BrowserX's existing build-mode split instead of browser sniffing:
 
 ```typescript
-// In HookExecutor constructor or a utility:
-const isExtensionMode = typeof chrome !== 'undefined' && chrome.runtime?.id;
-const isDesktopMode = typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop';
-const isServerMode = !isExtensionMode && !isDesktopMode;
+const buildMode =
+  typeof __BUILD_MODE__ !== 'undefined' ? __BUILD_MODE__ : 'extension';
 
-// Command hooks in extension mode → skip with warning
-if (hook.type === 'command' && isExtensionMode) {
+if (hook.type === 'command' && buildMode === 'extension') {
   return {
-    hookId, outcome: 'non_blocking_error',
+    hookId,
+    outcome: 'non_blocking_error',
     stderr: 'Command hooks are not available in extension mode',
     duration: 0,
   };
@@ -824,492 +852,292 @@ export class HookAggregator {
 }
 ```
 
-### 6. Integration Point: ToolRegistry.execute() (`src/tools/ToolRegistry.ts`)
+### 6. Integration Point: `TurnManager.executeToolCall()` Is The Canonical Tool Hook Site
 
-The most critical integration. Hook execution wraps the existing tool pipeline.
+This is the most important BrowserX-specific design detail missing from the original draft.
 
-**Current flow** (`ToolRegistry.execute()` at line 236):
+`ToolRegistry.execute()` is not the right ownership boundary for tool lifecycle hooks because:
+
+- `web_search` bypasses `ToolRegistry` entirely.
+- MCP tools bypass `ToolRegistry` entirely.
+- `TurnManager.executeBrowserTool()` already wraps `ToolRegistry.execute()` and emits `ToolExecutionStart` / `ToolExecutionEnd` / `ToolExecutionError`, so firing hooks in both layers would create duplicate observability and potential double execution.
+
+The recommended ownership model is:
+
+- `TurnManager.executeToolCall()` fires `PreToolUse`, `PostToolUse`, and `PostToolUseFailure` for every model-issued tool call.
+- `ToolRegistry.execute()` remains responsible for validation, approval checks, registry dispatch, and its existing registry-level events.
+- `ToolRegistry` may later receive hook-aware helpers, but it should not be the lifecycle firing site.
+
+**Concrete execution order inside `TurnManager.executeToolCall()`**
+
 ```
-1. Tool lookup (line 239-249)
-2. Validate parameters (line 252-264)
-3. ApprovalGate.check() (line 267-310)
-4. Emit ToolExecutionStart event (line 312-324)
-5. Execute handler with timeout (line 337-374)
-6. Emit ToolExecutionEnd event (line 377-388)
+1. Parse tool arguments if they arrive as JSON string
+2. Collect runtime context available at the orchestration layer:
+   - session_id
+   - tab_id
+   - current_url / current_domain when available
+   - cwd when available from Session / TurnContext
+3. Fire PreToolUse hooks
+   - if blocked: return `function_call_output` explaining the block
+   - if updatedInput exists: merge before dispatch
+4. Dispatch to one of:
+   - `executeWebSearch()`
+   - `executeBrowserTool()`
+   - `executeMcpTool()`
+5. On success, fire PostToolUse hooks
+   - if updatedOutput exists: rewrite the result before returning to the model
+6. On error, fire PostToolUseFailure hooks
+   - include the original error string in `tool_error`
+7. Convert final result into Responses API `function_call_output`
 ```
 
-**New flow with hooks:**
-```
-1. Tool lookup + validation (existing, unchanged)
-2. ── NEW: Build HookInput for PreToolUse ──
-3. ── NEW: Fire PreToolUse hooks (parallel) ──
-   - If any hook returns continue=false → return early with HOOK_BLOCKED error
-   - If hooks return updatedInput → merge into request.parameters
-4. ApprovalGate.check() (existing, uses potentially modified parameters)
-   - ── NEW: On 'ask_user' decision → fire PermissionRequest hooks ──
-     - If hook returns decision='approve' → skip user prompt, auto_approve
-     - If hook returns decision='block' → deny without user prompt
-   - ── NEW: On 'deny' decision → fire PermissionDenied hooks ──
-5. Emit ToolExecutionStart event (existing)
-6. Execute handler with timeout (existing)
-7. ── NEW: On success → fire PostToolUse hooks (parallel) ──
-   - If hooks return updatedOutput → modify the result before returning
-8. ── NEW: On failure → fire PostToolUseFailure hooks (parallel) ──
-   - PostToolUseFailure fires BEFORE the error is returned to caller
-9. Emit ToolExecutionEnd/Error event (existing)
-```
-
-**Concrete code change to `ToolRegistry.execute()`:**
+A thin orchestration helper keeps this logic out of every call site individually:
 
 ```typescript
-// New field on ToolRegistry:
-private hookRegistry?: HookRegistry;
-private hookExecutor?: HookExecutor;
-
-setHookSystem(registry: HookRegistry, executor: HookExecutor): void {
-  this.hookRegistry = registry;
-  this.hookExecutor = executor;
-}
-
-// Inside execute(), after validation (line 264) and before approval gate (line 267):
-
-// ── PreToolUse hooks ──
-if (this.hookRegistry && this.hookExecutor) {
-  const hookInput: HookInput = {
-    hook_event_name: 'PreToolUse',
-    session_id: request.sessionId,
-    tool_name: request.toolName,
-    tool_input: request.parameters,
-    current_url: request.metadata?.currentUrl as string | undefined,
-    current_domain: request.metadata?.currentDomain as string | undefined,
-    tab_id: request.tabId,
-  };
-
-  const matchingHooks = this.hookRegistry.getMatchingHooks(
-    'PreToolUse', request.toolName, request.parameters
-  );
-
-  if (matchingHooks.length > 0) {
-    const results = await Promise.all(
-      matchingHooks.map(hook => this.hookExecutor!.execute(hook.command, hookInput))
-    );
-
-    // Remove once-hooks that fired
-    for (let i = 0; i < matchingHooks.length; i++) {
-      if (matchingHooks[i].command.once) {
-        this.hookRegistry.unregister(matchingHooks[i].id);
-      }
-    }
-
-    const aggregated = HookAggregator.aggregate(results);
-
-    if (!aggregated.shouldContinue) {
-      return {
-        success: false,
-        error: {
-          code: 'HOOK_BLOCKED',
-          message: aggregated.stopReason ?? `PreToolUse hook blocked ${request.toolName}`,
-        },
-        duration: Date.now() - startTime,
-      };
-    }
-
-    // Apply input modifications
-    if (aggregated.updatedInput) {
-      request = { ...request, parameters: { ...request.parameters, ...aggregated.updatedInput } };
-    }
-  }
-}
-
-// ... existing approval gate code ...
-
-// After successful tool execution (line 388), before return:
-
-// ── PostToolUse hooks ──
-if (this.hookRegistry && this.hookExecutor) {
-  const postHookInput: HookInput = {
-    hook_event_name: 'PostToolUse',
-    session_id: request.sessionId,
-    tool_name: request.toolName,
-    tool_input: request.parameters,
-    tool_output: result,
-    current_url: request.metadata?.currentUrl as string | undefined,
-    current_domain: request.metadata?.currentDomain as string | undefined,
-    tab_id: request.tabId,
-  };
-
-  const postHooks = this.hookRegistry.getMatchingHooks(
-    'PostToolUse', request.toolName, request.parameters
-  );
-
-  if (postHooks.length > 0) {
-    const postResults = await Promise.all(
-      postHooks.map(hook => this.hookExecutor!.execute(hook.command, postHookInput))
-    );
-
-    for (let i = 0; i < postHooks.length; i++) {
-      if (postHooks[i].command.once) {
-        this.hookRegistry.unregister(postHooks[i].id);
-      }
-    }
-
-    const postAggregated = HookAggregator.aggregate(postResults);
-
-    // Apply output modifications
-    if (postAggregated.updatedOutput !== undefined) {
-      result = postAggregated.updatedOutput;
-    }
-  }
+export class HookDispatcher {
+  async fire(
+    event: HookEvent,
+    input: HookInput,
+    options?: { session?: Session; signal?: AbortSignal }
+  ): Promise<AggregatedHookResult>;
 }
 ```
 
-### 7. Integration Point: TurnManager.executeToolCall() (`src/core/TurnManager.ts:630`)
+`HookDispatcher` owns matching, sync/async splitting, `once` cleanup, aggregation, and hook observability event emission.
 
-The `TurnManager` is the **actual** call site where tool calls happen during a conversation turn. The `ToolRegistry.execute()` integration above covers registry-based tools, but `TurnManager.executeToolCall()` also handles:
-- `web_search` (bypasses ToolRegistry entirely, line 645-647)
-- MCP tools (via `McpToolHandler`, lines 650-670)
-
-For consistent hook coverage, `TurnManager.executeToolCall()` needs a hook wrapper too:
+**TurnManager sketch**
 
 ```typescript
-// In TurnManager, add hookRegistry + hookExecutor refs (injected via constructor or setter)
-// Wrap the entire executeToolCall() method:
+private hookDispatcher?: HookDispatcher;
 
 private async executeToolCall(toolName: string, parameters: any, callId: string): Promise<any> {
   let parsedParams = typeof parameters === 'string' ? JSON.parse(parameters) : parameters;
+  const tabId = this.session.getTabId();
+  const runtimeContext = await this.getToolRuntimeContext(tabId);
 
-  // ── PreToolUse hooks at TurnManager level ──
-  // This catches web_search and MCP tools that bypass ToolRegistry
-  if (this.hookRegistry) {
-    const hookInput: HookInput = {
+  if (this.hookDispatcher) {
+    const pre = await this.hookDispatcher.fire('PreToolUse', {
       hook_event_name: 'PreToolUse',
-      session_id: this.session.sessionId,
+      session_id: this.session.getSessionId(),
       tool_name: toolName,
       tool_input: parsedParams,
-    };
-    const hooks = this.hookRegistry.getMatchingHooks('PreToolUse', toolName, parsedParams);
-    if (hooks.length > 0) {
-      const results = await Promise.all(
-        hooks.map(h => this.hookExecutor!.execute(h.command, hookInput))
-      );
-      const agg = HookAggregator.aggregate(results);
-      if (!agg.shouldContinue) {
-        return {
-          type: 'function_call_output',
-          call_id: callId,
-          output: `Hook blocked: ${agg.stopReason ?? 'PreToolUse hook denied this tool call'}`,
-        };
-      }
-      if (agg.updatedInput) {
-        parsedParams = { ...parsedParams, ...agg.updatedInput };
-      }
+      tab_id: tabId > 0 ? tabId : undefined,
+      current_url: runtimeContext.currentUrl,
+      current_domain: runtimeContext.currentDomain,
+      cwd: runtimeContext.cwd,
+    }, { session: this.session });
+
+    if (!pre.shouldContinue) {
+      return {
+        type: 'function_call_output',
+        call_id: callId,
+        output: `Hook blocked: ${pre.stopReason ?? 'PreToolUse hook denied this tool call'}`,
+      };
+    }
+
+    if (pre.updatedInput) {
+      parsedParams = { ...parsedParams, ...pre.updatedInput };
     }
   }
 
-  // ... existing switch/case dispatch ...
-  // ... existing error handling ...
-
-  // ── PostToolUse hooks at TurnManager level ──
-  // (fire after successful result, before returning function_call_output)
+  // Existing dispatch remains the same:
+  // web_search -> executeWebSearch
+  // registry-backed tool -> executeBrowserTool
+  // MCP tool -> executeMcpTool
 }
 ```
 
-**Important**: To avoid double-firing hooks (once in TurnManager, once in ToolRegistry), we need a convention:
-- `ToolRegistry.execute()` fires hooks for **registry-based tools** (browser_dom, terminal, etc.)
-- `TurnManager.executeToolCall()` fires hooks for **non-registry tools** (web_search, MCP tools)
-- The `HookInput` includes a `source` field so hooks can distinguish if needed
+**Required helper omitted in the original draft**
 
-OR (simpler): Only fire hooks at the `TurnManager` level, remove hook logic from `ToolRegistry`. This is the recommended approach because:
-1. TurnManager is the single funnel for ALL tool calls
-2. Avoids double-fire complexity
-3. Matches claudy's pattern where hooks fire at the orchestration layer, not the tool layer
+```typescript
+private async getToolRuntimeContext(tabId: number): Promise<{
+  currentUrl?: string;
+  currentDomain?: string;
+  cwd?: string;
+}> { ... }
+```
 
-**Recommendation**: Wire hooks into `TurnManager.executeToolCall()` only. Remove hook logic from `ToolRegistry.execute()` (keep the design for reference but don't implement it there).
+Notes:
+
+- In extension mode, URL/domain come from `chrome.tabs.get(tabId)` when the session is tab-bound.
+- In desktop/server mode, URL may not exist for non-browser tools; hook input fields should simply be omitted.
+- `cwd` should come from BrowserX session state or `TurnContext`, not from a new ad hoc source.
+
+### 7. ToolRegistry Role After Hooks
+
+`ToolRegistry.execute()` still matters, but as an internal execution stage for registry-backed tools only. With the ownership split above, its responsibilities remain:
+
+1. tool lookup
+2. parameter validation
+3. approval gate check
+4. handler dispatch with timeout
+5. registry-level execution events
+
+This avoids the current draft's double-fire problem and matches BrowserX's real call graph more closely than pushing hook lifecycle logic down into the registry.
 
 ### 8. Integration Point: RepublicAgent Lifecycle
 
-**SessionStart** — fire during `RepublicAgent.initialize()` (`RepublicAgent.ts:90`):
+`RepublicAgent` owns session-level and submission-level hook events. After the hook system is initialized, these call sites should use `HookDispatcher`, not direct `HookRegistry`/`HookExecutor` access.
+
+**SessionStart** — fire near the end of `RepublicAgent.initialize()` after config, tools, model client, and session context are ready:
 
 ```typescript
-async initialize(): Promise<void> {
-  // ... existing initialization code (lines 90-153) ...
+await this.hookDispatcher.fire('SessionStart', {
+  hook_event_name: 'SessionStart',
+  session_id: this.session.getSessionId(),
+  session_start_source: initialHistory?.mode === 'resumed' ? 'resume' : 'startup',
+}, { session: this.session });
+```
 
-  // ── NEW: Fire SessionStart hooks ──
-  if (this.hookRegistry) {
-    const hookInput: HookInput = {
-      hook_event_name: 'SessionStart',
-      session_id: this.session.sessionId,
-      session_start_source: 'startup',  // or 'resume' for resumed sessions
-    };
-    const hooks = this.hookRegistry.getMatchingHooks('SessionStart');
-    if (hooks.length > 0) {
-      // SessionStart hooks run in parallel, non-blocking (errors logged, not thrown)
-      const results = await Promise.allSettled(
-        hooks.map(h => this.hookExecutor.execute(h.command, hookInput))
-      );
-      // Log any hook failures but don't block initialization
-      for (const r of results) {
-        if (r.status === 'rejected') {
-          console.warn('[RepublicAgent] SessionStart hook failed:', r.reason);
-        }
-      }
-    }
-  }
+Rules:
 
-  console.log('[RepublicAgent] DEBUG: initialize() complete');
+- `SessionStart` is non-blocking. Failures are logged and surfaced through hook events, but agent initialization continues.
+- The hook should run after `ConfigHookLoader.load()` so config-defined hooks are already present.
+
+**SessionEnd** — fire during agent shutdown before final session teardown:
+
+```typescript
+await this.hookDispatcher.fire('SessionEnd', {
+  hook_event_name: 'SessionEnd',
+  session_id: this.session.getSessionId(),
+  session_end_reason: 'shutdown',
+}, {
+  session: this.session,
+  signal: AbortSignal.timeout(1500),
+});
+```
+
+Rules:
+
+- `SessionEnd` is best-effort.
+- Timeout should be capped aggressively so shutdown is not held open by hooks.
+
+**UserPromptSubmit** — fire in `RepublicAgent.handleSubmission()` for `UserInput` and `UserTurn` before dispatching into the existing handlers:
+
+```typescript
+const promptText = extractSubmissionText(submission.op);
+const result = await this.hookDispatcher.fire('UserPromptSubmit', {
+  hook_event_name: 'UserPromptSubmit',
+  session_id: this.session.getSessionId(),
+  user_prompt: promptText,
+}, { session: this.session });
+
+if (!result.shouldContinue) {
+  this.emitEvent({
+    type: 'Error',
+    data: { message: result.stopReason ?? 'UserPromptSubmit hook blocked this input' },
+  });
+  return;
 }
 ```
 
-**SessionEnd** — fire during `RepublicAgent.handleShutdown()` (`RepublicAgent.ts:970`):
+Rules:
+
+- `UserPromptSubmit` is blocking.
+- If later needed, the aggregated result can grow an `updatedPrompt` field, but that is not required for phase 1.
+
+### 9. Integration Point: ApprovalGate
+
+`ApprovalGate` remains the sole owner of approval decisions. Hooks are an interception layer inside that pipeline, not a replacement for the approval manager.
+
+**PermissionRequest** — fire only when the approval pipeline has decided `ask_user`, and fire before calling `approvalManager.requestApproval()`:
 
 ```typescript
-private async handleShutdown(): Promise<void> {
-  // ── NEW: Fire SessionEnd hooks (with short timeout) ──
-  if (this.hookRegistry) {
-    const hookInput: HookInput = {
-      hook_event_name: 'SessionEnd',
-      session_id: this.session.sessionId,
-      session_end_reason: 'shutdown',
-    };
-    const hooks = this.hookRegistry.getMatchingHooks('SessionEnd');
-    if (hooks.length > 0) {
-      // SessionEnd hooks get a short timeout (1.5s, matching claudy)
-      const shortTimeoutSignal = AbortSignal.timeout(1500);
-      await Promise.allSettled(
-        hooks.map(h => this.hookExecutor.execute(
-          { ...h.command, timeout: Math.min(h.command.timeout ?? 30, 1.5) },
-          hookInput,
-          shortTimeoutSignal
-        ))
-      );
-    }
-  }
+const hookResult = await this.hookDispatcher.fire('PermissionRequest', {
+  hook_event_name: 'PermissionRequest',
+  session_id: fullContext.sessionId ?? '',
+  tool_name: toolName,
+  tool_input: parameters,
+  risk_score: assessment.score,
+  risk_level: assessment.level,
+  current_domain: domain,
+}, { session: sessionRef });
 
-  // Existing cleanup
-  this.submissionQueue = [];
-  this.eventQueue = [];
-  this.emitEvent({ type: 'ShutdownComplete' });
+if (hookResult.permissionDecision === 'approve') {
+  return 'auto_approve';
+}
+if (hookResult.permissionDecision === 'block') {
+  return 'deny';
 }
 ```
 
-**UserPromptSubmit** — fire in `RepublicAgent.handleSubmission()` (`RepublicAgent.ts:344`) for UserInput/UserTurn ops:
+Rules:
+
+- Only `ApprovalGate` may translate hook output into `auto_approve`, `deny`, or `ask_user`.
+- Hook output must not bypass risk assessment or policy evaluation; it only intercepts the final `ask_user` branch.
+
+**PermissionDenied** — fire after a deny decision is final:
 
 ```typescript
-private async handleSubmission(submission: Submission): Promise<void> {
-  try {
-    switch (submission.op.type) {
-      case 'UserInput':
-      case 'UserTurn': {
-        // ── NEW: Fire UserPromptSubmit hooks ──
-        if (this.hookRegistry) {
-          const items = submission.op.items;
-          const textContent = items
-            .filter(i => i.type === 'input_text')
-            .map(i => (i as any).text)
-            .join('\n');
-
-          const hookInput: HookInput = {
-            hook_event_name: 'UserPromptSubmit',
-            session_id: this.session.sessionId,
-            user_prompt: textContent,
-          };
-          const hooks = this.hookRegistry.getMatchingHooks('UserPromptSubmit');
-          if (hooks.length > 0) {
-            const results = await Promise.all(
-              hooks.map(h => this.hookExecutor.execute(h.command, hookInput))
-            );
-            const agg = HookAggregator.aggregate(results);
-
-            // Exit code 2 in claudy: block processing, erase prompt, show stderr to user
-            if (!agg.shouldContinue) {
-              this.emitEvent({
-                type: 'Error',
-                data: {
-                  message: agg.stopReason ?? 'UserPromptSubmit hook blocked this input',
-                },
-              });
-              return; // Don't process this submission
-            }
-          }
-        }
-
-        // Existing dispatch
-        if (submission.op.type === 'UserInput') {
-          await this.handleUserInput(submission.op, submission.context);
-        } else {
-          await this.handleUserTurn(submission.op, submission.context);
-        }
-        break;
-      }
-      // ... rest of switch cases unchanged
-    }
-  }
-}
+void this.hookDispatcher.fire('PermissionDenied', {
+  hook_event_name: 'PermissionDenied',
+  session_id: fullContext.sessionId ?? '',
+  tool_name: toolName,
+  tool_input: parameters,
+  approval_decision: 'deny',
+  current_domain: domain,
+}, { session: sessionRef });
 ```
 
-### 9. Integration Point: ApprovalGate (`src/core/approval/ApprovalGate.ts`)
+Rules:
 
-**PermissionRequest** — fire when `ApprovalGate.check()` decides `ask_user` (line 194):
+- `PermissionDenied` is informational and fire-and-forget.
+- It must not reopen the approval decision.
+
+### 10. Integration Point: Session.spawnTask() for TaskCreated / TaskCompleted
+
+`Session.spawnTask()` is the correct owner for task lifecycle hooks because it already manages task start, completion, and abort paths.
+
+**TaskCreated** — fire after the running task has been registered but before the task body begins meaningful execution:
 
 ```typescript
-// In ApprovalGate, add hook support:
-private hookRegistry?: HookRegistry;
-private hookExecutor?: HookExecutor;
-
-setHookSystem(registry: HookRegistry, executor: HookExecutor): void {
-  this.hookRegistry = registry;
-  this.hookExecutor = executor;
-}
-
-// Inside check(), before calling approvalManager.requestApproval() (line 219):
-
-if (decision === 'ask_user') {
-  // ── NEW: Fire PermissionRequest hooks ──
-  if (this.hookRegistry && this.hookExecutor) {
-    const hookInput: HookInput = {
-      hook_event_name: 'PermissionRequest',
-      session_id: fullContext.sessionId ?? '',
-      tool_name: toolName,
-      tool_input: parameters,
-      risk_score: assessment.score,
-      risk_level: assessment.level,
-      current_domain: domain,
-    };
-    const hooks = this.hookRegistry.getMatchingHooks('PermissionRequest', toolName, parameters);
-    if (hooks.length > 0) {
-      const results = await Promise.all(
-        hooks.map(h => this.hookExecutor!.execute(h.command, hookInput))
-      );
-      const agg = HookAggregator.aggregate(results);
-
-      // Hook can auto-approve or auto-deny without prompting user
-      if (agg.permissionDecision === 'approve') {
-        await this.recordHistory(toolName, assessment.score, assessment.level, 'auto_approve', 'auto', ['Approved by hook']);
-        return 'auto_approve';
-      }
-      if (agg.permissionDecision === 'block') {
-        await this.recordHistory(toolName, assessment.score, assessment.level, 'deny', 'auto', ['Blocked by hook']);
-        return 'deny';
-      }
-    }
-  }
-
-  // Existing: delegate to ApprovalManager (user prompt)
-  const approvalRequest: ApprovalRequest = { ... };
-  const response = await this.approvalManager.requestApproval(approvalRequest);
-  // ...
-}
+void this.hookDispatcher.fire('TaskCreated', {
+  hook_event_name: 'TaskCreated',
+  session_id: this.sessionId,
+  task_id: subId,
+  task_type: task.kind(),
+}, { session: this });
 ```
 
-**PermissionDenied** — fire after a deny decision (lines 109, 149, 226):
-```typescript
-// Add a helper method that fires PermissionDenied hooks:
-private async firePermissionDeniedHooks(
-  toolName: string,
-  parameters: Record<string, any>,
-  reason: string
-): Promise<void> {
-  if (!this.hookRegistry || !this.hookExecutor) return;
-
-  const hookInput: HookInput = {
-    hook_event_name: 'PermissionDenied',
-    tool_name: toolName,
-    tool_input: parameters,
-    approval_decision: 'deny',
-    session_id: '', // filled from context
-  };
-  const hooks = this.hookRegistry.getMatchingHooks('PermissionDenied', toolName, parameters);
-  if (hooks.length > 0) {
-    // Fire-and-forget: PermissionDenied hooks are informational
-    Promise.allSettled(hooks.map(h => this.hookExecutor!.execute(h.command, hookInput)));
-  }
-}
-```
-
-### 10. Integration Point: Session.spawnTask() for TaskCreated/TaskCompleted
-
-**TaskCreated** — fire in `Session.spawnTask()` (`Session.ts:1316`) after creating the task:
+**TaskCompleted** — fire in the promise resolution path once the task has either completed successfully or terminated with failure/abort:
 
 ```typescript
-async spawnTask(task: SessionTask, context: TurnContext, subId: string, input: InputItem[]): Promise<void> {
-  // Existing: abort existing tasks, create AbortController, etc.
-  // ...
-
-  // ── NEW: Fire TaskCreated hooks ──
-  if (this.hookRegistry) {
-    const hookInput: HookInput = {
-      hook_event_name: 'TaskCreated',
-      session_id: this.sessionId,
-      task_id: subId,
-      task_type: task.constructor.name,
-    };
-    const hooks = this.hookRegistry.getMatchingHooks('TaskCreated');
-    // Fire-and-forget
-    if (hooks.length > 0) {
-      Promise.allSettled(hooks.map(h => this.hookExecutor.execute(h.command, hookInput)));
-    }
-  }
-
-  // Existing: create promise wrapper, execute task...
-}
+void this.hookDispatcher.fire('TaskCompleted', {
+  hook_event_name: 'TaskCompleted',
+  session_id: this.sessionId,
+  task_id: subId,
+  task_type: task.kind(),
+}, { session: this });
 ```
 
-**TaskCompleted** — fire when the task promise resolves (inside the promise wrapper in `spawnTask()`):
+Rules:
 
-```typescript
-const promise = (async (): Promise<string | null> => {
-  try {
-    // Execute task (existing)
-    const result = await task.run(/* ... */);
-
-    // ── NEW: Fire TaskCompleted hooks ──
-    if (this.hookRegistry) {
-      const hookInput: HookInput = {
-        hook_event_name: 'TaskCompleted',
-        session_id: this.sessionId,
-        task_id: subId,
-        task_type: task.constructor.name,
-      };
-      const hooks = this.hookRegistry.getMatchingHooks('TaskCompleted');
-      if (hooks.length > 0) {
-        Promise.allSettled(hooks.map(h => this.hookExecutor.execute(h.command, hookInput)));
-      }
-    }
-
-    return result;
-  } catch (error) {
-    // ... existing error handling
-  }
-})();
-```
+- These are non-blocking lifecycle hooks.
+- If BrowserX later needs separate success/failure task events, add explicit new hook events rather than overloading `TaskCompleted` semantics.
 
 ### 11. Configuration Integration
 
-Add hooks to `IStoredConfig` (`src/config/types.ts`):
+Add hooks to both config shapes in `src/config/types.ts`:
 
 ```typescript
+export interface IAgentConfig {
+  // ... existing fields ...
+  hooks?: import('../core/hooks/types').HooksConfig;
+}
+
 export interface IStoredConfig {
   // ... existing fields ...
-
-  /** Hook configuration */
   hooks?: import('../core/hooks/types').HooksConfig;
 }
 ```
 
-Add hooks section to `IConfigChangeEvent`:
-
-```typescript
-export interface IConfigChangeEvent {
-  type: 'config-changed';
-  section: 'model' | 'provider' | 'profile' | 'preferences' | 'cache' | 'extension' | 'security' | 'approval' | 'hooks';
-  // ...
-}
-```
+Add `hooks` to `IConfigChangeEvent.section`. While doing this, it is worth reconciling the union with the actual persisted sections BrowserX already carries, because today the type is already narrower than the stored config shape.
 
 **ConfigHookLoader** (`src/core/hooks/loaders/ConfigHookLoader.ts`):
 
 ```typescript
 import type { AgentConfig } from '../../../config/AgentConfig';
+import { extractStoredConfig } from '../../../config/defaults';
 import type { HookRegistry } from '../HookRegistry';
 import type { HooksConfig } from '../types';
 
@@ -1322,8 +1150,10 @@ export class ConfigHookLoader {
     // Clear existing config-sourced hooks
     registry.unregisterBySource('config');
 
-    // Load from stored config
-    const storedConfig = config.getStoredConfig();
+    // AgentConfig currently exposes runtime config via getConfig(). Either add
+    // a dedicated getStoredConfig() helper or derive the persisted shape from
+    // the runtime config using extractStoredConfig().
+    const storedConfig = extractStoredConfig(config.getConfig());
     if (storedConfig.hooks) {
       registry.registerFromConfig(storedConfig.hooks, 'config');
     }
@@ -1344,44 +1174,40 @@ export class ConfigHookLoader {
 
 ### 12. Initialization Wiring in RepublicAgent
 
-Add hook system initialization to `RepublicAgent` constructor:
+The hook system should be constructed once per agent instance and then passed into the real owning surfaces through explicit injection.
 
 ```typescript
 export class RepublicAgent {
-  // ... existing fields ...
   private hookRegistry: HookRegistry;
   private hookExecutor: HookExecutor;
+  private hookDispatcher: HookDispatcher;
 
   constructor(config: AgentConfig, initialHistory?: InitialHistory, agentId?: string, userNotifier?: IUserNotifier) {
     // ... existing constructor code ...
 
-    // Initialize hook system
     this.hookRegistry = new HookRegistry();
-    this.hookExecutor = new HookExecutor();
-
-    // Wire hook system into tool registry
-    this.toolRegistry.setHookSystem(this.hookRegistry, this.hookExecutor);
-
-    // Wire hook system into approval gate (after approval gate is created)
-    // Note: ApprovalGate is created inside ApprovalManager or set on ToolRegistry
-    // This wiring happens after the approval pipeline is assembled.
-  }
-
-  async initialize(): Promise<void> {
-    // ... existing initialization ...
-
-    // Load hooks from config
-    ConfigHookLoader.load(this.config, this.hookRegistry);
-    ConfigHookLoader.watch(this.config, this.hookRegistry);
-
-    // Wire hooks into session (for TaskCreated/TaskCompleted)
-    this.session.setHookSystem(this.hookRegistry, this.hookExecutor);
-
-    // Fire SessionStart hooks
-    // ... (as described in section 8)
+    this.hookExecutor = new HookExecutor(/* runtime-specific deps */);
+    this.hookDispatcher = new HookDispatcher(this.hookRegistry, this.hookExecutor);
   }
 }
 ```
+
+**Required injection path**
+
+Because BrowserX currently assembles parts of the runtime in different places, implementation needs one explicit collaborator path:
+
+1. `RepublicAgent` constructs `HookRegistry`, `HookExecutor`, and `HookDispatcher`.
+2. `RepublicAgent.initialize()` loads config hooks through `ConfigHookLoader`.
+3. `TurnManager` instances receive `HookDispatcher` when they are created for a turn.
+4. `Session` receives `HookDispatcher` so task lifecycle hooks can fire from `spawnTask()`.
+5. `ApprovalGate` receives `HookDispatcher` from the platform bootstrap path that currently assembles approval and injects it into the tool stack.
+
+That last point is the important BrowserX-specific gap: today `ApprovalGate` is assembled by desktop/extension bootstrap and injected into `ToolRegistry`, not retained directly on `RepublicAgent`. Before implementation starts, choose one of these two approaches and document it in code:
+
+- promote `ApprovalGate` to a first-class `RepublicAgent` field, or
+- keep bootstrap ownership, but thread `HookDispatcher` into `ApprovalGate` at bootstrap time before the gate is given to `ToolRegistry`.
+
+Do not leave this as an implicit future decision; without it, `PermissionRequest` and `PermissionDenied` wiring is underspecified.
 
 ### 13. Recursion Guard
 
@@ -1413,28 +1239,35 @@ async execute(hook: HookCommand, input: HookInput, signal?: AbortSignal): Promis
 
 ### 14. Async Hook Support
 
-For hooks marked `async: true`, execute without blocking the main flow:
+For hooks marked `async: true`, async handling should live in `HookDispatcher`, not be duplicated at every firing site.
 
 ```typescript
-// In the hook firing logic (e.g., inside ToolRegistry or TurnManager):
-const syncHooks = matchingHooks.filter(h => !h.command.async);
-const asyncHooks = matchingHooks.filter(h => h.command.async);
+export class HookDispatcher {
+  async fire(event: HookEvent, input: HookInput, options?: FireOptions) {
+    const matched = this.registry.getMatchingHooks(...);
+    const syncHooks = matched.filter(h => !h.command.async);
+    const asyncHooks = matched.filter(h => h.command.async);
 
-// Execute sync hooks and wait for results
-const syncResults = await Promise.all(
-  syncHooks.map(h => this.hookExecutor.execute(h.command, hookInput))
-);
-const aggregated = HookAggregator.aggregate(syncResults);
+    const syncResults = await Promise.all(
+      syncHooks.map(h => this.executor.execute(h.command, input, options?.signal))
+    );
 
-// Fire async hooks in background (no await)
-if (asyncHooks.length > 0) {
-  for (const hook of asyncHooks) {
-    this.hookExecutor.execute(hook.command, hookInput).catch(err => {
-      console.warn(`[HookSystem] Async hook ${hook.id} failed:`, err);
-    });
+    for (const hook of asyncHooks) {
+      void this.executor.execute(hook.command, input, options?.signal).catch(err => {
+        this.reportAsyncHookFailure(hook, err, options);
+      });
+    }
+
+    return HookAggregator.aggregate(syncResults);
   }
 }
 ```
+
+Rules:
+
+- Call sites should only invoke `hookDispatcher.fire(...)`.
+- They should not repeat sync/async split logic or `once` cleanup logic locally.
+- Async hook failures are reported through hook observability and logs, but do not block the caller.
 
 ---
 
@@ -1444,8 +1277,10 @@ BrowserX already has structured event emission through `Session`/`TurnManager` u
 
 - **Hook events** (PreToolUse, PostToolUse, etc.) are interceptors that can modify behavior — they are NOT the same as observation events
 - **EventMsg events** (existing) are notifications for UI and persistence — they are downstream consumers
-- **Ordering**: Hook execution → EventMsg emission. A hook that blocks a tool call should also suppress the corresponding `ToolExecutionStart`/`ToolExecutionEnd` EventMsg.
+- **Ordering**: Hook execution → EventMsg emission. A hook that blocks a tool call should suppress the outer `TurnManager`-level tool execution events, not merely the inner registry event.
 - **Future EventBus migration** (Phase 4): When converting to pub/sub, existing `EventMsg` consumers become subscribers. Hook handlers remain a separate mechanism (middleware, not pub/sub) because they can modify/block execution.
+
+BrowserX already emits overlapping tool execution events from `TurnManager.executeBrowserTool()` and `ToolRegistry.execute()`. Hook observability should therefore have a single owner: `HookDispatcher` emits hook-facing events through `Session.emitEvent()`, and `ToolRegistry` does not emit separate hook-derived events.
 
 ### New EventMsg Types for Hook Observability
 
@@ -1485,45 +1320,40 @@ export interface HookBlockedEvent {
 ## Phase Plan
 
 **Phase 1: Core Infrastructure** (Week 1-2)
-- Define types in `src/core/hooks/types.ts` (HookEvent, HookCommand, HookResponse, HookInput, AggregatedHookResult)
-- Implement `HookMatcher.ts` with tool name + parameter pattern matching
-- Implement `HookRegistry.ts` with register/unregister/query, source management
-- Implement `HookExecutor.ts` for command type only (shell execution with exit code semantics)
-- Implement `HookAggregator.ts` for multi-hook result merging
-- Wire PreToolUse and PostToolUse into `TurnManager.executeToolCall()`
-- Wire SessionStart into `RepublicAgent.initialize()`
-- Wire SessionEnd into `RepublicAgent.handleShutdown()`
-- Add recursion guard (depth limit = 3)
-- Unit tests: HookMatcher pattern parsing, HookAggregator merge rules, HookExecutor command execution
-- Integration test: PreToolUse hook blocks tool execution, PostToolUse hook modifies output
+- Define types in `src/core/hooks/types.ts`
+- Implement `HookMatcher.ts`
+- Implement `HookRegistry.ts`
+- Implement `HookExecutor.ts` for command hooks with runtime-aware execution paths
+- Implement `HookAggregator.ts`
+- Implement `HookDispatcher.ts` as the only orchestration surface for matching, async split, `once` cleanup, aggregation, and observability
+- Wire `PreToolUse` / `PostToolUse` / `PostToolUseFailure` into `TurnManager.executeToolCall()`
+- Wire `SessionStart` / `SessionEnd` / `UserPromptSubmit` into `RepublicAgent`
+- Add recursion guard
+- Unit tests for matcher, registry, executor, aggregator, and dispatcher
+- Integration tests for registry tools, `web_search`, and MCP paths
 
 **Phase 2: Hook Types & Async** (Week 3)
-- Add prompt hook type in HookExecutor (LLM evaluation via ModelClientFactory)
-- Add HTTP hook type in HookExecutor (POST with JSON body)
-- Add `async: true` flag support (fire-and-forget execution)
-- Add `once: true` flag support (auto-unregister after first execution)
-- Add timeout handling with configurable defaults (30s command, 60s prompt, 30s HTTP)
-- Add error isolation: hook failure logs warning but doesn't block execution
-- Platform detection: graceful degradation for extension mode (no command hooks)
+- Add prompt hook support in `HookExecutor`
+- Add HTTP hook support in `HookExecutor`
+- Centralize async hook handling in `HookDispatcher`
+- Centralize `once` hook semantics in `HookDispatcher`
+- Add timeout handling and error isolation
+- Preserve graceful degradation in extension mode for command hooks
 
-**Phase 3: Configuration & Input Modification** (Week 4)
-- Add `hooks` field to `IStoredConfig` in `src/config/types.ts`
-- Implement `ConfigHookLoader.ts`: load hooks from config at startup, watch for changes
-- Wire UserPromptSubmit into `RepublicAgent.handleSubmission()`
-- Wire PermissionRequest/PermissionDenied into `ApprovalGate.check()`
-- Wire TaskCreated/TaskCompleted into `Session.spawnTask()`
-- Add `updatedInput` support: PreToolUse hooks can modify tool parameters
-- Add `$TOOL_NAME`, `$FILE_PATH`, `$ARGUMENTS`, `$CURRENT_URL`, `$TAB_ID` variable substitution
-- Tests for hook-based input modification and permission decisions
-- Add hook observability events (HookFired, HookResult, HookBlocked) to EventMsg
+**Phase 3: Configuration, Approval, and Task Integration** (Week 4)
+- Add `hooks` to both `IAgentConfig` and `IStoredConfig`
+- Implement `ConfigHookLoader.ts`
+- Wire `PermissionRequest` / `PermissionDenied` into `ApprovalGate`
+- Wire `TaskCreated` / `TaskCompleted` into `Session.spawnTask()`
+- Confirm and implement the bootstrap injection path for `ApprovalGate` ownership
+- Add hook observability events (`HookFired`, `HookResult`, `HookBlocked`) to `EventMsg`
+- Add tests for config hot reload, approval interception, task lifecycle hooks, and observability single ownership
 
-**Phase 4: Event Subscriber Pattern** (Week 5)
+**Phase 4: EventBus Follow-up** (Week 5)
 - Create `EventBus.ts` with subscribe/unsubscribe/emit
 - Migrate existing event dispatcher callbacks to EventBus
-- Add event filtering (subscribe to specific event types only)
-- Add event correlation: link related events with correlation ID
-- Add event history buffer (last N events for debugging)
-- Wire hooks as EventBus subscribers (unify hook and event systems)
+- Add filtering, correlation, and event history buffer
+- Keep hooks as middleware/interceptors even if the observation layer moves to pub/sub
 
 ## Priority Events for BrowserX
 
