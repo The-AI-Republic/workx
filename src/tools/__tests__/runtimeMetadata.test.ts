@@ -1,11 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   DEFAULT_TOOL_CONCURRENCY_PROFILE,
   type ToolConcurrencyProfile,
   type ToolRuntimeMetadata,
 } from '@/tools/runtimeMetadata';
+import { RiskLevel } from '@/core/approval/types';
 import { ToolRegistry } from '@/tools/ToolRegistry';
 import type { ToolDefinition } from '@/tools/BaseTool';
+import type { IRiskAssessor } from '@/core/approval/types';
 
 // Helper: create a minimal function tool definition
 function makeTool(name: string): ToolDefinition {
@@ -40,9 +42,25 @@ describe('ToolRegistry runtime metadata', () => {
   describe('register() backward compatibility', () => {
     it('accepts bare IRiskAssessor as third argument', async () => {
       const registry = new ToolRegistry();
-      const riskAssessor = { assessRisk: () => ({ level: 0, factors: [] }) } as any;
+      const riskAssessor: IRiskAssessor = {
+        assess: () => ({ score: 0, level: RiskLevel.None, factors: [], action: 'auto_approve' }),
+      };
       await registry.register(makeTool('test'), noop, riskAssessor);
+      const gate = { check: vi.fn().mockResolvedValue('auto_approve') } as any;
+      registry.setApprovalGate(gate);
+
+      await registry.execute({
+        toolName: 'test',
+        parameters: {},
+        sessionId: 's1',
+        turnId: 't1',
+      });
+
       expect(registry.getTool('test')).not.toBeNull();
+      expect(gate.check).toHaveBeenCalledWith('test', {}, riskAssessor, {
+        sessionId: 's1',
+        turnId: 't1',
+      });
     });
 
     it('accepts ToolRegistrationOptions as third argument', async () => {

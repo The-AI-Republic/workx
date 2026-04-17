@@ -454,6 +454,11 @@ describe('ToolRegistry – extended coverage', () => {
       const res = await registry.execute(makeRequest('gated'));
       expect(res.success).toBe(false);
       expect(res.error?.code).toBe('APPROVAL_DENIED');
+
+      const events = (collector.collect as ReturnType<typeof vi.fn>).mock.calls.map(
+        c => c[0].msg.type,
+      );
+      expect(events).toContain('ToolExecutionStart');
     });
 
     it('should proceed when approval gate returns auto_approve', async () => {

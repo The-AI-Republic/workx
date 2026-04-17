@@ -117,7 +117,7 @@ export class ToolRegistry {
     }
 
     // Normalize the third argument: bare IRiskAssessor vs ToolRegistrationOptions
-    const opts: ToolRegistrationOptions = optionsOrAssessor && 'assessRisk' in optionsOrAssessor
+    const opts: ToolRegistrationOptions = optionsOrAssessor && 'assess' in optionsOrAssessor
       ? { riskAssessor: optionsOrAssessor as IRiskAssessor }
       : (optionsOrAssessor as ToolRegistrationOptions ?? {});
 
@@ -309,6 +309,22 @@ export class ToolRegistry {
         };
       }
 
+      // Emit execution start event before approval checks so denied calls still
+      // surface a full lifecycle to downstream consumers.
+      this.emitEvent({
+        id: `evt_exec_start_${request.toolName}_${request.callId ?? ''}`,
+        msg: {
+          type: 'ToolExecutionStart',
+          data: {
+            tool_name: request.toolName,
+            call_id: request.callId,
+            session_id: request.sessionId,
+            turn_id: request.turnId,
+            start_time: startTime,
+          },
+        },
+      });
+
       // Approval gate check (if configured)
       if (this.approvalGate) {
         const context = request.metadata ? {
@@ -354,21 +370,6 @@ export class ToolRegistry {
         }
         // 'auto_approve' and 'ask_user' (resolved to approve) continue execution
       }
-
-      // Emit execution start event (with call_id when available)
-      this.emitEvent({
-        id: `evt_exec_start_${request.toolName}_${request.callId ?? ''}`,
-        msg: {
-          type: 'ToolExecutionStart',
-          data: {
-            tool_name: request.toolName,
-            call_id: request.callId,
-            session_id: request.sessionId,
-            turn_id: request.turnId,
-            start_time: startTime,
-          },
-        },
-      });
 
       // Wrap progress callback to also emit ToolExecutionProgress events
       const emitProgress: ToolProgressCallback | undefined = request.onProgress
