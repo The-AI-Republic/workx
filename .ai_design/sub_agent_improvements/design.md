@@ -47,8 +47,7 @@ Key capabilities BrowserX lacks:
 3. **Task notification pipeline** - no mechanism to inject results into parent's conversation
 4. **Forked agent path** - no cache-optimized spawning with inherited context
 5. **Agent resume** - sub-agents are ephemeral, cannot be resumed
-6. **Recursion depth enforcement** - worker type allows nesting but no depth limit
-7. **Signal propagation** - AbortSignal accepted but not properly wired
+6. **Parent-lifecycle-linked cancellation** - `AbortSignal` already reaches `TaskRunner`, but child lifetime is not explicitly linked to parent engine/session disposal
 
 ### 1.3 Architectural Gap: Missing Preparation Layer
 
@@ -64,17 +63,17 @@ runAgent() [prepare] → query() [execute] → finally [cleanup]
 
 **Cleanup:** MCP servers, session hooks, prompt cache tracking, file state cache, Perfetto traces, transcript dirs, todos, shell tasks.
 
-BrowserX has no equivalent preparation layer. `SubAgentRunner.run()` does minimal setup (~30 lines: resolve type, create registry entry, create engine) and delegates everything to `engine.run()`. The equivalent mapping:
+BrowserX already has some of the right seams: `createChildEngine()` exists, event routing exists, model overrides are honored, and `AbortSignal` already flows from `SubAgentRunner` into `engine.run()` and then `TaskRunner.runLoop()`. The gap is narrower than "no preparation layer", but still real: `SubAgentRunner.run()` is the only place where sub-agent-specific orchestration lives, and it currently mixes type resolution, registry management, engine creation, synchronous execution, event emission, and cleanup in one method. The equivalent mapping:
 
 | Claudy | BrowserX | Gap |
 |--------|----------|-----|
-| `runAgent()` prepare | `SubAgentRunner.run()` first 100 lines | No deep context isolation, no agent-specific resource setup |
-| `createSubagentContext()` (~120 lines) | `createChildEngine()` (~25 lines) | No file state cloning, no permission wrapping, no callback isolation |
-| `query()` as async generator | `engine.run()` returns Promise | No incremental message yielding, no mid-loop drain point |
-| `query()` mid-loop drain | Nothing | No way to inject messages during execution |
-| `runAgent()` finally | `engine.dispose()` | Minimal cleanup, no transcript persistence |
+| `runAgent()` prepare | `SubAgentRunner.run()` first ~100 lines | No background orchestration, no retained run state, no parent-linked cancellation policy |
+| `createSubagentContext()` (~120 lines) | `createChildEngine()` (~25 lines) | No depth metadata, no injected pending-message drain callback, no explicit lifecycle linkage |
+| `query()` as async generator | `engine.run()` returns Promise | No parent-facing streaming/progress hook beyond engine events |
+| `query()` mid-loop drain | `TaskRunner.runLoop()` has no injected drain hook | No place to deliver cross-agent messages or parent notifications between turns |
+| `runAgent()` finally | `engine.dispose()` | Cleanup exists, but no retained completion summaries for management tools |
 
-This gap matters because every feature in section 2 (background execution, notifications, messaging) needs hooks that don't exist in the current pipeline. Adding them ad-hoc will turn `SubAgentRunner.run()` into a 500-line monolith. The refactoring in section 2.8 addresses this structurally.
+This gap matters because every feature in section 2 (background execution, notifications, messaging) needs explicit hooks instead of ad-hoc side effects. Adding them directly to the current `run()` path would turn `SubAgentRunner.run()` into a monolith. The refactoring in section 2.6 addresses this structurally.
 
 ### 1.4 Design Principles
 
@@ -87,6 +86,57 @@ This gap matters because every feature in section 2 (background execution, notif
 ---
 
 ## 2. Improvements
+
+### 2.0 Move Sub-Agent Module to `src/tools/AgentTool/`
+
+**Problem:** The sub-agent module lives in `src/core/subagent/` even though, from the main agent's perspective, `sub_agent` is a tool registered into `ToolRegistry` — the same as `browser_dom`, `exec_command`, etc. This creates a misleading organizational split: tools live in `src/tools/`, but the sub-agent (which is a tool) lives in `src/core/`.
+
+Claudy places its equivalent squarely in `src/tools/AgentTool/`. This is the right pattern — the sub-agent *uses* core engine internals (`createChildEngine`), but so do other tools that reference engine types. The import direction (tool → core) is correct and doesn't justify placing the tool inside core.
+
+**Proposed change:**
+
+Move the entire `src/core/subagent/` directory to `src/tools/AgentTool/`:
+
+```
+src/core/subagent/                    →  src/tools/AgentTool/
+├── types.ts                          →  ├── types.ts
+├── builtinTypes.ts                   →  ├── builtinTypes.ts
+├── SubAgentTool.ts                   →  ├── SubAgentTool.ts
+├── SubAgentRegistry.ts               →  ├── SubAgentRegistry.ts
+├── SubAgentRunner.ts                 →  ├── SubAgentRunner.ts
+├── register.ts                       →  ├── register.ts
+├── index.ts                          →  ├── index.ts
+└── __tests__/                        →  └── __tests__/
+    ├── SubAgentRegistry.test.ts      →      ├── SubAgentRegistry.test.ts
+    └── SubAgentTool.test.ts          →      └── SubAgentTool.test.ts
+```
+
+**Import updates required (6 external files):**
+
+| File | Old import | New import |
+|------|-----------|------------|
+| `src/tools/ToolRegistryCloner.ts` | `'../core/subagent/types'` | `'./AgentTool/types'` |
+| `src/tools/__tests__/ToolRegistryCloner.test.ts` | `'@/core/subagent/types'` | `'@/tools/AgentTool/types'` |
+| `src/core/engine/__tests__/RepublicAgentEngine.integration.test.ts` | `'../../subagent/SubAgentRunner'` etc. | `'@/tools/AgentTool/SubAgentRunner'` etc. |
+| `src/server/agent/ServerAgentBootstrap.ts` | `'@/core/subagent/register'` | `'@/tools/AgentTool/register'` |
+| `src/desktop/agent/DesktopAgentBootstrap.ts` | `'@/core/subagent/register'` | `'@/tools/AgentTool/register'` |
+| `src/core/registry/AgentRegistry.ts` | `'../subagent/register'` | `'@/tools/AgentTool/register'` |
+
+**Internal import updates (files within the moved module):**
+
+| File | Old import | New import |
+|------|-----------|------------|
+| `SubAgentRunner.ts` | `'../engine/RepublicAgentEngine'` | `'@/core/engine/RepublicAgentEngine'` |
+| `SubAgentRunner.ts` | `'../engine/RepublicAgentEngineConfig'` | `'@/core/engine/RepublicAgentEngineConfig'` |
+| `SubAgentRunner.ts` | `'../events/SubAgentEventRouter'` | `'@/core/events/SubAgentEventRouter'` |
+| `SubAgentRunner.ts` | `'../../tools/ToolRegistryCloner'` | `'../ToolRegistryCloner'` |
+| `SubAgentRegistry.ts` | `'../engine/RepublicAgentEngine'` | `'@/core/engine/RepublicAgentEngine'` |
+| `register.ts` | `'../engine/RepublicAgentEngine'` | `'@/core/engine/RepublicAgentEngine'` |
+| `SubAgentTool.ts` | `'../../tools/BaseTool'` | `'../BaseTool'` |
+| `__tests__/SubAgentRegistry.test.ts` | `'../../engine/RepublicAgentEngine'` | `'@/core/engine/RepublicAgentEngine'` |
+| `__tests__/SubAgentTool.test.ts` | `'../../../tools/BaseTool'` | `'../../BaseTool'` |
+
+**Why this comes first:** Every subsequent section references file paths. Moving the module first means all file references in Phase 0–4 point to the correct location. It also establishes the convention: sub-agent tools belong in `src/tools/`, alongside the other tools they sit next to in the LLM's tool list.
 
 ### 2.1 Background Execution (Async Sub-Agents)
 
@@ -138,6 +188,8 @@ When `background: false` (default, current behavior):
 
 These are simple tools registered alongside `sub_agent`. They query/mutate `SubAgentRegistry`.
 
+Completed background runs cannot be removed from `SubAgentRegistry` immediately. Management tools need a short-lived retained summary record, such as an in-memory tombstone with status, duration, token usage, and optional result preview. Foreground synchronous runs can continue using immediate cleanup because the parent already receives the direct tool result.
+
 ### 2.2 Task Notification Pipeline
 
 **Problem:** When a background sub-agent completes, there is no mechanism to inform the parent LLM of the result. The parent would need to poll.
@@ -148,16 +200,21 @@ These are simple tools registered alongside `sub_agent`. They query/mutate `SubA
 
 BrowserX uses direct parent-engine injection rather than a global queue. This is simpler and sufficient for our scope (single parent, max 3 sub-agents, no multi-parent coordination). If BrowserX later needs notification routing across multiple independent parents, a queue-based model closer to Claudy's should be considered.
 
-Add a notification injection mechanism to `RepublicAgentEngine`:
+Add a notification delivery mechanism to `RepublicAgentEngine` that queues synthetic user input for the parent's next turn. Appending text via `AddToHistory` is not sufficient because it only mutates history; it does not cause the parent task loop to consume the notification.
 
 ```typescript
 // In RepublicAgentEngine
-injectNotification(notification: TaskNotification): void {
-  // Create a synthetic user message containing the notification
-  // Submit as a 'UserTurn' operation to the SQ
-  this.submitOperation({
-    type: 'AddToHistory',
-    text: formatNotification(notification),
+enqueueSyntheticUserTurn(notificationText: string): void {
+  // Queue a synthetic user message into the same pending-input path
+  // consumed by TaskRunner at turn boundaries or on the next run.
+  this.session?.addPendingInput([
+    { type: 'text', text: notificationText }
+  ]);
+
+  // Emit a lightweight engine event so UI/consumers know a notification arrived.
+  this.pushEvent({
+    id: crypto.randomUUID(),
+    msg: { type: 'SubAgentNotificationQueued' }
   });
 }
 ```
@@ -193,10 +250,11 @@ interface TaskNotification {
 </task-notification>
 ```
 
-**When notifications are injected:**
+**When notifications are delivered:**
 - After a background sub-agent completes/fails/is cancelled
-- `SubAgentRunner` holds a reference to the parent engine and calls `parentEngine.injectNotification()`
-- If the parent engine is currently in a turn (processing an LLM response), the notification is queued and delivered after the current turn completes
+- `SubAgentRunner` holds a reference to the parent engine and calls `parentEngine.enqueueSyntheticUserTurn(...)`
+- If the parent engine is currently in a turn, the notification sits in pending input and is consumed at the next drain point or next user-triggered turn
+- If BrowserX later needs multi-parent or cross-process routing, replace this with a queue closer to Claudy's `messageQueueManager`
 
 ### 2.3 Cross-Agent Messaging
 
@@ -216,10 +274,10 @@ interface SendMessageParams {
 ```
 
 **Implementation:**
-1. `SubAgentRegistry` gains a `pendingMessages: Map<string, string[]>` per agent
+1. `SubAgentRegistry` gains a `pendingMessages: Map<string, string[]>` per running retained agent
 2. `send_message` tool validates the agent exists and is running, then appends to its pending queue
-3. The child engine's turn loop checks for pending messages after each turn (between tool rounds)
-4. Pending messages are injected as user messages into the child's conversation
+3. The child engine's task loop checks for pending messages after each turn (between tool rounds)
+4. Pending messages are queued into the child's pending-input path as synthetic user input before the next turn starts
 
 This requires a hook point in `TaskRunner.runLoop()`:
 
@@ -227,94 +285,45 @@ This requires a hook point in `TaskRunner.runLoop()`:
 // In TaskRunner.runLoop(), after each turn:
 const pendingMessages = this.getPendingMessages?.();
 if (pendingMessages?.length) {
-  // Inject as user message, continue loop
-  session.addUserMessage(pendingMessages.join('\n'));
+  session.addPendingInput([
+    { type: 'text', text: pendingMessages.join('\n') }
+  ]);
 }
 ```
 
 **Scope limitation:** No broadcast (`*`), no structured messages, no agent resume in this phase. Keep it simple: send a text message to a running background agent by ID.
 
-### 2.4 Recursion Depth Enforcement (BrowserX-specific)
+### 2.4 Cancellation Chain & Parent-Lifecycle Propagation
 
-**Problem:** The `worker` built-in type only denies `sub_agent` in its tool list. But if a custom type allows it (or if the deny is accidentally removed), unbounded recursion is possible. The `_subAgent.depth` metadata exists in events but is not enforced.
-
-**Note:** This is a BrowserX-original safety measure, not adopted from Claudy. Claudy prevents recursion through tool deny lists (`AgentTool` is removed from sub-agent tool pools via `ALL_AGENT_DISALLOWED_TOOLS`) and fork-specific guards (`isInForkChild`). It tracks `queryTracking.depth` but only for telemetry, not enforcement. BrowserX adds an explicit depth cap as defense-in-depth alongside tool deny lists.
+**Problem:** `SubAgentToolParams` already passes `signal` through to `engine.run()`, and `TaskRunner` already honors `AbortSignal`. The missing piece is explicit lifecycle linkage: foreground children should stop when the parent engine/session is torn down, while background children should intentionally outlive the parent turn.
 
 **Proposed design:**
 
-Add a `maxDepth` parameter to engine config:
+Preserve the existing signal path and add parent-lifecycle linkage on top.
 
-```typescript
-// In RepublicAgentEngineConfig
-parentEngineId?: string;
-depth?: number;           // NEW: current nesting depth (0 for main agent)
-maxDepth?: number;        // NEW: maximum allowed depth (default: 3)
-```
-
-Enforcement in `SubAgentRunner.run()`:
-
-```typescript
-const currentDepth = this.parentEngine.getDepth();
-const maxDepth = this.parentEngine.getMaxDepth();
-if (currentDepth >= maxDepth) {
-  return {
-    success: false,
-    response: `Sub-agent nesting depth limit (${maxDepth}) reached`,
-    stopReason: 'error',
-    // ...
-  };
-}
-```
-
-When creating a child engine via `createChildEngine()`, increment depth:
-
-```typescript
-createChildEngine(config) {
-  return new RepublicAgentEngine({
-    ...config,
-    depth: this.depth + 1,
-    maxDepth: this.maxDepth,
-    parentEngineId: this.engineId,
-  });
-}
-```
-
-This makes the `sub_agent` tool deny in `worker` optional — depth is enforced structurally regardless of tool configuration.
-
-### 2.5 Cancellation Chain & Signal Propagation
-
-**Problem:** `SubAgentToolParams` accepts `signal` but it's not properly wired through the execution chain. Parent aborting doesn't reliably cancel foreground sub-agents.
-
-**Proposed design:**
-
-Wire the signal through the full chain:
-
-```
-SubAgentRunner.run(params)
-  -> params.signal passed to engine.run(input, { signal: params.signal })
-    -> engine passes signal to Session.spawnTask()
-      -> TaskRunner uses signal in runLoop() abort check
-```
-
-For **foreground** sub-agents: create a child `AbortController` linked to both the parent's signal AND the params signal:
+For **foreground** sub-agents: create a child `AbortController` linked to both the caller's `params.signal` and parent-engine disposal/interruption:
 
 ```typescript
 const childController = new AbortController();
 
-// Link to parent engine's abort
-const parentUnsub = parentEngine.onDispose(() => childController.abort());
-
 // Link to caller's signal
 if (params.signal) {
-  params.signal.addEventListener('abort', () => childController.abort());
+  params.signal.addEventListener('abort', () => childController.abort(), { once: true });
 }
+
+// Link to parent engine disposal / shutdown via existing event listener
+const unlinkParent = parentEngine.onEvent((event) => {
+  if (event.msg.type === 'EngineDisposed') {
+    childController.abort();
+  }
+});
 ```
 
 For **background** sub-agents: create an independent `AbortController` (not linked to parent). Only cancelled explicitly via `cancel_sub_agent` tool.
 
-### 2.6 Token Usage Aggregation
+### 2.5 Token Usage Aggregation
 
-**Problem:** Each engine reports token usage independently. The parent has no visibility into total cost including sub-agents.
+**Problem:** Per-run token usage is already aggregated by `TaskRunner` and returned by `engine.run()`, and `SubAgentRunner` already exposes that in `SubAgentResult`. What is missing is retained accounting across multiple sub-agent runs so the parent can inspect or report on aggregate sub-agent cost after the fact.
 
 **Proposed design:**
 
@@ -337,11 +346,11 @@ interface SubAgentUsageSummary {
 getUsageSummary(): SubAgentUsageSummary
 ```
 
-`SubAgentRunner` updates the registry with token usage when each sub-agent completes. The parent engine can query aggregate usage for reporting.
+`SubAgentRunner` updates the registry with token usage when each sub-agent completes. The parent engine or management tools can query aggregate usage for reporting.
 
 Include sub-agent token usage in the task notification (2.2) so the parent LLM is aware of cost.
 
-### 2.8 Structural Refactoring: Agent Execution Pipeline
+### 2.6 Structural Refactoring: Agent Execution Pipeline
 
 **Problem:** `SubAgentRunner.run()` currently handles type resolution, registry management, engine creation, execution, event emission, result formatting, and cleanup in a single method. Every improvement in 2.1–2.7 adds more responsibility to this method. Without restructuring, it will grow into an unmaintainable monolith — and the same structure would need to be duplicated if teammates are added later.
 
@@ -349,7 +358,7 @@ Include sub-agent token usage in the task notification (2.2) so the parent LLM i
 
 **Proposed design:**
 
-#### 2.8.1 `IAgentRunner` Interface
+#### 2.6.1 `IAgentRunner` Interface
 
 Define a common interface for agent execution strategies. Sub-agents implement it now; teammates could implement it later without changing the rest of the system.
 
@@ -387,13 +396,12 @@ interface AgentRunResult {
 class SubAgentRunner implements IAgentRunner {
   async prepare(params): Promise<AgentContext> {
     // 1. Resolve type config
-    // 2. Check recursion depth
-    // 3. Create restricted tool registry
-    // 4. Create event router
-    // 5. Resolve approval policy + abort controller
-    // 6. Create child engine
-    // 7. Register with SubAgentRegistry
-    // 8. Return AgentContext
+    // 2. Create restricted tool registry
+    // 3. Create event router
+    // 4. Resolve approval policy + abort controller
+    // 5. Create child engine
+    // 6. Register with SubAgentRegistry
+    // 7. Return AgentContext
   }
 
   async execute(context): Promise<AgentRunResult> {
@@ -426,7 +434,7 @@ async run(params: SubAgentToolParams): Promise<SubAgentResult> {
 
 This is a **refactor, not a rewrite** — the same logic, split into clear stages.
 
-#### 2.8.2 Deeper Context Isolation in `createChildEngine()`
+#### 2.6.2 Deeper Context Isolation in `createChildEngine()`
 
 Current `createChildEngine()` (~25 lines) only creates a new engine with different config. It does not isolate mutable state. Extend it to handle:
 
@@ -438,11 +446,7 @@ createChildEngine(config: ChildEngineConfig): RepublicAgentEngine {
     parentEngineId: this.engineId,
     persistent: false,
 
-    // NEW: depth tracking (2.4)
-    depth: this.depth + 1,
-    maxDepth: this.maxDepth,
-
-    // NEW: abort strategy (2.5)
+    // NEW: abort strategy (2.4)
     // Caller decides: linked (foreground) or independent (background)
     abortController: config.abortController,
 
@@ -453,7 +457,7 @@ createChildEngine(config: ChildEngineConfig): RepublicAgentEngine {
 }
 ```
 
-#### 2.8.3 Message Drain Hook in `TaskRunner.runLoop()`
+#### 2.6.3 Message Drain Hook in `TaskRunner.runLoop()`
 
 Add a generic drain point between turns. This serves cross-agent messaging (2.3) now and would serve teammate message injection later, without TaskRunner knowing about either concept:
 
@@ -462,21 +466,21 @@ Add a generic drain point between turns. This serves cross-agent messaging (2.3)
 if (this.drainPendingMessages) {
   const pending = this.drainPendingMessages();
   if (pending?.length) {
-    // Inject as user messages into conversation
-    for (const msg of pending) {
-      session.addToHistory({
-        timestamp: Date.now(),
-        text: msg,
-        type: 'user',
-      });
-    }
+    // Inject as synthetic user input via the pending-input path.
+    // This is consumed by session.getPendingInput() at the top of the next
+    // loop iteration, matching how the task loop already accepts new user text.
+    // Using addToHistory() would be insufficient — it mutates history but does
+    // not cause the task loop to consume the message (see rationale in 2.2).
+    session.addPendingInput(
+      pending.map(msg => ({ type: 'text' as const, text: msg }))
+    );
   }
 }
 ```
 
 The `drainPendingMessages` callback is injected via engine config — TaskRunner doesn't import SubAgentRegistry or know where messages come from. This keeps the coupling one-directional.
 
-#### 2.8.4 Progress Yielding (Future-Compatible)
+#### 2.6.4 Progress Yielding (Future-Compatible)
 
 Current `engine.run()` returns `Promise<EngineResult>` — the caller gets nothing until completion. This blocks progress tracking and transcript recording.
 
@@ -502,7 +506,7 @@ This is less invasive than converting `engine.run()` to an async generator (whic
 
 **Why not an async generator now:** Converting `engine.run()` to yield messages would require changing `Session.spawnTask()`, `TaskRunner`, and every consumer of `engine.run()`. The callback approach is additive — existing callers don't change.
 
-#### 2.8.5 Teammate Compatibility Notes
+#### 2.6.5 Teammate Compatibility Notes
 
 These refactoring choices are designed so that a hypothetical teammate implementation would:
 - Implement `IAgentRunner` with an idle→work→idle loop in `execute()`
@@ -512,7 +516,7 @@ These refactoring choices are designed so that a hypothetical teammate implement
 
 None of this is built now. The point is that these interfaces don't need to change when teammates are added — only new implementations of existing interfaces.
 
-### 2.9 Custom Agent Type Definitions from Config
+### 2.7 Custom Agent Type Definitions from Config
 
 **Problem:** Built-in types are hardcoded. Users can only extend via programmatic `customTypes` in `registerSubAgentTool()`.
 
@@ -557,8 +561,8 @@ These are explicitly **out of scope** for this improvement phase:
 | Tab-per-agent isolation | Tab management is a browser tool concern, not a sub-agent concern. A sub-agent may or may not use a browser tab depending on its tools. Don't couple these concepts. If a sub-agent needs a specific tab, it should use existing tab management tools. |
 | Agent resume from disk | Claudy supports full agent lifecycle: eviction to disk, transcript sidechain persistence (`subagents/<agentId>.jsonl`), auto-resume from `SendMessage` (reconstructs replacement state, restores worktree metadata, continues in background), and re-warm of evicted agents. This requires transcript persistence, sidechain storage, and session reconstruction — significant infrastructure. BrowserX sub-agent tasks are typically short-lived browser automation steps where resume provides marginal value. Revisit if long-running background agents become a usage pattern. |
 | Coordinator mode | A modifier that forces async on all spawns. Useful for CLI orchestration with many parallel workers. Browser automation patterns are more sequential. Can be added trivially later (just set `background: true` by default). |
-| In-process teammates | Claudy's teammate system (`src/utils/swarm/`) provides persistent, long-lived agents that run a continuous idle→work→idle loop in the same Node.js process, isolated via `AsyncLocalStorage`. They communicate via a file-based mailbox system (`~/.claude/teams/{team}/inboxes/{name}.json`) polled every 500ms, and support team coordination patterns (leader/teammate roles, permission delegation, shutdown negotiation). This solves synchronous team coordination for CLI coding workflows where multiple agents need ongoing collaboration with accumulated context. Browser automation patterns are more sequential and task-oriented — sub-agents are sufficient. However, the refactoring in 2.8 (`IAgentRunner` interface, `drainPendingMessages` hook, `AgentContext`) is explicitly designed so teammates could be added as a new `IAgentRunner` implementation without changing existing infrastructure. |
-| Global message queue | Claudy's `messageQueueManager.ts` is a process-global singleton array that serves as a universal input bus — 14 different producers (user typing, Chrome extension, MCP servers, cron jobs, bridge connections, task completions) all push into it, and the `query()` loop drains it between turns with priority ordering (`'now'` > `'next'` > `'later'`) and agent-scoped filtering. BrowserX has a single input source (the user via UI) and max 3 sub-agents. Direct injection via `AddToHistory` is sufficient. A global queue should be considered if BrowserX adds multiple external input sources (MCP channels, browser extension bridge, scheduled tasks) that need fan-in coordination. |
+| In-process teammates | Claudy's teammate system (`src/utils/swarm/`) provides persistent, long-lived agents that run a continuous idle→work→idle loop in the same Node.js process, isolated via `AsyncLocalStorage`. They communicate via a file-based mailbox system (`~/.claude/teams/{team}/inboxes/{name}.json`) polled every 500ms, and support team coordination patterns (leader/teammate roles, permission delegation, shutdown negotiation). This solves synchronous team coordination for CLI coding workflows where multiple agents need ongoing collaboration with accumulated context. Browser automation patterns are more sequential and task-oriented — sub-agents are sufficient. However, the refactoring in 2.6 (`IAgentRunner` interface, `drainPendingMessages` hook, `AgentContext`) is explicitly designed so teammates could be added as a new `IAgentRunner` implementation without changing existing infrastructure. |
+| Global message queue | Claudy's `messageQueueManager.ts` is a process-global singleton array that serves as a universal input bus — 14 different producers (user typing, Chrome extension, MCP servers, cron jobs, bridge connections, task completions) all push into it, and the `query()` loop drains it between turns with priority ordering (`'now'` > `'next'` > `'later'`) and agent-scoped filtering. BrowserX has a single parent and max 3 sub-agents, so direct delivery into the parent session's pending-input path is sufficient. A global queue should be considered if BrowserX adds multiple external input sources that need fan-in coordination. |
 
 ---
 
@@ -568,34 +572,35 @@ These are explicitly **out of scope** for this improvement phase:
 
 | Task | Description | Files |
 |------|-------------|-------|
-| 0.1 | Define `IAgentRunner` interface and `AgentContext` type (2.8.1) | `src/core/subagent/types.ts` |
-| 0.2 | Refactor `SubAgentRunner.run()` into `prepare()` / `execute()` / `cleanup()` (2.8.1) | `SubAgentRunner.ts` |
-| 0.3 | Extend `createChildEngine()` with depth, abort, and drain callback config (2.8.2) | `RepublicAgentEngine.ts`, `RepublicAgentEngineConfig.ts` |
-| 0.4 | Add `drainPendingMessages` hook point in `TaskRunner.runLoop()` (2.8.3) | `TaskRunner.ts` |
-| 0.5 | Add `onProgress` callback to `RunOptions` and wire through TaskRunner (2.8.4) | `RepublicAgentEngine.ts`, `TaskRunner.ts`, types |
-| 0.6 | Tests: verify refactored pipeline produces identical behavior to current implementation | `__tests__/` |
+| 0.1 | Move `src/core/subagent/` to `src/tools/AgentTool/`, update all imports (2.0) | All files listed in 2.0 |
+| 0.2 | Define `IAgentRunner` interface and `AgentContext` type (2.6.1) | `src/tools/AgentTool/types.ts` |
+| 0.3 | Refactor `SubAgentRunner.run()` into `prepare()` / `execute()` / `cleanup()` (2.6.1) | `src/tools/AgentTool/SubAgentRunner.ts` |
+| 0.4 | Extend `createChildEngine()` with abort and drain callback config (2.6.2) | `RepublicAgentEngine.ts`, `RepublicAgentEngineConfig.ts` |
+| 0.5 | Add `drainPendingMessages` hook point in `TaskRunner.runLoop()` (2.6.3) | `TaskRunner.ts` |
+| 0.6 | Add `onProgress` callback to `RunOptions` and wire through TaskRunner (2.6.4) | `RepublicAgentEngine.ts`, `TaskRunner.ts`, types |
+| 0.7 | Tests: verify refactored pipeline produces identical behavior to current implementation | `__tests__/` |
 
-**Deliverable:** Same behavior, cleaner structure. Each subsequent phase lands in a clear location instead of growing a monolithic method.
+**Deliverable:** Same behavior, cleaner structure, correct module location. Each subsequent phase lands in a clear location instead of growing a monolithic method.
 
 ### Phase 1: Safety & Correctness
 
 | Task | Description | Files |
 |------|-------------|-------|
-| 1.1 | Add recursion depth enforcement (2.4) — uses `depth`/`maxDepth` from Phase 0.3 | `SubAgentRunner.prepare()`, `RepublicAgentEngine.ts` |
-| 1.2 | Wire signal propagation (2.5) — uses `abortController` config from Phase 0.3 | `SubAgentRunner.prepare()`, `RepublicAgentEngine.ts` |
-| 1.3 | Add token usage aggregation to SubAgentRegistry (2.6) — reported via `onProgress` from Phase 0.5 | `SubAgentRegistry.ts`, `SubAgentRunner.execute()`, `types.ts` |
-| 1.4 | Tests for recursion depth, signal cancellation, token tracking | `__tests__/` |
+| 1.1 | Add recursion depth metadata and enforcement in addition to keeping `sub_agent` denylist enforcement | `RepublicAgentEngineConfig.ts`, `RepublicAgentEngine.ts`, `src/tools/AgentTool/SubAgentRunner.ts`, `ToolRegistryCloner.ts` |
+| 1.2 | Add parent-lifecycle-linked cancellation for foreground sub-agents (2.4) | `src/tools/AgentTool/SubAgentRunner.ts`, `RepublicAgentEngine.ts` |
+| 1.3 | Add retained token usage summaries to SubAgentRegistry (2.5) | `src/tools/AgentTool/SubAgentRegistry.ts`, `src/tools/AgentTool/SubAgentRunner.ts`, `src/tools/AgentTool/types.ts` |
+| 1.4 | Tests for depth enforcement, cancellation linkage, token tracking | `__tests__/` |
 
-**Deliverable:** Sub-agents are safe from infinite recursion, properly cancellable, and report aggregate token usage.
+**Deliverable:** Recursion is blocked by both tool filtering and explicit depth checks. Foreground sub-agents stop with parent teardown, and sub-agent usage is retained for reporting.
 
 ### Phase 2: Background Execution
 
 | Task | Description | Files |
 |------|-------------|-------|
-| 2.1 | Add `background` flag to `SubAgentToolParams` and tool definition | `types.ts`, `SubAgentTool.ts` |
-| 2.2 | Implement background execution in `SubAgentRunner.execute()` (detach vs await decision) | `SubAgentRunner.ts` |
-| 2.3 | Add `list_sub_agents` and `cancel_sub_agent` tools | `register.ts` or new file |
-| 2.4 | Implement task notification pipeline (2.2) — uses `AddToHistory` on parent engine | `RepublicAgentEngine.ts`, `SubAgentRunner.ts` |
+| 2.1 | Add `background` flag to `SubAgentToolParams` and tool definition | `src/tools/AgentTool/types.ts`, `src/tools/AgentTool/SubAgentTool.ts` |
+| 2.2 | Implement background execution in `SubAgentRunner.execute()` (detach vs await decision) | `src/tools/AgentTool/SubAgentRunner.ts` |
+| 2.3 | Add retained run summaries plus `list_sub_agents` and `cancel_sub_agent` tools | `src/tools/AgentTool/register.ts` or new file, `src/tools/AgentTool/SubAgentRegistry.ts` |
+| 2.4 | Implement task notification delivery via parent's pending-input path, not `AddToHistory` | `RepublicAgentEngine.ts`, `Session.ts`, `src/tools/AgentTool/SubAgentRunner.ts` |
 | 2.5 | Tests for background execution, notification injection, cancellation | `__tests__/` |
 
 **Deliverable:** LLM can spawn background sub-agents, continue working, and receive notifications on completion.
@@ -604,9 +609,9 @@ These are explicitly **out of scope** for this improvement phase:
 
 | Task | Description | Files |
 |------|-------------|-------|
-| 3.1 | Add pending message queue to `SubAgentRegistry` | `SubAgentRegistry.ts` |
-| 3.2 | Add `send_message` tool | `register.ts` or new file |
-| 3.3 | Wire `drainPendingMessages` callback from Phase 0.4 to SubAgentRegistry | `SubAgentRunner.prepare()`, `SubAgentRegistry.ts` |
+| 3.1 | Add pending message queue to `SubAgentRegistry` | `src/tools/AgentTool/SubAgentRegistry.ts` |
+| 3.2 | Add `send_message` tool | `src/tools/AgentTool/register.ts` or new file |
+| 3.3 | Wire `drainPendingMessages` callback from Phase 0.4 to SubAgentRegistry and queue messages into child pending input | `src/tools/AgentTool/SubAgentRunner.ts`, `src/tools/AgentTool/SubAgentRegistry.ts`, `TaskRunner.ts` |
 | 3.4 | Tests for message routing, drain timing, invalid targets | `__tests__/` |
 
 **Deliverable:** Parent can send follow-up instructions to running background sub-agents.
@@ -616,8 +621,8 @@ These are explicitly **out of scope** for this improvement phase:
 | Task | Description | Files |
 |------|-------------|-------|
 | 4.1 | Define config schema for `subAgentTypes` | `config/types.ts` |
-| 4.2 | Load and validate custom types in `registerSubAgentTool()` | `register.ts` |
-| 4.3 | Merge precedence: built-in < config < programmatic | `register.ts` |
+| 4.2 | Load and validate custom types in `registerSubAgentTool()` | `src/tools/AgentTool/register.ts` |
+| 4.3 | Merge precedence: built-in < config < programmatic | `src/tools/AgentTool/register.ts` |
 | 4.4 | Tests for config loading, override precedence, validation | `__tests__/` |
 
 **Deliverable:** Users can define custom sub-agent types in config without code changes.
@@ -637,12 +642,11 @@ These are explicitly **out of scope** for this improvement phase:
                     │   ┌─────────────────────────────┐ │
                     │   │ prepare()                    │ │
                     │   │  1. Resolve type config      │ │
-                    │   │  2. Check recursion depth    │ │
-                    │   │  3. Create restricted tools  │ │
-                    │   │  4. Create event router      │ │
-                    │   │  5. Resolve abort strategy   │ │
-                    │   │  6. Create child engine      │ │
-                    │   │  7. Register in registry     │ │
+                    │   │  2. Create restricted tools  │ │
+                    │   │  3. Create event router      │ │
+                    │   │  4. Resolve abort strategy   │ │
+                    │   │  5. Create child engine      │ │
+                    │   │  6. Register in registry     │ │
                     │   │  → return AgentContext        │ │
                     │   └──────────────┬──────────────┘ │
                     │                  │                 │
@@ -731,8 +735,8 @@ These are explicitly **out of scope** for this improvement phase:
         │<───────────────────────────────┤
         │                                │
         │  (via parentEngine             │
-        │   .submitOperation             │
-        │   AddToHistory)                │
+        │   .enqueueSyntheticUserTurn    │
+        │   -> pending input)            │
         │                               done
 
     All agents share: TaskRunner.runLoop() → TurnManager.runTurn()
@@ -749,12 +753,12 @@ These are explicitly **out of scope** for this improvement phase:
         │                                   │
     runAgent() [async generator]        SubAgentRunner.prepare()
     ├─ resolve agent identity           ├─ resolve type config
-    ├─ build system prompt              ├─ check depth
-    ├─ set up permissions               ├─ create restricted tools
-    ├─ resolve tools                    ├─ create event router
-    ├─ create abort controller          ├─ resolve abort strategy
-    ├─ load MCP servers/skills          ├─ create child engine
-    ├─ createSubagentContext()          └─ register in registry
+    ├─ build system prompt              ├─ create restricted tools
+    ├─ set up permissions               ├─ create event router
+    ├─ resolve tools                    ├─ resolve abort strategy
+    ├─ create abort controller          ├─ create child engine
+    ├─ load MCP servers/skills          └─ register in registry
+    ├─ createSubagentContext()
     │   └─ clone file state                 │
     │   └─ wrap AppState access         SubAgentRunner.execute()
     │   └─ null UI callbacks            ├─ initialize engine
@@ -813,13 +817,12 @@ Background execution (Phase 2) is a prerequisite for cross-agent messaging (Phas
 
 ### 6.4 Why refactor before adding features?
 
-Every improvement in section 2 (background execution, notifications, messaging, depth enforcement) adds code to `SubAgentRunner.run()`. Without restructuring:
+Every improvement in section 2 (background execution, notifications, messaging) adds code to `SubAgentRunner.run()`. Without restructuring:
 - Background execution adds a foreground/background branch with different abort strategies, detached promise tracking, and notification callbacks (~80 lines)
 - Cross-agent messaging adds a `drainPendingMessages` callback wired through engine config to TaskRunner (~40 lines)
-- Depth enforcement adds config propagation and pre-flight checks (~20 lines)
 - Signal propagation adds linked/unlinked abort controller creation (~30 lines)
 
-That's ~170 lines of new logic in a method that's already ~200 lines. The result would be a single 370-line method handling type resolution, depth checks, tool filtering, event routing, abort strategies, engine creation, registry management, foreground/background branching, notification injection, progress tracking, cleanup, and error handling.
+That's ~150 lines of new logic in a method that's already ~200 lines. The result would be a single 350-line method handling type resolution, tool filtering, event routing, abort strategies, engine creation, registry management, foreground/background branching, notification injection, progress tracking, cleanup, and error handling.
 
 Splitting into `prepare()` / `execute()` / `cleanup()` costs ~30 minutes of refactoring and makes every subsequent phase land cleanly in a clear location. It also means `IAgentRunner` is available as an interface if teammates are ever needed — no second refactoring required.
 
@@ -840,8 +843,8 @@ BrowserX's browser automation patterns don't need this — sub-agent tasks are s
 
 The rule: **make interface decisions that don't block teammates, but only build implementations for sub-agents.**
 
-### 6.7 Notification injection via AddToHistory
+### 6.7 Notification delivery via pending input
 
-Using the existing `AddToHistory` operation in `RepublicAgentEngine` to inject notifications keeps the change minimal. The notification becomes part of the conversation history, so the LLM sees it naturally on its next turn. No new event types or special handling needed in the Session/TurnManager layer.
+Using the parent's existing pending-input path is the minimal design that still actually delivers the notification into the next parent turn. Appending history via `AddToHistory` would make the transcript look correct, but it would not guarantee the parent task loop consumes the notification. Queueing synthetic user input keeps the change local to the engine/session boundary and matches how the task loop already accepts new user text.
 
-This is a deliberate simplification over Claudy's approach (process-global command queue with agentId-scoped drainage and priority ordering). Direct injection is sufficient when there is a single parent engine with a small number of sub-agents (max 3). If BrowserX later supports multiple independent parent agents or needs notification priority ordering, a queue-based delivery model should be considered.
+This is a deliberate simplification over Claudy's approach (process-global command queue with agentId-scoped drainage and priority ordering). Direct delivery into the parent session's pending-input path is sufficient when there is a single parent engine with a small number of sub-agents (max 3). If BrowserX later supports multiple independent parent agents or needs notification priority ordering, a queue-based delivery model should be considered.

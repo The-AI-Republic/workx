@@ -69,13 +69,14 @@ function assertFunctionTool(def: ToolDefinition) {
 
 /** Create a mock RepublicAgentEngine with a capturable tool handler. */
 function createMockEngine() {
-  let capturedHandler: ((params: Record<string, unknown>, context: unknown) => Promise<string>) | undefined;
-  let capturedDefinition: ToolDefinition | undefined;
+  const capturedHandlers = new Map<string, (params: Record<string, unknown>, context: unknown) => Promise<string>>();
+  const capturedDefinitions = new Map<string, ToolDefinition>();
 
   const mockRegister = vi.fn(
     async (definition: ToolDefinition, handler: (params: Record<string, unknown>, context: unknown) => Promise<string>) => {
-      capturedDefinition = definition;
-      capturedHandler = handler;
+      const name = definition.type === 'function' ? definition.function.name : 'unknown';
+      capturedDefinitions.set(name, definition);
+      capturedHandlers.set(name, handler);
     },
   );
 
@@ -86,7 +87,9 @@ function createMockEngine() {
   const engine = {
     engineId: 'engine-test-123',
     getToolRegistry: vi.fn(() => mockToolRegistry),
-    getConfig: vi.fn(() => ({})),
+    getConfig: vi.fn(() => ({
+      agentConfig: { getConfig: () => ({}) },
+    })),
     pushEvent: vi.fn(),
   } as any;
 
@@ -94,8 +97,12 @@ function createMockEngine() {
     engine,
     mockRegister,
     mockToolRegistry,
-    getCapturedHandler: () => capturedHandler,
-    getCapturedDefinition: () => capturedDefinition,
+    /** Get the sub_agent tool handler (first registered) */
+    getCapturedHandler: () => capturedHandlers.get('sub_agent'),
+    getCapturedDefinition: () => capturedDefinitions.get('sub_agent'),
+    /** Get handler by tool name */
+    getHandler: (name: string) => capturedHandlers.get(name),
+    getDefinition: (name: string) => capturedDefinitions.get(name),
   };
 }
 
@@ -194,18 +201,29 @@ describe('registerSubAgentTool', () => {
   });
 
   it('registers tool in engine\'s tool registry', async () => {
-    const { engine, mockRegister } = createMockEngine();
+    const { engine, mockRegister, getCapturedDefinition } = createMockEngine();
     await registerSubAgentTool(engine, { types: sampleTypes() });
 
     expect(engine.getToolRegistry).toHaveBeenCalled();
-    expect(mockRegister).toHaveBeenCalledTimes(1);
+    // 4 tools: sub_agent + list_sub_agents + cancel_sub_agent + send_message
+    expect(mockRegister).toHaveBeenCalledTimes(4);
 
-    // First arg should be a ToolDefinition
-    const registeredDef = mockRegister.mock.calls[0][0] as ToolDefinition;
+    // First registered tool should be sub_agent
+    const registeredDef = getCapturedDefinition()!;
+    expect(registeredDef).toBeDefined();
     expect(registeredDef.type).toBe('function');
     if (registeredDef.type === 'function') {
       expect(registeredDef.function.name).toBe('sub_agent');
     }
+  });
+
+  it('registers management tools (list, cancel, send_message)', async () => {
+    const { engine, getDefinition } = createMockEngine();
+    await registerSubAgentTool(engine, { types: sampleTypes() });
+
+    expect(getDefinition('list_sub_agents')).toBeDefined();
+    expect(getDefinition('cancel_sub_agent')).toBeDefined();
+    expect(getDefinition('send_message')).toBeDefined();
   });
 
   it('returns a SubAgentRunner instance', async () => {
@@ -284,6 +302,7 @@ describe('registerSubAgentTool', () => {
       type: 'alpha',
       prompt: 'do the thing',
       description: undefined,
+      background: false,
     });
   });
 
@@ -335,6 +354,7 @@ describe('registerSubAgentTool', () => {
       type: 'alpha',
       prompt: 'research this',
       description: 'quick research',
+      background: false,
     });
 
     // With wrong types for optional params — they should be coerced to undefined
@@ -352,6 +372,7 @@ describe('registerSubAgentTool', () => {
       type: 'beta',
       prompt: 'do stuff',
       description: undefined,
+      background: false,
     });
   });
 });

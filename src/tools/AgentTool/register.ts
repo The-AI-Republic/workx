@@ -5,6 +5,14 @@ import { SubAgentRunner } from './SubAgentRunner';
 import { SubAgentRegistry } from './SubAgentRegistry';
 import { buildSubAgentToolDefinition } from './SubAgentTool';
 import { BUILTIN_SUBAGENT_TYPES } from './builtinTypes';
+import {
+  buildListSubAgentsToolDefinition,
+  buildCancelSubAgentToolDefinition,
+  buildSendMessageToolDefinition,
+  createListSubAgentsHandler,
+  createCancelSubAgentHandler,
+  createSendMessageHandler,
+} from './managementTools';
 import type { SubAgentTypeConfig, SubAgentToolParams } from './types';
 
 export interface RegisterSubAgentOptions {
@@ -15,7 +23,7 @@ export interface RegisterSubAgentOptions {
 }
 
 /**
- * Register the sub_agent tool with a RepublicAgentEngine.
+ * Register the sub_agent tool (and management tools) with a RepublicAgentEngine.
  * This wires up the tool definition, runner, and registry.
  */
 export async function registerSubAgentTool(
@@ -27,19 +35,34 @@ export async function registerSubAgentTool(
     maxConcurrent: options.maxConcurrent ?? 3,
   });
 
+  // Phase 4: Load sub-agent types from config (optional)
+  let configTypes: SubAgentTypeConfig[] = [];
+  try {
+    const agentConfig = engine.getConfig().agentConfig;
+    const configData = agentConfig.getConfig();
+    const rawTypes = (configData as unknown as Record<string, unknown>).subAgentTypes;
+    if (Array.isArray(rawTypes)) {
+      configTypes = rawTypes.filter(validateSubAgentTypeConfig);
+    }
+  } catch {
+    // Config loading is optional
+  }
+
   const runner = new SubAgentRunner({
     parentEngine: engine,
     registry,
-    customTypes,
+    customTypes: [...configTypes, ...(customTypes ?? [])],
   });
 
-  // Build tool definition with all types (builtins + custom) to match
+  // Build tool definition with all types (builtins + config + custom) to match
   // what the runner actually accepts at runtime
-  const allTypes = mergeTypes(customTypes);
+  const allTypes = mergeTypes(configTypes, customTypes);
   const toolDefinition = buildSubAgentToolDefinition(allTypes);
 
-  // Register the tool in the engine's registry
+  // Register tools in the engine's registry
   const toolRegistry = engine.getToolRegistry();
+
+  // Register the main sub_agent tool
   await toolRegistry.register(
     toolDefinition,
     async (params: Record<string, unknown>, _context: unknown) => {
@@ -55,6 +78,7 @@ export async function registerSubAgentTool(
         type: params.type,
         prompt: params.prompt,
         description: typeof params.description === 'string' ? params.description : undefined,
+        background: params.background === true,
       };
 
       const result = await runner.run(toolParams);
@@ -62,17 +86,41 @@ export async function registerSubAgentTool(
     }
   );
 
+  // Register management tools (list, cancel, send_message)
+  await toolRegistry.register(
+    buildListSubAgentsToolDefinition(),
+    createListSubAgentsHandler(registry),
+  );
+
+  await toolRegistry.register(
+    buildCancelSubAgentToolDefinition(),
+    createCancelSubAgentHandler(registry),
+  );
+
+  await toolRegistry.register(
+    buildSendMessageToolDefinition(),
+    createSendMessageHandler(registry),
+  );
+
   return runner;
 }
 
 /**
- * Merge builtins with optional custom types.
- * Custom types with the same ID override builtins.
+ * Merge builtins with optional config types and custom types.
+ * Later layers override earlier ones (builtins < config < custom).
  */
-function mergeTypes(customTypes?: SubAgentTypeConfig[]): SubAgentTypeConfig[] {
+function mergeTypes(
+  configTypes?: SubAgentTypeConfig[],
+  customTypes?: SubAgentTypeConfig[],
+): SubAgentTypeConfig[] {
   const merged = new Map<string, SubAgentTypeConfig>();
   for (const t of BUILTIN_SUBAGENT_TYPES) {
     merged.set(t.id, t);
+  }
+  if (configTypes) {
+    for (const t of configTypes) {
+      merged.set(t.id, t);
+    }
   }
   if (customTypes) {
     for (const t of customTypes) {
@@ -80,4 +128,34 @@ function mergeTypes(customTypes?: SubAgentTypeConfig[]): SubAgentTypeConfig[] {
     }
   }
   return Array.from(merged.values());
+}
+
+/**
+ * Validate that an unknown value conforms to SubAgentTypeConfig.
+ * Logs warnings for invalid entries so users can diagnose config issues.
+ */
+function validateSubAgentTypeConfig(t: unknown): t is SubAgentTypeConfig {
+  if (!t || typeof t !== 'object') return false;
+  const obj = t as Record<string, unknown>;
+  if (typeof obj.id !== 'string' || !obj.id) {
+    console.warn('[registerSubAgentTool] Skipping config type: missing id');
+    return false;
+  }
+  if (typeof obj.systemPrompt !== 'string' || !obj.systemPrompt) {
+    console.warn(`[registerSubAgentTool] Skipping config type ${obj.id}: missing systemPrompt`);
+    return false;
+  }
+  if (typeof obj.name !== 'string') {
+    console.warn(`[registerSubAgentTool] Skipping config type ${obj.id}: missing name`);
+    return false;
+  }
+  if (typeof obj.description !== 'string') {
+    console.warn(`[registerSubAgentTool] Skipping config type ${obj.id}: missing description`);
+    return false;
+  }
+  if (obj.maxTurns !== undefined && (typeof obj.maxTurns !== 'number' || obj.maxTurns < 1)) {
+    console.warn(`[registerSubAgentTool] Skipping config type ${obj.id}: invalid maxTurns`);
+    return false;
+  }
+  return true;
 }
