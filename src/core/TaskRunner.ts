@@ -63,6 +63,8 @@ export interface TaskOptions {
   autoCompact?: boolean;
   /** Max turns before forced stop. Overrides the static MAX_TURNS (500) default. */
   maxTurns?: number;
+  /** Callback that drains cross-agent messages injected between turns */
+  drainPendingMessages?: () => string[];
 }
 
 interface LoopOutcome {
@@ -296,6 +298,17 @@ export class TaskRunner {
       }
 
       const pendingInput = (await this.session.getPendingInput()) as ResponseItem[];
+
+      // Drain cross-agent messages (injected between turns)
+      if (this.options.drainPendingMessages) {
+        const messages = this.options.drainPendingMessages();
+        if (messages.length > 0) {
+          this.session.addPendingInput(
+            messages.map(msg => ({ type: 'text' as const, text: msg }))
+          );
+        }
+      }
+
       let turnInput = await this.buildNormalTurnInput(pendingInput);
 
       // Pre-request compaction check: estimate tokens and compact if needed

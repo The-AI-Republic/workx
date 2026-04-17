@@ -64,6 +64,9 @@ export interface SubAgentToolParams {
 
   /** AbortSignal for cancellation */
   signal?: AbortSignal;
+
+  /** Whether to run this sub-agent in the background */
+  background?: boolean;
 }
 
 /**
@@ -94,4 +97,80 @@ export interface SubAgentResult {
 
   /** Error message if stopReason is 'error' */
   error?: string;
+}
+
+/**
+ * Context for an agent execution pipeline.
+ * Created by prepare(), consumed by execute() and cleanup().
+ */
+export interface AgentContext {
+  runId: string;
+  engine: import('@/core/engine/RepublicAgentEngine').RepublicAgentEngine;
+  abortController: AbortController;
+  registry: import('./SubAgentRegistry').SubAgentRegistry;
+  typeConfig: SubAgentTypeConfig;
+  parentEngine: import('@/core/engine/RepublicAgentEngine').RepublicAgentEngine;
+  background: boolean;
+  startTime: number;
+  /** Cleanup function for event listeners */
+  unsubscribe?: () => void;
+}
+
+/**
+ * Result from agent execution (internal, maps to SubAgentResult for tool output).
+ */
+export interface AgentRunResult {
+  success: boolean;
+  response: string;
+  turnCount: number;
+  tokenUsage?: { input: number; output: number; total: number };
+  stopReason: 'completed' | 'max_turns' | 'error' | 'cancelled' | 'interrupted';
+  error?: string;
+}
+
+/**
+ * Agent execution pipeline interface.
+ * Sub-agents implement this now; teammates could implement it later.
+ */
+export interface IAgentRunner {
+  prepare(params: SubAgentToolParams): Promise<AgentContext>;
+  execute(context: AgentContext, params: SubAgentToolParams): Promise<AgentRunResult>;
+  cleanup(context: AgentContext): Promise<void>;
+}
+
+/** Token usage for a single sub-agent run */
+export interface SubAgentUsageEntry {
+  runId: string;
+  type: string;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+/** Aggregate token usage across sub-agent runs */
+export interface SubAgentUsageSummary {
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalTokens: number;
+  byAgent: SubAgentUsageEntry[];
+}
+
+/** Notification from a completed background sub-agent */
+export interface TaskNotification {
+  runId: string;
+  type: string;
+  description: string;
+  status: 'completed' | 'failed' | 'cancelled';
+  result?: string;
+  tokenUsage?: { input: number; output: number; total: number };
+  turnCount: number;
+  durationMs: number;
+  error?: string;
+}
+
+/** Result returned immediately when a background sub-agent is launched */
+export interface BackgroundSubAgentResult {
+  status: 'launched';
+  runId: string;
+  type: string;
+  description: string;
 }

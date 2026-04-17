@@ -140,16 +140,16 @@ describe('buildSubAgentToolDefinition', () => {
     expect(params.required).toEqual(['type', 'prompt']);
   });
 
-  it('includes all parameter properties (type, prompt, description)', () => {
+  it('includes all parameter properties (type, prompt, description, background)', () => {
     const fn = assertFunctionTool(buildSubAgentToolDefinition(sampleTypes()));
     const params = fn.parameters as {
       type: 'object';
       properties: Record<string, any>;
     };
     expect(Object.keys(params.properties)).toEqual(
-      expect.arrayContaining(['type', 'prompt', 'description']),
+      expect.arrayContaining(['type', 'prompt', 'description', 'background']),
     );
-    expect(Object.keys(params.properties)).toHaveLength(3);
+    expect(Object.keys(params.properties)).toHaveLength(4);
   });
 
   it('works with empty types array', () => {

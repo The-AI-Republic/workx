@@ -89,6 +89,23 @@ export interface RepublicAgentEngineConfig {
   parentEngineId?: string;
 
   /**
+   * Current nesting depth of this engine in the sub-agent hierarchy.
+   * 0 = top-level agent. Incremented by createChildEngine().
+   */
+  depth?: number;
+
+  /**
+   * Maximum allowed sub-agent nesting depth. Default: 3.
+   */
+  maxDepth?: number;
+
+  /**
+   * Callback that drains cross-agent messages injected between turns.
+   * Called by TaskRunner before building each turn's input.
+   */
+  drainPendingMessages?: () => string[];
+
+  /**
    * Initial conversation history (for session recovery).
    */
   initialHistory?: ConversationEntry[];
@@ -136,6 +153,9 @@ export interface RunOptions {
 
   /** Timeout in milliseconds for awaitable mode. Default: 600000 (10 minutes) */
   timeoutMs?: number;
+
+  /** Progress callback invoked after each turn completes */
+  onProgress?: (info: { type: 'turn_complete'; turnNumber: number }) => void;
 }
 
 export interface ExecutionContext {

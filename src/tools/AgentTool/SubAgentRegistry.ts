@@ -1,6 +1,7 @@
 // File: src/tools/AgentTool/SubAgentRegistry.ts
 
 import type { RepublicAgentEngine } from '@/core/engine/RepublicAgentEngine';
+import type { SubAgentUsageEntry, SubAgentUsageSummary } from './types';
 
 /**
  * Tracks an active sub-agent within a parent session
@@ -29,6 +30,8 @@ export interface ActiveSubAgent {
 export class SubAgentRegistry {
   private activeAgents = new Map<string, ActiveSubAgent>();
   private readonly maxConcurrent: number;
+  private usageRecords: SubAgentUsageEntry[] = [];
+  private pendingMessages = new Map<string, string[]>();
 
   constructor(options: { maxConcurrent?: number } = {}) {
     this.maxConcurrent = options.maxConcurrent ?? 3;
@@ -88,5 +91,59 @@ export class SubAgentRegistry {
     if (agent) {
       agent.status = status;
     }
+  }
+
+  /**
+   * Record token usage for a sub-agent run.
+   */
+  recordUsage(entry: SubAgentUsageEntry): void {
+    this.usageRecords.push(entry);
+  }
+
+  /**
+   * Get aggregated token usage across all recorded sub-agent runs.
+   */
+  getUsageSummary(): SubAgentUsageSummary {
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+
+    for (const entry of this.usageRecords) {
+      totalInputTokens += entry.inputTokens;
+      totalOutputTokens += entry.outputTokens;
+    }
+
+    return {
+      totalInputTokens,
+      totalOutputTokens,
+      totalTokens: totalInputTokens + totalOutputTokens,
+      byAgent: [...this.usageRecords],
+    };
+  }
+
+  /**
+   * Queue a cross-agent message for a running sub-agent.
+   * The message will be drained and injected into the sub-agent's next turn.
+   */
+  queueMessage(runId: string, message: string): void {
+    const agent = this.activeAgents.get(runId);
+    if (!agent) {
+      throw new Error(`No sub-agent found with runId: ${runId}`);
+    }
+    if (agent.status !== 'running') {
+      throw new Error(`Sub-agent ${runId} is not running (status: ${agent.status})`);
+    }
+    const queue = this.pendingMessages.get(runId) ?? [];
+    queue.push(message);
+    this.pendingMessages.set(runId, queue);
+  }
+
+  /**
+   * Drain and return all pending messages for a sub-agent.
+   * Clears the queue after draining.
+   */
+  drainMessages(runId: string): string[] {
+    const messages = this.pendingMessages.get(runId) ?? [];
+    this.pendingMessages.delete(runId);
+    return messages;
   }
 }

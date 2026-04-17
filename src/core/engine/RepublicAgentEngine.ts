@@ -270,6 +270,36 @@ export class RepublicAgentEngine {
   }
 
   /**
+   * Get the current nesting depth of this engine in the sub-agent hierarchy.
+   * 0 = top-level agent.
+   */
+  getDepth(): number {
+    return this.config.depth ?? 0;
+  }
+
+  /**
+   * Get the maximum allowed sub-agent nesting depth.
+   */
+  getMaxDepth(): number {
+    return this.config.maxDepth ?? 3;
+  }
+
+  /**
+   * Enqueue a synthetic user turn message (e.g. notification from a background sub-agent).
+   * Injects text into the session's pending input and emits a SubAgentNotificationQueued event.
+   */
+  enqueueSyntheticUserTurn(text: string): void {
+    this.session?.addPendingInput([{ type: 'text', text }]);
+    this.pushEvent({
+      id: crypto.randomUUID(),
+      msg: {
+        type: 'SubAgentNotificationQueued',
+        data: { text },
+      },
+    });
+  }
+
+  /**
    * Create a child engine for sub-agent execution.
    * Shares parent's model client factory and agent config.
    * Caller provides restricted tool registry, event router, etc.
@@ -283,6 +313,9 @@ export class RepublicAgentEngine {
     approvalGate?: RepublicAgentEngineConfig['approvalGate'];
     browserContext?: RepublicAgentEngineConfig['browserContext'];
     eventRouter?: RepublicAgentEngineConfig['eventRouter'];
+    depth?: number;
+    maxDepth?: number;
+    drainPendingMessages?: () => string[];
   }): RepublicAgentEngine {
     return new RepublicAgentEngine({
       agentConfig: this.config.agentConfig,
@@ -297,6 +330,9 @@ export class RepublicAgentEngine {
       browserContext: childConfig.browserContext,
       eventRouter: childConfig.eventRouter,
       parentEngineId: this.engineId,
+      depth: childConfig.depth ?? (this.getDepth() + 1),
+      maxDepth: childConfig.maxDepth ?? this.getMaxDepth(),
+      drainPendingMessages: childConfig.drainPendingMessages,
     });
   }
 
