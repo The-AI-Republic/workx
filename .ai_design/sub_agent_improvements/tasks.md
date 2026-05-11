@@ -3,7 +3,25 @@
 > Implementation tasks for the sub-agent improvements.
 > See [design.md](./design.md) for full design details.
 
-## Overview
+## Status as of 2026-05-11
+
+Legend: ✅ done · 🟡 partial · ❌ not started · ⛔ non-goal.
+
+| Phase | Description | Status | Notes |
+|-------|-------------|--------|-------|
+| Phase 0 | Structural Refactoring | ✅ 6/6 + 🟡 tests | Pipeline split, child engine + drain hook + onProgress all landed |
+| Phase 1 | Safety & Correctness | ✅ 3/3 + 🟡 tests | Depth, cancellation, usage retention all landed |
+| Phase 2 | Background Execution | 🟡 2/5 (param + tools only) | **`SubAgentRunner.execute()` still always `await`s; notification injection never fires** |
+| Phase 3 | Cross-Agent Messaging | ✅ 3/4 (plumbing) | `send_message` + queue + drain wired; end-to-end test blocked on Phase 2 |
+| Phase 4 | Custom Types from Config | ✅ 3/3 + 🟡 tests | Config schema, load, merge precedence all landed |
+
+**Remaining critical path:** `2.2 → 2.4 → 2.5 → 3.4 → 1.4 / 0.6 / 4.4`
+
+Land 2.2 + 2.4 together — they are the single change that turns the background path from inert plumbing into a working feature. Everything else is test backfill or non-goal.
+
+---
+
+## Original Overview (preserved for reference)
 
 | Phase | Description | Tasks | Blocked By |
 |-------|-------------|-------|------------|
@@ -13,7 +31,7 @@
 | Phase 3 | Cross-Agent Messaging | 3.1 - 3.4 | Phase 2 |
 | Phase 4 | Custom Types from Config | 4.1 - 4.4 | Phase 0 |
 
-**Critical Path:** `0.1 → 0.2 → 0.3 → 1.1 → 1.2 → 2.1 → 2.2 → 2.4 → 3.1 → 3.3`
+**Original critical path:** `0.1 → 0.2 → 0.3 → 1.1 → 1.2 → 2.1 → 2.2 → 2.4 → 3.1 → 3.3`
 
 ---
 
@@ -21,12 +39,12 @@
 
 | Task | Status | Description | Blocked By |
 |------|--------|-------------|------------|
-| 0.1 | ⬜ | Move sub-agent module to `src/tools/AgentTool/` | — |
-| 0.2 | ⬜ | Define `IAgentRunner`/`AgentContext` types and split `SubAgentRunner` into `prepare/execute/cleanup` | 0.1 |
-| 0.3 | ⬜ | Extend engine config for child metadata, lifecycle hooks, drain callbacks | 0.2 |
-| 0.4 | ⬜ | Add `drainPendingMessages` hook point to `TaskRunner.runLoop()` | 0.3 |
-| 0.5 | ⬜ | Add optional `onProgress` callback for sub-agent observability | 0.3 |
-| 0.6 | ⬜ | Phase 0 regression tests | 0.2, 0.3, 0.4, 0.5 |
+| 0.1 | ✅ | Move sub-agent module to `src/tools/AgentTool/` | — |
+| 0.2 | ✅ | Define `IAgentRunner`/`AgentContext` types and split `SubAgentRunner` into `prepare/execute/cleanup` | 0.1 |
+| 0.3 | ✅ | Extend engine config for child metadata, lifecycle hooks, drain callbacks | 0.2 |
+| 0.4 | ✅ | Add `drainPendingMessages` hook point to `TaskRunner.runLoop()` | 0.3 |
+| 0.5 | ✅ | Add optional `onProgress` callback for sub-agent observability | 0.3 |
+| 0.6 | 🟡 | Phase 0 regression tests — add explicit drain-noop / onProgress-noop assertions | 0.2, 0.3, 0.4, 0.5 |
 
 ### 0.1 Move Module
 
@@ -81,10 +99,10 @@
 
 | Task | Status | Description | Blocked By |
 |------|--------|-------------|------------|
-| 1.1 | ⬜ | Recursion depth enforcement | — |
-| 1.2 | ⬜ | Parent-lifecycle cancellation wiring | — |
-| 1.3 | ⬜ | Retained token usage summaries | — |
-| 1.4 | ⬜ | Phase 1 tests | 1.1, 1.2, 1.3 |
+| 1.1 | ✅ | Recursion depth enforcement | — |
+| 1.2 | ✅ | Parent-lifecycle cancellation wiring | — |
+| 1.3 | ✅ | Retained token usage summaries | — |
+| 1.4 | 🟡 | Phase 1 tests — add the named tests below | 1.1, 1.2, 1.3 |
 
 ### 1.1 Recursion Depth Enforcement
 
@@ -129,15 +147,17 @@
 
 ---
 
-## Phase 2: Background Execution
+## Phase 2: Background Execution — THE BLOCKING GAP
 
 | Task | Status | Description | Blocked By |
 |------|--------|-------------|------------|
-| 2.1 | ⬜ | Add `background` flag to SubAgentToolParams | 1.1, 1.2 |
-| 2.2 | ⬜ | Background execution in SubAgentRunner | 2.1 |
-| 2.3 | ⬜ | Retained run summaries and management tools | 2.2 |
-| 2.4 | ⬜ | Task notification pipeline | 2.2 |
-| 2.5 | ⬜ | Phase 2 tests | 2.2, 2.3, 2.4 |
+| 2.1 | ✅ | Add `background` flag to SubAgentToolParams | 1.1, 1.2 |
+| 2.2 | ❌ | **Background execution in SubAgentRunner — branch on `context.background`, detach, return `BackgroundSubAgentResult`** | 2.1 |
+| 2.3 | ✅ | Retained run summaries and management tools | 2.2 |
+| 2.4 | ❌ | **Task notification pipeline — call `parentEngine.enqueueSyntheticUserTurn()` from detached-promise handlers with `<task-notification>` XML** | 2.2 |
+| 2.5 | ❌ | Phase 2 tests | 2.2, 2.3, 2.4 |
+
+**2.2 and 2.4 land together.** Until both ship, the `background` parameter is parsed and stored but never changes execution semantics; `enqueueSyntheticUserTurn()` exists on the engine but is never invoked; the management tools and pending-message queue have nothing to observe. See `design.md` §1.6 step 1 for the precise code shape.
 
 ### 2.1 Add `background` Flag
 
@@ -209,10 +229,10 @@
 
 | Task | Status | Description | Blocked By |
 |------|--------|-------------|------------|
-| 3.1 | ⬜ | Pending message queue in SubAgentRegistry | 2.2 |
-| 3.2 | ⬜ | `send_message` tool | 3.1 |
-| 3.3 | ⬜ | Wire drain hook (from 0.4) to SubAgentRegistry for child pending-input delivery | 3.1 |
-| 3.4 | ⬜ | Phase 3 tests | 3.2, 3.3 |
+| 3.1 | ✅ | Pending message queue in SubAgentRegistry | 2.2 |
+| 3.2 | ✅ | `send_message` tool | 3.1 |
+| 3.3 | ✅ | Wire drain hook (from 0.4) to SubAgentRegistry for child pending-input delivery | 3.1 |
+| 3.4 | ❌ | Phase 3 tests — only meaningful once background runs exist | 3.2, 3.3, 2.2 |
 
 ### 3.1 Pending Message Queue
 
@@ -257,10 +277,10 @@
 
 | Task | Status | Description | Blocked By |
 |------|--------|-------------|------------|
-| 4.1 | ⬜ | Config schema for `subAgentTypes` | — |
-| 4.2 | ⬜ | Load and validate in registerSubAgentTool() | 4.1 |
-| 4.3 | ⬜ | Merge precedence logic | 4.2 |
-| 4.4 | ⬜ | Phase 4 tests | 4.2, 4.3 |
+| 4.1 | ✅ | Config schema for `subAgentTypes` | — |
+| 4.2 | ✅ | Load and validate in registerSubAgentTool() | 4.1 |
+| 4.3 | ✅ | Merge precedence logic | 4.2 |
+| 4.4 | 🟡 | Phase 4 tests | 4.2, 4.3 |
 
 ### 4.1 Config Schema
 
@@ -294,3 +314,128 @@
 - Test: config type overrides built-in type with same id
 - Test: programmatic customTypes overrides config type
 - Test: invalid config entry is skipped with warning
+
+---
+
+## Appendix A — Concrete shape for the 2.2 + 2.4 change
+
+This appendix is what an implementer needs to land the only remaining functional gap. See `design.md` §1.5 and §1.6 for context.
+
+**Files:** `src/tools/AgentTool/SubAgentRunner.ts`, `src/tools/AgentTool/types.ts`, `src/tools/AgentTool/__tests__/`.
+
+### A.1 Branch `run()` on `context.background`
+
+Current `run()` always does `await execute → cleanup` in a `try/finally`. Change it so background runs detach. Keep foreground behavior byte-identical.
+
+```ts
+async run(params: SubAgentToolParams): Promise<SubAgentResult | BackgroundSubAgentResult> {
+  // ... existing type resolution + early-return error cases unchanged ...
+
+  let context: AgentContext;
+  try {
+    context = await this.prepare(params, typeConfig);
+  } catch (error) { /* unchanged */ }
+
+  if (!context.background) {
+    try {
+      const result = await this.execute(context, params);
+      return this.toSubAgentResult(context, result);
+    } finally {
+      await this.cleanup(context);
+    }
+  }
+
+  // Background: detach. Do NOT await execute(); do NOT call cleanup() here.
+  void this.execute(context, params)
+    .then((result) =>
+      context.parentEngine.enqueueSyntheticUserTurn(
+        formatTaskNotification(context, params, result),
+      ),
+    )
+    .catch((error) =>
+      context.parentEngine.enqueueSyntheticUserTurn(
+        formatTaskNotification(context, params, {
+          success: false,
+          response: '',
+          turnCount: 0,
+          stopReason: 'error',
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      ),
+    )
+    .finally(() => this.cleanup(context));
+
+  return {
+    status: 'launched',
+    runId: context.runId,
+    type: params.type,
+    description: params.description ?? '',
+  };
+}
+```
+
+### A.2 Add `BackgroundSubAgentResult`
+
+```ts
+// src/tools/AgentTool/types.ts
+export interface BackgroundSubAgentResult {
+  status: 'launched';
+  runId: string;
+  type: string;
+  description: string;
+}
+```
+
+The `sub_agent` tool's result type becomes a discriminated union: foreground returns `SubAgentResult` (existing); background returns `BackgroundSubAgentResult`. The parent LLM should be able to distinguish.
+
+### A.3 Notification formatter
+
+```ts
+function formatTaskNotification(
+  ctx: AgentContext,
+  params: SubAgentToolParams,
+  result: AgentRunResult,
+): string {
+  const durationMs = Date.now() - ctx.startTime;
+  return [
+    '<task-notification>',
+    `  <run-id>${ctx.runId}</run-id>`,
+    `  <type>${params.type}</type>`,
+    `  <status>${result.success ? 'completed' : result.stopReason === 'cancelled' ? 'cancelled' : 'failed'}</status>`,
+    `  <summary>${escapeXml(params.description ?? params.type)}</summary>`,
+    result.response ? `  <result>${escapeXml(result.response)}</result>` : '',
+    result.error ? `  <error>${escapeXml(result.error)}</error>` : '',
+    '  <usage>',
+    result.tokenUsage ? `    <total_tokens>${result.tokenUsage.total}</total_tokens>` : '',
+    `    <turn_count>${result.turnCount}</turn_count>`,
+    `    <duration_ms>${durationMs}</duration_ms>`,
+    '  </usage>',
+    '</task-notification>',
+  ].filter(Boolean).join('\n');
+}
+```
+
+Match the XML shape to design.md §2.2. Keep escaping minimal but correct (`&`, `<`, `>` at least).
+
+### A.4 Tests to land alongside (covers Phase 2.5 + Phase 3.4)
+
+`__tests__/SubAgentRunner.background.test.ts`:
+- background=true returns `{ status: 'launched', runId, ... }` synchronously
+- detached run still records token usage in registry on completion
+- success path: parent's pending input contains `<task-notification>` with `<status>completed</status>` and token usage
+- failure path: notification has `<status>failed</status>` and `<error>` block
+- cancellation path: `cancel_sub_agent` aborts the detached run; notification has `<status>cancelled</status>`
+- foreground path is unchanged (synchronous result, no notification emitted)
+- `cleanup()` runs exactly once for background (in `.finally`), not twice
+
+`__tests__/SubAgentRunner.messaging.test.ts` (Phase 3 end-to-end):
+- launch background agent → `send_message(runId, "X")` → assert that the child's next turn sees "X" as user input (via the drain hook → pending input path)
+- `send_message` to non-existent runId returns error
+- `send_message` to completed agent returns error
+- multiple queued messages are joined into one user message at the next drain boundary
+
+### A.5 Small tightening — `approvalPolicy` override for background
+
+The audit flagged this as 🟡. In `SubAgentRunner.prepare()`, where the approval policy is resolved for background runs, ensure that a type with `approvalPolicy: 'inherit'` is **forced** to `'never'` when `background: true`, not silently inherited from the parent. Add a one-liner test that asserts a background `worker` (which inherits by default) ends up with `'never'`.
+
+This is the audit's only finding that survives independently of the 2.2 + 2.4 work.
