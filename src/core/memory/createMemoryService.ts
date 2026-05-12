@@ -1,10 +1,11 @@
 /**
- * Factory to create and initialize the simplified file-based MemoryService.
+ * Factory to create and initialize the file-based MemoryService.
  * Wires together: DailyMemoryStore, MemorySearcher, CoreMemoryManager.
  *
- * No embedding provider, no sqlite-vec, no background extraction.
- * The main LLM controls memory via save_memory / search_memory / forget_memory tools.
- * A cheap LLM (gpt-4o-mini) handles keyword generation and relevance filtering.
+ * Storage is markdown files under `~/.airepublic-pi/memory/`. The main LLM
+ * controls memory via save_memory / search_memory / forget_memory tools.
+ * A cheap LLM (gpt-4o-mini when an OpenAI key is available) handles keyword
+ * generation, relevance filtering, and core-memory merges.
  */
 
 import { DailyMemoryStore } from './DailyMemoryStore';
@@ -15,25 +16,6 @@ import { createMemoryFileSystem } from './MemoryFileSystem';
 import { DEFAULT_MEMORY_CONFIG, type LLMCaller, type MemoryConfig } from './types';
 
 declare const __BUILD_MODE__: 'desktop' | 'server' | 'extension';
-
-// ---------------------------------------------------------------------------
-// Legacy token getter stubs -- retained so existing bootstrap code
-// (DesktopAgentBootstrap) does not break. No-ops in the file-based system.
-// ---------------------------------------------------------------------------
-
-/**
- * @deprecated No longer needed. Embeddings are not used by the file-based memory system.
- */
-export function setMemoryTokenGetter(_getter: () => Promise<string | null>): void {
-  // no-op
-}
-
-/**
- * @deprecated No longer needed. Embeddings are not used by the file-based memory system.
- */
-export function getMemoryTokenGetter(): (() => Promise<string | null>) | null {
-  return null;
-}
 
 export interface MemoryServiceInit {
   config?: Partial<MemoryConfig>;

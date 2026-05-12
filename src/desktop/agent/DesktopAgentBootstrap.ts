@@ -730,10 +730,6 @@ export class DesktopAgentBootstrap {
         const tokenGetter = () => authService.getAccessToken();
         await this.setAuthMode(false, LLM_API_URL, tokenGetter);
 
-        // Register token getter for memory backend routing (embeddings)
-        const { setMemoryTokenGetter } = await import('@/core/memory/createMemoryService');
-        setMemoryTokenGetter(tokenGetter);
-
         // Persist preference if not already set
         const agentConfig = config.getConfig();
         if (agentConfig.preferences?.useOwnApiKey === undefined) {
@@ -812,8 +808,8 @@ export class DesktopAgentBootstrap {
         const factory = session.agent.getModelClientFactory();
         factory.setAuthManager(authManager);
 
-        // Close existing memory service so it doesn't attempt embeddings with
-        // stale credentials. A fresh service will be created on the next session.
+        // Close existing memory service so it doesn't keep using stale credentials
+        // for its cheap-LLM caller. A fresh service will be created on the next session.
         const existingMemory = session.agent.getSession()?.getMemoryService?.();
         if (existingMemory) {
           existingMemory.close().catch(() => {});
@@ -825,18 +821,6 @@ export class DesktopAgentBootstrap {
         await session.agent.refreshModelClient();
       }
     }
-
-    // Register/clear memory token getter for backend-routed embeddings
-    import('@/core/memory/createMemoryService').then(({ setMemoryTokenGetter }) => {
-      if (shouldUseBackend && tokenGetter) {
-        setMemoryTokenGetter(tokenGetter);
-      } else {
-        // Clear stale token getter when switching away from backend routing
-        setMemoryTokenGetter(() => Promise.resolve(null));
-      }
-    }).catch(() => {
-      // Memory module may not be available in all builds
-    });
   }
 
   /**

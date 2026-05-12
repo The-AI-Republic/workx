@@ -82,7 +82,6 @@
     "@tauri-apps/plugin-shell": "^2.3.5",
     "@tauri-apps/plugin-updater": "^2",
     "@types/eventsource": "^1.1.15",
-    "build": "^0.1.4",
     "chart.js": "^4.5.1",
     "chrome-devtools-mcp": "^0.17.0",
     "dom-accessibility-api": "^0.7.0",
@@ -100,7 +99,6 @@
   },
   "optionalDependencies": {
     "better-sqlite3": "^11.7.0",
-    "dotenv": "^16.4.7",
-    "sqlite-vec": "^0.1.7-alpha.2"
+    "dotenv": "^16.4.7"
   }
 }

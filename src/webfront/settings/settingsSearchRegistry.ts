@@ -103,10 +103,10 @@ export const settingsRegistry: SettingsSearchItem[] = [
   {
     id: 'memory.enabled',
     labelKey: 'Agent Memory',
-    descriptionKey: 'Remember facts across conversations. Requires an OpenAI API key for embeddings.',
+    descriptionKey: 'Remember facts across conversations. Works with any LLM provider.',
     section: SettingsSection.MEMORY,
     sectionLabelKey: 'Memory',
-    keywords: ['memory', 'remember', 'facts', 'long-term', 'embedding', 'openai'],
+    keywords: ['memory', 'remember', 'facts', 'long-term', 'preferences'],
     navigationTarget: 'memory',
     elementId: 'memoryEnabled',
     conditional: { type: 'platform', value: 'desktop' },
