@@ -162,7 +162,7 @@ export class DailyMemoryStore {
   /** Remove entries matching specific text from daily files */
   async removeEntries(textsToRemove: string[]): Promise<number> {
     const task = this.writeQueue.then(() => this._doRemoveEntries(textsToRemove));
-    this.writeQueue = task.catch(() => { /* keep chain alive */ });
+    this.writeQueue = task.then(() => undefined, () => { /* keep chain alive */ });
     return task;
   }
 
