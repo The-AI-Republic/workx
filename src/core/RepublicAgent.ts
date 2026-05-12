@@ -299,13 +299,18 @@ export class RepublicAgent {
       const taskContext = new TurnContext(modelClient, {});
       const userInstructions = await loadUserInstructions();
       taskContext.setUserInstructions(userInstructions);
-      const baseInstructions = await loadPrompt();
-      taskContext.setBaseInstructions(baseInstructions);
 
-      // Update session with new turn context
+      // Update session with new turn context first so the memory service has
+      // a target to attach to.
       this.session.setTurnContext(taskContext);
+
+      // Refresh memory state (service + tool registry + prompt extension) BEFORE
+      // loading the prompt, so the freshly composed prompt reflects the new state.
       await this.session.refreshMemoryService(this.config);
       await this.syncMemoryTools();
+
+      const baseInstructions = await loadPrompt();
+      taskContext.setBaseInstructions(baseInstructions);
     } catch (error) {
       console.error('[RepublicAgent] Failed to refresh model client:', error);
     }
@@ -330,10 +335,15 @@ export class RepublicAgent {
     // Reload instructions so prompt-relevant config changes take effect
     const userInstructions = await loadUserInstructions();
     turnCtx.setUserInstructions(userInstructions);
-    const baseInstructions = await loadPrompt();
-    turnCtx.setBaseInstructions(baseInstructions);
+
+    // Refresh memory state (service + tool registry + prompt extension) BEFORE
+    // composing the prompt, otherwise enabling memory yields a prompt without
+    // the memory extension and disabling it leaves stale memory text behind.
     await this.session.refreshMemoryService(this.config);
     await this.syncMemoryTools();
+
+    const baseInstructions = await loadPrompt();
+    turnCtx.setBaseInstructions(baseInstructions);
   }
 
   /**

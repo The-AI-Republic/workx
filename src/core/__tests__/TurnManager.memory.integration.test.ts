@@ -1,6 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { TurnManager } from '../TurnManager';
 
+// Stub PromptLoader so the test does not depend on the bundled default prompt
+// and we can prove TurnManager pulls fresh base instructions per turn.
+vi.mock('../PromptLoader', () => ({
+    loadPrompt: vi.fn(),
+    loadUserInstructions: vi.fn().mockResolvedValue('User instructions.'),
+}));
+
+import { loadPrompt } from '../PromptLoader';
+
 describe('TurnManager Memory Integration', () => {
     let mockTurnContext: any;
     let mockSession: any;
@@ -8,13 +17,16 @@ describe('TurnManager Memory Integration', () => {
     let turnManager: TurnManager;
 
     beforeEach(() => {
+        (loadPrompt as any).mockReset();
+        (loadPrompt as any).mockResolvedValue('Base instructions.');
+
         mockModelClient = {
             stream: vi.fn(),
             getSelectedModelKey: vi.fn().mockReturnValue('openai:test-model'),
         };
 
         mockTurnContext = {
-            getBaseInstructions: vi.fn().mockReturnValue('Base instructions.'),
+            getBaseInstructions: vi.fn().mockReturnValue('STALE INSTRUCTIONS'),
             getUserInstructions: vi.fn().mockReturnValue('User instructions.'),
             getModelClient: vi.fn().mockReturnValue(mockModelClient),
             getTools: vi.fn().mockReturnValue([]),
@@ -40,23 +52,37 @@ describe('TurnManager Memory Integration', () => {
         vi.clearAllMocks();
     });
 
-    // Note: Core memory injection is now handled via PromptLoader prompt extensions
-    // registered by RepublicAgent.initialize(), not by TurnManager directly.
-    // Memory tools (save_memory, search_memory, forget_memory) are registered in
-    // the ToolRegistry by RepublicAgent.initialize() and flow through the standard
-    // tool execution path.
+    // Note: Core memory injection is handled by PromptLoader prompt extensions
+    // (registered by RepublicAgent). TurnManager reloads the prompt per turn so
+    // newly saved / forgotten core memories take effect immediately.
 
-    it('does not inject memory context directly (handled by PromptLoader)', async () => {
+    it('reloads the system prompt per turn so memory injection is fresh', async () => {
         mockModelClient.stream.mockResolvedValue((async function* () {
             yield { type: 'Completed', tokenUsage: { inputTokens: 10, outputTokens: 10 } };
         })());
 
         await turnManager.runTurn([]);
 
-        // TurnManager passes base instructions as-is — no memory injection
+        expect(loadPrompt).toHaveBeenCalledTimes(1);
         expect(mockModelClient.stream).toHaveBeenCalledWith(
             expect.objectContaining({
+                // Comes from loadPrompt() — the cached value on TurnContext is ignored.
                 base_instructions_override: 'Base instructions.',
+            })
+        );
+    });
+
+    it('falls back to TurnContext.getBaseInstructions when loadPrompt throws', async () => {
+        (loadPrompt as any).mockRejectedValueOnce(new Error('compose failure'));
+        mockModelClient.stream.mockResolvedValue((async function* () {
+            yield { type: 'Completed', tokenUsage: { inputTokens: 10, outputTokens: 10 } };
+        })());
+
+        await turnManager.runTurn([]);
+
+        expect(mockModelClient.stream).toHaveBeenCalledWith(
+            expect.objectContaining({
+                base_instructions_override: 'STALE INSTRUCTIONS',
             })
         );
     });

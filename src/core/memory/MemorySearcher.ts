@@ -100,7 +100,9 @@ export class MemorySearcher {
           category: candidates[p.index].category,
           sourceDate: candidates[p.index].sourceDate,
           relevance: Math.min(1, Math.max(0, p.relevance)),
-        }));
+        }))
+        // Defend against an LLM that ignores the limit in the prompt.
+        .slice(0, limit);
     } catch (err) {
       console.warn('[MemorySearcher] Relevance filtering failed, returning empty results:', err);
       return [];

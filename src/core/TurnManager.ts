@@ -122,8 +122,17 @@ export class TurnManager {
     // Build tools list from turn context
     const tools = await this.buildToolsFromContext();
 
-    // Memory context is injected via PromptLoader prompt extension (registered in RepublicAgent).
-    const baseInstructions = this.turnContext.getBaseInstructions();
+    // Reload the system prompt per turn so dynamic prompt extensions (notably the
+    // memory extension that injects core-memory.md) reflect the latest state.
+    // loadPrompt() is in-memory templating with no I/O, so the cost is negligible.
+    // Falls back to the value cached on TurnContext if reload throws.
+    let baseInstructions: string | undefined;
+    try {
+      baseInstructions = await loadPrompt();
+    } catch (err) {
+      console.warn('[TurnManager] loadPrompt() failed, reusing cached base instructions:', err);
+      baseInstructions = this.turnContext.getBaseInstructions();
+    }
 
     const prompt: ModelPrompt = {
       input,

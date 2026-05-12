@@ -261,7 +261,7 @@
             : 'font-terminal text-term-dim-green'}"
         >
           <p class="m-0">{$_t("The agent automatically extracts and remembers important facts from your conversations — preferences, project details, and personal context.")}</p>
-          <p class="m-0">{$_t("All memory data is stored locally on your device. Nothing is sent to our servers.")}</p>
+          <p class="m-0">{$_t("Memory files are stored locally on your device. Memory content is sent to the configured LLM provider when the agent saves, searches, or merges facts.")}</p>
           <p class="m-0">{$_t("Core preferences (like 'always use dark mode') are injected into every conversation. Other facts are searchable on demand.")}</p>
           <p class="m-0">{$_t("Memory works with any LLM provider. When an OpenAI API key is available, it uses gpt-4o-mini for lower cost. Otherwise it uses your current model.")}</p>
         </div>

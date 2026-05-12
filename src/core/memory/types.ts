@@ -78,4 +78,3 @@ export interface FileSystem {
   ensureDir(path: string): Promise<void>;
   exists(path: string): Promise<boolean>;
 }
-
