@@ -388,7 +388,7 @@ export class DesktopAgentBootstrap {
       this.skillRegistry = new SkillRegistry(provider);
       await this.skillRegistry.discover();
 
-      registerPromptExtension(() => this.skillRegistry!.buildSkillsSystemPrompt());
+      registerPromptExtension('skills', () => this.skillRegistry!.buildSkillsSystemPrompt());
 
       console.log('[DesktopAgentBootstrap] Skills initialized, found', this.skillRegistry.getSkillMetas().length, 'skills');
     } catch (error) {
@@ -807,6 +807,14 @@ export class DesktopAgentBootstrap {
         const authManager = new AuthManager(shouldUseBackend, shouldUseBackend ? backendBaseUrl : null, tokenGetter);
         const factory = session.agent.getModelClientFactory();
         factory.setAuthManager(authManager);
+
+        // Close existing memory service so it doesn't keep using stale credentials
+        // for its cheap-LLM caller. A fresh service will be created on the next session.
+        const existingMemory = session.agent.getSession()?.getMemoryService?.();
+        if (existingMemory) {
+          existingMemory.close().catch(() => {});
+          session.agent.getSession()?.setMemoryService(null);
+        }
 
         console.log('[DesktopAgentBootstrap] Auth mode set on session', sessionMeta.sessionId, ', isBackendRouting:', factory.isBackendRouting());
 

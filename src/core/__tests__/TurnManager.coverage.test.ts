@@ -23,6 +23,7 @@ function createMocks() {
     emitEvent: vi.fn().mockResolvedValue(undefined),
     recordTurnContext: vi.fn().mockResolvedValue(undefined),
     showRawAgentReasoning: vi.fn().mockReturnValue(false),
+    getMemoryService: vi.fn().mockReturnValue(null),
   } as any;
 
   const turnContext = {
@@ -985,6 +986,7 @@ describe('TurnManager - useNativeWebSearch toggle', () => {
       emitEvent: vi.fn().mockResolvedValue(undefined),
       recordTurnContext: vi.fn().mockResolvedValue(undefined),
       showRawAgentReasoning: vi.fn().mockReturnValue(false),
+      getMemoryService: vi.fn().mockReturnValue(null),
     } as any;
 
     const mockModelClient = {

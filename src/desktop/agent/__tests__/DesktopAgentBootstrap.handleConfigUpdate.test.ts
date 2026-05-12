@@ -57,6 +57,13 @@ vi.mock('@/webfront/lib/i18n', () => ({ t: (s: string) => s }));
 vi.mock('@/core/approval/assessors/StaticRiskAssessor', () => ({
   StaticRiskAssessor: vi.fn(),
 }));
+vi.mock('@/core/scheduler/Scheduler', () => ({ Scheduler: vi.fn() }));
+vi.mock('../../scheduler/DesktopSchedulerAlarms', () => ({
+  DesktopSchedulerAlarms: vi.fn(),
+}));
+vi.mock('../../scheduler/DesktopSchedulerDeepLinkHandler', () => ({
+  DesktopSchedulerDeepLinkHandler: vi.fn(),
+}));
 
 // ---------------------------------------------------------------------------
 // Import under test (after mocks)
