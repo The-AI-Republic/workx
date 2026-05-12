@@ -11,7 +11,17 @@ import { RepublicAgentEngine } from '../RepublicAgentEngine';
 import { SubAgentRunner } from '@/tools/AgentTool/SubAgentRunner';
 import { SubAgentRegistry } from '@/tools/AgentTool/SubAgentRegistry';
 import type { RepublicAgentEngineConfig, EngineEvent, InputItem } from '../RepublicAgentEngineConfig';
-import type { SubAgentTypeConfig } from '@/tools/AgentTool/types';
+import type { SubAgentTypeConfig, SubAgentResult, BackgroundSubAgentResult } from '@/tools/AgentTool/types';
+
+/** Narrow runner.run() result to SubAgentResult for foreground-only tests. */
+function expectSubAgentResult(
+  r: SubAgentResult | BackgroundSubAgentResult,
+): SubAgentResult {
+  if ('status' in r) {
+    throw new Error('expected SubAgentResult, got BackgroundSubAgentResult');
+  }
+  return r;
+}
 import { TurnContext } from '../../TurnContext';
 
 // ---------------------------------------------------------------------------
@@ -472,10 +482,10 @@ describe('M5.3: SubAgentRunner end-to-end', () => {
       parentEngine,
     });
 
-    const result = await runner.run({
+    const result = expectSubAgentResult(await runner.run({
       type: 'nonexistent',
       prompt: 'do something',
-    });
+    }));
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('Unknown sub-agent type');
@@ -500,10 +510,10 @@ describe('M5.3: SubAgentRunner end-to-end', () => {
       registry,
     });
 
-    const result = await runner.run({
+    const result = expectSubAgentResult(await runner.run({
       type: 'researcher',
       prompt: 'analyze code',
-    });
+    }));
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('Max concurrent');
@@ -527,10 +537,10 @@ describe('M5.3: SubAgentRunner end-to-end', () => {
         parentEngine,
       });
 
-      const result = await runner.run({
+      const result = expectSubAgentResult(await runner.run({
         type: 'researcher',
         prompt: 'test prompt',
-      });
+      }));
 
       const startEvent = parentEvents.find(e => e.msg.type === 'SubAgentStart');
       expect(startEvent).toBeDefined();

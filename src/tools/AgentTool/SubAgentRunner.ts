@@ -10,6 +10,7 @@ import type {
   SubAgentTypeConfig,
   SubAgentToolParams,
   SubAgentResult,
+  BackgroundSubAgentResult,
   AgentContext,
   AgentRunResult,
   IAgentRunner,
@@ -49,9 +50,18 @@ export class SubAgentRunner implements IAgentRunner {
   }
 
   /**
-   * Run a sub-agent to completion.
+   * Run a sub-agent.
+   *
+   * Foreground (default): awaits execution and returns the final result.
+   * Background: starts execution in a detached promise and returns immediately
+   * with `{ status: 'launched', runId, ... }`. When the detached run completes
+   * (success/failure/cancel), a `<task-notification>` is injected into the
+   * parent engine's pending input so the parent LLM sees the outcome on its
+   * next turn.
    */
-  async run(params: SubAgentToolParams): Promise<SubAgentResult> {
+  async run(
+    params: SubAgentToolParams,
+  ): Promise<SubAgentResult | BackgroundSubAgentResult> {
     // Early validation
     const typeConfig = this.resolveType(params.type);
     if (!typeConfig) {
@@ -92,12 +102,47 @@ export class SubAgentRunner implements IAgentRunner {
       };
     }
 
-    try {
-      const result = await this.execute(context, params);
-      return this.toSubAgentResult(context, result);
-    } finally {
-      await this.cleanup(context);
+    if (!context.background) {
+      // Foreground: await result, cleanup before returning to caller.
+      try {
+        const result = await this.execute(context, params);
+        return this.toSubAgentResult(context, result);
+      } finally {
+        await this.cleanup(context);
+      }
     }
+
+    // Background: detach. Inject task notification on settle; cleanup runs
+    // only after the detached promise resolves (success or failure).
+    void this.execute(context, params)
+      .then((result) => {
+        context.parentEngine.enqueueSyntheticUserTurn(
+          this.formatTaskNotification(context, params, result),
+        );
+      })
+      .catch((error) => {
+        const errorMsg =
+          error instanceof Error ? error.message : String(error);
+        context.parentEngine.enqueueSyntheticUserTurn(
+          this.formatTaskNotification(context, params, {
+            success: false,
+            response: '',
+            turnCount: 0,
+            stopReason: 'error',
+            error: errorMsg,
+          }),
+        );
+      })
+      .finally(() => {
+        void this.cleanup(context);
+      });
+
+    return {
+      status: 'launched',
+      runId: context.runId,
+      type: params.type,
+      description: params.description ?? params.prompt.slice(0, 50),
+    };
   }
 
   // ---------------------------------------------------------------------------
@@ -142,7 +187,11 @@ export class SubAgentRunner implements IAgentRunner {
 
     // Default to 'inherit' when approvalPolicy is not explicitly set.
     // Only 'never' explicitly opts out of approval — prevents accidental bypass.
-    const effectiveApprovalPolicy = resolvedTypeConfig.approvalPolicy ?? 'inherit';
+    // Background runs cannot prompt the user (parent has moved on), so force 'never'
+    // regardless of the type's configured policy.
+    const effectiveApprovalPolicy = background
+      ? 'never'
+      : (resolvedTypeConfig.approvalPolicy ?? 'inherit');
     const approvalGate = effectiveApprovalPolicy === 'inherit'
       ? this.parentEngine.getToolRegistry().getApprovalGate()
       : undefined;
@@ -417,4 +466,58 @@ export class SubAgentRunner implements IAgentRunner {
       error: result.error,
     };
   }
+
+  /**
+   * Format a completed background run as a `<task-notification>` block to be
+   * injected into the parent engine's pending input. The parent LLM sees this
+   * on its next turn.
+   *
+   * Status mapping: success → 'completed'; stopReason 'cancelled' or
+   * 'interrupted' → 'cancelled'; anything else → 'failed'.
+   */
+  private formatTaskNotification(
+    context: AgentContext,
+    params: SubAgentToolParams,
+    result: AgentRunResult,
+  ): string {
+    const durationMs = Date.now() - context.startTime;
+    const status: 'completed' | 'failed' | 'cancelled' = result.success
+      ? 'completed'
+      : result.stopReason === 'cancelled' || result.stopReason === 'interrupted'
+        ? 'cancelled'
+        : 'failed';
+
+    const lines: string[] = [];
+    lines.push('<task-notification>');
+    lines.push(`  <run-id>${escapeXml(context.runId)}</run-id>`);
+    lines.push(`  <type>${escapeXml(params.type)}</type>`);
+    lines.push(`  <status>${status}</status>`);
+    lines.push(
+      `  <summary>${escapeXml(params.description ?? params.type)}</summary>`,
+    );
+    if (result.response) {
+      lines.push(`  <result>${escapeXml(result.response)}</result>`);
+    }
+    if (result.error) {
+      lines.push(`  <error>${escapeXml(result.error)}</error>`);
+    }
+    lines.push('  <usage>');
+    if (result.tokenUsage) {
+      lines.push(
+        `    <total_tokens>${result.tokenUsage.total}</total_tokens>`,
+      );
+    }
+    lines.push(`    <turn_count>${result.turnCount}</turn_count>`);
+    lines.push(`    <duration_ms>${durationMs}</duration_ms>`);
+    lines.push('  </usage>');
+    lines.push('</task-notification>');
+    return lines.join('\n');
+  }
+}
+
+function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
