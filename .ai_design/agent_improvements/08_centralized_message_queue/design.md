@@ -71,6 +71,20 @@ This creates several problems:
 
 ## What Claudy Does
 
+### Claudy Foundation (Validated 2026-05-11)
+
+Re-validation against the claudy source confirms the following set of primitives actually exist, and clarifies what the design above should *not* assume claudy already provides:
+
+- ✅ `utils/messageQueueManager.ts` — semantic priority queue (`now` / `next` / `later`) with mid-turn drain in the query loop
+- ✅ `utils/signal.ts` — lightweight 1:N fire-and-forget primitive
+- ✅ `utils/mailbox.ts` — async handshakes with direct-handoff optimization
+- ❌ **No unified event bus** — events flow through independent channels (`messageQueueManager` for input, `sdkEventQueue` for headless, `hookEvents` for lifecycle). There is no single MessageBus or topic registry in claudy.
+- ❌ **No EventLog with replay** — only bounded buffers (`sdkEventQueue` 1000 max, drop-oldest; `hookEvents` 100 pending then flush-on-handler-register).
+- ❌ **No middleware pipeline** — event delivery is direct, not chained through middleware.
+- ❌ **No backpressure signaling** — overflow is handled with drop-oldest, never with producer-side back-pressure.
+
+Anything in this design beyond the three ✅ primitives is a deliberate BrowserX extension, not a port. See "Why BrowserX Extends Beyond Claudy" below.
+
 ### Signal Primitive (Lightweight Notifications)
 
 ```typescript
@@ -235,7 +249,9 @@ function processQueueIfReady({ executeInput }): ProcessQueueResult {
 
 ### Mid-Turn Queue Drain (Critical Pattern)
 
-Claudy drains queued commands **during** the query processing loop, not just between turns:
+Claudy drains queued commands **during** the query processing loop, injecting queued prompts/task-notifications as **attachments between tool executions** (see `utils/query.ts` around the tool-execution boundary, ~line 1570). The drain filters by `agentId` (main thread vs subagent), excludes slash commands, and converts each queued command into a tool-result attachment that the next model call sees as if it were part of the prior turn.
+
+BrowserX cannot mirror this today because `Session.spawnTask` is not generator-based — once it is, the same drain hook can be inserted at the inter-tool boundary.
 
 ```typescript
 // src/utils/query.ts — Mid-turn drain between tool execution rounds
@@ -422,6 +438,35 @@ QueryGuard State Machine:
   isActive = (status !== 'idle') → prevents queue processor from firing
 ```
 
+### Patterns Worth Porting
+
+These are the patterns that earn their keep when ported to BrowserX:
+
+1. **Module-level singleton command queue with frozen-snapshot mutation** — `Object.freeze([...queue])` is recreated on every mutation so subscribers can use shallow reference equality (matches Svelte/React store semantics).
+2. **Linear-scan priority dequeue** with a `PRIORITY_ORDER` map — small, allocation-free, and good enough for queue depths in the tens. Avoids a full heap implementation.
+3. **Mailbox direct-handoff for approval flows** — when a `receive()` is already pending, `send()` resolves it directly without going through the queue. Removes an entire class of "did the resolver get registered before the message arrived?" bugs.
+4. **Bounded circular buffer with drop-oldest** for sdk-style event queues — simple, predictable, no producer-side coordination needed.
+
+### Patterns NOT Worth Porting
+
+Claudy carries several patterns that are tightly coupled to its REPL/Ink delivery model and should be skipped:
+
+- **Ink TUI rendering** (entire `src/ink/` tree) — BrowserX has no terminal UI surface.
+- **REPL XML printing of `<task-notification>`** — BrowserX uses structured `ChannelEvent` / `EventMsg` envelopes; XML stringification is unnecessary and lossy.
+- **`SessionState` transition machine tied to REPL interaction model** — BrowserX's session lifecycle is driven by channel events, not REPL key handling.
+- **CCR remote-bridge transport** — BrowserX already has its own multi-channel transport (sidepanel / websocket / tauri / server).
+- **Growthbook feature-flag wiring** — out of scope for a messaging refactor.
+
+### Why BrowserX Extends Beyond Claudy
+
+Claudy ships a single REPL and an SDK output stream — one consumer model, one event direction. BrowserX has to deliver the same event stream into **four** independent channels (sidepanel, websocket, tauri, server), each with its own connect/disconnect lifecycle and replay semantics. That is the justification for the parts of this design that are *not* in claudy:
+
+- **MessageBus with topics** — needed because multiple subscribers per event are the norm, not the exception.
+- **EventLog with replay** — needed because a reconnecting WebSocket or a freshly-opened sidepanel must catch up; claudy never reconnects anything.
+- **Middleware pipeline** — needed because cross-cutting logging/metrics/filtering must apply uniformly across channels; claudy can hard-code logging at the REPL render layer.
+
+These are deliberate BrowserX-specific extensions, not gold-plating.
+
 ## BrowserX Mapping
 
 ### Current Architecture (Actual Implementation)
@@ -461,6 +506,39 @@ ChannelAdapter.sendEvent() → chrome.runtime / WebSocket / Tauri
 6. ApprovalManager uses manual Promise/resolver handshake (exactly what Mailbox replaces)
 7. Config changes, service responses, and agent events flow through completely different paths
 8. No way to replay events for late-joining channels (e.g., a reconnecting WebSocket)
+
+### Cross-Check With Already-Merged BrowserX Work
+
+PRs **#174, #181, #185, #187, #193** have already landed the **transport** layer:
+
+- `ChannelManager` + `ServiceRegistry`
+- `sessionId` plumbing through `ChannelEvent`
+- Scheduler dispatch
+- Channel-thread routing
+
+What those PRs did **not** address is the **semantic** layer. Track 08 closes exactly that gap:
+
+- `RepublicAgent.submissionQueue: Submission[]` is still a plain FIFO array → **CommandQueue** replaces it.
+- `RepublicAgent.emitEvent` is still array-push + a single callback → **MessageBus** replaces it.
+- `ApprovalManager` still hand-rolls a pending-Promise map → **Mailbox** replaces it.
+
+In other words, transport = solved; semantic queue/bus/handshake = the remaining work.
+
+### Scope Boundary
+
+MessageBus does **not** replace `ChannelManager`. It sits **between** `RepublicAgent` and `ChannelManager`:
+
+```
+RepublicAgent ──► MessageBus (semantic: topics, priorities, replay)
+                       │
+                       ▼
+                 ChannelManager (transport: channel selection, framing)
+                       │
+                       ▼
+              SidePanel / WS / Tauri / Server channels
+```
+
+`ServiceRegistry` also stays unchanged — it remains a request/response (RPC) router, not a queue-based pub/sub. MessageBus is for one-to-many event flow; ServiceRegistry is for one-to-one method calls. They coexist.
 
 ### Proposed Architecture: MessageBus
 
@@ -1407,3 +1485,30 @@ agent.setEventPublisher((msg: EventMsg, metadata?: Record<string, unknown>) => {
 | Backpressure | None (unbounded array growth) | Bounded queue (1000) with drop-oldest | Configurable per-subscriber (drop-oldest/newest/block) |
 | Queue processor classes | Defined in QueueProcessor.ts but **unused** | Tight integration (processQueueIfReady → dequeue → executeInput) | CommandProcessor tightly integrated with RepublicAgent |
 | Mid-turn drain | Not supported | Yes (drain 'next' priority during query loop) | Future enhancement (after Phase 4) |
+
+## Validation Notes (re-checked vs claudy 2026-05-11)
+
+This design was re-validated against the claudy source on 2026-05-11. The following corrections were applied:
+
+1. **Added "Claudy Foundation (Validated)" subsection** at the top of "What Claudy Does" — explicitly enumerates what claudy *has* (`messageQueueManager.ts`, `signal.ts`, `mailbox.ts`) and what it *does not have* (no unified event bus, no EventLog with replay, no middleware pipeline, no backpressure signaling). Prevents the design from implying claudy already provides these primitives.
+
+2. **Sharpened the mid-turn drain description** — claudy injects queued prompts/task-notifications as **attachments between tool executions** in the query loop (`utils/query.ts`, ~line 1570), filtering by `agentId` and excluding slash commands. BrowserX can mirror this once `Session.spawnTask` becomes generator-based.
+
+3. **Added "Patterns Worth Porting"** — module-level singleton command queue with `Object.freeze([...queue])` snapshot pattern; linear-scan priority dequeue with `PRIORITY_ORDER` map; mailbox direct-handoff for approval flows; bounded circular buffer with drop-oldest for sdk-style queues.
+
+4. **Added "Patterns NOT Worth Porting"** — Ink TUI rendering (`src/ink/`); REPL XML printing of `<task-notification>` (BrowserX uses structured `ChannelEvent` / `EventMsg` envelopes); `SessionState` transition machine tied to REPL interaction; CCR remote-bridge transport; Growthbook feature-flag wiring.
+
+5. **Added "Cross-Check With Already-Merged BrowserX Work"** — PRs #174, #181, #185, #187, #193 set up the **transport** layer (`ChannelManager` + `ServiceRegistry` + `sessionId` / `ChannelEvent` + scheduler dispatch + channel-thread routing). Track 08 closes the **semantic** layer gap: `submissionQueue: Submission[]` plain FIFO, `emitEvent` array-push + callback, `ApprovalManager` hand-rolled pending-Promise map.
+
+6. **Clarified scope boundary** — MessageBus sits **between** `RepublicAgent` and `ChannelManager` (semantic layer), not as a replacement. `ServiceRegistry` stays request/response (RPC), not queue-based.
+
+7. **Justified BrowserX-specific extensions** — added "Why BrowserX Extends Beyond Claudy" subsection. EventLog with replay, MessageBus topics, and middleware pipeline are deliberate extensions justified by BrowserX's multi-channel architecture (sidepanel, websocket, tauri, server) versus claudy's single REPL/SDK output.
+
+### Files Cited
+
+- `utils/messageQueueManager.ts` — semantic priority queue (`now` / `next` / `later`), 548 lines
+- `utils/signal.ts` — 1:N fire-and-forget primitive, ~30 lines
+- `utils/mailbox.ts` — async handshake with direct-handoff, 74 lines
+- `utils/query.ts` — mid-turn drain at the inter-tool boundary (~line 1570)
+- `utils/sdkEventQueue.ts` — bounded queue (1000 max, drop-oldest) for headless mode
+- `utils/hooks/hookEvents.ts` — buffered events (100 pending) with flush-on-handler-register

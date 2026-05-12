@@ -16,19 +16,25 @@ Claudy has 28 hook event types with 4 hook command types (shell, prompt, agent, 
 
 ### Hook Events (28 types)
 
+The full set, sourced from `entrypoints/sdk/coreTypes.ts`:
+
 ```typescript
 type HookEvent =
   | 'PreToolUse' | 'PostToolUse' | 'PostToolUseFailure'
-  | 'UserPromptSubmit' | 'SessionStart' | 'SessionEnd' | 'Stop'
+  | 'Notification'
+  | 'UserPromptSubmit'
+  | 'SessionStart' | 'SessionEnd'
+  | 'Stop' | 'StopFailure'
   | 'SubagentStart' | 'SubagentStop'
   | 'PreCompact' | 'PostCompact'
   | 'PermissionRequest' | 'PermissionDenied'
+  | 'Setup' | 'TeammateIdle'
   | 'TaskCreated' | 'TaskCompleted'
-  | 'CwdChanged' | 'FileChanged'
   | 'Elicitation' | 'ElicitationResult'
-  | 'ConfigChange' | 'WorktreeCreate' | 'WorktreeRemove'
-  | 'InstructionsLoaded' | 'Notification'
-  | 'Setup' | 'StopFailure' | 'TeammateIdle'
+  | 'ConfigChange'
+  | 'WorktreeCreate' | 'WorktreeRemove'
+  | 'InstructionsLoaded'
+  | 'CwdChanged' | 'FileChanged'
 ```
 
 ### Hook Command Types
@@ -47,7 +53,11 @@ executeHooks(event, context)
 ├─ Trust check: workspace trust required in interactive mode (skipped for SDK)
 ├─ Env check: CLAUDE_CODE_SIMPLE disables all hooks
 ├─ getMatchingHooks():
-│  ├─ Collect from all sources (user settings > project settings > local settings > plugins > built-in)
+│  ├─ Collect from all sources (user settings, project settings, local settings, plugins, built-in)
+│  │   NOTE: claudy `utils/hooks.ts:getHooksConfig()` *concatenates* all sources.
+│  │   There is no override-by-source semantic — every matching hook from every
+│  │   source fires in parallel. Earlier doc revisions described this as a
+│  │   priority/override chain; that is incorrect.
 │  ├─ Filter by matcher pattern (tool name, glob-like syntax)
 │  ├─ Apply `if` condition filtering (permission rule syntax, e.g. "Bash(git *)")
 │  ├─ Deduplicate by command+if condition
@@ -58,7 +68,9 @@ executeHooks(event, context)
 │  │   ├─ execPromptHook() — LLM evaluation, model configurable
 │  │   ├─ execAgentHook() — agentic verification, spawns subagent
 │  │   └─ execHttpHook() — POST to URL with JSON body
-│  ├─ Individual per-hook timeout (default 10min for tools, 1.5s for SessionEnd)
+│  ├─ Individual per-hook timeout (default 10min for tools, 1.5s for SessionEnd —
+│  │   SessionEnd is special-cased and capped together; configurable via
+│  │   `CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS`)
 │  └─ Output validated via Zod schema
 ├─ Yield results individually as hooks complete (async generator)
 ├─ Aggregate results:
@@ -98,12 +110,17 @@ interface AsyncHookJSONOutput {
 }
 ```
 
+**Async hook response shape** — when a hook returns `{"async": true, "asyncTimeout": <ms>}`, claudy's executor immediately yields a placeholder result, registers the still-running hook in `AsyncHookRegistry`, and re-enters via `emitHookResponse()` once the underlying shell command (or HTTP request) settles. This re-entry pattern lets long-running hooks avoid blocking tool dispatch while still feeding their final stdout/exit-code back into the same hook pipeline.
+
 ### Claudy Hook Registration Architecture
 
-**Source priority (highest to lowest):**
+**Hook sources (concatenated, not prioritized):**
+
+> **Correction:** Earlier revisions of this doc described user > project > local > plugins > built-in as a priority/override chain. That is wrong. Claudy's `utils/hooks.ts:getHooksConfig()` *concatenates* hooks from every source; all matching hooks from all sources fire in parallel for the event. There is no override-by-source semantic. Per-hook merge precedence applies only to permission decisions and `updatedInput`.
+
 1. User settings (`~/.claude/settings.json`) — user-scoped
 2. Project settings (`.claude/settings.json`) — repo-scoped
-3. Local settings (`.claude/settings.local.json`) — gitignored overrides
+3. Local settings (`.claude/settings.local.json`) — gitignored
 4. Plugin hooks — from plugin manifests
 5. Session hooks — in-memory, temporary (function callbacks)
 6. Built-in hooks — internal SDK callbacks
@@ -114,10 +131,19 @@ interface AsyncHookJSONOutput {
 - `removeFunctionHook()` / `removeSessionHook()` — cleanup by ID
 - `OnHookSuccess` callbacks — react to hook completion
 
+**Function hooks (in-process callbacks)**
+
+Beyond the four serializable hook command types, claudy supports raw TypeScript callback hooks registered through `addFunctionHook()`. Key properties:
+
+- Signature: `(messages: Message[], signal?: AbortSignal) => boolean | Promise<boolean>`
+- Session-scoped only — never persisted to settings, never loaded from plugins
+- Stored in a `Map` (not a `Record`) so callback identity is preserved across registrations and `removeFunctionHook()` calls can target a specific function reference
+- Primary use case is structured-output validation inside the SDK, where the host needs synchronous in-process access to the live message list rather than a stdin/HTTP boundary
+
 **Plugin hooks** (`src/utils/plugins/loadPluginHooks.ts`):
 - Plugins define hooks in manifest via `hooksConfig` field
 - Hot-reload support: subscribes to policySettings changes, reloads on plugin toggle
-- Plugin context injected: `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_DATA}`, `${user_config.X}`
+- Plugin context substitution: plugin-loaded hook commands and HTTP URLs/headers can reference `${CLAUDE_PLUGIN_ROOT}` (the plugin install dir), `${CLAUDE_PLUGIN_DATA}` (per-plugin data dir), and `${user_config.X}` (resolved from the plugin's user-config schema). Substitution happens at hook-execution time, not at registration, so user-config edits take effect on the next firing without re-registering the hook.
 
 ### Claudy Hook Configuration Format
 
@@ -212,6 +238,34 @@ Event emission for SDK consumers:
 
 Always emitted (regardless of `includeHookEvents`): SessionStart, Setup.
 Pending events buffered (up to 100) until handler is registered.
+
+### Claudy HTTP Hook Security
+
+**File:** `utils/hooks/execHttpHook.ts`
+
+HTTP hooks have a hardened execution path that the design must mirror if BrowserX ever loads HTTP hooks from anywhere outside trusted local config:
+
+- **URL allowlist**: every target URL is checked against `allowedHttpHookUrls` (settings + plugin-declared) before the request goes out. Unlisted URLs are rejected before any DNS lookup.
+- **Header env-var allowlist**: `$VAR` interpolation inside `headers` only resolves variables that appear in an explicit allowlist; arbitrary process env is not exposed via headers.
+- **CRLF sanitization**: header values are stripped of `\r` / `\n` so a malicious value cannot inject extra headers or split the request.
+- **Sandbox proxy routing**: when running under the workspace sandbox, requests are routed through the sandbox proxy rather than the agent's own network stack, so HTTP hooks inherit the same egress policy as user-tool network access.
+
+### Claudy Permission Gates Around Hook Execution
+
+Hooks are gated by trust and global-disable checks before any matching/dispatch happens, via `shouldSkipHookDueToTrust` and the `CLAUDE_CODE_SIMPLE` env var:
+
+- **Workspace trust dialog gate**: in interactive mode, hooks are skipped until the user has accepted the workspace trust dialog for the current cwd. Untrusted workspaces silently no-op all hooks.
+- **`CLAUDE_CODE_SIMPLE` global disable**: setting this env var disables *all* hooks globally regardless of source — useful for debugging and for environments that must run with no extension behavior.
+- **Non-interactive (SDK) implicit trust**: when claudy is embedded via the SDK with no interactive surface, trust is implicit; the trust gate is bypassed but `CLAUDE_CODE_SIMPLE` still applies.
+
+### Claudy Hook Telemetry
+
+Each hook execution emits:
+
+- A `tengu_run_hook` analytics event with hook type, event name, source, and outcome
+- An OpenTelemetry span pair via `startHookSpan()` / `endHookSpan()`, scoped per hook so parallel hooks each get their own span
+
+These two layers are independent: analytics fires even when OTEL is unconfigured, and OTEL spans capture timing/attributes for downstream APM tooling without depending on the analytics pipeline.
 
 ---
 
@@ -785,10 +839,14 @@ export class HookAggregator {
    * Rules (matching claudy):
    * - shouldContinue: ALL hooks must have continue !== false
    * - stopReason: first non-null from any hook
-   * - updatedInput: last-writer-wins per key (hooks execute in parallel,
-   *   so order is non-deterministic; documented as "last settled wins")
-   * - permissionDecision: deny > block > approve > undefined
-   *   (most restrictive wins, matching claudy's deny > ask > allow > passthrough)
+   * - updatedInput: last-writer-wins per key. Because hooks execute in parallel,
+   *   completion order is non-deterministic — when two hooks rewrite the same
+   *   key the surviving value depends on which hook's promise settles last.
+   *   Document this and discourage having two hooks rewrite the same key.
+   * - permissionDecision: deny > ask > allow > passthrough (claudy ordering).
+   *   In this codebase that surfaces as block > approve > undefined; the
+   *   semantic remains "most restrictive wins" and is fully deterministic
+   *   regardless of completion order.
    * - additionalContext: concatenated from all hooks
    * - systemMessages: concatenated from all hooks
    */
@@ -1381,3 +1439,22 @@ Given BrowserX is a browser automation agent, these events matter most:
 - **Double-firing**: If hooks are wired at both TurnManager and ToolRegistry levels, they fire twice. Recommendation: wire at TurnManager level only (single funnel for all tool calls).
 - **Async hook ordering**: Parallel execution means hook result ordering is non-deterministic. `updatedInput` merge uses last-writer-wins which may surprise users. Document this clearly.
 - **Config hot-reload**: When hooks config changes mid-session, existing hooks are replaced atomically. Running hooks are not aborted — they complete but their results may be stale.
+
+---
+
+## Validation Notes (re-checked vs claudy 2026-05-11)
+
+Re-validated this design against claudy source. Corrections applied:
+
+- **Hook event list (28)**: Replaced the previous list with the canonical 28 events from `entrypoints/sdk/coreTypes.ts`. The earlier list was ordered ad-hoc and missing the canonical grouping; the count was already correct but the membership had drift.
+- **Source priority is wrong**: `utils/hooks.ts:getHooksConfig()` *concatenates* all sources rather than overriding by source. Removed "highest to lowest" framing and added an explicit correction note. Per-hook merge precedence still applies (deny > ask > allow > passthrough; `updatedInput` last-writer-wins).
+- **SessionEnd timeout**: Documented the 1.5s default cap and the `CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS` override that makes SessionEnd a special case versus the 10-minute default for tool hooks.
+- **Async hook response**: Documented the `{"async": true, "asyncTimeout": <ms>}` shape and the `AsyncHookRegistry` re-entry pattern via `emitHookResponse()`.
+- **Function hooks**: Added a subsection covering the in-process TypeScript callback path, its `(messages, signal) => boolean | Promise<boolean>` signature, session-only scoping, `Map`-based identity preservation, and structured-output validation use case.
+- **HTTP hook security**: Added a subsection covering URL allowlist (`allowedHttpHookUrls`), env-var allowlist for `$VAR` header interpolation, CRLF sanitization, and sandbox proxy routing. Cited `utils/hooks/execHttpHook.ts`.
+- **Permission gates around hook execution**: Added a subsection covering the workspace trust dialog gate, `CLAUDE_CODE_SIMPLE` global disable, and SDK implicit-trust path. Cited `shouldSkipHookDueToTrust`.
+- **Plugin context substitution**: Documented `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_DATA}`, and `${user_config.X}` interpolation, and noted that substitution happens at execution time so user-config edits take effect on next firing.
+- **Telemetry**: Documented the `tengu_run_hook` analytics event plus per-hook OpenTelemetry spans via `startHookSpan`/`endHookSpan`, and noted the two layers are independent.
+- **Merge non-determinism**: Strengthened the `HookAggregator` comment to make explicit that `updatedInput` last-writer-wins depends on parallel completion order (non-deterministic), while permission decisions remain deterministic under `deny > ask > allow > passthrough`.
+
+References: `utils/hooks.ts`, `entrypoints/sdk/coreTypes.ts`, `utils/hooks/execHttpHook.ts`, `schemas/hooks.ts`.

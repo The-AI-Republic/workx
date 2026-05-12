@@ -21,6 +21,25 @@ After the research below, the track is now ready to implement as a **vertical sl
 
 That sequencing matches the current codebase much better than trying to land all four families at once.
 
+## Family Taxonomy Note (BrowserX-specific)
+
+The BrowserX families proposed below — `background_agent`, `browser_automation`, `tab_watcher`, `data_extraction` — are **BrowserX-specific** and do **NOT** correspond to claudy's runtime task families.
+
+Claudy's actual `TaskType` (see `Task.ts`) is:
+
+```ts
+type TaskType =
+  | 'local_bash'
+  | 'local_agent'
+  | 'remote_agent'
+  | 'in_process_teammate'
+  | 'local_workflow'
+  | 'monitor_mcp'
+  | 'dream';
+```
+
+What we borrow from claudy is the **registry + state-machine pattern** (typed discriminated union, terminal-state guards, append-only output offset, `notified` flag, retention semantics), not the family taxonomy itself.
+
 ## Goal
 
 Add typed task families to BrowserX without replacing its current execution stack.
@@ -75,9 +94,19 @@ Claudy distinguishes:
 
 The `isBackgrounded`, `retain`, `evictAfter`, and `pendingMessages` fields are the right pattern for BrowserX too, especially once sidepanel UI starts switching between foreground and background task views.
 
+**Storage shape**: claudy keeps all tasks in a **single flat dict** on `AppState.tasks` keyed by id, with per-task metadata flags such as `isBackgrounded` (see `tasks/LocalAgentTask/LocalAgentTask.tsx:134`). It does **not** use two separate containers for foreground vs background. Before BrowserX commits to a two-container `Session` design (`activeTurn` + `backgroundTasks`), consider whether one dict + an `isBackgrounded` flag is simpler. The two-container approach is justified here only because `ActiveTurn` already bundles foreground-turn state (approvals, pending input) that does not belong on long-lived background tasks.
+
+### 3b. No central scheduler in claudy
+
+Claudy has **no `TaskRunner` / `TaskScheduler` orchestrator** for cross-task scheduling. Tasks are simply inserted into `AppState.tasks` and run on their own. There is no "abort all on spawn" rule — multiple `local_agent` and `in_process_teammate` tasks run concurrently by default.
+
+BrowserX's current `Session.spawnTask()` calling `abortAllTasks('UserInterrupt')` before every spawn is a **BrowserX-specific bottleneck**, not something inherited from claudy. The design correctly identifies this as the real concurrency seam to fix.
+
 ### 4. Output is append-only with delta polling
 
-Claudy's filesystem implementation is not portable to BrowserX, but the behavior is:
+Claudy's storage model (see `utils/task/TaskOutput.ts`) is **filesystem append + an in-memory pipe buffer (default 8 MB)**, not IndexedDB chunk aggregation. There is no `TaskOutputStore` class in claudy to port directly — BrowserX must invent the chunked-storage layer for IndexedDB/SQLite from scratch.
+
+What **is** portable is the **delta-polling pattern**: an offset-tracked `getOutputDelta(fromOffset)` that returns only new content since the last read. The semantics to preserve:
 
 - append asynchronously
 - keep caller non-blocking
@@ -85,7 +114,7 @@ Claudy's filesystem implementation is not portable to BrowserX, but the behavior
 - return deltas
 - evict in-memory buffers while preserving persisted output
 
-BrowserX should keep those semantics and swap filesystem append for IndexedDB/SQLite chunk append.
+BrowserX swaps filesystem append + 8 MB pipe buffer for IndexedDB/SQLite chunk append + a smaller bounded in-memory buffer.
 
 ### 5. Re-registration preserves UI-held state
 
@@ -326,11 +355,11 @@ export interface TaskAttachment {
 
 ### Polling constants
 
-Carry over Claudy's timings:
+Carry over Claudy's timings (confirmed against `utils/task/framework.ts`):
 
 - `POLL_INTERVAL_MS = 1000`
-- `PANEL_GRACE_MS = 30000`
 - `STOPPED_DISPLAY_MS = 3000`
+- `PANEL_GRACE_MS = 30000`
 
 ## Output Persistence Design
 
@@ -554,6 +583,8 @@ Required behavior:
 - after each tool execution, check whether the running task has queued `pendingMessages`
 - if yes, hand them back to the active task loop through a small injected-input API on `AgentTask` / `TaskRunner`
 
+**Claudy reference pattern**: `pendingMessages` is an array on the task state, drained at turn boundaries via a `drainPendingMessages()` helper. All mutations go through `updateTaskState()` so the drain is atomic with the state transition (no torn reads where a message is consumed but the array still shows it). BrowserX should match: drain via `TaskRegistry.update()` so the splice and the state update commit together.
+
 Important note:
 
 `AgentTask.injectUserInput()` currently exists only as a stub in [`AgentTask`](/home/rich/dev/airepublic/open_source/s1/browserx/src/core/AgentTask.ts:121). This track must either implement it or explicitly defer queued-message draining. The previous doc did not call that out.
@@ -619,8 +650,11 @@ This is a registry concern, not a `TaskRunner` concern.
 - full service-worker restart recovery for in-flight background tasks
 - scheduler-triggered spawning of every family
 - a second execution engine besides `TaskRunner`
+- **systematic retry policy** — claudy does not implement automatic retry; failed tasks stay terminal
+- **TTL-based cleanup** — claudy has no time-to-live sweep; eviction happens only after `notified === true` AND terminal status (plus the optional `evictAfter` grace window)
+- **task DAGs / dependency graphs** — claudy has no parent/child task linkage or dependency tracking; tasks are flat and independent
 
-Those can come after the `background_agent` path is stable.
+BrowserX correctly scopes these out and matches claudy's minimal lifecycle model. They can come after the `background_agent` path is stable, if at all.
 
 ## Implementation Sequence
 
@@ -670,3 +704,23 @@ Those can come after the `background_agent` path is stable.
 ## Start Condition
 
 After this research, the track is ready to start implementation **only if we begin with the `background_agent` vertical slice** and treat the other families as typed placeholders until the registry and concurrency seam are proven.
+
+## Validation Notes (re-checked vs claudy 2026-05-11)
+
+The doc was re-validated against claudy source on 2026-05-11. The following corrections were applied:
+
+1. **Family taxonomy clarified** — Added a "Family Taxonomy Note" up front. BrowserX's `background_agent` / `browser_automation` / `tab_watcher` / `data_extraction` are BrowserX-specific. Claudy's actual `TaskType` is `'local_bash' | 'local_agent' | 'remote_agent' | 'in_process_teammate' | 'local_workflow' | 'monitor_mcp' | 'dream'`. What we borrow is the registry + state-machine pattern, not the family list. (Source: `Task.ts`, `tasks/types.ts`.)
+
+2. **Storage model corrected** — Claudy uses **filesystem append + an in-memory pipe buffer (~8 MB default)**, not IndexedDB chunk aggregation. There is no `TaskOutputStore` class to port. BrowserX must invent the chunked-storage layer itself; only the delta-polling API (offset-tracked `getOutputDelta()`) is portable. (Source: `utils/task/TaskOutput.ts`.)
+
+3. **No central scheduler in claudy** — Added section 3b clarifying claudy stores all tasks in a flat `AppState.tasks` dict with no orchestrator and no "abort all on spawn." Multiple `local_agent` / `in_process_teammate` tasks run concurrently. BrowserX's `Session.spawnTask()` abort behavior is a BrowserX-specific bottleneck. (Source: `Task.ts`, `tasks/LocalAgentTask/LocalAgentTask.tsx`.)
+
+4. **Single dict vs two containers** — Added a note that claudy uses one flat dict + an `isBackgrounded` flag (`LocalAgentTask.tsx:134`). BrowserX's two-container approach is justified by `ActiveTurn` already owning foreground-only state (approvals, pending input), but the simpler alternative was called out.
+
+5. **Polling constants confirmed** — `POLL_INTERVAL_MS = 1000`, `STOPPED_DISPLAY_MS = 3000`, `PANEL_GRACE_MS = 30000` all match `utils/task/framework.ts`.
+
+6. **Queued-message draining pattern** — Added a note that claudy uses a `pendingMessages` array drained at turn boundaries via `drainPendingMessages()`, mutated through `updateTaskState()` for atomicity. BrowserX should match by draining inside `TaskRegistry.update()`.
+
+7. **Out-of-scope items confirmed** — Claudy does **not** implement systematic retry, TTL cleanup, or task DAGs. Eviction is gated only on `notified === true` + terminal status. BrowserX's design correctly scopes these out; the out-of-scope list was extended to make this explicit.
+
+**Sources cited**: `Task.ts`, `tasks/types.ts`, `utils/task/TaskOutput.ts`, `utils/task/framework.ts`, `tasks/LocalAgentTask/LocalAgentTask.tsx`.
