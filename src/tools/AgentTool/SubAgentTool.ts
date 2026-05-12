@@ -20,6 +20,10 @@ export function buildSubAgentToolDefinition(
       name: 'sub_agent',
       description: `Delegate a task to a specialized sub-agent. The sub-agent runs independently with its own context and returns a result. Use this when a task is self-contained and can be fully described in the prompt.
 
+Return shape depends on the background flag:
+- background=false (default): synchronous. Returns { success, response, runId, turnCount, stopReason, tokenUsage?, error? } — the full result of the sub-agent's run. Use response to read its output.
+- background=true: asynchronous. Returns immediately with { kind: "background", status: "launched", runId, type, description }. The sub-agent keeps running. When it finishes, a <task-notification> block is injected into your next turn with the final status, result, and usage. Keep the returned runId — use it with cancel_sub_agent or send_message.
+
 Available types:
 ${typeDescriptions}`,
       strict: false,
@@ -41,7 +45,7 @@ ${typeDescriptions}`,
           },
           background: {
             type: 'boolean',
-            description: 'Run in background (returns immediately, sends notification on completion). Default: false.',
+            description: 'Run in background (returns immediately with runId, sends <task-notification> on completion). Default: false.',
           },
         },
         required: ['type', 'prompt'],

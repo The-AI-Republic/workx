@@ -114,6 +114,14 @@ export interface AgentContext {
   startTime: number;
   /** Cleanup function for event listeners */
   unsubscribe?: () => void;
+  /**
+   * Mutable: set to true by `cancel_sub_agent` (or any external cancellation
+   * path) before disposing the engine. When true, the detached background
+   * handler suppresses the `<task-notification>` injection — the caller of
+   * `cancel_sub_agent` already received explicit confirmation, so a second
+   * notification would be redundant noise to the parent LLM.
+   */
+  cancelled?: boolean;
 }
 
 /**
@@ -169,8 +177,24 @@ export interface TaskNotification {
 
 /** Result returned immediately when a background sub-agent is launched */
 export interface BackgroundSubAgentResult {
+  /**
+   * Literal discriminant. Use `'kind' in result && result.kind === 'background'`
+   * to narrow `SubAgentResult | BackgroundSubAgentResult` — more robust than
+   * checking for `'status' in result`, which would silently break if
+   * `SubAgentResult` ever gained a `status` field.
+   */
+  kind: 'background';
   status: 'launched';
   runId: string;
   type: string;
   description: string;
+}
+
+/**
+ * Type guard for narrowing the `sub_agent` tool's union return type.
+ */
+export function isBackgroundSubAgentResult(
+  r: SubAgentResult | BackgroundSubAgentResult,
+): r is BackgroundSubAgentResult {
+  return 'kind' in r && r.kind === 'background';
 }

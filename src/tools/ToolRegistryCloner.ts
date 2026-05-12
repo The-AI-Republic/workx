@@ -41,18 +41,29 @@ export async function cloneToolRegistry(
 
 /**
  * Convenience function for creating sub-agent tool registries.
- * Automatically excludes dangerous tools and the sub_agent tool itself.
+ * Automatically excludes dangerous tools and the sub_agent management surface.
+ *
+ * Always-denied tools:
+ * - `sub_agent` — prevents recursive nesting
+ * - `list_sub_agents`, `cancel_sub_agent`, `send_message` — prevent a sub-agent
+ *   from discovering or interfering with its siblings. These tools are the
+ *   parent's privileged orchestration surface; children should not have them.
  */
+const ALWAYS_DENIED_FOR_SUB_AGENTS = [
+  'sub_agent',
+  'list_sub_agents',
+  'cancel_sub_agent',
+  'send_message',
+];
+
 export async function createSubAgentToolRegistry(
   parentRegistry: ToolRegistry,
   subAgentType: SubAgentTypeConfig
 ): Promise<ToolRegistry> {
-  const defaultDenyList = ['sub_agent']; // Always prevent nesting
-
   return cloneToolRegistry(parentRegistry, {
     include: subAgentType.tools?.allow,
     exclude: [
-      ...defaultDenyList,
+      ...ALWAYS_DENIED_FOR_SUB_AGENTS,
       ...(subAgentType.tools?.deny ?? []),
     ],
   });

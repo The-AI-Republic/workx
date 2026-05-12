@@ -1,7 +1,10 @@
 // File: src/tools/AgentTool/SubAgentRegistry.ts
 
 import type { RepublicAgentEngine } from '@/core/engine/RepublicAgentEngine';
-import type { SubAgentUsageEntry, SubAgentUsageSummary } from './types';
+import type { AgentContext, SubAgentUsageEntry, SubAgentUsageSummary } from './types';
+
+/** Default cap on retained non-running entries before oldest-first eviction. */
+const DEFAULT_HISTORICAL_RETENTION = 50;
 
 /**
  * Tracks an active sub-agent within a parent session
@@ -14,6 +17,19 @@ export interface ActiveSubAgent {
   engine: RepublicAgentEngine;
   startTime: number;
   status: 'running' | 'completed' | 'failed' | 'cancelled';
+  /**
+   * Set when the status transitions away from 'running'. Used as the eviction
+   * ordering key when historical retention exceeds the cap.
+   */
+  endTime?: number;
+  /**
+   * Back-reference to the runner's context — used by external cancellation
+   * paths (e.g. cancel_sub_agent) to set `context.cancelled = true` before
+   * disposing the engine so the detached background handler skips the
+   * task-notification injection. Optional because the registry may be used
+   * by callers that don't go through the runner pipeline (e.g. tests).
+   */
+  context?: AgentContext;
 }
 
 /**
@@ -30,16 +46,25 @@ export interface ActiveSubAgent {
 export class SubAgentRegistry {
   private activeAgents = new Map<string, ActiveSubAgent>();
   private readonly maxConcurrent: number;
+  private readonly maxHistoricalEntries: number;
   private usageRecords: SubAgentUsageEntry[] = [];
   private pendingMessages = new Map<string, string[]>();
+  private onError?: (msg: string, error: unknown) => void;
 
-  constructor(options: { maxConcurrent?: number } = {}) {
+  constructor(options: {
+    maxConcurrent?: number;
+    maxHistoricalEntries?: number;
+    onError?: (msg: string, error: unknown) => void;
+  } = {}) {
     this.maxConcurrent = options.maxConcurrent ?? 3;
+    this.maxHistoricalEntries = options.maxHistoricalEntries ?? DEFAULT_HISTORICAL_RETENTION;
+    this.onError = options.onError;
   }
 
   /**
    * Atomically check concurrency limit and register a sub-agent.
    * Counts running agents directly to avoid TOCTOU race conditions.
+   * Evicts oldest non-running entries if historical retention is at the cap.
    */
   register(agent: ActiveSubAgent): void {
     let activeCount = 0;
@@ -49,6 +74,7 @@ export class SubAgentRegistry {
     if (activeCount >= this.maxConcurrent) {
       throw new Error(`Max concurrent sub-agents (${this.maxConcurrent}) reached`);
     }
+    this.evictHistoricalIfNeeded();
     this.activeAgents.set(agent.runId, agent);
   }
 
@@ -75,11 +101,15 @@ export class SubAgentRegistry {
       try {
         await agent.engine.dispose();
       } catch (error) {
-        console.warn(`[SubAgentRegistry] Error disposing sub-agent ${agent.runId}:`, error);
+        this.reportError(`Error disposing sub-agent ${agent.runId}`, error);
       }
       agent.status = 'cancelled';
+      agent.endTime = Date.now();
+      // Delete only the snapshotted runId — concurrent register() during the
+      // await above must not have its entry erased.
+      this.activeAgents.delete(agent.runId);
+      this.pendingMessages.delete(agent.runId);
     }));
-    this.activeAgents.clear();
   }
 
   canSpawn(): boolean {
@@ -90,6 +120,40 @@ export class SubAgentRegistry {
     const agent = this.activeAgents.get(runId);
     if (agent) {
       agent.status = status;
+      if (status !== 'running' && agent.endTime === undefined) {
+        agent.endTime = Date.now();
+      }
+    }
+  }
+
+  /**
+   * Evict oldest non-running historical entries when retention is at the cap.
+   * Running entries are never evicted (they're load-bearing for management
+   * tools); only completed/failed/cancelled tombstones are recycled.
+   */
+  private evictHistoricalIfNeeded(): void {
+    const tombstones: ActiveSubAgent[] = [];
+    for (const a of this.activeAgents.values()) {
+      if (a.status !== 'running') tombstones.push(a);
+    }
+    if (tombstones.length < this.maxHistoricalEntries) return;
+    tombstones.sort((a, b) => (a.endTime ?? 0) - (b.endTime ?? 0));
+    const toEvict = tombstones.length - this.maxHistoricalEntries + 1;
+    for (let i = 0; i < toEvict; i++) {
+      const victim = tombstones[i];
+      this.activeAgents.delete(victim.runId);
+      this.pendingMessages.delete(victim.runId);
+    }
+  }
+
+  /**
+   * Report an error via the configured callback. Falls back to a silent drop
+   * if no callback is wired — callers that care about disposal errors must
+   * provide an `onError` callback at construction time.
+   */
+  private reportError(msg: string, error: unknown): void {
+    if (this.onError) {
+      this.onError(msg, error);
     }
   }
 

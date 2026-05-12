@@ -24,7 +24,7 @@ export function buildCancelSubAgentToolDefinition(): ToolDefinition {
     type: 'function',
     function: {
       name: 'cancel_sub_agent',
-      description: 'Cancel a running sub-agent by its runId.',
+      description: 'Cancel a running sub-agent by its runId. Returns explicit confirmation; no task-notification is emitted for cancellations initiated through this tool.',
       strict: false,
       parameters: {
         type: 'object',
@@ -65,6 +65,15 @@ export function buildSendMessageToolDefinition(): ToolDefinition {
   };
 }
 
+/**
+ * Coerce a tool-call parameter to a non-empty string. Returns undefined when
+ * the value is missing or any non-string type (objects, arrays, numbers).
+ */
+function requireStringParam(value: unknown): string | undefined {
+  if (typeof value !== 'string' || value.length === 0) return undefined;
+  return value;
+}
+
 export function createListSubAgentsHandler(registry: SubAgentRegistry) {
   return async (_params: Record<string, unknown>) => {
     const agents = registry.getAll().map(a => ({
@@ -81,9 +90,9 @@ export function createListSubAgentsHandler(registry: SubAgentRegistry) {
 
 export function createCancelSubAgentHandler(registry: SubAgentRegistry) {
   return async (params: Record<string, unknown>) => {
-    const runId = params.runId as string;
+    const runId = requireStringParam(params.runId);
     if (!runId) {
-      return JSON.stringify({ success: false, error: 'Missing required parameter: runId' });
+      return JSON.stringify({ success: false, error: 'Missing or invalid parameter: runId (must be a non-empty string)' });
     }
     const agent = registry.get(runId);
     if (!agent) {
@@ -93,6 +102,13 @@ export function createCancelSubAgentHandler(registry: SubAgentRegistry) {
       return JSON.stringify({ success: false, error: `Sub-agent ${runId} is not running (status: ${agent.status})` });
     }
     try {
+      // Mark the context cancelled BEFORE disposing the engine — the detached
+      // background handler checks this flag to suppress the duplicate
+      // task-notification (the caller already gets explicit confirmation
+      // below).
+      if (agent.context) {
+        agent.context.cancelled = true;
+      }
       await agent.engine.dispose();
       registry.updateStatus(runId, 'cancelled');
       return JSON.stringify({ success: true, message: `Sub-agent ${runId} cancelled` });
@@ -105,10 +121,10 @@ export function createCancelSubAgentHandler(registry: SubAgentRegistry) {
 
 export function createSendMessageHandler(registry: SubAgentRegistry) {
   return async (params: Record<string, unknown>) => {
-    const to = params.to as string;
-    const message = params.message as string;
-    if (!to) return JSON.stringify({ success: false, error: 'Missing required parameter: to' });
-    if (!message) return JSON.stringify({ success: false, error: 'Missing required parameter: message' });
+    const to = requireStringParam(params.to);
+    if (!to) return JSON.stringify({ success: false, error: 'Missing or invalid parameter: to (must be a non-empty string)' });
+    const message = requireStringParam(params.message);
+    if (!message) return JSON.stringify({ success: false, error: 'Missing or invalid parameter: message (must be a non-empty string)' });
 
     const agent = registry.get(to);
     if (!agent) return JSON.stringify({ success: false, error: `No sub-agent found with runId: ${to}` });

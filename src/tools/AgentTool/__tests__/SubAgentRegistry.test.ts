@@ -289,18 +289,27 @@ describe('SubAgentRegistry', () => {
       expect(agent2.status).toBe('cancelled');
     });
 
-    it('clears the registry after cancellation', async () => {
+    it('removes only running entries; preserves historical tombstones', async () => {
+      // After the H1 fix, cancelAll deletes only the entries it cancelled —
+      // historical (completed/failed/cancelled) tombstones survive so
+      // management tools can still report on them.
       registry.register(createAgent({ runId: 'r1', status: 'running' }));
       registry.register(createAgent({ runId: 'r2', status: 'completed' }));
 
       await registry.cancelAll();
 
-      expect(registry.getAll()).toHaveLength(0);
       expect(registry.get('r1')).toBeUndefined();
-      expect(registry.get('r2')).toBeUndefined();
+      expect(registry.get('r2')).toBeDefined();
+      expect(registry.get('r2')?.status).toBe('completed');
     });
 
-    it('handles dispose() errors gracefully (wraps in try-catch)', async () => {
+    it('handles dispose() errors gracefully (reports via onError, not console)', async () => {
+      const errors: Array<{ msg: string; err: unknown }> = [];
+      const registryWithErrorSink = new SubAgentRegistry({
+        maxConcurrent: 5,
+        onError: (msg, err) => errors.push({ msg, err }),
+      });
+
       const failingEngine = createMockEngine();
       (failingEngine.dispose as ReturnType<typeof vi.fn>).mockRejectedValue(
         new Error('dispose boom'),
@@ -308,28 +317,25 @@ describe('SubAgentRegistry', () => {
 
       const successEngine = createMockEngine();
 
-      registry.register(createAgent({ runId: 'r1', status: 'running', engine: failingEngine }));
-      registry.register(createAgent({ runId: 'r2', status: 'running', engine: successEngine }));
-
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      registryWithErrorSink.register(createAgent({ runId: 'r1', status: 'running', engine: failingEngine }));
+      registryWithErrorSink.register(createAgent({ runId: 'r2', status: 'running', engine: successEngine }));
 
       // Should NOT throw despite failing dispose
-      await expect(registry.cancelAll()).resolves.toBeUndefined();
+      await expect(registryWithErrorSink.cancelAll()).resolves.toBeUndefined();
 
       // Both agents had dispose called
       expect(failingEngine.dispose).toHaveBeenCalledOnce();
       expect(successEngine.dispose).toHaveBeenCalledOnce();
 
-      // Warning was logged for the failing agent
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('[SubAgentRegistry] Error disposing sub-agent r1'),
-        expect.any(Error),
-      );
+      // Error was reported via onError, not console.warn
+      expect(errors).toHaveLength(1);
+      expect(errors[0].msg).toContain('Error disposing sub-agent r1');
+      expect(errors[0].err).toBeInstanceOf(Error);
 
-      // Registry is still cleared
-      expect(registry.getAll()).toHaveLength(0);
-
-      warnSpy.mockRestore();
+      // Both running entries are removed (cancelled tombstones kept? No —
+      // cancelAll deletes them since they were cancelled by this call)
+      expect(registryWithErrorSink.get('r1')).toBeUndefined();
+      expect(registryWithErrorSink.get('r2')).toBeUndefined();
     });
   });
 });

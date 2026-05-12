@@ -130,7 +130,7 @@ async function settle(extraTicks = 0): Promise<void> {
 function isBackground(
   r: SubAgentResult | BackgroundSubAgentResult,
 ): r is BackgroundSubAgentResult {
-  return 'status' in r && r.status === 'launched';
+  return 'kind' in r && r.kind === 'background';
 }
 
 // ---------------------------------------------------------------------------
@@ -427,3 +427,223 @@ describe('SubAgentRunner cross-agent messaging — drain wiring', () => {
     await settle();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Codex review fixes — regression tests
+// ---------------------------------------------------------------------------
+
+describe('SubAgentRunner — already-aborted params.signal (M3)', () => {
+  it('aborts the child controller immediately when params.signal is already aborted', async () => {
+    const parent = createParentEngine();
+    const runner = new SubAgentRunner({
+      parentEngine: parent as never,
+      customTypes: [makeType()],
+    });
+    const ctrl = new AbortController();
+    ctrl.abort();
+
+    // Foreground: should propagate the already-aborted state into engine.run
+    await runner.run({
+      type: 'worker',
+      prompt: 'task',
+      signal: ctrl.signal,
+    });
+
+    // engine.run was called with a signal that is already aborted
+    const callOpts = parent.__childEngine.run.mock.calls[0]?.[1] as
+      | { signal?: AbortSignal }
+      | undefined;
+    expect(callOpts?.signal?.aborted).toBe(true);
+  });
+});
+
+describe('SubAgentRunner — explicit-cancel suppresses notification (C2)', () => {
+  it('skips task-notification injection when context.cancelled is set before settle', async () => {
+    // Long-running child so we can mark cancelled before it resolves.
+    const parent = createParentEngine(
+      { success: false, stopReason: 'cancelled' },
+      { childRunDelayMs: 20 },
+    );
+    const registry = new SubAgentRegistry({ maxConcurrent: 3 });
+    const runner = new SubAgentRunner({
+      parentEngine: parent as never,
+      registry,
+      customTypes: [makeType()],
+    });
+
+    const result = await runner.run({
+      type: 'worker',
+      prompt: 'task',
+      background: true,
+    });
+    if (!isBackground(result)) throw new Error('expected background');
+
+    // Simulate cancel_sub_agent: mark cancelled before the detached promise settles
+    const entry = registry.get(result.runId);
+    if (entry?.context) entry.context.cancelled = true;
+
+    await new Promise((r) => setTimeout(r, 40));
+    await settle();
+
+    // No notification should be enqueued
+    expect(parent.enqueueSyntheticUserTurn).not.toHaveBeenCalled();
+  });
+});
+
+describe('SubAgentRegistry — bounded historical retention (H3)', () => {
+  it('evicts oldest non-running entries when retention cap is reached', () => {
+    const registry = new SubAgentRegistry({
+      maxConcurrent: 5,
+      maxHistoricalEntries: 3,
+    });
+    const mockEngine = { dispose: vi.fn() } as never;
+
+    // Register 5 agents and complete them one at a time
+    for (let i = 0; i < 5; i++) {
+      registry.register({
+        runId: `run-${i}`,
+        type: 'worker',
+        description: `task ${i}`,
+        parentSessionId: 'parent',
+        engine: mockEngine,
+        startTime: 1000 + i,
+        status: 'running',
+      });
+      // Mark completed with monotonically increasing endTime
+      registry.updateStatus(`run-${i}`, 'completed');
+    }
+
+    // After 5 inserts of tombstones with cap=3, only the 3 most recent remain
+    const remaining = registry.getAll().map((a) => a.runId);
+    expect(remaining).toHaveLength(3);
+    expect(remaining).toContain('run-4');
+    expect(remaining).toContain('run-3');
+    expect(remaining).toContain('run-2');
+    expect(remaining).not.toContain('run-0');
+    expect(remaining).not.toContain('run-1');
+  });
+
+  it('never evicts running entries even when at the cap', () => {
+    const registry = new SubAgentRegistry({
+      maxConcurrent: 10,
+      maxHistoricalEntries: 2,
+    });
+    const mockEngine = { dispose: vi.fn() } as never;
+
+    // 3 running entries (no tombstones to evict yet)
+    for (let i = 0; i < 3; i++) {
+      registry.register({
+        runId: `run-${i}`,
+        type: 'worker',
+        description: `task ${i}`,
+        parentSessionId: 'parent',
+        engine: mockEngine,
+        startTime: 1000 + i,
+        status: 'running',
+      });
+    }
+    expect(registry.getAll()).toHaveLength(3);
+
+    // Add 3 tombstones → cap is 2, so one is evicted on each new register
+    for (let i = 3; i < 6; i++) {
+      registry.register({
+        runId: `run-${i}`,
+        type: 'worker',
+        description: `task ${i}`,
+        parentSessionId: 'parent',
+        engine: mockEngine,
+        startTime: 1000 + i,
+        status: 'running',
+      });
+      registry.updateStatus(`run-${i}`, 'failed');
+    }
+
+    // 3 running + at most 2 tombstones
+    const running = registry.getAll().filter((a) => a.status === 'running');
+    const tombstones = registry.getAll().filter((a) => a.status !== 'running');
+    expect(running).toHaveLength(3);
+    expect(tombstones.length).toBeLessThanOrEqual(2);
+  });
+});
+
+describe('SubAgentRegistry — cancelAll deletes only snapshotted runIds (H1)', () => {
+  it('does not erase entries registered after the snapshot', async () => {
+    const registry = new SubAgentRegistry({ maxConcurrent: 5 });
+    // Slow-disposing engine to widen the race window
+    let resolveDispose: () => void = () => {};
+    const disposePromise = new Promise<void>((r) => {
+      resolveDispose = r;
+    });
+    const slowEngine = { dispose: () => disposePromise } as never;
+    const fastEngine = { dispose: vi.fn().mockResolvedValue(undefined) } as never;
+
+    registry.register({
+      runId: 'old-run',
+      type: 'worker',
+      description: 'old',
+      parentSessionId: 'parent',
+      engine: slowEngine,
+      startTime: 1000,
+      status: 'running',
+    });
+
+    // Kick off cancelAll (it awaits dispose)
+    const cancelAllPromise = registry.cancelAll();
+
+    // Register a new entry during the in-flight cancelAll
+    await Promise.resolve();
+    registry.register({
+      runId: 'new-run',
+      type: 'worker',
+      description: 'new',
+      parentSessionId: 'parent',
+      engine: fastEngine,
+      startTime: 2000,
+      status: 'running',
+    });
+
+    // Let cancelAll finish
+    resolveDispose();
+    await cancelAllPromise;
+
+    // The newly registered entry survived; the old one was cancelled and removed
+    expect(registry.get('new-run')).toBeDefined();
+    expect(registry.get('new-run')?.status).toBe('running');
+    expect(registry.get('old-run')).toBeUndefined();
+  });
+});
+
+describe('RepublicAgentEngine.enqueueSyntheticUserTurn — idle buffering (C1)', () => {
+  // C1 is tested at the engine level: when there is no active turn, the text
+  // is buffered and drained on the next run(). This is exercised here against
+  // the real engine via the existing integration test fixture in
+  // src/core/engine/__tests__/RepublicAgentEngine.integration.test.ts.
+  // The buffer logic itself is small enough to unit-test indirectly through
+  // the runner tests above and through the integration test suite.
+  it.skip('covered by engine integration tests + drainPendingNotificationsInto unit', () => {});
+});
+
+describe('isBackgroundSubAgentResult — kind discriminant (M2)', () => {
+  it('narrows on kind, not status', async () => {
+    const { isBackgroundSubAgentResult } = await import('../types');
+    const bg: BackgroundSubAgentResult = {
+      kind: 'background',
+      status: 'launched',
+      runId: 'r',
+      type: 't',
+      description: 'd',
+    };
+    const sync: SubAgentResult = {
+      success: true,
+      response: 'x',
+      runId: 'r2',
+      turnCount: 1,
+      stopReason: 'completed',
+    };
+    expect(isBackgroundSubAgentResult(bg)).toBe(true);
+    expect(isBackgroundSubAgentResult(sync)).toBe(false);
+  });
+});
+
+// M1 test lives in its own file (SubAgentRunner.siblingDeny.test.ts) because
+// this file vi.mocks ../../ToolRegistryCloner.

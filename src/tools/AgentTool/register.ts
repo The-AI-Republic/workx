@@ -33,6 +33,17 @@ export async function registerSubAgentTool(
   const customTypes = options.types;
   const registry = new SubAgentRegistry({
     maxConcurrent: options.maxConcurrent ?? 3,
+    onError: (msg, error) => {
+      engine.pushEvent({
+        id: crypto.randomUUID(),
+        msg: {
+          type: 'SubAgentError',
+          data: {
+            error: `${msg}: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        },
+      });
+    },
   });
 
   // Phase 4: Load sub-agent types from config (optional)

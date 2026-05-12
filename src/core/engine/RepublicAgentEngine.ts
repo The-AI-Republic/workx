@@ -41,6 +41,13 @@ export class RepublicAgentEngine {
   // Event listener callbacks (supports multiple listeners)
   private eventListeners: Array<(event: EngineEvent) => void> = [];
 
+  /**
+   * Notifications enqueued while no turn is active. Drained and prepended to
+   * the next `run()` / `sendFollowUp()` so background sub-agent results are
+   * not silently dropped when the parent is idle. See `enqueueSyntheticUserTurn`.
+   */
+  private pendingNotifications: string[] = [];
+
   constructor(config: RepublicAgentEngineConfig) {
     this.engineId = crypto.randomUUID();
     this.config = config;
@@ -147,7 +154,7 @@ export class RepublicAgentEngine {
     this.ensureReady();
     const submissionId = this.submitOperation({
       type: 'UserInput',
-      items: input,
+      items: this.drainPendingNotificationsInto(input),
       context: options?.context,
     });
     return this.waitForCompletion(submissionId, options);
@@ -167,7 +174,7 @@ export class RepublicAgentEngine {
     this.ensureReady();
     const submissionId = this.submitOperation({
       type: 'UserTurn',
-      items: input,
+      items: this.drainPendingNotificationsInto(input),
       context: options?.context,
     });
     return this.waitForCompletion(submissionId, options);
@@ -286,10 +293,23 @@ export class RepublicAgentEngine {
 
   /**
    * Enqueue a synthetic user turn message (e.g. notification from a background sub-agent).
-   * Injects text into the session's pending input and emits a SubAgentNotificationQueued event.
+   *
+   * If a turn is currently active, the text is appended to the session's
+   * pending-input queue and consumed at the next drain point.
+   *
+   * If no turn is active, the text is buffered on the engine and prepended to
+   * the input of the next `run()` / `sendFollowUp()` call, so background
+   * notifications are never silently dropped when the parent is idle.
+   *
+   * Either way, a `SubAgentNotificationQueued` event is emitted so UI/event
+   * consumers can react immediately.
    */
   enqueueSyntheticUserTurn(text: string): void {
-    this.session?.addPendingInput([{ type: 'text', text }]);
+    if (this.session?.isActiveTurn()) {
+      this.session.addPendingInput([{ type: 'text', text }]);
+    } else {
+      this.pendingNotifications.push(text);
+    }
     this.pushEvent({
       id: crypto.randomUUID(),
       msg: {
@@ -297,6 +317,19 @@ export class RepublicAgentEngine {
         data: { text },
       },
     });
+  }
+
+  /**
+   * Drain any pending notification text accumulated while idle and prepend it
+   * to the caller's input so the next turn sees the notifications first.
+   */
+  private drainPendingNotificationsInto(input: InputItem[]): InputItem[] {
+    if (this.pendingNotifications.length === 0) return input;
+    const notifications = this.pendingNotifications.splice(0);
+    return [
+      ...notifications.map((text) => ({ type: 'text' as const, text })),
+      ...input,
+    ];
   }
 
   /**

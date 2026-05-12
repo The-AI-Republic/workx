@@ -12,12 +12,13 @@ import { SubAgentRunner } from '@/tools/AgentTool/SubAgentRunner';
 import { SubAgentRegistry } from '@/tools/AgentTool/SubAgentRegistry';
 import type { RepublicAgentEngineConfig, EngineEvent, InputItem } from '../RepublicAgentEngineConfig';
 import type { SubAgentTypeConfig, SubAgentResult, BackgroundSubAgentResult } from '@/tools/AgentTool/types';
+import { isBackgroundSubAgentResult } from '@/tools/AgentTool/types';
 
 /** Narrow runner.run() result to SubAgentResult for foreground-only tests. */
 function expectSubAgentResult(
   r: SubAgentResult | BackgroundSubAgentResult,
 ): SubAgentResult {
-  if ('status' in r) {
+  if (isBackgroundSubAgentResult(r)) {
     throw new Error('expected SubAgentResult, got BackgroundSubAgentResult');
   }
   return r;

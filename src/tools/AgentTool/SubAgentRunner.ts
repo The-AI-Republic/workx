@@ -14,6 +14,7 @@ import type {
   AgentContext,
   AgentRunResult,
   IAgentRunner,
+  TaskNotification,
 } from './types';
 
 /**
@@ -112,37 +113,84 @@ export class SubAgentRunner implements IAgentRunner {
       }
     }
 
-    // Background: detach. Inject task notification on settle; cleanup runs
-    // only after the detached promise resolves (success or failure).
-    void this.execute(context, params)
-      .then((result) => {
-        context.parentEngine.enqueueSyntheticUserTurn(
-          this.formatTaskNotification(context, params, result),
-        );
-      })
-      .catch((error) => {
-        const errorMsg =
-          error instanceof Error ? error.message : String(error);
-        context.parentEngine.enqueueSyntheticUserTurn(
-          this.formatTaskNotification(context, params, {
-            success: false,
-            response: '',
-            turnCount: 0,
-            stopReason: 'error',
-            error: errorMsg,
-          }),
-        );
-      })
-      .finally(() => {
-        void this.cleanup(context);
-      });
+    // Background: detach. Wrapped in an async IIFE so cleanup rejections and
+    // notification throws are all observable inside a single try/catch/finally.
+    // Skip the notification entirely when context.cancelled is true — the
+    // operator who called cancel_sub_agent already received explicit
+    // confirmation; a second notification would be redundant noise.
+    void (async () => {
+      try {
+        const result = await this.execute(context, params);
+        if (!context.cancelled) {
+          this.safeEnqueueNotification(
+            context,
+            this.formatTaskNotification(context, params, result),
+          );
+        }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        if (!context.cancelled) {
+          this.safeEnqueueNotification(
+            context,
+            this.formatTaskNotification(context, params, {
+              success: false,
+              response: '',
+              turnCount: 0,
+              stopReason: 'error',
+              error: errorMsg,
+            }),
+          );
+        }
+      } finally {
+        try {
+          await this.cleanup(context);
+        } catch (cleanupError) {
+          // Surface as an event so consumers have visibility; never let it
+          // become an unhandled rejection on the detached promise chain.
+          context.parentEngine.pushEvent({
+            id: crypto.randomUUID(),
+            msg: {
+              type: 'SubAgentError',
+              data: {
+                runId: context.runId,
+                subAgentType: params.type,
+                error: `cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
+              },
+            },
+          });
+        }
+      }
+    })();
 
     return {
+      kind: 'background',
       status: 'launched',
       runId: context.runId,
       type: params.type,
       description: params.description ?? params.prompt.slice(0, 50),
     };
+  }
+
+  /**
+   * Inject a notification into the parent engine, swallowing any throw so it
+   * cannot poison the detached background chain. Errors are surfaced as events.
+   */
+  private safeEnqueueNotification(context: AgentContext, text: string): void {
+    try {
+      context.parentEngine.enqueueSyntheticUserTurn(text);
+    } catch (error) {
+      context.parentEngine.pushEvent({
+        id: crypto.randomUUID(),
+        msg: {
+          type: 'SubAgentError',
+          data: {
+            runId: context.runId,
+            subAgentType: context.typeConfig.id,
+            error: `notification enqueue failed: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        },
+      });
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -213,32 +261,60 @@ export class SubAgentRunner implements IAgentRunner {
     });
 
     // Phase 1.2: Parent-lifecycle cancellation
-    let abortController: AbortController;
+    const abortController = new AbortController();
     let unsubscribe: (() => void) | undefined;
 
-    if (background) {
-      // Background agents: independent AbortController with no linkage
-      abortController = new AbortController();
-    } else {
-      // Foreground agents: linked AbortController
-      abortController = new AbortController();
-
+    if (!background) {
+      // Foreground agents: link to params.signal and parent EngineDisposed.
       if (params.signal) {
-        params.signal.addEventListener(
-          'abort',
-          () => abortController.abort(),
-          { once: true }
-        );
+        // Handle already-aborted signal — addEventListener would never fire.
+        if (params.signal.aborted) {
+          abortController.abort();
+        } else {
+          params.signal.addEventListener(
+            'abort',
+            () => abortController.abort(),
+            { once: true },
+          );
+        }
       }
 
       unsubscribe = this.parentEngine.onEvent((event) => {
-        if (event.msg.type === 'EngineDisposed') {
-          abortController.abort();
-        }
+        if (event.msg.type !== 'EngineDisposed') return;
+        abortController.abort();
+      });
+    } else if (params.signal !== undefined) {
+      // Background runs intentionally outlive the caller's signal — surface
+      // this surprise as an event so the caller knows their signal is inert.
+      this.parentEngine.pushEvent({
+        id: crypto.randomUUID(),
+        msg: {
+          type: 'SubAgentWarning',
+          data: {
+            runId,
+            subAgentType: params.type,
+            warning: 'background: true ignores params.signal — use cancel_sub_agent to terminate.',
+          },
+        },
       });
     }
 
-    // Atomically check concurrency and register — prevents TOCTOU race
+    const context: AgentContext = {
+      runId,
+      engine,
+      abortController,
+      registry: this.registry,
+      typeConfig: resolvedTypeConfig,
+      parentEngine: this.parentEngine,
+      background,
+      startTime,
+      unsubscribe,
+    };
+
+    // Atomically check concurrency and register — prevents TOCTOU race.
+    // Passing context lets cancel_sub_agent set context.cancelled before
+    // disposing the engine, so the detached handler can skip the duplicate
+    // task-notification.
     try {
       this.registry.register({
         runId,
@@ -248,6 +324,7 @@ export class SubAgentRunner implements IAgentRunner {
         engine,
         startTime,
         status: 'running',
+        context,
       });
     } catch {
       // Clean up unsubscribe on registration failure
@@ -283,17 +360,7 @@ export class SubAgentRunner implements IAgentRunner {
       },
     });
 
-    return {
-      runId,
-      engine,
-      abortController,
-      registry: this.registry,
-      typeConfig: resolvedTypeConfig,
-      parentEngine: this.parentEngine,
-      background,
-      startTime,
-      unsubscribe,
-    };
+    return context;
   }
 
   // ---------------------------------------------------------------------------
@@ -404,7 +471,17 @@ export class SubAgentRunner implements IAgentRunner {
     try {
       await context.engine.dispose();
     } catch (disposeError) {
-      console.warn(`[SubAgentRunner] Error disposing engine for run ${context.runId}:`, disposeError);
+      context.parentEngine.pushEvent({
+        id: crypto.randomUUID(),
+        msg: {
+          type: 'SubAgentError',
+          data: {
+            runId: context.runId,
+            subAgentType: context.typeConfig.id,
+            error: `engine dispose failed: ${disposeError instanceof Error ? disposeError.message : String(disposeError)}`,
+          },
+        },
+      });
     }
 
     // Call unsubscribe if set (foreground event listener cleanup)
@@ -474,50 +551,74 @@ export class SubAgentRunner implements IAgentRunner {
    *
    * Status mapping: success → 'completed'; stopReason 'cancelled' or
    * 'interrupted' → 'cancelled'; anything else → 'failed'.
+   *
+   * The notification is built as a `TaskNotification` value first, then
+   * serialized — so any future field added to the interface fails to compile
+   * until the formatter is updated.
    */
   private formatTaskNotification(
     context: AgentContext,
     params: SubAgentToolParams,
     result: AgentRunResult,
   ): string {
-    const durationMs = Date.now() - context.startTime;
-    const status: 'completed' | 'failed' | 'cancelled' = result.success
+    const status: TaskNotification['status'] = result.success
       ? 'completed'
       : result.stopReason === 'cancelled' || result.stopReason === 'interrupted'
         ? 'cancelled'
         : 'failed';
 
-    const lines: string[] = [];
-    lines.push('<task-notification>');
-    lines.push(`  <run-id>${escapeXml(context.runId)}</run-id>`);
-    lines.push(`  <type>${escapeXml(params.type)}</type>`);
-    lines.push(`  <status>${status}</status>`);
-    lines.push(
-      `  <summary>${escapeXml(params.description ?? params.type)}</summary>`,
-    );
-    if (result.response) {
-      lines.push(`  <result>${escapeXml(result.response)}</result>`);
-    }
-    if (result.error) {
-      lines.push(`  <error>${escapeXml(result.error)}</error>`);
-    }
-    lines.push('  <usage>');
-    if (result.tokenUsage) {
-      lines.push(
-        `    <total_tokens>${result.tokenUsage.total}</total_tokens>`,
-      );
-    }
-    lines.push(`    <turn_count>${result.turnCount}</turn_count>`);
-    lines.push(`    <duration_ms>${durationMs}</duration_ms>`);
-    lines.push('  </usage>');
-    lines.push('</task-notification>');
-    return lines.join('\n');
+    const notification: TaskNotification = {
+      runId: context.runId,
+      type: params.type,
+      description: params.description ?? params.type,
+      status,
+      result: result.response || undefined,
+      error: result.error,
+      tokenUsage: result.tokenUsage,
+      turnCount: result.turnCount,
+      durationMs: Date.now() - context.startTime,
+    };
+
+    return serializeTaskNotification(notification);
   }
 }
 
-function escapeXml(value: string): string {
+/**
+ * Sanitize an LLM-visible text value before it appears between XML-like tags.
+ *
+ * The notification is consumed by an LLM, not by a strict XML parser. Beyond
+ * basic XML entity escaping, we also disarm the literal opening-/closing-tag
+ * sequences for the notification's own envelope and nested elements, so a
+ * sub-agent's response cannot inject a fake `</task-notification>` boundary
+ * that the parent LLM might pattern-match as end-of-message.
+ */
+function escapeForLlmXml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
+}
+
+function serializeTaskNotification(n: TaskNotification): string {
+  const lines: string[] = [];
+  lines.push('<task-notification>');
+  lines.push(`  <run-id>${escapeForLlmXml(n.runId)}</run-id>`);
+  lines.push(`  <type>${escapeForLlmXml(n.type)}</type>`);
+  lines.push(`  <status>${n.status}</status>`);
+  lines.push(`  <summary>${escapeForLlmXml(n.description)}</summary>`);
+  if (n.result) {
+    lines.push(`  <result>${escapeForLlmXml(n.result)}</result>`);
+  }
+  if (n.error) {
+    lines.push(`  <error>${escapeForLlmXml(n.error)}</error>`);
+  }
+  lines.push('  <usage>');
+  if (n.tokenUsage) {
+    lines.push(`    <total_tokens>${n.tokenUsage.total}</total_tokens>`);
+  }
+  lines.push(`    <turn_count>${n.turnCount}</turn_count>`);
+  lines.push(`    <duration_ms>${n.durationMs}</duration_ms>`);
+  lines.push('  </usage>');
+  lines.push('</task-notification>');
+  return lines.join('\n');
 }
