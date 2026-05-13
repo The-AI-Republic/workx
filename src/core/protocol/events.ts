@@ -104,6 +104,10 @@ export type EventMsg =
   // Service routing events
   | { type: 'ServiceResponse'; data: ServiceResponseEvent }
   | { type: 'StateUpdate'; data: StateUpdateEvent }
+  // Sub-agent lifecycle events
+  | { type: 'SubAgentStart'; data: SubAgentStartEvent }
+  | { type: 'SubAgentComplete'; data: SubAgentCompleteEvent }
+  | { type: 'SubAgentError'; data: SubAgentErrorEvent }
 ;
 
 // Individual event payload types
@@ -668,5 +672,31 @@ export interface StateUpdateEvent {
   sessionId?: string;
   tabId?: number;
   [key: string]: unknown;
+}
+
+// Sub-agent lifecycle event payloads
+
+export interface SubAgentStartEvent {
+  runId: string;
+  subAgentType: string;
+  description: string;
+}
+
+export interface SubAgentCompleteEvent {
+  runId: string;
+  subAgentType: string;
+  turnCount: number;
+  tokenUsage?: {
+    input: number;
+    output: number;
+    total: number;
+  };
+  duration: number;
+}
+
+export interface SubAgentErrorEvent {
+  runId: string;
+  subAgentType: string;
+  error: string;
 }
 

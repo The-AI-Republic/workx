@@ -112,7 +112,9 @@ export class DesktopAgentBootstrap {
       this.registry = AgentRegistry.getInstance({
         maxConcurrent: maxConcurrentSessions,
         agentFactory: async (agentConfig, initialHistory) => {
-          const agent = new RepublicAgent(agentConfig, initialHistory, undefined, new UserNotifier());
+          const { DesktopPlatformAdapter } = await import('../platform/DesktopPlatformAdapter');
+          const platformAdapter = new DesktopPlatformAdapter();
+          const agent = new RepublicAgent(agentConfig, platformAdapter, initialHistory, undefined, new UserNotifier());
 
           // Copy auth manager from an existing session for consistency
           const existingAuth = this.getFirstAuthManager();
@@ -127,6 +129,9 @@ export class DesktopAgentBootstrap {
 
           // Register skills tool
           await this.registerSkillsToolOnAgent(agent);
+
+          // Register sub-agent tool
+          await this.registerSubAgentToolOnAgent(agent);
 
           return agent;
         },
@@ -445,6 +450,31 @@ export class DesktopAgentBootstrap {
     );
 
     console.log('[DesktopAgentBootstrap] use_skill tool registered for', allSkills.length, 'skills');
+  }
+
+  /**
+   * Register the sub_agent tool on a specific agent's engine.
+   * Called by the agentFactory for every new session.
+   */
+  private async registerSubAgentToolOnAgent(agent: RepublicAgent): Promise<void> {
+    const engine = agent.getEngine();
+    if (!engine) {
+      console.warn('[DesktopAgentBootstrap] Cannot register sub_agent tool: engine not initialized');
+      return;
+    }
+
+    try {
+      const { registerSubAgentTool } = await import('@/tools/AgentTool/register');
+      await registerSubAgentTool(engine);
+      console.log('[DesktopAgentBootstrap] sub_agent tool registered');
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      console.warn('[DesktopAgentBootstrap] Could not register sub_agent tool:', error);
+      engine.pushEvent({
+        id: crypto.randomUUID(),
+        msg: { type: 'BackgroundEvent', data: { message: `Sub-agent tool registration failed: ${errMsg}`, level: 'error' } },
+      });
+    }
   }
 
   /**

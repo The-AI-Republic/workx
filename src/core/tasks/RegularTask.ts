@@ -20,6 +20,11 @@ import type { ToolRegistry } from '../../tools/ToolRegistry';
  */
 export class RegularTask implements SessionTask {
   private agentTask: AgentTask | null = null;
+  private maxTurns?: number;
+
+  constructor(options?: { maxTurns?: number }) {
+    this.maxTurns = options?.maxTurns;
+  }
 
   /**
    * Return task kind
@@ -56,7 +61,8 @@ export class RegularTask implements SessionTask {
       turnManager,
       session.getSessionId(),
       subId,
-      responseItems
+      responseItems,
+      { maxTurns: this.maxTurns }
     );
 
     try {

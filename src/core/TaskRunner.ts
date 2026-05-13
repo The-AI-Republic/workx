@@ -61,6 +61,10 @@ export interface TaskOptions {
   timeoutMs?: number;
   /** Auto-compact when token limit reached */
   autoCompact?: boolean;
+  /** Max turns before forced stop. Overrides the static MAX_TURNS (500) default. */
+  maxTurns?: number;
+  /** Callback that drains cross-agent messages injected between turns */
+  drainPendingMessages?: () => string[];
 }
 
 interface LoopOutcome {
@@ -211,8 +215,9 @@ export class TaskRunner {
         this.state.status = 'cancelled';
         this.state.abortReason = outcome.abortedReason;
         if (outcome.abortedReason === 'automatic_abort') {
+          const maxTurns = this.options.maxTurns ?? TaskRunner.MAX_TURNS;
           await this.emitBackgroundEvent(
-            `Task stopped after reaching the maximum of ${TaskRunner.MAX_TURNS} turns`,
+            `Task stopped after reaching the maximum of ${maxTurns} turns`,
             'warning'
           );
         }
@@ -280,7 +285,8 @@ export class TaskRunner {
         });
       }
 
-      if (turnCount >= TaskRunner.MAX_TURNS) {
+      const effectiveMaxTurns = this.options.maxTurns ?? TaskRunner.MAX_TURNS;
+      if (turnCount >= effectiveMaxTurns) {
         return this.buildLoopOutcome({
           turnCount,
           compactionPerformed,
@@ -291,7 +297,21 @@ export class TaskRunner {
         });
       }
 
+      // Drain cross-agent messages FIRST so they land in this turn, not the
+      // next one. Pushing into addPendingInput after getPendingInput() has
+      // already snapshotted the queue would silently defer drained messages
+      // by a full turn (or lose them entirely on the final turn).
+      if (this.options.drainPendingMessages) {
+        const messages = this.options.drainPendingMessages();
+        if (messages.length > 0) {
+          this.session.addPendingInput(
+            messages.map(msg => ({ type: 'text' as const, text: msg }))
+          );
+        }
+      }
+
       const pendingInput = (await this.session.getPendingInput()) as ResponseItem[];
+
       let turnInput = await this.buildNormalTurnInput(pendingInput);
 
       // Pre-request compaction check: estimate tokens and compact if needed

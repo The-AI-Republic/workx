@@ -44,7 +44,8 @@ export class AgentTask {
     turnManager: TurnManager,
     sessionId: string,
     submissionId: string,
-    input: ResponseItem[]
+    input: ResponseItem[],
+    options?: { maxTurns?: number }
   ) {
     this.sessionId = sessionId;
     this.submissionId = submissionId;
@@ -61,7 +62,7 @@ export class AgentTask {
         type: 'text' as const,
         text: getResponseItemContent(item)
       })),
-      { autoCompact: true }
+      { autoCompact: true, maxTurns: options?.maxTurns }
     );
   }
 
