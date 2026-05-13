@@ -185,6 +185,98 @@ describe('HookExecutor', () => {
     it('trims whitespace before parsing', () => {
       expect(HookExecutor.tryParseJson('  {"ok": true}  ')).toEqual({ ok: true });
     });
+
+    it('strips __proto__ from parsed output (prototype-pollution defense)', () => {
+      const parsed = HookExecutor.tryParseJson(
+        '{"hookSpecificOutput":{"updatedInput":{"__proto__":{"polluted":true},"file_path":"/tmp/x"}}}',
+      );
+      expect(parsed?.hookSpecificOutput?.updatedInput?.file_path).toBe('/tmp/x');
+      // __proto__ key is removed entirely
+      expect(
+        Object.prototype.hasOwnProperty.call(
+          parsed!.hookSpecificOutput.updatedInput,
+          '__proto__',
+        ),
+      ).toBe(false);
+      // The host's Object.prototype is unaffected
+      expect(({} as any).polluted).toBeUndefined();
+    });
+
+    it('strips constructor and prototype keys recursively', () => {
+      const parsed = HookExecutor.tryParseJson(
+        '{"updatedInput":{"nested":{"constructor":{"x":1},"prototype":{"y":2},"ok":3}}}',
+      );
+      expect(parsed?.updatedInput?.nested?.ok).toBe(3);
+      expect(
+        Object.prototype.hasOwnProperty.call(parsed!.updatedInput.nested, 'constructor'),
+      ).toBe(false);
+      expect(
+        Object.prototype.hasOwnProperty.call(parsed!.updatedInput.nested, 'prototype'),
+      ).toBe(false);
+    });
+  });
+
+  describe('stripProtoKeys', () => {
+    it('removes dangerous keys but preserves the rest', () => {
+      const cleaned = HookExecutor.stripProtoKeys({
+        a: 1,
+        __proto__: { x: 2 },
+        nested: { b: 3, constructor: 'evil' },
+      });
+      expect(cleaned).toEqual({ a: 1, nested: { b: 3 } });
+    });
+
+    it('descends into arrays', () => {
+      const cleaned = HookExecutor.stripProtoKeys([
+        { keep: 1, __proto__: 'gone' },
+        { keep: 2 },
+      ]);
+      expect(cleaned).toEqual([{ keep: 1 }, { keep: 2 }]);
+    });
+
+    it('returns primitives unchanged', () => {
+      expect(HookExecutor.stripProtoKeys(null)).toBe(null);
+      expect(HookExecutor.stripProtoKeys(42)).toBe(42);
+      expect(HookExecutor.stripProtoKeys('hi')).toBe('hi');
+    });
+  });
+
+  describe('buildHookEnv', () => {
+    it('passes through allowlisted vars only', () => {
+      const env = HookExecutor.buildHookEnv({
+        PATH: '/usr/bin',
+        HOME: '/home/u',
+        // These must be dropped — they're the kind of secret the agent holds
+        OPENAI_API_KEY: 'sk-secret',
+        ANTHROPIC_API_KEY: 'sk-also-secret',
+        AWS_SECRET_ACCESS_KEY: 'aws-secret',
+        BROWSERX_BACKEND_TOKEN: 'token',
+      });
+      expect(env.PATH).toBe('/usr/bin');
+      expect(env.HOME).toBe('/home/u');
+      expect(env.OPENAI_API_KEY).toBeUndefined();
+      expect(env.ANTHROPIC_API_KEY).toBeUndefined();
+      expect(env.AWS_SECRET_ACCESS_KEY).toBeUndefined();
+      expect(env.BROWSERX_BACKEND_TOKEN).toBeUndefined();
+    });
+
+    it('honors BROWSERX_HOOK_ENV opt-in allowlist', () => {
+      const env = HookExecutor.buildHookEnv({
+        PATH: '/usr/bin',
+        MY_HOOK_VAR: 'value',
+        OTHER_VAR: 'should-not-leak',
+        BROWSERX_HOOK_ENV: 'MY_HOOK_VAR',
+      });
+      expect(env.MY_HOOK_VAR).toBe('value');
+      expect(env.OTHER_VAR).toBeUndefined();
+      // BROWSERX_HOOK_ENV itself is not in the allowlist, so it doesn't propagate
+      expect(env.BROWSERX_HOOK_ENV).toBeUndefined();
+    });
+
+    it('handles missing BROWSERX_HOOK_ENV gracefully', () => {
+      const env = HookExecutor.buildHookEnv({ PATH: '/x' });
+      expect(env.PATH).toBe('/x');
+    });
   });
 
   describe('execute — extension mode', () => {

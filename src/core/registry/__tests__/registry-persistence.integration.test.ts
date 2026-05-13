@@ -57,6 +57,9 @@ vi.mock('@/core/RepublicAgent', () => {
       getApprovalManager() {
         return {};
       }
+      getHookDispatcher() {
+        return { fire: vi.fn().mockResolvedValue({}) };
+      }
       getModelClientFactory() {
         return { setAuthManager: vi.fn() };
       }

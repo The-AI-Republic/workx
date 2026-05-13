@@ -225,6 +225,8 @@ export class DesktopAgentBootstrap {
     const approvalGate = new ApprovalGate(approvalManager, policyEngine);
     approvalGate.addEnhancer(new DomainSensitivityEnhancer());
     approvalGate.addEnhancer(new SensitivePathEnhancer());
+    // Wire hook dispatcher so PermissionRequest/PermissionDenied hooks fire
+    approvalGate.setHookDispatcher(agent.getHookDispatcher());
 
     // Desktop mode uses ConfigStorageProvider (TauriConfigStorage already initialized)
     const configStorage = new ApprovalConfigStorage(() => getConfigStorage());

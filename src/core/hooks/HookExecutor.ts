@@ -24,6 +24,41 @@ const DEFAULT_HTTP_TIMEOUT_S = 30;
 /** Max recursion depth to prevent infinite hook loops */
 const MAX_RECURSION_DEPTH = 3;
 
+/**
+ * Env vars allowed to leak into hook child processes.
+ *
+ * The agent process holds model API keys, OAuth tokens, and backend credentials
+ * in its environment. Passing all of `process.env` to every user-configured
+ * hook would let any hook script (intentionally or by accident, e.g. via a
+ * stray `env` call) exfiltrate those secrets. We pass only the variables a
+ * hook script reasonably needs to find binaries and resolve user-scope paths.
+ */
+const HOOK_ENV_ALLOWLIST: ReadonlySet<string> = new Set([
+  'PATH',
+  'HOME',
+  'USER',
+  'USERNAME',
+  'LOGNAME',
+  'SHELL',
+  'LANG',
+  'LC_ALL',
+  'TZ',
+  'TMPDIR',
+  'TEMP',
+  'TMP',
+  // Windows-friendly basics
+  'SYSTEMROOT',
+  'WINDIR',
+  'PATHEXT',
+  'COMSPEC',
+  'APPDATA',
+  'LOCALAPPDATA',
+  'USERPROFILE',
+  'PROGRAMFILES',
+  'PROGRAMDATA',
+]);
+
+
 export class HookExecutor {
   /**
    * Execute a single hook command with the given input context.
@@ -214,17 +249,23 @@ export class HookExecutor {
 
     const timeoutMs = (hook.timeout ?? DEFAULT_HTTP_TIMEOUT_S) * 1000;
 
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-      // Combine with external signal
+    // Combine with external signal — keep a reference so we can detach below.
+    const onExternalAbort = () => controller.abort();
+    if (signal) {
+      signal.addEventListener('abort', onExternalAbort, { once: true });
+    }
+
+    const cleanup = () => {
+      clearTimeout(timeoutId);
       if (signal) {
-        signal.addEventListener('abort', () => controller.abort(), {
-          once: true,
-        });
+        signal.removeEventListener('abort', onExternalAbort);
       }
+    };
 
+    try {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         ...hook.headers,
@@ -236,8 +277,6 @@ export class HookExecutor {
         body: JSON.stringify(input),
         signal: controller.signal,
       });
-
-      clearTimeout(timeoutId);
 
       if (!response.ok) {
         return {
@@ -274,6 +313,8 @@ export class HookExecutor {
         stderr: error instanceof Error ? error.message : String(error),
         duration: Date.now() - start,
       };
+    } finally {
+      cleanup();
     }
   }
 
@@ -349,14 +390,68 @@ export class HookExecutor {
 
   /**
    * Try to parse JSON stdout. Returns undefined if not valid JSON.
+   * Recursively strips prototype-pollution keys (`__proto__`, `constructor`,
+   * `prototype`) from the parsed object so untrusted hook output can't replace
+   * the prototype of objects it gets merged into downstream.
    */
   static tryParseJson(text: string | undefined): any | undefined {
     if (!text || !text.trim()) return undefined;
     try {
-      return JSON.parse(text.trim());
+      const parsed = JSON.parse(text.trim());
+      return HookExecutor.stripProtoKeys(parsed);
     } catch {
       return undefined;
     }
+  }
+
+  /**
+   * Build the env passed to hook child processes — allowlist + opt-in extras.
+   *
+   * The agent process holds model API keys, OAuth tokens, and backend
+   * credentials in its environment; passing all of `process.env` to a
+   * user-configured hook would let any hook script exfiltrate those secrets.
+   * Users can opt specific variables in via `BROWSERX_HOOK_ENV` (comma-separated).
+   */
+  static buildHookEnv(env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+    const out: NodeJS.ProcessEnv = {};
+    const extra = env.BROWSERX_HOOK_ENV
+      ? new Set(
+          env.BROWSERX_HOOK_ENV.split(',')
+            .map((s) => s.trim())
+            .filter(Boolean),
+        )
+      : new Set<string>();
+
+    for (const [key, value] of Object.entries(env)) {
+      if (value === undefined) continue;
+      if (HOOK_ENV_ALLOWLIST.has(key) || extra.has(key)) {
+        out[key] = value;
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Recursively remove `__proto__` / `constructor` / `prototype` keys from any
+   * object/array in the tree. `JSON.parse` puts these on as own properties, so
+   * a spread like `{ ...parsed.updatedInput }` would otherwise replace the
+   * resulting object's prototype.
+   */
+  static stripProtoKeys(value: unknown): any {
+    if (Array.isArray(value)) {
+      return value.map((v) => HookExecutor.stripProtoKeys(v));
+    }
+    if (value && typeof value === 'object') {
+      const out: Record<string, unknown> = {};
+      for (const key of Object.keys(value as Record<string, unknown>)) {
+        if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+          continue;
+        }
+        out[key] = HookExecutor.stripProtoKeys((value as Record<string, unknown>)[key]);
+      }
+      return out;
+    }
+    return value;
   }
 
   /**
@@ -379,7 +474,7 @@ export class HookExecutor {
 
       const proc = spawn(shellBin, shellArgs, {
         stdio: ['pipe', 'pipe', 'pipe'],
-        env: { ...process.env },
+        env: HookExecutor.buildHookEnv(),
       });
 
       let stdout = '';

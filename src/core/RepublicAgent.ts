@@ -1214,6 +1214,17 @@ export class RepublicAgent {
     return this.approvalManager;
   }
 
+  /**
+   * Get the hook dispatcher.
+   *
+   * Exposed so platform bootstraps (extension/desktop/server) can wire the
+   * dispatcher into the ApprovalGate they construct, which is required for
+   * PermissionRequest and PermissionDenied hooks to fire.
+   */
+  getHookDispatcher(): HookDispatcher {
+    return this.hookDispatcher;
+  }
+
 
   /**
    * Cleanup resources

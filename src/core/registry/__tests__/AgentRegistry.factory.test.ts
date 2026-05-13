@@ -28,6 +28,7 @@ vi.mock('@/core/RepublicAgent', () => ({
     setEventDispatcher = vi.fn();
     getApprovalManager = vi.fn().mockReturnValue({});
     getToolRegistry = vi.fn().mockReturnValue({ setApprovalGate: vi.fn() });
+    getHookDispatcher = vi.fn().mockReturnValue({ fire: vi.fn().mockResolvedValue({}) });
     agentId = 'agent_ext';
   },
 }));
@@ -64,6 +65,7 @@ function createFactoryAgent() {
     setEventDispatcher: vi.fn(),
     getApprovalManager: vi.fn().mockReturnValue({}),
     getToolRegistry: vi.fn().mockReturnValue({ setApprovalGate: vi.fn() }),
+    getHookDispatcher: vi.fn().mockReturnValue({ fire: vi.fn().mockResolvedValue({}) }),
     agentId: 'agent_factory',
   };
 }
