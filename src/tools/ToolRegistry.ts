@@ -21,7 +21,6 @@ import type {
 } from './BaseTool';
 import type { ApprovalGate } from '../core/approval/ApprovalGate';
 import type { IRiskAssessor } from '../core/approval/types';
-import { parseNodeId } from './dom/utils';
 import {
   DEFAULT_TOOL_CONCURRENCY_PROFILE,
   type ToolConcurrencyProfile,
@@ -29,8 +28,10 @@ import {
   type ToolResultProfile,
   type ToolRuntimeMetadata,
   type ToolProgressCallback,
-  type ToolProgressData,
 } from './runtimeMetadata';
+// Note: parseNodeId is dynamically imported in enrichDomParameters to keep
+// ToolRegistry cross-platform (extension-only DOM utils stay out of the
+// desktop/server bundles).
 
 /**
  * Stringify a value for size measurement during result truncation.
@@ -594,6 +595,14 @@ export class ToolRegistry {
   }
 
   /**
+   * Iterate over all registered tool entries.
+   * Returns [toolName, entry] pairs for cloning/filtering.
+   */
+  entries(): IterableIterator<[string, { definition: ToolDefinition; handler: ToolHandler; riskAssessor?: IRiskAssessor }]> {
+    return this.tools.entries();
+  }
+
+  /**
    * List all registered tools
    */
   listTools(): ToolDefinition[] {
@@ -635,8 +644,9 @@ export class ToolRegistry {
     tabId: number
   ): Promise<Record<string, any>> {
     try {
-      // Dynamic import to avoid circular dependency at module load time
-      const { DomService } = await import('./dom/DomService');
+      // Dynamic imports to avoid pulling extension-only code into desktop/server builds
+      const { DomService } = await import('../extension/tools/dom/DomService');
+      const { parseNodeId } = await import('../extension/tools/dom/utils');
       const domService = await DomService.forTab(tabId);
       const snapshot = domService.getCurrentSnapshot();
       if (!snapshot) return parameters;

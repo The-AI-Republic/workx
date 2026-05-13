@@ -27,6 +27,7 @@ vi.mock('@/core/RepublicAgent', () => {
       setEventDispatcher(_fn: any) {}
       getSession() {
         return {
+          sessionId: `session_${Date.now()}_${Math.random().toString(36).slice(2)}`,
           conversationId: `conv_${Date.now()}`,
           abortAllTasks: vi.fn().mockResolvedValue(undefined),
           close: vi.fn().mockResolvedValue(undefined),
@@ -41,6 +42,9 @@ vi.mock('@/core/RepublicAgent', () => {
       }
       getToolRegistry() {
         return { getTool: vi.fn(), setApprovalGate: vi.fn() };
+      }
+      getEngine() {
+        return null;
       }
     },
   };

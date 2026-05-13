@@ -1,31 +1,28 @@
 /**
  * Main RepublicAgent class
- * Implements the SQ/EQ (Submission Queue/Event Queue) architecture
+ * Thin orchestration wrapper over RepublicAgentEngine.
+ * Handles platform-specific concerns (tab binding, config subscriptions, model hot-swap)
+ * and delegates all execution to the engine's single SQ/EQ loop.
  */
 
-import type { Submission, Op, InputItem, AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSummaryConfig, ReviewDecision } from './protocol/types';
+import type { Op, ReviewDecision, InputItem as ProtocolInputItem } from './protocol/types';
 import type { Event, EventMsg } from './protocol/events';
-import type { IConfigChangeEvent, IToolsConfig, IModelConfig } from '../config/types';
+import type { IConfigChangeEvent } from '../config/types';
 import type { AgentReadyState } from './models/types/Auth';
 import type { InitialHistory } from './session/state/types';
+import type { EngineEvent, EngineOp, InputItem as EngineInputItem } from './engine/RepublicAgentEngineConfig';
 import { AgentConfig } from '../config/AgentConfig';
 import { Session } from './Session';
 import { TurnContext } from './TurnContext';
 import { ApprovalManager } from './ApprovalManager';
 import { ToolRegistry } from '../tools/ToolRegistry';
 import { ModelClientFactory } from './models/ModelClientFactory';
+import { RepublicAgentEngine } from './engine/RepublicAgentEngine';
 import { type IUserNotifier, NoOpNotifier } from './IUserNotifier';
 import { v4 as uuidv4 } from 'uuid';
 import { loadPrompt, loadUserInstructions, configurePromptComposer, isComposerConfigured } from './PromptLoader';
-import { RegularTask } from './tasks/RegularTask';
-import { registerPlatformTools } from '../tools/registerPlatformTools';
-import { TabManager } from './TabManager';
+import type { IPlatformAdapter } from './platform/IPlatformAdapter';
 
-/**
- * Main agent class managing the submission and event queues
- * Enhanced with AgentTask integration for coordinated task execution
- * Feature 015: Now supports agentId for multi-agent instance tracking
- */
 /**
  * Event dispatcher function type
  * Used to route events to UI channels without hardcoding chrome.runtime
@@ -35,27 +32,28 @@ export type EventDispatcher = (event: Event) => void | Promise<void>;
 export class RepublicAgent {
   private _agentId: string;
   private nextId: number = 1;
-  private submissionQueue: Submission[] = [];
-  private eventQueue: Event[] = [];
   private session: Session;
-  private isProcessing: boolean = false;
   private config: AgentConfig;
   private approvalManager: ApprovalManager;
   private toolRegistry: ToolRegistry;
   private modelClientFactory: ModelClientFactory;
+  private platformAdapter: IPlatformAdapter;
   private userNotifier: IUserNotifier;
   private eventDispatcher: EventDispatcher | null = null;
+  private eventQueue: Event[] = [];
+  private engine: RepublicAgentEngine | null = null;
   // Non-null signals a deferred model switch. The actual model is resolved from
   // AgentConfig.selectedModelKey (which is updated before the config-changed event
   // fires), so the stored value is only used as a "switch pending" flag.
   private pendingModelKey: string | null = null;
 
-  constructor(config: AgentConfig, initialHistory?: InitialHistory, agentId?: string, userNotifier?: IUserNotifier) {
+  constructor(config: AgentConfig, platformAdapter: IPlatformAdapter, initialHistory?: InitialHistory, agentId?: string, userNotifier?: IUserNotifier) {
     // Generate or use provided agentId for multi-instance tracking (Feature 015)
     this._agentId = agentId ?? `agent_${uuidv4()}`;
 
     // Config must be provided (use await AgentConfig.getInstance() if needed)
     this.config = config;
+    this.platformAdapter = platformAdapter;
 
     // Initialize components with config
     this.modelClientFactory = new ModelClientFactory();
@@ -122,11 +120,18 @@ export class RepublicAgent {
       }
     }
 
-    // Register platform tools (pass model data for feature filtering)
-    await registerPlatformTools(this.toolRegistry, this.config.getToolsConfig(), {
-      name: modelData.model.name,
-      supportsImage: modelData.model.supportsImage
+    // Register platform tools via adapter (replaces __BUILD_MODE__-based detection)
+    await this.platformAdapter.registerPlatformTools(this.toolRegistry, this.config.getToolsConfig(), {
+      supportsImage: modelData.model.supportsImage ?? false
     });
+
+    // Wire tool context for adapters that need lazy browser connection (desktop MCP)
+    if (this.platformAdapter.setToolContext) {
+      this.platformAdapter.setToolContext(
+        this.toolRegistry,
+        (msg: { type: string; data: Record<string, unknown> }) => this.emitEvent(msg as EventMsg),
+      );
+    }
 
     // Create model client and turn context during initialization
     // API key can be null - validation happens when making API requests
@@ -150,7 +155,24 @@ export class RepublicAgent {
     // Set the turn context on the session
     this.session.setTurnContext(taskContext);
 
-    console.log('[RepublicAgent] DEBUG: initialize() complete');
+    // Create and initialize the engine with the shared session
+    this.engine = new RepublicAgentEngine({
+      agentConfig: this.config,
+      modelClientFactory: this.modelClientFactory,
+      toolRegistry: this.toolRegistry,
+      systemPrompt: baseInstructions,
+      userInstructions,
+      session: this.session,
+      ownsSession: false,
+      approvalGate: this.toolRegistry.getApprovalGate() ?? undefined,
+      approvalManager: this.approvalManager,
+    });
+    await this.engine.initialize();
+
+    // Bridge engine events to the RepublicAgent event system
+    this.wireEngineEvents();
+
+    // initialization complete
   }
 
   /**
@@ -166,18 +188,17 @@ export class RepublicAgent {
   private async configurePromptComposition(): Promise<void> {
     // Skip if already configured (desktop bootstrap provides platform context)
     if (isComposerConfigured()) {
-      console.log('[RepublicAgent] PromptComposer already configured (by bootstrap)');
       return;
     }
 
-    const agentType = (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop')
+    const agentType = this.platformAdapter.platformId === 'desktop'
       ? 'applepi' as const
       : 'browserx' as const;
 
     configurePromptComposer(agentType, {
-      browserConnection: agentType === 'browserx' ? 'extension' : 'mcp',
+      browserConnection: this.platformAdapter.platformId === 'extension' ? 'extension' : 'mcp',
     });
-    console.log(`[RepublicAgent] PromptComposer configured for agent type: ${agentType}`);
+    // PromptComposer configured
   }
 
   /**
@@ -290,114 +311,97 @@ export class RepublicAgent {
   }
 
   /**
-   * Submit an operation to the agent
-   * Returns the submission ID
+   * Submit an operation to the agent.
+   * Orchestration-only ops are handled locally.
+   * Execution ops are forwarded to the engine after pre-submit hooks.
+   * Returns a submission ID.
    */
   async submitOperation(op: Op, context?: { tabId?: number }): Promise<string> {
     const id = `sub_${this.nextId++}`;
-    const submission: Submission = { id, op, context };
 
-    this.submissionQueue.push(submission);
-
-    // Start processing if not already running
-    if (!this.isProcessing) {
-      this.processSubmissionQueue();
-    }
-
-    return id;
-  }
-
-  /**
-   * Get the next event from the event queue
-   */
-  async getNextEvent(): Promise<Event | null> {
-    return this.eventQueue.shift() || null;
-  }
-
-  /**
-   * Process submissions from the queue
-   */
-  private async processSubmissionQueue(): Promise<void> {
-    this.isProcessing = true;
-
-    while (this.submissionQueue.length > 0) {
-      const submission = this.submissionQueue.shift()!;
-
-      try {
-        await this.handleSubmission(submission);
-      } catch (error) {
-        this.emitEvent({
-          type: 'Error',
-          data: {
-            message: error instanceof Error ? error.message : 'Unknown error occurred',
-          },
-        });
-      }
-    }
-
-    this.isProcessing = false;
-  }
-
-  /**
-   * Handle a single submission
-   */
-  private async handleSubmission(submission: Submission): Promise<void> {
     try {
-      switch (submission.op.type) {
-        case 'Interrupt':
-          await this.handleInterrupt();
-          break;
+      // Guard: engine must be initialized before forwarding execution ops
+      const requireEngine = () => {
+        if (!this.engine) {
+          throw new Error('RepublicAgent not initialized. Call initialize() before submitOperation().');
+        }
+        return this.engine;
+      };
 
-        case 'UserInput':
-          await this.handleUserInput(submission.op, submission.context);
-          break;
-
-        case 'UserTurn':
-          await this.handleUserTurn(submission.op, submission.context);
-          break;
-
-        case 'OverrideTurnContext':
-          await this.handleOverrideTurnContext(submission.op);
-          break;
-
-        case 'ExecApproval':
-          await this.handleExecApproval(submission.op);
-          break;
-
-        case 'PatchApproval':
-          await this.handlePatchApproval(submission.op);
-          break;
-
-        case 'AddToHistory':
-          await this.handleAddToHistory(submission.op);
-          break;
-
+      switch (op.type) {
+        // === Orchestration-only ops (handled locally, no engine involvement) ===
         case 'GetPath':
           await this.handleGetPath();
           break;
 
-        case 'Compact':
-          await this.handleCompact('auto');
-          break;
-
-        case 'ManualCompact':
-          await this.handleCompact('manual');
+        case 'OverrideTurnContext':
+          await this.handleOverrideTurnContext(op);
           break;
 
         case 'GetHistoryEntryRequest':
-          await this.handleGetHistoryEntryRequest(submission.op);
+          await this.handleGetHistoryEntryRequest(op);
+          break;
+
+        // === UserInput/UserTurn: run pre-submit hooks, then delegate to engine ===
+        // Return the engine's submission ID so callers can correlate with lifecycle events
+        case 'UserInput':
+        case 'UserTurn': {
+          await this.preSubmitHooks(op, context);
+          return requireEngine().submitOperation(this.toEngineOp(op));
+        }
+
+        // === Forward execution ops to engine ===
+        case 'ExecApproval':
+          requireEngine().submitOperation({
+            type: 'ExecApproval',
+            callId: op.id,
+            decision: op.decision,
+            remember: op.remember,
+            alternativeText: op.alternativeText,
+          });
+          break;
+
+        case 'PatchApproval':
+          requireEngine().submitOperation({
+            type: 'PatchApproval',
+            patchId: op.id,
+            decision: op.decision,
+          });
+          break;
+
+        case 'Interrupt':
+          await this.userNotifier.notifyWarning(
+            'Task Interrupted',
+            'The current task has been interrupted by user request'
+          );
+          requireEngine().submitOperation({ type: 'Interrupt', reason: 'user_interrupt' });
+          break;
+
+        case 'Compact':
+          requireEngine().submitOperation({ type: 'Compact', mode: 'auto' });
+          break;
+
+        case 'ManualCompact':
+          requireEngine().submitOperation({ type: 'ManualCompact' });
+          break;
+
+        case 'AddToHistory':
+          requireEngine().submitOperation({ type: 'AddToHistory', text: op.text });
           break;
 
         case 'Shutdown':
-          await this.handleShutdown();
+          // Cleanly tear down the engine. dispose() is idempotent and emits
+          // EngineDisposed, which is the canonical "we're done" signal. Do
+          // NOT also submit a Shutdown op — that double-handles teardown and
+          // races the dispose path.
+          await requireEngine().dispose();
           break;
 
         default:
-          // Handle other op types
           this.emitEvent({
             type: 'AgentMessage',
             data: {
-              message: `Operation type ${(submission.op as any).type} not yet implemented`,
+              message: `Operation type ${(op as any).type} not yet implemented`,
             },
           });
       }
@@ -407,43 +411,111 @@ export class RepublicAgent {
         type: 'TurnAborted',
         data: {
           reason: 'error',
-          submission_id: submission.id,
+          submission_id: id,
         },
       });
-      throw error;
+      this.emitEvent({
+        type: 'Error',
+        data: {
+          message: error instanceof Error ? error.message : 'Unknown error occurred',
+        },
+      });
+    }
+
+    return id;
+  }
+
+  /**
+   * Pre-submit hooks: tab binding + pending model switch.
+   * Run before forwarding UserInput/UserTurn to the engine.
+   */
+  private async preSubmitHooks(
+    op: Extract<Op, { type: 'UserInput' }> | Extract<Op, { type: 'UserTurn' }>,
+    context?: { tabId?: number }
+  ): Promise<void> {
+    // Tab binding (platform adapter concern)
+    const tabContext = op.type === 'UserTurn' && op.tabId !== undefined
+      ? { tabId: op.tabId }
+      : context;
+    await this.handleTabBinding(tabContext);
+
+    // Apply pending model switch
+    if (this.pendingModelKey !== null) {
+      const deferredKey = this.pendingModelKey;
+      this.pendingModelKey = null;
+      try {
+        const newClient = await this.modelClientFactory.createClientForCurrentModel();
+        const turnCtx = this.session.getTurnContext();
+        turnCtx.setModelClient(newClient);
+        turnCtx.setSelectedModelKey(deferredKey);
+      } catch (error) {
+        console.error('Failed to apply pending model switch:', error);
+      }
     }
   }
 
   /**
-   * Handle interrupt operation
-   * Updated (Feature 012): Delegate to Session.abortAllTasks()
+   * Convert a protocol InputItem to an engine InputItem.
+   * Protocol types: text, image (image_url), clipboard (content), context (path)
+   * Engine types:   text (text), image (data, mimeType), file (path)
    */
-  private async handleInterrupt(): Promise<void> {
-    // Set interrupt flag in session
-    this.session.requestInterrupt();
+  private static convertInputItem(item: ProtocolInputItem): EngineInputItem {
+    switch (item.type) {
+      case 'text':
+        return { type: 'text', text: item.text };
+      case 'image': {
+        // Protocol uses image_url (data URI), engine expects data + mimeType
+        const dataUri = item.image_url;
+        const match = dataUri.match(/^data:([^;]+);base64,(.+)$/);
+        if (match) {
+          return { type: 'image', data: match[2], mimeType: match[1] };
+        }
+        // Fallback: pass the whole URI as data
+        return { type: 'image', data: dataUri, mimeType: 'image/png' };
+      }
+      case 'clipboard':
+        // Clipboard content is text-like; convert to text item
+        return { type: 'text', text: item.content ?? '' };
+      case 'context':
+        // Context with a path maps to the engine's file type
+        return { type: 'file', path: item.path };
+      default:
+        // Exhaustiveness guard — treat unknown types as text
+        return { type: 'text', text: '' };
+    }
+  }
 
-    // Clear the submission queue
-    this.submissionQueue = [];
+  /**
+   * Convert a RepublicAgent Op to an EngineOp for forwarding to the engine.
+   */
+  private toEngineOp(op: Extract<Op, { type: 'UserInput' }> | Extract<Op, { type: 'UserTurn' }>): EngineOp {
+    const items = op.items.map(RepublicAgent.convertInputItem);
 
-    // Notify user about interruption
-    await this.userNotifier.notifyWarning(
-      'Task Interrupted',
-      'The current task has been interrupted by user request'
-    );
+    if (op.type === 'UserInput') {
+      return { type: 'UserInput', items };
+    }
+    // UserTurn with context overrides — only include defined values
+    // to avoid overwriting existing context with undefined
+    const overrides: Record<string, unknown> = {};
+    if (op.approval_policy !== undefined) overrides.approval_policy = op.approval_policy;
+    if (op.sandbox_policy !== undefined) overrides.sandbox_policy = op.sandbox_policy;
+    if (op.model !== undefined) overrides.model = op.model;
+    if (op.effort !== undefined) overrides.effort = op.effort;
+    if (op.summary !== undefined) overrides.summary = op.summary;
 
-    this.emitEvent({
-      type: 'TurnAborted',
-      data: {
-        reason: 'user_interrupt',
-      },
-    });
+    return {
+      type: 'UserTurn',
+      items,
+      contextOverrides: Object.keys(overrides).length > 0 ? overrides : undefined,
+    };
+  }
 
-    // Delegate to Session.abortAllTasks() (Feature 012: Session task management)
-    // Session will abort all tasks and emit TurnAborted events
-    await this.session.abortAllTasks('UserInterrupt');
 
-    // Clear interrupt flag after handling
-    this.session.clearInterrupt();
+  /**
+   * Get the next event from the event queue
+   */
+  async getNextEvent(): Promise<Event | null> {
+    return this.eventQueue.shift() || null;
   }
 
   /**
@@ -452,127 +524,38 @@ export class RepublicAgent {
    */
   private async handleTabBinding(submissionContext?: { tabId?: number }): Promise<void> {
     const currentTabId = this.session.getTabId();
-    const newTabId = submissionContext?.tabId ?? -1; // Default to -1 if not provided
-
-    const tabManager = TabManager.getInstance();
+    const newTabId = submissionContext?.tabId ?? -1;
 
     // ================================================================
     // CASE 1: newTabId is -1 → Create a new tab
     // ================================================================
     if (newTabId === -1) {
       try {
-        // Server mode: no real tabs — use sentinel tabId
-        if (__BUILD_MODE__ === 'server') {
-          this.session.setTabId(1);
-          this.emitEvent({
-            type: 'StateUpdate',
-            data: { sessionId: this.session.getId(), tabId: 1 },
-          });
+        // Lazy browser setup (e.g., desktop MCP connection)
+        await this.platformAdapter.ensureBrowserReady?.();
+
+        // Extension: clear old tab group before creating new tab
+        if (this.platformAdapter.hasRealTabs && currentTabId !== -1) {
+          await this.platformAdapter.switchTab(currentTabId, -1);
         }
-        // Desktop mode: ensure chrome-devtools-mcp is connected.
-        // chrome-devtools-mcp launches Chrome with a default page — no need to
-        // call new_page. The agent will use navigate_page to go where it needs.
-        else if (__BUILD_MODE__ === 'desktop') {
-          try {
-            const { MCPManager } = await import('./mcp/MCPManager');
-            const { registerMCPTools } = await import('./mcp/MCPToolAdapter');
-            const mcpManager = await MCPManager.getInstance('desktop');
-            const browserServer = mcpManager.getServerByName('browser');
-            if (browserServer) {
-              await mcpManager.connect(browserServer.id);
 
-              // Verify tools were actually discovered
-              const connection = mcpManager.getConnection(browserServer.id);
-              if (connection && connection.tools.length > 0) {
-                // Lazily register tools if they weren't registered at startup
-                if (!this.toolRegistry.getTool(`browser__${connection.tools[0].name}`)) {
-                  const { McpBrowserRiskAssessor } = await import('./approval/assessors/McpBrowserRiskAssessor');
-                  await registerMCPTools(mcpManager, 'browser', connection.tools, this.toolRegistry, new McpBrowserRiskAssessor());
-                }
-              } else {
-                const warnMsg = 'Browser MCP server connected but no tools were discovered. Browser automation will not work.';
-                console.warn(`[RepublicAgent] ${warnMsg}`);
-                this.emitEvent({
-                  type: 'BackgroundEvent',
-                  data: { message: warnMsg, level: 'warning' },
-                });
-              }
-            } else {
-              const warnMsg = 'Builtin browser server not found in MCPManager. Browser tools will be unavailable.';
-              console.warn(`[RepublicAgent] ${warnMsg}`);
-              this.emitEvent({
-                type: 'BackgroundEvent',
-                data: { message: warnMsg, level: 'warning' },
-              });
-            }
-          } catch (mcpError) {
-            const errorMsg = mcpError instanceof Error ? mcpError.message : String(mcpError);
-            console.error(`[RepublicAgent] Desktop mode: browser MCP server connection failed: ${errorMsg}`);
-            this.emitEvent({
-              type: 'BackgroundEvent',
-              data: {
-                message: `Browser tools unavailable: ${errorMsg}`,
-                level: 'warning',
-              },
-            });
-            // Don't fail the submission — tools will return errors to the LLM
-          }
+        const createdTabId = await this.platformAdapter.createTab({
+          url: 'about:blank',
+          active: false,
+        });
 
-          // Use sentinel tabId=1 since MCP manages page state internally
-          const createdTabId = 1;
+        this.session.setTabId(createdTabId);
 
-          this.session.setTabId(createdTabId);
-
-          this.emitEvent({
-            type: 'StateUpdate',
-            data: { sessionId: this.session.getId(), tabId: createdTabId },
-          });
-        } else {
-          // Extension mode: use Chrome extension TabManager
-          const createdTabId = await tabManager.createTab({
-            url: 'about:blank',
-            active: false,
-          });
-          const oldTabId = currentTabId;
-          if (oldTabId !== -1) {
-            await tabManager.clearAllTabsFromGroup();
-          }
-
-          if (createdTabId) {
-            // Update session's tabId (SessionState is the source of truth)
-            this.session.setTabId(createdTabId);
-
-            // Add tab to ApplePi group
-            await tabManager.addTabToGroup(createdTabId);
-
-            // Notify UI of tab binding update
-            this.emitEvent({
-              type: 'StateUpdate',
-              data: { sessionId: this.session.getId(), tabId: createdTabId },
-            });
-          } else {
-            const errorMsg = 'Failed to create tab for session: tab creation returned null';
-
-            // Emit error to chat UI
-            this.emitEvent({
-              type: 'Error',
-              data: {
-                message: 'Failed to create a new tab. Please try again.',
-              },
-            });
-
-            throw new Error(errorMsg);
-          }
-        }
+        this.emitEvent({
+          type: 'StateUpdate',
+          data: { sessionId: this.session.getId(), tabId: createdTabId },
+        });
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : 'Unknown error during tab creation';
 
-        // Emit error to chat UI
         this.emitEvent({
           type: 'Error',
-          data: {
-            message: `Failed to create browser tab: ${errorMsg}`,
-          },
+          data: { message: `Failed to create browser tab: ${errorMsg}` },
         });
 
         throw error;
@@ -582,15 +565,12 @@ export class RepublicAgent {
     // CASE 2: newTabId === currentTabId → Check health, don't rebind
     // ================================================================
     else if (newTabId === currentTabId) {
+      if (this.platformAdapter.hasRealTabs) {
+        const validation = await this.platformAdapter.validateTab(currentTabId);
 
-      // Desktop/server mode: tab health is not managed by Chrome extension TabManager
-      if (__BUILD_MODE__ !== 'desktop' && __BUILD_MODE__ !== 'server') {
-        const validation = await tabManager.validateTab(currentTabId);
-
-        if (validation.status === 'invalid') {
+        if (!validation.valid) {
           const errorMsg = `Current tab ${currentTabId} is not healthy. Reason: ${validation.reason}`;
 
-          // Emit error to chat UI
           this.emitEvent({
             type: 'Error',
             data: {
@@ -601,59 +581,38 @@ export class RepublicAgent {
           throw new Error(errorMsg);
         }
       }
-
     }
     // ================================================================
     // CASE 3: newTabId !== currentTabId → Switch to new tab
     // ================================================================
     else {
-
-      if (__BUILD_MODE__ === 'desktop' || __BUILD_MODE__ === 'server') {
-        // Desktop/server mode: just update session tabId (no tab groups, no extension validation)
+      if (!this.platformAdapter.hasRealTabs) {
+        // Desktop/server: just update session tabId
         this.session.setTabId(newTabId);
       } else {
-        // Extension mode: validate tab and manage tab groups
-        const validation = await tabManager.validateTab(newTabId);
+        // Extension: validate tab before switching
+        const validation = await this.platformAdapter.validateTab(newTabId);
 
-        if (validation.status !== 'valid') {
-          const errorMsg = validation.status === 'invalid'
-            ? `Tab ${newTabId} is not valid. Reason: ${validation.reason}`
-            : `Tab ${newTabId} validation is still in progress`;
-
-          // Emit error to chat UI
+        if (!validation.valid) {
           this.emitEvent({
             type: 'Error',
             data: {
-              message: validation.status === 'invalid'
-                ? `The selected tab (ID: ${newTabId}) is not valid (${validation.reason}). Please select a valid tab and try again.`
-                : `Unable to validate tab ${newTabId}. Please try again.`,
+              message: `The selected tab (ID: ${newTabId}) is not valid (${validation.reason}). Please select a valid tab and try again.`,
             },
           });
 
-          throw new Error(errorMsg);
+          throw new Error(`Tab ${newTabId} is not valid. Reason: ${validation.reason}`);
         }
 
-        // Tab is valid, proceed with switching
         try {
-          // Clear all tabs from group if it exists
-          if (currentTabId !== -1) {
-            await tabManager.clearAllTabsFromGroup();
-          }
-
-          // Update session's tabId (SessionState is the source of truth)
+          await this.platformAdapter.switchTab(currentTabId, newTabId);
           this.session.setTabId(newTabId);
-
-          // Add new tab to ApplePi group
-          await tabManager.addTabToGroup(newTabId);
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : 'Unknown error during tab switching';
 
-          // Emit error to chat UI
           this.emitEvent({
             type: 'Error',
-            data: {
-              message: `Failed to switch to tab ${newTabId}: ${errorMsg}`,
-            },
+            data: { message: `Failed to switch to tab ${newTabId}: ${errorMsg}` },
           });
 
           throw error;
@@ -661,8 +620,6 @@ export class RepublicAgent {
       }
     }
 
-
-    // Emit state update event to notify UI of tab binding change
     this.emitEvent({
       type: 'BackgroundEvent',
       data: {
@@ -672,155 +629,12 @@ export class RepublicAgent {
     });
   }
 
-  /**
-   * Process user input with SessionTask
-   * Common method for handling both handleUserInput and handleUserTurn
-   * Updated (Feature 012): Use RegularTask and delegate to Session.spawnTask()
-   */
-  private async processUserInputWithTask(
-    items: Array<any>,
-    contextOverrides?: {
-      cwd?: string;
-      approval_policy?: AskForApproval;
-      sandbox_policy?: SandboxPolicy;
-      model?: string;
-      effort?: ReasoningEffortConfig;
-      summary?: ReasoningSummaryConfig;
-      final_output_json_schema?: any;
-    },
-    newTask: boolean = false,
-    submissionContext?: { tabId?: number }
-  ): Promise<void> {
-    try {
-
-      // Handle tab binding/creation/switching
-      await this.handleTabBinding(submissionContext);
-
-      // Apply pending model switch before processing the new submission
-      if (this.pendingModelKey !== null) {
-        const deferredKey = this.pendingModelKey;
-        this.pendingModelKey = null;
-        try {
-          const newClient = await this.modelClientFactory.createClientForCurrentModel();
-          const turnCtx = this.session.getTurnContext();
-          turnCtx.setModelClient(newClient);
-          turnCtx.setSelectedModelKey(deferredKey);
-        } catch (error) {
-          console.error('Failed to apply pending model switch:', error);
-        }
-      }
-
-      // Convert input items to InputItem format for SessionTask
-      const inputItems: InputItem[] = items.map(item => ({
-        type: item.type || 'text',
-        text: item.type === 'text' ? item.text || '' : undefined,
-      }));
-
-      // Get existing turn context (created during initialize())
-      let taskContext = this.session.getTurnContext();
-
-      // If context overrides are provided, update the turn context
-      if (contextOverrides) {
-        if (taskContext) {
-          // Update existing context with overrides
-          // Note: model override is no longer supported - use AgentConfig.selectModel() instead
-          this.session.updateTurnContext(contextOverrides);
-        }
-      }
-
-      if (!taskContext) {
-        throw new Error('Turn context not initialized');
-      }
-
-      // Create RegularTask instance (Feature 011 architecture)
-      // RegularTask will delegate to AgentTask → TaskRunner
-      const task = new RegularTask();
-
-      // Generate submission ID
-      const submissionId = uuidv4();
-
-      // Delegate to Session.spawnTask() (Feature 012: Session task management)
-      // Session will manage task lifecycle, emit events, and handle abortion
-      await this.session.spawnTask(task, taskContext, submissionId, inputItems);
-
-
-      // Note: Session.spawnTask() is fire-and-forget
-      // Task completion/abortion events are emitted by Session via eventEmitter
-      // We don't need to wait for completion or manually manage activeTask
-
-    } catch (error) {
-      console.error('Error processing user input:', error);
-
-      // Check if this is an API key error and emit appropriate event
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred during task execution';
-      const isApiKeyError = errorMessage.includes('No API key configured');
-
-      // Get provider name for better error message
-      let providerName = 'the selected provider';
-      try {
-        const configData = this.config.getConfig();
-        const modelData = this.config.getModelByKey(configData.selectedModelKey);
-        if (modelData) {
-          providerName = modelData.provider.name;
-        }
-      } catch (e) {
-        // Ignore error getting provider name
-      }
-
-      const userFriendlyMessage = isApiKeyError
-        ? `Cannot execute task: No API key configured for ${providerName}. Please go to Settings → Model Configuration and add your API key.`
-        : errorMessage;
-
-      this.emitEvent({
-        type: 'Error',
-        data: {
-          message: userFriendlyMessage,
-        },
-      });
-
-      throw error;
-    }
-  }
-
-  /**
-   * Handle user input
-   * Uses the current persistent TurnContext
-   */
-  private async handleUserInput(
-    op: Extract<Op, { type: 'UserInput' }>,
-    context?: { tabId?: number }
-  ): Promise<void> {
-
-    this.session.addPendingInput(op.items);
-    await this.processUserInputWithTask(op.items, undefined, true, context);
-
-  }
-
-  /**
-   * Handle user turn with full context using AgentTask
-   * Allows per-turn overrides of the context
-   */
-  private async handleUserTurn(
-    op: Extract<Op, { type: 'UserTurn' }>,
-    context?: { tabId?: number }
-  ): Promise<void> {
-    await this.processUserInputWithTask(op.items, {
-      approval_policy: op.approval_policy,
-      sandbox_policy: op.sandbox_policy,
-      model: op.model,
-      effort: op.effort,
-      summary: op.summary,
-    }, true, { tabId: op.tabId });
-  }
 
   /**
    * Cancel a running task
-   * Updated (Feature 012): Use Session.abortAllTasks()
    */
   async cancelTask(submissionId: string): Promise<void> {
-    // Check if task is running in Session
     if (this.session.hasRunningTask(submissionId)) {
-      // Abort the specific task (currently aborts all tasks)
       await this.session.abortAllTasks('UserInterrupt');
     }
   }
@@ -831,10 +645,9 @@ export class RepublicAgent {
   private async handleOverrideTurnContext(
     op: Extract<Op, { type: 'OverrideTurnContext' }>
   ): Promise<void> {
-    // Partial update of turn context
     const updates: any = {};
 
-    if (op.tabId !== undefined) updates.tabId = op.tabId; // Replaced cwd with tabId
+    if (op.tabId !== undefined) updates.tabId = op.tabId;
     if (op.approval_policy !== undefined) updates.approval_policy = op.approval_policy;
     if (op.sandbox_policy !== undefined) updates.sandbox_policy = op.sandbox_policy;
     if (op.model !== undefined) updates.model = op.model;
@@ -844,111 +657,6 @@ export class RepublicAgent {
     this.session.updateTurnContext(updates);
   }
 
-  /**
-   * Handle exec approval
-   * Unified handler for both extension and desktop platforms.
-   * Routes decisions to ApprovalManager (risk-based approvals) and Session (protocol-level).
-   */
-  private async handleExecApproval(op: Extract<Op, { type: 'ExecApproval' }>): Promise<void> {
-    const decision = op.decision === 'approve' ? 'approve' : 'reject';
-
-    // Capture pending approval data before handleDecision removes it
-    let toolName = '';
-    let params: Record<string, any> = {};
-    let domain: string | undefined;
-    let riskScore: number | undefined;
-    if (op.remember) {
-      const pending = this.approvalManager.getApproval(op.id);
-      if (pending) {
-        toolName = pending.request?.metadata?.toolName || '';
-        params = pending.request?.details?.parameters || {};
-        domain = pending.request?.metadata?.domain;
-        riskScore = pending.request?.metadata?.riskScore;
-      } else {
-        console.warn(`[RepublicAgent] Cannot remember decision - no pending approval for id: ${op.id}`);
-      }
-    }
-
-    // Resolve through both approval paths. Either or both may have a pending
-    // request for this ID depending on which subsystem initiated the approval.
-    // Use try-catch to ensure one path's failure doesn't block the other.
-
-    let riskBasedResolved = false;
-    try {
-      await this.approvalManager.handleDecision({
-        id: op.id,
-        decision,
-        timestamp: Date.now(),
-        reason: op.alternativeText || (decision === 'reject' ? 'Denied by user' : undefined),
-      });
-      riskBasedResolved = true;
-    } catch (error) {
-      console.warn(`[RepublicAgent] ApprovalManager.handleDecision failed for ${op.id}:`, error);
-    }
-
-    let protocolResolved = false;
-    try {
-      await this.session.notifyApproval(op.id, op.decision);
-      protocolResolved = true;
-    } catch (error) {
-      console.warn(`[RepublicAgent] Session.notifyApproval failed for ${op.id}:`, error);
-    }
-
-    if (!riskBasedResolved && !protocolResolved) {
-      console.error(`[RepublicAgent] Approval decision could not be routed for id: ${op.id} — no pending request found in either subsystem`);
-    }
-
-    // Remember decision for this session if requested
-    if (op.remember && toolName) {
-      const approvalGate = this.toolRegistry.getApprovalGate();
-      if (approvalGate) {
-        approvalGate.rememberDecision(
-          toolName,
-          params,
-          decision === 'approve' ? 'auto_approve' : 'deny',
-          domain,
-          riskScore,
-        );
-      }
-    }
-
-    // Emit event
-    this.emitEvent({
-      type: 'BackgroundEvent',
-      data: {
-        message: `Execution ${decision === 'approve' ? 'approved' : 'rejected'}: ${op.id}`,
-        level: 'info',
-      },
-    });
-  }
-
-  /**
-   * Handle patch approval
-   */
-  private async handlePatchApproval(op: Extract<Op, { type: 'PatchApproval' }>): Promise<void> {
-    // Resolve the pending approval through Session
-    await this.session.notifyApproval(op.id, op.decision);
-
-    // Emit event
-    this.emitEvent({
-      type: 'BackgroundEvent',
-      data: {
-        message: `Patch ${op.decision === 'approve' ? 'approved' : 'rejected'}: ${op.id}`,
-        level: 'info',
-      },
-    });
-  }
-
-  /**
-   * Handle add to history
-   */
-  private async handleAddToHistory(op: Extract<Op, { type: 'AddToHistory' }>): Promise<void> {
-    this.session.addToHistory({
-      timestamp: Date.now(),
-      text: op.text,
-      type: 'user',
-    });
-  }
 
   /**
    * Handle get path request
@@ -964,83 +672,9 @@ export class RepublicAgent {
     });
   }
 
-  /**
-   * Handle shutdown
-   */
-  private async handleShutdown(): Promise<void> {
-    // Clean up and emit shutdown complete
-    this.submissionQueue = [];
-    this.eventQueue = [];
-
-    this.emitEvent({
-      type: 'ShutdownComplete',
-    });
-  }
-
-  /**
-   * Handle compact operation
-   * Triggers conversation history compaction to reduce token usage
-   * @param trigger - What triggered this compaction ('auto' | 'manual')
-   */
-  private async handleCompact(trigger: 'auto' | 'manual' = 'auto'): Promise<void> {
-    try {
-      // Emit background event indicating compaction started
-      this.emitEvent({
-        type: 'BackgroundEvent',
-        data: {
-          message: `History compaction started (${trigger})`,
-          level: 'info',
-        },
-      });
-
-      // Get history size before compaction
-      const historyBefore = this.session.getConversationHistory().items.length;
-
-      // Get model client for LLM-based summarization
-      const modelClient = await this.modelClientFactory.createClientForCurrentModel();
-
-      // Perform compaction with LLM-based summarization
-      const result = await this.session.compact(trigger, modelClient);
-
-      // Get history size after compaction
-      const historyAfter = this.session.getConversationHistory().items.length;
-
-      // Emit CompactionCompleted event for UI notification (T036)
-      this.emitEvent({
-        type: 'CompactionCompleted',
-        data: {
-          success: result.success,
-          tokensBefore: result.tokensBefore,
-          tokensAfter: result.tokensAfter,
-          itemsTrimmed: result.itemsTrimmed,
-          compactionCount: this.session.getCompactionCount(),
-          triggerReason: trigger,
-          error: result.error,
-        },
-      });
-
-      // Emit background event indicating compaction completed
-      this.emitEvent({
-        type: 'BackgroundEvent',
-        data: {
-          message: `History compaction completed: ${historyBefore} → ${historyAfter} items (saved ~${result.tokensBefore - result.tokensAfter} tokens)`,
-          level: 'info',
-        },
-      });
-    } catch (error) {
-      this.emitEvent({
-        type: 'Error',
-        data: {
-          message: `History compaction failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        },
-      });
-      throw error;
-    }
-  }
 
   /**
    * Handle get history entry request
-   * Returns a specific entry from the conversation history
    */
   private async handleGetHistoryEntryRequest(
     op: Extract<Op, { type: 'GetHistoryEntryRequest' }>
@@ -1049,7 +683,6 @@ export class RepublicAgent {
       const entry = this.session.getHistoryEntry(op.offset);
 
       if (entry) {
-        // Emit event with the history entry
         this.emitEvent({
           type: 'BackgroundEvent',
           data: {
@@ -1058,7 +691,6 @@ export class RepublicAgent {
           },
         });
       } else {
-        // Emit error if entry not found
         this.emitEvent({
           type: 'Error',
           data: {
@@ -1077,23 +709,50 @@ export class RepublicAgent {
     }
   }
 
+
+  /**
+   * Wire engine events to the RepublicAgent's eventDispatcher.
+   * The engine emits EngineEvents; we convert and dispatch them to the UI.
+   */
+  /**
+   * Engine-only event types that don't originate from session's event emitter.
+   * These need to be forwarded explicitly to the RepublicAgent event system.
+   */
+  private static readonly ENGINE_ONLY_EVENTS = new Set([
+    'ShutdownComplete',
+    'EngineDisposed',
+    'TaskStarted',
+    'CompactionCompleted',
+    'TurnAborted',
+    'HistoryCleared',
+    'BackgroundEvent',
+    'Error',
+    'SubAgentStart',
+    'SubAgentComplete',
+    'SubAgentError',
+  ]);
+
+  private wireEngineEvents(): void {
+    if (!this.engine) return;
+    this.engine.onEvent((engineEvent: EngineEvent) => {
+      // Session-originated events are already dispatched via the session's emitter
+      // (wired in the constructor). Only forward engine-only events that don't
+      // originate from session to avoid duplicate dispatching.
+      if (RepublicAgent.ENGINE_ONLY_EVENTS.has(engineEvent.msg.type)) {
+        this.emitEvent(engineEvent.msg as EventMsg);
+      }
+    });
+  }
+
   /**
    * Set the event dispatcher
-   *
-   * This MUST be called before using the agent. The dispatcher routes events
-   * to UI channels via ChannelManager. This makes RepublicAgent platform-agnostic.
-   *
-   * @param dispatcher - Function to dispatch events to UI channels
    */
   setEventDispatcher(dispatcher: EventDispatcher): void {
     this.eventDispatcher = dispatcher;
   }
 
   /**
-   * Emit an event to the event queue
-   *
-   * Events are routed through the injected event dispatcher to ChannelManager,
-   * which then dispatches to the appropriate channel (extension, desktop, etc.)
+   * Emit an event to the event queue and dispatch to UI
    */
   private emitEvent(msg: EventMsg): void {
     const event: Event = {
@@ -1125,7 +784,6 @@ export class RepublicAgent {
     return this.session;
   }
 
-
   /**
    * Get the model client factory
    */
@@ -1147,25 +805,39 @@ export class RepublicAgent {
     return this.approvalManager;
   }
 
+  /**
+   * Get the platform adapter
+   */
+  getPlatformAdapter(): IPlatformAdapter {
+    return this.platformAdapter;
+  }
+
+  /**
+   * Get the engine instance
+   */
+  getEngine(): RepublicAgentEngine | null {
+    return this.engine;
+  }
 
   /**
    * Cleanup resources
    */
   async cleanup(): Promise<void> {
+    if (this.engine) {
+      await this.engine.dispose();
+    }
     await this.toolRegistry.cleanup();
     this.toolRegistry.clear();
-    this.submissionQueue = [];
     this.eventQueue = [];
     await this.userNotifier.clearAll();
+    await this.platformAdapter.dispose();
   }
 
   /**
    * Setup notification handlers
    */
   private setupNotificationHandlers(): void {
-    // Register notification callback for UI updates
     this.userNotifier.onNotification((notification) => {
-      // Emit notification event for UI
       this.emitEvent({
         type: 'Notification',
         data: {
@@ -1186,13 +858,11 @@ export class RepublicAgent {
     approvalId: string,
     decision: 'approve' | 'reject'
   ): Promise<void> {
-    // Process the approval decision
     const pendingApproval = this.approvalManager.getApproval(approvalId);
     if (!pendingApproval) return;
 
     const approval = pendingApproval.request;
 
-    // Submit the decision as an operation based on approval type
     const reviewDecision: ReviewDecision = decision === 'approve'
       ? 'approve'
       : 'reject';
@@ -1221,7 +891,6 @@ export class RepublicAgent {
 
   /**
    * Check if agent is ready to accept commands
-   * Returns true if user is logged in (backend routing) OR API key is configured
    */
   async isReady(): Promise<AgentReadyState> {
     try {
@@ -1239,7 +908,6 @@ export class RepublicAgent {
 
       const providerId = modelData.provider.id;
 
-      // Check if using backend routing (user is logged in)
       if (this.modelClientFactory.isBackendRouting()) {
         return {
           ready: true,
@@ -1249,7 +917,6 @@ export class RepublicAgent {
         };
       }
 
-      // Fall back to API key mode
       const apiKey = await this.config.getProviderApiKey(providerId);
 
       if (!apiKey || !apiKey.trim()) {
@@ -1281,16 +948,13 @@ export class RepublicAgent {
    * Handle interruption
    */
   async interrupt(): Promise<void> {
-    // Request interrupt on session
     this.session.requestInterrupt();
 
-    // Notify user
     await this.userNotifier.notifyInfo(
       'Interruption Requested',
       'The current task will be interrupted'
     );
 
-    // Submit interrupt operation
     await this.submitOperation({ type: 'Interrupt' });
   }
 

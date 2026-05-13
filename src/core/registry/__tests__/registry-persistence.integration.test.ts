@@ -69,6 +69,9 @@ vi.mock('@/core/RepublicAgent', () => {
       async getNextEvent() {
         return null;
       }
+      getEngine() {
+        return null;
+      }
     },
   };
 });
