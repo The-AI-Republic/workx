@@ -388,14 +388,16 @@ describe('RepublicAgent', () => {
       expect(id1).not.toBe(id2);
     });
 
-    it('should process a Shutdown op and delegate to engine', async () => {
+    it('should process a Shutdown op by disposing the engine', async () => {
       await agent.initialize();
 
       await agent.submitOperation({ type: 'Shutdown' });
       await new Promise(r => setTimeout(r, 0));
 
-      expect(mockEngineInstance.submitOperation).toHaveBeenCalledWith({ type: 'Shutdown' });
+      // Shutdown now goes straight to dispose(); we no longer also submit a
+      // separate Shutdown op (that double-handles teardown).
       expect(mockEngineInstance.dispose).toHaveBeenCalled();
+      expect(mockEngineInstance.submitOperation).not.toHaveBeenCalledWith({ type: 'Shutdown' });
     });
 
     it('should process a GetPath op and emit ConversationPath', async () => {

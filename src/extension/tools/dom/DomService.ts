@@ -2299,10 +2299,14 @@ export class DomService {
         actualScrollY = Math.floor(windowHeight * 0.8);
       }
 
-      // Execute scroll
+      // Execute scroll — pass values as JSON-RPC arguments, never interpolate
+      // into the expression string. Coerce to safe finite integers so an LLM
+      // tool param of NaN/Infinity or a wrapped string can't sneak through.
+      const safeScrollX = Number.isFinite(scrollX) ? Math.trunc(scrollX) : 0;
+      const safeScrollY = Number.isFinite(actualScrollY) ? Math.trunc(actualScrollY as number) : 0;
       await this.sendCommand('Runtime.evaluate', {
-        expression: `window.scrollTo({ left: window.scrollX + ${scrollX}, top: window.scrollY + ${actualScrollY}, behavior: 'smooth' })`,
-        returnByValue: false
+        expression: `((dx, dy) => window.scrollTo({ left: window.scrollX + dx, top: window.scrollY + dy, behavior: 'smooth' }))(${safeScrollX}, ${safeScrollY})`,
+        returnByValue: false,
       });
 
       // Wait for smooth scroll animation to complete
@@ -2481,20 +2485,26 @@ export class DomService {
             actualScrollY = Math.floor(iframeHeight * 0.8);
           }
 
-          // Scroll the iframe's content window
-          await this.sendCommand('Runtime.callFunctionOn', {
-            objectId: resolveResult.object.objectId,
-            functionDeclaration: `function() {
-              if (this.contentWindow) {
-                this.contentWindow.scrollTo({
-                  left: this.contentWindow.scrollX + ${scrollX},
-                  top: this.contentWindow.scrollY + ${actualScrollY},
-                  behavior: 'smooth'
-                });
-              }
-            }`,
-            returnByValue: false
-          });
+          // Scroll the iframe's content window — pass scroll deltas as
+          // call arguments rather than interpolating into the function body.
+          {
+            const safeScrollX = Number.isFinite(scrollX) ? Math.trunc(scrollX) : 0;
+            const safeScrollY = Number.isFinite(actualScrollY) ? Math.trunc(actualScrollY as number) : 0;
+            await this.sendCommand('Runtime.callFunctionOn', {
+              objectId: resolveResult.object.objectId,
+              functionDeclaration: `function(dx, dy) {
+                if (this.contentWindow) {
+                  this.contentWindow.scrollTo({
+                    left: this.contentWindow.scrollX + dx,
+                    top: this.contentWindow.scrollY + dy,
+                    behavior: 'smooth'
+                  });
+                }
+              }`,
+              arguments: [{ value: safeScrollX }, { value: safeScrollY }],
+              returnByValue: false,
+            });
+          }
 
           // Wait for animation
           await new Promise(resolve => setTimeout(resolve, 500));
@@ -2559,12 +2569,18 @@ export class DomService {
           actualScrollY = containerHeight > 0 ? Math.floor(containerHeight * 0.8) : 100;
         }
 
-        // Execute scroll with smooth animation
-        await this.sendCommand('Runtime.callFunctionOn', {
-          objectId: resolveResult.object.objectId,
-          functionDeclaration: `function() { this.scrollTo({ left: this.scrollLeft + ${scrollX}, top: this.scrollTop + ${actualScrollY}, behavior: 'smooth' }); }`,
-          returnByValue: false
-        });
+        // Execute scroll with smooth animation — pass deltas as arguments,
+        // not as interpolated values in the function body.
+        {
+          const safeScrollX = Number.isFinite(scrollX) ? Math.trunc(scrollX) : 0;
+          const safeScrollY = Number.isFinite(actualScrollY) ? Math.trunc(actualScrollY as number) : 0;
+          await this.sendCommand('Runtime.callFunctionOn', {
+            objectId: resolveResult.object.objectId,
+            functionDeclaration: `function(dx, dy) { this.scrollTo({ left: this.scrollLeft + dx, top: this.scrollTop + dy, behavior: 'smooth' }); }`,
+            arguments: [{ value: safeScrollX }, { value: safeScrollY }],
+            returnByValue: false,
+          });
+        }
 
         // Wait for animation
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -2762,24 +2778,32 @@ export class DomService {
       await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId: resolvedBackendNodeId });
 
       // If specific alignment options provided, use JavaScript scrollIntoView
+      // on the resolved node object — never interpolate caller-supplied values
+      // (including nodeId) into a Runtime.evaluate expression string.
       if (options?.block || options?.inline) {
-        const scrollOptions = JSON.stringify({
-          behavior: 'smooth',
-          block: options.block || 'center',
-          inline: options.inline || 'nearest'
-        });
-
-        await this.sendCommand('Runtime.evaluate', {
-          expression: `
-            (function() {
-              const node = document.querySelector('[data-node-id="${nodeId}"]');
-              if (node) {
-                node.scrollIntoView(${scrollOptions});
-              }
-            })()
-          `,
-          returnByValue: true
-        });
+        const resolveResult = await this.sendCommand<{ object: { objectId?: string } }>(
+          'DOM.resolveNode',
+          { backendNodeId: resolvedBackendNodeId },
+        );
+        if (resolveResult?.object?.objectId) {
+          // Coerce alignment to known literal values to defend against
+          // unexpected runtime values (the JSON schema enforces this for
+          // LLM input, but the inner narrowing is cheap insurance).
+          const allowedBlock = new Set(['start', 'center', 'end', 'nearest']);
+          const allowedInline = new Set(['start', 'center', 'end', 'nearest']);
+          const safeBlock = allowedBlock.has(options.block as string)
+            ? (options.block as string)
+            : 'center';
+          const safeInline = allowedInline.has(options.inline as string)
+            ? (options.inline as string)
+            : 'nearest';
+          await this.sendCommand('Runtime.callFunctionOn', {
+            objectId: resolveResult.object.objectId,
+            functionDeclaration: `function(opts) { this.scrollIntoView(opts); }`,
+            arguments: [{ value: { behavior: 'smooth', block: safeBlock, inline: safeInline } }],
+            returnByValue: false,
+          });
+        }
       }
 
       // Wait for scroll animation to complete

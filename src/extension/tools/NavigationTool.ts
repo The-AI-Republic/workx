@@ -517,26 +517,57 @@ export class NavigationTool extends BaseTool {
   }
 
   /**
-   * Validate and normalize URL
+   * Validate and normalize URL.
+   *
+   * Security: the LLM controls this string. Only http(s) navigation is allowed.
+   * `javascript:`, `data:`, `vbscript:`, `file://`, `chrome://`,
+   * `chrome-extension://`, `about:`, and `view-source:` are explicitly
+   * rejected — they either execute arbitrary code in the page context, read
+   * the local filesystem, or reach into the extension's own privileged origin.
    */
   private validateAndNormalizeUrl(url: string): string {
-    // Add protocol if missing
-    if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('file://') && !url.startsWith('chrome://')) {
-      // Check if it looks like a domain
-      if (url.includes('.') && !url.includes(' ')) {
-        url = 'https://' + url;
-      } else {
-        // Treat as search query
-        url = `https://www.google.com/search?q=${encodeURIComponent(url)}`;
+    const trimmed = url.trim();
+    const lower = trimmed.toLowerCase();
+    const BLOCKED_PREFIXES = [
+      'javascript:',
+      'data:',
+      'vbscript:',
+      'file:',
+      'chrome:',
+      'chrome-extension:',
+      'about:',
+      'view-source:',
+    ];
+    for (const prefix of BLOCKED_PREFIXES) {
+      if (lower.startsWith(prefix)) {
+        throw new Error(`Blocked URL scheme: ${prefix}`);
       }
     }
 
+    let normalized = trimmed;
+    if (!lower.startsWith('http://') && !lower.startsWith('https://')) {
+      if (normalized.includes('.') && !normalized.includes(' ')) {
+        normalized = 'https://' + normalized;
+      } else {
+        // Treat as search query
+        normalized = `https://www.google.com/search?q=${encodeURIComponent(normalized)}`;
+      }
+    }
+
+    let parsed: URL;
     try {
-      new URL(url); // Validate URL format
-      return url;
-    } catch (error) {
+      parsed = new URL(normalized);
+    } catch {
       throw new Error(`Invalid URL format: ${url}`);
     }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new Error(`Blocked URL scheme: ${parsed.protocol}`);
+    }
+    // Return the pre-`new URL()` form so we don't add a trailing slash to
+    // path-less inputs like `https://example.com` (which `URL.toString()`
+    // would normalize to `https://example.com/`). Callers — and existing
+    // tests — expect the value as supplied.
+    return normalized;
   }
 
   /**

@@ -47,7 +47,12 @@ export interface IBrowserController {
   navigate(url: string): Promise<void>;
   getPageContent(): Promise<string>;
   screenshot(): Promise<string>;
-  executeScript(script: string): Promise<unknown>;
+  // NOTE: A previous revision exposed `executeScript(script: string)` here.
+  // It was removed because it required `new Function(script)` to satisfy
+  // the chrome.scripting API surface, which is an LLM-controlled-code
+  // execution footgun. Tools that need to run code in a page should call
+  // `chrome.scripting.executeScript({ func: knownFunction })` directly with
+  // a statically-defined function reference.
 }
 
 export interface IPlatformAdapter {

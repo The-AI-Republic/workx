@@ -86,13 +86,6 @@ export class ExtensionPlatformAdapter implements IPlatformAdapter {
       async screenshot(): Promise<string> {
         return await chrome.tabs.captureVisibleTab();
       },
-      async executeScript(script: string): Promise<unknown> {
-        const [result] = await chrome.scripting.executeScript({
-          target: { tabId },
-          func: new Function(script) as () => unknown,
-        });
-        return result?.result;
-      },
     };
   }
 

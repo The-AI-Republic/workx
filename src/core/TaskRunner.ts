@@ -297,9 +297,10 @@ export class TaskRunner {
         });
       }
 
-      const pendingInput = (await this.session.getPendingInput()) as ResponseItem[];
-
-      // Drain cross-agent messages (injected between turns)
+      // Drain cross-agent messages FIRST so they land in this turn, not the
+      // next one. Pushing into addPendingInput after getPendingInput() has
+      // already snapshotted the queue would silently defer drained messages
+      // by a full turn (or lose them entirely on the final turn).
       if (this.options.drainPendingMessages) {
         const messages = this.options.drainPendingMessages();
         if (messages.length > 0) {
@@ -308,6 +309,8 @@ export class TaskRunner {
           );
         }
       }
+
+      const pendingInput = (await this.session.getPendingInput()) as ResponseItem[];
 
       let turnInput = await this.buildNormalTurnInput(pendingInput);
 

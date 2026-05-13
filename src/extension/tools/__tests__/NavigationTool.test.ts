@@ -235,20 +235,44 @@ describe('NavigationTool', () => {
       expect(calledUrl).toContain(encodeURIComponent('funny cats'));
     });
 
-    it('should pass through chrome:// URLs unchanged', async () => {
-      await tool.execute(
+    it('rejects chrome:// URLs (privileged scheme)', async () => {
+      const result = await tool.execute(
         { action: 'navigate', url: 'chrome://settings' },
         withTab(1)
       );
-      expect(chromeMock().tabs.update).toHaveBeenCalledWith(1, { url: 'chrome://settings' });
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/Blocked URL scheme/);
+      expect(chromeMock().tabs.update).not.toHaveBeenCalled();
     });
 
-    it('should pass through file:// URLs unchanged', async () => {
-      await tool.execute(
+    it('rejects file:// URLs (local filesystem access)', async () => {
+      const result = await tool.execute(
         { action: 'navigate', url: 'file:///tmp/test.html' },
         withTab(1)
       );
-      expect(chromeMock().tabs.update).toHaveBeenCalledWith(1, { url: 'file:///tmp/test.html' });
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/Blocked URL scheme/);
+      expect(chromeMock().tabs.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects javascript: URLs (LLM-driven code execution surface)', async () => {
+      const result = await tool.execute(
+        { action: 'navigate', url: 'javascript:alert(1)' },
+        withTab(1)
+      );
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/Blocked URL scheme/);
+      expect(chromeMock().tabs.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects data: URLs', async () => {
+      const result = await tool.execute(
+        { action: 'navigate', url: 'data:text/html,<script>alert(1)</script>' },
+        withTab(1)
+      );
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/Blocked URL scheme/);
+      expect(chromeMock().tabs.update).not.toHaveBeenCalled();
     });
 
     it('should return a navigationId in the response', async () => {

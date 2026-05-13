@@ -54,7 +54,6 @@ export class AgentRegistry {
   private _config: AgentConfig | null = null;
   private _storage: SessionStorage | null = null;
   private _registryConfig: RegistryConfig;
-  private _cachedExtensionAdapter: import('../../extension/platform/ExtensionPlatformAdapter').ExtensionPlatformAdapter | null = null;
 
   /**
    * Create a new AgentRegistry
@@ -153,14 +152,15 @@ export class AgentRegistry {
         // Server/Desktop path: use provided factory for agent creation
         agent = await this._registryConfig.agentFactory(this._config, initialHistory);
       } else {
-        // Extension path: create agent and wire events through ChannelManager
-        // Cache the adapter — it's stateless and safe to share across sessions
-        if (!this._cachedExtensionAdapter) {
-          const { ExtensionPlatformAdapter } = await import('../../extension/platform/ExtensionPlatformAdapter');
-          this._cachedExtensionAdapter = new ExtensionPlatformAdapter();
-          await this._cachedExtensionAdapter.initialize();
-        }
-        const platformAdapter = this._cachedExtensionAdapter;
+        // Extension path: create agent and wire events through ChannelManager.
+        // Use a fresh adapter per agent so RepublicAgent.cleanup()'s dispose()
+        // call cannot poison other sessions' shared adapter. ExtensionPlatformAdapter
+        // is cheap to construct (TabManager is a singleton, retrieved on init),
+        // so per-session instances are inexpensive and remove the cross-session
+        // dispose hazard if/when dispose() grows real cleanup logic.
+        const { ExtensionPlatformAdapter } = await import('../../extension/platform/ExtensionPlatformAdapter');
+        const platformAdapter = new ExtensionPlatformAdapter();
+        await platformAdapter.initialize();
         agent = new RepublicAgent(this._config, platformAdapter, initialHistory, undefined, new UserNotifier());
         await agent.initialize();
 

@@ -355,13 +355,24 @@ export class FormAutomationTool extends BaseTool {
       // Skip hidden and submit buttons
       if (input.type === 'hidden') return null;
 
+      const fieldType = detectFieldType(input);
+      // Never expose values for password / hidden / credit-card fields. The
+      // field's existence + name/label is sufficient for the LLM to fill or
+      // reason about it; the value is a credential leak otherwise.
+      const SENSITIVE_TYPES: ReadonlyArray<FormFieldType> = ['password'];
+      const nameForSensitivityCheck = (input.name || input.id || '').toLowerCase();
+      const looksSensitive =
+        SENSITIVE_TYPES.includes(fieldType) ||
+        /password|passwd|pwd|secret|token|cvc|cvv|ssn|card-?number/.test(nameForSensitivityCheck);
+      const exposeValue = !looksSensitive;
+
       const field: FormField = {
         name: input.name || input.id || '',
         id: input.id || undefined,
-        type: detectFieldType(input),
+        type: fieldType,
         label: findLabel(input),
         required: input.hasAttribute('required'),
-        value: input.value || undefined,
+        value: exposeValue ? (input.value || undefined) : undefined,
         placeholder: (input as HTMLInputElement).placeholder || undefined,
         selector: generateSelector(input),
       };
@@ -618,10 +629,17 @@ export class FormAutomationTool extends BaseTool {
       inputs.forEach(input => {
         const element = input as HTMLInputElement;
         if (!element.checkValidity()) {
+          // Never echo the value back for sensitive fields — password fields
+          // that fail validation would otherwise leak the password into the
+          // LLM result.
+          const nameLower = (element.name || element.id || '').toLowerCase();
+          const sensitive =
+            element.type === 'password' ||
+            /password|passwd|pwd|secret|token|cvc|cvv|ssn|card-?number/.test(nameLower);
           errors.push({
             field: element.name || element.id || 'unknown',
             message: element.validationMessage,
-            value: element.value,
+            value: sensitive ? undefined : element.value,
           });
         }
       });

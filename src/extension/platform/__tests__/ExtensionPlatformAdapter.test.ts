@@ -170,14 +170,15 @@ describe('ExtensionPlatformAdapter', () => {
 
   // ── Browser controller ────────────────────────────────────────────────
 
-  it('getBrowserController() returns controller with navigate, getPageContent, screenshot, executeScript', async () => {
+  it('getBrowserController() returns controller with navigate, getPageContent, screenshot', async () => {
     const controller = await adapter.getBrowserController(42);
 
     expect(controller).not.toBeNull();
     expect(controller!.navigate).toBeInstanceOf(Function);
     expect(controller!.getPageContent).toBeInstanceOf(Function);
     expect(controller!.screenshot).toBeInstanceOf(Function);
-    expect(controller!.executeScript).toBeInstanceOf(Function);
+    // executeScript was intentionally removed — see IPlatformAdapter.ts.
+    expect((controller as unknown as { executeScript?: unknown }).executeScript).toBeUndefined();
   });
 
   it('getBrowserController().navigate() calls chrome.tabs.update', async () => {
@@ -213,16 +214,9 @@ describe('ExtensionPlatformAdapter', () => {
     expect(chrome.tabs.captureVisibleTab).toHaveBeenCalled();
   });
 
-  it('getBrowserController().executeScript() runs script on tab', async () => {
-    (chrome as any).scripting.executeScript.mockResolvedValue([
-      { result: 'script-result' },
-    ]);
-
-    const controller = await adapter.getBrowserController(42);
-    const result = await controller!.executeScript('return 1+1');
-
-    expect(result).toBe('script-result');
-  });
+  // executeScript was removed from IBrowserController — see IPlatformAdapter.ts
+  // for rationale. Tools that need to inject code call chrome.scripting
+  // directly with a statically-defined `func:` reference.
 
   // ── registerPlatformTools ─────────────────────────────────────────────
 

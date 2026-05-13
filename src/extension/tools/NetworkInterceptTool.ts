@@ -346,14 +346,33 @@ export class NetworkInterceptTool extends BaseTool {
             condition: this.createRuleCondition(config.patterns, tabId),
           });
         } else if (mod.type === 'url' && mod.action === 'modify') {
-          // URL redirect rule
+          // URL redirect rule — validate target before installing.
+          // Reject anything that isn't an https:// URL: this prevents an
+          // LLM-controlled rule from rerouting requests to attacker-controlled
+          // origins, http downgrades, javascript:/data: URLs, or
+          // chrome-extension:// destinations.
+          const targetUrl = mod.value;
+          if (typeof targetUrl !== 'string' || targetUrl.length === 0) {
+            throw new Error('url:modify rule requires a non-empty string value');
+          }
+          let parsedTarget: URL;
+          try {
+            parsedTarget = new URL(targetUrl);
+          } catch {
+            throw new Error(`url:modify rule has invalid redirect URL: ${targetUrl}`);
+          }
+          if (parsedTarget.protocol !== 'https:') {
+            throw new Error(
+              `url:modify rule must redirect to https:// (got ${parsedTarget.protocol})`,
+            );
+          }
           rules.push({
             id: ruleId++,
             priority: 1,
             action: {
               type: chrome.declarativeNetRequest.RuleActionType.REDIRECT,
               redirect: {
-                url: mod.value,
+                url: parsedTarget.toString(),
               },
             },
             condition: this.createRuleCondition(config.patterns, tabId),

@@ -390,7 +390,10 @@ export class RepublicAgent {
           break;
 
         case 'Shutdown':
-          requireEngine().submitOperation({ type: 'Shutdown' });
+          // Cleanly tear down the engine. dispose() is idempotent and emits
+          // EngineDisposed, which is the canonical "we're done" signal. Do
+          // NOT also submit a Shutdown op — that double-handles teardown and
+          // races the dispose path.
           await requireEngine().dispose();
           break;
 

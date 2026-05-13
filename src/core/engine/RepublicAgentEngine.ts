@@ -33,11 +33,6 @@ export class RepublicAgentEngine {
   private disposed = false;
   private initialized = false;
 
-  // Completion tracking for awaitable mode
-  private completionResolvers = new Map<string, {
-    resolve: (result: EngineResult) => void;
-  }>();
-
   // Event listener callbacks (supports multiple listeners)
   private eventListeners: Array<(event: EngineEvent) => void> = [];
 
@@ -56,6 +51,9 @@ export class RepublicAgentEngine {
   }
 
   async initialize(): Promise<void> {
+    if (this.disposed) {
+      throw new Error('[RepublicAgentEngine] Cannot initialize a disposed engine');
+    }
     if (this.initialized) return;
 
     // Use externally-provided session or create a new one
@@ -201,19 +199,13 @@ export class RepublicAgentEngine {
   }
 
   cancel(): void {
+    // Drop any queued submissions; in-flight callers blocked on
+    // waitForCompletion() unblock either when dispose() emits EngineDisposed
+    // or when their per-submission timeout fires. Notification buffer is
+    // cleared so a subsequent run() doesn't pick up stale notifications from
+    // a cancelled session.
     this.submissionQueue.length = 0;
-    // Resolve any pending completion promises
-    for (const [submissionId, resolver] of this.completionResolvers) {
-      resolver.resolve({
-        success: false,
-        response: null,
-        turnCount: 0,
-        stopReason: 'cancelled',
-        engineId: this.engineId,
-        submissionId,
-      });
-    }
-    this.completionResolvers.clear();
+    this.pendingNotifications.length = 0;
   }
 
   async dispose(): Promise<void> {
