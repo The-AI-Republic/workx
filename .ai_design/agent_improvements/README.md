@@ -22,7 +22,11 @@ BrowserX is a multi-platform browser automation agent. Claudy is a terminal-nati
 | 05b | [Auto-Extraction & Compaction Interlock](./05b_auto_extraction_compaction_interlock/design.md) | P2 | Medium | Background session summarization with compaction-safe interlock; layers on PR #167 |
 | 06 | [Multi-Agent Coordination](./06_multi_agent_coordination/design.md) | P2 | Large | Coordinator mode, worker delegation |
 | 07 | [Centralized State](./07_centralized_state/design.md) | P1 | Medium | Unified state, selectors, side-effect handlers |
-| 08 | [Centralized Message Queue](./08_centralized_message_queue/design.md) | P1 | Medium | Unified event bus, semantic command queue, replay |
+| 08 | Centralized Message Queue — **split** into 08a/08b/08c (and deferred 08d). Original archived at [`08_centralized_message_queue_SPLIT/`](./08_centralized_message_queue_SPLIT/design.md) | — | — | See sub-tracks below |
+| 08a | [Signal + Mailbox](./08a_signal_mailbox/design.md) | P1 | Small | Foundational primitives; refactors ApprovalManager; deletes dead QueueProcessor.ts |
+| 08b | [CommandQueue](./08b_command_queue/design.md) | P1 | Medium | Typed input queue with priorities; sub-agent isolation; wires PR #191 task notifications |
+| 08c | [EventLog](./08c_event_log/design.md) | P1 | Medium | Bounded audit/replay journal; subscribes to hooks/queue/approvals/sub-agents |
+| 08d | [MessageBus DEFERRED](./08d_message_bus_DEFERRED/design.md) | — | — | Deferred; reassess after 08a/b/c land |
 
 ## Dependency Graph
 
@@ -35,7 +39,11 @@ BrowserX is a multi-platform browser automation agent. Claudy is a terminal-nati
 
 07_centralized_state ──> (independent, can proceed in parallel)
 
-08_centralized_message_queue ──> (independent, enhances 01, 04, 06, 07)
+08a_signal_mailbox ──┬──> 08b_command_queue
+                     ├──> 08c_event_log (also subscribes to Track 01 hooks)
+                     └──> (Track 07 can also use Signal as agentStateStore subscribe primitive)
+
+08d_message_bus_DEFERRED ──> (no work; reassess after 08a/b/c land)
 ```
 
 ## Existing Work

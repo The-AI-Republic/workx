@@ -1,4 +1,27 @@
-# Track 08: Centralized Message Queue
+# Track 08: Centralized Message Queue (SPLIT — see sub-tracks)
+
+> **Status (2026-05-13):** This 1515-line design has been **split into four
+> implementation-sized sub-tracks** to match the pattern used for Tracks 03, 05,
+> and 07. This file is kept for historical reference; **do not implement from it
+> directly**.
+>
+> | Sub-track | Scope | Status |
+> |-----------|-------|--------|
+> | [08a Signal + Mailbox](../08a_signal_mailbox/design.md) | Port `Signal<T>` + `Mailbox<T>` verbatim with safety additions; refactor `ApprovalManager`; delete dead `QueueProcessor.ts` | Ready |
+> | [08b CommandQueue](../08b_command_queue/design.md) | Typed input queue with `now/next/later` priorities, sub-agent isolation filter, `'now'` urgent-interrupt signal | Ready (blocked on 08a) |
+> | [08c EventLog](../08c_event_log/design.md) | Bounded audit/replay journal backed by IndexedDB + SQLite; subscribes to hooks, queue, approvals, sub-agents | Ready (soft-blocked on 08a) |
+> | [08d MessageBus](../08d_message_bus_DEFERRED/design.md) | **DEFERRED** — `ChannelManager`, `HookDispatcher`, and `ServiceRegistry` likely cover the gap; reassess after 08a/b/c land | Deferred |
+>
+> Each sub-track has its own `design.md` + `tasks.md` with: status header, validation
+> notes against current claudy + browserx, naming/collision audit, v1 plan with LOC
+> estimates, follow-on roadmap, and risks.
+>
+> **Why split:** the four primitives have different risk profiles, dependencies, and
+> design surfaces. Keeping them in one document means 60% of the doc is stale-by-default
+> while only one slice is shipping. The split mirrors the 03 → 03b, 05 → 05b, and
+> 07 → 07a/b/c/... pattern.
+
+---
 
 ## Problem
 
