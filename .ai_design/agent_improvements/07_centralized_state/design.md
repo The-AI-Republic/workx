@@ -1,5 +1,21 @@
 # Track 07: Centralized State
 
+> **Status (2026-05-13):** Implementation-ready for a small v1 slice. Active PR: none.
+> Independent track — does **not** require Track 05/05b's `main → agent-improvements`
+> merge. Follow-on slices (07b, 07c, …) will land as separate tracks, mirroring the
+> 03 → 03b and 05 → 05b pattern.
+>
+> Key decisions resolved (see [Validation Notes 2026-05-13](#validation-notes-2026-05-13)):
+> - **Shape:** flat, not nested-by-domain (matches claudy; avoids domain-boundary
+>   bikeshedding; React/Svelte selectors don't care).
+> - **Naming:** type is `AgentState`; instance is `agentStateStore` (the literal
+>   name `agentStore` is taken by `src/webfront/stores/agentStore.ts`).
+> - **v1 scope:** 7 fields, 3 effect branches, no migration of existing service
+>   ownership. Read-through facade only.
+> - **Persistence:** zero persisted fields in v1. Multi-platform storage adapter
+>   makes persisted fields expensive (IndexedDB schema bump + SQLite CREATE TABLE
+>   + Rust migration per field) — defer until 07b.
+
 ## Problem
 
 BrowserX distributes state across multiple singletons and service instances: `SessionState`, `AgentConfig`, `RepublicAgent`, `TaskRunner`, `ApprovalManager`, `ToolRegistry`, and 10+ Svelte stores in webfront. This makes it hard to:
@@ -10,7 +26,7 @@ BrowserX distributes state across multiple singletons and service instances: `Se
 - Add new state consumers without wiring
 - Prevent state drift between services
 
-Claudy uses a centralized `AppState` (~87 top-level fields, flat — not namespaced — wrapped in `DeepImmutable`; see `getDefaultAppState()` in `state/AppStateStore.ts:456–569`) with a tiny homegrown store, a single global change handler, and only a couple of selectors, keeping all runtime state in one observable place.
+Claudy uses a centralized `AppState` (~160 top-level fields, flat — not namespaced — wrapped in `DeepImmutable`; see `getDefaultAppState()` in `state/AppStateStore.ts:89–452`) with a tiny homegrown store, a single global change handler, and only a couple of selectors, keeping all runtime state in one observable place. Of those ~160 fields, roughly **75% are terminal/REPL-only** and not portable — see [Not Portable to BrowserX](#not-portable-to-browserx).
 
 ## What Claudy Does
 
@@ -152,56 +168,70 @@ src/core/state/
 
 (No `migrations.ts` — claudy has no state versioning, and BrowserX is not committing to one in Phase 1.)
 
-### AgentState Type
+### AgentState Type — v1 (this PR)
+
+v1 includes **only the 7 fields read by 5+ files today** (verified by codebase audit
+2026-05-13). Each one already exists somewhere; we are not inventing state, we are
+giving it a single observable home.
 
 ```typescript
 interface AgentState {
-  // Identity
-  agentId: string
-  sessionId: string
-  platform: 'extension' | 'desktop' | 'server'
+  // Routing identity — currently Session.sessionId (1477 refs)
+  sessionId: string | null
 
-  // Session
-  activeTabId: number | null
-  activeDomain: string | null
-  sessionStartTime: number
-  isRunning: boolean
+  // Model selection — currently AgentConfig.currentConfig.selectedModelKey (29 files)
+  selectedModelKey: string | null
 
-  // Cost & usage
-  totalTokensUsed: number
-  totalCostUSD: number
-  modelUsage: Record<string, { input: number; output: number }>
-
-  // Approval state
+  // Approval policy mode — currently ApprovalManager.policy (15+ files)
   approvalMode: ApprovalMode
-  approvedDomains: Set<string>
-  approvedCommands: Set<string>
-  pendingApprovals: number
 
-  // Task tracking
-  activeTaskCount: number
-  backgroundTaskCount: number
-  taskSummary: Record<string, TaskStatus>
+  // Task registry — currently Session.activeTasks + TaskRunner.state, scattered (PR #191)
+  runningTasks: Record<string, TaskSummary>
 
-  // Tool state
-  enabledTools: Set<string>
-  disabledTools: Set<string>
-  mcpServersConnected: string[]
+  // Foreground task — currently Session.foregroundTaskId (from PR #191)
+  foregroundTaskId: string | null
 
-  // Memory (from Track 05)
-  sessionMemoryInitialized: boolean
-  lastMemoryExtractionAt: number | null
+  // Pending approvals — currently ApprovalManager.pendingRequests (Map)
+  pendingApprovals: Record<string, PendingApprovalSummary>
 
-  // Coordinator (from Track 06)
-  isCoordinatorMode: boolean
-  activeWorkerCount: number
-  workerSummary: Record<string, WorkerStatus>
+  // Theme — currently webfront/stores/themeStore.ts (UI store, mirrored on read)
+  theme: 'light' | 'dark' | 'system'
+}
 
-  // Config (read-only mirror)
-  selectedModel: string
-  selectedProvider: string
+type TaskSummary = {
+  id: string
+  type: 'background_agent'        // expanded by Track 04
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'killed'
+  startedAt: number
+}
+
+type PendingApprovalSummary = {
+  executionId: string
+  toolName: string
+  requestedAt: number
 }
 ```
+
+That's the entire v1 surface. No tabId, no domain, no token counters, no MCP, no
+memory, no coordinator. Those land in 07b+.
+
+### AgentState Type — Roadmap (07b, 07c, …)
+
+Fields earmarked for follow-on slices, each its own PR. Order is suggestive, not binding:
+
+- **07b — usage & cost:** `totalTokensUsed`, `totalCostUSD`, `modelUsage` (read-through
+  facade over `TokenUsageStore`).
+- **07c — browsing context:** `activeTabId`, `activeDomain`, `approvedDomains` (binds
+  to extension/desktop tab APIs; platform-specific).
+- **07d — tool surface:** `enabledTools`, `disabledTools`, `mcpServersConnected`
+  (read-through over `ToolRegistry`).
+- **07e — memory mirror** (depends on `main → agent-improvements` merge — Track 05/05b
+  prerequisite): `sessionMemoryInitialized`, `lastMemoryExtractionAt`.
+- **07f — coordinator/multi-agent** (depends on Track 06): `isCoordinatorMode`,
+  `activeWorkerCount`, `workerSummary`.
+- **07g — webfront consolidation:** absorb `agentStore`, `threadStore`, `usageStore`,
+  `userStore` (the four that mirror server state today). `layoutStore`, `themeStore`,
+  `platformStore` stay as Svelte stores — they're UI-local and never round-trip.
 
 ### Not Portable to BrowserX
 
@@ -215,9 +245,29 @@ Roughly 15–20 of claudy's 87 fields are terminal-only and should NOT be ported
 
 Audit the full `getDefaultAppState()` list and drop anything with no web/extension equivalent.
 
-### Open Decision: Flat vs Nested-by-Domain
+### Resolved: Flat shape
 
-BrowserX must decide whether `AgentState` is **flat** (claudy's choice, optimized for React + `useSyncExternalStore`) or **nested by domain** (`session.*`, `approval.*`, `tools.*`, `tasks.*`). Claudy chose flat for React simplicity, but BrowserX has many singleton services to fold in, and a nested layout may better mirror the existing service boundaries (and make adapter wiring more obvious). Pick before Phase 1.
+We pick **flat** (matches claudy). Rationale:
+- v1 has 7 fields — nesting buys nothing at this size.
+- Selectors handle all derived/grouped views; the storage layout doesn't need to mirror domains.
+- Spread updates stay shallow, which keeps the free-for-all `setState` pattern (claudy's lesson) survivable: `setAgentState(s => ({ ...s, foregroundTaskId: id }))` can't accidentally clobber an unrelated nested object.
+- Nested shapes invite domain bikeshedding (does `runningTasks` go under `session.*` or `tasks.*`?). Flat sidesteps that entirely.
+
+When 07b/07c land and the field count climbs past ~25, revisit. Until then, flat.
+
+### Naming & Collisions
+
+Audited against the codebase 2026-05-13:
+
+| Name | Status | Verdict |
+|------|--------|---------|
+| `AgentState` (type) | Not used anywhere | **Use** as the type name |
+| `agentStateStore` (instance) | Not used | **Use** as the singleton instance |
+| `agentStore` | **Taken** — `src/webfront/stores/agentStore.ts` | Avoid |
+| `appStore` / `AppState` | Not used, but `AgentConfig`/`AgentRegistry` follow `Agent*` convention | Pass — staying with `AgentState` keeps the prefix consistent |
+| `SessionState` | Taken — `src/core/session/state/SessionState.ts` (per-session data container) | Don't rename; it's a different scope (per-session, not app-wide). Coexists fine. |
+| `TurnState`, `TaskState`, `ExecutionState` | All taken, all narrow scopes | Coexist fine — `*State` suffix is house style |
+| `src/core/state/` (new directory) | Sibling of existing `src/core/session/state/` | OK — different concern, parallel naming |
 
 ### Selectors (Derived State)
 
@@ -240,32 +290,55 @@ const isApprovalBacklogged = (state: AgentState) =>
   state.pendingApprovals > 3
 ```
 
-### Effects (Single Diff Handler)
+### Effects (Single Diff Handler) — v1
 
-Match claudy's pattern: one global `onChangeAgentState({ newState, oldState })` that runs after every commit and inline-diffs the fields it cares about. **Do not build a per-field `registerEffect` registry.**
+Match claudy's pattern: one global `onChangeAgentState({ newState, oldState })` that
+runs after every commit and inline-diffs the fields it cares about. **Do not build a
+per-field `registerEffect` registry.**
+
+v1 ships with exactly **3 effect branches**:
 
 ```typescript
 // src/core/state/onChangeAgentState.ts
-export function onChangeAgentState({ newState, oldState }: { newState: AgentState; oldState: AgentState }) {
-  if (newState.activeTabId !== oldState.activeTabId) {
-    const domain = newState.activeTabId != null ? getTabDomain(newState.activeTabId) : null
-    if (domain !== newState.activeDomain) {
-      // commit follow-up via setAgentState; reEvaluateSkillVisibility handles the rest
-    }
-    reEvaluateSkillVisibility(newState.activeDomain)
+import { saveConfig } from '../../config/storage'
+import { emitEvent } from '../events/EventBus'  // assumes Track 01 hook bus is in
+import { modelClientFactory } from '../../model/ModelClientFactory'
+
+export function onChangeAgentState({
+  newState,
+  oldState,
+}: {
+  newState: AgentState
+  oldState: AgentState
+}) {
+  // 1. Model swap — keep the model client in sync without RepublicAgent.setupConfigSubscriptions()
+  if (newState.selectedModelKey !== oldState.selectedModelKey && newState.selectedModelKey) {
+    modelClientFactory.swapModel(newState.selectedModelKey).catch((err) =>
+      console.error('[agentState] model swap failed', err),
+    )
   }
 
-  if (newState.selectedModel !== oldState.selectedModel) {
-    updateTokenLimits(newState.selectedModel)
-    invalidatePromptCache()
+  // 2. Theme persistence — only persisted field in v1; Svelte themeStore reads from here downstream
+  if (newState.theme !== oldState.theme) {
+    saveConfig({ theme: newState.theme }).catch((err) =>
+      console.error('[agentState] theme save failed', err),
+    )
   }
 
-  if (newState.isCoordinatorMode !== oldState.isCoordinatorMode) {
-    if (newState.isCoordinatorMode) registerCoordinatorTools()
-    else unregisterCoordinatorTools()
+  // 3. Approval-mode broadcast — fixes the same class of bug claudy's onChangeAppState fixed
+  //    (mode change in one place not reaching the UI / event log)
+  if (newState.approvalMode !== oldState.approvalMode) {
+    emitEvent('approval:mode-changed', {
+      from: oldState.approvalMode,
+      to: newState.approvalMode,
+      at: Date.now(),
+    })
   }
 }
 ```
+
+That's it for v1. Each later track adds its own `if` block — no registry, no
+ordering layer, no dependency tracking. When this file passes ~15 branches, revisit.
 
 ### Migration from Current Architecture
 
@@ -340,40 +413,96 @@ The central store updates its internal snapshot when:
 1. An event fires from a subscribed adapter
 2. A selector is accessed and the underlying adapter state has changed (lazy pull)
 
-### Phase Plan
+### v1 Plan (this PR — ~600–800 LOC, single PR)
 
-**Phase 1: State Type, Store & Adapters** (Week 1)
-- Decide flat vs nested-by-domain `AgentState` shape (see open decision above)
-- Define `AgentState` interface and `getDefaultAgentState()`
-- Implement homegrown `createStore<T>` (~35 lines, pub/sub + `Object.is` short-circuit) — no immer, no Zustand
-- Implement adapter interfaces for each existing service (SessionState, ApprovalManager, ToolRegistry, TaskRunner, AgentConfig)
-- Wire store to read from existing services via adapters (pull for static state, event subscription for dynamic state)
-- Add state snapshot for debugging (`getFullState()`)
-- **No memoized selector factory in this phase** — plain selector functions only
+Goal: prove the pattern, ship the smallest possible thing, leave existing services
+untouched.
 
-**Phase 2: Selectors** (Week 2)
-- Add plain selector functions for the most common derived state
-- Wire selectors into UI stores (Svelte derived store compatibility)
-- Replace ad-hoc derived state computation across the codebase
-- Defer any memoized `createSelector` factory until profiling proves it's needed
+**Step 1 — Store primitive** (`src/core/state/store.ts`, ~35 lines)
+- Port claudy's `createStore<T>(initial, onChange?)` verbatim. Set-based listeners,
+  `Object.is(next, prev)` dedup, `subscribe()` returns unsub, `setState(updater)`.
+- Generic and reusable — not just for `AgentState`.
 
-**Phase 3: Single Diff Handler** (Week 3)
-- Implement `onChangeAgentState({ newState, oldState })` and call it from `setAgentState`
-- Migrate config subscription handlers from RepublicAgent into the diff handler
-- Migrate approval mode propagation into the diff handler
-- **No per-field `registerEffect` registry, no effect ordering layer, no dependency tracking** — keep it boring
+**Step 2 — AgentState type** (`src/core/state/AgentState.ts`)
+- Define the 7-field interface (above).
+- Export `getDefaultAgentState()` returning the initial snapshot.
+- No `DeepImmutable` wrapper in v1 — TypeScript `readonly` is enough; revisit if mutation bugs surface.
 
-**Phase 4: State Diagnostics** (Week 4)
-- Add `/state` command: dump current AgentState as JSON
-- Add state diff tracking (what changed between turns)
-- Add state health checks (detect inconsistencies)
-- Wire into error reporting (include state snapshot in error context)
+**Step 3 — Singleton wiring** (`src/core/state/AgentStateStore.ts`)
+- Instantiate `createStore<AgentState>(getDefaultAgentState(), onChangeAgentState)`.
+- Export `getAgentState()`, `setAgentState(updater)`, `subscribeAgentState(listener)`.
+- Single module-level instance. No factory, no DI in v1.
+
+**Step 4 — Diff handler** (`src/core/state/onChangeAgentState.ts`)
+- Three branches as shown above: `selectedModelKey`, `theme`, `approvalMode`.
+- No registry, no per-field effects.
+
+**Step 5 — Read-through facade adapters** (in the existing service files, not new ones)
+- `AgentConfig` — on `selectedModelKey` change in its existing `eventHandlers`,
+  call `setAgentState(s => ({ ...s, selectedModelKey: newKey }))`. ~5 lines.
+- `ApprovalManager` — on policy mutation, mirror into `setAgentState`. On pending
+  request enqueue/resolve, mirror `pendingApprovals` summary. ~15 lines.
+- `Session.spawnTask` / `SubAgentRunner` (PR #191 surfaces) — on task lifecycle,
+  mirror `runningTasks` and `foregroundTaskId` summaries. ~20 lines.
+- Existing services keep being the source of truth. AgentState is a **read-only
+  observable mirror** in v1.
+
+**Step 6 — Webfront bridge** (`src/webfront/stores/agentStateBridge.ts`, ~40 lines)
+- One Svelte `readable` per consumed field, backed by `subscribeAgentState`.
+- Migrate `themeStore` to read from this bridge (smallest, lowest-risk consumer).
+- Leave `agentStore`, `threadStore`, etc. unchanged — they migrate in 07g.
+
+**Step 7 — Debug snapshot**
+- Add `dumpAgentState(): string` returning pretty-printed JSON.
+- Wire into existing error reporting context (one-line addition in error handler).
+
+**Step 8 — Tests** (`tests/core/state/`)
+- Unit: `createStore` (subscribe/unsubscribe, Object.is dedup, onChange firing).
+- Unit: `onChangeAgentState` (each of the 3 branches fires on change, skipped on no-change).
+- Integration: `AgentConfig` model swap → `getAgentState().selectedModelKey` updated.
+- Integration: `ApprovalManager.requestApproval` → `pendingApprovals` populated.
+- Aim 80%+ coverage on new files; do not chase coverage on existing services.
+
+### Follow-on Tracks (NOT in this PR)
+
+Each is a separate design + PR, mirroring the 03/03b and 05/05b pattern:
+
+| Track | Scope | Depends on |
+|-------|-------|------------|
+| **07b** | Usage + cost mirror (`totalTokensUsed`, `totalCostUSD`, `modelUsage`) | TokenUsageStore exists today |
+| **07c** | Browsing context (`activeTabId`, `activeDomain`, `approvedDomains`) | Per-platform tab APIs |
+| **07d** | Tool surface (`enabledTools`, `disabledTools`, `mcpServersConnected`) | Tool registry stable |
+| **07e** | Memory mirror (`sessionMemoryInitialized`, `lastMemoryExtractionAt`) | Track 05 + `main → agent-improvements` merge |
+| **07f** | Coordinator/multi-agent (`isCoordinatorMode`, `activeWorkerCount`, `workerSummary`) | Track 06 |
+| **07g** | Webfront consolidation — replace `agentStore`, `threadStore`, `usageStore`, `userStore` with bridge | 07b for usage |
+| **07h** | Diagnostics — `/state` slash command, diff tracking, health checks, periodic audits | All above |
+
+Each follow-on adds: 3–8 fields + ≤3 effect branches + 1–2 adapter wires. Stays under the ~15-branch ceiling per `onChangeAgentState`.
 
 ## Risks
 
-- **Dual source of truth**: During migration, state exists in both AgentStateStore and original services. Mitigate by making AgentStateStore a read-through facade initially.
-- **Performance**: Selector re-computation on every state change. Mitigate with memoization and granular subscriptions.
-- **Breaking existing code**: Existing code reads from SessionState, AgentConfig directly. Don't break these paths; add AgentStateStore alongside.
+- **Dual source of truth (v1, by design):** services keep ownership; AgentState is a
+  read-only mirror. The risk is mirror drift — adapter forgets to call `setAgentState`
+  on some mutation path. Mitigations:
+  - Adapter code lives in the same file as the mutation (e.g., the `setAgentState`
+    call sits next to the `this.policy = …` line in `ApprovalManager`), making drift
+    visible at code-review time.
+  - Tests assert that AgentState matches the underlying service after representative
+    mutations.
+  - v1 keeps the mirrored field set tiny (7), so the audit surface is small.
+- **Free-for-all writes:** any module can call `setAgentState`. Claudy lives with
+  this. Mitigations: spread-operator discipline, code review, no concurrent setState
+  in a tick. Revisit if v1 surfaces real bugs.
+- **Multi-platform persistence is expensive:** every persisted field requires
+  `STORE_KEY_PATHS` entry + IndexedDB schema bump + SQLite CREATE TABLE + Rust
+  migration. v1 dodges this by persisting **only `theme`** (which already has a
+  config storage path). Future persisted fields are explicit per-track decisions.
+- **Naming overlap with `SessionState`:** different scope (per-session container vs
+  app-wide observable). Audited 2026-05-13; no API collision. Documented in
+  [Naming & Collisions](#naming--collisions).
+- **Bootstrap-state-style split (claudy lesson):** if circular deps force any field
+  out of AgentState, document why in a comment header, and treat splits as a code
+  smell to revisit.
 
 ## Validation Notes (re-checked vs claudy 2026-05-11)
 
@@ -389,3 +518,111 @@ Re-validated this design against the current claudy source. Corrections applied:
 - **What claudy does NOT do**: added an explicit list (no per-field effect registry, no memoized selector factory, no persistent snapshots, no time-travel devtools, no state versioning).
 
 Sources: `state/store.ts`, `state/AppState.tsx`, `state/AppStateStore.ts`, `state/onChangeAppState.ts`, `state/selectors.ts`.
+
+## Validation Notes (2026-05-13)
+
+Re-validated against the current claudy source AND audited the browserx side
+(branch `agent-improvements`) to make this design implementation-ready. Two parallel
+research probes ran 2026-05-13.
+
+### Claudy findings (correcting earlier estimates)
+
+- **AppState is ~160 fields, not ~87.** `state/AppStateStore.ts:89–452`. Earlier
+  estimate was off by ~2x. **~75% are terminal/REPL-only** (`replContext`,
+  `sessionHooks`, `tungsten*`, `bagel*`, `computerUseMcpState`, `replBridge*`
+  (~13 fields), `ultraplan*` (~5 fields), `teamContext`, footer/expand UI state).
+  Portable subset is **~40 fields**, of which only ~7 are read frequently enough to
+  justify v1 inclusion.
+- **`createStore` is 34 lines exactly.** Quoted verbatim in the
+  [Store Mechanics](#store-mechanics) section above. Worth porting 1:1 — it's smaller
+  than any wrapper around Zustand we could write.
+- **`onChangeAppState` is the choke-point** (`state/onChangeAppState.ts:43–172`). A
+  multi-paragraph comment block (lines 52–64) explicitly documents the bug that
+  killed the earlier per-callsite pattern: permission mode mutated by 8+ paths,
+  only 2 told the SDK, web UI drifted. **This is the single biggest lesson we are
+  importing** — applied here to `approvalMode` and `selectedModelKey`.
+- **Claudy `tasks` is a mutable dict, not immutable.** A few `delete tasks[id]` sites
+  exist. We mirror task summaries into `runningTasks: Record<string, TaskSummary>`
+  but treat it as immutable on the browserx side (the source of truth — `Session.activeTasks`,
+  `SubAgentRunner` — owns mutability).
+- **Persistence is selective**, only ~4 fields trigger disk writes via the diff
+  handler. Sessions/transcripts persist separately. **No automatic AppState snapshot.**
+  We follow this — only `theme` persists in v1.
+- **Bootstrap state is split off** (`bootstrap/state.ts:31` has
+  `// DO NOT ADD MORE STATE HERE` warning) to avoid circular deps. Flagged as a
+  risk in [Risks](#risks).
+
+### BrowserX-side audit findings (correcting design assumptions)
+
+Existing design referenced fields that don't exist or aren't in scope yet. Audit
+2026-05-13 against branch `agent-improvements`:
+
+- **No `src/core/state/` directory exists.** Only `src/core/session/state/` (turn-state
+  scaffolding from PR #191 — `SessionState.ts`, `TurnState.ts`, `ActiveTurn.ts`). Track 07
+  creates a NEW sibling directory; no naming collision.
+- **No `AppState`, `AgentState`, or `appStore` files anywhere in `src/`.** Greenfield.
+- **`AgentConfig` already has `eventHandlers: Map`** (`src/config/AgentConfig.ts:36`).
+  It is essentially a proto-store. v1 adapter wires into this existing surface — no
+  new event plumbing needed for `selectedModelKey`.
+- **9 Svelte stores** in `src/webfront/stores/`: `agentStore`, `threadStore`,
+  `usageStore`, `tokenUsageStore`, `layoutStore`, `themeStore`, `userStore`,
+  `vaultStore`, `platformStore`, `schedulerStore`. Four of them mirror server state
+  (`agentStore`, `threadStore`, `usageStore`, `userStore`) — Track 07g consolidates
+  those. The other five are UI-local and stay.
+- **`agentStore` name is taken** in webfront. The store singleton in v1 is named
+  `agentStateStore` to avoid collision.
+- **Memory system is NOT on this branch.** `src/core/memory/` exists on `main` only
+  (PR #167 merged 2026-05-12, commit `37a092dd`). Branch is 45 commits behind. **Track 07 v1
+  is independent — does not require the main merge.** Only 07e (memory mirror) does.
+- **Storage adapter cost is real.** `STORE_KEY_PATHS` in `src/storage/StorageAdapter.ts:17–28`
+  currently lists 10 stores. Adding a persisted field requires edits to: that path,
+  `IndexedDBAdapter` (schema bump), `NodeSQLiteAdapter` (CREATE TABLE), `TauriSQLiteAdapter`
+  (Rust migration). v1 reuses the existing `config` store for `theme`; no new stores added.
+- **Open PRs (2026-05-13):** #198 (hook/event system), #197 (tool metadata), #194
+  (plugin design), #190 (web UI), #189 (smoke test), #166 (release). None conflict
+  with v1; we depend on #198 only for `EventBus` (the `approval:mode-changed` effect).
+
+### v1 cross-cutting fields (verified read counts)
+
+The 7 fields chosen for v1 are not aspirational — they were selected by counting
+references in the codebase. Audit numbers:
+
+| Field | Current owner | Reference count |
+|-------|---------------|-----------------|
+| `sessionId` | `Session.sessionId` | 1477 refs across src/ |
+| `selectedModelKey` | `AgentConfig.currentConfig.selectedModelKey` | 29 files |
+| `approvalMode` | `ApprovalManager.policy` | 15+ files |
+| `runningTasks` | `Session.activeTasks` + `TaskRunner.state` | 6+ files (post PR #191) |
+| `foregroundTaskId` | `Session.foregroundTaskId` | 5+ files (post PR #191) |
+| `pendingApprovals` | `ApprovalManager.pendingRequests` (Map) | 8+ files |
+| `theme` | `webfront/stores/themeStore.ts` | UI consumers only, but cross-platform |
+
+### Decisions resolved in this revision
+
+1. **Shape:** flat (not nested-by-domain). Documented in
+   [Resolved: Flat shape](#resolved-flat-shape).
+2. **Naming:** `AgentState` type, `agentStateStore` instance, `src/core/state/`
+   directory. Documented in [Naming & Collisions](#naming--collisions).
+3. **v1 surface:** 7 fields, 3 effect branches, no service migration, only `theme`
+   persisted. Documented in [v1 Plan](#v1-plan-this-pr--600800-loc-single-pr).
+4. **Independence from Track 05:** v1 does not require `main → agent-improvements`
+   merge. Only 07e does.
+5. **Roadmap:** explicit 07b–07h follow-on tracks listed, each in scope of a single
+   future PR.
+
+### Open items deliberately deferred to follow-on tracks
+
+- Memoized selector factory (defer to 07h diagnostics if profiling demands it)
+- `/state` slash command + diff tracking (07h)
+- Periodic health checks (07h)
+- Persistence of more than `theme` (each persisted field is its own decision)
+- Webfront consolidation (07g)
+- `DeepImmutable` wrapper (not in v1; revisit if mutation bugs surface)
+
+Sources for this revision:
+- Claudy: `state/store.ts`, `state/AppStateStore.ts:89–452`, `state/onChangeAppState.ts:43–172`,
+  `state/selectors.ts`, `bootstrap/state.ts:31`.
+- BrowserX: `src/core/Session.ts:49`, `src/core/RepublicAgent.ts:32`,
+  `src/core/session/state/SessionState.ts:28`, `src/config/AgentConfig.ts:36`,
+  `src/core/registry/AgentRegistry.ts:46`, `src/storage/StorageAdapter.ts:17–28`,
+  `src/webfront/stores/*.ts`.

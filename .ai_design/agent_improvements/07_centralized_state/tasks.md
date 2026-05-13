@@ -1,81 +1,104 @@
-# Track 07: Centralized State - Tasks
+# Track 07: Centralized State — Tasks
 
-## Phase 1: State Type & Store
+> v1 scope only. Each follow-on (07b–07h) gets its own tasks.md when picked up.
+> Target: single PR, ~600–800 LOC, no migration of existing service ownership.
 
-- [ ] Define `AgentState` interface in `src/core/state/AgentState.ts`
-  - Identity fields: agentId, sessionId, platform
-  - Session fields: activeTabId, activeDomain, sessionStartTime, isRunning
-  - Usage fields: totalTokensUsed, totalCostUSD, modelUsage
-  - Approval fields: approvalMode, approvedDomains, approvedCommands, pendingApprovals
-  - Task fields: activeTaskCount, backgroundTaskCount, taskSummary
-  - Tool fields: enabledTools, disabledTools, mcpServersConnected
-  - Config fields: selectedModel, selectedProvider
-- [ ] Implement `AgentStateStore` class in `src/core/state/AgentStateStore.ts`:
-  - getState(): AgentState (immutable snapshot)
-  - setState(updates: Partial<AgentState>): void
-  - subscribe(listener: (state) => void): unsubscribe function
-  - getFullState(): AgentState (for debugging, includes all fields)
-- [ ] Wire store to read from existing services (facade pattern):
-  - Read from SessionState for session-related fields
-  - Read from AgentConfig for config fields
-  - Read from ApprovalManager for approval fields
-  - Read from TaskRunner for task fields
-  - Read from ToolRegistry for tool fields
-- [ ] Add state snapshot method for debugging: `dumpState(): string`
-- [ ] Add state serialization for error reporting context
-- [ ] Write tests for store creation, getState/setState, subscription
+## Step 1 — Store primitive
 
-## Phase 2: Selectors
+- [ ] Create `src/core/state/store.ts` (~35 lines)
+  - Port claudy's `createStore<T>(initial, onChange?)` verbatim
+  - `Set<Listener>` for subscribers
+  - `Object.is(next, prev)` short-circuit before notify
+  - `subscribe()` returns unsubscribe function
+- [ ] Unit tests in `tests/core/state/store.test.ts`
+  - Subscribe / unsubscribe lifecycle
+  - `Object.is` dedup (no notify on identical state)
+  - `onChange` receives `{ newState, oldState }`
+  - Listeners fire in insertion order
 
-- [ ] Define selector type: `(state: AgentState) => T`
-- [ ] Implement memoized selector factory in `src/core/state/selectors.ts`:
-  - createSelector(inputSelectors, combiner): MemoizedSelector
-  - Re-computes only when input values change
-- [ ] Implement core selectors:
-  - isAnyTaskRunning: boolean
-  - currentDomainTrusted: boolean
-  - totalToolsAvailable: number
-  - sessionDuration: number
-  - isApprovalBacklogged: boolean
-  - activeWorkerSummary: WorkerStatus[] (for Track 06)
-- [ ] Add selector subscription: subscribe to specific selector, notified only when value changes
-- [ ] Create Svelte store adapter: wrap AgentStateStore selector as Svelte readable store
-- [ ] Identify and replace ad-hoc derived state computations in existing code
-- [ ] Write tests for selector memoization and change detection
+## Step 2 — AgentState type
 
-## Phase 3: Effects
+- [ ] Create `src/core/state/AgentState.ts`
+  - Define `AgentState` interface (7 fields, see design.md)
+  - Define `TaskSummary` and `PendingApprovalSummary` helper types
+  - Export `getDefaultAgentState(): AgentState`
+- [ ] No `DeepImmutable` wrapper in v1; use `readonly` modifiers on the interface
 
-- [ ] Define `StateEffect` type: (newValue, oldValue, state) => void
-- [ ] Implement `registerEffect(field, handler)` in `src/core/state/effects.ts`
-- [ ] Implement effect execution on setState: run registered effects for changed fields
-- [ ] Add effect ordering: effects run in registration order (deterministic)
-- [ ] Migrate existing config subscription handlers from RepublicAgent.initialize():
-  - selectedModelKey change → update model client
-  - toolsConfig change → update ToolRegistry
-  - providerApiKeys change → recreate model client
-  - approvalPolicy change → update ApprovalManager
-- [ ] Migrate approval mode propagation to effects
-- [ ] Add effect dependency tracking: effect A depends on effect B (run B first)
-- [ ] Add effect error isolation: failed effect logs error, doesn't block other effects
-- [ ] Write tests for effect execution order and error isolation
+## Step 3 — Singleton store wiring
 
-## Phase 4: State Diagnostics
+- [ ] Create `src/core/state/AgentStateStore.ts`
+  - Instantiate `createStore<AgentState>(getDefaultAgentState(), onChangeAgentState)`
+  - Export `getAgentState()`, `setAgentState(updater)`, `subscribeAgentState(listener)`
+  - Single module-level instance — no factory, no DI in v1
+- [ ] Export a `dumpAgentState(): string` helper for debug snapshots
 
-- [ ] Add `/state` command to CommandRegistry:
-  - Dumps current AgentState as formatted JSON
-  - Highlights non-default values
-  - Shows active effects and selectors
-- [ ] Implement state diff tracking:
-  - Store previous state on each setState
-  - computeDiff(prev, current): StateChange[]
-  - Log diffs for debugging (configurable verbosity)
-- [ ] Implement state health checks in `src/core/state/healthChecks.ts`:
-  - Verify session exists in AgentRegistry
-  - Verify active tab is still open
-  - Verify approved domains haven't been revoked
-  - Verify tool registry matches enabled/disabled state
-- [ ] Wire state snapshot into error reporting:
-  - Include AgentState summary in error context
-  - Redact sensitive fields (API keys, form data)
-- [ ] Add periodic health check (configurable interval, default: every 30 turns)
-- [ ] Write tests for health checks and state diff computation
+## Step 4 — Diff handler
+
+- [ ] Create `src/core/state/onChangeAgentState.ts`
+  - Branch 1: `selectedModelKey` change → `modelClientFactory.swapModel(newKey)`
+  - Branch 2: `theme` change → `saveConfig({ theme })` via existing config storage
+  - Branch 3: `approvalMode` change → emit `approval:mode-changed` event
+- [ ] Unit tests in `tests/core/state/onChangeAgentState.test.ts`
+  - Each branch fires when its field changes
+  - No branch fires when its field doesn't change (Object.is path)
+  - Error in one branch doesn't block others (try/catch per branch)
+
+## Step 5 — Read-through facade adapters
+
+- [ ] `AgentConfig`: in the existing `eventHandlers` plumbing
+      (`src/config/AgentConfig.ts:36`), on `selectedModelKey` change, call
+      `setAgentState(s => ({ ...s, selectedModelKey: newKey }))`. ~5 lines.
+- [ ] `ApprovalManager`:
+  - On policy mode change → mirror to `approvalMode`
+  - On `pendingRequests` enqueue/resolve → mirror summary to `pendingApprovals`
+  - ~15 lines total
+- [ ] `Session` / `SubAgentRunner` (PR #191 surfaces):
+  - On task spawn → add to `runningTasks`
+  - On task status transition → update entry
+  - On task complete/fail/kill → remove from `runningTasks`
+  - On foreground swap → update `foregroundTaskId`
+  - ~20 lines total
+- [ ] Integration tests in `tests/core/state/integration.test.ts`
+  - `AgentConfig` model swap → `getAgentState().selectedModelKey` matches
+  - `ApprovalManager.requestApproval` → `pendingApprovals` populated; resolve clears it
+  - `Session.spawnTask` → `runningTasks` includes the new task; completion removes it
+
+## Step 6 — Webfront bridge
+
+- [ ] Create `src/webfront/stores/agentStateBridge.ts` (~40 lines)
+  - One Svelte `readable` per consumed AgentState field
+  - Each backed by `subscribeAgentState` + a field selector
+- [ ] Migrate `themeStore.ts` to read from `agentStateBridge`
+  - Smallest-blast-radius consumer — proves the bridge pattern
+  - Other Svelte stores (`agentStore`, `threadStore`, `usageStore`, `userStore`)
+    stay unchanged — migrate in 07g
+
+## Step 7 — Debug + error reporting
+
+- [ ] Wire `dumpAgentState()` into the existing error reporting context
+  - One line in the error handler; pretty-printed JSON in the error payload
+- [ ] Redact pending approval payloads beyond `{ executionId, toolName, requestedAt }`
+      to avoid leaking arguments
+
+## Step 8 — Coverage & docs
+
+- [ ] Verify 80%+ coverage on `src/core/state/**` new files
+  - Do NOT chase coverage on the modified existing services
+- [ ] Update `CLAUDE.md` if relevant patterns shift (optional)
+- [ ] Add a short README at `src/core/state/README.md` documenting:
+  - v1 surface
+  - How to read / how to write
+  - Pointer to follow-on tracks
+
+## Out of scope (v1) — picked up by 07b–07h
+
+- Usage + cost tracking (07b)
+- Browsing context fields (07c)
+- Tool surface mirror (07d)
+- Memory mirror (07e) — also requires `main → agent-improvements` merge
+- Coordinator / multi-agent fields (07f) — requires Track 06
+- Webfront consolidation beyond `themeStore` (07g)
+- `/state` slash command, diff tracking, health checks (07h)
+- Memoized selector factory (defer until profiling demands it)
+- `DeepImmutable` wrapper (revisit if mutation bugs surface)
+- Additional persisted fields beyond `theme`
