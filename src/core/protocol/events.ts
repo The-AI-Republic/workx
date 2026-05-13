@@ -107,6 +107,10 @@ export type EventMsg =
   // Hook system events
   | { type: 'HookFired'; data: HookFiredEvent }
   | { type: 'HookBlocked'; data: HookBlockedEvent }
+  // Sub-agent lifecycle events
+  | { type: 'SubAgentStart'; data: SubAgentStartEvent }
+  | { type: 'SubAgentComplete'; data: SubAgentCompleteEvent }
+  | { type: 'SubAgentError'; data: SubAgentErrorEvent }
 ;
 
 // Individual event payload types
@@ -685,5 +689,31 @@ export interface HookBlockedEvent {
   hook_event_name: string;
   tool_name?: string;
   stop_reason?: string;
+}
+
+// Sub-agent lifecycle event payloads
+
+export interface SubAgentStartEvent {
+  runId: string;
+  subAgentType: string;
+  description: string;
+}
+
+export interface SubAgentCompleteEvent {
+  runId: string;
+  subAgentType: string;
+  turnCount: number;
+  tokenUsage?: {
+    input: number;
+    output: number;
+    total: number;
+  };
+  duration: number;
+}
+
+export interface SubAgentErrorEvent {
+  runId: string;
+  subAgentType: string;
+  error: string;
 }
 

@@ -290,8 +290,20 @@ describe('BrowserxAgent - handleModelConfigChange', () => {
       clearAllTabsFromGroup: vi.fn().mockResolvedValue(undefined),
     };
 
+    const mockPlatformAdapter = {
+      platformId: 'extension' as const,
+      hasRealTabs: true,
+      hasBrowserTools: true,
+      initialize: vi.fn().mockResolvedValue(undefined),
+      createTab: vi.fn().mockResolvedValue(100),
+      validateTab: vi.fn().mockResolvedValue({ valid: true }),
+      switchTab: vi.fn().mockResolvedValue(undefined),
+      registerPlatformTools: vi.fn().mockResolvedValue(undefined),
+      dispose: vi.fn().mockResolvedValue(undefined),
+    };
+
     config = createMockConfig();
-    agent = new BrowserxAgent(config as unknown as AgentConfig);
+    agent = new BrowserxAgent(config as unknown as AgentConfig, mockPlatformAdapter as any);
   });
 
   // =========================================================================

@@ -25,7 +25,7 @@ The output of this track is:
 
 Claudy's relevant design is sound and should be copied conceptually:
 
-1. Concurrency is evaluated per input, not per tool class.
+1. **Concurrency is evaluated per input, not per tool class.** This is a stated principle, not a footnote. Classification depends on the actual call arguments, because the same tool name can be safe or unsafe depending on what it is asked to do. The canonical Claudy example is `BashTool`, where `isConcurrencySafe(input)` simply returns `isReadOnly(input)`, and `isReadOnly(input)` parses the `command` string to detect mutating shell verbs (e.g. `cd`, which mutates the working directory and is therefore disqualified from concurrent execution). See `tools/BashTool/BashTool.tsx`. The BrowserX equivalents are `web_scraping(url=…)` and `form_automation(url=…)`: presence of `url` means the call may create or navigate a tab and must be classified as non-safe, whereas the same tool without `url` operates on the bound session tab and can be safe. The classifier API therefore takes `input` and is allowed (encouraged) to inspect it.
 2. Defaults are fail-closed:
    - `isConcurrencySafe() -> false`
    - `isReadOnly() -> false`
@@ -192,6 +192,10 @@ export interface ToolConcurrencyProfile {
 
 export interface ToolUIProfile {
   getActivityDescription?(input: Record<string, unknown>): string | null
+  // Optional UI hint used to collapse/dim read-only operations in the
+  // transcript view (parity with claudy's `Tool.isSearchOrReadCommand`,
+  // see `Tool.ts`). Purely cosmetic — does NOT influence concurrency
+  // classification, which is governed by `ToolConcurrencyProfile`.
   isSearchOrReadCommand?(input: Record<string, unknown>): {
     isSearch: boolean
     isRead: boolean
@@ -204,10 +208,35 @@ export interface ToolResultProfile {
   inputsEquivalent?(a: Record<string, unknown>, b: Record<string, unknown>): boolean
 }
 
+export interface ToolLifecycleProfile {
+  // Whether a tool is exposed to the model. Tools may be conditionally
+  // hidden by returning `false`. Parity with claudy `Tool.isEnabled()`.
+  isEnabled?(): boolean
+
+  // Whether a new user message can preempt this tool while it is running.
+  //   - 'cancel': aborting in-flight execution is safe (default for most tools)
+  //   - 'block':  the user message must wait for the tool to finish
+  // Defaults to 'block'. BrowserX use case: `browser_navigation.waitForLoad`
+  // should declare `'block'` because cancelling mid-load leaves the page in
+  // an indeterminate state. Parity with claudy `Tool.interruptBehavior`.
+  interruptBehavior?(): 'cancel' | 'block'
+
+  // Optional context mutation hook. When a tool finishes, it may return a
+  // function that produces an updated `ToolUseContext` for downstream calls
+  // — e.g. to record the active tab after `browser_navigation.navigate`,
+  // or the new `cwd` after a Bash `cd`. Claudy only honors `contextModifier`
+  // for **non**-concurrency-safe tools, because applying mutation hooks
+  // from concurrent siblings would race. BrowserX must follow the same
+  // rule: the orchestrator MUST skip `contextModifier` when the tool is
+  // executing inside a concurrent batch. See `Tool.ts`.
+  contextModifier?(context: ToolUseContext): ToolUseContext
+}
+
 export interface ToolRuntimeMetadata {
   concurrency: ToolConcurrencyProfile
   ui?: ToolUIProfile
   result?: ToolResultProfile
+  lifecycle?: ToolLifecycleProfile
 }
 
 export const DEFAULT_TOOL_CONCURRENCY_PROFILE: ToolConcurrencyProfile = {
@@ -393,6 +422,8 @@ and add it to:
 - `src/server/channels/ServerChannel.ts`
 - any UI event categorization code that groups tool events
 
+**Divergence note vs Claudy.** Claudy does **not** model tool progress as a distinct event type. It emits progress as a regular `'tool_progress'` *message* in its assistant/tool stream, alongside tool_use and tool_result messages — see how `StreamingToolExecutor` interleaves progress into the same async iterator that yields tool results. BrowserX's plan to define a first-class `ToolExecutionProgressEvent` is a deliberate divergence: it fits BrowserX's existing typed event bus and avoids overloading message channels. Implementers should be aware that any future code that ports a Claudy stream consumer will need an adapter layer to translate `'tool_progress'` messages into `ToolExecutionProgressEvent` (or vice versa).
+
 ## 7. Progress callback behavior
 
 Progress should be optional and cheap when unused.
@@ -493,6 +524,7 @@ For safe batch:
 - execute concurrently with bounded parallelism
 - preserve result ordering in the returned `function_call_output[]`
 - allow progress events to interleave naturally
+- **sibling abort propagation:** when one call in a concurrent batch errors (or is rejected by approval), all sibling in-flight calls in the same batch must be aborted and replaced with synthetic error results so the model sees a consistent batch outcome rather than partial mystery silence. This mirrors Claudy's `StreamingToolExecutor` (see `services/tools/StreamingToolExecutor.ts`), which cancels the remaining concurrent tool uses on the first failure and emits a synthetic error message for each. BrowserX should plumb a per-batch `AbortController` into `ToolExecutionRequest` so executors can react.
 
 Bounded parallelism:
 
@@ -500,7 +532,7 @@ Bounded parallelism:
 export const MAX_SAFE_TOOL_CALL_CONCURRENCY = 5
 ```
 
-Five is a better BrowserX default than Claudy's ten because BrowserX tools frequently use Chrome APIs, debugger sessions, DOM serialization, screenshots, or hidden tabs/windows.
+Claudy defaults to **10**, configurable via the `CLAUDE_CODE_MAX_TOOL_USE_CONCURRENCY` environment variable (see `services/tools/toolOrchestration.ts`). BrowserX's chosen `5` is a deliberate tightening, not parity: BrowserX tools frequently use Chrome APIs, debugger sessions, DOM serialization, screenshots, or hidden tabs/windows, so the per-batch ceiling is lower by design.
 
 If later made configurable, the setting should be internal-only at first. It does not need public config surface in the first implementation.
 
@@ -768,6 +800,10 @@ For object results:
 - rely on tool-specific result shaping
 - optionally apply truncation after `JSON.stringify()` in `TurnManager` when producing `function_call_output`
 
+### Opting out of truncation
+
+Some tools must not be truncated, because their output is the very content the agent will then act on, and a truncated result would force the agent to re-issue the same call in a loop. Claudy's `Read` tool is the canonical example: it sets `maxResultSizeChars: Infinity` so file contents flow through to the model untouched. BrowserX should follow the same convention — any tool whose result would create a re-read / re-fetch persistence loop (a future BrowserX `Read`-equivalent, or a content-snapshot tool) should set `maxResultSizeChars: Infinity` to disable truncation. The truncation branch in `ToolRegistry.execute()` must therefore guard against `Infinity` and skip slicing in that case.
+
 Filesystem-backed persistence can be a later server/desktop enhancement if it proves necessary.
 
 ---
@@ -871,3 +907,19 @@ These decisions should be treated as settled for implementation:
 7. `data_extraction` must be fixed to use the bound session tab before it can be classified as concurrency-safe.
 
 With those constraints, the implementation can proceed directly.
+
+---
+
+## Validation Notes (re-checked vs claudy 2026-05-11)
+
+This section records corrections applied after a re-validation pass against the claudy source. Each bullet cites the claudy file the correction was derived from.
+
+- **Concurrency cap.** Claudy defaults to `10`, configurable via the `CLAUDE_CODE_MAX_TOOL_USE_CONCURRENCY` environment variable, not `5`. BrowserX's `MAX_SAFE_TOOL_CALL_CONCURRENCY = 5` is now framed as a deliberate tightening for browser/tab overhead rather than as parity. Source: `services/tools/toolOrchestration.ts`.
+- **Input-dependent classification promoted to a stated principle.** Concurrency classification takes the call's `input` and inspects it; the canonical claudy example is `BashTool`, where `isConcurrencySafe(input) === isReadOnly(input)` and `isReadOnly(input)` parses the `command` string to disqualify shell verbs like `cd`. BrowserX equivalents are `web_scraping(url=…)` and `form_automation(url=…)`. Sources: `Tool.ts`, `tools/BashTool/BashTool.tsx`.
+- **`contextModifier` documented.** Tools may return a `contextModifier(context) => context` function that updates downstream `ToolUseContext` (e.g. active tab, cwd). Claudy only honors `contextModifier` for **non**-concurrency-safe tools, because applying mutation hooks from concurrent siblings would race; BrowserX must enforce the same rule. Source: `Tool.ts`.
+- **`interruptBehavior` documented.** Tools may declare `interruptBehavior(): 'cancel' | 'block'`, defaulting to `'block'`. Controls whether a new user message can preempt the in-flight tool. BrowserX use case: `browser_navigation.waitForLoad` should be `'block'`. Source: `Tool.ts`.
+- **`isSearchOrReadCommand` documented.** Optional UI hint that lets the transcript view collapse/dim read-only operations. It does not influence concurrency classification. Source: `Tool.ts`.
+- **`isEnabled` documented.** Tools may be conditionally hidden from the model by returning `false` from `isEnabled()`. Source: `Tool.ts`.
+- **`maxResultSizeChars: Infinity` documented.** Tools whose results would otherwise create a re-fetch / re-read persistence loop (claudy's `Read` is the canonical example) should set `maxResultSizeChars: Infinity` to disable truncation. The `ToolRegistry.execute()` truncation branch must guard against `Infinity`. Source: `Tool.ts`.
+- **Sibling abort propagation in concurrent batches.** When one call in a concurrent batch errors, sibling in-flight calls in the same batch must be aborted and replaced with synthetic error results so the model sees a consistent batch outcome. Source: `services/tools/StreamingToolExecutor.ts`.
+- **Progress-event shape divergence flagged.** Claudy emits progress as a regular `'tool_progress'` message in its tool stream, not as a distinct typed event. BrowserX's plan to define a first-class `ToolExecutionProgressEvent` is acceptable but is now explicitly flagged as a divergence so future stream-consumer ports remember to bridge the two shapes. Source: `services/tools/StreamingToolExecutor.ts`.

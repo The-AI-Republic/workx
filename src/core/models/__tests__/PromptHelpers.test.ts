@@ -11,14 +11,14 @@ import type { Prompt, ModelFamily } from '@/core/models/types/ResponsesAPI';
 import type { ResponseItem } from '@/core/protocol/types';
 
 // Mock the ScreenshotFileManager dependency
-vi.mock('@/tools/screenshot/ScreenshotFileManager', () => ({
+vi.mock('@/extension/tools/screenshot/ScreenshotFileManager', () => ({
   ScreenshotFileManager: {
     getScreenshot: vi.fn(),
   },
 }));
 
 // Import the mocked module so we can control its behavior per-test
-import { ScreenshotFileManager } from '@/tools/screenshot/ScreenshotFileManager';
+import { ScreenshotFileManager } from '@/extension/tools/screenshot/ScreenshotFileManager';
 
 const mockedGetScreenshot = vi.mocked(ScreenshotFileManager.getScreenshot);
 

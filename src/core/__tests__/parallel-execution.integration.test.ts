@@ -17,6 +17,7 @@ vi.mock('@/core/RepublicAgent', () => ({
     initialize = async () => undefined;
     setEventDispatcher = (_fn: any) => {};
     getSession = () => ({
+      sessionId: this._conversationId,
       conversationId: this._conversationId,
       abortAllTasks: () => {},
       close: () => {},
@@ -34,6 +35,7 @@ vi.mock('@/core/RepublicAgent', () => ({
     getApprovalManager = () => ({});
     getToolRegistry = () => ({ setApprovalGate: () => {} });
     getHookDispatcher = () => ({ fire: async () => ({}) });
+    getEngine = () => null;
     agentId = 'agent_mock';
   },
 }));

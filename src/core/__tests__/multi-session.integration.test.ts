@@ -24,6 +24,7 @@ vi.mock('@/core/RepublicAgent', () => ({
     getApprovalManager = () => ({});
     getToolRegistry = () => ({ setApprovalGate: () => {} });
     getHookDispatcher = () => ({ fire: async () => ({}) });
+    getEngine = () => null;
     agentId = 'agent_mock';
   },
 }));

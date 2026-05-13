@@ -153,7 +153,9 @@ export class ServerAgentBootstrap {
       this.registry = new AgentRegistry({
         maxConcurrent: 3,
         agentFactory: async (cfg, initialHistory) => {
-          const agent = new RepublicAgent(cfg, initialHistory);
+          const { ServerPlatformAdapter } = await import('../platform/ServerPlatformAdapter');
+          const platformAdapter = new ServerPlatformAdapter();
+          const agent = new RepublicAgent(cfg, platformAdapter, initialHistory);
           await agent.initialize();
 
           // Register server-mode tools on each new agent
@@ -162,7 +164,29 @@ export class ServerAgentBootstrap {
             await registerServerTools(toolRegistry as any);
             console.log('[ServerAgentBootstrap] Server tools registered on new session agent');
           } catch (err) {
+            const errMsg = err instanceof Error ? err.message : String(err);
             console.warn('[ServerAgentBootstrap] Tool registration failed (non-fatal):', err);
+            agent.getEngine()?.pushEvent({
+              id: crypto.randomUUID(),
+              msg: { type: 'BackgroundEvent', data: { message: `Server tool registration failed: ${errMsg}`, level: 'error' } },
+            });
+          }
+
+          // Register sub-agent tool
+          const engine = agent.getEngine();
+          if (engine) {
+            try {
+              const { registerSubAgentTool } = await import('@/tools/AgentTool/register');
+              await registerSubAgentTool(engine);
+              console.log('[ServerAgentBootstrap] sub_agent tool registered');
+            } catch (err) {
+              const errMsg = err instanceof Error ? err.message : String(err);
+              console.warn('[ServerAgentBootstrap] sub_agent tool registration failed (non-fatal):', err);
+              engine.pushEvent({
+                id: crypto.randomUUID(),
+                msg: { type: 'BackgroundEvent', data: { message: `Sub-agent tool registration failed: ${errMsg}`, level: 'error' } },
+              });
+            }
           }
 
           return agent;
