@@ -61,6 +61,15 @@ export function toAgentEvent(event: EventMsg): EventFrame | null {
         error: event.data.error,
       }, seq);
 
+    case 'ToolExecutionProgress':
+      return makeEvent('agent', {
+        kind: 'tool.progress',
+        toolName: event.data.tool_name,
+        callId: event.data.call_id,
+        progressData: event.data.progress_data,
+        timestamp: event.data.timestamp,
+      }, seq);
+
     // ── MCP tool calls ────────────────────────────────────────────────
     case 'McpToolCallBegin':
       return makeEvent('agent', {

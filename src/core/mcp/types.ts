@@ -208,6 +208,11 @@ export interface IMCPTool {
 
   /** Optional annotations */
   annotations?: {
+    /** Raw MCP hints — preserved for concurrency classification */
+    readOnlyHint?: boolean;
+    destructiveHint?: boolean;
+    openWorldHint?: boolean;
+    /** Display-oriented fields */
     audience?: ('user' | 'assistant')[];
     priority?: number;
     costLevel?: 'low' | 'medium' | 'high';

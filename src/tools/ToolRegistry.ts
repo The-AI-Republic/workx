@@ -21,6 +21,31 @@ import type {
 } from './BaseTool';
 import type { ApprovalGate } from '../core/approval/ApprovalGate';
 import type { IRiskAssessor } from '../core/approval/types';
+import {
+  DEFAULT_TOOL_CONCURRENCY_PROFILE,
+  type ToolConcurrencyProfile,
+  type ToolUIProfile,
+  type ToolResultProfile,
+  type ToolRuntimeMetadata,
+  type ToolProgressCallback,
+} from './runtimeMetadata';
+// Note: parseNodeId is dynamically imported in enrichDomParameters to keep
+// ToolRegistry cross-platform (extension-only DOM utils stay out of the
+// desktop/server bundles).
+
+/**
+ * Stringify a value for size measurement during result truncation.
+ * Returns undefined when serialization is impossible (circular refs, etc.),
+ * which causes truncation to be skipped rather than throw.
+ */
+function safeJsonStringify(value: unknown): string | undefined {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Interface for event collection (used for testing)
  * The actual EventCollector class is in tests/utils/test-helpers.ts
@@ -30,13 +55,26 @@ export interface IEventCollector {
 }
 
 /**
- * Tool registry entry
+ * Tool registry entry — includes runtime metadata for concurrency, UI, and result management.
  */
 interface ToolRegistryEntry {
   definition: ToolDefinition;
   handler: ToolHandler;
   registrationTime: number;
   riskAssessor?: IRiskAssessor;
+  runtime: ToolRuntimeMetadata;
+}
+
+/**
+ * Structured registration options for tools with runtime metadata.
+ */
+export interface ToolRegistrationOptions {
+  riskAssessor?: IRiskAssessor;
+  runtime?: Partial<{
+    concurrency: Partial<ToolConcurrencyProfile>;
+    ui: ToolUIProfile;
+    result: ToolResultProfile;
+  }>;
 }
 
 /**
@@ -70,9 +108,16 @@ export class ToolRegistry {
   }
 
   /**
-   * Register a tool with the registry
+   * Register a tool with the registry.
+   *
+   * Accepts either a bare IRiskAssessor (backward-compatible) or a structured
+   * ToolRegistrationOptions object with runtime metadata.
    */
-  async register(tool: ToolDefinition, handler: ToolHandler, riskAssessor?: IRiskAssessor): Promise<void> {
+  async register(
+    tool: ToolDefinition,
+    handler: ToolHandler,
+    optionsOrAssessor?: IRiskAssessor | ToolRegistrationOptions,
+  ): Promise<void> {
     // Validate tool definition
     this.validateToolDefinition(tool);
 
@@ -84,12 +129,28 @@ export class ToolRegistry {
       throw new Error(`Tool '${toolName}' is already registered`);
     }
 
+    // Normalize the third argument: bare IRiskAssessor vs ToolRegistrationOptions
+    const opts: ToolRegistrationOptions = optionsOrAssessor && 'assess' in optionsOrAssessor
+      ? { riskAssessor: optionsOrAssessor as IRiskAssessor }
+      : (optionsOrAssessor as ToolRegistrationOptions ?? {});
+
+    // Build runtime metadata with fail-closed defaults
+    const runtime: ToolRuntimeMetadata = {
+      concurrency: {
+        ...DEFAULT_TOOL_CONCURRENCY_PROFILE,
+        ...(opts.runtime?.concurrency ?? {}),
+      },
+      ui: opts.runtime?.ui,
+      result: opts.runtime?.result,
+    };
+
     // Register the tool
     const entry: ToolRegistryEntry = {
       definition: tool,
       handler,
       registrationTime: Date.now(),
-      riskAssessor,
+      riskAssessor: opts.riskAssessor,
+      runtime,
     };
 
     this.tools.set(toolName, entry);
@@ -261,6 +322,22 @@ export class ToolRegistry {
         };
       }
 
+      // Emit execution start event before approval checks so denied calls still
+      // surface a full lifecycle to downstream consumers.
+      this.emitEvent({
+        id: `evt_exec_start_${request.toolName}_${request.callId ?? ''}`,
+        msg: {
+          type: 'ToolExecutionStart',
+          data: {
+            tool_name: request.toolName,
+            call_id: request.callId,
+            session_id: request.sessionId,
+            turn_id: request.turnId,
+            start_time: startTime,
+          },
+        },
+      });
+
       // Approval gate check (if configured)
       if (this.approvalGate) {
         const context = request.metadata ? {
@@ -307,28 +384,41 @@ export class ToolRegistry {
         // 'auto_approve' and 'ask_user' (resolved to approve) continue execution
       }
 
-      // Emit execution start event
-      this.emitEvent({
-        id: `evt_exec_start_${request.toolName}`,
-        msg: {
-          type: 'ToolExecutionStart',
-          data: {
-            tool_name: request.toolName,
-            session_id: request.sessionId,
-            turn_id: request.turnId,
-            start_time: startTime,
-          },
-        },
-      });
+      // Wrap progress callback to also emit ToolExecutionProgress events.
+      // Counter is scoped to this call so IDs are deterministic and not
+      // sensitive to interleaving with other concurrent tool executions.
+      let progressSeq = 0;
+      const progressIdScope = request.callId ?? `${request.toolName}_${startTime}`;
+      const emitProgress: ToolProgressCallback | undefined = request.onProgress
+        ? (progress) => {
+            request.onProgress?.(progress);
+            this.emitEvent({
+              id: `evt_exec_progress_${progressIdScope}_${++progressSeq}`,
+              msg: {
+                type: 'ToolExecutionProgress',
+                data: {
+                  tool_name: request.toolName,
+                  call_id: request.callId,
+                  session_id: request.sessionId,
+                  turn_id: request.turnId,
+                  progress_data: progress.data,
+                  timestamp: Date.now(),
+                },
+              },
+            });
+          }
+        : undefined;
 
       // Create execution context
       const context: ToolContext = {
         sessionId: request.sessionId,
         turnId: request.turnId,
         toolName: request.toolName,
+        callId: request.callId,
         metadata: {
           tabId: request.tabId, // Pass tabId from request to tool via metadata
         },
+        onProgress: emitProgress,
       };
 
       // Execute with timeout (default 120 seconds if not specified)
@@ -371,13 +461,27 @@ export class ToolRegistry {
         };
       }
 
+      // Result truncation: apply maxResultSizeChars if configured.
+      // Non-string results are measured via JSON.stringify so structured
+      // payloads (e.g. dom_tool snapshots) are also bounded.
+      const maxChars = entry.runtime.result?.maxResultSizeChars;
+      if (maxChars) {
+        const serialized = typeof result === 'string' ? result : safeJsonStringify(result);
+        if (serialized !== undefined && serialized.length > maxChars) {
+          const originalLength = serialized.length;
+          result = serialized.slice(0, maxChars) +
+            `\n\n[Result truncated from ${originalLength} to ${maxChars} chars]`;
+        }
+      }
+
       // Emit success event
       this.emitEvent({
-        id: `evt_exec_end_${request.toolName}`,
+        id: `evt_exec_end_${request.toolName}_${request.callId ?? ''}`,
         msg: {
           type: 'ToolExecutionEnd',
           data: {
             tool_name: request.toolName,
+            call_id: request.callId,
             session_id: request.sessionId,
             success: true,
             duration: Date.now() - startTime,
@@ -389,7 +493,6 @@ export class ToolRegistry {
         success: true,
         data: result,
         duration: Date.now() - startTime,
-        metadata: undefined, // ToolDefinition doesn't have metadata field
       };
 
     } catch (error: any) {
@@ -417,6 +520,70 @@ export class ToolRegistry {
         duration: Date.now() - startTime,
       };
     }
+  }
+
+  // ===========================================================================
+  // Runtime metadata query helpers (fail-closed, catch exceptions)
+  // ===========================================================================
+
+  /**
+   * Check if a tool call is concurrency-safe given its input.
+   * Returns false (fail-closed) if tool not found or check throws.
+   */
+  isConcurrencySafe(toolName: string, input: Record<string, unknown>): boolean {
+    const entry = this.tools.get(toolName);
+    if (!entry) return false;
+    try {
+      return entry.runtime.concurrency.isConcurrencySafe(input);
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Check if a tool call is read-only given its input.
+   */
+  isReadOnly(toolName: string, input: Record<string, unknown>): boolean {
+    const entry = this.tools.get(toolName);
+    if (!entry) return false;
+    try {
+      return entry.runtime.concurrency.isReadOnly(input);
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Check if a tool call is destructive given its input.
+   */
+  isDestructive(toolName: string, input: Record<string, unknown>): boolean {
+    const entry = this.tools.get(toolName);
+    if (!entry) return false;
+    try {
+      return entry.runtime.concurrency.isDestructive(input);
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Get human-readable activity description for a tool call.
+   */
+  getActivityDescription(toolName: string, input: Record<string, unknown>): string | null {
+    const entry = this.tools.get(toolName);
+    if (!entry?.runtime.ui?.getActivityDescription) return null;
+    try {
+      return entry.runtime.ui.getActivityDescription(input);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Get result profile for a tool.
+   */
+  getResultProfile(toolName: string): ToolResultProfile | undefined {
+    return this.tools.get(toolName)?.runtime.result;
   }
 
   /**

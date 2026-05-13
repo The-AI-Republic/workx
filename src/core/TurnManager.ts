@@ -18,6 +18,12 @@ import type { IToolsConfig } from '../config/types';
 import { mapResponseItemToEventMessages } from './events/EventMapping';
 import type { ResponseItem } from './protocol/types';
 import { WebSearchTool } from '../tools/WebSearchTool';
+import {
+  prepareToolCall,
+  partitionToolCalls,
+  executeToolCallBatches,
+  type PreparedToolCall,
+} from './toolOrchestration';
 import type { HookDispatcher } from './hooks/HookDispatcher';
 import type { HookInput } from './hooks/types';
 
@@ -559,33 +565,38 @@ export class TurnManager {
       }
 
       // Handle tool_calls embedded in message items (unified format)
-      // NEW: Assistant messages can now contain tool_calls directly
-      // IMPORTANT: Gemini 3 may send parallel tool calls - we must execute ALL of them
-      // and return ALL responses, otherwise Gemini will return empty on next turn
+      // Gemini 3 may send parallel tool calls — we must execute ALL of them.
+      // Safe calls run concurrently (bounded); unsafe calls run sequentially.
       if (item.type === 'message' && item.tool_calls && Array.isArray(item.tool_calls) && item.tool_calls.length > 0) {
-        const toolCallResults: any[] = [];
+        // Step 1: Prepare all calls (parse args once, classify concurrency)
+        const prepared = item.tool_calls.map((tc: any) =>
+          prepareToolCall(tc, this.toolRegistry)
+        );
 
-        // Execute ALL tool calls sequentially (Gemini expects responses for all)
-        for (const toolCall of item.tool_calls) {
-          try {
-            const result = await this.executeToolCall(
-              toolCall.function.name,
-              toolCall.function.arguments,
-              toolCall.id
-            );
-            toolCallResults.push(result);
-          } catch (error) {
-            toolCallResults.push({
-              type: 'function_call_output',
-              call_id: toolCall.id,
-              output: `Error: ${error instanceof Error ? error.message : String(error)}`,
-            });
-          }
-        }
+        // Step 2: Partition into batches
+        const batches = partitionToolCalls(prepared);
 
-        // Return all tool call results (will be added to conversation history)
-        // If single result, return as-is for backward compatibility
-        // If multiple results, return as array
+        // Step 3: Execute batches (safe=concurrent, unsafe=sequential)
+        const toolCallResults = await executeToolCallBatches(
+          batches,
+          async (call: PreparedToolCall) => {
+            try {
+              return await this.executeToolCall(
+                call.name,
+                call.parsedArguments,
+                call.id,
+              );
+            } catch (error) {
+              return {
+                type: 'function_call_output',
+                call_id: call.id,
+                output: `Error: ${error instanceof Error ? error.message : String(error)}`,
+              };
+            }
+          },
+        );
+
+        // Return results preserving original order
         if (toolCallResults.length === 1) {
           return toolCallResults[0];
         }
@@ -681,7 +692,7 @@ export class TurnManager {
           // Check ToolRegistry for browser tools BEFORE falling back to MCP
           const browserTool = this.toolRegistry.getTool(toolName);
           if (browserTool) {
-            result = await this.executeBrowserTool(browserTool, parsedParams);
+            result = await this.executeBrowserTool(browserTool, parsedParams, callId);
             break;
           }
 
@@ -849,19 +860,13 @@ export class TurnManager {
   }
 
   /**
-   * Execute a browser tool from ToolRegistry
+   * Execute a browser tool from ToolRegistry.
+   *
+   * Lifecycle events (ToolExecutionStart/End/Error/Timeout) are emitted by
+   * ToolRegistry.execute() — TurnManager does not duplicate them.
    */
-  private async executeBrowserTool(tool: any, parameters: any): Promise<any> {
-    // Emit browser tool execution event
+  private async executeBrowserTool(tool: any, parameters: any, callId?: string): Promise<any> {
     const toolName = this.getToolNameFromDefinition(tool);
-
-    await this.emitEvent({
-      type: 'ToolExecutionStart',
-      data: {
-        tool_name: toolName,
-        session_id: this.session.getSessionId(),
-      },
-    });
 
     try {
       // Execute tool via ToolRegistry
@@ -886,6 +891,7 @@ export class TurnManager {
         parameters,
         sessionId: this.session.getSessionId(),
         turnId: `turn_${Date.now()}`,
+        callId,
         tabId, // Pass tabId in request for tools that need it
         timeout: 300000, // 5 min — allows for MCP lazy connection + tool execution
         metadata: {
@@ -906,15 +912,6 @@ export class TurnManager {
         throw err;
       }
 
-      await this.emitEvent({
-        type: 'ToolExecutionEnd',
-        data: {
-          tool_name: toolName,
-          session_id: this.session.getSessionId(),
-          success: true,
-        },
-      });
-
       // Emit TaskUpdate through platform-agnostic event path
       if (toolName === 'planning_tool' && response.data?._taskEvent) {
         await this.emitEvent({
@@ -927,15 +924,7 @@ export class TurnManager {
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       console.error(`[TurnManager] executeBrowserTool: ${toolName} threw:`, errorMsg);
-
-      await this.emitEvent({
-        type: 'ToolExecutionError',
-        data: {
-          tool_name: toolName,
-          session_id: this.session.getSessionId(),
-          error: errorMsg,
-        },
-      });
+      // ToolRegistry.execute() already emitted ToolExecutionError — do not duplicate
       throw error;
     }
   }

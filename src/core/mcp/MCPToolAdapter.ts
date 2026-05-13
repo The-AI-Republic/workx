@@ -15,6 +15,7 @@ import type {
   IMCPContent,
 } from './types';
 import type { IRiskAssessor } from '../approval/types';
+import type { ToolRegistrationOptions } from '../../tools/ToolRegistry';
 
 /**
  * Adapts MCP tools to ApplePi ToolDefinition format.
@@ -172,7 +173,7 @@ export function getMCPToolAdapter(): MCPToolAdapter {
  * Registry interface matching ToolRegistry
  */
 export interface IToolRegistry {
-  register(tool: ToolDefinition, handler: ToolHandler, riskAssessor?: IRiskAssessor): Promise<void>;
+  register(tool: ToolDefinition, handler: ToolHandler, riskAssessor?: IRiskAssessor | ToolRegistrationOptions): Promise<void>;
   unregister(toolName: string): Promise<void>;
 }
 
@@ -199,8 +200,24 @@ export async function registerMCPTools(
     const definition = adapter.adaptTool(tool, serverName);
     const handler = adapter.createHandler(manager, serverName, tool.name);
 
+    // Derive runtime metadata from raw MCP annotation hints
+    const readOnly = tool.annotations?.readOnlyHint ?? false;
+    const destructive = tool.annotations?.destructiveHint ?? false;
+
     try {
-      await registry.register(definition, handler, riskAssessor);
+      await registry.register(definition, handler, {
+        riskAssessor,
+        runtime: {
+          concurrency: {
+            isConcurrencySafe: () => readOnly,
+            isReadOnly: () => readOnly,
+            isDestructive: () => destructive,
+          },
+          result: {
+            maxResultSizeChars: 50_000,
+          },
+        },
+      });
     } catch (error) {
       // Tool might already be registered (e.g., during reconnect)
       console.warn(`[MCPToolAdapter] Failed to register tool ${definition.type === 'function' ? definition.function.name : definition.type}:`, error);

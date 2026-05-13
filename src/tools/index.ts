@@ -9,9 +9,19 @@
 import { ToolRegistry } from './ToolRegistry';
 
 // Re-export cross-platform tools and base classes
-export { ToolRegistry } from './ToolRegistry';
+export { ToolRegistry, type ToolRegistrationOptions } from './ToolRegistry';
 export { BaseTool, createFunctionTool, createObjectSchema, createToolDefinition } from './BaseTool';
 export type { ToolDefinition, JsonSchema, ResponsesApiTool, FreeformTool, FreeformToolFormat, ToolMetadata, Platform } from './BaseTool';
+export type {
+  ToolConcurrencyProfile,
+  ToolUIProfile,
+  ToolResultProfile,
+  ToolRuntimeMetadata,
+  ToolProgressData,
+  ToolProgress,
+  ToolProgressCallback,
+} from './runtimeMetadata';
+export { DEFAULT_TOOL_CONCURRENCY_PROFILE } from './runtimeMetadata';
 export { PlanningTool } from './PlanningTool';
 export { WebSearchTool } from './WebSearchTool';
 export { SettingTool } from './SettingTool';

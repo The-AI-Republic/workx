@@ -97,9 +97,11 @@ export interface ToolExecutionRequest {
   parameters: Record<string, any>;
   sessionId: string;
   turnId: string;
+  callId?: string; // Original tool_call ID from the model response
   tabId?: number; // Current session's bound tab ID
   timeout?: number;
   metadata?: Record<string, any>; // Additional context (currentUrl, currentDomain, cwd, etc.)
+  onProgress?: import('./runtimeMetadata').ToolProgressCallback; // Optional progress callback
 }
 
 /**
@@ -165,7 +167,9 @@ export interface ToolContext {
   sessionId: string;
   turnId: string;
   toolName: string;
+  callId?: string;
   metadata?: Record<string, any>;
+  onProgress?: import('./runtimeMetadata').ToolProgressCallback;
 }
 
 /**
@@ -189,6 +193,8 @@ export interface BaseToolOptions {
   timeout?: number;
   retries?: number;
   metadata?: Record<string, any>;
+  callId?: string;
+  onProgress?: import('./runtimeMetadata').ToolProgressCallback;
 }
 
 /**

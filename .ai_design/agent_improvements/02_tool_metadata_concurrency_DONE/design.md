@@ -1,5 +1,9 @@
 # Track 02: Tool Metadata & Concurrency
 
+> **Status: DONE** — shipped via PR #197 (`feat/tool-metadata-concurrency` → `agent-improvements`, merged 2026-05-13).
+>
+> Implemented runtime metadata model on `ToolRegistryEntry` (concurrency / UI / result profiles with fail-closed defaults), per-input classification for all 11 built-in tools, batch partitioning orchestrator with bounded parallelism (max 5), `ToolExecutionProgress` event wired through the pipeline, result truncation via `maxResultSizeChars` (covers both string and structured payloads), MCP raw `readOnlyHint`/`destructiveHint` preservation with derived metadata, and `call_id` propagation through all tool lifecycle events. Sole owner of tool lifecycle event emission is `ToolRegistry` (duplicate emission from `TurnManager` was removed). The original design notes below are kept for historical reference.
+
 ## Goal
 
 Bring the useful parts of Claudy's tool metadata and safe parallel execution model into BrowserX, but adapt them to BrowserX's actual architecture instead of doing a literal port.

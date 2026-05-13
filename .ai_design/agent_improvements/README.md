@@ -15,7 +15,7 @@ BrowserX is a multi-platform browser automation agent. Claudy is a terminal-nati
 | # | Track | Priority | Effort | Value |
 |---|-------|----------|--------|-------|
 | 01 | [Hook & Event System](./01_hook_event_system_DONE/design.md) ✅ DONE (PR #198, merged 2026-05-13) | P0 | Large | Unlocks extensibility for all other tracks |
-| 02 | [Tool Metadata & Concurrency](./02_tool_metadata_concurrency/design.md) | P0 | Medium | Enables parallel tool execution, progress UX |
+| 02 | [Tool Metadata & Concurrency](./02_tool_metadata_concurrency_DONE/design.md) ✅ DONE (PR #197, merged 2026-05-13) | P0 | Medium | Enables parallel tool execution, progress UX |
 | 03 | [Command & Skill System](./03_command_skill_system/design.md) | P1 | Medium | User-facing extensibility, plugin ecosystem |
 | 04 | [Typed Task Families](./04_typed_task_families/design.md) | P1 | Large | Background agents, disk persistence, progress |
 | 05 | [Session Memory](./05_session_memory_DONE/design.md) ✅ DONE (PR #167, merged 2026-05-12) | P2 | Medium | Cross-session context, automatic summarization |
@@ -31,7 +31,7 @@ BrowserX is a multi-platform browser automation agent. Claudy is a terminal-nati
                                                   ├──> 04_typed_task_families ──> 06_multi_agent_coordination
                                                   └──> 05_session_memory_DONE (shipped via PR #167) ──> 05b_auto_extraction_compaction_interlock (requires main → agent-improvements merge)
 
-02_tool_metadata_concurrency ──> multiple_tools_call (existing)
+02_tool_metadata_concurrency_DONE (shipped via PR #197) ──> multiple_tools_call (existing)
 
 07_centralized_state ──> (independent, can proceed in parallel)
 
