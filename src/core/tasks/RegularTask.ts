@@ -51,6 +51,12 @@ export class RegularTask implements SessionTask {
       session.getToolRegistry() as ToolRegistry // Tool registry is required
     );
 
+    // Wire hook dispatcher if available
+    const hookDispatcher = session.getHookDispatcher();
+    if (hookDispatcher) {
+      turnManager.setHookDispatcher(hookDispatcher);
+    }
+
     // Convert InputItem[] to ResponseItem[] for AgentTask
     const responseItems = this.convertInput(input);
 

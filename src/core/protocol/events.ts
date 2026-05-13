@@ -104,6 +104,9 @@ export type EventMsg =
   // Service routing events
   | { type: 'ServiceResponse'; data: ServiceResponseEvent }
   | { type: 'StateUpdate'; data: StateUpdateEvent }
+  // Hook system events
+  | { type: 'HookFired'; data: HookFiredEvent }
+  | { type: 'HookBlocked'; data: HookBlockedEvent }
   // Sub-agent lifecycle events
   | { type: 'SubAgentStart'; data: SubAgentStartEvent }
   | { type: 'SubAgentComplete'; data: SubAgentCompleteEvent }
@@ -672,6 +675,20 @@ export interface StateUpdateEvent {
   sessionId?: string;
   tabId?: number;
   [key: string]: unknown;
+}
+
+// Hook system event payloads
+
+export interface HookFiredEvent {
+  hook_event_name: string;
+  hook_count: number;
+  tool_name?: string;
+}
+
+export interface HookBlockedEvent {
+  hook_event_name: string;
+  tool_name?: string;
+  stop_reason?: string;
 }
 
 // Sub-agent lifecycle event payloads

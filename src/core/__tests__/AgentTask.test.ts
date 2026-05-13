@@ -79,6 +79,7 @@ function createMockSession(overrides: Record<string, any> = {}): Session {
     getTabId: vi.fn().mockReturnValue(1),
     getSessionId: vi.fn().mockReturnValue('session-001'),
     getToolRegistry: vi.fn().mockReturnValue({}),
+    getHookDispatcher: vi.fn().mockReturnValue(null),
     getConversationHistory: vi.fn().mockReturnValue({ items: [] }),
     compact: vi.fn().mockResolvedValue({
       success: true,

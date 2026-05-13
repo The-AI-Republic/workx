@@ -99,6 +99,8 @@ async function configureExtensionPlatform(targetAgent: RepublicAgent): Promise<v
   const approvalGate = new ApprovalGate(approvalManager, policyEngine);
   approvalGate.addEnhancer(new DomainSensitivityEnhancer());
   approvalGate.addEnhancer(new SemanticElementEnhancer());
+  // Wire hook dispatcher so PermissionRequest/PermissionDenied hooks fire
+  approvalGate.setHookDispatcher(targetAgent.getHookDispatcher());
 
   // Extension mode uses ConfigStorageProvider for approval config
   const configStorage = new ApprovalConfigStorage(() => getConfigStorage());

@@ -4,6 +4,7 @@
  */
 
 import type { IApprovalConfig } from '../core/approval/types';
+import type { HooksConfig } from '../core/hooks/types';
 
 /**
  * Main centralized configuration interface for the agent (RUNTIME)
@@ -49,6 +50,7 @@ export interface IAgentConfig {
   tools?: IToolsConfig;
   storage?: IStorageConfig;
   approval?: IApprovalConfig;
+  hooks?: HooksConfig;
 }
 
 // Model pricing information
@@ -473,6 +475,8 @@ export interface IStoredConfig {
   storage?: IStorageConfig;
   /** Approval system configuration */
   approval?: IApprovalConfig;
+  /** Hook system configuration */
+  hooks?: HooksConfig;
 }
 
 // Storage interfaces
@@ -530,7 +534,7 @@ export interface IExportData {
 // Event interfaces for config changes
 export interface IConfigChangeEvent {
   type: 'config-changed';
-  section: 'model' | 'provider' | 'profile' | 'preferences' | 'cache' | 'extension' | 'security' | 'approval';
+  section: 'model' | 'provider' | 'profile' | 'preferences' | 'cache' | 'extension' | 'security' | 'approval' | 'hooks';
   oldValue?: any;
   newValue: any;
   timestamp: number;
