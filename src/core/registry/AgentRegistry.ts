@@ -171,6 +171,8 @@ export class AgentRegistry {
         const approvalGate = new ApprovalGate(approvalManager, policyEngine);
         approvalGate.addEnhancer(new DomainSensitivityEnhancer());
         approvalGate.addEnhancer(new SemanticElementEnhancer());
+        // Wire hook dispatcher so PermissionRequest/PermissionDenied hooks fire
+        approvalGate.setHookDispatcher(agent.getHookDispatcher());
         const configStorage = new ApprovalConfigStorage(() => getConfigStorage());
         approvalGate.setConfigStorage(configStorage);
         try {

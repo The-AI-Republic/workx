@@ -1,5 +1,9 @@
 # Track 01: Hook & Event System
 
+> **Status: DONE** — shipped via PR #198 (`feat/hook-event-system` → `agent-improvements`, merged 2026-05-13, commit `f0347d7e`).
+>
+> The merged shape matches the Phase-1 scope in this document: 11 hook events (PreToolUse / PostToolUse / PostToolUseFailure / SessionStart / SessionEnd / UserPromptSubmit / Stop / PermissionRequest / PermissionDenied / TaskCreated / TaskCompleted) with three command types (command / prompt-stub / http), config-based registration with hot reload, recursion guard, and HookFired/HookBlocked observability events. Code-review follow-ups during the PR closed four high-severity issues (ApprovalGate↔HookDispatcher wiring, restricted child-process env via allowlist, prototype-pollution sanitization in parsed hook JSON, HTTP timer/listener cleanup). Open follow-ups for a later PR: full Zod validation of hook output (H3), PostToolUseFailure mutation semantics (H4), and the additional medium / low items in the PR review.
+
 ## Problem
 
 BrowserX has no hook system. Tools execute atomically with no extensibility points before, during, or after execution. Events are one-way callbacks with no subscriber pattern. This prevents:

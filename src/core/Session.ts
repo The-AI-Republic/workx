@@ -22,6 +22,7 @@ import { type SessionServices, createSessionServices } from './session/state/Ses
 import { ActiveTurn } from './session/state/ActiveTurn';
 import type { TokenUsageInfo, RunningTask, RateLimitSnapshot, TurnAbortReason, InitialHistory } from './session/state/types';
 import { isDOMSnapshotOutput, compressSnapshot } from './session/state/SnapshotCompressor';
+import type { HookDispatcher } from './hooks/HookDispatcher';
 
 // Compaction imports
 import { CompactService } from './compact/CompactService';
@@ -67,6 +68,7 @@ export class Session {
   // Title generation stage: 0 = not started, 1 = generated at 2 messages, 2 = generated at 5 messages (final)
   private titleGenerationStage: number = 0;
   private initializationPromise: Promise<void> | null = null;
+  private hookDispatcher: HookDispatcher | null = null;
 
   constructor(
     configOrIsPersistent?: AgentConfig | boolean,
@@ -369,6 +371,20 @@ export class Session {
    */
   setEventEmitter(emitter: (event: Event) => Promise<void>): void {
     this.eventEmitter = emitter;
+  }
+
+  /**
+   * Set the hook dispatcher for task lifecycle hooks.
+   */
+  setHookDispatcher(dispatcher: HookDispatcher): void {
+    this.hookDispatcher = dispatcher;
+  }
+
+  /**
+   * Get the hook dispatcher (for passing to TurnManager).
+   */
+  getHookDispatcher(): HookDispatcher | null {
+    return this.hookDispatcher;
   }
 
   /**
@@ -1325,6 +1341,16 @@ export class Session {
     // Create AbortController for cancellation
     const abortController = new AbortController();
 
+    // Fire TaskCreated hook (fire-and-forget)
+    if (this.hookDispatcher) {
+      this.hookDispatcher.fire('TaskCreated', {
+        hook_event_name: 'TaskCreated',
+        session_id: this.sessionId,
+        task_id: subId,
+        task_type: task.constructor.name,
+      }).catch(() => {});
+    }
+
     // Create promise wrapper for task execution
     const promise = (async (): Promise<string | null> => {
       try {
@@ -1332,6 +1358,17 @@ export class Session {
         const result = await task.run(this, context, subId, input);
         // On success, call completion handler
         await this.onTaskFinished(subId, result);
+
+        // Fire TaskCompleted hook (fire-and-forget)
+        if (this.hookDispatcher) {
+          this.hookDispatcher.fire('TaskCompleted', {
+            hook_event_name: 'TaskCompleted',
+            session_id: this.sessionId,
+            task_id: subId,
+            task_type: task.constructor.name,
+          }).catch(() => {});
+        }
+
         return result;
       } catch (error) {
         // On error, call abort handler

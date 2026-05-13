@@ -24,6 +24,8 @@ import {
   executeToolCallBatches,
   type PreparedToolCall,
 } from './toolOrchestration';
+import type { HookDispatcher } from './hooks/HookDispatcher';
+import type { HookInput } from './hooks/types';
 
 /**
  * Optional MCP capability interface for sessions that support MCP tools.
@@ -89,6 +91,7 @@ export class TurnManager {
   private config: TurnConfig;
   private cancelled = false;
   private nativeWebSearchEnabled = false;
+  private hookDispatcher: HookDispatcher | null = null;
 
   constructor(
     session: Session,
@@ -105,6 +108,13 @@ export class TurnManager {
       maxRetryDelayMs: 30000,
       ...config,
     };
+  }
+
+  /**
+   * Set the hook dispatcher for pre/post tool use hooks.
+   */
+  setHookDispatcher(dispatcher: HookDispatcher): void {
+    this.hookDispatcher = dispatcher;
   }
 
   /**
@@ -650,6 +660,27 @@ export class TurnManager {
         }
       }
 
+      // ── PreToolUse hooks ──
+      if (this.hookDispatcher) {
+        const hookInput: HookInput = {
+          hook_event_name: 'PreToolUse',
+          session_id: this.session.sessionId,
+          tool_name: toolName,
+          tool_input: typeof parsedParams === 'object' ? parsedParams : {},
+        };
+        const preResult = await this.hookDispatcher.fire('PreToolUse', hookInput);
+        if (!preResult.shouldContinue) {
+          return {
+            type: 'function_call_output',
+            call_id: callId,
+            output: `Hook blocked: ${preResult.stopReason ?? 'PreToolUse hook denied this tool call'}`,
+          };
+        }
+        if (preResult.updatedInput) {
+          parsedParams = { ...parsedParams, ...preResult.updatedInput };
+        }
+      }
+
       let result: any;
 
       switch (toolName) {
@@ -679,6 +710,21 @@ export class TurnManager {
         }
       }
 
+      // ── PostToolUse hooks ──
+      if (this.hookDispatcher) {
+        const postHookInput: HookInput = {
+          hook_event_name: 'PostToolUse',
+          session_id: this.session.sessionId,
+          tool_name: toolName,
+          tool_input: typeof parsedParams === 'object' ? parsedParams : {},
+          tool_output: result,
+        };
+        const postResult = await this.hookDispatcher.fire('PostToolUse', postHookInput);
+        if (postResult.updatedOutput !== undefined) {
+          result = postResult.updatedOutput;
+        }
+      }
+
       // Format result as function_call_output
       // If result is already a string (e.g. from MCP text content), use it directly
       // to avoid double-encoding (JSON.stringify on a string adds quotes + escapes)
@@ -694,6 +740,7 @@ export class TurnManager {
       const errorMsg = error instanceof Error ? error.message : String(error);
 
       // Handle approval denial with a descriptive message for the LLM
+      // Check this first — denials are normal control flow, not tool failures.
       if (errorMsg.includes('denied by the approval system')) {
         const reason = (error as any).reason;
         console.warn(`[TurnManager] executeToolCall ${toolName} denied by approval system${reason ? `: ${reason}` : ''}`);
@@ -705,6 +752,18 @@ export class TurnManager {
           call_id: callId,
           output,
         };
+      }
+
+      // ── PostToolUseFailure hooks (real failures only, not denials) ──
+      if (this.hookDispatcher) {
+        const failHookInput: HookInput = {
+          hook_event_name: 'PostToolUseFailure',
+          session_id: this.session.sessionId,
+          tool_name: toolName,
+          tool_input: typeof parameters === 'object' ? parameters : {},
+          tool_error: errorMsg,
+        };
+        this.hookDispatcher.fire('PostToolUseFailure', failHookInput).catch(() => {});
       }
 
       console.error(`[TurnManager] executeToolCall ${toolName} failed:`, errorMsg);

@@ -21,6 +21,11 @@ import { RepublicAgentEngine } from './engine/RepublicAgentEngine';
 import { type IUserNotifier, NoOpNotifier } from './IUserNotifier';
 import { v4 as uuidv4 } from 'uuid';
 import { loadPrompt, loadUserInstructions, configurePromptComposer, isComposerConfigured } from './PromptLoader';
+import { HookRegistry } from './hooks/HookRegistry';
+import { HookExecutor } from './hooks/HookExecutor';
+import { HookDispatcher } from './hooks/HookDispatcher';
+import { ConfigHookLoader } from './hooks/loaders/ConfigHookLoader';
+import type { HookInput } from './hooks/types';
 import type { IPlatformAdapter } from './platform/IPlatformAdapter';
 
 /**
@@ -46,6 +51,10 @@ export class RepublicAgent {
   // AgentConfig.selectedModelKey (which is updated before the config-changed event
   // fires), so the stored value is only used as a "switch pending" flag.
   private pendingModelKey: string | null = null;
+  // Hook system
+  private hookRegistry: HookRegistry;
+  private hookExecutor: HookExecutor;
+  private hookDispatcher: HookDispatcher;
 
   constructor(config: AgentConfig, platformAdapter: IPlatformAdapter, initialHistory?: InitialHistory, agentId?: string, userNotifier?: IUserNotifier) {
     // Generate or use provided agentId for multi-instance tracking (Feature 015)
@@ -65,6 +74,13 @@ export class RepublicAgent {
     this.session = new Session(this.config, true, undefined, this.toolRegistry, initialHistory);
     // Wire up session event emitter to RepublicAgent's event queue
     this.session.setEventEmitter(async (event: Event) => this.emitEvent(event.msg));
+
+    // Initialize hook system
+    this.hookRegistry = new HookRegistry();
+    this.hookExecutor = new HookExecutor();
+    this.hookDispatcher = new HookDispatcher(this.hookRegistry, this.hookExecutor);
+    this.hookDispatcher.setEventEmitter((msg) => this.emitEvent(msg));
+    this.session.setHookDispatcher(this.hookDispatcher);
 
     // Setup event processing for notifications
     this.setupNotificationHandlers();
@@ -154,6 +170,19 @@ export class RepublicAgent {
 
     // Set the turn context on the session
     this.session.setTurnContext(taskContext);
+
+    // Load hooks from config and watch for changes
+    ConfigHookLoader.load(this.config, this.hookRegistry);
+    ConfigHookLoader.watch(this.config, this.hookRegistry);
+
+    // Fire SessionStart hooks (non-blocking)
+    this.hookDispatcher.fire('SessionStart', {
+      hook_event_name: 'SessionStart',
+      session_id: this.session.sessionId,
+      session_start_source: 'startup',
+    }).catch((err) => {
+      console.warn('[RepublicAgent] SessionStart hook failed:', err);
+    });
 
     // Create and initialize the engine with the shared session
     this.engine = new RepublicAgentEngine({
@@ -346,7 +375,11 @@ export class RepublicAgent {
         // Return the engine's submission ID so callers can correlate with lifecycle events
         case 'UserInput':
         case 'UserTurn': {
-          await this.preSubmitHooks(op, context);
+          const shouldContinue = await this.preSubmitHooks(op, context);
+          if (!shouldContinue) {
+            // UserPromptSubmit hook blocked — return local id without engine submission
+            return id;
+          }
           return requireEngine().submitOperation(this.toEngineOp(op));
         }
 
@@ -426,13 +459,40 @@ export class RepublicAgent {
   }
 
   /**
-   * Pre-submit hooks: tab binding + pending model switch.
+   * Pre-submit hooks: UserPromptSubmit hook + tab binding + pending model switch.
    * Run before forwarding UserInput/UserTurn to the engine.
+   *
+   * Returns `false` if a UserPromptSubmit hook blocked the operation, in which
+   * case the caller must skip engine submission.
    */
   private async preSubmitHooks(
     op: Extract<Op, { type: 'UserInput' }> | Extract<Op, { type: 'UserTurn' }>,
     context?: { tabId?: number }
-  ): Promise<void> {
+  ): Promise<boolean> {
+    // Fire UserPromptSubmit hooks before any work
+    const textContent = (op.items ?? [])
+      .filter((i: any) => i.type === 'text')
+      .map((i: any) => i.text ?? '')
+      .join('\n');
+
+    if (textContent) {
+      const hookInput: HookInput = {
+        hook_event_name: 'UserPromptSubmit',
+        session_id: this.session.sessionId,
+        user_prompt: textContent,
+      };
+      const hookResult = await this.hookDispatcher.fire('UserPromptSubmit', hookInput);
+      if (!hookResult.shouldContinue) {
+        this.emitEvent({
+          type: 'Error',
+          data: {
+            message: hookResult.stopReason ?? 'UserPromptSubmit hook blocked this input',
+          },
+        });
+        return false;
+      }
+    }
+
     // Tab binding (platform adapter concern)
     const tabContext = op.type === 'UserTurn' && op.tabId !== undefined
       ? { tabId: op.tabId }
@@ -452,6 +512,7 @@ export class RepublicAgent {
         console.error('Failed to apply pending model switch:', error);
       }
     }
+    return true;
   }
 
   /**
@@ -806,6 +867,17 @@ export class RepublicAgent {
   }
 
   /**
+   * Get the hook dispatcher.
+   *
+   * Exposed so platform bootstraps (extension/desktop/server) can wire the
+   * dispatcher into the ApprovalGate they construct, which is required for
+   * PermissionRequest and PermissionDenied hooks to fire.
+   */
+  getHookDispatcher(): HookDispatcher {
+    return this.hookDispatcher;
+  }
+
+  /**
    * Get the platform adapter
    */
   getPlatformAdapter(): IPlatformAdapter {
@@ -823,6 +895,22 @@ export class RepublicAgent {
    * Cleanup resources
    */
   async cleanup(): Promise<void> {
+    // Fire SessionEnd hooks with short timeout (1.5s) before tearing things down.
+    // Failures here must not block shutdown.
+    try {
+      await this.hookDispatcher.fire(
+        'SessionEnd',
+        {
+          hook_event_name: 'SessionEnd',
+          session_id: this.session.sessionId,
+          session_end_reason: 'shutdown',
+        },
+        { timeoutOverride: 1.5 },
+      );
+    } catch (err) {
+      console.warn('[RepublicAgent] SessionEnd hook failed during cleanup:', err);
+    }
+
     if (this.engine) {
       await this.engine.dispose();
     }

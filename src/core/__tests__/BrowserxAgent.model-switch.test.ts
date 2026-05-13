@@ -207,6 +207,8 @@ describe('BrowserxAgent - handleModelConfigChange', () => {
     mockSessionInstance = {
       conversationId: 'conv-123',
       setEventEmitter: vi.fn(),
+      setHookDispatcher: vi.fn(),
+      getHookDispatcher: vi.fn().mockReturnValue(null),
       setTurnContext: vi.fn(),
       getTurnContext: vi.fn().mockReturnValue(mockTurnContextInstance),
       updateTurnContext: vi.fn(),
