@@ -1,5 +1,9 @@
 # Track 05: Session Memory
 
+> **Status: DONE** — shipped via PR #167 (`integrate-memory` → `main`, merged 2026-05-12, commit `37a092dd`).
+>
+> The merged shape differs from the original design here: it is an **LLM-controlled** save/search/forget memory over date-sharded markdown + `core-memory.md`, rather than the **automatic threshold-based** extraction with compaction interlock that this doc described. The original design and the validation notes below are kept for historical reference and as a backlog of ideas (auto-extraction, compaction interlock, feature gates, staleness detection, team sync) that could be layered on top later if needed.
+
 ## Problem
 
 BrowserX has conversation history compaction (`CompactService` with `SummaryGenerator`) but no automatic session memory extraction. When a session ends or context is compacted, nuanced context (user preferences, task state, learned corrections) is lost. There is no:
