@@ -199,7 +199,10 @@ export async function registerTools(
         riskAssessor: staticRiskAssessor,
         runtime: {
           concurrency: {
-            isConcurrencySafe: (input) => !input.url, // url present → may create new tab
+            // Active-tab scrape (no url) reads live DOM that a concurrent
+            // dom/navigation tool could mutate. With url it creates a new tab.
+            // Either way, not concurrency-safe with sibling browser-state calls.
+            isConcurrencySafe: () => false,
             isReadOnly: (input) => !input.url,
             isDestructive: () => false,
           },

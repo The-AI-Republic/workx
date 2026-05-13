@@ -41,12 +41,12 @@ export const MAX_SAFE_TOOL_CALL_CONCURRENCY = 5;
 // =============================================================================
 
 /**
- * Synthetic concurrency profile for web_search, which is special-cased in TurnManager
- * and not registered in ToolRegistry.
+ * Synthetic concurrency safety for web_search, which is special-cased in
+ * TurnManager and not registered in ToolRegistry. Web search is a pure read
+ * against an external service with no shared browser state, so it is always
+ * safe to run concurrently with other safe calls.
  */
-function isWebSearchConcurrencySafe(): boolean {
-  return true;
-}
+const WEB_SEARCH_CONCURRENCY_SAFE = true;
 
 // =============================================================================
 // Public API
@@ -70,12 +70,9 @@ export function prepareToolCall(
     parsedArguments = call.function.arguments ?? {};
   }
 
-  let isConcurrencySafe: boolean;
-  if (call.function.name === 'web_search') {
-    isConcurrencySafe = isWebSearchConcurrencySafe();
-  } else {
-    isConcurrencySafe = registry.isConcurrencySafe(call.function.name, parsedArguments);
-  }
+  const isConcurrencySafe = call.function.name === 'web_search'
+    ? WEB_SEARCH_CONCURRENCY_SAFE
+    : registry.isConcurrencySafe(call.function.name, parsedArguments);
 
   return {
     id: call.id,
@@ -104,6 +101,10 @@ export function partitionToolCalls(calls: PreparedToolCall[]): ToolCallBatch[] {
 /**
  * Execute a batch of tool calls concurrently with bounded parallelism.
  * Results are returned in the same order as the input calls.
+ *
+ * Contract: `executor` MUST NOT throw. Callers should wrap their per-call
+ * logic in try/catch and return an error-shaped result. A throw will reject
+ * `Promise.all` and abandon any in-flight workers, losing their results.
  */
 export async function executeBatchConcurrently<T>(
   calls: PreparedToolCall[],

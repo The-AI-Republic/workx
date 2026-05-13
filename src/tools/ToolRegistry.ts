@@ -33,6 +33,19 @@ import {
 } from './runtimeMetadata';
 
 /**
+ * Stringify a value for size measurement during result truncation.
+ * Returns undefined when serialization is impossible (circular refs, etc.),
+ * which causes truncation to be skipped rather than throw.
+ */
+function safeJsonStringify(value: unknown): string | undefined {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Interface for event collection (used for testing)
  * The actual EventCollector class is in tests/utils/test-helpers.ts
  */
@@ -73,7 +86,6 @@ export class ToolRegistry {
   private tools: Map<string, ToolRegistryEntry> = new Map();
   private eventCollector?: IEventCollector;
   private approvalGate?: ApprovalGate;
-  private progressEventCounter = 0;
 
   constructor(eventCollector?: IEventCollector) {
     this.eventCollector = eventCollector;
@@ -371,12 +383,16 @@ export class ToolRegistry {
         // 'auto_approve' and 'ask_user' (resolved to approve) continue execution
       }
 
-      // Wrap progress callback to also emit ToolExecutionProgress events
+      // Wrap progress callback to also emit ToolExecutionProgress events.
+      // Counter is scoped to this call so IDs are deterministic and not
+      // sensitive to interleaving with other concurrent tool executions.
+      let progressSeq = 0;
+      const progressIdScope = request.callId ?? `${request.toolName}_${startTime}`;
       const emitProgress: ToolProgressCallback | undefined = request.onProgress
         ? (progress) => {
             request.onProgress?.(progress);
             this.emitEvent({
-              id: `evt_exec_progress_${request.toolName}_${++this.progressEventCounter}`,
+              id: `evt_exec_progress_${progressIdScope}_${++progressSeq}`,
               msg: {
                 type: 'ToolExecutionProgress',
                 data: {
@@ -444,12 +460,17 @@ export class ToolRegistry {
         };
       }
 
-      // Result truncation: apply maxResultSizeChars if configured
+      // Result truncation: apply maxResultSizeChars if configured.
+      // Non-string results are measured via JSON.stringify so structured
+      // payloads (e.g. dom_tool snapshots) are also bounded.
       const maxChars = entry.runtime.result?.maxResultSizeChars;
-      if (maxChars && typeof result === 'string' && result.length > maxChars) {
-        const originalLength = result.length;
-        result = result.slice(0, maxChars) +
-          `\n\n[Result truncated from ${originalLength} to ${maxChars} chars]`;
+      if (maxChars) {
+        const serialized = typeof result === 'string' ? result : safeJsonStringify(result);
+        if (serialized !== undefined && serialized.length > maxChars) {
+          const originalLength = serialized.length;
+          result = serialized.slice(0, maxChars) +
+            `\n\n[Result truncated from ${originalLength} to ${maxChars} chars]`;
+        }
       }
 
       // Emit success event

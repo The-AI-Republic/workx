@@ -15,6 +15,7 @@ import type {
   IMCPContent,
 } from './types';
 import type { IRiskAssessor } from '../approval/types';
+import type { ToolRegistrationOptions } from '../../tools/ToolRegistry';
 
 /**
  * Adapts MCP tools to ApplePi ToolDefinition format.
@@ -172,7 +173,7 @@ export function getMCPToolAdapter(): MCPToolAdapter {
  * Registry interface matching ToolRegistry
  */
 export interface IToolRegistry {
-  register(tool: ToolDefinition, handler: ToolHandler, riskAssessor?: IRiskAssessor | import('../../tools/ToolRegistry').ToolRegistrationOptions): Promise<void>;
+  register(tool: ToolDefinition, handler: ToolHandler, riskAssessor?: IRiskAssessor | ToolRegistrationOptions): Promise<void>;
   unregister(toolName: string): Promise<void>;
 }
 

@@ -260,6 +260,42 @@ describe('ToolRegistry runtime metadata', () => {
 
       expect(response.data.length).toBe(1_000_000);
     });
+
+    it('truncates oversized non-string results via JSON serialization', async () => {
+      const registry = new ToolRegistry();
+      const bigObject = { items: Array.from({ length: 500 }, (_, i) => ({ i, text: 'x'.repeat(20) })) };
+      await registry.register(makeTool('big_object_tool'), async () => bigObject, {
+        runtime: { result: { maxResultSizeChars: 200 } },
+      });
+
+      const response = await registry.execute({
+        toolName: 'big_object_tool',
+        parameters: {},
+        sessionId: 's1',
+        turnId: 't1',
+      });
+
+      expect(response.success).toBe(true);
+      expect(typeof response.data).toBe('string');
+      expect(response.data).toMatch(/\[Result truncated from \d+ to 200 chars\]/);
+    });
+
+    it('leaves non-string results untouched when under the limit', async () => {
+      const registry = new ToolRegistry();
+      const obj = { ok: true, value: 42 };
+      await registry.register(makeTool('small_object_tool'), async () => obj, {
+        runtime: { result: { maxResultSizeChars: 1000 } },
+      });
+
+      const response = await registry.execute({
+        toolName: 'small_object_tool',
+        parameters: {},
+        sessionId: 's1',
+        turnId: 't1',
+      });
+
+      expect(response.data).toEqual(obj);
+    });
   });
 
   describe('progress event emission', () => {
@@ -325,6 +361,46 @@ describe('ToolRegistry runtime metadata', () => {
       const progressEvts = events.filter(e => e.msg?.type === 'ToolExecutionProgress');
       expect(progressEvts).toHaveLength(2);
       expect(new Set(progressEvts.map((e: any) => e.id)).size).toBe(2);
+    });
+
+    it('scopes progress event ids by callId so concurrent executions do not collide', async () => {
+      const events: any[] = [];
+      const collector = { collect: (e: any) => events.push(e) };
+      const registry = new ToolRegistry(collector);
+
+      await registry.register(makeTool('concurrent_progress_tool'), async (_params, context) => {
+        context.onProgress?.({
+          toolUseID: 'p',
+          data: { type: 'test_progress' } as any,
+        });
+        return 'done';
+      });
+
+      await Promise.all([
+        registry.execute({
+          toolName: 'concurrent_progress_tool',
+          parameters: {},
+          sessionId: 's1',
+          turnId: 't1',
+          callId: 'call_A',
+          onProgress: () => {},
+        }),
+        registry.execute({
+          toolName: 'concurrent_progress_tool',
+          parameters: {},
+          sessionId: 's1',
+          turnId: 't1',
+          callId: 'call_B',
+          onProgress: () => {},
+        }),
+      ]);
+
+      const progressEvts = events.filter(e => e.msg?.type === 'ToolExecutionProgress');
+      expect(progressEvts).toHaveLength(2);
+      const ids = progressEvts.map(e => e.id as string);
+      expect(new Set(ids).size).toBe(2);
+      expect(ids.some(id => id.includes('call_A'))).toBe(true);
+      expect(ids.some(id => id.includes('call_B'))).toBe(true);
     });
 
     it('does not emit progress events when onProgress is absent', async () => {
