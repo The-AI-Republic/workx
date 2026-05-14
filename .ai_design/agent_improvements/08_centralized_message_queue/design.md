@@ -149,7 +149,6 @@ Concrete mapping for `RepublicAgentEngineConfig.EngineOp` (every variant covered
 | `PatchApproval` | `'now'` | Same as ExecApproval |
 | `UserInput` | `'next'` | Foreground typing |
 | `UserTurn` | `'next'` | Programmatic foreground submission |
-| `ServiceRequest` | `'next'` | RPC-style, foreground UI is waiting |
 | `ManualCompact` | `'next'` | User triggered `/compact` |
 | `ClearHistory` | `'next'` | User triggered |
 | `Compact` (auto, mode: 'auto') | `'later'` | Background trimming, no UI wait |
@@ -170,7 +169,7 @@ export function priorityForOp(op: EngineOp): QueuePriority {
     case 'AddToHistory':
       return 'later';
     default:
-      // UserInput, UserTurn, ServiceRequest, ManualCompact, ClearHistory, and any future addition
+      // UserInput, UserTurn, ManualCompact, ClearHistory, and any future addition
       return 'next';
   }
 }
@@ -373,7 +372,7 @@ Two parallel implementation-readiness probes informed this revision. Key concret
   - `submitOperation` (lines 123-133): synchronous push + async `processSubmissionQueue()` trigger.
   - `processSubmissionQueue` (lines 427-452): re-entrancy guarded, `while (length > 0)` loop, `shift()` dequeue, one-at-a-time `handleSubmission`.
   - `Interrupt` handler clears queue at line 602; `cancel()` at line 214; `dispose()` at line 820. All three become `.clear()` calls.
-- **`EngineOp` variants** (`src/core/engine/RepublicAgentEngineConfig.ts:176-186`): `UserInput`, `UserTurn`, `Interrupt`, `ExecApproval`, `PatchApproval`, `Compact`, `ManualCompact`, `AddToHistory`, `Shutdown`, `ClearHistory`, `ServiceRequest`.
+- **`EngineOp` variants** (`src/core/engine/RepublicAgentEngineConfig.ts:176-186`): `UserInput`, `UserTurn`, `Interrupt`, `ExecApproval`, `PatchApproval`, `Compact`, `ManualCompact`, `AddToHistory`, `Shutdown`, `ClearHistory` (10 variants total).
 - **`SubAgentRunner.safeEnqueueNotification`** (`src/tools/AgentTool/SubAgentRunner.ts:232-248`): calls `context.parentEngine.enqueueSyntheticUserTurn(text)`. This is the only cross-engine call back to a parent. **Not touched** in v1 because `pendingNotifications` stays as-is.
 - **`QueueProcessor.ts`** dead-code re-verification (2026-05-14): zero production imports, zero non-test references. Safe to delete.
 - **Naming collisions**: all proposed names (`CommandQueue`, `QueuedCommand`, `QueuePriority`, `EnqueueOptions`) — no existing symbols in `src/`.
