@@ -73,7 +73,7 @@
       on:click={handleToggle}
       title="Background tasks"
     >
-      <span class="dot" />
+      <span class="dot"></span>
       <span class="count">{count}</span>
     </button>
     {#if open}
