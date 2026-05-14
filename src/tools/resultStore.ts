@@ -104,6 +104,21 @@ export function formatFileSize(bytes: number): string {
 }
 
 /**
+ * Disarm any literal `</persisted-output>` (or `<persisted-output>`) substring
+ * that appears inside raw tool output, so it can't terminate the wrapper
+ * message early. A single backslash before the slash / before the tag name is
+ * enough — the real wrapper tags emitted by `buildPersistedOutputMessage` never
+ * contain a backslash, so the model can still locate the unambiguous boundary.
+ *
+ * Case-insensitive guard in case a tool returns mixed-case tag content.
+ */
+function escapePersistedOutputTags(preview: string): string {
+  return preview
+    .replace(/<\/persisted-output>/gi, '<\\/persisted-output>')
+    .replace(/<persisted-output>/gi, '<\\persisted-output>');
+}
+
+/**
  * Build the <persisted-output> message that the model sees in place of the
  * truncated original. Branches on `kind` to give the model the right
  * retrieval instructions.
@@ -112,6 +127,7 @@ export function buildPersistedOutputMessage(r: PersistedResult): string {
   const sizeStr = formatFileSize(r.originalSize);
   const previewLimit = formatFileSize(PREVIEW_SIZE_BYTES);
   const tail = r.hasMore ? '\n...\n' : '\n';
+  const safePreview = escapePersistedOutputTags(r.preview);
 
   if (r.kind === 'cache') {
     return (
@@ -120,7 +136,7 @@ export function buildPersistedOutputMessage(r: PersistedResult): string {
       `To retrieve the full output, call cache_storage_tool with:\n` +
       `  { "action": "read", "storageKey": "${r.reference}" }\n\n` +
       `Preview (first ${previewLimit}):\n` +
-      `${r.preview}${tail}` +
+      `${safePreview}${tail}` +
       `</persisted-output>`
     );
   }
@@ -132,7 +148,7 @@ export function buildPersistedOutputMessage(r: PersistedResult): string {
     `To retrieve the full output, call read_persisted_result with:\n` +
     `  { "path": "${r.reference}" }\n\n` +
     `Preview (first ${previewLimit}):\n` +
-    `${r.preview}${tail}` +
+    `${safePreview}${tail}` +
     `</persisted-output>`
   );
 }

@@ -26,7 +26,19 @@ export interface ContentReplacementStateOptions {
    * Deliberately NOT called by `seedFromResume`, which is the inverse path.
    */
   onRecord?(rec: ContentReplacementRecord): void;
+
+  /**
+   * Soft cap on the number of remembered decisions. When exceeded, the oldest
+   * insertion is evicted from both `seenIds` and `replacements` (FIFO via Map
+   * iteration order). On eviction, a previously-decided callId becomes
+   * indistinguishable from "never seen" — replay falls through to re-persist,
+   * which is idempotent. Defaults to 5000 entries (~10 MB at 2 KB previews).
+   */
+  maxEntries?: number;
 }
+
+/** Default soft cap on retained replacement decisions. */
+export const DEFAULT_MAX_REPLACEMENT_ENTRIES = 5000;
 
 export class ContentReplacementState {
   /** All tool_use_ids whose persistence fate has been decided this session. */
@@ -34,7 +46,11 @@ export class ContentReplacementState {
   /** tool_use_id → exact preview string the model saw. Byte-identical re-apply. */
   readonly replacements = new Map<string, string>();
 
-  constructor(private opts: ContentReplacementStateOptions = {}) {}
+  private readonly maxEntries: number;
+
+  constructor(private opts: ContentReplacementStateOptions = {}) {
+    this.maxEntries = opts.maxEntries ?? DEFAULT_MAX_REPLACEMENT_ENTRIES;
+  }
 
   /**
    * Record a fresh persistence decision: the model saw `replacement` for
@@ -43,6 +59,7 @@ export class ContentReplacementState {
   record(callId: string, replacement: string): void {
     this.seenIds.add(callId);
     this.replacements.set(callId, replacement);
+    this.evictIfNeeded();
     this.opts.onRecord?.({ kind: 'tool-result', toolUseId: callId, replacement });
   }
 
@@ -54,6 +71,7 @@ export class ContentReplacementState {
   seedFromResume(rec: ContentReplacementRecord): void {
     this.seenIds.add(rec.toolUseId);
     this.replacements.set(rec.toolUseId, rec.replacement);
+    this.evictIfNeeded();
   }
 
   /**
@@ -64,6 +82,7 @@ export class ContentReplacementState {
    */
   freezeUnreplaced(callId: string): void {
     this.seenIds.add(callId);
+    this.evictIfNeeded();
   }
 
   /**
@@ -73,5 +92,20 @@ export class ContentReplacementState {
    */
   reapply(callId: string): string | undefined {
     return this.replacements.get(callId);
+  }
+
+  /**
+   * Drop oldest entries until under the cap. The Set + Map are kept in sync
+   * by always evicting from both; the eviction key is the oldest in
+   * `seenIds`, which is the broader collection (every recorded/frozen id is
+   * in `seenIds`, but not every id has a replacement).
+   */
+  private evictIfNeeded(): void {
+    while (this.seenIds.size > this.maxEntries) {
+      const oldest = this.seenIds.values().next().value as string | undefined;
+      if (oldest === undefined) return;
+      this.seenIds.delete(oldest);
+      this.replacements.delete(oldest);
+    }
   }
 }

@@ -11,6 +11,15 @@
 
 import type { ToolDefinition, ToolContext } from '@/tools/BaseTool';
 
+/**
+ * Hard cap on the size of a single retrieval. Persisted files are written by
+ * FileToolResultStore with content > the per-tool threshold (default 50 KB) —
+ * there's no enforced upper bound at write time, so a buggy / malicious tool
+ * could persist arbitrarily large content. This cap keeps a retrieval from
+ * blowing up the agent's context window or the server's memory.
+ */
+export const READ_PERSISTED_RESULT_MAX_BYTES = 50 * 1024 * 1024; // 50 MB
+
 export const READ_PERSISTED_RESULT_TOOL_DEFINITION: ToolDefinition = {
   type: 'function',
   function: {
@@ -55,7 +64,7 @@ export class ReadPersistedResultTool {
     }
     const requested = params.path;
 
-    const { readFile, realpath } = await import('node:fs/promises');
+    const { readFile, realpath, stat } = await import('node:fs/promises');
     const { resolve, sep } = await import('node:path');
 
     // Resolve the root to a canonical path. The root must exist; if it
@@ -100,6 +109,18 @@ export class ReadPersistedResultTool {
     if (!realTarget.includes(`${sep}tool-results${sep}`)) {
       throw new Error(
         `read_persisted_result: path is not under a tool-results directory: ${requested}`,
+      );
+    }
+
+    // Size cap: refuse pathologically large files before reading them into
+    // memory. The realistic upper bound is "a bit over a tool's threshold",
+    // so 50 MB is a generous ceiling for legitimate retrievals.
+    const st = await stat(realTarget);
+    if (st.size > READ_PERSISTED_RESULT_MAX_BYTES) {
+      throw new Error(
+        `read_persisted_result: file is ${st.size} bytes, exceeds the ` +
+          `${READ_PERSISTED_RESULT_MAX_BYTES}-byte retrieval cap. Use a more ` +
+          `targeted retrieval (e.g., search the file via the appropriate tool).`,
       );
     }
 

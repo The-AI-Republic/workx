@@ -770,9 +770,15 @@ export class Session {
    * Close session and cleanup resources using RolloutRecorder
    */
   async close(): Promise<void> {
-    // Tool result persistence cleanup (track 09). Best-effort: log but don't
-    // throw — closing the rollout recorder below is more important.
-    if (this.toolResultStore) {
+    // Tool result persistence cleanup (track 09).
+    //
+    // Only purge persisted results on close for non-persistent sessions.
+    // Persistent sessions can be resumed — the rollout still contains
+    // <persisted-output> messages pointing at these storage keys / file
+    // paths, and the agent must be able to retrieve the full content on
+    // resume. Stale entries from persistent sessions are reclaimed via
+    // server-mode TTL sweep / cache quota eviction instead.
+    if (this.toolResultStore && !this.isPersistent) {
       try {
         await this.toolResultStore.cleanup(this.sessionId);
       } catch (error) {
@@ -1734,8 +1740,19 @@ export class Session {
         // Track 09: re-seed the replacement state with the exact preview
         // string the model saw on the original turn. seedFromResume
         // deliberately bypasses the rollout onRecord callback so we don't
-        // re-record everything.
-        this.replacementState?.seedFromResume(rolloutItem.payload);
+        // re-record everything. A corrupted / older-format payload must
+        // not poison the rest of resume — validate shape, skip on mismatch.
+        const p = rolloutItem.payload as any;
+        if (
+          p &&
+          typeof p === 'object' &&
+          typeof p.toolUseId === 'string' &&
+          typeof p.replacement === 'string'
+        ) {
+          this.replacementState?.seedFromResume(p);
+        } else {
+          console.warn('[Session] Skipping malformed content_replacement rollout record');
+        }
       }
       // Other rollout item types (event_msg, etc.) are not added to history
     }

@@ -61,4 +61,40 @@ describe('ContentReplacementState', () => {
     const state = new ContentReplacementState();
     expect(() => state.record('call_5', 'x')).not.toThrow();
   });
+
+  it('evicts oldest entries FIFO once maxEntries is exceeded', () => {
+    const state = new ContentReplacementState({ maxEntries: 3 });
+    state.record('a', 'A');
+    state.record('b', 'B');
+    state.record('c', 'C');
+    state.record('d', 'D'); // forces eviction of 'a'
+
+    expect(state.seenIds.has('a')).toBe(false);
+    expect(state.replacements.has('a')).toBe(false);
+    expect(state.seenIds.has('d')).toBe(true);
+    expect(state.replacements.get('d')).toBe('D');
+    expect(state.seenIds.size).toBe(3);
+    expect(state.replacements.size).toBe(3);
+  });
+
+  it('keeps seenIds and replacements in sync under eviction even for mixed insert paths', () => {
+    const state = new ContentReplacementState({ maxEntries: 2 });
+    state.freezeUnreplaced('frozen-1'); // seen, no replacement
+    state.record('with-repl', 'r');     // seen + replacement
+    state.record('another', 'r2');      // forces eviction of 'frozen-1'
+
+    expect(state.seenIds.has('frozen-1')).toBe(false);
+    expect(state.replacements.has('frozen-1')).toBe(false);
+    expect(state.seenIds.has('with-repl')).toBe(true);
+    expect(state.seenIds.has('another')).toBe(true);
+  });
+
+  it('seedFromResume() also evicts when the cap is exceeded', () => {
+    const state = new ContentReplacementState({ maxEntries: 2 });
+    state.seedFromResume({ kind: 'tool-result', toolUseId: 'a', replacement: 'A' });
+    state.seedFromResume({ kind: 'tool-result', toolUseId: 'b', replacement: 'B' });
+    state.seedFromResume({ kind: 'tool-result', toolUseId: 'c', replacement: 'C' });
+    expect(state.seenIds.has('a')).toBe(false);
+    expect(state.seenIds.size).toBe(2);
+  });
 });

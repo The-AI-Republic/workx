@@ -11,7 +11,10 @@ import { tmpdir } from 'node:os';
 import { mkdtemp, rm, mkdir, writeFile, symlink, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { ReadPersistedResultTool } from '../ReadPersistedResultTool';
+import {
+  ReadPersistedResultTool,
+  READ_PERSISTED_RESULT_MAX_BYTES,
+} from '../ReadPersistedResultTool';
 
 describe('ReadPersistedResultTool', () => {
   let parent: string;     // overall tmp parent (contains both root and outside-root files)
@@ -92,6 +95,21 @@ describe('ReadPersistedResultTool', () => {
     await expect(tool.execute({ path: 42 as any })).rejects.toThrow(
       /must be a non-empty string/,
     );
+  });
+
+  it('rejects files larger than READ_PERSISTED_RESULT_MAX_BYTES', async () => {
+    // Use truncate to make a sparse 50-MB-plus-1 file without allocating real disk.
+    const { open } = await import('node:fs/promises');
+    const dir = join(rootDir, 'sess1', 'tool-results');
+    await mkdir(dir, { recursive: true });
+    const big = join(dir, 'huge.txt');
+    const fh = await open(big, 'w');
+    try {
+      await fh.truncate(READ_PERSISTED_RESULT_MAX_BYTES + 1);
+    } finally {
+      await fh.close();
+    }
+    await expect(tool.execute({ path: big })).rejects.toThrow(/exceeds the .* retrieval cap/);
   });
 
   it('canonicalizes the root via realpath (handles symlinked rootDir)', async () => {
