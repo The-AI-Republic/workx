@@ -112,9 +112,49 @@ export type EventMsg =
   | { type: 'SubAgentStart'; data: SubAgentStartEvent }
   | { type: 'SubAgentComplete'; data: SubAgentCompleteEvent }
   | { type: 'SubAgentError'; data: SubAgentErrorEvent }
+  // Session summary telemetry (internal observability; UI ignores by default)
+  | { type: 'SessionSummaryTelemetry'; data: SessionSummaryTelemetryEventData }
 ;
 
 // Individual event payload types
+
+/**
+ * Internal telemetry for the session-summary feature (Track 05b).
+ *
+ * Emitted by the SessionSummaryHook and the compaction interlock. UI consumers
+ * ignore this event type; only the (future) observability sink reads it.
+ * Mirrors claudy's dedicated services/analytics channel — separate from
+ * user-facing events.
+ */
+export type SessionSummaryTelemetryName =
+  | 'init'
+  | 'file_read'
+  | 'extraction'
+  | 'manual_extraction'
+  | 'loaded'
+  | 'compact_skipped_empty_summary'
+  | 'compact_with_summary'
+  | 'compact_extraction_wait_timeout';
+
+export interface SessionSummaryTelemetryEventData {
+  /** Discriminator within the SessionSummaryTelemetry envelope. */
+  event: SessionSummaryTelemetryName;
+  /** Owning session. Not duplicated into payload. */
+  sessionId: string;
+  /** Event-specific fields. Shape depends on `event`; see design §11. */
+  payload: Record<string, unknown>;
+  /** Index signature so this is assignable to `EngineEvent.msg.data`. */
+  [key: string]: unknown;
+}
+
+/**
+ * Convenience alias so call sites can construct a fully-formed envelope.
+ * Equivalent to `Extract<EventMsg, { type: 'SessionSummaryTelemetry' }>`.
+ */
+export interface SessionSummaryTelemetryEvent {
+  type: 'SessionSummaryTelemetry';
+  data: SessionSummaryTelemetryEventData;
+}
 
 export interface ErrorEvent {
   message: string;

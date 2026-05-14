@@ -67,6 +67,18 @@ export interface SubAgentToolParams {
 
   /** Whether to run this sub-agent in the background */
   background?: boolean;
+
+  /**
+   * When `background: true`, suppress the synthetic `<task-notification>`
+   * that is normally injected into the parent's pending input on completion.
+   *
+   * Used by internal extractors (session summary) where the parent LLM should
+   * never see the bookkeeping completion event. Has no effect on foreground
+   * runs (which return their result to the caller directly).
+   *
+   * @internal Track 05b: silent-background escape hatch.
+   */
+  quietBackground?: boolean;
 }
 
 /**

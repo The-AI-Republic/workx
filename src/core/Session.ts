@@ -34,6 +34,22 @@ import type { ModelClient } from './models/ModelClient';
 import type { MemoryService } from './memory/MemoryService';
 import { createMemoryService } from './memory/createMemoryService';
 
+// Track 05b: session summary auto-extraction
+import type {
+  PostTurnContext,
+  SessionSummaryHook,
+} from './sessionSummary/SessionSummaryHook';
+
+/**
+ * Post-turn hook signature. Owned by Session because TurnManager is per-task
+ * but hooks (notably the session-summary extractor) live the length of the
+ * session. TurnManager fires hooks via `session.firePostTurnHooks(ctx)`.
+ */
+export type PostTurnHook = (ctx: PostTurnContext) => Promise<void> | void;
+
+/** Lightweight alias so the field declaration doesn't pull the full class. */
+type SessionSummaryHookHandle = SessionSummaryHook;
+
 // Title generation imports
 import { TitleGenerator } from './title';
 
@@ -74,6 +90,13 @@ export class Session {
   private titleGenerationStage: number = 0;
   private initializationPromise: Promise<void> | null = null;
   private hookDispatcher: HookDispatcher | null = null;
+
+  // Track 05b: per-session post-turn callbacks (e.g. session-summary
+  // extractor). TurnManager is created per-task; the callback list lives on
+  // Session so listeners survive across multiple TurnManager instances.
+  // The session-summary hook itself is owned here and disposed in shutdown().
+  private postTurnHooks: PostTurnHook[] = [];
+  private _sessionSummaryHook: SessionSummaryHookHandle | null = null;
 
   constructor(
     configOrIsPersistent?: AgentConfig | boolean,
@@ -410,6 +433,51 @@ export class Session {
     return this.sessionId;
   }
 
+  // ─── Track 05b: post-turn hooks + session-summary hook ──────────────────
+
+  /**
+   * Register a callback that fires after every successful turn (after the
+   * `Completed` event in TurnManager). Returns an unregister function.
+   *
+   * Errors thrown inside hooks are swallowed by firePostTurnHooks so a
+   * misbehaving hook can't break the turn.
+   */
+  registerPostTurnHook(fn: PostTurnHook): () => void {
+    this.postTurnHooks.push(fn);
+    return () => {
+      const i = this.postTurnHooks.indexOf(fn);
+      if (i >= 0) this.postTurnHooks.splice(i, 1);
+    };
+  }
+
+  /**
+   * Fire all registered post-turn hooks. Called by TurnManager's `Completed`
+   * case. Sequential await preserves ordering; errors are caught per-hook.
+   */
+  async firePostTurnHooks(ctx: PostTurnContext): Promise<void> {
+    if (this.postTurnHooks.length === 0) return;
+    for (const hook of this.postTurnHooks) {
+      try {
+        await hook(ctx);
+      } catch (err) {
+        console.warn(
+          '[Session] postTurnHook failed:',
+          err instanceof Error ? err.message : String(err),
+        );
+      }
+    }
+  }
+
+  /** Attach the session-summary hook (constructed by RepublicAgent). */
+  setSessionSummaryHook(hook: SessionSummaryHookHandle | null): void {
+    this._sessionSummaryHook = hook;
+  }
+
+  /** Read access for tests, manual extraction, and the compaction interlock. */
+  getSessionSummaryHook(): SessionSummaryHookHandle | null {
+    return this._sessionSummaryHook;
+  }
+
   /**
    * Compatibility: Initialize session components
    * Note: Refactored Session initializes in constructor, this is for backward compatibility
@@ -586,13 +654,21 @@ export class Session {
     // Get base instructions from turn context (same as TurnManager does for normal turns)
     const baseInstructions = this.turnContext?.getBaseInstructions?.();
 
-    // Use CompactService for LLM-based compaction
+    // Use CompactService for LLM-based compaction.
+    // Track 05b: thread sessionId + sessionSummaryHook so the service can
+    // (a) await any in-flight summary extraction before destructively
+    // rewriting history, and (b) fold the cached summary into the
+    // summarization prompt as a hint.
     const result = await this.compactService.compact(
       items,
       trigger,
       modelClient,
       tokensBefore,
-      baseInstructions
+      baseInstructions,
+      {
+        sessionId: this.sessionId,
+        sessionSummaryHook: this._sessionSummaryHook,
+      },
     );
 
     if (result.success && result.newHistory) {
@@ -1262,6 +1338,19 @@ export class Session {
    * Graceful shutdown
    */
   async shutdown(): Promise<void> {
+    // Track 05b: detach the session-summary hook (unregisters post-turn
+    // callback + prompt extension). Safe to call without an attached hook.
+    try {
+      this._sessionSummaryHook?.detach();
+    } catch (err) {
+      console.warn(
+        '[Session] sessionSummaryHook.detach failed:',
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+    this._sessionSummaryHook = null;
+    this.postTurnHooks.length = 0;
+
     await this.closeMemoryService();
 
     if (this.services?.rollout) {

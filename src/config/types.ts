@@ -334,6 +334,17 @@ export interface IUserPreferences {
    * Defaults to gpt-4o-mini for low cost. Independent of the user's selected chat model.
    */
   extractionModel?: string;
+  /**
+   * Track 05b: automatic per-session summary extraction.
+   * - When true: a background sub-agent distills the conversation into
+   *   `~/.airepublic-pi/memory/sessions/<sessionId>/summary.md` and the
+   *   compaction service folds it in.
+   * - When false (default): feature disabled.
+   *
+   * Off-by-default until telemetry validates cost and quality on real
+   * sessions; flip via Memory Settings once the feature gates open.
+   */
+  sessionSummaryEnabled?: boolean;
   zoomLevel?: number;
   shortcuts?: Record<string, string>;
   experimental?: Record<string, boolean>;

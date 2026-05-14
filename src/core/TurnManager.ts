@@ -266,6 +266,42 @@ export class TurnManager {
             // Stream completed with final token usage
             totalTokenUsage = event.tokenUsage;
 
+            // Track 05b: fire post-turn hooks before returning. Hooks are
+            // owned by Session (since TurnManager is per-task but post-turn
+            // listeners — notably the session-summary extractor — live the
+            // length of the session). Errors are swallowed inside
+            // firePostTurnHooks so a misbehaving hook can't break the turn.
+            //
+            // Defensive `typeof` checks: many existing test fixtures mock
+            // Session without these methods. In production the real Session
+            // class always provides them; in tests we no-op gracefully.
+            const sess = this.session as unknown as {
+              firePostTurnHooks?: (ctx: unknown) => Promise<void>;
+              getSessionId?: () => string;
+              getConversationHistory?: () => { items: unknown[] };
+            };
+            if (typeof sess.firePostTurnHooks === 'function') {
+              const lastTurnHadToolCalls = processedItems.some(
+                (p) =>
+                  p.item?.type === 'function_call' ||
+                  p.item?.type === 'custom_tool_call',
+              );
+              const historyItems =
+                typeof sess.getConversationHistory === 'function'
+                  ? sess.getConversationHistory().items
+                  : [];
+              const sessionId =
+                typeof sess.getSessionId === 'function'
+                  ? sess.getSessionId()
+                  : '';
+              await sess.firePostTurnHooks({
+                sessionId,
+                history: historyItems,
+                totalTokenUsage,
+                lastTurnHadToolCalls,
+              });
+            }
+
             return {
               processedItems,
               totalTokenUsage,

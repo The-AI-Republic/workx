@@ -118,10 +118,17 @@ export class SubAgentRunner implements IAgentRunner {
     // Skip the notification entirely when context.cancelled is true — the
     // operator who called cancel_sub_agent already received explicit
     // confirmation; a second notification would be redundant noise.
+    //
+    // `quietBackground: true` (Track 05b) suppresses the notification too —
+    // used by internal extractors (session summary) where the parent LLM
+    // should never see the bookkeeping completion event.
+    const suppressNotification = (): boolean =>
+      context.cancelled === true || params.quietBackground === true;
+
     void (async () => {
       try {
         const result = await this.execute(context, params);
-        if (!context.cancelled) {
+        if (!suppressNotification()) {
           this.safeEnqueueNotification(
             context,
             this.formatTaskNotification(context, params, result),
@@ -129,7 +136,7 @@ export class SubAgentRunner implements IAgentRunner {
         }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-        if (!context.cancelled) {
+        if (!suppressNotification()) {
           this.safeEnqueueNotification(
             context,
             this.formatTaskNotification(context, params, {

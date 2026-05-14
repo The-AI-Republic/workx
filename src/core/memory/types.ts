@@ -51,6 +51,16 @@ export interface MemoryConfig {
   recallLimit: number;
   extractionModel?: string;
   excludeCategories?: MemoryCategory[];
+  /**
+   * Track 05b: per-session auto-summary feature (default off).
+   * When enabled, a background sub-agent distills the conversation into
+   * `<memoryRoot>/sessions/<sessionId>/summary.md` and folds it into
+   * compaction. Distinct from the LLM-controlled memory above — this is
+   * automatic, threshold-driven, opt-in.
+   */
+  sessionSummary?: {
+    enabled: boolean;
+  };
 }
 
 /** Default cheap model for memory keyword generation and relevance filtering. */
@@ -60,6 +70,7 @@ export const DEFAULT_MEMORY_CONFIG: MemoryConfig = {
   enabled: false,
   recallLimit: 10,
   extractionModel: DEFAULT_EXTRACTION_MODEL,
+  sessionSummary: { enabled: false },
 };
 
 // ---------------------------------------------------------------------------
