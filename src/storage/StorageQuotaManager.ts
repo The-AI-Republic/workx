@@ -252,9 +252,12 @@ export class StorageQuotaManager {
       if (quota.percentage >= this.criticalThreshold) {
         // Critical: Automatic cleanup
         console.warn(`Storage critical: ${quota.percentage.toFixed(2)}%. Running cleanup...`);
-        // Track 04: if a tiered evictor is registered, drive tier 0 first
-        // (ephemeral task output chunks) before legacy cleanup; escalate to
-        // tier 1 (cache) if tier 0 underfills.
+        // Track 04: if a tiered evictor is registered, IT is the canonical
+        // eviction path; the legacy multi-step cleanup is bypassed entirely
+        // to avoid double-evicting the cache (tier 1 already covers it).
+        // If tier-0 + tier-1 still under-fill, log and wait for the next
+        // tick rather than thrash through legacy paths that would re-call
+        // cacheManager.cleanup() and risk clearing tier-1 work twice.
         if (this.tieredEvictor) {
           const targetBytes = Math.max(
             0,
@@ -269,10 +272,19 @@ export class StorageQuotaManager {
             const freed1 = await this.tieredEvictor.evictTier(1, remaining);
             remaining -= freed1;
           }
-          // Tier 2 is never auto-evicted.
-          if (remaining <= 0) return;
+          // Tier 2 is never auto-evicted. If we didn't reclaim enough, log
+          // and exit — tier 2 must be cleaned up by an explicit user action.
+          if (remaining > 0) {
+            console.warn(
+              `[StorageQuotaManager] Tiered eviction freed ${targetBytes - remaining}B, ` +
+              `still ${remaining}B over target. Tier-2 not auto-evicted.`,
+            );
+          }
+          return;
         }
         // Legacy multi-step cleanup (rollouts -> expired cache -> full cache).
+        // Used only when no tieredEvictor was injected (e.g., tests, non-
+        // extension contexts).
         const results = await this.cleanup(this.warningThreshold);
         console.log('Cleanup results:', results);
       } else if (quota.percentage >= this.warningThreshold) {

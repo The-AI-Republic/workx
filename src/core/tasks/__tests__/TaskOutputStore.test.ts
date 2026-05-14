@@ -149,4 +149,55 @@ describe('TaskOutputStore', () => {
     expect(seen).toBeDefined();
     expect(seen!).toBeGreaterThanOrEqual(before);
   });
+
+  // ─── B1 fix: cleanupTask drains pending writes ──────────────────────
+
+  it('cleanupTask rejects pending in-memory writes and blocks future appends', async () => {
+    const store = new TaskOutputStore(makeAdapter());
+    // Kick off cleanupTask immediately after appending so the append's
+    // drain races with cleanup.
+    const appendP = store.appendChunk('a1', 'event', 'x');
+    const cleanupP = store.cleanupTask('a1');
+    // Either the append wins the race (succeeds, then cleanup deletes) or
+    // cleanup wins (append rejects with eviction). Both are correct.
+    let appendResolved = false;
+    try {
+      await appendP;
+      appendResolved = true;
+    } catch (err) {
+      expect((err as Error).message).toMatch(/evicted/);
+    }
+    await cleanupP;
+    // After cleanup, storage MUST be empty regardless of who won the race.
+    const remaining = await store.getDelta('a1');
+    expect(remaining).toHaveLength(0);
+    // Subsequent appends must be rejected — the task id is evicted.
+    await expect(store.appendChunk('a1', 'event', 'y')).rejects.toThrow(/evicted/);
+    expect(typeof appendResolved).toBe('boolean'); // keep var used
+  });
+
+  it('flush waits for in-flight drain via promise (no busy-wait)', async () => {
+    const store = new TaskOutputStore(makeAdapter());
+    // Start several appends without awaiting.
+    const writes = [
+      store.appendChunk('a1', 'event', 'one'),
+      store.appendChunk('a1', 'event', 'two'),
+      store.appendChunk('a1', 'event', 'three'),
+    ];
+    await store.flush('a1');
+    // After flush, all writes must have settled.
+    const settled = await Promise.allSettled(writes);
+    for (const r of settled) expect(r.status).toBe('fulfilled');
+    expect(await store.getDelta('a1')).toHaveLength(3);
+  });
+
+  it('resetEvictedFlag re-enables appends after a cleanup', async () => {
+    const store = new TaskOutputStore(makeAdapter());
+    await store.appendChunk('a1', 'event', 'x');
+    await store.cleanupTask('a1');
+    await expect(store.appendChunk('a1', 'event', 'y')).rejects.toThrow(/evicted/);
+    store.resetEvictedFlag('a1');
+    const after = await store.appendChunk('a1', 'event', 'z');
+    expect(after.seq).toBe(1); // lastSeq was cleaned up
+  });
 });

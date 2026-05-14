@@ -21,6 +21,7 @@ import { SessionState, type SessionStateExport } from './session/state/SessionSt
 import { type SessionServices, createSessionServices } from './session/state/SessionServices';
 import { ActiveTurn } from './session/state/ActiveTurn';
 import type { TokenUsageInfo, RunningTask, RateLimitSnapshot, TurnAbortReason, InitialHistory } from './session/state/types';
+import { TaskKind } from './session/state/types';
 import { isDOMSnapshotOutput, compressSnapshot } from './session/state/SnapshotCompressor';
 import type { HookDispatcher } from './hooks/HookDispatcher';
 
@@ -1507,15 +1508,38 @@ export class Session {
    *
    * 1. The task came through Session.spawnTask first — there's a matching
    *    RunningTask entry already; this call attaches state + context to it.
+   *    NOTE on the `existing` branch: the caller may pass `abortController`
+   *    via `bits`, but we intentionally KEEP the spawn's own controller
+   *    rather than swap it. Reason: the spawn's controller is already wired
+   *    into the task's promise chain; replacing it mid-run would leave the
+   *    real run uncancellable.
+   *
    * 2. The task was spawned by a child engine (sub-agent) whose flow does
    *    NOT go through the parent session's spawnTask — there's no matching
    *    entry. We create a synthetic RunningTask owned by the sub-agent's
    *    AbortController so the parent session can track / abort / display it.
    *
+   * ⚠️  WARNING: AbortController duality for sub-agents.
+   * The sub-agent runs inside its own RepublicAgentEngine which has its
+   * own Session. That child session's spawnTask creates its OWN
+   * AbortController, separate from the one stored here (which comes from
+   * SubAgentRunner.prepare and is wired into AgentContext).
+   *
+   * Aborting via THIS (parent) session's abortTask fires only the parent-
+   * side controller. That signal reaches the child's model call via the
+   * `signal:` option passed to engine.run(...), and the resulting thrown
+   * abort error propagates through the child's task promise → child's
+   * onTaskAborted. So abort DOES propagate, but through the model-error
+   * path, NOT by the child session's controller being fired directly.
+   *
+   * If you change this code, preserve that property — or move sub-agent
+   * tracking to the child session entirely and have the parent only hold
+   * a read-through projection.
+   *
    * @param state - The typed task state. state.id must equal the runId.
    * @param bits - Runtime bits: AgentContext for cancel propagation,
-   *               AbortController for per-task abort, scopedTabIds for
-   *               tab-close granularity.
+   *               AbortController for per-task abort (synthetic path only),
+   *               scopedTabIds for tab-close granularity.
    */
   registerTaskState(
     state: BackgroundAgentTaskState,
@@ -1527,6 +1551,8 @@ export class Session {
   ): void {
     const existing = this.activeTasks.get(state.id);
     if (existing) {
+      // Attach-only path: preserve the spawn's existing AbortController.
+      // `bits.abortController` is deliberately ignored — see JSDoc.
       existing.taskState = state;
       existing.context = bits.context;
       if (bits.scopedTabIds !== undefined) {
@@ -1538,19 +1564,23 @@ export class Session {
     // didn't go through this session's spawnTask.
     const abortController = bits.abortController ?? new AbortController();
     const synthetic: RunningTask = {
-      // Sub-agents are not Regular/Review/Compact in the SessionTask sense
-      // but we need a valid TaskKind for the field. Use Regular as a sentinel.
-      // The handleTaskAbort path keys off taskState + context, not kind.
-      kind: 'Regular' as unknown as RunningTask['kind'],
+      // Sub-agents don't have a meaningful SessionTask kind. Use Regular
+      // as a sentinel; the handleTaskAbort path keys off taskState +
+      // context, not kind.
+      kind: TaskKind.Regular,
       abortController,
-      // A no-op SessionTask shim — SubAgentRunner owns the real abort flow
-      // via context.cancelled + context.abortController; this session's
-      // abort path delegates to those via handleTaskAbort.
+      // A no-op SessionTask shim. The real abort path is:
+      //   parent.abortTask(id) -> handleTaskAbort
+      //     -> context.cancelled = true
+      //     -> abortController.abort()
+      //     -> (model call inside child engine throws, child task ends)
+      // This shim's abort() is intentionally a no-op because the work
+      // happens through the context + abortController above.
       task: {
-        kind: () => 'Regular' as unknown as RunningTask['kind'],
+        kind: () => TaskKind.Regular,
         run: async () => null,
         abort: async () => undefined,
-      } as unknown as SessionTask,
+      },
       promise: Promise.resolve(null),
       startTime: state.startTime,
       taskState: state,

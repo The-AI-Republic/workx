@@ -11,7 +11,7 @@
  * desktop builds.
  */
 
-import { writable, type Writable, type Readable, derived } from 'svelte/store';
+import { writable, get, type Writable, type Readable, derived } from 'svelte/store';
 import type { TaskState } from '@/core/tasks/types';
 import type { TaskOutputChunk } from '@/core/tasks/TaskOutputStore';
 import { POLL_INTERVAL_MS } from '@/core/tasks/timing';
@@ -94,12 +94,11 @@ export async function fetchTaskOutputDelta(taskId: string): Promise<void> {
   const engine = getEngine?.();
   if (!engine) return;
   // Determine current lastSeq from store.
-  let lastSeq = 0;
-  const unsubscribe = state.subscribe(s => {
-    const chunks = s.outputs[taskId];
-    if (chunks && chunks.length > 0) lastSeq = chunks[chunks.length - 1]!.seq;
-  });
-  unsubscribe();
+  const snapshot = get(state);
+  const existing = snapshot.outputs[taskId];
+  const lastSeq = existing && existing.length > 0
+    ? existing[existing.length - 1]!.seq
+    : 0;
   try {
     const fresh = await engine.getTaskOutput(taskId, lastSeq);
     if (fresh.length === 0) return;

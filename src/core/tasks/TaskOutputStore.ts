@@ -38,13 +38,6 @@ function chunkIdFor(taskId: string, seq: number): string {
   return `${taskId}:${seq.toString().padStart(8, '0')}`;
 }
 
-interface QueuedWrite {
-  kind: TaskOutputChunkKind;
-  data: string;
-  resolve: (chunk: TaskOutputChunk) => void;
-  reject: (err: Error) => void;
-}
-
 /**
  * Append-only chunk store. Per-task in-memory queue drains via the adapter
  * so callers don't block on storage I/O. Sequence numbers are assigned
@@ -54,12 +47,16 @@ export class TaskOutputStore {
   private adapter: StorageAdapter;
   /** Last seq written for each task. Populated lazily on first append. */
   private lastSeq = new Map<string, number>();
-  /** Pending writes per task — drained sequentially per task. */
-  private queues = new Map<string, QueuedWrite[]>();
-  /** Per-task drain flight flag. */
-  private draining = new Set<string>();
+  /**
+   * Per-task tail of a serialised write chain. Each enqueueOne extends the
+   * tail so writes for the same task always happen in submission order.
+   * `flush` awaits the current tail to know all pending writes are done.
+   */
+  private tails = new Map<string, Promise<void>>();
   /** lastReadAt heartbeat per task — used by TaskOutputManager eviction grace. */
   private lastReadAt = new Map<string, number>();
+  /** Tasks that have been evicted; new appends are rejected. */
+  private evicted = new Set<string>();
 
   constructor(adapter: StorageAdapter) {
     this.adapter = adapter;
@@ -130,20 +127,40 @@ export class TaskOutputStore {
     }
   }
 
-  /** Delete every chunk for a task. Called by the eviction timer. */
+  /**
+   * Delete every chunk for a task. Called by the eviction timer.
+   *
+   * (B1 fix) Marks the task evicted FIRST so any concurrent enqueueOne
+   * rejects immediately, then waits for the current write-chain tail to
+   * settle so any in-flight put() completes (or fails) before we delete
+   * rows. After this, future appends for this task are rejected — see
+   * the `evicted` guard in `enqueueOne`.
+   */
   async cleanupTask(taskId: string): Promise<void> {
+    // Block new appends.
+    this.evicted.add(taskId);
+
+    // Wait for the current write-chain tail to settle.
+    const tail = this.tails.get(taskId);
+    if (tail) {
+      try {
+        await tail;
+      } catch {
+        // Individual write failures surface via that write's own promise;
+        // we tolerate them here.
+      }
+    }
+    this.tails.delete(taskId);
+
     const rows = await this.adapter.queryByIndex<TaskOutputChunk>(
       STORE_NAME,
       'by_task_id',
       taskId,
     );
-    if (rows.length === 0) {
-      this.lastSeq.delete(taskId);
-      this.lastReadAt.delete(taskId);
-      return;
+    if (rows.length > 0) {
+      const keys = rows.map(r => r.chunkId);
+      await this.adapter.batchDelete(STORE_NAME, keys);
     }
-    const keys = rows.map(r => r.chunkId);
-    await this.adapter.batchDelete(STORE_NAME, keys);
     this.lastSeq.delete(taskId);
     this.lastReadAt.delete(taskId);
   }
@@ -156,20 +173,27 @@ export class TaskOutputStore {
     await Promise.all(taskIds.map(id => this.cleanupTask(id)));
   }
 
-  /** Drain any pending in-memory writes for this task. */
+  /**
+   * Wait until every write enqueued for this task so far has settled.
+   *
+   * (S4 fix) Awaits the current write-chain tail. Subsequent enqueueOne
+   * calls extend the tail but do NOT extend this flush's wait — flush
+   * sees the chain at the moment it's called, not future appends.
+   */
   async flush(taskId: string): Promise<void> {
-    const queue = this.queues.get(taskId);
-    if (!queue || queue.length === 0) return;
-    if (this.draining.has(taskId)) {
-      // Wait briefly for in-flight drain to complete.
-      while (this.draining.has(taskId)) {
-        await sleep(5);
-      }
+    const tail = this.tails.get(taskId);
+    if (!tail) return;
+    try {
+      await tail;
+    } catch {
+      // Per-write failures are propagated through that write's own
+      // promise; flush itself returns without throwing.
     }
-    // After waiting, kick off another drain if anything new arrived.
-    if (queue.length > 0) {
-      await this.drainQueue(taskId);
-    }
+  }
+
+  /** Clear the evicted flag so a task id can be reused (tests/restart paths). */
+  resetEvictedFlag(taskId: string): void {
+    this.evicted.delete(taskId);
   }
 
   /** Test/debug: read the last heartbeat for a task (for eviction grace). */
@@ -179,64 +203,84 @@ export class TaskOutputStore {
 
   // ─── internals ───────────────────────────────────────────────────────
 
+  /**
+   * Per-task serialised write chain. Each enqueueOne extends `tails[taskId]`
+   * by chaining `.then(() => doWrite(...))`. This guarantees writes for the
+   * same task happen in submission order without busy-polling, and flush
+   * can await the current tail to know all currently-pending writes have
+   * settled.
+   */
   private enqueueOne(
     taskId: string,
     kind: TaskOutputChunkKind,
     data: string,
   ): Promise<TaskOutputChunk> {
-    return new Promise<TaskOutputChunk>((resolve, reject) => {
-      const queue = this.queues.get(taskId) ?? [];
-      queue.push({ kind, data, resolve, reject });
-      this.queues.set(taskId, queue);
-      void this.drainQueue(taskId);
+    if (this.evicted.has(taskId)) {
+      return Promise.reject(
+        new Error(`TaskOutputStore: task ${taskId} has been evicted`),
+      );
+    }
+    const prevTail = this.tails.get(taskId) ?? Promise.resolve();
+    let resolve!: (c: TaskOutputChunk) => void;
+    let reject!: (e: Error) => void;
+    const writePromise = new Promise<TaskOutputChunk>((res, rej) => {
+      resolve = res;
+      reject = rej;
     });
+    // Chain the write onto the previous tail. The tail itself ignores
+    // individual failures so one bad write doesn't poison the chain.
+    const tail = prevTail.then(async () => {
+      // Re-check eviction at write time — a cleanupTask may have run
+      // between enqueue and execution.
+      if (this.evicted.has(taskId)) {
+        reject(new Error(`TaskOutputStore: task ${taskId} has been evicted`));
+        return;
+      }
+      try {
+        const chunk = await this.doWrite(taskId, kind, data);
+        resolve(chunk);
+      } catch (err) {
+        reject(err instanceof Error ? err : new Error(String(err)));
+      }
+    });
+    this.tails.set(taskId, tail);
+    return writePromise;
   }
 
-  private async drainQueue(taskId: string): Promise<void> {
-    if (this.draining.has(taskId)) return;
-    this.draining.add(taskId);
-    try {
-      while (true) {
-        const queue = this.queues.get(taskId);
-        if (!queue || queue.length === 0) break;
-
-        // Resolve lastSeq lazily — read existing chunks if we don't know.
-        let lastSeq = this.lastSeq.get(taskId);
-        if (lastSeq === undefined) {
-          const existing = await this.adapter.queryByIndex<TaskOutputChunk>(
-            STORE_NAME,
-            'by_task_id',
-            taskId,
-          );
-          lastSeq = existing.reduce(
-            (max, r) => (r.seq > max ? r.seq : max),
-            0,
-          );
-          this.lastSeq.set(taskId, lastSeq);
-        }
-
-        const next = queue.shift()!;
-        const seq = lastSeq + 1;
-        const chunk: TaskOutputChunk = {
-          chunkId: chunkIdFor(taskId, seq),
-          taskId,
-          seq,
-          createdAt: Date.now(),
-          kind: next.kind,
-          data: next.data,
-        };
-        try {
-          await this.adapter.put<TaskOutputChunk>(STORE_NAME, chunk);
-          this.lastSeq.set(taskId, seq);
-          next.resolve(chunk);
-        } catch (err) {
-          next.reject(err instanceof Error ? err : new Error(String(err)));
-          // Don't update lastSeq on failure — next attempt retries the same seq.
-        }
-      }
-    } finally {
-      this.draining.delete(taskId);
+  /**
+   * Execute a single put for the next seq. Resolves the seq lazily on
+   * first write per task by querying existing rows.
+   */
+  private async doWrite(
+    taskId: string,
+    kind: TaskOutputChunkKind,
+    data: string,
+  ): Promise<TaskOutputChunk> {
+    let lastSeq = this.lastSeq.get(taskId);
+    if (lastSeq === undefined) {
+      const existing = await this.adapter.queryByIndex<TaskOutputChunk>(
+        STORE_NAME,
+        'by_task_id',
+        taskId,
+      );
+      lastSeq = existing.reduce(
+        (max, r) => (r.seq > max ? r.seq : max),
+        0,
+      );
+      this.lastSeq.set(taskId, lastSeq);
     }
+    const seq = lastSeq + 1;
+    const chunk: TaskOutputChunk = {
+      chunkId: chunkIdFor(taskId, seq),
+      taskId,
+      seq,
+      createdAt: Date.now(),
+      kind,
+      data,
+    };
+    await this.adapter.put<TaskOutputChunk>(STORE_NAME, chunk);
+    this.lastSeq.set(taskId, seq);
+    return chunk;
   }
 }
 

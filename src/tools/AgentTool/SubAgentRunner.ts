@@ -17,6 +17,7 @@ import type {
   TaskNotification,
 } from './types';
 import type { BackgroundAgentTaskState } from '@/core/tasks/types';
+import { PANEL_GRACE_MS } from '@/core/tasks/timing';
 
 /**
  * SubAgentRunner spawns and manages sub-agent executions.
@@ -213,7 +214,6 @@ export class SubAgentRunner implements IAgentRunner {
     }
     // Re-arm evictAfter if not retained.
     if (!ts.retain) {
-      const PANEL_GRACE_MS = 30_000;
       ts.evictAfter = Date.now() + PANEL_GRACE_MS;
     }
     // Kick the eviction timer; ensureEvictionTimer is private but

@@ -141,13 +141,9 @@ async function configureExtensionPlatform(targetAgent: RepublicAgent): Promise<v
         'The tab was closed or crashed. All tasks have been stopped.'
       );
     } else {
-      // Working-tab close: selective abort.
-      const tasksOnTab = session
-        .listActiveTasks()
-        .filter(t => t.scopedTabIds?.includes(closedTabId));
-      if (tasksOnTab.length > 0) {
-        await session.abortTasksForTab(closedTabId, 'TabClosed');
-      }
+      // Working-tab close: selective abort. abortTasksForTab filters
+      // internally and is a no-op when no tasks are scoped to the tab.
+      await session.abortTasksForTab(closedTabId, 'TabClosed');
     }
   });
 }
