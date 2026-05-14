@@ -23,6 +23,17 @@ export type CanUseToolFn = (
 ) => CanUseToolDecision | Promise<CanUseToolDecision>;
 
 /**
+ * Sync variant. Narrower than `CanUseToolFn` so call sites and tests can
+ * treat the result synchronously without `await`. Assignable to
+ * `CanUseToolFn` (sync is a subtype of sync | async) wherever the wider
+ * type is required.
+ */
+export type SyncCanUseTool = (
+  toolName: string,
+  input: unknown,
+) => CanUseToolDecision;
+
+/**
  * Returns a sync canUseTool gate that:
  *  - Allows only `file_edit`
  *  - Allows it only when the `path` (or `file_path`) input resolves to the
@@ -32,7 +43,7 @@ export type CanUseToolFn = (
  * Accepts both `path` and `file_path` field names because the FileEditTool
  * input schema has historically used both.
  */
-export function createSummaryFileCanUseTool(summaryPath: string): CanUseToolFn {
+export function createSummaryFileCanUseTool(summaryPath: string): SyncCanUseTool {
   const allowedAbsolute = path.resolve(summaryPath);
 
   return (toolName: string, input: unknown): CanUseToolDecision => {
