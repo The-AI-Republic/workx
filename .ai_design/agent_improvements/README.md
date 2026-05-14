@@ -23,7 +23,7 @@ BrowserX is a multi-platform browser automation agent. Claudy is a terminal-nati
 | 06 | [Multi-Agent Coordination](./06_multi_agent_coordination/design.md) | P2 | Large | Coordinator mode, worker delegation |
 | 07 | [Centralized State](./07_centralized_state/design.md) | P1 | Medium | Unified state, selectors, side-effect handlers |
 | 08 | [Centralized Message Queue & Audit](./08_centralized_message_queue/design.md) | P1 | Medium | Two phases: (1) `CommandQueue<T>` replaces plain `submissionQueue` — priorities, sub-agent filter, batching; deletes dead `QueueProcessor.ts`. (2) Persistent `EventLog` for hooks/queue/approvals/tool/sub-agent audit. MessageBus (former 08d) stays deferred. Earlier 08a primitives (Signal, Mailbox, ApprovalManager refactor) dropped after audit found BrowserX equivalents already exist. |
-| 09 | [Tool Result Persistence](./09_tool_result_persistence/design.md) | P2 | Medium | Persist oversized tool results to disk instead of truncating; agent reads back via Read |
+| 09 | [Tool Result Persistence](./09_tool_result_persistence_DONE/design.md) ✅ DONE (PR #213, merged 2026-05-14) | P2 | Medium | Persist oversized tool results to disk instead of truncating; agent reads back via Read |
 | 10 | [Plugin System](./10_plugin_system/design.md) | P1 | Large | Claudy-compatible plugin packaging — manifest, marketplace, install, trust. Aggregates skills/hooks/MCP/subagents/commands into installable units. Phased 10a/10b/10c. |
 
 ## Dependency Graph
