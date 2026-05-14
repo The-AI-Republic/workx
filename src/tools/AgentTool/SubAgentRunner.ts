@@ -651,6 +651,15 @@ export class SubAgentRunner implements IAgentRunner {
         ? 'cancelled'
         : 'failed';
 
+    // (Track 04) Capture output offset from the parent session's typed
+    // state so the parent agent can delta-poll any chunks written after
+    // the notification was assembled.
+    const parentSession = context.parentEngine.getSession?.();
+    const taskState = parentSession?.getTask?.(context.runId)?.taskState;
+    const outputOffset = taskState?.outputOffset && taskState.outputOffset > 0
+      ? taskState.outputOffset
+      : undefined;
+
     const notification: TaskNotification = {
       runId: context.runId,
       type: params.type,
@@ -661,6 +670,7 @@ export class SubAgentRunner implements IAgentRunner {
       tokenUsage: result.tokenUsage,
       turnCount: result.turnCount,
       durationMs: Date.now() - context.startTime,
+      outputOffset,
     };
 
     return serializeTaskNotification(notification);
@@ -698,11 +708,22 @@ function serializeTaskNotification(n: TaskNotification): string {
   }
   lines.push('  <usage>');
   if (n.tokenUsage) {
+    lines.push(`    <input_tokens>${n.tokenUsage.input}</input_tokens>`);
+    lines.push(`    <output_tokens>${n.tokenUsage.output}</output_tokens>`);
+    if (n.tokenUsage.cached !== undefined) {
+      lines.push(`    <cached_tokens>${n.tokenUsage.cached}</cached_tokens>`);
+    }
     lines.push(`    <total_tokens>${n.tokenUsage.total}</total_tokens>`);
   }
   lines.push(`    <turn_count>${n.turnCount}</turn_count>`);
   lines.push(`    <duration_ms>${n.durationMs}</duration_ms>`);
   lines.push('  </usage>');
+  // (Track 04) Optional element — present only when the sub-agent's
+  // TaskRunner persisted chunks. Parent agent can call
+  // engine.getTaskOutput(run-id, outputOffset) to fetch tail bytes.
+  if (n.outputOffset !== undefined) {
+    lines.push(`  <output-offset>${n.outputOffset}</output-offset>`);
+  }
   lines.push('</task-notification>');
   return lines.join('\n');
 }
