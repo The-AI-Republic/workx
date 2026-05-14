@@ -103,6 +103,13 @@ export class RepublicAgentEngine {
       });
     }
 
+    // Track 04: forward the shared TaskOutputStore to the session so its
+    // typed-task accessors (getTaskOutputStore, retainTask, eviction timer)
+    // and the engine's getTaskOutput can both reach the same backing store.
+    if (this.session && this.config.taskOutputStore) {
+      this.session.setTaskOutputStore(this.config.taskOutputStore);
+    }
+
     // Setup approval system
     this.setupApprovalSystem();
 
@@ -206,6 +213,45 @@ export class RepublicAgentEngine {
     // a cancelled session.
     this.submissionQueue.length = 0;
     this.pendingNotifications.length = 0;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Track 04: typed task query API
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Get a delta of output chunks for a tracked task. Returns chunks with
+   * `seq > fromSeq`. Used by the UI panel + the parent agent's
+   * "what has X done so far?" query.
+   *
+   * No-op (returns []) if no TaskOutputStore is configured.
+   */
+  async getTaskOutput(
+    taskId: string,
+    fromSeq: number = 0,
+  ): Promise<import('../tasks/TaskOutputStore').TaskOutputChunk[]> {
+    const store = this.session?.getTaskOutputStore?.();
+    if (!store) return [];
+    return store.getDelta(taskId, fromSeq);
+  }
+
+  /**
+   * Snapshot of all typed task states currently in Session.activeTasks.
+   * Includes terminal-but-unevicted tasks (still inside PANEL_GRACE_MS).
+   * Used by the background-tasks badge and the parent agent's
+   * list_sub_agents-style queries.
+   */
+  listTaskStates(): import('../tasks/types').TaskState[] {
+    return this.session?.listTaskStates?.() ?? [];
+  }
+
+  /**
+   * UI-driven retain toggle. Pass true on panel mount, false on unmount.
+   * retain=true blocks eviction; retain=false re-arms evictAfter for
+   * terminal tasks.
+   */
+  retainTask(taskId: string, retain: boolean): void {
+    this.session?.retainTask?.(taskId, retain);
   }
 
   async dispose(): Promise<void> {
