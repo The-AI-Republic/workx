@@ -89,7 +89,7 @@ describe('Tier 1: Shared/Core uses "applepi"', () => {
   });
 
   it('GoogleDocAddon uses "data-applepi-injected" attribute', () => {
-    const src = readSource('src/extension/tools/dom/addon/GoogleDocAddon.ts');
+    const src = readSource('src/extension/tools/dom/addons/GoogleDocAddon.ts');
     expect(src).toContain('data-applepi-injected');
   });
 });
@@ -163,7 +163,7 @@ describe('Guard-rails: no cross-tier naming leaks', () => {
     ['src/desktop/storage/KeytarCredentialStore.ts', 'KeytarCredentialStore'],
     ['src/core/registry/AgentSession.ts', 'AgentSession'],
     ['src/desktop/hotkeys.ts', 'hotkeys'],
-    ['src/extension/tools/dom/addon/GoogleDocAddon.ts', 'GoogleDocAddon'],
+    ['src/extension/tools/dom/addons/GoogleDocAddon.ts', 'GoogleDocAddon'],
     ['src/desktop/index.html', 'desktop index.html'],
     ['src/storage/IndexedDBAdapter.ts', 'IndexedDBAdapter'],
   ];

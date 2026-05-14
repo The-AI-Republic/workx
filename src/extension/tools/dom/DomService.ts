@@ -13,8 +13,8 @@ import type {
 import { NODE_ID_DOCUMENT } from './types';
 import { computeHeuristics, classifyNode, determineInteractionType, detectFramework, serializedNodeToHtml, computeScrollable, parseNodeId } from './utils';
 import type { TypeOptions } from '../../../types/domTool';
-import { DomAddon, type DomAddonContext } from './addon/DomAddon';
-import { googleDocAddon } from './addon/GoogleDocAddon';
+import { DomAddon, type DomAddonContext } from './addons/DomAddon';
+import { googleDocAddon } from './addons/GoogleDocAddon';
 import type { DebuggerClient, CDPEventCallback } from '../../../core/tools/browser/DebuggerClient';
 // Static import — forTab() is only used in extension builds where DOMTool is registered.
 // Dynamic import() is banned in Chrome extension service workers.
