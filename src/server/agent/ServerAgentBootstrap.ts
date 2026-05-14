@@ -3,7 +3,7 @@
  *
  * Main orchestrator for server mode. Creates AgentRegistry with
  * session-aware agent management, ServerChannel, ChannelManager,
- * plugin loader, and maintenance timers.
+ * connector loader, and maintenance timers.
  *
  * Pattern follows the extension service worker: no singleton agent,
  * all operations routed through AgentRegistry by sessionId.
@@ -28,10 +28,10 @@ import { SessionIndex } from '../persistence/SessionIndex';
 import { TranscriptStore } from '../persistence/TranscriptStore';
 import { BackupManager } from '../persistence/backup';
 import { ApprovalManager } from '../exec/approval-manager';
-import { PluginRegistry } from '../plugins/plugin-registry';
-import { ApplePiPluginApi } from '../plugins/applepi-plugin-api';
-import { discoverPlugins } from '../plugins/plugin-loader';
-import { ChannelPluginBridge } from '../plugins/channel-bridge';
+import { ConnectorRegistry } from '../channel-connectors/connector-registry';
+import { ApplePiConnectorApi } from '../channel-connectors/applepi-connector-api';
+import { discoverConnectors } from '../channel-connectors/connector-loader';
+import { ConnectorBridge } from '../channel-connectors/connector-bridge';
 import { HealthMonitor } from '../health/health-monitor';
 import {
   setHealthAgentStatus,
@@ -83,7 +83,7 @@ export class ServerAgentBootstrap {
   private transcriptStore: TranscriptStore | null = null;
   private backupManager: BackupManager | null = null;
   private approvalManager: ApprovalManager | null = null;
-  private pluginRegistry: PluginRegistry | null = null;
+  private connectorRegistry: ConnectorRegistry | null = null;
   private healthMonitor: HealthMonitor | null = null;
   private scheduler: Scheduler | null = null;
   private scheduleEventStorage: ServerScheduleStorage | null = null;
@@ -275,8 +275,8 @@ export class ServerAgentBootstrap {
       // 12. Register method handlers
       this.registerHandlers();
 
-      // 12b. Initialize plugins
-      await this.initializePlugins(channelManager);
+      // 12b. Initialize connectors
+      await this.initializeConnectors(channelManager);
 
       // 13. Start health monitoring
       this.healthMonitor = new HealthMonitor();
@@ -533,37 +533,37 @@ export class ServerAgentBootstrap {
   }
 
   /**
-   * Initialize channel plugins.
+   * Initialize channel connectors.
    */
-  private async initializePlugins(channelManager: ReturnType<typeof getChannelManager>): Promise<void> {
-    this.pluginRegistry = new PluginRegistry();
+  private async initializeConnectors(channelManager: ReturnType<typeof getChannelManager>): Promise<void> {
+    this.connectorRegistry = new ConnectorRegistry();
     const config = getServerConfig();
 
     try {
-      const definitions = await discoverPlugins();
+      const definitions = await discoverConnectors();
 
       for (const definition of definitions) {
-        const api = new ApplePiPluginApi();
+        const api = new ApplePiConnectorApi();
         await definition.register(api);
 
         const registrations = api.getRegistrations();
         for (const reg of registrations) {
-          const plugin = reg.plugin;
-          this.pluginRegistry.register(definition, plugin);
+          const connector = reg.connector;
+          this.connectorRegistry.register(definition, connector);
 
           // Create a bridge per account
-          const accountIds = plugin.config.listAccountIds(config.server.channels[plugin.id]);
+          const accountIds = connector.config.listAccountIds(config.server.channels[connector.id]);
           for (const accountId of accountIds) {
-            const bridge = new ChannelPluginBridge(plugin, accountId);
+            const bridge = new ConnectorBridge(connector, accountId);
             await channelManager.registerChannel(bridge);
-            console.log(`[ServerAgentBootstrap] Plugin bridge registered: ${plugin.id}:${accountId}`);
+            console.log(`[ServerAgentBootstrap] Connector bridge registered: ${connector.id}:${accountId}`);
           }
         }
       }
 
-      console.log(`[ServerAgentBootstrap] ${this.pluginRegistry.size} plugin(s) initialized`);
+      console.log(`[ServerAgentBootstrap] ${this.connectorRegistry.size} connector(s) initialized`);
     } catch (err) {
-      console.warn('[ServerAgentBootstrap] Plugin initialization error:', err);
+      console.warn('[ServerAgentBootstrap] Connector initialization error:', err);
     }
   }
 
@@ -749,8 +749,8 @@ export class ServerAgentBootstrap {
     return this.approvalManager;
   }
 
-  getPluginRegistry(): PluginRegistry | null {
-    return this.pluginRegistry;
+  getConnectorRegistry(): ConnectorRegistry | null {
+    return this.connectorRegistry;
   }
 
   getScheduler(): Scheduler | null {
@@ -788,7 +788,7 @@ export class ServerAgentBootstrap {
     this.toolResultSweep?.stop();
     this.toolResultSweep = null;
 
-    // Shutdown channel manager (shuts down all channels including plugin bridges)
+    // Shutdown channel manager (shuts down all channels including connector bridges)
     const channelManager = getChannelManager();
     await channelManager.shutdown();
 

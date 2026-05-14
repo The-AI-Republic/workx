@@ -808,7 +808,7 @@ Third-party channel integrations (Slack, Telegram, WhatsApp, Discord, etc.) are 
 
 *   **Ingestion:** The plugin's `gateway` adapter establishes the connection to the platform (e.g., Slack Socket Mode WebSocket, Telegram long-polling, webhook endpoints).
 *   **Verification:** The plugin's built-in security verifies platform-specific signatures (e.g., `X-Slack-Signature`, Telegram bot token). This is handled inside the plugin — Pi does not need to implement platform-specific verification.
-*   **Translation:** The `ChannelPluginBridge` (Section 20.5) translates between the plugin's message format and Pi's `SubmissionContext`.
+*   **Translation:** The `ConnectorBridge` (Section 20.5) translates between the plugin's message format and Pi's `SubmissionContext`.
 
 ### 17.2 Security Layers
 
@@ -817,7 +817,7 @@ Channel security is enforced at three layers:
 | Layer | Responsibility | Handled by |
 |-------|---------------|------------|
 | **Platform verification** | Sender is authentic (cryptographic signatures) | Channel plugin (built-in) |
-| **Owner identity** | Sender is the agent owner | `ChannelPluginBridge` (Section 20.7) |
+| **Owner identity** | Sender is the agent owner | `ConnectorBridge` (Section 20.7) |
 | **RBAC** | Channel connection has appropriate scopes | WS server auth (Section 9) |
 
 ### 17.3 Identity & Session Binding
@@ -912,7 +912,7 @@ packages/ws-server/
     connection/     # Handshake, auth, watchdog (Section 4, 6, 8)
     streaming/      # ChatEvent, AgentEvent, throttling (Section 5)
     auth/           # RBAC roles, scopes, authorization (Section 9)
-    plugins/        # PluginLoader, PluginRegistry, ChannelPluginBridge (Section 20)
+    channel-connectors/  # ConnectorLoader, ConnectorRegistry, ConnectorBridge (Section 20)
     server.ts       # createWsServer() — returns an HTTP+WS server instance
     bridge.ts       # Transport-agnostic bridge interface
 ```
@@ -1042,7 +1042,7 @@ Implementations:
 
 ## 20. Channel Plugin System (OpenClaw-Compatible)
 
-Pi adopts the [OpenClaw](https://github.com/nicepkg/openclaw) `ChannelPlugin` interface as its channel integration standard. Any OpenClaw channel plugin package (Slack, Telegram, WhatsApp, Discord, Signal, Matrix, IRC, etc.) can be installed and run on Pi without modification. Channel plugins are hosted by **Server Mode** and **Apple Pi (Desktop)** — BrowserX gains channel access by pairing with one of these runtimes (see Section 18.4).
+Pi adopts the [OpenClaw](https://github.com/nicepkg/openclaw) `ChannelConnector` interface as its channel integration standard. Any OpenClaw channel plugin package (Slack, Telegram, WhatsApp, Discord, Signal, Matrix, IRC, etc.) can be installed and run on Pi without modification. Channel plugins are hosted by **Server Mode** and **Apple Pi (Desktop)** — BrowserX gains channel access by pairing with one of these runtimes (see Section 18.4).
 
 ### 20.0 Cross-Mode Plugin Hosting
 
@@ -1057,19 +1057,19 @@ Channel plugins run in **Server Mode** and **Apple Pi** only. BrowserX does not 
 #### 20.0.1 Plugin Isolation (Server Mode)
 To ensure that a third-party channel plugin cannot crash the main RepublicAgent process or leak memory into the global scope:
 *   **Worker Threads:** Each plugin instance runs in its own `worker_threads` context.
-*   **Communication:** The `ChannelPluginBridge` manages an asynchronous message port to the worker.
+*   **Communication:** The `ConnectorBridge` manages an asynchronous message port to the worker.
 *   **Resource Limits:** Worker threads are started with limited heap memory (e.g., `--max-old-space-size=128`).
 
 ```
 Server Mode:
   Channel Plugin (in-process)
-    → ChannelPluginBridge
+    → ConnectorBridge
     → ChannelManager (direct)
     → RepublicAgent (same process)
 
 Desktop Mode (Apple Pi):
   Channel Plugin (Node.js sidecar)
-    → ChannelPluginBridge
+    → ConnectorBridge
     → Tauri IPC bridge (TauriBridge)
     → DesktopMessageRouter
     → RepublicAgent (Svelte/TS in Tauri webview)
@@ -1084,12 +1084,12 @@ In Desktop mode, channel plugins run in the **same sidecar process** that hosts 
 
 #### Sidecar Plugin Loader (Desktop)
 
-For Desktop mode, the sidecar process runs the same `PluginLoader` (Section 20.4) at startup. The `TransportBridge` implementation determines how the `ChannelPluginBridge` communicates with the agent:
+For Desktop mode, the sidecar process runs the same `ConnectorLoader` (Section 20.4) at startup. The `TransportBridge` implementation determines how the `ConnectorBridge` communicates with the agent:
 
 *   **Server Mode:** `DirectBridge` — no serialization, direct function calls.
 *   **Desktop:** `TauriBridge` — serializes inbound messages to Tauri IPC events, deserializes agent responses.
 
-The `ChannelPluginBridge` is transport-agnostic — it doesn't know or care which bridge it's using. This is the same `TransportBridge` interface from Section 18.6, reused for plugin traffic.
+The `ConnectorBridge` is transport-agnostic — it doesn't know or care which bridge it's using. This is the same `TransportBridge` interface from Section 18.6, reused for plugin traffic.
 
 #### Desktop Mode UI Integration
 
@@ -1216,19 +1216,19 @@ Channel management lives in the **Settings page** (`/settings`):
 
 | Layer | Compatible? | Notes |
 |-------|-------------|-------|
-| **Channel plugins** (`ChannelPlugin` interface) | Yes — full drop-in | Same npm packages, no wrapper |
-| **Plugin SDK** (`OpenClawPluginApi`) | Yes — implemented by Pi | Pi provides its own implementation of the registration API |
+| **Channel plugins** (`ChannelConnector` interface) | Yes — full drop-in | Same npm packages, no wrapper |
+| **Plugin SDK** (`OpenClawConnectorApi`) | Yes — implemented by Pi | Pi provides its own implementation of the registration API |
 | **Agent runtime** | No | Pi uses its own `RepublicAgent`, not OpenClaw's agent |
 | **Skills / Memory / Providers** | No | Pi has its own skill, memory, and model provider systems |
 
-Plugin authors write to OpenClaw's `ChannelPlugin` interface. Their plugin runs on OpenClaw, Pi, or any other platform that implements the same contract.
+Plugin authors write to OpenClaw's `ChannelConnector` interface. Their plugin runs on OpenClaw, Pi, or any other platform that implements the same contract.
 
-### 20.2 ChannelPlugin Interface
+### 20.2 ChannelConnector Interface
 
-Pi adopts the full `ChannelPlugin` type from OpenClaw. The interface is a composition of optional **adapters**, each handling one concern:
+Pi adopts the full `ChannelConnector` type from OpenClaw. The interface is a composition of optional **adapters**, each handling one concern:
 
 ```typescript
-type ChannelPlugin<ResolvedAccount = any> = {
+type ChannelConnector<ResolvedAccount = any> = {
   id: ChannelId;
   meta: ChannelMeta;                        // label, icon, description
   capabilities: ChannelCapabilities;        // what the channel supports
@@ -1274,21 +1274,21 @@ OpenClaw plugins export a standard entry point:
 
 ```typescript
 // What an OpenClaw plugin looks like (e.g., extensions/slack/index.ts)
-const plugin: OpenClawPluginDefinition = {
+const plugin: OpenClawConnectorDefinition = {
   id: "slack",
   name: "Slack",
   description: "Slack channel plugin",
-  register(api: OpenClawPluginApi) {
+  register(api: OpenClawConnectorApi) {
     api.registerChannel({ plugin: slackPlugin });
   },
 };
 export default plugin;
 ```
 
-Pi implements the `OpenClawPluginApi` interface so that the plugin's `register()` call works without modification:
+Pi implements the `OpenClawConnectorApi` interface so that the plugin's `register()` call works without modification:
 
 ```typescript
-interface OpenClawPluginApi {
+interface OpenClawConnectorApi {
   id: string;
   name: string;
   config: OpenClawConfig;
@@ -1296,7 +1296,7 @@ interface OpenClawPluginApi {
   logger: PluginLogger;
 
   // Channel registration — primary use case for Pi
-  registerChannel: (registration: { plugin: ChannelPlugin }) => void;
+  registerChannel: (registration: { plugin: ChannelConnector }) => void;
 
   // Tool registration — mapped to Pi's tool registry
   registerTool: (tool: AgentTool) => void;
@@ -1333,16 +1333,16 @@ Server startup
   ├── 1. Scan extensions/ and node_modules/ for plugin candidates
   ├── 2. For each candidate:
   │     ├── a. Dynamic import() the entry point
-  │     ├── b. Validate it exports an OpenClawPluginDefinition
-  │     ├── c. Create a PiPluginApi instance (our OpenClawPluginApi implementation)
+  │     ├── b. Validate it exports an OpenClawConnectorDefinition
+  │     ├── c. Create a ApplePiConnectorApi instance (our OpenClawConnectorApi implementation)
   │     └── d. Call plugin.register(api)
   │           └── Plugin calls api.registerChannel({ plugin })
-  │               └── ChannelPlugin stored in PluginRegistry
+  │               └── ChannelConnector stored in ConnectorRegistry
   ├── 3. For each registered channel plugin:
   │     ├── a. Read config for this channel from server.channels.<pluginId>
   │     ├── b. Enumerate accounts via plugin.config.listAccountIds(cfg)
   │     ├── c. For each enabled & configured account:
-  │     │     └── Create a ChannelPluginBridge instance
+  │     │     └── Create a ConnectorBridge instance
   │     └── d. Register bridge with ChannelManager
   └── 4. ChannelManager starts all registered channels (see Section 20.6)
 ```
@@ -1353,9 +1353,9 @@ Server startup
 *   If a plugin's `register()` throws, catch the error, log it, and skip.
 *   The server reports which plugins loaded successfully and which failed in the `HelloOk` snapshot and `health` endpoint.
 
-### 20.5 ChannelPluginBridge
+### 20.5 ConnectorBridge
 
-The bridge is the core translation layer between an OpenClaw `ChannelPlugin` and Pi's internal systems (`ChannelManager`, `SubmissionContext`, `RepublicAgent`).
+The bridge is the core translation layer between an OpenClaw `ChannelConnector` and Pi's internal systems (`ChannelManager`, `SubmissionContext`, `RepublicAgent`).
 
 One bridge instance is created **per plugin per account** (e.g., Slack workspace "acme" gets its own bridge, Slack workspace "personal" gets another).
 
@@ -1365,7 +1365,7 @@ One bridge instance is created **per plugin per account** (e.g., Slack workspace
 Channel backend (e.g., Slack)
   → Plugin's gateway listener (runs inside startAccount())
   → Plugin calls ctx.runtime.routeInboundMessage({ channel, sender, text, ... })
-  → ChannelPluginBridge receives the inbound message
+  → ConnectorBridge receives the inbound message
   → Bridge builds a SubmissionContext:
       {
         channelId: "slack:acme",
@@ -1384,7 +1384,7 @@ Channel backend (e.g., Slack)
 ```
 RepublicAgent produces a response
   → ChannelManager invokes replyCallback on the SubmissionContext
-  → ChannelPluginBridge receives the outbound event
+  → ConnectorBridge receives the outbound event
   → Bridge translates to ChannelOutboundContext:
       {
         cfg: openClawCompatConfig,
@@ -1432,7 +1432,7 @@ The `ChannelManager` (from Section 2) manages plugin lifecycles via the bridge:
 
 ```
 ChannelManager.startChannels()
-  → For each registered ChannelPluginBridge:
+  → For each registered ConnectorBridge:
     → Check plugin.config.isEnabled(account, cfg)
     → Check plugin.config.isConfigured(account, cfg)
     → If both true: call plugin.gateway.startAccount(gatewayCtx)
@@ -1600,7 +1600,7 @@ Each channel plugin supports multiple accounts. For example, a user might have t
 }
 ```
 
-The plugin's `config.listAccountIds(cfg)` returns `["work", "personal"]`. A separate `ChannelPluginBridge` is created for each, with independent lifecycle, health tracking, and session isolation.
+The plugin's `config.listAccountIds(cfg)` returns `["work", "personal"]`. A separate `ConnectorBridge` is created for each, with independent lifecycle, health tracking, and session isolation.
 
 Session keys incorporate the account: `slack:work:channel_C456` vs `slack:personal:channel_C789`.
 
@@ -1611,14 +1611,14 @@ These steps integrate into the phased implementation from Section 19:
 #### Phase 1 Additions (Server Mode Standalone)
 
 19. **Define Plugin Compatibility Layer**
-    *   Create `src/server/plugins/types.ts` — re-export or reference OpenClaw's `ChannelPlugin`, `OpenClawPluginApi`, and related types.
-    *   Create `src/server/plugins/pi-plugin-api.ts` — Pi's implementation of `OpenClawPluginApi`.
-    *   Create `src/server/plugins/plugin-loader.ts` — discovery and loading logic.
-    *   Create `src/server/plugins/plugin-registry.ts` — stores registered channel plugins.
+    *   Create `src/server/channel-connectors/types.ts` — re-export or reference OpenClaw's `ChannelConnector`, `OpenClawConnectorApi`, and related types.
+    *   Create `src/server/channel-connectors/applepi-connector-api.ts` — Pi's implementation of `OpenClawConnectorApi`.
+    *   Create `src/server/channel-connectors/connector-loader.ts` — discovery and loading logic.
+    *   Create `src/server/channel-connectors/connector-registry.ts` — stores registered channel plugins.
 
-20. **Implement ChannelPluginBridge**
-    *   Create `src/server/plugins/channel-bridge.ts` — inbound/outbound translation, config mapping, lifecycle delegation.
-    *   Create `src/server/plugins/owner-verify.ts` — owner identity verification at the bridge layer.
+20. **Implement ConnectorBridge**
+    *   Create `src/server/channel-connectors/connector-bridge.ts` — inbound/outbound translation, config mapping, lifecycle delegation.
+    *   Create `src/server/channel-connectors/owner-verify.ts` — owner identity verification at the bridge layer.
 
 21. **Integrate with ChannelManager**
     *   Update `ServerAgentBootstrap` to run the plugin loader during startup.
@@ -1654,7 +1654,7 @@ Signal received (SIGTERM / SIGINT)
   │     └── { type: "event", event: "shutdown", payload: { reason: "signal", gracePeriodMs: 10000 } }
   │
   ├── 3. Stop channel plugins (parallel, with timeout)
-  │     ├── For each active ChannelPluginBridge:
+  │     ├── For each active ConnectorBridge:
   │     │   ├── Signal AbortController (triggers abortSignal in gateway context)
   │     │   ├── Call plugin.gateway.stopAccount(gatewayCtx)
   │     │   └── Wait up to 5s per plugin, then force-kill
@@ -1860,8 +1860,8 @@ docker compose exec applepi-server npm install openclaw-whatsapp --prefix /app/e
 
 # List installed plugins
 docker compose exec applepi-server node -e "
-  const { PluginLoader } = require('./plugins/plugin-loader');
-  PluginLoader.discover('/app/extensions').then(p => console.table(p));
+  const { ConnectorLoader } = require('./channel-connectors/connector-loader');
+  ConnectorLoader.discover('/app/extensions').then(p => console.table(p));
 "
 
 # Restart to pick up new plugins (hot-reload for channel config,

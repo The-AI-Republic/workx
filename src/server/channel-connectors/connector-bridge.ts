@@ -1,12 +1,12 @@
 /**
- * Channel Plugin Bridge
+ * Channel Connector Bridge
  *
- * Translates between OpenClaw plugin inbound/outbound messages
+ * Translates between OpenClaw connector inbound/outbound messages
  * and ApplePi's ChannelManager submission/event system.
  *
- * One bridge per plugin account.
+ * One bridge per connector account.
  *
- * @module server/plugins/channel-bridge
+ * @module server/channel-connectors/connector-bridge
  */
 
 import type { ChannelAdapter } from '@/core/channels/ChannelAdapter';
@@ -20,7 +20,7 @@ import type {
 import type { EventMsg } from '@/core/protocol/events';
 import type { Op, InputItem } from '@/core/protocol/types';
 import type {
-  ChannelPlugin,
+  ChannelConnector,
   ChannelGatewayContext,
   ChannelOutboundContext,
   InboundMessage,
@@ -40,14 +40,14 @@ const MAX_RESTART_ATTEMPTS = 10;
 const STABLE_RESET_MS = 30 * 60 * 1000; // 30 minutes
 
 // ─────────────────────────────────────────────────────────────────────────
-// ChannelPluginBridge
+// ConnectorBridge
 // ─────────────────────────────────────────────────────────────────────────
 
-export class ChannelPluginBridge implements ChannelAdapter {
+export class ConnectorBridge implements ChannelAdapter {
   readonly channelId: string;
   readonly channelType: ChannelType;
 
-  private plugin: ChannelPlugin;
+  private connector: ChannelConnector;
   private accountId: string;
   private submissionHandler: SubmissionHandler | null = null;
   private connectionState: ConnectionState = 'disconnected';
@@ -56,13 +56,13 @@ export class ChannelPluginBridge implements ChannelAdapter {
   private stableTimer: ReturnType<typeof setTimeout> | null = null;
   private initialized = false;
 
-  constructor(plugin: ChannelPlugin, accountId: string) {
-    this.plugin = plugin;
+  constructor(connector: ChannelConnector, accountId: string) {
+    this.connector = connector;
     this.accountId = accountId;
-    this.channelId = `${plugin.id}:${accountId}`;
-    this.channelType = plugin.id as ChannelType;
+    this.channelId = `${connector.id}:${accountId}`;
+    this.channelType = connector.id as ChannelType;
     this.snapshot = {
-      pluginId: plugin.id,
+      connectorId: connector.id,
       accountId,
       state: 'disconnected',
       restartCount: 0,
@@ -72,22 +72,22 @@ export class ChannelPluginBridge implements ChannelAdapter {
   async initialize(): Promise<void> {
     if (this.initialized) return;
 
-    console.log(`[ChannelBridge] Initializing ${this.channelId}...`);
+    console.log(`[ConnectorBridge] Initializing ${this.channelId}...`);
     this.connectionState = 'connecting';
     this.snapshot.state = 'starting';
 
     const config = getServerConfig();
-    const pluginConfig = config.server.channels[this.plugin.id];
+    const connectorConfig = config.server.channels[this.connector.id];
 
     const ctx: ChannelGatewayContext = {
       accountId: this.accountId,
-      config: pluginConfig,
+      config: connectorConfig,
       onMessage: (msg) => this.handleInboundMessage(msg),
       onStateChange: (state) => this.handleStateChange(state),
     };
 
     try {
-      await this.plugin.gateway.start(ctx);
+      await this.connector.gateway.start(ctx);
       this.connectionState = 'connected';
       this.snapshot.state = 'connected';
       this.snapshot.connectedAt = Date.now();
@@ -98,18 +98,18 @@ export class ChannelPluginBridge implements ChannelAdapter {
         this.snapshot.restartCount = 0;
       }, STABLE_RESET_MS);
 
-      console.log(`[ChannelBridge] ${this.channelId} connected`);
+      console.log(`[ConnectorBridge] ${this.channelId} connected`);
     } catch (err) {
       this.connectionState = 'error';
       this.snapshot.state = 'error';
       this.snapshot.errorMessage = err instanceof Error ? err.message : String(err);
-      console.error(`[ChannelBridge] ${this.channelId} failed to start:`, err);
+      console.error(`[ConnectorBridge] ${this.channelId} failed to start:`, err);
       this.scheduleRestart();
     }
   }
 
   async shutdown(): Promise<void> {
-    console.log(`[ChannelBridge] Shutting down ${this.channelId}...`);
+    console.log(`[ConnectorBridge] Shutting down ${this.channelId}...`);
 
     if (this.restartTimer) {
       clearTimeout(this.restartTimer);
@@ -121,16 +121,16 @@ export class ChannelPluginBridge implements ChannelAdapter {
     }
 
     const config = getServerConfig();
-    const pluginConfig = config.server.channels[this.plugin.id];
+    const connectorConfig = config.server.channels[this.connector.id];
 
     try {
-      await this.plugin.gateway.stop({
+      await this.connector.gateway.stop({
         accountId: this.accountId,
-        config: pluginConfig,
+        config: connectorConfig,
         onMessage: () => {},
       });
     } catch (err) {
-      console.warn(`[ChannelBridge] ${this.channelId} stop error:`, err);
+      console.warn(`[ConnectorBridge] ${this.channelId} stop error:`, err);
     }
 
     this.connectionState = 'disconnected';
@@ -149,17 +149,17 @@ export class ChannelPluginBridge implements ChannelAdapter {
 
   async sendEvent(event: ChannelEvent, _targetClientId?: string): Promise<void> {
     const msg = event.msg;
-    // Convert agent events to outbound plugin messages
-    if (msg.type === 'AgentMessage' && this.plugin.outbound) {
+    // Convert agent events to outbound connector messages
+    if (msg.type === 'AgentMessage' && this.connector.outbound) {
       const outboundCtx: ChannelOutboundContext = {
         accountId: this.accountId,
         target: '', // Set by the submission context's replyCallback
       };
 
       try {
-        await this.plugin.outbound.sendText(outboundCtx, msg.data.message);
+        await this.connector.outbound.sendText(outboundCtx, msg.data.message);
       } catch (err) {
-        console.error(`[ChannelBridge] ${this.channelId} outbound error:`, err);
+        console.error(`[ConnectorBridge] ${this.channelId} outbound error:`, err);
       }
     }
   }
@@ -203,7 +203,7 @@ export class ChannelPluginBridge implements ChannelAdapter {
 
   private handleInboundMessage(msg: InboundMessage): void {
     if (!this.submissionHandler) {
-      console.warn(`[ChannelBridge] ${this.channelId}: no handler, dropping message`);
+      console.warn(`[ConnectorBridge] ${this.channelId}: no handler, dropping message`);
       return;
     }
 
@@ -211,12 +211,12 @@ export class ChannelPluginBridge implements ChannelAdapter {
 
     // Owner verification
     const config = getServerConfig();
-    const isOwner = verifyOwner(this.plugin.id, msg.senderId, config);
+    const isOwner = verifyOwner(this.connector.id, msg.senderId, config);
 
     if (!isOwner) {
       const policy = config.server.exec?.approvalPolicy ?? 'dangerous';
       if (policy === 'always') {
-        console.warn(`[ChannelBridge] ${this.channelId}: non-owner message dropped`);
+        console.warn(`[ConnectorBridge] ${this.channelId}: non-owner message dropped`);
         return;
       }
       // For other policies, flag but allow (the agent can see the sender info)
@@ -229,8 +229,8 @@ export class ChannelPluginBridge implements ChannelAdapter {
       items,
     };
 
-    // Session key: {pluginId}:{accountId}:{channelId}
-    const sessionKey = `${this.plugin.id}:${this.accountId}:${msg.channelId}`;
+    // Session key: {connectorId}:{accountId}:{channelId}
+    const sessionKey = `${this.connector.id}:${this.accountId}:${msg.channelId}`;
 
     const context: SubmissionContext = {
       channelId: this.channelId,
@@ -244,13 +244,13 @@ export class ChannelPluginBridge implements ChannelAdapter {
             target: msg.channelId,
             threadId: msg.threadId,
           };
-          await this.plugin.outbound.sendText(outCtx, event.msg.data.message);
+          await this.connector.outbound.sendText(outCtx, event.msg.data.message);
         }
       },
     };
 
     this.submissionHandler(op, context).catch((err) => {
-      console.error(`[ChannelBridge] ${this.channelId} submission error:`, err);
+      console.error(`[ConnectorBridge] ${this.channelId} submission error:`, err);
     });
   }
 
@@ -269,7 +269,7 @@ export class ChannelPluginBridge implements ChannelAdapter {
 
   private scheduleRestart(): void {
     if (this.snapshot.restartCount >= MAX_RESTART_ATTEMPTS) {
-      console.error(`[ChannelBridge] ${this.channelId}: max restarts exceeded`);
+      console.error(`[ConnectorBridge] ${this.channelId}: max restarts exceeded`);
       return;
     }
 
@@ -277,14 +277,14 @@ export class ChannelPluginBridge implements ChannelAdapter {
     const delay = BACKOFF_SCHEDULE[backoffIndex];
     this.snapshot.restartCount++;
 
-    console.log(`[ChannelBridge] ${this.channelId}: restart in ${delay}ms (attempt ${this.snapshot.restartCount})`);
+    console.log(`[ConnectorBridge] ${this.channelId}: restart in ${delay}ms (attempt ${this.snapshot.restartCount})`);
 
     this.restartTimer = setTimeout(async () => {
       this.initialized = false;
       try {
         await this.initialize();
       } catch (err) {
-        console.error(`[ChannelBridge] ${this.channelId}: restart failed:`, err);
+        console.error(`[ConnectorBridge] ${this.channelId}: restart failed:`, err);
       }
     }, delay);
   }

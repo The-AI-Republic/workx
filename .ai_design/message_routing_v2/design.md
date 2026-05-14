@@ -130,7 +130,7 @@ Channel Frontends ──→ ChannelClient (universal, platform-agnostic)
 │           │    ┌────────────────┼──────────────────┐   │                        │
 │           │    │                │                  │   │                        │
 │           │    │  ┌─────────────────────────────┐  │   │                        │
-│           │    │  │  ChannelPluginBridge        │  │   │                        │
+│           │    │  │  ConnectorBridge        │  │   │                        │
 │           │    │  │  (Telegram, Slack, etc.)    │  │   │                        │
 │           │    │  │  (ChannelAdapter)           │  │   │                        │
 │           │    │  │  services: false            │  │   │                        │
@@ -215,11 +215,11 @@ Frontend: serviceRequest('mcp.getServers')
 ```
 Telegram user sends message
   → OpenClaw plugin gateway receives
-  → ChannelPluginBridge.handleInboundMessage()
+  → ConnectorBridge.handleInboundMessage()
   → Builds Op({type: 'UserInput', items: [...]}) + SubmissionContext
   → ChannelManager → AgentHandler → RepublicAgent
   → RepublicAgent emits AgentMessage EventMsg
-  → ChannelPluginBridge.sendEvent() → plugin.outbound.sendText()
+  → ConnectorBridge.sendEvent() → plugin.outbound.sendText()
   → Telegram user receives reply
 ```
 
@@ -431,7 +431,7 @@ This ensures all platforms register identical service paths with platform-specif
 
 ### 6.4 Plugin Bridges
 
-**No changes needed.** `ChannelPluginBridge` returns `supportsServices(): false`. Plugin channels only handle `UserInput` Ops from messaging platforms. If a service request somehow arrives, the ChannelManager can check capabilities or the service handler can check `context.channelType`.
+**No changes needed.** `ConnectorBridge` returns `supportsServices(): false`. Plugin channels only handle `UserInput` Ops from messaging platforms. If a service request somehow arrives, the ChannelManager can check capabilities or the service handler can check `context.channelType`.
 
 ## 7. Channel Client Layer
 

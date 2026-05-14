@@ -1,52 +1,52 @@
 /**
- * Plugin Loader
+ * Connector Loader
  *
- * Discovers plugins from extensions/ directory and node_modules.
- * Validates plugin definitions and loads them dynamically.
+ * Discovers connectors from extensions/ directory and node_modules.
+ * Validates connector definitions and loads them dynamically.
  *
- * @module server/plugins/plugin-loader
+ * @module server/channel-connectors/connector-loader
  */
 
 import * as path from 'node:path';
 import * as fs from 'node:fs';
-import type { OpenClawPluginDefinition } from './types';
+import type { OpenClawConnectorDefinition } from './types';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Discovery
 // ─────────────────────────────────────────────────────────────────────────
 
 /**
- * Discover and load all available plugins.
+ * Discover and load all available connectors.
  */
-export async function discoverPlugins(
+export async function discoverConnectors(
   extensionsDir?: string
-): Promise<OpenClawPluginDefinition[]> {
-  const plugins: OpenClawPluginDefinition[] = [];
+): Promise<OpenClawConnectorDefinition[]> {
+  const connectors: OpenClawConnectorDefinition[] = [];
 
   // 1. Scan extensions/ directory
   const extDir = extensionsDir ?? path.join(process.cwd(), 'extensions');
   if (fs.existsSync(extDir)) {
-    const extPlugins = await scanDirectory(extDir);
-    plugins.push(...extPlugins);
+    const extConnectors = await scanDirectory(extDir);
+    connectors.push(...extConnectors);
   }
 
-  // 2. Scan node_modules for packages with "openclaw-plugin": true
-  const nodeModulesPlugins = await scanNodeModules();
-  plugins.push(...nodeModulesPlugins);
+  // 2. Scan node_modules for packages with "openclaw-connector": true
+  const nodeModulesConnectors = await scanNodeModules();
+  connectors.push(...nodeModulesConnectors);
 
-  console.log(`[PluginLoader] Discovered ${plugins.length} plugin(s)`);
-  return plugins;
+  console.log(`[ConnectorLoader] Discovered ${connectors.length} connector(s)`);
+  return connectors;
 }
 
-async function scanDirectory(dir: string): Promise<OpenClawPluginDefinition[]> {
-  const plugins: OpenClawPluginDefinition[] = [];
+async function scanDirectory(dir: string): Promise<OpenClawConnectorDefinition[]> {
+  const connectors: OpenClawConnectorDefinition[] = [];
 
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
 
-    const pluginDir = path.join(dir, entry.name);
-    const packageJsonPath = path.join(pluginDir, 'package.json');
+    const connectorDir = path.join(dir, entry.name);
+    const packageJsonPath = path.join(connectorDir, 'package.json');
 
     if (!fs.existsSync(packageJsonPath)) continue;
 
@@ -54,24 +54,24 @@ async function scanDirectory(dir: string): Promise<OpenClawPluginDefinition[]> {
       const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
       if (!pkg['openclaw-plugin']) continue;
 
-      const entryPoint = path.join(pluginDir, pkg.main ?? 'index.js');
-      const plugin = await loadPlugin(entryPoint);
-      if (plugin) {
-        plugins.push(plugin);
+      const entryPoint = path.join(connectorDir, pkg.main ?? 'index.js');
+      const connector = await loadConnector(entryPoint);
+      if (connector) {
+        connectors.push(connector);
       }
     } catch (err) {
-      console.warn(`[PluginLoader] Failed to load plugin from ${pluginDir}:`, err);
+      console.warn(`[ConnectorLoader] Failed to load connector from ${connectorDir}:`, err);
     }
   }
 
-  return plugins;
+  return connectors;
 }
 
-async function scanNodeModules(): Promise<OpenClawPluginDefinition[]> {
-  const plugins: OpenClawPluginDefinition[] = [];
+async function scanNodeModules(): Promise<OpenClawConnectorDefinition[]> {
+  const connectors: OpenClawConnectorDefinition[] = [];
   const nodeModulesDir = path.join(process.cwd(), 'node_modules');
 
-  if (!fs.existsSync(nodeModulesDir)) return plugins;
+  if (!fs.existsSync(nodeModulesDir)) return connectors;
 
   const entries = fs.readdirSync(nodeModulesDir, { withFileTypes: true });
   for (const entry of entries) {
@@ -83,19 +83,19 @@ async function scanNodeModules(): Promise<OpenClawPluginDefinition[]> {
       const scopedEntries = fs.readdirSync(scopeDir, { withFileTypes: true });
       for (const scopedEntry of scopedEntries) {
         if (!scopedEntry.isDirectory()) continue;
-        const plugin = await tryLoadFromPackage(path.join(scopeDir, scopedEntry.name));
-        if (plugin) plugins.push(plugin);
+        const connector = await tryLoadFromPackage(path.join(scopeDir, scopedEntry.name));
+        if (connector) connectors.push(connector);
       }
     } else {
-      const plugin = await tryLoadFromPackage(path.join(nodeModulesDir, entry.name));
-      if (plugin) plugins.push(plugin);
+      const connector = await tryLoadFromPackage(path.join(nodeModulesDir, entry.name));
+      if (connector) connectors.push(connector);
     }
   }
 
-  return plugins;
+  return connectors;
 }
 
-async function tryLoadFromPackage(pkgDir: string): Promise<OpenClawPluginDefinition | null> {
+async function tryLoadFromPackage(pkgDir: string): Promise<OpenClawConnectorDefinition | null> {
   const packageJsonPath = path.join(pkgDir, 'package.json');
   if (!fs.existsSync(packageJsonPath)) return null;
 
@@ -104,7 +104,7 @@ async function tryLoadFromPackage(pkgDir: string): Promise<OpenClawPluginDefinit
     if (!pkg['openclaw-plugin']) return null;
 
     const entryPoint = path.join(pkgDir, pkg.main ?? 'index.js');
-    return await loadPlugin(entryPoint);
+    return await loadConnector(entryPoint);
   } catch {
     return null;
   }
@@ -114,27 +114,27 @@ async function tryLoadFromPackage(pkgDir: string): Promise<OpenClawPluginDefinit
 // Loading & validation
 // ─────────────────────────────────────────────────────────────────────────
 
-async function loadPlugin(entryPoint: string): Promise<OpenClawPluginDefinition | null> {
+async function loadConnector(entryPoint: string): Promise<OpenClawConnectorDefinition | null> {
   if (!fs.existsSync(entryPoint)) return null;
 
   try {
     const mod = await import(entryPoint);
     const definition = mod.default ?? mod;
 
-    if (!validatePluginDefinition(definition)) {
-      console.warn(`[PluginLoader] Invalid plugin definition at ${entryPoint}`);
+    if (!validateConnectorDefinition(definition)) {
+      console.warn(`[ConnectorLoader] Invalid connector definition at ${entryPoint}`);
       return null;
     }
 
-    console.log(`[PluginLoader] Loaded plugin: ${definition.id} v${definition.version}`);
-    return definition as OpenClawPluginDefinition;
+    console.log(`[ConnectorLoader] Loaded connector: ${definition.id} v${definition.version}`);
+    return definition as OpenClawConnectorDefinition;
   } catch (err) {
-    console.warn(`[PluginLoader] Failed to import ${entryPoint}:`, err);
+    console.warn(`[ConnectorLoader] Failed to import ${entryPoint}:`, err);
     return null;
   }
 }
 
-function validatePluginDefinition(def: unknown): boolean {
+function validateConnectorDefinition(def: unknown): boolean {
   if (!def || typeof def !== 'object') return false;
 
   const d = def as Record<string, unknown>;
