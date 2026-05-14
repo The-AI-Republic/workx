@@ -271,6 +271,7 @@ export class SessionSummaryHook {
     const startedAt = Date.now();
     let success = false;
     let error: string | undefined;
+    let finalStatus: 'completed' | 'failed' | 'cancelled' | 'timeout' | undefined;
 
     try {
       // Ensure scaffold + read current content. Build the path-locking gate
@@ -284,13 +285,30 @@ export class SessionSummaryHook {
       const userPrompt = buildSessionSummaryUpdatePrompt(summaryPath, currentContent);
       const result = await this.runner.run(buildExtractorParams(userPrompt, gate));
 
-      success = 'kind' in result ? result.status === 'launched' : result.success;
-
       // Background `run()` returns `'launched'` immediately. The actual
       // completion fires through the registry; we need to wait for it
       // before we refresh the cache and clear the flag.
+      //
+      // For background runs, `success` reflects the actual extractor outcome
+      // (`completed` status on the registry entry), NOT just whether the run
+      // was launched. This is what telemetry will use to decide whether the
+      // feature is healthy enough to flip on by default.
       if ('kind' in result && result.kind === 'background') {
-        await this.waitForBackgroundCompletion(result.runId);
+        const observed = await this.waitForBackgroundCompletion(result.runId);
+        finalStatus = observed ?? 'timeout';
+        success = finalStatus === 'completed';
+        if (finalStatus === 'timeout') {
+          error = 'extractor run exceeded 15s wait deadline';
+        } else if (finalStatus !== 'completed') {
+          error = `extractor run ended with status: ${finalStatus}`;
+        }
+      } else if ('kind' in result) {
+        // Foreground-shaped result from a non-background path (defensive).
+        success = result.status === 'launched';
+        finalStatus = success ? 'completed' : 'failed';
+      } else {
+        success = result.success;
+        finalStatus = success ? 'completed' : 'failed';
       }
 
       // If detach() fired during the run, don't update cache/state on
@@ -314,6 +332,7 @@ export class SessionSummaryHook {
           duration_ms: Date.now() - startedAt,
           config: { ...this.config },
           error,
+          final_status: finalStatus,
         });
       }
     }
@@ -322,23 +341,31 @@ export class SessionSummaryHook {
   /**
    * Wait for a background sub-agent run to complete by polling the
    * internal registry. The registry tracks status transitions; once the
-   * entry leaves the 'running' state we resolve.
+   * entry leaves the 'running' state we resolve with the final status.
    *
    * Has its own ~15s deadline so a runaway extractor can't block the hook
    * indefinitely (the compaction interlock has a separate 15s deadline of
    * its own — these are independent).
+   *
+   * @returns the final registry status (`'completed' | 'failed' | 'cancelled'`),
+   *   or `undefined` if the wait timed out / the hook detached / the entry
+   *   was evicted before we could observe its terminal state.
    */
-  private async waitForBackgroundCompletion(runId: string): Promise<void> {
+  private async waitForBackgroundCompletion(
+    runId: string,
+  ): Promise<'completed' | 'failed' | 'cancelled' | undefined> {
     const deadline = Date.now() + 15_000;
     while (Date.now() < deadline) {
-      if (this.lifetimeAbort.signal.aborted) return;
+      if (this.lifetimeAbort.signal.aborted) return undefined;
       const entry = this.internalRegistry.get(runId);
-      if (!entry || entry.status !== 'running') return;
+      if (!entry) return undefined;
+      if (entry.status !== 'running') return entry.status;
       await new Promise((r) => setTimeout(r, 250));
     }
     console.warn(
       `[SessionSummary] extractor run ${runId} exceeded 15s wait; releasing flag`,
     );
+    return undefined;
   }
 
   private async refreshCache(): Promise<void> {

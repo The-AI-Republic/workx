@@ -420,6 +420,12 @@ export class RepublicAgent {
       // loading the prompt, so the freshly composed prompt reflects the new state.
       await this.session.refreshMemoryService(this.config);
       await this.syncMemoryTools();
+      await this.syncSessionSummaryHook().catch((err) =>
+        console.warn(
+          '[RepublicAgent] syncSessionSummaryHook (new-conversation) failed:',
+          err instanceof Error ? err.message : String(err),
+        ),
+      );
 
       const baseInstructions = await loadPrompt();
       taskContext.setBaseInstructions(baseInstructions);
@@ -453,6 +459,14 @@ export class RepublicAgent {
     // the memory extension and disabling it leaves stale memory text behind.
     await this.session.refreshMemoryService(this.config);
     await this.syncMemoryTools();
+    // Track 05b: re-evaluate session-summary preference so flipping it via
+    // CONFIG_UPDATE attaches/detaches the hook without a full reinit.
+    await this.syncSessionSummaryHook().catch((err) =>
+      console.warn(
+        '[RepublicAgent] syncSessionSummaryHook (hotSwap) failed:',
+        err instanceof Error ? err.message : String(err),
+      ),
+    );
 
     const baseInstructions = await loadPrompt();
     turnCtx.setBaseInstructions(baseInstructions);

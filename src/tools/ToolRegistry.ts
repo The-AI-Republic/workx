@@ -356,8 +356,11 @@ export class ToolRegistry {
         };
       }
 
-      // Emit execution start event before approval checks so denied calls still
-      // surface a full lifecycle to downstream consumers.
+      // Emit execution start event before any gate so consumers see the
+      // attempt even if it's later denied. Note: gate denials (PRE_EXECUTE_DENIED,
+      // APPROVAL_DENIED) return early and do NOT emit a matching ToolExecutionEnd —
+      // downstream consumers must treat the absence of an End event for a known
+      // call_id as "denied / aborted before execution".
       this.emitEvent({
         id: `evt_exec_start_${request.toolName}_${request.callId ?? ''}`,
         msg: {
