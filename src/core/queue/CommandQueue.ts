@@ -43,7 +43,6 @@ export class CommandQueue<T> {
   dequeue(): QueuedCommand<T> | undefined {
     if (this.queue.length === 0) return undefined;
     const bestIdx = this.findHighestPriorityIndex();
-    if (bestIdx < 0) return undefined;
     const [cmd] = this.queue.splice(bestIdx, 1);
     this.rebuildSnapshotAndNotify();
     return cmd;
@@ -55,8 +54,7 @@ export class CommandQueue<T> {
    */
   peek(): QueuedCommand<T> | undefined {
     if (this.queue.length === 0) return undefined;
-    const bestIdx = this.findHighestPriorityIndex();
-    return bestIdx < 0 ? undefined : this.queue[bestIdx];
+    return this.queue[this.findHighestPriorityIndex()];
   }
 
   /** Empty the queue. No-op if already empty. */
@@ -88,7 +86,10 @@ export class CommandQueue<T> {
 
   /**
    * Linear scan, O(n). First-match (strict less-than) preserves FIFO within
-   * priority tier. Caller ensures queue is non-empty.
+   * priority tier. Always returns an index in [0, queue.length).
+   *
+   * Precondition: queue is non-empty. Callers (`dequeue`, `peek`) check
+   * `length === 0` before calling, so this assumption is enforced upstream.
    */
   private findHighestPriorityIndex(): number {
     let bestIdx = 0;
