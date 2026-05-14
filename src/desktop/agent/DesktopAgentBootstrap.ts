@@ -40,7 +40,8 @@ import type { Op } from '@/core/protocol/types';
 import type { SubmissionContext } from '@/core/channels/types';
 import type { EventMsg } from '@/core/protocol/events';
 import { t } from '@/webfront/lib/i18n';
-import { StaticRiskAssessor } from '@/core/approval/assessors/StaticRiskAssessor';
+import { SkillRiskAssessor } from '@/core/approval/assessors/SkillRiskAssessor';
+import { SkillExecutor, type SubAgentInvoker, type SubAgentResult } from '@/core/skills/SkillExecutor';
 import { Scheduler } from '@/core/scheduler/Scheduler';
 import { DesktopSchedulerAlarms } from '../scheduler/DesktopSchedulerAlarms';
 import { DesktopSchedulerDeepLinkHandler } from '../scheduler/DesktopSchedulerDeepLinkHandler';
@@ -439,6 +440,35 @@ export class DesktopAgentBootstrap {
     if (allSkills.length === 0) return;
 
     const registry = agent.getToolRegistry();
+    const hookRegistry = agent.getHookRegistry();
+    const skillRegistry = this.skillRegistry;
+
+    // Track 03 Phase 4 — bridge to sub_agent so context: 'fork' skills work.
+    // Returns a SubAgentResult shape regardless of whether sub_agent is registered.
+    const subAgentInvoker: SubAgentInvoker = async (subParams) => {
+      try {
+        const exec = await registry.execute({
+          toolName: 'sub_agent',
+          parameters: { ...subParams, background: false },
+          sessionId: 'skill-fork',
+          turnId: 'skill-fork-turn',
+        });
+        if (!exec.success) {
+          return { success: false, runId: '', error: exec.error?.message ?? 'sub_agent execute failed' };
+        }
+        const raw = exec.data;
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        return parsed as SubAgentResult;
+      } catch (err) {
+        return {
+          success: false,
+          runId: '',
+          error: `sub_agent invocation failed: ${err instanceof Error ? err.message : String(err)}`,
+        };
+      }
+    };
+
+    const executor = new SkillExecutor(skillRegistry, hookRegistry, subAgentInvoker);
 
     await registry.register(
       {
@@ -461,23 +491,18 @@ export class DesktopAgentBootstrap {
         const skillName = params.name as string;
         const args = params.arguments as string | undefined;
 
-        // Validate against the FULL catalog so explicit user `/skill-name`
-        // invocations still work even when the skill's domain isn't active.
-        // The domain filter shapes what the MODEL sees in its system prompt;
-        // it is not an access-control gate.
-        const knownNames = new Set(this.skillRegistry!.getAllSkillMetas().map((s) => s.name));
-        if (!knownNames.has(skillName)) {
-          return { error: `Skill "${skillName}" not found. Available skills: ${[...knownNames].join(', ')}` };
-        }
+        const result = await executor.execute(skillName, args);
 
-        const body = await this.skillRegistry!.invoke(skillName, args ? args.split(/\s+/) : []);
-        if (!body) {
-          return { error: `Failed to load skill "${skillName}"` };
+        // Inline → return body directly so the model reads it as instructions
+        // (preserves prior contract). Forked → return the sub-agent's response.
+        if (result.status === 'inline') return result.body;
+        if (result.status === 'forked') {
+          if (!result.success && result.error) return { error: result.error };
+          return result.result;
         }
-
-        return body;
+        return { error: result.error };
       },
-      new StaticRiskAssessor(0)
+      new SkillRiskAssessor(skillRegistry),
     );
 
     console.log('[DesktopAgentBootstrap] use_skill tool registered for', allSkills.length, 'skills');
