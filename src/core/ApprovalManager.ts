@@ -324,7 +324,22 @@ export class ApprovalManager {
    * Update approval policy
    */
   async updatePolicy(updates: Partial<ApprovalPolicy>): Promise<void> {
+    const previousMode = this.policy.mode;
     this.policy = { ...this.policy, ...updates };
+
+    if (this.policy.mode !== previousMode) {
+      this.emitEvent({
+        id: `evt_approval_policy_changed_${Date.now()}`,
+        msg: {
+          type: 'ApprovalPolicyChanged',
+          data: {
+            mode: this.policy.mode,
+            previousMode,
+            timestamp: Date.now(),
+          },
+        },
+      });
+    }
   }
 
   /**

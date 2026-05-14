@@ -71,6 +71,7 @@ export type EventMsg =
   | { type: 'ApprovalRequested'; data: ApprovalRequestedEvent }
   | { type: 'ApprovalGranted'; data: ApprovalGrantedEvent }
   | { type: 'ApprovalDenied'; data: ApprovalDeniedEvent }
+  | { type: 'ApprovalPolicyChanged'; data: ApprovalPolicyChangedEvent }
   // DiffTracker events
   | { type: 'ChangeAdded'; data: ChangeAddedEvent }
   | { type: 'ChangesRetrieved'; data: ChangesRetrievedEvent }
@@ -577,6 +578,16 @@ export interface ApprovalDeniedEvent {
   id: string;
   tool_name: string;
   reason: string;
+  timestamp: number;
+}
+
+/**
+ * Event emitted when the ApprovalManager policy changes (mode, thresholds, lists).
+ * Lets subscribers (UI, event log) react without polling getPolicy().
+ */
+export interface ApprovalPolicyChangedEvent {
+  mode: 'always_ask' | 'auto_approve_safe' | 'auto_reject_unsafe' | 'never_ask';
+  previousMode: 'always_ask' | 'auto_approve_safe' | 'auto_reject_unsafe' | 'never_ask';
   timestamp: number;
 }
 
