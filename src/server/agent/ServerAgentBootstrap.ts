@@ -42,6 +42,7 @@ import {
 } from '../handlers/health';
 import { setHandshakeSnapshotProviders } from '../connection/handshake';
 import { registerServerTools } from '../tools/registerServerTools';
+import { schedulePeriodicSweep } from '../maintenance/toolResultCleanup';
 
 // Handler registrations
 import { registerChatHandlers } from '../handlers/chat';
@@ -90,6 +91,7 @@ export class ServerAgentBootstrap {
   private schedulerAlarms: ServerSchedulerAlarms | null = null;
   private runningSchedulerJobId: string | null = null;
   private runningJobStartTime: number = 0;
+  private toolResultSweep: { stop: () => void } | null = null;
   private initialized = false;
 
   /**
@@ -158,10 +160,12 @@ export class ServerAgentBootstrap {
           const agent = new RepublicAgent(cfg, platformAdapter, initialHistory);
           await agent.initialize();
 
-          // Register server-mode tools on each new agent
+          // Register server-mode tools on each new agent. Pass `dataDir` so
+          // the track-09 read_persisted_result tool can be rooted at the
+          // same directory that FileToolResultStore writes into.
           try {
             const toolRegistry = agent.getToolRegistry();
-            await registerServerTools(toolRegistry as any);
+            await registerServerTools(toolRegistry as any, dataDir);
             console.log('[ServerAgentBootstrap] Server tools registered on new session agent');
           } catch (err) {
             const errMsg = err instanceof Error ? err.message : String(err);
@@ -248,6 +252,11 @@ export class ServerAgentBootstrap {
       // 9. Initialize backup manager
       this.backupManager = new BackupManager(dataDir, config.server.backup.retention);
       this.backupManager.start();
+
+      // 9b. Schedule TTL sweep for persisted tool results (track 09).
+      // Removes orphaned tool-result files from crashed sessions.
+      this.toolResultSweep = schedulePeriodicSweep(dataDir);
+      console.log('[ServerAgentBootstrap] Tool-result TTL sweep scheduled');
 
       // 10. Initialize approval manager
       this.approvalManager = new ApprovalManager();
@@ -774,6 +783,10 @@ export class ServerAgentBootstrap {
 
     // Stop backup manager
     this.backupManager?.stop();
+
+    // Stop tool-result TTL sweep
+    this.toolResultSweep?.stop();
+    this.toolResultSweep = null;
 
     // Shutdown channel manager (shuts down all channels including plugin bridges)
     const channelManager = getChannelManager();

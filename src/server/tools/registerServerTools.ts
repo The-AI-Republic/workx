@@ -30,11 +30,18 @@ const RETRY_DELAY_MS = 2000;
  * Register server-mode tools.
  *
  * 1. Registers cross-platform tools (planning, web search)
- * 2. Attempts to connect chrome-devtools-mcp for browser automation
- * 3. Sets up dynamic MCP tool registration for user-configured servers
+ * 2. Registers `read_persisted_result` for retrieving persisted tool outputs (track 09)
+ * 3. Attempts to connect chrome-devtools-mcp for browser automation
+ * 4. Sets up dynamic MCP tool registration for user-configured servers
+ *
+ * @param registry Tool registry to populate
+ * @param dataDir  Server data directory; when provided, enables
+ *                 `read_persisted_result` rooted at `{dataDir}/sessions`. Must
+ *                 match the rootDir of the session's FileToolResultStore.
  */
 export async function registerServerTools(
-  registry: ToolRegistry
+  registry: ToolRegistry,
+  dataDir?: string,
 ): Promise<void> {
   // ──────────────────────────────────────────────────────────────────────
   // Cross-platform tools
@@ -95,6 +102,49 @@ export async function registerServerTools(
     }
   } catch (err) {
     console.warn('[registerServerTools] Failed to register web search tool:', err);
+  }
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Track 09: read_persisted_result — retrieval path for FileToolResultStore
+  // ──────────────────────────────────────────────────────────────────────
+
+  if (dataDir) {
+    try {
+      const { ReadPersistedResultTool } = await import('./ReadPersistedResultTool');
+      const { StaticRiskAssessor } = await import('@/core/approval/assessors/StaticRiskAssessor');
+      const { join } = await import('node:path');
+
+      const rootDir = join(dataDir, 'sessions');
+      const tool = new ReadPersistedResultTool(rootDir);
+      const definition = tool.getDefinition();
+
+      if (!registry.getTool('read_persisted_result')) {
+        await registry.register(
+          definition,
+          async (params) => tool.execute(params as { path?: unknown }),
+          {
+            riskAssessor: new StaticRiskAssessor(0),
+            runtime: {
+              concurrency: {
+                isConcurrencySafe: () => true,
+                isReadOnly: () => true,
+                isDestructive: () => false,
+              },
+              ui: {
+                getActivityDescription: (input: Record<string, unknown>) =>
+                  `Reading persisted result: ${input.path ?? '<unknown>'}`,
+              },
+              // Infinity: this tool's output is exactly the persisted content;
+              // re-persisting would create a circular loop.
+              result: { maxResultSizeChars: Number.POSITIVE_INFINITY },
+            },
+          },
+        );
+        console.log('[registerServerTools] read_persisted_result tool registered');
+      }
+    } catch (err) {
+      console.warn('[registerServerTools] Failed to register read_persisted_result:', err);
+    }
   }
 
   // ──────────────────────────────────────────────────────────────────────

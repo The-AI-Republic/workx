@@ -45,6 +45,16 @@ import type { AgentContext } from '../tools/AgentTool/types';
 import { PANEL_GRACE_MS, STOPPED_DISPLAY_MS } from './tasks/timing';
 import type { TaskOutputStore } from './tasks/TaskOutputStore';
 
+// Track 09: tool result persistence
+import {
+  createToolResultStore,
+  type ToolResultStore,
+} from '../tools/resultStore';
+import {
+  ContentReplacementState,
+  type ContentReplacementRecord,
+} from '../tools/replacementState';
+
 /**
  * Execution state of the session
  */
@@ -96,6 +106,12 @@ export class Session {
   private titleGenerationStage: number = 0;
   private initializationPromise: Promise<void> | null = null;
   private hookDispatcher: HookDispatcher | null = null;
+
+  // Tool result persistence (track 09). Both fields are undefined when the
+  // platform deps required to build a store aren't available — TurnManager
+  // detects that and short-circuits persistence, falling back to passthrough.
+  private toolResultStore: ToolResultStore | undefined;
+  private replacementState: ContentReplacementState | undefined;
 
   constructor(
     configOrIsPersistent?: AgentConfig | boolean,
@@ -161,6 +177,42 @@ export class Session {
     // Session starts with no tab binding (tabId = -1)
     // Tab binding is handled by the UI when the side panel opens
     this.sessionState.setTabId(-1);
+
+    // Tool result persistence wiring (track 09).
+    //
+    // The replacementState's onRecord callback writes every persisted decision
+    // to the rollout recorder so it survives resume — preserving prompt-cache
+    // stability across replays.
+    //
+    // The store is platform-dependent. If the required deps aren't present
+    // (e.g. SessionCacheManager not provided), we leave both fields undefined;
+    // TurnManager treats that as "feature off" and passes results through
+    // unmodified.
+    this.replacementState = new ContentReplacementState({
+      onRecord: (rec: ContentReplacementRecord) => {
+        const rollout = this.services?.rollout;
+        if (!rollout) return;
+        rollout
+          .recordItems([{ type: 'content_replacement', payload: rec }])
+          .catch((err) => {
+            console.error('[Session] Failed to record content_replacement:', err);
+          });
+      },
+    });
+    try {
+      this.toolResultStore = createToolResultStore({
+        cache: this.services?.sessionCache,
+        serverRootDir: this.services?.serverRootDir,
+      });
+    } catch (err) {
+      // Missing dep for this platform is normal during early bootstrap or
+      // tests — log once and continue without persistence.
+      console.warn(
+        '[Session] Tool result persistence disabled:',
+        err instanceof Error ? err.message : err,
+      );
+      this.toolResultStore = undefined;
+    }
 
     // Handle initial history
     const historyMode = initialHistory ?? { mode: 'new' as const };
@@ -749,6 +801,22 @@ export class Session {
   async close(): Promise<void> {
     await this.closeMemoryService();
 
+    // Tool result persistence cleanup (track 09).
+    //
+    // Only purge persisted results on close for non-persistent sessions.
+    // Persistent sessions can be resumed — the rollout still contains
+    // <persisted-output> messages pointing at these storage keys / file
+    // paths, and the agent must be able to retrieve the full content on
+    // resume. Stale entries from persistent sessions are reclaimed via
+    // server-mode TTL sweep / cache quota eviction instead.
+    if (this.toolResultStore && !this.isPersistent) {
+      try {
+        await this.toolResultStore.cleanup(this.sessionId);
+      } catch (error) {
+        console.error('Failed to clean up tool result store:', error);
+      }
+    }
+
     if (this.services?.rollout) {
       try {
         // Record session close event
@@ -779,6 +847,24 @@ export class Session {
    */
   getId(): string {
     return this.sessionId;
+  }
+
+  /**
+   * Get the tool result store (track 09). May be undefined if no backing store
+   * is available for the current platform; callers should treat that as
+   * "persistence disabled" and pass tool results through unchanged.
+   */
+  getToolResultStore(): ToolResultStore | undefined {
+    return this.toolResultStore;
+  }
+
+  /**
+   * Get the content-replacement state (track 09). Mutated in place by
+   * TurnManager during tier-1 and tier-2 persistence; survives resume via
+   * the rollout `content_replacement` items.
+   */
+  getContentReplacementState(): ContentReplacementState | undefined {
+    return this.replacementState;
   }
 
   /**
@@ -2208,6 +2294,14 @@ export class Session {
       if (rolloutItem.type === 'response_item') {
         // Regular response item
         responseItems.push(rolloutItem.payload as ResponseItem);
+        // Track 09: seed seenIds from any function_call_output we've seen.
+        // This freezes "seen but unreplaced" decisions so tier-2 can't
+        // retroactively persist an output that the model already observed
+        // unchanged.
+        const r = rolloutItem.payload as any;
+        if (r && r.type === 'function_call_output' && typeof r.call_id === 'string') {
+          this.replacementState?.freezeUnreplaced(r.call_id);
+        }
       } else if (rolloutItem.type === 'compacted') {
         // Compacted history with summary
         // The compacted item should contain a summary that replaces multiple items
@@ -2219,6 +2313,23 @@ export class Session {
             content: compactedData.summary,
             type: 'message'
           } as ResponseItem);
+        }
+      } else if (rolloutItem.type === 'content_replacement') {
+        // Track 09: re-seed the replacement state with the exact preview
+        // string the model saw on the original turn. seedFromResume
+        // deliberately bypasses the rollout onRecord callback so we don't
+        // re-record everything. A corrupted / older-format payload must
+        // not poison the rest of resume — validate shape, skip on mismatch.
+        const p = rolloutItem.payload as any;
+        if (
+          p &&
+          typeof p === 'object' &&
+          typeof p.toolUseId === 'string' &&
+          typeof p.replacement === 'string'
+        ) {
+          this.replacementState?.seedFromResume(p);
+        } else {
+          console.warn('[Session] Skipping malformed content_replacement rollout record');
         }
       }
       // Other rollout item types (event_msg, etc.) are not added to history

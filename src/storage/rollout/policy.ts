@@ -26,6 +26,8 @@ export function isPersistedRolloutItem(item: RolloutItem): boolean {
       return shouldPersistResponseItem(item.payload);
     case 'event_msg':
       return shouldPersistEventMsg(item.payload);
+    case 'content_replacement':
+      return true; // Always persist — required for byte-identical resume (track 09)
     default:
       return false;
   }
