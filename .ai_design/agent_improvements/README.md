@@ -21,7 +21,7 @@ BrowserX is a multi-platform browser automation agent. Claudy is a terminal-nati
 | 05 | [Session Memory](./05_session_memory_DONE/design.md) ✅ DONE (PR #167, merged 2026-05-12) | P2 | Medium | Cross-session context, automatic summarization |
 | 05b | [Auto-Extraction & Compaction Interlock](./05b_auto_extraction_compaction_interlock_DONE/design.md) ✅ DONE (PR #206, merged 2026-05-14) | P2 | Medium | Background session summarization with compaction-safe interlock; layers on PR #167 |
 | 06 | [Multi-Agent Coordination](./06_multi_agent_coordination/design.md) | P2 | Large | Coordinator mode, worker delegation |
-| 07 | [Centralized State](./07_centralized_state/design.md) | P1 | Medium | Unified state, selectors, side-effect handlers |
+| 07 | [Centralized State](./07_centralized_state_DONE/design.md) ✅ DONE — narrow alternative shipped (PR #214, merged 2026-05-14). Full AgentState substrate descoped after audit found 5 of 7 fields had clean ownership; landed reactive `modelStore` + `ApprovalPolicyChanged` event instead. Revisit if future tracks justify the substrate. | P1 | Small | Reactive model store + approval-policy event |
 | 08 | [Centralized Message Queue & Audit](./08_centralized_message_queue/design.md) | P1 | Medium | Two phases: (1) `CommandQueue<T>` replaces plain `submissionQueue` — priorities, sub-agent filter, batching; deletes dead `QueueProcessor.ts`. (2) Persistent `EventLog` for hooks/queue/approvals/tool/sub-agent audit. MessageBus (former 08d) stays deferred. Earlier 08a primitives (Signal, Mailbox, ApprovalManager refactor) dropped after audit found BrowserX equivalents already exist. |
 | 09 | [Tool Result Persistence](./09_tool_result_persistence_DONE/design.md) ✅ DONE (PR #213, merged 2026-05-14) | P2 | Medium | Persist oversized tool results to disk instead of truncating; agent reads back via Read |
 | 10 | [Plugin System](./10_plugin_system/design.md) | P1 | Large | Claudy-compatible plugin packaging — manifest, marketplace, install, trust. Aggregates skills/hooks/MCP/subagents/commands into installable units. Phased 10a/10b/10c. |
@@ -35,7 +35,7 @@ BrowserX is a multi-platform browser automation agent. Claudy is a terminal-nati
 
 02_tool_metadata_concurrency_DONE (shipped via PR #197) ──> multiple_tools_call (existing)
 
-07_centralized_state ──> (independent, can proceed in parallel)
+07_centralized_state_DONE (shipped narrow via PR #214) ──> (full substrate descoped; revisit if needed)
 
 08_centralized_message_queue ──┬──> Phase 1: CommandQueue (replaces submissionQueue + pendingNotifications; deletes dead QueueProcessor.ts)
                                ├──> Phase 2: EventLog (subscribes to Track 01 hooks, CommandQueue, ApprovalManager, TurnManager, SubAgentRunner)
