@@ -134,15 +134,24 @@ describe('OpenAIChatCompletionClient', () => {
       expect(typeof tokenCount).toBe('number');
     });
 
-    it('should throw error for direct completion', async () => {
-      const request = {
+    it('should return a completion response', async () => {
+      const mockCreate = vi.fn().mockResolvedValue({
+        id: 'chatcmpl-123',
+        model: 'gpt-4o',
+        choices: [{ message: { role: 'assistant', content: 'Hi there!' }, finish_reason: 'stop' }],
+        usage: { prompt_tokens: 5, completion_tokens: 3, total_tokens: 8 },
+      });
+      // Replace the SDK client with a mock that has chat.completions.create
+      (client as any).client = { chat: { completions: { create: mockCreate } } };
+
+      const result = await client.complete({
         model: 'gpt-4o',
         messages: [{ role: 'user' as const, content: 'Hello' }],
-      };
+      });
 
-      await expect(client.complete(request)).rejects.toThrow(
-        'Direct completion not supported by Responses API'
-      );
+      expect(result.id).toBe('chatcmpl-123');
+      expect(result.choices[0].message.content).toBe('Hi there!');
+      expect(result.usage.totalTokens).toBe(8);
     });
 
     it('should validate empty prompt input', async () => {

@@ -28,7 +28,7 @@ export default defineConfig({
   },
   ssr: {
     // Keep native/binary modules external — don't bundle them
-    external: ['better-sqlite3', 'fsevents'],
+    external: ['better-sqlite3', 'fsevents', 'sqlite-vec'],
     noExternal: [
       // Force these into the bundle so path aliases resolve
       /^@\//,

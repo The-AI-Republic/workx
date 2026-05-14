@@ -22,8 +22,8 @@ let composer: PromptComposer | null = null;
 let configuredAgentType: AgentType = 'browserx';
 let staticContext: Partial<RuntimeContext> = {};
 
-/** Dynamic prompt extensions appended after the main system prompt */
-let promptExtensions: Array<() => string> = [];
+/** Dynamic prompt extensions appended after the main system prompt, keyed by name */
+let promptExtensions: Map<string, () => string> = new Map();
 
 /**
  * Configure the PromptLoader to use dynamic composition.
@@ -49,12 +49,20 @@ export function isComposerConfigured(): boolean {
 }
 
 /**
- * Register a dynamic prompt extension.
+ * Register a named dynamic prompt extension.
  * The callback is invoked on every loadPrompt() call and its non-empty
  * return value is appended to the system prompt.
+ * If an extension with the same name already exists, it is replaced.
  */
-export function registerPromptExtension(fn: () => string): void {
-  promptExtensions.push(fn);
+export function registerPromptExtension(name: string, fn: () => string): void {
+  promptExtensions.set(name, fn);
+}
+
+/**
+ * Unregister a named prompt extension.
+ */
+export function unregisterPromptExtension(name: string): void {
+  promptExtensions.delete(name);
 }
 
 /**
@@ -94,9 +102,9 @@ export async function loadPrompt(): Promise<string> {
  * Append registered prompt extensions to the base prompt.
  */
 function appendExtensions(base: string): string {
-  if (promptExtensions.length === 0) return base;
+  if (promptExtensions.size === 0) return base;
 
-  const extras = promptExtensions
+  const extras = Array.from(promptExtensions.values())
     .map((fn) => fn())
     .filter(Boolean);
 
