@@ -16,6 +16,7 @@ import type {
   IAgentRunner,
   TaskNotification,
 } from './types';
+import type { BackgroundAgentTaskState } from '@/core/tasks/types';
 
 /**
  * SubAgentRunner spawns and manages sub-agent executions.
@@ -126,20 +127,24 @@ export class SubAgentRunner implements IAgentRunner {
             context,
             this.formatTaskNotification(context, params, result),
           );
+          // (Track 04) Update typed state to terminal on parent session.
+          this.markTypedTaskTerminated(context, result);
         }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         if (!context.cancelled) {
+          const failed: AgentRunResult = {
+            success: false,
+            response: '',
+            turnCount: 0,
+            stopReason: 'error',
+            error: errorMsg,
+          };
           this.safeEnqueueNotification(
             context,
-            this.formatTaskNotification(context, params, {
-              success: false,
-              response: '',
-              turnCount: 0,
-              stopReason: 'error',
-              error: errorMsg,
-            }),
+            this.formatTaskNotification(context, params, failed),
           );
+          this.markTypedTaskTerminated(context, failed);
         }
       } finally {
         try {
@@ -175,6 +180,48 @@ export class SubAgentRunner implements IAgentRunner {
    * Inject a notification into the parent engine, swallowing any throw so it
    * cannot poison the detached background chain. Errors are surfaced as events.
    */
+  /**
+   * (Track 04) Mark the typed BackgroundAgentTaskState terminal on the
+   * parent session and record final telemetry (status, tokens, tools,
+   * endTime). The Session's eviction timer takes over from here; the
+   * RunningTask entry stays in activeTasks until the grace window expires.
+   */
+  private markTypedTaskTerminated(context: AgentContext, result: AgentRunResult): void {
+    const parentSession = context.parentEngine.getSession?.();
+    if (!parentSession?.getTask) return;
+    const entry = parentSession.getTask(context.runId);
+    if (!entry?.taskState) return;
+    const ts = entry.taskState;
+    if (ts.status !== 'pending' && ts.status !== 'running') return;
+    ts.status = result.success
+      ? 'completed'
+      : (result.stopReason === 'cancelled' || result.stopReason === 'interrupted')
+        ? 'killed'
+        : 'failed';
+    ts.endTime = Date.now();
+    ts.notified = true; // safeEnqueueNotification just ran (or was suppressed)
+    if (result.tokenUsage) {
+      ts.tokenUsage = {
+        input: result.tokenUsage.input ?? 0,
+        output: result.tokenUsage.output ?? 0,
+        total: result.tokenUsage.total ?? 0,
+      };
+    }
+    ts.toolUseCount = result.turnCount ?? ts.toolUseCount;
+    if (result.response) {
+      ts.lastAgentMessage = result.response;
+    }
+    // Re-arm evictAfter if not retained.
+    if (!ts.retain) {
+      const PANEL_GRACE_MS = 30_000;
+      ts.evictAfter = Date.now() + PANEL_GRACE_MS;
+    }
+    // Kick the eviction timer; ensureEvictionTimer is private but
+    // onTaskFinished/onTaskAborted normally start it. Touch a no-op
+    // helper to nudge: trigger one tick by calling retainTask(false).
+    parentSession.retainTask?.(context.runId, ts.retain);
+  }
+
   private safeEnqueueNotification(context: AgentContext, text: string): void {
     try {
       context.parentEngine.enqueueSyntheticUserTurn(text);
@@ -258,6 +305,10 @@ export class SubAgentRunner implements IAgentRunner {
       browserContext: parentConfig.browserContext,
       eventRouter,
       drainPendingMessages: () => this.registry.drainMessages(runId),
+      // (Track 04) Inherit parent's output store so the child's TaskRunner
+      // can persist chunks. RegularTask in the child session reads
+      // session.getTaskOutputStore() when wiring AgentTask -> TaskRunner.
+      taskOutputStore: parentSession?.getTaskOutputStore?.() ?? undefined,
     });
 
     // Phase 1.2: Parent-lifecycle cancellation
@@ -359,6 +410,39 @@ export class SubAgentRunner implements IAgentRunner {
         },
       },
     });
+
+    // (Track 04) Build typed BackgroundAgentTaskState and register on
+    // parent session. Identity collapse: runId === taskState.id.
+    // The parent session creates a synthetic RunningTask entry tied to
+    // this sub-agent's AbortController + context so per-task abort,
+    // tab-scoped abort, and eviction all work.
+    const parentSessionForRegistry = parentSession;
+    if (parentSessionForRegistry && typeof parentSessionForRegistry.registerTaskState === 'function') {
+      const description = params.description ?? params.prompt.slice(0, 50);
+      const taskState: BackgroundAgentTaskState = {
+        id: runId,
+        type: 'background_agent',
+        status: 'running',
+        description,
+        startTime,
+        outputOffset: 0,
+        notified: false,
+        isBackgrounded: background,
+        retain: false,
+        runId,
+        parentSessionId: this.parentEngine.engineId,
+        prompt: params.prompt,
+        toolUseCount: 0,
+        tokenUsage: { input: 0, output: 0, total: 0 },
+      };
+      parentSessionForRegistry.registerTaskState(taskState, {
+        context,
+        abortController,
+        scopedTabIds: parentConfig.browserContext?.tabId !== undefined
+          ? [parentConfig.browserContext.tabId]
+          : undefined,
+      });
+    }
 
     return context;
   }

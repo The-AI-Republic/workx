@@ -1499,31 +1499,65 @@ export class Session {
   }
 
   /**
-   * (Track 04 / Q2) Attach typed BackgroundAgentTaskState to a running task.
-   * Called by SubAgentRunner.prepare after it builds the typed state with
-   * all sub-agent-specific fields (prompt, parentSessionId, etc.).
+   * (Track 04 / Q2) Attach or create a typed BackgroundAgentTaskState in
+   * this session's activeTasks. Called by SubAgentRunner.prepare after it
+   * builds the typed state.
    *
-   * @param state - The typed task state. state.id must equal the runId
-   *                used as the spawn's submission id.
-   * @param bits - Runtime bits: AgentContext for cancel propagation and
-   *               scopedTabIds for tab-close granularity.
+   * Two code paths reach here:
+   *
+   * 1. The task came through Session.spawnTask first — there's a matching
+   *    RunningTask entry already; this call attaches state + context to it.
+   * 2. The task was spawned by a child engine (sub-agent) whose flow does
+   *    NOT go through the parent session's spawnTask — there's no matching
+   *    entry. We create a synthetic RunningTask owned by the sub-agent's
+   *    AbortController so the parent session can track / abort / display it.
+   *
+   * @param state - The typed task state. state.id must equal the runId.
+   * @param bits - Runtime bits: AgentContext for cancel propagation,
+   *               AbortController for per-task abort, scopedTabIds for
+   *               tab-close granularity.
    */
   registerTaskState(
     state: BackgroundAgentTaskState,
-    bits: { context: AgentContext; scopedTabIds?: number[] }
+    bits: {
+      context: AgentContext;
+      abortController?: AbortController;
+      scopedTabIds?: number[];
+    }
   ): void {
     const existing = this.activeTasks.get(state.id);
-    if (!existing) {
-      // No matching spawn — caller built state for a task that's not in the
-      // registry. This shouldn't happen in normal flow; ignore silently
-      // rather than throw to avoid blocking sub-agent execution.
+    if (existing) {
+      existing.taskState = state;
+      existing.context = bits.context;
+      if (bits.scopedTabIds !== undefined) {
+        existing.scopedTabIds = bits.scopedTabIds;
+      }
       return;
     }
-    existing.taskState = state;
-    existing.context = bits.context;
-    if (bits.scopedTabIds !== undefined) {
-      existing.scopedTabIds = bits.scopedTabIds;
-    }
+    // Synthetic registration path: sub-agent owned by a child engine that
+    // didn't go through this session's spawnTask.
+    const abortController = bits.abortController ?? new AbortController();
+    const synthetic: RunningTask = {
+      // Sub-agents are not Regular/Review/Compact in the SessionTask sense
+      // but we need a valid TaskKind for the field. Use Regular as a sentinel.
+      // The handleTaskAbort path keys off taskState + context, not kind.
+      kind: 'Regular' as unknown as RunningTask['kind'],
+      abortController,
+      // A no-op SessionTask shim — SubAgentRunner owns the real abort flow
+      // via context.cancelled + context.abortController; this session's
+      // abort path delegates to those via handleTaskAbort.
+      task: {
+        kind: () => 'Regular' as unknown as RunningTask['kind'],
+        run: async () => null,
+        abort: async () => undefined,
+      } as unknown as SessionTask,
+      promise: Promise.resolve(null),
+      startTime: state.startTime,
+      taskState: state,
+      context: bits.context,
+      scopedTabIds: bits.scopedTabIds,
+    };
+    this.activeTasks.set(state.id, synthetic);
   }
 
   /**

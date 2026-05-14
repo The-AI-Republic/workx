@@ -387,6 +387,8 @@ export class RepublicAgentEngine {
     depth?: number;
     maxDepth?: number;
     drainPendingMessages?: () => string[];
+    /** (Track 04) Inherit parent's TaskOutputStore so sub-agent's TaskRunner writes chunks. */
+    taskOutputStore?: RepublicAgentEngineConfig['taskOutputStore'];
   }): RepublicAgentEngine {
     return new RepublicAgentEngine({
       agentConfig: this.config.agentConfig,
@@ -404,6 +406,7 @@ export class RepublicAgentEngine {
       depth: childConfig.depth ?? (this.getDepth() + 1),
       maxDepth: childConfig.maxDepth ?? this.getMaxDepth(),
       drainPendingMessages: childConfig.drainPendingMessages,
+      taskOutputStore: childConfig.taskOutputStore ?? this.config.taskOutputStore,
     });
   }
 

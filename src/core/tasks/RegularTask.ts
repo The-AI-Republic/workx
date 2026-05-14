@@ -60,7 +60,12 @@ export class RegularTask implements SessionTask {
     // Convert InputItem[] to ResponseItem[] for AgentTask
     const responseItems = this.convertInput(input);
 
-    // Delegate to AgentTask coordinator (browser-specific layer)
+    // Delegate to AgentTask coordinator (browser-specific layer).
+    // (Track 04) If the session has a TaskOutputStore (set by the engine
+    // when a background sub-agent is running), thread it through so the
+    // underlying TaskRunner persists chunks. subId doubles as the taskId
+    // — for background_agent tasks subId is the runId set by SubAgentRunner.
+    const taskOutputStore = session.getTaskOutputStore?.() ?? undefined;
     this.agentTask = new AgentTask(
       session,
       context,
@@ -68,7 +73,11 @@ export class RegularTask implements SessionTask {
       session.getSessionId(),
       subId,
       responseItems,
-      { maxTurns: this.maxTurns }
+      {
+        maxTurns: this.maxTurns,
+        taskOutputStore: taskOutputStore ?? undefined,
+        taskId: taskOutputStore ? subId : undefined,
+      }
     );
 
     try {
