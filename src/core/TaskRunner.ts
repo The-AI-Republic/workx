@@ -70,6 +70,19 @@ export interface TaskOptions {
   maxTurns?: number;
   /** Callback that drains cross-agent messages injected between turns */
   drainPendingMessages?: () => string[];
+  /**
+   * (Track 04) Optional output store. When set, the runner appends chunks
+   * at turn boundaries and on terminal/abort flush so background sub-agent
+   * panels can poll live progress and the output survives reloads.
+   * Foreground RegularTasks leave this undefined and skip persistence.
+   */
+  taskOutputStore?: import('./tasks/TaskOutputStore').TaskOutputStore;
+  /**
+   * (Track 04) Task id for output-store writes. Distinct from `submissionId`
+   * (transport-layer) — this is the stable BackgroundAgentTaskState.id /
+   * runId. Required when taskOutputStore is set; ignored otherwise.
+   */
+  taskId?: string;
 }
 
 interface LoopOutcome {
@@ -250,6 +263,10 @@ export class TaskRunner {
       this.state.status = this.cancelled ? 'killed' : 'failed';
       this.state.lastError = err;
 
+      // Track 04: flush pending chunks before re-throwing so polling
+      // consumers see the tail of a task that died mid-turn.
+      await this.flushTaskOutput();
+
       if (this.cancelled && !this.state.abortReason) {
         this.state.abortReason = 'user_interrupt';
         await this.emitAbortedEvent('user_interrupt');
@@ -280,6 +297,9 @@ export class TaskRunner {
     while (!this.cancelled) {
       if (signal?.aborted) {
         this.cancel();
+        // Track 04: flush pending output before resolving so polling
+        // consumers see the tail of an aborted run.
+        await this.flushTaskOutput();
         return this.buildLoopOutcome({
           turnCount,
           compactionPerformed,
@@ -325,6 +345,12 @@ export class TaskRunner {
         if (compacted) {
           compactionPerformed = true;
           turnInput = await this.buildNormalTurnInput([]);
+          // Track 04: record the compaction in the chunk stream.
+          await this.appendTaskOutputEvent({
+            kind: 'compaction',
+            stage: 'pre_request',
+            turn: turnCount,
+          });
         }
       }
 
@@ -352,14 +378,31 @@ export class TaskRunner {
         turnCount += 1;
         this.state.currentTurnIndex = turnCount;
 
+        // Track 04: emit per-turn event chunk + the assistant message (if any).
+        await this.appendTaskOutputEvent({
+          kind: 'turn',
+          index: turnCount,
+          tokens: lastTokenUsage,
+        });
+        if (processResult.lastAgentMessage) {
+          await this.appendTaskOutputChunk('message', processResult.lastAgentMessage);
+        }
+
         if (processResult.tokenLimitReached && this.options.autoCompact) {
           const compacted = await this.attemptAutoCompact(turnCount, totalTokenUsage);
           if (compacted) {
             compactionPerformed = true;
+            await this.appendTaskOutputEvent({
+              kind: 'compaction',
+              stage: 'post_turn',
+              turn: turnCount,
+            });
           }
         }
 
         if (processResult.taskComplete) {
+          await this.appendTaskOutputEvent({ kind: 'complete', turn: turnCount });
+          await this.flushTaskOutput();
           return this.buildLoopOutcome({
             turnCount,
             compactionPerformed,
@@ -855,6 +898,50 @@ export class TaskRunner {
         turn_count: this.state.currentTurnIndex,
       },
     });
+  }
+
+  // ── Track 04: chunk emission helpers ─────────────────────────────────
+
+  /**
+   * Append a structured event chunk (turn boundary, compaction, complete)
+   * to the task's output stream. No-op if no TaskOutputStore is configured.
+   */
+  private async appendTaskOutputEvent(payload: Record<string, unknown>): Promise<void> {
+    const store = this.options.taskOutputStore;
+    const taskId = this.options.taskId;
+    if (!store || !taskId) return;
+    try {
+      await store.appendChunk(taskId, 'event', JSON.stringify(payload));
+    } catch (err) {
+      console.warn(`[TaskRunner] appendChunk(event) failed for ${taskId}:`, err);
+    }
+  }
+
+  /** Append a single chunk of a specific kind. */
+  private async appendTaskOutputChunk(
+    kind: 'stdout' | 'stderr' | 'event' | 'message',
+    data: string,
+  ): Promise<void> {
+    const store = this.options.taskOutputStore;
+    const taskId = this.options.taskId;
+    if (!store || !taskId || data.length === 0) return;
+    try {
+      await store.appendChunk(taskId, kind, data);
+    } catch (err) {
+      console.warn(`[TaskRunner] appendChunk(${kind}) failed for ${taskId}:`, err);
+    }
+  }
+
+  /** Drain pending writes in the in-memory queue. */
+  private async flushTaskOutput(): Promise<void> {
+    const store = this.options.taskOutputStore;
+    const taskId = this.options.taskId;
+    if (!store || !taskId) return;
+    try {
+      await store.flush(taskId);
+    } catch (err) {
+      console.warn(`[TaskRunner] flush failed for ${taskId}:`, err);
+    }
   }
 
   /**

@@ -45,7 +45,16 @@ export class AgentTask {
     sessionId: string,
     submissionId: string,
     input: ResponseItem[],
-    options?: { maxTurns?: number }
+    options?: {
+      maxTurns?: number;
+      /**
+       * (Track 04) Optional output store + task id. When provided, the
+       * underlying TaskRunner persists chunks for background-task panels
+       * and reload-safe progress. Foreground RegularTasks pass undefined.
+       */
+      taskOutputStore?: import('./tasks/TaskOutputStore').TaskOutputStore;
+      taskId?: string;
+    }
   ) {
     this.sessionId = sessionId;
     this.submissionId = submissionId;
@@ -62,7 +71,12 @@ export class AgentTask {
         type: 'text' as const,
         text: getResponseItemContent(item)
       })),
-      { autoCompact: true, maxTurns: options?.maxTurns }
+      {
+        autoCompact: true,
+        maxTurns: options?.maxTurns,
+        taskOutputStore: options?.taskOutputStore,
+        taskId: options?.taskId,
+      }
     );
   }
 
