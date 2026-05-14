@@ -16,6 +16,8 @@ function createMockAgent(overrides: Record<string, unknown> = {}) {
     isReady: vi.fn().mockResolvedValue({ ready: true, message: 'ok' }),
     getSession: vi.fn().mockReturnValue({
       abortAllTasks: vi.fn().mockResolvedValue(undefined),
+      // Track 04: agent.interrupt now narrows to foreground-only via this method
+      interruptTask: vi.fn().mockResolvedValue(undefined),
     }),
     getModelClientFactory: vi.fn().mockReturnValue({
       setAuthManager: vi.fn(),
@@ -127,12 +129,14 @@ describe('createAgentServices', () => {
   // ─── agent.interrupt ─────────────────────────────────────────────────
 
   describe('agent.interrupt', () => {
-    it('aborts all tasks and returns success', async () => {
+    it('calls session.interruptTask (foreground-only, Track 04) and returns success', async () => {
       const result = await services['agent.interrupt']({ sessionId: 's1' }, ctx);
       expect(result).toEqual({ success: true });
       const agentSession = deps.registry.getSession('s1');
       const session = agentSession.agent.getSession();
-      expect(session.abortAllTasks).toHaveBeenCalledWith('UserInterrupt');
+      // Track 04: agent.interrupt routes through interruptTask (foreground
+      // only), not the blanket abortAllTasks. Background tasks survive.
+      expect(session.interruptTask).toHaveBeenCalled();
     });
 
     it('throws when sessionId is missing', async () => {

@@ -209,12 +209,16 @@ describe('ToolRegistry runtime metadata', () => {
     });
   });
 
-  describe('result truncation', () => {
-    it('truncates oversized string results', async () => {
-      const events: any[] = [];
-      const collector = { collect: (e: any) => events.push(e) };
-      const registry = new ToolRegistry(collector);
-
+  describe('result size handling (track 09 — persistence moved to TurnManager)', () => {
+    // Track 09 moved size enforcement out of ToolRegistry.execute() into
+    // TurnManager (which has session lifecycle and a backing store). The
+    // registry now passes tool results through verbatim regardless of
+    // declared maxResultSizeChars; that field has become the *threshold*
+    // input to the persistence path. The persistence path itself is tested
+    // in src/core/__tests__/TurnManager.persistence.test.ts and
+    // src/tools/__tests__/resultBudget.test.ts.
+    it('does not truncate large string results — passes through unchanged', async () => {
+      const registry = new ToolRegistry();
       await registry.register(makeTool('big_tool'), async () => 'x'.repeat(200), {
         runtime: { result: { maxResultSizeChars: 50 } },
       });
@@ -227,11 +231,10 @@ describe('ToolRegistry runtime metadata', () => {
       });
 
       expect(response.success).toBe(true);
-      expect(response.data.length).toBeLessThan(200);
-      expect(response.data).toContain('[Result truncated from 200 to 50 chars]');
+      expect(response.data).toBe('x'.repeat(200));
     });
 
-    it('does not truncate results under the limit', async () => {
+    it('passes small string results through unchanged', async () => {
       const registry = new ToolRegistry();
       await registry.register(makeTool('small_tool'), async () => 'hello', {
         runtime: { result: { maxResultSizeChars: 1000 } },
@@ -247,21 +250,7 @@ describe('ToolRegistry runtime metadata', () => {
       expect(response.data).toBe('hello');
     });
 
-    it('does not truncate when no maxResultSizeChars set', async () => {
-      const registry = new ToolRegistry();
-      await registry.register(makeTool('no_limit'), async () => 'x'.repeat(1_000_000));
-
-      const response = await registry.execute({
-        toolName: 'no_limit',
-        parameters: {},
-        sessionId: 's1',
-        turnId: 't1',
-      });
-
-      expect(response.data.length).toBe(1_000_000);
-    });
-
-    it('truncates oversized non-string results via JSON serialization', async () => {
+    it('passes objects through unchanged regardless of size', async () => {
       const registry = new ToolRegistry();
       const bigObject = { items: Array.from({ length: 500 }, (_, i) => ({ i, text: 'x'.repeat(20) })) };
       await registry.register(makeTool('big_object_tool'), async () => bigObject, {
@@ -276,11 +265,10 @@ describe('ToolRegistry runtime metadata', () => {
       });
 
       expect(response.success).toBe(true);
-      expect(typeof response.data).toBe('string');
-      expect(response.data).toMatch(/\[Result truncated from \d+ to 200 chars\]/);
+      expect(response.data).toEqual(bigObject);
     });
 
-    it('leaves non-string results untouched when under the limit', async () => {
+    it('leaves non-string results untouched (small)', async () => {
       const registry = new ToolRegistry();
       const obj = { ok: true, value: 42 };
       await registry.register(makeTool('small_object_tool'), async () => obj, {

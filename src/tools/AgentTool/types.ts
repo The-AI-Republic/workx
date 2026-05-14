@@ -194,10 +194,21 @@ export interface TaskNotification {
   description: string;
   status: 'completed' | 'failed' | 'cancelled';
   result?: string;
-  tokenUsage?: { input: number; output: number; total: number };
+  /**
+   * Canonical Track 04 token-usage shape. cached optional for models that
+   * support prompt caching. total is stored to avoid re-summing.
+   */
+  tokenUsage?: { input: number; output: number; cached?: number; total: number };
   turnCount: number;
   durationMs: number;
   error?: string;
+  /**
+   * (Track 04) Last chunk seq in TaskOutputStore when the notification
+   * fires. Parent agent can use this to pick up additional chunks via
+   * engine.getTaskOutput(runId, outputOffset). Absent when the task wrote
+   * no chunks (foreground, or sub-agent without taskOutputStore wired).
+   */
+  outputOffset?: number;
 }
 
 /** Result returned immediately when a background sub-agent is launched */

@@ -25,6 +25,14 @@ export const STORE_KEY_PATHS: Record<string, string> = {
   schedule_events: 'id',
   schedule_exceptions: 'id',
   execution_records: 'id',
+  /**
+   * Track 04: append-only chunked output stream for background sub-agent tasks.
+   * Key format: `${taskId}:${seq.toString().padStart(8, '0')}` so range
+   * queries `[taskId, fromSeq] -> [taskId, +inf]` work as lex-sorted cursor
+   * scans in IndexedDB and `WHERE chunk_id LIKE '${taskId}:%' AND seq > ?`
+   * in SQLite.
+   */
+  task_output_chunks: 'chunkId',
 };
 
 /**
@@ -62,6 +70,9 @@ export const INDEX_FIELD_MAP: Record<string, string | string[]> = {
   by_event_instance: ['scheduleEventId', 'instanceTime'],
   by_event_id: 'scheduleEventId',
   by_instance_time: 'instanceTime',
+  // task_output_chunks (Track 04)
+  by_task_id: 'taskId',
+  by_task_seq: ['taskId', 'seq'],
 };
 
 /**

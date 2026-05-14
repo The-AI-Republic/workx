@@ -141,6 +141,19 @@ export type ResponseItem = any;
 export type EventMsg = any;
 
 /**
+ * Tool result content-replacement record (track 09).
+ *
+ * Emitted whenever an oversized tool result is persisted: the literal preview
+ * string the model saw is stored verbatim so resume can re-apply it byte-for-byte,
+ * preserving prompt-cache stability across replay.
+ */
+export interface ContentReplacementRecord {
+  kind: 'tool-result';
+  toolUseId: string;
+  replacement: string;
+}
+
+/**
  * A single item in a rollout recording.
  *
  * Discriminated union format:
@@ -152,7 +165,8 @@ export type RolloutItem =
   | { type: 'compacted'; payload: CompactedItem }
   | { type: 'turn_context'; payload: TurnContextItem }
   | { type: 'event_msg'; payload: EventMsg }
-  | { type: 'turn_completion'; payload: { turnId: string; stats: any } };
+  | { type: 'turn_completion'; payload: { turnId: string; stats: any } }
+  | { type: 'content_replacement'; payload: ContentReplacementRecord };
 
 /**
  * A single line in the JSONL rollout format.
@@ -162,7 +176,7 @@ export interface RolloutLine {
   /** ISO 8601 timestamp with milliseconds */
   timestamp: string;
   /** Discriminator for the item type */
-  type: 'session_meta' | 'response_item' | 'compacted' | 'turn_context' | 'event_msg' | 'turn_completion';
+  type: 'session_meta' | 'response_item' | 'compacted' | 'turn_context' | 'event_msg' | 'turn_completion' | 'content_replacement';
   /** The actual rollout item data */
   payload: RolloutItem['payload'];
 }

@@ -34,19 +34,6 @@ import {
 // desktop/server bundles).
 
 /**
- * Stringify a value for size measurement during result truncation.
- * Returns undefined when serialization is impossible (circular refs, etc.),
- * which causes truncation to be skipped rather than throw.
- */
-function safeJsonStringify(value: unknown): string | undefined {
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return undefined;
-  }
-}
-
-/**
  * Interface for event collection (used for testing)
  * The actual EventCollector class is in tests/utils/test-helpers.ts
  */
@@ -520,18 +507,11 @@ export class ToolRegistry {
         };
       }
 
-      // Result truncation: apply maxResultSizeChars if configured.
-      // Non-string results are measured via JSON.stringify so structured
-      // payloads (e.g. dom_tool snapshots) are also bounded.
-      const maxChars = entry.runtime.result?.maxResultSizeChars;
-      if (maxChars) {
-        const serialized = typeof result === 'string' ? result : safeJsonStringify(result);
-        if (serialized !== undefined && serialized.length > maxChars) {
-          const originalLength = serialized.length;
-          result = serialized.slice(0, maxChars) +
-            `\n\n[Result truncated from ${originalLength} to ${maxChars} chars]`;
-        }
-      }
+      // Note: result-size enforcement moved to TurnManager (track 09).
+      // Oversized results are now persisted to a backing store and replaced
+      // with a <persisted-output> preview, instead of being truncated here.
+      // `maxResultSizeChars` is still read from the result profile by
+      // TurnManager via `getResultProfile` and used as the persistence threshold.
 
       // Emit success event
       this.emitEvent({
@@ -643,6 +623,25 @@ export class ToolRegistry {
    */
   getResultProfile(toolName: string): ToolResultProfile | undefined {
     return this.tools.get(toolName)?.runtime.result;
+  }
+
+  /**
+   * Return the set of tool names whose `maxResultSizeChars` is non-finite
+   * (`Infinity`) — these opt out of the track-09 persistence path.
+   *
+   * Used by TurnManager's tier-2 budget enforcer to exclude retrieval tools
+   * (e.g. `cache_storage_tool`, `read_persisted_result`) from the budget,
+   * avoiding circular re-persistence loops.
+   */
+  getInfinityTools(): Set<string> {
+    const out = new Set<string>();
+    for (const [name, entry] of this.tools) {
+      const max = entry.runtime.result?.maxResultSizeChars;
+      if (max !== undefined && !Number.isFinite(max)) {
+        out.add(name);
+      }
+    }
+    return out;
   }
 
   /**

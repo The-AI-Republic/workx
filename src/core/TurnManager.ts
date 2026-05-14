@@ -26,6 +26,18 @@ import {
 } from './toolOrchestration';
 import type { HookDispatcher } from './hooks/HookDispatcher';
 import type { HookInput } from './hooks/types';
+import {
+  getPersistenceThreshold,
+  MAX_TOOL_RESULTS_PER_MESSAGE_CHARS,
+} from '../tools/toolLimits';
+import {
+  buildPersistedOutputMessage,
+  ToolResultTooLargeForStoreError,
+} from '../tools/resultStore';
+import {
+  enforceToolResultBudget,
+  type FunctionCallOutputItem,
+} from '../tools/resultBudget';
 
 /**
  * Optional MCP capability interface for sessions that support MCP tools.
@@ -647,11 +659,17 @@ export class TurnManager {
           },
         );
 
+        // Track 09: tier-2 aggregate budget. Tier-1 (in executeToolCall) has
+        // already persisted any individually-oversized results. Tier-2 catches
+        // the case where N parallel results collectively exceed the per-turn
+        // budget. Both tiers share state via ContentReplacementState.
+        const enforced = await this.maybeEnforceTier2(toolCallResults, prepared);
+
         // Return results preserving original order
-        if (toolCallResults.length === 1) {
-          return toolCallResults[0];
+        if (enforced.length === 1) {
+          return enforced[0];
         }
-        return toolCallResults;
+        return enforced;
       }
 
       // Handle web search response if needed
@@ -781,10 +799,17 @@ export class TurnManager {
       // to avoid double-encoding (JSON.stringify on a string adds quotes + escapes)
       const output = typeof result === 'string' ? result : JSON.stringify(result);
 
+      // Track 09: tier-1 persistence. Apply per-tool threshold AFTER
+      // serialization so object results (e.g. DOM snapshots) are measured
+      // correctly. The decision is recorded on the session's replacement
+      // state and written to the rollout, so resume produces byte-identical
+      // wire bytes.
+      const persistedOutput = await this.maybePersistToolResult(toolName, callId, output);
+
       return {
         type: 'function_call_output',
         call_id: callId,
-        output,
+        output: persistedOutput,
       };
 
     } catch (error) {
@@ -827,6 +852,98 @@ export class TurnManager {
     }
   }
 
+
+  /**
+   * Tier-1 tool result persistence (track 09).
+   *
+   * If the serialized output exceeds the tool's threshold, persist the full
+   * content to the platform-appropriate backing store and return a
+   * <persisted-output> preview message instead. Returns the output unchanged
+   * when persistence is disabled, the tool opted out (Infinity), the output
+   * is under threshold, or persistence fails (in which case we fall back to
+   * legacy truncation so the turn keeps moving).
+   */
+  private async maybePersistToolResult(
+    toolName: string,
+    callId: string,
+    output: string,
+  ): Promise<string> {
+    const store = this.session.getToolResultStore?.();
+    const state = this.session.getContentReplacementState?.();
+    if (!store || !state) return output;
+
+    const profile = this.toolRegistry.getResultProfile(toolName);
+    const threshold = getPersistenceThreshold(toolName, profile?.maxResultSizeChars);
+
+    // Infinity opt-out (e.g. cache_storage_tool, read_persisted_result).
+    if (!Number.isFinite(threshold)) return output;
+    if (output.length <= threshold) return output;
+
+    // Replay path: same call_id was already decided on a prior turn. Reuse
+    // the exact preview string the model saw — byte-identical re-apply means
+    // the prompt cache stays warm.
+    const cached = state.reapply(callId);
+    if (cached !== undefined) return cached;
+
+    try {
+      const persisted = await store.persist(this.session.sessionId, callId, output);
+      const message = buildPersistedOutputMessage(persisted);
+      state.record(callId, message);
+      return message;
+    } catch (err) {
+      // Persistence failed (quota, disk error, item-too-large for cache).
+      // Fall back to legacy truncation with a marker so the agent still gets
+      // *something* and the turn doesn't fail. We deliberately do NOT update
+      // the replacement state — next turn can retry.
+      const reason =
+        err instanceof ToolResultTooLargeForStoreError
+          ? 'result exceeds store item limit'
+          : err instanceof Error
+            ? err.message
+            : String(err);
+      console.warn(
+        `[TurnManager] tier-1 persistence failed for ${toolName} (${callId}): ${reason}`,
+      );
+      return (
+        output.slice(0, threshold) +
+        `\n\n[Result truncated from ${output.length} to ${threshold} chars — persistence failed: ${reason}]`
+      );
+    }
+  }
+
+  /**
+   * Tier-2 per-message aggregate budget (track 09). No-op when persistence
+   * is disabled (no store/state on session). Builds a call_id → tool_name
+   * map from the `prepared` array so the budget enforcer can skip
+   * Infinity-opt-out tools by name.
+   */
+  private async maybeEnforceTier2(
+    toolCallResults: any[],
+    prepared: PreparedToolCall[],
+  ): Promise<any[]> {
+    const store = this.session.getToolResultStore?.();
+    const state = this.session.getContentReplacementState?.();
+    if (!store || !state) return toolCallResults;
+
+    const nameByCallId = new Map<string, string>();
+    for (const p of prepared) nameByCallId.set(p.id, p.name);
+    const skipToolNames = this.toolRegistry.getInfinityTools();
+
+    // Only the items that are actually `function_call_output` are subject to
+    // the budget; errors / hook-blocked results are passed through as-is.
+    const enforced = await enforceToolResultBudget(
+      toolCallResults as FunctionCallOutputItem[],
+      state,
+      {
+        store,
+        sessionId: this.session.sessionId,
+        limit: MAX_TOOL_RESULTS_PER_MESSAGE_CHARS,
+        skipToolNames,
+        toolNameByCallId: (id) => nameByCallId.get(id),
+      },
+    );
+    return enforced;
+  }
 
   /** WebSearchTool instance for executing searches */
   private webSearchTool = new WebSearchTool();

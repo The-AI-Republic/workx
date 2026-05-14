@@ -175,6 +175,8 @@ describe('RepublicAgent', () => {
       requestInterrupt: vi.fn(),
       clearInterrupt: vi.fn(),
       abortAllTasks: vi.fn().mockResolvedValue(undefined),
+      // Track 04: per-task abort path
+      abortTask: vi.fn().mockResolvedValue(undefined),
       hasRunningTask: vi.fn().mockReturnValue(false),
       addToHistory: vi.fn(),
       getHistoryEntry: vi.fn(),
@@ -663,21 +665,25 @@ describe('RepublicAgent', () => {
   // =========================================================================
 
   describe('cancelTask()', () => {
-    it('should call session.abortAllTasks when the task is running', async () => {
+    it('should call session.abortTask with the specific submission id (Track 04)', async () => {
       mockSessionInstance.hasRunningTask.mockReturnValue(true);
 
       await agent.cancelTask('sub_1');
 
       expect(mockSessionInstance.hasRunningTask).toHaveBeenCalledWith('sub_1');
-      expect(mockSessionInstance.abortAllTasks).toHaveBeenCalledWith('UserInterrupt');
+      // Track 04: per-task abort, not blanket abortAllTasks, so cancelling
+      // task A doesn't kill unrelated background tasks.
+      expect(mockSessionInstance.abortTask).toHaveBeenCalledWith('sub_1', 'UserInterrupt');
+      expect(mockSessionInstance.abortAllTasks).not.toHaveBeenCalled();
     });
 
-    it('should not call abortAllTasks when no task is running for the given id', async () => {
+    it('should not call abortTask when no task is running for the given id', async () => {
       mockSessionInstance.hasRunningTask.mockReturnValue(false);
 
       await agent.cancelTask('sub_nonexistent');
 
       expect(mockSessionInstance.hasRunningTask).toHaveBeenCalledWith('sub_nonexistent');
+      expect(mockSessionInstance.abortTask).not.toHaveBeenCalled();
       expect(mockSessionInstance.abortAllTasks).not.toHaveBeenCalled();
     });
   });

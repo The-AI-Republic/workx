@@ -168,13 +168,13 @@ describe('TaskRunner', () => {
       expect(runner.isCancelled()).toBe(true);
     });
 
-    it('should set status to cancelled and abortReason to user_interrupt', () => {
+    it('should set status to killed and abortReason to user_interrupt', () => {
       const runner = new TaskRunner(
         session, turnContext, turnManager, SUBMISSION_ID, [],
       );
 
       runner.cancel();
-      expect(runner.getTaskStatus(SUBMISSION_ID)).toBe('cancelled');
+      expect(runner.getTaskStatus(SUBMISSION_ID)).toBe('killed');
     });
 
     it('should delegate cancellation to turnManager', () => {
@@ -496,7 +496,7 @@ describe('TaskRunner', () => {
       const result = await runPromise;
       expect(result.success).toBe(false);
       expect(runner.isCancelled()).toBe(true);
-      expect(runner.getTaskStatus(SUBMISSION_ID)).toBe('cancelled');
+      expect(runner.getTaskStatus(SUBMISSION_ID)).toBe('killed');
     });
 
     // -------------------------------------------------------------------
