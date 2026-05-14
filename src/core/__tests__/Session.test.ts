@@ -686,7 +686,7 @@ describe('Session', () => {
       expect(task.kind).toHaveBeenCalled();
     });
 
-    it('interruptTask should abort all running tasks', async () => {
+    it('interruptTask aborts the foreground task (Track 04)', async () => {
       const task = makeMockTask({
         run: vi.fn().mockImplementation(() => new Promise(() => {})), // never resolves
       });
@@ -694,6 +694,9 @@ describe('Session', () => {
       await session.spawnTask(task, turnContext, 'sub-1', []);
       expect(session.hasRunningTask('sub-1')).toBe(true);
 
+      // Track 04: interruptTask narrows to foreground-only. The spawn above
+      // has no `background: true`, so it IS the foreground task — should be
+      // killed.
       await session.interruptTask();
       expect(session.hasRunningTask('sub-1')).toBe(false);
     });

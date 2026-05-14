@@ -1570,6 +1570,14 @@ export class Session {
     const t = this.activeTasks.get(id);
     if (!t) return;
     await this.handleTaskAbort(id, t, reason);
+    // Also drain from ActiveTurn so hasRunningTask reports false immediately
+    // even if the task's promise never resolves (e.g., synthetic sub-agent
+    // entries created by SubAgentRunner whose promise is Promise.resolve(null)
+    // but never went through ActiveTurn anyway, and edge-case mocks).
+    if (this.activeTurn) {
+      const isEmpty = this.activeTurn.removeTask(id);
+      if (isEmpty) this.activeTurn = null;
+    }
     this.activeTasks.delete(id);
     if (this.foregroundTaskId === id) {
       this.foregroundTaskId = null;

@@ -37,21 +37,26 @@ export class StorageQuotaManager {
   constructor(
     cacheManagerOrOptions?: CacheManager | StorageQuotaManagerOptions
   ) {
-    // Backward-compat: accept either a CacheManager directly (legacy) or
-    // an options bag (new tiered-evictor API).
-    if (cacheManagerOrOptions && 'evictTier' in (cacheManagerOrOptions as object)) {
-      // Future-proofing: someone passed something that looks like an evictor;
-      // not the common path.
+    if (!cacheManagerOrOptions) return;
+    // Distinguish the legacy "pass a CacheManager directly" form from the
+    // new options bag. The new bag has at least one of the recognised
+    // option keys; everything else is treated as a CacheManager (mocks
+    // included — they often aren't instanceof CacheManager).
+    const candidate = cacheManagerOrOptions as Record<string, unknown>;
+    const looksLikeOptions =
+      'cacheManager' in candidate ||
+      'tieredEvictor' in candidate ||
+      'warningThreshold' in candidate ||
+      'criticalThreshold' in candidate;
+    if (!looksLikeOptions) {
+      this.cacheManager = cacheManagerOrOptions as CacheManager;
+      return;
     }
-    if (cacheManagerOrOptions instanceof CacheManager) {
-      this.cacheManager = cacheManagerOrOptions;
-    } else if (cacheManagerOrOptions && typeof cacheManagerOrOptions === 'object') {
-      const opts = cacheManagerOrOptions as StorageQuotaManagerOptions;
-      this.cacheManager = opts.cacheManager ?? null;
-      this.tieredEvictor = opts.tieredEvictor ?? null;
-      if (opts.warningThreshold !== undefined) this.warningThreshold = opts.warningThreshold;
-      if (opts.criticalThreshold !== undefined) this.criticalThreshold = opts.criticalThreshold;
-    }
+    const opts = cacheManagerOrOptions as StorageQuotaManagerOptions;
+    this.cacheManager = opts.cacheManager ?? null;
+    this.tieredEvictor = opts.tieredEvictor ?? null;
+    if (opts.warningThreshold !== undefined) this.warningThreshold = opts.warningThreshold;
+    if (opts.criticalThreshold !== undefined) this.criticalThreshold = opts.criticalThreshold;
   }
 
   /** Set or replace the tiered evictor after construction (e.g., late binding). */
