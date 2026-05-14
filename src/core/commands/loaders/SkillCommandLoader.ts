@@ -26,15 +26,13 @@ export class SkillCommandLoader {
       name: meta.name,
       description: meta.description,
       loadedFrom: 'skill',
-      // SkillMeta carries no `whenToUse`/`argumentHint` until Phase 2 extends it.
-      // Optional fields below are projected from extended SkillMeta when present.
-      whenToUse: (meta as SkillMeta & { whenToUse?: string }).whenToUse,
-      argumentHint: (meta as SkillMeta & { argumentHint?: string }).argumentHint,
-      userInvocable: (meta as SkillMeta & { userInvocable?: boolean }).userInvocable ?? true,
-      disableModelInvocation: (meta as SkillMeta & { disableModelInvocation?: boolean }).disableModelInvocation ?? false,
-      context: (meta as SkillMeta & { context?: 'inline' | 'fork' }).context ?? 'inline',
-      agent: (meta as SkillMeta & { agent?: string }).agent,
-      domains: (meta as SkillMeta & { domains?: readonly string[] }).domains,
+      whenToUse: meta.whenToUse,
+      argumentHint: meta.argumentHint,
+      userInvocable: meta.userInvocable ?? true,
+      disableModelInvocation: meta.disableModelInvocation ?? false,
+      context: meta.context ?? 'inline',
+      agent: meta.agent,
+      domains: meta.domains,
       // model / effort / allowedTools / hooks live on the full Skill record;
       // they're not surfaced via SkillMeta to avoid loading the body just to list.
       async getPromptForCommand(args: string): Promise<string> {

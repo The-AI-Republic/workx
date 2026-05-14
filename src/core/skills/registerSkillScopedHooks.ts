@@ -7,24 +7,15 @@
  */
 
 import type { SessionHookStore } from '@/core/hooks/loaders/SessionHookStore';
+import { VALID_HOOK_EVENTS } from '@/core/hooks/HookRegistry';
 import type { HooksConfig, HookEvent, HookCommand, HookMatcherEntry } from '@/core/hooks/types';
 
-const VALID_HOOK_EVENTS: ReadonlySet<HookEvent> = new Set<HookEvent>([
-  'PreToolUse',
-  'PostToolUse',
-  'PostToolUseFailure',
-  'SessionStart',
-  'SessionEnd',
-  'UserPromptSubmit',
-  'Stop',
-  'PermissionRequest',
-  'PermissionDenied',
-  'TaskCreated',
-  'TaskCompleted',
-  'PreCompact',
-  'PostCompact',
-  'ConfigChange',
-]);
+/**
+ * Cap on hooks registered per single skill invocation. Defends against a
+ * malicious or runaway skill declaring thousands of hooks and DoS-ing the
+ * registry. Excess hooks are dropped with a warning.
+ */
+export const MAX_HOOKS_PER_SKILL = 100;
 
 /**
  * Walk every event/matcher/hook in `hooks` and register through `store`.
@@ -40,7 +31,8 @@ export function registerSkillScopedHooks(
   skillName: string,
 ): number {
   let count = 0;
-  for (const [eventName, matcherEntries] of Object.entries(hooks)) {
+  let truncated = false;
+  outer: for (const [eventName, matcherEntries] of Object.entries(hooks)) {
     if (!VALID_HOOK_EVENTS.has(eventName as HookEvent)) {
       console.warn(
         `[registerSkillScopedHooks] Skill "${skillName}" declared unknown hook event "${eventName}", skipping`,
@@ -50,10 +42,19 @@ export function registerSkillScopedHooks(
     const event = eventName as HookEvent;
     for (const entry of matcherEntries as readonly HookMatcherEntry[]) {
       for (const hook of entry.hooks as readonly HookCommand[]) {
+        if (count >= MAX_HOOKS_PER_SKILL) {
+          truncated = true;
+          break outer;
+        }
         store.add(event, hook, entry.matcher);
         count++;
       }
     }
+  }
+  if (truncated) {
+    console.warn(
+      `[registerSkillScopedHooks] Skill "${skillName}" exceeded MAX_HOOKS_PER_SKILL (${MAX_HOOKS_PER_SKILL}); excess hooks dropped`,
+    );
   }
   return count;
 }

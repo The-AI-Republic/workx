@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { registerSkillScopedHooks } from '@/core/skills/registerSkillScopedHooks';
+import { registerSkillScopedHooks, MAX_HOOKS_PER_SKILL } from '@/core/skills/registerSkillScopedHooks';
 import { HookRegistry } from '@/core/hooks/HookRegistry';
 import { SessionHookStore } from '@/core/hooks/loaders/SessionHookStore';
-import type { HooksConfig } from '@/core/hooks/types';
+import type { HooksConfig, HookCommand } from '@/core/hooks/types';
 
 describe('registerSkillScopedHooks', () => {
   let registry: HookRegistry;
@@ -55,5 +55,37 @@ describe('registerSkillScopedHooks', () => {
   it('handles empty hooks config', () => {
     expect(registerSkillScopedHooks(store, {}, 'test-skill')).toBe(0);
     expect(store.size).toBe(0);
+  });
+
+  it('caps registration at MAX_HOOKS_PER_SKILL with a warning', () => {
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const command: HookCommand = { type: 'command', command: 'echo' };
+    const overflow = MAX_HOOKS_PER_SKILL + 50;
+    const hooks: HooksConfig = {
+      PreToolUse: [
+        { matcher: '*', hooks: Array.from({ length: overflow }, () => command) },
+      ],
+    };
+    const count = registerSkillScopedHooks(store, hooks, 'noisy-skill');
+    expect(count).toBe(MAX_HOOKS_PER_SKILL);
+    expect(store.size).toBe(MAX_HOOKS_PER_SKILL);
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining(`exceeded MAX_HOOKS_PER_SKILL (${MAX_HOOKS_PER_SKILL})`),
+    );
+    consoleSpy.mockRestore();
+  });
+
+  it('cap covers cross-event totals (not per-event)', () => {
+    const command: HookCommand = { type: 'command', command: 'echo' };
+    const half = Math.floor(MAX_HOOKS_PER_SKILL / 2);
+    const overflow = half + 10;
+    const hooks: HooksConfig = {
+      PreToolUse: [{ matcher: '*', hooks: Array.from({ length: overflow }, () => command) }],
+      PostToolUse: [{ matcher: '*', hooks: Array.from({ length: overflow }, () => command) }],
+    };
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const count = registerSkillScopedHooks(store, hooks, 's');
+    expect(count).toBe(MAX_HOOKS_PER_SKILL);
+    consoleSpy.mockRestore();
   });
 });

@@ -35,6 +35,7 @@ import { SkillRegistry } from '@/core/skills/SkillRegistry';
 import { SkillDomainFilter } from '@/core/skills/SkillDomainFilter';
 import { ActiveTabService } from '@/core/tabs/ActiveTabService';
 import { FilesystemSkillProvider } from '../storage/FilesystemSkillProvider';
+import { startDesktopActiveTabAdapter } from '../tabs/DesktopActiveTabAdapter';
 import { AuthManager, type IAuthManager } from '@/core/models/types/Auth';
 import type { Op } from '@/core/protocol/types';
 import type { SubmissionContext } from '@/core/channels/types';
@@ -399,21 +400,30 @@ export class DesktopAgentBootstrap {
       await provider.initialize();
 
       // Track 03 Phase 3 — wire domain-based conditional activation.
-      // ActiveTabService stays empty in desktop until a webview adapter pumps
-      // URL changes into it. Until then, getAvailableSkills() returns only
-      // unconditional skills, which is the safe fallback.
+      // The desktop adapter is currently an inert stub (no Tauri URL-change
+      // event source yet); domain-conditional skills stay dormant on desktop
+      // until that lands. Unconditional skills are unaffected.
       this.activeTabService = new ActiveTabService();
       this.skillDomainFilter = new SkillDomainFilter();
+
+      // Subscribe FIRST so any seed snapshot reaches the filter once init runs.
+      this.activeTabUnsubscribe = this.activeTabService.subscribe((snap) => {
+        this.skillDomainFilter?.onActiveTabChange(snap.hostname);
+      });
+
+      const stopAdapter = startDesktopActiveTabAdapter(this.activeTabService);
+      // Compose: stop adapter THEN unsubscribe filter
+      const priorUnsubscribe = this.activeTabUnsubscribe;
+      this.activeTabUnsubscribe = () => { stopAdapter(); priorUnsubscribe(); };
 
       this.skillRegistry = new SkillRegistry(provider, this.skillDomainFilter);
       await this.skillRegistry.discover();
 
-      // Subscribe the filter to active-tab changes (debounced micro-burst:
-      // setSnapshot itself is idempotent on hostname+url so no extra work
-      // needed for now; revisit if rapid nav becomes a prompt-cache concern).
-      this.activeTabUnsubscribe = this.activeTabService.subscribe((snap) => {
-        this.skillDomainFilter?.onActiveTabChange(snap.hostname);
-      });
+      // Race fix (B3): if a snapshot arrived between subscribe() and discover(),
+      // the filter handled it against empty maps. Replay the current snapshot
+      // now that init() has populated them.
+      const seed = this.activeTabService.getCurrent();
+      if (seed) this.skillDomainFilter.onActiveTabChange(seed.hostname);
 
       registerPromptExtension(() => this.skillRegistry!.buildSkillsSystemPrompt());
 
@@ -443,33 +453,6 @@ export class DesktopAgentBootstrap {
     const hookRegistry = agent.getHookRegistry();
     const skillRegistry = this.skillRegistry;
 
-    // Track 03 Phase 4 — bridge to sub_agent so context: 'fork' skills work.
-    // Returns a SubAgentResult shape regardless of whether sub_agent is registered.
-    const subAgentInvoker: SubAgentInvoker = async (subParams) => {
-      try {
-        const exec = await registry.execute({
-          toolName: 'sub_agent',
-          parameters: { ...subParams, background: false },
-          sessionId: 'skill-fork',
-          turnId: 'skill-fork-turn',
-        });
-        if (!exec.success) {
-          return { success: false, runId: '', error: exec.error?.message ?? 'sub_agent execute failed' };
-        }
-        const raw = exec.data;
-        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-        return parsed as SubAgentResult;
-      } catch (err) {
-        return {
-          success: false,
-          runId: '',
-          error: `sub_agent invocation failed: ${err instanceof Error ? err.message : String(err)}`,
-        };
-      }
-    };
-
-    const executor = new SkillExecutor(skillRegistry, hookRegistry, subAgentInvoker);
-
     await registry.register(
       {
         type: 'function',
@@ -487,10 +470,38 @@ export class DesktopAgentBootstrap {
           },
         },
       },
-      async (params) => {
+      async (params, ctx) => {
         const skillName = params.name as string;
         const args = params.arguments as string | undefined;
 
+        // Track 03 Phase 4 — construct invoker per-call so it captures the
+        // real session/turn IDs from ToolContext. Hardcoded sentinels would
+        // break event correlation and approval session-scoping.
+        const subAgentInvoker: SubAgentInvoker = async (subParams) => {
+          try {
+            const exec = await registry.execute({
+              toolName: 'sub_agent',
+              parameters: { ...subParams, background: false },
+              sessionId: ctx.sessionId,
+              turnId: ctx.turnId,
+              callId: ctx.callId,
+            });
+            if (!exec.success) {
+              return { success: false, runId: '', error: exec.error?.message ?? 'sub_agent execute failed' };
+            }
+            const raw = exec.data;
+            const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            return parsed as SubAgentResult;
+          } catch (err) {
+            return {
+              success: false,
+              runId: '',
+              error: `sub_agent invocation failed: ${err instanceof Error ? err.message : String(err)}`,
+            };
+          }
+        };
+
+        const executor = new SkillExecutor(skillRegistry, hookRegistry, subAgentInvoker);
         const result = await executor.execute(skillName, args);
 
         // Inline → return body directly so the model reads it as instructions
