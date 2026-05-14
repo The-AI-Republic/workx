@@ -116,6 +116,9 @@
   "Agent_Execution_Tools": {
     "message": "Agent Execution Tools"
   },
+  "Agent_Memory": {
+    "message": "Agent Memory"
+  },
   "Agent_URL_is_required": {
     "message": "Agent URL is required"
   },
@@ -1503,6 +1506,27 @@
   },
   "Remaining": {
     "message": "Remaining:"
+  },
+  "Remember_facts_across_conversations_Take_e5f6": {
+    "message": "Remember facts across conversations. Takes effect on next conversation."
+  },
+  "Use_own_OpenAI_API_key_g7h8": {
+    "message": "Use own OpenAI API key"
+  },
+  "When_off_memory_uses_your_account_credit_i9j0": {
+    "message": "When off, memory uses your account credits via backend routing."
+  },
+  "Free_tier_requires_your_own_OpenAI_API_ke_k1l2": {
+    "message": "Free tier requires your own OpenAI API key for memory. Upgrade to use account credits."
+  },
+  "Memory_is_enabled_but_no_OpenAI_API_key__c3d4": {
+    "message": "Memory is enabled but no OpenAI API key is configured. Add one in Model Settings to activate memory."
+  },
+  "No_OpenAI_API_key_found_Memory_will_use__a1b2": {
+    "message": "No OpenAI API key found. Memory will use your current LLM provider and model. For lower cost, add an OpenAI API key to use gpt-4o-mini instead."
+  },
+  "Memory_works_with_any_LLM_provider_When__c3d4e5": {
+    "message": "Memory works with any LLM provider. When an OpenAI API key is available, it uses gpt-4o-mini for lower cost. Otherwise it uses your current model."
   },
   "Remove": {
     "message": "Remove"

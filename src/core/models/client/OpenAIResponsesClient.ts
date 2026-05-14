@@ -293,9 +293,41 @@ export class OpenAIResponsesClient extends ModelClient {
     this.reasoningSummary = summary;
   }
 
-  // Basic ModelClient interface methods (delegated to streamResponses)
+  // Non-streaming completion using the Chat Completions API
   async complete(request: CompletionRequest): Promise<CompletionResponse> {
-    throw new ModelClientError('Direct completion not supported by Responses API - use streamResponses instead');
+    this.validateRequest(request);
+
+    const response = await this.client.chat.completions.create({
+      model: request.model,
+      messages: request.messages
+        .filter(m => m.role !== 'tool')
+        .map(m => ({
+          role: m.role as 'system' | 'user' | 'assistant',
+          content: m.content ?? '',
+        })),
+      temperature: request.temperature,
+      max_tokens: request.maxTokens,
+      stream: false,
+    });
+
+    const choice = response.choices[0];
+    return {
+      id: response.id,
+      model: response.model,
+      choices: [{
+        index: 0,
+        message: {
+          role: 'assistant',
+          content: choice?.message?.content ?? '',
+        },
+        finishReason: (choice?.finish_reason as CompletionResponse['choices'][0]['finishReason']) ?? 'stop',
+      }],
+      usage: {
+        promptTokens: response.usage?.prompt_tokens ?? 0,
+        completionTokens: response.usage?.completion_tokens ?? 0,
+        totalTokens: response.usage?.total_tokens ?? 0,
+      },
+    };
   }
 
   /**

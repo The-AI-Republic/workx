@@ -18,11 +18,12 @@
   import MCPSettings from '../../settings/MCPSettings.svelte';
   import ApprovalSettings from '../../settings/ApprovalSettings.svelte';
   import SecuritySettings from '../../settings/SecuritySettings.svelte';
+  import MemorySettings from '../../settings/MemorySettings.svelte';
   import { t } from '../../lib/i18n';
   import { uiTheme } from '../../stores/themeStore';
 
   // Navigation state - includes 'advanced-model-config' for 3rd level menu
-  type NavigationView = 'menu' | 'model-config' | 'advanced-model-config' | 'general' | 'storage' | 'tools' | 'mcp-servers' | 'extension' | 'approval' | 'security';
+  type NavigationView = 'menu' | 'model-config' | 'advanced-model-config' | 'general' | 'memory' | 'storage' | 'tools' | 'mcp-servers' | 'extension' | 'approval' | 'security';
   let currentView: NavigationView = $state('menu');
   let hasUnsavedChanges: boolean = $state(false);
   let showUnsavedDialog: boolean = $state(false);
@@ -174,6 +175,15 @@
           {highlightSettingId}
           onBack={handleBack}
           onSaved={() => {}}
+          bind:isDirty={hasUnsavedChanges}
+        />
+      {:else if currentView === 'memory'}
+        <MemorySettings
+          {settingsConfig}
+          {highlightSettingId}
+          onBack={handleBack}
+          onSaved={() => {}}
+          onNavigateTo={(view) => navigateTo(view as NavigationView)}
           bind:isDirty={hasUnsavedChanges}
         />
       {:else if currentView === 'storage'}

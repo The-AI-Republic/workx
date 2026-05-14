@@ -2,16 +2,66 @@ import type { StorageQuota, StorageStats } from '../types/storage';
 import { CacheManager } from './CacheManager';
 import { RolloutRecorder } from './rollout';
 
+/**
+ * Eviction tier identifier.
+ * - Tier 0: ephemeral task output chunks (Track 04 — TaskOutputManager).
+ * - Tier 1: cache_items (existing — least important persistent data).
+ * - Tier 2: anything else (rollouts, sessions, config — never auto-evict).
+ */
+export type EvictionTier = 0 | 1 | 2;
+
+/**
+ * Pluggable tiered evictor injected at service-worker startup.
+ * StorageQuotaManager stays unaware of which stores back each tier — the
+ * concrete impl knows about TaskOutputManager (tier 0), CacheManager (tier 1), etc.
+ */
+export interface TieredEvictor {
+  /** Returns bytes actually freed. Should be best-effort. */
+  evictTier(tier: EvictionTier, targetBytes: number): Promise<number>;
+}
+
+export interface StorageQuotaManagerOptions {
+  cacheManager?: CacheManager;
+  tieredEvictor?: TieredEvictor;
+  warningThreshold?: number;
+  criticalThreshold?: number;
+}
+
 export class StorageQuotaManager {
   private cacheManager: CacheManager | null = null;
   private quotaCheckInterval: number | null = null;
   private warningThreshold = 80; // Warn at 80% usage
   private criticalThreshold = 95; // Critical at 95% usage
+  private tieredEvictor: TieredEvictor | null = null;
 
   constructor(
-    cacheManager?: CacheManager
+    cacheManagerOrOptions?: CacheManager | StorageQuotaManagerOptions
   ) {
-    this.cacheManager = cacheManager || null;
+    if (!cacheManagerOrOptions) return;
+    // Distinguish the legacy "pass a CacheManager directly" form from the
+    // new options bag. The new bag has at least one of the recognised
+    // option keys; everything else is treated as a CacheManager (mocks
+    // included — they often aren't instanceof CacheManager).
+    const candidate = cacheManagerOrOptions as Record<string, unknown>;
+    const looksLikeOptions =
+      'cacheManager' in candidate ||
+      'tieredEvictor' in candidate ||
+      'warningThreshold' in candidate ||
+      'criticalThreshold' in candidate;
+    if (!looksLikeOptions) {
+      this.cacheManager = cacheManagerOrOptions as CacheManager;
+      return;
+    }
+    const opts = cacheManagerOrOptions as StorageQuotaManagerOptions;
+    this.cacheManager = opts.cacheManager ?? null;
+    this.tieredEvictor = opts.tieredEvictor ?? null;
+    if (opts.warningThreshold !== undefined) this.warningThreshold = opts.warningThreshold;
+    if (opts.criticalThreshold !== undefined) this.criticalThreshold = opts.criticalThreshold;
+  }
+
+  /** Set or replace the tiered evictor after construction (e.g., late binding). */
+  setTieredEvictor(evictor: TieredEvictor): void {
+    this.tieredEvictor = evictor;
   }
 
   async initialize(
@@ -202,6 +252,39 @@ export class StorageQuotaManager {
       if (quota.percentage >= this.criticalThreshold) {
         // Critical: Automatic cleanup
         console.warn(`Storage critical: ${quota.percentage.toFixed(2)}%. Running cleanup...`);
+        // Track 04: if a tiered evictor is registered, IT is the canonical
+        // eviction path; the legacy multi-step cleanup is bypassed entirely
+        // to avoid double-evicting the cache (tier 1 already covers it).
+        // If tier-0 + tier-1 still under-fill, log and wait for the next
+        // tick rather than thrash through legacy paths that would re-call
+        // cacheManager.cleanup() and risk clearing tier-1 work twice.
+        if (this.tieredEvictor) {
+          const targetBytes = Math.max(
+            0,
+            quota.usage - Math.floor((this.warningThreshold / 100) * quota.quota),
+          );
+          let remaining = targetBytes;
+          if (remaining > 0) {
+            const freed0 = await this.tieredEvictor.evictTier(0, remaining);
+            remaining -= freed0;
+          }
+          if (remaining > 0) {
+            const freed1 = await this.tieredEvictor.evictTier(1, remaining);
+            remaining -= freed1;
+          }
+          // Tier 2 is never auto-evicted. If we didn't reclaim enough, log
+          // and exit — tier 2 must be cleaned up by an explicit user action.
+          if (remaining > 0) {
+            console.warn(
+              `[StorageQuotaManager] Tiered eviction freed ${targetBytes - remaining}B, ` +
+              `still ${remaining}B over target. Tier-2 not auto-evicted.`,
+            );
+          }
+          return;
+        }
+        // Legacy multi-step cleanup (rollouts -> expired cache -> full cache).
+        // Used only when no tieredEvictor was injected (e.g., tests, non-
+        // extension contexts).
         const results = await this.cleanup(this.warningThreshold);
         console.log('Cleanup results:', results);
       } else if (quota.percentage >= this.warningThreshold) {

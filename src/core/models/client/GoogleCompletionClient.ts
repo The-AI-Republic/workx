@@ -169,7 +169,45 @@ export class GoogleCompletionClient extends ModelClient {
   }
 
   async complete(request: CompletionRequest): Promise<CompletionResponse> {
-    throw new Error('Method not implemented. Use stream() instead.');
+    const systemInstruction = request.messages
+      .filter(m => m.role === 'system')
+      .map(m => m.content ?? '')
+      .join('\n');
+
+    const contents = request.messages
+      .filter(m => m.role !== 'system')
+      .map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content ?? '' }],
+      }));
+
+    const result = await this.getClient().models.generateContent({
+      model: request.model,
+      contents,
+      config: {
+        systemInstruction: systemInstruction || undefined,
+        maxOutputTokens: request.maxTokens,
+        temperature: request.temperature,
+      },
+    });
+
+    const text = result.text ?? '';
+    const usage = result.usageMetadata;
+
+    return {
+      id: `gemini-${Date.now()}`,
+      model: request.model,
+      choices: [{
+        index: 0,
+        message: { role: 'assistant', content: text },
+        finishReason: 'stop',
+      }],
+      usage: {
+        promptTokens: usage?.promptTokenCount ?? 0,
+        completionTokens: usage?.candidatesTokenCount ?? 0,
+        totalTokens: usage?.totalTokenCount ?? 0,
+      },
+    };
   }
 
   async stream(prompt: Prompt): Promise<ResponseStream> {

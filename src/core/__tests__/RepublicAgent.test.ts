@@ -40,6 +40,8 @@ vi.mock('../PromptLoader', () => ({
   loadUserInstructions: vi.fn(async () => 'user-instructions'),
   isComposerConfigured: vi.fn(() => false),
   configurePromptComposer: vi.fn(),
+  registerPromptExtension: vi.fn(),
+  unregisterPromptExtension: vi.fn(),
 }));
 
 vi.mock('../../tools/registerPlatformTools', () => ({
@@ -58,6 +60,10 @@ vi.mock('../tasks/RegularTask', () => ({
 
 vi.mock('../engine/RepublicAgentEngine', () => ({
   RepublicAgentEngine: vi.fn(() => mockEngineInstance),
+}));
+
+vi.mock('../../tools/MemoryTools', () => ({
+  registerMemoryTools: vi.fn(async () => undefined),
 }));
 
 vi.mock('../TurnContext', () => ({
@@ -169,11 +175,15 @@ describe('RepublicAgent', () => {
       requestInterrupt: vi.fn(),
       clearInterrupt: vi.fn(),
       abortAllTasks: vi.fn().mockResolvedValue(undefined),
+      // Track 04: per-task abort path
+      abortTask: vi.fn().mockResolvedValue(undefined),
       hasRunningTask: vi.fn().mockReturnValue(false),
       addToHistory: vi.fn(),
       getHistoryEntry: vi.fn(),
       clearHistory: vi.fn(),
       shutdown: vi.fn().mockResolvedValue(undefined),
+      refreshMemoryService: vi.fn().mockResolvedValue(undefined),
+      initialize: vi.fn().mockResolvedValue(undefined),
       initializeSession: vi.fn().mockResolvedValue(undefined),
       notifyApproval: vi.fn(),
       compact: vi.fn().mockResolvedValue({
@@ -186,11 +196,13 @@ describe('RepublicAgent', () => {
       getDefaultModel: vi.fn().mockReturnValue('test-model'),
       getDefaultCwd: vi.fn().mockReturnValue('/'),
       isStorageEnabled: vi.fn().mockReturnValue(true),
+      getMemoryService: vi.fn().mockReturnValue(null),
     };
 
     mockToolRegistryInstance = {
       register: vi.fn(),
-      getTool: vi.fn(),
+      unregister: vi.fn().mockResolvedValue(undefined),
+      getTool: vi.fn().mockReturnValue(null),
       getAllTools: vi.fn().mockReturnValue([]),
       cleanup: vi.fn().mockResolvedValue(undefined),
       clear: vi.fn(),
@@ -617,21 +629,25 @@ describe('RepublicAgent', () => {
   // =========================================================================
 
   describe('cancelTask()', () => {
-    it('should call session.abortAllTasks when the task is running', async () => {
+    it('should call session.abortTask with the specific submission id (Track 04)', async () => {
       mockSessionInstance.hasRunningTask.mockReturnValue(true);
 
       await agent.cancelTask('sub_1');
 
       expect(mockSessionInstance.hasRunningTask).toHaveBeenCalledWith('sub_1');
-      expect(mockSessionInstance.abortAllTasks).toHaveBeenCalledWith('UserInterrupt');
+      // Track 04: per-task abort, not blanket abortAllTasks, so cancelling
+      // task A doesn't kill unrelated background tasks.
+      expect(mockSessionInstance.abortTask).toHaveBeenCalledWith('sub_1', 'UserInterrupt');
+      expect(mockSessionInstance.abortAllTasks).not.toHaveBeenCalled();
     });
 
-    it('should not call abortAllTasks when no task is running for the given id', async () => {
+    it('should not call abortTask when no task is running for the given id', async () => {
       mockSessionInstance.hasRunningTask.mockReturnValue(false);
 
       await agent.cancelTask('sub_nonexistent');
 
       expect(mockSessionInstance.hasRunningTask).toHaveBeenCalledWith('sub_nonexistent');
+      expect(mockSessionInstance.abortTask).not.toHaveBeenCalled();
       expect(mockSessionInstance.abortAllTasks).not.toHaveBeenCalled();
     });
   });
@@ -859,6 +875,12 @@ describe('RepublicAgent', () => {
       expect(mockSessionInstance.setTurnContext).toHaveBeenCalled();
     });
 
+    it('should refresh the memory service after replacing the model client', async () => {
+      await agent.refreshModelClient();
+
+      expect(mockSessionInstance.refreshMemoryService).toHaveBeenCalledWith(config);
+    });
+
     it('should not throw if createClientForCurrentModel fails', async () => {
       mockModelClientFactoryInstance.createClientForCurrentModel.mockRejectedValue(
         new Error('network error')
@@ -959,6 +981,12 @@ describe('RepublicAgent', () => {
 
       const turnCtx = mockSessionInstance.getTurnContext();
       expect(turnCtx.setBaseInstructions).toHaveBeenCalledWith('base-instructions');
+    });
+
+    it('should refresh the memory service after hot-swapping the model client', async () => {
+      await agent.hotSwapModelClient();
+
+      expect(mockSessionInstance.refreshMemoryService).toHaveBeenCalledWith(config);
     });
 
     it('should reuse existing TurnContext unlike refreshModelClient which creates a new one', async () => {

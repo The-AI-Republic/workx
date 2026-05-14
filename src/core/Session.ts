@@ -12,7 +12,7 @@ import type { EventMsg } from './protocol/events';
 import { RolloutRecorder, type RolloutItem } from '../storage/rollout';
 import { v4 as uuidv4 } from 'uuid';
 import { TurnContext } from './TurnContext';
-import type { AgentConfig } from '../config/AgentConfig';
+import { AgentConfig } from '../config/AgentConfig';
 import type { SessionTask } from './tasks/SessionTask';
 import type { ToolRegistry } from '../tools/ToolRegistry';
 
@@ -21,6 +21,7 @@ import { SessionState, type SessionStateExport } from './session/state/SessionSt
 import { type SessionServices, createSessionServices } from './session/state/SessionServices';
 import { ActiveTurn } from './session/state/ActiveTurn';
 import type { TokenUsageInfo, RunningTask, RateLimitSnapshot, TurnAbortReason, InitialHistory } from './session/state/types';
+import { TaskKind } from './session/state/types';
 import { isDOMSnapshotOutput, compressSnapshot } from './session/state/SnapshotCompressor';
 import type { HookDispatcher } from './hooks/HookDispatcher';
 
@@ -30,10 +31,21 @@ import type { CompactionResult, CompactionTrigger } from './compact/types';
 import { estimateRequestTokens } from './compact/utils';
 import type { ModelClient } from './models/ModelClient';
 
+// Memory system
+import type { MemoryService } from './memory/MemoryService';
+import { createMemoryService } from './memory/createMemoryService';
+
 // Title generation imports
 import { TitleGenerator } from './title';
 
-// Tool result persistence (track 09)
+// Track 04: typed tasks
+import type { BackgroundAgentTaskState, TaskState } from './tasks/types';
+import { isTerminalTaskStatus } from './tasks/types';
+import type { AgentContext } from '../tools/AgentTool/types';
+import { PANEL_GRACE_MS, STOPPED_DISPLAY_MS } from './tasks/timing';
+import type { TaskOutputStore } from './tasks/TaskOutputStore';
+
+// Track 09: tool result persistence
 import {
   createToolResultStore,
   type ToolResultStore,
@@ -75,6 +87,21 @@ export class Session {
   private interruptRequested: boolean = false;
   private compactService: CompactService;
   private titleGenerator: TitleGenerator;
+  private _memoryService: MemoryService | null = null;
+
+  // ─── Track 04: typed task registry ────────────────────────────────────
+  /**
+   * Cross-turn registry of every tracked task (foreground + background).
+   * Lives alongside `activeTurn` which still holds foreground-only turn
+   * state (approvals, pending input). See design.md §Concurrency Seam.
+   */
+  private activeTasks: Map<string, RunningTask> = new Map();
+  /** Single-valued pointer to the currently-foreground task, if any. */
+  private foregroundTaskId: string | null = null;
+  /** Lazily-started eviction timer that walks `activeTasks` for terminal tasks. */
+  private evictionTimerId: ReturnType<typeof setInterval> | null = null;
+  /** Optional output store shared with background sub-agent task runners. */
+  private taskOutputStore: TaskOutputStore | null = null;
   // Title generation stage: 0 = not started, 1 = generated at 2 messages, 2 = generated at 5 messages (final)
   private titleGenerationStage: number = 0;
   private initializationPromise: Promise<void> | null = null;
@@ -741,6 +768,8 @@ export class Session {
    * Reset session to initial state (for new conversation) using RolloutRecorder
    */
   async reset(): Promise<void> {
+    await this.closeMemoryService();
+
     // Shutdown old RolloutRecorder if it exists
     if (this.services?.rollout) {
       try {
@@ -770,6 +799,8 @@ export class Session {
    * Close session and cleanup resources using RolloutRecorder
    */
   async close(): Promise<void> {
+    await this.closeMemoryService();
+
     // Tool result persistence cleanup (track 09).
     //
     // Only purge persisted results on close for non-persistent sessions.
@@ -848,6 +879,145 @@ export class Session {
    */
   setTabId(tabId: number): void {
     this.sessionState.setTabId(tabId);
+  }
+
+  /**
+   * Get the memory service (null if memory is disabled or unsupported)
+   */
+  getMemoryService(): MemoryService | null {
+    return this._memoryService;
+  }
+
+  /**
+   * Set the memory service (called during initialization)
+   */
+  setMemoryService(service: MemoryService | null): void {
+    console.log(`[Memory] setMemoryService called with: ${service ? 'MemoryService instance' : 'null'}`, new Error().stack?.split('\n').slice(1, 4).join('\n'));
+    this._memoryService = service;
+  }
+
+  /**
+   * Rebuild the memory service from current config/auth state.
+   * Used on startup and after runtime config/auth changes.
+   */
+  async refreshMemoryService(configOverride?: AgentConfig): Promise<void> {
+    await this.closeMemoryService();
+
+    // Initialize memory service (for desktop/server only)
+    // Memory uses file-based storage with a cheap LLM for search operations.
+    try {
+      if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ !== 'extension') {
+        const agentConfig = configOverride || this.config || await AgentConfig.getInstance();
+        const preferences = agentConfig.getConfig().preferences;
+        const memoryEnabled = preferences?.memoryEnabled ?? false;
+
+        console.log(`[Memory] Init check: BUILD_MODE=${__BUILD_MODE__}, memoryEnabled=${memoryEnabled}, preferences=`, JSON.stringify({ memoryEnabled: preferences?.memoryEnabled, memoryUseOwnApiKey: preferences?.memoryUseOwnApiKey }));
+
+        // Determine API key source for the cheap memory LLM
+        const memoryUseOwnApiKey = preferences?.memoryUseOwnApiKey ?? true;
+        const useBackendForMemory = !memoryUseOwnApiKey;
+
+        const openaiApiKey = await agentConfig.getProviderApiKey('openai');
+
+        // Build backend routing config if applicable
+        let backendBaseUrl: string | undefined;
+        if (useBackendForMemory) {
+          const { LLM_API_URL } = await import('../config/constants');
+          if (LLM_API_URL) {
+            backendBaseUrl = LLM_API_URL;
+          }
+        }
+
+        // Create a dedicated LLM caller for memory keyword generation and relevance filtering.
+        // Prefers a cheap model (gpt-4o-mini) via OpenAI API key. Falls back to the
+        // user's current main LLM provider/model when no OpenAI key is available.
+        const { OpenAIChatCompletionClient } = await import('./models/client/OpenAIChatCompletionClient');
+        const { DEFAULT_EXTRACTION_MODEL } = await import('./memory/types');
+        const extractionModel = preferences?.extractionModel ?? DEFAULT_EXTRACTION_MODEL;
+
+        const memoryApiKey = useBackendForMemory
+          ? (openaiApiKey || 'backend-routed')
+          : (openaiApiKey || '');
+
+        let llmCaller = null;
+
+        if (memoryApiKey) {
+          // Preferred path: dedicated gpt-4o-mini client via OpenAI key
+          const memoryLLMClient = new OpenAIChatCompletionClient({
+            apiKey: memoryApiKey,
+            baseUrl: useBackendForMemory && backendBaseUrl ? backendBaseUrl + '/openai' : undefined,
+            sessionId: 'memory-search',
+            modelFamily: {
+              family: extractionModel,
+              base_instructions: '',
+              supports_reasoning: false,
+              supports_reasoning_summaries: false,
+              needs_special_apply_patch_instructions: false,
+            },
+            provider: {
+              name: 'OpenAI',
+              wire_api: 'Chat' as const,
+              requires_openai_auth: true,
+            },
+            ...(useBackendForMemory && backendBaseUrl && { useCredentials: true }),
+          });
+
+          llmCaller = {
+            complete: async (systemPrompt: string, userPrompt: string) => {
+              const response = await memoryLLMClient.complete({
+                model: extractionModel,
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: userPrompt }
+                ]
+              });
+              return response.choices[0]?.message?.content || '';
+            }
+          };
+        }
+
+        // Fallback: if no OpenAI key available, use the user's selected main LLM
+        // for memory operations (search keyword generation, relevance filtering).
+        // This ensures memory works regardless of which provider the user chose.
+        if (!llmCaller) {
+          llmCaller = await this.createFallbackMemoryLLMCaller(agentConfig);
+          if (llmCaller) {
+            console.info('[Memory] No OpenAI API key — using main LLM provider for memory operations.');
+          }
+        }
+
+        console.log(`[Memory] llmCaller=${llmCaller ? 'available' : 'null'}, memoryApiKey=${memoryApiKey ? 'set' : 'empty'}, openaiApiKey=${openaiApiKey ? 'set' : 'empty'}`);
+
+        const memoryService = await createMemoryService({
+          config: { enabled: memoryEnabled },
+          llmCaller,
+        });
+
+        console.log(`[Memory] createMemoryService result: ${memoryService ? 'initialized' : 'null'}`);
+
+        if (memoryEnabled && !memoryService) {
+          console.warn('[Memory] Memory is enabled but failed to initialize. Check logs for details.');
+        }
+
+        this.setMemoryService(memoryService);
+      }
+    } catch (err) {
+      console.error('[Memory] Initialization failed:', err);
+    }
+  }
+
+  /**
+   * Close memory service and release its resources.
+   */
+  private async closeMemoryService(): Promise<void> {
+    if (this._memoryService) {
+      try {
+        await this._memoryService.close();
+      } catch (error) {
+        console.error('Failed to close memory service:', error);
+      }
+      this._memoryService = null;
+    }
   }
 
   /**
@@ -1086,6 +1256,98 @@ export class Session {
         this.services.rollout = null;
       }
     }
+
+    await this.refreshMemoryService(config);
+  }
+
+  /**
+   * Create a memory LLM caller that mirrors the user's current main LLM provider/model.
+   * Used as a fallback when no OpenAI API key is available.
+   */
+  private async createFallbackMemoryLLMCaller(
+    agentConfig: AgentConfig
+  ): Promise<{ complete: (systemPrompt: string, userPrompt: string) => Promise<string> } | null> {
+    try {
+      const fullConfig = agentConfig.getConfig();
+      const modelData = agentConfig.getModelByKey(fullConfig.selectedModelKey);
+      if (!modelData) return null;
+
+      const providerId = modelData.provider.id;
+      const providerApiKey = await agentConfig.getProviderApiKey(providerId);
+      if (!providerApiKey) return null;
+
+      const modelKey = modelData.model.modelKey;
+      const baseUrl = modelData.provider.baseUrl || undefined;
+
+      if (providerId === 'google-ai-studio') {
+        const { GoogleCompletionClient } = await import('./models/client/GoogleCompletionClient');
+        const client = new GoogleCompletionClient({
+          apiKey: providerApiKey,
+          baseUrl,
+          provider: {
+            name: 'Google AI Studio',
+            wire_api: 'Chat' as const,
+            requires_openai_auth: false,
+          },
+          modelFamily: {
+            family: modelKey,
+            base_instructions: '',
+            supports_reasoning: false,
+            supports_reasoning_summaries: false,
+            needs_special_apply_patch_instructions: false,
+          },
+        });
+
+        return {
+          complete: async (systemPrompt: string, userPrompt: string) => {
+            const response = await client.complete({
+              model: modelKey,
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt }
+              ]
+            });
+            return response.choices[0]?.message?.content || '';
+          }
+        };
+      }
+
+      // All other providers use OpenAI-compatible Chat Completions API
+      const { OpenAIChatCompletionClient } = await import('./models/client/OpenAIChatCompletionClient');
+      const client = new OpenAIChatCompletionClient({
+        apiKey: providerApiKey,
+        baseUrl,
+        sessionId: 'memory-search',
+        modelFamily: {
+          family: modelKey,
+          base_instructions: '',
+          supports_reasoning: false,
+          supports_reasoning_summaries: false,
+          needs_special_apply_patch_instructions: false,
+        },
+        provider: {
+          name: modelData.provider.name || providerId,
+          wire_api: 'Chat' as const,
+          requires_openai_auth: true,
+        },
+      });
+
+      return {
+        complete: async (systemPrompt: string, userPrompt: string) => {
+          const response = await client.complete({
+            model: modelKey,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ]
+          });
+          return response.choices[0]?.message?.content || '';
+        }
+      };
+    } catch (err) {
+      console.warn('[Memory] Failed to create fallback memory LLM caller:', err);
+      return null;
+    }
   }
 
   /**
@@ -1108,6 +1370,8 @@ export class Session {
    * Graceful shutdown
    */
   async shutdown(): Promise<void> {
+    await this.closeMemoryService();
+
     if (this.services?.rollout) {
       try {
         await this.services.rollout.flush();
@@ -1334,16 +1598,51 @@ export class Session {
     task: RunningTask,
     reason: TurnAbortReason
   ): Promise<void> {
-    // Check if task already finished
-    // The AbortController will have no effect if the task already completed
+    // ── Track 04 Q7 ordering ──────────────────────────────────────────
+    // Step 1: resolve pending approvals owned by this task with 'denied'
+    //         so the awaiting tool call unwinds cleanly. Note: ActiveTurn
+    //         doesn't track per-task approvals today (single foreground
+    //         turn assumption), so this drains all pending approvals only
+    //         when the aborted task is the foreground task.
+    const isForeground = this.foregroundTaskId === subId;
+    if (isForeground && this.activeTurn) {
+      try {
+        this.activeTurn.clearPending();
+      } catch (e) {
+        console.warn(`[Session] clearPending failed during abort:`, e);
+      }
+    }
 
-    // Abort the task via AbortController
+    // Step 3 (re-ordered: must be set before abortController fires so the
+    // SubAgentRunner detached IIFE sees the flag during its await): mark
+    // the AgentContext cancelled. Suppresses misleading task-notification
+    // from SubAgentRunner.ts:127.
+    if (task.context) {
+      task.context.cancelled = true;
+    }
+
+    // Step 4: abort the controller.
     task.abortController.abort();
 
+    // Step 5: delegate to the task's own abort hook.
     try {
       await task.task.abort(this, subId);
     } catch (error) {
       console.warn(`Task abort() failed for ${subId}:`, error);
+    }
+
+    // Step 6: update typed state to terminal + set eviction grace.
+    if (task.taskState && !isTerminalTaskStatus(task.taskState.status)) {
+      task.taskState.status = 'killed';
+      task.taskState.endTime = Date.now();
+      if (!task.taskState.retain) {
+        task.taskState.evictAfter = Date.now() + PANEL_GRACE_MS;
+      }
+      // Cancelled background tasks have their notification suppressed; treat
+      // them as notified so the eviction timer can later reclaim their
+      // chunks. (See design.md Q5/Q7 and SubAgentRunner.ts:127.)
+      task.taskState.notified = true;
+      this.ensureEvictionTimer();
     }
 
     // Emit TurnAborted event
@@ -1372,17 +1671,29 @@ export class Session {
    * @param reason Reason for aborting all tasks
    */
   async abortAllTasks(reason: TurnAbortReason): Promise<void> {
-    // Take all running tasks
+    // Take all running tasks from the foreground ActiveTurn
     const tasks = this.takeAllRunningTasks();
+
+    // Also pull background tasks tracked in activeTasks but not in the
+    // foreground turn (Track 04). Hard-shutdown paths call this and expect
+    // everything to be killed.
+    const allIds = new Set<string>(tasks.keys());
+    for (const id of this.activeTasks.keys()) allIds.add(id);
 
     // Abort each task
     const abortPromises: Promise<void>[] = [];
-    for (const [subId, task] of tasks) {
-      abortPromises.push(this.handleTaskAbort(subId, task, reason));
+    for (const id of allIds) {
+      const task = tasks.get(id) ?? this.activeTasks.get(id);
+      if (!task) continue;
+      abortPromises.push(this.handleTaskAbort(id, task, reason));
     }
 
     // Wait for all aborts to complete (parallel execution)
     await Promise.all(abortPromises);
+
+    // Drain the typed-task registry too
+    this.activeTasks.clear();
+    this.foregroundTaskId = null;
   }
 
   /**
@@ -1403,6 +1714,30 @@ export class Session {
         this.activeTurn = null;
       }
     }
+
+    // Track 04: update typed-state to terminal + set eviction grace.
+    // Background sub-agents have their notification flag set by
+    // SubAgentRunner.safeEnqueueNotification; foreground RegularTasks are
+    // notified immediately here (no async notification path).
+    const t = this.activeTasks.get(subId);
+    if (t?.taskState && !isTerminalTaskStatus(t.taskState.status)) {
+      t.taskState.status = 'completed';
+      t.taskState.endTime = Date.now();
+      if (!t.taskState.isBackgrounded) {
+        // Foreground: no async notification path — the result already
+        // returned via the tool call, so consider it notified.
+        t.taskState.notified = true;
+      }
+      if (!t.taskState.retain) {
+        t.taskState.evictAfter = Date.now() + PANEL_GRACE_MS;
+      }
+      this.ensureEvictionTimer();
+    }
+    if (this.foregroundTaskId === subId) {
+      this.foregroundTaskId = null;
+    }
+    // Note: we leave the entry in activeTasks for the eviction grace window.
+    // The eviction timer removes it once gates pass.
   }
 
   /**
@@ -1419,10 +1754,17 @@ export class Session {
     task: SessionTask,
     context: TurnContext,
     subId: string,
-    input: InputItem[]
+    input: InputItem[],
+    opts: { background?: boolean; scopedTabIds?: number[] } = {}
   ): Promise<void> {
-    // Abort all existing tasks before spawning new one
-    await this.abortAllTasks('UserInterrupt');
+    // Track 04: foreground replacement no longer kills background tasks.
+    // Only abort the prior foreground task if this spawn is foreground.
+    if (!opts.background) {
+      if (this.foregroundTaskId) {
+        await this.abortTask(this.foregroundTaskId, 'UserInterrupt');
+      }
+      this.foregroundTaskId = subId;
+    }
 
     // Create AbortController for cancellation
     const abortController = new AbortController();
@@ -1469,14 +1811,245 @@ export class Session {
       abortController,
       task,
       promise,
-      startTime: Date.now()
+      startTime: Date.now(),
+      scopedTabIds: opts.scopedTabIds,
     };
 
     // Register as new active task (creates new ActiveTurn and adds task)
     this.registerNewActiveTask(subId, runningTask);
 
+    // Track 04: also insert into the cross-turn typed-task registry.
+    // SubAgentRunner.prepare will subsequently call registerTaskState to
+    // populate the taskState + context fields for background sub-agents.
+    this.activeTasks.set(subId, runningTask);
+
     // Execute asynchronously (fire-and-forget, don't await)
     // The promise will handle completion/abortion internally
+  }
+
+  /**
+   * (Track 04 / Q2) Attach or create a typed BackgroundAgentTaskState in
+   * this session's activeTasks. Called by SubAgentRunner.prepare after it
+   * builds the typed state.
+   *
+   * Two code paths reach here:
+   *
+   * 1. The task came through Session.spawnTask first — there's a matching
+   *    RunningTask entry already; this call attaches state + context to it.
+   *    NOTE on the `existing` branch: the caller may pass `abortController`
+   *    via `bits`, but we intentionally KEEP the spawn's own controller
+   *    rather than swap it. Reason: the spawn's controller is already wired
+   *    into the task's promise chain; replacing it mid-run would leave the
+   *    real run uncancellable.
+   *
+   * 2. The task was spawned by a child engine (sub-agent) whose flow does
+   *    NOT go through the parent session's spawnTask — there's no matching
+   *    entry. We create a synthetic RunningTask owned by the sub-agent's
+   *    AbortController so the parent session can track / abort / display it.
+   *
+   * ⚠️  WARNING: AbortController duality for sub-agents.
+   * The sub-agent runs inside its own RepublicAgentEngine which has its
+   * own Session. That child session's spawnTask creates its OWN
+   * AbortController, separate from the one stored here (which comes from
+   * SubAgentRunner.prepare and is wired into AgentContext).
+   *
+   * Aborting via THIS (parent) session's abortTask fires only the parent-
+   * side controller. That signal reaches the child's model call via the
+   * `signal:` option passed to engine.run(...), and the resulting thrown
+   * abort error propagates through the child's task promise → child's
+   * onTaskAborted. So abort DOES propagate, but through the model-error
+   * path, NOT by the child session's controller being fired directly.
+   *
+   * If you change this code, preserve that property — or move sub-agent
+   * tracking to the child session entirely and have the parent only hold
+   * a read-through projection.
+   *
+   * @param state - The typed task state. state.id must equal the runId.
+   * @param bits - Runtime bits: AgentContext for cancel propagation,
+   *               AbortController for per-task abort (synthetic path only),
+   *               scopedTabIds for tab-close granularity.
+   */
+  registerTaskState(
+    state: BackgroundAgentTaskState,
+    bits: {
+      context: AgentContext;
+      abortController?: AbortController;
+      scopedTabIds?: number[];
+    }
+  ): void {
+    const existing = this.activeTasks.get(state.id);
+    if (existing) {
+      // Attach-only path: preserve the spawn's existing AbortController.
+      // `bits.abortController` is deliberately ignored — see JSDoc.
+      existing.taskState = state;
+      existing.context = bits.context;
+      if (bits.scopedTabIds !== undefined) {
+        existing.scopedTabIds = bits.scopedTabIds;
+      }
+      return;
+    }
+    // Synthetic registration path: sub-agent owned by a child engine that
+    // didn't go through this session's spawnTask.
+    const abortController = bits.abortController ?? new AbortController();
+    const synthetic: RunningTask = {
+      // Sub-agents don't have a meaningful SessionTask kind. Use Regular
+      // as a sentinel; the handleTaskAbort path keys off taskState +
+      // context, not kind.
+      kind: TaskKind.Regular,
+      abortController,
+      // A no-op SessionTask shim. The real abort path is:
+      //   parent.abortTask(id) -> handleTaskAbort
+      //     -> context.cancelled = true
+      //     -> abortController.abort()
+      //     -> (model call inside child engine throws, child task ends)
+      // This shim's abort() is intentionally a no-op because the work
+      // happens through the context + abortController above.
+      task: {
+        kind: () => TaskKind.Regular,
+        run: async () => null,
+        abort: async () => undefined,
+      },
+      promise: Promise.resolve(null),
+      startTime: state.startTime,
+      taskState: state,
+      context: bits.context,
+      scopedTabIds: bits.scopedTabIds,
+    };
+    this.activeTasks.set(state.id, synthetic);
+  }
+
+  /**
+   * (Track 04) Abort a single task by id. Per-task variant of abortAllTasks.
+   * Walks the same handleTaskAbort path (which is the Q7-ordering source
+   * of truth: approvals → deny, pending input → drop, context.cancelled
+   * → set, abort, await, terminal-state update, ActiveTurn cleanup).
+   */
+  async abortTask(id: string, reason: TurnAbortReason): Promise<void> {
+    const t = this.activeTasks.get(id);
+    if (!t) return;
+    await this.handleTaskAbort(id, t, reason);
+    // Also drain from ActiveTurn so hasRunningTask reports false immediately
+    // even if the task's promise never resolves (e.g., synthetic sub-agent
+    // entries created by SubAgentRunner whose promise is Promise.resolve(null)
+    // but never went through ActiveTurn anyway, and edge-case mocks).
+    if (this.activeTurn) {
+      const isEmpty = this.activeTurn.removeTask(id);
+      if (isEmpty) this.activeTurn = null;
+    }
+    this.activeTasks.delete(id);
+    if (this.foregroundTaskId === id) {
+      this.foregroundTaskId = null;
+    }
+  }
+
+  /**
+   * (Track 04 / Q9) Abort all tasks scoped to a specific tab. Used by the
+   * service worker when a working tab closes (chat-panel tab close still
+   * routes through abortAllTasks).
+   */
+  async abortTasksForTab(tabId: number, reason: TurnAbortReason): Promise<void> {
+    const toAbort: string[] = [];
+    for (const [id, t] of this.activeTasks) {
+      if (t.scopedTabIds?.includes(tabId)) toAbort.push(id);
+    }
+    await Promise.all(toAbort.map(id => this.abortTask(id, reason)));
+  }
+
+  /** (Track 04) Internal full-record listing — runtime + typed-state pairs. */
+  listActiveTasks(): RunningTask[] {
+    return [...this.activeTasks.values()];
+  }
+
+  /** (Track 04) Projection of typed task states for UI and engine API. */
+  listTaskStates(): TaskState[] {
+    const out: TaskState[] = [];
+    for (const t of this.activeTasks.values()) {
+      if (t.taskState) out.push(t.taskState);
+    }
+    return out;
+  }
+
+  /** (Track 04) Lookup the full RunningTask record. */
+  getTask(id: string): RunningTask | undefined {
+    return this.activeTasks.get(id);
+  }
+
+  /** (Track 04) Get the foreground task id, if any. */
+  getForegroundTaskId(): string | null {
+    return this.foregroundTaskId;
+  }
+
+  /**
+   * (Track 04 / Q10) UI-driven retain toggle. Called by BackgroundTaskPanel
+   * mount/unmount. retain=true blocks eviction; retain=false re-arms
+   * evictAfter for terminal tasks.
+   */
+  retainTask(id: string, retain: boolean): void {
+    const t = this.activeTasks.get(id);
+    if (!t?.taskState) return;
+    t.taskState.retain = retain;
+    if (retain) {
+      t.taskState.evictAfter = undefined;
+    } else if (isTerminalTaskStatus(t.taskState.status)) {
+      t.taskState.evictAfter = Date.now() + PANEL_GRACE_MS;
+    }
+  }
+
+  /** (Track 04) Inject the shared TaskOutputStore (called at engine startup). */
+  setTaskOutputStore(store: TaskOutputStore): void {
+    this.taskOutputStore = store;
+  }
+
+  /** (Track 04) Get the shared TaskOutputStore, if set. */
+  getTaskOutputStore(): TaskOutputStore | null {
+    return this.taskOutputStore;
+  }
+
+  /**
+   * (Track 04) Lazily start the eviction timer. Runs every STOPPED_DISPLAY_MS
+   * and processes terminal tasks whose grace window has elapsed.
+   */
+  private ensureEvictionTimer(): void {
+    if (this.evictionTimerId !== null) return;
+    this.evictionTimerId = setInterval(() => {
+      void this.runEvictionTick();
+    }, STOPPED_DISPLAY_MS);
+  }
+
+  private async runEvictionTick(): Promise<void> {
+    const now = Date.now();
+    const toEvict: string[] = [];
+    for (const [id, t] of this.activeTasks) {
+      const state = t.taskState;
+      if (!state) continue;
+      if (!state.notified) continue;
+      if (!isTerminalTaskStatus(state.status)) continue;
+      if (state.retain) continue;
+      if (state.evictAfter !== undefined && now < state.evictAfter) continue;
+      toEvict.push(id);
+    }
+    if (toEvict.length === 0) {
+      // Stop the timer when there's nothing terminal awaiting eviction.
+      // It will restart lazily next time a task terminates.
+      const hasTerminal = [...this.activeTasks.values()].some(
+        t => t.taskState && isTerminalTaskStatus(t.taskState.status),
+      );
+      if (!hasTerminal && this.evictionTimerId !== null) {
+        clearInterval(this.evictionTimerId);
+        this.evictionTimerId = null;
+      }
+      return;
+    }
+    for (const id of toEvict) {
+      if (this.taskOutputStore) {
+        try {
+          await this.taskOutputStore.cleanupTask(id);
+        } catch (err) {
+          console.warn(`[Session] cleanupTask failed for ${id}:`, err);
+        }
+      }
+      this.activeTasks.delete(id);
+    }
   }
 
   /**
@@ -1486,7 +2059,12 @@ export class Session {
    * Used when user explicitly interrupts execution.
    */
   async interruptTask(): Promise<void> {
-    await this.abortAllTasks('UserInterrupt');
+    // Track 04: narrow to foreground-only — background tasks survive
+    // user interrupts. The chat-panel tab close path still goes through
+    // abortAllTasks for hard shutdown.
+    if (this.foregroundTaskId) {
+      await this.abortTask(this.foregroundTaskId, 'UserInterrupt');
+    }
   }
 
   // ========================================================================
@@ -1964,6 +2542,23 @@ export class Session {
 
     // Determine abort reason from error
     const reason: any = error?.name === 'AbortError' ? 'user_interrupt' : 'error';
+
+    // Track 04: update typed state. handleTaskAbort already does this for
+    // explicit Session.abortTask paths; this handler covers the case where
+    // a task threw an error that wasn't a direct abort.
+    const t = this.activeTasks.get(subId);
+    if (t?.taskState && !isTerminalTaskStatus(t.taskState.status)) {
+      t.taskState.status = reason === 'user_interrupt' ? 'killed' : 'failed';
+      t.taskState.endTime = Date.now();
+      t.taskState.notified = true;
+      if (!t.taskState.retain) {
+        t.taskState.evictAfter = Date.now() + PANEL_GRACE_MS;
+      }
+      this.ensureEvictionTimer();
+    }
+    if (this.foregroundTaskId === subId) {
+      this.foregroundTaskId = null;
+    }
 
     // Emit TurnAborted event (if eventEmitter is set)
     if (this.eventEmitter) {

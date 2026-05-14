@@ -62,6 +62,16 @@
       </svg>`
     },
     {
+      id: 'memory',
+      label: t('Memory'),
+      description: t('Long-term memory across conversations'),
+      icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2a4 4 0 0 1 4 4v1a3 3 0 0 1 3 3v1a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2v-1a3 3 0 0 1 3-3V6a4 4 0 0 1 4-4z"></path>
+        <line x1="8" y1="21" x2="16" y2="21"></line>
+        <line x1="12" y1="17" x2="12" y2="21"></line>
+      </svg>`
+    },
+    {
       id: 'storage',
       label: t('Storage & Cache'),
       description: t('Cache behavior and data retention'),

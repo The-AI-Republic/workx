@@ -18,6 +18,10 @@ export class SubAgentEventRouter implements IEventRouter {
     this.suppressedTypes = new Set(options.suppressedTypes ?? [
       'AgentMessageDelta',
       'AgentReasoningDelta',
+      // Track 04: chunk-payload-free delta — UI polls TaskOutputStore
+      // directly when a panel subscribes; default-suppress to keep the
+      // foreground event stream quiet otherwise.
+      'BackgroundTaskOutputDelta',
     ]);
   }
 

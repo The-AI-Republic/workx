@@ -20,6 +20,7 @@ export interface SettingsSearchItem {
 export enum SettingsSection {
   MODEL_CONFIG = 'model-config',
   GENERAL = 'general',
+  MEMORY = 'memory',
   STORAGE = 'storage',
   TOOLS = 'tools',
   MCP_SERVERS = 'mcp-servers',
@@ -32,7 +33,7 @@ export interface ConditionalRule {
   value: string;
 }
 
-export type NavigationView = 'menu' | 'model-config' | 'advanced-model-config' | 'general' | 'storage' | 'tools' | 'mcp-servers' | 'approval' | 'extension';
+export type NavigationView = 'menu' | 'model-config' | 'advanced-model-config' | 'general' | 'memory' | 'storage' | 'tools' | 'mcp-servers' | 'approval' | 'extension';
 
 export const settingsRegistry: SettingsSearchItem[] = [
   // ── Model Config ──────────────────────────────────────────────────────
@@ -97,6 +98,18 @@ export const settingsRegistry: SettingsSearchItem[] = [
     keywords: ['token', 'usage', 'cost', 'consumption', 'display'],
     navigationTarget: 'general',
     elementId: 'showTokenUsage',
+  },
+  // ── Memory ──────────────────────────────────────────────────────────
+  {
+    id: 'memory.enabled',
+    labelKey: 'Agent Memory',
+    descriptionKey: 'Remember facts across conversations. Works with any LLM provider.',
+    section: SettingsSection.MEMORY,
+    sectionLabelKey: 'Memory',
+    keywords: ['memory', 'remember', 'facts', 'long-term', 'preferences'],
+    navigationTarget: 'memory',
+    elementId: 'memoryEnabled',
+    conditional: { type: 'platform', value: 'desktop' },
   },
   {
     id: 'general.language',

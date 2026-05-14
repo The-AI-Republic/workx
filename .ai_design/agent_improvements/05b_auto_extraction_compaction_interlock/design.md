@@ -33,9 +33,9 @@ Don't add a parallel filesystem abstraction. Don't add a parallel prompt-attachm
 ```
                                                  ┌────────────────────────────────────────┐
  user turn ──► RepublicAgent ──► TurnManager.tryRunTurn()                                  │
-                                  │  (src/core/TurnManager.ts:176)                         │
+                                  │  (src/core/TurnManager.ts:192)                         │
                                   │                                                        │
-                                  │  on `Completed` event (line 237)                       │
+                                  │  on `Completed` event (line 253)                       │
                                   │  ───────────────────────────────► postTurnHooks[*] ────┤
                                   │                                                        │
                                   ▼                                                        │
@@ -88,7 +88,7 @@ Don't add a parallel filesystem abstraction. Don't add a parallel prompt-attachm
                        │      timeout = 15s, stale escape = 60s
                        ▼
                     optional: read summary.md and pass into SummaryGenerator
-                       src/core/compact/SummaryGenerator.ts:12
+                       src/core/compact/CompactService.ts:249 (generateSummaryWithModel)
 ```
 
 ## 4. Extraction sub-agent
@@ -215,11 +215,9 @@ export function buildExtractorParams(
 
 ### Concurrency — bypass the user-facing cap
 
-`SubAgentRegistry`'s default cap is 3 (src/tools/AgentTool/SubAgentRegistry.ts:59). The extractor is internal infrastructure and must not steal a slot from a user-spawned worker. Two options; we pick (b):
+`SubAgentRegistry`'s default cap is 3 (src/tools/AgentTool/SubAgentRegistry.ts:59). The extractor is internal infrastructure and must not steal a slot from a user-spawned worker.
 
-(a) Extend `SubAgentTypeConfig` with `category: 'internal' | 'user'`, and skip cap counting in `SubAgentRegistry.register()` for `category === 'internal'`.
-
-(b) **(chosen)** Construct a *separate* `SubAgentRegistry` instance dedicated to internal extractors with `maxConcurrent: 1`, owned by `SessionSummaryHook`. The hook passes this registry to a dedicated `SubAgentRunner({ parentEngine, registry })` instance. This keeps `SubAgentRegistry` semantics unchanged for user-facing flows.
+Construct a *separate* `SubAgentRegistry` instance dedicated to internal extractors with `maxConcurrent: 1`, owned by `SessionSummaryHook`. The hook passes this registry to a dedicated `SubAgentRunner({ parentEngine, registry })` instance. This keeps `SubAgentRegistry` semantics unchanged for user-facing flows.
 
 ```ts
 // src/core/sessionSummary/SessionSummaryHook.ts (NEW, excerpt)
@@ -237,7 +235,7 @@ The hook wraps the spawn in `try { ... } catch (err) { telemetry.failure(err); }
 
 ## 5. Trigger — post-turn hook in TurnManager
 
-There is no post-sampling hook registry today (`src/core/TurnManager.ts:176–295`). Add one.
+There is no post-sampling hook registry today (`src/core/TurnManager.ts:192–311` — the body of `tryRunTurn`). Add one.
 
 ```ts
 // src/core/TurnManager.ts (additions)
@@ -247,7 +245,6 @@ export interface PostTurnContext {
   history: ResponseItem[];           // from this.turnContext or session
   totalTokenUsage?: TokenUsage;
   lastTurnHadToolCalls: boolean;
-  abortSignal?: AbortSignal;
 }
 
 export type PostTurnHook = (ctx: PostTurnContext) => Promise<void>;
@@ -266,7 +263,7 @@ export class TurnManager {
 }
 ```
 
-Call site — immediately before the `return` at `src/core/TurnManager.ts:241–244`:
+Call site — immediately before the `return` at `src/core/TurnManager.ts:253–261` (the `case 'Completed':` block):
 
 ```ts
 case 'Completed': {
@@ -281,11 +278,10 @@ case 'Completed': {
   for (const hook of this.postTurnHooks) {
     try {
       await hook({
-        sessionId: this.turnContext.getSessionId(),
-        history: await this.turnContext.getHistorySnapshot(),
+        sessionId: this.session.getSessionId(),
+        history: this.session.getConversationHistory().items,
         totalTokenUsage,
         lastTurnHadToolCalls,
-        abortSignal: this.cancelAbortController?.signal,
       });
     } catch (err) {
       console.warn('[TurnManager] postTurnHook failed:', err);
@@ -367,7 +363,9 @@ Claudy: 10k init / 5k growth / 3 tool calls. BrowserX turns routinely include la
 
 ### Single source of truth for token counting
 
-Both this predicate and `CompactService.shouldCompact()` (`src/core/compact/CompactService.ts:40–59`) must agree on window sizing. We reuse `estimateRequestTokens()` from `src/core/compact/utils.ts:139–161` (the existing `1 token ≈ 4 chars` heuristic). Do **not** reimplement.
+Both this predicate and `CompactService.shouldCompact()` (`src/core/compact/CompactService.ts:40–59`) must agree on window sizing. We reuse `estimateRequestTokens()` from `src/core/compact/utils.ts:139–196` (the existing `1 token ≈ 4 chars` heuristic). Do **not** reimplement.
+
+**Items-only signature, by design.** The predicate calls `estimateRequestTokens(items)` and *does not* pass `instructionsLength` or `toolCount`. The post-turn hook doesn't have those handy, and the predicate is a coarse "is the conversation getting long" check, not a precise budget calculation — tuning the 15k/8k thresholds is the right knob if real-world telemetry shows the predicate fires too often or too rarely. Mirrors claudy's `tokenCountWithEstimation(messages)` (`utils/tokens.ts:226`), which is also messages-only.
 
 ## 7. Concurrency & flag lifecycle
 
@@ -418,7 +416,7 @@ The `finally` clause is the only place the flag is cleared. An invariant unit te
 
 ## 8. Compaction interlock
 
-`CompactService.compact()` (`src/core/compact/CompactService.ts:71–158`) is invoked synchronously from `TaskRunner.attemptAutoCompact()` (`src/core/TaskRunner.ts:766`). The minimal-blast-radius patch is to await an interlock at the very top of `compact()`.
+`CompactService.compact()` (`src/core/compact/CompactService.ts:71–195`) is invoked synchronously from `TaskRunner.attemptAutoCompact()` (`src/core/TaskRunner.ts:759`, with the `await this.session.compact(...)` call inside it at line `766`). The minimal-blast-radius patch is to await an interlock at the very top of `compact()`.
 
 ### `waitForSessionSummaryExtraction(sessionId)`
 
@@ -484,15 +482,15 @@ async compact(
 
 ### Folding the summary into the compaction prompt
 
-After the wait, optionally read `summary.md` and prepend it into the summarization request. Integration point: inside `generateSummaryWithModel()` (called from line 92), pass an additional `sessionSummaryHint?: string` so `SUMMARIZATION_PROMPT` can reference it. Keep the change small — don't rewrite `SummaryGenerator`. If the file is missing or `isSessionSummaryEmpty()` returns true, skip the hint and emit `browserx_compact_skipped_empty_summary` telemetry. Otherwise emit `browserx_compact_with_summary` with `{ tokens_before, tokens_after, summary_token_count }`.
+After the wait, optionally read `summary.md` and prepend it into the summarization request. Integration point: inside `generateSummaryWithModel()` (called from line 92), pass an additional `sessionSummaryHint?: string` so `SUMMARIZATION_PROMPT` can reference it. Keep the change small — don't rewrite `SummaryGenerator`. If the file is missing or `isSessionSummaryEmpty()` returns true, skip the hint and emit a `SessionSummaryTelemetry` event with `data.event = 'compact_skipped_empty_summary'`. Otherwise emit `data.event = 'compact_with_summary'` with payload `{ tokens_before, tokens_after, summary_token_count }`.
 
 ### Failure modes
 
 | Case | Behaviour |
 | --- | --- |
-| Extraction fails before compaction triggers | `summary.md` is whatever the previous successful extraction wrote (or absent). Compaction proceeds without the hint. Telemetry: `browserx_session_summary_extraction` with `success=false`; `browserx_compact_skipped_empty_summary` if file absent/empty. |
+| Extraction fails before compaction triggers | `summary.md` is whatever the previous successful extraction wrote (or absent). Compaction proceeds without the hint. Telemetry: `SessionSummaryTelemetry` with `data.event = 'extraction'` and `success=false`; `data.event = 'compact_skipped_empty_summary'` if file absent/empty. |
 | Extraction succeeds but compaction fails | History rewrite never happens; the existing `CompactService` retry loop (lines 89–108) handles it. Summary file is unaffected. |
-| Wait times out (15 s) | `waitForSessionSummaryExtraction` returns. Compaction proceeds. Extraction continues in the background; if it later writes `summary.md`, the *next* compaction picks it up. Telemetry: `browserx_compact_extraction_wait_timeout`. |
+| Wait times out (15 s) | `waitForSessionSummaryExtraction` returns. Compaction proceeds. Extraction continues in the background; if it later writes `summary.md`, the *next* compaction picks it up. Telemetry: `SessionSummaryTelemetry` with `data.event = 'compact_extraction_wait_timeout'`. |
 
 ## 9. Output target — session summary file
 
@@ -542,41 +540,38 @@ export class SessionSummaryFileStore {
 
 Mirrors claudy's 9 sections plus 2 BrowserX-specific sections at the top.
 
+10 sections, matching claudy's section count. Claudy's "Files and Functions" and "Codebase and System Documentation" are dropped (rarely apply to pure browser sessions); "Pages Visited" and "Forms Filled / Interactions Performed" replace them.
+
 ```markdown
-# Session Summary
+# Session Title
+_A short, distinctive 5–10 word descriptive title for the session. Info-dense, no filler._
 
-## Pages Visited
-[URLs the agent navigated to during this session]
+# Pages Visited
+_URLs the agent navigated to during this session._
 
-## Forms Filled / Interactions Performed
-[Form submissions, clicks, keyboard inputs of note]
+# Forms Filled / Interactions Performed
+_Form submissions, clicks, keyboard inputs of note._
 
-## Current State
-[What the user is currently working on]
+# Current State
+_What is actively being worked on right now? Pending tasks not yet completed. Immediate next steps._
 
-## Task Specification
-[What the user asked to accomplish]
+# Task Specification
+_What did the user ask to accomplish? Any design decisions or constraints._
 
-## Files & Functions
-[Important files, functions, APIs discovered]
+# Workflow
+_Steps taken, approach used, multi-step automation patterns._
 
-## Workflow
-[Steps taken, approach used]
+# Errors & Corrections
+_Errors encountered and how they were fixed. What did the user correct? What approaches failed and should not be tried again?_
 
-## Errors & Corrections
-[Mistakes made and how they were corrected]
+# Learnings
+_What has worked well? What has not? What to avoid? Do not duplicate items from other sections._
 
-## Documentation
-[Relevant docs, references, links surfaced during the session]
+# Key Results
+_If the user asked for a specific output (an answer, a table, exported data, a screenshot), repeat the exact result here._
 
-## Learnings
-[Non-obvious things learned during this session]
-
-## Key Results
-[Important outputs, findings, decisions]
-
-## Worklog
-[Timeline of major actions]
+# Worklog
+_Step by step, what was attempted/done. Very terse summary for each step._
 ```
 
 The literal template lives in `src/core/sessionSummary/template.ts` as a single exported `SESSION_SUMMARY_TEMPLATE` constant.
@@ -663,18 +658,43 @@ Skip injection entirely when `isSessionSummaryEmpty(cachedContent)` returns true
 
 ## 11. Telemetry
 
-Mirror claudy event names with `browserx_` prefix. Emit through the same channel TaskRunner uses for `BackgroundEvent` (`src/core/TaskRunner.ts:520–533`) — i.e. push a typed event onto the engine event queue, with `data.kind = 'telemetry'` and `data.event` / `data.payload`. UI ignores; observability layer (TBD outside this PR) consumes.
+Emit a **dedicated typed event** (`type: 'SessionSummaryTelemetry'`) onto the engine event queue. This keeps internal diagnostics out of the user-facing `BackgroundEvent` stream that the UI surfaces as system notices. The UI ignores `SessionSummaryTelemetry` by default; a future observability sink (TBD outside this PR) subscribes to this one type. Mirrors claudy's pattern of routing telemetry to a dedicated analytics sink (`services/analytics/index.ts:logEvent`) separate from user-visible events.
 
-| Event | Payload | When |
+Event shape:
+```ts
+// src/core/protocol/events.ts — new entry in the EventMsg union
+export interface SessionSummaryTelemetryEvent {
+  type: 'SessionSummaryTelemetry';
+  data: {
+    event: SessionSummaryTelemetryName;  // discriminator below
+    sessionId: string;
+    payload: Record<string, unknown>;
+  };
+}
+
+export type SessionSummaryTelemetryName =
+  | 'init'
+  | 'file_read'
+  | 'extraction'
+  | 'manual_extraction'
+  | 'loaded'
+  | 'compact_skipped_empty_summary'
+  | 'compact_with_summary'
+  | 'compact_extraction_wait_timeout';
+```
+
+| `data.event` | `data.payload` | When |
 | --- | --- | --- |
-| `browserx_session_summary_init` | `{ sessionId, config, memoryRoot }` | Hook attached, scaffold ensured. |
-| `browserx_session_summary_file_read` | `{ sessionId, content_length }` | After extractor completion + cache prime. |
-| `browserx_session_summary_extraction` | `{ sessionId, success, input_tokens, output_tokens, cache_read_tokens, duration_ms, config }` | Every extraction attempt. |
-| `browserx_session_summary_manual_extraction` | `{ sessionId, trigger: 'manual' }` | `manuallyExtractSessionSummary()` called. |
-| `browserx_session_summary_loaded` | `{ sessionId, content_length, token_count }` | Each `renderForPrompt()` that returns non-empty. |
-| `browserx_compact_skipped_empty_summary` | `{ sessionId }` | Compaction ran without summary hint because file was empty/missing. |
-| `browserx_compact_with_summary` | `{ sessionId, tokens_before, tokens_after, summary_token_count }` | Compaction folded the summary in. |
-| `browserx_compact_extraction_wait_timeout` | `{ sessionId, waited_ms }` | Interlock hit the 15 s deadline. |
+| `init` | `{ config, memoryRoot }` | Hook attached, scaffold ensured. |
+| `file_read` | `{ content_length }` | After extractor completion + cache prime. |
+| `extraction` | `{ success, input_tokens, output_tokens, cache_read_tokens, duration_ms, config }` | Every extraction attempt. |
+| `manual_extraction` | `{ trigger: 'manual' }` | `manuallyExtractSessionSummary()` called. |
+| `loaded` | `{ content_length, token_count }` | Each `renderForPrompt()` that returns non-empty. |
+| `compact_skipped_empty_summary` | `{}` | Compaction ran without summary hint because file was empty/missing. |
+| `compact_with_summary` | `{ tokens_before, tokens_after, summary_token_count }` | Compaction folded the summary in. |
+| `compact_extraction_wait_timeout` | `{ waited_ms }` | Interlock hit the 15 s deadline. |
+
+`sessionId` is on the outer `data` field, not duplicated in every payload.
 
 A small `src/core/sessionSummary/telemetry.ts` wraps emission so call sites stay readable.
 
@@ -711,12 +731,12 @@ Exposed on `Session` as `session.manuallyExtractSessionSummary()`. A future `/su
 | `src/core/sessionSummary/truncate.ts` | NEW | `truncateSessionSummaryForCompact()`. |
 | `src/core/sessionSummary/telemetry.ts` | NEW | Thin wrapper over engine event emit. |
 | `src/core/sessionSummary/SessionSummaryHook.ts` | NEW | Owns lifecycle: registry, runner, post-turn hook, prompt-extension, cache, manual API. |
-| `src/core/TurnManager.ts` | MODIFY | Add `postTurnHooks`, `registerPostTurnHook()`, hook fan-out at line 241–244. |
+| `src/core/TurnManager.ts` | MODIFY | Add `postTurnHooks`, `registerPostTurnHook()`, hook fan-out in the `case 'Completed':` block at lines 253–261. |
 | `src/tools/AgentTool/types.ts` | MODIFY | Add `quietBackground?: boolean` to `SubAgentToolParams`. |
 | `src/tools/AgentTool/SubAgentRunner.ts` | MODIFY | Honour `quietBackground` at lines 123–143 (skip notification injection). |
 | `src/core/Session.ts` | MODIFY | Construct `SessionSummaryHook`, attach on init, detach on shutdown; expose `manuallyExtractSessionSummary()`; thread `sessionId` into `compact()` call site. |
 | `src/core/compact/CompactService.ts` | MODIFY | Add optional `sessionId` arg to `compact()`; call `waitForSessionSummaryExtraction()` at top; thread summary hint into `generateSummaryWithModel()`. |
-| `src/core/compact/SummaryGenerator.ts` | MODIFY | Accept optional `sessionSummaryHint` parameter; weave into prompt template. |
+| `src/core/compact/constants.ts` | MODIFY (optional) | If the hint is woven via the prompt-template string rather than at the message-build site, extend `SUMMARIZATION_PROMPT` / `compactSummarization` here. |
 | `src/core/__tests__/sessionSummary/sessionSummaryUtils.test.ts` | NEW | Unit: predicate, config bounds. |
 | `src/core/__tests__/sessionSummary/extractionLifecycle.test.ts` | NEW | Unit: flag lifecycle, `finally` clear invariant, wait function. |
 | `src/core/__tests__/sessionSummary/summaryFileTools.test.ts` | NEW | Unit: `canUseTool` accept/deny, template emptiness, truncation. |
@@ -776,11 +796,11 @@ Exposed on `Session` as `session.manuallyExtractSessionSummary()`. A future `/su
 - `sessionSummary.e2e.test.ts`
   - script a 50-turn synthetic session that crosses 15k tokens
   - assert `<memoryRoot>/sessions/<sid>/summary.md` exists, non-empty, differs from template
-  - trigger compaction; assert post-compaction history references summary content; assert telemetry stream contains `browserx_compact_with_summary`
+  - trigger compaction; assert post-compaction history references summary content; assert event stream contains a `SessionSummaryTelemetry` event with `data.event = 'compact_with_summary'`
 
 ## 15. Risks
 
-1. **Cost blowup from extra LLM calls.** Each extraction is one extractor turn (~1 model call) every ~8 k token growth. Long sessions can add up. **Mitigation:** feature gate (default off via a `SESSION_SUMMARY_ENABLED` env / config flag in `MemoryConfig`); start with conservative thresholds (15k/8k/5); telemetry payload includes `input_tokens`/`output_tokens` so we can tune from real data before defaulting on.
+1. **Cost blowup from extra LLM calls.** Each extraction is one extractor turn (~1 model call) every ~8 k token growth. Long sessions can add up. **Mitigation:** feature gate via `MemoryConfig.sessionSummary?: { enabled: boolean }` (new optional field on the existing `MemoryConfig` shape from PR #167), default `enabled: false`; surfaced in the existing Memory Settings UI; start with conservative thresholds (15k/8k/5); telemetry payload includes `input_tokens`/`output_tokens` so we can tune from real data before defaulting on. Mirrors claudy's pattern of gating the feature behind a remote `tengu_session_memory` flag that ships off (`services/SessionMemory/sessionMemory.ts:80–81`).
 
 2. **Deadlock / hang if the flag is never cleared.** A crashing extractor could leave `extractionStartedAt[sid]` set forever, blocking every future compaction. **Mitigation:** the flag is *only* cleared inside a `finally{}` (enforced by an invariant unit test that asserts a throwing wrapped fn still clears it); `waitForSessionSummaryExtraction` has a 60 s staleness escape that force-clears; the hard 15 s deadline returns even without staleness.
 

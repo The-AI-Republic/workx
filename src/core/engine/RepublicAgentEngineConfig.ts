@@ -106,6 +106,14 @@ export interface RepublicAgentEngineConfig {
   drainPendingMessages?: () => string[];
 
   /**
+   * (Track 04) Shared TaskOutputStore for chunked output emission.
+   * Background sub-agent task runners write chunks here at turn
+   * boundaries; foreground RegularTasks leave this undefined and skip
+   * persistence. See design.md §TaskOutputStore.
+   */
+  taskOutputStore?: import('../tasks/TaskOutputStore').TaskOutputStore;
+
+  /**
    * Initial conversation history (for session recovery).
    */
   initialHistory?: ConversationEntry[];

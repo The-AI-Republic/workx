@@ -809,7 +809,7 @@
   {/if}
 
   <!-- API Key Section -->
-  <div class="settings-section settings-card {!isUserLoggedIn || useOwnApiKey ? '' : 'disabled-section'}">
+  <div class="settings-section settings-card">
     <div class="section-header">
       <h3 class="section-title">{t("API Key Configuration")}</h3>
       {#if isUserLoggedIn && !useOwnApiKey}
@@ -889,11 +889,7 @@
       <label for="api-key" class="form-label">
         {$_t("$1$ API Key", { substitutions: [currentProviderName] })}
       </label>
-      <div
-        class="input-group"
-        class:disabled-input={isUserLoggedIn && !useOwnApiKey}
-        title={isUserLoggedIn && !useOwnApiKey ? t('API key editing is disabled in backend mode') : ''}
-      >
+      <div class="input-group">
         {#if showApiKey}
           <input
             id="api-key"
@@ -911,7 +907,7 @@
                     ? 'gsk_...'
                     : 'sk-...'}
             class="api-key-input"
-            disabled={isInitializing || isSaving || (isUserLoggedIn && !useOwnApiKey)}
+            disabled={isInitializing || isSaving}
             autocomplete="off"
             spellcheck="false"
           />
@@ -932,7 +928,7 @@
                     ? 'gsk_...'
                     : 'sk-...'}
             class="api-key-input"
-            disabled={isInitializing || isSaving || (isUserLoggedIn && !useOwnApiKey)}
+            disabled={isInitializing || isSaving}
             autocomplete="off"
             spellcheck="false"
           />
@@ -958,7 +954,13 @@
           {/if}
         </button>
       </div>
-      <div class="help-text">{t("Enter your LLM API key")}</div>
+      <div class="help-text">
+        {#if isUserLoggedIn && !useOwnApiKey}
+          {t("Chat uses backend routing. An OpenAI key here is still needed for Agent Memory.")}
+        {:else}
+          {t("Enter your LLM API key")}
+        {/if}
+      </div>
 
       {#if showApiKeyWarning && !apiKey.trim()}
         <div class="message warning">

@@ -313,6 +313,27 @@ export interface IUserPreferences {
    * User's preferred language code (e.g., 'en', 'es', 'zh')
    */
   language?: string;
+  /**
+   * Whether agent long-term memory is enabled (desktop/server only)
+   * - When true: Agent remembers facts across conversations via file-based markdown storage
+   *   in `~/.airepublic-pi/memory/`, with an LLM driving save/search/forget tool calls.
+   * - When false: No memory persistence between conversations.
+   * - Default: false (opt-in). Works with any LLM provider; uses gpt-4o-mini for low-cost
+   *   keyword/relevance operations when an OpenAI key is available.
+   */
+  memoryEnabled?: boolean;
+  /**
+   * Routing for the cheap LLM used by memory keyword extraction and relevance ranking.
+   * - When true: Memory LLM requests go directly to OpenAI using the user's own API key.
+   * - When false: Memory LLM requests route through AI Republic backend (requires login + paid tier).
+   * - Default: true (own key); set to false by UI for logged-in paid-tier users.
+   */
+  memoryUseOwnApiKey?: boolean;
+  /**
+   * LLM model used for memory keyword extraction, relevance ranking, and core-memory merges.
+   * Defaults to gpt-4o-mini for low cost. Independent of the user's selected chat model.
+   */
+  extractionModel?: string;
   zoomLevel?: number;
   shortcuts?: Record<string, string>;
   experimental?: Record<string, boolean>;
