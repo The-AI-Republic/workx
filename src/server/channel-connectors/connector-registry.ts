@@ -1,24 +1,24 @@
 /**
- * Plugin Registry
+ * Connector Registry
  *
- * Stores and queries registered channel plugins and their accounts.
+ * Stores and queries registered channel connectors and their accounts.
  *
- * @module server/plugins/plugin-registry
+ * @module server/channel-connectors/connector-registry
  */
 
 import type {
-  ChannelPlugin,
+  ChannelConnector,
   ChannelAccountSnapshot,
-  OpenClawPluginDefinition,
+  OpenClawConnectorDefinition,
 } from './types';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────
 
-export interface RegisteredPlugin {
-  definition: OpenClawPluginDefinition;
-  plugin: ChannelPlugin;
+export interface RegisteredConnector {
+  definition: OpenClawConnectorDefinition;
+  connector: ChannelConnector;
   accounts: Map<string, ChannelAccountSnapshot>;
 }
 
@@ -26,50 +26,50 @@ export interface RegisteredPlugin {
 // Registry
 // ─────────────────────────────────────────────────────────────────────────
 
-export class PluginRegistry {
-  private plugins = new Map<string, RegisteredPlugin>();
+export class ConnectorRegistry {
+  private connectors = new Map<string, RegisteredConnector>();
 
   /**
-   * Register a channel plugin with its definition.
+   * Register a channel connector with its definition.
    */
-  register(definition: OpenClawPluginDefinition, plugin: ChannelPlugin): void {
-    this.plugins.set(plugin.id, {
+  register(definition: OpenClawConnectorDefinition, connector: ChannelConnector): void {
+    this.connectors.set(connector.id, {
       definition,
-      plugin,
+      connector,
       accounts: new Map(),
     });
   }
 
   /**
-   * Get a registered plugin by ID.
+   * Get a registered connector by ID.
    */
-  get(pluginId: string): RegisteredPlugin | undefined {
-    return this.plugins.get(pluginId);
+  get(connectorId: string): RegisteredConnector | undefined {
+    return this.connectors.get(connectorId);
   }
 
   /**
-   * Get all registered plugins.
+   * Get all registered connectors.
    */
-  getAll(): RegisteredPlugin[] {
-    return Array.from(this.plugins.values());
+  getAll(): RegisteredConnector[] {
+    return Array.from(this.connectors.values());
   }
 
   /**
-   * Update account snapshot for a plugin.
+   * Update account snapshot for a connector.
    */
-  updateAccountSnapshot(pluginId: string, snapshot: ChannelAccountSnapshot): void {
-    const entry = this.plugins.get(pluginId);
+  updateAccountSnapshot(connectorId: string, snapshot: ChannelAccountSnapshot): void {
+    const entry = this.connectors.get(connectorId);
     if (entry) {
       entry.accounts.set(snapshot.accountId, snapshot);
     }
   }
 
   /**
-   * Get all account snapshots across all plugins.
+   * Get all account snapshots across all connectors.
    */
   getAllSnapshots(): ChannelAccountSnapshot[] {
     const snapshots: ChannelAccountSnapshot[] = [];
-    for (const entry of this.plugins.values()) {
+    for (const entry of this.connectors.values()) {
       for (const snapshot of entry.accounts.values()) {
         snapshots.push(snapshot);
       }
@@ -78,16 +78,16 @@ export class PluginRegistry {
   }
 
   /**
-   * Remove a plugin from the registry.
+   * Remove a connector from the registry.
    */
-  unregister(pluginId: string): void {
-    this.plugins.delete(pluginId);
+  unregister(connectorId: string): void {
+    this.connectors.delete(connectorId);
   }
 
   /**
-   * Get plugin count.
+   * Get connector count.
    */
   get size(): number {
-    return this.plugins.size;
+    return this.connectors.size;
   }
 }

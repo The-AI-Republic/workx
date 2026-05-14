@@ -15,7 +15,7 @@
 >   `commands`. Track 03 shipped (PR #204, 2026-05-14) and `CommandLoader` already
 >   reserves `'plugin'` in `CommandLoadedFrom` — drop-in fit.
 > - **Deferred slots:** `outputStyles` (subsystem doesn't exist), `lspServers` (not
->   relevant), `channels` (out of scope — keeps existing `src/server/plugins/` loader).
+>   relevant), `channels` (out of scope — keeps existing `src/server/channel-connectors/` loader).
 > - **Reference pattern for plugin-scoped lifecycle:** `HookRegistry.unregisterBySource()`
 >   from PR #198 — every other registry must grow the same shape.
 
@@ -34,7 +34,7 @@ Three directories named `plugins/` exist in `src/` but solve unrelated problems:
 |---|---|---|
 | `src/extension/tools/dom/plugins/` | Site-specific DOM adapters (e.g. `GoogleDocPlugin`) | Compile-time site behavior; **not** user-extensibility |
 | `src/tools/dom/plugins/` | Older path for the same | Same as above |
-| `src/server/plugins/` | "OpenClaw" channel adapters (Slack, Telegram, …) | Has its own loader; **not** general-purpose plugins. `OpenClawPluginApi` exposes one method: `registerChannel` |
+| `src/server/channel-connectors/` | "OpenClaw" channel adapters (Slack, Telegram, …) | Has its own loader; **not** general-purpose plugins. `OpenClawConnectorApi` exposes one method: `registerChannel` |
 
 None of these read a manifest. None aggregate capabilities. None expose a `/plugin` UI.
 
@@ -86,7 +86,7 @@ Layered overview, mapped to source paths under `/home/rich/dev/study/claudy/src`
 | Command registration | `src/core/commands/CommandLoader.ts` ✅ | Already reserves `'plugin'` in `CommandLoadedFrom` and accepts pluggable loaders via `CommandLoaderDeps`. Just needs a `PluginCommandLoader` added under `src/core/commands/loaders/`. |
 | `marketplaceManager` | — | Missing |
 | `PluginInstallationManager` | — | Missing |
-| `/plugin` UI | — | Missing (note: `/plugin` does not conflict with `src/server/plugins/` channel loaders — those have no slash command) |
+| `/plugin` UI | — | Missing (note: `/plugin` does not conflict with `src/server/channel-connectors/` channel loaders — those have no slash command) |
 | `resetSentSkillNames()` | — | Missing — skill listing has no reinjection trigger |
 
 ### Integration Seams
@@ -283,7 +283,7 @@ Optional BrowserX-specific extensions (never required for claudy compatibility):
 | `outputStyles` | Deferred | Subsystem doesn't exist in BrowserX |
 | `mcpServers` | ✅ Phase 1 | Existing `MCPManager` |
 | `lspServers` | Out of scope | Not relevant |
-| `channels` | ⚠️ Existing dedicated loader | Keep `src/server/plugins/` separate; do not unify in v1 |
+| `channels` | ⚠️ Existing dedicated loader | Keep `src/server/channel-connectors/` separate; do not unify in v1 |
 | `settings` | ✅ Phase 1 (allowlisted) | Same allowlist constraint as claudy |
 | `userConfig` | Phase 3 | Plugin options dialog |
 
@@ -327,7 +327,7 @@ Optional BrowserX-specific extensions (never required for claudy compatibility):
 - Slash commands (deferred — Track 03 prerequisite)
 - DOM site plugins (`src/extension/tools/dom/plugins/`) — these are not user-extensibility
   plugins; they stay compile-time
-- OpenClaw channel plugins (`src/server/plugins/`) — keep dedicated loader; do not
+- OpenClaw channel plugins (`src/server/channel-connectors/`) — keep dedicated loader; do not
   unify in this track
 - Plugin developer mode (live-reload while editing) — Phase 4 candidate
 
@@ -356,7 +356,7 @@ Optional BrowserX-specific extensions (never required for claudy compatibility):
   `SOURCE_PRECEDENCE` already lists it (`src/core/commands/precedence.ts:12`). Track 03
   explicitly anticipated the plugin slot — no schema changes needed there.
 - Three `plugins/`-named BrowserX dirs confirmed unrelated to general agent extensibility:
-  `src/extension/tools/dom/plugins/`, `src/tools/dom/plugins/`, `src/server/plugins/`.
+  `src/extension/tools/dom/plugins/`, `src/tools/dom/plugins/`, `src/server/channel-connectors/`.
 - Claudy plugin source paths cross-referenced against `/home/rich/dev/study/claudy/src/`
   (read 2026-05-13): `plugins/`, `services/plugins/`, `utils/plugins/`,
   `commands/plugin/`, `commands/reload-plugins/`, `types/plugin.ts`.

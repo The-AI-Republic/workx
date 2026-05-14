@@ -4,7 +4,7 @@
  * Verifies whether an inbound message sender is the owner
  * using the static whitelist in config.
  *
- * @module server/plugins/owner-verify
+ * @module server/channel-connectors/owner-verify
  */
 
 import type { ServerConfig } from '../config/server-config';
@@ -13,7 +13,7 @@ import type { ServerConfig } from '../config/server-config';
  * Check if a platform user ID matches the owner's identity
  * for a given channel type.
  *
- * @param channelType - Plugin/channel type (e.g., 'slack', 'telegram')
+ * @param channelType - Connector/channel type (e.g., 'slack', 'telegram')
  * @param platformUserId - The sender's platform-specific user ID
  * @param config - Server configuration
  * @returns true if the sender is the owner
