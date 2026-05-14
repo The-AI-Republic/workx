@@ -81,7 +81,10 @@ export function createAgentServices(deps: AgentServiceDeps): Record<string, Serv
       }
 
       const session = agentSession.agent.getSession();
-      await session.abortAllTasks('UserInterrupt');
+      // Track 04: user-initiated interrupt narrows to the foreground task;
+      // background sub-agents survive. interruptTask() encapsulates the
+      // foreground-only logic.
+      await session.interruptTask();
       return { success: true };
     },
 

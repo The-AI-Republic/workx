@@ -33,6 +33,13 @@ import type { ModelClient } from './models/ModelClient';
 // Title generation imports
 import { TitleGenerator } from './title';
 
+// Track 04: typed tasks
+import type { BackgroundAgentTaskState, TaskState } from './tasks/types';
+import { isTerminalTaskStatus } from './tasks/types';
+import type { AgentContext } from '../tools/AgentTool/types';
+import { PANEL_GRACE_MS, STOPPED_DISPLAY_MS } from './tasks/timing';
+import type { TaskOutputStore } from './tasks/TaskOutputStore';
+
 /**
  * Execution state of the session
  */
@@ -65,6 +72,20 @@ export class Session {
   private interruptRequested: boolean = false;
   private compactService: CompactService;
   private titleGenerator: TitleGenerator;
+
+  // ─── Track 04: typed task registry ────────────────────────────────────
+  /**
+   * Cross-turn registry of every tracked task (foreground + background).
+   * Lives alongside `activeTurn` which still holds foreground-only turn
+   * state (approvals, pending input). See design.md §Concurrency Seam.
+   */
+  private activeTasks: Map<string, RunningTask> = new Map();
+  /** Single-valued pointer to the currently-foreground task, if any. */
+  private foregroundTaskId: string | null = null;
+  /** Lazily-started eviction timer that walks `activeTasks` for terminal tasks. */
+  private evictionTimerId: ReturnType<typeof setInterval> | null = null;
+  /** Optional output store shared with background sub-agent task runners. */
+  private taskOutputStore: TaskOutputStore | null = null;
   // Title generation stage: 0 = not started, 1 = generated at 2 messages, 2 = generated at 5 messages (final)
   private titleGenerationStage: number = 0;
   private initializationPromise: Promise<void> | null = null;
@@ -1248,16 +1269,51 @@ export class Session {
     task: RunningTask,
     reason: TurnAbortReason
   ): Promise<void> {
-    // Check if task already finished
-    // The AbortController will have no effect if the task already completed
+    // ── Track 04 Q7 ordering ──────────────────────────────────────────
+    // Step 1: resolve pending approvals owned by this task with 'denied'
+    //         so the awaiting tool call unwinds cleanly. Note: ActiveTurn
+    //         doesn't track per-task approvals today (single foreground
+    //         turn assumption), so this drains all pending approvals only
+    //         when the aborted task is the foreground task.
+    const isForeground = this.foregroundTaskId === subId;
+    if (isForeground && this.activeTurn) {
+      try {
+        this.activeTurn.clearPending();
+      } catch (e) {
+        console.warn(`[Session] clearPending failed during abort:`, e);
+      }
+    }
 
-    // Abort the task via AbortController
+    // Step 3 (re-ordered: must be set before abortController fires so the
+    // SubAgentRunner detached IIFE sees the flag during its await): mark
+    // the AgentContext cancelled. Suppresses misleading task-notification
+    // from SubAgentRunner.ts:127.
+    if (task.context) {
+      task.context.cancelled = true;
+    }
+
+    // Step 4: abort the controller.
     task.abortController.abort();
 
+    // Step 5: delegate to the task's own abort hook.
     try {
       await task.task.abort(this, subId);
     } catch (error) {
       console.warn(`Task abort() failed for ${subId}:`, error);
+    }
+
+    // Step 6: update typed state to terminal + set eviction grace.
+    if (task.taskState && !isTerminalTaskStatus(task.taskState.status)) {
+      task.taskState.status = 'killed';
+      task.taskState.endTime = Date.now();
+      if (!task.taskState.retain) {
+        task.taskState.evictAfter = Date.now() + PANEL_GRACE_MS;
+      }
+      // Cancelled background tasks have their notification suppressed; treat
+      // them as notified so the eviction timer can later reclaim their
+      // chunks. (See design.md Q5/Q7 and SubAgentRunner.ts:127.)
+      task.taskState.notified = true;
+      this.ensureEvictionTimer();
     }
 
     // Emit TurnAborted event
@@ -1286,17 +1342,29 @@ export class Session {
    * @param reason Reason for aborting all tasks
    */
   async abortAllTasks(reason: TurnAbortReason): Promise<void> {
-    // Take all running tasks
+    // Take all running tasks from the foreground ActiveTurn
     const tasks = this.takeAllRunningTasks();
+
+    // Also pull background tasks tracked in activeTasks but not in the
+    // foreground turn (Track 04). Hard-shutdown paths call this and expect
+    // everything to be killed.
+    const allIds = new Set<string>(tasks.keys());
+    for (const id of this.activeTasks.keys()) allIds.add(id);
 
     // Abort each task
     const abortPromises: Promise<void>[] = [];
-    for (const [subId, task] of tasks) {
-      abortPromises.push(this.handleTaskAbort(subId, task, reason));
+    for (const id of allIds) {
+      const task = tasks.get(id) ?? this.activeTasks.get(id);
+      if (!task) continue;
+      abortPromises.push(this.handleTaskAbort(id, task, reason));
     }
 
     // Wait for all aborts to complete (parallel execution)
     await Promise.all(abortPromises);
+
+    // Drain the typed-task registry too
+    this.activeTasks.clear();
+    this.foregroundTaskId = null;
   }
 
   /**
@@ -1317,6 +1385,30 @@ export class Session {
         this.activeTurn = null;
       }
     }
+
+    // Track 04: update typed-state to terminal + set eviction grace.
+    // Background sub-agents have their notification flag set by
+    // SubAgentRunner.safeEnqueueNotification; foreground RegularTasks are
+    // notified immediately here (no async notification path).
+    const t = this.activeTasks.get(subId);
+    if (t?.taskState && !isTerminalTaskStatus(t.taskState.status)) {
+      t.taskState.status = 'completed';
+      t.taskState.endTime = Date.now();
+      if (!t.taskState.isBackgrounded) {
+        // Foreground: no async notification path — the result already
+        // returned via the tool call, so consider it notified.
+        t.taskState.notified = true;
+      }
+      if (!t.taskState.retain) {
+        t.taskState.evictAfter = Date.now() + PANEL_GRACE_MS;
+      }
+      this.ensureEvictionTimer();
+    }
+    if (this.foregroundTaskId === subId) {
+      this.foregroundTaskId = null;
+    }
+    // Note: we leave the entry in activeTasks for the eviction grace window.
+    // The eviction timer removes it once gates pass.
   }
 
   /**
@@ -1333,10 +1425,17 @@ export class Session {
     task: SessionTask,
     context: TurnContext,
     subId: string,
-    input: InputItem[]
+    input: InputItem[],
+    opts: { background?: boolean; scopedTabIds?: number[] } = {}
   ): Promise<void> {
-    // Abort all existing tasks before spawning new one
-    await this.abortAllTasks('UserInterrupt');
+    // Track 04: foreground replacement no longer kills background tasks.
+    // Only abort the prior foreground task if this spawn is foreground.
+    if (!opts.background) {
+      if (this.foregroundTaskId) {
+        await this.abortTask(this.foregroundTaskId, 'UserInterrupt');
+      }
+      this.foregroundTaskId = subId;
+    }
 
     // Create AbortController for cancellation
     const abortController = new AbortController();
@@ -1383,14 +1482,174 @@ export class Session {
       abortController,
       task,
       promise,
-      startTime: Date.now()
+      startTime: Date.now(),
+      scopedTabIds: opts.scopedTabIds,
     };
 
     // Register as new active task (creates new ActiveTurn and adds task)
     this.registerNewActiveTask(subId, runningTask);
 
+    // Track 04: also insert into the cross-turn typed-task registry.
+    // SubAgentRunner.prepare will subsequently call registerTaskState to
+    // populate the taskState + context fields for background sub-agents.
+    this.activeTasks.set(subId, runningTask);
+
     // Execute asynchronously (fire-and-forget, don't await)
     // The promise will handle completion/abortion internally
+  }
+
+  /**
+   * (Track 04 / Q2) Attach typed BackgroundAgentTaskState to a running task.
+   * Called by SubAgentRunner.prepare after it builds the typed state with
+   * all sub-agent-specific fields (prompt, parentSessionId, etc.).
+   *
+   * @param state - The typed task state. state.id must equal the runId
+   *                used as the spawn's submission id.
+   * @param bits - Runtime bits: AgentContext for cancel propagation and
+   *               scopedTabIds for tab-close granularity.
+   */
+  registerTaskState(
+    state: BackgroundAgentTaskState,
+    bits: { context: AgentContext; scopedTabIds?: number[] }
+  ): void {
+    const existing = this.activeTasks.get(state.id);
+    if (!existing) {
+      // No matching spawn — caller built state for a task that's not in the
+      // registry. This shouldn't happen in normal flow; ignore silently
+      // rather than throw to avoid blocking sub-agent execution.
+      return;
+    }
+    existing.taskState = state;
+    existing.context = bits.context;
+    if (bits.scopedTabIds !== undefined) {
+      existing.scopedTabIds = bits.scopedTabIds;
+    }
+  }
+
+  /**
+   * (Track 04) Abort a single task by id. Per-task variant of abortAllTasks.
+   * Walks the same handleTaskAbort path (which is the Q7-ordering source
+   * of truth: approvals → deny, pending input → drop, context.cancelled
+   * → set, abort, await, terminal-state update, ActiveTurn cleanup).
+   */
+  async abortTask(id: string, reason: TurnAbortReason): Promise<void> {
+    const t = this.activeTasks.get(id);
+    if (!t) return;
+    await this.handleTaskAbort(id, t, reason);
+    this.activeTasks.delete(id);
+    if (this.foregroundTaskId === id) {
+      this.foregroundTaskId = null;
+    }
+  }
+
+  /**
+   * (Track 04 / Q9) Abort all tasks scoped to a specific tab. Used by the
+   * service worker when a working tab closes (chat-panel tab close still
+   * routes through abortAllTasks).
+   */
+  async abortTasksForTab(tabId: number, reason: TurnAbortReason): Promise<void> {
+    const toAbort: string[] = [];
+    for (const [id, t] of this.activeTasks) {
+      if (t.scopedTabIds?.includes(tabId)) toAbort.push(id);
+    }
+    await Promise.all(toAbort.map(id => this.abortTask(id, reason)));
+  }
+
+  /** (Track 04) Internal full-record listing — runtime + typed-state pairs. */
+  listActiveTasks(): RunningTask[] {
+    return [...this.activeTasks.values()];
+  }
+
+  /** (Track 04) Projection of typed task states for UI and engine API. */
+  listTaskStates(): TaskState[] {
+    const out: TaskState[] = [];
+    for (const t of this.activeTasks.values()) {
+      if (t.taskState) out.push(t.taskState);
+    }
+    return out;
+  }
+
+  /** (Track 04) Lookup the full RunningTask record. */
+  getTask(id: string): RunningTask | undefined {
+    return this.activeTasks.get(id);
+  }
+
+  /** (Track 04) Get the foreground task id, if any. */
+  getForegroundTaskId(): string | null {
+    return this.foregroundTaskId;
+  }
+
+  /**
+   * (Track 04 / Q10) UI-driven retain toggle. Called by BackgroundTaskPanel
+   * mount/unmount. retain=true blocks eviction; retain=false re-arms
+   * evictAfter for terminal tasks.
+   */
+  retainTask(id: string, retain: boolean): void {
+    const t = this.activeTasks.get(id);
+    if (!t?.taskState) return;
+    t.taskState.retain = retain;
+    if (retain) {
+      t.taskState.evictAfter = undefined;
+    } else if (isTerminalTaskStatus(t.taskState.status)) {
+      t.taskState.evictAfter = Date.now() + PANEL_GRACE_MS;
+    }
+  }
+
+  /** (Track 04) Inject the shared TaskOutputStore (called at engine startup). */
+  setTaskOutputStore(store: TaskOutputStore): void {
+    this.taskOutputStore = store;
+  }
+
+  /** (Track 04) Get the shared TaskOutputStore, if set. */
+  getTaskOutputStore(): TaskOutputStore | null {
+    return this.taskOutputStore;
+  }
+
+  /**
+   * (Track 04) Lazily start the eviction timer. Runs every STOPPED_DISPLAY_MS
+   * and processes terminal tasks whose grace window has elapsed.
+   */
+  private ensureEvictionTimer(): void {
+    if (this.evictionTimerId !== null) return;
+    this.evictionTimerId = setInterval(() => {
+      void this.runEvictionTick();
+    }, STOPPED_DISPLAY_MS);
+  }
+
+  private async runEvictionTick(): Promise<void> {
+    const now = Date.now();
+    const toEvict: string[] = [];
+    for (const [id, t] of this.activeTasks) {
+      const state = t.taskState;
+      if (!state) continue;
+      if (!state.notified) continue;
+      if (!isTerminalTaskStatus(state.status)) continue;
+      if (state.retain) continue;
+      if (state.evictAfter !== undefined && now < state.evictAfter) continue;
+      toEvict.push(id);
+    }
+    if (toEvict.length === 0) {
+      // Stop the timer when there's nothing terminal awaiting eviction.
+      // It will restart lazily next time a task terminates.
+      const hasTerminal = [...this.activeTasks.values()].some(
+        t => t.taskState && isTerminalTaskStatus(t.taskState.status),
+      );
+      if (!hasTerminal && this.evictionTimerId !== null) {
+        clearInterval(this.evictionTimerId);
+        this.evictionTimerId = null;
+      }
+      return;
+    }
+    for (const id of toEvict) {
+      if (this.taskOutputStore) {
+        try {
+          await this.taskOutputStore.cleanupTask(id);
+        } catch (err) {
+          console.warn(`[Session] cleanupTask failed for ${id}:`, err);
+        }
+      }
+      this.activeTasks.delete(id);
+    }
   }
 
   /**
@@ -1400,7 +1659,12 @@ export class Session {
    * Used when user explicitly interrupts execution.
    */
   async interruptTask(): Promise<void> {
-    await this.abortAllTasks('UserInterrupt');
+    // Track 04: narrow to foreground-only — background tasks survive
+    // user interrupts. The chat-panel tab close path still goes through
+    // abortAllTasks for hard shutdown.
+    if (this.foregroundTaskId) {
+      await this.abortTask(this.foregroundTaskId, 'UserInterrupt');
+    }
   }
 
   // ========================================================================
@@ -1853,6 +2117,23 @@ export class Session {
 
     // Determine abort reason from error
     const reason: any = error?.name === 'AbortError' ? 'user_interrupt' : 'error';
+
+    // Track 04: update typed state. handleTaskAbort already does this for
+    // explicit Session.abortTask paths; this handler covers the case where
+    // a task threw an error that wasn't a direct abort.
+    const t = this.activeTasks.get(subId);
+    if (t?.taskState && !isTerminalTaskStatus(t.taskState.status)) {
+      t.taskState.status = reason === 'user_interrupt' ? 'killed' : 'failed';
+      t.taskState.endTime = Date.now();
+      t.taskState.notified = true;
+      if (!t.taskState.retain) {
+        t.taskState.evictAfter = Date.now() + PANEL_GRACE_MS;
+      }
+      this.ensureEvictionTimer();
+    }
+    if (this.foregroundTaskId === subId) {
+      this.foregroundTaskId = null;
+    }
 
     // Emit TurnAborted event (if eventEmitter is set)
     if (this.eventEmitter) {
