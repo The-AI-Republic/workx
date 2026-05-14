@@ -123,6 +123,16 @@ async function configureExtensionPlatform(targetAgent: RepublicAgent): Promise<v
   const notifier = targetAgent.getUserNotifier();
 
   tabManager.onTabClosure(async (closedTabId: number) => {
+    // Track 04 / Q9: tab close has two cases:
+    //
+    // (a) The session's main tab closes -> hard shutdown of the session.
+    //     Existing behavior, preserved.
+    //
+    // (b) A working tab (referenced by some background task's scopedTabIds
+    //     but not the session's main tab) closes -> only abort tasks
+    //     scoped to that tab. Background tasks NOT touching that tab keep
+    //     running. This is what makes background sub-agents survive
+    //     incidental working-tab closures.
     if (session.getTabId() === closedTabId) {
       session.setTabId(-1);
       await session.abortAllTasks('TabClosed');
@@ -130,6 +140,10 @@ async function configureExtensionPlatform(targetAgent: RepublicAgent): Promise<v
         'Tab Closed',
         'The tab was closed or crashed. All tasks have been stopped.'
       );
+    } else {
+      // Working-tab close: selective abort. abortTasksForTab filters
+      // internally and is a no-op when no tasks are scoped to the tab.
+      await session.abortTasksForTab(closedTabId, 'TabClosed');
     }
   });
 }

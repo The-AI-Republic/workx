@@ -36,6 +36,8 @@ const ALLOWED_COLLECTIONS: &[&str] = &[
     "schedule_exceptions",
     "execution_records",
     "token_usage_records",
+    // Track 04: chunked output for background sub-agent tasks
+    "task_output_chunks",
 ];
 
 struct DbStorage {

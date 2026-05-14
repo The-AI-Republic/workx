@@ -112,7 +112,47 @@ export type EventMsg =
   | { type: 'SubAgentStart'; data: SubAgentStartEvent }
   | { type: 'SubAgentComplete'; data: SubAgentCompleteEvent }
   | { type: 'SubAgentError'; data: SubAgentErrorEvent }
+  // Track 04: typed-task layer events (background sub-agents only in v1)
+  | { type: 'BackgroundTaskStarted'; data: BackgroundTaskStartedEvent }
+  | { type: 'BackgroundTaskOutputDelta'; data: BackgroundTaskOutputDeltaEvent }
+  | { type: 'BackgroundTaskStateChanged'; data: BackgroundTaskStateChangedEvent }
+  | { type: 'BackgroundTaskTerminated'; data: BackgroundTaskTerminatedEvent }
 ;
+
+// ─── Track 04 event payloads ──────────────────────────────────────────────
+
+export interface BackgroundTaskStartedEvent {
+  taskId: string;
+  type: 'background_agent';
+  description: string;
+  startTime: number;
+}
+
+/**
+ * Metadata-only delta event. Chunks themselves stay in TaskOutputStore;
+ * subscribers poll engine.getTaskOutput(taskId, fromSeq) when interested.
+ */
+export interface BackgroundTaskOutputDeltaEvent {
+  taskId: string;
+  fromSeq: number;
+  toSeq: number;
+  /** Per-kind chunk counts in this delta range (for UI badges). */
+  kindCounts: Partial<Record<'stdout' | 'stderr' | 'event' | 'message', number>>;
+}
+
+export interface BackgroundTaskStateChangedEvent {
+  taskId: string;
+  prevStatus: 'pending' | 'running' | 'completed' | 'failed' | 'killed';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'killed';
+}
+
+export interface BackgroundTaskTerminatedEvent {
+  taskId: string;
+  status: 'completed' | 'failed' | 'killed';
+  endTime: number;
+  durationMs: number;
+  summary?: string;
+}
 
 // Individual event payload types
 

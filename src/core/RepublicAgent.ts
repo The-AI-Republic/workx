@@ -749,11 +749,16 @@ export class RepublicAgent {
 
 
   /**
-   * Cancel a running task
+   * Cancel a running task by submission id.
+   *
+   * Track 04: narrow to per-task abort so background sub-agent tasks
+   * survive user interrupts that target a different task. Falls through
+   * to abortAllTasks only if the task is the foreground task and Session's
+   * narrow path isn't applicable (e.g., older code paths).
    */
   async cancelTask(submissionId: string): Promise<void> {
     if (this.session.hasRunningTask(submissionId)) {
-      await this.session.abortAllTasks('UserInterrupt');
+      await this.session.abortTask(submissionId, 'UserInterrupt');
     }
   }
 

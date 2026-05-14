@@ -16,7 +16,7 @@ import type { TurnManager } from './TurnManager';
 /**
  * Task execution status
  */
-export type TaskStatus = 'initializing' | 'running' | 'completed' | 'failed' | 'cancelled';
+export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'killed';
 
 /**
  * Token budget tracking
@@ -34,7 +34,7 @@ export class AgentTask {
   private taskRunner: TaskRunner;
   public submissionId: string;
   private sessionId: string;
-  private status: TaskStatus = 'initializing';
+  private status: TaskStatus = 'pending';
   private abortController: AbortController;
   private input: ResponseItem[];
 
@@ -45,7 +45,16 @@ export class AgentTask {
     sessionId: string,
     submissionId: string,
     input: ResponseItem[],
-    options?: { maxTurns?: number }
+    options?: {
+      maxTurns?: number;
+      /**
+       * (Track 04) Optional output store + task id. When provided, the
+       * underlying TaskRunner persists chunks for background-task panels
+       * and reload-safe progress. Foreground RegularTasks pass undefined.
+       */
+      taskOutputStore?: import('./tasks/TaskOutputStore').TaskOutputStore;
+      taskId?: string;
+    }
   ) {
     this.sessionId = sessionId;
     this.submissionId = submissionId;
@@ -62,7 +71,12 @@ export class AgentTask {
         type: 'text' as const,
         text: getResponseItemContent(item)
       })),
-      { autoCompact: true, maxTurns: options?.maxTurns }
+      {
+        autoCompact: true,
+        maxTurns: options?.maxTurns,
+        taskOutputStore: options?.taskOutputStore,
+        taskId: options?.taskId,
+      }
     );
   }
 
@@ -83,7 +97,7 @@ export class AgentTask {
       this.status = 'completed';
     } catch (error) {
       if (this.abortController.signal.aborted) {
-        this.status = 'cancelled';
+        this.status = 'killed';
       } else {
         this.status = 'failed';
       }
@@ -96,7 +110,7 @@ export class AgentTask {
    */
   cancel(): void {
     this.abortController.abort();
-    this.status = 'cancelled';
+    this.status = 'killed';
   }
 
   /**
@@ -107,8 +121,8 @@ export class AgentTask {
     const runnerStatus = this.taskRunner.getTaskStatus(this.submissionId);
 
     // Map TaskRunner status to AgentTask status
-    if (runnerStatus === 'unknown' && this.status === 'initializing') {
-      return 'initializing';
+    if (runnerStatus === 'unknown' && this.status === 'pending') {
+      return 'pending';
     }
 
     return runnerStatus as TaskStatus || this.status;
