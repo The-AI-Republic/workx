@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { GoogleDocPlugin, googleDocPlugin } from '../GoogleDocPlugin';
-import type { DomPluginContext, DomPluginResult } from '../DomPlugin';
+import { GoogleDocAddon, googleDocAddon } from '../GoogleDocAddon';
+import type { DomAddonContext, DomAddonResult } from '../DomAddon';
 import type { VirtualNode } from '../../types';
 
 /** Helper: minimal VirtualNode */
@@ -41,11 +41,11 @@ function makeTreeWithCanvas(canvasNodes: VirtualNode[]): VirtualNode {
 const GOOGLE_DOC_URL = 'https://docs.google.com/document/d/1AbC_dEf-gHiJkLmNoPqRsTuVwXyZ/edit';
 const GOOGLE_DOC_URL_WITH_USER = 'https://docs.google.com/document/u/0/d/1AbC_dEf-gHiJkLmNoPqRsTuVwXyZ/edit';
 
-/** Helper: create a mock DomPluginContext */
+/** Helper: create a mock DomAddonContext */
 function createMockContext(
   url: string = GOOGLE_DOC_URL,
   sendCommandImpl?: (method: string, params: any) => Promise<any>
-): DomPluginContext {
+): DomAddonContext {
   return {
     tabId: 1,
     url,
@@ -120,23 +120,23 @@ function createMultiChunkFetchMock(chunks: string[]) {
   };
 }
 
-describe('GoogleDocPlugin', () => {
-  let plugin: GoogleDocPlugin;
+describe('GoogleDocAddon', () => {
+  let addon: GoogleDocAddon;
 
   beforeEach(() => {
-    plugin = new GoogleDocPlugin();
+    addon = new GoogleDocAddon();
   });
 
   // -------------------------------------------------------------------------
-  // Plugin identity
+  // Addon identity
   // -------------------------------------------------------------------------
-  describe('plugin identity', () => {
-    it('should have name "GoogleDocPlugin"', () => {
-      expect(plugin.name).toBe('GoogleDocPlugin');
+  describe('addon identity', () => {
+    it('should have name "GoogleDocAddon"', () => {
+      expect(addon.name).toBe('GoogleDocAddon');
     });
 
     it('should export a singleton instance', () => {
-      expect(googleDocPlugin).toBeInstanceOf(GoogleDocPlugin);
+      expect(googleDocAddon).toBeInstanceOf(GoogleDocAddon);
     });
   });
 
@@ -159,7 +159,7 @@ describe('GoogleDocPlugin', () => {
       it(`should return executed=false for: ${url || '(empty)'}`, async () => {
         const ctx = createMockContext(url);
         const tree = makeNode();
-        const result = await plugin.read(tree, ctx);
+        const result = await addon.read(tree, ctx);
         expect(result.executed).toBe(false);
         expect(result.success).toBe(false);
         expect(result.nodesAugmented).toBe(0);
@@ -174,14 +174,14 @@ describe('GoogleDocPlugin', () => {
     it('should match standard Google Doc URL', async () => {
       const ctx = createMockContext(GOOGLE_DOC_URL, createSuccessfulFetchMock('Hello'));
       const tree = makeTreeWithCanvas([makeCanvas()]);
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
       expect(result.executed).toBe(true);
     });
 
     it('should match Google Doc URL with user index', async () => {
       const ctx = createMockContext(GOOGLE_DOC_URL_WITH_USER, createSuccessfulFetchMock('Hello'));
       const tree = makeTreeWithCanvas([makeCanvas()]);
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
       expect(result.executed).toBe(true);
     });
 
@@ -189,7 +189,7 @@ describe('GoogleDocPlugin', () => {
       const url = 'https://docs.google.com/document/d/abcDEF123/edit';
       const ctx = createMockContext(url, createSuccessfulFetchMock('content'));
       const tree = makeTreeWithCanvas([makeCanvas()]);
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
       expect(result.executed).toBe(true);
     });
 
@@ -197,7 +197,7 @@ describe('GoogleDocPlugin', () => {
       const url = 'https://docs.google.com/document/d/abcDEF123/preview';
       const ctx = createMockContext(url, createSuccessfulFetchMock('content'));
       const tree = makeTreeWithCanvas([makeCanvas()]);
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
       expect(result.executed).toBe(true);
     });
 
@@ -205,7 +205,7 @@ describe('GoogleDocPlugin', () => {
       const url = 'https://docs.google.com/document/u/1/d/abcDEF123/edit';
       const ctx = createMockContext(url, createSuccessfulFetchMock('content'));
       const tree = makeTreeWithCanvas([makeCanvas()]);
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
       expect(result.executed).toBe(true);
     });
   });
@@ -217,14 +217,14 @@ describe('GoogleDocPlugin', () => {
     it('should call Page.getFrameTree to get frame ID', async () => {
       const ctx = createMockContext(GOOGLE_DOC_URL, createSuccessfulFetchMock('Doc text'));
       const tree = makeTreeWithCanvas([makeCanvas()]);
-      await plugin.read(tree, ctx);
+      await addon.read(tree, ctx);
       expect(ctx.sendCommand).toHaveBeenCalledWith('Page.getFrameTree', {});
     });
 
     it('should call Network.loadNetworkResource with correct export URL', async () => {
       const ctx = createMockContext(GOOGLE_DOC_URL, createSuccessfulFetchMock('text'));
       const tree = makeTreeWithCanvas([makeCanvas()]);
-      await plugin.read(tree, ctx);
+      await addon.read(tree, ctx);
 
       expect(ctx.sendCommand).toHaveBeenCalledWith(
         'Network.loadNetworkResource',
@@ -241,7 +241,7 @@ describe('GoogleDocPlugin', () => {
     it('should read stream content via IO.read', async () => {
       const ctx = createMockContext(GOOGLE_DOC_URL, createSuccessfulFetchMock('content'));
       const tree = makeTreeWithCanvas([makeCanvas()]);
-      await plugin.read(tree, ctx);
+      await addon.read(tree, ctx);
 
       expect(ctx.sendCommand).toHaveBeenCalledWith('IO.read', {
         handle: 'stream-handle-123',
@@ -252,7 +252,7 @@ describe('GoogleDocPlugin', () => {
     it('should close the stream after reading', async () => {
       const ctx = createMockContext(GOOGLE_DOC_URL, createSuccessfulFetchMock('content'));
       const tree = makeTreeWithCanvas([makeCanvas()]);
-      await plugin.read(tree, ctx);
+      await addon.read(tree, ctx);
 
       expect(ctx.sendCommand).toHaveBeenCalledWith('IO.close', {
         handle: 'stream-handle-123',
@@ -267,7 +267,7 @@ describe('GoogleDocPlugin', () => {
       );
       const canvas = makeCanvas();
       const tree = makeTreeWithCanvas([canvas]);
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
 
       expect(result.success).toBe(true);
       expect(result.metadata?.contentLength).toBe(originalText.length);
@@ -278,7 +278,7 @@ describe('GoogleDocPlugin', () => {
       const ctx = createMockContext(GOOGLE_DOC_URL, createSuccessfulFetchMock(text));
       const canvas = makeCanvas();
       const tree = makeTreeWithCanvas([canvas]);
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
 
       expect(result.success).toBe(true);
       expect(result.metadata?.contentLength).toBe(text.length);
@@ -289,7 +289,7 @@ describe('GoogleDocPlugin', () => {
       const ctx = createMockContext(GOOGLE_DOC_URL, createMultiChunkFetchMock(chunks));
       const canvas = makeCanvas();
       const tree = makeTreeWithCanvas([canvas]);
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
 
       expect(result.success).toBe(true);
       expect(result.metadata?.contentLength).toBe('chunk1chunk2chunk3'.length);
@@ -317,7 +317,7 @@ describe('GoogleDocPlugin', () => {
         }
       });
       const tree = makeTreeWithCanvas([makeCanvas()]);
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
       expect(result.success).toBe(true);
       expect(result.metadata?.contentLength).toBe('final data'.length);
     });
@@ -346,7 +346,7 @@ describe('GoogleDocPlugin', () => {
         }
       });
       const tree = makeTreeWithCanvas([makeCanvas()]);
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
 
       expect(result.executed).toBe(true);
       expect(result.success).toBe(false);
@@ -367,7 +367,7 @@ describe('GoogleDocPlugin', () => {
         }
       });
       const tree = makeTreeWithCanvas([makeCanvas()]);
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
 
       expect(result.executed).toBe(true);
       expect(result.success).toBe(false);
@@ -379,7 +379,7 @@ describe('GoogleDocPlugin', () => {
         throw new Error('CDP connection lost');
       });
       const tree = makeTreeWithCanvas([makeCanvas()]);
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
 
       expect(result.executed).toBe(true);
       expect(result.success).toBe(false);
@@ -391,7 +391,7 @@ describe('GoogleDocPlugin', () => {
         throw {};
       });
       const tree = makeTreeWithCanvas([makeCanvas()]);
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
 
       expect(result.executed).toBe(true);
       expect(result.success).toBe(false);
@@ -417,7 +417,7 @@ describe('GoogleDocPlugin', () => {
         }
       });
       const tree = makeTreeWithCanvas([makeCanvas()]);
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
       expect(result.error).toContain('404');
       expect(result.error).toContain('-200');
       expect(result.error).toContain('ERR_NOT_FOUND');
@@ -431,7 +431,7 @@ describe('GoogleDocPlugin', () => {
     it('should return success with 0 nodesAugmented for empty content', async () => {
       const ctx = createMockContext(GOOGLE_DOC_URL, createSuccessfulFetchMock(''));
       const tree = makeTreeWithCanvas([makeCanvas()]);
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
 
       expect(result.executed).toBe(true);
       expect(result.success).toBe(true);
@@ -442,7 +442,7 @@ describe('GoogleDocPlugin', () => {
     it('should return success with 0 nodesAugmented for whitespace-only content', async () => {
       const ctx = createMockContext(GOOGLE_DOC_URL, createSuccessfulFetchMock('   \n\t  '));
       const tree = makeTreeWithCanvas([makeCanvas()]);
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
 
       expect(result.executed).toBe(true);
       expect(result.success).toBe(true);
@@ -461,7 +461,7 @@ describe('GoogleDocPlugin', () => {
       const canvas = makeCanvas();
       const tree = makeTreeWithCanvas([canvas]);
 
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
 
       expect(result.executed).toBe(true);
       expect(result.success).toBe(true);
@@ -478,7 +478,7 @@ describe('GoogleDocPlugin', () => {
       const canvas2 = makeCanvas({ backendNodeId: 201 });
       const tree = makeTreeWithCanvas([canvas1, canvas2]);
 
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
       expect(result.metadata?.canvasCount).toBe(2);
     });
 
@@ -492,7 +492,7 @@ describe('GoogleDocPlugin', () => {
       });
       const tree = makeTreeWithCanvas([regularCanvas, kixCanvas]);
 
-      await plugin.read(tree, ctx);
+      await addon.read(tree, ctx);
 
       // kixCanvas should get the content
       expect(kixCanvas.children).toHaveLength(1);
@@ -514,7 +514,7 @@ describe('GoogleDocPlugin', () => {
       });
       const tree = makeTreeWithCanvas([smallCanvas, largeCanvas]);
 
-      await plugin.read(tree, ctx);
+      await addon.read(tree, ctx);
 
       expect(largeCanvas.children).toHaveLength(1);
       expect(largeCanvas.children![0].nodeValue).toBe(content);
@@ -528,7 +528,7 @@ describe('GoogleDocPlugin', () => {
       const canvas2 = makeCanvas({ backendNodeId: 201 });
       const tree = makeTreeWithCanvas([canvas1, canvas2]);
 
-      await plugin.read(tree, ctx);
+      await addon.read(tree, ctx);
 
       expect(canvas1.children).toHaveLength(1);
       expect(canvas1.children![0].nodeValue).toBe(content);
@@ -538,7 +538,7 @@ describe('GoogleDocPlugin', () => {
       const ctx = createMockContext(GOOGLE_DOC_URL, createSuccessfulFetchMock('text'));
       const canvas = makeCanvas();
       const tree = makeTreeWithCanvas([canvas]);
-      await plugin.read(tree, ctx);
+      await addon.read(tree, ctx);
 
       const textNode = canvas.children![0];
       expect(textNode.accessibility).toBeDefined();
@@ -562,7 +562,7 @@ describe('GoogleDocPlugin', () => {
       const body = makeBody([kixPage]);
       const tree = makeNode({ nodeName: 'HTML', children: [body] });
 
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
       expect(result.success).toBe(true);
       expect(result.nodesAugmented).toBe(1);
       expect(result.metadata?.injectionTarget).toBe('editor-container');
@@ -581,7 +581,7 @@ describe('GoogleDocPlugin', () => {
       const body = makeBody([editable]);
       const tree = makeNode({ nodeName: 'HTML', children: [body] });
 
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
       expect(result.success).toBe(true);
       expect(result.metadata?.injectionTarget).toBe('editor-container');
     });
@@ -597,7 +597,7 @@ describe('GoogleDocPlugin', () => {
       const body = makeBody([textbox]);
       const tree = makeNode({ nodeName: 'HTML', children: [body] });
 
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
       expect(result.success).toBe(true);
       expect(result.metadata?.injectionTarget).toBe('editor-container');
     });
@@ -613,7 +613,7 @@ describe('GoogleDocPlugin', () => {
       const body = makeBody([target]);
       const tree = makeNode({ nodeName: 'HTML', children: [body] });
 
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
       expect(result.success).toBe(true);
       expect(result.metadata?.injectionTarget).toBe('editor-container');
     });
@@ -630,7 +630,7 @@ describe('GoogleDocPlugin', () => {
       const body = makeBody([span]);
       const tree = makeNode({ nodeName: 'HTML', children: [body] });
 
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
       expect(result.success).toBe(true);
       expect(result.nodesAugmented).toBe(1);
       expect(result.metadata?.injectionTarget).toBe('body');
@@ -642,7 +642,7 @@ describe('GoogleDocPlugin', () => {
       const body = makeBody();
       const tree = makeNode({ nodeName: 'HTML', children: [body] });
 
-      await plugin.read(tree, ctx);
+      await addon.read(tree, ctx);
 
       // Should have a wrapper div child
       expect(body.children).toHaveLength(1);
@@ -667,7 +667,7 @@ describe('GoogleDocPlugin', () => {
       // Tree with no body, canvas, or editor containers
       const tree = makeNode({ nodeName: 'HTML', children: [] });
 
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
       expect(result.executed).toBe(true);
       expect(result.success).toBe(false);
       expect(result.nodesAugmented).toBe(0);
@@ -686,7 +686,7 @@ describe('GoogleDocPlugin', () => {
       delete canvas.children;
       const tree = makeTreeWithCanvas([canvas]);
 
-      await plugin.read(tree, ctx);
+      await addon.read(tree, ctx);
       expect(canvas.children).toBeDefined();
       expect(canvas.children).toHaveLength(1);
     });
@@ -698,7 +698,7 @@ describe('GoogleDocPlugin', () => {
       const canvas = makeCanvas({ children: [existingChild] });
       const tree = makeTreeWithCanvas([canvas]);
 
-      await plugin.read(tree, ctx);
+      await addon.read(tree, ctx);
       expect(canvas.children).toHaveLength(2);
       expect(canvas.children![0]).toBe(existingChild);
       expect(canvas.children![1].nodeValue).toBe(content);
@@ -712,7 +712,7 @@ describe('GoogleDocPlugin', () => {
       // No canvas, no editor -> body fallback with wrapper
       const tree = makeNode({ nodeName: 'HTML', children: [body] });
 
-      await plugin.read(tree, ctx);
+      await addon.read(tree, ctx);
       expect(body.children).toBeDefined();
       expect(body.children).toHaveLength(1);
       expect(body.children![0].nodeName).toBe('DIV');
@@ -724,7 +724,7 @@ describe('GoogleDocPlugin', () => {
       const body = makeBody();
       const tree = makeNode({ nodeName: 'HTML', children: [body] });
 
-      await plugin.read(tree, ctx);
+      await addon.read(tree, ctx);
       const wrapper = body.children![0];
       expect(wrapper.nodeType).toBe(1); // ELEMENT_NODE
       expect(wrapper.localName).toBe('div');
@@ -739,21 +739,21 @@ describe('GoogleDocPlugin', () => {
     it('should include docId in metadata', async () => {
       const ctx = createMockContext(GOOGLE_DOC_URL, createSuccessfulFetchMock('text'));
       const tree = makeTreeWithCanvas([makeCanvas()]);
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
       expect(result.metadata?.docId).toBe('1AbC_dEf-gHiJkLmNoPqRsTuVwXyZ');
     });
 
     it('should extract docId from URL with user index', async () => {
       const ctx = createMockContext(GOOGLE_DOC_URL_WITH_USER, createSuccessfulFetchMock('text'));
       const tree = makeTreeWithCanvas([makeCanvas()]);
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
       expect(result.metadata?.docId).toBe('1AbC_dEf-gHiJkLmNoPqRsTuVwXyZ');
     });
 
     it('should use docId to construct export URL', async () => {
       const ctx = createMockContext(GOOGLE_DOC_URL, createSuccessfulFetchMock('text'));
       const tree = makeTreeWithCanvas([makeCanvas()]);
-      await plugin.read(tree, ctx);
+      await addon.read(tree, ctx);
 
       const loadCall = (ctx.sendCommand as any).mock.calls.find(
         (c: any[]) => c[0] === 'Network.loadNetworkResource'
@@ -782,7 +782,7 @@ describe('GoogleDocPlugin', () => {
       });
       const tree = makeTreeWithCanvas([largeCanvas, kixCanvas]);
 
-      await plugin.read(tree, ctx);
+      await addon.read(tree, ctx);
       expect(kixCanvas.children).toHaveLength(1);
       expect(kixCanvas.children![0].nodeValue).toBe(content);
       expect(largeCanvas.children).toBeUndefined();
@@ -805,7 +805,7 @@ describe('GoogleDocPlugin', () => {
       });
       const tree = makeTreeWithCanvas([small, large, medium]);
 
-      await plugin.read(tree, ctx);
+      await addon.read(tree, ctx);
       expect(large.children).toHaveLength(1);
       expect(large.children![0].nodeValue).toBe(content);
     });
@@ -823,7 +823,7 @@ describe('GoogleDocPlugin', () => {
       });
       const tree = makeTreeWithCanvas([zeroCanvas, normalCanvas]);
 
-      await plugin.read(tree, ctx);
+      await addon.read(tree, ctx);
       expect(normalCanvas.children).toHaveLength(1);
     });
 
@@ -837,7 +837,7 @@ describe('GoogleDocPlugin', () => {
       });
       const tree = makeTreeWithCanvas([noBbox, withBbox]);
 
-      await plugin.read(tree, ctx);
+      await addon.read(tree, ctx);
       expect(withBbox.children).toHaveLength(1);
       expect(withBbox.children![0].nodeValue).toBe(content);
     });
@@ -853,7 +853,7 @@ describe('GoogleDocPlugin', () => {
       const canvas = makeCanvas({ attributes: undefined });
       const tree = makeTreeWithCanvas([canvas]);
 
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
       // Should still work - falls back to first canvas
       expect(result.success).toBe(true);
       expect(canvas.children).toHaveLength(1);
@@ -865,7 +865,7 @@ describe('GoogleDocPlugin', () => {
       const canvas = makeCanvas({ attributes: [] });
       const tree = makeTreeWithCanvas([canvas]);
 
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
       expect(result.success).toBe(true);
     });
 
@@ -876,7 +876,7 @@ describe('GoogleDocPlugin', () => {
         attributes: ['id', 'my-canvas', 'class', 'kix-canvas-tile-content main-canvas', 'width', '800'],
       });
       const tree = makeTreeWithCanvas([canvas]);
-      await plugin.read(tree, ctx);
+      await addon.read(tree, ctx);
 
       // kix-canvas-tile-content should be detected
       expect(canvas.children).toHaveLength(1);
@@ -892,7 +892,7 @@ describe('GoogleDocPlugin', () => {
       const ctx = createMockContext(GOOGLE_DOC_URL, createSuccessfulFetchMock(content));
       const tree = makeTreeWithCanvas([makeCanvas()]);
 
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
       expect(result.metadata).toEqual(
         expect.objectContaining({
           docId: '1AbC_dEf-gHiJkLmNoPqRsTuVwXyZ',
@@ -907,7 +907,7 @@ describe('GoogleDocPlugin', () => {
       const ctx = createMockContext(GOOGLE_DOC_URL, createSuccessfulFetchMock('doc text'));
       const tree = makeTreeWithCanvas([makeCanvas()]);
 
-      const result = await plugin.read(tree, ctx);
+      const result = await addon.read(tree, ctx);
 
       // Verify all 4 CDP calls were made in order
       const calls = (ctx.sendCommand as any).mock.calls.map((c: any[]) => c[0]);

@@ -1,4 +1,4 @@
-import { DomPlugin, type DomPluginContext, type DomPluginResult } from './DomPlugin';
+import { DomAddon, type DomAddonContext, type DomAddonResult } from './DomAddon';
 import type { VirtualNode } from '../types';
 
 /**
@@ -10,21 +10,21 @@ import type { VirtualNode } from '../types';
 const GOOGLE_DOC_PATTERN = /^https:\/\/docs\.google\.com\/document\/(u\/\d+\/)?d\/([a-zA-Z0-9-_]+)/;
 
 /**
- * Plugin to fetch and inject Google Doc content into the DOM tree
+ * Addon to fetch and inject Google Doc content into the DOM tree
  *
  * Google Docs renders content in canvas elements, making the actual text
- * inaccessible to standard DOM capture. This plugin:
+ * inaccessible to standard DOM capture. This addon:
  * 1. Detects when the page is a Google Doc
  * 2. Fetches the document content via the /export endpoint
  * 3. Injects the text as children of canvas elements
  */
-export class GoogleDocPlugin extends DomPlugin {
-  readonly name = 'GoogleDocPlugin';
+export class GoogleDocAddon extends DomAddon {
+  readonly name = 'GoogleDocAddon';
 
   /**
    * Read Google Doc content and inject it into the DOM tree
    */
-  async read(tree: VirtualNode, context: DomPluginContext): Promise<DomPluginResult> {
+  async read(tree: VirtualNode, context: DomAddonContext): Promise<DomAddonResult> {
     // Check if this is a Google Doc
     if (!GOOGLE_DOC_PATTERN.test(context.url)) {
       return {
@@ -154,7 +154,7 @@ export class GoogleDocPlugin extends DomPlugin {
    * Fetch Google Doc content as plain text using user's session cookies
    * Uses CDP Network.loadNetworkResource to bypass CORS restrictions
    */
-  private async fetchDocContent(docId: string, context: DomPluginContext): Promise<string> {
+  private async fetchDocContent(docId: string, context: DomAddonContext): Promise<string> {
     const exportUrl = `https://docs.google.com/document/d/${docId}/export?format=txt`;
 
     // Get the main frame ID - required for Network.loadNetworkResource
@@ -303,4 +303,4 @@ export class GoogleDocPlugin extends DomPlugin {
 }
 
 // Export a singleton instance
-export const googleDocPlugin = new GoogleDocPlugin();
+export const googleDocAddon = new GoogleDocAddon();

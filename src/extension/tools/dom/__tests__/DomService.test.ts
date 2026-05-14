@@ -22,9 +22,9 @@ vi.mock('@/extension/tools/browser/ChromeDebuggerClient', () => ({
   }
 }));
 
-// Mock the GoogleDocPlugin to avoid side effects
-vi.mock('../plugins/GoogleDocPlugin', () => ({
-  googleDocPlugin: {
+// Mock the GoogleDocAddon to avoid side effects
+vi.mock('../addon/GoogleDocAddon', () => ({
+  googleDocAddon: {
     name: 'google-doc',
     read: vi.fn().mockResolvedValue({ executed: false, success: false, nodesAugmented: 0 })
   }
