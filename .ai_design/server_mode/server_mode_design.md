@@ -908,13 +908,13 @@ To avoid duplicating the WebSocket server across three codebases, the protocol a
 ```
 packages/ws-server/
   src/
-    protocol/       # Frame types, validation, error codes (Section 3, 7)
-    connection/     # Handshake, auth, watchdog (Section 4, 6, 8)
-    streaming/      # ChatEvent, AgentEvent, throttling (Section 5)
-    auth/           # RBAC roles, scopes, authorization (Section 9)
+    protocol/            # Frame types, validation, error codes (Section 3, 7)
+    connection/          # Handshake, auth, watchdog (Section 4, 6, 8)
+    streaming/           # ChatEvent, AgentEvent, throttling (Section 5)
+    auth/                # RBAC roles, scopes, authorization (Section 9)
     channel-connectors/  # ConnectorLoader, ConnectorRegistry, ConnectorBridge (Section 20)
-    server.ts       # createWsServer() — returns an HTTP+WS server instance
-    bridge.ts       # Transport-agnostic bridge interface
+    server.ts            # createWsServer() — returns an HTTP+WS server instance
+    bridge.ts            # Transport-agnostic bridge interface
 ```
 
 Each mode imports and hosts it differently:
@@ -1042,7 +1042,11 @@ Implementations:
 
 ## 20. Channel Plugin System (OpenClaw-Compatible)
 
-Pi adopts the [OpenClaw](https://github.com/nicepkg/openclaw) `ChannelConnector` interface as its channel integration standard. Any OpenClaw channel plugin package (Slack, Telegram, WhatsApp, Discord, Signal, Matrix, IRC, etc.) can be installed and run on Pi without modification. Channel plugins are hosted by **Server Mode** and **Apple Pi (Desktop)** — BrowserX gains channel access by pairing with one of these runtimes (see Section 18.4).
+> **Naming note.** Throughout Section 20, `ChannelConnector`, `OpenClawConnectorApi`, `OpenClawConnectorDefinition`, etc. are **BrowserX's local names** (under `src/server/channel-connectors/`) for the shape-compatible upstream OpenClaw interfaces, which are still published as `ChannelPlugin`, `OpenClawPluginApi`, `OpenClawPluginDefinition` in the `openclaw` package. A plugin author writes against OpenClaw's upstream names; BrowserX accepts those packages unmodified by declaring the same shape under local names.
+>
+> The `"openclaw-plugin": true` discovery flag in `package.json` remains the upstream contract and is not renamed.
+
+Pi adopts the [OpenClaw](https://github.com/nicepkg/openclaw) `ChannelPlugin` interface as its channel integration standard (mirrored locally as `ChannelConnector`). Any OpenClaw channel plugin package (Slack, Telegram, WhatsApp, Discord, Signal, Matrix, IRC, etc.) can be installed and run on Pi without modification. Channel plugins are hosted by **Server Mode** and **Apple Pi (Desktop)** — BrowserX gains channel access by pairing with one of these runtimes (see Section 18.4).
 
 ### 20.0 Cross-Mode Plugin Hosting
 
@@ -1334,7 +1338,7 @@ Server startup
   ├── 2. For each candidate:
   │     ├── a. Dynamic import() the entry point
   │     ├── b. Validate it exports an OpenClawConnectorDefinition
-  │     ├── c. Create a ApplePiConnectorApi instance (our OpenClawConnectorApi implementation)
+  │     ├── c. Create an ApplePiConnectorApi instance (our OpenClawConnectorApi implementation)
   │     └── d. Call plugin.register(api)
   │           └── Plugin calls api.registerChannel({ plugin })
   │               └── ChannelConnector stored in ConnectorRegistry

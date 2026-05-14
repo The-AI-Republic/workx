@@ -30,7 +30,7 @@ export async function discoverConnectors(
     connectors.push(...extConnectors);
   }
 
-  // 2. Scan node_modules for packages with "openclaw-connector": true
+  // 2. Scan node_modules for packages with "openclaw-plugin": true (OpenClaw upstream contract flag)
   const nodeModulesConnectors = await scanNodeModules();
   connectors.push(...nodeModulesConnectors);
 

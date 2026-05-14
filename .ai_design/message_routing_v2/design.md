@@ -130,7 +130,7 @@ Channel Frontends ──→ ChannelClient (universal, platform-agnostic)
 │           │    ┌────────────────┼──────────────────┐   │                        │
 │           │    │                │                  │   │                        │
 │           │    │  ┌─────────────────────────────┐  │   │                        │
-│           │    │  │  ConnectorBridge        │  │   │                        │
+│           │    │  │  ConnectorBridge            │  │   │                        │
 │           │    │  │  (Telegram, Slack, etc.)    │  │   │                        │
 │           │    │  │  (ChannelAdapter)           │  │   │                        │
 │           │    │  │  services: false            │  │   │                        │
