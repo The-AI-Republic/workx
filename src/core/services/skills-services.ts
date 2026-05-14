@@ -15,6 +15,13 @@ import type { ServiceHandler } from '@/core/channels/ServiceRegistry';
 export interface SkillsServiceDeps {
   skillRegistry: {
     getSkillMetas(): unknown;
+    /**
+     * Returns the full unfiltered skill catalog. Distinct from
+     * `getSkillMetas()` which is domain-filtered when a SkillDomainFilter
+     * is attached. The typeahead UI uses this so the user always sees the
+     * full set regardless of the active tab.
+     */
+    getAllSkillMetas?(): unknown;
     invoke(name: string, args: string[]): unknown;
     save(skill: unknown): Promise<void>;
     delete(name: string): Promise<void>;
@@ -31,8 +38,10 @@ export function createSkillsServices(deps: SkillsServiceDeps): Record<string, Se
   const { skillRegistry, fetchFn = fetch } = deps;
 
   return {
+    // Typeahead surface — show ALL skills, not just domain-filtered ones,
+    // so the user can always invoke any skill via /name regardless of tab.
     'skills.list': async () => {
-      return skillRegistry.getSkillMetas();
+      return skillRegistry.getAllSkillMetas?.() ?? skillRegistry.getSkillMetas();
     },
 
     'skills.load': async (params) => {

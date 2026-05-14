@@ -32,6 +32,8 @@ import { AgentConfig } from '@/config/AgentConfig';
 import { configurePromptComposer, registerPromptExtension } from '@/core/PromptLoader';
 import type { RuntimeContext } from '@/prompts/PromptComposer';
 import { SkillRegistry } from '@/core/skills/SkillRegistry';
+import { SkillDomainFilter } from '@/core/skills/SkillDomainFilter';
+import { ActiveTabService } from '@/core/tabs/ActiveTabService';
 import { FilesystemSkillProvider } from '../storage/FilesystemSkillProvider';
 import { AuthManager, type IAuthManager } from '@/core/models/types/Auth';
 import type { Op } from '@/core/protocol/types';
@@ -61,6 +63,9 @@ export class DesktopAgentBootstrap {
   private registry: AgentRegistry | null = null;
   private channel: TauriChannel | null = null;
   private skillRegistry: SkillRegistry | null = null;
+  private skillDomainFilter: SkillDomainFilter | null = null;
+  private activeTabService: ActiveTabService | null = null;
+  private activeTabUnsubscribe: (() => void) | null = null;
   private scheduler: Scheduler | null = null;
   private schedulerAlarms: DesktopSchedulerAlarms | null = null;
   private schedulerDeepLinkHandler: DesktopSchedulerDeepLinkHandler | null = null;
@@ -392,12 +397,30 @@ export class DesktopAgentBootstrap {
       const provider = new FilesystemSkillProvider();
       await provider.initialize();
 
-      this.skillRegistry = new SkillRegistry(provider);
+      // Track 03 Phase 3 — wire domain-based conditional activation.
+      // ActiveTabService stays empty in desktop until a webview adapter pumps
+      // URL changes into it. Until then, getAvailableSkills() returns only
+      // unconditional skills, which is the safe fallback.
+      this.activeTabService = new ActiveTabService();
+      this.skillDomainFilter = new SkillDomainFilter();
+
+      this.skillRegistry = new SkillRegistry(provider, this.skillDomainFilter);
       await this.skillRegistry.discover();
+
+      // Subscribe the filter to active-tab changes (debounced micro-burst:
+      // setSnapshot itself is idempotent on hostname+url so no extra work
+      // needed for now; revisit if rapid nav becomes a prompt-cache concern).
+      this.activeTabUnsubscribe = this.activeTabService.subscribe((snap) => {
+        this.skillDomainFilter?.onActiveTabChange(snap.hostname);
+      });
 
       registerPromptExtension(() => this.skillRegistry!.buildSkillsSystemPrompt());
 
-      console.log('[DesktopAgentBootstrap] Skills initialized, found', this.skillRegistry.getSkillMetas().length, 'skills');
+      console.log(
+        '[DesktopAgentBootstrap] Skills initialized, found',
+        this.skillRegistry.getAllSkillMetas().length,
+        'skills',
+      );
     } catch (error) {
       console.warn('[DesktopAgentBootstrap] Could not initialize skills:', error);
     }
@@ -410,7 +433,9 @@ export class DesktopAgentBootstrap {
   private async registerSkillsToolOnAgent(agent: RepublicAgent): Promise<void> {
     if (!this.skillRegistry) return;
 
-    const allSkills = this.skillRegistry.getSkillMetas();
+    // Use unfiltered list so the tool registers as long as ANY skill exists,
+    // not only when the active tab matches a domain-conditional one.
+    const allSkills = this.skillRegistry.getAllSkillMetas();
     if (allSkills.length === 0) return;
 
     const registry = agent.getToolRegistry();
@@ -436,7 +461,11 @@ export class DesktopAgentBootstrap {
         const skillName = params.name as string;
         const args = params.arguments as string | undefined;
 
-        const knownNames = new Set(this.skillRegistry!.getSkillMetas().map((s) => s.name));
+        // Validate against the FULL catalog so explicit user `/skill-name`
+        // invocations still work even when the skill's domain isn't active.
+        // The domain filter shapes what the MODEL sees in its system prompt;
+        // it is not an access-control gate.
+        const knownNames = new Set(this.skillRegistry!.getAllSkillMetas().map((s) => s.name));
         if (!knownNames.has(skillName)) {
           return { error: `Skill "${skillName}" not found. Available skills: ${[...knownNames].join(', ')}` };
         }

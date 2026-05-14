@@ -964,11 +964,27 @@ async function initializeSkills(): Promise<void> {
     await storageProvider.initialize();
 
     const skillProvider = new IndexedDBSkillProvider(storageProvider);
-    skillRegistry = new SkillRegistry(skillProvider);
+
+    // Track 03 Phase 3 — wire domain-based conditional activation.
+    const { SkillDomainFilter } = await import('@/core/skills/SkillDomainFilter');
+    const { ActiveTabService } = await import('@/core/tabs/ActiveTabService');
+    const { startChromeActiveTabAdapter } = await import('./ChromeActiveTabAdapter');
+
+    const activeTabService = new ActiveTabService();
+    const skillDomainFilter = new SkillDomainFilter();
+    const stopAdapter = startChromeActiveTabAdapter(activeTabService);
+    activeTabService.subscribe((snap) => {
+      skillDomainFilter.onActiveTabChange(snap.hostname);
+    });
+
+    skillRegistry = new SkillRegistry(skillProvider, skillDomainFilter);
     await skillRegistry.discover();
 
     // Register dynamic prompt extension for auto-invocable skills
     registerPromptExtension(() => skillRegistry?.buildSkillsSystemPrompt() ?? '');
+
+    // Stash adapter cleanup on the registry handle so HMR/teardown can reach it.
+    (skillRegistry as unknown as { __disposeTabAdapter?: () => void }).__disposeTabAdapter = stopAdapter;
 
     console.log('[ServiceWorker] Skills initialized');
   } catch (error) {

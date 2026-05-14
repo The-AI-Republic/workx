@@ -1,6 +1,7 @@
 import type { ISkillProvider } from './SkillProvider';
 import type { Skill, SkillMeta, InvocationMode } from './types';
 import { substituteVariables, validateSkill, parseSkillMd, normalizeFrontmatter, projectMeta } from './SkillParser';
+import type { SkillDomainFilter } from './SkillDomainFilter';
 
 /** Built-in command names that skills cannot use */
 const RESERVED_COMMAND_NAMES = new Set(['new', 'help', 'settings']);
@@ -12,9 +13,17 @@ const RESERVED_COMMAND_NAMES = new Set(['new', 'help', 'settings']);
 export class SkillRegistry {
   private metas: SkillMeta[] = [];
   private provider: ISkillProvider;
+  private domainFilter: SkillDomainFilter | null = null;
 
-  constructor(provider: ISkillProvider) {
+  constructor(provider: ISkillProvider, domainFilter?: SkillDomainFilter) {
     this.provider = provider;
+    this.domainFilter = domainFilter ?? null;
+  }
+
+  /** Track 03 Phase 3 — attach a domain filter (or replace one) post-construction. */
+  setDomainFilter(filter: SkillDomainFilter | null): void {
+    this.domainFilter = filter;
+    if (filter) filter.init(this.metas);
   }
 
   // ── Discovery ───────────────────────────────────────────────────
@@ -22,17 +31,33 @@ export class SkillRegistry {
   /** Discover all skills and load Level 1 metadata */
   async discover(): Promise<SkillMeta[]> {
     this.metas = await this.provider.listMeta();
+    if (this.domainFilter) this.domainFilter.init(this.metas);
     return this.metas;
   }
 
-  /** Get all skill metadata (cached from last discover()) */
+  /**
+   * Get all skill metadata (cached from last discover()).
+   *
+   * When a domain filter is attached, returns only the skills currently
+   * available for the active tab (unconditional + matching conditional).
+   * Without a filter, returns the full list (extension/desktop/server
+   * fallback).
+   */
   getSkillMetas(): SkillMeta[] {
+    return this.domainFilter ? this.domainFilter.getAvailableSkills() : this.metas;
+  }
+
+  /**
+   * Returns all metas regardless of domain filter — for callers that need to
+   * reason about the full skill catalog (CRUD ops, /help typeahead).
+   */
+  getAllSkillMetas(): SkillMeta[] {
     return this.metas;
   }
 
-  /** Get auto-invocable skills (mode=auto|hybrid AND trusted) */
+  /** Get auto-invocable skills (mode=auto|hybrid AND trusted), filtered by domain when applicable. */
   getAutoInvocableSkills(): SkillMeta[] {
-    return this.metas.filter(
+    return this.getSkillMetas().filter(
       (s) => (s.invocationMode === 'auto' || s.invocationMode === 'hybrid') && s.trusted
     );
   }
