@@ -277,7 +277,12 @@ export async function registerExtensionTools(
               }
             },
           },
-          result: { maxResultSizeChars: 50_000 },
+          // Infinity: cache_storage_tool is the retrieval path for persisted
+          // tool results (track 09). Persisting its read responses would create
+          // a circular Read → file → Read loop. Other actions (write/update/
+          // delete/list) return small confirmation payloads that don't trip
+          // the threshold anyway.
+          result: { maxResultSizeChars: Number.POSITIVE_INFINITY },
         },
       });
     }
