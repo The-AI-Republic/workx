@@ -1,7 +1,7 @@
 import type { StorageProvider } from '@/core/storage/StorageProvider';
 import type { ISkillProvider } from '@/core/skills/SkillProvider';
 import type { Skill, SkillMeta } from '@/core/skills/types';
-import { serializeToSkillMd } from '@/core/skills/SkillParser';
+import { serializeToSkillMd, projectMeta } from '@/core/skills/SkillParser';
 
 const COLLECTION = 'skills';
 
@@ -18,13 +18,7 @@ export class IndexedDBSkillProvider implements ISkillProvider {
 
   async listMeta(): Promise<SkillMeta[]> {
     const skills = await this.storageProvider.list<Skill>(COLLECTION);
-    return skills.map((s) => ({
-      name: s.name,
-      description: s.description,
-      invocationMode: s.invocationMode,
-      trusted: s.trusted,
-      source: s.source,
-    }));
+    return skills.map((s) => projectMeta(s));
   }
 
   async load(name: string): Promise<Skill | null> {

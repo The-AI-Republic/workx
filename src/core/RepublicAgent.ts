@@ -997,6 +997,16 @@ export class RepublicAgent {
   }
 
   /**
+   * Get the hook registry.
+   *
+   * Exposed so SkillExecutor (Track 03) can register skill-scoped hooks
+   * via SessionHookStore for the duration of a single skill invocation.
+   */
+  getHookRegistry(): HookRegistry {
+    return this.hookRegistry;
+  }
+
+  /**
    * Get the platform adapter
    */
   getPlatformAdapter(): IPlatformAdapter {
