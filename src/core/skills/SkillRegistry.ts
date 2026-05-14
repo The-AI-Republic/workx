@@ -1,6 +1,6 @@
 import type { ISkillProvider } from './SkillProvider';
 import type { Skill, SkillMeta, InvocationMode } from './types';
-import { substituteVariables, validateSkill, parseSkillMd } from './SkillParser';
+import { substituteVariables, validateSkill, parseSkillMd, normalizeFrontmatter, projectMeta } from './SkillParser';
 
 /** Built-in command names that skills cannot use */
 const RESERVED_COMMAND_NAMES = new Set(['new', 'help', 'settings']);
@@ -60,6 +60,15 @@ export class SkillRegistry {
     return this.provider.loadReference(skillName, refPath);
   }
 
+  /**
+   * Load the full Skill record (Level 2) — body + extended fields.
+   * Use this when you need `context`, `agent`, `hooks`, `allowedTools`, etc.
+   * For substituted body only, use `invoke()`.
+   */
+  async loadFull(name: string): Promise<Skill | null> {
+    return this.provider.load(name);
+  }
+
   // ── System Prompt ───────────────────────────────────────────────
 
   /**
@@ -99,13 +108,7 @@ export class SkillRegistry {
 
     // Update cached metadata
     const existingIndex = this.metas.findIndex((m) => m.name === skill.name);
-    const meta: SkillMeta = {
-      name: skill.name,
-      description: skill.description,
-      invocationMode: skill.invocationMode,
-      trusted: skill.trusted,
-      source: skill.source,
-    };
+    const meta: SkillMeta = projectMeta(skill);
 
     if (existingIndex >= 0) {
       this.metas[existingIndex] = meta;
@@ -162,6 +165,7 @@ export class SkillRegistry {
     }
 
     const now = new Date().toISOString();
+    const fields = normalizeFrontmatter(parsed.frontmatter);
     const skill: Skill = {
       name: parsed.frontmatter.name,
       description: parsed.frontmatter.description,
@@ -170,13 +174,23 @@ export class SkillRegistry {
       trusted: false,
       source: 'imported',
       sourceUrl,
-      metadata: parsed.frontmatter.metadata,
-      allowedTools: parsed.frontmatter['allowed-tools']
-        ? parsed.frontmatter['allowed-tools'].split(/\s+/)
-        : undefined,
-      compatibility: parsed.frontmatter.compatibility,
+      metadata: fields.metadata,
+      allowedTools: fields.allowedTools,
+      compatibility: fields.compatibility,
       createdAt: now,
       updatedAt: now,
+      // Track 03 normalized fields
+      whenToUse: fields.whenToUse,
+      argumentHint: fields.argumentHint,
+      model: fields.model,
+      effort: fields.effort,
+      context: fields.context,
+      agent: fields.agent,
+      hooks: fields.hooks,
+      domains: fields.domains,
+      userInvocable: fields.userInvocable,
+      disableModelInvocation: fields.disableModelInvocation,
+      version: fields.version,
     };
 
     await this.save(skill);
