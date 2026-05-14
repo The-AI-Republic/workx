@@ -11,10 +11,11 @@
 > - **Compatibility:** drop-in compatible with claudy's `plugin.json` schema. A working
 >   claudy plugin loads in BrowserX for the slots BrowserX supports (skills, hooks, MCP,
 >   subagents); unsupported slots (commands, output-styles, LSP) are silently ignored.
-> - **v1 capability slots:** `skills`, `hooks`, `mcpServers`, `agents` (subagents).
-> - **Deferred slots:** `commands` (blocked on Track 03), `outputStyles` (subsystem doesn't
->   exist), `lspServers` (not relevant), `channels` (out of scope — keeps existing
->   `src/server/plugins/` loader).
+> - **v1 capability slots:** `skills`, `hooks`, `mcpServers`, `agents` (subagents),
+>   `commands`. Track 03 shipped (PR #204, 2026-05-14) and `CommandLoader` already
+>   reserves `'plugin'` in `CommandLoadedFrom` — drop-in fit.
+> - **Deferred slots:** `outputStyles` (subsystem doesn't exist), `lspServers` (not
+>   relevant), `channels` (out of scope — keeps existing `src/server/plugins/` loader).
 > - **Reference pattern for plugin-scoped lifecycle:** `HookRegistry.unregisterBySource()`
 >   from PR #198 — every other registry must grow the same shape.
 
@@ -82,6 +83,7 @@ Layered overview, mapped to source paths under `/home/rich/dev/study/claudy/src`
 | `HookRegistry.register()` | `src/core/hooks/HookRegistry.ts` ✅ | Already has `source` + `unregisterBySource()`. Just needs `'plugin'` source variant. |
 | `MCPManager.addServer()` | `src/core/mcp/MCPManager.ts` | No `pluginId` on `IMCPServerConfig`; no bulk removal by plugin |
 | Sub-agent type registration | `src/tools/AgentTool/register.ts` | Types registered at bootstrap via `registerSubAgentTool({ subAgentTypes })`. No runtime add/remove. |
+| Command registration | `src/core/commands/CommandLoader.ts` ✅ | Already reserves `'plugin'` in `CommandLoadedFrom` and accepts pluggable loaders via `CommandLoaderDeps`. Just needs a `PluginCommandLoader` added under `src/core/commands/loaders/`. |
 | `marketplaceManager` | — | Missing |
 | `PluginInstallationManager` | — | Missing |
 | `/plugin` UI | — | Missing (note: `/plugin` does not conflict with `src/server/plugins/` channel loaders — those have no slash command) |
@@ -137,7 +139,12 @@ src/core/plugins/
     ├── SkillSlotLoader.ts     # Walks <plugin>/skills/, registers into SkillRegistry
     ├── HookSlotLoader.ts      # Reads manifest.hooks, registers via HookRegistry.registerFromConfig
     ├── McpSlotLoader.ts       # Reads manifest.mcpServers, registers via MCPManager.addServer
-    └── SubAgentSlotLoader.ts  # Walks <plugin>/agents/, registers types into SubAgentRegistry
+    ├── SubAgentSlotLoader.ts  # Walks <plugin>/agents/, registers types into SubAgentRegistry
+    └── CommandSlotLoader.ts   # Walks <plugin>/commands/, contributes via Track 03 CommandLoader
+
+src/core/commands/loaders/
+└── PluginCommandLoader.ts     # NEW — sits alongside BuiltinCommandLoader + SkillCommandLoader,
+                               # consumed by CommandLoader. Fed by CommandSlotLoader on plugin enable.
 ```
 
 Existing-registry extensions required:
@@ -148,6 +155,11 @@ Existing-registry extensions required:
 - **`MCPManager`**: add optional `pluginId` on `IMCPServerConfig`; add `removeByPluginId()`.
 - **`src/tools/AgentTool/register.ts`**: expose runtime `registerSubAgentTypes(types, source)`
   and `unregisterTypesByPluginId(pluginId)`. Preserve current bootstrap behavior.
+- **`src/core/commands/CommandLoader.ts`**: extend `CommandLoaderDeps` with
+  `plugin?: PluginCommandLoader`. The `'plugin'` literal already exists in
+  `CommandLoadedFrom` (`src/core/commands/types.ts:17`) and `SOURCE_PRECEDENCE` already
+  lists `['builtin', 'skill', 'plugin']` (`src/core/commands/precedence.ts:12`) — no
+  type changes needed.
 
 Skill listing reinjection:
 - On every plugin enable/disable, `SkillRegistry` emits a `changed` signal. The next prompt
@@ -264,9 +276,9 @@ Optional BrowserX-specific extensions (never required for claudy compatibility):
 
 | Claudy slot | BrowserX v1 | Notes |
 |---|---|---|
-| `commands` | Deferred | Blocked on Track 03 |
+| `commands` | ✅ Phase 1 | Track 03 (PR #204) shipped `CommandLoader` with `'plugin'` source pre-reserved; just add `PluginCommandLoader` under `src/core/commands/loaders/` |
 | `agents` | ✅ Phase 1 | Loaded into `SubAgentRegistry` via runtime registration API |
-| `skills` | ✅ Phase 1 | Existing `SkillRegistry` |
+| `skills` | ✅ Phase 1 | Existing `SkillRegistry` (Track 03 added `domains` field) |
 | `hooks` | ✅ Phase 1 | Existing `HookRegistry` from PR #198 |
 | `outputStyles` | Deferred | Subsystem doesn't exist in BrowserX |
 | `mcpServers` | ✅ Phase 1 | Existing `MCPManager` |
@@ -322,24 +334,27 @@ Optional BrowserX-specific extensions (never required for claudy compatibility):
 ## Dependencies
 
 - ✅ **Track 01 (Hook & Event System)** — required, shipped via PR #198
+- ✅ **Track 03 (Command & Skill System)** — required for `commands` slot, shipped via PR #204
 - ✅ **Sub-agent system (PR #191)** — required, shipped
 - ✅ **MCPManager** — required, exists
 - ✅ **SkillRegistry** — required, exists
-- ⚠️ **Track 03 (Command & Skill System)** — blocks only the `commands` slot, which is
-  deferred from v1. Track 10 can ship without Track 03.
 - 07 (Centralized State) — *not* required; would simplify plugin-state subscription but
   not load-bearing.
 
-## Validation Notes (2026-05-13)
+## Validation Notes (2026-05-14)
 
-- All four target registries confirmed present in current `agent-improvements` HEAD:
+- All five target registries confirmed present in current `agent-improvements` HEAD:
   - `src/core/skills/SkillRegistry.ts:12`
   - `src/core/hooks/HookRegistry.ts:24`
   - `src/core/mcp/MCPManager.ts:58`
   - `src/tools/AgentTool/SubAgentRegistry.ts:46` (runtime registry) +
     `src/tools/AgentTool/register.ts` (type registration)
+  - `src/core/commands/CommandLoader.ts` (Track 03, PR #204, merged 2026-05-14)
 - `HookRegistry.unregisterBySource()` (`HookRegistry.ts:91`) confirmed as reference
   pattern for plugin-scoped cleanup.
+- `CommandLoadedFrom` already includes `'plugin'` (`src/core/commands/types.ts:17`);
+  `SOURCE_PRECEDENCE` already lists it (`src/core/commands/precedence.ts:12`). Track 03
+  explicitly anticipated the plugin slot — no schema changes needed there.
 - Three `plugins/`-named BrowserX dirs confirmed unrelated to general agent extensibility:
   `src/extension/tools/dom/plugins/`, `src/tools/dom/plugins/`, `src/server/plugins/`.
 - Claudy plugin source paths cross-referenced against `/home/rich/dev/study/claudy/src/`

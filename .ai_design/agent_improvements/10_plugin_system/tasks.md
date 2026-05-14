@@ -8,7 +8,7 @@
 ## Phase 1 — Foundation (PR 10a)
 
 ### Manifest schema
-- [ ] Add `src/core/plugins/PluginManifest.ts` with Zod schema mirroring claudy's `PluginManifestSchema` for the v1 slots: `name`, `version`, `description`, `author`, `skills`, `hooks`, `mcpServers`, `agents`, `settings`, `userConfig`. Accept (and silently ignore) unrecognized top-level slots so claudy plugins with `commands`/`outputStyles`/`lspServers` still load.
+- [ ] Add `src/core/plugins/PluginManifest.ts` with Zod schema mirroring claudy's `PluginManifestSchema` for the v1 slots: `name`, `version`, `description`, `author`, `skills`, `hooks`, `mcpServers`, `agents`, `commands`, `settings`, `userConfig`. Accept (and silently ignore) unrecognized top-level slots so claudy plugins with `outputStyles`/`lspServers` still load.
 - [ ] Add `src/core/plugins/types.ts` with `LoadedPlugin`, `PluginSource`, and the BrowserX-specific `browserx.domains` / `browserx.platforms` extensions.
 - [ ] Add `src/core/plugins/PluginErrors.ts` — discriminated union mirroring `claudy/types/plugin.ts:79` (generic-error, plugin-not-found, manifest-parse-error, manifest-validation-error, component-load-failed, …).
 
@@ -18,6 +18,7 @@
 - [ ] Extend `HookSource` in `src/core/hooks/types.ts` with `{ type: 'plugin'; pluginId: string }` variant. Existing `HookRegistry.unregisterBySource()` covers removal — no further change needed.
 - [ ] Extend `IMCPServerConfig` in `src/core/mcp/types.ts` with optional `pluginId`. Add `MCPManager.removeByPluginId(pluginId)` in `src/core/mcp/MCPManager.ts` — must `disconnect()` before `connections.delete()`.
 - [ ] Refactor `src/tools/AgentTool/register.ts` to expose `registerSubAgentTypes(types, source)` and `unregisterTypesByPluginId(pluginId)` as runtime APIs. Keep the existing bootstrap path (`registerSubAgentTool({ subAgentTypes })`) calling through the new API for parity.
+- [ ] Extend `CommandLoaderDeps` in `src/core/commands/CommandLoader.ts` with `plugin?: PluginCommandLoader`. No type changes — `'plugin'` is already in `CommandLoadedFrom` (`src/core/commands/types.ts:17`) and `SOURCE_PRECEDENCE` (`src/core/commands/precedence.ts:12`).
 
 ### Skill listing reinjection
 - [ ] Add `SkillRegistry.onChanged(listener)` subscription primitive (mirrors `HookRegistry`).
@@ -28,10 +29,12 @@
 - [ ] Add `src/core/plugins/loaders/HookSlotLoader.ts` — reads inline `manifest.hooks` (or `.hooks.json` referenced from manifest), calls `HookRegistry.registerFromConfig(config, { type: 'plugin', pluginId })`. On platform without shell (extension), mark each registered hook with `unsupportedOnPlatform: true` and the executor skips it.
 - [ ] Add `src/core/plugins/loaders/McpSlotLoader.ts` — reads inline `manifest.mcpServers` (or `.mcp.json`), calls `MCPManager.addServer({ ..., pluginId })`. Do not auto-connect; respect plugin trust state.
 - [ ] Add `src/core/plugins/loaders/SubAgentSlotLoader.ts` — walks `<plugin>/agents/` directory, parses agent `.md` files (mirroring claudy's `loadAgentsDir`), calls `registerSubAgentTypes(types, { type: 'plugin', pluginId })`.
+- [ ] Add `src/core/commands/loaders/PluginCommandLoader.ts` — sits alongside `BuiltinCommandLoader` and `SkillCommandLoader`. Holds plugin-contributed `Command` objects indexed by `pluginId`. Exposes `add(pluginId, commands)`, `removeByPluginId(pluginId)`, and the `load()` method consumed by `CommandLoader`. Each command's `loadedFrom = 'plugin'`.
+- [ ] Add `src/core/plugins/loaders/CommandSlotLoader.ts` — walks `<plugin>/commands/` (or entries in `manifest.commands` if array), parses each command markdown file using the same frontmatter parser Track 03 uses, constructs typed `PromptCommand` objects, calls `PluginCommandLoader.add(pluginId, commands)`. On plugin disable, calls `PluginCommandLoader.removeByPluginId(pluginId)`.
 
 ### Unified loader + registry
 - [ ] Add `src/core/plugins/PluginLoader.ts` — reads `plugin.json`, validates with `PluginManifestSchema`, dispatches each slot to its loader, collects per-slot errors, returns `LoadedPlugin` with success/error per slot.
-- [ ] Add `src/core/plugins/PluginRegistry.ts` — tracks loaded plugins by id, enable/disable state, persists state via storage adapter. Atomic `enable(id)` runs all four slot loaders; `disable(id)` calls `removeByPluginId` on all four registries. Idempotent.
+- [ ] Add `src/core/plugins/PluginRegistry.ts` — tracks loaded plugins by id, enable/disable state, persists state via storage adapter. Atomic `enable(id)` runs all five slot loaders (skills, hooks, MCP, subagents, commands); `disable(id)` calls `removeByPluginId` on all five registries. Idempotent.
 
 ### Discovery
 - [ ] Add `src/core/plugins/BundledPluginRegistry.ts` — port of `claudy/plugins/builtinPlugins.ts`. In-process registration API; bundled plugins always discoverable; user-toggleable.
@@ -49,8 +52,9 @@
 ### Tests
 - [ ] `PluginManifest` unit tests: valid manifest, missing optional slots, invalid slot value, unknown top-level field (must pass-through), malformed JSON.
 - [ ] Per-loader unit tests with mocked target registries.
-- [ ] `PluginLoader` integration test: load a fixture plugin with all four slots; verify each target registry receives the contribution with the right `pluginId`.
-- [ ] `PluginRegistry` tests: `enable` adds to all four; `disable` removes from all four; redundant enable/disable is idempotent; concurrent enable + disable on same id is serialized.
+- [ ] `PluginLoader` integration test: load a fixture plugin with all five slots; verify each target registry receives the contribution with the right `pluginId`.
+- [ ] `PluginRegistry` tests: `enable` adds to all five; `disable` removes from all five; redundant enable/disable is idempotent; concurrent enable + disable on same id is serialized.
+- [ ] `PluginCommandLoader` tests: `add` populates load output; `removeByPluginId` clears only that plugin's entries; dedupe-by-name precedence verified (`builtin > skill > plugin`).
 - [ ] Claudy compatibility fixture: copy a real claudy plugin under `tests/fixtures/claudy-plugins/<name>/`, confirm it loads in BrowserX (for v1 slots) without modification.
 - [ ] Skill listing reinjection test: enable plugin → `SkillRegistry.changed` fires → next prompt build includes the new skill names.
 
@@ -122,7 +126,6 @@
 
 - LSP server slot
 - Output styles slot (subsystem doesn't exist)
-- Commands slot (deferred to Track 03 merge)
 - DOM site plugin migration to plugin format (intentional: stays compile-time)
 - OpenClaw channel plugin migration (out of scope; keeps own loader)
 - Plugin developer mode (live-reload while editing) — Phase 4 candidate

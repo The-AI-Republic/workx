@@ -28,7 +28,7 @@ BrowserX is a multi-platform browser automation agent. Claudy is a terminal-nati
 | 08c | [EventLog](./08c_event_log/design.md) | P1 | Medium | Bounded audit/replay journal; subscribes to hooks/queue/approvals/sub-agents |
 | 08d | [MessageBus DEFERRED](./08d_message_bus_DEFERRED/design.md) | — | — | Deferred; reassess after 08a/b/c land |
 | 09 | [Tool Result Persistence](./09_tool_result_persistence/design.md) | P2 | Medium | Persist oversized tool results to disk instead of truncating; agent reads back via Read |
-| 10 | [Plugin System](./10_plugin_system/design.md) | P1 | Large | Claudy-compatible plugin packaging — manifest, marketplace, install, trust. Aggregates skills/hooks/MCP/subagents into installable units. Phased 10a/10b/10c. |
+| 10 | [Plugin System](./10_plugin_system/design.md) | P1 | Large | Claudy-compatible plugin packaging — manifest, marketplace, install, trust. Aggregates skills/hooks/MCP/subagents/commands into installable units. Phased 10a/10b/10c. |
 
 ## Dependency Graph
 
@@ -47,11 +47,10 @@ BrowserX is a multi-platform browser automation agent. Claudy is a terminal-nati
 
 08d_message_bus_DEFERRED ──> (no work; reassess after 08a/b/c land)
 
-10_plugin_system ──> (depends on shipped tracks: 01 hooks, sub-agents, MCP, skills)
+10_plugin_system ──> (depends on shipped tracks: 01 hooks, 03 commands, sub-agents, MCP, skills)
                   ├──> Phase 1 (10a) — manifest + unified loader + /plugin UI
                   ├──> Phase 2 (10b) — git marketplace + install
                   └──> Phase 3 (10c) — autoupdate + trust/policy + options
-                  (commands slot deferred until Track 03 ships)
 ```
 
 ## Existing Work
