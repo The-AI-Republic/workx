@@ -83,10 +83,31 @@ export interface ToolRegistrationOptions {
  * Provides centralized tool management for the browser tools system.
  * Handles registration, discovery, validation, and execution dispatch.
  */
+/**
+ * Result of a synchronous pre-execute check. Returned by an installed
+ * `PreExecuteCheck` gate to allow or deny a tool call before the approval
+ * pipeline runs.
+ */
+export type PreExecuteDecision =
+  | { behavior: 'allow' }
+  | { behavior: 'deny'; decisionReason: string };
+
+/**
+ * Synchronous pre-execute gate. Called by `ToolRegistry.execute()` before
+ * the approval gate. Used by internal sub-agents (e.g. session summary
+ * extractor) that need an unconditional input check independent of the
+ * approval policy.
+ */
+export type PreExecuteCheck = (
+  toolName: string,
+  parameters: Record<string, unknown>,
+) => PreExecuteDecision;
+
 export class ToolRegistry {
   private tools: Map<string, ToolRegistryEntry> = new Map();
   private eventCollector?: IEventCollector;
   private approvalGate?: ApprovalGate;
+  private preExecuteCheck?: PreExecuteCheck;
 
   constructor(eventCollector?: IEventCollector) {
     this.eventCollector = eventCollector;
@@ -105,6 +126,19 @@ export class ToolRegistry {
    */
   getApprovalGate(): ApprovalGate | undefined {
     return this.approvalGate;
+  }
+
+  /**
+   * Install a synchronous pre-execute gate. Runs BEFORE the approval gate
+   * so it can deny calls that the approval policy would otherwise
+   * auto-approve. Independent of approval policy (works with `'never'`).
+   *
+   * Used by internal extractors that need to constrain a sub-agent's tool
+   * inputs (e.g. lock `file_edit` to a single path). Production code only
+   * sets this on cloned child registries — never on the parent.
+   */
+  setPreExecuteCheck(check: PreExecuteCheck | undefined): void {
+    this.preExecuteCheck = check;
   }
 
   /**
@@ -337,6 +371,28 @@ export class ToolRegistry {
           },
         },
       });
+
+      // Pre-execute gate (sync, runs before the approval gate). Used by
+      // internal sub-agents to constrain tool inputs (e.g. session-summary
+      // extractor locking `file_edit` to a single path). Unconditional —
+      // bypasses the approval policy.
+      if (this.preExecuteCheck) {
+        const preDecision = this.preExecuteCheck(
+          request.toolName,
+          request.parameters as Record<string, unknown>,
+        );
+        if (preDecision.behavior === 'deny') {
+          return {
+            success: false,
+            error: {
+              code: 'PRE_EXECUTE_DENIED',
+              message: `Tool '${request.toolName}' denied by pre-execute gate`,
+              details: { reason: preDecision.decisionReason },
+            },
+            duration: Date.now() - startTime,
+          };
+        }
+      }
 
       // Approval gate check (if configured)
       if (this.approvalGate) {

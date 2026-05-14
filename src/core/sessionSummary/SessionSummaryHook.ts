@@ -50,11 +50,7 @@ import {
   shouldExtractSessionSummary,
 } from './sessionSummaryUtils';
 import { createSummaryFileCanUseTool } from './summaryFileTools';
-import {
-  createTelemetryEmitter,
-  NO_OP_TELEMETRY,
-  type TelemetryEmitter,
-} from './telemetry';
+import { createTelemetryEmitter, type TelemetryEmitter } from './telemetry';
 import { truncateSessionSummaryForCompact } from './truncate';
 
 const PROMPT_EXTENSION_NAME = 'session_summary';
@@ -92,6 +88,9 @@ export class SessionSummaryHook {
   private cachedSummary: string = '';
   private attached = false;
   private unregisterPostTurn?: () => void;
+  // Track 05b Issue 3: aborted on detach() so in-flight extractions stop
+  // updating cache/state on an orphaned instance. Recreated per attach.
+  private lifetimeAbort = new AbortController();
 
   constructor(options: SessionSummaryHookOptions) {
     this.sessionId = options.sessionId;
@@ -127,6 +126,8 @@ export class SessionSummaryHook {
   ): Promise<void> {
     if (this.attached) return;
     this.attached = true;
+    // Fresh abort controller for this attach cycle (detach()→attach() reuse).
+    this.lifetimeAbort = new AbortController();
 
     // Ensure the summary file exists with the canonical template, so first
     // extraction has something to edit and isSessionSummaryEmpty() works.
@@ -157,10 +158,17 @@ export class SessionSummaryHook {
     });
   }
 
-  /** Tear down. Safe to call multiple times. */
+  /**
+   * Tear down. Safe to call multiple times.
+   *
+   * Aborts any in-flight extraction's polling loop and cache refresh so they
+   * don't write to an orphaned instance. The underlying sub-agent run may
+   * continue briefly in the background but its result is discarded.
+   */
   detach(): void {
     if (!this.attached) return;
     this.attached = false;
+    this.lifetimeAbort.abort();
 
     try {
       this.unregisterPostTurn?.();
@@ -180,6 +188,12 @@ export class SessionSummaryHook {
    * The post-turn callback. Decides whether to fire the extractor and, if
    * so, spawns it in the background. Never throws — failures are logged via
    * telemetry and swallowed.
+   *
+   * Track 05b Issue 2: the extraction is intentionally fire-and-forget so
+   * the post-turn hook returns immediately and does not delay the next
+   * turn. `runExtraction` has its own try/finally for the in-flight flag,
+   * and the compaction interlock awaits the flag separately, so correctness
+   * does not require this caller to await.
    */
   async handlePostTurn(ctx: PostTurnContext): Promise<void> {
     if (!this.attached) return;
@@ -202,7 +216,8 @@ export class SessionSummaryHook {
       return;
     }
 
-    await this.runExtraction(ctx.history, /*manual*/ false);
+    // Fire-and-forget. `runExtraction` swallows errors internally.
+    void this.runExtraction(ctx.history, /*manual*/ false);
   }
 
   /**
@@ -216,15 +231,6 @@ export class SessionSummaryHook {
     if (isExtractionInFlight(this.sessionId)) return;
     this.telemetry.emit('manual_extraction', { trigger: 'manual' });
     await this.runExtraction(history, /*manual*/ true);
-  }
-
-  /**
-   * Public read-only access to the cached summary text. Used by
-   * `CompactService.compact()` to fold the hint into the summarization
-   * prompt. Returns `''` if no extraction has completed yet.
-   */
-  getCachedSummary(): string {
-    return this.cachedSummary;
   }
 
   /**
@@ -267,32 +273,29 @@ export class SessionSummaryHook {
     let error: string | undefined;
 
     try {
-      // Ensure scaffold + read current content so the extractor knows what's
-      // already there. createSummaryFileCanUseTool() lives in the per-call
-      // gate path — currently we rely on the type-config tools.allow filter
-      // since browserx's SubAgentRunner doesn't expose a per-call
-      // canUseTool override yet. Defence-in-depth would tighten this; a
-      // future tightening pass should wire `createSummaryFileCanUseTool`
-      // through `SubAgentRunner.prepare()`'s approval gate.
+      // Ensure scaffold + read current content. Build the path-locking gate
+      // and install it via SubAgentToolParams.canUseTool, which
+      // SubAgentRunner.prepare() applies to the child tool registry as a
+      // pre-execute check. Defence-in-depth on top of `tools.allow`.
       const summaryPath = await this.fileStore.ensureScaffold(this.sessionId);
       const currentContent = await this.fileStore.read(this.sessionId);
-
-      // Touch the gate so unused-import warnings don't flare; concrete
-      // approval-gate wiring is a follow-up.
-      void createSummaryFileCanUseTool(summaryPath);
+      const gate = createSummaryFileCanUseTool(summaryPath);
 
       const userPrompt = buildSessionSummaryUpdatePrompt(summaryPath, currentContent);
-      const result = await this.runner.run(buildExtractorParams(userPrompt));
+      const result = await this.runner.run(buildExtractorParams(userPrompt, gate));
 
       success = 'kind' in result ? result.status === 'launched' : result.success;
 
       // Background `run()` returns `'launched'` immediately. The actual
       // completion fires through the registry; we need to wait for it
-      // before we refresh the cache and clear the flag. Subscribe to the
-      // internal registry's events and resolve when this runId completes.
+      // before we refresh the cache and clear the flag.
       if ('kind' in result && result.kind === 'background') {
         await this.waitForBackgroundCompletion(result.runId);
       }
+
+      // If detach() fired during the run, don't update cache/state on
+      // this orphaned instance.
+      if (this.lifetimeAbort.signal.aborted) return;
 
       // Refresh the in-memory cache from disk. If the extractor's edits
       // failed/no-oped, this is a cheap re-read of the same content.
@@ -303,13 +306,16 @@ export class SessionSummaryHook {
       console.warn('[SessionSummary] extraction failed', error);
     } finally {
       markExtractionCompleted(this.sessionId);
-      this.telemetry.emit('extraction', {
-        success,
-        manual,
-        duration_ms: Date.now() - startedAt,
-        config: { ...this.config },
-        error,
-      });
+      // Telemetry emit is best-effort and tolerates a disposed engine.
+      if (!this.lifetimeAbort.signal.aborted) {
+        this.telemetry.emit('extraction', {
+          success,
+          manual,
+          duration_ms: Date.now() - startedAt,
+          config: { ...this.config },
+          error,
+        });
+      }
     }
   }
 
@@ -325,6 +331,7 @@ export class SessionSummaryHook {
   private async waitForBackgroundCompletion(runId: string): Promise<void> {
     const deadline = Date.now() + 15_000;
     while (Date.now() < deadline) {
+      if (this.lifetimeAbort.signal.aborted) return;
       const entry = this.internalRegistry.get(runId);
       if (!entry || entry.status !== 'running') return;
       await new Promise((r) => setTimeout(r, 250));
@@ -363,5 +370,3 @@ export class SessionSummaryHook {
   }
 }
 
-/** Re-export for callers (Session) that don't want to depend on telemetry directly. */
-export { NO_OP_TELEMETRY };

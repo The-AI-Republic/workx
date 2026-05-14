@@ -230,6 +230,14 @@ export class SubAgentRunner implements IAgentRunner {
       resolvedTypeConfig
     );
 
+    // Track 05b: install an optional sync pre-execute gate on the child
+    // registry. Runs BEFORE the approval gate so it constrains calls that
+    // `approvalPolicy: 'never'` would otherwise auto-approve. Used by
+    // internal extractors to lock `file_edit` to a single allowed path.
+    if (params.canUseTool) {
+      childRegistry.setPreExecuteCheck(params.canUseTool);
+    }
+
     // Create event router for namespaced events
     const eventRouter = new SubAgentEventRouter({
       parentEmitter: (event) => this.parentEngine.pushEvent(event),

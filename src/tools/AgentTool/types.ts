@@ -79,6 +79,19 @@ export interface SubAgentToolParams {
    * @internal Track 05b: silent-background escape hatch.
    */
   quietBackground?: boolean;
+
+  /**
+   * Optional synchronous pre-execute gate installed on the child tool
+   * registry. Runs BEFORE the approval gate, so it gates calls that the
+   * sub-agent's `approvalPolicy: 'never'` would otherwise auto-approve.
+   *
+   * Used by internal extractors (session summary) to constrain `file_edit`
+   * to a single allowed path. Defence-in-depth on top of
+   * `SubAgentTypeConfig.tools.allow`.
+   *
+   * @internal Track 05b
+   */
+  canUseTool?: import('../ToolRegistry').PreExecuteCheck;
 }
 
 /**

@@ -181,6 +181,10 @@ describe('RepublicAgent', () => {
       clearHistory: vi.fn(),
       shutdown: vi.fn().mockResolvedValue(undefined),
       refreshMemoryService: vi.fn().mockResolvedValue(undefined),
+      // Track 05b: session-summary hook accessors
+      setSessionSummaryHook: vi.fn(),
+      getSessionSummaryHook: vi.fn().mockReturnValue(null),
+      registerPostTurnHook: vi.fn().mockReturnValue(() => undefined),
       initialize: vi.fn().mockResolvedValue(undefined),
       initializeSession: vi.fn().mockResolvedValue(undefined),
       notifyApproval: vi.fn(),
@@ -383,6 +387,38 @@ describe('RepublicAgent', () => {
     it('should set the turn context on the session', async () => {
       await agent.initialize();
       expect(mockSessionInstance.setTurnContext).toHaveBeenCalled();
+    });
+
+    // ─── Track 05b: session-summary hook wiring ────────────────────────────
+    describe('syncSessionSummaryHook', () => {
+      it('does NOT construct a hook when preferences.sessionSummaryEnabled is false', async () => {
+        // Default mock has the flag absent → defaults to false
+        await agent.initialize();
+        expect(mockSessionInstance.setSessionSummaryHook).not.toHaveBeenCalled();
+      });
+
+      it('detaches an existing hook when the flag flips off', async () => {
+        const existingHook = { detach: vi.fn() };
+        mockSessionInstance.getSessionSummaryHook.mockReturnValue(existingHook);
+
+        await agent.initialize();
+
+        expect(existingHook.detach).toHaveBeenCalledTimes(1);
+        expect(mockSessionInstance.setSessionSummaryHook).toHaveBeenCalledWith(null);
+      });
+
+      it('does not crash when build mode is not desktop/server (extension build)', async () => {
+        // The default test env defines __BUILD_MODE__ via vitest config or a
+        // global; the function gracefully returns early on extension builds.
+        // Either path is acceptable — this assertion just guards against an
+        // unhandled rejection from syncSessionSummaryHook.
+        (config.getConfig as Mock).mockReturnValue({
+          ...((config.getConfig as Mock)() as Record<string, unknown>),
+          preferences: { sessionSummaryEnabled: true },
+        });
+
+        await expect(agent.initialize()).resolves.toBeUndefined();
+      });
     });
   });
 
