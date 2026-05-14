@@ -19,7 +19,7 @@ BrowserX is a multi-platform browser automation agent. Claudy is a terminal-nati
 | 03 | [Command & Skill System](./03_command_skill_system_DONE/design.md) ✅ DONE (PR #204, merged 2026-05-14) | P1 | Medium | User-facing extensibility, plugin ecosystem |
 | 04 | [Typed Task Families](./04_typed_task_families/design.md) | P1 | Large | Background agents, disk persistence, progress |
 | 05 | [Session Memory](./05_session_memory_DONE/design.md) ✅ DONE (PR #167, merged 2026-05-12) | P2 | Medium | Cross-session context, automatic summarization |
-| 05b | [Auto-Extraction & Compaction Interlock](./05b_auto_extraction_compaction_interlock/design.md) | P2 | Medium | Background session summarization with compaction-safe interlock; layers on PR #167 |
+| 05b | [Auto-Extraction & Compaction Interlock](./05b_auto_extraction_compaction_interlock_DONE/design.md) ✅ DONE (PR #206, merged 2026-05-14) | P2 | Medium | Background session summarization with compaction-safe interlock; layers on PR #167 |
 | 06 | [Multi-Agent Coordination](./06_multi_agent_coordination/design.md) | P2 | Large | Coordinator mode, worker delegation |
 | 07 | [Centralized State](./07_centralized_state/design.md) | P1 | Medium | Unified state, selectors, side-effect handlers |
 | 08 | [Centralized Message Queue & Audit](./08_centralized_message_queue/design.md) | P1 | Medium | Two phases: (1) `CommandQueue<T>` replaces plain `submissionQueue` — priorities, sub-agent filter, batching; deletes dead `QueueProcessor.ts`. (2) Persistent `EventLog` for hooks/queue/approvals/tool/sub-agent audit. MessageBus (former 08d) stays deferred. Earlier 08a primitives (Signal, Mailbox, ApprovalManager refactor) dropped after audit found BrowserX equivalents already exist. |
@@ -31,7 +31,7 @@ BrowserX is a multi-platform browser automation agent. Claudy is a terminal-nati
 ```
 01_hook_event_system_DONE (shipped via PR #198) ──┬──> 03_command_skill_system_DONE (shipped via PR #204)
                                                   ├──> 04_typed_task_families ──> 06_multi_agent_coordination
-                                                  └──> 05_session_memory_DONE (shipped via PR #167) ──> 05b_auto_extraction_compaction_interlock (requires main → agent-improvements merge)
+                                                  └──> 05_session_memory_DONE (shipped via PR #167) ──> 05b_auto_extraction_compaction_interlock_DONE (shipped via PR #206)
 
 02_tool_metadata_concurrency_DONE (shipped via PR #197) ──> multiple_tools_call (existing)
 
