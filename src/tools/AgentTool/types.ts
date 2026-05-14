@@ -67,6 +67,31 @@ export interface SubAgentToolParams {
 
   /** Whether to run this sub-agent in the background */
   background?: boolean;
+
+  /**
+   * When `background: true`, suppress the synthetic `<task-notification>`
+   * that is normally injected into the parent's pending input on completion.
+   *
+   * Used by internal extractors (session summary) where the parent LLM should
+   * never see the bookkeeping completion event. Has no effect on foreground
+   * runs (which return their result to the caller directly).
+   *
+   * @internal Track 05b: silent-background escape hatch.
+   */
+  quietBackground?: boolean;
+
+  /**
+   * Optional synchronous pre-execute gate installed on the child tool
+   * registry. Runs BEFORE the approval gate, so it gates calls that the
+   * sub-agent's `approvalPolicy: 'never'` would otherwise auto-approve.
+   *
+   * Used by internal extractors (session summary) to constrain `file_edit`
+   * to a single allowed path. Defence-in-depth on top of
+   * `SubAgentTypeConfig.tools.allow`.
+   *
+   * @internal Track 05b
+   */
+  canUseTool?: import('../ToolRegistry').PreExecuteCheck;
 }
 
 /**

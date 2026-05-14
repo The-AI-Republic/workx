@@ -120,10 +120,17 @@ export class SubAgentRunner implements IAgentRunner {
     // Skip the notification entirely when context.cancelled is true — the
     // operator who called cancel_sub_agent already received explicit
     // confirmation; a second notification would be redundant noise.
+    //
+    // `quietBackground: true` (Track 05b) suppresses the notification too —
+    // used by internal extractors (session summary) where the parent LLM
+    // should never see the bookkeeping completion event.
+    const suppressNotification = (): boolean =>
+      context.cancelled === true || params.quietBackground === true;
+
     void (async () => {
       try {
         const result = await this.execute(context, params);
-        if (!context.cancelled) {
+        if (!suppressNotification()) {
           this.safeEnqueueNotification(
             context,
             this.formatTaskNotification(context, params, result),
@@ -133,7 +140,7 @@ export class SubAgentRunner implements IAgentRunner {
         }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-        if (!context.cancelled) {
+        if (!suppressNotification()) {
           const failed: AgentRunResult = {
             success: false,
             response: '',
@@ -269,6 +276,14 @@ export class SubAgentRunner implements IAgentRunner {
       this.parentEngine.getToolRegistry(),
       resolvedTypeConfig
     );
+
+    // Track 05b: install an optional sync pre-execute gate on the child
+    // registry. Runs BEFORE the approval gate so it constrains calls that
+    // `approvalPolicy: 'never'` would otherwise auto-approve. Used by
+    // internal extractors to lock `file_edit` to a single allowed path.
+    if (params.canUseTool) {
+      childRegistry.setPreExecuteCheck(params.canUseTool);
+    }
 
     // Create event router for namespaced events
     const eventRouter = new SubAgentEventRouter({

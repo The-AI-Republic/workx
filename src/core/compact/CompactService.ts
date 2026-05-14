@@ -16,6 +16,27 @@ import { calculateBackoff, sleep } from './utils';
 import type { ModelClient } from '../models/ModelClient';
 import { isOutputTextDelta, isCompleted } from '../models/types/ResponseEvent';
 
+// Track 05b: compaction interlock + summary hint
+import {
+  EXTRACTION_WAIT_TIMEOUT_MS,
+  EXTRACTION_STALE_THRESHOLD_MS,
+} from '../sessionSummary/sessionSummaryUtils';
+import { waitForSessionSummaryExtraction } from '../sessionSummary/extractionLifecycle';
+import { isSessionSummaryEmpty } from '../sessionSummary/SessionSummaryFileStore';
+import { truncateSessionSummaryForCompact } from '../sessionSummary/truncate';
+import type { SessionSummaryHook } from '../sessionSummary/SessionSummaryHook';
+import type { SessionSummaryTelemetryName } from '../protocol/events';
+
+/**
+ * Track 05b: opt-in extras the caller (Session) threads through. Optional
+ * so existing direct callers / test fixtures of `CompactService.compact()`
+ * don't have to update.
+ */
+export interface CompactExtras {
+  sessionId?: string;
+  sessionSummaryHook?: SessionSummaryHook | null;
+}
+
 /**
  * Main service for orchestrating chat history compaction
  */
@@ -73,13 +94,59 @@ export class CompactService {
     trigger: CompactionTrigger,
     modelClient: ModelClient,
     tokensBefore: number = 0,
-    baseInstructions?: string
+    baseInstructions?: string,
+    extras?: CompactExtras,
   ): Promise<CompactionResult> {
     console.debug('[Compaction] Starting', {
       trigger,
       tokensBefore,
       historyLength: history.length,
     });
+
+    // Track 05b: compaction interlock. If a summary extraction is mid-write
+    // for this session, wait up to 15s for it to finish before destructively
+    // rewriting history. After the wait, read the (possibly fresh) summary
+    // file and fold its content into the summarization prompt as a hint.
+    const sessionId = extras?.sessionId;
+    const summaryHook = extras?.sessionSummaryHook;
+    let sessionSummaryHint: string | undefined;
+
+    if (sessionId) {
+      const waitResult = await waitForSessionSummaryExtraction(sessionId);
+      if (waitResult === 'timeout') {
+        this.emitSummaryTelemetry(
+          summaryHook,
+          'compact_extraction_wait_timeout',
+          sessionId,
+          { waited_ms: EXTRACTION_WAIT_TIMEOUT_MS },
+        );
+      } else if (waitResult === 'stale') {
+        this.emitSummaryTelemetry(
+          summaryHook,
+          'compact_extraction_wait_timeout',
+          sessionId,
+          {
+            waited_ms: EXTRACTION_STALE_THRESHOLD_MS,
+            stale: true,
+          },
+        );
+      }
+
+      // Pick up whatever the latest summary on disk is (or empty if missing).
+      if (summaryHook) {
+        const fresh = await summaryHook.readSummaryFromDisk();
+        if (fresh && !isSessionSummaryEmpty(fresh)) {
+          sessionSummaryHint = truncateSessionSummaryForCompact(fresh);
+        } else {
+          this.emitSummaryTelemetry(
+            summaryHook,
+            'compact_skipped_empty_summary',
+            sessionId,
+            {},
+          );
+        }
+      }
+    }
 
     let workingHistory = [...history];
     let itemsTrimmed = 0;
@@ -89,7 +156,12 @@ export class CompactService {
     while (retriesUsed <= this.config.maxRetries) {
       try {
         // Generate summary using embedded streaming logic
-        const summaryText = await this.generateSummaryWithModel(workingHistory, modelClient, baseInstructions);
+        const summaryText = await this.generateSummaryWithModel(
+          workingHistory,
+          modelClient,
+          baseInstructions,
+          sessionSummaryHint,
+        );
 
         // Collect and select user messages
         const userMessages = this.summaryGenerator.collectUserMessages(workingHistory);
@@ -134,6 +206,20 @@ export class CompactService {
           retriesUsed,
           trigger,
         });
+
+        // Track 05b: emit telemetry when the summary hint was folded in.
+        if (sessionId && sessionSummaryHint) {
+          this.emitSummaryTelemetry(
+            summaryHook,
+            'compact_with_summary',
+            sessionId,
+            {
+              tokens_before: tokensBefore,
+              tokens_after: tokensAfter,
+              summary_token_count: Math.ceil(sessionSummaryHint.length / 4),
+            },
+          );
+        }
 
         return result;
       } catch (error) {
@@ -249,15 +335,31 @@ export class CompactService {
   private async generateSummaryWithModel(
     history: ResponseItem[],
     modelClient: ModelClient,
-    baseInstructions?: string
+    baseInstructions?: string,
+    sessionSummaryHint?: string,
   ): Promise<string> {
+    // Track 05b: when a session-summary hint is available, prepend it to the
+    // summarization prompt so the LLM has the running narrative in hand
+    // before it summarizes. The hint is already truncated by the caller; we
+    // just wrap it in a clear delimiter.
+    const promptText =
+      sessionSummaryHint && sessionSummaryHint.length > 0
+        ? `${SUMMARIZATION_PROMPT}
+
+The following is a running session-summary distilled from earlier in this conversation. Use it as context but produce your own summary that captures the conversation in full:
+
+<session_summary>
+${sessionSummaryHint}
+</session_summary>`
+        : SUMMARIZATION_PROMPT;
+
     // Build summary request: history + summarization prompt
     const summaryRequest: ResponseItem[] = [
       ...history,
       {
         type: 'message' as const,
         role: 'user',
-        content: [{ type: 'input_text' as const, text: SUMMARIZATION_PROMPT }],
+        content: [{ type: 'input_text' as const, text: promptText }],
       },
     ];
 
@@ -281,6 +383,31 @@ export class CompactService {
     }
 
     return summaryText.trim();
+  }
+
+  /**
+   * Track 05b: emit a SessionSummaryTelemetry event through the hook's
+   * public emitter. Falls back to a no-op when no hook is wired up — tests
+   * and direct callers won't see telemetry, which is fine.
+   *
+   * `sessionId` is logged but the hook already knows its own session, so
+   * it isn't passed through.
+   */
+  private emitSummaryTelemetry(
+    hook: SessionSummaryHook | null | undefined,
+    event: SessionSummaryTelemetryName,
+    _sessionId: string,
+    payload: Record<string, unknown>,
+  ): void {
+    if (!hook) return;
+    try {
+      hook.emitTelemetry(event, payload);
+    } catch (err) {
+      console.warn(
+        '[Compaction] session-summary telemetry emit failed:',
+        err instanceof Error ? err.message : String(err),
+      );
+    }
   }
 
   /**

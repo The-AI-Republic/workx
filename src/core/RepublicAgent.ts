@@ -207,6 +207,15 @@ export class RepublicAgent {
     // Bridge engine events to the RepublicAgent event system
     this.wireEngineEvents();
 
+    // Track 05b: attach session-summary hook if enabled in preferences.
+    // Errors are swallowed — feature is opt-in and non-critical.
+    await this.syncSessionSummaryHook().catch((err) =>
+      console.warn(
+        '[RepublicAgent] syncSessionSummaryHook failed:',
+        err instanceof Error ? err.message : String(err),
+      ),
+    );
+
     // initialization complete
   }
 
@@ -307,6 +316,59 @@ export class RepublicAgent {
   private static readonly MEMORY_TOOL_NAMES = ['save_memory', 'search_memory', 'forget_memory'];
   private static readonly MEMORY_PROMPT_EXTENSION = 'memory';
 
+  /**
+   * Track 05b: idempotent setup/teardown for the session-summary hook based
+   * on the current `preferences.sessionSummaryEnabled` flag.
+   *
+   * Construction is build-mode-aware: the underlying file store relies on
+   * `createMemoryFileSystem()` which throws in the extension build. We
+   * silently skip in that case so the extension doesn't error at startup.
+   */
+  private async syncSessionSummaryHook(): Promise<void> {
+    const enabled =
+      this.config.getConfig().preferences?.sessionSummaryEnabled ?? false;
+    const existing = this.session.getSessionSummaryHook();
+
+    if (!enabled) {
+      if (existing) {
+        existing.detach();
+        this.session.setSessionSummaryHook(null);
+      }
+      return;
+    }
+
+    if (existing) return; // Already attached
+    if (!this.engine) return;
+
+    if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'extension') {
+      // Memory filesystem doesn't exist in the extension build.
+      return;
+    }
+
+    try {
+      const { createMemoryFileSystem } = await import('./memory/MemoryFileSystem');
+      const { SessionSummaryHook } = await import('./sessionSummary/SessionSummaryHook');
+      const { fs, memoryDir } = await createMemoryFileSystem();
+
+      const hook = new SessionSummaryHook({
+        sessionId: this.session.getSessionId(),
+        parentEngine: this.engine,
+        fs,
+        memoryRoot: memoryDir,
+      });
+
+      // attach() takes the Session-provided registrar. Bind it so the hook
+      // can register/unregister its post-turn callback symmetrically.
+      await hook.attach((fn) => this.session.registerPostTurnHook(fn));
+      this.session.setSessionSummaryHook(hook);
+    } catch (err) {
+      console.warn(
+        '[SessionSummary] failed to construct hook:',
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+  }
+
   private async syncMemoryTools(): Promise<void> {
     const ms = this.session.getMemoryService();
 
@@ -358,6 +420,12 @@ export class RepublicAgent {
       // loading the prompt, so the freshly composed prompt reflects the new state.
       await this.session.refreshMemoryService(this.config);
       await this.syncMemoryTools();
+      await this.syncSessionSummaryHook().catch((err) =>
+        console.warn(
+          '[RepublicAgent] syncSessionSummaryHook (new-conversation) failed:',
+          err instanceof Error ? err.message : String(err),
+        ),
+      );
 
       const baseInstructions = await loadPrompt();
       taskContext.setBaseInstructions(baseInstructions);
@@ -391,6 +459,14 @@ export class RepublicAgent {
     // the memory extension and disabling it leaves stale memory text behind.
     await this.session.refreshMemoryService(this.config);
     await this.syncMemoryTools();
+    // Track 05b: re-evaluate session-summary preference so flipping it via
+    // CONFIG_UPDATE attaches/detaches the hook without a full reinit.
+    await this.syncSessionSummaryHook().catch((err) =>
+      console.warn(
+        '[RepublicAgent] syncSessionSummaryHook (hotSwap) failed:',
+        err instanceof Error ? err.message : String(err),
+      ),
+    );
 
     const baseInstructions = await loadPrompt();
     turnCtx.setBaseInstructions(baseInstructions);
