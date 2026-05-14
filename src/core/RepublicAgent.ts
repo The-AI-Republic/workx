@@ -20,7 +20,7 @@ import { ModelClientFactory } from './models/ModelClientFactory';
 import { RepublicAgentEngine } from './engine/RepublicAgentEngine';
 import { type IUserNotifier, NoOpNotifier } from './IUserNotifier';
 import { v4 as uuidv4 } from 'uuid';
-import { loadPrompt, loadUserInstructions, configurePromptComposer, isComposerConfigured } from './PromptLoader';
+import { loadPrompt, loadUserInstructions, configurePromptComposer, isComposerConfigured, registerPromptExtension, unregisterPromptExtension } from './PromptLoader';
 import { HookRegistry } from './hooks/HookRegistry';
 import { HookExecutor } from './hooks/HookExecutor';
 import { HookDispatcher } from './hooks/HookDispatcher';
@@ -102,6 +102,9 @@ export class RepublicAgent {
    * Creates model client during initialization with nullable API key
    */
   async initialize(): Promise<void> {
+    // Wait for session background initialization (memory service, rollout, etc.)
+    await this.session.initialize();
+
     // Initialize model client factory with config
     await this.modelClientFactory.initialize(this.config);
 
@@ -148,6 +151,9 @@ export class RepublicAgent {
         (msg: { type: string; data: Record<string, unknown> }) => this.emitEvent(msg as EventMsg),
       );
     }
+
+    // Register/unregister memory tools based on current memory service state
+    await this.syncMemoryTools();
 
     // Create model client and turn context during initialization
     // API key can be null - validation happens when making API requests
@@ -294,6 +300,43 @@ export class RepublicAgent {
   }
 
   /**
+   * Sync memory tools in the ToolRegistry with the current memory service state.
+   * Registers tools if memory is enabled, unregisters if disabled.
+   * Safe to call repeatedly — idempotent.
+   */
+  private static readonly MEMORY_TOOL_NAMES = ['save_memory', 'search_memory', 'forget_memory'];
+  private static readonly MEMORY_PROMPT_EXTENSION = 'memory';
+
+  private async syncMemoryTools(): Promise<void> {
+    const ms = this.session.getMemoryService();
+
+    if (ms) {
+      // Register tools if not already present
+      const hasMemoryTools = this.toolRegistry.getTool('save_memory') !== null;
+      if (!hasMemoryTools) {
+        const { registerMemoryTools } = await import('../tools/MemoryTools');
+        await registerMemoryTools(this.toolRegistry, () => this.session.getMemoryService());
+      }
+
+      // Register prompt extension for core memory injection
+      registerPromptExtension(RepublicAgent.MEMORY_PROMPT_EXTENSION, () => {
+        const svc = this.session.getMemoryService();
+        return svc ? svc.getCachedGlobalContext() : '';
+      });
+    } else {
+      // Unregister tools
+      for (const name of RepublicAgent.MEMORY_TOOL_NAMES) {
+        if (this.toolRegistry.getTool(name) !== null) {
+          await this.toolRegistry.unregister(name);
+        }
+      }
+
+      // Unregister prompt extension
+      unregisterPromptExtension(RepublicAgent.MEMORY_PROMPT_EXTENSION);
+    }
+  }
+
+  /**
    * Refresh the model client when auth state changes
    * Called when INIT_AUTH is received to update the client with new routing
    */
@@ -306,11 +349,18 @@ export class RepublicAgent {
       const taskContext = new TurnContext(modelClient, {});
       const userInstructions = await loadUserInstructions();
       taskContext.setUserInstructions(userInstructions);
+
+      // Update session with new turn context first so the memory service has
+      // a target to attach to.
+      this.session.setTurnContext(taskContext);
+
+      // Refresh memory state (service + tool registry + prompt extension) BEFORE
+      // loading the prompt, so the freshly composed prompt reflects the new state.
+      await this.session.refreshMemoryService(this.config);
+      await this.syncMemoryTools();
+
       const baseInstructions = await loadPrompt();
       taskContext.setBaseInstructions(baseInstructions);
-
-      // Update session with new turn context
-      this.session.setTurnContext(taskContext);
     } catch (error) {
       console.error('[RepublicAgent] Failed to refresh model client:', error);
     }
@@ -335,6 +385,13 @@ export class RepublicAgent {
     // Reload instructions so prompt-relevant config changes take effect
     const userInstructions = await loadUserInstructions();
     turnCtx.setUserInstructions(userInstructions);
+
+    // Refresh memory state (service + tool registry + prompt extension) BEFORE
+    // composing the prompt, otherwise enabling memory yields a prompt without
+    // the memory extension and disabling it leaves stale memory text behind.
+    await this.session.refreshMemoryService(this.config);
+    await this.syncMemoryTools();
+
     const baseInstructions = await loadPrompt();
     turnCtx.setBaseInstructions(baseInstructions);
   }
@@ -880,6 +937,16 @@ export class RepublicAgent {
    */
   getHookDispatcher(): HookDispatcher {
     return this.hookDispatcher;
+  }
+
+  /**
+   * Get the hook registry.
+   *
+   * Exposed so SkillExecutor (Track 03) can register skill-scoped hooks
+   * via SessionHookStore for the duration of a single skill invocation.
+   */
+  getHookRegistry(): HookRegistry {
+    return this.hookRegistry;
   }
 
   /**

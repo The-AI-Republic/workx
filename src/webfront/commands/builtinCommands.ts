@@ -23,6 +23,7 @@ export function initBuiltinCommands(callbacks: BuiltinCommandCallbacks): void {
   commandRegistry.register({
     name: 'new',
     description: 'Reset the current conversation',
+    loadedFrom: 'builtin',
     action: () => {
       activeCallbacks?.onNewConversation();
     },
@@ -31,11 +32,13 @@ export function initBuiltinCommands(callbacks: BuiltinCommandCallbacks): void {
   commandRegistry.register({
     name: 'help',
     description: 'List all available commands',
+    loadedFrom: 'builtin',
     action: () => {
       const commands = commandRegistry.getAll();
       const lines = commands.map((cmd) => {
         const hint = cmd.argumentHint ? ` ${cmd.argumentHint}` : '';
-        return `**/${cmd.name}**${hint} — ${cmd.description}`;
+        const usage = cmd.whenToUse ? `\n  _${cmd.whenToUse}_` : '';
+        return `**/${cmd.name}**${hint} — ${cmd.description}${usage}`;
       });
       activeCallbacks?.onCommandOutput('Available Commands', lines.join('\n'));
     },
@@ -44,6 +47,7 @@ export function initBuiltinCommands(callbacks: BuiltinCommandCallbacks): void {
   commandRegistry.register({
     name: 'settings',
     description: 'Open the settings panel',
+    loadedFrom: 'builtin',
     action: () => {
       activeCallbacks?.onOpenSettings();
     },
@@ -110,6 +114,7 @@ async function syncSkillCommands(
         name,
         description: skill.description,
         argumentHint: '$ARGUMENTS',
+        loadedFrom: 'skill',
         action: (args?: string) => {
           storedOnSubmitText?.(`/${name}${args ? ' ' + args : ''}`);
         },

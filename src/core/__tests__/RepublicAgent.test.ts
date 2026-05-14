@@ -40,6 +40,8 @@ vi.mock('../PromptLoader', () => ({
   loadUserInstructions: vi.fn(async () => 'user-instructions'),
   isComposerConfigured: vi.fn(() => false),
   configurePromptComposer: vi.fn(),
+  registerPromptExtension: vi.fn(),
+  unregisterPromptExtension: vi.fn(),
 }));
 
 vi.mock('../../tools/registerPlatformTools', () => ({
@@ -58,6 +60,10 @@ vi.mock('../tasks/RegularTask', () => ({
 
 vi.mock('../engine/RepublicAgentEngine', () => ({
   RepublicAgentEngine: vi.fn(() => mockEngineInstance),
+}));
+
+vi.mock('../../tools/MemoryTools', () => ({
+  registerMemoryTools: vi.fn(async () => undefined),
 }));
 
 vi.mock('../TurnContext', () => ({
@@ -176,6 +182,8 @@ describe('RepublicAgent', () => {
       getHistoryEntry: vi.fn(),
       clearHistory: vi.fn(),
       shutdown: vi.fn().mockResolvedValue(undefined),
+      refreshMemoryService: vi.fn().mockResolvedValue(undefined),
+      initialize: vi.fn().mockResolvedValue(undefined),
       initializeSession: vi.fn().mockResolvedValue(undefined),
       notifyApproval: vi.fn(),
       compact: vi.fn().mockResolvedValue({
@@ -188,11 +196,13 @@ describe('RepublicAgent', () => {
       getDefaultModel: vi.fn().mockReturnValue('test-model'),
       getDefaultCwd: vi.fn().mockReturnValue('/'),
       isStorageEnabled: vi.fn().mockReturnValue(true),
+      getMemoryService: vi.fn().mockReturnValue(null),
     };
 
     mockToolRegistryInstance = {
       register: vi.fn(),
-      getTool: vi.fn(),
+      unregister: vi.fn().mockResolvedValue(undefined),
+      getTool: vi.fn().mockReturnValue(null),
       getAllTools: vi.fn().mockReturnValue([]),
       cleanup: vi.fn().mockResolvedValue(undefined),
       clear: vi.fn(),
@@ -865,6 +875,12 @@ describe('RepublicAgent', () => {
       expect(mockSessionInstance.setTurnContext).toHaveBeenCalled();
     });
 
+    it('should refresh the memory service after replacing the model client', async () => {
+      await agent.refreshModelClient();
+
+      expect(mockSessionInstance.refreshMemoryService).toHaveBeenCalledWith(config);
+    });
+
     it('should not throw if createClientForCurrentModel fails', async () => {
       mockModelClientFactoryInstance.createClientForCurrentModel.mockRejectedValue(
         new Error('network error')
@@ -965,6 +981,12 @@ describe('RepublicAgent', () => {
 
       const turnCtx = mockSessionInstance.getTurnContext();
       expect(turnCtx.setBaseInstructions).toHaveBeenCalledWith('base-instructions');
+    });
+
+    it('should refresh the memory service after hot-swapping the model client', async () => {
+      await agent.hotSwapModelClient();
+
+      expect(mockSessionInstance.refreshMemoryService).toHaveBeenCalledWith(config);
     });
 
     it('should reuse existing TurnContext unlike refreshModelClient which creates a new one', async () => {

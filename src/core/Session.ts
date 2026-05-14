@@ -12,7 +12,7 @@ import type { EventMsg } from './protocol/events';
 import { RolloutRecorder, type RolloutItem } from '../storage/rollout';
 import { v4 as uuidv4 } from 'uuid';
 import { TurnContext } from './TurnContext';
-import type { AgentConfig } from '../config/AgentConfig';
+import { AgentConfig } from '../config/AgentConfig';
 import type { SessionTask } from './tasks/SessionTask';
 import type { ToolRegistry } from '../tools/ToolRegistry';
 
@@ -30,6 +30,10 @@ import { CompactService } from './compact/CompactService';
 import type { CompactionResult, CompactionTrigger } from './compact/types';
 import { estimateRequestTokens } from './compact/utils';
 import type { ModelClient } from './models/ModelClient';
+
+// Memory system
+import type { MemoryService } from './memory/MemoryService';
+import { createMemoryService } from './memory/createMemoryService';
 
 // Title generation imports
 import { TitleGenerator } from './title';
@@ -73,6 +77,7 @@ export class Session {
   private interruptRequested: boolean = false;
   private compactService: CompactService;
   private titleGenerator: TitleGenerator;
+  private _memoryService: MemoryService | null = null;
 
   // ─── Track 04: typed task registry ────────────────────────────────────
   /**
@@ -711,6 +716,8 @@ export class Session {
    * Reset session to initial state (for new conversation) using RolloutRecorder
    */
   async reset(): Promise<void> {
+    await this.closeMemoryService();
+
     // Shutdown old RolloutRecorder if it exists
     if (this.services?.rollout) {
       try {
@@ -740,6 +747,8 @@ export class Session {
    * Close session and cleanup resources using RolloutRecorder
    */
   async close(): Promise<void> {
+    await this.closeMemoryService();
+
     if (this.services?.rollout) {
       try {
         // Record session close event
@@ -784,6 +793,145 @@ export class Session {
    */
   setTabId(tabId: number): void {
     this.sessionState.setTabId(tabId);
+  }
+
+  /**
+   * Get the memory service (null if memory is disabled or unsupported)
+   */
+  getMemoryService(): MemoryService | null {
+    return this._memoryService;
+  }
+
+  /**
+   * Set the memory service (called during initialization)
+   */
+  setMemoryService(service: MemoryService | null): void {
+    console.log(`[Memory] setMemoryService called with: ${service ? 'MemoryService instance' : 'null'}`, new Error().stack?.split('\n').slice(1, 4).join('\n'));
+    this._memoryService = service;
+  }
+
+  /**
+   * Rebuild the memory service from current config/auth state.
+   * Used on startup and after runtime config/auth changes.
+   */
+  async refreshMemoryService(configOverride?: AgentConfig): Promise<void> {
+    await this.closeMemoryService();
+
+    // Initialize memory service (for desktop/server only)
+    // Memory uses file-based storage with a cheap LLM for search operations.
+    try {
+      if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ !== 'extension') {
+        const agentConfig = configOverride || this.config || await AgentConfig.getInstance();
+        const preferences = agentConfig.getConfig().preferences;
+        const memoryEnabled = preferences?.memoryEnabled ?? false;
+
+        console.log(`[Memory] Init check: BUILD_MODE=${__BUILD_MODE__}, memoryEnabled=${memoryEnabled}, preferences=`, JSON.stringify({ memoryEnabled: preferences?.memoryEnabled, memoryUseOwnApiKey: preferences?.memoryUseOwnApiKey }));
+
+        // Determine API key source for the cheap memory LLM
+        const memoryUseOwnApiKey = preferences?.memoryUseOwnApiKey ?? true;
+        const useBackendForMemory = !memoryUseOwnApiKey;
+
+        const openaiApiKey = await agentConfig.getProviderApiKey('openai');
+
+        // Build backend routing config if applicable
+        let backendBaseUrl: string | undefined;
+        if (useBackendForMemory) {
+          const { LLM_API_URL } = await import('../config/constants');
+          if (LLM_API_URL) {
+            backendBaseUrl = LLM_API_URL;
+          }
+        }
+
+        // Create a dedicated LLM caller for memory keyword generation and relevance filtering.
+        // Prefers a cheap model (gpt-4o-mini) via OpenAI API key. Falls back to the
+        // user's current main LLM provider/model when no OpenAI key is available.
+        const { OpenAIChatCompletionClient } = await import('./models/client/OpenAIChatCompletionClient');
+        const { DEFAULT_EXTRACTION_MODEL } = await import('./memory/types');
+        const extractionModel = preferences?.extractionModel ?? DEFAULT_EXTRACTION_MODEL;
+
+        const memoryApiKey = useBackendForMemory
+          ? (openaiApiKey || 'backend-routed')
+          : (openaiApiKey || '');
+
+        let llmCaller = null;
+
+        if (memoryApiKey) {
+          // Preferred path: dedicated gpt-4o-mini client via OpenAI key
+          const memoryLLMClient = new OpenAIChatCompletionClient({
+            apiKey: memoryApiKey,
+            baseUrl: useBackendForMemory && backendBaseUrl ? backendBaseUrl + '/openai' : undefined,
+            sessionId: 'memory-search',
+            modelFamily: {
+              family: extractionModel,
+              base_instructions: '',
+              supports_reasoning: false,
+              supports_reasoning_summaries: false,
+              needs_special_apply_patch_instructions: false,
+            },
+            provider: {
+              name: 'OpenAI',
+              wire_api: 'Chat' as const,
+              requires_openai_auth: true,
+            },
+            ...(useBackendForMemory && backendBaseUrl && { useCredentials: true }),
+          });
+
+          llmCaller = {
+            complete: async (systemPrompt: string, userPrompt: string) => {
+              const response = await memoryLLMClient.complete({
+                model: extractionModel,
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: userPrompt }
+                ]
+              });
+              return response.choices[0]?.message?.content || '';
+            }
+          };
+        }
+
+        // Fallback: if no OpenAI key available, use the user's selected main LLM
+        // for memory operations (search keyword generation, relevance filtering).
+        // This ensures memory works regardless of which provider the user chose.
+        if (!llmCaller) {
+          llmCaller = await this.createFallbackMemoryLLMCaller(agentConfig);
+          if (llmCaller) {
+            console.info('[Memory] No OpenAI API key — using main LLM provider for memory operations.');
+          }
+        }
+
+        console.log(`[Memory] llmCaller=${llmCaller ? 'available' : 'null'}, memoryApiKey=${memoryApiKey ? 'set' : 'empty'}, openaiApiKey=${openaiApiKey ? 'set' : 'empty'}`);
+
+        const memoryService = await createMemoryService({
+          config: { enabled: memoryEnabled },
+          llmCaller,
+        });
+
+        console.log(`[Memory] createMemoryService result: ${memoryService ? 'initialized' : 'null'}`);
+
+        if (memoryEnabled && !memoryService) {
+          console.warn('[Memory] Memory is enabled but failed to initialize. Check logs for details.');
+        }
+
+        this.setMemoryService(memoryService);
+      }
+    } catch (err) {
+      console.error('[Memory] Initialization failed:', err);
+    }
+  }
+
+  /**
+   * Close memory service and release its resources.
+   */
+  private async closeMemoryService(): Promise<void> {
+    if (this._memoryService) {
+      try {
+        await this._memoryService.close();
+      } catch (error) {
+        console.error('Failed to close memory service:', error);
+      }
+      this._memoryService = null;
+    }
   }
 
   /**
@@ -1022,6 +1170,98 @@ export class Session {
         this.services.rollout = null;
       }
     }
+
+    await this.refreshMemoryService(config);
+  }
+
+  /**
+   * Create a memory LLM caller that mirrors the user's current main LLM provider/model.
+   * Used as a fallback when no OpenAI API key is available.
+   */
+  private async createFallbackMemoryLLMCaller(
+    agentConfig: AgentConfig
+  ): Promise<{ complete: (systemPrompt: string, userPrompt: string) => Promise<string> } | null> {
+    try {
+      const fullConfig = agentConfig.getConfig();
+      const modelData = agentConfig.getModelByKey(fullConfig.selectedModelKey);
+      if (!modelData) return null;
+
+      const providerId = modelData.provider.id;
+      const providerApiKey = await agentConfig.getProviderApiKey(providerId);
+      if (!providerApiKey) return null;
+
+      const modelKey = modelData.model.modelKey;
+      const baseUrl = modelData.provider.baseUrl || undefined;
+
+      if (providerId === 'google-ai-studio') {
+        const { GoogleCompletionClient } = await import('./models/client/GoogleCompletionClient');
+        const client = new GoogleCompletionClient({
+          apiKey: providerApiKey,
+          baseUrl,
+          provider: {
+            name: 'Google AI Studio',
+            wire_api: 'Chat' as const,
+            requires_openai_auth: false,
+          },
+          modelFamily: {
+            family: modelKey,
+            base_instructions: '',
+            supports_reasoning: false,
+            supports_reasoning_summaries: false,
+            needs_special_apply_patch_instructions: false,
+          },
+        });
+
+        return {
+          complete: async (systemPrompt: string, userPrompt: string) => {
+            const response = await client.complete({
+              model: modelKey,
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt }
+              ]
+            });
+            return response.choices[0]?.message?.content || '';
+          }
+        };
+      }
+
+      // All other providers use OpenAI-compatible Chat Completions API
+      const { OpenAIChatCompletionClient } = await import('./models/client/OpenAIChatCompletionClient');
+      const client = new OpenAIChatCompletionClient({
+        apiKey: providerApiKey,
+        baseUrl,
+        sessionId: 'memory-search',
+        modelFamily: {
+          family: modelKey,
+          base_instructions: '',
+          supports_reasoning: false,
+          supports_reasoning_summaries: false,
+          needs_special_apply_patch_instructions: false,
+        },
+        provider: {
+          name: modelData.provider.name || providerId,
+          wire_api: 'Chat' as const,
+          requires_openai_auth: true,
+        },
+      });
+
+      return {
+        complete: async (systemPrompt: string, userPrompt: string) => {
+          const response = await client.complete({
+            model: modelKey,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ]
+          });
+          return response.choices[0]?.message?.content || '';
+        }
+      };
+    } catch (err) {
+      console.warn('[Memory] Failed to create fallback memory LLM caller:', err);
+      return null;
+    }
   }
 
   /**
@@ -1044,6 +1284,8 @@ export class Session {
    * Graceful shutdown
    */
   async shutdown(): Promise<void> {
+    await this.closeMemoryService();
+
     if (this.services?.rollout) {
       try {
         await this.services.rollout.flush();

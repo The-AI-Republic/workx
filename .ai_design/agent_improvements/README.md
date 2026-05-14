@@ -16,7 +16,7 @@ BrowserX is a multi-platform browser automation agent. Claudy is a terminal-nati
 |---|-------|----------|--------|-------|
 | 01 | [Hook & Event System](./01_hook_event_system_DONE/design.md) ✅ DONE (PR #198, merged 2026-05-13) | P0 | Large | Unlocks extensibility for all other tracks |
 | 02 | [Tool Metadata & Concurrency](./02_tool_metadata_concurrency_DONE/design.md) ✅ DONE (PR #197, merged 2026-05-13) | P0 | Medium | Enables parallel tool execution, progress UX |
-| 03 | [Command & Skill System](./03_command_skill_system/design.md) | P1 | Medium | User-facing extensibility, plugin ecosystem |
+| 03 | [Command & Skill System](./03_command_skill_system_DONE/design.md) ✅ DONE (PR #204, merged 2026-05-14) | P1 | Medium | User-facing extensibility, plugin ecosystem |
 | 04 | [Typed Task Families](./04_typed_task_families/design.md) | P1 | Large | Background agents, disk persistence, progress |
 | 05 | [Session Memory](./05_session_memory_DONE/design.md) ✅ DONE (PR #167, merged 2026-05-12) | P2 | Medium | Cross-session context, automatic summarization |
 | 05b | [Auto-Extraction & Compaction Interlock](./05b_auto_extraction_compaction_interlock/design.md) | P2 | Medium | Background session summarization with compaction-safe interlock; layers on PR #167 |
@@ -27,11 +27,13 @@ BrowserX is a multi-platform browser automation agent. Claudy is a terminal-nati
 | 08b | [CommandQueue](./08b_command_queue/design.md) | P1 | Medium | Typed input queue with priorities; sub-agent isolation; wires PR #191 task notifications |
 | 08c | [EventLog](./08c_event_log/design.md) | P1 | Medium | Bounded audit/replay journal; subscribes to hooks/queue/approvals/sub-agents |
 | 08d | [MessageBus DEFERRED](./08d_message_bus_DEFERRED/design.md) | — | — | Deferred; reassess after 08a/b/c land |
+| 09 | [Tool Result Persistence](./09_tool_result_persistence/design.md) | P2 | Medium | Persist oversized tool results to disk instead of truncating; agent reads back via Read |
+| 10 | [Plugin System](./10_plugin_system/design.md) | P1 | Large | Claudy-compatible plugin packaging — manifest, marketplace, install, trust. Aggregates skills/hooks/MCP/subagents/commands into installable units. Phased 10a/10b/10c. |
 
 ## Dependency Graph
 
 ```
-01_hook_event_system_DONE (shipped via PR #198) ──┬──> 03_command_skill_system
+01_hook_event_system_DONE (shipped via PR #198) ──┬──> 03_command_skill_system_DONE (shipped via PR #204)
                                                   ├──> 04_typed_task_families ──> 06_multi_agent_coordination
                                                   └──> 05_session_memory_DONE (shipped via PR #167) ──> 05b_auto_extraction_compaction_interlock (requires main → agent-improvements merge)
 
@@ -44,6 +46,11 @@ BrowserX is a multi-platform browser automation agent. Claudy is a terminal-nati
                      └──> (Track 07 can also use Signal as agentStateStore subscribe primitive)
 
 08d_message_bus_DEFERRED ──> (no work; reassess after 08a/b/c land)
+
+10_plugin_system ──> (depends on shipped tracks: 01 hooks, 03 commands, sub-agents, MCP, skills)
+                  ├──> Phase 1 (10a) — manifest + unified loader + /plugin UI
+                  ├──> Phase 2 (10b) — git marketplace + install
+                  └──> Phase 3 (10c) — autoupdate + trust/policy + options
 ```
 
 ## Existing Work

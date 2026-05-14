@@ -12,7 +12,12 @@ import type {
 } from './types';
 import { HookMatcher } from './HookMatcher';
 
-const VALID_HOOK_EVENTS: ReadonlySet<string> = new Set([
+/**
+ * Canonical list of supported hook events. Exported so other modules
+ * (e.g. SkillExecutor's skill-scoped hook registration) can validate
+ * against the same source of truth.
+ */
+export const VALID_HOOK_EVENTS: ReadonlySet<HookEvent> = new Set<HookEvent>([
   'PreToolUse', 'PostToolUse', 'PostToolUseFailure',
   'SessionStart', 'SessionEnd',
   'UserPromptSubmit', 'Stop',
@@ -55,7 +60,7 @@ export class HookRegistry {
   registerFromConfig(config: HooksConfig, source: HookSource): string[] {
     const ids: string[] = [];
     for (const [eventName, matcherEntries] of Object.entries(config)) {
-      if (!VALID_HOOK_EVENTS.has(eventName)) {
+      if (!VALID_HOOK_EVENTS.has(eventName as HookEvent)) {
         console.warn(`[HookRegistry] Unknown hook event "${eventName}", skipping`);
         continue;
       }

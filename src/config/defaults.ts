@@ -14,7 +14,9 @@ export const DEFAULT_USER_PREFERENCES: IUserPreferences = {
   autoStartEnabled: false,
   zoomLevel: 100,
   shortcuts: {},
-  experimental: {}
+  experimental: {},
+  memoryEnabled: false,
+  memoryUseOwnApiKey: true,
 };
 
 export const DEFAULT_CACHE_SETTINGS: ICacheSettings = {

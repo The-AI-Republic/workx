@@ -32,13 +32,18 @@ import { AgentConfig } from '@/config/AgentConfig';
 import { configurePromptComposer, registerPromptExtension } from '@/core/PromptLoader';
 import type { RuntimeContext } from '@/prompts/PromptComposer';
 import { SkillRegistry } from '@/core/skills/SkillRegistry';
+import { SkillDomainFilter } from '@/core/skills/SkillDomainFilter';
+import { ActiveTabService } from '@/core/tabs/ActiveTabService';
 import { FilesystemSkillProvider } from '../storage/FilesystemSkillProvider';
+import { startDesktopActiveTabAdapter } from '../tabs/DesktopActiveTabAdapter';
 import { AuthManager, type IAuthManager } from '@/core/models/types/Auth';
 import type { Op } from '@/core/protocol/types';
 import type { SubmissionContext } from '@/core/channels/types';
 import type { EventMsg } from '@/core/protocol/events';
 import { t } from '@/webfront/lib/i18n';
-import { StaticRiskAssessor } from '@/core/approval/assessors/StaticRiskAssessor';
+import { SkillRiskAssessor } from '@/core/approval/assessors/SkillRiskAssessor';
+import { SkillExecutor } from '@/core/skills/SkillExecutor';
+import { buildSubAgentInvoker } from '@/core/skills/buildSubAgentInvoker';
 import { Scheduler } from '@/core/scheduler/Scheduler';
 import { DesktopSchedulerAlarms } from '../scheduler/DesktopSchedulerAlarms';
 import { DesktopSchedulerDeepLinkHandler } from '../scheduler/DesktopSchedulerDeepLinkHandler';
@@ -61,6 +66,9 @@ export class DesktopAgentBootstrap {
   private registry: AgentRegistry | null = null;
   private channel: TauriChannel | null = null;
   private skillRegistry: SkillRegistry | null = null;
+  private skillDomainFilter: SkillDomainFilter | null = null;
+  private activeTabService: ActiveTabService | null = null;
+  private activeTabUnsubscribe: (() => void) | null = null;
   private scheduler: Scheduler | null = null;
   private schedulerAlarms: DesktopSchedulerAlarms | null = null;
   private schedulerDeepLinkHandler: DesktopSchedulerDeepLinkHandler | null = null;
@@ -392,12 +400,39 @@ export class DesktopAgentBootstrap {
       const provider = new FilesystemSkillProvider();
       await provider.initialize();
 
-      this.skillRegistry = new SkillRegistry(provider);
+      // Track 03 Phase 3 — wire domain-based conditional activation.
+      // The desktop adapter is currently an inert stub (no Tauri URL-change
+      // event source yet); domain-conditional skills stay dormant on desktop
+      // until that lands. Unconditional skills are unaffected.
+      this.activeTabService = new ActiveTabService();
+      this.skillDomainFilter = new SkillDomainFilter();
+
+      // Subscribe FIRST so any seed snapshot reaches the filter once init runs.
+      this.activeTabUnsubscribe = this.activeTabService.subscribe((snap) => {
+        this.skillDomainFilter?.onActiveTabChange(snap.hostname);
+      });
+
+      const stopAdapter = startDesktopActiveTabAdapter(this.activeTabService);
+      // Compose: stop adapter THEN unsubscribe filter
+      const priorUnsubscribe = this.activeTabUnsubscribe;
+      this.activeTabUnsubscribe = () => { stopAdapter(); priorUnsubscribe(); };
+
+      this.skillRegistry = new SkillRegistry(provider, this.skillDomainFilter);
       await this.skillRegistry.discover();
 
-      registerPromptExtension(() => this.skillRegistry!.buildSkillsSystemPrompt());
+      // Race fix (B3): if a snapshot arrived between subscribe() and discover(),
+      // the filter handled it against empty maps. Replay the current snapshot
+      // now that init() has populated them.
+      const seed = this.activeTabService.getCurrent();
+      if (seed) this.skillDomainFilter.onActiveTabChange(seed.hostname);
 
-      console.log('[DesktopAgentBootstrap] Skills initialized, found', this.skillRegistry.getSkillMetas().length, 'skills');
+      registerPromptExtension('skills', () => this.skillRegistry!.buildSkillsSystemPrompt());
+
+      console.log(
+        '[DesktopAgentBootstrap] Skills initialized, found',
+        this.skillRegistry.getAllSkillMetas().length,
+        'skills',
+      );
     } catch (error) {
       console.warn('[DesktopAgentBootstrap] Could not initialize skills:', error);
     }
@@ -410,10 +445,14 @@ export class DesktopAgentBootstrap {
   private async registerSkillsToolOnAgent(agent: RepublicAgent): Promise<void> {
     if (!this.skillRegistry) return;
 
-    const allSkills = this.skillRegistry.getSkillMetas();
+    // Use unfiltered list so the tool registers as long as ANY skill exists,
+    // not only when the active tab matches a domain-conditional one.
+    const allSkills = this.skillRegistry.getAllSkillMetas();
     if (allSkills.length === 0) return;
 
     const registry = agent.getToolRegistry();
+    const hookRegistry = agent.getHookRegistry();
+    const skillRegistry = this.skillRegistry;
 
     await registry.register(
       {
@@ -432,23 +471,29 @@ export class DesktopAgentBootstrap {
           },
         },
       },
-      async (params) => {
+      async (params, ctx) => {
         const skillName = params.name as string;
         const args = params.arguments as string | undefined;
 
-        const knownNames = new Set(this.skillRegistry!.getSkillMetas().map((s) => s.name));
-        if (!knownNames.has(skillName)) {
-          return { error: `Skill "${skillName}" not found. Available skills: ${[...knownNames].join(', ')}` };
-        }
+        // Track 03 Phase 4 — build invoker per-call so it captures the real
+        // session/turn IDs from ToolContext. Hardcoded sentinels would break
+        // event correlation and approval session-scoping. Helper lives in
+        // core/skills/ so it's testable without standing up a RepublicAgent.
+        const subAgentInvoker = buildSubAgentInvoker(registry, ctx);
 
-        const body = await this.skillRegistry!.invoke(skillName, args ? args.split(/\s+/) : []);
-        if (!body) {
-          return { error: `Failed to load skill "${skillName}"` };
-        }
+        const executor = new SkillExecutor(skillRegistry, hookRegistry, subAgentInvoker);
+        const result = await executor.execute(skillName, args);
 
-        return body;
+        // Inline → return body directly so the model reads it as instructions
+        // (preserves prior contract). Forked → return the sub-agent's response.
+        if (result.status === 'inline') return result.body;
+        if (result.status === 'forked') {
+          if (!result.success && result.error) return { error: result.error };
+          return result.result;
+        }
+        return { error: result.error };
       },
-      new StaticRiskAssessor(0)
+      new SkillRiskAssessor(skillRegistry),
     );
 
     console.log('[DesktopAgentBootstrap] use_skill tool registered for', allSkills.length, 'skills');
@@ -839,6 +884,14 @@ export class DesktopAgentBootstrap {
         const authManager = new AuthManager(shouldUseBackend, shouldUseBackend ? backendBaseUrl : null, tokenGetter);
         const factory = session.agent.getModelClientFactory();
         factory.setAuthManager(authManager);
+
+        // Close existing memory service so it doesn't keep using stale credentials
+        // for its cheap-LLM caller. A fresh service will be created on the next session.
+        const existingMemory = session.agent.getSession()?.getMemoryService?.();
+        if (existingMemory) {
+          existingMemory.close().catch(() => {});
+          session.agent.getSession()?.setMemoryService(null);
+        }
 
         console.log('[DesktopAgentBootstrap] Auth mode set on session', sessionMeta.sessionId, ', isBackendRouting:', factory.isBackendRouting());
 
