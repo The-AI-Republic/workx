@@ -18,10 +18,12 @@
 import type { ActiveTabService } from '@/core/tabs/ActiveTabService';
 
 export function startDesktopActiveTabAdapter(service: ActiveTabService): () => void {
-  // Intentionally inert. See file header for activation steps.
-  // `service` accepted to keep the call signature stable across targets;
-  // touched here so callers know it's deliberately retained.
-  void service;
+  // `service` is part of the cross-target adapter signature; the stub
+  // deliberately ignores it until the Tauri webview event source lands
+  // (see file header). Touch it once below so lint doesn't flag it.
+  if (!service) {
+    console.warn('[DesktopActiveTabAdapter] called with no service — nothing to wire to');
+  }
   console.info(
     '[DesktopActiveTabAdapter] inert stub — domain-conditional skills will not activate on desktop',
   );

@@ -146,4 +146,50 @@ describe('SkillDomainFilter', () => {
     expect(filter.getActiveNames()).toEqual(['github']);
     expect(filter.isAvailable('gmail')).toBe(false);
   });
+
+  // Regression test for B3: the bootstrap race where the adapter's seed
+  // snapshot fires onActiveTabChange BEFORE init() has populated the maps.
+  // The fix is to replay the snapshot through onActiveTabChange after
+  // discover() completes. This test simulates that ordering.
+  describe('B3 — early snapshot before init', () => {
+    it('onActiveTabChange against empty maps is a no-op', () => {
+      // Filter starts uninitialised — no init() called yet.
+      const delta = filter.onActiveTabChange('gmail.com');
+      expect(delta.activated).toEqual([]);
+      expect(delta.deactivated).toEqual([]);
+      expect(filter.getActiveNames()).toEqual([]);
+    });
+
+    it('replay after init activates the matching skill', () => {
+      // 1. Subscriber fires while maps are empty (race window).
+      filter.onActiveTabChange('gmail.com');
+      expect(filter.getActiveNames()).toEqual([]);
+
+      // 2. discover() completes → init() populates maps.
+      filter.init([
+        meta({ name: 'gmail', domains: ['mail.google.com', 'gmail.com'] }),
+        meta({ name: 'always' }),
+      ]);
+      // After init alone, conditional skills are dormant.
+      expect(filter.isAvailable('gmail')).toBe(false);
+      expect(filter.isAvailable('always')).toBe(true);
+
+      // 3. Bootstrap replays the seed snapshot — fix path.
+      const delta = filter.onActiveTabChange('gmail.com');
+      expect(delta.activated).toEqual(['gmail']);
+      expect(filter.isAvailable('gmail')).toBe(true);
+    });
+
+    it('replay with a now-stale snapshot leaves no skills active', () => {
+      // 1. Early snapshot for gmail.com lands in empty filter.
+      filter.onActiveTabChange('gmail.com');
+      // 2. init populates the maps.
+      filter.init([meta({ name: 'gmail', domains: ['gmail.com'] })]);
+      // 3. By the time the bootstrap calls getCurrent(), the user has
+      //    already navigated to github.com — so the replay value is github.
+      const delta = filter.onActiveTabChange('github.com');
+      expect(delta.activated).toEqual([]);
+      expect(filter.isAvailable('gmail')).toBe(false);
+    });
+  });
 });

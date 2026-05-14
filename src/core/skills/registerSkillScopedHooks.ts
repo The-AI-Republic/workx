@@ -14,6 +14,16 @@ import type { HooksConfig, HookEvent, HookCommand, HookMatcherEntry } from '@/co
  * Cap on hooks registered per single skill invocation. Defends against a
  * malicious or runaway skill declaring thousands of hooks and DoS-ing the
  * registry. Excess hooks are dropped with a warning.
+ *
+ * Rationale for the value:
+ * - Legitimate skills typically declare 1–10 hooks (one per matched tool).
+ * - A skill with one hook per tool name across BrowserX's ~20 first-party
+ *   tools, plus a few generic matchers, comfortably fits under 50.
+ * - Setting the cap at 100 leaves 2× headroom for plugin-rich setups while
+ *   still bounding worst-case memory + per-hook-event dispatch cost.
+ *
+ * If a legitimate skill genuinely needs more, prefer composing multiple
+ * skills (each with its own scope) over raising this cap.
  */
 export const MAX_HOOKS_PER_SKILL = 100;
 

@@ -42,7 +42,8 @@ import type { SubmissionContext } from '@/core/channels/types';
 import type { EventMsg } from '@/core/protocol/events';
 import { t } from '@/webfront/lib/i18n';
 import { SkillRiskAssessor } from '@/core/approval/assessors/SkillRiskAssessor';
-import { SkillExecutor, type SubAgentInvoker, type SubAgentResult } from '@/core/skills/SkillExecutor';
+import { SkillExecutor } from '@/core/skills/SkillExecutor';
+import { buildSubAgentInvoker } from '@/core/skills/buildSubAgentInvoker';
 import { Scheduler } from '@/core/scheduler/Scheduler';
 import { DesktopSchedulerAlarms } from '../scheduler/DesktopSchedulerAlarms';
 import { DesktopSchedulerDeepLinkHandler } from '../scheduler/DesktopSchedulerDeepLinkHandler';
@@ -474,32 +475,11 @@ export class DesktopAgentBootstrap {
         const skillName = params.name as string;
         const args = params.arguments as string | undefined;
 
-        // Track 03 Phase 4 — construct invoker per-call so it captures the
-        // real session/turn IDs from ToolContext. Hardcoded sentinels would
-        // break event correlation and approval session-scoping.
-        const subAgentInvoker: SubAgentInvoker = async (subParams) => {
-          try {
-            const exec = await registry.execute({
-              toolName: 'sub_agent',
-              parameters: { ...subParams, background: false },
-              sessionId: ctx.sessionId,
-              turnId: ctx.turnId,
-              callId: ctx.callId,
-            });
-            if (!exec.success) {
-              return { success: false, runId: '', error: exec.error?.message ?? 'sub_agent execute failed' };
-            }
-            const raw = exec.data;
-            const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-            return parsed as SubAgentResult;
-          } catch (err) {
-            return {
-              success: false,
-              runId: '',
-              error: `sub_agent invocation failed: ${err instanceof Error ? err.message : String(err)}`,
-            };
-          }
-        };
+        // Track 03 Phase 4 — build invoker per-call so it captures the real
+        // session/turn IDs from ToolContext. Hardcoded sentinels would break
+        // event correlation and approval session-scoping. Helper lives in
+        // core/skills/ so it's testable without standing up a RepublicAgent.
+        const subAgentInvoker = buildSubAgentInvoker(registry, ctx);
 
         const executor = new SkillExecutor(skillRegistry, hookRegistry, subAgentInvoker);
         const result = await executor.execute(skillName, args);
