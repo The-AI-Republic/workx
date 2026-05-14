@@ -27,9 +27,14 @@ import type { TokenUsageRecord } from '@/storage/types';
  */
 export interface TaskState {
   submissionId: string;
-  status: 'idle' | 'running' | 'completed' | 'failed' | 'cancelled' | 'unknown';
+  status: 'idle' | 'running' | 'completed' | 'failed' | 'killed' | 'unknown';
   currentTurnIndex: number;
-  tokenUsage: {
+  /**
+   * Token budget tracking (remaining capacity / compaction trigger).
+   * Distinct from cumulative `tokenUsage` shape used by TaskNotification +
+   * BackgroundAgentTaskState — see src/core/tasks/types.ts for that.
+   */
+  tokenBudget: {
     used: number;
     max: number;
   };
@@ -133,7 +138,7 @@ export class TaskRunner {
       submissionId,
       status: 'idle',
       currentTurnIndex: 0,
-      tokenUsage: {
+      tokenBudget: {
         used: 0,
         max: contextWindow,
       },
@@ -150,7 +155,7 @@ export class TaskRunner {
     if (this.cancelResolve) {
       this.cancelResolve();
     }
-    this.state.status = 'cancelled';
+    this.state.status = 'killed';
     this.state.abortReason = 'user_interrupt';
   }
 
@@ -181,7 +186,7 @@ export class TaskRunner {
       this.state.status = 'running';
       this.state.abortReason = undefined;
       this.state.compactionPerformed = false;
-      this.state.tokenUsage.used = 0;
+      this.state.tokenBudget.used = 0;
       this.state.currentTurnIndex = 0;
       this.state.tokenUsageDetail = undefined;
       this.state.lastAgentMessage = undefined;
@@ -207,12 +212,12 @@ export class TaskRunner {
       this.state.compactionPerformed = outcome.compactionPerformed;
       this.state.lastAgentMessage = outcome.lastAgentMessage;
       this.state.tokenUsageDetail = outcome.tokenUsage;
-      this.state.tokenUsage.used = outcome.tokenUsage.total
+      this.state.tokenBudget.used = outcome.tokenUsage.total
         ? outcome.tokenUsage.total.total_tokens
         : 0;
 
       if (outcome.abortedReason) {
-        this.state.status = 'cancelled';
+        this.state.status = 'killed';
         this.state.abortReason = outcome.abortedReason;
         if (outcome.abortedReason === 'automatic_abort') {
           const maxTurns = this.options.maxTurns ?? TaskRunner.MAX_TURNS;
@@ -242,7 +247,7 @@ export class TaskRunner {
       };
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.state.status = this.cancelled ? 'cancelled' : 'failed';
+      this.state.status = this.cancelled ? 'killed' : 'failed';
       this.state.lastError = err;
 
       if (this.cancelled && !this.state.abortReason) {
@@ -757,7 +762,7 @@ export class TaskRunner {
    * Attempt automatic compaction when token limit is reached
    */
   private async attemptAutoCompact(turnIndex: number, usage?: TokenUsage): Promise<boolean> {
-    const usageNote = usage ? ` (tokens: ${usage.total_tokens}/${this.state.tokenUsage.max})` : '';
+    const usageNote = usage ? ` (tokens: ${usage.total_tokens}/${this.state.tokenBudget.max})` : '';
 
     try {
       // Get model client for LLM-based summarization
@@ -771,7 +776,7 @@ export class TaskRunner {
       // FR-009: Invalidate cached token state after successful compaction
       // Update state to reflect post-compaction token count
       if (result.success) {
-        this.state.tokenUsage.used = result.tokensAfter;
+        this.state.tokenBudget.used = result.tokensAfter;
         console.debug('[TaskRunner] Token state invalidated after compaction', {
           before: result.tokensBefore,
           after: result.tokensAfter,
@@ -871,8 +876,8 @@ export class TaskRunner {
    */
   getTokenUsage(_submissionId: string): { used: number; max: number; compactionThreshold: number } {
     return {
-      used: this.state.tokenUsage.used,
-      max: this.state.tokenUsage.max,
+      used: this.state.tokenBudget.used,
+      max: this.state.tokenBudget.max,
       compactionThreshold: TaskRunner.COMPACTION_THRESHOLD,
     };
   }

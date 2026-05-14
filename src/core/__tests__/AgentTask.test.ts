@@ -291,15 +291,15 @@ describe('AgentTask', () => {
       expect(task.getStatus()).toBe('failed');
     });
 
-    it('should set status to cancelled when abort signal is triggered before run', async () => {
+    it('should set status to killed when abort signal is triggered before run', async () => {
       mockRunTask.mockRejectedValueOnce(new Error('Aborted'));
-      mockGetTaskStatus.mockReturnValue('cancelled');
+      mockGetTaskStatus.mockReturnValue('killed');
 
       const task = new AgentTask(session, turnContext, turnManager, SESSION_ID, SUBMISSION_ID, []);
       task.cancel(); // cancel before run
 
       await expect(task.run()).rejects.toThrow('Aborted');
-      expect(task.getStatus()).toBe('cancelled');
+      expect(task.getStatus()).toBe('killed');
     });
 
     it('should propagate errors from TaskRunner', async () => {
@@ -331,8 +331,8 @@ describe('AgentTask', () => {
 
       // After cancel, the AbortSignal passed to run_task would be aborted
       // We verify by checking that the status reports cancelled
-      mockGetTaskStatus.mockReturnValue('cancelled');
-      expect(task.getStatus()).toBe('cancelled');
+      mockGetTaskStatus.mockReturnValue('killed');
+      expect(task.getStatus()).toBe('killed');
     });
 
     it('should be callable before run() is invoked', () => {
@@ -370,12 +370,12 @@ describe('AgentTask', () => {
   // -----------------------------------------------------------------------
 
   describe('getStatus', () => {
-    it('should return initializing when TaskRunner status is unknown and internal status is initializing', () => {
+    it('should return pending when TaskRunner status is unknown and internal status is pending', () => {
       mockGetTaskStatus.mockReturnValue('unknown');
 
       const task = new AgentTask(session, turnContext, turnManager, SESSION_ID, SUBMISSION_ID, []);
 
-      expect(task.getStatus()).toBe('initializing');
+      expect(task.getStatus()).toBe('pending');
     });
 
     it('should delegate to TaskRunner for status', () => {
@@ -403,12 +403,12 @@ describe('AgentTask', () => {
       expect(task.getStatus()).toBe('failed');
     });
 
-    it('should return cancelled when TaskRunner reports cancelled', () => {
-      mockGetTaskStatus.mockReturnValue('cancelled');
+    it('should return killed when TaskRunner reports killed', () => {
+      mockGetTaskStatus.mockReturnValue('killed');
 
       const task = new AgentTask(session, turnContext, turnManager, SESSION_ID, SUBMISSION_ID, []);
 
-      expect(task.getStatus()).toBe('cancelled');
+      expect(task.getStatus()).toBe('killed');
     });
 
     it('should return idle when TaskRunner reports idle', () => {
