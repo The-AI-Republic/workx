@@ -33,9 +33,9 @@ Don't add a parallel filesystem abstraction. Don't add a parallel prompt-attachm
 ```
                                                  ┌────────────────────────────────────────┐
  user turn ──► RepublicAgent ──► TurnManager.tryRunTurn()                                  │
-                                  │  (src/core/TurnManager.ts:176)                         │
+                                  │  (src/core/TurnManager.ts:192)                         │
                                   │                                                        │
-                                  │  on `Completed` event (line 237)                       │
+                                  │  on `Completed` event (line 253)                       │
                                   │  ───────────────────────────────► postTurnHooks[*] ────┤
                                   │                                                        │
                                   ▼                                                        │
@@ -88,7 +88,7 @@ Don't add a parallel filesystem abstraction. Don't add a parallel prompt-attachm
                        │      timeout = 15s, stale escape = 60s
                        ▼
                     optional: read summary.md and pass into SummaryGenerator
-                       src/core/compact/SummaryGenerator.ts:12
+                       src/core/compact/CompactService.ts:249 (generateSummaryWithModel)
 ```
 
 ## 4. Extraction sub-agent
@@ -215,11 +215,9 @@ export function buildExtractorParams(
 
 ### Concurrency — bypass the user-facing cap
 
-`SubAgentRegistry`'s default cap is 3 (src/tools/AgentTool/SubAgentRegistry.ts:59). The extractor is internal infrastructure and must not steal a slot from a user-spawned worker. Two options; we pick (b):
+`SubAgentRegistry`'s default cap is 3 (src/tools/AgentTool/SubAgentRegistry.ts:59). The extractor is internal infrastructure and must not steal a slot from a user-spawned worker.
 
-(a) Extend `SubAgentTypeConfig` with `category: 'internal' | 'user'`, and skip cap counting in `SubAgentRegistry.register()` for `category === 'internal'`.
-
-(b) **(chosen)** Construct a *separate* `SubAgentRegistry` instance dedicated to internal extractors with `maxConcurrent: 1`, owned by `SessionSummaryHook`. The hook passes this registry to a dedicated `SubAgentRunner({ parentEngine, registry })` instance. This keeps `SubAgentRegistry` semantics unchanged for user-facing flows.
+Construct a *separate* `SubAgentRegistry` instance dedicated to internal extractors with `maxConcurrent: 1`, owned by `SessionSummaryHook`. The hook passes this registry to a dedicated `SubAgentRunner({ parentEngine, registry })` instance. This keeps `SubAgentRegistry` semantics unchanged for user-facing flows.
 
 ```ts
 // src/core/sessionSummary/SessionSummaryHook.ts (NEW, excerpt)
@@ -237,7 +235,7 @@ The hook wraps the spawn in `try { ... } catch (err) { telemetry.failure(err); }
 
 ## 5. Trigger — post-turn hook in TurnManager
 
-There is no post-sampling hook registry today (`src/core/TurnManager.ts:176–295`). Add one.
+There is no post-sampling hook registry today (`src/core/TurnManager.ts:192–311` — the body of `tryRunTurn`). Add one.
 
 ```ts
 // src/core/TurnManager.ts (additions)
@@ -266,7 +264,7 @@ export class TurnManager {
 }
 ```
 
-Call site — immediately before the `return` at `src/core/TurnManager.ts:241–244`:
+Call site — immediately before the `return` at `src/core/TurnManager.ts:253–261` (the `case 'Completed':` block):
 
 ```ts
 case 'Completed': {
@@ -281,8 +279,8 @@ case 'Completed': {
   for (const hook of this.postTurnHooks) {
     try {
       await hook({
-        sessionId: this.turnContext.getSessionId(),
-        history: await this.turnContext.getHistorySnapshot(),
+        sessionId: this.session.getSessionId(),
+        history: this.session.getConversationHistory().items,
         totalTokenUsage,
         lastTurnHadToolCalls,
         abortSignal: this.cancelAbortController?.signal,
@@ -367,7 +365,7 @@ Claudy: 10k init / 5k growth / 3 tool calls. BrowserX turns routinely include la
 
 ### Single source of truth for token counting
 
-Both this predicate and `CompactService.shouldCompact()` (`src/core/compact/CompactService.ts:40–59`) must agree on window sizing. We reuse `estimateRequestTokens()` from `src/core/compact/utils.ts:139–161` (the existing `1 token ≈ 4 chars` heuristic). Do **not** reimplement.
+Both this predicate and `CompactService.shouldCompact()` (`src/core/compact/CompactService.ts:40–59`) must agree on window sizing. We reuse `estimateRequestTokens()` from `src/core/compact/utils.ts:139–196` (the existing `1 token ≈ 4 chars` heuristic). Do **not** reimplement.
 
 ## 7. Concurrency & flag lifecycle
 
@@ -418,7 +416,7 @@ The `finally` clause is the only place the flag is cleared. An invariant unit te
 
 ## 8. Compaction interlock
 
-`CompactService.compact()` (`src/core/compact/CompactService.ts:71–158`) is invoked synchronously from `TaskRunner.attemptAutoCompact()` (`src/core/TaskRunner.ts:766`). The minimal-blast-radius patch is to await an interlock at the very top of `compact()`.
+`CompactService.compact()` (`src/core/compact/CompactService.ts:71–195`) is invoked synchronously from `TaskRunner.attemptAutoCompact()` (`src/core/TaskRunner.ts:759`, with the `await this.session.compact(...)` call inside it at line `766`). The minimal-blast-radius patch is to await an interlock at the very top of `compact()`.
 
 ### `waitForSessionSummaryExtraction(sessionId)`
 
@@ -663,7 +661,7 @@ Skip injection entirely when `isSessionSummaryEmpty(cachedContent)` returns true
 
 ## 11. Telemetry
 
-Mirror claudy event names with `browserx_` prefix. Emit through the same channel TaskRunner uses for `BackgroundEvent` (`src/core/TaskRunner.ts:520–533`) — i.e. push a typed event onto the engine event queue, with `data.kind = 'telemetry'` and `data.event` / `data.payload`. UI ignores; observability layer (TBD outside this PR) consumes.
+Mirror claudy event names with `browserx_` prefix. Emit through the same channel TaskRunner uses for `BackgroundEvent` (`src/core/TaskRunner.ts:520–528`, `emitBackgroundEvent`) — i.e. push a typed event onto the engine event queue, with `data.kind = 'telemetry'` and `data.event` / `data.payload`. UI ignores; observability layer (TBD outside this PR) consumes.
 
 | Event | Payload | When |
 | --- | --- | --- |
@@ -711,12 +709,12 @@ Exposed on `Session` as `session.manuallyExtractSessionSummary()`. A future `/su
 | `src/core/sessionSummary/truncate.ts` | NEW | `truncateSessionSummaryForCompact()`. |
 | `src/core/sessionSummary/telemetry.ts` | NEW | Thin wrapper over engine event emit. |
 | `src/core/sessionSummary/SessionSummaryHook.ts` | NEW | Owns lifecycle: registry, runner, post-turn hook, prompt-extension, cache, manual API. |
-| `src/core/TurnManager.ts` | MODIFY | Add `postTurnHooks`, `registerPostTurnHook()`, hook fan-out at line 241–244. |
+| `src/core/TurnManager.ts` | MODIFY | Add `postTurnHooks`, `registerPostTurnHook()`, hook fan-out in the `case 'Completed':` block at lines 253–261. |
 | `src/tools/AgentTool/types.ts` | MODIFY | Add `quietBackground?: boolean` to `SubAgentToolParams`. |
 | `src/tools/AgentTool/SubAgentRunner.ts` | MODIFY | Honour `quietBackground` at lines 123–143 (skip notification injection). |
 | `src/core/Session.ts` | MODIFY | Construct `SessionSummaryHook`, attach on init, detach on shutdown; expose `manuallyExtractSessionSummary()`; thread `sessionId` into `compact()` call site. |
 | `src/core/compact/CompactService.ts` | MODIFY | Add optional `sessionId` arg to `compact()`; call `waitForSessionSummaryExtraction()` at top; thread summary hint into `generateSummaryWithModel()`. |
-| `src/core/compact/SummaryGenerator.ts` | MODIFY | Accept optional `sessionSummaryHint` parameter; weave into prompt template. |
+| `src/core/compact/constants.ts` | MODIFY (optional) | If the hint is woven via the prompt-template string rather than at the message-build site, extend `SUMMARIZATION_PROMPT` / `compactSummarization` here. |
 | `src/core/__tests__/sessionSummary/sessionSummaryUtils.test.ts` | NEW | Unit: predicate, config bounds. |
 | `src/core/__tests__/sessionSummary/extractionLifecycle.test.ts` | NEW | Unit: flag lifecycle, `finally` clear invariant, wait function. |
 | `src/core/__tests__/sessionSummary/summaryFileTools.test.ts` | NEW | Unit: `canUseTool` accept/deny, template emptiness, truncation. |
