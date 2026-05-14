@@ -3,6 +3,10 @@ export interface Command {
   readonly name: string;
   readonly description: string;
   readonly argumentHint?: string;
+  /** Detailed usage scenarios — surfaced to /help when present. */
+  readonly whenToUse?: string;
+  /** Source — drives display in /help and avoids treating skills as builtins. */
+  readonly loadedFrom?: 'builtin' | 'skill' | 'plugin';
   action(args?: string): void | Promise<void>;
 }
 
@@ -11,6 +15,8 @@ export interface CommandRegistration {
   name: string;
   description: string;
   argumentHint?: string;
+  whenToUse?: string;
+  loadedFrom?: 'builtin' | 'skill' | 'plugin';
   action: (args?: string) => void | Promise<void>;
 }
 
@@ -64,6 +70,8 @@ class CommandRegistryImpl {
       name: normalizedName,
       description: registration.description,
       argumentHint: registration.argumentHint,
+      whenToUse: registration.whenToUse,
+      loadedFrom: registration.loadedFrom,
       action: registration.action,
     });
   }

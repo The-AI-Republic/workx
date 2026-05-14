@@ -964,11 +964,36 @@ async function initializeSkills(): Promise<void> {
     await storageProvider.initialize();
 
     const skillProvider = new IndexedDBSkillProvider(storageProvider);
-    skillRegistry = new SkillRegistry(skillProvider);
+
+    // Track 03 Phase 3 — wire domain-based conditional activation.
+    const { SkillDomainFilter } = await import('@/core/skills/SkillDomainFilter');
+    const { ActiveTabService } = await import('@/core/tabs/ActiveTabService');
+    const { startChromeActiveTabAdapter } = await import('./ChromeActiveTabAdapter');
+
+    const activeTabService = new ActiveTabService();
+    const skillDomainFilter = new SkillDomainFilter();
+
+    // Subscribe FIRST so the seed snapshot from the adapter reaches the filter
+    // (adapter starts firing events immediately on startup).
+    activeTabService.subscribe((snap) => {
+      skillDomainFilter.onActiveTabChange(snap.hostname);
+    });
+    const stopAdapter = startChromeActiveTabAdapter(activeTabService);
+
+    skillRegistry = new SkillRegistry(skillProvider, skillDomainFilter);
     await skillRegistry.discover();
+
+    // Race fix (B3): the seed snapshot likely arrived between subscribe() and
+    // discover(), so the filter handled it against empty maps. Replay it now
+    // that init() has populated the conditional/active maps.
+    const seedSnapshot = activeTabService.getCurrent();
+    if (seedSnapshot) skillDomainFilter.onActiveTabChange(seedSnapshot.hostname);
 
     // Register dynamic prompt extension for auto-invocable skills
     registerPromptExtension(() => skillRegistry?.buildSkillsSystemPrompt() ?? '');
+
+    // Stash adapter cleanup on the registry handle so HMR/teardown can reach it.
+    (skillRegistry as unknown as { __disposeTabAdapter?: () => void }).__disposeTabAdapter = stopAdapter;
 
     console.log('[ServiceWorker] Skills initialized');
   } catch (error) {

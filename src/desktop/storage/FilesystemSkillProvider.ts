@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { ISkillProvider } from '@/core/skills/SkillProvider';
 import type { Skill, SkillMeta, InvocationMode } from '@/core/skills/types';
-import { parseSkillMd, serializeToSkillMd } from '@/core/skills/SkillParser';
+import { parseSkillMd, serializeToSkillMd, normalizeFrontmatter, projectMeta } from '@/core/skills/SkillParser';
 
 interface SkillMetaJson {
   invocationMode: InvocationMode;
@@ -30,32 +30,9 @@ export class FilesystemSkillProvider implements ISkillProvider {
 
     for (const dir of dirs) {
       try {
-        const skillPath = `${this.basePath}/${dir}/SKILL.md`;
-        const metaPath = `${this.basePath}/${dir}/.skill-meta.json`;
-
-        const content = await invoke<string | null>('skills_read_file', { path: skillPath });
-        if (!content) continue;
-
-        const parsed = parseSkillMd(content);
-
-        // Read sidecar metadata (defaults if missing)
-        let meta: Partial<SkillMetaJson> = {};
-        try {
-          const metaContent = await invoke<string | null>('skills_read_file', { path: metaPath });
-          if (metaContent) {
-            meta = JSON.parse(metaContent);
-          }
-        } catch {
-          // .skill-meta.json missing — use defaults
-        }
-
-        metas.push({
-          name: parsed.frontmatter.name,
-          description: parsed.frontmatter.description,
-          invocationMode: meta.invocationMode ?? 'manual',
-          trusted: meta.trusted ?? true,
-          source: meta.source ?? 'user',
-        });
+        const skill = await this.load(dir);
+        if (!skill) continue;
+        metas.push(projectMeta(skill));
       } catch (err) {
         console.warn(`[FilesystemSkillProvider] Skipping invalid skill directory: ${dir}`, err);
       }
@@ -86,6 +63,7 @@ export class FilesystemSkillProvider implements ISkillProvider {
       }
 
       const now = new Date().toISOString();
+      const fields = normalizeFrontmatter(parsed.frontmatter);
 
       return {
         name: parsed.frontmatter.name,
@@ -95,13 +73,23 @@ export class FilesystemSkillProvider implements ISkillProvider {
         trusted: meta.trusted ?? true,
         source: meta.source ?? 'user',
         sourceUrl: meta.sourceUrl,
-        metadata: parsed.frontmatter.metadata,
-        allowedTools: parsed.frontmatter['allowed-tools']
-          ? parsed.frontmatter['allowed-tools'].split(/\s+/)
-          : undefined,
-        compatibility: parsed.frontmatter.compatibility,
+        metadata: fields.metadata,
+        allowedTools: fields.allowedTools,
+        compatibility: fields.compatibility,
         createdAt: meta.createdAt ?? now,
         updatedAt: meta.updatedAt ?? now,
+        // Track 03 normalized fields
+        whenToUse: fields.whenToUse,
+        argumentHint: fields.argumentHint,
+        model: fields.model,
+        effort: fields.effort,
+        context: fields.context,
+        agent: fields.agent,
+        hooks: fields.hooks,
+        domains: fields.domains,
+        userInvocable: fields.userInvocable,
+        disableModelInvocation: fields.disableModelInvocation,
+        version: fields.version,
       };
     } catch {
       return null;
