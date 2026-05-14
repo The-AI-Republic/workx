@@ -13,8 +13,8 @@ import type {
 import { NODE_ID_DOCUMENT } from './types';
 import { computeHeuristics, classifyNode, determineInteractionType, detectFramework, serializedNodeToHtml, computeScrollable, parseNodeId } from './utils';
 import type { TypeOptions } from '../../../types/domTool';
-import { DomPlugin, type DomPluginContext } from './plugins/DomPlugin';
-import { googleDocPlugin } from './plugins/GoogleDocPlugin';
+import { DomAddon, type DomAddonContext } from './addons/DomAddon';
+import { googleDocAddon } from './addons/GoogleDocAddon';
 import type { DebuggerClient, CDPEventCallback } from '../../../core/tools/browser/DebuggerClient';
 // Static import — forTab() is only used in extension builds where DOMTool is registered.
 // Dynamic import() is banned in Chrome extension service workers.
@@ -30,7 +30,7 @@ export class DomService {
   private currentSnapshot: DomSnapshot | null = null;
   private config: ServiceConfig;
   private metrics: PerformanceMetrics; // Performance metrics tracking
-  private plugins: DomPlugin[] = [googleDocPlugin]; // DOM plugins for special content handling
+  private addons: DomAddon[] = [googleDocAddon]; // DOM addons for special content handling
 
   private constructor(client: DebuggerClient, instanceKey: string, config?: Partial<ServiceConfig>) {
     this.client = client;
@@ -607,8 +607,8 @@ export class DomService {
     const pageUrl = pageMetadata.url;
     const pageTitle = pageMetadata.title;
 
-    // Run DOM plugins to augment the tree with special content (e.g., Google Docs)
-    await this.runPlugins(virtualDom, pageUrl, pageTitle);
+    // Run DOM addons to augment the tree with special content (e.g., Google Docs)
+    await this.runAddons(virtualDom, pageUrl, pageTitle);
 
     // Compute stats
     const stats: SnapshotStats = {
@@ -679,20 +679,20 @@ export class DomService {
   }
 
   /**
-   * Run all registered DOM plugins to augment the tree
-   * Plugins can add special content that isn't accessible via standard DOM APIs
+   * Run all registered DOM addons to augment the tree
+   * Addons can add special content that isn't accessible via standard DOM APIs
    * (e.g., Google Docs canvas content)
    */
-  private async runPlugins(tree: VirtualNode, url: string, title: string): Promise<void> {
-    const context: DomPluginContext = {
+  private async runAddons(tree: VirtualNode, url: string, title: string): Promise<void> {
+    const context: DomAddonContext = {
       tabId: this.tabId,
       url,
       title,
       sendCommand: this.sendCommand.bind(this)
     };
 
-    for (const plugin of this.plugins) {
-      await plugin.read(tree, context);
+    for (const addon of this.addons) {
+      await addon.read(tree, context);
     }
   }
 

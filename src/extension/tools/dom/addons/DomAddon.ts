@@ -1,9 +1,9 @@
 import type { VirtualNode } from '../types';
 
 /**
- * Plugin context provided to DOM plugins during execution
+ * Addon context provided to DOM addons during execution
  */
-export interface DomPluginContext {
+export interface DomAddonContext {
   /** Tab ID for CDP commands */
   tabId: number;
   /** Current page URL */
@@ -15,12 +15,12 @@ export interface DomPluginContext {
 }
 
 /**
- * Result returned by a DOM plugin after execution
+ * Result returned by a DOM addon after execution
  */
-export interface DomPluginResult {
-  /** Whether the plugin ran (false if not applicable to this page) */
+export interface DomAddonResult {
+  /** Whether the addon ran (false if not applicable to this page) */
   executed: boolean;
-  /** Whether the plugin successfully augmented the tree (only valid if executed=true) */
+  /** Whether the addon successfully augmented the tree (only valid if executed=true) */
   success: boolean;
   /** Number of nodes augmented/added */
   nodesAugmented: number;
@@ -31,28 +31,28 @@ export interface DomPluginResult {
 }
 
 /**
- * Base class for DOM plugins that augment the VirtualNode tree
+ * Base class for DOM addons that augment the VirtualNode tree
  *
- * Plugins are used to handle special cases where the standard DOM capture
+ * Addons are used to handle special cases where the standard DOM capture
  * doesn't provide sufficient information (e.g., canvas-based content like Google Docs).
  *
- * To create a new plugin:
+ * To create a new addon:
  * 1. Extend this class
  * 2. Implement `read()` to check activation and augment the tree with content
  * 3. Optionally implement `write()` for editing capabilities
  */
-export abstract class DomPlugin {
-  /** Plugin name for logging and debugging */
+export abstract class DomAddon {
+  /** Addon name for logging and debugging */
   abstract readonly name: string;
 
   /**
    * Read content and augment the tree - checks activation and injects content if applicable
    * Called by DomService during snapshot building
    * @param tree The root VirtualNode tree
-   * @param context Plugin context with CDP access
+   * @param context Addon context with CDP access
    * @returns Result of the read operation
    */
-  abstract read(tree: VirtualNode, context: DomPluginContext): Promise<DomPluginResult>;
+  abstract read(tree: VirtualNode, context: DomAddonContext): Promise<DomAddonResult>;
 
   /**
    * Helper to find nodes matching a predicate
