@@ -1,79 +1,78 @@
 # Track 08: Centralized Message Queue
 
-> **Status (2026-05-14):** Implementation-ready, single phase. Active PR: none.
+> **Status (2026-05-14):** Implementation-ready after a second deep-audit pass against claudy + BrowserX code. Single phase, single PR.
 >
-> Originally split into 08a (Signal+Mailbox primitives), 08b (CommandQueue), 08c (EventLog), and 08d (MessageBus). After a deep audit of both claudy and browserx the scope collapsed:
->
-> - **08a primitives** (Signal, Mailbox, ApprovalManager refactor) — dropped. Audit showed BrowserX has functional equivalents already (HookRegistry, Svelte stores, `TurnState.pendingInput`, the existing `ApprovalManager`). Rationale preserved below in [Dropped from Earlier Proposals](#dropped-from-earlier-proposals).
-> - **08c EventLog** — deferred to **[#215](https://github.com/The-AI-Republic/browserx/issues/215)** pending a validated consumer. Honest framing: claudy ships approval/tool/hook telemetry to Datadog + OTel (not local files); BrowserX has no remote telemetry destination, so a local audit store is a real gap — but not an urgent one until something asks for it. Short note below in [Deferred: EventLog](#deferred-eventlog).
-> - **08d MessageBus** — stays deferred. Note below in [Deferred: MessageBus](#deferred-messagebus).
->
-> What remains in this track is one focused slice: **replace the FIFO `submissionQueue` with a priority-aware `CommandQueue<T>`**, fold the `pendingNotifications` workaround into it, and delete the dead `QueueProcessor.ts`.
+> EventLog deferred to **[#215](https://github.com/The-AI-Republic/browserx/issues/215)**. MessageBus (former 08d) stays deferred. Earlier 08a primitives (Signal, Mailbox, ApprovalManager refactor) dropped after the first audit found BrowserX equivalents already exist.
+
+---
+
+## What changed from the previous (2026-05-13) draft
+
+The 2026-05-14 implementation-readiness pass simplified the scope further. Four claims in the previous draft were softened or dropped after rereading both codebases:
+
+| Previous claim | Reality after re-audit | Outcome |
+|---|---|---|
+| "Add `engineId` filter on `dequeue` for sub-agent isolation" | Per-engine queue isolation already prevents cross-agent leaks. Each `RepublicAgentEngine` has its own queue; sub-agent commands never enter a peer's queue. Claudy needs `agentId` because it has *one shared* queue; BrowserX doesn't. | **Dropped from v1** |
+| "Fold `pendingNotifications` into the queue" | `pendingNotifications: string[]` is a pre-input buffer (text prepended to the *next* turn's user input via `drainPendingNotificationsInto`). Folding it would convert sub-agent notifications into their own turns — a semantic change worth doing intentionally if ever, not as a queue-refactor side effect. | **Dropped from v1** (the array stays as-is) |
+| "Optional consecutive-prompt batching" | Claudy's `canBatchWith` rule requires a `workload` field on every submission. BrowserX `Submission` doesn't carry one. Adding workload is a separate refactor. | **Dropped from v1** |
+| "Selective `remove(uuid)` and `popAll(filter)`" | Audit found zero call sites in BrowserX that would use either. `clear()` covers `cancel()` and `Interrupt`. | **Dropped from v1** |
+
+What survives is the **single load-bearing improvement**: priority-aware dequeue on `submissionQueue` so `Interrupt`/`ExecApproval`/`Shutdown` don't wait behind queued `Compact`/`AddToHistory` ops, plus a frozen-snapshot subscribe surface for future observability and the dead-code deletion.
+
+**Net size:** ~150 LOC new, ~350 LOC deleted (down from the previous estimate of ~300 new / ~350 deleted).
 
 ---
 
 ## Problem
 
-`RepublicAgentEngine.submissionQueue: Submission[]` (`src/core/engine/RepublicAgentEngine.ts:27`) is a plain array drained via `shift()`. Three concrete pain points:
+`RepublicAgentEngine.submissionQueue: Submission[]` (`src/core/engine/RepublicAgentEngine.ts:27`) is a plain array drained via `shift()`. Three concrete pains:
 
-### Pain 1 — No priorities, so background work can block foreground
+### Pain 1 — Interrupt waits behind queued ops
 
-A user-typed message sits behind queued background-task notifications because the queue is strict FIFO. There is no "user input jumps the line" mechanism, no "this is an urgent abort signal, process it first." Every submission has identical weight.
+Concrete scenario: user submits 3 chat messages in quick succession (3 `UserInput` ops queued), then hits the interrupt button (1 `Interrupt` op queued). With strict FIFO, the `Interrupt` op waits for the 3 prior `UserInput` ops to process. The interrupt is supposed to *interrupt*; right now it doesn't until the queue drains.
 
-### Pain 2 — `pendingNotifications` is a parallel structure for sub-agent results
+Same applies to `ExecApproval` and `PatchApproval` ops — the user is already blocked waiting for the answer, but their decision could sit behind background `Compact` or `AddToHistory` ops.
 
-When a background sub-agent finishes, `enqueueSyntheticUserTurn(text)` (`RepublicAgentEngine.ts:299-312`) needs to deliver the result to the parent agent. Today's flow:
+### Pain 2 — No observability of queue state
 
-- If the parent is mid-turn: append to `TurnState.pendingInput` (correct, this is what `pendingInput` is for).
-- If the parent is idle: push the text into `pendingNotifications: string[]` (`RepublicAgentEngine.ts:44`), to be drained as a prefix of the next user input via `drainPendingNotificationsInto` (`RepublicAgentEngine.ts:318-325`).
-
-The `pendingNotifications` array is a workaround introduced by PR #191 because the FIFO `submissionQueue` had no way to express "this submission is from agent X, deliver it as part of agent Y's next turn." It works, but it's a second queueing structure with bespoke semantics next to the main queue. Folding both into one priority-aware queue collapses the duplication.
+There's no way for UI/devtools to ask "how many ops are queued? what's the next one?" The current `eventQueue` carries post-handle events, not queue-state snapshots. A subscribe surface would unlock at least a small status indicator in the sidepanel without committing to the full EventLog design.
 
 ### Pain 3 — Dead `QueueProcessor.ts`
 
-`src/core/QueueProcessor.ts` (343 LOC) defines `PriorityQueue<T>`, `SubmissionQueue extends PriorityQueue<Submission>`, `EventQueue extends PriorityQueue<Event>`, and a `QueueProcessor` orchestrator. **Never instantiated in production code** (verified 2026-05-14). Carrying two competing priority-queue implementations invites future drift.
+`src/core/QueueProcessor.ts` (343 LOC) defines `PriorityQueue<T>`, `SubmissionQueue extends PriorityQueue<Submission>`, `EventQueue extends PriorityQueue<Event>`, and a `QueueProcessor` orchestrator. **Verified never instantiated in production** (2026-05-14 audit: `grep -rn "from.*QueueProcessor\|import.*QueueProcessor" src/ | grep -v __tests__` returns zero hits). Carrying two competing priority-queue implementations invites future drift; this is the natural moment to remove it.
 
-### Things that are NOT pain points (surprising findings from the audit)
+### Things that are NOT pain points (re-validated 2026-05-14)
 
-The earlier 08b design framed several other things as gaps. The audit pushed back on most of them:
-
-- **Per-engine queue isolation works fine.** Each `RepublicAgentEngine` already has its own `submissionQueue`. Claudy uses *one shared queue* with `agentId` filtering — which means every dequeue caller has to remember to pass the right filter. BrowserX's segregation eliminates that bug class entirely. The `engineId` filter we're adding is **specifically for the sub-agent-to-parent notification path**, not a general cross-talk fix.
-- **`'now'` priority doesn't need preemption.** Claudy's `'now'` priority does *not* abort an in-flight tool call — subscribers see the priority and can abort if they want. Adding tool-cancellation plumbing is out of scope; "urgent but cooperative" is fine.
-- **`ApprovalManager`'s resolver Map is fine.** Earlier proposals wanted to refactor it with a Mailbox. The audit confirmed BrowserX's `ApprovalManager` is more complete than claudy's flow; the resolver pattern is ~30 lines of a 547-line file and works correctly.
+- **Sub-agent cross-talk** — already prevented by per-engine queue isolation. Sub-agents have their own `RepublicAgentEngine` instances with their own `submissionQueue`. No filter needed.
+- **In-flight tool preemption** — claudy's `'now'` priority is "urgent but cooperative" (subscribers see it and can choose to abort). Adding tool-cancellation plumbing is out of scope.
+- **`ApprovalManager` resolver dance** — already audited. Works fine.
+- **`eventQueue: EngineEvent[]`** (engine-internal event buffer, `RepublicAgentEngine.ts:28`) — has different semantics (delivery to `eventWaiters`, no priorities). Not touched in this track.
 
 ---
 
-## Research Synthesis
+## What claudy does and what BrowserX adopts
 
-This scope is the result of two parallel deep-audit probes run 2026-05-14: one mapping claudy's full message/queue/event/approval/audit pipeline (`/home/rich/dev/study/claudy/src`), one mapping BrowserX's equivalent. The matrix below is the gap analysis.
+Mapped from the 2026-05-14 deep-audit probe of `/home/rich/dev/study/claudy/src/utils/messageQueueManager.ts`.
 
-| Capability | Claudy has | BrowserX has | Real gap? |
-|---|---|---|---|
-| Input buffer while busy | `Mailbox` (1 use site: `useMailboxBridge`) | `TurnState.pendingInput` + `Session.addPendingInput()` | ✅ Already covered |
-| Background sub-agent result injection | enqueue with `'later'` | `pendingNotifications` + `enqueueSyntheticUserTurn()` (workaround) | ⚠️ Works, but via a parallel array → **folded into Phase 1** |
-| Pub/sub primitive | `Signal` (mostly React adapters) | HookRegistry + Svelte stores | ✅ Already covered |
-| Inter-process IPC (swarm) | `teammateMailbox` (disk JSON) | N/A — single process | ✅ Not applicable |
-| Approval request/response | tool-result return path + per-handler logic | `ApprovalManager` (timeout, policy, ApprovalGate hooks, risk enhancers) | ✅ Already covered; BrowserX's is more complete |
-| Lifecycle hooks | hooks system | `HookRegistry` / `HookDispatcher` (PR #198) | ✅ Already covered |
-| Cross-platform routing | n/a (CLI only) | `ChannelManager` + `ServiceRegistry` (PR #174) | ✅ Already covered |
-| **Priority-ordered queue** (`now`/`next`/`later`) | `messageQueueManager` | plain FIFO | ❌ **Phase 1** |
-| **Filter-on-dequeue for sub-agent ↔ parent flow** | yes, every `dequeue()` | none; parallel `pendingNotifications` array workaround | ❌ **Phase 1** |
-| **Persistent local audit log** | claudy logs queue ops to JSONL; everything else to Datadog/OTel | nothing | ⏸ **Deferred → [#215](https://github.com/The-AI-Republic/browserx/issues/215)** |
-| **Dead `QueueProcessor.ts`** | n/a | 343 LOC, never instantiated | 🗑️ Phase 1 cleanup |
-
-### What the audit reframed
-
-- **`Mailbox.receive()` is never called in claudy.** The await-for-message pattern that 08a's design treated as load-bearing has zero consumers in claudy itself.
-- **BrowserX's `ApprovalManager` is more complete than claudy's approval flow.** Timeout, policy, `ApprovalGate` hook integration, risk enhancers, history map — none of these exist as a single coherent layer in claudy.
-- **Claudy's audit story isn't what the original design claimed.** Queue ops are logged to a session JSONL (true), but approval decisions go to **Datadog**, tool timing goes to **OpenTelemetry**, and hook firings aren't persisted at all. There's no single audit store on disk to "port." If BrowserX wants a local equivalent, we'd be building what claudy *should* have, not what claudy has — that's why EventLog moved to [#215](https://github.com/The-AI-Republic/browserx/issues/215) pending a real consumer.
+| Claudy mechanism | File:line | BrowserX action |
+|---|---|---|
+| Linear-scan `dequeue(filter)` with FIFO within priority tier | `messageQueueManager.ts:167-193` | **Port as-is** (drop the filter param; not needed) |
+| `PRIORITY_ORDER = { now: 0, next: 1, later: 2 }` | `messageQueueManager.ts:151-155` | **Port as-is** |
+| Priority defaults inline in enqueue (`'next'` for `enqueue`, `'later'` for `enqueuePendingNotification`) | `messageQueueManager.ts:128-135, 142-149` | **Adapt:** single `enqueue(payload, { priority? })`, default `'next'`. Op-type → priority mapping handled at call site in `submitOperation`. |
+| Frozen `readonly` snapshot rebuilt on every mutation via `Object.freeze([...commandQueue])` | `messageQueueManager.ts:54-61` | **Port as-is**. Useful for future UI subscribers (Svelte store wrap, devtools panel). |
+| `peek(filter?)` — priority-aware, non-mutating | `messageQueueManager.ts:219-238` | **Port as-is** (drop filter param; trivial inclusion in v1) |
+| `subscribe(listener)` returns unsubscribe; sync notify on every mutation | `messageQueueManager.ts:71`, `signal.ts` | **Port as-is**. Internal `Set<Listener>` in CommandQueue, not an exported Signal primitive. |
+| `remove([cmds])` / `removeByFilter(predicate)` with reverse iteration | `messageQueueManager.ts:273-316` | **Skip in v1**. No BrowserX call site. Reverse-iteration trick documented for future re-introduction. |
+| `dequeueAll()` / `dequeueAllMatching(predicate)` | `messageQueueManager.ts:199-213, 244-261` | **Skip in v1**. `clear()` covers BrowserX's `cancel()` + `Interrupt` paths. |
+| `canBatchWith` + `joinPromptValues` (consecutive-prompt batching) | `cli/print.ts:443-452, 428-434, 1934-1961` | **Skip in v1**. Requires `workload` field on submissions — separate refactor. |
+| `recordQueueOperation` audit logging | `messageQueueManager.ts:28-38` | **Deferred to [#215](https://github.com/The-AI-Republic/browserx/issues/215)**. Phase 1's `subscribe` API is a sufficient seam for future audit. |
+| `popAllEditable` (terminal UP-arrow re-edit) | `messageQueueManager.ts:415-484` | **Skip permanently**. Terminal-only UX. |
+| `agentId` filter on dequeue (sub-agent isolation) | `messageQueueManager.ts:167-193`, `cli/print.ts:1924` | **Skip permanently**. Per-engine queue isolation in BrowserX already covers this. |
+| `QueryGuard` 3-state FSM (idle/dispatching/running) with generation counter | `utils/QueryGuard.ts` | **Skip**. BrowserX's `processingSubmission: boolean` flag is sufficient — re-validated; no async-gap bug observed. |
 
 ---
 
 ## Phase 1: CommandQueue
-
-### Goal
-
-Replace `RepublicAgentEngine.submissionQueue: Submission[]` *and* `pendingNotifications: string[]` with a single `CommandQueue<Submission>` that is priority-ordered, filter-aware, and observable.
 
 ### Envelope
 
@@ -85,262 +84,341 @@ export interface QueuedCommand<T> {
   readonly uuid: string;
   readonly payload: T;
   readonly priority: QueuePriority;
-  readonly engineId?: string;   // undefined = unfiltered / main agent
-  readonly workload?: string;   // for optional batching of consecutive prompts
   readonly enqueuedAt: number;
 }
 
 export interface EnqueueOptions {
+  /** Defaults to 'next' if omitted. */
   priority?: QueuePriority;
-  engineId?: string;
-  workload?: string;
 }
-
-export type DequeueFilter<T> = (cmd: QueuedCommand<T>) => boolean;
 ```
+
+No `engineId`, no `workload` fields — neither has a consumer in v1.
 
 ### API
 
 ```typescript
 // src/core/queue/CommandQueue.ts
 export class CommandQueue<T> {
-  enqueue(payload: T, opts?: EnqueueOptions): string;          // returns uuid
-  dequeue(filter?: DequeueFilter<T>): QueuedCommand<T> | undefined;
-  dequeueBatch(filter: DequeueFilter<T>, maxBatch?: number): QueuedCommand<T>[];
-  peek(filter?: DequeueFilter<T>): QueuedCommand<T> | undefined;
-  remove(uuid: string): boolean;
-  popAll(filter?: DequeueFilter<T>): QueuedCommand<T>[];
+  /** Append to queue with given priority; default 'next'. Returns uuid for correlation. */
+  enqueue(payload: T, opts?: EnqueueOptions): string;
+
+  /** Remove and return highest-priority item (FIFO within tier). undefined if empty. */
+  dequeue(): QueuedCommand<T> | undefined;
+
+  /** Non-destructively return highest-priority item. undefined if empty. */
+  peek(): QueuedCommand<T> | undefined;
+
+  /** Empty the queue. */
   clear(): void;
+
   get length(): number;
-  /** Subscribe to mutations; returns unsubscribe. */
+
+  /** Subscribe to mutations. Listener receives frozen snapshot of current queue. */
   subscribe(listener: (snapshot: ReadonlyArray<QueuedCommand<T>>) => void): () => void;
 }
 ```
 
-No new exported pub/sub primitive. `subscribe` uses a private `Set<Listener>` (~10 lines), fires on every mutation with a frozen snapshot.
+That's the entire surface — six methods plus a getter. Adding more later is straightforward; cutting later is harder. Per CLAUDE.md ("don't design for hypothetical future requirements"), start minimal.
 
-### Priority semantics (matches claudy's `messageQueueManager.ts:151-155`)
+### Implementation notes
 
-- **`'now'`** — pulled before everything else. **Not preemptive**: does not abort an in-flight turn. The drain loop picks it on the next iteration. BrowserX's parallel background sub-agents make preemption messy; we adopt claudy's "urgent but cooperative" semantic.
-- **`'next'`** — drained mid-turn before the next API round-trip. Default for user input.
-- **`'later'`** — lowest. Drained as a new turn after the current one ends. Default for sub-agent notifications and scheduler ticks.
+- **Linear scan in `dequeue`/`peek`:** O(n) per call. Queue depth in BrowserX is typically < 5; not worth a heap. Adopt claudy's pattern verbatim.
+- **FIFO within priority tier:** First-match semantics during scan — `PRIORITY_ORDER[cmd.priority] < bestPriority`, strictly less-than, preserves insertion order within tier.
+- **Frozen snapshot:** `snapshot = Object.freeze([...queue])` on every mutation. Listeners receive the snapshot directly (not a callback to `getSnapshot()`); this is cleaner for non-React consumers than claudy's `useSyncExternalStore` pattern.
+- **Sync notification:** subscribers fire synchronously inside `enqueue`/`dequeue`/`clear`. Reentrancy is the caller's responsibility (matches claudy's behavior).
+- **No locks:** single-threaded JS event loop serializes mutations. Don't over-engineer.
 
-### Default priorities by submission source
+### Priority semantics
 
-| Source (current code location) | Priority |
+Adopted verbatim from claudy:
+
+- **`'now'`** — pulled before everything else. **Not preemptive**: does not abort an in-flight `await`. The next iteration of the drain loop picks it.
+- **`'next'`** — default for ordinary user-driven ops. Drained in FIFO order within tier.
+- **`'later'`** — lowest. Drained after `'now'` and `'next'` are exhausted.
+
+### Op-type → priority mapping
+
+Concrete mapping for `RepublicAgentEngineConfig.EngineOp` (every variant covered):
+
+| Op type | Priority | Rationale |
+|---|---|---|
+| `Interrupt` | `'now'` | User pressed stop; should not wait |
+| `Shutdown` | `'now'` | Process teardown; should not wait |
+| `ExecApproval` | `'now'` | User already waiting on the tool; their decision unblocks the agent |
+| `PatchApproval` | `'now'` | Same as ExecApproval |
+| `UserInput` | `'next'` | Foreground typing |
+| `UserTurn` | `'next'` | Programmatic foreground submission |
+| `ServiceRequest` | `'next'` | RPC-style, foreground UI is waiting |
+| `ManualCompact` | `'next'` | User triggered `/compact` |
+| `ClearHistory` | `'next'` | User triggered |
+| `Compact` (auto, mode: 'auto') | `'later'` | Background trimming, no UI wait |
+| `AddToHistory` | `'later'` | Side-effect, no user waiting |
+
+Implementation: a small pure helper in the same file:
+
+```typescript
+// src/core/queue/priorityForOp.ts (or inline in RepublicAgentEngine.ts)
+export function priorityForOp(op: EngineOp): QueuePriority {
+  switch (op.type) {
+    case 'Interrupt':
+    case 'Shutdown':
+    case 'ExecApproval':
+    case 'PatchApproval':
+      return 'now';
+    case 'Compact':
+    case 'AddToHistory':
+      return 'later';
+    default:
+      // UserInput, UserTurn, ServiceRequest, ManualCompact, ClearHistory, and any future addition
+      return 'next';
+  }
+}
+```
+
+`default` returns `'next'` so future Op types get a safe default without compile breaks. Add a unit test that locks the mapping for the listed variants.
+
+---
+
+## NOT in v1 scope (explicit non-goals)
+
+| Item | Why deferred |
 |---|---|
-| User text submission (`RepublicAgent.submitOperation` → `UserInput` op) | `'next'` |
-| `Interrupt`, `Shutdown` ops | `'now'` |
-| `ExecApproval` op | `'now'` |
-| Sub-agent background result (`enqueueSyntheticUserTurn` → enqueue here) | `'later'` |
-| Scheduler tick (`src/core/scheduler/`) | `'later'` |
-| `ServiceRequest` ops | `'next'` |
+| `engineId` filter on dequeue | Per-engine queue isolation already covers it. Re-introduce only if a future feature needs cross-agent queue sharing. |
+| Fold `pendingNotifications` into the queue | Would convert idle sub-agent notifications from "prepend to next user input" → "their own synthetic turn". Real behavior change; needs to be decided on its own merits, not bundled with a queue refactor. |
+| Consecutive-prompt batching (`canBatchWith` + `joinPromptValues`) | Requires `workload` field on submissions. Adding it is a separate refactor; do it if/when telemetry shows users hit the multi-prompt case often. |
+| `remove(uuid)` / `popAll(filter)` | Zero call sites in current BrowserX code. YAGNI. |
+| `recheckCommandQueue()` (claudy's "I might have missed something" nudge) | Useful only with claudy's React `useSyncExternalStore` + async-gap design. BrowserX's `processSubmissionQueue` re-checks `length > 0` in its loop; not needed. |
+| Audit log via `recordQueueOperation` | Tracked in [#215](https://github.com/The-AI-Republic/browserx/issues/215). Phase 1's `subscribe` surface is the seam if/when it's wired up. |
+| `eventQueue: EngineEvent[]` refactor | Different concern (event delivery to waiters), no priority need. Out of scope. |
+| Tool-call preemption on `'now'` arrival | Would require deep tool-cancellation plumbing. Not a queue concern. |
+| `RepublicAgentEngine.eventWaiters` refactor | Separate resolver-Array pattern; not in scope. |
 
-### Sub-agent → parent flow (the `pendingNotifications` replacement)
+---
 
-Each `RepublicAgentEngine` has an `engineId` (`RepublicAgentEngine.ts:19`). Sub-agent engines inherit `parentEngineId` (`RepublicAgentEngine.ts:357`).
+## Migration plan — concrete file edits
 
-**Before** (current code):
+All file:line references against the current `agent-improvements` branch as of commit `8d2ca945`.
 
-```typescript
-// Sub-agent finishes, parent is idle:
-this.pendingNotifications.push(text);     // parallel array
+### New files
 
-// Parent starts next turn:
-const input = drainPendingNotificationsInto(originalInput);  // prepend
-```
+1. **`src/core/queue/types.ts`** (~30 LOC) — exports `QueuePriority`, `QueuedCommand<T>`, `EnqueueOptions`.
+2. **`src/core/queue/CommandQueue.ts`** (~120 LOC) — the class with linear-scan `dequeue`, frozen snapshot, internal `Set<Listener>`.
+3. **`src/core/queue/__tests__/CommandQueue.test.ts`** (~150 LOC) — unit tests; see [Tests](#tests-to-add-and-update) below.
 
-**After** (Phase 1):
+### Edits to `src/core/engine/RepublicAgentEngine.ts`
 
-```typescript
-// Sub-agent finishes, parent is idle:
-this.parentEngine.submissionQueue.enqueue(
-  { type: 'UserInput', items: [{ type: 'text', text }] },
-  { priority: 'later', engineId: this.parentEngineId },
-);
-// no special parent code — drain loop picks it up naturally
-```
+| Line(s) | Current | Change |
+|---|---|---|
+| 27 | `private submissionQueue: Submission[] = [];` | `private submissionQueue = new CommandQueue<Submission>();` |
+| 130 | `this.submissionQueue.push(submission);` | `this.submissionQueue.enqueue(submission, { priority: priorityForOp(op) });` |
+| 214 | `this.submissionQueue.length = 0;` (in `cancel()`) | `this.submissionQueue.clear();` |
+| 431 | `while (this.submissionQueue.length > 0) {` (in `processSubmissionQueue`) | `while (this.submissionQueue.length > 0) {` — *unchanged*; CommandQueue exposes `length` getter |
+| 432 | `const submission = this.submissionQueue.shift()!;` | `const queued = this.submissionQueue.dequeue()!; const submission = queued.payload;` |
+| 602 | `this.submissionQueue.length = 0;` (in `Interrupt` handler) | `this.submissionQueue.clear();` |
+| 820 | `this.submissionQueue.length = 0;` (in `dispose`) | `this.submissionQueue.clear();` |
 
-The parent's drain loop filters by `engineId`:
+**Untouched** (deliberately):
+- Line 28 `eventQueue: EngineEvent[]` — out of scope.
+- Line 29 `processingSubmission: boolean` — re-entrancy guard is fine as-is.
+- Line 30 `eventWaiters` — separate resolver pattern; out of scope.
+- Line 44 `pendingNotifications: string[]` — kept as pre-input buffer.
+- Line 299-312 `enqueueSyntheticUserTurn` — kept as-is.
+- Line 318-325 `drainPendingNotificationsInto` — kept as-is.
 
-```typescript
-this.submissionQueue.dequeue((cmd) =>
-  cmd.engineId === this.engineId || cmd.engineId === undefined,
-)
-```
+### Delete
 
-`pendingNotifications: string[]` and `drainPendingNotificationsInto` are deleted. Sub-agent notifications and ordinary user submissions live in one queue, ordered by priority.
+- **`src/core/QueueProcessor.ts`** (343 LOC).
+- **`src/core/__tests__/QueueProcessor.test.ts`** (test file).
 
-### Batching (optional, can defer)
+### Type imports
 
-Consecutive `'prompt'`-mode commands from the same `workload` can coalesce into one turn:
+- `RepublicAgentEngine.ts` adds: `import { CommandQueue } from '../queue/CommandQueue';` and `import { priorityForOp } from '../queue/priorityForOp';`.
+- No type re-exports needed downstream — `Submission` envelope is unchanged.
 
-```typescript
-const batch = queue.dequeueBatch(
-  (cmd) => cmd.workload === workload && isPromptMode(cmd.payload),
-  10,
-);
-const mergedText = batch.map(c => extractText(c.payload)).join('\n\n');
-```
+---
 
-For v1, batching can be left as an unused API surface; the drain loop in `processSubmissionQueue` can call `dequeue` only. Wire it up if a real consumer appears.
+## Tests to add and update
 
-### Migration plan
+### Add — `src/core/queue/__tests__/CommandQueue.test.ts`
 
-1. Add `src/core/queue/types.ts` and `src/core/queue/CommandQueue.ts`.
-2. Modify `RepublicAgentEngine`:
-   - Replace `submissionQueue: Submission[]` with `submissionQueue: CommandQueue<Submission>`.
-   - Update `submitOperation` (`RepublicAgentEngine.ts:116-126`) to call `enqueue()` with priority derived from op type.
-   - Update `processSubmissionQueue` (`RepublicAgentEngine.ts:378-403`) to call `dequeue(filter)`.
-   - Delete `pendingNotifications: string[]` and `drainPendingNotificationsInto`.
-   - Modify `enqueueSyntheticUserTurn` (`RepublicAgentEngine.ts:299-312`) to enqueue into the parent's `CommandQueue` rather than push to a string array.
-3. Delete `src/core/QueueProcessor.ts` and `src/core/__tests__/QueueProcessor.test.ts`.
-4. Tests in `src/core/queue/__tests__/`:
-   - Priority ordering (`now` > `next` > `later`, FIFO within tier).
-   - `engineId` filter behavior for sub-agent → parent notifications.
-   - `remove(uuid)` and `popAll(filter)`.
-   - `subscribe` fires on every mutation.
-   - `dequeueBatch` returns up to N matching items.
+| Test | Asserts |
+|---|---|
+| `enqueue + dequeue returns same payload` | Round-trip without priority |
+| `dequeue returns 'now' before 'next' before 'later'` | Priority ordering |
+| `FIFO within tier` | Three `'next'` ops dequeued in insertion order |
+| `peek does not mutate` | `peek() === peek()` |
+| `peek returns highest priority` | Mirrors `dequeue` ordering without removal |
+| `length tracks mutations` | After enqueue/dequeue/clear |
+| `clear empties the queue` | `length === 0` after `clear()` |
+| `subscribe fires on enqueue` | Listener receives snapshot with new item |
+| `subscribe fires on dequeue` | Listener receives snapshot without the removed item |
+| `subscribe fires on clear` | Listener receives empty snapshot |
+| `unsubscribe stops further notifications` | Returned function works |
+| `snapshot is frozen` | `Object.isFrozen(snapshot)` |
+| `snapshot reference changes only on mutation` | Same reference returned across two `length` reads if no mutation between |
+| `default priority is 'next'` | Verify default |
 
-### Naming collision audit (verify before merge)
+### Add — `src/core/queue/__tests__/priorityForOp.test.ts`
+
+Lock the op-type → priority mapping table. One assertion per op type listed above. Ensure new op variants get a compile error or test failure if added without a mapping update.
+
+### Update — `src/core/engine/__tests__/RepublicAgentEngine.test.ts`
+
+Audit (2026-05-14) found these assertions on internal queue state:
+
+| Test | Current assertion | Update |
+|---|---|---|
+| Around line 167-184 (UserInput submission spawns task) | Spies on `processSubmissionQueue` timing | Verify behavior unchanged; no internal-state assertion |
+| Around line 278-319 (Interrupt handler clears queue) | `expect(engine.submissionQueue.length).toBe(0)` (or similar) | Replace with `engine.submissionQueue.length` (CommandQueue still exposes `length`) — should be drop-in |
+| Around line 597-602 (`cancel()` resolves pending completions) | Tests `cancel()` behavior via event listeners | Likely unaffected; verify via test run |
+
+Plus: add **one integration test** — submit a `UserInput` op, then `Interrupt`, in that order. Assert the `Interrupt` is processed first (priority 'now' jumps the FIFO).
+
+### Run
 
 ```bash
-grep -rn "class CommandQueue\|interface CommandQueue\|type CommandQueue\b" src/
+npm run lint && npm run type-check && npm test
 ```
 
-Verify no existing symbol named `CommandQueue` in `src/`. If a collision exists, fall back to `MessageQueue<T>` or `SubmissionQueueV2`.
+All green required before merge.
 
-### Estimated size
+### Notable: no `pendingNotifications` test changes
 
-- **New:** ~300 LOC (CommandQueue + types + tests + engine wiring).
-- **Deleted:** ~350 LOC (`QueueProcessor.ts` + `pendingNotifications` plumbing + tests).
-- **Net:** roughly LOC-neutral, plus first-class priority + filter capability.
+`pendingNotifications` stays as a `string[]` array. The methods touching it (`enqueueSyntheticUserTurn`, `drainPendingNotificationsInto`) are unchanged. Tests in `/src/tools/AgentTool/__tests__/SubAgentRunner.background.test.ts` and `.quietBackground.test.ts` should pass unchanged.
 
 ---
 
-## Deferred: EventLog
+## Naming collision audit (2026-05-14, re-verified)
 
-Tracked in **[#215](https://github.com/The-AI-Republic/browserx/issues/215)**.
+Run against `src/` on commit `8d2ca945`:
 
-Full design preserved in the issue body. Short version of the rationale:
-
-- Claudy's audit isn't actually local — approval decisions go to Datadog, tool timing to OTel. Only conversation/queue-op breadcrumbs land in the per-session JSONL.
-- BrowserX has no remote telemetry destination, so a local audit store is a real architectural gap — but not an urgent one. No incidents are currently blocked on "why was this auto-approved?" or "did the `PreToolUse` hook fire?"
-- Building ~600 LOC of storage infrastructure (new IndexedDB v5 store + SQLite migration + Rust migration + recorder + subscribers) for a hypothetical debugging need violates the repo's CLAUDE.md "don't design for hypothetical future requirements" rule.
-
-**Lighter-weight alternative to consider first if a consumer asks:** an in-memory ring buffer (last N events per session) wired to `CommandQueue.subscribe` + `HookDispatcher.emitObservability` + `ApprovalManager` event emits — ~50 LOC, covers live debugging without storage migration. Persistent storage only needed if post-session-end queries are required.
-
-Pick this back up when any of the trigger conditions in [#215](https://github.com/The-AI-Republic/browserx/issues/215) becomes true.
-
----
-
-## Deferred: MessageBus
-
-Originally scoped as 08d for generic topic-based pub/sub. Deferred status unchanged after the 2026-05-14 audit:
-
-1. **`ChannelManager`** (PR #174) already routes submissions between UI channels and the agent and dispatches events back.
-2. **`HookDispatcher`** (PR #198) already covers lifecycle observability with structured event kinds.
-3. **`ServiceRegistry`** already handles request/response RPC.
-4. **`CommandQueue.subscribe`** (this track) handles queue-state observation.
-
-Adding a generic `MessageBus` on top would create a fourth routing layer with overlapping responsibilities. Reassess only if a concrete consumer emerges that none of the above can serve.
+| Symbol | Audit result | Verdict |
+|---|---|---|
+| `CommandQueue` | No `class`/`interface`/`type` of this name | ✅ safe |
+| `QueuedCommand` | No existing | ✅ safe |
+| `QueuePriority` | No existing | ✅ safe |
+| `EnqueueOptions` | No existing | ✅ safe |
+| `SubmissionQueue` | Exists in dead `QueueProcessor.ts` | ✅ safe after deletion — but **don't reuse this name**; the new class has different semantics |
+| `EventQueue` | Exists in dead `QueueProcessor.ts` | ✅ same as above; don't reuse |
+| `PriorityQueue` | Exists in dead `QueueProcessor.ts` | ✅ safe after deletion |
 
 ---
 
-## Dropped from Earlier Proposals
+## Edge cases & invariants
 
-The previous split (08a/b/c/d) carried three proposals that the deep audit eliminated. Recorded here so future contributors don't re-propose them without context.
+Re-validated 2026-05-14 against `RepublicAgentEngine.ts`:
 
-### Signal (`createSignal<T>()`)
-
-**Proposed in 08a:** port claudy's 25-line pub/sub primitive.
-
-**Why dropped:**
-- Of 20 `Signal` instances in claudy (audit 2026-05-14), 9 are CLI-specific (chokidar file watchers, tmux session switches, Slack channel cache, GrowthBook feature flags, file-index builds) — none apply to a browser extension.
-- The remaining ~10 are React-adapter shapes for `useSyncExternalStore`. Svelte's `writable()` covers both the state and the subscribe surface natively; the adapter is unnecessary in this codebase.
-- The one consumer that *would* exist in BrowserX (`CommandQueue.subscribe`) is a 10-line internal `Set<Listener>`. No exported primitive needed.
-- `HookRegistry` (Track 01, PR #198) already covers lifecycle events with stronger guarantees (matchers, aggregation, observability).
-
-### Mailbox (`new Mailbox<T>()`)
-
-**Proposed in 08a:** port claudy's `Mailbox<T>` class with `send` / `receive(predicate, {timeoutMs, signal})` for request/response handshakes, and use it to refactor `ApprovalManager`.
-
-**Why dropped:**
-- Claudy uses `Mailbox` in exactly one place (`useMailboxBridge` via `context/mailbox.tsx`) and only calls `poll()`, never `receive()`. The await-for-message pattern that 08a treated as load-bearing is dead-on-arrival in claudy itself.
-- The one BrowserX use case `Mailbox` would solve (buffering user input while the agent is busy) is **already solved** by `TurnState.pendingInput` + `Session.addPendingInput()` / `Session.getPendingInput()` (`src/core/session/state/TurnState.ts:16-76`, `src/core/Session.ts:489-504`).
-- The other proposed use case (refactoring `ApprovalManager`) was dropped — see below.
-- The separate disk-based `teammateMailbox.ts` is for inter-process IPC between separate agent processes in claudy's swarm feature; BrowserX is single-process, so this concept does not transfer.
-
-### ApprovalManager refactor
-
-**Proposed in 08a:** rewrite `ApprovalManager.requestApproval` to use a `Mailbox`, replacing the `Map<id, PendingApproval>` resolver pattern.
-
-**Why dropped:**
-- The deep audit revealed `ApprovalManager`'s 547 lines are mostly **policy evaluation**, **risk assessment**, **event emissions**, and **history tracking** — not the resolver dance. The resolver pattern itself is ~30 lines (`src/core/ApprovalManager.ts:101-185`) and works correctly.
-- BrowserX's `ApprovalManager` is **more complete than claudy's approval flow**: claudy returns interactive approvals via tool-result return paths and only uses Mailbox for swarm-worker scenarios. BrowserX has timeout (600s default), policy evaluation, `ApprovalGate` hook integration (PR #198), risk enhancers (DOM, semantic, domain sensitivity), and persistent approval history map.
-- A rewrite would touch a load-bearing 547-line file for stylistic gain only, with non-trivial regression risk around the auto-approve-on-timeout semantics and four event emission sites.
-- If a future need emerges (e.g., cancel-on-session-end via `AbortController`), it can be added in-place without a new primitive.
+1. **Re-entrancy on `processSubmissionQueue`**: protected by `processingSubmission: boolean` flag (line 29, 428-450). Unchanged — `CommandQueue` doesn't interact with this guard.
+2. **Concurrent `submitOperation` from multiple channels**: JavaScript event loop serializes the `.enqueue` calls; the queue itself is single-threaded. Same as today.
+3. **`submitOperation` after `cancel()`**: `cancel()` calls `submissionQueue.clear()`. A subsequent `submitOperation` enqueues into the now-empty queue and re-triggers `processSubmissionQueue()`. Same as today.
+4. **`Interrupt` clears the queue**: line 602 currently does `submissionQueue.length = 0`. After refactor: `submissionQueue.clear()`. Semantically identical (Interrupt's own op has already been dequeued by the time line 602 runs).
+5. **Subscriber callback enqueues during notification**: claudy doesn't guard against this; BrowserX won't either. Document as "caller's responsibility" in the source comment.
+6. **`dispose()`**: line 820 currently does `submissionQueue.length = 0`. After refactor: `submissionQueue.clear()`. Same effect.
+7. **Empty `dequeue()`**: returns `undefined`. Loop in `processSubmissionQueue` already handles this implicitly via `length > 0` check on line 431; loop exits cleanly.
 
 ---
 
 ## Dependencies
 
 ```
-PR #191 (background sub-agents) ──> 08 Phase 1 CommandQueue
-                                    (folds pendingNotifications workaround into priority queue)
+PR #191 (background sub-agents) ──> 08 CommandQueue (no functional change to sub-agent flow,
+                                                    but tests must keep passing)
 
-08 Phase 1 ──> #215 EventLog (when triggered)
-            ──> Deferred 08d MessageBus reassessment (no work expected)
+08 CommandQueue ──> #215 EventLog (when triggered — Phase 1's subscribe surface is the seam)
+                ──> Deferred 08d MessageBus reassessment (no work expected)
 ```
 
-Phase 1 has no blocking dependencies and can ship as a single PR.
+No blocking dependencies. Phase 1 ships as a single PR.
 
 ---
 
 ## Risks
 
-- **`enqueueSyntheticUserTurn` semantic change.** Today's `pendingNotifications` always appends as text items to the next turn's input. After Phase 1, sub-agent notifications enqueue into the parent's `CommandQueue` with `priority: 'later'`. The drain order changes from "always prepended" to "later than any pending user input." This is the correct behavior (user input goes first), but it's a behavior shift. **Mitigation:** integration test that drives a foreground prompt + background sub-agent completion concurrently and asserts the foreground prompt is processed first.
-- **`engineId` filter correctness.** A bug in the filter could cross-talk commands between agents. **Mitigation:** test matrix covering main agent, sub-agent, and grandchild-agent dequeue patterns; assert no command meant for one engine surfaces in another's drain.
-- **`'now'` priority is non-preemptive.** A user pressing an interrupt while a 30 s tool call runs will not abort that tool — it will queue and execute when the tool returns. This is consistent with claudy and avoids adding tool-cancellation plumbing to this track. **Mitigation:** document the semantic clearly in the queue type. Actual preemption is out of scope; if needed, it's a future track.
-- **Deleting `QueueProcessor.ts` removes dead `PriorityQueue<T>`.** Re-verify before deletion: `grep -rn "QueueProcessor\|SubmissionQueue\|EventQueue" src/ --include="*.ts" | grep -v __tests__` should return no production callers (only `RepublicAgent.eventQueue` false positive — different name, same word).
+- **Behavior change: `Interrupt` and `ExecApproval` now jump ahead of queued ops.** Could expose latent bugs in handlers that assumed strict FIFO. **Mitigation:** the new integration test (submit `UserInput` then `Interrupt`, verify `Interrupt` is processed first) catches the intended new behavior. If a handler regression appears, it'll surface in CI.
+- **Deleting `QueueProcessor.ts` is one-way.** If a stale branch out there imports from it, that branch will fail to merge. **Mitigation:** the audit confirms zero production callers on `agent-improvements`. Open branches are the branch-author's responsibility to rebase. Tracking the deletion in the commit message helps grep.
+- **Re-entrant `subscribe` callbacks.** A listener that calls `enqueue` during a notify causes nested notification. Claudy permits this; BrowserX inherits the behavior. **Mitigation:** document in the source as "subscriber's responsibility — avoid mutation during notify or expect nested calls"; no listeners are wired in v1 anyway (the surface is for future use).
+- **Linear scan in `dequeue`.** O(n) per call. **Mitigation:** queue depth is typically < 5; not worth a heap. If profiling later shows hot-path issues, switch to bucket-per-priority — trivial migration.
 
 ---
 
-## Validation Notes (2026-05-14)
+## Validation Notes (2026-05-14, second pass)
 
-Two parallel deep-audit probes informed this scope. Key concrete findings:
+Two parallel implementation-readiness probes informed this revision. Key concrete findings:
 
-### Claudy mapping
+### Claudy queue implementation details (sources)
 
-- **`messageQueueManager.ts`** (`/home/rich/dev/study/claudy/src/utils/messageQueueManager.ts:53-193`): module-level `commandQueue: QueuedCommand[]` array. Priorities at line 151-155. `dequeue(filter)` at 167-193. `agentId` filter at line 1924 of `print.ts` (the main drain loop). `recordQueueOperation()` audit calls at lines 131, 191, 290, 472.
-- **`QueuedCommand` schema** (`/home/rich/dev/study/claudy/src/types/textInputTypes.ts:299-358`): fields include `priority`, `agentId`, `workload`, `uuid`, `mode`, `isMeta`, `origin`.
-- **Mailbox** (`utils/mailbox.ts`): 75 lines, used in 1 React Context, only via `poll()`. `receive()` has 0 callers.
-- **TeammateMailbox** (`utils/teammateMailbox.ts`): ~1100 lines, disk-based IPC, completely separate from in-memory Mailbox. Single-process BrowserX does not need this.
-- **Signal** (`utils/signal.ts`): 43 lines, 20 instantiations, 9 CLI-specific, ~10 React-adapter.
-- **Audit log**: claudy logs queue ops to the per-session JSONL alongside conversation. Approval decisions go to **Datadog** (`tengu_tool_use_*` events). Tool timing/errors go to **OpenTelemetry**. Hook firings are not persisted. No local query API.
+- **`messageQueueManager.ts`** (`/home/rich/dev/study/claudy/src/utils/messageQueueManager.ts`):
+  - Module-level `commandQueue: QueuedCommand[]` (line 53), frozen `snapshot` (line 55), `queueChanged` Signal (line 56).
+  - `dequeue(filter)` algorithm: linear scan, FIFO within priority via first-match (lines 167-193).
+  - `peek(filter)` mirrors dequeue scan, non-mutating (lines 219-238).
+  - `remove` / `removeByFilter` use reverse iteration (lines 273-316).
+  - `enqueue` defaults priority `'next'` (line 129); `enqueuePendingNotification` defaults `'later'` (line 143).
+  - `PRIORITY_ORDER = { now: 0, next: 1, later: 2 }` (lines 151-155).
+  - **No tests file** for `messageQueueManager` — integration-tested via `print.ts` + `query.ts`.
+- **`QueuedCommand` schema** (`/home/rich/dev/study/claudy/src/types/textInputTypes.ts:299-358`): 12+ fields including `priority`, `agentId`, `workload`, `uuid`, `mode`, `isMeta`, `origin`.
+- **Drain loop** (`cli/print.ts:1934-1961`): `while ((cmd = dequeue(isMainThread)))`; batching via `canBatchWith` + `joinPromptValues` for prompt-mode same-`workload` runs.
+- **`canBatchWith`** (`cli/print.ts:443-452`): same `mode === 'prompt'`, same `workload`, same `isMeta`.
+- **`joinPromptValues`** (`cli/print.ts:428-434`): newline-joined strings or `flatMap(toBlocks)` for content-block-mixed values.
+- **`isMainThread` filter** (`cli/print.ts:1924`): `cmd => cmd.agentId === undefined`. This is the agentId isolation pattern that BrowserX doesn't need.
+- **`popAllEditable`** (`messageQueueManager.ts:415-484`): terminal UP-arrow re-edit. Skipped.
 
-### BrowserX mapping
+### BrowserX integration map (sources)
 
-- **`RepublicAgentEngine.submissionQueue: Submission[]`** at `src/core/engine/RepublicAgentEngine.ts:27`. `processSubmissionQueue()` at line 378-403 (synchronous drain via `shift()`).
-- **`pendingNotifications: string[]`** at line 44, drained by `drainPendingNotificationsInto(input)` at line 318-325. Wired into `enqueueSyntheticUserTurn` at line 299-312.
-- **`TurnState.pendingInput: InputItem[]`** at `src/core/session/state/TurnState.ts:16`. Producer/consumer: `Session.addPendingInput` (line 504), `Session.getPendingInput` (line 489). Drained at turn boundaries by `TaskRunner.buildNormalTurnInput`.
-- **`ApprovalManager`** at `src/core/ApprovalManager.ts` (547 lines). Resolver Map at line 80, `requestApproval` at line 101, `handleDecision` at 190, `cancelRequest` at 277. Default timeout 600_000 at line 110.
-- **`ApprovalGate`** at `src/core/approval/ApprovalGate.ts:215, 379` fires `PermissionRequest` / `PermissionDenied` hooks (Track 01, PR #198).
-- **`HookDispatcher`** at `src/core/hooks/HookDispatcher.ts:76-154`. 13 hook events defined. `emitObservability` is the single observability choke point.
-- **`QueueProcessor.ts`** at `src/core/QueueProcessor.ts` (343 lines): dead. Re-verified 2026-05-14 — only references are its own colocated tests.
-- **`ChannelManager`** + **`ServiceRegistry`** (PR #174) — cross-platform routing complete.
+- **`RepublicAgentEngine`** (`src/core/engine/RepublicAgentEngine.ts`):
+  - `submissionQueue: Submission[]` (line 27); ~30 direct references across the file.
+  - `eventQueue: EngineEvent[]` (line 28) — separate concern, out of scope.
+  - `processingSubmission: boolean` re-entrancy guard (line 29).
+  - `pendingNotifications: string[]` (line 44) — pre-input buffer, kept as-is.
+  - `submitOperation` (lines 123-133): synchronous push + async `processSubmissionQueue()` trigger.
+  - `processSubmissionQueue` (lines 427-452): re-entrancy guarded, `while (length > 0)` loop, `shift()` dequeue, one-at-a-time `handleSubmission`.
+  - `Interrupt` handler clears queue at line 602; `cancel()` at line 214; `dispose()` at line 820. All three become `.clear()` calls.
+- **`EngineOp` variants** (`src/core/engine/RepublicAgentEngineConfig.ts:176-186`): `UserInput`, `UserTurn`, `Interrupt`, `ExecApproval`, `PatchApproval`, `Compact`, `ManualCompact`, `AddToHistory`, `Shutdown`, `ClearHistory`, `ServiceRequest`.
+- **`SubAgentRunner.safeEnqueueNotification`** (`src/tools/AgentTool/SubAgentRunner.ts:232-248`): calls `context.parentEngine.enqueueSyntheticUserTurn(text)`. This is the only cross-engine call back to a parent. **Not touched** in v1 because `pendingNotifications` stays as-is.
+- **`QueueProcessor.ts`** dead-code re-verification (2026-05-14): zero production imports, zero non-test references. Safe to delete.
+- **Naming collisions**: all proposed names (`CommandQueue`, `QueuedCommand`, `QueuePriority`, `EnqueueOptions`) — no existing symbols in `src/`.
+- **Tests touching queue state**: `RepublicAgentEngine.test.ts` (multiple), `SubAgentRunner.background.test.ts`, `SubAgentRunner.quietBackground.test.ts`. Most should pass unchanged; explicit `submissionQueue.length` assertions still work via the getter.
 
-### Decisions resolved
+### Decisions resolved (2026-05-14, second pass)
 
-1. **Drop Signal entirely.** Svelte stores + HookRegistry + inline `Set<Listener>` cover every use case BrowserX would actually have.
-2. **Drop Mailbox entirely.** `TurnState.pendingInput` is the existing equivalent; claudy doesn't use `Mailbox.receive()` either.
-3. **Drop ApprovalManager refactor.** Current implementation is correct and more complete than claudy's.
-4. **Keep CommandQueue (Phase 1).** Real gap. Replaces `submissionQueue` *and* `pendingNotifications` workaround.
-5. **Defer EventLog to [#215](https://github.com/The-AI-Republic/browserx/issues/215).** Real architectural gap (claudy uses Datadog/OTel which BrowserX can't reach), but no validated consumer today. Lighter-weight in-memory alternative noted in the issue.
-6. **Keep `QueueProcessor.ts` deletion.** Cleanup rides along with Phase 1.
-7. **MessageBus stays deferred.** No new consumer pressure surfaced.
+1. **Drop `engineId` filter.** Per-engine queue isolation already covers it.
+2. **Keep `pendingNotifications` untouched.** Pre-input buffer, not a queue. Folding it would change sub-agent notification semantics.
+3. **Drop batching from v1.** Requires `workload` field on submissions; separate refactor.
+4. **Drop `remove(uuid)` / `popAll(filter)`.** No BrowserX call sites need them.
+5. **Don't touch `eventQueue`.** Different concern (event delivery), no priority need.
+6. **Listener receives snapshot directly** (cleaner for Svelte/non-React consumers than claudy's `useSyncExternalStore` pattern that hands back `() => void` + a separate `getSnapshot()`).
+7. **Linear scan stays O(n).** Queue depth is small; heap would be premature.
+8. **`'now'` is non-preemptive.** Adopt claudy's "urgent but cooperative" semantic.
 
 ### Sources
 
-- Claudy: `utils/messageQueueManager.ts` (480 LOC), `utils/mailbox.ts` (75 LOC), `utils/teammateMailbox.ts` (~1100 LOC), `utils/signal.ts` (43 LOC), `types/textInputTypes.ts:299-358`, `cli/print.ts:1920-2100`, `utils/QueryGuard.ts:29-122`, `hooks/toolPermission/permissionLogging.ts` (analytics emission), `utils/telemetry/events.ts` (OTel emission).
-- BrowserX: `src/core/engine/RepublicAgentEngine.ts:27, 44, 116, 299, 318, 378`, `src/core/session/state/TurnState.ts:16-76`, `src/core/Session.ts:489-504`, `src/core/ApprovalManager.ts:80-321`, `src/core/approval/ApprovalGate.ts:215, 379`, `src/core/hooks/HookDispatcher.ts:76-154`, `src/core/QueueProcessor.ts` (343 LOC dead), `src/core/registry/AgentRegistry.ts:46-82`, `src/core/channels/ChannelManager.ts:59-67`.
+- Claudy: `utils/messageQueueManager.ts` (480 LOC), `types/textInputTypes.ts:299-358`, `cli/print.ts:1920-2100` (drain loop + batching), `cli/print.ts:443-452, 428-434` (batching helpers), `utils/signal.ts`, `utils/QueryGuard.ts`.
+- BrowserX: `src/core/engine/RepublicAgentEngine.ts:27, 28, 29, 30, 37, 44, 123-133, 208-216, 271-273, 286, 299-312, 318-325, 345-358, 364-371, 427-452, 602, 820, 835-837, 846-852, 904-916`, `src/core/engine/RepublicAgentEngineConfig.ts:176-200`, `src/core/RepublicAgent.ts:405-516`, `src/tools/AgentTool/SubAgentRunner.ts:130-176, 232-248`, `src/core/QueueProcessor.ts` (343 LOC dead, deletion target).
+
+---
+
+## Dropped from earlier proposals (preserved for context)
+
+The pre-2026-05-14 design carried three proposals the first audit eliminated. Recorded so future contributors don't re-propose them.
+
+### Signal (`createSignal<T>()`)
+
+Dropped after 2026-05-13 audit. Of 20 `Signal` instances in claudy, 9 are CLI-specific (chokidar watchers, tmux session switches, Slack channel cache, GrowthBook flags) and ~10 are React-adapter shapes for `useSyncExternalStore`. Svelte's `writable()` covers both the state and the subscribe surface natively. The one BrowserX consumer (`CommandQueue.subscribe`) is a 10-line internal `Set<Listener>` — no exported primitive needed.
+
+### Mailbox (`new Mailbox<T>()`)
+
+Dropped after 2026-05-13 audit. Claudy uses `Mailbox` in exactly one place (`useMailboxBridge` via `context/mailbox.tsx`) and only calls `poll()`, never `receive()`. The one BrowserX use case (buffering user input while busy) is already solved by `TurnState.pendingInput` + `Session.addPendingInput()`.
+
+### ApprovalManager refactor
+
+Dropped after 2026-05-13 audit. The 547 lines are mostly policy/risk/events; the resolver pattern itself is ~30 lines and works correctly. BrowserX's `ApprovalManager` is more complete than claudy's flow (timeout, policy, ApprovalGate hooks, risk enhancers).
+
+---
+
+## Deferred: EventLog
+
+Tracked in **[#215](https://github.com/The-AI-Republic/browserx/issues/215)**. Full design preserved in the issue. Pick up when: a real debugging incident occurs, a user-facing activity-log feature is prioritized, a compliance requirement surfaces, or `CommandQueue.subscribe` proves insufficient.
+
+## Deferred: MessageBus
+
+Stays deferred. `ChannelManager` (PR #174) + `ServiceRegistry` + `HookDispatcher` (PR #198) + `CommandQueue.subscribe` (this track) already cover routing + observation. Reassess only if a real consumer emerges that none of those can serve.
