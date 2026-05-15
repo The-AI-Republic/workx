@@ -1,4 +1,6 @@
-# Track 06: Multi-Agent Coordination
+# Track 06: Multi-Agent Coordination ❌ ABANDONED (2026-05-14)
+
+> **Status: Abandoned.** Track 04 (Typed Task Families, PR #205) already shipped the coordinator/worker primitives this track was proposing — see `src/tools/AgentTool/SubAgentRegistry.ts` and the `sub_agent` / `send_message` / `cancel_sub_agent` / `list_sub_agents` tools. Sub-agents are scoped to a parent session via `parentSessionId`, which respects BrowserX's invariant that sessions ("tabs") are independent — coupling sessions would be a bug, not a feature. The four claudy "coordinator-only" tools this track listed map 1:1 onto already-shipped sub-agent tools (`TEAM_CREATE` → `sub_agent`, `TEAM_DELETE` → `cancel_sub_agent`, `SEND_MESSAGE` → `send_message`; `SYNTHETIC_OUTPUT` not needed — the parent already produces its own output). Residual items (coordinator-mode system prompt, role-based tool allowlists, shared scratchpad) are prompt-engineering / config / a separate feature, not coordination concerns, and don't justify a track. The original design below is preserved for historical reference.
 
 ## Problem
 
