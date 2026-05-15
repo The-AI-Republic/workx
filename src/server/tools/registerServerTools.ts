@@ -154,6 +154,13 @@ export async function registerServerTools(
   await registerBrowserTools(registry);
 
   // ──────────────────────────────────────────────────────────────────────
+  // Ripgrep-backed read-only search tools (grep, glob) — server
+  // ──────────────────────────────────────────────────────────────────────
+
+  const { registerFileSearchTools } = await import('@/tools/file-search/register');
+  await registerFileSearchTools(registry, ['server']);
+
+  // ──────────────────────────────────────────────────────────────────────
   // Dynamic MCP tool registration for user-configured servers
   // ──────────────────────────────────────────────────────────────────────
 

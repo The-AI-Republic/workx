@@ -8,6 +8,7 @@ mod http_commands;
 mod keychain_commands;
 mod mcp_manager;
 mod oauth_server;
+mod ripgrep_commands;
 mod sandbox;
 mod rollout_db;
 mod scheduler_commands;
@@ -366,6 +367,8 @@ fn main() {
             // Terminal command execution
             terminal_commands::terminal_execute,
             terminal_commands::terminal_write_stdin,
+            // Ripgrep-backed code search (grep/glob tools)
+            ripgrep_commands::ripgrep_execute,
             // Sandbox commands
             sandbox::status::sandbox_check_status,
             sandbox::status::sandbox_install_runtime,

@@ -17,5 +17,6 @@ Actions that are auto-approved:
 - Reading/observing: DOM snapshots, scroll, page content
 - Navigation between pages
 - Read-only terminal: ls, cat, grep, find, pwd
+- Code search: the `grep` and `glob` tools (read-only, ripgrep-backed)
 - Git read operations: status, log, diff
 - Web search, planning
