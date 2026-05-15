@@ -26,7 +26,7 @@ Record findings inline in this file before starting Phase 1.
 
 ## Phase 1: Config-driven `parallel_tool_calls`
 
-**Goal:** Replace hardcoded `false` with a config value, allowlist-gated per provider, default `false`.
+**Goal:** Replace hardcoded `false` with a config value, default `false`, no allowlist (2026-05-14 research confirms all targeted OpenAI-compatible providers support `parallel_tool_calls`).
 **Estimated size:** ~50 LOC (plus ~40 LOC if Phase 0 finds a non-unified provider).
 **Single PR.**
 
@@ -39,8 +39,7 @@ Record findings inline in this file before starting Phase 1.
 
 - [ ] `src/config/types.ts` — add `parallelToolCalls?: boolean` to the tools config interface, with the JSDoc from design.md.
 - [ ] `src/config/defaults.ts` (`DEFAULT_TOOLS_CONFIG`) — add `parallelToolCalls: false`.
-- [ ] `src/core/models/ModelClientFactory.ts` — resolve effective value: `parallelToolCalls = globalFlag && PROVIDERS_SUPPORTING_PARALLEL.has(providerId)`. Define `PROVIDERS_SUPPORTING_PARALLEL = new Set(['openai', 'xai', 'groq', 'google'])` (google already works, included for completeness).
-- [ ] `src/core/models/client/ModelClient.ts` (abstract base) — add `protected readonly parallelToolCalls: boolean` set from the resolved config in the constructor, so subclasses read one place.
+- [ ] `src/core/models/client/ModelClient.ts` (abstract base) — add `protected readonly parallelToolCalls: boolean` set from the config value in the constructor, so subclasses read one place. No allowlist resolution — the global flag flows straight through to every OpenAI-compatible client.
 
 ### 1.3 Clients
 
@@ -68,8 +67,9 @@ Record findings inline in this file before starting Phase 1.
   - [ ] `parallelToolCalls: true` + OpenAI → payload `true`.
   - [ ] `parallelToolCalls: true` + xAI → payload `true`.
   - [ ] `parallelToolCalls: true` + Groq → payload `true`.
-  - [ ] `parallelToolCalls: true` + Fireworks (not in allowlist) → payload `false`.
-  - [ ] `parallelToolCalls: true` + Together (inherits, not in allowlist) → payload `false`.
+  - [ ] `parallelToolCalls: true` + Fireworks → payload `true`.
+  - [ ] `parallelToolCalls: true` + Together (inherits OpenAIChatCompletionClient) → payload `true`.
+  - [ ] `parallelToolCalls: false` explicit → payload `false` for every client.
 - [ ] Add `src/core/__tests__/TurnManager.parallelTools.integration.test.ts`:
   - [ ] Mock model stream emitting ONE `message` item with 3 `tool_calls` (2 safe reads + 1 unsafe write).
   - [ ] Assert orchestrator path (`TurnManager.ts:633`) is taken.
@@ -79,7 +79,7 @@ Record findings inline in this file before starting Phase 1.
 
 ### 1.7 Documentation
 
-- [ ] Brief note in `src/config/README.md` (if present) on the new `parallelToolCalls` flag and its allowlist gating.
+- [ ] Brief note in `src/config/README.md` (if present) on the new `parallelToolCalls` flag (config-driven, default off, applies to all OpenAI-compatible providers when on).
 - [ ] One-line note where model clients are documented (if any) that the flag is config-driven and dark by default.
 
 ---

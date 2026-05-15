@@ -93,30 +93,33 @@ Default `false`. This is a behavior-changing capability; ship it dark, enable de
 
 ### Provider support matrix (from 2026-05-14 audit)
 
+Verified 2026-05-14 against current provider documentation (web research — see Validation Notes). **All OpenAI-compatible providers BrowserX targets support `parallel_tool_calls`.** The "unclear" tier in the original 2026-04-07 design was stale and is removed.
+
 | Provider | API | Supports `parallel_tool_calls` | Action |
 |---|---|---|---|
-| OpenAI | Responses + Chat Completions | Yes (default true upstream) | config-driven |
+| OpenAI | Responses + Chat Completions | Yes (default `true` upstream) | config-driven |
 | xAI | Responses + Chat Completions | Yes | config-driven |
 | Google AI Studio | native SDK | Yes (already works via unified format) | no change — already parallel |
 | Groq | Chat Completions | Yes | config-driven |
-| Fireworks | Chat Completions | Unclear | keep `false` unless config explicitly overrides |
-| Together | Chat Completions (inherits) | Unclear | keep `false` unless config explicitly overrides |
-| Moonshot | Chat Completions (inherits) | Unclear | keep `false` unless config explicitly overrides |
+| Fireworks | Chat Completions | **Yes** — FireFunction-v2 markets parallel function calling; OpenAI-API-compatible | config-driven |
+| Together | Chat Completions (inherits) | **Yes** — docs: models "perform multiple function calls together... by default" | config-driven |
+| Moonshot/Kimi | Chat Completions (inherits) | **Yes** — docs explicitly document `parallel_tool_calls`; Kimi dropped legacy `function_call`, emits only the unified `tool_calls[]` array | config-driven |
 | Anthropic | Messages API | N/A (separate content blocks; different client) | out of scope |
 
-For "Unclear" providers: the resolved value defaults to `false` even when the global config flag is `true`, unless a per-provider override is set. Concretely: `parallelToolCalls = globalConfig && providerSupportsParallel`. Keep the provider-support set as a small allowlist (`openai`, `xai`, `groq`, `google`) in the client/factory.
+**No allowlist gate.** Sending `parallel_tool_calls: true` is safe for every OpenAI-compatible client — it's the upstream OpenAI default, accepted and honored by all targeted providers. The residual concern is *model quality* (a weak model emitting poor parallel calls), not *API support*. That concern is already backstopped by Track 02's concurrency profiles: a write/mutating tool is never classified concurrency-safe, so it cannot run concurrently regardless of what the model emits. The orchestrator serializes anything unsafe.
+
+A per-provider override remains *possible* via config if a specific deployment hits a bad model, but it is **not gated by default** and **not required for v1** — see Deferred.
 
 ### Config plumbing path
 
 ```
 AgentConfig.tools.parallelToolCalls (default false)
-   → ModelClientFactory resolves per-provider (allowlist gate)
    → passed into model client constructor / IModelConfig
    → client.buildRequestPayload() reads this.parallelToolCalls
-   → emitted in request body
+   → emitted in request body (all OpenAI-compatible clients)
 ```
 
-The exact threading mirrors how other tool-config values already reach clients (audit `IModelConfig` for the existing pattern; reuse it rather than inventing a new path).
+No allowlist resolution step. The global flag value flows directly to every OpenAI-compatible client. Gemini already emits the unified parallel format natively and needs no flag. The exact threading mirrors how other tool-config values already reach clients (audit `IModelConfig` for the existing pattern; reuse it rather than inventing a new path).
 
 ### Why no orchestrator / StreamingToolExecutor work
 
@@ -141,16 +144,15 @@ All line numbers against `agent-improvements` as of the branch this work starts 
 
 2. **`src/config/types.ts`** — add `parallelToolCalls?: boolean` to the tools config interface.
 3. **`src/config/defaults.ts`** (`DEFAULT_TOOLS_CONFIG`) — add `parallelToolCalls: false`.
-4. **`src/core/models/ModelClientFactory.ts`** — resolve effective value: `globalFlag && providerInAllowlist`. Pass into client construction.
-5. **`src/core/models/client/ModelClient.ts`** (abstract base) — add a `protected readonly parallelToolCalls: boolean` field set from config, so subclasses read one place.
+4. **`src/core/models/client/ModelClient.ts`** (abstract base) — add a `protected readonly parallelToolCalls: boolean` field set from the config value, so subclasses read one place. No allowlist resolution — the global flag flows straight through.
 
 ### Clients
 
-6. **`src/core/models/client/OpenAIResponsesClient.ts:436`** — `false` → `this.parallelToolCalls`.
-7. **`src/core/models/client/OpenAIChatCompletionClient.ts:819`** — `requestParams.parallel_tool_calls = this.parallelToolCalls;`
-8. **`src/core/models/client/FireworksClient.ts:53`** — `false` → `this.parallelToolCalls` (resolves to `false` unless config + allowlist say otherwise).
-9. **`src/core/models/client/GroqClient.ts:51`** — `false` → `this.parallelToolCalls`.
-10. `TogetherChatCompletionClient` / `FireworksChatCompletionClient` — no direct edit; inherit from `OpenAIChatCompletionClient`. Verify the inherited value resolves correctly.
+5. **`src/core/models/client/OpenAIResponsesClient.ts:436`** — `false` → `this.parallelToolCalls`.
+6. **`src/core/models/client/OpenAIChatCompletionClient.ts:819`** — `requestParams.parallel_tool_calls = this.parallelToolCalls;`
+7. **`src/core/models/client/FireworksClient.ts:53`** — `false` → `this.parallelToolCalls`.
+8. **`src/core/models/client/GroqClient.ts:51`** — `false` → `this.parallelToolCalls`.
+9. `TogetherChatCompletionClient` / `FireworksChatCompletionClient` — no direct edit; inherit from `OpenAIChatCompletionClient`. Verify the inherited value resolves correctly.
 
 ### No TurnManager change
 
@@ -168,9 +170,12 @@ All line numbers against `agent-improvements` as of the branch this work starts 
 
 - `src/core/models/__tests__/parallelToolCalls.config.test.ts`:
   - Default config → request payload has `parallel_tool_calls: false`.
-  - `parallelToolCalls: true` + OpenAI provider → payload has `true`.
-  - `parallelToolCalls: true` + Fireworks (not in allowlist) → payload still `false`.
-  - `parallelToolCalls: true` + Groq (in allowlist) → payload `true`.
+  - `parallelToolCalls: true` + OpenAI → payload `true`.
+  - `parallelToolCalls: true` + xAI → payload `true`.
+  - `parallelToolCalls: true` + Groq → payload `true`.
+  - `parallelToolCalls: true` + Fireworks → payload `true`.
+  - `parallelToolCalls: true` + Together (inherits OpenAIChatCompletionClient) → payload `true`.
+  - `parallelToolCalls: false` (explicit) → payload `false` for every client.
 - `src/core/__tests__/TurnManager.parallelTools.integration.test.ts`:
   - Mock a model stream that emits ONE `message` item with 3 `tool_calls` (2 safe reads + 1 unsafe write).
   - Assert the orchestrator path (`TurnManager.ts:633`) is taken.
@@ -203,7 +208,7 @@ If #1 confirms unified-item for all OpenAI-compatible providers, the migration p
 
 - **Model emits dependent tools in parallel.** Low. Models are trained to serialize dependent calls; claudy relies on this at scale. The orchestrator's concurrency profiles are the backstop — a write tool is never classified safe, so it can't run concurrently with anything.
 - **A provider streams N separate `function_call` items instead of a unified message.** Medium. This is exactly what pre-implementation verification #1 exists to catch. If found, that provider needs a small buffer-at-stream-end addition to the legacy path. Scoped, not architectural.
-- **"Unclear" providers (Fireworks/Together/Moonshot) silently break on `parallel_tool_calls`.** Low — the allowlist gate keeps them at `false` by default even when the global flag is on.
+- **A specific (weak) model emits poor-quality parallel calls.** Low. This is a model-quality concern, not API support — all targeted providers accept and honor the parameter (verified 2026-05-14, see Validation Notes). Track 02's concurrency profiles backstop it: write/mutating tools are never classified safe, so they serialize regardless of model output. A per-provider config override remains available for a deployment that hits a pathological model, but isn't gated by default.
 - **Behavior change surprises existing users.** Low — defaults to `false`. Opt-in. Default-on is a separate, later decision once the main providers are validated.
 - **Approval UX with parallel tools.** Medium. When N tools run concurrently, each independently fires PreToolUse/PostToolUse hooks and approval (`TurnManager` ~732-795) — N approval prompts, not one batched prompt. Acceptable for v1 (functionally correct, just not pretty). Batched-approval UI is explicitly deferred (matches old design's Phase 3).
 - **Cancellation mid-batch.** Medium. `TurnManager` cancel is a flag check, not an `AbortController`; in-flight batch workers finish before the cancelled flag is observed. Pre-existing behavior (Track 02 didn't change it); not made worse here. Out of scope to fix.
@@ -253,9 +258,17 @@ Two parallel deep-audit probes (claudy streaming-tool pipeline; BrowserX model-c
 
 1. **Don't rebuild the orchestrator.** Track 02 shipped it. This track is plumbing only.
 2. **Don't build StreamingToolExecutor in v1.** No early-arrival to exploit with buffering clients; cost/benefit doesn't justify it. Deferred with explicit revisit criteria.
-3. **Config-driven flag, default `false`, allowlist-gated per provider.** Dark launch; deliberate enablement.
+3. **Config-driven flag, default `false`, NO allowlist.** Dark launch; deliberate enablement. The earlier allowlist (gating Fireworks/Together/Moonshot off) was based on a stale "unclear" label from the 2026-04-07 design and is removed — 2026-05-14 web research confirms all targeted OpenAI-compatible providers support `parallel_tool_calls`.
 4. **No `TurnManager` change.** The existing Track 02 path catches the flipped-flag output. Prove via integration test, don't modify.
 5. **Pre-implementation verification gates the estimate.** If any provider streams N separate `function_call` items, that provider needs a small buffer-at-end addition — scoped, ~40 LOC, one provider.
+
+### Provider support verification (2026-05-14 web research)
+
+- **Fireworks** — [docs.fireworks.ai/guides/function-calling](https://docs.fireworks.ai/guides/function-calling): OpenAI-API-compatible function calling; FireFunction-v2 explicitly "optimized for... parallel function calling" (92.1% multi-tool accuracy).
+- **Together** — [docs.together.ai/docs/function-calling](https://docs.together.ai/docs/function-calling): models "perform multiple function calls together (aka parallel function calling) by default."
+- **Moonshot/Kimi** — [platform.moonshot.ai/docs/api/tool-use](https://platform.moonshot.ai/docs/api/tool-use): explicitly documents the `parallel_tool_calls` parameter; "supports parallel tool calls, with the model able to return multiple tool_calls at once." Kimi dropped legacy `function_call` entirely and emits only the unified `tool_calls[]` array — directly compatible with Track 02's orchestrator input.
+- **OpenAI / xAI / Groq** — `parallel_tool_calls` is the upstream OpenAI Chat Completions / Responses parameter; default `true` when unset. All accept and honor it.
+- Conclusion: no "unclear" tier; no allowlist needed.
 
 ### Sources
 
