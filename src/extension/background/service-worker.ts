@@ -87,6 +87,11 @@ let skillRegistry: SkillRegistry | null = null; // Agent skills
 // hooks/agents binding is a documented follow-up needing an
 // AgentRegistry.onAgentCreated hook on the extension path).
 let pluginRegistry: import('@/core/plugins/PluginRegistry').PluginRegistry | null = null;
+// Track 10: IDB provider's virtual-path resolvers, for per-session binding.
+let pluginFsResolvers: {
+  readFile: (p: string) => Promise<string | null>;
+  listDirs: (p: string) => Promise<string[]>;
+} | null = null;
 let isInitialized = false;
 let initializationPromise: Promise<void> | null = null;
 
@@ -232,7 +237,31 @@ async function doInitialize(): Promise<void> {
   // Load max concurrent sessions from user preferences
   const config = agentConfig!.getConfig();
   const maxConcurrentSessions = config.preferences?.maxConcurrentSessions ?? DEFAULT_MAX_CONCURRENT;
-  registry = AgentRegistry.getInstance({ maxConcurrent: maxConcurrentSessions });
+  registry = AgentRegistry.getInstance({
+    maxConcurrent: maxConcurrentSessions,
+    // Track 10: bind enabled plugins' hooks + sub-agent types to each new
+    // session. Reads module-level pluginRegistry/resolvers lazily — they're
+    // set by initializePlugins() before real sessions are created.
+    onAgentCreated: async (agent, { subAgentRunner }) => {
+      if (!pluginRegistry || !pluginFsResolvers || !subAgentRunner) return;
+      try {
+        const { PluginSessionBinder } = await import('@/core/plugins/PluginSessionBinder');
+        const binder = new PluginSessionBinder({
+          hookRegistry: agent.getHookRegistry(),
+          subAgentRunner,
+          readFile: pluginFsResolvers.readFile,
+          listDirs: pluginFsResolvers.listDirs,
+        });
+        const enabled = pluginRegistry
+          .getPlugins()
+          .filter((p) => p.state.status === 'enabled');
+        await binder.applyEnabledPlugins(enabled);
+        pluginRegistry.registerSessionBinder(binder);
+      } catch (e) {
+        console.warn('[ServiceWorker] plugin session bind failed (non-fatal):', e);
+      }
+    },
+  });
   registry.initialize(agentConfig!);
 
   // Initialize IndexedDB storage adapter early — shared by session persistence and TokenUsageStore.
@@ -1047,6 +1076,7 @@ async function initializePlugins(): Promise<void> {
     await storageProvider.initialize();
     const provider = new IndexedDBPluginProvider(storageProvider);
     await provider.initialize();
+    pluginFsResolvers = { readFile: provider.readFile, listDirs: provider.listDirs };
 
     const agentConfig = await AgentConfig.getInstance();
 
