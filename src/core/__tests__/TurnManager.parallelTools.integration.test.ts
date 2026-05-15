@@ -25,7 +25,9 @@ describe('TurnManager — Track 11 buffered function_call orchestration', () => 
       // no firePostTurnHooks → post-turn hook block is skipped
     };
     turnContext = {
-      getToolsConfig: vi.fn().mockReturnValue({}),
+      // Track 11 buffering is gated on this flag; the stream-loop tests
+      // below exercise the buffered path, so enable it here.
+      getToolsConfig: vi.fn().mockReturnValue({ parallelToolCalls: true }),
       getModelClient: vi.fn(),
       getModel: vi.fn().mockReturnValue('gpt-4'),
       getSessionId: vi.fn().mockReturnValue('test-session'),
@@ -174,6 +176,35 @@ describe('TurnManager — Track 11 buffered function_call orchestration', () => 
     ).rejects.toThrow('stream closed before response.completed');
 
     expect(execSpy).not.toHaveBeenCalled();
+  });
+
+  it('stream loop: with the flag OFF, function_call executes immediately (default path unchanged)', async () => {
+    // Gemini review fix: default (flag-off) path must not buffer. A stream
+    // that ends before Completed should still have executed the tool
+    // immediately via handleResponseItem (the original behavior), in
+    // contrast to the flag-on all-or-nothing case above.
+    turnContext.getToolsConfig.mockReturnValue({ parallelToolCalls: false });
+
+    async function* stream() {
+      yield {
+        type: 'OutputItemDone',
+        item: { type: 'function_call', name: 'read_a', arguments: '{}', call_id: 'a' },
+      };
+      // No Completed.
+    }
+    turnContext.getModelClient.mockReturnValue({ stream: vi.fn(async () => stream()) });
+
+    const execSpy = vi
+      .spyOn(turnManager as any, 'executeToolCall')
+      .mockResolvedValue({ type: 'function_call_output', call_id: 'a', output: 'immediate' });
+
+    await expect(
+      (turnManager as any).tryRunTurn({ input: [], tools: [] }),
+    ).rejects.toThrow('stream closed before response.completed');
+
+    // Flag off → immediate execution path → tool ran even though the
+    // stream never reached Completed.
+    expect(execSpy).toHaveBeenCalledTimes(1);
   });
 
   it('wraps a thrown tool error in a function_call_output envelope', async () => {

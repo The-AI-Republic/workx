@@ -226,6 +226,14 @@ export class TurnManager {
     const processedItems: ProcessedResponseItem[] = [];
     let totalTokenUsage: TokenUsage | undefined;
 
+    // Track 11: only buffer/orchestrate when the feature is enabled. With
+    // the flag off (default) the model is told not to parallelize, so there
+    // is never more than one function_call — buffering would only add the
+    // interrupt-before-Completed behavior change for zero benefit. Keep the
+    // original immediate-execution path byte-for-byte in the default case.
+    const parallelToolCallsEnabled =
+      this.turnContext.getToolsConfig?.()?.parallelToolCalls === true;
+
     // Track 11: OpenAI Responses API / xAI emit N separate `function_call`
     // output items for parallel tool calls (Chat Completions providers
     // accumulate into one `message` item — handled by the orchestrator path
@@ -268,13 +276,13 @@ export class TurnManager {
               event.item.modelKey = this.turnContext.getSelectedModelKey();
             }
 
-            // Track 11: defer legacy `function_call` items so a parallel
-            // batch runs through the concurrency orchestrator at `Completed`
-            // rather than executing each one sequentially here. Non-tool
-            // items (message/reasoning/web_search) keep immediate handling.
-            // Push a placeholder now to lock the stream position; its
-            // `response` is filled when the buffer flushes at `Completed`.
-            if (event.item?.type === 'function_call') {
+            // Track 11: when enabled, defer legacy `function_call` items so a
+            // parallel batch runs through the concurrency orchestrator at
+            // `Completed` rather than executing each one sequentially here.
+            // Non-tool items (message/reasoning/web_search) keep immediate
+            // handling. Push a placeholder now to lock the stream position;
+            // its `response` is filled when the buffer flushes at `Completed`.
+            if (parallelToolCallsEnabled && event.item?.type === 'function_call') {
               const entry: ProcessedResponseItem = { item: event.item };
               processedItems.push(entry);
               bufferedToolCalls.push(event.item);
