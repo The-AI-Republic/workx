@@ -4,6 +4,7 @@
  */
 
 import type { IApprovalConfig } from '../core/approval/types';
+import type { AgentMode } from '../prompts/PromptComposer';
 
 /**
  * Main centralized configuration interface for the agent (RUNTIME)
@@ -311,6 +312,15 @@ export interface IUserPreferences {
    * User's preferred language code (e.g., 'en', 'es', 'zh')
    */
   language?: string;
+  /**
+   * Default agent persona mode for NEW conversations (Apple Pi only).
+   * - 'general': desktop automation agent (existing behavior)
+   * - 'code': professional software engineering agent
+   * This only seeds new sessions. The ACTIVE mode is per-session and changed
+   * at runtime via SetSessionMode; it is not stored here. Ignored by browserx.
+   * Default: 'general'.
+   */
+  defaultMode?: AgentMode;
   /**
    * Whether agent long-term memory is enabled (desktop/server only)
    * - When true: Agent remembers facts across conversations via file-based markdown storage

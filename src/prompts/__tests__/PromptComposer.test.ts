@@ -54,6 +54,44 @@ describe('PromptComposer', () => {
     });
   });
 
+  describe('agent modes', () => {
+    it('defaults to general mode (no code guardrails)', () => {
+      const prompt = composer.composeMainInstruction('applepi');
+      expect(prompt).not.toContain('Software Engineering Guardrails');
+      expect(prompt).toContain('desktop automation agent');
+    });
+
+    it('code mode swaps identity + tool guidance and appends guardrails', () => {
+      const general = composer.composeMainInstruction('applepi', 'general');
+      const code = composer.composeMainInstruction('applepi', 'code');
+
+      expect(code).toContain('Code mode');
+      expect(code).toContain('Software Engineering Guardrails');
+      expect(code).toContain('dedicated file tools');
+      expect(code).not.toEqual(general);
+    });
+
+    it('code mode applies to applepi-server too', () => {
+      const code = composer.composeMainInstruction('applepi-server', 'code');
+      expect(code).toContain('Software Engineering Guardrails');
+    });
+
+    it('browserx ignores mode (always general prompt)', () => {
+      const asGeneral = composer.composeMainInstruction('browserx', 'general');
+      const asCode = composer.composeMainInstruction('browserx', 'code');
+      expect(asCode).toEqual(asGeneral);
+      expect(asCode).not.toContain('Software Engineering Guardrails');
+    });
+
+    it('shared fragments are present in every mode', () => {
+      for (const mode of ['general', 'code'] as const) {
+        const prompt = composer.composeMainInstruction('applepi', mode);
+        expect(prompt).toContain('Action Approval System'); // approval_policies
+        expect(prompt.length).toBeGreaterThan(0);
+      }
+    });
+  });
+
   describe('composeCompactPrompt', () => {
     it('should return compact summarization prompt', () => {
       const prompt = composer.composeCompactPrompt();

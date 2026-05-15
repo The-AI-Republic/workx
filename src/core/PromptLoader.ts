@@ -15,7 +15,7 @@
 import defaultPiExtensionPrompt from '../prompts/default_browserx_agent_prompt.md?raw';
 import defaultPiPrompt from '../prompts/default_applepi_agent_prompt.md?raw';
 import userInstructions from '../prompts/user_instruction.md?raw';
-import { PromptComposer, type AgentType, type RuntimeContext } from '../prompts/PromptComposer';
+import { PromptComposer, type AgentType, type AgentMode, type RuntimeContext, DEFAULT_MODE } from '../prompts/PromptComposer';
 
 // Module-level singleton — configured once, used on every loadPrompt() call
 let composer: PromptComposer | null = null;
@@ -74,15 +74,19 @@ export function unregisterPromptExtension(name: string): void {
  * If not configured: returns the default bundled prompt (fallback).
  *
  * Called on every user message submission — safe to call repeatedly.
+ *
+ * `mode` is per-session (owned by Session/TurnContext) and passed in by the
+ * caller — it is NOT module-global state, so concurrent sessions in different
+ * modes compose correctly.
  */
-export async function loadPrompt(): Promise<string> {
+export async function loadPrompt(mode: AgentMode = DEFAULT_MODE): Promise<string> {
   if (composer) {
     try {
       const context: RuntimeContext = {
         ...staticContext,
         currentDateTime: new Date().toISOString(),
       };
-      const prompt = composer.composeMainInstruction(configuredAgentType, context);
+      const prompt = composer.composeMainInstruction(configuredAgentType, mode, context);
       return appendExtensions(prompt);
     } catch (error) {
       console.error('[PromptLoader] composeMainInstruction failed, falling back to default prompt:', error);

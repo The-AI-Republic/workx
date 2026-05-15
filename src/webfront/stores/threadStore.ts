@@ -9,6 +9,7 @@
 
 import { writable, derived, get, type Writable } from 'svelte/store';
 import { getConfigStorage, isConfigStorageInitialized } from '@/core/storage/ConfigStorageProvider';
+import type { AgentMode } from '@/prompts/PromptComposer';
 
 /**
  * Sidepanel thread representation
@@ -21,6 +22,18 @@ export interface SidePanelThread {
   title: string;
   /** Creation timestamp for ordering */
   createdAt: number;
+  /**
+   * Active agent persona mode for this session. Undefined = not yet known
+   * (treat as the default mode). Committed only from a backend ModeChanged
+   * event — never optimistically.
+   */
+  mode?: AgentMode;
+  /**
+   * A mode the user requested that is awaiting application (the session had a
+   * task in flight). Drives the "switching after current task…" UI. Cleared
+   * when the backend confirms the switch applied.
+   */
+  pendingMode?: AgentMode | null;
 }
 
 /**
@@ -125,6 +138,40 @@ function createThreadStore() {
       update((state) => ({
         ...state,
         threads: state.threads.map((t) => (t.sessionId === sessionId ? { ...t, title } : t)),
+      }));
+
+      persistThreads();
+    },
+
+    /**
+     * Commit a thread's active mode (from a backend ModeChanged event).
+     * Also clears any pendingMode since the switch has now settled.
+     * @param sessionId The session ID of the thread
+     * @param mode The applied agent mode
+     */
+    setThreadMode: (sessionId: string, mode: AgentMode): void => {
+      update((state) => ({
+        ...state,
+        threads: state.threads.map((t) =>
+          t.sessionId === sessionId ? { ...t, mode, pendingMode: null } : t
+        ),
+      }));
+
+      persistThreads();
+    },
+
+    /**
+     * Set (or clear) a thread's pending mode — the user requested a switch but
+     * a task is in flight. Pass null to clear.
+     * @param sessionId The session ID of the thread
+     * @param mode The requested mode, or null to clear
+     */
+    setThreadPendingMode: (sessionId: string, mode: AgentMode | null): void => {
+      update((state) => ({
+        ...state,
+        threads: state.threads.map((t) =>
+          t.sessionId === sessionId ? { ...t, pendingMode: mode } : t
+        ),
       }));
 
       persistThreads();

@@ -4,6 +4,7 @@
 
 import type { IAgentConfig, IUserPreferences, ICacheSettings, IExtensionSettings, IPermissionSettings, IToolsConfig, IStorageConfig, IStoredConfig, IProviderConfig } from './types';
 import { DEFAULT_APPROVAL_CONFIG } from '../core/approval/types';
+import { DEFAULT_MODE } from '../prompts/PromptComposer';
 import defaultProviders from '../core/models/providers/default.json';
 
 export const DEFAULT_USER_PREFERENCES: IUserPreferences = {
@@ -17,6 +18,7 @@ export const DEFAULT_USER_PREFERENCES: IUserPreferences = {
   experimental: {},
   memoryEnabled: false,
   memoryUseOwnApiKey: true,
+  defaultMode: DEFAULT_MODE,
 };
 
 export const DEFAULT_CACHE_SETTINGS: ICacheSettings = {

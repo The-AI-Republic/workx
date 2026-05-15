@@ -11,15 +11,85 @@
 import browserxIntro from './fragments/browserx_intro.md?raw';
 import piIntro from './fragments/applepi_intro.md?raw';
 import piServerIntro from './fragments/applepi_server_intro.md?raw';
+import coderIntro from './fragments/coder_intro.md?raw';
 import safety from './fragments/safety.md?raw';
 import browserxTools from './fragments/browserx_tools.md?raw';
 import piTools from './fragments/pi_tools.md?raw';
+import coderTools from './fragments/coder_tools.md?raw';
+import codeGuardrails from './fragments/code_guardrails.md?raw';
 import taskPolicies from './fragments/task_execution_policies.md?raw';
 import approvalPolicies from './fragments/approval_policies.md?raw';
 import compactSummarization from './fragments/compact_summarization.md?raw';
 import compactSummaryPrefix from './fragments/compact_summary_prefix.md?raw';
 
 export type AgentType = 'browserx' | 'applepi' | 'applepi-server';
+
+/**
+ * Agent persona mode. Orthogonal to AgentType.
+ *
+ * Adding a mode is additive: extend this union, add a MODES entry, and add
+ * fragment manifest rows owned by the new mode. No composer logic changes.
+ */
+export type AgentMode = 'general' | 'code';
+
+export const DEFAULT_MODE: AgentMode = 'general';
+
+export interface AgentModeSpec {
+  id: AgentMode;
+  /** Display label for UI selectors */
+  label: string;
+  /**
+   * Platforms that offer this mode. Omitted = all non-browserx platforms.
+   * Browserx never exposes modes (composer forces 'general' for it).
+   */
+  agentTypes?: AgentType[];
+}
+
+/**
+ * Mode registry. The single source of truth for which modes exist and how
+ * they are labelled. UI selectors and slash commands render from this.
+ */
+export const MODES: Record<AgentMode, AgentModeSpec> = {
+  general: { id: 'general', label: 'General' },
+  code: { id: 'code', label: 'Code', agentTypes: ['applepi', 'applepi-server'] },
+};
+
+/**
+ * One composable prompt fragment.
+ * - `modes` omitted  → shared/universal (included in every mode)
+ * - `agentTypes` omitted → applies to every platform
+ * - `body.kind === 'runtime'` → generated at compose time, not a static file
+ */
+interface FragmentSpec {
+  id: string;
+  /** Composition order (ascending). */
+  order: number;
+  agentTypes?: AgentType[];
+  modes?: AgentMode[];
+  body: { kind: 'static'; content: string } | { kind: 'runtime' };
+}
+
+const FRAGMENTS: FragmentSpec[] = [
+  // 1. Identity intro
+  { id: 'intro', order: 10, agentTypes: ['browserx'], modes: ['general'], body: { kind: 'static', content: browserxIntro } },
+  { id: 'intro', order: 10, agentTypes: ['applepi'], modes: ['general'], body: { kind: 'static', content: piIntro } },
+  { id: 'intro', order: 10, agentTypes: ['applepi-server'], modes: ['general'], body: { kind: 'static', content: piServerIntro } },
+  { id: 'intro', order: 10, agentTypes: ['applepi', 'applepi-server'], modes: ['code'], body: { kind: 'static', content: coderIntro } },
+  // 2. Runtime metadata (generated)
+  { id: 'runtime', order: 20, body: { kind: 'runtime' } },
+  // 3. Safety (shared)
+  { id: 'safety', order: 30, body: { kind: 'static', content: safety } },
+  // 4. Tool guidance
+  { id: 'tools', order: 40, agentTypes: ['browserx'], modes: ['general'], body: { kind: 'static', content: browserxTools } },
+  { id: 'tools', order: 40, agentTypes: ['applepi', 'applepi-server'], modes: ['general'], body: { kind: 'static', content: piTools } },
+  { id: 'tools', order: 40, agentTypes: ['applepi', 'applepi-server'], modes: ['code'], body: { kind: 'static', content: coderTools } },
+  // 5. Task execution policies (shared)
+  { id: 'task_policy', order: 50, body: { kind: 'static', content: taskPolicies } },
+  // 6. Approval policies (shared)
+  { id: 'approval', order: 60, body: { kind: 'static', content: approvalPolicies } },
+  // 7. Mode-specific appends
+  { id: 'guardrails', order: 70, modes: ['code'], body: { kind: 'static', content: codeGuardrails } },
+];
 
 export interface RuntimeContext {
   /** Operating system: 'linux' | 'macos' | 'windows' */
@@ -44,40 +114,31 @@ export interface RuntimeContext {
 
 export class PromptComposer {
   /**
-   * Compose the main agent system prompt.
+   * Compose the main agent system prompt for an (agentType, mode) pair.
    *
-   * Assembled sections:
-   * 1. Self-intro + core directive + capabilities (agent-specific)
-   * 2. Runtime metadata (injected fresh each call)
-   * 3. Safety guidance (shared)
-   * 4. Tool guidance + operation strategy (agent-specific, static for MVP)
-   * 5. Task execution policies (shared)
+   * Assembly is driven by the FRAGMENTS manifest: each fragment declares the
+   * platforms and modes it belongs to. Browserx never exposes modes — its
+   * `mode` is forced to 'general' regardless of the argument.
+   *
+   * Slot order: identity → runtime metadata → safety → tool guidance →
+   * task policies → approval policies → mode-specific appends.
    */
-  composeMainInstruction(agentType: AgentType, context?: RuntimeContext): string {
-    const sections: string[] = [];
+  composeMainInstruction(
+    agentType: AgentType,
+    mode: AgentMode = DEFAULT_MODE,
+    context?: RuntimeContext
+  ): string {
+    const effectiveMode: AgentMode = agentType === 'browserx' ? 'general' : mode;
 
-    // 1. Agent identity & mission
-    const intro = agentType === 'browserx'
-      ? browserxIntro
-      : agentType === 'applepi-server'
-        ? piServerIntro
-        : piIntro;
-    sections.push(intro);
-
-    // 2. Runtime metadata
-    sections.push(this.buildRuntimeMetadata(agentType, context));
-
-    // 3. Safety & ethics
-    sections.push(safety);
-
-    // 4. Tool guidance (static listing for MVP)
-    sections.push(agentType === 'browserx' ? browserxTools : piTools);
-
-    // 5. Task execution policies
-    sections.push(taskPolicies);
-
-    // 6. Approval policies
-    sections.push(approvalPolicies);
+    const sections = FRAGMENTS
+      .filter((f) => !f.agentTypes || f.agentTypes.includes(agentType))
+      .filter((f) => !f.modes || f.modes.includes(effectiveMode))
+      .sort((a, b) => a.order - b.order)
+      .map((f) =>
+        f.body.kind === 'runtime'
+          ? this.buildRuntimeMetadata(agentType, context)
+          : f.body.content
+      );
 
     return sections.filter(Boolean).join('\n\n');
   }

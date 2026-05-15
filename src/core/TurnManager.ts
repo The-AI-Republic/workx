@@ -128,7 +128,7 @@ export class TurnManager {
     // Falls back to the value cached on TurnContext if reload throws.
     let baseInstructions: string | undefined;
     try {
-      baseInstructions = await loadPrompt();
+      baseInstructions = await loadPrompt(this.turnContext.getAgentMode());
     } catch (err) {
       console.warn('[TurnManager] loadPrompt() failed, reusing cached base instructions:', err);
       baseInstructions = this.turnContext.getBaseInstructions();
@@ -497,7 +497,7 @@ export class TurnManager {
     const messages: any[] = [];
 
     // Load and add the agent prompt as system message
-    const systemPrompt = await loadPrompt();
+    const systemPrompt = await loadPrompt(this.turnContext.getAgentMode());
     messages.push({ role: 'system', content: systemPrompt });
 
     // Add user instructions (development guidelines from user_instruction.md)

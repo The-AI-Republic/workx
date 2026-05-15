@@ -140,6 +140,20 @@ export const SECTIONS: Record<string, Section> = {
           alias: 'general.language',
         },
       }),
+      // Default persona mode for NEW conversations (Apple Pi only). The active
+      // per-session mode is changed at runtime via SetSessionMode, not here.
+      // When adding a mode, extend this enum and AgentMode in PromptComposer.
+      defaultMode: configField(z.enum(['general', 'code']).default('general'), {
+        llm_access: {
+          read: true,
+          write: true,
+          label: 'Default Mode',
+          description:
+            'Default agent persona for new conversations: general (desktop automation) or code (software engineering)',
+          category: 'general',
+          alias: 'general.defaultMode',
+        },
+      }),
       // Plain fields — no LLM access
       autoSync: configField(z.boolean().default(true)),
       telemetryEnabled: configField(z.boolean().default(false)),

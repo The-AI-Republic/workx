@@ -2,6 +2,8 @@
  * Core protocol types
  */
 
+import type { AgentMode } from '../../prompts/PromptComposer';
+
 // Constants from protocol
 export const USER_INSTRUCTIONS_OPEN_TAG = '<user_instructions>';
 export const USER_INSTRUCTIONS_CLOSE_TAG = '</user_instructions>';
@@ -101,6 +103,11 @@ export type Op =
   | { type: 'ListCustomPrompts' }
   | { type: 'Compact' }
   | { type: 'ManualCompact' } // Manual compaction trigger from UI
+  | {
+    type: 'SetSessionMode';
+    /** Target agent persona mode for this session (per-session, hot-switch) */
+    mode: AgentMode;
+  }
   | {
     type: 'Review';
     review_request: ReviewRequest;

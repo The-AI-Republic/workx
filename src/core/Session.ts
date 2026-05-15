@@ -12,6 +12,7 @@ import type { EventMsg } from './protocol/events';
 import { RolloutRecorder, type RolloutItem } from '../storage/rollout';
 import { v4 as uuidv4 } from 'uuid';
 import { TurnContext } from './TurnContext';
+import { type AgentMode, DEFAULT_MODE } from '../prompts/PromptComposer';
 import { AgentConfig } from '../config/AgentConfig';
 import type { SessionTask } from './tasks/SessionTask';
 import type { ToolRegistry } from '../tools/ToolRegistry';
@@ -72,6 +73,10 @@ export class Session {
   // Title generation stage: 0 = not started, 1 = generated at 2 messages, 2 = generated at 5 messages (final)
   private titleGenerationStage: number = 0;
   private initializationPromise: Promise<void> | null = null;
+  // Active agent persona mode. Source of truth for this session; seeded from
+  // preferences.defaultMode at construction, changed at runtime via
+  // RepublicAgent.setSessionMode. Distinct from initialHistory.mode.
+  private agentMode: AgentMode = DEFAULT_MODE;
 
   constructor(
     configOrIsPersistent?: AgentConfig | boolean,
@@ -101,6 +106,11 @@ export class Session {
       this.isPersistent = isPersistent ?? true;
     }
 
+    // Seed the persona mode from the global default. New sessions (including
+    // scheduled-job sessions) capture the default at creation time; the active
+    // mode then lives on the session and is changed via SetSessionMode.
+    this.agentMode = this.config?.getConfig().preferences?.defaultMode ?? DEFAULT_MODE;
+
     // Initialize session state
     this.sessionState = new SessionState(); // Pure data state
     this.toolRegistry = toolRegistry ?? null; // Tool registry from RepublicAgent
@@ -128,6 +138,7 @@ export class Session {
     } as any;
     this.turnContext = new TurnContext(dummyClient, {
       sessionId: this.sessionId,
+      agentMode: this.agentMode,
       approvalPolicy: 'on-request',
       sandboxPolicy: { mode: 'workspace-write' },
     });
@@ -741,6 +752,22 @@ export class Session {
    */
   getId(): string {
     return this.sessionId;
+  }
+
+  /**
+   * Get the active agent persona mode for this session.
+   */
+  getAgentMode(): AgentMode {
+    return this.agentMode;
+  }
+
+  /**
+   * Set the active agent persona mode for this session.
+   * RepublicAgent owns recomposing the prompt after this; Session only
+   * holds the value as the per-session source of truth.
+   */
+  setAgentMode(mode: AgentMode): void {
+    this.agentMode = mode;
   }
 
   /**
