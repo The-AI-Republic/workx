@@ -59,6 +59,54 @@ export {
   sensitiveContentPlaceholder,
 } from './userConfigSubstitution';
 
+export {
+  resolveDependencyClosure,
+  marketplaceOf,
+  nameOf,
+  qualifyDependency,
+} from './dependencyResolver';
+export type {
+  DependencyLookup,
+  DependencyResolution,
+  DependencyLookupResult,
+} from './dependencyResolver';
+export {
+  InstalledPluginsStore,
+  InstalledPluginEntrySchema,
+  InstalledPluginsFileV2Schema,
+  emptyInstalledPluginsFile,
+} from './installedPlugins';
+export type {
+  InstalledPluginEntry,
+  InstalledPluginsFileV2,
+  InstalledPluginScope,
+  InstalledPluginsStoreDeps,
+} from './installedPlugins';
+export { MarketplaceSchema, MarketplaceEntrySchema, PluginSourceSchema } from './MarketplaceSchema';
+export type { Marketplace, MarketplaceEntry } from './MarketplaceSchema';
+export { MarketplaceRegistry } from './MarketplaceRegistry';
+export type { MarketplaceRegistryDeps } from './MarketplaceRegistry';
+export { PluginCache, BROWSERX_PLUGIN_ORPHAN_TTL_MS } from './PluginCache';
+export type { PluginCacheFsDeps } from './PluginCache';
+export {
+  gitClone,
+  buildCloneArgs,
+  buildPullArgs,
+  gitErrorHint,
+  redactUrlCredentials,
+  gitTimeoutMs,
+  GIT_NO_PROMPT_ENV,
+} from './git';
+export type { GitRunner, GitRunResult, GitCloneOptions } from './git';
+export { PluginInstaller, PluginUninstaller } from './PluginInstaller';
+export type {
+  PluginInstallerDeps,
+  PluginUninstallerDeps,
+  FetchedPlugin,
+  InstallResult,
+  UninstallResult,
+} from './PluginInstaller';
+
 export { SkillSlotLoader } from './loaders/SkillSlotLoader';
 export type { SkillSlotLoaderDeps, FileReader, DirLister } from './loaders/SkillSlotLoader';
 export { HookSlotLoader } from './loaders/HookSlotLoader';

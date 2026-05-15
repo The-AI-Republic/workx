@@ -200,10 +200,91 @@ async function handlePluginCommand(rawArgs: string): Promise<void> {
         return;
       }
 
+      case 'install': {
+        if (!id) {
+          out('Plugin', 'Usage: /plugin install <id>@<marketplace>');
+          return;
+        }
+        const res = await client.serviceRequest<{
+          success: boolean;
+          error?: string;
+          installed?: string[];
+        }>('plugins.install', { id });
+        if (res?.success) {
+          const n = res.installed?.length ?? 1;
+          out(
+            'Plugin',
+            `✓ Installed ${id}${n > 1 ? ` + ${n - 1} dependency(ies)` : ''}.\n` +
+              `Run /plugin enable ${id} to activate.`,
+          );
+        } else {
+          out('Plugin', `✗ Install failed: ${res?.error ?? 'unknown'}`);
+        }
+        return;
+      }
+
+      case 'uninstall': {
+        if (!id) {
+          out('Plugin', 'Usage: /plugin uninstall <id>');
+          return;
+        }
+        const res = await client.serviceRequest<{ success: boolean; error?: string }>(
+          'plugins.uninstall',
+          { id },
+        );
+        out(
+          'Plugin',
+          res?.success
+            ? `✓ Uninstalled ${id}. Files marked for cleanup (7-day grace).`
+            : `✗ Uninstall failed: ${res?.error ?? 'unknown'}`,
+        );
+        return;
+      }
+
+      case 'marketplace':
+      case 'market': {
+        const action = parts[1];
+        const target = parts.slice(2).join(' ');
+        if (action === 'add') {
+          const res = await client.serviceRequest<{ success: boolean; name?: string; error?: string }>(
+            'plugins.marketplace.add',
+            { url: target },
+          );
+          out(
+            'Plugin',
+            res?.success
+              ? `✓ Added marketplace "${res.name}".`
+              : `✗ ${res?.error ?? 'add failed'}`,
+          );
+        } else if (action === 'remove' || action === 'rm') {
+          const res = await client.serviceRequest<{ success: boolean }>(
+            'plugins.marketplace.remove',
+            { name: target },
+          );
+          out('Plugin', res?.success ? `✓ Removed marketplace "${target}".` : `✗ Not found: ${target}`);
+        } else {
+          const rows = await client.serviceRequest<
+            Array<{ name: string; sourceRef: string; pluginCount: number }>
+          >('plugins.marketplace.list');
+          if (!rows || rows.length === 0) {
+            out('Plugin', 'No marketplaces added. /plugin marketplace add <url>');
+          } else {
+            out(
+              'Marketplaces',
+              rows
+                .map((r) => `- ${r.name} (${r.pluginCount} plugins) — ${r.sourceRef}`)
+                .join('\n'),
+            );
+          }
+        }
+        return;
+      }
+
       default:
         out(
           'Plugin',
-          `Unknown subcommand "${sub}". Usage: /plugin list | info <id> | enable <id> | disable <id> | reload`,
+          `Unknown subcommand "${sub}". Usage: /plugin list | info <id> | enable <id> | ` +
+            `disable <id> | reload | install <id>@<mkt> | uninstall <id> | marketplace add|list|remove`,
         );
     }
   } catch (e) {
