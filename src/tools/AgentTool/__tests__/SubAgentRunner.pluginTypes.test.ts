@@ -125,3 +125,46 @@ describe('SubAgentRunner — Track 10 runtime type registration', () => {
     expect(matching[0].name).toBe('Updated');
   });
 });
+
+describe('SubAgentRunner — Track 10 deferred-rebuild guard', () => {
+  function makeEngineWithActiveTasks(activeTasks: unknown[]) {
+    return {
+      engineId: 'parent-engine',
+      getToolRegistry: () => ({ getApprovalGate: () => undefined, entries: () => [] }),
+      getConfig: () => ({ model: 'gpt-4' }),
+      getSession: () => ({
+        getTurnContext: () => ({ getApprovalPolicy: () => 'on-request' }),
+        listActiveTasks: () => activeTasks,
+      }),
+      onEvent: vi.fn(() => () => undefined),
+    };
+  }
+
+  it('rebuilds eagerly when no tasks are active', async () => {
+    const runner = new SubAgentRunner({
+      parentEngine: makeEngineWithActiveTasks([]) as unknown as ConstructorParameters<typeof SubAgentRunner>[0]['parentEngine'],
+      registry: new SubAgentRegistry(),
+    });
+    const cb = vi.fn(async () => undefined);
+    runner.setTypesChangedCallback(cb);
+
+    await runner.addType(makeType('p:a'), { type: 'plugin', pluginId: 'p' });
+    expect(cb).toHaveBeenCalledTimes(1);
+  });
+
+  it('defers rebuild while a task is active; type is still added immediately', async () => {
+    const runner = new SubAgentRunner({
+      parentEngine: makeEngineWithActiveTasks([{ id: 'task-1' }]) as unknown as ConstructorParameters<typeof SubAgentRunner>[0]['parentEngine'],
+      registry: new SubAgentRegistry(),
+    });
+    const cb = vi.fn(async () => undefined);
+    runner.setTypesChangedCallback(cb);
+
+    await runner.addType(makeType('p:a'), { type: 'plugin', pluginId: 'p' });
+
+    // Type is in the map right away (run() resolves it at dispatch)
+    expect(runner.getTypes().some((t) => t.id === 'p:a')).toBe(true);
+    // ...but the LLM-visible rebuild is deferred
+    expect(cb).not.toHaveBeenCalled();
+  });
+});
