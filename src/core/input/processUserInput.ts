@@ -23,6 +23,7 @@ import type { InputItem } from '../protocol/types';
 import type { FunnelContext, ProcessedInput } from './types';
 import { classifyForOrigin, originRequiresGate } from './bridgeSafe';
 import { diskBackOversized } from './diskBacking';
+import { parseMentions, resolveMentions } from './mentions';
 
 /** Minimal slash parser (claudy parity / `parseCommandInput` logic).
  *  Inlined so `core/` never imports the `webfront/` UI command module. */
@@ -101,11 +102,18 @@ export async function processUserInput(
   const notes: string[] = [...backed.notes];
 
   // ── Stage 4 (Phase 4): `!` bash escape ────────────────────────────────
-  // ── Stage 6 (Phase 3): @tab/@page/@selection/@url mentions ────────────
-  // (Implemented in later phases — see design §4.4.)
+
+  // ── Stage 6: @tab/@page/@selection/@url mentions ──────────────────────
+  let resultItems = backed.items;
+  const mentions = parseMentions(primaryText);
+  if (mentions.length > 0) {
+    const resolved = await resolveMentions(mentions, ctx);
+    resultItems = [...resultItems, ...resolved.items];
+    notes.push(...resolved.notes);
+  }
 
   return {
-    items: backed.items,
+    items: resultItems,
     shouldQuery: true,
     systemNote: notes.length > 0 ? notes.join(' ') : undefined,
   };
