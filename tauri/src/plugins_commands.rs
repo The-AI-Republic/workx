@@ -15,13 +15,26 @@ use std::fs;
 use std::path::PathBuf;
 
 /// Expand a leading `~` to the user's home directory.
+///
+/// SECURITY (Track 10): defense-in-depth. The TS layer already jails
+/// plugin-supplied paths under the plugin root (see pluginPath.ts), but
+/// these commands accept a raw string over IPC, so independently reject
+/// any `..` (ParentDir) component here. Without this, a bug or bypass in
+/// the TS jail would let a malicious plugin read/write arbitrary files.
 fn resolve_path(path: &str) -> Result<PathBuf, String> {
-    if let Some(rest) = path.strip_prefix('~') {
+    let expanded = if let Some(rest) = path.strip_prefix('~') {
         let home = dirs::home_dir().ok_or("Cannot determine home directory")?;
-        Ok(home.join(rest.strip_prefix('/').unwrap_or(rest)))
+        home.join(rest.strip_prefix('/').unwrap_or(rest))
     } else {
-        Ok(PathBuf::from(path))
+        PathBuf::from(path)
+    };
+    if expanded
+        .components()
+        .any(|c| matches!(c, std::path::Component::ParentDir))
+    {
+        return Err(format!("path traversal ('..') not allowed: {}", path));
     }
+    Ok(expanded)
 }
 
 /// Ensure a directory (and all parents) exists.

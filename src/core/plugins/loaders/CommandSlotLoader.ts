@@ -19,6 +19,7 @@ import type { PromptCommand } from '@/core/commands/types';
 import type { LoadedPlugin, PluginError, PluginId, CommandMetadata } from '../types';
 import { substituteContent } from '../userConfigSubstitution';
 import type { FileReader, DirLister } from './SkillSlotLoader';
+import { safeJoinUnderRoot } from '../pluginPath';
 
 export interface CommandSlotLoaderDeps {
   pluginCommandLoader: PluginCommandLoader;
@@ -188,10 +189,9 @@ function basenameNoExt(name: string): string {
   return name.replace(/\.md$/i, '');
 }
 
+// SECURITY (Track 10): jail untrusted manifest command paths under root.
 function resolveRel(root: string, rel: string): string {
-  if (rel.startsWith('/')) return rel;
-  if (rel.startsWith('./')) return joinPath(root, rel.substring(2));
-  return joinPath(root, rel);
+  return safeJoinUnderRoot(root, rel);
 }
 
 function joinPath(...parts: string[]): string {

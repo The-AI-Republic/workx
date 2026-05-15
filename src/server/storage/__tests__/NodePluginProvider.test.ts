@@ -179,4 +179,22 @@ describe('NodePluginProvider + PluginRegistry (E2E-1)', () => {
     const entries = await fs.readdir(root);
     expect(entries.some((e) => e.includes('.staging-'))).toBe(false);
   });
+
+  it('SECURITY: writeFiles rejects a path-traversal entry (no escape)', async () => {
+    const root = path.join(tmpRoot, 'plugins');
+    const provider = new NodePluginProvider(root);
+    await provider.initialize();
+
+    const sentinel = path.join(tmpRoot, 'PWNED');
+    await expect(
+      provider.writeFiles('evil@local', [
+        { path: 'plugin.json', content: Buffer.from('{"name":"evil","version":"1.0.0"}') },
+        { path: '../../PWNED', content: Buffer.from('owned') },
+      ]),
+    ).rejects.toThrow(/traversal/);
+
+    // The escape target must NOT have been written.
+    const escaped = await fs.stat(sentinel).then(() => true).catch(() => false);
+    expect(escaped).toBe(false);
+  });
 });

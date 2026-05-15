@@ -22,6 +22,7 @@ import type { SubAgentTypeConfig } from '@/tools/AgentTool/types';
 import type { LoadedPlugin, PluginError, PluginId } from '../types';
 import { substituteContent } from '../userConfigSubstitution';
 import type { FileReader, DirLister } from './SkillSlotLoader';
+import { safeJoinUnderRoot } from '../pluginPath';
 
 export interface SubAgentSlotLoaderDeps {
   subAgentRunner: SubAgentRunner;
@@ -151,10 +152,9 @@ function parseIntSafe(s: string | undefined): number | undefined {
   return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
+// SECURITY (Track 10): jail untrusted manifest agent paths under root.
 function resolveRel(root: string, rel: string): string {
-  if (rel.startsWith('/')) return rel;
-  if (rel.startsWith('./')) return joinPath(root, rel.substring(2));
-  return joinPath(root, rel);
+  return safeJoinUnderRoot(root, rel);
 }
 
 function joinPath(...parts: string[]): string {
