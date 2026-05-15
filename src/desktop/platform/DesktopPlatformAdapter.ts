@@ -18,6 +18,7 @@ export class DesktopPlatformAdapter implements IPlatformAdapter {
   readonly platformId = 'desktop' as const;
   readonly hasRealTabs = false;
   readonly hasBrowserTools = true;
+  readonly hasShellExec = true; // Tauri desktop — has a shell
 
   private browserConnected = false;
   private toolRegistry: ToolRegistry | null = null;

@@ -19,6 +19,7 @@ export class ExtensionPlatformAdapter implements IPlatformAdapter {
   readonly platformId = 'extension' as const;
   readonly hasRealTabs = true;
   readonly hasBrowserTools = true;
+  readonly hasShellExec = false; // browser extension — no shell
 
   private tabManager!: TabManager;
 

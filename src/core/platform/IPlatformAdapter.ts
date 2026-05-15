@@ -69,6 +69,12 @@ export interface IPlatformAdapter {
   readonly platformId: 'extension' | 'desktop' | 'server';
   readonly hasRealTabs: boolean;
   readonly hasBrowserTools: boolean;
+  /**
+   * Track 13: whether this platform can run a user `!` shell escape. Read
+   * live by the input funnel — `false` makes `!cmd` literal text + a
+   * systemNote rather than an execution. (Extension has no shell.)
+   */
+  readonly hasShellExec: boolean;
 
   // Browser Readiness
   /**

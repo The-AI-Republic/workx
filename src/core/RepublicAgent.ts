@@ -34,6 +34,16 @@ import type { FunnelContext, InputOrigin } from './input/types';
  *  re-submitted op (defensive) is not double-funnelled. See design §7.6. */
 const FUNNELLED = Symbol('track13.funnelled');
 
+/** Track 13 — claudy parity (processUserInput.ts:272-279): cap hook output
+ *  surfaced to the user / model. */
+const MAX_HOOK_OUTPUT_LENGTH = 10000;
+function applyHookTruncation(content: string): string {
+  if (content.length > MAX_HOOK_OUTPUT_LENGTH) {
+    return `${content.substring(0, MAX_HOOK_OUTPUT_LENGTH)}… [output truncated - exceeded ${MAX_HOOK_OUTPUT_LENGTH} characters]`;
+  }
+  return content;
+}
+
 /**
  * Event dispatcher function type
  * Used to route events to UI channels without hardcoding chrome.runtime
@@ -486,7 +496,7 @@ export class RepublicAgent {
    */
   async submitOperation(
     op: Op,
-    context?: { tabId?: number; origin?: InputOrigin }
+    context?: { tabId?: number; origin?: InputOrigin; _chainDepth?: number }
   ): Promise<string> {
     const id = `sub_${this.nextId++}`;
 
@@ -532,6 +542,17 @@ export class RepublicAgent {
               const message = processed.resultText ?? processed.systemNote;
               if (message) {
                 this.emitEvent({ type: 'Error', data: { message } });
+              }
+              // Command chaining (claudy nextInput/submitNextInput). Bounded
+              // recursion via _chainDepth so a misbehaving chain can't loop.
+              if (processed.nextInput && processed.submitNextInput) {
+                const depth = (context?._chainDepth ?? 0) + 1;
+                if (depth <= 3) {
+                  await this.submitOperation(
+                    { type: 'UserInput', items: [{ type: 'text', text: processed.nextInput }] },
+                    { ...context, _chainDepth: depth }
+                  );
+                }
               }
               return id;
             }
@@ -680,13 +701,46 @@ export class RepublicAgent {
       };
       const hookResult = await this.hookDispatcher.fire('UserPromptSubmit', hookInput);
       if (!hookResult.shouldContinue) {
+        // claudy parity: a blocking hook erases the input; the user sees a
+        // warning that embeds the original prompt (processUserInput.ts:194-209).
+        const reason =
+          hookResult.stopReason ?? 'UserPromptSubmit hook blocked this input';
         this.emitEvent({
           type: 'Error',
           data: {
-            message: hookResult.stopReason ?? 'UserPromptSubmit hook blocked this input',
+            message: applyHookTruncation(
+              `${reason}\n\nOriginal prompt: ${textContent}`
+            ),
           },
         });
         return false;
+      }
+
+      // claudy parity: surface hook system messages (truncated, informational).
+      for (const sysMsg of hookResult.systemMessages ?? []) {
+        if (sysMsg && sysMsg.trim()) {
+          this.emitEvent({
+            type: 'AgentMessage',
+            data: { message: applyHookTruncation(sysMsg) },
+          });
+        }
+      }
+
+      // claudy parity: fold additionalContext in as a model-visible item
+      // (createAttachmentMessage 'hook_additional_context'). Rides alongside
+      // the prompt — the user's text item is untouched.
+      const extra = (hookResult.additionalContext ?? []).filter(
+        (c) => c && c.trim()
+      );
+      if (extra.length > 0) {
+        const joined = extra.map(applyHookTruncation).join('\n');
+        op.items = [
+          ...op.items,
+          {
+            type: 'text',
+            text: `<hook-additional-context>\n${joined}\n</hook-additional-context>`,
+          },
+        ];
       }
     }
 

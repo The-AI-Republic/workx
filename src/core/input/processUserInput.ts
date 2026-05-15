@@ -24,6 +24,7 @@ import type { FunnelContext, ProcessedInput } from './types';
 import { classifyForOrigin, originRequiresGate } from './bridgeSafe';
 import { diskBackOversized } from './diskBacking';
 import { parseMentions, resolveMentions } from './mentions';
+import { detectBashEscape, buildBashInputMarker } from './bashEscape';
 
 /** Minimal slash parser (claudy parity / `parseCommandInput` logic).
  *  Inlined so `core/` never imports the `webfront/` UI command module. */
@@ -100,11 +101,37 @@ export async function processUserInput(
   // ── Stage 2: wire-image / paste disk-backing ──────────────────────────
   const backed = await diskBackOversized(items, ctx);
   const notes: string[] = [...backed.notes];
+  let resultItems = backed.items;
 
-  // ── Stage 4 (Phase 4): `!` bash escape ────────────────────────────────
+  // ── Stage 4: `!` shell escape ─────────────────────────────────────────
+  // A bash escape is a command, not a prompt — it bypasses mention parsing.
+  const bash = detectBashEscape(primaryText);
+  if (bash) {
+    if (ctx.platform.hasShellExec) {
+      // Rewrite the primary text into the recognizable marker; the
+      // execution layer acts on it. Other items are left intact.
+      let replaced = false;
+      resultItems = resultItems.map((it) => {
+        if (!replaced && it.type === 'text' && it.text === primaryText) {
+          replaced = true;
+          return { type: 'text', text: buildBashInputMarker(bash.command) };
+        }
+        return it;
+      });
+      return {
+        items: resultItems,
+        shouldQuery: true,
+        systemNote: notes.length > 0 ? notes.join(' ') : undefined,
+      };
+    }
+    // Not shell-capable: leave `!` literal, note it, fall through as a
+    // normal prompt (so the text still reaches the model).
+    notes.push(
+      'Shell escape (`!`) is unavailable on this platform — sent as text.',
+    );
+  }
 
   // ── Stage 6: @tab/@page/@selection/@url mentions ──────────────────────
-  let resultItems = backed.items;
   const mentions = parseMentions(primaryText);
   if (mentions.length > 0) {
     const resolved = await resolveMentions(mentions, ctx);
