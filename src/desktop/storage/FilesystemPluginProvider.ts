@@ -20,6 +20,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { PluginLoader } from '@/core/plugins/PluginLoader';
 import type { IPluginProvider } from '@/core/plugins/PluginProvider';
 import { PluginManifestSchema } from '@/core/plugins/PluginManifest';
+import { assertSafeRelPath } from '@/core/plugins/pluginPath';
 import type {
   LoadedPlugin,
   PluginId,
@@ -146,8 +147,11 @@ function idToDirName(id: PluginId): string {
   return at >= 0 ? id.substring(0, at) : id;
 }
 
+// SECURITY (Track 10): install payloads are untrusted. Reject absolute
+// paths and `..` segments so an entry cannot escape the staging dir via
+// the Tauri `plugins_write_file` command.
 function normalizeRel(p: string): string {
-  return p.replace(/^\.?\//, '').replace(/\\/g, '/');
+  return assertSafeRelPath(p);
 }
 
 function join(...parts: string[]): string {
