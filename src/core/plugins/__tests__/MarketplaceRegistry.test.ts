@@ -74,6 +74,7 @@ describe('PluginCache', () => {
       removeDir: async (p: string) => {
         for (const k of [...files.keys()]) if (k.startsWith(p)) files.delete(k);
       },
+      removeFile: async (p: string) => { files.delete(p); },
       listEntries: async (p: string) => [...(dirs.get(p) ?? [])],
       pathExists: async (p: string) => files.has(p),
     };

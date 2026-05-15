@@ -163,7 +163,7 @@ describe('PluginInstaller', () => {
 });
 
 describe('PluginUninstaller', () => {
-  it('disable → settings → removeEntry → files removed on last scope', async () => {
+  it('B2: last-scope uninstall ORPHAN-MARKS the install path, does NOT hard-delete', async () => {
     const s = memStore();
     const installedStore = new InstalledPluginsStore({ ...s, filePath: '/ip.json' });
     await installedStore.addEntry('gone@local', {
@@ -172,6 +172,7 @@ describe('PluginUninstaller', () => {
     const ctx = makeRegistry();
     ctx.registry.register(loadedPlugin('gone@local'));
     const removeFiles = vi.fn(async () => undefined);
+    const markOrphaned = vi.fn(async () => undefined);
     const deleteOpts = vi.fn(async () => undefined);
     const enabled: Array<{ ids: string[]; enabled: boolean }> = [];
 
@@ -179,6 +180,7 @@ describe('PluginUninstaller', () => {
       provider: { remove: removeFiles } as never,
       installed: installedStore,
       registry: ctx.registry,
+      markOrphaned,
       setEnabled: async (ids, e) => { enabled.push({ ids, enabled: e }); },
       deletePluginOptions: deleteOpts,
     });
@@ -187,8 +189,34 @@ describe('PluginUninstaller', () => {
     expect(res).toEqual({ ok: true });
     expect(enabled).toEqual([{ ids: ['gone@local'], enabled: false }]);
     expect(await installedStore.getEntries('gone@local')).toHaveLength(0);
-    expect(removeFiles).toHaveBeenCalledWith('gone@local');
+    // CORRECTNESS: orphan-mark the captured install path; never hard-delete
+    expect(markOrphaned).toHaveBeenCalledWith('/c/gone');
+    expect(removeFiles).not.toHaveBeenCalled();
     expect(deleteOpts).toHaveBeenCalledWith('gone@local');
+  });
+
+  it('B2: non-last scope does not orphan-mark', async () => {
+    const s = memStore();
+    const installedStore = new InstalledPluginsStore({ ...s, filePath: '/ip.json' });
+    await installedStore.addEntry('multi@local', {
+      scope: 'user', version: '1', installedAt: 1, lastUpdated: 1, installPath: '/c/multi',
+    });
+    await installedStore.addEntry('multi@local', {
+      scope: 'project', version: '1', installedAt: 1, lastUpdated: 1, installPath: '/c/multi',
+    });
+    const ctx = makeRegistry();
+    ctx.registry.register(loadedPlugin('multi@local'));
+    const markOrphaned = vi.fn(async () => undefined);
+    const u = new PluginUninstaller({
+      provider: { remove: vi.fn() } as never,
+      installed: installedStore,
+      registry: ctx.registry,
+      markOrphaned,
+      setEnabled: async () => undefined,
+    });
+    await u.uninstall('multi@local', 'user');
+    expect(markOrphaned).not.toHaveBeenCalled(); // project scope remains
+    expect(await installedStore.getEntries('multi@local')).toHaveLength(1);
   });
 
   it('active-task guard refuses uninstall', async () => {

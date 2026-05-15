@@ -142,6 +142,15 @@ export interface PluginUninstallerDeps {
   installed: InstalledPluginsStore;
   registry: PluginRegistry;
   setEnabled: (ids: PluginId[], enabled: boolean) => Promise<void>;
+  /**
+   * SECURITY/CORRECTNESS (review B2): on last-scope removal we MUST NOT
+   * synchronously delete the plugin dir — a running session may still be
+   * reading it. Instead orphan-mark it; the 7-day GC sweep removes it
+   * later. Wired to `PluginCache.markOrphaned(installPath)` by the
+   * bootstrap. If absent, cleanup is deferred to the next GC pass
+   * (which will mark+grace any cache dir not in installed_plugins_v2).
+   */
+  markOrphaned?: (installPath: string) => Promise<void>;
   /** Wipe per-plugin options + secrets (Phase 10c). Optional. */
   deletePluginOptions?: (id: PluginId) => Promise<void>;
   /** Refuse if a background task uses this plugin's sub-agent types. */
@@ -161,6 +170,11 @@ export class PluginUninstaller {
     const refusal = this.deps.checkActiveTasks?.(pluginId);
     if (refusal) return { ok: false, error: refusal };
 
+    // Capture the install path for this scope BEFORE removeEntry deletes
+    // the bucket (needed to orphan-mark on last-scope removal).
+    const entries = await this.deps.installed.getEntries(pluginId);
+    const installPath = entries.find((e) => e.scope === scope)?.installPath;
+
     // disable (idempotent — no-op if not enabled)
     await this.deps.registry.disable(pluginId).catch((e) =>
       console.warn(`[PluginUninstaller] disable ${pluginId}:`, e),
@@ -173,10 +187,19 @@ export class PluginUninstaller {
     this.deps.registry.markEvicted(pluginId);
 
     if (lastScope) {
-      // last scope removed → remove files + wipe options
-      await this.deps.provider.remove(pluginId).catch((e) =>
-        console.warn(`[PluginUninstaller] remove files ${pluginId}:`, e),
-      );
+      // CORRECTNESS (review B2): orphan-mark, do NOT hard-delete — a
+      // running session may still be reading plugin files. The 7-day GC
+      // sweep removes the dir later.
+      if (this.deps.markOrphaned && installPath) {
+        await this.deps.markOrphaned(installPath).catch((e) =>
+          console.warn(`[PluginUninstaller] orphan-mark ${pluginId}:`, e),
+        );
+      } else {
+        console.log(
+          `[PluginUninstaller] ${pluginId} files left for the orphan GC ` +
+            `(no markOrphaned wired; next GC pass will mark + 7-day grace).`,
+        );
+      }
       await this.deps.deletePluginOptions?.(pluginId).catch((e) =>
         console.warn(`[PluginUninstaller] deleteOptions ${pluginId}:`, e),
       );

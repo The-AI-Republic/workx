@@ -590,10 +590,52 @@ export class ServerAgentBootstrap {
           ),
       });
 
+      // review B2/B3: uninstall must orphan-mark (not hard-delete); the
+      // 7-day GC sweep removes dirs later. Wire a PluginCache over Node fs.
+      const { PluginCache } = await import('@/core/plugins/PluginCache');
+      const fsmod = await import('node:fs');
+      const pluginCache = new PluginCache(
+        nodePath.join(os.homedir(), '.browserx'),
+        {
+          readText: async (p: string) => {
+            try {
+              return await fsmod.promises.readFile(p, 'utf-8');
+            } catch {
+              return null;
+            }
+          },
+          writeText: async (p: string, c: string) => {
+            await fsmod.promises.mkdir(nodePath.dirname(p), { recursive: true });
+            await fsmod.promises.writeFile(p, c, 'utf-8');
+          },
+          removeDir: nodeRemoveDir,
+          removeFile: async (p: string) => {
+            await fsmod.promises.rm(p, { force: true });
+          },
+          listEntries: async (p: string) => {
+            try {
+              return await fsmod.promises.readdir(p);
+            } catch {
+              return [];
+            }
+          },
+          pathExists: async (p: string) => {
+            try {
+              await fsmod.promises.stat(p);
+              return true;
+            } catch {
+              return false;
+            }
+          },
+        },
+      );
+
       const uninstaller = new PluginUninstaller({
         provider,
         installed: installedStore,
         registry,
+        markOrphaned: (installPath: string) =>
+          pluginCache.markOrphaned(installPath),
         setEnabled: async (ids, en) => {
           const cur = agentConfig.getConfig().enabledPlugins ?? {};
           const next = { ...cur };

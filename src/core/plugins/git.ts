@@ -31,6 +31,47 @@ export const GIT_NO_PROMPT_ENV: Record<string, string> = {
 
 const SSH_OPTS = 'core.sshCommand=ssh -o BatchMode=yes -o StrictHostKeyChecking=yes';
 
+/**
+ * SECURITY (Track 10): marketplace.json is untrusted remote content.
+ * A clone `url`/`ref` is attacker-influenced. git treats a leading `-`
+ * as an option, so `ref: "--upload-pack=touch /tmp/pwned"` is RCE.
+ * Allowed URL schemes only; reject `-`-leading url/ref; `--` separates
+ * options from positionals for the url (a `--branch <ref>` value cannot
+ * be `--`-guarded, so `ref` is rejected outright if it starts with `-`).
+ */
+const ALLOWED_URL_RE = /^(https:\/\/|git:\/\/|ssh:\/\/|git@[^-])/i;
+
+export class GitArgError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'GitArgError';
+  }
+}
+
+function assertSafeGitUrl(url: string): void {
+  if (typeof url !== 'string' || url.length === 0) {
+    throw new GitArgError('git url must be a non-empty string');
+  }
+  if (url.startsWith('-')) {
+    throw new GitArgError(`git url may not start with '-': ${url}`);
+  }
+  if (!ALLOWED_URL_RE.test(url)) {
+    throw new GitArgError(
+      `git url scheme not allowed (use https://, ssh://, git://, or git@): ${url}`,
+    );
+  }
+}
+
+function assertSafeGitRef(ref: string): void {
+  if (ref.startsWith('-')) {
+    throw new GitArgError(`git ref may not start with '-': ${ref}`);
+  }
+  // git refs cannot contain spaces, control chars, or '..'
+  if (/\s/.test(ref) || ref.includes('..')) {
+    throw new GitArgError(`invalid git ref: ${ref}`);
+  }
+}
+
 export interface GitCloneOptions {
   url: string;
   targetPath: string;
@@ -41,6 +82,8 @@ export interface GitCloneOptions {
 }
 
 export function buildCloneArgs(o: GitCloneOptions): string[] {
+  assertSafeGitUrl(o.url);
+  if (o.ref) assertSafeGitRef(o.ref);
   const args = ['-c', SSH_OPTS, 'clone', '--depth', '1'];
   if (o.sparsePaths && o.sparsePaths.length > 0) {
     args.push('--filter=blob:none', '--no-checkout');
@@ -49,11 +92,13 @@ export function buildCloneArgs(o: GitCloneOptions): string[] {
   }
   if (o.ref) args.push('--branch', o.ref);
   if (o.disableCredentialHelper) args.push('-c', 'credential.helper=');
-  args.push(o.url, o.targetPath);
+  // `--` terminates option parsing so a crafted url can't be read as a flag.
+  args.push('--', o.url, o.targetPath);
   return args;
 }
 
 export function buildPullArgs(ref?: string, disableCredentialHelper?: boolean): string[] {
+  if (ref) assertSafeGitRef(ref);
   const args = ['-c', SSH_OPTS];
   if (disableCredentialHelper) args.push('-c', 'credential.helper=');
   if (ref) {
@@ -82,9 +127,15 @@ export function gitErrorHint(stderr: string): string | null {
   return null;
 }
 
-/** Redact credentials embedded in a URL before logging. */
+/**
+ * Redact credentials embedded in a URL before logging. Covers
+ * `scheme://user:pass@host` for http(s)/ssh/git AND scp-style
+ * `user@host:path` (review S4).
+ */
 export function redactUrlCredentials(text: string): string {
-  return text.replace(/(https?:\/\/)[^@/\s]+@/g, '$1***@');
+  return text
+    .replace(/((?:https?|ssh|git):\/\/)[^@/\s]+@/g, '$1***@')
+    .replace(/\b[\w.-]+@([\w.-]+:)/g, '***@$1');
 }
 
 const DEFAULT_TIMEOUT_MS = 120_000;
