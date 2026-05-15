@@ -3,7 +3,7 @@
  *
  * Main orchestrator for server mode. Creates AgentRegistry with
  * session-aware agent management, ServerChannel, ChannelManager,
- * plugin loader, and maintenance timers.
+ * connector loader, and maintenance timers.
  *
  * Pattern follows the extension service worker: no singleton agent,
  * all operations routed through AgentRegistry by sessionId.
@@ -28,10 +28,10 @@ import { SessionIndex } from '../persistence/SessionIndex';
 import { TranscriptStore } from '../persistence/TranscriptStore';
 import { BackupManager } from '../persistence/backup';
 import { ApprovalManager } from '../exec/approval-manager';
-import { PluginRegistry } from '../plugins/plugin-registry';
-import { ApplePiPluginApi } from '../plugins/applepi-plugin-api';
-import { discoverPlugins } from '../plugins/plugin-loader';
-import { ChannelPluginBridge } from '../plugins/channel-bridge';
+import { ConnectorRegistry } from '../channel-connectors/connector-registry';
+import { ApplePiConnectorApi } from '../channel-connectors/applepi-connector-api';
+import { discoverConnectors } from '../channel-connectors/connector-loader';
+import { ConnectorBridge } from '../channel-connectors/connector-bridge';
 import { HealthMonitor } from '../health/health-monitor';
 import {
   setHealthAgentStatus,
@@ -42,6 +42,7 @@ import {
 } from '../handlers/health';
 import { setHandshakeSnapshotProviders } from '../connection/handshake';
 import { registerServerTools } from '../tools/registerServerTools';
+import { schedulePeriodicSweep } from '../maintenance/toolResultCleanup';
 
 // Handler registrations
 import { registerChatHandlers } from '../handlers/chat';
@@ -82,7 +83,7 @@ export class ServerAgentBootstrap {
   private transcriptStore: TranscriptStore | null = null;
   private backupManager: BackupManager | null = null;
   private approvalManager: ApprovalManager | null = null;
-  private pluginRegistry: PluginRegistry | null = null;
+  private connectorRegistry: ConnectorRegistry | null = null;
   private healthMonitor: HealthMonitor | null = null;
   private scheduler: Scheduler | null = null;
   private scheduleEventStorage: ServerScheduleStorage | null = null;
@@ -90,6 +91,7 @@ export class ServerAgentBootstrap {
   private schedulerAlarms: ServerSchedulerAlarms | null = null;
   private runningSchedulerJobId: string | null = null;
   private runningJobStartTime: number = 0;
+  private toolResultSweep: { stop: () => void } | null = null;
   private initialized = false;
 
   /**
@@ -153,16 +155,42 @@ export class ServerAgentBootstrap {
       this.registry = new AgentRegistry({
         maxConcurrent: 3,
         agentFactory: async (cfg, initialHistory) => {
-          const agent = new RepublicAgent(cfg, initialHistory);
+          const { ServerPlatformAdapter } = await import('../platform/ServerPlatformAdapter');
+          const platformAdapter = new ServerPlatformAdapter();
+          const agent = new RepublicAgent(cfg, platformAdapter, initialHistory);
           await agent.initialize();
 
-          // Register server-mode tools on each new agent
+          // Register server-mode tools on each new agent. Pass `dataDir` so
+          // the track-09 read_persisted_result tool can be rooted at the
+          // same directory that FileToolResultStore writes into.
           try {
             const toolRegistry = agent.getToolRegistry();
-            await registerServerTools(toolRegistry as any);
+            await registerServerTools(toolRegistry as any, dataDir);
             console.log('[ServerAgentBootstrap] Server tools registered on new session agent');
           } catch (err) {
+            const errMsg = err instanceof Error ? err.message : String(err);
             console.warn('[ServerAgentBootstrap] Tool registration failed (non-fatal):', err);
+            agent.getEngine()?.pushEvent({
+              id: crypto.randomUUID(),
+              msg: { type: 'BackgroundEvent', data: { message: `Server tool registration failed: ${errMsg}`, level: 'error' } },
+            });
+          }
+
+          // Register sub-agent tool
+          const engine = agent.getEngine();
+          if (engine) {
+            try {
+              const { registerSubAgentTool } = await import('@/tools/AgentTool/register');
+              await registerSubAgentTool(engine);
+              console.log('[ServerAgentBootstrap] sub_agent tool registered');
+            } catch (err) {
+              const errMsg = err instanceof Error ? err.message : String(err);
+              console.warn('[ServerAgentBootstrap] sub_agent tool registration failed (non-fatal):', err);
+              engine.pushEvent({
+                id: crypto.randomUUID(),
+                msg: { type: 'BackgroundEvent', data: { message: `Sub-agent tool registration failed: ${errMsg}`, level: 'error' } },
+              });
+            }
           }
 
           return agent;
@@ -225,6 +253,11 @@ export class ServerAgentBootstrap {
       this.backupManager = new BackupManager(dataDir, config.server.backup.retention);
       this.backupManager.start();
 
+      // 9b. Schedule TTL sweep for persisted tool results (track 09).
+      // Removes orphaned tool-result files from crashed sessions.
+      this.toolResultSweep = schedulePeriodicSweep(dataDir);
+      console.log('[ServerAgentBootstrap] Tool-result TTL sweep scheduled');
+
       // 10. Initialize approval manager
       this.approvalManager = new ApprovalManager();
 
@@ -242,8 +275,8 @@ export class ServerAgentBootstrap {
       // 12. Register method handlers
       this.registerHandlers();
 
-      // 12b. Initialize plugins
-      await this.initializePlugins(channelManager);
+      // 12b. Initialize connectors
+      await this.initializeConnectors(channelManager);
 
       // 13. Start health monitoring
       this.healthMonitor = new HealthMonitor();
@@ -500,37 +533,37 @@ export class ServerAgentBootstrap {
   }
 
   /**
-   * Initialize channel plugins.
+   * Initialize channel connectors.
    */
-  private async initializePlugins(channelManager: ReturnType<typeof getChannelManager>): Promise<void> {
-    this.pluginRegistry = new PluginRegistry();
+  private async initializeConnectors(channelManager: ReturnType<typeof getChannelManager>): Promise<void> {
+    this.connectorRegistry = new ConnectorRegistry();
     const config = getServerConfig();
 
     try {
-      const definitions = await discoverPlugins();
+      const definitions = await discoverConnectors();
 
       for (const definition of definitions) {
-        const api = new ApplePiPluginApi();
+        const api = new ApplePiConnectorApi();
         await definition.register(api);
 
         const registrations = api.getRegistrations();
         for (const reg of registrations) {
-          const plugin = reg.plugin;
-          this.pluginRegistry.register(definition, plugin);
+          const connector = reg.connector;
+          this.connectorRegistry.register(definition, connector);
 
           // Create a bridge per account
-          const accountIds = plugin.config.listAccountIds(config.server.channels[plugin.id]);
+          const accountIds = connector.config.listAccountIds(config.server.channels[connector.id]);
           for (const accountId of accountIds) {
-            const bridge = new ChannelPluginBridge(plugin, accountId);
+            const bridge = new ConnectorBridge(connector, accountId);
             await channelManager.registerChannel(bridge);
-            console.log(`[ServerAgentBootstrap] Plugin bridge registered: ${plugin.id}:${accountId}`);
+            console.log(`[ServerAgentBootstrap] Connector bridge registered: ${connector.id}:${accountId}`);
           }
         }
       }
 
-      console.log(`[ServerAgentBootstrap] ${this.pluginRegistry.size} plugin(s) initialized`);
+      console.log(`[ServerAgentBootstrap] ${this.connectorRegistry.size} connector(s) initialized`);
     } catch (err) {
-      console.warn('[ServerAgentBootstrap] Plugin initialization error:', err);
+      console.warn('[ServerAgentBootstrap] Connector initialization error:', err);
     }
   }
 
@@ -716,8 +749,8 @@ export class ServerAgentBootstrap {
     return this.approvalManager;
   }
 
-  getPluginRegistry(): PluginRegistry | null {
-    return this.pluginRegistry;
+  getConnectorRegistry(): ConnectorRegistry | null {
+    return this.connectorRegistry;
   }
 
   getScheduler(): Scheduler | null {
@@ -751,7 +784,11 @@ export class ServerAgentBootstrap {
     // Stop backup manager
     this.backupManager?.stop();
 
-    // Shutdown channel manager (shuts down all channels including plugin bridges)
+    // Stop tool-result TTL sweep
+    this.toolResultSweep?.stop();
+    this.toolResultSweep = null;
+
+    // Shutdown channel manager (shuts down all channels including connector bridges)
     const channelManager = getChannelManager();
     await channelManager.shutdown();
 

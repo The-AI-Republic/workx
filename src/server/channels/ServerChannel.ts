@@ -184,6 +184,7 @@ export class ServerChannel implements ChannelAdapter {
     if (
       event.type === 'ToolExecutionStart' ||
       event.type === 'ToolExecutionEnd' ||
+      event.type === 'ToolExecutionProgress' ||
       event.type === 'McpToolCallBegin' ||
       event.type === 'McpToolCallEnd' ||
       event.type === 'ExecCommandBegin' ||

@@ -21,7 +21,7 @@ import type { StorageAdapter } from './StorageAdapter';
  * IndexedDB database constants
  */
 export const DB_NAME = 'applepi_cache';
-export const DB_VERSION = 4;
+export const DB_VERSION = 5;
 
 /**
  * Object store names
@@ -47,6 +47,8 @@ export const STORE_NAMES = {
   SCHEDULE_EXCEPTIONS: 'schedule_exceptions',
   /** Execution records (one per actual job run) */
   EXECUTION_RECORDS: 'execution_records',
+  /** Track 04: chunked output for background sub-agent tasks */
+  TASK_OUTPUT_CHUNKS: 'task_output_chunks',
 } as const;
 
 /**
@@ -329,6 +331,18 @@ export class IndexedDBAdapter implements StorageAdapter {
             execStore.createIndex('by_status', 'status', { unique: false });
             execStore.createIndex('by_event_instance', ['scheduleEventId', 'instanceTime'], { unique: false });
             execStore.createIndex('by_instance_time', 'instanceTime', { unique: false });
+          }
+        }
+
+        // Version 5 (Track 04): task_output_chunks for background sub-agent output
+        if (oldVersion < 5) {
+          if (!db.objectStoreNames.contains(STORE_NAMES.TASK_OUTPUT_CHUNKS)) {
+            const chunksStore = db.createObjectStore(STORE_NAMES.TASK_OUTPUT_CHUNKS, {
+              keyPath: 'chunkId'
+            });
+            chunksStore.createIndex('by_task_id', 'taskId', { unique: false });
+            chunksStore.createIndex('by_task_seq', ['taskId', 'seq'], { unique: true });
+            chunksStore.createIndex('by_created_at', 'createdAt', { unique: false });
           }
         }
 

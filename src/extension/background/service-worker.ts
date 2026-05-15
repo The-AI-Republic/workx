@@ -99,6 +99,8 @@ async function configureExtensionPlatform(targetAgent: RepublicAgent): Promise<v
   const approvalGate = new ApprovalGate(approvalManager, policyEngine);
   approvalGate.addEnhancer(new DomainSensitivityEnhancer());
   approvalGate.addEnhancer(new SemanticElementEnhancer());
+  // Wire hook dispatcher so PermissionRequest/PermissionDenied hooks fire
+  approvalGate.setHookDispatcher(targetAgent.getHookDispatcher());
 
   // Extension mode uses ConfigStorageProvider for approval config
   const configStorage = new ApprovalConfigStorage(() => getConfigStorage());
@@ -121,6 +123,16 @@ async function configureExtensionPlatform(targetAgent: RepublicAgent): Promise<v
   const notifier = targetAgent.getUserNotifier();
 
   tabManager.onTabClosure(async (closedTabId: number) => {
+    // Track 04 / Q9: tab close has two cases:
+    //
+    // (a) The session's main tab closes -> hard shutdown of the session.
+    //     Existing behavior, preserved.
+    //
+    // (b) A working tab (referenced by some background task's scopedTabIds
+    //     but not the session's main tab) closes -> only abort tasks
+    //     scoped to that tab. Background tasks NOT touching that tab keep
+    //     running. This is what makes background sub-agents survive
+    //     incidental working-tab closures.
     if (session.getTabId() === closedTabId) {
       session.setTabId(-1);
       await session.abortAllTasks('TabClosed');
@@ -128,6 +140,10 @@ async function configureExtensionPlatform(targetAgent: RepublicAgent): Promise<v
         'Tab Closed',
         'The tab was closed or crashed. All tasks have been stopped.'
       );
+    } else {
+      // Working-tab close: selective abort. abortTasksForTab filters
+      // internally and is a no-op when no tasks are scoped to the tab.
+      await session.abortTasksForTab(closedTabId, 'TabClosed');
     }
   });
 }
@@ -962,11 +978,36 @@ async function initializeSkills(): Promise<void> {
     await storageProvider.initialize();
 
     const skillProvider = new IndexedDBSkillProvider(storageProvider);
-    skillRegistry = new SkillRegistry(skillProvider);
+
+    // Track 03 Phase 3 — wire domain-based conditional activation.
+    const { SkillDomainFilter } = await import('@/core/skills/SkillDomainFilter');
+    const { ActiveTabService } = await import('@/core/tabs/ActiveTabService');
+    const { startChromeActiveTabAdapter } = await import('./ChromeActiveTabAdapter');
+
+    const activeTabService = new ActiveTabService();
+    const skillDomainFilter = new SkillDomainFilter();
+
+    // Subscribe FIRST so the seed snapshot from the adapter reaches the filter
+    // (adapter starts firing events immediately on startup).
+    activeTabService.subscribe((snap) => {
+      skillDomainFilter.onActiveTabChange(snap.hostname);
+    });
+    const stopAdapter = startChromeActiveTabAdapter(activeTabService);
+
+    skillRegistry = new SkillRegistry(skillProvider, skillDomainFilter);
     await skillRegistry.discover();
+
+    // Race fix (B3): the seed snapshot likely arrived between subscribe() and
+    // discover(), so the filter handled it against empty maps. Replay it now
+    // that init() has populated the conditional/active maps.
+    const seedSnapshot = activeTabService.getCurrent();
+    if (seedSnapshot) skillDomainFilter.onActiveTabChange(seedSnapshot.hostname);
 
     // Register dynamic prompt extension for auto-invocable skills
     registerPromptExtension('skills', () => skillRegistry?.buildSkillsSystemPrompt() ?? '');
+
+    // Stash adapter cleanup on the registry handle so HMR/teardown can reach it.
+    (skillRegistry as unknown as { __disposeTabAdapter?: () => void }).__disposeTabAdapter = stopAdapter;
 
     console.log('[ServiceWorker] Skills initialized');
   } catch (error) {

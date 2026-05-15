@@ -185,6 +185,7 @@ export class EventProcessor {
       case 'Interrupted':
       case 'ToolRegistered':
       case 'ToolUnregistered':
+      case 'ApprovalPolicyChanged':
         return 'system';
 
       default:

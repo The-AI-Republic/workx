@@ -152,8 +152,16 @@ export class AgentRegistry {
         // Server/Desktop path: use provided factory for agent creation
         agent = await this._registryConfig.agentFactory(this._config, initialHistory);
       } else {
-        // Extension path: create agent and wire events through ChannelManager
-        agent = new RepublicAgent(this._config, initialHistory, undefined, new UserNotifier());
+        // Extension path: create agent and wire events through ChannelManager.
+        // Use a fresh adapter per agent so RepublicAgent.cleanup()'s dispose()
+        // call cannot poison other sessions' shared adapter. ExtensionPlatformAdapter
+        // is cheap to construct (TabManager is a singleton, retrieved on init),
+        // so per-session instances are inexpensive and remove the cross-session
+        // dispose hazard if/when dispose() grows real cleanup logic.
+        const { ExtensionPlatformAdapter } = await import('../../extension/platform/ExtensionPlatformAdapter');
+        const platformAdapter = new ExtensionPlatformAdapter();
+        await platformAdapter.initialize();
+        agent = new RepublicAgent(this._config, platformAdapter, initialHistory, undefined, new UserNotifier());
         await agent.initialize();
 
         // Configure extension-specific approval gate
@@ -163,6 +171,8 @@ export class AgentRegistry {
         const approvalGate = new ApprovalGate(approvalManager, policyEngine);
         approvalGate.addEnhancer(new DomainSensitivityEnhancer());
         approvalGate.addEnhancer(new SemanticElementEnhancer());
+        // Wire hook dispatcher so PermissionRequest/PermissionDenied hooks fire
+        approvalGate.setHookDispatcher(agent.getHookDispatcher());
         const configStorage = new ApprovalConfigStorage(() => getConfigStorage());
         approvalGate.setConfigStorage(configStorage);
         try {
@@ -174,6 +184,17 @@ export class AgentRegistry {
           console.warn('[AgentRegistry] Failed to load approval config, using defaults:', error);
         }
         toolRegistry.setApprovalGate(approvalGate);
+
+        // Register sub-agent tool on extension path
+        const engine = agent.getEngine();
+        if (engine) {
+          try {
+            const { registerSubAgentTool } = await import('@/tools/AgentTool/register');
+            await registerSubAgentTool(engine);
+          } catch (err) {
+            console.warn('[AgentRegistry] sub_agent tool registration failed (non-fatal):', err);
+          }
+        }
       }
     } catch (initError) {
       // Agent initialization failed - clean up and emit error event

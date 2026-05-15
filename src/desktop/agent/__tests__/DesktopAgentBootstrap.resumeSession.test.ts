@@ -40,6 +40,7 @@ const mockAgent = {
   initialize: vi.fn().mockResolvedValue(undefined),
   getToolRegistry: vi.fn().mockReturnValue({ setApprovalGate: vi.fn() }),
   getApprovalManager: vi.fn().mockReturnValue({}),
+  getHookDispatcher: vi.fn().mockReturnValue({ fire: vi.fn().mockResolvedValue({}) }),
   refreshModelClient: vi.fn().mockResolvedValue(undefined),
 };
 
