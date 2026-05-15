@@ -1,143 +1,371 @@
 # Track 12: Rate-Limit Resilience
 
-**Priority: P0** · **Effort: M** · **Status: READY TO IMPLEMENT**
+**Priority: P0** · **Effort: M** · **Status: IMPLEMENTATION-READY (code-verified 2026-05-15)**
 
-> Source: second-pass claudy↔browserx research (2026-05-14), implementation-readiness + multi-platform pass (2026-05-15). Grounded in a full read of both implementations and all three browserx deploy targets — see "Validation Notes" for exact `file:line` citations.
+> Source: second-pass claudy↔browserx research (2026-05-14); implementation-readiness +
+> multi-platform pass (2026-05-15); **final code-verification pass (2026-05-15)** — every
+> seam below traced against `HEAD` (`bd34246a`) by reading the actual source, not grepping.
+> All `path:line` citations in this revision are byte-accurate; corrections from earlier
+> drafts are listed in "Code-Verification Audit" at the bottom.
 
 ## Problem
 
-BrowserX runs unattended work (scheduler jobs, Apple Pi Server sessions, connector-driven sessions, background `TaskRunner` sub-agents). The model-call path has **three competing, shallow retry mechanisms and one fully-simulated dead one**:
+BrowserX runs unattended work (scheduler jobs, Apple Pi Server sessions, connector-driven
+sessions, background `TaskRunner` sub-agents). The model-call path has **five competing,
+shallow retry mechanisms and one fully-simulated dead one**:
 
-1. `ModelClient.withRetry()` (base, `core/models/ModelClient.ts:445-479`) — fixed `maxRetries: 3`, exponential backoff, no reset-awareness.
-2. Per-provider manual retry loops (`OpenAIResponsesClient.ts:353-389` connect, `:565-624` stream) — each re-implements backoff with `maxRetries = provider.request_max_retries ?? 3`.
-3. `RequestQueue.ts` — **entirely simulated**: `executeRequest()` (`:362-373`) does `sleep(500 + Math.random()*1000)` then `if (Math.random() < 0.1) throw new Error('Simulated request failure')`; `processQueue()` (`:291`) carries the comment *"Here we would make the actual request / For now, this is a placeholder"*. Never wired to a real model call.
+1. Base `ModelClient.withRetry()` (`core/models/ModelClient.ts:445-479`) — fixed
+   `maxRetries: 3` (`:156`), exponential backoff, no reset-awareness. **Note: type-only
+   import of `StreamAttemptError` at `:8`, never actually used in the body.**
+2. `OpenAIResponsesClient` connect-phase loop (`core/models/client/OpenAIResponsesClient.ts:358-398`,
+   `maxRetries = provider.request_max_retries ?? 3` at `:359`).
+3. `OpenAIResponsesClient` stream-phase loop (`:566-633`, same `?? 3` at `:571`).
+4. `TitleGenerator` private retry loop (`core/title/TitleGenerator.ts:43-76`) — its own
+   `maxRetries`/backoff; retries blindly on any error; calls `modelClient.stream()`
+   directly at `:158`, **bypassing the turn path**.
+5. `CompactService` private retry loop (`core/compact/CompactService.ts:156-268`) — same
+   pattern; calls `modelClient.stream()` directly at `:368`, bypassing the turn path.
+6. `core/models/RequestQueue.ts` — **entirely simulated**: `executeRequest()`
+   (`:362-373`) does `await this.sleep(500 + Math.random()*1000)` (`:365`) then
+   `if (Math.random() < 0.1) throw new Error('Simulated request failure')` (`:368-370`);
+   `processQueue()` (`:291-357`) carries the placeholder comment at `:319-320`. `enqueue()`
+   is **never called anywhere in production** — even though `OpenAIResponsesClient`
+   imports (`:31`), holds (`:124`), and conditionally instantiates it (`:228`,
+   `queueEnabled=true` at `:233`), the queue only ever runs the simulated `executeRequest`.
 
-Consequences: a `429` after 3 attempts **hard-fails an unattended run** instead of waiting for the window to reset; on Apple Pi Server this surfaces as `Error` → `scheduler.failJob()` (`ServerAgentBootstrap.ts:714-725`) with no human to retry; there is no model downgrade on sustained overload; rate-limit early-warning is dead code; and `Session.sendTokenCountEvent()` hardcodes `const rateLimits = undefined; // Would need getRateLimits method from SessionState` (`core/Session.ts:1614`) so even the snapshot that *is* parsed never reaches any client.
+Consequences: a `429`/`529` after 3 attempts **hard-fails an unattended run** instead of
+waiting for the window to reset; on Apple Pi Server this surfaces as an `Error` event →
+`scheduler.failJob()` (`ServerAgentBootstrap.ts:714-725`) with no human to retry; there is
+no model downgrade on sustained overload; rate-limit early-warning does not exist; and
+**two adjacent dead-data bugs** in `Session.sendTokenCountEvent` (`core/Session.ts:1611`)
+hardcode `const tokenInfo = undefined` (`:1613`) and `const rateLimits = undefined`
+(`:1614`) — so every `TokenCountEvent` carries `info: undefined` + `rate_limits: undefined`
+regardless of state, even though `SessionState` correctly stores both
+(`SessionState.updateRateLimits()` `:169`, private `latestRateLimits` `:39`;
+`getTokenInfo()` already exists at `:159` but the `:1613` comment falsely claims it does
+not).
 
-## What Claudy Does
+## What Claudy Does (reference architecture)
 
-### `withRetry` — a single generator-based retry engine (`services/api/withRetry.ts`)
+Claudy splits this into **three layers that never reach into each other** — the
+separation of concerns is the architectural pattern we copy wholesale; the code is a heavy
+port for Layer 1, an algorithm transplant for Layer 2, and a from-scratch
+reimplementation for Layer 3.
 
-`withRetry<T>()` (`:170-517`) is an `AsyncGenerator<SystemAPIErrorMessage, T>`: it *yields* heartbeat messages during waits and *returns* the operation result. One engine wraps every model call. Constants (`:52-55`, `:96-98`): `DEFAULT_MAX_RETRIES = 10`, `MAX_529_RETRIES = 3`, `BASE_DELAY_MS = 500`, `PERSISTENT_MAX_BACKOFF_MS = 5min`, `PERSISTENT_RESET_CAP_MS = 6hr`, `HEARTBEAT_INTERVAL_MS = 30s`.
+**Layer 1 — `services/api/withRetry.ts`: one generator-based retry engine.**
+`withRetry<T>()` (`:170-517`) is an `AsyncGenerator<SystemAPIErrorMessage, T>`: it *yields*
+heartbeats during waits and *returns* the result. One engine wraps every model call.
+Constants (`:52-55,96-98`): `DEFAULT_MAX_RETRIES=10`, `MAX_529_RETRIES=3`,
+`BASE_DELAY_MS=500`, `PERSISTENT_MAX_BACKOFF_MS=5min`, `PERSISTENT_RESET_CAP_MS=6hr`,
+`HEARTBEAT_INTERVAL_MS=30s`. Key mechanisms:
+- **Consecutive-overload counter** (`:186,:326-365`) separate from the retry count; after
+  `MAX_529_RETRIES` consecutive 529s, if a fallback model is configured, **throws
+  `FallbackTriggeredError`** (it does not swap the model itself).
+- **Persistent unattended mode** (`:368-512`): a separate `persistentAttempt` drives
+  backoff while the loop `attempt` is clamped (`:504-506`) so the loop **never
+  terminates** on 429/529; reads the reset header and waits until reset
+  (`getRateLimitResetDelayMs:814-822`, capped 6 h); long sleeps chunked into 30 s slices
+  (`:489-503`) — the chunk boundary is also where `signal.aborted` is polled (`:491`).
+- **Query-source awareness** (`:62-89,:316-324`): background sources (titles, summaries,
+  classifiers) **bail immediately** on 529 (`CannotRetryError`) to avoid 3-10× gateway
+  amplification during a capacity cascade; untagged paths default to retry.
+- **Max-tokens self-heal** (`:384-427`, `parseMaxTokensContextOverflowError:550-595`).
 
-**Query-source awareness** (`:62-89`). `FOREGROUND_529_RETRY_SOURCES: Set<QuerySource>` lists user-blocking sources that retry on 529; `shouldRetry529()` (`:84-89`) returns `true` only for those or `undefined` (conservative for untagged paths). Background sources (summaries, titles, suggestions, classifiers) **bail immediately** via `CannotRetryError` (`:144-158`) to avoid 3-10× gateway amplification during a capacity cascade the user never sees.
+**Layer 2 — `services/claudeAiLimits.ts`: passive header→status observer + early warning.**
+`extractQuotaStatusFromHeaders()` (`:454`) runs on every response; two-tier early warning
+(`:347-374`): server `…-surpassed-threshold` header first, else client-side time-relative
+thresholds — warn when `utilization ≥ t.utilization && timeProgress ≤ t.timePct`
+(`getTimeRelativeEarlyWarning:301-340`), i.e. "burning quota faster than the window
+sustains". A `< 0.7` floor (`rateLimitMessages.ts:69-78`) suppresses false alarms from
+stale post-reset data.
 
-**Persistent unattended mode** (`:91-104`, `:368-512`). `isPersistentRetryEnabled()` (`:100-104`) = `feature('UNATTENDED_RETRY') && isEnvTruthy(process.env.CLAUDE_CODE_UNATTENDED_RETRY)`. `isTransientCapacityError()` (`:106-110`) = `is529Error || (APIError && status===429)`. When on and transient:
-- `shouldRetry()` (`:702-706`) makes 429/529 unconditionally retryable, bypassing subscriber gates.
-- A separate `persistentAttempt` counter drives backoff while the loop `attempt` is clamped at `maxRetries` so the loop **never terminates** (`:504-506`).
-- `getRateLimitResetDelayMs(error)` (`:814-822`) reads `anthropic-ratelimit-unified-reset` (absolute unix seconds) and waits *until the window resets*, capped at `PERSISTENT_RESET_CAP_MS`.
-- Long sleeps are **chunked** into `HEARTBEAT_INTERVAL_MS` slices, each yielding a `SystemAPIErrorMessage` (`:489-503`) so the host does not mark the session idle. (`TODO(ANT-344)` at `:94-95` notes this keep-alive is a stopgap for a missing dedicated channel — browserx avoids the stopgap, see Divergence 3.)
-
-**Model fallback** (`:160-168`, `:326-365`). After `MAX_529_RETRIES` consecutive 529s, if `options.fallbackModel` is set, `withRetry` **throws `FallbackTriggeredError(originalModel, fallbackModel)`**. It does *not* swap the model itself — the caller catches the typed error and re-invokes with the fallback model.
-
-**Max-tokens overflow self-heal** (`:384-427`, `parseMaxTokensContextOverflowError` `:550-595`): parses `400 input length and max_tokens exceed context limit: A + B > C` and lowers `retryContext.maxTokensOverride` for the next attempt instead of failing.
-
-### `claudeAiLimits.ts` — limit observation + early warning
-
-`extractQuotaStatusFromHeaders(headers)` (`:454-485`) runs on **every** response; `extractQuotaStatusFromError(error)` (`:487-515`) on 429. Both produce a typed `ClaudeAILimits` (`:122-136`). Change detection via `isEqual` then `emitStatusChange()` (`:184-197`) fans out to `statusListeners` (`:181-182`). **Two-tier early warning** (`:255-374`): server-sent `…-surpassed-threshold` header first, else client-side time-relative thresholds (`EARLY_WARNING_CONFIGS` `:53-70`; e.g. five-hour window: warn when `utilization ≥ 0.9 && timeProgress ≤ 0.72`) — catches "burning quota faster than the window sustains" before rejection.
+**Layer 3 — caller-side fallback (`query.ts` + `claude.ts`): signal → re-throw → act.**
+The orchestrator only *signals* via the typed `FallbackTriggeredError`. An intermediate
+catch (`claude.ts:2603-2605`) must **re-throw it untouched** (swallowing it makes fallback
+a silent no-op). The top layer (`query.ts:894-939`) does the real work: swap model **and**
+discard partial assistant/tool state + strip model-bound thinking blocks before replaying,
+or the retry 400s on orphaned `tool_use`. **BrowserX does not need this cleanup — see
+Divergence 5.**
 
 ## BrowserX Mapping
 
-### The real seams
+### The real seams (code-verified 2026-05-15)
 
 | Concern | BrowserX location | State |
 |---|---|---|
-| Turn-loop → model call | `TurnManager.ts:224` `await this.turnContext.getModelClient().stream(processedPrompt)` | **The single wrap point** for retry/fallback |
-| Per-turn config seam | `TurnContext` ctor `TurnContext.ts:62-82`, `update()` `:87-123` (`TurnContextConfig`) | No `unattended` field today — add here |
-| Platform discriminator | `IPlatformAdapter.platformId: 'extension'\|'desktop'\|'server'` (`IPlatformAdapter.ts:60`); `ServerPlatformAdapter.platformId='server'` (`ServerPlatformAdapter.ts:18`) | Clean "is this a headless deployment" signal |
-| Model client owner | `TurnContext` (model from `ModelClientFactory.createClientForModelKey`, `RepublicAgentEngine.ts:83-98`) | Where a fallback model swap must re-create the client |
-| Per-attempt retry | `OpenAIResponsesClient.ts:353-389` & `:565-624`; base `ModelClient.withRetry()` `:445-479` | Duplicated, shallow, no persistent/fallback/source logic |
-| Error classification | `StreamAttemptError` (`types/StreamAttemptError.ts:14`): type `'RetryableHttp'\|'RetryableTransport'\|'Fatal'` (`:15`), `status` (`:16`), `retryAfter` (`:17`); static factories `retryableHttp()` (`:39`), `retryableTransport()` (`:46`), `fatal()` (`:53`) — **no `classify()` method; extend via a new factory/branch** | Good substrate — extend, don't replace |
-| Typed errors | `ModelClientError.ts`: `RateLimitError` class (`:61`) w/ `rateLimitMetadata` (`reset` `:21`, `retryAfter` `:25`); `ErrorFactory` (`:324`) `createRateLimitError(headers)` (`:328`, reads `x-ratelimit-reset/-limit/-remaining/-window`) | Rich metadata already parsed but under-used |
-| Snapshot parse | provider `parseRateLimitSnapshot()` (`OpenAIResponsesClient.ts:1301`) → `{type:'RateLimits', snapshot}` ResponseEvent emitted `:805` & `:895` | Parsed but… |
-| Snapshot → state | `Session.updateRateLimits()` `Session.ts:2481` → `SessionState.updateRateLimits()` `state/SessionState.ts:169` | …stored but **`Session.ts:1614` hardcodes `const rateLimits = undefined` inside `sendTokenCountEvent` (`:1611`)** so `RateLimitSnapshotEvent` (`protocol/events.ts:260`) never carries data — a live bug |
-| Unattended driver (server) | `ServerAgentBootstrap.setJobLauncher` `ServerAgentBootstrap.ts:622-647` (scheduled jobs), connector bridges `:538-568` | Fire-and-forget `submitOperation`; no human; failure → `failJob` `:714-725` |
-| Unattended driver (desktop) | `src/desktop/scheduler/DesktopSchedulerAlarms.ts` | Tauri-timer scheduled jobs; app may be minimized |
-| Dead simulation | `RequestQueue.ts` (+ `__tests__/RequestQueue.test.ts`) | Fully simulated; never wired |
+| Turn retry loop (the wrap point) | `TurnManager.runTurn()` retry loop `TurnManager.ts:175-207`; the model call it guards is `tryRunTurn` `:216` → `await this.turnContext.getModelClient().stream(processedPrompt)` **`:224`** | **The single caller-side wrap point.** `runTurn` already re-runs the whole `tryRunTurn` from rebuilt history on retry — exactly the restart semantics the orchestrator needs |
+| Per-turn config seam | `TurnContextConfig` `TurnContext.ts:22-45`; ctor `:62-82`; `update()` `:87-123`; class `:50` | Flat optional fields, spread-merged. **No `unattended` field today** — add here |
+| Platform discriminator | `IPlatformAdapter.platformId: 'extension'\|'desktop'\|'server'` (`IPlatformAdapter.ts:60`); `ServerPlatformAdapter.platformId='server'` (`ServerPlatformAdapter.ts:18`) | Clean headless signal |
+| Model client owner / swap | `Session.setTurnContext()` `Session.ts:312-318`, `updateTurnContext()` `:323-330` (delegates to `TurnContext.update()`, does **not** touch history), `getTurnContext()` `:335-337`; sub-agent path builds it at `RepublicAgentEngine.ts:85,89,98` | Fallback model swap re-creates the client here, between turns |
+| Per-attempt retry (to collapse) | `OpenAIResponsesClient.ts:358-398` & `:566-633`; base `ModelClient.withRetry()` `:445-479`; **plus** `TitleGenerator.ts:43-76` & `CompactService.ts:156-268` | 5 shallow loops, no reset/fallback/source logic |
+| Error classification | `ModelClientError` (`ModelClient.ts:134-145`, **no `cause` param**); `RateLimitError extends ModelClientError` (`ModelClientError.ts:61-89`) w/ `rateLimitMetadata` (`reset` unix `:21`, `retryAfter` ms `:25`, `limit/remaining/window`); `ErrorFactory.createRateLimitError(headers)` `:328-341` reads `x-ratelimit-limit/-remaining/-reset/-window` + `retry-after`. `error.statusCode` survives the wrap (see below) | Classify off `instanceof RateLimitError` / `error.statusCode` (429/529/5xx) — **not** `StreamAttemptError** |
+| ~~`StreamAttemptError`~~ | `core/models/types/StreamAttemptError.ts` — closed union, private ctor, exhaustive `toString()` | **DEAD CODE — do not touch.** Zero production consumers; only a type-only import at `ModelClient.ts:8` + barrel + contract test. The live loops classify via `instanceof ModelClientError`/`statusCode`. Earlier drafts' "carefully extend the union" analysis is moot |
+| Snapshot parse | `OpenAIResponsesClient.parseRateLimitSnapshot()` `:1301` reads proprietary `x-pi-primary-*`/`x-pi-secondary-*`; emits `{type:'RateLimits', snapshot}` at `:805` & `:895` | Parsed but… |
+| Snapshot → state | `Session.updateRateLimits()` `Session.ts:2481` → `:2486` `SessionState.updateRateLimits()` `:169` → `:2489` `sendTokenCountEvent` | …**stored then discarded** at `Session.ts:1614` (`rateLimits=undefined`). Also `:1613` (`tokenInfo=undefined`, stale comment) |
+| Type-shape mismatch | stored `RateLimitSnapshot` = `{primary?,secondary?: RateLimitWindow}` (`RateLimits.ts:6-20`, `used_percent`/`window_minutes?`/`resets_in_seconds?`) **≠** event payload `RateLimitSnapshotEvent` (`events.ts:260-271`, 5 **required flat** numbers) | No converter exists anywhere. Step 3 must add an adapter, not just a getter |
+| Event bus | `EventMsg` discriminated union `events.ts:28` (discriminator `type`, 84 variants, **no central registry — trivially extensible**); `Session.sendEvent()` | `RateLimitWaiting`/`RateLimitWarning`/`ModelDowngraded` are clean new variants. **No** rate-limit/waiting/warning/downgrade variant exists today |
+| Early-warning primitive | `isApproachingRateLimit(snapshot, threshold=80)` `RateLimits.ts:111-117` (`>=`, most-restrictive window) | Static case covered; add time-relative configs alongside |
+| Unattended driver (server) | `ServerAgentBootstrap.setJobLauncher` `:622-647` (submits `UserInput` at `:638-644`); connector bridges `:236,:428-435,:470`; fail path `:714-725`; event→WS `:198-215` | Fire-and-forget; failure → `failJob` |
+| Unattended driver (desktop) | `DesktopAgentBootstrap.ts:570` (jobLauncher), submits at `:589-592`; alarms in `src/desktop/scheduler/DesktopSchedulerAlarms.ts` (timers only, builds no Op) | Tauri-timer jobs |
+| Unattended driver (extension) | `src/extension/background/service-worker.ts:671` — **indirect**: opens sidepanel with `?scheduledJob=…`; the sidepanel submits the `UserInput` | MV3 SW lifetime constraint |
+| Unattended carrier (none today) | `submitOperation(op, ctx?)` `RepublicAgent.ts:481` — `ctx` only `{tabId?}`; `Submission.context` `protocol/types.ts:21-26` `{tabId?,sessionId?}`; `ExecutionContext.metadata` `RepublicAgentEngineConfig.ts:169-173` (untyped passthrough); registry `SessionType='primary'\|'scheduled'` `registry/types.ts:20` (set `AgentRegistry.ts:278`, **dies at the registry**) | Pick one carrier (see Step 2) |
+| Dead simulation | `RequestQueue.ts` + `__tests__/RequestQueue.test.ts`; barrel re-exports `core/models/index.ts:43,46,48`; client refs `OpenAIResponsesClient.ts:31,124,227-233,1433-1471` | Delete |
 
 ### Per-Platform Behavior
 
-The improvement lands once in `core/` but its *default posture* differs per deploy target. Posture is derived from `IPlatformAdapter.platformId` plus the submission driver — **not** an env var (claudy's `CLAUDE_CODE_UNATTENDED_RETRY` has no browser analog).
+The improvement lands once in `core/` but its *default posture* differs per deploy
+target, derived from `IPlatformAdapter.platformId` plus the submission driver — **not** an
+env var (claudy's `CLAUDE_CODE_UNATTENDED_RETRY` has no browser analog).
 
-- **Apple Pi Server (`platformId==='server'`, headless, Docker/K8s).** This is where the correctness gap actually bites. *Every* session is unattended: scheduled jobs (`ServerAgentBootstrap.ts:622`), connector-driven sessions (Slack/etc. bridges), and the WS-API. **Default `unattended: true` for the whole process**, overridable down by `APPLEPI_*` config / managed policy (Track 20). Reset-wait + `RateLimitWaiting`/`RateLimitWarning`/`ModelDowngraded` events ride the existing event→`ServerChannel`→WS dispatch (`ServerAgentBootstrap.ts:198-215`) and are appended to the transcript, so a remote operator sees "waiting 42 min for limit reset" instead of an opaque `failJob`. `RESET_CAP_MS` and a policy max-wait keep a job from hanging a worker forever.
-- **Apple Pi (`platformId==='desktop'`, Tauri).** Mixed. Interactive chat is **attended** — `unattended: false`, fail fast and surface the error so the user can act. Scheduled/background jobs via `DesktopSchedulerAlarms` are **unattended per-task** (set on the scheduler's submission, not globally). The desktop process is long-lived (Tauri host, not a suspendable SW), so multi-hour reset-waits are safe; emit `RateLimitWaiting` to the desktop UI + a `@tauri-apps/plugin-notification` is appropriate (out of scope here; the event is the contract).
-- **BrowserX (`platformId==='extension'`, Chrome MV3).** Mostly **attended** (popup UI, user watching) → `unattended: false` by default; fail fast. **Divergence/risk:** the MV3 service worker (`src/extension/background`) can be evicted after ~30 s idle / 5 min hard cap, so a multi-hour persistent wait is *not* reliable even when an extension-side scheduler triggers a job. For extension scheduler jobs, opt into persistent retry but **cap the wait short** (single window, not 6 h) and rely on the chrome alarms re-trigger to resume, rather than holding the event loop. Emit `RateLimitWaiting` so the popup (if open) shows status; never assume the SW survives the wait.
+- **Apple Pi Server (`platformId==='server'`).** Where the gap actually bites — *every*
+  session is unattended (scheduled jobs `ServerAgentBootstrap.ts:622`, connector bridges,
+  WS-API). **Default `unattended: true` for the process**, overridable down by config /
+  managed policy (Track 20). Reset-wait + `RateLimitWaiting`/`RateLimitWarning`/
+  `ModelDowngraded` events ride the existing event→`ServerChannel`→WS dispatch
+  (`ServerAgentBootstrap.ts:198-215`) and the transcript, so a remote operator sees
+  "waiting 42 min for limit reset" instead of an opaque `failJob`. `RESET_CAP_MS` + a
+  policy max-wait bound the worker hold.
+- **Apple Pi (`platformId==='desktop'`).** Mixed. Interactive chat is **attended**
+  (`unattended:false`, fail fast). Scheduled jobs via `DesktopAgentBootstrap.ts:570` are
+  **unattended per-task** (set on the scheduler's submission). The Tauri host is
+  long-lived, so multi-hour waits are safe; emit `RateLimitWaiting` to the desktop UI
+  (notification UX out of scope; the event is the contract).
+- **BrowserX (`platformId==='extension'`).** Mostly **attended** → `unattended:false`.
+  **Divergence/risk:** the MV3 service worker is evicted after ~30 s idle / 5 min hard
+  cap, so a multi-hour persistent wait is *not* reliable. Extension scheduler jobs are
+  indirect (sidepanel-driven, `service-worker.ts:671`); opt into persistent retry but
+  **clamp the wait to one window** and rely on the alarm re-trigger to resume; never
+  assume the SW survives the wait.
 
 ### Key design decisions (and divergences from claudy)
 
-1. **Delete `RequestQueue.ts` and its test.** Decoy infrastructure: `OpenAIResponsesClient.ts` imports it (`:31`), holds a `requestQueue` field (`:124`), and instantiates it (`:228`, `queueEnabled=true` `:233`) — but `RequestQueue.executeRequest()` (`:362`) is a pure simulation (`sleep(500+rand*1000)` `:365`, then `if (Math.random() < 0.1) throw new Error('Simulated request failure')` `:368-369`), so it **never routes a real model request** regardless of being wired. Mirrors Track 08's deletion of dead `QueueProcessor.ts`. *Do not "wire it up" — it is fake by construction.*
-2. **One retry orchestrator, not three.** Introduce `core/models/resilience/withRetry.ts` modeled on claudy's generator but adapted to browserx's `ResponseStream`: a single function the provider `stream()` path delegates to. Collapse the base `ModelClient.withRetry()` and the two `OpenAIResponsesClient` loops into it. Classification stays in `StreamAttemptError` — add a new factory/branch (alongside `retryableHttp()`/`retryableTransport()`/`fatal()`) for 529/overloaded + a consecutive-overload counter (there is **no `classify()` method** to extend — it is static factories).
-3. **Persistent unattended mode keyed off platform + driver, not an env var.** `unattended` becomes a `TurnContextConfig` field. Default derived: `platformId==='server'` ⇒ `true`; `desktop`/`extension` ⇒ `false`, with the scheduler/`TaskRunner`/connector submission paths explicitly setting `true` on their `Op`/`TurnContext`. **Divergence:** browserx has no stdout-idle host; the "heartbeat" emits a `RateLimitWaiting` event on the existing SQ/EQ bus (`Session.sendEvent`) instead of claudy's yielded `SystemAPIErrorMessage` (claudy's own `TODO(ANT-344)` calls that a stopgap).
-4. **Reset-until-wait uses browserx's relative field.** Claudy reads absolute `anthropic-ratelimit-unified-reset`. BrowserX is provider-agnostic: `getResetDelayMs()` prefers `RateLimitError.retryAfter`, then `RateLimitWindow.resets_in_seconds` (`types/RateLimits.ts:19`, relative), then `RateLimitError.rateLimitMetadata.reset - now` (`ModelClientError.ts:23`, absolute unix), capped at a 6 h `RESET_CAP_MS`.
-5. **Model fallback via a typed signal caught at `TurnManager`.** Add `FallbackTriggeredError(fromModel, toModel)`. The orchestrator throws it after `MAX_529_RETRIES` consecutive overloads when a fallback is configured; the `TurnManager.ts:224` caller catches it, asks `ModelClientFactory` for the fallback model, swaps it onto `TurnContext` via `update({model})`, re-invokes `stream()`. Fallback chain comes from model config (`config/types IModelConfig` / `providers/default.json`) — not hardcoded. Emit a visible `ModelDowngraded` event.
-6. **Fix the early-warning bug + add time-relative thresholds.** Make `Session.sendTokenCountEvent` (`Session.ts:1614`) read `sessionState.getRateLimits()` and populate `RateLimitSnapshotEvent` (`protocol/events.ts:260`). Then port claudy's two-tier model: browserx already has `isApproachingRateLimit(snapshot, 80)` (`types/RateLimits.ts:111`) for the static case; add time-relative `EARLY_WARNING_CONFIGS` over `RateLimitWindow.{used_percent, resets_in_seconds, window_minutes}` and emit `RateLimitWarning`. **Divergence:** browserx has no `statusListeners` pub/sub — reuse the SQ/EQ `Event`/`EventMsg` path.
+1. **Delete `RequestQueue.ts` and its test.** Verified pure simulation — never routes a
+   real request, `enqueue()` never called in production. Also remove the barrel
+   re-exports (`core/models/index.ts:43,46,48`) and the `OpenAIResponsesClient` import /
+   field / instantiation / status-pause-clear refs (`:31,:124,:227-233,:1433-1471`).
+   Mirrors Track 08's dead-`QueueProcessor.ts` deletion. *Do not "wire it up".*
+
+2. **One retry orchestrator, caller-side, classifying off `ModelClientError`.** New
+   `core/models/resilience/withRetry.ts`: a plain async function (no generator/yield —
+   browserx has the event bus; Divergence 3) that **wraps the model call at the
+   `TurnManager.runTurn` loop level** (`:175-207`). It classifies the caught error via
+   `instanceof RateLimitError` and `error.statusCode` (429 / 529 / ≥500) + `retryAfter`.
+   **`StreamAttemptError` is dead code and is NOT touched** (earlier-draft analysis about
+   widening its union is withdrawn). The 5 shallow loops (§Problem 1-5) collapse into
+   delegation to this orchestrator; the SDK is already `maxRetries: 0`
+   (`OpenAIResponsesClient.ts:215`).
+
+3. **Persistent unattended mode keyed off platform + driver, not an env var.**
+   `unattended` becomes a `TurnContextConfig` field; default derived from `platformId`
+   (`server`⇒`true`, else `false`), with scheduler/`TaskRunner`/connector submission paths
+   explicitly setting `true`. **Divergence:** the "heartbeat" emits a `RateLimitWaiting`
+   `EventMsg` on the existing bus via `Session.sendEvent` instead of claudy's yielded
+   `SystemAPIErrorMessage` (claudy's own `TODO(ANT-344)` calls the yield a stopgap). The
+   **chunked-sleep loop is kept** — not for stdout, but to poll the abort signal during
+   long waits.
+
+4. **Reset-until-wait uses browserx's relative field.** `getResetDelayMs()` prefers
+   `RateLimitError.retryAfter` (ms, `ModelClientError.ts:25`), then
+   `RateLimitWindow.resets_in_seconds` (`RateLimits.ts:19`), then
+   `RateLimitError.rateLimitMetadata.reset - now` (unix, `:21`), capped at a 6 h
+   `RESET_CAP_MS`. (Claudy's absolute `anthropic-ratelimit-unified-reset` is not on
+   browserx's wire — its providers expose `x-pi-*` / `x-ratelimit-*`.)
+
+5. **Model fallback is an in-orchestrator swap, NOT a deep typed-error throw.**
+   **Corrected from earlier drafts (verified):** a typed error thrown *inside* the client
+   is destroyed — `toModelClientError` (`OpenAIResponsesClient.ts:1106-1113,:683-698`,
+   impl `:1191`) replaces the concrete class with a fresh `ModelClientError`, and
+   `ModelClientError`'s ctor (`ModelClient.ts:134-145`) **cannot carry a `cause`**. So
+   the claudy "throw deep, catch upstream" split is **not viable as-is**. Because the
+   orchestrator sits *above* `TurnManager.ts:224` (caller side, above every
+   type-destroying wrapper), it can resolve the fallback model and swap inline —
+   `ModelClientFactory` → `Session.updateTurnContext({model})` → re-run the loop — with
+   **no need to throw `FallbackTriggeredError` through anything** (it may still define one
+   as an internal control-flow signal within the orchestrator). Emit a visible
+   `ModelDowngraded` event. **History hygiene is NOT required:** verified that BrowserX
+   records conversation history *only on successful turn return*
+   (`TaskRunner.processTurnResult` at `:368-370` → `recordConversationItemsDual` `:731`);
+   a mid-stream-failed turn commits nothing, so a between-turns swap+retry replays only
+   clean prior history + the same user input — no orphan-`tool_use` hazard, no buffer
+   reset. **Constraint:** the retry must restart the whole turn (re-enter
+   `runTurn`/`tryRunTurn` — which it does by construction), never resume a partial
+   iterator. Fallback chain comes from model config (`IModelConfig` /
+   `providers/default.json`), not hardcoded.
+
+6. **Fix both dead-data bugs + add time-relative early warning.** Add
+   `SessionState.getRateLimits(): RateLimitSnapshot | undefined` (returns
+   `latestRateLimits`) **and** use the existing `getTokenInfo()` (`:159`). In
+   `Session.sendTokenCountEvent` (`:1611`) replace `:1613`/`:1614` with those getters,
+   then **map** the stored `RateLimitSnapshot` → the flat `RateLimitSnapshotEvent` shape
+   via a new pure adapter (the two types are structurally incompatible — a getter alone
+   will not type-check at `Session.ts:1622`). The getter is the **shared prerequisite for
+   Tracks 12/18/25** — add once. Then add time-relative `EARLY_WARNING_CONFIGS` next to
+   `isApproachingRateLimit` in `RateLimits.ts`, evaluate in the response path, emit
+   `RateLimitWarning`. **Divergence:** no `statusListeners` pub/sub — reuse the SQ/EQ
+   `EventMsg` path; the consumer is a Svelte store, not a React hook.
 
 ## Implementation Plan (file-level, ordered)
 
-Land behind the existing safety net (`__tests__/calculateBackoff.test.ts`, `error-handling.test.ts`, `ModelClient.contract.test.ts`); `RequestQueue.test.ts` is deleted with the file.
+Land behind the existing safety net (`__tests__/calculateBackoff.test.ts`,
+`error-handling.test.ts`, `ModelClient.contract.test.ts`); `RequestQueue.test.ts` is
+deleted with the file. Add a test-only error-injection seam (Step 1) so the new
+reset-wait/fallback paths are deterministically exercisable — claudy has
+`rateLimitMocking.ts`; BrowserX has no replacement once `RequestQueue.test.ts` is gone.
 
-**Step 0 — delete decoy.** Remove `core/models/RequestQueue.ts` + `core/models/__tests__/RequestQueue.test.ts`; drop the `:218` reference in `OpenAIResponsesClient.ts`. Confirm no other importers (`grep -rn RequestQueue src`).
+**Step 0 — delete decoy (P0).** Remove `core/models/RequestQueue.ts` +
+`core/models/__tests__/RequestQueue.test.ts`; remove barrel re-exports
+`core/models/index.ts:43,46,48`; remove import (`OpenAIResponsesClient.ts:31`), field
+(`:124-125`), instantiation block (`:227-233`), and status/pause/clear references
+(`:1433-1434,1449-1454,1463,1470-1471`). `grep -rn RequestQueue src` must come back clean.
 
 **Step 1 — orchestrator + classification (Phase 1, P0 correctness).**
-- New `core/models/resilience/withRetry.ts`: generator-free async fn (browserx has the event bus; no need for yield-heartbeat) with constants ported from claudy `:52-55,96-98`; `getResetDelayMs(error)` per Divergence 4; `isTransientCapacityError()` reusing the `StreamAttemptError` type/status fields.
-- **`StreamAttemptError` change is NOT a one-line factory (forward-traced 2026-05-15).** `type` is a *closed union* `'RetryableHttp'|'RetryableTransport'|'Fatal'` (`:15`) built only via a **private constructor** (`:20`) through static factories; `.type` is consumed by `delay()` (`:89`), `intoError()` (`:112-131`), `isRetryable()` (`:142`), and an **exhaustive `toString()` switch** (`:149-156`); the real classification entry points are the free fn `classifyError()` (`:170`) and `fromHttpStatus()` (`:66`). Adding an `Overloaded` member touches the union + all those sites (the `toString()` switch is a compile-time exhaustiveness break). **A 529 is already `RetryableHttp` with `status:529`** (`fromHttpStatus:68` `status>=500`), so the orchestrator can detect overload via `status===529` *without* a new union member — prefer that (consecutive-overload counting keyed on `status`/`retryAfter`) over widening the union. Only widen the union if a distinct `delay()`/`isRetryable()` policy is required; if so, budget the ~6-site change.
-- Rewrite `OpenAIResponsesClient.ts:353-389` & `:565-624` to delegate to the orchestrator; delete the body of base `ModelClient.withRetry()` `:445-479` (keep signature, delegate).
+- New `core/models/resilience/withRetry.ts`: plain async fn; constants ported from claudy
+  (`DEFAULT_MAX_RETRIES`, `MAX_529_RETRIES=3`, `BASE_DELAY_MS=500`,
+  `PERSISTENT_MAX_BACKOFF_MS=5min`, `RESET_CAP_MS=6h`, chunk = 30 s for abort polling);
+  `classify(error)` off `instanceof RateLimitError` + `error.statusCode` (429/529/≥500) +
+  `retryAfter`; `getResetDelayMs(error)` per Divergence 4; consecutive-529 counter.
+- Insert it at the `TurnManager.runTurn` retry loop (`:175-207`) — wrap the
+  `tryRunTurn(prompt)` call (`:176`) so each retry restarts the whole turn from rebuilt
+  clean history (Divergence 5 constraint). Do **not** inject retry logic into the client.
+- Make the 5 shallow loops delegate / become pass-through: base
+  `ModelClient.withRetry()` (`:445-479`) keep signature, delegate; collapse
+  `OpenAIResponsesClient.ts:358-398` & `:566-633` to a single non-retrying request; route
+  `TitleGenerator.ts:43-76` & `CompactService.ts:156-268` through the orchestrator with
+  `source: 'background'` (Step 5).
+- **Do NOT modify `StreamAttemptError`** (dead code).
+- Test seam: a `__test__`-gated injectable that makes the next model call throw a
+  synthetic `RateLimitError` with a chosen `retryAfter`/`statusCode`.
 
 **Step 2 — unattended plumbing (Phase 1, P0).**
-- Add `unattended?: boolean` to `TurnContextConfig` + field/getter on `TurnContext` (`TurnContext.ts:50-82,87-123`).
-- Default resolver: read `IPlatformAdapter.platformId` where the `RepublicAgent`/engine builds the `TurnContext` (`RepublicAgentEngine.ts` `createClientForModelKey` `:85` → `new TurnContext` `:89` → `setTurnContext` `:98`; runtime swap via `updateTurnContext` `:543`/`getTurnContext` `:546`) → `server` ⇒ `true`, else `false`.
-- Server driver override: `ServerAgentBootstrap.setJobLauncher` (`:622-647`) and connector bridge submissions tag the op so the turn is unattended even if the global default is later relaxed by config.
-- Desktop/extension scheduler: `DesktopSchedulerAlarms` / extension background scheduler set `unattended: true` on the scheduled `submitOperation`.
-- Orchestrator: when `unattended`, `429/529` is unconditionally retryable; sleep `getResetDelayMs()` (capped `RESET_CAP_MS`); before each long sleep emit `RateLimitWaiting` (new `EventMsg`, `protocol/events.ts`) via `Session.sendEvent`. Extension path: clamp the cap to one window (MV3 SW lifetime — see Per-Platform).
+- Add `unattended?: boolean` to `TurnContextConfig` (`TurnContext.ts:22-45`) + getter on
+  `TurnContext`.
+- Default resolver where the engine builds/updates `TurnContext`
+  (`RepublicAgentEngine.ts:85,89,98`; runtime swap via `Session.updateTurnContext()`
+  `Session.ts:323-330`): `platformId==='server'` ⇒ `true`, else `false`.
+- Carrier for per-job override: thread an `unattended` flag from the scheduler/connector
+  submission. **Chosen carrier:** `submitOperation(op, ctx?)` 2nd arg
+  (`RepublicAgent.ts:481`) → `Submission.context` (`protocol/types.ts:21-26`, add
+  `unattended?: boolean`) → resolved into `TurnContextConfig` at the engine. Set
+  `unattended:true` at: server `ServerAgentBootstrap.ts:638-644`, desktop
+  `DesktopAgentBootstrap.ts:589-592`, extension sidepanel submit (the
+  `?scheduledJob=` path opened at `service-worker.ts:671`).
+- Orchestrator: when `unattended`, 429/529 is unconditionally retryable; sleep
+  `getResetDelayMs()` (capped `RESET_CAP_MS`); before each long sleep emit
+  `RateLimitWaiting` via `Session.sendEvent`. Extension: clamp cap to one window.
 
-**Step 3 — snapshot bug + early warning (Phase 2, P1).**
-- Fix `Session.ts:1614`: replace `const rateLimits = undefined` with `sessionState.getRateLimits()`. **Forward-traced (2026-05-15): the getter does NOT exist** — `SessionState` has only `updateRateLimits()` (`:169`) writing the private `latestRateLimits` field (`:39`). This step **must add** `getRateLimits(): RateLimitSnapshot | undefined { return this.latestRateLimits; }` to `SessionState`. This is the shared prerequisite for Tracks 12/18/25 — add it once, all three consume it. Then populate `RateLimitSnapshotEvent` (`protocol/events.ts:257,260`).
-- Add `EARLY_WARNING_CONFIGS` (time-relative) next to `isApproachingRateLimit` in `types/RateLimits.ts`; evaluate in the response path; emit `RateLimitWarning` `EventMsg`. Shared with Track 18 (`/cost`) — same `Session.ts:1614` fix.
+**Step 3 — dead-data fix + adapter + early warning (Phase 2, P1).**
+- Add `SessionState.getRateLimits(): RateLimitSnapshot | undefined` (`SessionState.ts`,
+  alongside `getTokenInfo()` `:159`).
+- Add a pure adapter `toRateLimitSnapshotEvent(s: RateLimitSnapshot):
+  RateLimitSnapshotEvent` (maps the 2 optional windows → the 5 required flat numbers;
+  define behavior when a window is absent — zero-fill, documented).
+- In `Session.sendTokenCountEvent` (`:1611`): `:1613` → `this.sessionState.getTokenInfo()`;
+  `:1614` → `this.sessionState.getRateLimits()` then `toRateLimitSnapshotEvent(...)` into
+  `msg.data.rate_limits` (`:1622`). Both fixes ship together (same method, both feed
+  `TokenCountEvent`). Shared prerequisite for Tracks 12/18/25.
+- Add `EARLY_WARNING_CONFIGS` (time-relative, ported formula:
+  `used_percent/100 ≥ utilization && timeProgress ≤ timePct`, plus the `< 0.7` false-alarm
+  floor) next to `isApproachingRateLimit` in `RateLimits.ts`; evaluate in the response
+  path; emit a new `RateLimitWarning` `EventMsg` variant.
 
 **Step 4 — model fallback (Phase 3, P1).**
-- Add `FallbackTriggeredError(fromModel,toModel)` (`core/models/resilience/`); orchestrator throws after `MAX_529_RETRIES` consecutive overloads when a fallback is configured.
-- Catch at `TurnManager.ts:224` site: resolve fallback from model config, `TurnContext.update({model})`, re-invoke `stream()`; emit `ModelDowngraded`. Add `fallbackModel`/chain to `IModelConfig` + `providers/default.json`.
+- In the orchestrator: after `MAX_529_RETRIES` consecutive overloads, if a fallback model
+  is configured, resolve it via `ModelClientFactory`, `Session.updateTurnContext({model})`,
+  and continue the loop (in-orchestrator swap — Divergence 5; **no** deep typed-error
+  throw, **no** history cleanup). Emit a new `ModelDowngraded` `EventMsg` variant.
+- Add `fallbackModel`/chain to `IModelConfig` + `providers/default.json`.
 
-**Step 5 — query-source awareness + max-tokens self-heal (Phase 4, P2).**
-- Introduce a `QuerySource`-equivalent on the request (browserx callers: main turn vs `TitleGenerator` vs `CompactService` vs sub-agent). Background sources bail fast under capacity cascade (claudy `:62-89` mapped to browserx call sites).
-- Port `parseMaxTokensContextOverflowError` → lower a `maxTokensOverride` on retry instead of failing. (Pairs with Track 25's `context_overflow` class on the same `TurnManager.ts:224` boundary — land together.)
+**Step 5 — source awareness + max-tokens self-heal (Phase 4, P2).**
+- Add a `source: 'foreground' | 'background'` field to the orchestrator options (no
+  request/`Prompt` change needed — `Prompt` `ResponsesAPI.ts:44-55` stays clean). The
+  concrete background call sites are `TitleGenerator.ts:158` and `CompactService.ts:368`
+  (both bypass the turn path and call `stream()` directly) plus the Track-05b quiet
+  extractor (`SessionSummaryHook.ts:286` via `SubAgentRunner`). Background sources
+  bail fast on 529 instead of amplifying a capacity cascade.
+- Port `parseMaxTokensContextOverflowError` → lower a `maxTokensOverride` on retry instead
+  of failing. (Pairs with Track 25's `context_overflow` class on the same
+  `TurnManager` boundary — land together.)
 
 ## Dependencies
 
-- **Track 01** (Hooks/Events): `RateLimitWaiting`/`RateLimitWarning`/`ModelDowngraded` ride the existing `Event`/`EventMsg` bus.
-- **Track 04** (Typed Tasks): `unattended` derived from platform + task family — scheduler/server/connector/background ⇒ persistent retry.
-- **Track 18** (USD Cost): downgrade decisions may factor running cost; both touch `ModelClientFactory`/model config; both share the `Session.ts:1614` fix.
-- **Track 20** (Managed Settings): server-default `unattended:true` overridable via the same managed-policy fetcher; shares ETag/poll/fail-open shape.
-- **Track 25** (Compaction): shares the `TurnManager.ts:224` boundary, `StreamAttemptError`, and circuit-breaker — **land together**.
+- **Track 01** (Hooks/Events): `RateLimitWaiting`/`RateLimitWarning`/`ModelDowngraded`
+  ride the existing `EventMsg` bus.
+- **Track 04** (Typed Tasks): `unattended` correlates with scheduler/server/connector/
+  background submission paths.
+- **Track 18** (USD Cost): shares the `Session.ts:1613-1614` fix + `getRateLimits()`
+  getter; downgrade may factor running cost.
+- **Track 20** (Managed Settings): server-default `unattended:true` overridable via the
+  same managed-policy fetcher.
+- **Track 25** (Compaction): shares the `TurnManager.ts:224` boundary, the
+  `ModelClientError`/`statusCode` classification, and the circuit-breaker — **land
+  together**. Also shares `getRateLimits()`.
 
 ## Risks
 
-- Unattended wait can stall a job for hours → cap at `RESET_CAP_MS` (6 h), always emit `RateLimitWaiting`, allow a policy max-wait override (Track 20). On extension, additionally clamp to one window (MV3 SW eviction).
-- Collapsing three retry loops into one risks regressing provider behavior → keep `StreamAttemptError` classification provider-pluggable; land behind the existing test net.
-- Silent model downgrade changes output quality → `ModelDowngraded` must be first-class and surfaced, never silent.
-- Provider header divergence (`x-pi-*` vs `x-ratelimit-*` vs none) → reset/limit extraction stays behind per-provider `parseRateLimitSnapshot()`; the orchestrator consumes only the normalized `RateLimitSnapshot`/`RateLimitError`.
+- Unattended wait can stall a job for hours → cap at `RESET_CAP_MS` (6 h), always emit
+  `RateLimitWaiting`, allow a policy max-wait (Track 20). On extension additionally clamp
+  to one window (MV3 SW eviction).
+- Collapsing 5 retry loops into one risks regressing per-provider behavior → keep
+  `ModelClientError`/`RateLimitError` classification provider-pluggable; land behind the
+  existing test net + the new injection seam.
+- Silent model downgrade changes output quality → `ModelDowngraded` must be first-class
+  and surfaced, never silent.
+- The orchestrator must wrap **at/above `TurnManager.runTurn`**; injecting it into the
+  client would have the typed control-flow error destroyed by `toModelClientError`
+  (verified). Keep all orchestrator state on the caller side.
+- The `RateLimitSnapshot` → `RateLimitSnapshotEvent` adapter is a real type seam — a
+  getter without the adapter does not compile. Treat the adapter as part of the Step 3
+  acceptance, with explicit absent-window behavior.
 
-## Validation Notes (verified vs claudy + browserx source, 2026-05-14 / multi-platform pass 2026-05-15)
+## Code-Verification Audit (2026-05-15, vs `HEAD` bd34246a)
 
-Both implementations read end-to-end. Citations:
+Every seam read end-to-end (not grepped). Corrections applied to earlier drafts:
 
-- claudy: `services/api/withRetry.ts:52-55,96-98` (constants), `:62-89` (`FOREGROUND_529_RETRY_SOURCES`/`shouldRetry529`), `:100-110` (`isPersistentRetryEnabled`/`isTransientCapacityError`), `:120-125` (`RetryContext`), `:144-168` (`CannotRetryError`/`FallbackTriggeredError`), `:170-517` (`withRetry` generator), `:326-365` (529 counter + fallback throw), `:368-512` (persistent backoff/heartbeat), `:489-503` (heartbeat chunking), `:504-506` (loop clamp), `:550-595` (`parseMaxTokensContextOverflowError`), `:702-706`/`:696-787` (`shouldRetry`), `:814-822` (`getRateLimitResetDelayMs`); `services/claudeAiLimits.ts:53-70,122-136,181-197,255-374,454-515`.
-- browserx core: `core/models/ModelClient.ts:118-156,445-479`; `core/models/client/OpenAIResponsesClient.ts:31,124-125,215,223-233,359,363,571,574,805,895,1301`; `core/models/RequestQueue.ts:291,320,362-369` (delete); `core/models/ModelClientError.ts:21,25,61-89,324-342`; `core/models/types/RateLimits.ts:6-20,19,111`; `core/models/types/StreamAttemptError.ts:14-17,39,46,53`; `core/Session.ts:1611,1614,2481,2469,2489`; `core/session/state/SessionState.ts:169`; `core/protocol/events.ts:255,257,260`; `core/TurnManager.ts:224`; `core/TurnContext.ts:50,62-82,87-123`; `core/engine/RepublicAgentEngine.ts:85,89,98,543,546`.
-- browserx platforms: `core/platform/IPlatformAdapter.ts:60`; `src/server/platform/ServerPlatformAdapter.ts:18`; `src/server/agent/ServerAgentBootstrap.ts:157-197` (agentFactory), `:198-215` (event→WS dispatch), `:622-647` (scheduled-job launcher = unattended driver), `:714-725` (failJob on rate-limit hard-fail today); `src/desktop/scheduler/DesktopSchedulerAlarms.ts`; `src/extension/background` (MV3 SW lifetime constraint).
+1. **Path drift:** `OpenAIResponsesClient.ts` is `src/core/models/client/OpenAIResponsesClient.ts`,
+   not `src/core/models/`. (CLAUDE.md is also stale on this.)
+2. **Line drift:** connect retry loop `:353-389`→**`:358-398`**; stream retry loop
+   `:565-624`→**`:566-633`**. (`RequestQueue` import `:31`, field `:124`, instantiation
+   `:228`/`:233`, `parseRateLimitSnapshot` `:1301`, emits `:805`/`:895`,
+   `ModelClient.withRetry` `:445-479`, `Session.ts:1611/1614/2481/2469/2489`,
+   `SessionState.ts:169/39`, `RateLimits.ts:111`, `events.ts:28/255/257/260`,
+   `TurnManager.ts:224`, `TurnContext.ts:22-45/62-82/87-123`,
+   `RepublicAgentEngine.ts:85/89/98`, `IPlatformAdapter.ts:60`,
+   `ServerPlatformAdapter.ts:18`, `ServerAgentBootstrap.ts:198-215/622-647/714-725`
+   all **confirmed exact**.)
+3. **`StreamAttemptError` is dead code (CONTRADICTION).** Zero production consumers
+   (type-only import `ModelClient.ts:8` + barrel + contract test). Live loops classify
+   via `instanceof ModelClientError` + `statusCode`. The entire earlier "do not widen the
+   closed union; detect via `status===529`" analysis is **withdrawn** — the class is not
+   in the request path at all. Net effort *down* (one fewer fragile change).
+4. **Layer-3 fallback premise corrected (CONTRADICTION, both directions).** (a) A typed
+   error thrown inside the client is destroyed by `toModelClientError`
+   (`OpenAIResponsesClient.ts:1106-1113,:683-698,:1191`); `ModelClientError` ctor has no
+   `cause` (`ModelClient.ts:134-145`). So "throw deep, catch at `TurnManager`" is not
+   viable — the orchestrator must wrap caller-side at `runTurn` (`:175-207`) and swap
+   inline. (b) Conversely, the earlier worry that BrowserX needs claudy-style
+   orphan-`tool_use` history cleanup is **false**: record-on-success
+   (`TaskRunner.ts:368-370` → `:731`) means a failed turn commits nothing; a
+   between-turns swap+retry is orphan-free *by construction*, no buffer reset needed.
+   The only constraint is "restart the whole turn", which `runTurn` does anyway.
+5. **Second dead-data bug found:** `Session.ts:1613` `tokenInfo=undefined` with a stale
+   comment ("would need getTokenInfo") — but `SessionState.getTokenInfo()` already exists
+   (`:159`). Folded into Step 3 (same method, both feed `TokenCountEvent`).
+6. **Type-shape mismatch found:** stored `RateLimitSnapshot` (`RateLimits.ts:6-20`,
+   nested optional windows) is structurally incompatible with the
+   `RateLimitSnapshotEvent` payload (`events.ts:260-271`, 5 required flat numbers); no
+   converter exists. Step 3 now requires a `toRateLimitSnapshotEvent` adapter, not just a
+   getter.
+7. **Background-source targets are concrete:** `TitleGenerator.ts:158` and
+   `CompactService.ts:368` call `modelClient.stream()` directly (bypassing the turn
+   path) with their own blind retry loops — they are the real "background" callers Step 5
+   must route + fast-bail. No `source`/`querySource` field exists on `Prompt`/`Op`/
+   `TurnContext` today; chosen carrier for `unattended` is `Submission.context`.
+8. **No streaming→non-streaming fallback exists** (verified) — claudy's
+   `initialConsecutive529Errors` cross-mode seam is N/A for BrowserX; dropped from scope.
+9. **No env-var analog** — `unattended` posture derives from `IPlatformAdapter.platformId`
+   + submission driver (server defaults on; the real bite point is `failJob`
+   `ServerAgentBootstrap.ts:714-725`).
 
-Corrections applied vs the first-pass draft:
-1. "Fix the `RequestQueue` stub" → **delete** it (it is a fully simulated decoy, not a half-finished feature).
-2. Identified the separate live bug `Session.ts:1614` (`rateLimits = undefined`) that makes `RateLimitSnapshotEvent` dead today — folded into Step 3 (shared with Track 18).
-3. Replaced claudy's `statusListeners` pub/sub + yielded `SystemAPIErrorMessage` heartbeat with browserx-native SQ/EQ `Event` emission (no terminal stdout host; claudy itself flags the yield as a `TODO(ANT-344)` stopgap).
-4. Reset-wait uses browserx's **relative** `resets_in_seconds`/`RateLimitError.retryAfter`, not claudy's absolute `anthropic-ratelimit-unified-reset` (browserx is provider-agnostic; those Anthropic headers are not on its wire).
-5. Fallback is a caller-side swap at `TurnManager.ts:224` via `ModelClientFactory`, not in-orchestrator.
-6. **Multi-platform (2026-05-15):** unattended posture is derived from `IPlatformAdapter.platformId` + submission driver, not an env var — `server` defaults on (the real bite point: `failJob` today), `desktop` per-task via `DesktopSchedulerAlarms`, `extension` opt-in with a clamped wait because the MV3 service worker is evicted long before a 6 h reset.
-
-## Forward-Trace Verification (2026-05-15)
-
-Traced the *forward* claims (symbols to create/modify/call), not just citations:
-
-- ✅ **Holds:** `TurnContextConfig` (`:22`) is an extensible interface used by ctor+`update()` — adding `unattended?: boolean` is the localized change described. `EventMsg` (`protocol/events.ts:28`) is a clean discriminated union — `RateLimitWaiting`/`RateLimitWarning`/`ModelDowngraded` are clean additions. `TurnManager.ts:224` fallback-catch site confirmed. `ErrorFactory.createRateLimitError`/`isApproachingRateLimit` reuse confirmed (read, not just grepped).
-- ⚠️ **Rescoped — `StreamAttemptError`:** NOT a one-line factory. Closed union + private ctor + exhaustive `toString()` switch + `classifyError()`/`fromHttpStatus()` entry points. Preferred path: detect overload via `status===529` (already `RetryableHttp`) **without** widening the union (see Step 1). Effort for the classification piece: S→S–M.
-- ⚠️ **Confirmed required (not "if absent") — `SessionState.getRateLimits()`:** does not exist; only `updateRateLimits()` (`:169`) + private `latestRateLimits` (`:39`). Step 3 must add the getter; it is the **shared prerequisite for Tracks 12/18/25** (add once).
-- Net effort: still **M**; no track-invalidating surprise. The orchestrator/`withRetry.ts` greenfield and the `RequestQueue` deletion are unaffected.
+Net effort: still **M** (Step 1 orchestrator greenfield + 5-loop collapse is the bulk);
+the `StreamAttemptError` simplification offsets the added adapter + second-bug fix. No
+track-invalidating surprise.
