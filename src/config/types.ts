@@ -194,6 +194,16 @@ export interface IModelConfig {
    * Default: 0 (must be explicitly enabled)
    */
   supportBackendMode?: number;
+
+  /**
+   * Track 12: fallback model key (optional).
+   * When sustained provider overload (consecutive 529s) is detected, the
+   * retry orchestrator downgrades to this model and retries. Must be a
+   * composite key (`provider:modelKey`, e.g. `openai:gpt-5.1`) of a
+   * generally-available model. Undefined ⇒ no downgrade (the run fails
+   * after the retry budget instead).
+   */
+  fallbackModelKey?: string;
 }
 
 // Provider configuration

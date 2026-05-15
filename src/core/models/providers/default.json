@@ -97,6 +97,7 @@
         "creator": "OpenAI",
         "contextWindow": 400000,
         "maxOutputTokens": 128000,
+        "fallbackModelKey": "openai:gpt-5.1",
         "supportsReasoning": true,
         "reasoningEfforts": [
           "minimal",

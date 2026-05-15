@@ -170,6 +170,16 @@ export class SessionState {
     this.latestRateLimits = { ...limits };
   }
 
+  /**
+   * Track 12: read back the latest stored rate-limit snapshot. Shared
+   * prerequisite for Tracks 12/18/25 — previously absent, which is why
+   * `Session.sendTokenCountEvent` hardcoded `rateLimits = undefined`.
+   * @returns the latest snapshot, or undefined if none recorded yet.
+   */
+  getRateLimits(): RateLimitSnapshot | undefined {
+    return this.latestRateLimits ? { ...this.latestRateLimits } : undefined;
+  }
+
   // ===== Approved Commands =====
 
   /**

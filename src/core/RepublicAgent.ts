@@ -14,6 +14,7 @@ import type { EngineEvent, EngineOp, InputItem as EngineInputItem } from './engi
 import { AgentConfig } from '../config/AgentConfig';
 import { Session } from './Session';
 import { TurnContext } from './TurnContext';
+import { EXTENSION_UNATTENDED_RESET_CAP_MS } from './models/resilience/withRetry';
 import { ApprovalManager } from './ApprovalManager';
 import { ToolRegistry } from '../tools/ToolRegistry';
 import { ModelClientFactory } from './models/ModelClientFactory';
@@ -160,9 +161,17 @@ export class RepublicAgent {
     // Use createClientForCurrentModel() to properly use selectedModelKey from config
     const modelClient = await this.modelClientFactory.createClientForCurrentModel();
 
-    // Create initial TurnContext with the model client
+    // Create initial TurnContext with the model client.
+    // Track 12: headless deployments (Apple Pi Server) default to unattended
+    // so scheduled/connector sessions wait out rate limits instead of
+    // hard-failing with no human to retry.
     const taskContext = new TurnContext(modelClient, {
-      sessionId: this.session.sessionId
+      sessionId: this.session.sessionId,
+      unattended: this.platformAdapter.platformId === 'server',
+      unattendedResetCapMs:
+        this.platformAdapter.platformId === 'extension'
+          ? EXTENSION_UNATTENDED_RESET_CAP_MS
+          : undefined,
     });
 
     // Configure PromptComposer for dynamic system prompt composition
@@ -407,8 +416,12 @@ export class RepublicAgent {
       // Create new model client with current auth state
       const modelClient = await this.modelClientFactory.createClientForCurrentModel();
 
-      // Create new TurnContext with updated model client
-      const taskContext = new TurnContext(modelClient, {});
+      // Create new TurnContext with updated model client, preserving the
+      // unattended posture across the auth-driven client refresh.
+      const prevUnattended = this.session.getTurnContext()?.getUnattended?.() ?? false;
+      const taskContext = new TurnContext(modelClient, {
+        unattended: prevUnattended,
+      });
       const userInstructions = await loadUserInstructions();
       taskContext.setUserInstructions(userInstructions);
 
@@ -478,8 +491,18 @@ export class RepublicAgent {
    * Execution ops are forwarded to the engine after pre-submit hooks.
    * Returns a submission ID.
    */
-  async submitOperation(op: Op, context?: { tabId?: number }): Promise<string> {
+  async submitOperation(
+    op: Op,
+    context?: { tabId?: number; unattended?: boolean }
+  ): Promise<string> {
     const id = `sub_${this.nextId++}`;
+
+    // Track 12: a scheduler/connector driver can mark this submission
+    // unattended; apply it to the live TurnContext before the turn runs
+    // (TurnManager reads getUnattended() fresh each turn).
+    if (context?.unattended !== undefined) {
+      this.session.updateTurnContext({ unattended: context.unattended });
+    }
 
     try {
       // Guard: engine must be initialized before forwarding execution ops

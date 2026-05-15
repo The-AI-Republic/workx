@@ -588,7 +588,9 @@ export class DesktopAgentBootstrap {
         // handleSchedulerEventCompletion on the previous task's TurnAborted event.
         await registryAgent.submitOperation(
           { type: 'UserInput', items: [{ type: 'text', text: execution.input }] },
-          {}
+          // Track 12: desktop scheduled jobs run unattended (the Tauri host is
+          // long-lived, so multi-hour reset-waits are safe).
+          { unattended: true }
         );
         this.runningSchedulerJobId = executionId;
         this.runningJobStartTime = Date.now();

@@ -7,6 +7,8 @@ import { Session } from './Session';
 import type { ToolDefinition } from '../tools/BaseTool';
 import { TurnContext } from './TurnContext';
 import type { CompletionRequest, CompletionResponse } from './models/ModelClient';
+import { withModelRetry } from './models/resilience/withRetry';
+import { AgentConfig } from '../config/AgentConfig';
 import { loadPrompt, loadUserInstructions } from './PromptLoader';
 import type { EventMsg, TokenUsage, StreamErrorEvent } from './protocol/events';
 import type { Event, InputItem } from './protocol/types';
@@ -169,45 +171,89 @@ export class TurnManager {
       user_instructions: this.turnContext.getUserInstructions(),
     };
 
-    let retries = 0;
+    const maxRetries = this.config.maxRetries || 3;
 
-    while (!this.cancelled) {
-      try {
-        return await this.tryRunTurn(prompt);
-      } catch (error) {
-        // Check for non-retryable errors
-        if (this.cancelled) {
-          throw new Error('Turn cancelled');
-        }
+    // Track 12: resolve the configured fallback model (composite key) once per
+    // turn. On sustained provider overload the orchestrator swaps to it.
+    let fallbackModelKey: string | undefined;
+    try {
+      const agentConfig = await AgentConfig.getInstance();
+      const currentKey = this.turnContext.getSelectedModelKey();
+      fallbackModelKey = agentConfig.getModelByKey(currentKey)?.model
+        .fallbackModelKey;
+    } catch {
+      fallbackModelKey = undefined;
+    }
 
-        if (this.isNonRetryableError(error)) {
-          throw error;
-        }
-
-        // Apply retry logic
-        if (retries < (this.config.maxRetries || 3)) {
-          retries++;
-          const delay = this.calculateRetryDelay(retries, error);
-
+    // Track 12: a single retry orchestrator wraps the whole turn. Each retry
+    // re-runs tryRunTurn from rebuilt clean history (browserx records history
+    // only on turn success — orphan-free by construction).
+    try {
+      return await withModelRetry(() => this.tryRunTurn(prompt), {
+        maxRetries,
+        unattended: this.turnContext.getUnattended(),
+        resetCapMs: this.turnContext.getUnattendedResetCapMs(),
+        currentModel: () => this.turnContext.getSelectedModelKey(),
+        fallback: fallbackModelKey
+          ? {
+              // Only downgrade once: once we're on the fallback model,
+              // resolve returns undefined so the orchestrator falls through
+              // to normal retry/persistent handling.
+              resolveFallbackModel: () =>
+                fallbackModelKey &&
+                this.turnContext.getSelectedModelKey() !== fallbackModelKey
+                  ? fallbackModelKey
+                  : undefined,
+              applyFallbackModel: (model) => {
+                this.session.updateTurnContext({ model });
+                this.turnContext.setSelectedModelKey(model);
+              },
+              onDowngrade: async (from, to) => {
+                await this.emitEvent({
+                  type: 'ModelDowngraded',
+                  data: {
+                    from_model: from,
+                    to_model: to,
+                    reason:
+                      'sustained provider overload (consecutive 529 responses)',
+                  },
+                });
+              },
+            }
+          : undefined,
+        isCancelled: () => this.cancelled,
+        isNonRetryable: (error) => this.isNonRetryableError(error),
+        computeBackoffMs: (attempt, error) =>
+          this.calculateRetryDelay(attempt, error),
+        onRetryNotice: async (error, attempt, delayMs) => {
           const summary = this.extractStreamErrorSummary(error);
-
-          // Notify about retry attempt
           await this.emitStreamError(
             `Stream error: ${summary}`,
             true,
-            retries,
-            delay,
+            attempt,
+            delayMs,
             this.config.maxRetries
           );
-
-          await this.sleep(delay);
-        } else {
-          throw error;
-        }
+        },
+        onWait: async (info) => {
+          await this.emitEvent({
+            type: 'RateLimitWaiting',
+            data: {
+              delay_ms: info.delayMs,
+              attempt: info.attempt,
+              status_code: info.statusCode,
+              kind: info.kind,
+            },
+          });
+        },
+        sleep: (ms) => this.sleep(ms),
+      });
+    } catch (error) {
+      if (this.cancelled) {
+        throw new Error('Turn cancelled');
       }
+      throw error;
     }
-
-    throw new Error('Turn cancelled');
   }
 
   /**

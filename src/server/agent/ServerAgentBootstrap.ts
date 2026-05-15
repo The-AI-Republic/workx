@@ -640,7 +640,9 @@ export class ServerAgentBootstrap {
             type: 'UserInput',
             items: [{ type: 'text', text: execution.input }],
           },
-          {}
+          // Track 12: scheduled jobs are unattended — wait out rate limits
+          // instead of hard-failing into scheduler.failJob() with no human.
+          { unattended: true }
         );
         this.runningSchedulerJobId = executionId;
         this.runningJobStartTime = Date.now();

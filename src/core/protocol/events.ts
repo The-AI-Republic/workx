@@ -99,6 +99,10 @@ export type EventMsg =
   | { type: 'TurnComplete'; data: TurnCompleteEvent }
   | { type: 'ContextUpdated'; data: ContextUpdatedEvent }
   | { type: 'TurnRetry'; data: TurnRetryEvent }
+  // Track 12: rate-limit resilience events
+  | { type: 'RateLimitWaiting'; data: RateLimitWaitingEvent }
+  | { type: 'RateLimitWarning'; data: RateLimitWarningEvent }
+  | { type: 'ModelDowngraded'; data: ModelDowngradedEvent }
   // Browser action events
   | { type: 'DOMActionStart'; data: DOMActionStartEvent }
   | { type: 'StorageActionStart'; data: StorageActionStartEvent }
@@ -733,6 +737,51 @@ export interface TurnRetryEvent {
   turn_id?: string;
   attempt?: number;
   reason?: string;
+}
+
+// Track 12: rate-limit resilience event payloads
+
+/**
+ * Emitted before a long unattended wait for a rate-limit window to reset, so
+ * a remote operator sees "waiting N ms for limit reset" instead of an opaque
+ * failure.
+ */
+export interface RateLimitWaitingEvent {
+  /** Milliseconds the agent will wait before the next attempt. */
+  delay_ms: number;
+  /** Persistent attempt counter (not the attended retry count). */
+  attempt: number;
+  /** HTTP status that triggered the wait (429 / 529), if known. */
+  status_code?: number;
+  /** Classified error kind: 'rate_limit' | 'overloaded' | 'server' | ... */
+  kind: string;
+}
+
+/**
+ * Early warning that quota is being consumed faster than the window sustains
+ * (time-relative threshold) or that a static threshold was crossed.
+ */
+export interface RateLimitWarningEvent {
+  /** Which window: 'primary' | 'secondary'. */
+  window: string;
+  /** Percent of the window consumed (0-100). */
+  used_percent: number;
+  /** Fraction of the window elapsed (0-1), when computable. */
+  time_progress?: number;
+  /** Seconds until the window resets, when known. */
+  resets_in_seconds?: number;
+  /** Human-readable summary for surfacing in the UI/transcript. */
+  message: string;
+}
+
+/**
+ * Emitted when sustained provider overload forces a model downgrade. Never
+ * silent — output quality changed.
+ */
+export interface ModelDowngradedEvent {
+  from_model?: string;
+  to_model: string;
+  reason: string;
 }
 
 // Browser action event payloads

@@ -22,6 +22,7 @@ import { type SessionServices, createSessionServices } from './session/state/Ses
 import { ActiveTurn } from './session/state/ActiveTurn';
 import type { TokenUsageInfo, RunningTask, RateLimitSnapshot, TurnAbortReason, InitialHistory } from './session/state/types';
 import { TaskKind } from './session/state/types';
+import { toRateLimitSnapshotEvent, evaluateEarlyWarning } from './models/types/RateLimits';
 import { isDOMSnapshotOutput, compressSnapshot } from './session/state/SnapshotCompressor';
 import type { HookDispatcher } from './hooks/HookDispatcher';
 
@@ -1609,9 +1610,14 @@ export class Session {
    * @param subId Submission ID
    */
   async sendTokenCountEvent(subId: string): Promise<void> {
-    // Get token info from SessionState
-    const tokenInfo = undefined; // Would need getTokenInfo method from SessionState
-    const rateLimits = undefined; // Would need getRateLimits method from SessionState
+    // Track 12: read the real values from SessionState (both were previously
+    // hardcoded undefined — the getters now exist). The stored snapshot is
+    // adapted to the flat RateLimitSnapshotEvent wire shape.
+    const tokenInfo = this.sessionState.getTokenInfo();
+    const snapshot = this.sessionState.getRateLimits();
+    const rateLimits = snapshot
+      ? toRateLimitSnapshotEvent(snapshot)
+      : undefined;
 
     const event: Event = {
       id: subId,
@@ -2484,6 +2490,31 @@ export class Session {
   ): Promise<void> {
     // Update SessionState
     this.sessionState.updateRateLimits(rateLimits);
+
+    // Track 12: emit an early warning when quota is being burned faster than
+    // the window sustains (before the API actually rejects).
+    const warning = evaluateEarlyWarning(rateLimits);
+    if (warning) {
+      const resetSuffix =
+        warning.resets_in_seconds !== undefined
+          ? `, resets in ${Math.ceil(warning.resets_in_seconds)}s`
+          : '';
+      await this.sendEvent({
+        id: subId,
+        msg: {
+          type: 'RateLimitWarning',
+          data: {
+            window: warning.window,
+            used_percent: warning.used_percent,
+            time_progress: warning.time_progress,
+            resets_in_seconds: warning.resets_in_seconds,
+            message:
+              `Approaching rate limit: ${warning.used_percent.toFixed(0)}% of ` +
+              `the ${warning.window} window used${resetSuffix}`,
+          },
+        } as EventMsg,
+      });
+    }
 
     // Send token count event
     await this.sendTokenCountEvent(subId);
