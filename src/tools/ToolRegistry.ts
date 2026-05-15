@@ -215,6 +215,40 @@ export class ToolRegistry {
   }
 
   /**
+   * Track 10: upsert a tool — replace if present, else register.
+   *
+   * Used by `SubAgentRunner.rebuildSubAgentTool()` to swap the `sub_agent`
+   * tool definition when plugin sub-agent types are added/removed at
+   * runtime. The plain `register()` throws on duplicate, so callers that
+   * want "either install or update" semantics use this instead.
+   *
+   * Replacement is atomic from the consumer's view: the new entry is in
+   * place before this method returns; in-flight tool calls already
+   * dispatched to the old handler continue with that closure.
+   */
+  async replace(
+    tool: ToolDefinition,
+    handler: ToolHandler,
+    optionsOrAssessor?: IRiskAssessor | ToolRegistrationOptions,
+  ): Promise<void> {
+    const toolName = this.getToolName(tool);
+    if (this.tools.has(toolName)) {
+      this.tools.delete(toolName);
+      this.emitEvent({
+        id: `evt_unregister_${toolName}`,
+        msg: {
+          type: 'ToolUnregistered',
+          data: {
+            tool_name: toolName,
+            unregistration_time: Date.now(),
+          },
+        },
+      });
+    }
+    await this.register(tool, handler, optionsOrAssessor);
+  }
+
+  /**
    * Discover tools based on query criteria
    */
   async discover(query?: ToolDiscoveryQuery): Promise<ToolDiscoveryResult> {
