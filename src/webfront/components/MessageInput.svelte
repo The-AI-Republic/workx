@@ -59,9 +59,14 @@
 
   /** Submit the current value plus any pending attachments, then reset. */
   function submitWithAttachments(): void {
-    const atts = pendingAttachments.length ? pendingAttachments : undefined;
-    onSubmit(value, atts);
-    clearAttachments();
+    // Preserve the exact prior call signature when there are no attachments
+    // (backward compatible — callers/tests expecting one arg are unaffected).
+    if (pendingAttachments.length) {
+      onSubmit(value, pendingAttachments);
+      clearAttachments();
+    } else {
+      onSubmit(value);
+    }
   }
 
   /** Pull image files out of a clipboard event into pendingAttachments. */

@@ -533,11 +533,21 @@ export class RepublicAgent {
           //    sources. See design §4.3.
           let userOp = op as Extract<Op, { type: 'UserInput' | 'UserTurn' }>;
           if (!(userOp as Record<symbol, unknown>)[FUNNELLED]) {
-            const processed = await processUserInput(
-              userOp.items,
-              this.buildFunnelContext(userOp, context)
-            );
-            if (!processed.shouldQuery) {
+            // The funnel is strictly additive: any unexpected failure inside
+            // it must NOT abort the turn (design risk: never abort a
+            // scheduled/connector job). On error, proceed with the original
+            // op unchanged.
+            let processed: Awaited<ReturnType<typeof processUserInput>> | null = null;
+            try {
+              processed = await processUserInput(
+                userOp.items,
+                this.buildFunnelContext(userOp, context)
+              );
+            } catch (funnelErr) {
+              console.error('[RepublicAgent] input funnel failed; proceeding with raw input:', funnelErr);
+              processed = null;
+            }
+            if (processed && !processed.shouldQuery) {
               // Handled by the funnel (blocked / slash / bash) — no engine turn.
               const message = processed.resultText ?? processed.systemNote;
               if (message) {
@@ -556,15 +566,17 @@ export class RepublicAgent {
               }
               return id;
             }
-            if (processed.systemNote) {
-              // Non-blocking degradation notice (e.g. "@page unavailable").
-              this.emitEvent({
-                type: 'AgentMessage',
-                data: { message: processed.systemNote },
-              });
+            if (processed) {
+              if (processed.systemNote) {
+                // Non-blocking degradation notice (e.g. "@page unavailable").
+                this.emitEvent({
+                  type: 'AgentMessage',
+                  data: { message: processed.systemNote },
+                });
+              }
+              userOp = { ...userOp, items: processed.items };
+              (userOp as Record<symbol, unknown>)[FUNNELLED] = true;
             }
-            userOp = { ...userOp, items: processed.items };
-            (userOp as Record<symbol, unknown>)[FUNNELLED] = true;
           }
           op = userOp;
 
@@ -670,8 +682,12 @@ export class RepublicAgent {
       origin: context?.origin ?? { channel: 'local' },
       platform: this.platformAdapter,
       // Track 09 store — may be undefined when persistence is disabled for
-      // the platform; the funnel then leaves items unchanged.
-      resultStore: this.session.getToolResultStore(),
+      // the platform; the funnel then leaves items unchanged. Guarded so a
+      // session without the accessor cannot abort a submission.
+      resultStore:
+        typeof this.session.getToolResultStore === 'function'
+          ? this.session.getToolResultStore()
+          : undefined,
       tabId,
     };
   }

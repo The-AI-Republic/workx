@@ -193,6 +193,17 @@ Mirrors claudy's strict order but expressed in browserx's `InputItem[]`/capabili
 
 ---
 
+## 5b. As-Built Resolutions (implemented 2026-05-15, branch `feat/track-13-input-pipeline`)
+
+Decisions the design left open or stated literally, resolved during implementation for system-consistency. The design above is the intent; this is what shipped.
+
+1. **§6.1 MessageInput relocation — kept UI-command dispatch client-side (deliberate divergence).** `/new`,`/help`,`/settings` are pure Svelte router/callback actions; Track 03 designates `webfront/commands` as the UI-only surface. They *cannot* execute in core, and the literal "delete the slash branches" would break `/settings`. Resolution: the funnel is the canonical processor for all model-bound + server input (its real value); UI commands stay correctly in the UI layer. By the time core sees input, UI commands are already handled client-side. Behavior-preserving; no `MessageInput.test.ts` regression.
+2. **§7.2 `@selection` backend — adapter-level, not DomService (layering refinement).** Added optional `IBrowserController.getSelectionText?()` instead of a `core/`→`extension/` `DomService` import (which would violate layering). Extension implements it via `chrome.scripting` (the same path as `getPageContent`, no CDP). Strictly better for layering than the design's §7.2.
+3. **§7.4 screenshot spike — resolved as the safe hybrid.** Inline `image` is **kept** (vision, no regression) **plus** a Track-09-persisted `{mime,b64}` envelope under a content-addressed idempotent id **plus** an `[Image source: <ref>]` text breadcrumb. No `context{path}` for images (would dump base64 into the prompt as text via `convertInputItem`).
+4. **§7.5 `@page`/`@tab` representation — adapter `getPageContent()`.** Resolved via the cross-platform `IBrowserController.getPageContent()` (the abstraction that exists) rather than importing extension's `DomService.getSerializedDom()` into core. Avoids the layering violation; large content collapses to Track 09's `<persisted-output>`.
+5. **§7.3 `!` exec — funnel does normalization only (explicit layer boundary).** The funnel detects `!`, gates on `hasShellExec`, and emits the recognizable `<bash-input>` marker (or literal text + systemNote). Actually *running* the command + injecting `<bash-stdout>` is the execution layer's concern, kept out of `core/input/` for the same layering reason UI commands stayed in the UI — the bounded engine-layer follow-up.
+6. **§7.1 origin plumbing — centralized in `agentHandler`.** `connector-bridge.ts` needed no edit: it already threads `SubmissionContext` through `submissionHandler` → `agentHandler`, where `deriveInputOrigin` runs centrally. Cleaner than per-connector edits.
+
 ## 6. Per-stage detail (browserx)
 
 - **6.1 Slash relocation (Phase 1).** Delete `MessageInput.svelte` slash branches (`:208-215`, `:304-311`) and `handlePaste` slash logic (`:262-279`); keep the dropdown/preview UX but route the *final dispatch* through `onSubmit` → core funnel → `parseCommandInput`. Remove the `commandRegistry`/`parseCommandInput` imports (`:15`) once dispatch is centralized. `onSubmit(value:string)` contract unchanged. Behavior-preserving — covered by `MessageInput.test.ts` + `CommandRegistry` tests.
