@@ -159,7 +159,8 @@ export function getDefaultAgentConfig(): IAgentConfig {
     extension: { ...DEFAULT_EXTENSION_SETTINGS },
     tools: { ...DEFAULT_TOOLS_CONFIG },
     storage: { ...DEFAULT_STORAGE_CONFIG },
-    approval: { ...DEFAULT_APPROVAL_CONFIG }
+    approval: { ...DEFAULT_APPROVAL_CONFIG },
+    enabledPlugins: {}
   };
 }
 
@@ -434,7 +435,9 @@ export function buildRuntimeConfig(stored: IStoredConfig | null): IAgentConfig {
         ...DEFAULT_APPROVAL_CONFIG.timeouts,
         ...(stored.approval?.timeouts || {})
       }
-    }
+    },
+    // Track 10: per-plugin enable state round-trips verbatim
+    enabledPlugins: stored.enabledPlugins ?? {}
   };
 }
 
@@ -470,6 +473,8 @@ export function extractStoredConfig(config: IAgentConfig): IStoredConfig {
     activeProfile: config.activeProfile,
     tools: config.tools,
     storage: config.storage,
-    approval: config.approval
+    approval: config.approval,
+    // Track 10: persist per-plugin enable state
+    enabledPlugins: config.enabledPlugins
   };
 }
