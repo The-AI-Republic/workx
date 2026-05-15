@@ -29,7 +29,7 @@ BrowserX is a multi-platform browser automation agent. Claudy is a terminal-nati
 
 ### Second-Pass Research Tracks (added 2026-05-14)
 
-Tracks 12–24 come from a second, deeper claudy↔browserx comparison (2026-05-14) that targeted subsystems the original 2026-04-07 `plan.md` analysis never turned into tracks. None overlap tracks 01–11. Each design.md was written after reading the actual claudy implementation **and** the real browserx integration seams end-to-end, with `file:line` citations, divergence rationale, phase plans, and "Validation Notes" (matching the shipped 06/09 quality bar). Two claudy subsystems were investigated and **dismissed**: `thinkback`/`thinkback-play` (a "Year in Review" marketing animation, not rewind — the real feature is `/rewind`, see Track 15) and `upstreamproxy` (container credential-isolation for a threat model browserx does not have — not a model gateway).
+Tracks 12–25 come from deeper claudy↔browserx comparison (2026-05-14) targeting subsystems the original 2026-04-07 `plan.md` analysis never turned into tracks. None overlap tracks 01–11. (Tracks 12–24: second-pass subsystem sweep. Track 25: a context-window-management follow-up — the two unattended-robustness gaps surfaced when comparing compaction head-to-head.) Each design.md was written after reading the actual claudy implementation **and** the real browserx integration seams end-to-end, with `file:line` citations, divergence rationale, phase plans, and "Validation Notes" (matching the shipped 06/09 quality bar). Two claudy subsystems were investigated and **dismissed**: `thinkback`/`thinkback-play` (a "Year in Review" marketing animation, not rewind — the real feature is `/rewind`, see Track 15) and `upstreamproxy` (container credential-isolation for a threat model browserx does not have — not a model gateway).
 
 | # | Track | Priority | Effort | Value |
 |---|-------|----------|--------|-------|
@@ -46,6 +46,7 @@ Tracks 12–24 come from a second, deeper claudy↔browserx comparison (2026-05-
 | 22 | [Feature Flags & Lazy Loading](./22_feature_flags_lazy_loading/design.md) | P2 | Medium | Vite `define` `__FEATURE_*__` (same mechanism as `__BUILD_MODE__:vite.config.mjs:116`) + gated dynamic imports; pairs with existing `FeatureFlagRecorder`. Sequenced before 21/23. Code-grounded design. |
 | 23 | [Agentic Payments (x402)](./23_agentic_payments_x402/design.md) | P2 (strategic) | Medium | HTTP 402 micropayments. **No global fetch chokepoint in browserx** → opt-in capability for resource tools, never auto-pay on navigation; flag-gated, vetted crypto. Code-grounded design. |
 | 24 | [Minor UX & Hardening Follow-ups](./24_minor_ux_hardening_followups/design.md) | P1–P2 (per item) | Small–Medium each | Bundle: Fuse ranking (P1/S), personas (P2/S), prompt suggestion NOT speculation (P2/M), server `execSync` hardening + `execFileSync` injection fix (P2/M), sync deferred (P2/L) + fail-closed secret scanner (P2/S). Code-grounded design. |
+| 25 | [Autonomous & Reactive Context Compaction](./25_context_compaction_robustness/design.md) | P1 | Small–Medium | Wires the **already-correct** `Session.shouldCompact()` into the existing post-turn hook (`Session.ts:519`) so the headless/main loop self-compacts (only the sub-agent path does today); adds reactive 413/context-overflow recovery on Track 12's model-call boundary + circuit breaker; unifies the 3 inconsistent thresholds. Wiring + safety-net, not a `CompactService` rewrite. Code-grounded design. |
 
 ## Dependency Graph
 
@@ -80,8 +81,11 @@ Tracks 12–24 come from a second, deeper claudy↔browserx comparison (2026-05-
 12_rate_limit ──> 18_cost (downgrade factors cost); shares ETag/poll/fail-open pattern with 20_managed_settings
 14_plan_mode ──> 23_x402 (payment = destructive action through approval)
 22_feature_flags ──> 21_remote_bridge & 23_x402 (ship dark, opt-in)
+12_rate_limit ──> 25_context_compaction (shared TurnManager:224 model-call boundary + StreamAttemptError + circuit-breaker)
+05b_session_summary (DONE) ──> 25_context_compaction (registerPostTurnHook seam + the compaction it triggers)
 
-Recommended sequencing: 12 (P0, correctness) → 13 (P0, spine) → {14, 15, 16, 17, 18, 19} (P1) → 20, 21 → {22, 23} (P2) → 24 (opportunistic)
+Recommended sequencing: 12 (P0, correctness) → 13 (P0, spine) → {14, 15, 16, 17, 18, 19, 25} (P1) → 20, 21 → {22, 23} (P2) → 24 (opportunistic)
+  (25 pairs with 12 — same model-call boundary; land them together)
 ```
 
 ## Existing Work
