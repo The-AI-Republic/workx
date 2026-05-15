@@ -1,6 +1,7 @@
 import type { ISkillProvider } from './SkillProvider';
 import type { Skill, SkillMeta, InvocationMode } from './types';
-import { substituteVariables, validateSkill, parseSkillMd } from './SkillParser';
+import { substituteVariables, validateSkill, parseSkillMd, normalizeFrontmatter, projectMeta } from './SkillParser';
+import type { SkillDomainFilter } from './SkillDomainFilter';
 
 /** Built-in command names that skills cannot use */
 const RESERVED_COMMAND_NAMES = new Set(['new', 'help', 'settings']);
@@ -12,9 +13,17 @@ const RESERVED_COMMAND_NAMES = new Set(['new', 'help', 'settings']);
 export class SkillRegistry {
   private metas: SkillMeta[] = [];
   private provider: ISkillProvider;
+  private domainFilter: SkillDomainFilter | null = null;
 
-  constructor(provider: ISkillProvider) {
+  constructor(provider: ISkillProvider, domainFilter?: SkillDomainFilter) {
     this.provider = provider;
+    this.domainFilter = domainFilter ?? null;
+  }
+
+  /** Track 03 Phase 3 — attach a domain filter (or replace one) post-construction. */
+  setDomainFilter(filter: SkillDomainFilter | null): void {
+    this.domainFilter = filter;
+    if (filter) filter.init(this.metas);
   }
 
   // ── Discovery ───────────────────────────────────────────────────
@@ -22,17 +31,33 @@ export class SkillRegistry {
   /** Discover all skills and load Level 1 metadata */
   async discover(): Promise<SkillMeta[]> {
     this.metas = await this.provider.listMeta();
+    if (this.domainFilter) this.domainFilter.init(this.metas);
     return this.metas;
   }
 
-  /** Get all skill metadata (cached from last discover()) */
+  /**
+   * Get all skill metadata (cached from last discover()).
+   *
+   * When a domain filter is attached, returns only the skills currently
+   * available for the active tab (unconditional + matching conditional).
+   * Without a filter, returns the full list (extension/desktop/server
+   * fallback).
+   */
   getSkillMetas(): SkillMeta[] {
+    return this.domainFilter ? this.domainFilter.getAvailableSkills() : this.metas;
+  }
+
+  /**
+   * Returns all metas regardless of domain filter — for callers that need to
+   * reason about the full skill catalog (CRUD ops, /help typeahead).
+   */
+  getAllSkillMetas(): SkillMeta[] {
     return this.metas;
   }
 
-  /** Get auto-invocable skills (mode=auto|hybrid AND trusted) */
+  /** Get auto-invocable skills (mode=auto|hybrid AND trusted), filtered by domain when applicable. */
   getAutoInvocableSkills(): SkillMeta[] {
-    return this.metas.filter(
+    return this.getSkillMetas().filter(
       (s) => (s.invocationMode === 'auto' || s.invocationMode === 'hybrid') && s.trusted
     );
   }
@@ -58,6 +83,15 @@ export class SkillRegistry {
   /** Load a referenced file (Level 3) */
   async loadReference(skillName: string, refPath: string): Promise<string | null> {
     return this.provider.loadReference(skillName, refPath);
+  }
+
+  /**
+   * Load the full Skill record (Level 2) — body + extended fields.
+   * Use this when you need `context`, `agent`, `hooks`, `allowedTools`, etc.
+   * For substituted body only, use `invoke()`.
+   */
+  async loadFull(name: string): Promise<Skill | null> {
+    return this.provider.load(name);
   }
 
   // ── System Prompt ───────────────────────────────────────────────
@@ -99,13 +133,7 @@ export class SkillRegistry {
 
     // Update cached metadata
     const existingIndex = this.metas.findIndex((m) => m.name === skill.name);
-    const meta: SkillMeta = {
-      name: skill.name,
-      description: skill.description,
-      invocationMode: skill.invocationMode,
-      trusted: skill.trusted,
-      source: skill.source,
-    };
+    const meta: SkillMeta = projectMeta(skill);
 
     if (existingIndex >= 0) {
       this.metas[existingIndex] = meta;
@@ -162,6 +190,7 @@ export class SkillRegistry {
     }
 
     const now = new Date().toISOString();
+    const fields = normalizeFrontmatter(parsed.frontmatter);
     const skill: Skill = {
       name: parsed.frontmatter.name,
       description: parsed.frontmatter.description,
@@ -170,13 +199,23 @@ export class SkillRegistry {
       trusted: false,
       source: 'imported',
       sourceUrl,
-      metadata: parsed.frontmatter.metadata,
-      allowedTools: parsed.frontmatter['allowed-tools']
-        ? parsed.frontmatter['allowed-tools'].split(/\s+/)
-        : undefined,
-      compatibility: parsed.frontmatter.compatibility,
+      metadata: fields.metadata,
+      allowedTools: fields.allowedTools,
+      compatibility: fields.compatibility,
       createdAt: now,
       updatedAt: now,
+      // Track 03 normalized fields
+      whenToUse: fields.whenToUse,
+      argumentHint: fields.argumentHint,
+      model: fields.model,
+      effort: fields.effort,
+      context: fields.context,
+      agent: fields.agent,
+      hooks: fields.hooks,
+      domains: fields.domains,
+      userInvocable: fields.userInvocable,
+      disableModelInvocation: fields.disableModelInvocation,
+      version: fields.version,
     };
 
     await this.save(skill);

@@ -73,7 +73,7 @@ No existing behavior changes. Adds the new types and plumbing alongside the curr
 - `src/desktop/channels/TauriChannel.ts` — same
 - `src/server/channels/ServerChannel.ts` — `supportsServices() { return true; }`
 - `src/desktop/channels/WebSocketChannel.ts` — `supportsServices() { return true; }`
-- `src/server/plugins/channel-bridge.ts` — `supportsServices() { return false; }`
+- `src/server/channel-connectors/connector-bridge.ts` — `supportsServices() { return false; }`
 
 **Acceptance:** All channel implementations compile with the new capability.
 

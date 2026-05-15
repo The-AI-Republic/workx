@@ -2,7 +2,7 @@
  * Graceful Shutdown
  *
  * Orchestrates the shutdown sequence:
- *   1. Stop plugins
+ *   1. Stop connectors
  *   2. Drain active runs
  *   3. Flush writes
  *   4. Close WebSocket connections
@@ -53,7 +53,7 @@ export async function gracefulShutdown(reason: string = 'shutdown'): Promise<voi
     setTimeout(resolve, Math.min(gracePeriodMs, 10_000));
   });
 
-  // 4. Shutdown the agent bootstrap (plugins, persistence, agent)
+  // 4. Shutdown the agent bootstrap (connectors, persistence, agent)
   const bootstrap = getServerAgentBootstrap();
   await bootstrap.shutdown();
 

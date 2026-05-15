@@ -686,7 +686,7 @@ describe('Session', () => {
       expect(task.kind).toHaveBeenCalled();
     });
 
-    it('interruptTask should abort all running tasks', async () => {
+    it('interruptTask aborts the foreground task (Track 04)', async () => {
       const task = makeMockTask({
         run: vi.fn().mockImplementation(() => new Promise(() => {})), // never resolves
       });
@@ -694,8 +694,114 @@ describe('Session', () => {
       await session.spawnTask(task, turnContext, 'sub-1', []);
       expect(session.hasRunningTask('sub-1')).toBe(true);
 
+      // Track 04: interruptTask narrows to foreground-only. The spawn above
+      // has no `background: true`, so it IS the foreground task — should be
+      // killed.
       await session.interruptTask();
       expect(session.hasRunningTask('sub-1')).toBe(false);
+    });
+
+    // ─────────────────────────────────────────────────────────────────
+    // Track 04: concurrency seam — background tasks survive foreground
+    // ─────────────────────────────────────────────────────────────────
+
+    it('foreground spawn does NOT abort background tasks (Track 04 concurrency seam)', async () => {
+      const bg = makeMockTask({
+        run: vi.fn().mockImplementation(() => new Promise(() => {})),
+      });
+      const fg1 = makeMockTask({
+        run: vi.fn().mockImplementation(() => new Promise(() => {})),
+      });
+      const fg2 = makeMockTask({
+        run: vi.fn().mockImplementation(() => new Promise(() => {})),
+      });
+
+      // Spawn background first.
+      await session.spawnTask(bg, turnContext, 'bg-1', [], { background: true });
+      expect(session.hasRunningTask('bg-1')).toBe(true);
+      expect(bg.abort).not.toHaveBeenCalled();
+
+      // Spawn first foreground.
+      await session.spawnTask(fg1, turnContext, 'fg-1', []);
+      expect(session.getForegroundTaskId()).toBe('fg-1');
+
+      // Spawn second foreground — replaces fg1 but MUST NOT touch bg-1.
+      await session.spawnTask(fg2, turnContext, 'fg-2', []);
+      expect(session.getForegroundTaskId()).toBe('fg-2');
+      expect(fg1.abort).toHaveBeenCalled();   // prior foreground killed
+      expect(bg.abort).not.toHaveBeenCalled(); // background SURVIVES
+      expect(session.getTask('bg-1')).toBeDefined();
+    });
+
+    it('interruptTask kills foreground only, leaves background tasks running', async () => {
+      const bg = makeMockTask({
+        run: vi.fn().mockImplementation(() => new Promise(() => {})),
+      });
+      const fg = makeMockTask({
+        run: vi.fn().mockImplementation(() => new Promise(() => {})),
+      });
+
+      await session.spawnTask(bg, turnContext, 'bg-1', [], { background: true });
+      await session.spawnTask(fg, turnContext, 'fg-1', []);
+
+      await session.interruptTask();
+
+      expect(fg.abort).toHaveBeenCalled();
+      expect(bg.abort).not.toHaveBeenCalled();
+      expect(session.getForegroundTaskId()).toBeNull();
+    });
+
+    it('abortTask(id) isolates — aborting one background leaves siblings running', async () => {
+      const a = makeMockTask({ run: vi.fn().mockImplementation(() => new Promise(() => {})) });
+      const b = makeMockTask({ run: vi.fn().mockImplementation(() => new Promise(() => {})) });
+      const c = makeMockTask({ run: vi.fn().mockImplementation(() => new Promise(() => {})) });
+
+      await session.spawnTask(a, turnContext, 'bg-a', [], { background: true });
+      await session.spawnTask(b, turnContext, 'bg-b', [], { background: true });
+      await session.spawnTask(c, turnContext, 'bg-c', [], { background: true });
+
+      await session.abortTask('bg-b', 'UserInterrupt');
+
+      expect(b.abort).toHaveBeenCalled();
+      expect(a.abort).not.toHaveBeenCalled();
+      expect(c.abort).not.toHaveBeenCalled();
+      // bg-b removed; bg-a and bg-c still tracked.
+      expect(session.getTask('bg-b')).toBeUndefined();
+      expect(session.getTask('bg-a')).toBeDefined();
+      expect(session.getTask('bg-c')).toBeDefined();
+    });
+
+    it('abortTasksForTab aborts only tasks scoped to the closed tab', async () => {
+      const onTab42 = makeMockTask({ run: vi.fn().mockImplementation(() => new Promise(() => {})) });
+      const onTab99 = makeMockTask({ run: vi.fn().mockImplementation(() => new Promise(() => {})) });
+      const unscoped = makeMockTask({ run: vi.fn().mockImplementation(() => new Promise(() => {})) });
+
+      await session.spawnTask(onTab42, turnContext, 't42', [], {
+        background: true,
+        scopedTabIds: [42],
+      });
+      await session.spawnTask(onTab99, turnContext, 't99', [], {
+        background: true,
+        scopedTabIds: [99],
+      });
+      await session.spawnTask(unscoped, turnContext, 'tn', [], { background: true });
+
+      await session.abortTasksForTab(42, 'TabClosed');
+
+      expect(onTab42.abort).toHaveBeenCalled();
+      expect(onTab99.abort).not.toHaveBeenCalled();
+      expect(unscoped.abort).not.toHaveBeenCalled();
+    });
+
+    it('listActiveTasks + listTaskStates project correctly', async () => {
+      const fg = makeMockTask({ run: vi.fn().mockImplementation(() => new Promise(() => {})) });
+      await session.spawnTask(fg, turnContext, 'fg-1', []);
+
+      expect(session.listActiveTasks()).toHaveLength(1);
+      // Foreground spawn doesn't get a taskState attached (SubAgentRunner is
+      // the only registerTaskState caller in production). So listTaskStates
+      // is empty for a foreground-only setup.
+      expect(session.listTaskStates()).toHaveLength(0);
     });
 
     it('abortAllTasks should call abort on each task', async () => {

@@ -6,8 +6,8 @@
 
 import type { Prompt, ModelFamily, ResponseItem } from './types/ResponsesAPI';
 import type { ContentItem } from '../protocol/types';
-import { ScreenshotFileManager } from '../../tools/screenshot/ScreenshotFileManager';
-import { SCREENSHOT_CACHE_KEY } from '@/tools/screenshot/types';
+// ScreenshotFileManager is dynamically imported in injectScreenshots() to avoid
+// pulling extension-only code into desktop/server builds.
 
 /**
  * Get full instructions by combining base instructions with user instructions.
@@ -106,6 +106,7 @@ export async function get_formatted_input(prompt: Prompt): Promise<ResponseItem[
         
         // If it's a screenshot action, get the image and insert it after this item
         if (output?.metadata?.toolName === 'page_vision' && output?.metadata?.action === 'screenshot') {
+          const { ScreenshotFileManager } = await import('../../extension/tools/screenshot/ScreenshotFileManager');
           const screenshotData = await ScreenshotFileManager.getScreenshot();
 
           if (screenshotData) {

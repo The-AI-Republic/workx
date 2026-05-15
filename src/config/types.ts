@@ -5,6 +5,7 @@
 
 import type { IApprovalConfig } from '../core/approval/types';
 import type { AgentMode } from '../prompts/PromptComposer';
+import type { HooksConfig } from '../core/hooks/types';
 
 /**
  * Main centralized configuration interface for the agent (RUNTIME)
@@ -50,6 +51,7 @@ export interface IAgentConfig {
   tools?: IToolsConfig;
   storage?: IStorageConfig;
   approval?: IApprovalConfig;
+  hooks?: HooksConfig;
 }
 
 // Model pricing information
@@ -342,6 +344,17 @@ export interface IUserPreferences {
    * Defaults to gpt-4o-mini for low cost. Independent of the user's selected chat model.
    */
   extractionModel?: string;
+  /**
+   * Track 05b: automatic per-session summary extraction.
+   * - When true: a background sub-agent distills the conversation into
+   *   `~/.airepublic-pi/memory/sessions/<sessionId>/summary.md` and the
+   *   compaction service folds it in.
+   * - When false (default): feature disabled.
+   *
+   * Off-by-default until telemetry validates cost and quality on real
+   * sessions; flip via Memory Settings once the feature gates open.
+   */
+  sessionSummaryEnabled?: boolean;
   zoomLevel?: number;
   shortcuts?: Record<string, string>;
   experimental?: Record<string, boolean>;
@@ -504,6 +517,8 @@ export interface IStoredConfig {
   storage?: IStorageConfig;
   /** Approval system configuration */
   approval?: IApprovalConfig;
+  /** Hook system configuration */
+  hooks?: HooksConfig;
 }
 
 // Storage interfaces
@@ -561,7 +576,7 @@ export interface IExportData {
 // Event interfaces for config changes
 export interface IConfigChangeEvent {
   type: 'config-changed';
-  section: 'model' | 'provider' | 'profile' | 'preferences' | 'cache' | 'extension' | 'security' | 'approval';
+  section: 'model' | 'provider' | 'profile' | 'preferences' | 'cache' | 'extension' | 'security' | 'approval' | 'hooks';
   oldValue?: any;
   newValue: any;
   timestamp: number;

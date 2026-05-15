@@ -38,6 +38,7 @@ const EVENT_SCOPE_MAP: Record<string, EventScope> = {
   'ToolExecutionEnd': 'thread',
   'ToolExecutionError': 'thread',
   'ToolExecutionTimeout': 'thread',
+  'ToolExecutionProgress': 'thread',
   'McpToolCallBegin': 'thread',
   'McpToolCallEnd': 'thread',
   'ExecCommandBegin': 'thread',
@@ -53,6 +54,8 @@ const EVENT_SCOPE_MAP: Record<string, EventScope> = {
   'ApprovalGranted': 'thread',
   'ApprovalDenied': 'thread',
   'ApprovalAutoApproved': 'thread',
+  // Channel-scoped: global approval-policy setting change (not per-conversation)
+  'ApprovalPolicyChanged': 'channel',
   'PatchApplyBegin': 'thread',
   'PatchApplyEnd': 'thread',
 

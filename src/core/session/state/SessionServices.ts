@@ -5,6 +5,7 @@
  */
 
 import type { RolloutRecorder as StorageRolloutRecorder } from '../../../storage/rollout';
+import type { SessionCacheManager } from '../../../storage/SessionCacheManager';
 
 /**
  * User notification service interface
@@ -68,6 +69,22 @@ export interface SessionServices {
 
   /** Whether to show raw agent reasoning */
   showRawAgentReasoning: boolean;
+
+  /**
+   * Optional SessionCacheManager — when present, Session constructs a
+   * CacheToolResultStore for the track-09 persistence path. Required on
+   * extension / desktop / mobile platforms; omitted on server.
+   */
+  sessionCache?: SessionCacheManager;
+
+  /**
+   * Optional server tool-results root directory — when present (server platform
+   * only), Session constructs a FileToolResultStore rooted here. Callers
+   * should pass an already-joined path such as `{dataDir}/sessions`; the join
+   * lives in the server bootstrap (not here) to keep node:path out of the
+   * extension bundle.
+   */
+  serverRootDir?: string;
 }
 
 /**
@@ -131,5 +148,7 @@ export async function createSessionServices(
     domService: config.domService,
     tabManager: config.tabManager,
     showRawAgentReasoning: config.showRawAgentReasoning ?? false,
+    sessionCache: config.sessionCache,
+    serverRootDir: config.serverRootDir,
   };
 }

@@ -72,6 +72,7 @@ export type EventMsg =
   | { type: 'ApprovalRequested'; data: ApprovalRequestedEvent }
   | { type: 'ApprovalGranted'; data: ApprovalGrantedEvent }
   | { type: 'ApprovalDenied'; data: ApprovalDeniedEvent }
+  | { type: 'ApprovalPolicyChanged'; data: ApprovalPolicyChangedEvent }
   // DiffTracker events
   | { type: 'ChangeAdded'; data: ChangeAddedEvent }
   | { type: 'ChangesRetrieved'; data: ChangesRetrievedEvent }
@@ -89,6 +90,7 @@ export type EventMsg =
   | { type: 'ToolExecutionEnd'; data: ToolExecutionEndEvent }
   | { type: 'ToolExecutionError'; data: ToolExecutionErrorEvent }
   | { type: 'ToolExecutionTimeout'; data: ToolExecutionTimeoutEvent }
+  | { type: 'ToolExecutionProgress'; data: ToolExecutionProgressEvent }
   // Reasoning stream events
   | { type: 'ReasoningSummaryDelta'; data: ReasoningSummaryDeltaEvent }
   | { type: 'ReasoningContentDelta'; data: ReasoningContentDeltaEvent }
@@ -107,9 +109,96 @@ export type EventMsg =
   | { type: 'StateUpdate'; data: StateUpdateEvent }
   // Per-session agent persona mode
   | { type: 'ModeChanged'; data: ModeChangedEvent }
+  // Hook system events
+  | { type: 'HookFired'; data: HookFiredEvent }
+  | { type: 'HookBlocked'; data: HookBlockedEvent }
+  // Sub-agent lifecycle events
+  | { type: 'SubAgentStart'; data: SubAgentStartEvent }
+  | { type: 'SubAgentComplete'; data: SubAgentCompleteEvent }
+  | { type: 'SubAgentError'; data: SubAgentErrorEvent }
+  // Session summary telemetry (internal observability; UI ignores by default)
+  | { type: 'SessionSummaryTelemetry'; data: SessionSummaryTelemetryEventData }
+  // Track 04: typed-task layer events (background sub-agents only in v1)
+  | { type: 'BackgroundTaskStarted'; data: BackgroundTaskStartedEvent }
+  | { type: 'BackgroundTaskOutputDelta'; data: BackgroundTaskOutputDeltaEvent }
+  | { type: 'BackgroundTaskStateChanged'; data: BackgroundTaskStateChangedEvent }
+  | { type: 'BackgroundTaskTerminated'; data: BackgroundTaskTerminatedEvent }
 ;
 
+// ─── Track 04 event payloads ──────────────────────────────────────────────
+
+export interface BackgroundTaskStartedEvent {
+  taskId: string;
+  type: 'background_agent';
+  description: string;
+  startTime: number;
+}
+
+/**
+ * Metadata-only delta event. Chunks themselves stay in TaskOutputStore;
+ * subscribers poll engine.getTaskOutput(taskId, fromSeq) when interested.
+ */
+export interface BackgroundTaskOutputDeltaEvent {
+  taskId: string;
+  fromSeq: number;
+  toSeq: number;
+  /** Per-kind chunk counts in this delta range (for UI badges). */
+  kindCounts: Partial<Record<'stdout' | 'stderr' | 'event' | 'message', number>>;
+}
+
+export interface BackgroundTaskStateChangedEvent {
+  taskId: string;
+  prevStatus: 'pending' | 'running' | 'completed' | 'failed' | 'killed';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'killed';
+}
+
+export interface BackgroundTaskTerminatedEvent {
+  taskId: string;
+  status: 'completed' | 'failed' | 'killed';
+  endTime: number;
+  durationMs: number;
+  summary?: string;
+}
+
 // Individual event payload types
+
+/**
+ * Internal telemetry for the session-summary feature (Track 05b).
+ *
+ * Emitted by the SessionSummaryHook and the compaction interlock. UI consumers
+ * ignore this event type; only the (future) observability sink reads it.
+ * Mirrors claudy's dedicated services/analytics channel — separate from
+ * user-facing events.
+ */
+export type SessionSummaryTelemetryName =
+  | 'init'
+  | 'file_read'
+  | 'extraction'
+  | 'manual_extraction'
+  | 'loaded'
+  | 'compact_skipped_empty_summary'
+  | 'compact_with_summary'
+  | 'compact_extraction_wait_timeout';
+
+export interface SessionSummaryTelemetryEventData {
+  /** Discriminator within the SessionSummaryTelemetry envelope. */
+  event: SessionSummaryTelemetryName;
+  /** Owning session. Not duplicated into payload. */
+  sessionId: string;
+  /** Event-specific fields. Shape depends on `event`; see design §11. */
+  payload: Record<string, unknown>;
+  /** Index signature so this is assignable to `EngineEvent.msg.data`. */
+  [key: string]: unknown;
+}
+
+/**
+ * Convenience alias so call sites can construct a fully-formed envelope.
+ * Equivalent to `Extract<EventMsg, { type: 'SessionSummaryTelemetry' }>`.
+ */
+export interface SessionSummaryTelemetryEvent {
+  type: 'SessionSummaryTelemetry';
+  data: SessionSummaryTelemetryEventData;
+}
 
 export interface ErrorEvent {
   message: string;
@@ -507,6 +596,16 @@ export interface ApprovalDeniedEvent {
   timestamp: number;
 }
 
+/**
+ * Event emitted when the ApprovalManager policy changes (mode, thresholds, lists).
+ * Lets subscribers (UI, event log) react without polling getPolicy().
+ */
+export interface ApprovalPolicyChangedEvent {
+  mode: 'always_ask' | 'auto_approve_safe' | 'auto_reject_unsafe' | 'never_ask';
+  previousMode: 'always_ask' | 'auto_approve_safe' | 'auto_reject_unsafe' | 'never_ask';
+  timestamp: number;
+}
+
 // DiffTracker event payloads
 
 export interface ChangeAddedEvent {
@@ -604,6 +703,15 @@ export interface ToolExecutionTimeoutEvent {
   timeout_ms: number;
 }
 
+export interface ToolExecutionProgressEvent {
+  tool_name: string;
+  call_id?: string;
+  session_id?: string;
+  turn_id?: string;
+  progress_data: import('../../tools/runtimeMetadata').ToolProgressData;
+  timestamp: number;
+}
+
 // Reasoning stream event payloads
 
 export interface ReasoningSummaryDeltaEvent {
@@ -683,5 +791,45 @@ export interface StateUpdateEvent {
   sessionId?: string;
   tabId?: number;
   [key: string]: unknown;
+}
+
+// Hook system event payloads
+
+export interface HookFiredEvent {
+  hook_event_name: string;
+  hook_count: number;
+  tool_name?: string;
+}
+
+export interface HookBlockedEvent {
+  hook_event_name: string;
+  tool_name?: string;
+  stop_reason?: string;
+}
+
+// Sub-agent lifecycle event payloads
+
+export interface SubAgentStartEvent {
+  runId: string;
+  subAgentType: string;
+  description: string;
+}
+
+export interface SubAgentCompleteEvent {
+  runId: string;
+  subAgentType: string;
+  turnCount: number;
+  tokenUsage?: {
+    input: number;
+    output: number;
+    total: number;
+  };
+  duration: number;
+}
+
+export interface SubAgentErrorEvent {
+  runId: string;
+  subAgentType: string;
+  error: string;
 }
 

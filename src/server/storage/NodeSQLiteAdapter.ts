@@ -25,6 +25,8 @@ const ADAPTER_STORES = [
   'schedule_exceptions',
   'execution_records',
   'token_usage_records',
+  // Track 04
+  'task_output_chunks',
 ];
 
 export class NodeSQLiteAdapter implements StorageAdapter {
@@ -56,6 +58,8 @@ export class NodeSQLiteAdapter implements StorageAdapter {
       scheduler_jobs: ['by_status', 'by_scheduled_time', 'by_status_time', 'by_created_at'],
       agent_sessions: ['by_type', 'by_state'],
       token_usage_records: ['by_session', 'by_timestamp', 'by_model'],
+      // Track 04: delta-poll range scans + FIFO eviction
+      task_output_chunks: ['by_task_id', 'by_task_seq', 'by_created_at'],
     };
 
     // Create tables for all adapter stores
