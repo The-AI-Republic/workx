@@ -27,6 +27,12 @@ import { HookDispatcher } from './hooks/HookDispatcher';
 import { ConfigHookLoader } from './hooks/loaders/ConfigHookLoader';
 import type { HookInput } from './hooks/types';
 import type { IPlatformAdapter } from './platform/IPlatformAdapter';
+import { processUserInput } from './input/processUserInput';
+import type { FunnelContext, InputOrigin } from './input/types';
+
+/** Marks an Op whose items have already passed through the input funnel, so a
+ *  re-submitted op (defensive) is not double-funnelled. See design §7.6. */
+const FUNNELLED = Symbol('track13.funnelled');
 
 /**
  * Event dispatcher function type
@@ -478,7 +484,10 @@ export class RepublicAgent {
    * Execution ops are forwarded to the engine after pre-submit hooks.
    * Returns a submission ID.
    */
-  async submitOperation(op: Op, context?: { tabId?: number }): Promise<string> {
+  async submitOperation(
+    op: Op,
+    context?: { tabId?: number; origin?: InputOrigin }
+  ): Promise<string> {
     const id = `sub_${this.nextId++}`;
 
     try {
@@ -508,6 +517,36 @@ export class RepublicAgent {
         // Return the engine's submission ID so callers can correlate with lifecycle events
         case 'UserInput':
         case 'UserTurn': {
+          // ── Track 13: input funnel runs ONCE, before hooks, so the
+          //    UserPromptSubmit hook sees expanded/enriched input. One
+          //    placement covers ext, desktop, and all server input
+          //    sources. See design §4.3.
+          let userOp = op as Extract<Op, { type: 'UserInput' | 'UserTurn' }>;
+          if (!(userOp as Record<symbol, unknown>)[FUNNELLED]) {
+            const processed = await processUserInput(
+              userOp.items,
+              this.buildFunnelContext(userOp, context)
+            );
+            if (!processed.shouldQuery) {
+              // Handled by the funnel (blocked / slash / bash) — no engine turn.
+              const message = processed.resultText ?? processed.systemNote;
+              if (message) {
+                this.emitEvent({ type: 'Error', data: { message } });
+              }
+              return id;
+            }
+            if (processed.systemNote) {
+              // Non-blocking degradation notice (e.g. "@page unavailable").
+              this.emitEvent({
+                type: 'AgentMessage',
+                data: { message: processed.systemNote },
+              });
+            }
+            userOp = { ...userOp, items: processed.items };
+            (userOp as Record<symbol, unknown>)[FUNNELLED] = true;
+          }
+          op = userOp;
+
           const shouldContinue = await this.preSubmitHooks(op, context);
           if (!shouldContinue) {
             // UserPromptSubmit hook blocked — return local id without engine submission
@@ -589,6 +628,28 @@ export class RepublicAgent {
     }
 
     return id;
+  }
+
+  /**
+   * Assemble the {@link FunnelContext} for the Track 13 input funnel.
+   * `origin` defaults to `local` (trusted UI) when a caller does not supply
+   * one — preserving current behavior for the webfront path. The bridge-safe
+   * gate only engages for non-`local` origins (connector / remote / scheduler).
+   */
+  private buildFunnelContext(
+    op: Extract<Op, { type: 'UserInput' | 'UserTurn' }>,
+    context?: { tabId?: number; origin?: InputOrigin }
+  ): FunnelContext {
+    const tabId =
+      op.type === 'UserTurn' && op.tabId !== undefined
+        ? op.tabId
+        : context?.tabId;
+    return {
+      sessionId: this.session.sessionId,
+      origin: context?.origin ?? { channel: 'local' },
+      platform: this.platformAdapter,
+      tabId,
+    };
   }
 
   /**
