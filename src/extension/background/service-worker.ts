@@ -83,6 +83,10 @@ let scheduler: Scheduler | null = null; // Job scheduler
 let schedulerAlarms: SchedulerAlarms | null = null;
 let sessionStorage: SessionStorage | null = null; // Feature 015: Session persistence
 let skillRegistry: SkillRegistry | null = null; // Agent skills
+// Track 10: global plugin registry (skills + MCP slots; per-session
+// hooks/agents binding is a documented follow-up needing an
+// AgentRegistry.onAgentCreated hook on the extension path).
+let pluginRegistry: import('@/core/plugins/PluginRegistry').PluginRegistry | null = null;
 let isInitialized = false;
 let initializationPromise: Promise<void> | null = null;
 
@@ -276,6 +280,10 @@ async function doInitialize(): Promise<void> {
 
   // Initialize Skills
   await initializeSkills();
+
+  // Track 10: initialize the plugin system (after skills — the skill slot
+  // loader targets the global skillRegistry).
+  await initializePlugins();
 
   // Initialize Scheduler
   await initializeScheduler();
@@ -493,6 +501,7 @@ async function registerServiceHandlers(): Promise<void> {
       mcp: mcpManager ? { mcpManager } : undefined,
       scheduler: scheduler ? { scheduler } : undefined,
       skills: skillRegistry ? { skillRegistry } : undefined,
+      plugins: pluginRegistry ? { pluginRegistry } : undefined,
       vault: {
         vaultManager: VaultManager as any,
       },
@@ -1013,6 +1022,76 @@ async function initializeSkills(): Promise<void> {
   } catch (error) {
     console.warn('[ServiceWorker] Failed to initialize skills:', error);
     // Non-fatal — skills are optional
+  }
+}
+
+/**
+ * Track 10: initialize the global plugin system for the extension.
+ *
+ * Wires the globally-reachable slots — skills (the same SkillRegistry the
+ * skills service uses) + MCP (the singleton MCPManager). Hooks + sub-agent
+ * types are per-session (created in AgentRegistry's extension path) and are
+ * a documented follow-up needing an AgentRegistry.onAgentCreated hook;
+ * commands are global storage. Plugins live in an IDB-virtualized store.
+ */
+async function initializePlugins(): Promise<void> {
+  try {
+    const { IndexedDBStorageProvider } = await import('../storage/IndexedDBStorageProvider');
+    const { IndexedDBPluginProvider } = await import('../storage/IndexedDBPluginProvider');
+    const { PluginRegistry } = await import('@/core/plugins/PluginRegistry');
+    const { SkillSlotLoader } = await import('@/core/plugins/loaders/SkillSlotLoader');
+    const { McpSlotLoader } = await import('@/core/plugins/loaders/McpSlotLoader');
+    const { AgentConfig } = await import('@/config/AgentConfig');
+
+    const storageProvider = new IndexedDBStorageProvider();
+    await storageProvider.initialize();
+    const provider = new IndexedDBPluginProvider(storageProvider);
+    await provider.initialize();
+
+    const agentConfig = await AgentConfig.getInstance();
+
+    pluginRegistry = new PluginRegistry({
+      provider,
+      // Virtual-path resolvers from the IDB provider keep the slot loaders
+      // platform-agnostic.
+      skillSlot: skillRegistry
+        ? new SkillSlotLoader({
+            skillRegistry,
+            readFile: provider.readFile,
+            listDirs: provider.listDirs,
+          })
+        : undefined,
+      mcpSlot: mcpManager ? new McpSlotLoader(mcpManager) : undefined,
+      // hooks / agents: per-session (AgentRegistry extension path) — follow-up
+      getEnabledFromConfig: () => agentConfig.getConfig().enabledPlugins ?? {},
+      persistEnabled: async (id, enabled) => {
+        const current = agentConfig.getConfig().enabledPlugins ?? {};
+        agentConfig.updateConfig({
+          enabledPlugins: { ...current, [id]: enabled },
+        });
+      },
+    });
+
+    const metas = await provider.listMeta();
+    for (const m of metas) {
+      try {
+        pluginRegistry.register(await provider.load(`${m.name}@local`));
+      } catch (e) {
+        console.warn(`[ServiceWorker] plugin load ${m.name} failed:`, e);
+      }
+    }
+    await pluginRegistry.bootstrapEnabledPlugins();
+
+    agentConfig.on('config-changed', (e: { section?: string }) => {
+      if (e.section === 'enabledPlugins') {
+        void pluginRegistry?.reconcileFromConfig();
+      }
+    });
+
+    console.log(`[ServiceWorker] Plugins initialized (${metas.length} discovered)`);
+  } catch (error) {
+    console.warn('[ServiceWorker] Failed to initialize plugins:', error);
+    // Non-fatal — plugins are optional
   }
 }
 
