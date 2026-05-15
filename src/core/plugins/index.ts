@@ -98,6 +98,8 @@ export {
   GIT_NO_PROMPT_ENV,
 } from './git';
 export type { GitRunner, GitRunResult, GitCloneOptions } from './git';
+export { createGitFetchPlugin } from './pluginFetch';
+export type { GitFetchDeps } from './pluginFetch';
 export { PluginInstaller, PluginUninstaller } from './PluginInstaller';
 export type {
   PluginInstallerDeps,
