@@ -648,6 +648,9 @@ export class RepublicAgent {
       sessionId: this.session.sessionId,
       origin: context?.origin ?? { channel: 'local' },
       platform: this.platformAdapter,
+      // Track 09 store — may be undefined when persistence is disabled for
+      // the platform; the funnel then leaves items unchanged.
+      resultStore: this.session.getToolResultStore(),
       tabId,
     };
   }

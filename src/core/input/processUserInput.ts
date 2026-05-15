@@ -22,6 +22,7 @@
 import type { InputItem } from '../protocol/types';
 import type { FunnelContext, ProcessedInput } from './types';
 import { classifyForOrigin, originRequiresGate } from './bridgeSafe';
+import { diskBackOversized } from './diskBacking';
 
 /** Minimal slash parser (claudy parity / `parseCommandInput` logic).
  *  Inlined so `core/` never imports the `webfront/` UI command module. */
@@ -95,11 +96,17 @@ export async function processUserInput(
     }
   }
 
-  // ── Stage 2 (Phase 2): wire-image / paste disk-backing ────────────────
+  // ── Stage 2: wire-image / paste disk-backing ──────────────────────────
+  const backed = await diskBackOversized(items, ctx);
+  const notes: string[] = [...backed.notes];
+
   // ── Stage 4 (Phase 4): `!` bash escape ────────────────────────────────
   // ── Stage 6 (Phase 3): @tab/@page/@selection/@url mentions ────────────
-  // (Implemented in later phases — see design §4.4. Until then the funnel
-  //  is a transparent, behavior-preserving pass-through for trusted input.)
+  // (Implemented in later phases — see design §4.4.)
 
-  return { items, shouldQuery: true };
+  return {
+    items: backed.items,
+    shouldQuery: true,
+    systemNote: notes.length > 0 ? notes.join(' ') : undefined,
+  };
 }

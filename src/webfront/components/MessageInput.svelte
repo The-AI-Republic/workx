@@ -15,6 +15,7 @@
   import { commandRegistry, parseCommandInput } from '../commands';
   import type { FilteredCommand } from '../commands';
   import { initBuiltinCommands, registerSkillCommands } from '../commands/builtinCommands';
+  import type { InputItem } from '@/core/protocol/types';
 
   let {
     value = $bindable(''),
@@ -31,7 +32,9 @@
   }: {
     value?: string;
     placeholder?: string;
-    onSubmit?: (value: string) => void;
+    /** Track 13: optional `attachments` carries pasted screenshots as
+     *  `image` InputItems. Second arg is optional → backward compatible. */
+    onSubmit?: (value: string, attachments?: InputItem[]) => void;
     onStop?: () => void;
     onSelectConversation?: (sessionId: string) => void;
     onNewConversation?: () => void;
@@ -44,7 +47,45 @@
 
   let isFocused = $state(false);
 
+  // Track 13: screenshots captured from the web clipboard, sent alongside
+  // the prompt as `image` InputItems (the core funnel disk-backs them).
+  let pendingAttachments: InputItem[] = $state([]);
+
   let currentTheme = $derived($uiTheme);
+
+  function clearAttachments(): void {
+    pendingAttachments = [];
+  }
+
+  /** Submit the current value plus any pending attachments, then reset. */
+  function submitWithAttachments(): void {
+    const atts = pendingAttachments.length ? pendingAttachments : undefined;
+    onSubmit(value, atts);
+    clearAttachments();
+  }
+
+  /** Pull image files out of a clipboard event into pendingAttachments. */
+  function captureClipboardImages(event: ClipboardEvent): void {
+    const items = event.clipboardData?.items;
+    if (!items) return;
+    // DataTransferItemList is not iterable under our lib target — index it.
+    for (let idx = 0; idx < items.length; idx++) {
+      const it = items[idx];
+      if (it.kind !== 'file' || !it.type.startsWith('image/')) continue;
+      const file = it.getAsFile();
+      if (!file) continue;
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          pendingAttachments = [
+            ...pendingAttachments,
+            { type: 'image', image_url: reader.result },
+          ];
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  }
 
   // Long-press detection for scheduling
   const LONG_PRESS_DURATION = 500; // milliseconds
@@ -203,8 +244,10 @@
     // Normal mode: Submit on Enter (without Shift)
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
-      if (value.trim()) {
-        // Check if it looks like a command
+      if (value.trim() || pendingAttachments.length) {
+        // Check if it looks like a command (UI commands stay client-side —
+        // they navigate the Svelte router / fire callbacks and cannot run
+        // in core; Track 03 owns this UI-only surface).
         if (value.trim().startsWith('/')) {
           const parsed = parseCommandInput(value);
           if (parsed) {
@@ -213,7 +256,7 @@
             return;
           }
         }
-        onSubmit(value);
+        submitWithAttachments();
       }
     }
     // Allow Shift+Enter for new line (default textarea behavior)
@@ -261,6 +304,8 @@
 
   function handlePaste(event: ClipboardEvent): void {
     ensureBuiltins();
+    // Track 13: capture pasted screenshots (previously dropped entirely).
+    captureClipboardImages(event);
     // If field is empty and pasted text starts with "/", enter command mode after paste
     if (value === '' || value === undefined) {
       const pastedText = event.clipboardData?.getData('text') || '';
@@ -299,8 +344,8 @@
 
     if (isProcessing) {
       onStop();
-    } else if (value.trim()) {
-      // Check if it looks like a command
+    } else if (value.trim() || pendingAttachments.length) {
+      // UI commands stay client-side (see handleKeyDown note).
       if (value.trim().startsWith('/')) {
         ensureBuiltins();
         const parsed = parseCommandInput(value);
@@ -309,7 +354,7 @@
           return;
         }
       }
-      onSubmit(value);
+      submitWithAttachments();
     }
   }
 
@@ -391,6 +436,19 @@
       onHover={handleDropdownHover}
       onSelect={handleDropdownSelect}
     />
+
+    <!-- Track 13: pasted-image attachment indicator -->
+    {#if pendingAttachments.length > 0}
+      <div class="mb-1 flex items-center gap-2 text-xs {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
+        <span>📎 {pendingAttachments.length} {pendingAttachments.length === 1 ? $_t('image attached') : $_t('images attached')}</span>
+        <button
+          type="button"
+          class="underline cursor-pointer bg-transparent border-none p-0 {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-dim-green hover:text-term-green'}"
+          onclick={clearAttachments}
+          aria-label={$_t('Clear attached images')}
+        >{$_t('clear')}</button>
+      </div>
+    {/if}
 
     <div
       class="input-shell flex flex-col overflow-hidden transition-all duration-200

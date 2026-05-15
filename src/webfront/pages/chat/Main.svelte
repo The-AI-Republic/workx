@@ -4,7 +4,7 @@
   import { getInitializedUIClient } from '@/core/messaging';
   import type { UIChannelClient } from '@/core/messaging';
   import type { JobStatusChangedEvent } from '@/core/models/types/SchedulerContracts';
-  import type { Event } from '@/core/protocol/types';
+  import type { Event, InputItem } from '@/core/protocol/types';
   import type { ProcessedEvent } from '@/types/ui';
   import { STYLE_PRESETS } from '@/types/ui';
 
@@ -659,9 +659,11 @@
     }
   }
 
-  async function sendMessage(overrideText?: string) {
+  async function sendMessage(overrideText?: string, attachments?: InputItem[]) {
     const text = overrideText ?? inputText.trim();
-    if (!text) return;
+    // Track 13: allow image-only submissions (text may be empty when the
+    // user pastes a screenshot and sends without typing).
+    if (!text && !(attachments && attachments.length)) return;
 
     // Check if connected
     if (!isConnected) {
@@ -692,7 +694,7 @@
       category: 'message',
       timestamp: new Date(),
       title: 'user',
-      content: text,
+      content: text || (attachments && attachments.length ? `[${attachments.length} image(s)]` : ''),
       style: { textColor: 'text-cyan-400' },
       streaming: false,
       collapsible: false,
@@ -702,10 +704,13 @@
     // Send to agent with tab context
     try {
       if (!client) throw new Error('Message service not available');
+      const items: InputItem[] = [];
+      if (text) items.push({ type: 'text', text });
+      if (attachments && attachments.length) items.push(...attachments);
       await client.submitOp(
         {
           type: 'UserInput',
-          items: [{ type: 'text', text }],
+          items,
         },
         {
           tabId: currentTabId, // Include current tab selection in context
