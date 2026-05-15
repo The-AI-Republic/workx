@@ -25,7 +25,7 @@ BrowserX is a multi-platform browser automation agent. Claudy is a terminal-nati
 | 08 | [Centralized Message Queue](./08_centralized_message_queue/design.md) | P1 | Small | `CommandQueue<T>` replaces plain `submissionQueue` — adds priorities (`now`/`next`/`later`) so `Interrupt`/`ExecApproval`/`Shutdown` jump ahead of queued `Compact`/`AddToHistory`. Deletes dead `QueueProcessor.ts` (~350 LOC). 2026-05-14 implementation-readiness pass dropped `engineId` filter (per-engine isolation already covers it), `pendingNotifications` folding (different concern, kept as-is), batching, and `remove(uuid)` from v1. Earlier 08a primitives (Signal, Mailbox, ApprovalManager refactor) dropped. EventLog deferred to [#215](https://github.com/The-AI-Republic/browserx/issues/215); MessageBus stays deferred. |
 | 09 | [Tool Result Persistence](./09_tool_result_persistence_DONE/design.md) ✅ DONE (PR #213, merged 2026-05-14) | P2 | Medium | Persist oversized tool results to disk instead of truncating; agent reads back via Read |
 | 10 | [Plugin System](./10_plugin_system/design.md) | P1 | Large | Claudy-compatible plugin packaging — manifest, marketplace, install, trust. Aggregates skills/hooks/MCP/subagents/commands into installable units. Phased 10a/10b/10c. |
-| 11 | [Parallel Tool Calls](./11_parallel_tool_calls/design.md) | P1 | Small | Config-driven `parallel_tool_calls` flag (default off, no allowlist — 2026-05-14 research confirms OpenAI/xAI/Groq/Fireworks/Together/Moonshot all support it; Gemini native) so Track 02's already-shipped orchestrator can run multi-tool responses in parallel. ~50 LOC plumbing. Supersedes the obsolete pre-Track-02 `multiple_tools_call/` design. Streaming-tool-execution + batched-approval-UI deferred. |
+| 11 | [Parallel Tool Calls](./11_parallel_tool_calls_DONE/design.md) ✅ DONE (PR #221, merged 2026-05-15) | P1 | Small | Config-driven `parallel_tool_calls` flag (default off, no allowlist — 2026-05-14 research confirms OpenAI/xAI/Groq/Fireworks/Together/Moonshot all support it; Gemini native) so Track 02's already-shipped orchestrator can run multi-tool responses in parallel. Buffers the OpenAI-Responses/xAI N-`function_call` shape into the orchestrator. ~50 LOC plumbing. Supersedes the obsolete pre-Track-02 `multiple_tools_call/` design. Pre-enablement: manual multi-provider QA still pending (flag dark by default). Streaming-tool-execution + batched-approval-UI deferred. |
 
 ### Second-Pass Research Tracks (added 2026-05-14)
 
@@ -55,7 +55,7 @@ Tracks 12–25 come from deeper claudy↔browserx comparison (2026-05-14) target
                                                   ├──> 04_typed_task_families_DONE (shipped via PR #205) ──> 06_multi_agent_coordination ❌ ABANDONED (sub-agents in Track 04 already cover this)
                                                   └──> 05_session_memory_DONE (shipped via PR #167) ──> 05b_auto_extraction_compaction_interlock_DONE (shipped via PR #206)
 
-02_tool_metadata_concurrency_DONE (shipped via PR #197) ──> 11_parallel_tool_calls (flip parallel_tool_calls flag; orchestrator already shipped by Track 02)
+02_tool_metadata_concurrency_DONE (shipped via PR #197) ──> 11_parallel_tool_calls_DONE (shipped via PR #221; orchestrator was shipped by Track 02)
 
 07_centralized_state_DONE (shipped narrow via PR #214) ──> (full substrate descoped; revisit if needed)
 
