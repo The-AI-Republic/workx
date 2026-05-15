@@ -1070,6 +1070,7 @@ export class TurnManager {
           // omits these and the tools degrade gracefully.
           workspaceRoot: this.session.getWorkspaceRoot(),
           fileStateCache: this.session.getFileStateCache?.(),
+          agentMode: this.session.getAgentMode?.(), // §4.2: file tools are code-mode only
         },
       };
 

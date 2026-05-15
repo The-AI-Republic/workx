@@ -27,6 +27,8 @@ const MAX_OUT_BYTES = 256 * 1024;
 interface SessionHandles {
   workspaceRoot?: string;
   cache?: FileStateCache;
+  /** Per-session persona mode (§4.2). Undefined on the session-less path. */
+  agentMode?: string;
 }
 
 /** Pull the §4.5-seam handles out of ToolContext.metadata (any may be absent). */
@@ -35,8 +37,12 @@ function handles(context: ToolContext): SessionHandles {
   return {
     workspaceRoot: typeof m.workspaceRoot === 'string' && m.workspaceRoot.trim() ? m.workspaceRoot : undefined,
     cache: (m.fileStateCache as FileStateCache | undefined) ?? undefined,
+    agentMode: typeof m.agentMode === 'string' ? m.agentMode : undefined,
   };
 }
+
+const NOT_CODE_MODE_MSG =
+  'The file tools are available in Code mode only. Switch this session to Code mode to read/edit/write project files.';
 
 const NO_WORKSPACE_MSG =
   'No project folder is selected. Code-mode file tools are disabled until you choose a workspace folder in Apple Pi settings.';
@@ -60,6 +66,10 @@ abstract class FileAccessTool {
   createHandler(): ToolHandler {
     return async (params: Record<string, any>, context: ToolContext): Promise<string> => {
       const h = handles(context);
+      // §4.2: code-mode only. Gate by behavior, not registry mutation
+      // (consistent with the modes design). Undefined mode ⇒ session-less
+      // path ⇒ don't block on mode (workspace gate still applies).
+      if (h.agentMode !== undefined && h.agentMode !== 'code') return NOT_CODE_MODE_MSG;
       if (!h.workspaceRoot) return NO_WORKSPACE_MSG; // R8 — never default to app cwd
       const lex = lexicalPathCheck(h.workspaceRoot, String(params.path ?? ''));
       if (!lex.ok) {
