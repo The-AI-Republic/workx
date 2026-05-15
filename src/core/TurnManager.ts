@@ -232,7 +232,13 @@ export class TurnManager {
     // in handleResponseItem). Buffer the legacy items and run them through
     // Track 02's orchestrator at `Completed` instead of executing each
     // sequentially as it arrives.
+    //
+    // `bufferedEntries` are placeholder ProcessedResponseItem objects pushed
+    // into processedItems at the stream position the function_call arrived,
+    // so a non-tool item arriving between calls cannot reorder results
+    // relative to it. Responses fill in at `Completed`.
     const bufferedToolCalls: any[] = [];
+    const bufferedEntries: ProcessedResponseItem[] = [];
 
     try {
       // Process streaming response
@@ -266,8 +272,13 @@ export class TurnManager {
             // batch runs through the concurrency orchestrator at `Completed`
             // rather than executing each one sequentially here. Non-tool
             // items (message/reasoning/web_search) keep immediate handling.
+            // Push a placeholder now to lock the stream position; its
+            // `response` is filled when the buffer flushes at `Completed`.
             if (event.item?.type === 'function_call') {
+              const entry: ProcessedResponseItem = { item: event.item };
+              processedItems.push(entry);
               bufferedToolCalls.push(event.item);
+              bufferedEntries.push(entry);
               break;
             }
 
@@ -295,20 +306,20 @@ export class TurnManager {
             // Stream completed with final token usage
             totalTokenUsage = event.tokenUsage;
 
-            // Track 11: flush any buffered legacy `function_call` items
-            // through Track 02's orchestrator (safe calls concurrent,
-            // unsafe sequential, results in original order). Pushed into
-            // processedItems before the post-turn hook so the
+            // Track 11: flush buffered legacy `function_call` items through
+            // Track 02's orchestrator (safe calls concurrent, unsafe
+            // sequential, results in original call order). Results are
+            // written back into the position-preserving placeholders so
+            // ordering relative to any interleaved item is exact. The
+            // placeholders were already in processedItems, so the
             // `lastTurnHadToolCalls` detection below still sees them.
             if (bufferedToolCalls.length > 0) {
               const results = await this.executeBufferedToolCalls(bufferedToolCalls);
-              for (let i = 0; i < bufferedToolCalls.length; i++) {
-                processedItems.push({
-                  item: bufferedToolCalls[i],
-                  response: results[i],
-                });
+              for (let i = 0; i < bufferedEntries.length; i++) {
+                bufferedEntries[i]!.response = results[i];
               }
               bufferedToolCalls.length = 0;
+              bufferedEntries.length = 0;
             }
 
             // Track 05b: fire post-turn hooks before returning. Hooks are

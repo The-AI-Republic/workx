@@ -1018,7 +1018,9 @@ export class Session {
         let llmCaller = null;
 
         if (memoryApiKey) {
-          // Preferred path: dedicated gpt-4o-mini client via OpenAI key
+          // Preferred path: dedicated gpt-4o-mini client via OpenAI key.
+          // Track 11 note: memory extraction is a single tool-less completion;
+          // it intentionally does not take the agent's parallelToolCalls flag.
           const memoryLLMClient = new OpenAIChatCompletionClient({
             apiKey: memoryApiKey,
             baseUrl: useBackendForMemory && backendBaseUrl ? backendBaseUrl + '/openai' : undefined,
@@ -1388,7 +1390,9 @@ export class Session {
         };
       }
 
-      // All other providers use OpenAI-compatible Chat Completions API
+      // All other providers use OpenAI-compatible Chat Completions API.
+      // Track 11 note: memory-search is a single tool-less completion; it
+      // intentionally does not take the agent's parallelToolCalls flag.
       const { OpenAIChatCompletionClient } = await import('./models/client/OpenAIChatCompletionClient');
       const client = new OpenAIChatCompletionClient({
         apiKey: providerApiKey,

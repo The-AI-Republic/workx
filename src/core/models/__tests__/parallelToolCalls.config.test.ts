@@ -4,7 +4,7 @@
 // from client config into the built request payload across every
 // OpenAI-compatible client.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { OpenAIResponsesClient } from '../client/OpenAIResponsesClient';
 import { OpenAIChatCompletionClient } from '../client/OpenAIChatCompletionClient';
 import { GroqClient } from '../client/GroqClient';
@@ -122,25 +122,52 @@ describe('Track 11 — parallel_tool_calls config plumbing', () => {
   });
 
   describe('OpenAIChatCompletionClient (Moonshot; base for Together/Fireworks Chat)', () => {
-    it('stores the config-driven flag for the Chat Completions path', () => {
-      const off = new OpenAIChatCompletionClient({
+    // The Chat Completions payload is assembled inside
+    // makeChatCompletionsRequest and `parallel_tool_calls` is only set when
+    // the prompt has tools (it's a no-op without tools). Capture the params
+    // passed to the SDK to assert the real payload, not just the stored field.
+    const promptWithTools = {
+      input: [],
+      tools: [
+        {
+          type: 'function',
+          function: { name: 't', description: 'd', parameters: {} },
+        },
+      ],
+    } as any;
+
+    function chatClient(parallelToolCalls?: boolean) {
+      const client = new OpenAIChatCompletionClient({
         apiKey: 'k',
         sessionId: 's',
         modelFamily,
         provider: { ...provider('moonshot'), wire_api: 'Chat' } as any,
+        ...(parallelToolCalls !== undefined ? { parallelToolCalls } : {}),
       });
-      const on = new OpenAIChatCompletionClient({
-        apiKey: 'k',
-        sessionId: 's',
-        modelFamily,
-        provider: { ...provider('moonshot'), wire_api: 'Chat' } as any,
-        parallelToolCalls: true,
-      });
-      // The Chat Completions payload is assembled mid-stream; assert the
-      // plumbed value the request builder reads (set via the parent
-      // OpenAIResponsesClient constructor from config).
-      expect((off as any).parallelToolCalls).toBe(false);
-      expect((on as any).parallelToolCalls).toBe(true);
+      const captured: any = {};
+      (client as any).client = {
+        chat: {
+          completions: {
+            create: vi.fn(async (params: any) => {
+              captured.params = params;
+              return [] as any;
+            }),
+          },
+        },
+      };
+      return { client, captured };
+    }
+
+    it('emits parallel_tool_calls: false by default in the request payload', async () => {
+      const { client, captured } = chatClient();
+      await (client as any).makeChatCompletionsRequest(promptWithTools);
+      expect(captured.params.parallel_tool_calls).toBe(false);
+    });
+
+    it('emits parallel_tool_calls: true in the request payload when configured', async () => {
+      const { client, captured } = chatClient(true);
+      await (client as any).makeChatCompletionsRequest(promptWithTools);
+      expect(captured.params.parallel_tool_calls).toBe(true);
     });
   });
 });

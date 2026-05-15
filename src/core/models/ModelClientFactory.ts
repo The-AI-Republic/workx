@@ -224,7 +224,7 @@ export class ModelClientFactory {
     const apiKey = accessToken || 'backend-routed';
 
     // Track 11: resolve the parallel-tool-calls flag from tools config.
-    const parallelToolCalls = this.config?.getToolsConfig?.()?.parallelToolCalls ?? false;
+    const parallelToolCalls = this.resolveParallelToolCalls();
 
     // Get model metadata for configuration
     let modelConfig: any = undefined;
@@ -572,7 +572,7 @@ export class ModelClientFactory {
    */
   private instantiateClient(config: ModelClientConfig): ModelClient {
     // Track 11: resolve the parallel-tool-calls flag from tools config.
-    const parallelToolCalls = this.config?.getToolsConfig?.()?.parallelToolCalls ?? false;
+    const parallelToolCalls = this.resolveParallelToolCalls();
 
     // Get provider name from config
     const providerName = config.provider;
@@ -763,6 +763,16 @@ export class ModelClientFactory {
    * Get selected model from config
    * Returns the modelKey of the currently selected model
    */
+  /**
+   * Track 11: resolve the config-driven parallel-tool-calls flag.
+   * The `getToolsConfig?.()` guard is load-bearing — `this.config` may be a
+   * partial mock or an early-bootstrap config without the method. Defaults
+   * to false in that case.
+   */
+  private resolveParallelToolCalls(): boolean {
+    return this.config?.getToolsConfig?.()?.parallelToolCalls ?? false;
+  }
+
   getSelectedModel(): string {
     if (this.config) {
       // Get selectedModelKey from config

@@ -19,12 +19,21 @@ describe('TurnManager — Track 11 buffered function_call orchestration', () => 
     session = {
       getSessionId: vi.fn().mockReturnValue('test-session'),
       emitEvent: vi.fn(),
+      getTabId: vi.fn().mockReturnValue(-1),
+      recordTurnContext: vi.fn().mockResolvedValue(undefined),
       // no getToolResultStore → maybeEnforceTier2 is a no-op
+      // no firePostTurnHooks → post-turn hook block is skipped
     };
     turnContext = {
       getToolsConfig: vi.fn().mockReturnValue({}),
       getModelClient: vi.fn(),
       getModel: vi.fn().mockReturnValue('gpt-4'),
+      getSessionId: vi.fn().mockReturnValue('test-session'),
+      getApprovalPolicy: vi.fn().mockReturnValue('auto'),
+      getSandboxPolicy: vi.fn().mockReturnValue('read-only'),
+      getEffort: vi.fn(),
+      getSummary: vi.fn(),
+      getSelectedModelKey: vi.fn().mockReturnValue('openai:gpt-4'),
     };
     toolRegistry = new ToolRegistry();
 
@@ -98,6 +107,73 @@ describe('TurnManager — Track 11 buffered function_call orchestration', () => 
     expect(results).toHaveLength(1);
     expect(results[0].call_id).toBe('only');
     expect(results[0].output).toBe('single-ok');
+  });
+
+  it('stream loop: buffers function_call items, flushes at Completed, preserves position vs an interleaved non-tool item', async () => {
+    // Drives the real tryRunTurn stream loop (not the helper directly), so
+    // the OutputItemDone interception + Completed flush wiring is exercised.
+    async function* stream() {
+      yield {
+        type: 'OutputItemDone',
+        item: { type: 'function_call', name: 'read_a', arguments: '{}', call_id: 'a' },
+      };
+      // A non-tool item between the two function_calls. Its placeholder
+      // position must be preserved relative to the buffered results.
+      yield { type: 'OutputItemDone', item: { type: 'spacer' } };
+      yield {
+        type: 'OutputItemDone',
+        item: { type: 'function_call', name: 'read_b', arguments: '{}', call_id: 'b' },
+      };
+      yield { type: 'Completed', tokenUsage: undefined };
+    }
+
+    turnContext.getModelClient.mockReturnValue({ stream: vi.fn(async () => stream()) });
+
+    vi.spyOn(turnManager as any, 'executeToolCall').mockImplementation(
+      async (...args: unknown[]) => ({
+        type: 'function_call_output',
+        call_id: args[2] as string,
+        output: `${args[0] as string}-ok`,
+      }),
+    );
+
+    const result = await (turnManager as any).tryRunTurn({ input: [], tools: [] });
+    const items = result.processedItems;
+
+    // Order locked: fc-a (0), spacer (1), fc-b (2) — buffered results did
+    // not jump ahead of or behind the interleaved spacer.
+    expect(items).toHaveLength(3);
+    expect(items[0].item.call_id).toBe('a');
+    expect(items[0].response.output).toBe('read_a-ok');
+    expect(items[1].item.type).toBe('spacer');
+    expect(items[1].response).toBeUndefined();
+    expect(items[2].item.call_id).toBe('b');
+    expect(items[2].response.output).toBe('read_b-ok');
+  });
+
+  it('stream loop: a stream that ends before Completed executes no buffered tools (all-or-nothing)', async () => {
+    // Models the documented behavior change: an interrupted/incomplete
+    // stream that buffered a function_call but never reached Completed runs
+    // NO tools (previously the legacy path may have executed it mid-stream).
+    async function* stream() {
+      yield {
+        type: 'OutputItemDone',
+        item: { type: 'function_call', name: 'read_a', arguments: '{}', call_id: 'a' },
+      };
+      // No Completed — stream ends here.
+    }
+
+    turnContext.getModelClient.mockReturnValue({ stream: vi.fn(async () => stream()) });
+
+    const execSpy = vi
+      .spyOn(turnManager as any, 'executeToolCall')
+      .mockResolvedValue({ type: 'function_call_output', call_id: 'a', output: 'x' });
+
+    await expect(
+      (turnManager as any).tryRunTurn({ input: [], tools: [] }),
+    ).rejects.toThrow('stream closed before response.completed');
+
+    expect(execSpy).not.toHaveBeenCalled();
   });
 
   it('wraps a thrown tool error in a function_call_output envelope', async () => {
