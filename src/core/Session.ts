@@ -7,6 +7,7 @@
  */
 
 import type { InputItem, AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSummaryConfig, Event, ResponseItem, ConversationHistory, ReviewDecision } from './protocol/types';
+import { FileStateCache } from './files/FileStateCache';
 import { mapResponseItemToEventMessages } from './events/EventMapping';
 import type { EventMsg } from './protocol/events';
 import { RolloutRecorder, type RolloutItem } from '../storage/rollout';
@@ -140,6 +141,10 @@ export class Session {
   // detects that and short-circuits persistence, falling back to passthrough.
   private toolResultStore: ToolResultStore | undefined;
   private replacementState: ContentReplacementState | undefined;
+  // Per-session read-before-edit freshness substrate (code mode). One per
+  // Session ⇒ sub-agents (own Session) auto-isolate. Always present (the
+  // map is cheap); only meaningful when the file tools are used.
+  private readonly fileStateCache: FileStateCache = new FileStateCache();
 
   constructor(
     configOrIsPersistent?: AgentConfig | boolean,
@@ -959,6 +964,26 @@ export class Session {
    */
   getToolResultStore(): ToolResultStore | undefined {
     return this.toolResultStore;
+  }
+
+  /**
+   * The user-selected code-mode workspace root (absolute path), or undefined
+   * if none is set. Resolved from preferences.workspaceRoot. The file/search
+   * tools operate inside this directory and use it as the security jail
+   * anchor; undefined ⇒ those tools are disabled (never the app cwd).
+   */
+  getWorkspaceRoot(): string | undefined {
+    const root = this.config?.getConfig().preferences?.workspaceRoot;
+    return root && root.trim() ? root : undefined;
+  }
+
+  /**
+   * The per-session read-before-edit freshness cache (code mode). Populated
+   * by read_file; gated/rewritten by edit_file/write_file. One per Session so
+   * sub-agents are isolated (design R2/SC-10).
+   */
+  getFileStateCache(): FileStateCache {
+    return this.fileStateCache;
   }
 
   /**

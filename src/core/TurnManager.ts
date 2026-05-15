@@ -1065,6 +1065,11 @@ export class TurnManager {
         metadata: {
           currentUrl,
           currentDomain,
+          // Per-session handles for the file-access tools (design §4.5). Live
+          // in-process object refs; the session-less tools/index.ts path simply
+          // omits these and the tools degrade gracefully.
+          workspaceRoot: this.session.getWorkspaceRoot(),
+          fileStateCache: this.session.getFileStateCache?.(),
         },
       };
 

@@ -455,13 +455,18 @@ export class ToolRegistry {
           }
         : undefined;
 
-      // Create execution context
+      // Create execution context.
+      // Forward request.metadata so per-session handles injected by the caller
+      // (e.g. workspaceRoot + fileStateCache for the file-access tools — design
+      // §4.5) reach the handler. tabId stays explicit. Absent keys are normal
+      // (e.g. the session-less tools/index.ts path) — tools degrade gracefully.
       const context: ToolContext = {
         sessionId: request.sessionId,
         turnId: request.turnId,
         toolName: request.toolName,
         callId: request.callId,
         metadata: {
+          ...(request.metadata ?? {}),
           tabId: request.tabId, // Pass tabId from request to tool via metadata
         },
         onProgress: emitProgress,
