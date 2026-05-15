@@ -96,6 +96,7 @@ export {
   redactUrlCredentials,
   gitTimeoutMs,
   GIT_NO_PROMPT_ENV,
+  GitArgError,
 } from './git';
 export type { GitRunner, GitRunResult, GitCloneOptions } from './git';
 export { createGitFetchPlugin } from './pluginFetch';

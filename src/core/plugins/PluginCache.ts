@@ -17,6 +17,8 @@ export interface PluginCacheFsDeps {
   readText: (path: string) => Promise<string | null>;
   writeText: (path: string, content: string) => Promise<void>;
   removeDir: (path: string) => Promise<void>;
+  /** Unlink a single file. No-op if absent. (review B3) */
+  removeFile: (path: string) => Promise<void>;
   listEntries: (path: string) => Promise<string[]>;
   pathExists: (path: string) => Promise<boolean>;
   now?: () => number;
@@ -60,15 +62,15 @@ export class PluginCache {
     }
   }
 
-  /** If a previously-orphaned version is back in use, clear its marker. */
+  /**
+   * If a previously-orphaned version is back in use, actually delete the
+   * marker (review B3). The old empty-string sentinel meant a re-orphaned
+   * version could never be GC'd again — a permanent disk leak.
+   */
   async clearOrphanMarker(versionDir: string): Promise<void> {
     const marker = this.orphanMarkerPath(versionDir);
     if (await this.fs.pathExists(marker)) {
-      // Overwrite with nothing is not "delete"; use removeDir on the marker
-      // path is wrong. We rely on writeText being able to no-op-clear via
-      // an empty sentinel the GC ignores: simplest correct approach is to
-      // treat a marker file containing '' as cleared.
-      await this.fs.writeText(marker, '');
+      await this.fs.removeFile(marker);
     }
   }
 
@@ -97,7 +99,6 @@ export class PluginCache {
             await this.markOrphaned(vdir);
             continue;
           }
-          if (markerRaw === '') continue; // cleared marker — back in use
           const ts = Number(markerRaw);
           if (Number.isFinite(ts) && this.now() - ts > BROWSERX_PLUGIN_ORPHAN_TTL_MS) {
             await this.fs.removeDir(vdir);

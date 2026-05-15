@@ -25,6 +25,7 @@ import type { Skill } from '@/core/skills/types';
 import { parseSkillMd, normalizeFrontmatter, validateSkill } from '@/core/skills/SkillParser';
 import type { LoadedPlugin, PluginError, PluginId } from '../types';
 import { substituteContent } from '../userConfigSubstitution';
+import { safeJoinUnderRoot } from '../pluginPath';
 
 /**
  * Reads a single file from disk. Platform-specific — passed in by the
@@ -181,10 +182,12 @@ function pluginNameFromId(id: string): string {
   return at >= 0 ? id.substring(0, at) : id;
 }
 
+// SECURITY (Track 10): plugin-supplied manifest paths are untrusted.
+// `safeJoinUnderRoot` rejects absolute paths and any `..` segment and
+// jails the result under the plugin root, preventing arbitrary-file
+// reads via e.g. `"skills": "../../../.ssh"`.
 function resolveRel(root: string, rel: string): string {
-  if (rel.startsWith('/')) return rel;
-  if (rel.startsWith('./')) return joinPath(root, rel.substring(2));
-  return joinPath(root, rel);
+  return safeJoinUnderRoot(root, rel);
 }
 
 function joinPath(...parts: string[]): string {

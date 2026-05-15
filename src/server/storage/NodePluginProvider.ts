@@ -20,6 +20,7 @@ import type {
   PluginManifest,
 } from '@/core/plugins/types';
 import { PluginManifestSchema } from '@/core/plugins/PluginManifest';
+import { assertSafeRelPath } from '@/core/plugins/pluginPath';
 
 export class NodePluginProvider implements IPluginProvider {
   private readonly root: string;
@@ -113,7 +114,11 @@ export class NodePluginProvider implements IPluginProvider {
     const stagingDir = `${finalDir}.staging-${Date.now()}`;
     try {
       for (const file of files) {
-        const target = path.join(stagingDir, file.path);
+        // SECURITY (Track 10): install payloads are untrusted; reject
+        // absolute paths and `..` so an entry like
+        // `"../../etc/cron.d/x"` cannot escape the staging dir.
+        const safeRel = assertSafeRelPath(file.path);
+        const target = path.join(stagingDir, safeRel);
         await fs.mkdir(path.dirname(target), { recursive: true });
         await fs.writeFile(target, file.content);
       }
