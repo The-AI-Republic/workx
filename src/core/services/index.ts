@@ -16,6 +16,7 @@ import { createA2AServices, type A2AServiceDeps } from './a2a-services';
 import { createSessionServices, type SessionServiceDeps } from './session-services';
 import { createAgentServices, type AgentServiceDeps } from './agent-services';
 import { createStorageServices, type StorageServiceDeps } from './storage-services';
+import { createPluginsServices, type PluginsServiceDeps } from './plugins-services';
 
 /**
  * Dependencies for registering all services.
@@ -30,6 +31,7 @@ export interface AllServiceDeps {
   session?: SessionServiceDeps;
   agent?: AgentServiceDeps;
   storage?: StorageServiceDeps;
+  plugins?: PluginsServiceDeps;
 }
 
 /**
@@ -52,6 +54,7 @@ export function registerAllServices(
     ['session', createSessionServices],
     ['agent', createAgentServices],
     ['storage', createStorageServices],
+    ['plugins', createPluginsServices],
   ];
 
   for (const [key, factory] of factories) {
@@ -77,3 +80,4 @@ export { createA2AServices, type A2AServiceDeps } from './a2a-services';
 export { createSessionServices, type SessionServiceDeps } from './session-services';
 export { createAgentServices, type AgentServiceDeps } from './agent-services';
 export { createStorageServices, type StorageServiceDeps } from './storage-services';
+export { createPluginsServices, type PluginsServiceDeps } from './plugins-services';

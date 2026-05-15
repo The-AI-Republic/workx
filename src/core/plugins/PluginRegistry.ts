@@ -27,11 +27,21 @@ import type {
 
 export interface PluginRegistryDeps {
   provider: IPluginProvider;
-  skillSlot: SkillSlotLoader;
-  hookSlot: HookSlotLoader;
-  mcpSlot: McpSlotLoader;
-  subAgentSlot: SubAgentSlotLoader;
-  commandSlot: CommandSlotLoader;
+  /**
+   * Slot loaders. Each is optional so a platform can wire only the slots
+   * it can support globally. A plugin that declares a slot whose loader
+   * is absent gets an informational `component-load-failed` note (the
+   * plugin still enables for its supported slots) — design principle:
+   * "platform constraints surface as capability gaps, not load failures".
+   *
+   * Server v1 wires skills + mcp (globally reachable); hooks / agents /
+   * commands are per-session and propagated via a follow-up.
+   */
+  skillSlot?: SkillSlotLoader;
+  hookSlot?: HookSlotLoader;
+  mcpSlot?: McpSlotLoader;
+  subAgentSlot?: SubAgentSlotLoader;
+  commandSlot?: CommandSlotLoader;
   /** Returns the persisted `enabledPlugins` map. */
   getEnabledFromConfig: () => Record<PluginId, boolean>;
   /** Persists a single plugin's enable state. */
@@ -98,31 +108,48 @@ export class PluginRegistry {
         // Phase 10a-2 ordering: skills → hooks → mcp → agents → commands.
         // No formal dependencies between slots; ordering is deterministic
         // for debugging. Errors per slot accumulate in plugin.loadErrors;
-        // a thrown error from a slot triggers rollback.
+        // a thrown error from a slot triggers rollback. A declared slot
+        // whose loader is absent on this platform records an informational
+        // capability-gap note but does NOT fail the enable.
         if (plugin.manifest.skills) {
-          const errs = await this.deps.skillSlot.load(plugin, userConfig);
-          appendErrors(plugin, errs);
-          completed.push('skills');
+          if (this.deps.skillSlot) {
+            appendErrors(plugin, await this.deps.skillSlot.load(plugin, userConfig));
+            completed.push('skills');
+          } else {
+            appendErrors(plugin, [unsupportedSlot(id, 'skills')]);
+          }
         }
         if (plugin.manifest.hooks) {
-          const errs = this.deps.hookSlot.load(plugin);
-          appendErrors(plugin, errs);
-          completed.push('hooks');
+          if (this.deps.hookSlot) {
+            appendErrors(plugin, this.deps.hookSlot.load(plugin));
+            completed.push('hooks');
+          } else {
+            appendErrors(plugin, [unsupportedSlot(id, 'hooks')]);
+          }
         }
         if (plugin.manifest.mcpServers) {
-          const errs = await this.deps.mcpSlot.load(plugin, userConfig);
-          appendErrors(plugin, errs);
-          completed.push('mcpServers');
+          if (this.deps.mcpSlot) {
+            appendErrors(plugin, await this.deps.mcpSlot.load(plugin, userConfig));
+            completed.push('mcpServers');
+          } else {
+            appendErrors(plugin, [unsupportedSlot(id, 'mcpServers')]);
+          }
         }
         if (plugin.manifest.agents) {
-          const errs = await this.deps.subAgentSlot.load(plugin, userConfig);
-          appendErrors(plugin, errs);
-          completed.push('agents');
+          if (this.deps.subAgentSlot) {
+            appendErrors(plugin, await this.deps.subAgentSlot.load(plugin, userConfig));
+            completed.push('agents');
+          } else {
+            appendErrors(plugin, [unsupportedSlot(id, 'agents')]);
+          }
         }
         if (plugin.manifest.commands) {
-          const errs = await this.deps.commandSlot.load(plugin, userConfig);
-          appendErrors(plugin, errs);
-          completed.push('commands');
+          if (this.deps.commandSlot) {
+            appendErrors(plugin, await this.deps.commandSlot.load(plugin, userConfig));
+            completed.push('commands');
+          } else {
+            appendErrors(plugin, [unsupportedSlot(id, 'commands')]);
+          }
         }
 
         plugin.state = {
@@ -259,7 +286,7 @@ export class PluginRegistry {
 
     // Asymmetric prune: hooks whose pluginId is no longer in the registry
     // should be removed even if their plugin disappeared mid-flight.
-    this.deps.hookSlot.pruneRemovedPlugins(new Set(this.plugins.keys()));
+    this.deps.hookSlot?.pruneRemovedPlugins(new Set(this.plugins.keys()));
 
     return this.buildResult(errors);
   }
@@ -301,19 +328,19 @@ export class PluginRegistry {
   private async unloadSlot(plugin: LoadedPlugin, slot: PluginSlot): Promise<void> {
     switch (slot) {
       case 'skills':
-        await this.deps.skillSlot.unload(plugin.id);
+        await this.deps.skillSlot?.unload(plugin.id);
         break;
       case 'hooks':
-        this.deps.hookSlot.unload(plugin.id);
+        this.deps.hookSlot?.unload(plugin.id);
         break;
       case 'mcpServers':
-        await this.deps.mcpSlot.unload(plugin.id);
+        await this.deps.mcpSlot?.unload(plugin.id);
         break;
       case 'agents':
-        await this.deps.subAgentSlot.unload(plugin.id);
+        await this.deps.subAgentSlot?.unload(plugin.id);
         break;
       case 'commands':
-        this.deps.commandSlot.unload(plugin.id);
+        this.deps.commandSlot?.unload(plugin.id);
         break;
     }
   }
@@ -352,4 +379,19 @@ function appendErrors(plugin: LoadedPlugin, errors: PluginError[]): void {
   if (errors.length === 0) return;
   plugin.loadErrors = plugin.loadErrors ?? [];
   plugin.loadErrors.push(...errors);
+}
+
+/**
+ * Informational capability-gap note for a declared slot whose loader is
+ * not wired on this platform. Surfaced via `/plugin info` so the user
+ * understands why (e.g.) a plugin's hooks aren't firing on the server.
+ * Does NOT fail the enable — other slots still load.
+ */
+function unsupportedSlot(id: PluginId, slot: PluginSlot): PluginError {
+  return {
+    type: 'component-load-failed',
+    pluginId: id,
+    slot,
+    cause: `slot "${slot}" is not supported on this platform (capability gap, not a failure)`,
+  };
 }

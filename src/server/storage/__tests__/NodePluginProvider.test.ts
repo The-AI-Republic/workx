@@ -134,8 +134,8 @@ describe('NodePluginProvider + PluginRegistry (E2E-1)', () => {
     await registry.enable('test-plugin@local');
     expect(registry.isEnabled('test-plugin@local')).toBe(true);
     expect(enabledStore['test-plugin@local']).toBe(true);
-    expect(deps.skillSlot.load).toHaveBeenCalledTimes(1);
-    expect(deps.commandSlot.load).toHaveBeenCalledTimes(1);
+    expect(deps.skillSlot!.load).toHaveBeenCalledTimes(1);
+    expect(deps.commandSlot!.load).toHaveBeenCalledTimes(1);
 
     // Disable
     await registry.disable('test-plugin@local');
