@@ -10,6 +10,7 @@ import { ModelClient } from './models/ModelClient';
 import type { AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSummaryConfig } from './protocol/types';
 import type { IToolsConfig } from '../config/types';
 import { DEFAULT_TOOLS_CONFIG } from '../config/defaults';
+import { type AgentMode, DEFAULT_MODE } from '../prompts/PromptComposer';
 
 /**
  * browser environment policy for task execution
@@ -24,6 +25,8 @@ export interface TurnContextConfig {
   sessionId?: string;
   /** Base instructions override */
   baseInstructions?: string;
+  /** Agent persona mode for this session (drives prompt composition) */
+  agentMode?: AgentMode;
   /** User instructions for this turn */
   userInstructions?: string;
   /** Approval policy for commands */
@@ -51,6 +54,7 @@ export class TurnContext {
   private modelClient: ModelClient;
   private sessionId: string;
   private baseInstructions?: string;
+  private agentMode: AgentMode;
   private userInstructions?: string;
   private approvalPolicy: AskForApproval;
   private sandboxPolicy: SandboxPolicy;
@@ -68,6 +72,7 @@ export class TurnContext {
     // Initialize with defaults or provided config
     this.sessionId = config.sessionId || ''; // Default to empty string
     this.baseInstructions = config.baseInstructions;
+    this.agentMode = config.agentMode ?? DEFAULT_MODE;
     this.userInstructions = config.userInstructions;
     this.approvalPolicy = config.approvalPolicy || 'on-request';
     this.sandboxPolicy = config.sandboxPolicy || { mode: 'workspace-write' };
@@ -90,6 +95,9 @@ export class TurnContext {
     }
     if (config.baseInstructions !== undefined) {
       this.baseInstructions = config.baseInstructions;
+    }
+    if (config.agentMode !== undefined) {
+      this.agentMode = config.agentMode;
     }
     if (config.userInstructions !== undefined) {
       this.userInstructions = config.userInstructions;
@@ -134,6 +142,21 @@ export class TurnContext {
    */
   getBaseInstructions(): string | undefined {
     return this.baseInstructions;
+  }
+
+  /**
+   * Get the agent persona mode for this session.
+   */
+  getAgentMode(): AgentMode {
+    return this.agentMode;
+  }
+
+  /**
+   * Set the agent persona mode for this session.
+   * Callers must recompose base instructions afterwards.
+   */
+  setAgentMode(mode: AgentMode): void {
+    this.agentMode = mode;
   }
 
   /**
@@ -345,6 +368,7 @@ export class TurnContext {
     const cloned = new TurnContext(this.modelClient, {
       sessionId: this.sessionId,
       baseInstructions: this.baseInstructions,
+      agentMode: this.agentMode,
       userInstructions: this.userInstructions,
       approvalPolicy: this.approvalPolicy,
       sandboxPolicy: structuredClone(this.sandboxPolicy),

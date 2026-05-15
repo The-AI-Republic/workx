@@ -21,6 +21,8 @@ import { RepublicAgentEngine } from './engine/RepublicAgentEngine';
 import { type IUserNotifier, NoOpNotifier } from './IUserNotifier';
 import { v4 as uuidv4 } from 'uuid';
 import { loadPrompt, loadUserInstructions, configurePromptComposer, isComposerConfigured, registerPromptExtension, unregisterPromptExtension } from './PromptLoader';
+import type { AgentMode } from '../prompts/PromptComposer';
+import { MODES } from '../prompts/PromptComposer';
 import { HookRegistry } from './hooks/HookRegistry';
 import { HookExecutor } from './hooks/HookExecutor';
 import { HookDispatcher } from './hooks/HookDispatcher';
@@ -51,6 +53,10 @@ export class RepublicAgent {
   // AgentConfig.selectedModelKey (which is updated before the config-changed event
   // fires), so the stored value is only used as a "switch pending" flag.
   private pendingModelKey: string | null = null;
+  // Non-null signals a deferred per-session mode switch, applied at the next
+  // user submission (mirrors pendingModelKey). Set when SetSessionMode arrives
+  // while a task is running.
+  private pendingModeSwitch: AgentMode | null = null;
   // Hook system
   private hookRegistry: HookRegistry;
   private hookExecutor: HookExecutor;
@@ -162,7 +168,8 @@ export class RepublicAgent {
 
     // Create initial TurnContext with the model client
     const taskContext = new TurnContext(modelClient, {
-      sessionId: this.session.sessionId
+      sessionId: this.session.sessionId,
+      agentMode: this.session.getAgentMode()
     });
 
     // Configure PromptComposer for dynamic system prompt composition
@@ -171,7 +178,7 @@ export class RepublicAgent {
     // Load and set instructions
     const userInstructions = await loadUserInstructions();
     taskContext.setUserInstructions(userInstructions);
-    const baseInstructions = await loadPrompt();
+    const baseInstructions = await loadPrompt(this.session.getAgentMode());
     taskContext.setBaseInstructions(baseInstructions);
 
     // Set the turn context on the session
@@ -309,6 +316,68 @@ export class RepublicAgent {
   }
 
   /**
+   * Handle a per-session agent persona mode switch.
+   *
+   * Preserves conversation history. If a task is running, the switch is
+   * deferred until the next user submission (mirrors pendingModelKey). The UI
+   * commits the tab's mode on ModeChanged{applied:true} and shows a pending
+   * state on {applied:false}.
+   */
+  private async handleSetSessionMode(op: Extract<Op, { type: 'SetSessionMode' }>): Promise<void> {
+    const requested = op.mode;
+    const sessionId = this.session.getId();
+
+    if (!MODES[requested]) {
+      console.warn(`[RepublicAgent] Ignoring unknown session mode: ${requested}`);
+      return;
+    }
+
+    if (this.session.getAgentMode() === requested && this.pendingModeSwitch === null) {
+      this.emitEvent({ type: 'ModeChanged', data: { sessionId, mode: requested, applied: true } });
+      return;
+    }
+
+    if (this.session.getRunningTasks().size > 0) {
+      this.pendingModeSwitch = requested;
+      this.emitEvent({ type: 'ModeChanged', data: { sessionId, mode: requested, applied: false } });
+      this.emitEvent({
+        type: 'BackgroundEvent',
+        data: {
+          message: `Mode switch to "${MODES[requested].label}" will take effect after the current task completes.`,
+          level: 'info',
+        },
+      });
+      return;
+    }
+
+    await this.applyAgentMode(requested);
+    this.emitEvent({ type: 'ModeChanged', data: { sessionId, mode: requested, applied: true } });
+    this.emitEvent({
+      type: 'BackgroundEvent',
+      data: { message: `Switched to ${MODES[requested].label} mode.`, level: 'info' },
+    });
+  }
+
+  /**
+   * Apply a mode to the live session + turn context and recompose the system
+   * prompt. Does not emit ModeChanged — callers decide the applied flag.
+   */
+  private async applyAgentMode(mode: AgentMode): Promise<void> {
+    this.pendingModeSwitch = null;
+    this.session.setAgentMode(mode);
+    const turnCtx = this.session.getTurnContext();
+    if (turnCtx) {
+      turnCtx.setAgentMode(mode);
+      try {
+        const baseInstructions = await loadPrompt(mode);
+        turnCtx.setBaseInstructions(baseInstructions);
+      } catch (error) {
+        console.error('[RepublicAgent] Failed to recompose prompt on mode switch:', error);
+      }
+    }
+  }
+
+  /**
    * Sync memory tools in the ToolRegistry with the current memory service state.
    * Registers tools if memory is enabled, unregisters if disabled.
    * Safe to call repeatedly — idempotent.
@@ -408,7 +477,9 @@ export class RepublicAgent {
       const modelClient = await this.modelClientFactory.createClientForCurrentModel();
 
       // Create new TurnContext with updated model client
-      const taskContext = new TurnContext(modelClient, {});
+      const taskContext = new TurnContext(modelClient, {
+        agentMode: this.session.getAgentMode()
+      });
       const userInstructions = await loadUserInstructions();
       taskContext.setUserInstructions(userInstructions);
 
@@ -427,7 +498,7 @@ export class RepublicAgent {
         ),
       );
 
-      const baseInstructions = await loadPrompt();
+      const baseInstructions = await loadPrompt(this.session.getAgentMode());
       taskContext.setBaseInstructions(baseInstructions);
     } catch (error) {
       console.error('[RepublicAgent] Failed to refresh model client:', error);
@@ -468,7 +539,7 @@ export class RepublicAgent {
       ),
     );
 
-    const baseInstructions = await loadPrompt();
+    const baseInstructions = await loadPrompt(this.session.getAgentMode());
     turnCtx.setBaseInstructions(baseInstructions);
   }
 
@@ -502,6 +573,10 @@ export class RepublicAgent {
 
         case 'GetHistoryEntryRequest':
           await this.handleGetHistoryEntryRequest(op);
+          break;
+
+        case 'SetSessionMode':
+          await this.handleSetSessionMode(op);
           break;
 
         // === UserInput/UserTurn: run pre-submit hooks, then delegate to engine ===
@@ -644,6 +719,20 @@ export class RepublicAgent {
       } catch (error) {
         console.error('Failed to apply pending model switch:', error);
       }
+    }
+
+    // Apply pending mode switch before processing the new submission
+    if (this.pendingModeSwitch !== null) {
+      const deferredMode = this.pendingModeSwitch;
+      await this.applyAgentMode(deferredMode);
+      this.emitEvent({
+        type: 'ModeChanged',
+        data: { sessionId: this.session.getId(), mode: deferredMode, applied: true },
+      });
+      this.emitEvent({
+        type: 'BackgroundEvent',
+        data: { message: `Switched to ${MODES[deferredMode].label} mode.`, level: 'info' },
+      });
     }
     return true;
   }
