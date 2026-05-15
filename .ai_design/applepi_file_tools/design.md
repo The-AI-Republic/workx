@@ -1,298 +1,218 @@
-# Apple Pi File Tools — Read / Edit / Write (Code Mode, Phase 4)
+# Apple Pi Desktop — End-to-End Code Mode
 
-**Status**: Draft
+**Status**: Draft (implementation-ready)
 **Branch**: `feat/046-applepi-file-tools` (off `agent-improvements`)
 **Date**: 2026-05-15
-**Scope**: Apple Pi desktop + server. Browserx (extension) out of scope (no filesystem).
-**HARD PREREQUISITE (verified):** `src/tools/file-search/` does **not** exist on `agent-improvements`/`feat-046` — it lives only on unmerged PR #225 (`feat/045`). Phase 4 reuses that abstraction's shape, so **#225 must merge into `agent-improvements` before Phase 4 implementation starts**, OR Phase 4 must vendor a minimal copy of the executor-split pattern. This is an ordering gate, not a footnote. PR #223 (per-session modes; `coder_*` fragments promise these tools) should also land first so code mode actually surfaces them.
+**Scope**: **Desktop only** (Tauri WebView + Rust). Extension has no filesystem; server lacks an ApprovalGate and a working-root primitive — both explicitly out of scope here and deferred. Desktop is a real simplification: it has an ApprovalGate, a single Rust executor, and a UI to host a folder picker.
+
+This is the authoritative design for making the desktop Apple Pi agent do real coding work end-to-end: read, edit, write, grep, and glob over a user's project, with the read-before-edit freshness discipline that makes structured editing trustworthy rather than `sed -i` guesswork.
 
 ---
 
-## 0. Design Review — Verified & Corrected (2026-05-15)
+## 1. What "end-to-end code mode" actually requires
 
-This doc was reviewed against the live claudy code (`/home/rich/dev/study/claudy/src`) and the live browserx code on `feat-046`. Findings folded in below; the original §§1–9 are corrected in place.
+For a user to do real coding work, four things must be true, in dependency order. The first is the one the codebase has *no* primitive for and is the true gating blocker — it sits upstream of the file-tool engineering everyone focuses on:
 
-### 0.1 CORRECTNESS BUG FOUND & FIXED — the edit must apply to *fresh disk bytes*, not the cache
+1. **A workspace.** The agent must operate on a *user-chosen project directory*. Today there is none: `TerminalTool.setDefaultCwd` has zero callers, `TerminalTool.defaultCwd` stays `null`, and `get_project_root` (`tauri/src/commands.rs:28-34`) returns the *Apple Pi app's own* runtime-cwd parent — meaningless and unsafe as a code target. Without a workspace root, every file/search tool has nowhere to operate and no jail anchor. **§4.1.**
+2. **A mode.** Code mode must be *selectable per session* so the coder prompt + coding tools surface only when wanted. The per-session mode mechanism (`AgentMode`/`MODES`/`coder_*` fragments) does not exist on `agent-improvements` — it is PR #223. **§4.2 + §3.**
+3. **Tools.** Search (`grep`/`glob`) and file (`read`/`edit`/`write`) tools, scoped to the workspace. Search is PR #225's `file-search` abstraction (also not on `agent-improvements`); file tools are new here. **§4.3–§4.7.**
+4. **Trust.** The freshness gate (read-before-edit, atomic mtime-guarded write against fresh disk bytes) + desktop approval + a self-contained path jail. **§4.4–§4.8, §7.**
 
-The original design proposed: *"JS computes the new full-file content from the cached `FileStateCache.content`, sends it to `fs_write_if_unchanged(path, content, expectedMtime)`; the mtime guard makes it safe."* **This is not what claudy does and it is unsafe.** Verified in `claudy FileEditTool.ts:444-491`: claudy re-reads disk bytes *inside the atomic section* (`readFileForEdit` :449) and runs `findActualString`/replacement against **those fresh bytes** (:471, :482-488); the cached `readFileState.content` is used **only** as the equality oracle for the mtime-jitter fallback (:463), never as the edit base. The mtime check is *secondary*; the real safety is that the edit is computed against actual current disk content.
-
-Failure mode of the original model: a file changed on disk **without** an mtime advance (coarse-granularity FS, sub-millisecond change flooring to the same ms, an editor preserving mtime) → the mtime guard passes → Rust overwrites with content derived from **stale cached bytes** → **silent data loss**. Claudy fails safe here (`findActualString` against fresh bytes simply errors "string not found").
-
-**Correction (now binding):** `edit_file`'s atomic operation re-reads disk content **server-side** (Rust on desktop / Node in-process on server) and performs the exact-match + uniqueness/`replace_all` substitution against those **freshly-read bytes**, then writes — all within the single atomic command. The frontend never computes the post-edit blob from the cache. `write_file` (full overwrite) keeps the `content + expectedMtime` shape (no find/replace, so no stale-base hazard) but the mtime guard still applies. This reshapes §4.3/§4.4 — see below.
-
-### 0.2 Other verified corrections (binding)
-
-- **Cross-language mtime consistency.** Cache stores the mtime returned by *the executor that performed the read*; the write-check stat must come from the *same executor* with the *same precision*. Convention: integer milliseconds, `floor(mtimeMs)`. Desktop: all of read/stat/write-check mtimes come from Rust, which must return `floor` integer-ms matching Node's `Math.floor(statMtimeMs)`. Server: all from Node. **Never mix sources** for one file's store-vs-compare (verified against claudy `utils/file.ts:66-82` — same floored `mtimeMs` everywhere; a precision mismatch breaks the equality check and causes infinite "modified since read").
-- **Line endings + encoding.** Cache stores **LF-normalized** content (claudy `fileRead.ts:94`). The atomic write op must re-apply the file's original line endings (CRLF/LF, detected from disk) **and original encoding/BOM** (utf8/utf16le) — `edit_file` preserves; `write_file` always LF. The executor contract must carry endings *and* encoding, not just endings (original §4.3 missed encoding).
-- **Conservative-vs-claudy jitter behavior — decision.** Claudy's full-content fallback *succeeds* when mtime advanced but bytes are byte-identical to the cached full read (benign touch). v1 decision: **implement the fallback in the atomic op** (it already re-reads fresh bytes; compare against the cached `content` passed in for the full-read case) → claudy parity. If deferred, document that v1 is *more conservative* (errors on benign touch) — a usability, not safety, divergence.
-- **Authoritative gate = the atomic backend op, not the JS pre-check.** Verified: claudy calls `validateInput` (`toolExecution.ts:683`) long before `call` (`:1207`) with a **blocking permission prompt in between** (`:921-930`). So the JS-side read-before-edit/mtime pre-check is **advisory UX only**; the binding freshness gate is the re-stat+re-match inside the atomic server op. The design must not rely on the JS pre-check for safety.
-- **Partial-view reads are not valid edit bases** (claudy `FileEditTool.ts:276,296-299`): if the cache entry `isPartialView` or was a partial read, an edit must refuse with "read it first / re-read" — same as no entry.
-- **Server safety floor is deny-only and fully self-contained.** Verified: server wires **no `ApprovalGate`** at all (`ToolRegistry.execute:388` skips approval when unset; `getDefaultRules` has no `'server'` arm, `defaultRules.ts:112`); `SensitivePathEnhancer` is hard-gated to `terminal` (`:38-40`) so it gives **zero** path protection to file tools *even on desktop/extension*. Therefore the in-tool path-safety guard must be entirely self-contained in the tool and, **on server, can only allow or hard-deny (no "ask" — there is no approval UI on that path)**. It must not assume any approval-pipeline help anywhere.
-- **Dispatch chokepoint confirmed (good news).** All tool dispatch — main turn, **sub-agents (own `Session` via `RepublicAgentEngine`)**, server — funnels through `ToolRegistry.execute`'s single `ToolContext` build (`ToolRegistry.ts:459-468`, forwards only `tabId`). So a per-session `FileStateCache` on `Session` auto-isolates per sub-agent with no extra work. Correction: there are **three** `registry.execute` call sites (`TurnManager.ts:1071`, `tools/index.ts:53`, `buildSubAgentInvoker.ts:49`), all converging on that one build. The `tools/index.ts:53` path has **no Session** (test/utility) — tools must degrade gracefully (treat absent cache as "not read yet").
-- **No atomic primitive exists to adapt.** `skills_write_file` is a plain non-atomic `fs::write` (`skills_commands.rs:61`); there is no fs read/stat/write-with-guard command. The atomic command is **net-new Rust**, added to `tauri/src/main.rs generate_handler!`. Confirmed.
-- **No server working-root abstraction.** Desktop has `get_project_root` (`commands.rs:28-34`); the server has **no equivalent** (`process.cwd()` ad hoc). The server file-tool root/jail must be an explicit, pinned config — promoted from open-question to a §4.5 decision.
-
-### 0.3 Net verdict
-
-Architecture is sound and the cache-delivery seam is *simpler* than feared (single chokepoint, sub-agents auto-covered). One real correctness bug (0.1) is fixed by moving the edit transformation server-side. The remaining items are binding clarifications, now in §§4–9. Implementation-readiness gate: **#225 merged first** (or executor pattern vendored).
+If any of 1–3 is missing, code mode is non-functional regardless of how good the file tools are. §3 makes the ordering a hard gate.
 
 ---
 
-## 1. Overview
+## 2. Reference model — the minimal trustworthy core (from claudy)
 
-Phase 3 gave code mode **search** (`grep`/`glob`). Phase 4 gives it **read / edit / write** — the half that makes code mode actually usable end-to-end. The deliverable is not "file I/O" (that part is trivial). The deliverable is the **read-before-edit freshness gate**: the discipline that makes structured editing *trustworthy* instead of `sed -i` guesswork. That gate is the entire engineering problem; everything else is plumbing around it.
+Verified against `/home/rich/dev/study/claudy/src`. Claudy's *minimum viable* coding loop is **Bash + Read + Edit** (`tools.ts:271-298`, simple mode); Write/Grep/Glob are layered conveniences. The only state shared between tools is one per-session cache. The mechanisms a port MUST replicate for trustworthiness (everything else is deferrable):
 
-This doc maps claudy's complete read→edit→write lifecycle, states exactly what `agent-improvements` already provides versus what must be built, and specifies the architecture — with particular attention to the one place Apple Pi cannot copy claudy directly: **claudy's atomicity guarantee is in-process; Apple Pi desktop runs the agent in a Tauri WebView with the filesystem behind Rust IPC, so the atomic check-then-write must move into a single Rust command.**
+- **One per-session `readFileState` cache**, keyed by `path.normalize(absPath)`, entries `{content, timestamp:floor(mtimeMs), offset, limit, isPartialView?}` (`utils/fileStateCache.ts:4-15`). Read populates it with **`offset` set**; Edit/Write require a non-partial entry and store back with **`offset:undefined`**. The offset-presence distinction is load-bearing for the read-before-edit gate and the read-dedup.
+- **The atomic mutate section**: inside the tool's execute, after all `await`s, do a **synchronous fresh disk re-read**, re-compare `floor(mtime)` (with a full-read-only content-equality fallback for mtime jitter), run the substitution **against those fresh disk bytes**, write, then update the cache — **zero `await` between recheck and write** (`FileEditTool.ts:444-525`, comment `:443`). `validateInput`'s identical checks are advisory only: a blocking permission prompt sits between `validateInput` and `call` (`toolExecution.ts:683` vs `:1207`, prompt at `:921-930`), so the in-call recheck is the real integrity gate.
+- **Floor mtime identically at store-time and compare-time** (`Math.floor(mtimeMs)`, `utils/file.ts:66-82`) or watcher/IDE touches cause infinite false "modified since read".
+- **Exact-string Edit semantics**: exact match, uniqueness-unless-`replace_all`, empty-`old_string` ⇒ new file, no-op edit errors.
+- **Bypass-immune safety**: `.git`, `.vscode`, `.idea`, `.claude`, shell rc/config files prompt *even in the most permissive mode* (`permissions.ts:1226-1281`; blocklist `filesystem.ts:57-79`).
+- **Read is never persisted** (`maxResultSizeChars: Infinity`), self-bounded by a pre-read size gate + post-read token/line cap; output is `cat -n` line-numbered at map time, not stored.
+- **System-prompt guardrails are part of the mechanism**: read-before-edit, no gold-plating, verify-before-claiming-done, risky-action confirmation (`constants/prompts.ts:199-267`).
 
----
-
-## 2. How claudy does it (the reference lifecycle)
-
-```
-[model: Read]
-  Read.validateInput (deny/binary/size pre-gate)
-  → Read.call: readFileInRange (fast <10MB | streaming)
-  → readFileState.set(normalize(absPath), {content, timestamp:floor(mtimeMs), offset, limit})
-        offset is SET ⇒ this is a "Read entry"
-  → map result: addLineNumbers (cat -n), token-gate post-read, never persisted
-
-[model: Edit/Write]
-  validateInput:
-     e = readFileState.get(normalize(absPath))
-     !e || e.isPartialView                → ASK "read it first"
-     floor(statMtime) > e.timestamp        → (full-read content-equality fallback) else ASK "modified since read"
-     exact-match old_string + uniqueness   → error unless replace_all
-  permission: checkWritePermissionForTool
-     deny → internal-editable → .claude/** → checkPathSafetyForAutoEdit(.git/.vscode/settings/.ssh…)
-          → ask-rule → acceptEdits-mode auto-allow → allow-rule → ASK
-     (safetyCheck denials are BYPASS-IMMUNE — prompt even in YOLO)
-  call:  ─── ATOMIC, no await between recheck and write ───
-     re-stat + re-check mtime (same fallback) → else throw FILE_UNEXPECTEDLY_MODIFIED
-     write (Edit: preserve file's CRLF/LF; Write: always LF)
-  → readFileState.set(absPath, {content:updated, timestamp:floor(newMtime), offset:undefined, limit:undefined})
-        offset UNDEFINED ⇒ "edit entry" (immune to Read's dedup)
-  → LSP didChange/didSave + editor notify; short confirmation string (≤100k)
-```
-
-Load-bearing invariants a reimplementer must preserve (from deep research of `/home/rich/dev/study/claudy/src`):
-
-1. **`FileStateCache` is per-session, owned by the engine, threaded into every tool** via `ToolUseContext.readFileState` (`Tool.ts:181`). Entry shape: `{content, timestamp, offset, limit, isPartialView?}` (`utils/fileStateCache.ts:4-15`). Keys are `path.normalize()`-d *inside* the cache; all tools pass `expandPath(...)`. LRU 100 entries / 25 MB — **entries are not pinned; eviction forces a re-Read.**
-2. **`offset`/`limit` are a Read-vs-Edit discriminator, not just pagination.** Read stores the real offset (default 1); Edit/Write store `undefined`. Read's dedup stub only fires when `offset !== undefined`. Get this wrong → Read→Edit→Read serves stale "file_unchanged".
-3. **`Math.floor(mtimeMs)` on both store and compare** — unfloored timestamps cause infinite "modified since read" loops with IDE/file-watchers.
-4. **Full-content-equality fallback** for mtime jitter (cloud-sync/AV touch) applies **only to full reads** (`offset===undefined && limit===undefined`). Partial reads can never recover from an mtime touch without a re-Read.
-5. **`isPartialView` ≡ "not read"** for the edit gate.
-6. **Atomicity**: no `await` between the in-`call` staleness recheck and the write. `validateInput`'s check is *not* sufficient — a permission prompt happens between validate and call.
-7. **Write always writes LF; Edit preserves the file's endings.** Different by design (Write corrupted shell scripts when it sampled repo endings).
-8. **Safety-path denials (`.git/`, `.claude/`, `.vscode/`, settings) are bypass-immune** — they prompt even in the most permissive mode. The tool's `checkPermissions` returns `behavior` only; mode enforcement is one layer up.
-9. **Read is never persisted** (`maxResultSizeChars: Infinity`) — persisting a Read result the model re-reads is circular. It self-bounds via size (pre-read, whole-file) + token (post-read) gates.
-10. The edit algorithm is just **exact substring match + uniqueness-or-`replace_all` + empty-`old_string`=new-file**. Claudy's curly-quote normalization / API-tag de-sanitization / `.md` trailing-space exception are mitigations for *claudy's own response sanitization* — **not** intrinsic to editing.
+Deferrable without losing trust: the `file_unchanged` dedup stub, curly-quote normalization, PDF/image/notebook reads, LSP notifications, multi-edit.
 
 ---
 
-## 3. What `agent-improvements` already has vs must build
+## 3. Prerequisites & dependency ordering (HARD GATE)
 
-| Capability | Status | Evidence |
-|---|---|---|
-| Tool shape (`'function'` def, handler sig, `metadata.platforms`) | **Reuse** | `BaseTool.ts:67-77,166-180,741-798` |
-| Desktop tool → Rust command (registration pattern) | **Reuse** (TerminalTool exemplar) | `registerDesktopTools.ts:176-224`, `TerminalTool.ts:166-182` |
-| Server fs-tool registration pattern | **Reuse** | `registerServerTools.ts:111-148` (`read_persisted_result`) |
-| Phase-3 executor-split + Rust-command pattern | **Reuse** (#225) | `src/tools/file-search/` (RipgrepExecutor, FileSearchTool) |
-| ApprovalGate pipeline + assessors + policy rules | **Reuse** | `ApprovalGate.ts:102-270`, `defaultRules.ts`, `StaticRiskAssessor` |
-| `Session` owning a per-session cache (field + getter) | **Reuse pattern** | `Session.ts` `getToolResultStore()`/`getMemoryService()` |
-| **Per-session cache → tool handler delivery** | **MUST ADD** | `ToolRegistry.ts:459-468` forwards only `tabId`; `ToolContext` has no Session ref |
-| **Desktop atomic check-then-write Rust command** | **MUST ADD** | none in `main.rs:335-423`; `skills_write_file` is unconditional overwrite |
-| **Desktop fs read/stat returning mtime** | **MUST ADD** | `skills_read_file` returns content only, no mtime |
-| **Server fs read/edit/write with freshness** | **MUST ADD** | server uses ad-hoc Node `fs`; no freshness layer |
-| **Mutating-tool approval on server** | **MUST ADD** | server wires *no* ApprovalGate; `getDefaultRules` has no `'server'` arm (`defaultRules.ts:112`) |
-| **Sensitive-path/`.git`/settings guard for file tools** | **MUST ADD / generalize** | `SensitivePathEnhancer.ts:38-40` hard-gated to `terminal` only |
-| Non-zero risk assessor for edit/write | **MUST ADD** | read-only uses `StaticRiskAssessor(0)`; no write-aware assessor |
-| Sandbox coverage of direct fs commands | **MUST ADD (decision)** | terminal sandbox wraps shell only; direct `invoke` fs bypasses it |
+Desktop code mode cannot work end-to-end until these land, in this order. This is not a footnote; it is the implementation schedule.
+
+| # | Prerequisite | Why it blocks | State |
+|---|---|---|---|
+| P1 | **#225 merged to `agent-improvements`** (or its `file-search` executor-split + Rust ripgrep command vendored) | `grep`/`glob` and the `RipgrepExecutor`/`FileSearchTool` abstraction the file tools are built as siblings of do not exist on this branch. | unmerged |
+| P2 | **#223 merged** (per-session `AgentMode`/`MODES`/`coder_*` fragments) | No mechanism to *select* code mode per session or gate the coder prompt/tools; today the prompt is static and registration is global. | unmerged |
+| P3 | **Workspace-root primitive** (§4.1) | No user-chosen project directory exists anywhere; tools would default to the packaged app's cwd. Upstream of P4–P6. | does not exist |
+| P4 | Net-new Rust fs commands (§4.6) | No fs read/stat returning mtime; no atomic check-then-write. | does not exist |
+| P5 | Per-session `FileStateCache` delivery seam (§4.5) | The read-before-edit gate needs per-session freshness state to reach handlers. | does not exist |
+| P6 | Write-aware risk assessor + registration (§4.8) | Edit/Write must ASK; only read-only `StaticRiskAssessor(0)` and `TerminalRiskAssessor` exist. | does not exist |
 
 ---
 
 ## 4. Architecture
 
-### 4.1 The freshness cache (`FileStateCache`), per-session, owned by `Session`
+### 4.1 The workspace root — the upstream deliverable
 
-A new `src/core/files/FileStateCache.ts` ports claudy's semantics:
+A first-class, user-chosen, persisted project directory. Without it, nothing downstream is usable.
+
+- **Selection**: a folder picker in the desktop UI (Tauri dialog). The selected absolute path is the **workspace root**.
+- **Persistence**: stored in `config.json` via the existing `TauriConfigStorage` (a new `preferences.workspaceRoot` or a dedicated key). Restored on launch; re-promptable.
+- **Threading**: the workspace root is delivered to tools the same way the `FileStateCache` is (§4.5) — via the single `ToolContext` build. It is also passed into every Rust fs command as the **jail anchor** (the only path policy these commands get; the terminal sandbox does not cover direct `invoke` fs, and `SensitivePathEnhancer` is terminal-only).
+- **Resolution rule**: every file/search tool path is resolved to an absolute path, symlinks resolved, and **must be inside the workspace root** (after `..`/symlink resolution) or the tool hard-denies. There is no "outside the workspace with a prompt" in v1 — fail closed.
+- **Unset behavior**: if no workspace is selected, code-mode file/search tools are **disabled with a clear "select a project folder" message** — never silently default to the app cwd.
+
+### 4.2 Code-mode selection & prompt (depends P2 / #223)
+
+Code mode is the per-session `AgentMode='code'` from #223: it selects the `coder_*` prompt fragments and surfaces the coding tools. This design does not re-specify the mode mechanism (see `.ai_design/applepi_agent_modes/design.md`); it requires only that:
+
+- the coder system prompt asserts the §2 guardrails (read-before-edit, no gold-plating, verify-before-done, risky-action confirmation) — these shape behavior the mechanical checks cannot;
+- the coding tools (`read_file`/`edit_file`/`write_file`/`grep`/`glob`) are present when mode is `code` and a workspace is set.
+
+### 4.3 Tool suite & how they interlock
+
+```
+grep / glob ──► read_file ──► edit_file / write_file
+(locate)        (loads +       (mutates; requires a non-partial
+                 populates      read entry; re-reads fresh bytes
+                 cache entry)   in the atomic op)
+```
+The only state passed between tools is the per-session `FileStateCache` (§4.4). Search tools never touch it; `read_file` populates it; `edit_file`/`write_file` require an entry and rewrite it. `grep`/`glob` reuse PR #225's `RipgrepExecutor` (workspace root as the search root). `read_file`/`edit_file`/`write_file` are new, built as a `FileAccessTool` sibling of #225's `FileSearchTool`, sharing the desktop-`invoke` executor pattern.
+
+### 4.4 The freshness substrate — `FileStateCache`, per-session, owned by `Session`
+
+New `src/core/files/FileStateCache.ts`, semantics ported from claudy:
 
 ```ts
 export interface FileState {
-  content: string;          // RAW disk bytes (no line numbers)
-  mtimeFloorMs: number;     // Math.floor(mtimeMs) — floored on store AND compare
-  offset?: number;          // SET by read (Read-vs-Edit discriminator); undefined after edit/write
+  content: string;          // RAW disk bytes, LF-normalized, no line numbers
+  mtimeFloorMs: number;     // Math.floor(mtimeMs); floored on store AND compare
+  offset?: number;          // SET by read (read-vs-edit discriminator); undefined after edit/write
   limit?: number;
-  isPartialView?: boolean;  // injected/partial content ⇒ treated as "not read" by the edit gate
+  isPartialView?: boolean;  // injected/partial ⇒ treated as "not read" by the edit gate
 }
 ```
+- Bounded LRU (defaults: 100 entries / 25 MB, claudy's). Keys = `path.normalize(absolutePath)`. Eviction ⇒ forced re-read (acceptable).
+- **Owned by `Session`** as a private field with `getFileStateCache()`, mirroring `Session.getToolResultStore()`/`getMemoryService()` (constructor-initialized, synchronous, no async). Sub-agents construct their own `Session` (`RepublicAgentEngine.ts:73`) ⇒ a per-session cache **auto-isolates per sub-agent** with zero extra work.
 
-- Bounded LRU (≈100 entries / 25 MB), keys = normalized absolute path. Eviction → forced re-read (acceptable, matches claudy).
-- **Owned by `Session`** as a private field with `getFileStateCache()` — exactly mirroring `Session.getToolResultStore()` / `getMemoryService()`. Sub-agent sessions get their own (clone-on-fork semantics deferred; v1 = independent per session).
+### 4.5 Cache + workspace delivery seam — the one chokepoint
 
-### 4.2 Delivering the cache to tool handlers — the central seam
+All tool dispatch — main turn (`TurnManager.ts:1071`), sub-agents (own `Session`, same path via `SubAgentRunner`), the test-only `tools/index.ts:53` — converges on a single `ToolContext` build at **`ToolRegistry.ts:459-468`**, which today forwards only `tabId` and drops the rest of `request.metadata`. The seam:
 
-This is the one genuinely new piece of plumbing. Today `ToolRegistry.execute` builds `ToolContext` at `ToolRegistry.ts:459-468` forwarding **only `tabId`**; `ToolContext` carries no `Session` reference. Tool handlers are session-agnostic registry callbacks.
+1. `TurnManager.executeBrowserTool` (builds the request, `TurnManager.ts:1057-1069`) injects `fileStateCache: this.session.getFileStateCache()` and `workspaceRoot` into the request.
+2. The single `ToolContext` build is widened to forward these into `context.metadata`.
+3. Handlers read `context.metadata.fileStateCache` / `.workspaceRoot`.
 
-**Decision: thread the cache handle through the execution request → context (Option A).** `TurnManager.executeBrowserTool` already holds `this.session` and builds the `ToolExecutionRequest` (`TurnManager.ts:1057-1069`). It injects `fileStateCache: this.session.getFileStateCache()` into the request; `ToolRegistry.execute`'s context build is widened to forward request-supplied cache into `ToolContext.metadata.fileStateCache`. The handler reads `context.metadata.fileStateCache`.
+Rejected: a registry-side `Map<sessionId, cache>` (second ownership authority; `Session` is the natural owner). The `tools/index.ts:53` path has no `Session` — tools MUST degrade gracefully: absent cache ⇒ behave as "not read yet" (refuse edits, allow reads without populating); absent workspace ⇒ disabled per §4.1. Never throw on absence.
 
-- Rejected Option B (registry-side `Map<sessionId, FileStateCache>`): introduces a second ownership/eviction authority and a hidden global; `Session` is already the natural owner.
-- **Verified single chokepoint:** all dispatch — main turn, sub-agents (own `Session` via `RepublicAgentEngine`), server — funnels through the one `ToolContext` build at `ToolRegistry.ts:459-468`. There are **three** `registry.execute` call sites (`TurnManager.ts:1071`, `tools/index.ts:53`, `buildSubAgentInvoker.ts:49`); the cache handle is injected on the request at `TurnManager`'s build (`TurnManager.ts:1057-1069`) and the single context build is widened to forward it. Because sub-agents own their own `Session`, a per-session cache **auto-isolates per sub-agent** with zero extra work.
-- The `tools/index.ts:53` path has **no `Session`** (test/utility) — tools MUST degrade gracefully: absent cache ⇒ behave as "file not read yet" (refuse edits, allow reads without populating). Never throw on a missing cache.
-- In-process only — no serialization concern. Desktop tools still call Rust via `invoke`; the cache + JS *advisory* pre-check stay in JS; the **authoritative** re-stat + edit + write is one atomic Rust/Node op (§4.3).
+### 4.6 The atomic fs Rust commands (net-new, desktop)
 
-### 4.3 The filesystem executor (desktop/server split) — sibling of Phase 3's `RipgrepExecutor`
+The WebView cannot spawn processes or touch the fs; everything goes through Rust `invoke`. Claudy's "no `await` between recheck and write" is impossible across the JS↔IPC boundary, so **the entire recheck→substitute→write critical section lives inside one Rust command**. No existing command is adaptable (`skills_write_file` is a non-atomic `fs::write`). New `#[tauri::command]`s, registered in `tauri/src/main.rs generate_handler!`, mirroring the `terminal_execute` pattern (struct args, no shell, `Result<T,String>`):
 
-`src/tools/file-search/` already establishes the pattern: one module hides the desktop-`invoke` vs server-`child_process` split behind a typed contract. Phase 4 adds a sibling `FileSystemExecutor` with the same shape:
+- `fs_read_file(workspace_root, path, offset?, limit?) -> { content_lf, mtime_ms, size, endings, encoding, bom }` — path jailed to `workspace_root`; `mtime_ms = floor` integer ms (must equal JS `Math.floor(statMtimeMs)`); content CRLF→LF normalized; detects endings/encoding/BOM for round-trip.
+- `fs_stat(workspace_root, path) -> { exists, mtime_ms, size }`.
+- `fs_apply_edit(workspace_root, path, old_string, new_string, replace_all, expected_mtime_ms, expected_content_lf) -> Result<EditOutcome>` — **the atomic edit**. Server-side, in one command: (1) jail-check path; (2) re-read fresh bytes + re-stat; (3) if `floor(mtime) != expected_mtime_ms`: if fresh-LF `== expected_content_lf` proceed (benign-touch jitter fallback, claudy parity) else return `stale`; (4) exact-substring match `old_string` in **fresh bytes** — `0 ⇒ no_match`, `>1 && !replace_all ⇒ not_unique`; (5) substitute (first or all); (6) re-apply original endings+encoding+BOM; (7) write. Empty `old_string` ⇒ create-new (reject if exists & non-empty). Returns `{ ok:true, new_content_lf, mtime_ms, endings, encoding, bom }` or `{ ok:false, reason:'stale'|'not_found'|'no_match'|'not_unique'|'denied' }`.
+- `fs_write_if_unchanged(workspace_root, path, content, expected_mtime_ms: Option<u64>, endings, encoding, bom) -> Result<WriteOutcome>` — full overwrite (no find/replace ⇒ no stale-base hazard). `expected_mtime_ms = None` ⇒ create-only (must not exist). Always LF unless `endings` says CRLF (write always normalizes to LF for new files; edit preserves).
 
-```ts
-// Detected from disk on read, echoed back on write so endings/encoding round-trip.
-interface FileMeta { mtimeFloorMs: number; size: number; endings: 'LF' | 'CRLF'; encoding: 'utf8' | 'utf16le'; bom: boolean; }
+**Why the edit substitution is server-side, not JS:** claudy applies the edit to *freshly re-read disk bytes* inside its atomic section (`FileEditTool.ts:444-491`); the cache is only the jitter oracle, never the edit base. Computing the new blob in JS from the cache and writing-if-mtime-matches is unsafe: a file changed on disk **without** an mtime advance (coarse FS granularity, mtime-preserving editor, sub-ms change) passes the mtime guard and silently overwrites the concurrent change. Running match+substitute against fresh bytes inside `fs_apply_edit` fails safe (`no_match`) exactly as claudy does.
 
-interface FileSystemExecutor {
-  readFile(path, opts): Promise<{ content: string /* LF-normalized */; meta: FileMeta }>;
-  stat(path): Promise<{ exists: boolean; mtimeFloorMs: number; size: number }>;
+### 4.7 The file tools (`read_file`, `edit_file`, `write_file`)
 
-  // EDIT — atomic, server-side. Re-reads disk, verifies freshness, applies the
-  // exact-match substitution against FRESH bytes, re-applies endings+encoding,
-  // writes — all in one op. The frontend NEVER computes the post-edit blob.
-  applyEditIfUnchanged(args: {
-    path: string;
-    oldString: string; newString: string; replaceAll: boolean;
-    expectedMtimeFloorMs: number;          // from the cache entry
-    expectedContent: string;               // cache entry content (LF-norm) — jitter fallback oracle
-  }): Promise<
-    | { ok: true; newContent: string /* LF-norm */; meta: FileMeta }
-    | { ok: false; reason: 'stale' | 'not_found' | 'no_match' | 'not_unique' }
-  >;
+A `FileAccessTool` base (sibling of #225's `FileSearchTool`) sharing result/error shaping and the executor handle. Subclasses declare schema + behavior.
 
-  // WRITE — full overwrite (no find/replace ⇒ no stale-base hazard).
-  // expectedMtimeFloorMs===null ⇒ create-only (must not exist).
-  writeIfUnchanged(path, content, expectedMtimeFloorMs: number | null, meta: Pick<FileMeta,'endings'|'encoding'|'bom'>):
-    Promise<{ written: true; meta: FileMeta } | { written: false; reason: 'stale' | 'exists' }>;
-}
-```
+- **`read_file`** — read-only, `StaticRiskAssessor(0)` (auto-approve like `grep`/`glob`). Pre-read size gate (reject very large files before reading); post-read line/byte cap (byte/line proxy for claudy's token cap — v1, no tokenizer); `cat -n` numbering applied at map time; `offset`/`limit`; **never persisted** (`maxResultSizeChars: Infinity`). On success: `cache.set(absPath, {content:LF, mtimeFloorMs, offset, limit})` — a Read entry. Optional `file_unchanged` dedup (deferrable).
+- **`edit_file`** — mutating. JS *advisory* pre-check for a fast clear error (cache entry exists, not `isPartialView`, mtime not obviously stale → "read it first" / "re-read"). The **authoritative** gate + substitution is `fs_apply_edit` against fresh bytes. Exact-match + uniqueness-or-`replace_all` + empty-`old_string`=new-file. On `ok:true`: `cache.set(absPath, {content:new_content_lf, mtimeFloorMs:new, offset:undefined})` — an Edit entry. v1 = exact match only; claudy's curly-quote/de-sanitization niceties deferred (consequence: a curly-quote mismatch returns `no_match` — a safe, conservative failure, documented to users).
+- **`write_file`** — mutating. New file = no prior read (create-only). Existing file = read-before-overwrite (non-partial cache entry required). `fs_write_if_unchanged`. New files written LF. On success: cache `set` with `offset:undefined`.
 
-**Why `applyEditIfUnchanged` takes `oldString/newString`, not a precomputed blob (correctness fix §0.1):** claudy applies the edit to *freshly re-read disk bytes* inside its atomic critical section, not to the cached content. Porting that faithfully across the JS↔IPC boundary means the **substitution itself must run server-side** against the fresh read. The Rust/Node op: (1) re-read disk + re-stat; (2) if `floor(mtime) !== expectedMtimeFloorMs`: if fresh bytes (LF-norm) `=== expectedContent` → proceed (benign-touch jitter fallback, claudy parity), else return `stale`; (3) exact-substring-match `oldString` in fresh bytes — `0 matches ⇒ no_match`, `>1 && !replaceAll ⇒ not_unique`; (4) substitute (first occurrence or `replaceAll`); (5) re-apply original endings+encoding+BOM; (6) write. Empty `oldString` ⇒ create-new-file (reject if file exists & non-empty). This makes the model **claudy-equivalent**, closing the silent-data-loss hole in the original design.
+### 4.8 Approval & path safety (desktop has an ApprovalGate)
 
-- **Desktop** → new net-new Rust commands (no shell; struct args; no existing command adaptable — `skills_write_file` is non-atomic `fs::write`). Registered in `tauri/src/main.rs generate_handler!`:
-  - `fs_read_file(path) -> { content, mtime_ms, size, endings, encoding, bom }`
-  - `fs_stat(path) -> { exists, mtime_ms, size }`
-  - `fs_apply_edit(path, old, new, replace_all, expected_mtime_ms, expected_content) -> Result<EditOutcome>`
-  - `fs_write_if_unchanged(path, content, expected_mtime_ms: Option<u64>, endings, encoding, bom) -> Result<WriteOutcome>`
-  - Rust returns `mtime_ms` as **floored integer ms** matching JS `Math.floor(statMtimeMs)` (cross-language consistency, §0.2). The TOCTOU-critical re-stat→match→write is one Rust command — claudy's "no await between recheck and write" honored Rust-side, since it cannot be honored across IPC.
-- **Server** → Node `fs` in-process; performs the same re-read→verify→substitute→write synchronously (claudy's exact model). Same logical contract; same floored-ms convention via Node.
+Desktop wires `ApprovalGate` + `PolicyRulesEngine(getDefaultRules('desktop'))` + enhancers in `DesktopAgentBootstrap.configureDesktopPlatformForAgent` (`:232-262`). Two layers:
 
-### 4.4 The tool abstraction (`FileAccessTool`, sibling of `FileSearchTool`)
+1. **Self-contained path jail in the tool/Rust command (mandatory, mode-independent).** `SensitivePathEnhancer` is hard-gated to `terminal` (`SensitivePathEnhancer.ts:36-40`) so the approval pipeline gives file tools *zero* path protection even on desktop. Therefore each fs Rust command enforces: path resolves (symlinks, `..`) inside `workspace_root`; and a bypass-immune blocklist mirroring claudy (`.git/`, `.vscode/`, `.idea/`, `.claude/`, `.ssh/`, `.env*`, shell rc/`*.config` dotfiles) — hard-deny regardless of approval mode. This is the only path safety; it must be in the command, not the prompt.
+2. **`FileWriteRiskAssessor`** (new) — non-zero score that crosses the shared `riskAbove:30 ⇒ ASK` rule (`defaultRules.ts:16-18`) so `edit_file`/`write_file` prompt the desktop UI for ordinary in-workspace writes; declare `runtime.concurrency.isReadOnly:()=>false, isDestructive:()=>true`. `read_file`/`grep`/`glob` use `StaticRiskAssessor(0)` (auto-approve). The ASK flows through the existing `ApprovalGate.check → ApprovalManager.requestApproval → desktop UI` path (`ApprovalGate.ts:232-256`).
 
-A small base sharing result/error shaping and the executor handle; subclasses declare schema + behavior:
-
-| Tool | Mutating? | Approval | Notes |
-|---|---|---|---|
-| `read_file` | No | `StaticRiskAssessor(0)` (auto-approve, like grep/glob) | Populates `FileStateCache` (offset SET, LF-normalized content, executor-sourced floored mtime). Size pre-gate, line/byte cap, `cat -n`, offset/limit, dedup stub, never persisted (`maxResultSizeChars: Infinity`). |
-| `edit_file` | **Yes** | custom `FileWriteRiskAssessor` (score >30 ⇒ ASK) **+ self-contained path guard** | JS *advisory* pre-check (cache entry exists, not `isPartialView`, mtime not advanced) for a fast/clear error; **authoritative** gate + substitution is `applyEditIfUnchanged` server-side against fresh bytes. Exact-match + uniqueness-or-`replace_all` + empty-`old_string`=new-file. Post-success: cache `set` with new content + new mtime + `offset:undefined`. |
-| `write_file` | **Yes** | same as edit | New file = no prior read (create-only); existing file = read-before-overwrite (cache entry required, not partial). Always LF. Atomic via `writeIfUnchanged`. |
-
-Deferred: `notebook_edit`, multi-edit (the `getPatchForEdits` "old_string ⊄ prior new_string" rule is documented for if/when multi-edit lands). MVP edit = **exact match only** — claudy's curly-quote normalization / API-tag de-sanitization / `.md` trailing-space exception are explicitly deferred (they mitigate claudy's own API sanitization). Consequence to document for users: with exact-match-only, files containing curly quotes the model "straightened" will return `no_match` rather than silently mis-editing — a safe, conservative failure.
-
-### 4.5 Safety — and the server gap
-
-Read auto-approves. Edit/Write must NOT. Verified reality: `SensitivePathEnhancer` is hard-gated to `terminal` (`SensitivePathEnhancer.ts:38-40`) so it gives file tools **zero** path protection *even on desktop/extension*; and **server wires no `ApprovalGate` at all**. So the approval pipeline cannot be relied on for path safety anywhere — the guard must be **fully self-contained in the tool**.
-
-1. **A self-contained, mode-independent path-safety guard inside the file tools.** Denies writes to: outside the working root (see decision below) unless explicitly targeted, `.git/`, `.ssh/`, `.env*`, `settings.json`/known config files, `.vscode/`/`.idea/`, home-dir dotfiles. Mirrors claudy's bypass-immune `safetyCheck`. **Semantics differ by platform availability of an approval UI:** where an `ApprovalGate` exists (desktop/extension) a borderline path may surface as *ask*; **on server there is no approval UI, so the guard is allow-or-hard-deny only** (never silently allow a sensitive write because "no gate").
-2. **A `FileWriteRiskAssessor`** (non-zero score, trips `defaultRules` `riskAbove:30 ⇒ ASK`) so desktop/extension still prompt for ordinary writes; declare `runtime.concurrency.isReadOnly:()=>false, isDestructive:()=>true`. This is *additive* to layer 1, not a substitute — it is absent on server.
-
-**Working-root decision (promoted from open question — required for implementation):**
-- **Desktop:** root = `invoke('get_project_root')` (exists, `commands.rs:28-34`); writes confined to it unless the path is explicitly user-/task-supplied and passes the guard.
-- **Server:** there is **no** `get_project_root` equivalent. Root MUST be an explicit config value (e.g. `SessionServices.serverRootDir` / a `FILE_TOOLS_ROOT` env / agent config), resolved once at bootstrap. If unset, `write_file`/`edit_file` are **disabled on server** (fail closed) rather than defaulting to `process.cwd()`.
-- The guard resolves symlinks and rejects `..` escapes before the root check (claudy resolves symlink + original path; mirror that).
-
-Follow-ups (not blocking v1): add a `'server'` arm to `getDefaultRules` + wire a server ApprovalGate; generalize `SensitivePathEnhancer` beyond `terminal` (currently hard-gated, `SensitivePathEnhancer.ts:38-40`).
-
-### 4.6 Sandbox
-
-The terminal sandbox wraps **shell commands only**; direct `invoke` fs commands bypass it. Decision: the file tools enforce their **own writable-roots policy** (§4.5 layer 1) independent of the terminal sandbox. Documented explicitly so this isn't mistaken for a sandbox regression.
+The terminal sandbox does not cover direct `invoke` fs commands; the §4.8.1 jail is the substitute and must be treated as security-critical.
 
 ---
 
-## 5. End-to-end flow on Apple Pi (desktop)
+## 5. End-to-end desktop flow
 
 ```
-model → read_file
-  ToolRegistry.execute → ApprovalGate (auto-approve, StaticRiskAssessor 0)
-  → context.metadata.fileStateCache  (injected by TurnManager from Session)
-  → FileSystemExecutor.readFile → desktop invoke('fs_read_file')
-  → cache.set(absPath,{content, mtimeFloorMs, offset, limit})   [Read entry]
-  → cat -n + caps; not persisted
+User picks project folder ─► persisted preferences.workspaceRoot (TauriConfigStorage)
+User sets session to Code mode (#223) ─► coder prompt + coding tools surface
 
-model → edit_file
-  JS ADVISORY pre-check (fast clear error only — NOT authoritative):
-        cache.get → missing|isPartialView ⇒ "read it first"
-        floor(cached.mtime) stale-looking ⇒ hint "may be modified"
-  self-contained path guard (symlink-resolved, root-confined; deny-only on server)
-  ApprovalGate (FileWriteRiskAssessor >30 ⇒ ASK) [desktop/ext only; ABSENT on server]
-  → FileSystemExecutor.applyEditIfUnchanged({path, old, new, replaceAll,
-                                             expectedMtimeFloorMs, expectedContent})
-        → invoke('fs_apply_edit', …)        ── ATOMIC, single Rust command ──
-        Rust: re-read fresh bytes + re-stat
-              floor(mtime)≠expected ? (fresh==expectedContent ? proceed : return 'stale')
-              exact-match old in FRESH bytes → 0:'no_match' | >1&!all:'not_unique'
-              substitute → re-apply endings+encoding+BOM → write
-        ok:false ⇒ surface reason ('stale'⇒"modified since read, re-read")
-  → cache.set(absPath,{content:newContent(LF), mtimeFloorMs:new, offset:undefined})  [Edit entry]
-  → short confirmation (≤100k)
+model → grep "useState" ─► RipgrepExecutor (root = workspaceRoot) ─► file:line hits
+model → read_file(path) ─► ApprovalGate auto (StaticRiskAssessor 0)
+        ─► invoke fs_read_file(workspaceRoot,path) [jailed]
+        ─► cache.set(abs,{content:LF,mtimeFloorMs,offset,limit})  [Read entry]
+        ─► cat -n + caps; never persisted
+model → edit_file(path,old,new) ─►
+        JS advisory pre-check (cache entry? not partial? mtime not stale) → fast error if not
+        self-contained jail check (workspaceRoot + blocklist, bypass-immune)
+        ApprovalGate (FileWriteRiskAssessor >30 ⇒ ASK desktop UI)
+        ─► invoke fs_apply_edit(workspaceRoot,path,old,new,replace_all,
+                                expectedMtimeFloorMs, expectedContentLF)
+              Rust (one atomic command): jail → re-read fresh → mtime check
+              (+jitter fallback) → exact-match/uniqueness → substitute fresh
+              → re-apply endings/encoding/BOM → write
+           ok:false ⇒ surface reason ('stale' ⇒ "modified since read, re-read")
+        ─► cache.set(abs,{content:new_content_lf,mtimeFloorMs:new,offset:undefined}) [Edit entry]
+        ─► short confirmation
 ```
-
-The substitution runs **server-side against freshly-read disk bytes** — the frontend never builds the post-edit blob from the cache (§0.1 correctness fix). Server is identical except the executor uses in-process Node `fs` (claudy's exact synchronous re-read→verify→substitute→write) and the `ApprovalGate` layer is absent (the self-contained path guard is the only safety floor, deny-only).
+Sub-agents: identical, with their own `Session`/`FileStateCache` (auto-isolated). No server/extension path.
 
 ---
 
-## 6. Phasing (independently mergeable)
+## 6. Invariants (non-negotiable — state these as rules in code review)
+
+- **R1 — Edit substitution runs against freshly re-read disk bytes, inside the atomic Rust command.** Never compute the post-edit blob in JS from the cache. Rationale: a disk change without an mtime advance otherwise causes silent data loss; fresh-bytes match fails safe (`claudy FileEditTool.ts:444-491`).
+- **R2 — One per-session `FileStateCache`, owned by `Session`, keyed by normalized abs path.** Read sets `offset` defined; Edit/Write require a non-partial entry and store `offset:undefined`. The offset-presence distinction gates read-before-edit and read-dedup.
+- **R3 — `Math.floor(mtimeMs)` integer ms on both store and compare, from the same source.** Desktop: Rust returns floored integer ms equal to JS `Math.floor(statMtimeMs)`. Mixing precision/source ⇒ infinite false "modified since read".
+- **R4 — The JS pre-check is advisory; the atomic Rust command is authoritative.** A blocking approval prompt occurs between the pre-check and the write; only the in-command recheck closes the TOCTOU window.
+- **R5 — Path jail + bypass-immune sensitive blocklist live in the Rust command.** Not in the prompt, not relying on `SensitivePathEnhancer` (terminal-only) or any approval mode. Resolve symlinks/`..` before the workspace-containment check; fail closed.
+- **R6 — Cache holds LF-normalized content; the command round-trips original endings + encoding + BOM.** Edit preserves the file's endings; new files via Write are LF. Encoding/BOM are not optional.
+- **R7 — `read_file` is never persisted and is size-gated pre-read.** Persisting a read the model re-reads is circular; large files are rejected before reading.
+- **R8 — No workspace ⇒ file/search tools disabled with a clear message.** Never default to the app cwd.
+
+---
+
+## 7. Phasing (dependency-ordered; each independently shippable)
 
 | Phase | Scope | Ships |
 |---|---|---|
-| **4·0 — Prerequisite (BLOCKER)** | Merge #225 (`feat/045` file-search abstraction) into `agent-improvements` so `RipgrepExecutor`/`FileSearchTool`/`src/tools/file-search/` exist to build the `FileSystemExecutor`/`FileAccessTool` siblings. (Or explicitly vendor the executor-split pattern.) #223 also lands so code mode surfaces the tools. | Phase 4 can start. |
-| **4a — Freshness substrate + `read_file`** | `FileStateCache` (LF-norm content, executor-sourced floored mtime) + `Session` ownership + cache-delivery seam (widen the single `ToolRegistry.ts:459-468` ctx build; inject at `TurnManager.ts:1057-1069`; graceful no-Session degrade) + `FileSystemExecutor.readFile/stat` (desktop `fs_read_file`/`fs_stat` returning endings+encoding+bom; server Node) + `read_file` (read-only, auto-approve, caps, `cat -n`, dedup, never-persist). | Code mode reads files structurally; cache populated. Independently useful. |
-| **4b — `edit_file`** | Net-new atomic `fs_apply_edit` Rust command + Node equivalent (re-read→verify(+jitter fallback)→exact-match/uniqueness→substitute→re-apply endings/encoding→write, all server-side); JS advisory pre-check; self-contained path guard; `FileWriteRiskAssessor`. | Trustworthy edits — the claudy-parity, data-loss-safe milestone (§0.1). |
-| **4c — `write_file`** | `fs_write_if_unchanged` (create-only vs read-before-overwrite), always-LF, encoding round-trip, same guard. | Full read/edit/write. |
-| **4d — hardening (follow-up)** | Server `ApprovalGate` + `getDefaultRules('server')`; generalize `SensitivePathEnhancer` past `terminal`; sub-agent cache clone/merge-on-fork; optional notebook/multi-edit (+`getPatchForEdits` substring guard); token-accurate caps. | Production hardening. |
+| **P1·prereq** | #225 merged to `agent-improvements` (or vendor `file-search` executor + Rust ripgrep). | `grep`/`glob` foundation present. |
+| **P2·prereq** | #223 merged (per-session modes + `coder_*`). | Code mode selectable per session. |
+| **4a — Workspace root** | Folder picker UI + `preferences.workspaceRoot` persistence + delivery through the `ToolContext` seam + Rust jail-anchor plumbing. Disabled-when-unset UX. | Tools have a real, safe place to operate. |
+| **4b — `read_file` + freshness substrate** | `FileStateCache` + `Session` ownership + the delivery seam (`TurnManager`/`ToolRegistry` widening, graceful no-Session degrade) + `fs_read_file`/`fs_stat` Rust + `read_file` (read-only, caps, `cat -n`, never-persist). | Code mode reads project files structurally; cache populated. |
+| **4c — `edit_file`** | `fs_apply_edit` atomic Rust command (R1–R6); JS advisory pre-check; self-contained jail; `FileWriteRiskAssessor`. | Trustworthy, data-loss-safe edits — the claudy-parity milestone. |
+| **4d — `write_file`** | `fs_write_if_unchanged` (create-only vs read-before-overwrite); same jail + assessor. | Full read/edit/write. |
+| **4e — hardening** | `file_unchanged` dedup; sub-agent cache clone/merge-on-fork; multi-edit (+substring guard); token-accurate caps; generalize `SensitivePathEnhancer`; (later) server parity. | Production hardening. |
 
 ---
 
-## 7. Open Questions
+## 8. Open Questions
 
-Resolved by the design review (now binding, see §0.2 / §4.5): the edit-content/atomicity model (server-side fresh-read), server working-root (explicit config, fail-closed), the jitter fallback (implement in the atomic op), cross-language mtime precision, line-ending+encoding round-trip, server safety semantics (deny-only).
-
-Genuinely still open:
-1. **Output cap for `read_file`**: byte/line proxy for v1 (no tokenizer) — revisit if it mis-sizes vs real token budget.
-2. **Exact sensitive-path list** and block-vs-ask matrix per platform — §4.5 is the starting set; needs a final pinned list before 4b coding.
-3. **Server approval as a follow-up (4d) vs blocker**: recommend ship 4a–4c with the self-contained deny-only guard as the floor; flag the residual gap (no per-write prompt on server) for the user to accept.
-4. **Sub-agent cache fork semantics**: v1 = independent per session (auto via own `Session`); claudy's `cloneFileStateCache`/`mergeFileStateCaches` deferred to 4d — confirm acceptable.
-5. **LRU bound sizing** for Apple Pi (claudy: 100 entries / 25 MB) — adopt as defaults; revisit if sessions thrash evictions → spurious re-reads.
+1. **Workspace selection UX**: single folder per session vs a recent-projects list vs per-tab workspace? v1 recommendation: one persisted workspace, re-promptable; revisit multi-project later.
+2. **`read_file` output cap**: byte/line proxy for v1 (no tokenizer); revisit if it mis-sizes vs real token budget.
+3. **Sensitive-path blocklist final list** and whether any entries are "ask" vs "hard-deny" on desktop (server has no ask — but server is out of scope here). §4.8.1 is the starting set; pin before 4c.
+4. **Sub-agent cache fork**: v1 independent per session (auto). Clone/merge-on-fork (claudy `cloneFileStateCache`) deferred to 4e — confirm acceptable.
+5. **LRU bounds** (100/25 MB claudy default) — adopt; revisit if eviction thrash causes spurious re-reads.
 
 ---
 
-## 8. Success Criteria
+## 9. Success Criteria
 
-- **SC-1** After `read_file`, the session `FileStateCache` holds a Read entry (offset set, floored mtime); a subsequent identical `read_file` returns the dedup stub, not a re-read.
-- **SC-2** `edit_file` without a prior `read_file` is refused with "read it first" (not a blind write).
-- **SC-3** `edit_file` after the file changed on disk (newer mtime, different bytes) is refused with "modified since read"; a benign touch (newer mtime, byte-identical to the cached full read) succeeds via the in-op content-equality fallback.
-- **SC-4 (the §0.1 correctness criterion)** A file changed on disk **with no mtime advance** does NOT cause silent data loss: because `fs_apply_edit` re-reads fresh bytes and matches `old_string` against *those*, the edit either applies to the true current content or returns `no_match` — it never writes a blob derived from stale cached content. Verified-equivalent to claudy.
-- **SC-5** `edit_file` exact-match runs against freshly-read disk bytes: a non-unique `old_string` ⇒ `not_unique` unless `replace_all`; zero matches ⇒ `no_match`; empty `old_string` creates a new file only when absent/empty.
-- **SC-6** Writing `.git/`, `settings.json`, `.ssh/`, `.env`, or outside the working root is hard-denied by the self-contained guard **on every platform incl. server (no ApprovalGate, deny-only there)**; symlink/`..` escapes are resolved before the root check.
-- **SC-7** `read_file` is never persisted (no Read→file→Read loop); large files are size-gated pre-read.
-- **SC-8** `edit_file` preserves the file's existing line endings; `write_file` writes LF. Post-write the cache entry is an Edit entry (offset undefined) and the next `read_file` does not serve a stale stub.
-- **SC-9** Desktop and server produce identical tool-visible behavior via the `FileSystemExecutor` contract.
-
----
-
-## 9. Settled Decisions (for reviewers)
-
-- **The freshness gate is the feature**, not file I/O. Port claudy's `FileStateCache` semantics verbatim (floored mtime, offset-as-discriminator, `isPartialView`≡unread, full-read content fallback, never-persist-read).
-- **CORRECTED (§0.1): the edit transformation runs server-side against freshly-read disk bytes**, not in JS against the cache. The atomic op is `fs_apply_edit(path, old, new, replace_all, expectedMtime, expectedContent)` (re-read→verify+jitter-fallback→exact-match→substitute→re-apply endings/encoding→write), not a precomputed-blob `writeIfUnchanged`. This closes a silent-data-loss hole and is verified claudy-equivalent. `write_file` (no find/replace) keeps the blob+mtime shape.
-- **Atomicity is one backend op.** Claudy's in-process "no await between recheck and write" is impossible across the WebView↔Rust IPC boundary; desktop = one Rust command, server = one in-process Node op. The JS pre-check is **advisory only** (a permission prompt can occur between it and the write).
-- **Cross-language mtime + endings/encoding consistency is binding** (§0.2): same executor sources read-store and write-compare mtime at `floor(ms)`; cache holds LF-normalized content; backend round-trips original endings + encoding + BOM.
-- **Cache delivery = thread through the single `ToolContext` build** (Option A); `Session` owns the cache; sub-agents auto-isolate (own `Session`); the no-`Session` `tools/index.ts` path degrades to "not read". Rejected a registry-side sessionId→cache map.
-- **Edit is exact-match only for v1.** Claudy's quote/sanitization niceties are claudy-pipeline-specific; deferred. Consequence (curly-quote `no_match`) is a safe conservative failure, documented.
-- **Self-contained path guard is mandatory, mode-independent, deny-only on server.** The approval pipeline gives zero path protection to file tools anywhere (`SensitivePathEnhancer` is terminal-gated; server has no `ApprovalGate`). Working root: desktop `get_project_root`; server explicit config, **fail-closed if unset**.
-- **Sibling abstraction:** `FileSystemExecutor`/`FileAccessTool` parallel Phase 3's `RipgrepExecutor`/`FileSearchTool`.
-- **HARD ORDERING GATE:** Phase 4 cannot start until #225 (file-search abstraction) is on `agent-improvements`; #223 should also land. Not a footnote — Phase 4·0.
+- **SC-1** With no workspace selected, `read_file`/`edit_file`/`write_file`/`grep`/`glob` are unavailable with an actionable "select a project folder" message; never operate on the app's own directory.
+- **SC-2** With a workspace set, `grep`/`glob`/`read_file` operate over that directory; paths outside it (post symlink/`..` resolution) are hard-denied.
+- **SC-3** `read_file` populates a per-session Read entry (offset set, floored mtime, LF content); a subsequent identical read can serve the dedup stub (if implemented) and never re-persists.
+- **SC-4** `edit_file` without a prior `read_file` of that path is refused ("read it first"); a partial-view entry does not satisfy the gate.
+- **SC-5** `edit_file` after the file changed on disk with a newer mtime+different bytes is refused ("modified since read"); a benign touch (newer mtime, byte-identical) succeeds via the in-command jitter fallback.
+- **SC-6 (the core correctness criterion)** A file changed on disk **with no mtime advance** never causes silent data loss: `fs_apply_edit` matches `old_string` against fresh bytes and returns `no_match` rather than writing a stale-derived blob. Verified-equivalent to claudy.
+- **SC-7** `edit_file` exact-match against fresh bytes: non-unique ⇒ `not_unique` unless `replace_all`; zero ⇒ `no_match`; empty `old_string` creates a file only when absent/empty.
+- **SC-8** Writing `.git/`, `.ssh/`, `.env`, `settings.json`/dotfiles, or outside the workspace is hard-denied by the in-command jail **regardless of approval mode**; symlink/`..` escapes resolved first.
+- **SC-9** `edit_file` preserves the file's existing line endings + encoding + BOM; the post-write cache entry has `offset:undefined`; the next `read_file` returns correct fresh content (no stale dedup).
+- **SC-10** Sub-agents operate with their own isolated `FileStateCache` (a sub-agent edit does not satisfy the parent's read-before-edit gate and vice versa).
+- **SC-11** Ordinary in-workspace `edit_file`/`write_file` trigger the desktop approval prompt; `read_file`/`grep`/`glob` auto-approve.
