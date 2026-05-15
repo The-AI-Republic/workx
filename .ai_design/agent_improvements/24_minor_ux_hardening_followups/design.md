@@ -1,83 +1,104 @@
 # Track 24: Minor UX & Hardening Follow-ups (Bundle)
 
-**Priority: P1–P2 (per item)** · **Effort: S–M each** · **Status: NOT STARTED**
+**Priority: P1–P2 (per item)** · **Effort: S–M each** · **Status: READY TO IMPLEMENT**
 
-> Source: second-pass claudy↔browserx research (2026-05-14). Grounded in a read of each sub-area in both codebases — see per-item "Validation Notes". A bundle of small independent improvements (mirrors how 08a/b/c/d were collapsed); each sub-item is independently pickable.
+> Source: second-pass claudy↔browserx research (2026-05-14), implementation-readiness + multi-platform pass (2026-05-15). Grounded in a read of each sub-area in both codebases — see per-item "Validation Notes". A bundle of small independent improvements; each sub-item is independently pickable. Sub-items renumbered 24.x to match the README (was 23.x — a stale typo).
 
----
+### Per-Platform Applicability (at a glance)
 
-## 23.1 Fuse Fuzzy Command Ranking — **P1 · S**
-
-**Claudy:** `utils/suggestions/commandSuggestions.ts:1` `import Fuse from 'fuse.js'`; a Fuse index **cached by commands-array identity** (`getCommandFuse`, `:30-32`); ranking blended with `getSkillUsageScore` (`skillUsageTracking.ts`). Siblings: `directoryCompletion`, `shellHistoryCompletion`.
-
-**BrowserX:** `webfront/commands/CommandRegistry.ts` `filter()` (~`:95-117`) is strict: `command.name.startsWith(q)` then `description.toLowerCase().includes(q)`, sorted by `localeCompare`. No fuzzy, no usage weighting.
-
-**Design:** replace the `filter()` body with a Fuse index cached by `this.commands` identity (claudy's exact caching trick) + optional recency/usage weight (the `lastExecuted` map in `MessageInput.svelte` already exists). Near drop-in; rides Track 03 / Track 13 (the funnel calls `filter`).
-
----
-
-## 23.2 Output-Style Personas — **P2 · S**
-
-**Claudy:** `outputStyles/loadOutputStylesDir.ts` loads `.md` files, parses frontmatter (`utils/frontmatterParser`), into `OutputStyleConfig {name, description, prompt, keepCodingInstructions}` (`constants/outputStyles.ts`); project+user, project wins; selected style injected as a system-prompt persona.
-
-**BrowserX:** `prompts/PromptComposer.ts` composes static `.md?raw` fragments (`:11-18` — `browserx_intro`, `safety`, `browserx_tools`, `task_execution_policies`, `approval_policies`, …). No user-selectable persona/style.
-
-**Design:** add a "style" fragment slot to `PromptComposer` loaded from a styles dir (frontmatter + project>user precedence, claudy's pattern), reusing the existing `?raw` fragment mechanism. Set via settings (claudy deprecated its `/output-style` command in favor of config — follow that). Small, low-risk.
+| Item | BrowserX (ext) | Apple Pi (desktop) | Apple Pi Server (headless) |
+|---|---|---|---|
+| 24.1 Fuse ranking | ✅ (shared `webfront`) | ✅ (shared `webfront`) | ❌ N/A — no command-autocomplete UI; commands arrive as text via WS/connector → Track 13 funnel |
+| 24.2 Personas | ✅ via settings UI | ✅ via settings UI | ✅ via config file / Track 20 policy (operator-wide persona for scheduled jobs) |
+| 24.3 Prompt suggestion | ✅ (interactive) | ✅ (interactive) | ❌ N/A — no user to suggest to |
+| 24.4 Server-exec hardening | ❌ N/A (no exec) | already covered (`SandboxManager`) | ✅ **the whole point** — this is an Apple Pi Server hardening item |
+| 24.5 Secret scanner | ✅ (telemetry/export egress) | ✅ (export/sync egress) | ✅ **highest stakes** — most egress surface (transcript WS, `logs.tail`, connector replies) |
 
 ---
 
-## 23.3 Prompt Suggestion — **P2 · M**
+## 24.1 Fuse Fuzzy Command Ranking — **P1 · S** · *ext + desktop*
 
-**Claudy:** `services/PromptSuggestion/promptSuggestion.ts` — after ≥2 assistant turns, forks a **cache-piggybacked** agent (identical `cacheSafeParams`; any drift busts the prompt cache) predicting the user's next input (2–12 words); heavy regex filter strips Claude-voice/multi-sentence. `speculation.ts` then speculatively *executes* it in a COW filesystem overlay.
+**Claudy:** `utils/suggestions/commandSuggestions.ts:1` `import Fuse from 'fuse.js'`; a Fuse index **cached by commands-array identity** (`getCommandFuse`, `:30-32`); ranking blended with `getSkillUsageScore`.
+
+**BrowserX:** `webfront/commands/CommandRegistry.ts` `filter(query)` (`:89`, body `:89-117`) is strict: `command.name.startsWith(q)` (`:100`) then `description.toLowerCase().includes(q)` (`:107`), `localeCompare` sort (`:112-113`). No fuzzy, no usage weighting.
+
+**Design:** replace the `filter()` body with a Fuse index cached by `this.commands` identity (claudy's exact trick) + optional recency weight (`MessageInput.svelte`'s `lastExecuted` map already exists). `CommandRegistry` lives in shared `webfront` → one change fixes ext + desktop. Server has no command-autocomplete surface (commands are text through the Track 13 funnel) — out of scope there. Keep exact-prefix as a hard top-rank tier (claudy blends, doesn't replace).
+
+---
+
+## 24.2 Output-Style Personas — **P2 · S** · *all platforms; selection mechanism differs*
+
+**Claudy:** `outputStyles/loadOutputStylesDir.ts` loads `.md` + frontmatter into `OutputStyleConfig {name,description,prompt,keepCodingInstructions}`; project>user; injected as a system-prompt persona.
+
+**BrowserX:** `prompts/PromptComposer.ts` composes static `.md?raw` fragments (`:11-18`). No user-selectable persona. `configurePromptComposer(platform, ctx)` is called per platform (server: `ServerAgentBootstrap.ts:584` `'applepi-server'`; desktop/extension analogously).
+
+**Design:** add a "style" fragment slot to `PromptComposer` loaded from a styles dir (frontmatter + project>user, claudy's pattern), reusing the existing `?raw` mechanism. **Per-platform selection:** ext/desktop set it via the settings UI; **Apple Pi Server sets it via the config file / a Track 20 managed-policy key** so an operator can pin a persona across all unattended scheduled jobs (a real headless use case with no claudy analog). Follow claudy's deprecation of `/output-style` in favor of config.
+
+---
+
+## 24.3 Prompt Suggestion — **P2 · M** · *ext + desktop (interactive only)*
+
+**Claudy:** `services/PromptSuggestion/promptSuggestion.ts` — after ≥2 assistant turns, forks a **cache-piggybacked** agent predicting the user's next input; heavy regex filter. `speculation.ts` then speculatively *executes* it in a COW filesystem overlay.
 
 **BrowserX:** nothing.
 
-**Design:** port the **suggestion** path only. **Explicitly do NOT port `speculation.ts`** — its COW filesystem overlay does not transfer to non-idempotent browser side effects (navigation/clicks/form-fills); claudy itself gates speculation to internal users. Suggestion is a contained latent-UX win; speculation is the same hazard class as Track 23's "never auto-pay on navigation."
+**Design:** port the **suggestion** path only, gated to interactive runtimes (ext/desktop — there is no user to suggest to headless; the fork would be pure cost on the server). **Explicitly do NOT port `speculation.ts`** — its COW overlay does not transfer to non-idempotent browser side effects (navigation/clicks/form-fills); claudy itself gates speculation to internal users. Same hazard class as Track 23's "never auto-pay on navigation."
 
 ---
 
-## 23.4 Server-Exec Sandbox Hardening — **P2 · M**
+## 24.4 Server-Exec Sandbox Hardening — **P2 · M** · *Apple Pi Server only*
 
-**Claudy:** `utils/sandbox/sandbox-adapter.ts` wraps `@anthropic-ai/sandbox-runtime` (bubblewrap/Seatbelt): deny-write protected dirs, bare-git-repo escape scrub, `autoAllowBashIfSandboxed`.
+**Claudy:** `utils/sandbox/sandbox-adapter.ts` wraps `@anthropic-ai/sandbox-runtime` (bubblewrap/Seatbelt): deny-write protected dirs, bare-git escape scrub, `autoAllowBashIfSandboxed`.
 
-**BrowserX:** desktop is **already covered** — `desktop/tools/terminal/SandboxManager.ts` exists. The real gap is **server**: `server/tools/registerServerTools.ts:13` `import { execSync } from 'node:child_process'`, `:333` `execSync(\`which ${candidate}\`, …)` — raw, unsandboxed, *and* a string-interpolated shell call (injection-adjacent even if `candidate` is currently controlled).
+**BrowserX:** desktop **already covered** — `desktop/tools/terminal/SandboxManager.ts`. The gap is **Apple Pi Server**: `server/tools/registerServerTools.ts:13` `import { execSync }`, `:333` `execSync(\`which ${candidate}\`)` — raw, unsandboxed, string-interpolated (injection-adjacent). This is squarely a headless-server hardening item: the server runs unattended, often containerized and connector-exposed, so an unsandboxed interpolated exec is the highest-blast-radius issue in the bundle.
 
-**Design:** (a) close the unsandboxed server `execSync` path — route server tool exec through a sandbox wrapper analogous to the desktop `SandboxManager` (or a server bwrap/container boundary); (b) replace string-interpolated `execSync(\`which ${candidate}\`)` with an arg-array `execFileSync('which',[candidate])`; (c) import claudy's escape-hardening heuristics (deny-write protected config/skills dirs, bare-git scrub). Narrower than greenfield — desktop is done.
+**Design:** (a) route server tool exec through a sandbox wrapper analogous to the desktop `SandboxManager` (or a server bwrap/container boundary); (b) **unconditionally** replace `execSync(\`which ${candidate}\`)` with arg-array `execFileSync('which',[candidate])` (lands even where OS sandboxing is unavailable); (c) import claudy's escape-hardening heuristics (deny-write protected config/skills dirs, bare-git scrub). Extension has no exec (N/A); desktop done.
 
 ---
 
-## 23.5 Settings/Memory Sync + Secret Scanner — **Sync: P2 · L (deferred)** · **Secret scanner: P2 · S**
+## 24.5 Settings/Memory Sync + Secret Scanner — **Sync: P2 · L (deferred)** · **Secret scanner: P2 · S** · *all; highest stakes on server*
 
-**Claudy:** `services/settingsSync/` (diff-only upload, Zod, checksum/version, fail-open); `services/teamMemorySync/secretScanner.ts` + `teamMemSecretGuard.ts` + `watcher.ts` block secrets **before** pushing shared memory.
+**Claudy:** `services/settingsSync/` (diff-only, Zod, checksum/version, fail-open); `services/teamMemorySync/secretScanner.ts` + `teamMemSecretGuard.ts` + `watcher.ts` block secrets **before** pushing shared memory.
 
-**BrowserX:** `core/memory/` (`CoreMemoryManager`, `DailyMemoryStore`, `MemoryService`, `MemoryFileSystem`, `MemorySearcher`, `createMemoryService`) is **local-only**; grep finds no secret-scan / redact / export-share path.
+**BrowserX:** `core/memory/` is **local-only**; no secret-scan / redact / export-share path (grep).
 
 **Design:**
 - **Sync = P2/L, deferred** — needs a backend contract browserx lacks; do not start until one exists.
-- **Secret scanner = P2/S, do independently** — a pre-share secret scanner is valuable *now* the moment memory leaves the device (Track 16 telemetry redaction, future export/share). Port claudy's `secretScanner` patterns; **fail-CLOSED on the share/export path** (the inverse of the usual fail-open — a missed secret is worse than a blocked share). Guards Track 05 memory + Track 16 egress.
+- **Secret scanner = P2/S, do now** — valuable the moment memory leaves the device. Port claudy's `secretScanner` patterns; **fail-CLOSED on the share/export/egress path** (the inverse of the initiative-wide fail-open — a missed secret is worse than a blocked share). **Per-platform stakes:** the extension egress is telemetry/export; desktop adds export/sync; **Apple Pi Server has by far the most egress surface** — it streams transcripts over WS, mirrors to `logs.tail`, and (critically) the agent can emit text into **connector replies** (Slack/Telegram via `ConnectorBridge`). A secret landing in a Slack reply from an unattended job is a live exfil path, so the scanner is most critical headless and must guard the connector-reply + transcript + Track 16 paths, not only "export."
 
 ---
 
+## Implementation Plan (file-level, ordered; items independent)
+
+1. **24.4 (P2, highest blast radius) first, unconditional part:** in `server/tools/registerServerTools.ts`, replace `:333` interpolated `execSync(\`which ${candidate}\`)` with `execFileSync('which',[candidate])`; audit `:13` `execSync` importers. Then route server exec through a `SandboxManager`-analogous boundary (reuse `desktop/tools/terminal/SandboxManager.ts` as the reference).
+2. **24.1:** swap `webfront/commands/CommandRegistry.ts` `filter()` body for a Fuse index cached by `this.commands` identity + exact-prefix top tier + `lastExecuted` recency weight. Ships ext + desktop together.
+3. **24.5 secret scanner:** `core/memory/secretScanner.ts` (port claudy patterns); fail-closed gate invoked on every egress — Track 16 sink, memory export, and the server `ConnectorBridge` reply path + transcript store.
+4. **24.2:** `PromptComposer` style-fragment slot from a styles dir (frontmatter, project>user); selection from settings (ext/desktop) and config/Track-20 policy (server).
+5. **24.3:** `core/suggestions/promptSuggestion.ts` (cache-piggyback, suggestion only), gated to interactive platforms; **no `speculation.ts`**.
+6. **24.5 sync:** deferred until a backend contract exists.
+
 ## Dependencies
 
-- **Track 03 / 12** (Commands/Input funnel): 23.1 (`filter` is called by the funnel), 23.2 (persona registry)
-- **Track 05** (Memory) + **Track 16** (Telemetry): 23.5 secret scanner guards memory export / telemetry egress
-- Existing `PromptComposer` (`?raw` fragments) — 23.2; desktop `SandboxManager` — 23.4 reference
+- **Track 03 / 13** (Commands / Input funnel): 24.1 (`filter` called by the funnel), 24.2 (persona registry).
+- **Track 05** (Memory) + **Track 16** (Telemetry): 24.5 scanner guards memory export / telemetry / connector-reply egress.
+- **Track 20** (Managed Settings): 24.2 server persona pin is a policy key.
+- Existing `PromptComposer` (`?raw`), desktop `SandboxManager` (24.4 reference), `ConnectorBridge` (24.5 egress surface).
 
 ## Risks
 
-- 23.3: porting `speculation.ts` would be actively dangerous (non-idempotent browser actions) — suggestion only; this prohibition is the point.
-- 23.4: server sandbox needs an OS mechanism (container/bwrap) available in the server deployment — verify per deployment; the `execFileSync` fix is unconditional and should land regardless.
-- 23.5: secret-scanner false-negatives are dangerous — conservative patterns, **fail-closed on egress** (opposite of every other fail-open in this initiative — call it out so a future reader doesn't "fix" it to fail-open).
-- 23.1: Fuse mis-ranking vs strict prefix could surprise users — keep exact-prefix as a hard top-rank tier, fuzzy below (claudy blends, doesn't replace).
+- 24.3: porting `speculation.ts` would be actively dangerous (non-idempotent browser actions) — suggestion only; the prohibition is the point.
+- 24.4: server sandbox needs an OS mechanism (container/bwrap) per deployment — verify; the `execFileSync` fix is unconditional and lands regardless.
+- 24.5: secret-scanner false-negatives are dangerous — conservative patterns, **fail-closed on egress** (opposite of every other fail-open in this initiative — flagged so a future reader doesn't "fix" it to fail-open). Server connector-reply path is the highest-risk egress.
+- 24.1: Fuse mis-ranking vs strict prefix could surprise users — exact-prefix stays a hard top tier.
 
-## Validation Notes (verified vs claudy + browserx source, 2026-05-14)
+## Validation Notes (verified vs claudy + browserx source, 2026-05-14 / multi-platform pass 2026-05-15)
 
-- claudy: `utils/suggestions/commandSuggestions.ts:1,9,22-32` (Fuse + identity-cached index + skill-usage score); `outputStyles/loadOutputStylesDir.ts:3-35` (`OutputStyleConfig`, frontmatter, project>user); `services/PromptSuggestion/promptSuggestion.ts` (cache-piggyback) + `speculation.ts` (COW — excluded); `utils/sandbox/sandbox-adapter.ts`; `services/teamMemorySync/{secretScanner,teamMemSecretGuard,watcher}.ts`, `services/settingsSync/`.
-- browserx: `webfront/commands/CommandRegistry.ts:~95-117` (strict `startsWith`/`includes` + `localeCompare` sort — no fuzzy); `prompts/PromptComposer.ts:11-18` (static `?raw` fragment composition, no persona); `server/tools/registerServerTools.ts:13,333` (raw interpolated `execSync` — unsandboxed); `desktop/tools/terminal/SandboxManager.ts` (desktop already covered); `core/memory/` (local-only, no secret-scan/export — grep).
+- claudy: `utils/suggestions/commandSuggestions.ts:1` (`import Fuse`), `:9` (`getSkillUsageScore`), `:30` (`getCommandFuse` identity-cache), `:403` (`fuse` use); `outputStyles/loadOutputStylesDir.ts:3,5,27`; `services/PromptSuggestion/promptSuggestion.ts` + `speculation.ts` (excluded); `utils/sandbox/sandbox-adapter.ts`; `services/teamMemorySync/{secretScanner,teamMemSecretGuard,watcher}.ts`, `services/settingsSync/`.
+- browserx: `webfront/commands/CommandRegistry.ts:89-117` (shared ext+desktop; strict `filter`, `startsWith:100`/`includes:107`/`localeCompare:112`); `prompts/PromptComposer.ts:11-18` + `src/server/agent/ServerAgentBootstrap.ts:584` (`configurePromptComposer('applepi-server',…)` — per-platform persona selection); `server/tools/registerServerTools.ts:13,333` (raw interpolated `execSync` — server-only gap); `desktop/tools/terminal/SandboxManager.ts` (desktop covered); `core/memory/` (local-only); `src/server/channel-connectors/connector-bridge.ts` (connector-reply egress — 24.5 highest-risk path).
 
 Corrections vs the first-pass draft:
-1. 23.1: pinned the exact strict-filter code (`CommandRegistry.ts:~95-117`) and that claudy caches Fuse by array identity — the fix is a body replacement, and exact-prefix must stay a hard top tier (not naive fuzzy).
-2. 23.4: pinned the precise server gap (`registerServerTools.ts:333` interpolated `execSync`) and added an unconditional `execFileSync` injection fix that should land even where OS sandboxing is unavailable — the draft only said "close the path."
-3. 23.5: made the **fail-closed-on-egress** contract explicit (inverse of the initiative-wide fail-open) so it is not "corrected" later; tied it to Track 16 egress, not only future sync.
-4. 23.2: confirmed `PromptComposer` already uses `?raw` fragments — the persona slot reuses that mechanism (not a new prompt system).
+1. 24.1: pinned the strict-filter code + Fuse identity-cache; exact-prefix stays a hard top tier; scoped to shared `webfront` (ext+desktop, not server).
+2. 24.4: pinned the precise server gap + unconditional `execFileSync` fix; framed explicitly as an Apple Pi Server hardening item (desktop already done, extension N/A).
+3. 24.5: **fail-closed-on-egress** made explicit; egress surface widened to the server connector-reply + transcript paths (highest stakes), not only "export."
+4. 24.2: `PromptComposer` `?raw` reuse confirmed; added the per-platform selection split (settings UI vs server config/Track-20 policy for an operator-wide persona).
+5. **Multi-platform (2026-05-15):** added the per-item applicability matrix — 24.1/24.3 are interactive-only (ext+desktop), 24.4 is Apple Pi Server-only, 24.2/24.5 span all but with platform-specific mechanisms/stakes. Renumbered sub-items 23.x→24.x to match the README.

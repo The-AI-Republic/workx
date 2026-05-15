@@ -1,6 +1,6 @@
 # BrowserX Agent Improvements: Learning from Claudy
 
-Date: 2026-04-14 (tracks 01–11) · updated 2026-05-14 (second-pass tracks 12–24)
+Date: 2026-04-14 (tracks 01–11) · updated 2026-05-14 (second-pass tracks 12–24) · 2026-05-15 (tracks 12–25 made implementation-ready: per-platform behavior across BrowserX / Apple Pi / Apple Pi Server + file-level implementation plans folded into each design.md)
 
 ## Context
 
