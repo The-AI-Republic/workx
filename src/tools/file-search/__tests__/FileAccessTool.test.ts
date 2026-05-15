@@ -74,6 +74,19 @@ describe('read_file', () => {
     expect(e?.offset).toBe(1);
     expect(e?.mtimeFloorMs).toBe(42);
   });
+
+  it('range read: offset-based line numbers + caches a slice (not full)', async () => {
+    const cache = new FileStateCache();
+    mockFs.stat.mockResolvedValue({ exists: true, mtimeMs: 7, size: 9 });
+    mockFs.readFile.mockResolvedValue({ contentLf: 'l1\nl2\nl3\nl4\nl5', mtimeMs: 7, size: 14, endings: 'LF', encoding: 'utf8', bom: false });
+    const out = await new ReadFileTool().createHandler()(
+      { path: 'a.ts', offset: 2, limit: 2 }, ctx({ fileStateCache: cache }));
+    expect(out).toBe('2\tl2\n3\tl3'); // real (offset-based) line numbers
+    const e = cache.get(`${WS}/a.ts`);
+    expect(e?.content).toBe('l2\nl3'); // slice cached (SC-14: never jitter-eligible)
+    expect(e?.offset).toBe(2);
+    expect(e?.limit).toBe(2);
+  });
 });
 
 describe('edit_file', () => {
@@ -83,6 +96,14 @@ describe('edit_file', () => {
       { path: 'a.ts', old_string: 'a', new_string: 'b' }, ctx({ fileStateCache: cache }));
     expect(out).toMatch(/read the file first/i);
     expect(mockFs.applyEdit).not.toHaveBeenCalled();
+  });
+  it('surfaces no_op (identical old/new) without writing', async () => {
+    const cache = new FileStateCache();
+    cache.set(`${WS}/a.ts`, { content: 'a', mtimeFloorMs: 1, offset: 1 });
+    mockFs.applyEdit.mockResolvedValue({ ok: 'false', reason: 'no_op', message: 'identical; nothing to change.' });
+    const out = await new EditFileTool().createHandler()(
+      { path: 'a.ts', old_string: 'a', new_string: 'a' }, ctx({ fileStateCache: cache }));
+    expect(out).toMatch(/no_op/);
   });
   it('surfaces the actionable reason+message on failure', async () => {
     const cache = new FileStateCache();

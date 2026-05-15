@@ -110,7 +110,12 @@ fn jail(workspace_root: &str, target: &str) -> Result<Jailed, String> {
     }
 
     // Canonicalize the deepest existing ancestor (resolves symlinks), then
-    // re-append the non-existing tail.
+    // re-append the non-existing tail. SAFETY: a non-existent tail component
+    // cannot itself be a symlink (it doesn't exist), and any *existing*
+    // ancestor symlink IS resolved here, so containment cannot be bypassed
+    // via a symlinked directory. Each command is synchronous (no await
+    // between this check and the write — R4), so there is no TOCTOU window.
+    // Do not "simplify" away the deepest-existing-ancestor canonicalize.
     let mut existing = joined.clone();
     let mut tail: Vec<String> = Vec::new();
     while !existing.exists() {
@@ -150,7 +155,7 @@ fn deny_msg(reason: &str) -> String {
     match reason {
         "no_workspace" => "No workspace selected; code-mode file tools are disabled.".into(),
         "outside_workspace" => "Path is outside the workspace and cannot be accessed.".into(),
-        "blocked" => "Path is on the protected blocklist (.git/.ssh/.env/settings.json/etc.) and cannot be written.".into(),
+        "blocked" => "Path is on the protected blocklist (.git/.ssh/.env/settings.json/etc.) and cannot be accessed.".into(),
         _ => reason.into(),
     }
 }
@@ -164,7 +169,10 @@ struct Decoded {
 }
 
 /// Decode raw bytes to an LF-normalized UTF-8 string. Returns None for
-/// UTF-16 (refused in v1 rather than corrupted — R6 fail-safe).
+/// UTF-16 OR any non-UTF-8 (binary) input — refused rather than corrupted.
+/// Using strict from_utf8 (NOT from_utf8_lossy): lossy decode would replace
+/// invalid bytes with U+FFFD and a subsequent edit would write that garbage
+/// back, silently corrupting the file (R6 fail-safe).
 fn decode(bytes: &[u8]) -> Option<Decoded> {
     if bytes.len() >= 2 && ((bytes[0] == 0xFF && bytes[1] == 0xFE) || (bytes[0] == 0xFE && bytes[1] == 0xFF)) {
         return None; // UTF-16 — unsupported in v1
@@ -174,9 +182,19 @@ fn decode(bytes: &[u8]) -> Option<Decoded> {
     } else {
         (bytes, false)
     };
-    let s = String::from_utf8_lossy(body).to_string();
+    let s = String::from_utf8(body.to_vec()).ok()?; // strict: binary ⇒ None
     let endings = if s.contains("\r\n") { "CRLF" } else { "LF" };
     Some(Decoded { content_lf: s.replace("\r\n", "\n"), endings, bom })
+}
+
+/// Create the (jailed) parent directory chain for a not-yet-existing file so
+/// creating `a/new/dir/x.ts` works instead of failing opaquely (M1).
+fn ensure_parent(abs: &Path) -> Result<(), String> {
+    if let Some(parent) = abs.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create parent directory: {}", e))?;
+    }
+    Ok(())
 }
 
 /// Re-apply endings + BOM to LF content for writing (UTF-8 only in v1).
@@ -267,11 +285,20 @@ pub fn fs_apply_edit(
         }
         let endings = if new_string.contains("\r\n") { "CRLF" } else { "LF" };
         let content_lf = new_string.replace("\r\n", "\n");
+        ensure_parent(&j.abs)?; // M1: create missing subdirs (jailed)
         fs::write(&j.abs, encode(&content_lf, endings, false)).map_err(|e| e.to_string())?;
         let m = fs::metadata(&j.abs).map_err(|e| e.to_string())?;
         return Ok(EditOutcome::Ok {
             new_content_lf: content_lf,
             meta: FileMeta { mtime_ms: mtime_ms(&m), size: m.len(), endings: endings.into(), encoding: "utf8".into(), bom: false },
+        });
+    }
+
+    // No-op edit: identical strings would prompt + write for nothing (M3).
+    if old_string == new_string {
+        return Ok(EditOutcome::Err {
+            reason: "no_op".into(),
+            message: "old_string and new_string are identical; nothing to change.".into(),
         });
     }
 
@@ -371,6 +398,7 @@ pub fn fs_write_if_unchanged(
         }
     }
     let content_lf = content.replace("\r\n", "\n");
+    ensure_parent(&j.abs)?; // M1: create missing subdirs (jailed)
     fs::write(&j.abs, encode(&content_lf, &endings, bom)).map_err(|e| e.to_string())?;
     let m = fs::metadata(&j.abs).map_err(|e| e.to_string())?;
     Ok(WriteOutcome::Ok {
@@ -405,5 +433,35 @@ mod tests {
     fn encode_roundtrips_crlf() {
         assert_eq!(encode("a\nb", "CRLF", false), b"a\r\nb");
         assert_eq!(encode("a\nb", "LF", false), b"a\nb");
+    }
+
+    #[test]
+    fn decode_refuses_binary_not_lossy() {
+        // Invalid UTF-8 ⇒ None (NOT a U+FFFD-corrupted string that would be
+        // written back). Regression guard for the from_utf8_lossy bug.
+        assert!(decode(&[0x66, 0x6f, 0xff, 0xfe_u8.wrapping_add(1), 0x00]).is_none());
+        assert!(decode(&[0xC0, 0x80]).is_none()); // overlong / invalid
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn jail_rejects_symlinked_ancestor_escaping_root() {
+        use std::os::unix::fs::symlink;
+        let base = std::env::temp_dir().join(format!("fsjail_{}", std::process::id()));
+        let ws = base.join("ws");
+        let outside = base.join("outside");
+        let _ = fs::remove_dir_all(&base);
+        fs::create_dir_all(&ws).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("secret"), b"x").unwrap();
+        // A symlink *inside* the workspace pointing outside it.
+        symlink(&outside, ws.join("link")).unwrap();
+
+        let r = jail(ws.to_str().unwrap(), "link/secret");
+        assert!(r.is_err(), "symlinked-ancestor escape must be rejected");
+        // And a non-existing target under the same symlinked dir (create case).
+        assert!(jail(ws.to_str().unwrap(), "link/new.txt").is_err());
+
+        let _ = fs::remove_dir_all(&base);
     }
 }

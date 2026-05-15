@@ -95,6 +95,8 @@ export class ReadFileTool extends FileAccessTool {
     'You MUST read a file before editing it. Large files are size-gated; output is capped.';
   readonly parameters: Record<string, ParameterProperty> = {
     path: { type: 'string', description: 'File path, absolute or relative to the workspace root.' },
+    offset: { type: 'number', description: '1-indexed line to start at (default 1).', default: 1 },
+    limit: { type: 'number', description: 'Max lines to read from offset (default: until the output cap).' },
   };
   readonly required = ['path'];
   readonly riskAssessor = new StaticRiskAssessor(0); // read-only, auto-approve
@@ -108,19 +110,36 @@ export class ReadFileTool extends FileAccessTool {
     }
     const r = await fsExecutor.readFile(h.workspaceRoot, path);
 
-    // Populate the freshness cache: Read entry ⇒ offset SET (R2).
+    const rawOffset = Number(params.offset);
+    const rawLimit = Number(params.limit);
+    const offset = Number.isFinite(rawOffset) && rawOffset > 1 ? Math.floor(rawOffset) : 1;
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.floor(rawLimit) : undefined;
+    const isRange = offset > 1 || limit !== undefined;
+
+    const allLines = r.contentLf.split('\n');
+    const start = offset - 1;
+    const end = limit !== undefined ? start + limit : allLines.length;
+    const selected = allLines.slice(start, end);
+
+    // Populate the freshness cache (R2 — Read entry, offset SET). A FULL read
+    // caches the whole file (so the §4.6 jitter fallback can match); a RANGE
+    // read caches only the slice (slice ≠ whole fresh file ⇒ never
+    // jitter-eligible, matching the design's full-read-only fallback / SC-14).
     if (h.cache) {
-      const entry: FileState = { content: r.contentLf, mtimeFloorMs: r.mtimeMs, offset: 1, limit: undefined };
+      const entry: FileState = isRange
+        ? { content: selected.join('\n'), mtimeFloorMs: r.mtimeMs, offset, limit: limit ?? selected.length }
+        : { content: r.contentLf, mtimeFloorMs: r.mtimeMs, offset: 1, limit: undefined };
       h.cache.set(absKey(h.workspaceRoot, path), entry);
     }
 
-    let lines = r.contentLf.split('\n');
+    let lines = selected;
     let truncatedNote = '';
     if (lines.length > MAX_OUT_LINES) {
       lines = lines.slice(0, MAX_OUT_LINES);
-      truncatedNote = `\n… [truncated to ${MAX_OUT_LINES} lines; use grep to find specific content]`;
+      truncatedNote = `\n… [truncated to ${MAX_OUT_LINES} lines; pass offset/limit or use grep]`;
     }
-    let body = lines.map((l, i) => `${i + 1}\t${l}`).join('\n');
+    // cat -n with real (offset-based) line numbers.
+    let body = lines.map((l, i) => `${offset + i}\t${l}`).join('\n');
     if (body.length > MAX_OUT_BYTES) {
       body = body.slice(0, MAX_OUT_BYTES);
       truncatedNote = `\n… [truncated to ${MAX_OUT_BYTES / 1024} KB]`;
