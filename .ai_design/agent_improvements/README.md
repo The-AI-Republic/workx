@@ -25,6 +25,7 @@ BrowserX is a multi-platform browser automation agent. Claudy is a terminal-nati
 | 08 | [Centralized Message Queue](./08_centralized_message_queue/design.md) | P1 | Small | `CommandQueue<T>` replaces plain `submissionQueue` — adds priorities (`now`/`next`/`later`) so `Interrupt`/`ExecApproval`/`Shutdown` jump ahead of queued `Compact`/`AddToHistory`. Deletes dead `QueueProcessor.ts` (~350 LOC). 2026-05-14 implementation-readiness pass dropped `engineId` filter (per-engine isolation already covers it), `pendingNotifications` folding (different concern, kept as-is), batching, and `remove(uuid)` from v1. Earlier 08a primitives (Signal, Mailbox, ApprovalManager refactor) dropped. EventLog deferred to [#215](https://github.com/The-AI-Republic/browserx/issues/215); MessageBus stays deferred. |
 | 09 | [Tool Result Persistence](./09_tool_result_persistence_DONE/design.md) ✅ DONE (PR #213, merged 2026-05-14) | P2 | Medium | Persist oversized tool results to disk instead of truncating; agent reads back via Read |
 | 10 | [Plugin System](./10_plugin_system/design.md) | P1 | Large | Claudy-compatible plugin packaging — manifest, marketplace, install, trust. Aggregates skills/hooks/MCP/subagents/commands into installable units. Phased 10a/10b/10c. |
+| 11 | [Parallel Tool Calls](./11_parallel_tool_calls/design.md) | P1 | Small | Config-driven `parallel_tool_calls` flag (default off, allowlist-gated per provider) so Track 02's already-shipped orchestrator can run multi-tool responses in parallel for OpenAI/xAI/Groq (Gemini already does). ~50 LOC plumbing. Supersedes the obsolete pre-Track-02 `multiple_tools_call/` design. Streaming-tool-execution + batched-approval-UI deferred. |
 
 ## Dependency Graph
 
@@ -33,7 +34,7 @@ BrowserX is a multi-platform browser automation agent. Claudy is a terminal-nati
                                                   ├──> 04_typed_task_families_DONE (shipped via PR #205) ──> 06_multi_agent_coordination ❌ ABANDONED (sub-agents in Track 04 already cover this)
                                                   └──> 05_session_memory_DONE (shipped via PR #167) ──> 05b_auto_extraction_compaction_interlock_DONE (shipped via PR #206)
 
-02_tool_metadata_concurrency_DONE (shipped via PR #197) ──> multiple_tools_call (existing)
+02_tool_metadata_concurrency_DONE (shipped via PR #197) ──> 11_parallel_tool_calls (flip parallel_tool_calls flag; orchestrator already shipped by Track 02)
 
 07_centralized_state_DONE (shipped narrow via PR #214) ──> (full substrate descoped; revisit if needed)
 
@@ -51,7 +52,7 @@ BrowserX is a multi-platform browser automation agent. Claudy is a terminal-nati
 ## Existing Work
 
 - `plan.md` - Original comparison analysis (2026-04-07)
-- `multiple_tools_call/` - Parallel tool execution design (builds on Track 02)
+- `multiple_tools_call/` was superseded by Track 11 and removed (the 2026-04-07 design predated Track 02; most of its scope shipped with PR #197). See git history if the original is needed.
 
 ## How to Use
 
