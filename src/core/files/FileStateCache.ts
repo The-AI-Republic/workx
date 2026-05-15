@@ -41,8 +41,9 @@ const DEFAULT_MAX_BYTES = 25 * 1024 * 1024; // 25 MB (claudy default)
 export function normalizeCacheKey(absPath: string): string {
   const winDrive = /^([a-zA-Z]:)[\\/]/.exec(absPath);
   const prefix = winDrive ? winDrive[1] : '';
+  const rest = winDrive ? absPath.slice(winDrive[1].length) : absPath;
   const out: string[] = [];
-  for (const seg of absPath.split(/[\\/]+/)) {
+  for (const seg of rest.split(/[\\/]+/)) {
     if (seg === '' || seg === '.') continue;
     if (seg === '..') { out.pop(); continue; }
     out.push(seg);

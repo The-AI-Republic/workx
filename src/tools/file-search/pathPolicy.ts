@@ -71,8 +71,9 @@ export function lexicalPathCheck(
 function normalizeSegments(p: string): string {
   const winDrive = /^([a-zA-Z]:)[\\/]/.exec(p);
   const prefix = winDrive ? winDrive[1] : '';
+  const rest = winDrive ? p.slice(winDrive[1].length) : p;
   const out: string[] = [];
-  for (const seg of p.split(/[\\/]+/)) {
+  for (const seg of rest.split(/[\\/]+/)) {
     if (seg === '' || seg === '.') continue;
     if (seg === '..') { out.pop(); continue; }
     out.push(seg);
