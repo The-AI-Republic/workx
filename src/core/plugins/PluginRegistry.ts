@@ -57,14 +57,35 @@ export interface PluginRegistryDeps {
   checkDestructiveOpAllowed?: (op: 'reload' | 'uninstall', pluginId?: PluginId) => string | null;
 }
 
+/**
+ * Minimal interface a per-session binder must satisfy so `PluginRegistry`
+ * can prune it on disable. Implemented by `PluginSessionBinder`. Kept as a
+ * structural type to avoid a core→core import cycle.
+ */
+export interface SessionBinderHandle {
+  unloadPlugin(id: PluginId): Promise<void>;
+}
+
 export class PluginRegistry {
   private readonly plugins = new Map<PluginId, LoadedPlugin>();
   // Track 04 tails pattern — per-plugin promise chain for enable/disable serialization
   private readonly tails = new Map<PluginId, Promise<void>>();
   // Post-uninstall block — mirrors TaskOutputStore.evicted
   private readonly evicted = new Set<PluginId>();
+  // Live per-session binders — for immediate disable propagation (claudy
+  // gh-36995: removals must reach already-running sessions immediately).
+  private readonly sessionBinders = new Set<SessionBinderHandle>();
 
   constructor(private readonly deps: PluginRegistryDeps) {}
+
+  /**
+   * Register a per-session binder. Called by the platform agentFactory
+   * when a session is created. Returns an unregister fn for session teardown.
+   */
+  registerSessionBinder(binder: SessionBinderHandle): () => void {
+    this.sessionBinders.add(binder);
+    return () => this.sessionBinders.delete(binder);
+  }
 
   /** Read-only snapshot of all known plugins. */
   getPlugins(): LoadedPlugin[] {
@@ -208,6 +229,16 @@ export class PluginRegistry {
         } catch (e) {
           console.warn(`[PluginRegistry] disable ${id}/${slot}:`, e);
         }
+      }
+
+      // Propagate the removal to every live per-session binder immediately.
+      // claudy gh-36995: disabled-plugin hooks/agents must stop firing in
+      // already-running sessions right away (asymmetric with enable, which
+      // only affects new sessions).
+      for (const binder of this.sessionBinders) {
+        await binder.unloadPlugin(id).catch((e) =>
+          console.warn(`[PluginRegistry] binder unload ${id}:`, e),
+        );
       }
 
       plugin.state = { status: 'disabled' };

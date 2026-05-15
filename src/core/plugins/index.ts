@@ -36,7 +36,9 @@ export type { IPluginProvider } from './PluginProvider';
 export { PluginLoader } from './PluginLoader';
 export type { PluginLoaderDeps } from './PluginLoader';
 export { PluginRegistry } from './PluginRegistry';
-export type { PluginRegistryDeps } from './PluginRegistry';
+export type { PluginRegistryDeps, SessionBinderHandle } from './PluginRegistry';
+export { PluginSessionBinder } from './PluginSessionBinder';
+export type { PluginSessionBinderDeps } from './PluginSessionBinder';
 
 export {
   registerBundledPlugin,

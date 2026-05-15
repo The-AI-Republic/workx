@@ -78,6 +78,12 @@ let _instance: ServerAgentBootstrap | null = null;
 
 export class ServerAgentBootstrap {
   private registry: AgentRegistry | null = null;
+  // Track 10: set in registerServices; read lazily by agentFactory to bind
+  // per-session hook/agent plugin contributions. Null until services
+  // register (the initial primary session, created before that, gets
+  // global slots only — hooks/agents apply on the next session or
+  // /plugin reload, matching claudy's asymmetric enable semantics).
+  private pluginRegistry: import('@/core/plugins/PluginRegistry').PluginRegistry | null = null;
   private channel: ServerChannel | null = null;
   private sessionIndex: SessionIndex | null = null;
   private transcriptStore: TranscriptStore | null = null;
@@ -181,8 +187,36 @@ export class ServerAgentBootstrap {
           if (engine) {
             try {
               const { registerSubAgentTool } = await import('@/tools/AgentTool/register');
-              await registerSubAgentTool(engine);
+              const subAgentRunner = await registerSubAgentTool(engine);
               console.log('[ServerAgentBootstrap] sub_agent tool registered');
+
+              // Track 10: bind this session's hook + sub-agent registries to
+              // currently-enabled plugins. Skills + MCP are global (handled
+              // by the global PluginRegistry's slot loaders); hooks + agents
+              // are per-session and bound here.
+              if (this.pluginRegistry) {
+                try {
+                  const { PluginSessionBinder } = await import('@/core/plugins/PluginSessionBinder');
+                  const { nodeReadFile, nodeListDirs } = await import('@/server/storage/nodePluginFs');
+                  const binder = new PluginSessionBinder({
+                    hookRegistry: agent.getHookRegistry(),
+                    subAgentRunner,
+                    readFile: nodeReadFile,
+                    listDirs: nodeListDirs,
+                  });
+                  const enabled = this.pluginRegistry
+                    .getPlugins()
+                    .filter((p) => p.state.status === 'enabled');
+                  await binder.applyEnabledPlugins(enabled);
+                  // Register so a later /plugin disable prunes this session
+                  // immediately (claudy gh-36995). Teardown on session end is
+                  // a documented follow-up; a stale binder for an ended
+                  // session is a harmless no-op on prune.
+                  this.pluginRegistry.registerSessionBinder(binder);
+                } catch (bindErr) {
+                  console.warn('[ServerAgentBootstrap] plugin session bind failed (non-fatal):', bindErr);
+                }
+              }
             } catch (err) {
               const errMsg = err instanceof Error ? err.message : String(err);
               console.warn('[ServerAgentBootstrap] sub_agent tool registration failed (non-fatal):', err);
@@ -482,6 +516,9 @@ export class ServerAgentBootstrap {
       });
 
       pluginsDeps = { pluginRegistry: registry };
+      // Expose to agentFactory so sessions created after this point bind
+      // their per-session hook + sub-agent registries to enabled plugins.
+      this.pluginRegistry = registry;
       console.log(
         `[ServerAgentBootstrap] PluginRegistry initialized (${metas.length} plugin(s) discovered)`,
       );
