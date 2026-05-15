@@ -50,7 +50,7 @@ export class FireworksClient extends OpenAIResponsesClient {
       input: formattedInput,
       tools: toolsJson,
       tool_choice: 'auto',
-      parallel_tool_calls: false,
+      parallel_tool_calls: this.parallelToolCalls,
       // Fireworks-specific omissions:
       // - store: not supported (omitted entirely)
       // - include: not supported (omitted entirely)

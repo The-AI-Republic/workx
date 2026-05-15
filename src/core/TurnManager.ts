@@ -226,6 +226,14 @@ export class TurnManager {
     const processedItems: ProcessedResponseItem[] = [];
     let totalTokenUsage: TokenUsage | undefined;
 
+    // Track 11: OpenAI Responses API / xAI emit N separate `function_call`
+    // output items for parallel tool calls (Chat Completions providers
+    // accumulate into one `message` item — handled by the orchestrator path
+    // in handleResponseItem). Buffer the legacy items and run them through
+    // Track 02's orchestrator at `Completed` instead of executing each
+    // sequentially as it arrives.
+    const bufferedToolCalls: any[] = [];
+
     try {
       // Process streaming response
       // Loop processes ResponseEvent items from the model stream.
@@ -254,7 +262,16 @@ export class TurnManager {
               event.item.modelKey = this.turnContext.getSelectedModelKey();
             }
 
-            // Item (message or tool call) is complete
+            // Track 11: defer legacy `function_call` items so a parallel
+            // batch runs through the concurrency orchestrator at `Completed`
+            // rather than executing each one sequentially here. Non-tool
+            // items (message/reasoning/web_search) keep immediate handling.
+            if (event.item?.type === 'function_call') {
+              bufferedToolCalls.push(event.item);
+              break;
+            }
+
+            // Item (message or unified tool_calls) is complete
             const response = await this.handleResponseItem(event.item);
             processedItems.push({
               item: event.item,
@@ -277,6 +294,22 @@ export class TurnManager {
           case 'Completed': {
             // Stream completed with final token usage
             totalTokenUsage = event.tokenUsage;
+
+            // Track 11: flush any buffered legacy `function_call` items
+            // through Track 02's orchestrator (safe calls concurrent,
+            // unsafe sequential, results in original order). Pushed into
+            // processedItems before the post-turn hook so the
+            // `lastTurnHadToolCalls` detection below still sees them.
+            if (bufferedToolCalls.length > 0) {
+              const results = await this.executeBufferedToolCalls(bufferedToolCalls);
+              for (let i = 0; i < bufferedToolCalls.length; i++) {
+                processedItems.push({
+                  item: bufferedToolCalls[i],
+                  response: results[i],
+                });
+              }
+              bufferedToolCalls.length = 0;
+            }
 
             // Track 05b: fire post-turn hooks before returning. Hooks are
             // owned by Session (since TurnManager is per-task but post-turn
@@ -909,6 +942,41 @@ export class TurnManager {
         `\n\n[Result truncated from ${output.length} to ${threshold} chars — persistence failed: ${reason}]`
       );
     }
+  }
+
+  /**
+   * Track 11: run buffered legacy `function_call` items through Track 02's
+   * concurrency orchestrator. Returns one result per input call in original
+   * order. Mirrors the unified-format (`message` + `tool_calls[]`) path in
+   * handleResponseItem, including the Track 09 tier-2 aggregate budget.
+   */
+  private async executeBufferedToolCalls(calls: any[]): Promise<any[]> {
+    const prepared = calls.map((tc) =>
+      prepareToolCall(
+        { id: tc.call_id, function: { name: tc.name, arguments: tc.arguments } },
+        this.toolRegistry,
+      ),
+    );
+    const batches = partitionToolCalls(prepared);
+    const results = await executeToolCallBatches(
+      batches,
+      async (call: PreparedToolCall) => {
+        try {
+          return await this.executeToolCall(
+            call.name,
+            call.parsedArguments,
+            call.id,
+          );
+        } catch (error) {
+          return {
+            type: 'function_call_output',
+            call_id: call.id,
+            output: `Error: ${error instanceof Error ? error.message : String(error)}`,
+          };
+        }
+      },
+    );
+    return this.maybeEnforceTier2(results, prepared);
   }
 
   /**

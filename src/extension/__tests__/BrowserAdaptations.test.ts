@@ -54,6 +54,8 @@ describe('Browser Adaptations Contract Compliance', () => {
     });
 
     it('should construct request body matching Rust structure', () => {
+      // Track 11: parallel_tool_calls is now config-driven (default false).
+      // This structural fixture uses the default value.
       const requestBody = {
         model: 'gpt-4',
         instructions: 'You are helpful',
@@ -68,6 +70,8 @@ describe('Browser Adaptations Contract Compliance', () => {
 
       expect(requestBody.stream).toBe(true);
       expect(requestBody.tool_choice).toBe('auto');
+      // Default is false; Track 11's parallelToolCalls.config.test.ts covers
+      // the config-driven true/false matrix across providers.
       expect(requestBody.parallel_tool_calls).toBe(false);
     });
   });
