@@ -102,7 +102,7 @@ describe('Track 11 — parallel_tool_calls config plumbing', () => {
         apiKey: 'k',
         sessionId: 's',
         modelFamily,
-        provider: provider('fireworks') as any,
+        provider: provider('Fireworks AI') as any,
       });
       const payload = await payloadFor(client);
       expect(payload.parallel_tool_calls).toBe(false);
@@ -113,7 +113,7 @@ describe('Track 11 — parallel_tool_calls config plumbing', () => {
         apiKey: 'k',
         sessionId: 's',
         modelFamily,
-        provider: provider('fireworks') as any,
+        provider: provider('Fireworks AI') as any,
         parallelToolCalls: true,
       });
       const payload = await payloadFor(client);

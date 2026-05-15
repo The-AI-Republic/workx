@@ -323,7 +323,11 @@ export class TurnManager {
             // `lastTurnHadToolCalls` detection below still sees them.
             if (bufferedToolCalls.length > 0) {
               const results = await this.executeBufferedToolCalls(bufferedToolCalls);
-              for (let i = 0; i < bufferedEntries.length; i++) {
+              // results, bufferedToolCalls, and bufferedEntries are
+              // index-aligned by invariant (pushed in lockstep; the
+              // orchestrator preserves input order). Drive the loop off
+              // results.length as the single source of truth.
+              for (let i = 0; i < results.length; i++) {
                 bufferedEntries[i]!.response = results[i];
               }
               bufferedToolCalls.length = 0;
@@ -971,6 +975,8 @@ export class TurnManager {
    */
   private async executeBufferedToolCalls(calls: any[]): Promise<any[]> {
     const prepared = calls.map((tc) =>
+      // tc.arguments may be a JSON string or an already-parsed object;
+      // prepareToolCall handles both shapes.
       prepareToolCall(
         { id: tc.call_id, function: { name: tc.name, arguments: tc.arguments } },
         this.toolRegistry,
