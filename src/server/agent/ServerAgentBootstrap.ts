@@ -570,12 +570,32 @@ export class ServerAgentBootstrap {
         (id) => marketplaces.lookup(id)?.entry ?? null,
       );
 
+      // Phase 10c: admin policy. Read from /etc/browserx/policy.json (Linux/
+      // Mac) or %ProgramData%\BrowserX\policy.json (Windows). Missing/corrupt
+      // → empty policy (no restrictions).
+      const { PolicyLoader, PluginPolicy } = await import('@/core/plugins/policy');
+      const policyPath =
+        process.platform === 'win32'
+          ? nodePath.join(process.env.ProgramData ?? 'C:\\ProgramData', 'BrowserX', 'policy.json')
+          : '/etc/browserx/policy.json';
+      const policyLoader = new PolicyLoader({
+        readPolicyText: async () => {
+          try {
+            return new TextDecoder().decode(await nodeReadBytes(policyPath));
+          } catch {
+            return null;
+          }
+        },
+      });
+      const pluginPolicy = new PluginPolicy(policyLoader);
+
       const installer = new PluginInstaller({
         marketplaces,
         provider,
         installed: installedStore,
         registry,
         fetchPlugin,
+        isBlockedByPolicy: (id) => pluginPolicy.isBlocked(id),
         setEnabled: async (ids, en) => {
           const cur = agentConfig.getConfig().enabledPlugins ?? {};
           const next = { ...cur };
