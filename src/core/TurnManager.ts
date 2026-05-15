@@ -226,6 +226,28 @@ export class TurnManager {
     const processedItems: ProcessedResponseItem[] = [];
     let totalTokenUsage: TokenUsage | undefined;
 
+    // Track 11: only buffer/orchestrate when the feature is enabled. With
+    // the flag off (default) the model is told not to parallelize, so there
+    // is never more than one function_call — buffering would only add the
+    // interrupt-before-Completed behavior change for zero benefit. Keep the
+    // original immediate-execution path byte-for-byte in the default case.
+    const parallelToolCallsEnabled =
+      this.turnContext.getToolsConfig?.()?.parallelToolCalls === true;
+
+    // Track 11: OpenAI Responses API / xAI emit N separate `function_call`
+    // output items for parallel tool calls (Chat Completions providers
+    // accumulate into one `message` item — handled by the orchestrator path
+    // in handleResponseItem). Buffer the legacy items and run them through
+    // Track 02's orchestrator at `Completed` instead of executing each
+    // sequentially as it arrives.
+    //
+    // `bufferedEntries` are placeholder ProcessedResponseItem objects pushed
+    // into processedItems at the stream position the function_call arrived,
+    // so a non-tool item arriving between calls cannot reorder results
+    // relative to it. Responses fill in at `Completed`.
+    const bufferedToolCalls: any[] = [];
+    const bufferedEntries: ProcessedResponseItem[] = [];
+
     try {
       // Process streaming response
       // Loop processes ResponseEvent items from the model stream.
@@ -254,7 +276,21 @@ export class TurnManager {
               event.item.modelKey = this.turnContext.getSelectedModelKey();
             }
 
-            // Item (message or tool call) is complete
+            // Track 11: when enabled, defer legacy `function_call` items so a
+            // parallel batch runs through the concurrency orchestrator at
+            // `Completed` rather than executing each one sequentially here.
+            // Non-tool items (message/reasoning/web_search) keep immediate
+            // handling. Push a placeholder now to lock the stream position;
+            // its `response` is filled when the buffer flushes at `Completed`.
+            if (parallelToolCallsEnabled && event.item?.type === 'function_call') {
+              const entry: ProcessedResponseItem = { item: event.item };
+              processedItems.push(entry);
+              bufferedToolCalls.push(event.item);
+              bufferedEntries.push(entry);
+              break;
+            }
+
+            // Item (message or unified tool_calls) is complete
             const response = await this.handleResponseItem(event.item);
             processedItems.push({
               item: event.item,
@@ -277,6 +313,26 @@ export class TurnManager {
           case 'Completed': {
             // Stream completed with final token usage
             totalTokenUsage = event.tokenUsage;
+
+            // Track 11: flush buffered legacy `function_call` items through
+            // Track 02's orchestrator (safe calls concurrent, unsafe
+            // sequential, results in original call order). Results are
+            // written back into the position-preserving placeholders so
+            // ordering relative to any interleaved item is exact. The
+            // placeholders were already in processedItems, so the
+            // `lastTurnHadToolCalls` detection below still sees them.
+            if (bufferedToolCalls.length > 0) {
+              const results = await this.executeBufferedToolCalls(bufferedToolCalls);
+              // results, bufferedToolCalls, and bufferedEntries are
+              // index-aligned by invariant (pushed in lockstep; the
+              // orchestrator preserves input order). Drive the loop off
+              // results.length as the single source of truth.
+              for (let i = 0; i < results.length; i++) {
+                bufferedEntries[i]!.response = results[i];
+              }
+              bufferedToolCalls.length = 0;
+              bufferedEntries.length = 0;
+            }
 
             // Track 05b: fire post-turn hooks before returning. Hooks are
             // owned by Session (since TurnManager is per-task but post-turn
@@ -909,6 +965,43 @@ export class TurnManager {
         `\n\n[Result truncated from ${output.length} to ${threshold} chars — persistence failed: ${reason}]`
       );
     }
+  }
+
+  /**
+   * Track 11: run buffered legacy `function_call` items through Track 02's
+   * concurrency orchestrator. Returns one result per input call in original
+   * order. Mirrors the unified-format (`message` + `tool_calls[]`) path in
+   * handleResponseItem, including the Track 09 tier-2 aggregate budget.
+   */
+  private async executeBufferedToolCalls(calls: any[]): Promise<any[]> {
+    const prepared = calls.map((tc) =>
+      // tc.arguments may be a JSON string or an already-parsed object;
+      // prepareToolCall handles both shapes.
+      prepareToolCall(
+        { id: tc.call_id, function: { name: tc.name, arguments: tc.arguments } },
+        this.toolRegistry,
+      ),
+    );
+    const batches = partitionToolCalls(prepared);
+    const results = await executeToolCallBatches(
+      batches,
+      async (call: PreparedToolCall) => {
+        try {
+          return await this.executeToolCall(
+            call.name,
+            call.parsedArguments,
+            call.id,
+          );
+        } catch (error) {
+          return {
+            type: 'function_call_output',
+            call_id: call.id,
+            output: `Error: ${error instanceof Error ? error.message : String(error)}`,
+          };
+        }
+      },
+    );
+    return this.maybeEnforceTier2(results, prepared);
   }
 
   /**

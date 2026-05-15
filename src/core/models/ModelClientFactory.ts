@@ -223,6 +223,9 @@ export class ModelClientFactory {
     // Use real token if available (desktop), fall back to dummy key (extension uses cookies)
     const apiKey = accessToken || 'backend-routed';
 
+    // Track 11: resolve the parallel-tool-calls flag from tools config.
+    const parallelToolCalls = this.resolveParallelToolCalls();
+
     // Get model metadata for configuration
     let modelConfig: any = undefined;
     let supportsReasoning = false;
@@ -306,6 +309,7 @@ export class ModelClientFactory {
         reasoningEffort: reasoningEffort as any,
         reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
         useCredentials: true,
+        parallelToolCalls,
       });
     }
 
@@ -318,6 +322,7 @@ export class ModelClientFactory {
       provider: backendProvider,
       modelConfig,
       useCredentials: true,
+      parallelToolCalls,
     });
   }
 
@@ -566,6 +571,9 @@ export class ModelClientFactory {
    * @returns Model client instance
    */
   private instantiateClient(config: ModelClientConfig): ModelClient {
+    // Track 11: resolve the parallel-tool-calls flag from tools config.
+    const parallelToolCalls = this.resolveParallelToolCalls();
+
     // Get provider name from config
     const providerName = config.provider;
     const baseUrl = config.options?.baseUrl;
@@ -650,6 +658,7 @@ export class ModelClientFactory {
           modelFamily,
           provider,
           modelConfig,
+          parallelToolCalls,
         });
 
       case 'together':
@@ -661,6 +670,7 @@ export class ModelClientFactory {
           modelFamily,
           provider,
           modelConfig,
+          parallelToolCalls,
         });
 
       case 'fireworks':
@@ -672,6 +682,7 @@ export class ModelClientFactory {
           modelFamily,
           provider,
           modelConfig,
+          parallelToolCalls,
         });
 
       case 'google-ai-studio':
@@ -693,6 +704,7 @@ export class ModelClientFactory {
           modelConfig,
           reasoningEffort: reasoningEffort as any,
           reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
+          parallelToolCalls,
         });
 
       case 'openai':
@@ -710,6 +722,7 @@ export class ModelClientFactory {
           reasoningEffort: reasoningEffort as any,
           reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
           serviceTier,
+          parallelToolCalls,
         });
     }
   }
@@ -750,6 +763,16 @@ export class ModelClientFactory {
    * Get selected model from config
    * Returns the modelKey of the currently selected model
    */
+  /**
+   * Track 11: resolve the config-driven parallel-tool-calls flag.
+   * The `getToolsConfig?.()` guard is load-bearing — `this.config` may be a
+   * partial mock or an early-bootstrap config without the method. Defaults
+   * to false in that case.
+   */
+  private resolveParallelToolCalls(): boolean {
+    return this.config?.getToolsConfig?.()?.parallelToolCalls ?? false;
+  }
+
   getSelectedModel(): string {
     if (this.config) {
       // Get selectedModelKey from config

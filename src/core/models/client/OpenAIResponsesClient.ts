@@ -92,6 +92,8 @@ export interface OpenAIResponsesConfig {
   serviceTier?: 'default' | 'flex' | 'priority';
   /** Use credentials (cookies) for authentication - for backend routing */
   useCredentials?: boolean;
+  /** Track 11: allow the model to emit multiple tool calls per response. Default false. */
+  parallelToolCalls?: boolean;
 }
 
 /**
@@ -111,6 +113,8 @@ export class OpenAIResponsesClient extends ModelClient {
   protected serviceTier?: 'default' | 'flex' | 'priority';
   protected currentModel: string;
   protected useCredentials: boolean;
+  /** Track 11: emitted as `parallel_tool_calls` in the request payload. */
+  protected readonly parallelToolCalls: boolean;
 
   // OpenAI SDK client instance
   protected client: OpenAI;
@@ -127,6 +131,7 @@ export class OpenAIResponsesClient extends ModelClient {
     // This allows the model client to be created before API key is configured
 
     this.apiKey = config.apiKey;
+    this.parallelToolCalls = config.parallelToolCalls ?? false;
     this.baseUrl = config.baseUrl || 'https://api.openai.com/v1';
 
     // Validate baseUrl is a valid URL to catch configuration errors early
@@ -433,7 +438,7 @@ export class OpenAIResponsesClient extends ModelClient {
       }),
       tools: toolsJson,
       tool_choice: 'auto',
-      parallel_tool_calls: false,
+      parallel_tool_calls: this.parallelToolCalls,
       ...(storeValue !== undefined && { store: storeValue }), // Conditionally include store
       stream: true,
       ...(include !== undefined && include.length > 0 && { include }), // Conditionally include

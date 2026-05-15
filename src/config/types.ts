@@ -438,6 +438,15 @@ export interface IToolsConfig {
   mcpTools?: boolean;
   customTools?: Record<string, boolean>;
 
+  /**
+   * Allow the model to emit multiple tool calls in one response (Track 11).
+   * When true, Track 02's orchestrator runs concurrency-safe calls in
+   * parallel (bounded) and unsafe calls sequentially. Applies to all
+   * OpenAI-compatible providers; Gemini already emits the parallel format
+   * natively. Default false (conservative — preserves current behavior).
+   */
+  parallelToolCalls?: boolean;
+
   // Shared configuration metadata
   enabled?: string[];
   disabled?: string[];
