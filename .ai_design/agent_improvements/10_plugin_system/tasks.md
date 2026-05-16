@@ -118,6 +118,13 @@ All 10 design decisions confirmed 2026-05-14 — see `design.md § Resolved Desi
 - [ ] **src/core/plugins/loaders/SubAgentSlotLoader.ts** (NEW): walks `<plugin>/agents/` for `.md` files. Parses frontmatter. **Drops sensitive fields** (`permissionMode`, `hooks`, `mcpServers`) with warning (claudy `loadPluginAgents.ts:153-168`). Calls `subAgentRunner.addType(config, { type: 'plugin', pluginId })`. Type id namespace: `<pluginName>:<typeName>`. **Body content runs through `substitutePluginVariables` → `substituteUserConfigInContent`** (sensitive resolves to placeholder).
 - [ ] **src/core/plugins/loaders/CommandSlotLoader.ts** (NEW): walks `<plugin>/commands/` for `.md` files. Reuses Track 03 parser. **Command name namespaced as `<pluginName>:<bareName>`** (between-plugins collision resolution). Stamps `loadedFrom: 'plugin'` (so cross-source dedup via `SOURCE_PRECEDENCE` lets builtin/skill shadow plugin). Calls `pluginCommandLoader.add(pluginId, commands)`. On unload: `pluginCommandLoader.removeByPluginId(pluginId)`. **Body content runs through `substitutePluginVariables` → `substituteUserConfigInContent`**.
 
+### Carried from 10a-1 review (PR #222)
+
+Two latent gaps were left in the 10a-1 foundation because no call path exercises them until the loaders below are wired. Both are **acceptance criteria for the SubAgentSlotLoader wiring**, not optional cleanup.
+
+- [ ] **`SubAgentRunner.addType` — guard the non-plugin source branch.** `addType` (`src/tools/AgentTool/SubAgentRunner.ts`) only enforces the id-collision guard for `source.type === 'plugin'`. The `else` branch (config/builtin source) does a bare `this.types.set(id, config)` with no `pluginTypeOwner` check. If 10a-2 ever calls `addType` with a non-plugin source whose id collides with a plugin-owned type, it silently overwrites the plugin's type while `pluginTypeOwner` still points at the plugin — a later `removeByPluginId` then deletes the wrong (now non-plugin) type. Mirror of the plugin-side guard already in place. Acceptance: a config/builtin `addType` colliding with a plugin-owned id either throws or is explicitly defined; regression test added alongside the existing collision tests in `SubAgentRunner.pluginTypes.test.ts`.
+- [ ] **`ToolRegistry.replace` — make the sub-agent tool swap gap-free.** `replace()` (`src/tools/ToolRegistry.ts`) deletes the old entry, emits `ToolUnregistered`, then `await`s `register()` — a window where `sub_agent` is absent from the registry (a concurrent `discover()`/dispatch misses it). 10a-1 only fixed the misleading JSDoc; the real fix lands here because the consumer (the `setTypesChangedCallback` → `rebuildSubAgentTool` → `replace` path) is wired in 10a-2. Acceptance: either build-then-atomic-swap in `replace`, or serialize the rebuild against tool discovery; coordinate with the active-task-guard NOTE already in `addType` (defer rebuild until TaskCompleted per design § Active-Session Semantics Rule 2). Test: concurrent discover during a rebuild always sees exactly one `sub_agent` definition.
+
 ### User-config substitution module
 
 - [ ] **src/core/plugins/userConfigSubstitution.ts** (NEW): three functions per design § User Config Substitution.
@@ -267,6 +274,10 @@ All 10 design decisions confirmed 2026-05-14 — see `design.md § Resolved Desi
 ## Phase 10c — Hardening (PR 10c)
 
 **Scope:** autoupdate, blocklist, policy, impersonation guards, options dialog. All sections below have implementation-ready specs in design § Hardening.
+
+### Carried from 10a-2 review (PR #224)
+
+- [ ] **src/core/plugins/pluginPath.ts + providers**: the v1 path jail (`assertSafeRelPath` / `safeJoinUnderRoot`) is purely *lexical* — it rejects `..`/absolute/`~`/drive paths but does NOT resolve symlinks. A symlink inside an untrusted plugin payload (`skills -> /etc`, `link -> ../../`) passes the prefix check and the read loaders (Skill/SubAgent/Command) follow it out of the jail. Low risk for 10a-2 (user-placed local plugins) but a real bypass once 10b lands remote/marketplace install. Acceptance: after writing files, resolve the real path (`fs.realpath` on Node/Tauri; N/A for IDB virtual paths) and assert it is still under the plugin root; symlink-escape fixture is rejected with a `PluginPathError`-class error and a test proves arbitrary-file read via a planted symlink fails. The Tauri `resolve_path` confinement added in #224 (`~/.browserx` prefix check) is the lexical counterpart; this is its symlink-aware completion.
 
 ### policySettings — schema and storage
 

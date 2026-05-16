@@ -22,6 +22,7 @@ import { type SessionServices, createSessionServices } from './session/state/Ses
 import { ActiveTurn } from './session/state/ActiveTurn';
 import type { TokenUsageInfo, RunningTask, RateLimitSnapshot, TurnAbortReason, InitialHistory } from './session/state/types';
 import { TaskKind } from './session/state/types';
+import { toRateLimitSnapshotEvent, evaluateEarlyWarning } from './models/types/RateLimits';
 import { isDOMSnapshotOutput, compressSnapshot } from './session/state/SnapshotCompressor';
 import type { HookDispatcher } from './hooks/HookDispatcher';
 
@@ -505,6 +506,23 @@ export class Session {
    */
   getSessionId(): string {
     return this.sessionId;
+  }
+
+  /**
+   * Track 18: fold a task's USD cost into the cumulative session total.
+   * Delegated to SessionState so it persists in the session export and is
+   * restored on resume. Called once per task from TaskRunner.persistTokenUsage.
+   */
+  addCost(usd: number, estimated: boolean): void {
+    this.sessionState.addCost(usd, estimated);
+  }
+
+  /**
+   * Track 18: cumulative USD cost for this session (live total) and whether
+   * any of it was priced via the fallback rate. Backs the /cost surface.
+   */
+  getCostInfo(): { cumulativeCostUSD: number; hasUnknownModelCost: boolean } {
+    return this.sessionState.getCostInfo();
   }
 
   // ─── Track 05b: post-turn hooks + session-summary hook ──────────────────
@@ -1018,7 +1036,9 @@ export class Session {
         let llmCaller = null;
 
         if (memoryApiKey) {
-          // Preferred path: dedicated gpt-4o-mini client via OpenAI key
+          // Preferred path: dedicated gpt-4o-mini client via OpenAI key.
+          // Track 11 note: memory extraction is a single tool-less completion;
+          // it intentionally does not take the agent's parallelToolCalls flag.
           const memoryLLMClient = new OpenAIChatCompletionClient({
             apiKey: memoryApiKey,
             baseUrl: useBackendForMemory && backendBaseUrl ? backendBaseUrl + '/openai' : undefined,
@@ -1388,7 +1408,9 @@ export class Session {
         };
       }
 
-      // All other providers use OpenAI-compatible Chat Completions API
+      // All other providers use OpenAI-compatible Chat Completions API.
+      // Track 11 note: memory-search is a single tool-less completion; it
+      // intentionally does not take the agent's parallelToolCalls flag.
       const { OpenAIChatCompletionClient } = await import('./models/client/OpenAIChatCompletionClient');
       const client = new OpenAIChatCompletionClient({
         apiKey: providerApiKey,
@@ -1605,9 +1627,18 @@ export class Session {
    * @param subId Submission ID
    */
   async sendTokenCountEvent(subId: string): Promise<void> {
-    // Get token info from SessionState
-    const tokenInfo = undefined; // Would need getTokenInfo method from SessionState
-    const rateLimits = undefined; // Would need getRateLimits method from SessionState
+    // Track 12: read the real values from SessionState (both were previously
+    // hardcoded undefined — the getters now exist). The stored snapshot is
+    // adapted to the flat RateLimitSnapshotEvent wire shape.
+    const tokenInfo = this.sessionState.getTokenInfo();
+    const snapshot = this.sessionState.getRateLimits();
+    const rateLimits = snapshot
+      ? toRateLimitSnapshotEvent(snapshot)
+      : undefined;
+
+    // Track 18: ride the cumulative session cost out on the same event
+    // (purely additive on Track 12's repair).
+    const cost = this.sessionState.getCostInfo();
 
     const event: Event = {
       id: subId,
@@ -1616,6 +1647,8 @@ export class Session {
         data: {
           info: tokenInfo,
           rate_limits: rateLimits,
+          cost: cost.cumulativeCostUSD,
+          cost_estimated: cost.hasUnknownModelCost,
         },
       } as EventMsg,
     };
@@ -2466,6 +2499,21 @@ export class Session {
   }
 
   /**
+   * Track 12: record a rate-limit snapshot observed on the live model
+   * stream (the `RateLimits` ResponseEvent in TurnManager). This is the
+   * public entrypoint that makes the snapshot path actually fire in
+   * production — without it the parsed snapshot was dropped and
+   * `sendTokenCountEvent` could only ever emit `undefined`.
+   *
+   * @param rateLimits Rate limit snapshot parsed by the provider client
+   */
+  async recordRateLimits(rateLimits: RateLimitSnapshot): Promise<void> {
+    // Reactive emission (not tied to a specific submission) — use a fresh
+    // correlation id, consistent with how other mid-stream events are id'd.
+    await this.updateRateLimits(uuidv4(), rateLimits);
+  }
+
+  /**
    * Update rate limits
    *
    * Updates SessionState with rate limit information and sends token count event.
@@ -2480,6 +2528,31 @@ export class Session {
   ): Promise<void> {
     // Update SessionState
     this.sessionState.updateRateLimits(rateLimits);
+
+    // Track 12: emit an early warning when quota is being burned faster than
+    // the window sustains (before the API actually rejects).
+    const warning = evaluateEarlyWarning(rateLimits);
+    if (warning) {
+      const resetSuffix =
+        warning.resets_in_seconds !== undefined
+          ? `, resets in ${Math.ceil(warning.resets_in_seconds)}s`
+          : '';
+      await this.sendEvent({
+        id: subId,
+        msg: {
+          type: 'RateLimitWarning',
+          data: {
+            window: warning.window,
+            used_percent: warning.used_percent,
+            time_progress: warning.time_progress,
+            resets_in_seconds: warning.resets_in_seconds,
+            message:
+              `Approaching rate limit: ${warning.used_percent.toFixed(0)}% of ` +
+              `the ${warning.window} window used${resetSuffix}`,
+          },
+        } as EventMsg,
+      });
+    }
 
     // Send token count event
     await this.sendTokenCountEvent(subId);

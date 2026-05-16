@@ -34,16 +34,38 @@ export function getPluginErrorMessage(err: PluginError): string {
         : `Plugin ${err.pluginId} blocked by org policy`;
     case 'mcp-server-suppressed-duplicate':
       return `MCP server "${err.key}" from ${err.pluginId} suppressed (key already in use)`;
+    default:
+      // `err` is `never` for the exhaustive union; this guards against a
+      // non-conforming object that slipped through `toPluginError`.
+      return `Plugin error: ${(err as { type?: string }).type ?? 'unknown'}`;
   }
 }
+
+/** Discriminant tags of every `PluginError` variant in `types.ts`. */
+const KNOWN_PLUGIN_ERROR_TYPES: ReadonlySet<string> = new Set([
+  'generic-error',
+  'plugin-not-found',
+  'path-not-found',
+  'manifest-parse-error',
+  'manifest-validation-error',
+  'component-load-failed',
+  'marketplace-blocked-by-policy',
+  'mcp-server-suppressed-duplicate',
+]);
 
 /**
  * Coerce an unknown thrown value into a `PluginError`. Used by the
  * registry's catch blocks so error surfaces stay typed.
  */
 export function toPluginError(e: unknown, pluginId?: string): PluginError {
-  if (e && typeof e === 'object' && 'type' in e && typeof (e as { type: unknown }).type === 'string') {
-    // Already a structured PluginError (or close enough — let it through)
+  if (
+    e &&
+    typeof e === 'object' &&
+    'type' in e &&
+    typeof (e as { type: unknown }).type === 'string' &&
+    KNOWN_PLUGIN_ERROR_TYPES.has((e as { type: string }).type)
+  ) {
+    // Already a structured PluginError with a recognized discriminant.
     return e as PluginError;
   }
   const message = e instanceof Error ? e.message : String(e);

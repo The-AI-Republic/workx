@@ -107,15 +107,25 @@ export class PluginInstaller {
           error: `fetch ${id} failed: ${e instanceof Error ? e.message : String(e)}`,
         };
       }
-      // SHA verification: the catalogue entry's pinned sha must match.
-      const wantSha = lookup.entry.source && 'sha' in lookup.entry.source
-        ? (lookup.entry.source as { sha?: string }).sha
-        : undefined;
-      if (wantSha && fetched.gitCommitSha && wantSha !== fetched.gitCommitSha) {
-        return {
-          ok: false,
-          error: `SHA mismatch for ${id}: expected ${wantSha}, got ${fetched.gitCommitSha}`,
-        };
+      // SHA verification (fail-closed): if the catalogue pins a sha, the
+      // fetch MUST report a commit sha and it MUST match. Skipping the
+      // check when `fetched.gitCommitSha` is absent would silently install
+      // unverified content despite a pin — a supply-chain fail-open.
+      const src = lookup.entry.source as { sha?: string } | undefined;
+      const wantSha = src && 'sha' in src ? src.sha : undefined;
+      if (wantSha) {
+        if (!fetched.gitCommitSha) {
+          return {
+            ok: false,
+            error: `${id} pins sha ${wantSha} but the fetch could not confirm a commit sha — refusing to install unverified content`,
+          };
+        }
+        if (wantSha !== fetched.gitCommitSha) {
+          return {
+            ok: false,
+            error: `SHA mismatch for ${id}: expected ${wantSha}, got ${fetched.gitCommitSha}`,
+          };
+        }
       }
       await this.deps.provider.writeFiles(id, fetched.files);
       await this.deps.installed.addEntry(id, {

@@ -97,6 +97,64 @@ export function buildCloneArgs(o: GitCloneOptions): string[] {
   return args;
 }
 
+/** SECURITY: a pinned commit sha must be exactly 40-char lowercase hex. */
+export function assertSafeGitSha(sha: string): void {
+  if (typeof sha !== 'string' || !/^[0-9a-f]{40}$/.test(sha)) {
+    throw new GitArgError(`invalid git sha (need 40-char lowercase hex): ${sha}`);
+  }
+}
+
+/** `fetch --depth 1 origin <sha>` args (pinned-sha install path). */
+export function buildFetchShaArgs(sha: string, disableCredentialHelper?: boolean): string[] {
+  assertSafeGitSha(sha);
+  const args = ['-c', SSH_OPTS];
+  if (disableCredentialHelper) args.push('-c', 'credential.helper=');
+  args.push('fetch', '--depth', '1', 'origin', sha);
+  return args;
+}
+
+/** `checkout --detach <sha>` args (after a sha fetch). */
+export function buildCheckoutShaArgs(sha: string): string[] {
+  assertSafeGitSha(sha);
+  return ['checkout', '--detach', sha];
+}
+
+/**
+ * Pinned-sha materialization: `git clone --branch <sha>` does NOT resolve a
+ * raw commit, and a pinned sha MUST land on exactly that commit (supply-
+ * chain integrity). So clone the default branch, then fetch + detach-checkout
+ * the exact sha. Throws (fail-closed) if either step fails — never installs
+ * unverified content.
+ */
+export async function gitFetchCheckoutSha(
+  run: GitRunner,
+  cloneDir: string,
+  sha: string,
+  timeoutMs?: number,
+): Promise<void> {
+  const t = timeoutMs ?? gitTimeoutMs();
+  const fetchRes = await run(buildFetchShaArgs(sha), {
+    cwd: cloneDir,
+    env: { ...GIT_NO_PROMPT_ENV },
+    timeoutMs: t,
+  });
+  if (fetchRes.code !== 0) {
+    throw new Error(
+      `git fetch ${sha} failed (${fetchRes.code}): ${redactUrlCredentials(fetchRes.stderr)}`,
+    );
+  }
+  const coRes = await run(buildCheckoutShaArgs(sha), {
+    cwd: cloneDir,
+    env: { ...GIT_NO_PROMPT_ENV },
+    timeoutMs: t,
+  });
+  if (coRes.code !== 0) {
+    throw new Error(
+      `git checkout ${sha} failed (${coRes.code}): ${redactUrlCredentials(coRes.stderr)}`,
+    );
+  }
+}
+
 export function buildPullArgs(ref?: string, disableCredentialHelper?: boolean): string[] {
   if (ref) assertSafeGitRef(ref);
   const args = ['-c', SSH_OPTS];

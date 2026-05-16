@@ -474,4 +474,41 @@ describe('TurnContext Methods', () => {
       expect(context).not.toHaveProperty('validateCurrentTab');
     });
   });
+
+  describe('Track 12: unattended posture', () => {
+    it('defaults to attended (unattended=false)', () => {
+      const context = new TurnContext(mockModelClient);
+      expect(context.getUnattended()).toBe(false);
+      expect(context.getUnattendedResetCapMs()).toBeUndefined();
+    });
+
+    it('honors unattended + reset cap from config', () => {
+      const context = new TurnContext(mockModelClient, {
+        unattended: true,
+        unattendedResetCapMs: 5000,
+      });
+      expect(context.getUnattended()).toBe(true);
+      expect(context.getUnattendedResetCapMs()).toBe(5000);
+    });
+
+    it('update() can flip unattended', () => {
+      const context = new TurnContext(mockModelClient);
+      context.update({ unattended: true });
+      expect(context.getUnattended()).toBe(true);
+      context.update({ unattended: false });
+      expect(context.getUnattended()).toBe(false);
+    });
+
+    it('setUnattended() toggles posture', () => {
+      const context = new TurnContext(mockModelClient);
+      context.setUnattended(true);
+      expect(context.getUnattended()).toBe(true);
+    });
+
+    it('update() without unattended leaves it unchanged', () => {
+      const context = new TurnContext(mockModelClient, { unattended: true });
+      context.update({ sessionId: 'x' });
+      expect(context.getUnattended()).toBe(true);
+    });
+  });
 });

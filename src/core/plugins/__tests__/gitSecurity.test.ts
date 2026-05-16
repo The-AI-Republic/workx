@@ -7,6 +7,9 @@ import { describe, it, expect } from 'vitest';
 import {
   buildCloneArgs,
   buildPullArgs,
+  buildFetchShaArgs,
+  buildCheckoutShaArgs,
+  assertSafeGitSha,
   redactUrlCredentials,
   GitArgError,
 } from '../git';
@@ -54,6 +57,28 @@ describe('buildCloneArgs — arg-injection guard', () => {
   it('buildPullArgs rejects a malicious ref', () => {
     expect(() => buildPullArgs('--upload-pack=x')).toThrow(GitArgError);
     expect(() => buildPullArgs('main')).not.toThrow();
+  });
+});
+
+describe('pinned-sha args (review B: clone --branch <sha> never resolves)', () => {
+  const SHA = 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0';
+
+  it('assertSafeGitSha accepts 40-hex, rejects everything else', () => {
+    expect(() => assertSafeGitSha(SHA)).not.toThrow();
+    expect(() => assertSafeGitSha('main')).toThrow(GitArgError);
+    expect(() => assertSafeGitSha('A'.repeat(40))).toThrow(GitArgError); // uppercase
+    expect(() => assertSafeGitSha('a'.repeat(39))).toThrow(GitArgError); // too short
+    expect(() => assertSafeGitSha('--exec=x')).toThrow(GitArgError);
+  });
+
+  it('buildFetchShaArgs / buildCheckoutShaArgs build the exact safe args', () => {
+    expect(buildFetchShaArgs(SHA)).toEqual(
+      expect.arrayContaining(['fetch', '--depth', '1', 'origin', SHA]),
+    );
+    expect(buildCheckoutShaArgs(SHA)).toEqual(['checkout', '--detach', SHA]);
+    // and they refuse a non-sha (no option-smuggling via the sha slot)
+    expect(() => buildFetchShaArgs('--upload-pack=x')).toThrow(GitArgError);
+    expect(() => buildCheckoutShaArgs('HEAD')).toThrow(GitArgError);
   });
 });
 

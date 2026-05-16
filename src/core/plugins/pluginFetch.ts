@@ -14,7 +14,7 @@
 import type { FetchedPlugin } from './PluginInstaller';
 import type { MarketplaceEntry } from './MarketplaceSchema';
 import type { GitRunner } from './git';
-import { gitClone } from './git';
+import { gitClone, gitFetchCheckoutSha } from './git';
 
 export interface GitFetchDeps {
   run: GitRunner;
@@ -30,13 +30,18 @@ export interface GitFetchDeps {
   resolveHeadSha: (cloneDir: string) => Promise<string | undefined>;
 }
 
-function gitUrlFor(entry: MarketplaceEntry): { url: string; ref?: string } {
+// `ref` (branch/tag — `git clone --branch` resolves these) is kept distinct
+// from `sha` (a raw commit — only reachable via fetch+checkout). Conflating
+// them as `ref ?? sha` (the old code) meant a sha-pinned entry tried
+// `clone --branch <40-hex>` (which never resolves) AND skipped real SHA
+// verification when HEAD couldn't be read — a supply-chain fail-open.
+function gitUrlFor(entry: MarketplaceEntry): { url: string; ref?: string; sha?: string } {
   const s = entry.source;
   switch (s.type) {
     case 'github':
-      return { url: `https://github.com/${s.repo}.git`, ref: s.ref ?? s.sha };
+      return { url: `https://github.com/${s.repo}.git`, ref: s.ref, sha: s.sha };
     case 'git':
-      return { url: s.url, ref: s.ref ?? s.sha };
+      return { url: s.url, ref: s.ref, sha: s.sha };
     default:
       throw new Error(`git fetch unsupported for source type "${s.type}"`);
   }
@@ -54,12 +59,28 @@ export function createGitFetchPlugin(
   return async (pluginId: string): Promise<FetchedPlugin> => {
     const entry = resolveEntry(pluginId);
     if (!entry) throw new Error(`no marketplace entry for ${pluginId}`);
-    const { url, ref } = gitUrlFor(entry);
+    const { url, ref, sha: pinnedSha } = gitUrlFor(entry);
 
     const tmp = await deps.mkTempDir();
     try {
-      await gitClone(deps.run, { url, targetPath: tmp, ref });
-      const sha = await deps.resolveHeadSha(tmp);
+      if (pinnedSha) {
+        // Pinned commit: clone default branch, then fetch + detach-checkout
+        // the exact sha (fail-closed — gitFetchCheckoutSha throws otherwise).
+        await gitClone(deps.run, { url, targetPath: tmp });
+        await gitFetchCheckoutSha(deps.run, tmp, pinnedSha);
+      } else {
+        // Branch/tag (or default) — `--branch` resolves these fine.
+        await gitClone(deps.run, { url, targetPath: tmp, ref });
+      }
+      const resolved = await deps.resolveHeadSha(tmp);
+      if (pinnedSha && resolved && resolved !== pinnedSha) {
+        throw new Error(
+          `post-checkout sha mismatch: expected ${pinnedSha}, got ${resolved}`,
+        );
+      }
+      // When a sha was pinned we fetched+checked-out exactly it, so it is
+      // verified by construction even if `rev-parse HEAD` couldn't be read.
+      const gitCommitSha = pinnedSha ?? resolved;
       const rels = (await deps.walkFiles(tmp)).filter(
         (r) => !r.startsWith('.git/') && r !== '.git',
       );
@@ -69,8 +90,8 @@ export function createGitFetchPlugin(
       }
       const version =
         entry.version ??
-        (sha ? sha.slice(0, 7) : new Date().toISOString());
-      return { files, version, gitCommitSha: sha };
+        (gitCommitSha ? gitCommitSha.slice(0, 7) : new Date().toISOString());
+      return { files, version, gitCommitSha };
     } finally {
       await deps.removeDir(tmp).catch(() => undefined);
     }

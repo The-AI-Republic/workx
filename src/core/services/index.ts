@@ -17,6 +17,7 @@ import { createSessionServices, type SessionServiceDeps } from './session-servic
 import { createAgentServices, type AgentServiceDeps } from './agent-services';
 import { createStorageServices, type StorageServiceDeps } from './storage-services';
 import { createPluginsServices, type PluginsServiceDeps } from './plugins-services';
+import { createDiagnosticsServices, type DiagnosticsServiceDeps } from './diagnostics-services';
 
 /**
  * Dependencies for registering all services.
@@ -32,6 +33,7 @@ export interface AllServiceDeps {
   agent?: AgentServiceDeps;
   storage?: StorageServiceDeps;
   plugins?: PluginsServiceDeps;
+  diagnostics?: DiagnosticsServiceDeps;
 }
 
 /**
@@ -55,6 +57,7 @@ export function registerAllServices(
     ['agent', createAgentServices],
     ['storage', createStorageServices],
     ['plugins', createPluginsServices],
+    ['diagnostics', createDiagnosticsServices],
   ];
 
   for (const [key, factory] of factories) {
@@ -81,3 +84,4 @@ export { createSessionServices, type SessionServiceDeps } from './session-servic
 export { createAgentServices, type AgentServiceDeps } from './agent-services';
 export { createStorageServices, type StorageServiceDeps } from './storage-services';
 export { createPluginsServices, type PluginsServiceDeps } from './plugins-services';
+export { createDiagnosticsServices, type DiagnosticsServiceDeps } from './diagnostics-services';

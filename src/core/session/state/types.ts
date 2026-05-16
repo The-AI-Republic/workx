@@ -8,6 +8,17 @@ import type { BackgroundAgentTaskState } from '../../tasks/types';
 import type { AgentContext } from '../../../tools/AgentTool/types';
 
 /**
+ * Track 12: the real rate-limit snapshot shape is the percent-window model
+ * produced by every provider's `parseRateLimitSnapshot()` and carried in the
+ * `RateLimits` ResponseEvent. The previous local `{ limit_requests, ... }`
+ * interface here was an orphan (never populated or read), which is why
+ * `Session.sendTokenCountEvent` could only ever emit `undefined`. Re-export
+ * the canonical type so SessionState stores what providers actually emit.
+ */
+import type { RateLimitSnapshot } from '../../models/types/RateLimits';
+export type { RateLimitSnapshot };
+
+/**
  * Kind of task running in an active turn
  */
 export enum TaskKind {
@@ -104,19 +115,6 @@ export interface TokenUsageInfo {
   total_tokens?: number;
   cache_creation_input_tokens?: number;
   cache_read_input_tokens?: number;
-}
-
-/**
- * Rate limit snapshot
- * Matches existing Session rate limit tracking
- */
-export interface RateLimitSnapshot {
-  limit_requests?: number;
-  limit_tokens?: number;
-  remaining_requests?: number;
-  remaining_tokens?: number;
-  reset_requests?: string;
-  reset_tokens?: string;
 }
 
 /**
