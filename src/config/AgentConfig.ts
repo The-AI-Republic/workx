@@ -23,6 +23,12 @@ import {
 } from './defaults';
 import { validateConfig, validateModelConfig, validateProviderConfig, detectProviderFromKey } from './validators';
 import {
+  applyPolicy,
+  assertWritable,
+  stripLockedWrites,
+  getActivePolicySync,
+} from '../core/config/policy';
+import {
   getCredentialStore,
   isCredentialStoreInitialized,
   type CredentialStore
@@ -111,11 +117,29 @@ export class AgentConfig implements IConfigService {
       const storedConfig = await this.storage.get();
 
       // Build full runtime config by merging stored data with default.json providers/models
+      // (buildRuntimeConfig applies the Track 20 policy pin internally).
       this.currentConfig = buildRuntimeConfig(storedConfig);
+
+      // Track 20: reload() previously emitted nothing — the UI never learned a
+      // managed-policy change took effect. Emit so locked fields re-render.
+      this.emitChangeEvent('policy', null, this.currentConfig.policy ?? null);
     } catch (error) {
       console.error('Failed to reload config:', error);
       throw error;
     }
+  }
+
+  /**
+   * Track 20: re-assert admin policy onto the in-memory config. Bulk write
+   * paths (updateConfig/resetConfig/importConfig) bypass buildRuntimeConfig,
+   * so they must re-pin or a locked value would be overridable until reload.
+   */
+  private pinPolicy(): void {
+    this.currentConfig = applyPolicy(
+      this.currentConfig,
+      getActivePolicySync(),
+      'agent'
+    );
   }
 
   // Core CRUD operations
@@ -128,7 +152,17 @@ export class AgentConfig implements IConfigService {
     this.ensureInitialized();
 
     const oldConfig = { ...this.currentConfig };
-    const newConfig = { ...this.currentConfig, ...config };
+
+    // Track 20: drop writes to policy-locked paths (non-locked siblings pass
+    // through). The post-merge pin below re-asserts policy regardless — this
+    // is defense-in-depth + the signal for the UI.
+    const { patch, stripped } = stripLockedWrites('agent', config);
+    if (stripped.length > 0) {
+      console.warn(
+        `[AgentConfig] Ignored write to organization-managed setting(s): ${stripped.join(', ')}`
+      );
+    }
+    const newConfig = { ...this.currentConfig, ...patch };
 
     // Validate the new configuration
     const validation = validateConfig(newConfig);
@@ -141,6 +175,9 @@ export class AgentConfig implements IConfigService {
     }
 
     this.currentConfig = newConfig;
+    // Re-pin so a locked value is restored even if it slipped through a
+    // nested merge.
+    this.pinPolicy();
     this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
@@ -169,6 +206,8 @@ export class AgentConfig implements IConfigService {
     }
 
     this.currentConfig = newConfig;
+    // Track 20: a reset must not clear an admin-managed value.
+    this.pinPolicy();
     this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
@@ -216,6 +255,7 @@ export class AgentConfig implements IConfigService {
    */
   async setSelectedModel(compositeKey: string): Promise<void> {
     this.ensureInitialized();
+    assertWritable('agent', 'selectedModelKey');
 
     // Validate format
     if (!compositeKey.includes(':')) {
@@ -264,6 +304,7 @@ export class AgentConfig implements IConfigService {
 
   updateModelConfig(config: Partial<IModelConfig>): IModelConfig {
     this.ensureInitialized();
+    assertWritable('agent', 'selectedModelKey');
 
     const oldModel = this.getModelConfig();
     const newModel = { ...oldModel, ...config };
@@ -325,6 +366,7 @@ export class AgentConfig implements IConfigService {
    */
   addProvider(provider: IProviderConfig): IProviderConfig {
     this.ensureInitialized();
+    assertWritable('agent', `providers.${provider.id}`);
 
     const validation = validateProviderConfig(provider);
     if (!validation.valid) {
@@ -354,6 +396,8 @@ export class AgentConfig implements IConfigService {
   updateProvider(id: string, provider: Partial<IProviderConfig>): IProviderConfig {
     this.ensureInitialized();
 
+    assertWritable('agent', `providers.${id}`);
+
     const existing = this.currentConfig.providers[id];
     if (!existing) {
       throw new Error(`Provider not found: ${id}`);
@@ -382,6 +426,7 @@ export class AgentConfig implements IConfigService {
 
   deleteProvider(id: string): void {
     this.ensureInitialized();
+    assertWritable('agent', `providers.${id}`);
 
     // Check if provider hosts the currently selected model
     if (this.currentConfig.selectedModelKey.startsWith(`${id}:`)) {
@@ -418,6 +463,7 @@ export class AgentConfig implements IConfigService {
    */
   async setProviderApiKey(providerId: string, apiKey: string): Promise<IProviderConfig> {
     this.ensureInitialized();
+    assertWritable('agent', `providers.${providerId}.apiKey`);
 
     // Check if provider exists
     const provider = this.currentConfig.providers[providerId];
@@ -480,6 +526,7 @@ export class AgentConfig implements IConfigService {
    */
   async deleteProviderApiKey(providerId: string): Promise<void> {
     this.ensureInitialized();
+    assertWritable('agent', `providers.${providerId}.apiKey`);
 
     const provider = this.currentConfig.providers[providerId];
     if (!provider) {
@@ -648,6 +695,7 @@ export class AgentConfig implements IConfigService {
 
   createProfile(profile: IProfileConfig): IProfileConfig {
     this.ensureInitialized();
+    assertWritable('agent', 'profiles');
 
     if (!this.currentConfig.profiles) {
       this.currentConfig.profiles = {};
@@ -669,6 +717,7 @@ export class AgentConfig implements IConfigService {
 
   updateProfile(name: string, profile: Partial<IProfileConfig>): IProfileConfig {
     this.ensureInitialized();
+    assertWritable('agent', 'profiles');
 
     if (!this.currentConfig.profiles?.[name]) {
       throw new Error(`Profile not found: ${name}`);
@@ -687,6 +736,7 @@ export class AgentConfig implements IConfigService {
 
   deleteProfile(name: string): void {
     this.ensureInitialized();
+    assertWritable('agent', 'profiles');
 
     if (this.currentConfig.activeProfile === name) {
       throw new Error('Cannot delete active profile');
@@ -705,6 +755,7 @@ export class AgentConfig implements IConfigService {
 
   activateProfile(name: string): void {
     this.ensureInitialized();
+    assertWritable('agent', 'activeProfile');
 
     if (!this.currentConfig.profiles?.[name]) {
       throw new Error(`Profile not found: ${name}`);
@@ -752,6 +803,8 @@ export class AgentConfig implements IConfigService {
     }
 
     this.currentConfig = data.config;
+    // Track 20: an imported config must not override admin-managed values.
+    this.pinPolicy();
     this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
@@ -767,6 +820,7 @@ export class AgentConfig implements IConfigService {
 
   updateToolsConfig(config: Partial<IToolsConfig>): IToolsConfig {
     this.ensureInitialized();
+    assertWritable('agent', 'tools');
 
     const oldConfig = this.currentConfig.tools;
     const newConfig = {
@@ -798,6 +852,7 @@ export class AgentConfig implements IConfigService {
 
   enableTool(toolName: string): void {
     this.ensureInitialized();
+    assertWritable('agent', 'tools');
 
     const tools = this.currentConfig.tools || { enabled: [], disabled: [] };
     if (!tools.enabled) tools.enabled = [];
@@ -817,6 +872,7 @@ export class AgentConfig implements IConfigService {
 
   disableTool(toolName: string): void {
     this.ensureInitialized();
+    assertWritable('agent', 'tools');
 
     const tools = this.currentConfig.tools || { enabled: [], disabled: [] };
     if (!tools.enabled) tools.enabled = [];
@@ -854,6 +910,7 @@ export class AgentConfig implements IConfigService {
     config: Partial<IToolSpecificConfig>
   ): void {
     this.ensureInitialized();
+    assertWritable('agent', `tools.perToolConfig.${toolName}`);
 
     if (!this.currentConfig.tools) {
       this.currentConfig.tools = { enabled: [], disabled: [] } as IToolsConfig;
