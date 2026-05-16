@@ -433,6 +433,30 @@ export class DesktopAgentBootstrap {
           if (history.type !== 'resumed' || !history.payload?.history) return null;
           return { sessionId, rolloutItems: history.payload.history };
         },
+        // Track 15 (D9): summarize_up_to summarizer for desktop, sourced from
+        // the live primary agent's ModelClientFactory.
+        summarizeForRewind: async (items) => {
+          const reg = this.registry;
+          const primary = reg?.getPrimarySession();
+          const agent = primary ? reg?.getSession(primary.sessionId)?.agent : null;
+          if (!agent) return undefined;
+          try {
+            const { CompactService } = await import('@/core/compact/CompactService');
+            const modelClient = await agent.getModelClientFactory().createClientForCurrentModel();
+            const result = await new CompactService().compact(
+              items,
+              'manual',
+              modelClient,
+              0,
+              undefined,
+              { sessionId: agent.getSession().getSessionId() },
+            );
+            return result.success ? result.summaryText : undefined;
+          } catch (err) {
+            console.warn('[DesktopAgentBootstrap] summarizeForRewind failed:', err);
+            return undefined;
+          }
+        },
       } : undefined,
       agent: this.registry ? {
         registry: this.registry,

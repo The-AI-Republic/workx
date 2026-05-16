@@ -7,6 +7,8 @@ export interface BuiltinCommandCallbacks {
   onNewConversation: () => void;
   onCommandOutput: (title: string, content: string) => void;
   onOpenSettings: () => void;
+  /** Track 15: open the rewind turn-selector overlay. */
+  onOpenRewindSelector: () => void;
   onOpenDoctor: () => void;
 }
 
@@ -54,6 +56,20 @@ export function initBuiltinCommands(callbacks: BuiltinCommandCallbacks): void {
       activeCallbacks?.onOpenSettings();
     },
   });
+
+  // Track 15: /rewind (+ /checkpoint alias) open the turn-selector overlay.
+  // The registry has no alias mechanism, so register two commands sharing
+  // one action.
+  for (const name of ['rewind', 'checkpoint']) {
+    commandRegistry.register({
+      name,
+      description: 'Rewind the conversation to an earlier turn (forks a new branch)',
+      loadedFrom: 'builtin',
+      action: () => {
+        activeCallbacks?.onOpenRewindSelector();
+      },
+    });
+  }
 
   // Track 10: /plugin slash command. Subcommands parsed inside the action
   // (webfront splits only on first space, so the rest is `args`).

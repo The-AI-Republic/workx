@@ -21,6 +21,7 @@ describe('builtin /doctor', () => {
       onCommandOutput: vi.fn(),
       onOpenSettings: vi.fn(),
       onOpenDoctor,
+      onOpenRewindSelector: vi.fn(),
     });
 
     const cmd = commandRegistry.get('doctor');

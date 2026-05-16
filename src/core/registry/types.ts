@@ -36,6 +36,16 @@ export interface SessionConfig {
   };
 
   /**
+   * Fork data for a Track 15 rewind: seed a brand-new conversation from a
+   * sliced prefix of `sourceConversationId`'s rollout. The source rollout is
+   * never mutated (append-only storage; fork = new rollout).
+   */
+  fork?: {
+    sourceConversationId: string;
+    rolloutItems: unknown[];
+  };
+
+  /**
    * Mark as an internal infrastructure session (e.g. bootstrap fallback agent).
    * Internal sessions bypass the concurrent limit and are excluded from user-facing counts.
    */
