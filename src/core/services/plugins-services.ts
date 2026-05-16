@@ -26,6 +26,12 @@ export interface PluginsServiceDeps {
   marketplaces?: import('@/core/plugins/MarketplaceRegistry').MarketplaceRegistry;
   installer?: import('@/core/plugins/PluginInstaller').PluginInstaller;
   uninstaller?: import('@/core/plugins/PluginInstaller').PluginUninstaller;
+  /**
+   * Phase 10c policy gate. When present, a policy-blocked plugin cannot be
+   * runtime-enabled via `/plugin enable` (parity with the boot-time and
+   * installer guards — without this, the block is bypassable at runtime).
+   */
+  isBlockedByPolicy?: (id: string) => boolean | Promise<boolean>;
 }
 
 /** Lightweight row for the `/plugin list` table. */
@@ -132,6 +138,9 @@ export function createPluginsServices(
     'plugins.enable': async (params) => {
       const { id } = params as { id: string };
       try {
+        if (deps.isBlockedByPolicy && (await deps.isBlockedByPolicy(id))) {
+          return { success: false, error: `plugin ${id} is blocked by org policy` };
+        }
         await pluginRegistry.enable(id);
         const p = pluginRegistry.getPlugin(id);
         return { success: true, plugin: p ? toRow(p) : null };

@@ -482,6 +482,33 @@ export class ServerAgentBootstrap {
 
       const agentConfig = await AgentConfig.getInstance();
 
+      // Phase 10c: admin policy (read once, cached). /etc/browserx/policy.json
+      // (Linux/Mac) or %ProgramData%\BrowserX\policy.json (Windows). Missing/
+      // corrupt → empty policy. Built HERE (before bootstrapEnabledPlugins +
+      // MarketplaceRegistry) so block / force-enable / source guards apply.
+      const {
+        PolicyLoader,
+        PluginPolicy,
+        isSourceAllowedByPolicy,
+        isBlockedOfficialName,
+        validateOfficialNameSource,
+      } = await import('@/core/plugins/policy');
+      const policyPath =
+        process.platform === 'win32'
+          ? path.join(process.env.ProgramData ?? 'C:\\ProgramData', 'BrowserX', 'policy.json')
+          : '/etc/browserx/policy.json';
+      const policyLoader = new PolicyLoader({
+        readPolicyText: async () => {
+          try {
+            const fsmod = await import('node:fs');
+            return await fsmod.promises.readFile(policyPath, 'utf-8');
+          } catch {
+            return null;
+          }
+        },
+      });
+      const pluginPolicy = new PluginPolicy(policyLoader);
+
       const registry = new PluginRegistry({
         provider,
         skillSlot: skillsDeps
@@ -527,6 +554,27 @@ export class ServerAgentBootstrap {
           console.warn(`[ServerAgentBootstrap] plugin load ${m.name} failed:`, e);
         }
       }
+      // Phase 10c: enforce admin policy on the enabled set BEFORE bootstrap
+      // — `enabledPlugins[id] === false` blocks, `=== true` force-enables
+      // (and locks; the runtime enable guard + reconcile keep it pinned).
+      try {
+        const pol = await policyLoader.load();
+        const pinned = pol.enabledPlugins ?? {};
+        if (Object.keys(pinned).length > 0) {
+          const cur = agentConfig.getConfig().enabledPlugins ?? {};
+          const next = { ...cur };
+          let changed = false;
+          for (const [pid, want] of Object.entries(pinned)) {
+            if (next[pid] !== want) {
+              next[pid] = want;
+              changed = true;
+            }
+          }
+          if (changed) agentConfig.updateConfig({ enabledPlugins: next });
+        }
+      } catch (e) {
+        console.warn('[ServerAgentBootstrap] policy enabled-set enforcement failed:', e);
+      }
       await registry.bootstrapEnabledPlugins();
 
       // React to external enabledPlugins mutations (settings UI / policy)
@@ -561,6 +609,25 @@ export class ServerAgentBootstrap {
             await nodeRemoveDir(tmp).catch(() => undefined);
           }
         },
+        // Phase 10c: admin source allow/blocklist — refuses BEFORE the
+        // network fetch above ever runs.
+        checkSource: async (sourceRef: string) => {
+          const pol = await policyLoader.load();
+          return isSourceAllowedByPolicy(sourceRef, pol)
+            ? null
+            : `marketplace source blocked by org policy: ${sourceRef}`;
+        },
+        // Reserved-official-name / homograph impersonation guard (runs
+        // after parse, on the catalogue's declared name).
+        checkName: (name: string, sourceRef: string) => {
+          if (isBlockedOfficialName(name)) {
+            return `marketplace name "${name}" is reserved or uses a non-ASCII homograph (impersonation guard)`;
+          }
+          const v = validateOfficialNameSource(name, sourceRef);
+          return v.ok
+            ? null
+            : `marketplace "${name}" must originate from the official org (${v.reason})`;
+        },
       });
 
       const installedStore = new InstalledPluginsStore({
@@ -591,12 +658,16 @@ export class ServerAgentBootstrap {
         (id) => marketplaces.lookup(id)?.entry ?? null,
       );
 
+      // (policyLoader / pluginPolicy were built earlier — before
+      // bootstrapEnabledPlugins — so the same instance governs install,
+      // marketplace add, autoupdate, and the boot-time enabled set.)
       const installer = new PluginInstaller({
         marketplaces,
         provider,
         installed: installedStore,
         registry,
         fetchPlugin,
+        isBlockedByPolicy: (id) => pluginPolicy.isBlocked(id),
         setEnabled: async (ids, en) => {
           const cur = agentConfig.getConfig().enabledPlugins ?? {};
           const next = { ...cur };
@@ -665,7 +736,45 @@ export class ServerAgentBootstrap {
         },
       });
 
-      pluginsDeps = { pluginRegistry: registry, marketplaces, installer, uninstaller };
+      // Phase 10c: one-shot, fire-and-forget autoupdate + delisting sweep.
+      // Re-checks policy before re-materializing; delisting routes through
+      // the safe uninstaller (disable → orphan-mark, never a hard-delete).
+      try {
+        const { PluginAutoupdate } = await import('@/core/plugins/PluginAutoupdate');
+        const autoupdate = new PluginAutoupdate({
+          marketplaces,
+          installed: installedStore,
+          provider,
+          fetchPlugin,
+          autoUpdateMarketplaces: () => marketplaces.list().map((m) => m.name),
+          refreshMarketplace: async (name: string) => {
+            const m = marketplaces.list().find((x) => x.name === name);
+            if (m) await marketplaces.add(m.sourceRef);
+          },
+          isBlockedByPolicy: (id) => pluginPolicy.isBlocked(id),
+          uninstall: (id, scope) => uninstaller.uninstall(id, scope),
+        });
+        void autoupdate.run().then(
+          (r) => {
+            if (r.updated.length || r.delisted.length) {
+              console.log(
+                `[ServerAgentBootstrap] autoupdate: ${r.updated.length} updated, ${r.delisted.length} delisted`,
+              );
+            }
+          },
+          (e) => console.warn('[ServerAgentBootstrap] autoupdate failed:', e),
+        );
+      } catch (e) {
+        console.warn('[ServerAgentBootstrap] autoupdate wiring failed:', e);
+      }
+
+      pluginsDeps = {
+        pluginRegistry: registry,
+        marketplaces,
+        installer,
+        uninstaller,
+        isBlockedByPolicy: (id) => pluginPolicy.isBlocked(id),
+      };
       // Expose to agentFactory so sessions created after this point bind
       // their per-session hook + sub-agent registries to enabled plugins.
       this.pluginRegistry = registry;

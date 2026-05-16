@@ -52,6 +52,29 @@ describe('MarketplaceRegistry', () => {
     expect(r.remove('official')).toBe(true);
     expect(r.list()).toHaveLength(0);
   });
+
+  it('checkSource refuses BEFORE any fetch (policy source guard)', async () => {
+    const fetchCatalogue = vi.fn(async () => CAT);
+    const r = new MarketplaceRegistry({
+      fetchCatalogue,
+      checkSource: async (ref) => (ref.includes('evil') ? 'blocked by org policy' : null),
+    });
+    expect(await r.add('https://evil.com/m')).toEqual({ ok: false, error: 'blocked by org policy' });
+    expect(fetchCatalogue).not.toHaveBeenCalled(); // never even fetched
+    expect(await r.add('https://example.com/official')).toEqual({ ok: true, name: 'official' });
+    expect(fetchCatalogue).toHaveBeenCalledTimes(1);
+  });
+
+  it('checkName refuses AFTER parse (impersonation guard), not registered', async () => {
+    const fetchCatalogue = vi.fn(async () => CAT); // catalogue.name === 'official'
+    const r = new MarketplaceRegistry({
+      fetchCatalogue,
+      checkName: (name) => (name === 'official' ? 'reserved name' : null),
+    });
+    expect(await r.add('https://example.com/x')).toEqual({ ok: false, error: 'reserved name' });
+    expect(fetchCatalogue).toHaveBeenCalledTimes(1); // fetched, then rejected
+    expect(r.list()).toHaveLength(0); // NOT registered
+  });
 });
 
 describe('PluginCache', () => {

@@ -105,6 +105,28 @@ export {
 export type { GitRunner, GitRunResult, GitCloneOptions } from './git';
 export { createGitFetchPlugin } from './pluginFetch';
 export type { GitFetchDeps } from './pluginFetch';
+export {
+  PolicyLoader,
+  PluginPolicy,
+  PolicySettingsSchema,
+  emptyPolicy,
+  isSourceAllowedByPolicy,
+  isSourceInBlocklist,
+  sourceMatches,
+  isBlockedOfficialName,
+  validateOfficialNameSource,
+  ALLOWED_OFFICIAL_MARKETPLACE_NAMES,
+  BLOCKED_OFFICIAL_NAME_PATTERN,
+} from './policy';
+export type {
+  PolicySettings,
+  PolicyLoaderDeps,
+  MarketplaceSourceMatcher,
+} from './policy';
+export { PluginAutoupdate } from './PluginAutoupdate';
+export type { AutoupdateDeps, AutoupdateResult } from './PluginAutoupdate';
+export { PluginOptions } from './PluginOptions';
+export type { PluginOptionsDeps } from './PluginOptions';
 export { PluginInstaller, PluginUninstaller } from './PluginInstaller';
 export type {
   PluginInstallerDeps,

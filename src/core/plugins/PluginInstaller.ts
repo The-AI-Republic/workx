@@ -35,8 +35,8 @@ export interface PluginInstallerDeps {
   registry: PluginRegistry;
   /** Fetch a plugin's files for a resolved catalogue entry (git/tarball). */
   fetchPlugin: (pluginId: PluginId) => Promise<FetchedPlugin>;
-  /** Policy gate (Phase 10c). Default: allow all. */
-  isBlockedByPolicy?: (id: PluginId) => boolean;
+  /** Policy gate (Phase 10c). Default: allow all. May be async. */
+  isBlockedByPolicy?: (id: PluginId) => boolean | Promise<boolean>;
   /** Persist the whole closure to enabledPlugins in ONE write (step 5). */
   setEnabled: (ids: PluginId[], enabled: boolean) => Promise<void>;
   /** Cross-marketplace allowlist for the root marketplace (Phase 10c). */
@@ -62,7 +62,7 @@ export class PluginInstaller {
     }
     // 2. root policy guard
     const blocked = this.deps.isBlockedByPolicy ?? (() => false);
-    if (blocked(pluginId)) {
+    if (await blocked(pluginId)) {
       return { ok: false, error: `plugin ${pluginId} blocked by org policy` };
     }
     // 3. resolve dep closure
@@ -82,7 +82,7 @@ export class PluginInstaller {
 
     // 4. re-check every closure member (fail-closed)
     for (const id of closure) {
-      if (blocked(id)) {
+      if (await blocked(id)) {
         return { ok: false, error: `dependency ${id} blocked by org policy` };
       }
     }
