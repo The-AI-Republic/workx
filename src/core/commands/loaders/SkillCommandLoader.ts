@@ -25,7 +25,9 @@ export class SkillCommandLoader {
       type: 'prompt',
       name: meta.name,
       description: meta.description,
-      loadedFrom: 'skill',
+      // Track 10: skills owned by a plugin surface as `loadedFrom: 'plugin'`
+      // so SOURCE_PRECEDENCE puts them after builtin + user skills.
+      loadedFrom: meta.pluginId ? 'plugin' : 'skill',
       whenToUse: meta.whenToUse,
       argumentHint: meta.argumentHint,
       userInvocable: meta.userInvocable ?? true,

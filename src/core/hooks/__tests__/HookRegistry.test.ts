@@ -81,6 +81,37 @@ describe('HookRegistry', () => {
       expect(registry.getMatchingHooks('PreToolUse')).toHaveLength(0);
       expect(registry.getMatchingHooks('PostToolUse')).toHaveLength(1);
     });
+
+    it('Track 10: removes only the matching plugin variant by pluginId', () => {
+      registry.register('PreToolUse', command, { type: 'plugin', pluginId: 'a' });
+      registry.register('PreToolUse', command, { type: 'plugin', pluginId: 'b' });
+      registry.register('PreToolUse', command, 'config');
+      registry.register('PreToolUse', command, 'session');
+
+      const removed = registry.unregisterBySource({ type: 'plugin', pluginId: 'a' });
+      expect(removed).toBe(1);
+
+      const remaining = registry.getMatchingHooks('PreToolUse');
+      expect(remaining).toHaveLength(3);
+      const sources = remaining.map((h) => h.source);
+      expect(sources).toEqual(
+        expect.arrayContaining([
+          'config',
+          'session',
+          { type: 'plugin', pluginId: 'b' },
+        ]),
+      );
+    });
+
+    it('Track 10: plugin-source removal does not touch string-source hooks', () => {
+      registry.register('PreToolUse', command, 'config');
+      registry.register('PreToolUse', command, { type: 'plugin', pluginId: 'a' });
+
+      expect(registry.unregisterBySource({ type: 'plugin', pluginId: 'a' })).toBe(1);
+      const remaining = registry.getMatchingHooks('PreToolUse');
+      expect(remaining).toHaveLength(1);
+      expect(remaining[0].source).toBe('config');
+    });
   });
 
   describe('registerFromConfig', () => {
