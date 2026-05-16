@@ -536,7 +536,136 @@ export class ServerAgentBootstrap {
         }
       });
 
-      pluginsDeps = { pluginRegistry: registry };
+      // Phase 10b: marketplace + git-based install/uninstall (server has
+      // system git). Marketplace catalogue is fetched via a shallow clone
+      // into a temp dir, then marketplace.json read out.
+      const { MarketplaceRegistry } = await import('@/core/plugins/MarketplaceRegistry');
+      const { PluginInstaller, PluginUninstaller } = await import('@/core/plugins/PluginInstaller');
+      const { InstalledPluginsStore } = await import('@/core/plugins/installedPlugins');
+      const { createGitFetchPlugin } = await import('@/core/plugins/pluginFetch');
+      const {
+        nodeGitRunner, nodeMkTempDir, nodeWalkFiles, nodeReadBytes,
+        nodeRemoveDir, nodeResolveHeadSha,
+      } = await import('@/server/storage/nodeGitRunner');
+      const nodePath = await import('node:path');
+
+      const marketplaces = new MarketplaceRegistry({
+        fetchCatalogue: async (sourceRef: string) => {
+          const tmp = await nodeMkTempDir();
+          try {
+            const { gitClone } = await import('@/core/plugins/git');
+            await gitClone(nodeGitRunner, { url: sourceRef, targetPath: tmp });
+            const raw = await nodeReadBytes(nodePath.join(tmp, 'marketplace.json'));
+            return new TextDecoder().decode(raw);
+          } finally {
+            await nodeRemoveDir(tmp).catch(() => undefined);
+          }
+        },
+      });
+
+      const installedStore = new InstalledPluginsStore({
+        readText: async (p: string) => {
+          try {
+            return new TextDecoder().decode(await nodeReadBytes(p));
+          } catch {
+            return null;
+          }
+        },
+        writeText: async (p: string, c: string) => {
+          const fsmod = await import('node:fs');
+          await fsmod.promises.mkdir(nodePath.dirname(p), { recursive: true });
+          await fsmod.promises.writeFile(p, c, 'utf-8');
+        },
+        filePath: nodePath.join(os.homedir(), '.browserx', 'installed_plugins_v2.json'),
+      });
+
+      const fetchPlugin = createGitFetchPlugin(
+        {
+          run: nodeGitRunner,
+          mkTempDir: nodeMkTempDir,
+          walkFiles: nodeWalkFiles,
+          readBytes: nodeReadBytes,
+          removeDir: nodeRemoveDir,
+          resolveHeadSha: nodeResolveHeadSha,
+        },
+        (id) => marketplaces.lookup(id)?.entry ?? null,
+      );
+
+      const installer = new PluginInstaller({
+        marketplaces,
+        provider,
+        installed: installedStore,
+        registry,
+        fetchPlugin,
+        setEnabled: async (ids, en) => {
+          const cur = agentConfig.getConfig().enabledPlugins ?? {};
+          const next = { ...cur };
+          for (const i of ids) next[i] = en;
+          agentConfig.updateConfig({ enabledPlugins: next });
+        },
+        getAlreadyEnabled: () =>
+          new Set(
+            Object.entries(agentConfig.getConfig().enabledPlugins ?? {})
+              .filter(([, v]) => v === true)
+              .map(([k]) => k),
+          ),
+      });
+
+      // review B2/B3: uninstall must orphan-mark (not hard-delete); the
+      // 7-day GC sweep removes dirs later. Wire a PluginCache over Node fs.
+      const { PluginCache } = await import('@/core/plugins/PluginCache');
+      const fsmod = await import('node:fs');
+      const pluginCache = new PluginCache(
+        nodePath.join(os.homedir(), '.browserx'),
+        {
+          readText: async (p: string) => {
+            try {
+              return await fsmod.promises.readFile(p, 'utf-8');
+            } catch {
+              return null;
+            }
+          },
+          writeText: async (p: string, c: string) => {
+            await fsmod.promises.mkdir(nodePath.dirname(p), { recursive: true });
+            await fsmod.promises.writeFile(p, c, 'utf-8');
+          },
+          removeDir: nodeRemoveDir,
+          removeFile: async (p: string) => {
+            await fsmod.promises.rm(p, { force: true });
+          },
+          listEntries: async (p: string) => {
+            try {
+              return await fsmod.promises.readdir(p);
+            } catch {
+              return [];
+            }
+          },
+          pathExists: async (p: string) => {
+            try {
+              await fsmod.promises.stat(p);
+              return true;
+            } catch {
+              return false;
+            }
+          },
+        },
+      );
+
+      const uninstaller = new PluginUninstaller({
+        provider,
+        installed: installedStore,
+        registry,
+        markOrphaned: (installPath: string) =>
+          pluginCache.markOrphaned(installPath),
+        setEnabled: async (ids, en) => {
+          const cur = agentConfig.getConfig().enabledPlugins ?? {};
+          const next = { ...cur };
+          for (const i of ids) next[i] = en;
+          agentConfig.updateConfig({ enabledPlugins: next });
+        },
+      });
+
+      pluginsDeps = { pluginRegistry: registry, marketplaces, installer, uninstaller };
       // Expose to agentFactory so sessions created after this point bind
       // their per-session hook + sub-agent registries to enabled plugins.
       this.pluginRegistry = registry;

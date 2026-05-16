@@ -22,6 +22,10 @@ import { getPluginErrorMessage } from '@/core/plugins/PluginErrors';
 
 export interface PluginsServiceDeps {
   pluginRegistry: PluginRegistry;
+  /** Phase 10b — present when the runtime can fetch from marketplaces. */
+  marketplaces?: import('@/core/plugins/MarketplaceRegistry').MarketplaceRegistry;
+  installer?: import('@/core/plugins/PluginInstaller').PluginInstaller;
+  uninstaller?: import('@/core/plugins/PluginInstaller').PluginUninstaller;
 }
 
 /** Lightweight row for the `/plugin list` table. */
@@ -170,6 +174,57 @@ export function createPluginsServices(
           error: e instanceof Error ? e.message : String(e),
         };
       }
+    },
+
+    // ── Phase 10b: marketplace + install/uninstall ──────────────────
+
+    'plugins.marketplace.add': async (params) => {
+      if (!deps.marketplaces) {
+        return { success: false, error: 'marketplaces not available on this runtime' };
+      }
+      const { url } = params as { url: string };
+      const res = await deps.marketplaces.add(url);
+      return res.ok
+        ? { success: true, name: res.name }
+        : { success: false, error: res.error };
+    },
+
+    'plugins.marketplace.list': async () => {
+      return deps.marketplaces ? deps.marketplaces.list() : [];
+    },
+
+    'plugins.marketplace.remove': async (params) => {
+      if (!deps.marketplaces) {
+        return { success: false, error: 'marketplaces not available on this runtime' };
+      }
+      const { name } = params as { name: string };
+      return { success: deps.marketplaces.remove(name) };
+    },
+
+    'plugins.install': async (params) => {
+      if (!deps.installer) {
+        return { success: false, error: 'plugin install not available on this runtime' };
+      }
+      const { id, scope } = params as { id: string; scope?: string };
+      const res = await deps.installer.install(
+        id,
+        (scope as 'user' | 'project' | 'local') ?? 'user',
+      );
+      return res.ok
+        ? { success: true, installed: res.installed }
+        : { success: false, error: res.error };
+    },
+
+    'plugins.uninstall': async (params) => {
+      if (!deps.uninstaller) {
+        return { success: false, error: 'plugin uninstall not available on this runtime' };
+      }
+      const { id, scope } = params as { id: string; scope?: string };
+      const res = await deps.uninstaller.uninstall(
+        id,
+        (scope as 'user' | 'project' | 'local') ?? 'user',
+      );
+      return res.ok ? { success: true } : { success: false, error: res.error };
     },
   };
 }
