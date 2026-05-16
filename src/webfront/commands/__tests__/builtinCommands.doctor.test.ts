@@ -20,6 +20,7 @@ describe('builtin /doctor', () => {
       onNewConversation: vi.fn(),
       onCommandOutput: vi.fn(),
       onOpenSettings: vi.fn(),
+      onSubmitText: vi.fn(),
       onOpenDoctor,
       onOpenRewindSelector: vi.fn(),
     });

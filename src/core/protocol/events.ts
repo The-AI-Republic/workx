@@ -2,6 +2,7 @@
  * Event types
  */
 
+import type { PlanReviewPlan } from '../../tools/planReview/types';
 import type {
   ReviewRequest,
   ResponseItem,
@@ -572,6 +573,8 @@ export interface ApprovalRequestedEvent {
   explanation: string;
   command?: string;
   timeout?: number;
+  /** Track 14: structured plan for the editable Plan Review card. */
+  plan?: PlanReviewPlan;
 }
 
 /**

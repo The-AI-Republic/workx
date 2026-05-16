@@ -146,6 +146,7 @@
       onOpenSettings: () => {
         push('/settings');
       },
+      onSubmitText: (text: string) => onSubmit(text),
       onOpenRewindSelector: () => {
         onOpenRewindSelector?.();
       },

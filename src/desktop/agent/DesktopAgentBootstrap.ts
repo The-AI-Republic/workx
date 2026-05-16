@@ -38,7 +38,8 @@ import {
   onPolicyChanged,
   assessAndRecord,
 } from '@/core/config/policy';
-import { configurePromptComposer, registerPromptExtension } from '@/core/PromptLoader';
+import { configurePromptComposer, registerPromptExtension, setDynamicRuntimeContext } from '@/core/PromptLoader';
+import { registerPlanReviewTools } from '@/tools/planReview/PlanReviewTools';
 import type { RuntimeContext } from '@/prompts/PromptComposer';
 import { SkillRegistry } from '@/core/skills/SkillRegistry';
 import { SkillDomainFilter } from '@/core/skills/SkillDomainFilter';
@@ -306,6 +307,21 @@ export class DesktopAgentBootstrap {
     }
 
     toolRegistry.setApprovalGate(approvalGate);
+
+    // Plan Review (Track 14): closure-wired here (ToolContext has no
+    // registry/manager handle). Desktop has the working core-manager
+    // approval round-trip, so it is always registered.
+    await registerPlanReviewTools({
+      registry: toolRegistry,
+      approvalManager,
+      approvalGate,
+      platformId: 'desktop',
+      recordPlanArtifact: (payload) =>
+        agent.getSession().persistRolloutItems([{ type: 'plan_artifact', payload }]),
+    });
+    setDynamicRuntimeContext(() => ({
+      planReviewActive: toolRegistry.isPlanReviewActive(),
+    }));
 
     // Desktop mode: browser tools come from MCP — enable mcpTools
     const agentConfig = await AgentConfig.getInstance();
