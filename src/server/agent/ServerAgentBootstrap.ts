@@ -435,7 +435,13 @@ export class ServerAgentBootstrap {
         registry: this.registry,
         handleConfigUpdate: () => this.handleConfigUpdate(),
       } : undefined,
-      diagnostics: { buildCtx: () => this.buildDiagnosticContext() },
+      diagnostics: {
+        buildCtx: () => this.buildDiagnosticContext(),
+        heapdump: async () => {
+          const { performHeapDump } = await import('../diagnostics/heapdump');
+          return performHeapDump();
+        },
+      },
     });
 
     console.log(`[ServerAgentBootstrap] Registered ${count} service handlers`);

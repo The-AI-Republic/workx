@@ -21,6 +21,15 @@ export interface DiagnosticsServiceDeps {
   /** Assembles the platform's diagnostic context. May be async (e.g. the
    *  server resolves the MCP manager singleton lazily). */
   buildCtx: () => DiagnosticContext | Promise<DiagnosticContext>;
+  /** Server-only: capture a heap dump. Injected by the server bootstrap so
+   *  `core/` never imports node `v8`/`fs`; absent ⇒ the handler is not
+   *  registered (extension/desktop). */
+  heapdump?: () => Promise<{
+    success: boolean;
+    heapPath?: string;
+    diagPath?: string;
+    error?: string;
+  }>;
 }
 
 export function createDiagnosticsServices(
@@ -30,10 +39,17 @@ export function createDiagnosticsServices(
   // never register the service without its checks.
   registerCoreDiagnosticChecks();
 
-  return {
+  const handlers: Record<string, ServiceHandler> = {
     'diagnostics.report': async () => {
       const ctx = await deps.buildCtx();
       return redactDoctorReport(await buildDoctorReport(ctx));
     },
   };
+
+  if (deps.heapdump) {
+    const heapdump = deps.heapdump;
+    handlers['diagnostics.heapdump'] = async () => heapdump();
+  }
+
+  return handlers;
 }
