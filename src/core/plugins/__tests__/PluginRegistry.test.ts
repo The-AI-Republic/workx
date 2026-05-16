@@ -246,4 +246,38 @@ describe('PluginRegistry — bootstrap + reconcile + evicted', () => {
     const reg = new PluginRegistry(ctx.deps);
     await expect(reg.reload()).rejects.toThrow(/background tasks running/);
   });
+
+  it('reload preserves bundled/managed plugins the provider cannot re-supply', async () => {
+    const ctx = makeDeps();
+    const reg = new PluginRegistry(ctx.deps);
+
+    // A provider-discoverable filesystem plugin ...
+    reg.register(makePlugin('p@local'));
+    // ... and a bundled plugin the provider knows nothing about.
+    const bundled: LoadedPlugin = {
+      ...makePlugin('b@local'),
+      id: 'b@bundled',
+      source: { type: 'bundled' },
+      scope: 'managed',
+    };
+    bundled.manifest.name = 'b';
+    reg.register(bundled);
+
+    await reg.enable('p@local');
+    await reg.enable('b@bundled');
+
+    // Provider re-scan returns ONLY the filesystem plugin.
+    ctx.deps.provider.listMeta = vi.fn(async () => [makePlugin('p@local').manifest]);
+    ctx.deps.provider.load = vi.fn(async () => makePlugin('p@local'));
+
+    await reg.reload();
+
+    // Without preservation, b@bundled would be wiped by plugins.clear()
+    // and never re-registered (it isn't in the provider).
+    const b = reg.getPlugin('b@bundled');
+    expect(b).toBeDefined();
+    expect(b!.state.status).toBe('enabled');
+    // The provider-backed plugin is still rescanned + re-enabled.
+    expect(reg.getPlugin('p@local')?.state.status).toBe('enabled');
+  });
 });

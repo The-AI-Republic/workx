@@ -165,3 +165,39 @@ pub fn plugins_path_exists(path: String) -> Result<bool, String> {
     let resolved = resolve_path(&path)?;
     Ok(resolved.exists())
 }
+
+#[cfg(test)]
+mod tests {
+    //! Track 10 (review B #1): resolve_path must confine every resolved
+    //! path under `~/.browserx` and reject `..`, even for absolute inputs
+    //! that contain no `..` (the bug the `..`-only check missed).
+    use super::resolve_path;
+
+    #[test]
+    fn accepts_paths_under_the_plugin_data_dir() {
+        assert!(resolve_path("~/.browserx/plugins").is_ok());
+        assert!(resolve_path("~/.browserx/plugins/foo/skills/SKILL.md").is_ok());
+        // staging-dir + rename install target
+        assert!(resolve_path("~/.browserx/plugins/foo.staging-123").is_ok());
+    }
+
+    #[test]
+    fn rejects_absolute_paths_outside_the_data_dir() {
+        // No `..` anywhere — the old check would have let these through.
+        assert!(resolve_path("/etc/passwd").is_err());
+        assert!(resolve_path("~/.ssh/id_rsa").is_err());
+        assert!(resolve_path("~/Documents/secret.txt").is_err());
+    }
+
+    #[test]
+    fn rejects_parent_dir_traversal() {
+        assert!(resolve_path("~/.browserx/plugins/../../etc").is_err());
+        assert!(resolve_path("~/.browserx/../.ssh").is_err());
+    }
+
+    #[test]
+    fn prefix_check_is_component_wise_not_string_prefix() {
+        // A sibling that string-starts-with the root must NOT be accepted.
+        assert!(resolve_path("~/.browserx-evil/x").is_err());
+    }
+}
