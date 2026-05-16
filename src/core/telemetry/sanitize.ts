@@ -49,6 +49,17 @@ export function numericOnly(value: unknown): number | undefined {
 }
 
 /**
+ * A model identifier (e.g. `gemini-2.0-flash`). Provider-fixed, non-PII —
+ * analogous to a built-in tool name. Safe to log as a dimension.
+ */
+export function modelId(
+  name: string | undefined,
+): TelemetryMeta_VERIFIED_NOT_CONTENT | undefined {
+  if (!name) return undefined;
+  return name as unknown as TelemetryMeta_VERIFIED_NOT_CONTENT;
+}
+
+/**
  * The constructor name of an error — never its message (which may carry
  * URLs/paths/secrets). Safe to log as a coarse failure dimension.
  */

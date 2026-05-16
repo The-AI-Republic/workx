@@ -47,11 +47,30 @@ export type ExecutionCompleteHandler = (scheduleEventId: string) => Promise<void
 /**
  * Event emitter for execution status changes
  */
+/**
+ * Machine-readable cause for a scheduled-execution failure/degradation.
+ * Closed enum (privacy-clean) so telemetry can answer "why did a scheduled
+ * job abort" — including the pre-session cases the scheduler was previously
+ * silent about. `concurrent`/`offline`/`missed` have no execution record at
+ * the point they occur and remain documented residue (not emitted yet).
+ */
+export type ExecutionFailureReason =
+  | 'session_create_failed'
+  | 'no_launcher'
+  | 'launcher_error'
+  | 'agent_error'
+  | 'stale_recovered'
+  | 'mutex_queued'
+  | 'offline'
+  | 'missed'
+  | 'concurrent';
+
 export type ExecutionEventEmitter = (event: {
   executionId: string;
   scheduleEventId: string;
   status: string;
   timestamp: number;
+  failureReason?: ExecutionFailureReason;
 }) => void;
 
 export class JobExecutor {
@@ -129,6 +148,9 @@ export class JobExecutor {
         const id = uuidv4();
         const record = createExecutionRecord(id, scheduleEventId, instanceTime, input);
         await this.executionStorage.createExecution(record);
+        // Telemetry: a deferral was previously silent (status 'pending' is
+        // never emitted). Surface it so operators see queue back-pressure.
+        this.emitEvent(id, scheduleEventId, 'pending', 'mutex_queued');
         return id;
       }
       this.isExecuting = true;
@@ -142,6 +164,7 @@ export class JobExecutor {
 
         // Create agent session
         let sessionId: string;
+        let sessionCreateFailed = false;
         if (this.registry && this.registry.canCreateSession()) {
           try {
             const session = await this.registry.createSession({ type: 'scheduled' });
@@ -150,6 +173,7 @@ export class JobExecutor {
           } catch (error) {
             console.error(`[JobExecutor] Failed to create session for execution ${executionId}:`, error);
             sessionId = `session_${uuidv4()}`;
+            sessionCreateFailed = true;
           }
         } else {
           sessionId = `session_${uuidv4()}`;
@@ -162,8 +186,14 @@ export class JobExecutor {
         await this.showNotification(scheduleEventId, instanceTime, input);
 
         // Emit running event before launch (launchJob catches errors and calls failExecution,
-        // which would emit 'failed' — so we must emit 'running' first)
-        this.emitEvent(executionId, scheduleEventId, 'running');
+        // which would emit 'failed' — so we must emit 'running' first).
+        // A swallowed session-create failure was previously invisible; tag it.
+        this.emitEvent(
+          executionId,
+          scheduleEventId,
+          'running',
+          sessionCreateFailed ? 'session_create_failed' : undefined,
+        );
 
         // Launch job
         await this.launchJob(executionId, sessionId);
@@ -209,7 +239,11 @@ export class JobExecutor {
   /**
    * Mark an execution as failed.
    */
-  async failExecution(executionId: string, error: string): Promise<void> {
+  async failExecution(
+    executionId: string,
+    error: string,
+    failureReason: ExecutionFailureReason = 'agent_error',
+  ): Promise<void> {
     const execution = await this.executionStorage.getExecution(executionId);
     if (!execution) throw new Error(`Execution not found: ${executionId}`);
     if (execution.status !== 'running') {
@@ -224,7 +258,7 @@ export class JobExecutor {
       completedAt: Date.now(),
     });
 
-    this.emitEvent(executionId, execution.scheduleEventId, 'failed');
+    this.emitEvent(executionId, execution.scheduleEventId, 'failed', failureReason);
 
     // Notify ScheduleManager to re-arm alarms (failed jobs don't break the chain)
     if (this.executionCompleteHandler) {
@@ -310,6 +344,7 @@ export class JobExecutor {
     try {
       // Create agent session
       let sessionId: string;
+      let sessionCreateFailed = false;
       if (this.registry && this.registry.canCreateSession()) {
         try {
           const session = await this.registry.createSession({ type: 'scheduled' });
@@ -317,6 +352,7 @@ export class JobExecutor {
           this.executionSessions.set(record.id, sessionId);
         } catch {
           sessionId = `session_${uuidv4()}`;
+          sessionCreateFailed = true;
         }
       } else {
         sessionId = `session_${uuidv4()}`;
@@ -328,7 +364,12 @@ export class JobExecutor {
         startedAt: Date.now(),
       });
 
-      this.emitEvent(record.id, record.scheduleEventId, 'running');
+      this.emitEvent(
+        record.id,
+        record.scheduleEventId,
+        'running',
+        sessionCreateFailed ? 'session_create_failed' : undefined,
+      );
 
       // Show notification with the stored input
       await this.showNotification(record.scheduleEventId, record.instanceTime, record.input);
@@ -356,7 +397,12 @@ export class JobExecutor {
         error: 'Execution interrupted: app was restarted while job was running',
         completedAt: Date.now(),
       });
-      this.emitEvent(execution.id, execution.scheduleEventId, 'failed');
+      this.emitEvent(
+        execution.id,
+        execution.scheduleEventId,
+        'failed',
+        'stale_recovered',
+      );
     }
   }
 
@@ -396,11 +442,18 @@ export class JobExecutor {
         }
         await this.jobLauncher(executionId, sessionId, agent);
       } else {
+        // Previously silent: the job would sit 'running' forever. Properly
+        // fail it so the cause is visible (telemetry + storage).
         console.warn('[JobExecutor] No job launcher configured — execution will not run');
+        await this.failExecution(
+          executionId,
+          'No job launcher configured',
+          'no_launcher',
+        );
       }
     } catch (error) {
       console.error(`[JobExecutor] Job launcher failed for execution ${executionId}:`, error);
-      await this.failExecution(executionId, `Job launcher error: ${error instanceof Error ? error.message : String(error)}`);
+      await this.failExecution(executionId, `Job launcher error: ${error instanceof Error ? error.message : String(error)}`, 'launcher_error');
     }
   }
 
@@ -417,13 +470,19 @@ export class JobExecutor {
     }
   }
 
-  private emitEvent(executionId: string, scheduleEventId: string, status: string): void {
+  private emitEvent(
+    executionId: string,
+    scheduleEventId: string,
+    status: string,
+    failureReason?: ExecutionFailureReason,
+  ): void {
     if (this.eventEmitter) {
       this.eventEmitter({
         executionId,
         scheduleEventId,
         status,
         timestamp: Date.now(),
+        ...(failureReason ? { failureReason } : {}),
       });
     }
   }

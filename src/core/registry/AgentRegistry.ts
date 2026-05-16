@@ -17,6 +17,7 @@ import { SemanticElementEnhancer } from '../approval/enhancers/SemanticElementEn
 import { ApprovalConfigStorage } from '../approval/ApprovalConfigStorage';
 import { getConfigStorage } from '../storage/ConfigStorageProvider';
 import { getChannelManager } from '../channels/ChannelManager';
+import { withTelemetry } from '../telemetry/TelemetryBridge';
 import { TabManager } from '../TabManager';
 import type { InitialHistory } from '../session/state/types';
 import type {
@@ -225,16 +226,21 @@ export class AgentRegistry {
       session.setStorage(this._storage);
     }
 
-    // Wire event dispatcher with the unified sessionId
+    // Wire event dispatcher with the unified sessionId.
+    // Decorate with the telemetry bridge: it observes the per-session event
+    // chokepoint (allowlist-only, privacy-typed, no-op until a sink+gate are
+    // wired) and ALWAYS forwards to the real dispatcher. Zero Track-01 change.
     if (this._registryConfig.eventDispatcherFactory) {
-      agent.setEventDispatcher(this._registryConfig.eventDispatcherFactory(session.sessionId));
+      agent.setEventDispatcher(
+        withTelemetry(this._registryConfig.eventDispatcherFactory(session.sessionId)),
+      );
     } else {
       // Extension path: route events through ChannelManager
-      agent.setEventDispatcher((event) => {
+      agent.setEventDispatcher(withTelemetry((event) => {
         import('@/core/channels/ChannelManager').then(({ getChannelManager }) => {
           getChannelManager().broadcastEvent({ msg: event.msg, sessionId: session.sessionId }).catch(() => {});
         }).catch(() => {});
-      });
+      }));
     }
 
     // Attach agent to session

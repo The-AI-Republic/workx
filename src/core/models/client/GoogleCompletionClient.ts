@@ -4,7 +4,7 @@
  */
 
 import { GoogleGenAI } from '@google/genai';
-import { GeminiLogger } from '../../../utils/logger';
+import { logEvent, modelId } from '../../telemetry';
 import type { ResponseEvent, Prompt, ModelProviderInfo } from '../types/ResponsesAPI';
 import { ModelClient, ModelClientError, type RetryConfig, type CompletionRequest, type CompletionResponse } from '../ModelClient';
 import { get_full_instructions, get_formatted_input } from '../PromptHelpers';
@@ -211,9 +211,10 @@ export class GoogleCompletionClient extends ModelClient {
   }
 
   async stream(prompt: Prompt): Promise<ResponseStream> {
-    // Reset state
-    GeminiLogger.stateReset();
-    GeminiLogger.streamStart(this.currentModel, 'conversation-' + Date.now());
+    // Centralized telemetry (no-op unless a sink + privacy gate are wired).
+    // Replaces the legacy GeminiLogger console tracer; `GeminiLogger`
+    // remains available as the opt-in GEMINI_DEBUG console-only path.
+    logEvent('gemini.stream_start', { model: modelId(this.currentModel) });
 
     // Create stream and start processing asynchronously
     const stream = new ResponseStream(undefined, { eventTimeout: 1800000 });

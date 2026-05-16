@@ -31,6 +31,7 @@ export {
   boundedEnum,
   numericOnly,
   errorClass,
+  modelId,
 } from './sanitize';
 
 export {
