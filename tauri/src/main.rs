@@ -9,6 +9,7 @@ mod keychain_commands;
 mod mcp_manager;
 mod oauth_server;
 mod sandbox;
+mod plugins_commands;
 mod rollout_db;
 mod scheduler_commands;
 mod skills_commands;
@@ -399,6 +400,13 @@ fn main() {
             skills_commands::skills_read_file,
             skills_commands::skills_write_file,
             skills_commands::skills_remove_dir,
+            plugins_commands::plugins_ensure_dir,
+            plugins_commands::plugins_list_entries,
+            plugins_commands::plugins_read_file,
+            plugins_commands::plugins_write_file,
+            plugins_commands::plugins_remove_dir,
+            plugins_commands::plugins_rename,
+            plugins_commands::plugins_path_exists,
             // SQLite storage commands
             db_storage::storage_init,
             db_storage::storage_close,

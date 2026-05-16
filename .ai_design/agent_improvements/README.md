@@ -37,9 +37,9 @@ Tracks 12–25 come from deeper claudy↔browserx comparison (2026-05-14) target
 | 13 | [Input Pipeline & Browser-Native Mentions](./13_input_pipeline_mentions/design.md) | **P0** | Large | Unified input funnel + `@tab`/`@page`/`@selection` + screenshot paste. Reuses the existing `UserPromptSubmit` hook (Track 01) — funnel precedes it; relocates parsing out of `MessageInput.svelte`. Code-grounded design. |
 | 14 | [Plan Review](./14_plan_review/design.md) | P1 | Medium | Propose-plan → freeze all mutations → single approval. Orthogonal gate state (NOT an `ApprovalMode` value — "mode" reserved by #223/#228) keyed off Track 02 metadata; classification audit completed; headless registration-gated off (no server core-manager round-trip). Was "Plan Mode". Code-grounded. |
 | 15 | [Conversation Rewind & Fork](./15_conversation_rewind/design.md) | P1 | **M** (→ M–L e2e) | Rewind/fork. Runtime end-to-end-correctness pass (2026-05-15): `forked` substrate **scaffolded but broken**; **P0 fixes** (each a prescribed line + test) gate the pure slice fn + selector UI + `summarize_up_to` + server RPC + scheduler resume. Runtime trace caught 3 defects "wired seams" miss — dangling tool_use on the scheduler checkpoint (D10/D11 `call_id` trim), silent model/approval reset (D12 resume-parity), stale live-rollout read (D13 flush) — all closed. Decisions D1–D13 resolved, continuation flow traced — **hand-off-ready, functionally complete e2e**. Effort **up** (S–M → M). Code-grounded design. |
-| 16 | [Telemetry & Analytics](./16_telemetry_analytics/design.md) | P1 | Medium | No-op-by-default, privacy-typed event sink. **Bridges the Track 01 event bus** instead of re-instrumenting call sites (browserx advantage over claudy). Code-grounded design. |
+| 16 | [Centralized Telemetry & Analytics](./16_telemetry_analytics/design.md) | P1 | M–L | **IMPLEMENTATION-READY, end-to-end verification-grounded (2026-05-15).** One no-op-by-default, privacy-typed contract subsuming browserx's 4 scattered surfaces. Real seam **verified**: a decorator on `RepublicAgent.emitEvent`'s per-session `eventDispatcher` (`AgentRegistry.ts:230/233`), **zero Track-01 change** (the earlier "subscribe to the bus" framing was false). Concrete allowlist, privacy model vs real `AgentConfig`, per-platform sinks with verified APIs, end-to-end DoD + test strategy. Every load-bearing claim file:line-cited; UNVERIFIED items flagged. |
 | 17 | [Operational Diagnostics](./17_operational_diagnostics/design.md) | P1 | Small–Medium | Cross-platform `/doctor` + heapdump. Reuses/extends existing `HealthStatus`/`HealthMonitor` (status is binary `_agentReady` today); node-only heapdump. Code-grounded design. |
-| 18 | [USD Cost Tracking](./18_usd_cost_tracking/design.md) | P1 | Medium | Numeric `provider:model` cost table (NOT runtime prose-parsing) → per-turn cost on `TaskCompleteEvent`, folded once at `persistTokenUsage` (per-engine self-report, not claudy recursion) + cumulative in `SessionState` + `/cost` + server per-job cost & per-day budget cap. **Independently shippable** — decoupled from Track 12 (the `Session.ts:1614` `TokenCount` `cost` rider is optional coordination, not a dependency). Implementation-ready: `design.md` + `tasks.md`. |
+| 18 | [USD Cost Tracking](./18_usd_cost_tracking/design.md) ✅ DONE (PR #231, merged 2026-05-16) | P1 | Medium | Numeric `provider:model` cost table (NOT runtime prose-parsing) → per-turn cost on `TaskCompleteEvent`, folded once at `persistTokenUsage` (per-engine self-report, not claudy recursion) + cumulative in `SessionState` + `/cost` + server per-job cost & per-day budget cap. **Independently shippable** — decoupled from Track 12 (the `Session.ts:1614` `TokenCount` `cost` rider is optional coordination, not a dependency). MVP phases 1–4 shipped; telemetry (3.7, Track 16 absent), x402 seam (4.6, Track 23 absent) and mid-run abort (4.7, non-MVP) deliberately deferred — see `tasks.md`. |
 | 19 | [Versioned Migration Framework](./19_migration_framework/design.md) | P1 | Small | Version-gated registry; absorbs the un-versioned every-load `migrateApprovalConfig` (`AgentConfig.ts:77`) as migration #1; distinct from `IndexedDBAdapter` DB-version. Code-grounded design. |
 | 20 | [Managed / Policy Settings Tier](./20_managed_policy_settings/design.md) | P1 | Medium (full MDM P3/L) | Policy tier in **both** config systems + explicit `lockedKeys`; shared ETag/poll/fail-open remote fetcher (reused by Tracks 12/16). Code-grounded design. |
 | 21 | [Remote Bridge & Relay](./21_remote_bridge_relay/design.md) | P1 | Large | NAT-free relay + viewer/driver. Replay rides **existing** `nextSeq` + `HandshakeSnapshotProviders` (not new infra); relay gated on hosted infra; teleport P3. Code-grounded design. |
@@ -98,6 +98,12 @@ the single-track gaps in 26–32**. Filed as bug-report tracks (detail + fix in 
 > Sequencing: **34 (Critical)** → **33 / 37 / 35 (P1)** → **36 (P2)**. Track 37 BUG-3's
 > `TieredEvictor` ordering must be decided jointly with Track 29 G3 + Track 32 Phase 5 (one
 > shared decision across all three — flagged in each doc).
+
+### Additional Research Tracks (2026-05-16)
+
+| # | Track | Priority | Effort | Value |
+|---|-------|----------|--------|-------|
+| 38 | [Keyboard Shortcut System](./38_keyboard_shortcut_system/design.md) | P1 | Medium | Centralize BrowserX shortcuts around action IDs, active contexts, resolver/display helpers, validation, and platform-specific extension/desktop mappings; selectively adopts claudy's keybinding architecture without terminal-specific assumptions. |
 
 ## Dependency Graph
 
@@ -159,6 +165,7 @@ T04 × T05b × T01 (Session/sub-agent)──> 34_int_extractor_task_seam (phanto
 T07 × T11 × T01  (reactive config)  ──> 35_int_reactive_config_staleness (stale client flag + mid-tool hook swap)
 T02 × T01        (parallel+approval)──> 36_int_concurrent_approval_serialization (duplicate prompts)
 T09 × T04 × store(persist+cache)    ──> 37_int_persisted_result_durability (blob vanishes under rollout pointer)
+claudy keybindings comparison       ──> 38_keyboard_shortcut_system (action IDs + contexts + validation + platform global mapping)
 
 Integration-fix order: 34 (Critical) → 33 / 37 / 35 (P1) → 36 (P2)
   (37 BUG-3 TieredEvictor ordering == 29 G3 == 32 P5 — ONE shared decision, no drift)

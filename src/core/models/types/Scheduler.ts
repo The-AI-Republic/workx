@@ -45,4 +45,15 @@ export interface JobResultRecord {
 
   /** Execution time in milliseconds */
   duration: number;
+
+  /**
+   * Track 18: USD cost for this job, computed once in core and read off the
+   * TaskComplete event (never recomputed server-side). Persists for free
+   * inside the opaque JobResultRecord JSON blob (no schema/migration).
+   * Optional so pre-Track-18 execution rows remain valid.
+   */
+  costUSD?: number;
+
+  /** Track 18: true if any turn was priced via the fallback rate. */
+  costEstimated?: boolean;
 }

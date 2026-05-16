@@ -35,7 +35,6 @@ import {
   assessAndRecord,
   redactSecrets,
 } from '@/core/config/policy';
-import { emitLog } from '../handlers/logs';
 import { SessionIndex } from '../persistence/SessionIndex';
 import { TranscriptStore } from '../persistence/TranscriptStore';
 import { BackupManager } from '../persistence/backup';
@@ -69,6 +68,7 @@ import { registerLogsHandlers } from '../handlers/logs';
 import { registerExecHandlers } from '../handlers/exec';
 import { registerSchedulerHandlers } from '../handlers/scheduler';
 import { registerCredentialsHandlers } from '../handlers/credentials';
+import { emitLog } from '../handlers/logs';
 
 // Scheduler
 import { ServerScheduleStorage } from '../scheduler/ServerScheduleStorage';
@@ -93,6 +93,12 @@ let _instance: ServerAgentBootstrap | null = null;
 
 export class ServerAgentBootstrap {
   private registry: AgentRegistry | null = null;
+  // Track 10: set in registerServices; read lazily by agentFactory to bind
+  // per-session hook/agent plugin contributions. Null until services
+  // register (the initial primary session, created before that, gets
+  // global slots only — hooks/agents apply on the next session or
+  // /plugin reload, matching claudy's asymmetric enable semantics).
+  private pluginRegistry: import('@/core/plugins/PluginRegistry').PluginRegistry | null = null;
   private channel: ServerChannel | null = null;
   private sessionIndex: SessionIndex | null = null;
   private transcriptStore: TranscriptStore | null = null;
@@ -222,8 +228,36 @@ export class ServerAgentBootstrap {
           if (engine) {
             try {
               const { registerSubAgentTool } = await import('@/tools/AgentTool/register');
-              await registerSubAgentTool(engine);
+              const subAgentRunner = await registerSubAgentTool(engine);
               console.log('[ServerAgentBootstrap] sub_agent tool registered');
+
+              // Track 10: bind this session's hook + sub-agent registries to
+              // currently-enabled plugins. Skills + MCP are global (handled
+              // by the global PluginRegistry's slot loaders); hooks + agents
+              // are per-session and bound here.
+              if (this.pluginRegistry) {
+                try {
+                  const { PluginSessionBinder } = await import('@/core/plugins/PluginSessionBinder');
+                  const { nodeReadFile, nodeListDirs } = await import('@/server/storage/nodePluginFs');
+                  const binder = new PluginSessionBinder({
+                    hookRegistry: agent.getHookRegistry(),
+                    subAgentRunner,
+                    readFile: nodeReadFile,
+                    listDirs: nodeListDirs,
+                  });
+                  const enabled = this.pluginRegistry
+                    .getPlugins()
+                    .filter((p) => p.state.status === 'enabled');
+                  await binder.applyEnabledPlugins(enabled);
+                  // Register so a later /plugin disable prunes this session
+                  // immediately (claudy gh-36995). Teardown on session end is
+                  // a documented follow-up; a stale binder for an ended
+                  // session is a harmless no-op on prune.
+                  this.pluginRegistry.registerSessionBinder(binder);
+                } catch (bindErr) {
+                  console.warn('[ServerAgentBootstrap] plugin session bind failed (non-fatal):', bindErr);
+                }
+              }
             } catch (err) {
               const errMsg = err instanceof Error ? err.message : String(err);
               console.warn('[ServerAgentBootstrap] sub_agent tool registration failed (non-fatal):', err);
@@ -491,10 +525,227 @@ export class ServerAgentBootstrap {
       console.warn('[ServerAgentBootstrap] SkillRegistry not available for service registration:', error);
     }
 
+    // Track 10: plugin registry. Server v1 wires the globally-reachable
+    // slots — skills (the same SkillRegistry the skills service uses) and
+    // MCP (the singleton MCPManager). Hooks / agents / commands are
+    // per-session (created in agentFactory) and propagate via a documented
+    // follow-up; PluginRegistry surfaces them as capability gaps for now.
+    let pluginsDeps: import('@/core/services').PluginsServiceDeps | undefined;
+    try {
+      const os = await import('node:os');
+      const path = await import('node:path');
+      const { NodePluginProvider } = await import('@/server/storage/NodePluginProvider');
+      const { nodeReadFile, nodeListDirs } = await import('@/server/storage/nodePluginFs');
+      const { PluginRegistry } = await import('@/core/plugins/PluginRegistry');
+      const { SkillSlotLoader } = await import('@/core/plugins/loaders/SkillSlotLoader');
+      const { McpSlotLoader } = await import('@/core/plugins/loaders/McpSlotLoader');
+      const { AgentConfig } = await import('@/config/AgentConfig');
+
+      const pluginsRoot = path.join(os.homedir(), '.browserx', 'plugins');
+      const provider = new NodePluginProvider(pluginsRoot);
+      await provider.initialize();
+
+      const agentConfig = await AgentConfig.getInstance();
+
+      const registry = new PluginRegistry({
+        provider,
+        skillSlot: skillsDeps
+          ? new SkillSlotLoader({
+              skillRegistry: skillsDeps.skillRegistry as never,
+              readFile: nodeReadFile,
+              listDirs: nodeListDirs,
+            })
+          : undefined,
+        mcpSlot: mcpDeps
+          ? new McpSlotLoader(mcpDeps.mcpManager as never)
+          : undefined,
+        // hooks / agents / commands: per-session (agentFactory) — follow-up
+        getEnabledFromConfig: () => agentConfig.getConfig().enabledPlugins ?? {},
+        persistEnabled: async (id, enabled) => {
+          const current = agentConfig.getConfig().enabledPlugins ?? {};
+          agentConfig.updateConfig({
+            enabledPlugins: { ...current, [id]: enabled },
+          });
+        },
+        checkDestructiveOpAllowed: (op) => {
+          // Refuse reload while any background sub-agent task is running
+          // (design § Active-Session Semantics Rule 3).
+          if (op !== 'reload' || !this.registry) return null;
+          for (const s of this.registry.listSessions()) {
+            const agentSession = this.registry.getSession(s.sessionId);
+            const active =
+              agentSession?.agent?.getSession?.()?.listActiveTasks?.() ?? [];
+            if (active.length > 0) {
+              return `Cannot reload: ${active.length} background task(s) running. /task stop <id> first.`;
+            }
+          }
+          return null;
+        },
+      });
+
+      // Discover + register from disk
+      const metas = await provider.listMeta();
+      for (const m of metas) {
+        try {
+          registry.register(await provider.load(`${m.name}@local`));
+        } catch (e) {
+          console.warn(`[ServerAgentBootstrap] plugin load ${m.name} failed:`, e);
+        }
+      }
+      await registry.bootstrapEnabledPlugins();
+
+      // React to external enabledPlugins mutations (settings UI / policy)
+      agentConfig.on('config-changed', (e: { section?: string }) => {
+        if (e.section === 'enabledPlugins') {
+          void registry.reconcileFromConfig();
+        }
+      });
+
+      // Phase 10b: marketplace + git-based install/uninstall (server has
+      // system git). Marketplace catalogue is fetched via a shallow clone
+      // into a temp dir, then marketplace.json read out.
+      const { MarketplaceRegistry } = await import('@/core/plugins/MarketplaceRegistry');
+      const { PluginInstaller, PluginUninstaller } = await import('@/core/plugins/PluginInstaller');
+      const { InstalledPluginsStore } = await import('@/core/plugins/installedPlugins');
+      const { createGitFetchPlugin } = await import('@/core/plugins/pluginFetch');
+      const {
+        nodeGitRunner, nodeMkTempDir, nodeWalkFiles, nodeReadBytes,
+        nodeRemoveDir, nodeResolveHeadSha,
+      } = await import('@/server/storage/nodeGitRunner');
+      const nodePath = await import('node:path');
+
+      const marketplaces = new MarketplaceRegistry({
+        fetchCatalogue: async (sourceRef: string) => {
+          const tmp = await nodeMkTempDir();
+          try {
+            const { gitClone } = await import('@/core/plugins/git');
+            await gitClone(nodeGitRunner, { url: sourceRef, targetPath: tmp });
+            const raw = await nodeReadBytes(nodePath.join(tmp, 'marketplace.json'));
+            return new TextDecoder().decode(raw);
+          } finally {
+            await nodeRemoveDir(tmp).catch(() => undefined);
+          }
+        },
+      });
+
+      const installedStore = new InstalledPluginsStore({
+        readText: async (p: string) => {
+          try {
+            return new TextDecoder().decode(await nodeReadBytes(p));
+          } catch {
+            return null;
+          }
+        },
+        writeText: async (p: string, c: string) => {
+          const fsmod = await import('node:fs');
+          await fsmod.promises.mkdir(nodePath.dirname(p), { recursive: true });
+          await fsmod.promises.writeFile(p, c, 'utf-8');
+        },
+        filePath: nodePath.join(os.homedir(), '.browserx', 'installed_plugins_v2.json'),
+      });
+
+      const fetchPlugin = createGitFetchPlugin(
+        {
+          run: nodeGitRunner,
+          mkTempDir: nodeMkTempDir,
+          walkFiles: nodeWalkFiles,
+          readBytes: nodeReadBytes,
+          removeDir: nodeRemoveDir,
+          resolveHeadSha: nodeResolveHeadSha,
+        },
+        (id) => marketplaces.lookup(id)?.entry ?? null,
+      );
+
+      const installer = new PluginInstaller({
+        marketplaces,
+        provider,
+        installed: installedStore,
+        registry,
+        fetchPlugin,
+        setEnabled: async (ids, en) => {
+          const cur = agentConfig.getConfig().enabledPlugins ?? {};
+          const next = { ...cur };
+          for (const i of ids) next[i] = en;
+          agentConfig.updateConfig({ enabledPlugins: next });
+        },
+        getAlreadyEnabled: () =>
+          new Set(
+            Object.entries(agentConfig.getConfig().enabledPlugins ?? {})
+              .filter(([, v]) => v === true)
+              .map(([k]) => k),
+          ),
+      });
+
+      // review B2/B3: uninstall must orphan-mark (not hard-delete); the
+      // 7-day GC sweep removes dirs later. Wire a PluginCache over Node fs.
+      const { PluginCache } = await import('@/core/plugins/PluginCache');
+      const fsmod = await import('node:fs');
+      const pluginCache = new PluginCache(
+        nodePath.join(os.homedir(), '.browserx'),
+        {
+          readText: async (p: string) => {
+            try {
+              return await fsmod.promises.readFile(p, 'utf-8');
+            } catch {
+              return null;
+            }
+          },
+          writeText: async (p: string, c: string) => {
+            await fsmod.promises.mkdir(nodePath.dirname(p), { recursive: true });
+            await fsmod.promises.writeFile(p, c, 'utf-8');
+          },
+          removeDir: nodeRemoveDir,
+          removeFile: async (p: string) => {
+            await fsmod.promises.rm(p, { force: true });
+          },
+          listEntries: async (p: string) => {
+            try {
+              return await fsmod.promises.readdir(p);
+            } catch {
+              return [];
+            }
+          },
+          pathExists: async (p: string) => {
+            try {
+              await fsmod.promises.stat(p);
+              return true;
+            } catch {
+              return false;
+            }
+          },
+        },
+      );
+
+      const uninstaller = new PluginUninstaller({
+        provider,
+        installed: installedStore,
+        registry,
+        markOrphaned: (installPath: string) =>
+          pluginCache.markOrphaned(installPath),
+        setEnabled: async (ids, en) => {
+          const cur = agentConfig.getConfig().enabledPlugins ?? {};
+          const next = { ...cur };
+          for (const i of ids) next[i] = en;
+          agentConfig.updateConfig({ enabledPlugins: next });
+        },
+      });
+
+      pluginsDeps = { pluginRegistry: registry, marketplaces, installer, uninstaller };
+      // Expose to agentFactory so sessions created after this point bind
+      // their per-session hook + sub-agent registries to enabled plugins.
+      this.pluginRegistry = registry;
+      console.log(
+        `[ServerAgentBootstrap] PluginRegistry initialized (${metas.length} plugin(s) discovered)`,
+      );
+    } catch (error) {
+      console.warn('[ServerAgentBootstrap] PluginRegistry not available:', error);
+    }
+
     const count = registerAllServices(serviceRegistry, {
       mcp: mcpDeps,
       a2a: a2aDeps,
       skills: skillsDeps,
+      plugins: pluginsDeps,
       scheduler: this.scheduler ? { scheduler: this.scheduler } : undefined,
       session: this.registry ? { registry: this.registry } : undefined,
       agent: this.registry ? {
@@ -827,6 +1078,11 @@ export class ServerAgentBootstrap {
       const data = (msg as EventMsg & { data?: Record<string, any> }).data;
       const summary = data?.last_agent_message?.slice(0, 500) || 'Job completed';
       const tokenData = data?.token_usage?.total;
+      // Track 18: cost was computed once in core and rides the TaskComplete
+      // event — read it, never recompute server-side (the server has only
+      // prose pricing and no model context).
+      const jobCostUSD = typeof data?.cost_usd === 'number' ? data.cost_usd : 0;
+      const jobCostEstimated = data?.cost_estimated === true;
       this.scheduler.completeJob(jobId, {
         summary,
         tokenUsage: {
@@ -835,6 +1091,12 @@ export class ServerAgentBootstrap {
           totalTokens: tokenData?.total_tokens ?? 0,
         },
         duration,
+        costUSD: jobCostUSD,
+        costEstimated: jobCostEstimated,
+      }).then(() => {
+        // Track 18: post-hoc budget enforcement (blocks subsequent jobs;
+        // never throws into a running turn).
+        return this.enforceBudgetCaps(jobId, jobCostUSD, jobCostEstimated);
       }).catch((error) => {
         console.error(`[ServerAgentBootstrap] Failed to complete scheduler job ${jobId}:`, error);
       });
@@ -849,6 +1111,66 @@ export class ServerAgentBootstrap {
       this.scheduler.failJob(jobId, error).catch((err) => {
         console.error(`[ServerAgentBootstrap] Failed to fail scheduler job ${jobId}:`, err);
       });
+    }
+  }
+
+  /**
+   * Track 18: post-hoc USD budget enforcement for unattended scheduler jobs.
+   * MVP scope — runs after a job completes, so it blocks *subsequent* jobs
+   * (a mid-run abort would need per-turn server-side cost and is a documented
+   * follow-on). Never throws into a turn; on a per-day breach it pauses the
+   * job queue cleanly and surfaces a logs.tail-visible warning.
+   */
+  private async enforceBudgetCaps(
+    jobId: string,
+    jobCostUSD: number,
+    jobCostEstimated: boolean,
+  ): Promise<void> {
+    try {
+      const limits = getServerConfig().server.limits;
+      const maxPerJob = limits.maxUsdPerJob ?? 0;
+      const maxPerDay = limits.maxUsdPerDay ?? 0;
+
+      if (maxPerJob > 0 && jobCostUSD > maxPerJob) {
+        emitLog('warn', 'Per-job USD budget exceeded', {
+          event: 'budget_job_exceeded',
+          jobId,
+          jobCostUSD,
+          capUSD: maxPerJob,
+          estimated: jobCostEstimated,
+        });
+      }
+
+      if (maxPerDay > 0 && this.executionRecordStorage) {
+        const now = Date.now();
+        // UTC start-of-day so the cap window and the logged date agree with
+        // each other and with the dashboard's aggregateByDate, which buckets
+        // on the ISO timestamp (UTC). A local-time window would disagree near
+        // midnight in non-UTC zones.
+        const d = new Date(now);
+        const startOfDayUTC = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+        const todays = await this.executionRecordStorage.getExecutionsInRange(
+          startOfDayUTC,
+          now,
+        );
+        const dayTotalUSD = todays.reduce(
+          (sum, e) => sum + (e.result?.costUSD ?? 0),
+          0,
+        );
+        if (dayTotalUSD > maxPerDay) {
+          emitLog('warn', 'Daily USD budget cap exceeded — pausing job queue', {
+            event: 'budget_cap_exceeded',
+            date: new Date(startOfDayUTC).toISOString().slice(0, 10),
+            dayTotalUSD,
+            capUSD: maxPerDay,
+          });
+          // Clean pause — stops future jobs; does not abort the (already
+          // finished) one, never throws into a turn.
+          await this.scheduler?.pauseJobQueue();
+        }
+      }
+    } catch (err) {
+      console.error('[ServerAgentBootstrap] Budget cap check failed:', err);
     }
   }
 

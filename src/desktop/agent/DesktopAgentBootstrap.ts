@@ -75,6 +75,13 @@ export class DesktopAgentBootstrap {
   private registry: AgentRegistry | null = null;
   private channel: TauriChannel | null = null;
   private skillRegistry: SkillRegistry | null = null;
+  // Track 10: global plugin registry + per-session binder deps. Set in
+  // registerServices; read lazily by agentFactory.
+  private pluginRegistry: import('@/core/plugins/PluginRegistry').PluginRegistry | null = null;
+  private pluginFsResolvers: {
+    readFile: (p: string) => Promise<string | null>;
+    listDirs: (p: string) => Promise<string[]>;
+  } | null = null;
   private skillDomainFilter: SkillDomainFilter | null = null;
   private activeTabService: ActiveTabService | null = null;
   private activeTabUnsubscribe: (() => void) | null = null;
@@ -180,7 +187,10 @@ export class DesktopAgentBootstrap {
           await this.registerSkillsToolOnAgent(agent);
 
           // Register sub-agent tool
-          await this.registerSubAgentToolOnAgent(agent);
+          const subAgentRunner = await this.registerSubAgentToolOnAgent(agent);
+
+          // Track 10: bind enabled plugins' hooks + agents to this session
+          await this.bindPluginsToSession(agent, subAgentRunner);
 
           return agent;
         },
@@ -330,9 +340,89 @@ export class DesktopAgentBootstrap {
       console.warn('[DesktopAgentBootstrap] A2AManager not available for service registration:', error);
     }
 
+    // Track 10: plugin registry. Wires the globally-reachable slots —
+    // skills (the same SkillRegistry the skills service uses) + MCP
+    // (singleton). Hooks + agents are bound per-session in the
+    // agentFactory via PluginSessionBinder. Commands are global storage.
+    let pluginsDeps: import('@/core/services').PluginsServiceDeps | undefined;
+    try {
+      const { FilesystemPluginProvider } = await import('@/desktop/storage/FilesystemPluginProvider');
+      const { PluginRegistry } = await import('@/core/plugins/PluginRegistry');
+      const { SkillSlotLoader } = await import('@/core/plugins/loaders/SkillSlotLoader');
+      const { McpSlotLoader } = await import('@/core/plugins/loaders/McpSlotLoader');
+      const { AgentConfig } = await import('@/config/AgentConfig');
+
+      const provider = new FilesystemPluginProvider('~/.browserx/plugins');
+      await provider.initialize();
+      this.pluginFsResolvers = {
+        readFile: provider.readFile,
+        listDirs: provider.listDirs,
+      };
+
+      const agentConfig = await AgentConfig.getInstance();
+
+      const pluginRegistry = new PluginRegistry({
+        provider,
+        skillSlot: this.skillRegistry
+          ? new SkillSlotLoader({
+              skillRegistry: this.skillRegistry,
+              readFile: provider.readFile,
+              listDirs: provider.listDirs,
+            })
+          : undefined,
+        mcpSlot: mcpDeps
+          ? new McpSlotLoader(mcpDeps.mcpManager as never)
+          : undefined,
+        // hooks / agents: per-session (agentFactory PluginSessionBinder)
+        getEnabledFromConfig: () => agentConfig.getConfig().enabledPlugins ?? {},
+        persistEnabled: async (id, enabled) => {
+          const current = agentConfig.getConfig().enabledPlugins ?? {};
+          agentConfig.updateConfig({
+            enabledPlugins: { ...current, [id]: enabled },
+          });
+        },
+        checkDestructiveOpAllowed: (op) => {
+          if (op !== 'reload' || !this.registry) return null;
+          for (const s of this.registry.listSessions()) {
+            const as = this.registry.getSession(s.sessionId);
+            const active =
+              as?.agent?.getSession?.()?.listActiveTasks?.() ?? [];
+            if (active.length > 0) {
+              return `Cannot reload: ${active.length} background task(s) running. /task stop <id> first.`;
+            }
+          }
+          return null;
+        },
+      });
+
+      const metas = await provider.listMeta();
+      for (const m of metas) {
+        try {
+          pluginRegistry.register(await provider.load(`${m.name}@local`));
+        } catch (e) {
+          console.warn(`[DesktopAgentBootstrap] plugin load ${m.name} failed:`, e);
+        }
+      }
+      await pluginRegistry.bootstrapEnabledPlugins();
+      agentConfig.on('config-changed', (e: { section?: string }) => {
+        if (e.section === 'enabledPlugins') {
+          void pluginRegistry.reconcileFromConfig();
+        }
+      });
+
+      this.pluginRegistry = pluginRegistry;
+      pluginsDeps = { pluginRegistry };
+      console.log(
+        `[DesktopAgentBootstrap] PluginRegistry initialized (${metas.length} discovered)`,
+      );
+    } catch (error) {
+      console.warn('[DesktopAgentBootstrap] PluginRegistry not available:', error);
+    }
+
     const count = registerAllServices(registry, {
       mcp: mcpDeps,
       a2a: a2aDeps,
+      plugins: pluginsDeps,
       skills: this.skillRegistry ? { skillRegistry: this.skillRegistry } : undefined,
       scheduler: this.scheduler ? { scheduler: this.scheduler } : undefined,
       session: this.registry ? {
@@ -572,17 +662,20 @@ export class DesktopAgentBootstrap {
    * Register the sub_agent tool on a specific agent's engine.
    * Called by the agentFactory for every new session.
    */
-  private async registerSubAgentToolOnAgent(agent: RepublicAgent): Promise<void> {
+  private async registerSubAgentToolOnAgent(
+    agent: RepublicAgent,
+  ): Promise<import('@/tools/AgentTool/SubAgentRunner').SubAgentRunner | null> {
     const engine = agent.getEngine();
     if (!engine) {
       console.warn('[DesktopAgentBootstrap] Cannot register sub_agent tool: engine not initialized');
-      return;
+      return null;
     }
 
     try {
       const { registerSubAgentTool } = await import('@/tools/AgentTool/register');
-      await registerSubAgentTool(engine);
+      const runner = await registerSubAgentTool(engine);
       console.log('[DesktopAgentBootstrap] sub_agent tool registered');
+      return runner;
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
       console.warn('[DesktopAgentBootstrap] Could not register sub_agent tool:', error);
@@ -590,6 +683,35 @@ export class DesktopAgentBootstrap {
         id: crypto.randomUUID(),
         msg: { type: 'BackgroundEvent', data: { message: `Sub-agent tool registration failed: ${errMsg}`, level: 'error' } },
       });
+      return null;
+    }
+  }
+
+  /**
+   * Track 10: bind this session's hook + sub-agent registries to enabled
+   * plugins. Skills + MCP are global (PluginRegistry slot loaders); hooks
+   * + agents are per-session. Mirrors the server agentFactory wiring.
+   */
+  private async bindPluginsToSession(
+    agent: RepublicAgent,
+    runner: import('@/tools/AgentTool/SubAgentRunner').SubAgentRunner | null,
+  ): Promise<void> {
+    if (!this.pluginRegistry || !this.pluginFsResolvers || !runner) return;
+    try {
+      const { PluginSessionBinder } = await import('@/core/plugins/PluginSessionBinder');
+      const binder = new PluginSessionBinder({
+        hookRegistry: agent.getHookRegistry(),
+        subAgentRunner: runner,
+        readFile: this.pluginFsResolvers.readFile,
+        listDirs: this.pluginFsResolvers.listDirs,
+      });
+      const enabled = this.pluginRegistry
+        .getPlugins()
+        .filter((p) => p.state.status === 'enabled');
+      await binder.applyEnabledPlugins(enabled);
+      this.pluginRegistry.registerSessionBinder(binder);
+    } catch (e) {
+      console.warn('[DesktopAgentBootstrap] plugin session bind failed (non-fatal):', e);
     }
   }
 
@@ -741,6 +863,8 @@ export class DesktopAgentBootstrap {
       const data = (msg as EventMsg & { data?: Record<string, any> }).data;
       const summary = data?.last_agent_message?.slice(0, 500) || 'Job completed';
       const tokenData = data?.token_usage?.total;
+      // Track 18: parity with ServerAgentBootstrap — cost is read off the
+      // TaskComplete event (computed once in core), never recomputed.
       this.scheduler.completeJob(jobId, {
         summary,
         tokenUsage: {
@@ -749,6 +873,8 @@ export class DesktopAgentBootstrap {
           totalTokens: tokenData?.total_tokens ?? 0,
         },
         duration,
+        costUSD: typeof data?.cost_usd === 'number' ? data.cost_usd : 0,
+        costEstimated: data?.cost_estimated === true,
       }).catch((error) => {
         console.error(`[DesktopAgentBootstrap] Failed to complete scheduler job ${jobId}:`, error);
       });
