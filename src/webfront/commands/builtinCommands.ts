@@ -6,6 +6,8 @@ export interface BuiltinCommandCallbacks {
   onNewConversation: () => void;
   onCommandOutput: (title: string, content: string) => void;
   onOpenSettings: () => void;
+  /** Submit text to the agent as if the user sent it (Track 14 /plan). */
+  onSubmitText: (text: string) => void;
 }
 
 /** Mutable reference that always points to the live component's callbacks. */
@@ -50,6 +52,29 @@ export function initBuiltinCommands(callbacks: BuiltinCommandCallbacks): void {
     loadedFrom: 'builtin',
     action: () => {
       activeCallbacks?.onOpenSettings();
+    },
+  });
+
+  commandRegistry.register({
+    name: 'plan',
+    description: 'Plan review: explore read-only and approve a plan before acting',
+    argumentHint: '<task>',
+    whenToUse:
+      'Use when you want the agent to propose a complete plan and freeze all ' +
+      'state-changing actions until you approve it.',
+    loadedFrom: 'builtin',
+    action: (args?: string) => {
+      const task = (args ?? '').trim();
+      const directive = task
+        ? 'Enter plan review for the following task. Call the BeginPlan tool, ' +
+          'then explore the page read-only to understand what is needed, and ' +
+          'present a complete plan via SubmitPlanForReview for my approval ' +
+          'before doing anything that changes state.\n\nTask: ' +
+          task
+        : 'Enter plan review: call the BeginPlan tool, explore read-only to ' +
+          'understand the current task, then present a complete plan via ' +
+          'SubmitPlanForReview for my approval before changing anything.';
+      activeCallbacks?.onSubmitText(directive);
     },
   });
 }

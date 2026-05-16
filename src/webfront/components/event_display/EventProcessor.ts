@@ -749,6 +749,7 @@ export class EventProcessor {
           riskLevel: data.risk_level,
           riskFactors: data.risk_factors,
           countdown: data.timeout ? Math.floor(data.timeout / 1000) : 0,
+          plan: data.plan, // Track 14: structured plan → editable card
           onApprove: () => {
             this.sendApprovalDecision(data.id, 'approve');
           },

@@ -18,6 +18,7 @@ import taskPolicies from './fragments/task_execution_policies.md?raw';
 import approvalPolicies from './fragments/approval_policies.md?raw';
 import compactSummarization from './fragments/compact_summarization.md?raw';
 import compactSummaryPrefix from './fragments/compact_summary_prefix.md?raw';
+import planReview from './fragments/plan_review.md?raw';
 
 export type AgentType = 'browserx' | 'applepi' | 'applepi-server';
 
@@ -40,6 +41,13 @@ export interface RuntimeContext {
   currentDateTime?: string;
   /** Available memory in GB */
   memoryGB?: number;
+  /**
+   * Track 14 Plan Review: when true, the read-only-exploration fragment
+   * is appended so the model keeps proposing (not executing) across
+   * turns. Re-evaluated every compose() call → persists for the whole
+   * review. Orthogonal to the agent operating-mode axis.
+   */
+  planReviewActive?: boolean;
 }
 
 export class PromptComposer {
@@ -78,6 +86,15 @@ export class PromptComposer {
 
     // 6. Approval policies
     sections.push(approvalPolicies);
+
+    // 7. Plan Review (Track 14) — appended last (highest salience) only
+    //    while the freeze is active, so the model proposes a plan instead
+    //    of executing. The freeze itself is the hard guarantee; this is
+    //    the soft cross-turn guidance so it doesn't waste turns on denied
+    //    mutations.
+    if (context?.planReviewActive) {
+      sections.push(planReview);
+    }
 
     return sections.filter(Boolean).join('\n\n');
   }

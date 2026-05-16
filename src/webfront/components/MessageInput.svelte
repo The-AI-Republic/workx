@@ -134,6 +134,7 @@
       onOpenSettings: () => {
         push('/settings');
       },
+      onSubmitText: (text: string) => onSubmit(text),
     });
 
     // Load skill commands asynchronously (non-blocking)

@@ -77,7 +77,7 @@ export async function registerServerTools(
   }
 
   try {
-    const { WebSearchTool } = await import('@/tools/WebSearchTool');
+    const { WebSearchTool, WEB_SEARCH_CONCURRENCY } = await import('@/tools/WebSearchTool');
     const { StaticRiskAssessor } = await import('@/core/approval/assessors/StaticRiskAssessor');
 
     const webSearchTool = new WebSearchTool();
@@ -96,7 +96,10 @@ export async function registerServerTools(
             },
           });
         },
-        new StaticRiskAssessor(0)
+        {
+          riskAssessor: new StaticRiskAssessor(0),
+          runtime: { concurrency: WEB_SEARCH_CONCURRENCY },
+        }
       );
       console.log('[registerServerTools] Web search tool registered');
     }

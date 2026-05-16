@@ -5,6 +5,7 @@
 
 import type { ReviewDecision } from './protocol/types';
 import type { Event } from './protocol/types';
+import type { PlanReviewPlan } from '../tools/planReview/types';
 import type { AgentConfig } from '../config/AgentConfig';
 
 export interface ApprovalRequest {
@@ -123,6 +124,10 @@ export class ApprovalManager {
           explanation: request.description || request.title,
           command: request.details.command,
           timeout,
+          // Track 14: surface the structured plan so the approval card can
+          // render an editable Plan Review view. Undefined for all other
+          // request types (omitted from the event).
+          plan: (request.details.parameters as { plan?: PlanReviewPlan } | undefined)?.plan,
         },
       },
     });

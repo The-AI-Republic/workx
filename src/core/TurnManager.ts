@@ -5,6 +5,7 @@
 
 import { Session } from './Session';
 import type { ToolDefinition } from '../tools/BaseTool';
+import { SUBMIT_PLAN_TOOL_NAME } from '../tools/planReview/types';
 import { TurnContext } from './TurnContext';
 import type { CompletionRequest, CompletionResponse } from './models/ModelClient';
 import { withModelRetry } from './models/resilience/withRetry';
@@ -1197,6 +1198,14 @@ export class TurnManager {
         }
       } catch { /* tab may not exist in desktop mode */ }
 
+      // SubmitPlanForReview (Track 14) blocks on human plan approval, which
+      // can take far longer than a tool call. Give it an effectively
+      // unbounded execution timeout so the registry's handler race does not
+      // abort a pending review; everything else keeps the 5-min default
+      // (MCP lazy connection + tool execution).
+      const executionTimeout =
+        toolName === SUBMIT_PLAN_TOOL_NAME ? 24 * 60 * 60 * 1000 : 300000;
+
       const request = {
         toolName,
         parameters,
@@ -1204,7 +1213,7 @@ export class TurnManager {
         turnId: `turn_${Date.now()}`,
         callId,
         tabId, // Pass tabId in request for tools that need it
-        timeout: 300000, // 5 min — allows for MCP lazy connection + tool execution
+        timeout: executionTimeout,
         metadata: {
           currentUrl,
           currentDomain,

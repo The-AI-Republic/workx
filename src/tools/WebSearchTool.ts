@@ -7,6 +7,24 @@
  */
 
 import { BaseTool, createToolDefinition, type BaseToolRequest, type BaseToolOptions, type ToolDefinition } from './BaseTool';
+import type { ToolConcurrencyProfile } from './runtimeMetadata';
+
+/**
+ * Shared concurrency profile for web_search, used by every platform
+ * registrar (extension / desktop / server) so the three cannot drift.
+ *
+ * web_search is a pure external search GET: no DOM/navigation/storage
+ * mutation and no shared browser state. It is therefore both
+ * concurrency-safe AND read-only. The read-only bit is load-bearing for
+ * Track 14 Plan Review — without it, web search (core to read-only
+ * exploration) fail-closes to "frozen" during a plan. (Previously each
+ * registrar passed a bare risk assessor with no concurrency profile.)
+ */
+export const WEB_SEARCH_CONCURRENCY: ToolConcurrencyProfile = {
+  isConcurrencySafe: () => true,
+  isReadOnly: () => true,
+  isDestructive: () => false,
+};
 
 /**
  * Search result interface
