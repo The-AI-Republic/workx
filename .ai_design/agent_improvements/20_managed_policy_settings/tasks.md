@@ -18,6 +18,39 @@ merge point is **not** end-to-end and must not be merged.
 
 ---
 
+## IMPLEMENTATION STATUS (2026-05-16) — Phases 1–4 DONE, end-to-end
+
+Branch `feat/track-20-managed-policy-settings`. type-check clean, 0 lint errors,
+383 tests green (incl. the four-surface invariant), production build green.
+
+**Phase 0 findings (corrections vs the design's assumptions):**
+- **Track 17 diagnostics IS implemented** (the branch moved — `src/core/
+  diagnostics/` with a real `DiagnosticCheck` registry). So we shipped a real
+  `policy-origin` check registered in `registerCoreDiagnosticChecks()` — no
+  "degrade gracefully / conditional registration" was needed.
+- AgentConfig has **more** write surfaces than the 3 named (resetConfig,
+  importConfig, setSelectedModel, updateModelConfig, add/update/deleteProvider,
+  enable/disableTool, updateToolSpecificConfig, profile mutators). All now
+  re-pin or `assertWritable`-guarded — the invariant holds across every one.
+- The build copies the **root** `manifest.json` (`scripts/build.js:45`), with a
+  synced `src/extension/manifest.json`. Updated **both** + added
+  `managed-schema.json` copy.
+- **Interactive securityCheck adaptation (deliberate divergence):** a blocking
+  `ApprovalManager` modal at policy-change time has no per-turn agent context
+  and the server core ApprovalManager fail-opens — wiring it blind is unsafe.
+  Implemented instead: pure `assessPolicyChange`, server auto-apply + a
+  **redacted `emitLog` audit** (real Track-16 sink, the headless-critical
+  path), and ext/desktop a surfaced `console.warn` on weakening. Enforcement
+  never depends on the prompt; this matches the design's intent (operator/user
+  is informed) without unverifiable blind UI wiring.
+- **Phase 4 scope:** shipped the testable, dependency-free slice —
+  `ManagedDirSource` (`managed-settings.d/` drop-in dir, deterministic merge).
+  macOS-plist / Windows-registry remain the explicitly-deferred P3/L
+  subprocess tier (need a real OS + `plutil`/`reg`), per the design's own
+  "Phase 4 P3/L, separate, optional".
+
+---
+
 ## Phase 0: Pre-implementation verification (DO FIRST — gates the estimate)
 
 The design was line-level verified on branch `agent-improvements` (2026-05-16).
