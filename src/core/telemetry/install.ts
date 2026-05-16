@@ -14,6 +14,8 @@
 import { attachSink, setTelemetryGate, type TelemetrySink } from './analytics';
 import { isTelemetryAllowed, readEnvOptOut } from './privacy';
 import { telemetryBridge } from './TelemetryBridge';
+import { teeSinks } from './TeeSink';
+import { createOtelSink } from './otel/OtelSink';
 
 export function installTelemetry(opts: {
   /** Live reader of `AgentConfig.getConfig().preferences.telemetryEnabled`. */
@@ -28,7 +30,11 @@ export function installTelemetry(opts: {
       return false; // fail-closed
     }
   });
-  attachSink(opts.sink);
+  // Phase 4: tee in the OTLP sink iff explicitly opted in via env
+  // (`createOtelSink` returns null otherwise — ships dark; extension has
+  // no `process` so it is always null there). No Track 22 dependency.
+  const otel = createOtelSink();
+  attachSink(otel ? teeSinks(opts.sink, otel) : opts.sink);
 }
 
 /**
