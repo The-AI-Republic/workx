@@ -1,4 +1,4 @@
-# Track 044: Keyboard Shortcut System
+# Track 38: Keyboard Shortcut System
 
 **Date**: 2026-05-16
 **Scope**: Browserx webfront, Chrome extension commands, and Tauri desktop hotkeys
