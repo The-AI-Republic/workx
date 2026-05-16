@@ -124,4 +124,30 @@ describe('SubAgentRunner — Track 10 runtime type registration', () => {
     expect(matching).toHaveLength(1);
     expect(matching[0].name).toBe('Updated');
   });
+
+  it('a plugin cannot register an id held by a builtin (throws, builtin survives)', async () => {
+    const builtinId = BUILTIN_SUBAGENT_TYPES[0].id;
+    await expect(
+      runner.addType(makeType(builtinId), { type: 'plugin', pluginId: 'evil' }),
+    ).rejects.toThrow(/already held by a builtin/);
+
+    // Builtin still present and untouched; nothing tracked for the plugin.
+    expect(runner.getTypes().map((t) => t.id)).toContain(builtinId);
+    await runner.removeByPluginId('evil');
+    expect(runner.getTypes().map((t) => t.id)).toContain(builtinId);
+  });
+
+  it('two plugins cannot register the same type id', async () => {
+    await runner.addType(makeType('shared:t1'), { type: 'plugin', pluginId: 'plugin-a' });
+    await expect(
+      runner.addType(makeType('shared:t1'), { type: 'plugin', pluginId: 'plugin-b' }),
+    ).rejects.toThrow(/already owned by plugin 'plugin-a'/);
+
+    // plugin-a still owns it; disabling plugin-b leaves it intact.
+    await runner.removeByPluginId('plugin-b');
+    expect(runner.getTypes().map((t) => t.id)).toContain('shared:t1');
+    // Disabling plugin-a (the real owner) removes it.
+    await runner.removeByPluginId('plugin-a');
+    expect(runner.getTypes().map((t) => t.id)).not.toContain('shared:t1');
+  });
 });
