@@ -140,9 +140,12 @@ export class AgentRegistry {
     // Allocate a session letter
     const letterIndex = this._allocateLetterIndex();
 
-    // Build InitialHistory if resume data is present
+    // Build InitialHistory if resume or fork data is present (Track 15:
+    // fork seeds a NEW conversation from a sliced rollout; source untouched).
     const initialHistory: InitialHistory | undefined = sessionConfig.resume
       ? { mode: 'resumed', sessionId: sessionConfig.resume.sessionId, rolloutItems: sessionConfig.resume.rolloutItems }
+      : sessionConfig.fork
+      ? { mode: 'forked', rolloutItems: sessionConfig.fork.rolloutItems, sourceConversationId: sessionConfig.fork.sourceConversationId }
       : undefined;
 
     // T057: Wrap agent creation in try-catch for graceful error handling
@@ -263,8 +266,10 @@ export class AgentRegistry {
     // Subscribe to session events and forward to registry listeners
     session.on((event) => this._emitEvent(event));
 
-    // If resuming, initialize the agent's session to replay history
-    if (sessionConfig.resume) {
+    // If resuming or forking, initialize the agent's session so history is
+    // reconstructed (and, for fork, persisted to the new rollout) before the
+    // session is marked ready (Track 15).
+    if (sessionConfig.resume || sessionConfig.fork) {
       await agent.getSession().initialize();
     }
 

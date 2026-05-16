@@ -44,10 +44,13 @@ import {
 import { setHandshakeSnapshotProviders } from '../connection/handshake';
 import { registerServerTools } from '../tools/registerServerTools';
 import { schedulePeriodicSweep } from '../maintenance/toolResultCleanup';
+import { RolloutRecorder } from '@/storage/rollout';
 
 // Handler registrations
 import { registerChatHandlers } from '../handlers/chat';
 import { registerSessionHandlers } from '../handlers/sessions';
+import { listUserTurns, computeRewindSlice, buildSummarizedFork } from '@/core/session/rewind';
+import { CompactService } from '@/core/compact/CompactService';
 import { registerConfigHandlers } from '../handlers/config';
 import { registerHealthHandlers } from '../handlers/health';
 import { registerToolsHandlers } from '../handlers/tools';
@@ -93,6 +96,9 @@ export class ServerAgentBootstrap {
   private runningSchedulerJobId: string | null = null;
   private runningJobStartTime: number = 0;
   private toolResultSweep: { stop: () => void } | null = null;
+  // Track 15: periodic rollout TTL cleanup (the server otherwise never prunes
+  // expired/forked rollouts — only the extension had alarm-based cleanup).
+  private rolloutTtlSweep: ReturnType<typeof setInterval> | null = null;
   private initialized = false;
 
   /**
@@ -263,6 +269,21 @@ export class ServerAgentBootstrap {
       // Removes orphaned tool-result files from crashed sessions.
       this.toolResultSweep = schedulePeriodicSweep(dataDir);
       console.log('[ServerAgentBootstrap] Tool-result TTL sweep scheduled');
+
+      // 9c. Track 15: periodic rollout TTL cleanup. Without this the server
+      // never prunes expired/forked rollouts (every rewind makes a new one).
+      const ROLLOUT_TTL_SWEEP_MS = 6 * 60 * 60 * 1000; // 6h
+      const sweepRollouts = () =>
+        RolloutRecorder.cleanupExpired()
+          .then((n) => {
+            if (n > 0) console.log(`[ServerAgentBootstrap] Pruned ${n} expired rollout(s)`);
+          })
+          .catch((e) => console.error('[ServerAgentBootstrap] Rollout TTL cleanup failed:', e));
+      void sweepRollouts();
+      this.rolloutTtlSweep = setInterval(sweepRollouts, ROLLOUT_TTL_SWEEP_MS);
+      // Don't keep the process alive solely for the sweep.
+      (this.rolloutTtlSweep as { unref?: () => void }).unref?.();
+      console.log('[ServerAgentBootstrap] Rollout TTL sweep scheduled');
 
       // 10. Initialize approval manager
       this.approvalManager = new ApprovalManager();
@@ -480,6 +501,69 @@ export class ServerAgentBootstrap {
         }
         await targetSession.agent.submitOperation({ type: 'ManualCompact' }, {});
         return { status: 'compacted' };
+      },
+      // Track 15: list the conversation's user turns (D13 flush first).
+      listSessionTurns: async (key) => {
+        if (!this.registry) throw new Error('Registry not initialized');
+        const targetSession = this.registry.getSession(key);
+        if (!targetSession?.agent) {
+          throw new Error(`Session not found: ${key}`);
+        }
+        const convId = targetSession.agent.getSession().getSessionId();
+        await targetSession.agent.getSession().flushRollout?.();
+        return listUserTurns(convId);
+      },
+      // Track 15: fork the conversation to an earlier turn. The source
+      // rollout is append-only and untouched; a NEW conversation is created
+      // and its id returned so the operator re-targets it. Side effects
+      // (exec'd commands, file writes, sent messages) are NOT rewound.
+      rewindSession: async (key, targetSequence, mode) => {
+        if (!this.registry) throw new Error('Registry not initialized');
+        const registry = this.registry;
+        const targetSession = registry.getSession(key);
+        if (!targetSession?.agent) {
+          throw new Error(`Session not found: ${key}`);
+        }
+        const sourceAgent = targetSession.agent;
+        const sourceConvId = sourceAgent.getSession().getSessionId();
+
+        // D13: flush the live source session before slicing.
+        await sourceAgent.getSession().flushRollout?.();
+
+        const forked =
+          mode === 'summarize_up_to'
+            ? await buildSummarizedFork(sourceConvId, targetSequence, async (items) => {
+                try {
+                  const modelClient = await sourceAgent
+                    .getModelClientFactory()
+                    .createClientForCurrentModel();
+                  const result = await new CompactService().compact(
+                    items,
+                    'manual',
+                    modelClient,
+                    0,
+                    undefined,
+                    { sessionId: sourceConvId },
+                  );
+                  return result.success ? result.summaryText : undefined;
+                } catch (err) {
+                  console.warn('[ServerAgentBootstrap] summarizeForRewind failed:', err);
+                  return undefined;
+                }
+              })
+            : await computeRewindSlice(sourceConvId, targetSequence);
+
+        const newSession = await registry.createSession({
+          type: 'primary',
+          fork: {
+            sourceConversationId: forked.sourceConversationId,
+            rolloutItems: forked.rolloutItems,
+          },
+        });
+        return {
+          sourceConversationId: sourceConvId,
+          newConversationId: newSession.sessionId,
+        };
       },
     });
 
@@ -803,6 +887,12 @@ export class ServerAgentBootstrap {
     // Stop tool-result TTL sweep
     this.toolResultSweep?.stop();
     this.toolResultSweep = null;
+
+    // Stop rollout TTL sweep (Track 15)
+    if (this.rolloutTtlSweep) {
+      clearInterval(this.rolloutTtlSweep);
+      this.rolloutTtlSweep = null;
+    }
 
     // Shutdown channel manager (shuts down all channels including connector bridges)
     const channelManager = getChannelManager();

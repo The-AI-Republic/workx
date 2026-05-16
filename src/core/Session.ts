@@ -249,10 +249,14 @@ export class Session {
     if (this.isPersistent && (historyMode.mode === 'new' || historyMode.mode === 'forked')) {
       // Create new rollout
       this.initializationPromise = this.initializeSession('create', this.sessionId, this.config).then(() => {
-        // For forked mode, persist the forked history after rollout is created
+        // For forked mode, reconstruct THEN persist the forked history after
+        // the new rollout is created. recordInitialHistory() does
+        // reconstructHistoryFromRollout() -> persistRolloutResponseItems();
+        // this is its sole correct caller (Track 15, Phase 0a — previously
+        // this branch persisted an empty sessionState because nothing
+        // reconstructed historyMode.rolloutItems first).
         if (historyMode.mode === 'forked') {
-          const history = this.sessionState.historySnapshot();
-          return this.persistRolloutResponseItems(history);
+          return this.recordInitialHistory(historyMode);
         }
       }).catch(err => {
         console.error('Failed to initialize session:', err);
@@ -2405,11 +2409,16 @@ export class Session {
         // Compacted history with summary
         // The compacted item should contain a summary that replaces multiple items
         const compactedData = rolloutItem.payload as any;
-        if (compactedData.summary) {
+        // CompactedItem declares `message` (storage/rollout/types.ts). Earlier
+        // notes referenced `summary`; read `message` first and fall back to
+        // `summary` for forward/backward tolerance (Track 15, Phase 0b — this
+        // is what summarize_up_to emits and what fork-replay reads back).
+        const compactedText = compactedData.message ?? compactedData.summary;
+        if (compactedText) {
           // Add summary as a system message
           responseItems.push({
             role: 'system',
-            content: compactedData.summary,
+            content: compactedText,
             type: 'message'
           } as ResponseItem);
         }
@@ -2612,6 +2621,26 @@ export class Session {
       // Persist forked history to new rollout
       const history = this.sessionState.historySnapshot();
       await this.persistRolloutResponseItems(history);
+    }
+  }
+
+  /**
+   * Flush any queued rollout writes to durable storage.
+   *
+   * The static RolloutRecorder read path bypasses this live session's
+   * writer (writes are serialized through RolloutWriter.writeQueue), so any
+   * caller that needs to read this conversation's items while it is still
+   * live — e.g. the Track 15 rewind selector / slice fn — MUST call this
+   * first, otherwise queued-but-unflushed turns are invisible (Track 15,
+   * D13 / Phase 0c). No-op if this session has no rollout recorder.
+   */
+  async flushRollout(): Promise<void> {
+    if (this.services?.rollout) {
+      try {
+        await this.services.rollout.flush();
+      } catch (e) {
+        console.error('Failed to flush rollout recorder:', e);
+      }
     }
   }
 

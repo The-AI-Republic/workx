@@ -15,6 +15,14 @@ import type {
 import { createExecutionRecord } from '../models/types/ScheduleEvent';
 import type { JobResultRecord } from '../models/types/Scheduler';
 import type { AgentRegistry } from '../registry/AgentRegistry';
+import { computeRewindSlice, findCheckpointSequence } from '../session/rewind';
+
+/**
+ * Track 15: max rewind-from-checkpoint retries before a scheduled job is
+ * terminally failed. Bounds the resume-instead-of-fail loop; failed-attempt
+ * side effects are NOT undone, so this is intentionally small.
+ */
+const MAX_REWIND_RETRIES = 2;
 
 /**
  * Notification handler callback — platform-specific notification display
@@ -216,6 +224,13 @@ export class JobExecutor {
       throw new Error(`Cannot fail execution in ${execution.status} status`);
     }
 
+    // Track 15 (D10): before terminally failing, try to resume from the last
+    // good checkpoint by forking the source rollout. This is the single
+    // chokepoint (covers launcher-thrown and event-driven failures).
+    if (await this.maybeRewindRetry(execution, error)) {
+      return;
+    }
+
     await this.cleanupSession(executionId);
 
     await this.executionStorage.updateExecution(executionId, {
@@ -234,6 +249,96 @@ export class JobExecutor {
     // Schedule queue processing asynchronously to avoid recursion
     // (failExecution can be called from launchJob → executePendingRecord → processQueue)
     queueMicrotask(() => { this.processQueue().catch(() => {}); });
+  }
+
+  /**
+   * Track 15: on hard failure, fork the source conversation from its last
+   * good checkpoint and re-launch the same input instead of failing
+   * terminally. Returns true if a retry was launched (caller must return).
+   *
+   * The source rollout is append-only and untouched; a NEW scheduled session
+   * is created from the sliced prefix. The failed attempt's side effects
+   * (exec'd commands, file writes, sent messages) are NOT undone — retries
+   * are bounded by MAX_REWIND_RETRIES.
+   */
+  private async maybeRewindRetry(
+    execution: ExecutionRecord,
+    error: string
+  ): Promise<boolean> {
+    try {
+      if (!this.registry || !this.registry.canCreateSession()) return false;
+      const priorRetries = execution.retryCount ?? 0;
+      if (priorRetries >= MAX_REWIND_RETRIES) return false;
+      const sourceConvId = execution.sessionId;
+      if (!sourceConvId) return false;
+      const srcSession = this.registry.getSession(sourceConvId);
+      if (!srcSession?.agent) return false;
+
+      // D13: flush the live source session before reading its rollout.
+      await srcSession.agent.getSession().flushRollout?.();
+
+      // D10: checkpoint = last user-turn boundary <= last assistant turn.
+      const checkpointSeq = await findCheckpointSequence(sourceConvId);
+      const forked =
+        checkpointSeq != null
+          ? await computeRewindSlice(sourceConvId, checkpointSeq)
+          : null;
+
+      // Terminally resolve the failed execution WITHOUT emitting 'failed' or
+      // notifying the schedule handler — the retry execution drives the
+      // lifecycle (and re-arms alarms) from here.
+      await this.cleanupSession(execution.id);
+      await this.executionStorage.updateExecution(execution.id, {
+        status: 'failed',
+        error: `${error} (rewound; retry ${priorRetries + 1}/${MAX_REWIND_RETRIES})`,
+        completedAt: Date.now(),
+      });
+
+      // Fresh execution: forked from the checkpoint when one exists, else a
+      // plain bounded retry from the original input (retry-from-zero).
+      const retryId = uuidv4();
+      const retryRec = createExecutionRecord(
+        retryId,
+        execution.scheduleEventId,
+        execution.instanceTime,
+        execution.input
+      );
+      retryRec.retryCount = priorRetries + 1;
+      retryRec.status = 'running';
+      retryRec.startedAt = Date.now();
+
+      const session = await this.registry.createSession(
+        forked
+          ? {
+              type: 'scheduled',
+              fork: {
+                sourceConversationId: forked.sourceConversationId,
+                rolloutItems: forked.rolloutItems,
+              },
+            }
+          : { type: 'scheduled' }
+      );
+      retryRec.sessionId = session.sessionId;
+      this.executionSessions.set(retryId, session.sessionId);
+      await this.executionStorage.createExecution(retryRec);
+
+      this.emitEvent(retryId, execution.scheduleEventId, 'running');
+      // Fire-and-forget; launchJob handles its own errors and recurses into
+      // failExecution (bounded by retryCount).
+      void this.launchJob(retryId, session.sessionId);
+
+      console.warn(
+        `[JobExecutor] Rewound failed execution ${execution.id} → ${retryId} ` +
+        `(checkpoint ${checkpointSeq ?? 'none/retry-from-zero'}; side effects NOT undone)`
+      );
+      return true;
+    } catch (e) {
+      console.error(
+        '[JobExecutor] maybeRewindRetry failed; falling back to normal failure:',
+        e
+      );
+      return false;
+    }
   }
 
   /**

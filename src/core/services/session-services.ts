@@ -11,6 +11,12 @@
 
 import type { ServiceHandler } from '@/core/channels/ServiceRegistry';
 import type { RepublicAgent } from '@/core/RepublicAgent';
+import type { ResponseItem } from '@/core/protocol/types';
+import {
+  listUserTurns,
+  computeRewindSlice,
+  buildSummarizedFork,
+} from '@/core/session/rewind';
 
 export interface SessionServiceDeps {
   /** Registry for multi-session management (required). */
@@ -33,6 +39,14 @@ export interface SessionServiceDeps {
 
   /** Load rollout history for a session ID (platform-specific storage) */
   loadRolloutHistory?: (sessionId: string) => Promise<{ sessionId: string; rolloutItems: unknown[] } | null>;
+
+  /**
+   * Track 15 (D9): summarize response items for `summarize_up_to` rewind.
+   * Platform-injected so the model client is sourced from the platform's
+   * existing per-agent ModelClientFactory, never constructed in core.
+   * Returns undefined on failure → caller falls back to a plain slice.
+   */
+  summarizeForRewind?: (items: ResponseItem[]) => Promise<string | undefined>;
 }
 
 /**
@@ -127,6 +141,79 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
       }
       const history = newSession.agent.getSession().getConversationHistory();
       return { sessionId: rolloutData.sessionId, history: history?.items ?? [] };
+    },
+
+    /**
+     * Track 15: list the current primary conversation's user turns so the
+     * rewind selector can pick a target. Flushes the live source session
+     * first (D13) so the newest in-flight turns are visible.
+     */
+    'session.turns': async () => {
+      const primary = registry.getPrimarySession();
+      if (!primary) {
+        return { turns: [] };
+      }
+      await registry.getSession(primary.sessionId)?.agent?.getSession()?.flushRollout?.();
+      const turns = await listUserTurns(primary.sessionId);
+      return { turns };
+    },
+
+    /**
+     * Track 15: rewind/fork the current primary conversation to an earlier
+     * user turn. Forks a NEW conversation (source untouched); the in-flight
+     * turn is aborted by removeSession (D7). Returns the NEW conversation id
+     * — the UI must re-target it.
+     * Requires: { targetSequence: number, mode?: 'conversation'|'summarize_up_to' }
+     */
+    'session.rewind': async (params) => {
+      const { targetSequence, mode } = (params ?? {}) as {
+        targetSequence?: number;
+        mode?: 'conversation' | 'summarize_up_to';
+      };
+      if (typeof targetSequence !== 'number') {
+        throw new Error('targetSequence is required');
+      }
+      const primary = registry.getPrimarySession();
+      if (!primary) {
+        throw new Error('No active conversation to rewind');
+      }
+      const sourceConvId = primary.sessionId;
+
+      // D13: flush the live source session so the slice sees all turns.
+      await registry.getSession(sourceConvId)?.agent?.getSession()?.flushRollout?.();
+
+      // Capture the rewound-to user-turn text BEFORE re-seating (D8).
+      const turns = await listUserTurns(sourceConvId);
+      const rewoundText =
+        mode === 'summarize_up_to'
+          ? undefined
+          : turns.find((tn) => tn.sequence === targetSequence)?.text;
+
+      // Build the forked history (summarize before removeSession so the
+      // source agent's model client is still alive — D9).
+      const forked =
+        mode === 'summarize_up_to' && deps.summarizeForRewind
+          ? await buildSummarizedFork(sourceConvId, targetSequence, deps.summarizeForRewind)
+          : await computeRewindSlice(sourceConvId, targetSequence);
+
+      // Abort + close the source session (D7), then create the fork.
+      await registry.removeSession(sourceConvId);
+      const newSession = await registry.createSession({
+        type: 'primary',
+        fork: {
+          sourceConversationId: forked.sourceConversationId,
+          rolloutItems: forked.rolloutItems,
+        },
+      });
+      if (!newSession.agent) {
+        throw new Error('Failed to create agent for rewound session');
+      }
+      const history = newSession.agent.getSession().getConversationHistory();
+      return {
+        sessionId: newSession.sessionId,
+        history: history?.items ?? [],
+        rewoundText,
+      };
     },
 
     /**
