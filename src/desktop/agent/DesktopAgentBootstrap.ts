@@ -949,6 +949,14 @@ export class DesktopAgentBootstrap {
       console.warn('[DesktopAgentBootstrap] Could not fetch platform info:', e);
     }
 
+    // Track 24.2: user-selected output-style persona.
+    try {
+      const config = await AgentConfig.getInstance();
+      staticContext.personaName = config.getConfig().preferences?.personaName;
+    } catch (e) {
+      console.warn('[DesktopAgentBootstrap] Could not read persona preference:', e);
+    }
+
     configurePromptComposer('applepi', staticContext);
     console.log('[DesktopAgentBootstrap] PromptComposer configured for pi with platform context');
   }

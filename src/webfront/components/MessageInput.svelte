@@ -19,6 +19,7 @@
 
   let {
     value = $bindable(''),
+    suggestion = $bindable<string | null>(null),
     placeholder = t('>> Enter command...'),
     onSubmit = () => {},
     onStop = () => {},
@@ -32,6 +33,8 @@
     onOpenRewindSelector,
   }: {
     value?: string;
+    /** Track 24.3: predicted next message; chip + Tab-accept. */
+    suggestion?: string | null;
     placeholder?: string;
     /** Track 13: optional `attachments` carries pasted screenshots as
      *  `image` InputItems. Second arg is optional → backward compatible. */
@@ -64,8 +67,14 @@
     pendingReads = [];
   }
 
+  /** Track 24.3: dismiss the next-message suggestion chip. */
+  function dismissSuggestion(): void {
+    suggestion = null;
+  }
+
   /** Submit the current value plus any pending attachments, then reset. */
   async function submitWithAttachments(): Promise<void> {
+    suggestion = null; // Track 24.3: a sent message invalidates the prediction.
     if (pendingReads.length) {
       await Promise.all(pendingReads);
     }
@@ -191,7 +200,7 @@
 
   function updateFilter(): void {
     const query = filterText;
-    filteredCommands = commandRegistry.filter(query);
+    filteredCommands = commandRegistry.filter(query, lastExecuted);
     selectedIndex = 0;
   }
 
@@ -267,6 +276,27 @@
       }
     }
 
+    // Track 24.3: Tab accepts the suggestion only when the command palette is
+    // closed AND the input is empty OR the typed text is a prefix of the
+    // suggestion. Guarantees Tab never hijacks the palette (handled above) or
+    // normal typing / focus traversal.
+    if (event.key === 'Tab' && !event.shiftKey && suggestion && !isCommandMode) {
+      const isPrefix =
+        value.length > 0 && suggestion.toLowerCase().startsWith(value.toLowerCase());
+      if (value.trim() === '' || isPrefix) {
+        event.preventDefault();
+        value = suggestion;
+        suggestion = null;
+        return;
+      }
+    }
+    // Escape dismisses a visible suggestion (command mode consumes Escape above).
+    if (event.key === 'Escape' && suggestion && !isCommandMode) {
+      event.preventDefault();
+      suggestion = null;
+      return;
+    }
+
     // Normal mode: Submit on Enter (without Shift)
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
@@ -294,6 +324,11 @@
     // Clear error on input
     if (errorMessage) {
       clearError();
+    }
+
+    // Track 24.3: drop the suggestion once typing diverges from it.
+    if (suggestion && !suggestion.toLowerCase().startsWith(value.toLowerCase())) {
+      suggestion = null;
     }
 
     // Check for command mode activation: "/" as first char in field
@@ -473,6 +508,22 @@
           onclick={clearAttachments}
           aria-label={$_t('Clear attached images')}
         >{$_t('clear')}</button>
+      </div>
+    {/if}
+
+    <!-- Track 24.3: next-message suggestion chip (Tab to accept, × to dismiss).
+         Visible exactly when Tab will accept: palette closed AND input empty
+         OR the typed text is a live prefix of the suggestion. -->
+    {#if suggestion && !isCommandMode && (!value.trim() || suggestion.toLowerCase().startsWith(value.toLowerCase()))}
+      <div class="mb-1 flex items-center gap-2 text-xs {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
+        <span class="opacity-70">Tab ↹</span>
+        <span class="truncate">{suggestion}</span>
+        <button
+          type="button"
+          class="cursor-pointer bg-transparent border-none p-0 {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-dim-green hover:text-term-green'}"
+          onclick={dismissSuggestion}
+          aria-label={$_t('Dismiss suggestion')}
+        >✕</button>
       </div>
     {/if}
 
