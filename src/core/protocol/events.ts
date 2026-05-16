@@ -236,6 +236,10 @@ export interface TaskCompleteEvent {
   last_agent_message?: string;
   turn_count?: number;
   token_usage?: TaskTokenUsageSummary;
+  /** Track 18: USD cost for this task, computed once in core. */
+  cost_usd?: number;
+  /** Track 18: true if any turn was priced via the fallback rate. */
+  cost_estimated?: boolean;
   compaction_performed?: boolean;
   aborted?: boolean;
   abort_reason?: TurnAbortReason;
@@ -260,6 +264,10 @@ export interface TokenUsageInfo {
 export interface TokenCountEvent {
   info?: TokenUsageInfo;
   rate_limits?: RateLimitSnapshotEvent;
+  /** Track 18: cumulative session USD cost (additive rider on Track 12's fix). */
+  cost?: number;
+  /** Track 18: true if any of the cumulative cost was estimated. */
+  cost_estimated?: boolean;
 }
 
 export interface RateLimitSnapshotEvent {

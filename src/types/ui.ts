@@ -137,6 +137,12 @@ export interface EventMetadata {
   // Token Usage (TokenCount events)
   tokenUsage?: TokenUsage;
 
+  // Track 18: USD cost (sibling of tokenUsage — cost is never inside the
+  // token shape). costUSD is the task's cost; costEstimated true if priced
+  // via the fallback rate (unknown/downgraded model).
+  costUSD?: number;
+  costEstimated?: boolean;
+
   // Command Execution
   command?: string;               // Original command
   exitCode?: number;              // Exit code (0 = success)

@@ -9,6 +9,7 @@ import { SUBMIT_PLAN_TOOL_NAME } from '../tools/planReview/types';
 import { TurnContext } from './TurnContext';
 import type { CompletionRequest, CompletionResponse } from './models/ModelClient';
 import { withModelRetry } from './models/resilience/withRetry';
+import { calculateUSDCost } from './models/cost/cost';
 import { AgentConfig } from '../config/AgentConfig';
 import { loadPrompt, loadUserInstructions } from './PromptLoader';
 import type { EventMsg, TokenUsage, StreamErrorEvent } from './protocol/events';
@@ -69,6 +70,10 @@ export interface TurnRunResult {
   processedItems: ProcessedResponseItem[];
   /** Total token usage for this turn */
   totalTokenUsage?: TokenUsage;
+  /** Track 18: USD cost for this turn, computed from the post-swap model. */
+  turnCostUSD?: number;
+  /** Track 18: true when the model was absent from the cost table. */
+  turnCostEstimated?: boolean;
 }
 
 /**
@@ -365,6 +370,21 @@ export class TurnManager {
             // Stream completed with final token usage
             totalTokenUsage = event.tokenUsage;
 
+            // Track 18: compute this turn's USD cost from the model that
+            // actually served it. getSelectedModelKey() reflects any Track 12
+            // mid-turn downgrade (applyFallbackModel calls setSelectedModelKey),
+            // so a fallback model is priced (or flagged estimated) correctly.
+            let turnCostUSD: number | undefined;
+            let turnCostEstimated: boolean | undefined;
+            if (totalTokenUsage) {
+              const cost = calculateUSDCost(
+                this.turnContext.getSelectedModelKey(),
+                totalTokenUsage,
+              );
+              turnCostUSD = cost.costUSD;
+              turnCostEstimated = cost.estimated;
+            }
+
             // Track 11: flush buffered legacy `function_call` items through
             // Track 02's orchestrator (safe calls concurrent, unsafe
             // sequential, results in original call order). Results are
@@ -424,6 +444,8 @@ export class TurnManager {
             return {
               processedItems,
               totalTokenUsage,
+              turnCostUSD,
+              turnCostEstimated,
             };
           }
 
