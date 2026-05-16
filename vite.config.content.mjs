@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import { resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { featureDefine } from './vite.featureFlags.mjs';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
@@ -10,6 +11,9 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 export default defineConfig({
   define: {
     __BUILD_MODE__: JSON.stringify('extension'),
+    // Track 22 — same extension matrix as vite.config.mjs. Note this build
+    // uses inlineDynamicImports:true, so OFF flags strip via DCE only.
+    ...featureDefine('extension', process.env),
   },
   plugins: [
     svelte({

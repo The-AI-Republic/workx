@@ -28,12 +28,16 @@ import { STORAGE_KEYS } from '../../config/defaults';
 import { DEFAULT_APPROVAL_CONFIG } from '../../core/approval/types';
 import { TabManager } from '../../core/TabManager';
 import { LLM_API_URL } from '../../config/constants';
-import { MCPManager } from '../../core/mcp/MCPManager';
-import { registerMCPTools, unregisterMCPTools } from '../../core/mcp/MCPToolAdapter';
+// Track 22: MCP/A2A are gated behind compile-time feature flags. Manager
+// classes and tool-adapter helpers load via dynamic import() inside the
+// feature-gated init blocks, so an OFF build tree-shakes core/mcp +
+// core/a2a out of the extension bundle entirely. Only type-only imports
+// remain at top level (erased at compile time — zero bundle cost).
+import type { MCPManager as MCPManagerT } from '../../core/mcp/MCPManager';
 import type { MCPManagerEvent } from '../../core/mcp/types';
-import { A2AManager } from '../../core/a2a/A2AManager';
-import { registerA2ASkills, unregisterA2ASkills } from '../../core/a2a/A2AToolAdapter';
+import type { A2AManager as A2AManagerT } from '../../core/a2a/A2AManager';
 import type { A2AManagerEvent } from '../../core/a2a/types';
+import { MCP, A2A } from '../../core/features/feature';
 
 // Skills imports
 import { SkillRegistry } from '../../core/skills';
@@ -83,8 +87,8 @@ let registry: AgentRegistry | null = null;
 let cacheManager: CacheManager | null = null;
 let storageQuotaManager: StorageQuotaManager | null = null;
 let agentConfig: AgentConfig | null = null;
-let mcpManager: MCPManager | null = null; // MCP server connection manager
-let a2aManager: A2AManager | null = null; // A2A agent connection manager
+let mcpManager: MCPManagerT | null = null; // MCP server connection manager
+let a2aManager: A2AManagerT | null = null; // A2A agent connection manager
 let currentAuthManager: AuthManager | null = null; // Preserve auth state across agent recreation
 let scheduler: Scheduler | null = null; // Job scheduler
 let schedulerAlarms: SchedulerAlarms | null = null;
@@ -322,26 +326,36 @@ async function doInitialize(): Promise<void> {
   // This ensures backend routing is set up correctly on service worker startup
   await initializeAuthFromConfig();
 
-  // Initialize MCP manager
-  mcpManager = await MCPManager.getInstance();
+  // Track 22: MCP gated behind the MCP compile-time flag. When OFF this
+  // whole block is dead-code-eliminated and the dynamic import() chunk is
+  // never emitted, so core/mcp leaves the extension bundle.
+  if (MCP) {
+    // Initialize MCP manager
+    const { MCPManager } = await import('../../core/mcp/MCPManager');
+    mcpManager = await MCPManager.getInstance();
 
-  // Subscribe to MCP events for tool registration/unregistration
-  setupMCPToolRegistration();
+    // Subscribe to MCP events for tool registration/unregistration
+    await setupMCPToolRegistration();
 
-  // Auto-connect enabled MCP servers (T064: service worker lifecycle handling)
-  await autoConnectEnabledMCPServers();
+    // Auto-connect enabled MCP servers (T064: service worker lifecycle handling)
+    await autoConnectEnabledMCPServers();
+  }
 
   // Setup message handlers
   setupMessageHandlers();
 
-  // Initialize A2A manager
-  a2aManager = await A2AManager.getInstance();
+  // Track 22: A2A gated behind the A2A compile-time flag (same DCE rationale).
+  if (A2A) {
+    // Initialize A2A manager
+    const { A2AManager } = await import('../../core/a2a/A2AManager');
+    a2aManager = await A2AManager.getInstance();
 
-  // Subscribe to A2A events for tool registration/unregistration
-  setupA2AToolRegistration();
+    // Subscribe to A2A events for tool registration/unregistration
+    await setupA2AToolRegistration();
 
-  // Auto-connect enabled A2A agents
-  await autoConnectEnabledA2AAgents();
+    // Auto-connect enabled A2A agents
+    await autoConnectEnabledA2AAgents();
+  }
 
   // Initialize Skills
   await initializeSkills();
@@ -840,11 +854,15 @@ async function autoConnectEnabledMCPServers(): Promise<void> {
  * Registers/unregisters MCP tools with ToolRegistry when connections change
  * Applies to all active sessions' tool registries.
  */
-function setupMCPToolRegistration(): void {
+async function setupMCPToolRegistration(): Promise<void> {
   if (!mcpManager || !registry) {
     console.warn('[ServiceWorker] Cannot setup MCP tool registration - manager or registry not ready');
     return;
   }
+
+  // Track 22: only reached when the MCP flag is ON (caller is gated), so this
+  // dynamic import keeps core/mcp/MCPToolAdapter out of OFF builds.
+  const { registerMCPTools } = await import('../../core/mcp/MCPToolAdapter');
 
   /** Get tool registries from all active sessions */
   function getAllToolRegistries() {
@@ -936,11 +954,15 @@ function setupMCPToolRegistration(): void {
  * Registers/unregisters A2A skills with ToolRegistry when connections change.
  * Mirrors the setupMCPToolRegistration() pattern.
  */
-function setupA2AToolRegistration(): void {
+async function setupA2AToolRegistration(): Promise<void> {
   if (!a2aManager || !registry) {
     console.warn('[ServiceWorker] Cannot setup A2A tool registration - manager or registry not ready');
     return;
   }
+
+  // Track 22: only reached when the A2A flag is ON (caller is gated), so this
+  // dynamic import keeps core/a2a/A2AToolAdapter out of OFF builds.
+  const { registerA2ASkills } = await import('../../core/a2a/A2AToolAdapter');
 
   /** Get tool registries from all active sessions */
   function getAllToolRegistries() {
