@@ -29,6 +29,7 @@
     onModelChanged,
     onTabSelected,
     onCommandOutput,
+    onOpenRewindSelector,
   }: {
     value?: string;
     placeholder?: string;
@@ -43,6 +44,8 @@
     onModelChanged?: (data: { modelId: string; modelName: string }) => void;
     onTabSelected?: (data: { tabId: number }) => void;
     onCommandOutput?: (data: { title: string; content: string }) => void;
+    /** Track 15: open the rewind turn-selector overlay. */
+    onOpenRewindSelector?: () => void;
   } = $props();
 
   let isFocused = $state(false);
@@ -135,6 +138,9 @@
         push('/settings');
       },
       onSubmitText: (text: string) => onSubmit(text),
+      onOpenRewindSelector: () => {
+        onOpenRewindSelector?.();
+      },
       onOpenDoctor: () => {
         push('/doctor');
       },

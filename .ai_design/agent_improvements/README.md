@@ -99,6 +99,13 @@ the single-track gaps in 26–32**. Filed as bug-report tracks (detail + fix in 
 > `TieredEvictor` ordering must be decided jointly with Track 29 G3 + Track 32 Phase 5 (one
 > shared decision across all three — flagged in each doc).
 
+### Additional Research Tracks (2026-05-16)
+
+| # | Track | Priority | Effort | Value |
+|---|-------|----------|--------|-------|
+| 38 | [Keyboard Shortcut System](./38_keyboard_shortcut_system/design.md) | P1 | Medium | Centralize BrowserX shortcuts around action IDs, active contexts, resolver/display helpers, validation, and platform-specific extension/desktop mappings; selectively adopts claudy's keybinding architecture without terminal-specific assumptions. |
+| 39 | [Dynamic Tool Management](./39_dynamic_tool_management/design.md) | P1 | Medium | Provider-neutral adaptation of claudy's ToolSearch: keep full internal tool availability, defer MCP/A2A/plugin schemas from initial model requests, expose `tool_search`, hydrate selected schemas on the next request, and preserve approval/policy enforcement. |
+
 ## Dependency Graph
 
 ```
@@ -159,6 +166,8 @@ T04 × T05b × T01 (Session/sub-agent)──> 34_int_extractor_task_seam (phanto
 T07 × T11 × T01  (reactive config)  ──> 35_int_reactive_config_staleness (stale client flag + mid-tool hook swap)
 T02 × T01        (parallel+approval)──> 36_int_concurrent_approval_serialization (duplicate prompts)
 T09 × T04 × store(persist+cache)    ──> 37_int_persisted_result_durability (blob vanishes under rollout pointer)
+claudy keybindings comparison       ──> 38_keyboard_shortcut_system (action IDs + contexts + validation + platform global mapping)
+claudy ToolSearch comparison        ──> 39_dynamic_tool_management (deferred model-facing schemas + provider-neutral tool_search hydration)
 
 Integration-fix order: 34 (Critical) → 33 / 37 / 35 (P1) → 36 (P2)
   (37 BUG-3 TieredEvictor ordering == 29 G3 == 32 P5 — ONE shared decision, no drift)
