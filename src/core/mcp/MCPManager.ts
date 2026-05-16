@@ -236,13 +236,14 @@ export class MCPManager implements IMCPManager {
   /**
    * Track 10: scoped removal — remove every server owned by a given plugin.
    *
-   * Called by `PluginRegistry.disable(pluginId)` to atomically unload one
-   * plugin's MCP servers. Each server is removed via `removeServer`, which
-   * already disconnects before drop and emits `config-removed` per server.
+   * Called by `PluginRegistry.disable(pluginId)` to unload one plugin's
+   * MCP servers. Each server is removed via `removeServer`, which already
+   * disconnects before drop and emits `config-removed` per server.
    *
-   * Per-server errors are logged but don't halt the loop — final state is
-   * "no servers with this pluginId remain in this.servers". Builtin and
-   * user-added servers are unaffected (no `pluginId`).
+   * Best-effort: per-server errors are logged but don't halt the loop, so
+   * a server whose `removeServer` throws may remain in `this.servers`.
+   * The loop attempts removal of every matching server regardless. Builtin
+   * and user-added servers are unaffected (no `pluginId`).
    */
   async removeByPluginId(pluginId: string): Promise<void> {
     this.ensureInitialized();
