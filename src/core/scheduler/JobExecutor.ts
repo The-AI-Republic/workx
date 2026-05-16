@@ -331,6 +331,13 @@ export class JobExecutor {
         `[JobExecutor] Rewound failed execution ${execution.id} → ${retryId} ` +
         `(checkpoint ${checkpointSeq ?? 'none/retry-from-zero'}; side effects NOT undone)`
       );
+
+      // The rewind path returns early and skips the normal failExecution
+      // tail; without this, pending queued executions would not be drained
+      // until the retry chain terminally ends. The retry already holds its
+      // slot via launchJob, and processQueue re-checks canCreateSession, so
+      // this only releases genuinely-available capacity.
+      queueMicrotask(() => { this.processQueue().catch(() => {}); });
       return true;
     } catch (e) {
       console.error(

@@ -190,11 +190,24 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
           : turns.find((tn) => tn.sequence === targetSequence)?.text;
 
       // Build the forked history (summarize before removeSession so the
-      // source agent's model client is still alive — D9).
-      const forked =
-        mode === 'summarize_up_to' && deps.summarizeForRewind
-          ? await buildSummarizedFork(sourceConvId, targetSequence, deps.summarizeForRewind)
-          : await computeRewindSlice(sourceConvId, targetSequence);
+      // source agent's model client is still alive — D9). If the caller asked
+      // to summarize but no summarizer is wired, fail loudly rather than
+      // silently producing a full conversation fork (design doc §103).
+      let forked;
+      if (mode === 'summarize_up_to') {
+        if (!deps.summarizeForRewind) {
+          throw new Error(
+            'summarize_up_to is unavailable: no summarizer is configured for this platform',
+          );
+        }
+        forked = await buildSummarizedFork(
+          sourceConvId,
+          targetSequence,
+          deps.summarizeForRewind,
+        );
+      } else {
+        forked = await computeRewindSlice(sourceConvId, targetSequence);
+      }
 
       // Abort + close the source session (D7), then create the fork.
       await registry.removeSession(sourceConvId);

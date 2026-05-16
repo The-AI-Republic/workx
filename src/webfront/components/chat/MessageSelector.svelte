@@ -79,7 +79,15 @@
         sessionId: string;
         history?: unknown[];
         rewoundText?: string;
-      }>('session.rewind', { targetSequence: selected.sequence, mode });
+      }>(
+        'session.rewind',
+        { targetSequence: selected.sequence, mode },
+        // `summarize_up_to` runs a synchronous model compaction server-side;
+        // the default 30s cap would falsely reject a successful summarize and
+        // orphan the already-created fork. Give it a generous ceiling (the
+        // server still bounds the model call itself).
+        { timeoutMs: mode === 'summarize_up_to' ? 180_000 : 60_000 },
+      );
       onRewound(result);
     } catch (e) {
       errorMsg = e instanceof Error ? e.message : String(e);
