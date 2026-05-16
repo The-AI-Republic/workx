@@ -70,7 +70,10 @@ const REJECT_RULES: Array<{ id: string; test: (s: string, ctx: RejectCtx) => boo
       ),
   },
   { id: 'echoes-assistant', test: (s, c) => jaccard(s, c.lastAssistant) > 0.6 },
-  { id: 'secret', test: (s) => scanForSecrets(s).spans.length > 0 },
+  // High-confidence secrets only (`.block`), not the scanner's low-confidence
+  // generic-high-entropy heuristic — keeps suggestion filtering decoupled
+  // from redaction tuning.
+  { id: 'secret', test: (s) => scanForSecrets(s).block },
   {
     id: 'destructive',
     test: (s) => /\b(delete|remove|drop|erase|wipe|purge|uninstall|format)\b/i.test(s),

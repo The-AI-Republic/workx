@@ -9,6 +9,14 @@
 
 import type { PromptSuggestionConfig } from './types';
 
+/**
+ * Session-side throttle: minimum gap between two suggestion generations for
+ * one session. Task completions are human-paced, but retried/aborted tasks
+ * can emit completion in quick succession — this plus the single-flight guard
+ * prevents stacked/wasteful background calls.
+ */
+export const SUGGESTION_COOLDOWN_MS = 3000;
+
 export const DEFAULT_SUGGESTION_CONFIG: PromptSuggestionConfig = {
   maxRetries: 2,
   baseBackoffMs: 1000,

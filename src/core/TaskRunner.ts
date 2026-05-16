@@ -577,7 +577,7 @@ export class TaskRunner {
     // delay, or fail task completion.
     Promise.resolve()
       .then(() => this.session.maybeGenerateSuggestion?.())
-      .catch(() => {});
+      .catch((e) => console.debug('[TaskRunner] prompt suggestion error (ignored):', e));
 
     // Fire-and-forget: persist token usage record
     this.persistTokenUsage(

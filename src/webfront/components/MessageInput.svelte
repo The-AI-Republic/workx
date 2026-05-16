@@ -505,8 +505,10 @@
       </div>
     {/if}
 
-    <!-- Track 24.3: next-message suggestion chip (Tab to accept, × to dismiss) -->
-    {#if suggestion && !value.trim() && !isCommandMode}
+    <!-- Track 24.3: next-message suggestion chip (Tab to accept, × to dismiss).
+         Visible exactly when Tab will accept: palette closed AND input empty
+         OR the typed text is a live prefix of the suggestion. -->
+    {#if suggestion && !isCommandMode && (!value.trim() || suggestion.toLowerCase().startsWith(value.toLowerCase()))}
       <div class="mb-1 flex items-center gap-2 text-xs {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
         <span class="opacity-70">Tab ↹</span>
         <span class="truncate">{suggestion}</span>

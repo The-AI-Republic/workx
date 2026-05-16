@@ -55,6 +55,7 @@ type SessionSummaryHookHandle = SessionSummaryHook;
 // Title generation imports
 import { TitleGenerator } from './title';
 import { PromptSuggestionGenerator } from './suggestions/promptSuggestion';
+import { SUGGESTION_COOLDOWN_MS } from './suggestions/constants';
 
 // Track 04: typed tasks
 import type { BackgroundAgentTaskState, TaskState } from './tasks/types';
@@ -106,6 +107,8 @@ export class Session {
   private compactService: CompactService;
   private titleGenerator: TitleGenerator;
   private suggestionGenerator: PromptSuggestionGenerator;
+  private suggestionInFlight = false;
+  private lastSuggestionAt = 0;
   private _memoryService: MemoryService | null = null;
 
   // ─── Track 04: typed task registry ────────────────────────────────────
@@ -2413,6 +2416,12 @@ export class Session {
     if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'server') {
       return;
     }
+    // Single-flight + cooldown: a slow background call must not stack with the
+    // next task's completion, and rapid retried/aborted completions must not
+    // each spawn a model call.
+    if (this.suggestionInFlight) return;
+    if (Date.now() - this.lastSuggestionAt < SUGGESTION_COOLDOWN_MS) return;
+
     const history = this.sessionState.historySnapshot();
     if (this.suggestionGenerator.countAssistantTurns(history) < 2) {
       return;
@@ -2420,12 +2429,20 @@ export class Session {
     const modelClient = this.getModelClientForTitle();
     if (!modelClient) return;
 
-    const result = await this.suggestionGenerator.generateSuggestion(history, modelClient);
-    if (result.success && result.suggestion) {
-      await this.emitEvent({
-        id: crypto.randomUUID(),
-        msg: { type: 'PromptSuggestion', data: { suggestion: result.suggestion } },
-      });
+    this.suggestionInFlight = true;
+    try {
+      const result = await this.suggestionGenerator.generateSuggestion(history, modelClient);
+      this.lastSuggestionAt = Date.now();
+      if (result.success && result.suggestion) {
+        await this.emitEvent({
+          id: crypto.randomUUID(),
+          msg: { type: 'PromptSuggestion', data: { suggestion: result.suggestion } },
+        });
+      } else if (!result.success) {
+        console.debug('[Session] Prompt suggestion generation failed:', result.error);
+      }
+    } finally {
+      this.suggestionInFlight = false;
     }
   }
 

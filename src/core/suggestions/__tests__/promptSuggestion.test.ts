@@ -80,6 +80,17 @@ describe('generateSuggestion — happy path + cleaning', () => {
     expect(r.success).toBe(true);
     expect(r.suggestion).toBeUndefined();
   });
+
+  it('a benign long token is NOT rejected (decoupled from generic-high-entropy)', async () => {
+    const g = new PromptSuggestionGenerator();
+    const longToken = 'abcdefghij0123456789ABCDEFGHIJ0123456789klmnop';
+    const r = await g.generateSuggestion(
+      baseHistory(),
+      mockClient(`rerun the report for batch ${longToken}`),
+    );
+    expect(r.success).toBe(true);
+    expect(r.suggestion).toContain(longToken);
+  });
 });
 
 describe('REJECT_RULES discard unsafe / low-value predictions', () => {
