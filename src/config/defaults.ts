@@ -83,6 +83,9 @@ export const DEFAULT_TOOLS_CONFIG: IToolsConfig = {
   mcpTools: false,
   customTools: {},
 
+  // Track 11: dark by default. Enable to let the model batch tool calls.
+  parallelToolCalls: false,
+
   // Shared configuration metadata
   enabled: [
     'web_scraping',

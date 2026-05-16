@@ -14,16 +14,23 @@
 use std::fs;
 use std::path::PathBuf;
 
-/// Expand a leading `~` to the user's home directory.
+/// Expand a leading `~` to the user's home directory and confine the
+/// result under the app data dir (`~/.browserx`).
 ///
-/// SECURITY (Track 10): defense-in-depth. The TS layer already jails
-/// plugin-supplied paths under the plugin root (see pluginPath.ts), but
-/// these commands accept a raw string over IPC, so independently reject
-/// any `..` (ParentDir) component here. Without this, a bug or bypass in
-/// the TS jail would let a malicious plugin read/write arbitrary files.
+/// SECURITY (Track 10, review B #1): defense-in-depth. The TS layer
+/// already jails plugin-supplied paths under the plugin root (see
+/// pluginPath.ts), but these commands accept a raw string over IPC, so
+/// they independently (a) reject any `..` (ParentDir) component and
+/// (b) require the resolved path to stay under `~/.browserx`. Rejecting
+/// only `..` is insufficient — an absolute path with no `..` (e.g.
+/// `/etc/passwd`, `~/.ssh/id_rsa`) would otherwise pass straight through,
+/// and `plugins_remove_dir` is a recursive force-delete. The prefix check
+/// is component-wise (PathBuf::starts_with), so a sibling like
+/// `~/.browserx-evil` does NOT satisfy it. Symlink resolution is out of
+/// scope here (tracked as a Phase 10c hardening item).
 fn resolve_path(path: &str) -> Result<PathBuf, String> {
+    let home = dirs::home_dir().ok_or("Cannot determine home directory")?;
     let expanded = if let Some(rest) = path.strip_prefix('~') {
-        let home = dirs::home_dir().ok_or("Cannot determine home directory")?;
         home.join(rest.strip_prefix('/').unwrap_or(rest))
     } else {
         PathBuf::from(path)
@@ -33,6 +40,14 @@ fn resolve_path(path: &str) -> Result<PathBuf, String> {
         .any(|c| matches!(c, std::path::Component::ParentDir))
     {
         return Err(format!("path traversal ('..') not allowed: {}", path));
+    }
+    let app_root = home.join(".browserx");
+    if !expanded.starts_with(&app_root) {
+        return Err(format!(
+            "path escapes the plugin data dir ({}): {}",
+            app_root.display(),
+            path
+        ));
     }
     Ok(expanded)
 }
@@ -149,4 +164,40 @@ pub fn plugins_rename(from: String, to: String) -> Result<(), String> {
 pub fn plugins_path_exists(path: String) -> Result<bool, String> {
     let resolved = resolve_path(&path)?;
     Ok(resolved.exists())
+}
+
+#[cfg(test)]
+mod tests {
+    //! Track 10 (review B #1): resolve_path must confine every resolved
+    //! path under `~/.browserx` and reject `..`, even for absolute inputs
+    //! that contain no `..` (the bug the `..`-only check missed).
+    use super::resolve_path;
+
+    #[test]
+    fn accepts_paths_under_the_plugin_data_dir() {
+        assert!(resolve_path("~/.browserx/plugins").is_ok());
+        assert!(resolve_path("~/.browserx/plugins/foo/skills/SKILL.md").is_ok());
+        // staging-dir + rename install target
+        assert!(resolve_path("~/.browserx/plugins/foo.staging-123").is_ok());
+    }
+
+    #[test]
+    fn rejects_absolute_paths_outside_the_data_dir() {
+        // No `..` anywhere — the old check would have let these through.
+        assert!(resolve_path("/etc/passwd").is_err());
+        assert!(resolve_path("~/.ssh/id_rsa").is_err());
+        assert!(resolve_path("~/Documents/secret.txt").is_err());
+    }
+
+    #[test]
+    fn rejects_parent_dir_traversal() {
+        assert!(resolve_path("~/.browserx/plugins/../../etc").is_err());
+        assert!(resolve_path("~/.browserx/../.ssh").is_err());
+    }
+
+    #[test]
+    fn prefix_check_is_component_wise_not_string_prefix() {
+        // A sibling that string-starts-with the root must NOT be accepted.
+        assert!(resolve_path("~/.browserx-evil/x").is_err());
+    }
 }

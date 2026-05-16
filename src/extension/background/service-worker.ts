@@ -529,6 +529,15 @@ async function registerServiceHandlers(): Promise<void> {
     const count = registerAllServices(serviceRegistry, {
       mcp: mcpManager ? { mcpManager } : undefined,
       scheduler: scheduler ? { scheduler } : undefined,
+      diagnostics: {
+        buildCtx: () => ({
+          platformId: 'extension',
+          channelManager: getChannelManager(),
+          mcpManager: mcpManager ?? undefined,
+          skillRegistry: skillRegistry ?? undefined,
+          scheduler: scheduler ?? undefined,
+        }),
+      },
       skills: skillRegistry ? { skillRegistry } : undefined,
       plugins: pluginRegistry ? { pluginRegistry } : undefined,
       vault: {

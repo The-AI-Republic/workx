@@ -132,12 +132,8 @@ describe('SessionState', () => {
 
     it('should update rate limits', () => {
       const rateLimits: RateLimitSnapshot = {
-        limit_requests: 1000,
-        limit_tokens: 100000,
-        remaining_requests: 999,
-        remaining_tokens: 99500,
-        reset_requests: '2025-10-01T12:00:00Z',
-        reset_tokens: '2025-10-01T12:00:00Z',
+        primary: { used_percent: 42, window_minutes: 300, resets_in_seconds: 1200 },
+        secondary: { used_percent: 10, window_minutes: 10080 },
       };
 
       state.updateRateLimits(rateLimits);
@@ -146,22 +142,29 @@ describe('SessionState', () => {
       expect(exported.latestRateLimits).toEqual(rateLimits);
     });
 
+    it('should expose the latest snapshot via getRateLimits()', () => {
+      expect(state.getRateLimits()).toBeUndefined();
+      const snapshot: RateLimitSnapshot = {
+        primary: { used_percent: 55 },
+      };
+      state.updateRateLimits(snapshot);
+      expect(state.getRateLimits()).toEqual(snapshot);
+    });
+
     it('should replace previous rate limits on update', () => {
       const rateLimits1: RateLimitSnapshot = {
-        remaining_requests: 999,
-        remaining_tokens: 99500,
+        primary: { used_percent: 50 },
       };
 
       const rateLimits2: RateLimitSnapshot = {
-        remaining_requests: 998,
-        remaining_tokens: 99000,
+        primary: { used_percent: 80 },
       };
 
       state.updateRateLimits(rateLimits1);
       state.updateRateLimits(rateLimits2);
 
       const exported = state.export();
-      expect(exported.latestRateLimits?.remaining_requests).toBe(998);
+      expect(exported.latestRateLimits?.primary?.used_percent).toBe(80);
     });
   });
 
@@ -260,8 +263,7 @@ describe('SessionState', () => {
       ] as any);
       state.addTokenUsage(150);
       state.updateRateLimits({
-        remaining_requests: 500,
-        remaining_tokens: 50000,
+        primary: { used_percent: 70, window_minutes: 300 },
       });
       state.addApprovedCommand('cmd1');
       state.addApprovedCommand('cmd2');
@@ -272,7 +274,7 @@ describe('SessionState', () => {
 
       expect(reimported.history.items).toHaveLength(2);
       expect(reimported.tokenInfo?.total_tokens).toBe(150);
-      expect(reimported.latestRateLimits?.remaining_requests).toBe(500);
+      expect(reimported.latestRateLimits?.primary?.used_percent).toBe(70);
       expect(reimported.approvedCommands).toHaveLength(2);
     });
   });

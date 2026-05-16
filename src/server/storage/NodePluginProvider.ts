@@ -2,8 +2,9 @@
  * NodePluginProvider — filesystem-backed IPluginProvider for the server
  * (Node.js) runtime.
  *
- * Layout: `<root>/<pluginDir>/plugin.json` per plugin. `<root>` defaults to
- * `<workspace>/.browserx/plugins`. This is also the reference implementation
+ * Layout: `<root>/<pluginDir>/plugin.json` per plugin. `<root>` is supplied
+ * by the platform bootstrap (server uses `~/.browserx/plugins`, i.e.
+ * `os.homedir()`). This is also the reference implementation
  * the desktop (Tauri) and extension (IDB) adapters mirror — kept dependency-
  * free (only Node `fs`/`path`) so it's unit-testable without platform plumbing.
  *
@@ -63,8 +64,16 @@ export class NodePluginProvider implements IPluginProvider {
       const result = PluginManifestSchema.safeParse(parsed);
       if (!result.success) continue;
       const manifest = result.data as PluginManifest;
+      const pid: PluginId = `${manifest.name}@local`;
+      const prior = this.idToDir.get(pid);
+      if (prior !== undefined && prior !== dir) {
+        console.warn(
+          `[NodePluginProvider] duplicate plugin name "${manifest.name}": ` +
+            `"${dir}" shadows "${prior}" (id ${pid})`,
+        );
+      }
       out.push(manifest);
-      this.idToDir.set(`${manifest.name}@local`, dir);
+      this.idToDir.set(pid, dir);
     }
     return out;
   }

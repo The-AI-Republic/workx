@@ -1,3 +1,4 @@
+import { push } from 'svelte-spa-router';
 import { commandRegistry } from './CommandRegistry';
 import type { SkillMeta } from '@/core/skills/types';
 import { getInitializedUIClient } from '@/core/messaging';
@@ -6,6 +7,7 @@ export interface BuiltinCommandCallbacks {
   onNewConversation: () => void;
   onCommandOutput: (title: string, content: string) => void;
   onOpenSettings: () => void;
+  onOpenDoctor: () => void;
 }
 
 /** Mutable reference that always points to the live component's callbacks. */
@@ -62,6 +64,38 @@ export function initBuiltinCommands(callbacks: BuiltinCommandCallbacks): void {
     loadedFrom: 'builtin',
     action: (args?: string) => {
       void handlePluginCommand(args ?? '');
+    },
+  });
+
+  commandRegistry.register({
+    name: 'doctor',
+    description: 'Run operational diagnostics and show a health report',
+    whenToUse:
+      'When the agent is misbehaving — checks config, credentials, channels, MCP, skills, and the scheduler.',
+    loadedFrom: 'builtin',
+    action: () => {
+      activeCallbacks?.onOpenDoctor();
+    },
+  });
+
+  // Track 18: /cost and /usage both open the usage dashboard (which shows
+  // cumulative USD, per-model and per-day cost). The registry has no alias
+  // field, so register both; the has('new') guard above keeps it idempotent.
+  commandRegistry.register({
+    name: 'cost',
+    description: 'Show session and historical USD cost',
+    loadedFrom: 'builtin',
+    action: () => {
+      push('/usage');
+    },
+  });
+
+  commandRegistry.register({
+    name: 'usage',
+    description: 'Show token & cost usage dashboard',
+    loadedFrom: 'builtin',
+    action: () => {
+      push('/usage');
     },
   });
 }

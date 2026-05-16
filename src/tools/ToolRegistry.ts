@@ -222,9 +222,13 @@ export class ToolRegistry {
    * runtime. The plain `register()` throws on duplicate, so callers that
    * want "either install or update" semantics use this instead.
    *
-   * Replacement is atomic from the consumer's view: the new entry is in
-   * place before this method returns; in-flight tool calls already
-   * dispatched to the old handler continue with that closure.
+   * NOT atomic: the old entry is removed (emitting `ToolUnregistered`)
+   * before `register()` is awaited, so there is a brief window where the
+   * tool is absent from the registry — a concurrent `discover()` or
+   * dispatch in that window will not see it. The new entry is guaranteed
+   * present only once this method resolves. In-flight tool calls already
+   * dispatched to the old handler continue with that closure. Callers
+   * needing gap-free swaps must serialize against tool discovery.
    */
   async replace(
     tool: ToolDefinition,
