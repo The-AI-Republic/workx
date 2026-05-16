@@ -28,6 +28,15 @@ Convention: `- [ ] N.M` work item; `Test:` lines are required acceptance checks.
 - [ ] 2.4 Confirm in code that hook events need no extra wiring (they already reach the chokepoint via `RepublicAgent.ts:82` → `emitEvent` `:956-977`) and that sub-agent lifecycle events arrive tagged with `_subAgent.{depth}` (`SubAgentEventRouter.ts:28-49`). Document the coverage limit (sub-agent deltas suppressed; only `ENGINE_ONLY_EVENTS` `RepublicAgent.ts:920-932` forwarded). Scheduler emitter family is out of scope (separate path).
 - [ ] 2.5 Subsume `SessionSummaryTelemetry` — dual-emit, zero behavior change. Add optional 3rd param `telemetryCore` to `createTelemetryEmitter` (`core/sessionSummary/telemetry.ts:26-51`), default no-op so `NO_OP_TELEMETRY`/tests/callers (`SessionSummaryHook.ts:101`) are untouched. Keep `parentEngine.pushEvent(...)` exactly as-is; additionally `logEvent('session_summary.'+event, sanitized)`. **Strip** `memoryRoot`, `config`, `error` (→ `errorPresent` + `errorClass`); pass numerics/bounded strings through (payloads verified `SessionSummaryHook.ts:155,232,329,375,392`; `CompactService.ts:117,124,141,212`).
 - [ ] 2.6 Subsume the live `GeminiLogger` calls: replace `GoogleCompletionClient.ts:216` with `logEvent('gemini.stream_start', { model })` (drop synthetic conv-id); drop `:215`. Optionally add `logEvent('gemini.stream_end', { chunkCount, accumulatedTextLen, toolCallCount, finishReason })` at `GoogleCompletionClient.ts:447`. Do **not** port the ~15 dead raw-string methods; leave `GeminiLogger` as the `GEMINI_DEBUG` console-only path.
+
+### Second tap — scheduler emitter (closes the "why did a scheduled job abort" goal)
+
+- [ ] 2.7 Add an optional `tap?: (e: Record<string, unknown>) => void` parameter to `Scheduler.connectToChannel` (`core/scheduler/Scheduler.ts:119`), invoked inside the existing emitter closure **before** `dispatchEvent` (`Scheduler.ts:123-134`). Single core change; one tap covers both Scheduler + JobExecutor events (`Scheduler.setEventEmitter:98-106` funnels JobExecutor back through the same slot — no separate `JobExecutor` tap).
+- [ ] 2.8 Pass `withSchedulerTelemetry(...)` at the 3 platform call sites: `ServerAgentBootstrap.ts:619`, `DesktopAgentBootstrap.ts:567`, `service-worker.ts:487`. Reuse the shared `withTelemetry`/allowlist helper from 2.1 for consistency with the agent-side decorator.
+- [ ] 2.9 Map the two verified scheduler shapes (no free-text fields — stream is telemetry-clean): `scheduler.execution` ← Shape A (`JobExecutor.ts:420-429`: `status` enum, `timestamp`, `executionId`/`scheduleEventId` ids); `scheduler.state` ← Shape B (`Scheduler.ts:466-470`: `isPaused` bool, `currentJobId`).
+- [ ] 2.10 **CORE SCHEDULER CHANGE (the one conscious scope decision — get owner sign-off):** add a bounded enum `failureReason` (`session_create_failed | no_launcher | offline | mutex_queued | missed | concurrent | launcher_error | stale_recovered | agent_error`) to the emitted event and emit it at the ~6 currently-silent sites: session/agent-create failure (`JobExecutor.ts:150-153,313-323`), null/throwing launcher (`:388-405`), connectivity/paused gate (`:288-290`), mutex deferral (`:127-133`), concurrent-trigger rejection (`:120-122`), stale-recovery (`:359`); missed/mis-fired via `ScheduleManager.getMissedInstances`. Enum-only, privacy-clean. Without this the tap answers "ran/succeeded/failed" but not "why it aborted pre-session" → goal only partially met.
+- [ ] 2.11 Optional (server/desktop only): enrich `completed`/`failed` with `duration` + `token_usage.total` from `handleSchedulerEventCompletion` (`ServerAgentBootstrap.ts:692-726`, `DesktopAgentBootstrap.ts:662-696`) — coordinate with Track 18 to avoid duplicate cost extraction. No extension equivalent (verified) — note, don't build one.
+- [ ] Test 2.e: drive scheduler through `running`/`completed`/`failed`/`cancelled` + each `failureReason` site → `scheduler.*` events with enum/numeric only. **Goal-closing assertion:** a pre-session (session-create) failure yields `scheduler.execution` with the correct `failureReason`.
 - [ ] Test 2.a: representative `EventMsg` values through `observe()` → exact allowlist mapping; excluded/unknown types produce nothing.
 - [ ] Test 2.b: decorator always forwards to `real(event)` even when the telemetry call throws; event ordering to transport preserved.
 - [ ] Test 2.c: disabled-path — `telemetryEnabled:false`, drive a full turn (tool calls + approvals + compaction): zero `write` calls **and** turn completes uninjured; a throwing sink does not break the turn.
@@ -54,14 +63,16 @@ Convention: `- [ ] N.M` work item; `Test:` lines are required acceptance checks.
 
 - [ ] One `logEvent` core exists, no-op unless `telemetryEnabled` true, privacy enforced at compile time.
 - [ ] `TelemetryBridge` emits the curated numeric/boolean allowlist with **zero** hand-instrumented call sites; allowlist-only (new Track 01 events can't leak).
+- [ ] **Scheduler tap live + `failureReason` enum emitted at the silent sites** → a scheduled job that aborts *before a session starts* produces a `scheduler.execution` telemetry event with a machine-readable cause (the "why did a scheduled job abort" goal genuinely met, not partial).
 - [ ] The four scattered surfaces are subsumed (SessionSummaryTelemetry dual-emits; live GeminiLogger call is a marker event; `emitLog` is a pluggable sink) with no behavior regression for existing consumers.
 - [ ] Each platform has a working sink attached at its bootstrap.
-- [ ] Server with `telemetryEnabled:true`: operator tailing `logs.tail` sees structured tool-failure/approval/abort/compaction/token-pressure events; with `false`, nothing emitted and the turn loop provably unaffected.
+- [ ] Server with `telemetryEnabled:true`: operator tailing `logs.tail` sees structured tool-failure/approval/abort/compaction/token-pressure events **and scheduled-job lifecycle + abort cause**; with `false`, nothing emitted and the turn loop provably unaffected.
 - [ ] Tests: injectable fake sink + `_resetForTesting` assert exact names/metadata; disabled-path proves the turn loop is uninjured.
 
 ## Dependencies / non-dependencies
 
 - **Track 01 (DONE):** seam is `RepublicAgent.emitEvent`/`AgentRegistry` dispatcher — **no Track-01 change**.
 - **Track 12:** rate-limit events are Track 01 `EventMsg` → bridged free (no net-new instrumentation).
+- **Scheduler:** separate emitter, second tap (2.7–2.11). `failureReason` (2.10) is the only scheduler-core change — needs owner sign-off. Cost-enrichment (2.11) shares a seam with **Track 18** — coordinate.
 - **Track 17 / Track 20:** do **not** exist; baseline must not depend on them (it doesn't). Additive later.
 - **Track 22:** Phase 4 only.
