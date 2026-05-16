@@ -33,6 +33,8 @@ describe('TurnManager Memory Integration', () => {
             getToolsConfig: vi.fn().mockReturnValue({ enabled: {} }),
             getSelectedModelKey: vi.fn().mockReturnValue('openai:test-model'),
             getSessionId: vi.fn().mockReturnValue('test-session-id'),
+            getUnattended: vi.fn().mockReturnValue(false),
+            getUnattendedResetCapMs: vi.fn().mockReturnValue(undefined),
         };
 
         mockSession = {

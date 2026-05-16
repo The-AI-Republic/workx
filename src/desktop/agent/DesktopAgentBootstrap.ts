@@ -19,6 +19,7 @@
 
 import { TauriChannel } from '../channels/TauriChannel';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
+import type { DiagnosticContext } from '@/core/diagnostics';
 import { RepublicAgent } from '@/core/RepublicAgent';
 import { UserNotifier } from '@/core/UserNotifier';
 import { ApprovalGate } from '@/core/approval/ApprovalGate';
@@ -404,9 +405,37 @@ export class DesktopAgentBootstrap {
           await tauriStorage.set('agent_config', storedConfig);
         },
       } : undefined,
+      diagnostics: {
+        buildCtx: () => this.buildDiagnosticContext(channelManager),
+      },
     });
 
     console.log(`[DesktopAgentBootstrap] Registered ${count} service handlers`);
+  }
+
+  /**
+   * Assemble the desktop diagnostic context (Track 17). No DiagnosticsMonitor
+   * on desktop — there is no `/health` probe; the report is served on demand.
+   */
+  private async buildDiagnosticContext(
+    channelManager: ReturnType<typeof getChannelManager>,
+  ): Promise<DiagnosticContext> {
+    let mcpManager: DiagnosticContext['mcpManager'];
+    try {
+      const { MCPManager } = await import('@/core/mcp/MCPManager');
+      mcpManager = (await MCPManager.getInstance(
+        'desktop',
+      )) as unknown as DiagnosticContext['mcpManager'];
+    } catch {
+      // MCP unavailable — the mcp-connected check degrades to "not in use".
+    }
+    return {
+      platformId: 'desktop',
+      channelManager,
+      mcpManager,
+      skillRegistry: this.skillRegistry ?? undefined,
+      scheduler: this.scheduler ?? undefined,
+    };
   }
 
   /**
@@ -710,7 +739,9 @@ export class DesktopAgentBootstrap {
         // handleSchedulerEventCompletion on the previous task's TurnAborted event.
         await registryAgent.submitOperation(
           { type: 'UserInput', items: [{ type: 'text', text: execution.input }] },
-          {}
+          // Track 12: desktop scheduled jobs run unattended (the Tauri host is
+          // long-lived, so multi-hour reset-waits are safe).
+          { unattended: true }
         );
         this.runningSchedulerJobId = executionId;
         this.runningJobStartTime = Date.now();
@@ -792,6 +823,8 @@ export class DesktopAgentBootstrap {
       const data = (msg as EventMsg & { data?: Record<string, any> }).data;
       const summary = data?.last_agent_message?.slice(0, 500) || 'Job completed';
       const tokenData = data?.token_usage?.total;
+      // Track 18: parity with ServerAgentBootstrap — cost is read off the
+      // TaskComplete event (computed once in core), never recomputed.
       this.scheduler.completeJob(jobId, {
         summary,
         tokenUsage: {
@@ -800,6 +833,8 @@ export class DesktopAgentBootstrap {
           totalTokens: tokenData?.total_tokens ?? 0,
         },
         duration,
+        costUSD: typeof data?.cost_usd === 'number' ? data.cost_usd : 0,
+        costEstimated: data?.cost_estimated === true,
       }).catch((error) => {
         console.error(`[DesktopAgentBootstrap] Failed to complete scheduler job ${jobId}:`, error);
       });

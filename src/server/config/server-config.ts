@@ -57,6 +57,13 @@ const LimitsConfigSchema = z.object({
   maxSessions: z.number().default(1_000),
   maxHistoryBytes: z.number().default(6_291_456),
   sessionRetentionDays: z.number().default(30),
+  // Track 18: USD budget caps for unattended scheduler jobs. 0 = disabled.
+  // maxUsdPerDay pauses the job queue once the day's summed cost exceeds it
+  // (post-hoc, blocks subsequent jobs). maxUsdPerJob flags an individual
+  // over-budget job in the logs. Hot-reloadable via the existing
+  // onConfigReload wiring (a candidate Track 20 lockedKeys policy key).
+  maxUsdPerDay: z.number().default(0),
+  maxUsdPerJob: z.number().default(0),
   queue: QueueConfigSchema.default({}),
 });
 

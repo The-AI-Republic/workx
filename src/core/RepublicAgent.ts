@@ -14,6 +14,7 @@ import type { EngineEvent, EngineOp, InputItem as EngineInputItem } from './engi
 import { AgentConfig } from '../config/AgentConfig';
 import { Session } from './Session';
 import { TurnContext } from './TurnContext';
+import { EXTENSION_UNATTENDED_RESET_CAP_MS } from './models/resilience/withRetry';
 import { ApprovalManager } from './ApprovalManager';
 import { ToolRegistry } from '../tools/ToolRegistry';
 import { ModelClientFactory } from './models/ModelClientFactory';
@@ -27,6 +28,24 @@ import { HookDispatcher } from './hooks/HookDispatcher';
 import { ConfigHookLoader } from './hooks/loaders/ConfigHookLoader';
 import type { HookInput } from './hooks/types';
 import type { IPlatformAdapter } from './platform/IPlatformAdapter';
+import { processUserInput } from './input/processUserInput';
+import type { FunnelContext, InputOrigin } from './input/types';
+
+/** Marks an Op object that has already passed through the input funnel.
+ *  Defensive only: it guards re-submission of the *same op object*, not a
+ *  freshly re-derived op (connector/scheduler/chaining build new ops, which
+ *  are correctly re-funnelled). See design §7.6. */
+const FUNNELLED = Symbol('track13.funnelled');
+
+/** Track 13 — claudy parity (processUserInput.ts:272-279): cap hook output
+ *  surfaced to the user / model. */
+const MAX_HOOK_OUTPUT_LENGTH = 10000;
+function applyHookTruncation(content: string): string {
+  if (content.length > MAX_HOOK_OUTPUT_LENGTH) {
+    return `${content.substring(0, MAX_HOOK_OUTPUT_LENGTH)}… [output truncated - exceeded ${MAX_HOOK_OUTPUT_LENGTH} characters]`;
+  }
+  return content;
+}
 
 /**
  * Event dispatcher function type
@@ -160,9 +179,17 @@ export class RepublicAgent {
     // Use createClientForCurrentModel() to properly use selectedModelKey from config
     const modelClient = await this.modelClientFactory.createClientForCurrentModel();
 
-    // Create initial TurnContext with the model client
+    // Create initial TurnContext with the model client.
+    // Track 12: headless deployments (Apple Pi Server) default to unattended
+    // so scheduled/connector sessions wait out rate limits instead of
+    // hard-failing with no human to retry.
     const taskContext = new TurnContext(modelClient, {
-      sessionId: this.session.sessionId
+      sessionId: this.session.sessionId,
+      unattended: this.platformAdapter.platformId === 'server',
+      unattendedResetCapMs:
+        this.platformAdapter.platformId === 'extension'
+          ? EXTENSION_UNATTENDED_RESET_CAP_MS
+          : undefined,
     });
 
     // Configure PromptComposer for dynamic system prompt composition
@@ -407,8 +434,12 @@ export class RepublicAgent {
       // Create new model client with current auth state
       const modelClient = await this.modelClientFactory.createClientForCurrentModel();
 
-      // Create new TurnContext with updated model client
-      const taskContext = new TurnContext(modelClient, {});
+      // Create new TurnContext with updated model client, preserving the
+      // unattended posture across the auth-driven client refresh.
+      const prevUnattended = this.session.getTurnContext()?.getUnattended?.() ?? false;
+      const taskContext = new TurnContext(modelClient, {
+        unattended: prevUnattended,
+      });
       const userInstructions = await loadUserInstructions();
       taskContext.setUserInstructions(userInstructions);
 
@@ -478,8 +509,25 @@ export class RepublicAgent {
    * Execution ops are forwarded to the engine after pre-submit hooks.
    * Returns a submission ID.
    */
-  async submitOperation(op: Op, context?: { tabId?: number }): Promise<string> {
+  async submitOperation(
+    op: Op,
+    // Track 13 (origin/_chainDepth: input funnel) + Track 12 (unattended:
+    // retry posture) — orthogonal concerns, unioned.
+    context?: {
+      tabId?: number;
+      origin?: InputOrigin;
+      _chainDepth?: number;
+      unattended?: boolean;
+    }
+  ): Promise<string> {
     const id = `sub_${this.nextId++}`;
+
+    // Track 12: a scheduler/connector driver can mark this submission
+    // unattended; apply it to the live TurnContext before the turn runs
+    // (TurnManager reads getUnattended() fresh each turn).
+    if (context?.unattended !== undefined) {
+      this.session.updateTurnContext({ unattended: context.unattended });
+    }
 
     try {
       // Guard: engine must be initialized before forwarding execution ops
@@ -508,6 +556,59 @@ export class RepublicAgent {
         // Return the engine's submission ID so callers can correlate with lifecycle events
         case 'UserInput':
         case 'UserTurn': {
+          // ── Track 13: input funnel runs ONCE, before hooks, so the
+          //    UserPromptSubmit hook sees expanded/enriched input. One
+          //    placement covers ext, desktop, and all server input
+          //    sources. See design §4.3.
+          let userOp = op as Extract<Op, { type: 'UserInput' | 'UserTurn' }>;
+          if (!(userOp as Record<symbol, unknown>)[FUNNELLED]) {
+            // The funnel is strictly additive: any unexpected failure inside
+            // it must NOT abort the turn (design risk: never abort a
+            // scheduled/connector job). On error, proceed with the original
+            // op unchanged.
+            let processed: Awaited<ReturnType<typeof processUserInput>> | null = null;
+            try {
+              processed = await processUserInput(
+                userOp.items,
+                this.buildFunnelContext(userOp, context)
+              );
+            } catch (funnelErr) {
+              console.error('[RepublicAgent] input funnel failed; proceeding with raw input:', funnelErr);
+              processed = null;
+            }
+            if (processed && !processed.shouldQuery) {
+              // Handled by the funnel (blocked / slash / bash) — no engine turn.
+              const message = processed.resultText ?? processed.systemNote;
+              if (message) {
+                this.emitEvent({ type: 'Error', data: { message } });
+              }
+              // Command chaining (claudy nextInput/submitNextInput). Bounded
+              // recursion via _chainDepth so a misbehaving chain can't loop.
+              if (processed.nextInput && processed.submitNextInput) {
+                const depth = (context?._chainDepth ?? 0) + 1;
+                if (depth <= 3) {
+                  await this.submitOperation(
+                    { type: 'UserInput', items: [{ type: 'text', text: processed.nextInput }] },
+                    { ...context, _chainDepth: depth }
+                  );
+                }
+              }
+              return id;
+            }
+            if (processed) {
+              if (processed.systemNote) {
+                // Non-blocking degradation notice (e.g. "@page unavailable").
+                this.emitEvent({
+                  type: 'AgentMessage',
+                  data: { message: processed.systemNote },
+                });
+              }
+              userOp = { ...userOp, items: processed.items };
+              (userOp as Record<symbol, unknown>)[FUNNELLED] = true;
+            }
+          }
+          op = userOp;
+
           const shouldContinue = await this.preSubmitHooks(op, context);
           if (!shouldContinue) {
             // UserPromptSubmit hook blocked — return local id without engine submission
@@ -592,6 +693,35 @@ export class RepublicAgent {
   }
 
   /**
+   * Assemble the {@link FunnelContext} for the Track 13 input funnel.
+   * `origin` defaults to `local` (trusted UI) when a caller does not supply
+   * one — preserving current behavior for the webfront path. The bridge-safe
+   * gate only engages for non-`local` origins (connector / remote / scheduler).
+   */
+  private buildFunnelContext(
+    op: Extract<Op, { type: 'UserInput' | 'UserTurn' }>,
+    context?: { tabId?: number; origin?: InputOrigin }
+  ): FunnelContext {
+    const tabId =
+      op.type === 'UserTurn' && op.tabId !== undefined
+        ? op.tabId
+        : context?.tabId;
+    return {
+      sessionId: this.session.sessionId,
+      origin: context?.origin ?? { channel: 'local' },
+      platform: this.platformAdapter,
+      // Track 09 store — may be undefined when persistence is disabled for
+      // the platform; the funnel then leaves items unchanged. Guarded so a
+      // session without the accessor cannot abort a submission.
+      resultStore:
+        typeof this.session.getToolResultStore === 'function'
+          ? this.session.getToolResultStore()
+          : undefined,
+      tabId,
+    };
+  }
+
+  /**
    * Pre-submit hooks: UserPromptSubmit hook + tab binding + pending model switch.
    * Run before forwarding UserInput/UserTurn to the engine.
    *
@@ -616,13 +746,46 @@ export class RepublicAgent {
       };
       const hookResult = await this.hookDispatcher.fire('UserPromptSubmit', hookInput);
       if (!hookResult.shouldContinue) {
+        // claudy parity: a blocking hook erases the input; the user sees a
+        // warning that embeds the original prompt (processUserInput.ts:194-209).
+        const reason =
+          hookResult.stopReason ?? 'UserPromptSubmit hook blocked this input';
         this.emitEvent({
           type: 'Error',
           data: {
-            message: hookResult.stopReason ?? 'UserPromptSubmit hook blocked this input',
+            message: applyHookTruncation(
+              `${reason}\n\nOriginal prompt: ${textContent}`
+            ),
           },
         });
         return false;
+      }
+
+      // claudy parity: surface hook system messages (truncated, informational).
+      for (const sysMsg of hookResult.systemMessages ?? []) {
+        if (sysMsg && sysMsg.trim()) {
+          this.emitEvent({
+            type: 'AgentMessage',
+            data: { message: applyHookTruncation(sysMsg) },
+          });
+        }
+      }
+
+      // claudy parity: fold additionalContext in as a model-visible item
+      // (createAttachmentMessage 'hook_additional_context'). Rides alongside
+      // the prompt — the user's text item is untouched.
+      const extra = (hookResult.additionalContext ?? []).filter(
+        (c) => c && c.trim()
+      );
+      if (extra.length > 0) {
+        const joined = extra.map(applyHookTruncation).join('\n');
+        op.items = [
+          ...op.items,
+          {
+            type: 'text',
+            text: `<hook-additional-context>\n${joined}\n</hook-additional-context>`,
+          },
+        ];
       }
     }
 

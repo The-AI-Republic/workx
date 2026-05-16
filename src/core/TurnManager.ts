@@ -7,6 +7,9 @@ import { Session } from './Session';
 import type { ToolDefinition } from '../tools/BaseTool';
 import { TurnContext } from './TurnContext';
 import type { CompletionRequest, CompletionResponse } from './models/ModelClient';
+import { withModelRetry } from './models/resilience/withRetry';
+import { calculateUSDCost } from './models/cost/cost';
+import { AgentConfig } from '../config/AgentConfig';
 import { loadPrompt, loadUserInstructions } from './PromptLoader';
 import type { EventMsg, TokenUsage, StreamErrorEvent } from './protocol/events';
 import type { Event, InputItem } from './protocol/types';
@@ -66,6 +69,10 @@ export interface TurnRunResult {
   processedItems: ProcessedResponseItem[];
   /** Total token usage for this turn */
   totalTokenUsage?: TokenUsage;
+  /** Track 18: USD cost for this turn, computed from the post-swap model. */
+  turnCostUSD?: number;
+  /** Track 18: true when the model was absent from the cost table. */
+  turnCostEstimated?: boolean;
 }
 
 /**
@@ -169,45 +176,89 @@ export class TurnManager {
       user_instructions: this.turnContext.getUserInstructions(),
     };
 
-    let retries = 0;
+    const maxRetries = this.config.maxRetries || 3;
 
-    while (!this.cancelled) {
-      try {
-        return await this.tryRunTurn(prompt);
-      } catch (error) {
-        // Check for non-retryable errors
-        if (this.cancelled) {
-          throw new Error('Turn cancelled');
-        }
+    // Track 12: resolve the configured fallback model (composite key) once per
+    // turn. On sustained provider overload the orchestrator swaps to it.
+    let fallbackModelKey: string | undefined;
+    try {
+      const agentConfig = await AgentConfig.getInstance();
+      const currentKey = this.turnContext.getSelectedModelKey();
+      fallbackModelKey = agentConfig.getModelByKey(currentKey)?.model
+        .fallbackModelKey;
+    } catch {
+      fallbackModelKey = undefined;
+    }
 
-        if (this.isNonRetryableError(error)) {
-          throw error;
-        }
-
-        // Apply retry logic
-        if (retries < (this.config.maxRetries || 3)) {
-          retries++;
-          const delay = this.calculateRetryDelay(retries, error);
-
+    // Track 12: a single retry orchestrator wraps the whole turn. Each retry
+    // re-runs tryRunTurn from rebuilt clean history (browserx records history
+    // only on turn success — orphan-free by construction).
+    try {
+      return await withModelRetry(() => this.tryRunTurn(prompt), {
+        maxRetries,
+        unattended: this.turnContext.getUnattended(),
+        resetCapMs: this.turnContext.getUnattendedResetCapMs(),
+        currentModel: () => this.turnContext.getSelectedModelKey(),
+        fallback: fallbackModelKey
+          ? {
+              // Only downgrade once: once we're on the fallback model,
+              // resolve returns undefined so the orchestrator falls through
+              // to normal retry/persistent handling.
+              resolveFallbackModel: () =>
+                fallbackModelKey &&
+                this.turnContext.getSelectedModelKey() !== fallbackModelKey
+                  ? fallbackModelKey
+                  : undefined,
+              applyFallbackModel: (model) => {
+                this.session.updateTurnContext({ model });
+                this.turnContext.setSelectedModelKey(model);
+              },
+              onDowngrade: async (from, to) => {
+                await this.emitEvent({
+                  type: 'ModelDowngraded',
+                  data: {
+                    from_model: from,
+                    to_model: to,
+                    reason:
+                      'sustained provider overload (consecutive 529 responses)',
+                  },
+                });
+              },
+            }
+          : undefined,
+        isCancelled: () => this.cancelled,
+        isNonRetryable: (error) => this.isNonRetryableError(error),
+        computeBackoffMs: (attempt, error) =>
+          this.calculateRetryDelay(attempt, error),
+        onRetryNotice: async (error, attempt, delayMs) => {
           const summary = this.extractStreamErrorSummary(error);
-
-          // Notify about retry attempt
           await this.emitStreamError(
             `Stream error: ${summary}`,
             true,
-            retries,
-            delay,
+            attempt,
+            delayMs,
             this.config.maxRetries
           );
-
-          await this.sleep(delay);
-        } else {
-          throw error;
-        }
+        },
+        onWait: async (info) => {
+          await this.emitEvent({
+            type: 'RateLimitWaiting',
+            data: {
+              delay_ms: info.delayMs,
+              attempt: info.attempt,
+              status_code: info.statusCode,
+              kind: info.kind,
+            },
+          });
+        },
+        sleep: (ms) => this.sleep(ms),
+      });
+    } catch (error) {
+      if (this.cancelled) {
+        throw new Error('Turn cancelled');
       }
+      throw error;
     }
-
-    throw new Error('Turn cancelled');
   }
 
   /**
@@ -225,6 +276,28 @@ export class TurnManager {
 
     const processedItems: ProcessedResponseItem[] = [];
     let totalTokenUsage: TokenUsage | undefined;
+
+    // Track 11: only buffer/orchestrate when the feature is enabled. With
+    // the flag off (default) the model is told not to parallelize, so there
+    // is never more than one function_call — buffering would only add the
+    // interrupt-before-Completed behavior change for zero benefit. Keep the
+    // original immediate-execution path byte-for-byte in the default case.
+    const parallelToolCallsEnabled =
+      this.turnContext.getToolsConfig?.()?.parallelToolCalls === true;
+
+    // Track 11: OpenAI Responses API / xAI emit N separate `function_call`
+    // output items for parallel tool calls (Chat Completions providers
+    // accumulate into one `message` item — handled by the orchestrator path
+    // in handleResponseItem). Buffer the legacy items and run them through
+    // Track 02's orchestrator at `Completed` instead of executing each
+    // sequentially as it arrives.
+    //
+    // `bufferedEntries` are placeholder ProcessedResponseItem objects pushed
+    // into processedItems at the stream position the function_call arrived,
+    // so a non-tool item arriving between calls cannot reorder results
+    // relative to it. Responses fill in at `Completed`.
+    const bufferedToolCalls: any[] = [];
+    const bufferedEntries: ProcessedResponseItem[] = [];
 
     try {
       // Process streaming response
@@ -254,7 +327,21 @@ export class TurnManager {
               event.item.modelKey = this.turnContext.getSelectedModelKey();
             }
 
-            // Item (message or tool call) is complete
+            // Track 11: when enabled, defer legacy `function_call` items so a
+            // parallel batch runs through the concurrency orchestrator at
+            // `Completed` rather than executing each one sequentially here.
+            // Non-tool items (message/reasoning/web_search) keep immediate
+            // handling. Push a placeholder now to lock the stream position;
+            // its `response` is filled when the buffer flushes at `Completed`.
+            if (parallelToolCallsEnabled && event.item?.type === 'function_call') {
+              const entry: ProcessedResponseItem = { item: event.item };
+              processedItems.push(entry);
+              bufferedToolCalls.push(event.item);
+              bufferedEntries.push(entry);
+              break;
+            }
+
+            // Item (message or unified tool_calls) is complete
             const response = await this.handleResponseItem(event.item);
             processedItems.push({
               item: event.item,
@@ -272,11 +359,50 @@ export class TurnManager {
             break;
 
           case 'RateLimits':
+            // Track 12: forward the parsed snapshot to the session so the
+            // dead-data fix + early warning actually fire (previously
+            // dropped here, leaving TokenCount/RateLimitWarning inert).
+            await this.session.recordRateLimits(event.snapshot);
             break;
 
           case 'Completed': {
             // Stream completed with final token usage
             totalTokenUsage = event.tokenUsage;
+
+            // Track 18: compute this turn's USD cost from the model that
+            // actually served it. getSelectedModelKey() reflects any Track 12
+            // mid-turn downgrade (applyFallbackModel calls setSelectedModelKey),
+            // so a fallback model is priced (or flagged estimated) correctly.
+            let turnCostUSD: number | undefined;
+            let turnCostEstimated: boolean | undefined;
+            if (totalTokenUsage) {
+              const cost = calculateUSDCost(
+                this.turnContext.getSelectedModelKey(),
+                totalTokenUsage,
+              );
+              turnCostUSD = cost.costUSD;
+              turnCostEstimated = cost.estimated;
+            }
+
+            // Track 11: flush buffered legacy `function_call` items through
+            // Track 02's orchestrator (safe calls concurrent, unsafe
+            // sequential, results in original call order). Results are
+            // written back into the position-preserving placeholders so
+            // ordering relative to any interleaved item is exact. The
+            // placeholders were already in processedItems, so the
+            // `lastTurnHadToolCalls` detection below still sees them.
+            if (bufferedToolCalls.length > 0) {
+              const results = await this.executeBufferedToolCalls(bufferedToolCalls);
+              // results, bufferedToolCalls, and bufferedEntries are
+              // index-aligned by invariant (pushed in lockstep; the
+              // orchestrator preserves input order). Drive the loop off
+              // results.length as the single source of truth.
+              for (let i = 0; i < results.length; i++) {
+                bufferedEntries[i]!.response = results[i];
+              }
+              bufferedToolCalls.length = 0;
+              bufferedEntries.length = 0;
+            }
 
             // Track 05b: fire post-turn hooks before returning. Hooks are
             // owned by Session (since TurnManager is per-task but post-turn
@@ -317,6 +443,8 @@ export class TurnManager {
             return {
               processedItems,
               totalTokenUsage,
+              turnCostUSD,
+              turnCostEstimated,
             };
           }
 
@@ -909,6 +1037,43 @@ export class TurnManager {
         `\n\n[Result truncated from ${output.length} to ${threshold} chars — persistence failed: ${reason}]`
       );
     }
+  }
+
+  /**
+   * Track 11: run buffered legacy `function_call` items through Track 02's
+   * concurrency orchestrator. Returns one result per input call in original
+   * order. Mirrors the unified-format (`message` + `tool_calls[]`) path in
+   * handleResponseItem, including the Track 09 tier-2 aggregate budget.
+   */
+  private async executeBufferedToolCalls(calls: any[]): Promise<any[]> {
+    const prepared = calls.map((tc) =>
+      // tc.arguments may be a JSON string or an already-parsed object;
+      // prepareToolCall handles both shapes.
+      prepareToolCall(
+        { id: tc.call_id, function: { name: tc.name, arguments: tc.arguments } },
+        this.toolRegistry,
+      ),
+    );
+    const batches = partitionToolCalls(prepared);
+    const results = await executeToolCallBatches(
+      batches,
+      async (call: PreparedToolCall) => {
+        try {
+          return await this.executeToolCall(
+            call.name,
+            call.parsedArguments,
+            call.id,
+          );
+        } catch (error) {
+          return {
+            type: 'function_call_output',
+            call_id: call.id,
+            output: `Error: ${error instanceof Error ? error.message : String(error)}`,
+          };
+        }
+      },
+    );
+    return this.maybeEnforceTier2(results, prepared);
   }
 
   /**

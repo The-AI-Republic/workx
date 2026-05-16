@@ -14,6 +14,8 @@ import type {
   Submission,
   InputItem,
 } from './RepublicAgentEngineConfig';
+import { CommandQueue } from '../queue/CommandQueue';
+import { priorityForOp } from '../queue/priorityForOp';
 
 export class RepublicAgentEngine {
   readonly engineId: string;
@@ -23,8 +25,12 @@ export class RepublicAgentEngine {
   private session: Session | null = null;
   private ownsSession: boolean;
 
-  // Queue state
-  private submissionQueue: Submission[] = [];
+  // Queue state.
+  // submissionQueue: priority-aware (Track 08) — 'Interrupt'/'ExecApproval'/
+  //   'PatchApproval'/'Shutdown' jump ahead of queued 'Compact'/'AddToHistory'.
+  //   See src/core/queue/priorityForOp.ts.
+  // eventQueue: plain FIFO — event delivery to waiters, no priority semantics.
+  private submissionQueue = new CommandQueue<Submission>();
   private eventQueue: EngineEvent[] = [];
   private processingSubmission = false;
   private eventWaiters: Array<(event: EngineEvent) => void> = [];
@@ -127,7 +133,7 @@ export class RepublicAgentEngine {
       op,
       timestamp: Date.now(),
     };
-    this.submissionQueue.push(submission);
+    this.submissionQueue.enqueue(submission, { priority: priorityForOp(op) });
     this.processSubmissionQueue();
     return submission.id;
   }
@@ -211,7 +217,7 @@ export class RepublicAgentEngine {
     // or when their per-submission timeout fires. Notification buffer is
     // cleared so a subsequent run() doesn't pick up stale notifications from
     // a cancelled session.
-    this.submissionQueue.length = 0;
+    this.submissionQueue.clear();
     this.pendingNotifications.length = 0;
   }
 
@@ -429,7 +435,9 @@ export class RepublicAgentEngine {
     this.processingSubmission = true;
     try {
       while (this.submissionQueue.length > 0) {
-        const submission = this.submissionQueue.shift()!;
+        const queued = this.submissionQueue.dequeue();
+        if (!queued) break;
+        const submission = queued.payload;
         try {
           await this.handleSubmission(submission);
         } catch (error) {
@@ -599,7 +607,7 @@ export class RepublicAgentEngine {
     this.session.requestInterrupt();
 
     // Clear pending submissions
-    this.submissionQueue.length = 0;
+    this.submissionQueue.clear();
 
     // Emit abort event
     this.pushEvent({
@@ -817,7 +825,7 @@ export class RepublicAgentEngine {
   // ---------------------------------------------------------------------------
 
   private async handleShutdown(): Promise<void> {
-    this.submissionQueue.length = 0;
+    this.submissionQueue.clear();
     this.eventQueue.length = 0;
 
     this.pushEvent({

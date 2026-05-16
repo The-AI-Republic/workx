@@ -18,6 +18,7 @@ export class ServerPlatformAdapter implements IPlatformAdapter {
   readonly platformId = 'server' as const;
   readonly hasRealTabs = false;
   hasBrowserTools = false;
+  readonly hasShellExec = true; // server has exec via registerExecHandlers
 
   async initialize(): Promise<void> {
     try {

@@ -21,6 +21,7 @@ import { configurePromptComposer } from '@/core/PromptLoader';
 import type { RuntimeContext } from '@/prompts/PromptComposer';
 import type { Op } from '@/core/protocol/types';
 import type { SubmissionContext } from '@/core/channels/types';
+import { deriveInputOrigin } from '@/core/input/types';
 import type { EventMsg } from '@/core/protocol/events';
 
 import { getServerConfig, watchConfig, stopWatchingConfig, onConfigReload } from '../config/server-config';
@@ -33,6 +34,9 @@ import { ApplePiConnectorApi } from '../channel-connectors/applepi-connector-api
 import { discoverConnectors } from '../channel-connectors/connector-loader';
 import { ConnectorBridge } from '../channel-connectors/connector-bridge';
 import { HealthMonitor } from '../health/health-monitor';
+import { DiagnosticsMonitor } from '../health/diagnostics-monitor';
+import type { DiagnosticContext } from '@/core/diagnostics';
+import type { SkillRegistry as ISkillRegistry } from '@/core/skills/SkillRegistry';
 import {
   setHealthAgentStatus,
   setHealthAgentTools,
@@ -54,6 +58,7 @@ import { registerLogsHandlers } from '../handlers/logs';
 import { registerExecHandlers } from '../handlers/exec';
 import { registerSchedulerHandlers } from '../handlers/scheduler';
 import { registerCredentialsHandlers } from '../handlers/credentials';
+import { emitLog } from '../handlers/logs';
 
 // Scheduler
 import { ServerScheduleStorage } from '../scheduler/ServerScheduleStorage';
@@ -91,6 +96,8 @@ export class ServerAgentBootstrap {
   private approvalManager: ApprovalManager | null = null;
   private connectorRegistry: ConnectorRegistry | null = null;
   private healthMonitor: HealthMonitor | null = null;
+  private diagnosticsMonitor: DiagnosticsMonitor | null = null;
+  private skillRegistry: ISkillRegistry | null = null;
   private scheduler: Scheduler | null = null;
   private scheduleEventStorage: ServerScheduleStorage | null = null;
   private executionRecordStorage: ServerExecutionStorage | null = null;
@@ -267,7 +274,12 @@ export class ServerAgentBootstrap {
           throw new Error(`Session not found: ${context.sessionId}`);
         }
         console.log('[ServerAgentBootstrap] Processing submission:', op.type, 'session:', context.sessionId);
-        await targetSession.agent.submitOperation(op, { tabId: context.tabId });
+        // Track 13: thread channel origin so the input funnel can apply the
+        // bridge-safe slash gate (connector input must not leak raw /config).
+        await targetSession.agent.submitOperation(op, {
+          tabId: context.tabId,
+          origin: deriveInputOrigin(context),
+        });
       };
 
       channelManager.setAgentHandler(agentHandler);
@@ -365,6 +377,14 @@ export class ServerAgentBootstrap {
       // 15. Register service handlers on ChannelManager (message_routing_v2)
       await this.registerServices(channelManager);
 
+      // 15b. Start diagnostics monitoring so GET /health reports a truthful
+      // status for K8s/Docker probes (Track 17). Started after registerServices
+      // so the first report sees the fully-wired context.
+      this.diagnosticsMonitor = new DiagnosticsMonitor(() =>
+        this.buildDiagnosticContext(),
+      );
+      this.diagnosticsMonitor.start();
+
       this.initialized = true;
       console.log('[ServerAgentBootstrap] Initialization complete');
     } catch (error) {
@@ -433,6 +453,7 @@ export class ServerAgentBootstrap {
       const skillRegistry = new SkillRegistry(skillProvider);
       await skillRegistry.discover();
       skillsDeps = { skillRegistry };
+      this.skillRegistry = skillRegistry;
 
       console.log(`[ServerAgentBootstrap] Skills initialized, found ${skillRegistry.getSkillMetas().length} skills`);
     } catch (error) {
@@ -537,9 +558,40 @@ export class ServerAgentBootstrap {
         registry: this.registry,
         handleConfigUpdate: () => this.handleConfigUpdate(),
       } : undefined,
+      diagnostics: {
+        buildCtx: () => this.buildDiagnosticContext(),
+        heapdump: async () => {
+          const { performHeapDump } = await import('../diagnostics/heapdump');
+          return performHeapDump();
+        },
+      },
     });
 
     console.log(`[ServerAgentBootstrap] Registered ${count} service handlers`);
+  }
+
+  /**
+   * Assemble the server diagnostic context (Track 17). Resolves singletons
+   * lazily so it is correct regardless of bootstrap ordering; absent
+   * collaborators degrade their check gracefully.
+   */
+  private async buildDiagnosticContext(): Promise<DiagnosticContext> {
+    let mcpManager: DiagnosticContext['mcpManager'];
+    try {
+      const { MCPManager } = await import('@/core/mcp/MCPManager');
+      mcpManager = (await MCPManager.getInstance(
+        'server',
+      )) as unknown as DiagnosticContext['mcpManager'];
+    } catch {
+      // MCP unavailable — the mcp-connected check degrades to "not in use".
+    }
+    return {
+      platformId: 'server',
+      channelManager: getChannelManager(),
+      mcpManager,
+      skillRegistry: this.skillRegistry ?? undefined,
+      scheduler: this.scheduler ?? undefined,
+    };
   }
 
   /**
@@ -554,7 +606,12 @@ export class ServerAgentBootstrap {
         if (!this.registry) throw new Error('AgentRegistry not initialized');
         const targetSession = this.registry.getSession(context.sessionId);
         if (!targetSession?.agent) throw new Error(`Session not found: ${context.sessionId}`);
-        await targetSession.agent.submitOperation(op, { tabId: context.tabId });
+        // Track 13: derive origin from the chat channel (on-host WS chat maps
+        // to `local` and skips the gate; remote/relay maps to `remote`).
+        await targetSession.agent.submitOperation(op, {
+          tabId: context.tabId,
+          origin: deriveInputOrigin(context),
+        });
       },
       getHistory: async (sessionKey) => {
         if (!this.transcriptStore) return [];
@@ -762,7 +819,12 @@ export class ServerAgentBootstrap {
             type: 'UserInput',
             items: [{ type: 'text', text: execution.input }],
           },
-          {}
+          // Scheduled jobs are unattended on two orthogonal axes:
+          //  - Track 13 origin `scheduler`: a failed mention/capability
+          //    degrades via systemNote, never aborts the turn.
+          //  - Track 12 unattended: wait out 429/529 instead of
+          //    hard-failing into scheduler.failJob() with no human.
+          { origin: { channel: 'scheduler' }, unattended: true }
         );
         this.runningSchedulerJobId = executionId;
         this.runningJobStartTime = Date.now();
@@ -822,6 +884,11 @@ export class ServerAgentBootstrap {
       const data = (msg as EventMsg & { data?: Record<string, any> }).data;
       const summary = data?.last_agent_message?.slice(0, 500) || 'Job completed';
       const tokenData = data?.token_usage?.total;
+      // Track 18: cost was computed once in core and rides the TaskComplete
+      // event — read it, never recompute server-side (the server has only
+      // prose pricing and no model context).
+      const jobCostUSD = typeof data?.cost_usd === 'number' ? data.cost_usd : 0;
+      const jobCostEstimated = data?.cost_estimated === true;
       this.scheduler.completeJob(jobId, {
         summary,
         tokenUsage: {
@@ -830,6 +897,12 @@ export class ServerAgentBootstrap {
           totalTokens: tokenData?.total_tokens ?? 0,
         },
         duration,
+        costUSD: jobCostUSD,
+        costEstimated: jobCostEstimated,
+      }).then(() => {
+        // Track 18: post-hoc budget enforcement (blocks subsequent jobs;
+        // never throws into a running turn).
+        return this.enforceBudgetCaps(jobId, jobCostUSD, jobCostEstimated);
       }).catch((error) => {
         console.error(`[ServerAgentBootstrap] Failed to complete scheduler job ${jobId}:`, error);
       });
@@ -844,6 +917,66 @@ export class ServerAgentBootstrap {
       this.scheduler.failJob(jobId, error).catch((err) => {
         console.error(`[ServerAgentBootstrap] Failed to fail scheduler job ${jobId}:`, err);
       });
+    }
+  }
+
+  /**
+   * Track 18: post-hoc USD budget enforcement for unattended scheduler jobs.
+   * MVP scope — runs after a job completes, so it blocks *subsequent* jobs
+   * (a mid-run abort would need per-turn server-side cost and is a documented
+   * follow-on). Never throws into a turn; on a per-day breach it pauses the
+   * job queue cleanly and surfaces a logs.tail-visible warning.
+   */
+  private async enforceBudgetCaps(
+    jobId: string,
+    jobCostUSD: number,
+    jobCostEstimated: boolean,
+  ): Promise<void> {
+    try {
+      const limits = getServerConfig().server.limits;
+      const maxPerJob = limits.maxUsdPerJob ?? 0;
+      const maxPerDay = limits.maxUsdPerDay ?? 0;
+
+      if (maxPerJob > 0 && jobCostUSD > maxPerJob) {
+        emitLog('warn', 'Per-job USD budget exceeded', {
+          event: 'budget_job_exceeded',
+          jobId,
+          jobCostUSD,
+          capUSD: maxPerJob,
+          estimated: jobCostEstimated,
+        });
+      }
+
+      if (maxPerDay > 0 && this.executionRecordStorage) {
+        const now = Date.now();
+        // UTC start-of-day so the cap window and the logged date agree with
+        // each other and with the dashboard's aggregateByDate, which buckets
+        // on the ISO timestamp (UTC). A local-time window would disagree near
+        // midnight in non-UTC zones.
+        const d = new Date(now);
+        const startOfDayUTC = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+        const todays = await this.executionRecordStorage.getExecutionsInRange(
+          startOfDayUTC,
+          now,
+        );
+        const dayTotalUSD = todays.reduce(
+          (sum, e) => sum + (e.result?.costUSD ?? 0),
+          0,
+        );
+        if (dayTotalUSD > maxPerDay) {
+          emitLog('warn', 'Daily USD budget cap exceeded — pausing job queue', {
+            event: 'budget_cap_exceeded',
+            date: new Date(startOfDayUTC).toISOString().slice(0, 10),
+            dayTotalUSD,
+            capUSD: maxPerDay,
+          });
+          // Clean pause — stops future jobs; does not abort the (already
+          // finished) one, never throws into a turn.
+          await this.scheduler?.pauseJobQueue();
+        }
+      }
+    } catch (err) {
+      console.error('[ServerAgentBootstrap] Budget cap check failed:', err);
     }
   }
 
@@ -892,8 +1025,9 @@ export class ServerAgentBootstrap {
     // Stop config watcher
     stopWatchingConfig();
 
-    // Stop health monitor
+    // Stop health + diagnostics monitors
     this.healthMonitor?.stop();
+    this.diagnosticsMonitor?.stop();
 
     // Cancel pending approvals
     this.approvalManager?.cancelAll();

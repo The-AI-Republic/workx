@@ -38,13 +38,4 @@ export {
   SSEEventParser,
 } from './SSEEventParser';
 
-// Browser-specific request queue for rate limiting
-export {
-  RequestQueue,
-  RequestPriority,
-  type QueuedRequest,
-  type RateLimitConfig as RequestQueueRateLimitConfig,
-  type QueueMetrics,
-} from './RequestQueue';
-
 // ModelRegistry removed - model metadata now managed by AgentConfig
