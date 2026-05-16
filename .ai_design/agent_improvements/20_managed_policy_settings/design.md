@@ -1,6 +1,6 @@
 # Track 20: Managed / Policy Settings Tier
 
-**Priority: P1** · **Effort: M** (full OS-MDM parity: P3/L) · **Status: READY TO IMPLEMENT (end-to-end spec)**
+**Priority: P1** · **Effort: M** (full OS-MDM parity: P3/L) · **Status: IMPLEMENTED (Phases 1–4; macOS-plist/Windows-registry = deferred P3/L)**
 
 > Source: third-pass claudy↔browserx research (2026-05-16) — full reads of claudy's
 > `services/remoteManagedSettings/` + `utils/settings/` and a full audit of browserx's

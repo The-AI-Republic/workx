@@ -27,10 +27,15 @@ import type { EventMsg } from '@/core/protocol/events';
 import { getServerConfig, watchConfig, stopWatchingConfig, onConfigReload } from '../config/server-config';
 import {
   ManagedFileSource,
+  ManagedDirSource,
+  RemotePolicySource,
   registerPolicySources,
   resolveActivePolicy,
   onPolicyChanged,
+  assessAndRecord,
+  redactSecrets,
 } from '@/core/config/policy';
+import { emitLog } from '../handlers/logs';
 import { SessionIndex } from '../persistence/SessionIndex';
 import { TranscriptStore } from '../persistence/TranscriptStore';
 import { BackupManager } from '../persistence/backup';
@@ -158,7 +163,11 @@ export class ServerAgentBootstrap {
       // systems' first hydration already sees admin policy. Fail-open.
       try {
         registerPolicySources([
+          // Fleet remote path is highest precedence (first-wins), then the
+          // ConfigMap/Secret-mounted managed file.
+          new RemotePolicySource(),
           new ManagedFileSource(process.env.APPLEPI_POLICY_PATH),
+          new ManagedDirSource(),
         ]);
         await resolveActivePolicy();
         console.log('[ServerAgentBootstrap] Managed policy resolved');
@@ -359,10 +368,24 @@ export class ServerAgentBootstrap {
         });
       });
 
-      // Track 20: a managed-file policy change (auto-wired fs.watch on the
-      // source) re-resolves the policy; re-hydrate the agent config so the
-      // pin re-applies fleet-wide without a restart.
-      onPolicyChanged(() => {
+      // Track 20: a remote/managed-file policy change re-resolves the policy.
+      // Headless server has no interactive user — auto-apply, but emit a
+      // REDACTED audit (warn if it weakens security) so operators see it in
+      // the logs.tail stream they already watch. Then re-hydrate so the pin
+      // re-applies fleet-wide without a restart.
+      onPolicyChanged((p) => {
+        const a = assessAndRecord(p);
+        emitLog(
+          a.weakened ? 'warn' : 'info',
+          'managed policy applied',
+          redactSecrets({
+            origin: p?.origin ?? null,
+            lockedKeys: p?.lockedKeys ?? [],
+            changedKeys: a.changedKeys,
+            weakened: a.weakened,
+            reasons: a.reasons,
+          })
+        );
         this.handleConfigUpdate().catch((err) => {
           console.error('[ServerAgentBootstrap] Failed to apply policy change:', err);
         });

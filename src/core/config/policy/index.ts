@@ -32,8 +32,27 @@ export {
 export { applyPolicy } from './applyPolicy';
 
 export { ManagedFileSource, defaultManagedFilePath } from './ManagedFileSource';
+export { ManagedDirSource, defaultManagedDirPath } from './ManagedDirSource';
 
 export { isKeyLocked, assertWritable, stripLockedWrites } from './guards';
+
+export {
+  assessPolicyChange,
+  assessAndRecord,
+  redactSecrets,
+  __resetSecurityCheckForTests,
+} from './securityCheck';
+export type { PolicyChangeAssessment } from './securityCheck';
+
+export { RemotePolicySource } from '../remotePolicy/RemotePolicySource';
+export type { RemotePolicySourceOptions } from '../remotePolicy/RemotePolicySource';
+export {
+  fetchRemotePolicy,
+  computePolicyChecksum,
+  startPolicyPoll,
+  stopPolicyPoll,
+} from '../remotePolicy/RemotePolicyFetcher';
+export type { RemoteFetchResult } from '../remotePolicy/RemotePolicyFetcher';
 
 export {
   deepClone,

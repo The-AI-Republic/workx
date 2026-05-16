@@ -32,9 +32,11 @@ import { getConfigStorage } from '@/core/storage/ConfigStorageProvider';
 import { AgentConfig } from '@/config/AgentConfig';
 import {
   ManagedFileSource,
+  ManagedDirSource,
   registerPolicySources,
   resolveActivePolicy,
   onPolicyChanged,
+  assessAndRecord,
 } from '@/core/config/policy';
 import { configurePromptComposer, registerPromptExtension } from '@/core/PromptLoader';
 import type { RuntimeContext } from '@/prompts/PromptComposer';
@@ -104,9 +106,17 @@ export class DesktopAgentBootstrap {
       try {
         registerPolicySources([
           new ManagedFileSource(process.env.APPLEPI_POLICY_PATH),
+          new ManagedDirSource(),
         ]);
         await resolveActivePolicy();
-        onPolicyChanged(() => {
+        onPolicyChanged((p) => {
+          const a = assessAndRecord(p);
+          if (a.weakened) {
+            console.warn(
+              '[DesktopAgentBootstrap] Organization applied a managed policy that weakens security:',
+              a.reasons.join('; ')
+            );
+          }
           AgentConfig.getInstance()
             .then((c) => c.reload())
             .catch((err) =>

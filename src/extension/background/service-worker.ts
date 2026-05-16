@@ -58,6 +58,7 @@ import {
   registerPolicySources,
   resolveActivePolicy,
   onPolicyChanged,
+  assessAndRecord,
 } from '../../core/config/policy';
 import { ChromeCredentialStore } from '../../extension/storage/ChromeCredentialStore';
 import * as VaultManager from '../../core/crypto/VaultManager';
@@ -230,7 +231,14 @@ async function doInitialize(): Promise<void> {
   // Track 20: when admin pushes a managed-policy change (chrome.storage
   // managed area, auto-wired via the source's subscribe), re-hydrate so the
   // pin re-applies and the UI re-renders locked fields.
-  onPolicyChanged(() => {
+  onPolicyChanged((p) => {
+    const a = assessAndRecord(p);
+    if (a.weakened) {
+      console.warn(
+        '[ServiceWorker] Organization applied a managed policy that weakens security:',
+        a.reasons.join('; ')
+      );
+    }
     AgentConfig.getInstance()
       .then((c) => c.reload())
       .catch((err) =>
