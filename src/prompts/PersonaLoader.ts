@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 /**
  * Persona / output-style loader (Track 24.2).
  *
