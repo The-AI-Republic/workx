@@ -5,7 +5,7 @@
 // never throw).
 
 import { describe, it, expect } from 'vitest';
-import { calculateUSDCost, formatCost, formatCostSummary } from '../cost';
+import { calculateUSDCost, formatCost } from '../cost';
 import { MODEL_COST_TABLE, DEFAULT_FALLBACK_RATE } from '../modelCostTable';
 import type { TokenUsage } from '../../types/TokenUsage';
 
@@ -65,26 +65,9 @@ describe('calculateUSDCost', () => {
   });
 });
 
-describe('formatCost / formatCostSummary', () => {
+describe('formatCost', () => {
   it('uses 4 dp at/under $0.50 and 2 dp above', () => {
     expect(formatCost(0.1234)).toBe('$0.1234');
     expect(formatCost(1.239)).toBe('$1.24');
-  });
-
-  it('summary shows total, per-model breakdown and an estimated marker', () => {
-    const out = formatCostSummary([
-      { providerModelKey: 'openai:gpt-5.1', costUSD: 1.5, estimated: false },
-      { providerModelKey: 'anthropic:claude', costUSD: 0.25, estimated: true },
-    ]);
-    expect(out).toContain('Total cost: $1.75');
-    expect(out).toContain('≈ estimated');
-    expect(out).toContain('openai:gpt-5.1: $1.50');
-    expect(out).toContain('anthropic:claude: $0.2500 ≈');
-  });
-
-  it('folds an x402 spend line into the total', () => {
-    const out = formatCostSummary([{ providerModelKey: 'openai:gpt-5.1', costUSD: 1.0, estimated: false }], { x402USD: 0.5 });
-    expect(out).toContain('Total cost: $1.50');
-    expect(out).toContain('x402 payments: $0.5000');
   });
 });

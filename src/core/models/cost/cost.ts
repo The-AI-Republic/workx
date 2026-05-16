@@ -40,38 +40,7 @@ export function calculateUSDCost(providerModelKey: string, usage: TokenUsage): C
   return { costUSD, estimated: known === undefined };
 }
 
-/** One model's rolled-up cost, for `formatCostSummary`. */
-export interface CostBreakdownRow {
-  providerModelKey: string;
-  costUSD: number;
-  estimated: boolean;
-}
-
 /** claudy-style USD formatting: ≤ $0.50 → 4 dp, above → 2 dp. */
 export function formatCost(costUSD: number): string {
   return '$' + (costUSD > 0.5 ? costUSD.toFixed(2) : costUSD.toFixed(4));
-}
-
-/**
- * Render a claudy-`formatTotalCost`-shaped summary for the `/cost` surface:
- * total, optional x402 line, per-model breakdown. Pure; no state.
- */
-export function formatCostSummary(rows: CostBreakdownRow[], opts?: { x402USD?: number }): string {
-  const x402USD = opts?.x402USD ?? 0;
-  const total = rows.reduce((sum, r) => sum + r.costUSD, 0) + x402USD;
-  const anyEstimated = rows.some((r) => r.estimated);
-
-  const lines: string[] = [];
-  lines.push(`Total cost: ${formatCost(total)}${anyEstimated ? ' (≈ estimated — unknown model rates)' : ''}`);
-
-  if (rows.length > 0) {
-    lines.push('By model:');
-    for (const r of [...rows].sort((a, b) => b.costUSD - a.costUSD)) {
-      lines.push(`  ${r.providerModelKey}: ${formatCost(r.costUSD)}${r.estimated ? ' ≈' : ''}`);
-    }
-  }
-  if (x402USD > 0) {
-    lines.push(`x402 payments: ${formatCost(x402USD)}`);
-  }
-  return lines.join('\n');
 }

@@ -771,7 +771,8 @@ export class ServerAgentBootstrap {
       const maxPerDay = limits.maxUsdPerDay ?? 0;
 
       if (maxPerJob > 0 && jobCostUSD > maxPerJob) {
-        emitLog('warn', 'budget_job_exceeded', {
+        emitLog('warn', 'Per-job USD budget exceeded', {
+          event: 'budget_job_exceeded',
           jobId,
           jobCostUSD,
           capUSD: maxPerJob,
@@ -781,10 +782,14 @@ export class ServerAgentBootstrap {
 
       if (maxPerDay > 0 && this.executionRecordStorage) {
         const now = Date.now();
-        const startOfDay = new Date(now);
-        startOfDay.setHours(0, 0, 0, 0);
+        // UTC start-of-day so the cap window and the logged date agree with
+        // each other and with the dashboard's aggregateByDate, which buckets
+        // on the ISO timestamp (UTC). A local-time window would disagree near
+        // midnight in non-UTC zones.
+        const d = new Date(now);
+        const startOfDayUTC = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
         const todays = await this.executionRecordStorage.getExecutionsInRange(
-          startOfDay.getTime(),
+          startOfDayUTC,
           now,
         );
         const dayTotalUSD = todays.reduce(
@@ -792,8 +797,9 @@ export class ServerAgentBootstrap {
           0,
         );
         if (dayTotalUSD > maxPerDay) {
-          emitLog('warn', 'budget_cap_exceeded', {
-            date: startOfDay.toISOString().slice(0, 10),
+          emitLog('warn', 'Daily USD budget cap exceeded — pausing job queue', {
+            event: 'budget_cap_exceeded',
+            date: new Date(startOfDayUTC).toISOString().slice(0, 10),
             dayTotalUSD,
             capUSD: maxPerDay,
           });

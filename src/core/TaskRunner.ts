@@ -274,6 +274,10 @@ export class TaskRunner {
       this.state.status = this.cancelled ? 'killed' : 'failed';
       this.state.lastError = err;
 
+      // A thrown task has no reliable final usage, so partial cost/tokens are
+      // intentionally not persisted here — only the aborted and completed
+      // paths persist (unchanged from pre-cost-tracking behavior).
+
       // Track 04: flush pending chunks before re-throwing so polling
       // consumers see the tail of a task that died mid-turn.
       await this.flushTaskOutput();
@@ -600,7 +604,10 @@ export class TaskRunner {
         model: this.turnContext.getModel(),
         // Provider-qualified key — the same model id is priced differently
         // across providers (e.g. kimi-k2-thinking on moonshot/fireworks/
-        // together), so cost history must record the composite.
+        // together), so cost history must record the composite. Caveat: on a
+        // Track-12 mid-task downgrade this stores only the final model, so the
+        // per-model breakdown attributes the task's blended cost to it; the
+        // session/day totals stay exact (they sum the per-record costUSD).
         provider_model: this.turnContext.getSelectedModelKey(),
         timestamp: new Date().toISOString(),
         input_tokens: usage.input_tokens,
