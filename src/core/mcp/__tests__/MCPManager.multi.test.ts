@@ -37,11 +37,12 @@ function createMockConfigStorage(): ConfigStorageProvider {
   };
 }
 
-// Mock crypto.randomUUID
+// Mock crypto.randomUUID — zero-padded to 12 hex chars for the 100-server cap (Track 10).
 let uuidCounter = 0;
 const mockRandomUUID = vi.fn(() => {
   uuidCounter++;
-  return `550e8400-e29b-41d4-a716-44665544000${uuidCounter}`;
+  const tail = uuidCounter.toString(16).padStart(12, '0');
+  return `550e8400-e29b-41d4-a716-${tail}`;
 });
 
 // Use vi.hoisted to ensure mocks are available when vi.mock runs
@@ -364,24 +365,24 @@ describe('MCPManager Multi-Server', () => {
   });
 
   describe('server limit', () => {
-    it('should enforce maximum of 5 servers', async () => {
+    it('should enforce MAX_SERVERS limit (raised to 100 in Track 10)', async () => {
       const manager = await MCPManager.getInstance();
 
-      // Add 5 servers successfully
-      for (let i = 0; i < 5; i++) {
+      // Add 100 servers successfully (post-Track-10 ceiling)
+      for (let i = 0; i < 100; i++) {
         await manager.addServer({
           name: `server-${i}`,
           url: `https://server${i}.example.com`,
         });
       }
 
-      expect(manager.getServers()).toHaveLength(5);
+      expect(manager.getServers().filter((s) => !s.builtin)).toHaveLength(100);
 
-      // 6th server should fail
+      // 101st server should fail
       await expect(
         manager.addServer({
-          name: 'server-5',
-          url: 'https://server5.example.com',
+          name: 'server-100',
+          url: 'https://server100.example.com',
         })
       ).rejects.toThrow(/maximum/i);
     });

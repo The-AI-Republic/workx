@@ -14,3 +14,4 @@ export type { CommandLoaderDeps } from './CommandLoader';
 export { BuiltinCommandLoader } from './loaders/BuiltinCommandLoader';
 export type { BuiltinCommandSource } from './loaders/BuiltinCommandLoader';
 export { SkillCommandLoader } from './loaders/SkillCommandLoader';
+export { PluginCommandLoader } from './loaders/PluginCommandLoader';
