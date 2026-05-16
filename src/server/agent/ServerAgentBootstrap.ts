@@ -55,6 +55,7 @@ import { registerLogsHandlers } from '../handlers/logs';
 import { registerExecHandlers } from '../handlers/exec';
 import { registerSchedulerHandlers } from '../handlers/scheduler';
 import { registerCredentialsHandlers } from '../handlers/credentials';
+import { emitLog } from '../handlers/logs';
 
 // Scheduler
 import { ServerScheduleStorage } from '../scheduler/ServerScheduleStorage';
@@ -716,6 +717,11 @@ export class ServerAgentBootstrap {
       const data = (msg as EventMsg & { data?: Record<string, any> }).data;
       const summary = data?.last_agent_message?.slice(0, 500) || 'Job completed';
       const tokenData = data?.token_usage?.total;
+      // Track 18: cost was computed once in core and rides the TaskComplete
+      // event — read it, never recompute server-side (the server has only
+      // prose pricing and no model context).
+      const jobCostUSD = typeof data?.cost_usd === 'number' ? data.cost_usd : 0;
+      const jobCostEstimated = data?.cost_estimated === true;
       this.scheduler.completeJob(jobId, {
         summary,
         tokenUsage: {
@@ -724,6 +730,12 @@ export class ServerAgentBootstrap {
           totalTokens: tokenData?.total_tokens ?? 0,
         },
         duration,
+        costUSD: jobCostUSD,
+        costEstimated: jobCostEstimated,
+      }).then(() => {
+        // Track 18: post-hoc budget enforcement (blocks subsequent jobs;
+        // never throws into a running turn).
+        return this.enforceBudgetCaps(jobId, jobCostUSD, jobCostEstimated);
       }).catch((error) => {
         console.error(`[ServerAgentBootstrap] Failed to complete scheduler job ${jobId}:`, error);
       });
@@ -738,6 +750,60 @@ export class ServerAgentBootstrap {
       this.scheduler.failJob(jobId, error).catch((err) => {
         console.error(`[ServerAgentBootstrap] Failed to fail scheduler job ${jobId}:`, err);
       });
+    }
+  }
+
+  /**
+   * Track 18: post-hoc USD budget enforcement for unattended scheduler jobs.
+   * MVP scope — runs after a job completes, so it blocks *subsequent* jobs
+   * (a mid-run abort would need per-turn server-side cost and is a documented
+   * follow-on). Never throws into a turn; on a per-day breach it pauses the
+   * job queue cleanly and surfaces a logs.tail-visible warning.
+   */
+  private async enforceBudgetCaps(
+    jobId: string,
+    jobCostUSD: number,
+    jobCostEstimated: boolean,
+  ): Promise<void> {
+    try {
+      const limits = getServerConfig().server.limits;
+      const maxPerJob = limits.maxUsdPerJob ?? 0;
+      const maxPerDay = limits.maxUsdPerDay ?? 0;
+
+      if (maxPerJob > 0 && jobCostUSD > maxPerJob) {
+        emitLog('warn', 'budget_job_exceeded', {
+          jobId,
+          jobCostUSD,
+          capUSD: maxPerJob,
+          estimated: jobCostEstimated,
+        });
+      }
+
+      if (maxPerDay > 0 && this.executionRecordStorage) {
+        const now = Date.now();
+        const startOfDay = new Date(now);
+        startOfDay.setHours(0, 0, 0, 0);
+        const todays = await this.executionRecordStorage.getExecutionsInRange(
+          startOfDay.getTime(),
+          now,
+        );
+        const dayTotalUSD = todays.reduce(
+          (sum, e) => sum + (e.result?.costUSD ?? 0),
+          0,
+        );
+        if (dayTotalUSD > maxPerDay) {
+          emitLog('warn', 'budget_cap_exceeded', {
+            date: startOfDay.toISOString().slice(0, 10),
+            dayTotalUSD,
+            capUSD: maxPerDay,
+          });
+          // Clean pause — stops future jobs; does not abort the (already
+          // finished) one, never throws into a turn.
+          await this.scheduler?.pauseJobQueue();
+        }
+      }
+    } catch (err) {
+      console.error('[ServerAgentBootstrap] Budget cap check failed:', err);
     }
   }
 
