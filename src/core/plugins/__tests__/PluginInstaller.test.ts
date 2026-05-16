@@ -160,6 +160,20 @@ describe('PluginInstaller', () => {
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error).toMatch(/SHA mismatch/);
   });
+
+  it('fail-closed: pinned sha but fetch reports no commit sha → refuses', async () => {
+    const cat = JSON.parse(CATALOGUE);
+    cat.plugins[1].source = { type: 'github', repo: 'x/common', sha: 'a'.repeat(40) };
+    const mk = new MarketplaceRegistry({ fetchCatalogue: async () => JSON.stringify(cat) });
+    await mk.add('ref');
+    const res = await installer({
+      marketplaces: mk,
+      // Old behaviour: undefined sha SKIPPED the check → unverified install.
+      fetchPlugin: async () => ({ files: [], version: '1', gitCommitSha: undefined }),
+    }).install('common@official');
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error).toMatch(/could not confirm a commit sha|unverified/);
+  });
 });
 
 describe('PluginUninstaller', () => {
