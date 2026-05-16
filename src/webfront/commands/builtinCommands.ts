@@ -8,6 +8,7 @@ export interface BuiltinCommandCallbacks {
   onOpenSettings: () => void;
   /** Submit text to the agent as if the user sent it (Track 14 /plan). */
   onSubmitText: (text: string) => void;
+  onOpenDoctor: () => void;
 }
 
 /** Mutable reference that always points to the live component's callbacks. */
@@ -75,6 +76,17 @@ export function initBuiltinCommands(callbacks: BuiltinCommandCallbacks): void {
           'understand the current task, then present a complete plan via ' +
           'SubmitPlanForReview for my approval before changing anything.';
       activeCallbacks?.onSubmitText(directive);
+    },
+  });
+
+  commandRegistry.register({
+    name: 'doctor',
+    description: 'Run operational diagnostics and show a health report',
+    whenToUse:
+      'When the agent is misbehaving — checks config, credentials, channels, MCP, skills, and the scheduler.',
+    loadedFrom: 'builtin',
+    action: () => {
+      activeCallbacks?.onOpenDoctor();
     },
   });
 }

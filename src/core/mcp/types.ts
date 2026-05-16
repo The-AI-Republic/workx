@@ -80,6 +80,14 @@ export interface IMCPServerConfig {
 
   /** Unix timestamp of last update */
   updatedAt: number;
+
+  /**
+   * Track 10: plugin owner. Present when this server was registered by a
+   * plugin (manifest.mcpServers slot). Used by `MCPManager.removeByPluginId`
+   * for scoped removal on plugin disable. ID format: `<pluginName>@<marketplace>`.
+   * Absent for user-added or builtin servers.
+   */
+  pluginId?: string;
 }
 
 /**
@@ -98,6 +106,8 @@ export interface IMCPServerConfigCreate {
   args?: string[];
   env?: Record<string, string>;
   cwd?: string;
+  /** Track 10: plugin owner (absent for user-added servers). */
+  pluginId?: string;
 }
 
 /**
@@ -312,6 +322,13 @@ export interface IMCPManager {
    * Remove an MCP server configuration.
    */
   removeServer(id: string): Promise<void>;
+
+  /**
+   * Track 10: scoped removal — remove every server owned by a given plugin.
+   * Each server is disconnected before drop. Per-server errors logged but
+   * don't halt the loop.
+   */
+  removeByPluginId(pluginId: string): Promise<void>;
 
   /**
    * Get all server configurations.

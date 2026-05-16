@@ -198,6 +198,7 @@ export function projectMeta(skill: Skill): SkillMeta {
     domains: skill.domains,
     userInvocable: skill.userInvocable,
     disableModelInvocation: skill.disableModelInvocation,
+    pluginId: skill.pluginId,
   };
 }
 

@@ -135,6 +135,9 @@
         push('/settings');
       },
       onSubmitText: (text: string) => onSubmit(text),
+      onOpenDoctor: () => {
+        push('/doctor');
+      },
     });
 
     // Load skill commands asynchronously (non-blocking)

@@ -99,7 +99,11 @@ if (tlsEnabled) {
 }
 
 function handleHttpRequest(req: IncomingMessage, res: ServerResponse): void {
-  // Health endpoint
+  // Health endpoint (UNAUTHENTICATED — K8s/Docker liveness/readiness probe).
+  // Track 17 security boundary: this returns ONLY the HealthStatus shape (a
+  // truthful status enum now, via DiagnosticsMonitor). The full DoctorReport
+  // is NEVER served here — it is exposed solely through the authenticated
+  // `diagnostics.report` service. Do not widen this payload.
   if (req.method === 'GET' && req.url === '/health') {
     const status = getHealthStatus();
     res.writeHead(200, { 'Content-Type': 'application/json' });

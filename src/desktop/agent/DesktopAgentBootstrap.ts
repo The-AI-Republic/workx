@@ -19,6 +19,7 @@
 
 import { TauriChannel } from '../channels/TauriChannel';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
+import type { DiagnosticContext } from '@/core/diagnostics';
 import { RepublicAgent } from '@/core/RepublicAgent';
 import { UserNotifier } from '@/core/UserNotifier';
 import { ApprovalGate } from '@/core/approval/ApprovalGate';
@@ -330,9 +331,37 @@ export class DesktopAgentBootstrap {
           await tauriStorage.set('agent_config', storedConfig);
         },
       } : undefined,
+      diagnostics: {
+        buildCtx: () => this.buildDiagnosticContext(channelManager),
+      },
     });
 
     console.log(`[DesktopAgentBootstrap] Registered ${count} service handlers`);
+  }
+
+  /**
+   * Assemble the desktop diagnostic context (Track 17). No DiagnosticsMonitor
+   * on desktop — there is no `/health` probe; the report is served on demand.
+   */
+  private async buildDiagnosticContext(
+    channelManager: ReturnType<typeof getChannelManager>,
+  ): Promise<DiagnosticContext> {
+    let mcpManager: DiagnosticContext['mcpManager'];
+    try {
+      const { MCPManager } = await import('@/core/mcp/MCPManager');
+      mcpManager = (await MCPManager.getInstance(
+        'desktop',
+      )) as unknown as DiagnosticContext['mcpManager'];
+    } catch {
+      // MCP unavailable — the mcp-connected check degrades to "not in use".
+    }
+    return {
+      platformId: 'desktop',
+      channelManager,
+      mcpManager,
+      skillRegistry: this.skillRegistry ?? undefined,
+      scheduler: this.scheduler ?? undefined,
+    };
   }
 
   /**

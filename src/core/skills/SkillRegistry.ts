@@ -4,7 +4,13 @@ import { substituteVariables, validateSkill, parseSkillMd, normalizeFrontmatter,
 import type { SkillDomainFilter } from './SkillDomainFilter';
 
 /** Built-in command names that skills cannot use */
-const RESERVED_COMMAND_NAMES = new Set(['new', 'help', 'settings']);
+const RESERVED_COMMAND_NAMES = new Set([
+  'new',
+  'help',
+  'settings',
+  'plugin',
+  'doctor',
+]);
 
 /**
  * Central coordinator for skill lifecycle.
@@ -148,6 +154,30 @@ export class SkillRegistry {
 
     // Remove from cached metadata
     this.metas = this.metas.filter((m) => m.name !== name);
+  }
+
+  /**
+   * Track 10: scoped removal — delete every skill owned by a given plugin.
+   *
+   * Called by `PluginRegistry.disable(pluginId)` to atomically unload one
+   * plugin's skills without touching user-created or other-plugin skills.
+   *
+   * Per-skill errors are logged but don't halt the loop; final state is
+   * "no metas with this pluginId remain". If a provider.delete throws,
+   * the corresponding meta is still removed from cache — disable semantics
+   * win over storage consistency (next reload will reconcile).
+   */
+  async removeByPluginId(pluginId: string): Promise<void> {
+    const targets = this.metas.filter((m) => m.pluginId === pluginId);
+    for (const target of targets) {
+      try {
+        await this.provider.delete(target.name);
+      } catch (e) {
+        // Surface but don't halt — see PluginRegistry rollback-failure policy
+        console.warn(`[SkillRegistry.removeByPluginId] ${target.name}:`, e);
+      }
+    }
+    this.metas = this.metas.filter((m) => m.pluginId !== pluginId);
   }
 
   /** Export a skill as standard-compliant SKILL.md */
