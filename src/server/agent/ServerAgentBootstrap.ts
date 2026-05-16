@@ -34,6 +34,9 @@ import { ApplePiConnectorApi } from '../channel-connectors/applepi-connector-api
 import { discoverConnectors } from '../channel-connectors/connector-loader';
 import { ConnectorBridge } from '../channel-connectors/connector-bridge';
 import { HealthMonitor } from '../health/health-monitor';
+import { DiagnosticsMonitor } from '../health/diagnostics-monitor';
+import type { DiagnosticContext } from '@/core/diagnostics';
+import type { SkillRegistry as ISkillRegistry } from '@/core/skills/SkillRegistry';
 import {
   setHealthAgentStatus,
   setHealthAgentTools,
@@ -87,6 +90,8 @@ export class ServerAgentBootstrap {
   private approvalManager: ApprovalManager | null = null;
   private connectorRegistry: ConnectorRegistry | null = null;
   private healthMonitor: HealthMonitor | null = null;
+  private diagnosticsMonitor: DiagnosticsMonitor | null = null;
+  private skillRegistry: ISkillRegistry | null = null;
   private scheduler: Scheduler | null = null;
   private scheduleEventStorage: ServerScheduleStorage | null = null;
   private executionRecordStorage: ServerExecutionStorage | null = null;
@@ -338,6 +343,14 @@ export class ServerAgentBootstrap {
       // 15. Register service handlers on ChannelManager (message_routing_v2)
       await this.registerServices(channelManager);
 
+      // 15b. Start diagnostics monitoring so GET /health reports a truthful
+      // status for K8s/Docker probes (Track 17). Started after registerServices
+      // so the first report sees the fully-wired context.
+      this.diagnosticsMonitor = new DiagnosticsMonitor(() =>
+        this.buildDiagnosticContext(),
+      );
+      this.diagnosticsMonitor.start();
+
       this.initialized = true;
       console.log('[ServerAgentBootstrap] Initialization complete');
     } catch (error) {
@@ -406,6 +419,7 @@ export class ServerAgentBootstrap {
       const skillRegistry = new SkillRegistry(skillProvider);
       await skillRegistry.discover();
       skillsDeps = { skillRegistry };
+      this.skillRegistry = skillRegistry;
 
       console.log(`[ServerAgentBootstrap] Skills initialized, found ${skillRegistry.getSkillMetas().length} skills`);
     } catch (error) {
@@ -422,9 +436,40 @@ export class ServerAgentBootstrap {
         registry: this.registry,
         handleConfigUpdate: () => this.handleConfigUpdate(),
       } : undefined,
+      diagnostics: {
+        buildCtx: () => this.buildDiagnosticContext(),
+        heapdump: async () => {
+          const { performHeapDump } = await import('../diagnostics/heapdump');
+          return performHeapDump();
+        },
+      },
     });
 
     console.log(`[ServerAgentBootstrap] Registered ${count} service handlers`);
+  }
+
+  /**
+   * Assemble the server diagnostic context (Track 17). Resolves singletons
+   * lazily so it is correct regardless of bootstrap ordering; absent
+   * collaborators degrade their check gracefully.
+   */
+  private async buildDiagnosticContext(): Promise<DiagnosticContext> {
+    let mcpManager: DiagnosticContext['mcpManager'];
+    try {
+      const { MCPManager } = await import('@/core/mcp/MCPManager');
+      mcpManager = (await MCPManager.getInstance(
+        'server',
+      )) as unknown as DiagnosticContext['mcpManager'];
+    } catch {
+      // MCP unavailable — the mcp-connected check degrades to "not in use".
+    }
+    return {
+      platformId: 'server',
+      channelManager: getChannelManager(),
+      mcpManager,
+      skillRegistry: this.skillRegistry ?? undefined,
+      scheduler: this.scheduler ?? undefined,
+    };
   }
 
   /**
@@ -858,8 +903,9 @@ export class ServerAgentBootstrap {
     // Stop config watcher
     stopWatchingConfig();
 
-    // Stop health monitor
+    // Stop health + diagnostics monitors
     this.healthMonitor?.stop();
+    this.diagnosticsMonitor?.stop();
 
     // Cancel pending approvals
     this.approvalManager?.cancelAll();

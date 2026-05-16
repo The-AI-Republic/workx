@@ -10,6 +10,7 @@ import type {
   RegisteredHook,
   HooksConfig,
 } from './types';
+import { isSameHookSource } from './types';
 import { HookMatcher } from './HookMatcher';
 
 /**
@@ -92,12 +93,16 @@ export class HookRegistry {
 
   /**
    * Unregister all hooks from a specific source.
+   *
+   * Track 10: `source` may be `{ type: 'plugin'; pluginId }` for per-plugin
+   * scoped removal. Comparison uses {@link isSameHookSource} for the
+   * discriminated-union variant.
    */
   unregisterBySource(source: HookSource): number {
     let count = 0;
     for (const [event, hooks] of this.hooks.entries()) {
       const before = hooks.length;
-      const filtered = hooks.filter((h) => h.source !== source);
+      const filtered = hooks.filter((h) => !isSameHookSource(h.source, source));
       this.hooks.set(event, filtered);
       count += before - filtered.length;
     }

@@ -1,8 +1,19 @@
 # Track 23: Agentic Payments (x402)
 
-**Priority: P2 (strategic / forward-looking)** · **Effort: M** · **Status: READY TO IMPLEMENT** (prototype-gated)
+**Priority: P2 (strategic / forward-looking)** · **Effort: M** · **Status: ⚠️ ERROR — NEEDS EDIT** (was: READY TO IMPLEMENT, prototype-gated)
 
 > Source: second-pass claudy↔browserx research (2026-05-14), implementation-readiness + multi-platform pass (2026-05-15). Grounded in a full read of claudy's x402 service and browserx's HTTP/tool/credential surfaces across all three deploy targets — see "Validation Notes". Speculative + security-sensitive: prototype behind a Track 22 flag; do not rush to production.
+
+> ⚠️ **ERROR — NEEDS EDIT (flagged 2026-05-15 by the Track 14 deep-implementation pass; full correction deferred to a follow-up session).**
+>
+> **What is wrong:** This doc's headless-server fail-closed argument rests on a *false mechanism*. It claims (lines ~40, 46, 69, 79, 87, 93) that "Track 14 established the server `ApprovalManager` *times out* with no operator (`approval-manager.ts:114,121`) → a payment routed through approval denies on timeout / fails closed." That citation is the **exec-command** manager (`src/server/exec/approval-manager.ts`), reached only via `src/server/handlers/exec.ts`. But this doc routes payments through **`ApprovalGate`** (lines 46, 60), and `ApprovalGate` only ever calls the **core** `ApprovalManager` (`src/core/ApprovalManager.ts`) — a *different* manager with the *opposite* server behavior, verified by the Track 14 deep pass:
+> - On the server the core manager has **no decision return-wiring at all** (a connected operator cannot approve it either), and `ApprovalGate` is **never even constructed in `src/server`** (`setApprovalGate` is not called; `ToolRegistry.ts:388` guards `check()` on the gate's presence).
+> - `balanced` (`getTimeoutForMode()===0`) ⇒ the call **hangs forever** — never a clean deny.
+> - `high_speed` (`600000`) ⇒ the 10-min timer **auto-APPROVES** (`decision:'approve'`, `metadata:{timeout:true}`) — i.e. **fail-OPEN: the payment settles with no one approving it.** For an unattended agent this is a fund-draining hole, the exact opposite of the doc's "fail closed" claim.
+>
+> **Severity:** the *conclusion* ("headless payments must fail CLOSED unless Track-20 allowlisted + Track-18 capped") is still correct policy and should be kept. Only the *mechanism and citation* are wrong — but an implementer who follows the doc literally ("route through `ApprovalGate` on the server, it will time out and deny") ships the fail-open hole.
+>
+> **Required correction (next session):** replace the "approval times out → deny" mechanism with an **active, explicit registration/policy gate** (mirror the corrected Track 14: autonomous payment is *not exposed* on `platformId==='server'` unless a Track-20 managed allowlist policy resolves it; the deny is explicit, never the byproduct of an assumed timeout). Fix the Validation-Notes citation (line ~87) to distinguish the exec manager (valid only for the exec/payment-*command* path) from the core manager (the `ApprovalGate` path). Keep the Track-20 allowlist + Track-18 cap composition intact. See `14_plan_review/design.md` → "Validation Notes → Correction 4" for the verified evidence.
 
 ## Problem
 

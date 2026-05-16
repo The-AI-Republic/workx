@@ -1,8 +1,19 @@
 # Track 19: Versioned Migration Framework
 
-**Priority: P1** · **Effort: S** · **Status: READY TO IMPLEMENT**
+**Priority: P1** · **Effort: S** · **Status: DEFERRED (no users yet — revisit before first GA)**
 
 > Source: second-pass claudy↔browserx research (2026-05-14), implementation-readiness + multi-platform pass (2026-05-15). Grounded in a full read of claudy's migration runner and browserx's config init across all three deploy targets — see "Validation Notes". Smallest effort / highest de-risking leverage of the second-pass set.
+
+## Deferral Decision (2026-05-15)
+
+**Not implementing now.** A versioned migration framework exists to upgrade *existing users'* config from an old shape to a new one. BrowserX has **zero users in the wild**, so there is no persisted legacy data anywhere to migrate, and the settings shape can be changed freely without harm.
+
+Consequences:
+
+- The framework's stated payoff ("de-risk every future settings change") only accrues once real users have persisted config that cannot be discarded. Until then it is speculative.
+- The design's headline win — version-gating `migrateApprovalConfig` so it stops running on every `initialize()` — has a strictly simpler resolution with no users: **delete `migrateApprovalConfig` and its legacy-key handling outright** (`AgentConfig.ts:76-77` call/gate + `:183-199` body). No user has the legacy approval key, so the migration is dead code. This is less effort than building the framework to gate it.
+
+**Revisit trigger:** before the first GA / before real users persist config — *not* on a time schedule. At that point the framework should also be built against the *actual* schema changes it needs to carry, which makes it easier to design well. This is a deferral, not a cancellation: once real users exist *and* a persisted settings field changes, silent config loss/corruption for early users is exactly the failure this track prevents.
 
 ## Problem
 

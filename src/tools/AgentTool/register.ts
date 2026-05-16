@@ -14,6 +14,7 @@ import {
   createSendMessageHandler,
 } from './managementTools';
 import type { SubAgentTypeConfig, SubAgentToolParams } from './types';
+import { validateSubAgentTypeConfig } from './validateTypeConfig';
 
 export interface RegisterSubAgentOptions {
   /** Sub-agent types to register. Defaults to built-in types. */
@@ -141,32 +142,6 @@ function mergeTypes(
   return Array.from(merged.values());
 }
 
-/**
- * Validate that an unknown value conforms to SubAgentTypeConfig.
- * Logs warnings for invalid entries so users can diagnose config issues.
- */
-function validateSubAgentTypeConfig(t: unknown): t is SubAgentTypeConfig {
-  if (!t || typeof t !== 'object') return false;
-  const obj = t as Record<string, unknown>;
-  if (typeof obj.id !== 'string' || !obj.id) {
-    console.warn('[registerSubAgentTool] Skipping config type: missing id');
-    return false;
-  }
-  if (typeof obj.systemPrompt !== 'string' || !obj.systemPrompt) {
-    console.warn(`[registerSubAgentTool] Skipping config type ${obj.id}: missing systemPrompt`);
-    return false;
-  }
-  if (typeof obj.name !== 'string') {
-    console.warn(`[registerSubAgentTool] Skipping config type ${obj.id}: missing name`);
-    return false;
-  }
-  if (typeof obj.description !== 'string') {
-    console.warn(`[registerSubAgentTool] Skipping config type ${obj.id}: missing description`);
-    return false;
-  }
-  if (obj.maxTurns !== undefined && (typeof obj.maxTurns !== 'number' || obj.maxTurns < 1)) {
-    console.warn(`[registerSubAgentTool] Skipping config type ${obj.id}: invalid maxTurns`);
-    return false;
-  }
-  return true;
-}
+// Track 10: validateSubAgentTypeConfig moved to ./validateTypeConfig.ts
+// (re-exported here for backwards compatibility with external callers).
+export { validateSubAgentTypeConfig };

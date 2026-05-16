@@ -134,6 +134,9 @@
       onOpenSettings: () => {
         push('/settings');
       },
+      onOpenDoctor: () => {
+        push('/doctor');
+      },
     });
 
     // Load skill commands asynchronously (non-blocking)

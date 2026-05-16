@@ -7,6 +7,7 @@ export interface BuiltinCommandCallbacks {
   onNewConversation: () => void;
   onCommandOutput: (title: string, content: string) => void;
   onOpenSettings: () => void;
+  onOpenDoctor: () => void;
 }
 
 /** Mutable reference that always points to the live component's callbacks. */
@@ -51,6 +52,17 @@ export function initBuiltinCommands(callbacks: BuiltinCommandCallbacks): void {
     loadedFrom: 'builtin',
     action: () => {
       activeCallbacks?.onOpenSettings();
+    },
+  });
+
+  commandRegistry.register({
+    name: 'doctor',
+    description: 'Run operational diagnostics and show a health report',
+    whenToUse:
+      'When the agent is misbehaving — checks config, credentials, channels, MCP, skills, and the scheduler.',
+    loadedFrom: 'builtin',
+    action: () => {
+      activeCallbacks?.onOpenDoctor();
     },
   });
 
