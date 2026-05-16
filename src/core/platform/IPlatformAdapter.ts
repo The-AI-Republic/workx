@@ -47,6 +47,15 @@ export interface IBrowserController {
   navigate(url: string): Promise<void>;
   getPageContent(): Promise<string>;
   screenshot(): Promise<string>;
+  /**
+   * Track 13: current user text selection on the page, or '' when nothing is
+   * selected. Optional — platforms without a DOM (or without a real browser
+   * controller wired) omit it, and the input funnel degrades `@selection`
+   * into a systemNote rather than throwing. Kept on the adapter-level
+   * controller (not extension's DomService) so `core/` stays platform-
+   * agnostic — a layering-safe refinement of design §7.2.
+   */
+  getSelectionText?(): Promise<string>;
   // NOTE: A previous revision exposed `executeScript(script: string)` here.
   // It was removed because it required `new Function(script)` to satisfy
   // the chrome.scripting API surface, which is an LLM-controlled-code
@@ -60,6 +69,12 @@ export interface IPlatformAdapter {
   readonly platformId: 'extension' | 'desktop' | 'server';
   readonly hasRealTabs: boolean;
   readonly hasBrowserTools: boolean;
+  /**
+   * Track 13: whether this platform can run a user `!` shell escape. Read
+   * live by the input funnel — `false` makes `!cmd` literal text + a
+   * systemNote rather than an execution. (Extension has no shell.)
+   */
+  readonly hasShellExec: boolean;
 
   // Browser Readiness
   /**
