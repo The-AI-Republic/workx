@@ -10,6 +10,8 @@
 
 import { RepublicAgent } from '../../core/RepublicAgent';
 import { UserNotifier } from '../../core/UserNotifier';
+import { installTelemetry, schedulerTelemetryTap } from '../../core/telemetry';
+import { RingSink } from '../telemetry/RingSink';
 import type { Submission } from '../../core/protocol/types';
 import { ApprovalGate } from '../../core/approval/ApprovalGate';
 import { PolicyRulesEngine } from '../../core/approval/PolicyRulesEngine';
@@ -209,6 +211,15 @@ async function doInitialize(): Promise<void> {
 
   // Initialize configuration singleton first
   agentConfig = await AgentConfig.getInstance();
+
+  // Centralized telemetry: live privacy gate + bounded in-memory ring
+  // (best-effort/ephemeral — MV3 SW eviction; no remote egress). No-op
+  // unless telemetryEnabled (read live).
+  installTelemetry({
+    getTelemetryEnabled: () =>
+      agentConfig?.getConfig().preferences?.telemetryEnabled,
+    sink: RingSink,
+  });
 
   // Initialize ONLY StorageProvider early — PlanningTool requires it via getTaskStore()
   // during tool registration in registry.createSession().
@@ -482,9 +493,10 @@ async function registerServiceHandlers(): Promise<void> {
       },
     };
 
-    // Wire scheduler events to ChannelManager (unified dispatch)
+    // Wire scheduler events to ChannelManager (unified dispatch) + telemetry
+    // tap (scheduler is a separate emitter family bypassing the chokepoint)
     if (scheduler) {
-      scheduler.connectToChannel(() => channelManager, 'sidepanel-main');
+      scheduler.connectToChannel(() => channelManager, 'sidepanel-main', schedulerTelemetryTap);
     }
 
     if (!registry) throw new Error('AgentRegistry not initialized');

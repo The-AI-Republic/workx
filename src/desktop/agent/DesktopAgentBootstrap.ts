@@ -19,6 +19,8 @@
 
 import { TauriChannel } from '../channels/TauriChannel';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
+import { installTelemetry, schedulerTelemetryTap } from '@/core/telemetry';
+import { FileSink } from '../telemetry/FileSink';
 import type { DiagnosticContext } from '@/core/diagnostics';
 import { RepublicAgent } from '@/core/RepublicAgent';
 import { UserNotifier } from '@/core/UserNotifier';
@@ -92,6 +94,14 @@ export class DesktopAgentBootstrap {
     try {
       // 1. Get agent config
       const config = await AgentConfig.getInstance();
+
+      // 1b. Centralized telemetry: live privacy gate + size-capped
+      // rotating file sink. No-op unless telemetryEnabled (read live).
+      installTelemetry({
+        getTelemetryEnabled: () =>
+          config.getConfig().preferences?.telemetryEnabled,
+        sink: FileSink,
+      });
 
       // 2. Configure PromptComposer with platform context BEFORE any agent.initialize()
       // This must happen first so RepublicAgent.configurePromptComposition() sees
@@ -592,8 +602,13 @@ export class DesktopAgentBootstrap {
         await this.scheduler!.handleAlarm(alarmName);
       });
 
-      // Wire event emitter → unified channel dispatch
-      this.scheduler.connectToChannel(() => getChannelManager(), this.channel!.channelId);
+      // Wire event emitter → unified channel dispatch (+ telemetry tap:
+      // scheduler is a separate emitter family bypassing the agent chokepoint)
+      this.scheduler.connectToChannel(
+        () => getChannelManager(),
+        this.channel!.channelId,
+        schedulerTelemetryTap,
+      );
 
       // Wire job launcher — show window and submit directly to agent
       this.scheduler.setJobLauncher(async (executionId, sessionId, registryAgent) => {

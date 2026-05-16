@@ -40,3 +40,6 @@ export {
   readEnvOptOut,
 } from './privacy';
 export type { PrivacyLevel } from './privacy';
+
+export { telemetryBridge, withTelemetry } from './TelemetryBridge';
+export { installTelemetry, schedulerTelemetryTap } from './install';

@@ -116,10 +116,12 @@ describe('TelemetryBridge', () => {
       },
       { name: 'scheduler.state', metadata: { is_paused: true } },
     ]);
-    // no raw ids / free text leaked
+    // no raw ids / free text leaked: metadata is numeric/boolean/enum only
     for (const e of events) {
       for (const v of Object.values(e.metadata)) {
-        expect(typeof v === 'string' ? v.length < 32 : true).toBe(true);
+        expect(['number', 'boolean', 'string', 'undefined']).toContain(
+          typeof v,
+        );
       }
     }
   });

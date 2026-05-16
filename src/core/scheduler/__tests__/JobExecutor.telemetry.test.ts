@@ -37,6 +37,12 @@ class MemStore implements IExecutionStorage {
   async getRunningExecutions() {
     return [...this.m.values()].filter((e) => e.status === 'running');
   }
+  async getArchivedExecutions() {
+    return [];
+  }
+  async getArchivedExecutionsCount() {
+    return 0;
+  }
 }
 
 describe('JobExecutor failureReason (Test 2.e — goal-closing)', () => {

@@ -55,6 +55,8 @@ import { registerConfigHandlers } from '../handlers/config';
 import { registerHealthHandlers } from '../handlers/health';
 import { registerToolsHandlers } from '../handlers/tools';
 import { registerLogsHandlers } from '../handlers/logs';
+import { installTelemetry, schedulerTelemetryTap } from '@/core/telemetry';
+import { ServerLogSink } from '../telemetry/ServerLogSink';
 import { registerExecHandlers } from '../handlers/exec';
 import { registerSchedulerHandlers } from '../handlers/scheduler';
 import { registerCredentialsHandlers } from '../handlers/credentials';
@@ -149,6 +151,15 @@ export class ServerAgentBootstrap {
 
       // 2. Get agent config
       const agentConfig = await AgentConfig.getInstance();
+
+      // 2b. Centralized telemetry: live privacy gate + the server sink
+      // (existing emitLog → stdout + logs.tail; zero new transport).
+      // No-op unless preferences.telemetryEnabled is true (read live).
+      installTelemetry({
+        getTelemetryEnabled: () =>
+          agentConfig.getConfig().preferences?.telemetryEnabled,
+        sink: ServerLogSink,
+      });
 
       // 3. Configure PromptComposer with server platform context
       // (must happen before agent.initialize() inside agentFactory)
@@ -672,8 +683,15 @@ export class ServerAgentBootstrap {
         await this.scheduler!.handleAlarm(alarmName);
       });
 
-      // 6. Wire event emitter -> unified channel dispatch
-      this.scheduler.connectToChannel(() => channelManager, this.channel!.channelId);
+      // 6. Wire event emitter -> unified channel dispatch (+ telemetry tap;
+      // the scheduler is a separate emitter family that bypasses the agent
+      // chokepoint, so it gets its own observation point — closes the
+      // "why did a scheduled job abort" goal incl. pre-session failures).
+      this.scheduler.connectToChannel(
+        () => channelManager,
+        this.channel!.channelId,
+        schedulerTelemetryTap,
+      );
 
       // 7. Wire job launcher -> submit job input to agent via registry
       this.scheduler.setJobLauncher(async (executionId, sessionId, registryAgent) => {
