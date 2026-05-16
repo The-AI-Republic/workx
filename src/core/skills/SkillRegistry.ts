@@ -4,7 +4,7 @@ import { substituteVariables, validateSkill, parseSkillMd, normalizeFrontmatter,
 import type { SkillDomainFilter } from './SkillDomainFilter';
 
 /** Built-in command names that skills cannot use */
-const RESERVED_COMMAND_NAMES = new Set(['new', 'help', 'settings']);
+const RESERVED_COMMAND_NAMES = new Set(['new', 'help', 'settings', 'doctor']);
 
 /**
  * Central coordinator for skill lifecycle.

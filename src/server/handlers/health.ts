@@ -41,7 +41,6 @@ let _startTime = Date.now();
 let _agentReady = false;
 let _agentModel: string | undefined;
 let _agentTools: string[] = [];
-let _activeRuns = 0;
 let _channels: Record<string, 'connected' | 'disconnected' | 'reconnecting'> = {};
 let _activeSessions = 0;
 let _totalSessions = 0;
@@ -57,10 +56,6 @@ export function setHealthAgentStatus(ready: boolean, model?: string): void {
 
 export function setHealthAgentTools(tools: string[]): void {
   _agentTools = tools;
-}
-
-export function setHealthActiveRuns(count: number): void {
-  _activeRuns = count;
 }
 
 export function setHealthChannels(channels: Record<string, 'connected' | 'disconnected' | 'reconnecting'>): void {
@@ -116,7 +111,9 @@ export function getHealthStatus(): HealthStatus {
     channels: _channels,
     agent: {
       ready: _agentReady,
-      activeRuns: _activeRuns,
+      // Always 0: never tracked. Kept for HealthStatus shape back-compat
+      // (the previous setter had zero callers — dead — and was removed).
+      activeRuns: 0,
       tools: _agentTools,
       model: _agentModel,
     },
