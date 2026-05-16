@@ -140,6 +140,9 @@
       onOpenRewindSelector: () => {
         onOpenRewindSelector?.();
       },
+      onOpenDoctor: () => {
+        push('/doctor');
+      },
     });
 
     // Load skill commands asynchronously (non-blocking)

@@ -512,6 +512,23 @@ export class Session {
     return this.sessionId;
   }
 
+  /**
+   * Track 18: fold a task's USD cost into the cumulative session total.
+   * Delegated to SessionState so it persists in the session export and is
+   * restored on resume. Called once per task from TaskRunner.persistTokenUsage.
+   */
+  addCost(usd: number, estimated: boolean): void {
+    this.sessionState.addCost(usd, estimated);
+  }
+
+  /**
+   * Track 18: cumulative USD cost for this session (live total) and whether
+   * any of it was priced via the fallback rate. Backs the /cost surface.
+   */
+  getCostInfo(): { cumulativeCostUSD: number; hasUnknownModelCost: boolean } {
+    return this.sessionState.getCostInfo();
+  }
+
   // ─── Track 05b: post-turn hooks + session-summary hook ──────────────────
 
   /**
@@ -1623,6 +1640,10 @@ export class Session {
       ? toRateLimitSnapshotEvent(snapshot)
       : undefined;
 
+    // Track 18: ride the cumulative session cost out on the same event
+    // (purely additive on Track 12's repair).
+    const cost = this.sessionState.getCostInfo();
+
     const event: Event = {
       id: subId,
       msg: {
@@ -1630,6 +1651,8 @@ export class Session {
         data: {
           info: tokenInfo,
           rate_limits: rateLimits,
+          cost: cost.cumulativeCostUSD,
+          cost_estimated: cost.hasUnknownModelCost,
         },
       } as EventMsg,
     };

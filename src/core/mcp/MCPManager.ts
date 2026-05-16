@@ -30,8 +30,15 @@ import {
 } from './MCPConfig';
 import { decryptApiKey } from '../../utils/encryption';
 
-/** Maximum number of MCP servers allowed (excluding builtins) */
-const MAX_SERVERS = 5;
+/**
+ * Maximum number of MCP servers allowed (excluding builtins).
+ *
+ * Track 10 (Q8 decision) raised this from 5 → 100. The original cap was
+ * conservative; 100 is plenty for any reasonable user-plus-plugin
+ * combination. No per-source exemption needed — plugin-installed servers
+ * count toward the same ceiling.
+ */
+const MAX_SERVERS = 100;
 
 /** Builtin browser server ID — deterministic UUID for desktop.
  *  Must be a valid UUID to pass MCPServerConfigSchema validation. */
@@ -224,6 +231,32 @@ export class MCPManager implements IMCPManager {
     // Emit event
     this.emit({ type: 'config-removed', configId: id });
 
+  }
+
+  /**
+   * Track 10: scoped removal — remove every server owned by a given plugin.
+   *
+   * Called by `PluginRegistry.disable(pluginId)` to unload one plugin's
+   * MCP servers. Each server is removed via `removeServer`, which already
+   * disconnects before drop and emits `config-removed` per server.
+   *
+   * Best-effort: per-server errors are logged but don't halt the loop, so
+   * a server whose `removeServer` throws may remain in `this.servers`.
+   * The loop attempts removal of every matching server regardless. Builtin
+   * and user-added servers are unaffected (no `pluginId`).
+   */
+  async removeByPluginId(pluginId: string): Promise<void> {
+    this.ensureInitialized();
+    const targets = Array.from(this.servers.values()).filter(
+      (s) => s.pluginId === pluginId,
+    );
+    for (const target of targets) {
+      try {
+        await this.removeServer(target.id);
+      } catch (e) {
+        console.warn(`[MCPManager.removeByPluginId] ${target.name}:`, e);
+      }
+    }
   }
 
   /**

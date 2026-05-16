@@ -18,17 +18,43 @@ import type {
 } from './types';
 import type { BackgroundAgentTaskState } from '@/core/tasks/types';
 import { PANEL_GRACE_MS } from '@/core/tasks/timing';
+import { assertValidSubAgentTypeConfig } from './validateTypeConfig';
+
+/**
+ * Source tag for sub-agent type registrations. Used by the plugin port
+ * (Track 10) to scope removals by plugin owner without affecting builtin
+ * or config-supplied types.
+ */
+export type SubAgentTypeSource =
+  | { type: 'builtin' }
+  | { type: 'config' }
+  | { type: 'plugin'; pluginId: string };
 
 /**
  * SubAgentRunner spawns and manages sub-agent executions.
  * Uses RepublicAgentEngine for execution and SubAgentRegistry for tracking.
  *
  * Implements prepare/execute/cleanup pipeline (IAgentRunner interface).
+ *
+ * Track 10: types are mutable at runtime. Call `addType` / `removeByPluginId`
+ * for plugin-driven mutations; wire `setTypesChangedCallback(fn)` so the
+ * outer registration layer (registerSubAgentTool) can rebuild the
+ * `sub_agent` tool definition via `ToolRegistry.replace`.
  */
 export class SubAgentRunner implements IAgentRunner {
   private readonly registry: SubAgentRegistry;
   private readonly parentEngine: RepublicAgentEngine;
-  private readonly customTypes: Map<string, SubAgentTypeConfig>;
+  // Track 10: mutable types map (was readonly customTypes)
+  private readonly types: Map<string, SubAgentTypeConfig>;
+  // Track 10: plugin ownership index for scoped removal
+  private readonly pluginTypeIndex: Map<string, Set<string>>;
+  // Track 10: reverse index (typeId → owning pluginId) for plugin-owned
+  // types only. Lets addType reject collisions with builtin/config types
+  // or another plugin's id, and lets removeByPluginId delete only ids it
+  // still owns (never a builtin that happens to share the id).
+  private readonly pluginTypeOwner: Map<string, string>;
+  // Track 10: callback fired when types change at runtime (after initial construction)
+  private onTypesChanged: (() => Promise<void>) | null = null;
 
   constructor(options: {
     parentEngine: RepublicAgentEngine;
@@ -37,18 +63,107 @@ export class SubAgentRunner implements IAgentRunner {
   }) {
     this.parentEngine = options.parentEngine;
     this.registry = options.registry ?? new SubAgentRegistry();
-    this.customTypes = new Map();
+    this.types = new Map();
+    this.pluginTypeIndex = new Map();
+    this.pluginTypeOwner = new Map();
 
     // Register built-in types
     for (const type of BUILTIN_SUBAGENT_TYPES) {
-      this.customTypes.set(type.id, type);
+      this.types.set(type.id, type);
     }
 
-    // Register custom types
+    // Register custom types (from constructor — typically config-sourced)
     if (options.customTypes) {
       for (const type of options.customTypes) {
-        this.customTypes.set(type.id, type);
+        this.types.set(type.id, type);
       }
+    }
+    // No onTypesChanged fires during construction — the outer
+    // registerSubAgentTool builds the initial tool definition itself.
+  }
+
+  /**
+   * Track 10: wire a callback that fires after every runtime type change
+   * (`addType` / `removeByPluginId`). The callback typically rebuilds the
+   * `sub_agent` tool definition and replaces it in the engine's tool
+   * registry via `ToolRegistry.replace`.
+   *
+   * Called by `registerSubAgentTool` after the initial tool registration.
+   */
+  setTypesChangedCallback(cb: (() => Promise<void>) | null): void {
+    this.onTypesChanged = cb;
+  }
+
+  /**
+   * Track 10: add a new sub-agent type at runtime.
+   *
+   * Plugin source carries `pluginId` for scoped removal via
+   * `removeByPluginId`. Fires the types-changed callback so the outer
+   * registration layer can rebuild the `sub_agent` tool definition.
+   *
+   * A plugin-sourced type may NOT reuse an id already held by a builtin,
+   * a config-supplied type, or a *different* plugin — that would let a
+   * later `removeByPluginId` silently delete the shadowed type. Such a
+   * collision throws so the plugin loader surfaces it in
+   * `LoadedPlugin.errors` (consistent with `assertValidSubAgentTypeConfig`).
+   * Re-adding under the same pluginId is allowed (update-in-place).
+   *
+   * NOTE: Phase 10a-1 ships eager rebuild on every addType. Phase 10a-2
+   * will add an active-task guard (defer until TaskCompleted) per design
+   * § Active-Session Semantics Rule 2 to prevent the LLM seeing an
+   * in-turn schema swap.
+   */
+  async addType(config: SubAgentTypeConfig, source: SubAgentTypeSource): Promise<void> {
+    assertValidSubAgentTypeConfig(config);
+    if (source.type === 'plugin') {
+      const owner = this.pluginTypeOwner.get(config.id);
+      if (owner === undefined && this.types.has(config.id)) {
+        throw new Error(
+          `Plugin '${source.pluginId}' cannot register sub-agent type '${config.id}': ` +
+            `id is already held by a builtin or config-supplied type`,
+        );
+      }
+      if (owner !== undefined && owner !== source.pluginId) {
+        throw new Error(
+          `Plugin '${source.pluginId}' cannot register sub-agent type '${config.id}': ` +
+            `id is already owned by plugin '${owner}'`,
+        );
+      }
+      this.types.set(config.id, config);
+      let set = this.pluginTypeIndex.get(source.pluginId);
+      if (!set) {
+        set = new Set();
+        this.pluginTypeIndex.set(source.pluginId, set);
+      }
+      set.add(config.id);
+      this.pluginTypeOwner.set(config.id, source.pluginId);
+    } else {
+      this.types.set(config.id, config);
+    }
+    if (this.onTypesChanged) {
+      await this.onTypesChanged();
+    }
+  }
+
+  /**
+   * Track 10: scoped removal — remove every type owned by a given plugin.
+   * Called by `PluginRegistry.disable(pluginId)`. Builtin and config-sourced
+   * types are unaffected (no pluginId).
+   */
+  async removeByPluginId(pluginId: string): Promise<void> {
+    const typeIds = this.pluginTypeIndex.get(pluginId);
+    if (!typeIds || typeIds.size === 0) return;
+    for (const id of typeIds) {
+      // Only drop ids this plugin still owns — never a builtin/other type
+      // that happens to share the id (addType's guard makes this defensive).
+      if (this.pluginTypeOwner.get(id) === pluginId) {
+        this.types.delete(id);
+        this.pluginTypeOwner.delete(id);
+      }
+    }
+    this.pluginTypeIndex.delete(pluginId);
+    if (this.onTypesChanged) {
+      await this.onTypesChanged();
     }
   }
 
@@ -607,10 +722,10 @@ export class SubAgentRunner implements IAgentRunner {
   }
 
   /**
-   * Get all available sub-agent types.
+   * Get all available sub-agent types (builtins + config + custom + plugin).
    */
   getTypes(): SubAgentTypeConfig[] {
-    return Array.from(this.customTypes.values());
+    return Array.from(this.types.values());
   }
 
   /**
@@ -625,7 +740,7 @@ export class SubAgentRunner implements IAgentRunner {
   // ---------------------------------------------------------------------------
 
   private resolveType(typeId: string): SubAgentTypeConfig | undefined {
-    return this.customTypes.get(typeId);
+    return this.types.get(typeId);
   }
 
   /**

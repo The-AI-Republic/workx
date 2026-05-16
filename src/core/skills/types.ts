@@ -57,6 +57,14 @@ export interface Skill {
   /** Default false. */
   disableModelInvocation?: boolean;
   version?: string;
+  // ── Track 10: plugin ownership ──
+  /**
+   * Plugin owner. Present when this skill was registered through a plugin
+   * (manifest.skills slot); absent for user-created or URL-imported skills.
+   * Used by `SkillRegistry.removeByPluginId` for scoped removal on plugin
+   * disable. ID format: `<pluginName>@<marketplace>`.
+   */
+  pluginId?: string;
 }
 
 // ── SkillMeta (Level 1 — Lightweight) ───────────────────────────
@@ -78,6 +86,8 @@ export interface SkillMeta {
   domains?: string[];
   userInvocable?: boolean;
   disableModelInvocation?: boolean;
+  // ── Track 10 projection ──
+  pluginId?: string;
 }
 
 // ── Parsed SKILL.md ─────────────────────────────────────────────
@@ -191,4 +201,6 @@ export const skillSchema = z.object({
   userInvocable: z.boolean().optional(),
   disableModelInvocation: z.boolean().optional(),
   version: z.string().max(64).optional(),
+  // ── Track 10 ──
+  pluginId: z.string().optional(),
 });
