@@ -31,6 +31,8 @@ export {
 
 export { applyPolicy } from './applyPolicy';
 
+export { ManagedFileSource, defaultManagedFilePath } from './ManagedFileSource';
+
 export { isKeyLocked, assertWritable, stripLockedWrites } from './guards';
 
 export {

@@ -25,6 +25,12 @@ import { deriveInputOrigin } from '@/core/input/types';
 import type { EventMsg } from '@/core/protocol/events';
 
 import { getServerConfig, watchConfig, stopWatchingConfig, onConfigReload } from '../config/server-config';
+import {
+  ManagedFileSource,
+  registerPolicySources,
+  resolveActivePolicy,
+  onPolicyChanged,
+} from '@/core/config/policy';
 import { SessionIndex } from '../persistence/SessionIndex';
 import { TranscriptStore } from '../persistence/TranscriptStore';
 import { BackupManager } from '../persistence/backup';
@@ -145,6 +151,20 @@ export class ServerAgentBootstrap {
 
       // 1. Initialize config storage (must happen before AgentConfig)
       setConfigStorage(new FileConfigStorageProvider(dataDir));
+
+      // 1b. Track 20: register the managed-file policy source (fleet policy is
+      // mounted via ConfigMap/Secret at APPLEPI_POLICY_PATH) and resolve it
+      // BEFORE AgentConfig.getInstance() / loadServerConfig() so both config
+      // systems' first hydration already sees admin policy. Fail-open.
+      try {
+        registerPolicySources([
+          new ManagedFileSource(process.env.APPLEPI_POLICY_PATH),
+        ]);
+        await resolveActivePolicy();
+        console.log('[ServerAgentBootstrap] Managed policy resolved');
+      } catch (error) {
+        console.warn('[ServerAgentBootstrap] Managed policy resolution failed (non-fatal):', error);
+      }
 
       // 2. Get agent config
       const agentConfig = await AgentConfig.getInstance();
@@ -336,6 +356,15 @@ export class ServerAgentBootstrap {
         // Hot-reload: iterate all sessions for refreshModelClient
         this.handleConfigUpdate().catch((err) => {
           console.error('[ServerAgentBootstrap] Failed to handle config update:', err);
+        });
+      });
+
+      // Track 20: a managed-file policy change (auto-wired fs.watch on the
+      // source) re-resolves the policy; re-hydrate the agent config so the
+      // pin re-applies fleet-wide without a restart.
+      onPolicyChanged(() => {
+        this.handleConfigUpdate().catch((err) => {
+          console.error('[ServerAgentBootstrap] Failed to apply policy change:', err);
         });
       });
 

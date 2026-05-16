@@ -53,6 +53,12 @@ import { setConfigStorage } from '../../core/storage/ConfigStorageProvider';
 import { setCredentialStore } from '../../core/storage/CredentialStore';
 import { setStorageProvider, isStorageProviderInitialized } from '../../core/storage';
 import { ChromeConfigStorage } from '../../extension/storage/ChromeConfigStorage';
+import { ChromeManagedConfigSource } from '../../extension/storage/ChromeManagedConfigSource';
+import {
+  registerPolicySources,
+  resolveActivePolicy,
+  onPolicyChanged,
+} from '../../core/config/policy';
 import { ChromeCredentialStore } from '../../extension/storage/ChromeCredentialStore';
 import * as VaultManager from '../../core/crypto/VaultManager';
 // Modules previously loaded via dynamic import() — must be static in service workers
@@ -197,6 +203,17 @@ async function doInitialize(): Promise<void> {
     console.warn('[ServiceWorker] Failed to initialize credential store:', error);
   }
 
+  // Track 20: register the Chrome-native managed-policy source and resolve it
+  // BEFORE AgentConfig.getInstance() so the first buildRuntimeConfig already
+  // sees admin policy. Fail-open: no managed storage → no policy.
+  try {
+    registerPolicySources([new ChromeManagedConfigSource()]);
+    await resolveActivePolicy();
+    console.log('[ServiceWorker] Managed policy resolved (early)');
+  } catch (error) {
+    console.warn('[ServiceWorker] Managed policy resolution failed:', error);
+  }
+
   // Inject RolloutRecorder provider before any session creation triggers it.
   // Direct instantiation avoids dynamic import() which is banned in service workers.
   try {
@@ -209,6 +226,17 @@ async function doInitialize(): Promise<void> {
 
   // Initialize configuration singleton first
   agentConfig = await AgentConfig.getInstance();
+
+  // Track 20: when admin pushes a managed-policy change (chrome.storage
+  // managed area, auto-wired via the source's subscribe), re-hydrate so the
+  // pin re-applies and the UI re-renders locked fields.
+  onPolicyChanged(() => {
+    AgentConfig.getInstance()
+      .then((c) => c.reload())
+      .catch((err) =>
+        console.warn('[ServiceWorker] policy reload failed:', err)
+      );
+  });
 
   // Initialize ONLY StorageProvider early — PlanningTool requires it via getTaskStore()
   // during tool registration in registry.createSession().

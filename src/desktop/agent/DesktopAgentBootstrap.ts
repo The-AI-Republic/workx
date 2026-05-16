@@ -30,6 +30,12 @@ import { SensitivePathEnhancer } from '@/core/approval/enhancers/SensitivePathEn
 import { ApprovalConfigStorage } from '@/core/approval/ApprovalConfigStorage';
 import { getConfigStorage } from '@/core/storage/ConfigStorageProvider';
 import { AgentConfig } from '@/config/AgentConfig';
+import {
+  ManagedFileSource,
+  registerPolicySources,
+  resolveActivePolicy,
+  onPolicyChanged,
+} from '@/core/config/policy';
 import { configurePromptComposer, registerPromptExtension } from '@/core/PromptLoader';
 import type { RuntimeContext } from '@/prompts/PromptComposer';
 import { SkillRegistry } from '@/core/skills/SkillRegistry';
@@ -77,6 +83,7 @@ export class DesktopAgentBootstrap {
   private runningJobStartTime: number = 0;
   private initialized = false;
   private isUpdatingConfig = false;
+  private policyPollTimer: ReturnType<typeof setInterval> | null = null;
 
   /**
    * Initialize the desktop agent system
@@ -90,6 +97,29 @@ export class DesktopAgentBootstrap {
     console.log('[DesktopAgentBootstrap] Initializing...');
 
     try {
+      // 0. Track 20: register the managed-file policy source and resolve it
+      // BEFORE AgentConfig.getInstance() so the first buildRuntimeConfig sees
+      // admin policy. Desktop has no config watcher, so reload is a net-new
+      // 60s poll (the design's explicit desktop choice). Fail-open.
+      try {
+        registerPolicySources([
+          new ManagedFileSource(process.env.APPLEPI_POLICY_PATH),
+        ]);
+        await resolveActivePolicy();
+        onPolicyChanged(() => {
+          AgentConfig.getInstance()
+            .then((c) => c.reload())
+            .catch((err) =>
+              console.warn('[DesktopAgentBootstrap] policy reload failed:', err)
+            );
+        });
+        this.policyPollTimer = setInterval(() => {
+          void resolveActivePolicy();
+        }, 60_000);
+      } catch (error) {
+        console.warn('[DesktopAgentBootstrap] Managed policy resolution failed (non-fatal):', error);
+      }
+
       // 1. Get agent config
       const config = await AgentConfig.getInstance();
 
@@ -989,6 +1019,12 @@ export class DesktopAgentBootstrap {
    */
   async shutdown(): Promise<void> {
     console.log('[DesktopAgentBootstrap] Shutting down...');
+
+    // Track 20: stop the managed-policy poll
+    if (this.policyPollTimer) {
+      clearInterval(this.policyPollTimer);
+      this.policyPollTimer = null;
+    }
 
     // Dispose scheduler
     this.schedulerDeepLinkHandler?.dispose();
