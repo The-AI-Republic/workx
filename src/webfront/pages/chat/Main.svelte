@@ -40,6 +40,8 @@
   let messages: Array<{ type: 'user' | 'agent'; content: string; timestamp: number }> = $state([]);
   let processedEvents: ProcessedEvent[] = $state([]);
   let inputText: string = $state('');
+  // Track 24.3: predicted next user message (bound into MessageInput).
+  let nextSuggestion: string | null = $state(null);
   let isConnected: boolean = $state(false);
   let isProcessing: boolean = $state(false);
   let showWelcome = $derived(!isProcessing && processedEvents.length === 0 && messages.length === 0);
@@ -601,6 +603,7 @@
     // Update processing state
     if (msg.type === 'TaskStarted') {
       isProcessing = true;
+      nextSuggestion = null; // Track 24.3: a new turn invalidates the prediction.
       // Note: We don't clear history here - user wants to see full conversation
       // History is only cleared when user explicitly clicks "New Conversation"
     } else if (msg.type === 'TaskComplete' || msg.type === 'TaskFailed') {
@@ -617,6 +620,11 @@
     // Keep legacy Error message handling for backward compatibility
     // Note: AgentMessage case removed - agent messages are now handled by EventProcessor
     switch (msg.type) {
+      case 'PromptSuggestion':
+        if ('data' in msg && msg.data?.suggestion) {
+          nextSuggestion = msg.data.suggestion;
+        }
+        break;
       case 'Error':
         if ('data' in msg && msg.data && 'message' in msg.data) {
           messages = [...messages, {
@@ -1518,6 +1526,7 @@
           <div class="pr-2 py-2 pl-0">
             <MessageInput
               bind:value={inputText}
+              bind:suggestion={nextSuggestion}
               onSubmit={sendMessage}
               onStop={stopAgent}
               onSelectConversation={resumeConversation}

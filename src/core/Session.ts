@@ -54,6 +54,7 @@ type SessionSummaryHookHandle = SessionSummaryHook;
 
 // Title generation imports
 import { TitleGenerator } from './title';
+import { PromptSuggestionGenerator } from './suggestions/promptSuggestion';
 
 // Track 04: typed tasks
 import type { BackgroundAgentTaskState, TaskState } from './tasks/types';
@@ -104,6 +105,7 @@ export class Session {
   private interruptRequested: boolean = false;
   private compactService: CompactService;
   private titleGenerator: TitleGenerator;
+  private suggestionGenerator: PromptSuggestionGenerator;
   private _memoryService: MemoryService | null = null;
 
   // ─── Track 04: typed task registry ────────────────────────────────────
@@ -170,6 +172,7 @@ export class Session {
     this.toolRegistry = toolRegistry ?? null; // Tool registry from RepublicAgent
     this.compactService = new CompactService(); // Initialize compaction service
     this.titleGenerator = new TitleGenerator(); // Initialize title generation service
+    this.suggestionGenerator = new PromptSuggestionGenerator(); // Track 24.3
 
     // Initialize services (merged from initialize() method)
     if (services) {
@@ -2396,6 +2399,34 @@ export class Session {
       return this.turnContext.getModelClient();
     }
     return null;
+  }
+
+  /**
+   * Track 24.3: after a completed turn, predict the user's likely next
+   * message and emit it for one-tap accept in the interactive UI.
+   *
+   * Gated OFF on the headless server build — there is no user to suggest to,
+   * so the extra model call would be pure cost. Fire-and-forget; never blocks
+   * task completion. Mirrors {@link maybeGenerateTitle}'s background pattern.
+   */
+  async maybeGenerateSuggestion(): Promise<void> {
+    if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'server') {
+      return;
+    }
+    const history = this.sessionState.historySnapshot();
+    if (this.suggestionGenerator.countAssistantTurns(history) < 2) {
+      return;
+    }
+    const modelClient = this.getModelClientForTitle();
+    if (!modelClient) return;
+
+    const result = await this.suggestionGenerator.generateSuggestion(history, modelClient);
+    if (result.success && result.suggestion) {
+      await this.emitEvent({
+        id: crypto.randomUUID(),
+        msg: { type: 'PromptSuggestion', data: { suggestion: result.suggestion } },
+      });
+    }
   }
 
   /**

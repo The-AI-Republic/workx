@@ -46,6 +46,7 @@ import {
 } from '../handlers/health';
 import { setHandshakeSnapshotProviders } from '../connection/handshake';
 import { registerServerTools } from '../tools/registerServerTools';
+import { redactEventMsgSecrets } from '../security/eventRedaction';
 import { schedulePeriodicSweep } from '../maintenance/toolResultCleanup';
 
 // Handler registrations
@@ -208,12 +209,14 @@ export class ServerAgentBootstrap {
             console.error('[ServerAgentBootstrap] Failed to dispatch event:', error);
           });
 
-          // Also log to transcript store
+          // Also log to transcript store (Track 24.5: secret-redacted at rest —
+          // non-blocking, the entry is kept, only detected secrets become ***).
           if (this.transcriptStore) {
+            const redactedMsg = redactEventMsgSecrets(event.msg);
             this.transcriptStore.append('__active__', {
               ts: Date.now(),
-              type: event.msg.type,
-              data: event.msg,
+              type: redactedMsg.type,
+              data: redactedMsg,
             });
           }
 
@@ -629,13 +632,33 @@ export class ServerAgentBootstrap {
    */
   private async configurePrompt(): Promise<void> {
     const os = await import('node:os');
+    const homeDir = os.homedir();
+
+    // Track 24.2: register filesystem persona overrides (user dir lowest,
+    // project dir highest precedence; both overlay built-ins), then pin the
+    // operator-selected persona from config.json.
+    try {
+      const { join } = await import('node:path');
+      const { scanDiskPersonas } = await import('@/prompts/diskPersonas');
+      const { registerExternalPersonas } = await import('@/prompts/PersonaLoader');
+      registerExternalPersonas(
+        scanDiskPersonas([
+          join(homeDir, '.browserx', 'styles'),
+          join(process.cwd(), '.browserx', 'styles'),
+        ]),
+      );
+    } catch (e) {
+      console.warn('[ServerAgentBootstrap] Persona disk scan skipped:', e);
+    }
 
     const staticContext: Partial<RuntimeContext> = {
       browserConnection: 'none',
       os: process.platform,
       arch: process.arch,
       shell: process.platform === 'win32' ? 'powershell' : 'bash',
-      homeDir: os.homedir(),
+      homeDir,
+      // TODO(track-20): allow a managed-policy key to override this.
+      personaName: getServerConfig().server.persona,
     };
 
     configurePromptComposer('applepi-server', staticContext);

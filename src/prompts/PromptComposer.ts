@@ -18,6 +18,7 @@ import taskPolicies from './fragments/task_execution_policies.md?raw';
 import approvalPolicies from './fragments/approval_policies.md?raw';
 import compactSummarization from './fragments/compact_summarization.md?raw';
 import compactSummaryPrefix from './fragments/compact_summary_prefix.md?raw';
+import { resolvePersona } from './PersonaLoader';
 
 export type AgentType = 'browserx' | 'applepi' | 'applepi-server';
 
@@ -40,6 +41,8 @@ export interface RuntimeContext {
   currentDateTime?: string;
   /** Available memory in GB */
   memoryGB?: number;
+  /** Selected output-style persona name (Track 24.2). Unknown → no-op. */
+  personaName?: string;
 }
 
 export class PromptComposer {
@@ -64,14 +67,21 @@ export class PromptComposer {
         : piIntro;
     sections.push(intro);
 
+    // 1b. Output-style persona (Track 24.2). Additive; unknown/unset → null.
+    const persona = resolvePersona(context?.personaName);
+    if (persona) sections.push(persona.prompt);
+
     // 2. Runtime metadata
     sections.push(this.buildRuntimeMetadata(agentType, context));
 
     // 3. Safety & ethics
     sections.push(safety);
 
-    // 4. Tool guidance (static listing for MVP)
-    sections.push(agentType === 'browserx' ? browserxTools : piTools);
+    // 4. Tool guidance (static listing for MVP). A persona may opt out of the
+    //    coding/tool instructions via `keepCodingInstructions: false`.
+    if (!persona || persona.keepCodingInstructions) {
+      sections.push(agentType === 'browserx' ? browserxTools : piTools);
+    }
 
     // 5. Task execution policies
     sections.push(taskPolicies);
