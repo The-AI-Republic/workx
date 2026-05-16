@@ -21,6 +21,7 @@ import { configurePromptComposer } from '@/core/PromptLoader';
 import type { RuntimeContext } from '@/prompts/PromptComposer';
 import type { Op } from '@/core/protocol/types';
 import type { SubmissionContext } from '@/core/channels/types';
+import { deriveInputOrigin } from '@/core/input/types';
 import type { EventMsg } from '@/core/protocol/events';
 
 import { getServerConfig, watchConfig, stopWatchingConfig, onConfigReload } from '../config/server-config';
@@ -233,7 +234,12 @@ export class ServerAgentBootstrap {
           throw new Error(`Session not found: ${context.sessionId}`);
         }
         console.log('[ServerAgentBootstrap] Processing submission:', op.type, 'session:', context.sessionId);
-        await targetSession.agent.submitOperation(op, { tabId: context.tabId });
+        // Track 13: thread channel origin so the input funnel can apply the
+        // bridge-safe slash gate (connector input must not leak raw /config).
+        await targetSession.agent.submitOperation(op, {
+          tabId: context.tabId,
+          origin: deriveInputOrigin(context),
+        });
       };
 
       channelManager.setAgentHandler(agentHandler);
@@ -432,7 +438,12 @@ export class ServerAgentBootstrap {
         if (!this.registry) throw new Error('AgentRegistry not initialized');
         const targetSession = this.registry.getSession(context.sessionId);
         if (!targetSession?.agent) throw new Error(`Session not found: ${context.sessionId}`);
-        await targetSession.agent.submitOperation(op, { tabId: context.tabId });
+        // Track 13: derive origin from the chat channel (on-host WS chat maps
+        // to `local` and skips the gate; remote/relay maps to `remote`).
+        await targetSession.agent.submitOperation(op, {
+          tabId: context.tabId,
+          origin: deriveInputOrigin(context),
+        });
       },
       getHistory: async (sessionKey) => {
         if (!this.transcriptStore) return [];
@@ -640,9 +651,12 @@ export class ServerAgentBootstrap {
             type: 'UserInput',
             items: [{ type: 'text', text: execution.input }],
           },
-          // Track 12: scheduled jobs are unattended — wait out rate limits
-          // instead of hard-failing into scheduler.failJob() with no human.
-          { unattended: true }
+          // Scheduled jobs are unattended on two orthogonal axes:
+          //  - Track 13 origin `scheduler`: a failed mention/capability
+          //    degrades via systemNote, never aborts the turn.
+          //  - Track 12 unattended: wait out 429/529 instead of
+          //    hard-failing into scheduler.failJob() with no human.
+          { origin: { channel: 'scheduler' }, unattended: true }
         );
         this.runningSchedulerJobId = executionId;
         this.runningJobStartTime = Date.now();
