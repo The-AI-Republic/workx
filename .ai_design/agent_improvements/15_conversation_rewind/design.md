@@ -103,7 +103,7 @@ Safety net: `storage/rollout/__tests__` real rollout fixtures.
 - **Track 03** (Commands): `/rewind`/`/checkpoint` `local` command + selector open hook (ext/desktop only).
 - **Track 05 / 05b** (Memory/Compaction): `summarize_up_to`.
 - **Track 12** (Rate-Limit): the headless win — resume a failed unattended job from last checkpoint via the same slice fn.
-- **Track 14** (Plan Mode): a rejected plan = rewind to the pre-plan turn (special case).
+- **Track 14** (Plan Review): a rejected plan = rewind to the turn before `BeginPlan` (special case).
 - **Track 13** (Input Pipeline): selector opened via the command path that routes through the funnel.
 
 ## Risks

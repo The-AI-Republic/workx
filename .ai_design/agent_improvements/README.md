@@ -35,7 +35,7 @@ Tracks 12–25 come from deeper claudy↔browserx comparison (2026-05-14) target
 |---|-------|----------|--------|-------|
 | 12 | [Rate-Limit Resilience](./12_rate_limit_resilience/design.md) | **P0** | Medium | Unattended runs survive 429s (wait-until-reset), early-warning, model downgrade. Collapses 3 shallow retry loops into one; **deletes** the dead simulated `RequestQueue.ts`; fixes the live `Session.ts:1610` bug that discards parsed rate-limit snapshots. Correctness gap, not enhancement. Design is fully code-grounded (depth-bar reference). |
 | 13 | [Input Pipeline & Browser-Native Mentions](./13_input_pipeline_mentions/design.md) | **P0** | Large | Unified input funnel + `@tab`/`@page`/`@selection` + screenshot paste. Reuses the existing `UserPromptSubmit` hook (Track 01) — funnel precedes it; relocates parsing out of `MessageInput.svelte`. Code-grounded design. |
-| 14 | [Plan Mode](./14_plan_mode/design.md) | P1 | Medium | Propose-plan → gate all mutations → single approval. Categorical gate keyed off Track 02 metadata (hard dep); `ApprovalManager` makes it channel-safe (vs claudy's terminal-only). Code-grounded design. |
+| 14 | [Plan Review](./14_plan_review/design.md) | P1 | Medium | Propose-plan → freeze all mutations → single approval. Orthogonal gate state (NOT an `ApprovalMode` value — "mode" reserved by #223/#228) keyed off Track 02 metadata; classification audit completed; headless registration-gated off (no server core-manager round-trip). Was "Plan Mode". Code-grounded. |
 | 15 | [Conversation Rewind & Fork](./15_conversation_rewind/design.md) | P1 | **S–M** | Rewind/fork. The `forked` `InitialHistory` substrate is **already wired** (`Session.ts:248`) — net-new work is the slice fn + selector UI + `summarize_up_to`. Effort revised down. Code-grounded design. |
 | 16 | [Telemetry & Analytics](./16_telemetry_analytics/design.md) | P1 | Medium | No-op-by-default, privacy-typed event sink. **Bridges the Track 01 event bus** instead of re-instrumenting call sites (browserx advantage over claudy). Code-grounded design. |
 | 17 | [Operational Diagnostics](./17_operational_diagnostics/design.md) | P1 | Small–Medium | Cross-platform `/doctor` + heapdump. Reuses/extends existing `HealthStatus`/`HealthMonitor` (status is binary `_agentReady` today); node-only heapdump. Code-grounded design. |
@@ -44,7 +44,7 @@ Tracks 12–25 come from deeper claudy↔browserx comparison (2026-05-14) target
 | 20 | [Managed / Policy Settings Tier](./20_managed_policy_settings/design.md) | P1 | Medium (full MDM P3/L) | Policy tier in **both** config systems + explicit `lockedKeys`; shared ETag/poll/fail-open remote fetcher (reused by Tracks 12/16). Code-grounded design. |
 | 21 | [Remote Bridge & Relay](./21_remote_bridge_relay/design.md) | P1 | Large | NAT-free relay + viewer/driver. Replay rides **existing** `nextSeq` + `HandshakeSnapshotProviders` (not new infra); relay gated on hosted infra; teleport P3. Code-grounded design. |
 | 22 | [Feature Flags & Lazy Loading](./22_feature_flags_lazy_loading/design.md) | P2 | Medium | Vite `define` `__FEATURE_*__` (same mechanism as `__BUILD_MODE__:vite.config.mjs:116`) + gated dynamic imports; pairs with existing `FeatureFlagRecorder`. Sequenced before 21/23. Code-grounded design. |
-| 23 | [Agentic Payments (x402)](./23_agentic_payments_x402/design.md) | P2 (strategic) | Medium | HTTP 402 micropayments. **No global fetch chokepoint in browserx** → opt-in capability for resource tools, never auto-pay on navigation; flag-gated, vetted crypto. Code-grounded design. |
+| 23 | [Agentic Payments (x402)](./23_agentic_payments_x402/design.md) | P2 (strategic) | Medium | ⚠️ **ERROR — NEEDS EDIT** (headless fail-closed rests on a false mechanism: cites the exec manager but routes through `ApprovalGate`/core manager, which fail-**OPEN** on server — see doc banner & `14_plan_review` Correction 4). HTTP 402 micropayments. **No global fetch chokepoint in browserx** → opt-in capability for resource tools, never auto-pay on navigation; flag-gated, vetted crypto. Code-grounded design. |
 | 24 | [Minor UX & Hardening Follow-ups](./24_minor_ux_hardening_followups/design.md) | P1–P2 (per item) | Small–Medium each | Bundle: Fuse ranking (P1/S), personas (P2/S), prompt suggestion NOT speculation (P2/M), server `execSync` hardening + `execFileSync` injection fix (P2/M), sync deferred (P2/L) + fail-closed secret scanner (P2/S). Code-grounded design. |
 | 25 | [Autonomous & Reactive Context Compaction](./25_context_compaction_robustness/design.md) | P1 | Small–Medium | Wires the **already-correct** `Session.shouldCompact()` into the existing post-turn hook (`Session.ts:519`) so the headless/main loop self-compacts (only the sub-agent path does today); adds reactive 413/context-overflow recovery on Track 12's model-call boundary + circuit breaker; unifies the 3 inconsistent thresholds. Wiring + safety-net, not a `CompactService` rewrite. Code-grounded design. |
 
@@ -125,13 +125,13 @@ the single-track gaps in 26–32**. Filed as bug-report tracks (detail + fix in 
 16_telemetry ──> 17_diagnostics, 19_migration (per-migration events), 18_cost (cost metric)
 01_hooks/events ──> 12_rate_limit (warning/downgrade events), 13_input_pipeline (UserPromptSubmit hook),
                     15_rewind, 18_cost (cost on TaskCompleteEvent), 21_remote_bridge (snapshot/replay)
-03_commands ──> 13_input_pipeline (slash routes through funnel), 14_plan (/plan), 15_rewind (/rewind),
+03_commands ──> 13_input_pipeline (slash routes through funnel), 14_plan_review (/plan), 15_rewind (/rewind),
                 17_diagnostics (/doctor), 18_cost (/cost), 24.1 (Fuse ranking), 24.2 (personas)
 04_typed_tasks ──> 12_rate_limit (unattended detection), 21_remote_bridge (relay = task family)
 09_tool_result_persistence ──> 13_input_pipeline (disk-backed image/large-paste reuse)
 12_rate_limit ··> 18_cost (coordination, non-blocking: a Track-12 downgrade/fallback model is exactly 18's `estimated` cost case; 18 ships independently)
 12_rate_limit shares ETag/poll/fail-open pattern with 20_managed_settings
-14_plan_mode ──> 23_x402 (payment = destructive action through approval)
+14_plan_review ──> 23_x402 (payment = destructive action through approval)
 22_feature_flags ──> 21_remote_bridge & 23_x402 (ship dark, opt-in)
 12_rate_limit ──> 25_context_compaction (shared TurnManager:224 model-call boundary + StreamAttemptError + circuit-breaker)
 05b_session_summary (DONE) ──> 25_context_compaction (registerPostTurnHook seam + the compaction it triggers)
