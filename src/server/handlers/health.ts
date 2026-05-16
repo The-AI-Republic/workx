@@ -8,6 +8,7 @@
 
 import { registerMethodHandler, type MethodContext } from '@applepi/ws-server';
 import { getConnectionCount } from '../connection/watchdog';
+import type { DiagnosticStatus } from '@/core/diagnostics';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Health status
@@ -44,6 +45,10 @@ let _activeRuns = 0;
 let _channels: Record<string, 'connected' | 'disconnected' | 'reconnecting'> = {};
 let _activeSessions = 0;
 let _totalSessions = 0;
+// Worst diagnostic verdict from the periodic DiagnosticsMonitor (Track 17).
+// Defaults to 'pass' so that, before the first diagnostic refresh, `status`
+// behaves exactly as it did historically (derived from `_agentReady` alone).
+let _diagnostics: DiagnosticStatus = 'pass';
 
 export function setHealthAgentStatus(ready: boolean, model?: string): void {
   _agentReady = ready;
@@ -71,6 +76,15 @@ export function resetHealthStartTime(): void {
   _startTime = Date.now();
 }
 
+/**
+ * Set the aggregate diagnostic verdict (Track 17). Called by the
+ * `DiagnosticsMonitor` on each refresh so `GET /health` / the `health`
+ * method report a *truthful* `status` for K8s/Docker probes.
+ */
+export function setHealthDiagnostics(verdict: DiagnosticStatus): void {
+  _diagnostics = verdict;
+}
+
 const SERVER_VERSION = '1.0.0';
 
 /**
@@ -80,9 +94,15 @@ export function getHealthStatus(): HealthStatus {
   const connections = getConnectionCount();
   const memUsage = process.memoryUsage();
 
-  const status: HealthStatus['status'] = _agentReady
-    ? 'ok'
-    : 'degraded';
+  // Shape-compatible upgrade (Track 17): same 3-value enum, but the value is
+  // now accurate. A critical check failure depools/restarts the container; a
+  // warn or a not-ready agent is degraded.
+  const status: HealthStatus['status'] =
+    _diagnostics === 'fail'
+      ? 'error'
+      : !_agentReady || _diagnostics === 'warn'
+        ? 'degraded'
+        : 'ok';
 
   return {
     status,
