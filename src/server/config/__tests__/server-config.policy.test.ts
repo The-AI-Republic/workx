@@ -4,6 +4,7 @@
  * (env stays an admin lever, but `lockedKeys` pins the resolved value).
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import type { ResolvedPolicy } from '@/core/config/policy';
 
 const ENV_KEYS = ['APPLEPI_CONFIG_PATH', 'APPLEPI_DATA_DIR', 'APPLEPI_SERVER_PORT'];
 const saved: Record<string, string | undefined> = {};
@@ -56,6 +57,24 @@ describe('Track 20 — server-config policy pin', () => {
     process.env.APPLEPI_SERVER_PORT = '1234';
     const cfg = loadServerConfig();
     expect(cfg.server.port).toBe(9999); // policy > env > file > defaults
+  });
+
+  it('a post-boot policy change is re-pinned by a second loadServerConfig()', async () => {
+    // Mirrors the ServerAgentBootstrap onPolicyChanged handler, which now
+    // re-runs loadServerConfig() so the server.* tier re-pins without a
+    // restart (AgentConfig.reload() only re-hydrates the agent.* tier).
+    let current: ResolvedPolicy | null = null;
+    registerPolicySources([{ origin: 'file', load: async () => current }]);
+    await resolveActivePolicy();
+    expect(loadServerConfig().server.port).toBe(18100); // no policy yet
+
+    current = {
+      values: { 'server.server.port': 7777 },
+      lockedKeys: ['server.server.port'],
+      origin: 'file',
+    };
+    await resolveActivePolicy();
+    expect(loadServerConfig().server.port).toBe(7777); // re-pinned
   });
 
   it('agent-namespaced policy does not leak into server config', async () => {

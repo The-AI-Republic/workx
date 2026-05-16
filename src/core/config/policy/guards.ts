@@ -41,28 +41,60 @@ export function assertWritable(ns: PolicyNamespace, localPath: string): void {
 }
 
 /**
+ * Throw {@link PolicyLockedError} if a write at `localPath` would touch ANY
+ * locked key: `localPath` itself is locked, lies under a locked ancestor, OR
+ * is an ancestor of a locked key (a coarse create/delete that would clobber a
+ * locked descendant). Unlike {@link assertWritable}, this also rejects the
+ * ancestor case — use it for whole-subtree create/delete/activate ops where
+ * there are no unlocked siblings within the same call to preserve. For
+ * partial-merge writes prefer {@link stripLockedWrites} so unlocked siblings
+ * still apply.
+ */
+export function assertWritableSubtree(
+  ns: PolicyNamespace,
+  localPath: string
+): void {
+  for (const k of lockedKeysFor(ns)) {
+    if (
+      localPath === k ||
+      localPath.startsWith(k + '.') ||
+      k.startsWith(localPath + '.')
+    ) {
+      throw new PolicyLockedError(`${ns}.${localPath}`);
+    }
+  }
+}
+
+/**
  * Remove only the exact locked leaf paths a partial write `patch` touches
  * (deep clone in, original untouched). Non-locked siblings are preserved, so
  * a bulk update still applies its allowed parts. Returns the cleaned patch
  * and the stripped paths so a caller can surface "ignored — managed by your
  * organization". The post-merge pin still re-asserts policy values regardless,
  * so this is defense-in-depth + a UX signal, not the sole guarantee.
+ *
+ * `basePath` namespaces a patch whose leaves are relative to a subtree (e.g.
+ * `updateProvider`'s patch is relative to `providers.<id>`). It is prepended
+ * before the lock check and to the returned `stripped` paths, but NOT used
+ * for the in-patch `deleteByPath` (the patch object itself stays relative).
  */
 export function stripLockedWrites<T>(
   ns: PolicyNamespace,
-  patch: T
+  patch: T,
+  basePath = ''
 ): { patch: T; stripped: string[] } {
   const locked = lockedKeysFor(ns);
   if (locked.length === 0) return { patch, stripped: [] };
 
-  const stripped = flattenLeafPaths(patch).filter((leaf) =>
-    isPathLockedBy(locked, leaf)
+  const prefix = basePath ? basePath + '.' : '';
+  const relStripped = flattenLeafPaths(patch).filter((leaf) =>
+    isPathLockedBy(locked, prefix + leaf)
   );
-  if (stripped.length === 0) return { patch, stripped: [] };
+  if (relStripped.length === 0) return { patch, stripped: [] };
 
   const out = deepClone(patch);
-  for (const leaf of stripped) {
+  for (const leaf of relStripped) {
     deleteByPath(out as unknown as Record<string, unknown>, leaf);
   }
-  return { patch: out, stripped };
+  return { patch: out, stripped: relStripped.map((l) => prefix + l) };
 }

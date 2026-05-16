@@ -24,7 +24,7 @@ import type { SubmissionContext } from '@/core/channels/types';
 import { deriveInputOrigin } from '@/core/input/types';
 import type { EventMsg } from '@/core/protocol/events';
 
-import { getServerConfig, watchConfig, stopWatchingConfig, onConfigReload } from '../config/server-config';
+import { getServerConfig, loadServerConfig, watchConfig, stopWatchingConfig, onConfigReload } from '../config/server-config';
 import {
   ManagedFileSource,
   ManagedDirSource,
@@ -121,7 +121,9 @@ export class ServerAgentBootstrap {
     }
 
     console.log('[ServerAgentBootstrap] Initializing...');
-    const config = getServerConfig();
+    // NOTE: getServerConfig() is intentionally deferred until AFTER the
+    // Track 20 policy block below. The first call memoizes the pinned config,
+    // so calling it here would cache a config with NO admin policy applied.
     const dataDir = process.env.APPLEPI_DATA_DIR ??
       `${process.env.HOME ?? process.env.USERPROFILE ?? '/tmp'}/.applepi-server/data`;
 
@@ -159,8 +161,8 @@ export class ServerAgentBootstrap {
 
       // 1b. Track 20: register the managed-file policy source (fleet policy is
       // mounted via ConfigMap/Secret at APPLEPI_POLICY_PATH) and resolve it
-      // BEFORE AgentConfig.getInstance() / loadServerConfig() so both config
-      // systems' first hydration already sees admin policy. Fail-open.
+      // BEFORE the first getServerConfig() / AgentConfig.getInstance() so both
+      // config systems' first hydration already sees admin policy. Fail-open.
       try {
         registerPolicySources([
           // Fleet remote path is highest precedence (first-wins), then the
@@ -174,6 +176,10 @@ export class ServerAgentBootstrap {
       } catch (error) {
         console.warn('[ServerAgentBootstrap] Managed policy resolution failed (non-fatal):', error);
       }
+
+      // 1c. First server-config read — now memoizes the policy-pinned config
+      // (server.* tier). Must come after the policy block above.
+      const config = getServerConfig();
 
       // 2. Get agent config
       const agentConfig = await AgentConfig.getInstance();
@@ -386,6 +392,14 @@ export class ServerAgentBootstrap {
             reasons: a.reasons,
           })
         );
+        // Re-pin the server.* tier: AgentConfig.reload() (in handleConfigUpdate)
+        // only re-hydrates the agent.* config. Without this, a post-boot policy
+        // change would never reach the memoized server config.
+        try {
+          loadServerConfig();
+        } catch (err) {
+          console.error('[ServerAgentBootstrap] Failed to re-pin server config on policy change:', err);
+        }
         this.handleConfigUpdate().catch((err) => {
           console.error('[ServerAgentBootstrap] Failed to apply policy change:', err);
         });

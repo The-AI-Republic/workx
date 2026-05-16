@@ -34,7 +34,12 @@ export { applyPolicy } from './applyPolicy';
 export { ManagedFileSource, defaultManagedFilePath } from './ManagedFileSource';
 export { ManagedDirSource, defaultManagedDirPath } from './ManagedDirSource';
 
-export { isKeyLocked, assertWritable, stripLockedWrites } from './guards';
+export {
+  isKeyLocked,
+  assertWritable,
+  assertWritableSubtree,
+  stripLockedWrites,
+} from './guards';
 
 export {
   assessPolicyChange,

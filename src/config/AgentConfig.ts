@@ -25,6 +25,7 @@ import { validateConfig, validateModelConfig, validateProviderConfig, detectProv
 import {
   applyPolicy,
   assertWritable,
+  assertWritableSubtree,
   stripLockedWrites,
   getActivePolicySync,
 } from '../core/config/policy';
@@ -140,6 +141,23 @@ export class AgentConfig implements IConfigService {
       getActivePolicySync(),
       'agent'
     );
+  }
+
+  /**
+   * Track 20: drop writes to policy-locked leaves a partial-merge mutator's
+   * `patch` touches (leaves are relative to `basePath`, e.g. `providers.openai`
+   * for updateProvider). Warns, returns the cleaned patch. Mirrors
+   * updateConfig so EVERY write surface — not just updateConfig — enforces
+   * leaf-level locks. The post-merge pin still re-asserts pinned values.
+   */
+  private stripLocked<T>(patch: T, basePath: string): T {
+    const { patch: safe, stripped } = stripLockedWrites('agent', patch, basePath);
+    if (stripped.length > 0) {
+      console.warn(
+        `[AgentConfig] Ignored write to organization-managed setting(s): ${stripped.join(', ')}`
+      );
+    }
+    return safe;
   }
 
   // Core CRUD operations
@@ -304,7 +322,17 @@ export class AgentConfig implements IConfigService {
 
   updateModelConfig(config: Partial<IModelConfig>): IModelConfig {
     this.ensureInitialized();
-    assertWritable('agent', 'selectedModelKey');
+
+    // Resolve the target model first and guard the ACTUAL write path
+    // (providers[id].models[*], not selectedModelKey) fail-closed, before any
+    // validation work. A locked provider/models subtree (or ancestor) is
+    // enforced; sibling keys like apiKey are intentionally NOT used here so an
+    // apiKey lock doesn't block unrelated model edits.
+    const modelData = this.getModelByKey(this.currentConfig.selectedModelKey);
+    if (!modelData) {
+      throw new Error('Cannot update model: selected model not found');
+    }
+    assertWritable('agent', `providers.${modelData.provider.id}.models`);
 
     const oldModel = this.getModelConfig();
     const newModel = { ...oldModel, ...config };
@@ -325,12 +353,6 @@ export class AgentConfig implements IConfigService {
       throw new Error('maxOutputTokens cannot exceed contextWindow');
     }
 
-    // Update the model in the provider's models array
-    const modelData = this.getModelByKey(this.currentConfig.selectedModelKey);
-    if (!modelData) {
-      throw new Error('Cannot update model: selected model not found');
-    }
-
     const provider = this.currentConfig.providers[modelData.provider.id];
     if (!provider || !provider.models) {
       throw new Error('Cannot update model: provider not found');
@@ -343,6 +365,8 @@ export class AgentConfig implements IConfigService {
     }
 
     provider.models[modelIndex] = newModel;
+    // Re-assert policy in case a pinned value lives under this provider.
+    this.pinPolicy();
 
     this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
@@ -366,7 +390,7 @@ export class AgentConfig implements IConfigService {
    */
   addProvider(provider: IProviderConfig): IProviderConfig {
     this.ensureInitialized();
-    assertWritable('agent', `providers.${provider.id}`);
+    assertWritableSubtree('agent', `providers.${provider.id}`);
 
     const validation = validateProviderConfig(provider);
     if (!validation.valid) {
@@ -378,13 +402,14 @@ export class AgentConfig implements IConfigService {
     }
 
     this.currentConfig.providers[provider.id] = provider;
+    this.pinPolicy();
     this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
 
-    this.emitChangeEvent('provider', null, provider);
+    this.emitChangeEvent('provider', null, this.currentConfig.providers[provider.id]);
 
-    return provider;
+    return this.currentConfig.providers[provider.id];
   }
 
   /**
@@ -396,6 +421,9 @@ export class AgentConfig implements IConfigService {
   updateProvider(id: string, provider: Partial<IProviderConfig>): IProviderConfig {
     this.ensureInitialized();
 
+    // Whole-provider (or ancestor) lock → hard reject. Finer leaf locks (e.g.
+    // providers.<id>.apiKey) are stripped below so unlocked siblings still
+    // apply — consistent with updateConfig.
     assertWritable('agent', `providers.${id}`);
 
     const existing = this.currentConfig.providers[id];
@@ -403,7 +431,8 @@ export class AgentConfig implements IConfigService {
       throw new Error(`Provider not found: ${id}`);
     }
 
-    const updated = { ...existing, ...provider };
+    const safe = this.stripLocked(provider, `providers.${id}`);
+    const updated = { ...existing, ...safe };
 
     const validation = validateProviderConfig(updated);
     if (!validation.valid) {
@@ -415,18 +444,21 @@ export class AgentConfig implements IConfigService {
     }
 
     this.currentConfig.providers[id] = updated;
+    this.pinPolicy();
     this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
 
-    this.emitChangeEvent('provider', existing, updated);
+    this.emitChangeEvent('provider', existing, this.currentConfig.providers[id]);
 
-    return updated;
+    return this.currentConfig.providers[id];
   }
 
   deleteProvider(id: string): void {
     this.ensureInitialized();
-    assertWritable('agent', `providers.${id}`);
+    // Deleting the subtree would also remove any locked descendant (e.g. a
+    // locked apiKey), so reject if the provider OR anything under it is locked.
+    assertWritableSubtree('agent', `providers.${id}`);
 
     // Check if provider hosts the currently selected model
     if (this.currentConfig.selectedModelKey.startsWith(`${id}:`)) {
@@ -435,6 +467,7 @@ export class AgentConfig implements IConfigService {
 
     const deleted = this.currentConfig.providers[id];
     delete this.currentConfig.providers[id];
+    this.pinPolicy();
     this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
@@ -695,7 +728,7 @@ export class AgentConfig implements IConfigService {
 
   createProfile(profile: IProfileConfig): IProfileConfig {
     this.ensureInitialized();
-    assertWritable('agent', 'profiles');
+    assertWritableSubtree('agent', `profiles.${profile.name}`);
 
     if (!this.currentConfig.profiles) {
       this.currentConfig.profiles = {};
@@ -706,6 +739,7 @@ export class AgentConfig implements IConfigService {
     }
 
     this.currentConfig.profiles[profile.name] = profile;
+    this.pinPolicy();
     this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
@@ -717,26 +751,29 @@ export class AgentConfig implements IConfigService {
 
   updateProfile(name: string, profile: Partial<IProfileConfig>): IProfileConfig {
     this.ensureInitialized();
-    assertWritable('agent', 'profiles');
+    assertWritable('agent', `profiles.${name}`);
 
     if (!this.currentConfig.profiles?.[name]) {
       throw new Error(`Profile not found: ${name}`);
     }
 
-    const updated = { ...this.currentConfig.profiles[name], ...profile };
+    const safe = this.stripLocked(profile, `profiles.${name}`);
+    const previous = this.currentConfig.profiles[name];
+    const updated = { ...previous, ...safe };
     this.currentConfig.profiles[name] = updated;
+    this.pinPolicy();
     this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
 
-    this.emitChangeEvent('profile', this.currentConfig.profiles[name], updated);
+    this.emitChangeEvent('profile', previous, this.currentConfig.profiles[name]);
 
-    return updated;
+    return this.currentConfig.profiles[name];
   }
 
   deleteProfile(name: string): void {
     this.ensureInitialized();
-    assertWritable('agent', 'profiles');
+    assertWritableSubtree('agent', `profiles.${name}`);
 
     if (this.currentConfig.activeProfile === name) {
       throw new Error('Cannot delete active profile');
@@ -746,6 +783,7 @@ export class AgentConfig implements IConfigService {
     if (this.currentConfig.profiles) {
       delete this.currentConfig.profiles[name];
     }
+    this.pinPolicy();
     this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
@@ -764,6 +802,7 @@ export class AgentConfig implements IConfigService {
     this.currentConfig.activeProfile = name;
     const profile = this.currentConfig.profiles[name];
     profile.lastUsed = Date.now();
+    this.pinPolicy();
 
     this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
@@ -820,29 +859,35 @@ export class AgentConfig implements IConfigService {
 
   updateToolsConfig(config: Partial<IToolsConfig>): IToolsConfig {
     this.ensureInitialized();
+    // Whole-tools (or ancestor) lock → hard reject. Finer leaf locks (e.g.
+    // tools.sandboxPolicy.network_access) are stripped so unlocked siblings
+    // still apply, then re-pinned — the previous coarse guard let any
+    // sub-`tools` lock through entirely.
     assertWritable('agent', 'tools');
+    const safe = this.stripLocked(config, 'tools');
 
     const oldConfig = this.currentConfig.tools;
     const newConfig = {
       ...(this.currentConfig.tools || {}),
-      ...config,
+      ...safe,
       sandboxPolicy: {
         ...(this.currentConfig.tools?.sandboxPolicy || {}),
-        ...(config.sandboxPolicy || {})
+        ...(safe.sandboxPolicy || {})
       },
       perToolConfig: {
         ...(this.currentConfig.tools?.perToolConfig || {}),
-        ...(config.perToolConfig || {})
+        ...(safe.perToolConfig || {})
       }
     };
 
     this.currentConfig.tools = newConfig as IToolsConfig;
+    this.pinPolicy();
     this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
-    this.emitChangeEvent('tools' as any, oldConfig, newConfig);
+    this.emitChangeEvent('tools' as any, oldConfig, this.currentConfig.tools);
 
-    return newConfig as IToolsConfig;
+    return this.currentConfig.tools as IToolsConfig;
   }
 
   getEnabledTools(): string[] {
@@ -852,7 +897,11 @@ export class AgentConfig implements IConfigService {
 
   enableTool(toolName: string): void {
     this.ensureInitialized();
-    assertWritable('agent', 'tools');
+    // Writes both tools.enabled and tools.disabled — guard the exact arrays
+    // (and, via ancestor match, a whole-`tools` lock) rather than the coarse
+    // `tools` path which let a specific `tools.enabled` lock slip through.
+    assertWritable('agent', 'tools.enabled');
+    assertWritable('agent', 'tools.disabled');
 
     const tools = this.currentConfig.tools || { enabled: [], disabled: [] };
     if (!tools.enabled) tools.enabled = [];
@@ -864,15 +913,17 @@ export class AgentConfig implements IConfigService {
     tools.disabled = tools.disabled.filter(name => name !== toolName);
 
     this.currentConfig.tools = tools as IToolsConfig;
+    this.pinPolicy();
     this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
-    this.emitChangeEvent('tools' as any, null, tools);
+    this.emitChangeEvent('tools' as any, null, this.currentConfig.tools);
   }
 
   disableTool(toolName: string): void {
     this.ensureInitialized();
-    assertWritable('agent', 'tools');
+    assertWritable('agent', 'tools.enabled');
+    assertWritable('agent', 'tools.disabled');
 
     const tools = this.currentConfig.tools || { enabled: [], disabled: [] };
     if (!tools.enabled) tools.enabled = [];
@@ -884,10 +935,11 @@ export class AgentConfig implements IConfigService {
     }
 
     this.currentConfig.tools = tools as IToolsConfig;
+    this.pinPolicy();
     this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
-    this.emitChangeEvent('tools' as any, null, tools);
+    this.emitChangeEvent('tools' as any, null, this.currentConfig.tools);
   }
 
   getToolTimeout(): number {
@@ -911,6 +963,7 @@ export class AgentConfig implements IConfigService {
   ): void {
     this.ensureInitialized();
     assertWritable('agent', `tools.perToolConfig.${toolName}`);
+    const safe = this.stripLocked(config, `tools.perToolConfig.${toolName}`);
 
     if (!this.currentConfig.tools) {
       this.currentConfig.tools = { enabled: [], disabled: [] } as IToolsConfig;
@@ -922,8 +975,9 @@ export class AgentConfig implements IConfigService {
     const oldConfig = this.currentConfig.tools.perToolConfig[toolName];
     this.currentConfig.tools.perToolConfig[toolName] = {
       ...(oldConfig || {}),
-      ...config
+      ...safe
     };
+    this.pinPolicy();
 
     this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
