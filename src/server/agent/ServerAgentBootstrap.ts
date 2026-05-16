@@ -651,9 +651,12 @@ export class ServerAgentBootstrap {
             type: 'UserInput',
             items: [{ type: 'text', text: execution.input }],
           },
-          // Track 13: scheduled jobs are unattended — origin `scheduler` so a
-          // failed mention/capability degrades via systemNote, never aborts.
-          { origin: { channel: 'scheduler' } }
+          // Scheduled jobs are unattended on two orthogonal axes:
+          //  - Track 13 origin `scheduler`: a failed mention/capability
+          //    degrades via systemNote, never aborts the turn.
+          //  - Track 12 unattended: wait out 429/529 instead of
+          //    hard-failing into scheduler.failJob() with no human.
+          { origin: { channel: 'scheduler' }, unattended: true }
         );
         this.runningSchedulerJobId = executionId;
         this.runningJobStartTime = Date.now();

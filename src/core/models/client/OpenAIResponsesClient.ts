@@ -28,7 +28,6 @@ import type { IModelConfig } from '../../../config/types';
 import type { RateLimitSnapshot } from '../types/RateLimits';
 import type { TokenUsage } from '../types/TokenUsage';
 import { SSEEventParser } from '../SSEEventParser';
-import { RequestQueue } from '../RequestQueue';
 import { get_full_instructions, get_formatted_input } from '../PromptHelpers';
 
 /**
@@ -121,8 +120,6 @@ export class OpenAIResponsesClient extends ModelClient {
 
   // Performance optimizations (Phase 9)
   protected sseParser: SSEEventParser;
-  protected requestQueue: RequestQueue | null = null;
-  protected queueEnabled: boolean = false;
 
   constructor(config: OpenAIResponsesConfig, retryConfig?: Partial<RetryConfig>) {
     super(retryConfig);
@@ -219,19 +216,6 @@ export class OpenAIResponsesClient extends ModelClient {
 
     // Initialize performance optimizations
     this.sseParser = new SSEEventParser();
-
-    // Initialize request queue if rate limiting is needed
-    // Note: requestsPerMinute/requestsPerHour not in base ModelProviderInfo type yet
-    // TODO: Add to ModelProviderInfo interface
-    const providerAny = this.provider as any;
-    if (providerAny.requestsPerMinute || providerAny.requestsPerHour) {
-      this.requestQueue = new RequestQueue({
-        requestsPerMinute: providerAny.requestsPerMinute || 60,
-        requestsPerHour: providerAny.requestsPerHour || 1000,
-        burstLimit: Math.min(providerAny.requestsPerMinute || 10, 10),
-      });
-      this.queueEnabled = true;
-    }
   }
 
   getProvider(): ModelProviderInfo {
@@ -355,47 +339,10 @@ export class OpenAIResponsesClient extends ModelClient {
     // Build request payload (can be overridden by subclasses like GroqClient)
     const payload = await this.buildRequestPayload(prompt);
 
-    // Retry logic with exponential backoff
-    const maxRetries = this.provider.request_max_retries ?? 3;
-    let attempt = 0;
-    let lastError: any;
-
-    while (attempt <= maxRetries) {
-      try {
-        // Make API request - returns ResponseStream immediately
-        return await this.attemptStreamResponses(attempt, payload);
-      } catch (error) {
-        lastError = error;
-
-        // Don't retry on the last attempt
-        if (attempt === maxRetries) {
-          break;
-        }
-
-        // Check for non-retryable errors (e.g., 401)
-        if (error instanceof ModelClientError) {
-          if (error.statusCode === 401) {
-            throw error; // Don't retry auth errors
-          }
-
-          if (error.statusCode && error.statusCode < 500 && error.statusCode !== 429) {
-            throw error; // Don't retry client errors except 429
-          }
-        }
-
-        // Calculate backoff delay
-        let retryAfter: number | undefined;
-        if (error instanceof ModelClientError && error.retryAfter) {
-          retryAfter = error.retryAfter;
-        }
-
-        const delay = this.calculateBackoff(attempt, retryAfter);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        attempt++;
-      }
-    }
-
-    throw lastError;
+    // Track 12: retry/backoff/reset-wait is owned by the single orchestrator
+    // at the TurnManager.runTurn boundary. This client makes one attempt and
+    // lets errors propagate up for unified classification.
+    return await this.attemptStreamResponses(0, payload);
   }
 
   /**
@@ -567,68 +514,30 @@ export class OpenAIResponsesClient extends ModelClient {
     // Build request payload (can be overridden by subclasses)
     const payload = await this.buildRequestPayload(prompt);
 
-    // Retry logic with exponential backoff
-    const maxRetries = this.provider.request_max_retries ?? 3;
-    let attempt = 0;
-
-    while (attempt <= maxRetries) {
-      attempt++;
-
-      try {
-        const sdkStream = await this.makeResponsesApiRequest(payload);
-
-        // Process SDK stream and yield events
-        yield* this.processSDKStream(sdkStream);
-        return;
-
-      } catch (error) {
-        // Handle specific error cases
-        if (error instanceof ModelClientError) {
-          // Check for rate limiting
-          if (error.statusCode === 429) {
-            if (attempt > maxRetries) {
-              throw error;
-            }
-
-            const delay = this.calculateBackoff(attempt - 1, error.retryAfter);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            continue;
-          }
-
-          // Check for auth errors
-          if (error.statusCode === 401) {
-            // Differentiate between backend auth (session expired) and provider auth (API key)
-            if (this.useCredentials) {
-              throw new ModelClientError(
-                'Session expired - please log in again to continue using the AI agent',
-                401,
-                'Backend',
-                false // Not retryable
-              );
-            } else {
-              throw new ModelClientError(
-                'Authentication failed - check API key',
-                401,
-                this.provider.name,
-                false // Not retryable
-              );
-            }
-          }
-
-          // Non-retryable errors
-          if (error.statusCode && error.statusCode < 500 && error.statusCode !== 429) {
-            throw error;
-          }
+    // Track 12: single attempt — retry/backoff is centralized in the
+    // orchestrator. The 401 message enrichment is kept (user-facing value);
+    // all other errors propagate unchanged for unified classification.
+    try {
+      const sdkStream = await this.makeResponsesApiRequest(payload);
+      yield* this.processSDKStream(sdkStream);
+    } catch (error) {
+      if (error instanceof ModelClientError && error.statusCode === 401) {
+        if (this.useCredentials) {
+          throw new ModelClientError(
+            'Session expired - please log in again to continue using the AI agent',
+            401,
+            'Backend',
+            false // Not retryable
+          );
         }
-
-        // Retry on server errors or network issues
-        if (attempt > maxRetries) {
-          throw error;
-        }
-
-        const delay = this.calculateBackoff(attempt - 1);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        throw new ModelClientError(
+          'Authentication failed - check API key',
+          401,
+          this.provider.name,
+          false // Not retryable
+        );
       }
+      throw error;
     }
   }
 
@@ -1430,8 +1339,6 @@ export class OpenAIResponsesClient extends ModelClient {
   public getPerformanceStatus() {
     return {
       sseMetrics: this.sseParser.getPerformanceMetrics(),
-      queueStatus: this.requestQueue?.getStatus(),
-      queueAnalytics: this.requestQueue?.getAnalytics(),
     };
   }
 
@@ -1443,34 +1350,9 @@ export class OpenAIResponsesClient extends ModelClient {
   }
 
   /**
-   * Enable or disable request queuing
-   */
-  public setQueueEnabled(enabled: boolean): void {
-    if (this.requestQueue) {
-      this.queueEnabled = enabled;
-      if (enabled) {
-        this.requestQueue.resume();
-      } else {
-        this.requestQueue.pause();
-      }
-    }
-  }
-
-  /**
-   * Clear all queued requests
-   */
-  public clearQueue(): void {
-    this.requestQueue?.clear();
-  }
-
-  /**
    * Cleanup resources
    */
   public async cleanup(): Promise<void> {
-    if (this.requestQueue) {
-      this.requestQueue.pause();
-    }
-
     this.sseParser.resetPerformanceMetrics();
   }
 }
