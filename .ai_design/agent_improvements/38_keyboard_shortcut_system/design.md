@@ -1,196 +1,231 @@
 # Track 38: Keyboard Shortcut System
 
 **Date**: 2026-05-16
-**Scope**: Browserx webfront, Chrome extension commands, and Tauri desktop hotkeys
+**Scope**: Browserx webfront, Chrome extension commands, Tauri desktop global hotkeys, settings, diagnostics
 **Reference**: `/home/rich/dev/study/claudy/src/keybindings`
 
-## Summary
+## Goal
 
-Both codebases support keyboard shortcuts today, but they do it at different maturity levels.
+Browserx already has keyboard shortcuts, but they are not a system yet. They are separate implementations that happen to use keys:
 
-`claudy` has a first-class keybinding subsystem. It models shortcuts as configurable action mappings, resolves them through active UI contexts, supports multi-key chords, validates user config, and lets UI hints show the configured shortcut.
+- Chrome extension commands are declared in `manifest.json` and `src/extension/manifest.json`, then handled by `chrome.commands` in `src/extension/background/service-worker.ts`.
+- Tauri desktop global hotkeys are hardcoded in `src/desktop/hotkeys.ts`.
+- In-app shortcuts are hardcoded in Svelte handlers such as `src/webfront/App.svelte`, `src/webfront/components/MessageInput.svelte`, modal components, settings search, model selectors, and scheduler dialogs.
 
-`browserx` supports shortcuts, but they are fragmented:
+This track turns those scattered handlers into a product-level shortcut system:
 
-- Chrome extension commands are declared in `manifest.json` and handled by `chrome.commands`.
-- Tauri desktop global hotkeys are registered in `src/desktop/hotkeys.ts`.
-- In-app shortcuts are hardcoded in Svelte handlers such as message submit, slash-command navigation, modal escape handling, zoom, tab accessibility, and model picker dismissal.
+```text
+keyboard event or platform command -> shortcut action id -> local handler
+```
 
-The main improvement opportunity is not to copy `claudy` wholesale. Browserx is DOM, extension, and desktop based, not Ink/terminal based. The useful lesson is to centralize key-to-action resolution while keeping action handlers local to the owning UI.
+The end state is not a direct transplant from Claudy. Browserx is a DOM app that also runs as a Chrome extension and a Tauri desktop app. The right implementation is a shared shortcut catalog plus platform-specific adapters:
 
-## Current Browserx Support
+- Pure shortcut catalog, parser, resolver, display, validation, and config merge logic in `src/core/shortcuts`.
+- Svelte runtime registration and DOM listener in `src/webfront/shortcuts`.
+- Desktop global hotkey registration in `src/desktop/hotkeys.ts`, generated from the shared catalog.
+- Chrome command mapping in `src/extension/background/service-worker.ts`, mapped to the same action ids.
+- Settings and diagnostics that read the same effective shortcut data used at runtime.
 
-Browserx currently supports three shortcut surfaces.
+After this track is implemented, Browserx should have:
 
-### Extension-level commands
+- one typed inventory of shortcut actions and contexts,
+- one source of defaults for webfront, desktop, and extension shortcuts,
+- explicit context priority for overlapping keys such as `Enter`, `Escape`, `ArrowUp`, and `ArrowDown`,
+- dynamic shortcut display for help/settings UI,
+- validation for user overrides and platform limitations,
+- desktop and extension command parity checks,
+- focused tests for parser, resolver, validation, Svelte integration, desktop adapters, and extension command mapping.
 
-Defined in both root `manifest.json` and `src/extension/manifest.json`:
+## Current Browserx Behavior
+
+### Extension Commands
+
+Files:
+
+- `manifest.json`
+- `src/extension/manifest.json`
+- `src/extension/background/service-worker.ts`
+
+Current defaults:
 
 - `Alt+Shift+C`: `toggle-sidepanel`
 - `Alt+Shift+Q`: `quick-action`
 
-The background service worker listens through `chrome.commands.onCommand` and dispatches `toggle-sidepanel` or `quick-action` in `src/extension/background/service-worker.ts`.
+Current service worker behavior:
 
-Strengths:
+- `toggle-sidepanel` calls `chrome.sidePanel.open({ windowId: chrome.windows.WINDOW_ID_CURRENT })`.
+- `quick-action` queries the active tab and calls `executeQuickAction(tabId)`.
 
-- Works when the extension is active enough for Chrome command dispatch.
-- Uses the browser-native command surface.
+Problems:
 
-Gaps:
+- The command names are not connected to the rest of Browserx shortcut behavior.
+- The defaults are duplicated in two manifests.
+- There is no testable command-name-to-product-action mapping.
+- Chrome users can change extension shortcuts outside Browserx, so UI display must use `chrome.commands.getAll()` where available instead of trusting the manifest default.
 
-- Chrome users can change extension shortcuts outside the app, so the app cannot reliably display the actual assigned key without querying Chrome APIs where available.
-- These commands are not connected to any shared Browserx action registry.
-- No collision analysis with in-app shortcuts.
+### Desktop Global Hotkeys
 
-### Desktop global hotkeys
+File:
 
-`src/desktop/hotkeys.ts` uses `@tauri-apps/plugin-global-shortcut` and registers:
+- `src/desktop/hotkeys.ts`
+
+Current defaults:
 
 - `CommandOrControl+Shift+B`: toggle window
 - `CommandOrControl+Shift+I`: focus input
 - `CommandOrControl+Shift+K`: quick action
 
-Strengths:
+Current behavior:
 
-- Clear small module.
-- Tracks registered shortcuts and unregisters them.
-- Emits UI events (`applepi:focus-input`, `applepi:quick-action`) instead of reaching into components directly.
+- `toggleWindow` calls `toggleWindow()` from `src/desktop/tray.ts`.
+- `focusInput` shows/focuses the Tauri window and dispatches `applepi:focus-input`.
+- `quickAction` shows/focuses the Tauri window and dispatches `applepi:quick-action`.
 
-Gaps:
+Problems:
 
-- Defaults are hardcoded and not backed by a shared definition.
-- No user config, validation, or reserved-key policy.
-- No display helper for settings/help UI.
-- No parity mapping to Chrome extension commands.
+- Defaults are hardcoded in the desktop module.
+- There is no shared action id, display helper, validation, or settings integration.
+- Registration failure is logged but not surfaced to diagnostics/settings.
+- There is no relationship between desktop `quickAction` and extension `quick-action`.
 
-### In-app Svelte shortcuts
+### In-App DOM Shortcuts
 
-Examples:
+Important files:
 
-- `src/webfront/App.svelte`: `Ctrl/Cmd +/-/0` zoom.
-- `src/webfront/components/MessageInput.svelte`: `Enter` submit, `Shift+Enter` newline, slash-command dropdown navigation with arrows, `Escape`, and `Enter`.
-- Modal components use `Escape` through local `svelte:window` handlers.
-- Buttons and tabs use `Enter`/`Space` for accessibility.
+- `src/webfront/App.svelte`: `Ctrl/Cmd` plus `+`, `-`, and `0` for zoom.
+- `src/webfront/components/MessageInput.svelte`: `Enter` submit, `Shift+Enter` newline, slash-command navigation with `ArrowDown`, `ArrowUp`, `Escape`, and `Enter`.
+- `src/webfront/components/chat/ModelSelection.svelte`: window-level `Escape`.
+- `src/webfront/components/scheduler/ScheduleJobModal.svelte`: window-level `Escape`.
+- `src/webfront/components/scheduler/JobDetailModal.svelte`: window-level `Escape`.
+- `src/webfront/pages/skills/Skills.svelte`: window-level `Escape`.
+- `src/webfront/settings/components/SettingsSearch.svelte`: input-local search result navigation.
+- `src/webfront/settings/components/ModelSelector.svelte`: input-local model dropdown navigation.
+- Various buttons/tabs/switches use `Enter` and `Space` for accessibility.
 
-Strengths:
+What should stay local:
 
-- Behavior is close to the owning component and easy to understand in isolation.
-- Native form and accessibility handlers are mostly simple.
+- Native button, switch, tab, and clickable-row accessibility handlers using `Enter` and `Space`.
+- Component-specific text-entry behavior that is not product-configurable.
 
-Gaps:
+What should move into the shortcut system:
 
-- No central list of shortcuts.
-- No way to show a complete shortcut help screen.
-- No user customization.
-- Context precedence is implicit and can become fragile as overlays grow.
-- Window-level `Escape` listeners can conflict when multiple modals or popups are mounted.
+- App-level zoom.
+- Chat submit and newline display/behavior.
+- Slash command navigation and dismissal.
+- Overlay dismissal when the overlay owns a modal/model-picker/scheduler context.
+- Settings search and model-selector navigation only if we decide they should appear in keyboard help and be user-configurable. Otherwise they can stay local.
 
-## Claudy Findings
+Problems:
 
-`claudy` treats keybindings as a platform-level product surface.
+- There is no complete shortcut inventory.
+- There is no shortcut help/settings screen.
+- Context precedence is implicit. Multiple mounted window listeners can all see `Escape`.
+- Key labels in UI cannot reliably reflect user overrides.
 
-### Default bindings are action mappings
+## Claudy Findings To Reuse
 
-`defaultBindings.ts` defines blocks by context, for example `Global`, `Chat`, `Autocomplete`, `Settings`, `Confirmation`, `Tabs`, and `Transcript`. Each block maps keystroke strings to action IDs like `chat:submit`, `settings:search`, or `app:toggleTranscript`.
+Claudy has a mature keybinding subsystem under `/home/rich/dev/study/claudy/src/keybindings`.
 
-Important idea for Browserx: action IDs are stable product contracts. Components register what action they can handle; shortcut definitions decide which keys trigger those actions.
+Useful patterns:
 
-### Handlers stay local
+- `defaultBindings.ts` maps key strings to stable action ids grouped by contexts.
+- `parser.ts`, `match.ts`, and `resolver.ts` keep parsing and resolution pure and testable.
+- `useKeybinding.ts` lets components own side effects while bindings stay configurable.
+- `KeybindingContext.tsx` and `KeybindingProviderSetup.tsx` keep active contexts and handler registration centralized.
+- `validate.ts`, `reservedShortcuts.ts`, and `loadUserBindings.ts` validate user overrides before runtime use.
+- `shortcutFormat.ts` and `useShortcutDisplay.ts` let UI display the currently configured key instead of hardcoded text.
+- Chord support is isolated behind resolver state and an early interceptor, so chord prefixes do not leak into the prompt input.
 
-`useKeybinding.ts` registers a handler for an action and context. The handler remains in the owning component, while the binding comes from config. This avoids a giant global switch statement.
+Things Browserx should not copy directly:
 
-Important idea for Browserx: implement a Svelte action/hook equivalent, such as `useShortcut(action, handler, { context, active })`, where the component owns side effects.
+- Ink `Key` matching. Browserx must normalize DOM `KeyboardEvent`, Chrome command strings, and Tauri accelerators.
+- Terminal-specific alt/meta/super behavior.
+- User config file watching from `~/.claude/keybindings.json`. Browserx already has `AgentConfig` and `preferences.shortcuts`.
+- React provider/hook mechanics. Browserx uses Svelte 5 runes and store-style modules.
+- Chords in v1. Browser DOM text inputs, IME composition, and capture-phase handling make chords riskier than single-keystroke shortcuts.
 
-### Contexts provide precedence
+## Design Decisions
 
-`KeybindingContext.tsx` tracks active contexts and resolves against those contexts before `Global`. This is what lets `Escape` mean "dismiss autocomplete", "close modal", or "cancel chat" depending on state.
+1. Use action ids as product contracts.
 
-Important idea for Browserx: overlays, command mode, settings, chat input, model picker, scheduler dialogs, and global app shortcuts need explicit context priority.
+   Components and platform services handle actions such as `app:zoomIn`, `chat:submit`, or `app:quickAction`. Key strings are configuration, not component API.
 
-### Chords are supported, but should be staged
+2. Keep handlers local.
 
-`resolver.ts` supports chord sequences such as `ctrl+x ctrl+k`. `KeybindingProviderSetup.tsx` adds a global chord interceptor with a 1 second timeout so the second key does not leak into the input field.
+   The shortcut runtime should find the action. The owning component or service should perform the side effect. Avoid a single global switch for all in-app behavior.
 
-Important idea for Browserx: design the resolver to support chords, but do not expose chords in Browserx v1 unless there is a clear use case. Browser DOM input has different pitfalls from terminal input.
+3. Put shared logic in `src/core/shortcuts`.
 
-### User config is merged and validated
+   Desktop, extension, diagnostics, settings, and webfront tests all need the same catalog and validation. `src/webfront/shortcuts` should only contain Svelte-specific runtime helpers.
 
-`loadUserBindings.ts` loads defaults first, then user bindings. Later entries win. It validates shape, duplicate keys, invalid contexts, invalid actions, reserved shortcuts, and config parse failures.
+4. Make contexts explicit and ordered.
 
-Important idea for Browserx: a user-editable shortcut settings surface should be backed by validation before it is wired to global desktop registration.
+   `SlashCommand` should beat `Chat`; modal contexts should beat `Global`; `Global` should be last. Context order must be testable.
 
-### Shortcut display is dynamic
+5. Treat platform globals as privileged.
 
-`shortcutFormat.ts` and `useShortcutDisplay.ts` let UI hints show the configured binding with fallback logging.
+   Desktop global hotkeys and Chrome extension commands can conflict with OS/browser shortcuts or user-changed browser settings. They need validation, graceful failure, and diagnostics.
 
-Important idea for Browserx: every visible shortcut hint should render from the same registry that handles the shortcut.
+6. Do not migrate accessibility semantics.
 
-## Key Differences
+   `Enter`/`Space` handlers for normal buttons, tabs, switches, and clickable rows should remain local/native. They are accessibility behavior, not shortcut customization.
 
-| Area | Claudy | Browserx today |
-| --- | --- | --- |
-| Runtime | Terminal/Ink React | Svelte DOM, Chrome extension, Tauri desktop |
-| Model | Key -> action -> local handler | Mostly key -> local handler |
-| Contexts | Explicit and centralized | Implicit in component mount/focus |
-| Chords | Supported with timeout/interceptor | Not supported |
-| User config | `~/.claude/keybindings.json`, gated, hot reload | No shortcut config |
-| Validation | Duplicate, reserved, invalid context/action | None beyond platform registration failure |
-| Display hints | Config-aware | Hardcoded or absent |
-| Global shortcuts | Terminal app-level | Chrome commands plus Tauri global shortcuts |
+7. Ship single-keystroke shortcuts end to end before chords.
 
-## Design Principles For Browserx
+   The resolver can leave room for chords, but Track 38 completion should not depend on chord support.
 
-1. Keep platform shortcuts and in-app shortcuts separate, but driven by one catalog.
-2. Use action IDs as the stable API, not DOM key strings.
-3. Keep handlers in components/services, not in a global switch.
-4. Make context priority explicit.
-5. Preserve native accessibility handlers for buttons, tabs, and controls.
-6. Treat global OS/browser shortcuts as privileged: validate, reserve, and fail gracefully.
-7. Add user customization only after defaults, resolver, and diagnostics are stable.
-
-## Proposed Architecture
-
-### New module
+## Target File Layout
 
 ```text
+src/core/shortcuts/
+|-- types.ts                    # shared types
+|-- catalog.ts                  # contexts, actions, descriptions, ownership metadata
+|-- defaultBindings.ts          # default binding blocks for all scopes
+|-- parser.ts                   # parse shortcut strings into normalized keys
+|-- domEvent.ts                 # DOM KeyboardEvent -> normalized keystroke
+|-- resolver.ts                 # pure context + key + bindings -> action
+|-- display.ts                  # platform-aware display strings
+|-- validate.ts                 # config, duplicate, reserved, unsupported checks
+|-- merge.ts                    # defaults + user overrides -> effective bindings
+|-- platformAdapters.ts         # DOM/Tauri/Chrome string conversions
+|-- extensionCommands.ts        # Chrome command name <-> action id mapping
+`-- inventory.ts                # generated/current shortcut inventory helpers
+
 src/webfront/shortcuts/
-|-- actions.ts              # action IDs, contexts, metadata
-|-- defaultBindings.ts      # platform-aware defaults
-|-- parser.ts               # DOM/Tauri/Chrome shortcut normalization
-|-- resolver.ts             # pure key event + context -> action
-|-- registry.ts             # active handlers, contexts, lookup
-|-- shortcutStore.ts        # Svelte store for bindings and warnings
-|-- useShortcut.ts          # Svelte helper/action for components
-|-- display.ts              # shortcut display formatting
-`-- validate.ts             # conflicts, reserved shortcuts, unknown actions
+|-- shortcutStore.ts            # Svelte-readable effective bindings + warnings
+|-- ShortcutProvider.svelte     # root DOM keydown listener and registry owner
+|-- useShortcut.ts              # registerShortcut/registerShortcutContext helpers
+|-- ShortcutHelp.svelte         # read-only help/settings list
+`-- diagnostics.ts              # UI formatting for shortcut warnings
 ```
 
-The module should be framework-light. `parser.ts`, `resolver.ts`, `display.ts`, and `validate.ts` should be pure TypeScript and unit tested. Svelte-specific logic belongs only in `shortcutStore.ts` and `useShortcut.ts`.
+Do not import Svelte modules from `src/core/shortcuts`. `src/core/shortcuts` must be usable by Vitest, desktop modules, and extension service worker code without pulling webfront runtime code.
 
-### Shortcut catalog
-
-Start with a curated v1 catalog:
+## Core Types
 
 ```ts
-type ShortcutContext =
+export type ShortcutScope = 'inApp' | 'desktopGlobal' | 'extensionCommand';
+
+export type ShortcutContext =
   | 'Global'
   | 'Chat'
-  | 'CommandPalette'
   | 'SlashCommand'
   | 'Modal'
-  | 'Settings'
+  | 'SettingsSearch'
+  | 'SettingsModelSelector'
   | 'ModelPicker'
-  | 'Scheduler'
+  | 'SchedulerModal'
+  | 'Skills'
   | 'DesktopGlobal'
   | 'ExtensionCommand';
 
-type ShortcutAction =
+export type ShortcutAction =
   | 'app:zoomIn'
   | 'app:zoomOut'
   | 'app:zoomReset'
+  | 'app:toggleWindow'
   | 'app:focusInput'
   | 'app:quickAction'
-  | 'app:toggleWindow'
   | 'chat:submit'
   | 'chat:newline'
   | 'slash:next'
@@ -199,160 +234,747 @@ type ShortcutAction =
   | 'slash:dismiss'
   | 'modal:dismiss'
   | 'modelPicker:dismiss'
-  | 'scheduler:dismiss';
-```
+  | 'scheduler:dismiss'
+  | 'skills:dismiss'
+  | 'settingsSearch:next'
+  | 'settingsSearch:previous'
+  | 'settingsSearch:accept'
+  | 'settingsSearch:dismiss'
+  | 'settingsModelSelector:next'
+  | 'settingsModelSelector:previous'
+  | 'settingsModelSelector:accept'
+  | 'settingsModelSelector:dismiss'
+  | 'settingsModelSelector:first'
+  | 'settingsModelSelector:last';
 
-Do not include button accessibility actions like `Enter`/`Space` for ordinary clickable controls. Those should remain native/local because they are accessibility semantics, not user-configurable app shortcuts.
+export interface ShortcutBindingBlock {
+  context: ShortcutContext;
+  bindings: Record<string, ShortcutAction | null>;
+}
 
-### Binding shape
+export interface ParsedKeystroke {
+  key: string;
+  ctrl: boolean;
+  alt: boolean;
+  shift: boolean;
+  meta: boolean;
+}
 
-Use a JSON-compatible shape similar to `claudy`, with Browserx-specific platform scopes:
+export interface ParsedShortcutBinding {
+  context: ShortcutContext;
+  action: ShortcutAction | null;
+  keystrokes: ParsedKeystroke[];
+  source: 'default' | 'user';
+}
 
-```json
-{
-  "bindings": [
-    {
-      "context": "Global",
-      "bindings": {
-        "mod+=": "app:zoomIn",
-        "mod+-": "app:zoomOut",
-        "mod+0": "app:zoomReset"
-      }
-    },
-    {
-      "context": "Chat",
-      "bindings": {
-        "enter": "chat:submit",
-        "shift+enter": "chat:newline"
-      }
-    },
-    {
-      "context": "SlashCommand",
-      "bindings": {
-        "down": "slash:next",
-        "up": "slash:previous",
-        "enter": "slash:accept",
-        "escape": "slash:dismiss"
-      }
-    },
-    {
-      "context": "DesktopGlobal",
-      "bindings": {
-        "mod+shift+b": "app:toggleWindow",
-        "mod+shift+i": "app:focusInput",
-        "mod+shift+k": "app:quickAction"
-      }
-    },
-    {
-      "context": "ExtensionCommand",
-      "bindings": {
-        "alt+shift+c": "app:toggleWindow",
-        "alt+shift+q": "app:quickAction"
-      }
-    }
-  ]
+export interface ShortcutUserConfig {
+  version: 1;
+  bindings: ShortcutBindingBlock[];
 }
 ```
 
-`mod` should normalize to `Meta` on macOS and `Ctrl` on Windows/Linux for in-app and desktop bindings. Chrome extension manifests still need concrete suggested keys.
+Notes:
 
-### Runtime flow
+- `null` means "explicitly unbound", matching Claudy's useful override semantics.
+- `mod` is accepted in config and normalizes to `Meta` on macOS and `Ctrl` on Windows/Linux for DOM display/resolution. For Tauri registration it converts to `CommandOrControl`.
+- Chrome extension manifests cannot use runtime `mod`; catalog helpers must emit concrete suggested keys.
+- Chord arrays are represented in the parsed shape to avoid future rewrites, but v1 validation should reject multi-keystroke chords for user config unless `allowChords` is explicitly enabled in tests or a future phase.
 
-1. Load default bindings into a Svelte shortcut store.
-2. Components register active contexts when mounted/open/focused.
-3. Components register handlers for action IDs.
-4. A root-level DOM `keydown` listener resolves global and active-context shortcuts first.
-5. Component-level input handlers can either move to `useShortcut` or call `resolveShortcut(event, contexts)`.
-6. When a shortcut matches, call the first active handler and stop propagation if consumed.
-7. For Tauri desktop global shortcuts, generate registrations from `DesktopGlobal` bindings and keep the current event bridge to the UI.
-8. For Chrome extension commands, keep manifest declarations but map command names to the same action IDs in the service worker.
+`catalog.ts` should also define metadata for settings/help/diagnostics:
 
-## Implementation Tracks
+```ts
+export interface ShortcutActionMeta {
+  action: ShortcutAction;
+  defaultContext: ShortcutContext;
+  scopes: ShortcutScope[];
+  label: string;
+  description: string;
+  owner:
+    | 'webfront'
+    | 'desktop'
+    | 'extension'
+    | 'settings'
+    | 'scheduler';
+  configurable: boolean;
+}
 
-### Track 044A: Inventory and defaults
+export const SHORTCUT_ACTION_META: Record<ShortcutAction, ShortcutActionMeta> = {
+  'app:zoomIn': {
+    action: 'app:zoomIn',
+    defaultContext: 'Global',
+    scopes: ['inApp'],
+    label: 'Zoom in',
+    description: 'Increase the Browserx UI zoom level.',
+    owner: 'webfront',
+    configurable: true,
+  },
+  // ...
+};
+```
 
-Create the shortcut catalog, default binding blocks, parser, display formatter, and resolver tests. No behavior changes yet.
+The metadata is what settings should render. Do not derive user-facing labels from action id strings.
+
+## Default Bindings
+
+The v1 defaults should model current Browserx behavior:
+
+```ts
+export const DEFAULT_SHORTCUT_BINDINGS: ShortcutBindingBlock[] = [
+  {
+    context: 'Global',
+    bindings: {
+      'mod+=': 'app:zoomIn',
+      'mod++': 'app:zoomIn',
+      'mod+-': 'app:zoomOut',
+      'mod+0': 'app:zoomReset',
+    },
+  },
+  {
+    context: 'Chat',
+    bindings: {
+      enter: 'chat:submit',
+      'shift+enter': 'chat:newline',
+    },
+  },
+  {
+    context: 'SlashCommand',
+    bindings: {
+      down: 'slash:next',
+      up: 'slash:previous',
+      enter: 'slash:accept',
+      escape: 'slash:dismiss',
+    },
+  },
+  {
+    context: 'Modal',
+    bindings: {
+      escape: 'modal:dismiss',
+    },
+  },
+  {
+    context: 'ModelPicker',
+    bindings: {
+      escape: 'modelPicker:dismiss',
+    },
+  },
+  {
+    context: 'SchedulerModal',
+    bindings: {
+      escape: 'scheduler:dismiss',
+    },
+  },
+  {
+    context: 'Skills',
+    bindings: {
+      escape: 'skills:dismiss',
+    },
+  },
+  {
+    context: 'DesktopGlobal',
+    bindings: {
+      'mod+shift+b': 'app:toggleWindow',
+      'mod+shift+i': 'app:focusInput',
+      'mod+shift+k': 'app:quickAction',
+    },
+  },
+  {
+    context: 'ExtensionCommand',
+    bindings: {
+      'alt+shift+c': 'app:toggleWindow',
+      'alt+shift+q': 'app:quickAction',
+    },
+  },
+];
+```
+
+Settings search and settings model selector can be added to the catalog in Track 38C only if the implementation migrates those components. If not migrated, keep their action ids out of the default help list to avoid promising configurable behavior that is still local.
+
+## User Config
+
+Browserx already has `preferences.shortcuts?: Record<string, string>` in `src/config/types.ts` and defaults it to `{}` in `src/config/defaults.ts`. This track should replace the flat shape with a versioned shortcut config while preserving backward compatibility:
+
+```ts
+export type ShortcutPreferences = ShortcutUserConfig | Record<string, string>;
+
+export interface IUserPreferences {
+  // ...
+  shortcuts?: ShortcutPreferences;
+}
+```
+
+`src/core/shortcuts/merge.ts` should expose:
+
+```ts
+export function normalizeShortcutPreferences(
+  value: unknown,
+): { config: ShortcutUserConfig | null; warnings: ShortcutValidationIssue[] };
+
+export function getEffectiveShortcutBindings(
+  userValue: unknown,
+  options: { platform: 'macos' | 'windows' | 'linux'; includeUser?: boolean },
+): { bindings: ParsedShortcutBinding[]; warnings: ShortcutValidationIssue[] };
+```
+
+Rules:
+
+- Missing `preferences.shortcuts` means defaults only.
+- `{}` means defaults only.
+- Versioned `{ version: 1, bindings: [...] }` is the supported shape.
+- Legacy flat records are accepted during migration as global overrides when possible, but settings should save back in the versioned shape.
+- User bindings are parsed after defaults, so later entries win.
+- `null` user bindings unbind a default.
+- Validation warnings must not prevent app startup. Invalid user blocks are ignored and reported.
+
+## Resolver Behavior
+
+`src/core/shortcuts/resolver.ts` should be pure.
+
+```ts
+export type ShortcutResolveResult =
+  | { type: 'match'; action: ShortcutAction; binding: ParsedShortcutBinding }
+  | { type: 'unbound'; binding: ParsedShortcutBinding }
+  | { type: 'none' };
+
+export function resolveShortcut(
+  key: ParsedKeystroke,
+  activeContexts: ShortcutContext[],
+  bindings: ParsedShortcutBinding[],
+): ShortcutResolveResult;
+```
+
+Resolution rules:
+
+1. `activeContexts` is already ordered from highest priority to lowest.
+2. `Global` is appended by the webfront provider if not already present.
+3. Only bindings whose context is in `activeContexts` are considered.
+4. Higher-priority context wins over lower-priority context.
+5. Within the same context and key, the last parsed binding wins. This supports user overrides.
+6. `null` returns `unbound` and should consume the event only when the runtime is inside shortcut handling for that context.
+7. v1 ignores multi-keystroke chords. Parser can represent them, validation rejects them for user config.
+
+The resolver should not know about DOM focus, Svelte components, Tauri, Chrome, config storage, or event propagation.
+
+## DOM Event Normalization
+
+`src/core/shortcuts/domEvent.ts` should convert `KeyboardEvent` to `ParsedKeystroke | null`.
+
+Normalization requirements:
+
+- Ignore `event.isComposing`.
+- Normalize `Escape` to `escape`.
+- Normalize `Enter` to `enter`.
+- Normalize `ArrowUp`, `ArrowDown`, `ArrowLeft`, `ArrowRight` to `up`, `down`, `left`, `right`.
+- Normalize `PageUp`, `PageDown`, `Home`, `End`, `Backspace`, `Delete`, `Tab`, and space.
+- Lowercase printable single-character keys.
+- Preserve `ctrlKey`, `altKey`, `shiftKey`, and `metaKey`.
+- Treat `=` and `+` as distinct key values so current zoom behavior can support both `mod+=` and `mod++`.
+- Return `null` for modifier-only keydown events.
+
+Editable-target guard:
+
+```ts
+export function shouldResolveInAppShortcut(
+  event: KeyboardEvent,
+  activeContexts: ShortcutContext[],
+): boolean;
+```
+
+Rules:
+
+- Never resolve if `event.defaultPrevented` is already true.
+- Never resolve during IME composition.
+- In editable elements, resolve only:
+  - active context shortcuts owned by that editable area, such as `Chat` and `SlashCommand`,
+  - modified `Global` shortcuts such as zoom,
+  - pending chord handling in a future phase.
+- Outside editable elements, resolve active contexts plus `Global`.
+
+This guard is important because Browserx has real textareas and inputs. Claudy's terminal prompt problem maps to Browserx as "do not steal normal typing from focused inputs".
+
+## Webfront Runtime
+
+`src/webfront/shortcuts/ShortcutProvider.svelte` should wrap the app inside `src/webfront/App.svelte`:
+
+```svelte
+<ShortcutProvider>
+  <AppShell>
+    ...
+  </AppShell>
+</ShortcutProvider>
+```
+
+Provider responsibilities:
+
+- Load effective bindings from `AgentConfig.getInstance().getConfig().preferences?.shortcuts`.
+- Subscribe to `AgentConfig` config change events if available, or expose a `reloadShortcutStore()` function called by settings after save.
+- Own a handler registry keyed by action id.
+- Own an active context registry with explicit priority.
+- Install one root `window.addEventListener('keydown', handler, { capture: true })`.
+- Resolve shortcuts through `resolveShortcut`.
+- Invoke the first active handler for the resolved action.
+- If the handler returns anything except `false`, call `event.preventDefault()` and `event.stopImmediatePropagation()`.
+- Expose warnings to settings/help UI and diagnostics formatting.
+
+`src/webfront/shortcuts/useShortcut.ts` should provide framework-light helpers:
+
+```ts
+export type ShortcutHandler = (event: KeyboardEvent) => void | false | Promise<void | false>;
+
+export function registerShortcut(
+  action: ShortcutAction,
+  context: ShortcutContext,
+  handler: ShortcutHandler,
+): () => void;
+
+export function registerShortcutContext(
+  context: ShortcutContext,
+  options?: { active?: () => boolean; priority?: number },
+): () => void;
+
+export function getShortcutDisplay(
+  action: ShortcutAction,
+  context: ShortcutContext,
+  fallback?: string,
+): string;
+```
+
+Svelte components can call these inside `$effect` or `onMount`, returning unregister functions in cleanup. This is closer to Browserx's existing style than introducing React-like hooks.
+
+Context priority:
+
+```ts
+const CONTEXT_PRIORITY: Record<ShortcutContext, number> = {
+  SlashCommand: 100,
+  Modal: 90,
+  SchedulerModal: 90,
+  ModelPicker: 80,
+  Skills: 80,
+  SettingsSearch: 70,
+  SettingsModelSelector: 70,
+  Chat: 50,
+  Global: 0,
+  DesktopGlobal: 0,
+  ExtensionCommand: 0,
+};
+```
+
+If two registrations use the same context and priority, newer active registration wins. This fixes multiple mounted `Escape` listeners by making ownership explicit.
+
+## In-App Migration Plan
+
+### Zoom
+
+Current owner: `src/webfront/App.svelte`
+
+Replace the dedicated `handleZoom` window listener with three registered handlers:
+
+- `app:zoomIn`
+- `app:zoomOut`
+- `app:zoomReset`
+
+Keep `applyZoom`, `setZoom`, `MIN_ZOOM`, `MAX_ZOOM`, and persistence behavior in `App.svelte`. The shortcut system should not know how zoom is stored.
+
+### Chat Submit And Newline
+
+Current owner: `src/webfront/components/MessageInput.svelte`
+
+Register `Chat` context only while the textarea is focused. Register:
+
+- `chat:submit`: calls the existing submit logic if `value.trim()` or `pendingAttachments.length`; consumes the event.
+- `chat:newline`: returns `false` so the textarea default newline behavior still occurs. This action exists mainly so display/help and conflict validation understand `Shift+Enter`.
+
+Keep clipboard image handling, command execution, long press scheduling, and submit-with-attachments logic local.
+
+### Slash Command Dropdown
+
+Current owner: `src/webfront/components/MessageInput.svelte`
+
+Register `SlashCommand` context while `isCommandMode && showDropdown` is true. Register:
+
+- `slash:next`: current `ArrowDown` behavior.
+- `slash:previous`: current `ArrowUp` behavior.
+- `slash:dismiss`: current `Escape` behavior.
+- `slash:accept`: current `Enter` behavior for selected command or direct parse.
+
+Tests must prove `SlashCommand` beats `Chat` for `Enter`, `Escape`, `ArrowUp`, and `ArrowDown`.
+
+### Modal Escape
+
+Migrate one overlay family at a time:
+
+- Scheduler modals: `ScheduleJobModal.svelte`, `JobDetailModal.svelte`.
+- Model picker: `ModelSelection.svelte`.
+- Skills overlay: `Skills.svelte`.
+- Settings unsaved changes dialog can either use `Modal` or remain local until settings migration.
+
+Each overlay should register context only while visible/open. Remove its `svelte:window onkeydown` after migration.
+
+### Settings Search And Settings Model Selector
+
+These can be migrated after the core Chat/Slash/Modal path is stable. They currently use element-local `onkeydown`, which is acceptable. Migrate them only if shortcut help/settings should expose them.
+
+If migrated:
+
+- `SettingsSearch.svelte` registers `SettingsSearch` while the search input is focused and results are visible.
+- `ModelSelector.svelte` registers `SettingsModelSelector` while the dropdown is focused/open.
+- Keep `Enter` and `Space` accessibility activation for ordinary clickable rows local unless the selector context owns them.
+
+## Desktop Integration
+
+`src/desktop/hotkeys.ts` should stop defining `DEFAULT_HOTKEYS` by hand. Instead:
+
+```ts
+import {
+  getDefaultBindingsForContext,
+  getActionForDesktopHotkey,
+  toTauriAccelerator,
+} from '@/core/shortcuts';
+```
+
+Runtime flow:
+
+1. Read effective bindings for `DesktopGlobal`.
+2. Convert each supported binding to Tauri accelerator syntax:
+   - `mod+shift+b` -> `CommandOrControl+Shift+B`
+   - `mod+shift+i` -> `CommandOrControl+Shift+I`
+   - `mod+shift+k` -> `CommandOrControl+Shift+K`
+3. Register each accelerator with Tauri.
+4. Store registration results in module-level state for diagnostics:
+   - registered shortcuts,
+   - skipped invalid shortcuts,
+   - registration failures.
+5. Dispatch action-local behavior through a desktop action handler map:
+
+```ts
+const DESKTOP_SHORTCUT_HANDLERS: Record<ShortcutAction, () => Promise<void> | void> = {
+  'app:toggleWindow': async () => toggleWindow(),
+  'app:focusInput': async () => {
+    await showAndFocusWindow();
+    window.dispatchEvent(new CustomEvent('applepi:focus-input'));
+  },
+  'app:quickAction': async () => {
+    await showAndFocusWindow();
+    window.dispatchEvent(new CustomEvent('applepi:quick-action'));
+  },
+};
+```
+
+Keep `registerHotkey`, `unregisterHotkey`, `unregisterAllHotkeys`, `getRegisteredHotkeys`, and `isHotkeyRegistered` exported because they are already the desktop module API.
+
+Add:
+
+```ts
+export function getHotkeyDiagnostics(): DesktopHotkeyDiagnostics;
+```
+
+Diagnostics should include registration failures so `/doctor` can report them.
+
+## Extension Integration
+
+Chrome manifests must stay static:
+
+- `manifest.json`
+- `src/extension/manifest.json`
+
+Add `src/core/shortcuts/extensionCommands.ts`:
+
+```ts
+export const EXTENSION_COMMAND_ACTIONS: Record<string, ShortcutAction> = {
+  'toggle-sidepanel': 'app:toggleWindow',
+  'quick-action': 'app:quickAction',
+};
+
+export const EXTENSION_COMMAND_DEFAULTS: Record<string, string> = {
+  'toggle-sidepanel': 'Alt+Shift+C',
+  'quick-action': 'Alt+Shift+Q',
+};
+```
+
+Change `src/extension/background/service-worker.ts`:
+
+```ts
+function handleCommand(commandName: string): void {
+  const action = EXTENSION_COMMAND_ACTIONS[commandName];
+  if (!action) {
+    console.warn('[ServiceWorker] Unknown command:', commandName);
+    return;
+  }
+  handleShortcutAction(action);
+}
+```
+
+Then keep extension side effects local:
+
+```ts
+function handleShortcutAction(action: ShortcutAction): void {
+  switch (action) {
+    case 'app:toggleWindow':
+      chrome.sidePanel.open({ windowId: chrome.windows.WINDOW_ID_CURRENT });
+      return;
+    case 'app:quickAction':
+      chrome.tabs.query({ active: true, currentWindow: true }, ...);
+      return;
+  }
+}
+```
+
+Add a unit test that exercises command-name mapping without Chrome runtime.
+
+Add a manifest parity test:
+
+- Parse both manifest files.
+- Assert every command in `EXTENSION_COMMAND_ACTIONS` exists in both manifests.
+- Assert manifest `suggested_key.default` matches `EXTENSION_COMMAND_DEFAULTS`.
+
+For display in settings/help:
+
+- In extension UI, call `chrome.commands.getAll()` when available.
+- If Chrome returns a user-assigned shortcut, display that.
+- Otherwise display the catalog default.
+
+## Settings And Help UI
+
+Add a keyboard shortcuts settings/help view after the runtime is stable.
+
+Recommended integration:
+
+- Add `keyboard-shortcuts` to `NavigationView` in `src/webfront/pages/settings/Settings.svelte`.
+- Add a category card in `src/webfront/settings/components/SettingsMenu.svelte`.
+- Add entries to `src/webfront/settings/settingsSearchRegistry.ts`.
+- Create `src/webfront/settings/KeyboardShortcutsSettings.svelte` or reuse `ShortcutHelp.svelte` inside settings.
+
+Ship in two steps:
+
+1. Read-only help view:
+   - grouped by context,
+   - shows action label, description, current binding, source, and warning status,
+   - uses `display.ts` and Chrome command lookup where possible.
+2. Editable overrides:
+   - edit one action binding at a time,
+   - validate before saving,
+   - save versioned config to `preferences.shortcuts`,
+   - reset action to default,
+   - reset all to defaults.
+
+Do not add editable global desktop shortcuts until validation and failure display are in place. A bad desktop global can fail because the OS or another app owns it.
+
+## Validation
+
+`src/core/shortcuts/validate.ts` should report structured issues:
+
+```ts
+export type ShortcutValidationIssue = {
+  severity: 'error' | 'warning';
+  type:
+    | 'parse_error'
+    | 'unknown_context'
+    | 'unknown_action'
+    | 'duplicate_key'
+    | 'duplicate_action'
+    | 'reserved_shortcut'
+    | 'unsupported_platform'
+    | 'unsupported_chord'
+    | 'manifest_mismatch'
+    | 'desktop_registration_failed';
+  message: string;
+  context?: ShortcutContext;
+  action?: ShortcutAction;
+  key?: string;
+  source?: 'default' | 'user' | 'manifest' | 'desktop';
+};
+```
+
+Validation rules:
+
+- Unknown context is an error.
+- Unknown action is an error.
+- Invalid key syntax is an error.
+- Duplicate key in the same context is a warning if last-one-wins is clear.
+- Duplicate action in the same context is a warning because display can become ambiguous.
+- Reserved browser shortcuts are warnings for in-app shortcuts and errors for global platform bindings where appropriate.
+- Chords are warnings/errors in v1 user config depending on whether they would be ignored.
+- Tauri unsupported accelerators are errors for `DesktopGlobal`.
+- Chrome manifest mismatches are warnings in local tests and diagnostics.
+
+Reserved shortcut examples:
+
+- Browser navigation/editing shortcuts: `mod+l`, `mod+r`, `mod+w`, `mod+t`, `mod+tab`, `mod+shift+tab`.
+- Browser developer tools: `f12`, `mod+shift+i`.
+- Common OS shortcuts: `mod+space`, `alt+tab`, `mod+q`.
+
+Important: `mod+shift+i` is currently a desktop global default for focus input. Validation must treat desktop global defaults separately from in-app browser shortcuts. It may be acceptable for Tauri but should not be introduced as a webfront DOM shortcut.
+
+## Diagnostics
+
+Add `src/core/diagnostics/checks/shortcuts-valid.ts` and register it in `src/core/diagnostics/index.ts`.
+
+The check should:
+
+- load `AgentConfig`,
+- validate `preferences.shortcuts`,
+- validate effective defaults for the current platform,
+- include desktop hotkey registration failures when running in desktop mode and diagnostics are available,
+- include manifest parity problems when running in extension mode or in tests that can read manifests.
+
+Doctor output should be compact:
+
+- pass: "Shortcut configuration is valid."
+- warn: "Shortcut configuration has N warning(s)."
+- fail: "Shortcut configuration has N error(s)."
+
+Structured data can include counts and issue types. It must not include user-specific secrets, though shortcut keys themselves are safe.
+
+## Implementation Phases
+
+### Track 38A: Core Catalog, Parser, Resolver
+
+Files to add:
+
+- `src/core/shortcuts/types.ts`
+- `src/core/shortcuts/catalog.ts`
+- `src/core/shortcuts/defaultBindings.ts`
+- `src/core/shortcuts/parser.ts`
+- `src/core/shortcuts/domEvent.ts`
+- `src/core/shortcuts/resolver.ts`
+- `src/core/shortcuts/display.ts`
+- `src/core/shortcuts/merge.ts`
+- `src/core/shortcuts/validate.ts`
+- `src/core/shortcuts/index.ts`
+- `src/core/shortcuts/__tests__/*`
+
+No behavior changes.
 
 Acceptance criteria:
 
-- Unit tests cover parsing `mod`, arrows, escape, enter, shift+enter, plus/minus/zero.
-- Resolver can pick the highest-priority active context.
-- A generated inventory lists current Browserx shortcuts and their owner file.
+- Parser tests cover `mod`, `ctrl`, `cmd/meta`, `alt`, `shift`, arrows, escape, enter, space, tab, plus, minus, zero.
+- DOM normalization tests cover `KeyboardEvent.key` values used by Browserx.
+- Resolver tests prove context priority and last-one-wins user overrides.
+- Display tests cover macOS, Windows, Linux, Tauri, and Chrome formats.
+- Validation tests cover unknown context/action, duplicates, reserved shortcuts, unsupported chords, and malformed config.
 
-### Track 044B: In-app registry and Svelte integration
+### Track 38B: Webfront Runtime And Zoom Migration
 
-Add `shortcutStore`, a root provider/listener in `App.svelte`, and a Svelte helper for registering handlers and contexts. Migrate only low-risk shortcuts first:
+Files to add:
 
-- Zoom shortcuts from `App.svelte`.
-- Slash-command dropdown navigation in `MessageInput.svelte`.
-- Model picker and modal `Escape` handling where a single overlay owns the context.
+- `src/webfront/shortcuts/shortcutStore.ts`
+- `src/webfront/shortcuts/ShortcutProvider.svelte`
+- `src/webfront/shortcuts/useShortcut.ts`
 
-Acceptance criteria:
+Files to change:
 
-- Existing keyboard tests still pass.
-- New tests prove `SlashCommand` context wins over `Chat` for `ArrowUp`, `ArrowDown`, `Enter`, and `Escape`.
-- `Shift+Enter` still inserts a newline in chat.
-
-### Track 044C: Platform globals
-
-Connect desktop and extension global shortcuts to the shared action catalog.
-
-Desktop:
-
-- Replace hardcoded `DEFAULT_HOTKEYS` with generated `DesktopGlobal` defaults.
-- Keep `registerHotkey`, `unregisterHotkey`, and failure logging.
-- Add conflict reporting when Tauri says a global shortcut is already registered.
-
-Extension:
-
-- Keep manifest `commands`, but introduce a command-name to action-ID map in the service worker.
-- Add a small diagnostic that compares manifest defaults to the shortcut catalog.
+- `src/webfront/App.svelte`
 
 Acceptance criteria:
 
-- Desktop global shortcuts still register and dispatch `app:toggleWindow`, `app:focusInput`, and `app:quickAction`.
-- Extension commands still open side panel and quick action.
-- Tests cover command-name to action-ID mapping without Chrome runtime.
+- `ShortcutProvider` wraps the existing app.
+- Zoom behavior remains identical.
+- Existing zoom persistence through `preferences.zoomLevel` remains unchanged.
+- No text input behavior changes.
+- Tests cover root DOM listener resolution and zoom action invocation.
 
-### Track 044D: Settings, validation, and help UI
+### Track 38C: Chat, Slash Command, And Overlay Migration
 
-Add a read-only keyboard shortcuts settings/help view first. Then add editable user overrides if product wants customization.
+Files to change:
 
-Validation should cover:
-
-- Unknown context.
-- Unknown action.
-- Duplicate key in same context.
-- Duplicate action with ambiguous display.
-- Reserved browser/OS shortcuts.
-- Platform unsupported shortcuts.
-- Global shortcut registration failure.
+- `src/webfront/components/MessageInput.svelte`
+- `src/webfront/components/chat/ModelSelection.svelte`
+- `src/webfront/components/scheduler/ScheduleJobModal.svelte`
+- `src/webfront/components/scheduler/JobDetailModal.svelte`
+- optionally `src/webfront/pages/skills/Skills.svelte`
 
 Acceptance criteria:
 
-- `/doctor` or diagnostics can report shortcut config issues.
-- UI shortcut hints read from the same display helper as the resolver.
-- User overrides can be reset to defaults.
+- `Enter` submits chat exactly as today.
+- `Shift+Enter` still inserts a newline.
+- Slash command `ArrowDown`, `ArrowUp`, `Escape`, and `Enter` behave exactly as today.
+- `SlashCommand` beats `Chat` for overlapping keys.
+- Visible overlays dismiss on `Escape` only when their context is active.
+- Removed window-level `Escape` listeners do not regress modal close behavior.
+- Existing `MessageInput` tests pass, with new tests for context precedence.
 
-### Track 044E: Optional chords
+### Track 38D: Desktop And Extension Platform Globals
 
-Only add chords after the single-keystroke system is stable.
+Files to change:
 
-Browserx should initially avoid text-producing chord prefixes inside focused textareas unless there is an interceptor that prevents leakage into input. `claudy` solved this with an early chord interceptor; Browserx would need equivalent DOM capture-phase handling plus careful IME/composition handling.
+- `src/desktop/hotkeys.ts`
+- `src/extension/background/service-worker.ts`
+- `manifest.json`
+- `src/extension/manifest.json`
+
+Files to add:
+
+- `src/core/shortcuts/platformAdapters.ts`
+- `src/core/shortcuts/extensionCommands.ts`
+- desktop and extension shortcut tests
 
 Acceptance criteria:
 
-- Chord prefixes do not type into the message input.
-- Chords timeout and cancel predictably.
-- IME composition events are ignored by the shortcut resolver.
+- Desktop hotkeys are derived from `DesktopGlobal` effective bindings.
+- Desktop registration still dispatches toggle window, focus input, and quick action.
+- Desktop registration failures are stored for diagnostics.
+- Extension `chrome.commands` maps command names to shared action ids.
+- Extension commands still open the side panel and run quick action.
+- Manifest parity test covers both manifest files.
 
-## Risks And Mitigations
+### Track 38E: Settings, User Overrides, And Diagnostics
 
-- **Risk: Breaking text input.** Mitigate by skipping global in-app shortcut resolution during `event.isComposing`, and by requiring context ownership for textarea shortcuts.
-- **Risk: Fighting browser defaults.** Mitigate with a reserved shortcut list and avoid intercepting common browser navigation/editing shortcuts unless the user is inside a known app context.
-- **Risk: Extension and desktop drift.** Mitigate by deriving both from the same action catalog and adding tests that compare manifest command names to catalog metadata.
-- **Risk: Too much migration at once.** Mitigate by migrating zoom and slash-command navigation first, leaving accessibility key handlers local.
+Files to change:
 
-## Recommended Next Step
+- `src/config/types.ts`
+- `src/config/defaults.ts`
+- `src/config/validators.ts`
+- `src/webfront/pages/settings/Settings.svelte`
+- `src/webfront/settings/components/SettingsMenu.svelte`
+- `src/webfront/settings/settingsSearchRegistry.ts`
+- `src/core/diagnostics/index.ts`
 
-Implement Track 044A first. It is pure TypeScript plus tests and gives Browserx a shortcut vocabulary without changing behavior. After that, Track 044B can migrate the highest-value in-app shortcuts while preserving current UX.
+Files to add:
+
+- `src/webfront/settings/KeyboardShortcutsSettings.svelte`
+- `src/core/diagnostics/checks/shortcuts-valid.ts`
+
+Acceptance criteria:
+
+- Settings has a keyboard shortcuts page.
+- Read-only list displays effective shortcuts from the same display helper used by runtime code.
+- User can override an in-app shortcut, save, reload, and use the new shortcut.
+- User can reset one shortcut and reset all shortcuts to defaults.
+- Invalid overrides are rejected or saved with warnings according to validation severity.
+- `/doctor` reports shortcut config warnings/errors.
+- Existing config validation tests are updated for the versioned shortcuts shape.
+
+### Future Track: Chords
+
+Do not include chords in the Track 38 definition of done.
+
+If added later:
+
+- resolver state must support pending chord prefixes,
+- DOM listener must run early enough to prevent prefix/second key leakage into textareas,
+- chord timeout should be deterministic, likely 1000 ms,
+- `event.isComposing` must cancel/skip chord handling,
+- text-producing chord prefixes should be forbidden in editable contexts unless explicitly proven safe.
+
+## End-To-End Definition Of Done
+
+Track 38 is complete when:
+
+- in-app, desktop, and extension shortcut defaults come from one shared catalog,
+- migrated in-app shortcuts are resolved through explicit contexts,
+- desktop and extension platform commands map to the same action ids used by the catalog,
+- settings can show and edit effective shortcut bindings,
+- diagnostics reports invalid shortcut config and platform registration failures,
+- all migrated behavior is covered by focused tests,
+- ordinary typing and accessibility activation are not regressed.
+
+## Known Risks
+
+- Breaking text input: mitigated by `event.isComposing`, editable-target guards, and keeping `Shift+Enter` default textarea behavior.
+- Fighting browser defaults: mitigated by reserved shortcut validation and avoiding unmodified global printable shortcuts.
+- Multiple overlays handling `Escape`: mitigated by explicit context priority and visible/open-only context registration.
+- Extension/desktop drift: mitigated by shared catalog plus manifest parity and desktop adapter tests.
+- Over-migration: mitigated by leaving ordinary accessibility handlers and non-product key handling local.
+
+## Recommended First Implementation Step
+
+Start with Track 38A. It gives Browserx a typed shortcut vocabulary, parser, resolver, display formatter, merge logic, and validation without changing runtime behavior. Then Track 38B can add the Svelte provider and migrate zoom as the first low-risk behavior change.

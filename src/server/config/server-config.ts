@@ -10,6 +10,7 @@
 import { z } from 'zod';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { applyPolicy, getActivePolicySync } from '@/core/config/policy';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Configuration schema
@@ -153,8 +154,14 @@ export function loadServerConfig(): ServerConfig {
   const merged = applyEnvOverrides(fileConfig);
   const parsed = ServerConfigSchema.parse(merged);
 
-  _config = parsed;
-  return parsed;
+  // Track 20: pin admin policy as the highest-priority tier, AFTER
+  // env>file>defaults resolution. No-op until a policy source is resolved.
+  // The existing onConfigReload callbacks deliver this pinned object, so
+  // hot-reload re-applies policy with no new seam.
+  const resolved = applyPolicy(parsed, getActivePolicySync(), 'server');
+
+  _config = resolved;
+  return resolved;
 }
 
 /**

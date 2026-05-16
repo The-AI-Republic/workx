@@ -51,6 +51,24 @@ export interface IAgentConfig {
   storage?: IStorageConfig;
   approval?: IApprovalConfig;
   hooks?: HooksConfig;
+
+  /**
+   * Track 20: runtime-only managed-policy marker. Populated by the policy
+   * resolver post-merge. NOT persisted (absent from {@link IStoredConfig} and
+   * {@link extractStoredConfig}). `lockedKeys` are namespace-relative agent
+   * dot-paths the UI renders non-editable; `origin` identifies the source.
+   */
+  policy?: {
+    lockedKeys: string[];
+    origin: 'chrome-managed' | 'file' | 'remote' | 'env' | null;
+  };
+
+  /**
+   * Track 10: per-plugin enable state. Keyed by `<name>@<marketplace>`.
+   * Read by `PluginRegistry.bootstrapEnabledPlugins`; written on every
+   * `/plugin enable|disable`. Absent → no plugins enabled.
+   */
+  enabledPlugins?: Record<string, boolean>;
 }
 
 // Model pricing information
@@ -534,6 +552,8 @@ export interface IStoredConfig {
   approval?: IApprovalConfig;
   /** Hook system configuration */
   hooks?: HooksConfig;
+  /** Track 10: per-plugin enable state, keyed by `<name>@<marketplace>` */
+  enabledPlugins?: Record<string, boolean>;
 }
 
 // Storage interfaces
@@ -591,7 +611,7 @@ export interface IExportData {
 // Event interfaces for config changes
 export interface IConfigChangeEvent {
   type: 'config-changed';
-  section: 'model' | 'provider' | 'profile' | 'preferences' | 'cache' | 'extension' | 'security' | 'approval' | 'hooks';
+  section: 'model' | 'provider' | 'profile' | 'preferences' | 'cache' | 'extension' | 'security' | 'approval' | 'hooks' | 'policy' | 'enabledPlugins';
   oldValue?: any;
   newValue: any;
   timestamp: number;

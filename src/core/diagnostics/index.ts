@@ -11,6 +11,7 @@ import { channelsReachableCheck } from './checks/channels-reachable';
 import { mcpConnectedCheck } from './checks/mcp-connected';
 import { skillsLoadedCheck } from './checks/skills-loaded';
 import { schedulerHealthCheck } from './checks/scheduler-health';
+import { policyOriginCheck } from './checks/policy-origin';
 
 export type {
   DiagnosticStatus,
@@ -45,4 +46,5 @@ export function registerCoreDiagnosticChecks(): void {
   registerDiagnosticCheck(mcpConnectedCheck);
   registerDiagnosticCheck(skillsLoadedCheck);
   registerDiagnosticCheck(schedulerHealthCheck);
+  registerDiagnosticCheck(policyOriginCheck);
 }
