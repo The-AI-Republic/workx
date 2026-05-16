@@ -11,9 +11,27 @@
  * See .ai_design/agent_improvements/14_plan_review/design.md.
  */
 
+import type { JsonSchema } from '../BaseTool';
+
 /** Tool names (single source of truth — imported by core + wiring). */
 export const BEGIN_PLAN_TOOL_NAME = 'BeginPlan';
 export const SUBMIT_PLAN_TOOL_NAME = 'SubmitPlanForReview';
+
+/** Parameter schema for a no-argument tool (BeginPlan). */
+export const NO_TOOL_PARAMS: JsonSchema = {
+  type: 'object',
+  properties: {},
+  required: [],
+};
+
+/**
+ * Sentinel `prePlanSequence` meaning "the real pre-BeginPlan rollout
+ * sequence is not wired yet". Track 15 (rewind) is design-only today, so
+ * every artifact records this. TODO(track-15): when rewind lands it MUST
+ * populate the true sequence here AND treat this sentinel as "no anchor —
+ * do not rewind" rather than "rewind to sequence 0 (session start)".
+ */
+export const UNSET_PRE_PLAN_SEQUENCE = 0;
 
 /** A single planned step. `mutating` is the model's own classification. */
 export interface PlanReviewStep {
@@ -69,14 +87,15 @@ export interface PlanArtifactPayload {
   /** Set when the user edited the plan in the approval card (Phase 3). */
   editedBy?: 'user';
   /**
-   * Rollout sequence of the turn before BeginPlan — the Track 15
-   * rewind anchor for a rejected plan.
+   * Rollout sequence of the turn before BeginPlan — the Track 15 rewind
+   * anchor for a rejected plan. Currently always {@link UNSET_PRE_PLAN_SEQUENCE}
+   * (Track 15 is design-only); see that constant for the wiring contract.
    */
   prePlanSequence: number;
 }
 
 /** JSON Schema for the SubmitPlanForReview tool input (model-facing). */
-export const SUBMIT_PLAN_FOR_REVIEW_INPUT_SCHEMA = {
+export const SUBMIT_PLAN_FOR_REVIEW_INPUT_SCHEMA: JsonSchema = {
   type: 'object',
   properties: {
     summary: {
@@ -124,4 +143,4 @@ export const SUBMIT_PLAN_FOR_REVIEW_INPUT_SCHEMA = {
     },
   },
   required: ['summary', 'steps'],
-} as const;
+};

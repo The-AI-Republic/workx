@@ -20,6 +20,8 @@ import {
   BEGIN_PLAN_TOOL_NAME,
   SUBMIT_PLAN_TOOL_NAME,
   SUBMIT_PLAN_FOR_REVIEW_INPUT_SCHEMA,
+  NO_TOOL_PARAMS,
+  UNSET_PRE_PLAN_SEQUENCE,
   type PlanArtifactPayload,
   type PlanReviewPlan,
 } from './types';
@@ -68,7 +70,7 @@ export function buildBeginPlanDefinition(): ToolDefinition {
         'read-only exploration. Call this before exploring when the user asked ' +
         'you to plan first. After exploring, call SubmitPlanForReview.',
       strict: false,
-      parameters: { type: 'object', properties: {}, required: [] } as any,
+      parameters: NO_TOOL_PARAMS,
     },
   };
 }
@@ -84,7 +86,7 @@ export function buildSubmitPlanForReviewDefinition(): ToolDefinition {
         'plan. Blocks until the user decides; on approval the freeze lifts and ' +
         'you execute the plan.',
       strict: false,
-      parameters: SUBMIT_PLAN_FOR_REVIEW_INPUT_SCHEMA as any,
+      parameters: SUBMIT_PLAN_FOR_REVIEW_INPUT_SCHEMA,
     },
   };
 }
@@ -129,17 +131,33 @@ function normalizePlan(params: Record<string, any>): PlanReviewPlan | null {
   return { summary, steps, allowedPrompts };
 }
 
-/** Phase 3: the edited plan rides back as JSON in the approval `reason`. */
-function tryParseEditedPlan(reason: string | undefined): PlanReviewPlan | null {
-  if (!reason) return null;
+/**
+ * Phase 3: the edited plan rides back as JSON in the approval `reason`.
+ *
+ * Discriminated so the handler can tell three cases apart:
+ *  - `edited`  — a valid edited plan (treat as approve-with-edits),
+ *  - `invalid` — the user used the plan editor (reason is a JSON object)
+ *                but the result isn't a usable plan → distinct feedback,
+ *  - `none`    — free-text / a plain deny → ordinary rejection feedback.
+ */
+type EditedPlanParse =
+  | { kind: 'edited'; plan: PlanReviewPlan }
+  | { kind: 'invalid' }
+  | { kind: 'none' };
+
+function parseEditedPlan(reason: string | undefined): EditedPlanParse {
+  if (!reason) return { kind: 'none' };
   const trimmed = reason.trim();
-  if (!trimmed.startsWith('{')) return null;
+  if (!trimmed.startsWith('{')) return { kind: 'none' };
+  let parsed: unknown;
   try {
-    const parsed = JSON.parse(trimmed);
-    return normalizePlan(parsed);
+    parsed = JSON.parse(trimmed);
   } catch {
-    return null;
+    // Looked like the plan editor's payload but isn't parseable JSON.
+    return { kind: 'invalid' };
   }
+  const plan = normalizePlan(parsed as Record<string, any>);
+  return plan ? { kind: 'edited', plan } : { kind: 'invalid' };
 }
 
 function formatPlan(plan: PlanReviewPlan): string {
@@ -254,9 +272,9 @@ function makeSubmitPlanForReviewHandler(w: PlanReviewWiring): ToolHandler {
       sessionId: ctx.sessionId,
       turnId: ctx.turnId,
       createdAt: Date.now(),
-      // Track 15 rewind anchor. Track 15 (rewind) is design-only; populated
-      // best-effort as 0 until it lands and supplies the real sequence.
-      prePlanSequence: 0,
+      // Track 15 rewind anchor — sentinel until rewind lands (see the
+      // UNSET_PRE_PLAN_SEQUENCE contract).
+      prePlanSequence: UNSET_PRE_PLAN_SEQUENCE,
     };
     await safeRecord(w, { ...base, status: 'submitted', plan });
 
@@ -295,11 +313,12 @@ function makeSubmitPlanForReviewHandler(w: PlanReviewWiring): ToolHandler {
       );
     }
 
-    const edited = tryParseEditedPlan(resp.reason);
-    const approved = resp.decision === 'approve' || !!edited;
+    const editParse = parseEditedPlan(resp.reason);
+    const approved = resp.decision === 'approve' || editParse.kind === 'edited';
 
     if (approved) {
-      const finalPlan = edited ?? plan;
+      const edited = editParse.kind === 'edited';
+      const finalPlan = editParse.kind === 'edited' ? editParse.plan : plan;
       w.registry.endPlanReview();
       await safeRecord(w, {
         ...base,
@@ -308,12 +327,25 @@ function makeSubmitPlanForReviewHandler(w: PlanReviewWiring): ToolHandler {
         ...(edited ? { editedBy: 'user' as const } : {}),
       });
       seedGrants(w, finalPlan);
-      return formatApprovedEcho(finalPlan, !!edited);
+      return formatApprovedEcho(finalPlan, edited);
     }
 
-    // Rejected.
+    // Not approved. Freeze lifts either way (documented advisory tradeoff).
     w.registry.endPlanReview();
     await safeRecord(w, { ...base, status: 'rejected', plan });
+
+    if (editParse.kind === 'invalid') {
+      // The user used the plan editor but the edited plan was unusable
+      // (bad JSON, or no summary / no steps). Fail-safe: nothing executed.
+      return (
+        'The user tried to approve an edited plan, but the edited plan was ' +
+        'not valid (it needs a non-empty `summary` and at least one `step`). ' +
+        'Nothing was executed and the freeze is lifted. Ask the user to ' +
+        're-open the plan editor and submit a corrected plan, or describe ' +
+        'the change and call SubmitPlanForReview again.'
+      );
+    }
+
     const feedback =
       resp.reason && resp.reason !== 'Denied by user'
         ? `\n\nUser feedback: ${resp.reason}`
