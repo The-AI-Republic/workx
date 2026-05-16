@@ -5,6 +5,7 @@
 import type { IAgentConfig, IUserPreferences, ICacheSettings, IExtensionSettings, IPermissionSettings, IToolsConfig, IStorageConfig, IStoredConfig, IProviderConfig } from './types';
 import { DEFAULT_APPROVAL_CONFIG } from '../core/approval/types';
 import defaultProviders from '../core/models/providers/default.json';
+import { applyPolicy, getActivePolicySync } from '../core/config/policy';
 
 export const DEFAULT_USER_PREFERENCES: IUserPreferences = {
   autoSync: true,
@@ -162,7 +163,8 @@ export function getDefaultAgentConfig(): IAgentConfig {
     extension: { ...DEFAULT_EXTENSION_SETTINGS },
     tools: { ...DEFAULT_TOOLS_CONFIG },
     storage: { ...DEFAULT_STORAGE_CONFIG },
-    approval: { ...DEFAULT_APPROVAL_CONFIG }
+    approval: { ...DEFAULT_APPROVAL_CONFIG },
+    enabledPlugins: {}
   };
 }
 
@@ -352,7 +354,8 @@ export function buildRuntimeConfig(stored: IStoredConfig | null): IAgentConfig {
   const defaults = getDefaultAgentConfig();
 
   if (!stored) {
-    return defaults;
+    // Track 20: pin admin policy post-merge (no-op until a source is resolved).
+    return applyPolicy(defaults, getActivePolicySync(), 'agent');
   }
 
   // Get fresh providers from default.json
@@ -391,7 +394,7 @@ export function buildRuntimeConfig(stored: IStoredConfig | null): IAgentConfig {
     }
   }
 
-  return {
+  const merged: IAgentConfig = {
     version: stored.version || defaults.version,
     selectedModelKey,
     providers,
@@ -437,8 +440,14 @@ export function buildRuntimeConfig(stored: IStoredConfig | null): IAgentConfig {
         ...DEFAULT_APPROVAL_CONFIG.timeouts,
         ...(stored.approval?.timeouts || {})
       }
-    }
+    },
+    // Track 10: per-plugin enable state round-trips verbatim
+    enabledPlugins: stored.enabledPlugins ?? {}
   };
+
+  // Track 20: pin admin policy AFTER all merging so the one-level merges above
+  // cannot defeat a nested managed value. No-op until a source is resolved.
+  return applyPolicy(merged, getActivePolicySync(), 'agent');
 }
 
 /**
@@ -473,6 +482,8 @@ export function extractStoredConfig(config: IAgentConfig): IStoredConfig {
     activeProfile: config.activeProfile,
     tools: config.tools,
     storage: config.storage,
-    approval: config.approval
+    approval: config.approval,
+    // Track 10: persist per-plugin enable state
+    enabledPlugins: config.enabledPlugins
   };
 }

@@ -24,7 +24,17 @@ import type { SubmissionContext } from '@/core/channels/types';
 import { deriveInputOrigin } from '@/core/input/types';
 import type { EventMsg } from '@/core/protocol/events';
 
-import { getServerConfig, watchConfig, stopWatchingConfig, onConfigReload } from '../config/server-config';
+import { getServerConfig, loadServerConfig, watchConfig, stopWatchingConfig, onConfigReload } from '../config/server-config';
+import {
+  ManagedFileSource,
+  ManagedDirSource,
+  RemotePolicySource,
+  registerPolicySources,
+  resolveActivePolicy,
+  onPolicyChanged,
+  assessAndRecord,
+  redactSecrets,
+} from '@/core/config/policy';
 import { SessionIndex } from '../persistence/SessionIndex';
 import { TranscriptStore } from '../persistence/TranscriptStore';
 import { BackupManager } from '../persistence/backup';
@@ -86,6 +96,12 @@ let _instance: ServerAgentBootstrap | null = null;
 
 export class ServerAgentBootstrap {
   private registry: AgentRegistry | null = null;
+  // Track 10: set in registerServices; read lazily by agentFactory to bind
+  // per-session hook/agent plugin contributions. Null until services
+  // register (the initial primary session, created before that, gets
+  // global slots only — hooks/agents apply on the next session or
+  // /plugin reload, matching claudy's asymmetric enable semantics).
+  private pluginRegistry: import('@/core/plugins/PluginRegistry').PluginRegistry | null = null;
   private channel: ServerChannel | null = null;
   private sessionIndex: SessionIndex | null = null;
   private transcriptStore: TranscriptStore | null = null;
@@ -117,7 +133,9 @@ export class ServerAgentBootstrap {
     }
 
     console.log('[ServerAgentBootstrap] Initializing...');
-    const config = getServerConfig();
+    // NOTE: getServerConfig() is intentionally deferred until AFTER the
+    // Track 20 policy block below. The first call memoizes the pinned config,
+    // so calling it here would cache a config with NO admin policy applied.
     const dataDir = process.env.APPLEPI_DATA_DIR ??
       `${process.env.HOME ?? process.env.USERPROFILE ?? '/tmp'}/.applepi-server/data`;
 
@@ -152,6 +170,28 @@ export class ServerAgentBootstrap {
 
       // 1. Initialize config storage (must happen before AgentConfig)
       setConfigStorage(new FileConfigStorageProvider(dataDir));
+
+      // 1b. Track 20: register the managed-file policy source (fleet policy is
+      // mounted via ConfigMap/Secret at APPLEPI_POLICY_PATH) and resolve it
+      // BEFORE the first getServerConfig() / AgentConfig.getInstance() so both
+      // config systems' first hydration already sees admin policy. Fail-open.
+      try {
+        registerPolicySources([
+          // Fleet remote path is highest precedence (first-wins), then the
+          // ConfigMap/Secret-mounted managed file.
+          new RemotePolicySource(),
+          new ManagedFileSource(process.env.APPLEPI_POLICY_PATH),
+          new ManagedDirSource(),
+        ]);
+        await resolveActivePolicy();
+        console.log('[ServerAgentBootstrap] Managed policy resolved');
+      } catch (error) {
+        console.warn('[ServerAgentBootstrap] Managed policy resolution failed (non-fatal):', error);
+      }
+
+      // 1c. First server-config read — now memoizes the policy-pinned config
+      // (server.* tier). Must come after the policy block above.
+      const config = getServerConfig();
 
       // 2. Get agent config
       const agentConfig = await AgentConfig.getInstance();
@@ -194,8 +234,36 @@ export class ServerAgentBootstrap {
           if (engine) {
             try {
               const { registerSubAgentTool } = await import('@/tools/AgentTool/register');
-              await registerSubAgentTool(engine);
+              const subAgentRunner = await registerSubAgentTool(engine);
               console.log('[ServerAgentBootstrap] sub_agent tool registered');
+
+              // Track 10: bind this session's hook + sub-agent registries to
+              // currently-enabled plugins. Skills + MCP are global (handled
+              // by the global PluginRegistry's slot loaders); hooks + agents
+              // are per-session and bound here.
+              if (this.pluginRegistry) {
+                try {
+                  const { PluginSessionBinder } = await import('@/core/plugins/PluginSessionBinder');
+                  const { nodeReadFile, nodeListDirs } = await import('@/server/storage/nodePluginFs');
+                  const binder = new PluginSessionBinder({
+                    hookRegistry: agent.getHookRegistry(),
+                    subAgentRunner,
+                    readFile: nodeReadFile,
+                    listDirs: nodeListDirs,
+                  });
+                  const enabled = this.pluginRegistry
+                    .getPlugins()
+                    .filter((p) => p.state.status === 'enabled');
+                  await binder.applyEnabledPlugins(enabled);
+                  // Register so a later /plugin disable prunes this session
+                  // immediately (claudy gh-36995). Teardown on session end is
+                  // a documented follow-up; a stale binder for an ended
+                  // session is a harmless no-op on prune.
+                  this.pluginRegistry.registerSessionBinder(binder);
+                } catch (bindErr) {
+                  console.warn('[ServerAgentBootstrap] plugin session bind failed (non-fatal):', bindErr);
+                }
+              }
             } catch (err) {
               const errMsg = err instanceof Error ? err.message : String(err);
               console.warn('[ServerAgentBootstrap] sub_agent tool registration failed (non-fatal):', err);
@@ -361,6 +429,37 @@ export class ServerAgentBootstrap {
         });
       });
 
+      // Track 20: a remote/managed-file policy change re-resolves the policy.
+      // Headless server has no interactive user — auto-apply, but emit a
+      // REDACTED audit (warn if it weakens security) so operators see it in
+      // the logs.tail stream they already watch. Then re-hydrate so the pin
+      // re-applies fleet-wide without a restart.
+      onPolicyChanged((p) => {
+        const a = assessAndRecord(p);
+        emitLog(
+          a.weakened ? 'warn' : 'info',
+          'managed policy applied',
+          redactSecrets({
+            origin: p?.origin ?? null,
+            lockedKeys: p?.lockedKeys ?? [],
+            changedKeys: a.changedKeys,
+            weakened: a.weakened,
+            reasons: a.reasons,
+          })
+        );
+        // Re-pin the server.* tier: AgentConfig.reload() (in handleConfigUpdate)
+        // only re-hydrates the agent.* config. Without this, a post-boot policy
+        // change would never reach the memoized server config.
+        try {
+          loadServerConfig();
+        } catch (err) {
+          console.error('[ServerAgentBootstrap] Failed to re-pin server config on policy change:', err);
+        }
+        this.handleConfigUpdate().catch((err) => {
+          console.error('[ServerAgentBootstrap] Failed to apply policy change:', err);
+        });
+      });
+
       // 15. Register service handlers on ChannelManager (message_routing_v2)
       await this.registerServices(channelManager);
 
@@ -447,10 +546,336 @@ export class ServerAgentBootstrap {
       console.warn('[ServerAgentBootstrap] SkillRegistry not available for service registration:', error);
     }
 
+    // Track 10: plugin registry. Server v1 wires the globally-reachable
+    // slots — skills (the same SkillRegistry the skills service uses) and
+    // MCP (the singleton MCPManager). Hooks / agents / commands are
+    // per-session (created in agentFactory) and propagate via a documented
+    // follow-up; PluginRegistry surfaces them as capability gaps for now.
+    let pluginsDeps: import('@/core/services').PluginsServiceDeps | undefined;
+    try {
+      const os = await import('node:os');
+      const path = await import('node:path');
+      const { NodePluginProvider } = await import('@/server/storage/NodePluginProvider');
+      const { nodeReadFile, nodeListDirs } = await import('@/server/storage/nodePluginFs');
+      const { PluginRegistry } = await import('@/core/plugins/PluginRegistry');
+      const { SkillSlotLoader } = await import('@/core/plugins/loaders/SkillSlotLoader');
+      const { McpSlotLoader } = await import('@/core/plugins/loaders/McpSlotLoader');
+      const { AgentConfig } = await import('@/config/AgentConfig');
+
+      const pluginsRoot = path.join(os.homedir(), '.browserx', 'plugins');
+      const provider = new NodePluginProvider(pluginsRoot);
+      await provider.initialize();
+
+      const agentConfig = await AgentConfig.getInstance();
+
+      // Phase 10c: admin policy (read once, cached). /etc/browserx/policy.json
+      // (Linux/Mac) or %ProgramData%\BrowserX\policy.json (Windows). Missing/
+      // corrupt → empty policy. Built HERE (before bootstrapEnabledPlugins +
+      // MarketplaceRegistry) so block / force-enable / source guards apply.
+      const {
+        PolicyLoader,
+        PluginPolicy,
+        isSourceAllowedByPolicy,
+        isBlockedOfficialName,
+        validateOfficialNameSource,
+      } = await import('@/core/plugins/policy');
+      const policyPath =
+        process.platform === 'win32'
+          ? path.join(process.env.ProgramData ?? 'C:\\ProgramData', 'BrowserX', 'policy.json')
+          : '/etc/browserx/policy.json';
+      const policyLoader = new PolicyLoader({
+        readPolicyText: async () => {
+          try {
+            const fsmod = await import('node:fs');
+            return await fsmod.promises.readFile(policyPath, 'utf-8');
+          } catch {
+            return null;
+          }
+        },
+      });
+      const pluginPolicy = new PluginPolicy(policyLoader);
+
+      const registry = new PluginRegistry({
+        provider,
+        skillSlot: skillsDeps
+          ? new SkillSlotLoader({
+              skillRegistry: skillsDeps.skillRegistry as never,
+              readFile: nodeReadFile,
+              listDirs: nodeListDirs,
+            })
+          : undefined,
+        mcpSlot: mcpDeps
+          ? new McpSlotLoader(mcpDeps.mcpManager as never)
+          : undefined,
+        // hooks / agents / commands: per-session (agentFactory) — follow-up
+        getEnabledFromConfig: () => agentConfig.getConfig().enabledPlugins ?? {},
+        persistEnabled: async (id, enabled) => {
+          const current = agentConfig.getConfig().enabledPlugins ?? {};
+          agentConfig.updateConfig({
+            enabledPlugins: { ...current, [id]: enabled },
+          });
+        },
+        checkDestructiveOpAllowed: (op) => {
+          // Refuse reload while any background sub-agent task is running
+          // (design § Active-Session Semantics Rule 3).
+          if (op !== 'reload' || !this.registry) return null;
+          for (const s of this.registry.listSessions()) {
+            const agentSession = this.registry.getSession(s.sessionId);
+            const active =
+              agentSession?.agent?.getSession?.()?.listActiveTasks?.() ?? [];
+            if (active.length > 0) {
+              return `Cannot reload: ${active.length} background task(s) running. /task stop <id> first.`;
+            }
+          }
+          return null;
+        },
+      });
+
+      // Discover + register from disk
+      const metas = await provider.listMeta();
+      for (const m of metas) {
+        try {
+          registry.register(await provider.load(`${m.name}@local`));
+        } catch (e) {
+          console.warn(`[ServerAgentBootstrap] plugin load ${m.name} failed:`, e);
+        }
+      }
+      // Phase 10c: enforce admin policy on the enabled set BEFORE bootstrap
+      // — `enabledPlugins[id] === false` blocks, `=== true` force-enables
+      // (and locks; the runtime enable guard + reconcile keep it pinned).
+      try {
+        const pol = await policyLoader.load();
+        const pinned = pol.enabledPlugins ?? {};
+        if (Object.keys(pinned).length > 0) {
+          const cur = agentConfig.getConfig().enabledPlugins ?? {};
+          const next = { ...cur };
+          let changed = false;
+          for (const [pid, want] of Object.entries(pinned)) {
+            if (next[pid] !== want) {
+              next[pid] = want;
+              changed = true;
+            }
+          }
+          if (changed) agentConfig.updateConfig({ enabledPlugins: next });
+        }
+      } catch (e) {
+        console.warn('[ServerAgentBootstrap] policy enabled-set enforcement failed:', e);
+      }
+      await registry.bootstrapEnabledPlugins();
+
+      // React to external enabledPlugins mutations (settings UI / policy)
+      agentConfig.on('config-changed', (e: { section?: string }) => {
+        if (e.section === 'enabledPlugins') {
+          void registry.reconcileFromConfig();
+        }
+      });
+
+      // Phase 10b: marketplace + git-based install/uninstall (server has
+      // system git). Marketplace catalogue is fetched via a shallow clone
+      // into a temp dir, then marketplace.json read out.
+      const { MarketplaceRegistry } = await import('@/core/plugins/MarketplaceRegistry');
+      const { PluginInstaller, PluginUninstaller } = await import('@/core/plugins/PluginInstaller');
+      const { InstalledPluginsStore } = await import('@/core/plugins/installedPlugins');
+      const { createGitFetchPlugin } = await import('@/core/plugins/pluginFetch');
+      const {
+        nodeGitRunner, nodeMkTempDir, nodeWalkFiles, nodeReadBytes,
+        nodeRemoveDir, nodeResolveHeadSha,
+      } = await import('@/server/storage/nodeGitRunner');
+      const nodePath = await import('node:path');
+
+      const marketplaces = new MarketplaceRegistry({
+        fetchCatalogue: async (sourceRef: string) => {
+          const tmp = await nodeMkTempDir();
+          try {
+            const { gitClone } = await import('@/core/plugins/git');
+            await gitClone(nodeGitRunner, { url: sourceRef, targetPath: tmp });
+            const raw = await nodeReadBytes(nodePath.join(tmp, 'marketplace.json'));
+            return new TextDecoder().decode(raw);
+          } finally {
+            await nodeRemoveDir(tmp).catch(() => undefined);
+          }
+        },
+        // Phase 10c: admin source allow/blocklist — refuses BEFORE the
+        // network fetch above ever runs.
+        checkSource: async (sourceRef: string) => {
+          const pol = await policyLoader.load();
+          return isSourceAllowedByPolicy(sourceRef, pol)
+            ? null
+            : `marketplace source blocked by org policy: ${sourceRef}`;
+        },
+        // Reserved-official-name / homograph impersonation guard (runs
+        // after parse, on the catalogue's declared name).
+        checkName: (name: string, sourceRef: string) => {
+          if (isBlockedOfficialName(name)) {
+            return `marketplace name "${name}" is reserved or uses a non-ASCII homograph (impersonation guard)`;
+          }
+          const v = validateOfficialNameSource(name, sourceRef);
+          return v.ok
+            ? null
+            : `marketplace "${name}" must originate from the official org (${v.reason})`;
+        },
+      });
+
+      const installedStore = new InstalledPluginsStore({
+        readText: async (p: string) => {
+          try {
+            return new TextDecoder().decode(await nodeReadBytes(p));
+          } catch {
+            return null;
+          }
+        },
+        writeText: async (p: string, c: string) => {
+          const fsmod = await import('node:fs');
+          await fsmod.promises.mkdir(nodePath.dirname(p), { recursive: true });
+          await fsmod.promises.writeFile(p, c, 'utf-8');
+        },
+        filePath: nodePath.join(os.homedir(), '.browserx', 'installed_plugins_v2.json'),
+      });
+
+      const fetchPlugin = createGitFetchPlugin(
+        {
+          run: nodeGitRunner,
+          mkTempDir: nodeMkTempDir,
+          walkFiles: nodeWalkFiles,
+          readBytes: nodeReadBytes,
+          removeDir: nodeRemoveDir,
+          resolveHeadSha: nodeResolveHeadSha,
+        },
+        (id) => marketplaces.lookup(id)?.entry ?? null,
+      );
+
+      // (policyLoader / pluginPolicy were built earlier — before
+      // bootstrapEnabledPlugins — so the same instance governs install,
+      // marketplace add, autoupdate, and the boot-time enabled set.)
+      const installer = new PluginInstaller({
+        marketplaces,
+        provider,
+        installed: installedStore,
+        registry,
+        fetchPlugin,
+        isBlockedByPolicy: (id) => pluginPolicy.isBlocked(id),
+        setEnabled: async (ids, en) => {
+          const cur = agentConfig.getConfig().enabledPlugins ?? {};
+          const next = { ...cur };
+          for (const i of ids) next[i] = en;
+          agentConfig.updateConfig({ enabledPlugins: next });
+        },
+        getAlreadyEnabled: () =>
+          new Set(
+            Object.entries(agentConfig.getConfig().enabledPlugins ?? {})
+              .filter(([, v]) => v === true)
+              .map(([k]) => k),
+          ),
+      });
+
+      // review B2/B3: uninstall must orphan-mark (not hard-delete); the
+      // 7-day GC sweep removes dirs later. Wire a PluginCache over Node fs.
+      const { PluginCache } = await import('@/core/plugins/PluginCache');
+      const fsmod = await import('node:fs');
+      const pluginCache = new PluginCache(
+        nodePath.join(os.homedir(), '.browserx'),
+        {
+          readText: async (p: string) => {
+            try {
+              return await fsmod.promises.readFile(p, 'utf-8');
+            } catch {
+              return null;
+            }
+          },
+          writeText: async (p: string, c: string) => {
+            await fsmod.promises.mkdir(nodePath.dirname(p), { recursive: true });
+            await fsmod.promises.writeFile(p, c, 'utf-8');
+          },
+          removeDir: nodeRemoveDir,
+          removeFile: async (p: string) => {
+            await fsmod.promises.rm(p, { force: true });
+          },
+          listEntries: async (p: string) => {
+            try {
+              return await fsmod.promises.readdir(p);
+            } catch {
+              return [];
+            }
+          },
+          pathExists: async (p: string) => {
+            try {
+              await fsmod.promises.stat(p);
+              return true;
+            } catch {
+              return false;
+            }
+          },
+        },
+      );
+
+      const uninstaller = new PluginUninstaller({
+        provider,
+        installed: installedStore,
+        registry,
+        markOrphaned: (installPath: string) =>
+          pluginCache.markOrphaned(installPath),
+        setEnabled: async (ids, en) => {
+          const cur = agentConfig.getConfig().enabledPlugins ?? {};
+          const next = { ...cur };
+          for (const i of ids) next[i] = en;
+          agentConfig.updateConfig({ enabledPlugins: next });
+        },
+      });
+
+      // Phase 10c: one-shot, fire-and-forget autoupdate + delisting sweep.
+      // Re-checks policy before re-materializing; delisting routes through
+      // the safe uninstaller (disable → orphan-mark, never a hard-delete).
+      try {
+        const { PluginAutoupdate } = await import('@/core/plugins/PluginAutoupdate');
+        const autoupdate = new PluginAutoupdate({
+          marketplaces,
+          installed: installedStore,
+          provider,
+          fetchPlugin,
+          autoUpdateMarketplaces: () => marketplaces.list().map((m) => m.name),
+          refreshMarketplace: async (name: string) => {
+            const m = marketplaces.list().find((x) => x.name === name);
+            if (m) await marketplaces.add(m.sourceRef);
+          },
+          isBlockedByPolicy: (id) => pluginPolicy.isBlocked(id),
+          uninstall: (id, scope) => uninstaller.uninstall(id, scope),
+        });
+        void autoupdate.run().then(
+          (r) => {
+            if (r.updated.length || r.delisted.length) {
+              console.log(
+                `[ServerAgentBootstrap] autoupdate: ${r.updated.length} updated, ${r.delisted.length} delisted`,
+              );
+            }
+          },
+          (e) => console.warn('[ServerAgentBootstrap] autoupdate failed:', e),
+        );
+      } catch (e) {
+        console.warn('[ServerAgentBootstrap] autoupdate wiring failed:', e);
+      }
+
+      pluginsDeps = {
+        pluginRegistry: registry,
+        marketplaces,
+        installer,
+        uninstaller,
+        isBlockedByPolicy: (id) => pluginPolicy.isBlocked(id),
+      };
+      // Expose to agentFactory so sessions created after this point bind
+      // their per-session hook + sub-agent registries to enabled plugins.
+      this.pluginRegistry = registry;
+      console.log(
+        `[ServerAgentBootstrap] PluginRegistry initialized (${metas.length} plugin(s) discovered)`,
+      );
+    } catch (error) {
+      console.warn('[ServerAgentBootstrap] PluginRegistry not available:', error);
+    }
+
     const count = registerAllServices(serviceRegistry, {
       mcp: mcpDeps,
       a2a: a2aDeps,
       skills: skillsDeps,
+      plugins: pluginsDeps,
       scheduler: this.scheduler ? { scheduler: this.scheduler } : undefined,
       session: this.registry ? { registry: this.registry } : undefined,
       agent: this.registry ? {

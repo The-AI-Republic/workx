@@ -71,6 +71,18 @@ export function initBuiltinCommands(callbacks: BuiltinCommandCallbacks): void {
     });
   }
 
+  // Track 10: /plugin slash command. Subcommands parsed inside the action
+  // (webfront splits only on first space, so the rest is `args`).
+  commandRegistry.register({
+    name: 'plugin',
+    description: 'Manage plugins: list | info <id> | enable <id> | disable <id> | reload',
+    argumentHint: '<subcommand> [id]',
+    loadedFrom: 'builtin',
+    action: (args?: string) => {
+      void handlePluginCommand(args ?? '');
+    },
+  });
+
   commandRegistry.register({
     name: 'doctor',
     description: 'Run operational diagnostics and show a health report',
@@ -102,6 +114,232 @@ export function initBuiltinCommands(callbacks: BuiltinCommandCallbacks): void {
       push('/usage');
     },
   });
+}
+
+/** Render + dispatch for the `/plugin` command. */
+async function handlePluginCommand(rawArgs: string): Promise<void> {
+  const out = (title: string, content: string) =>
+    activeCallbacks?.onCommandOutput(title, content);
+
+  const parts = rawArgs.trim().split(/\s+/).filter(Boolean);
+  const sub = (parts[0] ?? 'list').toLowerCase();
+  const id = parts[1];
+
+  try {
+    const client = await getInitializedUIClient();
+
+    switch (sub) {
+      case 'list': {
+        const rows = await client.serviceRequest<
+          Array<{ id: string; version: string; scope: string; status: string; errorVariant?: string }>
+        >('plugins.list');
+        if (!rows || rows.length === 0) {
+          out('Plugins', 'No plugins installed.');
+          return;
+        }
+        const glyph = (s: string) =>
+          s === 'enabled' ? '✓' : s === 'error' ? '⚠' : s === 'disabled' ? '○' : '…';
+        const lines = rows.map(
+          (r) =>
+            `${glyph(r.status)} ${r.id}  v${r.version}  ${r.scope}  ${r.status}` +
+            (r.errorVariant ? `  (${r.errorVariant})` : ''),
+        );
+        const enabled = rows.filter((r) => r.status === 'enabled').length;
+        const errored = rows.filter((r) => r.status === 'error').length;
+        out(
+          'Installed plugins',
+          `${lines.join('\n')}\n\n${rows.length} plugins · ${enabled} enabled · ${errored} error`,
+        );
+        return;
+      }
+
+      case 'info': {
+        if (!id) {
+          out('Plugin', 'Usage: /plugin info <id>');
+          return;
+        }
+        const info = await client.serviceRequest<{
+          error?: string;
+          id: string;
+          version: string;
+          description?: string;
+          scope: string;
+          status: string;
+          source: string;
+          capabilities: Record<string, boolean>;
+          loadErrors: string[];
+        }>('plugins.info', { id });
+        if (!info || info.error) {
+          out('Plugin', info?.error ?? `Plugin not found: ${id}`);
+          return;
+        }
+        const caps = Object.entries(info.capabilities)
+          .filter(([, v]) => v)
+          .map(([k]) => k)
+          .join(', ') || 'none';
+        const errs =
+          info.loadErrors.length > 0
+            ? `\n\nLoad errors:\n${info.loadErrors.map((e) => `  - ${e}`).join('\n')}`
+            : '\n\nNo load errors.';
+        out(
+          `${info.id} (v${info.version})`,
+          `${info.description ?? ''}\n` +
+            `Source: ${info.source}\n` +
+            `Scope: ${info.scope}\n` +
+            `Status: ${info.status}\n\n` +
+            `Capabilities: ${caps}${errs}`,
+        );
+        return;
+      }
+
+      case 'enable': {
+        if (!id) {
+          out('Plugin', 'Usage: /plugin enable <id>');
+          return;
+        }
+        const res = await client.serviceRequest<{
+          success: boolean;
+          error?: string;
+          loadErrors?: string[];
+        }>('plugins.enable', { id });
+        if (res?.success) {
+          out('Plugin', `✓ Enabled ${id}. Effective on next message.`);
+        } else {
+          const detail = res?.loadErrors?.length
+            ? `\n${res.loadErrors.map((e) => `  - ${e}`).join('\n')}`
+            : '';
+          out('Plugin', `✗ Failed to enable ${id}: ${res?.error ?? 'unknown'}${detail}`);
+        }
+        return;
+      }
+
+      case 'disable': {
+        if (!id) {
+          out('Plugin', 'Usage: /plugin disable <id>');
+          return;
+        }
+        const res = await client.serviceRequest<{ success: boolean; error?: string }>(
+          'plugins.disable',
+          { id },
+        );
+        out(
+          'Plugin',
+          res?.success
+            ? `✓ Disabled ${id}.`
+            : `✗ Failed to disable ${id}: ${res?.error ?? 'unknown'}`,
+        );
+        return;
+      }
+
+      case 'reload': {
+        const res = await client.serviceRequest<{
+          success: boolean;
+          error?: string;
+          enabled?: Array<{ id: string }>;
+          errors?: string[];
+        }>('plugins.reload');
+        if (res?.success) {
+          const n = res.enabled?.length ?? 0;
+          const errs = res.errors?.length
+            ? `\n${res.errors.map((e) => `  - ${e}`).join('\n')}`
+            : '';
+          out('Plugin', `Reloaded ${n} plugin(s).${errs}`);
+        } else {
+          out('Plugin', `✗ Cannot reload: ${res?.error ?? 'unknown'}`);
+        }
+        return;
+      }
+
+      case 'install': {
+        if (!id) {
+          out('Plugin', 'Usage: /plugin install <id>@<marketplace>');
+          return;
+        }
+        const res = await client.serviceRequest<{
+          success: boolean;
+          error?: string;
+          installed?: string[];
+        }>('plugins.install', { id });
+        if (res?.success) {
+          const n = res.installed?.length ?? 1;
+          out(
+            'Plugin',
+            `✓ Installed ${id}${n > 1 ? ` + ${n - 1} dependency(ies)` : ''}.\n` +
+              `Run /plugin enable ${id} to activate.`,
+          );
+        } else {
+          out('Plugin', `✗ Install failed: ${res?.error ?? 'unknown'}`);
+        }
+        return;
+      }
+
+      case 'uninstall': {
+        if (!id) {
+          out('Plugin', 'Usage: /plugin uninstall <id>');
+          return;
+        }
+        const res = await client.serviceRequest<{ success: boolean; error?: string }>(
+          'plugins.uninstall',
+          { id },
+        );
+        out(
+          'Plugin',
+          res?.success
+            ? `✓ Uninstalled ${id}. Files marked for cleanup (7-day grace).`
+            : `✗ Uninstall failed: ${res?.error ?? 'unknown'}`,
+        );
+        return;
+      }
+
+      case 'marketplace':
+      case 'market': {
+        const action = parts[1];
+        const target = parts.slice(2).join(' ');
+        if (action === 'add') {
+          const res = await client.serviceRequest<{ success: boolean; name?: string; error?: string }>(
+            'plugins.marketplace.add',
+            { url: target },
+          );
+          out(
+            'Plugin',
+            res?.success
+              ? `✓ Added marketplace "${res.name}".`
+              : `✗ ${res?.error ?? 'add failed'}`,
+          );
+        } else if (action === 'remove' || action === 'rm') {
+          const res = await client.serviceRequest<{ success: boolean }>(
+            'plugins.marketplace.remove',
+            { name: target },
+          );
+          out('Plugin', res?.success ? `✓ Removed marketplace "${target}".` : `✗ Not found: ${target}`);
+        } else {
+          const rows = await client.serviceRequest<
+            Array<{ name: string; sourceRef: string; pluginCount: number }>
+          >('plugins.marketplace.list');
+          if (!rows || rows.length === 0) {
+            out('Plugin', 'No marketplaces added. /plugin marketplace add <url>');
+          } else {
+            out(
+              'Marketplaces',
+              rows
+                .map((r) => `- ${r.name} (${r.pluginCount} plugins) — ${r.sourceRef}`)
+                .join('\n'),
+            );
+          }
+        }
+        return;
+      }
+
+      default:
+        out(
+          'Plugin',
+          `Unknown subcommand "${sub}". Usage: /plugin list | info <id> | enable <id> | ` +
+            `disable <id> | reload | install <id>@<mkt> | uninstall <id> | marketplace add|list|remove`,
+        );
+    }
+  } catch (e) {
+    out('Plugin', `Error: ${e instanceof Error ? e.message : String(e)}`);
+  }
 }
 
 /** Track which command names were registered by the skill system */

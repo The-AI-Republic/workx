@@ -152,8 +152,19 @@ export class AgentRegistry {
     let agent: RepublicAgent;
     try {
       if (this._registryConfig.agentFactory) {
-        // Server/Desktop path: use provided factory for agent creation
+        // Server/Desktop path: use provided factory for agent creation.
+        // The factory owns sub-agent registration + plugin binding
+        // internally (see Server/DesktopAgentBootstrap), so onAgentCreated
+        // is invoked with a null runner here for contract symmetry only —
+        // those platforms don't set the callback.
         agent = await this._registryConfig.agentFactory(this._config, initialHistory);
+        if (this._registryConfig.onAgentCreated) {
+          try {
+            await this._registryConfig.onAgentCreated(agent, { subAgentRunner: null });
+          } catch (cbErr) {
+            console.warn('[AgentRegistry] onAgentCreated callback failed (non-fatal):', cbErr);
+          }
+        }
       } else {
         // Extension path: create agent and wire events through ChannelManager.
         // Use a fresh adapter per agent so RepublicAgent.cleanup()'s dispose()
@@ -190,12 +201,23 @@ export class AgentRegistry {
 
         // Register sub-agent tool on extension path
         const engine = agent.getEngine();
+        let subAgentRunner: import('../../tools/AgentTool/SubAgentRunner').SubAgentRunner | null = null;
         if (engine) {
           try {
             const { registerSubAgentTool } = await import('@/tools/AgentTool/register');
-            await registerSubAgentTool(engine);
+            subAgentRunner = await registerSubAgentTool(engine);
           } catch (err) {
             console.warn('[AgentRegistry] sub_agent tool registration failed (non-fatal):', err);
+          }
+        }
+
+        // Track 10: let the platform bootstrap bind per-session plugin
+        // contributions (hooks + sub-agent types). Non-fatal.
+        if (this._registryConfig.onAgentCreated) {
+          try {
+            await this._registryConfig.onAgentCreated(agent, { subAgentRunner });
+          } catch (cbErr) {
+            console.warn('[AgentRegistry] onAgentCreated callback failed (non-fatal):', cbErr);
           }
         }
       }

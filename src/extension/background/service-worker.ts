@@ -53,6 +53,13 @@ import { setConfigStorage } from '../../core/storage/ConfigStorageProvider';
 import { setCredentialStore } from '../../core/storage/CredentialStore';
 import { setStorageProvider, isStorageProviderInitialized } from '../../core/storage';
 import { ChromeConfigStorage } from '../../extension/storage/ChromeConfigStorage';
+import { ChromeManagedConfigSource } from '../../extension/storage/ChromeManagedConfigSource';
+import {
+  registerPolicySources,
+  resolveActivePolicy,
+  onPolicyChanged,
+  assessAndRecord,
+} from '../../core/config/policy';
 import { ChromeCredentialStore } from '../../extension/storage/ChromeCredentialStore';
 import * as VaultManager from '../../core/crypto/VaultManager';
 // Modules previously loaded via dynamic import() — must be static in service workers
@@ -85,6 +92,15 @@ let scheduler: Scheduler | null = null; // Job scheduler
 let schedulerAlarms: SchedulerAlarms | null = null;
 let sessionStorage: SessionStorage | null = null; // Feature 015: Session persistence
 let skillRegistry: SkillRegistry | null = null; // Agent skills
+// Track 10: global plugin registry (skills + MCP slots; per-session
+// hooks/agents binding is a documented follow-up needing an
+// AgentRegistry.onAgentCreated hook on the extension path).
+let pluginRegistry: import('@/core/plugins/PluginRegistry').PluginRegistry | null = null;
+// Track 10: IDB provider's virtual-path resolvers, for per-session binding.
+let pluginFsResolvers: {
+  readFile: (p: string) => Promise<string | null>;
+  listDirs: (p: string) => Promise<string[]>;
+} | null = null;
 let isInitialized = false;
 let initializationPromise: Promise<void> | null = null;
 
@@ -199,6 +215,17 @@ async function doInitialize(): Promise<void> {
     console.warn('[ServiceWorker] Failed to initialize credential store:', error);
   }
 
+  // Track 20: register the Chrome-native managed-policy source and resolve it
+  // BEFORE AgentConfig.getInstance() so the first buildRuntimeConfig already
+  // sees admin policy. Fail-open: no managed storage → no policy.
+  try {
+    registerPolicySources([new ChromeManagedConfigSource()]);
+    await resolveActivePolicy();
+    console.log('[ServiceWorker] Managed policy resolved (early)');
+  } catch (error) {
+    console.warn('[ServiceWorker] Managed policy resolution failed:', error);
+  }
+
   // Inject RolloutRecorder provider before any session creation triggers it.
   // Direct instantiation avoids dynamic import() which is banned in service workers.
   try {
@@ -211,6 +238,24 @@ async function doInitialize(): Promise<void> {
 
   // Initialize configuration singleton first
   agentConfig = await AgentConfig.getInstance();
+
+  // Track 20: when admin pushes a managed-policy change (chrome.storage
+  // managed area, auto-wired via the source's subscribe), re-hydrate so the
+  // pin re-applies and the UI re-renders locked fields.
+  onPolicyChanged((p) => {
+    const a = assessAndRecord(p);
+    if (a.weakened) {
+      console.warn(
+        '[ServiceWorker] Organization applied a managed policy that weakens security:',
+        a.reasons.join('; ')
+      );
+    }
+    AgentConfig.getInstance()
+      .then((c) => c.reload())
+      .catch((err) =>
+        console.warn('[ServiceWorker] policy reload failed:', err)
+      );
+  });
 
   // Initialize ONLY StorageProvider early — PlanningTool requires it via getTaskStore()
   // during tool registration in registry.createSession().
@@ -230,7 +275,31 @@ async function doInitialize(): Promise<void> {
   // Load max concurrent sessions from user preferences
   const config = agentConfig!.getConfig();
   const maxConcurrentSessions = config.preferences?.maxConcurrentSessions ?? DEFAULT_MAX_CONCURRENT;
-  registry = AgentRegistry.getInstance({ maxConcurrent: maxConcurrentSessions });
+  registry = AgentRegistry.getInstance({
+    maxConcurrent: maxConcurrentSessions,
+    // Track 10: bind enabled plugins' hooks + sub-agent types to each new
+    // session. Reads module-level pluginRegistry/resolvers lazily — they're
+    // set by initializePlugins() before real sessions are created.
+    onAgentCreated: async (agent, { subAgentRunner }) => {
+      if (!pluginRegistry || !pluginFsResolvers || !subAgentRunner) return;
+      try {
+        const { PluginSessionBinder } = await import('@/core/plugins/PluginSessionBinder');
+        const binder = new PluginSessionBinder({
+          hookRegistry: agent.getHookRegistry(),
+          subAgentRunner,
+          readFile: pluginFsResolvers.readFile,
+          listDirs: pluginFsResolvers.listDirs,
+        });
+        const enabled = pluginRegistry
+          .getPlugins()
+          .filter((p) => p.state.status === 'enabled');
+        await binder.applyEnabledPlugins(enabled);
+        pluginRegistry.registerSessionBinder(binder);
+      } catch (e) {
+        console.warn('[ServiceWorker] plugin session bind failed (non-fatal):', e);
+      }
+    },
+  });
   registry.initialize(agentConfig!);
 
   // Initialize IndexedDB storage adapter early — shared by session persistence and TokenUsageStore.
@@ -278,6 +347,10 @@ async function doInitialize(): Promise<void> {
 
   // Initialize Skills
   await initializeSkills();
+
+  // Track 10: initialize the plugin system (after skills — the skill slot
+  // loader targets the global skillRegistry).
+  await initializePlugins();
 
   // Initialize Scheduler
   await initializeScheduler();
@@ -504,6 +577,7 @@ async function registerServiceHandlers(): Promise<void> {
         }),
       },
       skills: skillRegistry ? { skillRegistry } : undefined,
+      plugins: pluginRegistry ? { pluginRegistry } : undefined,
       vault: {
         vaultManager: VaultManager as any,
       },
@@ -1047,6 +1121,77 @@ async function initializeSkills(): Promise<void> {
   } catch (error) {
     console.warn('[ServiceWorker] Failed to initialize skills:', error);
     // Non-fatal — skills are optional
+  }
+}
+
+/**
+ * Track 10: initialize the global plugin system for the extension.
+ *
+ * Wires the globally-reachable slots — skills (the same SkillRegistry the
+ * skills service uses) + MCP (the singleton MCPManager). Hooks + sub-agent
+ * types are per-session (created in AgentRegistry's extension path) and are
+ * a documented follow-up needing an AgentRegistry.onAgentCreated hook;
+ * commands are global storage. Plugins live in an IDB-virtualized store.
+ */
+async function initializePlugins(): Promise<void> {
+  try {
+    const { IndexedDBStorageProvider } = await import('../storage/IndexedDBStorageProvider');
+    const { IndexedDBPluginProvider } = await import('../storage/IndexedDBPluginProvider');
+    const { PluginRegistry } = await import('@/core/plugins/PluginRegistry');
+    const { SkillSlotLoader } = await import('@/core/plugins/loaders/SkillSlotLoader');
+    const { McpSlotLoader } = await import('@/core/plugins/loaders/McpSlotLoader');
+    const { AgentConfig } = await import('@/config/AgentConfig');
+
+    const storageProvider = new IndexedDBStorageProvider();
+    await storageProvider.initialize();
+    const provider = new IndexedDBPluginProvider(storageProvider);
+    await provider.initialize();
+    pluginFsResolvers = { readFile: provider.readFile, listDirs: provider.listDirs };
+
+    const agentConfig = await AgentConfig.getInstance();
+
+    pluginRegistry = new PluginRegistry({
+      provider,
+      // Virtual-path resolvers from the IDB provider keep the slot loaders
+      // platform-agnostic.
+      skillSlot: skillRegistry
+        ? new SkillSlotLoader({
+            skillRegistry,
+            readFile: provider.readFile,
+            listDirs: provider.listDirs,
+          })
+        : undefined,
+      mcpSlot: mcpManager ? new McpSlotLoader(mcpManager) : undefined,
+      // hooks / agents: per-session (AgentRegistry extension path) — follow-up
+      getEnabledFromConfig: () => agentConfig.getConfig().enabledPlugins ?? {},
+      persistEnabled: async (id, enabled) => {
+        const current = agentConfig.getConfig().enabledPlugins ?? {};
+        agentConfig.updateConfig({
+          enabledPlugins: { ...current, [id]: enabled },
+        });
+      },
+    });
+
+    const metas = await provider.listMeta();
+    for (const m of metas) {
+      try {
+        pluginRegistry.register(await provider.load(`${m.name}@local`));
+      } catch (e) {
+        console.warn(`[ServiceWorker] plugin load ${m.name} failed:`, e);
+      }
+    }
+    await pluginRegistry.bootstrapEnabledPlugins();
+
+    agentConfig.on('config-changed', (e: { section?: string }) => {
+      if (e.section === 'enabledPlugins') {
+        void pluginRegistry?.reconcileFromConfig();
+      }
+    });
+
+    console.log(`[ServiceWorker] Plugins initialized (${metas.length} discovered)`);
+  } catch (error) {
+    console.warn('[ServiceWorker] Failed to initialize plugins:', error);
+    // Non-fatal — plugins are optional
   }
 }
 
