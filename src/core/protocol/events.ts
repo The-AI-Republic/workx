@@ -98,6 +98,7 @@ export type EventMsg =
   // Turn lifecycle events
   | { type: 'TurnStarted'; data: TurnStartedEvent }
   | { type: 'TurnComplete'; data: TurnCompleteEvent }
+  | { type: 'PromptSuggestion'; data: PromptSuggestionEvent }
   | { type: 'ContextUpdated'; data: ContextUpdatedEvent }
   | { type: 'TurnRetry'; data: TurnRetryEvent }
   // Track 12: rate-limit resilience events
@@ -737,6 +738,11 @@ export interface TurnCompleteEvent {
   session_id?: string;
   turn_id?: string;
   success?: boolean;
+}
+
+/** Track 24.3: predicted next user message for one-tap accept (ext/desktop). */
+export interface PromptSuggestionEvent {
+  suggestion: string;
 }
 
 export interface ContextUpdatedEvent {

@@ -1,3 +1,5 @@
+import Fuse from 'fuse.js';
+
 /** A registered slash command */
 export interface Command {
   readonly name: string;
@@ -86,33 +88,84 @@ class CommandRegistryImpl {
     );
   }
 
-  filter(query: string): FilteredCommand[] {
+  /**
+   * Filter commands for autocomplete (Track 24.1).
+   *
+   * Two tiers, exact-prefix always wins:
+   *  1. Hard top tier — commands whose name starts with the query, in the
+   *     legacy `localeCompare` order. When `recency` is supplied, more
+   *     recently executed commands lead within the tier. With no `recency`
+   *     this tier is byte-identical to the pre-Fuse behavior.
+   *  2. Fuzzy tier — a Fuse index over the remaining commands (typo/substring
+   *     tolerant across name/description/whenToUse), ordered by match score
+   *     with a small, bounded recency nudge so it can never override a clearly
+   *     better fuzzy match.
+   *
+   * `matchType` stays within `'name' | 'description'` — the consumer contract
+   * is unchanged.
+   */
+  filter(query: string, recency?: ReadonlyMap<string, number>): FilteredCommand[] {
     const q = query.toLowerCase().trim();
+
+    // Recency comparator: newer first; a no-op (returns 0) when `recency` is
+    // absent or neither command is known, so ordering falls through to the
+    // legacy `localeCompare`.
+    const byRecencyThenName = (a: Command, b: Command): number => {
+      const ra = recency?.get(a.name) ?? 0;
+      const rb = recency?.get(b.name) ?? 0;
+      if (ra !== rb) return rb - ra;
+      return a.name.localeCompare(b.name);
+    };
+
     if (q === '') {
-      return this.getAll().map((command) => ({ command, matchType: 'name' as const }));
+      return this.getAll()
+        .sort(byRecencyThenName)
+        .map((command) => ({ command, matchType: 'name' as const }));
     }
 
-    const nameMatches: FilteredCommand[] = [];
-    const descMatches: FilteredCommand[] = [];
-    const seen = new Set<string>();
-
+    const prefix: FilteredCommand[] = [];
+    const rest: Command[] = [];
     for (const command of this.commands.values()) {
       if (command.name.startsWith(q)) {
-        nameMatches.push({ command, matchType: 'name' });
-        seen.add(command.name);
+        prefix.push({ command, matchType: 'name' });
+      } else {
+        rest.push(command);
       }
     }
+    prefix.sort((a, b) => byRecencyThenName(a.command, b.command));
 
-    for (const command of this.commands.values()) {
-      if (!seen.has(command.name) && command.description.toLowerCase().includes(q)) {
-        descMatches.push({ command, matchType: 'description' });
-      }
-    }
+    const fuse = new Fuse(rest, {
+      keys: [
+        { name: 'name', weight: 0.6 },
+        { name: 'description', weight: 0.3 },
+        { name: 'whenToUse', weight: 0.1 },
+      ],
+      threshold: 0.5,
+      ignoreLocation: true,
+      includeScore: true,
+      includeMatches: true,
+    });
 
-    nameMatches.sort((a, b) => a.command.name.localeCompare(b.command.name));
-    descMatches.sort((a, b) => a.command.name.localeCompare(b.command.name));
+    const fuzzy: FilteredCommand[] = fuse
+      .search(q)
+      .map((r) => {
+        const matchedName = r.matches?.some((m) => m.key === 'name');
+        // Small, bounded recency nudge: at most 0.05 off the Fuse score
+        // (range 0..1), so a clearly better match always stays ahead.
+        const recencyNudge = recency?.has(r.item.name) ? 0.05 : 0;
+        return {
+          command: r.item,
+          matchType: (matchedName ? 'name' : 'description') as 'name' | 'description',
+          _score: (r.score ?? 1) - recencyNudge,
+        };
+      })
+      .sort((a, b) => {
+        if (a._score !== b._score) return a._score - b._score;
+        return byRecencyThenName(a.command, b.command);
+      })
+      .map(({ command, matchType }) => ({ command, matchType }));
 
-    return [...nameMatches, ...descMatches];
+    return [...prefix, ...fuzzy];
   }
 
   has(name: string): boolean {
