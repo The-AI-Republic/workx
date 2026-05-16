@@ -1318,4 +1318,66 @@ describe('Session', () => {
       expect(session.getMessageCount()).toBe(2);
     });
   });
+
+  describe('Track 12: recordRateLimits wiring', () => {
+    it('stores the snapshot and emits a populated TokenCount (no longer inert)', async () => {
+      const session = new Session(undefined, false);
+      const events: any[] = [];
+      session.setEventEmitter(async (e) => {
+        events.push(e);
+      });
+
+      await session.recordRateLimits({
+        primary: { used_percent: 40, window_minutes: 300 },
+      });
+
+      const tokenCount = events.find((e) => e.msg.type === 'TokenCount');
+      expect(tokenCount).toBeDefined();
+      // Previously this was always undefined (the dead-data bug).
+      expect(tokenCount.msg.data.rate_limits).toEqual({
+        primary_used_percent: 40,
+        secondary_used_percent: 0,
+        primary_to_secondary_ratio_percent: 0,
+        primary_window_minutes: 300,
+        secondary_window_minutes: 0,
+      });
+    });
+
+    it('emits RateLimitWarning on a fast-burn snapshot', async () => {
+      const session = new Session(undefined, false);
+      const events: any[] = [];
+      session.setEventEmitter(async (e) => {
+        events.push(e);
+      });
+
+      // 92% used but only ~28% of the window elapsed → burning too fast.
+      await session.recordRateLimits({
+        primary: {
+          used_percent: 92,
+          window_minutes: 300,
+          resets_in_seconds: 215 * 60,
+        },
+      });
+
+      const warning = events.find((e) => e.msg.type === 'RateLimitWarning');
+      expect(warning).toBeDefined();
+      expect(warning.msg.data.window).toBe('primary');
+      expect(warning.msg.data.used_percent).toBe(92);
+    });
+
+    it('does not emit RateLimitWarning when usage is sustainable', async () => {
+      const session = new Session(undefined, false);
+      const events: any[] = [];
+      session.setEventEmitter(async (e) => {
+        events.push(e);
+      });
+
+      await session.recordRateLimits({
+        primary: { used_percent: 20, window_minutes: 300, resets_in_seconds: 60 },
+      });
+
+      expect(events.find((e) => e.msg.type === 'RateLimitWarning')).toBeUndefined();
+      expect(events.find((e) => e.msg.type === 'TokenCount')).toBeDefined();
+    });
+  });
 });

@@ -354,6 +354,10 @@ export class TurnManager {
             break;
 
           case 'RateLimits':
+            // Track 12: forward the parsed snapshot to the session so the
+            // dead-data fix + early warning actually fire (previously
+            // dropped here, leaving TokenCount/RateLimitWarning inert).
+            await this.session.recordRateLimits(event.snapshot);
             break;
 
           case 'Completed': {

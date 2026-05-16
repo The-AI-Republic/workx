@@ -2476,6 +2476,21 @@ export class Session {
   }
 
   /**
+   * Track 12: record a rate-limit snapshot observed on the live model
+   * stream (the `RateLimits` ResponseEvent in TurnManager). This is the
+   * public entrypoint that makes the snapshot path actually fire in
+   * production — without it the parsed snapshot was dropped and
+   * `sendTokenCountEvent` could only ever emit `undefined`.
+   *
+   * @param rateLimits Rate limit snapshot parsed by the provider client
+   */
+  async recordRateLimits(rateLimits: RateLimitSnapshot): Promise<void> {
+    // Reactive emission (not tied to a specific submission) — use a fresh
+    // correlation id, consistent with how other mid-stream events are id'd.
+    await this.updateRateLimits(uuidv4(), rateLimits);
+  }
+
+  /**
    * Update rate limits
    *
    * Updates SessionState with rate limit information and sends token count event.

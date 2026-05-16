@@ -104,11 +104,11 @@ export function classifyModelError(error: unknown): ModelErrorClassification {
   const msg = getMessage(error).toLowerCase();
   const retryAfterMs = getRetryAfterMs(error);
 
-  if (
-    status === 529 ||
-    msg.includes('overloaded_error') ||
-    msg.includes('overloaded')
-  ) {
+  // 529 may arrive as a status OR (when the SDK drops it mid-stream) only as
+  // the `"type":"overloaded_error"` JSON fragment in the message. Match that
+  // specific fragment, not a bare "overloaded" substring (too broad — could
+  // hit echoed user content).
+  if (status === 529 || msg.includes('overloaded_error')) {
     return { kind: 'overloaded', statusCode: status ?? 529, retryAfterMs };
   }
   if (status === 429 || error instanceof RateLimitError) {
@@ -186,21 +186,6 @@ export function internalBackoffMs(attempt: number, capMs: number): number {
   const base = Math.min(BASE_DELAY_MS * Math.pow(2, Math.max(0, attempt - 1)), capMs);
   const jitter = Math.random() * 0.25 * base;
   return base + jitter;
-}
-
-/**
- * Internal control-flow signal: a fallback model swap was performed. Never
- * propagates out of `withModelRetry` (the loop catches and continues). Kept
- * as a named type for clarity / future external use.
- */
-export class FallbackTriggeredError extends Error {
-  constructor(
-    public readonly fromModel: string | undefined,
-    public readonly toModel: string,
-  ) {
-    super(`Model fallback: ${fromModel ?? 'unknown'} -> ${toModel}`);
-    this.name = 'FallbackTriggeredError';
-  }
 }
 
 export interface ModelRetryFallback {
