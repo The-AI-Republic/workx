@@ -69,9 +69,9 @@
       {:else if report}
         <div class="overall overall-{report.overall}">
           <span class="badge">{symbol(report.overall)}</span>
-          <span>{t('Overall')}: {report.overall.toUpperCase()}</span>
+          <span>{t('Overall')}: {t(report.overall.toUpperCase())}</span>
           <span class="meta">
-            {report.platformId} · {report.checks.length} checks · {report.durationMs}ms
+            {report.platformId} · {report.checks.length} {t('checks')} · {report.durationMs}{t('ms')}
           </span>
         </div>
 

@@ -31,7 +31,7 @@ const RULES: Array<[RegExp, string]> = [
   [/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, REPLACEMENT],
   // key=value / key: "value" for secret-ish keys
   [
-    /\b(api[_-]?key|token|secret|password|passwd|authorization)\b(["']?\s*[:=]\s*["']?)([^\s"',}]+)/gi,
+    /\b(api[_-]?key|token|secret|password|passwd|authorization|credentials?|auth)\b(["']?\s*[:=]\s*["']?)([^\s"',}]+)/gi,
     `$1$2${REPLACEMENT}`,
   ],
   // URL userinfo  scheme://user:pass@host  →  scheme://user:***@host
@@ -44,7 +44,7 @@ const RULES: Array<[RegExp, string]> = [
 /** A `data` field whose key name is itself sensitive — scrub the value
  *  wholesale regardless of its shape. */
 const SENSITIVE_KEY =
-  /(^|_)(api[_-]?key|apikey|token|secret|password|passwd|authorization)$/i;
+  /(^|_)(api[_-]?key|apikey|token|secret|password|passwd|authorization|credential|auth)s?$/i;
 
 function redactString(input: string): string {
   let out = input;
@@ -67,7 +67,10 @@ function redactValue(value: unknown, keyIsSensitive = false): unknown {
   if (value && typeof value === 'object') {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      out[k] = redactValue(v, SENSITIVE_KEY.test(k));
+      // Inherit the parent's sensitivity: a value nested under a
+      // sensitive-named key is scrubbed wholesale regardless of its shape
+      // (objects must propagate the flag exactly like arrays do).
+      out[k] = redactValue(v, keyIsSensitive || SENSITIVE_KEY.test(k));
     }
     return out;
   }
