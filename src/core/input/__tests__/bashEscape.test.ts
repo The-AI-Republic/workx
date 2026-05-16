@@ -21,10 +21,13 @@ describe('buildBashInputMarker', () => {
   });
 });
 
-function ctx(hasShellExec: boolean): FunnelContext {
+function ctx(
+  hasShellExec: boolean,
+  channel: FunnelContext['origin']['channel'] = 'local',
+): FunnelContext {
   return {
     sessionId: 's',
-    origin: { channel: 'local' },
+    origin: { channel },
     platform: { hasShellExec, hasBrowserTools: false, hasRealTabs: false } as FunnelContext['platform'],
   };
 }
@@ -42,6 +45,34 @@ describe('processUserInput — Stage 4 shell escape', () => {
     const r = await processUserInput([{ type: 'text', text: '!rm -rf /' }], ctx(false));
     expect((r.items[0] as { text: string }).text).toBe('!rm -rf /');
     expect(r.systemNote).toContain('Shell escape');
+  });
+
+  it('honors ! for an operator-trusted scheduler origin', async () => {
+    const r = await processUserInput(
+      [{ type: 'text', text: '!backup.sh' }],
+      ctx(true, 'scheduler'),
+    );
+    expect((r.items[0] as { text: string }).text).toBe(
+      '<bash-input>backup.sh</bash-input>',
+    );
+  });
+
+  it('refuses ! from an untrusted connector even on a shell-capable host', async () => {
+    const r = await processUserInput(
+      [{ type: 'text', text: '!rm -rf ~' }],
+      ctx(true, 'connector'),
+    );
+    expect((r.items[0] as { text: string }).text).toBe('!rm -rf ~');
+    expect(r.systemNote).toContain('not available over this channel');
+  });
+
+  it('refuses ! from a remote relay origin', async () => {
+    const r = await processUserInput(
+      [{ type: 'text', text: '!whoami' }],
+      ctx(true, 'remote'),
+    );
+    expect((r.items[0] as { text: string }).text).toBe('!whoami');
+    expect(r.systemNote).toBeTruthy();
   });
 
   it('a bash escape bypasses mention parsing', async () => {

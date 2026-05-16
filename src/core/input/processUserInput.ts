@@ -21,7 +21,11 @@
 
 import type { InputItem } from '../protocol/types';
 import type { FunnelContext, ProcessedInput } from './types';
-import { classifyForOrigin, originRequiresGate } from './bridgeSafe';
+import {
+  classifyForOrigin,
+  originRequiresGate,
+  isOperatorTrustedOrigin,
+} from './bridgeSafe';
 import { diskBackOversized } from './diskBacking';
 import { parseMentions, resolveMentions } from './mentions';
 import { detectBashEscape, buildBashInputMarker } from './bashEscape';
@@ -107,7 +111,11 @@ export async function processUserInput(
   // A bash escape is a command, not a prompt — it bypasses mention parsing.
   const bash = detectBashEscape(primaryText);
   if (bash) {
-    if (ctx.platform.hasShellExec) {
+    // Gate on BOTH platform capability AND origin trust: a `!` from an
+    // untrusted connector/remote user must not synthesize a <bash-input>
+    // marker on a shell-capable server (same trust boundary as the
+    // bridge-safe slash gate). Only operator-trusted origins may escape.
+    if (ctx.platform.hasShellExec && isOperatorTrustedOrigin(ctx.origin)) {
       // Rewrite the primary text into the recognizable marker; the
       // execution layer acts on it. Other items are left intact.
       let replaced = false;
@@ -124,10 +132,12 @@ export async function processUserInput(
         systemNote: notes.length > 0 ? notes.join(' ') : undefined,
       };
     }
-    // Not shell-capable: leave `!` literal, note it, fall through as a
+    // Not permitted: leave `!` literal, note the reason, fall through as a
     // normal prompt (so the text still reaches the model).
     notes.push(
-      'Shell escape (`!`) is unavailable on this platform — sent as text.',
+      !ctx.platform.hasShellExec
+        ? 'Shell escape (`!`) is unavailable on this platform — sent as text.'
+        : 'Shell escape (`!`) is not available over this channel — sent as text.',
     );
   }
 

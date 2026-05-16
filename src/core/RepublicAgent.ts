@@ -30,8 +30,10 @@ import type { IPlatformAdapter } from './platform/IPlatformAdapter';
 import { processUserInput } from './input/processUserInput';
 import type { FunnelContext, InputOrigin } from './input/types';
 
-/** Marks an Op whose items have already passed through the input funnel, so a
- *  re-submitted op (defensive) is not double-funnelled. See design §7.6. */
+/** Marks an Op object that has already passed through the input funnel.
+ *  Defensive only: it guards re-submission of the *same op object*, not a
+ *  freshly re-derived op (connector/scheduler/chaining build new ops, which
+ *  are correctly re-funnelled). See design §7.6. */
 const FUNNELLED = Symbol('track13.funnelled');
 
 /** Track 13 — claudy parity (processUserInput.ts:272-279): cap hook output

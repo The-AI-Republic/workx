@@ -50,15 +50,22 @@
   // Track 13: screenshots captured from the web clipboard, sent alongside
   // the prompt as `image` InputItems (the core funnel disk-backs them).
   let pendingAttachments: InputItem[] = $state([]);
+  // In-flight FileReader decodes — awaited before submit so a paste followed
+  // immediately by Enter cannot drop the image (decode race).
+  let pendingReads: Promise<void>[] = [];
 
   let currentTheme = $derived($uiTheme);
 
   function clearAttachments(): void {
     pendingAttachments = [];
+    pendingReads = [];
   }
 
   /** Submit the current value plus any pending attachments, then reset. */
-  function submitWithAttachments(): void {
+  async function submitWithAttachments(): Promise<void> {
+    if (pendingReads.length) {
+      await Promise.all(pendingReads);
+    }
     // Preserve the exact prior call signature when there are no attachments
     // (backward compatible — callers/tests expecting one arg are unaffected).
     if (pendingAttachments.length) {
@@ -79,16 +86,21 @@
       if (it.kind !== 'file' || !it.type.startsWith('image/')) continue;
       const file = it.getAsFile();
       if (!file) continue;
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          pendingAttachments = [
-            ...pendingAttachments,
-            { type: 'image', image_url: reader.result },
-          ];
-        }
-      };
-      reader.readAsDataURL(file);
+      const read = new Promise<void>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === 'string') {
+            pendingAttachments = [
+              ...pendingAttachments,
+              { type: 'image', image_url: reader.result },
+            ];
+          }
+          resolve();
+        };
+        reader.onerror = () => resolve();
+        reader.readAsDataURL(file);
+      });
+      pendingReads = [...pendingReads, read];
     }
   }
 

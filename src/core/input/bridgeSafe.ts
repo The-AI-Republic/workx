@@ -60,6 +60,16 @@ export function originRequiresGate(origin: InputOrigin): boolean {
 }
 
 /**
+ * Operator-trusted origins: on-host UI/WS chat (`local`) and operator-authored
+ * scheduled jobs (`scheduler`). External, untrusted users come in via
+ * `connector`/`remote`. Used to gate privileged input affordances such as the
+ * `!` shell escape (a connector message must not synthesize shell intent).
+ */
+export function isOperatorTrustedOrigin(origin: InputOrigin): boolean {
+  return origin.channel === 'local' || origin.channel === 'scheduler';
+}
+
+/**
  * Classify a slash command name for an untrusted origin.
  * Callers should only invoke this when {@link originRequiresGate} is true.
  */

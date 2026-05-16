@@ -25,18 +25,7 @@ import type { InputItem } from '../protocol/types';
 import type { FunnelContext } from './types';
 import { buildPersistedOutputMessage } from '../../tools/resultStore';
 import { DEFAULT_MAX_RESULT_SIZE_CHARS } from '../../tools/toolLimits';
-
-/** Non-cryptographic content fingerprint (FNV-1a, 32-bit) used to derive an
- *  idempotent `toolUseId` so re-submitting the same blob does not double-write
- *  (FileToolResultStore swallows EEXIST). Cross-platform and synchronous. */
-function fingerprint(s: string): string {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return (h >>> 0).toString(16).padStart(8, '0');
-}
+import { fingerprint } from './hash';
 
 function parseDataUri(uri: string): { mime: string; b64: string } | null {
   const m = /^data:([^;,]+)?(?:;[^,]*)?;base64,(.+)$/i.exec(uri);

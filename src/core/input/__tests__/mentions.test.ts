@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { parseMentions, resolveMentions } from '../mentions';
+import { parseMentions, resolveMentions, blockedUrlReason } from '../mentions';
 import { processUserInput } from '../processUserInput';
 import type { FunnelContext } from '../types';
 import type { IPlatformAdapter, IBrowserController } from '../../platform/IPlatformAdapter';
+import type { ToolResultStore, PersistedResult } from '../../../tools/resultStore';
+import { DEFAULT_MAX_RESULT_SIZE_CHARS } from '../../../tools/toolLimits';
 
 describe('parseMentions', () => {
   it('parses every mention form without rewriting the prompt', () => {
@@ -32,6 +34,46 @@ describe('parseMentions', () => {
   it('only accepts http(s) addresses for @url', () => {
     expect(parseMentions('@url ftp://nope')).toEqual([]);
     expect(parseMentions('@url not-a-url')).toEqual([]);
+  });
+
+  it('tolerates punctuation around mentions', () => {
+    expect(parseMentions('see (@tab) and @page. then @selection!')).toEqual([
+      { kind: 'tab' },
+      { kind: 'page' },
+      { kind: 'selection' },
+    ]);
+    expect(parseMentions('fetch @url https://x.com/a, please')).toEqual([
+      { kind: 'url', addr: 'https://x.com/a' },
+    ]);
+  });
+});
+
+describe('blockedUrlReason (SSRF guard)', () => {
+  it('blocks loopback / private / link-local / metadata targets', () => {
+    for (const u of [
+      'http://localhost/x',
+      'http://127.0.0.1/x',
+      'http://127.5.5.5/x',
+      'http://0.0.0.0/',
+      'http://10.0.0.1/',
+      'http://172.16.0.1/',
+      'http://172.31.255.1/',
+      'http://192.168.1.1/',
+      'http://169.254.169.254/latest/meta-data/',
+      'http://100.64.0.1/',
+      'http://[::1]/',
+      'http://[fe80::1]/',
+      'http://[fd00::1]/',
+      'ftp://example.com/',
+    ]) {
+      expect(blockedUrlReason(u)).not.toBeNull();
+    }
+  });
+
+  it('allows public addresses', () => {
+    expect(blockedUrlReason('https://example.com/a')).toBeNull();
+    expect(blockedUrlReason('http://8.8.8.8/')).toBeNull();
+    expect(blockedUrlReason('http://172.32.0.1/')).toBeNull(); // just outside private
   });
 });
 
@@ -163,6 +205,67 @@ describe('resolveMentions — capability gating', () => {
       ctx(platform({ hasBrowserTools: false, hasRealTabs: false }, null)),
     );
     expect(fail.systemNote).toContain('HTTP 503');
+  });
+
+  it('refuses an SSRF @url target without fetching', async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    const r = await processUserInput(
+      [{ type: 'text', text: 'read @url http://169.254.169.254/latest/meta-data/' }],
+      ctx(platform({ hasBrowserTools: false, hasRealTabs: false }, null)),
+    );
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(r.systemNote).toContain('refused');
+    expect(r.items).toHaveLength(1); // nothing appended
+  });
+
+  it('times out a hung page resolution instead of stalling', async () => {
+    vi.useFakeTimers();
+    const r = processUserInput(
+      [{ type: 'text', text: 'read @page' }],
+      ctx(
+        platform(
+          { hasBrowserTools: true, hasRealTabs: true },
+          controller({ getPageContent: () => new Promise<string>(() => {}) }),
+        ),
+      ),
+    );
+    await vi.advanceTimersByTimeAsync(9000);
+    const res = await r;
+    vi.useRealTimers();
+    expect(res.shouldQuery).toBe(true);
+    expect(res.systemNote).toContain('timed out');
+  });
+
+  it('persists oversized mention content under a content-addressed idempotent id', async () => {
+    const calls: string[] = [];
+    const store: ToolResultStore = {
+      async persist(_s, toolUseId, content): Promise<PersistedResult> {
+        calls.push(toolUseId);
+        return {
+          reference: `/d/${toolUseId}`,
+          kind: 'file',
+          originalSize: content.length,
+          preview: content.slice(0, 20),
+          hasMore: true,
+        };
+      },
+      async retrieve() {
+        return null;
+      },
+      async cleanup() {},
+    };
+    const big = 'p'.repeat(DEFAULT_MAX_RESULT_SIZE_CHARS + 100);
+    const p = platform(
+      { hasBrowserTools: true, hasRealTabs: true },
+      controller({ getPageContent: async () => big }),
+    );
+    const c = { ...ctx(p), resultStore: store };
+    await processUserInput([{ type: 'text', text: '@page' }], c);
+    await processUserInput([{ type: 'text', text: '@page' }], c);
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toMatch(/^mention-page-[0-9a-f]{8}$/);
+    expect(calls[0]).toBe(calls[1]); // idempotent across resubmission
   });
 
   it('never aborts a scheduled job when a mention throws', async () => {
