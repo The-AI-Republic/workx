@@ -88,6 +88,30 @@ describe('source allow/blocklist', () => {
     expect(sourceMatches('https://a.b.com/x', { type: 'host', hostPattern: '*.b.com' })).toBe(true);
     expect(sourceMatches('/corp/plugins/x', { type: 'path', pathPattern: '/corp/plugins/*' })).toBe(true);
   });
+
+  it('github matcher is path-anchored — no substring / adjacent / embed bypass', () => {
+    const m = { type: 'github', repo: 'browserx/official' } as const;
+    // legitimate forms still match
+    expect(sourceMatches('https://github.com/browserx/official', m)).toBe(true);
+    expect(sourceMatches('https://github.com/browserx/official.git', m)).toBe(true);
+    expect(sourceMatches('https://github.com/browserx/official/', m)).toBe(true);
+    expect(sourceMatches('git@github.com:browserx/official.git', m)).toBe(true);
+    expect(sourceMatches('browserx/official', m)).toBe(true); // bare
+    // adjacent-name collision must NOT satisfy an allowlist of browserx/official
+    expect(sourceMatches('https://github.com/browserx/official-evil', m)).toBe(false);
+    expect(sourceMatches('https://github.com/browserx/officialX.git', m)).toBe(false);
+    // wrong host / querystring embedding must NOT match
+    expect(sourceMatches('https://evil.com/?x=github.com/browserx/official', m)).toBe(false);
+    expect(sourceMatches('https://github.com.evil.com/browserx/official', m)).toBe(false);
+  });
+
+  it('allowlist is not bypassable by an adjacent github repo name', () => {
+    const policy: PolicySettings = {
+      strictKnownMarketplaces: [{ type: 'github', repo: 'browserx/official' }],
+    };
+    expect(isSourceAllowedByPolicy('https://github.com/browserx/official.git', policy)).toBe(true);
+    expect(isSourceAllowedByPolicy('https://github.com/browserx/official-evil', policy)).toBe(false);
+  });
 });
 
 describe('impersonation guards', () => {

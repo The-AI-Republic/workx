@@ -30,6 +30,21 @@ export interface AutoupdateDeps {
   autoUpdateMarketplaces: () => string[];
   /** Refresh a marketplace catalogue (git pull / re-fetch). */
   refreshMarketplace: (name: string) => Promise<void>;
+  /**
+   * Phase 10c policy gate. Re-checked before re-materializing an update —
+   * autoupdate must NOT pull new code for a plugin an admin has since
+   * blocked (the manual installer guards this; autoupdate must too).
+   */
+  isBlockedByPolicy?: (id: PluginId) => boolean | Promise<boolean>;
+  /**
+   * Safe uninstall for delisting. Wired to `PluginUninstaller.uninstall`
+   * (active-task guard → disable → setEnabled(false) → removeEntry →
+   * orphan-mark). Delisting MUST NOT raw `provider.remove` — that re-
+   * introduces the review-B2 hazard (hard-delete while a session reads,
+   * live registry still holding slots). If absent, we only `removeEntry`
+   * and leave the dir for the orphan GC (never a synchronous wipe).
+   */
+  uninstall?: (id: PluginId, scope: InstalledPluginScope) => Promise<unknown>;
 }
 
 export interface AutoupdateResult {
@@ -63,6 +78,13 @@ export class PluginAutoupdate {
           : undefined;
       if (!catalogueSha) continue;
 
+      // Phase 10c: never pull new code for a plugin an admin has blocked
+      // since it was installed (parity with PluginInstaller's guard).
+      if (this.deps.isBlockedByPolicy && (await this.deps.isBlockedByPolicy(pluginId))) {
+        console.warn(`[PluginAutoupdate] skip ${pluginId}: blocked by policy`);
+        continue;
+      }
+
       for (const entry of bucket.entries) {
         if (entry.gitCommitSha === catalogueSha) continue; // up to date
 
@@ -71,6 +93,15 @@ export class PluginAutoupdate {
           fetched = await this.deps.fetchPlugin(pluginId);
         } catch (e) {
           console.warn(`[PluginAutoupdate] fetch ${pluginId} failed:`, e);
+          continue;
+        }
+        // Fail-closed: the fetched commit must be exactly the catalogue's
+        // pinned sha — never store an unverified/divergent update.
+        if (fetched.gitCommitSha !== catalogueSha) {
+          console.warn(
+            `[PluginAutoupdate] skip ${pluginId}: fetched sha ` +
+              `${fetched.gitCommitSha ?? 'none'} != catalogue ${catalogueSha}`,
+          );
           continue;
         }
         await this.deps.provider.writeFiles(pluginId, fetched.files);
@@ -105,10 +136,21 @@ export class PluginAutoupdate {
         if (live.has(pluginId)) continue;
         for (const entry of bucket.entries) {
           if (entry.scope === 'managed') continue;
-          await this.deps.installed
-            .removeEntry(pluginId, entry.scope as InstalledPluginScope)
-            .catch(() => undefined);
-          await this.deps.provider.remove(pluginId).catch(() => undefined);
+          const scope = entry.scope as InstalledPluginScope;
+          if (this.deps.uninstall) {
+            // Safe path: active-task guard → disable → setEnabled(false)
+            // → removeEntry → orphan-mark. No synchronous hard-delete.
+            await this.deps.uninstall(pluginId, scope).catch((e) =>
+              console.warn(`[PluginAutoupdate] delist uninstall ${pluginId}:`, e),
+            );
+          } else {
+            // No uninstaller wired: drop the ledger entry only; leave the
+            // dir for the orphan GC. NEVER provider.remove here — that is
+            // the review-B2 hazard (hard-delete while a session reads).
+            await this.deps.installed
+              .removeEntry(pluginId, scope)
+              .catch(() => undefined);
+          }
           removed.push(pluginId);
         }
       }

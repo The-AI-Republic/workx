@@ -19,6 +19,18 @@ export interface MarketplaceRegistryDeps {
    * tarball on extension). Returns raw JSON text.
    */
   fetchCatalogue: (sourceRef: string) => Promise<string>;
+  /**
+   * Phase 10c policy gate. Consulted by `add()`:
+   *  - `checkSource(sourceRef)` runs BEFORE any network fetch — admin
+   *    allow/blocklist of marketplace sources (design § Marketplace source
+   *    guards: "Call site: BEFORE any network operation").
+   *  - `checkName(catalogueName, sourceRef)` runs after parse, before
+   *    registering — reserved-official-name / homograph impersonation.
+   * Return a refusal message to block, or null to allow. Optional →
+   * absent means no policy (back-compat with 10b callers + tests).
+   */
+  checkSource?: (sourceRef: string) => Promise<string | null> | string | null;
+  checkName?: (catalogueName: string, sourceRef: string) => string | null;
 }
 
 interface AddedMarketplace {
@@ -35,6 +47,12 @@ export class MarketplaceRegistry {
 
   /** Add (or refresh) a marketplace from its source ref. */
   async add(sourceRef: string): Promise<{ ok: true; name: string } | { ok: false; error: string }> {
+    // Phase 10c: admin source allow/blocklist — BEFORE any network op so a
+    // blocked source is never even fetched.
+    if (this.deps.checkSource) {
+      const refusal = await this.deps.checkSource(sourceRef);
+      if (refusal) return { ok: false, error: refusal };
+    }
     let raw: string;
     try {
       raw = await this.deps.fetchCatalogue(sourceRef);
@@ -52,6 +70,12 @@ export class MarketplaceRegistry {
       return { ok: false, error: `marketplace.json invalid: ${result.error.message}` };
     }
     const catalogue = result.data;
+    // Phase 10c: reserved-official-name / homograph impersonation guard.
+    // catalogue.name is only known after parse, so this runs post-fetch.
+    if (this.deps.checkName) {
+      const refusal = this.deps.checkName(catalogue.name, sourceRef);
+      if (refusal) return { ok: false, error: refusal };
+    }
     this.marketplaces.set(catalogue.name, {
       name: catalogue.name,
       sourceRef,

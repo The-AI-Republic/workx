@@ -75,8 +75,54 @@ describe('PluginAutoupdate', () => {
     expect(res.updated).toEqual([]);
   });
 
-  it('delisting: forceRemoveDeletedPlugins auto-uninstalls vanished plugins', async () => {
-    // catalogue no longer lists 'old@official'
+  it('run() skips a plugin blocked by policy (no re-materialize)', async () => {
+    const mk = new MarketplaceRegistry({ fetchCatalogue: async () => catalogue(SHA_NEW) });
+    await mk.add('ref');
+    const store = new InstalledPluginsStore({ ...memStore(), filePath: '/ip.json' });
+    await store.addEntry('gh@official', {
+      scope: 'user', version: '1', installedAt: 1, lastUpdated: 1,
+      installPath: '/c/gh', gitCommitSha: SHA_OLD,
+    });
+    const writeFiles = vi.fn(async () => undefined);
+    const fetchPlugin = vi.fn();
+    const au = new PluginAutoupdate({
+      marketplaces: mk,
+      installed: store,
+      provider: { writeFiles, getRoot: () => '/c/gh' } as never,
+      fetchPlugin,
+      autoUpdateMarketplaces: () => ['official'],
+      refreshMarketplace: async () => undefined,
+      isBlockedByPolicy: async (id) => id === 'gh@official',
+    });
+    const res = await au.run();
+    expect(res.updated).toEqual([]);
+    expect(fetchPlugin).not.toHaveBeenCalled();
+    expect(writeFiles).not.toHaveBeenCalled();
+  });
+
+  it('run() fail-closed: skips when fetched sha != catalogue sha', async () => {
+    const mk = new MarketplaceRegistry({ fetchCatalogue: async () => catalogue(SHA_NEW) });
+    await mk.add('ref');
+    const store = new InstalledPluginsStore({ ...memStore(), filePath: '/ip.json' });
+    await store.addEntry('gh@official', {
+      scope: 'user', version: '1', installedAt: 1, lastUpdated: 1,
+      installPath: '/c/gh', gitCommitSha: SHA_OLD,
+    });
+    const writeFiles = vi.fn(async () => undefined);
+    const au = new PluginAutoupdate({
+      marketplaces: mk,
+      installed: store,
+      provider: { writeFiles, getRoot: () => '/c/gh' } as never,
+      fetchPlugin: async () => ({ files: [], version: '2', gitCommitSha: 'c'.repeat(40) }),
+      autoUpdateMarketplaces: () => ['official'],
+      refreshMarketplace: async () => undefined,
+    });
+    const res = await au.run();
+    expect(res.updated).toEqual([]);
+    expect(writeFiles).not.toHaveBeenCalled();
+  });
+
+  it('delisting routes through the SAFE uninstaller — never provider.remove', async () => {
     const mk = new MarketplaceRegistry({ fetchCatalogue: async () => catalogue(SHA_OLD, true) });
     await mk.add('ref');
     const store = new InstalledPluginsStore({ ...memStore(), filePath: '/ip.json' });
@@ -86,7 +132,8 @@ describe('PluginAutoupdate', () => {
     await store.addEntry('mgd@official', {
       scope: 'managed', version: '1', installedAt: 1, lastUpdated: 1, installPath: '/c/mgd',
     });
-    const remove = vi.fn(async () => undefined);
+    const remove = vi.fn(async () => undefined); // provider.remove — MUST NOT be called
+    const uninstall = vi.fn(async () => undefined);
 
     const au = new PluginAutoupdate({
       marketplaces: mk,
@@ -95,12 +142,35 @@ describe('PluginAutoupdate', () => {
       fetchPlugin: vi.fn(),
       autoUpdateMarketplaces: () => ['official'],
       refreshMarketplace: async () => undefined,
+      uninstall,
     });
 
     const res = await au.run();
     expect(res.delisted).toEqual(['old@official']);
-    expect(remove).toHaveBeenCalledWith('old@official');
-    // managed scope is left for the admin
-    expect(await store.getEntries('mgd@official')).toHaveLength(1);
+    expect(uninstall).toHaveBeenCalledWith('old@official', 'user');
+    expect(remove).not.toHaveBeenCalled(); // review B2: no synchronous hard-delete
+    expect(await store.getEntries('mgd@official')).toHaveLength(1); // managed left
+  });
+
+  it('delisting without an uninstaller drops the ledger entry only (no hard-delete)', async () => {
+    const mk = new MarketplaceRegistry({ fetchCatalogue: async () => catalogue(SHA_OLD, true) });
+    await mk.add('ref');
+    const store = new InstalledPluginsStore({ ...memStore(), filePath: '/ip.json' });
+    await store.addEntry('old@official', {
+      scope: 'user', version: '1', installedAt: 1, lastUpdated: 1, installPath: '/c/old',
+    });
+    const remove = vi.fn(async () => undefined);
+    const au = new PluginAutoupdate({
+      marketplaces: mk,
+      installed: store,
+      provider: { writeFiles: vi.fn(), getRoot: () => '/c', remove } as never,
+      fetchPlugin: vi.fn(),
+      autoUpdateMarketplaces: () => ['official'],
+      refreshMarketplace: async () => undefined,
+    });
+    const res = await au.run();
+    expect(res.delisted).toEqual(['old@official']);
+    expect(remove).not.toHaveBeenCalled(); // never a synchronous wipe
+    expect(await store.getEntries('old@official')).toHaveLength(0); // ledger entry gone
   });
 });

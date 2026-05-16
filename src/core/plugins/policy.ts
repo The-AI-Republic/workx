@@ -100,11 +100,42 @@ export class PluginPolicy {
 
 function hostOf(ref: string): string {
   try {
-    return new URL(ref).host;
+    // hostname (not host) so an embedded port can't dodge a host pattern.
+    return new URL(ref).hostname;
   } catch {
     const m = ref.match(/@([^:/]+)[:/]/) || ref.match(/\/\/([^/]+)/);
     return m ? m[1] : ref;
   }
+}
+
+/**
+ * Parse the canonical `owner/repo` from a GitHub ref, requiring the HOST
+ * to be exactly github.com. Returns null otherwise. Substring/querystring
+ * embedding (`https://evil.com/?x=github.com/o/r`) and adjacent-name
+ * collisions (`o/r-evil` vs an allowlist of `o/r`) must NOT resolve — a
+ * weak `ref.includes(...)` here is an allowlist bypass.
+ */
+function parseGithubRepo(ref: string): string | null {
+  let host: string;
+  let pathPart: string;
+  try {
+    const u = new URL(ref);
+    host = u.hostname.toLowerCase();
+    pathPart = u.pathname;
+  } catch {
+    const m = ref.match(/^[\w.-]+@([^:]+):(.+)$/); // scp: git@host:owner/repo
+    if (!m) return null;
+    host = m[1].toLowerCase();
+    pathPart = `/${m[2]}`;
+  }
+  if (host !== 'github.com') return null;
+  const cleaned = pathPart
+    .replace(/^\/+/, '')
+    .replace(/\.git$/, '')
+    .replace(/\/+$/, '');
+  const parts = cleaned.split('/');
+  if (parts.length < 2 || !parts[0] || !parts[1]) return null;
+  return `${parts[0]}/${parts[1]}`;
 }
 
 function globToRe(glob: string): RegExp {
@@ -117,8 +148,10 @@ export function sourceMatches(
   matcher: MarketplaceSourceMatcher,
 ): boolean {
   switch (matcher.type) {
-    case 'github':
-      return ref.includes(`github.com/${matcher.repo}`) || ref === matcher.repo;
+    case 'github': {
+      if (ref === matcher.repo) return true; // bare `owner/repo`
+      return parseGithubRepo(ref) === matcher.repo;
+    }
     case 'host':
       return globToRe(matcher.hostPattern).test(hostOf(ref));
     case 'path':
