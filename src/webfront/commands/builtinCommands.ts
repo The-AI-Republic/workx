@@ -1,3 +1,4 @@
+import { push } from 'svelte-spa-router';
 import { commandRegistry } from './CommandRegistry';
 import type { SkillMeta } from '@/core/skills/types';
 import { getInitializedUIClient } from '@/core/messaging';
@@ -62,6 +63,27 @@ export function initBuiltinCommands(callbacks: BuiltinCommandCallbacks): void {
     loadedFrom: 'builtin',
     action: () => {
       activeCallbacks?.onOpenDoctor();
+    },
+  });
+
+  // Track 18: /cost and /usage both open the usage dashboard (which shows
+  // cumulative USD, per-model and per-day cost). The registry has no alias
+  // field, so register both; the has('new') guard above keeps it idempotent.
+  commandRegistry.register({
+    name: 'cost',
+    description: 'Show session and historical USD cost',
+    loadedFrom: 'builtin',
+    action: () => {
+      push('/usage');
+    },
+  });
+
+  commandRegistry.register({
+    name: 'usage',
+    description: 'Show token & cost usage dashboard',
+    loadedFrom: 'builtin',
+    action: () => {
+      push('/usage');
     },
   });
 }

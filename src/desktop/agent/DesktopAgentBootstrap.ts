@@ -701,6 +701,8 @@ export class DesktopAgentBootstrap {
       const data = (msg as EventMsg & { data?: Record<string, any> }).data;
       const summary = data?.last_agent_message?.slice(0, 500) || 'Job completed';
       const tokenData = data?.token_usage?.total;
+      // Track 18: parity with ServerAgentBootstrap — cost is read off the
+      // TaskComplete event (computed once in core), never recomputed.
       this.scheduler.completeJob(jobId, {
         summary,
         tokenUsage: {
@@ -709,6 +711,8 @@ export class DesktopAgentBootstrap {
           totalTokens: tokenData?.total_tokens ?? 0,
         },
         duration,
+        costUSD: typeof data?.cost_usd === 'number' ? data.cost_usd : 0,
+        costEstimated: data?.cost_estimated === true,
       }).catch((error) => {
         console.error(`[DesktopAgentBootstrap] Failed to complete scheduler job ${jobId}:`, error);
       });
