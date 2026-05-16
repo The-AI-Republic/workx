@@ -39,7 +39,7 @@ Tracks 12–25 come from deeper claudy↔browserx comparison (2026-05-14) target
 | 15 | [Conversation Rewind & Fork](./15_conversation_rewind/design.md) | P1 | **S–M** | Rewind/fork. The `forked` `InitialHistory` substrate is **already wired** (`Session.ts:248`) — net-new work is the slice fn + selector UI + `summarize_up_to`. Effort revised down. Code-grounded design. |
 | 16 | [Telemetry & Analytics](./16_telemetry_analytics/design.md) | P1 | Medium | No-op-by-default, privacy-typed event sink. **Bridges the Track 01 event bus** instead of re-instrumenting call sites (browserx advantage over claudy). Code-grounded design. |
 | 17 | [Operational Diagnostics](./17_operational_diagnostics/design.md) | P1 | Small–Medium | Cross-platform `/doctor` + heapdump. Reuses/extends existing `HealthStatus`/`HealthMonitor` (status is binary `_agentReady` today); node-only heapdump. Code-grounded design. |
-| 18 | [USD Cost Tracking](./18_usd_cost_tracking/design.md) | P1 | Medium | Numeric cost table (NOT runtime prose-parsing) + USD accumulator + `/cost`; folds sub-agent cost; shares the `Session.ts:1610` fix with Track 12. Code-grounded design. |
+| 18 | [USD Cost Tracking](./18_usd_cost_tracking/design.md) | P1 | Medium | Numeric `provider:model` cost table (NOT runtime prose-parsing) → per-turn cost on `TaskCompleteEvent`, folded once at `persistTokenUsage` (per-engine self-report, not claudy recursion) + cumulative in `SessionState` + `/cost` + server per-job cost & per-day budget cap. **Independently shippable** — decoupled from Track 12 (the `Session.ts:1614` `TokenCount` `cost` rider is optional coordination, not a dependency). Implementation-ready: `design.md` + `tasks.md`. |
 | 19 | [Versioned Migration Framework](./19_migration_framework/design.md) | P1 | Small | Version-gated registry; absorbs the un-versioned every-load `migrateApprovalConfig` (`AgentConfig.ts:77`) as migration #1; distinct from `IndexedDBAdapter` DB-version. Code-grounded design. |
 | 20 | [Managed / Policy Settings Tier](./20_managed_policy_settings/design.md) | P1 | Medium (full MDM P3/L) | Policy tier in **both** config systems + explicit `lockedKeys`; shared ETag/poll/fail-open remote fetcher (reused by Tracks 12/16). Code-grounded design. |
 | 21 | [Remote Bridge & Relay](./21_remote_bridge_relay/design.md) | P1 | Large | NAT-free relay + viewer/driver. Replay rides **existing** `nextSeq` + `HandshakeSnapshotProviders` (not new infra); relay gated on hosted infra; teleport P3. Code-grounded design. |
@@ -124,12 +124,13 @@ the single-track gaps in 26–32**. Filed as bug-report tracks (detail + fix in 
 
 16_telemetry ──> 17_diagnostics, 19_migration (per-migration events), 18_cost (cost metric)
 01_hooks/events ──> 12_rate_limit (warning/downgrade events), 13_input_pipeline (UserPromptSubmit hook),
-                    15_rewind, 18_cost (CostUpdatedEvent), 21_remote_bridge (snapshot/replay)
+                    15_rewind, 18_cost (cost on TaskCompleteEvent), 21_remote_bridge (snapshot/replay)
 03_commands ──> 13_input_pipeline (slash routes through funnel), 14_plan (/plan), 15_rewind (/rewind),
                 17_diagnostics (/doctor), 18_cost (/cost), 24.1 (Fuse ranking), 24.2 (personas)
 04_typed_tasks ──> 12_rate_limit (unattended detection), 21_remote_bridge (relay = task family)
 09_tool_result_persistence ──> 13_input_pipeline (disk-backed image/large-paste reuse)
-12_rate_limit ──> 18_cost (downgrade factors cost); shares ETag/poll/fail-open pattern with 20_managed_settings
+12_rate_limit ··> 18_cost (coordination, non-blocking: a Track-12 downgrade/fallback model is exactly 18's `estimated` cost case; 18 ships independently)
+12_rate_limit shares ETag/poll/fail-open pattern with 20_managed_settings
 14_plan_mode ──> 23_x402 (payment = destructive action through approval)
 22_feature_flags ──> 21_remote_bridge & 23_x402 (ship dark, opt-in)
 12_rate_limit ──> 25_context_compaction (shared TurnManager:224 model-call boundary + StreamAttemptError + circuit-breaker)
