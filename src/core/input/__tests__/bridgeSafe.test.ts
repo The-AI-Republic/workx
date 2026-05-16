@@ -27,6 +27,7 @@ describe('classifyForOrigin', () => {
 
   it('marks UI-only / sensitive commands unsafe-known', () => {
     expect(classifyForOrigin('settings')).toBe('unsafe-known');
+    expect(classifyForOrigin('doctor')).toBe('unsafe-known');
     expect(classifyForOrigin('config')).toBe('unsafe-known');
     expect(classifyForOrigin('login')).toBe('unsafe-known');
   });

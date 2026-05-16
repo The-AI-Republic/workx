@@ -39,6 +39,7 @@ const BRIDGE_SAFE_NAMES = new Set<string>(['help']);
  */
 const KNOWN_UNSAFE_NAMES = new Set<string>([
   'settings',
+  'doctor',
   'config',
   'new',
   'clear',
