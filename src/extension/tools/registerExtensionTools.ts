@@ -26,6 +26,7 @@ import { PageVisionTool } from './PageVisionTool';
 import { PlanningTool } from '../../tools/PlanningTool';
 import { WebSearchTool } from '../../tools/WebSearchTool';
 import { SettingTool } from '../../tools/SettingTool';
+import { registerResourceFetchTool } from '../../tools/ResourceFetchTool';
 
 // Risk assessors
 import { DomToolRiskAssessor } from '../../core/approval/assessors/DomToolRiskAssessor';
@@ -116,6 +117,11 @@ export async function registerExtensionTools(
         optionsOrAssessor,
       );
     };
+
+    // ── resource_fetch (Track 23 — the only x402-payable surface) ───────
+    // Extension never custodies a key: the wired capability surfaces 402s
+    // for human approval and never auto-pays.
+    await registerResourceFetchTool(registry);
 
     // ── browser_dom (registry key: dom_tool) ────────────────────────────
     if (isToolEnabled('dom_tool')) {

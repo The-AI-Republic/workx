@@ -21,6 +21,7 @@ import type {
 } from './BaseTool';
 import type { ApprovalGate } from '../core/approval/ApprovalGate';
 import type { IRiskAssessor } from '../core/approval/types';
+import type { PaymentCapability } from '../core/payments/x402/types';
 import {
   DEFAULT_TOOL_CONCURRENCY_PROFILE,
   type ToolConcurrencyProfile,
@@ -95,6 +96,7 @@ export class ToolRegistry {
   private eventCollector?: IEventCollector;
   private approvalGate?: ApprovalGate;
   private preExecuteCheck?: PreExecuteCheck;
+  private paymentCapability?: PaymentCapability;
 
   constructor(eventCollector?: IEventCollector) {
     this.eventCollector = eventCollector;
@@ -126,6 +128,23 @@ export class ToolRegistry {
    */
   setPreExecuteCheck(check: PreExecuteCheck | undefined): void {
     this.preExecuteCheck = check;
+  }
+
+  /**
+   * Install the x402 payment capability (Track 23). Mirrors setApprovalGate:
+   * the platform bootstrap constructs a per-platform capability (extension =
+   * surface-only / never pays; desktop = signer + ApprovalGate approval;
+   * server = default-deny allowlist policy) and wires it here. It is threaded
+   * onto ToolContext.payments and consumed ONLY by the resource-fetch tool.
+   * Undefined ⇒ no tool can pay.
+   */
+  setPaymentCapability(capability: PaymentCapability | undefined): void {
+    this.paymentCapability = capability;
+  }
+
+  /** Get the payment capability (if configured). */
+  getPaymentCapability(): PaymentCapability | undefined {
+    return this.paymentCapability;
   }
 
   /**
@@ -503,6 +522,9 @@ export class ToolRegistry {
           tabId: request.tabId, // Pass tabId from request to tool via metadata
         },
         onProgress: emitProgress,
+        // Track 23: the resource-fetch tool reads this to settle a 402.
+        // Undefined on platforms/sessions with no wired capability.
+        payments: this.paymentCapability,
       };
 
       // Execute with timeout (default 120 seconds if not specified)
