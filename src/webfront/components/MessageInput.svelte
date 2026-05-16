@@ -30,6 +30,7 @@
     onModelChanged,
     onTabSelected,
     onCommandOutput,
+    onOpenRewindSelector,
   }: {
     value?: string;
     /** Track 24.3: predicted next message; chip + Tab-accept. */
@@ -46,6 +47,8 @@
     onModelChanged?: (data: { modelId: string; modelName: string }) => void;
     onTabSelected?: (data: { tabId: number }) => void;
     onCommandOutput?: (data: { title: string; content: string }) => void;
+    /** Track 15: open the rewind turn-selector overlay. */
+    onOpenRewindSelector?: () => void;
   } = $props();
 
   let isFocused = $state(false);
@@ -142,6 +145,9 @@
       },
       onOpenSettings: () => {
         push('/settings');
+      },
+      onOpenRewindSelector: () => {
+        onOpenRewindSelector?.();
       },
       onOpenDoctor: () => {
         push('/doctor');
