@@ -442,14 +442,11 @@ export class JobExecutor {
         }
         await this.jobLauncher(executionId, sessionId, agent);
       } else {
-        // Previously silent: the job would sit 'running' forever. Properly
-        // fail it so the cause is visible (telemetry + storage).
+        // No launcher: behavior intentionally unchanged (no state change) to
+        // avoid a scheduler control-flow regression. This is documented
+        // residue alongside concurrent/offline/missed — the `no_launcher`
+        // enum value is reserved but not emitted here (design §6 "residue").
         console.warn('[JobExecutor] No job launcher configured — execution will not run');
-        await this.failExecution(
-          executionId,
-          'No job launcher configured',
-          'no_launcher',
-        );
       }
     } catch (error) {
       console.error(`[JobExecutor] Job launcher failed for execution ${executionId}:`, error);

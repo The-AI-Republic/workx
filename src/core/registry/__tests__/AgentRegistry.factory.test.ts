@@ -206,10 +206,16 @@ describe('AgentRegistry — factory path (server/desktop)', () => {
 
       // Factory should be called with the session ID
       expect(eventDispatcherFactory).toHaveBeenCalledWith(session.sessionId);
-      // Agent should have its event dispatcher set
-      expect(factoryAgent.setEventDispatcher).toHaveBeenCalledWith(
-        eventDispatcherFactory.mock.results[0].value
-      );
+      // Agent's dispatcher is set to the telemetry-decorated wrapper which
+      // ALWAYS forwards to the factory's real dispatcher (Track 16).
+      expect(factoryAgent.setEventDispatcher).toHaveBeenCalledTimes(1);
+      const wired = factoryAgent.setEventDispatcher.mock.calls[0][0];
+      const realDispatcher = eventDispatcherFactory.mock.results[0].value;
+      expect(typeof wired).toBe('function');
+      expect(wired).not.toBe(realDispatcher); // decorated, not identical
+      const evt = { id: 'e1', msg: { type: 'TurnStarted', data: {} } };
+      wired(evt);
+      expect(realDispatcher).toHaveBeenCalledWith(evt); // forwards regardless
     });
 
     it('should use extension event dispatcher when eventDispatcherFactory not provided', async () => {

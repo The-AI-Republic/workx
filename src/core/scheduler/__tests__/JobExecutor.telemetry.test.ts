@@ -46,13 +46,15 @@ class MemStore implements IExecutionStorage {
 }
 
 describe('JobExecutor failureReason (Test 2.e — goal-closing)', () => {
-  it('a job with no launcher aborts before any turn with a machine-readable cause', async () => {
+  it('a job that aborts at launch carries a machine-readable cause', async () => {
     const exec = new JobExecutor(new MemStore());
     const events: Array<{ status: string; failureReason?: ExecutionFailureReason }> =
       [];
     exec.setEventEmitter((e) => events.push(e));
+    exec.setJobLauncher(async () => {
+      throw new Error('launch blew up before any turn');
+    });
 
-    // No jobLauncher / no registry configured → previously silent.
     await exec.execute('sched-1', Date.now(), 'do something');
 
     const statuses = events.map((e) => e.status);
@@ -60,7 +62,7 @@ describe('JobExecutor failureReason (Test 2.e — goal-closing)', () => {
     expect(statuses).toContain('failed');
 
     const failed = events.find((e) => e.status === 'failed');
-    // The pre-session abort is now attributable, not invisible:
-    expect(failed?.failureReason).toBe('no_launcher');
+    // The abort is attributable, not an opaque generic 'failed':
+    expect(failed?.failureReason).toBe('launcher_error');
   });
 });
