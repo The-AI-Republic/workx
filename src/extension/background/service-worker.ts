@@ -77,6 +77,7 @@ import type { SessionConfig } from '../../core/registry/types';
 import { DEFAULT_MAX_CONCURRENT } from '../../core/registry/types';
 import { PRIMARY_SESSION_ALIAS } from '../../core/models/types/SessionContracts';
 import { t } from '../../webfront/lib/i18n';
+import { getActionForExtensionCommand, type ShortcutAction } from '../../core/shortcuts';
 
 // Global instances
 let registry: AgentRegistry | null = null;
@@ -1231,20 +1232,34 @@ function setupContextMenus(): void {
  * Handle keyboard commands
  */
 function handleCommand(command: string): void {
-  switch (command) {
-    case 'toggle-sidepanel':
-      // Toggle side panel
+  const action = getActionForExtensionCommand(command);
+  if (!action) {
+    console.warn('[ServiceWorker] Unknown keyboard command:', command);
+    return;
+  }
+
+  handleShortcutAction(action);
+}
+
+/**
+ * Handle shared shortcut actions from extension commands.
+ */
+function handleShortcutAction(action: ShortcutAction): void {
+  switch (action) {
+    case 'app:toggleWindow':
       chrome.sidePanel.open({ windowId: chrome.windows.WINDOW_ID_CURRENT });
       break;
 
-    case 'quick-action':
-      // Trigger quick action on current tab
+    case 'app:quickAction':
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs[0]?.id) {
           executeQuickAction(tabs[0].id);
         }
       });
       break;
+
+    default:
+      console.warn('[ServiceWorker] No extension shortcut handler for action:', action);
   }
 }
 
