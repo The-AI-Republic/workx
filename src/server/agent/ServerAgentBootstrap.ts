@@ -83,6 +83,12 @@ let _instance: ServerAgentBootstrap | null = null;
 
 export class ServerAgentBootstrap {
   private registry: AgentRegistry | null = null;
+  // Track 10: set in registerServices; read lazily by agentFactory to bind
+  // per-session hook/agent plugin contributions. Null until services
+  // register (the initial primary session, created before that, gets
+  // global slots only — hooks/agents apply on the next session or
+  // /plugin reload, matching claudy's asymmetric enable semantics).
+  private pluginRegistry: import('@/core/plugins/PluginRegistry').PluginRegistry | null = null;
   private channel: ServerChannel | null = null;
   private sessionIndex: SessionIndex | null = null;
   private transcriptStore: TranscriptStore | null = null;
@@ -188,8 +194,36 @@ export class ServerAgentBootstrap {
           if (engine) {
             try {
               const { registerSubAgentTool } = await import('@/tools/AgentTool/register');
-              await registerSubAgentTool(engine);
+              const subAgentRunner = await registerSubAgentTool(engine);
               console.log('[ServerAgentBootstrap] sub_agent tool registered');
+
+              // Track 10: bind this session's hook + sub-agent registries to
+              // currently-enabled plugins. Skills + MCP are global (handled
+              // by the global PluginRegistry's slot loaders); hooks + agents
+              // are per-session and bound here.
+              if (this.pluginRegistry) {
+                try {
+                  const { PluginSessionBinder } = await import('@/core/plugins/PluginSessionBinder');
+                  const { nodeReadFile, nodeListDirs } = await import('@/server/storage/nodePluginFs');
+                  const binder = new PluginSessionBinder({
+                    hookRegistry: agent.getHookRegistry(),
+                    subAgentRunner,
+                    readFile: nodeReadFile,
+                    listDirs: nodeListDirs,
+                  });
+                  const enabled = this.pluginRegistry
+                    .getPlugins()
+                    .filter((p) => p.state.status === 'enabled');
+                  await binder.applyEnabledPlugins(enabled);
+                  // Register so a later /plugin disable prunes this session
+                  // immediately (claudy gh-36995). Teardown on session end is
+                  // a documented follow-up; a stale binder for an ended
+                  // session is a harmless no-op on prune.
+                  this.pluginRegistry.registerSessionBinder(binder);
+                } catch (bindErr) {
+                  console.warn('[ServerAgentBootstrap] plugin session bind failed (non-fatal):', bindErr);
+                }
+              }
             } catch (err) {
               const errMsg = err instanceof Error ? err.message : String(err);
               console.warn('[ServerAgentBootstrap] sub_agent tool registration failed (non-fatal):', err);
@@ -426,10 +460,98 @@ export class ServerAgentBootstrap {
       console.warn('[ServerAgentBootstrap] SkillRegistry not available for service registration:', error);
     }
 
+    // Track 10: plugin registry. Server v1 wires the globally-reachable
+    // slots — skills (the same SkillRegistry the skills service uses) and
+    // MCP (the singleton MCPManager). Hooks / agents / commands are
+    // per-session (created in agentFactory) and propagate via a documented
+    // follow-up; PluginRegistry surfaces them as capability gaps for now.
+    let pluginsDeps: import('@/core/services').PluginsServiceDeps | undefined;
+    try {
+      const os = await import('node:os');
+      const path = await import('node:path');
+      const { NodePluginProvider } = await import('@/server/storage/NodePluginProvider');
+      const { nodeReadFile, nodeListDirs } = await import('@/server/storage/nodePluginFs');
+      const { PluginRegistry } = await import('@/core/plugins/PluginRegistry');
+      const { SkillSlotLoader } = await import('@/core/plugins/loaders/SkillSlotLoader');
+      const { McpSlotLoader } = await import('@/core/plugins/loaders/McpSlotLoader');
+      const { AgentConfig } = await import('@/config/AgentConfig');
+
+      const pluginsRoot = path.join(os.homedir(), '.browserx', 'plugins');
+      const provider = new NodePluginProvider(pluginsRoot);
+      await provider.initialize();
+
+      const agentConfig = await AgentConfig.getInstance();
+
+      const registry = new PluginRegistry({
+        provider,
+        skillSlot: skillsDeps
+          ? new SkillSlotLoader({
+              skillRegistry: skillsDeps.skillRegistry as never,
+              readFile: nodeReadFile,
+              listDirs: nodeListDirs,
+            })
+          : undefined,
+        mcpSlot: mcpDeps
+          ? new McpSlotLoader(mcpDeps.mcpManager as never)
+          : undefined,
+        // hooks / agents / commands: per-session (agentFactory) — follow-up
+        getEnabledFromConfig: () => agentConfig.getConfig().enabledPlugins ?? {},
+        persistEnabled: async (id, enabled) => {
+          const current = agentConfig.getConfig().enabledPlugins ?? {};
+          agentConfig.updateConfig({
+            enabledPlugins: { ...current, [id]: enabled },
+          });
+        },
+        checkDestructiveOpAllowed: (op) => {
+          // Refuse reload while any background sub-agent task is running
+          // (design § Active-Session Semantics Rule 3).
+          if (op !== 'reload' || !this.registry) return null;
+          for (const s of this.registry.listSessions()) {
+            const agentSession = this.registry.getSession(s.sessionId);
+            const active =
+              agentSession?.agent?.getSession?.()?.listActiveTasks?.() ?? [];
+            if (active.length > 0) {
+              return `Cannot reload: ${active.length} background task(s) running. /task stop <id> first.`;
+            }
+          }
+          return null;
+        },
+      });
+
+      // Discover + register from disk
+      const metas = await provider.listMeta();
+      for (const m of metas) {
+        try {
+          registry.register(await provider.load(`${m.name}@local`));
+        } catch (e) {
+          console.warn(`[ServerAgentBootstrap] plugin load ${m.name} failed:`, e);
+        }
+      }
+      await registry.bootstrapEnabledPlugins();
+
+      // React to external enabledPlugins mutations (settings UI / policy)
+      agentConfig.on('config-changed', (e: { section?: string }) => {
+        if (e.section === 'enabledPlugins') {
+          void registry.reconcileFromConfig();
+        }
+      });
+
+      pluginsDeps = { pluginRegistry: registry };
+      // Expose to agentFactory so sessions created after this point bind
+      // their per-session hook + sub-agent registries to enabled plugins.
+      this.pluginRegistry = registry;
+      console.log(
+        `[ServerAgentBootstrap] PluginRegistry initialized (${metas.length} plugin(s) discovered)`,
+      );
+    } catch (error) {
+      console.warn('[ServerAgentBootstrap] PluginRegistry not available:', error);
+    }
+
     const count = registerAllServices(serviceRegistry, {
       mcp: mcpDeps,
       a2a: a2aDeps,
       skills: skillsDeps,
+      plugins: pluginsDeps,
       scheduler: this.scheduler ? { scheduler: this.scheduler } : undefined,
       session: this.registry ? { registry: this.registry } : undefined,
       agent: this.registry ? {

@@ -82,6 +82,13 @@ export class SubAgentRunner implements IAgentRunner {
     // registerSubAgentTool builds the initial tool definition itself.
   }
 
+  // Track 10 (Phase 10a-2): deferred-rebuild guard. When a sub-agent type
+  // changes while a task is in-flight, defer the `sub_agent` tool-def
+  // rebuild until the next safe boundary (task completion) so the LLM
+  // never sees a mid-turn schema swap. See design § Active-Session
+  // Semantics Rule 2.
+  private pendingRebuild = false;
+
   /**
    * Track 10: wire a callback that fires after every runtime type change
    * (`addType` / `removeByPluginId`). The callback typically rebuilds the
@@ -95,11 +102,54 @@ export class SubAgentRunner implements IAgentRunner {
   }
 
   /**
+   * True when at least one task is in-flight in the parent session.
+   * Used to decide whether a type-def rebuild must be deferred.
+   */
+  private hasActiveTasks(): boolean {
+    try {
+      const session = this.parentEngine.getSession?.();
+      const active = session?.listActiveTasks?.() ?? [];
+      return active.length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Rebuild now if it's safe (no active tasks), otherwise mark a pending
+   * rebuild that `flushPendingRebuild` will pick up at the next task
+   * completion boundary.
+   */
+  private async scheduleRebuild(): Promise<void> {
+    if (!this.onTypesChanged) return;
+    if (this.hasActiveTasks()) {
+      this.pendingRebuild = true;
+      return;
+    }
+    await this.onTypesChanged();
+  }
+
+  /**
+   * Flush a deferred rebuild at a safe boundary. Called when a task
+   * completes (foreground end-of-run + background terminal). No-op if
+   * nothing pending or if tasks are still in flight.
+   */
+  private async flushPendingRebuild(): Promise<void> {
+    if (!this.pendingRebuild) return;
+    if (this.hasActiveTasks()) return; // still not safe; wait for the next completion
+    this.pendingRebuild = false;
+    if (this.onTypesChanged) {
+      await this.onTypesChanged().catch((e) =>
+        console.warn('[SubAgentRunner] deferred rebuild failed:', e),
+      );
+    }
+  }
+
+  /**
    * Track 10: add a new sub-agent type at runtime.
    *
    * Plugin source carries `pluginId` for scoped removal via
-   * `removeByPluginId`. Fires the types-changed callback so the outer
-   * registration layer can rebuild the `sub_agent` tool definition.
+   * `removeByPluginId`.
    *
    * A plugin-sourced type may NOT reuse an id already held by a builtin,
    * a config-supplied type, or a *different* plugin — that would let a
@@ -108,10 +158,10 @@ export class SubAgentRunner implements IAgentRunner {
    * `LoadedPlugin.errors` (consistent with `assertValidSubAgentTypeConfig`).
    * Re-adding under the same pluginId is allowed (update-in-place).
    *
-   * NOTE: Phase 10a-1 ships eager rebuild on every addType. Phase 10a-2
-   * will add an active-task guard (defer until TaskCompleted) per design
-   * § Active-Session Semantics Rule 2 to prevent the LLM seeing an
-   * in-turn schema swap.
+   * Rebuild is deferred when a task is in-flight (design § Active-Session
+   * Semantics Rule 2) — the new type is in the `types` map immediately but
+   * the LLM-visible `sub_agent` schema only changes at the next
+   * task-completion boundary (see `scheduleRebuild`).
    */
   async addType(config: SubAgentTypeConfig, source: SubAgentTypeSource): Promise<void> {
     assertValidSubAgentTypeConfig(config);
@@ -140,15 +190,14 @@ export class SubAgentRunner implements IAgentRunner {
     } else {
       this.types.set(config.id, config);
     }
-    if (this.onTypesChanged) {
-      await this.onTypesChanged();
-    }
+    await this.scheduleRebuild();
   }
 
   /**
    * Track 10: scoped removal — remove every type owned by a given plugin.
    * Called by `PluginRegistry.disable(pluginId)`. Builtin and config-sourced
-   * types are unaffected (no pluginId).
+   * types are unaffected (no pluginId). Rebuild deferred when a task is
+   * in-flight (same guard as `addType`).
    */
   async removeByPluginId(pluginId: string): Promise<void> {
     const typeIds = this.pluginTypeIndex.get(pluginId);
@@ -162,9 +211,7 @@ export class SubAgentRunner implements IAgentRunner {
       }
     }
     this.pluginTypeIndex.delete(pluginId);
-    if (this.onTypesChanged) {
-      await this.onTypesChanged();
-    }
+    await this.scheduleRebuild();
   }
 
   /**
@@ -227,6 +274,10 @@ export class SubAgentRunner implements IAgentRunner {
         return this.toSubAgentResult(context, result);
       } finally {
         await this.cleanup(context);
+        // Track 10: foreground run finished — safe boundary to flush any
+        // deferred sub-agent type-def rebuild (design § Active-Session
+        // Semantics Rule 2).
+        void this.flushPendingRebuild();
       }
     }
 
@@ -342,6 +393,10 @@ export class SubAgentRunner implements IAgentRunner {
     // onTaskFinished/onTaskAborted normally start it. Touch a no-op
     // helper to nudge: trigger one tick by calling retainTask(false).
     parentSession.retainTask?.(context.runId, ts.retain);
+
+    // Track 10: a background task just terminated — flush any deferred
+    // sub-agent type-def rebuild now that this is a safe boundary.
+    void this.flushPendingRebuild();
   }
 
   private safeEnqueueNotification(context: AgentContext, text: string): void {
