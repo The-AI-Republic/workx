@@ -169,12 +169,16 @@ export class CommandSlotLoader {
       context: 'inline',
       async getPromptForCommand(args: string): Promise<string> {
         if (!args) return substitutedBody;
-        // Simple argument substitution: $1, $2, ... and $@
         const argList = args.split(/\s+/).filter(Boolean);
-        let out = substitutedBody;
-        out = out.replace(/\$@/g, args);
-        out = out.replace(/\$(\d+)/g, (_m, n: string) => argList[parseInt(n, 10) - 1] ?? '');
-        return out;
+        // Single-pass, function-form replacement: the replacement value is
+        // returned literally, so `$`-sequences in untrusted `args`
+        // (`$&`, `$\``, `$'`, `$$`) are NOT reinterpreted as replacement
+        // patterns (same hazard documented in userConfigSubstitution.ts
+        // ~L40-43), and an injected `$1` from args is not re-expanded by a
+        // second pass.
+        return substitutedBody.replace(/\$@|\$(\d+)/g, (_m, n?: string) =>
+          n === undefined ? args : (argList[parseInt(n, 10) - 1] ?? ''),
+        );
       },
     };
   }

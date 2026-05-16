@@ -293,11 +293,20 @@ export class PluginRegistry {
       }
     }
 
-    // Re-scan via provider
+    // Re-scan via provider. Preserve plugins the provider can't re-supply
+    // (bundled / admin-managed) — clearing unconditionally would silently
+    // drop them on every reload, since only provider-discovered plugins
+    // get re-registered below.
+    const nonProvider = Array.from(this.plugins.values()).filter(
+      (p) => p.source.type === 'bundled' || p.scope === 'managed',
+    );
     this.plugins.clear();
+    for (const p of nonProvider) this.plugins.set(p.id, p);
     const manifests = await this.deps.provider.listMeta();
     for (const manifest of manifests) {
       try {
+        // Filesystem providers key ids as `<name>@local` in v1. Marketplace-
+        // aware id reconstruction is a Phase 10b concern (see design § 10b).
         const loaded = await this.deps.provider.load(`${manifest.name}@local`);
         this.register(loaded);
       } catch (e) {

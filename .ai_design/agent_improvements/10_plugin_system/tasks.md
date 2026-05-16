@@ -275,6 +275,10 @@ Two latent gaps were left in the 10a-1 foundation because no call path exercises
 
 **Scope:** autoupdate, blocklist, policy, impersonation guards, options dialog. All sections below have implementation-ready specs in design § Hardening.
 
+### Carried from 10a-2 review (PR #224)
+
+- [ ] **src/core/plugins/pluginPath.ts + providers**: the v1 path jail (`assertSafeRelPath` / `safeJoinUnderRoot`) is purely *lexical* — it rejects `..`/absolute/`~`/drive paths but does NOT resolve symlinks. A symlink inside an untrusted plugin payload (`skills -> /etc`, `link -> ../../`) passes the prefix check and the read loaders (Skill/SubAgent/Command) follow it out of the jail. Low risk for 10a-2 (user-placed local plugins) but a real bypass once 10b lands remote/marketplace install. Acceptance: after writing files, resolve the real path (`fs.realpath` on Node/Tauri; N/A for IDB virtual paths) and assert it is still under the plugin root; symlink-escape fixture is rejected with a `PluginPathError`-class error and a test proves arbitrary-file read via a planted symlink fails. The Tauri `resolve_path` confinement added in #224 (`~/.browserx` prefix check) is the lexical counterpart; this is its symlink-aware completion.
+
 ### policySettings — schema and storage
 
 - [ ] **src/core/plugins/types.ts**: add `PolicySettings`, `MarketplaceSource` types per design § policySettings.
