@@ -1,6 +1,6 @@
 # Track 10: Plugin System
 
-> **Status (2026-05-14):** Design implementation-ready. All 10 design decisions confirmed (see [Resolved Design Decisions](#resolved-design-decisions) below). **Q7 rename has landed** — the prior `src/server/plugins/PluginRegistry` was renamed and moved to `src/server/channel-connectors/connector-registry.ts:ConnectorRegistry`. Track 10 takes the unqualified `PluginRegistry` name under `src/core/plugins/`. Active Track 10 PR: none yet.
+> **Status: DONE** — merged to `agent-improvements` via PRs #222/#224/#226/#227 (Track 10 a1/a2/b/c). All 10 design decisions confirmed (see [Resolved Design Decisions](#resolved-design-decisions) below). Q7 rename landed: the prior `src/server/plugins/PluginRegistry` was renamed/moved to `src/server/channel-connectors/connector-registry.ts:ConnectorRegistry`; Track 10 takes the unqualified `PluginRegistry` name under `src/core/plugins/`.
 >
 > Layers a claudy-compatible plugin packaging system on top of BrowserX's existing skill / hook / MCP / sub-agent / command registries. **Splits at implementation time into 10a-1 (registry refactor) / 10a-2 (manifest + loader + UI) / 10b (distribution) / 10c (hardening)** (see [Phasing](#phased-plan)).
 >

@@ -1,6 +1,6 @@
 # Track 17: Operational Diagnostics
 
-**Priority: P1** · **Effort: M** · **Status: READY TO IMPLEMENT**
+**Priority: P1** · **Effort: M** · **Status: DONE (merged to `agent-improvements` via PR #232)**
 
 > Source: third-pass claudy↔browserx research (2026-05-15), full implementation-readiness pass. Grounded in a complete read of claudy's `doctor`/`status`/`heapdump` surface AND a verified, line-level read of browserx's health subsystem, command/service transport, platform adapter, and the four dependency tracks across all three deploy targets. **This revision corrects four false premises in the prior draft** (Tracks 16/13 do not exist in code; Track 07's central store was not built; Track 09's artifact store is inert in shipped builds) — see "Validation Notes & Corrections". Incremental, not greenfield: the health primitives exist; the diagnostics layer does not.
 

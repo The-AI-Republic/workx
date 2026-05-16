@@ -1,6 +1,6 @@
 # Track 12: Rate-Limit Resilience
 
-**Priority: P0** · **Effort: M** · **Status: IMPLEMENTATION-READY (code-verified 2026-05-15)**
+**Priority: P0** · **Effort: M** · **Status: DONE (merged to `agent-improvements` via PR #230)**
 
 > Source: second-pass claudy↔browserx research (2026-05-14); implementation-readiness +
 > multi-platform pass (2026-05-15); **final code-verification pass (2026-05-15)** — every

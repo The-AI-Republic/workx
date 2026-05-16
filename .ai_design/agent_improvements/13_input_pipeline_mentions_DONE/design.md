@@ -1,6 +1,6 @@
 # Track 13: Input Pipeline & Browser-Native Mentions
 
-**Priority: P0** · **Effort: L** · **Status: READY TO IMPLEMENT (implementation-grade, ground-truth verified 2026-05-15)**
+**Priority: P0** · **Effort: L** · **Status: DONE (merged to `agent-improvements` via PR #229)**
 
 > Source: second-pass claudy↔browserx research + a full implementation-readiness pass (2026-05-15) that read claudy's entire input funnel and browserx's submission seam, protocol, platform adapters, server input sources, browser/DOM backends, and the *as-built* dependency tracks (01 Hooks, 03 Commands, 09 Persistence — all DONE). All line numbers below are verified against branch `agent-improvements`. Where the earlier draft was wrong (a non-existent method, a non-existent backend, a non-existent capability flag, dropped channel origin), this revision replaces the claim with a concrete, system-consistent design — see **§7 Hard Problems** and **§11 Corrections Ledger**.
 
