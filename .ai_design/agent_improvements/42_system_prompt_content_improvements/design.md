@@ -1,4 +1,4 @@
-# Track 40: System Prompt Content Improvements
+# Track 42: System Prompt Content Improvements
 
 **Date**: 2026-05-16
 **Scope**: BrowserX / Apple Pi system prompt content, prompt fragment structure, memory/skill prompt guidance, prompt-size reduction
@@ -431,4 +431,3 @@ Plan review intentionally remains last while active. Memory and skill extensions
 2. Should `currentDateTime` remain in the main system prompt, or should future prompt-cache work move volatile runtime data to a separate dynamic tail block?
 3. Should planning-tool schema documentation live entirely in the tool description, or should a short global reminder remain for providers with weak tool-description adherence?
 4. Should memory stale-verification be enforced by tooling for high-risk categories, or remain prompt-only?
-

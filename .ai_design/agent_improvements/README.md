@@ -105,7 +105,7 @@ the single-track gaps in 26–32**. Filed as bug-report tracks (detail + fix in 
 |---|-------|----------|--------|-------|
 | 38 | [Keyboard Shortcut System](./38_keyboard_shortcut_system/design.md) | P1 | Medium | Centralize BrowserX shortcuts around action IDs, active contexts, resolver/display helpers, validation, and platform-specific extension/desktop mappings; selectively adopts claudy's keybinding architecture without terminal-specific assumptions. |
 | 39 | [Dynamic Tool Management](./39_dynamic_tool_management/design.md) | P1 | Medium | Provider-neutral adaptation of claudy's ToolSearch: keep full internal tool availability, defer MCP/A2A/plugin schemas from initial model requests, expose `tool_search`, hydrate selected schemas on the next request, and preserve approval/policy enforcement. |
-| 40 | [System Prompt Content Improvements](./40_system_prompt_content_improvements/design.md) | P1 | Small–Medium | Compare claudy's prompt sections with BrowserX's composed prompt; add missing system semantics/action-risk/memory-staleness/skill anti-guessing guidance while trimming verbose duplicated planning/tool-loop prose. |
+| 42 | [System Prompt Content Improvements](./42_system_prompt_content_improvements/design.md) | P1 | Small–Medium | Compare claudy's prompt sections with BrowserX's composed prompt; add missing system semantics/action-risk/memory-staleness/skill anti-guessing guidance while trimming verbose duplicated planning/tool-loop prose. |
 
 ## Dependency Graph
 
@@ -169,7 +169,7 @@ T02 × T01        (parallel+approval)──> 36_int_concurrent_approval_serializ
 T09 × T04 × store(persist+cache)    ──> 37_int_persisted_result_durability (blob vanishes under rollout pointer)
 claudy keybindings comparison       ──> 38_keyboard_shortcut_system (action IDs + contexts + validation + platform global mapping)
 claudy ToolSearch comparison        ──> 39_dynamic_tool_management (deferred model-facing schemas + provider-neutral tool_search hydration)
-claudy system prompt comparison     ──> 40_system_prompt_content_improvements (system semantics + action risk + prompt-size reduction)
+claudy system prompt comparison     ──> 42_system_prompt_content_improvements (system semantics + action risk + prompt-size reduction)
 
 Integration-fix order: 34 (Critical) → 33 / 37 / 35 (P1) → 36 (P2)
   (37 BUG-3 TieredEvictor ordering == 29 G3 == 32 P5 — ONE shared decision, no drift)
