@@ -14,6 +14,11 @@ import type { TelemetryMeta_VERIFIED_NOT_CONTENT } from './analytics';
  * Sanitize a tool name. Built-in tool names are fixed identifiers (safe).
  * MCP tool names follow `mcp__<server>__<tool>` and can reveal user-specific
  * server configuration (PII-medium) → collapsed to `'mcp_tool'`.
+ *
+ * Note: this is allowlist-*by-trust* of the fixed built-in registry, not
+ * allowlist-*by-enumeration* — a non-`mcp__` name passes through verbatim.
+ * If a future dynamic/user-named tool can reach this, switch to an explicit
+ * known-name set so an arbitrary name cannot be logged.
  */
 export function sanitizeToolName(
   toolName: string,

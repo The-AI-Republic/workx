@@ -27,8 +27,12 @@ export type TelemetryMeta_VERIFIED_NOT_CONTENT = never;
 
 /**
  * Marker type for values intentionally routed to PII-tagged `_PROTO_*` keys.
- * Such keys are stripped by {@link stripProtoFields} before any
- * general-access sink; only a privileged sink may ever see them.
+ *
+ * browserx v1 has no privileged sink, so {@link stripProtoFields} is enforced
+ * **centrally in {@link logEvent}** before the event reaches *any* sink — a
+ * `_PROTO_*` key can never leave the core. The marker + strip are kept as the
+ * seam for a future privileged-sink split; today they are a belt-and-braces
+ * guard against a regression that adds such a key.
  *
  * Usage: `value as TelemetryMeta_VERIFIED_PII_TAGGED`.
  */
@@ -57,7 +61,10 @@ export type TelemetrySink = {
 
 /**
  * Strip `_PROTO_*` keys from a payload destined for general-access storage.
- * Returns the input unchanged (same reference) when no `_PROTO_` keys exist.
+ * Returns the input unchanged (same reference) when no `_PROTO_` keys exist
+ * (the universal case today — zero allocation on the hot path). Enforced
+ * centrally by {@link logEvent}; exported for the future privileged-sink
+ * split and unit-tested independently.
  */
 export function stripProtoFields<V>(
   metadata: Record<string, V>,
@@ -108,7 +115,13 @@ export function setTelemetryGate(fn: () => boolean): void {
  * Attach the sink that receives all events. Idempotent: a second call is a
  * no-op (whichever bootstrap path runs first wins, no coordination needed).
  * Queued events drain asynchronously via `queueMicrotask` to keep startup off
- * the critical path; FIFO order is preserved within the drained batch.
+ * the critical path; FIFO order is preserved *within the drained batch*.
+ *
+ * Boundary caveat: events logged between this call and the microtask drain
+ * write to the sink immediately, i.e. ahead of the older queued batch — a
+ * one-time ordering inversion at attach. Harmless for counters/aggregation;
+ * a sink read as a strict ordered trace should not assume global FIFO across
+ * the attach boundary.
  */
 export function attachSink(newSink: TelemetrySink): void {
   if (sink !== null) {
@@ -146,10 +159,21 @@ function enqueue(event: TelemetryEvent): void {
  * Synchronous and guaranteed never to throw to the caller.
  */
 export function logEvent(name: string, metadata: LogEventMetadata): void {
-  if (!telemetryGate()) {
+  let allowed: boolean;
+  try {
+    allowed = telemetryGate();
+  } catch {
+    return; // a throwing gate must never break the caller — fail-closed
+  }
+  if (!allowed) {
     return; // gated before enqueue — don't fill a bounded queue to discard
   }
-  const event: TelemetryEvent = { name, metadata };
+  // Central privacy enforcement: no privileged sink exists in v1, so a
+  // `_PROTO_*` key can never reach any sink (same-ref fast path when none).
+  const event: TelemetryEvent = {
+    name,
+    metadata: stripProtoFields(metadata),
+  };
   const s = sink;
   if (s === null) {
     enqueue(event);

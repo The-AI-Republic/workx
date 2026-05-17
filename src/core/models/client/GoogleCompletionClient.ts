@@ -212,8 +212,11 @@ export class GoogleCompletionClient extends ModelClient {
 
   async stream(prompt: Prompt): Promise<ResponseStream> {
     // Centralized telemetry (no-op unless a sink + privacy gate are wired).
-    // Replaces the legacy GeminiLogger console tracer; `GeminiLogger`
-    // remains available as the opt-in GEMINI_DEBUG console-only path.
+    // This replaced the only production caller of `GeminiLogger` (the
+    // GEMINI_DEBUG `stateReset()`/`streamStart()` console trace); that class
+    // is now unused by app code and slated for follow-up removal. No
+    // GeminiLogger state is shared across streams, so dropping the per-stream
+    // `stateReset()` is inert.
     logEvent('gemini.stream_start', { model: modelId(this.currentModel) });
 
     // Create stream and start processing asynchronously

@@ -8,10 +8,12 @@
  * bundled by default" intent). Desktop/server only — the extension never
  * does remote egress (Web-Store/privacy liability + MV3 SW eviction).
  *
- * Bootstrap wiring is intentionally deferred to Track 22's `feature()`
- * seam (design §9/§12: "Track 22 — Phase 4 only"). Until then this module
- * exists, is correct, and is reachable via {@link createOtelSink} but is
- * not attached by any platform — i.e. genuinely dark.
+ * Wiring: `installTelemetry` calls {@link createOtelSink} on every platform
+ * and tees it alongside the platform sink — but ONLY when {@link
+ * isOtelSinkEnabled} is true (opt-in env flag + endpoint), otherwise
+ * `createOtelSink` returns `null` and nothing is teed. So it ships dark by
+ * default (inert, no egress) yet needs no Track 22 dependency to activate;
+ * Track 22's `feature()` seam would only add a config-driven toggle later.
  */
 
 import type { TelemetrySink, TelemetryEvent } from '../analytics';

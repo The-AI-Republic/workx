@@ -54,6 +54,40 @@ const BG_STATUS = [
   'failed',
   'killed',
 ] as const;
+const HOOK_EVENTS = [
+  'PreToolUse',
+  'PostToolUse',
+  'PostToolUseFailure',
+  'SessionStart',
+  'SessionEnd',
+  'UserPromptSubmit',
+  'Stop',
+  'PermissionRequest',
+  'PermissionDenied',
+  'TaskCreated',
+  'TaskCompleted',
+  'PreCompact',
+  'PostCompact',
+  'ConfigChange',
+] as const;
+const EXEC_STATUS = [
+  'pending',
+  'running',
+  'completed',
+  'failed',
+  'cancelled',
+] as const;
+const FAILURE_REASONS = [
+  'session_create_failed',
+  'no_launcher',
+  'launcher_error',
+  'agent_error',
+  'stale_recovered',
+  'mutex_queued',
+  'offline',
+  'missed',
+  'concurrent',
+] as const;
 
 /**
  * Curated allowlist (design §6). Each entry extracts ONLY numeric/boolean/
@@ -277,42 +311,6 @@ const ALLOWLIST: Record<string, { name: string; extract: Extractor }> = {
   },
   TaskFailed: { name: 'error.task_failed', extract: () => ({}) },
 };
-
-const HOOK_EVENTS = [
-  'PreToolUse',
-  'PostToolUse',
-  'PostToolUseFailure',
-  'SessionStart',
-  'SessionEnd',
-  'UserPromptSubmit',
-  'Stop',
-  'PermissionRequest',
-  'PermissionDenied',
-  'TaskCreated',
-  'TaskCompleted',
-  'PreCompact',
-  'PostCompact',
-  'ConfigChange',
-] as const;
-
-const EXEC_STATUS = [
-  'pending',
-  'running',
-  'completed',
-  'failed',
-  'cancelled',
-] as const;
-const FAILURE_REASONS = [
-  'session_create_failed',
-  'no_launcher',
-  'launcher_error',
-  'agent_error',
-  'stale_recovered',
-  'mutex_queued',
-  'offline',
-  'missed',
-  'concurrent',
-] as const;
 
 function cleanMeta(m: LogEventMetadata): LogEventMetadata {
   const out: LogEventMetadata = {};

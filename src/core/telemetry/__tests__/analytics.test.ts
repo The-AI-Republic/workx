@@ -110,6 +110,30 @@ describe('telemetry core: analytics', () => {
     expect(after.events).toHaveLength(0);
   });
 
+  it('F4: a throwing privacy gate never propagates and fails closed', () => {
+    setTelemetryGate(() => {
+      throw new Error('gate boom');
+    });
+    const { events, sink } = captureSink();
+    attachSink(sink);
+    expect(() => logEvent('x', { n: 1 })).not.toThrow();
+    expect(events).toHaveLength(0); // fail-closed: nothing emitted
+    expect(getDroppedCount()).toBe(0); // not even queued
+  });
+
+  it('F1: _PROTO_* keys are stripped centrally before any sink', async () => {
+    const { events, sink } = captureSink();
+    attachSink(sink);
+    // metadata is numeric/boolean by type, but a regression adding a
+    // `_PROTO_` key must never reach the sink — enforced in logEvent.
+    logEvent('e', { ok: 1, _PROTO_pii: 7 } as unknown as Record<
+      string,
+      number
+    >);
+    await Promise.resolve();
+    expect(events).toEqual([{ name: 'e', metadata: { ok: 1 } }]);
+  });
+
   it('logEventAsync resolves and mirrors logEvent', async () => {
     const { events, sink } = captureSink();
     attachSink(sink);
