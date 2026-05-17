@@ -63,6 +63,7 @@ import { isTerminalTaskStatus } from './tasks/types';
 import type { AgentContext } from '../tools/AgentTool/types';
 import { PANEL_GRACE_MS, STOPPED_DISPLAY_MS } from './tasks/timing';
 import type { TaskOutputStore } from './tasks/TaskOutputStore';
+import type { ShadowAgentScheduler } from './shadowAgent';
 
 // Track 09: tool result persistence
 import {
@@ -135,6 +136,8 @@ export class Session {
   // The session-summary hook itself is owned here and disposed in shutdown().
   private postTurnHooks: PostTurnHook[] = [];
   private _sessionSummaryHook: SessionSummaryHookHandle | null = null;
+  private shadowAgentScheduler: ShadowAgentScheduler | null = null;
+  private shadowCompactPrepareEnabled = false;
 
   // Tool result persistence (track 09). Both fields are undefined when the
   // platform deps required to build a store aren't available — TurnManager
@@ -271,6 +274,14 @@ export class Session {
       // Resume from existing rollout (note: initializeSession will also reconstruct history)
       this.initializationPromise = this.initializeSession('resume', this.sessionId, this.config).catch(err => {
         console.error('Failed to resume session:', err);
+      });
+    } else if (!this.isPersistent && historyMode.mode !== 'new') {
+      // Non-persistent child sessions (sub-agents, shadow agents) still need
+      // their in-memory parent/fork history reconstructed before the first
+      // turn. There is no rollout writer to await, but keeping the same
+      // initialization seam lets engines call session.initialize() uniformly.
+      this.initializationPromise = this.recordInitialHistory(historyMode).catch(err => {
+        console.error('Failed to initialize non-persistent history:', err);
       });
     }
   }
@@ -580,6 +591,14 @@ export class Session {
     return this._sessionSummaryHook;
   }
 
+  setShadowAgentScheduler(scheduler: ShadowAgentScheduler | null): void {
+    this.shadowAgentScheduler = scheduler;
+  }
+
+  setShadowCompactPreparationEnabled(enabled: boolean): void {
+    this.shadowCompactPrepareEnabled = enabled;
+  }
+
   /**
    * Compatibility: Initialize session components
    * Note: Refactored Session initializes in constructor, this is for backward compatibility
@@ -770,6 +789,8 @@ export class Session {
       {
         sessionId: this.sessionId,
         sessionSummaryHook: this._sessionSummaryHook,
+        shadowScheduler: this.shadowAgentScheduler ?? undefined,
+        enableShadowPrepare: this.shadowCompactPrepareEnabled,
       },
     );
 

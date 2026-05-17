@@ -38,7 +38,7 @@ export function createSummaryFileCanUseTool(summaryPath: string): PreExecuteChec
     if (toolName !== FILE_EDIT_TOOL_NAME) {
       return {
         behavior: 'deny',
-        decisionReason: `session_summary_extractor may only call ${FILE_EDIT_TOOL_NAME}; got ${toolName}`,
+        decisionReason: `session summary shadow agent may only call ${FILE_EDIT_TOOL_NAME}; got ${toolName}`,
       };
     }
 
