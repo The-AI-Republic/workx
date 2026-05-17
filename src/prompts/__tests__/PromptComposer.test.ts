@@ -2,8 +2,9 @@
  * Tests for PromptComposer - verifies all fragments are included
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { PromptComposer } from '../PromptComposer';
+import { registerExternalPersonas, clearExternalPersonas } from '../PersonaLoader';
 
 describe('PromptComposer', () => {
   const composer = new PromptComposer();
@@ -65,6 +66,46 @@ describe('PromptComposer', () => {
     it('should return summary prefix', () => {
       const prefix = composer.composeSummaryPrefix();
       expect(prefix.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('output-style persona (Track 24.2)', () => {
+    afterEach(() => clearExternalPersonas());
+
+    it('no personaName → output is byte-identical to no context (regression guard)', () => {
+      const base = composer.composeMainInstruction('browserx');
+      const withCtx = composer.composeMainInstruction('browserx', {});
+      // Adding an empty context must not introduce a persona section.
+      expect(withCtx).toBe(base);
+      expect(base).toContain('## Operation Strategy'); // tools fragment present
+    });
+
+    it('keepCodingInstructions:false → tools fragment dropped, persona prompt injected', () => {
+      registerExternalPersonas([
+        {
+          name: 'nocode',
+          description: '',
+          keepCodingInstructions: false,
+          prompt: 'PERSONA_MARKER_XYZ',
+        },
+      ]);
+      const prompt = composer.composeMainInstruction('browserx', { personaName: 'nocode' });
+      expect(prompt).toContain('PERSONA_MARKER_XYZ');
+      expect(prompt).not.toContain('## Operation Strategy');
+    });
+
+    it('keepCodingInstructions:true → tools fragment kept alongside persona', () => {
+      registerExternalPersonas([
+        {
+          name: 'withcode',
+          description: '',
+          keepCodingInstructions: true,
+          prompt: 'PERSONA_MARKER_ABC',
+        },
+      ]);
+      const prompt = composer.composeMainInstruction('browserx', { personaName: 'withcode' });
+      expect(prompt).toContain('PERSONA_MARKER_ABC');
+      expect(prompt).toContain('## Operation Strategy');
     });
   });
 });

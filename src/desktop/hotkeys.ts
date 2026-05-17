@@ -13,6 +13,7 @@ import { toggleWindow } from './tray';
 import { AgentConfig } from '@/config/AgentConfig';
 import {
   detectShortcutPlatform,
+  getEffectiveBindingsForContext,
   getEffectiveShortcutBindings,
   toTauriAccelerator,
   type ShortcutAction,
@@ -80,7 +81,8 @@ export async function initializeHotkeys(): Promise<void> {
   const { bindings } = getEffectiveShortcutBindings(config.getConfig().preferences?.shortcuts, {
     platform: detectShortcutPlatform(),
   });
-  const desktopBindings = bindings.filter((binding) => binding.context === 'DesktopGlobal' && binding.action);
+  const desktopBindings = getEffectiveBindingsForContext('DesktopGlobal', bindings)
+    .filter((binding) => binding.action);
 
   for (const binding of desktopBindings) {
     const shortcut = toTauriAccelerator(binding, detectShortcutPlatform());

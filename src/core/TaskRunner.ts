@@ -571,6 +571,14 @@ export class TaskRunner {
       data,
     });
 
+    // Track 24.3: predict the user's next message (ext/desktop only; the
+    // generator self-gates off on the server build). Strictly fire-and-forget
+    // — deferred into a microtask and fully swallowed so it can never block,
+    // delay, or fail task completion.
+    Promise.resolve()
+      .then(() => this.session.maybeGenerateSuggestion?.())
+      .catch((e) => console.debug('[TaskRunner] prompt suggestion error (ignored):', e));
+
     // Fire-and-forget: persist token usage record
     this.persistTokenUsage(
       outcome.tokenUsage.total,

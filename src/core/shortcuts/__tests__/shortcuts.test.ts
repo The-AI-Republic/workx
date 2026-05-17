@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   EXTENSION_COMMAND_ACTIONS,
   EXTENSION_COMMAND_DEFAULTS,
+  getEffectiveBindingsForContext,
   getEffectiveShortcutBindings,
   getShortcutDisplay,
   keyboardEventToKeystroke,
@@ -32,6 +33,17 @@ describe('DOM keyboard normalization', () => {
       ctrl: false,
       alt: false,
       shift: true,
+      meta: false,
+    });
+  });
+
+  it('normalizes shifted plus as a plus key shortcut', () => {
+    const event = new KeyboardEvent('keydown', { key: '+', ctrlKey: true, shiftKey: true });
+    expect(keyboardEventToKeystroke(event)).toEqual({
+      key: '+',
+      ctrl: true,
+      alt: false,
+      shift: false,
       meta: false,
     });
   });
@@ -69,6 +81,23 @@ describe('shortcut resolver', () => {
       bindings,
     )).toMatchObject({ type: 'match', action: 'chat:submit' });
   });
+
+  it('computes effective context bindings with null unbinds', () => {
+    const { bindings } = getEffectiveShortcutBindings({
+      version: 1,
+      bindings: [{
+        context: 'DesktopGlobal',
+        bindings: {
+          'mod+shift+b': null,
+          'mod+shift+n': 'app:toggleWindow',
+        },
+      }],
+    }, { platform: 'linux' });
+
+    const desktop = getEffectiveBindingsForContext('DesktopGlobal', bindings);
+    expect(desktop.find((binding) => binding.original === 'mod+shift+b')?.action).toBeNull();
+    expect(desktop.find((binding) => binding.original === 'mod+shift+n')?.action).toBe('app:toggleWindow');
+  });
 });
 
 describe('shortcut display and platform adapters', () => {
@@ -93,6 +122,20 @@ describe('shortcut validation', () => {
     expect(issues.map((issue) => issue.type)).toEqual(
       expect.arrayContaining(['unknown_context', 'unsupported_chord', 'unknown_action']),
     );
+  });
+
+  it('keeps defaults when stored versioned preferences are malformed', () => {
+    expect(() => getEffectiveShortcutBindings({
+      version: 1,
+      bindings: [{ context: 'Chat' }],
+    })).not.toThrow();
+
+    const result = getEffectiveShortcutBindings({
+      version: 1,
+      bindings: [{ context: 'Chat' }],
+    });
+    expect(result.warnings.map((issue) => issue.type)).toContain('parse_error');
+    expect(result.bindings.some((binding) => binding.context === 'Chat' && binding.action === 'chat:submit')).toBe(true);
   });
 });
 

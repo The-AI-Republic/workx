@@ -38,7 +38,8 @@ import {
   onPolicyChanged,
   assessAndRecord,
 } from '@/core/config/policy';
-import { configurePromptComposer, registerPromptExtension } from '@/core/PromptLoader';
+import { configurePromptComposer, registerPromptExtension, setDynamicRuntimeContext } from '@/core/PromptLoader';
+import { registerPlanReviewTools } from '@/tools/planReview/PlanReviewTools';
 import type { RuntimeContext } from '@/prompts/PromptComposer';
 import { SkillRegistry } from '@/core/skills/SkillRegistry';
 import { SkillDomainFilter } from '@/core/skills/SkillDomainFilter';
@@ -307,6 +308,21 @@ export class DesktopAgentBootstrap {
 
     toolRegistry.setApprovalGate(approvalGate);
 
+    // Plan Review (Track 14): closure-wired here (ToolContext has no
+    // registry/manager handle). Desktop has the working core-manager
+    // approval round-trip, so it is always registered.
+    await registerPlanReviewTools({
+      registry: toolRegistry,
+      approvalManager,
+      approvalGate,
+      platformId: 'desktop',
+      recordPlanArtifact: (payload) =>
+        agent.getSession().persistRolloutItems([{ type: 'plan_artifact', payload }]),
+    });
+    setDynamicRuntimeContext(() => ({
+      planReviewActive: toolRegistry.isPlanReviewActive(),
+    }));
+
     // Desktop mode: browser tools come from MCP — enable mcpTools
     const agentConfig = await AgentConfig.getInstance();
     agentConfig.updateToolsConfig({ mcpTools: true });
@@ -432,6 +448,30 @@ export class DesktopAgentBootstrap {
           const history = await RolloutRecorder.getRolloutHistory(sessionId);
           if (history.type !== 'resumed' || !history.payload?.history) return null;
           return { sessionId, rolloutItems: history.payload.history };
+        },
+        // Track 15 (D9): summarize_up_to summarizer for desktop, sourced from
+        // the live primary agent's ModelClientFactory.
+        summarizeForRewind: async (items) => {
+          const reg = this.registry;
+          const primary = reg?.getPrimarySession();
+          const agent = primary ? reg?.getSession(primary.sessionId)?.agent : null;
+          if (!agent) return undefined;
+          try {
+            const { CompactService } = await import('@/core/compact/CompactService');
+            const modelClient = await agent.getModelClientFactory().createClientForCurrentModel();
+            const result = await new CompactService().compact(
+              items,
+              'manual',
+              modelClient,
+              0,
+              undefined,
+              { sessionId: agent.getSession().getSessionId() },
+            );
+            return result.success ? result.summaryText : undefined;
+          } catch (err) {
+            console.warn('[DesktopAgentBootstrap] summarizeForRewind failed:', err);
+            return undefined;
+          }
         },
       } : undefined,
       agent: this.registry ? {
@@ -923,6 +963,14 @@ export class DesktopAgentBootstrap {
       staticContext.homeDir = await homeDir();
     } catch (e) {
       console.warn('[DesktopAgentBootstrap] Could not fetch platform info:', e);
+    }
+
+    // Track 24.2: user-selected output-style persona.
+    try {
+      const config = await AgentConfig.getInstance();
+      staticContext.personaName = config.getConfig().preferences?.personaName;
+    } catch (e) {
+      console.warn('[DesktopAgentBootstrap] Could not read persona preference:', e);
     }
 
     configurePromptComposer('applepi', staticContext);

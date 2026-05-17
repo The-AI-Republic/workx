@@ -12,12 +12,13 @@ export function keyboardEventToKeystroke(event: KeyboardEvent): ParsedKeystroke 
   let key = event.key;
   if (key === ' ') key = 'space';
   if (key.length === 1) key = key.toLowerCase();
+  const shift = key === '+' ? false : event.shiftKey;
 
   return {
     key: normalizeKeyName(key),
     ctrl: event.ctrlKey,
     alt: event.altKey,
-    shift: event.shiftKey,
+    shift,
     meta: event.metaKey,
   };
 }

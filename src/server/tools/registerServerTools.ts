@@ -10,7 +10,7 @@
  * @module server/tools/registerServerTools
  */
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import type { ToolRegistry } from '@/tools/ToolRegistry';
 import type { IRiskAssessor } from '@/core/approval/types';
 
@@ -77,7 +77,7 @@ export async function registerServerTools(
   }
 
   try {
-    const { WebSearchTool } = await import('@/tools/WebSearchTool');
+    const { WebSearchTool, WEB_SEARCH_CONCURRENCY } = await import('@/tools/WebSearchTool');
     const { StaticRiskAssessor } = await import('@/core/approval/assessors/StaticRiskAssessor');
 
     const webSearchTool = new WebSearchTool();
@@ -96,7 +96,10 @@ export async function registerServerTools(
             },
           });
         },
-        new StaticRiskAssessor(0)
+        {
+          riskAssessor: new StaticRiskAssessor(0),
+          runtime: { concurrency: WEB_SEARCH_CONCURRENCY },
+        }
       );
       console.log('[registerServerTools] Web search tool registered');
     }
@@ -330,7 +333,8 @@ function findChromeBinary(): string | null {
 
   for (const candidate of candidates) {
     try {
-      const result = execSync(`which ${candidate}`, { encoding: 'utf-8' }).trim();
+      // Track 24.4: arg-array exec — no shell, no string interpolation.
+      const result = execFileSync('which', [candidate], { encoding: 'utf-8' }).trim();
       if (result) return result;
     } catch {
       // Not found

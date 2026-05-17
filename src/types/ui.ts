@@ -6,6 +6,7 @@
  */
 
 import type { Event } from '../core/protocol/types';
+import type { PlanReviewPlan } from '../tools/planReview/types';
 
 // ============================================================================
 // Core Event Display Types
@@ -228,6 +229,7 @@ export interface ApprovalRequest {
   riskLevel?: string;                  // 'none' | 'low' | 'medium' | 'high' | 'critical'
   riskFactors?: string[];              // Human-readable risk factors
   countdown?: number;                  // Seconds remaining for auto-timeout
+  plan?: PlanReviewPlan;               // Track 14: structured plan → editable card
 
   // Response callbacks
   onApprove: () => void;               // Callback for approval

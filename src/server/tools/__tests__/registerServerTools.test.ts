@@ -29,16 +29,17 @@ const { mockPlanningTool, mockWebSearchTool, mockMCPManagerInstance } = vi.hoist
 // ---------------------------------------------------------------------------
 
 // Use vi.hoisted to create the mock fn so it's available in the factory
-const { mockExecSyncFn } = vi.hoisted(() => ({
-  mockExecSyncFn: vi.fn<(...args: any[]) => any>(() => { throw new Error('not found'); }),
+const { mockExecFileSyncFn } = vi.hoisted(() => ({
+  mockExecFileSyncFn: vi.fn<(...args: any[]) => any>(() => { throw new Error('not found'); }),
 }));
 
 // Mock child_process — for CJS modules, named imports resolve from
-// the `default` export, so we must override execSync there too.
+// the `default` export, so we must override execFileSync there too.
+// (Track 24.4: the chrome-binary probe uses execFileSync('which',[candidate]).)
 vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>();
-  const defaultWithMock = { ...(actual as any).default, execSync: mockExecSyncFn };
-  return { ...actual, execSync: mockExecSyncFn, default: defaultWithMock };
+  const defaultWithMock = { ...(actual as any).default, execFileSync: mockExecFileSyncFn };
+  return { ...actual, execFileSync: mockExecFileSyncFn, default: defaultWithMock };
 });
 
 vi.mock('@/tools/PlanningTool', () => ({
@@ -114,7 +115,7 @@ beforeEach(() => {
   mockMCPManagerInstance.getConnection.mockReturnValue({ tools: [] });
   mockMCPManagerInstance.on.mockReturnValue(undefined);
 
-  mockExecSyncFn.mockImplementation(() => { throw new Error('not found'); });
+  mockExecFileSyncFn.mockImplementation(() => { throw new Error('not found'); });
 });
 
 afterEach(() => {
@@ -169,15 +170,17 @@ describe('planning and web search registration', () => {
 
 describe('chrome binary detection', () => {
   it('does not register browser tools when Chrome is not found', async () => {
-    mockExecSyncFn.mockImplementation(() => { throw new Error('not found'); });
+    mockExecFileSyncFn.mockImplementation(() => { throw new Error('not found'); });
     const registry = makeRegistry();
     await registerServerTools(registry);
     expect(mockMCPManagerInstance.addServer).not.toHaveBeenCalled();
   });
 
   it('attempts to add browser MCP server when Chrome is found', async () => {
-    mockExecSyncFn.mockImplementation((cmd: any) => {
-      if (typeof cmd === 'string' && cmd.includes('google-chrome')) return '/usr/bin/google-chrome' as any;
+    mockExecFileSyncFn.mockImplementation((file: any, args: any) => {
+      if (file === 'which' && Array.isArray(args) && args[0] === 'google-chrome') {
+        return '/usr/bin/google-chrome' as any;
+      }
       throw new Error('not found');
     });
     const registry = makeRegistry();
@@ -185,6 +188,27 @@ describe('chrome binary detection', () => {
     expect(mockMCPManagerInstance.addServer).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'browser', transport: 'stdio' }),
     );
+  });
+
+  it('probes via execFileSync with an arg array — no shell string', async () => {
+    mockExecFileSyncFn.mockImplementation((file: any, args: any) => {
+      if (file === 'which' && Array.isArray(args) && args[0] === 'chromium') {
+        return '/usr/bin/chromium' as any;
+      }
+      throw new Error('not found');
+    });
+    const registry = makeRegistry();
+    await registerServerTools(registry);
+    expect(mockExecFileSyncFn).toHaveBeenCalledWith(
+      'which',
+      ['chromium'],
+      { encoding: 'utf-8' },
+    );
+    // No call should pass an interpolated shell string.
+    for (const call of mockExecFileSyncFn.mock.calls) {
+      expect(call[0]).toBe('which');
+      expect(Array.isArray(call[1])).toBe(true);
+    }
   });
 });
 

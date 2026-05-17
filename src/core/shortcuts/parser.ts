@@ -133,6 +133,11 @@ export function parseBindingBlocks(
   const parsed: ParsedShortcutBinding[] = [];
 
   for (const block of blocks) {
+    if (!block || typeof block !== 'object' || !block.bindings || typeof block.bindings !== 'object') {
+      if (!options.skipInvalid) throw new Error('Shortcut binding block must have a bindings object.');
+      continue;
+    }
+
     for (const [shortcut, action] of Object.entries(block.bindings)) {
       try {
         parsed.push({

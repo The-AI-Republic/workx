@@ -39,13 +39,7 @@ export function getBindingForAction(
   // array order wins, so a later `null` (unbind) or rebind supersedes an
   // earlier default. Build the effective per-keystroke binding first, then
   // report the keystroke that still maps to `action`.
-  const effective = new Map<string, ParsedShortcutBinding>();
-  for (const binding of bindings) {
-    if (binding.context !== context || binding.keystrokes.length !== 1) continue;
-    const first = binding.keystrokes[0];
-    if (!first) continue;
-    effective.set(keystrokeToCanonicalString(first), binding);
-  }
+  const effective = getEffectiveBindingsForContext(context, bindings);
 
   let result: ParsedShortcutBinding | undefined;
   for (const binding of effective.values()) {
@@ -54,4 +48,18 @@ export function getBindingForAction(
     }
   }
   return result;
+}
+
+export function getEffectiveBindingsForContext(
+  context: ShortcutContext,
+  bindings: ParsedShortcutBinding[],
+): ParsedShortcutBinding[] {
+  const effective = new Map<string, ParsedShortcutBinding>();
+  for (const binding of bindings) {
+    if (binding.context !== context || binding.keystrokes.length !== 1) continue;
+    const first = binding.keystrokes[0];
+    if (!first) continue;
+    effective.set(keystrokeToCanonicalString(first), binding);
+  }
+  return Array.from(effective.values());
 }
