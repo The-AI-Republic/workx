@@ -84,6 +84,7 @@ describe('SkillExecutor — forked', () => {
       type: 'general-purpose',
       prompt: 'Do thing',
       description: 'Skill: test-skill',
+      contextMode: 'fork',
     });
     expect(result.status).toBe('forked');
     if (result.status === 'forked') {

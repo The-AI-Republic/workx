@@ -48,7 +48,11 @@ export function buildSubAgentInvoker(
     try {
       const exec = await registry.execute({
         toolName: 'sub_agent',
-        parameters: { ...subParams, background: false },
+        parameters: {
+          ...subParams,
+          context_mode: subParams.contextMode,
+          background: false,
+        },
         sessionId: ctx.sessionId,
         turnId: ctx.turnId,
         callId: ctx.callId,

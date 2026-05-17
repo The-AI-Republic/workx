@@ -14,7 +14,11 @@ import {
   createSendMessageHandler,
 } from './managementTools';
 import type { SubAgentTypeConfig, SubAgentToolParams } from './types';
-import { validateSubAgentTypeConfig } from './validateTypeConfig';
+import {
+  normalizeSubAgentTypeConfig,
+  validateSubAgentTypeConfig,
+} from './validateTypeConfig';
+import { isSubAgentContextMode } from './agentTypes';
 
 export interface RegisterSubAgentOptions {
   /** Sub-agent types to register. Defaults to built-in types. */
@@ -54,7 +58,17 @@ export async function registerSubAgentTool(
     const configData = agentConfig.getConfig();
     const rawTypes = (configData as unknown as Record<string, unknown>).subAgentTypes;
     if (Array.isArray(rawTypes)) {
-      configTypes = rawTypes.filter(validateSubAgentTypeConfig);
+      configTypes = [];
+      for (const raw of rawTypes) {
+        if (!validateSubAgentTypeConfig(raw)) continue;
+        try {
+          configTypes.push(normalizeSubAgentTypeConfig(raw));
+        } catch (error) {
+          console.warn(
+            `[SubAgent type config] ${raw.id}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+      }
     }
   } catch {
     // Config loading is optional
@@ -91,6 +105,11 @@ export async function registerSubAgentTool(
         prompt: params.prompt,
         description: typeof params.description === 'string' ? params.description : undefined,
         background: params.background === true,
+        contextMode: isSubAgentContextMode(params.context_mode)
+          ? params.context_mode
+          : isSubAgentContextMode(params.contextMode)
+            ? params.contextMode
+            : undefined,
       };
 
       const result = await runner.run(toolParams);

@@ -272,6 +272,12 @@ export class Session {
       this.initializationPromise = this.initializeSession('resume', this.sessionId, this.config).catch(err => {
         console.error('Failed to resume session:', err);
       });
+    } else if (!this.isPersistent && historyMode.mode !== 'new') {
+      // Child/forked sessions are non-persistent but still need the provided
+      // in-memory history before the first turn runs.
+      this.initializationPromise = this.recordInitialHistory(historyMode).catch(err => {
+        console.error('Failed to initialize non-persistent session history:', err);
+      });
     }
   }
 

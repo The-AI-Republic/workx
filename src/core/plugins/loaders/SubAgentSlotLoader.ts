@@ -19,6 +19,12 @@
 
 import type { SubAgentRunner } from '@/tools/AgentTool/SubAgentRunner';
 import type { SubAgentTypeConfig } from '@/tools/AgentTool/types';
+import {
+  AgentType,
+  SubAgentContextMode,
+  isAgentType,
+  isSubAgentContextMode,
+} from '@/tools/AgentTool/agentTypes';
 import type { LoadedPlugin, PluginError, PluginId } from '../types';
 import { substituteContent } from '../userConfigSubstitution';
 import type { FileReader, DirLister } from './SkillSlotLoader';
@@ -88,11 +94,16 @@ export class SubAgentSlotLoader {
         try {
           const { frontmatter, body } = parseFrontmatter(content);
           const bareName = frontmatter.name || basenameNoExt(entry);
+          const allowedContextModes = parseContextModes(frontmatter.allowedContextModes);
           const config: SubAgentTypeConfig = {
             id: `${pluginName}:${bareName}`,
             name: frontmatter.name || bareName,
             description: frontmatter.description || `Plugin-defined: ${bareName}`,
             systemPrompt: substituteContent(body, plugin, userConfig),
+            agentType: parsePluginAgentType(frontmatter.agentType),
+            defaultContextMode: parseContextMode(frontmatter.defaultContextMode)
+              ?? allowedContextModes[0],
+            allowedContextModes,
             maxTurns: parseIntSafe(frontmatter.maxTurns),
             // model intentionally not exposed via frontmatter parsing in v1
           };
@@ -150,6 +161,34 @@ function parseIntSafe(s: string | undefined): number | undefined {
   if (s == null) return undefined;
   const n = parseInt(s, 10);
   return Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
+function parsePluginAgentType(s: string | undefined): AgentType {
+  if (s == null || s === '') return AgentType.GeneralPurpose;
+  if (!isAgentType(s) || s === AgentType.Internal) {
+    throw new Error(`Invalid plugin agentType: ${s}`);
+  }
+  return s;
+}
+
+function parseContextMode(s: string | undefined): SubAgentContextMode | undefined {
+  if (s == null || s === '') return undefined;
+  if (!isSubAgentContextMode(s)) {
+    throw new Error(`Invalid sub-agent context mode: ${s}`);
+  }
+  return s;
+}
+
+function parseContextModes(s: string | undefined): SubAgentContextMode[] {
+  if (s == null || s === '') return [SubAgentContextMode.Isolated];
+  const modes = s.split(',').map((v) => v.trim()).filter(Boolean);
+  if (modes.length === 0) return [SubAgentContextMode.Isolated];
+  for (const mode of modes) {
+    if (!isSubAgentContextMode(mode)) {
+      throw new Error(`Invalid sub-agent context mode: ${mode}`);
+    }
+  }
+  return modes as SubAgentContextMode[];
 }
 
 // SECURITY (Track 10): jail untrusted manifest agent paths under root.

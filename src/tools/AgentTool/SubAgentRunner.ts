@@ -6,6 +6,9 @@ import { SubAgentEventRouter } from '@/core/events/SubAgentEventRouter';
 import { createSubAgentToolRegistry } from '../ToolRegistryCloner';
 import { SubAgentRegistry } from './SubAgentRegistry';
 import { BUILTIN_SUBAGENT_TYPES } from './builtinTypes';
+import { SubAgentContextMode } from './agentTypes';
+import { resolveSubAgentBehavior } from './behavior';
+import { buildForkedSubAgentInitialHistory } from './forkContext';
 import type {
   SubAgentTypeConfig,
   SubAgentToolParams,
@@ -18,7 +21,10 @@ import type {
 } from './types';
 import type { BackgroundAgentTaskState } from '@/core/tasks/types';
 import { PANEL_GRACE_MS } from '@/core/tasks/timing';
-import { assertValidSubAgentTypeConfig } from './validateTypeConfig';
+import {
+  assertValidSubAgentTypeConfig,
+  normalizeSubAgentTypeConfig,
+} from './validateTypeConfig';
 
 /**
  * Source tag for sub-agent type registrations. Used by the plugin port
@@ -69,13 +75,13 @@ export class SubAgentRunner implements IAgentRunner {
 
     // Register built-in types
     for (const type of BUILTIN_SUBAGENT_TYPES) {
-      this.types.set(type.id, type);
+      this.types.set(type.id, normalizeSubAgentTypeConfig(type, { allowInternal: true }));
     }
 
     // Register custom types (from constructor — typically config-sourced)
     if (options.customTypes) {
       for (const type of options.customTypes) {
-        this.types.set(type.id, type);
+        this.types.set(type.id, normalizeSubAgentTypeConfig(type));
       }
     }
     // No onTypesChanged fires during construction — the outer
@@ -165,30 +171,31 @@ export class SubAgentRunner implements IAgentRunner {
    */
   async addType(config: SubAgentTypeConfig, source: SubAgentTypeSource): Promise<void> {
     assertValidSubAgentTypeConfig(config);
+    const normalizedConfig = normalizeSubAgentTypeConfig(config);
     if (source.type === 'plugin') {
-      const owner = this.pluginTypeOwner.get(config.id);
-      if (owner === undefined && this.types.has(config.id)) {
+      const owner = this.pluginTypeOwner.get(normalizedConfig.id);
+      if (owner === undefined && this.types.has(normalizedConfig.id)) {
         throw new Error(
-          `Plugin '${source.pluginId}' cannot register sub-agent type '${config.id}': ` +
+          `Plugin '${source.pluginId}' cannot register sub-agent type '${normalizedConfig.id}': ` +
             `id is already held by a builtin or config-supplied type`,
         );
       }
       if (owner !== undefined && owner !== source.pluginId) {
         throw new Error(
-          `Plugin '${source.pluginId}' cannot register sub-agent type '${config.id}': ` +
+          `Plugin '${source.pluginId}' cannot register sub-agent type '${normalizedConfig.id}': ` +
             `id is already owned by plugin '${owner}'`,
         );
       }
-      this.types.set(config.id, config);
+      this.types.set(normalizedConfig.id, normalizedConfig);
       let set = this.pluginTypeIndex.get(source.pluginId);
       if (!set) {
         set = new Set();
         this.pluginTypeIndex.set(source.pluginId, set);
       }
-      set.add(config.id);
-      this.pluginTypeOwner.set(config.id, source.pluginId);
+      set.add(normalizedConfig.id);
+      this.pluginTypeOwner.set(normalizedConfig.id, source.pluginId);
     } else {
-      this.types.set(config.id, config);
+      this.types.set(normalizedConfig.id, normalizedConfig);
     }
     await this.scheduleRebuild();
   }
@@ -301,25 +308,26 @@ export class SubAgentRunner implements IAgentRunner {
             context,
             this.formatTaskNotification(context, params, result),
           );
-          // (Track 04) Update typed state to terminal on parent session.
-          this.markTypedTaskTerminated(context, result);
         }
+        // (Track 04) Update typed state to terminal on parent session even
+        // when quietBackground suppresses LLM-visible notification delivery.
+        this.markTypedTaskTerminated(context, result);
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
+        const failed: AgentRunResult = {
+          success: false,
+          response: '',
+          turnCount: 0,
+          stopReason: 'error',
+          error: errorMsg,
+        };
         if (!suppressNotification()) {
-          const failed: AgentRunResult = {
-            success: false,
-            response: '',
-            turnCount: 0,
-            stopReason: 'error',
-            error: errorMsg,
-          };
           this.safeEnqueueNotification(
             context,
             this.formatTaskNotification(context, params, failed),
           );
-          this.markTypedTaskTerminated(context, failed);
         }
+        this.markTypedTaskTerminated(context, failed);
       } finally {
         try {
           await this.cleanup(context);
@@ -440,6 +448,10 @@ export class SubAgentRunner implements IAgentRunner {
     const runId = crypto.randomUUID();
     const startTime = Date.now();
     const background = params.background ?? false;
+    const behavior = resolveSubAgentBehavior(resolvedTypeConfig, {
+      background,
+      contextMode: params.contextMode,
+    });
 
     // Create restricted tool registry
     const childRegistry = await createSubAgentToolRegistry(
@@ -459,7 +471,7 @@ export class SubAgentRunner implements IAgentRunner {
     const eventRouter = new SubAgentEventRouter({
       parentEmitter: (event) => this.parentEngine.pushEvent(event),
       engineId: runId,
-      suppressedTypes: resolvedTypeConfig.suppressedEvents,
+      suppressedTypes: behavior.suppressedEvents,
     });
 
     const parentConfig = this.parentEngine.getConfig();
@@ -469,15 +481,24 @@ export class SubAgentRunner implements IAgentRunner {
     // Only 'never' explicitly opts out of approval — prevents accidental bypass.
     // Background runs cannot prompt the user (parent has moved on), so force 'never'
     // regardless of the type's configured policy.
-    const effectiveApprovalPolicy = background
-      ? 'never'
-      : (resolvedTypeConfig.approvalPolicy ?? 'inherit');
+    const configuredApprovalPolicy = resolvedTypeConfig.approvalPolicy
+      ?? behavior.approvalPolicyDefault;
+    const effectiveApprovalPolicy = background ? 'never' : configuredApprovalPolicy;
     const approvalGate = effectiveApprovalPolicy === 'inherit'
       ? this.parentEngine.getToolRegistry().getApprovalGate()
       : undefined;
     const approvalPolicy = effectiveApprovalPolicy === 'inherit'
       ? parentSession?.getTurnContext?.().getApprovalPolicy?.() ?? 'on-request'
       : 'never';
+
+    const initialHistory = behavior.contextMode === SubAgentContextMode.Fork
+      ? buildForkedSubAgentInitialHistory(this.parentEngine, params.prompt, {
+        runId,
+        typeId: resolvedTypeConfig.id,
+        agentType: behavior.agentType,
+        contextMode: behavior.contextMode,
+      })
+      : undefined;
 
     // Create child engine via parent's factory method
     const engine = this.parentEngine.createChildEngine({
@@ -490,6 +511,7 @@ export class SubAgentRunner implements IAgentRunner {
       browserContext: parentConfig.browserContext,
       eventRouter,
       drainPendingMessages: () => this.registry.drainMessages(runId),
+      initialHistory,
       // (Track 04) Inherit parent's output store so the child's TaskRunner
       // can persist chunks. RegularTask in the child session reads
       // session.getTaskOutputStore() when wiring AgentTask -> TaskRunner.
@@ -543,6 +565,9 @@ export class SubAgentRunner implements IAgentRunner {
       typeConfig: resolvedTypeConfig,
       parentEngine: this.parentEngine,
       background,
+      behavior,
+      contextMode: behavior.contextMode,
+      executionMode: behavior.executionMode,
       startTime,
       unsubscribe,
     };
@@ -589,11 +614,14 @@ export class SubAgentRunner implements IAgentRunner {
       msg: {
         type: 'SubAgentStart',
         data: {
-          runId,
-          subAgentType: params.type,
-          description: params.description ?? params.prompt.slice(0, 50),
+            runId,
+            subAgentType: params.type,
+            agentType: behavior.agentType,
+            contextMode: behavior.contextMode,
+            executionMode: behavior.executionMode,
+            description: params.description ?? params.prompt.slice(0, 50),
+          },
         },
-      },
     });
 
     // (Track 04) Build typed BackgroundAgentTaskState and register on
@@ -609,6 +637,9 @@ export class SubAgentRunner implements IAgentRunner {
         type: 'background_agent',
         status: 'running',
         description,
+        agentType: behavior.agentType,
+        contextMode: behavior.contextMode,
+        executionMode: behavior.executionMode,
         startTime,
         outputOffset: 0,
         notified: false,
@@ -644,7 +675,12 @@ export class SubAgentRunner implements IAgentRunner {
     try {
       await context.engine.initialize();
 
-      const input: InputItem[] = [{ type: 'text', text: params.prompt }];
+      const input: InputItem[] = [{
+        type: 'text',
+        text: context.contextMode === SubAgentContextMode.Fork
+          ? 'Begin the delegated forked sub-agent task now.'
+          : params.prompt,
+      }];
       const result = await context.engine.run(input, {
         maxTurns: context.typeConfig.maxTurns,
         signal: context.abortController.signal,
@@ -670,6 +706,9 @@ export class SubAgentRunner implements IAgentRunner {
           data: {
             runId: context.runId,
             subAgentType: params.type,
+            agentType: context.behavior.agentType,
+            contextMode: context.contextMode,
+            executionMode: context.executionMode,
             turnCount: result.turnCount,
             tokenUsage,
             duration: Date.now() - context.startTime,
@@ -848,6 +887,9 @@ export class SubAgentRunner implements IAgentRunner {
     const notification: TaskNotification = {
       runId: context.runId,
       type: params.type,
+      agentType: context.behavior.agentType,
+      contextMode: context.contextMode,
+      executionMode: context.executionMode,
       description: params.description ?? params.type,
       status,
       result: result.response || undefined,
@@ -883,6 +925,15 @@ function serializeTaskNotification(n: TaskNotification): string {
   lines.push('<task-notification>');
   lines.push(`  <run-id>${escapeForLlmXml(n.runId)}</run-id>`);
   lines.push(`  <type>${escapeForLlmXml(n.type)}</type>`);
+  if (n.agentType) {
+    lines.push(`  <agent-type>${escapeForLlmXml(n.agentType)}</agent-type>`);
+  }
+  if (n.contextMode) {
+    lines.push(`  <context-mode>${escapeForLlmXml(n.contextMode)}</context-mode>`);
+  }
+  if (n.executionMode) {
+    lines.push(`  <execution-mode>${escapeForLlmXml(n.executionMode)}</execution-mode>`);
+  }
   lines.push(`  <status>${n.status}</status>`);
   lines.push(`  <summary>${escapeForLlmXml(n.description)}</summary>`);
   if (n.result) {
