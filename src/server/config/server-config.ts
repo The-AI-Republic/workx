@@ -94,6 +94,11 @@ export const ServerConfigSchema = z.object({
       limits: LimitsConfigSchema.default({}),
       backup: BackupConfigSchema.default({}),
       shutdownGracePeriodMs: z.number().default(10_000),
+      // Track 24.2: operator-pinned output-style persona for all unattended
+      // jobs. Resolved against built-in styles + .browserx/styles dirs.
+      // TODO(track-20): allow a managed-policy key to override this once
+      // Track 20 lands.
+      persona: z.string().optional(),
     })
     .default({}),
   owner: OwnerConfigSchema.default({}),

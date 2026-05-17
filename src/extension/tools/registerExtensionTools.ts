@@ -24,7 +24,7 @@ import { PageVisionTool } from './PageVisionTool';
 
 // Cross-platform tools (also used in extension)
 import { PlanningTool } from '../../tools/PlanningTool';
-import { WebSearchTool } from '../../tools/WebSearchTool';
+import { WebSearchTool, WEB_SEARCH_CONCURRENCY } from '../../tools/WebSearchTool';
 import { SettingTool } from '../../tools/SettingTool';
 
 // Risk assessors
@@ -124,7 +124,11 @@ export async function registerExtensionTools(
         runtime: {
           concurrency: {
             isConcurrencySafe: (input) => input.action === 'snapshot',
-            isReadOnly: (input) => input.action === 'snapshot',
+            // Track 14: `scroll` is a view-only operation (no DOM mutation,
+            // no navigation) — read-only, so the model can scroll long
+            // pages while exploring during Plan Review. `snapshot` likewise.
+            // click/type/keypress mutate and stay non-read-only (frozen).
+            isReadOnly: (input) => input.action === 'snapshot' || input.action === 'scroll',
             isDestructive: () => false,
           },
           ui: {
@@ -243,7 +247,14 @@ export async function registerExtensionTools(
             // Extraction reads live DOM that other browser-state calls could
             // mutate within the same turn; conservatively sequential.
             isConcurrencySafe: () => false,
-            isReadOnly: () => true,
+            // Track 14 audit: every mode runs chrome.scripting.executeScript
+            // against the AMBIENT active tab (not the session tab) with
+            // arbitrary injected script — not provably side-effect-free, so
+            // it must NOT be trusted read-only by the Plan Review freeze.
+            // Force-frozen until Track 27 binds it to the session tab and
+            // the injected extractors are confirmed pure. Keeping it
+            // non-read-only is the fail-safe choice (frozen during review).
+            isReadOnly: () => false,
             isDestructive: () => false,
           },
           ui: {
@@ -352,7 +363,10 @@ export async function registerExtensionTools(
     // ── web_search ──────────────────────────────────────────────────────
     // Note: web_search concurrency safety is special-cased in toolOrchestration
     // (always safe — pure external read, no shared browser state).
-    await registerTool('web_search', new WebSearchTool(), new StaticRiskAssessor(0));
+    await registerTool('web_search', new WebSearchTool(), {
+      riskAssessor: new StaticRiskAssessor(0),
+      runtime: { concurrency: WEB_SEARCH_CONCURRENCY },
+    });
 
     // ── setting_tool ────────────────────────────────────────────────────
     const READ_SETTING_ACTIONS = new Set(['get', 'list']);

@@ -376,6 +376,12 @@ export interface IUserPreferences {
   zoomLevel?: number;
   shortcuts?: Record<string, string>;
   experimental?: Record<string, boolean>;
+  /**
+   * Track 24.2: selected output-style persona name. Resolved against built-in
+   * `src/prompts/styles/*.md` (and filesystem `.browserx/styles` on the
+   * server). Unknown/unset → the prompt is composed unchanged.
+   */
+  personaName?: string;
 }
 
 export interface ICacheSettings {

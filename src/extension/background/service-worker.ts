@@ -12,6 +12,8 @@ import { RepublicAgent } from '../../core/RepublicAgent';
 import { UserNotifier } from '../../core/UserNotifier';
 import type { Submission } from '../../core/protocol/types';
 import { ApprovalGate } from '../../core/approval/ApprovalGate';
+import { registerPlanReviewTools } from '../../tools/planReview/PlanReviewTools';
+import { setDynamicRuntimeContext } from '../../core/PromptLoader';
 import { PolicyRulesEngine } from '../../core/approval/PolicyRulesEngine';
 import { getDefaultRules } from '../../core/approval/defaultRules';
 import { DomainSensitivityEnhancer } from '../../core/approval/enhancers/DomainSensitivityEnhancer';
@@ -72,6 +74,8 @@ import type { StorageAdapter } from '../../storage/StorageAdapter';
 import { TokenUsageStore } from '../../storage/TokenUsageStore';
 import { getChannelManager } from '../../core/channels/ChannelManager';
 import { registerAllServices } from '../../core/services';
+import { CompactService } from '../../core/compact/CompactService';
+import type { ResponseItem } from '../../core/protocol/types';
 import { SidePanelChannel } from '../../extension/channels/SidePanelChannel';
 import { ChatGPTOAuthExtensionStorage } from '../auth/ChatGPTOAuthExtensionStorage';
 import { ChatGPTOAuthService } from '../../core/auth/ChatGPTOAuthService';
@@ -136,6 +140,22 @@ async function configureExtensionPlatform(targetAgent: RepublicAgent): Promise<v
   }
 
   toolRegistry.setApprovalGate(approvalGate);
+
+  // Plan Review (Track 14): register Begin/Submit closures here, where the
+  // registry + core ApprovalManager are in scope (ToolContext exposes
+  // neither). Feed the registry's freeze flag into the system prompt each
+  // turn so the read-only-exploration guidance persists across the review.
+  await registerPlanReviewTools({
+    registry: toolRegistry,
+    approvalManager,
+    approvalGate,
+    platformId: 'extension',
+    recordPlanArtifact: (payload) =>
+      targetAgent.getSession().persistRolloutItems([{ type: 'plan_artifact', payload }]),
+  });
+  setDynamicRuntimeContext(() => ({
+    planReviewActive: toolRegistry.isPlanReviewActive(),
+  }));
 
   // Tab closure handler
   const tabManager = TabManager.getInstance();
@@ -606,6 +626,29 @@ async function registerServiceHandlers(): Promise<void> {
           const initialHistory = await RolloutRecorder.getRolloutHistory(sessionId);
           if (initialHistory.type !== 'resumed' || !initialHistory.payload?.history) return null;
           return { sessionId, rolloutItems: initialHistory.payload.history };
+        },
+        // Track 15 (D9): summarize_up_to summarizer, sourced from the live
+        // primary agent's existing ModelClientFactory (no client built here).
+        summarizeForRewind: async (items: ResponseItem[]) => {
+          const reg = registry;
+          const primary = reg?.getPrimarySession();
+          const agent = primary ? reg?.getSession(primary.sessionId)?.agent : null;
+          if (!agent) return undefined;
+          try {
+            const modelClient = await agent.getModelClientFactory().createClientForCurrentModel();
+            const result = await new CompactService().compact(
+              items,
+              'manual',
+              modelClient,
+              0,
+              undefined,
+              { sessionId: agent.getSession().getSessionId() },
+            );
+            return result.success ? result.summaryText : undefined;
+          } catch (err) {
+            console.warn('[service-worker] summarizeForRewind failed:', err);
+            return undefined;
+          }
         },
       },
       agent: {

@@ -54,6 +54,8 @@ type SessionSummaryHookHandle = SessionSummaryHook;
 
 // Title generation imports
 import { TitleGenerator } from './title';
+import { PromptSuggestionGenerator } from './suggestions/promptSuggestion';
+import { SUGGESTION_COOLDOWN_MS } from './suggestions/constants';
 
 // Track 04: typed tasks
 import type { BackgroundAgentTaskState, TaskState } from './tasks/types';
@@ -104,6 +106,9 @@ export class Session {
   private interruptRequested: boolean = false;
   private compactService: CompactService;
   private titleGenerator: TitleGenerator;
+  private suggestionGenerator: PromptSuggestionGenerator;
+  private suggestionInFlight = false;
+  private lastSuggestionAt = 0;
   private _memoryService: MemoryService | null = null;
 
   // ─── Track 04: typed task registry ────────────────────────────────────
@@ -170,6 +175,7 @@ export class Session {
     this.toolRegistry = toolRegistry ?? null; // Tool registry from RepublicAgent
     this.compactService = new CompactService(); // Initialize compaction service
     this.titleGenerator = new TitleGenerator(); // Initialize title generation service
+    this.suggestionGenerator = new PromptSuggestionGenerator(); // Track 24.3
 
     // Initialize services (merged from initialize() method)
     if (services) {
@@ -249,10 +255,14 @@ export class Session {
     if (this.isPersistent && (historyMode.mode === 'new' || historyMode.mode === 'forked')) {
       // Create new rollout
       this.initializationPromise = this.initializeSession('create', this.sessionId, this.config).then(() => {
-        // For forked mode, persist the forked history after rollout is created
+        // For forked mode, reconstruct THEN persist the forked history after
+        // the new rollout is created. recordInitialHistory() does
+        // reconstructHistoryFromRollout() -> persistRolloutResponseItems();
+        // this is its sole correct caller (Track 15, Phase 0a — previously
+        // this branch persisted an empty sessionState because nothing
+        // reconstructed historyMode.rolloutItems first).
         if (historyMode.mode === 'forked') {
-          const history = this.sessionState.historySnapshot();
-          return this.persistRolloutResponseItems(history);
+          return this.recordInitialHistory(historyMode);
         }
       }).catch(err => {
         console.error('Failed to initialize session:', err);
@@ -2399,6 +2409,48 @@ export class Session {
   }
 
   /**
+   * Track 24.3: after a completed turn, predict the user's likely next
+   * message and emit it for one-tap accept in the interactive UI.
+   *
+   * Gated OFF on the headless server build — there is no user to suggest to,
+   * so the extra model call would be pure cost. Fire-and-forget; never blocks
+   * task completion. Mirrors {@link maybeGenerateTitle}'s background pattern.
+   */
+  async maybeGenerateSuggestion(): Promise<void> {
+    if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'server') {
+      return;
+    }
+    // Single-flight + cooldown: a slow background call must not stack with the
+    // next task's completion, and rapid retried/aborted completions must not
+    // each spawn a model call.
+    if (this.suggestionInFlight) return;
+    if (Date.now() - this.lastSuggestionAt < SUGGESTION_COOLDOWN_MS) return;
+
+    const history = this.sessionState.historySnapshot();
+    if (this.suggestionGenerator.countAssistantTurns(history) < 2) {
+      return;
+    }
+    const modelClient = this.getModelClientForTitle();
+    if (!modelClient) return;
+
+    this.suggestionInFlight = true;
+    try {
+      const result = await this.suggestionGenerator.generateSuggestion(history, modelClient);
+      this.lastSuggestionAt = Date.now();
+      if (result.success && result.suggestion) {
+        await this.emitEvent({
+          id: crypto.randomUUID(),
+          msg: { type: 'PromptSuggestion', data: { suggestion: result.suggestion } },
+        });
+      } else if (!result.success) {
+        console.debug('[Session] Prompt suggestion generation failed:', result.error);
+      }
+    } finally {
+      this.suggestionInFlight = false;
+    }
+  }
+
+  /**
    * Reconstruct history from rollout
    *
    * Reconstructs conversation history from rollout storage, handling both
@@ -2428,11 +2480,16 @@ export class Session {
         // Compacted history with summary
         // The compacted item should contain a summary that replaces multiple items
         const compactedData = rolloutItem.payload as any;
-        if (compactedData.summary) {
+        // CompactedItem declares `message` (storage/rollout/types.ts). Earlier
+        // notes referenced `summary`; read `message` first and fall back to
+        // `summary` for forward/backward tolerance (Track 15, Phase 0b — this
+        // is what summarize_up_to emits and what fork-replay reads back).
+        const compactedText = compactedData.message ?? compactedData.summary;
+        if (compactedText) {
           // Add summary as a system message
           responseItems.push({
             role: 'system',
-            content: compactedData.summary,
+            content: compactedText,
             type: 'message'
           } as ResponseItem);
         }
@@ -2635,6 +2692,26 @@ export class Session {
       // Persist forked history to new rollout
       const history = this.sessionState.historySnapshot();
       await this.persistRolloutResponseItems(history);
+    }
+  }
+
+  /**
+   * Flush any queued rollout writes to durable storage.
+   *
+   * The static RolloutRecorder read path bypasses this live session's
+   * writer (writes are serialized through RolloutWriter.writeQueue), so any
+   * caller that needs to read this conversation's items while it is still
+   * live — e.g. the Track 15 rewind selector / slice fn — MUST call this
+   * first, otherwise queued-but-unflushed turns are invisible (Track 15,
+   * D13 / Phase 0c). No-op if this session has no rollout recorder.
+   */
+  async flushRollout(): Promise<void> {
+    if (this.services?.rollout) {
+      try {
+        await this.services.rollout.flush();
+      } catch (e) {
+        console.error('Failed to flush rollout recorder:', e);
+      }
     }
   }
 

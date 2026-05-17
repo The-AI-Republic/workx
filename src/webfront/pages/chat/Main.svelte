@@ -10,6 +10,7 @@
 
   import TerminalMessage from '../../components/TerminalMessage.svelte';
   import MessageInput from '../../components/MessageInput.svelte';
+  import MessageSelector from '../../components/chat/MessageSelector.svelte';
   import EventDisplay from '../../components/event_display/EventDisplay.svelte';
   import { EventProcessor } from '../../components/event_display/EventProcessor';
   import { welcomeAsciiLines } from '../../constants/welcomeAscii';
@@ -40,6 +41,10 @@
   let messages: Array<{ type: 'user' | 'agent'; content: string; timestamp: number }> = $state([]);
   let processedEvents: ProcessedEvent[] = $state([]);
   let inputText: string = $state('');
+  // Track 24.3: predicted next user message (bound into MessageInput).
+  let nextSuggestion: string | null = $state(null);
+  // Track 15: rewind turn-selector overlay visibility.
+  let showRewindSelector: boolean = $state(false);
   let isConnected: boolean = $state(false);
   let isProcessing: boolean = $state(false);
   let showWelcome = $derived(!isProcessing && processedEvents.length === 0 && messages.length === 0);
@@ -601,6 +606,7 @@
     // Update processing state
     if (msg.type === 'TaskStarted') {
       isProcessing = true;
+      nextSuggestion = null; // Track 24.3: a new turn invalidates the prediction.
       // Note: We don't clear history here - user wants to see full conversation
       // History is only cleared when user explicitly clicks "New Conversation"
     } else if (msg.type === 'TaskComplete' || msg.type === 'TaskFailed') {
@@ -617,6 +623,11 @@
     // Keep legacy Error message handling for backward compatibility
     // Note: AgentMessage case removed - agent messages are now handled by EventProcessor
     switch (msg.type) {
+      case 'PromptSuggestion':
+        if ('data' in msg && msg.data?.suggestion) {
+          nextSuggestion = msg.data.suggestion;
+        }
+        break;
       case 'Error':
         if ('data' in msg && msg.data && 'message' in msg.data) {
           messages = [...messages, {
@@ -866,6 +877,57 @@
         content: t('Failed to load conversation. Please try again.'),
         timestamp: Date.now(),
       }];
+    }
+  }
+
+  /**
+   * Track 15: handle a completed rewind. The backend forked a NEW conversation
+   * (source untouched) and returned its id + history. Swap the UI to it,
+   * render the sliced history, and (for a plain `conversation` rewind)
+   * repopulate the input with the rewound-to user turn's text (D8).
+   */
+  async function handleRewound(result: {
+    sessionId: string;
+    history?: unknown[];
+    rewoundText?: string;
+  }) {
+    showRewindSelector = false;
+    const newId = result?.sessionId;
+    if (!newId) return;
+
+    // Clear current UI state.
+    messages = [];
+    processedEvents = [];
+    inputText = '';
+    isProcessing = false;
+    eventProcessor.reset();
+
+    // Id swap: register a thread for the forked conversation and switch to it
+    // (the source conversation remains in history, untouched).
+    if (!threadStore.getThread(newId)) {
+      threadStore.createThread(newId, 'New Thread');
+    }
+    threadStates.set(newId, {
+      messages: [],
+      processedEvents: [],
+      inputText: '',
+      isProcessing: false,
+      currentTabId: -1,
+      eventProcessor: new EventProcessor(),
+    });
+    activeSessionId = newId;
+    threadStore.setActiveThread(newId);
+    threadRouter.setActiveSession(newId);
+
+    try {
+      await restoreConversationHistory(newId);
+    } catch (error) {
+      console.error('[App] Failed to restore rewound conversation:', error);
+    }
+
+    // D8: repopulate input AFTER restore (restore/loadThreadState clobbers it).
+    if (result.rewoundText) {
+      inputText = result.rewoundText;
     }
   }
 
@@ -1518,6 +1580,7 @@
           <div class="pr-2 py-2 pl-0">
             <MessageInput
               bind:value={inputText}
+              bind:suggestion={nextSuggestion}
               onSubmit={sendMessage}
               onStop={stopAgent}
               onSelectConversation={resumeConversation}
@@ -1527,12 +1590,20 @@
               placeholder={$_t(">> Enter command...")}
               onTabSelected={handleTabSelected}
               onCommandOutput={handleCommandOutput}
+              onOpenRewindSelector={() => showRewindSelector = true}
             />
           </div>
 
         </div>
       </div>
   </div>
+
+  <!-- Track 15: rewind turn-selector overlay (command-invoked) -->
+  <MessageSelector
+    show={showRewindSelector}
+    onClose={() => showRewindSelector = false}
+    onRewound={handleRewound}
+  />
 
 <style>
   /* Animations - kept as they use @keyframes */

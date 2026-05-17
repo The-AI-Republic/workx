@@ -268,6 +268,8 @@ export class RepublicAgent {
 
     configurePromptComposer(agentType, {
       browserConnection: this.platformAdapter.platformId === 'extension' ? 'extension' : 'mcp',
+      // Track 24.2: user-selected output-style persona.
+      personaName: this.config.getConfig().preferences?.personaName,
     });
     // PromptComposer configured
   }
