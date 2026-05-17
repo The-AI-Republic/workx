@@ -161,10 +161,11 @@
   }
 
   onMount(() => {
-    const unregisterContext = registerShortcutContext('SchedulerModal', { active: () => show });
+    const isActive = () => show;
+    const unregisterContext = registerShortcutContext('SchedulerModal', { active: isActive });
     const unregisterDismiss = registerShortcut('scheduler:dismiss', 'SchedulerModal', () => {
       handleClose();
-    });
+    }, { active: isActive });
 
     return () => {
       unregisterContext();

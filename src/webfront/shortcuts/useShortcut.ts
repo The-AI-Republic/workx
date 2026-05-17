@@ -13,6 +13,7 @@ interface HandlerRegistration {
   action: ShortcutAction;
   context: ShortcutContext;
   handler: ShortcutHandler;
+  active: () => boolean;
   order: number;
 }
 
@@ -31,8 +32,15 @@ export function registerShortcut(
   action: ShortcutAction,
   context: ShortcutContext,
   handler: ShortcutHandler,
+  options: { active?: () => boolean } = {},
 ): () => void {
-  const registration: HandlerRegistration = { action, context, handler, order: nextOrder++ };
+  const registration: HandlerRegistration = {
+    action,
+    context,
+    handler,
+    active: options.active ?? (() => true),
+    order: nextOrder++,
+  };
   const actionHandlers = handlers.get(action) ?? [];
   actionHandlers.push(registration);
   handlers.set(action, actionHandlers);
@@ -89,12 +97,14 @@ export function invokeShortcutAction(
   if (!registrations?.length) return false;
 
   const activeContexts = new Set(getActiveShortcutContexts());
-  const match = registrations
-    .filter((item) => item.context === context && activeContexts.has(item.context))
-    .sort((a, b) => b.order - a.order)[0]
-    ?? registrations
-      .filter((item) => activeContexts.has(item.context))
-      .sort((a, b) => b.order - a.order)[0];
+  const candidates = registrations.filter(
+    (item) => activeContexts.has(item.context) && item.active(),
+  );
+  const match =
+    candidates
+      .filter((item) => item.context === context)
+      .sort((a, b) => b.order - a.order)[0]
+    ?? candidates.sort((a, b) => b.order - a.order)[0];
 
   if (!match) return false;
   const result = match.handler(event);

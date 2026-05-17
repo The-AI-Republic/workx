@@ -121,10 +121,11 @@
   );
 
   onMount(() => {
-    const unregisterContext = registerShortcutContext('SchedulerModal', { active: () => show && job != null });
+    const isActive = () => show && job != null;
+    const unregisterContext = registerShortcutContext('SchedulerModal', { active: isActive });
     const unregisterDismiss = registerShortcut('scheduler:dismiss', 'SchedulerModal', () => {
       handleClose();
-    });
+    }, { active: isActive });
 
     return () => {
       unregisterContext();

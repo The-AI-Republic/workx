@@ -27,12 +27,6 @@ export const DEFAULT_SHORTCUT_BINDINGS: ShortcutBindingBlock[] = [
     },
   },
   {
-    context: 'Modal',
-    bindings: {
-      escape: 'modal:dismiss',
-    },
-  },
-  {
     context: 'ModelPicker',
     bindings: {
       escape: 'modelPicker:dismiss',

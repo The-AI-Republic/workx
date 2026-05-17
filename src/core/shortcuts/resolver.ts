@@ -1,4 +1,4 @@
-import { keystrokeEquals } from './parser';
+import { keystrokeEquals, keystrokeToCanonicalString } from './parser';
 import type { ParsedKeystroke, ParsedShortcutBinding, ShortcutAction, ShortcutContext } from './types';
 
 export type ShortcutResolveResult =
@@ -35,11 +35,23 @@ export function getBindingForAction(
   context: ShortcutContext,
   bindings: ParsedShortcutBinding[],
 ): ParsedShortcutBinding | undefined {
-  for (let index = bindings.length - 1; index >= 0; index--) {
-    const binding = bindings[index];
-    if (binding.context === context && binding.action === action) {
-      return binding;
+  // Mirror resolveShortcut: for a single-keystroke binding the last entry in
+  // array order wins, so a later `null` (unbind) or rebind supersedes an
+  // earlier default. Build the effective per-keystroke binding first, then
+  // report the keystroke that still maps to `action`.
+  const effective = new Map<string, ParsedShortcutBinding>();
+  for (const binding of bindings) {
+    if (binding.context !== context || binding.keystrokes.length !== 1) continue;
+    const first = binding.keystrokes[0];
+    if (!first) continue;
+    effective.set(keystrokeToCanonicalString(first), binding);
+  }
+
+  let result: ParsedShortcutBinding | undefined;
+  for (const binding of effective.values()) {
+    if (binding.action === action) {
+      result = binding;
     }
   }
-  return undefined;
+  return result;
 }
