@@ -335,7 +335,8 @@ async function doInitialize(): Promise<void> {
     mcpManager = await MCPManager.getInstance();
 
     // Subscribe to MCP events for tool registration/unregistration
-    await setupMCPToolRegistration();
+    // (sync — handler attaches immediately, before any auto-connect)
+    setupMCPToolRegistration();
 
     // Auto-connect enabled MCP servers (T064: service worker lifecycle handling)
     await autoConnectEnabledMCPServers();
@@ -351,7 +352,8 @@ async function doInitialize(): Promise<void> {
     a2aManager = await A2AManager.getInstance();
 
     // Subscribe to A2A events for tool registration/unregistration
-    await setupA2AToolRegistration();
+    // (sync — handler attaches immediately, before any auto-connect)
+    setupA2AToolRegistration();
 
     // Auto-connect enabled A2A agents
     await autoConnectEnabledA2AAgents();
@@ -854,15 +856,11 @@ async function autoConnectEnabledMCPServers(): Promise<void> {
  * Registers/unregisters MCP tools with ToolRegistry when connections change
  * Applies to all active sessions' tool registries.
  */
-async function setupMCPToolRegistration(): Promise<void> {
+function setupMCPToolRegistration(): void {
   if (!mcpManager || !registry) {
     console.warn('[ServiceWorker] Cannot setup MCP tool registration - manager or registry not ready');
     return;
   }
-
-  // Track 22: only reached when the MCP flag is ON (caller is gated), so this
-  // dynamic import keeps core/mcp/MCPToolAdapter out of OFF builds.
-  const { registerMCPTools } = await import('../../core/mcp/MCPToolAdapter');
 
   /** Get tool registries from all active sessions */
   function getAllToolRegistries() {
@@ -905,6 +903,11 @@ async function setupMCPToolRegistration(): Promise<void> {
 
         // Register new tools on all sessions
         try {
+          // Track 22: lazy adapter import — keeps core/mcp/MCPToolAdapter out
+          // of OFF builds (this whole function is unreferenced when MCP is
+          // off, so it tree-shakes), without delaying the .on() subscription
+          // above. import() is cached after the first event.
+          const { registerMCPTools } = await import('../../core/mcp/MCPToolAdapter');
           for (const tr of getAllToolRegistries()) {
             await registerMCPTools(mcpManager!, serverName, tools, tr);
           }
@@ -954,15 +957,11 @@ async function setupMCPToolRegistration(): Promise<void> {
  * Registers/unregisters A2A skills with ToolRegistry when connections change.
  * Mirrors the setupMCPToolRegistration() pattern.
  */
-async function setupA2AToolRegistration(): Promise<void> {
+function setupA2AToolRegistration(): void {
   if (!a2aManager || !registry) {
     console.warn('[ServiceWorker] Cannot setup A2A tool registration - manager or registry not ready');
     return;
   }
-
-  // Track 22: only reached when the A2A flag is ON (caller is gated), so this
-  // dynamic import keeps core/a2a/A2AToolAdapter out of OFF builds.
-  const { registerA2ASkills } = await import('../../core/a2a/A2AToolAdapter');
 
   /** Get tool registries from all active sessions */
   function getAllToolRegistries() {
@@ -1001,6 +1000,11 @@ async function setupA2AToolRegistration(): Promise<void> {
 
         // Register new skills on all sessions
         try {
+          // Track 22: lazy adapter import — keeps core/a2a/A2AToolAdapter out
+          // of OFF builds (this whole function is unreferenced when A2A is
+          // off, so it tree-shakes), without delaying the .on() subscription
+          // above. import() is cached after the first event.
+          const { registerA2ASkills } = await import('../../core/a2a/A2AToolAdapter');
           for (const tr of getAllToolRegistries()) {
             await registerA2ASkills(a2aManager!, agentName, skills, tr, a2aAgentConfig.trusted);
           }
