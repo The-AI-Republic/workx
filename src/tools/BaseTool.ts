@@ -102,6 +102,7 @@ export interface ToolExecutionRequest {
   timeout?: number;
   metadata?: Record<string, any>; // Additional context (currentUrl, currentDomain, cwd, etc.)
   onProgress?: import('./runtimeMetadata').ToolProgressCallback; // Optional progress callback
+  signal?: AbortSignal;
 }
 
 /**
@@ -170,6 +171,7 @@ export interface ToolContext {
   callId?: string;
   metadata?: Record<string, any>;
   onProgress?: import('./runtimeMetadata').ToolProgressCallback;
+  signal?: AbortSignal;
   /**
    * x402 payment capability (Track 23). Populated centrally by
    * ToolRegistry.execute from the platform-wired capability. ONLY the
@@ -202,6 +204,7 @@ export interface BaseToolOptions {
   metadata?: Record<string, any>;
   callId?: string;
   onProgress?: import('./runtimeMetadata').ToolProgressCallback;
+  signal?: AbortSignal;
 }
 
 /**

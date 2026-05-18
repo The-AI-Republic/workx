@@ -16,6 +16,7 @@ import type {
   StreamingState,
   EventStyle,
   EventMetadata,
+  EventStatus,
 } from '@/types/ui';
 import { STYLE_PRESETS } from '@/types/ui';
 import { t } from '../../lib/i18n';
@@ -148,6 +149,7 @@ export class EventProcessor {
       case 'ToolExecutionEnd':
       case 'ToolExecutionError':
       case 'ToolExecutionTimeout':
+      case 'ToolExecutionProgress':
         return 'tool';
 
       // Command output
@@ -568,6 +570,29 @@ export class EventProcessor {
       };
     }
 
+    if (msg.type === 'ToolExecutionProgress') {
+      const data = msg.data.progress_data as unknown as Record<string, unknown>;
+      const status = typeof data.status === 'string' ? data.status : 'running';
+      const eventStatus: EventStatus =
+        status === 'failed' ? 'error' : status === 'completed' ? 'success' : 'running';
+      const message = typeof data.message === 'string'
+        ? data.message
+        : `${data.type ?? 'progress'} ${status}`;
+      return {
+        id: event.id,
+        category: 'tool',
+        timestamp: new Date(),
+        title: `tool ${msg.data.tool_name}`,
+        content: message,
+        style: STYLE_PRESETS.tool_call,
+        status: eventStatus,
+        metadata: {
+          toolName: msg.data.tool_name,
+        },
+        collapsible: false,
+      };
+    }
+
     return null;
   }
 
@@ -863,11 +888,15 @@ export class EventProcessor {
       }
 
       const cumulativeCost = msg.data.cost;
+      const pressure = msg.data.token_warning_state;
       const content = t('Tokens: $1$', { substitutions: [usage.total_tokens?.toLocaleString() || '0'] }) +
   '\n  ' + t('Input: $1$', { substitutions: [usage.input_tokens?.toLocaleString() || '0'] }) +
     (usage.cached_input_tokens ? ` (${usage.cached_input_tokens.toLocaleString()} ${t('cached')})` : '') +
   '\n  ' + t('Output: $1$', { substitutions: [usage.output_tokens?.toLocaleString() || '0'] }) +
     (usage.reasoning_output_tokens ? '\n  ' + t('Reasoning: $1$', { substitutions: [usage.reasoning_output_tokens.toLocaleString()] }) : '') +
+    (pressure?.percent_used !== undefined
+      ? '\n  ' + t('Context: $1$ used', { substitutions: [`${pressure.percent_used.toFixed(0)}%`] })
+      : '') +
     (typeof cumulativeCost === 'number'
       ? '\n  ' + t('Cost: $1$', { substitutions: [formatCost(cumulativeCost) + (msg.data.cost_estimated ? ' ≈' : '')] })
       : '');

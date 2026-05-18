@@ -91,6 +91,9 @@ export interface ToolRuntimeMetadata {
  */
 export interface ToolProgressData {
   type: string;
+  message?: string;
+  status?: string;
+  [key: string]: unknown;
 }
 
 /**

@@ -73,6 +73,7 @@ export class TurnContext {
   private unattended: boolean;
   private unattendedResetCapMs?: number;
   private _selectedModelKey?: string;
+  private activeToolAllowList?: ReadonlySet<string>;
 
   constructor(
     modelClient: ModelClient,
@@ -288,6 +289,20 @@ export class TurnContext {
     }
   }
 
+  setActiveToolAllowList(toolNames?: readonly string[]): void {
+    this.activeToolAllowList = toolNames && toolNames.length > 0
+      ? new Set(toolNames)
+      : undefined;
+  }
+
+  getActiveToolAllowList(): readonly string[] | undefined {
+    return this.activeToolAllowList ? [...this.activeToolAllowList] : undefined;
+  }
+
+  isAllowedByActiveToolAllowList(toolName: string): boolean {
+    return !this.activeToolAllowList || this.activeToolAllowList.has(toolName);
+  }
+
   /**
    * Replace the model client instance.
    * Used for cross-provider model switching where setModel() alone is insufficient.
@@ -330,7 +345,14 @@ export class TurnContext {
    * Get model context window size
    */
   getModelContextWindow(): number | undefined {
-    return this.modelClient.getModelContextWindow();
+    return this.modelClient.getModelContextWindow?.();
+  }
+
+  /**
+   * Get the model-specific token count where automatic compaction should begin.
+   */
+  getAutoCompactTokenLimit(): number | undefined {
+    return this.modelClient.getAutoCompactTokenLimit?.();
   }
 
   /**

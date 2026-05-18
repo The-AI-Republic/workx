@@ -1,7 +1,7 @@
 # Track 27 — Tool Progress UX & Sibling Abort Activation (follow-up to Track 02)
 
 Date: 2026-05-15
-Status: OPEN — P1/P2
+Status: DONE — P1/P2 (implemented 2026-05-18)
 Follows up: [Track 02 — Tool Metadata & Concurrency](../02_tool_metadata_concurrency_DONE/design.md) (shipped PR #197)
 Audit source: design-vs-implementation audit 2026-05-15 (independently verified against source on `agent-improvements`; re-verified 2026-05-18 on `origin/agent-improvements` at `cd1e339e`; re-verified after pull 2026-05-18 on `origin/agent-improvements` at `e9bbff26`)
 

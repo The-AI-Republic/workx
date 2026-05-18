@@ -225,4 +225,57 @@ describe('executeToolCallBatches', () => {
     const results = await executeToolCallBatches(batches, async (call) => call.id);
     expect(results).toEqual(['a']);
   });
+
+  it('cancels safe siblings with synthetic results after one concurrent failure', async () => {
+    const calls: PreparedToolCall[] = [
+      { id: 'a', name: 'safe1', rawArguments: {}, parsedArguments: {}, isConcurrencySafe: true },
+      { id: 'b', name: 'safe2', rawArguments: {}, parsedArguments: {}, isConcurrencySafe: true },
+      { id: 'c', name: 'safe3', rawArguments: {}, parsedArguments: {}, isConcurrencySafe: true },
+    ];
+    const batches = partitionToolCalls(calls);
+    const seenSignals: AbortSignal[] = [];
+
+    const results = await executeToolCallBatches(
+      batches,
+      async (call, options) => {
+        seenSignals.push(options!.signal!);
+        if (call.id === 'b') return 'fail:b';
+        await new Promise(resolve => setTimeout(resolve, 20));
+        return `ok:${call.id}`;
+      },
+      {
+        shouldAbortOnResult: result => result.startsWith('fail'),
+        makeCancelledResult: call => `cancelled:${call.id}`,
+      },
+    );
+
+    expect(results).toEqual(['cancelled:a', 'fail:b', 'cancelled:c']);
+    expect(seenSignals.every(signal => signal.aborted)).toBe(true);
+  });
+
+  it('does not pass abort signals to unsafe sequential siblings', async () => {
+    const batches = [{
+      isConcurrencySafe: false,
+      calls: [
+        { id: 'a', name: 'unsafe1', rawArguments: {}, parsedArguments: {}, isConcurrencySafe: false },
+        { id: 'b', name: 'unsafe2', rawArguments: {}, parsedArguments: {}, isConcurrencySafe: false },
+      ],
+    }];
+    const signals: Array<AbortSignal | undefined> = [];
+
+    const results = await executeToolCallBatches(
+      batches,
+      async (call, options) => {
+        signals.push(options?.signal);
+        return (call.id === 'a' ? 'fail:a' : 'ok:b') as string;
+      },
+      {
+        shouldAbortOnResult: result => result.startsWith('fail'),
+        makeCancelledResult: call => `cancelled:${call.id}`,
+      },
+    );
+
+    expect(results).toEqual(['fail:a', 'ok:b']);
+    expect(signals).toEqual([undefined, undefined]);
+  });
 });

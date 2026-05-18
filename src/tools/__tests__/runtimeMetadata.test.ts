@@ -60,6 +60,8 @@ describe('ToolRegistry runtime metadata', () => {
       expect(gate.check).toHaveBeenCalledWith('test', {}, riskAssessor, {
         sessionId: 's1',
         turnId: 't1',
+      }, {
+        hookSnapshot: undefined,
       });
     });
 

@@ -19,6 +19,11 @@ import type {
 } from './protocol/events';
 import type { CompactionResult } from './compact/types';
 import { estimateRequestTokens } from './compact/utils';
+import {
+  getAutoCompactRatio,
+  getAutoCompactTokenLimit,
+  shouldAutoCompactTokens,
+} from './compact/tokenPressure';
 import { TokenUsageStore } from '@/storage/TokenUsageStore';
 import type { TokenUsageRecord } from '@/storage/types';
 
@@ -127,7 +132,6 @@ export class TaskRunner {
   private cancelResolve: (() => void) | null = null;
   private state: TaskState;
   private static readonly MAX_TURNS = 500;
-  private static readonly COMPACTION_THRESHOLD = 0.85; // 85% of the context window
 
   constructor(
     session: Session,
@@ -505,6 +509,7 @@ export class TaskRunner {
 
   private async emitTaskStarted(): Promise<void> {
     const contextWindow = this.turnContext.getModelContextWindow();
+    const autoCompactLimit = this.turnContext.getAutoCompactTokenLimit?.();
     const toolsConfig = this.turnContext.getToolsConfig();
     const enabledTools = Object.entries(toolsConfig)
       .filter(([, enabled]) => Boolean(enabled))
@@ -519,7 +524,7 @@ export class TaskRunner {
       approval_policy: this.turnContext.getApprovalPolicy(),
       sandbox_policy: this.turnContext.getSandboxPolicy(),
       auto_compact: this.options.autoCompact !== false,
-      compaction_threshold: TaskRunner.COMPACTION_THRESHOLD,
+      compaction_threshold: getAutoCompactRatio(contextWindow, autoCompactLimit),
       tools: enabledTools,
       tools_config: toolsConfig as Record<string, unknown>,
       timeout_ms: this.options.timeoutMs,
@@ -816,10 +821,10 @@ export class TaskRunner {
 
     // Check token limits
     const contextWindow = this.turnContext.getModelContextWindow();
+    const autoCompactLimit = this.turnContext.getAutoCompactTokenLimit?.();
     const tokenLimitReached = Boolean(
       totalTokenUsage &&
-      contextWindow &&
-      totalTokenUsage.total_tokens >= contextWindow * TaskRunner.COMPACTION_THRESHOLD
+      shouldAutoCompactTokens(totalTokenUsage.total_tokens, contextWindow, autoCompactLimit)
     );
 
     return {
@@ -866,14 +871,15 @@ export class TaskRunner {
     const toolsConfig = this.turnContext.getToolsConfig();
     const toolCount = Object.values(toolsConfig).filter(Boolean).length;
     const estimatedTokens = estimateRequestTokens(turnInput, instructionsLength, toolCount);
-    const threshold = contextWindow * TaskRunner.COMPACTION_THRESHOLD;
+    const autoCompactLimit = this.turnContext.getAutoCompactTokenLimit?.();
+    const threshold = getAutoCompactTokenLimit(contextWindow, autoCompactLimit);
 
-    if (estimatedTokens >= threshold) {
+    if (typeof threshold === 'number' && estimatedTokens >= threshold) {
       console.debug('[TaskRunner] Pre-request compaction check', {
         estimatedTokens,
         contextWindow,
         thresholdTokens: threshold,
-        thresholdRatio: TaskRunner.COMPACTION_THRESHOLD,
+        thresholdRatio: getAutoCompactRatio(contextWindow, autoCompactLimit),
       });
       return true;
     }
@@ -991,7 +997,9 @@ export class TaskRunner {
     const taskId = this.options.taskId;
     if (!store || !taskId) return;
     try {
+      const fromSeq = await store.getLastSeq(taskId);
       await store.appendChunk(taskId, 'event', JSON.stringify(payload));
+      await this.emitTaskOutputDelta(taskId, fromSeq, await store.getLastSeq(taskId), 'event');
     } catch (err) {
       console.warn(`[TaskRunner] appendChunk(event) failed for ${taskId}:`, err);
     }
@@ -1006,10 +1014,30 @@ export class TaskRunner {
     const taskId = this.options.taskId;
     if (!store || !taskId || data.length === 0) return;
     try {
+      const fromSeq = await store.getLastSeq(taskId);
       await store.appendChunk(taskId, kind, data);
+      await this.emitTaskOutputDelta(taskId, fromSeq, await store.getLastSeq(taskId), kind);
     } catch (err) {
       console.warn(`[TaskRunner] appendChunk(${kind}) failed for ${taskId}:`, err);
     }
+  }
+
+  private async emitTaskOutputDelta(
+    taskId: string,
+    fromSeq: number,
+    toSeq: number,
+    kind: 'stdout' | 'stderr' | 'event' | 'message',
+  ): Promise<void> {
+    if (toSeq <= fromSeq) return;
+    await this.emitEvent({
+      type: 'BackgroundTaskOutputDelta',
+      data: {
+        taskId,
+        fromSeq,
+        toSeq,
+        kindCounts: { [kind]: toSeq - fromSeq },
+      },
+    });
   }
 
   /** Drain pending writes in the in-memory queue. */
@@ -1045,7 +1073,10 @@ export class TaskRunner {
     return {
       used: this.state.tokenBudget.used,
       max: this.state.tokenBudget.max,
-      compactionThreshold: TaskRunner.COMPACTION_THRESHOLD,
+      compactionThreshold: getAutoCompactRatio(
+        this.turnContext.getModelContextWindow(),
+        this.turnContext.getAutoCompactTokenLimit?.(),
+      ),
     };
   }
 }
