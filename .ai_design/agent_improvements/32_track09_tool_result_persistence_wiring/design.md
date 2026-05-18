@@ -3,10 +3,10 @@
 Date: 2026-05-15
 Status: OPEN — P1 (entire Track 09 feature is inert in shipped builds)
 Follows up: [Track 09 — Tool Result Persistence](../09_tool_result_persistence_DONE/design.md) (shipped PR #213)
-Audit source: design-vs-implementation audit 2026-05-15 (independently verified against source on `agent-improvements`)
+Audit source: design-vs-implementation audit 2026-05-15 (independently verified against source on `agent-improvements`; re-verified 2026-05-18 on `origin/agent-improvements` at `cd1e339e`; re-verified after pull 2026-05-18 on `origin/agent-improvements` at `e9bbff26`)
 
-> Follow-up track. Track 09's design doc is **not** modified. This captures the single
-> integration gap that makes the entire shipped Track 09 subsystem do nothing in production.
+> Follow-up track. Track 09's design doc is **not** modified. This captures the production
+> integration gap that keeps the shipped Track 09 subsystem inert in normal boots.
 
 ## Why this track exists
 
@@ -19,20 +19,24 @@ no production bootstrap injects the services that own the store.
 This is exactly the "✅ shipped but unverified" failure mode: the unit tests pass because
 they construct stores directly, masking the fact that the production code path never gets one.
 
-## Verified gap (single root cause)
+## Verified gap (production wiring root cause)
 
 - `RepublicAgent` is the sole production `Session` constructor:
   `src/core/RepublicAgent.ts:74` → `new Session(this.config, true, undefined, this.toolRegistry, initialHistory)`
   — the **services argument is `undefined`** on extension, desktop, server, and mobile.
-- `Session.getToolResultStore()` (`src/core/Session.ts:933`) returns the store only if
-  `services` was supplied; with `undefined` it always returns `undefined`.
+- `Session` now has a service-aware constructor path and will construct a
+  `ContentReplacementState` / tool-result store when the caller supplies services. That
+  means the missing capability is no longer inside `Session`; the remaining production gap
+  is that the `RepublicAgent` path still passes `undefined`.
+- `Session.getToolResultStore()` returns the store only if services were supplied; with the
+  current `RepublicAgent` construction it still returns `undefined` in shipped boots.
 - `TurnManager` short-circuits both persistence tiers when there is no store:
   `src/core/TurnManager.ts:927` and `:1017` (`this.session.getToolResultStore?.()` → undefined → early return).
 - `createSessionServices` exists (`src/core/session/state/SessionServices.ts:134`) and
-  `Session.ts:228` would read `this.services?.serverRootDir`, but no bootstrap calls the
-  factory for the `RepublicAgent` path. `Session.ts:1275-1283` even carries comments
-  acknowledging the missing wiring ("createSessionServices might not be available if not
-  passed").
+  `Session` can consume `sessionCache` / `serverRootDir`, but no bootstrap calls the factory
+  for the `RepublicAgent` path with those backing services. The fallback services created
+  during session initialization are minimal runtime services, not the storage services that
+  make Track 09 active.
 
 Net effect: oversized tool results are **not** persisted on any platform; the agent's
 `read_persisted_result` path is never reachable; tier-2 budget enforcement never triggers via
@@ -41,8 +45,9 @@ builds.
 
 ## Goals
 
-1. Construct a `SessionServices` in every production bootstrap and pass it to
-   `RepublicAgent` → `Session`, so `getToolResultStore()` returns a real store.
+1. Construct a `SessionServices` in every production bootstrap and pass it through
+   `RepublicAgent` to the already service-aware `Session`, so `getToolResultStore()`
+   returns a real store.
 2. Populate platform-correct backends:
    - extension / desktop / mobile → `sessionCache` backed by a `SessionCacheManager`
      (`CacheToolResultStore`)
@@ -60,8 +65,9 @@ builds.
 
 - Add a single shared helper (or reuse `createSessionServices`) invoked by each bootstrap:
   - `RepublicAgent` accepts an optional pre-built `SessionServices` (or the deps to build
-    one) and passes it as the `Session` services argument instead of `undefined`
-    (`RepublicAgent.ts:74`).
+    one) and passes it as the `Session` services argument instead of `undefined`. Preserve
+    the existing `Session` service-aware constructor; the change is to the production
+    caller path.
   - Extension service worker / `DesktopAgentBootstrap` / mobile bootstrap: build
     `SessionServices` with `sessionCache: new SessionCacheManager(dbAdapter)` (a
     `SessionCacheManager` is already constructed for `StorageTool` at

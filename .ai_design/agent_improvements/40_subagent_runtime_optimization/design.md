@@ -5,6 +5,11 @@
 **Claudy reference**: `/home/rich/dev/study/claudy/src/tools/AgentTool`, `/home/rich/dev/study/claudy/src/tools/AgentTool/forkSubagent.ts`, `/home/rich/dev/study/claudy/src/tools/AgentTool/runAgent.ts`
 **BrowserX reference**: `src/tools/AgentTool`, `src/core/engine`, `src/core/Session.ts`, `src/core/skills`
 
+**Implementation status (2026-05-18, `origin/agent-improvements` `e9bbff26`)**: implemented
+by PR #243 with review follow-ups. Re-verification found one remaining design-level guard:
+there is max-depth protection and per-type fork opt-in, but no explicit fork-recursion/tag
+guard equivalent to Claudy's "already forked" check.
+
 ## End-To-End Goal
 
 After this track is implemented, BrowserX has one coherent sub-agent runtime with two context modes:

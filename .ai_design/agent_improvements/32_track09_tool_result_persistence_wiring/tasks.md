@@ -5,7 +5,7 @@ Follows up [Track 09](../09_tool_result_persistence_DONE/design.md). See `design
 ## Phase 1 — RepublicAgent accepts services
 
 - [ ] 1.1 Let `RepublicAgent` accept an optional pre-built `SessionServices` (or deps) and
-      pass it to `new Session(...)` instead of `undefined` (`RepublicAgent.ts:74`).
+      pass it to the existing service-aware `new Session(...)` path instead of `undefined`.
 - [ ] 1.2 Integration test: a real `RepublicAgent`→`Session` built for a client platform has
       `getToolResultStore()` non-undefined (the test PR #213 lacked).
 

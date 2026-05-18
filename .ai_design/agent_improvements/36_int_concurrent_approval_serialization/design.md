@@ -4,7 +4,7 @@ Date: 2026-05-15
 Status: OPEN — P2 (Medium)
 Type: Cross-track integration bug
 Tracks involved: [Track 02 Concurrency](../02_tool_metadata_concurrency_DONE/design.md) × [Track 01 Hooks](../01_hook_event_system_DONE/design.md) (approval gate)
-Source: cross-track integration audit 2026-05-15, independently re-verified against on-disk source on `agent-improvements`.
+Source: cross-track integration audit 2026-05-15, independently re-verified against on-disk source on `agent-improvements`; re-verified 2026-05-18 on `origin/agent-improvements` at `cd1e339e`; re-verified after pull 2026-05-18 on `origin/agent-improvements` at `e9bbff26`.
 
 ## Summary
 

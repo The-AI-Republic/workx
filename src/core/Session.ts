@@ -64,6 +64,7 @@ import { isTerminalTaskStatus } from './tasks/types';
 import type { AgentContext } from '../tools/AgentTool/types';
 import { PANEL_GRACE_MS, STOPPED_DISPLAY_MS } from './tasks/timing';
 import type { TaskOutputStore } from './tasks/TaskOutputStore';
+import type { ShadowAgentScheduler } from './shadowAgent';
 
 // Track 09: tool result persistence
 import {
@@ -128,6 +129,13 @@ export class Session {
   // Title generation stage: 0 = not started, 1 = generated at 2 messages, 2 = generated at 5 messages (final)
   private titleGenerationStage: number = 0;
   private initializationPromise: Promise<void> | null = null;
+  /**
+   * Fatal initialization error for a non-persistent child/forked session.
+   * A forked sub-agent told it inherited the parent conversation must not
+   * silently run with empty history, so this is surfaced from initialize()
+   * rather than swallowed (see constructor non-persistent branch).
+   */
+  private initError: Error | null = null;
   private hookDispatcher: HookDispatcher | null = null;
 
   // Track 05b: per-session post-turn callbacks (e.g. session-summary
@@ -136,6 +144,8 @@ export class Session {
   // The session-summary hook itself is owned here and disposed in shutdown().
   private postTurnHooks: PostTurnHook[] = [];
   private _sessionSummaryHook: SessionSummaryHookHandle | null = null;
+  private shadowAgentScheduler: ShadowAgentScheduler | null = null;
+  private shadowCompactPrepareEnabled = false;
 
   // Tool result persistence (track 09). Both fields are undefined when the
   // platform deps required to build a store aren't available — TurnManager
@@ -272,6 +282,21 @@ export class Session {
       // Resume from existing rollout (note: initializeSession will also reconstruct history)
       this.initializationPromise = this.initializeSession('resume', this.sessionId, this.config).catch(err => {
         console.error('Failed to resume session:', err);
+      });
+    } else if (!this.isPersistent && historyMode.mode !== 'new') {
+      // Non-persistent child sessions (sub-agents, shadow agents, forks)
+      // still need their in-memory parent/fork history reconstructed before
+      // the first turn. There is no rollout writer to await, but keeping the
+      // same initialization seam lets engines call session.initialize()
+      // uniformly.
+      this.initializationPromise = this.recordInitialHistory(historyMode).catch(err => {
+        console.error('Failed to initialize non-persistent session history:', err);
+        // Forked/child context is a correctness precondition: surface the
+        // failure via initialize() so the sub-agent runner reports an error
+        // instead of running with empty history. Recorded as a flag rather
+        // than a rejected promise to avoid an unhandled-rejection before
+        // initialize() is awaited.
+        this.initError = err instanceof Error ? err : new Error(String(err));
       });
     }
   }
@@ -581,6 +606,14 @@ export class Session {
     return this._sessionSummaryHook;
   }
 
+  setShadowAgentScheduler(scheduler: ShadowAgentScheduler | null): void {
+    this.shadowAgentScheduler = scheduler;
+  }
+
+  setShadowCompactPreparationEnabled(enabled: boolean): void {
+    this.shadowCompactPrepareEnabled = enabled;
+  }
+
   /**
    * Compatibility: Initialize session components
    * Note: Refactored Session initializes in constructor, this is for backward compatibility
@@ -589,6 +622,9 @@ export class Session {
     // Wait for background initialization if it's in progress
     if (this.initializationPromise) {
       await this.initializationPromise;
+    }
+    if (this.initError) {
+      throw this.initError;
     }
     return Promise.resolve();
   }
@@ -771,6 +807,8 @@ export class Session {
       {
         sessionId: this.sessionId,
         sessionSummaryHook: this._sessionSummaryHook,
+        shadowScheduler: this.shadowAgentScheduler ?? undefined,
+        enableShadowPrepare: this.shadowCompactPrepareEnabled,
       },
     );
 

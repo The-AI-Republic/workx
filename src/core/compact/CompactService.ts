@@ -27,6 +27,12 @@ import { isSessionSummaryEmpty } from '../sessionSummary/SessionSummaryFileStore
 import { truncateSessionSummaryForCompact } from '../sessionSummary/truncate';
 import type { SessionSummaryHook } from '../sessionSummary/SessionSummaryHook';
 import type { SessionSummaryTelemetryName } from '../protocol/events';
+import {
+  ShadowAgentKind,
+  ShadowContextPolicy,
+  ShadowFailurePolicy,
+  type ShadowAgentScheduler,
+} from '../shadowAgent';
 
 /**
  * Track 05b: opt-in extras the caller (Session) threads through. Optional
@@ -36,6 +42,8 @@ import type { SessionSummaryTelemetryName } from '../protocol/events';
 export interface CompactExtras {
   sessionId?: string;
   sessionSummaryHook?: SessionSummaryHook | null;
+  shadowScheduler?: ShadowAgentScheduler;
+  enableShadowPrepare?: boolean;
 }
 
 /**
@@ -146,6 +154,32 @@ export class CompactService {
             {},
           );
         }
+      }
+    }
+
+    if (extras?.enableShadowPrepare && extras.shadowScheduler) {
+      try {
+        const shadow = await extras.shadowScheduler.run({
+          kind: ShadowAgentKind.Compact,
+          prompt: 'Prepare a concise compaction context note for the provided conversation. Return only the note.',
+          contextPolicy: ShadowContextPolicy.CompactCandidate,
+          context: { compactCandidateHistory: history },
+          failurePolicy: ShadowFailurePolicy.Fallback,
+          fallback: () => undefined,
+          dedupeKey: sessionId ? `${sessionId}:compact` : undefined,
+          metadata: { sessionId, trigger, phase: 'compact_prepare' },
+        });
+        if (shadow.status === 'completed' && shadow.outputText?.trim()) {
+          const shadowHint = shadow.outputText.trim();
+          sessionSummaryHint = sessionSummaryHint
+            ? `${sessionSummaryHint}\n\nShadow compaction note:\n${shadowHint}`
+            : shadowHint;
+        }
+      } catch (err) {
+        console.warn(
+          '[Compaction] shadow prepare failed; using direct compaction:',
+          err instanceof Error ? err.message : String(err),
+        );
       }
     }
 

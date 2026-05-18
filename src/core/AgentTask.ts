@@ -47,6 +47,7 @@ export class AgentTask {
     input: ResponseItem[],
     options?: {
       maxTurns?: number;
+      drainPendingMessages?: () => string[];
       /**
        * (Track 04) Optional output store + task id. When provided, the
        * underlying TaskRunner persists chunks for background-task panels
@@ -74,6 +75,7 @@ export class AgentTask {
       {
         autoCompact: true,
         maxTurns: options?.maxTurns,
+        drainPendingMessages: options?.drainPendingMessages,
         taskOutputStore: options?.taskOutputStore,
         taskId: options?.taskId,
       }

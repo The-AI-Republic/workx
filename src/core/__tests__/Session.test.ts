@@ -207,6 +207,29 @@ describe('Session', () => {
       await session.initialize();
       await expect(session.initialize()).resolves.toBeUndefined();
     });
+
+    it('surfaces a non-persistent forked history init failure instead of swallowing it', async () => {
+      // Regression: a forked sub-agent is told it inherited the parent
+      // conversation. If reconstruct/persist fails it must NOT silently run
+      // with empty history — initialize() has to reject so the runner reports it.
+      const consoleErr = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const recordSpy = vi
+        .spyOn(Session.prototype as any, 'recordInitialHistory')
+        .mockRejectedValue(new Error('forked reconstruct failed'));
+
+      try {
+        const session = new Session(undefined, false, undefined, undefined, {
+          mode: 'forked',
+          sourceConversationId: 'parent-session',
+          rolloutItems: [],
+        });
+        await expect(session.initialize()).rejects.toThrow('forked reconstruct failed');
+        expect(consoleErr).toHaveBeenCalled();
+      } finally {
+        recordSpy.mockRestore();
+        consoleErr.mockRestore();
+      }
+    });
   });
 
   // =========================================================================
