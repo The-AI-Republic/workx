@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest';
-import { PromptComposer, type AgentType } from '../PromptComposer';
+import { FRAGMENTS, PromptComposer, type AgentType } from '../PromptComposer';
 import { registerExternalPersonas, clearExternalPersonas } from '../PersonaLoader';
 
 function expectInOrder(text: string, labels: string[]): void {
@@ -97,6 +97,51 @@ describe('PromptComposer', () => {
 
       expect(browserx.length).toBeLessThan(9500);
       expect(applepi.length).toBeLessThan(9500);
+    });
+  });
+
+  describe('agent modes', () => {
+    it('defaults to general mode (no code guardrails)', () => {
+      const prompt = composer.composeMainInstruction('applepi');
+      expect(prompt).not.toContain('Software Engineering Guardrails');
+      expect(prompt).toContain('desktop automation agent');
+    });
+
+    it('code mode swaps identity + tool guidance and appends guardrails', () => {
+      const general = composer.composeMainInstruction('applepi', 'general');
+      const code = composer.composeMainInstruction('applepi', 'code');
+
+      expect(code).toContain('Code mode');
+      expect(code).toContain('Software Engineering Guardrails');
+      expect(code).toContain('dedicated file tools');
+      expect(code).not.toEqual(general);
+    });
+
+    it('code mode applies to applepi-server too', () => {
+      const code = composer.composeMainInstruction('applepi-server', 'code');
+      expect(code).toContain('Software Engineering Guardrails');
+    });
+
+    it('browserx ignores mode (always general prompt)', () => {
+      const asGeneral = composer.composeMainInstruction('browserx', 'general');
+      const asCode = composer.composeMainInstruction('browserx', 'code');
+      expect(asCode).toEqual(asGeneral);
+      expect(asCode).not.toContain('Software Engineering Guardrails');
+    });
+
+    it('shared fragments are present in every mode', () => {
+      for (const mode of ['general', 'code'] as const) {
+        const prompt = composer.composeMainInstruction('applepi', mode);
+        expect(prompt).toContain('## Action Risk and Approval');
+        expect(prompt.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('declares mode-specific prompt sections in the fragment manifest', () => {
+      expect(FRAGMENTS.some((f) => f.id === 'coder-intro' && f.modes?.includes('code'))).toBe(true);
+      expect(FRAGMENTS.some((f) => f.id === 'coder-tools' && f.modes?.includes('code'))).toBe(true);
+      expect(FRAGMENTS.some((f) => f.id === 'code-guardrails' && f.modes?.includes('code'))).toBe(true);
+      expect(FRAGMENTS.some((f) => f.id === 'pi-tools' && f.modes?.includes('general'))).toBe(true);
     });
   });
 

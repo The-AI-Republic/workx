@@ -162,7 +162,7 @@ export class TurnManager {
     // Falls back to the value cached on TurnContext if reload throws.
     let baseInstructions: string | undefined;
     try {
-      baseInstructions = await loadPrompt();
+      baseInstructions = await loadPrompt(this.turnContext.getAgentMode());
     } catch (err) {
       console.warn('[TurnManager] loadPrompt() failed, reusing cached base instructions:', err);
       baseInstructions = this.turnContext.getBaseInstructions();

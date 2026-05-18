@@ -32,7 +32,8 @@
   // Multi-thread support
   import { get } from 'svelte/store';
   import ThreadBar from '../../components/threads/ThreadBar.svelte';
-  import { threadStore } from '../../stores/threadStore';
+  import { threadStore, activeThread } from '../../stores/threadStore';
+  import { MODES, DEFAULT_MODE, type AgentMode } from '@/prompts/PromptComposer';
   import { ThreadEventRouter } from '../../routing/ThreadEventRouter';
   // UI channel client (platform-agnostic)
   let client: UIChannelClient | null = $state(null);
@@ -168,6 +169,21 @@
           const data = (msg as any).data;
           if (data && 'tabId' in data) {
             currentTabId = data.tabId!;
+          }
+        } else if (msg.type === 'ModeChanged' && 'data' in msg) {
+          // Backend is the source of truth — commit on applied, show pending
+          // otherwise. Never flip optimistically on click.
+          const { sessionId, mode, applied } = (msg as any).data;
+          if (applied) {
+            threadStore.setThreadMode(sessionId, mode);
+            const event: Event = { id: `evt_${Date.now()}`, msg };
+            if (sessionId === activeSessionId) {
+              handleEvent(event);
+            } else {
+              handleEventForSession(event, sessionId);
+            }
+          } else {
+            threadStore.setThreadPendingMode(sessionId, mode);
           }
         } else if (msg.type === 'BackgroundEvent' && 'data' in msg) {
           const data = (msg as any).data;
@@ -1336,6 +1352,26 @@
   }
 
   /**
+   * Request a per-session persona mode switch for the active thread.
+   * Backend is the source of truth — we do NOT flip the UI optimistically.
+   * The tab commits its mode only when a ModeChanged{applied:true} event
+   * arrives (see threadRouter.onChannel). Deferred switches surface as a
+   * pending state until the running task completes.
+   */
+  async function setSessionMode(mode: AgentMode) {
+    if (!activeSessionId || !client) return;
+    if (($activeThread?.mode ?? DEFAULT_MODE) === mode && !$activeThread?.pendingMode) return;
+    try {
+      await client.submitOp(
+        { type: 'SetSessionMode', mode },
+        { sessionId: activeSessionId },
+      );
+    } catch (error) {
+      console.error('Failed to set session mode:', error);
+    }
+  }
+
+  /**
    * Handle new thread button click from ThreadBar
    */
   async function handleNewThread() {
@@ -1462,6 +1498,33 @@
             {/if}
           </div>
           <div class="flex items-center space-x-2">
+            {#if platform.platformName !== 'extension' && activeSessionId}
+              {@const activeMode = $activeThread?.mode ?? DEFAULT_MODE}
+              {@const pendingMode = $activeThread?.pendingMode ?? null}
+              <div class="flex items-center gap-1" role="group" aria-label={$_t("Agent mode")}>
+                {#each Object.values(MODES).filter((m) => !m.agentTypes || m.agentTypes.includes('applepi') || m.agentTypes.includes('applepi-server')) as modeSpec (modeSpec.id)}
+                  {@const isActive = activeMode === modeSpec.id && !pendingMode}
+                  {@const isPending = pendingMode === modeSpec.id}
+                  <button
+                    type="button"
+                    onclick={() => setSessionMode(modeSpec.id)}
+                    title={isPending ? $_t("Switching after current task…") : $_t("Switch agent mode")}
+                    aria-pressed={isActive}
+                    class="text-xs px-2 py-0.5 rounded font-[inherit] cursor-pointer transition-opacity
+                      {isActive
+                        ? (currentTheme === 'modern'
+                            ? 'bg-chat-accent/15 text-chat-accent dark:text-chat-accent-dark font-semibold'
+                            : 'bg-[rgba(34,197,94,0.15)] border border-term-dim-green text-term-bright-green')
+                        : (currentTheme === 'modern'
+                            ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:opacity-100 opacity-70'
+                            : 'text-term-dim-green hover:text-term-green opacity-70 hover:opacity-100')}
+                      {isPending ? 'animate-pulse' : ''}"
+                  >
+                    {modeSpec.label}{#if isPending}…{/if}
+                  </button>
+                {/each}
+              </div>
+            {/if}
             {#if isProcessing}
               <TerminalMessage type="warning" content={$_t("[PROCESSING]")} />
             {/if}
