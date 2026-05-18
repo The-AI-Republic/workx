@@ -10,6 +10,7 @@ export type DesktopRuntimeFrame =
     }
   | {
       type: 'hello-ok';
+      nonce?: string;
       protocolVersion: number;
       runtimeProfile: 'desktop-runtime';
       pid: number;

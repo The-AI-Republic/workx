@@ -3,6 +3,9 @@ import { stdin as defaultStdin, stdout as defaultStdout } from 'node:process';
 import type { Readable, Writable } from 'node:stream';
 import type { DesktopRuntimeFrame } from './frames';
 
+/** Hard cap on a single frame payload (and on an unframed header run). */
+export const MAX_FRAME_BYTES = 64 * 1024 * 1024;
+
 export class StdioFrameCarrier extends EventEmitter {
   private buffer = Buffer.alloc(0);
   private started = false;
@@ -43,14 +46,24 @@ export class StdioFrameCarrier extends EventEmitter {
     this.buffer = Buffer.concat([this.buffer, chunk]);
     while (true) {
       const newline = this.buffer.indexOf(0x0a);
-      if (newline < 0) return;
+      if (newline < 0) {
+        // No frame header yet. Guard against an unbounded run of bytes with no
+        // newline (a peer that never frames) exhausting memory.
+        if (this.buffer.length > MAX_FRAME_BYTES) {
+          this.emit('error', new Error('Frame header exceeds maximum size; dropping buffer'));
+          this.buffer = Buffer.alloc(0);
+        }
+        return;
+      }
 
       const lengthText = this.buffer.subarray(0, newline).toString('utf-8').trim();
       const length = Number(lengthText);
-      if (!Number.isInteger(length) || length < 0) {
-        this.emit('error', new Error(`Invalid frame length: ${lengthText}`));
-        this.buffer = Buffer.alloc(0);
-        return;
+      if (!/^\d+$/.test(lengthText) || !Number.isInteger(length) || length < 0 || length > MAX_FRAME_BYTES) {
+        // Resync: drop only the bad header line and keep scanning, so one stray
+        // non-frame line (e.g. a stray stdout write) cannot kill the stream.
+        this.emit('error', new Error(`Invalid frame length: ${JSON.stringify(lengthText)}`));
+        this.buffer = this.buffer.subarray(newline + 1);
+        continue;
       }
 
       const frameStart = newline + 1;

@@ -437,17 +437,26 @@ fn main() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| {
-            if let RunEvent::WindowEvent {
-                label,
-                event: WindowEvent::CloseRequested { api, .. },
-                ..
-            } = event
-            {
-                // Prevent the window from being destroyed — hide it to tray instead
-                api.prevent_close();
-                if let Some(window) = app.get_webview_window(&label) {
-                    let _ = window.hide();
+            match event {
+                RunEvent::WindowEvent {
+                    label,
+                    event: WindowEvent::CloseRequested { api, .. },
+                    ..
+                } => {
+                    // Prevent the window from being destroyed — hide it to tray instead
+                    api.prevent_close();
+                    if let Some(window) = app.get_webview_window(&label) {
+                        let _ = window.hide();
+                    }
                 }
+                // Best-effort: stop the runtime sidecar promptly on app teardown
+                // so a `node` child is never orphaned (kill_on_drop is the backstop).
+                RunEvent::ExitRequested { .. } | RunEvent::Exit => {
+                    runtime_supervisor::kill_on_exit(
+                        app.state::<runtime_supervisor::RuntimeSupervisorState>().inner(),
+                    );
+                }
+                _ => {}
             }
         });
 }

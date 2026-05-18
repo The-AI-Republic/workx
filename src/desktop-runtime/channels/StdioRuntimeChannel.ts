@@ -78,11 +78,9 @@ export class StdioRuntimeChannel implements ChannelAdapter {
   }
 
   private async handleFrame(frame: DesktopRuntimeFrame): Promise<void> {
-    if (frame.type === 'ping') {
-      this.carrier.send({ type: 'pong', id: frame.id, ts: Date.now() });
-      return;
-    }
-
+    // `ping`/`hello`/`shutdown`/`control-response` are handled centrally in the
+    // runtime entrypoint so health works during bootstrap before this channel
+    // attaches. This channel only owns inbound agent submissions.
     if (frame.type === 'request') {
       if (!this.submissionHandler) {
         this.carrier.send({ type: 'response', id: frame.id, ok: false, error: 'No submission handler registered' });
