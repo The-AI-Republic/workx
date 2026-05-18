@@ -44,9 +44,9 @@ Tracks 12–25 come from deeper claudy↔browserx comparison (2026-05-14) target
 | 20 | [Managed / Policy Settings Tier](./20_managed_policy_settings_DONE/design.md) ✅ DONE (PR #237, merged 2026-05-16) | P1 | Medium (full MDM P3/L) | Policy tier in **both** config systems + explicit `lockedKeys`; shared ETag/poll/fail-open remote fetcher (reused by Tracks 12/16). Code-grounded design. |
 | 21 | [Remote Bridge & Relay](./21_remote_bridge_relay_DEFERRED/design.md) DEFERRED | P1 | Large | NAT-free relay + viewer/driver. Replay rides **existing** `nextSeq` + `HandshakeSnapshotProviders` (not new infra); relay gated on hosted infra; teleport P3. Code-grounded design. |
 | 22 | [Feature Flags & Lazy Loading](./22_feature_flags_lazy_loading_DONE/design.md) ✅ DONE (PR #242, merged 2026-05-18) | P2 | Medium | Vite `define` `__FEATURE_*__` (same mechanism as `__BUILD_MODE__:vite.config.mjs:116`) + gated dynamic imports; pairs with existing `FeatureFlagRecorder`. Sequenced before 21/23. Code-grounded design. |
-| 23 | [Agentic Payments (x402)](./23_agentic_payments_x402/design.md) | P2 (strategic) | Medium | ⚠️ **ERROR — NEEDS EDIT** (headless fail-closed rests on a false mechanism: cites the exec manager but routes through `ApprovalGate`/core manager, which fail-**OPEN** on server — see doc banner & `14_plan_review_DONE` Correction 4). HTTP 402 micropayments. **No global fetch chokepoint in browserx** → opt-in capability for resource tools, never auto-pay on navigation; flag-gated, vetted crypto. Code-grounded design. |
+| 23 | [Agentic Payments (x402)](./23_agentic_payments_x402_DONE/design.md) ✅ DONE (PR #238, merged 2026-05-18) | P2 (strategic) | Large | HTTP 402 micropayments through an explicit `ResourceFetchTool`, never browser navigation auto-pay. Adds x402 config/caps/tracker, vetted signing surface, platform-specific custody, extension detect/surface behavior, desktop approval-gated signing, and server default-deny allowlist/budget policy. |
 | 24 | [Minor UX & Hardening Follow-ups](./24_minor_ux_hardening_followups_DONE/design.md) ✅ DONE (PR #240, merged 2026-05-16) | P1–P2 (per item) | Small–Medium each | Bundle: Fuse ranking (P1/S), personas (P2/S), prompt suggestion NOT speculation (P2/M), server `execSync` hardening + `execFileSync` injection fix (P2/M), sync deferred (P2/L) + fail-closed secret scanner (P2/S). Code-grounded design. |
-| 25 | [Autonomous & Reactive Context Compaction](./25_context_compaction_robustness/design.md) | P1 | Small–Medium | Wires the **already-correct** `Session.shouldCompact()` into the existing post-turn hook (`Session.ts:519`) so the headless/main loop self-compacts (only the sub-agent path does today); adds reactive 413/context-overflow recovery on Track 12's model-call boundary + circuit breaker; unifies the 3 inconsistent thresholds. Wiring + safety-net, not a `CompactService` rewrite. Code-grounded design. |
+| 25 | [Autonomous & Reactive Context Compaction](./25_context_compaction_robustness_DONE/design.md) ✅ DONE | P1 | Small–Medium | Adds the RepublicAgent-level auto-compaction post-turn hook, reactive 413/context-overflow compact-and-retry on Track 12's model-call boundary, max-3 circuit breakers, canonical 0.8/model-provided threshold helpers, and token-pressure warning tiers. |
 
 ### Follow-up Tracks from DONE-track Audit (2026-05-15)
 
@@ -64,13 +64,13 @@ design, zero runtime impact — no follow-up track).**
 
 | # | Follow-up Track | Origin | Severity | Headline gap |
 |---|-----------------|--------|----------|--------------|
-| 26 | [Hook System Completion](./26_track01_hook_system_completion/design.md) | Track 01 | P1 | `TaskCompleted` never fires on failure/abort; tool hooks get no browser/runtime context; `HookResult` event + `Stop` firing site missing |
-| 27 | [Tool Progress UX & Sibling Abort](./27_track02_progress_ux_sibling_abort/design.md) | Track 02 | P1/P2 | Progress pipeline is plumbed but **dead** (no tool calls `onProgress`); no per-batch `AbortController`; `data_extraction` bound-tab fix unmet |
-| 28 | [Skill Security & Server Parity](./28_track03_skill_security_server_parity/design.md) | Track 03 | **P1 (security)** | `allowed-tools` parsed + returned but **never enforced**; server bootstrap has no skill executor/assessor; `src/core/commands/` orphaned dead code |
-| 29 | [Background Task Delivery](./29_track04_background_task_delivery/design.md) | Track 04 | **P1** | 4 background-task events never emitted/routed; UI never mounted; production `TieredEvictor` unwired; Q7 approval hang |
-| 30 | [Session Memory Privacy UI](./30_track05_memory_privacy_ui/design.md) | Track 05 | P2 | No in-UI view/clear of stored memory (privacy requirement); core-cap diverges from design |
-| 31 | [Session Summary E2E Coverage](./31_track05b_session_summary_e2e/design.md) | Track 05b | P2 | Full extract→file→interlock→fold loop never tested together; feature-flag location diverges from design §15 |
-| 32 | [Tool Result Persistence Wiring](./32_track09_tool_result_persistence_wiring/design.md) | Track 09 | **P1** | Entire subsystem **inert in every shipped build** — no bootstrap injects `SessionServices`, so `getToolResultStore()` is always undefined |
+| 26 | [Hook System Completion](./26_track01_hook_system_completion_DONE/design.md) ✅ DONE (2026-05-18) | Track 01 | P1 | `TaskCompleted` now fires exactly once on success/failure/abort, tool hooks receive bounded browser/runtime context with per-tool snapshots, `HookResult` telemetry is emitted per hook, `Stop` fires from accepted abort paths without veto power, and config hook watchers are cleaned up on agent teardown. |
+| 27 | [Tool Progress UX & Sibling Abort](./27_track02_progress_ux_sibling_abort_DONE/design.md) ✅ DONE (2026-05-18) | Track 02 | P1/P2 | Tool progress now emits through `TurnManager`/`ToolRegistry` into the sidepanel, Navigation/DOM/WebScraping/PageVision produce bounded checkpoints, safe parallel batches abort siblings on first failure/denial with synthetic cancelled results, and `data_extraction` uses the bound tab so it is concurrency-safe. |
+| 28 | [Skill Security & Server Parity](./28_track03_skill_security_server_parity_DONE/design.md) ✅ DONE (2026-05-18) | Track 03 | **P1 (security)** | `allowed-tools` now gates model-visible tools and dispatch, forked sub-agents inherit the gate, server/extension use shared `use_skill` + `SkillRiskAssessor` wiring, `agent:` validates against known sub-agent types, ActiveTab updates are debounced, and the orphaned core command layer was removed while preserving plugin command storage. |
+| 29 | [Background Task Delivery](./29_track04_background_task_delivery_DONE/design.md) ✅ DONE (2026-05-18) | Track 04 | **P1** | Background task lifecycle/output events now emit and route into the UI store without transcript pollution, the chat badge/polling path is mounted, extension quota pressure uses task-output-first tiered eviction, pending approvals unwind on abort, and task notifications carry durable output offsets. |
+| 30 | [Session Memory Privacy UI](./30_track05_memory_privacy_ui_DONE/design.md) ✅ DONE (2026-05-18) | Track 05 | P2 | Memory settings now show a bounded current-memory snapshot via `memory.getSnapshot`, support confirmed `memory.clearAll`, hide when no memory service is available, and codify the intentional 8000-character core-memory v1 cap. |
+| 31 | [Session Summary E2E Coverage](./31_track05b_session_summary_e2e_DONE/design.md) ✅ DONE (2026-05-18) | Track 05b | P2 | Added a deterministic Node integration harness for post-turn trigger → real `summary.md` write → compaction interlock wait → `<session_summary>` fold, and recorded `preferences.sessionSummaryEnabled` as the accepted v1 flag location. |
+| 32 | [Tool Result Persistence Wiring](./32_track09_tool_result_persistence_wiring_DONE/design.md) ✅ DONE (2026-05-18) | Track 09 | **P1** | Production bootstraps now pass `SessionServices` into `RepublicAgent`/`Session`, extension/desktop use cache-backed stores, server uses `{dataDir}/sessions`, and integration coverage proves persist/read-back/tier-2/cleanup/resume paths with a real store. |
 
 > Note (Track 07): the narrowed shipped scope (reactive `modelStore` + `ApprovalPolicyChanged`)
 > is fully and correctly implemented. The only inconsistency is that `07_*/design.md` and
@@ -89,11 +89,11 @@ the single-track gaps in 26–32**. Filed as bug-report tracks (detail + fix in 
 
 | # | Integration Track | Seam | Severity | Defect |
 |---|-------------------|------|----------|--------|
-| 33 | [Tool-Exec Route Consistency](./33_int_tool_exec_route_consistency/design.md) | T09×11×02 | **P1** | Track 09 tier-2 aggregate budget is **skipped on the legacy single-call route** — the default OpenAI-Responses/xAI path (flag off). Routes B/C enforce it; route A doesn't → unbounded multi-result context on the most common config |
-| 34 | [Extractor ↔ Task Seam](./34_int_extractor_task_seam/design.md) | T04×05b×01 | **P0 (Critical)** | 05b quiet extractor is registered as a Track-04 task but `markTypedTaskTerminated` is gated out by `quietBackground` → **permanent phantom "running" task** → badge pollution + eviction `setInterval` never stops + shutdown timer/child-engine leaks |
-| 35 | [Reactive Config Staleness](./35_int_reactive_config_staleness/design.md) | T07×11×01 | P1 | Mid-session config change doesn't invalidate the cached model client → **stale `parallelToolCalls`** (no `section:'tools'` listener; cache key omits it); hook registry can swap mid-tool (Pre vs Post different generations) |
-| 36 | [Concurrent Approval Serialization](./36_int_concurrent_approval_serialization/design.md) | T02×01 | P2 | Track 02 parallel batch + no per-key mutex in `ApprovalGate.check()` → N **duplicate approval prompts** for one logical decision; `rememberDecision` doesn't short-circuit siblings (no auth leak — verified) |
-| 37 | [Persisted-Result Durability](./37_int_persisted_result_durability/design.md) | T09×04×storage | P1 | Persisted tool results can vanish under their rollout pointer: kind-blind session `autoEvict`; model can `cache_storage_tool delete` its own blob; prod quota manager clears the **wrong** store (rollout cache) under pressure |
+| 33 | [Tool-Exec Route Consistency](./33_int_tool_exec_route_consistency_DONE/design.md) ✅ DONE (2026-05-18) | T09×11×02 | **P1** | Legacy flag-off `function_call` route now applies Track 09 tier-2 aggregate enforcement at `Completed`, preserving immediate execution while capping multi-result context growth. |
+| 34 | [Extractor ↔ Task Seam](./34_int_extractor_task_seam_DONE/design.md) ✅ DONE (2026-05-18) | T04×05b×01 | **P0 (Critical)** | Track 41 already moved extraction to shadow runtime; final fix aborts active typed tasks during `Session.shutdown()` and clears the Track-04 eviction interval so teardown cannot leak timers/tasks. |
+| 35 | [Reactive Config Staleness](./35_int_reactive_config_staleness_DONE/design.md) ✅ DONE (2026-05-18) | T07×11×01 | P1 | Model-client cache keys now include construction-time config (`parallelToolCalls`, provider/model signature), `tools`/`provider` changes invalidate/refresh clients, and tool executions use one hook snapshot across Pre/Permission/Post/failure. |
+| 36 | [Concurrent Approval Serialization](./36_int_concurrent_approval_serialization_DONE/design.md) ✅ DONE (2026-05-18) | T02×01 | P2 | `ApprovalGate.check()` now serializes in-flight prompts per approval memory key, so concurrent same-key calls share one hook/prompt and remembered decisions apply to siblings while distinct keys stay independent. |
+| 37 | [Persisted-Result Durability](./37_int_persisted_result_durability_DONE/design.md) ✅ DONE (2026-05-18) | T09×04×storage | P1 | Persisted tool-result blobs are protected from session auto-eviction and model delete/update, and extension quota pressure now evicts tier0 task output then tier1 ordinary cache items instead of rollout pointers or protected `tool_result` blobs. |
 
 > Sequencing: **34 (Critical)** → **33 / 37 / 35 (P1)** → **36 (P2)**. Track 37 BUG-3's
 > `TieredEvictor` ordering must be decided jointly with Track 29 G3 + Track 32 Phase 5 (one
@@ -104,10 +104,11 @@ the single-track gaps in 26–32**. Filed as bug-report tracks (detail + fix in 
 | # | Track | Priority | Effort | Value |
 |---|-------|----------|--------|-------|
 | 38 | [Keyboard Shortcut System](./38_keyboard_shortcut_system_DONE/design.md) ✅ DONE (PR #241, merged 2026-05-18) | P1 | Medium | Centralize BrowserX shortcuts around action IDs, active contexts, resolver/display helpers, validation, and platform-specific extension/desktop mappings; selectively adopts claudy's keybinding architecture without terminal-specific assumptions. |
-| 39 | [Dynamic Tool Management](./39_dynamic_tool_management/design.md) | P1 | Medium | Provider-neutral adaptation of claudy's ToolSearch: keep full internal tool availability, defer MCP/A2A/plugin schemas from initial model requests, expose `tool_search`, hydrate selected schemas on the next request, and preserve approval/policy enforcement. |
-| 40 | [Sub-Agent Runtime Optimization](./40_subagent_runtime_optimization/design.md) | P1 | Medium–Large | Implemented by PR #243 with one follow-up left from the design audit: add an explicit fork-recursion/tag guard beyond the shipped max-depth + per-type fork opt-in protections. |
+| 39 | [Dynamic Tool Management](./39_dynamic_tool_management_DONE/design.md) ✅ DONE | P1 | Large | Provider-neutral adaptation of claudy's ToolSearch: full internal tool availability, deferred MCP/A2A/plugin schemas, always-loaded `tool_search`, selected-schema hydration on the next request, and unchanged approval/policy enforcement. |
+| 40 | [Sub-Agent Runtime Optimization](./40_subagent_runtime_optimization_DONE/design.md) ✅ DONE | P1 | Medium–Large | PR #243 plus follow-ups completed typed sub-agent behavior, fork context mode, child history seams, skill integration, events, task-state coverage, and the final explicit fork-recursion/tag guard. |
 | 41 | [Shadow Agent Runtime](./41_shadow_agent_runtime_DONE/design.md) ✅ DONE (PR #245, merged 2026-05-18) | P1 | Medium–Large | Runtime-only `ShadowAgentRunner`/scheduler for internal background jobs; session-summary extraction migrated off quiet sub-agents, with diagnostics/failure policies and compaction prep covered by tests. |
 | 42 | [System Prompt Content Improvements](./42_system_prompt_content_improvements_DONE/design.md) ✅ DONE (PR #244, merged 2026-05-18) | P1 | Small–Medium | Compare claudy's prompt sections with BrowserX's composed prompt; add missing system semantics/action-risk/memory-staleness/skill anti-guessing guidance while trimming verbose duplicated planning/tool-loop prose. |
+| 43 | [Apple Pi Runtime Decoupling](./43_apple_pi_runtime_decoupling/design.md) ⚠ PARTIAL | P1 | XL | Desktop now defaults to the Rust-supervised runtime sidecar relay, with the legacy WebView bootstrap no longer called by UI startup/shutdown/login flows. Remaining work: runtime config relay cleanup, deleting retired bootstrap/Rust command surfaces, packaging/native-addon proof, and full parity/hardening. |
 
 ## Dependency Graph
 
@@ -153,7 +154,7 @@ Recommended sequencing: 12 (P0, correctness) → 13 (P0, spine) → {14, 15, 16,
 
 01_hook_event_system_DONE        ──> 26_track01_hook_system_completion (TaskCompleted-on-abort, tool ctx, HookResult, Stop)
 02_tool_metadata_concurrency_DONE──> 27_track02_progress_ux_sibling_abort (activate dead progress pipeline + AbortController)
-03_command_skill_system_DONE     ──> 28_track03_skill_security_server_parity (allowed-tools enforcement [security] + server parity)
+03_command_skill_system_DONE     ──> 28_track03_skill_security_server_parity_DONE (allowed-tools enforcement [security] + server parity)
 04_typed_task_families_DONE      ──> 29_track04_background_task_delivery (emit/route events + mount UI + TieredEvictor)
 05_session_memory_DONE           ──> 30_track05_memory_privacy_ui (view/clear memory UI)
 05b_..._interlock_DONE           ──> 31_track05b_session_summary_e2e (full-loop E2E + flag-location reconcile)
@@ -164,13 +165,13 @@ Priority order for follow-ups: 32 (feature dead in prod) ≈ 28 (security) ≈ 2
 
 --- Cross-track integration defects (33–37, added 2026-05-15) ---
 
-T09 × T11 × T02  (tool-exec routes) ──> 33_int_tool_exec_route_consistency (tier-2 skipped on legacy route)
-T04 × T05b × T01 (Session/sub-agent)──> 34_int_extractor_task_seam (phantom task + timer/engine leaks) [CRITICAL]
+T09 × T11 × T02  (tool-exec routes) ──> 33_int_tool_exec_route_consistency_DONE (tier-2 legacy-route gap resolved)
+T04 × T05b × T01 (Session/sub-agent)──> 34_int_extractor_task_seam_DONE (phantom task + timer/engine leaks resolved)
 T07 × T11 × T01  (reactive config)  ──> 35_int_reactive_config_staleness (stale client flag + mid-tool hook swap)
 T02 × T01        (parallel+approval)──> 36_int_concurrent_approval_serialization (duplicate prompts)
 T09 × T04 × store(persist+cache)    ──> 37_int_persisted_result_durability (blob vanishes under rollout pointer)
 claudy keybindings comparison       ──> 38_keyboard_shortcut_system_DONE (action IDs + contexts + validation + platform global mapping)
-claudy ToolSearch comparison        ──> 39_dynamic_tool_management (deferred model-facing schemas + provider-neutral tool_search hydration)
+claudy ToolSearch comparison        ──> 39_dynamic_tool_management_DONE (deferred model-facing schemas + provider-neutral tool_search hydration)
 claudy AgentTool/forkSubagent       ──> 40_subagent_runtime_optimization (enum AgentType + isolated/forked subagent modes)
 claudy runForkedAgent               ──> 41_shadow_agent_runtime_DONE (runtime-only shadow agents for internal background jobs)
 claudy system prompt comparison     ──> 42_system_prompt_content_improvements_DONE (system semantics + action risk + prompt-size reduction)

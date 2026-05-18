@@ -1,6 +1,6 @@
 # Track 23: Agentic Payments (x402)
 
-**Priority: P2 (strategic / forward-looking)** · **Effort: L** (was M — see "Why effort grew") · **Status: READY TO IMPLEMENT (prototype-gated, self-contained)**
+**Priority: P2 (strategic / forward-looking)** · **Effort: L** (was M — see "Why effort grew") · **Status: DONE — merged via PR #238**
 
 > Source: claudy↔browserx grounding passes (2026-05-14 / multi-platform 2026-05-15 / **end-to-end implementation-readiness rewrite 2026-05-16**). The 2026-05-16 pass read **all six** claudy x402 files in full and ran four code-grounding agents over `browserx/src` (HTTP/tool seams, the approval/gate path, the dependency tracks, the credential stores), then verified the load-bearing browserx files first-hand. Every file:line below was checked against current `src/`. Speculative + security-sensitive: prototype behind the in-track config gate; **no real funds before Phase 4**.
 

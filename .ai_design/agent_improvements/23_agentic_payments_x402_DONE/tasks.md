@@ -1,6 +1,6 @@
 # Track 23 Tasks
 
-> **Status (2026-05-16):** READY TO IMPLEMENT, prototype-gated. Effort **L**.
+> **Status (2026-05-18):** DONE — merged into `agent-improvements` via PR #238. Effort **L**.
 > Phases match `design.md` numbering exactly (Phase 0–4) so the two stay
 > consistent. **Phase 0–1 are zero-funds and ship the gate + dry-run** — do
 > these first; nothing signs or spends until Phase 2, and the track goal is
@@ -189,8 +189,8 @@ allowlisted**; navigation 402s observed, never paid.
 ## Cross-cutting
 
 - [ ] `.ai_design/agent_improvements/README.md` — add/refresh the Track 23 row (effort **L**, prototype-gated) and Dependency Graph: in-track slices for 22/18/20 (note the `_DONE`-unreliable lesson — these are *verified absent*, not assumed); Track 14 used ext/desktop only.
-- [ ] After each phase merges: tick the section here and update `design.md` Status.
-- [ ] Rename dir to `23_agentic_payments_x402_DONE` only after **all** phases merge; note in README which phases shipped (suffix-is-unreliable convention).
+- [x] After each phase merges: tick the section here and update `design.md` Status.
+- [x] Rename dir to `23_agentic_payments_x402_DONE` only after **all** phases merge; note in README which phases shipped (suffix-is-unreliable convention).
 
 ---
 
