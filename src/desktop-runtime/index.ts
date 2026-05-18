@@ -1,5 +1,6 @@
 import { setRuntimeProfile } from '@/runtime/profile';
 import {
+  assertDesktopRuntimeHost,
   createDevDesktopRuntimeHost,
   setDesktopRuntimeHost,
   type DesktopRuntimeHost,
@@ -18,7 +19,7 @@ import { PiRuntimeBootstrap } from './PiRuntimeBootstrap';
 
 async function loadHost(): Promise<DesktopRuntimeHost> {
   const raw = process.env.APPLEPI_DESKTOP_RUNTIME_HOST;
-  if (raw) return JSON.parse(raw) as DesktopRuntimeHost;
+  if (raw) return assertDesktopRuntimeHost(JSON.parse(raw) as DesktopRuntimeHost);
   return createDevDesktopRuntimeHost();
 }
 

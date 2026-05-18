@@ -60,8 +60,8 @@ async function init() {
     }
   }
 
-  // 1. Initialize the legacy in-WebView bootstrap only when explicitly opted out
-  // of the sidecar runtime relay.
+  // 1. Initialize the legacy in-WebView bootstrap unless the sidecar runtime
+  // relay has been explicitly opted in.
   if (!useRuntimeRelay) {
     try {
       const { initializeDesktopAgent } = await import('../agent/DesktopAgentBootstrap');

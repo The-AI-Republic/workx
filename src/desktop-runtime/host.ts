@@ -14,8 +14,24 @@ export interface DesktopRuntimeHost {
 
 let host: DesktopRuntimeHost | null = null;
 
+const REQUIRED_HOST_KEYS: Array<keyof DesktopRuntimeHost> = [
+  'configDir',
+  'storageDbPath',
+  'rolloutDbPath',
+  'configJsonPath',
+];
+
+export function assertDesktopRuntimeHost(nextHost: DesktopRuntimeHost): DesktopRuntimeHost {
+  for (const key of REQUIRED_HOST_KEYS) {
+    if (typeof nextHost[key] !== 'string' || nextHost[key].trim() === '') {
+      throw new Error(`Desktop runtime host is missing required path: ${key}`);
+    }
+  }
+  return nextHost;
+}
+
 export function setDesktopRuntimeHost(nextHost: DesktopRuntimeHost): void {
-  host = nextHost;
+  host = assertDesktopRuntimeHost(nextHost);
 }
 
 export function getDesktopRuntimeHost(): DesktopRuntimeHost {
@@ -24,7 +40,7 @@ export function getDesktopRuntimeHost(): DesktopRuntimeHost {
   const encoded = typeof process !== 'undefined' ? process.env.APPLEPI_DESKTOP_RUNTIME_HOST : undefined;
   if (encoded) {
     try {
-      host = JSON.parse(encoded) as DesktopRuntimeHost;
+      host = assertDesktopRuntimeHost(JSON.parse(encoded) as DesktopRuntimeHost);
       return host;
     } catch (error) {
       throw new Error(`Invalid APPLEPI_DESKTOP_RUNTIME_HOST JSON: ${error instanceof Error ? error.message : String(error)}`);
@@ -46,10 +62,16 @@ export async function createDevDesktopRuntimeHost(): Promise<DesktopRuntimeHost>
   const os = await import('node:os');
   const path = await import('node:path');
 
+  if (process.env.APPLEPI_DESKTOP_RUNTIME_ALLOW_DEV_HOST !== 'true') {
+    throw new Error(
+      'APPLEPI_DESKTOP_RUNTIME_HOST is required. Set APPLEPI_DESKTOP_RUNTIME_ALLOW_DEV_HOST=true only for local sidecar development.'
+    );
+  }
+
   const configDir = process.env.APPLEPI_DESKTOP_CONFIG_DIR
     ?? path.join(os.homedir(), '.config', 'apple-pi-dev');
 
-  return {
+  return assertDesktopRuntimeHost({
     configDir,
     storageDbPath: path.join(configDir, 'storage.db'),
     rolloutDbPath: path.join(configDir, 'rollouts.db'),
@@ -61,5 +83,5 @@ export async function createDevDesktopRuntimeHost(): Promise<DesktopRuntimeHost>
     keychainServicePrefix: 'applepi',
     platform: process.platform,
     arch: process.arch,
-  };
+  });
 }
