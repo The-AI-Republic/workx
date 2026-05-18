@@ -48,6 +48,15 @@ vi.mock('@/tools/PlanningTool', () => ({
 
 vi.mock('@/tools/WebSearchTool', () => ({
   WebSearchTool: vi.fn().mockImplementation(() => mockWebSearchTool),
+  // registerServerTools also destructures WEB_SEARCH_CONCURRENCY from this
+  // module (added in track-14); the mock must provide it or vitest throws
+  // "No WEB_SEARCH_CONCURRENCY export is defined on the mock". Mirrors the
+  // real ToolConcurrencyProfile shape in src/tools/WebSearchTool.ts.
+  WEB_SEARCH_CONCURRENCY: {
+    isConcurrencySafe: () => true,
+    isReadOnly: () => true,
+    isDestructive: () => false,
+  },
 }));
 
 vi.mock('@/core/approval/assessors/StaticRiskAssessor', () => ({
