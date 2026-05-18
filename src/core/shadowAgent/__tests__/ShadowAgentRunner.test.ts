@@ -66,4 +66,45 @@ describe('ShadowAgentRunner', () => {
     expect(child.run).toHaveBeenCalledWith([{ type: 'text', text: 'update summary' }], expect.anything());
     expect(child.dispose).toHaveBeenCalled();
   });
+
+  it('marks the child engine as a shadow child so it cannot recurse into shadow compaction', async () => {
+    const registry = new ToolRegistry();
+    await registry.register(fnDef('file_edit'), vi.fn());
+
+    let childConfig: any;
+    const child = {
+      engineId: 'child-1',
+      initialize: vi.fn(),
+      run: vi.fn().mockResolvedValue({
+        success: true,
+        response: 'done',
+        tokenUsage: { input_tokens: 1, output_tokens: 2, total_tokens: 3 },
+      }),
+      dispose: vi.fn(),
+    };
+    const parent = {
+      engineId: 'parent-1',
+      getToolRegistry: () => registry,
+      getSession: () => ({
+        getSessionId: () => 'session-1',
+        getConversationHistory: () => ({ items: [] }),
+      }),
+      createChildEngine: vi.fn((config) => {
+        childConfig = config;
+        return child;
+      }),
+      pushEvent: vi.fn(),
+    } as unknown as RepublicAgentEngine;
+
+    const runner = new ShadowAgentRunner({ parentEngine: parent });
+    await runner.run({
+      kind: ShadowAgentKind.SessionSummary,
+      parentEngine: parent,
+      prompt: 'update summary',
+      systemPrompt: 'summary system',
+      contextPolicy: ShadowContextPolicy.ParentHistory,
+    });
+
+    expect(childConfig.isShadowAgentChild).toBe(true);
+  });
 });
