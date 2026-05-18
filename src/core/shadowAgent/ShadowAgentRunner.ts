@@ -224,13 +224,20 @@ function combineAbortSignals(a?: AbortSignal, b?: AbortSignal): AbortSignal | un
   if (!a) return b;
   if (!b) return a;
   const controller = new AbortController();
-  const abort = () => controller.abort();
   if (a.aborted || b.aborted) {
     controller.abort();
-  } else {
-    a.addEventListener('abort', abort, { once: true });
-    b.addEventListener('abort', abort, { once: true });
+    return controller.signal;
   }
+  // Remove the listener from the *other* signal when either fires, so a
+  // long-lived caller-provided signal does not accumulate one dead listener
+  // per shadow run.
+  const onAbort = () => {
+    controller.abort();
+    a.removeEventListener('abort', onAbort);
+    b.removeEventListener('abort', onAbort);
+  };
+  a.addEventListener('abort', onAbort, { once: true });
+  b.addEventListener('abort', onAbort, { once: true });
   return controller.signal;
 }
 

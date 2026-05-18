@@ -111,10 +111,10 @@ export class ShadowAgentScheduler {
 
     if (policy === 'abort_previous') {
       for (const active of this.active.values()) {
-        if (active.request.kind === job.request.kind) active.abortController.abort();
+        if (matching(active)) active.abortController.abort();
       }
       for (let i = this.queued.length - 1; i >= 0; i -= 1) {
-        if (this.queued[i].request.kind === job.request.kind) {
+        if (matching(this.queued[i])) {
           this.finishCancelled(this.queued.splice(i, 1)[0], 'replaced by newer shadow job');
         }
       }
@@ -122,7 +122,7 @@ export class ShadowAgentScheduler {
 
     if (policy === 'coalesce_latest') {
       for (let i = this.queued.length - 1; i >= 0; i -= 1) {
-        if (this.queued[i].request.kind === job.request.kind) {
+        if (matching(this.queued[i])) {
           this.emitCoalesced(this.queued[i], 'replaced by latest shadow job');
           this.finishCancelled(this.queued.splice(i, 1)[0], 'coalesced by newer shadow job');
         }

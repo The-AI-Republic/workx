@@ -32,6 +32,31 @@ describe('ShadowAgentScheduler', () => {
     await expect(queued2).resolves.toMatchObject({ status: 'completed', runId: 'queued-2' });
   });
 
+  it('coalesce_latest only coalesces queued jobs sharing the same dedupeKey', async () => {
+    const first = deferred<ShadowAgentResult>();
+    const runner = fakeRunner(async (request) => {
+      if (request.runId === 'active') return first.promise;
+      return result(request.runId);
+    }, ['active', 'sessA-1', 'sessB-1', 'sessA-2']);
+    const scheduler = makeScheduler(runner);
+
+    // Hold one job active so the rest queue behind it (totalLimit: 1).
+    const active = scheduler.run({ ...req('active'), queuePolicy: 'coalesce_latest', dedupeKey: 'A' });
+    await Promise.resolve();
+
+    const sessA1 = scheduler.run({ ...req('a1'), queuePolicy: 'coalesce_latest', dedupeKey: 'A' });
+    const sessB1 = scheduler.run({ ...req('b1'), queuePolicy: 'coalesce_latest', dedupeKey: 'B' });
+    // Newer key-A job must coalesce the queued key-A job but leave key-B alone.
+    const sessA2 = scheduler.run({ ...req('a2'), queuePolicy: 'coalesce_latest', dedupeKey: 'A' });
+
+    first.resolve(result('active'));
+
+    await expect(active).resolves.toMatchObject({ status: 'completed', runId: 'active' });
+    await expect(sessA1).resolves.toMatchObject({ status: 'cancelled' });
+    await expect(sessB1).resolves.toMatchObject({ status: 'completed', runId: 'sessB-1' });
+    await expect(sessA2).resolves.toMatchObject({ status: 'completed', runId: 'sessA-2' });
+  });
+
   it('abort_previous aborts active prompt-suggestion jobs', async () => {
     const first = deferred<ShadowAgentResult>();
     const seenSignals: AbortSignal[] = [];

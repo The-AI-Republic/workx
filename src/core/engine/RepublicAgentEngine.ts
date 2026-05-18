@@ -124,7 +124,10 @@ export class RepublicAgentEngine {
 
     // Setup approval system
     this.setupApprovalSystem();
-    this.shadowAgentScheduler = new ShadowAgentScheduler({ parentEngine: this });
+    // Reuse any scheduler already handed out via getShadowAgentScheduler()
+    // before initialize() ran, so the session is wired to the same instance
+    // that dispose() shuts down (avoids a second, orphaned scheduler).
+    this.shadowAgentScheduler ??= new ShadowAgentScheduler({ parentEngine: this });
     this.session?.setShadowAgentScheduler?.(this.shadowAgentScheduler);
     const prefs = this.config.agentConfig.getConfig?.()?.preferences as
       | { shadowCompactPrepareEnabled?: boolean }
