@@ -3,19 +3,13 @@
 
 mod browser_commands;
 mod commands;
-mod db_storage;
-mod http_commands;
 mod keychain_commands;
 mod mcp_manager;
 mod oauth_server;
-mod sandbox;
 mod plugins_commands;
-mod rollout_db;
 mod runtime_supervisor;
 mod scheduler_commands;
 mod skills_commands;
-mod storage_commands;
-mod terminal_commands;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -333,7 +327,6 @@ fn main() {
 
             Ok(())
         })
-        .manage(terminal_commands::PtySessionRegistry::new())
         .manage(runtime_supervisor::RuntimeSupervisorState::default())
         .invoke_handler(tauri::generate_handler![
             commands::greet,
@@ -349,18 +342,6 @@ fn main() {
             mcp_manager::mcp_read_resource,
             mcp_manager::mcp_disconnect,
             mcp_manager::get_browser_mcp_sidecar_path,
-            // Config storage commands
-            storage_commands::config_storage_get,
-            storage_commands::config_storage_set,
-            storage_commands::config_storage_remove,
-            storage_commands::config_storage_set_many,
-            storage_commands::config_storage_remove_many,
-            storage_commands::config_storage_get_all,
-            storage_commands::config_storage_clear,
-            storage_commands::config_storage_get_size,
-            storage_commands::config_storage_get_chunk,
-            storage_commands::config_storage_append_chunk,
-            storage_commands::config_storage_commit,
             // Browser detection and CDP commands
             browser_commands::find_running_browsers,
             browser_commands::file_exists,
@@ -369,34 +350,11 @@ fn main() {
             browser_commands::launch_chrome,
             browser_commands::get_chrome_ws_endpoint,
             browser_commands::kill_process,
-            // Terminal command execution
-            terminal_commands::terminal_execute,
-            terminal_commands::terminal_write_stdin,
-            // Sandbox commands
-            sandbox::status::sandbox_check_status,
-            sandbox::status::sandbox_install_runtime,
-            // HTTP proxy command
-            http_commands::http_fetch,
-            http_commands::http_append_body_chunk,
             // Keychain commands
             keychain_commands::keychain_get,
             keychain_commands::keychain_set,
             keychain_commands::keychain_delete,
             keychain_commands::keychain_list_accounts,
-            // Rollout database commands
-            rollout_db::rollout_db_init,
-            rollout_db::rollout_db_put_metadata,
-            rollout_db::rollout_db_get_metadata,
-            rollout_db::rollout_db_delete_metadata,
-            rollout_db::rollout_db_get_all_metadata,
-            rollout_db::rollout_db_add_items,
-            rollout_db::rollout_db_get_items,
-            rollout_db::rollout_db_get_last_sequence,
-            rollout_db::rollout_db_delete_items_by_rollout_ids,
-            rollout_db::rollout_db_cleanup_expired,
-            rollout_db::rollout_db_get_stats,
-            rollout_db::rollout_db_list_conversations,
-            rollout_db::rollout_db_close,
             // OAuth callback server
             oauth_server::start_oauth_callback_server,
             // Skills filesystem commands
@@ -412,21 +370,6 @@ fn main() {
             plugins_commands::plugins_remove_dir,
             plugins_commands::plugins_rename,
             plugins_commands::plugins_path_exists,
-            // SQLite storage commands
-            db_storage::storage_init,
-            db_storage::storage_close,
-            db_storage::storage_get,
-            db_storage::storage_set,
-            db_storage::storage_delete,
-            db_storage::storage_get_many,
-            db_storage::storage_set_many,
-            db_storage::storage_delete_many,
-            db_storage::storage_list,
-            db_storage::storage_query,
-            db_storage::storage_count,
-            db_storage::storage_clear,
-            db_storage::storage_vacuum,
-            db_storage::storage_batch,
             // Scheduler OS-level job commands
             scheduler_commands::scheduler_register_os_job,
             scheduler_commands::scheduler_remove_os_job,

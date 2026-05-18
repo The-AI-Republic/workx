@@ -5,7 +5,7 @@
  * Manages multiple WebSocket client connections and routes events
  * to the appropriate clients.
  *
- * Pattern follows TauriChannel.
+ * Pattern follows the ChannelAdapter contract used by UI/runtime transports.
  *
  * @module server/channels/ServerChannel
  */
@@ -30,7 +30,7 @@ type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
 /**
  * ServerChannel implements ChannelAdapter for WebSocket connections.
  *
- * Unlike TauriChannel (single connection), ServerChannel manages multiple
+ * Unlike single-client desktop transports, ServerChannel manages multiple
  * WebSocket clients. Events are filtered per-connection based on scopes.
  *
  * Flow:

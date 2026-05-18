@@ -1,23 +1,12 @@
 /**
  * Transport implementations unit tests
  *
- * Tests sessionId routing and event dispatch for all three transports:
- * ChromeExtensionTransport, TauriTransport, WebSocketTransport
+ * Tests sessionId routing and event dispatch for UI transports:
+ * ChromeExtensionTransport and WebSocketTransport
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ChannelEvent } from '@/core/channels/types';
-
-// ---------------------------------------------------------------------------
-// Tauri mock
-// ---------------------------------------------------------------------------
-const mockTauriListen = vi.fn();
-const mockTauriEmit = vi.fn().mockResolvedValue(undefined);
-
-vi.mock('@tauri-apps/api/event', () => ({
-  listen: mockTauriListen,
-  emit: mockTauriEmit,
-}));
 
 // ---------------------------------------------------------------------------
 // WebSocket mock
@@ -66,7 +55,6 @@ class MockWebSocket {
 // Imports (after mocks are in place)
 // ---------------------------------------------------------------------------
 import { ChromeExtensionTransport } from '../ChromeExtensionTransport';
-import { TauriTransport } from '../TauriTransport';
 import { WebSocketTransport } from '../WebSocketTransport';
 
 // ---------------------------------------------------------------------------
@@ -208,109 +196,6 @@ describe('ChromeExtensionTransport', () => {
     expect(goodHandler).toHaveBeenCalledTimes(1);
 
     consoleErrorSpy.mockRestore();
-  });
-});
-
-// =========================================================================
-// TauriTransport
-// =========================================================================
-describe('TauriTransport', () => {
-  let transport: TauriTransport;
-  let capturedTauriCallback: (event: { payload: unknown }) => void;
-
-  beforeEach(() => {
-    transport = new TauriTransport();
-
-    const mockUnlisten = vi.fn();
-    mockTauriListen.mockImplementation(
-      (_eventName: string, cb: (event: { payload: unknown }) => void) => {
-        capturedTauriCallback = cb;
-        return Promise.resolve(mockUnlisten);
-      },
-    );
-    mockTauriEmit.mockResolvedValue(undefined);
-  });
-
-  it('sendOp throws when not initialized', async () => {
-    await expect(transport.sendOp({ type: 'response.create' } as any)).rejects.toThrow(
-      'TauriTransport not initialized',
-    );
-  });
-
-  it('sendOp emits pi:submit with op and context', async () => {
-    await transport.initialize();
-    const op = { type: 'conversation.item.create' } as any;
-    const context = { sessionId: 'sess-2' };
-    await transport.sendOp(op, context);
-
-    expect(mockTauriEmit).toHaveBeenCalledWith('pi:submit', { op, context });
-  });
-
-  it('initialize sets up pi:event listener', async () => {
-    await transport.initialize();
-    expect(mockTauriListen).toHaveBeenCalledWith('pi:event', expect.any(Function));
-  });
-
-  it('events with { msg, sessionId } envelope are dispatched correctly', async () => {
-    await transport.initialize();
-    const handler = vi.fn();
-    transport.onEvent(handler);
-
-    const eventMsg = fakeEventMsg();
-    capturedTauriCallback({ payload: { msg: eventMsg, sessionId: 'sess-3' } });
-
-    expect(handler).toHaveBeenCalledTimes(1);
-    const received: ChannelEvent = handler.mock.calls[0][0];
-    expect(received.msg).toEqual(eventMsg);
-    expect(received.sessionId).toBe('sess-3');
-  });
-
-  it('bare EventMsg (legacy) is wrapped in ChannelEvent', async () => {
-    await transport.initialize();
-    const handler = vi.fn();
-    transport.onEvent(handler);
-
-    const eventMsg = fakeEventMsg();
-    capturedTauriCallback({ payload: eventMsg });
-
-    expect(handler).toHaveBeenCalledTimes(1);
-    const received: ChannelEvent = handler.mock.calls[0][0];
-    expect(received.msg).toEqual(eventMsg);
-    expect(received.sessionId).toBeUndefined();
-  });
-
-  it('invalid payloads are ignored', async () => {
-    await transport.initialize();
-    const handler = vi.fn();
-    transport.onEvent(handler);
-
-    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    capturedTauriCallback({ payload: null });
-    capturedTauriCallback({ payload: 'string-payload' });
-    capturedTauriCallback({ payload: { noMsgOrType: true } });
-
-    expect(handler).not.toHaveBeenCalled();
-    consoleWarnSpy.mockRestore();
-  });
-
-  it('destroy cleans up listener', async () => {
-    await transport.initialize();
-    transport.onEvent(vi.fn());
-    await transport.destroy();
-
-    await expect(transport.sendOp({ type: 'response.create' } as any)).rejects.toThrow(
-      'TauriTransport not initialized',
-    );
-  });
-
-  it('unlisten from onEvent works', async () => {
-    await transport.initialize();
-    const handler = vi.fn();
-    const unlisten = transport.onEvent(handler);
-    unlisten();
-
-    capturedTauriCallback({ payload: { msg: fakeEventMsg(), sessionId: 's' } });
-    expect(handler).not.toHaveBeenCalled();
   });
 });
 

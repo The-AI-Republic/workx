@@ -1,11 +1,9 @@
 /**
  * Desktop Storage
  *
- * Exports storage implementations for Tauri desktop mode.
+ * Exports desktop UI storage helpers that still run in the WebView.
  *
  * @module desktop/storage
  */
 
-export { SQLiteStorageProvider } from './SQLiteStorageProvider';
 export { KeytarCredentialStore } from './KeytarCredentialStore';
-export { TauriConfigStorage } from './TauriConfigStorage';

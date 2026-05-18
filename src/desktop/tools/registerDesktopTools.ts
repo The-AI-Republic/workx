@@ -21,7 +21,6 @@ import { registerResourceFetchTool } from '../../tools/ResourceFetchTool';
 import { MCPManager } from '../../core/mcp/MCPManager';
 import { registerMCPTools } from '../../core/mcp/MCPToolAdapter';
 import { TerminalTool } from './terminal/TerminalTool';
-import { invoke } from '@tauri-apps/api/core';
 import { TerminalRiskAssessor } from '../../core/approval/assessors/TerminalRiskAssessor';
 import { McpBrowserRiskAssessor } from '../../core/approval/assessors/McpBrowserRiskAssessor';
 import { StaticRiskAssessor } from '../../core/approval/assessors/StaticRiskAssessor';
@@ -91,6 +90,9 @@ export async function registerDesktopToolsImpl(
           turnId: context.turnId,
           toolName: context.toolName,
         },
+        callId: context.callId,
+        onProgress: context.onProgress,
+        signal: context.signal,
       });
     }, riskAssessor);
   };
@@ -183,13 +185,7 @@ export async function registerDesktopToolsImpl(
   // Register terminal tool (desktop only)
   // ──────────────────────────────────────────────────────────────────────
   const terminalTool = new TerminalTool();
-  let osName: string | undefined;
-  try {
-    const platformInfo = await invoke<{ os: string; arch: string; version: string }>('get_platform_info');
-    osName = platformInfo.os;
-  } catch (error) {
-    console.warn('[registerDesktopTools] Failed to get platform info:', error);
-  }
+  const osName = process.platform;
 
   // Initialize sandbox support and fetch status for dynamic tool description
   let sandboxStatus;

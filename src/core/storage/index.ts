@@ -82,10 +82,7 @@ export async function createStorageProvider(
     return new IndexedDBStorageProvider();
   }
   if (__BUILD_MODE__ === 'desktop') {
-    const { SQLiteStorageProvider } = await import(
-      '@/desktop/storage/SQLiteStorageProvider'
-    );
-    return new SQLiteStorageProvider();
+    throw new Error('Desktop WebView storage is owned by the runtime sidecar. Use runtime services instead.');
   }
   if (__BUILD_MODE__ === 'server') {
     if (isDesktopRuntimeProfile()) {
@@ -172,10 +169,10 @@ export async function createConfigStorage(): Promise<ConfigStorageProvider> {
     return new ChromeConfigStorage();
   }
   if (__BUILD_MODE__ === 'desktop') {
-    const { TauriConfigStorage } = await import(
-      '@/desktop/storage/TauriConfigStorage'
+    const { RuntimeRelayConfigStorageProvider } = await import(
+      '@/desktop-runtime/storage/RuntimeRelayConfigStorageProvider'
     );
-    return new TauriConfigStorage();
+    return new RuntimeRelayConfigStorageProvider();
   }
   if (__BUILD_MODE__ === 'server') {
     if (isDesktopRuntimeProfile()) {

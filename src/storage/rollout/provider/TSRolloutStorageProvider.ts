@@ -2,10 +2,8 @@
  * TSRolloutStorageProvider
  *
  * TypeScript/Node.js implementation of RolloutStorageProvider using better-sqlite3.
- * Same schema as the Rust rollout_db.rs used by desktop (TauriRolloutStorageProvider),
- * but executed directly in-process via better-sqlite3.
  *
- * Used by server mode where Tauri IPC is not available.
+ * Used by server mode and by the desktop runtime sidecar.
  */
 
 import type { RolloutStorageProvider, StorageStats } from './RolloutStorageProvider';

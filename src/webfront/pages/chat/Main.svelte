@@ -32,8 +32,10 @@
   // Multi-thread support
   import { get } from 'svelte/store';
   import ThreadBar from '../../components/threads/ThreadBar.svelte';
+  import BackgroundTasksBadge from '../../components/BackgroundTasksBadge.svelte';
   import { threadStore } from '../../stores/threadStore';
   import { ThreadEventRouter } from '../../routing/ThreadEventRouter';
+  import { handleBackgroundTaskEvent, startBackgroundTaskPolling, stopBackgroundTaskPolling } from '../../stores/backgroundTaskStore';
   // UI channel client (platform-agnostic)
   let client: UIChannelClient | null = $state(null);
   let unsubscribers: Array<() => void> = $state([]);
@@ -153,11 +155,19 @@
       threadRouter.setActiveSession(activeSessionId);
 
       threadRouter.onActiveThread((channelEvent) => {
+        if (channelEvent.msg.type.startsWith('BackgroundTask')) {
+          handleBackgroundTaskEvent(channelEvent.msg);
+          return;
+        }
         const event: Event = { id: `evt_${Date.now()}`, msg: channelEvent.msg };
         handleEvent(event);
       });
 
       threadRouter.onBackgroundThread((channelEvent) => {
+        if (channelEvent.msg.type.startsWith('BackgroundTask')) {
+          handleBackgroundTaskEvent(channelEvent.msg);
+          return;
+        }
         const event: Event = { id: `evt_${Date.now()}`, msg: channelEvent.msg };
         handleEventForSession(event, channelEvent.sessionId!);
       });
@@ -183,13 +193,39 @@
       unsubscribers.push(
         client.onEvent('*', (channelEvent) => threadRouter.route(channelEvent))
       );
+      startBackgroundTaskPolling(() => {
+        if (!client || !activeSessionId) return null;
+        return {
+          async listTaskStates() {
+            const response = await client!.serviceRequest<{ tasks?: import('@/core/tasks/types').TaskState[] }>(
+              'session.listTaskStates',
+              { sessionId: activeSessionId },
+            );
+            return response.tasks ?? [];
+          },
+          async getTaskOutput(taskId: string, fromSeq = 0) {
+            const response = await client!.serviceRequest<{ chunks?: import('@/core/tasks/TaskOutputStore').TaskOutputChunk[] }>(
+              'session.getTaskOutput',
+              { sessionId: activeSessionId, taskId, fromSeq },
+            );
+            return response.chunks ?? [];
+          },
+          retainTask(taskId: string, retain: boolean) {
+            void client!.serviceRequest('session.retainTask', {
+              sessionId: activeSessionId,
+              taskId,
+              retain,
+            });
+          },
+        };
+      });
     } catch (error) {
       console.error('[App] UIChannelClient initialization failed:', error);
     }
 
     // Check if this is a scheduled job execution (US3: T022)
     // Extension: detected via URL params from chrome.tabs.create
-    // Desktop: detected via DOM event from DesktopAgentBootstrap job launcher
+    // Desktop: detected via DOM event from the runtime job launcher
     const urlParams = new URLSearchParams(window.location.search);
     const jobIdParam = urlParams.get('scheduledJob');
     const sessionIdParam = urlParams.get('sessionId');
@@ -241,6 +277,7 @@
         unsub();
       }
       unsubscribers = [];
+      stopBackgroundTaskPolling();
     };
   });
 
@@ -1462,6 +1499,7 @@
             {/if}
           </div>
           <div class="flex items-center space-x-2">
+            <BackgroundTasksBadge />
             {#if isProcessing}
               <TerminalMessage type="warning" content={$_t("[PROCESSING]")} />
             {/if}

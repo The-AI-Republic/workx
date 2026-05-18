@@ -8,9 +8,8 @@ import type { ConfigStorageProvider } from '@/core/storage/ConfigStorageProvider
  * Durability rules (this file is the user's real, pre-existing config):
  * - Writes are atomic: serialize to a temp file in the same directory, then
  *   rename over the target, so a crash mid-write cannot truncate config.json.
- * - Every operation re-reads from disk first, so a concurrent writer (the
- *   legacy Tauri `storage_commands` path during the additive phase, or another
- *   runtime instance) is not clobbered by a stale in-memory snapshot.
+ * - Every operation re-reads from disk first, so a concurrent runtime instance
+ *   is not clobbered by a stale in-memory snapshot.
  */
 export class DesktopRuntimeConfigStorageProvider implements ConfigStorageProvider {
   private data: Record<string, unknown>;

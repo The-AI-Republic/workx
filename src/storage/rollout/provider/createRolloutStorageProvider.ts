@@ -3,7 +3,7 @@
  * based on the current build mode.
  *
  * - Extension: IndexedDBRolloutStorageProvider (IndexedDB "ApplePiRollouts")
- * - Desktop:   TauriRolloutStorageProvider (invoke → Rust/rusqlite → SQLite)
+ * - Desktop:   Runtime sidecar only; WebView rollout storage is disabled
  * - Server:    TSRolloutStorageProvider (better-sqlite3 → SQLite)
  */
 
@@ -14,10 +14,7 @@ declare const __BUILD_MODE__: 'extension' | 'desktop' | 'server';
 
 export async function createRolloutStorageProvider(): Promise<RolloutStorageProvider> {
   if (__BUILD_MODE__ === 'desktop') {
-    const { TauriRolloutStorageProvider } = await import('./TauriRolloutStorageProvider');
-    const provider = new TauriRolloutStorageProvider();
-    await provider.initialize();
-    return provider;
+    throw new Error('Desktop WebView rollout storage is owned by the runtime sidecar.');
   }
 
   if (__BUILD_MODE__ === 'server') {

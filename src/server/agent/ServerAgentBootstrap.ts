@@ -16,7 +16,7 @@ import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelMan
 import type { ChannelAdapter } from '@/core/channels/ChannelAdapter';
 import { RepublicAgent } from '@/core/RepublicAgent';
 import { AgentConfig, CREDENTIAL_SECURED_MARKER } from '@/config/AgentConfig';
-import { setConfigStorage } from '@/core/storage/ConfigStorageProvider';
+import { getConfigStorage, setConfigStorage } from '@/core/storage/ConfigStorageProvider';
 import { getCredentialStore } from '@/core/storage';
 import { AuthManager } from '@/core/models/types/Auth';
 import { FileConfigStorageProvider } from '../storage/FileConfigStorageProvider';
@@ -62,6 +62,8 @@ import { registerServerTools } from '../tools/registerServerTools';
 import { redactEventMsgSecrets } from '../security/eventRedaction';
 import { schedulePeriodicSweep } from '../maintenance/toolResultCleanup';
 import { RolloutRecorder } from '@/storage/rollout';
+import { createSessionServices } from '@/core/session/state/SessionServices';
+import { registerUseSkillTool } from '@/core/skills/registerUseSkillTool';
 
 // Handler registrations
 import { registerChatHandlers } from '../handlers/chat';
@@ -239,13 +241,18 @@ export class ServerAgentBootstrap {
       const channelManager = getChannelManager();
 
       // 5. Create AgentRegistry with factories
+      const { join } = await import('node:path');
+      const serverRootDir = join(dataDir, 'sessions');
       this.registry = new AgentRegistry({
         maxConcurrent: 3,
         agentFactory: async (cfg, initialHistory) => {
           const platformAdapter = profile === 'desktop-runtime'
             ? new (await import('@/desktop-runtime/platform/DesktopRuntimePlatformAdapter')).DesktopRuntimePlatformAdapter()
             : new (await import('../platform/ServerPlatformAdapter')).ServerPlatformAdapter();
-          const agent = new RepublicAgent(cfg, platformAdapter, initialHistory);
+          const services = await createSessionServices({
+            serverRootDir,
+          }, false);
+          const agent = new RepublicAgent(cfg, platformAdapter, initialHistory, undefined, undefined, services);
           await agent.initialize();
 
           if (profile === 'server') {
@@ -266,12 +273,19 @@ export class ServerAgentBootstrap {
             }
           }
 
+          await this.registerSkillsToolOnAgent(agent);
+
           // Register sub-agent tool
           const engine = agent.getEngine();
           if (engine) {
             try {
               const { registerSubAgentTool } = await import('@/tools/AgentTool/register');
               const subAgentRunner = await registerSubAgentTool(engine);
+              if (this.skillRegistry) {
+                this.skillRegistry.setValidationContextProvider(() => ({
+                  knownAgents: subAgentRunner.getTypes().map((t) => t.id),
+                }));
+              }
               console.log('[ServerAgentBootstrap] sub_agent tool registered');
 
               // Track 10: bind this session's hook + sub-agent registries to
@@ -609,6 +623,16 @@ export class ServerAgentBootstrap {
     }
   }
 
+  private async registerSkillsToolOnAgent(agent: RepublicAgent): Promise<void> {
+    if (!this.skillRegistry) return;
+    await registerUseSkillTool({
+      toolRegistry: agent.getToolRegistry(),
+      hookRegistry: agent.getHookRegistry(),
+      skillRegistry: this.skillRegistry,
+      getTurnContext: () => agent.getSession().getTurnContext(),
+    });
+  }
+
   /**
    * Register service handlers on ChannelManager (message_routing_v2).
    * Gives server mode full service parity with the extension.
@@ -654,6 +678,14 @@ export class ServerAgentBootstrap {
       await skillRegistry.discover();
       skillsDeps = { skillRegistry };
       this.skillRegistry = skillRegistry;
+      if (this.registry) {
+        for (const meta of this.registry.listSessions()) {
+          const agent = this.registry.getSession(meta.sessionId)?.agent;
+          if (agent) {
+            await this.registerSkillsToolOnAgent(agent);
+          }
+        }
+      }
 
       console.log(`[ServerAgentBootstrap] Skills initialized, found ${skillRegistry.getSkillMetas().length} skills`);
     } catch (error) {
@@ -991,6 +1023,7 @@ export class ServerAgentBootstrap {
       skills: skillsDeps,
       plugins: pluginsDeps,
       scheduler: this.scheduler ? { scheduler: this.scheduler } : undefined,
+      storage: { configStorage: getConfigStorage() },
       session: this.registry ? { registry: this.registry } : undefined,
       agent: this.registry ? {
         registry: this.registry,
@@ -1012,6 +1045,7 @@ export class ServerAgentBootstrap {
           return performHeapDump();
         },
       },
+      memory: this.registry ? { registry: this.registry } : undefined,
     });
 
     console.log(`[ServerAgentBootstrap] Registered ${count} service handlers`);

@@ -86,7 +86,7 @@
    * Uses the same /api/v1/users/profile endpoint as the extension to get
    * accurate userType (subscription tier), instead of relying on the
    * /auth/desktop/session endpoint which may not return subscription info.
-   * Agent auth mode is already set during DesktopAgentBootstrap.initialize().
+   * Agent auth mode is already set during runtime initialization.
    */
   async function updateDesktopUserStore(): Promise<void> {
     try {

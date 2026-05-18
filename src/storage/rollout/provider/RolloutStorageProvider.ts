@@ -4,7 +4,7 @@
  * Domain-specific storage abstraction for rollout recording.
  * Each platform implements this using native capabilities:
  * - Extension: IndexedDB (IndexedDBRolloutStorageProvider)
- * - Desktop: Tauri/SQLite (TauriRolloutStorageProvider)
+ * - Desktop runtime/server: SQLite via the Node runtime
  */
 
 import type {

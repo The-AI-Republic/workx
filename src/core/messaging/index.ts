@@ -17,13 +17,10 @@
 // UIChannelClient (message_routing_v2)
 import { UIChannelClient } from './UIChannelClient';
 import { ChromeExtensionTransport } from './transports/ChromeExtensionTransport';
-import { TauriTransport } from './transports/TauriTransport';
 import { RuntimeRelayTauriTransport } from './transports/RuntimeRelayTauriTransport';
-import { isDesktopRuntimeRelayEnabled } from '@/desktop-runtime/featureFlag';
 export { UIChannelClient };
 export type { UIChannelTransport } from './transports/types';
 export { ChromeExtensionTransport };
-export { TauriTransport };
 export { RuntimeRelayTauriTransport };
 export { WebSocketTransport } from './transports/WebSocketTransport';
 
@@ -47,13 +44,8 @@ export function getUIClient(): UIChannelClient {
   // Runtime checks like __TAURI__ are unreliable because the chromePolyfill
   // installs chrome.runtime.sendMessage before __TAURI__ may be available.
   if (__BUILD_MODE__ === 'desktop') {
-    if (isDesktopRuntimeRelayEnabled()) {
-      console.log('[messaging] Selected RuntimeRelayTauriTransport (desktop runtime relay mode)');
-      transport = new RuntimeRelayTauriTransport();
-    } else {
-      console.log('[messaging] Selected TauriTransport (desktop mode)');
-      transport = new TauriTransport();
-    }
+    console.log('[messaging] Selected RuntimeRelayTauriTransport (desktop runtime sidecar)');
+    transport = new RuntimeRelayTauriTransport();
   } else if (__BUILD_MODE__ === 'extension') {
     console.log('[messaging] Selected ChromeExtensionTransport (extension mode)');
     transport = new ChromeExtensionTransport();
