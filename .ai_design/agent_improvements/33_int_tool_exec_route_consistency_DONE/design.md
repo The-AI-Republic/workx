@@ -1,7 +1,7 @@
 # Track 33 — Integration Defect: Tier-2 Budget Skipped on the Legacy Tool-Exec Route
 
 Date: 2026-05-15
-Status: OPEN — **P1 (High, security-adjacent)**
+Status: DONE — fixed 2026-05-18
 Type: Cross-track integration bug
 Tracks involved: [Track 09 Tool Result Persistence](../09_tool_result_persistence_DONE/design.md) × [Track 11 Parallel Tool Calls](../11_parallel_tool_calls_DONE/design.md) × [Track 02 Concurrency](../02_tool_metadata_concurrency_DONE/design.md)
 Source: cross-track integration audit 2026-05-15, independently re-verified against on-disk source on `agent-improvements`; re-verified 2026-05-18 on `origin/agent-improvements` at `cd1e339e`; re-verified after pull 2026-05-18 on `origin/agent-improvements` at `e9bbff26`.
@@ -30,10 +30,10 @@ All three converge on `executeToolCall` for per-call Track-01 hooks + Track-09 *
 persistence, and on `ToolRegistry.execute()` for Track-02 lifecycle events — those are
 consistent. The divergence is **tier-2 only**.
 
-## BUG — High: Route A never calls `maybeEnforceTier2`
+## BUG — Resolved 2026-05-18: Route A now reaches tier-2 aggregate enforcement
 
-**Evidence:** `maybeEnforceTier2` is defined at `TurnManager.ts:1013` and invoked only from
-route B (`:722`) and route C (`:1004`). Route A (`:659-672`) returns the
+**Original evidence:** `maybeEnforceTier2` was defined at `TurnManager.ts:1013` and invoked
+only from route B (`:722`) and route C (`:1004`). Route A (`:659-672`) returned the
 `executeToolCall` result verbatim with no tier-2 call.
 
 **Impact:** Track 09 defines two tiers — tier-1 (per-result, applied in `executeToolCall`)
@@ -52,19 +52,13 @@ This is **independent of Track 32** (the SessionServices-injection follow-up):
 (`TurnManager.ts:1017-1019`), so adding the call to route A is safe even when persistence is
 disabled, and becomes effective once Track 32 wires the store.
 
-## Fix
+## Fix shipped
 
-Make all three routes converge on tier-2. Preferred (single owner): in
-`handleResponseItem`'s `function_call` branch, after obtaining `result`, route it through
-the same enforcement B/C use — e.g. wrap the single call as a one-element `prepared` array
-and `return (await this.maybeEnforceTier2([result], [prepared]))[0]`.
-
-Alternative (structural): drop the `parallelToolCalls` flag-gate for the *single*
-`function_call` item and always fold it into the buffered path (route C), so exactly one
-code path owns tier-2 for every provider. This also shrinks the route matrix from 3 to 2 and
-removes a class of future drift — but is a larger behavioural change and should be weighed
-against Track 11's "flag-off path byte-for-byte unchanged" guarantee (the minimal fix
-preserves that guarantee; the structural fix intentionally changes it and needs its own QA).
+Route A still executes immediately when `parallelToolCalls` is off, preserving Track 11's
+flag-off execution behavior. At `Completed`, `TurnManager` now collects all immediate legacy
+`function_call_output` responses from that model response and calls `maybeEnforceTier2` once
+over the aggregate. This is stricter than the original one-element minimal sketch because it
+actually catches the documented "5 × 45K" aggregate overflow case.
 
 ## Validation
 
