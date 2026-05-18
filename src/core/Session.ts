@@ -128,6 +128,13 @@ export class Session {
   // Title generation stage: 0 = not started, 1 = generated at 2 messages, 2 = generated at 5 messages (final)
   private titleGenerationStage: number = 0;
   private initializationPromise: Promise<void> | null = null;
+  /**
+   * Fatal initialization error for a non-persistent child/forked session.
+   * A forked sub-agent told it inherited the parent conversation must not
+   * silently run with empty history, so this is surfaced from initialize()
+   * rather than swallowed (see constructor non-persistent branch).
+   */
+  private initError: Error | null = null;
   private hookDispatcher: HookDispatcher | null = null;
 
   // Track 05b: per-session post-turn callbacks (e.g. session-summary
@@ -276,12 +283,19 @@ export class Session {
         console.error('Failed to resume session:', err);
       });
     } else if (!this.isPersistent && historyMode.mode !== 'new') {
-      // Non-persistent child sessions (sub-agents, shadow agents) still need
-      // their in-memory parent/fork history reconstructed before the first
-      // turn. There is no rollout writer to await, but keeping the same
-      // initialization seam lets engines call session.initialize() uniformly.
+      // Non-persistent child sessions (sub-agents, shadow agents, forks)
+      // still need their in-memory parent/fork history reconstructed before
+      // the first turn. There is no rollout writer to await, but keeping the
+      // same initialization seam lets engines call session.initialize()
+      // uniformly.
       this.initializationPromise = this.recordInitialHistory(historyMode).catch(err => {
-        console.error('Failed to initialize non-persistent history:', err);
+        console.error('Failed to initialize non-persistent session history:', err);
+        // Forked/child context is a correctness precondition: surface the
+        // failure via initialize() so the sub-agent runner reports an error
+        // instead of running with empty history. Recorded as a flag rather
+        // than a rejected promise to avoid an unhandled-rejection before
+        // initialize() is awaited.
+        this.initError = err instanceof Error ? err : new Error(String(err));
       });
     }
   }
@@ -607,6 +621,9 @@ export class Session {
     // Wait for background initialization if it's in progress
     if (this.initializationPromise) {
       await this.initializationPromise;
+    }
+    if (this.initError) {
+      throw this.initError;
     }
     return Promise.resolve();
   }
@@ -2438,7 +2455,8 @@ export class Session {
    * task completion. Mirrors {@link maybeGenerateTitle}'s background pattern.
    */
   async maybeGenerateSuggestion(): Promise<void> {
-    if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'server') {
+    const { getRuntimeProfile } = await import('@/runtime/profile');
+    if (getRuntimeProfile() === 'server') {
       return;
     }
     // Single-flight + cooldown: a slow background call must not stack with the

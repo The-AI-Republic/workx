@@ -112,6 +112,7 @@ export class SkillRegistry {
     const parts: string[] = [];
     parts.push('You have access to user-defined skills. When a skill is relevant to the user\'s request, invoke it using the use_skill tool.');
     parts.push('When the user types a message starting with /skill-name, invoke that skill using the use_skill tool.');
+    parts.push('Only invoke skills that are listed as available or explicitly loaded. Do not guess skill names. If no listed skill fits, proceed with normal tools.');
 
     const autoSkills = this.getAutoInvocableSkills();
     if (autoSkills.length > 0) {

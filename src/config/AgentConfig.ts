@@ -204,6 +204,9 @@ export class AgentConfig implements IConfigService {
     if (oldConfig.selectedModelKey !== newConfig.selectedModelKey) {
       this.emitChangeEvent('model', oldConfig.selectedModelKey, newConfig.selectedModelKey);
     }
+    if (oldConfig.preferences !== newConfig.preferences) {
+      this.emitChangeEvent('preferences', oldConfig.preferences, newConfig.preferences);
+    }
 
     return { ...this.currentConfig };
   }

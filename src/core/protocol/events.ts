@@ -119,6 +119,7 @@ export type EventMsg =
   | { type: 'SubAgentStart'; data: SubAgentStartEvent }
   | { type: 'SubAgentComplete'; data: SubAgentCompleteEvent }
   | { type: 'SubAgentError'; data: SubAgentErrorEvent }
+  | { type: 'SubAgentWarning'; data: SubAgentWarningEvent }
   // Shadow-agent runtime events (internal observability; UI ignores by default)
   | { type: 'ShadowAgentStarted'; data: ShadowAgentRuntimeEventData }
   | { type: 'ShadowAgentCompleted'; data: ShadowAgentRuntimeEventData }
@@ -889,12 +890,18 @@ export interface HookBlockedEvent {
 export interface SubAgentStartEvent {
   runId: string;
   subAgentType: string;
+  agentType?: string;
+  contextMode?: string;
+  executionMode?: string;
   description: string;
 }
 
 export interface SubAgentCompleteEvent {
   runId: string;
   subAgentType: string;
+  agentType?: string;
+  contextMode?: string;
+  executionMode?: string;
   turnCount: number;
   tokenUsage?: {
     input: number;
@@ -905,7 +912,13 @@ export interface SubAgentCompleteEvent {
 }
 
 export interface SubAgentErrorEvent {
+  runId?: string;
+  subAgentType?: string;
+  error: string;
+}
+
+export interface SubAgentWarningEvent {
   runId: string;
   subAgentType: string;
-  error: string;
+  warning: string;
 }

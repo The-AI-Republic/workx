@@ -5,6 +5,7 @@
 
 import type { IApprovalConfig } from '../core/approval/types';
 import type { HooksConfig } from '../core/hooks/types';
+import type { ShortcutUserConfig } from '../core/shortcuts/types';
 
 /**
  * Main centralized configuration interface for the agent (RUNTIME)
@@ -374,7 +375,7 @@ export interface IUserPreferences {
    */
   sessionSummaryEnabled?: boolean;
   zoomLevel?: number;
-  shortcuts?: Record<string, string>;
+  shortcuts?: ShortcutUserConfig | Record<string, string>;
   experimental?: Record<string, boolean>;
   /**
    * Track 24.2: selected output-style persona name. Resolved against built-in

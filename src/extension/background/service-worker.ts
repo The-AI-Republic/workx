@@ -10,6 +10,8 @@
 
 import { RepublicAgent } from '../../core/RepublicAgent';
 import { UserNotifier } from '../../core/UserNotifier';
+import { installTelemetry, schedulerTelemetryTap } from '../../core/telemetry';
+import { RingSink } from '../telemetry/RingSink';
 import type { Submission } from '../../core/protocol/types';
 import { ApprovalGate } from '../../core/approval/ApprovalGate';
 import { registerPlanReviewTools } from '../../tools/planReview/PlanReviewTools';
@@ -30,12 +32,16 @@ import { STORAGE_KEYS } from '../../config/defaults';
 import { DEFAULT_APPROVAL_CONFIG } from '../../core/approval/types';
 import { TabManager } from '../../core/TabManager';
 import { LLM_API_URL } from '../../config/constants';
-import { MCPManager } from '../../core/mcp/MCPManager';
-import { registerMCPTools, unregisterMCPTools } from '../../core/mcp/MCPToolAdapter';
+// Track 22: MCP/A2A are gated behind compile-time feature flags. Manager
+// classes and tool-adapter helpers load via dynamic import() inside the
+// feature-gated init blocks, so an OFF build tree-shakes core/mcp +
+// core/a2a out of the extension bundle entirely. Only type-only imports
+// remain at top level (erased at compile time — zero bundle cost).
+import type { MCPManager as MCPManagerT } from '../../core/mcp/MCPManager';
 import type { MCPManagerEvent } from '../../core/mcp/types';
-import { A2AManager } from '../../core/a2a/A2AManager';
-import { registerA2ASkills, unregisterA2ASkills } from '../../core/a2a/A2AToolAdapter';
+import type { A2AManager as A2AManagerT } from '../../core/a2a/A2AManager';
 import type { A2AManagerEvent } from '../../core/a2a/types';
+import { MCP, A2A } from '../../core/features/feature';
 
 // Skills imports
 import { SkillRegistry } from '../../core/skills';
@@ -81,14 +87,15 @@ import type { SessionConfig } from '../../core/registry/types';
 import { DEFAULT_MAX_CONCURRENT } from '../../core/registry/types';
 import { PRIMARY_SESSION_ALIAS } from '../../core/models/types/SessionContracts';
 import { t } from '../../webfront/lib/i18n';
+import { getActionForExtensionCommand, type ShortcutAction } from '../../core/shortcuts';
 
 // Global instances
 let registry: AgentRegistry | null = null;
 let cacheManager: CacheManager | null = null;
 let storageQuotaManager: StorageQuotaManager | null = null;
 let agentConfig: AgentConfig | null = null;
-let mcpManager: MCPManager | null = null; // MCP server connection manager
-let a2aManager: A2AManager | null = null; // A2A agent connection manager
+let mcpManager: MCPManagerT | null = null; // MCP server connection manager
+let a2aManager: A2AManagerT | null = null; // A2A agent connection manager
 let currentAuthManager: AuthManager | null = null; // Preserve auth state across agent recreation
 let scheduler: Scheduler | null = null; // Job scheduler
 let schedulerAlarms: SchedulerAlarms | null = null;
@@ -257,6 +264,15 @@ async function doInitialize(): Promise<void> {
   // Initialize configuration singleton first
   agentConfig = await AgentConfig.getInstance();
 
+  // Centralized telemetry: live privacy gate + bounded in-memory ring
+  // (best-effort/ephemeral — MV3 SW eviction; no remote egress). No-op
+  // unless telemetryEnabled (read live).
+  installTelemetry({
+    getTelemetryEnabled: () =>
+      agentConfig?.getConfig().preferences?.telemetryEnabled,
+    sink: RingSink,
+  });
+
   // Track 20: when admin pushes a managed-policy change (chrome.storage
   // managed area, auto-wired via the source's subscribe), re-hydrate so the
   // pin re-applies and the UI re-renders locked fields.
@@ -342,26 +358,38 @@ async function doInitialize(): Promise<void> {
   // This ensures backend routing is set up correctly on service worker startup
   await initializeAuthFromConfig();
 
-  // Initialize MCP manager
-  mcpManager = await MCPManager.getInstance();
+  // Track 22: MCP gated behind the MCP compile-time flag. When OFF this
+  // whole block is dead-code-eliminated and the dynamic import() chunk is
+  // never emitted, so core/mcp leaves the extension bundle.
+  if (MCP) {
+    // Initialize MCP manager
+    const { MCPManager } = await import('../../core/mcp/MCPManager');
+    mcpManager = await MCPManager.getInstance();
 
-  // Subscribe to MCP events for tool registration/unregistration
-  setupMCPToolRegistration();
+    // Subscribe to MCP events for tool registration/unregistration
+    // (sync — handler attaches immediately, before any auto-connect)
+    setupMCPToolRegistration();
 
-  // Auto-connect enabled MCP servers (T064: service worker lifecycle handling)
-  await autoConnectEnabledMCPServers();
+    // Auto-connect enabled MCP servers (T064: service worker lifecycle handling)
+    await autoConnectEnabledMCPServers();
+  }
 
   // Setup message handlers
   setupMessageHandlers();
 
-  // Initialize A2A manager
-  a2aManager = await A2AManager.getInstance();
+  // Track 22: A2A gated behind the A2A compile-time flag (same DCE rationale).
+  if (A2A) {
+    // Initialize A2A manager
+    const { A2AManager } = await import('../../core/a2a/A2AManager');
+    a2aManager = await A2AManager.getInstance();
 
-  // Subscribe to A2A events for tool registration/unregistration
-  setupA2AToolRegistration();
+    // Subscribe to A2A events for tool registration/unregistration
+    // (sync — handler attaches immediately, before any auto-connect)
+    setupA2AToolRegistration();
 
-  // Auto-connect enabled A2A agents
-  await autoConnectEnabledA2AAgents();
+    // Auto-connect enabled A2A agents
+    await autoConnectEnabledA2AAgents();
+  }
 
   // Initialize Skills
   await initializeSkills();
@@ -575,9 +603,10 @@ async function registerServiceHandlers(): Promise<void> {
       },
     };
 
-    // Wire scheduler events to ChannelManager (unified dispatch)
+    // Wire scheduler events to ChannelManager (unified dispatch) + telemetry
+    // tap (scheduler is a separate emitter family bypassing the chokepoint)
     if (scheduler) {
-      scheduler.connectToChannel(() => channelManager, 'sidepanel-main');
+      scheduler.connectToChannel(() => channelManager, 'sidepanel-main', schedulerTelemetryTap);
     }
 
     if (!registry) throw new Error('AgentRegistry not initialized');
@@ -930,6 +959,11 @@ function setupMCPToolRegistration(): void {
 
         // Register new tools on all sessions
         try {
+          // Track 22: lazy adapter import — keeps core/mcp/MCPToolAdapter out
+          // of OFF builds (this whole function is unreferenced when MCP is
+          // off, so it tree-shakes), without delaying the .on() subscription
+          // above. import() is cached after the first event.
+          const { registerMCPTools } = await import('../../core/mcp/MCPToolAdapter');
           for (const tr of getAllToolRegistries()) {
             await registerMCPTools(mcpManager!, serverName, tools, tr);
           }
@@ -1022,6 +1056,11 @@ function setupA2AToolRegistration(): void {
 
         // Register new skills on all sessions
         try {
+          // Track 22: lazy adapter import — keeps core/a2a/A2AToolAdapter out
+          // of OFF builds (this whole function is unreferenced when A2A is
+          // off, so it tree-shakes), without delaying the .on() subscription
+          // above. import() is cached after the first event.
+          const { registerA2ASkills } = await import('../../core/a2a/A2AToolAdapter');
           for (const tr of getAllToolRegistries()) {
             await registerA2ASkills(a2aManager!, agentName, skills, tr, a2aAgentConfig.trusted);
           }
@@ -1274,20 +1313,34 @@ function setupContextMenus(): void {
  * Handle keyboard commands
  */
 function handleCommand(command: string): void {
-  switch (command) {
-    case 'toggle-sidepanel':
-      // Toggle side panel
+  const action = getActionForExtensionCommand(command);
+  if (!action) {
+    console.warn('[ServiceWorker] Unknown keyboard command:', command);
+    return;
+  }
+
+  handleShortcutAction(action);
+}
+
+/**
+ * Handle shared shortcut actions from extension commands.
+ */
+function handleShortcutAction(action: ShortcutAction): void {
+  switch (action) {
+    case 'app:toggleWindow':
       chrome.sidePanel.open({ windowId: chrome.windows.WINDOW_ID_CURRENT });
       break;
 
-    case 'quick-action':
-      // Trigger quick action on current tab
+    case 'app:quickAction':
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs[0]?.id) {
           executeQuickAction(tabs[0].id);
         }
       });
       break;
+
+    default:
+      console.warn('[ServiceWorker] No extension shortcut handler for action:', action);
   }
 }
 

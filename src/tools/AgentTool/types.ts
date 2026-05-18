@@ -1,5 +1,12 @@
 // File: src/tools/AgentTool/types.ts
 
+import type {
+  AgentType,
+  SubAgentContextMode,
+  SubAgentExecutionMode,
+} from './agentTypes';
+import type { ResolvedSubAgentBehavior } from './behavior';
+
 /**
  * Configuration for a sub-agent type.
  * Defines how a sub-agent behaves and what tools it has access to.
@@ -7,6 +14,9 @@
 export interface SubAgentTypeConfig {
   /** Unique identifier for this sub-agent type */
   id: string;
+
+  /** Enum-backed runtime behavior type. Registration id remains dynamic. */
+  agentType?: AgentType;
 
   /** Human-readable name */
   name: string;
@@ -47,6 +57,12 @@ export interface SubAgentTypeConfig {
 
   /** Event types to suppress when routing to parent */
   suppressedEvents?: string[];
+
+  /** Default context mode for this type. Defaults to isolated. */
+  defaultContextMode?: SubAgentContextMode;
+
+  /** Allowed context modes. Defaults depend on agentType. */
+  allowedContextModes?: SubAgentContextMode[];
 }
 
 /**
@@ -67,6 +83,9 @@ export interface SubAgentToolParams {
 
   /** Whether to run this sub-agent in the background */
   background?: boolean;
+
+  /** Whether the child starts isolated or with a fork of parent history */
+  contextMode?: SubAgentContextMode;
 
   /**
    * When `background: true`, suppress the synthetic `<task-notification>`
@@ -147,6 +166,15 @@ export interface AgentContext {
    * notification would be redundant noise to the parent LLM.
    */
   cancelled?: boolean;
+
+  /** Resolved behavior profile for this run */
+  behavior: ResolvedSubAgentBehavior;
+
+  /** Effective context mode for this run */
+  contextMode: SubAgentContextMode;
+
+  /** Effective foreground/background mode for this run */
+  executionMode: SubAgentExecutionMode;
 }
 
 /**
@@ -191,6 +219,9 @@ export interface SubAgentUsageSummary {
 export interface TaskNotification {
   runId: string;
   type: string;
+  agentType?: AgentType;
+  contextMode?: SubAgentContextMode;
+  executionMode?: SubAgentExecutionMode;
   description: string;
   status: 'completed' | 'failed' | 'cancelled';
   result?: string;

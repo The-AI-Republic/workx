@@ -13,9 +13,12 @@
 
 import { ServerChannel } from '../channels/ServerChannel';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
+import type { ChannelAdapter } from '@/core/channels/ChannelAdapter';
 import { RepublicAgent } from '@/core/RepublicAgent';
 import { AgentConfig, CREDENTIAL_SECURED_MARKER } from '@/config/AgentConfig';
 import { setConfigStorage } from '@/core/storage/ConfigStorageProvider';
+import { getCredentialStore } from '@/core/storage';
+import { AuthManager } from '@/core/models/types/Auth';
 import { FileConfigStorageProvider } from '../storage/FileConfigStorageProvider';
 import { configurePromptComposer } from '@/core/PromptLoader';
 import type { RuntimeContext } from '@/prompts/PromptComposer';
@@ -69,6 +72,8 @@ import { registerConfigHandlers } from '../handlers/config';
 import { registerHealthHandlers } from '../handlers/health';
 import { registerToolsHandlers } from '../handlers/tools';
 import { registerLogsHandlers } from '../handlers/logs';
+import { installTelemetry, schedulerTelemetryTap } from '@/core/telemetry';
+import { ServerLogSink } from '../telemetry/ServerLogSink';
 import { registerExecHandlers } from '../handlers/exec';
 import { registerSchedulerHandlers } from '../handlers/scheduler';
 import { registerCredentialsHandlers } from '../handlers/credentials';
@@ -91,6 +96,12 @@ import { AgentRegistry } from '@/core/registry/AgentRegistry';
 
 let _instance: ServerAgentBootstrap | null = null;
 
+export interface ServerAgentBootstrapOptions {
+  profile?: 'server' | 'desktop-runtime';
+  dataDir?: string;
+  channel?: ChannelAdapter;
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Bootstrap
 // ─────────────────────────────────────────────────────────────────────────
@@ -103,7 +114,7 @@ export class ServerAgentBootstrap {
   // global slots only — hooks/agents apply on the next session or
   // /plugin reload, matching claudy's asymmetric enable semantics).
   private pluginRegistry: import('@/core/plugins/PluginRegistry').PluginRegistry | null = null;
-  private channel: ServerChannel | null = null;
+  private channel: ChannelAdapter | null = null;
   private sessionIndex: SessionIndex | null = null;
   private transcriptStore: TranscriptStore | null = null;
   private backupManager: BackupManager | null = null;
@@ -113,8 +124,8 @@ export class ServerAgentBootstrap {
   private diagnosticsMonitor: DiagnosticsMonitor | null = null;
   private skillRegistry: ISkillRegistry | null = null;
   private scheduler: Scheduler | null = null;
-  private scheduleEventStorage: ServerScheduleStorage | null = null;
-  private executionRecordStorage: ServerExecutionStorage | null = null;
+  private scheduleEventStorage: any | null = null;
+  private executionRecordStorage: any | null = null;
   private schedulerAlarms: ServerSchedulerAlarms | null = null;
   private runningSchedulerJobId: string | null = null;
   private runningJobStartTime: number = 0;
@@ -123,6 +134,8 @@ export class ServerAgentBootstrap {
   // expired/forked rollouts — only the extension had alarm-based cleanup).
   private rolloutTtlSweep: ReturnType<typeof setInterval> | null = null;
   private initialized = false;
+
+  constructor(private readonly options: ServerAgentBootstrapOptions = {}) {}
 
   /**
    * Initialize the server agent system.
@@ -137,7 +150,8 @@ export class ServerAgentBootstrap {
     // NOTE: getServerConfig() is intentionally deferred until AFTER the
     // Track 20 policy block below. The first call memoizes the pinned config,
     // so calling it here would cache a config with NO admin policy applied.
-    const dataDir = process.env.APPLEPI_DATA_DIR ??
+    const profile = this.options.profile ?? 'server';
+    const dataDir = this.options.dataDir ?? process.env.APPLEPI_DATA_DIR ??
       `${process.env.HOME ?? process.env.USERPROFILE ?? '/tmp'}/.applepi-server/data`;
 
     try {
@@ -150,9 +164,13 @@ export class ServerAgentBootstrap {
 
       // 0a. Initialize TokenUsageStore with NodeSQLiteAdapter
       try {
-        const { NodeSQLiteAdapter } = await import('@/server/storage/NodeSQLiteAdapter');
+        const { NodeSQLiteAdapter } = profile === 'desktop-runtime'
+          ? await import('@/desktop-runtime/storage/DesktopRuntimeSQLiteAdapter').then((m) => ({ NodeSQLiteAdapter: m.DesktopRuntimeSQLiteAdapter }))
+          : await import('@/server/storage/NodeSQLiteAdapter');
         const { TokenUsageStore } = await import('@/storage/TokenUsageStore');
-        const tokenAdapter = new NodeSQLiteAdapter(dataDir);
+        const tokenAdapter = profile === 'desktop-runtime'
+          ? new NodeSQLiteAdapter((await import('@/desktop-runtime/host')).getDesktopRuntimeHost().storageDbPath)
+          : new NodeSQLiteAdapter(dataDir);
         await tokenAdapter.initialize();
         TokenUsageStore.setAdapter(tokenAdapter);
       } catch (error) {
@@ -170,7 +188,13 @@ export class ServerAgentBootstrap {
       }
 
       // 1. Initialize config storage (must happen before AgentConfig)
-      setConfigStorage(new FileConfigStorageProvider(dataDir));
+      if (profile === 'desktop-runtime') {
+        const { getDesktopRuntimeHost } = await import('@/desktop-runtime/host');
+        const { DesktopRuntimeConfigStorageProvider } = await import('@/desktop-runtime/storage/DesktopRuntimeConfigStorageProvider');
+        setConfigStorage(new DesktopRuntimeConfigStorageProvider(getDesktopRuntimeHost().configJsonPath));
+      } else {
+        setConfigStorage(new FileConfigStorageProvider(dataDir));
+      }
 
       // 1b. Track 20: register the managed-file policy source (fleet policy is
       // mounted via ConfigMap/Secret at APPLEPI_POLICY_PATH) and resolve it
@@ -197,37 +221,49 @@ export class ServerAgentBootstrap {
       // 2. Get agent config
       const agentConfig = await AgentConfig.getInstance();
 
+      // 2b. Centralized telemetry: live privacy gate + the server sink
+      // (existing emitLog → stdout + logs.tail; zero new transport).
+      // No-op unless preferences.telemetryEnabled is true (read live).
+      installTelemetry({
+        getTelemetryEnabled: () =>
+          agentConfig.getConfig().preferences?.telemetryEnabled,
+        sink: ServerLogSink,
+      });
+
       // 3. Configure PromptComposer with server platform context
       // (must happen before agent.initialize() inside agentFactory)
       await this.configurePrompt();
 
       // 4. Create ServerChannel and wire up
-      this.channel = new ServerChannel();
+      this.channel = this.options.channel ?? new ServerChannel();
       const channelManager = getChannelManager();
 
       // 5. Create AgentRegistry with factories
       this.registry = new AgentRegistry({
         maxConcurrent: 3,
         agentFactory: async (cfg, initialHistory) => {
-          const { ServerPlatformAdapter } = await import('../platform/ServerPlatformAdapter');
-          const platformAdapter = new ServerPlatformAdapter();
+          const platformAdapter = profile === 'desktop-runtime'
+            ? new (await import('@/desktop-runtime/platform/DesktopRuntimePlatformAdapter')).DesktopRuntimePlatformAdapter()
+            : new (await import('../platform/ServerPlatformAdapter')).ServerPlatformAdapter();
           const agent = new RepublicAgent(cfg, platformAdapter, initialHistory);
           await agent.initialize();
 
-          // Register server-mode tools on each new agent. Pass `dataDir` so
-          // the track-09 read_persisted_result tool can be rooted at the
-          // same directory that FileToolResultStore writes into.
-          try {
-            const toolRegistry = agent.getToolRegistry();
-            await registerServerTools(toolRegistry as any, dataDir);
-            console.log('[ServerAgentBootstrap] Server tools registered on new session agent');
-          } catch (err) {
-            const errMsg = err instanceof Error ? err.message : String(err);
-            console.warn('[ServerAgentBootstrap] Tool registration failed (non-fatal):', err);
-            agent.getEngine()?.pushEvent({
-              id: crypto.randomUUID(),
-              msg: { type: 'BackgroundEvent', data: { message: `Server tool registration failed: ${errMsg}`, level: 'error' } },
-            });
+          if (profile === 'server') {
+            // Register server-mode tools on each new agent. Pass `dataDir` so
+            // the track-09 read_persisted_result tool can be rooted at the
+            // same directory that FileToolResultStore writes into.
+            try {
+              const toolRegistry = agent.getToolRegistry();
+              await registerServerTools(toolRegistry as any, dataDir);
+              console.log('[ServerAgentBootstrap] Server tools registered on new session agent');
+            } catch (err) {
+              const errMsg = err instanceof Error ? err.message : String(err);
+              console.warn('[ServerAgentBootstrap] Tool registration failed (non-fatal):', err);
+              agent.getEngine()?.pushEvent({
+                id: crypto.randomUUID(),
+                msg: { type: 'BackgroundEvent', data: { message: `Server tool registration failed: ${errMsg}`, level: 'error' } },
+              });
+            }
           }
 
           // Register sub-agent tool
@@ -339,8 +375,10 @@ export class ServerAgentBootstrap {
       console.log('[ServerAgentBootstrap] Transcript store initialized');
 
       // 9. Initialize backup manager
-      this.backupManager = new BackupManager(dataDir, config.server.backup.retention);
-      this.backupManager.start();
+      if (profile === 'server') {
+        this.backupManager = new BackupManager(dataDir, config.server.backup.retention);
+        this.backupManager.start();
+      }
 
       // 9b. Schedule TTL sweep for persisted tool results (track 09).
       // Removes orphaned tool-result files from crashed sessions.
@@ -380,12 +418,16 @@ export class ServerAgentBootstrap {
       this.registerHandlers();
 
       // 12b. Initialize connectors
-      await this.initializeConnectors(channelManager);
+      if (profile === 'server') {
+        await this.initializeConnectors(channelManager);
+      }
 
       // 13. Start health monitoring
-      this.healthMonitor = new HealthMonitor();
-      this.healthMonitor.start();
-      resetHealthStartTime();
+      if (profile === 'server') {
+        this.healthMonitor = new HealthMonitor();
+        this.healthMonitor.start();
+        resetHealthStartTime();
+      }
 
       // Update health status via first session in registry
       const primarySession = this.registry.getPrimarySession();
@@ -423,14 +465,16 @@ export class ServerAgentBootstrap {
       }
 
       // 14. Start config file watcher
-      watchConfig();
-      onConfigReload((_newConfig) => {
-        console.log('[ServerAgentBootstrap] Config reloaded');
-        // Hot-reload: iterate all sessions for refreshModelClient
-        this.handleConfigUpdate().catch((err) => {
-          console.error('[ServerAgentBootstrap] Failed to handle config update:', err);
+      if (profile === 'server') {
+        watchConfig();
+        onConfigReload((_newConfig) => {
+          console.log('[ServerAgentBootstrap] Config reloaded');
+          // Hot-reload: iterate all sessions for refreshModelClient
+          this.handleConfigUpdate().catch((err) => {
+            console.error('[ServerAgentBootstrap] Failed to handle config update:', err);
+          });
         });
-      });
+      }
 
       // Track 20: a remote/managed-file policy change re-resolves the policy.
       // Headless server has no interactive user — auto-apply, but emit a
@@ -469,10 +513,12 @@ export class ServerAgentBootstrap {
       // 15b. Start diagnostics monitoring so GET /health reports a truthful
       // status for K8s/Docker probes (Track 17). Started after registerServices
       // so the first report sees the fully-wired context.
-      this.diagnosticsMonitor = new DiagnosticsMonitor(() =>
-        this.buildDiagnosticContext(),
-      );
-      this.diagnosticsMonitor.start();
+      if (profile === 'server') {
+        this.diagnosticsMonitor = new DiagnosticsMonitor(() =>
+          this.buildDiagnosticContext(),
+        );
+        this.diagnosticsMonitor.start();
+      }
 
       this.initialized = true;
       console.log('[ServerAgentBootstrap] Initialization complete');
@@ -507,12 +553,14 @@ export class ServerAgentBootstrap {
   private async registerServices(channelManager: ReturnType<typeof getChannelManager>): Promise<void> {
     const { registerAllServices } = await import('@/core/services');
     const serviceRegistry = channelManager.getServiceRegistry();
+    const profile = this.options.profile ?? 'server';
+    const platformScope = profile === 'desktop-runtime' ? 'desktop' : 'server';
 
     // Get MCPManager instance
     let mcpDeps: import('@/core/services').MCPServiceDeps | undefined;
     try {
       const { MCPManager } = await import('@/core/mcp/MCPManager');
-      const mcpManager = await MCPManager.getInstance('server');
+      const mcpManager = await MCPManager.getInstance(platformScope);
       mcpDeps = { mcpManager: mcpManager as any };
     } catch (error) {
       console.warn('[ServerAgentBootstrap] MCPManager not available for service registration:', error);
@@ -522,7 +570,7 @@ export class ServerAgentBootstrap {
     let a2aDeps: import('@/core/services').A2AServiceDeps | undefined;
     try {
       const { A2AManager } = await import('@/core/a2a/A2AManager');
-      const a2aManager = await A2AManager.getInstance('server');
+      const a2aManager = await A2AManager.getInstance(platformScope);
       a2aDeps = { a2aManager: a2aManager as any };
     } catch (error) {
       console.warn('[ServerAgentBootstrap] A2AManager not available for service registration:', error);
@@ -884,6 +932,15 @@ export class ServerAgentBootstrap {
       agent: this.registry ? {
         registry: this.registry,
         handleConfigUpdate: () => this.handleConfigUpdate(),
+        createAuthManager: profile === 'desktop-runtime'
+          ? (shouldUseBackend, backendBaseUrl) => {
+              const tokenGetter = shouldUseBackend
+                ? async () => getCredentialStore().get('auth', 'access_token')
+                : undefined;
+              return new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter);
+            }
+          : undefined,
+        setAuthManager: profile === 'desktop-runtime' ? () => undefined : undefined,
       } : undefined,
       diagnostics: {
         buildCtx: () => this.buildDiagnosticContext(),
@@ -907,13 +964,13 @@ export class ServerAgentBootstrap {
     try {
       const { MCPManager } = await import('@/core/mcp/MCPManager');
       mcpManager = (await MCPManager.getInstance(
-        'server',
+        (this.options.profile ?? 'server') === 'desktop-runtime' ? 'desktop' : 'server',
       )) as unknown as DiagnosticContext['mcpManager'];
     } catch {
       // MCP unavailable — the mcp-connected check degrades to "not in use".
     }
     return {
-      platformId: 'server',
+      platformId: (this.options.profile ?? 'server') === 'desktop-runtime' ? 'desktop' : 'server',
       channelManager: getChannelManager(),
       mcpManager,
       skillRegistry: this.skillRegistry ?? undefined,
@@ -1160,18 +1217,19 @@ export class ServerAgentBootstrap {
       console.warn('[ServerAgentBootstrap] Persona disk scan skipped:', e);
     }
 
+    const isDesktopRuntime = (this.options.profile ?? 'server') === 'desktop-runtime';
     const staticContext: Partial<RuntimeContext> = {
-      browserConnection: 'none',
+      browserConnection: isDesktopRuntime ? 'mcp' : 'none',
       os: process.platform,
       arch: process.arch,
       shell: process.platform === 'win32' ? 'powershell' : 'bash',
       homeDir,
       // TODO(track-20): allow a managed-policy key to override this.
-      personaName: getServerConfig().server.persona,
+      personaName: isDesktopRuntime ? undefined : getServerConfig().server.persona,
     };
 
-    configurePromptComposer('applepi-server', staticContext);
-    console.log('[ServerAgentBootstrap] PromptComposer configured for server mode');
+    configurePromptComposer(isDesktopRuntime ? 'applepi' : 'applepi-server', staticContext);
+    console.log(`[ServerAgentBootstrap] PromptComposer configured for ${isDesktopRuntime ? 'desktop runtime' : 'server'} mode`);
   }
 
   /**
@@ -1183,10 +1241,21 @@ export class ServerAgentBootstrap {
   ): Promise<void> {
     try {
       // 1. Create new model storage (schedule events + executions)
-      this.scheduleEventStorage = new ServerScheduleStorage(dataDir);
-      await this.scheduleEventStorage.initialize();
-      this.executionRecordStorage = new ServerExecutionStorage(dataDir);
-      await this.executionRecordStorage.initialize();
+      if ((this.options.profile ?? 'server') === 'desktop-runtime') {
+        const { getDesktopRuntimeHost } = await import('@/desktop-runtime/host');
+        const { DesktopRuntimeSQLiteAdapter } = await import('@/desktop-runtime/storage/DesktopRuntimeSQLiteAdapter');
+        const { ScheduleEventStorage } = await import('@/core/scheduler/ScheduleEventStorage');
+        const { ExecutionStorage } = await import('@/core/scheduler/ExecutionStorage');
+        const adapter = new DesktopRuntimeSQLiteAdapter(getDesktopRuntimeHost().storageDbPath);
+        await adapter.initialize();
+        this.scheduleEventStorage = new ScheduleEventStorage(adapter);
+        this.executionRecordStorage = new ExecutionStorage(adapter);
+      } else {
+        this.scheduleEventStorage = new ServerScheduleStorage(dataDir);
+        await this.scheduleEventStorage.initialize();
+        this.executionRecordStorage = new ServerExecutionStorage(dataDir);
+        await this.executionRecordStorage.initialize();
+      }
       const executionStorage = this.executionRecordStorage;
 
       // 2. Create alarms (Node.js timers)
@@ -1204,8 +1273,15 @@ export class ServerAgentBootstrap {
         await this.scheduler!.handleAlarm(alarmName);
       });
 
-      // 6. Wire event emitter -> unified channel dispatch
-      this.scheduler.connectToChannel(() => channelManager, this.channel!.channelId);
+      // 6. Wire event emitter -> unified channel dispatch (+ telemetry tap;
+      // the scheduler is a separate emitter family that bypasses the agent
+      // chokepoint, so it gets its own observation point — closes the
+      // "why did a scheduled job abort" goal incl. pre-session failures).
+      this.scheduler.connectToChannel(
+        () => channelManager,
+        this.channel!.channelId,
+        schedulerTelemetryTap,
+      );
 
       // 7. Wire job launcher -> submit job input to agent via registry
       this.scheduler.setJobLauncher(async (executionId, sessionId, registryAgent) => {
@@ -1369,8 +1445,8 @@ export class ServerAgentBootstrap {
           startOfDayUTC,
           now,
         );
-        const dayTotalUSD = todays.reduce(
-          (sum, e) => sum + (e.result?.costUSD ?? 0),
+        const dayTotalUSD = (todays as Array<{ result?: { costUSD?: number } }>).reduce(
+          (sum: number, e) => sum + (e.result?.costUSD ?? 0),
           0,
         );
         if (dayTotalUSD > maxPerDay) {
@@ -1398,7 +1474,7 @@ export class ServerAgentBootstrap {
     return this.registry;
   }
 
-  getChannel(): ServerChannel | null {
+  getChannel(): ChannelAdapter | null {
     return this.channel;
   }
 
@@ -1444,8 +1520,8 @@ export class ServerAgentBootstrap {
 
     // Shutdown scheduler
     this.schedulerAlarms?.shutdown();
-    this.scheduleEventStorage?.close();
-    this.executionRecordStorage?.close();
+    this.scheduleEventStorage?.close?.();
+    this.executionRecordStorage?.close?.();
 
     // Stop backup manager
     this.backupManager?.stop();

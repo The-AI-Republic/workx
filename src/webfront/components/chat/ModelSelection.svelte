@@ -13,6 +13,7 @@
   import PopupCard from '../common/PopupCard.svelte';
   import { t, _t } from '../../lib/i18n';
   import { getInitializedUIClient } from '@/core/messaging';
+  import { registerShortcut, registerShortcutContext } from '../../shortcuts/useShortcut';
 
   let { onModelChanged }: {
     onModelChanged?: (value: { modelId: string; modelName: string }) => void;
@@ -209,14 +210,18 @@
     }
   }
 
-  function handleKeyDown(event: KeyboardEvent) {
-    if (event.key === 'Escape') {
+  $effect(() => {
+    const unregisterContext = registerShortcutContext('ModelPicker', { active: () => isOpen });
+    const unregisterDismiss = registerShortcut('modelPicker:dismiss', 'ModelPicker', () => {
       isOpen = false;
-    }
-  }
-</script>
+    });
 
-<svelte:window onkeydown={handleKeyDown} />
+    return () => {
+      unregisterContext();
+      unregisterDismiss();
+    };
+  });
+</script>
 
 <div class="relative inline-flex">
   <PopupCard title="" show={isOpen} onClose={closeDropdown}>
