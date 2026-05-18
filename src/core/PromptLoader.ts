@@ -152,7 +152,8 @@ export async function loadUserInstructions(): Promise<string> {
 /**
  * Load workspace-scoped coding instructions.
  *
- * Mirrors the Claude Code convention: a `CLAUDE.md` file at the selected
+ * Mirrors the Claude Code convention using Apple Pi's project file name:
+ * an `applepi.md` file at the selected
  * workspace root is project policy/context, not a user request. Missing files
  * are normal and produce an empty string.
  */
@@ -160,7 +161,7 @@ export async function loadProjectInstructions(workspaceRoot?: string): Promise<s
   const root = workspaceRoot?.trim();
   if (!root) return '';
 
-  const path = joinPath(root, 'CLAUDE.md');
+  const path = joinPath(root, 'applepi.md');
   try {
     let content = '';
     if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop') {
@@ -171,7 +172,7 @@ export async function loadProjectInstructions(workspaceRoot?: string): Promise<s
       content = await fs.readFile(path, 'utf-8');
     }
     const trimmed = content.trim();
-    return trimmed ? `# CLAUDE.md instructions\n${trimmed}` : '';
+    return trimmed ? `# applepi.md instructions\n${trimmed}` : '';
   } catch {
     return '';
   }

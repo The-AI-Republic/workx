@@ -134,13 +134,13 @@ describe('PromptLoader', () => {
     expect(typeof instructions).toBe('string');
   });
 
-  it('combines user instructions with CLAUDE.md project instructions', async () => {
+  it('combines user instructions with applepi.md project instructions', async () => {
     const { combineUserAndProjectInstructions } = await import('@/core/PromptLoader');
 
-    expect(combineUserAndProjectInstructions('User rules', '# CLAUDE.md instructions\nProject rules'))
-      .toBe('User rules\n\n# CLAUDE.md instructions\nProject rules');
-    expect(combineUserAndProjectInstructions('', '# CLAUDE.md instructions\nProject rules'))
-      .toBe('# CLAUDE.md instructions\nProject rules');
+    expect(combineUserAndProjectInstructions('User rules', '# applepi.md instructions\nProject rules'))
+      .toBe('User rules\n\n# applepi.md instructions\nProject rules');
+    expect(combineUserAndProjectInstructions('', '# applepi.md instructions\nProject rules'))
+      .toBe('# applepi.md instructions\nProject rules');
   });
 
   it('falls back to default prompt when composeMainInstruction throws', async () => {
