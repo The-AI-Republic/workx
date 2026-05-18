@@ -13,6 +13,7 @@ import { MemorySearcher } from './MemorySearcher';
 import { CoreMemoryManager } from './CoreMemoryManager';
 import { MemoryService } from './MemoryService';
 import { createMemoryFileSystem } from './MemoryFileSystem';
+import { ProjectMemoryManager, sanitizeProjectMemoryKey } from './ProjectMemoryManager';
 import { DEFAULT_MEMORY_CONFIG, type LLMCaller, type MemoryConfig } from './types';
 
 declare const __BUILD_MODE__: 'desktop' | 'server' | 'extension';
@@ -21,6 +22,8 @@ export interface MemoryServiceInit {
   config?: Partial<MemoryConfig>;
   /** Dedicated LLM caller for keyword generation and relevance filtering. Null disables memory. */
   llmCaller: LLMCaller | null;
+  /** Selected code workspace. When present, project memories are scoped here. */
+  workspaceRoot?: string;
 }
 
 /**
@@ -57,11 +60,18 @@ export async function createMemoryService(
     const dailyStore = new DailyMemoryStore(fs, memoryDir);
     const searcher = new MemorySearcher(init.llmCaller, dailyStore);
     const coreMemoryManager = new CoreMemoryManager(init.llmCaller, fs, memoryDir);
+    const projectMemoryManager = init.workspaceRoot?.trim()
+      ? new ProjectMemoryManager(
+          fs,
+          `${memoryDir.replace(/[/\\]$/, '')}/${'projects'}/${sanitizeProjectMemoryKey(init.workspaceRoot)}`,
+        )
+      : null;
 
     // Ensure core-memory.md exists with default template
     await coreMemoryManager.ensureFile();
+    await projectMemoryManager?.ensureFile();
 
-    const service = new MemoryService(dailyStore, searcher, coreMemoryManager, config);
+    const service = new MemoryService(dailyStore, searcher, coreMemoryManager, config, projectMemoryManager);
 
     // Load core memory into cache so it's available synchronously for prompt extensions
     await service.refreshGlobalContextCache();

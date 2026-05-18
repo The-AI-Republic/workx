@@ -6,6 +6,10 @@ import { TurnManager } from '../TurnManager';
 vi.mock('../PromptLoader', () => ({
     loadPrompt: vi.fn(),
     loadUserInstructions: vi.fn().mockResolvedValue('User instructions.'),
+    loadProjectInstructions: vi.fn().mockResolvedValue(''),
+    combineUserAndProjectInstructions: vi.fn((userText?: string, projectText?: string) =>
+        [userText?.trim(), projectText?.trim()].filter(Boolean).join('\n\n') || undefined
+    ),
 }));
 
 import { loadPrompt } from '../PromptLoader';

@@ -11,6 +11,7 @@
 import { DailyMemoryStore } from './DailyMemoryStore';
 import { MemorySearcher, type SearchResult } from './MemorySearcher';
 import { CoreMemoryManager } from './CoreMemoryManager';
+import { ProjectMemoryManager } from './ProjectMemoryManager';
 import {
   isCoreCategory,
   type LLMCaller,
@@ -37,7 +38,8 @@ export class MemoryService {
     dailyStore: DailyMemoryStore,
     searcher: MemorySearcher,
     coreMemoryManager: CoreMemoryManager,
-    config: MemoryConfig
+    config: MemoryConfig,
+    private readonly projectMemoryManager: ProjectMemoryManager | null = null
   ) {
     this.dailyStore = dailyStore;
     this.searcher = searcher;
@@ -51,7 +53,8 @@ export class MemoryService {
    */
   async refreshGlobalContextCache(): Promise<void> {
     const markdown = await this.getGlobalContextText();
-    this.cachedGlobalContext = this.formatGlobalMemoryContext(markdown);
+    const projectMarkdown = await this.getProjectContextText();
+    this.cachedGlobalContext = this.formatGlobalMemoryContext(markdown, projectMarkdown);
   }
 
   /**
@@ -73,7 +76,10 @@ export class MemoryService {
   async saveFact(text: string, category: MemoryCategory): Promise<void> {
     if (!this.config.enabled) return;
 
-    if (isCoreCategory(category)) {
+    if (category === 'project' && this.projectMemoryManager) {
+      await this.projectMemoryManager.appendFact(text);
+      await this.refreshGlobalContextCache();
+    } else if (isCoreCategory(category)) {
       // Route to core-memory.md via LLM merge
       await this.coreMemoryManager.mergeCoreFacts([text]);
       // Refresh cached context so next prompt includes the new fact
@@ -108,12 +114,16 @@ export class MemoryService {
     return this.coreMemoryManager.getCoreMemoryContent();
   }
 
+  async getProjectContextText(): Promise<string> {
+    return this.projectMemoryManager?.getProjectMemoryContent() ?? '';
+  }
+
   /**
    * Format global memory context for injection into system prompt.
    * Includes behavioral instructions for the LLM on how to use memory,
    * followed by the core memory content.
    */
-  formatGlobalMemoryContext(coreMarkdown: string): string {
+  formatGlobalMemoryContext(coreMarkdown: string, projectMarkdown = ''): string {
     // Cap core memory to prevent unbounded context window usage
     let content = (coreMarkdown ?? '').trim();
     if (content.length > MAX_CORE_MEMORY_CHARS) {
@@ -123,8 +133,12 @@ export class MemoryService {
     const coreMemoryBlock = content.length > 0
       ? `\n<agent_memory>\nThe following are core rules and preferences you must always follow for this user:\n\n${content}\n</agent_memory>`
       : '';
+    const projectContent = (projectMarkdown ?? '').trim();
+    const projectMemoryBlock = projectContent.length > 0
+      ? `\n<project_memory>\nThe following memory is scoped to the current code workspace only:\n\n${projectContent}\n</project_memory>`
+      : '';
 
-    return `${memoryInstructions}${coreMemoryBlock}`;
+    return `${memoryInstructions}${coreMemoryBlock}${projectMemoryBlock}`;
   }
 
   /**
@@ -132,7 +146,8 @@ export class MemoryService {
    */
   async getFormattedGlobalContext(): Promise<string> {
     const markdown = await this.getGlobalContextText();
-    return this.formatGlobalMemoryContext(markdown);
+    const projectMarkdown = await this.getProjectContextText();
+    return this.formatGlobalMemoryContext(markdown, projectMarkdown);
   }
 
   // ---------------------------------------------------------------------------
@@ -163,16 +178,17 @@ export class MemoryService {
     }
     if (terms.length === 0) terms = [trimmed];
 
-    const [coreRemoved, dailyRemoved] = await Promise.all([
+    const [coreRemoved, dailyRemoved, projectRemoved] = await Promise.all([
       this.coreMemoryManager.removeFacts(terms),
       this.dailyStore.removeEntries(terms),
+      this.projectMemoryManager?.removeFacts(terms) ?? Promise.resolve(0),
     ]);
 
-    if (coreRemoved > 0) {
+    if (coreRemoved > 0 || projectRemoved > 0) {
       await this.refreshGlobalContextCache();
     }
 
-    return coreRemoved + dailyRemoved;
+    return coreRemoved + dailyRemoved + projectRemoved;
   }
 
   /**

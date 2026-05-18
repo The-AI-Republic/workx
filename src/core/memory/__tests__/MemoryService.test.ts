@@ -10,6 +10,7 @@ import { MemoryService } from '../MemoryService';
 import { DailyMemoryStore } from '../DailyMemoryStore';
 import { MemorySearcher, type SearchResult } from '../MemorySearcher';
 import { CoreMemoryManager } from '../CoreMemoryManager';
+import { ProjectMemoryManager } from '../ProjectMemoryManager';
 import type { MemoryConfig } from '../types';
 import { DEFAULT_MEMORY_CONFIG } from '../types';
 
@@ -48,10 +49,20 @@ function createMockCoreManager(): CoreMemoryManager {
   } as unknown as CoreMemoryManager;
 }
 
+function createMockProjectManager(): ProjectMemoryManager {
+  return {
+    appendFact: vi.fn().mockResolvedValue(undefined),
+    removeFacts: vi.fn().mockResolvedValue(0),
+    getProjectMemoryContent: vi.fn().mockResolvedValue('# Project Memory'),
+    ensureFile: vi.fn().mockResolvedValue(undefined),
+  } as unknown as ProjectMemoryManager;
+}
+
 function createService(overrides: {
   dailyStore?: DailyMemoryStore;
   searcher?: MemorySearcher;
   coreManager?: CoreMemoryManager;
+  projectManager?: ProjectMemoryManager | null;
   config?: Partial<MemoryConfig>;
 } = {}) {
   const dailyStore = overrides.dailyStore ?? createMockDailyStore();
@@ -59,8 +70,9 @@ function createService(overrides: {
   const coreManager = overrides.coreManager ?? createMockCoreManager();
   const config: MemoryConfig = { ...DEFAULT_MEMORY_CONFIG, enabled: true, ...overrides.config };
 
-  const service = new MemoryService(dailyStore, searcher, coreManager, config);
-  return { service, dailyStore, searcher, coreManager };
+  const projectManager = overrides.projectManager ?? null;
+  const service = new MemoryService(dailyStore, searcher, coreManager, config, projectManager);
+  return { service, dailyStore, searcher, coreManager, projectManager };
 }
 
 // ---------------------------------------------------------------------------
@@ -94,6 +106,14 @@ describe('MemoryService.formatGlobalMemoryContext', () => {
     expect(result).toContain('</agent_memory>');
     expect(result).toContain('# User Profile');
     expect(result).toContain('- Likes cats');
+  });
+
+  it('includes project memory in a separate workspace-scoped block', () => {
+    const { service } = createService();
+    const result = service.formatGlobalMemoryContext('# User Profile', '# Project Memory\n- Uses pnpm');
+    expect(result).toContain('<agent_memory>');
+    expect(result).toContain('<project_memory>');
+    expect(result).toContain('Uses pnpm');
   });
 
   it('trims the markdown content', () => {
@@ -206,12 +226,22 @@ describe('MemoryService.saveFact', () => {
     expect(dailyStore.appendFact).toHaveBeenCalledWith('User is 30 years old', 'personal');
   });
 
-  it('routes project category to DailyMemoryStore', async () => {
+  it('routes project category to DailyMemoryStore when no workspace memory exists', async () => {
     const { service, dailyStore } = createService();
 
     await service.saveFact('Project uses React', 'project');
 
     expect(dailyStore.appendFact).toHaveBeenCalledWith('Project uses React', 'project');
+  });
+
+  it('routes project category to ProjectMemoryManager when workspace memory exists', async () => {
+    const projectManager = createMockProjectManager();
+    const { service, dailyStore } = createService({ projectManager });
+
+    await service.saveFact('Project uses React', 'project');
+
+    expect(projectManager.appendFact).toHaveBeenCalledWith('Project uses React');
+    expect(dailyStore.appendFact).not.toHaveBeenCalled();
   });
 });
 
