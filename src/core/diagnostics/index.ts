@@ -12,6 +12,7 @@ import { mcpConnectedCheck } from './checks/mcp-connected';
 import { skillsLoadedCheck } from './checks/skills-loaded';
 import { schedulerHealthCheck } from './checks/scheduler-health';
 import { policyOriginCheck } from './checks/policy-origin';
+import { shortcutsValidCheck } from './checks/shortcuts-valid';
 
 export type {
   DiagnosticStatus,
@@ -47,4 +48,5 @@ export function registerCoreDiagnosticChecks(): void {
   registerDiagnosticCheck(skillsLoadedCheck);
   registerDiagnosticCheck(schedulerHealthCheck);
   registerDiagnosticCheck(policyOriginCheck);
+  registerDiagnosticCheck(shortcutsValidCheck);
 }

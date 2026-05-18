@@ -16,6 +16,7 @@ import {
   VALID_VERBOSITIES,
   CONFIG_LIMITS
 } from './defaults';
+import { normalizeShortcutPreferences, validateShortcutBlocks } from '../core/shortcuts';
 
 export interface ValidationResult {
   valid: boolean;
@@ -338,7 +339,22 @@ export function validateUserPreferences(prefs: any): ValidationResult {
   }
 
   if (prefs.shortcuts && typeof prefs.shortcuts === 'object') {
-    const shortcutCount = Object.keys(prefs.shortcuts).length;
+    const normalized = normalizeShortcutPreferences(prefs.shortcuts);
+    if (normalized.config) {
+      const shortcutIssues = validateShortcutBlocks(normalized.config.bindings, { source: 'user' });
+      const firstError = shortcutIssues.find((issue) => issue.severity === 'error');
+      if (firstError) {
+        return {
+          valid: false,
+          field: 'preferences.shortcuts',
+          error: firstError.message
+        };
+      }
+    }
+
+    const shortcutCount = normalized.config
+      ? normalized.config.bindings.reduce((count, block) => count + Object.keys(block.bindings).length, 0)
+      : Object.keys(prefs.shortcuts).length;
     if (shortcutCount > CONFIG_LIMITS.MAX_SHORTCUTS) {
       return {
         valid: false,
