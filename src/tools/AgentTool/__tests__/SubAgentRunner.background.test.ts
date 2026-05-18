@@ -238,6 +238,47 @@ describe('SubAgentRunner.run() — background detachment', () => {
     expect(xml).toContain('<duration_ms>');
   });
 
+  it('includes output-offset when task output chunks were persisted', async () => {
+    parent = createParentEngine({
+      success: true,
+      response: 'persisted output',
+      turnCount: 2,
+    });
+    const taskStates = new Map<string, any>();
+    const outputStore = {
+      flush: vi.fn(async () => undefined),
+      getLastSeq: vi.fn(async () => 7),
+    };
+    parent.getSession = () => ({
+      registerTaskState: vi.fn((state: any) => {
+        taskStates.set(state.id, state);
+      }),
+      getTask: vi.fn((id: string) => {
+        const taskState = taskStates.get(id);
+        return taskState ? { taskState } : undefined;
+      }),
+      getTaskOutputStore: vi.fn(() => outputStore),
+      retainTask: vi.fn(),
+      markBackgroundTaskStateChanged: vi.fn(),
+    });
+    runner = new SubAgentRunner({
+      parentEngine: parent as never,
+      registry,
+      customTypes: [makeType()],
+    });
+
+    await runner.run({
+      type: 'worker',
+      prompt: 'audit endpoints',
+      background: true,
+    });
+    await settle();
+
+    expect(outputStore.flush).toHaveBeenCalled();
+    const xml = parent.enqueueSyntheticUserTurn.mock.calls[0][0] as string;
+    expect(xml).toContain('<output-offset>7</output-offset>');
+  });
+
   it('injects a failed task-notification when execute() reports an error', async () => {
     parent = createParentEngine({
       success: false,
@@ -492,6 +533,44 @@ describe('SubAgentRunner fork context mode', () => {
     if ('kind' in result) throw new Error('expected foreground result');
     expect(result.success).toBe(false);
     expect(result.error).toContain('does not allow context mode');
+  });
+
+  it('rejects recursive fork mode when parent history already contains fork boilerplate', async () => {
+    const parent = createParentEngine();
+    parent.getSession = () => ({
+      getSessionId: () => 'parent-session',
+      getConversationHistory: () => ({
+        items: [
+          {
+            type: 'message',
+            role: 'user',
+            content: [{ type: 'input_text', text: '<forked-subagent-task>\nPrior fork' }],
+          },
+        ],
+      }),
+      getTaskOutputStore: () => undefined,
+      registerTaskState: vi.fn(),
+    } as any);
+    const runner = new SubAgentRunner({
+      parentEngine: parent as never,
+      customTypes: [
+        makeType({
+          agentType: AgentType.Worker,
+          allowedContextModes: [SubAgentContextMode.Isolated, SubAgentContextMode.Fork],
+        }),
+      ],
+    });
+
+    const result = await runner.run({
+      type: 'worker',
+      prompt: 'Nested fork',
+      contextMode: SubAgentContextMode.Fork,
+    });
+
+    if ('kind' in result) throw new Error('expected foreground result');
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('already contains forked sub-agent context');
+    expect(parent.createChildEngine).not.toHaveBeenCalled();
   });
 });
 

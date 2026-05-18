@@ -202,13 +202,14 @@ describe('Type guard mutual exclusivity', () => {
 
 describe('TurnAbortReason type', () => {
   it('should accept valid abort reason strings', () => {
-    const reasons: TurnAbortReason[] = ['Replaced', 'UserInterrupt', 'Error', 'Timeout', 'TabClosed'];
-    expect(reasons).toHaveLength(5);
+    const reasons: TurnAbortReason[] = ['Replaced', 'UserInterrupt', 'Error', 'Timeout', 'TabClosed', 'Shutdown'];
+    expect(reasons).toHaveLength(6);
     expect(reasons).toContain('Replaced');
     expect(reasons).toContain('UserInterrupt');
     expect(reasons).toContain('Error');
     expect(reasons).toContain('Timeout');
     expect(reasons).toContain('TabClosed');
+    expect(reasons).toContain('Shutdown');
   });
 });
 

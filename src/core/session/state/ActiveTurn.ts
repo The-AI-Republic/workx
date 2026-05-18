@@ -58,6 +58,11 @@ export class ActiveTurn {
     this.turnState.clearPendingInput();
   }
 
+  rejectPendingApprovalsAndClearInput(): void {
+    this.turnState.rejectPendingApprovals();
+    this.turnState.clearPendingInput();
+  }
+
   /**
    * Abort all running tasks and clear state
    */

@@ -14,6 +14,9 @@ export interface ForkContextMetadata {
   contextMode: SubAgentContextMode;
 }
 
+export const FORK_DIRECTIVE_OPEN_TAG = '<forked-subagent-task>';
+export const FORK_DIRECTIVE_CLOSE_TAG = '</forked-subagent-task>';
+
 export function buildForkedSubAgentInitialHistory(
   parentEngine: RepublicAgentEngine,
   prompt: string,
@@ -25,6 +28,12 @@ export function buildForkedSubAgentInitialHistory(
   }
 
   const sourceItems = parentSession.getConversationHistory().items as ResponseItem[];
+  if (containsForkDirective(sourceItems)) {
+    throw new Error(
+      'Cannot create a forked sub-agent from history that already contains forked sub-agent context',
+    );
+  }
+
   const rolloutItems = responseItemsToRolloutItems(sourceItems);
   const trimmed = pairingTrim(rolloutItems);
 
@@ -48,6 +57,16 @@ export function responseItemsToRolloutItems(items: ResponseItem[]): RolloutItem[
   }));
 }
 
+export function containsForkDirective(items: ResponseItem[]): boolean {
+  return items.some((item) => {
+    const serialized = JSON.stringify(item);
+    return (
+      serialized.includes(FORK_DIRECTIVE_OPEN_TAG) ||
+      serialized.includes(FORK_DIRECTIVE_CLOSE_TAG)
+    );
+  });
+}
+
 function buildForkDirectiveMessage(
   prompt: string,
   metadata: ForkContextMetadata,
@@ -59,13 +78,13 @@ function buildForkDirectiveMessage(
       {
         type: 'input_text',
         text: [
-          '<forked-subagent-task>',
+          FORK_DIRECTIVE_OPEN_TAG,
           `You are a delegated forked subagent for type '${metadata.typeId}' (${metadata.agentType}).`,
           'Use the inherited conversation only to complete the delegated task below.',
           'Do not assume control of the main conversation. Return one final result to the parent.',
           '',
           prompt,
-          '</forked-subagent-task>',
+          FORK_DIRECTIVE_CLOSE_TAG,
         ].join('\n'),
       },
     ],

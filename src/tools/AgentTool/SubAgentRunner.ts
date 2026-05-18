@@ -303,6 +303,7 @@ export class SubAgentRunner implements IAgentRunner {
     void (async () => {
       try {
         const result = await this.execute(context, params);
+        await this.syncTaskOutputOffset(context);
         if (!suppressNotification()) {
           this.safeEnqueueNotification(
             context,
@@ -321,6 +322,7 @@ export class SubAgentRunner implements IAgentRunner {
           stopReason: 'error',
           error: errorMsg,
         };
+        await this.syncTaskOutputOffset(context);
         if (!suppressNotification()) {
           this.safeEnqueueNotification(
             context,
@@ -375,6 +377,7 @@ export class SubAgentRunner implements IAgentRunner {
     if (!entry?.taskState) return;
     const ts = entry.taskState;
     if (ts.status !== 'pending' && ts.status !== 'running') return;
+    const prevStatus = ts.status;
     ts.status = result.success
       ? 'completed'
       : (result.stopReason === 'cancelled' || result.stopReason === 'interrupted')
@@ -401,10 +404,24 @@ export class SubAgentRunner implements IAgentRunner {
     // onTaskFinished/onTaskAborted normally start it. Touch a no-op
     // helper to nudge: trigger one tick by calling retainTask(false).
     parentSession.retainTask?.(context.runId, ts.retain);
+    parentSession.markBackgroundTaskStateChanged?.(ts, prevStatus);
 
     // Track 10: a background task just terminated — flush any deferred
     // sub-agent type-def rebuild now that this is a safe boundary.
     void this.flushPendingRebuild();
+  }
+
+  private async syncTaskOutputOffset(context: AgentContext): Promise<void> {
+    const parentSession = context.parentEngine.getSession?.();
+    const entry = parentSession?.getTask?.(context.runId);
+    const store = parentSession?.getTaskOutputStore?.();
+    if (!entry?.taskState || !store) return;
+    try {
+      await store.flush(context.runId);
+      entry.taskState.outputOffset = await store.getLastSeq(context.runId);
+    } catch (error) {
+      console.warn(`[SubAgentRunner] failed to sync output offset for ${context.runId}:`, error);
+    }
   }
 
   private safeEnqueueNotification(context: AgentContext, text: string): void {
@@ -459,12 +476,20 @@ export class SubAgentRunner implements IAgentRunner {
       resolvedTypeConfig
     );
 
-    // Track 05b: install an optional sync pre-execute gate on the child
-    // registry. Runs BEFORE the approval gate so it constrains calls that
-    // `approvalPolicy: 'never'` would otherwise auto-approve. Used by
-    // internal extractors to lock `file_edit` to a single allowed path.
-    if (params.canUseTool) {
-      childRegistry.setPreExecuteCheck(params.canUseTool);
+    // Track 05b / Track 28: install optional sync pre-execute gates on the
+    // child registry. They run BEFORE approval so they constrain calls even
+    // when the child approval policy is `never`.
+    const allowedTools = params.allowedTools ? new Set(params.allowedTools) : undefined;
+    if (allowedTools || params.canUseTool) {
+      childRegistry.setPreExecuteCheck((toolName, toolParameters) => {
+        if (allowedTools && !allowedTools.has(toolName)) {
+          return {
+            behavior: 'deny',
+            decisionReason: `Tool "${toolName}" is not allowed by the active skill allowed-tools list`,
+          };
+        }
+        return params.canUseTool?.(toolName, toolParameters) ?? { behavior: 'allow' };
+      });
     }
 
     // Create event router for namespaced events

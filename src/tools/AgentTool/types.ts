@@ -87,6 +87,9 @@ export interface SubAgentToolParams {
   /** Whether the child starts isolated or with a fork of parent history */
   contextMode?: SubAgentContextMode;
 
+  /** Additional per-invocation hard allow-list inherited from a skill. */
+  allowedTools?: readonly string[];
+
   /**
    * When `background: true`, suppress the synthetic `<task-notification>`
    * that is normally injected into the parent's pending input on completion.

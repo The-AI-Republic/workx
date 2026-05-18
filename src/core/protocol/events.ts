@@ -86,6 +86,7 @@ export type EventMsg =
   // Tool registry events
   | { type: 'ToolRegistered'; data: ToolRegisteredEvent }
   | { type: 'ToolUnregistered'; data: ToolUnregisteredEvent }
+  | { type: 'ToolExposureUpdated'; data: ToolExposureUpdatedEvent }
   | { type: 'ToolExecutionStart'; data: ToolExecutionStartEvent }
   | { type: 'ToolExecutionEnd'; data: ToolExecutionEndEvent }
   | { type: 'ToolExecutionError'; data: ToolExecutionErrorEvent }
@@ -115,6 +116,7 @@ export type EventMsg =
   // Hook system events
   | { type: 'HookFired'; data: HookFiredEvent }
   | { type: 'HookBlocked'; data: HookBlockedEvent }
+  | { type: 'HookResult'; data: HookResultEvent }
   // Sub-agent lifecycle events
   | { type: 'SubAgentStart'; data: SubAgentStartEvent }
   | { type: 'SubAgentComplete'; data: SubAgentCompleteEvent }
@@ -287,10 +289,22 @@ export interface TokenUsageInfo {
   total_token_usage: TokenUsage;
   last_token_usage: TokenUsage;
   model_context_window?: number;
+  auto_compact_token_limit?: number;
 }
 
 export interface TokenCountEvent {
   info?: TokenUsageInfo;
+  token_warning_state?: {
+    current_tokens: number;
+    context_window?: number;
+    auto_compact_token_limit?: number;
+    percent_used?: number;
+    percent_left?: number;
+    is_above_warning_threshold: boolean;
+    is_above_error_threshold: boolean;
+    is_above_auto_compact_threshold: boolean;
+    is_at_blocking_limit: boolean;
+  };
   rate_limits?: RateLimitSnapshotEvent;
   /** Track 18: cumulative session USD cost (additive rider on Track 12's fix). */
   cost?: number;
@@ -701,6 +715,19 @@ export interface ToolUnregisteredEvent {
   unregistration_time?: number;
 }
 
+export interface ToolExposureUpdatedEvent {
+  session_id?: string;
+  dynamic_enabled: boolean;
+  always_count: number;
+  deferred_count: number;
+  hidden_count: number;
+  selected_count: number;
+  estimated_deferred_schema_chars: number;
+  estimated_deferred_schema_tokens: number;
+  threshold_tokens?: number;
+  selected_tools?: string[];
+}
+
 export interface ToolExecutionStartEvent {
   tool_name: string;
   call_id?: string;
@@ -883,6 +910,24 @@ export interface HookBlockedEvent {
   hook_event_name: string;
   tool_name?: string;
   stop_reason?: string;
+}
+
+export interface HookResultEvent {
+  hook_event_name: string;
+  hook_id: string;
+  execution_id: string;
+  source: string;
+  command_type: string;
+  outcome: string;
+  duration_ms: number;
+  tool_name?: string;
+  exit_code?: number;
+  blocked?: boolean;
+  permission_decision?: 'approve' | 'block';
+  updated_input?: boolean;
+  updated_output?: boolean;
+  additional_context?: boolean;
+  error?: string;
 }
 
 // Sub-agent lifecycle event payloads

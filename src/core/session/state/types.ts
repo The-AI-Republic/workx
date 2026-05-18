@@ -115,6 +115,8 @@ export interface TokenUsageInfo {
   total_tokens?: number;
   cache_creation_input_tokens?: number;
   cache_read_input_tokens?: number;
+  model_context_window?: number;
+  auto_compact_token_limit?: number;
 }
 
 /**
@@ -139,7 +141,7 @@ export interface SessionExport {
 /**
  * Reason for aborting a turn
  */
-export type TurnAbortReason = 'Replaced' | 'UserInterrupt' | 'Error' | 'Timeout' | 'TabClosed';
+export type TurnAbortReason = 'Replaced' | 'UserInterrupt' | 'Error' | 'Timeout' | 'TabClosed' | 'Shutdown';
 
 /**
  * Configuration for initializing a new Session
