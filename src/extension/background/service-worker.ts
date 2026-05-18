@@ -144,40 +144,6 @@ async function configureExtensionPlatform(targetAgent: RepublicAgent): Promise<v
 
   toolRegistry.setApprovalGate(approvalGate);
 
-  // Track 23: x402 capability — extension is the WORST custody environment,
-  // so it NEVER holds a signing key and NEVER auto-pays. The capability
-  // detects + surfaces the 402 (NoopSigner). Default-OFF via x402 config.
-  try {
-    const { createPaymentCapability, NoopSigner, getX402Config, isX402Enabled } =
-      await import('@/core/payments/x402');
-    const x402Audit = (
-      level: 'debug' | 'info' | 'warn' | 'error',
-      message: string,
-      data?: Record<string, unknown>,
-    ): void => {
-      const fn = level === 'warn' ? console.warn : level === 'error' ? console.error : console.log;
-      fn(`[x402] ${message}`, data ?? '');
-    };
-    toolRegistry.setPaymentCapability(
-      createPaymentCapability({
-        platform: 'extension',
-        isEnabled: isX402Enabled,
-        getCaps: async () => {
-          const c = await getX402Config();
-          return {
-            network: c.network,
-            maxPaymentPerRequestUSD: c.maxPaymentPerRequestUSD,
-            maxSessionSpendUSD: c.maxSessionSpendUSD,
-          };
-        },
-        signer: new NoopSigner(),
-        audit: x402Audit,
-      }),
-    );
-  } catch (error) {
-    console.warn('[ServiceWorker] x402 capability wiring failed (non-fatal):', error);
-  }
-
   // Plan Review (Track 14): register Begin/Submit closures here, where the
   // registry + core ApprovalManager are in scope (ToolContext exposes
   // neither). Feed the registry's freeze flag into the system prompt each
