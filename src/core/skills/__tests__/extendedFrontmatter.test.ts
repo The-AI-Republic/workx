@@ -4,6 +4,7 @@ import {
   normalizeFrontmatter,
   serializeToSkillMd,
   projectMeta,
+  validateSkill,
 } from '@/core/skills/SkillParser';
 import { skillFrontmatterSchema } from '@/core/skills/types';
 import type { Skill } from '@/core/skills/types';
@@ -188,6 +189,25 @@ describe('parseSkillMd round-trips extended fields', () => {
     expect(fields.context).toBe('fork');
     expect(fields.agent).toBe('general-purpose');
     expect(fields.domains).toEqual(['gmail.com', '*.google.com']);
+  });
+
+  it('validates fork agent values against injected known sub-agent types', () => {
+    const parsed = parseSkillMd(baseFrontmatter({
+      context: 'fork',
+      agent: 'missing-agent',
+    }));
+    const result = validateSkill(parsed, undefined, { knownAgents: ['researcher', 'worker'] });
+    expect(result.valid).toBe(false);
+    expect(result.errors.join('\n')).toMatch(/Unknown sub-agent type "missing-agent"/);
+  });
+
+  it('accepts fork agent values present in the injected known sub-agent types', () => {
+    const parsed = parseSkillMd(baseFrontmatter({
+      context: 'fork',
+      agent: 'worker',
+    }));
+    const result = validateSkill(parsed, undefined, { knownAgents: ['researcher', 'worker'] });
+    expect(result).toEqual({ valid: true, errors: [] });
   });
 });
 

@@ -90,7 +90,40 @@ describe('SubAgentRunner canUseTool wiring', () => {
     });
 
     expect(childRegistryMock.setPreExecuteCheck).toHaveBeenCalledTimes(1);
-    expect(childRegistryMock.setPreExecuteCheck).toHaveBeenCalledWith(gate);
+    const installed = childRegistryMock.setPreExecuteCheck.mock.calls[0][0] as PreExecuteCheck;
+    expect(installed('file_edit', { path: 'summary.md' })).toEqual({ behavior: 'allow' });
+    expect(gate).toHaveBeenCalledWith('file_edit', { path: 'summary.md' });
+  });
+
+  it('combines skill allowedTools with params.canUseTool on the child registry', async () => {
+    const engine = makeMockEngine();
+    const runner = new SubAgentRunner({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      parentEngine: engine as any,
+      registry: new SubAgentRegistry({ maxConcurrent: 1 }),
+      customTypes: [FAKE_TYPE],
+    });
+
+    const gate: PreExecuteCheck = vi.fn(
+      () => ({ behavior: 'allow' as const }),
+    );
+
+    await runner.run({
+      type: 'fake_internal',
+      prompt: 'go',
+      background: true,
+      quietBackground: true,
+      allowedTools: ['file_edit'],
+      canUseTool: gate,
+    });
+
+    const installed = childRegistryMock.setPreExecuteCheck.mock.calls[0][0] as PreExecuteCheck;
+    expect(installed('file_edit', { path: 'summary.md' })).toEqual({ behavior: 'allow' });
+    expect(installed('read_dom', {})).toEqual({
+      behavior: 'deny',
+      decisionReason: 'Tool "read_dom" is not allowed by the active skill allowed-tools list',
+    });
+    expect(gate).toHaveBeenCalledTimes(1);
   });
 
   it('does NOT install a gate when params.canUseTool is omitted', async () => {

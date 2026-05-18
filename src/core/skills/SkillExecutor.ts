@@ -38,6 +38,7 @@ export interface SubAgentInvocationParams {
   prompt: string;
   description: string;
   contextMode?: import('@/tools/AgentTool/agentTypes').SubAgentContextMode;
+  allowedTools?: readonly string[];
 }
 
 export type SubAgentInvoker = (params: SubAgentInvocationParams) => Promise<SubAgentResult>;
@@ -132,6 +133,7 @@ export class SkillExecutor {
           prompt: body,
           description: `Skill: ${skillName}`,
           contextMode: SubAgentContextMode.Fork,
+          allowedTools: skill.allowedTools,
         });
         return {
           success: result.success,

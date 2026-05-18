@@ -1,7 +1,7 @@
 # Track 28 — Command/Skill Security & Server Parity (follow-up to Track 03)
 
 Date: 2026-05-15
-Status: OPEN — P1 (one item security-critical)
+Status: READY TO IMPLEMENT — P1 (one item security-critical; decisions locked 2026-05-18)
 Follows up: [Track 03 — Command & Skill System](../03_command_skill_system_DONE/design.md) (shipped PR #204)
 Audit source: design-vs-implementation audit 2026-05-15 (independently verified against source on `agent-improvements`; re-verified 2026-05-18 on `origin/agent-improvements` at `cd1e339e`; re-verified after pull 2026-05-18 on `origin/agent-improvements` at `e9bbff26`)
 
@@ -82,6 +82,26 @@ only at invocation.
 4. Add the recorded 500ms ActiveTab debounce (G4).
 5. Validate `agent:` at parse time against registered sub-agent types (G5).
 
+## Implementation decisions locked 2026-05-18
+
+1. **`allowed-tools` applies to every model-callable tool.** This includes built-ins, MCP,
+   A2A, plugin tools, `tool_search`, `use_skill`, and sub-agent tools. Execution-time
+   `ToolRegistry.execute()` remains the final choke point. `allowed-tools` is an additional
+   hard-deny gate before approval, not an approval hint.
+2. **No `tool_search` bypass.** If a skill's allow-list includes `tool_search`, search
+   results and selectable tools are filtered to the same active allow-list. A selected
+   deferred tool outside the active allow-list is rejected even if it was selected earlier.
+3. **Default behavior stays backwards-compatible.** Missing `allowed-tools` means no
+   skill-specific restriction beyond normal approval/policy. Present `allowed-tools` means
+   exact tool-name allow-list in v1. Wildcards/source patterns are deferred until a concrete
+   product need appears.
+4. **Delete the orphaned `src/core/commands/` layer.** It has no runtime consumer; the
+   webfront slash-command surface is the actual product path. If plugins need a shared typed
+   command layer later, Track 10 or a follow-up can introduce one with an active consumer.
+5. **Parse-time `agent:` validation uses injected context.** Keep `SkillParser` portable by
+   accepting an optional validation context containing known agent types. `SkillRegistry`
+   and platform bootstraps pass the registered sub-agent types; tests pass a small fixture.
+
 ## Non-goals
 
 - Re-designing the skill model — Track 03's schema/executor/assessor stand as-is.
@@ -114,10 +134,9 @@ shared construction so the three bootstraps cannot drift again.
 
 ### G3 — commands layer
 
-Decision required (see Open Questions). Recommended: **delete** `src/core/commands/` unless a
-near-term consumer is identified — the webfront command path already satisfies the
-user-visible Phase 1 goal, and Track 10 (Plugin System) is the only plausible future
-consumer; it can introduce its own surface when scoped.
+Delete `src/core/commands/` and its tests. Do not touch `src/webfront/commands/`, which is
+the user-visible slash-command implementation. Run type-check to prove there are no dangling
+imports.
 
 ### G4 — debounce
 
@@ -151,9 +170,8 @@ message.
 - G4: unit test — N rapid tab switches → 1 callback after 500ms.
 - G5: parser test — unknown `agent:` value fails parse with explicit message.
 
-## Open questions
+## Closed questions
 
-1. **G3**: wire or delete `src/core/commands/`? Needs a product call (does Track 10 want it
-   now, or later on its own terms?).
-2. **G1**: does the allow-list apply to MCP tools and sub-agent tools too, or only the
-   built-in tool registry? (Recommend: all tools the skill could invoke.)
+1. G3 is resolved: delete the orphaned core command layer.
+2. G1 is resolved: the allow-list applies to every tool the skill could cause the model to
+   invoke.
