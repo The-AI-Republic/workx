@@ -137,7 +137,8 @@ export class RepublicAgentEngine {
       | { shadowCompactPrepareEnabled?: boolean }
       | undefined;
     this.session?.setShadowCompactPreparationEnabled?.(
-      prefs?.shadowCompactPrepareEnabled === true,
+      prefs?.shadowCompactPrepareEnabled === true &&
+        this.config.isShadowAgentChild !== true,
     );
 
     this.initialized = true;
@@ -425,6 +426,7 @@ export class RepublicAgentEngine {
     initialHistory?: RepublicAgentEngineConfig['initialHistory'];
     /** (Track 04) Inherit parent's TaskOutputStore so sub-agent's TaskRunner writes chunks. */
     taskOutputStore?: RepublicAgentEngineConfig['taskOutputStore'];
+    isShadowAgentChild?: boolean;
   }): RepublicAgentEngine {
     return new RepublicAgentEngine({
       agentConfig: this.config.agentConfig,
@@ -444,6 +446,7 @@ export class RepublicAgentEngine {
       drainPendingMessages: childConfig.drainPendingMessages,
       initialHistory: childConfig.initialHistory,
       taskOutputStore: childConfig.taskOutputStore ?? this.config.taskOutputStore,
+      isShadowAgentChild: childConfig.isShadowAgentChild,
     });
   }
 

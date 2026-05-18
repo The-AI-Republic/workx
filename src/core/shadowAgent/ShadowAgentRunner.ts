@@ -83,6 +83,7 @@ export class ShadowAgentRunner {
         maxTurns: resolved.maxTurns,
         approvalPolicy: resolved.profile.approvalPolicy ?? 'never',
         initialHistory,
+        isShadowAgentChild: true,
       });
       await childEngine.initialize();
 
