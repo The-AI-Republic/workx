@@ -3,7 +3,7 @@
 Date: 2026-05-15
 Status: OPEN — P2
 Follows up: [Track 05 — Session Memory](../05_session_memory_DONE/design.md) (shipped PR #167)
-Audit source: design-vs-implementation audit 2026-05-15 (independently verified against source on `agent-improvements`)
+Audit source: design-vs-implementation audit 2026-05-15 (independently verified against source on `agent-improvements`; re-verified 2026-05-18 on `origin/agent-improvements` at `cd1e339e`; re-verified after pull 2026-05-18 on `origin/agent-improvements` at `e9bbff26`)
 
 > Follow-up track. Track 05's design doc is **not** modified. Track 05's shipped scope
 > (LLM-controlled save/search/forget, daily + core memory, prompt injection, off-by-default,

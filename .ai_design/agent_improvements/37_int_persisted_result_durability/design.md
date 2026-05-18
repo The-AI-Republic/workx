@@ -4,7 +4,7 @@ Date: 2026-05-15
 Status: OPEN — P1
 Type: Cross-track integration / coexistence bug
 Tracks involved: [Track 09 Tool Result Persistence](../09_tool_result_persistence_DONE/design.md) × [Track 04 Typed Task Families](../04_typed_task_families_DONE/design.md) × shared cache/quota/rollout × `StorageTool`
-Source: cross-track integration audit 2026-05-15, independently re-verified against on-disk source on `agent-improvements`.
+Source: cross-track integration audit 2026-05-15, independently re-verified against on-disk source on `agent-improvements`; re-verified 2026-05-18 on `origin/agent-improvements` at `cd1e339e`; re-verified after pull 2026-05-18 on `origin/agent-improvements` at `e9bbff26`.
 
 ## Summary
 
@@ -63,15 +63,14 @@ system-managed tool result and cannot be deleted/modified").
 
 ## BUG-3 — Medium: prod quota manager clears the wrong store under pressure
 
-**Evidence (verified):** production wires `new StorageQuotaManager(cacheManager)` — the
-single-arg legacy form, so `tieredEvictor` is `null`
-(`src/extension/service-worker.ts:1269`; `StorageQuotaManager.ts:51-53`). On critical quota
-the legacy branch runs `cacheManager.cleanup()` then `cacheManager.clear()`
-(`StorageQuotaManager.ts:196-212`), but `CacheManager` only touches
-`STORE_NAMES.ROLLOUT_CACHE` (`src/storage/CacheManager.ts:135,237-276`). The actual space
-consumers — Track 04 `task_output_chunks` and Track 09 `cache_items` — are **never**
-reclaimed by the quota manager in prod, while a global storage-pressure event nukes the
-unrelated rollout cache (which itself holds Track 09 resume pointers).
+**Evidence (verified):** `StorageQuotaManager` now supports an options-bag constructor with
+a `tieredEvictor`, but production extension startup still wires the single-arg legacy form:
+`new StorageQuotaManager(cacheManager)`, so `tieredEvictor` is `null`. On critical quota the
+legacy branch runs `cacheManager.cleanup()` then `cacheManager.clear()`, but `CacheManager`
+only touches `STORE_NAMES.ROLLOUT_CACHE`. The actual space consumers — Track 04
+`task_output_chunks` and Track 09 `cache_items` — are **never** reclaimed by the quota
+manager in prod, while a global storage-pressure event nukes the unrelated rollout cache
+(which itself holds Track 09 resume pointers).
 
 This is distinct from Track 29 G3 / Track 32 P5: even with correct tier ordering, the prod
 *constructor* never engages tiers, and the legacy fallback actively clears the wrong store.

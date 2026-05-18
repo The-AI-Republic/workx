@@ -392,7 +392,7 @@ Phases 1-3 contracts.
 - **integration:** Track 14 `core/ApprovalManager.ts:10-30,101,145-184,1166`;
   Track 16 `server/handlers/logs.ts:15,39-45`; Track 12
   `core/models/resilience/withRetry.ts` (pure retry, no config I/O);
-  Track 17 `.ai_design/agent_improvements/17_operational_diagnostics/` (design only);
+  Track 17 `.ai_design/agent_improvements/17_operational_diagnostics_DONE/` (design only);
   sequencing `.ai_design/agent_improvements/README.md` (`12→13→{14..17}→20`).
 
 ### Corrections vs prior drafts

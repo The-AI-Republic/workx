@@ -5,6 +5,11 @@
 **Claudy reference**: `/home/rich/dev/study/claudy/src/utils/forkedAgent.ts`, `/home/rich/dev/study/claudy/src/services/sessionMemory.ts`, `/home/rich/dev/study/claudy/src/services/promptSuggestion.ts`, `/home/rich/dev/study/claudy/src/services/extractMemories.ts`, `/home/rich/dev/study/claudy/src/services/compact.ts`
 **BrowserX reference**: `src/core/sessionSummary`, `src/core/compact`, `src/core/engine`, `src/tools/AgentTool`
 
+**Implementation status (2026-05-18, `origin/agent-improvements` `e9bbff26`)**: DONE via
+PR #245 and follow-up commits. Session summary extraction is migrated to
+`ShadowAgentScheduler`; shadow context, runner, scheduler, failure policies, diagnostics,
+and compaction preparation are implemented with tests.
+
 ## End-To-End Goal
 
 After this track is implemented, BrowserX has a first-class internal **shadow agent** runtime:

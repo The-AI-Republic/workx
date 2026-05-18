@@ -4,7 +4,7 @@ Date: 2026-05-15
 Status: OPEN — **P1 (High, security-adjacent)**
 Type: Cross-track integration bug
 Tracks involved: [Track 09 Tool Result Persistence](../09_tool_result_persistence_DONE/design.md) × [Track 11 Parallel Tool Calls](../11_parallel_tool_calls_DONE/design.md) × [Track 02 Concurrency](../02_tool_metadata_concurrency_DONE/design.md)
-Source: cross-track integration audit 2026-05-15, independently re-verified against on-disk source on `agent-improvements`.
+Source: cross-track integration audit 2026-05-15, independently re-verified against on-disk source on `agent-improvements`; re-verified 2026-05-18 on `origin/agent-improvements` at `cd1e339e`; re-verified after pull 2026-05-18 on `origin/agent-improvements` at `e9bbff26`.
 
 ## Summary
 

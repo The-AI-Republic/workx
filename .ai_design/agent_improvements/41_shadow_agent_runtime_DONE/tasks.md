@@ -1,5 +1,7 @@
 # Track 41 Tasks: Shadow Agent Runtime
 
+Status: DONE; re-verified 2026-05-18 on `origin/agent-improvements` at `e9bbff26`.
+
 ## Phase 0: Shared Child-Agent Foundation
 
 - [x] Reuse or implement the child-engine `initialHistory` seam described in Track 40.

@@ -3,7 +3,7 @@
 Date: 2026-05-15
 Status: OPEN — P1 (feature built but not delivered to the user)
 Follows up: [Track 04 — Typed Task Families](../04_typed_task_families_DONE/design.md) (shipped PR #205)
-Audit source: design-vs-implementation audit 2026-05-15 (independently verified against source on `agent-improvements`)
+Audit source: design-vs-implementation audit 2026-05-15 (independently verified against source on `agent-improvements`; re-verified 2026-05-18 on `origin/agent-improvements` at `cd1e339e`; re-verified after pull 2026-05-18 on `origin/agent-improvements` at `e9bbff26`)
 
 > Follow-up track. Track 04's design doc is **not** modified. This captures the Track 04
 > commitments PR #205 did not deliver, verified against on-disk source.
@@ -37,10 +37,11 @@ source.
 
 ### G3 — Production `TieredEvictor` not wired
 
-`service-worker.ts` constructs `new StorageQuotaManager(cacheManager)` with **no**
+`StorageQuotaManager` now has options-bag / tiered-evictor support, but production
+`service-worker.ts` still constructs `new StorageQuotaManager(cacheManager)` with **no**
 `tieredEvictor`; `TaskOutputManager`/`TaskOutputStore` are not imported in the service
-worker. The tier-0 (task-output) eviction path designed in Track 04 is unreachable in the
-shipped extension.
+worker. The tier-0 (task-output) eviction path designed in Track 04 is still unreachable in
+the shipped extension.
 
 ### G4 — Q7 approval handling drops resolvers instead of denying (hang risk)
 

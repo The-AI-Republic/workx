@@ -4,7 +4,7 @@ Date: 2026-05-15
 Status: OPEN — P1
 Type: Cross-track integration bug
 Tracks involved: [Track 07 Centralized State](../07_centralized_state_DONE/design.md) × [Track 11 Parallel Tool Calls](../11_parallel_tool_calls_DONE/design.md) × [Track 01 Hooks](../01_hook_event_system_DONE/design.md)
-Source: cross-track integration audit 2026-05-15, independently re-verified against on-disk source on `agent-improvements`.
+Source: cross-track integration audit 2026-05-15, independently re-verified against on-disk source on `agent-improvements`; re-verified 2026-05-18 on `origin/agent-improvements` at `cd1e339e`; re-verified after pull 2026-05-18 on `origin/agent-improvements` at `e9bbff26`.
 
 ## Summary
 
@@ -28,23 +28,31 @@ per-client flag, and a mid-tool hook-set swap.
 - `RepublicAgent` subscribes to `config-changed` and reacts **only** to
   `event.section === 'model'` (`src/core/RepublicAgent.ts:253-255` →
   `handleModelConfigChange:265`). There is **no** `section === 'tools'` handler.
-- `modelClientFactory.clearCache()` is called only from the desktop hot-swap path
-  (`RepublicAgent.ts:444`), never reached for an extension `tools` config change.
+- `modelClientFactory.clearCache()` is called by explicit hot-swap/reinitialize service
+  paths, but the core `RepublicAgent` config subscription still reacts only to model changes
+  and the model-client cache key still omits tools-derived inputs.
+
+**2026-05-18 nuance:** desktop/server `agent.configUpdate` paths now call
+`hotSwapModelClient()` and clear the cache, and the extension service path recreates the
+session. Those explicit service-level update paths cover part of this bug. The remaining
+defect is still real for in-process `config-changed` `section:'tools'` events and any caller
+that updates client-feeding config without going through those platform hot-swap/recreate
+paths; the factory cache key also still cannot distinguish two clients that differ only by
+construction-time tools config.
 
 **Bug:** Two concrete failures:
-1. Toggling `parallelToolCalls` emits `config-changed` `section:'tools'` — no listener →
-   no cache invalidation → the already-built client keeps the **old** flag for the rest of
-   the session. The Track 11 feature flag is effectively pinned to its value at first client
-   construction for any reused cache entry.
+1. Toggling `parallelToolCalls` through a direct `config-changed` `section:'tools'` path has
+   no core listener → no cache invalidation → the already-built client keeps the **old** flag
+   for any reused cache entry.
 2. Even via the model path: change model A→B (builds B fresh), then back to A → the
    **cached A client** (built before any later config change) is returned, carrying stale
    per-client config (parallelToolCalls, and any other construction-time-resolved setting).
 
-**Fix:** either (a) include the tools-config-derived `parallelToolCalls` (and other
-construction-time-resolved inputs) in `cacheKey`, or (b) have `RepublicAgent` also subscribe
-to `section: 'tools'` (and any other section that feeds client construction) and call
-`modelClientFactory.clearCache()` before re-creating the client. Option (a) is more precise
-(only rebuilds affected clients); option (b) is simpler. Add a test: toggle
+**Fix:** include the tools-config-derived `parallelToolCalls` (and other
+construction-time-resolved inputs) in `cacheKey`, and/or make the core config subscription
+invalidate/recreate the client for every section that feeds client construction. The fix
+should cover all mutation paths, not only the desktop/server service `agent.configUpdate`
+hot-swap path or the extension session-recreate path. Add a test: toggle
 `parallelToolCalls` mid-session → next turn's client emits the new value.
 
 ---
@@ -71,6 +79,11 @@ policy for one action. The window is real and is *widened* by concurrent batches
 **Fix:** snapshot the matching hook set once per turn (or per tool execution) so PreToolUse
 and PostToolUse for the same tool use the same hook generation. The reload still takes
 effect — just at the next turn/tool boundary, not mid-execution.
+
+**Related lifecycle gap:** Track 26 G5 now separately tracks that
+`ConfigHookLoader.watch(...)` returns an unsubscribe function that `RepublicAgent.cleanup()`
+does not retain or invoke. That cleanup leak is distinct from this per-tool generation
+consistency bug, but both should be considered when touching hook reload lifecycle.
 
 ## Validation
 

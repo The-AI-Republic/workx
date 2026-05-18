@@ -3,7 +3,7 @@
 Date: 2026-05-15
 Status: OPEN — P1 (one item security-critical)
 Follows up: [Track 03 — Command & Skill System](../03_command_skill_system_DONE/design.md) (shipped PR #204)
-Audit source: design-vs-implementation audit 2026-05-15 (independently verified against source on `agent-improvements`)
+Audit source: design-vs-implementation audit 2026-05-15 (independently verified against source on `agent-improvements`; re-verified 2026-05-18 on `origin/agent-improvements` at `cd1e339e`; re-verified after pull 2026-05-18 on `origin/agent-improvements` at `e9bbff26`)
 
 > This is a **follow-up track**. It does not modify Track 03's design doc. It captures the
 > commitments Track 03's design made that the shipped PR #204 code does **not** fulfill, as
@@ -35,7 +35,7 @@ field is threaded all the way to the executor result — then **dropped**.
 **Impact:** an inline skill declaring `allowed-tools: read_dom` still runs with the agent's
 full tool set. The advertised containment guarantee does not exist.
 
-### G2 — Server agents have no skill execution / risk assessor / domain filter
+### G2 — Server and extension agents have no skill execution parity
 
 Track 03 Phases 3 & 4 required `ServerAgentBootstrap` to mirror the desktop wiring
 (`use_skill`, `SkillExecutor`, `SkillRiskAssessor`, `SkillDomainFilter`). The desktop path
@@ -43,6 +43,13 @@ Track 03 Phases 3 & 4 required `ServerAgentBootstrap` to mirror the desktop wiri
 (`src/server/agent/ServerAgentBootstrap.ts`) builds only a bare `SkillRegistry` for service
 lookups — no executor, no assessor, no domain filter, no `use_skill` parity. Server-mode
 skills therefore run unassessed or not at all.
+
+2026-05-18 re-verification found the same parity gap on the extension execution path:
+`service-worker.ts` initializes skill storage/discovery, `SkillDomainFilter`, and the prompt
+extension, but there is no extension-side `use_skill` registration using `SkillExecutor` /
+`SkillRiskAssessor` (grep negative for `registerSkillsToolOnAgent`, `use_skill`,
+`SkillExecutor`, and `SkillRiskAssessor` in the extension service-worker path). Net: extension
+prompts can advertise skills, but the agent has no executable `use_skill` tool for them.
 
 ### G3 — `src/core/commands/` typed-command layer is orphaned dead code
 
@@ -69,7 +76,8 @@ only at invocation.
 ## Goals
 
 1. Enforce `allowed-tools` as a real per-turn tool allow-list during skill execution (G1).
-2. Bring `ServerAgentBootstrap` to skill parity with the desktop bootstrap (G2).
+2. Bring server and extension agents to skill execution parity with the desktop bootstrap
+   (G2).
 3. Resolve `src/core/commands/`: wire it into the slash/model surface **or** delete it (G3).
 4. Add the recorded 500ms ActiveTab debounce (G4).
 5. Validate `agent:` at parse time against registered sub-agent types (G5).
@@ -96,13 +104,13 @@ tool gate consumed by the dispatch path:
 - Fork skills already get an isolated sub-agent registry; verify the allow-list is applied to
   the forked registry too.
 
-### G2 — server parity
+### G2 — server + extension parity
 
-Mirror the desktop wiring in `src/server/agent/ServerAgentBootstrap.ts`: construct
-`SkillExecutor`, `SkillRiskAssessor`, `SkillDomainFilter` (server-appropriate `ActiveTab`
-source — likely a no-op/headless adapter), and register `use_skill` with the same options
-object the desktop bootstrap uses. Factor the shared construction so the two bootstraps
-cannot drift again.
+Mirror the desktop wiring in both `src/server/agent/ServerAgentBootstrap.ts` and the extension
+service-worker agent factory: construct `SkillExecutor`, `SkillRiskAssessor`,
+`SkillDomainFilter` (server-appropriate `ActiveTab` source — likely a no-op/headless adapter),
+and register `use_skill` with the same options object the desktop bootstrap uses. Factor the
+shared construction so the three bootstraps cannot drift again.
 
 ### G3 — commands layer
 
@@ -126,7 +134,8 @@ message.
 
 - **G1 false-positives**: an over-tight allow-list could break legitimate skills. Mitigate
   with a structured, actionable error and an integration test per skill shape.
-- **G2 drift**: shared factory must be the single construction site for both bootstraps.
+- **G2 drift**: shared factory must be the single construction site for desktop, server, and
+  extension bootstraps.
 - **G3**: deleting code that a future track wants — mitigated by Track 10 being able to
   reintroduce a purpose-built surface; git history preserves the orphaned layer.
 
@@ -135,8 +144,8 @@ message.
 - G1: integration test — inline skill with `allowed-tools: read_dom` attempts a write tool →
   rejected with `tool_error`; allowed tool succeeds; allow-list cleared after skill ends;
   forked-registry variant covered.
-- G2: server bootstrap test asserting `use_skill` present and `SkillRiskAssessor` is the
-  active assessor (not `StaticRiskAssessor(0)`).
+- G2: server and extension bootstrap tests asserting `use_skill` present and
+  `SkillRiskAssessor` is the active assessor (not `StaticRiskAssessor(0)`).
 - G3: if deleted — `npm run type-check` + full suite green, no dangling imports. If wired —
   typeahead/model test exercising `CommandLoader`.
 - G4: unit test — N rapid tab switches → 1 callback after 500ms.

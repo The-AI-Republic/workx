@@ -1,83 +1,59 @@
 # Track 34 — Integration Defect: 05b Extractor ↔ Track 04 Task Seam (+ teardown leaks)
 
 Date: 2026-05-15
-Status: OPEN — **P0 (Critical)**
+Status: OPEN — P1 (extractor seam resolved; shutdown timer leak remains)
 Type: Cross-track integration bug (not a single-track design gap)
 Tracks involved: [Track 04 Typed Task Families](../04_typed_task_families_DONE/design.md) × [Track 05b Auto-Extraction/Interlock](../05b_auto_extraction_compaction_interlock_DONE/design.md) × [Track 01 Hooks](../01_hook_event_system_DONE/design.md)
-Source: cross-track integration audit 2026-05-15, each defect independently re-verified against on-disk source on `agent-improvements`.
+Source: cross-track integration audit 2026-05-15, each defect independently re-verified against on-disk source on `agent-improvements`; re-verified 2026-05-18 on `origin/agent-improvements` at `cd1e339e`; re-verified after pull 2026-05-18 on `origin/agent-improvements` at `e9bbff26`.
 
 ## Summary
 
-Track 05b runs its background summary extractor as a **sub-agent**. Track 04 added a
-`Session` task seam that *unconditionally* registers every sub-agent as a tracked task but
-marks it terminal *conditionally*. Because the 05b extractor is `quietBackground: true`, the
-terminal-marking is gated out — so the extractor becomes a **permanent phantom "running"
-task** that never settles. This single defect cascades into a UI-pollution bug, an
-eviction-timer leak, and a teardown resource leak. None of these are in tracks 26–32.
+Track 41 migrated the 05b summary extractor away from the user-facing `sub_agent` seam and
+onto `ShadowAgentScheduler`. The original P0 extractor phantom is therefore resolved on the
+current branch: session summary no longer registers a quiet background sub-agent, no longer
+emits user-facing `SubAgentStart` / `SubAgentComplete`, and parent engine disposal shuts down
+active shadow jobs before `Session.shutdown()`.
+
+One teardown bug from the original audit remains: `Session.shutdown()` still does not clear
+an already armed Track-04 eviction interval and still does not abort active typed tasks.
 
 ---
 
-## BUG-1 — Critical: quiet extractor is registered as a Track-04 task but never marked terminal
+## BUG-1 — Resolved by Track 41: quiet extractor is no longer a sub-agent task
 
-**Evidence (verified):**
-- `SubAgentRunner` registers a synthetic `BackgroundAgentTaskState` (`status: 'running'`,
-  `notified: false`) into the parent `Session` for **every** sub-agent — the call is guarded
-  only by `typeof parentSession.registerTaskState === 'function'`, *not* by `quietBackground`:
-  `src/tools/AgentTool/SubAgentRunner.ts:435-460` (registerTaskState at `:453`).
-- The only transition to terminal is `markTypedTaskTerminated`, called **only inside**
-  `if (!suppressNotification())`: `SubAgentRunner.ts:133,139` (success) and `:143,155`
-  (failure).
-- `suppressNotification()` returns `true` whenever `params.quietBackground === true`:
-  `SubAgentRunner.ts:127-128`.
-- The 05b extractor is constructed with `quietBackground: true`:
-  `src/core/sessionSummary/cacheSafeParams.ts:32,36`.
+**Current evidence:** `SessionSummaryHook` now calls
+`parentEngine.getShadowAgentScheduler().run({ kind: ShadowAgentKind.SessionSummary, ... })`
+and no longer imports or constructs `SubAgentRunner`, `SubAgentRegistry`,
+`cacheSafeParams.ts`, or `session_summary_extractor`. Track 41 also removed those old helper
+files. Shadow jobs do not register typed background task state or consume sub-agent registry
+slots.
 
-**Result:** the extractor's task entry is created but `markTypedTaskTerminated` is never
-called for it → it remains `status: 'running'` forever.
-
-**Impact:**
-1. It appears in `Session.listTaskStates()` (`src/core/Session.ts:2057-2062`) → pollutes the
-   background-task badge / transcript — exactly what `quietBackground` exists to prevent.
-2. Track 04's eviction timer's "stop when nothing non-terminal remains" check
-   (`Session.ts:2127-2133`) sees a perpetually non-terminal task and **the timer never
-   stops** (feeds BUG-3).
-
-**Fix:** make registration and terminal-marking symmetric. Either (a) skip
-`registerTaskState` when `quietBackground === true` (thread the flag into the
-`registerTaskState` call site in `SubAgentRunner.prepare`), or (b) always call
-`markTypedTaskTerminated` in the run `finally` regardless of notification suppression
-(suppress only the *notification*, not the state transition). Option (a) is cleaner: the
-quiet extractor should be outside the user-facing task seam entirely. Add a regression test
-asserting a `quietBackground` sub-agent leaves `listTaskStates()` unchanged and lets the
-eviction timer stop.
+`SubAgentRunner` itself was also hardened: detached background runs now call
+`markTypedTaskTerminated(...)` after execution even when `quietBackground` suppresses the
+LLM-visible notification. That makes the old failure mode less likely for compatibility
+callers, but the important extractor fix is that internal extraction no longer enters this
+seam at all.
 
 ---
 
-## BUG-2 — High: `SubAgentStart`/`SubAgentComplete` events fired for the quiet extractor
+## BUG-2 — Resolved by Track 41: extractor lifecycle no longer emits sub-agent events
 
-**Evidence:** `SubAgentRunner` pushes `SubAgentStart` (`SubAgentRunner.ts:417-427`) and
-`SubAgentComplete` (`:496-508`) onto the **parent** engine's event stream unconditionally —
-the `quietBackground` contract suppresses the *notification* but not these lifecycle events.
-The extractor is therefore half-visible (notification hidden, but Start/Complete leak into
-the parent transcript/UI).
-
-**Fix:** route the extractor's lifecycle events through the existing suppression mechanism —
-`SubAgentEventRouter` already supports `suppressedTypes` (`SubAgentRunner.ts:289-293`); add
-`SESSION_SUMMARY_EXTRACTOR_TYPE_ID` to it so the quiet extractor is fully invisible.
+**Current evidence:** session summary extraction is a `ShadowAgentKind.SessionSummary`
+request. The shadow runner/scheduler uses shadow telemetry and typed shadow results; it does
+not call `SubAgentRunner` and does not inject user-facing sub-agent lifecycle events by
+default.
 
 ---
 
-## BUG-3 — High: `Session.shutdown()` leaks the Track-04 eviction `setInterval` past teardown
+## BUG-3 — Still open: `Session.shutdown()` leaks the Track-04 eviction `setInterval` past teardown
 
-**Evidence:** `Session.shutdown()` (`src/core/Session.ts:1452-1475`) detaches the 05b hook,
-closes memory, flushes rollout — but never calls `abortAllTasks` and never clears
-`evictionTimerId`. `clearInterval` only happens inside `runEvictionTick` when no
-non-terminal task remains (`Session.ts:2130-2132`). Per BUG-1 the quiet-extractor task is
-permanently non-terminal, so the timer keeps firing `runEvictionTick` on a shut-down
-`Session` indefinitely (a `setInterval` leak in the service worker; also touches
-`taskOutputStore` after shutdown). `RepublicAgentEngine.dispose()` calls
-`session.shutdown()` (`RepublicAgentEngine.ts:269-271`) and adds no task cleanup. Even
-without BUG-1, any still-running background task at shutdown leaves the timer armed.
+**Evidence:** `Session.shutdown()` detaches the 05b hook, closes memory, and flushes rollout
+but still never calls `abortAllTasks` and never clears `evictionTimerId`. `clearInterval`
+only happens inside `runEvictionTick` when no non-terminal task remains. If the eviction
+timer is already armed, it can keep firing after shutdown and touch `taskOutputStore` on a
+shut-down `Session`. `RepublicAgentEngine.dispose()` now shuts down the shadow-agent
+scheduler first, which addresses the extractor child-engine side of this track, but it does
+not clean up ordinary typed background tasks or an already armed eviction interval.
 
 **Fix:** in `Session.shutdown()`, before detaching: `if (this.evictionTimerId) {
 clearInterval(this.evictionTimerId); this.evictionTimerId = null; }` and `await
@@ -86,38 +62,25 @@ this.abortAllTasks('Shutdown')` (or at minimum clear `activeTasks`). Test: after
 
 ---
 
-## BUG-4 — Medium: extractor's orphaned child engine is not disposed on parent teardown
+## BUG-4 — Resolved by Track 41: extractor child engine is owned by the shadow scheduler
 
-**Evidence:** On dispose, a `Shutdown`/`Interrupt` at priority `now` jumps the queue
-(`src/core/queue/priorityForOp.ts:22-26`) and `handleShutdown` only clears queues
-(`RepublicAgentEngine.ts:827-835`). `SessionSummaryHook.detach()` aborts `lifetimeAbort`
-(`src/core/sessionSummary/SessionSummaryHook.ts:171`) which short-circuits `runExtraction`
-*after* its await, but `detach()` never cancels the extractor's in-flight child
-`RepublicAgentEngine`/`runner.run`; the underlying sub-agent run is explicitly "discarded
-but may continue" (`SessionSummaryHook.ts:165-167`). The interlock *flag* is safe (cleared
-in `runExtraction`'s `finally` + a 60s staleness escape in
-`src/core/sessionSummary/extractionLifecycle.ts:73-76`), but the orphaned child engine —
-which may hold a CDP/debugger attachment — is never torn down on parent shutdown.
-
-**Fix:** have `SessionSummaryHook.detach()` (or `Session.shutdown()` via the internal
-`SubAgentRegistry`) abort the extractor's child engine / its `abortController`, wiring it to
-`lifetimeAbort`. Test: parent dispose mid-extraction cancels the child engine.
+**Current evidence:** `RepublicAgentEngine.dispose()` calls
+`this.shadowAgentScheduler?.shutdown()` before `session.shutdown()`. The scheduler cancels
+queued jobs and aborts active jobs. `SessionSummaryHook.detach()` still aborts its local
+lifetime controller to suppress orphaned cache/state writes after detach.
 
 ---
 
 ## Assessed safe (no defect — recorded so it isn't re-investigated)
 
 - **Post-turn re-entrancy:** `firePostTurnHooks` is awaited inside TurnManager's `Completed`
-  case before returning (`src/core/TurnManager.ts:337-377`); the 05b hook is fire-and-forget
-  and guarded by the `isExtractionInFlight` skip
-  (`SessionSummaryHook.ts:213-217`). A queued `Compact` (priority `later`) running its
-  interlock while the spawning turn is still extracting is the *intended* path, correctly
-  bounded by the 15s/60s escapes (`extractionLifecycle.ts:63-83`). No new defect beyond
-  BUG-1/3 which make the task-state never settle.
+  case before returning; the 05b hook is still fire-and-forget and guarded by the
+  `isExtractionInFlight` skip. A queued `Compact` running its interlock while the spawning
+  turn is still extracting is the intended path, correctly bounded by the 15s/60s escapes.
+  Track 41's shadow migration does not introduce a new re-entrancy defect.
 
 ## Relationship to other tracks
 
 Distinct from Track 29 (Track-04 follow-up, which covers events-not-emitted / UI-not-mounted
-/ Q7 hang) — this track is about the *05b-sub-agent ↔ Track-04-seam interaction*, which
-Track 29 does not address. Sequence: fix BUG-1 first (it makes BUG-3 permanent); BUG-3's
-`shutdown` fix is independently valuable and should land regardless.
+/ Q7 hang). The extractor-specific seam is now resolved by Track 41; only the independent
+Track-04 shutdown cleanup remains here.

@@ -13,7 +13,7 @@
 >
 > **Severity:** the *conclusion* ("headless payments must fail CLOSED unless Track-20 allowlisted + Track-18 capped") is still correct policy and should be kept. Only the *mechanism and citation* are wrong — but an implementer who follows the doc literally ("route through `ApprovalGate` on the server, it will time out and deny") ships the fail-open hole.
 >
-> **Required correction (next session):** replace the "approval times out → deny" mechanism with an **active, explicit registration/policy gate** (mirror the corrected Track 14: autonomous payment is *not exposed* on `platformId==='server'` unless a Track-20 managed allowlist policy resolves it; the deny is explicit, never the byproduct of an assumed timeout). Fix the Validation-Notes citation (line ~87) to distinguish the exec manager (valid only for the exec/payment-*command* path) from the core manager (the `ApprovalGate` path). Keep the Track-20 allowlist + Track-18 cap composition intact. See `14_plan_review/design.md` → "Validation Notes → Correction 4" for the verified evidence.
+> **Required correction (next session):** replace the "approval times out → deny" mechanism with an **active, explicit registration/policy gate** (mirror the corrected Track 14: autonomous payment is *not exposed* on `platformId==='server'` unless a Track-20 managed allowlist policy resolves it; the deny is explicit, never the byproduct of an assumed timeout). Fix the Validation-Notes citation (line ~87) to distinguish the exec manager (valid only for the exec/payment-*command* path) from the core manager (the `ApprovalGate` path). Keep the Track-20 allowlist + Track-18 cap composition intact. See `14_plan_review_DONE/design.md` → "Validation Notes → Correction 4" for the verified evidence.
 
 ## Problem
 

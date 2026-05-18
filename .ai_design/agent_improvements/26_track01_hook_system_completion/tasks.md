@@ -29,9 +29,19 @@ Follows up [Track 01](../01_hook_event_system_DONE/design.md). See `design.md` f
 - [ ] 4.2a Wire a `Stop` firing site (turn-stop) + test, or
 - [ ] 4.2b Remove `Stop` from `VALID_HOOK_EVENTS` + union; test registration rejected.
 
+## Phase 5 — Config hook watcher cleanup (G5)
+
+- [ ] 5.1 Store the unsubscribe returned by `ConfigHookLoader.watch(...)` on
+      `RepublicAgent`.
+- [ ] 5.2 Invoke that unsubscribe during `RepublicAgent.cleanup()` and clear config-source
+      hooks or the registry as appropriate after `SessionEnd`.
+- [ ] 5.3 Test: after cleanup, emitting `config-changed { section: 'hooks' }` does not
+      mutate the cleaned-up agent's `HookRegistry` and does not retain an old listener.
+
 ## Exit criteria
 
 - `TaskCompleted` observable on success, failure, and abort.
 - Tool hooks receive browser/runtime context.
 - `HookResult` shipped or explicitly descoped here.
 - `Stop` either fires or is unregistrable.
+- Config hook watchers are unsubscribed during agent cleanup.

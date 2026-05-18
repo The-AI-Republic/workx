@@ -192,7 +192,7 @@ additional `PolicySource` impls behind the same interface.
 
 - [ ] `.ai_design/agent_improvements/README.md` — verify/refresh the Track 20 row (effort **M**; Phase 4 **P3/L**) and the Dependency Graph: Phase 1 has **no hard deps**; Track 14 is a Phase 3 dep (ext/desktop only); Tracks 16/17 are degrade-gracefully forward-notes, not blockers; Track 12/18 are config-key consumers only.
 - [ ] After each phase merges, update `design.md` **Status** and tick the corresponding section here. Re-run the Phase 0 `grep`s if the branch moved materially.
-- [ ] Rename the dir to `20_managed_policy_settings_DONE` only after **all P1 phases (1–3)** merge; note in README which phases shipped (Phase 4 may trail; the `_DONE` suffix is unreliable, so be explicit).
+- [X] Rename the dir to `20_managed_policy_settings_DONE` only after **all P1 phases (1–3)** merge; note in README which phases shipped (Phase 4 may trail; the `_DONE` suffix is unreliable, so be explicit).
 
 ---
 

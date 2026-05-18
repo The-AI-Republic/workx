@@ -8,7 +8,9 @@ Cross-track integration bug. See `design.md` for evidence (file:line).
       `parallelToolCalls`) into `ModelClientFactory` `cacheKey` (`:184`), or (b)
       `RepublicAgent` subscribes to `section:'tools'` (and other client-feeding sections)
       and calls `modelClientFactory.clearCache()` before re-create.
-- [ ] 1.2 Implement chosen fix.
+- [ ] 1.2 Audit every config mutation path and implement the chosen fix so tools-derived
+      client config invalidates/rebuilds consistently, not only through desktop/server
+      `agent.configUpdate` hot-swap or extension session re-create flows.
 - [ ] 1.3 Test: toggle `parallelToolCalls` mid-session → next turn's payload reflects it;
       model A→B→A returns a current-config client, not the stale cached one.
 
