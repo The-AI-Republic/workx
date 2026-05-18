@@ -108,6 +108,20 @@ export async function registerServerTools(
   }
 
   // ──────────────────────────────────────────────────────────────────────
+  // Track 23: resource_fetch (the only payable x402 surface). Payment
+  // behavior is governed by the capability wired in ServerAgentBootstrap
+  // (default-deny unless server.x402 allowlists the payee).
+  // ──────────────────────────────────────────────────────────────────────
+
+  try {
+    const { registerResourceFetchTool } = await import('@/tools/ResourceFetchTool');
+    await registerResourceFetchTool(registry);
+    console.log('[registerServerTools] resource_fetch tool registered');
+  } catch (err) {
+    console.warn('[registerServerTools] Failed to register resource_fetch tool:', err);
+  }
+
+  // ──────────────────────────────────────────────────────────────────────
   // Track 09: read_persisted_result — retrieval path for FileToolResultStore
   // ──────────────────────────────────────────────────────────────────────
 

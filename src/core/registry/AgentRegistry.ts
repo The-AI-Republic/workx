@@ -200,6 +200,36 @@ export class AgentRegistry {
         }
         toolRegistry.setApprovalGate(approvalGate);
 
+        // Track 23: x402 capability on the real extension session path.
+        // The extension never holds a key and never auto-pays; the capability
+        // only surfaces HTTP 402 requirements through resource_fetch.
+        try {
+          const { createPaymentCapability, NoopSigner, getX402Config, isX402Enabled } =
+            await import('@/core/payments/x402');
+          toolRegistry.setPaymentCapability(
+            createPaymentCapability({
+              platform: 'extension',
+              isEnabled: isX402Enabled,
+              getCaps: async () => {
+                const c = await getX402Config();
+                return {
+                  network: c.network,
+                  maxPaymentPerRequestUSD: c.maxPaymentPerRequestUSD,
+                  maxSessionSpendUSD: c.maxSessionSpendUSD,
+                };
+              },
+              signer: new NoopSigner(),
+              audit: (level, message, data) => {
+                const fn =
+                  level === 'warn' ? console.warn : level === 'error' ? console.error : console.log;
+                fn(`[x402] ${message}`, data ?? '');
+              },
+            }),
+          );
+        } catch (error) {
+          console.warn('[AgentRegistry] x402 capability wiring failed (non-fatal):', error);
+        }
+
         // Register sub-agent tool on extension path
         const engine = agent.getEngine();
         let subAgentRunner: import('../../tools/AgentTool/SubAgentRunner').SubAgentRunner | null = null;

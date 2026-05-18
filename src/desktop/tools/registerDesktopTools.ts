@@ -17,6 +17,7 @@ import { PlanningTool } from '../../tools/PlanningTool';
 import { getTaskStore } from '../../core/taskmanager';
 import { WebSearchTool, WEB_SEARCH_CONCURRENCY } from '../../tools/WebSearchTool';
 import { SettingTool } from '../../tools/SettingTool';
+import { registerResourceFetchTool } from '../../tools/ResourceFetchTool';
 import { MCPManager } from '../../core/mcp/MCPManager';
 import { registerMCPTools } from '../../core/mcp/MCPToolAdapter';
 import { TerminalTool } from './terminal/TerminalTool';
@@ -93,6 +94,11 @@ export async function registerDesktopToolsImpl(
       });
     }, riskAssessor);
   };
+
+  // ── resource_fetch (Track 23 — the only x402-payable surface) ─────────
+  // Desktop is the signer home; the wired capability requires explicit
+  // human approval (ApprovalGate) above the trivial threshold.
+  await registerResourceFetchTool(registry);
 
   // ──────────────────────────────────────────────────────────────────────
   // Register browser tools via MCPManager builtin server

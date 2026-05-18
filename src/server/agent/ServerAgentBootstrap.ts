@@ -311,6 +311,69 @@ export class ServerAgentBootstrap {
             }
           }
 
+          // Track 23: x402 capability — headless server FAILS CLOSED.
+          // ApprovalGate is NOT constructed on the server (verified), so
+          // safety is an EXPLICIT default-deny allowlist policy from
+          // server.x402 — never an approval timeout. No policy / not
+          // allowlisted / over cap ⇒ deny + audit. Real signing is Phase-4
+          // gated (coinbase/x402 SDK).
+          try {
+            const toolRegistry = agent.getToolRegistry();
+            const {
+              createPaymentCapability,
+              CoinbaseX402Signer,
+              PaymentKeyStore,
+              evaluateServerPolicy,
+            } = await import('@/core/payments/x402');
+            const { getServerConfig } = await import('../config/server-config');
+            const { emitLog } = await import('../handlers/logs');
+
+            const keyStore = new PaymentKeyStore();
+            const signer = new CoinbaseX402Signer(
+              () => keyStore.getPrivateKey(),
+              async () => {
+                throw new Error('x402 address derivation is Phase-4 gated (coinbase/x402 SDK)');
+              },
+            );
+
+            const x402 = () => getServerConfig().server.x402;
+
+            toolRegistry.setPaymentCapability(
+              createPaymentCapability({
+                platform: 'server',
+                isEnabled: async () => x402().enabled === true,
+                getCaps: async () => {
+                  const cfg = x402();
+                  return {
+                    network: cfg.network,
+                    // Per-request cap is owned by the allowlist policy below
+                    // (per payee domain); the generic limit is not the gate.
+                    maxPaymentPerRequestUSD: Number.POSITIVE_INFINITY,
+                    maxSessionSpendUSD: cfg.maxSessionSpendUSD,
+                  };
+                },
+                signer,
+                // Explicit default-deny allowlist (Track 20 stand-in) — pure,
+                // unit-tested evaluateServerPolicy. sessionSpentUSD is the
+                // per-day approximation pending Phase 4.
+                serverPolicy: (amountUSD, resourceUrl, sessionSpentUSD) => {
+                  const cfg = x402();
+                  return evaluateServerPolicy(
+                    { allowlist: cfg.allowlist, maxPerDayUSD: cfg.maxPerDayUSD },
+                    amountUSD,
+                    resourceUrl,
+                    sessionSpentUSD,
+                  );
+                },
+                audit: (level, message, data) =>
+                  emitLog(level, `[x402] ${message}`, data),
+              }),
+            );
+            console.log('[ServerAgentBootstrap] x402 capability wired (default-deny)');
+          } catch (err) {
+            console.warn('[ServerAgentBootstrap] x402 capability wiring failed (non-fatal):', err);
+          }
+
           return agent;
         },
         eventDispatcherFactory: (sessionId) => (event) => {

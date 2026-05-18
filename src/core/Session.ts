@@ -11,6 +11,7 @@ import { mapResponseItemToEventMessages } from './events/EventMapping';
 import type { EventMsg } from './protocol/events';
 import { RolloutRecorder, type RolloutItem } from '../storage/rollout';
 import { v4 as uuidv4 } from 'uuid';
+import { resetX402SessionPayments } from './payments/x402/tracker';
 import { TurnContext } from './TurnContext';
 import { AgentConfig } from '../config/AgentConfig';
 import type { SessionTask } from './tasks/SessionTask';
@@ -923,6 +924,9 @@ export class Session {
 
     // Clear conversation history
     this.clearHistory();
+
+    // Track 23: a new conversation starts at $0 x402 spend (this session only)
+    resetX402SessionPayments(this.sessionId);
 
     // Create new conversation ID
     Object.assign(this, { sessionId: uuidv4() });
