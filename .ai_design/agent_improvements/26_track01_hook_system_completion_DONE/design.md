@@ -1,7 +1,7 @@
 # Track 26 — Hook System Completion (follow-up to Track 01)
 
 Date: 2026-05-15
-Status: OPEN — P1
+Status: READY TO IMPLEMENT — P1 (decisions locked 2026-05-18)
 Follows up: [Track 01 — Hook & Event System](../01_hook_event_system_DONE/design.md) (shipped PR #198)
 Audit source: design-vs-implementation audit 2026-05-15 (independently verified against source on `agent-improvements`; re-verified 2026-05-18 on `origin/agent-improvements` at `cd1e339e`; re-verified after pull 2026-05-18 on `origin/agent-improvements` at `e9bbff26`)
 
@@ -54,14 +54,32 @@ on later `section:'hooks'` changes.
 
 1. Fire `TaskCompleted` on success **and** failure/abort (G1).
 2. Add `getToolRuntimeContext` and populate browser/runtime context on tool hook inputs (G2).
-3. Either emit a `HookResult` event or formally descope it in Track 01's design (G3).
-4. Either wire a `Stop` firing site or remove `Stop` from the Phase-1 union (G4).
+3. Emit a bounded per-hook `HookResult` observability event (G3).
+4. Wire `Stop` as a real user/system stop lifecycle hook (G4).
 5. Store and invoke the config-hook watcher unsubscribe during agent cleanup (G5).
 
 ## Non-goals
 
 - Phase-2 hook features Track 01 explicitly deferred: prompt/http hook execution, async
   re-entry (`{"async":true}` + `asyncTimeout`) / `AsyncHookRegistry`. Those remain Phase 2.
+
+## Implementation decisions locked 2026-05-18
+
+1. **Keep `HookResult`.** BrowserX should move toward a Claudy-grade hook surface, so per-hook
+   result/progress observability is useful. The v1 event is metadata-bounded: hook id/name,
+   event name, source, status, duration, blocked/permission/update flags, and error summary.
+   It must not emit large tool outputs, full hook stdout, or secrets.
+2. **Wire `Stop`.** `Stop` means "a running turn/task was asked to stop by the user or by a
+   system lifecycle path." It fires from the accepted stop/abort path after the stop request
+   is accepted and before/while abort propagation begins. It is observability/policy-notify
+   only in v1: it cannot veto the stop and it must be bounded so shutdown/abort cannot hang.
+   If a later product wants a vetoable stop hook, that is a new track.
+3. **Snapshot hooks per tool execution.** A single tool call must use one hook generation for
+   PreToolUse, PermissionRequest, PostToolUse, and PostToolUseFailure. Config reloads apply
+   to the next tool execution, not halfway through the current one.
+4. **Keep Track 26 focused.** The broader Claudy-inspired hook expansion is tracked in
+   GitHub issue #248. This track implements the concrete completion items that unblock that
+   larger direction.
 
 ## Approach
 
@@ -72,13 +90,13 @@ on later `section:'hooks'` changes.
   `current_url`/`current_domain` (active page for that tab), `cwd` (platform-appropriate);
   merge it into the three tool `HookInput` construction sites in `TurnManager`. Guard for
   no-tab/headless contexts (fields optional).
-- **G3**: decide (see Open Questions). If keep: add `HookResult` to `EventMsg` and emit
-  per-hook results from `HookDispatcher`. If drop: this follow-up's only G3 deliverable is a
-  one-line note added to *this* doc recording the descope (Track 01's doc stays untouched per
-  the user's rule).
-- **G4**: prefer wiring a real `Stop` firing site at turn-stop in `TurnManager`/
-  `RepublicAgent`; if no clear semantics, remove `Stop` from `VALID_HOOK_EVENTS` + union so
-  it cannot be registered.
+- **G3**: add `HookResult` to `EventMsg` and emit a bounded event from `HookDispatcher` for
+  every executed hook. Emit one result for success, block, permission decision, input update,
+  timeout, and thrown error. Redact or summarize any large payloads.
+- **G4**: wire `Stop` from the accepted stop paths (`RepublicAgent.handleInterrupt`,
+  `Session.interruptTask`/`abortTask`/shutdown-relevant abort path as applicable). The hook
+  receives the session id, optional task/submission id, reason, platform/runtime context, and
+  whether the stopped task was foreground/background. It cannot cancel the stop.
 - **G5**: keep the unsubscribe returned by `ConfigHookLoader.watch` on `RepublicAgent`; call
   it from `cleanup()` before clearing agent-owned state. Also clear config-source hooks or the
   whole `HookRegistry` if no other cleanup consumer needs it after `SessionEnd`.
@@ -95,14 +113,7 @@ on later `section:'hooks'` changes.
   `TaskCompleted`; success path unchanged.
 - G2: unit test — a PreToolUse hook receives `tab_id`/`current_url`/`current_domain`/`cwd`;
   headless context yields the documented empty/optional shape.
-- G3: if kept, dispatcher test asserts a `HookResult` per executed hook.
-- G4: if wired, a turn-stop test fires `Stop`; if removed, registering `Stop` is rejected.
+- G3: dispatcher test asserts a bounded `HookResult` per executed hook.
+- G4: a turn-stop/abort test fires `Stop` exactly once and cannot be vetoed by a hook.
 - G5: test — initialize then cleanup an agent, emit `config-changed {section:'hooks'}`, and
   assert the cleaned-up registry is not reloaded/mutated and the config listener count drops.
-
-## Open questions
-
-1. G3: is `HookResult` worth the event volume, or is `HookFired`+`HookBlocked` sufficient?
-   (Recommend: descope unless a consumer needs per-hook result granularity.)
-2. G4: what are the precise `Stop` semantics for a browser agent (turn end? user-stop?
-   shutdown?) — needed before wiring vs removing.

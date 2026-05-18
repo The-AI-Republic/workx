@@ -24,10 +24,16 @@ export interface HookFireOptions {
   signal?: AbortSignal;
   /** Override the default timeout for all hooks in this call (seconds). */
   timeoutOverride?: number;
+  /** Frozen hook generation for one tool execution. */
+  snapshot?: HookExecutionSnapshot;
 }
 
 /** Callback to emit EventMsg into the BrowserX event pipeline. */
 export type HookEventEmitter = (msg: EventMsg) => void;
+
+export interface HookExecutionSnapshot {
+  getMatchingHooks(event: HookEvent): RegisteredHook[];
+}
 
 /**
  * No-op result returned when no hooks match, avoiding unnecessary allocations.
@@ -39,6 +45,13 @@ const EMPTY_RESULT: AggregatedHookResult = Object.freeze({
   results: Object.freeze([]) as readonly HookResult[],
   totalDuration: 0,
 });
+
+const TOOL_EXECUTION_HOOK_EVENTS: readonly HookEvent[] = [
+  'PreToolUse',
+  'PermissionRequest',
+  'PostToolUse',
+  'PostToolUseFailure',
+];
 
 export class HookDispatcher {
   private readonly registry: HookRegistry;
@@ -64,6 +77,25 @@ export class HookDispatcher {
     return this.registry;
   }
 
+  createToolExecutionSnapshot(
+    toolName: string,
+    toolInput?: Record<string, unknown>,
+  ): HookExecutionSnapshot {
+    const hooksByEvent = new Map<HookEvent, RegisteredHook[]>();
+    for (const event of TOOL_EXECUTION_HOOK_EVENTS) {
+      hooksByEvent.set(
+        event,
+        this.registry.getMatchingHooks(event, toolName, toolInput),
+      );
+    }
+
+    return {
+      getMatchingHooks(event: HookEvent): RegisteredHook[] {
+        return [...(hooksByEvent.get(event) ?? [])];
+      },
+    };
+  }
+
   /**
    * Fire all matching hooks for an event.
    *
@@ -78,16 +110,9 @@ export class HookDispatcher {
     input: HookInput,
     options?: HookFireOptions,
   ): Promise<AggregatedHookResult> {
-    // Fast path: no hooks registered for this event at all
-    if (!this.registry.hasHooksFor(event)) {
-      return EMPTY_RESULT;
-    }
-
-    const matching = this.registry.getMatchingHooks(
-      event,
-      input.tool_name,
-      input.tool_input as Record<string, unknown> | undefined,
-    );
+    const matching = options?.snapshot
+      ? options.snapshot.getMatchingHooks(event)
+      : this.getLiveMatchingHooks(event, input);
 
     if (matching.length === 0) {
       return EMPTY_RESULT;
@@ -106,7 +131,7 @@ export class HookDispatcher {
 
     // Fire async hooks (fire-and-forget)
     for (const hook of asyncHooks) {
-      this.fireAndForget(hook, input, options?.signal);
+      this.fireAndForget(hook, input, options?.signal, options?.timeoutOverride);
     }
 
     // Execute sync hooks in parallel and aggregate.
@@ -138,6 +163,10 @@ export class HookDispatcher {
             },
       );
       aggregated = HookAggregator.aggregate(results);
+      results.forEach((result, idx) => {
+        const hook = syncHooks[idx];
+        if (hook) this.emitHookResult(event, input, hook, result);
+      });
     }
 
     // Remove `once` hooks (both sync and async)
@@ -153,6 +182,19 @@ export class HookDispatcher {
     return aggregated;
   }
 
+  private getLiveMatchingHooks(event: HookEvent, input: HookInput): RegisteredHook[] {
+    // Fast path: no hooks registered for this event at all
+    if (!this.registry.hasHooksFor(event)) {
+      return [];
+    }
+
+    return this.registry.getMatchingHooks(
+      event,
+      input.tool_name,
+      input.tool_input as Record<string, unknown> | undefined,
+    );
+  }
+
   // -----------------------------------------------------------------------
   // Private
   // -----------------------------------------------------------------------
@@ -161,12 +203,25 @@ export class HookDispatcher {
     hook: RegisteredHook,
     input: HookInput,
     signal?: AbortSignal,
+    timeoutOverride?: number,
   ): void {
-    this.executor.execute(hook.command, input, signal).catch((err) => {
+    const cmd =
+      timeoutOverride !== undefined
+        ? { ...hook.command, timeout: timeoutOverride }
+        : hook.command;
+    this.executor.execute(cmd, input, signal).then((result) => {
+      this.emitHookResult(hook.event, input, hook, result);
+    }).catch((err) => {
       console.warn(
         `[HookDispatcher] Async hook ${hook.id} failed:`,
         err instanceof Error ? err.message : err,
       );
+      this.emitHookResult(hook.event, input, hook, {
+        hookId: `failed_${hook.id}`,
+        outcome: 'non_blocking_error',
+        stderr: err instanceof Error ? err.message : String(err),
+        duration: 0,
+      });
     });
   }
 
@@ -199,5 +254,45 @@ export class HookDispatcher {
         },
       });
     }
+  }
+
+  private emitHookResult(
+    event: HookEvent,
+    input: HookInput,
+    hook: RegisteredHook,
+    result: HookResult,
+  ): void {
+    if (!this.eventEmitter) return;
+    const error = result.stderr || result.stdout;
+    this.eventEmitter({
+      type: 'HookResult',
+      data: {
+        hook_event_name: event,
+        hook_id: hook.id,
+        execution_id: result.hookId,
+        source: this.sourceToString(hook.source),
+        command_type: hook.command.type,
+        outcome: result.outcome,
+        duration_ms: result.duration,
+        tool_name: input.tool_name,
+        exit_code: result.exitCode,
+        blocked: result.outcome === 'blocking_error' || result.continue === false,
+        permission_decision: result.decision,
+        updated_input: result.updatedInput !== undefined,
+        updated_output: result.updatedOutput !== undefined,
+        additional_context: result.additionalContext !== undefined,
+        error: error ? this.truncate(error, 240) : undefined,
+      },
+    });
+  }
+
+  private sourceToString(source: RegisteredHook['source']): string {
+    return typeof source === 'string'
+      ? source
+      : `${source.type}:${source.pluginId}`;
+  }
+
+  private truncate(value: string, max: number): string {
+    return value.length <= max ? value : `${value.slice(0, max)}...`;
   }
 }
