@@ -154,6 +154,56 @@ describe('AgentRegistry — factory path (server/desktop)', () => {
       expect((session.agent as any).agentId).toBe('agent_ext');
     });
 
+    it('Track 10: onAgentCreated fires for the agentFactory path (null runner)', async () => {
+      const factoryAgent = createFactoryAgent();
+      const agentFactory = vi.fn().mockResolvedValue(factoryAgent);
+      const onAgentCreated = vi.fn().mockResolvedValue(undefined);
+
+      const registry = new AgentRegistry({
+        maxConcurrent: 3,
+        agentFactory,
+        onAgentCreated,
+      });
+      registry.initialize(mockConfig);
+
+      await registry.createSession({ type: 'scheduled' });
+
+      expect(onAgentCreated).toHaveBeenCalledTimes(1);
+      expect(onAgentCreated).toHaveBeenCalledWith(factoryAgent, {
+        subAgentRunner: null,
+      });
+    });
+
+    it('Track 10: onAgentCreated fires for the extension path with a runner slot', async () => {
+      const onAgentCreated = vi.fn().mockResolvedValue(undefined);
+      const registry = new AgentRegistry({ maxConcurrent: 3, onAgentCreated });
+      registry.initialize(mockConfig);
+
+      await registry.createSession({ type: 'primary' });
+
+      expect(onAgentCreated).toHaveBeenCalledTimes(1);
+      const [agentArg, ctxArg] = onAgentCreated.mock.calls[0];
+      expect(agentArg).toBeDefined();
+      // subAgentRunner is null in the mocked extension path (engine is null)
+      expect(ctxArg).toHaveProperty('subAgentRunner');
+    });
+
+    it('Track 10: a throwing onAgentCreated is non-fatal (session still created)', async () => {
+      const factoryAgent = createFactoryAgent();
+      const agentFactory = vi.fn().mockResolvedValue(factoryAgent);
+      const onAgentCreated = vi.fn().mockRejectedValue(new Error('binder boom'));
+
+      const registry = new AgentRegistry({
+        maxConcurrent: 3,
+        agentFactory,
+        onAgentCreated,
+      });
+      registry.initialize(mockConfig);
+
+      const session = await registry.createSession({ type: 'scheduled' });
+      expect(session.agent).toBe(factoryAgent);
+    });
+
     it('should propagate agentFactory errors', async () => {
       const agentFactory = vi.fn().mockRejectedValue(new Error('Factory init failed'));
 
@@ -206,10 +256,16 @@ describe('AgentRegistry — factory path (server/desktop)', () => {
 
       // Factory should be called with the session ID
       expect(eventDispatcherFactory).toHaveBeenCalledWith(session.sessionId);
-      // Agent should have its event dispatcher set
-      expect(factoryAgent.setEventDispatcher).toHaveBeenCalledWith(
-        eventDispatcherFactory.mock.results[0].value
-      );
+      // Agent's dispatcher is set to the telemetry-decorated wrapper which
+      // ALWAYS forwards to the factory's real dispatcher (Track 16).
+      expect(factoryAgent.setEventDispatcher).toHaveBeenCalledTimes(1);
+      const wired = factoryAgent.setEventDispatcher.mock.calls[0][0];
+      const realDispatcher = eventDispatcherFactory.mock.results[0].value;
+      expect(typeof wired).toBe('function');
+      expect(wired).not.toBe(realDispatcher); // decorated, not identical
+      const evt = { id: 'e1', msg: { type: 'TurnStarted', data: {} } };
+      wired(evt);
+      expect(realDispatcher).toHaveBeenCalledWith(evt); // forwards regardless
     });
 
     it('should use extension event dispatcher when eventDispatcherFactory not provided', async () => {

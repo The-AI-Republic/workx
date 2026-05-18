@@ -23,6 +23,7 @@ import type { Op } from '@/core/protocol/types';
 import { shouldReceiveEvent } from '../auth/authorize';
 import { makeEvent } from '@applepi/ws-server';
 import { getTrackedConnections, touchConnection } from '../connection/watchdog';
+import { redactEventMsgSecrets } from '../security/eventRedaction';
 
 type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
 
@@ -89,7 +90,7 @@ export class ServerChannel implements ChannelAdapter {
     }
 
     this.eventSeq++;
-    const eventMsg = event.msg;
+    const eventMsg = redactEventMsgSecrets(event.msg);
     const eventName = this.eventMsgToName(eventMsg);
     const payload = event.sessionId ? { ...eventMsg, sessionId: event.sessionId } : eventMsg;
     const frame = JSON.stringify(makeEvent(eventName, payload, this.eventSeq));

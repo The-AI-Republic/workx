@@ -10,8 +10,12 @@
 
 import { RepublicAgent } from '../../core/RepublicAgent';
 import { UserNotifier } from '../../core/UserNotifier';
+import { installTelemetry, schedulerTelemetryTap } from '../../core/telemetry';
+import { RingSink } from '../telemetry/RingSink';
 import type { Submission } from '../../core/protocol/types';
 import { ApprovalGate } from '../../core/approval/ApprovalGate';
+import { registerPlanReviewTools } from '../../tools/planReview/PlanReviewTools';
+import { setDynamicRuntimeContext } from '../../core/PromptLoader';
 import { PolicyRulesEngine } from '../../core/approval/PolicyRulesEngine';
 import { getDefaultRules } from '../../core/approval/defaultRules';
 import { DomainSensitivityEnhancer } from '../../core/approval/enhancers/DomainSensitivityEnhancer';
@@ -28,12 +32,16 @@ import { STORAGE_KEYS } from '../../config/defaults';
 import { DEFAULT_APPROVAL_CONFIG } from '../../core/approval/types';
 import { TabManager } from '../../core/TabManager';
 import { LLM_API_URL } from '../../config/constants';
-import { MCPManager } from '../../core/mcp/MCPManager';
-import { registerMCPTools, unregisterMCPTools } from '../../core/mcp/MCPToolAdapter';
+// Track 22: MCP/A2A are gated behind compile-time feature flags. Manager
+// classes and tool-adapter helpers load via dynamic import() inside the
+// feature-gated init blocks, so an OFF build tree-shakes core/mcp +
+// core/a2a out of the extension bundle entirely. Only type-only imports
+// remain at top level (erased at compile time — zero bundle cost).
+import type { MCPManager as MCPManagerT } from '../../core/mcp/MCPManager';
 import type { MCPManagerEvent } from '../../core/mcp/types';
-import { A2AManager } from '../../core/a2a/A2AManager';
-import { registerA2ASkills, unregisterA2ASkills } from '../../core/a2a/A2AToolAdapter';
+import type { A2AManager as A2AManagerT } from '../../core/a2a/A2AManager';
 import type { A2AManagerEvent } from '../../core/a2a/types';
+import { MCP, A2A } from '../../core/features/feature';
 
 // Skills imports
 import { SkillRegistry } from '../../core/skills';
@@ -53,6 +61,13 @@ import { setConfigStorage } from '../../core/storage/ConfigStorageProvider';
 import { setCredentialStore } from '../../core/storage/CredentialStore';
 import { setStorageProvider, isStorageProviderInitialized } from '../../core/storage';
 import { ChromeConfigStorage } from '../../extension/storage/ChromeConfigStorage';
+import { ChromeManagedConfigSource } from '../../extension/storage/ChromeManagedConfigSource';
+import {
+  registerPolicySources,
+  resolveActivePolicy,
+  onPolicyChanged,
+  assessAndRecord,
+} from '../../core/config/policy';
 import { ChromeCredentialStore } from '../../extension/storage/ChromeCredentialStore';
 import * as VaultManager from '../../core/crypto/VaultManager';
 // Modules previously loaded via dynamic import() — must be static in service workers
@@ -61,6 +76,8 @@ import type { StorageAdapter } from '../../storage/StorageAdapter';
 import { TokenUsageStore } from '../../storage/TokenUsageStore';
 import { getChannelManager } from '../../core/channels/ChannelManager';
 import { registerAllServices } from '../../core/services';
+import { CompactService } from '../../core/compact/CompactService';
+import type { ResponseItem } from '../../core/protocol/types';
 import { SidePanelChannel } from '../../extension/channels/SidePanelChannel';
 import { ChatGPTOAuthExtensionStorage } from '../auth/ChatGPTOAuthExtensionStorage';
 import { ChatGPTOAuthService } from '../../core/auth/ChatGPTOAuthService';
@@ -70,19 +87,29 @@ import type { SessionConfig } from '../../core/registry/types';
 import { DEFAULT_MAX_CONCURRENT } from '../../core/registry/types';
 import { PRIMARY_SESSION_ALIAS } from '../../core/models/types/SessionContracts';
 import { t } from '../../webfront/lib/i18n';
+import { getActionForExtensionCommand, type ShortcutAction } from '../../core/shortcuts';
 
 // Global instances
 let registry: AgentRegistry | null = null;
 let cacheManager: CacheManager | null = null;
 let storageQuotaManager: StorageQuotaManager | null = null;
 let agentConfig: AgentConfig | null = null;
-let mcpManager: MCPManager | null = null; // MCP server connection manager
-let a2aManager: A2AManager | null = null; // A2A agent connection manager
+let mcpManager: MCPManagerT | null = null; // MCP server connection manager
+let a2aManager: A2AManagerT | null = null; // A2A agent connection manager
 let currentAuthManager: AuthManager | null = null; // Preserve auth state across agent recreation
 let scheduler: Scheduler | null = null; // Job scheduler
 let schedulerAlarms: SchedulerAlarms | null = null;
 let sessionStorage: SessionStorage | null = null; // Feature 015: Session persistence
 let skillRegistry: SkillRegistry | null = null; // Agent skills
+// Track 10: global plugin registry (skills + MCP slots; per-session
+// hooks/agents binding is a documented follow-up needing an
+// AgentRegistry.onAgentCreated hook on the extension path).
+let pluginRegistry: import('@/core/plugins/PluginRegistry').PluginRegistry | null = null;
+// Track 10: IDB provider's virtual-path resolvers, for per-session binding.
+let pluginFsResolvers: {
+  readFile: (p: string) => Promise<string | null>;
+  listDirs: (p: string) => Promise<string[]>;
+} | null = null;
 let isInitialized = false;
 let initializationPromise: Promise<void> | null = null;
 
@@ -150,6 +177,22 @@ async function configureExtensionPlatform(targetAgent: RepublicAgent): Promise<v
   } catch (error) {
     console.warn('[ServiceWorker] x402 capability wiring failed (non-fatal):', error);
   }
+
+  // Plan Review (Track 14): register Begin/Submit closures here, where the
+  // registry + core ApprovalManager are in scope (ToolContext exposes
+  // neither). Feed the registry's freeze flag into the system prompt each
+  // turn so the read-only-exploration guidance persists across the review.
+  await registerPlanReviewTools({
+    registry: toolRegistry,
+    approvalManager,
+    approvalGate,
+    platformId: 'extension',
+    recordPlanArtifact: (payload) =>
+      targetAgent.getSession().persistRolloutItems([{ type: 'plan_artifact', payload }]),
+  });
+  setDynamicRuntimeContext(() => ({
+    planReviewActive: toolRegistry.isPlanReviewActive(),
+  }));
 
   // Tab closure handler
   const tabManager = TabManager.getInstance();
@@ -231,6 +274,17 @@ async function doInitialize(): Promise<void> {
     console.warn('[ServiceWorker] Failed to initialize credential store:', error);
   }
 
+  // Track 20: register the Chrome-native managed-policy source and resolve it
+  // BEFORE AgentConfig.getInstance() so the first buildRuntimeConfig already
+  // sees admin policy. Fail-open: no managed storage → no policy.
+  try {
+    registerPolicySources([new ChromeManagedConfigSource()]);
+    await resolveActivePolicy();
+    console.log('[ServiceWorker] Managed policy resolved (early)');
+  } catch (error) {
+    console.warn('[ServiceWorker] Managed policy resolution failed:', error);
+  }
+
   // Inject RolloutRecorder provider before any session creation triggers it.
   // Direct instantiation avoids dynamic import() which is banned in service workers.
   try {
@@ -243,6 +297,33 @@ async function doInitialize(): Promise<void> {
 
   // Initialize configuration singleton first
   agentConfig = await AgentConfig.getInstance();
+
+  // Centralized telemetry: live privacy gate + bounded in-memory ring
+  // (best-effort/ephemeral — MV3 SW eviction; no remote egress). No-op
+  // unless telemetryEnabled (read live).
+  installTelemetry({
+    getTelemetryEnabled: () =>
+      agentConfig?.getConfig().preferences?.telemetryEnabled,
+    sink: RingSink,
+  });
+
+  // Track 20: when admin pushes a managed-policy change (chrome.storage
+  // managed area, auto-wired via the source's subscribe), re-hydrate so the
+  // pin re-applies and the UI re-renders locked fields.
+  onPolicyChanged((p) => {
+    const a = assessAndRecord(p);
+    if (a.weakened) {
+      console.warn(
+        '[ServiceWorker] Organization applied a managed policy that weakens security:',
+        a.reasons.join('; ')
+      );
+    }
+    AgentConfig.getInstance()
+      .then((c) => c.reload())
+      .catch((err) =>
+        console.warn('[ServiceWorker] policy reload failed:', err)
+      );
+  });
 
   // Initialize ONLY StorageProvider early — PlanningTool requires it via getTaskStore()
   // during tool registration in registry.createSession().
@@ -262,7 +343,31 @@ async function doInitialize(): Promise<void> {
   // Load max concurrent sessions from user preferences
   const config = agentConfig!.getConfig();
   const maxConcurrentSessions = config.preferences?.maxConcurrentSessions ?? DEFAULT_MAX_CONCURRENT;
-  registry = AgentRegistry.getInstance({ maxConcurrent: maxConcurrentSessions });
+  registry = AgentRegistry.getInstance({
+    maxConcurrent: maxConcurrentSessions,
+    // Track 10: bind enabled plugins' hooks + sub-agent types to each new
+    // session. Reads module-level pluginRegistry/resolvers lazily — they're
+    // set by initializePlugins() before real sessions are created.
+    onAgentCreated: async (agent, { subAgentRunner }) => {
+      if (!pluginRegistry || !pluginFsResolvers || !subAgentRunner) return;
+      try {
+        const { PluginSessionBinder } = await import('@/core/plugins/PluginSessionBinder');
+        const binder = new PluginSessionBinder({
+          hookRegistry: agent.getHookRegistry(),
+          subAgentRunner,
+          readFile: pluginFsResolvers.readFile,
+          listDirs: pluginFsResolvers.listDirs,
+        });
+        const enabled = pluginRegistry
+          .getPlugins()
+          .filter((p) => p.state.status === 'enabled');
+        await binder.applyEnabledPlugins(enabled);
+        pluginRegistry.registerSessionBinder(binder);
+      } catch (e) {
+        console.warn('[ServiceWorker] plugin session bind failed (non-fatal):', e);
+      }
+    },
+  });
   registry.initialize(agentConfig!);
 
   // Initialize IndexedDB storage adapter early — shared by session persistence and TokenUsageStore.
@@ -287,29 +392,45 @@ async function doInitialize(): Promise<void> {
   // This ensures backend routing is set up correctly on service worker startup
   await initializeAuthFromConfig();
 
-  // Initialize MCP manager
-  mcpManager = await MCPManager.getInstance();
+  // Track 22: MCP gated behind the MCP compile-time flag. When OFF this
+  // whole block is dead-code-eliminated and the dynamic import() chunk is
+  // never emitted, so core/mcp leaves the extension bundle.
+  if (MCP) {
+    // Initialize MCP manager
+    const { MCPManager } = await import('../../core/mcp/MCPManager');
+    mcpManager = await MCPManager.getInstance();
 
-  // Subscribe to MCP events for tool registration/unregistration
-  setupMCPToolRegistration();
+    // Subscribe to MCP events for tool registration/unregistration
+    // (sync — handler attaches immediately, before any auto-connect)
+    setupMCPToolRegistration();
 
-  // Auto-connect enabled MCP servers (T064: service worker lifecycle handling)
-  await autoConnectEnabledMCPServers();
+    // Auto-connect enabled MCP servers (T064: service worker lifecycle handling)
+    await autoConnectEnabledMCPServers();
+  }
 
   // Setup message handlers
   setupMessageHandlers();
 
-  // Initialize A2A manager
-  a2aManager = await A2AManager.getInstance();
+  // Track 22: A2A gated behind the A2A compile-time flag (same DCE rationale).
+  if (A2A) {
+    // Initialize A2A manager
+    const { A2AManager } = await import('../../core/a2a/A2AManager');
+    a2aManager = await A2AManager.getInstance();
 
-  // Subscribe to A2A events for tool registration/unregistration
-  setupA2AToolRegistration();
+    // Subscribe to A2A events for tool registration/unregistration
+    // (sync — handler attaches immediately, before any auto-connect)
+    setupA2AToolRegistration();
 
-  // Auto-connect enabled A2A agents
-  await autoConnectEnabledA2AAgents();
+    // Auto-connect enabled A2A agents
+    await autoConnectEnabledA2AAgents();
+  }
 
   // Initialize Skills
   await initializeSkills();
+
+  // Track 10: initialize the plugin system (after skills — the skill slot
+  // loader targets the global skillRegistry).
+  await initializePlugins();
 
   // Initialize Scheduler
   await initializeScheduler();
@@ -516,9 +637,10 @@ async function registerServiceHandlers(): Promise<void> {
       },
     };
 
-    // Wire scheduler events to ChannelManager (unified dispatch)
+    // Wire scheduler events to ChannelManager (unified dispatch) + telemetry
+    // tap (scheduler is a separate emitter family bypassing the chokepoint)
     if (scheduler) {
-      scheduler.connectToChannel(() => channelManager, 'sidepanel-main');
+      scheduler.connectToChannel(() => channelManager, 'sidepanel-main', schedulerTelemetryTap);
     }
 
     if (!registry) throw new Error('AgentRegistry not initialized');
@@ -536,6 +658,7 @@ async function registerServiceHandlers(): Promise<void> {
         }),
       },
       skills: skillRegistry ? { skillRegistry } : undefined,
+      plugins: pluginRegistry ? { pluginRegistry } : undefined,
       vault: {
         vaultManager: VaultManager as any,
       },
@@ -550,6 +673,29 @@ async function registerServiceHandlers(): Promise<void> {
           const initialHistory = await RolloutRecorder.getRolloutHistory(sessionId);
           if (initialHistory.type !== 'resumed' || !initialHistory.payload?.history) return null;
           return { sessionId, rolloutItems: initialHistory.payload.history };
+        },
+        // Track 15 (D9): summarize_up_to summarizer, sourced from the live
+        // primary agent's existing ModelClientFactory (no client built here).
+        summarizeForRewind: async (items: ResponseItem[]) => {
+          const reg = registry;
+          const primary = reg?.getPrimarySession();
+          const agent = primary ? reg?.getSession(primary.sessionId)?.agent : null;
+          if (!agent) return undefined;
+          try {
+            const modelClient = await agent.getModelClientFactory().createClientForCurrentModel();
+            const result = await new CompactService().compact(
+              items,
+              'manual',
+              modelClient,
+              0,
+              undefined,
+              { sessionId: agent.getSession().getSessionId() },
+            );
+            return result.success ? result.summaryText : undefined;
+          } catch (err) {
+            console.warn('[service-worker] summarizeForRewind failed:', err);
+            return undefined;
+          }
         },
       },
       agent: {
@@ -847,6 +993,11 @@ function setupMCPToolRegistration(): void {
 
         // Register new tools on all sessions
         try {
+          // Track 22: lazy adapter import — keeps core/mcp/MCPToolAdapter out
+          // of OFF builds (this whole function is unreferenced when MCP is
+          // off, so it tree-shakes), without delaying the .on() subscription
+          // above. import() is cached after the first event.
+          const { registerMCPTools } = await import('../../core/mcp/MCPToolAdapter');
           for (const tr of getAllToolRegistries()) {
             await registerMCPTools(mcpManager!, serverName, tools, tr);
           }
@@ -939,6 +1090,11 @@ function setupA2AToolRegistration(): void {
 
         // Register new skills on all sessions
         try {
+          // Track 22: lazy adapter import — keeps core/a2a/A2AToolAdapter out
+          // of OFF builds (this whole function is unreferenced when A2A is
+          // off, so it tree-shakes), without delaying the .on() subscription
+          // above. import() is cached after the first event.
+          const { registerA2ASkills } = await import('../../core/a2a/A2AToolAdapter');
           for (const tr of getAllToolRegistries()) {
             await registerA2ASkills(a2aManager!, agentName, skills, tr, a2aAgentConfig.trusted);
           }
@@ -1059,6 +1215,77 @@ async function initializeSkills(): Promise<void> {
   }
 }
 
+/**
+ * Track 10: initialize the global plugin system for the extension.
+ *
+ * Wires the globally-reachable slots — skills (the same SkillRegistry the
+ * skills service uses) + MCP (the singleton MCPManager). Hooks + sub-agent
+ * types are per-session (created in AgentRegistry's extension path) and are
+ * a documented follow-up needing an AgentRegistry.onAgentCreated hook;
+ * commands are global storage. Plugins live in an IDB-virtualized store.
+ */
+async function initializePlugins(): Promise<void> {
+  try {
+    const { IndexedDBStorageProvider } = await import('../storage/IndexedDBStorageProvider');
+    const { IndexedDBPluginProvider } = await import('../storage/IndexedDBPluginProvider');
+    const { PluginRegistry } = await import('@/core/plugins/PluginRegistry');
+    const { SkillSlotLoader } = await import('@/core/plugins/loaders/SkillSlotLoader');
+    const { McpSlotLoader } = await import('@/core/plugins/loaders/McpSlotLoader');
+    const { AgentConfig } = await import('@/config/AgentConfig');
+
+    const storageProvider = new IndexedDBStorageProvider();
+    await storageProvider.initialize();
+    const provider = new IndexedDBPluginProvider(storageProvider);
+    await provider.initialize();
+    pluginFsResolvers = { readFile: provider.readFile, listDirs: provider.listDirs };
+
+    const agentConfig = await AgentConfig.getInstance();
+
+    pluginRegistry = new PluginRegistry({
+      provider,
+      // Virtual-path resolvers from the IDB provider keep the slot loaders
+      // platform-agnostic.
+      skillSlot: skillRegistry
+        ? new SkillSlotLoader({
+            skillRegistry,
+            readFile: provider.readFile,
+            listDirs: provider.listDirs,
+          })
+        : undefined,
+      mcpSlot: mcpManager ? new McpSlotLoader(mcpManager) : undefined,
+      // hooks / agents: per-session (AgentRegistry extension path) — follow-up
+      getEnabledFromConfig: () => agentConfig.getConfig().enabledPlugins ?? {},
+      persistEnabled: async (id, enabled) => {
+        const current = agentConfig.getConfig().enabledPlugins ?? {};
+        agentConfig.updateConfig({
+          enabledPlugins: { ...current, [id]: enabled },
+        });
+      },
+    });
+
+    const metas = await provider.listMeta();
+    for (const m of metas) {
+      try {
+        pluginRegistry.register(await provider.load(`${m.name}@local`));
+      } catch (e) {
+        console.warn(`[ServiceWorker] plugin load ${m.name} failed:`, e);
+      }
+    }
+    await pluginRegistry.bootstrapEnabledPlugins();
+
+    agentConfig.on('config-changed', (e: { section?: string }) => {
+      if (e.section === 'enabledPlugins') {
+        void pluginRegistry?.reconcileFromConfig();
+      }
+    });
+
+    console.log(`[ServiceWorker] Plugins initialized (${metas.length} discovered)`);
+  } catch (error) {
+    console.warn('[ServiceWorker] Failed to initialize plugins:', error);
+    // Non-fatal — plugins are optional
+  }
+}
+
 
 /**
  * Setup Chrome API event listeners
@@ -1120,20 +1347,34 @@ function setupContextMenus(): void {
  * Handle keyboard commands
  */
 function handleCommand(command: string): void {
-  switch (command) {
-    case 'toggle-sidepanel':
-      // Toggle side panel
+  const action = getActionForExtensionCommand(command);
+  if (!action) {
+    console.warn('[ServiceWorker] Unknown keyboard command:', command);
+    return;
+  }
+
+  handleShortcutAction(action);
+}
+
+/**
+ * Handle shared shortcut actions from extension commands.
+ */
+function handleShortcutAction(action: ShortcutAction): void {
+  switch (action) {
+    case 'app:toggleWindow':
       chrome.sidePanel.open({ windowId: chrome.windows.WINDOW_ID_CURRENT });
       break;
 
-    case 'quick-action':
-      // Trigger quick action on current tab
+    case 'app:quickAction':
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs[0]?.id) {
           executeQuickAction(tabs[0].id);
         }
       });
       break;
+
+    default:
+      console.warn('[ServiceWorker] No extension shortcut handler for action:', action);
   }
 }
 

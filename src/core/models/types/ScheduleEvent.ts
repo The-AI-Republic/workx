@@ -90,6 +90,14 @@ export interface ExecutionRecord {
 
   /** When execution completed (Unix ms) */
   completedAt: number | null;
+
+  /**
+   * Track 15: number of rewind-from-checkpoint retries already attempted for
+   * this logical job. Bounds the resume-instead-of-fail loop. Optional so
+   * ExecutionRecords persisted before this field existed still deserialize
+   * (treated as 0).
+   */
+  retryCount?: number;
 }
 
 // ============================================================================
@@ -207,6 +215,7 @@ export function createExecutionRecord(
     error: null,
     startedAt: null,
     completedAt: null,
+    retryCount: 0,
   };
 }
 

@@ -6,7 +6,7 @@ interface UsageState {
   records: TokenUsageRecord[];
   sessionSummaries: SessionUsageSummary[];
   dailySummaries: DailyUsageSummary[];
-  modelSummaries: Record<string, { total_tokens: number; taskCount: number }>;
+  modelSummaries: Record<string, { total_tokens: number; taskCount: number; costUSD: number; costEstimated: boolean }>;
   groupByModel: boolean;
   loading: boolean;
   error: string | null;

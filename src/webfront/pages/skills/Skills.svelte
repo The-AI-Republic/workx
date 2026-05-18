@@ -11,6 +11,7 @@
   import { refreshSkillCommands } from '../../commands/builtinCommands';
   import { t, _t } from '../../lib/i18n';
   import { uiTheme } from '../../stores/themeStore';
+  import { registerShortcut, registerShortcutContext } from '../../shortcuts/useShortcut';
 
   let currentTheme = $derived($uiTheme);
 
@@ -212,14 +213,18 @@
     push('/');
   }
 
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') {
+  onMount(() => {
+    const unregisterContext = registerShortcutContext('Skills');
+    const unregisterDismiss = registerShortcut('skills:dismiss', 'Skills', () => {
       handleClose();
-    }
-  }
-</script>
+    });
 
-<svelte:window onkeydown={handleKeydown} />
+    return () => {
+      unregisterContext();
+      unregisterDismiss();
+    };
+  });
+</script>
 
 <div class="h-full flex items-center justify-center {currentTheme === 'modern' ? 'bg-black/30' : 'bg-black/50'}">
   <div class="w-full max-w-[42rem] max-h-[80vh] overflow-y-auto rounded-lg flex flex-col

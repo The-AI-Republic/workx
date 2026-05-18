@@ -136,7 +136,7 @@ export class ToolRegistry {
    * surface-only / never pays; desktop = signer + ApprovalGate approval;
    * server = default-deny allowlist policy) and wires it here. It is threaded
    * onto ToolContext.payments and consumed ONLY by the resource-fetch tool.
-   * Undefined ⇒ no tool can pay.
+   * Undefined means no tool can pay.
    */
   setPaymentCapability(capability: PaymentCapability | undefined): void {
     this.paymentCapability = capability;
@@ -145,6 +145,34 @@ export class ToolRegistry {
   /** Get the payment capability (if configured). */
   getPaymentCapability(): PaymentCapability | undefined {
     return this.paymentCapability;
+  }
+
+  /**
+   * Plan Review (Track 14) freeze state.
+   *
+   * While active, every non-read-only tool call is hard-denied in
+   * execute() — the categorical "propose plan → freeze → one approval →
+   * execute" gate. This is an orthogonal flag on the registry (the sole
+   * tool-execution choke point), deliberately NOT an ApprovalMode value
+   * and NOT an ApprovalGate change: "mode" is reserved for the per-session
+   * agent operating-mode axis, and the registry owns isReadOnly natively
+   * on every platform (incl. server, where ApprovalGate is never built).
+   */
+  private planReviewActive = false;
+
+  /** Enter Plan Review: freeze all non-read-only tool calls. Idempotent. */
+  beginPlanReview(): void {
+    this.planReviewActive = true;
+  }
+
+  /** Exit Plan Review: lift the freeze. Idempotent. */
+  endPlanReview(): void {
+    this.planReviewActive = false;
+  }
+
+  /** Whether Plan Review is currently freezing non-read-only calls. */
+  isPlanReviewActive(): boolean {
+    return this.planReviewActive;
   }
 
   /**
@@ -439,6 +467,24 @@ export class ToolRegistry {
             duration: Date.now() - startTime,
           };
         }
+      }
+
+      // Plan Review (Track 14) freeze. Runs BEFORE the approval gate so a
+      // frozen mutation is hard-denied and never reaches the core
+      // ApprovalManager (whose high_speed timeout would otherwise
+      // fail-OPEN auto-approve it). Keyed off Track 02 isReadOnly, which
+      // is registry-native and fail-closed on every platform. The single,
+      // sufficient enforcement point — see .ai_design 14_plan_review.
+      if (this.planReviewActive && !this.isReadOnly(request.toolName, request.parameters as Record<string, unknown>)) {
+        return {
+          success: false,
+          error: {
+            code: 'APPROVAL_DENIED',
+            message: `Tool '${request.toolName}' is frozen during plan review — read-only actions only until the plan is approved`,
+            details: { reason: 'plan-review-freeze' },
+          },
+          duration: Date.now() - startTime,
+        };
       }
 
       // Approval gate check (if configured)

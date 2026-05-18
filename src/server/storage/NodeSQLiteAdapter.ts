@@ -31,10 +31,17 @@ const ADAPTER_STORES = [
 
 export class NodeSQLiteAdapter implements StorageAdapter {
   private db: import('better-sqlite3').Database | null = null;
-  private dataDir: string;
+  private dataDir: string | null;
+  private dbPath: string | null;
 
-  constructor(dataDir: string) {
-    this.dataDir = dataDir;
+  constructor(dataDirOrOptions: string | { dataDir?: string; dbPath?: string }) {
+    if (typeof dataDirOrOptions === 'string') {
+      this.dataDir = dataDirOrOptions;
+      this.dbPath = null;
+    } else {
+      this.dataDir = dataDirOrOptions.dataDir ?? null;
+      this.dbPath = dataDirOrOptions.dbPath ?? null;
+    }
   }
 
   async initialize(): Promise<void> {
@@ -44,12 +51,15 @@ export class NodeSQLiteAdapter implements StorageAdapter {
     const { join } = await import('node:path');
     const { existsSync, mkdirSync } = await import('node:fs');
 
-    const dir = join(this.dataDir, 'storage');
+    const dir = this.dbPath
+      ? this.dbPath.replace(/[\\/][^\\/]*$/, '') || '.'
+      : join(this.dataDir ?? '', 'storage');
+    const dbPath = this.dbPath ?? join(dir, 'storage.db');
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
     }
 
-    this.db = new Database(join(dir, 'storage.db'));
+    this.db = new Database(dbPath);
     this.db.pragma('journal_mode = WAL');
     this.db.pragma('foreign_keys = ON');
 

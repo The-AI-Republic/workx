@@ -10,6 +10,7 @@
 import { z } from 'zod';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { applyPolicy, getActivePolicySync } from '@/core/config/policy';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Configuration schema
@@ -76,6 +77,13 @@ const LimitsConfigSchema = z.object({
   maxSessions: z.number().default(1_000),
   maxHistoryBytes: z.number().default(6_291_456),
   sessionRetentionDays: z.number().default(30),
+  // Track 18: USD budget caps for unattended scheduler jobs. 0 = disabled.
+  // maxUsdPerDay pauses the job queue once the day's summed cost exceeds it
+  // (post-hoc, blocks subsequent jobs). maxUsdPerJob flags an individual
+  // over-budget job in the logs. Hot-reloadable via the existing
+  // onConfigReload wiring (a candidate Track 20 lockedKeys policy key).
+  maxUsdPerDay: z.number().default(0),
+  maxUsdPerJob: z.number().default(0),
   queue: QueueConfigSchema.default({}),
 });
 
@@ -106,6 +114,11 @@ export const ServerConfigSchema = z.object({
       limits: LimitsConfigSchema.default({}),
       backup: BackupConfigSchema.default({}),
       shutdownGracePeriodMs: z.number().default(10_000),
+      // Track 24.2: operator-pinned output-style persona for all unattended
+      // jobs. Resolved against built-in styles + .browserx/styles dirs.
+      // TODO(track-20): allow a managed-policy key to override this once
+      // Track 20 lands.
+      persona: z.string().optional(),
     })
     .default({}),
   owner: OwnerConfigSchema.default({}),
@@ -161,8 +174,14 @@ export function loadServerConfig(): ServerConfig {
   const merged = applyEnvOverrides(fileConfig);
   const parsed = ServerConfigSchema.parse(merged);
 
-  _config = parsed;
-  return parsed;
+  // Track 20: pin admin policy as the highest-priority tier, AFTER
+  // env>file>defaults resolution. No-op until a policy source is resolved.
+  // The existing onConfigReload callbacks deliver this pinned object, so
+  // hot-reload re-applies policy with no new seam.
+  const resolved = applyPolicy(parsed, getActivePolicySync(), 'server');
+
+  _config = resolved;
+  return resolved;
 }
 
 /**

@@ -13,9 +13,12 @@
 
 import { ServerChannel } from '../channels/ServerChannel';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
+import type { ChannelAdapter } from '@/core/channels/ChannelAdapter';
 import { RepublicAgent } from '@/core/RepublicAgent';
 import { AgentConfig, CREDENTIAL_SECURED_MARKER } from '@/config/AgentConfig';
 import { setConfigStorage } from '@/core/storage/ConfigStorageProvider';
+import { getCredentialStore } from '@/core/storage';
+import { AuthManager } from '@/core/models/types/Auth';
 import { FileConfigStorageProvider } from '../storage/FileConfigStorageProvider';
 import { configurePromptComposer } from '@/core/PromptLoader';
 import type { RuntimeContext } from '@/prompts/PromptComposer';
@@ -24,7 +27,17 @@ import type { SubmissionContext } from '@/core/channels/types';
 import { deriveInputOrigin } from '@/core/input/types';
 import type { EventMsg } from '@/core/protocol/events';
 
-import { getServerConfig, watchConfig, stopWatchingConfig, onConfigReload } from '../config/server-config';
+import { getServerConfig, loadServerConfig, watchConfig, stopWatchingConfig, onConfigReload } from '../config/server-config';
+import {
+  ManagedFileSource,
+  ManagedDirSource,
+  RemotePolicySource,
+  registerPolicySources,
+  resolveActivePolicy,
+  onPolicyChanged,
+  assessAndRecord,
+  redactSecrets,
+} from '@/core/config/policy';
 import { SessionIndex } from '../persistence/SessionIndex';
 import { TranscriptStore } from '../persistence/TranscriptStore';
 import { BackupManager } from '../persistence/backup';
@@ -46,18 +59,25 @@ import {
 } from '../handlers/health';
 import { setHandshakeSnapshotProviders } from '../connection/handshake';
 import { registerServerTools } from '../tools/registerServerTools';
+import { redactEventMsgSecrets } from '../security/eventRedaction';
 import { schedulePeriodicSweep } from '../maintenance/toolResultCleanup';
+import { RolloutRecorder } from '@/storage/rollout';
 
 // Handler registrations
 import { registerChatHandlers } from '../handlers/chat';
 import { registerSessionHandlers } from '../handlers/sessions';
+import { listUserTurns, computeRewindSlice, buildSummarizedFork } from '@/core/session/rewind';
+import { CompactService } from '@/core/compact/CompactService';
 import { registerConfigHandlers } from '../handlers/config';
 import { registerHealthHandlers } from '../handlers/health';
 import { registerToolsHandlers } from '../handlers/tools';
 import { registerLogsHandlers } from '../handlers/logs';
+import { installTelemetry, schedulerTelemetryTap } from '@/core/telemetry';
+import { ServerLogSink } from '../telemetry/ServerLogSink';
 import { registerExecHandlers } from '../handlers/exec';
 import { registerSchedulerHandlers } from '../handlers/scheduler';
 import { registerCredentialsHandlers } from '../handlers/credentials';
+import { emitLog } from '../handlers/logs';
 
 // Scheduler
 import { ServerScheduleStorage } from '../scheduler/ServerScheduleStorage';
@@ -76,13 +96,25 @@ import { AgentRegistry } from '@/core/registry/AgentRegistry';
 
 let _instance: ServerAgentBootstrap | null = null;
 
+export interface ServerAgentBootstrapOptions {
+  profile?: 'server' | 'desktop-runtime';
+  dataDir?: string;
+  channel?: ChannelAdapter;
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Bootstrap
 // ─────────────────────────────────────────────────────────────────────────
 
 export class ServerAgentBootstrap {
   private registry: AgentRegistry | null = null;
-  private channel: ServerChannel | null = null;
+  // Track 10: set in registerServices; read lazily by agentFactory to bind
+  // per-session hook/agent plugin contributions. Null until services
+  // register (the initial primary session, created before that, gets
+  // global slots only — hooks/agents apply on the next session or
+  // /plugin reload, matching claudy's asymmetric enable semantics).
+  private pluginRegistry: import('@/core/plugins/PluginRegistry').PluginRegistry | null = null;
+  private channel: ChannelAdapter | null = null;
   private sessionIndex: SessionIndex | null = null;
   private transcriptStore: TranscriptStore | null = null;
   private backupManager: BackupManager | null = null;
@@ -92,13 +124,18 @@ export class ServerAgentBootstrap {
   private diagnosticsMonitor: DiagnosticsMonitor | null = null;
   private skillRegistry: ISkillRegistry | null = null;
   private scheduler: Scheduler | null = null;
-  private scheduleEventStorage: ServerScheduleStorage | null = null;
-  private executionRecordStorage: ServerExecutionStorage | null = null;
+  private scheduleEventStorage: any | null = null;
+  private executionRecordStorage: any | null = null;
   private schedulerAlarms: ServerSchedulerAlarms | null = null;
   private runningSchedulerJobId: string | null = null;
   private runningJobStartTime: number = 0;
   private toolResultSweep: { stop: () => void } | null = null;
+  // Track 15: periodic rollout TTL cleanup (the server otherwise never prunes
+  // expired/forked rollouts — only the extension had alarm-based cleanup).
+  private rolloutTtlSweep: ReturnType<typeof setInterval> | null = null;
   private initialized = false;
+
+  constructor(private readonly options: ServerAgentBootstrapOptions = {}) {}
 
   /**
    * Initialize the server agent system.
@@ -110,8 +147,11 @@ export class ServerAgentBootstrap {
     }
 
     console.log('[ServerAgentBootstrap] Initializing...');
-    const config = getServerConfig();
-    const dataDir = process.env.APPLEPI_DATA_DIR ??
+    // NOTE: getServerConfig() is intentionally deferred until AFTER the
+    // Track 20 policy block below. The first call memoizes the pinned config,
+    // so calling it here would cache a config with NO admin policy applied.
+    const profile = this.options.profile ?? 'server';
+    const dataDir = this.options.dataDir ?? process.env.APPLEPI_DATA_DIR ??
       `${process.env.HOME ?? process.env.USERPROFILE ?? '/tmp'}/.applepi-server/data`;
 
     try {
@@ -124,9 +164,13 @@ export class ServerAgentBootstrap {
 
       // 0a. Initialize TokenUsageStore with NodeSQLiteAdapter
       try {
-        const { NodeSQLiteAdapter } = await import('@/server/storage/NodeSQLiteAdapter');
+        const { NodeSQLiteAdapter } = profile === 'desktop-runtime'
+          ? await import('@/desktop-runtime/storage/DesktopRuntimeSQLiteAdapter').then((m) => ({ NodeSQLiteAdapter: m.DesktopRuntimeSQLiteAdapter }))
+          : await import('@/server/storage/NodeSQLiteAdapter');
         const { TokenUsageStore } = await import('@/storage/TokenUsageStore');
-        const tokenAdapter = new NodeSQLiteAdapter(dataDir);
+        const tokenAdapter = profile === 'desktop-runtime'
+          ? new NodeSQLiteAdapter((await import('@/desktop-runtime/host')).getDesktopRuntimeHost().storageDbPath)
+          : new NodeSQLiteAdapter(dataDir);
         await tokenAdapter.initialize();
         TokenUsageStore.setAdapter(tokenAdapter);
       } catch (error) {
@@ -144,42 +188,82 @@ export class ServerAgentBootstrap {
       }
 
       // 1. Initialize config storage (must happen before AgentConfig)
-      setConfigStorage(new FileConfigStorageProvider(dataDir));
+      if (profile === 'desktop-runtime') {
+        const { getDesktopRuntimeHost } = await import('@/desktop-runtime/host');
+        const { DesktopRuntimeConfigStorageProvider } = await import('@/desktop-runtime/storage/DesktopRuntimeConfigStorageProvider');
+        setConfigStorage(new DesktopRuntimeConfigStorageProvider(getDesktopRuntimeHost().configJsonPath));
+      } else {
+        setConfigStorage(new FileConfigStorageProvider(dataDir));
+      }
+
+      // 1b. Track 20: register the managed-file policy source (fleet policy is
+      // mounted via ConfigMap/Secret at APPLEPI_POLICY_PATH) and resolve it
+      // BEFORE the first getServerConfig() / AgentConfig.getInstance() so both
+      // config systems' first hydration already sees admin policy. Fail-open.
+      try {
+        registerPolicySources([
+          // Fleet remote path is highest precedence (first-wins), then the
+          // ConfigMap/Secret-mounted managed file.
+          new RemotePolicySource(),
+          new ManagedFileSource(process.env.APPLEPI_POLICY_PATH),
+          new ManagedDirSource(),
+        ]);
+        await resolveActivePolicy();
+        console.log('[ServerAgentBootstrap] Managed policy resolved');
+      } catch (error) {
+        console.warn('[ServerAgentBootstrap] Managed policy resolution failed (non-fatal):', error);
+      }
+
+      // 1c. First server-config read — now memoizes the policy-pinned config
+      // (server.* tier). Must come after the policy block above.
+      const config = getServerConfig();
 
       // 2. Get agent config
       const agentConfig = await AgentConfig.getInstance();
+
+      // 2b. Centralized telemetry: live privacy gate + the server sink
+      // (existing emitLog → stdout + logs.tail; zero new transport).
+      // No-op unless preferences.telemetryEnabled is true (read live).
+      installTelemetry({
+        getTelemetryEnabled: () =>
+          agentConfig.getConfig().preferences?.telemetryEnabled,
+        sink: ServerLogSink,
+      });
 
       // 3. Configure PromptComposer with server platform context
       // (must happen before agent.initialize() inside agentFactory)
       await this.configurePrompt();
 
       // 4. Create ServerChannel and wire up
-      this.channel = new ServerChannel();
+      this.channel = this.options.channel ?? new ServerChannel();
       const channelManager = getChannelManager();
 
       // 5. Create AgentRegistry with factories
       this.registry = new AgentRegistry({
         maxConcurrent: 3,
         agentFactory: async (cfg, initialHistory) => {
-          const { ServerPlatformAdapter } = await import('../platform/ServerPlatformAdapter');
-          const platformAdapter = new ServerPlatformAdapter();
+          const platformAdapter = profile === 'desktop-runtime'
+            ? new (await import('@/desktop-runtime/platform/DesktopRuntimePlatformAdapter')).DesktopRuntimePlatformAdapter()
+            : new (await import('../platform/ServerPlatformAdapter')).ServerPlatformAdapter();
           const agent = new RepublicAgent(cfg, platformAdapter, initialHistory);
           await agent.initialize();
 
-          // Register server-mode tools on each new agent. Pass `dataDir` so
-          // the track-09 read_persisted_result tool can be rooted at the
-          // same directory that FileToolResultStore writes into.
-          try {
-            const toolRegistry = agent.getToolRegistry();
-            await registerServerTools(toolRegistry as any, dataDir);
-            console.log('[ServerAgentBootstrap] Server tools registered on new session agent');
-          } catch (err) {
-            const errMsg = err instanceof Error ? err.message : String(err);
-            console.warn('[ServerAgentBootstrap] Tool registration failed (non-fatal):', err);
-            agent.getEngine()?.pushEvent({
-              id: crypto.randomUUID(),
-              msg: { type: 'BackgroundEvent', data: { message: `Server tool registration failed: ${errMsg}`, level: 'error' } },
-            });
+          if (profile === 'server') {
+            // Register server-mode tools on each new agent. Pass `dataDir` so
+            // the track-09 read_persisted_result tool can be rooted at the
+            // same directory that FileToolResultStore writes into.
+            try {
+              const toolRegistry = agent.getToolRegistry();
+              await registerServerTools(toolRegistry as any, dataDir);
+              console.log('[ServerAgentBootstrap] Server tools registered on new session agent');
+            } catch (err) {
+              const errMsg = err instanceof Error ? err.message : String(err);
+              console.warn('[ServerAgentBootstrap] Tool registration failed (non-fatal):', err);
+              agent.getEngine()?.pushEvent({
+                id: crypto.randomUUID(),
+                msg: { type: 'BackgroundEvent', data: { message: `Server tool registration failed: ${errMsg}`, level: 'error' } },
+              });
+            }
           }
 
           // Register sub-agent tool
@@ -187,8 +271,36 @@ export class ServerAgentBootstrap {
           if (engine) {
             try {
               const { registerSubAgentTool } = await import('@/tools/AgentTool/register');
-              await registerSubAgentTool(engine);
+              const subAgentRunner = await registerSubAgentTool(engine);
               console.log('[ServerAgentBootstrap] sub_agent tool registered');
+
+              // Track 10: bind this session's hook + sub-agent registries to
+              // currently-enabled plugins. Skills + MCP are global (handled
+              // by the global PluginRegistry's slot loaders); hooks + agents
+              // are per-session and bound here.
+              if (this.pluginRegistry) {
+                try {
+                  const { PluginSessionBinder } = await import('@/core/plugins/PluginSessionBinder');
+                  const { nodeReadFile, nodeListDirs } = await import('@/server/storage/nodePluginFs');
+                  const binder = new PluginSessionBinder({
+                    hookRegistry: agent.getHookRegistry(),
+                    subAgentRunner,
+                    readFile: nodeReadFile,
+                    listDirs: nodeListDirs,
+                  });
+                  const enabled = this.pluginRegistry
+                    .getPlugins()
+                    .filter((p) => p.state.status === 'enabled');
+                  await binder.applyEnabledPlugins(enabled);
+                  // Register so a later /plugin disable prunes this session
+                  // immediately (claudy gh-36995). Teardown on session end is
+                  // a documented follow-up; a stale binder for an ended
+                  // session is a harmless no-op on prune.
+                  this.pluginRegistry.registerSessionBinder(binder);
+                } catch (bindErr) {
+                  console.warn('[ServerAgentBootstrap] plugin session bind failed (non-fatal):', bindErr);
+                }
+              }
             } catch (err) {
               const errMsg = err instanceof Error ? err.message : String(err);
               console.warn('[ServerAgentBootstrap] sub_agent tool registration failed (non-fatal):', err);
@@ -270,12 +382,14 @@ export class ServerAgentBootstrap {
             console.error('[ServerAgentBootstrap] Failed to dispatch event:', error);
           });
 
-          // Also log to transcript store
+          // Also log to transcript store (Track 24.5: secret-redacted at rest —
+          // non-blocking, the entry is kept, only detected secrets become ***).
           if (this.transcriptStore) {
+            const redactedMsg = redactEventMsgSecrets(event.msg);
             this.transcriptStore.append('__active__', {
               ts: Date.now(),
-              type: event.msg.type,
-              data: event.msg,
+              type: redactedMsg.type,
+              data: redactedMsg,
             });
           }
 
@@ -324,13 +438,30 @@ export class ServerAgentBootstrap {
       console.log('[ServerAgentBootstrap] Transcript store initialized');
 
       // 9. Initialize backup manager
-      this.backupManager = new BackupManager(dataDir, config.server.backup.retention);
-      this.backupManager.start();
+      if (profile === 'server') {
+        this.backupManager = new BackupManager(dataDir, config.server.backup.retention);
+        this.backupManager.start();
+      }
 
       // 9b. Schedule TTL sweep for persisted tool results (track 09).
       // Removes orphaned tool-result files from crashed sessions.
       this.toolResultSweep = schedulePeriodicSweep(dataDir);
       console.log('[ServerAgentBootstrap] Tool-result TTL sweep scheduled');
+
+      // 9c. Track 15: periodic rollout TTL cleanup. Without this the server
+      // never prunes expired/forked rollouts (every rewind makes a new one).
+      const ROLLOUT_TTL_SWEEP_MS = 6 * 60 * 60 * 1000; // 6h
+      const sweepRollouts = () =>
+        RolloutRecorder.cleanupExpired()
+          .then((n) => {
+            if (n > 0) console.log(`[ServerAgentBootstrap] Pruned ${n} expired rollout(s)`);
+          })
+          .catch((e) => console.error('[ServerAgentBootstrap] Rollout TTL cleanup failed:', e));
+      void sweepRollouts();
+      this.rolloutTtlSweep = setInterval(sweepRollouts, ROLLOUT_TTL_SWEEP_MS);
+      // Don't keep the process alive solely for the sweep.
+      (this.rolloutTtlSweep as { unref?: () => void }).unref?.();
+      console.log('[ServerAgentBootstrap] Rollout TTL sweep scheduled');
 
       // 10. Initialize approval manager
       this.approvalManager = new ApprovalManager();
@@ -350,12 +481,16 @@ export class ServerAgentBootstrap {
       this.registerHandlers();
 
       // 12b. Initialize connectors
-      await this.initializeConnectors(channelManager);
+      if (profile === 'server') {
+        await this.initializeConnectors(channelManager);
+      }
 
       // 13. Start health monitoring
-      this.healthMonitor = new HealthMonitor();
-      this.healthMonitor.start();
-      resetHealthStartTime();
+      if (profile === 'server') {
+        this.healthMonitor = new HealthMonitor();
+        this.healthMonitor.start();
+        resetHealthStartTime();
+      }
 
       // Update health status via first session in registry
       const primarySession = this.registry.getPrimarySession();
@@ -393,12 +528,45 @@ export class ServerAgentBootstrap {
       }
 
       // 14. Start config file watcher
-      watchConfig();
-      onConfigReload((_newConfig) => {
-        console.log('[ServerAgentBootstrap] Config reloaded');
-        // Hot-reload: iterate all sessions for refreshModelClient
+      if (profile === 'server') {
+        watchConfig();
+        onConfigReload((_newConfig) => {
+          console.log('[ServerAgentBootstrap] Config reloaded');
+          // Hot-reload: iterate all sessions for refreshModelClient
+          this.handleConfigUpdate().catch((err) => {
+            console.error('[ServerAgentBootstrap] Failed to handle config update:', err);
+          });
+        });
+      }
+
+      // Track 20: a remote/managed-file policy change re-resolves the policy.
+      // Headless server has no interactive user — auto-apply, but emit a
+      // REDACTED audit (warn if it weakens security) so operators see it in
+      // the logs.tail stream they already watch. Then re-hydrate so the pin
+      // re-applies fleet-wide without a restart.
+      onPolicyChanged((p) => {
+        const a = assessAndRecord(p);
+        emitLog(
+          a.weakened ? 'warn' : 'info',
+          'managed policy applied',
+          redactSecrets({
+            origin: p?.origin ?? null,
+            lockedKeys: p?.lockedKeys ?? [],
+            changedKeys: a.changedKeys,
+            weakened: a.weakened,
+            reasons: a.reasons,
+          })
+        );
+        // Re-pin the server.* tier: AgentConfig.reload() (in handleConfigUpdate)
+        // only re-hydrates the agent.* config. Without this, a post-boot policy
+        // change would never reach the memoized server config.
+        try {
+          loadServerConfig();
+        } catch (err) {
+          console.error('[ServerAgentBootstrap] Failed to re-pin server config on policy change:', err);
+        }
         this.handleConfigUpdate().catch((err) => {
-          console.error('[ServerAgentBootstrap] Failed to handle config update:', err);
+          console.error('[ServerAgentBootstrap] Failed to apply policy change:', err);
         });
       });
 
@@ -408,10 +576,12 @@ export class ServerAgentBootstrap {
       // 15b. Start diagnostics monitoring so GET /health reports a truthful
       // status for K8s/Docker probes (Track 17). Started after registerServices
       // so the first report sees the fully-wired context.
-      this.diagnosticsMonitor = new DiagnosticsMonitor(() =>
-        this.buildDiagnosticContext(),
-      );
-      this.diagnosticsMonitor.start();
+      if (profile === 'server') {
+        this.diagnosticsMonitor = new DiagnosticsMonitor(() =>
+          this.buildDiagnosticContext(),
+        );
+        this.diagnosticsMonitor.start();
+      }
 
       this.initialized = true;
       console.log('[ServerAgentBootstrap] Initialization complete');
@@ -446,12 +616,14 @@ export class ServerAgentBootstrap {
   private async registerServices(channelManager: ReturnType<typeof getChannelManager>): Promise<void> {
     const { registerAllServices } = await import('@/core/services');
     const serviceRegistry = channelManager.getServiceRegistry();
+    const profile = this.options.profile ?? 'server';
+    const platformScope = profile === 'desktop-runtime' ? 'desktop' : 'server';
 
     // Get MCPManager instance
     let mcpDeps: import('@/core/services').MCPServiceDeps | undefined;
     try {
       const { MCPManager } = await import('@/core/mcp/MCPManager');
-      const mcpManager = await MCPManager.getInstance('server');
+      const mcpManager = await MCPManager.getInstance(platformScope);
       mcpDeps = { mcpManager: mcpManager as any };
     } catch (error) {
       console.warn('[ServerAgentBootstrap] MCPManager not available for service registration:', error);
@@ -461,7 +633,7 @@ export class ServerAgentBootstrap {
     let a2aDeps: import('@/core/services').A2AServiceDeps | undefined;
     try {
       const { A2AManager } = await import('@/core/a2a/A2AManager');
-      const a2aManager = await A2AManager.getInstance('server');
+      const a2aManager = await A2AManager.getInstance(platformScope);
       a2aDeps = { a2aManager: a2aManager as any };
     } catch (error) {
       console.warn('[ServerAgentBootstrap] A2AManager not available for service registration:', error);
@@ -488,15 +660,350 @@ export class ServerAgentBootstrap {
       console.warn('[ServerAgentBootstrap] SkillRegistry not available for service registration:', error);
     }
 
+    // Track 10: plugin registry. Server v1 wires the globally-reachable
+    // slots — skills (the same SkillRegistry the skills service uses) and
+    // MCP (the singleton MCPManager). Hooks / agents / commands are
+    // per-session (created in agentFactory) and propagate via a documented
+    // follow-up; PluginRegistry surfaces them as capability gaps for now.
+    let pluginsDeps: import('@/core/services').PluginsServiceDeps | undefined;
+    try {
+      const os = await import('node:os');
+      const path = await import('node:path');
+      const { NodePluginProvider } = await import('@/server/storage/NodePluginProvider');
+      const { nodeReadFile, nodeListDirs } = await import('@/server/storage/nodePluginFs');
+      const { PluginRegistry } = await import('@/core/plugins/PluginRegistry');
+      const { SkillSlotLoader } = await import('@/core/plugins/loaders/SkillSlotLoader');
+      const { McpSlotLoader } = await import('@/core/plugins/loaders/McpSlotLoader');
+      const { AgentConfig } = await import('@/config/AgentConfig');
+
+      const pluginsRoot = path.join(os.homedir(), '.browserx', 'plugins');
+      const provider = new NodePluginProvider(pluginsRoot);
+      await provider.initialize();
+
+      const agentConfig = await AgentConfig.getInstance();
+
+      // Phase 10c: admin policy (read once, cached). /etc/browserx/policy.json
+      // (Linux/Mac) or %ProgramData%\BrowserX\policy.json (Windows). Missing/
+      // corrupt → empty policy. Built HERE (before bootstrapEnabledPlugins +
+      // MarketplaceRegistry) so block / force-enable / source guards apply.
+      const {
+        PolicyLoader,
+        PluginPolicy,
+        isSourceAllowedByPolicy,
+        isBlockedOfficialName,
+        validateOfficialNameSource,
+      } = await import('@/core/plugins/policy');
+      const policyPath =
+        process.platform === 'win32'
+          ? path.join(process.env.ProgramData ?? 'C:\\ProgramData', 'BrowserX', 'policy.json')
+          : '/etc/browserx/policy.json';
+      const policyLoader = new PolicyLoader({
+        readPolicyText: async () => {
+          try {
+            const fsmod = await import('node:fs');
+            return await fsmod.promises.readFile(policyPath, 'utf-8');
+          } catch {
+            return null;
+          }
+        },
+      });
+      const pluginPolicy = new PluginPolicy(policyLoader);
+
+      const registry = new PluginRegistry({
+        provider,
+        skillSlot: skillsDeps
+          ? new SkillSlotLoader({
+              skillRegistry: skillsDeps.skillRegistry as never,
+              readFile: nodeReadFile,
+              listDirs: nodeListDirs,
+            })
+          : undefined,
+        mcpSlot: mcpDeps
+          ? new McpSlotLoader(mcpDeps.mcpManager as never)
+          : undefined,
+        // hooks / agents / commands: per-session (agentFactory) — follow-up
+        getEnabledFromConfig: () => agentConfig.getConfig().enabledPlugins ?? {},
+        persistEnabled: async (id, enabled) => {
+          const current = agentConfig.getConfig().enabledPlugins ?? {};
+          agentConfig.updateConfig({
+            enabledPlugins: { ...current, [id]: enabled },
+          });
+        },
+        checkDestructiveOpAllowed: (op) => {
+          // Refuse reload while any background sub-agent task is running
+          // (design § Active-Session Semantics Rule 3).
+          if (op !== 'reload' || !this.registry) return null;
+          for (const s of this.registry.listSessions()) {
+            const agentSession = this.registry.getSession(s.sessionId);
+            const active =
+              agentSession?.agent?.getSession?.()?.listActiveTasks?.() ?? [];
+            if (active.length > 0) {
+              return `Cannot reload: ${active.length} background task(s) running. /task stop <id> first.`;
+            }
+          }
+          return null;
+        },
+      });
+
+      // Discover + register from disk
+      const metas = await provider.listMeta();
+      for (const m of metas) {
+        try {
+          registry.register(await provider.load(`${m.name}@local`));
+        } catch (e) {
+          console.warn(`[ServerAgentBootstrap] plugin load ${m.name} failed:`, e);
+        }
+      }
+      // Phase 10c: enforce admin policy on the enabled set BEFORE bootstrap
+      // — `enabledPlugins[id] === false` blocks, `=== true` force-enables
+      // (and locks; the runtime enable guard + reconcile keep it pinned).
+      try {
+        const pol = await policyLoader.load();
+        const pinned = pol.enabledPlugins ?? {};
+        if (Object.keys(pinned).length > 0) {
+          const cur = agentConfig.getConfig().enabledPlugins ?? {};
+          const next = { ...cur };
+          let changed = false;
+          for (const [pid, want] of Object.entries(pinned)) {
+            if (next[pid] !== want) {
+              next[pid] = want;
+              changed = true;
+            }
+          }
+          if (changed) agentConfig.updateConfig({ enabledPlugins: next });
+        }
+      } catch (e) {
+        console.warn('[ServerAgentBootstrap] policy enabled-set enforcement failed:', e);
+      }
+      await registry.bootstrapEnabledPlugins();
+
+      // React to external enabledPlugins mutations (settings UI / policy)
+      agentConfig.on('config-changed', (e: { section?: string }) => {
+        if (e.section === 'enabledPlugins') {
+          void registry.reconcileFromConfig();
+        }
+      });
+
+      // Phase 10b: marketplace + git-based install/uninstall (server has
+      // system git). Marketplace catalogue is fetched via a shallow clone
+      // into a temp dir, then marketplace.json read out.
+      const { MarketplaceRegistry } = await import('@/core/plugins/MarketplaceRegistry');
+      const { PluginInstaller, PluginUninstaller } = await import('@/core/plugins/PluginInstaller');
+      const { InstalledPluginsStore } = await import('@/core/plugins/installedPlugins');
+      const { createGitFetchPlugin } = await import('@/core/plugins/pluginFetch');
+      const {
+        nodeGitRunner, nodeMkTempDir, nodeWalkFiles, nodeReadBytes,
+        nodeRemoveDir, nodeResolveHeadSha,
+      } = await import('@/server/storage/nodeGitRunner');
+      const nodePath = await import('node:path');
+
+      const marketplaces = new MarketplaceRegistry({
+        fetchCatalogue: async (sourceRef: string) => {
+          const tmp = await nodeMkTempDir();
+          try {
+            const { gitClone } = await import('@/core/plugins/git');
+            await gitClone(nodeGitRunner, { url: sourceRef, targetPath: tmp });
+            const raw = await nodeReadBytes(nodePath.join(tmp, 'marketplace.json'));
+            return new TextDecoder().decode(raw);
+          } finally {
+            await nodeRemoveDir(tmp).catch(() => undefined);
+          }
+        },
+        // Phase 10c: admin source allow/blocklist — refuses BEFORE the
+        // network fetch above ever runs.
+        checkSource: async (sourceRef: string) => {
+          const pol = await policyLoader.load();
+          return isSourceAllowedByPolicy(sourceRef, pol)
+            ? null
+            : `marketplace source blocked by org policy: ${sourceRef}`;
+        },
+        // Reserved-official-name / homograph impersonation guard (runs
+        // after parse, on the catalogue's declared name).
+        checkName: (name: string, sourceRef: string) => {
+          if (isBlockedOfficialName(name)) {
+            return `marketplace name "${name}" is reserved or uses a non-ASCII homograph (impersonation guard)`;
+          }
+          const v = validateOfficialNameSource(name, sourceRef);
+          return v.ok
+            ? null
+            : `marketplace "${name}" must originate from the official org (${v.reason})`;
+        },
+      });
+
+      const installedStore = new InstalledPluginsStore({
+        readText: async (p: string) => {
+          try {
+            return new TextDecoder().decode(await nodeReadBytes(p));
+          } catch {
+            return null;
+          }
+        },
+        writeText: async (p: string, c: string) => {
+          const fsmod = await import('node:fs');
+          await fsmod.promises.mkdir(nodePath.dirname(p), { recursive: true });
+          await fsmod.promises.writeFile(p, c, 'utf-8');
+        },
+        filePath: nodePath.join(os.homedir(), '.browserx', 'installed_plugins_v2.json'),
+      });
+
+      const fetchPlugin = createGitFetchPlugin(
+        {
+          run: nodeGitRunner,
+          mkTempDir: nodeMkTempDir,
+          walkFiles: nodeWalkFiles,
+          readBytes: nodeReadBytes,
+          removeDir: nodeRemoveDir,
+          resolveHeadSha: nodeResolveHeadSha,
+        },
+        (id) => marketplaces.lookup(id)?.entry ?? null,
+      );
+
+      // (policyLoader / pluginPolicy were built earlier — before
+      // bootstrapEnabledPlugins — so the same instance governs install,
+      // marketplace add, autoupdate, and the boot-time enabled set.)
+      const installer = new PluginInstaller({
+        marketplaces,
+        provider,
+        installed: installedStore,
+        registry,
+        fetchPlugin,
+        isBlockedByPolicy: (id) => pluginPolicy.isBlocked(id),
+        setEnabled: async (ids, en) => {
+          const cur = agentConfig.getConfig().enabledPlugins ?? {};
+          const next = { ...cur };
+          for (const i of ids) next[i] = en;
+          agentConfig.updateConfig({ enabledPlugins: next });
+        },
+        getAlreadyEnabled: () =>
+          new Set(
+            Object.entries(agentConfig.getConfig().enabledPlugins ?? {})
+              .filter(([, v]) => v === true)
+              .map(([k]) => k),
+          ),
+      });
+
+      // review B2/B3: uninstall must orphan-mark (not hard-delete); the
+      // 7-day GC sweep removes dirs later. Wire a PluginCache over Node fs.
+      const { PluginCache } = await import('@/core/plugins/PluginCache');
+      const fsmod = await import('node:fs');
+      const pluginCache = new PluginCache(
+        nodePath.join(os.homedir(), '.browserx'),
+        {
+          readText: async (p: string) => {
+            try {
+              return await fsmod.promises.readFile(p, 'utf-8');
+            } catch {
+              return null;
+            }
+          },
+          writeText: async (p: string, c: string) => {
+            await fsmod.promises.mkdir(nodePath.dirname(p), { recursive: true });
+            await fsmod.promises.writeFile(p, c, 'utf-8');
+          },
+          removeDir: nodeRemoveDir,
+          removeFile: async (p: string) => {
+            await fsmod.promises.rm(p, { force: true });
+          },
+          listEntries: async (p: string) => {
+            try {
+              return await fsmod.promises.readdir(p);
+            } catch {
+              return [];
+            }
+          },
+          pathExists: async (p: string) => {
+            try {
+              await fsmod.promises.stat(p);
+              return true;
+            } catch {
+              return false;
+            }
+          },
+        },
+      );
+
+      const uninstaller = new PluginUninstaller({
+        provider,
+        installed: installedStore,
+        registry,
+        markOrphaned: (installPath: string) =>
+          pluginCache.markOrphaned(installPath),
+        setEnabled: async (ids, en) => {
+          const cur = agentConfig.getConfig().enabledPlugins ?? {};
+          const next = { ...cur };
+          for (const i of ids) next[i] = en;
+          agentConfig.updateConfig({ enabledPlugins: next });
+        },
+      });
+
+      // Phase 10c: one-shot, fire-and-forget autoupdate + delisting sweep.
+      // Re-checks policy before re-materializing; delisting routes through
+      // the safe uninstaller (disable → orphan-mark, never a hard-delete).
+      try {
+        const { PluginAutoupdate } = await import('@/core/plugins/PluginAutoupdate');
+        const autoupdate = new PluginAutoupdate({
+          marketplaces,
+          installed: installedStore,
+          provider,
+          fetchPlugin,
+          autoUpdateMarketplaces: () => marketplaces.list().map((m) => m.name),
+          refreshMarketplace: async (name: string) => {
+            const m = marketplaces.list().find((x) => x.name === name);
+            if (m) await marketplaces.add(m.sourceRef);
+          },
+          isBlockedByPolicy: (id) => pluginPolicy.isBlocked(id),
+          uninstall: (id, scope) => uninstaller.uninstall(id, scope),
+        });
+        void autoupdate.run().then(
+          (r) => {
+            if (r.updated.length || r.delisted.length) {
+              console.log(
+                `[ServerAgentBootstrap] autoupdate: ${r.updated.length} updated, ${r.delisted.length} delisted`,
+              );
+            }
+          },
+          (e) => console.warn('[ServerAgentBootstrap] autoupdate failed:', e),
+        );
+      } catch (e) {
+        console.warn('[ServerAgentBootstrap] autoupdate wiring failed:', e);
+      }
+
+      pluginsDeps = {
+        pluginRegistry: registry,
+        marketplaces,
+        installer,
+        uninstaller,
+        isBlockedByPolicy: (id) => pluginPolicy.isBlocked(id),
+      };
+      // Expose to agentFactory so sessions created after this point bind
+      // their per-session hook + sub-agent registries to enabled plugins.
+      this.pluginRegistry = registry;
+      console.log(
+        `[ServerAgentBootstrap] PluginRegistry initialized (${metas.length} plugin(s) discovered)`,
+      );
+    } catch (error) {
+      console.warn('[ServerAgentBootstrap] PluginRegistry not available:', error);
+    }
+
     const count = registerAllServices(serviceRegistry, {
       mcp: mcpDeps,
       a2a: a2aDeps,
       skills: skillsDeps,
+      plugins: pluginsDeps,
       scheduler: this.scheduler ? { scheduler: this.scheduler } : undefined,
       session: this.registry ? { registry: this.registry } : undefined,
       agent: this.registry ? {
         registry: this.registry,
         handleConfigUpdate: () => this.handleConfigUpdate(),
+        createAuthManager: profile === 'desktop-runtime'
+          ? (shouldUseBackend, backendBaseUrl) => {
+              const tokenGetter = shouldUseBackend
+                ? async () => getCredentialStore().get('auth', 'access_token')
+                : undefined;
+              return new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter);
+            }
+          : undefined,
+        setAuthManager: profile === 'desktop-runtime' ? () => undefined : undefined,
       } : undefined,
       diagnostics: {
         buildCtx: () => this.buildDiagnosticContext(),
@@ -520,13 +1027,13 @@ export class ServerAgentBootstrap {
     try {
       const { MCPManager } = await import('@/core/mcp/MCPManager');
       mcpManager = (await MCPManager.getInstance(
-        'server',
+        (this.options.profile ?? 'server') === 'desktop-runtime' ? 'desktop' : 'server',
       )) as unknown as DiagnosticContext['mcpManager'];
     } catch {
       // MCP unavailable — the mcp-connected check degrades to "not in use".
     }
     return {
-      platformId: 'server',
+      platformId: (this.options.profile ?? 'server') === 'desktop-runtime' ? 'desktop' : 'server',
       channelManager: getChannelManager(),
       mcpManager,
       skillRegistry: this.skillRegistry ?? undefined,
@@ -588,6 +1095,69 @@ export class ServerAgentBootstrap {
         }
         await targetSession.agent.submitOperation({ type: 'ManualCompact' }, {});
         return { status: 'compacted' };
+      },
+      // Track 15: list the conversation's user turns (D13 flush first).
+      listSessionTurns: async (key) => {
+        if (!this.registry) throw new Error('Registry not initialized');
+        const targetSession = this.registry.getSession(key);
+        if (!targetSession?.agent) {
+          throw new Error(`Session not found: ${key}`);
+        }
+        const convId = targetSession.agent.getSession().getSessionId();
+        await targetSession.agent.getSession().flushRollout?.();
+        return listUserTurns(convId);
+      },
+      // Track 15: fork the conversation to an earlier turn. The source
+      // rollout is append-only and untouched; a NEW conversation is created
+      // and its id returned so the operator re-targets it. Side effects
+      // (exec'd commands, file writes, sent messages) are NOT rewound.
+      rewindSession: async (key, targetSequence, mode) => {
+        if (!this.registry) throw new Error('Registry not initialized');
+        const registry = this.registry;
+        const targetSession = registry.getSession(key);
+        if (!targetSession?.agent) {
+          throw new Error(`Session not found: ${key}`);
+        }
+        const sourceAgent = targetSession.agent;
+        const sourceConvId = sourceAgent.getSession().getSessionId();
+
+        // D13: flush the live source session before slicing.
+        await sourceAgent.getSession().flushRollout?.();
+
+        const forked =
+          mode === 'summarize_up_to'
+            ? await buildSummarizedFork(sourceConvId, targetSequence, async (items) => {
+                try {
+                  const modelClient = await sourceAgent
+                    .getModelClientFactory()
+                    .createClientForCurrentModel();
+                  const result = await new CompactService().compact(
+                    items,
+                    'manual',
+                    modelClient,
+                    0,
+                    undefined,
+                    { sessionId: sourceConvId },
+                  );
+                  return result.success ? result.summaryText : undefined;
+                } catch (err) {
+                  console.warn('[ServerAgentBootstrap] summarizeForRewind failed:', err);
+                  return undefined;
+                }
+              })
+            : await computeRewindSlice(sourceConvId, targetSequence);
+
+        const newSession = await registry.createSession({
+          type: 'primary',
+          fork: {
+            sourceConversationId: forked.sourceConversationId,
+            rolloutItems: forked.rolloutItems,
+          },
+        });
+        return {
+          sourceConversationId: sourceConvId,
+          newConversationId: newSession.sessionId,
+        };
       },
     });
 
@@ -691,17 +1261,38 @@ export class ServerAgentBootstrap {
    */
   private async configurePrompt(): Promise<void> {
     const os = await import('node:os');
+    const homeDir = os.homedir();
 
+    // Track 24.2: register filesystem persona overrides (user dir lowest,
+    // project dir highest precedence; both overlay built-ins), then pin the
+    // operator-selected persona from config.json.
+    try {
+      const { join } = await import('node:path');
+      const { scanDiskPersonas } = await import('@/prompts/diskPersonas');
+      const { registerExternalPersonas } = await import('@/prompts/PersonaLoader');
+      registerExternalPersonas(
+        scanDiskPersonas([
+          join(homeDir, '.browserx', 'styles'),
+          join(process.cwd(), '.browserx', 'styles'),
+        ]),
+      );
+    } catch (e) {
+      console.warn('[ServerAgentBootstrap] Persona disk scan skipped:', e);
+    }
+
+    const isDesktopRuntime = (this.options.profile ?? 'server') === 'desktop-runtime';
     const staticContext: Partial<RuntimeContext> = {
-      browserConnection: 'none',
+      browserConnection: isDesktopRuntime ? 'mcp' : 'none',
       os: process.platform,
       arch: process.arch,
       shell: process.platform === 'win32' ? 'powershell' : 'bash',
-      homeDir: os.homedir(),
+      homeDir,
+      // TODO(track-20): allow a managed-policy key to override this.
+      personaName: isDesktopRuntime ? undefined : getServerConfig().server.persona,
     };
 
-    configurePromptComposer('applepi-server', staticContext);
-    console.log('[ServerAgentBootstrap] PromptComposer configured for server mode');
+    configurePromptComposer(isDesktopRuntime ? 'applepi' : 'applepi-server', staticContext);
+    console.log(`[ServerAgentBootstrap] PromptComposer configured for ${isDesktopRuntime ? 'desktop runtime' : 'server'} mode`);
   }
 
   /**
@@ -713,10 +1304,21 @@ export class ServerAgentBootstrap {
   ): Promise<void> {
     try {
       // 1. Create new model storage (schedule events + executions)
-      this.scheduleEventStorage = new ServerScheduleStorage(dataDir);
-      await this.scheduleEventStorage.initialize();
-      this.executionRecordStorage = new ServerExecutionStorage(dataDir);
-      await this.executionRecordStorage.initialize();
+      if ((this.options.profile ?? 'server') === 'desktop-runtime') {
+        const { getDesktopRuntimeHost } = await import('@/desktop-runtime/host');
+        const { DesktopRuntimeSQLiteAdapter } = await import('@/desktop-runtime/storage/DesktopRuntimeSQLiteAdapter');
+        const { ScheduleEventStorage } = await import('@/core/scheduler/ScheduleEventStorage');
+        const { ExecutionStorage } = await import('@/core/scheduler/ExecutionStorage');
+        const adapter = new DesktopRuntimeSQLiteAdapter(getDesktopRuntimeHost().storageDbPath);
+        await adapter.initialize();
+        this.scheduleEventStorage = new ScheduleEventStorage(adapter);
+        this.executionRecordStorage = new ExecutionStorage(adapter);
+      } else {
+        this.scheduleEventStorage = new ServerScheduleStorage(dataDir);
+        await this.scheduleEventStorage.initialize();
+        this.executionRecordStorage = new ServerExecutionStorage(dataDir);
+        await this.executionRecordStorage.initialize();
+      }
       const executionStorage = this.executionRecordStorage;
 
       // 2. Create alarms (Node.js timers)
@@ -734,8 +1336,15 @@ export class ServerAgentBootstrap {
         await this.scheduler!.handleAlarm(alarmName);
       });
 
-      // 6. Wire event emitter -> unified channel dispatch
-      this.scheduler.connectToChannel(() => channelManager, this.channel!.channelId);
+      // 6. Wire event emitter -> unified channel dispatch (+ telemetry tap;
+      // the scheduler is a separate emitter family that bypasses the agent
+      // chokepoint, so it gets its own observation point — closes the
+      // "why did a scheduled job abort" goal incl. pre-session failures).
+      this.scheduler.connectToChannel(
+        () => channelManager,
+        this.channel!.channelId,
+        schedulerTelemetryTap,
+      );
 
       // 7. Wire job launcher -> submit job input to agent via registry
       this.scheduler.setJobLauncher(async (executionId, sessionId, registryAgent) => {
@@ -824,6 +1433,11 @@ export class ServerAgentBootstrap {
       const data = (msg as EventMsg & { data?: Record<string, any> }).data;
       const summary = data?.last_agent_message?.slice(0, 500) || 'Job completed';
       const tokenData = data?.token_usage?.total;
+      // Track 18: cost was computed once in core and rides the TaskComplete
+      // event — read it, never recompute server-side (the server has only
+      // prose pricing and no model context).
+      const jobCostUSD = typeof data?.cost_usd === 'number' ? data.cost_usd : 0;
+      const jobCostEstimated = data?.cost_estimated === true;
       this.scheduler.completeJob(jobId, {
         summary,
         tokenUsage: {
@@ -832,6 +1446,12 @@ export class ServerAgentBootstrap {
           totalTokens: tokenData?.total_tokens ?? 0,
         },
         duration,
+        costUSD: jobCostUSD,
+        costEstimated: jobCostEstimated,
+      }).then(() => {
+        // Track 18: post-hoc budget enforcement (blocks subsequent jobs;
+        // never throws into a running turn).
+        return this.enforceBudgetCaps(jobId, jobCostUSD, jobCostEstimated);
       }).catch((error) => {
         console.error(`[ServerAgentBootstrap] Failed to complete scheduler job ${jobId}:`, error);
       });
@@ -849,6 +1469,66 @@ export class ServerAgentBootstrap {
     }
   }
 
+  /**
+   * Track 18: post-hoc USD budget enforcement for unattended scheduler jobs.
+   * MVP scope — runs after a job completes, so it blocks *subsequent* jobs
+   * (a mid-run abort would need per-turn server-side cost and is a documented
+   * follow-on). Never throws into a turn; on a per-day breach it pauses the
+   * job queue cleanly and surfaces a logs.tail-visible warning.
+   */
+  private async enforceBudgetCaps(
+    jobId: string,
+    jobCostUSD: number,
+    jobCostEstimated: boolean,
+  ): Promise<void> {
+    try {
+      const limits = getServerConfig().server.limits;
+      const maxPerJob = limits.maxUsdPerJob ?? 0;
+      const maxPerDay = limits.maxUsdPerDay ?? 0;
+
+      if (maxPerJob > 0 && jobCostUSD > maxPerJob) {
+        emitLog('warn', 'Per-job USD budget exceeded', {
+          event: 'budget_job_exceeded',
+          jobId,
+          jobCostUSD,
+          capUSD: maxPerJob,
+          estimated: jobCostEstimated,
+        });
+      }
+
+      if (maxPerDay > 0 && this.executionRecordStorage) {
+        const now = Date.now();
+        // UTC start-of-day so the cap window and the logged date agree with
+        // each other and with the dashboard's aggregateByDate, which buckets
+        // on the ISO timestamp (UTC). A local-time window would disagree near
+        // midnight in non-UTC zones.
+        const d = new Date(now);
+        const startOfDayUTC = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+        const todays = await this.executionRecordStorage.getExecutionsInRange(
+          startOfDayUTC,
+          now,
+        );
+        const dayTotalUSD = (todays as Array<{ result?: { costUSD?: number } }>).reduce(
+          (sum: number, e) => sum + (e.result?.costUSD ?? 0),
+          0,
+        );
+        if (dayTotalUSD > maxPerDay) {
+          emitLog('warn', 'Daily USD budget cap exceeded — pausing job queue', {
+            event: 'budget_cap_exceeded',
+            date: new Date(startOfDayUTC).toISOString().slice(0, 10),
+            dayTotalUSD,
+            capUSD: maxPerDay,
+          });
+          // Clean pause — stops future jobs; does not abort the (already
+          // finished) one, never throws into a turn.
+          await this.scheduler?.pauseJobQueue();
+        }
+      }
+    } catch (err) {
+      console.error('[ServerAgentBootstrap] Budget cap check failed:', err);
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────────────
   // Accessors
   // ─────────────────────────────────────────────────────────────────────
@@ -857,7 +1537,7 @@ export class ServerAgentBootstrap {
     return this.registry;
   }
 
-  getChannel(): ServerChannel | null {
+  getChannel(): ChannelAdapter | null {
     return this.channel;
   }
 
@@ -903,8 +1583,8 @@ export class ServerAgentBootstrap {
 
     // Shutdown scheduler
     this.schedulerAlarms?.shutdown();
-    this.scheduleEventStorage?.close();
-    this.executionRecordStorage?.close();
+    this.scheduleEventStorage?.close?.();
+    this.executionRecordStorage?.close?.();
 
     // Stop backup manager
     this.backupManager?.stop();
@@ -912,6 +1592,12 @@ export class ServerAgentBootstrap {
     // Stop tool-result TTL sweep
     this.toolResultSweep?.stop();
     this.toolResultSweep = null;
+
+    // Stop rollout TTL sweep (Track 15)
+    if (this.rolloutTtlSweep) {
+      clearInterval(this.rolloutTtlSweep);
+      this.rolloutTtlSweep = null;
+    }
 
     // Shutdown channel manager (shuts down all channels including connector bridges)
     const channelManager = getChannelManager();

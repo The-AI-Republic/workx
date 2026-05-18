@@ -4,6 +4,7 @@
   "version": "0.0.36",
   "description": "__MSG_extension_description__",
   "default_locale": "en",
+  "managed_storage": "managed-schema.json",
   "permissions": [
     "tabs",
     "tabGroups",

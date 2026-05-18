@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { uiTheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
   import type { RecurrenceRule } from '@/core/models/types/Scheduler';
+  import { registerShortcut, registerShortcutContext } from '../../shortcuts/useShortcut';
 
   interface JobDetail {
     id: string;
@@ -38,12 +40,6 @@
 
   function handleBackdropClick(e: MouseEvent) {
     if (e.target === e.currentTarget) {
-      handleClose();
-    }
-  }
-
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') {
       handleClose();
     }
   }
@@ -123,9 +119,20 @@
   let hasSession = $derived(
     job != null && job.sessionId && (job.status === 'completed' || job.status === 'failed')
   );
-</script>
 
-<svelte:window onkeydown={handleKeydown} />
+  onMount(() => {
+    const isActive = () => show && job != null;
+    const unregisterContext = registerShortcutContext('SchedulerModal', { active: isActive });
+    const unregisterDismiss = registerShortcut('scheduler:dismiss', 'SchedulerModal', () => {
+      handleClose();
+    }, { active: isActive });
+
+    return () => {
+      unregisterContext();
+      unregisterDismiss();
+    };
+  });
+</script>
 
 {#if show && job}
   <div
