@@ -4,25 +4,25 @@ Cross-track integration / coexistence bug. See `design.md` for evidence (file:li
 
 ## Phase 1 — BUG-1 (High): kind-aware session eviction
 
-- [ ] 1.1 `SessionCacheManager.autoEvict` skips `customMetadata.kind === 'tool_result'`
+- [x] 1.1 `SessionCacheManager.autoEvict` skips `customMetadata.kind === 'tool_result'`
       entries (mirror `CacheToolResultStore.cleanup`'s filter), or add an un-evictable flag.
-- [ ] 1.2 Test: session over quota with mixed entries → no `tool_result` evicted; a
+- [x] 1.2 Test: session over quota with mixed entries → no `tool_result` evicted; a
       referenced persisted result stays readable.
 
 ## Phase 2 — BUG-2 (High): protect persisted results from model delete/update
 
-- [ ] 2.1 `StorageTool.handleDelete` + `handleUpdate` reject keys whose entry
+- [x] 2.1 `StorageTool.handleDelete` + `handleUpdate` reject keys whose entry
       `customMetadata.kind === CACHE_TOOL_RESULT_KIND` with a clear error.
-- [ ] 2.2 Test: model `delete`/`update` on a tool_result key → rejected, blob survives;
+- [x] 2.2 Test: model `delete`/`update` on a tool_result key → rejected, blob survives;
       ordinary keys still deletable.
 
 ## Phase 3 — BUG-3 (Med): quota manager targets the real consumers
 
-- [ ] 3.1 Construct `StorageQuotaManager` (service-worker.ts:1269) with the options-bag +
+- [x] 3.1 Construct `StorageQuotaManager` (service-worker.ts:1269) with the options-bag +
       `TieredEvictor` (tier0 `TaskOutputManager`, tier1 `cache_items`/`SessionCacheManager`).
-- [ ] 3.2 **Coordinate tier ordering with Track 29 G3 and Track 32 Phase 5** — one shared
+- [x] 3.2 **Coordinate tier ordering with Track 29 G3 and Track 32 Phase 5** — one shared
       decision, recorded in all three docs.
-- [ ] 3.3 Test: critical quota reclaims `task_output_chunks`/`cache_items`, not
+- [x] 3.3 Test: critical quota reclaims `task_output_chunks`/`cache_items`, not
       `ROLLOUT_CACHE`.
 
 ## Exit criteria
