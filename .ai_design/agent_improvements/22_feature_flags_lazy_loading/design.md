@@ -1,33 +1,25 @@
 # Track 22: Feature Flags & Lazy Loading
 
-**Priority: P2** · **Effort: M** · **Status: READY TO IMPLEMENT**
+**Priority: P2** · **Effort: M** · **Status: READY TO IMPLEMENT — gated on a Phase-0 spike (see §Phase 0)**
 
-> Source: second-pass claudy↔browserx research (2026-05-14), implementation-readiness + multi-platform pass (2026-05-15). Grounded in a full read of claudy's `feature()` shim and browserx's build define + flag recorder across all three deploy targets — see "Validation Notes". This is plan.md "Priority 8", confirmed never tracked.
+> Source: second-pass claudy↔browserx research (2026-05-14), implementation-readiness + multi-platform pass (2026-05-15), mechanism-correctness + SW-constraint pass (2026-05-16). Grounded in a full read of claudy's `feature()` macro, browserx's Vite `define` substrate, the 80 `__BUILD_MODE__` compile-gate sites, and `src/extension/background/service-worker.ts` in full — see "Validation Notes". This is plan.md "Priority 8", confirmed never tracked. All `path:line` are code-verified vs the working tree on 2026-05-16; browserx paths are relative to `src/` unless they are repo-root `vite.config.*` / `vite.featureFlags.mjs`.
 
 ## Problem
 
 BrowserX has **no compile-time feature gating / dead-code elimination**. The two things that look like it are not:
 
-- `__BUILD_MODE__` (`vite.config.mjs:116` `'extension'`, `vite.config.server.mts:13` `'server'`, `vite.config.desktop.mts:28` `'desktop'`, `vite.config.content.mjs:12` `'extension'`) — **platform branch selection**, not feature isolation.
-- `FeatureFlagRecorder` (`core/session/state/SessionServices.ts:23` interface, `:115` `InMemoryFeatureFlagRecorder`, `:142` prod default `undefined`) — a **recorder for test/observability attribution**. It *observes* flags; it does not gate or eliminate anything.
+- `__BUILD_MODE__` (`vite.config.mjs:116`, `vite.config.content.mjs:12`, `vite.config.desktop.mts:28`, `vite.config.server.mts:13`) — **platform branch selection**, not feature isolation. It *is* the exact substrate we extend.
+- `FeatureFlagRecorder` (`src/core/session/state/SessionServices.ts:23` interface, `:115` `InMemoryFeatureFlagRecorder`, `:142` prod default `undefined`) — a **test/observability recorder**. It is the *runtime* layer (kept and reused), not a gate.
 
-Experimental subsystems (Track 21 relay, Track 23 x402, voice, heavy MCP bridges) cannot ship dark without bloating the size-critical extension bundle.
+Experimental + heavy-optional subsystems cannot ship dark without bloating the size-critical extension bundle. Concretely, the background service worker today statically imports & eagerly constructs **MCP** (`service-worker.ts:31-33,257`) and **A2A** (`:34-36,269`) — both bundled into `background.js` (1.3 MB) + `chunks/` (5.2 MB) unconditionally.
 
-## What Claudy Does
+## What Claudy Does — and why it doesn't port cleanly
 
-`shims/bun-bundle.ts` (41 lines):
+`shims/bun-bundle.ts` (41 lines, **24 flags**): `feature('X')` imported from `bun:bundle`, **Bun-macro-inlined** to a literal in prod, so `if (feature('X')) { … }` DCEs; usage (`entrypoints/cli.tsx:100,112,165,185,212`) gates entrypoint dispatch **+ a dynamic `import()`** so a disabled subsystem is *neither bundled nor loaded*. Compile-time isolation is kept strictly separate from the runtime gate (`cli.tsx:110-112`: *"feature() must stay inline for build-time dead code elimination; isBridgeEnabled() checks the runtime GrowthBook gate"*).
 
-```ts
-const FEATURE_FLAGS: Record<string, boolean> = {
-  BRIDGE_MODE: envBool('CLAUDE_CODE_BRIDGE_MODE', false),
-  DAEMON: envBool('CLAUDE_CODE_DAEMON', false),
-  VOICE_MODE: envBool('CLAUDE_CODE_VOICE_MODE', false),
-  /* …~28 flags… */
-}
-export function feature(name: string): boolean { return FEATURE_FLAGS[name] ?? false }
-```
-
-In production Bun builds `feature('X')` is a **compile-time constant** so `if (feature('X')) { … }` branches are stripped; the dev shim reads env (`envBool`) with `false` defaults. `shims/preload.ts` installs it before app code. Usage (`entrypoints/cli.tsx:100-212`): `if (feature('DAEMON') && args[0]==='--daemon-worker')`, `if (feature('BRIDGE_MODE') && args[0]==='remote-control')` — **the gate guards entrypoint dispatch / a dynamic import**, so a disabled subsystem is both dead-code-eliminated *and* never loaded. Compile-time isolation is cleanly separate from runtime remote gates (GrowthBook), often layered.
+**Two reasons this is not a copy-paste:**
+1. **No macro.** Vite `define` is textual identifier substitution; it cannot fold `FEATURE_FLAGS[name]` inside a function. Claudy folds only because Bun macro-inlines the call. The portable analogue is browserx's bare-constant pattern (80 `__BUILD_MODE__` sites).
+2. **`await import()` is illegal in the extension SW.** Claudy is a Bun CLI. browserx's most size-critical target is a Chrome MV3 service worker, where the HTML spec bans dynamic `import()` (`service-worker.ts:49-51`, `:58`). Claudy's entire "gate a dynamic import" mechanism **does not apply to the SW** — the one target the track exists for. (The codebase is *itself inconsistent* here: `:49-51` declares the ban yet `:992-994` runs a live `await import()` in the SW — Phase 0 must resolve this before Phase 2.)
 
 ## BrowserX Mapping
 
@@ -35,64 +27,114 @@ In production Bun builds `feature('X')` is a **compile-time constant** so `if (f
 
 | Concern | BrowserX location | State |
 |---|---|---|
-| Constant injection | `vite.config.mjs:115-116`, `vite.config.content.mjs:12`, `vite.config.desktop.mts:28`, `vite.config.server.mts:12-13` `define: { __BUILD_MODE__ }` | **The exact substrate** — Vite `define` constant-folds + tree-shakes; platform-only today |
-| Flag observation | `SessionServices.ts:23-147` `FeatureFlagRecorder`, prod `undefined` | Attribution only — **not** gating |
-| Env availability | `process.env` on desktop/server; **none in the extension SW** (`logger.ts:12` guards `typeof process`) | Determines where a runtime override is even possible |
-| Heavy optional subsystems | Track 21 relay, Track 23 x402, voice, heavy MCP | Bundled unconditionally today |
+| Constant injection | `vite.config.mjs:115-117`, `vite.config.content.mjs:11-13`, `vite.config.desktop.mts:27-29`, `vite.config.server.mts:12-14` `define:{…}` | The substrate — Vite `define` → esbuild/Rollup constant-fold + tree-shake. |
+| Proven compile-gate pattern | 80 sites read the bare injected constant directly (`src/config/AgentConfig.ts:76`, `src/core/storage/index.ts:77-96`) | The house pattern we mirror — never wrapped in a function; that is *why* it DCEs. |
+| Ambient typing | `src/types/globals.d.ts:14` `declare const __BUILD_MODE__` | Where `__FEATURE_*__` declarations go. |
+| Runtime flag layer | `SessionServices.ts:23,142` `FeatureFlagRecorder` (prod `undefined`) | Rollout/attribution — kept; the rebuild-free lever (with Track 20), **not** `feature.ts`. |
+| Heavy subsystems in the extension bundle **today** | MCP (`service-worker.ts:31-33,257`), A2A (`:34-36,269`) — static import + eager construct | The concrete Phase-2 proof targets (no dependency on Tracks 21/23). |
+| SW dynamic-import ban | `service-worker.ts:49-51,58` (ban) vs `:992-994` (live `await import()`) | **Unresolved contradiction → Phase 0 spike.** |
 
-### Per-Platform Behavior
+### Two layers — strictly separated
 
-Four Vite configs, **two of them extension** (`vite.config.mjs` main + `vite.config.content.mjs` content script). The track's *value* and the *override model* differ sharply per target.
+1. **Compile-time layer (`feature.ts` injected constants).** Code *physically absent* from the artifact. Enables ship-dark + keeps unvetted code out of the server image. **Flipping requires a rebuild — inherent, not a defect.** All four targets.
+2. **Runtime layer (`FeatureFlagRecorder` + Track 20 managed policy).** Code *present but inert*; flips **without a rebuild** (per-deployment / staged rollout). The server fleet lever. Does **not** strip bytes.
 
-- **BrowserX (extension, Chrome MV3).** The reason this track exists. Bundle size is **size-critical**: Chrome Web Store review, and MV3 service-worker cold-start latency scale with bundle size. Heavy optional subsystems (relay/x402/voice/heavy MCP) must default **OFF** and be tree-shaken out of `vite.config.mjs` *and* `vite.config.content.mjs`. **Hard constraint:** the extension SW has no `process.env`, so claudy's `envBool` runtime fallback is impossible here — on the extension a flag is a *pure compile-time constant* baked at build, with **no runtime override**. The bundle-size delta (measure it) is the success metric and it is an extension-only metric.
-- **Apple Pi (desktop, Tauri).** `vite.config.desktop.mts`. Bundle size is not Web-Store-policed; lazy loading still trims cold start. `process.env` exists → the `envBool` dev/runtime fallback works. Per-target *defaults differ*: subsystems gated OFF on the extension (e.g. relay host worker, shell-heavy MCP) default **ON** here. So a flag is `(platform default) overridable by env`.
-- **Apple Pi Server (headless, Docker/K8s).** `vite.config.server.mts`. Bundle size barely matters (Docker image). Flags matter for **(a)** keeping a production server image from shipping unvetted experimental paths (relay/x402 default OFF until vetted, flipped per-deployment), and **(b)** the **most valuable per-platform lever**: `APPLEPI_FEATURE_*` env vars let an operator flip a flag per K8s deployment **without a rebuild** — exactly claudy's `CLAUDE_CODE_*` env model, viable here precisely because `process.env` exists. This is the natural fleet/staged-rollout knob for the headless server and composes with Track 20 (a flag default can be a managed-policy key).
+A subsystem may be *layered* (compile-gated *and* runtime-gated, like claudy's bridge). They never collapse into one switch. The earlier draft's "`APPLEPI_FEATURE_*` gives a rebuild-free flip through `feature.ts`" was wrong: Vite `define` bakes `__FEATURE_*__` into the built artifact, so the `typeof __FEATURE_X__` guard folds at build time and any `process.env` fallback in `feature.ts` is **provably dead in every real build** (fires only in vitest/ts-node). Rebuild-free rollout is the runtime layer's job.
+
+### Per-target mechanism (the central correction)
+
+The gate mechanism is **platform-shaped**, because dynamic `import()` is available in some targets and banned in others:
+
+| Target | Vite config | Dynamic `import()`? | Gate mechanism | OFF result | ON result |
+|---|---|---|---|---|---|
+| **Extension background SW** | `vite.config.mjs` input `background` (`:125`) | **Banned** (`service-worker.ts:49-51`) — pending Phase 0 | Static top-level import + `if (FLAG) { use… }`. DCE relies on Rollup tree-shaking the now-unreferenced module — **only works if that module + its transitive graph are side-effect-free** (`package.json` `sideEffects`, no top-level side effects). | Module gone from `background.js`/`chunks/` (the headline win — *if* tree-shaking holds; verify) | Module present, eagerly loaded as today |
+| **Extension sidepanel / welcome** | `vite.config.mjs` inputs `sidepanel`/`welcome` (`:126-127`) | Allowed (web page) | `if (FLAG) { await import('…') }` (claudy pattern) | Lazy chunk not emitted | Lazy chunk, loaded on demand |
+| **Content script** | `vite.config.content.mjs` (`inlineDynamicImports:true` `:39`, iife `:32`) | Syntactically allowed but inlined | `if (FLAG) { await import('…') }` | `if(false)` branch DCE'd, module tree-shaken | Inlined into `content.js` (no lazy chunk) |
+| **Desktop** | `vite.config.desktop.mts` | Allowed | dynamic-import lazy chunk | chunk not emitted | lazy chunk |
+| **Server** | `vite.config.server.mts` (SSR, `minify:false` `:20`, `ssr.noExternal:[/^@\//]` `:29-36`) | Allowed | dynamic-import; Rollup constant-DCE drops the module | module absent (verify by grepping `dist/server/index.mjs` — no minifier safety net) | module present |
+
+**Consequence:** the SW size win — the track's whole point — depends on **static-import + side-effect-free tree-shaking**, *not* claudy's lazy import. This is strictly weaker and target-specific; it must be proven per subsystem with a bundle analyzer, and a subsystem whose module graph has top-level side effects (event registration, singletons constructed at import) will **not** strip and must be refactored to be import-pure first. MCP/A2A's `*Manager.getInstance()` + `setup*ToolRegistration()` are side-effectful and will need the gate to also remove their *construction sites* (`service-worker.ts:256-275`), not just an import.
+
+### Per-platform defaults
+
+Four configs, two of them extension (`vite.config.mjs` SW/sidepanel/welcome + `vite.config.content.mjs`). Extension defaults are conservatively **OFF** for heavy flags (no runtime override exists in the SW — a wrong default can only be re-published, not hot-flipped). Desktop defaults heavier subsystems **ON**; server defaults experimental OFF (flipped by rebuild for vetting; rebuild-free rollout is the runtime layer). The per-platform default matrix is the single `vite.featureFlags.mjs` (decision 2).
 
 ### Key design decisions (and divergences from claudy)
 
-1. **Vite `define` is browserx's `bun:bundle`, with per-target default maps.** Add `define: { __FEATURE_<X>__: JSON.stringify(bool) }` to **all four** `vite.config.*` from a single `featureDefaults[platform]` map (a flag may default differently per platform — relay OFF on extension, ON on desktop/server). `core/features/feature.ts` `feature('X')` returns the injected `__FEATURE_X__`; a fallback reads `process.env`/`APPLEPI_FEATURE_*` **only where `process.env` exists** (desktop/server) — guard `typeof process` exactly like `logger.ts:12`. Vite already constant-folds + tree-shakes `define` (proven by `__BUILD_MODE__`). **Divergence:** mechanism is Vite `define`, not `bun:bundle`; and the runtime env fallback is desktop/server-only, not universal (claudy assumes env everywhere).
-2. **Gate guards a dynamic import** (port claudy's `cli.tsx` pattern): `if (feature('REMOTE_BRIDGE')) { const m = await import('./remote/relay') }`. Disabled subsystems are *neither bundled nor loaded* — the extension bundle-size win.
-3. **Two explicit layers; keep `FeatureFlagRecorder`.** Compile-time `feature()` (elimination/isolation) vs runtime flag (rollout/attribution). The existing `FeatureFlagRecorder` stays as the runtime attribution layer — pair with it, don't replace it.
-4. **First feature-gated subsystems:** Track 21 (relay), Track 23 (x402), voice, heavy MCP bridges. Prove the extension bundle-size delta with a bundle analyzer (don't assume tree-shaking worked).
-5. **P2, honest scoping.** Bundle hygiene + experimental isolation, not a correctness gap. Land before Track 21/23 ship so they ship dark; does not block correctness.
+1. **`feature.ts` exposes one typed injected constant per flag — not a `feature('X')` function** (Vite has no Bun macro; see "What Claudy Does"). Mirrors the 80 `__BUILD_MODE__` sites:
+
+   ```ts
+   // src/core/features/feature.ts  (only file app code imports)
+   declare const __FEATURE_MCP__: boolean;
+   declare const __FEATURE_A2A__: boolean;
+   declare const __FEATURE_REMOTE_BRIDGE__: boolean;
+   declare const __FEATURE_X402__: boolean;
+   declare const __FEATURE_VOICE__: boolean;
+
+   // Each export is a literal after `define` runs → robust DCE. The `typeof`
+   // guard handles vitest/ts-node only; it is NOT a production runtime override.
+   export const MCP           = typeof __FEATURE_MCP__           !== 'undefined' && __FEATURE_MCP__;
+   export const A2A           = typeof __FEATURE_A2A__           !== 'undefined' && __FEATURE_A2A__;
+   export const REMOTE_BRIDGE = typeof __FEATURE_REMOTE_BRIDGE__ !== 'undefined' && __FEATURE_REMOTE_BRIDGE__;
+   export const X402          = typeof __FEATURE_X402__          !== 'undefined' && __FEATURE_X402__;
+   export const VOICE         = typeof __FEATURE_VOICE__         !== 'undefined' && __FEATURE_VOICE__;
+
+   export type FlagName = 'MCP' | 'A2A' | 'REMOTE_BRIDGE' | 'X402' | 'VOICE';
+   ```
+
+   **No string-keyed `feature(name)`** — it defeats DCE *and* type-safety.
+
+2. **Single dependency-free defaults matrix** at repo root **`vite.featureFlags.mjs`** (the `.mjs` Vite configs cannot import a `.ts`/`@/` module at config-eval time). Pure data + `featureDefine(platform, env)` → `{ "__FEATURE_<NAME>__": JSON.stringify(bool) }`; per-platform `FLAG_DEFAULTS`; imported by all four configs and re-typed for `feature.ts`. `APPLEPI_FEATURE_*` here is a **build-time** knob (changes what is baked → still a rebuild), explicitly not the runtime lever (decision 3).
+
+3. **Keep `FeatureFlagRecorder` as the runtime layer.** It is the rebuild-free per-deployment lever and composes with **Track 20** (a managed-policy key drives a recorder default). `feature.ts` evaluations are reported into it for attribution (Phase 3). Pair, don't replace.
+
+4. **First feature-gated subsystems are MCP + A2A (present in the extension bundle today)**, not relay/x402/voice (which don't exist yet — Tracks 21/23 deferred). MCP/A2A make Phase 2 provable now. relay/x402/voice are follow-on conversions when those tracks land.
+
+5. **P2, honest scoping.** Bundle hygiene + experimental isolation, not a correctness gap. Sequence just before Tracks 21/23 so they ship dark; does not block correctness; does not preempt P0/P1. **End-to-end readiness is gated on the Phase-0 spike** (the SW dynamic-import contradiction + side-effect-free-strip feasibility) — a doc edit cannot substitute for it.
 
 ## Implementation Plan (file-level, ordered)
 
-**Phase 1 — `feature()` + per-target defines.**
-- `core/features/featureDefaults.ts`: `Record<BuildMode, Record<FlagName, boolean>>` (the per-platform default matrix).
-- `core/features/feature.ts`: `feature(name)` → injected `__FEATURE_<name>__`; env fallback `APPLEPI_FEATURE_<name>` guarded by `typeof process !== 'undefined'` (no-op in extension SW).
-- Add the `__FEATURE_*__` define block (sourced from `featureDefaults[platform]`, env-overridable on node) to `vite.config.mjs`, `vite.config.content.mjs`, `vite.config.desktop.mts`, `vite.config.server.mts` — mirror the existing `__BUILD_MODE__` define exactly.
+**Phase 0 — prerequisite spike (resolves the only true blocker).** Determine empirically how a feature-gated heavy subsystem can be removed from the **background SW** bundle:
+- Resolve the `service-worker.ts:49-51` ("dynamic import banned") vs `:992-994` (live `await import()`) contradiction: does the current Vite config emit a SW-loadable chunk for `:992`, and does it work in a packaged MV3 build at runtime? Determines whether the SW can use the lazy-import path at all or is restricted to static-import + tree-shake.
+- Prototype: gate MCP (`service-worker.ts:31-33,256-263`) behind a hard-coded `false` constant via `define`, build `vite.config.mjs`, and bundle-analyze whether `core/mcp/*` actually leaves `background.js` + `chunks/`. If side effects pin it, identify the refactor (make `core/mcp` import-pure; gate the construction sites).
+- **Exit:** a one-page decision recording the SW mechanism (lazy-import vs static+treeshake), the measured MCP byte delta, and whether MCP/A2A need import-purity refactors. Phases 1–3 below assume this is answered; if the spike shows the SW cannot strip without large refactors, Track 22's SW value is re-scoped before proceeding.
 
-**Phase 2 — convert subsystems + verify.**
-- Convert 2–3 heavy optional subsystems (Track 21 relay worker, Track 23 x402, one heavy MCP bridge) to `feature()`-gated dynamic imports.
-- Run a bundle analyzer on the `extension` build with the flags off; record the byte delta as the acceptance criterion.
+**Phase 1 — substrate.** `vite.featureFlags.mjs` (matrix + `featureDefine`); `src/types/globals.d.ts` `__FEATURE_*__` decls beside `:14`; `src/core/features/feature.ts` (typed per-flag consts + `FlagName`); spread `featureDefine('<plat>', process.env)` into the `define` of all four configs (`vite.config.mjs:115-117`, `vite.config.content.mjs:11-13`, `vite.config.desktop.mts:27-29`, `vite.config.server.mts:12-14`).
 
-**Phase 3 — discipline + attribution.**
-- Single flag registry with a mandatory expiry/removal note per experimental flag.
-- Wire `feature()` evaluations into `FeatureFlagRecorder` for runtime attribution; document the compile-time-vs-runtime-vs-`__BUILD_MODE__` three-way split so a future reader does not conflate them.
+**Phase 2 — convert MCP + A2A, verify per target.** Gate MCP (`service-worker.ts:31-33` imports, `:256-263` construct/auto-connect, `:769-853` `setupMCPToolRegistration`) and A2A (`:34-36`, `:268-275`, `:865-944`) behind `MCP`/`A2A` using the Phase-0-chosen SW mechanism. Bundle-analyze `vite.config.mjs` (background + sidepanel) OFF vs ON; record byte delta (acceptance number). Grep `dist/server/index.mjs` for absence on the server build.
+
+**Phase 3 — discipline + attribution.** `FlagName` union = single registry + mandatory expiry note per experimental flag; report `feature.ts` constants into `FeatureFlagRecorder`; document the three-way split (compile-time `feature.ts` / runtime `FeatureFlagRecorder`+Track 20 / `__BUILD_MODE__`).
 
 ## Dependencies
 
-- Build config (`vite.config.mjs`, `vite.config.content.mjs`, `vite.config.desktop.mts`, `vite.config.server.mts`) + existing `__BUILD_MODE__` define infra.
-- **Track 21** (Relay) & **Track 23** (x402): natural first feature-gated subsystems — coordinate so they ship dark.
-- **Track 20** (Managed Settings): a flag default can be a managed-policy key (server staged rollout).
+- Build config (all four `vite.config.*`) + `__BUILD_MODE__` infra + `src/types/globals.d.ts:14`.
+- **Phase 0 spike** — hard prerequisite for Phase 2 (SW strip mechanism).
+- **Track 21/23** — follow-on feature-gated subsystems (ship dark); not needed for Phases 0–3 (MCP/A2A carry the proof).
+- **Track 20** — the rebuild-free server rollout lever (runtime layer, not `feature.ts`).
 - `SessionServices.FeatureFlagRecorder` (existing) for runtime attribution.
 
 ## Risks
 
-- Vite constant-folding must actually eliminate the gated `import()` — verify with a bundle analyzer per target (the value is the extension size delta).
-- Flag sprawl — single registry; mandatory expiry/removal note (claudy carries ~28 and it is already a lot).
-- Don't conflate with `__BUILD_MODE__` (platform) or `FeatureFlagRecorder` (attribution) — three distinct concerns.
-- Extension has **no runtime override** (no `process.env`): a wrong extension build default cannot be hot-flipped — extension flag defaults must be conservative (off for anything heavy).
-- P2 priority is deliberate — sequence just before Tracks 21/23, don't preempt P0/P1.
+- **SW cannot use claudy's dynamic-import model** (`service-worker.ts:49-51`); the size win depends on static-import + side-effect-free tree-shaking, which is strictly weaker and unproven until Phase 0. A side-effectful module graph (MCP/A2A construct singletons + register handlers at init) will not strip without import-purity refactors. **Top risk; Phase 0 exists to retire it.**
+- The `service-worker.ts:49-51` vs `:992-994` contradiction means the codebase itself doesn't settle SW dynamic import — no doc can; Phase 0 must.
+- `feature.ts` must stay a bare typed export fed by `define`; re-introducing an indexed `feature('X')` silently breaks DCE (regression test in Phase 3).
+- Server `minify:false` + `ssr.noExternal:[/^@\//]` — verify absence by grepping `dist/server/index.mjs`, no minifier safety net.
+- Content script: OFF-case size win only, no runtime lazy-load (`inlineDynamicImports:true`).
+- Flag sprawl — `FlagName` union is the single registry; mandatory expiry note.
+- Don't conflate the three layers (compile-time / runtime / `__BUILD_MODE__`).
+- Extension has no runtime override — conservative OFF defaults for heavy flags.
+- P2 — sequence just before Tracks 21/23, don't preempt P0/P1.
 
-## Validation Notes (verified vs claudy + browserx source, 2026-05-14 / multi-platform pass 2026-05-15)
+## Validation Notes (verified vs claudy + browserx working tree, 2026-05-14 / 2026-05-15 / 2026-05-16)
 
-- claudy: `shims/bun-bundle.ts:1-41`; `shims/preload.ts`/`macro.ts`; `entrypoints/cli.tsx:100,112,165,185,212`.
-- browserx: `vite.config.mjs:115-116`, `vite.config.content.mjs:12`, `vite.config.desktop.mts:28`, `vite.config.server.mts:12-13` (`define:{__BUILD_MODE__}` — the four-config Vite-define substrate); `core/session/state/SessionServices.ts:23,115,142` (recorder, not gate); `utils/logger.ts:12` (`typeof process` guard — the pattern for the env-fallback guard; proves extension SW has no `process.env`).
+- claudy: `shims/bun-bundle.ts:1-41` (24 flags, Bun-macro-inlined `feature()`); `shims/macro.ts` (installs `MACRO`, not `feature`); `entrypoints/cli.tsx:1,100,112,165,185,212` (`feature()` gates + dynamic imports; `:110-112` compile-vs-runtime layering — claudy is a Bun CLI, **no SW constraint**).
+- browserx build substrate: `vite.config.mjs:115-117` (+ inputs `:125` background SW, `:126` sidepanel, `:127` welcome), `vite.config.content.mjs:11-13` (+ `:32` iife, `:39` `inlineDynamicImports:true`), `vite.config.desktop.mts:27-29`, `vite.config.server.mts:12-14` (+ `:20` `minify:false`, `:29-36` `ssr.noExternal:[/^@\//]`); `src/types/globals.d.ts:14`; `src/config/AgentConfig.ts:76`, `src/core/storage/index.ts:77-96` (bare-constant compile-gate house pattern); `src/core/session/state/SessionServices.ts:23,142` (runtime recorder, not gate); `src/utils/logger.ts:12` (`typeof process` guard pattern).
+- browserx SW ground truth (`src/extension/background/service-worker.ts`): `:31-33` static MCP imports, `:34-36` static A2A imports, `:256-263` MCP construct + auto-connect, `:268-275` A2A construct + auto-connect, `:769-853`/`:865-944` MCP/A2A event-registration side effects, `:49-51`+`:58` "dynamic import banned in SWs", **contradicted by** `:992-994` live `await import()`. dist today: `background.js` 1.3 MB, `chunks/` 5.2 MB, `sidepanel.js` 752 KB.
 
-Corrections vs the first-pass draft:
-1. Pinned the substrate: browserx already uses Vite `define` for `__BUILD_MODE__` across **four** configs — `feature()` is the same mechanism extended with `__FEATURE_*__`, not a new build system.
-2. `FeatureFlagRecorder` is prod-`undefined` recorder-only (`SessionServices.ts:142`) — source-pinned.
-3. Sequenced before Tracks 21/23 (their dark-ship enabler) while keeping P2.
-4. **Multi-platform (2026-05-15):** the bundle-size payoff is overwhelmingly an *extension* concern (Web Store + MV3 SW cold start); near-irrelevant on the server Docker image. Flags need a **per-target default matrix** (a flag may default differently per platform) across all four Vite configs. claudy's `envBool` runtime fallback is **desktop/server-only** (the extension SW has no `process.env`) — on the extension a flag is a pure compile-time constant with no runtime override; on the server `APPLEPI_FEATURE_*` env is the rebuild-free fleet rollout lever (composes with Track 20).
+Corrections vs prior drafts:
+1. **SW mechanism (2026-05-16):** claudy's "gate a dynamic import" is illegal in the extension SW (`:49-51`). Per-target mechanism table added; the SW path is static-import + side-effect-free tree-shake, unproven until Phase 0; codebase self-contradiction (`:49-51` vs `:992-994`) is now an explicit prerequisite spike.
+2. **Proof targets (2026-05-16):** MCP (`:31-33,257`) + A2A (`:34-36,269`) are in the extension bundle *today* — Phase 2 is provable now without Tracks 21/23 (which are deferred). Earlier "no MCP in browser agent" (`SessionServices.ts`) was misleading.
+3. **Mechanism (2026-05-16):** indexed `feature('X')` does not DCE under Vite (Bun-macro-only) → bare typed per-flag constants.
+4. **Two-layer split (2026-05-16):** rebuild-free server flip via `feature.ts` env fallback is impossible (define bakes the constant); rebuild-free rollout is the runtime layer + Track 20.
+5. **Config wiring (2026-05-16):** matrix moved to dependency-free repo-root `vite.featureFlags.mjs`; `__FEATURE_*__` decls in `src/types/globals.d.ts:14`.
+6. **Earlier (2026-05-14/15):** per-target default matrix; bundle payoff is overwhelmingly an extension concern; `FeatureFlagRecorder` prod-`undefined`; claudy count `~28 → 24`; `src/` path prefixes.

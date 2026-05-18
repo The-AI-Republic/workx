@@ -757,6 +757,7 @@ export class EventProcessor {
           riskLevel: data.risk_level,
           riskFactors: data.risk_factors,
           countdown: data.timeout ? Math.floor(data.timeout / 1000) : 0,
+          plan: data.plan, // Track 14: structured plan → editable card
           onApprove: () => {
             this.sendApprovalDecision(data.id, 'approve');
           },
@@ -766,9 +767,17 @@ export class EventProcessor {
           onRequestChange: (text: string) => {
             this.sendApprovalDecision(data.id, 'reject', false, text);
           },
-          onRemember: (scope: 'session' | 'no') => {
-            this.sendApprovalDecision(data.id, 'approve', scope === 'session');
-          },
+          // Track 14: a Plan Review approval is a one-shot decision —
+          // "Always Approve" (remember) is meaningless for it and would
+          // persist a grant for SubmitPlanForReview itself. Omit onRemember
+          // when a plan is present so the card hides that misleading button.
+          ...(data.plan
+            ? {}
+            : {
+                onRemember: (scope: 'session' | 'no') => {
+                  this.sendApprovalDecision(data.id, 'approve', scope === 'session');
+                },
+              }),
         },
         collapsible: false,
       };

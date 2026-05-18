@@ -31,7 +31,13 @@ COMMANDS:
 - "update": Update a single task by taskId. Change status (pending → in_progress → completed), subject, task_description, activeForm, owner, metadata, or add dependency edges (addBlocks, addBlockedBy).
 - "list": List all tasks with their current status.
 - "get": Get full details of a single task by taskId.
-- "get_plan": Retrieve the full plan context including plan_summary, plan_detail, and all tasks. Use when you need to recover plan strategy after many tool calls.`;
+- "get_plan": Retrieve the full plan context including plan_summary, plan_detail, and all tasks. Use when you need to recover plan strategy after many tool calls.
+
+STATUS DISCIPLINE:
+- Keep at most one task in_progress.
+- Update a task as soon as its status changes.
+- Use get_plan if prior tool output was compacted or you need to recover the strategy.
+- Do not restate the full plan to the user after every tool call.`;
 
 /**
  * PlanningTool — command-dispatching persistent task manager

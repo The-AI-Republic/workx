@@ -154,6 +154,56 @@ describe('AgentRegistry — factory path (server/desktop)', () => {
       expect((session.agent as any).agentId).toBe('agent_ext');
     });
 
+    it('Track 10: onAgentCreated fires for the agentFactory path (null runner)', async () => {
+      const factoryAgent = createFactoryAgent();
+      const agentFactory = vi.fn().mockResolvedValue(factoryAgent);
+      const onAgentCreated = vi.fn().mockResolvedValue(undefined);
+
+      const registry = new AgentRegistry({
+        maxConcurrent: 3,
+        agentFactory,
+        onAgentCreated,
+      });
+      registry.initialize(mockConfig);
+
+      await registry.createSession({ type: 'scheduled' });
+
+      expect(onAgentCreated).toHaveBeenCalledTimes(1);
+      expect(onAgentCreated).toHaveBeenCalledWith(factoryAgent, {
+        subAgentRunner: null,
+      });
+    });
+
+    it('Track 10: onAgentCreated fires for the extension path with a runner slot', async () => {
+      const onAgentCreated = vi.fn().mockResolvedValue(undefined);
+      const registry = new AgentRegistry({ maxConcurrent: 3, onAgentCreated });
+      registry.initialize(mockConfig);
+
+      await registry.createSession({ type: 'primary' });
+
+      expect(onAgentCreated).toHaveBeenCalledTimes(1);
+      const [agentArg, ctxArg] = onAgentCreated.mock.calls[0];
+      expect(agentArg).toBeDefined();
+      // subAgentRunner is null in the mocked extension path (engine is null)
+      expect(ctxArg).toHaveProperty('subAgentRunner');
+    });
+
+    it('Track 10: a throwing onAgentCreated is non-fatal (session still created)', async () => {
+      const factoryAgent = createFactoryAgent();
+      const agentFactory = vi.fn().mockResolvedValue(factoryAgent);
+      const onAgentCreated = vi.fn().mockRejectedValue(new Error('binder boom'));
+
+      const registry = new AgentRegistry({
+        maxConcurrent: 3,
+        agentFactory,
+        onAgentCreated,
+      });
+      registry.initialize(mockConfig);
+
+      const session = await registry.createSession({ type: 'scheduled' });
+      expect(session.agent).toBe(factoryAgent);
+    });
+
     it('should propagate agentFactory errors', async () => {
       const agentFactory = vi.fn().mockRejectedValue(new Error('Factory init failed'));
 

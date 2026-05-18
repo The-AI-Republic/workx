@@ -13,6 +13,7 @@ export {
   registerHotkey,
   unregisterHotkey,
   unregisterAllHotkeys,
+  getHotkeyDiagnostics,
 } from './hotkeys';
 export { TauriChannel } from './channels/TauriChannel';
 export {

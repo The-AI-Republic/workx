@@ -2,6 +2,10 @@
  * TypeScript type definitions for RolloutRecorder
  */
 
+// Type-only import (erased at compile; no runtime/layering coupling) so the
+// plan_artifact payload shape stays single-sourced with the tool + UI.
+import type { PlanArtifactPayload } from '../../tools/planReview/types';
+
 // ============================================================================
 // Constants
 // ============================================================================
@@ -166,7 +170,8 @@ export type RolloutItem =
   | { type: 'turn_context'; payload: TurnContextItem }
   | { type: 'event_msg'; payload: EventMsg }
   | { type: 'turn_completion'; payload: { turnId: string; stats: any } }
-  | { type: 'content_replacement'; payload: ContentReplacementRecord };
+  | { type: 'content_replacement'; payload: ContentReplacementRecord }
+  | { type: 'plan_artifact'; payload: PlanArtifactPayload };
 
 /**
  * A single line in the JSONL rollout format.
@@ -176,7 +181,7 @@ export interface RolloutLine {
   /** ISO 8601 timestamp with milliseconds */
   timestamp: string;
   /** Discriminator for the item type */
-  type: 'session_meta' | 'response_item' | 'compacted' | 'turn_context' | 'event_msg' | 'turn_completion' | 'content_replacement';
+  type: 'session_meta' | 'response_item' | 'compacted' | 'turn_context' | 'event_msg' | 'turn_completion' | 'content_replacement' | 'plan_artifact';
   /** The actual rollout item data */
   payload: RolloutItem['payload'];
 }
@@ -368,4 +373,8 @@ export function isTurnContextItem(item: RolloutItem): item is Extract<RolloutIte
  */
 export function isEventMsgItem(item: RolloutItem): item is Extract<RolloutItem, { type: 'event_msg' }> {
   return item.type === 'event_msg';
+}
+
+export function isPlanArtifactItem(item: RolloutItem): item is Extract<RolloutItem, { type: 'plan_artifact' }> {
+  return item.type === 'plan_artifact';
 }

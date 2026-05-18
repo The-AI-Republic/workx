@@ -15,6 +15,41 @@
   let alternativeText = $state('');
   let showAlternativeInput = $state(false);
 
+  // Track 14: editable Plan Review. When the request carries a structured
+  // plan, offer an editor; "Approve with edits" rides the existing
+  // onRequestChange transport (the SubmitPlanForReview handler parses a
+  // JSON plan in the reason as approve-with-edits).
+  const planObj = $derived(event.requiresApproval?.plan);
+  let showPlanEditor = $state(false);
+  let planDraft = $state('');
+  let planEditError = $state('');
+
+  function togglePlanEditor() {
+    if (!showPlanEditor && planObj) {
+      planDraft = JSON.stringify(planObj, null, 2);
+      planEditError = '';
+    }
+    showPlanEditor = !showPlanEditor;
+  }
+
+  async function handleApproveWithEdits() {
+    if (!event.requiresApproval?.onRequestChange || processing) return;
+    let normalized: string;
+    try {
+      // Re-serialize so the handler always receives compact valid JSON.
+      normalized = JSON.stringify(JSON.parse(planDraft));
+    } catch {
+      planEditError = $_t('Invalid JSON — please fix the plan before approving.');
+      return;
+    }
+    processing = true;
+    try {
+      event.requiresApproval.onRequestChange(normalized);
+    } finally {
+      processing = false;
+    }
+  }
+
   // Countdown timer
   // countdown=0 means no timeout (balanced mode — wait indefinitely for user)
   let timeRemaining = $state(event.requiresApproval?.countdown ?? 0);
@@ -227,7 +262,41 @@
             {$_t("Suggest Alternative")}
           </button>
         {/if}
+
+        {#if planObj && event.requiresApproval.onRequestChange}
+          <button
+            class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={processing || timedOut}
+            onclick={togglePlanEditor}
+          >
+            {showPlanEditor ? $_t("Hide Editor") : $_t("Edit Plan")}
+          </button>
+        {/if}
       </div>
+
+      {#if showPlanEditor && planObj && event.requiresApproval.onRequestChange}
+        <div class="flex flex-col gap-2 mt-1">
+          <textarea
+            bind:value={planDraft}
+            rows="12"
+            spellcheck="false"
+            class="w-full px-2 py-1.5 bg-gray-800 border border-gray-600 rounded text-xs font-mono text-gray-200 focus:outline-none focus:border-indigo-500"
+            disabled={processing}
+          ></textarea>
+          {#if planEditError}
+            <div class="text-red-400 text-xs">{planEditError}</div>
+          {/if}
+          <div>
+            <button
+              class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={processing || !planDraft.trim()}
+              onclick={handleApproveWithEdits}
+            >
+              {$_t("Approve with edits")}
+            </button>
+          </div>
+        </div>
+      {/if}
 
       {#if showAlternativeInput && event.requiresApproval.onRequestChange}
         <div class="flex gap-2 mt-1">
