@@ -108,6 +108,27 @@ export class DailyMemoryStore {
     return results;
   }
 
+  /** Clear all indexed daily entries while leaving empty day files behind. */
+  async clearAll(): Promise<number> {
+    const task = this.writeQueue.then(() => this._doClearAll());
+    this.writeQueue = task.then(() => undefined, () => { /* keep chain alive */ });
+    return task;
+  }
+
+  private async _doClearAll(): Promise<number> {
+    const days = await this.listDays();
+    let removed = 0;
+
+    for (const day of days) {
+      const entries = await this.readDay(day);
+      removed += entries.length;
+      await this.fs.writeFile(this.filePath(day), `# ${day}\n`);
+    }
+
+    await this.fs.writeFile(this.filePath('_index'), '');
+    return removed;
+  }
+
   /** List all available daily files, sorted newest first */
   async listDays(): Promise<string[]> {
     const indexPath = this.filePath('_index');

@@ -106,6 +106,22 @@ describe('CoreMemoryManager.getCoreMemoryContent', () => {
   });
 });
 
+describe('CoreMemoryManager.clearAll', () => {
+  it('resets core memory to the empty template', async () => {
+    const fs = createMockFS({ [CORE_FILE]: '# User Profile\n- secret' });
+    const llm = createMockLLM();
+    const manager = new CoreMemoryManager(llm, fs, MEMORY_DIR);
+
+    await manager.clearAll();
+
+    expect(fs.writeFile).toHaveBeenCalledWith(
+      CORE_FILE,
+      expect.stringContaining('# User Profile'),
+    );
+    expect(fs._store.get(CORE_FILE)).not.toContain('secret');
+  });
+});
+
 // ---------------------------------------------------------------------------
 // removeFacts
 // ---------------------------------------------------------------------------

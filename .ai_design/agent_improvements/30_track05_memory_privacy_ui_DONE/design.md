@@ -1,7 +1,7 @@
 # Track 30 — Session Memory Privacy UI (follow-up to Track 05)
 
 Date: 2026-05-15
-Status: OPEN — P2
+Status: DONE — P2 (implemented 2026-05-18)
 Follows up: [Track 05 — Session Memory](../05_session_memory_DONE/design.md) (shipped PR #167)
 Audit source: design-vs-implementation audit 2026-05-15 (independently verified against source on `agent-improvements`; re-verified 2026-05-18 on `origin/agent-improvements` at `cd1e339e`; re-verified after pull 2026-05-18 on `origin/agent-improvements` at `e9bbff26`)
 
@@ -31,8 +31,19 @@ results are uncapped per-fact. No functional risk, but design and code disagree.
 
 1. Add a memory **view** panel and a **clear-all** action to `MemorySettings.svelte`,
    satisfying Track 05's privacy requirement (G1).
-2. Reconcile the core-memory cap: either raise it toward the designed budget or record the
-   8k-char decision (G2).
+2. Reconcile the core-memory cap by recording the implemented 8k-char cap as the intended
+   v1 behavior (G2).
+
+## Implementation decisions locked 2026-05-18
+
+1. **V1 is read-only view + clear-all.** Do not add per-entry editing/deletion in this track.
+   The privacy requirement is satisfied by visibility plus a confirmed full clear.
+2. **Keep the 8k-character core-memory cap.** The implemented cap is intentionally
+   token-cost conscious and safer than the older 12k-token design target. Record the 8k-char
+   value here as the intended behavior; do not edit Track 05's shipped design doc.
+3. **UI talks through a narrow service API.** `MemorySettings.svelte` should not perform
+   direct filesystem traversal. Add a small desktop/server-only memory service request API
+   returning a sanitized snapshot and supporting confirmed clear-all.
 
 ## Non-goals
 
@@ -42,17 +53,15 @@ results are uncapped per-fact. No functional risk, but design and code disagree.
 
 ## Approach
 
-- **G1**: surface, in `MemorySettings.svelte`, a read-only view of current core memory plus
-  recent daily files (read via the existing `MemoryService`/`MemoryFileSystem` APIs;
-  `RepublicAgent.ts:384-387` already exposes the prompt-extension path — reuse the read
-  surface, do not re-implement file IO). Add a guarded "Clear all memory" action calling the
-  existing forget/clear primitives (`MemoryService.ts:148-176`,
-  `DailyMemoryStore.removeEntries`, `CoreMemoryManager.removeFacts`) with a confirm dialog.
-  Honor the off-by-default and extension-build-excluded constraints (panel hidden when memory
-  service is null on extension).
-- **G2**: pick one — raise the cap to the designed budget, or add a short note to *this*
-  doc recording 8k chars as the intended value (Track 05's doc stays untouched per the
-  user's rule). Recommend: keep 8k (token-cost conscious), record the decision.
+- **G1**: add `MemoryService.getSnapshot()` returning `{ enabled, coreMemory, dailyFiles }`
+  with bounded daily-file count and bounded per-file preview, and `MemoryService.clearAll()`
+  that clears core memory and all daily memory files then refreshes the global context cache.
+  Expose those through the existing UI client/service-request bridge for desktop/server.
+  `MemorySettings.svelte` renders the read-only snapshot and a confirmed destructive
+  "Clear all memory" action. Honor the off-by-default and extension-build-excluded
+  constraints (panel hidden when memory service is null on extension).
+- **G2**: add a short code/doc assertion that `MAX_CORE_MEMORY_CHARS = 8000` is the intended
+  cap for v1.
 
 ## Risks
 
@@ -65,9 +74,4 @@ results are uncapped per-fact. No functional risk, but design and code disagree.
 - G1: with memory enabled (desktop), the settings panel shows current core memory and
   recent daily entries; "Clear all" (after confirm) empties them and the next prompt no
   longer injects the cleared facts. On extension build the panel is absent.
-- G2: a test/document asserting the effective core-injection cap matches the recorded value.
-
-## Open questions
-
-1. Should the view be read-only, or also allow per-entry deletion (finer-grained than
-   clear-all)? Recommend read-only + clear-all for v1; per-entry later if asked.
+- G2: a test/document asserting the effective core-injection cap is 8000 chars.
