@@ -22,8 +22,12 @@ import { RiskLevel, scoreToRiskLevel } from './types';
 import type { PolicyRulesEngine } from './PolicyRulesEngine';
 import type { ApprovalManager, ApprovalRequest } from '../ApprovalManager';
 import type { ApprovalConfigStorage } from './ApprovalConfigStorage';
-import type { HookDispatcher } from '../hooks/HookDispatcher';
+import type { HookDispatcher, HookExecutionSnapshot } from '../hooks/HookDispatcher';
 import type { HookInput } from '../hooks/types';
+
+export interface ApprovalCheckOptions {
+  hookSnapshot?: HookExecutionSnapshot;
+}
 
 export class ApprovalGate {
   private approvalManager: ApprovalManager;
@@ -35,6 +39,7 @@ export class ApprovalGate {
   private blockedDomains: string[] = [];
   private configStorage: ApprovalConfigStorage | null = null;
   private hookDispatcher: HookDispatcher | null = null;
+  private inFlightApprovalChecks = new Map<string, Promise<ApprovalCheckResult>>();
 
   constructor(approvalManager: ApprovalManager, policyEngine: PolicyRulesEngine) {
     this.approvalManager = approvalManager;
@@ -103,7 +108,8 @@ export class ApprovalGate {
     toolName: string,
     parameters: Record<string, any>,
     assessor?: IRiskAssessor,
-    context?: Partial<ApprovalContext>
+    context?: Partial<ApprovalContext>,
+    options?: ApprovalCheckOptions
   ): Promise<ApprovalCheckResult> {
     // Build full context
     const fullContext: ApprovalContext = {
@@ -200,7 +206,47 @@ export class ApprovalGate {
       return 'auto_approve';
     }
 
-    // decision === 'ask_user': fire PermissionRequest hooks first
+    const inFlight = this.inFlightApprovalChecks.get(memoryKey);
+    if (inFlight) {
+      const result = await inFlight;
+      const rememberedAfterWait = this.sessionMemory.get(memoryKey);
+      if (rememberedAfterWait) {
+        const withinMargin = rememberedAfterWait.approvedRiskScore === undefined
+          || assessment.score <= rememberedAfterWait.approvedRiskScore + RISK_CEILING_MARGIN;
+        if (withinMargin) {
+          await this.recordHistory(toolName, assessment.score, assessment.level, rememberedAfterWait.decision, 'auto', ['Remembered session decision']);
+          return rememberedAfterWait.decision;
+        }
+      }
+      return result;
+    }
+
+    const approvalCheck = this.runUserApprovalFlow(
+      toolName,
+      parameters,
+      assessment,
+      domain,
+      fullContext,
+      options,
+    );
+    this.inFlightApprovalChecks.set(memoryKey, approvalCheck);
+    try {
+      return await approvalCheck;
+    } finally {
+      if (this.inFlightApprovalChecks.get(memoryKey) === approvalCheck) {
+        this.inFlightApprovalChecks.delete(memoryKey);
+      }
+    }
+  }
+
+  private async runUserApprovalFlow(
+    toolName: string,
+    parameters: Record<string, any>,
+    assessment: RiskAssessment,
+    domain: string | undefined,
+    fullContext: ApprovalContext,
+    options?: ApprovalCheckOptions,
+  ): Promise<ApprovalCheckResult> {
     if (this.hookDispatcher) {
       const hookInput: HookInput = {
         hook_event_name: 'PermissionRequest',
@@ -212,7 +258,9 @@ export class ApprovalGate {
         current_domain: domain,
       };
       try {
-        const hookResult = await this.hookDispatcher.fire('PermissionRequest', hookInput);
+        const hookResult = await this.hookDispatcher.fire('PermissionRequest', hookInput, {
+          snapshot: options?.hookSnapshot,
+        });
         if (hookResult.permissionDecision === 'approve') {
           await this.recordHistory(toolName, assessment.score, assessment.level, 'auto_approve', 'auto', ['Approved by hook']);
           return 'auto_approve';

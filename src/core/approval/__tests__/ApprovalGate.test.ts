@@ -219,6 +219,7 @@ describe('ApprovalGate', () => {
           tool_name: 'dom_tool',
           tool_input: { action: 'click' },
         }),
+        { snapshot: undefined },
       );
       // Hook said 'approve' → bypass user prompt
       expect(decision).toBe('auto_approve');
@@ -275,6 +276,73 @@ describe('ApprovalGate', () => {
       // Hook failure must not break the gate — falls through to the user prompt
       expect(mockManager.requestApproval).toHaveBeenCalled();
       expect(decision).toBe('auto_approve'); // mock manager approves
+    });
+  });
+
+  describe('concurrent approval serialization', () => {
+    function emptyAgg(extra: Record<string, unknown> = {}) {
+      return {
+        shouldContinue: true,
+        additionalContext: [],
+        systemMessages: [],
+        results: [],
+        totalDuration: 0,
+        ...extra,
+      };
+    }
+
+    function makeDispatcherStub() {
+      return {
+        fire: vi.fn(async () => emptyAgg()),
+        getRegistry: vi.fn(),
+        setEventEmitter: vi.fn(),
+      };
+    }
+
+    it('collapses concurrent same-key checks into one hook fire and one prompt', async () => {
+      let resolveApproval!: (value: any) => void;
+      mockManager.requestApproval.mockImplementation(() =>
+        new Promise((resolve) => {
+          resolveApproval = resolve;
+        })
+      );
+      const dispatcher = makeDispatcherStub();
+      gate.setHookDispatcher(dispatcher as any);
+
+      const assessor = createAssessor(50);
+      const checks = [
+        gate.check('dom_tool', { action: 'click' }, assessor),
+        gate.check('dom_tool', { action: 'click' }, assessor),
+        gate.check('dom_tool', { action: 'click' }, assessor),
+      ];
+
+      await vi.waitFor(() => {
+        expect(mockManager.requestApproval).toHaveBeenCalledTimes(1);
+        expect(dispatcher.fire).toHaveBeenCalledTimes(1);
+      });
+
+      gate.rememberDecision('dom_tool', { action: 'click' }, 'auto_approve');
+      resolveApproval({ id: 'test', decision: 'approve', timestamp: Date.now() });
+
+      await expect(Promise.all(checks)).resolves.toEqual([
+        'auto_approve',
+        'auto_approve',
+        'auto_approve',
+      ]);
+    });
+
+    it('does not collapse distinct approval keys', async () => {
+      const dispatcher = makeDispatcherStub();
+      gate.setHookDispatcher(dispatcher as any);
+
+      const assessor = createAssessor(50);
+      await Promise.all([
+        gate.check('browser_dom', { action: 'click' }, assessor),
+        gate.check('browser_dom', { action: 'type' }, assessor),
+      ]);
+
+      expect(mockManager.requestApproval).toHaveBeenCalledTimes(2);
+      expect(dispatcher.fire).toHaveBeenCalledTimes(2);
     });
   });
 
