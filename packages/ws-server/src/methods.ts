@@ -49,6 +49,8 @@ export const METHOD_REGISTRY: Record<string, MethodSpec> = {
   'sessions.reset': { scope: 'sessions.write' },
   'sessions.delete': { scope: 'sessions.write' },
   'sessions.compact': { scope: 'sessions.write' },
+  'sessions.turns': { scope: 'sessions.read' },
+  'sessions.rewind': { scope: 'sessions.write' },
 
   // Config
   'config.get': { scope: 'config.read' },

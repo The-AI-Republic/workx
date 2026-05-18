@@ -94,6 +94,10 @@ interface LoopOutcome {
     total?: TokenUsage;
     last?: TokenUsage;
   };
+  /** Track 18: USD cost summed across this task's turns (sibling of tokenUsage). */
+  totalCostUSD?: number;
+  /** Track 18: true if any turn used a model absent from the cost table. */
+  costEstimated?: boolean;
 }
 
 interface LoopOutcomeInit {
@@ -103,6 +107,8 @@ interface LoopOutcomeInit {
   totalTokenUsage?: TokenUsage;
   lastTokenUsage?: TokenUsage;
   abortedReason?: TurnAbortReason;
+  totalCostUSD?: number;
+  costEstimated?: boolean;
 }
 
 /**
@@ -241,8 +247,13 @@ export class TaskRunner {
         }
         await this.emitAbortedEvent(outcome.abortedReason);
 
-        // Fire-and-forget: persist partial token usage for aborted tasks
-        this.persistTokenUsage(outcome.tokenUsage.total, outcome.turnCount);
+        // Fire-and-forget: persist partial token usage + cost for aborted tasks
+        this.persistTokenUsage(
+          outcome.tokenUsage.total,
+          outcome.turnCount,
+          outcome.totalCostUSD,
+          outcome.costEstimated ?? false,
+        );
 
         return {
           success: false,
@@ -262,6 +273,10 @@ export class TaskRunner {
       const err = error instanceof Error ? error : new Error(String(error));
       this.state.status = this.cancelled ? 'killed' : 'failed';
       this.state.lastError = err;
+
+      // A thrown task has no reliable final usage, so partial cost/tokens are
+      // intentionally not persisted here — only the aborted and completed
+      // paths persist (unchanged from pre-cost-tracking behavior).
 
       // Track 04: flush pending chunks before re-throwing so polling
       // consumers see the tail of a task that died mid-turn.
@@ -293,6 +308,9 @@ export class TaskRunner {
     let compactionPerformed = false;
     let totalTokenUsage: TokenUsage | undefined;
     let lastTokenUsage: TokenUsage | undefined;
+    // Track 18: per-task USD accumulator, summed from each turn's cost.
+    let totalCostUSD: number | undefined;
+    let costEstimated = false;
 
     while (!this.cancelled) {
       if (signal?.aborted) {
@@ -306,6 +324,8 @@ export class TaskRunner {
           lastAgentMessage,
           totalTokenUsage,
           lastTokenUsage,
+          totalCostUSD,
+          costEstimated,
           abortedReason: 'user_interrupt',
         });
       }
@@ -318,6 +338,8 @@ export class TaskRunner {
           lastAgentMessage,
           totalTokenUsage,
           lastTokenUsage,
+          totalCostUSD,
+          costEstimated,
           abortedReason: 'automatic_abort',
         });
       }
@@ -361,6 +383,8 @@ export class TaskRunner {
           lastAgentMessage,
           totalTokenUsage,
           lastTokenUsage,
+          totalCostUSD,
+          costEstimated,
           abortedReason: 'user_interrupt',
         });
       }
@@ -373,6 +397,13 @@ export class TaskRunner {
         if (turnResult.totalTokenUsage) {
           totalTokenUsage = this.aggregateTokenUsage(totalTokenUsage, turnResult.totalTokenUsage);
           lastTokenUsage = turnResult.totalTokenUsage;
+        }
+        // Track 18: fold this turn's USD cost into the per-task total.
+        if (typeof turnResult.turnCostUSD === 'number') {
+          totalCostUSD = (totalCostUSD ?? 0) + turnResult.turnCostUSD;
+          if (turnResult.turnCostEstimated) {
+            costEstimated = true;
+          }
         }
 
         turnCount += 1;
@@ -450,6 +481,8 @@ export class TaskRunner {
         total: init.totalTokenUsage,
         last: init.lastTokenUsage,
       },
+      totalCostUSD: init.totalCostUSD,
+      costEstimated: init.costEstimated,
     };
   }
 
@@ -525,34 +558,81 @@ export class TaskRunner {
       };
     }
 
+    // Track 18: the cost computed once in core (TurnManager) rides the live
+    // TaskComplete event so every consumer (UI, server per-job, desktop)
+    // reads it instead of recomputing.
+    if (typeof outcome.totalCostUSD === 'number') {
+      data.cost_usd = outcome.totalCostUSD;
+      data.cost_estimated = outcome.costEstimated ?? false;
+    }
+
     await this.emitEvent({
       type: 'TaskComplete',
       data,
     });
 
+    // Track 24.3: predict the user's next message (ext/desktop only; the
+    // generator self-gates off on the server build). Strictly fire-and-forget
+    // — deferred into a microtask and fully swallowed so it can never block,
+    // delay, or fail task completion.
+    Promise.resolve()
+      .then(() => this.session.maybeGenerateSuggestion?.())
+      .catch((e) => console.debug('[TaskRunner] prompt suggestion error (ignored):', e));
+
     // Fire-and-forget: persist token usage record
-    this.persistTokenUsage(outcome.tokenUsage.total, outcome.turnCount);
+    this.persistTokenUsage(
+      outcome.tokenUsage.total,
+      outcome.turnCount,
+      outcome.totalCostUSD,
+      outcome.costEstimated ?? false,
+    );
   }
 
-  private persistTokenUsage(total: TokenUsage | undefined, turnCount: number): void {
+  /**
+   * Track 18: the single fold-once seam. Called exactly once per task
+   * (emitTaskComplete on the normal path, or the aborted path in run_task —
+   * mutually exclusive). Each engine (parent and every sub-agent) self-reports
+   * its own cost here; the parent's totalTokenUsage never includes sub-agent
+   * tokens, so summing TokenUsageRecord.costUSD per session is double-count
+   * free. Cumulative cost also lands in SessionState here via this.session.
+   */
+  private persistTokenUsage(
+    total: TokenUsage | undefined,
+    turnCount: number,
+    costUSD?: number,
+    costEstimated: boolean = false,
+  ): void {
     try {
       const usage = total ?? { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0, reasoning_output_tokens: 0, total_tokens: 0 };
+      const resolvedCost = costUSD ?? 0;
       const record: TokenUsageRecord = {
         id: `${this.session.getSessionId()}_${this.submissionId}_${Date.now()}`,
         sessionId: this.session.getSessionId(),
         taskId: this.submissionId,
         model: this.turnContext.getModel(),
+        // Provider-qualified key — the same model id is priced differently
+        // across providers (e.g. kimi-k2-thinking on moonshot/fireworks/
+        // together), so cost history must record the composite. Caveat: on a
+        // Track-12 mid-task downgrade this stores only the final model, so the
+        // per-model breakdown attributes the task's blended cost to it; the
+        // session/day totals stay exact (they sum the per-record costUSD).
+        provider_model: this.turnContext.getSelectedModelKey(),
         timestamp: new Date().toISOString(),
         input_tokens: usage.input_tokens,
         cached_input_tokens: usage.cached_input_tokens,
         output_tokens: usage.output_tokens,
         reasoning_output_tokens: usage.reasoning_output_tokens,
         total_tokens: usage.total_tokens,
+        costUSD: resolvedCost,
+        costEstimated,
         turn_count: turnCount,
       };
       TokenUsageStore.getInstance().save(record).catch((err) =>
         console.warn('[TaskRunner] Token usage save failed:', err)
       );
+      // Live cumulative for /cost + resume. Same single seam — no parallel
+      // path, no double-count.
+      this.session.addCost(resolvedCost, costEstimated);
     } catch (err) {
       console.warn('[TaskRunner] Token usage persist failed:', err);
     }

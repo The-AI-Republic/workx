@@ -19,6 +19,7 @@ export class ExtensionPlatformAdapter implements IPlatformAdapter {
   readonly platformId = 'extension' as const;
   readonly hasRealTabs = true;
   readonly hasBrowserTools = true;
+  readonly hasShellExec = false; // browser extension — no shell
 
   private tabManager!: TabManager;
 
@@ -85,6 +86,15 @@ export class ExtensionPlatformAdapter implements IPlatformAdapter {
       },
       async screenshot(): Promise<string> {
         return await chrome.tabs.captureVisibleTab();
+      },
+      // Track 13: read the live page selection via the same chrome.scripting
+      // path used by getPageContent (no CDP needed in the extension).
+      async getSelectionText(): Promise<string> {
+        const [result] = await chrome.scripting.executeScript({
+          target: { tabId },
+          func: () => window.getSelection()?.toString() ?? '',
+        });
+        return (result?.result as string) ?? '';
       },
     };
   }

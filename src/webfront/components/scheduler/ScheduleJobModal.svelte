@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { uiTheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
   import RecurrenceSelector from './RecurrenceSelector.svelte';
   import type { RecurrenceRule } from '@/core/models/types/Scheduler';
+  import { registerShortcut, registerShortcutContext } from '../../shortcuts/useShortcut';
 
   let {
     show = false,
@@ -150,12 +151,6 @@
     }
   }
 
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') {
-      handleClose();
-    }
-  }
-
   // Quick schedule buttons
   function scheduleIn(minutes: number) {
     const date = new Date();
@@ -164,9 +159,20 @@
     selectedTime = formatTimeForInput(date);
     errorMessage = '';
   }
-</script>
 
-<svelte:window onkeydown={handleKeydown} />
+  onMount(() => {
+    const isActive = () => show;
+    const unregisterContext = registerShortcutContext('SchedulerModal', { active: isActive });
+    const unregisterDismiss = registerShortcut('scheduler:dismiss', 'SchedulerModal', () => {
+      handleClose();
+    }, { active: isActive });
+
+    return () => {
+      unregisterContext();
+      unregisterDismiss();
+    };
+  });
+</script>
 
 {#if show}
   <div

@@ -20,6 +20,8 @@ export type { ActiveSubAgent } from './SubAgentRegistry';
 export { SubAgentRunner } from './SubAgentRunner';
 export { registerSubAgentTool } from './register';
 export type { RegisterSubAgentOptions } from './register';
+export { AgentType, SubAgentContextMode, SubAgentExecutionMode } from './agentTypes';
+export { resolveSubAgentBehavior } from './behavior';
 export {
   buildListSubAgentsToolDefinition,
   buildCancelSubAgentToolDefinition,

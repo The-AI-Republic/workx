@@ -5,9 +5,11 @@
    * Now uses pre-built modelSelectionItems from parent
    */
   import type { ConfiguredFeatures } from '@/config/types';
+  import { onMount } from 'svelte';
   import { userStore } from '../../stores/userStore';
   import Tooltip from '../../components/common/Tooltip.svelte';
   import { t, _t } from '../../lib/i18n';
+  import { registerShortcut, registerShortcutContext } from '../../shortcuts/useShortcut';
 
   // Props
   let {
@@ -292,6 +294,56 @@
       if (typeof window !== 'undefined') {
         document.removeEventListener('click', handleClickOutside);
       }
+    };
+  });
+
+  onMount(() => {
+    const unregisterContext = registerShortcutContext('SettingsModelSelector', {
+      active: () => !disabled && (isOpen || document.activeElement === selectorRef),
+    });
+    const unregisterNext = registerShortcut('settingsModelSelector:next', 'SettingsModelSelector', () => {
+      if (!isOpen) {
+        isOpen = true;
+        focusedIndex = groupedModels.findIndex((g) => g.modelName === selectedModelName);
+      } else {
+        focusedIndex = Math.min(focusedIndex + 1, groupedModels.length - 1);
+      }
+    });
+    const unregisterPrevious = registerShortcut('settingsModelSelector:previous', 'SettingsModelSelector', () => {
+      if (isOpen) {
+        focusedIndex = Math.max(focusedIndex - 1, 0);
+      }
+    });
+    const unregisterAccept = registerShortcut('settingsModelSelector:accept', 'SettingsModelSelector', () => {
+      if (isOpen && focusedIndex >= 0) {
+        const group = groupedModels[focusedIndex];
+        if (group.providers.length === 1) {
+          selectModel(group.providers[0].modelId);
+        }
+      } else {
+        toggleDropdown();
+      }
+    });
+    const unregisterDismiss = registerShortcut('settingsModelSelector:dismiss', 'SettingsModelSelector', () => {
+      isOpen = false;
+      pendingSelectionModelName = null;
+      pendingProviderErrors.clear();
+    });
+    const unregisterFirst = registerShortcut('settingsModelSelector:first', 'SettingsModelSelector', () => {
+      if (isOpen) focusedIndex = 0;
+    });
+    const unregisterLast = registerShortcut('settingsModelSelector:last', 'SettingsModelSelector', () => {
+      if (isOpen) focusedIndex = groupedModels.length - 1;
+    });
+
+    return () => {
+      unregisterContext();
+      unregisterNext();
+      unregisterPrevious();
+      unregisterAccept();
+      unregisterDismiss();
+      unregisterFirst();
+      unregisterLast();
     };
   });
 </script>

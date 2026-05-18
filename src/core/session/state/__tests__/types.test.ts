@@ -234,20 +234,16 @@ describe('Interface structure verification', () => {
 
   it('should create a valid RateLimitSnapshot', () => {
     const snapshot: RateLimitSnapshot = {
-      limit_requests: 1000,
-      limit_tokens: 100000,
-      remaining_requests: 999,
-      remaining_tokens: 99000,
-      reset_requests: '2025-01-01T00:00:00Z',
-      reset_tokens: '2025-01-01T00:01:00Z',
+      primary: { used_percent: 90, window_minutes: 300, resets_in_seconds: 600 },
+      secondary: { used_percent: 30, window_minutes: 10080 },
     };
-    expect(snapshot.limit_requests).toBe(1000);
-    expect(snapshot.remaining_tokens).toBe(99000);
+    expect(snapshot.primary?.used_percent).toBe(90);
+    expect(snapshot.secondary?.used_percent).toBe(30);
   });
 
   it('should allow partial RateLimitSnapshot', () => {
     const snapshot: RateLimitSnapshot = {};
-    expect(snapshot.limit_requests).toBeUndefined();
+    expect(snapshot.primary).toBeUndefined();
   });
 
   it('should create a valid SessionExport', () => {
@@ -257,7 +253,7 @@ describe('Interface structure verification', () => {
         history: { messages: [] },
         approvedCommands: ['cmd1', 'cmd2'],
         tokenInfo: { total_tokens: 500 },
-        latestRateLimits: { remaining_requests: 10 },
+        latestRateLimits: { primary: { used_percent: 10 } },
       },
       metadata: {
         created: Date.now(),

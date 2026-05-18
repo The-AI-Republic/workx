@@ -7,6 +7,7 @@
   import SchedulerCalendar from './pages/scheduler/SchedulerCalendar.svelte';
   import AppShell from './components/layout/AppShell.svelte';
   import Skills from './pages/skills/Skills.svelte';
+  import Doctor from './pages/diagnostics/Doctor.svelte';
   import Usage from './pages/usage/Usage.svelte';
   import { userStore } from './stores/userStore';
   import { isAuthenticated } from './lib/utils/cookie';
@@ -17,6 +18,8 @@
   import { platform } from './stores/platformStore';
   import { vaultStore, refreshVaultStatus } from './stores/vaultStore';
   import PinUnlockOverlay from './components/vault/PinUnlockOverlay.svelte';
+  import ShortcutProvider from './shortcuts/ShortcutProvider.svelte';
+  import { registerShortcut } from './shortcuts/useShortcut';
 
   // Zoom constants
   const MIN_ZOOM = 50;
@@ -41,6 +44,9 @@
 
     // Usage page
     '/usage': Usage,
+
+    // Operational diagnostics (Track 17)
+    '/doctor': Doctor,
 
     // Catch-all route - redirect to chat
     '*': Chat,
@@ -207,25 +213,9 @@
     }
   }
 
-  function handleZoom(e: KeyboardEvent) {
-    if (!(e.ctrlKey || e.metaKey)) return;
-
+  function zoomBy(delta: number) {
     const zoom = parseInt(document.documentElement.style.fontSize) || 100;
-    switch (e.key) {
-      case '=':
-      case '+':
-        e.preventDefault();
-        setZoom(zoom + ZOOM_STEP);
-        break;
-      case '-':
-        e.preventDefault();
-        setZoom(zoom - ZOOM_STEP);
-        break;
-      case '0':
-        e.preventDefault();
-        setZoom(100);
-        break;
-    }
+    setZoom(zoom + delta);
   }
 
   // Check user authentication when sidepanel opens
@@ -235,7 +225,9 @@
     refreshVaultStatus();
 
     // Register zoom keyboard shortcuts and restore saved zoom level
-    window.addEventListener('keydown', handleZoom);
+    const unregisterZoomIn = registerShortcut('app:zoomIn', 'Global', () => zoomBy(ZOOM_STEP));
+    const unregisterZoomOut = registerShortcut('app:zoomOut', 'Global', () => zoomBy(-ZOOM_STEP));
+    const unregisterZoomReset = registerShortcut('app:zoomReset', 'Global', () => setZoom(100));
     AgentConfig.getInstance().then((config) => {
       const zoom = config.getConfig().preferences?.zoomLevel;
       if (zoom && zoom !== 100) applyZoom(zoom);
@@ -262,12 +254,15 @@
       chrome.cookies.onChanged.addListener(cookieChangeListener);
       console.log('[App] Cookie change listener registered');
     }
+
+    return () => {
+      unregisterZoomIn();
+      unregisterZoomOut();
+      unregisterZoomReset();
+    };
   });
 
   onDestroy(() => {
-    // Clean up zoom keyboard shortcut listener
-    window.removeEventListener('keydown', handleZoom);
-
     // Clean up cookie change listener
     if (cookieChangeListener && typeof chrome !== 'undefined' && chrome.cookies?.onChanged) {
       chrome.cookies.onChanged.removeListener(cookieChangeListener);
@@ -276,10 +271,12 @@
   });
 </script>
 
-<AppShell>
-  {#if $vaultStore.isLocked}
-    <PinUnlockOverlay onUnlocked={() => refreshVaultStatus()} />
-  {:else}
-    <Router {routes} />
-  {/if}
-</AppShell>
+<ShortcutProvider>
+  <AppShell>
+    {#if $vaultStore.isLocked}
+      <PinUnlockOverlay onUnlocked={() => refreshVaultStatus()} />
+    {:else}
+      <Router {routes} />
+    {/if}
+  </AppShell>
+</ShortcutProvider>

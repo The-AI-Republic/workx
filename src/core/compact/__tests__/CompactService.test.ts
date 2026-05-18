@@ -399,10 +399,9 @@ describe('CompactService', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Network timeout');
-      // The while loop runs while retriesUsed <= maxRetries (3).
-      // Each failure increments retriesUsed, and the loop exits when retriesUsed > maxRetries.
-      // So retriesUsed ends at maxRetries + 1 = 4.
-      expect(result.retriesUsed).toBe(4);
+      // Track 12: retriesUsed now counts retries actually performed.
+      // maxRetries=3 → 3 retries, then the 4th attempt throws.
+      expect(result.retriesUsed).toBe(3);
       expect(result.tokensBefore).toBe(10000);
       expect(result.tokensAfter).toBe(10000);
       expect(result.triggerReason).toBe('auto');
@@ -444,10 +443,9 @@ describe('CompactService', () => {
       const result = await customService.compact(history, 'auto', mockClient, 5000);
 
       expect(result.success).toBe(false);
-      // With maxRetries=1: loop runs while retriesUsed<=1.
-      // Attempt 1 fails -> retriesUsed=1 (<=1, sleep & continue)
-      // Attempt 2 fails -> retriesUsed=2 (>1, return failure)
-      expect(result.retriesUsed).toBe(2);
+      // Track 12: maxRetries=1 → 1 retry performed (attempt 1 fails & retries,
+      // attempt 2 fails & throws). retriesUsed counts retries performed.
+      expect(result.retriesUsed).toBe(1);
       // 1 initial attempt + 1 retry = 2 total calls
       expect(mockClient.stream).toHaveBeenCalledTimes(2);
     });
@@ -603,9 +601,12 @@ describe('CompactService', () => {
 
       const result = await service.compact(history, 'auto', mockClient, 5000);
 
-      // With only 1 item, trimming cannot happen; falls back to regular retry logic
+      // With only 1 item, trimming cannot happen. Track 12: context-overflow
+      // is non-retryable (retrying an un-trimmable oversized request is
+      // pointless), so it fails immediately with no retries.
       expect(result.success).toBe(false);
-      expect(result.retriesUsed).toBe(4);
+      expect(result.retriesUsed).toBe(0);
+      expect(mockClient.stream).toHaveBeenCalledTimes(1);
     });
 
     it('should combine trimming and retries when both occur', async () => {
@@ -861,8 +862,8 @@ describe('CompactService', () => {
       const result = await svc.compact(history, 'auto', mockClient, 5000);
 
       expect(result.success).toBe(false);
-      // With maxRetries=0: first failure increments retriesUsed to 1 (>0), returns failure
-      expect(result.retriesUsed).toBe(1);
+      // Track 12: maxRetries=0 → no retries performed.
+      expect(result.retriesUsed).toBe(0);
       // Only the initial attempt, no retries
       expect(mockClient.stream).toHaveBeenCalledTimes(1);
     });

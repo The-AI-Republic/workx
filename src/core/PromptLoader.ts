@@ -26,6 +26,25 @@ let staticContext: Partial<RuntimeContext> = {};
 let promptExtensions: Map<string, () => string> = new Map();
 
 /**
+ * Optional provider of per-call dynamic RuntimeContext, merged over the
+ * static context on every loadPrompt(). Used for state that changes
+ * within a session (e.g. Track 14 plan-review active flag) without
+ * coupling PromptLoader to the ToolRegistry.
+ */
+let dynamicContextProvider: (() => Partial<RuntimeContext>) | null = null;
+
+/**
+ * Register (or clear, with null) a dynamic RuntimeContext provider.
+ * Invoked on every loadPrompt() call; its result is merged over the
+ * static context (before currentDateTime).
+ */
+export function setDynamicRuntimeContext(
+  fn: (() => Partial<RuntimeContext>) | null
+): void {
+  dynamicContextProvider = fn;
+}
+
+/**
  * Configure the PromptLoader to use dynamic composition.
  * Called once during agent initialization.
  * After this, every loadPrompt() call returns a freshly composed prompt.
@@ -82,8 +101,15 @@ export function unregisterPromptExtension(name: string): void {
 export async function loadPrompt(mode: AgentMode = DEFAULT_MODE): Promise<string> {
   if (composer) {
     try {
+      let dynamic: Partial<RuntimeContext> = {};
+      try {
+        dynamic = dynamicContextProvider?.() ?? {};
+      } catch (e) {
+        console.error('[PromptLoader] dynamic context provider failed:', e);
+      }
       const context: RuntimeContext = {
         ...staticContext,
+        ...dynamic,
         currentDateTime: new Date().toISOString(),
       };
       const prompt = composer.composeMainInstruction(configuredAgentType, mode, context);

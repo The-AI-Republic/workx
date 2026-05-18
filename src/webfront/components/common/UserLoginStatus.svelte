@@ -101,12 +101,20 @@
           });
         }
 
-        // Tell the agent to switch to backend routing mode (direct call, same process)
+        // Tell the active desktop agent path to switch to backend routing mode.
         try {
-          const { getDesktopAgentBootstrap } = await import('@/desktop/agent/DesktopAgentBootstrap');
-          const bootstrap = getDesktopAgentBootstrap();
-          const tokenGetter = () => authService.getAccessToken();
-          await bootstrap.setAuthMode(false, LLM_API_URL, tokenGetter);
+          const { isDesktopRuntimeRelayEnabled } = await import('@/desktop-runtime/featureFlag');
+          if (isDesktopRuntimeRelayEnabled()) {
+            const { getInitializedUIClient } = await import('@/core/messaging');
+            await (await getInitializedUIClient()).serviceRequest('agent.initAuth', {
+              useOwnApiKey: false,
+              backendBaseUrl: LLM_API_URL,
+              tokenSource: 'desktop-keychain',
+            });
+          } else {
+            const { getDesktopAgentBootstrap } = await import('@/desktop/agent/DesktopAgentBootstrap');
+            await getDesktopAgentBootstrap().setAuthMode(false, LLM_API_URL, () => authService.getAccessToken());
+          }
           console.log('[UserLoginStatus] Desktop auth mode set to backend routing');
         } catch (authError) {
           console.warn('[UserLoginStatus] Failed to set desktop auth mode:', authError);

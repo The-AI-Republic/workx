@@ -11,6 +11,8 @@
   import { getInitializedUIClient } from '@/core/messaging';
   import { t, _t } from '../lib/i18n';
   import { highlightSetting } from './utils/highlightSetting';
+  import { isPolicyLocked, managedTooltip } from './utils/policyLock';
+  import ManagedBadge from '../components/common/ManagedBadge.svelte';
   import './utils/highlight-pulse.css';
 
   let {
@@ -104,7 +106,15 @@
     }
   }
 
+  // Track 20: approval mode is a prime org-lockable control.
+  const approvalModeLocked = isPolicyLocked(
+    settingsConfig.getConfig(),
+    'approval.mode'
+  );
+  const managedHint = managedTooltip(settingsConfig.getConfig());
+
   function handleModeChange(mode: ApprovalMode) {
+    if (approvalModeLocked) return; // enforced server-side too; UI guard
     config.mode = mode;
     isDirty = true;
   }
@@ -153,10 +163,13 @@
     <div class="settings-body">
       <!-- Approval Mode -->
       <section class="setting-section" data-setting-id="approval-mode">
-        <h4 class="subsection-title">{$_t("Approval Mode")}</h4>
+        <h4 class="subsection-title">
+          {$_t("Approval Mode")}
+          <ManagedBadge locked={approvalModeLocked} tooltip={managedHint} />
+        </h4>
         <p class="subsection-description">{$_t("Controls how aggressively the agent asks for approval.")}</p>
 
-        <div class="mode-options">
+        <div class="mode-options" class:policy-locked={approvalModeLocked}>
           {#each APPROVAL_MODES as mode}
             <label class="mode-option" class:selected={config.mode === mode}>
               <input
@@ -164,6 +177,7 @@
                 name="approval-mode"
                 value={mode}
                 checked={config.mode === mode}
+                disabled={approvalModeLocked}
                 onchange={() => handleModeChange(mode)}
               />
               <div class="mode-content">
@@ -317,6 +331,12 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+  }
+
+  /* Track 20: org-managed (policy-locked) control */
+  .mode-options.policy-locked {
+    opacity: 0.6;
+    pointer-events: none;
   }
 
   .mode-option {

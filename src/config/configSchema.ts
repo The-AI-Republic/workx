@@ -9,6 +9,7 @@
  */
 
 import { z } from 'zod';
+import { isKeyLocked } from '../core/config/policy';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -280,15 +281,29 @@ export type ResolveResult = ResolvedField | DeniedField;
  * Also checks aliases: if direct lookup fails, tries alias resolution.
  */
 export function resolve(path: string, action: 'read' | 'write'): ResolveResult {
-  // Try direct resolution first
-  const direct = resolveDirectPath(path, action);
-  if (direct) return direct;
+  // Try direct resolution first, then alias resolution.
+  const result =
+    resolveDirectPath(path, action) ??
+    resolveByAlias(path, action) ?? {
+      denied: true as const,
+      reason: `Path "${path}" is not accessible`,
+    };
 
-  // Fall back to alias resolution
-  const aliased = resolveByAlias(path, action);
-  if (aliased) return aliased;
+  // Track 20: the LLM setting_tool is the third config write surface. Deny
+  // writes to organization-managed (locked) paths using the resolver's
+  // canonical path (covers alias resolution too).
+  if (
+    action === 'write' &&
+    !('denied' in result) &&
+    isKeyLocked('agent', result.path)
+  ) {
+    return {
+      denied: true,
+      reason: `Field "${result.path}" is managed by your organization and cannot be changed.`,
+    };
+  }
 
-  return { denied: true, reason: `Path "${path}" is not accessible` };
+  return result;
 }
 
 function resolveDirectPath(path: string, action: 'read' | 'write'): ResolveResult | null {

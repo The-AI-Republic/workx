@@ -6,6 +6,9 @@ import { SubAgentEventRouter } from '@/core/events/SubAgentEventRouter';
 import { createSubAgentToolRegistry } from '../ToolRegistryCloner';
 import { SubAgentRegistry } from './SubAgentRegistry';
 import { BUILTIN_SUBAGENT_TYPES } from './builtinTypes';
+import { SubAgentContextMode } from './agentTypes';
+import { resolveSubAgentBehavior } from './behavior';
+import { buildForkedSubAgentInitialHistory } from './forkContext';
 import type {
   SubAgentTypeConfig,
   SubAgentToolParams,
@@ -18,17 +21,46 @@ import type {
 } from './types';
 import type { BackgroundAgentTaskState } from '@/core/tasks/types';
 import { PANEL_GRACE_MS } from '@/core/tasks/timing';
+import {
+  assertValidSubAgentTypeConfig,
+  normalizeSubAgentTypeConfig,
+} from './validateTypeConfig';
+
+/**
+ * Source tag for sub-agent type registrations. Used by the plugin port
+ * (Track 10) to scope removals by plugin owner without affecting builtin
+ * or config-supplied types.
+ */
+export type SubAgentTypeSource =
+  | { type: 'builtin' }
+  | { type: 'config' }
+  | { type: 'plugin'; pluginId: string };
 
 /**
  * SubAgentRunner spawns and manages sub-agent executions.
  * Uses RepublicAgentEngine for execution and SubAgentRegistry for tracking.
  *
  * Implements prepare/execute/cleanup pipeline (IAgentRunner interface).
+ *
+ * Track 10: types are mutable at runtime. Call `addType` / `removeByPluginId`
+ * for plugin-driven mutations; wire `setTypesChangedCallback(fn)` so the
+ * outer registration layer (registerSubAgentTool) can rebuild the
+ * `sub_agent` tool definition via `ToolRegistry.replace`.
  */
 export class SubAgentRunner implements IAgentRunner {
   private readonly registry: SubAgentRegistry;
   private readonly parentEngine: RepublicAgentEngine;
-  private readonly customTypes: Map<string, SubAgentTypeConfig>;
+  // Track 10: mutable types map (was readonly customTypes)
+  private readonly types: Map<string, SubAgentTypeConfig>;
+  // Track 10: plugin ownership index for scoped removal
+  private readonly pluginTypeIndex: Map<string, Set<string>>;
+  // Track 10: reverse index (typeId → owning pluginId) for plugin-owned
+  // types only. Lets addType reject collisions with builtin/config types
+  // or another plugin's id, and lets removeByPluginId delete only ids it
+  // still owns (never a builtin that happens to share the id).
+  private readonly pluginTypeOwner: Map<string, string>;
+  // Track 10: callback fired when types change at runtime (after initial construction)
+  private onTypesChanged: (() => Promise<void>) | null = null;
 
   constructor(options: {
     parentEngine: RepublicAgentEngine;
@@ -37,19 +69,156 @@ export class SubAgentRunner implements IAgentRunner {
   }) {
     this.parentEngine = options.parentEngine;
     this.registry = options.registry ?? new SubAgentRegistry();
-    this.customTypes = new Map();
+    this.types = new Map();
+    this.pluginTypeIndex = new Map();
+    this.pluginTypeOwner = new Map();
 
     // Register built-in types
     for (const type of BUILTIN_SUBAGENT_TYPES) {
-      this.customTypes.set(type.id, type);
+      this.types.set(type.id, normalizeSubAgentTypeConfig(type, { allowInternal: true }));
     }
 
-    // Register custom types
+    // Register custom types (from constructor — typically config-sourced)
     if (options.customTypes) {
       for (const type of options.customTypes) {
-        this.customTypes.set(type.id, type);
+        this.types.set(type.id, normalizeSubAgentTypeConfig(type));
       }
     }
+    // No onTypesChanged fires during construction — the outer
+    // registerSubAgentTool builds the initial tool definition itself.
+  }
+
+  // Track 10 (Phase 10a-2): deferred-rebuild guard. When a sub-agent type
+  // changes while a task is in-flight, defer the `sub_agent` tool-def
+  // rebuild until the next safe boundary (task completion) so the LLM
+  // never sees a mid-turn schema swap. See design § Active-Session
+  // Semantics Rule 2.
+  private pendingRebuild = false;
+
+  /**
+   * Track 10: wire a callback that fires after every runtime type change
+   * (`addType` / `removeByPluginId`). The callback typically rebuilds the
+   * `sub_agent` tool definition and replaces it in the engine's tool
+   * registry via `ToolRegistry.replace`.
+   *
+   * Called by `registerSubAgentTool` after the initial tool registration.
+   */
+  setTypesChangedCallback(cb: (() => Promise<void>) | null): void {
+    this.onTypesChanged = cb;
+  }
+
+  /**
+   * True when at least one task is in-flight in the parent session.
+   * Used to decide whether a type-def rebuild must be deferred.
+   */
+  private hasActiveTasks(): boolean {
+    try {
+      const session = this.parentEngine.getSession?.();
+      const active = session?.listActiveTasks?.() ?? [];
+      return active.length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Rebuild now if it's safe (no active tasks), otherwise mark a pending
+   * rebuild that `flushPendingRebuild` will pick up at the next task
+   * completion boundary.
+   */
+  private async scheduleRebuild(): Promise<void> {
+    if (!this.onTypesChanged) return;
+    if (this.hasActiveTasks()) {
+      this.pendingRebuild = true;
+      return;
+    }
+    await this.onTypesChanged();
+  }
+
+  /**
+   * Flush a deferred rebuild at a safe boundary. Called when a task
+   * completes (foreground end-of-run + background terminal). No-op if
+   * nothing pending or if tasks are still in flight.
+   */
+  private async flushPendingRebuild(): Promise<void> {
+    if (!this.pendingRebuild) return;
+    if (this.hasActiveTasks()) return; // still not safe; wait for the next completion
+    this.pendingRebuild = false;
+    if (this.onTypesChanged) {
+      await this.onTypesChanged().catch((e) =>
+        console.warn('[SubAgentRunner] deferred rebuild failed:', e),
+      );
+    }
+  }
+
+  /**
+   * Track 10: add a new sub-agent type at runtime.
+   *
+   * Plugin source carries `pluginId` for scoped removal via
+   * `removeByPluginId`.
+   *
+   * A plugin-sourced type may NOT reuse an id already held by a builtin,
+   * a config-supplied type, or a *different* plugin — that would let a
+   * later `removeByPluginId` silently delete the shadowed type. Such a
+   * collision throws so the plugin loader surfaces it in
+   * `LoadedPlugin.errors` (consistent with `assertValidSubAgentTypeConfig`).
+   * Re-adding under the same pluginId is allowed (update-in-place).
+   *
+   * Rebuild is deferred when a task is in-flight (design § Active-Session
+   * Semantics Rule 2) — the new type is in the `types` map immediately but
+   * the LLM-visible `sub_agent` schema only changes at the next
+   * task-completion boundary (see `scheduleRebuild`).
+   */
+  async addType(config: SubAgentTypeConfig, source: SubAgentTypeSource): Promise<void> {
+    assertValidSubAgentTypeConfig(config);
+    const normalizedConfig = normalizeSubAgentTypeConfig(config);
+    if (source.type === 'plugin') {
+      const owner = this.pluginTypeOwner.get(normalizedConfig.id);
+      if (owner === undefined && this.types.has(normalizedConfig.id)) {
+        throw new Error(
+          `Plugin '${source.pluginId}' cannot register sub-agent type '${normalizedConfig.id}': ` +
+            `id is already held by a builtin or config-supplied type`,
+        );
+      }
+      if (owner !== undefined && owner !== source.pluginId) {
+        throw new Error(
+          `Plugin '${source.pluginId}' cannot register sub-agent type '${normalizedConfig.id}': ` +
+            `id is already owned by plugin '${owner}'`,
+        );
+      }
+      this.types.set(normalizedConfig.id, normalizedConfig);
+      let set = this.pluginTypeIndex.get(source.pluginId);
+      if (!set) {
+        set = new Set();
+        this.pluginTypeIndex.set(source.pluginId, set);
+      }
+      set.add(normalizedConfig.id);
+      this.pluginTypeOwner.set(normalizedConfig.id, source.pluginId);
+    } else {
+      this.types.set(normalizedConfig.id, normalizedConfig);
+    }
+    await this.scheduleRebuild();
+  }
+
+  /**
+   * Track 10: scoped removal — remove every type owned by a given plugin.
+   * Called by `PluginRegistry.disable(pluginId)`. Builtin and config-sourced
+   * types are unaffected (no pluginId). Rebuild deferred when a task is
+   * in-flight (same guard as `addType`).
+   */
+  async removeByPluginId(pluginId: string): Promise<void> {
+    const typeIds = this.pluginTypeIndex.get(pluginId);
+    if (!typeIds || typeIds.size === 0) return;
+    for (const id of typeIds) {
+      // Only drop ids this plugin still owns — never a builtin/other type
+      // that happens to share the id (addType's guard makes this defensive).
+      if (this.pluginTypeOwner.get(id) === pluginId) {
+        this.types.delete(id);
+        this.pluginTypeOwner.delete(id);
+      }
+    }
+    this.pluginTypeIndex.delete(pluginId);
+    await this.scheduleRebuild();
   }
 
   /**
@@ -112,6 +281,10 @@ export class SubAgentRunner implements IAgentRunner {
         return this.toSubAgentResult(context, result);
       } finally {
         await this.cleanup(context);
+        // Track 10: foreground run finished — safe boundary to flush any
+        // deferred sub-agent type-def rebuild (design § Active-Session
+        // Semantics Rule 2).
+        void this.flushPendingRebuild();
       }
     }
 
@@ -135,25 +308,26 @@ export class SubAgentRunner implements IAgentRunner {
             context,
             this.formatTaskNotification(context, params, result),
           );
-          // (Track 04) Update typed state to terminal on parent session.
-          this.markTypedTaskTerminated(context, result);
         }
+        // (Track 04) Update typed state to terminal on parent session even
+        // when quietBackground suppresses LLM-visible notification delivery.
+        this.markTypedTaskTerminated(context, result);
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
+        const failed: AgentRunResult = {
+          success: false,
+          response: '',
+          turnCount: 0,
+          stopReason: 'error',
+          error: errorMsg,
+        };
         if (!suppressNotification()) {
-          const failed: AgentRunResult = {
-            success: false,
-            response: '',
-            turnCount: 0,
-            stopReason: 'error',
-            error: errorMsg,
-          };
           this.safeEnqueueNotification(
             context,
             this.formatTaskNotification(context, params, failed),
           );
-          this.markTypedTaskTerminated(context, failed);
         }
+        this.markTypedTaskTerminated(context, failed);
       } finally {
         try {
           await this.cleanup(context);
@@ -227,6 +401,10 @@ export class SubAgentRunner implements IAgentRunner {
     // onTaskFinished/onTaskAborted normally start it. Touch a no-op
     // helper to nudge: trigger one tick by calling retainTask(false).
     parentSession.retainTask?.(context.runId, ts.retain);
+
+    // Track 10: a background task just terminated — flush any deferred
+    // sub-agent type-def rebuild now that this is a safe boundary.
+    void this.flushPendingRebuild();
   }
 
   private safeEnqueueNotification(context: AgentContext, text: string): void {
@@ -270,6 +448,10 @@ export class SubAgentRunner implements IAgentRunner {
     const runId = crypto.randomUUID();
     const startTime = Date.now();
     const background = params.background ?? false;
+    const behavior = resolveSubAgentBehavior(resolvedTypeConfig, {
+      background,
+      contextMode: params.contextMode,
+    });
 
     // Create restricted tool registry
     const childRegistry = await createSubAgentToolRegistry(
@@ -289,7 +471,7 @@ export class SubAgentRunner implements IAgentRunner {
     const eventRouter = new SubAgentEventRouter({
       parentEmitter: (event) => this.parentEngine.pushEvent(event),
       engineId: runId,
-      suppressedTypes: resolvedTypeConfig.suppressedEvents,
+      suppressedTypes: behavior.suppressedEvents,
     });
 
     const parentConfig = this.parentEngine.getConfig();
@@ -299,15 +481,24 @@ export class SubAgentRunner implements IAgentRunner {
     // Only 'never' explicitly opts out of approval — prevents accidental bypass.
     // Background runs cannot prompt the user (parent has moved on), so force 'never'
     // regardless of the type's configured policy.
-    const effectiveApprovalPolicy = background
-      ? 'never'
-      : (resolvedTypeConfig.approvalPolicy ?? 'inherit');
+    const configuredApprovalPolicy = resolvedTypeConfig.approvalPolicy
+      ?? behavior.approvalPolicyDefault;
+    const effectiveApprovalPolicy = background ? 'never' : configuredApprovalPolicy;
     const approvalGate = effectiveApprovalPolicy === 'inherit'
       ? this.parentEngine.getToolRegistry().getApprovalGate()
       : undefined;
     const approvalPolicy = effectiveApprovalPolicy === 'inherit'
       ? parentSession?.getTurnContext?.().getApprovalPolicy?.() ?? 'on-request'
       : 'never';
+
+    const initialHistory = behavior.contextMode === SubAgentContextMode.Fork
+      ? buildForkedSubAgentInitialHistory(this.parentEngine, params.prompt, {
+        runId,
+        typeId: resolvedTypeConfig.id,
+        agentType: behavior.agentType,
+        contextMode: behavior.contextMode,
+      })
+      : undefined;
 
     // Create child engine via parent's factory method
     const engine = this.parentEngine.createChildEngine({
@@ -320,6 +511,7 @@ export class SubAgentRunner implements IAgentRunner {
       browserContext: parentConfig.browserContext,
       eventRouter,
       drainPendingMessages: () => this.registry.drainMessages(runId),
+      initialHistory,
       // (Track 04) Inherit parent's output store so the child's TaskRunner
       // can persist chunks. RegularTask in the child session reads
       // session.getTaskOutputStore() when wiring AgentTask -> TaskRunner.
@@ -373,6 +565,9 @@ export class SubAgentRunner implements IAgentRunner {
       typeConfig: resolvedTypeConfig,
       parentEngine: this.parentEngine,
       background,
+      behavior,
+      contextMode: behavior.contextMode,
+      executionMode: behavior.executionMode,
       startTime,
       unsubscribe,
     };
@@ -421,6 +616,9 @@ export class SubAgentRunner implements IAgentRunner {
         data: {
           runId,
           subAgentType: params.type,
+          agentType: behavior.agentType,
+          contextMode: behavior.contextMode,
+          executionMode: behavior.executionMode,
           description: params.description ?? params.prompt.slice(0, 50),
         },
       },
@@ -439,6 +637,9 @@ export class SubAgentRunner implements IAgentRunner {
         type: 'background_agent',
         status: 'running',
         description,
+        agentType: behavior.agentType,
+        contextMode: behavior.contextMode,
+        executionMode: behavior.executionMode,
         startTime,
         outputOffset: 0,
         notified: false,
@@ -474,7 +675,12 @@ export class SubAgentRunner implements IAgentRunner {
     try {
       await context.engine.initialize();
 
-      const input: InputItem[] = [{ type: 'text', text: params.prompt }];
+      const input: InputItem[] = [{
+        type: 'text',
+        text: context.contextMode === SubAgentContextMode.Fork
+          ? 'Begin the delegated forked sub-agent task now.'
+          : params.prompt,
+      }];
       const result = await context.engine.run(input, {
         maxTurns: context.typeConfig.maxTurns,
         signal: context.abortController.signal,
@@ -500,6 +706,9 @@ export class SubAgentRunner implements IAgentRunner {
           data: {
             runId: context.runId,
             subAgentType: params.type,
+            agentType: context.behavior.agentType,
+            contextMode: context.contextMode,
+            executionMode: context.executionMode,
             turnCount: result.turnCount,
             tokenUsage,
             duration: Date.now() - context.startTime,
@@ -607,10 +816,10 @@ export class SubAgentRunner implements IAgentRunner {
   }
 
   /**
-   * Get all available sub-agent types.
+   * Get all available sub-agent types (builtins + config + custom + plugin).
    */
   getTypes(): SubAgentTypeConfig[] {
-    return Array.from(this.customTypes.values());
+    return Array.from(this.types.values());
   }
 
   /**
@@ -625,7 +834,7 @@ export class SubAgentRunner implements IAgentRunner {
   // ---------------------------------------------------------------------------
 
   private resolveType(typeId: string): SubAgentTypeConfig | undefined {
-    return this.customTypes.get(typeId);
+    return this.types.get(typeId);
   }
 
   /**
@@ -678,6 +887,9 @@ export class SubAgentRunner implements IAgentRunner {
     const notification: TaskNotification = {
       runId: context.runId,
       type: params.type,
+      agentType: context.behavior.agentType,
+      contextMode: context.contextMode,
+      executionMode: context.executionMode,
       description: params.description ?? params.type,
       status,
       result: result.response || undefined,
@@ -713,6 +925,15 @@ function serializeTaskNotification(n: TaskNotification): string {
   lines.push('<task-notification>');
   lines.push(`  <run-id>${escapeForLlmXml(n.runId)}</run-id>`);
   lines.push(`  <type>${escapeForLlmXml(n.type)}</type>`);
+  if (n.agentType) {
+    lines.push(`  <agent-type>${escapeForLlmXml(n.agentType)}</agent-type>`);
+  }
+  if (n.contextMode) {
+    lines.push(`  <context-mode>${escapeForLlmXml(n.contextMode)}</context-mode>`);
+  }
+  if (n.executionMode) {
+    lines.push(`  <execution-mode>${escapeForLlmXml(n.executionMode)}</execution-mode>`);
+  }
   lines.push(`  <status>${n.status}</status>`);
   lines.push(`  <summary>${escapeForLlmXml(n.description)}</summary>`);
   if (n.result) {
