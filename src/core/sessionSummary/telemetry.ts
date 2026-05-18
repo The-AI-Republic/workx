@@ -15,6 +15,34 @@ import type {
   SessionSummaryTelemetryEvent,
   SessionSummaryTelemetryName,
 } from '@/core/protocol/events';
+import {
+  logEvent,
+  errorClass,
+  type LogEventMetadata,
+} from '@/core/telemetry';
+
+/**
+ * Strip a SessionSummary payload down to numeric/boolean/bounded-enum only.
+ * Drops privacy-sensitive fields (`memoryRoot` fs path, full `config`
+ * snapshot) and replaces free-text `error` with `errorPresent` + class.
+ */
+function sanitizeSummaryPayload(
+  payload: Record<string, unknown>,
+): LogEventMetadata {
+  const out: LogEventMetadata = {};
+  for (const [k, v] of Object.entries(payload)) {
+    if (k === 'memoryRoot' || k === 'config') continue; // sensitive — drop
+    if (k === 'error') {
+      out.errorPresent = v != null;
+      const cls = errorClass(v);
+      if (cls !== undefined) out.errorClass = cls;
+      continue;
+    }
+    if (typeof v === 'number' || typeof v === 'boolean') out[k] = v;
+    // any other string/object is dropped (privacy-safe default)
+  }
+  return out;
+}
 
 export interface TelemetryEmitter {
   emit(
@@ -45,6 +73,16 @@ export function createTelemetryEmitter(
           event,
           err instanceof Error ? err.message : String(err),
         );
+      }
+
+      // Additionally route through the centralized telemetry core (no-op
+      // unless a sink + privacy gate are wired). The pushEvent above is
+      // unchanged so existing consumers (server transcript store) are
+      // unaffected. Sensitive fields are stripped.
+      try {
+        logEvent(`session_summary.${event}`, sanitizeSummaryPayload(payload));
+      } catch {
+        // telemetry must never break the caller
       }
     },
   };
