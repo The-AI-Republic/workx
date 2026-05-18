@@ -19,6 +19,9 @@
 
 import { TauriChannel } from '../channels/TauriChannel';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
+import { installTelemetry, schedulerTelemetryTap } from '@/core/telemetry';
+import { FileSink } from '../telemetry/FileSink';
+import type { DiagnosticContext } from '@/core/diagnostics';
 import { RepublicAgent } from '@/core/RepublicAgent';
 import { UserNotifier } from '@/core/UserNotifier';
 import { ApprovalGate } from '@/core/approval/ApprovalGate';
@@ -29,7 +32,16 @@ import { SensitivePathEnhancer } from '@/core/approval/enhancers/SensitivePathEn
 import { ApprovalConfigStorage } from '@/core/approval/ApprovalConfigStorage';
 import { getConfigStorage } from '@/core/storage/ConfigStorageProvider';
 import { AgentConfig } from '@/config/AgentConfig';
-import { configurePromptComposer, registerPromptExtension } from '@/core/PromptLoader';
+import {
+  ManagedFileSource,
+  ManagedDirSource,
+  registerPolicySources,
+  resolveActivePolicy,
+  onPolicyChanged,
+  assessAndRecord,
+} from '@/core/config/policy';
+import { configurePromptComposer, registerPromptExtension, setDynamicRuntimeContext } from '@/core/PromptLoader';
+import { registerPlanReviewTools } from '@/tools/planReview/PlanReviewTools';
 import type { RuntimeContext } from '@/prompts/PromptComposer';
 import { SkillRegistry } from '@/core/skills/SkillRegistry';
 import { SkillDomainFilter } from '@/core/skills/SkillDomainFilter';
@@ -66,6 +78,13 @@ export class DesktopAgentBootstrap {
   private registry: AgentRegistry | null = null;
   private channel: TauriChannel | null = null;
   private skillRegistry: SkillRegistry | null = null;
+  // Track 10: global plugin registry + per-session binder deps. Set in
+  // registerServices; read lazily by agentFactory.
+  private pluginRegistry: import('@/core/plugins/PluginRegistry').PluginRegistry | null = null;
+  private pluginFsResolvers: {
+    readFile: (p: string) => Promise<string | null>;
+    listDirs: (p: string) => Promise<string[]>;
+  } | null = null;
   private skillDomainFilter: SkillDomainFilter | null = null;
   private activeTabService: ActiveTabService | null = null;
   private activeTabUnsubscribe: (() => void) | null = null;
@@ -76,6 +95,7 @@ export class DesktopAgentBootstrap {
   private runningJobStartTime: number = 0;
   private initialized = false;
   private isUpdatingConfig = false;
+  private policyPollTimer: ReturnType<typeof setInterval> | null = null;
 
   /**
    * Initialize the desktop agent system
@@ -89,8 +109,47 @@ export class DesktopAgentBootstrap {
     console.log('[DesktopAgentBootstrap] Initializing...');
 
     try {
+      // 0. Track 20: register the managed-file policy source and resolve it
+      // BEFORE AgentConfig.getInstance() so the first buildRuntimeConfig sees
+      // admin policy. Desktop has no config watcher, so reload is a net-new
+      // 60s poll (the design's explicit desktop choice). Fail-open.
+      try {
+        registerPolicySources([
+          new ManagedFileSource(process.env.APPLEPI_POLICY_PATH),
+          new ManagedDirSource(),
+        ]);
+        await resolveActivePolicy();
+        onPolicyChanged((p) => {
+          const a = assessAndRecord(p);
+          if (a.weakened) {
+            console.warn(
+              '[DesktopAgentBootstrap] Organization applied a managed policy that weakens security:',
+              a.reasons.join('; ')
+            );
+          }
+          AgentConfig.getInstance()
+            .then((c) => c.reload())
+            .catch((err) =>
+              console.warn('[DesktopAgentBootstrap] policy reload failed:', err)
+            );
+        });
+        this.policyPollTimer = setInterval(() => {
+          void resolveActivePolicy();
+        }, 60_000);
+      } catch (error) {
+        console.warn('[DesktopAgentBootstrap] Managed policy resolution failed (non-fatal):', error);
+      }
+
       // 1. Get agent config
       const config = await AgentConfig.getInstance();
+
+      // 1b. Centralized telemetry: live privacy gate + size-capped
+      // rotating file sink. No-op unless telemetryEnabled (read live).
+      installTelemetry({
+        getTelemetryEnabled: () =>
+          config.getConfig().preferences?.telemetryEnabled,
+        sink: FileSink,
+      });
 
       // 2. Configure PromptComposer with platform context BEFORE any agent.initialize()
       // This must happen first so RepublicAgent.configurePromptComposition() sees
@@ -139,7 +198,10 @@ export class DesktopAgentBootstrap {
           await this.registerSkillsToolOnAgent(agent);
 
           // Register sub-agent tool
-          await this.registerSubAgentToolOnAgent(agent);
+          const subAgentRunner = await this.registerSubAgentToolOnAgent(agent);
+
+          // Track 10: bind enabled plugins' hooks + agents to this session
+          await this.bindPluginsToSession(agent, subAgentRunner);
 
           return agent;
         },
@@ -256,6 +318,83 @@ export class DesktopAgentBootstrap {
 
     toolRegistry.setApprovalGate(approvalGate);
 
+    // Track 23: x402 capability — desktop is the signer home (OS keychain +
+    // interactive user). Above the trivial threshold a payment requires
+    // explicit human approval via the SAME ApprovalGate (which IS constructed
+    // here, unlike the server). Real signing is Phase-4 gated (coinbase/x402
+    // SDK). Default-OFF via x402 config.
+    try {
+      const {
+        createPaymentCapability,
+        CoinbaseX402Signer,
+        PaymentKeyStore,
+        getX402Config,
+        isX402Enabled,
+      } = await import('@/core/payments/x402');
+      const { StaticRiskAssessor } = await import('@/core/approval/assessors/StaticRiskAssessor');
+      const keyStore = new PaymentKeyStore();
+      const signer = new CoinbaseX402Signer(
+        () => keyStore.getPrivateKey(),
+        async () => {
+          throw new Error('x402 address derivation is Phase-4 gated (coinbase/x402 SDK)');
+        },
+      );
+      // score 80 ⇒ ask_user (StaticRiskAssessor: >30 ⇒ ask_user)
+      const payAssessor = new StaticRiskAssessor(80);
+      toolRegistry.setPaymentCapability(
+        createPaymentCapability({
+          platform: 'desktop',
+          isEnabled: isX402Enabled,
+          getCaps: async () => {
+            const c = await getX402Config();
+            return {
+              network: c.network,
+              maxPaymentPerRequestUSD: c.maxPaymentPerRequestUSD,
+              maxSessionSpendUSD: c.maxSessionSpendUSD,
+            };
+          },
+          signer,
+          requestApproval: async (info) => {
+            const r = await approvalGate.check(
+              'x402_payment',
+              {
+                resource: info.resource,
+                amountUSD: info.amountUSD,
+                payTo: info.payTo,
+                network: info.network,
+              },
+              payAssessor,
+              { sessionId: info.ctx.sessionId, turnId: info.ctx.turnId },
+            );
+            const decision = typeof r === 'string' ? r : r.decision;
+            return decision === 'deny' ? 'deny' : 'approve';
+          },
+          audit: (level, message, data) => {
+            const fn =
+              level === 'warn' ? console.warn : level === 'error' ? console.error : console.log;
+            fn(`[x402] ${message}`, data ?? '');
+          },
+        }),
+      );
+    } catch (error) {
+      console.warn('[DesktopAgentBootstrap] x402 capability wiring failed (non-fatal):', error);
+    }
+
+    // Plan Review (Track 14): closure-wired here (ToolContext has no
+    // registry/manager handle). Desktop has the working core-manager
+    // approval round-trip, so it is always registered.
+    await registerPlanReviewTools({
+      registry: toolRegistry,
+      approvalManager,
+      approvalGate,
+      platformId: 'desktop',
+      recordPlanArtifact: (payload) =>
+        agent.getSession().persistRolloutItems([{ type: 'plan_artifact', payload }]),
+    });
+    setDynamicRuntimeContext(() => ({
+      planReviewActive: toolRegistry.isPlanReviewActive(),
+    }));
+
     // Desktop mode: browser tools come from MCP — enable mcpTools
     const agentConfig = await AgentConfig.getInstance();
     agentConfig.updateToolsConfig({ mcpTools: true });
@@ -289,9 +428,89 @@ export class DesktopAgentBootstrap {
       console.warn('[DesktopAgentBootstrap] A2AManager not available for service registration:', error);
     }
 
+    // Track 10: plugin registry. Wires the globally-reachable slots —
+    // skills (the same SkillRegistry the skills service uses) + MCP
+    // (singleton). Hooks + agents are bound per-session in the
+    // agentFactory via PluginSessionBinder. Commands are global storage.
+    let pluginsDeps: import('@/core/services').PluginsServiceDeps | undefined;
+    try {
+      const { FilesystemPluginProvider } = await import('@/desktop/storage/FilesystemPluginProvider');
+      const { PluginRegistry } = await import('@/core/plugins/PluginRegistry');
+      const { SkillSlotLoader } = await import('@/core/plugins/loaders/SkillSlotLoader');
+      const { McpSlotLoader } = await import('@/core/plugins/loaders/McpSlotLoader');
+      const { AgentConfig } = await import('@/config/AgentConfig');
+
+      const provider = new FilesystemPluginProvider('~/.browserx/plugins');
+      await provider.initialize();
+      this.pluginFsResolvers = {
+        readFile: provider.readFile,
+        listDirs: provider.listDirs,
+      };
+
+      const agentConfig = await AgentConfig.getInstance();
+
+      const pluginRegistry = new PluginRegistry({
+        provider,
+        skillSlot: this.skillRegistry
+          ? new SkillSlotLoader({
+              skillRegistry: this.skillRegistry,
+              readFile: provider.readFile,
+              listDirs: provider.listDirs,
+            })
+          : undefined,
+        mcpSlot: mcpDeps
+          ? new McpSlotLoader(mcpDeps.mcpManager as never)
+          : undefined,
+        // hooks / agents: per-session (agentFactory PluginSessionBinder)
+        getEnabledFromConfig: () => agentConfig.getConfig().enabledPlugins ?? {},
+        persistEnabled: async (id, enabled) => {
+          const current = agentConfig.getConfig().enabledPlugins ?? {};
+          agentConfig.updateConfig({
+            enabledPlugins: { ...current, [id]: enabled },
+          });
+        },
+        checkDestructiveOpAllowed: (op) => {
+          if (op !== 'reload' || !this.registry) return null;
+          for (const s of this.registry.listSessions()) {
+            const as = this.registry.getSession(s.sessionId);
+            const active =
+              as?.agent?.getSession?.()?.listActiveTasks?.() ?? [];
+            if (active.length > 0) {
+              return `Cannot reload: ${active.length} background task(s) running. /task stop <id> first.`;
+            }
+          }
+          return null;
+        },
+      });
+
+      const metas = await provider.listMeta();
+      for (const m of metas) {
+        try {
+          pluginRegistry.register(await provider.load(`${m.name}@local`));
+        } catch (e) {
+          console.warn(`[DesktopAgentBootstrap] plugin load ${m.name} failed:`, e);
+        }
+      }
+      await pluginRegistry.bootstrapEnabledPlugins();
+      agentConfig.on('config-changed', (e: { section?: string }) => {
+        if (e.section === 'enabledPlugins') {
+          void pluginRegistry.reconcileFromConfig();
+        }
+      });
+
+      this.pluginRegistry = pluginRegistry;
+      pluginsDeps = { pluginRegistry };
+      console.log(
+        `[DesktopAgentBootstrap] PluginRegistry initialized (${metas.length} discovered)`,
+      );
+    } catch (error) {
+      console.warn('[DesktopAgentBootstrap] PluginRegistry not available:', error);
+    }
+
     const count = registerAllServices(registry, {
       mcp: mcpDeps,
       a2a: a2aDeps,
+      plugins: pluginsDeps,
       skills: this.skillRegistry ? { skillRegistry: this.skillRegistry } : undefined,
       scheduler: this.scheduler ? { scheduler: this.scheduler } : undefined,
       session: this.registry ? {
@@ -301,6 +520,30 @@ export class DesktopAgentBootstrap {
           const history = await RolloutRecorder.getRolloutHistory(sessionId);
           if (history.type !== 'resumed' || !history.payload?.history) return null;
           return { sessionId, rolloutItems: history.payload.history };
+        },
+        // Track 15 (D9): summarize_up_to summarizer for desktop, sourced from
+        // the live primary agent's ModelClientFactory.
+        summarizeForRewind: async (items) => {
+          const reg = this.registry;
+          const primary = reg?.getPrimarySession();
+          const agent = primary ? reg?.getSession(primary.sessionId)?.agent : null;
+          if (!agent) return undefined;
+          try {
+            const { CompactService } = await import('@/core/compact/CompactService');
+            const modelClient = await agent.getModelClientFactory().createClientForCurrentModel();
+            const result = await new CompactService().compact(
+              items,
+              'manual',
+              modelClient,
+              0,
+              undefined,
+              { sessionId: agent.getSession().getSessionId() },
+            );
+            return result.success ? result.summaryText : undefined;
+          } catch (err) {
+            console.warn('[DesktopAgentBootstrap] summarizeForRewind failed:', err);
+            return undefined;
+          }
         },
       } : undefined,
       agent: this.registry ? {
@@ -314,9 +557,37 @@ export class DesktopAgentBootstrap {
           await tauriStorage.set('agent_config', storedConfig);
         },
       } : undefined,
+      diagnostics: {
+        buildCtx: () => this.buildDiagnosticContext(channelManager),
+      },
     });
 
     console.log(`[DesktopAgentBootstrap] Registered ${count} service handlers`);
+  }
+
+  /**
+   * Assemble the desktop diagnostic context (Track 17). No DiagnosticsMonitor
+   * on desktop — there is no `/health` probe; the report is served on demand.
+   */
+  private async buildDiagnosticContext(
+    channelManager: ReturnType<typeof getChannelManager>,
+  ): Promise<DiagnosticContext> {
+    let mcpManager: DiagnosticContext['mcpManager'];
+    try {
+      const { MCPManager } = await import('@/core/mcp/MCPManager');
+      mcpManager = (await MCPManager.getInstance(
+        'desktop',
+      )) as unknown as DiagnosticContext['mcpManager'];
+    } catch {
+      // MCP unavailable — the mcp-connected check degrades to "not in use".
+    }
+    return {
+      platformId: 'desktop',
+      channelManager,
+      mcpManager,
+      skillRegistry: this.skillRegistry ?? undefined,
+      scheduler: this.scheduler ?? undefined,
+    };
   }
 
   /**
@@ -503,17 +774,20 @@ export class DesktopAgentBootstrap {
    * Register the sub_agent tool on a specific agent's engine.
    * Called by the agentFactory for every new session.
    */
-  private async registerSubAgentToolOnAgent(agent: RepublicAgent): Promise<void> {
+  private async registerSubAgentToolOnAgent(
+    agent: RepublicAgent,
+  ): Promise<import('@/tools/AgentTool/SubAgentRunner').SubAgentRunner | null> {
     const engine = agent.getEngine();
     if (!engine) {
       console.warn('[DesktopAgentBootstrap] Cannot register sub_agent tool: engine not initialized');
-      return;
+      return null;
     }
 
     try {
       const { registerSubAgentTool } = await import('@/tools/AgentTool/register');
-      await registerSubAgentTool(engine);
+      const runner = await registerSubAgentTool(engine);
       console.log('[DesktopAgentBootstrap] sub_agent tool registered');
+      return runner;
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
       console.warn('[DesktopAgentBootstrap] Could not register sub_agent tool:', error);
@@ -521,6 +795,35 @@ export class DesktopAgentBootstrap {
         id: crypto.randomUUID(),
         msg: { type: 'BackgroundEvent', data: { message: `Sub-agent tool registration failed: ${errMsg}`, level: 'error' } },
       });
+      return null;
+    }
+  }
+
+  /**
+   * Track 10: bind this session's hook + sub-agent registries to enabled
+   * plugins. Skills + MCP are global (PluginRegistry slot loaders); hooks
+   * + agents are per-session. Mirrors the server agentFactory wiring.
+   */
+  private async bindPluginsToSession(
+    agent: RepublicAgent,
+    runner: import('@/tools/AgentTool/SubAgentRunner').SubAgentRunner | null,
+  ): Promise<void> {
+    if (!this.pluginRegistry || !this.pluginFsResolvers || !runner) return;
+    try {
+      const { PluginSessionBinder } = await import('@/core/plugins/PluginSessionBinder');
+      const binder = new PluginSessionBinder({
+        hookRegistry: agent.getHookRegistry(),
+        subAgentRunner: runner,
+        readFile: this.pluginFsResolvers.readFile,
+        listDirs: this.pluginFsResolvers.listDirs,
+      });
+      const enabled = this.pluginRegistry
+        .getPlugins()
+        .filter((p) => p.state.status === 'enabled');
+      await binder.applyEnabledPlugins(enabled);
+      this.pluginRegistry.registerSessionBinder(binder);
+    } catch (e) {
+      console.warn('[DesktopAgentBootstrap] plugin session bind failed (non-fatal):', e);
     }
   }
 
@@ -563,8 +866,13 @@ export class DesktopAgentBootstrap {
         await this.scheduler!.handleAlarm(alarmName);
       });
 
-      // Wire event emitter → unified channel dispatch
-      this.scheduler.connectToChannel(() => getChannelManager(), this.channel!.channelId);
+      // Wire event emitter → unified channel dispatch (+ telemetry tap:
+      // scheduler is a separate emitter family bypassing the agent chokepoint)
+      this.scheduler.connectToChannel(
+        () => getChannelManager(),
+        this.channel!.channelId,
+        schedulerTelemetryTap,
+      );
 
       // Wire job launcher — show window and submit directly to agent
       this.scheduler.setJobLauncher(async (executionId, sessionId, registryAgent) => {
@@ -588,7 +896,9 @@ export class DesktopAgentBootstrap {
         // handleSchedulerEventCompletion on the previous task's TurnAborted event.
         await registryAgent.submitOperation(
           { type: 'UserInput', items: [{ type: 'text', text: execution.input }] },
-          {}
+          // Track 12: desktop scheduled jobs run unattended (the Tauri host is
+          // long-lived, so multi-hour reset-waits are safe).
+          { unattended: true }
         );
         this.runningSchedulerJobId = executionId;
         this.runningJobStartTime = Date.now();
@@ -670,6 +980,8 @@ export class DesktopAgentBootstrap {
       const data = (msg as EventMsg & { data?: Record<string, any> }).data;
       const summary = data?.last_agent_message?.slice(0, 500) || 'Job completed';
       const tokenData = data?.token_usage?.total;
+      // Track 18: parity with ServerAgentBootstrap — cost is read off the
+      // TaskComplete event (computed once in core), never recomputed.
       this.scheduler.completeJob(jobId, {
         summary,
         tokenUsage: {
@@ -678,6 +990,8 @@ export class DesktopAgentBootstrap {
           totalTokens: tokenData?.total_tokens ?? 0,
         },
         duration,
+        costUSD: typeof data?.cost_usd === 'number' ? data.cost_usd : 0,
+        costEstimated: data?.cost_estimated === true,
       }).catch((error) => {
         console.error(`[DesktopAgentBootstrap] Failed to complete scheduler job ${jobId}:`, error);
       });
@@ -726,6 +1040,14 @@ export class DesktopAgentBootstrap {
       staticContext.homeDir = await homeDir();
     } catch (e) {
       console.warn('[DesktopAgentBootstrap] Could not fetch platform info:', e);
+    }
+
+    // Track 24.2: user-selected output-style persona.
+    try {
+      const config = await AgentConfig.getInstance();
+      staticContext.personaName = config.getConfig().preferences?.personaName;
+    } catch (e) {
+      console.warn('[DesktopAgentBootstrap] Could not read persona preference:', e);
     }
 
     configurePromptComposer('applepi', staticContext);
@@ -958,6 +1280,12 @@ export class DesktopAgentBootstrap {
    */
   async shutdown(): Promise<void> {
     console.log('[DesktopAgentBootstrap] Shutting down...');
+
+    // Track 20: stop the managed-policy poll
+    if (this.policyPollTimer) {
+      clearInterval(this.policyPollTimer);
+      this.policyPollTimer = null;
+    }
 
     // Dispose scheduler
     this.schedulerDeepLinkHandler?.dispose();

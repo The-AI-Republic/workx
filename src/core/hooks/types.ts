@@ -84,8 +84,26 @@ export interface HookMatcherEntry {
 
 /**
  * Where a hook was registered from, for display and priority ordering.
+ *
+ * Track 10 widened the union so the plugin variant carries `pluginId`,
+ * enabling per-plugin scoped removal via
+ * `HookRegistry.unregisterBySource({ type: 'plugin', pluginId })`.
+ * `'config'` and `'session'` remain flat strings — existing call sites
+ * are unaffected.
  */
-export type HookSource = 'config' | 'session' | 'plugin';
+export type HookSource =
+  | 'config'
+  | 'session'
+  | { type: 'plugin'; pluginId: string };
+
+/**
+ * Deep-equal source comparison handling the discriminated-union widening.
+ */
+export function isSameHookSource(a: HookSource, b: HookSource): boolean {
+  if (typeof a === 'string' && typeof b === 'string') return a === b;
+  if (typeof a === 'string' || typeof b === 'string') return false;
+  return a.type === b.type && a.pluginId === b.pluginId;
+}
 
 /**
  * Internal registered hook with source metadata.

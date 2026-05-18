@@ -16,6 +16,7 @@ import type {
 } from './RepublicAgentEngineConfig';
 import { CommandQueue } from '../queue/CommandQueue';
 import { priorityForOp } from '../queue/priorityForOp';
+import { ShadowAgentScheduler } from '../shadowAgent/ShadowAgentScheduler';
 
 export class RepublicAgentEngine {
   readonly engineId: string;
@@ -38,6 +39,7 @@ export class RepublicAgentEngine {
   // Lifecycle state
   private disposed = false;
   private initialized = false;
+  private shadowAgentScheduler: ShadowAgentScheduler | null = null;
 
   // Event listener callbacks (supports multiple listeners)
   private eventListeners: Array<(event: EngineEvent) => void> = [];
@@ -75,7 +77,11 @@ export class RepublicAgentEngine {
         this.config.persistent ?? false,
         undefined,
         this.toolRegistry,
+        this.config.initialHistory,
       );
+      if (typeof this.session.initialize === 'function') {
+        await this.session.initialize();
+      }
 
       // Apply config values (systemPrompt, userInstructions, model) to the session's TurnContext.
       // Without this, sub-agents would run with bare defaults instead of the
@@ -116,8 +122,23 @@ export class RepublicAgentEngine {
       this.session.setTaskOutputStore(this.config.taskOutputStore);
     }
 
+    if (this.ownsSession && this.session?.initialize) {
+      await this.session.initialize();
+    }
+
     // Setup approval system
     this.setupApprovalSystem();
+    // Reuse any scheduler already handed out via getShadowAgentScheduler()
+    // before initialize() ran, so the session is wired to the same instance
+    // that dispose() shuts down (avoids a second, orphaned scheduler).
+    this.shadowAgentScheduler ??= new ShadowAgentScheduler({ parentEngine: this });
+    this.session?.setShadowAgentScheduler?.(this.shadowAgentScheduler);
+    const prefs = this.config.agentConfig.getConfig?.()?.preferences as
+      | { shadowCompactPrepareEnabled?: boolean }
+      | undefined;
+    this.session?.setShadowCompactPreparationEnabled?.(
+      prefs?.shadowCompactPrepareEnabled === true,
+    );
 
     this.initialized = true;
   }
@@ -264,6 +285,7 @@ export class RepublicAgentEngine {
     if (this.disposed) return;
     this.disposed = true;
     this.cancel();
+    this.shadowAgentScheduler?.shutdown();
 
     // Shutdown session if we own it
     if (this.ownsSession && this.session) {
@@ -318,6 +340,13 @@ export class RepublicAgentEngine {
 
   getConfig(): RepublicAgentEngineConfig {
     return this.config;
+  }
+
+  getShadowAgentScheduler(): ShadowAgentScheduler {
+    if (!this.shadowAgentScheduler) {
+      this.shadowAgentScheduler = new ShadowAgentScheduler({ parentEngine: this });
+    }
+    return this.shadowAgentScheduler;
   }
 
   /**
@@ -393,6 +422,7 @@ export class RepublicAgentEngine {
     depth?: number;
     maxDepth?: number;
     drainPendingMessages?: () => string[];
+    initialHistory?: RepublicAgentEngineConfig['initialHistory'];
     /** (Track 04) Inherit parent's TaskOutputStore so sub-agent's TaskRunner writes chunks. */
     taskOutputStore?: RepublicAgentEngineConfig['taskOutputStore'];
   }): RepublicAgentEngine {
@@ -412,6 +442,7 @@ export class RepublicAgentEngine {
       depth: childConfig.depth ?? (this.getDepth() + 1),
       maxDepth: childConfig.maxDepth ?? this.getMaxDepth(),
       drainPendingMessages: childConfig.drainPendingMessages,
+      initialHistory: childConfig.initialHistory,
       taskOutputStore: childConfig.taskOutputStore ?? this.config.taskOutputStore,
     });
   }
@@ -551,7 +582,10 @@ export class RepublicAgentEngine {
       // Create RegularTask and delegate to Session.spawnTask()
       // Pass maxTurns from engine config so sub-agents enforce their turn limits.
       const { RegularTask } = await import('../tasks/RegularTask');
-      const task = new RegularTask({ maxTurns: this.config.maxTurns });
+      const task = new RegularTask({
+        maxTurns: this.config.maxTurns,
+        drainPendingMessages: this.config.drainPendingMessages,
+      });
 
       await this.session.spawnTask(task, turnContext, submissionId, protocolItems);
 

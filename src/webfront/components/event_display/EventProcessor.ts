@@ -21,6 +21,7 @@ import { STYLE_PRESETS } from '@/types/ui';
 import { t } from '../../lib/i18n';
 import { agentDisplayName } from '../../stores/platformStore';
 import { getInitializedUIClient } from '@/core/messaging';
+import { formatCost } from '@/core/models/cost/cost';
 
 /**
  * EventProcessor Implementation
@@ -363,11 +364,18 @@ export class EventProcessor {
               total: tokenUsage.total_tokens || 0,
             }
           : undefined,
+        // Track 18: cost computed once in core, read here (never recomputed).
+        costUSD: msg.data.cost_usd,
+        costEstimated: msg.data.cost_estimated,
       };
 
       let content = t('Task completed in $1$ turn(s)', { substitutions: [(msg.data.turn_count || 0).toString()] });
       if (tokenUsage) {
         content += '\n' + t('Tokens: $1$', { substitutions: [tokenUsage.total_tokens?.toLocaleString() || '0'] });
+      }
+      if (typeof msg.data.cost_usd === 'number') {
+        const costStr = formatCost(msg.data.cost_usd) + (msg.data.cost_estimated ? ' ≈' : '');
+        content += '\n' + t('Cost: $1$', { substitutions: [costStr] });
       }
 
       return {
@@ -749,6 +757,7 @@ export class EventProcessor {
           riskLevel: data.risk_level,
           riskFactors: data.risk_factors,
           countdown: data.timeout ? Math.floor(data.timeout / 1000) : 0,
+          plan: data.plan, // Track 14: structured plan → editable card
           onApprove: () => {
             this.sendApprovalDecision(data.id, 'approve');
           },
@@ -758,9 +767,17 @@ export class EventProcessor {
           onRequestChange: (text: string) => {
             this.sendApprovalDecision(data.id, 'reject', false, text);
           },
-          onRemember: (scope: 'session' | 'no') => {
-            this.sendApprovalDecision(data.id, 'approve', scope === 'session');
-          },
+          // Track 14: a Plan Review approval is a one-shot decision —
+          // "Always Approve" (remember) is meaningless for it and would
+          // persist a grant for SubmitPlanForReview itself. Omit onRemember
+          // when a plan is present so the card hides that misleading button.
+          ...(data.plan
+            ? {}
+            : {
+                onRemember: (scope: 'session' | 'no') => {
+                  this.sendApprovalDecision(data.id, 'approve', scope === 'session');
+                },
+              }),
         },
         collapsible: false,
       };
@@ -845,11 +862,15 @@ export class EventProcessor {
         return null;
       }
 
+      const cumulativeCost = msg.data.cost;
       const content = t('Tokens: $1$', { substitutions: [usage.total_tokens?.toLocaleString() || '0'] }) +
   '\n  ' + t('Input: $1$', { substitutions: [usage.input_tokens?.toLocaleString() || '0'] }) +
     (usage.cached_input_tokens ? ` (${usage.cached_input_tokens.toLocaleString()} ${t('cached')})` : '') +
   '\n  ' + t('Output: $1$', { substitutions: [usage.output_tokens?.toLocaleString() || '0'] }) +
-    (usage.reasoning_output_tokens ? '\n  ' + t('Reasoning: $1$', { substitutions: [usage.reasoning_output_tokens.toLocaleString()] }) : '');
+    (usage.reasoning_output_tokens ? '\n  ' + t('Reasoning: $1$', { substitutions: [usage.reasoning_output_tokens.toLocaleString()] }) : '') +
+    (typeof cumulativeCost === 'number'
+      ? '\n  ' + t('Cost: $1$', { substitutions: [formatCost(cumulativeCost) + (msg.data.cost_estimated ? ' ≈' : '')] })
+      : '');
 
       return {
         id: event.id,

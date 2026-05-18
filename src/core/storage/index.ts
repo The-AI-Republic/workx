@@ -10,6 +10,7 @@ import type { StorageProvider } from './StorageProvider';
 import type { CredentialStore } from './CredentialStore';
 import type { ConfigStorageProvider } from './ConfigStorageProvider';
 import type { StorageFactoryOptions } from './types';
+import { isDesktopRuntimeProfile } from '@/runtime/profile';
 
 export type { StorageProvider } from './StorageProvider';
 export type { CredentialStore } from './CredentialStore';
@@ -87,6 +88,13 @@ export async function createStorageProvider(
     return new SQLiteStorageProvider();
   }
   if (__BUILD_MODE__ === 'server') {
+    if (isDesktopRuntimeProfile()) {
+      const { getDesktopRuntimeHost } = await import('@/desktop-runtime/host');
+      const { DesktopRuntimeStorageProvider } = await import(
+        '@/desktop-runtime/storage/DesktopRuntimeStorageProvider'
+      );
+      return new DesktopRuntimeStorageProvider(getDesktopRuntimeHost().storageDbPath);
+    }
     const { getDataDir } = await import('@/server/config/server-config');
     const { ServerStorageProvider } = await import(
       '@/server/storage/ServerStorageProvider'
@@ -121,6 +129,20 @@ export async function createCredentialStore(): Promise<CredentialStore> {
     return new KeytarCredentialStore();
   }
   if (__BUILD_MODE__ === 'server') {
+    if (isDesktopRuntimeProfile()) {
+      const { getDesktopRuntimeHost } = await import('@/desktop-runtime/host');
+      const { ControlFrameCredentialStore } = await import(
+        '@/desktop-runtime/credentials/ControlFrameCredentialStore'
+      );
+      const { getDesktopRuntimeControlBridge } = await import(
+        '@/desktop-runtime/protocol/controlBridge'
+      );
+      const host = getDesktopRuntimeHost();
+      return new ControlFrameCredentialStore(
+        getDesktopRuntimeControlBridge().keychain,
+        host.keychainServicePrefix ?? 'applepi',
+      );
+    }
     const { getDataDir } = await import('@/server/config/server-config');
     const { FileCredentialStore } = await import(
       '@/server/storage/FileCredentialStore'
@@ -156,6 +178,13 @@ export async function createConfigStorage(): Promise<ConfigStorageProvider> {
     return new TauriConfigStorage();
   }
   if (__BUILD_MODE__ === 'server') {
+    if (isDesktopRuntimeProfile()) {
+      const { getDesktopRuntimeHost } = await import('@/desktop-runtime/host');
+      const { DesktopRuntimeConfigStorageProvider } = await import(
+        '@/desktop-runtime/storage/DesktopRuntimeConfigStorageProvider'
+      );
+      return new DesktopRuntimeConfigStorageProvider(getDesktopRuntimeHost().configJsonPath);
+    }
     const { getDataDir } = await import('@/server/config/server-config');
     const { FileConfigStorageProvider } = await import(
       '@/server/storage/FileConfigStorageProvider'

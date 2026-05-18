@@ -28,6 +28,8 @@ export function isPersistedRolloutItem(item: RolloutItem): boolean {
       return shouldPersistEventMsg(item.payload);
     case 'content_replacement':
       return true; // Always persist — required for byte-identical resume (track 09)
+    case 'plan_artifact':
+      return true; // Always persist — durability + Track 15 rewind anchor (track 14)
     default:
       return false;
   }

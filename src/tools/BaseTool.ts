@@ -170,6 +170,13 @@ export interface ToolContext {
   callId?: string;
   metadata?: Record<string, any>;
   onProgress?: import('./runtimeMetadata').ToolProgressCallback;
+  /**
+   * x402 payment capability (Track 23). Populated centrally by
+   * ToolRegistry.execute from the platform-wired capability. ONLY the
+   * resource-fetch tool consumes this; browser navigation tools are never
+   * given a payable path by construction.
+   */
+  payments?: import('../core/payments/x402/types').PaymentCapability;
 }
 
 /**

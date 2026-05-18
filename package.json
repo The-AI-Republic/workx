@@ -12,6 +12,7 @@
     "tauri:build": "node scripts/check-env.js desktop && npm run build:sidecar && npm run build:ripgrep-sidecar && cd tauri && cargo tauri build",
     "build:sidecar": "node scripts/build-sidecar.mjs",
     "build:ripgrep-sidecar": "node scripts/build-ripgrep-sidecar.mjs",
+    "build:desktop-runtime": "vite build --config vite.config.desktop-runtime.mts",
     "vite:build": "vite build",
     "build": "node scripts/check-env.js extension && node scripts/build.js",
     "build:desktop": "node scripts/check-env.js desktop && vite build --config vite.config.desktop.mts",

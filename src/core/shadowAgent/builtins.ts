@@ -1,0 +1,88 @@
+import {
+  ShadowAgentKind,
+  ShadowAgentPriority,
+  ShadowContextPolicy,
+  ShadowFailurePolicy,
+  type ShadowAgentProfile,
+} from './types';
+
+export const SHADOW_AGENT_PROFILES: Readonly<Record<ShadowAgentKind, ShadowAgentProfile>> =
+  Object.freeze({
+    [ShadowAgentKind.SessionSummary]: Object.freeze({
+      kind: ShadowAgentKind.SessionSummary,
+      defaultContextPolicy: ShadowContextPolicy.ParentHistory,
+      defaultPriority: ShadowAgentPriority.Normal,
+      failurePolicy: ShadowFailurePolicy.ReturnError,
+      maxConcurrency: 1,
+      queuePolicy: 'coalesce_latest',
+      timeoutMs: 15_000,
+      maxTurns: 4,
+      toolPolicy: Object.freeze({ allow: ['file_edit'] }),
+      approvalPolicy: 'never',
+      visibleToUser: false,
+      suppressedEvents: Object.freeze([
+        'AgentMessageDelta',
+        'AgentReasoningDelta',
+        'AgentReasoningRawContentDelta',
+        'AgentMessage',
+        'AgentReasoning',
+        'AgentReasoningRawContent',
+      ]),
+    }),
+    [ShadowAgentKind.Compact]: Object.freeze({
+      kind: ShadowAgentKind.Compact,
+      defaultContextPolicy: ShadowContextPolicy.CompactCandidate,
+      defaultPriority: ShadowAgentPriority.Idle,
+      failurePolicy: ShadowFailurePolicy.Fallback,
+      maxConcurrency: 1,
+      queuePolicy: 'coalesce_latest',
+      timeoutMs: 30_000,
+      maxTurns: 3,
+      toolPolicy: Object.freeze({ allow: [] }),
+      approvalPolicy: 'never',
+      visibleToUser: false,
+    }),
+    [ShadowAgentKind.PromptSuggestion]: Object.freeze({
+      kind: ShadowAgentKind.PromptSuggestion,
+      defaultContextPolicy: ShadowContextPolicy.ParentHistoryWithSummary,
+      defaultPriority: ShadowAgentPriority.Idle,
+      failurePolicy: ShadowFailurePolicy.LogAndSuppress,
+      maxConcurrency: 1,
+      queuePolicy: 'abort_previous',
+      timeoutMs: 10_000,
+      maxTurns: 2,
+      toolPolicy: Object.freeze({ allow: [] }),
+      approvalPolicy: 'never',
+      visibleToUser: false,
+    }),
+    [ShadowAgentKind.MemoryExtraction]: Object.freeze({
+      kind: ShadowAgentKind.MemoryExtraction,
+      defaultContextPolicy: ShadowContextPolicy.ParentHistory,
+      defaultPriority: ShadowAgentPriority.Normal,
+      failurePolicy: ShadowFailurePolicy.LogAndSuppress,
+      maxConcurrency: 1,
+      queuePolicy: 'coalesce_latest',
+      timeoutMs: 20_000,
+      maxTurns: 4,
+      toolPolicy: Object.freeze({ allow: [] }),
+      approvalPolicy: 'never',
+      visibleToUser: false,
+    }),
+    [ShadowAgentKind.Diagnostics]: Object.freeze({
+      kind: ShadowAgentKind.Diagnostics,
+      defaultContextPolicy: ShadowContextPolicy.PromptOnly,
+      defaultPriority: ShadowAgentPriority.Idle,
+      failurePolicy: ShadowFailurePolicy.ReturnError,
+      maxConcurrency: 1,
+      queuePolicy: 'queue',
+      timeoutMs: 15_000,
+      maxTurns: 2,
+      toolPolicy: Object.freeze({ allow: [] }),
+      approvalPolicy: 'never',
+      visibleToUser: false,
+    }),
+  });
+
+export function getShadowAgentProfile(kind: ShadowAgentKind): ShadowAgentProfile {
+  return SHADOW_AGENT_PROFILES[kind];
+}

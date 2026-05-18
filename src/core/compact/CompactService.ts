@@ -13,6 +13,7 @@ import { DEFAULT_COMPACTION_CONFIG, SUMMARIZATION_PROMPT } from './constants';
 import { SummaryGenerator } from './SummaryGenerator';
 import { HistoryReconstructor } from './HistoryReconstructor';
 import { calculateBackoff, sleep } from './utils';
+import { withModelRetry } from '../models/resilience/withRetry';
 import type { ModelClient } from '../models/ModelClient';
 import { isOutputTextDelta, isCompleted } from '../models/types/ResponseEvent';
 
@@ -26,6 +27,12 @@ import { isSessionSummaryEmpty } from '../sessionSummary/SessionSummaryFileStore
 import { truncateSessionSummaryForCompact } from '../sessionSummary/truncate';
 import type { SessionSummaryHook } from '../sessionSummary/SessionSummaryHook';
 import type { SessionSummaryTelemetryName } from '../protocol/events';
+import {
+  ShadowAgentKind,
+  ShadowContextPolicy,
+  ShadowFailurePolicy,
+  type ShadowAgentScheduler,
+} from '../shadowAgent';
 
 /**
  * Track 05b: opt-in extras the caller (Session) threads through. Optional
@@ -35,6 +42,8 @@ import type { SessionSummaryTelemetryName } from '../protocol/events';
 export interface CompactExtras {
   sessionId?: string;
   sessionSummaryHook?: SessionSummaryHook | null;
+  shadowScheduler?: ShadowAgentScheduler;
+  enableShadowPrepare?: boolean;
 }
 
 /**
@@ -148,21 +157,103 @@ export class CompactService {
       }
     }
 
+    if (extras?.enableShadowPrepare && extras.shadowScheduler) {
+      try {
+        const shadow = await extras.shadowScheduler.run({
+          kind: ShadowAgentKind.Compact,
+          prompt: 'Prepare a concise compaction context note for the provided conversation. Return only the note.',
+          contextPolicy: ShadowContextPolicy.CompactCandidate,
+          context: { compactCandidateHistory: history },
+          failurePolicy: ShadowFailurePolicy.Fallback,
+          fallback: () => undefined,
+          dedupeKey: sessionId ? `${sessionId}:compact` : undefined,
+          metadata: { sessionId, trigger, phase: 'compact_prepare' },
+        });
+        if (shadow.status === 'completed' && shadow.outputText?.trim()) {
+          const shadowHint = shadow.outputText.trim();
+          sessionSummaryHint = sessionSummaryHint
+            ? `${sessionSummaryHint}\n\nShadow compaction note:\n${shadowHint}`
+            : shadowHint;
+        }
+      } catch (err) {
+        console.warn(
+          '[Compaction] shadow prepare failed; using direct compaction:',
+          err instanceof Error ? err.message : String(err),
+        );
+      }
+    }
+
     let workingHistory = [...history];
     let itemsTrimmed = 0;
     let retriesUsed = 0;
 
-    // Retry loop with exponential backoff
-    while (retriesUsed <= this.config.maxRetries) {
+    // Track 12: transient-error retry/backoff is delegated to the single
+    // orchestrator. The outer loop is retained only for the bespoke
+    // context-overflow self-heal (trim oldest item and re-summarize), which
+    // is domain logic, not a transient retry.
+    for (;;) {
+      let summaryText: string;
       try {
-        // Generate summary using embedded streaming logic
-        const summaryText = await this.generateSummaryWithModel(
-          workingHistory,
-          modelClient,
-          baseInstructions,
-          sessionSummaryHint,
+        summaryText = await withModelRetry(
+          () =>
+            this.generateSummaryWithModel(
+              workingHistory,
+              modelClient,
+              baseInstructions,
+              sessionSummaryHint,
+            ),
+          {
+            maxRetries: this.config.maxRetries,
+            unattended: false,
+            // 'compact' is a foreground-retry source (claudy parity): a
+            // failed compaction blocks progress, so retry 429/529 rather
+            // than fast-bail.
+            source: 'foreground',
+            sleep: (ms) => sleep(ms),
+            computeBackoffMs: (attempt) =>
+              calculateBackoff(attempt, this.config.baseBackoffMs),
+            // Context-overflow is self-healed by trimming below, not by
+            // retrying the same oversized input.
+            isNonRetryable: (e) =>
+              this.isContextOverflowError(
+                e instanceof Error ? e.message : String(e),
+              ),
+            onRetryNotice: () => {
+              retriesUsed++;
+            },
+          },
         );
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
 
+        // Context overflow: trim oldest item and re-summarize (not a retry).
+        if (
+          this.isContextOverflowError(errorMessage) &&
+          workingHistory.length > 1
+        ) {
+          console.debug('[Compaction] Context overflow, trimming oldest item');
+          workingHistory = this.trimOldestItem(workingHistory);
+          itemsTrimmed++;
+          continue;
+        }
+
+        console.error('[Compaction] Failed after max retries', {
+          error: errorMessage,
+          retriesUsed,
+        });
+        return {
+          success: false,
+          tokensBefore,
+          tokensAfter: tokensBefore,
+          itemsTrimmed,
+          error: errorMessage,
+          retriesUsed,
+          triggerReason: trigger,
+        };
+      }
+
+      {
         // Collect and select user messages
         const userMessages = this.summaryGenerator.collectUserMessages(workingHistory);
         const selectedMessages = this.historyReconstructor.selectUserMessages(
@@ -222,62 +313,8 @@ export class CompactService {
         }
 
         return result;
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-
-        // Check if this is a context overflow error
-        if (this.isContextOverflowError(errorMessage)) {
-          // Trim oldest items and retry
-          if (workingHistory.length > 1) {
-            console.debug('[Compaction] Context overflow, trimming oldest item');
-            workingHistory = this.trimOldestItem(workingHistory);
-            itemsTrimmed++;
-            continue; // Don't count as retry
-          }
-        }
-
-        // Regular error - retry with backoff
-        retriesUsed++;
-
-        if (retriesUsed <= this.config.maxRetries) {
-          const delay = calculateBackoff(retriesUsed, this.config.baseBackoffMs);
-          console.debug('[Compaction] Retrying after error', {
-            error: errorMessage,
-            retriesUsed,
-            maxRetries: this.config.maxRetries,
-            delayMs: delay,
-          });
-          await sleep(delay);
-        } else {
-          // Max retries exceeded
-          console.error('[Compaction] Failed after max retries', {
-            error: errorMessage,
-            retriesUsed,
-          });
-
-          return {
-            success: false,
-            tokensBefore,
-            tokensAfter: tokensBefore,
-            itemsTrimmed,
-            error: errorMessage,
-            retriesUsed,
-            triggerReason: trigger,
-          };
-        }
       }
     }
-
-    // Should not reach here, but handle gracefully
-    return {
-      success: false,
-      tokensBefore,
-      tokensAfter: tokensBefore,
-      itemsTrimmed,
-      error: 'Unexpected compaction termination',
-      retriesUsed,
-      triggerReason: trigger,
-    };
   }
 
   /**

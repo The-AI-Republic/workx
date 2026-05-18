@@ -12,8 +12,10 @@ export class FileConfigStorageProvider implements ConfigStorageProvider {
   private readonly filePath: string;
   private data: Record<string, unknown>;
 
-  constructor(dataDir: string) {
-    this.filePath = join(dataDir, 'config-storage.json');
+  constructor(dataDirOrOptions: string | { dataDir?: string; filePath?: string }) {
+    this.filePath = typeof dataDirOrOptions === 'string'
+      ? join(dataDirOrOptions, 'config-storage.json')
+      : dataDirOrOptions.filePath ?? join(dataDirOrOptions.dataDir ?? '', 'config-storage.json');
     this.data = this.load();
   }
 

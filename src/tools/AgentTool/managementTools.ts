@@ -79,6 +79,9 @@ export function createListSubAgentsHandler(registry: SubAgentRegistry) {
     const agents = registry.getAll().map(a => ({
       runId: a.runId,
       type: a.type,
+      agentType: a.context?.behavior.agentType,
+      contextMode: a.context?.contextMode,
+      executionMode: a.context?.executionMode,
       description: a.description,
       status: a.status,
       startTime: a.startTime,

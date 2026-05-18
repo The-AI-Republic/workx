@@ -72,19 +72,27 @@ export class UIChannelClient {
    *
    * @param service - Dotted service path (e.g. 'mcp.getServers')
    * @param params - Request parameters
+   * @param opts - Optional per-request overrides. `timeoutMs` overrides the
+   *   default 30s cap for handlers that legitimately run long (e.g. Track 15
+   *   `session.rewind` with `summarize_up_to`, which performs a synchronous
+   *   model compaction call — at the default cap a successful summarize would
+   *   spuriously reject while the server still completes the fork, orphaning
+   *   it).
    * @returns The response data
    */
   async serviceRequest<T = unknown>(
     service: string,
-    params: Record<string, unknown> = {}
+    params: Record<string, unknown> = {},
+    opts?: { timeoutMs?: number }
   ): Promise<T> {
     const requestId = crypto.randomUUID();
+    const timeoutMs = opts?.timeoutMs ?? SERVICE_REQUEST_TIMEOUT_MS;
 
     const promise = new Promise<T>((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.pendingRequests.delete(requestId);
-        reject(new Error(`Service request '${service}' timed out after ${SERVICE_REQUEST_TIMEOUT_MS}ms`));
-      }, SERVICE_REQUEST_TIMEOUT_MS);
+        reject(new Error(`Service request '${service}' timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
 
       this.pendingRequests.set(requestId, {
         resolve: resolve as (data: unknown) => void,

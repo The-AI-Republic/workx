@@ -8,6 +8,7 @@ import type { ResponseItem } from '../protocol/types';
 import type { TitleGenerationConfig, TitleGenerationResult } from './types';
 import { DEFAULT_TITLE_CONFIG, TITLE_GENERATION_PROMPT } from './constants';
 import type { ModelClient } from '../models/ModelClient';
+import { withModelRetry } from '../models/resilience/withRetry';
 import { isOutputTextDelta, isCompleted } from '../models/types/ResponseEvent';
 
 /**
@@ -38,47 +39,43 @@ export class TitleGenerator {
       };
     }
 
-    let retriesUsed = 0;
-
-    while (retriesUsed <= this.config.maxRetries) {
-      try {
-        const title = await this.callModelForTitle(userMessages, modelClient);
-
-        // Clean and validate title
-        const cleanedTitle = this.cleanTitle(title);
-
-        if (cleanedTitle.length === 0) {
-          throw new Error('Generated title is empty');
+    // Track 12: route through the single retry orchestrator as a
+    // 'background' source — title generation is non-user-blocking, so it
+    // fast-bails on provider overload instead of amplifying a capacity
+    // cascade. Exponential-backoff parity is preserved via computeBackoffMs.
+    try {
+      const cleanedTitle = await withModelRetry(
+        async () => {
+          const title = await this.callModelForTitle(userMessages, modelClient);
+          const cleaned = this.cleanTitle(title);
+          if (cleaned.length === 0) {
+            throw new Error('Generated title is empty');
+          }
+          return cleaned;
+        },
+        {
+          maxRetries: this.config.maxRetries,
+          unattended: false,
+          source: 'background',
+          sleep: (ms) => this.sleep(ms),
+          computeBackoffMs: (attempt) =>
+            this.config.baseBackoffMs * Math.pow(2, attempt - 1),
         }
+      );
 
-        return {
-          success: true,
-          title: cleanedTitle,
-        };
-      } catch (error) {
-        retriesUsed++;
-
-        if (retriesUsed <= this.config.maxRetries) {
-          // Wait with exponential backoff
-          const delay = this.config.baseBackoffMs * Math.pow(2, retriesUsed - 1);
-          await this.sleep(delay);
-        } else {
-          // Max retries exceeded
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          console.error('[TitleGenerator] Failed after max retries:', errorMessage);
-
-          return {
-            success: false,
-            error: errorMessage,
-          };
-        }
-      }
+      return {
+        success: true,
+        title: cleanedTitle,
+      };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error('[TitleGenerator] Failed after max retries:', errorMessage);
+      return {
+        success: false,
+        error: errorMessage,
+      };
     }
-
-    return {
-      success: false,
-      error: 'Unexpected termination',
-    };
   }
 
   /**

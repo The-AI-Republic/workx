@@ -204,13 +204,23 @@ export async function registerMCPTools(
     const readOnly = tool.annotations?.readOnlyHint ?? false;
     const destructive = tool.annotations?.destructiveHint ?? false;
 
+    // Track 14 audit: readOnlyHint is the MCP server's own, unverified
+    // self-declaration. Trusting it for the Plan Review freeze is only
+    // acceptable for the vetted built-in 'browser' server (chrome-devtools-
+    // mcp). A user-configured server self-declaring readOnlyHint:true on a
+    // mutating tool would otherwise bypass the freeze, so for any other
+    // server isReadOnly is forced false (frozen during review). Concurrency
+    // behavior is left on the raw hint to avoid an unrelated regression.
+    const TRUSTED_READONLY_MCP_SERVERS = new Set(['browser']);
+    const freezeReadOnly = TRUSTED_READONLY_MCP_SERVERS.has(serverName) ? readOnly : false;
+
     try {
       await registry.register(definition, handler, {
         riskAssessor,
         runtime: {
           concurrency: {
             isConcurrencySafe: () => readOnly,
-            isReadOnly: () => readOnly,
+            isReadOnly: () => freezeReadOnly,
             isDestructive: () => destructive,
           },
           result: {

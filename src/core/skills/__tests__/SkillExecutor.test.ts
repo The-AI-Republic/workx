@@ -84,6 +84,7 @@ describe('SkillExecutor — forked', () => {
       type: 'general-purpose',
       prompt: 'Do thing',
       description: 'Skill: test-skill',
+      contextMode: 'fork',
     });
     expect(result.status).toBe('forked');
     if (result.status === 'forked') {
@@ -124,6 +125,26 @@ describe('SkillExecutor — forked', () => {
     if (result.status === 'forked') {
       expect(result.success).toBe(false);
       expect(result.error).toBe('sub-agent crashed');
+    }
+  });
+
+  it("surfaces a clear error when the skill's agent does not allow fork", async () => {
+    // SkillExecutor always requests contextMode: 'fork'. If the skill points
+    // at an agent type whose allowedContextModes excludes fork, the runner
+    // rejects it and that reason must reach the caller verbatim (not be
+    // swallowed into a generic failure).
+    const skill = baseSkill({ context: 'fork', agent: 'isolated-only' });
+    const subAgentInvoker: SubAgentInvoker = async () => ({
+      success: false,
+      runId: 'run-rejected',
+      error: "Sub-agent type 'isolated-only' does not allow context mode 'fork'",
+    });
+    const exec = new SkillExecutor(makeRegistry(skill), hookRegistry, subAgentInvoker);
+    const result = await exec.execute('test-skill', '');
+    expect(result.status).toBe('forked');
+    if (result.status === 'forked') {
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/does not allow context mode 'fork'/);
     }
   });
 });

@@ -2,6 +2,7 @@
  * Event types
  */
 
+import type { PlanReviewPlan } from '../../tools/planReview/types';
 import type {
   ReviewRequest,
   ResponseItem,
@@ -98,8 +99,13 @@ export type EventMsg =
   // Turn lifecycle events
   | { type: 'TurnStarted'; data: TurnStartedEvent }
   | { type: 'TurnComplete'; data: TurnCompleteEvent }
+  | { type: 'PromptSuggestion'; data: PromptSuggestionEvent }
   | { type: 'ContextUpdated'; data: ContextUpdatedEvent }
   | { type: 'TurnRetry'; data: TurnRetryEvent }
+  // Track 12: rate-limit resilience events
+  | { type: 'RateLimitWaiting'; data: RateLimitWaitingEvent }
+  | { type: 'RateLimitWarning'; data: RateLimitWarningEvent }
+  | { type: 'ModelDowngraded'; data: ModelDowngradedEvent }
   // Browser action events
   | { type: 'DOMActionStart'; data: DOMActionStartEvent }
   | { type: 'StorageActionStart'; data: StorageActionStartEvent }
@@ -116,6 +122,15 @@ export type EventMsg =
   | { type: 'SubAgentStart'; data: SubAgentStartEvent }
   | { type: 'SubAgentComplete'; data: SubAgentCompleteEvent }
   | { type: 'SubAgentError'; data: SubAgentErrorEvent }
+  | { type: 'SubAgentWarning'; data: SubAgentWarningEvent }
+  // Shadow-agent runtime events (internal observability; UI ignores by default)
+  | { type: 'ShadowAgentStarted'; data: ShadowAgentRuntimeEventData }
+  | { type: 'ShadowAgentCompleted'; data: ShadowAgentRuntimeEventData }
+  | { type: 'ShadowAgentFailed'; data: ShadowAgentRuntimeEventData }
+  | { type: 'ShadowAgentCancelled'; data: ShadowAgentRuntimeEventData }
+  | { type: 'ShadowAgentCoalesced'; data: ShadowAgentRuntimeEventData }
+  | { type: 'ShadowAgentTimedOut'; data: ShadowAgentRuntimeEventData }
+  | { type: 'ShadowAgentFallbackUsed'; data: ShadowAgentRuntimeEventData }
   // Session summary telemetry (internal observability; UI ignores by default)
   | { type: 'SessionSummaryTelemetry'; data: SessionSummaryTelemetryEventData }
   // Track 04: typed-task layer events (background sub-agents only in v1)
@@ -200,6 +215,24 @@ export interface SessionSummaryTelemetryEvent {
   data: SessionSummaryTelemetryEventData;
 }
 
+export interface ShadowAgentRuntimeEventData {
+  run_id: string;
+  kind: string;
+  priority: string;
+  status?: string;
+  duration_ms?: number;
+  timeout_ms?: number;
+  failure_policy: string;
+  model?: string;
+  parent_engine_id?: string;
+  child_engine_id?: string;
+  dedupe_key?: string;
+  message?: string;
+  error?: string;
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
 export interface ErrorEvent {
   message: string;
   code?: string;
@@ -246,6 +279,10 @@ export interface TaskCompleteEvent {
   last_agent_message?: string;
   turn_count?: number;
   token_usage?: TaskTokenUsageSummary;
+  /** Track 18: USD cost for this task, computed once in core. */
+  cost_usd?: number;
+  /** Track 18: true if any turn was priced via the fallback rate. */
+  cost_estimated?: boolean;
   compaction_performed?: boolean;
   aborted?: boolean;
   abort_reason?: TurnAbortReason;
@@ -270,6 +307,10 @@ export interface TokenUsageInfo {
 export interface TokenCountEvent {
   info?: TokenUsageInfo;
   rate_limits?: RateLimitSnapshotEvent;
+  /** Track 18: cumulative session USD cost (additive rider on Track 12's fix). */
+  cost?: number;
+  /** Track 18: true if any of the cumulative cost was estimated. */
+  cost_estimated?: boolean;
 }
 
 export interface RateLimitSnapshotEvent {
@@ -574,6 +615,8 @@ export interface ApprovalRequestedEvent {
   explanation: string;
   command?: string;
   timeout?: number;
+  /** Track 14: structured plan for the editable Plan Review card. */
+  plan?: PlanReviewPlan;
 }
 
 /**
@@ -739,6 +782,11 @@ export interface TurnCompleteEvent {
   success?: boolean;
 }
 
+/** Track 24.3: predicted next user message for one-tap accept (ext/desktop). */
+export interface PromptSuggestionEvent {
+  suggestion: string;
+}
+
 export interface ContextUpdatedEvent {
   session_id?: string;
   context_type?: string;
@@ -748,6 +796,51 @@ export interface TurnRetryEvent {
   turn_id?: string;
   attempt?: number;
   reason?: string;
+}
+
+// Track 12: rate-limit resilience event payloads
+
+/**
+ * Emitted before a long unattended wait for a rate-limit window to reset, so
+ * a remote operator sees "waiting N ms for limit reset" instead of an opaque
+ * failure.
+ */
+export interface RateLimitWaitingEvent {
+  /** Milliseconds the agent will wait before the next attempt. */
+  delay_ms: number;
+  /** Persistent attempt counter (not the attended retry count). */
+  attempt: number;
+  /** HTTP status that triggered the wait (429 / 529), if known. */
+  status_code?: number;
+  /** Classified error kind: 'rate_limit' | 'overloaded' | 'server' | ... */
+  kind: string;
+}
+
+/**
+ * Early warning that quota is being consumed faster than the window sustains
+ * (time-relative threshold) or that a static threshold was crossed.
+ */
+export interface RateLimitWarningEvent {
+  /** Which window: 'primary' | 'secondary'. */
+  window: string;
+  /** Percent of the window consumed (0-100). */
+  used_percent: number;
+  /** Fraction of the window elapsed (0-1), when computable. */
+  time_progress?: number;
+  /** Seconds until the window resets, when known. */
+  resets_in_seconds?: number;
+  /** Human-readable summary for surfacing in the UI/transcript. */
+  message: string;
+}
+
+/**
+ * Emitted when sustained provider overload forces a model downgrade. Never
+ * silent — output quality changed.
+ */
+export interface ModelDowngradedEvent {
+  from_model?: string;
+  to_model: string;
+  reason: string;
 }
 
 // Browser action event payloads
@@ -812,12 +905,18 @@ export interface HookBlockedEvent {
 export interface SubAgentStartEvent {
   runId: string;
   subAgentType: string;
+  agentType?: string;
+  contextMode?: string;
+  executionMode?: string;
   description: string;
 }
 
 export interface SubAgentCompleteEvent {
   runId: string;
   subAgentType: string;
+  agentType?: string;
+  contextMode?: string;
+  executionMode?: string;
   turnCount: number;
   tokenUsage?: {
     input: number;
@@ -828,8 +927,13 @@ export interface SubAgentCompleteEvent {
 }
 
 export interface SubAgentErrorEvent {
-  runId: string;
-  subAgentType: string;
+  runId?: string;
+  subAgentType?: string;
   error: string;
 }
 
+export interface SubAgentWarningEvent {
+  runId: string;
+  subAgentType: string;
+  warning: string;
+}

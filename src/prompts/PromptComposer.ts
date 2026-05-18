@@ -12,15 +12,19 @@ import browserxIntro from './fragments/browserx_intro.md?raw';
 import piIntro from './fragments/applepi_intro.md?raw';
 import piServerIntro from './fragments/applepi_server_intro.md?raw';
 import coderIntro from './fragments/coder_intro.md?raw';
+import systemSemantics from './fragments/system_semantics.md?raw';
 import safety from './fragments/safety.md?raw';
+import actionRiskAndApproval from './fragments/action_risk_and_approval.md?raw';
+import workLoop from './fragments/work_loop.md?raw';
 import browserxTools from './fragments/browserx_tools.md?raw';
 import piTools from './fragments/pi_tools.md?raw';
 import coderTools from './fragments/coder_tools.md?raw';
 import codeGuardrails from './fragments/code_guardrails.md?raw';
-import taskPolicies from './fragments/task_execution_policies.md?raw';
-import approvalPolicies from './fragments/approval_policies.md?raw';
+import communication from './fragments/communication.md?raw';
 import compactSummarization from './fragments/compact_summarization.md?raw';
 import compactSummaryPrefix from './fragments/compact_summary_prefix.md?raw';
+import planReview from './fragments/plan_review.md?raw';
+import { resolvePersona } from './PersonaLoader';
 
 export type AgentType = 'browserx' | 'applepi' | 'applepi-server';
 
@@ -54,43 +58,6 @@ export const MODES: Record<AgentMode, AgentModeSpec> = {
   code: { id: 'code', label: 'Code', agentTypes: ['applepi', 'applepi-server'] },
 };
 
-/**
- * One composable prompt fragment.
- * - `modes` omitted  → shared/universal (included in every mode)
- * - `agentTypes` omitted → applies to every platform
- * - `body.kind === 'runtime'` → generated at compose time, not a static file
- */
-interface FragmentSpec {
-  id: string;
-  /** Composition order (ascending). */
-  order: number;
-  agentTypes?: AgentType[];
-  modes?: AgentMode[];
-  body: { kind: 'static'; content: string } | { kind: 'runtime' };
-}
-
-const FRAGMENTS: FragmentSpec[] = [
-  // 1. Identity intro
-  { id: 'intro', order: 10, agentTypes: ['browserx'], modes: ['general'], body: { kind: 'static', content: browserxIntro } },
-  { id: 'intro', order: 10, agentTypes: ['applepi'], modes: ['general'], body: { kind: 'static', content: piIntro } },
-  { id: 'intro', order: 10, agentTypes: ['applepi-server'], modes: ['general'], body: { kind: 'static', content: piServerIntro } },
-  { id: 'intro', order: 10, agentTypes: ['applepi', 'applepi-server'], modes: ['code'], body: { kind: 'static', content: coderIntro } },
-  // 2. Runtime metadata (generated)
-  { id: 'runtime', order: 20, body: { kind: 'runtime' } },
-  // 3. Safety (shared)
-  { id: 'safety', order: 30, body: { kind: 'static', content: safety } },
-  // 4. Tool guidance
-  { id: 'tools', order: 40, agentTypes: ['browserx'], modes: ['general'], body: { kind: 'static', content: browserxTools } },
-  { id: 'tools', order: 40, agentTypes: ['applepi', 'applepi-server'], modes: ['general'], body: { kind: 'static', content: piTools } },
-  { id: 'tools', order: 40, agentTypes: ['applepi', 'applepi-server'], modes: ['code'], body: { kind: 'static', content: coderTools } },
-  // 5. Task execution policies (shared)
-  { id: 'task_policy', order: 50, body: { kind: 'static', content: taskPolicies } },
-  // 6. Approval policies (shared)
-  { id: 'approval', order: 60, body: { kind: 'static', content: approvalPolicies } },
-  // 7. Mode-specific appends
-  { id: 'guardrails', order: 70, modes: ['code'], body: { kind: 'static', content: codeGuardrails } },
-];
-
 export interface RuntimeContext {
   /** Operating system: 'linux' | 'macos' | 'windows' */
   os?: string;
@@ -110,35 +77,94 @@ export interface RuntimeContext {
   currentDateTime?: string;
   /** Available memory in GB */
   memoryGB?: number;
+  /**
+   * Track 14 Plan Review: when true, the read-only-exploration fragment
+   * is appended so the model keeps proposing (not executing) across
+   * turns. Re-evaluated every compose() call → persists for the whole
+   * review. Orthogonal to the agent operating-mode axis.
+   */
+  planReviewActive?: boolean;
+  /** Selected output-style persona name (Track 24.2). Unknown → no-op. */
+  personaName?: string;
 }
 
 export class PromptComposer {
   /**
    * Compose the main agent system prompt for an (agentType, mode) pair.
    *
-   * Assembly is driven by the FRAGMENTS manifest: each fragment declares the
-   * platforms and modes it belongs to. Browserx never exposes modes — its
-   * `mode` is forced to 'general' regardless of the argument.
-   *
-   * Slot order: identity → runtime metadata → safety → tool guidance →
-   * task policies → approval policies → mode-specific appends.
+   * Assembled sections:
+   * 1. Self-intro + core directive + capabilities (agent/mode-specific)
+   * 2. Output-style persona, if configured
+   * 3. Runtime metadata (injected fresh each call)
+   * 4. System semantics, safety, action risk, and work loop (shared)
+   * 5. Tool guidance + operation strategy (agent/mode-specific)
+   * 6. Communication guidance (shared)
+   * 7. Code guardrails, when code mode is active
+   * 8. Plan review mode guidance, when active
    */
+  composeMainInstruction(agentType: AgentType, context?: RuntimeContext): string;
+  composeMainInstruction(agentType: AgentType, mode?: AgentMode, context?: RuntimeContext): string;
   composeMainInstruction(
     agentType: AgentType,
-    mode: AgentMode = DEFAULT_MODE,
+    modeOrContext: AgentMode | RuntimeContext = DEFAULT_MODE,
     context?: RuntimeContext
   ): string {
-    const effectiveMode: AgentMode = agentType === 'browserx' ? 'general' : mode;
+    const requestedMode: AgentMode = typeof modeOrContext === 'string' ? modeOrContext : DEFAULT_MODE;
+    const runtimeContext = typeof modeOrContext === 'string' ? context : modeOrContext;
+    const effectiveMode: AgentMode = agentType === 'browserx' ? 'general' : requestedMode;
+    const sections: string[] = [];
 
-    const sections = FRAGMENTS
-      .filter((f) => !f.agentTypes || f.agentTypes.includes(agentType))
-      .filter((f) => !f.modes || f.modes.includes(effectiveMode))
-      .sort((a, b) => a.order - b.order)
-      .map((f) =>
-        f.body.kind === 'runtime'
-          ? this.buildRuntimeMetadata(agentType, context)
-          : f.body.content
-      );
+    // 1. Agent identity & mission
+    const intro = effectiveMode === 'code' && agentType !== 'browserx'
+      ? coderIntro
+      : agentType === 'browserx'
+        ? browserxIntro
+        : agentType === 'applepi-server'
+          ? piServerIntro
+          : piIntro;
+    sections.push(intro);
+
+    // 1b. Output-style persona (Track 24.2). Additive; unknown/unset → null.
+    const persona = resolvePersona(runtimeContext?.personaName);
+    if (persona) sections.push(persona.prompt);
+
+    // 2. Runtime metadata
+    sections.push(this.buildRuntimeMetadata(agentType, runtimeContext));
+
+    // 3. Runtime and safety semantics
+    sections.push(systemSemantics);
+    sections.push(safety);
+    sections.push(actionRiskAndApproval);
+    sections.push(workLoop);
+
+    // 4. Tool guidance (static listing for MVP). A persona may opt out of the
+    //    coding/tool instructions via `keepCodingInstructions: false`.
+    if (!persona || persona.keepCodingInstructions) {
+      sections.push(agentType === 'browserx'
+        ? browserxTools
+        : effectiveMode === 'code'
+          ? coderTools
+          : piTools);
+    }
+
+    // 5. Communication guidance remains shared even for personas that opt out
+    //    of platform tool routing.
+    sections.push(communication);
+
+    // 6. Code-mode guardrails are mode-specific and should remain close to
+    // the end of the prompt for salience.
+    if (effectiveMode === 'code') {
+      sections.push(codeGuardrails);
+    }
+
+    // 7. Plan Review (Track 14) — appended last (highest salience) only
+    //    while the freeze is active, so the model proposes a plan instead
+    //    of executing. The freeze itself is the hard guarantee; this is
+    //    the soft cross-turn guidance so it doesn't waste turns on denied
+    //    mutations.
+    if (runtimeContext?.planReviewActive) {
+      sections.push(planReview);
+    }
 
     return sections.filter(Boolean).join('\n\n');
   }

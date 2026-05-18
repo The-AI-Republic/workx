@@ -45,6 +45,19 @@ export interface TurnContextConfig {
   summary?: ReasoningSummaryConfig;
   /** Enable review mode */
   reviewMode?: boolean;
+  /**
+   * Track 12: when true, the retry orchestrator treats 429/529 as
+   * unconditionally retryable and waits until the limit resets instead of
+   * hard-failing. Derived from platform (server ⇒ true) + scheduler/
+   * connector submission drivers; defaults false (attended).
+   */
+  unattended?: boolean;
+  /**
+   * Track 12: optional ceiling on a single unattended reset-wait. Set by the
+   * platform resolver for extension (MV3 SW lifetime). Undefined ⇒ orchestrator
+   * default (6 h).
+   */
+  unattendedResetCapMs?: number;
 }
 
 /**
@@ -61,6 +74,8 @@ export class TurnContext {
   private browserEnvironmentPolicy: BrowserEnvironmentPolicy;
   private toolsConfig: IToolsConfig;
   private reviewMode: boolean;
+  private unattended: boolean;
+  private unattendedResetCapMs?: number;
   private _selectedModelKey?: string;
 
   constructor(
@@ -78,6 +93,8 @@ export class TurnContext {
     this.sandboxPolicy = config.sandboxPolicy || { mode: 'workspace-write' };
     this.browserEnvironmentPolicy = config.browserEnvironmentPolicy || 'preserve';
     this.reviewMode = config.reviewMode || false;
+    this.unattended = config.unattended || false;
+    this.unattendedResetCapMs = config.unattendedResetCapMs;
 
     // Default tools configuration with all IToolsConfig fields
     this.toolsConfig = {
@@ -116,6 +133,12 @@ export class TurnContext {
     }
     if (config.reviewMode !== undefined) {
       this.reviewMode = config.reviewMode;
+    }
+    if (config.unattended !== undefined) {
+      this.unattended = config.unattended;
+    }
+    if (config.unattendedResetCapMs !== undefined) {
+      this.unattendedResetCapMs = config.unattendedResetCapMs;
     }
 
     // Update model client if model changed
@@ -359,6 +382,28 @@ export class TurnContext {
    */
   setReviewMode(enabled: boolean): void {
     this.reviewMode = enabled;
+  }
+
+  /**
+   * Track 12: whether this turn runs unattended (persistent rate-limit retry).
+   */
+  getUnattended(): boolean {
+    return this.unattended;
+  }
+
+  /**
+   * Set unattended posture (used by scheduler/connector submission drivers).
+   */
+  setUnattended(enabled: boolean): void {
+    this.unattended = enabled;
+  }
+
+  /**
+   * Track 12: per-platform ceiling on a single unattended reset-wait
+   * (undefined ⇒ orchestrator default).
+   */
+  getUnattendedResetCapMs(): number | undefined {
+    return this.unattendedResetCapMs;
   }
 
   /**

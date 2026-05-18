@@ -12,6 +12,7 @@ import { mapResponseItemToEventMessages } from './events/EventMapping';
 import type { EventMsg } from './protocol/events';
 import { RolloutRecorder, type RolloutItem } from '../storage/rollout';
 import { v4 as uuidv4 } from 'uuid';
+import { resetX402SessionPayments } from './payments/x402/tracker';
 import { TurnContext } from './TurnContext';
 import { type AgentMode, DEFAULT_MODE } from '../prompts/PromptComposer';
 import { AgentConfig } from '../config/AgentConfig';
@@ -24,6 +25,7 @@ import { type SessionServices, createSessionServices } from './session/state/Ses
 import { ActiveTurn } from './session/state/ActiveTurn';
 import type { TokenUsageInfo, RunningTask, RateLimitSnapshot, TurnAbortReason, InitialHistory } from './session/state/types';
 import { TaskKind } from './session/state/types';
+import { toRateLimitSnapshotEvent, evaluateEarlyWarning } from './models/types/RateLimits';
 import { isDOMSnapshotOutput, compressSnapshot } from './session/state/SnapshotCompressor';
 import type { HookDispatcher } from './hooks/HookDispatcher';
 
@@ -55,6 +57,8 @@ type SessionSummaryHookHandle = SessionSummaryHook;
 
 // Title generation imports
 import { TitleGenerator } from './title';
+import { PromptSuggestionGenerator } from './suggestions/promptSuggestion';
+import { SUGGESTION_COOLDOWN_MS } from './suggestions/constants';
 
 // Track 04: typed tasks
 import type { BackgroundAgentTaskState, TaskState } from './tasks/types';
@@ -62,6 +66,7 @@ import { isTerminalTaskStatus } from './tasks/types';
 import type { AgentContext } from '../tools/AgentTool/types';
 import { PANEL_GRACE_MS, STOPPED_DISPLAY_MS } from './tasks/timing';
 import type { TaskOutputStore } from './tasks/TaskOutputStore';
+import type { ShadowAgentScheduler } from './shadowAgent';
 
 // Track 09: tool result persistence
 import {
@@ -105,6 +110,9 @@ export class Session {
   private interruptRequested: boolean = false;
   private compactService: CompactService;
   private titleGenerator: TitleGenerator;
+  private suggestionGenerator: PromptSuggestionGenerator;
+  private suggestionInFlight = false;
+  private lastSuggestionAt = 0;
   private _memoryService: MemoryService | null = null;
 
   // ─── Track 04: typed task registry ────────────────────────────────────
@@ -127,6 +135,13 @@ export class Session {
   // preferences.defaultMode at construction, changed at runtime via
   // RepublicAgent.setSessionMode. Distinct from initialHistory.mode.
   private agentMode: AgentMode = DEFAULT_MODE;
+  /**
+   * Fatal initialization error for a non-persistent child/forked session.
+   * A forked sub-agent told it inherited the parent conversation must not
+   * silently run with empty history, so this is surfaced from initialize()
+   * rather than swallowed (see constructor non-persistent branch).
+   */
+  private initError: Error | null = null;
   private hookDispatcher: HookDispatcher | null = null;
 
   // Track 05b: per-session post-turn callbacks (e.g. session-summary
@@ -135,6 +150,8 @@ export class Session {
   // The session-summary hook itself is owned here and disposed in shutdown().
   private postTurnHooks: PostTurnHook[] = [];
   private _sessionSummaryHook: SessionSummaryHookHandle | null = null;
+  private shadowAgentScheduler: ShadowAgentScheduler | null = null;
+  private shadowCompactPrepareEnabled = false;
 
   // Tool result persistence (track 09). Both fields are undefined when the
   // platform deps required to build a store aren't available — TurnManager
@@ -184,6 +201,7 @@ export class Session {
     this.toolRegistry = toolRegistry ?? null; // Tool registry from RepublicAgent
     this.compactService = new CompactService(); // Initialize compaction service
     this.titleGenerator = new TitleGenerator(); // Initialize title generation service
+    this.suggestionGenerator = new PromptSuggestionGenerator(); // Track 24.3
 
     // Initialize services (merged from initialize() method)
     if (services) {
@@ -264,10 +282,14 @@ export class Session {
     if (this.isPersistent && (historyMode.mode === 'new' || historyMode.mode === 'forked')) {
       // Create new rollout
       this.initializationPromise = this.initializeSession('create', this.sessionId, this.config).then(() => {
-        // For forked mode, persist the forked history after rollout is created
+        // For forked mode, reconstruct THEN persist the forked history after
+        // the new rollout is created. recordInitialHistory() does
+        // reconstructHistoryFromRollout() -> persistRolloutResponseItems();
+        // this is its sole correct caller (Track 15, Phase 0a — previously
+        // this branch persisted an empty sessionState because nothing
+        // reconstructed historyMode.rolloutItems first).
         if (historyMode.mode === 'forked') {
-          const history = this.sessionState.historySnapshot();
-          return this.persistRolloutResponseItems(history);
+          return this.recordInitialHistory(historyMode);
         }
       }).catch(err => {
         console.error('Failed to initialize session:', err);
@@ -276,6 +298,21 @@ export class Session {
       // Resume from existing rollout (note: initializeSession will also reconstruct history)
       this.initializationPromise = this.initializeSession('resume', this.sessionId, this.config).catch(err => {
         console.error('Failed to resume session:', err);
+      });
+    } else if (!this.isPersistent && historyMode.mode !== 'new') {
+      // Non-persistent child sessions (sub-agents, shadow agents, forks)
+      // still need their in-memory parent/fork history reconstructed before
+      // the first turn. There is no rollout writer to await, but keeping the
+      // same initialization seam lets engines call session.initialize()
+      // uniformly.
+      this.initializationPromise = this.recordInitialHistory(historyMode).catch(err => {
+        console.error('Failed to initialize non-persistent session history:', err);
+        // Forked/child context is a correctness precondition: surface the
+        // failure via initialize() so the sub-agent runner reports an error
+        // instead of running with empty history. Recorded as a flag rather
+        // than a rejected promise to avoid an unhandled-rejection before
+        // initialize() is awaited.
+        this.initError = err instanceof Error ? err : new Error(String(err));
       });
     }
   }
@@ -523,6 +560,23 @@ export class Session {
     return this.sessionId;
   }
 
+  /**
+   * Track 18: fold a task's USD cost into the cumulative session total.
+   * Delegated to SessionState so it persists in the session export and is
+   * restored on resume. Called once per task from TaskRunner.persistTokenUsage.
+   */
+  addCost(usd: number, estimated: boolean): void {
+    this.sessionState.addCost(usd, estimated);
+  }
+
+  /**
+   * Track 18: cumulative USD cost for this session (live total) and whether
+   * any of it was priced via the fallback rate. Backs the /cost surface.
+   */
+  getCostInfo(): { cumulativeCostUSD: number; hasUnknownModelCost: boolean } {
+    return this.sessionState.getCostInfo();
+  }
+
   // ─── Track 05b: post-turn hooks + session-summary hook ──────────────────
 
   /**
@@ -568,6 +622,14 @@ export class Session {
     return this._sessionSummaryHook;
   }
 
+  setShadowAgentScheduler(scheduler: ShadowAgentScheduler | null): void {
+    this.shadowAgentScheduler = scheduler;
+  }
+
+  setShadowCompactPreparationEnabled(enabled: boolean): void {
+    this.shadowCompactPrepareEnabled = enabled;
+  }
+
   /**
    * Compatibility: Initialize session components
    * Note: Refactored Session initializes in constructor, this is for backward compatibility
@@ -576,6 +638,9 @@ export class Session {
     // Wait for background initialization if it's in progress
     if (this.initializationPromise) {
       await this.initializationPromise;
+    }
+    if (this.initError) {
+      throw this.initError;
     }
     return Promise.resolve();
   }
@@ -758,6 +823,8 @@ export class Session {
       {
         sessionId: this.sessionId,
         sessionSummaryHook: this._sessionSummaryHook,
+        shadowScheduler: this.shadowAgentScheduler ?? undefined,
+        enableShadowPrepare: this.shadowCompactPrepareEnabled,
       },
     );
 
@@ -873,6 +940,9 @@ export class Session {
 
     // Clear conversation history
     this.clearHistory();
+
+    // Track 23: a new conversation starts at $0 x402 spend (this session only)
+    resetX402SessionPayments(this.sessionId);
 
     // Create new conversation ID
     Object.assign(this, { sessionId: uuidv4() });
@@ -1070,7 +1140,9 @@ export class Session {
         let llmCaller = null;
 
         if (memoryApiKey) {
-          // Preferred path: dedicated gpt-4o-mini client via OpenAI key
+          // Preferred path: dedicated gpt-4o-mini client via OpenAI key.
+          // Track 11 note: memory extraction is a single tool-less completion;
+          // it intentionally does not take the agent's parallelToolCalls flag.
           const memoryLLMClient = new OpenAIChatCompletionClient({
             apiKey: memoryApiKey,
             baseUrl: useBackendForMemory && backendBaseUrl ? backendBaseUrl + '/openai' : undefined,
@@ -1440,7 +1512,9 @@ export class Session {
         };
       }
 
-      // All other providers use OpenAI-compatible Chat Completions API
+      // All other providers use OpenAI-compatible Chat Completions API.
+      // Track 11 note: memory-search is a single tool-less completion; it
+      // intentionally does not take the agent's parallelToolCalls flag.
       const { OpenAIChatCompletionClient } = await import('./models/client/OpenAIChatCompletionClient');
       const client = new OpenAIChatCompletionClient({
         apiKey: providerApiKey,
@@ -1657,9 +1731,18 @@ export class Session {
    * @param subId Submission ID
    */
   async sendTokenCountEvent(subId: string): Promise<void> {
-    // Get token info from SessionState
-    const tokenInfo = undefined; // Would need getTokenInfo method from SessionState
-    const rateLimits = undefined; // Would need getRateLimits method from SessionState
+    // Track 12: read the real values from SessionState (both were previously
+    // hardcoded undefined — the getters now exist). The stored snapshot is
+    // adapted to the flat RateLimitSnapshotEvent wire shape.
+    const tokenInfo = this.sessionState.getTokenInfo();
+    const snapshot = this.sessionState.getRateLimits();
+    const rateLimits = snapshot
+      ? toRateLimitSnapshotEvent(snapshot)
+      : undefined;
+
+    // Track 18: ride the cumulative session cost out on the same event
+    // (purely additive on Track 12's repair).
+    const cost = this.sessionState.getCostInfo();
 
     const event: Event = {
       id: subId,
@@ -1668,6 +1751,8 @@ export class Session {
         data: {
           info: tokenInfo,
           rate_limits: rateLimits,
+          cost: cost.cumulativeCostUSD,
+          cost_estimated: cost.hasUnknownModelCost,
         },
       } as EventMsg,
     };
@@ -2418,6 +2503,49 @@ export class Session {
   }
 
   /**
+   * Track 24.3: after a completed turn, predict the user's likely next
+   * message and emit it for one-tap accept in the interactive UI.
+   *
+   * Gated OFF on the headless server build — there is no user to suggest to,
+   * so the extra model call would be pure cost. Fire-and-forget; never blocks
+   * task completion. Mirrors {@link maybeGenerateTitle}'s background pattern.
+   */
+  async maybeGenerateSuggestion(): Promise<void> {
+    const { getRuntimeProfile } = await import('@/runtime/profile');
+    if (getRuntimeProfile() === 'server') {
+      return;
+    }
+    // Single-flight + cooldown: a slow background call must not stack with the
+    // next task's completion, and rapid retried/aborted completions must not
+    // each spawn a model call.
+    if (this.suggestionInFlight) return;
+    if (Date.now() - this.lastSuggestionAt < SUGGESTION_COOLDOWN_MS) return;
+
+    const history = this.sessionState.historySnapshot();
+    if (this.suggestionGenerator.countAssistantTurns(history) < 2) {
+      return;
+    }
+    const modelClient = this.getModelClientForTitle();
+    if (!modelClient) return;
+
+    this.suggestionInFlight = true;
+    try {
+      const result = await this.suggestionGenerator.generateSuggestion(history, modelClient);
+      this.lastSuggestionAt = Date.now();
+      if (result.success && result.suggestion) {
+        await this.emitEvent({
+          id: crypto.randomUUID(),
+          msg: { type: 'PromptSuggestion', data: { suggestion: result.suggestion } },
+        });
+      } else if (!result.success) {
+        console.debug('[Session] Prompt suggestion generation failed:', result.error);
+      }
+    } finally {
+      this.suggestionInFlight = false;
+    }
+  }
+
+  /**
    * Reconstruct history from rollout
    *
    * Reconstructs conversation history from rollout storage, handling both
@@ -2447,11 +2575,16 @@ export class Session {
         // Compacted history with summary
         // The compacted item should contain a summary that replaces multiple items
         const compactedData = rolloutItem.payload as any;
-        if (compactedData.summary) {
+        // CompactedItem declares `message` (storage/rollout/types.ts). Earlier
+        // notes referenced `summary`; read `message` first and fall back to
+        // `summary` for forward/backward tolerance (Track 15, Phase 0b — this
+        // is what summarize_up_to emits and what fork-replay reads back).
+        const compactedText = compactedData.message ?? compactedData.summary;
+        if (compactedText) {
           // Add summary as a system message
           responseItems.push({
             role: 'system',
-            content: compactedData.summary,
+            content: compactedText,
             type: 'message'
           } as ResponseItem);
         }
@@ -2518,6 +2651,21 @@ export class Session {
   }
 
   /**
+   * Track 12: record a rate-limit snapshot observed on the live model
+   * stream (the `RateLimits` ResponseEvent in TurnManager). This is the
+   * public entrypoint that makes the snapshot path actually fire in
+   * production — without it the parsed snapshot was dropped and
+   * `sendTokenCountEvent` could only ever emit `undefined`.
+   *
+   * @param rateLimits Rate limit snapshot parsed by the provider client
+   */
+  async recordRateLimits(rateLimits: RateLimitSnapshot): Promise<void> {
+    // Reactive emission (not tied to a specific submission) — use a fresh
+    // correlation id, consistent with how other mid-stream events are id'd.
+    await this.updateRateLimits(uuidv4(), rateLimits);
+  }
+
+  /**
    * Update rate limits
    *
    * Updates SessionState with rate limit information and sends token count event.
@@ -2532,6 +2680,31 @@ export class Session {
   ): Promise<void> {
     // Update SessionState
     this.sessionState.updateRateLimits(rateLimits);
+
+    // Track 12: emit an early warning when quota is being burned faster than
+    // the window sustains (before the API actually rejects).
+    const warning = evaluateEarlyWarning(rateLimits);
+    if (warning) {
+      const resetSuffix =
+        warning.resets_in_seconds !== undefined
+          ? `, resets in ${Math.ceil(warning.resets_in_seconds)}s`
+          : '';
+      await this.sendEvent({
+        id: subId,
+        msg: {
+          type: 'RateLimitWarning',
+          data: {
+            window: warning.window,
+            used_percent: warning.used_percent,
+            time_progress: warning.time_progress,
+            resets_in_seconds: warning.resets_in_seconds,
+            message:
+              `Approaching rate limit: ${warning.used_percent.toFixed(0)}% of ` +
+              `the ${warning.window} window used${resetSuffix}`,
+          },
+        } as EventMsg,
+      });
+    }
 
     // Send token count event
     await this.sendTokenCountEvent(subId);
@@ -2614,6 +2787,26 @@ export class Session {
       // Persist forked history to new rollout
       const history = this.sessionState.historySnapshot();
       await this.persistRolloutResponseItems(history);
+    }
+  }
+
+  /**
+   * Flush any queued rollout writes to durable storage.
+   *
+   * The static RolloutRecorder read path bypasses this live session's
+   * writer (writes are serialized through RolloutWriter.writeQueue), so any
+   * caller that needs to read this conversation's items while it is still
+   * live — e.g. the Track 15 rewind selector / slice fn — MUST call this
+   * first, otherwise queued-but-unflushed turns are invisible (Track 15,
+   * D13 / Phase 0c). No-op if this session has no rollout recorder.
+   */
+  async flushRollout(): Promise<void> {
+    if (this.services?.rollout) {
+      try {
+        await this.services.rollout.flush();
+      } catch (e) {
+        console.error('Failed to flush rollout recorder:', e);
+      }
     }
   }
 

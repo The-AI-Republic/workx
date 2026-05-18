@@ -6,6 +6,7 @@
  */
 
 import type { Event } from '../core/protocol/types';
+import type { PlanReviewPlan } from '../tools/planReview/types';
 
 // ============================================================================
 // Core Event Display Types
@@ -136,6 +137,12 @@ export interface EventMetadata {
   // Token Usage (TokenCount events)
   tokenUsage?: TokenUsage;
 
+  // Track 18: USD cost (sibling of tokenUsage — cost is never inside the
+  // token shape). costUSD is the task's cost; costEstimated true if priced
+  // via the fallback rate (unknown/downgraded model).
+  costUSD?: number;
+  costEstimated?: boolean;
+
   // Command Execution
   command?: string;               // Original command
   exitCode?: number;              // Exit code (0 = success)
@@ -222,6 +229,7 @@ export interface ApprovalRequest {
   riskLevel?: string;                  // 'none' | 'low' | 'medium' | 'high' | 'critical'
   riskFactors?: string[];              // Human-readable risk factors
   countdown?: number;                  // Seconds remaining for auto-timeout
+  plan?: PlanReviewPlan;               // Track 14: structured plan → editable card
 
   // Response callbacks
   onApprove: () => void;               // Callback for approval

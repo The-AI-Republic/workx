@@ -62,6 +62,15 @@
       </svg>`
     },
     {
+      id: 'keyboard-shortcuts',
+      label: t('Keyboard Shortcuts'),
+      description: t('View and customize app keyboard shortcuts'),
+      icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+        <path d="M7 9h.01M11 9h.01M15 9h.01M17 13h.01M13 13h.01M9 13h.01M7 17h10"></path>
+      </svg>`
+    },
+    {
       id: 'memory',
       label: t('Memory'),
       description: t('Long-term memory across conversations'),

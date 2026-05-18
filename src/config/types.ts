@@ -6,6 +6,7 @@
 import type { IApprovalConfig } from '../core/approval/types';
 import type { AgentMode } from '../prompts/PromptComposer';
 import type { HooksConfig } from '../core/hooks/types';
+import type { ShortcutUserConfig } from '../core/shortcuts/types';
 
 /**
  * Main centralized configuration interface for the agent (RUNTIME)
@@ -52,6 +53,24 @@ export interface IAgentConfig {
   storage?: IStorageConfig;
   approval?: IApprovalConfig;
   hooks?: HooksConfig;
+
+  /**
+   * Track 20: runtime-only managed-policy marker. Populated by the policy
+   * resolver post-merge. NOT persisted (absent from {@link IStoredConfig} and
+   * {@link extractStoredConfig}). `lockedKeys` are namespace-relative agent
+   * dot-paths the UI renders non-editable; `origin` identifies the source.
+   */
+  policy?: {
+    lockedKeys: string[];
+    origin: 'chrome-managed' | 'file' | 'remote' | 'env' | null;
+  };
+
+  /**
+   * Track 10: per-plugin enable state. Keyed by `<name>@<marketplace>`.
+   * Read by `PluginRegistry.bootstrapEnabledPlugins`; written on every
+   * `/plugin enable|disable`. Absent → no plugins enabled.
+   */
+  enabledPlugins?: Record<string, boolean>;
 }
 
 // Model pricing information
@@ -195,6 +214,16 @@ export interface IModelConfig {
    * Default: 0 (must be explicitly enabled)
    */
   supportBackendMode?: number;
+
+  /**
+   * Track 12: fallback model key (optional).
+   * When sustained provider overload (consecutive 529s) is detected, the
+   * retry orchestrator downgrades to this model and retries. Must be a
+   * composite key (`provider:modelKey`, e.g. `openai:gpt-5.1`) of a
+   * generally-available model. Undefined ⇒ no downgrade (the run fails
+   * after the retry budget instead).
+   */
+  fallbackModelKey?: string;
 }
 
 // Provider configuration
@@ -364,8 +393,14 @@ export interface IUserPreferences {
    */
   sessionSummaryEnabled?: boolean;
   zoomLevel?: number;
-  shortcuts?: Record<string, string>;
+  shortcuts?: ShortcutUserConfig | Record<string, string>;
   experimental?: Record<string, boolean>;
+  /**
+   * Track 24.2: selected output-style persona name. Resolved against built-in
+   * `src/prompts/styles/*.md` (and filesystem `.browserx/styles` on the
+   * server). Unknown/unset → the prompt is composed unchanged.
+   */
+  personaName?: string;
 }
 
 export interface ICacheSettings {
@@ -456,6 +491,15 @@ export interface IToolsConfig {
   mcpTools?: boolean;
   customTools?: Record<string, boolean>;
 
+  /**
+   * Allow the model to emit multiple tool calls in one response (Track 11).
+   * When true, Track 02's orchestrator runs concurrency-safe calls in
+   * parallel (bounded) and unsafe calls sequentially. Applies to all
+   * OpenAI-compatible providers; Gemini already emits the parallel format
+   * natively. Default false (conservative — preserves current behavior).
+   */
+  parallelToolCalls?: boolean;
+
   // Shared configuration metadata
   enabled?: string[];
   disabled?: string[];
@@ -527,6 +571,8 @@ export interface IStoredConfig {
   approval?: IApprovalConfig;
   /** Hook system configuration */
   hooks?: HooksConfig;
+  /** Track 10: per-plugin enable state, keyed by `<name>@<marketplace>` */
+  enabledPlugins?: Record<string, boolean>;
 }
 
 // Storage interfaces
@@ -584,7 +630,7 @@ export interface IExportData {
 // Event interfaces for config changes
 export interface IConfigChangeEvent {
   type: 'config-changed';
-  section: 'model' | 'provider' | 'profile' | 'preferences' | 'cache' | 'extension' | 'security' | 'approval' | 'hooks';
+  section: 'model' | 'provider' | 'profile' | 'preferences' | 'cache' | 'extension' | 'security' | 'approval' | 'hooks' | 'policy' | 'enabledPlugins';
   oldValue?: any;
   newValue: any;
   timestamp: number;

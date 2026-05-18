@@ -1,10 +1,12 @@
 // File: src/tools/AgentTool/builtinTypes.ts
 
 import type { SubAgentTypeConfig } from './types';
+import { AgentType, SubAgentContextMode } from './agentTypes';
 
 export const BUILTIN_SUBAGENT_TYPES: SubAgentTypeConfig[] = [
   {
     id: 'researcher',
+    agentType: AgentType.Researcher,
     name: 'Researcher',
     description: 'Fast read-only agent for exploring the codebase, searching files, reading documentation, and gathering information. Use when you need to find or understand something before acting.',
     systemPrompt: `You are a research assistant. Your job is to find information, read files, search code, and report back concisely.
@@ -20,9 +22,12 @@ Rules:
     maxTurns: 15,
     approvalPolicy: 'never',
     suppressedEvents: ['AgentMessageDelta', 'AgentReasoningDelta'],
+    defaultContextMode: SubAgentContextMode.Isolated,
+    allowedContextModes: [SubAgentContextMode.Isolated, SubAgentContextMode.Fork],
   },
   {
     id: 'planner',
+    agentType: AgentType.Planner,
     name: 'Planner',
     description: 'Agent for analyzing requirements and creating implementation plans. Use when you need to break down a complex task into steps before executing.',
     systemPrompt: `You are a planning assistant. Analyze the task, identify the files and components involved, and create a clear step-by-step plan.
@@ -38,9 +43,12 @@ Rules:
     maxTurns: 20,
     approvalPolicy: 'never',
     suppressedEvents: ['AgentMessageDelta', 'AgentReasoningDelta'],
+    defaultContextMode: SubAgentContextMode.Isolated,
+    allowedContextModes: [SubAgentContextMode.Isolated, SubAgentContextMode.Fork],
   },
   {
     id: 'worker',
+    agentType: AgentType.Worker,
     name: 'Worker',
     description: 'General-purpose agent that can read, write, and execute. Use for independent sub-tasks that can be fully described in the prompt without needing back-and-forth.',
     systemPrompt: `You are a task executor. Complete the assigned task efficiently and report what you did.
@@ -55,5 +63,7 @@ Rules:
     maxTurns: 25,
     approvalPolicy: 'inherit',
     suppressedEvents: ['AgentMessageDelta'],
+    defaultContextMode: SubAgentContextMode.Isolated,
+    allowedContextModes: [SubAgentContextMode.Isolated, SubAgentContextMode.Fork],
   },
 ];

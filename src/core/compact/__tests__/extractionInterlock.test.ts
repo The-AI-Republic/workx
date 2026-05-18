@@ -19,6 +19,7 @@ import { SESSION_SUMMARY_TEMPLATE } from '../../sessionSummary/template';
 import type { SessionSummaryHook } from '../../sessionSummary/SessionSummaryHook';
 import type { ResponseItem } from '../../protocol/types';
 import type { ModelClient } from '../../models/ModelClient';
+import { ShadowAgentKind, type ShadowAgentScheduler } from '../../shadowAgent';
 
 vi.mock('../../models/types/ResponseEvent', () => ({
   isOutputTextDelta: (event: { type: string }) => event.type === 'output_text_delta',
@@ -210,5 +211,52 @@ describe('CompactService — Track 05b interlock', () => {
     const result = await service.compact(history, 'auto', model, 100);
     expect(result.success).toBe(true);
     expect(captured[0]).not.toContain('<session_summary>');
+  });
+
+  it('folds an opt-in shadow compaction note into the direct compaction prompt', async () => {
+    const service = new CompactService();
+    const captured: string[] = [];
+    const model = makeStreamingModel(captured);
+    const history: ResponseItem[] = [userMsg('hi'), asstMsg('there')];
+    const shadowScheduler = {
+      run: vi.fn(async () => ({
+        kind: ShadowAgentKind.Compact,
+        status: 'completed',
+        outputText: 'shadow note about earlier state',
+        durationMs: 1,
+        runId: 'shadow-compact',
+      })),
+    } as unknown as ShadowAgentScheduler;
+
+    const result = await service.compact(history, 'auto', model, 100, undefined, {
+      sessionId: 's-1',
+      shadowScheduler,
+      enableShadowPrepare: true,
+    });
+
+    expect(result.success).toBe(true);
+    expect(shadowScheduler.run).toHaveBeenCalledTimes(1);
+    expect(captured[0]).toContain('shadow note about earlier state');
+  });
+
+  it('uses direct compaction when opt-in shadow preparation fails', async () => {
+    const service = new CompactService();
+    const captured: string[] = [];
+    const model = makeStreamingModel(captured);
+    const history: ResponseItem[] = [userMsg('hi'), asstMsg('there')];
+    const shadowScheduler = {
+      run: vi.fn(async () => {
+        throw new Error('shadow unavailable');
+      }),
+    } as unknown as ShadowAgentScheduler;
+
+    const result = await service.compact(history, 'auto', model, 100, undefined, {
+      sessionId: 's-1',
+      shadowScheduler,
+      enableShadowPrepare: true,
+    });
+
+    expect(result.success).toBe(true);
+    expect(captured[0]).toBe('Summarize.');
   });
 });

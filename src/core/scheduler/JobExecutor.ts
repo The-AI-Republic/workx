@@ -15,6 +15,14 @@ import type {
 import { createExecutionRecord } from '../models/types/ScheduleEvent';
 import type { JobResultRecord } from '../models/types/Scheduler';
 import type { AgentRegistry } from '../registry/AgentRegistry';
+import { computeRewindSlice, findCheckpointSequence } from '../session/rewind';
+
+/**
+ * Track 15: max rewind-from-checkpoint retries before a scheduled job is
+ * terminally failed. Bounds the resume-instead-of-fail loop; failed-attempt
+ * side effects are NOT undone, so this is intentionally small.
+ */
+const MAX_REWIND_RETRIES = 2;
 
 /**
  * Notification handler callback — platform-specific notification display
@@ -47,11 +55,30 @@ export type ExecutionCompleteHandler = (scheduleEventId: string) => Promise<void
 /**
  * Event emitter for execution status changes
  */
+/**
+ * Machine-readable cause for a scheduled-execution failure/degradation.
+ * Closed enum (privacy-clean) so telemetry can answer "why did a scheduled
+ * job abort" — including the pre-session cases the scheduler was previously
+ * silent about. `concurrent`/`offline`/`missed` have no execution record at
+ * the point they occur and remain documented residue (not emitted yet).
+ */
+export type ExecutionFailureReason =
+  | 'session_create_failed'
+  | 'no_launcher'
+  | 'launcher_error'
+  | 'agent_error'
+  | 'stale_recovered'
+  | 'mutex_queued'
+  | 'offline'
+  | 'missed'
+  | 'concurrent';
+
 export type ExecutionEventEmitter = (event: {
   executionId: string;
   scheduleEventId: string;
   status: string;
   timestamp: number;
+  failureReason?: ExecutionFailureReason;
 }) => void;
 
 export class JobExecutor {
@@ -129,6 +156,9 @@ export class JobExecutor {
         const id = uuidv4();
         const record = createExecutionRecord(id, scheduleEventId, instanceTime, input);
         await this.executionStorage.createExecution(record);
+        // Telemetry: a deferral was previously silent (status 'pending' is
+        // never emitted). Surface it so operators see queue back-pressure.
+        this.emitEvent(id, scheduleEventId, 'pending', 'mutex_queued');
         return id;
       }
       this.isExecuting = true;
@@ -142,6 +172,7 @@ export class JobExecutor {
 
         // Create agent session
         let sessionId: string;
+        let sessionCreateFailed = false;
         if (this.registry && this.registry.canCreateSession()) {
           try {
             const session = await this.registry.createSession({ type: 'scheduled' });
@@ -150,6 +181,7 @@ export class JobExecutor {
           } catch (error) {
             console.error(`[JobExecutor] Failed to create session for execution ${executionId}:`, error);
             sessionId = `session_${uuidv4()}`;
+            sessionCreateFailed = true;
           }
         } else {
           sessionId = `session_${uuidv4()}`;
@@ -162,8 +194,14 @@ export class JobExecutor {
         await this.showNotification(scheduleEventId, instanceTime, input);
 
         // Emit running event before launch (launchJob catches errors and calls failExecution,
-        // which would emit 'failed' — so we must emit 'running' first)
-        this.emitEvent(executionId, scheduleEventId, 'running');
+        // which would emit 'failed' — so we must emit 'running' first).
+        // A swallowed session-create failure was previously invisible; tag it.
+        this.emitEvent(
+          executionId,
+          scheduleEventId,
+          'running',
+          sessionCreateFailed ? 'session_create_failed' : undefined,
+        );
 
         // Launch job
         await this.launchJob(executionId, sessionId);
@@ -209,11 +247,22 @@ export class JobExecutor {
   /**
    * Mark an execution as failed.
    */
-  async failExecution(executionId: string, error: string): Promise<void> {
+  async failExecution(
+    executionId: string,
+    error: string,
+    failureReason: ExecutionFailureReason = 'agent_error',
+  ): Promise<void> {
     const execution = await this.executionStorage.getExecution(executionId);
     if (!execution) throw new Error(`Execution not found: ${executionId}`);
     if (execution.status !== 'running') {
       throw new Error(`Cannot fail execution in ${execution.status} status`);
+    }
+
+    // Track 15 (D10): before terminally failing, try to resume from the last
+    // good checkpoint by forking the source rollout. This is the single
+    // chokepoint (covers launcher-thrown and event-driven failures).
+    if (await this.maybeRewindRetry(execution, error)) {
+      return;
     }
 
     await this.cleanupSession(executionId);
@@ -224,7 +273,7 @@ export class JobExecutor {
       completedAt: Date.now(),
     });
 
-    this.emitEvent(executionId, execution.scheduleEventId, 'failed');
+    this.emitEvent(executionId, execution.scheduleEventId, 'failed', failureReason);
 
     // Notify ScheduleManager to re-arm alarms (failed jobs don't break the chain)
     if (this.executionCompleteHandler) {
@@ -234,6 +283,103 @@ export class JobExecutor {
     // Schedule queue processing asynchronously to avoid recursion
     // (failExecution can be called from launchJob → executePendingRecord → processQueue)
     queueMicrotask(() => { this.processQueue().catch(() => {}); });
+  }
+
+  /**
+   * Track 15: on hard failure, fork the source conversation from its last
+   * good checkpoint and re-launch the same input instead of failing
+   * terminally. Returns true if a retry was launched (caller must return).
+   *
+   * The source rollout is append-only and untouched; a NEW scheduled session
+   * is created from the sliced prefix. The failed attempt's side effects
+   * (exec'd commands, file writes, sent messages) are NOT undone — retries
+   * are bounded by MAX_REWIND_RETRIES.
+   */
+  private async maybeRewindRetry(
+    execution: ExecutionRecord,
+    error: string
+  ): Promise<boolean> {
+    try {
+      if (!this.registry || !this.registry.canCreateSession()) return false;
+      const priorRetries = execution.retryCount ?? 0;
+      if (priorRetries >= MAX_REWIND_RETRIES) return false;
+      const sourceConvId = execution.sessionId;
+      if (!sourceConvId) return false;
+      const srcSession = this.registry.getSession(sourceConvId);
+      if (!srcSession?.agent) return false;
+
+      // D13: flush the live source session before reading its rollout.
+      await srcSession.agent.getSession().flushRollout?.();
+
+      // D10: checkpoint = last user-turn boundary <= last assistant turn.
+      const checkpointSeq = await findCheckpointSequence(sourceConvId);
+      const forked =
+        checkpointSeq != null
+          ? await computeRewindSlice(sourceConvId, checkpointSeq)
+          : null;
+
+      // Terminally resolve the failed execution WITHOUT emitting 'failed' or
+      // notifying the schedule handler — the retry execution drives the
+      // lifecycle (and re-arms alarms) from here.
+      await this.cleanupSession(execution.id);
+      await this.executionStorage.updateExecution(execution.id, {
+        status: 'failed',
+        error: `${error} (rewound; retry ${priorRetries + 1}/${MAX_REWIND_RETRIES})`,
+        completedAt: Date.now(),
+      });
+
+      // Fresh execution: forked from the checkpoint when one exists, else a
+      // plain bounded retry from the original input (retry-from-zero).
+      const retryId = uuidv4();
+      const retryRec = createExecutionRecord(
+        retryId,
+        execution.scheduleEventId,
+        execution.instanceTime,
+        execution.input
+      );
+      retryRec.retryCount = priorRetries + 1;
+      retryRec.status = 'running';
+      retryRec.startedAt = Date.now();
+
+      const session = await this.registry.createSession(
+        forked
+          ? {
+              type: 'scheduled',
+              fork: {
+                sourceConversationId: forked.sourceConversationId,
+                rolloutItems: forked.rolloutItems,
+              },
+            }
+          : { type: 'scheduled' }
+      );
+      retryRec.sessionId = session.sessionId;
+      this.executionSessions.set(retryId, session.sessionId);
+      await this.executionStorage.createExecution(retryRec);
+
+      this.emitEvent(retryId, execution.scheduleEventId, 'running');
+      // Fire-and-forget; launchJob handles its own errors and recurses into
+      // failExecution (bounded by retryCount).
+      void this.launchJob(retryId, session.sessionId);
+
+      console.warn(
+        `[JobExecutor] Rewound failed execution ${execution.id} → ${retryId} ` +
+        `(checkpoint ${checkpointSeq ?? 'none/retry-from-zero'}; side effects NOT undone)`
+      );
+
+      // The rewind path returns early and skips the normal failExecution
+      // tail; without this, pending queued executions would not be drained
+      // until the retry chain terminally ends. The retry already holds its
+      // slot via launchJob, and processQueue re-checks canCreateSession, so
+      // this only releases genuinely-available capacity.
+      queueMicrotask(() => { this.processQueue().catch(() => {}); });
+      return true;
+    } catch (e) {
+      console.error(
+        '[JobExecutor] maybeRewindRetry failed; falling back to normal failure:',
+        e
+      );
+      return false;
+    }
   }
 
   /**
@@ -310,6 +456,7 @@ export class JobExecutor {
     try {
       // Create agent session
       let sessionId: string;
+      let sessionCreateFailed = false;
       if (this.registry && this.registry.canCreateSession()) {
         try {
           const session = await this.registry.createSession({ type: 'scheduled' });
@@ -317,6 +464,7 @@ export class JobExecutor {
           this.executionSessions.set(record.id, sessionId);
         } catch {
           sessionId = `session_${uuidv4()}`;
+          sessionCreateFailed = true;
         }
       } else {
         sessionId = `session_${uuidv4()}`;
@@ -328,7 +476,12 @@ export class JobExecutor {
         startedAt: Date.now(),
       });
 
-      this.emitEvent(record.id, record.scheduleEventId, 'running');
+      this.emitEvent(
+        record.id,
+        record.scheduleEventId,
+        'running',
+        sessionCreateFailed ? 'session_create_failed' : undefined,
+      );
 
       // Show notification with the stored input
       await this.showNotification(record.scheduleEventId, record.instanceTime, record.input);
@@ -356,7 +509,12 @@ export class JobExecutor {
         error: 'Execution interrupted: app was restarted while job was running',
         completedAt: Date.now(),
       });
-      this.emitEvent(execution.id, execution.scheduleEventId, 'failed');
+      this.emitEvent(
+        execution.id,
+        execution.scheduleEventId,
+        'failed',
+        'stale_recovered',
+      );
     }
   }
 
@@ -396,11 +554,15 @@ export class JobExecutor {
         }
         await this.jobLauncher(executionId, sessionId, agent);
       } else {
+        // No launcher: behavior intentionally unchanged (no state change) to
+        // avoid a scheduler control-flow regression. This is documented
+        // residue alongside concurrent/offline/missed — the `no_launcher`
+        // enum value is reserved but not emitted here (design §6 "residue").
         console.warn('[JobExecutor] No job launcher configured — execution will not run');
       }
     } catch (error) {
       console.error(`[JobExecutor] Job launcher failed for execution ${executionId}:`, error);
-      await this.failExecution(executionId, `Job launcher error: ${error instanceof Error ? error.message : String(error)}`);
+      await this.failExecution(executionId, `Job launcher error: ${error instanceof Error ? error.message : String(error)}`, 'launcher_error');
     }
   }
 
@@ -417,13 +579,19 @@ export class JobExecutor {
     }
   }
 
-  private emitEvent(executionId: string, scheduleEventId: string, status: string): void {
+  private emitEvent(
+    executionId: string,
+    scheduleEventId: string,
+    status: string,
+    failureReason?: ExecutionFailureReason,
+  ): void {
     if (this.eventEmitter) {
       this.eventEmitter({
         executionId,
         scheduleEventId,
         status,
         timestamp: Date.now(),
+        ...(failureReason ? { failureReason } : {}),
       });
     }
   }
