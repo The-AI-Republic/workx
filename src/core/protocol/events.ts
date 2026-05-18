@@ -219,6 +219,7 @@ export interface ShadowAgentRuntimeEventData {
   duration_ms?: number;
   timeout_ms?: number;
   failure_policy: string;
+  model?: string;
   parent_engine_id?: string;
   child_engine_id?: string;
   dedupe_key?: string;

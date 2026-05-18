@@ -1,10 +1,5 @@
 import type { EngineEvent } from '@/core/engine/RepublicAgentEngineConfig';
-import type {
-  ShadowAgentKind,
-  ShadowAgentPriority,
-  ShadowAgentStatus,
-  ShadowFailurePolicy,
-} from './types';
+import type { ShadowAgentRuntimeEventData } from '@/core/protocol/events';
 
 export type ShadowAgentEventType =
   | 'ShadowAgentStarted'
@@ -15,23 +10,12 @@ export type ShadowAgentEventType =
   | 'ShadowAgentTimedOut'
   | 'ShadowAgentFallbackUsed';
 
-export interface ShadowAgentEventData {
-  run_id: string;
-  kind: ShadowAgentKind;
-  priority: ShadowAgentPriority;
-  status?: ShadowAgentStatus;
-  duration_ms?: number;
-  timeout_ms?: number;
-  failure_policy: ShadowFailurePolicy;
-  model?: string;
-  parent_engine_id?: string;
-  child_engine_id?: string;
-  dedupe_key?: string;
-  message?: string;
-  error?: string;
-  metadata?: Record<string, unknown>;
-  [key: string]: unknown;
-}
+/**
+ * Canonical shadow-agent event payload. Aliased to the protocol-level
+ * {@link ShadowAgentRuntimeEventData} so the wire type and the emit type
+ * cannot drift apart.
+ */
+export type ShadowAgentEventData = ShadowAgentRuntimeEventData;
 
 export function createShadowAgentEvent(
   type: ShadowAgentEventType,

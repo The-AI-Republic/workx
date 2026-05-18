@@ -1,6 +1,6 @@
 import { createChildToolRegistry } from '@/tools/ToolRegistryCloner';
 import type { RepublicAgentEngine } from '@/core/engine/RepublicAgentEngine';
-import type { EngineEvent } from '@/core/engine/RepublicAgentEngineConfig';
+import type { ShadowAgentRuntimeEventData } from '@/core/protocol/events';
 import { getShadowAgentProfile } from './builtins';
 import { buildShadowInitialHistory } from './ShadowAgentContext';
 import { createShadowAgentEvent, errorToMessage } from './ShadowAgentEvents';
@@ -48,6 +48,25 @@ export class ShadowAgentRunner {
       metadata: resolved.metadata,
     });
 
+    // Deterministic timeout: our own controller + timer so that the
+    // timed_out vs. failed classification does not depend on the engine's
+    // error-message wording. Also fully links/unlinks the caller signals so
+    // a long-lived signal never accumulates a listener per run.
+    const timeoutController = new AbortController();
+    let timedOut = false;
+    const timer =
+      resolved.timeoutMs > 0
+        ? setTimeout(() => {
+            timedOut = true;
+            timeoutController.abort();
+          }, resolved.timeoutMs)
+        : undefined;
+    const link = linkAbortSignals(
+      options?.abortSignal,
+      resolved.abortSignal,
+      timeoutController.signal,
+    );
+
     try {
       const parentRegistry = resolved.parentEngine.getToolRegistry();
       const childRegistry = await createChildToolRegistry(
@@ -67,10 +86,9 @@ export class ShadowAgentRunner {
       });
       await childEngine.initialize();
 
-      const signal = combineAbortSignals(options?.abortSignal, resolved.abortSignal);
       const result = await childEngine.run(
         [{ type: 'text', text: resolved.prompt }],
-        { signal, timeoutMs: resolved.timeoutMs },
+        { signal: link.signal, timeoutMs: resolved.timeoutMs },
       );
 
       const durationMs = Date.now() - startedAt;
@@ -92,13 +110,19 @@ export class ShadowAgentRunner {
         return completed;
       }
 
-      const status = result.stopReason === 'cancelled' || signal?.aborted
-        ? 'cancelled'
-        : result.stopReason === 'interrupted'
+      // Our own timeout takes precedence: when the timer fired the combined
+      // signal is aborted too, so timedOut MUST be checked before the
+      // abort/cancel branches.
+      const status = timedOut
+        ? 'timed_out'
+        : result.stopReason === 'cancelled' ||
+            isExternallyAborted(options?.abortSignal, resolved.abortSignal)
           ? 'cancelled'
-          : result.error?.toLowerCase().includes('timed out')
-            ? 'timed_out'
-            : 'failed';
+          : result.stopReason === 'interrupted'
+            ? 'cancelled'
+            : result.error?.toLowerCase().includes('timed out')
+              ? 'timed_out'
+              : 'failed';
       const failed = await this.handleFailure(
         resolved,
         result.error ?? result.stopReason,
@@ -109,13 +133,17 @@ export class ShadowAgentRunner {
       return failed;
     } catch (error) {
       const durationMs = Date.now() - startedAt;
-      const status = isAbortLike(error, options?.abortSignal, resolved.abortSignal)
-        ? 'cancelled'
-        : isTimeoutLike(error)
-          ? 'timed_out'
-          : 'failed';
+      const status = timedOut
+        ? 'timed_out'
+        : isAbortLike(error, options?.abortSignal, resolved.abortSignal)
+          ? 'cancelled'
+          : isTimeoutLike(error)
+            ? 'timed_out'
+            : 'failed';
       return this.handleFailure(resolved, error, durationMs, childEngine?.engineId, status);
     } finally {
+      if (timer) clearTimeout(timer);
+      link.dispose();
       if (childEngine) {
         await Promise.resolve(childEngine.dispose()).catch(() => undefined);
       }
@@ -187,7 +215,7 @@ export class ShadowAgentRunner {
   private emit(
     type: Parameters<typeof createShadowAgentEvent>[0],
     request: ShadowAgentResolvedRequest,
-    data: Partial<EngineEvent['msg']['data']> & Record<string, unknown>,
+    data: Partial<ShadowAgentRuntimeEventData>,
   ): void {
     try {
       request.parentEngine.pushEvent(createShadowAgentEvent(type, {
@@ -200,7 +228,7 @@ export class ShadowAgentRunner {
         dedupe_key: request.dedupeKey,
         model: request.model,
         ...data,
-      } as any));
+      }));
     } catch (error) {
       console.warn('[ShadowAgentRunner] event emit failed:', errorToMessage(error));
     }
@@ -220,25 +248,35 @@ function defaultSystemPrompt(kind: string): string {
   return `You are an internal BrowserX shadow agent for ${kind}. Complete only the delegated runtime task and return concise output.`;
 }
 
-function combineAbortSignals(a?: AbortSignal, b?: AbortSignal): AbortSignal | undefined {
-  if (!a) return b;
-  if (!b) return a;
+/**
+ * Combine N abort signals into one, and return an explicit `dispose()` that
+ * detaches every listener. `dispose()` is called on every run completion
+ * path (success, failure, timeout) so a long-lived caller-provided signal
+ * never accumulates a dead listener per shadow run.
+ */
+function linkAbortSignals(
+  ...signals: Array<AbortSignal | undefined>
+): { signal: AbortSignal | undefined; dispose: () => void } {
+  const real = signals.filter((s): s is AbortSignal => Boolean(s));
+  if (real.length === 0) return { signal: undefined, dispose: () => undefined };
+  if (real.length === 1) return { signal: real[0], dispose: () => undefined };
+
   const controller = new AbortController();
-  if (a.aborted || b.aborted) {
-    controller.abort();
-    return controller.signal;
-  }
-  // Remove the listener from the *other* signal when either fires, so a
-  // long-lived caller-provided signal does not accumulate one dead listener
-  // per shadow run.
-  const onAbort = () => {
-    controller.abort();
-    a.removeEventListener('abort', onAbort);
-    b.removeEventListener('abort', onAbort);
+  const onAbort = () => controller.abort();
+  const dispose = () => {
+    for (const s of real) s.removeEventListener('abort', onAbort);
   };
-  a.addEventListener('abort', onAbort, { once: true });
-  b.addEventListener('abort', onAbort, { once: true });
-  return controller.signal;
+
+  if (real.some((s) => s.aborted)) {
+    controller.abort();
+    return { signal: controller.signal, dispose: () => undefined };
+  }
+  for (const s of real) s.addEventListener('abort', onAbort, { once: true });
+  return { signal: controller.signal, dispose };
+}
+
+function isExternallyAborted(...signals: Array<AbortSignal | undefined>): boolean {
+  return signals.some((signal) => signal?.aborted);
 }
 
 function isAbortLike(error: unknown, ...signals: Array<AbortSignal | undefined>): boolean {

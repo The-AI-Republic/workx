@@ -57,7 +57,50 @@ describe('ShadowAgentRunner failure policies', () => {
 
     expect(result.status).toBe('timed_out');
   });
+
+  it('classifies its own timeout as timed_out regardless of the abort error wording', async () => {
+    // Child hangs until the runner aborts it; the resulting error looks like a
+    // plain cancellation ("aborted"), so only the runner's own deterministic
+    // timer can correctly distinguish timeout from cancellation.
+    const parent = makeHangingParent();
+    const runner = new ShadowAgentRunner({ parentEngine: parent });
+
+    const result = await runner.run({
+      kind: ShadowAgentKind.Diagnostics,
+      prompt: 'diagnose',
+      failurePolicy: ShadowFailurePolicy.ReturnError,
+      timeoutMs: 10,
+    });
+
+    expect(result.status).toBe('timed_out');
+  });
 });
+
+function makeHangingParent(): RepublicAgentEngine {
+  const child = {
+    engineId: 'child',
+    initialize: vi.fn(),
+    run: vi.fn(
+      (_input: unknown, opts: { signal?: AbortSignal }) =>
+        new Promise((resolve) => {
+          opts?.signal?.addEventListener('abort', () =>
+            resolve({ success: false, stopReason: 'error', error: 'aborted by signal' }),
+          );
+        }),
+    ),
+    dispose: vi.fn(),
+  };
+  return {
+    engineId: 'parent',
+    getToolRegistry: () => new ToolRegistry(),
+    getSession: () => ({
+      getSessionId: () => 'session',
+      getConversationHistory: () => ({ items: [] }),
+    }),
+    createChildEngine: vi.fn(() => child),
+    pushEvent: vi.fn(),
+  } as unknown as RepublicAgentEngine;
+}
 
 function makeParent(runResult: Record<string, unknown>): RepublicAgentEngine {
   const child = {
