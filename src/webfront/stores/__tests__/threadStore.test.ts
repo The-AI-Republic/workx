@@ -297,6 +297,24 @@ describe('threadStore', () => {
       expect(state.threads).toHaveLength(1);
     });
 
+    it('strips runtime mode state when restoring persisted threads', async () => {
+      const stored: ThreadStoreState = {
+        threads: [
+          { sessionId: 's1', title: 'Restored', createdAt: 1000, mode: 'code', pendingMode: 'general' },
+        ],
+        activeSessionId: 's1',
+      };
+      mockConfigStorage.get.mockResolvedValue(stored);
+
+      const result = await threadStore.restoreThreads();
+
+      expect(result.threads[0].mode).toBeUndefined();
+      expect(result.threads[0].pendingMode).toBeUndefined();
+      const state = get(threadStore);
+      expect(state.threads[0].mode).toBeUndefined();
+      expect(state.threads[0].pendingMode).toBeUndefined();
+    });
+
     it('returns initial state when storage is empty', async () => {
       mockConfigStorage.get.mockResolvedValue(null);
 
@@ -345,6 +363,25 @@ describe('threadStore', () => {
       const state = get(threadStore);
       expect(state.threads).toHaveLength(0);
       expect(state.activeSessionId).toBeNull();
+    });
+  });
+
+  describe('runtime mode state persistence', () => {
+    it('keeps mode in memory but strips it from config storage writes', () => {
+      threadStore.createThread('s1');
+      mockConfigStorage.set.mockClear();
+
+      threadStore.setThreadMode('s1', 'code');
+      threadStore.setThreadPendingMode('s1', 'general');
+
+      const state = get(threadStore);
+      expect(state.threads[0].mode).toBe('code');
+      expect(state.threads[0].pendingMode).toBe('general');
+
+      const lastCall = mockConfigStorage.set.mock.calls[mockConfigStorage.set.mock.calls.length - 1];
+      const persisted = lastCall?.[1] as ThreadStoreState;
+      expect(persisted.threads[0].mode).toBeUndefined();
+      expect(persisted.threads[0].pendingMode).toBeUndefined();
     });
   });
 

@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest';
-import { PromptComposer, type AgentType } from '../PromptComposer';
+import { FRAGMENTS, PromptComposer, type AgentType } from '../PromptComposer';
 import { registerExternalPersonas, clearExternalPersonas } from '../PersonaLoader';
 
 function expectInOrder(text: string, labels: string[]): void {
@@ -135,6 +135,13 @@ describe('PromptComposer', () => {
         expect(prompt).toContain('## Action Risk and Approval');
         expect(prompt.length).toBeGreaterThan(0);
       }
+    });
+
+    it('declares mode-specific prompt sections in the fragment manifest', () => {
+      expect(FRAGMENTS.some((f) => f.id === 'coder-intro' && f.modes?.includes('code'))).toBe(true);
+      expect(FRAGMENTS.some((f) => f.id === 'coder-tools' && f.modes?.includes('code'))).toBe(true);
+      expect(FRAGMENTS.some((f) => f.id === 'code-guardrails' && f.modes?.includes('code'))).toBe(true);
+      expect(FRAGMENTS.some((f) => f.id === 'pi-tools' && f.modes?.includes('general'))).toBe(true);
     });
   });
 
