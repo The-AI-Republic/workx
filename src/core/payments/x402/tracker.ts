@@ -1,76 +1,111 @@
 /**
- * x402 Session Spend Tracker — Track 18 stand-in.
+ * x402 Spend Tracker — Track 18 stand-in.
  *
  * Track 18 (USD cost tracking) does not exist in src/, so x402 carries its
- * own self-contained, in-memory, session-scoped ledger (ported from claudy's
- * `services/x402/tracker.ts`). `resetX402SessionPayments()` is wired into
- * Session.reset() so a new conversation starts at $0. A future Track 18 can
- * absorb this via the documented `setX402PaymentSink` fold-in hook without
- * changing any signature.
+ * own self-contained ledger (ported in spirit from claudy). Unlike claudy
+ * (single-process CLI), the browserx **server runs concurrent sessions**, so
+ * the ledger is keyed by `sessionId` — one session's spend never counts
+ * against another's cap and `resetX402SessionPayments(sessionId)` (wired into
+ * Session.reset()) clears only that conversation. A future Track 18 can
+ * absorb this via `setX402PaymentSink` without signature churn.
  *
  * @module core/payments/x402/tracker
  */
 
 import type { X402PaymentRecord } from './types';
 
-let sessionPayments: X402PaymentRecord[] = [];
-let sessionTotalUSD = 0;
+interface Ledger {
+  payments: X402PaymentRecord[];
+  totalUSD: number;
+}
+
+const ledgers = new Map<string, Ledger>();
 
 /** Optional fold-in sink (future Track 18 CostTracker). */
-let paymentSink: ((record: X402PaymentRecord) => void) | undefined;
+let paymentSink: ((sessionId: string, record: X402PaymentRecord) => void) | undefined;
+
+function ledger(sessionId: string): Ledger {
+  let l = ledgers.get(sessionId);
+  if (!l) {
+    l = { payments: [], totalUSD: 0 };
+    ledgers.set(sessionId, l);
+  }
+  return l;
+}
 
 /** Register a fold-in sink. Track 18, when it lands, wires its CostTracker here. */
 export function setX402PaymentSink(
-  sink: ((record: X402PaymentRecord) => void) | undefined,
+  sink: ((sessionId: string, record: X402PaymentRecord) => void) | undefined,
 ): void {
   paymentSink = sink;
 }
 
-/** Record a payment into the session ledger. */
-export function addX402Payment(record: X402PaymentRecord): void {
-  sessionPayments.push(record);
-  sessionTotalUSD += record.amountUSD;
+/** Record a payment into a session's ledger. */
+export function addX402Payment(sessionId: string, record: X402PaymentRecord): void {
+  const l = ledger(sessionId);
+  l.payments.push(record);
+  l.totalUSD += record.amountUSD;
   try {
-    paymentSink?.(record);
+    paymentSink?.(sessionId, record);
   } catch {
     /* a broken sink must never break payment accounting */
   }
 }
 
-/** Total USD spent via x402 this session. */
-export function getX402SessionSpentUSD(): number {
-  return sessionTotalUSD;
+/** USD spent via x402 in a given session. */
+export function getX402SessionSpentUSD(sessionId: string): number {
+  return ledgers.get(sessionId)?.totalUSD ?? 0;
 }
 
-/** All payment records this session (read-only). */
-export function getX402SessionPayments(): readonly X402PaymentRecord[] {
-  return sessionPayments;
+/** Payment records for a given session (read-only). */
+export function getX402SessionPayments(sessionId: string): readonly X402PaymentRecord[] {
+  return ledgers.get(sessionId)?.payments ?? [];
 }
 
-/** Number of payments this session. */
-export function getX402PaymentCount(): number {
-  return sessionPayments.length;
+/**
+ * Payment count for a session, or across all sessions when `sessionId` is
+ * omitted (used by the read-only /x402 status surface which has no session
+ * handle in the webfront context).
+ */
+export function getX402PaymentCount(sessionId?: string): number {
+  if (sessionId !== undefined) return ledgers.get(sessionId)?.payments.length ?? 0;
+  let n = 0;
+  for (const l of ledgers.values()) n += l.payments.length;
+  return n;
 }
 
-/** Reset session spend (wired into Session.reset()). */
-export function resetX402SessionPayments(): void {
-  sessionPayments = [];
-  sessionTotalUSD = 0;
+/** Reset a session's spend (wired into Session.reset()). */
+export function resetX402SessionPayments(sessionId: string): void {
+  ledgers.delete(sessionId);
 }
 
-/** Plain-text spend summary grouped by resource domain (for /x402 status). */
-export function formatX402Cost(): string {
-  if (sessionPayments.length === 0) return '';
+/** Test-only: drop every ledger. */
+export function _resetAllX402Payments(): void {
+  ledgers.clear();
+}
 
+/**
+ * Plain-text spend summary grouped by resource domain. Session-scoped when
+ * `sessionId` is given; otherwise aggregated across all sessions.
+ */
+export function formatX402Cost(sessionId?: string): string {
+  const payments: X402PaymentRecord[] =
+    sessionId !== undefined
+      ? [...(ledgers.get(sessionId)?.payments ?? [])]
+      : [...ledgers.values()].flatMap((l) => l.payments);
+
+  if (payments.length === 0) return '';
+
+  const totalUSD = payments.reduce((s, p) => s + p.amountUSD, 0);
   const lines: string[] = [];
   lines.push(
-    `x402 payments: $${sessionTotalUSD.toFixed(4)} (${sessionPayments.length} ${
-      sessionPayments.length === 1 ? 'payment' : 'payments'
+    `x402 payments: $${totalUSD.toFixed(4)} (${payments.length} ${
+      payments.length === 1 ? 'payment' : 'payments'
     })`,
   );
 
   const byDomain: Record<string, { count: number; totalUSD: number }> = {};
-  for (const p of sessionPayments) {
+  for (const p of payments) {
     let domain: string;
     try {
       domain = new URL(p.resource).hostname;

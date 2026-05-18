@@ -30,6 +30,12 @@ export {
   type LimitCheckInput,
   type LimitCheckResult,
 } from './limits';
+export {
+  evaluateServerPolicy,
+  type X402AllowlistEntry,
+  type X402ServerPolicyConfig,
+  type ServerPolicyDecision,
+} from './serverPolicy';
 export { NoopSigner, CoinbaseX402Signer } from './signer';
 export { PaymentKeyStore } from './PaymentKeyStore';
 export {

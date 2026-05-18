@@ -158,7 +158,7 @@ allowlisted**; navigation 402s observed, never paid.
 
 ### 3.3 `/x402` command (webfront → ext/desktop only)
 
-- [ ] `src/webfront/commands/builtinCommands.ts` (+ callbacks) — register `x402` via `commandRegistry.register` with subcommands `setup|status|enable|disable|set-limit|set-session|network|remove` (port claudy `commands/x402/x402.ts` behavior; `setup` writes the key via `PaymentKeyStore`, never to config.json). Reserve the name if a skill-name collision guard exists (cf. Track 17's `RESERVED_COMMAND_NAMES`).
+- [ ] `src/webfront/commands/builtinCommands.ts` (+ callbacks) — register `x402` via `commandRegistry.register` with subcommands `setup|status|enable|disable|set-limit|set-session|network|remove`. The chat command must never accept or persist a private key; `setup` only gives agent-side provisioning guidance. Reserve the name if a skill-name collision guard exists (cf. Track 17's `RESERVED_COMMAND_NAMES`).
 - [ ] Document in the command help + design that **server has no `/x402`** — it is config-driven (`server.x402`).
 
 ### 3.4 Do NOT
@@ -205,3 +205,5 @@ allowlisted**; navigation 402s observed, never paid.
 | Track 22 feature-flag gate | When it lands, replace `isX402Enabled` internals with `feature('X402')`; keep the function signature. |
 | Extension hot-key signing | Custody too weak (decision/risks). Revisit only if a hardware-backed extension keystore exists. |
 | Non-USDC assets / non-`exact` scheme | claudy supports only `scheme:'exact'` + USDC; match that until the protocol stabilises (Phase 4 risk). |
+| **`/x402` webfront↔agent cross-context** (PR #238 review MED-5) | The command mutates config in the renderer; the capability reads it agent-side (different JS contexts on the extension). Route `/x402` mutations through the UI→agent service channel — Phase-3 follow-up. Today it fails into a clear message, never silently. |
+| **SSRF DNS-rebinding hardening** (PR #238 review HIGH-2) | The literal-host egress guard does not resolve DNS; a hostname resolving to a private IP is not caught. Resolve-then-check / pinned egress — Phase-4 follow-up. |

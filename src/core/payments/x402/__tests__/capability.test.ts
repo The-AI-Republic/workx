@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createPaymentCapability } from '@/core/payments/x402/capability';
-import { resetX402SessionPayments } from '@/core/payments/x402/tracker';
+import { _resetAllX402Payments } from '@/core/payments/x402/tracker';
 import {
   USDC_ADDRESSES,
   type PaymentRequirement,
@@ -52,7 +52,7 @@ const throwingSigner: Signer = {
 };
 
 describe('createPaymentCapability', () => {
-  beforeEach(() => resetX402SessionPayments());
+  beforeEach(() => _resetAllX402Payments());
 
   it('denies when disabled', async () => {
     const cap = createPaymentCapability({
@@ -101,6 +101,25 @@ describe('createPaymentCapability', () => {
     expect(r.paid).toBe(false);
   });
 
+  it('server policy evaluates the fetched URL, not a forged requirement.resource', async () => {
+    const seen = vi.fn(() => ({ allowed: false, reason: 'not allowlisted' }));
+    const cap = createPaymentCapability({
+      platform: 'server',
+      isEnabled: async () => true,
+      getCaps: caps,
+      signer: goodSigner,
+      serverPolicy: seen,
+    });
+
+    const r = await cap.tryPay(
+      { ...requirement, resource: 'https://api.example.com/forged' },
+      { url: 'https://evil.example.net/paywall', sessionId: 's1' },
+    );
+
+    expect(r.paid).toBe(false);
+    expect(seen).toHaveBeenCalledWith(0.05, 'https://evil.example.net/paywall', 0);
+  });
+
   it('server pays when policy allows and signer succeeds', async () => {
     const cap = createPaymentCapability({
       platform: 'server',
@@ -143,6 +162,24 @@ describe('createPaymentCapability', () => {
     expect(r.paid).toBe(true);
   });
 
+  it('desktop requires approval for sub-cent payments and rejects signed amount drift', async () => {
+    const approve = vi.fn(async () => 'approve' as const);
+    const cap = createPaymentCapability({
+      platform: 'desktop',
+      isEnabled: async () => true,
+      getCaps: caps,
+      signer: goodSigner,
+      requestApproval: approve,
+    });
+    const r = await cap.tryPay(
+      { ...requirement, maxAmountRequired: '5000' },
+      { url: requirement.resource },
+    );
+    expect(approve).toHaveBeenCalledOnce();
+    expect(r.paid).toBe(false);
+    if (!r.paid) expect(r.reason).toMatch(/signed payment amount/i);
+  });
+
   it('dry-run validates + (server) allowlists but never signs', async () => {
     const sign = vi.fn();
     const cap = createPaymentCapability({
@@ -170,6 +207,37 @@ describe('createPaymentCapability', () => {
     const r = await cap.tryPay(requirement, { url: requirement.resource });
     expect(r.paid).toBe(false);
     if (!r.paid) expect(r.reason).toMatch(/Phase-4 gated/);
+  });
+
+  it('denies when the signer returns an authorization for a different amount', async () => {
+    const cap = createPaymentCapability({
+      platform: 'server',
+      isEnabled: async () => true,
+      getCaps: caps,
+      signer: {
+        getAddress: async () => '0xMyWallet',
+        signPayment: async () => ({
+          x402Version: 1,
+          scheme: 'exact',
+          network: 'base',
+          payload: {
+            signature: '0xsig',
+            authorization: {
+              from: '0xMyWallet',
+              to: '0xPayee',
+              value: '75000',
+              validAfter: '0',
+              validBefore: '999',
+              nonce: '0xnonce',
+            },
+          },
+        }),
+      },
+      serverPolicy: () => ({ allowed: true }),
+    });
+    const r = await cap.tryPay(requirement, { url: requirement.resource });
+    expect(r.paid).toBe(false);
+    if (!r.paid) expect(r.reason).toMatch(/signed payment amount/i);
   });
 
   it('denies over the per-request cap before any signing', async () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { resourceFetchHandler } from '@/tools/ResourceFetchTool';
+import { ResourceFetchRiskAssessor, resourceFetchHandler } from '@/tools/ResourceFetchTool';
 import type { ToolContext } from '@/tools/BaseTool';
 import {
   USDC_ADDRESSES,
@@ -21,6 +21,14 @@ function fakeResponse(opts: {
     headers: { get: (k: string) => h.get(k.toLowerCase()) ?? null },
     text: async () => opts.body ?? '',
   } as unknown as Response;
+}
+
+function realResponse(
+  status: number,
+  body: string,
+  headers?: Record<string, string>,
+): Response {
+  return new Response(body, { status, headers });
 }
 
 const requirementHeader = JSON.stringify({
@@ -53,6 +61,26 @@ describe('resourceFetchHandler', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('rejects unsupported HTTP methods', async () => {
+    const r = await resourceFetchHandler({ url: 'https://x.com/a', method: 'TRACE' }, ctx());
+    expect(r.success).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'http://169.254.169.254/latest/meta-data/',
+    'http://localhost:8080/admin',
+    'https://127.0.0.1/x',
+    'http://10.0.0.5/internal',
+    'http://192.168.1.1/router',
+    'http://[::1]/x',
+  ])('blocks SSRF target %s without fetching', async (badUrl) => {
+    const r = await resourceFetchHandler({ url: badUrl }, ctx());
+    expect(r.success).toBe(false);
+    expect(r.error).toMatch(/SSRF guard/);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('passes through a non-402 response', async () => {
     fetchMock.mockResolvedValueOnce(
       fakeResponse({ status: 200, body: 'hello', headers: { 'content-type': 'text/plain' } }),
@@ -61,6 +89,21 @@ describe('resourceFetchHandler', () => {
     expect(r.success).toBe(true);
     expect(r.status).toBe(200);
     expect(r.body).toBe('hello');
+  });
+
+  it('sets an abort signal on direct fetches', async () => {
+    fetchMock.mockResolvedValueOnce(fakeResponse({ status: 200, body: 'hello' }));
+    const r = await resourceFetchHandler({ url: 'https://x.com/a' }, ctx());
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(r.success).toBe(true);
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('caps streamed response bodies', async () => {
+    fetchMock.mockResolvedValueOnce(realResponse(200, 'x'.repeat(1_000_010)));
+    const r = await resourceFetchHandler({ url: 'https://x.com/a' }, ctx());
+    expect(r.success).toBe(true);
+    expect(r.body).toHaveLength(1_000_000);
   });
 
   it('402 without x-payment-required surfaces an error', async () => {
@@ -121,5 +164,24 @@ describe('resourceFetchHandler', () => {
     expect(r.body).toBe('PAID-CONTENT');
     const retryInit = fetchMock.mock.calls[1][1] as RequestInit;
     expect((retryInit.headers as Record<string, string>)['x-payment']).toBe('BASE64PAYLOAD');
+  });
+});
+
+describe('ResourceFetchRiskAssessor', () => {
+  it('auto-approves plain read requests', () => {
+    const r = new ResourceFetchRiskAssessor().assess('resource_fetch', {
+      url: 'https://example.com/data',
+      method: 'GET',
+    });
+    expect(r.action).toBe('auto_approve');
+  });
+
+  it('asks for approval on mutating requests', () => {
+    const r = new ResourceFetchRiskAssessor().assess('resource_fetch', {
+      url: 'https://example.com/data',
+      method: 'POST',
+      body: '{}',
+    });
+    expect(r.action).toBe('ask_user');
   });
 });

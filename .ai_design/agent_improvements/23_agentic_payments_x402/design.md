@@ -141,6 +141,8 @@ A capability that *spends money* behaves very differently per platform, driven b
 - **Auto-pay on navigation would be catastrophic** — forbidden by design; the payable `fetch` is unreachable from `NavigationTool`/CDP by construction (separate tool, gated `ToolContext` handle).
 - **Headless over-spend** — without the explicit server allowlist + per-day cap + `preExecuteCheck` deny-default, an unattended/compromised agent could drain funds. The default-deny is mandatory, not advisory; it must not rely on `ApprovalGate` (absent server-side) or any timeout (fails open).
 - **Self-contained slices drift from future Tracks 18/20/22** — keep the fold-in hooks small and documented so later tracks can absorb them.
+- **ResourceFetchTool is new server egress (SSRF).** A literal-host guard now blocks loopback/RFC1918/link-local/metadata/no-dot hosts (`src/tools/ResourceFetchTool.ts`). It does NOT resolve DNS, so a hostname resolving to a private IP (DNS rebinding) is not caught — resolve-then-check / pinned egress is a **Phase-4 follow-up**.
+- **`/x402` webfront↔agent cross-context.** The command runs in the webfront renderer and reads/writes config via `getConfigStorage()`; the capability reads it agent-side. On the extension these are different JS contexts, so a UI `enable`/`set-limit` may not be observed by the service-worker capability (it fails into a clear message, never silently). Routing `/x402` mutations through the UI→agent service channel is a **Phase-3 follow-up**; key custody is already explicitly NOT done over chat.
 - Pre-production protocol / regulatory surface — Phase 4 gated on explicit product + legal review; no real funds before then.
 
 ## Validation Notes (verified vs claudy + browserx `src/`, 2026-05-16)

@@ -15,7 +15,7 @@
 
 import { getConfigStorage } from '@/core/storage/ConfigStorageProvider';
 import { STORAGE_KEYS } from '@/config/defaults';
-import { X402_DEFAULTS, type X402Config, type PaymentNetwork } from './types';
+import { X402_DEFAULTS, isPaymentNetwork, type X402Config } from './types';
 
 /** Dot-path under the CONFIG storage object where x402 settings live. */
 const X402_CONFIG_PATH = 'x402';
@@ -26,7 +26,7 @@ function coerce(raw: unknown): X402Config {
   const r = (raw ?? {}) as Partial<X402Config>;
   return {
     enabled: r.enabled === true,
-    network: (r.network as PaymentNetwork) ?? X402_DEFAULTS.network,
+    network: isPaymentNetwork(r.network) ? r.network : X402_DEFAULTS.network,
     address: typeof r.address === 'string' ? r.address : undefined,
     maxPaymentPerRequestUSD:
       typeof r.maxPaymentPerRequestUSD === 'number' && r.maxPaymentPerRequestUSD > 0

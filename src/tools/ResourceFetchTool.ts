@@ -19,10 +19,15 @@ import {
   type ToolContext,
 } from './BaseTool';
 import type { ToolRegistry } from './ToolRegistry';
+import type { IRiskAssessor, RiskAssessment } from '../core/approval/types';
+import { scoreToRiskLevel } from '../core/approval/types';
 import { parsePaymentRequirement } from '../core/payments/x402/detect';
 import { X402_HEADERS } from '../core/payments/x402/types';
 
 const MAX_BODY_CHARS = 1_000_000;
+const FETCH_TIMEOUT_MS = 30_000;
+const ALLOWED_METHODS = new Set(['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD']);
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'DELETE', 'PATCH']);
 
 export const RESOURCE_FETCH_TOOL: ToolDefinition = createToolDefinition(
   'resource_fetch',
@@ -55,17 +60,83 @@ export const RESOURCE_FETCH_TOOL: ToolDefinition = createToolDefinition(
   { required: ['url'], category: 'network', version: '1.0.0' },
 );
 
+/**
+ * SSRF egress guard. This tool introduces a direct Node fetch from the agent
+ * process (the Chrome-mediated web tools never did) — on the server that is a
+ * server-side-request-forgery surface. Block obvious internal targets by
+ * literal host. NOTE: this does NOT resolve DNS, so a hostname that resolves
+ * to a private IP (DNS rebinding) is not caught here — that hardening is a
+ * Phase-4 follow-up (resolve-then-check / pinned egress).
+ */
+function blockedHostReason(rawUrl: string): string | null {
+  let host: string;
+  try {
+    host = new URL(rawUrl).hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  } catch {
+    return 'unparseable URL';
+  }
+  if (host === 'localhost' || host.endsWith('.localhost')) return 'loopback host';
+  if (!host.includes('.') && !host.includes(':')) return 'non-public bare hostname';
+  if (host.endsWith('.local') || host.endsWith('.internal')) return 'internal TLD';
+  // IPv6 loopback / unique-local / link-local
+  if (host === '::1' || host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80'))
+    return 'non-public IPv6';
+  const m = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (m) {
+    const [a, b] = [Number(m[1]), Number(m[2])];
+    if (a === 127 || a === 0 || a === 10) return 'loopback/private IPv4';
+    if (a === 169 && b === 254) return 'link-local / cloud metadata IPv4';
+    if (a === 172 && b >= 16 && b <= 31) return 'private IPv4 (172.16/12)';
+    if (a === 192 && b === 168) return 'private IPv4 (192.168/16)';
+    if (a >= 224) return 'multicast/reserved IPv4';
+  }
+  return null;
+}
+
 async function doFetch(
   url: string,
   method: string,
   headers: Record<string, string>,
   body?: string,
 ): Promise<Response> {
-  const init: RequestInit = { method, headers };
-  if (body !== undefined && method !== 'GET' && method !== 'HEAD') {
-    init.body = body;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const init: RequestInit = { method, headers, signal: controller.signal };
+    if (body !== undefined && method !== 'GET' && method !== 'HEAD') {
+      init.body = body;
+    }
+    return await fetch(url, init);
+  } finally {
+    clearTimeout(timeout);
   }
-  return fetch(url, init);
+}
+
+async function readResponseTextLimited(res: Response): Promise<string> {
+  if (!res.body) {
+    return (await res.text()).slice(0, MAX_BODY_CHARS);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let text = '';
+
+  try {
+    while (text.length < MAX_BODY_CHARS) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      text += decoder.decode(value, { stream: true });
+      if (text.length >= MAX_BODY_CHARS) {
+        await reader.cancel();
+        break;
+      }
+    }
+    text += decoder.decode();
+  } finally {
+    reader.releaseLock();
+  }
+
+  return text.slice(0, MAX_BODY_CHARS);
 }
 
 export const resourceFetchHandler: ToolHandler = async (
@@ -84,6 +155,17 @@ export const resourceFetchHandler: ToolHandler = async (
   if (!/^https?:\/\//i.test(url)) {
     return { success: false, error: `Invalid url '${url}': must be an absolute http(s) URL` };
   }
+  if (!ALLOWED_METHODS.has(method)) {
+    return { success: false, error: `Unsupported method '${method}'` };
+  }
+
+  const blocked = blockedHostReason(url);
+  if (blocked) {
+    return {
+      success: false,
+      error: `Refusing to fetch '${url}': ${blocked} (SSRF guard — internal/private targets are blocked)`,
+    };
+  }
 
   let res: Response;
   try {
@@ -96,7 +178,7 @@ export const resourceFetchHandler: ToolHandler = async (
   }
 
   if (res.status !== 402) {
-    const text = (await res.text()).slice(0, MAX_BODY_CHARS);
+    const text = await readResponseTextLimited(res);
     return {
       success: res.ok,
       status: res.status,
@@ -177,7 +259,7 @@ export const resourceFetchHandler: ToolHandler = async (
     };
   }
 
-  const retryText = (await retry.text()).slice(0, MAX_BODY_CHARS);
+  const retryText = await readResponseTextLimited(retry);
   return {
     success: retry.ok,
     status: retry.status,
@@ -200,6 +282,42 @@ export const resourceFetchHandler: ToolHandler = async (
  */
 export async function registerResourceFetchTool(registry: ToolRegistry): Promise<void> {
   if (registry.getTool('resource_fetch')) return;
-  const { StaticRiskAssessor } = await import('../core/approval/assessors/StaticRiskAssessor');
-  await registry.register(RESOURCE_FETCH_TOOL, resourceFetchHandler, new StaticRiskAssessor(0));
+  await registry.register(RESOURCE_FETCH_TOOL, resourceFetchHandler, new ResourceFetchRiskAssessor());
+}
+
+export class ResourceFetchRiskAssessor implements IRiskAssessor {
+  assess(
+    _toolName: string,
+    parameters: Record<string, unknown>,
+  ): RiskAssessment {
+    const method = String(parameters.method ?? 'GET').toUpperCase();
+    const hasBody = typeof parameters.body === 'string' && parameters.body.length > 0;
+    const hasHeaders =
+      parameters.headers &&
+      typeof parameters.headers === 'object' &&
+      Object.keys(parameters.headers).length > 0;
+
+    let score = 10;
+    const factors = ['Direct HTTP request'];
+
+    if (MUTATING_METHODS.has(method)) {
+      score = 55;
+      factors.push(`Mutating HTTP method ${method}`);
+    }
+    if (hasBody) {
+      score = Math.max(score, 55);
+      factors.push('Includes request body');
+    }
+    if (hasHeaders) {
+      score = Math.max(score, MUTATING_METHODS.has(method) ? 60 : 25);
+      factors.push('Includes custom headers');
+    }
+
+    return {
+      score,
+      level: scoreToRiskLevel(score),
+      factors,
+      action: score <= 30 ? 'auto_approve' : 'ask_user',
+    };
+  }
 }

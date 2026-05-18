@@ -9,7 +9,7 @@
  * @module core/payments/x402/detect
  */
 
-import type { PaymentRequirement } from './types';
+import { isPaymentNetwork, type PaymentRequirement } from './types';
 
 /**
  * Parse the `x-payment-required` header value into a PaymentRequirement.
@@ -39,6 +39,9 @@ export function parsePaymentRequirement(headerValue: string): PaymentRequirement
   }
   if (p.scheme !== 'exact') {
     throw new Error(`Unsupported x402 scheme: ${String(p.scheme)} (only 'exact' supported)`);
+  }
+  if (!isPaymentNetwork(p.network)) {
+    throw new Error(`Unsupported x402 network: ${String(p.network)}`);
   }
   return {
     scheme: 'exact',

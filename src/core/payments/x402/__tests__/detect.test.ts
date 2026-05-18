@@ -41,6 +41,12 @@ describe('parsePaymentRequirement', () => {
     expect(() => parsePaymentRequirement(JSON.stringify(bad))).toThrow(/Unsupported x402 scheme/);
   });
 
+  it('throws on unsupported network', () => {
+    const bad = JSON.parse(valid());
+    bad.network = 'not-a-chain';
+    expect(() => parsePaymentRequirement(JSON.stringify(bad))).toThrow(/Unsupported x402 network/);
+  });
+
   it('defaults maxTimeoutSeconds when absent/invalid', () => {
     const o = JSON.parse(valid());
     delete o.maxTimeoutSeconds;

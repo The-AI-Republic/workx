@@ -860,8 +860,8 @@ export class Session {
     // Clear conversation history
     this.clearHistory();
 
-    // Track 23: a new conversation starts at $0 x402 spend
-    resetX402SessionPayments();
+    // Track 23: a new conversation starts at $0 x402 spend (this session only)
+    resetX402SessionPayments(this.sessionId);
 
     // Create new conversation ID
     Object.assign(this, { sessionId: uuidv4() });

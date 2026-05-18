@@ -40,7 +40,7 @@ export function validatePaymentRequirement(input: LimitCheckInput): LimitCheckRe
   } = input;
 
   const amountUSD = tokenAmountToUSD(requirement.maxAmountRequired);
-  if (!Number.isFinite(amountUSD) || amountUSD < 0) {
+  if (!Number.isFinite(amountUSD) || amountUSD <= 0) {
     return { valid: false, reason: `Unparseable payment amount '${requirement.maxAmountRequired}'` };
   }
 

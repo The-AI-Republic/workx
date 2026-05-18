@@ -20,6 +20,17 @@ export type PaymentNetwork =
   | 'ethereum'
   | 'ethereum-sepolia';
 
+export const PAYMENT_NETWORKS = [
+  'base',
+  'base-sepolia',
+  'ethereum',
+  'ethereum-sepolia',
+] as const satisfies readonly PaymentNetwork[];
+
+export function isPaymentNetwork(value: unknown): value is PaymentNetwork {
+  return typeof value === 'string' && (PAYMENT_NETWORKS as readonly string[]).includes(value);
+}
+
 /** The three browserx deploy targets. */
 export type PaymentPlatform = 'extension' | 'desktop' | 'server';
 
@@ -166,6 +177,8 @@ export const USDC_DECIMALS = 6;
 
 /** Convert a token smallest-unit amount string to USD (1 USDC ≈ 1 USD). */
 export function tokenAmountToUSD(amount: string): number {
-  const n = parseInt(amount, 10);
+  if (!/^(0|[1-9]\d*)$/.test(amount)) return NaN;
+  const n = Number(amount);
+  if (!Number.isSafeInteger(n)) return NaN;
   return Number.isFinite(n) ? n / 10 ** USDC_DECIMALS : NaN;
 }

@@ -211,7 +211,7 @@ export class ServerAgentBootstrap {
               createPaymentCapability,
               CoinbaseX402Signer,
               PaymentKeyStore,
-              getX402SessionSpentUSD,
+              evaluateServerPolicy,
             } = await import('@/core/payments/x402');
             const { getServerConfig } = await import('../config/server-config');
             const { emitLog } = await import('../handlers/logs');
@@ -232,49 +232,26 @@ export class ServerAgentBootstrap {
                 isEnabled: async () => x402().enabled === true,
                 getCaps: async () => {
                   const cfg = x402();
-                  const maxEntry = cfg.allowlist.reduce(
-                    (m, e) => Math.max(m, e.maxPerRequestUSD),
-                    0,
-                  );
                   return {
                     network: cfg.network,
-                    maxPaymentPerRequestUSD: maxEntry,
+                    // Per-request cap is owned by the allowlist policy below
+                    // (per payee domain); the generic limit is not the gate.
+                    maxPaymentPerRequestUSD: Number.POSITIVE_INFINITY,
                     maxSessionSpendUSD: cfg.maxSessionSpendUSD,
                   };
                 },
                 signer,
-                // Explicit default-deny allowlist (Track 20 stand-in).
-                serverPolicy: (requirement, amountUSD) => {
+                // Explicit default-deny allowlist (Track 20 stand-in) — pure,
+                // unit-tested evaluateServerPolicy. sessionSpentUSD is the
+                // per-day approximation pending Phase 4.
+                serverPolicy: (amountUSD, resourceUrl, sessionSpentUSD) => {
                   const cfg = x402();
-                  let host: string;
-                  try {
-                    host = new URL(requirement.resource).hostname;
-                  } catch {
-                    return { allowed: false, reason: 'unparseable resource URL' };
-                  }
-                  const entry = cfg.allowlist.find(
-                    (e) => host === e.domain || host.endsWith(`.${e.domain}`),
+                  return evaluateServerPolicy(
+                    { allowlist: cfg.allowlist, maxPerDayUSD: cfg.maxPerDayUSD },
+                    amountUSD,
+                    resourceUrl,
+                    sessionSpentUSD,
                   );
-                  if (!entry) {
-                    return { allowed: false, reason: `payee domain '${host}' not allowlisted` };
-                  }
-                  if (amountUSD > entry.maxPerRequestUSD) {
-                    return {
-                      allowed: false,
-                      reason: `$${amountUSD.toFixed(4)} exceeds allowlist cap $${entry.maxPerRequestUSD.toFixed(2)} for ${host}`,
-                    };
-                  }
-                  // Per-day cap — session-scoped approximation pending Phase 4.
-                  if (
-                    cfg.maxPerDayUSD > 0 &&
-                    getX402SessionSpentUSD() + amountUSD > cfg.maxPerDayUSD
-                  ) {
-                    return {
-                      allowed: false,
-                      reason: `would exceed per-day cap $${cfg.maxPerDayUSD.toFixed(2)}`,
-                    };
-                  }
-                  return { allowed: true };
                 },
                 audit: (level, message, data) =>
                   emitLog(level, `[x402] ${message}`, data),

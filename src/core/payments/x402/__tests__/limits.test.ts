@@ -62,4 +62,21 @@ describe('validatePaymentRequirement', () => {
     });
     expect(r.valid).toBe(false);
   });
+
+  it('rejects partially numeric or non-integer base-unit amounts', () => {
+    for (const maxAmountRequired of [
+      '50000abc',
+      '0.5',
+      '',
+      ' 50000',
+      '9007199254740992',
+      '0',
+    ]) {
+      const r = validatePaymentRequirement({
+        requirement: req({ maxAmountRequired }),
+        ...base,
+      });
+      expect(r.valid).toBe(false);
+    }
+  });
 });

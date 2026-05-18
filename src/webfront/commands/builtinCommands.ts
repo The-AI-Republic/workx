@@ -6,7 +6,6 @@ import {
   saveX402Config,
   formatX402Cost,
   getX402PaymentCount,
-  PaymentKeyStore,
   type PaymentNetwork,
 } from '@/core/payments/x402';
 
@@ -105,8 +104,8 @@ and is NOT managed here.
 - \`/x402 set-limit <usd>\` — max per request
 - \`/x402 set-session <usd>\` — max per session
 - \`/x402 network <${X402_NETWORKS.join('|')}>\`
-- \`/x402 setup <0x-private-key>\` — import a wallet key (desktop)
-- \`/x402 remove\` — delete the wallet key + disable
+- \`/x402 setup\` — show agent-side wallet provisioning guidance (never paste a key)
+- \`/x402 remove\` — key custody is agent-side only, never over chat
 
 Real payment signing is gated behind a security/legal review (design.md
 Phase 4) — no real funds move before then.`;
@@ -183,31 +182,20 @@ async function runX402Command(
         return { title, content: `Network set to ${net}` };
       }
 
-      case 'setup': {
-        const key = parts[1];
-        if (!key) {
-          return {
-            title,
-            content:
-              'Usage: /x402 setup <0x-private-key>. Key generation is Phase-4 gated ' +
-              '(coinbase/x402 SDK) — import an existing key for now. The extension ' +
-              'never custodies a key; run setup on desktop.',
-          };
-        }
-        await new PaymentKeyStore().setPrivateKey(key);
-        await saveX402Config({ enabled: true });
+      case 'setup':
+      case 'remove': {
+        // Security: a private key must NEVER be passed through chat — the
+        // conversation is persisted to history/rollout/logs. Key custody is
+        // provisioned agent-side only.
         return {
           title,
           content:
-            'Wallet key stored and x402 enabled. Fund the address with USDC. ' +
-            'Real signing remains Phase-4 gated until the security/legal review completes.',
+            'Wallet key custody is not performed over chat (the conversation is ' +
+            'persisted). Provision/remove the x402 key agent-side: desktop = OS ' +
+            'keychain; server = the secrets-manager-backed credential store ' +
+            '(server.x402 is config-driven). The extension never holds a key. ' +
+            'Real signing stays gated until the Phase-4 security/legal review.',
         };
-      }
-
-      case 'remove': {
-        await new PaymentKeyStore().deletePrivateKey();
-        await saveX402Config({ enabled: false });
-        return { title, content: 'Wallet key removed and x402 disabled.' };
       }
 
       default:
@@ -237,7 +225,7 @@ export async function registerSkillCommands(
   onSubmitText: (text: string) => void
 ): Promise<void> {
   storedOnSubmitText = onSubmitText;
-  await syncSkillCommands(onSubmitText);
+  await syncSkillCommands();
 }
 
 /**
@@ -247,12 +235,10 @@ export async function registerSkillCommands(
  */
 export async function refreshSkillCommands(): Promise<void> {
   if (!storedOnSubmitText) return;
-  await syncSkillCommands(storedOnSubmitText);
+  await syncSkillCommands();
 }
 
-async function syncSkillCommands(
-  onSubmitText: (text: string) => void
-): Promise<void> {
+async function syncSkillCommands(): Promise<void> {
   try {
     const skills = await (await getInitializedUIClient()).serviceRequest<SkillMeta[]>('skills.list');
     const currentSkillNames = new Set<string>();

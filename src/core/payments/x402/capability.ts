@@ -2,25 +2,20 @@
  * x402 payment capability — the per-platform safety core.
  *
  * Constructed by each platform bootstrap with injected dependencies so this
- * core module never imports server/tools code (no circular deps, no
- * server-only imports leaking into the extension bundle):
+ * core module never imports server/tools code:
  *   - extension → NoopSigner, no serverPolicy, no approval ⇒ NEVER pays
  *                 (surfaces the 402 for the agent/human).
  *   - desktop   → real signer + `requestApproval` adapting ApprovalGate.check;
  *                 above-threshold payments require explicit human approval.
- *   - server    → real signer + `serverPolicy` (allowlist + per-day cap from
- *                 `server.x402`). DEFAULT-DENY: no policy / not allowlisted /
- *                 over cap ⇒ deny. This is an explicit deny, never the
- *                 byproduct of an approval timeout (ApprovalGate is not even
- *                 constructed on the server — see design.md "resolved error").
+ *   - server    → real signer + `serverPolicy` (the pure evaluateServerPolicy
+ *                 bound to server.x402). DEFAULT-DENY; an explicit deny, never
+ *                 the byproduct of an approval timeout (ApprovalGate is not
+ *                 even constructed on the server).
  *
  * @module core/payments/x402/capability
  */
 
-import {
-  addX402Payment,
-  getX402SessionSpentUSD,
-} from './tracker';
+import { addX402Payment, getX402SessionSpentUSD } from './tracker';
 import { validatePaymentRequirement } from './limits';
 import type {
   PaymentCapability,
@@ -42,19 +37,13 @@ export type AuditFn = (
 
 export interface PaymentCapabilityDeps {
   platform: PaymentPlatform;
-  /** Gate (Track 22 stand-in). False ⇒ capability never pays. */
   isEnabled: () => Promise<boolean>;
-  /** Configured caps + network (ext/desktop: x402 config; server: server.x402). */
   getCaps: () => Promise<{
     network: PaymentNetwork;
     maxPaymentPerRequestUSD: number;
     maxSessionSpendUSD: number;
   }>;
   signer: Signer;
-  /**
-   * ext/desktop human approval, adapting ApprovalGate.check. Required for
-   * above-threshold payments on those platforms; absent ⇒ fail closed.
-   */
   requestApproval?: (info: {
     resource: string;
     amountUSD: number;
@@ -63,25 +52,36 @@ export interface PaymentCapabilityDeps {
     ctx: PaymentContext;
   }) => Promise<'approve' | 'deny'>;
   /**
-   * Server allowlist + per-day policy (from server.x402). DEFAULT-DENY: if
-   * undefined on the server, every payment is denied.
+   * Server allowlist + per-day policy (bind evaluateServerPolicy here).
+   * DEFAULT-DENY: if undefined on the server every payment is denied.
+   * `resourceUrl` is always the URL that actually returned HTTP 402. Never
+   * trust the server-supplied requirement.resource for allowlist decisions.
    */
   serverPolicy?: (
-    requirement: PaymentRequirement,
     amountUSD: number,
+    resourceUrl: string,
+    sessionSpentUSD: number,
   ) => { allowed: boolean; reason?: string };
-  /** Audit sink (server wires emitLog; others console). */
   audit?: AuditFn;
-  /** USD above which ext/desktop require explicit approval. */
+  /**
+   * Desktop approval threshold. Default 0 means every positive payment needs
+   * explicit approval; callers may raise it only after Phase-4 policy review.
+   */
   approvalThresholdUSD?: number;
   /** Phase-1 / safety: when true, validate + log but never sign. */
   dryRun?: boolean;
 }
 
-const DEFAULT_APPROVAL_THRESHOLD_USD = 0.01;
+const DEFAULT_APPROVAL_THRESHOLD_USD = 0;
+
+/** Portable base64 (Node Buffer when present, else btoa). */
+function toBase64(s: string): string {
+  if (typeof Buffer !== 'undefined') return Buffer.from(s).toString('base64');
+  return btoa(unescape(encodeURIComponent(s)));
+}
 
 function encodePaymentHeader(payload: unknown): string {
-  return Buffer.from(JSON.stringify(payload)).toString('base64');
+  return toBase64(JSON.stringify(payload));
 }
 
 export function createPaymentCapability(
@@ -94,9 +94,13 @@ export function createPaymentCapability(
     requirement: PaymentRequirement,
     ctx: PaymentContext,
   ): Promise<PaymentResult> {
+    const sessKey = ctx.sessionId ?? 'default';
+    const fetchedUrl = ctx.url;
+    const displayResourceUrl = requirement.resource || ctx.url;
     const base = {
       platform: deps.platform,
-      resource: requirement.resource || ctx.url,
+      resource: fetchedUrl,
+      claimedResource: requirement.resource || undefined,
       payTo: requirement.payTo,
       network: requirement.network,
       sessionId: ctx.sessionId,
@@ -108,9 +112,10 @@ export function createPaymentCapability(
     }
 
     const caps = await deps.getCaps();
+    const sessionSpentUSD = getX402SessionSpentUSD(sessKey);
     const check = validatePaymentRequirement({
       requirement,
-      sessionSpentUSD: getX402SessionSpentUSD(),
+      sessionSpentUSD,
       maxPaymentPerRequestUSD: caps.maxPaymentPerRequestUSD,
       maxSessionSpendUSD: caps.maxSessionSpendUSD,
       configuredNetwork: caps.network,
@@ -143,11 +148,10 @@ export function createPaymentCapability(
         });
         return {
           paid: false,
-          reason:
-            'Server default-deny: no server.x402 allowlist policy is configured',
+          reason: 'Server default-deny: no server.x402 allowlist policy is configured',
         };
       }
-      const decision = deps.serverPolicy(requirement, amountUSD);
+      const decision = deps.serverPolicy(amountUSD, fetchedUrl, sessionSpentUSD);
       if (!decision.allowed) {
         audit('warn', `x402 server payment denied: ${decision.reason ?? 'not allowlisted'}`, {
           ...base,
@@ -169,7 +173,7 @@ export function createPaymentCapability(
         return { paid: false, reason: 'Above auto-pay threshold and no approval surface available' };
       }
       const decision = await deps.requestApproval({
-        resource: base.resource,
+        resource: fetchedUrl,
         amountUSD,
         payTo: requirement.payTo,
         network: requirement.network,
@@ -203,19 +207,33 @@ export function createPaymentCapability(
         return { paid: false, reason: 'No wallet key available to sign the payment' };
       }
       const payload = await deps.signer.signPayment(requirement, fromAddress);
+      const signedValue = payload.payload.authorization.value;
+      if (signedValue !== requirement.maxAmountRequired) {
+        audit('warn', 'x402 payment denied: signed amount does not match requirement', {
+          ...base,
+          amountUSD,
+          requiredAmount: requirement.maxAmountRequired,
+          signedAmount: signedValue,
+        });
+        return {
+          paid: false,
+          reason: 'Signed payment amount did not match the x402 requirement',
+        };
+      }
       const paymentHeader = encodePaymentHeader(payload);
+      const signedAmountUSD = tokenAmountToUSD(signedValue);
 
       const record: X402PaymentRecord = {
         timestamp: Date.now(),
-        resource: base.resource,
-        amount: requirement.maxAmountRequired,
-        amountUSD: tokenAmountToUSD(requirement.maxAmountRequired),
+        resource: displayResourceUrl,
+        amount: signedValue,
+        amountUSD: signedAmountUSD,
         token: requirement.extra?.name ?? 'USDC',
         network: requirement.network,
         payTo: requirement.payTo,
         signature: payload.payload.signature,
       };
-      addX402Payment(record);
+      addX402Payment(sessKey, record);
       audit('info', `x402 payment authorized: $${record.amountUSD.toFixed(4)}`, {
         ...base,
         amountUSD: record.amountUSD,
