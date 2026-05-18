@@ -8,6 +8,7 @@
  */
 
 import type { RolloutStorageProvider } from './RolloutStorageProvider';
+import { isDesktopRuntimeProfile } from '@/runtime/profile';
 
 declare const __BUILD_MODE__: 'extension' | 'desktop' | 'server';
 
@@ -20,6 +21,15 @@ export async function createRolloutStorageProvider(): Promise<RolloutStorageProv
   }
 
   if (__BUILD_MODE__ === 'server') {
+    if (isDesktopRuntimeProfile()) {
+      const { getDesktopRuntimeHost } = await import('@/desktop-runtime/host');
+      const { DesktopRuntimeRolloutStorageProvider } = await import(
+        '@/desktop-runtime/storage/DesktopRuntimeRolloutStorageProvider'
+      );
+      const provider = new DesktopRuntimeRolloutStorageProvider(getDesktopRuntimeHost().rolloutDbPath);
+      await provider.initialize();
+      return provider;
+    }
     const { getDataDir } = await import('@/server/config/server-config');
     const { TSRolloutStorageProvider } = await import('./TSRolloutStorageProvider');
     const provider = new TSRolloutStorageProvider(getDataDir());

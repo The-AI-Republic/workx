@@ -1,45 +1,32 @@
-/**
- * File-based ConfigStorageProvider for server mode.
- * Stores config as a JSON file on disk, mirroring what Tauri's Rust backend
- * does for the desktop app.
- */
-
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
+import { dirname } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import type { ConfigStorageProvider } from '@/core/storage/ConfigStorageProvider';
 
-export class FileConfigStorageProvider implements ConfigStorageProvider {
-  private readonly filePath: string;
+export class DesktopRuntimeConfigStorageProvider implements ConfigStorageProvider {
   private data: Record<string, unknown>;
 
-  constructor(dataDirOrOptions: string | { dataDir?: string; filePath?: string }) {
-    this.filePath = typeof dataDirOrOptions === 'string'
-      ? join(dataDirOrOptions, 'config-storage.json')
-      : dataDirOrOptions.filePath ?? join(dataDirOrOptions.dataDir ?? '', 'config-storage.json');
+  constructor(private readonly filePath: string) {
     this.data = this.load();
   }
 
   private load(): Record<string, unknown> {
     try {
       if (existsSync(this.filePath)) {
-        return JSON.parse(readFileSync(this.filePath, 'utf-8'));
+        const raw = readFileSync(this.filePath, 'utf-8');
+        return raw.trim() ? JSON.parse(raw) : {};
       }
     } catch (error) {
-      console.warn('[FileConfigStorage] Failed to read config file, starting fresh:', error);
+      console.warn('[DesktopRuntimeConfigStorage] Failed to read config file:', error);
     }
     return {};
   }
 
   private persist(): void {
-    try {
-      const dir = dirname(this.filePath);
-      if (!existsSync(dir)) {
-        mkdirSync(dir, { recursive: true });
-      }
-      writeFileSync(this.filePath, JSON.stringify(this.data, null, 2), 'utf-8');
-    } catch (error) {
-      console.error('[FileConfigStorage] Failed to write config file:', error);
+    const dir = dirname(this.filePath);
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
     }
+    writeFileSync(this.filePath, JSON.stringify(this.data, null, 2), 'utf-8');
   }
 
   async get<T>(key: string): Promise<T | null> {
@@ -87,7 +74,9 @@ export class FileConfigStorageProvider implements ConfigStorageProvider {
     this.persist();
   }
 
-  async getBytesInUse(_key?: string): Promise<number | null> {
-    return null;
+  async getBytesInUse(key?: string): Promise<number | null> {
+    const value = key ? this.data[key] : this.data;
+    if (value === undefined) return 0;
+    return Buffer.byteLength(JSON.stringify(value), 'utf-8');
   }
 }

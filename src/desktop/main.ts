@@ -12,8 +12,9 @@ import { initializeHotkeys } from './hotkeys';
 import { initializeTray } from './tray';
 import { initializeAutoStart } from './autostart';
 import { initializeUpdater } from './updater';
-import { getDesktopAgentBootstrap } from './agent/DesktopAgentBootstrap';
 import { AgentConfig } from '@/config/AgentConfig';
+import { isDesktopRuntimeRelayEnabled } from '@/desktop-runtime/featureFlag';
+import { invoke } from '@tauri-apps/api/core';
 
 /**
  * Initialize the desktop-specific services
@@ -69,8 +70,13 @@ async function cleanup(): Promise<void> {
 
   // Shutdown the agent bootstrap
   try {
-    const bootstrap = getDesktopAgentBootstrap();
-    await bootstrap.shutdown();
+    if (isDesktopRuntimeRelayEnabled()) {
+      await invoke('runtime_shutdown');
+    } else {
+      const { getDesktopAgentBootstrap } = await import('./agent/DesktopAgentBootstrap');
+      const bootstrap = getDesktopAgentBootstrap();
+      await bootstrap.shutdown();
+    }
   } catch (error) {
     console.error('[Desktop] Failed to shutdown agent bootstrap:', error);
   }

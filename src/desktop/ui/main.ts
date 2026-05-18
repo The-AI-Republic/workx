@@ -25,7 +25,7 @@ import '../../webfront/styles.css';
 import { mount } from 'svelte';
 import App from '../../webfront/App.svelte';
 import { initializeDesktop } from '../main';
-import { initializeDesktopAgent } from '../agent/DesktopAgentBootstrap';
+import { isDesktopRuntimeRelayEnabled } from '@/desktop-runtime/featureFlag';
 import { initLocale } from '../../webfront/lib/i18n';
 import { AgentConfig } from '@/config/AgentConfig';
 import { initializeConfigStorage, initializeCredentialStore } from '@/core/storage';
@@ -48,22 +48,31 @@ async function init() {
     // Continue - will fall back to in-memory storage
   }
 
-  // 0.5. Initialize credential store (for secure API key storage)
-  try {
-    await initializeCredentialStore();
-    console.log('[Desktop] Credential store initialized');
-  } catch (error) {
-    console.warn('[Desktop] Failed to initialize credential store:', error);
+  const useRuntimeRelay = isDesktopRuntimeRelayEnabled();
+
+  // 0.5. Initialize credential store only for the legacy in-WebView agent.
+  if (!useRuntimeRelay) {
+    try {
+      await initializeCredentialStore();
+      console.log('[Desktop] Credential store initialized');
+    } catch (error) {
+      console.warn('[Desktop] Failed to initialize credential store:', error);
+    }
   }
 
-  // 1. Initialize the agent bootstrap first
-  // This creates RepublicAgent + TauriChannel + ChannelManager
-  try {
-    await initializeDesktopAgent();
-    console.log('[Desktop] Agent bootstrap initialized');
-  } catch (error) {
-    console.error('[Desktop] Failed to initialize agent bootstrap:', error);
-    // Continue anyway - the app will show error state
+  // 1. Initialize the legacy in-WebView bootstrap only when explicitly opted out
+  // of the sidecar runtime relay.
+  if (!useRuntimeRelay) {
+    try {
+      const { initializeDesktopAgent } = await import('../agent/DesktopAgentBootstrap');
+      await initializeDesktopAgent();
+      console.log('[Desktop] Agent bootstrap initialized');
+    } catch (error) {
+      console.error('[Desktop] Failed to initialize agent bootstrap:', error);
+      // Continue anyway - the app will show error state
+    }
+  } else {
+    console.log('[Desktop] Using sidecar runtime relay; skipping in-WebView agent bootstrap');
   }
 
   // 2. Initialize desktop services (tray, hotkeys)

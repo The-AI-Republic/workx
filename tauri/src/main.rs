@@ -11,6 +11,7 @@ mod oauth_server;
 mod sandbox;
 mod plugins_commands;
 mod rollout_db;
+mod runtime_supervisor;
 mod scheduler_commands;
 mod skills_commands;
 mod storage_commands;
@@ -333,10 +334,14 @@ fn main() {
             Ok(())
         })
         .manage(terminal_commands::PtySessionRegistry::new())
+        .manage(runtime_supervisor::RuntimeSupervisorState::default())
         .invoke_handler(tauri::generate_handler![
             commands::greet,
             commands::get_platform_info,
             commands::get_project_root,
+            runtime_supervisor::runtime_start,
+            runtime_supervisor::runtime_agent_send,
+            runtime_supervisor::runtime_shutdown,
             mcp_manager::mcp_connect,
             mcp_manager::mcp_list_tools,
             mcp_manager::mcp_call_tool,
