@@ -19,6 +19,9 @@ import { getConfigStorage } from '../storage/ConfigStorageProvider';
 import { getChannelManager } from '../channels/ChannelManager';
 import { withTelemetry } from '../telemetry/TelemetryBridge';
 import { TabManager } from '../TabManager';
+import { createSessionServices } from '../session/state/SessionServices';
+import { SessionCacheManager } from '../../storage/SessionCacheManager';
+import { IndexedDBAdapter } from '../../storage/IndexedDBAdapter';
 import type { InitialHistory } from '../session/state/types';
 import type {
   SessionConfig,
@@ -155,7 +158,7 @@ export class AgentRegistry {
       if (this._registryConfig.agentFactory) {
         // Server/Desktop path: use provided factory for agent creation.
         // The factory owns sub-agent registration + plugin binding
-        // internally (see Server/DesktopAgentBootstrap), so onAgentCreated
+        // internally (see ServerAgentBootstrap), so onAgentCreated
         // is invoked with a null runner here for contract symmetry only —
         // those platforms don't set the callback.
         agent = await this._registryConfig.agentFactory(this._config, initialHistory);
@@ -176,7 +179,10 @@ export class AgentRegistry {
         const { ExtensionPlatformAdapter } = await import('../../extension/platform/ExtensionPlatformAdapter');
         const platformAdapter = new ExtensionPlatformAdapter();
         await platformAdapter.initialize();
-        agent = new RepublicAgent(this._config, platformAdapter, initialHistory, undefined, new UserNotifier());
+        const services = await createSessionServices({
+          sessionCache: new SessionCacheManager(new IndexedDBAdapter()),
+        }, false);
+        agent = new RepublicAgent(this._config, platformAdapter, initialHistory, undefined, new UserNotifier(), services);
         await agent.initialize();
 
         // Configure extension-specific approval gate
