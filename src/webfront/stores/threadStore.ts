@@ -23,15 +23,15 @@ export interface SidePanelThread {
   /** Creation timestamp for ordering */
   createdAt: number;
   /**
-   * Active agent persona mode for this session. Undefined = not yet known
-   * (treat as the default mode). Committed only from a backend ModeChanged
-   * event — never optimistically.
+   * Runtime-only active agent persona mode for this session. Undefined = not
+   * yet known (treat as the default mode). Committed only from a backend
+   * ModeChanged event — never optimistically, and never persisted.
    */
   mode?: AgentMode;
   /**
-   * A mode the user requested that is awaiting application (the session had a
-   * task in flight). Drives the "switching after current task…" UI. Cleared
-   * when the backend confirms the switch applied.
+   * Runtime-only mode the user requested that is awaiting application (the
+   * session had a task in flight). Drives the "switching after current task…"
+   * UI. Cleared when the backend confirms the switch applied. Never persisted.
    */
   pendingMode?: AgentMode | null;
 }
@@ -217,8 +217,9 @@ function createThreadStore() {
         const stored = await getConfigStorage().get<ThreadStoreState>(STORAGE_KEY);
 
         if (stored && stored.threads && stored.threads.length > 0) {
-          set(stored);
-          return stored;
+          const restored = sanitizePersistentState(stored);
+          set(restored);
+          return restored;
         }
       } catch (error) {
         console.error('[ThreadStore] Failed to restore threads:', error);
@@ -254,11 +255,22 @@ async function persistThreads(): Promise<void> {
       console.warn('[ThreadStore] ConfigStorage not initialized, skipping persist');
       return;
     }
-    const state = get(threadStore);
+    const state = sanitizePersistentState(get(threadStore));
     await getConfigStorage().set(STORAGE_KEY, state);
   } catch (error) {
     console.error('[ThreadStore] Failed to persist threads:', error);
   }
+}
+
+function sanitizePersistentState(state: ThreadStoreState): ThreadStoreState {
+  return {
+    activeSessionId: state.activeSessionId,
+    threads: state.threads.map((thread) => ({
+      sessionId: thread.sessionId,
+      title: thread.title,
+      createdAt: thread.createdAt,
+    })),
+  };
 }
 
 // Create the store singleton

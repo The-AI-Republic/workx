@@ -118,6 +118,13 @@ export interface RepublicAgentEngineConfig {
    * Initial conversation history (for session recovery).
    */
   initialHistory?: InitialHistory;
+
+  /**
+   * True for engines created by ShadowAgentRunner. Shadow children can compact
+   * their local forked history, but they must not start shadow compaction
+   * preparation again or a large compact candidate can recurse indefinitely.
+   */
+  isShadowAgentChild?: boolean;
 }
 
 export interface EngineResult {

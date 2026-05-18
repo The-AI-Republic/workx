@@ -58,6 +58,73 @@ export const MODES: Record<AgentMode, AgentModeSpec> = {
   code: { id: 'code', label: 'Code', agentTypes: ['applepi', 'applepi-server'] },
 };
 
+type FragmentContent = string | ((args: {
+  agentType: AgentType;
+  mode: AgentMode;
+  context?: RuntimeContext;
+  composer: PromptComposer;
+}) => string | null | undefined);
+
+interface FragmentSpec {
+  id: string;
+  order: number;
+  content: FragmentContent;
+  agentTypes?: AgentType[];
+  modes?: AgentMode[];
+  requiresCodingInstructions?: boolean;
+}
+
+export const FRAGMENTS: FragmentSpec[] = [
+  { id: 'browserx-intro', order: 10, agentTypes: ['browserx'], content: browserxIntro },
+  { id: 'applepi-intro', order: 10, agentTypes: ['applepi'], modes: ['general'], content: piIntro },
+  { id: 'applepi-server-intro', order: 10, agentTypes: ['applepi-server'], modes: ['general'], content: piServerIntro },
+  { id: 'coder-intro', order: 10, agentTypes: ['applepi', 'applepi-server'], modes: ['code'], content: coderIntro },
+  {
+    id: 'persona',
+    order: 20,
+    content: ({ context }) => resolvePersona(context?.personaName)?.prompt,
+  },
+  {
+    id: 'runtime-metadata',
+    order: 30,
+    content: ({ agentType, context, composer }) => composer.buildRuntimeMetadata(agentType, context),
+  },
+  { id: 'system-semantics', order: 40, content: systemSemantics },
+  { id: 'safety', order: 50, content: safety },
+  { id: 'action-risk-and-approval', order: 60, content: actionRiskAndApproval },
+  { id: 'work-loop', order: 70, content: workLoop },
+  {
+    id: 'browserx-tools',
+    order: 80,
+    agentTypes: ['browserx'],
+    requiresCodingInstructions: true,
+    content: browserxTools,
+  },
+  {
+    id: 'pi-tools',
+    order: 80,
+    agentTypes: ['applepi', 'applepi-server'],
+    modes: ['general'],
+    requiresCodingInstructions: true,
+    content: piTools,
+  },
+  {
+    id: 'coder-tools',
+    order: 80,
+    agentTypes: ['applepi', 'applepi-server'],
+    modes: ['code'],
+    requiresCodingInstructions: true,
+    content: coderTools,
+  },
+  { id: 'communication', order: 90, content: communication },
+  { id: 'code-guardrails', order: 100, modes: ['code'], content: codeGuardrails },
+  {
+    id: 'plan-review',
+    order: 110,
+    content: ({ context }) => context?.planReviewActive ? planReview : null,
+  },
+];
+
 export interface RuntimeContext {
   /** Operating system: 'linux' | 'macos' | 'windows' */
   os?: string;
@@ -112,61 +179,18 @@ export class PromptComposer {
     const requestedMode: AgentMode = typeof modeOrContext === 'string' ? modeOrContext : DEFAULT_MODE;
     const runtimeContext = typeof modeOrContext === 'string' ? context : modeOrContext;
     const effectiveMode: AgentMode = agentType === 'browserx' ? 'general' : requestedMode;
-    const sections: string[] = [];
-
-    // 1. Agent identity & mission
-    const intro = effectiveMode === 'code' && agentType !== 'browserx'
-      ? coderIntro
-      : agentType === 'browserx'
-        ? browserxIntro
-        : agentType === 'applepi-server'
-          ? piServerIntro
-          : piIntro;
-    sections.push(intro);
-
-    // 1b. Output-style persona (Track 24.2). Additive; unknown/unset → null.
     const persona = resolvePersona(runtimeContext?.personaName);
-    if (persona) sections.push(persona.prompt);
 
-    // 2. Runtime metadata
-    sections.push(this.buildRuntimeMetadata(agentType, runtimeContext));
-
-    // 3. Runtime and safety semantics
-    sections.push(systemSemantics);
-    sections.push(safety);
-    sections.push(actionRiskAndApproval);
-    sections.push(workLoop);
-
-    // 4. Tool guidance (static listing for MVP). A persona may opt out of the
-    //    coding/tool instructions via `keepCodingInstructions: false`.
-    if (!persona || persona.keepCodingInstructions) {
-      sections.push(agentType === 'browserx'
-        ? browserxTools
-        : effectiveMode === 'code'
-          ? coderTools
-          : piTools);
-    }
-
-    // 5. Communication guidance remains shared even for personas that opt out
-    //    of platform tool routing.
-    sections.push(communication);
-
-    // 6. Code-mode guardrails are mode-specific and should remain close to
-    // the end of the prompt for salience.
-    if (effectiveMode === 'code') {
-      sections.push(codeGuardrails);
-    }
-
-    // 7. Plan Review (Track 14) — appended last (highest salience) only
-    //    while the freeze is active, so the model proposes a plan instead
-    //    of executing. The freeze itself is the hard guarantee; this is
-    //    the soft cross-turn guidance so it doesn't waste turns on denied
-    //    mutations.
-    if (runtimeContext?.planReviewActive) {
-      sections.push(planReview);
-    }
-
-    return sections.filter(Boolean).join('\n\n');
+    return FRAGMENTS
+      .filter((fragment) => !fragment.agentTypes || fragment.agentTypes.includes(agentType))
+      .filter((fragment) => !fragment.modes || fragment.modes.includes(effectiveMode))
+      .filter((fragment) => !fragment.requiresCodingInstructions || !persona || persona.keepCodingInstructions)
+      .sort((a, b) => a.order - b.order)
+      .map((fragment) => typeof fragment.content === 'function'
+        ? fragment.content({ agentType, mode: effectiveMode, context: runtimeContext, composer: this })
+        : fragment.content)
+      .filter((section): section is string => Boolean(section))
+      .join('\n\n');
   }
 
   /**
@@ -186,7 +210,7 @@ export class PromptComposer {
   /**
    * Build runtime metadata section.
    */
-  private buildRuntimeMetadata(
+  buildRuntimeMetadata(
     agentType: AgentType,
     context?: RuntimeContext
   ): string {

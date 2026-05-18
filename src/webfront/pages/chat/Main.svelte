@@ -176,6 +176,12 @@
           const { sessionId, mode, applied } = (msg as any).data;
           if (applied) {
             threadStore.setThreadMode(sessionId, mode);
+            const event: Event = { id: `evt_${Date.now()}`, msg };
+            if (sessionId === activeSessionId) {
+              handleEvent(event);
+            } else {
+              handleEventForSession(event, sessionId);
+            }
           } else {
             threadStore.setThreadPendingMode(sessionId, mode);
           }
@@ -1496,7 +1502,7 @@
               {@const activeMode = $activeThread?.mode ?? DEFAULT_MODE}
               {@const pendingMode = $activeThread?.pendingMode ?? null}
               <div class="flex items-center gap-1" role="group" aria-label={$_t("Agent mode")}>
-                {#each Object.values(MODES).filter((m) => !m.agentTypes || m.agentTypes.includes('applepi') || m.agentTypes.includes('applepi-server')) as modeSpec}
+                {#each Object.values(MODES).filter((m) => !m.agentTypes || m.agentTypes.includes('applepi') || m.agentTypes.includes('applepi-server')) as modeSpec (modeSpec.id)}
                   {@const isActive = activeMode === modeSpec.id && !pendingMode}
                   {@const isPending = pendingMode === modeSpec.id}
                   <button
