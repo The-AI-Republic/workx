@@ -175,6 +175,7 @@ export class EventProcessor {
       case 'Notification':
       case 'SessionConfigured':
       case 'BackgroundEvent':
+      case 'ModeChanged':
       case 'TurnDiff':
       case 'GetHistoryEntryResponse':
       case 'McpListToolsResponse':
@@ -892,6 +893,20 @@ export class EventProcessor {
         title: t('Notification'),
         content: msg.data.message || '',
         style: { textColor: 'text-gray-400' },
+        collapsible: false,
+      };
+    }
+
+    if (msg.type === 'ModeChanged') {
+      if (!msg.data.applied) return null;
+      const label = msg.data.mode.charAt(0).toUpperCase() + msg.data.mode.slice(1);
+      return {
+        id: event.id,
+        category: 'system',
+        timestamp: new Date(),
+        title: t('Mode Changed'),
+        content: `-- switched to ${label} mode --`,
+        style: STYLE_PRESETS.dimmed,
         collapsible: false,
       };
     }

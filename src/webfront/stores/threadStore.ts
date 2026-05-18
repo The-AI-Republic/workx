@@ -9,6 +9,7 @@
 
 import { writable, derived, get, type Writable } from 'svelte/store';
 import { getConfigStorage, isConfigStorageInitialized } from '@/core/storage/ConfigStorageProvider';
+import type { AgentMode } from '@/prompts/PromptComposer';
 
 /**
  * Sidepanel thread representation
@@ -21,6 +22,18 @@ export interface SidePanelThread {
   title: string;
   /** Creation timestamp for ordering */
   createdAt: number;
+  /**
+   * Runtime-only active agent persona mode for this session. Undefined = not
+   * yet known (treat as the default mode). Committed only from a backend
+   * ModeChanged event — never optimistically, and never persisted.
+   */
+  mode?: AgentMode;
+  /**
+   * Runtime-only mode the user requested that is awaiting application (the
+   * session had a task in flight). Drives the "switching after current task…"
+   * UI. Cleared when the backend confirms the switch applied. Never persisted.
+   */
+  pendingMode?: AgentMode | null;
 }
 
 /**
@@ -131,6 +144,40 @@ function createThreadStore() {
     },
 
     /**
+     * Commit a thread's active mode (from a backend ModeChanged event).
+     * Also clears any pendingMode since the switch has now settled.
+     * @param sessionId The session ID of the thread
+     * @param mode The applied agent mode
+     */
+    setThreadMode: (sessionId: string, mode: AgentMode): void => {
+      update((state) => ({
+        ...state,
+        threads: state.threads.map((t) =>
+          t.sessionId === sessionId ? { ...t, mode, pendingMode: null } : t
+        ),
+      }));
+
+      persistThreads();
+    },
+
+    /**
+     * Set (or clear) a thread's pending mode — the user requested a switch but
+     * a task is in flight. Pass null to clear.
+     * @param sessionId The session ID of the thread
+     * @param mode The requested mode, or null to clear
+     */
+    setThreadPendingMode: (sessionId: string, mode: AgentMode | null): void => {
+      update((state) => ({
+        ...state,
+        threads: state.threads.map((t) =>
+          t.sessionId === sessionId ? { ...t, pendingMode: mode } : t
+        ),
+      }));
+
+      persistThreads();
+    },
+
+    /**
      * Get a thread by session ID (direct lookup)
      * @param sessionId The session ID to find
      * @returns The thread or undefined
@@ -170,8 +217,9 @@ function createThreadStore() {
         const stored = await getConfigStorage().get<ThreadStoreState>(STORAGE_KEY);
 
         if (stored && stored.threads && stored.threads.length > 0) {
-          set(stored);
-          return stored;
+          const restored = sanitizePersistentState(stored);
+          set(restored);
+          return restored;
         }
       } catch (error) {
         console.error('[ThreadStore] Failed to restore threads:', error);
@@ -207,11 +255,22 @@ async function persistThreads(): Promise<void> {
       console.warn('[ThreadStore] ConfigStorage not initialized, skipping persist');
       return;
     }
-    const state = get(threadStore);
+    const state = sanitizePersistentState(get(threadStore));
     await getConfigStorage().set(STORAGE_KEY, state);
   } catch (error) {
     console.error('[ThreadStore] Failed to persist threads:', error);
   }
+}
+
+function sanitizePersistentState(state: ThreadStoreState): ThreadStoreState {
+  return {
+    activeSessionId: state.activeSessionId,
+    threads: state.threads.map((thread) => ({
+      sessionId: thread.sessionId,
+      title: thread.title,
+      createdAt: thread.createdAt,
+    })),
+  };
 }
 
 // Create the store singleton

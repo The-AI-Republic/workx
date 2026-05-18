@@ -12,6 +12,7 @@ import type {
   ReasoningSummaryConfig,
 } from './types';
 import type { TaskSummary } from '../taskmanager/types';
+import type { AgentMode } from '../../prompts/PromptComposer';
 
 /**
  * Event Queue Entry - responses from agent
@@ -112,6 +113,8 @@ export type EventMsg =
   // Service routing events
   | { type: 'ServiceResponse'; data: ServiceResponseEvent }
   | { type: 'StateUpdate'; data: StateUpdateEvent }
+  // Per-session agent persona mode
+  | { type: 'ModeChanged'; data: ModeChangedEvent }
   // Hook system events
   | { type: 'HookFired'; data: HookFiredEvent }
   | { type: 'HookBlocked'; data: HookBlockedEvent }
@@ -233,6 +236,18 @@ export interface ShadowAgentRuntimeEventData {
 export interface ErrorEvent {
   message: string;
   code?: string;
+}
+
+/**
+ * Emitted when a session's agent persona mode changes (or is requested but
+ * deferred because a task is in flight). The UI is the consumer — it commits
+ * the tab's mode on `applied: true` and shows a pending state otherwise.
+ */
+export interface ModeChangedEvent {
+  sessionId: string;
+  mode: AgentMode;
+  /** true = applied to the live turn context now; false = deferred */
+  applied: boolean;
 }
 
 export interface TaskStartedEvent {
