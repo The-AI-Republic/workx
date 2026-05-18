@@ -2417,7 +2417,8 @@ export class Session {
    * task completion. Mirrors {@link maybeGenerateTitle}'s background pattern.
    */
   async maybeGenerateSuggestion(): Promise<void> {
-    if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'server') {
+    const { getRuntimeProfile } = await import('@/runtime/profile');
+    if (getRuntimeProfile() === 'server') {
       return;
     }
     // Single-flight + cooldown: a slow background call must not stack with the

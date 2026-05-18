@@ -611,25 +611,39 @@ export class MCPManager implements IMCPManager {
       }
     }
 
-    const { invoke } = await import('@tauri-apps/api/core');
-
     // Try the bundled sidecar binary first (production builds).
     // Fall back to npx + node_modules for dev mode where no sidecar is built.
     let command = 'npx';
     let args = ['chrome-devtools-mcp', '--no-usage-statistics', '--isolated', '--chromeArg=--no-sandbox', '--chromeArg=--disable-setuid-sandbox'];
     let cwd: string | undefined;
 
-    try {
-      const sidecarPath = await invoke<string>('get_browser_mcp_sidecar_path');
-      command = sidecarPath;
-      args = ['--no-usage-statistics', '--isolated', '--chromeArg=--no-sandbox', '--chromeArg=--disable-setuid-sandbox'];
-      // sidecar resolves its own paths — no cwd needed
-    } catch {
-      // Resolve project root so npx can find chrome-devtools-mcp in node_modules
+    if (__BUILD_MODE__ === 'server') {
       try {
-        cwd = await invoke<string>('get_project_root');
+        const { getOptionalDesktopRuntimeHost } = await import('@/desktop-runtime/host');
+        const host = getOptionalDesktopRuntimeHost();
+        if (host?.browserMcpSidecarPath) {
+          command = host.browserMcpSidecarPath;
+          args = ['--no-usage-statistics', '--isolated', '--chromeArg=--no-sandbox', '--chromeArg=--disable-setuid-sandbox'];
+        } else if (host?.projectRoot) {
+          cwd = host.projectRoot;
+        }
       } catch (err) {
-        console.warn('[MCPManager] Failed to resolve project root:', err);
+        console.warn('[MCPManager] Failed to resolve desktop runtime MCP host paths:', err);
+      }
+    } else {
+      const { invoke } = await import('@tauri-apps/api/core');
+      try {
+        const sidecarPath = await invoke<string>('get_browser_mcp_sidecar_path');
+        command = sidecarPath;
+        args = ['--no-usage-statistics', '--isolated', '--chromeArg=--no-sandbox', '--chromeArg=--disable-setuid-sandbox'];
+        // sidecar resolves its own paths — no cwd needed
+      } catch {
+        // Resolve project root so npx can find chrome-devtools-mcp in node_modules
+        try {
+          cwd = await invoke<string>('get_project_root');
+        } catch (err) {
+          console.warn('[MCPManager] Failed to resolve project root:', err);
+        }
       }
     }
 
