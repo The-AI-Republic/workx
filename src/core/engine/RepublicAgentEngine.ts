@@ -75,6 +75,7 @@ export class RepublicAgentEngine {
         this.config.persistent ?? false,
         undefined,
         this.toolRegistry,
+        this.config.initialHistory,
       );
 
       // Apply config values (systemPrompt, userInstructions, model) to the session's TurnContext.
@@ -114,6 +115,10 @@ export class RepublicAgentEngine {
     // and the engine's getTaskOutput can both reach the same backing store.
     if (this.session && this.config.taskOutputStore) {
       this.session.setTaskOutputStore(this.config.taskOutputStore);
+    }
+
+    if (this.ownsSession && this.session?.initialize) {
+      await this.session.initialize();
     }
 
     // Setup approval system
@@ -393,6 +398,7 @@ export class RepublicAgentEngine {
     depth?: number;
     maxDepth?: number;
     drainPendingMessages?: () => string[];
+    initialHistory?: RepublicAgentEngineConfig['initialHistory'];
     /** (Track 04) Inherit parent's TaskOutputStore so sub-agent's TaskRunner writes chunks. */
     taskOutputStore?: RepublicAgentEngineConfig['taskOutputStore'];
   }): RepublicAgentEngine {
@@ -412,6 +418,7 @@ export class RepublicAgentEngine {
       depth: childConfig.depth ?? (this.getDepth() + 1),
       maxDepth: childConfig.maxDepth ?? this.getMaxDepth(),
       drainPendingMessages: childConfig.drainPendingMessages,
+      initialHistory: childConfig.initialHistory,
       taskOutputStore: childConfig.taskOutputStore ?? this.config.taskOutputStore,
     });
   }
@@ -551,7 +558,10 @@ export class RepublicAgentEngine {
       // Create RegularTask and delegate to Session.spawnTask()
       // Pass maxTurns from engine config so sub-agents enforce their turn limits.
       const { RegularTask } = await import('../tasks/RegularTask');
-      const task = new RegularTask({ maxTurns: this.config.maxTurns });
+      const task = new RegularTask({
+        maxTurns: this.config.maxTurns,
+        drainPendingMessages: this.config.drainPendingMessages,
+      });
 
       await this.session.spawnTask(task, turnContext, submissionId, protocolItems);
 

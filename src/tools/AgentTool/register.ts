@@ -14,7 +14,11 @@ import {
   createSendMessageHandler,
 } from './managementTools';
 import type { SubAgentTypeConfig, SubAgentToolParams } from './types';
-import { validateSubAgentTypeConfig } from './validateTypeConfig';
+import {
+  normalizeSubAgentTypeConfig,
+  validateSubAgentTypeConfig,
+} from './validateTypeConfig';
+import { isSubAgentContextMode } from './agentTypes';
 
 export interface RegisterSubAgentOptions {
   /** Sub-agent types to register. Defaults to built-in types. */
@@ -54,7 +58,17 @@ export async function registerSubAgentTool(
     const configData = agentConfig.getConfig();
     const rawTypes = (configData as unknown as Record<string, unknown>).subAgentTypes;
     if (Array.isArray(rawTypes)) {
-      configTypes = rawTypes.filter(validateSubAgentTypeConfig);
+      configTypes = [];
+      for (const raw of rawTypes) {
+        if (!validateSubAgentTypeConfig(raw)) continue;
+        try {
+          configTypes.push(normalizeSubAgentTypeConfig(raw));
+        } catch (error) {
+          console.warn(
+            `[SubAgent type config] ${raw.id}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+      }
     }
   } catch {
     // Config loading is optional
@@ -86,11 +100,29 @@ export async function registerSubAgentTool(
         return JSON.stringify({ success: false, error: 'Missing required parameter: prompt' });
       }
 
+      // Accept both the tool-schema snake_case `context_mode` and the
+      // internal camelCase `contextMode`. When a value is supplied but
+      // unrecognized, fail loudly instead of silently defaulting — this
+      // matches resolveSubAgentBehavior, which throws for a valid-but-
+      // disallowed mode rather than coercing it.
+      const rawContextMode = params.context_mode ?? params.contextMode;
+      let contextMode: SubAgentToolParams['contextMode'];
+      if (rawContextMode !== undefined) {
+        if (!isSubAgentContextMode(rawContextMode)) {
+          return JSON.stringify({
+            success: false,
+            error: `Invalid context_mode '${String(rawContextMode)}'. Expected 'isolated' or 'fork'.`,
+          });
+        }
+        contextMode = rawContextMode;
+      }
+
       const toolParams: SubAgentToolParams = {
         type: params.type,
         prompt: params.prompt,
         description: typeof params.description === 'string' ? params.description : undefined,
         background: params.background === true,
+        contextMode,
       };
 
       const result = await runner.run(toolParams);

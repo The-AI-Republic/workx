@@ -119,6 +119,7 @@ export type EventMsg =
   | { type: 'SubAgentStart'; data: SubAgentStartEvent }
   | { type: 'SubAgentComplete'; data: SubAgentCompleteEvent }
   | { type: 'SubAgentError'; data: SubAgentErrorEvent }
+  | { type: 'SubAgentWarning'; data: SubAgentWarningEvent }
   // Session summary telemetry (internal observability; UI ignores by default)
   | { type: 'SessionSummaryTelemetry'; data: SessionSummaryTelemetryEventData }
   // Track 04: typed-task layer events (background sub-agents only in v1)
@@ -863,12 +864,18 @@ export interface HookBlockedEvent {
 export interface SubAgentStartEvent {
   runId: string;
   subAgentType: string;
+  agentType?: string;
+  contextMode?: string;
+  executionMode?: string;
   description: string;
 }
 
 export interface SubAgentCompleteEvent {
   runId: string;
   subAgentType: string;
+  agentType?: string;
+  contextMode?: string;
+  executionMode?: string;
   turnCount: number;
   tokenUsage?: {
     input: number;
@@ -879,8 +886,13 @@ export interface SubAgentCompleteEvent {
 }
 
 export interface SubAgentErrorEvent {
-  runId: string;
-  subAgentType: string;
+  runId?: string;
+  subAgentType?: string;
   error: string;
 }
 
+export interface SubAgentWarningEvent {
+  runId: string;
+  subAgentType: string;
+  warning: string;
+}
