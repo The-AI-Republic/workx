@@ -1,155 +1,297 @@
 # Track 43: Apple Pi Runtime Decoupling (Out-of-Process Agent)
 
-**Priority: P1** · **Effort: XL** · **Status: DESIGN — NOT implementation-ready (blocked on the P0 dispatch audit; design-reviewed ×3, 2026-05-17)**
+**Priority: P1** | **Effort: XL** | **Status: READY FOR IMPLEMENTATION (design locked 2026-05-17)**
 
-> Source: architecture pass + **three rounds of design review** on Apple Pi's desktop runtime (2026-05-17), line-level verified against `DesktopAgentBootstrap`, `TauriChannel`, both platform adapters, the `__BUILD_MODE__` factories, `KeytarCredentialStore`, `ServerAgentBootstrap`, `@applepi/ws-server`, the `tauri/src` command surface + `Cargo.toml`/`capabilities`, the Rust storage paths, and `server_mode_design.md`. Round 1 corrected 4 false premises; round 2 reversed the keychain decision; **round 3 (external cross-review) found that the round-2 build-mode strategy is broken and that two hard gaps — data-migration path-compatibility and direct UI→bootstrap calls — were underspecified** (see "Validation Notes — Round 3"). The status is therefore *not* READY: the build-mode strategy is an open decision gated on a complete dispatch audit. Not greenfield (the frame protocol is a shipped package; a headless runtime ships), but Decision 0 is unresolved.
+This track moves the Apple Pi desktop agent out of the Tauri WebView and into a supervised native Node runtime process. Tauri remains the UI, shell, and OS-trust boundary. The agent runtime owns agent state, tools, storage, MCP, scheduler orchestration, and auth mode.
+
+The previous review rounds are preserved as background, but the blocking questions are now resolved in this document:
+
+- The runtime sidecar is a **Node bundle built with `__BUILD_MODE__='server'`**.
+- The sidecar sets a separate runtime profile: **`APPLEPI_RUNTIME_PROFILE=desktop-runtime`**.
+- The runtime still presents desktop semantics where they matter: **`platformId='desktop'`**, desktop prompt/persona, desktop approval rules, desktop scheduler behavior, desktop MCP/browser tool behavior, and existing desktop on-disk paths.
+- The desktop UI bundle remains a Tauri/WebView bundle with `__BUILD_MODE__='desktop'`.
+- `src/server/index.ts` is **not** the desktop runtime entrypoint. Add a dedicated desktop runtime entrypoint.
 
 ## Problem
 
-The agent runtime runs **inside the Tauri WebView, in the same JS context as the UI** (`DesktopAgentBootstrap.ts:8`, `TauriChannel.ts:7-8`, `desktop/ui/main.ts:57` "Initialize the agent bootstrap" then mount UI). Consequences, verified:
+The current desktop agent runs inside the Tauri WebView, in the same JS context as the Svelte UI. That creates four durable problems:
 
-1. **Agent trapped in a browser sandbox.** ~40 `invoke()` shims to Rust (`main.rs:336-431`); `desktop/ui/main.ts:18-21` installs `installFetchProxy()` that *"routes external HTTP through Rust to bypass CORS"* — a per-request tax on the agent's own traffic.
-2. **Sandbox artifacts in the design** — `TauriChannel.ts:156-160` `LargePayloadStore` for the WebView2 `postMessage` limit.
-3. **Agent lifecycle bolted to UI lifecycle** — `main.rs:434-447` `prevent_close`+`hide` exists so the JS heap (and agent) survives a window close.
-4. **Two runtimes maintained twice** — `DesktopAgentBootstrap.ts` (1267 ln) ∥ `ServerAgentBootstrap.ts` (~1500 ln); they drift (`DesktopAgentBootstrap.ts:906-907` "parity with ServerAgentBootstrap").
+1. The agent is trapped in the browser sandbox. It needs Rust shims for HTTP, filesystem, storage, terminal, browser, MCP, OAuth, skills, plugins, and keychain.
+2. UI and agent lifecycle are coupled. Tauri has to hide the window rather than close it so the JS heap that contains the agent survives.
+3. Desktop and server maintain separate bootstraps with duplicated wiring and drift.
+4. The agent pays WebView IPC taxes for work that should be local to the runtime process.
 
-Goal: **Tauri owns only the UI + OS trust/shell boundary; the agent runs as a native Node process the Tauri shell spawns and supervises** — a bundled, auto-managed instance of the runtime `applepi-server` already ships.
+Goal: Tauri supervises a bundled runtime sidecar. The WebView is a UI client. The runtime is the single in-process home for the agent.
 
-## Validation Notes & Corrections
-
-**Round 1 (architecture review):**
-- **C1 — adapters are inert stubs.** `ServerPlatformAdapter.ts:66-103` & `DesktopPlatformAdapter.ts:133-170` return empty-body storage/cred stubs. Real per-mode routing is the `__BUILD_MODE__` factories `core/storage/index.ts:74-130` + `createRolloutStorageProvider.ts:14-37`. Work = replace desktop *providers*, not swap an adapter.
-- **C2 — `__BUILD_MODE__` is a hard compile-time gate** (pervasive). The decoupled runtime can't naively reuse `'desktop'` (Tauri-invoke providers, no Tauri in Node) or `'server'` (wrong data dir/behavior). → see **Decision 0 (revised in round 2)**.
-- **C3 — no `MessageRouter` exists** (`grep`=0); seam is `ChannelManager`/`ChannelAdapter`. `server_mode_design.md`'s `DesktopMessageRouter` is stale. Relay implements `ChannelAdapter`.
-- **C4 — Track 43 supersedes `server_mode_design.md` §18.3/§20.0** (`TauriBridge`/`DesktopMessageRouter` dropped; WS collapses to a co-located `DirectBridge`).
-
-**Round 2 (implementation-readiness review) — the load-bearing corrections:**
-
-- **C5 (REVERSAL) — keychain DOES need the Rust bridge.** Round 1 claimed `KeytarCredentialStore` is native Node keytar. **False.** Its own header: *"Uses Tauri commands that wrap keytar … on the Rust side"*; it `import { invoke } from '@tauri-apps/api/core'` → `invoke('keychain_get')`. **`keytar` is absent from `package.json`.** ⇒ `keychain_commands` (Rust) is **KEPT as a required control-frame bridge**; the runtime's credential store calls it over a control frame. (Alternative — add a `keytar`/`keyring` native dep — is an Open Question, not the default.)
-
-- **C6 `[SUPERSEDED by C9 — kept as historical record; do not act on this bullet in isolation]` (ARCHITECTURE CHANGE) — Decision 0 is NOT a new `__BUILD_MODE__` value.** Verified: ~10 `core/` modules branch on `__BUILD_MODE__ === 'desktop'` for *behavior*, not just storage — incl. `core/mcp/transports/index.ts:90` (`=== 'desktop' ? 'stdio' : 'sse'`, **MCP transport selection**), `core/messaging/index.ts:46`, `core/memory/MemoryFileSystem.ts:17`, `core/a2a/A2AManager.ts:72`, `core/mcp/MCPManager.ts:78`, `core/PromptLoader.ts:119`, `tools/registerPlatformTools.ts:24,73,128`. A new value would **silently disable every one** in the runtime. **Revised strategy:** the runtime bundle keeps `__BUILD_MODE__='desktop'` (all behavioral branches stay correct), and **only the 3 provider branches** (`createStorageProvider`/`createCredentialStore`/`createRolloutStorageProvider` + the ConfigStorage factory) are **rewired from Tauri-invoke to Node-native**. This is safe because, post-decouple, those factories execute **only in the Node runtime** — the UI-only webview no longer constructs the agent or storage (P3 must enforce this). Net: the divergence is confined to ~4 factory branches; zero behavioral-branch audit.
-
-- **D1 (DE-RISK) — the frame protocol is real and already a package.** `packages/ws-server/` exists; `server/connection/handshake.ts` imports `PROTOCOL_VERSION, ConnectRequestSchema, makeResponse, makeEvent, negotiateProtocolVersion, WS_CLOSE, getRegisteredMethods, EVENT_SCOPE_MAP` from `@applepi/ws-server`. `server_mode_design.md` §18.5/§18.6 extraction is **done**, incl. the `TransportBridge` seam (`toAgent`/`onAgentEvent`/`isConnected`) with a working `DirectBridge`. ⇒ P1 is "add a `StdioBridge` + carrier", not "build a protocol." Substantially lowers P1 risk.
-
-- **C7 — `ServerAgentBootstrap` extraction is more than a transport flag.** It directly `new`s `ServerChannel` (`:205`), `ServerScheduleStorage(dataDir)`/`ServerExecutionStorage(dataDir)`/`ServerSchedulerAlarms` (`:1186-1193`). The clean seam is `ServerChannel` (a `ChannelAdapter`); but the bootstrap also hard-codes the server scheduler/storage *set*. P1 must parameterize bootstrap over **(transport, storage set, scheduler set)**, not just transport.
-
-- **C8 (caveat) — `better-sqlite3` is a native module NOT in root `package.json`.** `ServerStorageProvider.ts:55` does `await import('better-sqlite3')`; it works in server deployments where it's installed separately. The desktop-runtime bundle must **add `better-sqlite3` with per-OS/arch prebuilt binaries** (feeds Open Q2: bundling/compiling).
-
-**Round 3 (external cross-review) — the load-bearing corrections that reset the status:**
-
-- **C9 (REVERSAL of C6) — keeping `__BUILD_MODE__='desktop'` does NOT make the runtime work; the strategy is broken.** C6 claimed `'desktop'` branches "stay correct." Verified false for a *Node process*: many `=== 'desktop'` branches **dispatch to Tauri/Rust-backed implementations** that do not exist in a Node sidecar. Confirmed: `core/memory/MemoryFileSystem.ts:17` (`'desktop'` → `createTauriFileSystem()` — Tauri APIs absent in Node); `core/mcp/MCPManager.ts:565` (stdio MCP: `'server'`→`NodeMCPBridge`, else incl. `'desktop'`→**`RustMCPBridge`/Tauri-IPC** — Rust absent in the sidecar). Neither round-1 (new value → branches silently disabled) nor round-2 (`'desktop'` → branches dispatch to Tauri impls) is a valid simple pick. **Decision 0 ("4 storage factories") is decisively undercounted.** The runtime is architecturally closer to `'server'` (which already has the Node impls: `ServerStorageProvider`, `createNodeFileSystem`, `NodeMCPBridge`) than to `'desktop'`. The build-mode strategy is now an **open decision gated on a complete dispatch audit** (P0), with a leading candidate of *"build as `'server'`, parameterize data paths, add the keychain bridge + desktop approval/persona + `platformId='desktop'` label, suppress server-only behaviors"*.
-
-- **C10 — direct UI→bootstrap calls bypass the channel entirely (missed scope).** The UI does not only talk to the agent via `ChannelAdapter`. `src/webfront/components/common/UserLoginStatus.svelte:106-109` dynamically imports `getDesktopAgentBootstrap()` and calls `bootstrap.setAuthMode(...)` **in-process**; `src/desktop/main.ts:15,72` calls `bootstrap.shutdown()`; `src/desktop/ui/main.ts:28` calls `initializeDesktopAgent()`. After decoupling the bootstrap lives in the sidecar — these need a **request/response service/control-frame API**, not just the event relay. Mitigation: the `ServiceRegistry` already exists and the channel carries it (`TauriChannel.supportsServices()=true`), so these become *service migrations* — real, previously-unscoped refactor work.
-
-- **C11 — server providers are NOT drop-in even at the right dir (data-loss risk understated).** Verified file/dir divergence: desktop today (Rust) writes `<config_dir>/storage.db` (`db_storage.rs:257`), `<config_dir>/rollouts.db` (`rollout_db.rs:19`), `<config_dir>/config.json` (`storage_commands.rs:35`). The server providers write `<dataDir>/storage/storage.db` (`ServerStorageProvider.ts:59`), `<dataDir>/rollouts/rollouts.db` (`TSRolloutStorageProvider.ts:37`), `<dataDir>/config-storage.json` (`FileConfigStorageProvider.ts:15`) — **different subdirs AND filenames**, plus a probable Rust-vs-`better-sqlite3` **schema** mismatch. Pointing them at the desktop dir still yields fresh empty databases ("silent empty app"). The round-2 wording ("reuse … pointed at the resolved dir … reproduce byte-for-byte") **understated this**: it requires either path/filename/schema-faithful runtime providers OR an explicit one-time migration — a **hard P0/P1 requirement**, not P4 verification.
-
-- **C5 confirmed independently** by the external review (no change; strengthens the round-2 reversal).
-
-## Target Architecture
+## Final Architecture
 
 ```
-┌──────── Tauri shell (NO agent logic) ────────┐    ┌── Apple Pi runtime — native Node proc ──┐
-│ WebView: Svelte UI ONLY                      │    │ PiRuntimeBootstrap (= ServerAgentBoot-  │
-│   ChannelManager → relay ChannelAdapter      │    │   strap, parameterized: transport +    │
-│      │ invoke('agent_send')  ▲ emit pi:event │stdio│   storage set + scheduler set)         │
-│ Rust: supervisor + DUMB relay + shell        │◄──►│ RepublicAgent · AgentRegistry          │
-│   • spawn/health/restart/kill                │frame│ __BUILD_MODE__ = Decision 0 (OPEN)     │
-│   • resolves data paths + keychain bridge    │    │ storage/cred/rollout = Node-native     │
-│   • tray/deeplink/updater/hotkeys/notify     │    │ StdioBridge (TransportBridge impl)     │
-└───────────────────────────────────────────────┘    └─ spawns external Chrome + MCP subprocs ┘
+Tauri shell / Rust
+  - starts, monitors, restarts, and stops the runtime sidecar
+  - relays UI frames between WebView and runtime stdio
+  - resolves desktop paths and passes them in the launch handshake
+  - keeps OS-trust bridges: keychain, scheduler registration, tray, deeplink,
+    updater, notification, autostart, global shortcut, window control
+
+Svelte WebView
+  - renders UI only
+  - talks to the runtime through a relay ChannelAdapter
+  - uses service-backed config/auth APIs instead of importing the bootstrap
+  - does not create the agent, credential store, rollout store, or SQLite stores
+
+Desktop runtime sidecar
+  - Node process, server build mode, desktop runtime profile
+  - PiRuntimeBootstrap with desktop profile wiring
+  - RepublicAgent, AgentRegistry, MCP, tools, memory, storage, scheduler logic
+  - stdio ChannelAdapter carrier to Rust
+  - optional co-located websocket server only for explicit remote-access mode
 ```
 
-### Decision 0 (OPEN — round-3 reset) — Build-mode strategy is unresolved; gated on the P0 dispatch audit
+## Decision 0: Build Mode And Runtime Profile
 
-Round 1 (new `'desktop-runtime'` value) and round 2 (stay `'desktop'`, rewire 4 factories) are **both rejected** (C6/C9): a new value silently disables `=== 'desktop'` behavioral branches in the runtime; staying `'desktop'` makes those branches dispatch to **Tauri/Rust impls absent in a Node process** (`MemoryFileSystem.ts:17`→`createTauriFileSystem`, `MCPManager.ts:565`→`RustMCPBridge`, the storage factories, …). The divergence is **not** confined to 4 factories.
+Use a two-axis model:
 
-The strategy cannot be finalized until a **complete audit of every `__BUILD_MODE__ === 'desktop'` and `platformId === 'desktop'` dispatch that assumes Tauri/Rust** is done (P0, hard gate). Each such site needs a per-site decision: Node-native impl, runtime-context switch, or Rust control-frame bridge.
+| Axis | Desktop UI | Desktop runtime sidecar | Server |
+|---|---|---|---|
+| Compile-time `__BUILD_MODE__` | `desktop` | `server` | `server` |
+| Runtime profile | `desktop-webview` | `desktop-runtime` | `server` |
+| Platform label exposed to agent | UI only | `desktop` | `server` |
+| Runtime entrypoint | `src/desktop/ui/main.ts` | `src/desktop-runtime/index.ts` | `src/server/index.ts` |
 
-**Leading candidate (to validate in the audit), not yet adopted:** build the runtime as **`__BUILD_MODE__='server'`** — it already supplies the Node implementations the runtime needs (`ServerStorageProvider`, `createNodeFileSystem`, `NodeMCPBridge`) — then layer the desktop deltas: (a) **path/filename/schema-faithful** storage/rollout/config providers matching the existing Rust on-disk layout *or* a one-time migration (C11); (b) the **keychain control-frame bridge** to Rust (C5, same `applepi-` service names); (c) desktop approval rules + prompt persona + `platformId='desktop'` label; (d) suppress server-only behaviors (RBAC handshake, health monitor, `Session.ts:2420` server branch). The P0 audit must enumerate (d) exhaustively before this is adopted.
+Rationale:
 
-Invariants regardless of strategy: post-decouple the **UI-only webview must never call the storage/credential/rollout factories or `getDesktopAgentBootstrap()`** (C10) — all of it is runtime-side, reached via services/control-frames (P3 must enforce).
+- A Node sidecar cannot use `__BUILD_MODE__='desktop'` safely. Several desktop branches dispatch to Tauri/Rust implementations that do not exist in a sidecar, including `createTauriFileSystem()` and `RustMCPBridge`.
+- A Node sidecar can use `__BUILD_MODE__='server'` to get Node-capable implementations such as Node filesystem and Node MCP stdio transport.
+- Server build mode alone is not enough. The sidecar must override server assumptions with the `desktop-runtime` profile: desktop paths, desktop platform label, desktop prompt, desktop approval rules, desktop auth/keychain bridge, desktop scheduler bridge, and server-only behavior suppression.
 
-### Decision 1 — Transport: Rust-relayed stdio (no TCP port)
+Implementation:
 
-`agent runtime ⇄ Rust ⇄ UI` over the runtime's stdio; Rust is a transparent relay. The runtime keeps the WS server only for the optional remote-access feature, co-located with the agent via `DirectBridge` (not bridged through Rust). The new seam is a **`StdioBridge` implementing `@applepi/ws-server`'s `TransportBridge`** (peer of the existing `DirectBridge`).
+- Add a small runtime profile module, for example `src/runtime/profile.ts`.
+- The desktop runtime entrypoint sets `process.env.APPLEPI_RUNTIME_PROFILE='desktop-runtime'` before bootstrap code imports providers that read the profile.
+- Server entrypoints default to `server`.
+- UI code may use `desktop-webview` only for client-side factory decisions.
 
-### Decision 2 — One bootstrap
+## Dispatch Audit Decisions
 
-Retire `DesktopAgentBootstrap`. Runtime runs `PiRuntimeBootstrap` = `ServerAgentBootstrap` parameterized over (transport, storage set, scheduler set) — C7. Desktop-only wiring ports as `platformId==='desktop'` branches. `IPlatformAdapter.platformId` stays `'desktop'` (labelling: `getDefaultRules('desktop')` `DesktopAgentBootstrap.ts:289`, `RepublicAgent.ts:265`).
+| Site | Runtime disposition |
+|---|---|
+| `core/memory/MemoryFileSystem.ts` | Server build gives Node filesystem. Desktop runtime must keep desktop memory paths where applicable. |
+| `core/mcp/MCPManager.ts` | Server build gives `NodeMCPBridge`; pass platform `desktop` explicitly so desktop-scoped MCP servers are used. Replace Tauri-side builtin browser path resolution with handshake-provided paths. |
+| `core/mcp/transports/index.ts` | With server build the default becomes server-like. Desktop runtime must explicitly configure stdio MCP transport for desktop MCP servers where needed. |
+| `core/storage/index.ts` | Add `desktop-runtime` provider branches that open the existing desktop file paths, not server subdirectories. |
+| `storage/rollout/provider/createRolloutStorageProvider.ts` | Add `desktop-runtime` branch for the existing desktop rollout DB path. |
+| `core/memory/createMemoryService.ts` | Server/desktop both allow memory; no special UI dependency. |
+| `core/a2a/A2AManager.ts` | Desktop runtime must call `A2AManager.getInstance('desktop')` or equivalent explicit platform wiring. |
+| `core/PromptLoader.ts` | Use Apple Pi desktop prompt/persona, not `applepi-server`. |
+| `core/Session.ts` suggestion gate | Replace `__BUILD_MODE__ === 'server'` with runtime capability/profile logic so one-tap desktop suggestions remain enabled in `desktop-runtime`. |
+| `core/messaging/index.ts` | UI-only. The runtime must not import desktop WebView messaging. |
+| `tools/registerPlatformTools.ts` | `RepublicAgent` should use the injected desktop runtime platform adapter. Avoid global `detectPlatform()` in the sidecar path. |
+| `RepublicAgent.ts` | Inject `platformId='desktop'` for desktop runtime so agent type, approval defaults, and desktop behavior remain correct. Explicitly pass unattended/server flags where the profile requires them. |
 
-### Decision 3 — Lifecycle, supervision, and the handshake payload (Rust-owned)
+## Decision 1: Dedicated Runtime Entrypoint
 
-Spawn on app start (Rust-side `Command`/sidecar — `tauri-plugin-shell = "2"` supports stdin write + stdout/stderr streams; spawning from Rust needs **no webview capability**, and `capabilities/default.json` already grants `process:allow-restart`). State machine: nonce handshake (inherited fd/env, never the webview) → ping/pong health (port `server/connection/watchdog.ts`) → bounded-backoff restart with `runtime:reconnecting` UX (sessions rehydrate from disk) → graceful shutdown → SIGTERM → SIGKILL; parent-bound child; single-instance already enforced (`main.rs:149`).
+Do not boot the desktop runtime through `src/server/index.ts`.
 
-**The handshake payload (Rust→runtime) carries the resolved environment**, solving migration-path correctness: Rust resolves the **data/config/cache/rollout directories** (today these come from Tauri's path API → `@tauri-apps/api/path`, e.g. Rust `db_storage.rs:258-263` `config_dir.join("storage.db")`) and the **keychain availability/service prefix** (`applepi-`), and passes them to the runtime. The Node runtime must NOT recompute Tauri's app-dir algorithm itself.
+Add a new entrypoint, for example `src/desktop-runtime/index.ts`, that:
 
-### Wire protocol / large payloads
+1. Reads the Rust launch handshake.
+2. Sets the runtime profile to `desktop-runtime`.
+3. Installs desktop path/auth/scheduler/keychain bridge dependencies.
+4. Configures the desktop prompt context.
+5. Starts `PiRuntimeBootstrap` on a stdio-backed channel.
 
-Reuse `@applepi/ws-server` (PROTOCOL_VERSION, frame codec, handshake) over a length-prefixed **stdio carrier** (stderr = logs, never parsed). The relay carries full `ChannelAdapter` traffic incl. the `ServiceRegistry` RPC `TauriChannel.supportsServices()=true` already multiplexes. Keep `LargePayloadStore` spill on the **Rust→webview hop only** (WebView2 limit); the runtime↔Rust hop streams freely.
+Server-only features stay in server mode unless deliberately enabled later:
 
-## Rust Command Surface: Collapse vs. Survive
+- Public HTTP listener and websocket listener.
+- Remote RBAC/session handshake.
+- Server watchdog HTTP health surface.
+- Server data directory defaults.
+- Server config file defaults.
+- Server stale-connection cleanup and tick broadcasting.
+- Server log streaming or diagnostics endpoints that imply remote clients.
 
-| Module (`tauri/src`) | Fate | Why |
+The desktop runtime may keep local diagnostics internally, but they must not create a listening port by default.
+
+## Decision 2: One Bootstrap
+
+Extract the shared bootstrap into `PiRuntimeBootstrap`.
+
+`PiRuntimeBootstrap` is parameterized over:
+
+- `profile`: `server` or `desktop-runtime`.
+- `channel`: `ServerChannel`, `StdioRuntimeChannel`, or a test harness channel.
+- `platformAdapter`: server adapter or desktop runtime adapter.
+- `storageSet`: config, key-value, rollout, scheduler, execution, memory.
+- `schedulerSet`: event storage, execution storage, alarms/OS registration bridge.
+- `authSet`: token getter, credential bridge, auth callback handler.
+- `runtimeHost`: resolved paths, sidecar locations, app metadata, shell bridge clients.
+
+Current server behavior must remain unchanged when `profile='server'`.
+
+Desktop runtime behavior uses:
+
+- `platformId='desktop'`.
+- Desktop approval rules and managed policy wiring.
+- Desktop prompt composer config (`applepi`, not `applepi-server`).
+- Desktop MCP/browser tools with Node-capable implementations.
+- Desktop scheduler semantics with OS registration through Rust control frames.
+- Auth token access through runtime-owned keychain bridge, not a WebView token getter.
+
+## Decision 3: Transport And Protocol
+
+Use Rust-relayed stdio between Tauri and the runtime.
+
+`@applepi/ws-server` currently provides method/frame schemas and helpers, but the inspected package does **not** contain a shipped `TransportBridge` or `DirectBridge` implementation. Therefore P1 must implement the desktop stdio carrier directly. Reuse the package's protocol constants, frame schemas, method names, and frame constructors where useful, but do not implement against nonexistent bridge classes.
+
+Carrier rules:
+
+- Runtime stdout is reserved for length-prefixed JSON frames.
+- Runtime stderr is logs/diagnostics and is never parsed as protocol.
+- Rust relays frames between child stdout/stdin and WebView events/invokes.
+- Rust may validate only the outer carrier shape, nonce, and lifecycle; it does not own agent semantics.
+- Large-payload spill remains only on the Rust-to-WebView hop if WebView limits require it. Runtime-to-Rust stdio should stream framed payloads directly.
+
+Minimum frame families:
+
+- `hello` / `hello-ok`: nonce, protocol version, runtime profile, resolved paths.
+- `request` / `response`: service and channel requests.
+- `event`: agent/channel events to UI.
+- `control-request` / `control-response`: runtime asks Rust to perform keychain, scheduler, window, notification, deeplink, and shell operations.
+- `ping` / `pong`: supervisor health.
+- `shutdown`: graceful termination.
+
+## Decision 4: Storage And Migration
+
+No one-time data migration is required for the first cut if the desktop runtime uses path-compatible providers. This is mandatory.
+
+Rust currently stores desktop data under `ProjectDirs::from("com", "airepublic", "pi").config_dir()`:
+
+| Data | Current desktop file | Required runtime provider |
 |---|---|---|
-| `storage_commands`, `db_storage`, `rollout_db` | **Delete** | Node-native providers (Decision 0). |
-| `http_commands` + `desktop/polyfills/fetchProxy.ts` | **Delete** | Node `fetch`, no CORS. |
-| `terminal_commands` | **Delete** | Node `child_process`. |
-| `skills_commands`, `plugins_commands` | **Delete** | Node `fs` (`Filesystem{Skill,Plugin}Provider`). |
-| `oauth_server` | **Delete** | Node `http.Server`. |
-| `mcp_manager`, `browser_commands`, `sandbox`, `commands::get_*/file_exists/is_port_available` | **Delete** | Node `child_process`/CDP/stdlib; desktop builtin-MCP path (`DesktopPlatformAdapter.ts:50-96`) moves into the runtime. **Not free:** stdio MCP currently routes to `RustMCPBridge` under `'desktop'` (`MCPManager.ts:565`); in any Node runtime it must use `NodeMCPBridge` — a P0a dispatch-audit item, not automatic (C9). |
-| `commands::get_platform_info` | **Move** to runtime / handshake | Runtime knows its OS/arch. |
-| **`keychain_commands`** | **KEEP — required control-frame bridge (C5)** | `KeytarCredentialStore` is Tauri-invoke; `keytar` not a dep. |
-| `scheduler_commands` (OS cron/launchd/Task Scheduler) | **KEEP — control-frame bridge** | OS-trust job registration. |
-| `main.rs` shell plugins (tray/deeplink/autostart/updater/global-shortcut/notification/single-instance/window/theme) | **KEEP** | Tauri's remaining job. |
+| General key-value storage | `<config_dir>/storage.db` | `DesktopRuntimeStorageProvider` over this exact file |
+| SQLite adapter for scheduler/execution stores | `<config_dir>/storage.db` | `DesktopRuntimeSQLiteAdapter` over this exact file |
+| Rollout storage | `<config_dir>/rollouts.db` | `DesktopRuntimeRolloutStorageProvider` over this exact file |
+| Config storage | `<config_dir>/config.json` | `DesktopRuntimeConfigStorageProvider` preserving current JSON shape |
+| Credentials | OS keychain with existing `applepi-` service names | Runtime credential store calling Rust keychain control frames |
 
-≈**33 of ~40 delete**; **2 kept as control-frame bridges** (`keychain_commands`, `scheduler_commands`); shell plugins stay.
+Do not point server providers at the desktop config directory unchanged. Server providers currently use subpaths such as `storage/storage.db`, `rollouts/rollouts.db`, and `config-storage.json`, which would create empty replacement data.
 
-## Shell ⇄ Runtime crossings (function call → control frame)
+Schema inspection result:
 
-Scheduler "show window+focus+submit" `DesktopAgentBootstrap.ts:801-828`; job-start notification `:831-844`; deep-link `auth-callback` `main.rs:149-264` → `auth:callback` frame; **keychain get/set/delete/list** → keychain control frame (C5); OS scheduler register/remove → scheduler control frame; hotkeys/tray/autostart/updater stay Rust.
+- The Rust storage DB table shape and server `ServerStorageProvider` table shape are compatible for key-value collections: `key TEXT PRIMARY KEY`, `value TEXT NOT NULL`, `created_at INTEGER NOT NULL`, `updated_at INTEGER NOT NULL`.
+- The rollout DB schemas are compatible enough to implement a path-compatible Node provider over the existing file.
+- Runtime providers may add compatible indexes, but must not rename tables, move files, or rewrite values during first launch.
+- Config storage must preserve current `config.json` object semantics. The WebView chunking behavior was only a Tauri IPC workaround and must not define the runtime storage format.
 
-## Resource Footprint (analysis — verify in P4)
+P4 still verifies this as a no-op migration with real existing user data on Linux, macOS, and Windows.
 
-Not "1→2 processes doubling cost." Apple Pi is **already multi-process** (Chrome + MCP sidecars) and the UI↔agent boundary is **already serialized** (`TauriChannel` uses Tauri's `emit`/`listen` event bus, not a function call). The agent's working set (history, MCP, buffers) **moves heaps, it doesn't duplicate**.
+## Decision 5: UI Config, Auth, And Bootstrap Calls
 
-- **RAM:** genuine new cost = one Node runtime baseline (~tens of MB; lower if compiled — Open Q2), partially offset by a lighter WebView JS heap and deleting the IPC-shim layer (`fetchProxy` double-buffering, `LargePayloadStore`).
-- **CPU:** likely neutral-to-better — today every storage/HTTP op pays a serialize→IPC→Rust→deserialize tax; after, those are native in-process calls. New stdio cost applies only to lower-volume UI↔agent traffic that was already serialized.
-- **Verdict:** modest bounded RAM increase for process isolation (UI crash/reload no longer kills the agent), sandbox escape, and desktop+server convergence — the standard thin-shell+runtime desktop architecture. **P4 measures idle + under-load RSS/CPU, in-webview vs decoupled, to confirm.**
+The UI cannot call `getDesktopAgentBootstrap()` after the cut.
 
-## Reconciliation with `server_mode_design.md`
+Confirmed direct call replacements:
 
-Track 43 supersedes §18.3/§18.6/§20.0: `TauriBridge` + unimplemented `DesktopMessageRouter` dropped; remote-access WS co-locates with the agent (`DirectBridge`). `src/desktop/channels/websocket/WebSocketServer.ts` (Tauri-invoke scaffold) → dead code, delete P3. `@applepi/ws-server` (§18.5, **already extracted**) is imported by the runtime; channel plugins (§20.0) run in the same runtime process — their intended desktop home.
+| Current call | Replacement |
+|---|---|
+| `desktop/ui/main.ts` calls `initializeDesktopAgent()` | Rust starts runtime; UI initializes relay client only. |
+| `desktop/main.ts` calls `bootstrap.shutdown()` | Rust supervisor sends runtime `shutdown` and owns child termination. |
+| `UserLoginStatus.svelte` calls `bootstrap.setAuthMode(...)` | UI sends service request, for example `agent.initAuth` or `auth.setMode`, to the runtime. |
 
-## Phasing (parity harness precedes the irreversible cut)
+Auth-specific rule:
 
-1. **P0 — Verification + decision gate (BLOCKING; design is not READY until this completes).** Three hard sub-gates that must close before P1 estimates are valid: **(0a) Dispatch audit** — enumerate *every* `__BUILD_MODE__ === 'desktop'` and `platformId === 'desktop'` site that assumes Tauri/Rust (`MemoryFileSystem.ts:17`, `MCPManager.ts:565`, the storage factories, `messaging`, `a2a`, `PromptLoader`, …); per-site disposition; then **adopt or reject the `'server'`-base candidate** and finalize Decision 0. **(0b) Data-migration design** — pin the exact desktop on-disk layout (`storage.db`/`rollouts.db`/`config.json` at `ProjectDirs("com","airepublic","pi").config_dir`) and specify *either* path/filename/schema-faithful runtime providers *or* a one-time migration (C11). **(0c) Bootstrap-call inventory** — enumerate every direct `getDesktopAgentBootstrap()`/bootstrap method call from UI/shell (`setAuthMode`, `shutdown`, `initializeDesktopAgent`, `getRegistry`, `getScheduler`, `getReadyState`, …) and define the service/control-frame replacement for each (C10). Plus: record resolved paths, lock the desktop-only-wiring port list, decide keychain default vs native dep.
-2. **P1 — Node-native providers + `StdioBridge` + parameterized bootstrap + parity harness.** Implement the Decision 0 strategy finalized in P0a (provider set per the chosen build mode, schema/path-faithful per P0b); add `better-sqlite3` + prebuilds (C8); add `StdioBridge` impl of `@applepi/ws-server`'s `TransportBridge`; parameterize `ServerAgentBootstrap`→`PiRuntimeBootstrap` over (transport, storage set, scheduler set) (C7); add the P0c bootstrap-call services. Build the cross-binding parity harness. Additive; server mode unchanged.
-3. **P2 — Rust supervisor + relay + UI relay client (behind build flag).** Sidecar spawn/handshake (with resolved-paths payload, Decision 3)/health/restart; `agent_send` relay; **keychain + scheduler control-frame bridges**; relay `ChannelAdapter`. **Exit criterion: parity harness green.**
-4. **P3 — The cut (irreversible; requires P2 parity green).** Switch desktop to the relay client; ensure the webview calls **no** storage factory; port desktop-only wiring; delete `DesktopAgentBootstrap`, `DesktopPlatformAdapter`, the ~33 dead Rust commands, `fetchProxy.ts`, `WebSocketServer.ts`.
-5. **P4 — Hardening + measurement.** No-op on-disk migration verification (highest user risk); crash/restart soak; scheduler-across-restart; large-payload streaming; **Resource Footprint measurement**; three-OS packaging.
+- Do not pass a WebView `tokenGetter` to the runtime. Functions cannot be serialized, and credentials should not remain WebView-owned.
+- Runtime auth uses a desktop keychain token source. The keychain implementation calls Rust `keychain_*` control frames.
+- Rust forwards auth deeplinks to the runtime as an `auth:callback` control/event frame.
+- The runtime stores refreshed tokens and emits auth state updates back to the UI.
+
+Config-specific rule:
+
+- The UI still needs config access before and during mount.
+- Replace desktop WebView config storage with a relay-backed `RuntimeConfigStorageProvider` implementing the existing config storage interface over runtime services, or with a minimal Rust relay command that forwards to runtime before mount.
+- Remove WebView credential-store initialization in the cut. Credentials become runtime-only.
+
+This is part of P1/P2, not cleanup.
+
+## Decision 6: Desktop Runtime Platform Adapter
+
+Add `DesktopRuntimePlatformAdapter` instead of reusing the current WebView/Tauri desktop adapter directly.
+
+Responsibilities:
+
+- `platformId='desktop'`.
+- Register desktop tools that are Node-capable.
+- Use Node implementations for filesystem, browser launch/control, terminal, skills, plugins, HTTP, MCP process management, and OAuth callback handling where possible.
+- Use Rust control frames only for OS-trust operations that should stay in Tauri/Rust: keychain, scheduler registration, show/focus window, notification, tray/deeplink/updater/autostart/global shortcut.
+
+Known tool implementation notes:
+
+- Terminal tools must move away from current Tauri invoke paths to Node `child_process`/PTY or a deliberately retained Rust bridge if security requires it.
+- Browser builtin MCP must not call Tauri `invoke` to locate sidecars or project root. Use handshake-provided `browserMcpSidecarPath`, `projectRoot`, and app paths.
+- MCP stdio must use `NodeMCPBridge` in the sidecar.
+- Desktop prompt and approval behavior should remain desktop, not server.
+
+## Rust Command Surface
+
+| Rust surface | Fate |
+|---|---|
+| Storage DB, rollout DB, config storage commands | Delete after runtime path-compatible providers are active and UI config relay exists. |
+| HTTP/fetch proxy | Delete; runtime uses Node fetch. |
+| Terminal commands | Delete unless a specific security review keeps a Rust bridge. |
+| Skills/plugins filesystem commands | Delete; runtime uses Node filesystem providers. |
+| OAuth local server | Delete; runtime can own local HTTP callback handling or Rust can forward deeplinks only. |
+| MCP manager/browser/process helper commands | Delete after Node runtime replacements land. |
+| Keychain commands | Keep as Rust control-frame bridge. |
+| Scheduler OS registration commands | Keep as Rust control-frame bridge. |
+| Tray, deeplink, updater, global shortcut, notification, autostart, single instance, window/theme shell code | Keep in Tauri/Rust. |
 
 ## Packaging
 
-Runtime ships as a Tauri `externalBin` (precedent `tauri.conf.json:7-8,16`). Add it + a new `vite.config.desktop-runtime.mts` (Node SSR target like `vite.config.server.mts:13,16,27`; its `define __BUILD_MODE__` value is whatever Decision 0 finalizes in P0a — likely `'server'`, not `'desktop'`) + extend `scripts/build-sidecar.mjs`. Must bundle `better-sqlite3` with per-OS/arch prebuilts (C8). Open Q2: ship Node vs. SEA/Bun/pkg.
+Add a desktop runtime build and sidecar package:
 
-## Open Questions
+- `vite.config.desktop-runtime.mts`: Node SSR target, `__BUILD_MODE__='server'`.
+- `src/desktop-runtime/index.ts`: runtime entrypoint.
+- `scripts/build-sidecar.mjs`: extended to build/package the runtime sidecar.
+- Tauri `externalBin`: includes the runtime executable.
 
-1. **Keychain:** keep `keychain_commands` Rust bridge (default, C5) vs. add a `keytar`/`keyring` native dep to the runtime? Decide on a *signed* macOS build in P0.
-2. Ship Node vs. compile (SEA/Bun/pkg) — bundle size vs. startup vs. native-module (`better-sqlite3`) prebuild handling.
-3. Keep `prevent_close`/tray-hide UX once runtime survival no longer needs the webview alive?
-4. Optional opt-in: expose the co-located WS so external clients attach to the desktop agent (the §18 vision, now simpler). Out of scope.
+`better-sqlite3` is already present as an optional dependency in the root package, but production packaging must explicitly include the correct native prebuilds or extracted native addon files for each supported OS/arch. This is a packaging deliverable, not an open design question.
 
-## Appendix — Verified Anchors
+Preferred first implementation:
 
-- In-webview: `DesktopAgentBootstrap.ts:8`; `TauriChannel.ts:7-8`; `desktop/ui/main.ts:18-21,57`.
-- Adapters inert: `ServerPlatformAdapter.ts:66-103`, `DesktopPlatformAdapter.ts:133-170`.
-- Real factories: `core/storage/index.ts:74-152`; `createRolloutStorageProvider.ts:14-37`.
-- Keychain is Tauri-invoke (C5): `src/desktop/storage/KeytarCredentialStore.ts:1-15,55`; `keytar` absent from `package.json`.
-- Behavioral build-mode branches (C6): `core/mcp/transports/index.ts:90`, `core/messaging/index.ts:46`, `core/memory/MemoryFileSystem.ts:17`, `core/a2a/A2AManager.ts:72`, `core/PromptLoader.ts:119`, `tools/registerPlatformTools.ts:24,73,128`.
-- Protocol is a real package (D1): `packages/ws-server/`; `server/connection/handshake.ts:18-31` imports `@applepi/ws-server`.
-- Bootstrap coupling (C7): `ServerAgentBootstrap.ts:205,1186-1193`.
-- `better-sqlite3` native, not root dep (C8): `ServerStorageProvider.ts:4,55`.
-- Path source-of-truth: `src/desktop/platform/paths.ts:10-19` (Tauri path API), Rust `db_storage.rs:258-263`.
-- Tauri sidecar/stdio: `tauri/Cargo.toml:17-24` (`tauri-plugin-shell="2"`); `tauri/capabilities/default.json` (`process:allow-restart`; no `shell:execute` → spawn must be Rust-side).
-- No `MessageRouter`: `grep -rln MessageRouter src` (non-test)=0.
-- Supersedes: `server_mode_design.md` §18.3/§18.5/§18.6/§20.0; scaffold `src/desktop/channels/websocket/WebSocketServer.ts`.
+- Dev: run the runtime bundle under system Node for fast iteration.
+- Production: package a sidecar launcher/runtime executable using the existing sidecar build pattern, with native addon extraction verified on Linux, macOS, and Windows.
+
+## Implementation Phases
+
+1. P1: Add runtime profile, desktop runtime entrypoint, path-compatible Node providers, stdio carrier, `PiRuntimeBootstrap`, desktop runtime platform adapter, UI service replacements, and parity harness. Server behavior unchanged.
+2. P2: Add Rust supervisor, launch handshake, stdio relay, keychain/scheduler/window/notification/deeplink control frames, relay ChannelAdapter, and runtime-down/reconnecting UI states behind a build flag.
+3. P3: Cut desktop over to the runtime relay, remove in-WebView bootstrap, remove WebView credential initialization, port desktop-only wiring, and delete dead Rust commands.
+4. P4: Harden and measure: no-op migration verification, crash/restart soak, scheduler restart behavior, large payloads, packaging, resource footprint, and three-OS smoke builds.
+
+## Acceptance Criteria
+
+Implementation-ready means the following are true before coding starts:
+
+- The runtime build mode decision is locked: server build mode plus desktop runtime profile.
+- Desktop existing data paths are locked and path-compatible providers are required.
+- UI bootstrap/direct-call replacements are enumerated.
+- `@applepi/ws-server` is treated as frame/schema infrastructure only; no nonexistent bridge abstraction is assumed.
+- Server-only behavior suppression is explicit.
+- Auth/keychain ownership is runtime-side with Rust control frames.
+- UI config access has a replacement path before `storage_commands` can be deleted.
+
+Done means:
+
+- Existing desktop data opens in the runtime without migration or empty replacement DB creation.
+- The desktop UI can start, login, chat, use tools, schedule jobs, restart, and recover after runtime crash.
+- Server mode still passes its existing tests and starts unchanged.
+- The desktop app builds and smokes on Linux, macOS, and Windows with the sidecar included.
+
+## Verified Anchors
+
+- In-WebView bootstrap: `src/desktop/ui/main.ts`, `src/desktop/bootstrap/DesktopAgentBootstrap.ts`, `src/desktop/channels/TauriChannel.ts`.
+- Build-mode dispatches: `src/core/memory/MemoryFileSystem.ts`, `src/core/mcp/MCPManager.ts`, `src/core/mcp/transports/index.ts`, `src/core/storage/index.ts`, `src/storage/rollout/provider/createRolloutStorageProvider.ts`, `src/core/a2a/A2AManager.ts`, `src/core/PromptLoader.ts`, `src/core/Session.ts`, `src/tools/registerPlatformTools.ts`.
+- Direct bootstrap calls: `src/desktop/ui/main.ts`, `src/desktop/main.ts`, `src/webfront/components/common/UserLoginStatus.svelte`.
+- Desktop Rust storage paths: `tauri/src/db_storage.rs`, `tauri/src/rollout_db.rs`, `tauri/src/storage_commands.rs`.
+- Server provider path mismatch: `src/server/storage/ServerStorageProvider.ts`, `src/server/storage/NodeSQLiteAdapter.ts`, `src/storage/rollout/provider/TSRolloutStorageProvider.ts`, `src/server/storage/FileConfigStorageProvider.ts`.
+- Protocol package: `packages/ws-server`.
+- Tauri sidecar/shell capability: `tauri/Cargo.toml`, `tauri/capabilities/default.json`.

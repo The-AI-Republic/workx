@@ -1,93 +1,150 @@
 # Track 43 Tasks
 
-> **Status (2026-05-17):** DESIGN — **NOT implementation-ready** (design-reviewed ×3).
-> Effort XL. P0 is now a **blocking decision gate**: round 3 found the build-mode
-> strategy broken (C9), the data-migration plan understated (C11), and direct
-> UI→bootstrap calls unscoped (C10). P1 estimates are invalid until P0a/P0b/P0c
-> close. P1–P2 remain additive/reversible behind a build flag; **P3 is the
-> irreversible cut, gated on the P1 parity harness being green.** The frame
-> protocol (`@applepi/ws-server`) and a headless runtime already ship.
+**Status (2026-05-17): READY FOR IMPLEMENTATION.**
 
-See [`design.md`](./design.md) — Validation Notes (rounds 1–3; **C5 keychain
-reversal, C9 build-mode strategy broken, C10 direct bootstrap calls, C11 data
-migration**), Decision 0 (OPEN — gated on the P0 dispatch audit), the
-command-collapse table, and the `server_mode_design.md` reconciliation.
+The design is now locked for implementation: desktop runtime sidecar builds with `__BUILD_MODE__='server'`, runs with `APPLEPI_RUNTIME_PROFILE=desktop-runtime`, exposes `platformId='desktop'`, uses desktop path-compatible providers, and communicates through Rust-relayed stdio.
 
----
+P1/P2 are additive behind a flag. P3 is the irreversible desktop cutover and requires the parity harness to be green.
 
-## Phase 0: Verification + DECISION gate (BLOCKING — design is not READY until 0a/0b/0c close)
+See [`design.md`](./design.md) for the final decisions, dispatch audit disposition, storage path requirements, and UI/auth replacement rules.
 
-Anchors verified on `agent-improvements` (2026-05-17); re-confirm and record findings inline.
+## Phase 1: Runtime Foundation And Parity Harness
 
-### 0a — Dispatch audit + finalize Decision 0 (build-mode strategy is OPEN)
+Goal: create a runnable desktop runtime sidecar without changing current desktop behavior.
 
-- [ ] **Full `=== 'desktop'` dispatch audit.** `grep -rn "__BUILD_MODE__ === 'desktop'\|=== \"desktop\"\|platformId === 'desktop'\|platform === 'desktop'" src/core src/tools src/storage | grep -v __tests__`. For **every** site, record whether it dispatches to a Tauri/Rust-backed impl that breaks in a Node sidecar. Known-bad confirmed: `core/memory/MemoryFileSystem.ts:17` (`createTauriFileSystem`), `core/mcp/MCPManager.ts:565` (`RustMCPBridge`), the storage/cred/rollout factories. Also classify `messaging/index.ts:46`, `a2a/A2AManager.ts:72`, `PromptLoader.ts:119`, `mcp/transports/index.ts:90`, `registerPlatformTools.ts`.
-- [ ] **Decide & record Decision 0.** Evaluate the leading candidate (build runtime as `__BUILD_MODE__='server'` → free Node impls; layer desktop deltas: schema/path-faithful providers, keychain bridge, desktop approval/persona, `platformId='desktop'`; suppress server-only behaviors). Exhaustively enumerate the server-only behaviors to suppress (RBAC handshake, health monitor, `Session.ts:2420`, …). Adopt or reject with rationale. **P1 cannot start until this is recorded.**
+- [ ] Add `src/runtime/profile.ts` with `server`, `desktop-runtime`, and `desktop-webview` profile detection.
+- [ ] Add `src/desktop-runtime/index.ts`. It must set `APPLEPI_RUNTIME_PROFILE=desktop-runtime`, read the Rust launch handshake, configure desktop runtime dependencies, and start `PiRuntimeBootstrap`.
+- [ ] Add `vite.config.desktop-runtime.mts` using a Node SSR target and `define: { __BUILD_MODE__: "'server'" }`.
+- [ ] Add `npm run build:desktop-runtime`.
+- [ ] Extend `scripts/build-sidecar.mjs` for the desktop runtime sidecar.
+- [ ] Package `better-sqlite3` native prebuilds/addon files for Linux, macOS, and Windows. The dependency exists, but packaging must prove the native module loads inside the sidecar.
 
-### 0b — Data-migration design (C11 — silent-empty-app risk)
+### Path-compatible storage providers
 
-- [ ] **Pin the exact desktop on-disk layout.** Confirmed: `storage.db`, `rollouts.db`, `config.json` under `ProjectDirs::from("com","airepublic","pi").config_dir()` (`db_storage.rs:257`, `rollout_db.rs:19`, `storage_commands.rs:35`). Server providers diverge: `<dir>/storage/storage.db`, `<dir>/rollouts/rollouts.db`, `<dir>/config-storage.json` (`ServerStorageProvider.ts:59`, `TSRolloutStorageProvider.ts:37`, `FileConfigStorageProvider.ts:15`).
-- [ ] **Specify the migration.** Choose: (i) runtime providers that match the existing filenames/subdirs **and** are schema-compatible with the Rust-written DBs, OR (ii) an explicit one-time migration (copy/transform on first runtime launch, with rollback). Compare the Rust SQLite schema vs `better-sqlite3` provider schema; document the transform or prove identity. This is a P1 deliverable, not P4.
+- [ ] Add `DesktopRuntimeStorageProvider` over the exact Rust desktop file `<config_dir>/storage.db`.
+- [ ] Add `DesktopRuntimeSQLiteAdapter` over the exact Rust desktop file `<config_dir>/storage.db` for scheduler/execution stores.
+- [ ] Add `DesktopRuntimeRolloutStorageProvider` over the exact Rust desktop file `<config_dir>/rollouts.db`.
+- [ ] Add `DesktopRuntimeConfigStorageProvider` over the exact Rust desktop file `<config_dir>/config.json`, preserving current JSON object semantics.
+- [ ] Update `core/storage/index.ts` and rollout/config provider factories so `desktop-runtime` uses these providers under server build mode.
+- [ ] Add provider tests against fixture copies of existing Rust-created DB/config files. Assert no new `storage/`, `rollouts/`, or `config-storage.json` files are created.
+- [ ] Add a no-op open/read/write test for all existing desktop collections used by scheduler, sessions, config, cache, rollout, token usage, and task output chunks.
 
-### 0c — Direct UI→bootstrap call inventory (C10)
+### Stdio carrier and runtime channel
 
-- [ ] **Enumerate every non-channel UI/shell→bootstrap call.** Confirmed: `UserLoginStatus.svelte:106-109` (`getDesktopAgentBootstrap().setAuthMode`), `desktop/main.ts:15,72` (`shutdown`), `desktop/ui/main.ts:28` (`initializeDesktopAgent`). Sweep: `grep -rn "getDesktopAgentBootstrap\|DesktopAgentBootstrap" src/webfront src/desktop | grep -v __tests__`. For each, define the `ServiceRegistry` service or control-frame replacement (mechanism exists; `TauriChannel.supportsServices()=true`). Output: a service API list — a P1 deliverable.
+- [ ] Add a length-prefixed JSON stdio carrier. Stdout is protocol frames only; stderr is diagnostics only.
+- [ ] Reuse `@applepi/ws-server` frame schemas/helpers where they exist. Do not depend on nonexistent `TransportBridge` or `DirectBridge` classes.
+- [ ] Implement `StdioRuntimeChannel` as a `ChannelAdapter` for runtime-side channel traffic.
+- [ ] Implement frame families: `hello`, `hello-ok`, `request`, `response`, `event`, `control-request`, `control-response`, `ping`, `pong`, `shutdown`.
+- [ ] Add tests for partial frames, multiple frames per chunk, oversized frames, invalid JSON, protocol version mismatch, nonce mismatch, and stderr isolation.
 
-### Remaining P0 checks
+### Shared bootstrap
 
-- [ ] **Re-confirm C5 (keychain).** `KeytarCredentialStore.ts` still `invoke('keychain_*')`; `keytar` still absent from `package.json`. ⇒ `keychain_commands` Rust bridge REQUIRED. If a native keytar dep was added, revisit Open Q1.
-- [ ] **Re-confirm zero `MessageRouter`** (`grep -rln MessageRouter src | grep -v __tests__` = 0). If a router landed, revise C3.
-- [ ] **Re-confirm D1 (protocol package).** `packages/ws-server/` exists; `server/connection/handshake.ts` imports `@applepi/ws-server`; locate the `TransportBridge` interface + `DirectBridge` impl (the `StdioBridge` template).
-- [ ] **Record exact resolved data paths (migration safety — highest user risk).** Run a built desktop app per OS; capture the actual on-disk paths for SQLite (`db_storage.rs:258-263` config dir + `storage.db`), rollout, config, and the keychain service prefix (`applepi-`). The Node-native providers + handshake payload MUST reproduce these byte-for-byte. Record here.
-- [ ] **Confirm adapters inert + factories real.** `ServerPlatformAdapter.ts:66-103`, `DesktopPlatformAdapter.ts:133-170`, `core/storage/index.ts:74-152`, `createRolloutStorageProvider.ts:14-37`.
-- [ ] **Confirm C7 (bootstrap coupling).** `ServerAgentBootstrap.ts:205` (`new ServerChannel`), `:1186-1193` (`ServerScheduleStorage/ServerExecutionStorage/ServerSchedulerAlarms(dataDir)`). Lock the parameterization surface: (transport, storage set, scheduler set).
-- [ ] **Lock the desktop-only-wiring port list (P3 scope).** `DesktopAgentBootstrap.ts`: managed policy `:110-139`; approval enhancers `:284-329`; plan-review `:314-324`; MCP tool reg `:542-589`; scheduler `:763-886`; auth/keychain restore `:1039-1146`; config hot-swap `:998-1032`. Confirm ranges.
-- [ ] **Find every webview storage-factory call site (P3 must zero these).** `grep -rn "createStorageProvider\|createCredentialStore\|createRolloutStorageProvider\|initializeConfigStorage\|initializeCredentialStore" src/desktop src/webfront` — incl. `desktop/ui/main.ts`. These move runtime-side.
-- [ ] **Decide keychain default (Open Q1)** on a *signed* macOS build: Rust bridge (default) vs. native dep.
-- [ ] **Add the supersede note** to `server_mode_design.md` §18.3/§18.6/§20.0 pointing at Track 43.
+- [ ] Extract `ServerAgentBootstrap` shared logic into `PiRuntimeBootstrap`.
+- [ ] Keep current server behavior unchanged behind `profile='server'`.
+- [ ] Parameterize bootstrap over channel, platform adapter, storage set, scheduler set, auth set, runtime host paths, and control bridge clients.
+- [ ] Add `DesktopRuntimePlatformAdapter` with `platformId='desktop'`.
+- [ ] Configure desktop runtime prompt/persona as Apple Pi desktop (`applepi`), not `applepi-server`.
+- [ ] Configure desktop approval rules, managed policy, plan review, and model settings parity with the old desktop bootstrap.
+- [ ] Ensure `RepublicAgent` receives the desktop platform adapter and desktop platform label.
+- [ ] Ensure `A2AManager` and MCP manager are initialized with explicit desktop platform where needed.
+- [ ] Replace the `Session.ts` server-build suggestion skip with runtime profile/capability logic so desktop runtime suggestions remain enabled.
 
----
+### MCP, tools, and Node desktop behavior
 
-## Phase 1: Node-native providers + StdioBridge + parameterized bootstrap + parity harness
+- [ ] Make desktop runtime MCP stdio use `NodeMCPBridge`.
+- [ ] Remove Tauri `invoke` path resolution from desktop builtin browser MCP setup. Use handshake-provided `browserMcpSidecarPath`, `projectRoot`, and app paths.
+- [ ] Port browser tools to Node-capable launch/process/file behavior or explicit Rust control frames where OS trust is required.
+- [ ] Port terminal tools to Node `child_process`/PTY or document and implement a deliberate Rust control bridge.
+- [ ] Port skills/plugins filesystem access to Node providers.
+- [ ] Ensure runtime uses Node `fetch`; no desktop fetch proxy.
 
-**Goal:** A headless runtime bundle with Node-native storage that speaks the
-frame protocol over stdio. Server mode unchanged; fully additive.
+### UI service replacements
 
-- [ ] `vite.config.desktop-runtime.mts` — Node SSR target (mirror `vite.config.server.mts:13,16,27`); **`define __BUILD_MODE__` = the value finalized in P0a** (likely `'server'`, not `'desktop'`); `npm run build:desktop-runtime`.
-- [ ] Implement the **P0a-finalized Decision 0 provider set** — schema/path-faithful to the existing Rust on-disk layout per the **P0b migration spec** (not just "pointed at the dir"); credential→**keychain control-frame client** (C5). Guard so the webview path is untouched until P3.
-- [ ] Implement the **P0c bootstrap-call service API** (e.g. `auth.setMode`, lifecycle) over `ServiceRegistry`/control-frames, replacing the direct `getDesktopAgentBootstrap()` calls.
-- [ ] Add `better-sqlite3` dependency + per-OS/arch prebuilt binary handling (C8).
-- [ ] Add `StdioBridge implements TransportBridge` (peer of `DirectBridge`) + a length-prefixed stdio carrier (stderr = logs only). Reuse `@applepi/ws-server` codec/handshake; add the launch-nonce + resolved-paths handshake frame.
-- [ ] Extract `ServerAgentBootstrap` → `PiRuntimeBootstrap` parameterized over **(transport, storage set, scheduler set)** (C7); `websocket`+server set = current behavior verbatim.
-- [ ] **Build the cross-binding parity harness:** identical agent scenarios over `stdio` (runtime) and `websocket` (server); assert identical event/result streams. Gates P3.
-- [ ] Tests: codec round-trip / partial-frame / oversized / version-mismatch / nonce-reject; providers against the recorded paths.
+- [ ] Replace `desktop/ui/main.ts` `initializeDesktopAgent()` with relay client initialization only.
+- [ ] Replace `desktop/main.ts` `bootstrap.shutdown()` with Rust supervisor shutdown.
+- [ ] Replace `UserLoginStatus.svelte` direct `getDesktopAgentBootstrap().setAuthMode(...)` with a runtime service request.
+- [ ] Define and implement runtime services/control frames for `agent.initAuth` or `auth.setMode`, `auth.getState`, `auth.logout`, and auth state events.
+- [ ] Runtime auth must use desktop keychain token source. Do not pass WebView token getter functions across IPC.
+- [ ] Add `RuntimeConfigStorageProvider` for WebView desktop config access over the relay, or an equivalent pre-mount config relay. This must exist before deleting `storage_commands`.
+- [ ] Stop initializing the WebView credential store after cutover; credentials are runtime-owned.
 
-## Phase 2: Rust supervisor + relay + UI relay client (behind build flag)
+### Parity harness
 
-**Goal:** Tauri spawns/supervises the runtime and relays frames; in-webview
-path still default. **Exit criterion: parity harness green.**
+- [ ] Build a cross-binding parity harness that can run the same agent scenarios over current server websocket and desktop runtime stdio.
+- [ ] Cover chat request/response, streaming events, tool call, MCP stdio server, config read/write, rollout read/write, auth mode update, scheduler job creation, scheduler trigger, cancellation, reconnect, and graceful shutdown.
+- [ ] P1 exit requires the harness to pass against the new sidecar in dev mode.
 
-- [ ] Runtime as `externalBin`; **Rust-side** sidecar spawn on app start (no webview capability needed; `capabilities/default.json` already has `process:allow-restart`).
-- [ ] Supervisor: nonce+resolved-paths handshake (inherited fd/env), ping/pong health (port `server/connection/watchdog.ts`), bounded-backoff restart, graceful→SIGTERM→SIGKILL, parent-bound child.
-- [ ] Rust resolves data/config/cache/rollout dirs + keychain prefix and sends them in the handshake (Decision 3).
-- [ ] Relay: `invoke('agent_send', frame)` → child stdin; stdout → `emit('pi:event', frame)`. Rust does NOT parse the agent protocol.
-- [ ] **Keychain control-frame bridge** (`keychain_commands`) + **scheduler control-frame bridge** (`scheduler_commands`); `ui:show-window`, `notification`, deep-link `auth:callback` frames.
-- [ ] Relay `ChannelAdapter` client (contract pinned in P0), behind the build flag; `runtime:reconnecting`/`runtime:down` UX.
-- [ ] Rust tests: spawn/restart/quit, orphan kill, handshake reject, stderr→diagnostics. **Run the parity harness — must be green to exit P2.**
+## Phase 2: Rust Supervisor And Relay Behind Flag
 
-## Phase 3: The cut (irreversible — requires P2 parity green)
+Goal: Tauri can start and talk to the sidecar, while the old in-WebView path remains the default.
 
-- [ ] Switch desktop build to the relay client; remove the build flag; UI bundle stays `__BUILD_MODE__='desktop'`.
-- [ ] **Zero the webview storage-factory call sites** (P0 list) — all storage runtime-side.
-- [ ] Port the P0 desktop-only-wiring list into `PiRuntimeBootstrap` as `platformId==='desktop'` branches.
-- [ ] Delete `DesktopAgentBootstrap`, `DesktopPlatformAdapter`, the ~33 dead Rust commands (keep `keychain_commands` + `scheduler_commands` bridges + shell plugins), `src/desktop/polyfills/fetchProxy.ts`, `src/desktop/channels/websocket/WebSocketServer.ts`.
-- [ ] Shrink `LargePayloadStore` to the Rust→webview hop only.
+- [ ] Add Rust runtime supervisor module.
+- [ ] Spawn the desktop runtime as a Tauri `externalBin` from Rust, not from WebView shell APIs.
+- [ ] Generate a launch nonce and pass resolved host data to the runtime handshake.
+- [ ] Resolve and pass exact paths: `configDir`, `storageDbPath`, `rolloutDbPath`, `configJsonPath`, cache/log dirs, `browserMcpSidecarPath`, `projectRoot`, platform info, and keychain service prefix.
+- [ ] Implement `hello`/`hello-ok` handshake validation.
+- [ ] Implement ping/pong health, bounded restart backoff, graceful shutdown, SIGTERM/SIGKILL fallback, and parent-bound child cleanup.
+- [ ] Relay WebView `agent_send` invocations to runtime stdin and runtime stdout events to WebView events.
+- [ ] Add relay client `ChannelAdapter` in the WebView behind a build/runtime flag.
+- [ ] Add UI states for runtime starting, reconnecting, down, and permanently failed.
 
-## Phase 4: Hardening + measurement
+### Rust control-frame bridges
 
-- [ ] **No-op on-disk migration verification** (highest user-facing risk): existing users' SQLite/rollout/config readable + keychain entries accessible at the recorded paths/prefix.
-- [ ] Soak: crash/restart under load; scheduler-across-restart; session rehydrate from rollout.
-- [ ] Large-payload streaming over stdio; latency vs. in-webview baseline.
-- [ ] **Resource Footprint measurement** (design §Resource Footprint): idle + under-load RSS/CPU, in-webview vs decoupled, all three OSes. Record vs. the design's bounded-increase claim.
-- [ ] `npm run tauri:build` smoke on Linux/macOS/Windows; updater delivers the sidecar (+ `better-sqlite3` prebuilts).
-- [ ] Resolve Open Questions 1–4; mark Status: DONE.
+- [ ] Keychain bridge: get, set, delete, list, and error mapping over existing Rust keychain commands.
+- [ ] Scheduler OS bridge: register, update, remove, and fire/submit scheduled jobs using existing scheduler OS trust code.
+- [ ] Window bridge: show/focus/submit path used by scheduler notifications.
+- [ ] Notification bridge: job-start and job-finished notifications.
+- [ ] Deeplink bridge: forward auth callback deeplinks to runtime.
+- [ ] Diagnostics bridge: stderr capture and recent-runtime-log access.
+
+### Phase 2 tests
+
+- [ ] Rust unit tests for supervisor spawn, handshake reject, restart, graceful quit, forced kill, orphan cleanup, and stderr handling.
+- [ ] Integration test for WebView relay request/response and event ordering.
+- [ ] Run parity harness through Rust relay. P2 exit requires green parity.
+
+## Phase 3: Desktop Cutover
+
+Goal: desktop uses the sidecar by default. This phase is irreversible and requires P2 parity green.
+
+- [ ] Switch desktop startup to Rust-supervised runtime sidecar.
+- [ ] Remove old in-WebView agent initialization.
+- [ ] Remove direct imports of `DesktopAgentBootstrap` and `getDesktopAgentBootstrap` from UI/shell code.
+- [ ] Remove WebView credential-store initialization.
+- [ ] Switch WebView config access to `RuntimeConfigStorageProvider` or the approved runtime config relay.
+- [ ] Port remaining desktop-only bootstrap wiring to `PiRuntimeBootstrap`.
+- [ ] Delete `DesktopAgentBootstrap` after all behavior is ported.
+- [ ] Delete or retire the WebView/Tauri-only desktop platform adapter if no remaining UI-only use exists.
+- [ ] Delete fetch proxy and HTTP Rust command path.
+- [ ] Delete storage, DB, rollout, terminal, skills, plugins, OAuth, MCP manager, browser helper, and generic process/file Rust commands that are replaced by runtime implementations.
+- [ ] Keep keychain, scheduler OS registration, tray, deeplink, updater, global shortcut, notification, autostart, single-instance, window, and theme shell code.
+- [ ] Shrink large-payload spill to the Rust-to-WebView hop only.
+- [ ] Add static/grep guard tests that fail if desktop UI imports `DesktopAgentBootstrap`, `createCredentialStore`, runtime SQLite providers, or agent bootstrap entrypoints.
+
+## Phase 4: Hardening, Migration Safety, And Packaging
+
+- [ ] No-op migration verification with real existing desktop data on Linux, macOS, and Windows.
+- [ ] Confirm existing `storage.db`, `rollouts.db`, and `config.json` are opened in place and not replaced by empty server-path files.
+- [ ] Confirm existing keychain entries are readable through the runtime keychain bridge with the same service names.
+- [ ] Crash/restart soak while streaming a response.
+- [ ] Crash/restart soak during MCP tool call.
+- [ ] Scheduler-across-restart test.
+- [ ] Session rehydrate from disk after runtime restart.
+- [ ] Large payload test across runtime-to-Rust and Rust-to-WebView boundaries.
+- [ ] Resource footprint measurement: old in-WebView desktop vs sidecar desktop, idle and under load.
+- [ ] Startup latency measurement.
+- [ ] `npm run tauri:build` smoke on Linux, macOS, and Windows.
+- [ ] Verify updater includes and replaces the runtime sidecar.
+- [ ] Verify native SQLite addon loading in packaged app on all supported OS/arch combinations.
+- [ ] Verify server mode still starts and passes existing server tests.
+
+## Final Done Criteria
+
+- [ ] Desktop app starts with no in-WebView agent bootstrap.
+- [ ] UI can login, logout, switch auth mode, chat, stream, cancel, use tools, configure models, and schedule jobs.
+- [ ] Runtime crash does not kill the UI; UI reconnects after supervisor restart.
+- [ ] Existing user data remains visible after upgrade.
+- [ ] Existing scheduled jobs remain visible and executable after upgrade.
+- [ ] No unexpected local HTTP port is opened by the desktop runtime.
+- [ ] Server mode behavior is unchanged.
+- [ ] Three-OS packaged builds pass smoke tests.
