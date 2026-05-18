@@ -74,6 +74,12 @@ export interface TaskStateBase {
 
 export interface BackgroundAgentTaskState extends TaskStateBase {
   type: 'background_agent';
+  /** Track 40: enum-backed runtime behavior identity */
+  agentType?: import('@/tools/AgentTool/agentTypes').AgentType;
+  /** Track 40: isolated vs forked-subagent context mode */
+  contextMode?: import('@/tools/AgentTool/agentTypes').SubAgentContextMode;
+  /** Track 40: foreground/background execution mode */
+  executionMode?: import('@/tools/AgentTool/agentTypes').SubAgentExecutionMode;
   /** Joins back to SubAgentRegistry; equals `id` for v1 (identity collapse) */
   runId: string;
   /** Parent session that spawned this sub-agent */

@@ -207,6 +207,29 @@ describe('Session', () => {
       await session.initialize();
       await expect(session.initialize()).resolves.toBeUndefined();
     });
+
+    it('surfaces a non-persistent forked history init failure instead of swallowing it', async () => {
+      // Regression: a forked sub-agent is told it inherited the parent
+      // conversation. If reconstruct/persist fails it must NOT silently run
+      // with empty history — initialize() has to reject so the runner reports it.
+      const consoleErr = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const recordSpy = vi
+        .spyOn(Session.prototype as any, 'recordInitialHistory')
+        .mockRejectedValue(new Error('forked reconstruct failed'));
+
+      try {
+        const session = new Session(undefined, false, undefined, undefined, {
+          mode: 'forked',
+          sourceConversationId: 'parent-session',
+          rolloutItems: [],
+        });
+        await expect(session.initialize()).rejects.toThrow('forked reconstruct failed');
+        expect(consoleErr).toHaveBeenCalled();
+      } finally {
+        recordSpy.mockRestore();
+        consoleErr.mockRestore();
+      }
+    });
   });
 
   // =========================================================================
@@ -1316,6 +1339,68 @@ describe('Session', () => {
       await session.recordConversationItemsDual([makeMessage('assistant', 'a1')]);
 
       expect(session.getMessageCount()).toBe(2);
+    });
+  });
+
+  describe('Track 12: recordRateLimits wiring', () => {
+    it('stores the snapshot and emits a populated TokenCount (no longer inert)', async () => {
+      const session = new Session(undefined, false);
+      const events: any[] = [];
+      session.setEventEmitter(async (e) => {
+        events.push(e);
+      });
+
+      await session.recordRateLimits({
+        primary: { used_percent: 40, window_minutes: 300 },
+      });
+
+      const tokenCount = events.find((e) => e.msg.type === 'TokenCount');
+      expect(tokenCount).toBeDefined();
+      // Previously this was always undefined (the dead-data bug).
+      expect(tokenCount.msg.data.rate_limits).toEqual({
+        primary_used_percent: 40,
+        secondary_used_percent: 0,
+        primary_to_secondary_ratio_percent: 0,
+        primary_window_minutes: 300,
+        secondary_window_minutes: 0,
+      });
+    });
+
+    it('emits RateLimitWarning on a fast-burn snapshot', async () => {
+      const session = new Session(undefined, false);
+      const events: any[] = [];
+      session.setEventEmitter(async (e) => {
+        events.push(e);
+      });
+
+      // 92% used but only ~28% of the window elapsed → burning too fast.
+      await session.recordRateLimits({
+        primary: {
+          used_percent: 92,
+          window_minutes: 300,
+          resets_in_seconds: 215 * 60,
+        },
+      });
+
+      const warning = events.find((e) => e.msg.type === 'RateLimitWarning');
+      expect(warning).toBeDefined();
+      expect(warning.msg.data.window).toBe('primary');
+      expect(warning.msg.data.used_percent).toBe(92);
+    });
+
+    it('does not emit RateLimitWarning when usage is sustainable', async () => {
+      const session = new Session(undefined, false);
+      const events: any[] = [];
+      session.setEventEmitter(async (e) => {
+        events.push(e);
+      });
+
+      await session.recordRateLimits({
+        primary: { used_percent: 20, window_minutes: 300, resets_in_seconds: 60 },
+      });
+
+      expect(events.find((e) => e.msg.type === 'RateLimitWarning')).toBeUndefined();
+      expect(events.find((e) => e.msg.type === 'TokenCount')).toBeDefined();
     });
   });
 });

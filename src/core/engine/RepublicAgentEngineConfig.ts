@@ -9,6 +9,7 @@ import type { Session } from '../Session';
 import type { ApprovalManager } from '../ApprovalManager';
 import type { AskForApproval, ReviewDecision } from '../protocol/types';
 import type { IBrowserController } from '../platform/IPlatformAdapter';
+import type { InitialHistory } from '../session/state/types';
 
 export interface RepublicAgentEngineConfig {
   /** AgentConfig instance (shared — for credentials and provider info) */
@@ -116,7 +117,7 @@ export interface RepublicAgentEngineConfig {
   /**
    * Initial conversation history (for session recovery).
    */
-  initialHistory?: ConversationEntry[];
+  initialHistory?: InitialHistory;
 }
 
 export interface EngineResult {

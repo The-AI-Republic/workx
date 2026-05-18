@@ -38,6 +38,9 @@ function createMocks() {
     getSummary: vi.fn().mockReturnValue({ enabled: false }),
     getBaseInstructions: vi.fn().mockReturnValue(undefined),
     getUserInstructions: vi.fn().mockReturnValue(undefined),
+    getSelectedModelKey: vi.fn().mockReturnValue('openai:gpt-4'),
+    getUnattended: vi.fn().mockReturnValue(false),
+    getUnattendedResetCapMs: vi.fn().mockReturnValue(undefined),
   } as any;
 
   const toolRegistry = {
@@ -1007,6 +1010,8 @@ describe('TurnManager - useNativeWebSearch toggle', () => {
       getBaseInstructions: vi.fn().mockReturnValue(undefined),
       getUserInstructions: vi.fn().mockReturnValue(undefined),
       getSelectedModelKey: vi.fn().mockReturnValue('openai:gpt-4'),
+      getUnattended: vi.fn().mockReturnValue(false),
+      getUnattendedResetCapMs: vi.fn().mockReturnValue(undefined),
     } as any;
 
     const toolRegistry = {

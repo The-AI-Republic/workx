@@ -17,6 +17,7 @@ import type { HookRegistry } from '@/core/hooks/HookRegistry';
 import { SessionHookStore } from '@/core/hooks/loaders/SessionHookStore';
 import { substituteVariables } from './SkillParser';
 import { registerSkillScopedHooks } from './registerSkillScopedHooks';
+import { SubAgentContextMode } from '@/tools/AgentTool/agentTypes';
 
 /**
  * Shape of the sub_agent invocation. Matches the JSON the sub_agent tool
@@ -36,6 +37,7 @@ export interface SubAgentInvocationParams {
   type: string;
   prompt: string;
   description: string;
+  contextMode?: import('@/tools/AgentTool/agentTypes').SubAgentContextMode;
 }
 
 export type SubAgentInvoker = (params: SubAgentInvocationParams) => Promise<SubAgentResult>;
@@ -129,6 +131,7 @@ export class SkillExecutor {
           type: skill.agent!,
           prompt: body,
           description: `Skill: ${skillName}`,
+          contextMode: SubAgentContextMode.Fork,
         });
         return {
           success: result.success,

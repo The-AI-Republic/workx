@@ -8,12 +8,15 @@
 
 import { BuiltinCommandLoader } from './loaders/BuiltinCommandLoader';
 import { SkillCommandLoader } from './loaders/SkillCommandLoader';
+import { PluginCommandLoader } from './loaders/PluginCommandLoader';
 import { precedenceOf } from './precedence';
 import type { Command } from './types';
 
 export interface CommandLoaderDeps {
   builtin?: BuiltinCommandLoader;
   skill?: SkillCommandLoader;
+  /** Track 10: plugin-contributed commands (manifest.commands slot). */
+  plugin?: PluginCommandLoader;
 }
 
 export class CommandLoader {
@@ -23,6 +26,7 @@ export class CommandLoader {
     const collected: Command[] = [];
     if (this.deps.builtin) collected.push(...this.deps.builtin.load());
     if (this.deps.skill) collected.push(...this.deps.skill.load());
+    if (this.deps.plugin) collected.push(...this.deps.plugin.load());
     return CommandLoader.dedupeByName(collected);
   }
 

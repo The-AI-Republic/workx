@@ -30,8 +30,15 @@ import {
 } from './MCPConfig';
 import { decryptApiKey } from '../../utils/encryption';
 
-/** Maximum number of MCP servers allowed (excluding builtins) */
-const MAX_SERVERS = 5;
+/**
+ * Maximum number of MCP servers allowed (excluding builtins).
+ *
+ * Track 10 (Q8 decision) raised this from 5 → 100. The original cap was
+ * conservative; 100 is plenty for any reasonable user-plus-plugin
+ * combination. No per-source exemption needed — plugin-installed servers
+ * count toward the same ceiling.
+ */
+const MAX_SERVERS = 100;
 
 /** Builtin browser server ID — deterministic UUID for desktop.
  *  Must be a valid UUID to pass MCPServerConfigSchema validation. */
@@ -224,6 +231,32 @@ export class MCPManager implements IMCPManager {
     // Emit event
     this.emit({ type: 'config-removed', configId: id });
 
+  }
+
+  /**
+   * Track 10: scoped removal — remove every server owned by a given plugin.
+   *
+   * Called by `PluginRegistry.disable(pluginId)` to unload one plugin's
+   * MCP servers. Each server is removed via `removeServer`, which already
+   * disconnects before drop and emits `config-removed` per server.
+   *
+   * Best-effort: per-server errors are logged but don't halt the loop, so
+   * a server whose `removeServer` throws may remain in `this.servers`.
+   * The loop attempts removal of every matching server regardless. Builtin
+   * and user-added servers are unaffected (no `pluginId`).
+   */
+  async removeByPluginId(pluginId: string): Promise<void> {
+    this.ensureInitialized();
+    const targets = Array.from(this.servers.values()).filter(
+      (s) => s.pluginId === pluginId,
+    );
+    for (const target of targets) {
+      try {
+        await this.removeServer(target.id);
+      } catch (e) {
+        console.warn(`[MCPManager.removeByPluginId] ${target.name}:`, e);
+      }
+    }
   }
 
   /**
@@ -578,25 +611,39 @@ export class MCPManager implements IMCPManager {
       }
     }
 
-    const { invoke } = await import('@tauri-apps/api/core');
-
     // Try the bundled sidecar binary first (production builds).
     // Fall back to npx + node_modules for dev mode where no sidecar is built.
     let command = 'npx';
     let args = ['chrome-devtools-mcp', '--no-usage-statistics', '--isolated', '--chromeArg=--no-sandbox', '--chromeArg=--disable-setuid-sandbox'];
     let cwd: string | undefined;
 
-    try {
-      const sidecarPath = await invoke<string>('get_browser_mcp_sidecar_path');
-      command = sidecarPath;
-      args = ['--no-usage-statistics', '--isolated', '--chromeArg=--no-sandbox', '--chromeArg=--disable-setuid-sandbox'];
-      // sidecar resolves its own paths — no cwd needed
-    } catch {
-      // Resolve project root so npx can find chrome-devtools-mcp in node_modules
+    if (__BUILD_MODE__ === 'server') {
       try {
-        cwd = await invoke<string>('get_project_root');
+        const { getOptionalDesktopRuntimeHost } = await import('@/desktop-runtime/host');
+        const host = getOptionalDesktopRuntimeHost();
+        if (host?.browserMcpSidecarPath) {
+          command = host.browserMcpSidecarPath;
+          args = ['--no-usage-statistics', '--isolated', '--chromeArg=--no-sandbox', '--chromeArg=--disable-setuid-sandbox'];
+        } else if (host?.projectRoot) {
+          cwd = host.projectRoot;
+        }
       } catch (err) {
-        console.warn('[MCPManager] Failed to resolve project root:', err);
+        console.warn('[MCPManager] Failed to resolve desktop runtime MCP host paths:', err);
+      }
+    } else {
+      const { invoke } = await import('@tauri-apps/api/core');
+      try {
+        const sidecarPath = await invoke<string>('get_browser_mcp_sidecar_path');
+        command = sidecarPath;
+        args = ['--no-usage-statistics', '--isolated', '--chromeArg=--no-sandbox', '--chromeArg=--disable-setuid-sandbox'];
+        // sidecar resolves its own paths — no cwd needed
+      } catch {
+        // Resolve project root so npx can find chrome-devtools-mcp in node_modules
+        try {
+          cwd = await invoke<string>('get_project_root');
+        } catch (err) {
+          console.warn('[MCPManager] Failed to resolve project root:', err);
+        }
       }
     }
 

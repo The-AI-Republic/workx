@@ -4,6 +4,7 @@
   import { usageStore } from '../../stores/usageStore';
   import UsageList from '../../components/usage/UsageList.svelte';
   import UsageChart from '../../components/usage/UsageChart.svelte';
+  import { formatCost } from '@/core/models/cost/cost';
 
   let currentTheme = $derived($uiTheme);
   let loading = $derived($usageStore.loading);
@@ -12,6 +13,10 @@
   let dailySummaries = $derived($usageStore.dailySummaries);
   let modelSummaries = $derived($usageStore.modelSummaries);
   let groupByModel = $derived($usageStore.groupByModel);
+
+  // Track 18: total USD across all loaded sessions, for the /cost surface.
+  let totalCostUSD = $derived(sessionSummaries.reduce((s, x) => s + (x.costUSD ?? 0), 0));
+  let anyCostEstimated = $derived(sessionSummaries.some((x) => x.costEstimated));
 
   $effect(() => {
     usageStore.loadAll();
@@ -94,6 +99,24 @@
         <p class="text-xs opacity-70">{$_t('Token usage will appear here after running tasks')}</p>
       </div>
     {:else}
+      <!-- Track 18: total cost summary (hidden when there is no cost yet,
+           e.g. all history predates cost tracking) -->
+      {#if totalCostUSD > 0}
+        <div class="px-3 py-2.5 rounded flex items-baseline justify-between
+          {currentTheme === 'modern'
+            ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark'
+            : 'border border-term-dim-green bg-[rgba(0,255,0,0.03)]'}">
+          <span class="text-xs uppercase tracking-wide
+            {currentTheme === 'modern'
+              ? 'text-chat-muted dark:text-chat-muted-dark font-chat'
+              : 'text-term-dim-green font-terminal'}">{$_t('Total cost')}</span>
+          <span class="text-lg font-semibold
+            {currentTheme === 'modern'
+              ? 'text-chat-text dark:text-chat-text-dark font-chat'
+              : 'text-term-green font-terminal'}">{formatCost(totalCostUSD)}{#if anyCostEstimated}<span class="text-xs font-normal opacity-70"> &middot; {$_t('≈ estimated')}</span>{/if}</span>
+        </div>
+      {/if}
+
       <!-- Daily Chart -->
       {#if dailySummaries.length > 0}
         <div class="h-[300px]">

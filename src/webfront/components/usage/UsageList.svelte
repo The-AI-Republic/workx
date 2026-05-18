@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { SessionUsageSummary } from '@/storage/types';
+  import { formatCost } from '@/core/models/cost/cost';
   import { _t } from '../../lib/i18n';
 
   let {
@@ -9,7 +10,7 @@
     theme = 'modern',
   }: {
     summaries?: SessionUsageSummary[];
-    modelSummaries?: Record<string, { total_tokens: number; taskCount: number }>;
+    modelSummaries?: Record<string, { total_tokens: number; taskCount: number; costUSD: number; costEstimated: boolean }>;
     groupByModel?: boolean;
     theme?: string;
   } = $props();
@@ -47,7 +48,7 @@
           <span class="text-xs
             {theme === 'modern'
               ? 'text-chat-muted dark:text-chat-muted-dark font-chat'
-              : 'text-term-dim-green font-terminal'}">{fmt(stats.total_tokens)} tokens &middot; {stats.taskCount} {$_t('tasks')}</span>
+              : 'text-term-dim-green font-terminal'}">{fmt(stats.total_tokens)} tokens &middot; {stats.taskCount} {$_t('tasks')}{#if stats.costUSD > 0} &middot; {formatCost(stats.costUSD)}{stats.costEstimated ? ' ≈' : ''}{/if}</span>
         </div>
       </div>
     {/each}
@@ -98,6 +99,12 @@
           {/if}
           {#if session.reasoning_output_tokens > 0}
             &middot; {fmt(session.reasoning_output_tokens)} reasoning
+          {/if}
+          {#if session.costUSD > 0}
+            &middot; <span class="font-medium
+              {theme === 'modern'
+                ? 'text-chat-text dark:text-chat-text-dark'
+                : 'text-term-green'}">{formatCost(session.costUSD)}{session.costEstimated ? ' ≈' : ''}</span>
           {/if}
         </div>
       </div>

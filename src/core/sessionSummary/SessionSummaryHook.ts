@@ -3,11 +3,10 @@
  * ─────────────────────────────────────────────────────────────────────────
  * Owns the full lifecycle of one session's automatic summary extraction:
  *
- *   • A dedicated `SubAgentRegistry` (maxConcurrent: 1) so the extractor
- *     never steals a slot from user-spawned sub-agents.
- *   • A dedicated `SubAgentRunner` configured with
- *     `SESSION_SUMMARY_EXTRACTOR_TYPE` and a `canUseTool` that locks the
- *     extractor to `file_edit` on the exact summary path.
+ *   • A per-engine shadow-agent scheduler so the extractor never steals a
+ *     user-facing sub-agent slot or writes background task state.
+ *   • A `ShadowAgentKind.SessionSummary` request with a `canUseTool` gate that
+ *     locks the extractor to `file_edit` on the exact summary path.
  *   • The post-turn trigger predicate + extraction-in-flight flag.
  *   • A cached `summary.md` content string + prompt-extension registration
  *     so subsequent turns automatically see the summary.
@@ -17,7 +16,7 @@
  * engine is ready. Lifetime is bound to the Session.
  *
  * Mirrors claudy's `services/SessionMemory/sessionMemory.ts` architecture
- * but adapted to browserx's `SubAgentRunner` primitive (see design §4).
+ * but adapted to browserx's internal shadow-agent runtime.
  */
 
 import type { RepublicAgentEngine } from '@/core/engine/RepublicAgentEngine';
@@ -27,19 +26,18 @@ import {
   registerPromptExtension,
   unregisterPromptExtension,
 } from '@/core/PromptLoader';
-import { SubAgentRegistry } from '@/tools/AgentTool/SubAgentRegistry';
-import { SubAgentRunner } from '@/tools/AgentTool/SubAgentRunner';
+import {
+  ShadowAgentKind,
+  ShadowContextPolicy,
+  ShadowFailurePolicy,
+} from '@/core/shadowAgent';
 
-import { buildExtractorParams } from './cacheSafeParams';
 import {
   isExtractionInFlight,
   markExtractionCompleted,
   markExtractionStarted,
 } from './extractionLifecycle';
-import {
-  SESSION_SUMMARY_EXTRACTOR_TYPE,
-} from './extractorType';
-import { buildSessionSummaryUpdatePrompt } from './prompts';
+import { buildSessionSummaryUpdatePrompt, SESSION_SUMMARY_EXTRACTION_PROMPT } from './prompts';
 import { SessionSummaryFileStore, isSessionSummaryEmpty } from './SessionSummaryFileStore';
 import {
   createInitialExtractionState,
@@ -49,7 +47,7 @@ import {
   type SessionSummaryConfig,
   shouldExtractSessionSummary,
 } from './sessionSummaryUtils';
-import { createSummaryFileCanUseTool } from './summaryFileTools';
+import { createSummaryFileCanUseTool, FILE_EDIT_TOOL_NAME } from './summaryFileTools';
 import { createTelemetryEmitter, type TelemetryEmitter } from './telemetry';
 import { truncateSessionSummaryForCompact } from './truncate';
 
@@ -80,8 +78,6 @@ export class SessionSummaryHook {
   private readonly parentEngine: RepublicAgentEngine;
   private readonly fileStore: SessionSummaryFileStore;
   private readonly config: SessionSummaryConfig;
-  private readonly internalRegistry: SubAgentRegistry;
-  private readonly runner: SubAgentRunner;
   private readonly telemetry: TelemetryEmitter;
 
   private state: ExtractionState = createInitialExtractionState();
@@ -100,18 +96,6 @@ export class SessionSummaryHook {
     this.telemetry =
       options.telemetry ?? createTelemetryEmitter(options.parentEngine, options.sessionId);
 
-    // Dedicated registry — one extractor at a time, doesn't share slots
-    // with user-spawned sub-agents.
-    this.internalRegistry = new SubAgentRegistry({
-      maxConcurrent: 1,
-      maxHistoricalEntries: 5,
-    });
-
-    this.runner = new SubAgentRunner({
-      parentEngine: this.parentEngine,
-      registry: this.internalRegistry,
-      customTypes: [SESSION_SUMMARY_EXTRACTOR_TYPE],
-    });
   }
 
   /**
@@ -271,44 +255,39 @@ export class SessionSummaryHook {
     const startedAt = Date.now();
     let success = false;
     let error: string | undefined;
-    let finalStatus: 'completed' | 'failed' | 'cancelled' | 'timeout' | undefined;
+    let finalStatus: 'completed' | 'failed' | 'cancelled' | 'timeout' | 'fallback_used' | undefined;
 
     try {
       // Ensure scaffold + read current content. Build the path-locking gate
-      // and install it via SubAgentToolParams.canUseTool, which
-      // SubAgentRunner.prepare() applies to the child tool registry as a
-      // pre-execute check. Defence-in-depth on top of `tools.allow`.
+      // and install it on the shadow child registry as a pre-execute check.
+      // Defence-in-depth on top of the session-summary profile's `file_edit`
+      // allowlist.
       const summaryPath = await this.fileStore.ensureScaffold(this.sessionId);
       const currentContent = await this.fileStore.read(this.sessionId);
       const gate = createSummaryFileCanUseTool(summaryPath);
 
       const userPrompt = buildSessionSummaryUpdatePrompt(summaryPath, currentContent);
-      const result = await this.runner.run(buildExtractorParams(userPrompt, gate));
+      const result = await this.parentEngine.getShadowAgentScheduler().run({
+        kind: ShadowAgentKind.SessionSummary,
+        parentEngine: this.parentEngine,
+        prompt: userPrompt,
+        systemPrompt: SESSION_SUMMARY_EXTRACTION_PROMPT,
+        contextPolicy: ShadowContextPolicy.ParentHistory,
+        context: { parentHistory: history },
+        toolPolicy: { allow: [FILE_EDIT_TOOL_NAME], preExecuteCheck: gate },
+        failurePolicy: ShadowFailurePolicy.ReturnError,
+        dedupeKey: this.sessionId,
+        metadata: { sessionId: this.sessionId, manual, summaryPath },
+      });
 
-      // Background `run()` returns `'launched'` immediately. The actual
-      // completion fires through the registry; we need to wait for it
-      // before we refresh the cache and clear the flag.
-      //
-      // For background runs, `success` reflects the actual extractor outcome
-      // (`completed` status on the registry entry), NOT just whether the run
-      // was launched. This is what telemetry will use to decide whether the
-      // feature is healthy enough to flip on by default.
-      if ('kind' in result && result.kind === 'background') {
-        const observed = await this.waitForBackgroundCompletion(result.runId);
-        finalStatus = observed ?? 'timeout';
-        success = finalStatus === 'completed';
-        if (finalStatus === 'timeout') {
-          error = 'extractor run exceeded 15s wait deadline';
-        } else if (finalStatus !== 'completed') {
-          error = `extractor run ended with status: ${finalStatus}`;
-        }
-      } else if ('kind' in result) {
-        // Foreground-shaped result from a non-background path (defensive).
-        success = result.status === 'launched';
-        finalStatus = success ? 'completed' : 'failed';
-      } else {
-        success = result.success;
-        finalStatus = success ? 'completed' : 'failed';
+      finalStatus = result.status === 'timed_out' ? 'timeout' : result.status;
+      success = result.status === 'completed';
+      if (!success) {
+        error = result.error instanceof Error
+          ? result.error.message
+          : result.error
+            ? String(result.error)
+            : `extractor run ended with status: ${result.status}`;
       }
 
       // If detach() fired during the run, don't update cache/state on
@@ -336,36 +315,6 @@ export class SessionSummaryHook {
         });
       }
     }
-  }
-
-  /**
-   * Wait for a background sub-agent run to complete by polling the
-   * internal registry. The registry tracks status transitions; once the
-   * entry leaves the 'running' state we resolve with the final status.
-   *
-   * Has its own ~15s deadline so a runaway extractor can't block the hook
-   * indefinitely (the compaction interlock has a separate 15s deadline of
-   * its own — these are independent).
-   *
-   * @returns the final registry status (`'completed' | 'failed' | 'cancelled'`),
-   *   or `undefined` if the wait timed out / the hook detached / the entry
-   *   was evicted before we could observe its terminal state.
-   */
-  private async waitForBackgroundCompletion(
-    runId: string,
-  ): Promise<'completed' | 'failed' | 'cancelled' | undefined> {
-    const deadline = Date.now() + 15_000;
-    while (Date.now() < deadline) {
-      if (this.lifetimeAbort.signal.aborted) return undefined;
-      const entry = this.internalRegistry.get(runId);
-      if (!entry) return undefined;
-      if (entry.status !== 'running') return entry.status;
-      await new Promise((r) => setTimeout(r, 250));
-    }
-    console.warn(
-      `[SessionSummary] extractor run ${runId} exceeded 15s wait; releasing flag`,
-    );
-    return undefined;
   }
 
   private async refreshCache(): Promise<void> {
@@ -396,4 +345,3 @@ export class SessionSummaryHook {
     return truncated;
   }
 }
-

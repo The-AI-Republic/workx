@@ -21,9 +21,11 @@ import type { ToolRegistry } from '../../tools/ToolRegistry';
 export class RegularTask implements SessionTask {
   private agentTask: AgentTask | null = null;
   private maxTurns?: number;
+  private drainPendingMessages?: () => string[];
 
-  constructor(options?: { maxTurns?: number }) {
+  constructor(options?: { maxTurns?: number; drainPendingMessages?: () => string[] }) {
     this.maxTurns = options?.maxTurns;
+    this.drainPendingMessages = options?.drainPendingMessages;
   }
 
   /**
@@ -75,6 +77,7 @@ export class RegularTask implements SessionTask {
       responseItems,
       {
         maxTurns: this.maxTurns,
+        drainPendingMessages: this.drainPendingMessages,
         taskOutputStore: taskOutputStore ?? undefined,
         taskId: taskOutputStore ? subId : undefined,
       }

@@ -130,7 +130,11 @@ describe('Edge Case: Invalid API Key', () => {
     expect(attemptCount).toBe(1);
   });
 
-  it('should retry on 429 rate limit error', async () => {
+  it('makes a single attempt and propagates 429 (retry centralized in orchestrator)', async () => {
+    // Track 12: the client no longer retries internally — the single retry
+    // orchestrator at the TurnManager.runTurn boundary owns retry/backoff.
+    // The client makes ONE attempt and propagates the 429 for the
+    // orchestrator to classify and retry.
     const client = new TestableOpenAIResponsesClient({
       apiKey: 'valid-key',
       sessionId: 'test-conv-3',
@@ -140,35 +144,13 @@ describe('Edge Case: Invalid API Key', () => {
 
     client.mockAttemptFn = async () => {
       attemptCount++;
-      if (attemptCount === 1) {
-        throw new ModelClientError(
-          'Rate limit exceeded',
-          429,
-          'openai',
-          true,
-          0 // retry immediately
-        );
-      }
-      // Second attempt succeeds
-      const stream = new ResponseStream();
-      stream.addEvent({ type: 'Created' });
-      stream.addEvent({ type: 'Completed', responseId: 'resp-1' });
-      stream.complete();
-      return stream;
+      throw new ModelClientError('Rate limit exceeded', 429, 'openai', true, 0);
     };
 
-    // Execute
-    const stream = await client.stream(createPrompt());
-
-    // Verify two attempts (initial + 1 retry)
-    expect(attemptCount).toBe(2);
-
-    // Verify stream works
-    const events = [];
-    for await (const event of stream) {
-      events.push(event);
-    }
-    expect(events.length).toBeGreaterThan(0);
+    await expect(client.stream(createPrompt())).rejects.toThrow(
+      'Rate limit exceeded'
+    );
+    expect(attemptCount).toBe(1);
   });
 
   it('should match quickstart edge case 1 example', async () => {

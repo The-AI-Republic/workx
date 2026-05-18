@@ -11,13 +11,17 @@
 import browserxIntro from './fragments/browserx_intro.md?raw';
 import piIntro from './fragments/applepi_intro.md?raw';
 import piServerIntro from './fragments/applepi_server_intro.md?raw';
+import systemSemantics from './fragments/system_semantics.md?raw';
 import safety from './fragments/safety.md?raw';
+import actionRiskAndApproval from './fragments/action_risk_and_approval.md?raw';
+import workLoop from './fragments/work_loop.md?raw';
 import browserxTools from './fragments/browserx_tools.md?raw';
 import piTools from './fragments/pi_tools.md?raw';
-import taskPolicies from './fragments/task_execution_policies.md?raw';
-import approvalPolicies from './fragments/approval_policies.md?raw';
+import communication from './fragments/communication.md?raw';
 import compactSummarization from './fragments/compact_summarization.md?raw';
 import compactSummaryPrefix from './fragments/compact_summary_prefix.md?raw';
+import planReview from './fragments/plan_review.md?raw';
+import { resolvePersona } from './PersonaLoader';
 
 export type AgentType = 'browserx' | 'applepi' | 'applepi-server';
 
@@ -40,6 +44,15 @@ export interface RuntimeContext {
   currentDateTime?: string;
   /** Available memory in GB */
   memoryGB?: number;
+  /**
+   * Track 14 Plan Review: when true, the read-only-exploration fragment
+   * is appended so the model keeps proposing (not executing) across
+   * turns. Re-evaluated every compose() call → persists for the whole
+   * review. Orthogonal to the agent operating-mode axis.
+   */
+  planReviewActive?: boolean;
+  /** Selected output-style persona name (Track 24.2). Unknown → no-op. */
+  personaName?: string;
 }
 
 export class PromptComposer {
@@ -48,10 +61,12 @@ export class PromptComposer {
    *
    * Assembled sections:
    * 1. Self-intro + core directive + capabilities (agent-specific)
-   * 2. Runtime metadata (injected fresh each call)
-   * 3. Safety guidance (shared)
-   * 4. Tool guidance + operation strategy (agent-specific, static for MVP)
-   * 5. Task execution policies (shared)
+   * 2. Output-style persona, if configured
+   * 3. Runtime metadata (injected fresh each call)
+   * 4. System semantics, safety, action risk, and work loop (shared)
+   * 5. Tool guidance + operation strategy (agent-specific, static for MVP)
+   * 6. Communication guidance (shared)
+   * 7. Plan review mode guidance, when active
    */
   composeMainInstruction(agentType: AgentType, context?: RuntimeContext): string {
     const sections: string[] = [];
@@ -64,20 +79,37 @@ export class PromptComposer {
         : piIntro;
     sections.push(intro);
 
+    // 1b. Output-style persona (Track 24.2). Additive; unknown/unset → null.
+    const persona = resolvePersona(context?.personaName);
+    if (persona) sections.push(persona.prompt);
+
     // 2. Runtime metadata
     sections.push(this.buildRuntimeMetadata(agentType, context));
 
-    // 3. Safety & ethics
+    // 3. Runtime and safety semantics
+    sections.push(systemSemantics);
     sections.push(safety);
+    sections.push(actionRiskAndApproval);
+    sections.push(workLoop);
 
-    // 4. Tool guidance (static listing for MVP)
-    sections.push(agentType === 'browserx' ? browserxTools : piTools);
+    // 4. Tool guidance (static listing for MVP). A persona may opt out of the
+    //    coding/tool instructions via `keepCodingInstructions: false`.
+    if (!persona || persona.keepCodingInstructions) {
+      sections.push(agentType === 'browserx' ? browserxTools : piTools);
+    }
 
-    // 5. Task execution policies
-    sections.push(taskPolicies);
+    // 5. Communication guidance remains shared even for personas that opt out
+    //    of platform tool routing.
+    sections.push(communication);
 
-    // 6. Approval policies
-    sections.push(approvalPolicies);
+    // 6. Plan Review (Track 14) — appended last (highest salience) only
+    //    while the freeze is active, so the model proposes a plan instead
+    //    of executing. The freeze itself is the hard guarantee; this is
+    //    the soft cross-turn guidance so it doesn't waste turns on denied
+    //    mutations.
+    if (context?.planReviewActive) {
+      sections.push(planReview);
+    }
 
     return sections.filter(Boolean).join('\n\n');
   }

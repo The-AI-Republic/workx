@@ -28,6 +28,7 @@ import type {
 } from './types';
 import { verifyOwner } from './owner-verify';
 import { getServerConfig } from '../config/server-config';
+import { scanForSecrets, BLOCKED_OUTBOUND_MESSAGE } from '@/core/security/secretScanner';
 
 type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
 
@@ -147,6 +148,16 @@ export class ConnectorBridge implements ChannelAdapter {
     this.submissionHandler = handler;
   }
 
+  /**
+   * Fail-closed secret gate for connector-bound text (Track 24.5). A connector
+   * reply is the highest-stakes egress path (external Slack/Telegram from
+   * unattended jobs), so on any high-confidence/uncertain hit we withhold the
+   * original entirely and send the fixed safe string instead.
+   */
+  private guardOutboundText(text: string): string {
+    return scanForSecrets(text).block ? BLOCKED_OUTBOUND_MESSAGE : text;
+  }
+
   async sendEvent(event: ChannelEvent, _targetClientId?: string): Promise<void> {
     const msg = event.msg;
     // Convert agent events to outbound connector messages
@@ -157,7 +168,7 @@ export class ConnectorBridge implements ChannelAdapter {
       };
 
       try {
-        await this.connector.outbound.sendText(outboundCtx, msg.data.message);
+        await this.connector.outbound.sendText(outboundCtx, this.guardOutboundText(msg.data.message));
       } catch (err) {
         console.error(`[ConnectorBridge] ${this.channelId} outbound error:`, err);
       }
@@ -244,7 +255,7 @@ export class ConnectorBridge implements ChannelAdapter {
             target: msg.channelId,
             threadId: msg.threadId,
           };
-          await this.connector.outbound.sendText(outCtx, event.msg.data.message);
+          await this.connector.outbound.sendText(outCtx, this.guardOutboundText(event.msg.data.message));
         }
       },
     };

@@ -16,8 +16,8 @@ export interface ResponsesApiRequest {
   tools: any[];
   /** Tool selection mode - always "auto" (literal type enforced) */
   tool_choice: "auto";
-  /** Whether to allow parallel tool calls - always false (literal type enforced) */
-  parallel_tool_calls: false;
+  /** Whether to allow parallel tool calls (Track 11 — config-driven, default false). */
+  parallel_tool_calls: boolean;
   reasoning?: Reasoning;
   store: boolean;
   /** Whether to stream the response - always true (literal type enforced) */

@@ -84,6 +84,8 @@ export const MCPServerConfigSchema = z.object({
   cwd: z.string().optional(),
   createdAt: z.number(),
   updatedAt: z.number(),
+  // Track 10: plugin owner (absent for user-added servers)
+  pluginId: z.string().optional(),
 });
 
 /**
@@ -103,6 +105,8 @@ export const MCPServerConfigCreateSchema = z.object({
   args: z.array(z.string()).optional(),
   env: z.record(z.string()).optional(),
   cwd: z.string().optional(),
+  // Track 10: plugin owner (absent for user-added servers)
+  pluginId: z.string().optional(),
 }).refine(
   (data) => {
     // SSE transport requires url
@@ -299,6 +303,7 @@ export function createServerConfig(
     cwd: validated.cwd,
     createdAt: now,
     updatedAt: now,
+    pluginId: validated.pluginId,
   };
 }
 

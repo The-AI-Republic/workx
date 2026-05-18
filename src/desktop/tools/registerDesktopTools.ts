@@ -10,13 +10,14 @@
  * @module desktop/tools/registerDesktopTools
  */
 
-import { ToolRegistry } from '../../tools/ToolRegistry';
+import { ToolRegistry, type ToolRegistrationOptions } from '../../tools/ToolRegistry';
 import type { IToolsConfig } from '../../config/types';
 import type { ToolDefinition, Platform } from '../../tools/BaseTool';
 import { PlanningTool } from '../../tools/PlanningTool';
 import { getTaskStore } from '../../core/taskmanager';
-import { WebSearchTool } from '../../tools/WebSearchTool';
+import { WebSearchTool, WEB_SEARCH_CONCURRENCY } from '../../tools/WebSearchTool';
 import { SettingTool } from '../../tools/SettingTool';
+import { registerResourceFetchTool } from '../../tools/ResourceFetchTool';
 import { MCPManager } from '../../core/mcp/MCPManager';
 import { registerMCPTools } from '../../core/mcp/MCPToolAdapter';
 import { TerminalTool } from './terminal/TerminalTool';
@@ -72,7 +73,7 @@ export async function registerDesktopToolsImpl(
   const staticAssessor = new StaticRiskAssessor();
 
   // Helper to register a BaseTool instance
-  const registerTool = async (toolName: string, toolInstance: any, riskAssessor?: IRiskAssessor) => {
+  const registerTool = async (toolName: string, toolInstance: any, riskAssessor?: IRiskAssessor | ToolRegistrationOptions) => {
     if (registry.getTool(toolName)) {
       return;
     }
@@ -94,6 +95,11 @@ export async function registerDesktopToolsImpl(
       });
     }, riskAssessor);
   };
+
+  // ── resource_fetch (Track 23 — the only x402-payable surface) ─────────
+  // Desktop is the signer home; the wired capability requires explicit
+  // human approval (ApprovalGate) above the trivial threshold.
+  await registerResourceFetchTool(registry);
 
   // ──────────────────────────────────────────────────────────────────────
   // Register browser tools via MCPManager builtin server
@@ -163,9 +169,12 @@ export async function registerDesktopToolsImpl(
     console.error('[registerDesktopTools] Failed to register PlanningTool (StorageProvider unavailable):', error);
   }
 
-  // Web search tool (zero risk)
+  // Web search tool (zero risk; read-only — Track 14 shared profile)
   const webSearchTool = new WebSearchTool();
-  await registerTool('web_search', webSearchTool, new StaticRiskAssessor(0));
+  await registerTool('web_search', webSearchTool, {
+    riskAssessor: new StaticRiskAssessor(0),
+    runtime: { concurrency: WEB_SEARCH_CONCURRENCY },
+  });
 
   // Setting tool - always enabled for reading/writing allowlisted settings via chat
   const settingTool = new SettingTool();

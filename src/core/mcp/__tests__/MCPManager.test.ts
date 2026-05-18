@@ -37,11 +37,14 @@ function createMockConfigStorage(): ConfigStorageProvider {
   };
 }
 
-// Mock crypto.randomUUID - must return a valid UUID format
+// Mock crypto.randomUUID - must return a valid UUID format.
+// Counter is zero-padded to 12 hex chars (last UUID segment) so we can
+// generate up to 16^12 distinct UUIDs — well over the 100-server cap.
 let uuidCounter = 0;
 const mockRandomUUID = vi.fn(() => {
   uuidCounter++;
-  return `550e8400-e29b-41d4-a716-44665544000${uuidCounter}`;
+  const tail = uuidCounter.toString(16).padStart(12, '0');
+  return `550e8400-e29b-41d4-a716-${tail}`;
 });
 
 // Mock MCPClient functions
@@ -190,24 +193,49 @@ describe('MCPManager', () => {
       expect(mockStorage.set).toHaveBeenCalled();
     });
 
-    it('should enforce 5-server limit', async () => {
+    it('should enforce MAX_SERVERS limit (raised to 100 in Track 10)', async () => {
       const manager = await MCPManager.getInstance();
 
-      // Add 5 servers
-      for (let i = 0; i < 5; i++) {
+      // Add 100 servers (the post-Track-10 ceiling)
+      for (let i = 0; i < 100; i++) {
         await manager.addServer({
           name: `server-${i}`,
           url: `https://server${i}.example.com`,
         });
       }
 
-      // 6th server should fail
+      // 101st server should fail
       await expect(
         manager.addServer({
-          name: 'server-6',
-          url: 'https://server6.example.com',
+          name: 'server-100',
+          url: 'https://server100.example.com',
         })
       ).rejects.toThrow(/maximum/i);
+    });
+
+    it('Track 10: persists pluginId through addServer round-trip', async () => {
+      const manager = await MCPManager.getInstance();
+      const config = await manager.addServer({
+        name: 'gh-tools',
+        url: 'https://gh.example.com',
+        pluginId: 'gh-workflow@official',
+      });
+      expect(config.pluginId).toBe('gh-workflow@official');
+      const fetched = manager.getServer(config.id);
+      expect(fetched?.pluginId).toBe('gh-workflow@official');
+    });
+
+    it('Track 10: removeByPluginId removes only matching plugin servers', async () => {
+      const manager = await MCPManager.getInstance();
+      await manager.addServer({ name: 'a1', url: 'https://a1.example.com', pluginId: 'plugin-a' });
+      await manager.addServer({ name: 'a2', url: 'https://a2.example.com', pluginId: 'plugin-a' });
+      await manager.addServer({ name: 'b1', url: 'https://b1.example.com', pluginId: 'plugin-b' });
+      await manager.addServer({ name: 'user1', url: 'https://user1.example.com' });
+
+      await manager.removeByPluginId('plugin-a');
+
+      const remaining = manager.getServers().filter((s) => !s.builtin);
+      expect(remaining.map((s) => s.name).sort()).toEqual(['b1', 'user1']);
     });
 
     it('should reject duplicate server names', async () => {

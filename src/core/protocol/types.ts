@@ -23,6 +23,12 @@ export interface Submission {
     tabId?: number;
     /** Feature 015: Session ID for multi-agent routing */
     sessionId?: string;
+    /**
+     * Track 12: when true, this submission runs unattended — the retry
+     * orchestrator waits out 429/529 instead of hard-failing. Set by
+     * scheduler/connector drivers; overrides the platform default.
+     */
+    unattended?: boolean;
   };
 }
 

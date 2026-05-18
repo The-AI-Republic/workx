@@ -16,6 +16,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SubAgentRunner } from '../SubAgentRunner';
 import { SubAgentRegistry } from '../SubAgentRegistry';
 import type { SubAgentTypeConfig, BackgroundSubAgentResult, SubAgentResult } from '../types';
+import { AgentType, SubAgentContextMode } from '../agentTypes';
 
 // ---------------------------------------------------------------------------
 // Mocks for the heavy collaborators (ToolRegistryCloner, SubAgentEventRouter)
@@ -48,7 +49,7 @@ interface ParentEngineMock {
   getMaxDepth: () => number;
   getToolRegistry: () => { getApprovalGate: () => undefined };
   getConfig: () => Record<string, unknown>;
-  getSession: () => null;
+  getSession: () => any;
   pushEvent: ReturnType<typeof vi.fn>;
   onEvent: ReturnType<typeof vi.fn>;
   createChildEngine: ReturnType<typeof vi.fn>;
@@ -425,6 +426,72 @@ describe('SubAgentRunner cross-agent messaging — drain wiring', () => {
     expect(config?.drainPendingMessages?.()).toEqual([]);
 
     await settle();
+  });
+});
+
+describe('SubAgentRunner fork context mode', () => {
+  it('passes forked parent history into the child engine and uses a trigger input', async () => {
+    const parent = createParentEngine();
+    parent.getSession = () => ({
+      getSessionId: () => 'parent-session',
+      getConversationHistory: () => ({
+        items: [
+          {
+            type: 'message',
+            role: 'user',
+            content: [{ type: 'input_text', text: 'Parent context' }],
+          },
+        ],
+      }),
+      getTaskOutputStore: () => undefined,
+      registerTaskState: vi.fn(),
+    } as any);
+
+    const runner = new SubAgentRunner({
+      parentEngine: parent as never,
+      customTypes: [
+        makeType({
+          agentType: AgentType.Worker,
+          allowedContextModes: [SubAgentContextMode.Isolated, SubAgentContextMode.Fork],
+        }),
+      ],
+    });
+
+    const result = await runner.run({
+      type: 'worker',
+      prompt: 'Use the parent context',
+      contextMode: SubAgentContextMode.Fork,
+    });
+    if ('kind' in result) throw new Error('expected foreground result');
+
+    const config = parent.__childEngine.__capturedConfig as any;
+    expect(config.initialHistory?.mode).toBe('forked');
+    expect(config.initialHistory?.sourceConversationId).toBe('parent-session');
+    expect(JSON.stringify(config.initialHistory?.rolloutItems)).toContain('Parent context');
+    expect(JSON.stringify(config.initialHistory?.rolloutItems)).toContain('Use the parent context');
+    expect(parent.__childEngine.run).toHaveBeenCalledWith(
+      [{ type: 'text', text: 'Begin the delegated forked sub-agent task now.' }],
+      expect.anything(),
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects fork mode when a type has not opted in', async () => {
+    const parent = createParentEngine();
+    const runner = new SubAgentRunner({
+      parentEngine: parent as never,
+      customTypes: [makeType()],
+    });
+
+    const result = await runner.run({
+      type: 'worker',
+      prompt: 'task',
+      contextMode: SubAgentContextMode.Fork,
+    });
+
+    if ('kind' in result) throw new Error('expected foreground result');
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('does not allow context mode');
   });
 });
 

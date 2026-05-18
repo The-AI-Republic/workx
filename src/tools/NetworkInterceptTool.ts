@@ -566,6 +566,21 @@ export class NetworkInterceptTool extends BaseTool {
       const statusGroup = Math.floor(details.statusCode / 100) * 100;
       this.metrics.requestsByStatus[`${statusGroup}`] =
         (this.metrics.requestsByStatus[`${statusGroup}`] || 0) + 1;
+
+      // Track 23: a navigation 402 is OBSERVED and surfaced only — never
+      // auto-paid. Only an explicit resource_fetch may pay (design decision 2).
+      if (details.statusCode === 402) {
+        const headers = request.responseHeaders ?? {};
+        const hasX402 = Object.keys(headers).some(
+          (k) => k.toLowerCase() === 'x-payment-required',
+        );
+        console.warn(
+          `[NetworkIntercept] Observed HTTP 402 from ${details.url}` +
+            (hasX402
+              ? ' (x402 x-payment-required present) — NOT auto-paid; navigation 402s are surfaced only'
+              : ''),
+        );
+      }
     }
   }
 
