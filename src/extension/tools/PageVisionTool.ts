@@ -188,29 +188,59 @@ Simply provide coordinates based on visual analysis of the screenshot image.
     }
 
 
-    // Route by action type - return raw data, BaseTool.execute() will wrap it
-    let result: ResponseData;
-    switch (typedRequest.action) {
-      case 'screenshot':
-        result = await this.executeScreenshot(tabId, typedRequest);
-        break;
-      case 'click':
-        result = await this.executeClick(tabId, typedRequest);
-        break;
-      case 'type':
-        result = await this.executeType(tabId, typedRequest);
-        break;
-      case 'scroll':
-        result = await this.executeScrollAction(tabId, typedRequest);
-        break;
-      case 'keypress':
-        result = await this.executeKeypress(tabId, typedRequest);
-        break;
-      default:
-        throw new Error(`Unknown action: ${typedRequest.action}`);
-    }
+    this.emitVisionProgress(options, 'capturing');
 
-    return result;
+    try {
+      // Route by action type - return raw data, BaseTool.execute() will wrap it
+      let result: ResponseData;
+      switch (typedRequest.action) {
+        case 'screenshot':
+          result = await this.executeScreenshot(tabId, typedRequest);
+          break;
+        case 'click':
+          result = await this.executeClick(tabId, typedRequest);
+          break;
+        case 'type':
+          result = await this.executeType(tabId, typedRequest);
+          break;
+        case 'scroll':
+          result = await this.executeScrollAction(tabId, typedRequest);
+          break;
+        case 'keypress':
+          result = await this.executeKeypress(tabId, typedRequest);
+          break;
+        default:
+          throw new Error(`Unknown action: ${typedRequest.action}`);
+      }
+
+      this.emitVisionProgress(options, 'captured', this.estimateScreenshotBytes(result));
+      return result;
+    } catch (error) {
+      this.emitVisionProgress(options, 'failed');
+      throw error;
+    }
+  }
+
+  private emitVisionProgress(
+    options: BaseToolOptions | undefined,
+    status: 'capturing' | 'captured' | 'failed',
+    screenshotSizeBytes?: number,
+  ): void {
+    options?.onProgress?.({
+      toolUseID: options.callId ?? 'page_vision',
+      data: {
+        type: 'vision_progress',
+        status,
+        screenshotSizeBytes,
+      },
+    });
+  }
+
+  private estimateScreenshotBytes(result: ResponseData): number | undefined {
+    if ('width' in result && 'height' in result) {
+      return result.width * result.height * 4;
+    }
+    return undefined;
   }
 
   /**

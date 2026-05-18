@@ -34,7 +34,10 @@ export async function cloneToolRegistry(
 
     // Deep-clone the definition to prevent cross-registry mutation
     const clonedDefinition = structuredClone(entry.definition);
-    await clone.register(clonedDefinition, entry.handler, entry.riskAssessor);
+    await clone.register(clonedDefinition, entry.handler, {
+      riskAssessor: entry.riskAssessor,
+      exposure: entry.exposure,
+    });
   }
 
   return clone;

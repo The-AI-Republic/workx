@@ -14,8 +14,7 @@
  * Reference: design.md § Loader-by-slot Wiring (CommandSlotLoader bullet).
  */
 
-import type { PluginCommandLoader } from '@/core/commands/loaders/PluginCommandLoader';
-import type { PromptCommand } from '@/core/commands/types';
+import type { PluginCommandLoader, PluginPromptCommand } from '@/core/plugins/PluginCommandLoader';
 import type { LoadedPlugin, PluginError, PluginId, CommandMetadata } from '../types';
 import { substituteContent } from '../userConfigSubstitution';
 import type { FileReader, DirLister } from './SkillSlotLoader';
@@ -36,7 +35,7 @@ export class CommandSlotLoader {
   ): Promise<PluginError[]> {
     const errors: PluginError[] = [];
     const pluginName = pluginNameFromId(plugin.id);
-    const commands: PromptCommand[] = [];
+    const commands: PluginPromptCommand[] = [];
 
     const raw = plugin.manifest.commands;
     if (raw == null) {
@@ -107,7 +106,7 @@ export class CommandSlotLoader {
     pluginName: string,
     bareName: string,
     meta: CommandMetadata,
-  ): Promise<{ command: PromptCommand } | { error: PluginError }> {
+  ): Promise<{ command: PluginPromptCommand } | { error: PluginError }> {
     let body: string;
     if (meta.content != null) {
       body = meta.content;
@@ -154,7 +153,7 @@ export class CommandSlotLoader {
     description: string,
     body: string,
     meta: Partial<CommandMetadata & { argumentHint?: string; whenToUse?: string }>,
-  ): PromptCommand {
+  ): PluginPromptCommand {
     const namespaced = `${pluginName}:${bareName}`;
     const substitutedBody = substituteContent(body, plugin, userConfig);
     return {

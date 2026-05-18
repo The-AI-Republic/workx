@@ -10,7 +10,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { CommandSlotLoader } from '../CommandSlotLoader';
 import type { LoadedPlugin } from '../../types';
-import type { PromptCommand } from '@/core/commands/types';
+import type { PluginPromptCommand } from '@/core/plugins/PluginCommandLoader';
 
 function makePlugin(commands: Record<string, { content: string; description: string }>): LoadedPlugin {
   return {
@@ -25,11 +25,11 @@ function makePlugin(commands: Record<string, { content: string; description: str
 
 async function loadCommands(
   commands: Record<string, { content: string; description: string }>,
-): Promise<PromptCommand[]> {
-  const added: PromptCommand[] = [];
+): Promise<PluginPromptCommand[]> {
+  const added: PluginPromptCommand[] = [];
   const loader = new CommandSlotLoader({
     pluginCommandLoader: {
-      add: vi.fn((_id: string, cmds: PromptCommand[]) => added.push(...cmds)),
+      add: vi.fn((_id: string, cmds: PluginPromptCommand[]) => added.push(...cmds)),
       removeByPluginId: vi.fn(),
     } as never,
     readFile: vi.fn(async () => null),

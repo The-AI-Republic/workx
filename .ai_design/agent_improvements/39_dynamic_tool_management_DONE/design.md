@@ -1,8 +1,15 @@
 # Track 39: Dynamic Tool Management
 
 **Date**: 2026-05-16
+**Status**: DONE — implemented 2026-05-18
 **Scope**: Browserx tool exposure, MCP/A2A/plugin tool scaling, skill discoverability, prompt-size control
 **Reference**: `/home/rich/dev/study/claudy/src/utils/toolSearch.ts`, `/home/rich/dev/study/claudy/src/tools/ToolSearchTool`, `/home/rich/dev/study/claudy/src/services/api/claude.ts`
+
+**Implementation note**: BrowserX now has a provider-neutral exposure layer under
+`src/tools/exposure/`. `ToolRegistry` stores exposure metadata, MCP/A2A registrations
+default to deferred, `tool_search` persists selected tool names, and `TurnManager`
+rebuilds model-facing schemas from `ToolExposureManager`. Diagnostics are emitted as
+`ToolExposureUpdated`.
 
 ## Summary
 
@@ -81,6 +88,26 @@ The design lesson is not the Anthropic-specific beta API. The design lesson is t
 6. Skills should stay behind `use_skill` plus metadata, not become one schema per installed skill.
 7. The design must work without Anthropic `tool_reference`.
 8. Diagnostics must show why a tool was exposed, deferred, hidden, or unavailable.
+
+## Implementation decisions locked 2026-05-18
+
+1. **Provider-neutral only.** Do not add Anthropic `tool_reference`/`defer_loading` support
+   in v1. Hydration happens by selecting tool names in BrowserX state and rebuilding the next
+   normal model request with those schemas.
+2. **Registry remains the execution authority.** Exposure controls what schemas the model
+   sees; execution still goes through `ToolRegistry.execute()`, approval, pre-execute gates,
+   plan review, skill allow-lists, and policy.
+3. **MVP defaults:** built-in/core tools and `tool_search` are always; MCP/A2A/plugin
+   function tools are deferred; disabled/admin-hidden tools are hidden; `use_skill` stays
+   always when skills exist.
+4. **Dynamic loading mode defaults to `auto`, but tests opt in explicitly.** In `auto`, turn
+   it on only when deferred schema size exceeds the configured threshold.
+5. **Hydration scope is session + active task.** Selected tools persist within the session
+   and current task, are recomputed against current policy every request, and are dropped
+   from exposure if disabled/hidden later.
+6. **Duplicate MCP exposure is removed in this track.** The registry-backed path becomes the
+   single model-exposure source for MCP schemas; any existing session `getMcpTools()` path
+   must dedupe or stop adding duplicate schemas.
 
 ## Proposed Architecture
 
@@ -363,6 +390,23 @@ This avoids moving the bloat from schemas into prose.
 - Replace long deferred-tool name lists with source summaries for very large installs.
 - Let plugin manifests declare `alwaysLoad`, `deferred`, `hidden`, and `searchHint`.
 - Add user override UI for always-load/defer/hidden policy.
+
+## File-level implementation plan
+
+1. Add `src/tools/exposure/` with `ToolExposureTypes.ts`,
+   `ToolExposureManager.ts`, `ToolSearchIndex.ts`, `ToolSelectionStore.ts`,
+   `ToolSearchTool.ts`, and tests.
+2. Extend `ToolRegistrationOptions` / `ToolRegistryEntry` with
+   `exposure?: ToolExposureProfile`; add read APIs for exposure-aware entries without
+   changing execution semantics.
+3. Update MCP, A2A, and plugin tool registration to set exposure metadata.
+4. Register `tool_search` in all bootstraps that register model-facing tools.
+5. Replace `TurnManager.buildToolsFromContext()`'s direct "all tools" behavior with
+   `ToolExposureManager.buildExposure(...)`.
+6. After a `tool_search` call, update `ToolSelectionStore` and rebuild model-facing tools
+   before the next model request in the same turn/task.
+7. Add diagnostics counters/events for always/deferred/hidden/selected tools and prompt
+   schema size estimates.
 
 ## Validation
 

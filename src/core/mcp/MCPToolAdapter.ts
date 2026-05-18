@@ -227,6 +227,13 @@ export async function registerMCPTools(
             maxResultSizeChars: 50_000,
           },
         },
+        exposure: {
+          source: 'mcp',
+          mode: 'deferred',
+          serverName,
+          displayName: `${serverName}: ${tool.name}`,
+          searchHint: tool.description,
+        },
       });
     } catch (error) {
       // Tool might already be registered (e.g., during reconnect)
