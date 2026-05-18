@@ -1,12 +1,11 @@
 # Track 40 Tasks: Sub-Agent Runtime Optimization
 
-Status: implemented by PR #243 and review follow-ups; re-verified 2026-05-18 on
-`origin/agent-improvements` at `e9bbff26`.
+Status: DONE. Implemented by PR #243, review follow-ups, and final fork-recursion/tag
+guard on 2026-05-18.
 
 Note: the merged code covers the child-history seams, typed agent semantics, fork routing,
-skill fork integration, events, and task-state regression coverage. The one remaining
-unchecked item is an explicit fork-recursion/tag guard; current code has max-depth
-protection but no Claudy-style rejection when already inside forked sub-agent history.
+skill fork integration, events, task-state regression coverage, and explicit rejection of
+fork mode when inherited history already contains BrowserX's fork directive tag.
 
 ## Phase 0: Required Child-Agent Seams
 
@@ -57,7 +56,7 @@ protection but no Claudy-style rejection when already inside forked sub-agent hi
 - [x] Preserve isolated mode as the default path.
 - [x] Route fork mode through child engine `initialHistory`.
 - [x] Add guards for max depth, plugin opt-in, and background approval policy.
-- [ ] Add an explicit fork-recursion/tag guard so a forked sub-agent cannot recursively fork
+- [x] Add an explicit fork-recursion/tag guard so a forked sub-agent cannot recursively fork
       from inherited history containing the fork boilerplate.
 - [x] Ensure background terminal task state is recorded even when notification delivery is suppressed.
 - [x] Add foreground and background fork-mode tests.
