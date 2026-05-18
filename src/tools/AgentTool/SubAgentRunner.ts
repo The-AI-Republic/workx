@@ -614,14 +614,14 @@ export class SubAgentRunner implements IAgentRunner {
       msg: {
         type: 'SubAgentStart',
         data: {
-            runId,
-            subAgentType: params.type,
-            agentType: behavior.agentType,
-            contextMode: behavior.contextMode,
-            executionMode: behavior.executionMode,
-            description: params.description ?? params.prompt.slice(0, 50),
-          },
+          runId,
+          subAgentType: params.type,
+          agentType: behavior.agentType,
+          contextMode: behavior.contextMode,
+          executionMode: behavior.executionMode,
+          description: params.description ?? params.prompt.slice(0, 50),
         },
+      },
     });
 
     // (Track 04) Build typed BackgroundAgentTaskState and register on

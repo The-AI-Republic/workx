@@ -43,3 +43,40 @@ describe('resolveSubAgentBehavior', () => {
     ).toThrow(/does not allow context mode/);
   });
 });
+
+describe('normalizeSubAgentTypeConfig context-mode defaults', () => {
+  it('inherits the agentType profile modes when context fields are omitted', () => {
+    // Regression: previously hardcoded [Isolated], so a worker config that
+    // omitted allowedContextModes was silently locked out of fork even
+    // though the Worker profile allows it.
+    const normalized = typeConfig({ agentType: AgentType.Worker });
+    expect(normalized.allowedContextModes).toEqual([
+      SubAgentContextMode.Isolated,
+      SubAgentContextMode.Fork,
+    ]);
+    expect(normalized.defaultContextMode).toBe(SubAgentContextMode.Isolated);
+
+    // And the resolved behavior must agree (single source of truth).
+    const behavior = resolveSubAgentBehavior(normalized, {
+      contextMode: SubAgentContextMode.Fork,
+    });
+    expect(behavior.contextMode).toBe(SubAgentContextMode.Fork);
+  });
+
+  it('still defaults a typeless config to isolated-only', () => {
+    const normalized = typeConfig();
+    expect(normalized.allowedContextModes).toEqual([SubAgentContextMode.Isolated]);
+    expect(normalized.defaultContextMode).toBe(SubAgentContextMode.Isolated);
+  });
+
+  it('honors an explicit allowedContextModes over the profile and clamps the default into it', () => {
+    const normalized = typeConfig({
+      agentType: AgentType.Worker,
+      allowedContextModes: [SubAgentContextMode.Fork],
+    });
+    expect(normalized.allowedContextModes).toEqual([SubAgentContextMode.Fork]);
+    // Worker profile default is Isolated, which is not allowed here, so it
+    // clamps to the first allowed mode rather than producing an invalid default.
+    expect(normalized.defaultContextMode).toBe(SubAgentContextMode.Fork);
+  });
+});

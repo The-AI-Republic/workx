@@ -100,16 +100,29 @@ export async function registerSubAgentTool(
         return JSON.stringify({ success: false, error: 'Missing required parameter: prompt' });
       }
 
+      // Accept both the tool-schema snake_case `context_mode` and the
+      // internal camelCase `contextMode`. When a value is supplied but
+      // unrecognized, fail loudly instead of silently defaulting — this
+      // matches resolveSubAgentBehavior, which throws for a valid-but-
+      // disallowed mode rather than coercing it.
+      const rawContextMode = params.context_mode ?? params.contextMode;
+      let contextMode: SubAgentToolParams['contextMode'];
+      if (rawContextMode !== undefined) {
+        if (!isSubAgentContextMode(rawContextMode)) {
+          return JSON.stringify({
+            success: false,
+            error: `Invalid context_mode '${String(rawContextMode)}'. Expected 'isolated' or 'fork'.`,
+          });
+        }
+        contextMode = rawContextMode;
+      }
+
       const toolParams: SubAgentToolParams = {
         type: params.type,
         prompt: params.prompt,
         description: typeof params.description === 'string' ? params.description : undefined,
         background: params.background === true,
-        contextMode: isSubAgentContextMode(params.context_mode)
-          ? params.context_mode
-          : isSubAgentContextMode(params.contextMode)
-            ? params.contextMode
-            : undefined,
+        contextMode,
       };
 
       const result = await runner.run(toolParams);

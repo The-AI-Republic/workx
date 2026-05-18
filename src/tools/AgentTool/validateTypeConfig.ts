@@ -7,6 +7,7 @@ import {
   isAgentType,
   isSubAgentContextMode,
 } from './agentTypes';
+import { getDefaultBehaviorProfile } from './behavior';
 
 /**
  * Validate that an unknown value conforms to `SubAgentTypeConfig`.
@@ -69,10 +70,18 @@ export function normalizeSubAgentTypeConfig(
     throw new Error(`Sub-agent type '${config.id}' cannot use internal agentType`);
   }
 
+  // Single source of truth: when context-mode fields are omitted they derive
+  // from the agentType behavior profile (same table resolveSubAgentBehavior
+  // uses). Previously this hardcoded [Isolated], so a config/plugin type
+  // declaring `agentType: 'worker'` (whose profile allows fork) was silently
+  // locked to isolated. Explicit config fields still win.
+  const profile = getDefaultBehaviorProfile(agentType);
   const allowedContextModes = config.allowedContextModes
-    ?? [SubAgentContextMode.Isolated];
+    ?? profile.allowedContextModes;
   const defaultContextMode = config.defaultContextMode
-    ?? allowedContextModes[0]
+    ?? (allowedContextModes.includes(profile.defaultContextMode)
+      ? profile.defaultContextMode
+      : allowedContextModes[0])
     ?? SubAgentContextMode.Isolated;
 
   if (!allowedContextModes.includes(defaultContextMode)) {
