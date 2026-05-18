@@ -2,6 +2,7 @@
 
 import { ToolRegistry } from './ToolRegistry';
 import type { SubAgentTypeConfig } from './AgentTool/types';
+import type { PreExecuteCheck } from './ToolRegistry';
 
 export interface ToolCloneOptions {
   /** Tools to include (allowlist). If undefined, include all tools. */
@@ -56,15 +57,47 @@ const ALWAYS_DENIED_FOR_SUB_AGENTS = [
   'send_message',
 ];
 
+const ALWAYS_DENIED_FOR_CHILD_AGENTS = ALWAYS_DENIED_FOR_SUB_AGENTS;
+
+export interface ChildToolRegistryPolicy {
+  allow?: string[];
+  deny?: string[];
+  preExecuteCheck?: PreExecuteCheck;
+}
+
+export async function createChildToolRegistry(
+  parentRegistry: ToolRegistry,
+  policy: ChildToolRegistryPolicy = {},
+  options: { childKind: 'subagent' | 'shadow_agent' },
+): Promise<ToolRegistry> {
+  const clone = await cloneToolRegistry(parentRegistry, {
+    include: policy.allow,
+    exclude: [
+      ...ALWAYS_DENIED_FOR_CHILD_AGENTS,
+      ...(policy.deny ?? []),
+    ],
+  });
+
+  if (policy.preExecuteCheck) {
+    clone.setPreExecuteCheck(policy.preExecuteCheck);
+  }
+
+  // Keep the option in the signature as an explicit call-site marker. Future
+  // child kinds can diverge here without changing the public helper shape.
+  void options;
+  return clone;
+}
+
 export async function createSubAgentToolRegistry(
   parentRegistry: ToolRegistry,
   subAgentType: SubAgentTypeConfig
 ): Promise<ToolRegistry> {
-  return cloneToolRegistry(parentRegistry, {
-    include: subAgentType.tools?.allow,
-    exclude: [
-      ...ALWAYS_DENIED_FOR_SUB_AGENTS,
-      ...(subAgentType.tools?.deny ?? []),
-    ],
-  });
+  return createChildToolRegistry(
+    parentRegistry,
+    {
+      allow: subAgentType.tools?.allow,
+      deny: subAgentType.tools?.deny,
+    },
+    { childKind: 'subagent' },
+  );
 }

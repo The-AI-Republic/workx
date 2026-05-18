@@ -16,6 +16,7 @@ import type {
 } from './RepublicAgentEngineConfig';
 import { CommandQueue } from '../queue/CommandQueue';
 import { priorityForOp } from '../queue/priorityForOp';
+import { ShadowAgentScheduler } from '../shadowAgent/ShadowAgentScheduler';
 
 export class RepublicAgentEngine {
   readonly engineId: string;
@@ -38,6 +39,7 @@ export class RepublicAgentEngine {
   // Lifecycle state
   private disposed = false;
   private initialized = false;
+  private shadowAgentScheduler: ShadowAgentScheduler | null = null;
 
   // Event listener callbacks (supports multiple listeners)
   private eventListeners: Array<(event: EngineEvent) => void> = [];
@@ -77,6 +79,9 @@ export class RepublicAgentEngine {
         this.toolRegistry,
         this.config.initialHistory,
       );
+      if (typeof this.session.initialize === 'function') {
+        await this.session.initialize();
+      }
 
       // Apply config values (systemPrompt, userInstructions, model) to the session's TurnContext.
       // Without this, sub-agents would run with bare defaults instead of the
@@ -123,6 +128,17 @@ export class RepublicAgentEngine {
 
     // Setup approval system
     this.setupApprovalSystem();
+    // Reuse any scheduler already handed out via getShadowAgentScheduler()
+    // before initialize() ran, so the session is wired to the same instance
+    // that dispose() shuts down (avoids a second, orphaned scheduler).
+    this.shadowAgentScheduler ??= new ShadowAgentScheduler({ parentEngine: this });
+    this.session?.setShadowAgentScheduler?.(this.shadowAgentScheduler);
+    const prefs = this.config.agentConfig.getConfig?.()?.preferences as
+      | { shadowCompactPrepareEnabled?: boolean }
+      | undefined;
+    this.session?.setShadowCompactPreparationEnabled?.(
+      prefs?.shadowCompactPrepareEnabled === true,
+    );
 
     this.initialized = true;
   }
@@ -269,6 +285,7 @@ export class RepublicAgentEngine {
     if (this.disposed) return;
     this.disposed = true;
     this.cancel();
+    this.shadowAgentScheduler?.shutdown();
 
     // Shutdown session if we own it
     if (this.ownsSession && this.session) {
@@ -323,6 +340,13 @@ export class RepublicAgentEngine {
 
   getConfig(): RepublicAgentEngineConfig {
     return this.config;
+  }
+
+  getShadowAgentScheduler(): ShadowAgentScheduler {
+    if (!this.shadowAgentScheduler) {
+      this.shadowAgentScheduler = new ShadowAgentScheduler({ parentEngine: this });
+    }
+    return this.shadowAgentScheduler;
   }
 
   /**

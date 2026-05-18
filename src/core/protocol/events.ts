@@ -120,6 +120,14 @@ export type EventMsg =
   | { type: 'SubAgentComplete'; data: SubAgentCompleteEvent }
   | { type: 'SubAgentError'; data: SubAgentErrorEvent }
   | { type: 'SubAgentWarning'; data: SubAgentWarningEvent }
+  // Shadow-agent runtime events (internal observability; UI ignores by default)
+  | { type: 'ShadowAgentStarted'; data: ShadowAgentRuntimeEventData }
+  | { type: 'ShadowAgentCompleted'; data: ShadowAgentRuntimeEventData }
+  | { type: 'ShadowAgentFailed'; data: ShadowAgentRuntimeEventData }
+  | { type: 'ShadowAgentCancelled'; data: ShadowAgentRuntimeEventData }
+  | { type: 'ShadowAgentCoalesced'; data: ShadowAgentRuntimeEventData }
+  | { type: 'ShadowAgentTimedOut'; data: ShadowAgentRuntimeEventData }
+  | { type: 'ShadowAgentFallbackUsed'; data: ShadowAgentRuntimeEventData }
   // Session summary telemetry (internal observability; UI ignores by default)
   | { type: 'SessionSummaryTelemetry'; data: SessionSummaryTelemetryEventData }
   // Track 04: typed-task layer events (background sub-agents only in v1)
@@ -202,6 +210,24 @@ export interface SessionSummaryTelemetryEventData {
 export interface SessionSummaryTelemetryEvent {
   type: 'SessionSummaryTelemetry';
   data: SessionSummaryTelemetryEventData;
+}
+
+export interface ShadowAgentRuntimeEventData {
+  run_id: string;
+  kind: string;
+  priority: string;
+  status?: string;
+  duration_ms?: number;
+  timeout_ms?: number;
+  failure_policy: string;
+  model?: string;
+  parent_engine_id?: string;
+  child_engine_id?: string;
+  dedupe_key?: string;
+  message?: string;
+  error?: string;
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
 export interface ErrorEvent {
