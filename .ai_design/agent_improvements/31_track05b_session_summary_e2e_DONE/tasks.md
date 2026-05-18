@@ -4,23 +4,28 @@ Follows up [Track 05b](../05b_auto_extraction_compaction_interlock_DONE/design.m
 
 ## Phase 1 — End-to-end loop test (G1)
 
-- [ ] 1.1 Build a Node integration harness: real `MemoryFileSystem`, deterministic mocked
+- [x] 1.1 Build a Node integration harness: real `MemoryFileSystem`, deterministic mocked
       extractor model client, synthetic multi-turn session > 15k tokens.
-- [ ] 1.2 Assert post-turn hook triggers extraction; `summary.md` written and ≠ empty
+- [x] 1.2 Assert post-turn hook triggers extraction; `summary.md` written and ≠ empty
       template.
-- [ ] 1.3 Trigger compaction; assert it blocks on in-flight extraction (hard 15s/60s
+- [x] 1.3 Trigger compaction; assert it blocks on in-flight extraction (hard 15s/60s
       escapes) and folds the summary (`<session_summary>` wrap / `compact_with_summary`).
-- [ ] 1.4 Ensure it runs in CI without a browser.
+- [x] 1.4 Ensure it runs in CI without a browser.
 
 ## Phase 2 — Feature-flag reconciliation (G2)
 
-- [ ] 2.1 Decide relocate vs document.
+- [x] 2.1 Decide relocate vs document.
 - [ ] 2.2a Relocate: add `MemoryConfig.sessionSummary?: { enabled }`
       (`src/core/memory/types.ts`); read in `RepublicAgent.ts:327-338`; back-compat read of
       `preferences.sessionSummaryEnabled`.
-- [ ] 2.2b Document: record `preferences.sessionSummaryEnabled` as accepted in *this* doc
+- [x] 2.2b Document: record `preferences.sessionSummaryEnabled` as accepted in *this* doc
       (do not edit Track 05b).
-- [ ] 2.3 Test: flag resolves from the chosen location; defaults off; back-compat covered.
+- [x] 2.3 Test: flag resolves from the chosen location; defaults off; back-compat covered.
+
+Decision: keep `preferences.sessionSummaryEnabled` as the accepted v1 flag location.
+It lives with the other user-visible settings toggles, defaults off, and existing
+`RepublicAgent` coverage verifies the absent/false path and extension-build no-op. No
+`MemoryConfig` relocation is required for this follow-up.
 
 ## Exit criteria
 

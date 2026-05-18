@@ -1,7 +1,7 @@
 # Track 31 — Session Summary E2E Coverage & Flag Reconciliation (follow-up to Track 05b)
 
 Date: 2026-05-15
-Status: OPEN — P2
+Status: DONE — P2 (implemented 2026-05-18)
 Follows up: [Track 05b — Auto-Extraction & Compaction Interlock](../05b_auto_extraction_compaction_interlock_DONE/design.md) (shipped PR #206)
 Audit source: design-vs-implementation audit 2026-05-15 (independently verified against source on `agent-improvements`; re-verified 2026-05-18 on `origin/agent-improvements` at `cd1e339e`; re-verified after pull 2026-05-18 on `origin/agent-improvements` at `e9bbff26`)
 
@@ -83,3 +83,10 @@ shape disagrees with the design.
 2. G2: is `preferences.sessionSummaryEnabled` already persisted in any shipped user config?
    If yes, relocation must migrate it (coordinate with Track 19 migration framework if/when
    that lands).
+
+## Implementation decision
+
+Implemented with the Node integration harness. The active flag location remains
+`preferences.sessionSummaryEnabled`; this is the accepted v1 shape because it is a user-visible
+settings toggle, defaults off, and already has runtime wiring coverage. No `MemoryConfig`
+relocation was performed.
