@@ -1,4 +1,4 @@
-import { BaseTool, type ToolDefinition } from '../../tools/BaseTool';
+import { BaseTool, type BaseToolOptions, type ToolDefinition } from '../../tools/BaseTool';
 
 /** Extraction mode */
 export type ExportFormat = 'json' | 'csv' | 'xml' | 'markdown';
@@ -49,6 +49,8 @@ export interface DataExtractionResult {
   warnings?: string[];
   error?: string;
 }
+
+type BoundExtractionTab = chrome.tabs.Tab & { id: number };
 
 export class DataExtractionTool extends BaseTool {
   protected toolDefinition: ToolDefinition;
@@ -164,26 +166,27 @@ export class DataExtractionTool extends BaseTool {
     });
   }
 
-  async executeImpl(params: DataExtractionParams): Promise<DataExtractionResult> {
+  async executeImpl(params: DataExtractionParams, options?: BaseToolOptions): Promise<DataExtractionResult> {
     try {
       const { mode, patterns, selectors, format, schema } = params;
+      const tab = await this.resolveBoundTab(options);
       let extractedData: ExtractedData;
 
       switch (mode) {
         case 'pattern':
-          extractedData = await this.extractByPatterns(patterns || []);
+          extractedData = await this.extractByPatterns(tab, patterns || []);
           break;
         case 'structured':
-          extractedData = await this.extractStructured(selectors || {}, schema);
+          extractedData = await this.extractStructured(tab, selectors || {}, schema);
           break;
         case 'semantic':
-          extractedData = await this.extractSemantic(params.context);
+          extractedData = await this.extractSemantic(tab, params.context);
           break;
         case 'table':
-          extractedData = await this.extractTables(params.tableSelector);
+          extractedData = await this.extractTables(tab, params.tableSelector);
           break;
         default:
-          extractedData = await this.extractAuto();
+          extractedData = await this.extractAuto(tab);
       }
 
       // Store extracted data
@@ -209,10 +212,17 @@ export class DataExtractionTool extends BaseTool {
     }
   }
 
-  private async extractByPatterns(patternNames: string[]): Promise<ExtractedData> {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab.id) throw new Error('No active tab');
+  private async resolveBoundTab(options?: BaseToolOptions): Promise<BoundExtractionTab> {
+    const tabId = options?.metadata?.tabId;
+    if (typeof tabId !== 'number' || tabId < 0) {
+      throw new Error('No bound tab');
+    }
+    const tab = await chrome.tabs.get(tabId);
+    if (typeof tab.id !== 'number') throw new Error('Bound tab not found');
+    return tab as BoundExtractionTab;
+  }
 
+  private async extractByPatterns(tab: BoundExtractionTab, patternNames: string[]): Promise<ExtractedData> {
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: (patterns: Array<{ name: string; regex: string }>) => {
@@ -244,10 +254,7 @@ export class DataExtractionTool extends BaseTool {
     };
   }
 
-  private async extractStructured(selectors: Record<string, string>, schema?: any): Promise<ExtractedData> {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab.id) throw new Error('No active tab');
-
+  private async extractStructured(tab: BoundExtractionTab, selectors: Record<string, string>, schema?: any): Promise<ExtractedData> {
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: (selectors: Record<string, string>) => {
@@ -280,10 +287,7 @@ export class DataExtractionTool extends BaseTool {
     };
   }
 
-  private async extractSemantic(context?: string): Promise<ExtractedData> {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab.id) throw new Error('No active tab');
-
+  private async extractSemantic(tab: BoundExtractionTab, context?: string): Promise<ExtractedData> {
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: () => {
@@ -354,10 +358,7 @@ export class DataExtractionTool extends BaseTool {
     };
   }
 
-  private async extractTables(selector?: string): Promise<ExtractedData> {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab.id) throw new Error('No active tab');
-
+  private async extractTables(tab: BoundExtractionTab, selector?: string): Promise<ExtractedData> {
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: (tableSelector?: string) => {
@@ -426,11 +427,11 @@ export class DataExtractionTool extends BaseTool {
     };
   }
 
-  private async extractAuto(): Promise<ExtractedData> {
+  private async extractAuto(tab: BoundExtractionTab): Promise<ExtractedData> {
     // Automatic extraction combining multiple methods
-    const patterns = await this.extractByPatterns(['email', 'phone', 'url', 'date']);
-    const semantic = await this.extractSemantic();
-    const tables = await this.extractTables();
+    const patterns = await this.extractByPatterns(tab, ['email', 'phone', 'url', 'date']);
+    const semantic = await this.extractSemantic(tab);
+    const tables = await this.extractTables(tab);
 
     return {
       raw: {

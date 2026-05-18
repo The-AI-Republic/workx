@@ -8,6 +8,7 @@ import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
 import { StorageTool, CacheErrorType } from '@/extension/tools/StorageTool';
 import { IndexedDBAdapter } from '@/storage/IndexedDBAdapter';
+import { CACHE_TOOL_RESULT_KIND } from '@/tools/resultStore';
 
 describe('StorageTool', () => {
   let tool: StorageTool;
@@ -367,6 +368,36 @@ describe('StorageTool', () => {
       expect(result.data.success).toBe(false);
       expect(result.data.errorType).toBe(CacheErrorType.ITEM_NOT_FOUND);
     });
+
+    it('should reject deleting system-managed persisted tool results', async () => {
+      const writeResult = await tool.execute(
+        {
+          action: 'write',
+          data: { content: 'persisted result' },
+          description: 'tool_result:call_123',
+          customMetadata: { kind: CACHE_TOOL_RESULT_KIND, toolUseId: 'call_123' }
+        },
+        { metadata: { sessionId: 'conv_del_guard' } }
+      );
+
+      const storageKey = writeResult.data.metadata.storageKey;
+      const deleteResult = await tool.execute(
+        { action: 'delete', storageKey },
+        { metadata: { sessionId: 'conv_del_guard' } }
+      );
+
+      expect(deleteResult.success).toBe(true);
+      expect(deleteResult.data.success).toBe(false);
+      expect(deleteResult.data.errorType).toBe(CacheErrorType.VALIDATION_ERROR);
+      expect(deleteResult.data.message).toContain('system-managed persisted tool result');
+
+      const readResult = await tool.execute(
+        { action: 'read', storageKey },
+        { metadata: { sessionId: 'conv_del_guard' } }
+      );
+      expect(readResult.success).toBe(true);
+      expect(readResult.data.item.data).toEqual({ content: 'persisted result' });
+    });
   });
 
   describe('Update Operations', () => {
@@ -443,6 +474,42 @@ describe('StorageTool', () => {
       expect(result.success).toBe(true);
       expect(result.data.success).toBe(false);
       expect(result.data.errorType).toBe(CacheErrorType.ITEM_NOT_FOUND);
+    });
+
+    it('should reject updating system-managed persisted tool results', async () => {
+      const writeResult = await tool.execute(
+        {
+          action: 'write',
+          data: { content: 'original' },
+          description: 'tool_result:call_456',
+          customMetadata: { kind: CACHE_TOOL_RESULT_KIND, toolUseId: 'call_456' }
+        },
+        { metadata: { sessionId: 'conv_upd_guard' } }
+      );
+
+      const storageKey = writeResult.data.metadata.storageKey;
+      const updateResult = await tool.execute(
+        {
+          action: 'update',
+          storageKey,
+          data: { content: 'mutated' },
+          description: 'Mutated'
+        },
+        { metadata: { sessionId: 'conv_upd_guard' } }
+      );
+
+      expect(updateResult.success).toBe(true);
+      expect(updateResult.data.success).toBe(false);
+      expect(updateResult.data.errorType).toBe(CacheErrorType.VALIDATION_ERROR);
+      expect(updateResult.data.message).toContain('system-managed persisted tool result');
+
+      const readResult = await tool.execute(
+        { action: 'read', storageKey },
+        { metadata: { sessionId: 'conv_upd_guard' } }
+      );
+      expect(readResult.success).toBe(true);
+      expect(readResult.data.item.data).toEqual({ content: 'original' });
+      expect(readResult.data.item.description).toBe('tool_result:call_456');
     });
   });
 

@@ -1,7 +1,7 @@
 # Track 34 — Integration Defect: 05b Extractor ↔ Track 04 Task Seam (+ teardown leaks)
 
 Date: 2026-05-15
-Status: OPEN — P1 (extractor seam resolved; shutdown timer leak remains)
+Status: DONE — shutdown timer/task teardown fixed 2026-05-18
 Type: Cross-track integration bug (not a single-track design gap)
 Tracks involved: [Track 04 Typed Task Families](../04_typed_task_families_DONE/design.md) × [Track 05b Auto-Extraction/Interlock](../05b_auto_extraction_compaction_interlock_DONE/design.md) × [Track 01 Hooks](../01_hook_event_system_DONE/design.md)
 Source: cross-track integration audit 2026-05-15, each defect independently re-verified against on-disk source on `agent-improvements`; re-verified 2026-05-18 on `origin/agent-improvements` at `cd1e339e`; re-verified after pull 2026-05-18 on `origin/agent-improvements` at `e9bbff26`.
@@ -45,20 +45,12 @@ default.
 
 ---
 
-## BUG-3 — Still open: `Session.shutdown()` leaks the Track-04 eviction `setInterval` past teardown
+## BUG-3 — Resolved 2026-05-18: `Session.shutdown()` no longer leaks the Track-04 eviction `setInterval`
 
-**Evidence:** `Session.shutdown()` detaches the 05b hook, closes memory, and flushes rollout
-but still never calls `abortAllTasks` and never clears `evictionTimerId`. `clearInterval`
-only happens inside `runEvictionTick` when no non-terminal task remains. If the eviction
-timer is already armed, it can keep firing after shutdown and touch `taskOutputStore` on a
-shut-down `Session`. `RepublicAgentEngine.dispose()` now shuts down the shadow-agent
-scheduler first, which addresses the extractor child-engine side of this track, but it does
-not clean up ordinary typed background tasks or an already armed eviction interval.
-
-**Fix:** in `Session.shutdown()`, before detaching: `if (this.evictionTimerId) {
-clearInterval(this.evictionTimerId); this.evictionTimerId = null; }` and `await
-this.abortAllTasks('Shutdown')` (or at minimum clear `activeTasks`). Test: after
-`shutdown()`, no eviction tick fires (fake timers).
+**Fix shipped:** `Session.shutdown()` now aborts active tasks with `Shutdown`, clears
+`activeTasks`/foreground state through the existing abort path, and clears the armed
+eviction interval after abort propagation. A fake-timer regression test verifies shutdown
+aborts an active typed task and leaves zero active timers.
 
 ---
 

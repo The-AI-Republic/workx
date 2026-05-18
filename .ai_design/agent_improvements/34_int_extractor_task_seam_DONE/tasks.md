@@ -12,9 +12,9 @@ extractor-specific seam; only the independent shutdown leak remains open.
 
 ## Phase 2 — BUG-3 (High): stop eviction timer + abort tasks on shutdown
 
-- [ ] 2.1 In `Session.shutdown()` (`Session.ts:1452-1475`): clear `evictionTimerId` and
+- [x] 2.1 In `Session.shutdown()` (`Session.ts:1452-1475`): clear `evictionTimerId` and
       `await abortAllTasks('Shutdown')` (or clear `activeTasks`) before detaching.
-- [ ] 2.2 Test (fake timers): no eviction tick fires after `shutdown()`.
+- [x] 2.2 Test (fake timers): no eviction tick fires after `shutdown()`.
 
 ## Phase 3 — BUG-2 (High): fully suppress quiet extractor lifecycle events
 
