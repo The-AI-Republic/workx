@@ -102,6 +102,20 @@ describe('get_full_instructions', () => {
     expect(result).toBe('Custom base.\nExtra guidance.');
   });
 
+  it('should include each instruction source exactly once when override is present', () => {
+    const prompt = makePrompt({
+      base_instructions_override: 'Runtime composed prompt.',
+      user_instructions: 'User instruction block.',
+    });
+    const model = makeModel({ base_instructions: 'Model fallback prompt.' });
+
+    const result = get_full_instructions(prompt, model);
+
+    expect(result.match(/Runtime composed prompt\./g)).toHaveLength(1);
+    expect(result.match(/User instruction block\./g)).toHaveLength(1);
+    expect(result).not.toContain('Model fallback prompt.');
+  });
+
   it('should not add extra newline when user_instructions is empty string', () => {
     const prompt = makePrompt({ user_instructions: '' });
     const model = makeModel();

@@ -7,14 +7,12 @@ import { Session } from './Session';
 import type { ToolDefinition } from '../tools/BaseTool';
 import { SUBMIT_PLAN_TOOL_NAME } from '../tools/planReview/types';
 import { TurnContext } from './TurnContext';
-import type { CompletionRequest, CompletionResponse } from './models/ModelClient';
 import { withModelRetry } from './models/resilience/withRetry';
 import { calculateUSDCost } from './models/cost/cost';
 import { AgentConfig } from '../config/AgentConfig';
-import { loadPrompt, loadUserInstructions } from './PromptLoader';
+import { loadPrompt } from './PromptLoader';
 import type { EventMsg, TokenUsage, StreamErrorEvent } from './protocol/events';
-import type { Event, InputItem } from './protocol/types';
-import type { ResponseEvent } from './models/types/ResponseEvent';
+import type { Event } from './protocol/types';
 import type { Prompt as ModelPrompt } from './models/types/ResponsesAPI';
 import { v4 as uuidv4 } from 'uuid';
 import { ToolRegistry } from '../tools/ToolRegistry';
@@ -659,69 +657,6 @@ export class TurnManager {
       ...prompt,
       input: [...syntheticResponses, ...prompt.input],
     };
-  }
-
-  /**
-   * Build completion request for model client
-   */
-  private async buildCompletionRequest(prompt: ModelPrompt): Promise<CompletionRequest> {
-    const model = this.turnContext.getModel();
-    const request: CompletionRequest = {
-      model,
-      messages: await this.convertPromptToMessages(prompt),
-      tools: prompt.tools,
-      stream: true,
-      maxTokens: 4096,
-    };
-
-    // For gpt-5, temperature must be 1 (default) or omitted
-    // For other models, use 0.7
-    if (model !== 'gpt-5') {
-      request.temperature = 0.7;
-    }
-
-    return request;
-  }
-
-  /**
-   * Convert prompt format to model client message format
-   */
-  private async convertPromptToMessages(prompt: ModelPrompt): Promise<any[]> {
-    const messages: any[] = [];
-
-    // Load and add the agent prompt as system message
-    const systemPrompt = await loadPrompt();
-    messages.push({ role: 'system', content: systemPrompt });
-
-    // Add user instructions (development guidelines from user_instruction.md)
-    const userInstructions = this.turnContext.getUserInstructions();
-    if (userInstructions) {
-      messages.push({
-        role: 'system',
-        content: `<user_instructions>\n${userInstructions}\n</user_instructions>`,
-      });
-    }
-
-    // Add base instructions if provided (as override)
-    if (prompt.base_instructions_override) {
-      messages.push({
-        role: 'system',
-        content: prompt.base_instructions_override,
-      });
-    }
-
-    // Convert input items to messages
-    for (const item of prompt.input) {
-      if (item.type === 'message') {
-        messages.push({
-          role: item.role,
-          content: item.content,
-          toolCalls: item.tool_calls,
-        });
-      }
-    }
-
-    return messages;
   }
 
   /**

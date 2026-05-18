@@ -5,7 +5,7 @@
  * getFormattedGlobalContext, formatGlobalMemoryContext.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { MemoryService } from '../MemoryService';
 import { DailyMemoryStore } from '../DailyMemoryStore';
 import { MemorySearcher, type SearchResult } from '../MemorySearcher';
@@ -73,6 +73,8 @@ describe('MemoryService.formatGlobalMemoryContext', () => {
     const result = service.formatGlobalMemoryContext('');
     expect(result).toContain('Long-Term Memory');
     expect(result).toContain('save_memory');
+    expect(result).toContain('facts that can be derived');
+    expect(result).toContain('Memory can become stale');
     expect(result).not.toContain('<agent_memory>');
   });
 
