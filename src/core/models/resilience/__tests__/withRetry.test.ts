@@ -11,6 +11,7 @@ import {
   withModelRetry,
   __setModelRetryTestInjector,
   parseMaxTokensContextOverflowError,
+  isContextOverflowError,
   RESET_CAP_MS,
   MAX_529_RETRIES,
 } from '../withRetry';
@@ -59,6 +60,14 @@ describe('classifyModelError', () => {
   it('classifies 4xx (401/400) as fatal', () => {
     expect(classifyModelError(new ModelClientError('x', 401)).kind).toBe('fatal');
     expect(classifyModelError(new ModelClientError('x', 400)).kind).toBe('fatal');
+  });
+  it('classifies 413 and provider prompt-too-long messages as context_overflow', () => {
+    expect(classifyModelError(new ModelClientError('too large', 413)).kind).toBe(
+      'context_overflow',
+    );
+    expect(classifyModelError(new ModelClientError('prompt is too long', 400)).kind).toBe(
+      'context_overflow',
+    );
   });
   it('classifies stream-closed / network as transport (retryable)', () => {
     expect(classifyModelError(new Error('stream closed before response.completed')).kind).toBe(
@@ -307,6 +316,16 @@ describe('parseMaxTokensContextOverflowError', () => {
   });
 });
 
+describe('isContextOverflowError', () => {
+  it('recognizes status and common provider messages', () => {
+    expect(isContextOverflowError(new ModelClientError('request too large', 413))).toBe(
+      true,
+    );
+    expect(isContextOverflowError(new Error('context_length_exceeded'))).toBe(true);
+    expect(isContextOverflowError(new Error('network timeout'))).toBe(false);
+  });
+});
+
 describe('withModelRetry — context-overflow self-heal', () => {
   it('retries without counting when onContextOverflow handles it', async () => {
     let n = 0;
@@ -328,11 +347,32 @@ describe('withModelRetry — context-overflow self-heal', () => {
       onContextOverflow,
     });
     expect(res).toBe('ok');
-    expect(onContextOverflow).toHaveBeenCalledWith({
+    expect(onContextOverflow).toHaveBeenCalledWith(expect.objectContaining({
       inputTokens: 190000,
       maxTokens: 20000,
       contextLimit: 200000,
-    });
+      statusCode: 400,
+    }));
+  });
+
+  it('retries without counting on 413 when onContextOverflow handles it', async () => {
+    const op = vi
+      .fn()
+      .mockRejectedValueOnce(new ModelClientError('request too large', 413))
+      .mockResolvedValue('ok');
+    const onContextOverflow = vi.fn().mockReturnValue(true);
+    await expect(
+      withModelRetry(op, {
+        maxRetries: 0,
+        unattended: false,
+        sleep: noSleep,
+        onContextOverflow,
+      }),
+    ).resolves.toBe('ok');
+    expect(op).toHaveBeenCalledTimes(2);
+    expect(onContextOverflow).toHaveBeenCalledWith(
+      expect.objectContaining({ statusCode: 413, message: 'request too large' }),
+    );
   });
 
   it('stays fatal when no handler is provided', async () => {

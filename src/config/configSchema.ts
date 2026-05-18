@@ -194,6 +194,11 @@ export const SECTIONS: Record<string, Section> = {
       webSearch: toolToggle('Web Search', 'Enable web search capabilities'),
       fileOperations: toolToggle('File Operations', 'Enable file read/write operations', false),
       mcpTools: toolToggle('MCP Tools', 'Enable Model Context Protocol tools', false),
+      dynamicToolLoading: configField(z.union([z.boolean(), z.literal('auto')]).default('auto')),
+      dynamicToolLoadingThresholdPercent: configField(z.number().min(0).max(100).default(2)),
+      alwaysLoadTools: configField(z.array(z.string()).default([])),
+      deferTools: configField(z.array(z.string()).default([])),
+      hiddenTools: configField(z.array(z.string()).default([])),
     },
   },
 

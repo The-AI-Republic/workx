@@ -17,7 +17,7 @@ vi.mock('../constants', () => ({
   NO_SUMMARY_PLACEHOLDER: '(no summary available)',
   TRUNCATION_MARKER: '\n[...tokens truncated]',
   DEFAULT_COMPACTION_CONFIG: {
-    triggerThreshold: 0.85,
+    triggerThreshold: 0.8,
     userMessageBudget: 20000,
     maxRetries: 3,
     baseBackoffMs: 100,
@@ -130,18 +130,18 @@ describe('CompactService', () => {
   // =========================================================================
   describe('shouldCompact', () => {
     it('should return true when tokens exceed threshold', () => {
-      // Default threshold is 0.85. 91000 / 100000 = 0.91 > 0.85
+      // Default threshold is 0.8. 91000 / 100000 = 0.91 > 0.8
       expect(service.shouldCompact(91000, 100000)).toBe(true);
     });
 
     it('should return false when tokens are below threshold', () => {
-      // 80000 / 100000 = 0.80 < 0.85
-      expect(service.shouldCompact(80000, 100000)).toBe(false);
+      // 79999 / 100000 is just below 0.8
+      expect(service.shouldCompact(79999, 100000)).toBe(false);
     });
 
     it('should return true when tokens exactly equal threshold', () => {
-      // 85000 / 100000 = 0.85 >= 0.85
-      expect(service.shouldCompact(85000, 100000)).toBe(true);
+      // 80000 / 100000 = 0.8 >= 0.8
+      expect(service.shouldCompact(80000, 100000)).toBe(true);
     });
 
     it('should return false when contextWindow is 0', () => {
@@ -153,7 +153,7 @@ describe('CompactService', () => {
     });
 
     it('should return true when currentTokens exceed contextWindow', () => {
-      // 150000 / 100000 = 1.5 >= 0.85
+      // 150000 / 100000 = 1.5 >= 0.8
       expect(service.shouldCompact(150000, 100000)).toBe(true);
     });
 
@@ -170,18 +170,18 @@ describe('CompactService', () => {
     });
 
     it('should handle very small context window', () => {
-      // 10 / 10 = 1.0 >= 0.85
+      // 10 / 10 = 1.0 >= 0.8
       expect(service.shouldCompact(10, 10)).toBe(true);
-      // 8 / 10 = 0.8 < 0.85
-      expect(service.shouldCompact(8, 10)).toBe(false);
+      // 7 / 10 = 0.7 < 0.8
+      expect(service.shouldCompact(7, 10)).toBe(false);
     });
 
     it('should handle very large token counts', () => {
       expect(service.shouldCompact(950000, 1000000)).toBe(true);
-      // 850000 / 1000000 = 0.85 >= 0.85
-      expect(service.shouldCompact(850000, 1000000)).toBe(true);
-      // 840000 / 1000000 = 0.84 < 0.85
-      expect(service.shouldCompact(840000, 1000000)).toBe(false);
+      // 800000 / 1000000 = 0.8 >= 0.8
+      expect(service.shouldCompact(800000, 1000000)).toBe(true);
+      // 799999 / 1000000 is just below 0.8
+      expect(service.shouldCompact(799999, 1000000)).toBe(false);
     });
   });
 
@@ -192,7 +192,7 @@ describe('CompactService', () => {
     it('should return default config when no overrides provided', () => {
       const config = service.getConfig();
       expect(config).toEqual({
-        triggerThreshold: 0.85,
+        triggerThreshold: 0.8,
         userMessageBudget: 20000,
         maxRetries: 3,
         baseBackoffMs: 100,
@@ -256,8 +256,8 @@ describe('CompactService', () => {
     });
 
     it('should affect shouldCompact behavior after update', () => {
-      // Default threshold 0.85: 80% usage should not trigger
-      expect(service.shouldCompact(80000, 100000)).toBe(false);
+      // Default threshold 0.8: just-below-80% usage should not trigger
+      expect(service.shouldCompact(79999, 100000)).toBe(false);
       // Update threshold to 0.7
       service.updateConfig({ triggerThreshold: 0.7 });
       // Now 80% usage should trigger
@@ -747,7 +747,7 @@ describe('CompactService', () => {
     it('should create instance with default config', () => {
       const svc = new CompactService();
       expect(svc.getConfig()).toEqual({
-        triggerThreshold: 0.85,
+        triggerThreshold: 0.8,
         userMessageBudget: 20000,
         maxRetries: 3,
         baseBackoffMs: 100,
@@ -775,7 +775,7 @@ describe('CompactService', () => {
     it('should accept empty config object', () => {
       const svc = new CompactService({});
       expect(svc.getConfig()).toEqual({
-        triggerThreshold: 0.85,
+        triggerThreshold: 0.8,
         userMessageBudget: 20000,
         maxRetries: 3,
         baseBackoffMs: 100,

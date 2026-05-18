@@ -21,6 +21,7 @@ import { TurnContext } from '@/core/TurnContext';
 import type { SessionServices } from '@/core/session/state/SessionServices';
 import type { SessionTask } from '@/core/tasks/SessionTask';
 import { TaskKind } from '@/core/session/state/types';
+import type { BackgroundAgentTaskState } from '@/core/tasks/types';
 import type { ResponseItem, InputItem } from '@/core/protocol/types';
 
 // Mock RolloutRecorder so the constructor never touches disk
@@ -649,8 +650,8 @@ describe('Session', () => {
       });
 
       it('should return false when tokens are below threshold', () => {
-        // 80 tokens is below 90% of 100
-        session.addTokenUsage(80);
+        // 79 tokens is below the default 80% threshold for a 100-token window.
+        session.addTokenUsage(79);
         expect(session.shouldCompact(100)).toBe(false);
       });
     });
@@ -836,6 +837,96 @@ describe('Session', () => {
       await session.abortAllTasks('UserInterrupt');
 
       expect(task.abort).toHaveBeenCalled();
+    });
+
+    it('fires TaskCompleted exactly once for successful, failed, and aborted tasks', async () => {
+      const fire = vi.fn().mockResolvedValue({ shouldContinue: true });
+      session.setHookDispatcher({ fire } as any);
+
+      await session.spawnTask(makeMockTask({ run: vi.fn().mockResolvedValue('done') }), turnContext, 'ok', []);
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      await session.spawnTask(makeMockTask({ run: vi.fn().mockRejectedValue(new Error('boom')) }), turnContext, 'fail', []);
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      const aborting = makeMockTask({ run: vi.fn().mockImplementation(() => new Promise(() => {})) });
+      await session.spawnTask(aborting, turnContext, 'abort', []);
+      await session.abortTask('abort', 'UserInterrupt');
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      const completed = fire.mock.calls
+        .filter(([event]) => event === 'TaskCompleted')
+        .map(([, input]) => input.task_id);
+      expect(completed).toEqual(['ok', 'fail', 'abort']);
+    });
+
+    it('fires Stop on accepted abort and a throwing hook cannot veto the abort', async () => {
+      const fire = vi.fn(async (event: string) => {
+        if (event === 'Stop') throw new Error('stop hook failed');
+        return { shouldContinue: true };
+      });
+      session.setHookDispatcher({ fire } as any);
+      const task = makeMockTask({
+        run: vi.fn().mockImplementation(() => new Promise(() => {})),
+      });
+
+      await session.spawnTask(task, turnContext, 'stoppable', []);
+      await session.abortTask('stoppable', 'UserInterrupt');
+
+      expect(task.abort).toHaveBeenCalled();
+      expect(session.hasRunningTask('stoppable')).toBe(false);
+      expect(fire).toHaveBeenCalledWith(
+        'Stop',
+        expect.objectContaining({
+          hook_event_name: 'Stop',
+          session_id: session.sessionId,
+          task_id: 'stoppable',
+          stop_reason: 'UserInterrupt',
+          is_background: false,
+        }),
+        expect.objectContaining({ timeoutOverride: 1 }),
+      );
+    });
+
+    it('shutdown aborts active typed tasks and clears the eviction timer', async () => {
+      vi.useFakeTimers();
+      try {
+        const task = makeMockTask({
+          run: vi.fn().mockImplementation(() => new Promise(() => {})),
+        });
+        const context: any = { cancelled: false };
+
+        await session.spawnTask(task, turnContext, 'bg-shutdown', [], { background: true });
+        const taskState: BackgroundAgentTaskState = {
+          id: 'bg-shutdown',
+          type: 'background_agent',
+          status: 'running',
+          description: 'shutdown test',
+          startTime: Date.now(),
+          outputOffset: 0,
+          notified: false,
+          isBackgrounded: true,
+          retain: false,
+          runId: 'bg-shutdown',
+          parentSessionId: 'test-session',
+          prompt: 'test',
+          toolUseCount: 0,
+          tokenUsage: { input: 0, output: 0, total: 0 },
+        };
+        session.registerTaskState(taskState, { context });
+
+        (session as any).ensureEvictionTimer();
+        expect(vi.getTimerCount()).toBeGreaterThan(0);
+
+        await session.shutdown();
+
+        expect(task.abort).toHaveBeenCalled();
+        expect(context.cancelled).toBe(true);
+        expect(session.getTask('bg-shutdown')).toBeUndefined();
+        expect(vi.getTimerCount()).toBe(0);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('should clean up task from activeTurn after task completes', async () => {
@@ -1363,6 +1454,33 @@ describe('Session', () => {
         primary_to_secondary_ratio_percent: 0,
         primary_window_minutes: 300,
         secondary_window_minutes: 0,
+      });
+    });
+
+    it('emits token warning state from the canonical auto-compact threshold', async () => {
+      const session = new Session(undefined, false);
+      const events: any[] = [];
+      session.setEventEmitter(async (e) => {
+        events.push(e);
+      });
+      session.setTurnContext({
+        getSessionId: () => session.sessionId,
+        update: vi.fn(),
+        getModelContextWindow: () => 100000,
+        getAutoCompactTokenLimit: () => 80000,
+      } as any);
+      session.addTokenUsage(85000);
+
+      await session.sendTokenCountEvent('sub-1');
+
+      const tokenCount = events.find((e) => e.msg.type === 'TokenCount');
+      expect(tokenCount.msg.data.info.total_token_usage.total_tokens).toBe(85000);
+      expect(tokenCount.msg.data.info.auto_compact_token_limit).toBe(80000);
+      expect(tokenCount.msg.data.token_warning_state).toMatchObject({
+        current_tokens: 85000,
+        context_window: 100000,
+        auto_compact_token_limit: 80000,
+        is_above_auto_compact_threshold: true,
       });
     });
 

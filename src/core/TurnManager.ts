@@ -11,7 +11,12 @@ import { withModelRetry } from './models/resilience/withRetry';
 import { calculateUSDCost } from './models/cost/cost';
 import { AgentConfig } from '../config/AgentConfig';
 import { loadPrompt } from './PromptLoader';
-import type { EventMsg, TokenUsage, StreamErrorEvent } from './protocol/events';
+import type {
+  CompactionCompletedEvent,
+  EventMsg,
+  TokenUsage,
+  StreamErrorEvent,
+} from './protocol/events';
 import type { Event } from './protocol/types';
 import type { Prompt as ModelPrompt } from './models/types/ResponsesAPI';
 import { v4 as uuidv4 } from 'uuid';
@@ -26,8 +31,9 @@ import {
   executeToolCallBatches,
   type PreparedToolCall,
 } from './toolOrchestration';
-import type { HookDispatcher } from './hooks/HookDispatcher';
+import type { HookDispatcher, HookExecutionSnapshot } from './hooks/HookDispatcher';
 import type { HookInput } from './hooks/types';
+import { getToolRuntimeContext } from './hooks/toolRuntimeContext';
 import {
   getPersistenceThreshold,
   MAX_TOOL_RESULTS_PER_MESSAGE_CHARS,
@@ -40,6 +46,13 @@ import {
   enforceToolResultBudget,
   type FunctionCallOutputItem,
 } from '../tools/resultBudget';
+import {
+  ToolExposureManager,
+  ensureToolSearchRegistered,
+  createToolSearchHandler,
+  getDefaultToolSelectionStore,
+  type ToolRegistryExposureEntry,
+} from '../tools/exposure';
 
 /**
  * Optional MCP capability interface for sessions that support MCP tools.
@@ -110,6 +123,10 @@ export class TurnManager {
   private cancelled = false;
   private nativeWebSearchEnabled = false;
   private hookDispatcher: HookDispatcher | null = null;
+  private consecutiveContextOverflowCompactions = 0;
+  private readonly toolSelectionStore = getDefaultToolSelectionStore();
+  private readonly toolExposureManager: ToolExposureManager;
+  private lastToolExposureReminder?: string;
 
   constructor(
     session: Session,
@@ -126,6 +143,7 @@ export class TurnManager {
       maxRetryDelayMs: 30000,
       ...config,
     };
+    this.toolExposureManager = new ToolExposureManager(this.toolSelectionStore);
   }
 
   /**
@@ -140,6 +158,25 @@ export class TurnManager {
    */
   cancel(): void {
     this.cancelled = true;
+  }
+
+  private shouldAbortSafeSiblingBatch(result: any): boolean {
+    if (!result || result.type !== 'function_call_output') return false;
+    const output = typeof result.output === 'string' ? result.output : '';
+    return (
+      output.startsWith('Error:') ||
+      output.startsWith('Action denied:') ||
+      output.includes('"APPROVAL_DENIED"') ||
+      output.includes('denied by the approval system')
+    );
+  }
+
+  private makeCancelledToolResult(call: PreparedToolCall): any {
+    return {
+      type: 'function_call_output',
+      call_id: call.id,
+      output: 'Error: Cancelled because a concurrent sibling tool call failed or was denied',
+    };
   }
 
   /**
@@ -168,12 +205,14 @@ export class TurnManager {
       baseInstructions = this.turnContext.getBaseInstructions();
     }
 
-    const prompt: ModelPrompt = {
-      input,
+    let currentInput = input;
+    let currentBaseInstructions = this.withToolExposureReminder(baseInstructions);
+    const buildPrompt = (): ModelPrompt => ({
+      input: currentInput,
       tools,
-      base_instructions_override: baseInstructions,
+      base_instructions_override: currentBaseInstructions,
       user_instructions: this.turnContext.getUserInstructions(),
-    };
+    });
 
     const maxRetries = this.config.maxRetries || 3;
 
@@ -193,7 +232,7 @@ export class TurnManager {
     // re-runs tryRunTurn from rebuilt clean history (browserx records history
     // only on turn success — orphan-free by construction).
     try {
-      return await withModelRetry(() => this.tryRunTurn(prompt), {
+      const result = await withModelRetry(() => this.tryRunTurn(buildPrompt()), {
         maxRetries,
         unattended: this.turnContext.getUnattended(),
         resetCapMs: this.turnContext.getUnattendedResetCapMs(),
@@ -250,14 +289,56 @@ export class TurnManager {
             },
           });
         },
+        onContextOverflow: async () => {
+          if (this.consecutiveContextOverflowCompactions >= 3) {
+            return false;
+          }
+          this.consecutiveContextOverflowCompactions += 1;
+          const compacted = await this.compactForContextOverflow();
+          if (!compacted) {
+            return false;
+          }
+          currentInput = (await this.session.buildTurnInputWithHistory([])) as any[];
+          try {
+            currentBaseInstructions = this.withToolExposureReminder(await loadPrompt());
+          } catch {
+            currentBaseInstructions = this.withToolExposureReminder(this.turnContext.getBaseInstructions());
+          }
+          return true;
+        },
         sleep: (ms) => this.sleep(ms),
       });
+      this.consecutiveContextOverflowCompactions = 0;
+      return result;
     } catch (error) {
       if (this.cancelled) {
         throw new Error('Turn cancelled');
       }
       throw error;
     }
+  }
+
+  private async compactForContextOverflow(): Promise<boolean> {
+    await this.emitEvent({
+      type: 'BackgroundEvent',
+      data: {
+        message: 'Context overflow detected; compacting history before retry',
+        level: 'warning',
+      },
+    });
+
+    const result = await this.session.compact('auto', this.turnContext.getModelClient());
+    const data: CompactionCompletedEvent = {
+      success: result.success,
+      tokensBefore: result.tokensBefore,
+      tokensAfter: result.tokensAfter,
+      itemsTrimmed: result.itemsTrimmed,
+      compactionCount: this.session.getCompactionCount(),
+      triggerReason: result.triggerReason,
+      error: result.error,
+    };
+    await this.emitEvent({ type: 'CompactionCompleted', data });
+    return result.success;
   }
 
   /**
@@ -403,6 +484,15 @@ export class TurnManager {
               bufferedEntries.length = 0;
             }
 
+            // Track 33: the default legacy path executes `function_call`
+            // items immediately when parallelToolCalls is off, but tier-2 is
+            // an aggregate budget across the whole model response. Enforce it
+            // over all immediate legacy responses once the stream reaches
+            // Completed, before the turn result is returned.
+            if (!parallelToolCallsEnabled) {
+              await this.enforceImmediateLegacyTier2(processedItems);
+            }
+
             // Track 05b: fire post-turn hooks before returning. Hooks are
             // owned by Session (since TurnManager is per-task but post-turn
             // listeners — notably the session-summary extractor — live the
@@ -494,6 +584,8 @@ export class TurnManager {
         throw new Error(`Stream error: ${error.message}`);
       }
       throw error;
+    } finally {
+      this.turnContext.setActiveToolAllowList(undefined);
     }
   }
 
@@ -501,50 +593,30 @@ export class TurnManager {
    * Build tools list from turn context and session
    */
   private async buildToolsFromContext(): Promise<ToolDefinition[]> {
-    const tools: ToolDefinition[] = [];
-
     // Get tools configuration from turn context
     const toolsConfig = this.turnContext.getToolsConfig() as IToolsConfig;
-
-    // Get all registered browser tools from ToolRegistry
-    const registeredTools = this.toolRegistry.listTools();
 
     // Check if all tools should be enabled
     const enableAllTools = toolsConfig.enable_all_tools ?? false;
 
-    // Add browser tools from registry based on config
-    for (const toolDef of registeredTools) {
-      // Extract tool name based on type
-      let toolName: string;
-      if (toolDef.type === 'function') {
-        toolName = toolDef.function.name;
-      } else if (toolDef.type === 'local_shell') {
-        toolName = 'local_shell';
-      } else if (toolDef.type === 'web_search') {
-        toolName = 'web_search';
-      } else if (toolDef.type === 'custom') {
-        toolName = toolDef.custom.name;
-      } else {
-        console.warn('[TurnManager] Unknown tool type, skipping:', toolDef);
-        continue;
-      }
-
-      // Check if tool is explicitly disabled
-      const isDisabled = toolsConfig.disabled?.includes(toolName);
-
-      if (!isDisabled) {
-        // Tools are already in the correct ToolDefinition format
-        // Just pass them through directly
-        tools.push(toolDef);
-      }
-    }
+    await this.ensureToolSearchTool();
+    const exposure = this.toolExposureManager.buildExposure({
+      entries: this.getRegistryEntriesWithExposure(),
+      toolsConfig,
+      sessionId: this.turnContext.getSessionId?.() ?? this.session.getSessionId?.() ?? '',
+      modelContextWindow: this.turnContext.getModelContextWindow?.(),
+      isToolAllowed: (toolName) => this.isAllowedByActiveToolAllowList(toolName),
+    });
+    this.lastToolExposureReminder = exposure.reminder;
+    await this.emitToolExposureDiagnostics(exposure);
+    const tools: ToolDefinition[] = [...exposure.tools];
 
     // Add agent execution tools based on config
     // Only add web_search if not already registered in ToolRegistry
     const hasWebSearch = tools.some(t =>
       (t.type === 'function' && t.function.name === 'web_search') || t.type === 'web_search'
     );
-    if (!hasWebSearch && (enableAllTools || toolsConfig.webSearch)) {
+    if (!hasWebSearch && (enableAllTools || toolsConfig.webSearch) && this.isAllowedByActiveToolAllowList('web_search')) {
       const modelClient = this.turnContext.getModelClient();
       const useNative = toolsConfig.useNativeWebSearch !== false;
       this.nativeWebSearchEnabled = useNative && modelClient.supportsNativeWebSearch();
@@ -579,30 +651,37 @@ export class TurnManager {
     // Guard MCP calls with capability check to prevent "is not a function" errors
     const mcpSession = this.session as unknown as Partial<MCPCapableSession>;
     if (
+      !exposure.diagnostics.dynamicEnabled &&
       (enableAllTools || toolsConfig.mcpTools === true) &&
       typeof mcpSession.getMcpTools === 'function'
     ) {
       const mcpTools = await mcpSession.getMcpTools();
       // Convert MCP tools to ModelClient format
-      const convertedMcpTools = mcpTools.map((tool: any) => ({
-        type: 'function' as const,
-        function: {
-          name: tool.function.name,
-          description: tool.function.description,
-          strict: tool.function.strict ?? false,
-          parameters: tool.function.parameters || { type: 'object' as const, properties: {} },
-        },
-      }));
+      const convertedMcpTools = mcpTools
+        .filter((tool: any) => this.isAllowedByActiveToolAllowList(tool.function.name))
+        .filter((tool: any) => !tools.some((existing) => this.getToolName(existing) === tool.function.name))
+        .map((tool: any) => ({
+          type: 'function' as const,
+          function: {
+            name: tool.function.name,
+            description: tool.function.description,
+            strict: tool.function.strict ?? false,
+            parameters: tool.function.parameters || { type: 'object' as const, properties: {} },
+          },
+        }));
       tools.push(...convertedMcpTools);
     }
 
     // Add custom tools if configured
     if (toolsConfig.customTools) {
       for (const [toolName, isEnabled] of Object.entries(toolsConfig.customTools)) {
-        if (isEnabled || enableAllTools) {
+          if (isEnabled || enableAllTools) {
+          if (!this.isAllowedByActiveToolAllowList(toolName)) {
+            continue;
+          }
           // Custom tools would be loaded from registry or another source
           const customTool = this.toolRegistry.getTool(toolName);
-          if (customTool) {
+          if (customTool && !tools.some((existing) => this.getToolName(existing) === toolName)) {
             if (customTool.type === 'function') {
               tools.push({
                 type: 'function',
@@ -620,6 +699,75 @@ export class TurnManager {
     }
 
     return tools;
+  }
+
+  private async ensureToolSearchTool(): Promise<void> {
+    if (
+      typeof this.toolRegistry.getTool !== 'function' ||
+      typeof this.toolRegistry.register !== 'function'
+    ) {
+      return;
+    }
+    await ensureToolSearchRegistered(
+      this.toolRegistry,
+      createToolSearchHandler({
+        registry: this.toolRegistry,
+        exposureManager: this.toolExposureManager,
+        selectionStore: this.toolSelectionStore,
+        getToolsConfig: () => this.turnContext.getToolsConfig() as IToolsConfig,
+        getSessionId: () => this.turnContext.getSessionId?.() ?? this.session.getSessionId?.() ?? '',
+        getModelContextWindow: () => this.turnContext.getModelContextWindow?.(),
+        isToolAllowed: (toolName) => this.isAllowedByActiveToolAllowList(toolName),
+      }),
+    );
+  }
+
+  private getRegistryEntriesWithExposure(): ToolRegistryExposureEntry[] {
+    if (typeof this.toolRegistry.entriesWithExposure === 'function') {
+      return this.toolRegistry.entriesWithExposure();
+    }
+    return this.toolRegistry.listTools().map((definition) => ({
+      name: this.getToolName(definition),
+      definition,
+    }));
+  }
+
+  private withToolExposureReminder(baseInstructions?: string): string | undefined {
+    if (!this.lastToolExposureReminder) return baseInstructions;
+    return [baseInstructions, this.lastToolExposureReminder].filter(Boolean).join('\n\n');
+  }
+
+  private async emitToolExposureDiagnostics(exposure: ReturnType<ToolExposureManager['buildExposure']>): Promise<void> {
+    if (exposure.diagnostics.deferredCount === 0 && exposure.diagnostics.hiddenCount === 0) {
+      return;
+    }
+    await this.emitEvent({
+      type: 'ToolExposureUpdated',
+      data: {
+        session_id: this.turnContext.getSessionId?.() ?? this.session.getSessionId?.() ?? undefined,
+        dynamic_enabled: exposure.diagnostics.dynamicEnabled,
+        always_count: exposure.diagnostics.alwaysCount,
+        deferred_count: exposure.diagnostics.deferredCount,
+        hidden_count: exposure.diagnostics.hiddenCount,
+        selected_count: exposure.diagnostics.selectedCount,
+        estimated_deferred_schema_chars: exposure.diagnostics.estimatedDeferredSchemaChars,
+        estimated_deferred_schema_tokens: exposure.diagnostics.estimatedDeferredSchemaTokens,
+        threshold_tokens: exposure.diagnostics.thresholdTokens,
+        selected_tools: exposure.selected.map((tool) => tool.name),
+      },
+    });
+  }
+
+  private getToolName(toolDef: ToolDefinition): string {
+    if (toolDef.type === 'function') return toolDef.function.name;
+    if (toolDef.type === 'local_shell') return 'local_shell';
+    if (toolDef.type === 'web_search') return 'web_search';
+    if (toolDef.type === 'custom') return toolDef.custom.name;
+    return 'unknown';
+  }
+
+  private isAllowedByActiveToolAllowList(toolName: string): boolean {
+    return this.turnContext.isAllowedByActiveToolAllowList?.(toolName) ?? true;
   }
 
   /**
@@ -706,12 +854,13 @@ export class TurnManager {
         // Step 3: Execute batches (safe=concurrent, unsafe=sequential)
         const toolCallResults = await executeToolCallBatches(
           batches,
-          async (call: PreparedToolCall) => {
+          async (call: PreparedToolCall, options) => {
             try {
               return await this.executeToolCall(
                 call.name,
                 call.parsedArguments,
                 call.id,
+                options?.signal,
               );
             } catch (error) {
               return {
@@ -720,6 +869,10 @@ export class TurnManager {
                 output: `Error: ${error instanceof Error ? error.message : String(error)}`,
               };
             }
+          },
+          {
+            shouldAbortOnResult: this.shouldAbortSafeSiblingBatch,
+            makeCancelledResult: this.makeCancelledToolResult,
           },
         );
 
@@ -781,7 +934,14 @@ export class TurnManager {
   /**
    * Execute a tool call and return the response
    */
-  private async executeToolCall(toolName: string, parameters: any, callId: string): Promise<any> {
+  private async executeToolCall(
+    toolName: string,
+    parameters: any,
+    callId: string,
+    signal?: AbortSignal,
+  ): Promise<any> {
+    let hookSnapshot: HookExecutionSnapshot | undefined;
+    let parsedParamsForFailure = parameters;
     try {
       // Parse parameters if they're a JSON string (common with OpenAI API)
       let parsedParams = parameters;
@@ -792,6 +952,28 @@ export class TurnManager {
           throw new Error(`Failed to parse tool parameters: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
+      parsedParamsForFailure = parsedParams;
+
+      if (!this.isAllowedByActiveToolAllowList(toolName)) {
+        const allowed = this.turnContext.getActiveToolAllowList?.()?.join(', ') ?? '';
+        return {
+          type: 'function_call_output',
+          call_id: callId,
+          output: JSON.stringify({
+            error: {
+              code: 'SKILL_TOOL_NOT_ALLOWED',
+              message: `Tool "${toolName}" is not allowed by the active skill allowed-tools list`,
+              allowedTools: allowed,
+            },
+          }),
+        };
+      }
+
+      hookSnapshot = this.hookDispatcher?.createToolExecutionSnapshot(
+        toolName,
+        typeof parsedParams === 'object' ? parsedParams : {},
+      );
+      const runtimeContext = await getToolRuntimeContext(this.session);
 
       // ── PreToolUse hooks ──
       if (this.hookDispatcher) {
@@ -800,8 +982,11 @@ export class TurnManager {
           session_id: this.session.sessionId,
           tool_name: toolName,
           tool_input: typeof parsedParams === 'object' ? parsedParams : {},
+          ...runtimeContext,
         };
-        const preResult = await this.hookDispatcher.fire('PreToolUse', hookInput);
+        const preResult = await this.hookDispatcher.fire('PreToolUse', hookInput, {
+          snapshot: hookSnapshot,
+        });
         if (!preResult.shouldContinue) {
           return {
             type: 'function_call_output',
@@ -811,6 +996,7 @@ export class TurnManager {
         }
         if (preResult.updatedInput) {
           parsedParams = { ...parsedParams, ...preResult.updatedInput };
+          parsedParamsForFailure = parsedParams;
         }
       }
 
@@ -825,7 +1011,7 @@ export class TurnManager {
           // Check ToolRegistry for browser tools BEFORE falling back to MCP
           const browserTool = this.toolRegistry.getTool(toolName);
           if (browserTool) {
-            result = await this.executeBrowserTool(browserTool, parsedParams, callId);
+            result = await this.executeBrowserTool(browserTool, parsedParams, callId, hookSnapshot, signal);
             break;
           }
 
@@ -851,8 +1037,11 @@ export class TurnManager {
           tool_name: toolName,
           tool_input: typeof parsedParams === 'object' ? parsedParams : {},
           tool_output: result,
+          ...runtimeContext,
         };
-        const postResult = await this.hookDispatcher.fire('PostToolUse', postHookInput);
+        const postResult = await this.hookDispatcher.fire('PostToolUse', postHookInput, {
+          snapshot: hookSnapshot,
+        });
         if (postResult.updatedOutput !== undefined) {
           result = postResult.updatedOutput;
         }
@@ -900,10 +1089,13 @@ export class TurnManager {
           hook_event_name: 'PostToolUseFailure',
           session_id: this.session.sessionId,
           tool_name: toolName,
-          tool_input: typeof parameters === 'object' ? parameters : {},
+          tool_input: typeof parsedParamsForFailure === 'object' ? parsedParamsForFailure : {},
           tool_error: errorMsg,
+          ...(await getToolRuntimeContext(this.session)),
         };
-        this.hookDispatcher.fire('PostToolUseFailure', failHookInput).catch(() => {});
+        this.hookDispatcher.fire('PostToolUseFailure', failHookInput, {
+          snapshot: hookSnapshot,
+        }).catch(() => {});
       }
 
       console.error(`[TurnManager] executeToolCall ${toolName} failed:`, errorMsg);
@@ -993,12 +1185,13 @@ export class TurnManager {
     const batches = partitionToolCalls(prepared);
     const results = await executeToolCallBatches(
       batches,
-      async (call: PreparedToolCall) => {
+      async (call: PreparedToolCall, options) => {
         try {
           return await this.executeToolCall(
             call.name,
             call.parsedArguments,
             call.id,
+            options?.signal,
           );
         } catch (error) {
           return {
@@ -1008,8 +1201,43 @@ export class TurnManager {
           };
         }
       },
+      {
+        shouldAbortOnResult: this.shouldAbortSafeSiblingBatch,
+        makeCancelledResult: this.makeCancelledToolResult,
+      },
     );
     return this.maybeEnforceTier2(results, prepared);
+  }
+
+  /**
+   * Track 33: route-A (`function_call` immediate execution) aggregate budget.
+   *
+   * Unlike the buffered routes, the default path executes one legacy
+   * `function_call` at a time as it arrives. Tier-2 must still see all legacy
+   * outputs from the same completed model response together, otherwise several
+   * individually-small outputs can exceed the per-turn aggregate budget.
+   */
+  private async enforceImmediateLegacyTier2(
+    processedItems: ProcessedResponseItem[],
+  ): Promise<void> {
+    const entries = processedItems.filter(
+      (p) =>
+        p.item?.type === 'function_call' &&
+        p.response?.type === 'function_call_output',
+    );
+    if (entries.length === 0) return;
+
+    const prepared = entries.map((p) =>
+      prepareToolCall(
+        { id: p.item.call_id, function: { name: p.item.name, arguments: p.item.arguments } },
+        this.toolRegistry,
+      ),
+    );
+    const results = entries.map((p) => p.response);
+    const enforced = await this.maybeEnforceTier2(results, prepared);
+    for (let i = 0; i < entries.length; i += 1) {
+      entries[i]!.response = enforced[i];
+    }
   }
 
   /**
@@ -1134,7 +1362,13 @@ export class TurnManager {
    * Lifecycle events (ToolExecutionStart/End/Error/Timeout) are emitted by
    * ToolRegistry.execute() — TurnManager does not duplicate them.
    */
-  private async executeBrowserTool(tool: any, parameters: any, callId?: string): Promise<any> {
+  private async executeBrowserTool(
+    tool: any,
+    parameters: any,
+    callId?: string,
+    hookSnapshot?: HookExecutionSnapshot,
+    signal?: AbortSignal,
+  ): Promise<any> {
     const toolName = this.getToolNameFromDefinition(tool);
 
     try {
@@ -1163,19 +1397,54 @@ export class TurnManager {
       const executionTimeout =
         toolName === SUBMIT_PLAN_TOOL_NAME ? 24 * 60 * 60 * 1000 : 300000;
 
+      const turnId = `turn_${Date.now()}`;
       const request = {
         toolName,
         parameters,
         sessionId: this.session.getSessionId(),
-        turnId: `turn_${Date.now()}`,
+        turnId,
         callId,
         tabId, // Pass tabId in request for tools that need it
         timeout: executionTimeout,
+        signal,
+        onProgress: (progress: { data: import('../tools/runtimeMetadata').ToolProgressData }) => {
+          void this.emitEvent({
+            type: 'ToolExecutionProgress',
+            data: {
+              tool_name: toolName,
+              call_id: callId,
+              session_id: this.session.getSessionId(),
+              turn_id: turnId,
+              progress_data: progress.data,
+              timestamp: Date.now(),
+            },
+          });
+        },
         metadata: {
           currentUrl,
           currentDomain,
+          hookSnapshot,
         },
       };
+
+      const activity = this.toolRegistry.getActivityDescription(toolName, parameters);
+      if (activity) {
+        await this.emitEvent({
+          type: 'ToolExecutionProgress',
+          data: {
+            tool_name: toolName,
+            call_id: callId,
+            session_id: this.session.getSessionId(),
+            turn_id: turnId,
+            progress_data: {
+              type: 'tool_activity',
+              message: activity,
+              status: 'started',
+            },
+            timestamp: Date.now(),
+          },
+        });
+      }
 
       const response = await this.toolRegistry.execute(request);
 

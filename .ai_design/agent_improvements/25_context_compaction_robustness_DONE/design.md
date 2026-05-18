@@ -1,6 +1,12 @@
 # Track 25: Autonomous & Reactive Context Compaction
 
-**Priority: P1** · **Effort: S–M** · **Status: READY TO IMPLEMENT**
+**Priority: P1** · **Effort: S–M** · **Status: DONE**
+
+Implementation landed in the agent-improvements working branch. It adds the
+RepublicAgent-level auto-compaction post-turn hook, model-bound reactive
+context-overflow compact-and-retry, a canonical token-pressure helper, token
+warning tiers, and tests covering the new hook, retry classification, warning
+state, and threshold unification.
 
 > Source: third-pass claudy↔browserx research (2026-05-14), implementation-readiness + multi-platform pass (2026-05-15). Grounded in a full read of claudy's compaction subsystem and browserx's compaction seams across all three deploy targets — see "Validation Notes". Closes two robustness gaps that matter most for *unattended* runs; companion to Track 12, with which it shares the model-call boundary.
 

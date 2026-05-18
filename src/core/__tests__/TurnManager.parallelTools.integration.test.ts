@@ -8,6 +8,34 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TurnManager } from '../TurnManager';
 import { ToolRegistry } from '../../tools/ToolRegistry';
+import { ContentReplacementState } from '../../tools/replacementState';
+import type { PersistedResult, ToolResultStore } from '../../tools/resultStore';
+
+class StubToolResultStore implements ToolResultStore {
+  persistCalls = 0;
+  persisted = new Map<string, string>();
+
+  async persist(_sessionId: string, toolUseId: string, content: string): Promise<PersistedResult> {
+    this.persistCalls += 1;
+    this.persisted.set(toolUseId, content);
+    return {
+      reference: `ref:${toolUseId}`,
+      kind: 'cache',
+      originalSize: content.length,
+      preview: content.slice(0, 80),
+      hasMore: true,
+    };
+  }
+
+  async retrieve(reference: string): Promise<string | null> {
+    const key = reference.startsWith('ref:') ? reference.slice(4) : reference;
+    return this.persisted.get(key) ?? null;
+  }
+
+  async cleanup(): Promise<void> {
+    // no-op
+  }
+}
 
 describe('TurnManager — Track 11 buffered function_call orchestration', () => {
   let session: any;
@@ -17,6 +45,7 @@ describe('TurnManager — Track 11 buffered function_call orchestration', () => 
 
   beforeEach(() => {
     session = {
+      sessionId: 'test-session',
       getSessionId: vi.fn().mockReturnValue('test-session'),
       emitEvent: vi.fn(),
       getTabId: vi.fn().mockReturnValue(-1),
@@ -36,6 +65,7 @@ describe('TurnManager — Track 11 buffered function_call orchestration', () => 
       getEffort: vi.fn(),
       getSummary: vi.fn(),
       getSelectedModelKey: vi.fn().mockReturnValue('openai:gpt-4'),
+      setActiveToolAllowList: vi.fn(),
     };
     toolRegistry = new ToolRegistry();
 
@@ -205,6 +235,82 @@ describe('TurnManager — Track 11 buffered function_call orchestration', () => 
     // Flag off → immediate execution path → tool ran even though the
     // stream never reached Completed.
     expect(execSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('stream loop: flag-off legacy function_call path enforces tier-2 aggregate at Completed', async () => {
+    turnContext.getToolsConfig.mockReturnValue({ parallelToolCalls: false });
+
+    const store = new StubToolResultStore();
+    const replacementState = new ContentReplacementState();
+    session.getToolResultStore = vi.fn().mockReturnValue(store);
+    session.getContentReplacementState = vi.fn().mockReturnValue(replacementState);
+
+    async function* stream() {
+      for (let i = 0; i < 5; i += 1) {
+        yield {
+          type: 'OutputItemDone',
+          item: {
+            type: 'function_call',
+            name: `read_${i}`,
+            arguments: '{}',
+            call_id: `call_${i}`,
+          },
+        };
+      }
+      yield { type: 'Completed', tokenUsage: undefined };
+    }
+    turnContext.getModelClient.mockReturnValue({ stream: vi.fn(async () => stream()) });
+
+    vi.spyOn(turnManager as any, 'executeToolCall').mockImplementation(
+      async (...args: unknown[]) => ({
+        type: 'function_call_output',
+        call_id: args[2] as string,
+        output: 'x'.repeat(45_000),
+      }),
+    );
+
+    const result = await (turnManager as any).tryRunTurn({ input: [], tools: [] });
+    const outputs = result.processedItems.map((p: any) => p.response.output);
+
+    expect(store.persistCalls).toBeGreaterThanOrEqual(1);
+    expect(outputs.some((o: string) => o.startsWith('<persisted-output>'))).toBe(true);
+    expect(replacementState.replacements.size).toBe(store.persistCalls);
+  });
+
+  it('stream loop: flag-off under-budget legacy result is unchanged and does not persist', async () => {
+    turnContext.getToolsConfig.mockReturnValue({ parallelToolCalls: false });
+
+    const store = new StubToolResultStore();
+    const replacementState = new ContentReplacementState();
+    session.getToolResultStore = vi.fn().mockReturnValue(store);
+    session.getContentReplacementState = vi.fn().mockReturnValue(replacementState);
+
+    async function* stream() {
+      yield {
+        type: 'OutputItemDone',
+        item: {
+          type: 'function_call',
+          name: 'read_small',
+          arguments: '{}',
+          call_id: 'small_call',
+        },
+      };
+      yield { type: 'Completed', tokenUsage: undefined };
+    }
+    turnContext.getModelClient.mockReturnValue({ stream: vi.fn(async () => stream()) });
+
+    vi.spyOn(turnManager as any, 'executeToolCall').mockResolvedValue({
+      type: 'function_call_output',
+      call_id: 'small_call',
+      output: 'small output',
+    });
+
+    const result = await (turnManager as any).tryRunTurn({ input: [], tools: [] });
+
+    expect(result.processedItems[0].response.output).toBe('small output');
+    expect(store.persistCalls).toBe(0);
+    expect(replacementState.seenIds.has('small_call')).toBe(true);
+    expect(replacementState.replacements.has('small_call')).toBe(false);
   });
 
   it('wraps a thrown tool error in a function_call_output envelope', async () => {

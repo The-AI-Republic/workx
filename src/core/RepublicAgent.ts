@@ -10,6 +10,7 @@ import type { Event, EventMsg } from './protocol/events';
 import type { IConfigChangeEvent } from '../config/types';
 import type { AgentReadyState } from './models/types/Auth';
 import type { InitialHistory } from './session/state/types';
+import type { SessionServices } from './session/state/SessionServices';
 import type { EngineEvent, EngineOp, InputItem as EngineInputItem } from './engine/RepublicAgentEngineConfig';
 import { AgentConfig } from '../config/AgentConfig';
 import { Session } from './Session';
@@ -19,6 +20,7 @@ import { ApprovalManager } from './ApprovalManager';
 import { ToolRegistry } from '../tools/ToolRegistry';
 import { ModelClientFactory } from './models/ModelClientFactory';
 import { RepublicAgentEngine } from './engine/RepublicAgentEngine';
+import { AutoCompactHook } from './compact/autoCompactHook';
 import { type IUserNotifier, NoOpNotifier } from './IUserNotifier';
 import { v4 as uuidv4 } from 'uuid';
 import { loadPrompt, loadUserInstructions, configurePromptComposer, isComposerConfigured, registerPromptExtension, unregisterPromptExtension } from './PromptLoader';
@@ -70,12 +72,22 @@ export class RepublicAgent {
   // AgentConfig.selectedModelKey (which is updated before the config-changed event
   // fires), so the stored value is only used as a "switch pending" flag.
   private pendingModelKey: string | null = null;
+  private pendingModelClientRefresh = false;
   // Hook system
   private hookRegistry: HookRegistry;
   private hookExecutor: HookExecutor;
   private hookDispatcher: HookDispatcher;
+  private configHookUnsubscribe: (() => void) | null = null;
+  private autoCompactHook: AutoCompactHook | null = null;
 
-  constructor(config: AgentConfig, platformAdapter: IPlatformAdapter, initialHistory?: InitialHistory, agentId?: string, userNotifier?: IUserNotifier) {
+  constructor(
+    config: AgentConfig,
+    platformAdapter: IPlatformAdapter,
+    initialHistory?: InitialHistory,
+    agentId?: string,
+    userNotifier?: IUserNotifier,
+    services?: SessionServices,
+  ) {
     // Generate or use provided agentId for multi-instance tracking (Feature 015)
     this._agentId = agentId ?? `agent_${uuidv4()}`;
 
@@ -90,7 +102,7 @@ export class RepublicAgent {
     this.userNotifier = userNotifier ?? new NoOpNotifier();
 
     // Initialize session with config and toolRegistry
-    this.session = new Session(this.config, true, undefined, this.toolRegistry, initialHistory);
+    this.session = new Session(this.config, true, services, this.toolRegistry, initialHistory);
     // Wire up session event emitter to RepublicAgent's event queue
     this.session.setEventEmitter(async (event: Event) => this.emitEvent(event.msg));
 
@@ -206,7 +218,8 @@ export class RepublicAgent {
 
     // Load hooks from config and watch for changes
     ConfigHookLoader.load(this.config, this.hookRegistry);
-    ConfigHookLoader.watch(this.config, this.hookRegistry);
+    this.configHookUnsubscribe?.();
+    this.configHookUnsubscribe = ConfigHookLoader.watch(this.config, this.hookRegistry);
 
     // Fire SessionStart hooks (non-blocking)
     this.hookDispatcher.fire('SessionStart', {
@@ -234,6 +247,8 @@ export class RepublicAgent {
     // Bridge engine events to the RepublicAgent event system
     this.wireEngineEvents();
 
+    this.syncAutoCompactHook();
+
     // Track 05b: attach session-summary hook if enabled in preferences.
     // Errors are swallowed — feature is opt-in and non-critical.
     await this.syncSessionSummaryHook().catch((err) =>
@@ -250,7 +265,7 @@ export class RepublicAgent {
    * Configure PromptComposer for dynamic system prompt composition.
    * Detects agent type from build mode and sets basic context.
    *
-   * In desktop mode, DesktopAgentBootstrap calls configurePromptComposer()
+   * In desktop mode, the runtime bootstrap calls configurePromptComposer()
    * with full platform context (OS, arch, shell, homeDir) BEFORE
    * agent.initialize(), so this method skips re-configuration.
    *
@@ -278,12 +293,35 @@ export class RepublicAgent {
    * Setup config change subscriptions
    */
   private setupConfigSubscriptions(): void {
-    // Subscribe to model config changes
     this.config.on('config-changed', (event: IConfigChangeEvent) => {
       if (event.section === 'model') {
-        this.handleModelConfigChange(event);
+        this.handleModelConfigChange(event).catch((error) => {
+          console.error('[RepublicAgent] Failed to handle model config change:', error);
+        });
+        return;
+      }
+
+      if (this.isModelClientConstructionConfigSection(event.section)) {
+        this.handleModelClientConstructionConfigChange(event).catch((error) => {
+          console.error('[RepublicAgent] Failed to handle model-client config change:', error);
+        });
       }
     });
+  }
+
+  private isModelClientConstructionConfigSection(section: IConfigChangeEvent['section']): boolean {
+    return section === 'tools' || section === 'provider';
+  }
+
+  private async handleModelClientConstructionConfigChange(_event: IConfigChangeEvent): Promise<void> {
+    this.modelClientFactory.clearCache();
+
+    if (this.session.getRunningTasks().size > 0) {
+      this.pendingModelClientRefresh = true;
+      return;
+    }
+
+    await this.applyCurrentModelClient(this.config.getConfig().selectedModelKey);
   }
 
   /**
@@ -301,6 +339,7 @@ export class RepublicAgent {
     if (this.session.getRunningTasks().size > 0) {
       // Defer the model switch until the next user submission
       this.pendingModelKey = newModelId;
+      this.pendingModelClientRefresh = true;
       this.emitEvent({
         type: 'BackgroundEvent',
         data: {
@@ -314,11 +353,10 @@ export class RepublicAgent {
     // No task running — apply model switch immediately
     // Clear any stale pending key from a prior deferred switch
     this.pendingModelKey = null;
+    this.pendingModelClientRefresh = false;
     try {
-      const modelClient = await this.modelClientFactory.createClientForCurrentModel();
-      const turnCtx = this.session.getTurnContext();
-      turnCtx.setModelClient(modelClient);
-      turnCtx.setSelectedModelKey(newModelId);
+      this.modelClientFactory.clearCache();
+      await this.applyCurrentModelClient(newModelId);
       this.emitEvent({
         type: 'BackgroundEvent',
         data: {
@@ -335,6 +373,13 @@ export class RepublicAgent {
         },
       });
     }
+  }
+
+  private async applyCurrentModelClient(selectedModelKey: string): Promise<void> {
+    const modelClient = await this.modelClientFactory.createClientForCurrentModel();
+    const turnCtx = this.session.getTurnContext();
+    turnCtx.setModelClient(modelClient);
+    turnCtx.setSelectedModelKey(selectedModelKey);
   }
 
   /**
@@ -396,6 +441,23 @@ export class RepublicAgent {
         err instanceof Error ? err.message : String(err),
       );
     }
+  }
+
+  private syncAutoCompactHook(): void {
+    if (!this.engine) return;
+    if (this.autoCompactHook) return;
+
+    this.autoCompactHook = new AutoCompactHook({
+      session: this.session,
+      getModelClient: () => this.session.getTurnContext().getModelClient(),
+      submitCompact: () => {
+        if (!this.engine) {
+          throw new Error('RepublicAgent engine is not initialized');
+        }
+        return this.engine.submitOperation({ type: 'Compact', mode: 'auto' });
+      },
+    });
+    this.autoCompactHook.attach((fn) => this.session.registerPostTurnHook(fn));
   }
 
   private async syncMemoryTools(): Promise<void> {
@@ -798,16 +860,15 @@ export class RepublicAgent {
     await this.handleTabBinding(tabContext);
 
     // Apply pending model switch
-    if (this.pendingModelKey !== null) {
-      const deferredKey = this.pendingModelKey;
+    if (this.pendingModelKey !== null || this.pendingModelClientRefresh) {
+      const deferredKey = this.pendingModelKey ?? this.config.getConfig().selectedModelKey;
       this.pendingModelKey = null;
+      this.pendingModelClientRefresh = false;
       try {
-        const newClient = await this.modelClientFactory.createClientForCurrentModel();
-        const turnCtx = this.session.getTurnContext();
-        turnCtx.setModelClient(newClient);
-        turnCtx.setSelectedModelKey(deferredKey);
+        this.modelClientFactory.clearCache();
+        await this.applyCurrentModelClient(deferredKey);
       } catch (error) {
-        console.error('Failed to apply pending model switch:', error);
+        console.error('Failed to apply pending model client refresh:', error);
       }
     }
     return true;
@@ -1099,6 +1160,11 @@ export class RepublicAgent {
   private wireEngineEvents(): void {
     if (!this.engine) return;
     this.engine.onEvent((engineEvent: EngineEvent) => {
+      if (engineEvent.msg.type === 'CompactionCompleted') {
+        this.autoCompactHook?.handleCompactionCompleted(
+          engineEvent.msg.data?.success === true,
+        );
+      }
       // Session-originated events are already dispatched via the session's emitter
       // (wired in the constructor). Only forward engine-only events that don't
       // originate from session to avoid duplicate dispatching.
@@ -1223,6 +1289,11 @@ export class RepublicAgent {
     } catch (err) {
       console.warn('[RepublicAgent] SessionEnd hook failed during cleanup:', err);
     }
+    this.configHookUnsubscribe?.();
+    this.configHookUnsubscribe = null;
+    this.hookRegistry.unregisterBySource('config');
+    this.autoCompactHook?.detach();
+    this.autoCompactHook = null;
 
     if (this.engine) {
       await this.engine.dispose();
