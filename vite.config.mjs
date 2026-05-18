@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { resolve } from 'path';
 import { fileURLToPath } from 'url';
+import { featureDefine } from './vite.featureFlags.mjs';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
@@ -114,6 +115,9 @@ export default defineConfig({
   envDir: resolve(__dirname, 'src/extension'), // Load .env from src/extension
   define: {
     __BUILD_MODE__: JSON.stringify('extension'),
+    // Track 22 — compile-time feature flags (per-platform matrix). The SW
+    // has no process.env; APPLEPI_FEATURE_* here is a build-time-only knob.
+    ...featureDefine('extension', process.env),
   },
   build: {
     // Disable modulePreload completely - the polyfill uses `document` which doesn't exist in service workers

@@ -6,6 +6,9 @@
 
 import type { RolloutRecorder as StorageRolloutRecorder } from '../../../storage/rollout';
 import type { SessionCacheManager } from '../../../storage/SessionCacheManager';
+// Track 22: compile-time flag values are reported into the recorder here for
+// runtime attribution (layer 2). No-op when no recorder (prod default).
+import { reportFeatureFlags } from '../../features/feature';
 
 /**
  * User notification service interface
@@ -140,6 +143,10 @@ export async function createSessionServices(
 
   // Create default feature flag recorder if not provided
   const featureFlagRecorder = config.featureFlagRecorder ?? (isTest ? new InMemoryFeatureFlagRecorder() : undefined);
+
+  // Track 22: attribute the build's compile-time flag values into the
+  // recorder when one exists (no-op in prod where recorder is undefined).
+  reportFeatureFlags(featureFlagRecorder);
 
   return {
     rollout: config.rollout ?? null, // RolloutRecorder will be initialized by Session
