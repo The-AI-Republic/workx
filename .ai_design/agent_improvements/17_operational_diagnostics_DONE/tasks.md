@@ -145,7 +145,7 @@ Depends on Phase 1 (+ Phase 2 for the service).
 
 - [ ] `.ai_design/agent_improvements/README.md` — verify/refresh the Track 17 row (line ~41; effort is **M**, not "Small–Medium") and add Track 17 to the Dependency Graph (depends on nothing hard for Phase 1+2; Phase 3 needs the live `webfront/commands` path which exists today; note Track 13/16 are forward-notes, not blockers).
 - [ ] After each phase merges, update `design.md` Status and tick the corresponding section here.
-- [ ] Rename the track dir to `17_operational_diagnostics_DONE` only after **all four phases** merge (per the `_DONE`-suffix convention — and note in README which phases shipped, given the suffix-is-unreliable lesson).
+- [X] Rename the track dir to `17_operational_diagnostics_DONE` only after **all four phases** merge (per the `_DONE`-suffix convention — and note in README which phases shipped, given the suffix-is-unreliable lesson).
 
 ---
 

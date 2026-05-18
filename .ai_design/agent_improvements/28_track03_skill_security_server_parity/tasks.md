@@ -15,14 +15,18 @@ Ordering: G1 (security) → G2 → G5 → G4 → G3 (decision-gated).
 - [ ] 1.5 Tests: inline-skill allow-list blocks a disallowed tool, permits a listed one,
       clears after the skill, and covers the forked-registry path.
 
-## Phase 2 — Server parity (G2)
+## Phase 2 — Server + extension parity (G2)
 
-- [ ] 2.1 Extract a shared skill-wiring factory used by both `DesktopAgentBootstrap` and
-      `src/server/agent/ServerAgentBootstrap.ts` (single construction site).
+- [ ] 2.1 Extract a shared skill-wiring factory used by `DesktopAgentBootstrap`,
+      `src/server/agent/ServerAgentBootstrap.ts`, and the extension service-worker agent
+      factory (single construction site).
 - [ ] 2.2 Wire `SkillExecutor`, `SkillRiskAssessor`, `SkillDomainFilter`, and `use_skill`
       into `ServerAgentBootstrap` via the factory (server-appropriate ActiveTab source).
-- [ ] 2.3 Test: server bootstrap exposes `use_skill` and uses `SkillRiskAssessor` (not
-      `StaticRiskAssessor(0)`).
+- [ ] 2.3 Wire `use_skill` execution into the extension service-worker path. The extension
+      already initializes skill discovery/domain filtering/prompt extension; the missing piece
+      is registering the executable tool with `SkillExecutor` + `SkillRiskAssessor`.
+- [ ] 2.4 Test: server and extension bootstraps expose `use_skill` and use
+      `SkillRiskAssessor` (not `StaticRiskAssessor(0)`).
 
 ## Phase 3 — Parse-time `agent:` validation (G5)
 
@@ -45,7 +49,8 @@ Ordering: G1 (security) → G2 → G5 → G4 → G3 (decision-gated).
 ## Exit criteria
 
 - An inline skill with `allowed-tools` cannot invoke tools outside its list (verified test).
-- Server agents execute skills through `SkillExecutor` + `SkillRiskAssessor` like desktop.
+- Server and extension agents execute skills through `SkillExecutor` + `SkillRiskAssessor`
+  like desktop.
 - Unknown `agent:` fails at parse time.
 - ActiveTab callback debounced to 500ms.
 - `src/core/commands/` is either wired (with a consumer + test) or deleted.

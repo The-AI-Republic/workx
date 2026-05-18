@@ -4,12 +4,14 @@ Follows up [Track 02](../02_tool_metadata_concurrency_DONE/design.md). See `desi
 
 ## Phase 1 — Activate progress UX (G1)
 
-- [ ] 1.1 Emit one initial activity event via `getActivityDescription()` at tool execution
+- [ ] 1.1 Pass an `onProgress` callback from `TurnManager.executeBrowserTool()` into
+      `ToolRegistry.execute`; verify `ToolRegistry` emits `ToolExecutionProgress`.
+- [ ] 1.2 Emit one initial activity event via `getActivityDescription()` at tool execution
       entry; ensure UI categorization consumes it.
-- [ ] 1.2 Call `options.onProgress` at checkpoints in `NavigationTool`, `DOMTool`,
+- [ ] 1.3 Call `options.onProgress` at checkpoints in `NavigationTool`, `DOMTool`,
       `WebScrapingTool`, `PageVisionTool`; throttle/cap emissions.
-- [ ] 1.3 Sidepanel renders progress for a running tool.
-- [ ] 1.4 Integration test: navigation+scrape emits ordered, bounded progress events.
+- [ ] 1.4 Sidepanel renders progress for a running tool.
+- [ ] 1.5 Integration test: navigation+scrape emits ordered, bounded progress events.
 
 ## Phase 2 — Sibling abort (G2)
 

@@ -39,6 +39,25 @@ const ExecConfigSchema = z.object({
   approvalTimeoutMs: z.number().default(300_000),
 });
 
+// Track 23 (x402) — Track 20 (managed policy) does not exist in src/, so the
+// server payee allowlist + caps live here, mirroring ExecConfigSchema. The
+// private key is NOT here (it is in FileCredentialStore); nothing in this
+// schema is secret. Default: disabled + empty allowlist ⇒ default-DENY.
+const X402AllowlistEntrySchema = z.object({
+  domain: z.string(),
+  maxPerRequestUSD: z.number().nonnegative(),
+});
+
+const X402ConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  network: z
+    .enum(['base', 'base-sepolia', 'ethereum', 'ethereum-sepolia'])
+    .default('base'),
+  allowlist: z.array(X402AllowlistEntrySchema).default([]),
+  maxPerDayUSD: z.number().nonnegative().default(0),
+  maxSessionSpendUSD: z.number().nonnegative().default(5),
+});
+
 const QueueConfigSchema = z.object({
   cap: z.number().default(20),
   debounceMs: z.number().default(1_000),
@@ -90,6 +109,7 @@ export const ServerConfigSchema = z.object({
       trustedProxies: z.array(z.string()).default([]),
       allowedOrigins: z.array(z.string()).default([]),
       exec: ExecConfigSchema.default({}),
+      x402: X402ConfigSchema.default({}),
       channels: z.record(z.string(), z.unknown()).default({}),
       limits: LimitsConfigSchema.default({}),
       backup: BackupConfigSchema.default({}),

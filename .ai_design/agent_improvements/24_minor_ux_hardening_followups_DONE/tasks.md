@@ -147,7 +147,7 @@ ext+desktop (`platformId !== 'server'`). **One PR.** Built as a sibling of
 
 - [ ] **Update the README row** (`.ai_design/agent_improvements/README.md:48`) to match the validated design: 24.4 is **P2/S footgun hardening, not a P2/M "injection fix"**; note 24.5 sync deferred / scanner P2/S fail-closed; line 129 dependency-graph mentions of 24.1/24.2 remain valid.
 - [ ] After each item's PR merges, tick its section here and update `design.md` **Status**. Re-run that item's Phase 0 greps if the branch moved materially.
-- [ ] Rename the dir to `24_minor_ux_hardening_followups_DONE` only after **all 5** items merge; until then note in the README which items shipped (the `_DONE` suffix is all-or-nothing and unreliable for a bundle — be explicit per item).
+- [X] Rename the dir to `24_minor_ux_hardening_followups_DONE` only after **all 5** items merge; until then note in the README which items shipped (the `_DONE` suffix is all-or-nothing and unreliable for a bundle — be explicit per item).
 - [ ] All PRs target **`main`** (project workflow), not `agent-improvements`.
 
 ---

@@ -3,24 +3,30 @@
 Date: 2026-05-15
 Status: OPEN — P2
 Follows up: [Track 05b — Auto-Extraction & Compaction Interlock](../05b_auto_extraction_compaction_interlock_DONE/design.md) (shipped PR #206)
-Audit source: design-vs-implementation audit 2026-05-15 (independently verified against source on `agent-improvements`)
+Audit source: design-vs-implementation audit 2026-05-15 (independently verified against source on `agent-improvements`; re-verified 2026-05-18 on `origin/agent-improvements` at `cd1e339e`; re-verified after pull 2026-05-18 on `origin/agent-improvements` at `e9bbff26`)
 
 > Follow-up track. Track 05b's design doc is **not** modified. Track 05b's mechanism
-> (background extractor sub-agent, compaction interlock with hard 15s/60s escapes, post-turn
-> trigger, prompt injection, `quietBackground` gating) genuinely shipped and is wired
-> end-to-end. These are the two residual items.
+> (post-turn trigger, prompt injection, and compaction interlock with hard 15s/60s escapes)
+> genuinely shipped. As of Track 41, extraction now runs through the shadow-agent scheduler
+> instead of the old quiet background sub-agent path. These are the residual follow-ups.
 
 ## Verified gaps
 
 ### G1 — End-to-end test missing (full loop never exercised together)
 
 Track 05b design §13/§14 specified an E2E test (`tests/e2e/sessionSummary.e2e.test.ts`).
-The `tests/e2e/` directory does not exist; the file is absent. PR #206's body descopes it
-("would need a real browser fixture"), but Track 05b design §16 (out-of-scope) does **not**
-list it as out-of-scope — so per the audit rule this is an undocumented gap, not a clean
-descope. The full extractor → `summary.md` → interlock → fold-into-compaction loop is
-covered only by isolated unit/integration mocks, never run together against a real
-`MemoryFileSystem`.
+The `tests/e2e/` directory still does not exist. Track 41 added stronger coverage around the
+new shadow path:
+
+- `SessionSummaryHook.test.ts` exercises scheduler invocation, in-flight guarding, detach
+  suppression, and manual extraction cache refresh.
+- `compact/__tests__/extractionInterlock.test.ts` exercises compaction waiting for
+  extraction and folding a non-empty summary into the compaction prompt.
+- `ShadowAgentRunner` / `ShadowAgentScheduler` tests cover the runtime substrate.
+
+That is materially better than the original isolated mocks, but still not the full
+extractor → real `summary.md` write → interlock → fold-into-compaction loop in one harness
+against a real `MemoryFileSystem`.
 
 ### G2 — Feature-flag location diverges from design (minor)
 
@@ -39,8 +45,8 @@ shape disagrees with the design.
 
 ## Non-goals
 
-- Re-testing the units already covered (utils, lifecycle, fileStore, truncate, interlock,
-  `quietBackground`, post-turn hook) — those exist and pass.
+- Re-testing the units already covered (utils, lifecycle, fileStore, truncate, shadow
+  scheduler, interlock, post-turn hook) — those exist and pass.
 - Any change to the interlock semantics — verified correct.
 
 ## Approach

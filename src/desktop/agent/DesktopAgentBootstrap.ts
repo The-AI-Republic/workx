@@ -318,6 +318,68 @@ export class DesktopAgentBootstrap {
 
     toolRegistry.setApprovalGate(approvalGate);
 
+    // Track 23: x402 capability — desktop is the signer home (OS keychain +
+    // interactive user). Above the trivial threshold a payment requires
+    // explicit human approval via the SAME ApprovalGate (which IS constructed
+    // here, unlike the server). Real signing is Phase-4 gated (coinbase/x402
+    // SDK). Default-OFF via x402 config.
+    try {
+      const {
+        createPaymentCapability,
+        CoinbaseX402Signer,
+        PaymentKeyStore,
+        getX402Config,
+        isX402Enabled,
+      } = await import('@/core/payments/x402');
+      const { StaticRiskAssessor } = await import('@/core/approval/assessors/StaticRiskAssessor');
+      const keyStore = new PaymentKeyStore();
+      const signer = new CoinbaseX402Signer(
+        () => keyStore.getPrivateKey(),
+        async () => {
+          throw new Error('x402 address derivation is Phase-4 gated (coinbase/x402 SDK)');
+        },
+      );
+      // score 80 ⇒ ask_user (StaticRiskAssessor: >30 ⇒ ask_user)
+      const payAssessor = new StaticRiskAssessor(80);
+      toolRegistry.setPaymentCapability(
+        createPaymentCapability({
+          platform: 'desktop',
+          isEnabled: isX402Enabled,
+          getCaps: async () => {
+            const c = await getX402Config();
+            return {
+              network: c.network,
+              maxPaymentPerRequestUSD: c.maxPaymentPerRequestUSD,
+              maxSessionSpendUSD: c.maxSessionSpendUSD,
+            };
+          },
+          signer,
+          requestApproval: async (info) => {
+            const r = await approvalGate.check(
+              'x402_payment',
+              {
+                resource: info.resource,
+                amountUSD: info.amountUSD,
+                payTo: info.payTo,
+                network: info.network,
+              },
+              payAssessor,
+              { sessionId: info.ctx.sessionId, turnId: info.ctx.turnId },
+            );
+            const decision = typeof r === 'string' ? r : r.decision;
+            return decision === 'deny' ? 'deny' : 'approve';
+          },
+          audit: (level, message, data) => {
+            const fn =
+              level === 'warn' ? console.warn : level === 'error' ? console.error : console.log;
+            fn(`[x402] ${message}`, data ?? '');
+          },
+        }),
+      );
+    } catch (error) {
+      console.warn('[DesktopAgentBootstrap] x402 capability wiring failed (non-fatal):', error);
+    }
+
     // Plan Review (Track 14): closure-wired here (ToolContext has no
     // registry/manager handle). Desktop has the working core-manager
     // approval round-trip, so it is always registered.
