@@ -184,7 +184,7 @@ export class EditFileTool extends FileAccessTool {
 
     // Edit entry ⇒ offset undefined (R2): chainable, dedup-immune.
     h.cache?.set(key, { content: res.newContentLf, mtimeFloorMs: res.mtimeMs, offset: undefined, limit: undefined });
-    return `Edited ${path} (${replaceAll ? 'all occurrences' : '1 occurrence'}).`;
+    return `Edited ${path} (${replaceAll ? 'all occurrences' : '1 occurrence'}).\n\n${formatSimpleDiff(path, oldString, newString)}`;
   }
 }
 
@@ -227,8 +227,10 @@ export class WriteFileTool extends FileAccessTool {
     });
     if (res.written === 'false') return `Write not applied (${res.reason}): ${res.message}`;
 
-    h.cache?.set(key, { content: content.replace(/\r\n/g, '\n'), mtimeFloorMs: res.mtimeMs, offset: undefined, limit: undefined });
-    return `${st.exists ? 'Overwrote' : 'Created'} ${path}.`;
+    const normalizedContent = content.replace(/\r\n/g, '\n');
+    h.cache?.set(key, { content: normalizedContent, mtimeFloorMs: res.mtimeMs, offset: undefined, limit: undefined });
+    const previous = st.exists ? (entry?.content ?? '') : '';
+    return `${st.exists ? 'Overwrote' : 'Created'} ${path}.\n\n${formatSimpleDiff(path, previous, normalizedContent)}`;
   }
 }
 
@@ -236,4 +238,25 @@ export class WriteFileTool extends FileAccessTool {
 function absKey(workspaceRoot: string, p: string): string {
   const isAbs = /^([a-zA-Z]:[\\/]|[\\/])/.test(p);
   return isAbs ? p : `${workspaceRoot}/${p}`;
+}
+
+function formatSimpleDiff(path: string, before: string, after: string): string {
+  const beforeLines = capDiffLines(before.split('\n'));
+  const afterLines = capDiffLines(after.split('\n'));
+  const lines = [
+    '```diff',
+    `--- ${path}`,
+    `+++ ${path}`,
+    '@@',
+    ...beforeLines.map((line) => `-${line}`),
+    ...afterLines.map((line) => `+${line}`),
+    '```',
+  ];
+  return lines.join('\n');
+}
+
+function capDiffLines(lines: string[]): string[] {
+  const capped = lines.slice(0, 80);
+  if (lines.length > capped.length) capped.push(`... [${lines.length - capped.length} more lines omitted]`);
+  return capped;
 }

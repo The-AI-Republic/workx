@@ -1191,6 +1191,7 @@ export class Session {
         const memoryService = await createMemoryService({
           config: { enabled: memoryEnabled },
           llmCaller,
+          workspaceRoot: this.getWorkspaceRoot(),
         });
 
         console.log(`[Memory] createMemoryService result: ${memoryService ? 'initialized' : 'null'}`);

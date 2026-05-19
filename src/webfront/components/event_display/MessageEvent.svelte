@@ -2,24 +2,14 @@
   /**
    * MessageEvent - Renders agent and user messages
    */
-  import { marked } from 'marked';
   import type { ProcessedEvent } from '@/types/ui';
   import { uiTheme } from '../../stores/themeStore';
+  import { parseMarkdownWithDiff } from './diffMarkdown';
 
   let { event }: { event: ProcessedEvent } = $props();
 
-  // Parse markdown content
-  function parseMarkdown(text: string): string {
-    return marked.parse(text, {
-      breaks: true,
-      gfm: true,
-      headerIds: false,
-      mangle: false,
-    }) as string;
-  }
-
   let contentHtml = $derived(typeof event.content === 'string'
-    ? parseMarkdown(event.content)
+    ? parseMarkdownWithDiff(event.content)
     : JSON.stringify(event.content));
 
   let isUserMessage = $derived(event.title === 'user');
@@ -122,6 +112,40 @@
     white-space: pre-wrap;
     word-break: break-all;
     overflow: visible;
+  }
+
+  .markdown-content :global(.diff-block) {
+    background: #0f172a;
+    color: #cbd5e1;
+    padding: 0.75em 0;
+    overflow-x: auto;
+  }
+
+  .markdown-content :global(.diff-line) {
+    display: block;
+    padding: 0 1em;
+    min-height: 1.35em;
+    white-space: pre;
+  }
+
+  .markdown-content :global(.diff-add) {
+    color: #86efac;
+    background: rgba(34, 197, 94, 0.16);
+  }
+
+  .markdown-content :global(.diff-del) {
+    color: #fca5a5;
+    background: rgba(239, 68, 68, 0.16);
+  }
+
+  .markdown-content :global(.diff-hunk) {
+    color: #93c5fd;
+    background: rgba(59, 130, 246, 0.14);
+  }
+
+  .markdown-content :global(.diff-file) {
+    color: #fde68a;
+    background: rgba(245, 158, 11, 0.12);
   }
 
   .markdown-content :global(blockquote) {

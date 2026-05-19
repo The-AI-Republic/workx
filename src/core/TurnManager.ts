@@ -10,7 +10,7 @@ import { TurnContext } from './TurnContext';
 import { withModelRetry } from './models/resilience/withRetry';
 import { calculateUSDCost } from './models/cost/cost';
 import { AgentConfig } from '../config/AgentConfig';
-import { loadPrompt } from './PromptLoader';
+import { combineUserAndProjectInstructions, loadProjectInstructions, loadPrompt } from './PromptLoader';
 import type { EventMsg, TokenUsage, StreamErrorEvent } from './protocol/events';
 import type { Event } from './protocol/types';
 import type { Prompt as ModelPrompt } from './models/types/ResponsesAPI';
@@ -167,12 +167,17 @@ export class TurnManager {
       console.warn('[TurnManager] loadPrompt() failed, reusing cached base instructions:', err);
       baseInstructions = this.turnContext.getBaseInstructions();
     }
+    const projectInstructions = await loadProjectInstructions(this.session.getWorkspaceRoot?.());
+    const userInstructions = combineUserAndProjectInstructions(
+      this.turnContext.getUserInstructions(),
+      projectInstructions,
+    );
 
     const prompt: ModelPrompt = {
       input,
       tools,
       base_instructions_override: baseInstructions,
-      user_instructions: this.turnContext.getUserInstructions(),
+      user_instructions: userInstructions,
     };
 
     const maxRetries = this.config.maxRetries || 3;
