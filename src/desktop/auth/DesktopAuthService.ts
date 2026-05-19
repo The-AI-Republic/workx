@@ -4,9 +4,9 @@
  * Handles OAuth authentication for the Apple Pi desktop app using deep links.
  *
  * Flow:
- * 1. Open browser to HOME_BASE_URL/login?redirect_url=airepublic-pi://auth/callback
+ * 1. Open browser to HOME_BASE_URL/login?redirect_url=applepi://auth/callback
  * 2. User logs in via login page (Google OAuth, etc.)
- * 3. Backend redirects to airepublic-pi://auth/callback?access_token=xxx&refresh_token=xxx
+ * 3. Backend redirects to applepi://auth/callback?access_token=xxx&refresh_token=xxx
  * 4. OS routes deep link to Apple Pi app
  * 5. Apple Pi app extracts tokens and stores them in OS keychain
  *
@@ -33,7 +33,7 @@ const TOKEN_ACCOUNTS = {
 /**
  * Auth callback URL scheme
  */
-const AUTH_CALLBACK_SCHEME = 'airepublic-pi://auth/callback';
+const AUTH_CALLBACK_SCHEME = 'applepi://auth/callback';
 
 /**
  * User session data returned from auth endpoints

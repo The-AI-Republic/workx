@@ -71,7 +71,7 @@
 - [ ] T015 [P] [US2] Update `<title>BrowserX Desktop</title>` to `<title>Apple Pi</title>` in `src/desktop/index.html` (FR-015)
 - [ ] T016 [US2] Update desktop agent prompt `src/prompts/default_pi_agent_prompt.md` — change "You are Pi" to "You are Apple Pi" throughout (FR-016)
 - [ ] T017 [US2] Verify `shortDescription` and `longDescription` in `tauri/tauri.conf.json` stay as "Pi" (FR-013, FR-014) — confirm no changes needed
-- [ ] T018 [US2] Verify Tauri identifier remains `com.airepublic.pi`, Cargo name remains `pi`, deep-link remains `airepublic-pi` (FR-017, FR-018, FR-019) — confirm no changes needed
+- [ ] T018 [US2] Verify Tauri identifier remains `com.airepublic.pi`, Cargo name remains `pi`, deep-link remains `applepi` (FR-017, FR-018, FR-019) — confirm no changes needed
 
 **Checkpoint**: Desktop app shows "Apple Pi" in all user-visible surfaces. Config metadata preserved as "Pi".
 

@@ -1,7 +1,7 @@
 /**
  * Desktop Scheduler Deep Link Handler
  *
- * Handles incoming `airepublic-pi://scheduler/trigger?jobId=xxx` deep links
+ * Handles incoming `applepi://scheduler/trigger?jobId=xxx` deep links
  * that fire when an OS-level scheduled job activates.
  *
  * Listens on the existing `auth-callback` Tauri event (reuses current
@@ -42,11 +42,11 @@ export class DesktopSchedulerDeepLinkHandler {
    */
   private handleDeepLink(url: string): void {
     try {
-      // Parse the URL — expected format: `airepublic-pi://scheduler/trigger?jobId=xxx`
+      // Parse the URL — expected format: `applepi://scheduler/trigger?jobId=xxx`
       const urlObj = new URL(url);
 
       // Match on hostname + pathname for proper URL path matching
-      // URL parses `airepublic-pi://scheduler/trigger` as host="scheduler", pathname="/trigger"
+      // URL parses `applepi://scheduler/trigger` as host="scheduler", pathname="/trigger"
       const isSchedulerTrigger =
         urlObj.hostname === 'scheduler' && urlObj.pathname === '/trigger';
 

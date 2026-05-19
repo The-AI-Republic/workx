@@ -2,7 +2,7 @@
  * Desktop Scheduler Deep Link Handler Tests
  *
  * Tests for DesktopSchedulerDeepLinkHandler which processes
- * `airepublic-pi://scheduler/trigger?jobId=xxx` deep link events.
+ * `applepi://scheduler/trigger?jobId=xxx` deep link events.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -85,7 +85,7 @@ describe('DesktopSchedulerDeepLinkHandler', () => {
 
     it('should trigger scheduler alarm for valid scheduler URL', () => {
       capturedListenCallback!({
-        payload: 'airepublic-pi://scheduler/trigger?jobId=task-42',
+        payload: 'applepi://scheduler/trigger?jobId=task-42',
       });
 
       expect(scheduler.handleAlarm).toHaveBeenCalledWith(getJobAlarmName('task-42'));
@@ -93,7 +93,7 @@ describe('DesktopSchedulerDeepLinkHandler', () => {
 
     it('should remove OS job after triggering', async () => {
       capturedListenCallback!({
-        payload: 'airepublic-pi://scheduler/trigger?jobId=task-42',
+        payload: 'applepi://scheduler/trigger?jobId=task-42',
       });
 
       // removeOsJob is async — wait a tick
@@ -106,7 +106,7 @@ describe('DesktopSchedulerDeepLinkHandler', () => {
 
     it('should ignore non-scheduler deep links', () => {
       capturedListenCallback!({
-        payload: 'airepublic-pi://auth/callback?code=abc123',
+        payload: 'applepi://auth/callback?code=abc123',
       });
 
       expect(scheduler.handleAlarm).not.toHaveBeenCalled();
@@ -114,7 +114,7 @@ describe('DesktopSchedulerDeepLinkHandler', () => {
 
     it('should ignore URLs without jobId', () => {
       capturedListenCallback!({
-        payload: 'airepublic-pi://scheduler/trigger',
+        payload: 'applepi://scheduler/trigger',
       });
 
       expect(scheduler.handleAlarm).not.toHaveBeenCalled();
@@ -136,7 +136,7 @@ describe('DesktopSchedulerDeepLinkHandler', () => {
       // Should not throw
       expect(() => {
         capturedListenCallback!({
-          payload: 'airepublic-pi://scheduler/trigger?jobId=task-1',
+          payload: 'applepi://scheduler/trigger?jobId=task-1',
         });
       }).not.toThrow();
     });

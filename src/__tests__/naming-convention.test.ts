@@ -157,7 +157,7 @@ describe('Tier 3: Desktop user-facing uses "Apple Pi"', () => {
     expect(desktop).toContain('Name=Apple Pi');
     expect(desktop).toContain('StartupWMClass=ApplePi');
     expect(desktop).toContain('Exec={{exec}} %u');
-    expect(desktop).toContain('MimeType=x-scheme-handler/airepublic-pi');
+    expect(desktop).toContain('MimeType=x-scheme-handler/applepi');
   });
 });
 

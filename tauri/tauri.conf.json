@@ -81,7 +81,7 @@
     "deep-link": {
       "desktop": {
         "schemes": [
-          "airepublic-pi"
+          "applepi"
         ]
       }
     }

@@ -4,7 +4,7 @@
 //! so jobs fire even when the app is fully quit.
 //!
 //! Each job is registered as an OS-level scheduled entry that opens the app via deep link:
-//! `airepublic-pi://scheduler/trigger?jobId={jobId}`
+//! `applepi://scheduler/trigger?jobId={jobId}`
 
 use std::fs;
 use std::path::PathBuf;
@@ -172,7 +172,7 @@ fn register_launchd_job(job_id: &str, scheduled_time: i64) -> Result<(), String>
         fs::create_dir_all(parent).map_err(|e| format!("Failed to create directory: {}", e))?;
     }
 
-    let deep_link = format!("airepublic-pi://scheduler/trigger?jobId={}", job_id);
+    let deep_link = format!("applepi://scheduler/trigger?jobId={}", job_id);
 
     let plist_file = format!("{}{}.plist", PLIST_PREFIX, job_id);
     let plist_content = format!(
@@ -301,7 +301,7 @@ fn register_schtasks_job(job_id: &str, scheduled_time: i64) -> Result<(), String
     let job_name = schtasks_name(job_id);
     let date_str = dt.format("%m/%d/%Y").to_string();
     let time_str = dt.format("%H:%M").to_string();
-    let deep_link = format!("airepublic-pi://scheduler/trigger?jobId={}", job_id);
+    let deep_link = format!("applepi://scheduler/trigger?jobId={}", job_id);
 
     let output = Command::new("schtasks.exe")
         .args([
@@ -412,7 +412,7 @@ fn register_systemd_job(job_id: &str, scheduled_time: i64) -> Result<(), String>
         .map_err(|e| format!("Failed to create systemd user dir: {}", e))?;
 
     let unit_name = format!("{}{}", SYSTEMD_PREFIX, job_id);
-    let deep_link = format!("airepublic-pi://scheduler/trigger?jobId={}", job_id);
+    let deep_link = format!("applepi://scheduler/trigger?jobId={}", job_id);
 
     // Find the right command to open deep links (xdg-open may not be available on headless)
     let open_cmd = if Command::new("xdg-open").arg("--version").output().is_ok() {
@@ -472,7 +472,7 @@ fn register_crontab_fallback(job_id: &str, scheduled_time: i64) -> Result<(), St
         .single()
         .ok_or_else(|| "Invalid timestamp".to_string())?;
 
-    let deep_link = format!("airepublic-pi://scheduler/trigger?jobId={}", job_id);
+    let deep_link = format!("applepi://scheduler/trigger?jobId={}", job_id);
     let marker = format!("pi-scheduler-{}", job_id);
     let cron_entry = format!(
         "{min} {hour} {day} {month} * xdg-open \"{deep_link}\"; crontab -l 2>/dev/null | grep -v '{marker}' | crontab - # {marker}",
