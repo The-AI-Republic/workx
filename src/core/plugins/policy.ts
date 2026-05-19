@@ -188,6 +188,9 @@ export const ALLOWED_OFFICIAL_MARKETPLACE_NAMES: readonly string[] = [];
 export const BLOCKED_OFFICIAL_NAME_PATTERN =
   /(official.*\b(browserx|airepublic)\b|\b(browserx|airepublic)\b.*official|^(browserx|airepublic)[-_](marketplace|plugins|official))/i;
 
+// \x00 is intentional: this is a non-ASCII / homograph guard that must
+// match any codepoint outside the printable ASCII range.
+// eslint-disable-next-line no-control-regex
 const NON_ASCII_PATTERN = /[^\x00-\x7F]/;
 const OFFICIAL_GITHUB_ORG = 'browserx';
 
