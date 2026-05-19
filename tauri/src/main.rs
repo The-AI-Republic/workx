@@ -132,7 +132,7 @@ mod tests {
 
 fn main() {
     fn is_app_deep_link(url: &str) -> bool {
-        url.starts_with("applepi://") || url.starts_with("airepublic-pi://")
+        url.starts_with("applepi://")
     }
 
     tauri::Builder::default()
@@ -179,20 +179,14 @@ fn main() {
             // provide the handler through `/usr/share/applications/ApplePi.desktop`;
             // runtime registration would add a second user-level `pi-handler.desktop`.
             #[cfg(windows)]
-            {
-                for scheme in ["applepi", "airepublic-pi"] {
-                    if let Err(e) = app.deep_link().register(scheme) {
-                        eprintln!("[Pi] Failed to register {} deep link handler: {}", scheme, e);
-                    }
-                }
+            if let Err(e) = app.deep_link().register("applepi") {
+                eprintln!("[Pi] Failed to register deep link handler: {}", e);
             }
 
             #[cfg(target_os = "linux")]
             if app.env().appimage.is_some() {
-                for scheme in ["applepi", "airepublic-pi"] {
-                    if let Err(e) = app.deep_link().register(scheme) {
-                        eprintln!("[Pi] Failed to register AppImage {} deep link handler: {}", scheme, e);
-                    }
+                if let Err(e) = app.deep_link().register("applepi") {
+                    eprintln!("[Pi] Failed to register AppImage deep link handler: {}", e);
                 }
             }
 

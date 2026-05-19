@@ -10,7 +10,6 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>applepi</string>
-				<string>airepublic-pi</string>
 			</array>
 		</dict>
 	</array>
