@@ -19,6 +19,8 @@ export interface RipgrepResult {
   /** ripgrep exit code: 0 = matches, 1 = no matches, 2 = error. */
   exitCode: number;
   timedOut: boolean;
+  /** Output hit the size cap and was clipped (results incomplete). */
+  truncated: boolean;
   /** Which binary served the request — for diagnostics only. */
   source: 'system' | 'bundled';
 }
@@ -33,9 +35,9 @@ export interface RunRipgrepOptions {
    * pre-check cannot stat/resolve symlinks (R5, defense in depth).
    */
   workspaceRoot?: string;
-  /** Hard timeout; defaults to 20s (60s effective on slow FS via Rust). */
+  /** Hard timeout; defaults to 20s (enforced in Rust on desktop, by execFile on server). */
   timeoutMs?: number;
-  /** Max stdout bytes to buffer (server only; desktop is bounded in Rust). */
+  /** Max stdout bytes to buffer; both paths cap memory (Node via execFile, desktop via the Rust reader). */
   maxBuffer?: number;
 }
 
@@ -168,17 +170,26 @@ async function runViaNode(
               reject(Object.assign(new Error('ENOENT'), { enoent: true }));
               return;
             }
+            // maxBuffer exceeded also kills the child (killed + SIGTERM), but
+            // this is NOT a timeout. Return the partial output with the
+            // structured `truncated` flag (mirrors the desktop Rust reader)
+            // so the caller still gets results + a clear incomplete signal.
+            // Must be checked before the timeout branch (same kill signature).
+            if (code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER' || /maxBuffer/i.test(err.message)) {
+              resolve({ stdout: stdout ?? '', stderr: stderr ?? '', exitCode: 0, timedOut: false, truncated: true, source });
+              return;
+            }
             // execFile sets killed + SIGTERM on timeout.
             if ((err as any).killed && (err as any).signal === 'SIGTERM') {
-              resolve({ stdout: stdout ?? '', stderr: stderr ?? '', exitCode: 124, timedOut: true, source });
+              resolve({ stdout: stdout ?? '', stderr: stderr ?? '', exitCode: 124, timedOut: true, truncated: false, source });
               return;
             }
             // Non-zero exit (incl. 1 = no matches) is NOT a rejection.
             const exitCode = typeof (err as any).code === 'number' ? (err as any).code : 2;
-            resolve({ stdout: stdout ?? '', stderr: stderr ?? '', exitCode, timedOut: false, source });
+            resolve({ stdout: stdout ?? '', stderr: stderr ?? '', exitCode, timedOut: false, truncated: false, source });
             return;
           }
-          resolve({ stdout: stdout ?? '', stderr: stderr ?? '', exitCode: 0, timedOut: false, source });
+          resolve({ stdout: stdout ?? '', stderr: stderr ?? '', exitCode: 0, timedOut: false, truncated: false, source });
         }
       );
       child.on('error', (err: NodeJS.ErrnoException) => {

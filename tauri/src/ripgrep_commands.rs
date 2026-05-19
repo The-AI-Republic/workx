@@ -14,6 +14,42 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
+/// Cap on retained child output, matching the Node path's `maxBuffer`
+/// (32 MB). A wide grep can stream far more than this; without a cap the
+/// WebView host process would grow unbounded.
+const MAX_OUTPUT_BYTES: usize = 32 * 1024 * 1024;
+
+/// Read a child pipe to EOF but retain at most `cap` bytes. Bytes past the
+/// cap are still read and discarded so the child never blocks on a full
+/// pipe (it can exit cleanly and the poll loop sees a normal exit rather
+/// than a spurious timeout). Returns `(buffer, truncated)` — truncation is
+/// reported as a structured flag, never injected into the output stream.
+/// Bounds desktop memory like `maxBuffer` bounds the Node path.
+fn read_capped<R: Read>(r: &mut R, cap: usize) -> (Vec<u8>, bool) {
+    let mut buf = Vec::new();
+    let mut chunk = [0u8; 64 * 1024];
+    let mut truncated = false;
+    loop {
+        match r.read(&mut chunk) {
+            Ok(0) => break,
+            Ok(n) => {
+                if buf.len() < cap {
+                    let room = cap - buf.len();
+                    let take = n.min(room);
+                    buf.extend_from_slice(&chunk[..take]);
+                    if take < n {
+                        truncated = true;
+                    }
+                } else {
+                    truncated = true;
+                }
+            }
+            Err(_) => break,
+        }
+    }
+    (buf, truncated)
+}
+
 /// Authoritative containment for grep/glob: the search dir must resolve
 /// (symlinks included) to inside `workspace_root`. Mirrors the fs_commands
 /// jail; the JS lexical pre-check cannot stat/resolve symlinks so this is the
@@ -47,6 +83,8 @@ pub struct RipgrepResult {
     pub exit_code: i32,
     #[serde(rename = "timedOut")]
     pub timed_out: bool,
+    /// Output exceeded the size cap and was clipped (results incomplete).
+    pub truncated: bool,
     /// Which binary served the request — diagnostics only.
     pub source: String,
 }
@@ -76,8 +114,23 @@ fn resolve_ripgrep() -> Result<(String, &'static str), String> {
     ))
 }
 
+/// Async command wrapper. ripgrep can run for the full timeout; a
+/// synchronous `#[tauri::command]` would run on the main thread and freeze
+/// the WebView for the duration. Run the blocking work on the blocking
+/// pool, mirroring `terminal_commands::terminal_execute`.
 #[tauri::command]
-pub fn ripgrep_execute(
+pub async fn ripgrep_execute(
+    args: Vec<String>,
+    cwd: Option<String>,
+    timeout_ms: Option<u64>,
+    workspace_root: Option<String>,
+) -> Result<RipgrepResult, String> {
+    tokio::task::spawn_blocking(move || ripgrep_execute_blocking(args, cwd, timeout_ms, workspace_root))
+        .await
+        .map_err(|e| format!("ripgrep task join error: {}", e))?
+}
+
+fn ripgrep_execute_blocking(
     args: Vec<String>,
     cwd: Option<String>,
     timeout_ms: Option<u64>,
@@ -105,16 +158,8 @@ pub fn ripgrep_execute(
     // the OS pipe buffer while we're polling for exit.
     let mut out_pipe = child.stdout.take().ok_or("no stdout pipe")?;
     let mut err_pipe = child.stderr.take().ok_or("no stderr pipe")?;
-    let out_handle = std::thread::spawn(move || {
-        let mut buf = Vec::new();
-        let _ = out_pipe.read_to_end(&mut buf);
-        buf
-    });
-    let err_handle = std::thread::spawn(move || {
-        let mut buf = Vec::new();
-        let _ = err_pipe.read_to_end(&mut buf);
-        buf
-    });
+    let out_handle = std::thread::spawn(move || read_capped(&mut out_pipe, MAX_OUTPUT_BYTES));
+    let err_handle = std::thread::spawn(move || read_capped(&mut err_pipe, MAX_OUTPUT_BYTES));
 
     // Poll for exit; kill on timeout. Dependency-free (no wait-timeout crate).
     let start = Instant::now();
@@ -135,14 +180,17 @@ pub fn ripgrep_execute(
         }
     };
 
-    let stdout = String::from_utf8_lossy(&out_handle.join().unwrap_or_default()).to_string();
-    let stderr = String::from_utf8_lossy(&err_handle.join().unwrap_or_default()).to_string();
+    let (out_buf, out_truncated) = out_handle.join().unwrap_or_default();
+    let (err_buf, _err_truncated) = err_handle.join().unwrap_or_default();
+    let stdout = String::from_utf8_lossy(&out_buf).to_string();
+    let stderr = String::from_utf8_lossy(&err_buf).to_string();
 
     Ok(RipgrepResult {
         stdout,
         stderr,
         exit_code,
         timed_out,
+        truncated: out_truncated,
         source: source.to_string(),
     })
 }
@@ -150,6 +198,23 @@ pub fn ripgrep_execute(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn read_capped_caps_buffer_and_flags_truncation() {
+        use std::io::Cursor;
+        let mut cur = Cursor::new(vec![b'x'; 10_000]);
+        let (out, truncated) = read_capped(&mut cur, 1_000);
+        // Exactly the cap retained; excess drained, not appended.
+        assert_eq!(out.len(), 1_000);
+        assert!(truncated);
+    }
+
+    #[test]
+    fn read_capped_passes_small_output_through_unflagged() {
+        use std::io::Cursor;
+        let mut cur = Cursor::new(b"hello".to_vec());
+        assert_eq!(read_capped(&mut cur, 1_000), (b"hello".to_vec(), false));
+    }
 
     #[test]
     fn contain_skips_when_no_workspace() {

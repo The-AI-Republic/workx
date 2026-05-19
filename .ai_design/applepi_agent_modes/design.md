@@ -401,7 +401,7 @@ Each phase is independently mergeable. Phase 1 alone is a valuable internal chan
 
 ## 15. Open Questions
 
-1. **Dedicated file tools — Rust-via-Tauri vs TS wrappers?** Recommend **Rust** (parity is the point; ~1wk vs ~1day).
+1. **Dedicated file tools — Rust-via-Tauri vs TS wrappers?** Recommend **Rust** (parity is the point; ~1wk vs ~1day). **Resolved (Phase 3, PR #225):** hybrid sourcing — prefer system `rg` on PATH, fall back to a bundled `@vscode/ripgrep` sidecar. Desktop executes via a no-shell Rust `ripgrep_execute` command (argv vector, model-controlled args never reach a shell); server executes via Node `child_process.execFile`. The seam is `src/tools/file-search/ripgrep.ts`; swapping the binary strategy is confined to that file + Rust.
 2. **`loadPrompt(mode)` arg vs moving composition onto the agent?** Recommend the **arg** (smaller blast radius).
 3. **`coder_server_intro.md` fork vs share?** Recommend **share** initially.
 4. **Mode marker visual language** (icon set / color tint per mode) — needs design input; must scale to N modes, not be a 2-state toggle.
@@ -422,3 +422,4 @@ For reviewers — these were debated and closed during design:
 - **N-mode registry, not binary.** A third mode must be additive only (§5.2, §12). YAGNI line: static table, no runtime/user-defined modes.
 - **`PromptLoader` singleton must be refactored.** Per-session mode is incompatible with module-global mode state (§8.1).
 - **No optimistic UI.** Deferral makes optimistic flips dishonest; backend `Session` is source of truth (§8.3).
+- **Auto-approved read-only search is workspace-jailed (resolved, PR #228).** An earlier PR #225 note proposed *accepting* an un-contained model-chosen `path` (consistent with `TerminalRiskAssessor`) and deferring containment. That stance was **superseded**: the Phase-4 file-tools work (PR #228) jailed `grep`/`glob` to the selected workspace — code-mode-gated, `sessionScope`/`lexicalPathCheck` on the JS side, and an authoritative Rust `contain_in_workspace` re-check that resolves symlinks (`fs::canonicalize`) on desktop, with an equivalent `realpath` containment on the Node/server path. They still run without a confirmation prompt (`StaticRiskAssessor(0)`) but can no longer read outside the workspace, closing the browser-agent prompt-injection exfiltration concern for these tools. (The broader question of un-contained auto-approved reads via `TerminalRiskAssessor` remains separate follow-up.)

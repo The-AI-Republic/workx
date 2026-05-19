@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { GlobTool } from '../GlobTool';
 import { isNoMatches, type RipgrepResult } from '../ripgrep';
 
-function rg(stdout: string, exitCode = 0): RipgrepResult {
-  return { stdout, stderr: '', exitCode, timedOut: false, source: 'system' };
+function rg(stdout: string, exitCode = 0, truncated = false): RipgrepResult {
+  return { stdout, stderr: '', exitCode, timedOut: false, truncated, source: 'system' };
 }
 
 describe('GlobTool', () => {
@@ -26,6 +26,15 @@ describe('GlobTool', () => {
     const out = tool.formatResult(rg(many), { pattern: 'x', limit: 100, offset: 0 });
     expect(out).toContain('[Truncated to 100 of 150');
     expect(out).toContain('offset=100');
+
+    expect(tool.formatResult(rg('a.ts\nb.ts'), { pattern: 'x', offset: 50 })).toBe(
+      'No files at offset=50 (total 2). Lower the offset.'
+    );
+
+    const capped = tool.formatResult(rg('a.ts\nb.ts', 0, true), { pattern: 'x' });
+    expect(capped).toContain('Found 2 file(s)');
+    expect(capped).toContain('size cap and is incomplete');
+    expect(capped).not.toContain('[output truncated at');
   });
 
   it('tool definition registers for server with read-only auto-approve', () => {

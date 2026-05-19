@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { GrepTool } from '../GrepTool';
 import type { RipgrepResult } from '../ripgrep';
 
-function rg(stdout: string, exitCode = 0): RipgrepResult {
-  return { stdout, stderr: '', exitCode, timedOut: false, source: 'system' };
+function rg(stdout: string, exitCode = 0, truncated = false): RipgrepResult {
+  return { stdout, stderr: '', exitCode, timedOut: false, truncated, source: 'system' };
 }
 
 describe('GrepTool', () => {
@@ -64,6 +64,30 @@ describe('GrepTool', () => {
       const out = tool.formatResult(rg(lines), { pattern: 'x', head_limit: 250, offset: 0 });
       expect(out).toContain('[Truncated to 250 of 300');
       expect(out).toContain('offset=250');
+    });
+
+    it('offset past the end returns a clear message, not an empty list', () => {
+      const out = tool.formatResult(rg('a.ts\nb.ts'), { pattern: 'x', head_limit: 250, offset: 50 });
+      expect(out).toBe('No results at offset=50 (total 2). Lower the offset.');
+    });
+
+    it('renders the size-cap note from the structured flag, not a fake result line', () => {
+      const out = tool.formatResult(rg('a.ts\nb.ts', 0, true), { pattern: 'x' });
+      expect(out).toContain('Found 2 file(s)');
+      expect(out).toContain('size cap and is incomplete');
+      expect(out).not.toContain('[output truncated at');
+    });
+
+    it('non-numeric head_limit falls back to the default (250)', () => {
+      const lines = Array.from({ length: 300 }, (_, i) => `f${i}.ts`).join('\n');
+      const out = tool.formatResult(rg(lines), { pattern: 'x', head_limit: 'abc' });
+      expect(out).toContain('[Truncated to 250 of 300');
+    });
+
+    it('negative offset is clamped to 0', () => {
+      const out = tool.formatResult(rg('a.ts\nb.ts'), { pattern: 'x', offset: -10 });
+      expect(out).toContain('Found 2 file(s)');
+      expect(out).not.toContain('No results at offset');
     });
 
     it('head_limit=0 means unlimited', () => {
