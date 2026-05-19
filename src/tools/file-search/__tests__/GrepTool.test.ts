@@ -66,6 +66,11 @@ describe('GrepTool', () => {
       expect(out).toContain('offset=250');
     });
 
+    it('offset past the end returns a clear message, not an empty list', () => {
+      const out = tool.formatResult(rg('a.ts\nb.ts'), { pattern: 'x', head_limit: 250, offset: 50 });
+      expect(out).toBe('No results at offset=50 (total 2). Lower the offset.');
+    });
+
     it('head_limit=0 means unlimited', () => {
       const lines = Array.from({ length: 300 }, (_, i) => `f${i}.ts`).join('\n');
       const out = tool.formatResult(rg(lines), { pattern: 'x', head_limit: 0 });

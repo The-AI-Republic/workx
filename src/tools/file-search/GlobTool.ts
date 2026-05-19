@@ -45,6 +45,9 @@ export class GlobTool extends FileSearchTool {
     const limit = p.limit === undefined ? DEFAULT_LIMIT : Number(p.limit);
     const offset = Number(p.offset) || 0;
     const { page, truncated } = paginate(files, limit, offset);
+    if (page.length === 0 && offset > 0) {
+      return `No files at offset=${offset} (total ${files.length}). Lower the offset.`;
+    }
 
     let out = `Found ${files.length} file(s):\n${page.join('\n')}`;
     if (truncated) {

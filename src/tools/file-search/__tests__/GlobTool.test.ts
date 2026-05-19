@@ -26,6 +26,10 @@ describe('GlobTool', () => {
     const out = tool.formatResult(rg(many), { pattern: 'x', limit: 100, offset: 0 });
     expect(out).toContain('[Truncated to 100 of 150');
     expect(out).toContain('offset=100');
+
+    expect(tool.formatResult(rg('a.ts\nb.ts'), { pattern: 'x', offset: 50 })).toBe(
+      'No files at offset=50 (total 2). Lower the offset.'
+    );
   });
 
   it('tool definition registers for server with read-only auto-approve', () => {

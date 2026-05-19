@@ -12,7 +12,7 @@
 
 import { createToolDefinition, type ToolDefinition, type ToolHandler, type ToolContext, type ParameterProperty, type Platform } from '../BaseTool';
 import { StaticRiskAssessor } from '../../core/approval/assessors/StaticRiskAssessor';
-import { runRipgrep, isNoMatches, RipgrepTimeoutError, RipgrepNotFoundError, type RipgrepResult } from './ripgrep';
+import { runRipgrep, RipgrepTimeoutError, RipgrepNotFoundError, type RipgrepResult } from './ripgrep';
 
 export abstract class FileSearchTool {
   abstract readonly name: string;
@@ -45,9 +45,9 @@ export abstract class FileSearchTool {
         if (result.exitCode === 2 && result.stderr.trim()) {
           return `Search error: ${result.stderr.trim().split('\n').slice(0, 5).join('\n')}`;
         }
-        if (isNoMatches(result)) {
-          return this.formatResult(result, params); // subclass renders the empty case
-        }
+        // exit 1 / empty stdout (ripgrep's "no matches") needs no special
+        // case here — each subclass's formatResult renders its own empty
+        // message from the (empty) stdout.
         return this.formatResult(result, params);
       } catch (e) {
         if (e instanceof RipgrepTimeoutError) {

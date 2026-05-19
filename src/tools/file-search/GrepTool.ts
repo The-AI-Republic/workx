@@ -81,6 +81,9 @@ export class GrepTool extends FileSearchTool {
     const headLimit = p.head_limit === undefined ? DEFAULT_HEAD_LIMIT : Number(p.head_limit);
     const offset = Number(p.offset) || 0;
     const { page, truncated } = paginate(raw, headLimit, offset);
+    if (page.length === 0 && offset > 0) {
+      return `No results at offset=${offset} (total ${raw.length}). Lower the offset.`;
+    }
 
     let header: string;
     if (mode === 'files_with_matches') header = `Found ${raw.length} file(s) with matches:`;

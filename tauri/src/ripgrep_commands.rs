@@ -12,6 +12,45 @@ use std::io::Read;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
+/// Cap on retained child output, matching the Node path's `maxBuffer`
+/// (32 MB). A wide grep can stream far more than this; without a cap the
+/// WebView host process would grow unbounded.
+const MAX_OUTPUT_BYTES: usize = 32 * 1024 * 1024;
+
+/// Read a child pipe to EOF but retain at most `cap` bytes. Bytes past the
+/// cap are still read and discarded so the child never blocks on a full
+/// pipe (it can exit cleanly and the poll loop sees a normal exit rather
+/// than a spurious timeout); a notice is appended so the caller/model
+/// knows the output was clipped. Bounds desktop memory like `maxBuffer`
+/// bounds the Node path.
+fn read_capped<R: Read>(r: &mut R, cap: usize) -> Vec<u8> {
+    let mut buf = Vec::new();
+    let mut chunk = [0u8; 64 * 1024];
+    let mut truncated = false;
+    loop {
+        match r.read(&mut chunk) {
+            Ok(0) => break,
+            Ok(n) => {
+                if buf.len() < cap {
+                    let room = cap - buf.len();
+                    let take = n.min(room);
+                    buf.extend_from_slice(&chunk[..take]);
+                    if take < n {
+                        truncated = true;
+                    }
+                } else {
+                    truncated = true;
+                }
+            }
+            Err(_) => break,
+        }
+    }
+    if truncated {
+        buf.extend_from_slice(format!("\n[output truncated at {} bytes]\n", cap).as_bytes());
+    }
+    buf
+}
+
 #[derive(Serialize)]
 pub struct RipgrepResult {
     pub stdout: String,
@@ -75,16 +114,8 @@ pub fn ripgrep_execute(
     // the OS pipe buffer while we're polling for exit.
     let mut out_pipe = child.stdout.take().ok_or("no stdout pipe")?;
     let mut err_pipe = child.stderr.take().ok_or("no stderr pipe")?;
-    let out_handle = std::thread::spawn(move || {
-        let mut buf = Vec::new();
-        let _ = out_pipe.read_to_end(&mut buf);
-        buf
-    });
-    let err_handle = std::thread::spawn(move || {
-        let mut buf = Vec::new();
-        let _ = err_pipe.read_to_end(&mut buf);
-        buf
-    });
+    let out_handle = std::thread::spawn(move || read_capped(&mut out_pipe, MAX_OUTPUT_BYTES));
+    let err_handle = std::thread::spawn(move || read_capped(&mut err_pipe, MAX_OUTPUT_BYTES));
 
     // Poll for exit; kill on timeout. Dependency-free (no wait-timeout crate).
     let start = Instant::now();
@@ -120,6 +151,23 @@ pub fn ripgrep_execute(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn read_capped_truncates_and_drains_excess() {
+        use std::io::Cursor;
+        let mut cur = Cursor::new(vec![b'x'; 10_000]);
+        let out = read_capped(&mut cur, 1_000);
+        // 1000 retained + a short notice; the other 9000 bytes are dropped.
+        assert!(out.len() < 1_100, "retained {} bytes", out.len());
+        assert!(String::from_utf8_lossy(&out).contains("output truncated at 1000 bytes"));
+    }
+
+    #[test]
+    fn read_capped_passes_small_output_through_unchanged() {
+        use std::io::Cursor;
+        let mut cur = Cursor::new(b"hello".to_vec());
+        assert_eq!(read_capped(&mut cur, 1_000), b"hello");
+    }
 
     #[test]
     fn resolve_finds_system_rg_or_errors_cleanly() {

@@ -26,9 +26,9 @@ export interface RipgrepResult {
 export interface RunRipgrepOptions {
   /** Working directory ripgrep runs in (search root). */
   cwd?: string;
-  /** Hard timeout; defaults to 20s (60s effective on slow FS via Rust). */
+  /** Hard timeout; defaults to 20s (enforced in Rust on desktop, by execFile on server). */
   timeoutMs?: number;
-  /** Max stdout bytes to buffer (server only; desktop is bounded in Rust). */
+  /** Max stdout bytes to buffer; both paths cap memory (Node via execFile, desktop via the Rust reader). */
   maxBuffer?: number;
 }
 
@@ -128,6 +128,21 @@ async function runViaNode(
             const code = (err as NodeJS.ErrnoException).code;
             if (code === 'ENOENT') {
               reject(Object.assign(new Error('ENOENT'), { enoent: true }));
+              return;
+            }
+            // maxBuffer exceeded also kills the child (killed + SIGTERM), but
+            // this is NOT a timeout. Return the partial output with a notice
+            // so the model still gets results + guidance — mirrors the
+            // desktop Rust reader's cap-and-annotate behavior. Must be
+            // checked before the timeout branch below (same kill signature).
+            if (code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER' || /maxBuffer/i.test(err.message)) {
+              resolve({
+                stdout: (stdout ?? '') + `\n[output truncated at ${maxBuffer} bytes]\n`,
+                stderr: stderr ?? '',
+                exitCode: 0,
+                timedOut: false,
+                source,
+              });
               return;
             }
             // execFile sets killed + SIGTERM on timeout.

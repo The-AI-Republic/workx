@@ -401,7 +401,7 @@ Each phase is independently mergeable. Phase 1 alone is a valuable internal chan
 
 ## 15. Open Questions
 
-1. **Dedicated file tools — Rust-via-Tauri vs TS wrappers?** Recommend **Rust** (parity is the point; ~1wk vs ~1day).
+1. **Dedicated file tools — Rust-via-Tauri vs TS wrappers?** Recommend **Rust** (parity is the point; ~1wk vs ~1day). **Resolved (Phase 3, PR #225):** hybrid sourcing — prefer system `rg` on PATH, fall back to a bundled `@vscode/ripgrep` sidecar. Desktop executes via a no-shell Rust `ripgrep_execute` command (argv vector, model-controlled args never reach a shell); server executes via Node `child_process.execFile`. The seam is `src/tools/file-search/ripgrep.ts`; swapping the binary strategy is confined to that file + Rust.
 2. **`loadPrompt(mode)` arg vs moving composition onto the agent?** Recommend the **arg** (smaller blast radius).
 3. **`coder_server_intro.md` fork vs share?** Recommend **share** initially.
 4. **Mode marker visual language** (icon set / color tint per mode) — needs design input; must scale to N modes, not be a 2-state toggle.
@@ -422,3 +422,4 @@ For reviewers — these were debated and closed during design:
 - **N-mode registry, not binary.** A third mode must be additive only (§5.2, §12). YAGNI line: static table, no runtime/user-defined modes.
 - **`PromptLoader` singleton must be refactored.** Per-session mode is incompatible with module-global mode state (§8.1).
 - **No optimistic UI.** Deferral makes optimistic flips dishonest; backend `Session` is source of truth (§8.3).
+- **Auto-approved read-only search has no path containment — accepted (PR #225).** `grep`/`glob` run without a confirmation prompt (`StaticRiskAssessor(0)`) and accept a model-chosen `path` that is not constrained to the project root. This is deliberately consistent with the already-shipped `TerminalRiskAssessor`, which auto-approves `cat`/`rg`/`grep`/`find`/`ls` over any path. Adding containment to only the file-search tools would be bypassable via the terminal tool and inconsistent. The arbitrary-path auto-approved read (relevant under the browser-agent prompt-injection threat model) is therefore a **system-wide posture to revisit holistically (terminal + file-search together)**, not a per-tool fix — tracked as follow-up, not a Phase 3 blocker (§7, §9).
