@@ -151,6 +151,14 @@ describe('Tier 3: Desktop user-facing uses "Apple Pi"', () => {
     expect(conf.mainBinaryName).toBe('ApplePi');
     expect(conf.app.windows[0].title).toBe('Apple Pi');
   });
+
+  it('Linux desktop scheme handler forwards callback URLs to ApplePi', () => {
+    const desktop = readSource('tauri/templates/linux-desktop.desktop');
+    expect(desktop).toContain('Name=Apple Pi');
+    expect(desktop).toContain('StartupWMClass=ApplePi');
+    expect(desktop).toContain('Exec={{exec}} %u');
+    expect(desktop).toContain('MimeType=x-scheme-handler/airepublic-pi');
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
