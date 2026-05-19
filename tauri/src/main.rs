@@ -170,14 +170,19 @@ fn main() {
                 }
             }
 
-            // Register the deep link protocol handler at runtime.
-            // On Linux this creates/updates the .desktop file and registers with xdg-mime.
-            // On Windows this creates the registry entries.
-            // On macOS this is handled at compile time via Info.plist, so register() is a no-op.
-            #[cfg(desktop)]
-            {
+            // Register the deep link protocol handler at runtime where there is no
+            // installer-provided desktop entry. On Linux, .deb/.rpm installs already
+            // provide the handler through `/usr/share/applications/ApplePi.desktop`;
+            // runtime registration would add a second user-level `pi-handler.desktop`.
+            #[cfg(windows)]
+            if let Err(e) = app.deep_link().register("airepublic-pi") {
+                eprintln!("[Pi] Failed to register deep link handler: {}", e);
+            }
+
+            #[cfg(target_os = "linux")]
+            if app.env().appimage.is_some() {
                 if let Err(e) = app.deep_link().register("airepublic-pi") {
-                    eprintln!("[Pi] Failed to register deep link handler: {}", e);
+                    eprintln!("[Pi] Failed to register AppImage deep link handler: {}", e);
                 }
             }
 

@@ -1,6 +1,6 @@
 [package]
 name = "pi"
-version = "0.1.0"
+version = "0.1.1"
 description = "Pi - AI-powered personal assistant agent"
 authors = ["AI Republic"]
 license = "UNLICENSED"

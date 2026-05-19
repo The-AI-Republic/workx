@@ -145,9 +145,11 @@ describe('Tier 3: Desktop user-facing uses "Apple Pi"', () => {
     expect(src).toContain('Apple Pi');
   });
 
-  it('tauri.conf.json productName is "Apple Pi"', () => {
+  it('tauri.conf.json package identity is space-free', () => {
     const conf = JSON.parse(readSource('tauri/tauri.conf.json'));
-    expect(conf.productName).toBe('Apple Pi');
+    expect(conf.productName).toBe('ApplePi');
+    expect(conf.mainBinaryName).toBe('ApplePi');
+    expect(conf.app.windows[0].title).toBe('Apple Pi');
   });
 });
 

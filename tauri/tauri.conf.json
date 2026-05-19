@@ -1,7 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Apple Pi",
-  "version": "0.1.0",
+  "productName": "ApplePi",
+  "mainBinaryName": "ApplePi",
+  "version": "0.1.1",
   "identifier": "com.airepublic.pi",
   "build": {
     "beforeBuildCommand": { "script": "npm run build:desktop && npm run build:desktop-runtime && npm run build:sidecar", "cwd": ".." },
@@ -29,7 +30,11 @@
     "targets": "all",
     "linux": {
       "deb": {
-        "depends": []
+        "depends": [],
+        "desktopTemplate": "templates/linux-desktop.desktop"
+      },
+      "rpm": {
+        "desktopTemplate": "templates/linux-desktop.desktop"
       }
     },
     "macOS": {
