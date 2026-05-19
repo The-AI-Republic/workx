@@ -131,6 +131,10 @@ mod tests {
 }
 
 fn main() {
+    fn is_app_deep_link(url: &str) -> bool {
+        url.starts_with("applepi://") || url.starts_with("airepublic-pi://")
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -145,7 +149,7 @@ fn main() {
             // On Windows/Linux, deep link URLs come as CLI arguments
             // Check if any argument looks like our deep link
             for arg in args {
-                if arg.starts_with("applepi://") {
+                if is_app_deep_link(&arg) {
                     let _ = app.emit("auth-callback", &arg);
 
                     // Bring the window to focus
@@ -175,14 +179,20 @@ fn main() {
             // provide the handler through `/usr/share/applications/ApplePi.desktop`;
             // runtime registration would add a second user-level `pi-handler.desktop`.
             #[cfg(windows)]
-            if let Err(e) = app.deep_link().register("applepi") {
-                eprintln!("[Pi] Failed to register deep link handler: {}", e);
+            {
+                for scheme in ["applepi", "airepublic-pi"] {
+                    if let Err(e) = app.deep_link().register(scheme) {
+                        eprintln!("[Pi] Failed to register {} deep link handler: {}", scheme, e);
+                    }
+                }
             }
 
             #[cfg(target_os = "linux")]
             if app.env().appimage.is_some() {
-                if let Err(e) = app.deep_link().register("applepi") {
-                    eprintln!("[Pi] Failed to register AppImage deep link handler: {}", e);
+                for scheme in ["applepi", "airepublic-pi"] {
+                    if let Err(e) = app.deep_link().register(scheme) {
+                        eprintln!("[Pi] Failed to register AppImage {} deep link handler: {}", scheme, e);
+                    }
                 }
             }
 
@@ -202,7 +212,7 @@ fn main() {
                 app.deep_link().on_open_url(move |event| {
                     for url in event.urls() {
                         let url_str = url.as_str();
-                        if url_str.starts_with("applepi://") {
+                        if is_app_deep_link(url_str) {
                             let _ = handle.emit("auth-callback", url_str);
                             if let Some(window) = handle.get_webview_window("main") {
                                 let _ = window.show();
@@ -239,7 +249,7 @@ fn main() {
                                 continue;
                             }
                             for url in &initial {
-                                if url.starts_with("applepi://") {
+                                if is_app_deep_link(url) {
                                     let _ = handle2.emit("auth-callback", url);
                                     if let Some(window) = handle2.get_webview_window("main") {
                                         let _ = window.show();
@@ -251,7 +261,7 @@ fn main() {
                         }
                         // Final attempt regardless of window state
                         for url in &initial {
-                            if url.starts_with("applepi://") {
+                            if is_app_deep_link(url) {
                                 let _ = handle2.emit("auth-callback", url);
                                 if let Some(window) = handle2.get_webview_window("main") {
                                     let _ = window.show();
