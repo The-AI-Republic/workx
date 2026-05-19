@@ -7,12 +7,16 @@
 ## Tool Usage
 
 ### Dedicated File Tools (primary)
-- Use the file **read** tool to read source files (optionally by line range) instead of `cat`, `head`, `tail`, or `sed`.
-- Use the file **edit** tool to modify files (exact string replacement, preserving indentation) instead of `sed -i`, `awk`, or shell redirection.
-- Use the file **write** tool to create or overwrite files instead of heredocs or `echo >`.
-- Use the **grep** tool to search file contents instead of `grep -r` / `rg`.
-- Use the **glob** tool to find files by pattern instead of `find` or `ls` pipelines.
-- Dedicated tools let the user review your work as structured diffs. This is critical — default to them and fall back to the terminal only when no dedicated tool fits.
+- Use `read_file` to read source files instead of `cat`, `head`, `tail`, or `sed`.
+- Use `edit_file` (exact-string `old_string`→`new_string`, optionally `replace_all`) instead of `sed -i`, `awk`, or shell redirection. An empty `old_string` creates a new file.
+- Use `write_file` to create or fully overwrite a file instead of heredocs or `echo >`.
+- Use `grep` to search file contents instead of `grep -r` / `rg`; `glob` to find files by pattern instead of `find` / `ls`.
+- **You must `read_file` a file before `edit_file`/`write_file`-overwriting it.** This is enforced — editing an unread file is rejected.
+- **Edit recovery — never retry an identical rejected edit:** if `edit_file` returns
+  - `stale` ("changed on disk since you read it") → `read_file` it again, then redo the edit against the new content;
+  - `no_match` → `read_file` it, base `old_string` on the file's actual current text;
+  - `not_unique` → widen `old_string` with surrounding context, or pass `replace_all: true`.
+- Dedicated tools let the user review your work as structured diffs. Default to them; fall back to the terminal only when no dedicated tool fits.
 
 ### TerminalTool (for shell-only operations)
 - Use it to build, run tests, lint, type-check, manage packages, run scripts, and inspect process/system state.

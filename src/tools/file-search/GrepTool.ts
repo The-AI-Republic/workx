@@ -7,7 +7,7 @@
  */
 
 import type { ParameterProperty } from '../BaseTool';
-import { FileSearchTool, paginate } from './FileSearchTool';
+import { FileSearchTool, paginate, coerceLimit, coerceOffset } from './FileSearchTool';
 import type { RipgrepResult } from './ripgrep';
 
 const VCS_EXCLUDES = ['.git', '.hg', '.svn'];
@@ -82,9 +82,8 @@ export class GrepTool extends FileSearchTool {
       : '';
     if (raw.length === 0) return `No matches found.${capNote}`;
 
-    const rawHeadLimit = p.head_limit === undefined ? DEFAULT_HEAD_LIMIT : Number(p.head_limit);
-    const headLimit = Number.isFinite(rawHeadLimit) ? Math.trunc(rawHeadLimit) : DEFAULT_HEAD_LIMIT;
-    const offset = Math.max(0, Math.trunc(Number(p.offset)) || 0);
+    const headLimit = coerceLimit(p.head_limit, DEFAULT_HEAD_LIMIT);
+    const offset = coerceOffset(p.offset);
     const { page, truncated } = paginate(raw, headLimit, offset);
     if (page.length === 0 && offset > 0) {
       return `No results at offset=${offset} (total ${raw.length}). Lower the offset.${capNote}`;
