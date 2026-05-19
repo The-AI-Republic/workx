@@ -165,7 +165,7 @@ describe('planning and web search registration', () => {
   it('skips registration when tool already exists', async () => {
     const registry = makeRegistry();
     registry.getTool.mockImplementation((name: string) => {
-      if (name === 'planning_tool' || name === 'web_search' || name === 'resource_fetch') return {};
+      if (name === 'planning_tool' || name === 'web_search' || name === 'resource_fetch' || name === 'grep' || name === 'glob') return {};
       return undefined;
     });
     await registerServerTools(registry);

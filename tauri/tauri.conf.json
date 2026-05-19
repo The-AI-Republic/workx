@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "identifier": "com.airepublic.pi",
   "build": {
-    "beforeBuildCommand": { "script": "npm run build:desktop && npm run build:desktop-runtime && node scripts/build-sandbox.mjs && npm run build:sidecar", "cwd": ".." },
-    "beforeDevCommand": { "script": "npm run build:desktop-runtime && node scripts/build-sandbox.mjs && npm run build:sidecar && npm run dev:desktop", "cwd": ".." },
+    "beforeBuildCommand": { "script": "npm run build:desktop && npm run build:desktop-runtime && node scripts/build-sandbox.mjs && npm run build:sidecar && npm run build:ripgrep-sidecar", "cwd": ".." },
+    "beforeDevCommand": { "script": "npm run build:desktop-runtime && node scripts/build-sandbox.mjs && npm run build:sidecar && npm run build:ripgrep-sidecar && npm run dev:desktop", "cwd": ".." },
     "devUrl": "http://localhost:5174",
     "frontendDist": "../dist/desktop"
   },
@@ -13,7 +13,7 @@
     "active": true,
     "category": "DeveloperTool",
     "copyright": "",
-    "externalBin": ["binaries/windows-sandbox", "binaries/chrome-devtools-mcp"],
+    "externalBin": ["binaries/windows-sandbox", "binaries/chrome-devtools-mcp", "binaries/rg"],
     "resources": ["../dist/desktop-runtime/**/*"],
     "icon": [
       "icons/32x32.png",

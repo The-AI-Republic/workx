@@ -4,10 +4,12 @@
 mod browser_commands;
 mod commands;
 mod db_storage;
+mod fs_commands;
 mod http_commands;
 mod keychain_commands;
 mod mcp_manager;
 mod oauth_server;
+mod ripgrep_commands;
 mod sandbox;
 mod plugins_commands;
 mod rollout_db;
@@ -372,6 +374,13 @@ fn main() {
             // Terminal command execution
             terminal_commands::terminal_execute,
             terminal_commands::terminal_write_stdin,
+            // Ripgrep-backed code search (grep/glob tools)
+            ripgrep_commands::ripgrep_execute,
+            // Code-mode filesystem commands (read/edit/write tools)
+            fs_commands::fs_stat,
+            fs_commands::fs_read_file,
+            fs_commands::fs_apply_edit,
+            fs_commands::fs_write_if_unchanged,
             // Sandbox commands
             sandbox::status::sandbox_check_status,
             sandbox::status::sandbox_install_runtime,
