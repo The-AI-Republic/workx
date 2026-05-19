@@ -76,13 +76,18 @@ export class GrepTool extends FileSearchTool {
   protected formatResult(result: RipgrepResult, p: Record<string, any>): string {
     const mode: string = p.output_mode ?? 'files_with_matches';
     const raw = result.stdout.split('\n').filter((l) => l.length > 0);
-    if (raw.length === 0) return 'No matches found.';
 
-    const headLimit = p.head_limit === undefined ? DEFAULT_HEAD_LIMIT : Number(p.head_limit);
-    const offset = Number(p.offset) || 0;
+    const capNote = result.truncated
+      ? '\n\n[Search output hit the size cap and is incomplete — narrow the pattern or scope it with a path/glob filter.]'
+      : '';
+    if (raw.length === 0) return `No matches found.${capNote}`;
+
+    const rawHeadLimit = p.head_limit === undefined ? DEFAULT_HEAD_LIMIT : Number(p.head_limit);
+    const headLimit = Number.isFinite(rawHeadLimit) ? Math.trunc(rawHeadLimit) : DEFAULT_HEAD_LIMIT;
+    const offset = Math.max(0, Math.trunc(Number(p.offset)) || 0);
     const { page, truncated } = paginate(raw, headLimit, offset);
     if (page.length === 0 && offset > 0) {
-      return `No results at offset=${offset} (total ${raw.length}). Lower the offset.`;
+      return `No results at offset=${offset} (total ${raw.length}). Lower the offset.${capNote}`;
     }
 
     let header: string;
@@ -94,6 +99,6 @@ export class GrepTool extends FileSearchTool {
     if (truncated) {
       out += `\n\n[Truncated to ${headLimit} of ${raw.length}. Re-run with offset=${offset + headLimit} for more, or narrow the pattern.]`;
     }
-    return out;
+    return out + capNote;
   }
 }

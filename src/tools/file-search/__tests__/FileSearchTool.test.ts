@@ -61,7 +61,7 @@ describe('FileSearchTool.createHandler error mapping', () => {
 
   it('maps exit 2 + stderr to a Search error (capped at 5 lines)', async () => {
     mockedRun.mockResolvedValue({
-      stdout: '', stderr: 'regex parse error\nl2\nl3\nl4\nl5\nl6', exitCode: 2, timedOut: false, source: 'system',
+      stdout: '', stderr: 'regex parse error\nl2\nl3\nl4\nl5\nl6', exitCode: 2, timedOut: false, truncated: false, source: 'system',
     });
     const out = await new ProbeTool().createHandler()({ pattern: 'x' }, ctx());
     expect(out).toMatch(/^Search error: regex parse error/);
@@ -84,17 +84,17 @@ describe('FileSearchTool.createHandler error mapping', () => {
   });
 
   it('formats a normal result via the subclass', async () => {
-    mockedRun.mockResolvedValue({ stdout: 'hit', stderr: '', exitCode: 0, timedOut: false, source: 'system' });
+    mockedRun.mockResolvedValue({ stdout: 'hit', stderr: '', exitCode: 0, timedOut: false, truncated: false, source: 'system' });
     expect(await new ProbeTool().createHandler()({ pattern: 'x' }, ctx())).toBe('OK:hit');
   });
 
   it('exit 2 with blank stderr falls through to formatResult (not an error)', async () => {
-    mockedRun.mockResolvedValue({ stdout: '', stderr: '   ', exitCode: 2, timedOut: false, source: 'system' });
+    mockedRun.mockResolvedValue({ stdout: '', stderr: '   ', exitCode: 2, timedOut: false, truncated: false, source: 'system' });
     expect(await new ProbeTool().createHandler()({ pattern: 'x' }, ctx())).toBe('OK:');
   });
 
   it('no-matches (exit 1, empty stdout) renders the subclass empty case', async () => {
-    mockedRun.mockResolvedValue({ stdout: '', stderr: '', exitCode: 1, timedOut: false, source: 'system' });
+    mockedRun.mockResolvedValue({ stdout: '', stderr: '', exitCode: 1, timedOut: false, truncated: false, source: 'system' });
     expect(await new ProbeTool().createHandler()({ pattern: 'x' }, ctx())).toBe('OK:');
   });
 });

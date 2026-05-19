@@ -40,19 +40,24 @@ export class GlobTool extends FileSearchTool {
 
   protected formatResult(result: RipgrepResult, p: Record<string, any>): string {
     const files = result.stdout.split('\n').filter((l) => l.length > 0);
-    if (files.length === 0) return 'No files found.';
 
-    const limit = p.limit === undefined ? DEFAULT_LIMIT : Number(p.limit);
-    const offset = Number(p.offset) || 0;
+    const capNote = result.truncated
+      ? '\n\n[Search output hit the size cap and is incomplete — use a more specific pattern or a path filter.]'
+      : '';
+    if (files.length === 0) return `No files found.${capNote}`;
+
+    const rawLimit = p.limit === undefined ? DEFAULT_LIMIT : Number(p.limit);
+    const limit = Number.isFinite(rawLimit) ? Math.trunc(rawLimit) : DEFAULT_LIMIT;
+    const offset = Math.max(0, Math.trunc(Number(p.offset)) || 0);
     const { page, truncated } = paginate(files, limit, offset);
     if (page.length === 0 && offset > 0) {
-      return `No files at offset=${offset} (total ${files.length}). Lower the offset.`;
+      return `No files at offset=${offset} (total ${files.length}). Lower the offset.${capNote}`;
     }
 
     let out = `Found ${files.length} file(s):\n${page.join('\n')}`;
     if (truncated) {
       out += `\n\n[Truncated to ${limit} of ${files.length}. Re-run with offset=${offset + limit} or a more specific pattern.]`;
     }
-    return out;
+    return out + capNote;
   }
 }
