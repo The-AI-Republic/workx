@@ -32,6 +32,23 @@ export class FsUnsupportedPlatformError extends Error {
   }
 }
 
+export class FsTimeoutError extends Error {
+  constructor() {
+    super('The filesystem operation timed out.');
+    this.name = 'FsTimeoutError';
+  }
+}
+
+/**
+ * Hard ceiling on a single fs invoke. Reads are already size-gated (≤5 MB)
+ * and edits/writes are bounded by content; this exists so a hung Rust call
+ * (a stalled FUSE/network mount, a wedged command) surfaces a clean error
+ * instead of blocking the tool handler — and the whole turn — forever. The
+ * Rust side is not cancelled (Tauri invoke has no abort); we just stop
+ * waiting on it.
+ */
+const FS_INVOKE_TIMEOUT_MS = 30_000;
+
 function isDesktop(): boolean {
   return typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop';
 }
@@ -39,7 +56,17 @@ function isDesktop(): boolean {
 async function invokeFs<T>(cmd: string, args: Record<string, unknown>): Promise<T> {
   if (!isDesktop()) throw new FsUnsupportedPlatformError();
   const { invoke } = await import('@tauri-apps/api/core');
-  return invoke<T>(cmd, args);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      invoke<T>(cmd, args),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new FsTimeoutError()), FS_INVOKE_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 export const fsExecutor = {

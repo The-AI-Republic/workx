@@ -8,7 +8,7 @@
  */
 
 import type { ParameterProperty } from '../BaseTool';
-import { FileSearchTool, paginate } from './FileSearchTool';
+import { FileSearchTool, paginate, coerceLimit, coerceOffset } from './FileSearchTool';
 import type { RipgrepResult } from './ripgrep';
 
 const DEFAULT_LIMIT = 100;
@@ -42,8 +42,8 @@ export class GlobTool extends FileSearchTool {
     const files = result.stdout.split('\n').filter((l) => l.length > 0);
     if (files.length === 0) return 'No files found.';
 
-    const limit = p.limit === undefined ? DEFAULT_LIMIT : Number(p.limit);
-    const offset = Number(p.offset) || 0;
+    const limit = coerceLimit(p.limit, DEFAULT_LIMIT);
+    const offset = coerceOffset(p.offset);
     const { page, truncated } = paginate(files, limit, offset);
 
     let out = `Found ${files.length} file(s):\n${page.join('\n')}`;

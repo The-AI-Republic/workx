@@ -18,11 +18,18 @@ export const SENSITIVE_DIRS = [
   '.git', '.svn', '.hg', '.vscode', '.idea', '.claude', '.ssh',
 ] as const;
 
-/** Exact dotfile / config basenames that must never be written. */
+/**
+ * Exact sensitive dotfile basenames that must never be written. All are
+ * dotfiles by design (design.md §"bypass-immune safety": VCS/IDE/.claude
+ * dirs + shell-rc / config DOTFILES). A bare `settings.json` is intentionally
+ * NOT here — it's a common, legitimate project filename; the genuinely
+ * sensitive cases (`.vscode/settings.json`, `.claude/settings.json`) are
+ * already hard-denied via SENSITIVE_DIRS.
+ */
 export const SENSITIVE_FILES = [
   '.env', '.npmrc', '.netrc', '.bashrc', '.bash_profile', '.zshrc',
   '.zprofile', '.profile', '.gitconfig', '.gitmodules', '.mcp.json',
-  '.claude.json', 'settings.json',
+  '.claude.json',
 ] as const;
 
 /** True if any path segment is a sensitive dir, or the basename is sensitive
@@ -54,10 +61,16 @@ export function lexicalPathCheck(
 ): PathPolicyResult {
   if (!workspaceRoot || !workspaceRoot.trim()) return { ok: false, reason: 'no_workspace' };
 
-  const root = normalizeSegments(workspaceRoot);
+  const root = normalizeSegments(workspaceRoot).path;
   const isAbs = /^([a-zA-Z]:[\\/]|[\\/])/.test(target);
   const joined = isAbs ? target : `${workspaceRoot}/${target}`;
-  const abs = normalizeSegments(joined);
+  const norm = normalizeSegments(joined);
+
+  // A `..` that pops above the path root is an explicit traversal escape —
+  // reject it directly instead of relying on the containment string-compare
+  // below to happen to catch the flattened result (defense in depth).
+  if (norm.escaped) return { ok: false, reason: 'outside_workspace' };
+  const abs = norm.path;
 
   if (abs !== root && !abs.startsWith(root.endsWith('/') ? root : root + '/')) {
     return { ok: false, reason: 'outside_workspace' };
@@ -66,17 +79,27 @@ export function lexicalPathCheck(
   return { ok: true, abs };
 }
 
-/** Pure lexical normalization: collapse `.`/`..`/duplicate separators to a
- *  forward-slash absolute path. Does NOT touch the filesystem. */
-function normalizeSegments(p: string): string {
+/**
+ * Pure lexical normalization: collapse `.`/`..`/duplicate separators to a
+ * forward-slash absolute path. Does NOT touch the filesystem. `escaped` is
+ * true when a `..` was applied with no parent segment to consume (i.e. the
+ * path tried to traverse above its own root) — the caller treats that as a
+ * containment violation rather than silently flattening it away.
+ */
+function normalizeSegments(p: string): { path: string; escaped: boolean } {
   const winDrive = /^([a-zA-Z]:)[\\/]/.exec(p);
   const prefix = winDrive ? winDrive[1] : '';
   const rest = winDrive ? p.slice(winDrive[1].length) : p;
   const out: string[] = [];
+  let escaped = false;
   for (const seg of rest.split(/[\\/]+/)) {
     if (seg === '' || seg === '.') continue;
-    if (seg === '..') { out.pop(); continue; }
+    if (seg === '..') {
+      if (out.length === 0) { escaped = true; continue; }
+      out.pop();
+      continue;
+    }
     out.push(seg);
   }
-  return `${prefix}/${out.join('/')}`;
+  return { path: `${prefix}/${out.join('/')}`, escaped };
 }

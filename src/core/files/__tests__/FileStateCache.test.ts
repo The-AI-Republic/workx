@@ -7,8 +7,12 @@ describe('normalizeCacheKey', () => {
     expect(normalizeCacheKey('/a//b/./c')).toBe('/a/b/c');
     expect(normalizeCacheKey('\\a\\b')).toBe('/a/b');
   });
-  it('keeps a windows drive prefix', () => {
-    expect(normalizeCacheKey('C:\\a\\..\\b')).toBe('C:/b');
+  it('keeps a windows drive prefix (case-folded)', () => {
+    expect(normalizeCacheKey('C:\\a\\..\\b')).toBe('c:/b');
+  });
+  it('case-folds so read/edit casing differences collide (macOS/Windows)', () => {
+    expect(normalizeCacheKey('/ws/Foo.ts')).toBe(normalizeCacheKey('/ws/foo.ts'));
+    expect(normalizeCacheKey('/WS/SUB/File.TS')).toBe('/ws/sub/file.ts');
   });
 });
 
@@ -18,6 +22,13 @@ describe('FileStateCache', () => {
     c.set('/w/a.ts', { content: 'x', mtimeFloorMs: 10, offset: 1 });
     expect(c.has('/w/./a.ts')).toBe(true);
     expect(c.get('/w/sub/../a.ts')?.content).toBe('x');
+  });
+
+  it('a Read under one casing is found when edited under another', () => {
+    const c = new FileStateCache();
+    c.set('/ws/Components/Button.tsx', { content: 'x', mtimeFloorMs: 5, offset: 1 });
+    expect(c.get('/ws/components/button.tsx')?.content).toBe('x');
+    expect(c.has('/WS/Components/Button.tsx')).toBe(true);
   });
 
   it('R2: read entry has offset set; edit entry undefined', () => {

@@ -87,6 +87,30 @@ describe('read_file', () => {
     expect(e?.offset).toBe(2);
     expect(e?.limit).toBe(2);
   });
+
+  // Contract guard: a range read followed by an edit of an UNCHANGED file
+  // must succeed. The slice is cached, but the Rust freshness check is
+  // `stale ⟺ (mtime changed) AND (full content ≠ cached)`. Unchanged ⇒ mtime
+  // matches ⇒ first conjunct false ⇒ NOT stale. (The slice-vs-full mismatch
+  // only matters under mtime jitter — the intended SC-14 trade-off, not a
+  // bug.) Regression for the PR #228 review "always-stale" concern.
+  it('range read → edit of an unchanged file succeeds (not spuriously stale)', async () => {
+    const cache = new FileStateCache();
+    mockFs.stat.mockResolvedValue({ exists: true, mtimeMs: 7, size: 14 });
+    mockFs.readFile.mockResolvedValue({ contentLf: 'l1\nl2\nl3\nl4\nl5', mtimeMs: 7, size: 14, endings: 'LF', encoding: 'utf8', bom: false });
+    await new ReadFileTool().createHandler()(
+      { path: 'a.ts', offset: 2, limit: 2 }, ctx({ fileStateCache: cache }));
+
+    mockFs.applyEdit.mockResolvedValue({ ok: 'true', newContentLf: 'l2\nL3', mtimeMs: 7, size: 14, endings: 'LF', encoding: 'utf8', bom: false });
+    const out = await new EditFileTool().createHandler()(
+      { path: 'a.ts', old_string: 'l3', new_string: 'L3' }, ctx({ fileStateCache: cache }));
+
+    expect(out).toMatch(/Edited a\.ts/);
+    expect(mockFs.applyEdit).toHaveBeenCalledTimes(1);
+    const sent = mockFs.applyEdit.mock.calls[0][0];
+    expect(sent.expectedMtimeMs).toBe(7);   // the range-read mtime is forwarded
+    expect(sent.expectedContentLf).toBe('l2\nl3'); // the cached slice, unchanged mtime ⇒ Rust won't flag stale
+  });
 });
 
 describe('edit_file', () => {

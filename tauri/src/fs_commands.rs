@@ -21,9 +21,12 @@ use std::time::UNIX_EPOCH;
 
 // Keep byte-identical to pathPolicy.ts SENSITIVE_DIRS / SENSITIVE_FILES.
 const SENSITIVE_DIRS: &[&str] = &[".git", ".svn", ".hg", ".vscode", ".idea", ".claude", ".ssh"];
+// All dotfiles by design. Bare `settings.json` is intentionally excluded
+// (legit project filename); `.vscode/`/`.claude/` SENSITIVE_DIRS still cover
+// the sensitive settings.json locations. Keep in sync with pathPolicy.ts.
 const SENSITIVE_FILES: &[&str] = &[
     ".env", ".npmrc", ".netrc", ".bashrc", ".bash_profile", ".zshrc", ".zprofile",
-    ".profile", ".gitconfig", ".gitmodules", ".mcp.json", ".claude.json", "settings.json",
+    ".profile", ".gitconfig", ".gitmodules", ".mcp.json", ".claude.json",
 ];
 
 #[derive(Serialize)]
@@ -155,7 +158,7 @@ fn deny_msg(reason: &str) -> String {
     match reason {
         "no_workspace" => "No workspace selected; code-mode file tools are disabled.".into(),
         "outside_workspace" => "Path is outside the workspace and cannot be accessed.".into(),
-        "blocked" => "Path is on the protected blocklist (.git/.ssh/.env/settings.json/etc.) and cannot be accessed.".into(),
+        "blocked" => "Path is on the protected blocklist (.git/.ssh/.env/.claude/etc.) and cannot be accessed.".into(),
         _ => reason.into(),
     }
 }

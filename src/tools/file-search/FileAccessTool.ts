@@ -16,36 +16,14 @@ import { createToolDefinition, type ToolDefinition, type ToolHandler, type ToolC
 import { StaticRiskAssessor } from '../../core/approval/assessors/StaticRiskAssessor';
 import { FileWriteRiskAssessor } from '../../core/approval/assessors/FileWriteRiskAssessor';
 import type { IRiskAssessor } from '../../core/approval/types';
-import type { FileStateCache, FileState } from '../../core/files/FileStateCache';
-import { fsExecutor, FsUnsupportedPlatformError } from './fsExecutor';
+import type { FileState } from '../../core/files/FileStateCache';
+import { fsExecutor, FsUnsupportedPlatformError, FsTimeoutError } from './fsExecutor';
 import { lexicalPathCheck } from './pathPolicy';
+import { sessionScope, type SessionScope, NOT_CODE_MODE_MSG, NO_WORKSPACE_MSG } from './sessionScope';
 
 const MAX_READ_BYTES = 5 * 1024 * 1024; // pre-read hard reject (design §4.7)
 const MAX_OUT_LINES = 2000;
 const MAX_OUT_BYTES = 256 * 1024;
-
-interface SessionHandles {
-  workspaceRoot?: string;
-  cache?: FileStateCache;
-  /** Per-session persona mode (§4.2). Undefined on the session-less path. */
-  agentMode?: string;
-}
-
-/** Pull the §4.5-seam handles out of ToolContext.metadata (any may be absent). */
-function handles(context: ToolContext): SessionHandles {
-  const m = context.metadata ?? {};
-  return {
-    workspaceRoot: typeof m.workspaceRoot === 'string' && m.workspaceRoot.trim() ? m.workspaceRoot : undefined,
-    cache: (m.fileStateCache as FileStateCache | undefined) ?? undefined,
-    agentMode: typeof m.agentMode === 'string' ? m.agentMode : undefined,
-  };
-}
-
-const NOT_CODE_MODE_MSG =
-  'The file tools are available in Code mode only. Switch this session to Code mode to read/edit/write project files.';
-
-const NO_WORKSPACE_MSG =
-  'No project folder is selected. Code-mode file tools are disabled until you choose a workspace folder in Apple Pi settings.';
 
 abstract class FileAccessTool {
   abstract readonly name: string;
@@ -53,7 +31,7 @@ abstract class FileAccessTool {
   abstract readonly parameters: Record<string, ParameterProperty>;
   abstract readonly required: string[];
   abstract readonly riskAssessor: IRiskAssessor;
-  protected abstract run(params: Record<string, any>, h: Required<Pick<SessionHandles, 'workspaceRoot'>> & SessionHandles): Promise<string>;
+  protected abstract run(params: Record<string, any>, h: SessionScope & { workspaceRoot: string }): Promise<string>;
 
   toToolDefinition(platforms: Platform[]): ToolDefinition {
     return createToolDefinition(this.name, this.description, this.parameters, {
@@ -65,7 +43,7 @@ abstract class FileAccessTool {
 
   createHandler(): ToolHandler {
     return async (params: Record<string, any>, context: ToolContext): Promise<string> => {
-      const h = handles(context);
+      const h = sessionScope(context);
       // §4.2: code-mode only. Gate by behavior, not registry mutation
       // (consistent with the modes design). Undefined mode ⇒ session-less
       // path ⇒ don't block on mode (workspace gate still applies).
@@ -80,6 +58,9 @@ abstract class FileAccessTool {
         return await this.run(params, { ...h, workspaceRoot: h.workspaceRoot });
       } catch (e) {
         if (e instanceof FsUnsupportedPlatformError) return e.message;
+        if (e instanceof FsTimeoutError) {
+          return `The file operation timed out (the workspace filesystem may be slow or unavailable). Do not retry immediately; tell the user.`;
+        }
         throw e;
       }
     };
@@ -101,7 +82,7 @@ export class ReadFileTool extends FileAccessTool {
   readonly required = ['path'];
   readonly riskAssessor = new StaticRiskAssessor(0); // read-only, auto-approve
 
-  protected async run(params: Record<string, any>, h: SessionHandles & { workspaceRoot: string }): Promise<string> {
+  protected async run(params: Record<string, any>, h: SessionScope & { workspaceRoot: string }): Promise<string> {
     const path = String(params.path);
     const st = await fsExecutor.stat(h.workspaceRoot, path);
     if (!st.exists) return `File not found: ${path}`;
@@ -123,8 +104,11 @@ export class ReadFileTool extends FileAccessTool {
 
     // Populate the freshness cache (R2 — Read entry, offset SET). A FULL read
     // caches the whole file (so the §4.6 jitter fallback can match); a RANGE
-    // read caches only the slice (slice ≠ whole fresh file ⇒ never
-    // jitter-eligible, matching the design's full-read-only fallback / SC-14).
+    // read caches only the slice. NOTE: this does NOT make range-read→edit
+    // "always stale". Rust's rule is `stale ⟺ mtime changed AND full ≠
+    // cached`; for an UNCHANGED file the mtime matches so it is never stale.
+    // The slice only forfeits the mtime-jitter fallback (identical content,
+    // bumped mtime ⇒ re-read) — the intended SC-14 trade-off, not a bug.
     if (h.cache) {
       const entry: FileState = isRange
         ? { content: selected.join('\n'), mtimeFloorMs: r.mtimeMs, offset, limit: limit ?? selected.length }
@@ -166,7 +150,7 @@ export class EditFileTool extends FileAccessTool {
   readonly required = ['path', 'old_string', 'new_string'];
   readonly riskAssessor = new FileWriteRiskAssessor();
 
-  protected async run(params: Record<string, any>, h: SessionHandles & { workspaceRoot: string }): Promise<string> {
+  protected async run(params: Record<string, any>, h: SessionScope & { workspaceRoot: string }): Promise<string> {
     const path = String(params.path);
     const oldString = String(params.old_string ?? '');
     const newString = String(params.new_string ?? '');
@@ -176,6 +160,12 @@ export class EditFileTool extends FileAccessTool {
 
     // Advisory pre-check (R4: authoritative gate is the Rust command).
     if (oldString.length > 0) {
+      // No cache at all (session-less path) ≠ "you didn't read it" — a read
+      // can't populate a cache that doesn't exist, so "read the file first"
+      // would loop the model forever. Distinct, terminal message.
+      if (h.cache === undefined) {
+        return `Cannot edit "${path}": no session file cache is available, so the read-before-edit safety check cannot run. This requires an active Apple Pi desktop session — do not retry.`;
+      }
       if (!entry) return `Read the file first: call read_file("${path}") before editing it.`;
       if (entry.isPartialView) return `The cached view of "${path}" is partial. read_file it (fully) before editing.`;
     }
@@ -212,7 +202,7 @@ export class WriteFileTool extends FileAccessTool {
   readonly required = ['path', 'content'];
   readonly riskAssessor = new FileWriteRiskAssessor();
 
-  protected async run(params: Record<string, any>, h: SessionHandles & { workspaceRoot: string }): Promise<string> {
+  protected async run(params: Record<string, any>, h: SessionScope & { workspaceRoot: string }): Promise<string> {
     const path = String(params.path);
     const content = String(params.content ?? '');
     const key = absKey(h.workspaceRoot, path);
@@ -220,6 +210,9 @@ export class WriteFileTool extends FileAccessTool {
     const entry = h.cache?.get(key);
 
     if (st.exists) {
+      if (h.cache === undefined) {
+        return `Cannot overwrite "${path}": no session file cache is available to verify a prior read. This requires an active Apple Pi desktop session — do not retry.`;
+      }
       if (!entry || entry.isPartialView) {
         return `"${path}" exists. read_file it before overwriting with write_file.`;
       }

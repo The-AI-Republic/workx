@@ -7,11 +7,18 @@ describe('isSensitivePath', () => {
     expect(isSensitivePath('.ssh/id_rsa')).toBe(true);
     expect(isSensitivePath('a/.vscode/x')).toBe(true);
   });
-  it('flags sensitive basenames incl. .env*', () => {
-    expect(isSensitivePath('settings.json')).toBe(true);
+  it('flags sensitive dotfile basenames incl. .env*', () => {
     expect(isSensitivePath('a/b/.env')).toBe(true);
     expect(isSensitivePath('a/.env.local')).toBe(true);
     expect(isSensitivePath('a/.gitconfig')).toBe(true);
+    expect(isSensitivePath('.claude.json')).toBe(true);
+  });
+  it('does NOT flag a bare project settings.json (over-broad fix)', () => {
+    expect(isSensitivePath('settings.json')).toBe(false);
+    expect(isSensitivePath('src/config/settings.json')).toBe(false);
+    // but the genuinely-sensitive locations stay blocked via SENSITIVE_DIRS
+    expect(isSensitivePath('.vscode/settings.json')).toBe(true);
+    expect(isSensitivePath('.claude/settings.json')).toBe(true);
   });
   it('passes ordinary code paths', () => {
     expect(isSensitivePath('src/index.ts')).toBe(false);
@@ -29,6 +36,11 @@ describe('lexicalPathCheck', () => {
   });
   it('`..` escape → outside_workspace', () => {
     expect(lexicalPathCheck('/w', '../etc/passwd')).toEqual({ ok: false, reason: 'outside_workspace' });
+  });
+  it('rejects `..` over-pop explicitly (deep + exact-root traversal)', () => {
+    expect(lexicalPathCheck('/w', '../../../../etc/passwd')).toEqual({ ok: false, reason: 'outside_workspace' });
+    expect(lexicalPathCheck('/w', 'a/../../..')).toEqual({ ok: false, reason: 'outside_workspace' });
+    expect(lexicalPathCheck('/w', 'sub/../sub/ok.ts')).toEqual({ ok: true, abs: '/w/sub/ok.ts' });
   });
   it('absolute path outside root → outside_workspace', () => {
     expect(lexicalPathCheck('/w', '/etc/hosts')).toEqual({ ok: false, reason: 'outside_workspace' });

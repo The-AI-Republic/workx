@@ -37,6 +37,15 @@ const DEFAULT_MAX_BYTES = 25 * 1024 * 1024; // 25 MB (claudy default)
  * unifies separators so `/a/../b`, `/a//b`, `\a\b` collide to one key.
  * Mirrors claudy's `path.normalize` keying (the load-bearing part is that
  * every caller passes an absolute path and the cache normalizes it).
+ *
+ * Case-folded: this feature is desktop-only and desktop's primary targets
+ * (macOS APFS, Windows NTFS) are case-INSENSITIVE — `read_file("Foo.ts")`
+ * then `edit_file("foo.ts")` is the same file and must hit the same entry,
+ * else the read-before-edit gate spuriously rejects a file the model did
+ * read. On case-sensitive Linux, two distinct files differing only by case
+ * collide to one key, but the authoritative Rust layer re-verifies mtime +
+ * content and returns `stale` on mismatch → a safe, self-healing re-read,
+ * never a wrong-file write. (Design review fix; see PR #228 review.)
  */
 export function normalizeCacheKey(absPath: string): string {
   const winDrive = /^([a-zA-Z]:)[\\/]/.exec(absPath);
@@ -45,10 +54,15 @@ export function normalizeCacheKey(absPath: string): string {
   const out: string[] = [];
   for (const seg of rest.split(/[\\/]+/)) {
     if (seg === '' || seg === '.') continue;
+    // Over-pop (`..` past root) is intentionally NOT rejected here — unlike
+    // pathPolicy.lexicalPathCheck, this is only a Map key, never a security
+    // decision. A mis-popped key simply won't match the real file's key; the
+    // authoritative Rust layer re-verifies mtime+content and returns `stale`,
+    // forcing a safe re-read. Jail enforcement lives in pathPolicy/Rust.
     if (seg === '..') { out.pop(); continue; }
     out.push(seg);
   }
-  return `${prefix}/${out.join('/')}`;
+  return `${prefix}/${out.join('/')}`.toLowerCase();
 }
 
 /**

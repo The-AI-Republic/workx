@@ -26,10 +26,24 @@ export interface RipgrepResult {
 export interface RunRipgrepOptions {
   /** Working directory ripgrep runs in (search root). */
   cwd?: string;
+  /**
+   * Workspace jail anchor. Passed so the authoritative layer (Rust on
+   * desktop; a realpath containment check on Node/server) re-verifies that
+   * `cwd` is inside the workspace with symlinks resolved — the JS lexical
+   * pre-check cannot stat/resolve symlinks (R5, defense in depth).
+   */
+  workspaceRoot?: string;
   /** Hard timeout; defaults to 20s (60s effective on slow FS via Rust). */
   timeoutMs?: number;
   /** Max stdout bytes to buffer (server only; desktop is bounded in Rust). */
   maxBuffer?: number;
+}
+
+export class RipgrepOutsideWorkspaceError extends Error {
+  constructor() {
+    super('Search path resolves outside the workspace and was refused.');
+    this.name = 'RipgrepOutsideWorkspaceError';
+  }
 }
 
 export class RipgrepTimeoutError extends Error {
@@ -70,9 +84,9 @@ export async function runRipgrep(
   const mode = getBuildMode();
 
   if (mode === 'desktop') {
-    return runViaTauri(args, opts.cwd, timeoutMs);
+    return runViaTauri(args, opts.cwd, timeoutMs, opts.workspaceRoot);
   }
-  return runViaNode(args, opts.cwd, timeoutMs, opts.maxBuffer ?? DEFAULT_MAX_BUFFER);
+  return runViaNode(args, opts.cwd, timeoutMs, opts.maxBuffer ?? DEFAULT_MAX_BUFFER, opts.workspaceRoot);
 }
 
 /**
@@ -83,7 +97,8 @@ export async function runRipgrep(
 async function runViaTauri(
   args: string[],
   cwd: string | undefined,
-  timeoutMs: number
+  timeoutMs: number,
+  workspaceRoot: string | undefined
 ): Promise<RipgrepResult> {
   const { invoke } = await import('@tauri-apps/api/core');
   try {
@@ -91,6 +106,7 @@ async function runViaTauri(
       args,
       cwd: cwd ?? null,
       timeoutMs,
+      workspaceRoot: workspaceRoot ?? null,
     });
     if (r.timedOut) throw new RipgrepTimeoutError(timeoutMs);
     return r;
@@ -110,9 +126,31 @@ async function runViaNode(
   args: string[],
   cwd: string | undefined,
   timeoutMs: number,
-  maxBuffer: number
+  maxBuffer: number,
+  workspaceRoot: string | undefined
 ): Promise<RipgrepResult> {
   const { execFile } = await import('node:child_process');
+
+  // Authoritative containment for the server/Node path (the Rust jail only
+  // covers desktop). Resolve symlinks on both the workspace and the search
+  // root and require the latter to be inside the former. ripgrep itself does
+  // not follow symlinks (no --follow) and we never pass a positional path, so
+  // a contained cwd cannot be escaped from. Skipped only when no workspace is
+  // anchored (FileSearchTool already refuses that case before calling here).
+  if (workspaceRoot && workspaceRoot.trim()) {
+    const { realpathSync } = await import('node:fs');
+    const { sep } = await import('node:path');
+    try {
+      const realRoot = realpathSync(workspaceRoot);
+      const realCwd = realpathSync(cwd && cwd.trim() ? cwd : workspaceRoot);
+      if (realCwd !== realRoot && !realCwd.startsWith(realRoot.endsWith(sep) ? realRoot : realRoot + sep)) {
+        throw new RipgrepOutsideWorkspaceError();
+      }
+    } catch (e) {
+      if (e instanceof RipgrepOutsideWorkspaceError) throw e;
+      throw new RipgrepOutsideWorkspaceError(); // unresolvable path ⇒ refuse
+    }
+  }
 
   const attempt = (
     bin: string,
@@ -160,8 +198,17 @@ async function runViaNode(
     let rgPath: string;
     try {
       ({ rgPath } = await import('@vscode/ripgrep'));
-    } catch {
-      throw new RipgrepNotFoundError();
+    } catch (impErr) {
+      // Only a genuine module-resolution failure means "ripgrep unavailable".
+      // Any other error (the package is present but its entry throws) must
+      // propagate — masking it as RipgrepNotFoundError sent users to install
+      // ripgrep when ripgrep was not the problem.
+      const code = (impErr as NodeJS.ErrnoException)?.code;
+      const msg = impErr instanceof Error ? impErr.message : String(impErr);
+      if (code === 'ERR_MODULE_NOT_FOUND' || code === 'MODULE_NOT_FOUND' || /cannot find (module|package)/i.test(msg)) {
+        throw new RipgrepNotFoundError();
+      }
+      throw impErr;
     }
     try {
       result = await attempt(rgPath, 'bundled');
