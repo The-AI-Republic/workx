@@ -289,7 +289,7 @@ describe('configSchema', () => {
 
     it('filters by general category', () => {
       const fields = listByCategory('general');
-      expect(fields.length).toBe(3); // uiTheme, theme, language
+      expect(fields.length).toBe(4); // uiTheme, theme, language, defaultMode
       expect(fields.every((f) => f.llm_access.category === 'general')).toBe(true);
     });
 

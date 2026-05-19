@@ -71,6 +71,8 @@ vi.mock('../TurnContext', () => ({
     setUserInstructions: vi.fn(),
     setBaseInstructions: vi.fn(),
     getSessionId: vi.fn(() => 'session-1'),
+    getAgentMode: vi.fn(() => 'general'),
+    setAgentMode: vi.fn(),
   })),
 }));
 
@@ -111,6 +113,7 @@ import { AgentConfig } from '../../config/AgentConfig';
 import { Session } from '../Session';
 import type { Op } from '../protocol/types';
 import type { Event } from '../protocol/events';
+import { loadPrompt } from '../PromptLoader';
 
 // ---------------------------------------------------------------------------
 // Helper: create mock AgentConfig (plain object, not through vi.mock)
@@ -166,11 +169,15 @@ describe('RepublicAgent', () => {
         setBaseInstructions: vi.fn(),
         setModelClient: vi.fn(),
         setSelectedModelKey: vi.fn(),
+        getAgentMode: vi.fn(() => 'general'),
+        setAgentMode: vi.fn(),
       }),
       updateTurnContext: vi.fn(),
       getTabId: vi.fn().mockReturnValue(-1),
       setTabId: vi.fn(),
       getId: vi.fn().mockReturnValue('session-id-1'),
+      getAgentMode: vi.fn().mockReturnValue('general'),
+      setAgentMode: vi.fn(),
       getConversationHistory: vi.fn().mockReturnValue({ items: [] }),
       addPendingInput: vi.fn(),
       spawnTask: vi.fn().mockResolvedValue(undefined),
@@ -180,7 +187,7 @@ describe('RepublicAgent', () => {
       // Track 04: per-task abort path
       abortTask: vi.fn().mockResolvedValue(undefined),
       hasRunningTask: vi.fn().mockReturnValue(false),
-      getRunningTasks: vi.fn().mockReturnValue(new Set()),
+      getRunningTasks: vi.fn().mockReturnValue(new Map()),
       addToHistory: vi.fn(),
       getHistoryEntry: vi.fn(),
       clearHistory: vi.fn(),
@@ -542,6 +549,73 @@ describe('RepublicAgent', () => {
       );
       expect(pathEvent).toBeDefined();
       expect(pathEvent![0].msg.data.path).toBe('conv-123');
+    });
+
+    it('should no-op SetSessionMode when requested mode is already active', async () => {
+      await agent.initialize();
+      vi.mocked(loadPrompt).mockClear();
+      mockSessionInstance.setAgentMode.mockClear();
+
+      const dispatcherSpy = vi.fn();
+      agent.setEventDispatcher(dispatcherSpy);
+
+      await agent.submitOperation({ type: 'SetSessionMode', mode: 'general' });
+      await new Promise(r => setTimeout(r, 0));
+
+      const modeEvent = dispatcherSpy.mock.calls.find(
+        (call: any[]) => call[0]?.msg?.type === 'ModeChanged'
+      );
+      expect(modeEvent?.[0].msg.data).toEqual({
+        sessionId: 'session-id-1',
+        mode: 'general',
+        applied: true,
+      });
+      expect(mockSessionInstance.setAgentMode).not.toHaveBeenCalled();
+      expect(loadPrompt).not.toHaveBeenCalled();
+    });
+
+    it('should defer SetSessionMode while a task is running and apply it on next user input', async () => {
+      await agent.initialize();
+      const turnContext = mockSessionInstance.getTurnContext();
+      vi.mocked(loadPrompt).mockClear();
+      mockSessionInstance.setAgentMode.mockClear();
+      turnContext.setAgentMode.mockClear();
+      turnContext.setBaseInstructions.mockClear();
+
+      const dispatcherSpy = vi.fn();
+      agent.setEventDispatcher(dispatcherSpy);
+
+      mockSessionInstance.getRunningTasks.mockReturnValue(new Map([['task-1', { id: 'task-1' }]]));
+
+      await agent.submitOperation({ type: 'SetSessionMode', mode: 'code' });
+      await new Promise(r => setTimeout(r, 0));
+
+      expect(mockSessionInstance.setAgentMode).not.toHaveBeenCalled();
+      expect(dispatcherSpy.mock.calls.some(
+        (call: any[]) =>
+          call[0]?.msg?.type === 'ModeChanged' &&
+          call[0]?.msg?.data?.mode === 'code' &&
+          call[0]?.msg?.data?.applied === false
+      )).toBe(true);
+
+      mockSessionInstance.getRunningTasks.mockReturnValue(new Map());
+
+      await agent.submitOperation({
+        type: 'UserInput',
+        items: [{ type: 'text', text: 'apply the pending mode' }],
+      });
+      await new Promise(r => setTimeout(r, 0));
+
+      expect(mockSessionInstance.setAgentMode).toHaveBeenCalledWith('code');
+      expect(turnContext.setAgentMode).toHaveBeenCalledWith('code');
+      expect(loadPrompt).toHaveBeenCalledWith('code');
+      expect(turnContext.setBaseInstructions).toHaveBeenCalledWith('base-instructions');
+      expect(dispatcherSpy.mock.calls.some(
+        (call: any[]) =>
+          call[0]?.msg?.type === 'ModeChanged' &&
+          call[0]?.msg?.data?.mode === 'code' &&
+          call[0]?.msg?.data?.applied === true
+      )).toBe(true);
     });
 
     it('should process an AddToHistory op and delegate to engine', async () => {

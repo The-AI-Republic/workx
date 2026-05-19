@@ -3,9 +3,11 @@
 
 mod browser_commands;
 mod commands;
+mod fs_commands;
 mod keychain_commands;
 mod mcp_manager;
 mod oauth_server;
+mod ripgrep_commands;
 mod plugins_commands;
 mod runtime_supervisor;
 mod scheduler_commands;
@@ -359,6 +361,13 @@ fn main() {
             browser_commands::launch_chrome,
             browser_commands::get_chrome_ws_endpoint,
             browser_commands::kill_process,
+            // Ripgrep-backed code search (grep/glob tools)
+            ripgrep_commands::ripgrep_execute,
+            // Code-mode filesystem commands (read/edit/write tools)
+            fs_commands::fs_stat,
+            fs_commands::fs_read_file,
+            fs_commands::fs_apply_edit,
+            fs_commands::fs_write_if_unchanged,
             // Keychain commands
             keychain_commands::keychain_get,
             keychain_commands::keychain_set,

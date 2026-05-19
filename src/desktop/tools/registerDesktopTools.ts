@@ -21,6 +21,7 @@ import { registerResourceFetchTool } from '../../tools/ResourceFetchTool';
 import { MCPManager } from '../../core/mcp/MCPManager';
 import { registerMCPTools } from '../../core/mcp/MCPToolAdapter';
 import { TerminalTool } from './terminal/TerminalTool';
+import { registerFileSearchTools } from '../../tools/file-search/register';
 import { TerminalRiskAssessor } from '../../core/approval/assessors/TerminalRiskAssessor';
 import { McpBrowserRiskAssessor } from '../../core/approval/assessors/McpBrowserRiskAssessor';
 import { StaticRiskAssessor } from '../../core/approval/assessors/StaticRiskAssessor';
@@ -227,4 +228,9 @@ export async function registerDesktopToolsImpl(
       terminalAssessor
     );
   }
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Register ripgrep-backed read-only search tools (grep, glob) — desktop
+  // ──────────────────────────────────────────────────────────────────────
+  await registerFileSearchTools(registry, ['desktop']);
 }

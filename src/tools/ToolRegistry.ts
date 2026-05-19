@@ -36,6 +36,20 @@ import type { ToolExposureProfile, ToolRegistryExposureEntry } from './exposure'
 // desktop/server bundles).
 
 /**
+ * Tools that receive the §4.5 per-session metadata seam (workspaceRoot +
+ * the mutable FileStateCache + agentMode). Keep in sync with the tools
+ * registered by registerFileSearchTools(). Every other tool gets only
+ * { tabId } — the cache must NOT be reachable from arbitrary tool handlers.
+ */
+const FILE_SEAM_TOOLS = new Set<string>([
+  'read_file',
+  'edit_file',
+  'write_file',
+  'grep',
+  'glob',
+]);
+
+/**
  * Interface for event collection (used for testing)
  * The actual EventCollector class is in tests/utils/test-helpers.ts
  */
@@ -563,15 +577,28 @@ export class ToolRegistry {
           }
         : undefined;
 
-      // Create execution context
+      // Create execution context.
+      // The §4.5 seam (workspaceRoot + the live, mutable per-session
+      // FileStateCache + agentMode) is forwarded ONLY to the file/search
+      // tools that consume it. Broadcasting the mutable cache handle to every
+      // MCP/browser/plugin tool would let any tool forge read-before-edit
+      // freshness entries and defeat the advisory edit gate — and would leak
+      // currentUrl/currentDomain that pre-§4.5 tools never received. Every
+      // other tool keeps the historical { tabId }-only metadata.
+      const isFileTool = FILE_SEAM_TOOLS.has(request.toolName);
       const context: ToolContext = {
         sessionId: request.sessionId,
         turnId: request.turnId,
         toolName: request.toolName,
         callId: request.callId,
-        metadata: {
-          tabId: request.tabId, // Pass tabId from request to tool via metadata
-        },
+        metadata: isFileTool
+          ? {
+              ...(request.metadata ?? {}),
+              tabId: request.tabId, // Pass tabId from request to tool via metadata
+            }
+          : {
+              tabId: request.tabId,
+            },
         onProgress: emitProgress,
         signal: request.signal,
         // Track 23: the resource-fetch tool reads this to settle a 402.

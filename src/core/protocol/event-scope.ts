@@ -94,6 +94,9 @@ const EVENT_SCOPE_MAP: Record<string, EventScope> = {
   // Channel-scoped: global/settings events
   'BackgroundEvent': 'channel',
   'StateUpdate': 'channel',
+  // Carries its own sessionId; routed to the right thread by the channel
+  // handler so deferred switches on background sessions still update the UI.
+  'ModeChanged': 'channel',
   'SessionConfigured': 'channel',
   'Notification': 'channel',
   'ShutdownComplete': 'channel',

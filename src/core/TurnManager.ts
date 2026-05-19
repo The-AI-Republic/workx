@@ -199,7 +199,7 @@ export class TurnManager {
     // Falls back to the value cached on TurnContext if reload throws.
     let baseInstructions: string | undefined;
     try {
-      baseInstructions = await loadPrompt();
+      baseInstructions = await loadPrompt(this.turnContext.getAgentMode());
     } catch (err) {
       console.warn('[TurnManager] loadPrompt() failed, reusing cached base instructions:', err);
       baseInstructions = this.turnContext.getBaseInstructions();
@@ -1424,6 +1424,12 @@ export class TurnManager {
           currentUrl,
           currentDomain,
           hookSnapshot,
+          // Per-session handles for the file-access tools (design §4.5). Live
+          // in-process object refs; the session-less tools/index.ts path simply
+          // omits these and the tools degrade gracefully.
+          workspaceRoot: this.session.getWorkspaceRoot(),
+          fileStateCache: this.session.getFileStateCache?.(),
+          agentMode: this.session.getAgentMode?.(), // §4.2: file tools are code-mode only
         },
       };
 

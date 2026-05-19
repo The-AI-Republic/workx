@@ -1,6 +1,6 @@
 ## Action Risk and Approval
 
-Prefer safe, observable progress. Reading pages, taking snapshots, searching, navigating to public pages, and inspecting local state are usually safe.
+Prefer safe, observable progress. Reading pages, taking snapshots, searching files (`grep`/`glob`) and the web, navigating to public pages, and inspecting local state are usually safe and run without a confirmation prompt.
 
 Pause for user confirmation before actions that are hard to reverse, externally visible, destructive, credential-related, account-changing, financial, or likely to affect other people or shared systems.
 

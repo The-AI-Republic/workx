@@ -7,12 +7,14 @@
  */
 
 import type { InputItem, AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSummaryConfig, Event, ResponseItem, ConversationHistory, ReviewDecision } from './protocol/types';
+import { FileStateCache } from './files/FileStateCache';
 import { mapResponseItemToEventMessages } from './events/EventMapping';
 import type { EventMsg } from './protocol/events';
 import { RolloutRecorder, type RolloutItem } from '../storage/rollout';
 import { v4 as uuidv4 } from 'uuid';
 import { resetX402SessionPayments } from './payments/x402/tracker';
 import { TurnContext } from './TurnContext';
+import { type AgentMode, DEFAULT_MODE } from '../prompts/PromptComposer';
 import { AgentConfig } from '../config/AgentConfig';
 import type { SessionTask } from './tasks/SessionTask';
 import type { ToolRegistry } from '../tools/ToolRegistry';
@@ -134,6 +136,10 @@ export class Session {
   // Title generation stage: 0 = not started, 1 = generated at 2 messages, 2 = generated at 5 messages (final)
   private titleGenerationStage: number = 0;
   private initializationPromise: Promise<void> | null = null;
+  // Active agent persona mode. Source of truth for this session; seeded from
+  // preferences.defaultMode at construction, changed at runtime via
+  // RepublicAgent.setSessionMode. Distinct from initialHistory.mode.
+  private agentMode: AgentMode = DEFAULT_MODE;
   /**
    * Fatal initialization error for a non-persistent child/forked session.
    * A forked sub-agent told it inherited the parent conversation must not
@@ -158,6 +164,10 @@ export class Session {
   // detects that and short-circuits persistence, falling back to passthrough.
   private toolResultStore: ToolResultStore | undefined;
   private replacementState: ContentReplacementState | undefined;
+  // Per-session read-before-edit freshness substrate (code mode). One per
+  // Session ⇒ sub-agents (own Session) auto-isolate. Always present (the
+  // map is cheap); only meaningful when the file tools are used.
+  private readonly fileStateCache: FileStateCache = new FileStateCache();
 
   constructor(
     configOrIsPersistent?: AgentConfig | boolean,
@@ -187,6 +197,11 @@ export class Session {
       this.isPersistent = isPersistent ?? true;
     }
 
+    // Seed the persona mode from the global default. New sessions (including
+    // scheduled-job sessions) capture the default at creation time; the active
+    // mode then lives on the session and is changed via SetSessionMode.
+    this.agentMode = this.config?.getConfig().preferences?.defaultMode ?? DEFAULT_MODE;
+
     // Initialize session state
     this.sessionState = new SessionState(); // Pure data state
     this.toolRegistry = toolRegistry ?? null; // Tool registry from RepublicAgent
@@ -215,6 +230,7 @@ export class Session {
     } as any;
     this.turnContext = new TurnContext(dummyClient, {
       sessionId: this.sessionId,
+      agentMode: this.agentMode,
       approvalPolicy: 'on-request',
       sandboxPolicy: { mode: 'workspace-write' },
     });
@@ -1005,12 +1021,48 @@ export class Session {
   }
 
   /**
+   * Get the active agent persona mode for this session.
+   */
+  getAgentMode(): AgentMode {
+    return this.agentMode;
+  }
+
+  /**
+   * Set the active agent persona mode for this session.
+   * RepublicAgent owns recomposing the prompt after this; Session only
+   * holds the value as the per-session source of truth.
+   */
+  setAgentMode(mode: AgentMode): void {
+    this.agentMode = mode;
+  }
+
+  /**
    * Get the tool result store (track 09). May be undefined if no backing store
    * is available for the current platform; callers should treat that as
    * "persistence disabled" and pass tool results through unchanged.
    */
   getToolResultStore(): ToolResultStore | undefined {
     return this.toolResultStore;
+  }
+
+  /**
+   * The user-selected code-mode workspace root (absolute path), or undefined
+   * if none is set. Resolved from preferences.workspaceRoot. The file/search
+   * tools operate inside this directory and use it as the security jail
+   * anchor; undefined ⇒ those tools are disabled (never the app cwd).
+   */
+  getWorkspaceRoot(): string | undefined {
+    const root = this.config?.getConfig().preferences?.workspaceRoot;
+    return root && root.trim() ? root : undefined;
+  }
+
+  /**
+   * The per-session read-before-edit freshness cache (code mode). Populated
+   * by read_file; gated/rewritten by edit_file/write_file. One per Session so
+   * sub-agents are isolated (design R2/SC-10).
+   */
+  getFileStateCache(): FileStateCache {
+    return this.fileStateCache;
   }
 
   /**

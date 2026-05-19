@@ -64,6 +64,16 @@
   on:click={handleSelect}
   on:keydown={handleKeydown}
 >
+  {#if thread.mode === 'code'}
+    <span
+      class="shrink-0 font-mono text-[10px] leading-none px-1 py-0.5 rounded
+        {currentTheme === 'modern'
+          ? 'bg-chat-accent/15 text-chat-accent dark:text-chat-accent-dark'
+          : 'bg-[rgba(34,197,94,0.15)] text-term-bright-green'}"
+      title="Code mode"
+      aria-label="Code mode"
+    >&lt;/&gt;</span>
+  {/if}
   <span class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{displayTitle}</span>
   {#if showClose}
     <button
