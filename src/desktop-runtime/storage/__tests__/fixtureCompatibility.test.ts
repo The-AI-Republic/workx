@@ -191,11 +191,11 @@ describe('Desktop runtime providers — fixture compatibility', () => {
     const adapter = new DesktopRuntimeSQLiteAdapter(storageDbPath);
     await adapter.initialize();
 
-    // Adapter and Provider point at the same file; smoke-test the
-    // scheduler-related collections that route through the adapter.
-    const stateOnce = adapter.getDatabase?.();
-    void stateOnce;
-    await adapter.close?.();
+    // Adapter and Provider point at the same file. The adapter doesn't
+    // expose a database handle to us, but initialize() is what the
+    // scheduler stores call before doing any work — if that succeeds the
+    // schema is compatible.
+    await (adapter as { close?: () => Promise<void> }).close?.();
 
     const after = listAllPaths(configDir);
     expect(after.some((p) => p === 'storage' || p.startsWith(`storage${path.sep}`))).toBe(false);

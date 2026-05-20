@@ -124,16 +124,19 @@
     chatgptOAuthSigningIn = true;
     chatgptOAuthError = '';
     try {
-      const { ChatGPTOAuthService } = await import('@/core/auth/ChatGPTOAuthService');
-
       if (platform.platformName === 'desktop') {
-        const { ChatGPTOAuthDesktopFlow } = await import('@/desktop/auth/ChatGPTOAuthDesktopFlow');
-        const { ChatGPTOAuthDesktopStorage } = await import('@/desktop/auth/ChatGPTOAuthDesktopStorage');
-        const storage = new ChatGPTOAuthDesktopStorage();
-        const oauthService = new ChatGPTOAuthService(storage);
-        const flow = new ChatGPTOAuthDesktopFlow(oauthService);
-        await flow.login();
+        // Track 43: the runtime owns the OAuth callback HTTP server and the
+        // token storage. The UI just asks for the auth URL, opens it, and
+        // awaits completion.
+        const client = await getInitializedUIClient();
+        const { authUrl } = await client.serviceRequest<{ authUrl: string }>(
+          'auth.chatgpt.startLogin',
+        );
+        const { open } = await import('@tauri-apps/plugin-shell');
+        await open(authUrl);
+        await client.serviceRequest('auth.chatgpt.awaitCompletion');
       } else {
+        const { ChatGPTOAuthService } = await import('@/core/auth/ChatGPTOAuthService');
         const { ChatGPTOAuthExtensionFlow } = await import('@/extension/auth/ChatGPTOAuthExtensionFlow');
         const { ChatGPTOAuthExtensionStorage } = await import('@/extension/auth/ChatGPTOAuthExtensionStorage');
         const storage = new ChatGPTOAuthExtensionStorage();
@@ -171,21 +174,29 @@
     }
   }
 
+  /**
+   * Extension-only OAuth service factory. Desktop uses the runtime's
+   * `auth.chatgpt.*` services instead (the runtime owns ChatGPT tokens
+   * after Track 43's cutover).
+   */
   async function getChatGPTOAuthService() {
     const { ChatGPTOAuthService } = await import('@/core/auth/ChatGPTOAuthService');
     if (platform.platformName === 'desktop') {
-      const { ChatGPTOAuthDesktopStorage } = await import('@/desktop/auth/ChatGPTOAuthDesktopStorage');
-      return new ChatGPTOAuthService(new ChatGPTOAuthDesktopStorage());
-    } else {
-      const { ChatGPTOAuthExtensionStorage } = await import('@/extension/auth/ChatGPTOAuthExtensionStorage');
-      return new ChatGPTOAuthService(new ChatGPTOAuthExtensionStorage());
+      throw new Error('Desktop ChatGPT OAuth runs in the runtime; call auth.chatgpt.* services instead');
     }
+    const { ChatGPTOAuthExtensionStorage } = await import('@/extension/auth/ChatGPTOAuthExtensionStorage');
+    return new ChatGPTOAuthService(new ChatGPTOAuthExtensionStorage());
   }
 
   async function handleChatGPTDisconnect() {
     try {
-      const oauthService = await getChatGPTOAuthService();
-      await oauthService.logout();
+      if (platform.platformName === 'desktop') {
+        const client = await getInitializedUIClient();
+        await client.serviceRequest('auth.chatgpt.logout');
+      } else {
+        const oauthService = await getChatGPTOAuthService();
+        await oauthService.logout();
+      }
       chatgptOAuthConnected = false;
 
       // Revert authMethod to api_key
@@ -209,6 +220,14 @@
 
   async function checkChatGPTOAuthStatus() {
     try {
+      if (platform.platformName === 'desktop') {
+        const client = await getInitializedUIClient();
+        const { connected } = await client.serviceRequest<{ connected: boolean }>(
+          'auth.chatgpt.isConnected',
+        );
+        chatgptOAuthConnected = connected;
+        return;
+      }
       const oauthService = await getChatGPTOAuthService();
       const isAuth = await oauthService.isAuthenticated();
       chatgptOAuthConnected = isAuth;

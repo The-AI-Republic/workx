@@ -54,7 +54,7 @@ describe('StdioFrameCarrier (hardening)', () => {
   it('preserves 0x0a bytes inside a JSON payload (length-prefix is authoritative)', async () => {
     const { input, carrier } = makeCarrier();
     const frames: Array<{ event: { msg: { text: string } } }> = [];
-    carrier.onFrame((f) => frames.push(f as { event: { msg: { text: string } } }));
+    carrier.onFrame((f) => frames.push(f as unknown as { event: { msg: { text: string } } }));
     carrier.start();
 
     const payload = { type: 'event', event: { msg: { text: 'line one\nline two\nline three' } } };
@@ -166,7 +166,7 @@ describe('StdioFrameCarrier (hardening)', () => {
     const { input, carrier } = makeCarrier();
     const frames: Array<{ pad: string }> = [];
     const errors: unknown[] = [];
-    carrier.onFrame((f) => frames.push(f as { pad: string }));
+    carrier.onFrame((f) => frames.push(f as unknown as { pad: string }));
     carrier.on('error', (e) => errors.push(e));
     carrier.start();
 

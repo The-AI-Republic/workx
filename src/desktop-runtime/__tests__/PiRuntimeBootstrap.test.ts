@@ -36,10 +36,22 @@ vi.mock('../host', () => ({
 
 import { PiRuntimeBootstrap } from '../PiRuntimeBootstrap';
 
-class FakeChannel implements ChannelAdapter {
-  sendOp = vi.fn();
-  onEvent = vi.fn(() => () => undefined);
-  destroy = vi.fn();
+/**
+ * Skeletal stand-in for ChannelAdapter — only identity is asserted by these
+ * tests, since the bootstrap forwards the channel through to ServerAgentBootstrap
+ * (which is itself mocked). Real adapters live in src/server/channels and
+ * src/desktop-runtime/channels.
+ */
+function makeFakeChannel(): ChannelAdapter {
+  return {
+    channelId: 'fake-channel',
+    channelType: 'tauri' as never,
+    capabilities: {} as never,
+    initialize: vi.fn(async () => undefined),
+    shutdown: vi.fn(async () => undefined),
+    sendEvent: vi.fn(async () => undefined),
+    onSubmission: vi.fn(),
+  } as unknown as ChannelAdapter;
 }
 
 beforeEach(() => {
@@ -52,7 +64,7 @@ afterEach(() => {
 
 describe('PiRuntimeBootstrap', () => {
   it('forwards profile="desktop-runtime", host.configDir as dataDir, and the channel to ServerAgentBootstrap', () => {
-    const channel = new FakeChannel();
+    const channel = makeFakeChannel();
     new PiRuntimeBootstrap({ channel });
 
     expect(recordedOptions).toHaveLength(1);
@@ -64,7 +76,7 @@ describe('PiRuntimeBootstrap', () => {
   });
 
   it('honors an explicit dataDirOverride for tests, but cannot downgrade the profile', () => {
-    const channel = new FakeChannel();
+    const channel = makeFakeChannel();
     new PiRuntimeBootstrap({ channel, dataDirOverride: '/tmp/override' });
 
     expect(recordedOptions[0]?.profile).toBe('desktop-runtime');
