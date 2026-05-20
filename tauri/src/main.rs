@@ -1,17 +1,11 @@
 // Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod browser_commands;
 mod commands;
-mod fs_commands;
 mod keychain_commands;
-mod mcp_manager;
-mod oauth_server;
 mod ripgrep_commands;
-mod plugins_commands;
 mod runtime_supervisor;
 mod scheduler_commands;
-mod skills_commands;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -232,11 +226,17 @@ fn main() {
                     std::thread::spawn(move || {
                         // Retry emitting the deep link until the frontend has mounted
                         // its auth-callback listener. The webview must be fully loaded
-                        // before it can receive events.
-                        let delays = [500, 1000, 1500, 2000, 3000];
+                        // before it can receive events. On a cold start the runtime
+                        // sidecar is also spawning in parallel; on slow machines a
+                        // larger window catches deeplinks that would otherwise miss.
+                        // Total budget ~16s with the final unconditional fallback at
+                        // the end. Stops early once the window is visible AND a
+                        // matching URL was emitted.
+                        let delays = [
+                            500, 1000, 1500, 2000, 3000, 4000, 5000,
+                        ];
                         for delay_ms in delays {
                             std::thread::sleep(Duration::from_millis(delay_ms));
-                            // Check if the main window is ready (visible = frontend loaded)
                             let window_ready = handle2
                                 .get_webview_window("main")
                                 .and_then(|w| w.is_visible().ok())
@@ -255,7 +255,9 @@ fn main() {
                                 }
                             }
                         }
-                        // Final attempt regardless of window state
+                        // Final attempt regardless of window state — the WebView
+                        // may have its listener attached even if `is_visible()`
+                        // is still false (autostart minimized to tray, etc.).
                         for url in &initial {
                             if is_app_deep_link(url) {
                                 let _ = handle2.emit("auth-callback", url);
@@ -346,49 +348,19 @@ fn main() {
             runtime_supervisor::runtime_start,
             runtime_supervisor::runtime_agent_send,
             runtime_supervisor::runtime_shutdown,
-            mcp_manager::mcp_connect,
-            mcp_manager::mcp_list_tools,
-            mcp_manager::mcp_call_tool,
-            mcp_manager::mcp_list_resources,
-            mcp_manager::mcp_read_resource,
-            mcp_manager::mcp_disconnect,
-            mcp_manager::get_browser_mcp_sidecar_path,
-            // Browser detection and CDP commands
-            browser_commands::find_running_browsers,
-            browser_commands::file_exists,
-            browser_commands::get_home_dir,
-            browser_commands::is_port_available,
-            browser_commands::launch_chrome,
-            browser_commands::get_chrome_ws_endpoint,
-            browser_commands::kill_process,
             // Ripgrep-backed code search (grep/glob tools)
             ripgrep_commands::ripgrep_execute,
-            // Code-mode filesystem commands (read/edit/write tools)
-            fs_commands::fs_stat,
-            fs_commands::fs_read_file,
-            fs_commands::fs_apply_edit,
-            fs_commands::fs_write_if_unchanged,
-            // Keychain commands
+            // Keychain: ONLY exposed to the runtime sidecar via the
+            // keychain.* control frames in runtime_supervisor.rs. These
+            // Tauri commands are kept registered so the keychain crate's
+            // permissions are wired (Tauri 2 capability system), but the
+            // WebView does not invoke them after Track 43's cutover —
+            // ControlFrameCredentialStore is the only credential entry point.
             keychain_commands::keychain_get,
             keychain_commands::keychain_set,
             keychain_commands::keychain_delete,
             keychain_commands::keychain_list_accounts,
-            // OAuth callback server
-            oauth_server::start_oauth_callback_server,
-            // Skills filesystem commands
-            skills_commands::skills_ensure_dir,
-            skills_commands::skills_list_dirs,
-            skills_commands::skills_read_file,
-            skills_commands::skills_write_file,
-            skills_commands::skills_remove_dir,
-            plugins_commands::plugins_ensure_dir,
-            plugins_commands::plugins_list_entries,
-            plugins_commands::plugins_read_file,
-            plugins_commands::plugins_write_file,
-            plugins_commands::plugins_remove_dir,
-            plugins_commands::plugins_rename,
-            plugins_commands::plugins_path_exists,
-            // Scheduler OS-level job commands
+            // Scheduler OS-level job commands (OS-trust boundary kept in Rust).
             scheduler_commands::scheduler_register_os_job,
             scheduler_commands::scheduler_remove_os_job,
             scheduler_commands::scheduler_list_os_jobs,

@@ -1,11 +1,16 @@
 /**
  * FileSystemExecutor — the single abstraction over the code-mode fs commands.
  *
- * Sibling of RipgrepExecutor (./ripgrep.ts). Desktop only: the WebView cannot
- * touch the filesystem, so every op is a Rust `invoke`. The Rust side is the
- * AUTHORITATIVE jail + freshness boundary (design §4.6/§4.8, R1/R3/R4/R5/R6);
- * this module is a thin typed transport. Non-desktop builds reject clearly —
- * code mode file tools are desktop-only in v1.
+ * Sibling of RipgrepExecutor (./ripgrep.ts).
+ *
+ * After Track 43's cutover the agent (and these tools) runs inside the
+ * runtime sidecar — a Node process — so the executor talks to the local
+ * filesystem through Node `fs/promises` directly. The jail + freshness
+ * contract (design §4.6/§4.8, R1/R3/R4/R5/R6) moved with it into
+ * src/server/tools/fs/NodeFsExecutor.ts; this module is the typed entry
+ * point both desktop UI _and_ runtime can import (the desktop UI branch
+ * is intentionally unreachable post-cutover — code-mode tools run in the
+ * agent, not the WebView).
  */
 
 export interface FileMeta {
@@ -49,17 +54,22 @@ export class FsTimeoutError extends Error {
  */
 const FS_INVOKE_TIMEOUT_MS = 30_000;
 
-function isDesktop(): boolean {
-  return typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop';
+function isServer(): boolean {
+  return typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'server';
 }
 
-async function invokeFs<T>(cmd: string, args: Record<string, unknown>): Promise<T> {
-  if (!isDesktop()) throw new FsUnsupportedPlatformError();
-  const { invoke } = await import('@tauri-apps/api/core');
+/**
+ * Wrap a NodeFsExecutor call with the shared 30s ceiling. The Rust path
+ * needed this against a hung Tauri invoke; the Node path needs it against
+ * a hung filesystem (stalled FUSE/network mount, wedged syscall) — the
+ * call is not cancelled (Node has no cross-call abort either), we just
+ * stop waiting on it.
+ */
+async function withTimeout<T>(p: Promise<T>): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
-      invoke<T>(cmd, args),
+      p,
       new Promise<never>((_, reject) => {
         timer = setTimeout(() => reject(new FsTimeoutError()), FS_INVOKE_TIMEOUT_MS);
       }),
@@ -70,13 +80,17 @@ async function invokeFs<T>(cmd: string, args: Record<string, unknown>): Promise<
 }
 
 export const fsExecutor = {
-  stat(workspaceRoot: string, path: string): Promise<StatOutcome> {
-    return invokeFs<StatOutcome>('fs_stat', { workspaceRoot, path });
+  async stat(workspaceRoot: string, path: string): Promise<StatOutcome> {
+    if (!isServer()) throw new FsUnsupportedPlatformError();
+    const node = await import('@/server/tools/fs/NodeFsExecutor');
+    return withTimeout(node.stat(workspaceRoot, path));
   },
-  readFile(workspaceRoot: string, path: string): Promise<ReadOutcome> {
-    return invokeFs<ReadOutcome>('fs_read_file', { workspaceRoot, path });
+  async readFile(workspaceRoot: string, path: string): Promise<ReadOutcome> {
+    if (!isServer()) throw new FsUnsupportedPlatformError();
+    const node = await import('@/server/tools/fs/NodeFsExecutor');
+    return withTimeout(node.readFile(workspaceRoot, path));
   },
-  applyEdit(args: {
+  async applyEdit(args: {
     workspaceRoot: string;
     path: string;
     oldString: string;
@@ -85,17 +99,11 @@ export const fsExecutor = {
     expectedMtimeMs: number;
     expectedContentLf: string;
   }): Promise<EditOutcome> {
-    return invokeFs<EditOutcome>('fs_apply_edit', {
-      workspaceRoot: args.workspaceRoot,
-      path: args.path,
-      oldString: args.oldString,
-      newString: args.newString,
-      replaceAll: args.replaceAll,
-      expectedMtimeMs: args.expectedMtimeMs,
-      expectedContentLf: args.expectedContentLf,
-    });
+    if (!isServer()) throw new FsUnsupportedPlatformError();
+    const node = await import('@/server/tools/fs/NodeFsExecutor');
+    return withTimeout(node.applyEdit(args));
   },
-  writeIfUnchanged(args: {
+  async writeIfUnchanged(args: {
     workspaceRoot: string;
     path: string;
     content: string;
@@ -103,13 +111,8 @@ export const fsExecutor = {
     endings: 'LF' | 'CRLF';
     bom: boolean;
   }): Promise<WriteOutcome> {
-    return invokeFs<WriteOutcome>('fs_write_if_unchanged', {
-      workspaceRoot: args.workspaceRoot,
-      path: args.path,
-      content: args.content,
-      expectedMtimeMs: args.expectedMtimeMs,
-      endings: args.endings,
-      bom: args.bom,
-    });
+    if (!isServer()) throw new FsUnsupportedPlatformError();
+    const node = await import('@/server/tools/fs/NodeFsExecutor');
+    return withTimeout(node.writeIfUnchanged(args));
   },
 };

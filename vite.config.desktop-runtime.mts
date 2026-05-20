@@ -23,8 +23,17 @@ export default defineConfig({
     target: 'node22',
   },
   ssr: {
+    // Track 43 packaging: bundle EVERY pure-JS dep into the runtime so the
+    // packaged sidecar can run from an isolated resource directory without
+    // a full node_modules tree alongside it. Native addons (.node files)
+    // and packages that ship platform-specific binaries stay external —
+    // they're bundled separately by `scripts/build-desktop-runtime-sidecar.mjs`
+    // alongside their minimal runtime closure (bindings, file-uri-to-path,
+    // …). The default Vite SSR behavior — externalize everything in
+    // package.json `dependencies` — would leave zod/MCP SDK/OpenAI SDK/etc.
+    // as bare imports that the packaged sidecar cannot resolve.
     external: ['better-sqlite3', 'fsevents', 'sqlite-vec'],
-    noExternal: [/^@\//],
+    noExternal: true,
   },
   resolve: {
     alias: {

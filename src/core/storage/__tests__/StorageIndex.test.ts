@@ -15,7 +15,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mock the dynamic imports used by the factory functions
 const mockIndexedDBStorageProvider = vi.fn();
 const mockChromeCredentialStore = vi.fn();
-const mockKeytarCredentialStore = vi.fn();
 const mockChromeConfigStorage = vi.fn();
 const mockRuntimeRelayConfigStorageProvider = vi.fn();
 
@@ -27,9 +26,9 @@ vi.mock('@/extension/storage/ChromeCredentialStore', () => ({
   ChromeCredentialStore: mockChromeCredentialStore,
 }));
 
-vi.mock('@/desktop/storage/KeytarCredentialStore', () => ({
-  KeytarCredentialStore: mockKeytarCredentialStore,
-}));
+// Track 43: KeytarCredentialStore is no longer a desktop dependency — the
+// WebView is forbidden from opening the OS keychain. The desktop branch of
+// `createCredentialStore` throws instead of constructing one.
 
 vi.mock('@/extension/storage/ChromeConfigStorage', () => ({
   ChromeConfigStorage: mockChromeConfigStorage,
@@ -44,7 +43,6 @@ describe('Storage Index Module', () => {
     vi.resetModules();
     mockIndexedDBStorageProvider.mockClear();
     mockChromeCredentialStore.mockClear();
-    mockKeytarCredentialStore.mockClear();
     mockChromeConfigStorage.mockClear();
     mockRuntimeRelayConfigStorageProvider.mockClear();
   });

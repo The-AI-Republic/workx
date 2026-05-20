@@ -29,7 +29,8 @@ png = "0.17"
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
 directories = "5"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-native-roots"] }
-rmcp = { version = "0.15", features = ["client", "transport-child-process"] }
+# rmcp removed: the deleted mcp_manager.rs was its only user; MCP runs in the
+# runtime sidecar now via the NodeMCPBridge.
 which = "7"
 tempfile = "3"
 log = "0.4"

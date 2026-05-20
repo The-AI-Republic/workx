@@ -55,64 +55,94 @@
 
   async function openLoginPage() {
     if (platform.platformName === 'desktop') {
-      // Desktop mode: use DesktopAuthService with deep link OAuth
+      // Desktop mode: open the browser to /login, await the auth-callback
+      // deeplink (Rust → WebView event), and forward both tokens to the
+      // runtime via `auth.completeLogin`. The WebView never touches the OS
+      // keychain after the Track 43 cutover — the runtime owns credentials.
       isLoggingIn = true;
-
-      // Create a cancellation mechanism
       let isCancelled = false;
+      let rejectPending: ((err: Error) => void) | null = null;
+
       cancelLogin = () => {
         isCancelled = true;
         isLoggingIn = false;
         cancelLogin = null;
-        // Reject the pending login promise so the deep link callback cannot
-        // silently authenticate the user after they cancelled.
-        authService.cancelLogin();
+        rejectPending?.(new Error('Login cancelled'));
         console.log('[UserLoginStatus] Login cancelled by user');
       };
 
       try {
-        const { getDesktopAuthService } = await import('@/desktop/auth/DesktopAuthService');
-        const authService = getDesktopAuthService(HOME_PAGE_BASE_URL);
-        await authService.initialize();
-        const session = await authService.login();
+        const [{ open }, { listen }, { getInitializedUIClient }] = await Promise.all([
+          import('@tauri-apps/plugin-shell'),
+          import('@tauri-apps/api/event'),
+          import('@/core/messaging'),
+        ]);
 
-        // Check if cancelled while waiting
+        // 1. Open the browser to the login URL with our deeplink callback.
+        const loginUrl = new URL('/login', HOME_PAGE_BASE_URL);
+        loginUrl.searchParams.set('redirect_url', 'applepi://auth/callback');
+        loginUrl.searchParams.set('desktop_login_ts', Date.now().toString());
+
+        // 2. Subscribe to the auth-callback event from Rust before opening the
+        // browser — Rust emits it as soon as the OS hands us the URL.
+        const tokensPromise = new Promise<{ accessToken: string; refreshToken: string }>(
+          (resolve, reject) => {
+            rejectPending = reject;
+            const timeoutId = setTimeout(() => reject(new Error('Login timed out')), 300_000);
+            listen<string>('auth-callback', (event) => {
+              try {
+                const urlObj = new URL(event.payload);
+                const accessToken = urlObj.searchParams.get('access_token');
+                const refreshToken = urlObj.searchParams.get('refresh_token');
+                if (!accessToken || !refreshToken) {
+                  reject(new Error(urlObj.searchParams.get('error') ?? 'Missing tokens'));
+                  return;
+                }
+                clearTimeout(timeoutId);
+                resolve({ accessToken, refreshToken });
+              } catch (err) {
+                reject(err instanceof Error ? err : new Error(String(err)));
+              }
+            }).then((unlisten) => {
+              // Detach the listener once the promise settles so a later
+              // unrelated deeplink does not silently re-trigger login UI.
+              tokensPromise.finally(() => unlisten()).catch(() => undefined);
+            });
+          },
+        );
+
+        await open(loginUrl.toString());
+        const tokens = await tokensPromise;
         if (isCancelled) return;
 
-        // Fetch user profile using same API as extension to get accurate userType
-        const accessToken = await authService.getAccessToken();
-        const profile = accessToken ? await fetchUserProfile(accessToken) : null;
+        // 3. Hand tokens to the runtime. The runtime persists them in the
+        // keychain (via the Rust keychain control-frame bridge), creates a
+        // backend-routing AuthManager whose tokenGetter reads from that same
+        // credential store, and pushes the new AuthManager into every
+        // active session's model client.
+        const client = await getInitializedUIClient();
+        const completion = await client.serviceRequest<{ success: boolean; user: any }>(
+          'auth.completeLogin',
+          { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken, backendBaseUrl: LLM_API_URL },
+        );
+        const accessToken = tokens.accessToken;
+        if (isCancelled) return;
 
-        // Update user store - prefer profile data (has accurate userType)
+        // 4. Update the UI userStore from the runtime response, with a local
+        // profile fetch fallback if the runtime didn't fetch one for us.
+        let profile: any = completion?.user ?? null;
+        if (!profile) {
+          profile = await fetchUserProfile(accessToken);
+        }
         if (profile) {
           userStore.setUser({
-            name: profile.name || session.given_name || session.name || null,
-            email: profile.email || session.email,
-            avatar: profile.avatar || session.picture || null,
-            userType: profile.userType,
-          });
-        } else {
-          // Fallback to session data
-          userStore.setUser({
-            name: session.given_name || session.name || null,
-            email: session.email,
-            avatar: session.picture || null,
-            userType: (session.subscription as any)?.plan_id ?? 0,
+            name: profile.name ?? null,
+            email: profile.email,
+            avatar: profile.avatar ?? null,
+            userType: profile.userType ?? 0,
           });
         }
-
-        // Tell the desktop runtime to switch to backend routing mode.
-        try {
-          const { getInitializedUIClient } = await import('@/core/messaging');
-          await (await getInitializedUIClient()).serviceRequest('agent.initAuth', {
-            useOwnApiKey: false,
-            backendBaseUrl: LLM_API_URL,
-            tokenSource: 'desktop-keychain',
-          });
-          console.log('[UserLoginStatus] Desktop auth mode set to backend routing');
-        } catch (authError) {
-          console.warn('[UserLoginStatus] Failed to set desktop auth mode:', authError);
-        }
+        console.log('[UserLoginStatus] Desktop auth completed via runtime');
       } catch (error) {
         if (!isCancelled) {
           console.error('[UserLoginStatus] Desktop login failed:', error);
@@ -122,6 +152,7 @@
           isLoggingIn = false;
           cancelLogin = null;
         }
+        rejectPending = null;
       }
     } else {
       // Extension mode: open login page in a new tab

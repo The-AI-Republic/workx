@@ -45,7 +45,17 @@ async function init() {
     // Continue - will fall back to in-memory storage
   }
 
-  // 1. Start the sidecar runtime relay. The relay transport asks Rust to
+  // 1. Subscribe to runtime lifecycle events before starting the sidecar so
+  // the very first `runtime:ready` / `runtime:reconnecting` event flips the
+  // UI status indicator (no race with relay startup).
+  try {
+    const { initializeRuntimeStatusStore } = await import('@/webfront/stores/runtimeStatusStore');
+    await initializeRuntimeStatusStore();
+  } catch (error) {
+    console.warn('[Desktop] Runtime status store not initialized:', error);
+  }
+
+  // 1a. Start the sidecar runtime relay. The relay transport asks Rust to
   // supervise the Node runtime and routes all agent/channel traffic through it.
   try {
     await getInitializedUIClient();
@@ -53,6 +63,35 @@ async function init() {
   } catch (error) {
     console.error('[Desktop] Failed to initialize sidecar runtime relay:', error);
     // Continue anyway - the app will show connection/error state
+  }
+
+  // 1b. Route deeplinks from Rust to runtime services. The Rust supervisor
+  // emits every `applepi://...` URL as an `auth-callback` event; the WebView
+  // is the only listener — it parses and routes by path.
+  try {
+    const { listen } = await import('@tauri-apps/api/event');
+    await listen<string>('auth-callback', async (event) => {
+      try {
+        const url = new URL(event.payload);
+        if (url.host === 'scheduler' && url.pathname === '/trigger') {
+          const jobId = url.searchParams.get('jobId');
+          if (!jobId) {
+            console.warn('[Desktop] Scheduler deeplink missing jobId:', event.payload);
+            return;
+          }
+          const client = await getInitializedUIClient();
+          await client.serviceRequest('scheduler.trigger', { jobId });
+          console.log(`[Desktop] Scheduler deeplink routed to runtime for job ${jobId}`);
+        }
+        // /auth/callback deeplinks are handled by UserLoginStatus.svelte's
+        // own listener (it's the one expecting the login completion); routing
+        // here would race that listener.
+      } catch (err) {
+        console.warn('[Desktop] Failed to route deeplink:', err);
+      }
+    });
+  } catch (error) {
+    console.warn('[Desktop] Deeplink router not registered:', error);
   }
 
   // 2. Initialize desktop services (tray, hotkeys)

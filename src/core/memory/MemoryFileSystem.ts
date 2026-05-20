@@ -15,7 +15,11 @@ export async function createMemoryFileSystem(): Promise<{
   memoryDir: string;
 }> {
   if (__BUILD_MODE__ === 'desktop') {
-    return createTauriFileSystem();
+    // Track 43: the agent (and memory FS) runs inside the Node runtime
+    // sidecar after the cutover. The desktop WebView never calls this; the
+    // legacy Tauri branch that invoked the deleted skills_* commands has
+    // been removed. Any post-cutover caller in the WebView is a bug.
+    throw new Error('Memory filesystem is owned by the runtime sidecar; the WebView must not call createMemoryFileSystem()');
   }
   if (__BUILD_MODE__ === 'server') {
     return createNodeFileSystem();
@@ -23,40 +27,6 @@ export async function createMemoryFileSystem(): Promise<{
   throw new Error(
     `Memory filesystem not supported in build mode: ${__BUILD_MODE__}`
   );
-}
-
-async function createTauriFileSystem(): Promise<{
-  fs: FileSystem;
-  memoryDir: string;
-}> {
-  const { invoke } = await import('@tauri-apps/api/core');
-  const { homeDir, join } = await import('@tauri-apps/api/path');
-
-  const home = await homeDir();
-  const memoryDir = await join(home, '.airepublic-pi', 'memory');
-
-  const fs: FileSystem = {
-    readFile: async (path: string) => {
-      const content = await invoke<string | null>('skills_read_file', { path });
-      return content ?? '';
-    },
-    writeFile: async (path: string, content: string) => {
-      await invoke('skills_write_file', { path, content });
-    },
-    ensureDir: async (path: string) => {
-      await invoke('skills_ensure_dir', { path });
-    },
-    exists: async (path: string) => {
-      try {
-        const content = await invoke<string | null>('skills_read_file', { path });
-        return content !== null;
-      } catch {
-        return false;
-      }
-    },
-  };
-
-  return { fs, memoryDir };
 }
 
 async function createNodeFileSystem(): Promise<{

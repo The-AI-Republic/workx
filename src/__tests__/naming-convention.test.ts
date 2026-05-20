@@ -72,9 +72,12 @@ describe('Tier 1: Shared/Core uses "applepi"', () => {
     expect(src).toMatch(/CREDENTIAL_SERVICE\s*=\s*['"]applepi['"]/);
   });
 
-  it('KeytarCredentialStore service prefix is "applepi"', () => {
-    const src = readSource('src/desktop/storage/KeytarCredentialStore.ts');
-    expect(src).toMatch(/SERVICE_PREFIX\s*=\s*['"]applepi['"]/);
+  it('Runtime credential store service prefix defaults to "applepi"', () => {
+    // Track 43: KeytarCredentialStore (WebView) was deleted. The keychain
+    // service prefix now lives on the runtime side, in the
+    // ControlFrameCredentialStore default and in the Rust handshake.
+    const src = readSource('src/desktop-runtime/credentials/ControlFrameCredentialStore.ts');
+    expect(src).toMatch(/servicePrefix\s*=\s*['"]applepi['"]/);
   });
 
   it('Desktop hotkeys use "applepi:" event prefix', () => {
@@ -170,7 +173,7 @@ describe('Guard-rails: no cross-tier naming leaks', () => {
   // (excluding imports, comments, and the AgentType union which intentionally includes both)
   const coreFiles: [string, string][] = [
     ['src/config/AgentConfig.ts', 'AgentConfig'],
-    ['src/desktop/storage/KeytarCredentialStore.ts', 'KeytarCredentialStore'],
+    ['src/desktop-runtime/credentials/ControlFrameCredentialStore.ts', 'ControlFrameCredentialStore'],
     ['src/core/registry/AgentSession.ts', 'AgentSession'],
     ['src/desktop/hotkeys.ts', 'hotkeys'],
     ['src/extension/tools/dom/addons/GoogleDocAddon.ts', 'GoogleDocAddon'],

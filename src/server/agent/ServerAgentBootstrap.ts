@@ -1017,6 +1017,26 @@ export class ServerAgentBootstrap {
       console.warn('[ServerAgentBootstrap] PluginRegistry not available:', error);
     }
 
+    // Track 43: ChatGPT OAuth lives in the runtime after the cutover. The
+    // 127.0.0.1:1455 callback HTTP server, the token storage, and the PKCE
+    // exchange all happen here; the UI just calls `auth.chatgpt.*` services.
+    let chatgptFlow:
+      | InstanceType<typeof import('@/desktop-runtime/auth/RuntimeChatGPTOAuthFlow').RuntimeChatGPTOAuthFlow>
+      | undefined;
+    let chatgptStorage:
+      | InstanceType<typeof import('@/desktop-runtime/auth/RuntimeChatGPTOAuthStorage').RuntimeChatGPTOAuthStorage>
+      | undefined;
+    if (profile === 'desktop-runtime') {
+      try {
+        const { RuntimeChatGPTOAuthFlow } = await import('@/desktop-runtime/auth/RuntimeChatGPTOAuthFlow');
+        const { RuntimeChatGPTOAuthStorage } = await import('@/desktop-runtime/auth/RuntimeChatGPTOAuthStorage');
+        chatgptStorage = new RuntimeChatGPTOAuthStorage(() => getCredentialStore());
+        chatgptFlow = new RuntimeChatGPTOAuthFlow(chatgptStorage);
+      } catch (e) {
+        console.warn('[ServerAgentBootstrap] ChatGPT runtime auth wiring failed:', e);
+      }
+    }
+
     const count = registerAllServices(serviceRegistry, {
       mcp: mcpDeps,
       a2a: a2aDeps,
@@ -1037,6 +1057,37 @@ export class ServerAgentBootstrap {
             }
           : undefined,
         setAuthManager: profile === 'desktop-runtime' ? () => undefined : undefined,
+      } : undefined,
+      // Track 43: runtime-owned auth services (auth.completeLogin / getState /
+      // logout + ChatGPT OAuth). Desktop runtime only — server mode handles
+      // auth differently.
+      auth: profile === 'desktop-runtime' && this.registry ? {
+        registry: this.registry,
+        createAuthManager: (shouldUseBackend, backendBaseUrl) => {
+          const tokenGetter = shouldUseBackend
+            ? async () => getCredentialStore().get('auth', 'access_token')
+            : undefined;
+          return new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter);
+        },
+        setAuthManager: () => undefined,
+        getCredentialStore: () => getCredentialStore(),
+        // The runtime owns the access token after cutover; the UI must not
+        // receive it. The runtime performs the profile fetch itself and
+        // returns only the redacted profile shape the UI needs.
+        fetchUserProfile: async (accessToken: string) => {
+          try {
+            const { fetchUserProfileServerSide } = await import('@/desktop-runtime/auth/runtimeProfileFetch');
+            return await fetchUserProfileServerSide(accessToken);
+          } catch (err) {
+            console.warn('[ServerAgentBootstrap] runtime profile fetch failed:', err);
+            return null;
+          }
+        },
+        // ChatGPT OAuth: runtime owns the 127.0.0.1:1455 callback server
+        // (was Rust `start_oauth_callback_server`, now deleted) and the token
+        // storage (was WebView `ChatGPTOAuthDesktopStorage` → keytar).
+        chatgptFlow,
+        getChatGPTStorage: chatgptStorage ? () => chatgptStorage! : undefined,
       } : undefined,
       diagnostics: {
         buildCtx: () => this.buildDiagnosticContext(),
@@ -1355,8 +1406,16 @@ export class ServerAgentBootstrap {
       }
       const executionStorage = this.executionRecordStorage;
 
-      // 2. Create alarms (Node.js timers)
-      this.schedulerAlarms = new ServerSchedulerAlarms();
+      // 2. Create alarms. Server profile uses pure in-process Node timers;
+      // desktop-runtime adds OS-level scheduled jobs via the Rust scheduler
+      // control bridge (firing even when the whole app is quit).
+      if ((this.options.profile ?? 'server') === 'desktop-runtime') {
+        const { RuntimeSchedulerAlarms } = await import('@/desktop-runtime/scheduler/RuntimeSchedulerAlarms');
+        const { getDesktopRuntimeControlBridge } = await import('@/desktop-runtime/protocol/controlBridge');
+        this.schedulerAlarms = new RuntimeSchedulerAlarms(getDesktopRuntimeControlBridge().scheduler) as unknown as ServerSchedulerAlarms;
+      } else {
+        this.schedulerAlarms = new ServerSchedulerAlarms();
+      }
 
       // 3. Create new model components directly
       const scheduleManager = new ScheduleManager(this.scheduleEventStorage, executionStorage, this.schedulerAlarms);

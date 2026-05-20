@@ -120,10 +120,14 @@ export async function createCredentialStore(): Promise<CredentialStore> {
     return new ChromeCredentialStore();
   }
   if (__BUILD_MODE__ === 'desktop') {
-    const { KeytarCredentialStore } = await import(
-      '@/desktop/storage/KeytarCredentialStore'
+    // Track 43: after the desktop cutover the WebView is no longer allowed to
+    // open the OS keychain. Credentials live in the runtime sidecar (the
+    // ControlFrameCredentialStore branch under `__BUILD_MODE__ === 'server'`
+    // below). UIs that need auth state should call the `auth.*` runtime
+    // services; UIs that need a per-key secret should ask the runtime.
+    throw new Error(
+      'WebView credentials are runtime-owned after Track 43; use auth.* runtime services instead of createCredentialStore() on desktop',
     );
-    return new KeytarCredentialStore();
   }
   if (__BUILD_MODE__ === 'server') {
     if (isDesktopRuntimeProfile()) {
