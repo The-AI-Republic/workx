@@ -18,11 +18,18 @@ policy, and exit criteria.
 
 ---
 
-## Goal 1: Spawned-sidecar parity test
+## Goal 1: Spawned-sidecar correctness test
 
 Replaces `src/desktop-runtime/parity/__tests__/scenarios.test.ts` (the
 tautological lookup-vs-lookup test) with a real integration test that
-spawns the sidecar and asserts it produces the canonical event sequences.
+spawns the Apple Pi desktop runtime sidecar and asserts each
+`PARITY_SCENARIOS` entry produces its canonical event sequence
+(`SCENARIO_EVENT_SEQUENCES[name]`).
+
+**Not a parity test.** Direct assertion against the canonical reference
+— no `runParityHarness` wrapper, no second binding. The harness and
+`scenarios.ts` library stay in the codebase for the deferred
+server-vs-desktop transport-parity test (out of scope here).
 
 **Prerequisites:**
 - `npm run build:desktop-runtime-sidecar` must run as a CI step before
@@ -34,9 +41,10 @@ spawns the sidecar and asserts it produces the canonical event sequences.
 
 ### Tasks
 
-- [ ] Add `src/desktop-runtime/parity/__tests__/spawnedSidecar.harness.ts`
-      exporting `createSpawnedSidecarBinding(): Promise<ParityBinding>`.
-      Implementation:
+- [ ] Add `src/desktop-runtime/parity/__tests__/spawnedSidecar.helper.ts`
+      exporting `spawnSidecar(): Promise<SpawnedSidecar>` where
+      `SpawnedSidecar` is a small wrapper with `submit(op, context?)`,
+      `drainEvents()`, and `shutdown()` methods. Implementation:
   - Resolve sidecar entry: `tauri/sidecar/desktop-runtime/index.mjs`
     relative to repo root. Fail clearly if missing — instruct user to
     run `npm run build:desktop-runtime-sidecar`.
@@ -47,31 +55,37 @@ spawns the sidecar and asserts it produces the canonical event sequences.
     `{ "type": "hello", "nonce": randomUUID(), "protocolVersion": 1 }`
     frame to stdin; wait for matching `hello-ok` on stdout. Reuse the
     frame writer/reader from `src/desktop-runtime/protocol/stdioCarrier.ts`.
-  - Return a `ParityBinding` whose `submit()` writes a `request` frame
-    wrapping the `Op`, `drainEvents()` returns events accumulated since
-    the last drain, and `shutdown()` sends a `shutdown` frame, waits up
-    to `SHUTDOWN_GRACE` (5s), then SIGKILLs.
+  - `submit()` writes a `request` frame wrapping the `Op`.
+    `drainEvents()` returns `ChannelEvent[]` accumulated since the
+    last drain. `shutdown()` sends a `shutdown` frame, waits up to
+    `SHUTDOWN_GRACE` (5s), then SIGKILLs.
 - [ ] Add `src/desktop-runtime/parity/__tests__/spawnedSidecar.scenarios.integration.test.ts`
       following the repo's `*.integration.test.ts` convention (see
       `src/core/__tests__/TurnManager.parallelTools.integration.test.ts`):
-  - Build a "canonical replay" `ParityBinding` whose `drainEvents()`
-    returns `SCENARIO_EVENT_SEQUENCES[currentScenarioName]` verbatim.
-  - For each scenario in `PARITY_SCENARIOS`, run
-    `runParityHarness([sidecarBinding, canonicalReplayBinding],
-    [scenario])` and assert `report.ok === true`.
-  - One global `beforeAll` spawns the sidecar; `afterAll` shuts it down.
+  - One global `beforeAll` calls `spawnSidecar()`; `afterAll` calls
+    `sidecar.shutdown()`.
+  - For each `scenario` in `PARITY_SCENARIOS`: run all `scenario.steps`
+    through `sidecar.submit()`, collect `await sidecar.drainEvents()`,
+    assert `normalize(events)` deep-equals
+    `normalize(SCENARIO_EVENT_SEQUENCES[scenario.name])`.
+  - Use the same `normalize` projection as `ParityHarness.ts:41`
+    (`{ msg, sessionId }`) — import or re-export it so the equivalence
+    definition stays single-sourced.
 - [ ] Delete the existing tautological
-      `src/desktop-runtime/parity/__tests__/scenarios.test.ts`
-      OR replace its contents with mechanism-only smoke tests (harness
-      ≥2-binding check, `SCENARIO_EVENT_SEQUENCES` keys match
-      `PARITY_SCENARIOS` names). Update the file's docstring to drop
-      the "follow-up integration test does not exist yet" paragraph.
+      `src/desktop-runtime/parity/__tests__/scenarios.test.ts`. If a
+      defensive contract on the scenarios library is useful, replace
+      it with a ~5-line file that only asserts every `PARITY_SCENARIOS`
+      name has a key in `SCENARIO_EVENT_SEQUENCES` (and vice versa).
 - [ ] Wire the new integration test into the CI workflow for Linux
       (gate on `os: ubuntu-*`). macOS and Windows runs remain release-time
       per Track 43 Phase 4.
-- [ ] Update `43_apple_pi_runtime_decoupling_DONE/tasks.md:86,115` to
-      tick those boxes and drop the `[scaffolding]` / `[not-yet-real]`
-      annotations; cross-link to Track 45 in the annotation note.
+- [ ] Update `43_apple_pi_runtime_decoupling_DONE/tasks.md:86` to tick
+      it ("P1 exit requires the harness to pass against the new sidecar
+      in dev mode") and drop the `[not-yet-real]` annotation;
+      cross-link to Track 45 in the note. **Do not** tick line 115
+      ("Run parity harness through Rust relay") — that is the deferred
+      server-vs-desktop transport-parity test, intentionally out of
+      scope for Track 45. Update its annotation to say so.
 
 ---
 

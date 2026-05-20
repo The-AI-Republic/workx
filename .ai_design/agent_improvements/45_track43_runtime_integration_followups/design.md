@@ -23,15 +23,20 @@ unit/contract test suite is green.
 
 What is **not** proven by today's CI:
 
-1. **Parity test is tautological.** The existing
-   `src/desktop-runtime/parity/__tests__/scenarios.test.ts` registers two
-   fake bindings that both drain from the same
-   `SCENARIO_EVENT_SEQUENCES` lookup, so the positive-path comparison is
-   `JSON.stringify(X) === JSON.stringify(X)`. The file's own header
-   docstring (lines 1-30) calls this out. The actual P1/P2 exit gate
-   listed in `43_apple_pi_runtime_decoupling_DONE/tasks.md:86,115` —
-   spawning the real sidecar and running `PARITY_SCENARIOS` through it —
-   does not exist.
+1. **Desktop sidecar correctness is unverified in CI.** The existing
+   `src/desktop-runtime/parity/__tests__/scenarios.test.ts` registers
+   two fake bindings that both drain from the same
+   `SCENARIO_EVENT_SEQUENCES` lookup, so the positive-path comparison
+   is `JSON.stringify(X) === JSON.stringify(X)`. The file's own header
+   docstring (lines 1-30) calls this out. Nothing in CI actually
+   spawns the real Apple Pi desktop sidecar and asserts it produces
+   the event sequences `PARITY_SCENARIOS` expects. See
+   `43.../tasks.md:86`. (The original Track 43 design also envisioned
+   a *separate* future test that runs both server and desktop
+   transports through the same scenarios for transport-parity — see
+   `43.../tasks.md:115`. That is **not** what this track is about; it
+   stays deferred. Track 45 is just about verifying the desktop side
+   on its own.)
 2. **Rust supervisor lifecycle untested.** `tauri/src/runtime_supervisor.rs`
    handles spawn, handshake, restart with bounded backoff
    (`RESTART_BASE_MS = 500ms`, `RESTART_MAX_MS = 30s`,
@@ -56,11 +61,21 @@ continue to be owned by release at tag time per Track 43 Phase 4.
 
 ## Goals
 
-### Goal 1 — Spawned-sidecar parity test
+### Goal 1 — Spawned-sidecar correctness test
 
 Build a CI integration test that spawns the **real** desktop runtime
-sidecar and asserts each `PARITY_SCENARIOS` entry produces its
-canonical event sequence.
+sidecar (the Apple Pi runtime) and asserts each `PARITY_SCENARIOS`
+entry produces its canonical event sequence
+(`SCENARIO_EVENT_SEQUENCES[<name>]`).
+
+This is a **correctness** test for the desktop sidecar, not a parity
+test. It does not use `runParityHarness`. The harness was designed to
+compare two real transports (server WebSocket vs desktop stdio) for an
+eventual server-vs-desktop parity exit gate — that test remains
+deferred (still useful future work; not blocking Apple Pi desktop
+readiness, which is what this track is about). The harness and
+`scenarios.ts` library stay in the codebase intact so the deferred
+parity test has nothing to wire up when someone picks it up.
 
 **Launch shape** (matches what `runtime_supervisor.rs` does today):
 
@@ -76,26 +91,36 @@ canonical event sequence.
   and `src/desktop-runtime/protocol/frames.ts`
   (`DESKTOP_RUNTIME_PROTOCOL_VERSION`).
 - Carrier: length-prefixed JSON frames over the child's stdin/stdout
-  (`StdioRuntimeChannel` / `src/desktop-runtime/protocol/stdioCarrier.ts`).
+  (reuse readers/writers from
+  `src/desktop-runtime/protocol/stdioCarrier.ts`).
 
-**Harness shape.** `runParityHarness` (`parity/ParityHarness.ts:58`)
-requires ≥2 bindings. Use:
+**Test shape (direct assertion, no harness):**
 
-- **Binding A — real spawned sidecar.** A `ParityBinding` that wraps the
-  child process; `submit()` sends an Op frame, `drainEvents()` returns
-  events received since the last drain, `shutdown()` sends the
-  `shutdown` frame and reaps the process.
-- **Binding B — canonical-sequence replay.** A `ParityBinding` whose
-  `drainEvents()` returns `SCENARIO_EVENT_SEQUENCES[<currentScenario>]`
-  verbatim. The harness will then compare the real sidecar's events to
-  the canonical reference. This is one step better than today's
-  lookup-vs-lookup tautology because exactly one binding does real work.
+```ts
+for (const scenario of PARITY_SCENARIOS) {
+  for (const step of scenario.steps) {
+    await sidecar.submit(step.op, step.context);
+  }
+  const events = await sidecar.drainEvents();
+  expect(normalize(events))
+    .toEqual(normalize(SCENARIO_EVENT_SEQUENCES[scenario.name]));
+}
+```
 
-The two-real-bindings shape (real sidecar vs in-process server with a
-real `ServerChannel`) is **not** in scope for this track — booting a full
-server in the test process adds significant weight; the canonical fake
-proves sidecar correctness against the same reference both transports
-must converge on anyway.
+where `sidecar` is a small helper that wraps the spawned child process:
+`submit()` writes a `request` frame, `drainEvents()` returns events
+received since the last drain. The `normalize()` function is the same
+default normalizer the harness uses
+(`{ msg, sessionId }` projection — see `ParityHarness.ts:41`) so we
+benefit from the existing equivalence definition without invoking the
+harness itself.
+
+**What about the existing `scenarios.test.ts` tautology?** It can be
+deleted outright once the new test is green — its only purpose was to
+hold the place for a real test. (Optionally keep a slimmed file that
+asserts only "every `PARITY_SCENARIOS` name appears as a key in
+`SCENARIO_EVENT_SEQUENCES`" as a defensive contract on the
+scenarios library; that's a 5-line shape check, not parity proof.)
 
 ### Goal 2 — Rust supervisor lifecycle tests
 
@@ -169,9 +194,10 @@ Suggested ordering (smallest → largest):
 - **Goal 1.** `npm run test src/desktop-runtime/parity/__tests__/spawnedSidecar.scenarios.integration.test.ts`
   green in CI for Linux. Every `PARITY_SCENARIOS` entry matches its
   `SCENARIO_EVENT_SEQUENCES` reference when run through a freshly
-  spawned sidecar. The existing tautological `scenarios.test.ts` is
-  either deleted or downgraded to a harness-mechanism-only smoke whose
-  docstring no longer mentions parity.
+  spawned sidecar (Apple Pi desktop runtime, profile
+  `desktop-runtime`). The existing tautological `scenarios.test.ts`
+  is deleted, or replaced with a 5-line shape check that every
+  scenario name has a canonical-sequence key.
 - **Goal 2.** `cargo test --manifest-path tauri/Cargo.toml supervisor::lifecycle`
   green. Each lifecycle path listed in goal 2 has a dedicated
   `#[tokio::test]`. Backoff/grace assertions reference the supervisor
