@@ -190,7 +190,7 @@
       threadRouter.onChannel((channelEvent) => {
         const { msg } = channelEvent;
         if (msg.type === 'StateUpdate' && 'data' in msg) {
-          const data = (msg as any).data;
+          const data = msg.data;
           if (data?.scope === 'desktop-runtime' && data.kind === 'agent.accessChanged' && data.access) {
             applyAccessState(data.access as AgentAccessState);
           } else if (data && 'tabId' in data) {

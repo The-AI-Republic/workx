@@ -15,10 +15,10 @@ export type RuntimeProfileStatus = 'idle' | 'loading' | 'ready' | 'failed';
 export interface RuntimeAuthState {
   mode: RuntimeAuthMode;
   hasToken: boolean;
-  /** Compatibility alias for pre-Track-44 desktop UI callers. */
+  /** Compatibility alias for pre-Track-44 desktop UI callers. TODO(track-44-cleanup): remove after UI callers use hasToken. */
   hasValidToken: boolean;
   profile: RuntimeUserProfileSnapshot | null;
-  /** Compatibility alias for pre-Track-44 desktop UI callers. */
+  /** Compatibility alias for pre-Track-44 desktop UI callers. TODO(track-44-cleanup): remove after UI callers use profile. */
   user: RuntimeUserProfileSnapshot | null;
   profileStatus: RuntimeProfileStatus;
   updatedAt: number;
@@ -140,6 +140,8 @@ export class RuntimeStateController {
   private auth: RuntimeAuthState;
   private access: AgentAccessState;
   private readonly urls: RuntimeUrlConfig;
+  private authWriteQueue: Promise<void> = Promise.resolve();
+  private accessWriteQueue: Promise<void> = Promise.resolve();
 
   constructor(private readonly options: RuntimeStateControllerOptions = {}) {
     this.urls = options.urls ?? resolveRuntimeUrls();
@@ -178,29 +180,35 @@ export class RuntimeStateController {
   }
 
   async setAuthState(next: Partial<Omit<RuntimeAuthState, 'hasValidToken' | 'user' | 'updatedAt'>>): Promise<RuntimeAuthState> {
-    const profile = Object.prototype.hasOwnProperty.call(next, 'profile')
-      ? (next.profile ? { ...next.profile } : null)
-      : this.auth.profile;
-    this.auth = {
-      ...this.auth,
-      ...next,
-      profile,
-      user: profile,
-      hasValidToken: next.hasToken ?? this.auth.hasToken,
-      updatedAt: now(),
-    };
-    await this.emit('auth.stateChanged', { auth: this.getAuthState() });
-    return this.getAuthState();
+    return this.enqueueAuthWrite(async () => {
+      const profile = Object.prototype.hasOwnProperty.call(next, 'profile')
+        ? (next.profile ? { ...next.profile } : null)
+        : this.auth.profile;
+      this.auth = {
+        ...this.auth,
+        ...next,
+        profile,
+        user: profile,
+        hasValidToken: next.hasToken ?? this.auth.hasToken,
+        updatedAt: now(),
+      };
+      const snapshot = this.getAuthState();
+      await this.emit('auth.stateChanged', { auth: snapshot });
+      return snapshot;
+    });
   }
 
   async setAccessState(next: Partial<Omit<AgentAccessState, 'updatedAt'>>): Promise<AgentAccessState> {
-    this.access = {
-      ...this.access,
-      ...next,
-      updatedAt: now(),
-    };
-    await this.emit('agent.accessChanged', { access: this.getAccessState() });
-    return this.getAccessState();
+    return this.enqueueAccessWrite(async () => {
+      this.access = {
+        ...this.access,
+        ...next,
+        updatedAt: now(),
+      };
+      const snapshot = this.getAccessState();
+      await this.emit('agent.accessChanged', { access: snapshot });
+      return snapshot;
+    });
   }
 
   async setAccessFromReadyState(status: RuntimeReadyLike): Promise<AgentAccessState> {
@@ -228,5 +236,16 @@ export class RuntimeStateController {
       },
     });
   }
-}
 
+  private enqueueAuthWrite<T>(write: () => Promise<T>): Promise<T> {
+    const run = this.authWriteQueue.catch(() => undefined).then(write);
+    this.authWriteQueue = run.then(() => undefined, () => undefined);
+    return run;
+  }
+
+  private enqueueAccessWrite<T>(write: () => Promise<T>): Promise<T> {
+    const run = this.accessWriteQueue.catch(() => undefined).then(write);
+    this.accessWriteQueue = run.then(() => undefined, () => undefined);
+    return run;
+  }
+}

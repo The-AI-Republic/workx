@@ -647,7 +647,7 @@
           useOwnApiKey: newValue,
         },
       });
-      useOwnApiKey = response.access?.mode === 'api_key' ? true : newValue;
+        useOwnApiKey = response.access ? response.access.mode === 'api_key' : newValue;
 
       getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(err => console.warn('[ModelSettings] Failed to send configUpdate:', err));
 

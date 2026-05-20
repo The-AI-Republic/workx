@@ -907,11 +907,30 @@ export interface ServiceResponseEvent {
   error?: string;
 }
 
-export interface StateUpdateEvent {
+export interface GenericStateUpdateEvent {
   sessionId?: string;
   tabId?: number;
   [key: string]: unknown;
 }
+
+export interface DesktopRuntimeAuthStateUpdateEvent {
+  scope: 'desktop-runtime';
+  kind: 'auth.stateChanged';
+  auth: unknown;
+  [key: string]: unknown;
+}
+
+export interface DesktopRuntimeAccessStateUpdateEvent {
+  scope: 'desktop-runtime';
+  kind: 'agent.accessChanged';
+  access: unknown;
+  [key: string]: unknown;
+}
+
+export type StateUpdateEvent =
+  | DesktopRuntimeAuthStateUpdateEvent
+  | DesktopRuntimeAccessStateUpdateEvent
+  | GenericStateUpdateEvent;
 
 // Hook system event payloads
 

@@ -18,7 +18,7 @@ import { RepublicAgent } from '@/core/RepublicAgent';
 import { AgentConfig, CREDENTIAL_SECURED_MARKER } from '@/config/AgentConfig';
 import { getConfigStorage, setConfigStorage } from '@/core/storage/ConfigStorageProvider';
 import { getCredentialStore } from '@/core/storage';
-import { AuthManager } from '@/core/models/types/Auth';
+import { AuthManager, type IAuthManager } from '@/core/models/types/Auth';
 import { FileConfigStorageProvider } from '../storage/FileConfigStorageProvider';
 import { configurePromptComposer } from '@/core/PromptLoader';
 import type { RuntimeContext } from '@/prompts/PromptComposer';
@@ -132,7 +132,7 @@ export class ServerAgentBootstrap {
   private schedulerAlarms: ServerSchedulerAlarms | null = null;
   private runningSchedulerJobId: string | null = null;
   private runningJobStartTime: number = 0;
-  private currentAuthManager: unknown | null = null;
+  private currentAuthManager: IAuthManager | null = null;
   private runtimeState: RuntimeStateController | null = null;
   private toolResultSweep: { stop: () => void } | null = null;
   // Track 15: periodic rollout TTL cleanup (the server otherwise never prunes
@@ -258,7 +258,7 @@ export class ServerAgentBootstrap {
           const agent = new RepublicAgent(cfg, platformAdapter, initialHistory, undefined, undefined, services);
           await agent.initialize();
           if (this.currentAuthManager) {
-            agent.getModelClientFactory().setAuthManager(this.currentAuthManager as any);
+            agent.getModelClientFactory().setAuthManager(this.currentAuthManager);
             await agent.refreshModelClient();
           }
 
@@ -1155,13 +1155,13 @@ export class ServerAgentBootstrap {
     return this.runtimeState;
   }
 
-  private async applyAuthManagerToSessions(authManager: unknown): Promise<void> {
+  private async applyAuthManagerToSessions(authManager: IAuthManager | null): Promise<void> {
     if (!this.registry) return;
     for (const meta of this.registry.listSessions()) {
       if (meta.state === 'terminated') continue;
       const agentSession = this.registry.getSession(meta.sessionId);
       if (!agentSession?.agent) continue;
-      agentSession.agent.getModelClientFactory().setAuthManager(authManager as any);
+      agentSession.agent.getModelClientFactory().setAuthManager(authManager);
       await agentSession.agent.refreshModelClient();
     }
   }

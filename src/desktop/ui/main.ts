@@ -70,6 +70,7 @@ async function init() {
   // is the only listener — it parses and routes by path.
   try {
     const { listen } = await import('@tauri-apps/api/event');
+    const maxConsumedSchedulerDeeplinks = 128;
     const consumedSchedulerDeeplinks = new Set<string>();
     await listen<string>('applepi-deeplink', async (event) => {
       try {
@@ -78,6 +79,10 @@ async function init() {
           const dedupeKey = url.toString();
           if (consumedSchedulerDeeplinks.has(dedupeKey)) return;
           consumedSchedulerDeeplinks.add(dedupeKey);
+          if (consumedSchedulerDeeplinks.size > maxConsumedSchedulerDeeplinks) {
+            const oldest = consumedSchedulerDeeplinks.values().next().value;
+            if (oldest) consumedSchedulerDeeplinks.delete(oldest);
+          }
           const jobId = url.searchParams.get('jobId');
           if (!jobId) {
             console.warn('[Desktop] Scheduler deeplink missing jobId:', event.payload);

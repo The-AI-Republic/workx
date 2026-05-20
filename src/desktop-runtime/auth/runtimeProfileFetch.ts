@@ -9,6 +9,8 @@
  * but no shared module dependencies with webfront.
  */
 
+import { resolveRuntimeUrls } from '@/config/runtimeUrls';
+
 export interface RuntimeUserProfile {
   id?: string;
   name?: string;
@@ -69,4 +71,3 @@ export async function fetchUserProfileServerSide(
     return null;
   }
 }
-import { resolveRuntimeUrls } from '@/config/runtimeUrls';

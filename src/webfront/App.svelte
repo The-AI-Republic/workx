@@ -148,7 +148,7 @@
     try {
       const client = await getInitializedUIClient();
       runtimeStateUnlisten = client.onEvent('StateUpdate', (event) => {
-        const data = (event.msg as any).data;
+        const data = event.msg.data;
         if (data?.scope !== 'desktop-runtime') return;
         if (data.kind === 'auth.stateChanged') {
           applyDesktopAuthState(data.auth as RuntimeAuthState);

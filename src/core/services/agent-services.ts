@@ -10,6 +10,7 @@
  */
 
 import type { ServiceHandler } from '@/core/channels/ServiceRegistry';
+import type { IAuthManager } from '@/core/models/types/Auth';
 import {
   accessStateFromReadyState,
   type AgentAccessState,
@@ -28,10 +29,10 @@ export interface AgentServiceDeps {
   handleConfigUpdate?: () => Promise<unknown>;
 
   /** Create an auth manager from settings */
-  createAuthManager?: (shouldUseBackend: boolean, backendBaseUrl: string | null) => unknown;
+  createAuthManager?: (shouldUseBackend: boolean, backendBaseUrl: string | null) => IAuthManager;
 
   /** Preserve auth manager for agent recreation */
-  setAuthManager?: (authManager: unknown) => void;
+  setAuthManager?: (authManager: IAuthManager | null) => void;
 
   /** Runtime-owned desktop access state contract (Track 44). */
   runtimeState?: RuntimeStateController;
@@ -42,6 +43,21 @@ export interface AgentServiceDeps {
 
 export function createAgentServices(deps: AgentServiceDeps): Record<string, ServiceHandler> {
   const { registry } = deps;
+
+  function isPrimarySessionId(sessionId: string): boolean {
+    const sessions = registry.listSessions() as Array<{
+      sessionId: string;
+      state: string;
+      sessionType?: string;
+      type?: string;
+    }>;
+    const activeSessions = sessions.filter((s) => s.state !== 'terminated');
+    const explicitlyPrimary = activeSessions.find((s) => s.sessionType === 'primary' || s.type === 'primary');
+    if (explicitlyPrimary) {
+      return explicitlyPrimary.sessionId === sessionId;
+    }
+    return activeSessions[0]?.sessionId === sessionId;
+  }
 
   async function computeAccessState(fallback?: Partial<AgentAccessState>): Promise<AgentAccessState> {
     const sessions = registry.listSessions() as Array<{ sessionId: string; state: string; sessionType?: string; type?: string }>;
@@ -90,7 +106,7 @@ export function createAgentServices(deps: AgentServiceDeps): Record<string, Serv
       }
 
       const status = await agentSession.agent.isReady();
-      if (deps.runtimeState) {
+      if (deps.runtimeState && isPrimarySessionId(sessionId)) {
         await deps.runtimeState.setAccessFromReadyState(status);
       }
       return { ...status as object, timestamp: Date.now() };

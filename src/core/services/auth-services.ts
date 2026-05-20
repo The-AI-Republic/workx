@@ -11,6 +11,7 @@
  */
 
 import type { ServiceHandler } from '@/core/channels/ServiceRegistry';
+import type { IAuthManager } from '@/core/models/types/Auth';
 import {
   normalizeRuntimeProfile,
   type RuntimeStateController,
@@ -34,8 +35,8 @@ export interface AuthServiceDeps {
    * to push the new auth manager into existing sessions' model clients —
    * matches the existing `agent.initAuth` contract.
    */
-  createAuthManager?: (shouldUseBackend: boolean, backendBaseUrl: string | null) => unknown;
-  setAuthManager?: (authManager: unknown) => void;
+  createAuthManager?: (shouldUseBackend: boolean, backendBaseUrl: string | null) => IAuthManager;
+  setAuthManager?: (authManager: IAuthManager | null) => void;
 
   /**
    * Resolve the runtime credential store. The desktop runtime returns the
@@ -88,7 +89,7 @@ export interface AuthServiceDeps {
 
 function applyAuthManagerToSessions(
   registry: AuthServiceDeps['registry'],
-  authManager: unknown,
+  authManager: IAuthManager | null,
 ): Promise<void> {
   const sessions = registry.listSessions() as Array<{ sessionId: string; state: string }>;
   return Promise.all(
@@ -215,7 +216,8 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
         return { hasValidToken: false, hasToken: false, user: null, profile: null, profileStatus: 'idle' };
       }
 
-      if (deps.runtimeState) {
+      const existingAuthState = deps.runtimeState?.getAuthState();
+      if (deps.runtimeState && existingAuthState?.profileStatus !== 'ready') {
         await deps.runtimeState.setAuthState({
           mode: 'login',
           hasToken: true,
