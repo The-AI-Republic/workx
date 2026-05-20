@@ -9,6 +9,8 @@
  * but no shared module dependencies with webfront.
  */
 
+import { resolveRuntimeUrls } from '@/config/runtimeUrls';
+
 export interface RuntimeUserProfile {
   id?: string;
   name?: string;
@@ -23,11 +25,7 @@ export interface RuntimeUserProfile {
  * webfront's `HOME_PAGE_BASE_URL`, overridable via env for tests / staging.
  */
 function resolveAuthBaseUrl(): string {
-  return (
-    process.env.APPLEPI_HOME_PAGE_BASE_URL ??
-    process.env.VITE_HOME_PAGE_BASE_URL ??
-    'https://airepublic.com'
-  );
+  return resolveRuntimeUrls().homePageBaseUrl;
 }
 
 /**

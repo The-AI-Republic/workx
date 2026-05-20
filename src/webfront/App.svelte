@@ -15,6 +15,7 @@
   import { LLM_API_URL } from './lib/constants';
   import { AgentConfig } from '@/config/AgentConfig';
   import { getInitializedUIClient } from '@/core/messaging';
+  import type { DesktopRuntimeStateSnapshot, RuntimeAuthState } from '@/core/services/runtime-state';
   import { platform } from './stores/platformStore';
   import { vaultStore, refreshVaultStatus } from './stores/vaultStore';
   import PinUnlockOverlay from './components/vault/PinUnlockOverlay.svelte';
@@ -58,6 +59,7 @@
 
   // Store the cookie change listener for cleanup
   let cookieChangeListener: ((changeInfo: chrome.cookies.CookieChangeInfo) => void) | null = $state(null);
+  let runtimeStateUnlisten: (() => void) | null = null;
 
   /**
    * Check and update authentication state
@@ -105,23 +107,8 @@
         await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt]));
       }
       try {
-        const state = await client.serviceRequest<{
-          hasValidToken: boolean;
-          user: { name?: string; email?: string; avatar?: string; userType?: number } | null;
-        }>('auth.getState');
-
-        if (state?.hasValidToken && state.user) {
-          userStore.setUser({
-            name: state.user.name ?? null,
-            email: state.user.email ?? '',
-            avatar: state.user.avatar ?? null,
-            userType: state.user.userType ?? 0,
-          });
-          console.log('[App] Desktop userStore updated for:', state.user.email);
-          return;
-        }
-        // hasValidToken=false is a real "not logged in" answer — stop retrying.
-        userStore.setNotLoggedIn();
+        const snapshot = await client.serviceRequest<DesktopRuntimeStateSnapshot>('runtime.getStateSnapshot');
+        applyDesktopAuthState(snapshot.auth);
         return;
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
@@ -140,6 +127,36 @@
       }
     }
     userStore.setNotLoggedIn();
+  }
+
+  function applyDesktopAuthState(state: RuntimeAuthState | null | undefined): void {
+    if (state?.hasToken || state?.hasValidToken) {
+      userStore.setUser({
+        name: state.profile?.name ?? state.user?.name ?? null,
+        email: state.profile?.email ?? state.user?.email ?? null,
+        avatar: state.profile?.avatar ?? state.user?.avatar ?? null,
+        userType: state.profile?.userType ?? state.user?.userType ?? 0,
+      });
+      console.log('[App] Desktop userStore updated for:', state.profile?.email ?? state.user?.email ?? 'stored token');
+      return;
+    }
+    userStore.setNotLoggedIn();
+  }
+
+  async function wireDesktopRuntimeStateEvents(): Promise<void> {
+    if (platform.platformName !== 'desktop' || runtimeStateUnlisten) return;
+    try {
+      const client = await getInitializedUIClient();
+      runtimeStateUnlisten = client.onEvent('StateUpdate', (event) => {
+        const data = event.msg.data;
+        if (data?.scope !== 'desktop-runtime') return;
+        if (data.kind === 'auth.stateChanged') {
+          applyDesktopAuthState(data.auth as RuntimeAuthState);
+        }
+      });
+    } catch (error) {
+      console.warn('[App] Failed to subscribe to desktop runtime state:', error);
+    }
   }
 
   /**
@@ -236,6 +253,7 @@
     }).catch(() => {});
 
     // Initial auth check
+    wireDesktopRuntimeStateEvents();
     checkAndUpdateAuth();
 
     // Listen for cookie changes to detect login/logout from other pages
@@ -270,6 +288,8 @@
       chrome.cookies.onChanged.removeListener(cookieChangeListener);
       console.log('[App] Cookie change listener removed');
     }
+    runtimeStateUnlisten?.();
+    runtimeStateUnlisten = null;
   });
 </script>
 

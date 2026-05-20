@@ -90,7 +90,7 @@ describe('createAuthServices', () => {
       // Session refresh ran with the new auth manager.
       const session = deps.registry.getSession('s1');
       expect(session.agent.refreshModelClient).toHaveBeenCalled();
-      expect(result).toMatchObject({ success: true, user: { token: 'at-1' } });
+      expect(result).toMatchObject({ success: true, user: { email: 'u@test' } });
     });
 
     it('rejects when either token is missing', async () => {
@@ -114,19 +114,19 @@ describe('createAuthServices', () => {
   describe('auth.getState', () => {
     it('returns hasValidToken=false when no token is persisted', async () => {
       const res = await svc['auth.getState']!({}, TEST_CONTEXT);
-      expect(res).toEqual({ hasValidToken: false, user: null });
+      expect(res).toMatchObject({ hasValidToken: false, hasToken: false, user: null, profile: null });
     });
 
     it('returns hasValidToken=true and the user payload when a token is present', async () => {
       await deps.credentialStore.set('auth', 'access_token', 'fresh-at');
       const res = await svc['auth.getState']!({}, TEST_CONTEXT);
-      expect(res).toMatchObject({ hasValidToken: true, user: { token: 'fresh-at' } });
+      expect(res).toMatchObject({ hasValidToken: true, hasToken: true, user: { email: 'u@test' } });
     });
 
     it('degrades gracefully on platforms without a credential store', async () => {
       const localSvc = createAuthServices({ ...deps, getCredentialStore: undefined });
       const res = await localSvc['auth.getState']!({}, TEST_CONTEXT);
-      expect(res).toEqual({ hasValidToken: false, user: null });
+      expect(res).toMatchObject({ hasValidToken: false, hasToken: false, user: null, profile: null });
     });
   });
 
@@ -142,14 +142,14 @@ describe('createAuthServices', () => {
       expect(deps.createAuthManager).toHaveBeenCalledWith(false, null);
       const session = deps.registry.getSession('s1');
       expect(session.agent.refreshModelClient).toHaveBeenCalled();
-      expect(res).toEqual({ success: true });
+      expect(res).toMatchObject({ success: true });
     });
 
     it('swallows credential delete failures (the keychain entries may already be absent)', async () => {
       deps.credentialStore.delete.mockRejectedValueOnce(new Error('not found'));
       deps.credentialStore.delete.mockRejectedValueOnce(new Error('not found'));
       const res = await svc['auth.logout']!({}, TEST_CONTEXT);
-      expect(res).toEqual({ success: true });
+      expect(res).toMatchObject({ success: true });
     });
   });
 });

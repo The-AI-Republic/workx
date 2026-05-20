@@ -5,6 +5,7 @@
   import type { UIChannelClient } from '@/core/messaging';
   import type { JobStatusChangedEvent } from '@/core/models/types/SchedulerContracts';
   import type { Event, InputItem } from '@/core/protocol/types';
+  import type { AgentAccessState } from '@/core/services/runtime-state';
   import type { ProcessedEvent } from '@/types/ui';
   import { STYLE_PRESETS } from '@/types/ui';
 
@@ -56,6 +57,19 @@
   let agentReady: boolean = $state(false);
   let healthStatus: { ready: boolean; message?: string; provider?: string; model?: string; authMode?: 'login' | 'api_key' | 'none' } = $state({ ready: false, authMode: 'none' });
   let zoomLevel: number = $state(parseInt(document.documentElement.style.fontSize) || 100);
+
+  function applyAccessState(access: AgentAccessState): void {
+    isConnected = true;
+    agentReady = access.ready;
+    healthStatus = {
+      ready: access.ready,
+      message: access.reason,
+      provider: access.provider,
+      model: access.model,
+      authMode: access.mode,
+    };
+    agentStore.updateFromAccessState(access);
+  }
 
   function onZoomChanged(e: Event) {
     zoomLevel = (e as CustomEvent<number>).detail;
@@ -176,8 +190,10 @@
       threadRouter.onChannel((channelEvent) => {
         const { msg } = channelEvent;
         if (msg.type === 'StateUpdate' && 'data' in msg) {
-          const data = (msg as any).data;
-          if (data && 'tabId' in data) {
+          const data = msg.data;
+          if (data?.scope === 'desktop-runtime' && data.kind === 'agent.accessChanged' && data.access) {
+            applyAccessState(data.access as AgentAccessState);
+          } else if (data && 'tabId' in data) {
             currentTabId = data.tabId!;
           }
         } else if (msg.type === 'ModeChanged' && 'data' in msg) {
@@ -565,6 +581,13 @@
         isConnected = false;
         agentReady = false;
         healthStatus = { ready: false, message: t('Message service not available'), authMode: 'none' };
+        return;
+      }
+
+      if (platform.platformName === 'desktop') {
+        console.log('[App] Sending agent.getAccessState serviceRequest...');
+        const access = await (await getInitializedUIClient()).serviceRequest<AgentAccessState>('agent.getAccessState');
+        applyAccessState(access);
         return;
       }
 

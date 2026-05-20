@@ -12,6 +12,7 @@
   import { LLM_API_URL } from '../lib/constants';
   import { t, _t } from '../lib/i18n';
   import { getInitializedUIClient } from '@/core/messaging';
+  import type { AgentAccessState } from '@/core/services/runtime-state';
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
   import { platform } from '../stores/platformStore';
@@ -620,17 +621,7 @@
 
     try {
       const newValue = !useOwnApiKey;
-      useOwnApiKey = newValue;
       showApiKeyWarning = false; // Reset warning when switching modes
-
-      // Update config preferences
-      const config = settingsConfig.getConfig();
-      await settingsConfig.updateConfig({
-        preferences: {
-          ...config.preferences,
-          useOwnApiKey: newValue,
-        },
-      });
 
       // Send updated auth state to service worker
       // useOwnApiKey=false means route through backend
@@ -639,7 +630,24 @@
         useOwnApiKey: newValue,
       };
 
-      await (await getInitializedUIClient()).serviceRequest('agent.initAuth', authPayload);
+      const response = await (await getInitializedUIClient()).serviceRequest<{
+        success: boolean;
+        access?: AgentAccessState;
+      }>('agent.initAuth', authPayload);
+      if (!response?.success) {
+        throw new Error('Runtime rejected API mode update');
+      }
+
+      // Persist the user's preference after the runtime confirms the effective
+      // access state. The runtime remains the source of truth for display.
+      const config = settingsConfig.getConfig();
+      await settingsConfig.updateConfig({
+        preferences: {
+          ...config.preferences,
+          useOwnApiKey: newValue,
+        },
+      });
+        useOwnApiKey = response.access ? response.access.mode === 'api_key' : newValue;
 
       getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(err => console.warn('[ModelSettings] Failed to send configUpdate:', err));
 
@@ -654,7 +662,6 @@
       });
     } catch (error) {
       console.error('[ModelSettings] Failed to toggle useOwnApiKey:', error);
-      useOwnApiKey = !useOwnApiKey; // Revert on error
       showMessage(t('Failed to update API mode'), 'error');
     }
   }

@@ -18,7 +18,7 @@ import { RepublicAgent } from '@/core/RepublicAgent';
 import { AgentConfig, CREDENTIAL_SECURED_MARKER } from '@/config/AgentConfig';
 import { getConfigStorage, setConfigStorage } from '@/core/storage/ConfigStorageProvider';
 import { getCredentialStore } from '@/core/storage';
-import { AuthManager } from '@/core/models/types/Auth';
+import { AuthManager, type IAuthManager } from '@/core/models/types/Auth';
 import { FileConfigStorageProvider } from '../storage/FileConfigStorageProvider';
 import { configurePromptComposer } from '@/core/PromptLoader';
 import type { RuntimeContext } from '@/prompts/PromptComposer';
@@ -64,6 +64,7 @@ import { schedulePeriodicSweep } from '../maintenance/toolResultCleanup';
 import { RolloutRecorder } from '@/storage/rollout';
 import { createSessionServices } from '@/core/session/state/SessionServices';
 import { registerUseSkillTool } from '@/core/skills/registerUseSkillTool';
+import { RuntimeStateController, accessStateFromReadyState } from '@/core/services/runtime-state';
 
 // Handler registrations
 import { registerChatHandlers } from '../handlers/chat';
@@ -131,6 +132,8 @@ export class ServerAgentBootstrap {
   private schedulerAlarms: ServerSchedulerAlarms | null = null;
   private runningSchedulerJobId: string | null = null;
   private runningJobStartTime: number = 0;
+  private currentAuthManager: IAuthManager | null = null;
+  private runtimeState: RuntimeStateController | null = null;
   private toolResultSweep: { stop: () => void } | null = null;
   // Track 15: periodic rollout TTL cleanup (the server otherwise never prunes
   // expired/forked rollouts — only the extension had alarm-based cleanup).
@@ -254,6 +257,10 @@ export class ServerAgentBootstrap {
           }, false);
           const agent = new RepublicAgent(cfg, platformAdapter, initialHistory, undefined, undefined, services);
           await agent.initialize();
+          if (this.currentAuthManager) {
+            agent.getModelClientFactory().setAuthManager(this.currentAuthManager);
+            await agent.refreshModelClient();
+          }
 
           if (profile === 'server') {
             // Register server-mode tools on each new agent. Pass `dataDir` so
@@ -642,6 +649,10 @@ export class ServerAgentBootstrap {
     const serviceRegistry = channelManager.getServiceRegistry();
     const profile = this.options.profile ?? 'server';
     const platformScope = profile === 'desktop-runtime' ? 'desktop' : 'server';
+    const agentConfigForSnapshot = await AgentConfig.getInstance();
+    const runtimeState = profile === 'desktop-runtime'
+      ? this.getOrCreateRuntimeState(channelManager, agentConfigForSnapshot)
+      : undefined;
 
     // Get MCPManager instance
     let mcpDeps: import('@/core/services').MCPServiceDeps | undefined;
@@ -1056,7 +1067,10 @@ export class ServerAgentBootstrap {
               return new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter);
             }
           : undefined,
-        setAuthManager: profile === 'desktop-runtime' ? () => undefined : undefined,
+        setAuthManager: profile === 'desktop-runtime' ? (authManager) => {
+          this.currentAuthManager = authManager;
+        } : undefined,
+        runtimeState,
       } : undefined,
       // Track 43: runtime-owned auth services (auth.completeLogin / getState /
       // logout + ChatGPT OAuth). Desktop runtime only — server mode handles
@@ -1069,8 +1083,12 @@ export class ServerAgentBootstrap {
             : undefined;
           return new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter);
         },
-        setAuthManager: () => undefined,
+        setAuthManager: (authManager) => {
+          this.currentAuthManager = authManager;
+        },
         getCredentialStore: () => getCredentialStore(),
+        runtimeState,
+        refreshAccessState: () => this.refreshDesktopRuntimeAccessState(),
         // The runtime owns the access token after cutover; the UI must not
         // receive it. The runtime performs the profile fetch itself and
         // returns only the redacted profile shape the UI needs.
@@ -1097,9 +1115,142 @@ export class ServerAgentBootstrap {
         },
       },
       memory: this.registry ? { registry: this.registry } : undefined,
+      runtime: runtimeState ? { runtimeState } : undefined,
     });
 
     console.log(`[ServerAgentBootstrap] Registered ${count} service handlers`);
+
+    if (profile === 'desktop-runtime') {
+      await this.hydrateDesktopRuntimeAuthState();
+    }
+  }
+
+  private getOrCreateRuntimeState(
+    channelManager: ReturnType<typeof getChannelManager>,
+    agentConfig: AgentConfig,
+  ): RuntimeStateController {
+    if (this.runtimeState) return this.runtimeState;
+    this.runtimeState = new RuntimeStateController({
+      emitStateUpdate: (msg) => {
+        channelManager.broadcastEvent({ msg }).catch((error) => {
+          console.warn('[ServerAgentBootstrap] Failed to broadcast runtime state update:', error);
+        });
+      },
+      getEffectiveConfig: () => {
+        const config = agentConfig.getConfig();
+        return {
+          selectedModelKey: config.selectedModelKey,
+          preferences: {
+            useOwnApiKey: config.preferences?.useOwnApiKey,
+          },
+          policy: config.policy
+            ? {
+                lockedKeys: config.policy.lockedKeys,
+              }
+            : undefined,
+        };
+      },
+      getRuntimeStatus: () => ({ status: 'ready', lastError: null }),
+    });
+    return this.runtimeState;
+  }
+
+  private async applyAuthManagerToSessions(authManager: IAuthManager | null): Promise<void> {
+    if (!this.registry) return;
+    for (const meta of this.registry.listSessions()) {
+      if (meta.state === 'terminated') continue;
+      const agentSession = this.registry.getSession(meta.sessionId);
+      if (!agentSession?.agent) continue;
+      agentSession.agent.getModelClientFactory().setAuthManager(authManager);
+      await agentSession.agent.refreshModelClient();
+    }
+  }
+
+  private async refreshDesktopRuntimeAccessState() {
+    if (!this.runtimeState || !this.registry) {
+      return this.runtimeState?.getAccessState();
+    }
+    const sessions = this.registry.listSessions();
+    const primary = sessions.find((s) => s.type === 'primary' && s.state !== 'terminated')
+      ?? sessions.find((s) => s.state !== 'terminated');
+    if (!primary) {
+      return this.runtimeState.setAccessState({
+        status: 'initializing',
+        mode: 'none',
+        ready: false,
+        reason: 'Agent session is initializing.',
+      });
+    }
+    const agent = this.registry.getSession(primary.sessionId)?.agent;
+    if (!agent) {
+      return this.runtimeState.setAccessState({
+        status: 'initializing',
+        mode: 'none',
+        ready: false,
+        reason: 'Agent session is initializing.',
+      });
+    }
+    const ready = await agent.isReady();
+    return this.runtimeState.setAccessState(accessStateFromReadyState(ready));
+  }
+
+  private async hydrateDesktopRuntimeAuthState(): Promise<void> {
+    if (!this.runtimeState || !this.registry || (this.options.profile ?? 'server') !== 'desktop-runtime') return;
+    const agentConfig = await AgentConfig.getInstance();
+    const config = agentConfig.getConfig();
+    const useOwnApiKey = config.preferences?.useOwnApiKey === true;
+    const credentialStore = getCredentialStore();
+    const accessToken = await credentialStore.get('auth', 'access_token').catch(() => null);
+
+    const shouldUseBackend = Boolean(accessToken && !useOwnApiKey);
+    const tokenGetter = shouldUseBackend
+      ? async () => getCredentialStore().get('auth', 'access_token')
+      : undefined;
+    const authManager = new AuthManager(
+      shouldUseBackend,
+      shouldUseBackend ? this.runtimeState.getUrls().llmApiUrl : null,
+      tokenGetter,
+    );
+    this.currentAuthManager = authManager;
+    await this.applyAuthManagerToSessions(authManager);
+
+    if (accessToken) {
+      await this.runtimeState.setAuthState({
+        mode: useOwnApiKey ? 'own_api_key' : 'login',
+        hasToken: true,
+        profileStatus: 'loading',
+        lastError: undefined,
+      });
+      try {
+        const { fetchUserProfileServerSide } = await import('@/desktop-runtime/auth/runtimeProfileFetch');
+        const profile = await fetchUserProfileServerSide(accessToken);
+        await this.runtimeState.setAuthState({
+          mode: useOwnApiKey ? 'own_api_key' : 'login',
+          hasToken: true,
+          profile,
+          profileStatus: profile ? 'ready' : 'failed',
+          lastError: profile ? undefined : 'Profile unavailable',
+        });
+      } catch (error) {
+        await this.runtimeState.setAuthState({
+          mode: useOwnApiKey ? 'own_api_key' : 'login',
+          hasToken: true,
+          profile: null,
+          profileStatus: 'failed',
+          lastError: error instanceof Error ? error.message : String(error),
+        });
+      }
+    } else {
+      await this.runtimeState.setAuthState({
+        mode: useOwnApiKey ? 'own_api_key' : 'none',
+        hasToken: false,
+        profile: null,
+        profileStatus: 'idle',
+        lastError: undefined,
+      });
+    }
+
+    await this.refreshDesktopRuntimeAccessState();
   }
 
   /**

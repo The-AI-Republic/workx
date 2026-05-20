@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
+  envDir: resolve(__dirname, 'src/desktop'),
   define: {
     __BUILD_MODE__: JSON.stringify('server'),
   },

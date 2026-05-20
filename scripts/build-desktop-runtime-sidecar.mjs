@@ -16,22 +16,21 @@
  *           └── package.json
  *
  * Tauri's `bundle.resources` packages the whole tree alongside the app
- * binary. The Rust supervisor launches `node <resourceDir>/desktop-runtime/index.mjs`
- * and Node resolves better-sqlite3 from the bundled node_modules.
+ * binary. The Rust supervisor launches the packaged Node binary against
+ * `<resourceDir>/desktop-runtime/index.mjs`, and Node resolves better-sqlite3
+ * from the bundled node_modules.
  *
  * What we do _not_ do here:
- *   - Bundle Node.js itself. The runtime expects Node 20.19+/22+ on PATH;
- *     packaging Node is a P4 follow-up (it doubles the installer size).
  *   - Compile the runtime with @yao-pkg/pkg. The runtime uses dynamic
  *     `import()`, top-level await, and native addons — all of which fight
  *     with pkg's CJS-snapshot model (the chrome-devtools-mcp sidecar runs
- *     into the same issue). System Node is the path.
+ *     into the same issue).
  *
  * Run:  node scripts/build-desktop-runtime-sidecar.mjs
  * Or:   npm run build:desktop-runtime-sidecar
  */
 
-import { execSync, spawnSync } from 'node:child_process';
+import { execFileSync, execSync, spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -43,6 +42,8 @@ const req = createRequire(import.meta.url);
 
 const distEntry = path.join(root, 'dist/desktop-runtime/index.mjs');
 const sidecarDir = path.join(root, 'tauri/sidecar/desktop-runtime');
+const bundledNodeName = process.platform === 'win32' ? 'node.exe' : 'node';
+const bundledNodePath = path.join(sidecarDir, bundledNodeName);
 
 function info(msg) { console.log(`[build-desktop-runtime-sidecar] ${msg}`); }
 
@@ -157,7 +158,15 @@ step('4) copy better-sqlite3 native addon + lib + minimal runtime closure', () =
   info(`copied better-sqlite3 + runtime closure: ${BETTER_SQLITE3_RUNTIME_DEPS.join(', ')}`);
 });
 
-step('5) copy sqlite-vec native artifact (if installed)', () => {
+step('5) copy Node binary used for this build', () => {
+  copyFile(process.execPath, bundledNodePath);
+  if (process.platform !== 'win32') {
+    fs.chmodSync(bundledNodePath, 0o755);
+  }
+  info(`bundled ${process.version} from ${process.execPath}`);
+});
+
+step('6) copy sqlite-vec native artifact (if installed)', () => {
   try {
     copyRuntimeDep('sqlite-vec', ['dist', 'src']);
   } catch (err) {
@@ -165,7 +174,7 @@ step('5) copy sqlite-vec native artifact (if installed)', () => {
   }
 });
 
-step('6a) regression guard: bundled deps actually present on disk', () => {
+step('7a) regression guard: bundled runtime files actually present on disk', () => {
   // Sanity: a future refactor that drops bindings/file-uri-to-path would
   // make this list shrink. The end-to-end self-test below would catch it
   // too, but a clear early failure is friendlier.
@@ -175,9 +184,12 @@ step('6a) regression guard: bundled deps actually present on disk', () => {
       throw new Error(`Expected bundled dep ${dep} (missing ${pkg})`);
     }
   }
+  if (!fs.existsSync(bundledNodePath)) {
+    throw new Error(`Expected bundled node binary (missing ${bundledNodePath})`);
+  }
 });
 
-step('6b) self-test (instantiate the bundled native addon end-to-end)', () => {
+step('7b) self-test (instantiate the bundled native addon end-to-end)', () => {
   // Spawn `node` with cwd = sidecarDir so it resolves modules from the
   // bundled node_modules ONLY (the project's outer node_modules is up the
   // tree from sidecarDir, so this is also a regression guard against the
@@ -191,11 +203,14 @@ step('6b) self-test (instantiate the bundled native addon end-to-end)', () => {
   const isolatedTmp = fs.mkdtempSync(path.join(root, 'tauri/sidecar/.selftest-'));
   try {
     // Copy the sidecar tree into a path with no ancestor node_modules.
-    copyDir(sidecarDir, path.join(isolatedTmp, 'sidecar'));
-    execSync(
-      `node -e "const D=require('better-sqlite3'); const db=new D(':memory:'); db.exec('CREATE TABLE t(x)'); db.close(); console.log('addon-ok')"`,
+    const isolatedSidecar = path.join(isolatedTmp, 'sidecar');
+    const isolatedNode = path.join(isolatedSidecar, bundledNodeName);
+    copyDir(sidecarDir, isolatedSidecar);
+    execFileSync(
+      isolatedNode,
+      ['-e', "const D=require('better-sqlite3'); const db=new D(':memory:'); db.exec('CREATE TABLE t(x)'); db.close(); console.log('addon-ok')"],
       {
-        cwd: path.join(isolatedTmp, 'sidecar'),
+        cwd: isolatedSidecar,
         stdio: 'inherit',
         env: { ...process.env, NODE_PATH: '' },
       },
@@ -205,7 +220,7 @@ step('6b) self-test (instantiate the bundled native addon end-to-end)', () => {
   }
 });
 
-step('6c) self-test (import the runtime entry — catches missing bundled deps)', () => {
+step('7c) self-test (import the runtime entry — catches missing bundled deps)', () => {
   // The previous step proves the native addon loads. This step proves the
   // FULL runtime bundle's import graph resolves — every static AND every
   // dynamic `import(...)` chunk. Two ways this can go wrong:
@@ -223,7 +238,9 @@ step('6c) self-test (import the runtime entry — catches missing bundled deps)'
   // fails the self-test, no matter how the runtime otherwise exits.
   const isolatedTmp = fs.mkdtempSync(path.join(root, 'tauri/sidecar/.entrytest-'));
   try {
-    copyDir(sidecarDir, path.join(isolatedTmp, 'sidecar'));
+    const isolatedSidecar = path.join(isolatedTmp, 'sidecar');
+    const isolatedNode = path.join(isolatedSidecar, bundledNodeName);
+    copyDir(sidecarDir, isolatedSidecar);
     const fakeConfigDir = path.join(isolatedTmp, 'fake-config');
     fs.mkdirSync(fakeConfigDir, { recursive: true });
     const host = JSON.stringify({
@@ -241,10 +258,10 @@ step('6c) self-test (import the runtime entry — catches missing bundled deps)'
     // Capture stderr so we can scan it for module-resolution errors that
     // happen during async initialization.
     const child = childProcessOnce(
-      'node',
-      [path.join(isolatedTmp, 'sidecar', 'index.mjs')],
+      isolatedNode,
+      [path.join(isolatedSidecar, 'index.mjs')],
       {
-        cwd: path.join(isolatedTmp, 'sidecar'),
+        cwd: isolatedSidecar,
         env: {
           ...process.env,
           NODE_PATH: '',

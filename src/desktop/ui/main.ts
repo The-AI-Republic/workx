@@ -66,14 +66,23 @@ async function init() {
   }
 
   // 1b. Route deeplinks from Rust to runtime services. The Rust supervisor
-  // emits every `applepi://...` URL as an `auth-callback` event; the WebView
+  // emits every `applepi://...` URL as an `applepi-deeplink` event; the WebView
   // is the only listener — it parses and routes by path.
   try {
     const { listen } = await import('@tauri-apps/api/event');
-    await listen<string>('auth-callback', async (event) => {
+    const maxConsumedSchedulerDeeplinks = 128;
+    const consumedSchedulerDeeplinks = new Set<string>();
+    await listen<string>('applepi-deeplink', async (event) => {
       try {
         const url = new URL(event.payload);
         if (url.host === 'scheduler' && url.pathname === '/trigger') {
+          const dedupeKey = url.toString();
+          if (consumedSchedulerDeeplinks.has(dedupeKey)) return;
+          consumedSchedulerDeeplinks.add(dedupeKey);
+          if (consumedSchedulerDeeplinks.size > maxConsumedSchedulerDeeplinks) {
+            const oldest = consumedSchedulerDeeplinks.values().next().value;
+            if (oldest) consumedSchedulerDeeplinks.delete(oldest);
+          }
           const jobId = url.searchParams.get('jobId');
           if (!jobId) {
             console.warn('[Desktop] Scheduler deeplink missing jobId:', event.payload);
