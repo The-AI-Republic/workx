@@ -23,11 +23,7 @@ export interface RuntimeUserProfile {
  * webfront's `HOME_PAGE_BASE_URL`, overridable via env for tests / staging.
  */
 function resolveAuthBaseUrl(): string {
-  return (
-    process.env.APPLEPI_HOME_PAGE_BASE_URL ??
-    process.env.VITE_HOME_PAGE_BASE_URL ??
-    'https://airepublic.com'
-  );
+  return resolveRuntimeUrls().homePageBaseUrl;
 }
 
 /**
@@ -73,3 +69,4 @@ export async function fetchUserProfileServerSide(
     return null;
   }
 }
+import { resolveRuntimeUrls } from '@/config/runtimeUrls';

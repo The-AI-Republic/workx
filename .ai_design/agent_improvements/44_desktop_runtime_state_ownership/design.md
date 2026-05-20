@@ -1,6 +1,6 @@
 # Track 44: Desktop Runtime State Ownership Contract
 
-**Priority: P1** | **Effort: Medium-Large** | **Status: READY FOR IMPLEMENTATION (design review 2026-05-20)**
+**Priority: P1** | **Effort: Medium-Large** | **Status: IMPLEMENTED (2026-05-20)**
 
 Track 43 moved Apple Pi desktop from an in-WebView agent to a Rust-supervised Node runtime sidecar. That cutover is the right architecture, but the state boundary is still too implicit. Recent login/runtime debugging showed several classes of drift:
 

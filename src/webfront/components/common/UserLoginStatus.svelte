@@ -8,7 +8,7 @@
   import Tooltip from './Tooltip.svelte';
   import PopupCard from './PopupCard.svelte';
   import { _t } from '../../lib/i18n';
-  import { fetchUserProfile } from '../../lib/apis';
+  import type { RuntimeAuthState } from '@/core/services/runtime-state';
 
   let isLoggingIn = $state(false);
   let cancelLogin: (() => void) | null = $state(null);
@@ -55,7 +55,7 @@
 
   async function openLoginPage() {
     if (platform.platformName === 'desktop') {
-      // Desktop mode: open the browser to /login, await the auth-callback
+      // Desktop mode: open the browser to /login, await the applepi-deeplink
       // deeplink (Rust → WebView event), and forward both tokens to the
       // runtime via `auth.completeLogin`. The WebView never touches the OS
       // keychain after the Track 43 cutover — the runtime owns credentials.
@@ -83,15 +83,22 @@
         loginUrl.searchParams.set('redirect_url', 'applepi://auth/callback');
         loginUrl.searchParams.set('desktop_login_ts', Date.now().toString());
 
-        // 2. Subscribe to the auth-callback event from Rust before opening the
+        // 2. Subscribe to the applepi-deeplink event from Rust before opening the
         // browser — Rust emits it as soon as the OS hands us the URL.
         const tokensPromise = new Promise<{ accessToken: string; refreshToken: string }>(
           (resolve, reject) => {
             rejectPending = reject;
             const timeoutId = setTimeout(() => reject(new Error('Login timed out')), 300_000);
-            listen<string>('auth-callback', (event) => {
+            const consumedAuthCallbacks = new Set<string>();
+            listen<string>('applepi-deeplink', (event) => {
               try {
                 const urlObj = new URL(event.payload);
+                if (urlObj.host !== 'auth' || urlObj.pathname !== '/callback') {
+                  return;
+                }
+                const dedupeKey = urlObj.toString();
+                if (consumedAuthCallbacks.has(dedupeKey)) return;
+                consumedAuthCallbacks.add(dedupeKey);
                 const accessToken = urlObj.searchParams.get('access_token');
                 const refreshToken = urlObj.searchParams.get('refresh_token');
                 if (!accessToken || !refreshToken) {
@@ -121,19 +128,20 @@
         // credential store, and pushes the new AuthManager into every
         // active session's model client.
         const client = await getInitializedUIClient();
-        const completion = await client.serviceRequest<{ success: boolean; user: any }>(
+        const completion = await client.serviceRequest<{
+          success: boolean;
+          state?: RuntimeAuthState;
+          user?: { name?: string | null; email?: string | null; avatar?: string | null; userType?: number } | null;
+        }>(
           'auth.completeLogin',
           { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken, backendBaseUrl: LLM_API_URL },
         );
-        const accessToken = tokens.accessToken;
         if (isCancelled) return;
 
-        // 4. Update the UI userStore from the runtime response, with a local
-        // profile fetch fallback if the runtime didn't fetch one for us.
-        let profile: any = completion?.user ?? null;
-        if (!profile) {
-          profile = await fetchUserProfile(accessToken);
-        }
+        // 4. Update the UI userStore from the runtime response. Desktop
+        // profile lookup belongs to the runtime; the WebView does not retry
+        // profile calls with raw tokens after login.
+        const profile = completion?.state?.profile ?? completion?.user ?? null;
         if (profile) {
           userStore.setUser({
             name: profile.name ?? null,
@@ -141,6 +149,10 @@
             avatar: profile.avatar ?? null,
             userType: profile.userType ?? 0,
           });
+        } else {
+          // The runtime has accepted and stored the token. Keep the desktop UI
+          // in logged-in state even if the profile endpoint is unavailable.
+          userStore.setUser({ name: null, email: null, avatar: null, userType: 0 });
         }
         console.log('[UserLoginStatus] Desktop auth completed via runtime');
       } catch (error) {

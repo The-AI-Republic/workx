@@ -20,6 +20,7 @@ import { createStorageServices, type StorageServiceDeps } from './storage-servic
 import { createPluginsServices, type PluginsServiceDeps } from './plugins-services';
 import { createDiagnosticsServices, type DiagnosticsServiceDeps } from './diagnostics-services';
 import { createMemoryServices, type MemoryServiceDeps } from './memory-services';
+import { createRuntimeServices, type RuntimeServiceDeps } from './runtime-services';
 
 /**
  * Dependencies for registering all services.
@@ -38,6 +39,7 @@ export interface AllServiceDeps {
   plugins?: PluginsServiceDeps;
   diagnostics?: DiagnosticsServiceDeps;
   memory?: MemoryServiceDeps;
+  runtime?: RuntimeServiceDeps;
 }
 
 /**
@@ -64,6 +66,7 @@ export function registerAllServices(
     ['plugins', createPluginsServices],
     ['diagnostics', createDiagnosticsServices],
     ['memory', createMemoryServices],
+    ['runtime', createRuntimeServices],
   ];
 
   for (const [key, factory] of factories) {
@@ -93,3 +96,4 @@ export { createStorageServices, type StorageServiceDeps } from './storage-servic
 export { createPluginsServices, type PluginsServiceDeps } from './plugins-services';
 export { createDiagnosticsServices, type DiagnosticsServiceDeps } from './diagnostics-services';
 export { createMemoryServices, type MemoryServiceDeps } from './memory-services';
+export { createRuntimeServices, type RuntimeServiceDeps } from './runtime-services';

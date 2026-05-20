@@ -302,6 +302,10 @@ async fn handle_control_frame(app: &AppHandle, state: &RuntimeSupervisorState, f
 /// good handshake, `Err` on spawn failure.
 /// Resolve a `node` binary to invoke for the runtime sidecar.
 ///
+/// Production packages include the exact Node binary that built the native
+/// sidecar deps. Prefer that binary so native addons such as better-sqlite3
+/// cannot be accidentally loaded with a different system Node ABI.
+///
 /// macOS Finder-launched apps and Windows .exe launches typically run with a
 /// minimal PATH that does NOT include Homebrew (`/usr/local/bin`,
 /// `/opt/homebrew/bin`), NVM (`~/.nvm/versions/node/.../bin`), Volta, or
@@ -312,12 +316,26 @@ async fn handle_control_frame(app: &AppHandle, state: &RuntimeSupervisorState, f
 /// locations. The first one that exists wins.
 ///
 /// The `APPLEPI_NODE_BIN` env var overrides everything for power users / CI.
-fn resolve_node_bin() -> String {
+fn resolve_node_bin(app: &AppHandle) -> String {
     if let Ok(custom) = std::env::var("APPLEPI_NODE_BIN") {
         if !custom.is_empty() {
             return custom;
         }
     }
+
+    let bundled_name = if cfg!(target_os = "windows") { "node.exe" } else { "node" };
+    if let Ok(path) = app
+        .path()
+        .resolve(
+            format!("desktop-runtime/{}", bundled_name),
+            tauri::path::BaseDirectory::Resource,
+        )
+    {
+        if path.exists() {
+            return path.to_string_lossy().to_string();
+        }
+    }
+
     // Bare `node` if PATH has it. The Command spawn below also tries this
     // form, so the explicit existence check is a small optimization for
     // platforms with normal PATHs.
@@ -361,7 +379,7 @@ async fn spawn_once(
     let host = desktop_host(app)?;
     let host_json = serde_json::to_string(&host).map_err(|e| e.to_string())?;
     let entry = runtime_entry_path(app);
-    let node_bin = resolve_node_bin();
+    let node_bin = resolve_node_bin(app);
 
     let mut child = Command::new(&node_bin)
         .arg(entry)

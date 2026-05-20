@@ -108,6 +108,26 @@ describe('createAgentServices', () => {
     });
   });
 
+  describe('agent.getAccessState', () => {
+    it('returns global access state from an active session', async () => {
+      const agentSession = deps.registry.getSession('s1');
+      agentSession.agent.isReady.mockResolvedValueOnce({
+        ready: true,
+        provider: 'OpenAI',
+        model: 'gpt',
+        authMode: 'login',
+      });
+      const result = await services['agent.getAccessState']({}, ctx);
+      expect(result).toMatchObject({
+        ready: true,
+        status: 'ready',
+        mode: 'login',
+        provider: 'OpenAI',
+        model: 'gpt',
+      });
+    });
+  });
+
   // ─── agent.configUpdate ──────────────────────────────────────────────
 
   describe('agent.configUpdate', () => {
@@ -181,7 +201,7 @@ describe('createAgentServices', () => {
         { backendBaseUrl: 'https://api.example.com', useOwnApiKey: false },
         ctx,
       );
-      expect(result).toEqual({ success: true, isBackendRouting: true });
+      expect(result).toMatchObject({ success: true, isBackendRouting: true });
       expect(deps.createAuthManager).toHaveBeenCalledWith(true, 'https://api.example.com');
       expect(deps.setAuthManager).toHaveBeenCalledWith({ type: 'mock-auth' });
     });
@@ -191,13 +211,13 @@ describe('createAgentServices', () => {
         { backendBaseUrl: 'https://api.example.com', useOwnApiKey: true },
         ctx,
       );
-      expect(result).toEqual({ success: true, isBackendRouting: false });
+      expect(result).toMatchObject({ success: true, isBackendRouting: false });
       expect(deps.createAuthManager).toHaveBeenCalledWith(false, null);
     });
 
     it('uses null backendBaseUrl when not provided and useOwnApiKey is false', async () => {
       const result = await services['agent.initAuth']({ useOwnApiKey: false }, ctx);
-      expect(result).toEqual({ success: true, isBackendRouting: true });
+      expect(result).toMatchObject({ success: true, isBackendRouting: true });
       expect(deps.createAuthManager).toHaveBeenCalledWith(true, null);
     });
 
@@ -275,7 +295,7 @@ describe('createAgentServices', () => {
       const svc = createAgentServices(multiDeps);
       // Should not throw
       const result = await svc['agent.initAuth']({ useOwnApiKey: false }, ctx);
-      expect(result).toEqual({ success: true, isBackendRouting: true });
+      expect(result).toMatchObject({ success: true, isBackendRouting: true });
     });
   });
 
