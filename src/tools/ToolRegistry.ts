@@ -30,6 +30,7 @@ import {
   type ToolRuntimeMetadata,
   type ToolProgressCallback,
 } from './runtimeMetadata';
+import type { ToolExposureProfile, ToolRegistryExposureEntry } from './exposure';
 // Note: parseNodeId is dynamically imported in enrichDomParameters to keep
 // ToolRegistry cross-platform (extension-only DOM utils stay out of the
 // desktop/server bundles).
@@ -65,6 +66,7 @@ interface ToolRegistryEntry {
   registrationTime: number;
   riskAssessor?: IRiskAssessor;
   runtime: ToolRuntimeMetadata;
+  exposure?: ToolExposureProfile;
 }
 
 /**
@@ -72,6 +74,7 @@ interface ToolRegistryEntry {
  */
 export interface ToolRegistrationOptions {
   riskAssessor?: IRiskAssessor;
+  exposure?: ToolExposureProfile;
   runtime?: Partial<{
     concurrency: Partial<ToolConcurrencyProfile>;
     ui: ToolUIProfile;
@@ -233,6 +236,7 @@ export class ToolRegistry {
       registrationTime: Date.now(),
       riskAssessor: opts.riskAssessor,
       runtime,
+      exposure: opts.exposure,
     };
 
     this.tools.set(toolName, entry);
@@ -527,7 +531,8 @@ export class ToolRegistry {
           request.toolName,
           approvalParameters,
           entry.riskAssessor,
-          context
+          context,
+          { hookSnapshot: request.metadata?.hookSnapshot }
         );
 
         const decision = typeof result === 'string' ? result : result.decision;
@@ -595,6 +600,7 @@ export class ToolRegistry {
               tabId: request.tabId,
             },
         onProgress: emitProgress,
+        signal: request.signal,
         // Track 23: the resource-fetch tool reads this to settle a 402.
         // Undefined on platforms/sessions with no wired capability.
         payments: this.paymentCapability,
@@ -789,8 +795,20 @@ export class ToolRegistry {
    * Iterate over all registered tool entries.
    * Returns [toolName, entry] pairs for cloning/filtering.
    */
-  entries(): IterableIterator<[string, { definition: ToolDefinition; handler: ToolHandler; riskAssessor?: IRiskAssessor }]> {
+  entries(): IterableIterator<[string, { definition: ToolDefinition; handler: ToolHandler; riskAssessor?: IRiskAssessor; exposure?: ToolExposureProfile }]> {
     return this.tools.entries();
+  }
+
+  entriesWithExposure(): ToolRegistryExposureEntry[] {
+    return Array.from(this.tools.entries()).map(([name, entry]) => ({
+      name,
+      definition: entry.definition,
+      exposure: entry.exposure,
+    }));
+  }
+
+  getToolExposureProfile(name: string): ToolExposureProfile | undefined {
+    return this.tools.get(name)?.exposure;
   }
 
   /**

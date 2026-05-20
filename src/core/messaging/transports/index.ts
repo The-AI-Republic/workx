@@ -8,5 +8,5 @@
 
 export type { UIChannelTransport } from './types';
 export { ChromeExtensionTransport } from './ChromeExtensionTransport';
-export { TauriTransport } from './TauriTransport';
+export { RuntimeRelayTauriTransport } from './RuntimeRelayTauriTransport';
 export { WebSocketTransport, type WebSocketTransportConfig } from './WebSocketTransport';

@@ -283,29 +283,62 @@ Snapshots only return elements visible in the current viewport (inViewport: true
     }
 
 
-    // Route by action type - return raw data, BaseTool.execute() will wrap it
-    let result: SerializedDom | ActionResult;
-    switch (typedRequest.action) {
-      case 'snapshot':
-        result = await this.executeSnapshot(tabId, typedRequest.options);
-        break;
-      case 'click':
-        result = await this.executeClick(tabId, typedRequest.node_id!, typedRequest.options);
-        break;
-      case 'type':
-        result = await this.executeType(tabId, typedRequest.node_id!, typedRequest.text!, typedRequest.options);
-        break;
-      case 'keypress':
-        result = await this.executeKeypress(tabId, typedRequest.key!, typedRequest.options);
-        break;
-      case 'scroll':
-        result = await this.executeScroll(tabId, typedRequest.node_id!, typedRequest.options);
-        break;
-      default:
-        throw new Error(`Unknown action: ${typedRequest.action}`);
-    }
+    this.emitDomProgress(options, typedRequest, typedRequest.action === 'snapshot' ? 'serializing' : 'executing');
 
-    return result;
+    try {
+      // Route by action type - return raw data, BaseTool.execute() will wrap it
+      let result: SerializedDom | ActionResult;
+      switch (typedRequest.action) {
+        case 'snapshot':
+          result = await this.executeSnapshot(tabId, typedRequest.options);
+          break;
+        case 'click':
+          result = await this.executeClick(tabId, typedRequest.node_id!, typedRequest.options);
+          break;
+        case 'type':
+          result = await this.executeType(tabId, typedRequest.node_id!, typedRequest.text!, typedRequest.options);
+          break;
+        case 'keypress':
+          result = await this.executeKeypress(tabId, typedRequest.key!, typedRequest.options);
+          break;
+        case 'scroll':
+          result = await this.executeScroll(tabId, typedRequest.node_id!, typedRequest.options);
+          break;
+        default:
+          throw new Error(`Unknown action: ${typedRequest.action}`);
+      }
+
+      this.emitDomProgress(options, typedRequest, 'completed', this.getSerializedNodeCount(result));
+      return result;
+    } catch (error) {
+      this.emitDomProgress(options, typedRequest, 'failed');
+      throw error;
+    }
+  }
+
+  private emitDomProgress(
+    options: BaseToolOptions | undefined,
+    request: DOMToolRequest,
+    status: 'started' | 'serializing' | 'executing' | 'completed' | 'failed',
+    nodeCount?: number,
+  ): void {
+    options?.onProgress?.({
+      toolUseID: options.callId ?? 'browser_dom',
+      data: {
+        type: 'dom_progress',
+        action: request.action,
+        selector: request.node_id !== undefined ? String(request.node_id) : undefined,
+        status,
+        nodeCount,
+      },
+    });
+  }
+
+  private getSerializedNodeCount(result: SerializedDom | ActionResult): number | undefined {
+    if ('page' in result) {
+      return result.page.metrics?.serialized_nodes ?? result.page.metrics?.total_nodes;
+    }
+    return undefined;
   }
 
   // ============================================================================

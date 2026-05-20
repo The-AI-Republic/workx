@@ -194,7 +194,8 @@ async fn handle_control_frame(app: &AppHandle, state: &RuntimeSupervisorState, f
     let method = frame.get("method").and_then(Value::as_str).unwrap_or_default();
     let params = frame.get("params").cloned().unwrap_or_else(|| json!({}));
 
-    let result = match method {
+    let result: Result<Value, String> = match method {
+        // ── keychain ──────────────────────────────────────────────────────
         "keychain.get" => (|| {
             let service = required_str(&params, "service")?;
             let account = required_str(&params, "account")?;
@@ -215,12 +216,71 @@ async fn handle_control_frame(app: &AppHandle, state: &RuntimeSupervisorState, f
             let service = required_str(&params, "service")?;
             super::keychain_commands::keychain_list_accounts(service).map(|v| json!(v))
         })(),
+        // ── scheduler OS-trust bridge ─────────────────────────────────────
+        "scheduler.register" => {
+            match (required_str(&params, "jobId"), params.get("scheduledTime").and_then(Value::as_i64)) {
+                (Ok(job_id), Some(scheduled_time)) => {
+                    super::scheduler_commands::scheduler_register_os_job(job_id, scheduled_time)
+                        .await
+                        .map(|_| json!(null))
+                }
+                _ => Err("scheduler.register requires jobId (string) and scheduledTime (i64)".into()),
+            }
+        }
+        "scheduler.remove" => match required_str(&params, "jobId") {
+            Ok(job_id) => super::scheduler_commands::scheduler_remove_os_job(job_id)
+                .await
+                .map(|_| json!(null)),
+            Err(e) => Err(e),
+        },
+        "scheduler.list" => super::scheduler_commands::scheduler_list_os_jobs()
+            .await
+            .map(|v| json!(v)),
+        "scheduler.has" => match required_str(&params, "jobId") {
+            Ok(job_id) => super::scheduler_commands::scheduler_has_os_job(job_id)
+                .await
+                .map(|v| json!(v)),
+            Err(e) => Err(e),
+        },
+        "scheduler.clear" => super::scheduler_commands::scheduler_clear_os_jobs()
+            .await
+            .map(|_| json!(null)),
+        // ── notifications (OS-trust; uses tauri-plugin-notification) ──────
+        "notification.show" => {
+            let title = params.get("title").and_then(Value::as_str).unwrap_or("Apple Pi");
+            let body = params.get("body").and_then(Value::as_str).unwrap_or("");
+            use tauri_plugin_notification::NotificationExt;
+            match app.notification().builder().title(title).body(body).show() {
+                Ok(_) => Ok(json!(null)),
+                Err(e) => Err(e.to_string()),
+            }
+        }
+        // ── window shell controls ─────────────────────────────────────────
         "ui.showWindow" => {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
                 let _ = window.set_focus();
             }
             Ok(json!(null))
+        }
+        "ui.submitToFocus" => {
+            // Show window + focus + emit a `pi:focus-input` event the UI
+            // listens for to route a payload into the chat composer.
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+            let _ = app.emit("pi:focus-input", params.clone());
+            Ok(json!(null))
+        }
+        // ── diagnostics ────────────────────────────────────────────────────
+        "diagnostics.recentStderr" => {
+            // Recent stderr is captured by the supervisor stderr task and
+            // emitted as `runtime:stderr` events to the UI; the runtime
+            // itself doesn't get a copy, so it asks back here. A real
+            // implementation would back this with a ring buffer; for now
+            // return an empty list (no leak) so callers handle gracefully.
+            Ok(json!({ "lines": [] }))
         }
         _ => Err(format!("Unknown control method: {}", method)),
     };
@@ -240,6 +300,59 @@ async fn handle_control_frame(app: &AppHandle, state: &RuntimeSupervisorState, f
 /// until the stream closes. Returns `Ok(true)` if a valid `hello-ok` was seen
 /// during the session (a healthy run), `Ok(false)` if it died before/without a
 /// good handshake, `Err` on spawn failure.
+/// Resolve a `node` binary to invoke for the runtime sidecar.
+///
+/// macOS Finder-launched apps and Windows .exe launches typically run with a
+/// minimal PATH that does NOT include Homebrew (`/usr/local/bin`,
+/// `/opt/homebrew/bin`), NVM (`~/.nvm/versions/node/.../bin`), Volta, or
+/// `C:\Program Files\nodejs`. A bare `Command::new("node")` therefore fails
+/// with "node: not found" in production even though `node --version` works
+/// fine from a terminal. We try the bare command first (cheap, picks up the
+/// happy path) and fall back to a small list of well-known install
+/// locations. The first one that exists wins.
+///
+/// The `APPLEPI_NODE_BIN` env var overrides everything for power users / CI.
+fn resolve_node_bin() -> String {
+    if let Ok(custom) = std::env::var("APPLEPI_NODE_BIN") {
+        if !custom.is_empty() {
+            return custom;
+        }
+    }
+    // Bare `node` if PATH has it. The Command spawn below also tries this
+    // form, so the explicit existence check is a small optimization for
+    // platforms with normal PATHs.
+    if which::which("node").is_ok() {
+        return "node".to_string();
+    }
+    // Well-known install locations to probe in order.
+    let candidates: &[&str] = if cfg!(target_os = "macos") {
+        &[
+            "/opt/homebrew/bin/node",         // Apple Silicon Homebrew
+            "/usr/local/bin/node",            // Intel Homebrew + manual
+            "/usr/local/opt/node/bin/node",   // Homebrew keg
+        ]
+    } else if cfg!(target_os = "windows") {
+        &[
+            "C:\\Program Files\\nodejs\\node.exe",
+            "C:\\Program Files (x86)\\nodejs\\node.exe",
+        ]
+    } else {
+        &[
+            "/usr/local/bin/node",
+            "/usr/bin/node",
+            "/snap/bin/node",
+        ]
+    };
+    for candidate in candidates {
+        if std::path::Path::new(candidate).exists() {
+            return candidate.to_string();
+        }
+    }
+    // Fall back to bare "node" so the spawn produces a real error message
+    // the user can act on (instead of e.g. a path that doesn't exist).
+    "node".to_string()
+}
+
 async fn spawn_once(
     app: &AppHandle,
     inner: &Arc<Mutex<RuntimeSupervisor>>,
@@ -248,8 +361,9 @@ async fn spawn_once(
     let host = desktop_host(app)?;
     let host_json = serde_json::to_string(&host).map_err(|e| e.to_string())?;
     let entry = runtime_entry_path(app);
+    let node_bin = resolve_node_bin();
 
-    let mut child = Command::new("node")
+    let mut child = Command::new(&node_bin)
         .arg(entry)
         .env("APPLEPI_RUNTIME_PROFILE", "desktop-runtime")
         .env("APPLEPI_DESKTOP_RUNTIME_HOST", host_json)
@@ -258,7 +372,10 @@ async fn spawn_once(
         .stderr(Stdio::piped())
         .kill_on_drop(true)
         .spawn()
-        .map_err(|e| format!("Failed to spawn desktop runtime: {}", e))?;
+        .map_err(|e| format!(
+            "Failed to spawn desktop runtime via '{}': {}. Install Node.js 20.19+ or 22+ (https://nodejs.org), or set APPLEPI_NODE_BIN to a node binary path.",
+            node_bin, e,
+        ))?;
 
     let stdout = child.stdout.take().ok_or_else(|| "Runtime stdout unavailable".to_string())?;
     let stderr = child.stderr.take().ok_or_else(|| "Runtime stderr unavailable".to_string())?;

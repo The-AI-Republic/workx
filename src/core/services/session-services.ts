@@ -83,6 +83,45 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
     },
 
     /**
+     * Track 29: list typed background task states for a session.
+     */
+    'session.listTaskStates': async (params) => {
+      const { sessionId } = (params ?? {}) as { sessionId?: string };
+      const agentSession = requireSession(deps, sessionId);
+      return { tasks: agentSession.agent.getSession().listTaskStates() };
+    },
+
+    /**
+     * Track 29: read append-only background task output chunks.
+     */
+    'session.getTaskOutput': async (params) => {
+      const { sessionId, taskId, fromSeq } = (params ?? {}) as {
+        sessionId?: string;
+        taskId?: string;
+        fromSeq?: number;
+      };
+      if (!taskId) throw new Error('taskId is required');
+      const agentSession = requireSession(deps, sessionId);
+      const chunks = await agentSession.agent.getEngine()?.getTaskOutput(taskId, fromSeq ?? 0) ?? [];
+      return { chunks };
+    },
+
+    /**
+     * Track 29: retain/release terminal task output while a panel is mounted.
+     */
+    'session.retainTask': async (params) => {
+      const { sessionId, taskId, retain } = (params ?? {}) as {
+        sessionId?: string;
+        taskId?: string;
+        retain?: boolean;
+      };
+      if (!taskId) throw new Error('taskId is required');
+      const agentSession = requireSession(deps, sessionId);
+      agentSession.agent.getEngine()?.retainTask(taskId, retain !== false);
+      return { success: true };
+    },
+
+    /**
      * Reset a specific session.
      * Requires: { sessionId: string }
      */

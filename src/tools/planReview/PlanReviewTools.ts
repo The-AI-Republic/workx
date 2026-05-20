@@ -4,7 +4,7 @@
  * These are NOT plain BaseTool subclasses: a ToolContext exposes no
  * handle to the registry / approval manager. They are registered as
  * handler closures from the platform wiring site (service-worker.ts /
- * DesktopAgentBootstrap.ts), where the registry + core ApprovalManager
+ * runtime bootstraps), where the registry + core ApprovalManager
  * are in scope. The server bootstrap deliberately does NOT call
  * registerPlanReviewTools (no working approval round-trip there) unless
  * a Track-20 plan-resolution policy is present — the trap-guard.

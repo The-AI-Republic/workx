@@ -28,11 +28,16 @@ import { TaskKind } from './session/state/types';
 import { toRateLimitSnapshotEvent, evaluateEarlyWarning } from './models/types/RateLimits';
 import { isDOMSnapshotOutput, compressSnapshot } from './session/state/SnapshotCompressor';
 import type { HookDispatcher } from './hooks/HookDispatcher';
+import { getToolRuntimeContext } from './hooks/toolRuntimeContext';
 
 // Compaction imports
 import { CompactService } from './compact/CompactService';
 import type { CompactionResult, CompactionTrigger } from './compact/types';
 import { estimateRequestTokens } from './compact/utils';
+import {
+  calculateTokenWarningState,
+  shouldAutoCompactTokens,
+} from './compact/tokenPressure';
 import type { ModelClient } from './models/ModelClient';
 
 // Memory system
@@ -143,6 +148,7 @@ export class Session {
    */
   private initError: Error | null = null;
   private hookDispatcher: HookDispatcher | null = null;
+  private terminalTaskHookEmitted: Set<string> = new Set();
 
   // Track 05b: per-session post-turn callbacks (e.g. session-summary
   // extractor). TurnManager is created per-task; the callback list lives on
@@ -849,7 +855,10 @@ export class Session {
   shouldCompact(contextWindow: number): boolean {
     const tokenInfo = this.getTokenUsageInfo();
     const currentTokens = tokenInfo?.total_tokens ?? 0;
-    return this.compactService.shouldCompact(currentTokens, contextWindow);
+    const autoCompactLimit =
+      tokenInfo?.auto_compact_token_limit ??
+      this.turnContext?.getAutoCompactTokenLimit?.();
+    return shouldAutoCompactTokens(currentTokens, contextWindow, autoCompactLimit);
   }
 
   /**
@@ -1572,6 +1581,19 @@ export class Session {
    * Graceful shutdown
    */
   async shutdown(): Promise<void> {
+    try {
+      await this.abortAllTasks('Shutdown');
+    } catch (err) {
+      console.warn(
+        '[Session] abortAllTasks failed during shutdown:',
+        err instanceof Error ? err.message : String(err),
+      );
+      this.activeTasks.clear();
+      this.foregroundTaskId = null;
+    } finally {
+      this.clearEvictionTimer();
+    }
+
     // Track 05b: detach the session-summary hook (unregisters post-turn
     // callback + prompt extension). Safe to call without an attached hook.
     try {
@@ -1735,6 +1757,37 @@ export class Session {
     // hardcoded undefined — the getters now exist). The stored snapshot is
     // adapted to the flat RateLimitSnapshotEvent wire shape.
     const tokenInfo = this.sessionState.getTokenInfo();
+    const contextWindow =
+      tokenInfo?.model_context_window ??
+      this.turnContext?.getModelContextWindow?.();
+    const autoCompactTokenLimit =
+      tokenInfo?.auto_compact_token_limit ??
+      this.turnContext?.getAutoCompactTokenLimit?.();
+    const usage = tokenInfo
+      ? {
+          input_tokens: tokenInfo.input_tokens ?? 0,
+          cached_input_tokens:
+            tokenInfo.cache_creation_input_tokens ??
+            tokenInfo.cache_read_input_tokens ??
+            0,
+          output_tokens: tokenInfo.output_tokens ?? 0,
+          reasoning_output_tokens: 0,
+          total_tokens: tokenInfo.total_tokens ?? 0,
+        }
+      : undefined;
+    const protocolTokenInfo = usage
+      ? {
+          total_token_usage: usage,
+          last_token_usage: usage,
+          model_context_window: contextWindow,
+          auto_compact_token_limit: autoCompactTokenLimit,
+        }
+      : undefined;
+    const tokenWarningState = calculateTokenWarningState({
+      currentTokens: tokenInfo?.total_tokens,
+      contextWindow,
+      autoCompactTokenLimit,
+    });
     const snapshot = this.sessionState.getRateLimits();
     const rateLimits = snapshot
       ? toRateLimitSnapshotEvent(snapshot)
@@ -1749,7 +1802,8 @@ export class Session {
       msg: {
         type: 'TokenCount',
         data: {
-          info: tokenInfo,
+          info: protocolTokenInfo,
+          token_warning_state: tokenWarningState,
           rate_limits: rateLimits,
           cost: cost.cumulativeCostUSD,
           cost_estimated: cost.hasUnknownModelCost,
@@ -1824,6 +1878,7 @@ export class Session {
     task: RunningTask,
     reason: TurnAbortReason
   ): Promise<void> {
+    await this.fireStopHook(subId, task, reason);
     // ── Track 04 Q7 ordering ──────────────────────────────────────────
     // Step 1: resolve pending approvals owned by this task with 'denied'
     //         so the awaiting tool call unwinds cleanly. Note: ActiveTurn
@@ -1833,9 +1888,9 @@ export class Session {
     const isForeground = this.foregroundTaskId === subId;
     if (isForeground && this.activeTurn) {
       try {
-        this.activeTurn.clearPending();
+        this.activeTurn.rejectPendingApprovalsAndClearInput();
       } catch (e) {
-        console.warn(`[Session] clearPending failed during abort:`, e);
+        console.warn(`[Session] rejectPendingApprovals failed during abort:`, e);
       }
     }
 
@@ -1859,6 +1914,7 @@ export class Session {
 
     // Step 6: update typed state to terminal + set eviction grace.
     if (task.taskState && !isTerminalTaskStatus(task.taskState.status)) {
+      const prevStatus = task.taskState.status;
       task.taskState.status = 'killed';
       task.taskState.endTime = Date.now();
       if (!task.taskState.retain) {
@@ -1868,8 +1924,10 @@ export class Session {
       // them as notified so the eviction timer can later reclaim their
       // chunks. (See design.md Q5/Q7 and SubAgentRunner.ts:127.)
       task.taskState.notified = true;
+      this.emitBackgroundTaskStateChanged(task.taskState, prevStatus);
       this.ensureEvictionTimer();
     }
+    this.fireTaskCompletedHook(subId, task.task.constructor.name).catch(() => {});
 
     // Emit TurnAborted event
     const event: Event = {
@@ -1947,6 +2005,7 @@ export class Session {
     // notified immediately here (no async notification path).
     const t = this.activeTasks.get(subId);
     if (t?.taskState && !isTerminalTaskStatus(t.taskState.status)) {
+      const prevStatus = t.taskState.status;
       t.taskState.status = 'completed';
       t.taskState.endTime = Date.now();
       if (!t.taskState.isBackgrounded) {
@@ -1957,11 +2016,14 @@ export class Session {
       if (!t.taskState.retain) {
         t.taskState.evictAfter = Date.now() + PANEL_GRACE_MS;
       }
+      this.emitBackgroundTaskStateChanged(t.taskState, prevStatus);
       this.ensureEvictionTimer();
     }
     if (this.foregroundTaskId === subId) {
       this.foregroundTaskId = null;
     }
+    const taskType = this.activeTasks.get(subId)?.task.constructor.name;
+    this.fireTaskCompletedHook(subId, taskType).catch(() => {});
     // Note: we leave the entry in activeTasks for the eviction grace window.
     // The eviction timer removes it once gates pass.
   }
@@ -2012,16 +2074,6 @@ export class Session {
         const result = await task.run(this, context, subId, input);
         // On success, call completion handler
         await this.onTaskFinished(subId, result);
-
-        // Fire TaskCompleted hook (fire-and-forget)
-        if (this.hookDispatcher) {
-          this.hookDispatcher.fire('TaskCompleted', {
-            hook_event_name: 'TaskCompleted',
-            session_id: this.sessionId,
-            task_id: subId,
-            task_type: task.constructor.name,
-          }).catch(() => {});
-        }
 
         return result;
       } catch (error) {
@@ -2112,6 +2164,7 @@ export class Session {
       if (bits.scopedTabIds !== undefined) {
         existing.scopedTabIds = bits.scopedTabIds;
       }
+      this.emitBackgroundTaskStarted(state);
       return;
     }
     // Synthetic registration path: sub-agent owned by a child engine that
@@ -2142,6 +2195,7 @@ export class Session {
       scopedTabIds: bits.scopedTabIds,
     };
     this.activeTasks.set(state.id, synthetic);
+    this.emitBackgroundTaskStarted(state);
   }
 
   /**
@@ -2200,6 +2254,63 @@ export class Session {
     return this.activeTasks.get(id);
   }
 
+  private emitBackgroundTaskStarted(state: BackgroundAgentTaskState): void {
+    if (!this.eventEmitter) return;
+    void this.eventEmitter({
+      id: uuidv4(),
+      msg: {
+        type: 'BackgroundTaskStarted',
+        data: {
+          taskId: state.id,
+          type: 'background_agent',
+          description: state.description,
+          startTime: state.startTime,
+        },
+      },
+    });
+  }
+
+  private emitBackgroundTaskStateChanged(
+    state: BackgroundAgentTaskState,
+    prevStatus: BackgroundAgentTaskState['status'],
+  ): void {
+    if (!this.eventEmitter || prevStatus === state.status) return;
+    void this.eventEmitter({
+      id: uuidv4(),
+      msg: {
+        type: 'BackgroundTaskStateChanged',
+        data: {
+          taskId: state.id,
+          prevStatus,
+          status: state.status,
+        },
+      },
+    });
+    if (isTerminalTaskStatus(state.status)) {
+      const status = state.status as 'completed' | 'failed' | 'killed';
+      void this.eventEmitter({
+        id: uuidv4(),
+        msg: {
+          type: 'BackgroundTaskTerminated',
+          data: {
+            taskId: state.id,
+            status,
+            endTime: state.endTime ?? Date.now(),
+            durationMs: (state.endTime ?? Date.now()) - state.startTime,
+            summary: state.lastAgentMessage,
+          },
+        },
+      });
+    }
+  }
+
+  markBackgroundTaskStateChanged(
+    state: BackgroundAgentTaskState,
+    prevStatus: BackgroundAgentTaskState['status'],
+  ): void {
+    this.emitBackgroundTaskStateChanged(state, prevStatus);
+  }
+
   /** (Track 04) Get the foreground task id, if any. */
   getForegroundTaskId(): string | null {
     return this.foregroundTaskId;
@@ -2242,6 +2353,12 @@ export class Session {
     }, STOPPED_DISPLAY_MS);
   }
 
+  private clearEvictionTimer(): void {
+    if (this.evictionTimerId === null) return;
+    clearInterval(this.evictionTimerId);
+    this.evictionTimerId = null;
+  }
+
   private async runEvictionTick(): Promise<void> {
     const now = Date.now();
     const toEvict: string[] = [];
@@ -2261,8 +2378,7 @@ export class Session {
         t => t.taskState && isTerminalTaskStatus(t.taskState.status),
       );
       if (!hasTerminal && this.evictionTimerId !== null) {
-        clearInterval(this.evictionTimerId);
-        this.evictionTimerId = null;
+        this.clearEvictionTimer();
       }
       return;
     }
@@ -2291,6 +2407,46 @@ export class Session {
     if (this.foregroundTaskId) {
       await this.abortTask(this.foregroundTaskId, 'UserInterrupt');
     }
+  }
+
+  private async fireStopHook(
+    subId: string,
+    task: RunningTask,
+    reason: TurnAbortReason,
+  ): Promise<void> {
+    if (!this.hookDispatcher) return;
+    const isBackground = task.taskState?.isBackgrounded === true || this.foregroundTaskId !== subId;
+    try {
+      await this.hookDispatcher.fire(
+        'Stop',
+        {
+          hook_event_name: 'Stop',
+          session_id: this.sessionId,
+          task_id: subId,
+          task_type: task.task.constructor.name,
+          stop_reason: reason,
+          is_background: isBackground,
+          ...(await getToolRuntimeContext(this)),
+        },
+        { timeoutOverride: 1 },
+      );
+    } catch (err) {
+      console.warn('[Session] Stop hook failed during abort:', err);
+    }
+  }
+
+  private async fireTaskCompletedHook(
+    subId: string,
+    taskType?: string,
+  ): Promise<void> {
+    if (!this.hookDispatcher || this.terminalTaskHookEmitted.has(subId)) return;
+    this.terminalTaskHookEmitted.add(subId);
+    await this.hookDispatcher.fire('TaskCompleted', {
+      hook_event_name: 'TaskCompleted',
+      session_id: this.sessionId,
+      task_id: subId,
+      task_type: taskType,
+    });
   }
 
   // ========================================================================
@@ -2641,6 +2797,8 @@ export class Session {
       total_tokens: tokenUsage.total_tokens,
       cache_creation_input_tokens: tokenUsage.cached_input_tokens,
       cache_read_input_tokens: 0, // Not provided in TokenUsage
+      model_context_window: this.turnContext?.getModelContextWindow?.(),
+      auto_compact_token_limit: this.turnContext?.getAutoCompactTokenLimit?.(),
     };
 
     // Update SessionState
@@ -2882,17 +3040,21 @@ export class Session {
     // a task threw an error that wasn't a direct abort.
     const t = this.activeTasks.get(subId);
     if (t?.taskState && !isTerminalTaskStatus(t.taskState.status)) {
+      const prevStatus = t.taskState.status;
       t.taskState.status = reason === 'user_interrupt' ? 'killed' : 'failed';
       t.taskState.endTime = Date.now();
       t.taskState.notified = true;
       if (!t.taskState.retain) {
         t.taskState.evictAfter = Date.now() + PANEL_GRACE_MS;
       }
+      this.emitBackgroundTaskStateChanged(t.taskState, prevStatus);
       this.ensureEvictionTimer();
     }
     if (this.foregroundTaskId === subId) {
       this.foregroundTaskId = null;
     }
+    const taskType = this.activeTasks.get(subId)?.task.constructor.name;
+    this.fireTaskCompletedHook(subId, taskType).catch(() => {});
 
     // Emit TurnAborted event (if eventEmitter is set)
     if (this.eventEmitter) {

@@ -203,6 +203,10 @@ export interface HookInput {
   readonly task_id?: string;
   readonly task_type?: string;
 
+  // Stop lifecycle
+  readonly stop_reason?: string;
+  readonly is_background?: boolean;
+
   // BrowserX-specific context
   readonly current_url?: string;
   readonly current_domain?: string;

@@ -500,6 +500,17 @@ export interface IToolsConfig {
    */
   parallelToolCalls?: boolean;
 
+  /**
+   * Dynamic model-facing tool loading. Execution registration is unchanged:
+   * this only controls whether large deferred tool sets are exposed through
+   * tool_search before their full schemas are sent to the model.
+   */
+  dynamicToolLoading?: boolean | 'auto';
+  dynamicToolLoadingThresholdPercent?: number;
+  alwaysLoadTools?: string[];
+  deferTools?: string[];
+  hiddenTools?: string[];
+
   // Shared configuration metadata
   enabled?: string[];
   disabled?: string[];
@@ -630,7 +641,7 @@ export interface IExportData {
 // Event interfaces for config changes
 export interface IConfigChangeEvent {
   type: 'config-changed';
-  section: 'model' | 'provider' | 'profile' | 'preferences' | 'cache' | 'extension' | 'security' | 'approval' | 'hooks' | 'policy' | 'enabledPlugins';
+  section: 'model' | 'provider' | 'profile' | 'preferences' | 'cache' | 'extension' | 'security' | 'approval' | 'hooks' | 'tools' | 'policy' | 'enabledPlugins';
   oldValue?: any;
   newValue: any;
   timestamp: number;

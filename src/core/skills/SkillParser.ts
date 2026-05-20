@@ -45,13 +45,18 @@ export function parseSkillMd(content: string): ParsedSkill {
   return { frontmatter, body };
 }
 
+export interface SkillValidationContext {
+  knownAgents?: readonly string[];
+}
+
 /**
  * Validate a parsed skill against the Zod schemas.
  * Optionally checks for name conflicts with built-in commands.
  */
 export function validateSkill(
   parsed: ParsedSkill,
-  commandRegistry?: ICommandRegistry
+  commandRegistry?: ICommandRegistry,
+  context?: SkillValidationContext
 ): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
@@ -79,19 +84,38 @@ export function validateSkill(
     }
   }
 
+  const agent = parsed.frontmatter.agent;
+  const knownAgents = context?.knownAgents;
+  if (agent && knownAgents && !knownAgents.includes(agent)) {
+    const suffix = knownAgents.length > 0
+      ? ` Known agents: ${knownAgents.join(', ')}.`
+      : ' No sub-agent types are registered.';
+    errors.push(`agent: Unknown sub-agent type "${agent}".${suffix}`);
+  }
+
   return { valid: errors.length === 0, errors };
 }
 
 /**
  * Validate a full Skill object against the schema.
  */
-export function validateFullSkill(skill: Skill): { valid: boolean; errors: string[] } {
+export function validateFullSkill(
+  skill: Skill,
+  context?: SkillValidationContext
+): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
   const result = skillSchema.safeParse(skill);
   if (!result.success) {
     for (const issue of result.error.issues) {
       errors.push(`${issue.path.join('.')}: ${issue.message}`);
     }
+  }
+  const knownAgents = context?.knownAgents;
+  if (skill.agent && knownAgents && !knownAgents.includes(skill.agent)) {
+    const suffix = knownAgents.length > 0
+      ? ` Known agents: ${knownAgents.join(', ')}.`
+      : ' No sub-agent types are registered.';
+    errors.push(`agent: Unknown sub-agent type "${skill.agent}".${suffix}`);
   }
   return { valid: errors.length === 0, errors };
 }

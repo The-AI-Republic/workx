@@ -51,6 +51,7 @@ export function buildSubAgentInvoker(
         parameters: {
           ...subParams,
           context_mode: subParams.contextMode,
+          allowed_tools: subParams.allowedTools,
           background: false,
         },
         sessionId: ctx.sessionId,

@@ -41,6 +41,7 @@ export type ModelErrorKind =
   | 'rate_limit' // HTTP 429
   | 'overloaded' // HTTP 529 / "overloaded_error"
   | 'server' // HTTP >= 500
+  | 'context_overflow' // HTTP 413 / provider "prompt too long" errors
   | 'transport' // network / stream-closed / unknown-no-status (retryable)
   | 'fatal'; // 4xx (incl. 401/403/400) — not retryable
 
@@ -104,6 +105,9 @@ export function classifyModelError(error: unknown): ModelErrorClassification {
   const msg = getMessage(error).toLowerCase();
   const retryAfterMs = getRetryAfterMs(error);
 
+  if (isContextOverflowError(error)) {
+    return { kind: 'context_overflow', statusCode: status };
+  }
   // 529 may arrive as a status OR (when the SDK drops it mid-stream) only as
   // the `"type":"overloaded_error"` JSON fragment in the message. Match that
   // specific fragment, not a bare "overloaded" substring (too broad — could
@@ -181,6 +185,27 @@ export function parseMaxTokensContextOverflowError(
   return { inputTokens, maxTokens, contextLimit };
 }
 
+export function isContextOverflowError(error: unknown): boolean {
+  const status = getStatusCode(error);
+  if (status === 413) return true;
+
+  const msg = getMessage(error).toLowerCase();
+  if (!msg) return false;
+
+  return (
+    msg.includes('context_length_exceeded') ||
+    msg.includes('maximum context length') ||
+    msg.includes('context limit') ||
+    msg.includes('context window') ||
+    msg.includes('prompt too long') ||
+    msg.includes('prompt is too long') ||
+    msg.includes('input too long') ||
+    msg.includes('request too large') ||
+    msg.includes('too many tokens') ||
+    msg.includes('token limit exceeded')
+  );
+}
+
 /** Internal exponential backoff with jitter (used for persistent mode). */
 export function internalBackoffMs(attempt: number, capMs: number): number {
   const base = Math.min(BASE_DELAY_MS * Math.pow(2, Math.max(0, attempt - 1)), capMs);
@@ -237,9 +262,11 @@ export interface ModelRetryOptions {
    * (same TurnManager boundary) per the design.
    */
   onContextOverflow?: (info: {
-    inputTokens: number;
-    maxTokens: number;
-    contextLimit: number;
+    inputTokens?: number;
+    maxTokens?: number;
+    contextLimit?: number;
+    statusCode?: number;
+    message?: string;
   }) => boolean | Promise<boolean>;
   currentModel?: () => string | undefined;
   /** Injectable sleep for tests. */
@@ -320,14 +347,19 @@ export async function withModelRetry<T>(
       // counting it as an attempt.
       if (opts.onContextOverflow) {
         const overflow = parseMaxTokensContextOverflowError(error);
-        if (overflow) {
-          const handled = await opts.onContextOverflow(overflow);
+        if (overflow || isContextOverflowError(error)) {
+          const handled = await opts.onContextOverflow({
+            ...overflow,
+            statusCode: getStatusCode(error),
+            message: getMessage(error),
+          });
           if (handled) continue;
           throw error;
         }
       }
 
       const cls = classifyModelError(error);
+      if (cls.kind === 'context_overflow') throw error;
       if (cls.kind === 'fatal') throw error;
 
       const transient = cls.kind === 'rate_limit' || cls.kind === 'overloaded';

@@ -55,7 +55,7 @@ The core "data model" for this feature is the naming convention map:
 |------|-------|--------|
 | Tauri identifier | `com.airepublic.pi` | Code-level, already correct |
 | Cargo package name | `pi` | Code-level, already correct |
-| Deep-link scheme | `airepublic-pi` | Code-level, already correct |
+| Deep-link scheme | `applepi` | Code-level, already correct |
 | Extension manifest name | `BrowserX` | Extension product name |
 | CSS custom properties | `--browserx-*` | Extension-specific |
 | Custom events | `browserx:*` | Extension-specific |

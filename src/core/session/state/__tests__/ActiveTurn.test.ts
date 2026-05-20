@@ -147,6 +147,18 @@ describe('ActiveTurn', () => {
       expect(pendingApproval).toBeUndefined();
       expect(pendingInput).toEqual([]);
     });
+
+    it('should reject pending approvals and clear input without dropping resolvers', () => {
+      const resolver = vi.fn() as any;
+      activeTurn.insertPendingApproval('exec-1', resolver);
+      activeTurn.pushPendingInput({ type: 'text', text: 'queued' });
+
+      activeTurn.rejectPendingApprovalsAndClearInput();
+
+      expect(resolver).toHaveBeenCalledWith('reject');
+      expect(activeTurn.removePendingApproval('exec-1')).toBeUndefined();
+      expect(activeTurn.takePendingInput()).toEqual([]);
+    });
   });
 
   describe('Drain Operations', () => {

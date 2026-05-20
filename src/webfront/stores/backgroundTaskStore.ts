@@ -15,6 +15,7 @@ import { writable, get, type Writable, type Readable, derived } from 'svelte/sto
 import type { TaskState } from '@/core/tasks/types';
 import type { TaskOutputChunk } from '@/core/tasks/TaskOutputStore';
 import { POLL_INTERVAL_MS } from '@/core/tasks/timing';
+import type { EventMsg } from '@/core/protocol/events';
 
 export interface BackgroundTaskStoreState {
   /** All tracked typed task states (running + terminal-but-unevicted). */
@@ -46,7 +47,7 @@ export const backgroundTaskCount = derived(state, $s => {
 });
 
 export interface EngineLike {
-  listTaskStates(): TaskState[];
+  listTaskStates(): TaskState[] | Promise<TaskState[]>;
   getTaskOutput(taskId: string, fromSeq?: number): Promise<TaskOutputChunk[]>;
   retainTask(taskId: string, retain: boolean): void;
 }
@@ -72,11 +73,74 @@ export function stopBackgroundTaskPolling(): void {
   }
 }
 
+export function handleBackgroundTaskEvent(msg: EventMsg): void {
+  switch (msg.type) {
+    case 'BackgroundTaskStarted':
+      state.update(prev => ({
+        ...prev,
+        tasks: {
+          ...prev.tasks,
+          [msg.data.taskId]: {
+            id: msg.data.taskId,
+            type: 'background_agent',
+            runId: msg.data.taskId,
+            parentSessionId: '',
+            status: 'running',
+            description: msg.data.description,
+            prompt: '',
+            startTime: msg.data.startTime,
+            toolUseCount: 0,
+            tokenUsage: { input: 0, output: 0, total: 0 },
+            notified: false,
+            isBackgrounded: true,
+            outputOffset: 0,
+            retain: false,
+          },
+        },
+      }));
+      break;
+    case 'BackgroundTaskStateChanged':
+      state.update(prev => {
+        const task = prev.tasks[msg.data.taskId];
+        if (!task) return prev;
+        return {
+          ...prev,
+          tasks: {
+            ...prev.tasks,
+            [msg.data.taskId]: { ...task, status: msg.data.status },
+          },
+        };
+      });
+      break;
+    case 'BackgroundTaskTerminated':
+      state.update(prev => {
+        const task = prev.tasks[msg.data.taskId];
+        if (!task) return prev;
+        return {
+          ...prev,
+          tasks: {
+            ...prev.tasks,
+            [msg.data.taskId]: {
+              ...task,
+              status: msg.data.status,
+              endTime: msg.data.endTime,
+              lastAgentMessage: msg.data.summary,
+            },
+          },
+        };
+      });
+      break;
+    case 'BackgroundTaskOutputDelta':
+      void fetchTaskOutputDelta(msg.data.taskId);
+      break;
+  }
+}
+
 async function tick(): Promise<void> {
   const engine = getEngine?.();
   if (!engine) return;
   try {
-    const tasks = engine.listTaskStates();
+    const tasks = await engine.listTaskStates();
     state.update(prev => ({
       ...prev,
       tasks: Object.fromEntries(tasks.map(t => [t.id, t])),

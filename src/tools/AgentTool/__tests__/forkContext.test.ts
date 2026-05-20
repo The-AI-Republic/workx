@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { AgentType, SubAgentContextMode } from '../agentTypes';
-import { buildForkedSubAgentInitialHistory } from '../forkContext';
+import {
+  buildForkedSubAgentInitialHistory,
+  containsForkDirective,
+} from '../forkContext';
 
 describe('buildForkedSubAgentInitialHistory', () => {
   it('wraps parent history and delegated prompt into forked initial history', () => {
@@ -69,5 +72,53 @@ describe('buildForkedSubAgentInitialHistory', () => {
     if (initialHistory.mode !== 'forked') throw new Error('expected forked history');
     expect(initialHistory.rolloutItems).toHaveLength(1);
     expect(JSON.stringify(initialHistory.rolloutItems[0])).toContain('Do task');
+  });
+
+  it('rejects recursive fork history containing the fork directive tag', () => {
+    const parentSession = {
+      getSessionId: () => 'parent-session',
+      getConversationHistory: () => ({
+        items: [
+          {
+            type: 'message',
+            role: 'user',
+            content: [{ type: 'input_text', text: '<forked-subagent-task>\nNested' }],
+          },
+        ],
+      }),
+    };
+    const parentEngine = {
+      getSession: () => parentSession,
+    } as any;
+
+    expect(() =>
+      buildForkedSubAgentInitialHistory(parentEngine, 'Do task', {
+        runId: 'run-1',
+        typeId: 'worker',
+        agentType: AgentType.Worker,
+        contextMode: SubAgentContextMode.Fork,
+      }),
+    ).toThrow('already contains forked sub-agent context');
+  });
+
+  it('detects fork directive tags in response items', () => {
+    expect(
+      containsForkDirective([
+        {
+          type: 'message',
+          role: 'user',
+          content: [{ type: 'input_text', text: '</forked-subagent-task>' }],
+        } as any,
+      ]),
+    ).toBe(true);
+    expect(
+      containsForkDirective([
+        {
+          type: 'message',
+          role: 'user',
+          content: [{ type: 'input_text', text: 'regular parent history' }],
+        } as any,
+      ]),
+    ).toBe(false);
   });
 });

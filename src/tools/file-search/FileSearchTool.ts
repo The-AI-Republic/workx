@@ -51,8 +51,9 @@ export abstract class FileSearchTool {
       if (!scope.workspaceRoot) return NO_WORKSPACE_MSG;
 
       // Resolve the search root strictly inside the workspace. The lexical
-      // check is advisory; the Rust ripgrep_execute re-jails with symlink
-      // resolution (defense in depth — JS can't stat/resolve symlinks).
+      // check here is advisory; the runtime ripgrep wrapper re-jails the
+      // workspace with `realpath()` containment (defense in depth — the
+      // lexical check cannot resolve symlinks).
       let cwd = scope.workspaceRoot;
       const explicit = typeof params.path === 'string' && params.path.trim() ? String(params.path) : undefined;
       if (explicit) {

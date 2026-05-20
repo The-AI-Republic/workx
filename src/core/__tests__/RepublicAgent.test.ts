@@ -110,6 +110,7 @@ declare const __BUILD_MODE__: string;
 
 import { RepublicAgent } from '../RepublicAgent';
 import { AgentConfig } from '../../config/AgentConfig';
+import { Session } from '../Session';
 import type { Op } from '../protocol/types';
 import type { Event } from '../protocol/events';
 import { loadPrompt } from '../PromptLoader';
@@ -140,6 +141,7 @@ function createMockConfig(): AgentConfig {
     getProviderApiKey: vi.fn().mockResolvedValue('sk-test-key-123'),
     getToolsConfig: vi.fn().mockReturnValue({}),
     on: vi.fn(),
+    off: vi.fn(),
     updateToolsConfig: vi.fn(),
   } as unknown as AgentConfig;
 }
@@ -339,6 +341,31 @@ describe('RepublicAgent', () => {
       expect(notifier.notifyInfo).toBeDefined();
     });
 
+    it('passes supplied SessionServices to Session construction', () => {
+      const services = {
+        rollout: null,
+        notifier: { notify: vi.fn(), error: vi.fn(), success: vi.fn() },
+        showRawAgentReasoning: false,
+      };
+
+      new RepublicAgent(
+        config,
+        mockPlatformAdapter as any,
+        undefined,
+        'with-services',
+        mockUserNotifierInstance as any,
+        services as any,
+      );
+
+      expect(Session).toHaveBeenLastCalledWith(
+        config,
+        true,
+        services,
+        mockToolRegistryInstance,
+        undefined,
+      );
+    });
+
     it('should wire up session event emitter during construction', () => {
       const session = agent.getSession();
       expect(session.setEventEmitter).toHaveBeenCalledTimes(1);
@@ -347,6 +374,58 @@ describe('RepublicAgent', () => {
 
     it('should subscribe to config-changed events during construction', () => {
       expect(config.on as Mock).toHaveBeenCalledWith('config-changed', expect.any(Function));
+    });
+  });
+
+  describe('config subscriptions', () => {
+    function configChangeHandler() {
+      return (config.on as Mock).mock.calls.find(
+        ([eventName]) => eventName === 'config-changed'
+      )![1] as Function;
+    }
+
+    it('refreshes the current model client when tools config changes outside a running task', async () => {
+      await agent.initialize();
+      mockModelClientFactoryInstance.clearCache.mockClear();
+      mockModelClientFactoryInstance.createClientForCurrentModel.mockClear();
+
+      const newClient = { getModel: vi.fn().mockReturnValue('tools-refresh') };
+      mockModelClientFactoryInstance.createClientForCurrentModel.mockResolvedValueOnce(newClient);
+
+      configChangeHandler()({
+        type: 'config-changed',
+        section: 'tools',
+        oldValue: { parallelToolCalls: false },
+        newValue: { parallelToolCalls: true },
+        timestamp: Date.now(),
+      });
+
+      await vi.waitFor(() => {
+        expect(mockModelClientFactoryInstance.clearCache).toHaveBeenCalled();
+        expect(mockModelClientFactoryInstance.createClientForCurrentModel).toHaveBeenCalledTimes(1);
+      });
+      expect(mockSessionInstance.getTurnContext().setModelClient).toHaveBeenCalledWith(newClient);
+      expect(mockSessionInstance.getTurnContext().setSelectedModelKey).toHaveBeenCalledWith('openai:gpt-5');
+    });
+
+    it('defers tools config refresh while a task is running', async () => {
+      await agent.initialize();
+      mockModelClientFactoryInstance.clearCache.mockClear();
+      mockModelClientFactoryInstance.createClientForCurrentModel.mockClear();
+      mockSessionInstance.getRunningTasks.mockReturnValue(new Set(['task_1']));
+
+      configChangeHandler()({
+        type: 'config-changed',
+        section: 'tools',
+        oldValue: { parallelToolCalls: false },
+        newValue: { parallelToolCalls: true },
+        timestamp: Date.now(),
+      });
+
+      await vi.waitFor(() => {
+        expect(mockModelClientFactoryInstance.clearCache).toHaveBeenCalled();
+      });
+      expect(mockModelClientFactoryInstance.createClientForCurrentModel).not.toHaveBeenCalled();
     });
   });
 
@@ -779,6 +858,14 @@ describe('RepublicAgent', () => {
       await agent.cleanup();
 
       expect(mockUserNotifierInstance.clearAll).toHaveBeenCalled();
+    });
+
+    it('unsubscribes config hook watcher and removes config hooks on cleanup', async () => {
+      await agent.initialize();
+      await agent.cleanup();
+
+      expect(config.off as Mock).toHaveBeenCalledWith('config-changed', expect.any(Function));
+      expect(agent.getHookRegistry().getMatchingHooks('PreToolUse')).toHaveLength(0);
     });
 
     it('should clear submission and event queues', async () => {

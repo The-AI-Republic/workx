@@ -2,6 +2,7 @@ import type { ISkillProvider } from './SkillProvider';
 import type { Skill, SkillMeta, InvocationMode } from './types';
 import { substituteVariables, validateSkill, parseSkillMd, normalizeFrontmatter, projectMeta } from './SkillParser';
 import type { SkillDomainFilter } from './SkillDomainFilter';
+import type { SkillValidationContext } from './SkillParser';
 
 /** Built-in command names that skills cannot use */
 const RESERVED_COMMAND_NAMES = new Set([
@@ -20,10 +21,22 @@ export class SkillRegistry {
   private metas: SkillMeta[] = [];
   private provider: ISkillProvider;
   private domainFilter: SkillDomainFilter | null = null;
+  private getValidationContext?: () => SkillValidationContext | undefined;
 
-  constructor(provider: ISkillProvider, domainFilter?: SkillDomainFilter) {
+  constructor(
+    provider: ISkillProvider,
+    domainFilter?: SkillDomainFilter,
+    getValidationContext?: () => SkillValidationContext | undefined,
+  ) {
     this.provider = provider;
     this.domainFilter = domainFilter ?? null;
+    this.getValidationContext = getValidationContext;
+  }
+
+  setValidationContextProvider(
+    getValidationContext: (() => SkillValidationContext | undefined) | undefined,
+  ): void {
+    this.getValidationContext = getValidationContext;
   }
 
   /** Track 03 Phase 3 — attach a domain filter (or replace one) post-construction. */
@@ -135,6 +148,13 @@ export class SkillRegistry {
         `Skill name "${skill.name}" conflicts with a built-in command`
       );
     }
+    const knownAgents = this.getValidationContext?.()?.knownAgents;
+    if (skill.agent && knownAgents && !knownAgents.includes(skill.agent)) {
+      const suffix = knownAgents.length > 0
+        ? ` Known agents: ${knownAgents.join(', ')}.`
+        : ' No sub-agent types are registered.';
+      throw new Error(`Invalid skill: agent: Unknown sub-agent type "${skill.agent}".${suffix}`);
+    }
 
     await this.provider.save(skill);
 
@@ -215,7 +235,7 @@ export class SkillRegistry {
     const parsed = parseSkillMd(content);
 
     // Validate
-    const validation = validateSkill(parsed);
+    const validation = validateSkill(parsed, undefined, this.getValidationContext?.());
     if (!validation.valid) {
       throw new Error(`Invalid skill: ${validation.errors.join(', ')}`);
     }

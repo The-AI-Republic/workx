@@ -80,16 +80,19 @@ async function main(): Promise<void> {
 
   // A supervisor that does not perform the hello handshake (older host) will
   // never send `hello`; emit an unsolicited hello-ok once so it still learns
-  // pid/profile and does not deadlock waiting for it.
+  // pid/profile and does not deadlock waiting for it. Log loudly so a
+  // missing-handshake regression (the supervisor should ALWAYS send `hello`
+  // after Track 43) is visible in the supervisor's `runtime:stderr` event
+  // stream, not silently papered over.
   setTimeout(() => {
     if (!helloAcked) {
-      console.error('[desktop-runtime] no hello received; sending unsolicited hello-ok');
+      console.error('[desktop-runtime] WARN: no hello received after 2s; sending unsolicited hello-ok. The Rust supervisor should have sent `hello` — this fallback exists for backward compatibility only and may mask a protocol regression.');
       sendHelloOk(undefined);
     }
   }, 2_000);
 
   const channel = new StdioRuntimeChannel(carrier);
-  bootstrap = new PiRuntimeBootstrap(channel);
+  bootstrap = new PiRuntimeBootstrap({ channel });
   await bootstrap.initialize();
 
   const shutdown = (signal: string) => {

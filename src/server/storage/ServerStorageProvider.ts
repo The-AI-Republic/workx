@@ -2,12 +2,12 @@
  * ServerStorageProvider
  *
  * Server-mode implementation of StorageProvider using better-sqlite3.
- * Analogous to SQLiteStorageProvider (desktop/Tauri) but runs in Node.js.
+ * Analogous to the desktop runtime storage provider but runs in Node.js.
  *
  * - Dynamic import of better-sqlite3
  * - WAL mode for concurrent access
  * - SAVEPOINT transactions
- * - Same table schema as Rust db_storage.rs
+ * - Same table schema as the desktop runtime SQLite adapter
  *
  * @module server/storage/ServerStorageProvider
  */

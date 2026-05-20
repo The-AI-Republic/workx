@@ -3,8 +3,8 @@
  *
  * Provides transport implementations for MCP communication.
  * SSE transport is used for browser extension and web-based MCP servers.
- * Stdio transport for desktop is handled at the adapter level via RustMCPBridge,
- * not through this factory.
+ * Stdio transport is handled at the adapter level via NodeMCPBridge (server
+ * mode + desktop runtime sidecar), not through this factory.
  *
  * @module core/mcp/transports
  */
@@ -55,8 +55,9 @@ export interface TransportConfig {
 /**
  * Create a transport based on configuration
  *
- * Note: stdio transport is now handled at the adapter level (RustMCPBridge)
- * rather than through this factory. Only SSE transport is created here.
+ * Note: stdio transport is handled at the adapter level (NodeMCPBridge in
+ * server mode + desktop runtime sidecar) rather than through this factory.
+ * Only SSE transport is created here.
  *
  * @param config - Transport configuration
  * @returns Transport instance
@@ -71,9 +72,9 @@ export async function createTransport(config: TransportConfig): Promise<MCPTrans
       });
 
     case 'stdio':
-      // Stdio transport is handled at the adapter level via RustMCPBridge.
-      // MCPManager creates a RustMCPBridge instead of using this factory for stdio servers.
-      throw new Error('stdio transport is handled by RustMCPBridge, not the transport factory');
+      // Stdio transport is handled at the adapter level via NodeMCPBridge.
+      // MCPManager creates a NodeMCPBridge instead of using this factory for stdio servers.
+      throw new Error('stdio transport is handled by NodeMCPBridge, not the transport factory');
 
     case 'websocket':
       throw new Error('WebSocket transport not yet implemented');

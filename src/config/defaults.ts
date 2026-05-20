@@ -89,6 +89,14 @@ export const DEFAULT_TOOLS_CONFIG: IToolsConfig = {
   // Track 11: dark by default. Enable to let the model batch tool calls.
   parallelToolCalls: false,
 
+  // Track 39: provider-neutral dynamic tool loading. Auto mode only activates
+  // when deferred schemas exceed the configured share of the model context.
+  dynamicToolLoading: 'auto',
+  dynamicToolLoadingThresholdPercent: 2,
+  alwaysLoadTools: [],
+  deferTools: [],
+  hiddenTools: [],
+
   // Shared configuration metadata
   enabled: [
     'web_scraping',

@@ -112,6 +112,7 @@ export async function registerExtensionTools(
             },
             callId: context.callId,
             onProgress: context.onProgress,
+            signal: context.signal,
           });
         },
         optionsOrAssessor,
@@ -250,17 +251,10 @@ export async function registerExtensionTools(
         riskAssessor: staticRiskAssessor,
         runtime: {
           concurrency: {
-            // Extraction reads live DOM that other browser-state calls could
-            // mutate within the same turn; conservatively sequential.
-            isConcurrencySafe: () => false,
-            // Track 14 audit: every mode runs chrome.scripting.executeScript
-            // against the AMBIENT active tab (not the session tab) with
-            // arbitrary injected script — not provably side-effect-free, so
-            // it must NOT be trusted read-only by the Plan Review freeze.
-            // Force-frozen until Track 27 binds it to the session tab and
-            // the injected extractors are confirmed pure. Keeping it
-            // non-read-only is the fail-safe choice (frozen during review).
-            isReadOnly: () => false,
+            // Track 27: extraction is bound to the session tab and runs pure
+            // DOM reads, so distinct bound-tab calls can run concurrently.
+            isConcurrencySafe: () => true,
+            isReadOnly: () => true,
             isDestructive: () => false,
           },
           ui: {

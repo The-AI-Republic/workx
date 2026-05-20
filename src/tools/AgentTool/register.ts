@@ -123,6 +123,9 @@ export async function registerSubAgentTool(
         description: typeof params.description === 'string' ? params.description : undefined,
         background: params.background === true,
         contextMode,
+        allowedTools: Array.isArray(params.allowed_tools)
+          ? params.allowed_tools.filter((v): v is string => typeof v === 'string')
+          : undefined,
       };
 
       const result = await runner.run(toolParams);

@@ -84,6 +84,10 @@ const EVENT_SCOPE_MAP: Record<string, EventScope> = {
   'ExitedReviewMode': 'thread',
   'PlanUpdate': 'thread',
   'TaskUpdate': 'thread',
+  'BackgroundTaskStarted': 'thread',
+  'BackgroundTaskOutputDelta': 'thread',
+  'BackgroundTaskStateChanged': 'thread',
+  'BackgroundTaskTerminated': 'thread',
   'ConversationPath': 'thread',
   'GetHistoryEntryResponse': 'thread',
 

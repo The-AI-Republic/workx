@@ -25,6 +25,8 @@ import { getConfigStorage } from '../../core/storage/ConfigStorageProvider';
 import { AuthManager } from '../../core/models/types/Auth';
 import { CacheManager } from '../../storage/CacheManager';
 import { StorageQuotaManager } from '../../storage/StorageQuotaManager';
+import type { TieredEvictor, EvictionTier } from '../../storage/StorageQuotaManager';
+import { SessionCacheManager } from '../../storage/SessionCacheManager';
 import { RolloutRecorder } from '../../storage/rollout';
 import { IndexedDBRolloutStorageProvider } from '../../storage/rollout/provider/IndexedDBRolloutStorageProvider';
 import { AgentConfig } from '../../config/AgentConfig';
@@ -74,6 +76,8 @@ import * as VaultManager from '../../core/crypto/VaultManager';
 import { IndexedDBAdapter } from '../../storage/IndexedDBAdapter';
 import type { StorageAdapter } from '../../storage/StorageAdapter';
 import { TokenUsageStore } from '../../storage/TokenUsageStore';
+import { TaskOutputStore } from '../../core/tasks/TaskOutputStore';
+import { TaskOutputManager } from '../../core/tasks/TaskOutputManager';
 import { getChannelManager } from '../../core/channels/ChannelManager';
 import { registerAllServices } from '../../core/services';
 import { CompactService } from '../../core/compact/CompactService';
@@ -93,6 +97,9 @@ import { getActionForExtensionCommand, type ShortcutAction } from '../../core/sh
 let registry: AgentRegistry | null = null;
 let cacheManager: CacheManager | null = null;
 let storageQuotaManager: StorageQuotaManager | null = null;
+let sessionCacheManager: SessionCacheManager | null = null;
+let taskOutputStore: TaskOutputStore | null = null;
+let taskOutputManager: TaskOutputManager | null = null;
 let agentConfig: AgentConfig | null = null;
 let mcpManager: MCPManagerT | null = null; // MCP server connection manager
 let a2aManager: A2AManagerT | null = null; // A2A agent connection manager
@@ -112,6 +119,31 @@ let pluginFsResolvers: {
 } | null = null;
 let isInitialized = false;
 let initializationPromise: Promise<void> | null = null;
+
+function findTaskState(taskId: string): import('../../core/tasks/types').TaskState | undefined {
+  if (!registry) return undefined;
+  for (const meta of registry.listSessions()) {
+    const agent = registry.getSession(meta.sessionId)?.agent;
+    const state = agent?.getSession().getTask(taskId)?.taskState;
+    if (state) return state;
+  }
+  return undefined;
+}
+
+function createExtensionTieredEvictor(): TieredEvictor {
+  return {
+    async evictTier(tier: EvictionTier, targetBytes: number): Promise<number> {
+      if (targetBytes <= 0) return 0;
+      if (tier === 0) {
+        return taskOutputManager?.evictOldestChunks(targetBytes) ?? 0;
+      }
+      if (tier === 1) {
+        return sessionCacheManager?.evictOldestCacheItems(targetBytes) ?? 0;
+      }
+      return 0;
+    },
+  };
+}
 
 /**
  * Configure platform-specific approval gate and tab closure handler for extension mode.
@@ -315,6 +347,15 @@ async function doInitialize(): Promise<void> {
     // session. Reads module-level pluginRegistry/resolvers lazily — they're
     // set by initializePlugins() before real sessions are created.
     onAgentCreated: async (agent, { subAgentRunner }) => {
+      if (taskOutputStore) {
+        agent.getSession().setTaskOutputStore(taskOutputStore);
+      }
+      if (skillRegistry && subAgentRunner) {
+        skillRegistry.setValidationContextProvider(() => ({
+          knownAgents: subAgentRunner.getTypes().map((t) => t.id),
+        }));
+      }
+      await registerSkillsToolOnAgent(agent);
       if (!pluginRegistry || !pluginFsResolvers || !subAgentRunner) return;
       try {
         const { PluginSessionBinder } = await import('@/core/plugins/PluginSessionBinder');
@@ -342,6 +383,13 @@ async function doInitialize(): Promise<void> {
     const storageAdapter = new IndexedDBAdapter();
     await storageAdapter.initialize();
     TokenUsageStore.setAdapter(storageAdapter);
+    sessionCacheManager = new SessionCacheManager(storageAdapter);
+    taskOutputStore = new TaskOutputStore(storageAdapter);
+    taskOutputManager = new TaskOutputManager({
+      adapter: storageAdapter,
+      store: taskOutputStore,
+      getTaskState: (taskId) => findTaskState(taskId),
+    });
 
     // Feature 015 (T039): Initialize session persistence (uses same adapter)
     await initializeSessionPersistence(storageAdapter);
@@ -351,6 +399,9 @@ async function doInitialize(): Promise<void> {
 
   // Create initial session (always at least one)
   const initialSession = await registry.createSession({ type: 'primary' });
+  if (taskOutputStore && initialSession.agent) {
+    initialSession.agent.getSession().setTaskOutputStore(taskOutputStore);
+  }
 
   console.log(`[ServiceWorker] Initial session created: ${initialSession.sessionId}`);
 
@@ -675,6 +726,7 @@ async function registerServiceHandlers(): Promise<void> {
         },
       },
       storage: { storageProvider: chromeStorageAdapter },
+      memory: registry ? { registry } : undefined,
     });
 
     // Extension-specific override: agent.configUpdate
@@ -1147,6 +1199,7 @@ async function initializeSkills(): Promise<void> {
     // Track 03 Phase 3 — wire domain-based conditional activation.
     const { SkillDomainFilter } = await import('@/core/skills/SkillDomainFilter');
     const { ActiveTabService } = await import('@/core/tabs/ActiveTabService');
+    const { createDebouncedActiveTabHandler } = await import('@/core/tabs/debounceActiveTab');
     const { startChromeActiveTabAdapter } = await import('./ChromeActiveTabAdapter');
 
     const activeTabService = new ActiveTabService();
@@ -1154,8 +1207,11 @@ async function initializeSkills(): Promise<void> {
 
     // Subscribe FIRST so the seed snapshot from the adapter reaches the filter
     // (adapter starts firing events immediately on startup).
-    activeTabService.subscribe((snap) => {
+    const activeTabDebounce = createDebouncedActiveTabHandler((snap) => {
       skillDomainFilter.onActiveTabChange(snap.hostname);
+    });
+    activeTabService.subscribe((snap) => {
+      activeTabDebounce.handle(snap);
     });
     const stopAdapter = startChromeActiveTabAdapter(activeTabService);
 
@@ -1170,14 +1226,39 @@ async function initializeSkills(): Promise<void> {
 
     // Register dynamic prompt extension for auto-invocable skills
     registerPromptExtension('skills', () => skillRegistry?.buildSkillsSystemPrompt() ?? '');
+    await registerSkillsToolOnExistingSessions();
 
     // Stash adapter cleanup on the registry handle so HMR/teardown can reach it.
-    (skillRegistry as unknown as { __disposeTabAdapter?: () => void }).__disposeTabAdapter = stopAdapter;
+    (skillRegistry as unknown as { __disposeTabAdapter?: () => void }).__disposeTabAdapter = () => {
+      activeTabDebounce.cancel();
+      stopAdapter();
+    };
 
     console.log('[ServiceWorker] Skills initialized');
   } catch (error) {
     console.warn('[ServiceWorker] Failed to initialize skills:', error);
     // Non-fatal — skills are optional
+  }
+}
+
+async function registerSkillsToolOnAgent(agent: RepublicAgent): Promise<void> {
+  if (!skillRegistry) return;
+  const { registerUseSkillTool } = await import('@/core/skills/registerUseSkillTool');
+  await registerUseSkillTool({
+    toolRegistry: agent.getToolRegistry(),
+    hookRegistry: agent.getHookRegistry(),
+    skillRegistry,
+    getTurnContext: () => agent.getSession().getTurnContext(),
+  });
+}
+
+async function registerSkillsToolOnExistingSessions(): Promise<void> {
+  if (!registry) return;
+  for (const meta of registry.listSessions()) {
+    const agent = registry.getSession(meta.sessionId)?.agent;
+    if (agent) {
+      await registerSkillsToolOnAgent(agent);
+    }
   }
 }
 
@@ -1516,7 +1597,10 @@ async function initializeStorage(): Promise<void> {
   });
 
   // Initialize storage quota manager
-  storageQuotaManager = new StorageQuotaManager(cacheManager);
+  storageQuotaManager = new StorageQuotaManager({
+    cacheManager,
+    tieredEvictor: createExtensionTieredEvictor(),
+  });
   await storageQuotaManager.initialize();
 
   // Check storage quota

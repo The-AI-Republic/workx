@@ -153,6 +153,51 @@ describe('TaskRunner', () => {
     });
   });
 
+  describe('background task output delta events', () => {
+    it('emits metadata-only output delta after appending a task output chunk', async () => {
+      let seq = 0;
+      const store = {
+        getLastSeq: vi.fn(async () => seq),
+        appendChunk: vi.fn(async () => {
+          seq += 1;
+          return {
+            chunkId: `task-1:${seq}`,
+            taskId: 'task-1',
+            seq,
+            createdAt: Date.now(),
+            kind: 'message',
+            data: 'hello',
+          };
+        }),
+      };
+      const runner = new TaskRunner(
+        session,
+        turnContext,
+        turnManager,
+        SUBMISSION_ID,
+        [],
+        { taskOutputStore: store as never, taskId: 'task-1' },
+      );
+
+      await (runner as unknown as {
+        appendTaskOutputChunk(kind: 'message', data: string): Promise<void>;
+      }).appendTaskOutputChunk('message', 'hello');
+
+      expect(session.emitEvent).toHaveBeenCalledWith({
+        id: SUBMISSION_ID,
+        msg: {
+          type: 'BackgroundTaskOutputDelta',
+          data: {
+            taskId: 'task-1',
+            fromSeq: 0,
+            toSeq: 1,
+            kindCounts: { message: 1 },
+          },
+        },
+      });
+    });
+  });
+
   // -----------------------------------------------------------------------
   // cancel() / isCancelled()
   // -----------------------------------------------------------------------
@@ -277,7 +322,7 @@ describe('TaskRunner', () => {
       const usage = runner.getTokenUsage(SUBMISSION_ID);
       expect(usage.used).toBe(0);
       expect(usage.max).toBe(128000);
-      expect(usage.compactionThreshold).toBe(0.85);
+      expect(usage.compactionThreshold).toBe(0.8);
     });
 
     it('should update used tokens after a turn with token usage', async () => {
@@ -617,7 +662,7 @@ describe('TaskRunner', () => {
       const contextWindow = 100000;
       (turnContext.getModelContextWindow as Mock).mockReturnValue(contextWindow);
 
-      // Token usage exceeds 85% threshold (85000 >= 100000 * 0.85)
+      // Token usage exceeds 80% threshold (86000 >= 100000 * 0.8)
       const highTokenUsage = {
         input_tokens: 70000,
         cached_input_tokens: 0,
@@ -672,7 +717,7 @@ describe('TaskRunner', () => {
 
       (turnContext.getModelContextWindow as Mock).mockReturnValue(100000);
 
-      // Token usage below 85% threshold
+      // Token usage below 80% threshold
       const lowTokenUsage = {
         input_tokens: 5000,
         cached_input_tokens: 0,

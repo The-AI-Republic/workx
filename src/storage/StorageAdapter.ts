@@ -4,7 +4,7 @@
  * Platform-agnostic abstraction for IndexedDB-style object store operations.
  * Three implementations:
  * - IndexedDBAdapter (extension) — existing, unchanged behavior
- * - TauriSQLiteAdapter (desktop) — routes through Tauri invoke() to Rust SQLite
+ * - DesktopRuntimeSQLiteAdapter (desktop runtime) — runs inside the Node sidecar
  * - NodeSQLiteAdapter (server) — uses better-sqlite3 directly
  *
  * @module storage/StorageAdapter

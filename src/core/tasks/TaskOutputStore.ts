@@ -201,6 +201,17 @@ export class TaskOutputStore {
     return this.lastReadAt.get(taskId);
   }
 
+  async getLastSeq(taskId: string): Promise<number> {
+    const cached = this.lastSeq.get(taskId);
+    if (cached !== undefined) return cached;
+    const existing = await this.adapter.queryByIndex<TaskOutputChunk>(
+      STORE_NAME,
+      'by_task_id',
+      taskId,
+    );
+    return existing.reduce((max, row) => row.seq > max ? row.seq : max, 0);
+  }
+
   // ─── internals ───────────────────────────────────────────────────────
 
   /**

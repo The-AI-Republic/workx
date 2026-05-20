@@ -150,6 +150,14 @@ describe('TaskOutputStore', () => {
     expect(seen!).toBeGreaterThanOrEqual(before);
   });
 
+  it('reports the latest written seq for notification offsets', async () => {
+    const store = new TaskOutputStore(makeAdapter());
+    expect(await store.getLastSeq('a1')).toBe(0);
+    await store.appendChunk('a1', 'event', '{}');
+    await store.appendChunk('a1', 'message', 'done');
+    expect(await store.getLastSeq('a1')).toBe(2);
+  });
+
   // ─── B1 fix: cleanupTask drains pending writes ──────────────────────
 
   it('cleanupTask rejects pending in-memory writes and blocks future appends', async () => {

@@ -75,6 +75,31 @@ describe('HookDispatcher', () => {
     });
   });
 
+  describe('fire — tool execution snapshots', () => {
+    it('uses the same hook generation across one tool execution', async () => {
+      const commands: string[] = [];
+      vi.spyOn(executor, 'execute').mockImplementation(async (hook) => {
+        commands.push(hook.command ?? '');
+        return successResult(hook.command);
+      });
+
+      registry.register('PreToolUse', { type: 'command', command: 'old-pre' }, 'config');
+      registry.register('PostToolUse', { type: 'command', command: 'old-post' }, 'config');
+
+      const snapshot = dispatcher.createToolExecutionSnapshot('browser_dom', { action: 'click' });
+
+      registry.unregisterBySource('config');
+      registry.register('PreToolUse', { type: 'command', command: 'new-pre' }, 'config');
+      registry.register('PostToolUse', { type: 'command', command: 'new-post' }, 'config');
+
+      await dispatcher.fire('PreToolUse', makeInput(), { snapshot });
+      await dispatcher.fire('PostToolUse', makeInput({ hook_event_name: 'PostToolUse' }), { snapshot });
+      await dispatcher.fire('PostToolUse', makeInput({ hook_event_name: 'PostToolUse' }));
+
+      expect(commands).toEqual(['old-pre', 'old-post', 'new-post']);
+    });
+  });
+
   describe('fire — async hooks', () => {
     it('fires async hooks without awaiting', async () => {
       let asyncResolved = false;
@@ -181,6 +206,36 @@ describe('HookDispatcher', () => {
       await dispatcher.fire('PreToolUse', makeInput());
 
       expect(events.some((e) => e.type === 'HookBlocked')).toBe(false);
+    });
+
+    it('emits one bounded HookResult per executed hook', async () => {
+      vi.spyOn(executor, 'execute').mockResolvedValue({
+        hookId: 'exec-1',
+        outcome: 'success',
+        stdout: 'x'.repeat(500),
+        duration: 7,
+        updatedInput: { ok: true },
+      });
+
+      const events: EventMsg[] = [];
+      dispatcher.setEventEmitter((msg) => events.push(msg));
+
+      registry.register('PreToolUse', { type: 'command', command: 'ok' }, 'config');
+      await dispatcher.fire('PreToolUse', makeInput());
+
+      const results = events.filter((e) => e.type === 'HookResult');
+      expect(results).toHaveLength(1);
+      expect((results[0] as any).data).toMatchObject({
+        hook_event_name: 'PreToolUse',
+        execution_id: 'exec-1',
+        source: 'config',
+        command_type: 'command',
+        outcome: 'success',
+        duration_ms: 7,
+        tool_name: 'browser_dom',
+        updated_input: true,
+      });
+      expect(((results[0] as any).data.error as string).length).toBeLessThanOrEqual(243);
     });
   });
 

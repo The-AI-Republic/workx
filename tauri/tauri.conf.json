@@ -1,11 +1,12 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Apple Pi",
-  "version": "0.1.0",
+  "productName": "ApplePi",
+  "mainBinaryName": "ApplePi",
+  "version": "0.1.1",
   "identifier": "com.airepublic.pi",
   "build": {
-    "beforeBuildCommand": { "script": "npm run build:desktop && npm run build:desktop-runtime && node scripts/build-sandbox.mjs && npm run build:sidecar && npm run build:ripgrep-sidecar", "cwd": ".." },
-    "beforeDevCommand": { "script": "npm run build:desktop-runtime && node scripts/build-sandbox.mjs && npm run build:sidecar && npm run build:ripgrep-sidecar && npm run dev:desktop", "cwd": ".." },
+    "beforeBuildCommand": { "script": "npm run build:desktop && npm run build:desktop-runtime-sidecar && npm run build:sidecar && npm run build:ripgrep-sidecar", "cwd": ".." },
+    "beforeDevCommand": { "script": "npm run build:desktop-runtime-sidecar && npm run build:sidecar && npm run build:ripgrep-sidecar && npm run dev:desktop", "cwd": ".." },
     "devUrl": "http://localhost:5174",
     "frontendDist": "../dist/desktop"
   },
@@ -13,8 +14,10 @@
     "active": true,
     "category": "DeveloperTool",
     "copyright": "",
-    "externalBin": ["binaries/windows-sandbox", "binaries/chrome-devtools-mcp", "binaries/rg"],
-    "resources": ["../dist/desktop-runtime/**/*"],
+    "externalBin": ["binaries/chrome-devtools-mcp", "binaries/rg"],
+    "resources": {
+      "sidecar/desktop-runtime": "desktop-runtime"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/64x64.png",
@@ -29,7 +32,11 @@
     "targets": "all",
     "linux": {
       "deb": {
-        "depends": []
+        "depends": [],
+        "desktopTemplate": "templates/linux-desktop.desktop"
+      },
+      "rpm": {
+        "desktopTemplate": "templates/linux-desktop.desktop"
       }
     },
     "macOS": {
@@ -76,7 +83,7 @@
     "deep-link": {
       "desktop": {
         "schemes": [
-          "airepublic-pi"
+          "applepi"
         ]
       }
     }

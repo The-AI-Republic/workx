@@ -30,6 +30,15 @@ export interface ToolCallBatch {
   calls: PreparedToolCall[];
 }
 
+export interface ToolExecutionOptions {
+  signal?: AbortSignal;
+}
+
+export interface ToolBatchExecutionOptions<T> {
+  shouldAbortOnResult?: (result: T, call: PreparedToolCall) => boolean;
+  makeCancelledResult?: (call: PreparedToolCall) => T;
+}
+
 /**
  * Maximum number of safe tool calls to run in parallel within a single batch.
  * Conservative for browser context (Chrome APIs, debugger sessions, DOM, screenshots).
@@ -108,13 +117,15 @@ export function partitionToolCalls(calls: PreparedToolCall[]): ToolCallBatch[] {
  */
 export async function executeBatchConcurrently<T>(
   calls: PreparedToolCall[],
-  executor: (call: PreparedToolCall) => Promise<T>,
+  executor: (call: PreparedToolCall, options?: ToolExecutionOptions) => Promise<T>,
+  options: ToolBatchExecutionOptions<T> = {},
 ): Promise<T[]> {
   if (calls.length === 0) {
     return [];
   }
 
   const results = new Array<T>(calls.length);
+  const controller = new AbortController();
   let nextIndex = 0;
 
   const runWorker = async (): Promise<void> => {
@@ -124,7 +135,20 @@ export async function executeBatchConcurrently<T>(
         return;
       }
 
-      results[currentIndex] = await executor(calls[currentIndex]!);
+      const call = calls[currentIndex]!;
+      if (controller.signal.aborted && options.makeCancelledResult) {
+        results[currentIndex] = options.makeCancelledResult(call);
+        continue;
+      }
+      const result = await executor(call, { signal: controller.signal });
+      if (controller.signal.aborted && options.makeCancelledResult) {
+        results[currentIndex] = options.makeCancelledResult(call);
+        continue;
+      }
+      results[currentIndex] = result;
+      if (!controller.signal.aborted && options.shouldAbortOnResult?.(result, call)) {
+        controller.abort();
+      }
     }
   };
 
@@ -138,13 +162,14 @@ export async function executeBatchConcurrently<T>(
  */
 export async function executeToolCallBatches<T>(
   batches: ToolCallBatch[],
-  executor: (call: PreparedToolCall) => Promise<T>,
+  executor: (call: PreparedToolCall, options?: ToolExecutionOptions) => Promise<T>,
+  options: ToolBatchExecutionOptions<T> = {},
 ): Promise<T[]> {
   const allResults: T[] = [];
 
   for (const batch of batches) {
     if (batch.isConcurrencySafe && batch.calls.length > 1) {
-      const batchResults = await executeBatchConcurrently(batch.calls, executor);
+      const batchResults = await executeBatchConcurrently(batch.calls, executor, options);
       allResults.push(...batchResults);
     } else {
       // Sequential: single non-safe call or single safe call

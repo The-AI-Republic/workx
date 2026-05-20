@@ -45,6 +45,20 @@ const STORAGE_KEYS = {
 
 const DEFAULT_MODEL = 'gpt-5';
 
+interface ClientConstructionSignature {
+  selectedModelKey: string;
+  parallelToolCalls: boolean;
+  providerBaseUrl: string | null;
+  providerOrganization: string | null;
+  model: {
+    modelKey: string | null;
+    supportsReasoning: boolean;
+    supportsReasoningSummaries: boolean;
+    serviceTier: string | null;
+    supportBackendMode: number | null;
+  };
+}
+
 /**
  * Factory for creating and managing model clients
  */
@@ -181,7 +195,8 @@ export class ModelClientFactory {
     // Add routing type and OAuth status to cache key to separate clients
     const oauthActive = this.authManager?.isChatGPTOAuthActive?.() ? 'oauth' : 'direct';
     const routingType = this.isBackendRouting() ? 'backend' : oauthActive;
-    const cacheKey = `${provider}-${selectedModelKey}-${routingType}`;
+    const constructionSignature = this.hashObject(this.getClientConstructionSignature(provider));
+    const cacheKey = `${provider}-${selectedModelKey}-${routingType}-${constructionSignature}`;
 
     // Check cache first
     const cached = this.clientCache.get(cacheKey);
@@ -332,7 +347,8 @@ export class ModelClientFactory {
    * @returns Model client instance
    */
   createClientWithConfig(config: ModelClientConfig): ModelClient {
-    const cacheKey = `${config.provider}-${this.hashConfig(config)}`;
+    const constructionSignature = this.hashObject(this.getClientConstructionSignature(config.provider));
+    const cacheKey = `${config.provider}-${this.hashConfig(config)}-${constructionSignature}`;
 
     // Check cache first
     const cached = this.clientCache.get(cacheKey);
@@ -733,12 +749,15 @@ export class ModelClientFactory {
    * @returns Hash string
    */
   private hashConfig(config: ModelClientConfig): string {
-    const str = JSON.stringify({
+    return this.hashObject({
       provider: config.provider,
       apiKey: config.apiKey?.slice(0, 10) || 'null', // Only use first 10 chars for privacy
       options: config.options || {},
     });
+  }
 
+  private hashObject(value: unknown): string {
+    const str = JSON.stringify(value);
     // Simple hash function
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
@@ -748,6 +767,27 @@ export class ModelClientFactory {
     }
 
     return hash.toString(36);
+  }
+
+  private getClientConstructionSignature(provider: ModelProvider): ClientConstructionSignature {
+    const selectedModelKey = this.config?.getConfig().selectedModelKey || 'unknown';
+    const providerConfig = this.config?.getProvider?.(provider);
+    const modelData = this.config?.getModelByKey?.(selectedModelKey);
+    const model = modelData?.model;
+
+    return {
+      selectedModelKey,
+      parallelToolCalls: this.resolveParallelToolCalls(),
+      providerBaseUrl: providerConfig?.baseUrl ?? null,
+      providerOrganization: providerConfig?.organization ?? null,
+      model: {
+        modelKey: model?.modelKey ?? null,
+        supportsReasoning: model?.supportsReasoning ?? false,
+        supportsReasoningSummaries: model?.supportsReasoningSummaries ?? false,
+        serviceTier: model?.serviceTier ?? null,
+        supportBackendMode: model?.supportBackendMode ?? null,
+      },
+    };
   }
 
   /**

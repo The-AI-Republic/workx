@@ -144,3 +144,5 @@ export { SubAgentSlotLoader } from './loaders/SubAgentSlotLoader';
 export type { SubAgentSlotLoaderDeps } from './loaders/SubAgentSlotLoader';
 export { CommandSlotLoader } from './loaders/CommandSlotLoader';
 export type { CommandSlotLoaderDeps } from './loaders/CommandSlotLoader';
+export { PluginCommandLoader } from './PluginCommandLoader';
+export type { PluginPromptCommand } from './PluginCommandLoader';

@@ -16,7 +16,7 @@ import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelMan
 import type { ChannelAdapter } from '@/core/channels/ChannelAdapter';
 import { RepublicAgent } from '@/core/RepublicAgent';
 import { AgentConfig, CREDENTIAL_SECURED_MARKER } from '@/config/AgentConfig';
-import { setConfigStorage } from '@/core/storage/ConfigStorageProvider';
+import { getConfigStorage, setConfigStorage } from '@/core/storage/ConfigStorageProvider';
 import { getCredentialStore } from '@/core/storage';
 import { AuthManager } from '@/core/models/types/Auth';
 import { FileConfigStorageProvider } from '../storage/FileConfigStorageProvider';
@@ -62,6 +62,8 @@ import { registerServerTools } from '../tools/registerServerTools';
 import { redactEventMsgSecrets } from '../security/eventRedaction';
 import { schedulePeriodicSweep } from '../maintenance/toolResultCleanup';
 import { RolloutRecorder } from '@/storage/rollout';
+import { createSessionServices } from '@/core/session/state/SessionServices';
+import { registerUseSkillTool } from '@/core/skills/registerUseSkillTool';
 
 // Handler registrations
 import { registerChatHandlers } from '../handlers/chat';
@@ -239,13 +241,18 @@ export class ServerAgentBootstrap {
       const channelManager = getChannelManager();
 
       // 5. Create AgentRegistry with factories
+      const { join } = await import('node:path');
+      const serverRootDir = join(dataDir, 'sessions');
       this.registry = new AgentRegistry({
         maxConcurrent: 3,
         agentFactory: async (cfg, initialHistory) => {
           const platformAdapter = profile === 'desktop-runtime'
             ? new (await import('@/desktop-runtime/platform/DesktopRuntimePlatformAdapter')).DesktopRuntimePlatformAdapter()
             : new (await import('../platform/ServerPlatformAdapter')).ServerPlatformAdapter();
-          const agent = new RepublicAgent(cfg, platformAdapter, initialHistory);
+          const services = await createSessionServices({
+            serverRootDir,
+          }, false);
+          const agent = new RepublicAgent(cfg, platformAdapter, initialHistory, undefined, undefined, services);
           await agent.initialize();
 
           if (profile === 'server') {
@@ -266,12 +273,19 @@ export class ServerAgentBootstrap {
             }
           }
 
+          await this.registerSkillsToolOnAgent(agent);
+
           // Register sub-agent tool
           const engine = agent.getEngine();
           if (engine) {
             try {
               const { registerSubAgentTool } = await import('@/tools/AgentTool/register');
               const subAgentRunner = await registerSubAgentTool(engine);
+              if (this.skillRegistry) {
+                this.skillRegistry.setValidationContextProvider(() => ({
+                  knownAgents: subAgentRunner.getTypes().map((t) => t.id),
+                }));
+              }
               console.log('[ServerAgentBootstrap] sub_agent tool registered');
 
               // Track 10: bind this session's hook + sub-agent registries to
@@ -609,6 +623,16 @@ export class ServerAgentBootstrap {
     }
   }
 
+  private async registerSkillsToolOnAgent(agent: RepublicAgent): Promise<void> {
+    if (!this.skillRegistry) return;
+    await registerUseSkillTool({
+      toolRegistry: agent.getToolRegistry(),
+      hookRegistry: agent.getHookRegistry(),
+      skillRegistry: this.skillRegistry,
+      getTurnContext: () => agent.getSession().getTurnContext(),
+    });
+  }
+
   /**
    * Register service handlers on ChannelManager (message_routing_v2).
    * Gives server mode full service parity with the extension.
@@ -654,6 +678,14 @@ export class ServerAgentBootstrap {
       await skillRegistry.discover();
       skillsDeps = { skillRegistry };
       this.skillRegistry = skillRegistry;
+      if (this.registry) {
+        for (const meta of this.registry.listSessions()) {
+          const agent = this.registry.getSession(meta.sessionId)?.agent;
+          if (agent) {
+            await this.registerSkillsToolOnAgent(agent);
+          }
+        }
+      }
 
       console.log(`[ServerAgentBootstrap] Skills initialized, found ${skillRegistry.getSkillMetas().length} skills`);
     } catch (error) {
@@ -985,12 +1017,33 @@ export class ServerAgentBootstrap {
       console.warn('[ServerAgentBootstrap] PluginRegistry not available:', error);
     }
 
+    // Track 43: ChatGPT OAuth lives in the runtime after the cutover. The
+    // 127.0.0.1:1455 callback HTTP server, the token storage, and the PKCE
+    // exchange all happen here; the UI just calls `auth.chatgpt.*` services.
+    let chatgptFlow:
+      | InstanceType<typeof import('@/desktop-runtime/auth/RuntimeChatGPTOAuthFlow').RuntimeChatGPTOAuthFlow>
+      | undefined;
+    let chatgptStorage:
+      | InstanceType<typeof import('@/desktop-runtime/auth/RuntimeChatGPTOAuthStorage').RuntimeChatGPTOAuthStorage>
+      | undefined;
+    if (profile === 'desktop-runtime') {
+      try {
+        const { RuntimeChatGPTOAuthFlow } = await import('@/desktop-runtime/auth/RuntimeChatGPTOAuthFlow');
+        const { RuntimeChatGPTOAuthStorage } = await import('@/desktop-runtime/auth/RuntimeChatGPTOAuthStorage');
+        chatgptStorage = new RuntimeChatGPTOAuthStorage(() => getCredentialStore());
+        chatgptFlow = new RuntimeChatGPTOAuthFlow(chatgptStorage);
+      } catch (e) {
+        console.warn('[ServerAgentBootstrap] ChatGPT runtime auth wiring failed:', e);
+      }
+    }
+
     const count = registerAllServices(serviceRegistry, {
       mcp: mcpDeps,
       a2a: a2aDeps,
       skills: skillsDeps,
       plugins: pluginsDeps,
       scheduler: this.scheduler ? { scheduler: this.scheduler } : undefined,
+      storage: { configStorage: getConfigStorage() },
       session: this.registry ? { registry: this.registry } : undefined,
       agent: this.registry ? {
         registry: this.registry,
@@ -1005,6 +1058,37 @@ export class ServerAgentBootstrap {
           : undefined,
         setAuthManager: profile === 'desktop-runtime' ? () => undefined : undefined,
       } : undefined,
+      // Track 43: runtime-owned auth services (auth.completeLogin / getState /
+      // logout + ChatGPT OAuth). Desktop runtime only — server mode handles
+      // auth differently.
+      auth: profile === 'desktop-runtime' && this.registry ? {
+        registry: this.registry,
+        createAuthManager: (shouldUseBackend, backendBaseUrl) => {
+          const tokenGetter = shouldUseBackend
+            ? async () => getCredentialStore().get('auth', 'access_token')
+            : undefined;
+          return new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter);
+        },
+        setAuthManager: () => undefined,
+        getCredentialStore: () => getCredentialStore(),
+        // The runtime owns the access token after cutover; the UI must not
+        // receive it. The runtime performs the profile fetch itself and
+        // returns only the redacted profile shape the UI needs.
+        fetchUserProfile: async (accessToken: string) => {
+          try {
+            const { fetchUserProfileServerSide } = await import('@/desktop-runtime/auth/runtimeProfileFetch');
+            return await fetchUserProfileServerSide(accessToken);
+          } catch (err) {
+            console.warn('[ServerAgentBootstrap] runtime profile fetch failed:', err);
+            return null;
+          }
+        },
+        // ChatGPT OAuth: runtime owns the 127.0.0.1:1455 callback server
+        // (was Rust `start_oauth_callback_server`, now deleted) and the token
+        // storage (was WebView `ChatGPTOAuthDesktopStorage` → keytar).
+        chatgptFlow,
+        getChatGPTStorage: chatgptStorage ? () => chatgptStorage! : undefined,
+      } : undefined,
       diagnostics: {
         buildCtx: () => this.buildDiagnosticContext(),
         heapdump: async () => {
@@ -1012,6 +1096,7 @@ export class ServerAgentBootstrap {
           return performHeapDump();
         },
       },
+      memory: this.registry ? { registry: this.registry } : undefined,
     });
 
     console.log(`[ServerAgentBootstrap] Registered ${count} service handlers`);
@@ -1321,8 +1406,16 @@ export class ServerAgentBootstrap {
       }
       const executionStorage = this.executionRecordStorage;
 
-      // 2. Create alarms (Node.js timers)
-      this.schedulerAlarms = new ServerSchedulerAlarms();
+      // 2. Create alarms. Server profile uses pure in-process Node timers;
+      // desktop-runtime adds OS-level scheduled jobs via the Rust scheduler
+      // control bridge (firing even when the whole app is quit).
+      if ((this.options.profile ?? 'server') === 'desktop-runtime') {
+        const { RuntimeSchedulerAlarms } = await import('@/desktop-runtime/scheduler/RuntimeSchedulerAlarms');
+        const { getDesktopRuntimeControlBridge } = await import('@/desktop-runtime/protocol/controlBridge');
+        this.schedulerAlarms = new RuntimeSchedulerAlarms(getDesktopRuntimeControlBridge().scheduler) as unknown as ServerSchedulerAlarms;
+      } else {
+        this.schedulerAlarms = new ServerSchedulerAlarms();
+      }
 
       // 3. Create new model components directly
       const scheduleManager = new ScheduleManager(this.scheduleEventStorage, executionStorage, this.schedulerAlarms);

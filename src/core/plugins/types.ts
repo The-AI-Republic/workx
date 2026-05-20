@@ -11,6 +11,7 @@
 
 import type { HooksConfig } from '@/core/hooks/types';
 import type { IMCPServerConfig } from '@/core/mcp/types';
+import type { ToolExposureMode } from '@/tools/exposure';
 
 // ── Identifiers and scope ──────────────────────────────────────────
 
@@ -124,6 +125,11 @@ export interface PluginManifest {
   browserx?: {
     domains?: string[];
     platforms?: PluginPlatform[];
+    toolExposure?: Record<string, {
+      mode?: ToolExposureMode;
+      searchHint?: string;
+      displayName?: string;
+    }>;
   };
 }
 

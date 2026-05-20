@@ -25,9 +25,12 @@ export {
   substituteVariables,
   serializeToSkillMd,
 } from './SkillParser';
+export type { SkillValidationContext } from './SkillParser';
 
 // Provider interface
 export type { ISkillProvider } from './SkillProvider';
 
 // Registry
 export { SkillRegistry } from './SkillRegistry';
+export { registerUseSkillTool } from './registerUseSkillTool';
+export type { RegisterUseSkillToolOptions } from './registerUseSkillTool';

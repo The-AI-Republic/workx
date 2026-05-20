@@ -4,7 +4,8 @@
  * Uses the canonical service/account `CredentialStore` (NOT the narrower
  * IPlatformAdapter.ICredentialStore). Per-platform backing is whatever
  * `setCredentialStore()` installed at boot:
- *   - desktop  → KeytarCredentialStore (OS keychain — strongest)
+ *   - desktop-runtime → ControlFrameCredentialStore (OS keychain via Rust
+ *     control frames — strongest)
  *   - server   → FileCredentialStore (0o600 + AES-256-GCM; treat a
  *                decrypt-fail / missing VITE_VAULT_SECRET as "no key ⇒ deny")
  *   - extension → not used (NoopSigner; the extension never custodies a key)

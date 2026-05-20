@@ -5,7 +5,7 @@
  * Follows TSRolloutStorageProvider pattern (FR-011):
  * - Dynamic import of better-sqlite3
  * - WAL mode
- * - Same table schema as Rust db_storage.rs
+ * - Same table schema as the desktop runtime SQLite adapter
  *
  * @module server/storage/NodeSQLiteAdapter
  */
