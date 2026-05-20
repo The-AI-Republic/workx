@@ -20,6 +20,44 @@ export interface RuntimeUserProfile {
   userType?: number;
 }
 
+function decodeBase64UrlJson(segment: string): Record<string, unknown> | null {
+  try {
+    const base64 = segment.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(base64.length + ((4 - base64.length % 4) % 4), '=');
+    const json = Buffer.from(padded, 'base64').toString('utf8');
+    const parsed = JSON.parse(json) as unknown;
+    return parsed && typeof parsed === 'object' ? parsed as Record<string, unknown> : null;
+  } catch {
+    return null;
+  }
+}
+
+function pickString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+}
+
+export function profileFromAccessToken(accessToken: string): RuntimeUserProfile | null {
+  const [, payloadSegment] = accessToken.split('.');
+  if (!payloadSegment) return null;
+  const payload = decodeBase64UrlJson(payloadSegment);
+  if (!payload) return null;
+  const email = pickString(payload.email);
+  const id = pickString(payload.sub) ?? pickString(payload.user_id) ?? pickString(payload.id);
+  const name = pickString(payload.name) ?? pickString(payload.user_name) ?? pickString(payload.display_name);
+  if (!email && !id && !name) return null;
+  return {
+    id,
+    name,
+    email,
+    avatar: pickString(payload.avatar) ?? pickString(payload.avatar_url) ?? pickString(payload.picture),
+    userType: typeof payload.user_type === 'number'
+      ? payload.user_type
+      : typeof payload.userType === 'number'
+        ? payload.userType
+        : 0,
+  };
+}
+
 /**
  * Resolve the base URL for the auth backend. Identical default to the
  * webfront's `HOME_PAGE_BASE_URL`, overridable via env for tests / staging.
@@ -48,7 +86,7 @@ export async function fetchUserProfileServerSide(
       },
     });
     if (!response.ok) {
-      console.warn(`[runtime-auth] profile fetch failed: ${response.status} ${response.statusText}`);
+      console.warn(`[runtime-auth] profile fetch failed from ${baseUrl}: ${response.status} ${response.statusText}`);
       return null;
     }
     const data = (await response.json()) as Record<string, unknown>;
@@ -67,7 +105,7 @@ export async function fetchUserProfileServerSide(
       userType: (data.user_type as number | undefined) ?? 0,
     };
   } catch (error) {
-    console.warn('[runtime-auth] profile fetch threw:', error);
-    return null;
+    console.warn(`[runtime-auth] profile fetch threw from ${baseUrl}:`, error);
+    return profileFromAccessToken(accessToken);
   }
 }

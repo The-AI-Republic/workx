@@ -122,6 +122,27 @@ fn runtime_entry_path(app: &AppHandle) -> PathBuf {
     PathBuf::from("../dist/desktop-runtime/index.mjs")
 }
 
+fn mkcert_root_ca_path() -> Option<PathBuf> {
+    let mut candidates: Vec<PathBuf> = Vec::new();
+
+    if let Ok(caroot) = std::env::var("CAROOT") {
+        candidates.push(PathBuf::from(caroot).join("rootCA.pem"));
+    }
+    if let Some(data_dir) = dirs::data_dir() {
+        candidates.push(data_dir.join("mkcert").join("rootCA.pem"));
+    }
+    if let Some(data_local_dir) = dirs::data_local_dir() {
+        candidates.push(data_local_dir.join("mkcert").join("rootCA.pem"));
+    }
+    if let Some(home_dir) = dirs::home_dir() {
+        candidates.push(home_dir.join(".local").join("share").join("mkcert").join("rootCA.pem"));
+        candidates.push(home_dir.join("Library").join("Application Support").join("mkcert").join("rootCA.pem"));
+        candidates.push(home_dir.join("AppData").join("Local").join("mkcert").join("rootCA.pem"));
+    }
+
+    candidates.into_iter().find(|path| path.exists())
+}
+
 async fn write_frame(stdin: &mut ChildStdin, frame: &Value) -> Result<(), String> {
     let payload = serde_json::to_vec(frame).map_err(|e| e.to_string())?;
     stdin
@@ -381,10 +402,18 @@ async fn spawn_once(
     let entry = runtime_entry_path(app);
     let node_bin = resolve_node_bin(app);
 
-    let mut child = Command::new(&node_bin)
+    let mut command = Command::new(&node_bin);
+    command
         .arg(entry)
         .env("APPLEPI_RUNTIME_PROFILE", "desktop-runtime")
-        .env("APPLEPI_DESKTOP_RUNTIME_HOST", host_json)
+        .env("APPLEPI_DESKTOP_RUNTIME_HOST", host_json);
+    if std::env::var_os("NODE_EXTRA_CA_CERTS").is_none() {
+        if let Some(root_ca) = mkcert_root_ca_path() {
+            command.env("NODE_EXTRA_CA_CERTS", root_ca);
+        }
+    }
+
+    let mut child = command
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
