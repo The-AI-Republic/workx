@@ -109,6 +109,7 @@ the single-track gaps in 26–32**. Filed as bug-report tracks (detail + fix in 
 | 41 | [Shadow Agent Runtime](./41_shadow_agent_runtime_DONE/design.md) ✅ DONE (PR #245, merged 2026-05-18) | P1 | Medium–Large | Runtime-only `ShadowAgentRunner`/scheduler for internal background jobs; session-summary extraction migrated off quiet sub-agents, with diagnostics/failure policies and compaction prep covered by tests. |
 | 42 | [System Prompt Content Improvements](./42_system_prompt_content_improvements_DONE/design.md) ✅ DONE (PR #244, merged 2026-05-18) | P1 | Small–Medium | Compare claudy's prompt sections with BrowserX's composed prompt; add missing system semantics/action-risk/memory-staleness/skill anti-guessing guidance while trimming verbose duplicated planning/tool-loop prose. |
 | 43 | [Apple Pi Runtime Decoupling](./43_apple_pi_runtime_decoupling/design.md) ⚠ PARTIAL | P1 | XL | Desktop now defaults to the Rust-supervised runtime sidecar relay, with the legacy WebView bootstrap no longer called by UI startup/shutdown/login flows. Remaining work: runtime config relay cleanup, deleting retired bootstrap/Rust command surfaces, packaging/native-addon proof, and full parity/hardening. |
+| 44 | [Desktop Runtime State Ownership Contract](./44_desktop_runtime_state_ownership/design.md) | P1 | Medium–Large | Systematizes the post-Track-43 boundary: Tauri owns native capabilities, the desktop runtime owns auth/config/sessions/readiness, and the UI renders runtime-derived state; closes login/access/env parity drift. |
 
 ## Dependency Graph
 
@@ -175,6 +176,7 @@ claudy ToolSearch comparison        ──> 39_dynamic_tool_management_DONE (def
 claudy AgentTool/forkSubagent       ──> 40_subagent_runtime_optimization (enum AgentType + isolated/forked subagent modes)
 claudy runForkedAgent               ──> 41_shadow_agent_runtime_DONE (runtime-only shadow agents for internal background jobs)
 claudy system prompt comparison     ──> 42_system_prompt_content_improvements_DONE (system semantics + action risk + prompt-size reduction)
+43_apple_pi_runtime_decoupling      ──> 44_desktop_runtime_state_ownership (runtime/UI/Tauri state boundary + auth/access/env parity)
 
 Integration-fix order: 34 (Critical) → 33 / 37 / 35 (P1) → 36 (P2)
   (37 BUG-3 TieredEvictor ordering == 29 G3 == 32 P5 — ONE shared decision, no drift)
