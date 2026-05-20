@@ -139,7 +139,9 @@ export class DesktopAuthService {
    */
   async login(timeoutMs: number = 300000): Promise<UserSession> {
     // Build the login URL with deep link callback (same /login page as extension)
-    const loginUrl = `${this.authBaseUrl}/login?redirect_url=${encodeURIComponent(AUTH_CALLBACK_SCHEME)}`;
+    const loginUrl = new URL('/login', this.authBaseUrl);
+    loginUrl.searchParams.set('redirect_url', AUTH_CALLBACK_SCHEME);
+    loginUrl.searchParams.set('desktop_login_ts', Date.now().toString());
 
     // Create a promise that will be resolved by the callback handler
     const callbackPromise = new Promise<{ accessToken: string; refreshToken: string }>((resolve, reject) => {
@@ -157,7 +159,7 @@ export class DesktopAuthService {
     });
 
     // Open browser to login page
-    await open(loginUrl);
+    await open(loginUrl.toString());
 
     // Wait for the callback
     const { accessToken, refreshToken } = await callbackPromise;
