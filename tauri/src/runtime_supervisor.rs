@@ -194,7 +194,8 @@ async fn handle_control_frame(app: &AppHandle, state: &RuntimeSupervisorState, f
     let method = frame.get("method").and_then(Value::as_str).unwrap_or_default();
     let params = frame.get("params").cloned().unwrap_or_else(|| json!({}));
 
-    let result = match method {
+    let result: Result<Value, String> = match method {
+        // ── keychain ──────────────────────────────────────────────────────
         "keychain.get" => (|| {
             let service = required_str(&params, "service")?;
             let account = required_str(&params, "account")?;
@@ -215,12 +216,71 @@ async fn handle_control_frame(app: &AppHandle, state: &RuntimeSupervisorState, f
             let service = required_str(&params, "service")?;
             super::keychain_commands::keychain_list_accounts(service).map(|v| json!(v))
         })(),
+        // ── scheduler OS-trust bridge ─────────────────────────────────────
+        "scheduler.register" => {
+            match (required_str(&params, "jobId"), params.get("scheduledTime").and_then(Value::as_i64)) {
+                (Ok(job_id), Some(scheduled_time)) => {
+                    super::scheduler_commands::scheduler_register_os_job(job_id, scheduled_time)
+                        .await
+                        .map(|_| json!(null))
+                }
+                _ => Err("scheduler.register requires jobId (string) and scheduledTime (i64)".into()),
+            }
+        }
+        "scheduler.remove" => match required_str(&params, "jobId") {
+            Ok(job_id) => super::scheduler_commands::scheduler_remove_os_job(job_id)
+                .await
+                .map(|_| json!(null)),
+            Err(e) => Err(e),
+        },
+        "scheduler.list" => super::scheduler_commands::scheduler_list_os_jobs()
+            .await
+            .map(|v| json!(v)),
+        "scheduler.has" => match required_str(&params, "jobId") {
+            Ok(job_id) => super::scheduler_commands::scheduler_has_os_job(job_id)
+                .await
+                .map(|v| json!(v)),
+            Err(e) => Err(e),
+        },
+        "scheduler.clear" => super::scheduler_commands::scheduler_clear_os_jobs()
+            .await
+            .map(|_| json!(null)),
+        // ── notifications (OS-trust; uses tauri-plugin-notification) ──────
+        "notification.show" => {
+            let title = params.get("title").and_then(Value::as_str).unwrap_or("Apple Pi");
+            let body = params.get("body").and_then(Value::as_str).unwrap_or("");
+            use tauri_plugin_notification::NotificationExt;
+            match app.notification().builder().title(title).body(body).show() {
+                Ok(_) => Ok(json!(null)),
+                Err(e) => Err(e.to_string()),
+            }
+        }
+        // ── window shell controls ─────────────────────────────────────────
         "ui.showWindow" => {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
                 let _ = window.set_focus();
             }
             Ok(json!(null))
+        }
+        "ui.submitToFocus" => {
+            // Show window + focus + emit a `pi:focus-input` event the UI
+            // listens for to route a payload into the chat composer.
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+            let _ = app.emit("pi:focus-input", params.clone());
+            Ok(json!(null))
+        }
+        // ── diagnostics ────────────────────────────────────────────────────
+        "diagnostics.recentStderr" => {
+            // Recent stderr is captured by the supervisor stderr task and
+            // emitted as `runtime:stderr` events to the UI; the runtime
+            // itself doesn't get a copy, so it asks back here. A real
+            // implementation would back this with a ring buffer; for now
+            // return an empty list (no leak) so callers handle gracefully.
+            Ok(json!({ "lines": [] }))
         }
         _ => Err(format!("Unknown control method: {}", method)),
     };

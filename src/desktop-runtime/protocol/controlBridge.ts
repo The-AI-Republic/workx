@@ -8,6 +8,31 @@ interface PendingControl {
   timeout: ReturnType<typeof setTimeout>;
 }
 
+/**
+ * Scheduler OS-trust bridge. Mirrors the surface of the deleted
+ * `DesktopSchedulerAlarms.invoke('scheduler_*')` calls, but routes through
+ * Rust control frames instead of Tauri invoke (the runtime is a Node
+ * process and has no direct Tauri access).
+ */
+export interface SchedulerOsBridge {
+  register(jobId: string, scheduledTime: number): Promise<void>;
+  remove(jobId: string): Promise<void>;
+  list(): Promise<string[]>;
+  has(jobId: string): Promise<boolean>;
+  clear(): Promise<void>;
+}
+
+/** Notification OS-trust bridge — uses Rust `tauri-plugin-notification`. */
+export interface NotificationBridge {
+  show(title: string, body: string): Promise<void>;
+}
+
+/** Window shell controls — show / focus / push input to the composer. */
+export interface WindowBridge {
+  showAndFocus(): Promise<void>;
+  submitToFocus(payload: Record<string, unknown>): Promise<void>;
+}
+
 export class DesktopRuntimeControlBridge {
   private pending = new Map<string, PendingControl>();
 
@@ -20,6 +45,35 @@ export class DesktopRuntimeControlBridge {
       await this.request('keychain.delete', { service, account });
     },
     listAccounts: (service) => this.request<string[]>('keychain.listAccounts', { service }),
+  };
+
+  readonly scheduler: SchedulerOsBridge = {
+    register: async (jobId, scheduledTime) => {
+      await this.request('scheduler.register', { jobId, scheduledTime });
+    },
+    remove: async (jobId) => {
+      await this.request('scheduler.remove', { jobId });
+    },
+    list: () => this.request<string[]>('scheduler.list'),
+    has: (jobId) => this.request<boolean>('scheduler.has', { jobId }),
+    clear: async () => {
+      await this.request('scheduler.clear');
+    },
+  };
+
+  readonly notification: NotificationBridge = {
+    show: async (title, body) => {
+      await this.request('notification.show', { title, body });
+    },
+  };
+
+  readonly window: WindowBridge = {
+    showAndFocus: async () => {
+      await this.request('ui.showWindow');
+    },
+    submitToFocus: async (payload) => {
+      await this.request('ui.submitToFocus', payload);
+    },
   };
 
   constructor(private readonly carrier: StdioFrameCarrier) {}

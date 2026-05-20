@@ -1406,8 +1406,16 @@ export class ServerAgentBootstrap {
       }
       const executionStorage = this.executionRecordStorage;
 
-      // 2. Create alarms (Node.js timers)
-      this.schedulerAlarms = new ServerSchedulerAlarms();
+      // 2. Create alarms. Server profile uses pure in-process Node timers;
+      // desktop-runtime adds OS-level scheduled jobs via the Rust scheduler
+      // control bridge (firing even when the whole app is quit).
+      if ((this.options.profile ?? 'server') === 'desktop-runtime') {
+        const { RuntimeSchedulerAlarms } = await import('@/desktop-runtime/scheduler/RuntimeSchedulerAlarms');
+        const { getDesktopRuntimeControlBridge } = await import('@/desktop-runtime/protocol/controlBridge');
+        this.schedulerAlarms = new RuntimeSchedulerAlarms(getDesktopRuntimeControlBridge().scheduler) as unknown as ServerSchedulerAlarms;
+      } else {
+        this.schedulerAlarms = new ServerSchedulerAlarms();
+      }
 
       // 3. Create new model components directly
       const scheduleManager = new ScheduleManager(this.scheduleEventStorage, executionStorage, this.schedulerAlarms);
