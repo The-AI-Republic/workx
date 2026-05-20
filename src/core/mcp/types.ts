@@ -436,7 +436,7 @@ export interface IMCPToolAdapter {
 
 /**
  * Unified client adapter interface for MCP connections.
- * Both MCPClient (SSE) and RustMCPBridge (stdio) implement this interface,
+ * Both MCPClient (SSE) and NodeMCPBridge (stdio) implement this interface,
  * allowing MCPManager to work with either transport transparently.
  */
 export interface IMCPClientAdapter {

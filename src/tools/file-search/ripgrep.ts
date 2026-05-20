@@ -68,56 +68,22 @@ export class RipgrepNotFoundError extends Error {
 const DEFAULT_TIMEOUT_MS = 20_000;
 const DEFAULT_MAX_BUFFER = 32 * 1024 * 1024; // 32 MB — wide greps can be large
 
-function getBuildMode(): string {
-  return typeof __BUILD_MODE__ !== 'undefined' ? __BUILD_MODE__ : 'extension';
-}
-
 /**
  * Run ripgrep with an explicit argv array (NEVER a shell string — the
  * pattern/path/glob are model-controlled, so shell interpolation must not
  * be reachable). Exit code 1 (no matches) resolves normally; the caller
  * interprets it. A timeout rejects with RipgrepTimeoutError.
+ *
+ * After Track 43's cutover the agent (and these tools) runs inside the
+ * Node runtime sidecar — there is no `desktop` branch any more. The
+ * legacy Rust `ripgrep_execute` command is unused.
  */
 export async function runRipgrep(
   args: string[],
   opts: RunRipgrepOptions = {}
 ): Promise<RipgrepResult> {
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const mode = getBuildMode();
-
-  if (mode === 'desktop') {
-    return runViaTauri(args, opts.cwd, timeoutMs, opts.workspaceRoot);
-  }
   return runViaNode(args, opts.cwd, timeoutMs, opts.maxBuffer ?? DEFAULT_MAX_BUFFER, opts.workspaceRoot);
-}
-
-/**
- * Desktop: delegate to the Rust `ripgrep_execute` command. Rust owns the
- * hybrid resolution (system → bundled sidecar next to the exe) and the
- * timeout/kill so the WebView never has to spawn a process.
- */
-async function runViaTauri(
-  args: string[],
-  cwd: string | undefined,
-  timeoutMs: number,
-  workspaceRoot: string | undefined
-): Promise<RipgrepResult> {
-  const { invoke } = await import('@tauri-apps/api/core');
-  try {
-    const r = await invoke<RipgrepResult>('ripgrep_execute', {
-      args,
-      cwd: cwd ?? null,
-      timeoutMs,
-      workspaceRoot: workspaceRoot ?? null,
-    });
-    if (r.timedOut) throw new RipgrepTimeoutError(timeoutMs);
-    return r;
-  } catch (e) {
-    if (e instanceof RipgrepTimeoutError) throw e;
-    const msg = e instanceof Error ? e.message : String(e);
-    if (/not found|no such file|enoent/i.test(msg)) throw new RipgrepNotFoundError();
-    throw e;
-  }
 }
 
 /**
