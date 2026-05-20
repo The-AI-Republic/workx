@@ -79,6 +79,7 @@ describe('TurnManager Memory Integration', () => {
         };
 
         mockSession = {
+            getSessionId: vi.fn().mockReturnValue('test-session-id'),
             getMemoryService: vi.fn().mockReturnValue(null),
             getToolRegistry: vi.fn().mockReturnValue(null),
             showRawAgentReasoning: vi.fn().mockReturnValue(false),

@@ -191,7 +191,10 @@ export const BLOCKED_OFFICIAL_NAME_PATTERN =
 const OFFICIAL_GITHUB_ORG = 'browserx';
 
 function containsNonAscii(value: string): boolean {
-  return Array.from(value).some((char) => char.charCodeAt(0) > 0x7f);
+  for (let i = 0; i < value.length; i += 1) {
+    if (value.charCodeAt(i) > 0x7f) return true;
+  }
+  return false;
 }
 
 /** Names that look "official" (or use homographs) are reserved. */

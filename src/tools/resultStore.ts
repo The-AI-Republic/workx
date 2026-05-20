@@ -359,6 +359,8 @@ export class FileToolResultStore implements ToolResultStore {
             ]);
           }),
       );
+      // Remove the now-empty transient result directory when cleanup deleted
+      // every owned result. ENOTEMPTY is expected when persistent owners remain.
       await rm(dir, { recursive: false, force: true }).catch(() => undefined);
     } catch (e) {
       console.warn('[FileToolResultStore] cleanup failed:', e);

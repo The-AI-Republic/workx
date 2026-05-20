@@ -104,6 +104,7 @@ describe('ToolRegistry – extended coverage', () => {
       const firstHandler = vi.fn().mockResolvedValue('first');
       const secondHandler = vi.fn().mockResolvedValue('second');
       await registry.register(tool, firstHandler);
+      const registerEvent = (collector.collect as ReturnType<typeof vi.fn>).mock.calls[0][0];
       (collector.collect as ReturnType<typeof vi.fn>).mockClear();
 
       await registry.replace(tool, secondHandler);
@@ -116,6 +117,11 @@ describe('ToolRegistry – extended coverage', () => {
       );
       expect(events).toContain('ToolRegistered');
       expect(events).not.toContain('ToolUnregistered');
+      const replaceEvent = (collector.collect as ReturnType<typeof vi.fn>).mock.calls.find(
+        c => c[0].msg.type === 'ToolRegistered',
+      )?.[0];
+      expect(replaceEvent?.id).toMatch(/^evt_replace_swap_\d+_[0-9a-f-]+$/);
+      expect(replaceEvent?.id).not.toBe(registerEvent.id);
     });
   });
 

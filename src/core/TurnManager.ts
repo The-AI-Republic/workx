@@ -191,7 +191,7 @@ export class TurnManager {
 
   private getPromptRuntimeContext(): PromptRuntimeContext {
     return {
-      sessionId: this.session.getSessionId?.() ?? this.turnContext.getSessionId?.() ?? this.session.sessionId,
+      sessionId: this.session.getSessionId(),
       mode: this.getAgentMode(),
       toolRegistry: this.toolRegistry,
       turnContext: this.turnContext,

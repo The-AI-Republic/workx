@@ -190,18 +190,22 @@ export async function loadPrompt(
  * Append registered prompt extensions to the base prompt.
  */
 function appendExtensions(base: string, ctx: PromptRuntimeContext): string {
-  const extensions = new Map<string, PromptExtensionFn>(globalPromptExtensions);
+  let extensions: Iterable<PromptExtensionFn> = globalPromptExtensions.values();
+  let extensionCount = globalPromptExtensions.size;
   if (ctx.sessionId) {
     const sessionExtensions = sessionPromptExtensions.get(ctx.sessionId);
     if (sessionExtensions) {
+      const merged = new Map<string, PromptExtensionFn>(globalPromptExtensions);
       for (const [name, fn] of sessionExtensions) {
-        extensions.set(name, fn);
+        merged.set(name, fn);
       }
+      extensions = merged.values();
+      extensionCount = merged.size;
     }
   }
-  if (extensions.size === 0) return base;
+  if (extensionCount === 0) return base;
 
-  const extras = Array.from(extensions.values())
+  const extras = Array.from(extensions)
     .map((fn) => fn(ctx))
     .filter(Boolean);
 

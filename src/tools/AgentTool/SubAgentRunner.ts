@@ -528,7 +528,7 @@ export class SubAgentRunner implements IAgentRunner {
       !this.isNonInteractiveBackgroundSafe(behavior)
     ) {
       throw new Error(
-        `Background sub-agent type '${resolvedTypeConfig.id}' cannot inherit approval; configure approvalPolicy: "never" only for a read-only or internally locked profile`,
+        `Background sub-agent type '${resolvedTypeConfig.id}' cannot inherit approval; set approvalPolicy: "never" explicitly, or use a non-interactive profile that can safely downgrade inherited approval`,
       );
     }
     const effectiveApprovalPolicy =

@@ -306,7 +306,7 @@ export class ToolRegistry {
     const entry = this.createEntry(tool, handler, optionsOrAssessor);
     this.tools.set(toolName, entry);
     this.emitEvent({
-      id: `evt_register_${toolName}`,
+      id: `evt_replace_${toolName}_${entry.registrationTime}_${crypto.randomUUID()}`,
       msg: {
         type: 'ToolRegistered',
         data: {

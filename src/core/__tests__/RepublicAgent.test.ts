@@ -114,7 +114,7 @@ import { AgentConfig } from '../../config/AgentConfig';
 import { Session } from '../Session';
 import type { Op } from '../protocol/types';
 import type { Event } from '../protocol/events';
-import { loadPrompt } from '../PromptLoader';
+import { loadPrompt, unregisterSessionPromptExtensions } from '../PromptLoader';
 
 // ---------------------------------------------------------------------------
 // Helper: create mock AgentConfig (plain object, not through vi.mock)
@@ -864,6 +864,18 @@ describe('RepublicAgent', () => {
       await agent.cleanup();
 
       expect(mockUserNotifierInstance.clearAll).toHaveBeenCalled();
+    });
+
+    it('removes session-scoped prompt extensions after disposing the session', async () => {
+      vi.mocked(unregisterSessionPromptExtensions).mockClear();
+
+      await agent.cleanup();
+
+      expect(unregisterSessionPromptExtensions).toHaveBeenCalledWith('conv-123');
+      expect(mockSessionInstance.dispose).toHaveBeenCalled();
+      expect(mockSessionInstance.dispose.mock.invocationCallOrder[0]).toBeLessThan(
+        vi.mocked(unregisterSessionPromptExtensions).mock.invocationCallOrder[0],
+      );
     });
 
     it('unsubscribes config hook watcher and removes config hooks on cleanup', async () => {

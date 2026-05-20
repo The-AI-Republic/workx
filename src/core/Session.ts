@@ -69,7 +69,7 @@ export interface SessionDisposeOptions {
   recordCloseEvent?: boolean;
   /** Defaults to true. */
   flushRollout?: boolean;
-  /** Defaults to true for non-persistent sessions. */
+  /** Defaults to true, but cleanup only runs for non-persistent sessions. */
   cleanupToolResults?: boolean;
 }
 
@@ -2576,6 +2576,8 @@ export class Session {
    *
    * Records ResponseItems to both SessionState (in-memory history) and
    * RolloutRecorder (persistent storage).
+   * Concurrent callers are serialized through conversationCommitChain; callers
+   * only need to await their own returned promise.
    */
   async recordConversationItemsDual(items: ResponseItem[]): Promise<void> {
     const commit = this.conversationCommitChain.then(async () => {
