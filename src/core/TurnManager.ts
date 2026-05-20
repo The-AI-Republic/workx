@@ -10,7 +10,8 @@ import { TurnContext } from './TurnContext';
 import { withModelRetry } from './models/resilience/withRetry';
 import { calculateUSDCost } from './models/cost/cost';
 import { AgentConfig } from '../config/AgentConfig';
-import { loadPrompt } from './PromptLoader';
+import { loadPrompt, type PromptRuntimeContext } from './PromptLoader';
+import { DEFAULT_MODE, type AgentMode } from '../prompts/PromptComposer';
 import type {
   CompactionCompletedEvent,
   EventMsg,
@@ -85,6 +86,8 @@ export interface TurnRunResult {
   turnCostUSD?: number;
   /** Track 18: true when the model was absent from the cost table. */
   turnCostEstimated?: boolean;
+  /** True when this turn included any model-requested tool call. */
+  lastTurnHadToolCalls?: boolean;
 }
 
 /**
@@ -186,6 +189,19 @@ export class TurnManager {
     return this.cancelled;
   }
 
+  private getPromptRuntimeContext(): PromptRuntimeContext {
+    return {
+      sessionId: this.session.getSessionId?.() ?? this.turnContext.getSessionId?.() ?? this.session.sessionId,
+      mode: this.getAgentMode(),
+      toolRegistry: this.toolRegistry,
+      turnContext: this.turnContext,
+    };
+  }
+
+  private getAgentMode(): AgentMode {
+    return this.turnContext.getAgentMode?.() ?? this.session.getAgentMode?.() ?? DEFAULT_MODE;
+  }
+
   /**
    * Run a complete turn with retry logic
    */
@@ -199,7 +215,10 @@ export class TurnManager {
     // Falls back to the value cached on TurnContext if reload throws.
     let baseInstructions: string | undefined;
     try {
-      baseInstructions = await loadPrompt(this.turnContext.getAgentMode());
+      baseInstructions = await loadPrompt(
+        this.getAgentMode(),
+        this.getPromptRuntimeContext(),
+      );
     } catch (err) {
       console.warn('[TurnManager] loadPrompt() failed, reusing cached base instructions:', err);
       baseInstructions = this.turnContext.getBaseInstructions();
@@ -300,7 +319,9 @@ export class TurnManager {
           }
           currentInput = (await this.session.buildTurnInputWithHistory([])) as any[];
           try {
-            currentBaseInstructions = this.withToolExposureReminder(await loadPrompt());
+            currentBaseInstructions = this.withToolExposureReminder(
+              await loadPrompt(this.getAgentMode(), this.getPromptRuntimeContext()),
+            );
           } catch {
             currentBaseInstructions = this.withToolExposureReminder(this.turnContext.getBaseInstructions());
           }
@@ -493,47 +514,18 @@ export class TurnManager {
               await this.enforceImmediateLegacyTier2(processedItems);
             }
 
-            // Track 05b: fire post-turn hooks before returning. Hooks are
-            // owned by Session (since TurnManager is per-task but post-turn
-            // listeners — notably the session-summary extractor — live the
-            // length of the session). Errors are swallowed inside
-            // firePostTurnHooks so a misbehaving hook can't break the turn.
-            //
-            // Defensive `typeof` checks: many existing test fixtures mock
-            // Session without these methods. In production the real Session
-            // class always provides them; in tests we no-op gracefully.
-            const sess = this.session as unknown as {
-              firePostTurnHooks?: (ctx: unknown) => Promise<void>;
-              getSessionId?: () => string;
-              getConversationHistory?: () => { items: unknown[] };
-            };
-            if (typeof sess.firePostTurnHooks === 'function') {
-              const lastTurnHadToolCalls = processedItems.some(
-                (p) =>
-                  p.item?.type === 'function_call' ||
-                  p.item?.type === 'custom_tool_call',
-              );
-              const historyItems =
-                typeof sess.getConversationHistory === 'function'
-                  ? sess.getConversationHistory().items
-                  : [];
-              const sessionId =
-                typeof sess.getSessionId === 'function'
-                  ? sess.getSessionId()
-                  : '';
-              await sess.firePostTurnHooks({
-                sessionId,
-                history: historyItems,
-                totalTokenUsage,
-                lastTurnHadToolCalls,
-              });
-            }
+            const lastTurnHadToolCalls = processedItems.some(
+              (p) =>
+                p.item?.type === 'function_call' ||
+                p.item?.type === 'custom_tool_call',
+            );
 
             return {
               processedItems,
               totalTokenUsage,
               turnCostUSD,
               turnCostEstimated,
+              lastTurnHadToolCalls,
             };
           }
 
@@ -1142,7 +1134,12 @@ export class TurnManager {
     if (cached !== undefined) return cached;
 
     try {
-      const persisted = await store.persist(this.session.sessionId, callId, output);
+      const owner = this.session.isPersistentSession?.()
+        ? { kind: 'persistent_rollout' as const, sessionId: this.session.sessionId, callId }
+        : { kind: 'transient_session' as const, sessionId: this.session.sessionId, callId };
+      const persisted = await store.persist(this.session.sessionId, callId, output, {
+        owner,
+      });
       const message = buildPersistedOutputMessage(persisted);
       state.record(callId, message);
       return message;
@@ -1427,7 +1424,7 @@ export class TurnManager {
           // Per-session handles for the file-access tools (design §4.5). Live
           // in-process object refs; the session-less tools/index.ts path simply
           // omits these and the tools degrade gracefully.
-          workspaceRoot: this.session.getWorkspaceRoot(),
+          workspaceRoot: this.session.getWorkspaceRoot?.(),
           fileStateCache: this.session.getFileStateCache?.(),
           agentMode: this.session.getAgentMode?.(), // §4.2: file tools are code-mode only
         },

@@ -472,9 +472,9 @@ export class AgentSession {
     if (this._agent) {
       try {
         const session = this._agent.getSession();
-        // Use 'UserInterrupt' as the abort reason for session termination
-        await session.abortAllTasks('UserInterrupt');
-        await session.close();
+        const abortReason =
+          reason === 'tabClosed' ? 'TabClosed' : reason === 'error' ? 'Error' : 'UserInterrupt';
+        await session.dispose({ reason: abortReason, recordCloseEvent: true });
         await this._agent.cleanup();
       } catch (error) {
         console.error(`[AgentSession] Error during agent cleanup:`, error);

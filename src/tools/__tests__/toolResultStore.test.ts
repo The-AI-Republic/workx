@@ -221,6 +221,24 @@ describe('CacheToolResultStore', () => {
     expect(item.customMetadata?.toolUseId).toBe('tool_use_aaa');
   });
 
+  it('cleanup preserves cache entries owned by persistent rollouts', async () => {
+    const persistent = await store.persist('sess1', 'tool_persist', 'P'.repeat(60_000), {
+      owner: { kind: 'persistent_rollout', sessionId: 'sess1', callId: 'tool_persist' },
+    });
+    const transient = await store.persist('sess1', 'tool_transient', 'T'.repeat(60_000), {
+      owner: { kind: 'transient_session', sessionId: 'sess1', callId: 'tool_transient' },
+    });
+
+    await store.cleanup('sess1');
+
+    await expect(manager.read(persistent.reference)).resolves.toMatchObject({
+      customMetadata: expect.objectContaining({
+        owner: expect.objectContaining({ kind: 'persistent_rollout' }),
+      }),
+    });
+    await expect(manager.read(transient.reference)).rejects.toThrow();
+  });
+
   it('retrieve round-trips the original content', async () => {
     const content = 'line1\n' + 'a'.repeat(80_000);
     const { reference } = await store.persist('sess1', 'tool_use_bbb', content);
@@ -241,8 +259,12 @@ describe('CacheToolResultStore', () => {
   });
 
   it('cleanup deletes tool_result entries and leaves user entries intact', async () => {
-    await store.persist('sess1', 'tool_a', 'A'.repeat(60_000));
-    await store.persist('sess1', 'tool_b', 'B'.repeat(60_000));
+    await store.persist('sess1', 'tool_a', 'A'.repeat(60_000), {
+      owner: { kind: 'transient_session', sessionId: 'sess1', callId: 'tool_a' },
+    });
+    await store.persist('sess1', 'tool_b', 'B'.repeat(60_000), {
+      owner: { kind: 'transient_session', sessionId: 'sess1', callId: 'tool_b' },
+    });
     // A user entry (no kind=tool_result tag)
     const userMeta = await manager.write('sess1', { foo: 'bar' }, 'user-data');
 
@@ -258,6 +280,16 @@ describe('CacheToolResultStore', () => {
       const full = await manager.read(m.storageKey);
       expect(full.customMetadata?.kind).not.toBe(CACHE_TOOL_RESULT_KIND);
     }
+  });
+
+  it('cleanup preserves legacy cache entries without owner metadata', async () => {
+    const legacy = await store.persist('sess1', 'legacy_tool', 'L'.repeat(60_000));
+
+    await store.cleanup('sess1');
+
+    await expect(manager.read(legacy.reference)).resolves.toMatchObject({
+      customMetadata: expect.objectContaining({ kind: CACHE_TOOL_RESULT_KIND }),
+    });
   });
 });
 
@@ -308,9 +340,33 @@ describe('FileToolResultStore', () => {
   });
 
   it('cleanup removes the session tool-results directory', async () => {
-    await store.persist('sess1', 'tool_use_aaa', 'hello');
+    await store.persist('sess1', 'tool_use_aaa', 'hello', {
+      owner: { kind: 'transient_session', sessionId: 'sess1', callId: 'tool_use_aaa' },
+    });
     await store.cleanup('sess1');
     const dir = join(rootDir, 'sess1', 'tool-results');
     await expect(readFile(join(dir, 'tool_use_aaa.txt'), 'utf-8')).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  it('cleanup preserves legacy files without owner metadata', async () => {
+    const legacy = await store.persist('sess1', 'legacy_tool', 'legacy');
+
+    await store.cleanup('sess1');
+
+    await expect(readFile(legacy.reference, 'utf-8')).resolves.toBe('legacy');
+  });
+
+  it('cleanup preserves file entries owned by persistent rollouts', async () => {
+    const persistent = await store.persist('sess1', 'tool_persist', 'persisted', {
+      owner: { kind: 'persistent_rollout', sessionId: 'sess1', callId: 'tool_persist' },
+    });
+    const transient = await store.persist('sess1', 'tool_transient', 'transient', {
+      owner: { kind: 'transient_session', sessionId: 'sess1', callId: 'tool_transient' },
+    });
+
+    await store.cleanup('sess1');
+
+    await expect(readFile(persistent.reference, 'utf-8')).resolves.toBe('persisted');
+    await expect(readFile(transient.reference, 'utf-8')).rejects.toMatchObject({ code: 'ENOENT' });
   });
 });

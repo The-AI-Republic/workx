@@ -28,12 +28,6 @@ export function buildForkedSubAgentInitialHistory(
   }
 
   const sourceItems = parentSession.getConversationHistory().items as ResponseItem[];
-  if (containsForkDirective(sourceItems)) {
-    throw new Error(
-      'Cannot create a forked sub-agent from history that already contains forked sub-agent context',
-    );
-  }
-
   const rolloutItems = responseItemsToRolloutItems(sourceItems);
   const trimmed = pairingTrim(rolloutItems);
 

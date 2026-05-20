@@ -42,6 +42,7 @@ vi.mock('../PromptLoader', () => ({
   configurePromptComposer: vi.fn(),
   registerPromptExtension: vi.fn(),
   unregisterPromptExtension: vi.fn(),
+  unregisterSessionPromptExtensions: vi.fn(),
 }));
 
 vi.mock('../../tools/registerPlatformTools', () => ({
@@ -176,6 +177,7 @@ describe('RepublicAgent', () => {
       getTabId: vi.fn().mockReturnValue(-1),
       setTabId: vi.fn(),
       getId: vi.fn().mockReturnValue('session-id-1'),
+      getSessionId: vi.fn().mockReturnValue('conv-123'),
       getAgentMode: vi.fn().mockReturnValue('general'),
       setAgentMode: vi.fn(),
       getConversationHistory: vi.fn().mockReturnValue({ items: [] }),
@@ -192,6 +194,7 @@ describe('RepublicAgent', () => {
       getHistoryEntry: vi.fn(),
       clearHistory: vi.fn(),
       shutdown: vi.fn().mockResolvedValue(undefined),
+      dispose: vi.fn().mockResolvedValue(undefined),
       refreshMemoryService: vi.fn().mockResolvedValue(undefined),
       // Track 05b: session-summary hook accessors
       setSessionSummaryHook: vi.fn(),
@@ -608,7 +611,10 @@ describe('RepublicAgent', () => {
 
       expect(mockSessionInstance.setAgentMode).toHaveBeenCalledWith('code');
       expect(turnContext.setAgentMode).toHaveBeenCalledWith('code');
-      expect(loadPrompt).toHaveBeenCalledWith('code');
+      expect(loadPrompt).toHaveBeenCalledWith(
+        'code',
+        expect.objectContaining({ sessionId: 'conv-123' }),
+      );
       expect(turnContext.setBaseInstructions).toHaveBeenCalledWith('base-instructions');
       expect(dispatcherSpy.mock.calls.some(
         (call: any[]) =>

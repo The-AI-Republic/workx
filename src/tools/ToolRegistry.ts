@@ -192,6 +192,34 @@ export class ToolRegistry {
     return this.planReviewActive;
   }
 
+  private createEntry(
+    tool: ToolDefinition,
+    handler: ToolHandler,
+    optionsOrAssessor?: IRiskAssessor | ToolRegistrationOptions,
+  ): ToolRegistryEntry {
+    const opts: ToolRegistrationOptions = optionsOrAssessor && 'assess' in optionsOrAssessor
+      ? { riskAssessor: optionsOrAssessor as IRiskAssessor }
+      : (optionsOrAssessor as ToolRegistrationOptions ?? {});
+
+    const runtime: ToolRuntimeMetadata = {
+      concurrency: {
+        ...DEFAULT_TOOL_CONCURRENCY_PROFILE,
+        ...(opts.runtime?.concurrency ?? {}),
+      },
+      ui: opts.runtime?.ui,
+      result: opts.runtime?.result,
+    };
+
+    return {
+      definition: tool,
+      handler,
+      registrationTime: Date.now(),
+      riskAssessor: opts.riskAssessor,
+      runtime,
+      exposure: opts.exposure,
+    };
+  }
+
   /**
    * Register a tool with the registry.
    *
@@ -214,31 +242,7 @@ export class ToolRegistry {
       throw new Error(`Tool '${toolName}' is already registered`);
     }
 
-    // Normalize the third argument: bare IRiskAssessor vs ToolRegistrationOptions
-    const opts: ToolRegistrationOptions = optionsOrAssessor && 'assess' in optionsOrAssessor
-      ? { riskAssessor: optionsOrAssessor as IRiskAssessor }
-      : (optionsOrAssessor as ToolRegistrationOptions ?? {});
-
-    // Build runtime metadata with fail-closed defaults
-    const runtime: ToolRuntimeMetadata = {
-      concurrency: {
-        ...DEFAULT_TOOL_CONCURRENCY_PROFILE,
-        ...(opts.runtime?.concurrency ?? {}),
-      },
-      ui: opts.runtime?.ui,
-      result: opts.runtime?.result,
-    };
-
-    // Register the tool
-    const entry: ToolRegistryEntry = {
-      definition: tool,
-      handler,
-      registrationTime: Date.now(),
-      riskAssessor: opts.riskAssessor,
-      runtime,
-      exposure: opts.exposure,
-    };
-
+    const entry = this.createEntry(tool, handler, optionsOrAssessor);
     this.tools.set(toolName, entry);
 
     // Emit registration event
@@ -287,34 +291,32 @@ export class ToolRegistry {
    * runtime. The plain `register()` throws on duplicate, so callers that
    * want "either install or update" semantics use this instead.
    *
-   * NOT atomic: the old entry is removed (emitting `ToolUnregistered`)
-   * before `register()` is awaited, so there is a brief window where the
-   * tool is absent from the registry — a concurrent `discover()` or
-   * dispatch in that window will not see it. The new entry is guaranteed
-   * present only once this method resolves. In-flight tool calls already
-   * dispatched to the old handler continue with that closure. Callers
-   * needing gap-free swaps must serialize against tool discovery.
+   * Atomic from the registry's perspective: the map entry is replaced in one
+   * set(), so concurrent discover()/dispatch calls never observe a missing
+   * tool between delete and re-register. In-flight calls already dispatched
+   * to the previous handler continue with that closure.
    */
   async replace(
     tool: ToolDefinition,
     handler: ToolHandler,
     optionsOrAssessor?: IRiskAssessor | ToolRegistrationOptions,
   ): Promise<void> {
+    this.validateToolDefinition(tool);
     const toolName = this.getToolName(tool);
-    if (this.tools.has(toolName)) {
-      this.tools.delete(toolName);
-      this.emitEvent({
-        id: `evt_unregister_${toolName}`,
-        msg: {
-          type: 'ToolUnregistered',
-          data: {
-            tool_name: toolName,
-            unregistration_time: Date.now(),
-          },
+    const entry = this.createEntry(tool, handler, optionsOrAssessor);
+    this.tools.set(toolName, entry);
+    this.emitEvent({
+      id: `evt_register_${toolName}`,
+      msg: {
+        type: 'ToolRegistered',
+        data: {
+          tool_name: toolName,
+          category: undefined,
+          version: undefined,
+          registration_time: entry.registrationTime,
         },
-      });
-    }
-    await this.register(tool, handler, optionsOrAssessor);
+      },
+    });
   }
 
   /**
@@ -418,6 +420,29 @@ export class ToolRegistry {
    */
   async execute(request: ToolExecutionRequest): Promise<ToolExecutionResponse> {
     const startTime = Date.now();
+    const emitTerminalError = (
+      code: string,
+      message: string,
+      details?: unknown,
+      eventIdPrefix = 'evt_exec_error',
+    ) => {
+      this.emitEvent({
+        id: `${eventIdPrefix}_${request.toolName}_${request.callId ?? ''}`,
+        msg: {
+          type: 'ToolExecutionError',
+          data: {
+            tool_name: request.toolName,
+            call_id: request.callId,
+            session_id: request.sessionId,
+            turn_id: request.turnId,
+            code,
+            error: message,
+            details,
+            duration: Date.now() - startTime,
+          },
+        },
+      });
+    };
 
     try {
       const entry = this.tools.get(request.toolName);
@@ -446,11 +471,9 @@ export class ToolRegistry {
         };
       }
 
-      // Emit execution start event before any gate so consumers see the
-      // attempt even if it's later denied. Note: gate denials (PRE_EXECUTE_DENIED,
-      // APPROVAL_DENIED) return early and do NOT emit a matching ToolExecutionEnd —
-      // downstream consumers must treat the absence of an End event for a known
-      // call_id as "denied / aborted before execution".
+      // Emit execution start after registry lookup and parameter validation.
+      // Every subsequent early-denial path emits ToolExecutionError with the
+      // same identifiers, so consumers can close the lifecycle envelope.
       this.emitEvent({
         id: `evt_exec_start_${request.toolName}_${request.callId ?? ''}`,
         msg: {
@@ -475,6 +498,11 @@ export class ToolRegistry {
           request.parameters as Record<string, unknown>,
         );
         if (preDecision.behavior === 'deny') {
+          emitTerminalError(
+            'PRE_EXECUTE_DENIED',
+            `Tool '${request.toolName}' denied by pre-execute gate`,
+            { reason: preDecision.decisionReason },
+          );
           return {
             success: false,
             error: {
@@ -494,6 +522,11 @@ export class ToolRegistry {
       // is registry-native and fail-closed on every platform. The single,
       // sufficient enforcement point — see .ai_design 14_plan_review.
       if (this.planReviewActive && !this.isReadOnly(request.toolName, request.parameters as Record<string, unknown>)) {
+        emitTerminalError(
+          'APPROVAL_DENIED',
+          `Tool '${request.toolName}' is frozen during plan review — read-only actions only until the plan is approved`,
+          { reason: 'plan-review-freeze' },
+        );
         return {
           success: false,
           error: {
@@ -539,6 +572,11 @@ export class ToolRegistry {
         const reason = typeof result === 'object' && result !== null ? result.reason : undefined;
 
         if (decision === 'deny') {
+          emitTerminalError(
+            'APPROVAL_DENIED',
+            `Tool '${request.toolName}' was denied by the approval system`,
+            reason ? { reason } : undefined,
+          );
           return {
             success: false,
             error: {
@@ -627,8 +665,12 @@ export class ToolRegistry {
             type: isTimeout ? 'ToolExecutionTimeout' : 'ToolExecutionError',
             data: {
               tool_name: request.toolName,
+              call_id: request.callId,
               session_id: request.sessionId,
+              turn_id: request.turnId,
+              code: isTimeout ? 'TIMEOUT' : 'EXECUTION_ERROR',
               error: error.message,
+              details: error,
               duration: Date.now() - startTime,
               ...(isTimeout && { timeout_ms: timeout }),
             },
@@ -681,8 +723,12 @@ export class ToolRegistry {
           type: 'ToolExecutionError',
           data: {
             tool_name: request.toolName,
+            call_id: request.callId,
             session_id: request.sessionId,
+            turn_id: request.turnId,
+            code: 'EXECUTION_ERROR',
             error: error.message,
+            details: error,
             duration: Date.now() - startTime,
           },
         },
