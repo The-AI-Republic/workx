@@ -112,6 +112,12 @@ the single-track gaps in 26–32**. Filed as bug-report tracks (detail + fix in 
 | 43 | [Apple Pi Runtime Decoupling](./43_apple_pi_runtime_decoupling_DONE/design.md) ✅ CUTOVER DONE (PRs #246 + #255, merged 2026-05-18 / 2026-05-20) | P1 | XL | Desktop now defaults to the Rust-supervised runtime sidecar relay; legacy WebView bootstrap removed from UI startup/shutdown/login flows. P1/P2/P3 + automatable P4 closed. Highest-value remaining code-side verification gaps (spawned-sidecar parity, Rust supervisor lifecycle `tokio::test`s, real `diagnostics.recentStderr` ring-buffer) are tracked in [Track 45](./45_track43_runtime_integration_followups/design.md); multi-OS packaged smoke remains release-engineer at tag time. |
 | 44 | [Desktop Runtime State Ownership Contract](./44_desktop_runtime_state_ownership_DONE/design.md) ✅ DONE (PR #256, merged 2026-05-20) | P1 | Medium–Large | Runtime-owned desktop auth/access/profile state, startup snapshot, global access service, UI state derivation, generic deeplink delivery, shared URL resolution, and packaged Node/native-addon validation. |
 
+### Cross-Track Consistency Track (added 2026-05-20)
+
+| Track | Priority | Effort | Value |
+|-------|----------|--------|-------|
+| [improve_consistentcy0520](./improve_consistentcy0520/design.md) | P0/P1 | Medium-Large | Cross-track hardening pass for DONE-track integration drift: session-scoped prompt/runtime context, unified teardown, post-turn commit order, config generations, approval/tool lifecycle, storage lifetime, and track-status hygiene. |
+
 ## Dependency Graph
 
 ```
