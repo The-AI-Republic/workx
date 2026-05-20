@@ -89,7 +89,7 @@ async function main(): Promise<void> {
   }, 2_000);
 
   const channel = new StdioRuntimeChannel(carrier);
-  bootstrap = new PiRuntimeBootstrap(channel);
+  bootstrap = new PiRuntimeBootstrap({ channel });
   await bootstrap.initialize();
 
   const shutdown = (signal: string) => {
