@@ -226,11 +226,17 @@ fn main() {
                     std::thread::spawn(move || {
                         // Retry emitting the deep link until the frontend has mounted
                         // its auth-callback listener. The webview must be fully loaded
-                        // before it can receive events.
-                        let delays = [500, 1000, 1500, 2000, 3000];
+                        // before it can receive events. On a cold start the runtime
+                        // sidecar is also spawning in parallel; on slow machines a
+                        // larger window catches deeplinks that would otherwise miss.
+                        // Total budget ~16s with the final unconditional fallback at
+                        // the end. Stops early once the window is visible AND a
+                        // matching URL was emitted.
+                        let delays = [
+                            500, 1000, 1500, 2000, 3000, 4000, 5000,
+                        ];
                         for delay_ms in delays {
                             std::thread::sleep(Duration::from_millis(delay_ms));
-                            // Check if the main window is ready (visible = frontend loaded)
                             let window_ready = handle2
                                 .get_webview_window("main")
                                 .and_then(|w| w.is_visible().ok())
@@ -249,7 +255,9 @@ fn main() {
                                 }
                             }
                         }
-                        // Final attempt regardless of window state
+                        // Final attempt regardless of window state — the WebView
+                        // may have its listener attached even if `is_visible()`
+                        // is still false (autostart minimized to tray, etc.).
                         for url in &initial {
                             if is_app_deep_link(url) {
                                 let _ = handle2.emit("auth-callback", url);

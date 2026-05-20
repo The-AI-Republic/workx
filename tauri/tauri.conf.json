@@ -16,7 +16,7 @@
     "copyright": "",
     "externalBin": ["binaries/chrome-devtools-mcp", "binaries/rg"],
     "resources": {
-      "sidecar/desktop-runtime/**/*": "desktop-runtime"
+      "sidecar/desktop-runtime": "desktop-runtime"
     },
     "icon": [
       "icons/32x32.png",

@@ -31,7 +31,7 @@
  * Or:   npm run build:desktop-runtime-sidecar
  */
 
-import { execSync } from 'node:child_process';
+import { execSync, spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -87,17 +87,20 @@ step('1) build dist/desktop-runtime via Vite', () => {
 step('2) reset sidecar output dir', () => {
   rmrf(sidecarDir);
   fs.mkdirSync(sidecarDir, { recursive: true });
+});
+
+step('3) copy runtime bundle (index.mjs + code-split chunks under assets/) + package.json', () => {
+  // Vite splits dynamic imports into separate chunks under `assets/`. We
+  // need ALL of them — copying only index.mjs and its source map breaks
+  // the first dynamic `await import(...)` with ERR_MODULE_NOT_FOUND in the
+  // packaged runtime.
+  copyDir(path.dirname(distEntry), sidecarDir);
+  // Vite doesn't emit a package.json. Write one declaring type=module so
+  // Node treats `.js` chunks under `assets/` as ESM.
   fs.writeFileSync(
     path.join(sidecarDir, 'package.json'),
     JSON.stringify({ name: 'apple-pi-desktop-runtime', type: 'module', private: true }, null, 2),
   );
-});
-
-step('3) copy runtime bundle', () => {
-  copyFile(distEntry, path.join(sidecarDir, 'index.mjs'));
-  // Vite emits a source map alongside the bundle — keep it for diagnostics.
-  const mapSrc = `${distEntry}.map`;
-  if (fs.existsSync(mapSrc)) copyFile(mapSrc, path.join(sidecarDir, 'index.mjs.map'));
 });
 
 /**
@@ -201,5 +204,83 @@ step('6b) self-test (instantiate the bundled native addon end-to-end)', () => {
     fs.rmSync(isolatedTmp, { recursive: true, force: true });
   }
 });
+
+step('6c) self-test (import the runtime entry — catches missing bundled deps)', () => {
+  // The previous step proves the native addon loads. This step proves the
+  // FULL runtime bundle's import graph resolves — every static AND every
+  // dynamic `import(...)` chunk. Two ways this can go wrong:
+  //
+  //   1. A static dep is externalized but not bundled in node_modules
+  //      (e.g. zod left external by the Vite SSR default). The static
+  //      import fails before main() even runs.
+  //   2. The Vite code-split chunks under `assets/` weren't copied into
+  //      the sidecar tree. main() runs, calls bootstrap.initialize(),
+  //      which dynamically imports a chunk → ERR_MODULE_NOT_FOUND.
+  //
+  // We exercise both: spawn the runtime with a synthesized host so
+  // bootstrap.initialize() actually runs, point stdin at /dev/null so it
+  // exits on EOF, and SCAN STDERR for ERR_MODULE_NOT_FOUND. Any such error
+  // fails the self-test, no matter how the runtime otherwise exits.
+  const isolatedTmp = fs.mkdtempSync(path.join(root, 'tauri/sidecar/.entrytest-'));
+  try {
+    copyDir(sidecarDir, path.join(isolatedTmp, 'sidecar'));
+    const fakeConfigDir = path.join(isolatedTmp, 'fake-config');
+    fs.mkdirSync(fakeConfigDir, { recursive: true });
+    const host = JSON.stringify({
+      configDir: fakeConfigDir,
+      storageDbPath: path.join(fakeConfigDir, 'storage.db'),
+      rolloutDbPath: path.join(fakeConfigDir, 'rollouts.db'),
+      configJsonPath: path.join(fakeConfigDir, 'config.json'),
+      cacheDir: path.join(fakeConfigDir, 'cache'),
+      logDir: path.join(fakeConfigDir, 'logs'),
+      keychainServicePrefix: 'applepi-selftest',
+      platform: process.platform,
+      arch: process.arch,
+    });
+    // Spawn with stdin closed → carrier's read() hits EOF → main() exits.
+    // Capture stderr so we can scan it for module-resolution errors that
+    // happen during async initialization.
+    const child = childProcessOnce(
+      'node',
+      [path.join(isolatedTmp, 'sidecar', 'index.mjs')],
+      {
+        cwd: path.join(isolatedTmp, 'sidecar'),
+        env: {
+          ...process.env,
+          NODE_PATH: '',
+          APPLEPI_RUNTIME_PROFILE: 'desktop-runtime',
+          APPLEPI_DESKTOP_RUNTIME_HOST: host,
+        },
+        timeout: 10_000,
+      },
+    );
+    if (/ERR_MODULE_NOT_FOUND/.test(child.stderr) || /ERR_MODULE_NOT_FOUND/.test(child.stdout)) {
+      console.error('Runtime stderr:\n' + child.stderr);
+      throw new Error('Bundled runtime has unresolved imports — see stderr above');
+    }
+    info('runtime imports resolve cleanly (no ERR_MODULE_NOT_FOUND in stderr)');
+  } finally {
+    fs.rmSync(isolatedTmp, { recursive: true, force: true });
+  }
+});
+
+/**
+ * Synchronous spawn-once helper that captures stdout+stderr and enforces a
+ * hard timeout. Returns the captured streams regardless of exit code; the
+ * caller decides what counts as failure.
+ */
+function childProcessOnce(cmd, args, opts) {
+  const result = spawnSync(cmd, args, {
+    ...opts,
+    encoding: 'utf-8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  return {
+    status: result.status,
+    signal: result.signal,
+    stdout: result.stdout ?? '',
+    stderr: result.stderr ?? '',
+  };
+}
 
 info('done; output: ' + sidecarDir);

@@ -1030,7 +1030,7 @@ export class ServerAgentBootstrap {
       try {
         const { RuntimeChatGPTOAuthFlow } = await import('@/desktop-runtime/auth/RuntimeChatGPTOAuthFlow');
         const { RuntimeChatGPTOAuthStorage } = await import('@/desktop-runtime/auth/RuntimeChatGPTOAuthStorage');
-        chatgptStorage = new RuntimeChatGPTOAuthStorage(getCredentialStore());
+        chatgptStorage = new RuntimeChatGPTOAuthStorage(() => getCredentialStore());
         chatgptFlow = new RuntimeChatGPTOAuthFlow(chatgptStorage);
       } catch (e) {
         console.warn('[ServerAgentBootstrap] ChatGPT runtime auth wiring failed:', e);

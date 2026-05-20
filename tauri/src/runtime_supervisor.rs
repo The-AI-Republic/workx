@@ -300,6 +300,59 @@ async fn handle_control_frame(app: &AppHandle, state: &RuntimeSupervisorState, f
 /// until the stream closes. Returns `Ok(true)` if a valid `hello-ok` was seen
 /// during the session (a healthy run), `Ok(false)` if it died before/without a
 /// good handshake, `Err` on spawn failure.
+/// Resolve a `node` binary to invoke for the runtime sidecar.
+///
+/// macOS Finder-launched apps and Windows .exe launches typically run with a
+/// minimal PATH that does NOT include Homebrew (`/usr/local/bin`,
+/// `/opt/homebrew/bin`), NVM (`~/.nvm/versions/node/.../bin`), Volta, or
+/// `C:\Program Files\nodejs`. A bare `Command::new("node")` therefore fails
+/// with "node: not found" in production even though `node --version` works
+/// fine from a terminal. We try the bare command first (cheap, picks up the
+/// happy path) and fall back to a small list of well-known install
+/// locations. The first one that exists wins.
+///
+/// The `APPLEPI_NODE_BIN` env var overrides everything for power users / CI.
+fn resolve_node_bin() -> String {
+    if let Ok(custom) = std::env::var("APPLEPI_NODE_BIN") {
+        if !custom.is_empty() {
+            return custom;
+        }
+    }
+    // Bare `node` if PATH has it. The Command spawn below also tries this
+    // form, so the explicit existence check is a small optimization for
+    // platforms with normal PATHs.
+    if which::which("node").is_ok() {
+        return "node".to_string();
+    }
+    // Well-known install locations to probe in order.
+    let candidates: &[&str] = if cfg!(target_os = "macos") {
+        &[
+            "/opt/homebrew/bin/node",         // Apple Silicon Homebrew
+            "/usr/local/bin/node",            // Intel Homebrew + manual
+            "/usr/local/opt/node/bin/node",   // Homebrew keg
+        ]
+    } else if cfg!(target_os = "windows") {
+        &[
+            "C:\\Program Files\\nodejs\\node.exe",
+            "C:\\Program Files (x86)\\nodejs\\node.exe",
+        ]
+    } else {
+        &[
+            "/usr/local/bin/node",
+            "/usr/bin/node",
+            "/snap/bin/node",
+        ]
+    };
+    for candidate in candidates {
+        if std::path::Path::new(candidate).exists() {
+            return candidate.to_string();
+        }
+    }
+    // Fall back to bare "node" so the spawn produces a real error message
+    // the user can act on (instead of e.g. a path that doesn't exist).
+    "node".to_string()
+}
+
 async fn spawn_once(
     app: &AppHandle,
     inner: &Arc<Mutex<RuntimeSupervisor>>,
@@ -308,8 +361,9 @@ async fn spawn_once(
     let host = desktop_host(app)?;
     let host_json = serde_json::to_string(&host).map_err(|e| e.to_string())?;
     let entry = runtime_entry_path(app);
+    let node_bin = resolve_node_bin();
 
-    let mut child = Command::new("node")
+    let mut child = Command::new(&node_bin)
         .arg(entry)
         .env("APPLEPI_RUNTIME_PROFILE", "desktop-runtime")
         .env("APPLEPI_DESKTOP_RUNTIME_HOST", host_json)
@@ -318,7 +372,10 @@ async fn spawn_once(
         .stderr(Stdio::piped())
         .kill_on_drop(true)
         .spawn()
-        .map_err(|e| format!("Failed to spawn desktop runtime: {}", e))?;
+        .map_err(|e| format!(
+            "Failed to spawn desktop runtime via '{}': {}. Install Node.js 20.19+ or 22+ (https://nodejs.org), or set APPLEPI_NODE_BIN to a node binary path.",
+            node_bin, e,
+        ))?;
 
     let stdout = child.stdout.take().ok_or_else(|| "Runtime stdout unavailable".to_string())?;
     let stderr = child.stderr.take().ok_or_else(|| "Runtime stderr unavailable".to_string())?;

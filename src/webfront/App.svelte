@@ -86,30 +86,59 @@
    * Track 43 cutover the WebView no longer reads the OS keychain — the
    * runtime owns credentials and exposes auth state through the
    * `auth.getState` service.
+   *
+   * Retry on failure: the runtime sidecar spawns in parallel with the
+   * WebView mount. The runtime's `ServerAgentBootstrap.registerServices`
+   * (which makes `auth.getState` callable) runs late in `initialize()`,
+   * so on a fast UI / slow runtime, a request issued at onMount can
+   * arrive before the service is registered and reject with "Unknown
+   * service: auth.getState". Retry with bounded backoff so a real
+   * "no token" result is distinguishable from a transient race.
    */
   async function updateDesktopUserStore(): Promise<void> {
-    try {
-      const { getInitializedUIClient } = await import('@/core/messaging');
-      const client = await getInitializedUIClient();
-      const state = await client.serviceRequest<{
-        hasValidToken: boolean;
-        user: { name?: string; email?: string; avatar?: string; userType?: number } | null;
-      }>('auth.getState');
+    const RETRY_DELAYS_MS = [0, 400, 1000, 2000]; // ≤ ~3.5s total budget
+    const { getInitializedUIClient } = await import('@/core/messaging');
+    const client = await getInitializedUIClient();
 
-      if (state?.hasValidToken && state.user) {
-        userStore.setUser({
-          name: state.user.name ?? null,
-          email: state.user.email ?? '',
-          avatar: state.user.avatar ?? null,
-          userType: state.user.userType ?? 0,
-        });
-        console.log('[App] Desktop userStore updated for:', state.user.email);
-        return;
+    for (let attempt = 0; attempt < RETRY_DELAYS_MS.length; attempt++) {
+      if (RETRY_DELAYS_MS[attempt] > 0) {
+        await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt]));
       }
-    } catch (error) {
-      console.warn('[App] Desktop auth state fetch failed:', error);
-    }
+      try {
+        const state = await client.serviceRequest<{
+          hasValidToken: boolean;
+          user: { name?: string; email?: string; avatar?: string; userType?: number } | null;
+        }>('auth.getState');
 
+        if (state?.hasValidToken && state.user) {
+          userStore.setUser({
+            name: state.user.name ?? null,
+            email: state.user.email ?? '',
+            avatar: state.user.avatar ?? null,
+            userType: state.user.userType ?? 0,
+          });
+          console.log('[App] Desktop userStore updated for:', state.user.email);
+          return;
+        }
+        // hasValidToken=false is a real "not logged in" answer — stop retrying.
+        userStore.setNotLoggedIn();
+        return;
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        // "Unknown service" means the runtime bootstrap hasn't registered
+        // the handler yet; retry. Other errors are real failures — also
+        // retry (cheap) but log so we can spot patterns.
+        const isTransient = /Unknown service/i.test(msg);
+        if (!isTransient) {
+          console.warn(`[App] Desktop auth.getState failed (attempt ${attempt + 1}):`, error);
+        }
+        if (attempt === RETRY_DELAYS_MS.length - 1) {
+          if (!isTransient) {
+            console.warn('[App] Falling back to logged-out state after auth.getState exhausted retries');
+          }
+        }
+      }
+    }
     userStore.setNotLoggedIn();
   }
 

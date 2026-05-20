@@ -1,5 +1,6 @@
 import { ServerAgentBootstrap, type ServerAgentBootstrapOptions } from '@/server/agent/ServerAgentBootstrap';
 import type { ChannelAdapter } from '@/core/channels/ChannelAdapter';
+import { getRuntimeProfile } from '@/runtime/profile';
 import { getDesktopRuntimeHost } from './host';
 
 /**
@@ -62,6 +63,16 @@ export interface PiRuntimeBootstrapOptions {
  */
 export class PiRuntimeBootstrap extends ServerAgentBootstrap {
   constructor(options: PiRuntimeBootstrapOptions) {
+    // Defense in depth: the runtime entrypoint sets the profile env var
+    // before this constructor runs. If a future refactor reorders init or
+    // someone constructs this class outside the runtime, fail loudly
+    // instead of producing a server-mode agent under a desktop name.
+    const currentProfile = getRuntimeProfile();
+    if (currentProfile !== 'desktop-runtime') {
+      throw new Error(
+        `PiRuntimeBootstrap requires APPLEPI_RUNTIME_PROFILE='desktop-runtime' to be set before construction (got '${currentProfile}'). The runtime entrypoint (src/desktop-runtime/index.ts) sets this; if you are instantiating from a test, mock @/runtime/profile.`,
+      );
+    }
     const host = getDesktopRuntimeHost();
     const serverOptions: ServerAgentBootstrapOptions = {
       profile: 'desktop-runtime',

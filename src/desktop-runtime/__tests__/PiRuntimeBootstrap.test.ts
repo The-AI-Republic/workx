@@ -34,6 +34,10 @@ vi.mock('../host', () => ({
   }),
 }));
 
+vi.mock('@/runtime/profile', () => ({
+  getRuntimeProfile: () => 'desktop-runtime',
+}));
+
 import { PiRuntimeBootstrap } from '../PiRuntimeBootstrap';
 
 /**
