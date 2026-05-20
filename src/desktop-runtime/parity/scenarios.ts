@@ -1,23 +1,22 @@
 /**
- * Parity-harness scenario library (Track 43 P1/P2 exit gate).
+ * Parity-harness scenario library (Track 43, P1/P2 scaffolding).
  *
- * The design requires the harness to cover: chat request/response,
- * streaming events, tool call, MCP stdio server, config R/W, rollout R/W,
- * auth mode update, scheduler create+trigger, cancellation, reconnect,
- * graceful shutdown. Each scenario is a sequence of submissions; bindings
- * (websocket server vs stdio runtime sidecar) must produce the same
- * normalized event stream.
+ * Defines the set of scenarios both transports must agree on for the
+ * future P2 exit gate: chat request/response, streaming events, tool
+ * call, MCP stdio server, config R/W, rollout R/W, auth mode update,
+ * scheduler create+trigger, cancellation, reconnect, graceful shutdown.
  *
- * Two consumers:
- *   1. The unit-level parity test (in __tests__/scenarios.test.ts) feeds
- *      these scenarios into the harness against fake bindings whose
- *      event streams are derived from `SCENARIO_EVENT_SEQUENCES`. This
- *      exercises the harness mechanism — match detection, mismatch
- *      reporting, normalization — across the full design-mandated set.
- *   2. The real-sidecar integration test (P2 exit, follow-up) reuses
- *      these exact scenarios verbatim with bindings that spawn a runtime
- *      sidecar and a websocket-backed server channel. No scenario list
- *      drift between the two tiers.
+ * **Not an exit gate yet.** The unit test in
+ * `__tests__/scenarios.test.ts` exercises only the harness mechanism
+ * against fake bindings — both fakes read from `SCENARIO_EVENT_SEQUENCES`
+ * so the positive-path comparison is tautological. The actual exit gate
+ * is a follow-up integration test that spawns the runtime sidecar and
+ * runs the same scenarios against the real `StdioRuntimeChannel` and a
+ * real `ServerChannel`; that test does not exist yet.
+ *
+ * The scenario list and canonical event sequences below are stable so
+ * the integration test, when it lands, has nothing to wire up beyond
+ * the bindings themselves.
  */
 
 import type { Op } from '@/core/protocol/types';

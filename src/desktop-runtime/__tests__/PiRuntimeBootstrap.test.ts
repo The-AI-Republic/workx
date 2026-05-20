@@ -37,21 +37,26 @@ vi.mock('../host', () => ({
 import { PiRuntimeBootstrap } from '../PiRuntimeBootstrap';
 
 /**
- * Skeletal stand-in for ChannelAdapter — only identity is asserted by these
- * tests, since the bootstrap forwards the channel through to ServerAgentBootstrap
- * (which is itself mocked). Real adapters live in src/server/channels and
- * src/desktop-runtime/channels.
+ * Stand-in for ChannelAdapter — concrete enough to satisfy the interface
+ * (no escape-hatch casts) since these tests only assert what the
+ * bootstrap passes through. Real adapters live in src/server/channels
+ * and src/desktop-runtime/channels.
  */
 function makeFakeChannel(): ChannelAdapter {
+  const capabilities = { streaming: true, approvals: true, media: true, services: true };
   return {
     channelId: 'fake-channel',
-    channelType: 'tauri' as never,
-    capabilities: {} as never,
+    channelType: 'tauri',
     initialize: vi.fn(async () => undefined),
     shutdown: vi.fn(async () => undefined),
-    sendEvent: vi.fn(async () => undefined),
     onSubmission: vi.fn(),
-  } as unknown as ChannelAdapter;
+    sendEvent: vi.fn(async () => undefined),
+    supportsStreaming: () => true,
+    supportsApprovals: () => true,
+    supportsMedia: () => true,
+    supportsServices: () => true,
+    getCapabilities: () => capabilities,
+  };
 }
 
 beforeEach(() => {

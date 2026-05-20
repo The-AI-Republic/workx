@@ -5,11 +5,8 @@
  * run inside the runtime sidecar — a Node process — so they can hit the
  * filesystem directly through `node:fs/promises` instead of round-tripping
  * through Tauri `invoke`. The security contract from the deleted Rust module
- * is preserved here byte-for-byte:
+ * is preserved with these caveats:
  *
- *   - R1/R4: edit_file does a single synchronous re-read + match +
- *     substitute + write. No `await` between the freshness check and the
- *     write — no TOCTOU window.
  *   - R5: symlink-safe jail. Resolve the deepest existing ancestor first,
  *     append the not-yet-existing tail, then assert containment. A bypass-
  *     immune blocklist refuses .git/.ssh/.env/etc.
@@ -17,6 +14,25 @@
  *     WebView's `Math.floor(mtimeMs)`.
  *   - R6: UTF-8 strict (no lossy U+FFFD substitution); UTF-16 refused, not
  *     transcoded; CRLF/BOM detected on read and re-applied on write.
+ *   - R1/R4: edit_file re-reads fresh bytes, runs the match+substitute, and
+ *     writes — all within one logical operation. Note that this is `async`
+ *     with `await` between syscalls, so it does NOT have the strict
+ *     "no interleaving" guarantee the Rust version (synchronous in-process)
+ *     had:
+ *
+ *       - OS-level race: a hostile process can mutate the file between the
+ *         stat/read and the write. Same window the Rust version had.
+ *       - In-process race: an `await` here yields to the event loop. If the
+ *         runtime ever runs file tools in parallel (today it does not), a
+ *         second tool could observe partial state. Workspace-scoped tool
+ *         serialization or fcntl locking would close this.
+ *
+ *     `ensureParent()` for create-new paths does
+ *     `fs.mkdir(parent, { recursive: true })`, which follows symlinks at
+ *     intermediate components — if an attacker creates `/workspace/a` as a
+ *     symlink to `/etc` between the jail check and the mkdir, the writeFile
+ *     ends up outside the workspace. Same risk class as the Rust version;
+ *     per-component mkdir with O_NOFOLLOW is the future hardening.
  *
  * Keep the SENSITIVE_DIRS / SENSITIVE_FILES lists in sync with
  * src/tools/file-search/pathPolicy.ts.
@@ -317,6 +333,25 @@ export async function applyEdit(args: {
 
   const matches = countOccurrences(fresh, args.oldString);
   if (matches === 0) {
+    // Common no_match cause: the file is in one Unicode normalization form
+    // (often NFD on macOS / from Git) and the user supplied the needle in
+    // another (NFC). Detect that case so the caller knows how to retry,
+    // without silently rewriting the file in a different form (which would
+    // surprise other readers).
+    if (
+      args.oldString.normalize('NFC') !== args.oldString ||
+      fresh.normalize('NFC') !== fresh
+    ) {
+      const normalizedMatches = countOccurrences(fresh.normalize('NFC'), args.oldString.normalize('NFC'));
+      if (normalizedMatches > 0) {
+        return {
+          ok: 'false',
+          reason: 'no_match',
+          message:
+            'old_string was not found verbatim, but matches after Unicode NFC normalization. The file or your input is in a different normalization form (e.g. NFD vs NFC). Re-read the file and use the bytes you see.',
+        };
+      }
+    }
     return {
       ok: 'false',
       reason: 'no_match',

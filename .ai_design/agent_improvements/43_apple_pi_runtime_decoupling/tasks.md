@@ -1,13 +1,20 @@
 # Track 43 Tasks
 
-**Status (2026-05-19): IMPLEMENTATION COMPLETE pending three-OS packaged smoke.**
+**Status (2026-05-19): IMPLEMENTATION COMPLETE for the cuttable surface; some
+boxes ticked here track scaffolding rather than full design-spec verification —
+see annotations.**
 
-All Phase 1 / Phase 2 / Phase 3 deliverables are landed and tested. Phase 4
-items that can be exercised in CI (carrier hardening, fixture compatibility,
-parity scenarios, scheduler-across-restart, native-addon load proof,
-server-mode regression) are green; the remaining Phase 4 deliverables are
-explicitly multi-OS / multi-arch packaged-build verifications that must run
-on real Linux, macOS, and Windows boxes before tagging.
+All Phase 1 / Phase 2 / Phase 3 deliverables that close on code changes are
+landed and tested. Two classes of items below are explicitly NOT full
+verifications:
+
+  1. **Multi-OS packaged-build** items (P4) that need real Linux, macOS, and
+     Windows machines — owned by the release engineer at tag time.
+  2. **Real-sidecar integration items** (parity through spawned runtime,
+     supervisor-lifecycle Rust tests) where the in-CI version is scaffolding
+     and the integration version is a follow-up. Where this is the case the
+     task is annotated `[scaffolding]` so it's clear what the green CI does
+     and does not prove.
 
 See [`design.md`](./design.md) for the locked decisions, dispatch audit, storage
 path requirements, and UI/auth replacement rules.
@@ -36,7 +43,7 @@ Goal: create a runnable desktop runtime sidecar without changing current desktop
 ### Stdio carrier and runtime channel
 
 - [x] Add a length-prefixed JSON stdio carrier. Stdout is protocol frames only; stderr is diagnostics only.
-- [x] Reuse `@applepi/ws-server` frame schemas/helpers where they exist. Do not depend on nonexistent `TransportBridge` or `DirectBridge` classes.
+- [ ] Reuse `@applepi/ws-server` frame schemas/helpers where they exist. Do not depend on nonexistent `TransportBridge` or `DirectBridge` classes. **[deferred]** The current `protocol/frames.ts` defines its own `DesktopRuntimeFrame` discriminated union rather than reusing schemas from `@applepi/ws-server`. The half about not depending on nonexistent bridge classes is satisfied; the reuse half is not, and consolidating would reduce drift. Follow-up: extract a shared schema package or import the ws-server frame helpers.
 - [x] Implement `StdioRuntimeChannel` as a `ChannelAdapter` for runtime-side channel traffic.
 - [x] Implement frame families: `hello`, `hello-ok`, `request`, `response`, `event`, `control-request`, `control-response`, `ping`, `pong`, `shutdown`.
 - [x] Add tests for partial frames, multiple frames per chunk, oversized frames, invalid JSON, protocol version mismatch, nonce mismatch, and stderr isolation. (11 hardening tests in `protocol/__tests__/stdioCarrier.hardening.test.ts`.)
@@ -48,7 +55,7 @@ Goal: create a runnable desktop runtime sidecar without changing current desktop
 - [x] Parameterize bootstrap over channel, platform adapter, storage set, scheduler set, auth set, runtime host paths, and control bridge clients. (Implemented as profile-branching in `ServerAgentBootstrap` — see `PiRuntimeBootstrapOptions` doc comment for the invariant table.)
 - [x] Add `DesktopRuntimePlatformAdapter` with `platformId='desktop'`.
 - [x] Configure desktop runtime prompt/persona as Apple Pi desktop (`applepi`), not `applepi-server`.
-- [x] Configure desktop approval rules, managed policy, plan review, and model settings parity with the old desktop bootstrap. (Inherited via ServerAgentBootstrap's profile branches; the bootstrap test asserts the contract.)
+- [x] Configure desktop approval rules, managed policy, plan review, and model settings parity with the old desktop bootstrap. **[scaffolding]** ServerAgentBootstrap's `profile === 'desktop-runtime'` branches inherit the right wiring (24 branches), and the constructor contract test asserts the bootstrap is configured with `profile='desktop-runtime'`. A line-by-line parity assertion vs. the old DesktopAgentBootstrap (now deleted) does NOT exist; the cuttable proof is that the cutover commit's app boot already exercises the wiring in dev. **Follow-up:** add a per-feature assertion (approval defaults, managed-policy precedence, plan-review mode, model selection precedence) once a representative session-init test fixture exists.
 - [x] Ensure `RepublicAgent` receives the desktop platform adapter and desktop platform label.
 - [x] Ensure `A2AManager` and MCP manager are initialized with explicit desktop platform where needed.
 - [x] Replace the `Session.ts` server-build suggestion skip with runtime profile/capability logic so desktop runtime suggestions remain enabled.
@@ -74,9 +81,9 @@ Goal: create a runnable desktop runtime sidecar without changing current desktop
 
 ### Parity harness
 
-- [x] Build a cross-binding parity harness that can run the same agent scenarios over current server websocket and desktop runtime stdio.
-- [x] Cover chat request/response, streaming events, tool call, MCP stdio server, config read/write, rollout read/write, auth mode update, scheduler job creation, scheduler trigger, cancellation, reconnect, and graceful shutdown. (11 scenarios in `parity/scenarios.ts`; harness correctness tests in `parity/__tests__/scenarios.test.ts`.)
-- [x] P1 exit requires the harness to pass against the new sidecar in dev mode. (Real-sidecar integration run is a P2 exit follow-up; the scenario list is locked.)
+- [x] Build a cross-binding parity harness that can run the same agent scenarios over current server websocket and desktop runtime stdio. (`parity/ParityHarness.ts` — mechanism only; bindings supplied by caller.)
+- [x] Cover chat request/response, streaming events, tool call, MCP stdio server, config read/write, rollout read/write, auth mode update, scheduler job creation, scheduler trigger, cancellation, reconnect, and graceful shutdown. **[scaffolding]** 11 scenarios in `parity/scenarios.ts` with canonical event sequences. The CI test (`__tests__/scenarios.test.ts`) only exercises the harness mechanism — both fake bindings pull from the same `SCENARIO_EVENT_SEQUENCES` lookup, so the positive comparison is tautological (and that file's docstring says so).
+- [ ] P1 exit requires the harness to pass against the new sidecar in dev mode. **[not-yet-real]** Requires an integration test that spawns the runtime sidecar and a real `ServerChannel` and runs PARITY_SCENARIOS through both — does not exist yet. The scenario list is locked for that follow-up to pick up.
 
 ## Phase 2: Rust Supervisor And Relay Behind Flag
 
@@ -98,14 +105,14 @@ Goal: Tauri can start and talk to the sidecar, while the old in-WebView path rem
 - [x] Scheduler OS bridge: register, update, remove, and fire/submit scheduled jobs using existing scheduler OS trust code.
 - [x] Window bridge: show/focus/submit path used by scheduler notifications. (`ui.showWindow` and `ui.submitToFocus`.)
 - [x] Notification bridge: job-start and job-finished notifications. (`notification.show` via tauri-plugin-notification.)
-- [x] Deeplink bridge: forward auth callback deeplinks to runtime. (WebView routes both auth and scheduler deeplinks via service calls; documented in `src/desktop/ui/main.ts`. A push-event variant from Rust→runtime is a future optimization; the current path works end-to-end.)
-- [x] Diagnostics bridge: stderr capture and recent-runtime-log access. (Stub `diagnostics.recentStderr` returning an empty list; the live capture is emitted as `runtime:stderr` events to the UI today and a ring-buffer for runtime-side polling is a Phase 4 enhancement.)
+- [x] Deeplink bridge: forward auth callback deeplinks to runtime. **[indirect]** Rust emits the deeplink to the WebView as today; the WebView routes auth → `auth.completeLogin` and scheduler → `scheduler.trigger` runtime services. No direct Rust→runtime push frame yet; works end-to-end but the design's preferred shape (a control-event frame from Rust directly to runtime) is deferred.
+- [x] Diagnostics bridge: stderr capture and recent-runtime-log access. **[stub]** `diagnostics.recentStderr` exists as a control-frame handler that returns an empty array. The supervisor already emits stderr as `runtime:stderr` Tauri events to the UI; a ring-buffer so the runtime can also read its own recent stderr is a follow-up.
 
 ### Phase 2 tests
 
-- [x] Rust unit tests for supervisor spawn, handshake reject, restart, graceful quit, forced kill, orphan cleanup, and stderr handling. (The supervisor's host helpers + frame parser are unit-tested via `cargo test`; the lifecycle behaviors are covered by integration tests below.)
-- [x] Integration test for WebView relay request/response and event ordering. (Parity harness scenarios + RuntimeRelayTauriTransport tests.)
-- [x] Run parity harness through Rust relay. P2 exit requires green parity. (Scenario set + harness mechanism tests green; the real-sidecar end-to-end run is a P4 packaged-build verification.)
+- [ ] Rust unit tests for supervisor spawn, handshake reject, restart, graceful quit, forced kill, orphan cleanup, and stderr handling. **[not-yet-real]** `cargo test` currently exercises the supervisor's helpers (`required_str`, frame parsing in `read_frame` via the carrier hardening on the Node side, png-image loader) but the lifecycle behaviors above are not directly tested — that needs a tokio test that spawns a fake child process and exercises handshake / restart / kill paths.
+- [ ] Integration test for WebView relay request/response and event ordering. **[not-yet-real]** Same blocker as the parity-sidecar integration: needs a spawned runtime + a real `RuntimeRelayTauriTransport` round-trip. The transports test in `src/core/messaging/transports/__tests__/transports.test.ts` covers the WebView half only.
+- [ ] Run parity harness through Rust relay. P2 exit requires green parity. **[not-yet-real]** Pending the spawned-sidecar integration test above.
 
 ## Phase 3: Desktop Cutover
 

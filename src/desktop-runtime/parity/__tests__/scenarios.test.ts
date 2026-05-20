@@ -1,18 +1,31 @@
 /**
- * Parity-harness scenario coverage (Track 43 P1/P2 exit gate).
+ * Parity-harness scaffolding tests.
  *
- * Asserts:
- *  - All design-mandated scenarios are present in PARITY_SCENARIOS.
- *  - Each scenario has a canonical event sequence in
- *    SCENARIO_EVENT_SEQUENCES.
- *  - The harness reports a green result when two bindings emit the
- *    canonical sequence for the full scenario set.
- *  - The harness flags a mismatch when one binding deviates from the
- *    canonical sequence (negative test for false-greens).
+ * IMPORTANT — read this before treating green results as parity proof:
  *
- * The bindings here are in-process simulators. The same scenario list
- * powers the real-sidecar integration test (P2 exit, follow-up) — see
- * scenarios.ts for the contract.
+ * The "websocket" and "stdio" bindings used here are NOT real transports.
+ * Both pull from the same `SCENARIO_EVENT_SEQUENCES` lookup table, so the
+ * positive test ("both bindings emit the canonical sequences") is a
+ * tautology — it proves `JSON.stringify(X) === JSON.stringify(X)`, not
+ * that real websocket and stdio carriers behave equivalently.
+ *
+ * What this file DOES assert:
+ *  - All design-mandated scenario names are present in PARITY_SCENARIOS.
+ *  - Each scenario has at least one canonical event in
+ *    SCENARIO_EVENT_SEQUENCES (the list the real bindings must match).
+ *  - The harness mechanism (submit→drain loop, normalization, JSON
+ *    comparison, mismatch reporting) works: negative tests inject a
+ *    divergent binding and confirm the harness flags it.
+ *
+ * What this file does NOT assert:
+ *  - That a real ServerChannel (websocket) produces these sequences.
+ *  - That a real StdioRuntimeChannel produces these sequences.
+ *  - That the two real channels produce equivalent sequences.
+ *
+ * The actual P1/P2 parity exit gate is a follow-up integration test that
+ * spawns the runtime sidecar, runs PARITY_SCENARIOS against the real
+ * StdioRuntimeChannel and a real ServerChannel, and compares — that test
+ * does not exist yet. See tasks.md for the open box.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -93,17 +106,17 @@ describe('Parity-harness scenario coverage', () => {
     }
   });
 
-  it('reports a green result when both bindings emit the canonical sequences', async () => {
+  // This test is tautological by design: both bindings pull from the
+  // SAME hardcoded canonical sequence, so they must agree. It proves the
+  // harness mechanism doesn't crash on a full scenario sweep and that
+  // result accounting is correct — NOT that real bindings agree.
+  it('harness mechanism completes a full sweep without crashing (NOT a parity proof)', async () => {
     const report = await runParityHarness(
-      [makeBinding('websocket', PARITY_SCENARIOS), makeBinding('stdio', PARITY_SCENARIOS)],
+      [makeBinding('canonical-A', PARITY_SCENARIOS), makeBinding('canonical-B', PARITY_SCENARIOS)],
       PARITY_SCENARIOS,
     );
-    if (!report.ok) {
-      console.error('Mismatches:', JSON.stringify(report.mismatches, null, 2));
-    }
     expect(report.ok).toBe(true);
     expect(report.mismatches).toHaveLength(0);
-    // Sanity: results recorded for every (scenario, binding) pair.
     expect(report.results).toHaveLength(PARITY_SCENARIOS.length * 2);
   });
 

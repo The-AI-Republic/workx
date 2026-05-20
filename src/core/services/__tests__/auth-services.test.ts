@@ -6,7 +6,13 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { SubmissionContext } from '@/core/channels/types';
 import { createAuthServices, type AuthServiceDeps } from '../auth-services';
+
+const TEST_CONTEXT: SubmissionContext = {
+  channelId: 'test-channel',
+  channelType: 'tauri',
+};
 
 function fakeCredentialStore() {
   const data = new Map<string, string>();
@@ -75,7 +81,7 @@ describe('createAuthServices', () => {
         accessToken: 'at-1',
         refreshToken: 'rt-1',
         backendBaseUrl: 'https://api.example.com',
-      }, {} as never);
+      }, TEST_CONTEXT);
 
       expect(deps.credentialStore.set).toHaveBeenCalledWith('auth', 'access_token', 'at-1');
       expect(deps.credentialStore.set).toHaveBeenCalledWith('auth', 'refresh_token', 'rt-1');
@@ -88,10 +94,10 @@ describe('createAuthServices', () => {
     });
 
     it('rejects when either token is missing', async () => {
-      await expect(svc['auth.completeLogin']!({ accessToken: 'a' }, {} as never)).rejects.toThrow(
+      await expect(svc['auth.completeLogin']!({ accessToken: 'a' }, TEST_CONTEXT)).rejects.toThrow(
         /accessToken and refreshToken/,
       );
-      await expect(svc['auth.completeLogin']!({ refreshToken: 'b' }, {} as never)).rejects.toThrow(
+      await expect(svc['auth.completeLogin']!({ refreshToken: 'b' }, TEST_CONTEXT)).rejects.toThrow(
         /accessToken and refreshToken/,
       );
       expect(deps.credentialStore.set).not.toHaveBeenCalled();
@@ -101,25 +107,25 @@ describe('createAuthServices', () => {
       const localSvc = createAuthServices({ ...deps, getCredentialStore: undefined });
       await expect(localSvc['auth.completeLogin']!({
         accessToken: 'a', refreshToken: 'b',
-      }, {} as never)).rejects.toThrow(/credential store not available/);
+      }, TEST_CONTEXT)).rejects.toThrow(/credential store not available/);
     });
   });
 
   describe('auth.getState', () => {
     it('returns hasValidToken=false when no token is persisted', async () => {
-      const res = await svc['auth.getState']!({}, {} as never);
+      const res = await svc['auth.getState']!({}, TEST_CONTEXT);
       expect(res).toEqual({ hasValidToken: false, user: null });
     });
 
     it('returns hasValidToken=true and the user payload when a token is present', async () => {
       await deps.credentialStore.set('auth', 'access_token', 'fresh-at');
-      const res = await svc['auth.getState']!({}, {} as never);
+      const res = await svc['auth.getState']!({}, TEST_CONTEXT);
       expect(res).toMatchObject({ hasValidToken: true, user: { token: 'fresh-at' } });
     });
 
     it('degrades gracefully on platforms without a credential store', async () => {
       const localSvc = createAuthServices({ ...deps, getCredentialStore: undefined });
-      const res = await localSvc['auth.getState']!({}, {} as never);
+      const res = await localSvc['auth.getState']!({}, TEST_CONTEXT);
       expect(res).toEqual({ hasValidToken: false, user: null });
     });
   });
@@ -129,7 +135,7 @@ describe('createAuthServices', () => {
       await deps.credentialStore.set('auth', 'access_token', 'at');
       await deps.credentialStore.set('auth', 'refresh_token', 'rt');
 
-      const res = await svc['auth.logout']!({}, {} as never);
+      const res = await svc['auth.logout']!({}, TEST_CONTEXT);
 
       expect(deps.credentialStore.delete).toHaveBeenCalledWith('auth', 'access_token');
       expect(deps.credentialStore.delete).toHaveBeenCalledWith('auth', 'refresh_token');
@@ -142,7 +148,7 @@ describe('createAuthServices', () => {
     it('swallows credential delete failures (the keychain entries may already be absent)', async () => {
       deps.credentialStore.delete.mockRejectedValueOnce(new Error('not found'));
       deps.credentialStore.delete.mockRejectedValueOnce(new Error('not found'));
-      const res = await svc['auth.logout']!({}, {} as never);
+      const res = await svc['auth.logout']!({}, TEST_CONTEXT);
       expect(res).toEqual({ success: true });
     });
   });

@@ -102,16 +102,26 @@ step('3) copy runtime bundle', () => {
 
 /**
  * Copy a single npm dep's *runtime* tree (lib + native addon + package.json)
- * into the sidecar's node_modules so Node can resolve it. We skip
- * deps/, bindings.gyp, prebuilds for OTHER targets, etc., to keep the
- * bundle small.
+ * into the sidecar's node_modules so Node can resolve it. `picks` is the set
+ * of subpaths to include (e.g. `['lib', 'build/Release/...node']`); pass an
+ * empty array to copy the whole package directory.
+ *
+ * Does NOT walk transitive dependencies; use `copyRuntimeDepWithDeps` for
+ * that — the runtime loaders of native addons like better-sqlite3 do
+ * `require('bindings')(...)` at instantiation time, so transitive deps
+ * matter.
  */
 function copyRuntimeDep(name, picks) {
   const depRoot = path.dirname(req.resolve(`${name}/package.json`));
   const dst = path.join(sidecarDir, 'node_modules', name);
   fs.mkdirSync(dst, { recursive: true });
   copyFile(path.join(depRoot, 'package.json'), path.join(dst, 'package.json'));
-  for (const rel of picks) {
+  // Empty picks ⇒ copy the whole package (typical for tiny pure-JS deps like
+  // `bindings`/`file-uri-to-path` where there's nothing worth pruning).
+  const items = picks.length > 0
+    ? picks
+    : fs.readdirSync(depRoot).filter((n) => n !== 'package.json' && n !== 'node_modules');
+  for (const rel of items) {
     const s = path.join(depRoot, rel);
     if (!fs.existsSync(s)) continue;
     const d = path.join(dst, rel);
@@ -120,8 +130,28 @@ function copyRuntimeDep(name, picks) {
   }
 }
 
-step('4) copy better-sqlite3 native addon + lib', () => {
+/**
+ * Manually-curated runtime closure for `better-sqlite3`. Walking its full
+ * `dependencies` graph would pull in `prebuild-install` and its 38 install-
+ * time deps (tar-fs, readable-stream, …) — none of which are actually
+ * `require`d at runtime. The only runtime deps better-sqlite3 reaches are:
+ *
+ *   - `bindings`             (lib/database.js calls require('bindings'))
+ *   - `file-uri-to-path`     (bindings imports this)
+ *
+ * Both are tiny pure-JS shims. Keeping this list explicit instead of
+ * dependency-graph-walking keeps the sidecar small AND makes regressions
+ * obvious — if a future better-sqlite3 release adds a new runtime require,
+ * the self-test below catches it before shipping.
+ */
+const BETTER_SQLITE3_RUNTIME_DEPS = ['bindings', 'file-uri-to-path'];
+
+step('4) copy better-sqlite3 native addon + lib + minimal runtime closure', () => {
   copyRuntimeDep('better-sqlite3', ['lib', 'build/Release/better_sqlite3.node']);
+  for (const dep of BETTER_SQLITE3_RUNTIME_DEPS) {
+    copyRuntimeDep(dep, []); // whole package — both are tiny shims
+  }
+  info(`copied better-sqlite3 + runtime closure: ${BETTER_SQLITE3_RUNTIME_DEPS.join(', ')}`);
 });
 
 step('5) copy sqlite-vec native artifact (if installed)', () => {
@@ -132,14 +162,44 @@ step('5) copy sqlite-vec native artifact (if installed)', () => {
   }
 });
 
-step('6) self-test (load the bundled native addon via the bundled node_modules)', () => {
+step('6a) regression guard: bundled deps actually present on disk', () => {
+  // Sanity: a future refactor that drops bindings/file-uri-to-path would
+  // make this list shrink. The end-to-end self-test below would catch it
+  // too, but a clear early failure is friendlier.
+  for (const dep of ['better-sqlite3', ...BETTER_SQLITE3_RUNTIME_DEPS]) {
+    const pkg = path.join(sidecarDir, 'node_modules', dep, 'package.json');
+    if (!fs.existsSync(pkg)) {
+      throw new Error(`Expected bundled dep ${dep} (missing ${pkg})`);
+    }
+  }
+});
+
+step('6b) self-test (instantiate the bundled native addon end-to-end)', () => {
   // Spawn `node` with cwd = sidecarDir so it resolves modules from the
-  // bundled node_modules. Loading better-sqlite3 dispatches to the .node
-  // addon — if that fails we know the bundle is unusable BEFORE shipping.
-  execSync(
-    `node -e "require('better-sqlite3'); console.log('addon-ok')"`,
-    { cwd: sidecarDir, stdio: 'inherit' },
-  );
+  // bundled node_modules ONLY (the project's outer node_modules is up the
+  // tree from sidecarDir, so this is also a regression guard against the
+  // earlier false-positive where `require('better-sqlite3')` succeeded
+  // without `bindings` because the addon load only happens at
+  // `new Database(...)` time).
+  //
+  // We isolate the resolver by setting NODE_PATH to an empty path AND
+  // walking from a tmpdir whose ancestors have no node_modules — that's
+  // what the packaged install looks like.
+  const isolatedTmp = fs.mkdtempSync(path.join(root, 'tauri/sidecar/.selftest-'));
+  try {
+    // Copy the sidecar tree into a path with no ancestor node_modules.
+    copyDir(sidecarDir, path.join(isolatedTmp, 'sidecar'));
+    execSync(
+      `node -e "const D=require('better-sqlite3'); const db=new D(':memory:'); db.exec('CREATE TABLE t(x)'); db.close(); console.log('addon-ok')"`,
+      {
+        cwd: path.join(isolatedTmp, 'sidecar'),
+        stdio: 'inherit',
+        env: { ...process.env, NODE_PATH: '' },
+      },
+    );
+  } finally {
+    fs.rmSync(isolatedTmp, { recursive: true, force: true });
+  }
 });
 
 info('done; output: ' + sidecarDir);

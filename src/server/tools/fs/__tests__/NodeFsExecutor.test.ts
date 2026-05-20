@@ -229,6 +229,34 @@ describe('NodeFsExecutor edit', () => {
     if (res.ok === 'false') expect(res.reason).toBe('not_unique');
   });
 
+  it('returns an actionable no_match message when normalization mismatch is the cause', async () => {
+    // NFD: 'cafe' + combining acute (U+0301). NFC: 'caf' + precomposed e-acute (U+00E9).
+    // Built via \u escapes so source-file encoding cannot silently normalize one.
+    const nfd = 'cafe' + '\u0301';
+    const nfc = 'caf' + '\u00e9';
+    expect(nfd === nfc).toBe(false);
+    expect(nfd.normalize('NFC')).toBe(nfc);
+
+    const target = path.join(workspace, 'norm.txt');
+    await fs.writeFile(target, nfd);
+    const s = await stat(workspace, 'norm.txt');
+
+    const res = await applyEdit({
+      workspaceRoot: workspace,
+      path: 'norm.txt',
+      oldString: nfc,
+      newString: 'cafe',
+      replaceAll: false,
+      expectedMtimeMs: s.mtimeMs,
+      expectedContentLf: nfd,
+    });
+    expect(res.ok).toBe('false');
+    if (res.ok === 'false') {
+      expect(res.reason).toBe('no_match');
+      expect(res.message).toMatch(/normalization/i);
+    }
+  });
+
   it('replaces all occurrences when replaceAll=true and preserves CRLF/BOM', async () => {
     const target = path.join(workspace, 'multi.txt');
     await fs.writeFile(

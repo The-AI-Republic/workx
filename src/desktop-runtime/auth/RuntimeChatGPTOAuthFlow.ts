@@ -91,18 +91,30 @@ export class RuntimeChatGPTOAuthFlow {
           this.cleanup();
           return;
         }
-        res.writeHead(200, { 'Content-Type': 'text/html' }).end(
-          '<html><body><h3>Logged in</h3>You can close this window and return to the app.</body></html>',
-        );
 
+        // Don't claim success in the browser until the token exchange
+        // actually succeeds. Otherwise a 4xx from auth.openai.com after the
+        // redirect leaves the user looking at a "Logged in" page while the
+        // runtime knows the login failed.
         service
           .exchangeCodeForTokens(code, codeVerifier)
           .then((tokens) => {
+            res.writeHead(200, { 'Content-Type': 'text/html' }).end(
+              '<html><body><h3>Logged in</h3>You can close this window and return to the app.</body></html>',
+            );
             pending.resolve(tokens);
             this.cleanup();
           })
           .catch((err) => {
-            pending.reject(err instanceof Error ? err : new Error(String(err)));
+            const msg = err instanceof Error ? err.message : String(err);
+            try {
+              res.writeHead(502, { 'Content-Type': 'text/html' }).end(
+                `<html><body><h3>Login failed</h3><p>Token exchange failed: ${escapeHtml(msg)}</p>Return to the app and try again.</body></html>`,
+              );
+            } catch {
+              /* response may already be closed */
+            }
+            pending.reject(err instanceof Error ? err : new Error(msg));
             this.cleanup();
           });
       } catch (err) {
@@ -134,20 +146,27 @@ export class RuntimeChatGPTOAuthFlow {
       server.listen(CALLBACK_PORT, '127.0.0.1', () => resolve());
     });
 
-    pending = {
-      ...pending,
-      state,
-      codeVerifier,
-      server,
-      timer: setTimeout(() => {
-        pending.reject(new Error('ChatGPT OAuth login timed out'));
-        this.cleanup();
-      }, timeoutMs),
-    };
-    this.current = pending;
-
-    // Detach the completion promise so callers can await it via `finishLogin`.
-    this.completionPromise = completion;
+    // Past this point the server is listening. Any subsequent failure
+    // before `this.current = pending` (so the cleanup path can find the
+    // server to close) MUST close it explicitly to avoid leaking the port.
+    try {
+      pending = {
+        ...pending,
+        state,
+        codeVerifier,
+        server,
+        timer: setTimeout(() => {
+          pending.reject(new Error('ChatGPT OAuth login timed out'));
+          this.cleanup();
+        }, timeoutMs),
+      };
+      this.current = pending;
+      // Detach the completion promise so callers can await it via `waitForCompletion`.
+      this.completionPromise = completion;
+    } catch (err) {
+      server.close(() => undefined);
+      throw err;
+    }
 
     return { authUrl };
   }
