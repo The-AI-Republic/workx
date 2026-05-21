@@ -96,6 +96,34 @@ struct RuntimeSupervisor {
 /// for cases like a serialized panic backtrace.
 const STDERR_TRUNCATION_MARKER: &str = " …[truncated]";
 
+/// Peel every newline-terminated line out of `pending` (a raw-byte
+/// buffer that accumulates across `read()` calls) and return each as a
+/// `String`. Any bytes after the last `\n` stay in `pending` for the
+/// next call.
+///
+/// Pending is `Vec<u8>` (not `String`) so multi-byte UTF-8 characters
+/// split across read boundaries are NOT corrupted by an early
+/// `String::from_utf8_lossy` pass. Conversion happens per-line, once
+/// the line is whole.
+///
+/// Trailing `\r` is stripped after the `\n` so CRLF terminations produce
+/// the same line as bare `\n`.
+fn extract_completed_lines_from_pending(pending: &mut Vec<u8>) -> Vec<String> {
+    let mut completed = Vec::new();
+    while let Some(idx) = pending.iter().position(|b| *b == b'\n') {
+        // Drain the line including its `\n`.
+        let mut line_bytes: Vec<u8> = pending.drain(..=idx).collect();
+        // Drop the trailing `\n`.
+        line_bytes.pop();
+        // Drop a trailing `\r` if present (CRLF normalization).
+        if line_bytes.last() == Some(&b'\r') {
+            line_bytes.pop();
+        }
+        completed.push(String::from_utf8_lossy(&line_bytes).into_owned());
+    }
+    completed
+}
+
 impl RuntimeSupervisor {
     /// Push one completed stderr line into the ring buffer, evicting from
     /// the front until both caps are satisfied. A single line larger than
@@ -548,50 +576,48 @@ async fn spawn_once(
     // `runtime:stderr` Tauri events (UI behavior, unchanged), split each
     // chunk on `\n` and push completed lines into the supervisor's
     // bounded ring buffer so `diagnostics.recentStderr` returns real
-    // data instead of an empty list. A trailing partial line is carried
-    // across `read()` boundaries.
+    // data instead of an empty list. A trailing partial sequence is
+    // carried across `read()` boundaries as raw bytes — see
+    // `extract_completed_lines_from_pending` for the byte-level
+    // splitter — so a multi-byte UTF-8 character split across reads
+    // is not corrupted by an early `from_utf8_lossy` pass.
     {
         let app_err = app.clone();
         let inner_err = inner.clone();
         tauri::async_runtime::spawn(async move {
             let mut reader = BufReader::new(stderr);
             let mut buf = [0_u8; 4096];
-            let mut pending = String::new();
+            // Raw byte buffer for partial-line carry-over. Converting to
+            // String only happens once a full line has been extracted,
+            // which is the only point where UTF-8 boundaries are
+            // guaranteed to be either intact or genuinely malformed.
+            let mut pending: Vec<u8> = Vec::new();
             loop {
                 match reader.read(&mut buf).await {
                     Ok(0) | Err(_) => {
                         // EOF / read error: flush any unterminated trailing
                         // text as a final ring line so it isn't lost.
                         if !pending.is_empty() {
-                            let trailing = std::mem::take(&mut pending);
+                            let trailing = String::from_utf8_lossy(&pending).to_string();
+                            pending.clear();
                             let mut g = inner_err.lock().await;
                             g.push_stderr_line(generation, trailing);
                         }
                         break;
                     }
                     Ok(n) => {
-                        let text = String::from_utf8_lossy(&buf[..n]).to_string();
-                        let _ = app_err.emit("runtime:stderr", text.clone());
+                        // UI event: emit the raw chunk lossy-decoded.
+                        // Unchanged behavior; UI doesn't depend on
+                        // boundary-precise UTF-8.
+                        let _ = app_err.emit(
+                            "runtime:stderr",
+                            String::from_utf8_lossy(&buf[..n]).to_string(),
+                        );
 
-                        // Line-oriented append for the ring buffer. The
-                        // last segment after the final `\n` (or the entire
-                        // chunk if it has none) stays in `pending` until
-                        // its terminator arrives in a later read.
-                        pending.push_str(&text);
-                        let mut completed: Vec<String> = Vec::new();
-                        while let Some(idx) = pending.find('\n') {
-                            // `idx` is the byte offset of the `\n`; take the
-                            // bytes before it as a completed line and drop the
-                            // `\n` itself.
-                            let mut line: String = pending.drain(..=idx).collect();
-                            if line.ends_with('\n') {
-                                line.pop();
-                            }
-                            if line.ends_with('\r') {
-                                line.pop();
-                            }
-                            completed.push(line);
-                        }
+                        // Ring buffer: extend pending bytes, then peel
+                        // off any complete lines (terminated by `\n`).
+                        pending.extend_from_slice(&buf[..n]);
+                        let completed = extract_completed_lines_from_pending(&mut pending);
                         if !completed.is_empty() {
                             let mut g = inner_err.lock().await;
                             for line in completed {
@@ -935,6 +961,69 @@ mod unit_tests {
             "truncated line must fit inside the byte cap",
         );
         assert!(sup.recent_stderr_bytes <= STDERR_RING_BYTE_CAP);
+    }
+
+    // ─── stderr line extraction (UTF-8 boundary safety) ─────────────
+
+    #[test]
+    fn extract_completed_lines_splits_on_newline() {
+        let mut pending: Vec<u8> = b"line one\nline two\npartial".to_vec();
+        let lines = extract_completed_lines_from_pending(&mut pending);
+        assert_eq!(lines, vec!["line one".to_string(), "line two".to_string()]);
+        assert_eq!(pending, b"partial");
+    }
+
+    #[test]
+    fn extract_completed_lines_strips_crlf() {
+        let mut pending: Vec<u8> = b"windows-style\r\nbare\n".to_vec();
+        let lines = extract_completed_lines_from_pending(&mut pending);
+        assert_eq!(lines, vec!["windows-style".to_string(), "bare".to_string()]);
+        assert!(pending.is_empty());
+    }
+
+    #[test]
+    fn extract_completed_lines_preserves_multibyte_across_read_boundaries() {
+        // Regression: the previous String-based implementation called
+        // `String::from_utf8_lossy(&buf[..n]).to_string()` on each raw
+        // read, which corrupts a multi-byte UTF-8 character that
+        // straddles a read boundary (chunk 1 ends with bytes 1-2 of a
+        // 3-byte char, chunk 2 starts with byte 3). Each half becomes a
+        // U+FFFD replacement char, permanently losing the original.
+        //
+        // Simulate that scenario: feed `pending` two byte chunks that
+        // together encode a CJK ideographic full stop (U+3002 = 0xE3
+        // 0x80 0x82), split across reads with no newline between them,
+        // then a trailing `\n`. The extractor must NOT extract anything
+        // until the `\n` arrives, and when it does the character must
+        // be intact.
+        let mut pending: Vec<u8> = Vec::new();
+
+        // First "read": last two bytes of the multi-byte char.
+        pending.extend_from_slice(b"prefix");
+        pending.extend_from_slice(&[0xE3, 0x80]); // first two bytes of U+3002
+        let lines = extract_completed_lines_from_pending(&mut pending);
+        assert!(lines.is_empty(), "no newline yet → no extraction");
+
+        // Second "read": final byte + a newline.
+        pending.extend_from_slice(&[0x82]); // last byte of U+3002
+        pending.extend_from_slice(b" suffix\n");
+        let lines = extract_completed_lines_from_pending(&mut pending);
+        assert_eq!(lines.len(), 1);
+        // The character survives intact, NOT as two U+FFFD chars.
+        assert_eq!(lines[0], "prefix\u{3002} suffix");
+        assert!(pending.is_empty());
+    }
+
+    #[test]
+    fn extract_completed_lines_uses_lossy_for_genuinely_malformed_bytes() {
+        // A real malformed sequence (no terminator continuation) inside
+        // a completed line still gets `from_utf8_lossy`'d to U+FFFD —
+        // that's correct lossy behavior for actually-broken input, as
+        // opposed to broken-by-buffering input.
+        let mut pending: Vec<u8> = vec![b'o', b'k', 0xFF, 0xFE, b'\n'];
+        let lines = extract_completed_lines_from_pending(&mut pending);
+        assert_eq!(lines.len(), 1);
+        assert!(lines[0].contains('\u{FFFD}'));
     }
 
     #[test]
