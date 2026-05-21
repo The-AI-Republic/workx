@@ -55,19 +55,25 @@ fn write_frame<W: Write>(writer: &mut W, frame: &Value) -> io::Result<()> {
     writer.flush()
 }
 
-/// Read one length-prefixed JSON frame from stdin. Returns None on EOF.
-/// Matches the supervisor's `<len>\n<payload>` framing
-/// (`tauri/src/runtime_supervisor.rs:190`).
+/// Read one length-prefixed JSON frame from stdin. Returns `Ok(None)` on
+/// clean EOF only. A malformed length header or JSON parse failure is
+/// surfaced as `Err` so the fake child exits with code 2 — a test that
+/// passes garbage to the fake should fail loudly, not silently pass
+/// because the fake mistook the error for EOF. Matches the supervisor's
+/// `<len>\n<payload>` framing (`tauri/src/runtime_supervisor.rs:190`).
 fn read_frame<R: Read>(reader: &mut BufReader<R>) -> io::Result<Option<Value>> {
     let mut len_line = String::new();
     let n = reader.read_line(&mut len_line)?;
     if n == 0 {
         return Ok(None);
     }
-    let len: usize = match len_line.trim().parse() {
-        Ok(v) => v,
-        Err(_) => return Ok(None), // unframed garbage; treat as EOF for tests
-    };
+    let trimmed = len_line.trim();
+    let len: usize = trimmed.parse().map_err(|e| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("malformed frame length header {:?}: {}", trimmed, e),
+        )
+    })?;
     let mut payload = vec![0_u8; len];
     reader.read_exact(&mut payload)?;
     let frame: Value = serde_json::from_slice(&payload)?;

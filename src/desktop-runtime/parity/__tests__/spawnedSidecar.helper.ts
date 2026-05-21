@@ -15,11 +15,13 @@
  *
  * Deliberately narrow scope: this helper only proves the sidecar
  * boots, handshakes, answers protocol pings, and shuts down. It does
- * NOT drive UserInput Ops or compare event sequences — the Track 43
- * parity scaffolding (`scenarios.ts` + `SCENARIO_EVENT_SEQUENCES`) is
- * broken-by-construction (see the header note in `scenarios.ts`), and
- * fixing it requires a deterministic agent stack that's out of scope
- * for Track 45.
+ * NOT drive UserInput Ops or compare event sequences against a
+ * canonical list — the Track 43 parity scaffolding that previously
+ * lived in `scenarios.ts` was removed when this PR landed because its
+ * Op payloads were type-incorrect and its event sequences were
+ * synthetic placeholders. Building a real functional-turn verifier
+ * requires deterministic agent fixtures (fake model client, fake
+ * services, fake storage) and is out of scope for Track 45.
  */
 
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
@@ -109,20 +111,26 @@ export async function spawnSidecar(opts: SpawnSidecarOptions): Promise<SpawnedSi
 
   // Bucket incoming frames by type so the handshake / ping / shutdown
   // helpers below can `await` what they need without missing earlier
-  // arrivals.
-  const helloOkWaiters: Array<(f: DesktopRuntimeFrame) => void> = [];
-  const pongWaiters = new Map<string, (f: DesktopRuntimeFrame) => void>();
+  // arrivals. Each waiter records both resolve and reject so carrier
+  // errors can fail the wait with the real cause instead of letting it
+  // time out with a generic message.
+  type Waiter = {
+    resolve: (f: DesktopRuntimeFrame) => void;
+    reject: (err: Error) => void;
+  };
+  const helloOkWaiters: Waiter[] = [];
+  const pongWaiters = new Map<string, Waiter>();
   carrier.onFrame((frame) => {
     if (frame.type === 'hello-ok') {
       const w = helloOkWaiters.shift();
-      if (w) w(frame);
+      if (w) w.resolve(frame);
     } else if (frame.type === 'pong') {
       const id = (frame as Extract<DesktopRuntimeFrame, { type: 'pong' }>).id;
       if (id) {
         const w = pongWaiters.get(id);
         if (w) {
           pongWaiters.delete(id);
-          w(frame);
+          w.resolve(frame);
         }
       }
     }
@@ -131,7 +139,19 @@ export async function spawnSidecar(opts: SpawnSidecarOptions): Promise<SpawnedSi
     // we're explicitly NOT driving.
   });
   carrier.on('error', (err) => {
-    process.stderr.write(`[sidecar-carrier-error] ${String(err)}\n`);
+    const wrapped = err instanceof Error ? err : new Error(String(err));
+    process.stderr.write(`[sidecar-carrier-error] ${wrapped.message}\n`);
+    // Surface the real cause to every pending waiter so callers see
+    // (e.g.) "Invalid frame length" instead of a generic "timed out"
+    // 30 seconds later.
+    while (helloOkWaiters.length > 0) {
+      const w = helloOkWaiters.shift();
+      if (w) w.reject(wrapped);
+    }
+    for (const [id, w] of pongWaiters) {
+      pongWaiters.delete(id);
+      w.reject(wrapped);
+    }
   });
   carrier.start();
 
@@ -143,11 +163,25 @@ export async function spawnSidecar(opts: SpawnSidecarOptions): Promise<SpawnedSi
     protocolVersion: DESKTOP_RUNTIME_PROTOCOL_VERSION,
   } as DesktopRuntimeFrame);
 
+  // Hold onto the waiter reference so `onTimeout` can remove it from the
+  // queue (otherwise a late `hello-ok` after a timeout would call a stale
+  // resolver — benign today, but the pong path handles this correctly
+  // and the hello path should too).
+  let handshakeWaiter: Waiter | null = null;
   const helloOk = await withTimeout(
-    new Promise<DesktopRuntimeFrame>((res) => helloOkWaiters.push(res)),
+    new Promise<DesktopRuntimeFrame>((resolve, reject) => {
+      handshakeWaiter = { resolve, reject };
+      helloOkWaiters.push(handshakeWaiter);
+    }),
     HANDSHAKE_DEADLINE_MS,
     'handshake (hello-ok) timed out',
-    () => safeKill(child),
+    () => {
+      if (handshakeWaiter) {
+        const idx = helloOkWaiters.indexOf(handshakeWaiter);
+        if (idx >= 0) helloOkWaiters.splice(idx, 1);
+      }
+      safeKill(child);
+    },
   );
 
   const ok = helloOk as Extract<DesktopRuntimeFrame, { type: 'hello-ok' }>;
@@ -167,7 +201,9 @@ export async function spawnSidecar(opts: SpawnSidecarOptions): Promise<SpawnedSi
     const id = randomUUID();
     carrier.send({ type: 'ping', id } as DesktopRuntimeFrame);
     await withTimeout(
-      new Promise<DesktopRuntimeFrame>((res) => pongWaiters.set(id, res)),
+      new Promise<DesktopRuntimeFrame>((resolve, reject) => {
+        pongWaiters.set(id, { resolve, reject });
+      }),
       PING_DEADLINE_MS,
       `ping (${id}) timed out without a matching pong`,
       () => {

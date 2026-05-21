@@ -222,8 +222,16 @@ async fn graceful_shutdown_within_grace() {
     );
 }
 
+// Note on naming: this test verifies the *non-cooperative-child half* of
+// the supervisor's escalation contract — that a child running with
+// `FAKE_IGNORE_SHUTDOWN=1` does NOT exit within `SHUTDOWN_GRACE` after
+// receiving a `shutdown` frame, and that an external SIGKILL reliably
+// reaps it. The production supervisor's "send shutdown → wait grace →
+// SIGKILL" escalation logic itself (in `supervise()`) is not driven
+// here; that would require running the full supervise loop and is
+// deferred per the Track 45 design.
 #[tokio::test]
-async fn forced_kill_after_grace_when_child_ignores_shutdown() {
+async fn child_with_ignore_shutdown_survives_grace_and_sigkill_reaps_it() {
     let mut child = spawn_fake_child(&[
         ("FAKE_HANDSHAKE", "ok"),
         ("FAKE_IGNORE_SHUTDOWN", "1"),
@@ -238,8 +246,10 @@ async fn forced_kill_after_grace_when_child_ignores_shutdown() {
             .expect("handshake");
     }
     // Send shutdown; fake ignores it. Wait SHUTDOWN_GRACE + slack, then
-    // SIGKILL ourselves (mimics what `supervise()` does after the grace
-    // period expires) and assert the child terminates.
+    // SIGKILL ourselves and assert the child terminates. (The supervisor
+    // would do the same SIGKILL in production — see kill_on_exit() — but
+    // this test doesn't drive supervise(), so it only proves the child
+    // is non-cooperative and the kill primitive works.)
     write_frame(&mut stdin, &json!({ "type": "shutdown" }))
         .await
         .expect("send shutdown");
@@ -248,7 +258,6 @@ async fn forced_kill_after_grace_when_child_ignores_shutdown() {
         waited.is_err(),
         "fake-child with FAKE_IGNORE_SHUTDOWN=1 must NOT exit within grace"
     );
-    // Escalation: hard kill, then confirm the OS reaps the process.
     child.start_kill().expect("start_kill");
     let status = timeout(Duration::from_secs(2), child.wait())
         .await

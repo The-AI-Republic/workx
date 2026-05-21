@@ -89,10 +89,32 @@ struct RuntimeSupervisor {
     recent_stderr_bytes: usize,
 }
 
+/// Marker appended to a stderr line that the ring buffer had to truncate
+/// because the line alone exceeded `STDERR_RING_BYTE_CAP`. Without this,
+/// the eviction loop below would drop the entire oversized line on the
+/// next push — silently losing the most diagnostically useful evidence
+/// for cases like a serialized panic backtrace.
+const STDERR_TRUNCATION_MARKER: &str = " …[truncated]";
+
 impl RuntimeSupervisor {
     /// Push one completed stderr line into the ring buffer, evicting from
-    /// the front until both caps are satisfied.
-    fn push_stderr_line(&mut self, generation: u64, line: String) {
+    /// the front until both caps are satisfied. A single line larger than
+    /// `STDERR_RING_BYTE_CAP` is truncated to fit (with a marker) rather
+    /// than being silently dropped after self-eviction.
+    fn push_stderr_line(&mut self, generation: u64, mut line: String) {
+        // Pre-truncate any single oversized line so it can fit inside the
+        // byte cap without forcing the eviction loop to drop it entirely.
+        // UTF-8-safe truncation: walk back to the nearest char boundary.
+        let max_payload = STDERR_RING_BYTE_CAP.saturating_sub(STDERR_TRUNCATION_MARKER.len());
+        if line.len() > max_payload {
+            let mut cut = max_payload;
+            while cut > 0 && !line.is_char_boundary(cut) {
+                cut -= 1;
+            }
+            line.truncate(cut);
+            line.push_str(STDERR_TRUNCATION_MARKER);
+        }
+
         let len = line.len();
         self.recent_stderr.push_back(RingLine { generation, ts_ms: now_ms(), line });
         self.recent_stderr_bytes += len;
@@ -890,5 +912,47 @@ mod unit_tests {
         assert_eq!(back.generation, 8);
         assert!(front.ts_ms > 0);
         assert!(back.ts_ms >= front.ts_ms);
+    }
+
+    #[test]
+    fn ring_buffer_truncates_oversized_single_line() {
+        // Regression: a single line larger than STDERR_RING_BYTE_CAP used
+        // to be silently dropped by the eviction loop (it would pop the
+        // line it had just pushed because the buffer was still over-cap).
+        // Diagnostic data — exactly the kind we want to preserve — was
+        // lost. Push one giant line and assert it survives, truncated.
+        let mut sup = RuntimeSupervisor::default();
+        let huge = "a".repeat(STDERR_RING_BYTE_CAP * 2);
+        sup.push_stderr_line(1, huge);
+        assert_eq!(sup.recent_stderr.len(), 1, "oversized line must not be dropped");
+        let kept = &sup.recent_stderr.front().unwrap().line;
+        assert!(
+            kept.ends_with(STDERR_TRUNCATION_MARKER),
+            "truncated line must carry the marker so callers know data was elided",
+        );
+        assert!(
+            kept.len() <= STDERR_RING_BYTE_CAP,
+            "truncated line must fit inside the byte cap",
+        );
+        assert!(sup.recent_stderr_bytes <= STDERR_RING_BYTE_CAP);
+    }
+
+    #[test]
+    fn ring_buffer_truncates_oversized_line_at_utf8_boundary() {
+        // The truncation walks back to a char boundary so we never split
+        // a multi-byte UTF-8 sequence — important because the stderr task
+        // upstream uses `String::from_utf8_lossy` which can emit valid
+        // multi-byte characters near the cut point.
+        let mut sup = RuntimeSupervisor::default();
+        // A long string of 3-byte UTF-8 chars (CJK punctuation).
+        let huge: String = "。".repeat(STDERR_RING_BYTE_CAP);
+        sup.push_stderr_line(1, huge);
+        let kept = &sup.recent_stderr.front().unwrap().line;
+        // The marker is ASCII; the part before it must still be valid UTF-8.
+        let before_marker = kept.trim_end_matches(STDERR_TRUNCATION_MARKER);
+        assert!(
+            std::str::from_utf8(before_marker.as_bytes()).is_ok(),
+            "truncated payload must remain valid UTF-8",
+        );
     }
 }

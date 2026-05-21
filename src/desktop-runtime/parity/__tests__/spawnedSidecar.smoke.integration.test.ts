@@ -16,10 +16,12 @@
  *      child to exit within `SHUTDOWN_GRACE` (5 s).
  *
  * Out of scope (deliberate, see Track 45 design): UserInput Op
- * comparisons against `SCENARIO_EVENT_SEQUENCES`. The Track 43 parity
- * scaffolding has invalid Op payloads and synthetic placeholder
- * events; fixing it requires deterministic agent fixtures that belong
- * in a separate track.
+ * comparisons against a canonical event sequence. The Track 43 parity
+ * scaffolding that previously held such a list (`scenarios.ts` +
+ * `SCENARIO_EVENT_SEQUENCES`) had invalid Op payloads and synthetic
+ * placeholder events; it was removed when this PR landed. A real
+ * functional-turn verifier requires deterministic agent fixtures and
+ * belongs in a separate track.
  *
  * Prerequisite: `npm run build:desktop-runtime-sidecar` must have run
  * first. The Tauri beforeBuild hook does this automatically; for a
