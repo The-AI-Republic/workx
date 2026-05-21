@@ -1,6 +1,7 @@
 use directories::ProjectDirs;
 use serde::Serialize;
 use serde_json::{json, Value};
+use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::atomic::{AtomicI64, Ordering};
@@ -22,6 +23,45 @@ const RESTART_MAX_MS: u64 = 30_000;
 const MAX_RESTART_ATTEMPTS: u32 = 10;
 /// Grace period after a cooperative `shutdown` frame before a hard kill.
 const SHUTDOWN_GRACE: Duration = Duration::from_secs(5);
+/// Recent-stderr ring buffer caps (Track 45 Goal 3). Bounded by lines OR
+/// bytes — whichever cap is exceeded first triggers FIFO eviction. Kept
+/// across child (re)spawn within one supervisor lifetime so a multi-restart
+/// failure can still surface the stderr that explains the original crash.
+const STDERR_RING_LINE_CAP: usize = 200;
+const STDERR_RING_BYTE_CAP: usize = 64 * 1024;
+
+/// Restart backoff for the Nth attempt (1-indexed). Doubles each attempt
+/// starting from `RESTART_BASE_MS`, capped at `RESTART_MAX_MS`. Extracted
+/// for Track 45 Goal 2 lifecycle tests so the formula can be asserted
+/// directly without driving the full supervise loop.
+///
+/// attempt | backoff
+/// --------|--------
+///   1     |   500 ms
+///   2     |  1000 ms
+///   3     |  2000 ms
+///   4     |  4000 ms
+///   5     |  8000 ms
+///   6     | 16000 ms
+///   7+    | 30000 ms (capped)
+fn backoff_ms_for_attempt(attempt: u32) -> u64 {
+    if attempt == 0 {
+        return 0;
+    }
+    let shift = (attempt - 1).min(6);
+    (RESTART_BASE_MS << shift).min(RESTART_MAX_MS)
+}
+
+#[derive(Clone, Serialize)]
+struct RingLine {
+    /// Child generation (matches `RuntimeSupervisor.generation` at the time the line was emitted).
+    generation: u64,
+    /// Unix-epoch milliseconds when the line was captured.
+    #[serde(rename = "tsMs")]
+    ts_ms: i64,
+    /// stderr line without the trailing `\n`.
+    line: String,
+}
 
 #[derive(Default)]
 pub struct RuntimeSupervisorState {
@@ -40,6 +80,32 @@ struct RuntimeSupervisor {
     supervising: bool,
     /// A supervise() loop is active; prevents duplicate supervisors.
     loop_running: bool,
+    /// Recent stderr lines, FIFO bounded by `STDERR_RING_LINE_CAP` and
+    /// `STDERR_RING_BYTE_CAP`. Drained by the `diagnostics.recentStderr`
+    /// control-frame handler.
+    recent_stderr: VecDeque<RingLine>,
+    /// Running sum of `recent_stderr` line byte lengths, kept in sync with
+    /// the deque so the byte-cap check is O(1).
+    recent_stderr_bytes: usize,
+}
+
+impl RuntimeSupervisor {
+    /// Push one completed stderr line into the ring buffer, evicting from
+    /// the front until both caps are satisfied.
+    fn push_stderr_line(&mut self, generation: u64, line: String) {
+        let len = line.len();
+        self.recent_stderr.push_back(RingLine { generation, ts_ms: now_ms(), line });
+        self.recent_stderr_bytes += len;
+        while self.recent_stderr.len() > STDERR_RING_LINE_CAP
+            || self.recent_stderr_bytes > STDERR_RING_BYTE_CAP
+        {
+            if let Some(evicted) = self.recent_stderr.pop_front() {
+                self.recent_stderr_bytes = self.recent_stderr_bytes.saturating_sub(evicted.line.len());
+            } else {
+                break;
+            }
+        }
+    }
 }
 
 fn now_ms() -> i64 {
@@ -296,12 +362,17 @@ async fn handle_control_frame(app: &AppHandle, state: &RuntimeSupervisorState, f
         }
         // ── diagnostics ────────────────────────────────────────────────────
         "diagnostics.recentStderr" => {
-            // Recent stderr is captured by the supervisor stderr task and
-            // emitted as `runtime:stderr` events to the UI; the runtime
-            // itself doesn't get a copy, so it asks back here. A real
-            // implementation would back this with a ring buffer; for now
-            // return an empty list (no leak) so callers handle gracefully.
-            Ok(json!({ "lines": [] }))
+            // The stderr drain task pushes each completed line into a
+            // bounded ring buffer (Track 45 Goal 3). Caps are
+            // STDERR_RING_LINE_CAP lines and STDERR_RING_BYTE_CAP bytes;
+            // FIFO eviction. The buffer is retained across child
+            // (re)spawn within one supervisor lifetime so a restart loop
+            // still surfaces the stderr that explains the original crash.
+            // Each entry carries `generation` so callers can correlate
+            // lines with restart attempts.
+            let guard = state.inner.lock().await;
+            let lines: Vec<RingLine> = guard.recent_stderr.iter().cloned().collect();
+            Ok(json!({ "lines": lines }))
         }
         _ => Err(format!("Unknown control method: {}", method)),
     };
@@ -450,17 +521,61 @@ async fn spawn_once(
     let last_pong = Arc::new(AtomicI64::new(now_ms()));
 
     // stderr drain (diagnostics only; never parsed as protocol).
+    //
+    // Track 45 Goal 3: in addition to emitting raw chunks as
+    // `runtime:stderr` Tauri events (UI behavior, unchanged), split each
+    // chunk on `\n` and push completed lines into the supervisor's
+    // bounded ring buffer so `diagnostics.recentStderr` returns real
+    // data instead of an empty list. A trailing partial line is carried
+    // across `read()` boundaries.
     {
         let app_err = app.clone();
+        let inner_err = inner.clone();
         tauri::async_runtime::spawn(async move {
             let mut reader = BufReader::new(stderr);
             let mut buf = [0_u8; 4096];
+            let mut pending = String::new();
             loop {
                 match reader.read(&mut buf).await {
-                    Ok(0) | Err(_) => break,
+                    Ok(0) | Err(_) => {
+                        // EOF / read error: flush any unterminated trailing
+                        // text as a final ring line so it isn't lost.
+                        if !pending.is_empty() {
+                            let trailing = std::mem::take(&mut pending);
+                            let mut g = inner_err.lock().await;
+                            g.push_stderr_line(generation, trailing);
+                        }
+                        break;
+                    }
                     Ok(n) => {
                         let text = String::from_utf8_lossy(&buf[..n]).to_string();
-                        let _ = app_err.emit("runtime:stderr", text);
+                        let _ = app_err.emit("runtime:stderr", text.clone());
+
+                        // Line-oriented append for the ring buffer. The
+                        // last segment after the final `\n` (or the entire
+                        // chunk if it has none) stays in `pending` until
+                        // its terminator arrives in a later read.
+                        pending.push_str(&text);
+                        let mut completed: Vec<String> = Vec::new();
+                        while let Some(idx) = pending.find('\n') {
+                            // `idx` is the byte offset of the `\n`; take the
+                            // bytes before it as a completed line and drop the
+                            // `\n` itself.
+                            let mut line: String = pending.drain(..=idx).collect();
+                            if line.ends_with('\n') {
+                                line.pop();
+                            }
+                            if line.ends_with('\r') {
+                                line.pop();
+                            }
+                            completed.push(line);
+                        }
+                        if !completed.is_empty() {
+                            let mut g = inner_err.lock().await;
+                            for line in completed {
+                                g.push_stderr_line(generation, line);
+                            }
+                        }
                     }
                 }
             }
@@ -598,8 +713,7 @@ async fn supervise(app: AppHandle, inner: Arc<Mutex<RuntimeSupervisor>>) {
             inner.lock().await.loop_running = false;
             return;
         }
-        let shift = (attempt - 1).min(6);
-        let backoff = (RESTART_BASE_MS << shift).min(RESTART_MAX_MS);
+        let backoff = backoff_ms_for_attempt(attempt);
         let _ = app.emit(
             "runtime:reconnecting",
             json!({ "attempt": attempt, "delayMs": backoff }),
@@ -676,5 +790,105 @@ pub fn kill_on_exit(state: &RuntimeSupervisorState) {
         if let Some(child) = guard.child.as_mut() {
             let _ = child.start_kill();
         }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Track 45 Goal 2 (pure unit tests) — backoff math + ring buffer
+//
+// Process-driven lifecycle tests live in
+// `tauri/tests/runtime_supervisor_lifecycle.rs` because they need
+// `env!("CARGO_BIN_EXE_fake-runtime-child")`, which Cargo only sets for
+// integration tests under `tests/`.
+//
+// Tests in this module exercise internal helpers
+// (`backoff_ms_for_attempt`, `RuntimeSupervisor::push_stderr_line`,
+// `STDERR_RING_*` constants) without depending on subprocess machinery.
+// ─────────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod unit_tests {
+    use super::*;
+
+    // ─── backoff math (Track 45 Goal 2) ─────────────────────────────
+
+    #[test]
+    fn backoff_ms_for_attempt_doubles_then_caps() {
+        assert_eq!(backoff_ms_for_attempt(0), 0);
+        assert_eq!(backoff_ms_for_attempt(1), RESTART_BASE_MS); // 500
+        assert_eq!(backoff_ms_for_attempt(2), RESTART_BASE_MS * 2); // 1000
+        assert_eq!(backoff_ms_for_attempt(3), RESTART_BASE_MS * 4); // 2000
+        assert_eq!(backoff_ms_for_attempt(4), RESTART_BASE_MS * 8); // 4000
+        assert_eq!(backoff_ms_for_attempt(5), RESTART_BASE_MS * 16); // 8000
+        assert_eq!(backoff_ms_for_attempt(6), RESTART_BASE_MS * 32); // 16000
+        // Attempt 7+ caps at RESTART_MAX_MS (30s). 500 << 6 = 32000, capped.
+        assert_eq!(backoff_ms_for_attempt(7), RESTART_MAX_MS);
+        assert_eq!(backoff_ms_for_attempt(10), RESTART_MAX_MS);
+        assert_eq!(backoff_ms_for_attempt(MAX_RESTART_ATTEMPTS), RESTART_MAX_MS);
+    }
+
+    #[test]
+    fn cumulative_backoff_through_max_attempts_matches_design_doc() {
+        // 500 + 1000 + 2000 + 4000 + 8000 + 16000 + 4 × 30000 = 151_500 ms
+        // (~151.5 s real time through MAX_RESTART_ATTEMPTS). Documents the
+        // current "any successful handshake resets attempt to 0" semantics
+        // (supervise loop, the `Ok(true) => attempt = 0` arm): the cap
+        // only fires on consecutive pre-handshake failures.
+        let sum: u64 = (1..=MAX_RESTART_ATTEMPTS).map(backoff_ms_for_attempt).sum();
+        assert_eq!(sum, 151_500);
+    }
+
+    // ─── ring buffer behavior (Track 45 Goal 3) ─────────────────────
+
+    #[test]
+    fn ring_buffer_evicts_by_line_cap() {
+        let mut sup = RuntimeSupervisor::default();
+        for i in 0..(STDERR_RING_LINE_CAP + 50) {
+            sup.push_stderr_line(1, format!("line {i}"));
+        }
+        assert_eq!(sup.recent_stderr.len(), STDERR_RING_LINE_CAP);
+        // Oldest line evicted: 50 of the 250 inserted are gone from the front.
+        assert_eq!(
+            sup.recent_stderr.front().unwrap().line,
+            format!("line {}", 50)
+        );
+        // Newest preserved.
+        assert_eq!(
+            sup.recent_stderr.back().unwrap().line,
+            format!("line {}", STDERR_RING_LINE_CAP + 50 - 1)
+        );
+    }
+
+    #[test]
+    fn ring_buffer_evicts_by_byte_cap() {
+        let mut sup = RuntimeSupervisor::default();
+        // Each line is ~1 KiB. The byte cap is 64 KiB, so ~64 lines fit
+        // before byte-cap eviction begins, well below LINE_CAP.
+        let big_line = "x".repeat(1024);
+        for _ in 0..200 {
+            sup.push_stderr_line(1, big_line.clone());
+        }
+        assert!(sup.recent_stderr.len() < STDERR_RING_LINE_CAP);
+        assert!(
+            sup.recent_stderr_bytes <= STDERR_RING_BYTE_CAP,
+            "byte cap should hold: {} > {}",
+            sup.recent_stderr_bytes, STDERR_RING_BYTE_CAP
+        );
+    }
+
+    #[test]
+    fn ring_buffer_retains_across_generations() {
+        let mut sup = RuntimeSupervisor::default();
+        sup.push_stderr_line(7, "from child 7".into());
+        sup.push_stderr_line(8, "from child 8".into());
+        // Buffer survives child (re)spawn within one supervisor lifetime,
+        // which is what makes it diagnostic across restart loops.
+        assert_eq!(sup.recent_stderr.len(), 2);
+        let front = sup.recent_stderr.front().unwrap();
+        let back = sup.recent_stderr.back().unwrap();
+        assert_eq!(front.generation, 7);
+        assert_eq!(back.generation, 8);
+        assert!(front.ts_ms > 0);
+        assert!(back.ts_ms >= front.ts_ms);
     }
 }

@@ -1,22 +1,39 @@
 /**
  * Parity-harness scenario library (Track 43, P1/P2 scaffolding).
  *
- * Defines the set of scenarios both transports must agree on for the
- * future P2 exit gate: chat request/response, streaming events, tool
- * call, MCP stdio server, config R/W, rollout R/W, auth mode update,
- * scheduler create+trigger, cancellation, reconnect, graceful shutdown.
+ * @deprecated for use against the real desktop runtime.
  *
- * **Not an exit gate yet.** The unit test in
- * `__tests__/scenarios.test.ts` exercises only the harness mechanism
- * against fake bindings — both fakes read from `SCENARIO_EVENT_SEQUENCES`
- * so the positive-path comparison is tautological. The actual exit gate
- * is a follow-up integration test that spawns the runtime sidecar and
- * runs the same scenarios against the real `StdioRuntimeChannel` and a
- * real `ServerChannel`; that test does not exist yet.
+ * The Op shapes below now type-check honestly against
+ * `src/core/protocol/types.ts` (lowercase `'text'` InputItem
+ * discriminant; bare `Op` shape without an envelope; no
+ * `as unknown as Op` cast). Prior to that fix the helpers built an
+ * envelope `{ id, op: { type: 'UserInput', items: [{ type: 'Text', text }] } }`
+ * with uppercase `'Text'` and bypassed type checking.
  *
- * The scenario list and canonical event sequences below are stable so
- * the integration test, when it lands, has nothing to wire up beyond
- * the bindings themselves.
+ * However, this library is still **not** ready to drive a real
+ * sidecar end-to-end:
+ *
+ *   1. `ServerAgentBootstrap` rejects submissions without
+ *      `context.sessionId` (see
+ *      `src/server/agent/ServerAgentBootstrap.ts:428` — "No sessionId
+ *      in submission context"). None of the scenarios below populate
+ *      one. Any binding that submits these Ops at the real runtime
+ *      must inject a sessionId via `step.context.sessionId`.
+ *   2. `SCENARIO_EVENT_SEQUENCES` (below) are synthetic placeholders
+ *      (`text: 'hi back'`, `turnId: 't-1'`, `evt-<random>`,
+ *      hardcoded `sessionId: 'session-test'`). The real sidecar emits
+ *      real model output through `RepublicAgent`, real session IDs,
+ *      real timestamps. A direct `toEqual(...)` comparison cannot
+ *      pass — the canonical sequences were authored as scaffolding,
+ *      not as recordings of actual runtime output.
+ *
+ * Fixing both gaps requires a deterministic agent stack (fake model
+ * client, fake services, fake storage). That work is out of scope for
+ * Track 45 and belongs to a separate, larger track.
+ *
+ * Existing consumers (the tautological `__tests__/scenarios.test.ts`)
+ * only read the scenario names and the canonical-sequence keys, so
+ * the type-correctness fix above is non-breaking for them.
  */
 
 import type { Op } from '@/core/protocol/types';
@@ -25,74 +42,78 @@ import type { ParityScenario } from './ParityHarness';
 
 const sub = (op: Op, context?: Partial<SubmissionContext>): ParityScenario['steps'][number] => ({ op, context });
 
-/** Build a UserInput Op the runtime accepts. */
-function userInputOp(id: string, text: string): Op {
-  return {
-    id,
-    op: { type: 'UserInput', items: [{ type: 'Text', text }] },
-  } as unknown as Op;
+/** Build a UserInput Op the runtime accepts (bare Op, lowercase `'text'`). */
+function userInputOp(text: string): Op {
+  return { type: 'UserInput', items: [{ type: 'text', text }] };
 }
 
-function interruptOp(id: string): Op {
-  return { id, op: { type: 'Interrupt' } } as unknown as Op;
+function interruptOp(): Op {
+  return { type: 'Interrupt' };
 }
 
-function shutdownOp(id: string): Op {
-  return { id, op: { type: 'Shutdown' } } as unknown as Op;
+function shutdownOp(): Op {
+  return { type: 'Shutdown' };
 }
 
 export const PARITY_SCENARIOS: ParityScenario[] = [
   {
     name: 'chat: request → response',
-    steps: [sub(userInputOp('chat-1', 'hello'))],
+    steps: [sub(userInputOp('hello'))],
   },
   {
     name: 'chat: streaming delta events arrive in order',
-    steps: [sub(userInputOp('stream-1', 'write a haiku'))],
+    steps: [sub(userInputOp('write a haiku'))],
   },
   {
     name: 'tool call: emits begin → end pair',
-    steps: [sub(userInputOp('tool-1', 'run a tool'))],
+    steps: [sub(userInputOp('run a tool'))],
   },
   {
     name: 'MCP stdio: list_tools succeeds',
-    steps: [sub(userInputOp('mcp-1', 'list mcp tools'))],
+    steps: [sub(userInputOp('list mcp tools'))],
   },
   {
     name: 'config: read → write round-trip',
-    steps: [sub(userInputOp('cfg-1', 'set preference X'))],
+    steps: [sub(userInputOp('set preference X'))],
   },
   {
     name: 'rollout: read → write round-trip',
-    steps: [sub(userInputOp('roll-1', 'continue from rollout'))],
+    steps: [sub(userInputOp('continue from rollout'))],
   },
   {
     name: 'auth mode update: backend → own-key → backend',
-    steps: [sub(userInputOp('auth-1', 'switch auth mode'))],
+    steps: [sub(userInputOp('switch auth mode'))],
   },
   {
     name: 'scheduler: schedule + trigger',
-    steps: [sub(userInputOp('sched-1', 'schedule a job'))],
+    steps: [sub(userInputOp('schedule a job'))],
   },
   {
     name: 'cancellation: interrupt mid-turn',
-    steps: [sub(userInputOp('int-1', 'long task')), sub(interruptOp('int-2'))],
+    steps: [sub(userInputOp('long task')), sub(interruptOp())],
   },
   {
     name: 'reconnect: pause then resume submissions',
-    steps: [sub(userInputOp('rc-1', 'first')), sub(userInputOp('rc-2', 'second'))],
+    steps: [sub(userInputOp('first')), sub(userInputOp('second'))],
   },
   {
     name: 'graceful shutdown',
-    steps: [sub(userInputOp('sd-1', 'final')), sub(shutdownOp('sd-2'))],
+    steps: [sub(userInputOp('final')), sub(shutdownOp())],
   },
 ];
 
 /**
- * Canonical event sequence per scenario name. Both bindings must produce
- * this exact normalized stream. The shapes are intentionally minimal — the
- * parity test asserts equivalence (across two binding implementations of
- * the same op pipeline), not richness of any single sequence.
+ * Synthetic event sequences keyed by scenario name. Used by the
+ * existing tautological `__tests__/scenarios.test.ts` where two fake
+ * bindings both read from this lookup, so the equality assertion is
+ * `JSON.stringify(X) === JSON.stringify(X)`.
+ *
+ * These are **not** recordings of actual runtime output — the
+ * payloads (`text: 'hi back'`, `turnId: 't-1'`, random `evt-*` ids,
+ * hardcoded `sessionId: 'session-test'`) are placeholders authored
+ * when the parity library was scaffolded. A real `toEqual(...)`
+ * comparison against the spawned sidecar would never pass.
+ * See the file header for the full deprecation note.
  */
 export const SCENARIO_EVENT_SEQUENCES: Record<string, ChannelEvent[]> = {
   'chat: request → response': [
