@@ -442,6 +442,12 @@ export class SubAgentRunner implements IAgentRunner {
     }
   }
 
+  private isNonInteractiveBackgroundSafe(
+    behavior: ReturnType<typeof resolveSubAgentBehavior>,
+  ): boolean {
+    return behavior.toolPolicy === 'read_only_bias' || behavior.toolPolicy === 'internal_locked';
+  }
+
   // ---------------------------------------------------------------------------
   // IAgentRunner: prepare
   // ---------------------------------------------------------------------------
@@ -469,6 +475,14 @@ export class SubAgentRunner implements IAgentRunner {
       background,
       contextMode: params.contextMode,
     });
+    const parentSession = this.parentEngine.getSession();
+
+    if (
+      behavior.contextMode === SubAgentContextMode.Fork &&
+      parentSession?.isForkedSubAgentContext?.()
+    ) {
+      throw new Error('Forked sub-agents cannot spawn another forked sub-agent');
+    }
 
     // Create restricted tool registry
     const childRegistry = await createSubAgentToolRegistry(
@@ -500,15 +514,27 @@ export class SubAgentRunner implements IAgentRunner {
     });
 
     const parentConfig = this.parentEngine.getConfig();
-    const parentSession = this.parentEngine.getSession();
 
     // Default to 'inherit' when approvalPolicy is not explicitly set.
     // Only 'never' explicitly opts out of approval — prevents accidental bypass.
-    // Background runs cannot prompt the user (parent has moved on), so force 'never'
-    // regardless of the type's configured policy.
+    // Background runs cannot prompt the user (parent has moved on), so they
+    // must either explicitly run with `never` or be a non-interactive profile
+    // that can safely downgrade inherited approval to `never`.
     const configuredApprovalPolicy = resolvedTypeConfig.approvalPolicy
       ?? behavior.approvalPolicyDefault;
-    const effectiveApprovalPolicy = background ? 'never' : configuredApprovalPolicy;
+    if (
+      background &&
+      configuredApprovalPolicy === 'inherit' &&
+      !this.isNonInteractiveBackgroundSafe(behavior)
+    ) {
+      throw new Error(
+        `Background sub-agent type '${resolvedTypeConfig.id}' cannot inherit approval; set approvalPolicy: "never" explicitly, or use a non-interactive profile that can safely downgrade inherited approval`,
+      );
+    }
+    const effectiveApprovalPolicy =
+      background && configuredApprovalPolicy === 'inherit'
+        ? 'never'
+        : configuredApprovalPolicy;
     const approvalGate = effectiveApprovalPolicy === 'inherit'
       ? this.parentEngine.getToolRegistry().getApprovalGate()
       : undefined;

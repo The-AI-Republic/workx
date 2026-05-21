@@ -762,15 +762,25 @@ export interface ToolExecutionEndEvent {
 
 export interface ToolExecutionErrorEvent {
   tool_name: string;
+  call_id?: string;
   session_id?: string;
+  turn_id?: string;
+  code?: string;
   error: string;
+  details?: unknown;
   duration?: number;
 }
 
 export interface ToolExecutionTimeoutEvent {
   tool_name: string;
+  call_id?: string;
   session_id?: string;
+  turn_id?: string;
+  code?: string;
+  error?: string;
+  details?: unknown;
   timeout_ms: number;
+  duration?: number;
 }
 
 export interface ToolExecutionProgressEvent {

@@ -110,6 +110,31 @@ describe('PromptLoader', () => {
     expect(prompt.indexOf('SKILLS_EXTENSION_MARKER')).toBeGreaterThan(prompt.indexOf('MEMORY_EXTENSION_MARKER'));
   });
 
+  it('isolates session-scoped prompt extensions by session id', async () => {
+    const {
+      loadPrompt,
+      configurePromptComposer,
+      registerPromptExtension,
+      unregisterSessionPromptExtensions,
+    } = await import('@/core/PromptLoader');
+
+    configurePromptComposer('browserx');
+    registerPromptExtension('session-only', () => 'SESSION_A_MARKER', {
+      type: 'session',
+      sessionId: 'session-a',
+    });
+
+    const promptA = await loadPrompt(undefined, { sessionId: 'session-a' });
+    const promptB = await loadPrompt(undefined, { sessionId: 'session-b' });
+
+    expect(promptA).toContain('SESSION_A_MARKER');
+    expect(promptB).not.toContain('SESSION_A_MARKER');
+
+    unregisterSessionPromptExtensions('session-a');
+    const promptAfterCleanup = await loadPrompt(undefined, { sessionId: 'session-a' });
+    expect(promptAfterCleanup).not.toContain('SESSION_A_MARKER');
+  });
+
   it('includes fresh currentDateTime on each loadPrompt call', async () => {
     const { loadPrompt, configurePromptComposer } = await import('@/core/PromptLoader');
 

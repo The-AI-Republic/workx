@@ -188,8 +188,8 @@ async function configureExtensionPlatform(targetAgent: RepublicAgent): Promise<v
     recordPlanArtifact: (payload) =>
       targetAgent.getSession().persistRolloutItems([{ type: 'plan_artifact', payload }]),
   });
-  setDynamicRuntimeContext(() => ({
-    planReviewActive: toolRegistry.isPlanReviewActive(),
+  setDynamicRuntimeContext((ctx) => ({
+    planReviewActive: ctx.toolRegistry?.isPlanReviewActive?.() ?? toolRegistry.isPlanReviewActive(),
   }));
 
   // Tab closure handler

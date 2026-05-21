@@ -816,6 +816,30 @@ export class TaskRunner {
       await this.session.recordConversationItemsDual(itemsToRecord);
     }
 
+    // Post-turn hooks must observe the committed history. TurnManager builds
+    // the turn delta, while TaskRunner is the first point after the in-memory
+    // and durable conversation writes have completed.
+    const sess = this.session as unknown as {
+      firePostTurnHooks?: (ctx: unknown) => Promise<void>;
+      getSessionId?: () => string;
+      getConversationHistory?: () => { items: ResponseItem[] };
+    };
+    if (typeof sess.firePostTurnHooks === 'function') {
+      const historyItems =
+        typeof sess.getConversationHistory === 'function'
+          ? sess.getConversationHistory().items
+          : [];
+      const sessionId =
+        typeof sess.getSessionId === 'function' ? sess.getSessionId() : '';
+      await sess.firePostTurnHooks({
+        sessionId,
+        history: historyItems,
+        committedDelta: itemsToRecord,
+        totalTokenUsage,
+        lastTurnHadToolCalls: Boolean(turnResult.lastTurnHadToolCalls),
+      });
+    }
+
     // Extract last assistant message from recorded items
     const lastAgentMessage = this.getLastAssistantMessageFromTurn(itemsToRecord);
 

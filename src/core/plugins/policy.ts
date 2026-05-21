@@ -188,12 +188,18 @@ export const ALLOWED_OFFICIAL_MARKETPLACE_NAMES: readonly string[] = [];
 export const BLOCKED_OFFICIAL_NAME_PATTERN =
   /(official.*\b(browserx|airepublic)\b|\b(browserx|airepublic)\b.*official|^(browserx|airepublic)[-_](marketplace|plugins|official))/i;
 
-const NON_ASCII_PATTERN = /[^\x00-\x7F]/;
 const OFFICIAL_GITHUB_ORG = 'browserx';
+
+function containsNonAscii(value: string): boolean {
+  for (let i = 0; i < value.length; i += 1) {
+    if (value.charCodeAt(i) > 0x7f) return true;
+  }
+  return false;
+}
 
 /** Names that look "official" (or use homographs) are reserved. */
 export function isBlockedOfficialName(name: string): boolean {
-  if (NON_ASCII_PATTERN.test(name)) return true; // homograph guard
+  if (containsNonAscii(name)) return true; // homograph guard
   if (BLOCKED_OFFICIAL_NAME_PATTERN.test(name)) {
     return !ALLOWED_OFFICIAL_MARKETPLACE_NAMES.includes(name);
   }
