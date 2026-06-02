@@ -23,6 +23,12 @@ export function deepClone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
+const UNSAFE_PATH_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype']);
+
+function hasUnsafePathSegment(parts: readonly string[]): boolean {
+  return parts.some((part) => UNSAFE_PATH_SEGMENTS.has(part));
+}
+
 /** Split a dot-path into segments. Empty string → []. */
 export function splitPath(path: string): string[] {
   return path.length === 0 ? [] : path.split('.');
@@ -40,6 +46,7 @@ export function setByPath<T extends Record<string, unknown>>(
 ): T {
   const parts = splitPath(path);
   if (parts.length === 0) return target;
+  if (hasUnsafePathSegment(parts)) return target;
   let node: Record<string, unknown> = target;
   for (let i = 0; i < parts.length - 1; i++) {
     const key = parts[i];
@@ -63,6 +70,7 @@ export function deleteByPath<T extends Record<string, unknown>>(
 ): T {
   const parts = splitPath(path);
   if (parts.length === 0) return target;
+  if (hasUnsafePathSegment(parts)) return target;
   const chain: Array<Record<string, unknown>> = [target];
   let node: Record<string, unknown> = target;
   for (let i = 0; i < parts.length - 1; i++) {
@@ -86,6 +94,7 @@ export function deleteByPath<T extends Record<string, unknown>>(
 /** Read the value at `path`, or `undefined` if any segment is missing. */
 export function getByPath(source: unknown, path: string): unknown {
   const parts = splitPath(path);
+  if (hasUnsafePathSegment(parts)) return undefined;
   let node: unknown = source;
   for (const key of parts) {
     if (node === null || typeof node !== 'object') return undefined;
@@ -115,6 +124,7 @@ export function flattenLeafPaths(obj: unknown, prefix = ''): string[] {
   }
   const out: string[] = [];
   for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+    if (UNSAFE_PATH_SEGMENTS.has(k)) continue;
     const next = prefix ? `${prefix}.${k}` : k;
     out.push(...flattenLeafPaths(v, next));
   }

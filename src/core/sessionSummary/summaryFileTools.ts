@@ -12,8 +12,8 @@
  * (services/SessionMemory/sessionMemory.ts:460-482).
  */
 
-import * as path from 'path';
 import type { PreExecuteCheck, PreExecuteDecision } from '@/tools/ToolRegistry';
+import { normalizeSummaryPath } from './filePath';
 
 export const FILE_EDIT_TOOL_NAME = 'file_edit';
 
@@ -32,7 +32,7 @@ export type SyncCanUseTool = PreExecuteCheck;
  * input schema has historically used both.
  */
 export function createSummaryFileCanUseTool(summaryPath: string): PreExecuteCheck {
-  const allowedAbsolute = path.resolve(summaryPath);
+  const allowedAbsolute = normalizeSummaryPath(summaryPath);
 
   return (toolName: string, input: Record<string, unknown>): PreExecuteDecision => {
     if (toolName !== FILE_EDIT_TOOL_NAME) {
@@ -50,7 +50,7 @@ export function createSummaryFileCanUseTool(summaryPath: string): PreExecuteChec
       };
     }
 
-    if (path.resolve(target) !== allowedAbsolute) {
+    if (normalizeSummaryPath(target) !== allowedAbsolute) {
       return {
         behavior: 'deny',
         decisionReason: `${FILE_EDIT_TOOL_NAME} restricted to ${allowedAbsolute}; got ${target}`,

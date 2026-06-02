@@ -7,8 +7,8 @@
  * place per build mode — we just append `sessions/<sid>/summary.md`.
  */
 
-import * as path from 'path';
 import type { FileSystem } from '../memory/types';
+import { dirnameSummaryPath, joinSummaryPath } from './filePath';
 import { SESSION_SUMMARY_TEMPLATE } from './template';
 
 const SESSIONS_SUBDIR = 'sessions';
@@ -18,7 +18,7 @@ export function getSessionSummaryPath(
   memoryRoot: string,
   sessionId: string,
 ): string {
-  return path.join(memoryRoot, SESSIONS_SUBDIR, sessionId, SUMMARY_FILENAME);
+  return joinSummaryPath(memoryRoot, SESSIONS_SUBDIR, sessionId, SUMMARY_FILENAME);
 }
 
 /**
@@ -44,7 +44,7 @@ export class SessionSummaryFileStore {
    */
   async ensureScaffold(sessionId: string): Promise<string> {
     const file = this.pathFor(sessionId);
-    await this.fs.ensureDir(path.dirname(file));
+    await this.fs.ensureDir(dirnameSummaryPath(file));
     if (!(await this.fs.exists(file))) {
       await this.fs.writeFile(file, SESSION_SUMMARY_TEMPLATE);
     }
