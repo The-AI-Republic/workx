@@ -373,7 +373,7 @@ Capability-token role/scope mapping (Phase 1): the design must specify which rol
 Handshake:
 
 - Continue using `connect.challenge` and `connect`.
-- Accept token through the existing auth payload shape or add a capability-token variant.
+- A `'token'` auth mode already exists with constant-time verification (`src/server/connection/auth.ts:16` defines `AuthMode = 'none' | 'token' | 'password' | 'trusted-proxy'`; `verifyToken()` at `auth.ts:50-94` does the constant-time compare; the token arrives via `req.params.auth` at `handshake.ts:191`). **Decision needed:** either reuse the existing `'token'` mode for app-server (smaller change, the constant-time-compare task is already satisfied) or add a distinct `'capability-token'` variant if per-capability semantics are wanted. The challenge currently advertises a single mode (`authModes: [config.server.auth.mode]`, `handshake.ts:101`); the app-server transport must source its mode from `IAppServerConfig`, not `config.server.auth`.
 - Bind the authenticated identity to connection state.
 
 ### 6. Reject Browser Origins
@@ -1012,7 +1012,7 @@ Example conceptual request:
 }
 ```
 
-Note: `runId` and `accepted` are **net-new**. Today `chat.send` returns only `{ status: 'started', sessionKey }` (`src/server/handlers/chat.ts:75`), and `ChannelEvent` carries only `{ msg, sessionId? }` (`core/channels/types.ts:17-22`) — there is no `runId` on the event envelope. A run-id concept does exist inside the streaming layer (`src/server/streaming/chat-stream.ts:25`) but is not surfaced on the handler response or events. Plumbing a `runId` into the handler response and onto the `ChannelEvent` envelope is therefore a Phase 1 task, not an existing capability. Keep the change additive: retain `status` so existing headless clients are unaffected (Decision #2).
+Note: `runId`/`accepted` are not returned today, but the underlying id already exists — this is a low-effort surface, not net-new generation. `RepublicAgent.submitOperation()` already mints a per-turn submission id (`src/core/RepublicAgent.ts:688`) and returns it synchronously on the `chat.send` path. `chat-stream.ts` already exposes that id as `runId` on `TaskStarted` and delta events (`chat-stream.ts:129,166`). So Phase 1 work is: (a) capture the returned id in `chat.send` and add it to the response as `runId` (keep `status` for headless compatibility, Decision #2); (b) propagate `runId` from the existing per-turn id onto the `ChannelEvent` envelope (`core/channels/types.ts:17-22` carries only `{ msg, sessionId? }` today) so all event types — not just deltas — carry it. Reuse the existing submission id; do not invent a second identifier.
 
 Events should include:
 
