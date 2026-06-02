@@ -42,3 +42,13 @@ dirs = "5"
 default = ["custom-protocol", "dark-icon"]
 custom-protocol = ["tauri/custom-protocol"]
 dark-icon = []
+
+# Track 45 Goal 2: fake desktop-runtime child used by the supervisor
+# lifecycle tests. Wired in via APPLEPI_NODE_BIN=env!(CARGO_BIN_EXE_fake-runtime-child)
+# so the supervisor invokes this binary in place of `node`. The fake reads
+# stdio frames and is driven by env knobs documented in the source file.
+[[bin]]
+name = "fake-runtime-child"
+path = "tests/bin/fake_runtime_child.rs"
+test = false
+bench = false
