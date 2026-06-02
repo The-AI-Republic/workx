@@ -63,6 +63,11 @@ This checklist implements the design in `design.md`.
 - [ ] Start only on loopback unless `allowLan` is true.
 - [ ] Return actual port when configured port is `0`.
 
+### Connection Lifecycle
+
+- [ ] Add `src/app-server/connection/rateLimiter.ts` (reusable rate limiter or wrapper) and attach it in the transport.
+- [ ] Add `src/app-server/connection/ConnectionWatchdog.ts` for handshake timeout, heartbeat, and slow-unauthenticated cleanup.
+
 ### Auth
 
 - [ ] Add `src/app-server/connection/AppServerAuth.ts`.
@@ -84,6 +89,12 @@ This checklist implements the design in `design.md`.
 - [ ] Catch app-server startup errors and keep sidecar running.
 - [ ] Publish app-server status changes.
 
+### Handlers
+
+- [ ] Make `src/server/handlers/config.ts` use the desktop `AgentConfig` services in desktop app-server mode (not `.applepi-server/config.json`).
+- [ ] Confirm `src/server/handlers/credentials.ts` loopback/token/TLS checks hold for desktop app-server mode.
+- [ ] Ensure `src/server/handlers/logs.ts` subscriptions are per connection and cleaned up on disconnect.
+
 ### Runtime Services
 
 - [ ] Extend `runtime.getStateSnapshot` with app-server status.
@@ -92,6 +103,14 @@ This checklist implements the design in `design.md`.
 - [ ] Add `appServer.restart`.
 - [ ] Add `appServer.stop`.
 - [ ] Add `appServer.rotateToken`.
+
+### UI Integration
+
+- [ ] Consume app-server status in `src/webfront/stores/runtimeStatusStore.ts` via the chosen delivery mechanism (new Tauri event or poll `appServer.getStatus`).
+- [ ] Add advanced/developer settings controls: toggle app-server, show status, show endpoint.
+- [ ] Add rotate-token and explicit reveal/copy-token actions (no passive token display).
+- [ ] Add restart action and last-error display.
+- [ ] UI calls runtime services only, never the WebSocket server directly.
 
 ### MVP Tests
 
