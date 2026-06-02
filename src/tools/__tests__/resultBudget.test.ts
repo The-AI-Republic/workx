@@ -9,14 +9,26 @@ import {
   type FunctionCallOutputItem,
 } from '@/tools/resultBudget';
 import { ContentReplacementState } from '@/tools/replacementState';
-import type { ToolResultStore, PersistedResult } from '@/tools/resultStore';
+import type {
+  PersistedResult,
+  PersistedResultOwner,
+  PersistToolResultOptions,
+  ToolResultStore,
+} from '@/tools/resultStore';
 
 class StubStore implements ToolResultStore {
   persistCalls = 0;
   persisted = new Map<string, string>();
-  async persist(_sessionId: string, toolUseId: string, content: string): Promise<PersistedResult> {
+  owners = new Map<string, PersistedResultOwner | undefined>();
+  async persist(
+    _sessionId: string,
+    toolUseId: string,
+    content: string,
+    options: PersistToolResultOptions = {},
+  ): Promise<PersistedResult> {
     this.persistCalls += 1;
     this.persisted.set(toolUseId, content);
+    this.owners.set(toolUseId, options.owner);
     return {
       reference: `ref:${toolUseId}`,
       kind: 'cache',
@@ -24,6 +36,7 @@ class StubStore implements ToolResultStore {
       // Small preview — tier-2 sums preview-size, not original, after replacement.
       preview: content.slice(0, 80),
       hasMore: true,
+      owner: options.owner,
     };
   }
   async retrieve(reference: string): Promise<string | null> {
@@ -167,6 +180,24 @@ describe('enforceToolResultBudget', () => {
     expect(out[0].output).toBe('a'.repeat(60_000));
     expect(state.seenIds.has('c0')).toBe(true);
     expect(state.replacements.has('c0')).toBe(false);
+  });
+
+  it('passes owner metadata to tier-2 persisted results', async () => {
+    const results = [makeResult('c0', 'a'.repeat(60_000))];
+
+    await enforceToolResultBudget(results, state, {
+      store,
+      sessionId: 's1',
+      limit: 50_000,
+      skipToolNames: new Set(),
+      ownerByCallId: (callId) => ({ kind: 'transient_session', sessionId: 's1', callId }),
+    });
+
+    expect(store.owners.get('c0')).toEqual({
+      kind: 'transient_session',
+      sessionId: 's1',
+      callId: 'c0',
+    });
   });
 
   it('empty input passes through', async () => {

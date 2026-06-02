@@ -1266,6 +1266,9 @@ export class TurnManager {
         limit: MAX_TOOL_RESULTS_PER_MESSAGE_CHARS,
         skipToolNames,
         toolNameByCallId: (id) => nameByCallId.get(id),
+        ownerByCallId: (callId) => this.session.isPersistentSession?.()
+          ? { kind: 'persistent_rollout', sessionId: this.session.sessionId, callId }
+          : { kind: 'transient_session', sessionId: this.session.sessionId, callId },
       },
     );
     return enforced;

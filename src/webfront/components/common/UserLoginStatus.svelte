@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { push } from 'svelte-spa-router';
-  import { userStore, userInitials, getLoginPageUrl } from '../../stores/userStore';
+  import { userStore, userInitials, getDesktopLoginPageUrl, getLoginPageUrl } from '../../stores/userStore';
   import { uiTheme } from '../../stores/themeStore';
   import { platform } from '../../stores/platformStore';
   import { HOME_PAGE_BASE_URL, LLM_API_URL } from '../../lib/constants';
@@ -49,6 +49,15 @@
     }
   }
 
+  onMount(() => {
+    const handleLoginRequest = () => {
+      if (platform.platformName !== 'desktop' || isLoggingIn) return;
+      void openLoginPage();
+    };
+    window.addEventListener('applepi:request-login', handleLoginRequest);
+    return () => window.removeEventListener('applepi:request-login', handleLoginRequest);
+  });
+
   onDestroy(() => {
     hidePromoTooltip();
   });
@@ -78,18 +87,35 @@
           import('@/core/messaging'),
         ]);
 
-        // 1. Open the browser to the login URL with our deeplink callback.
-        const loginUrl = new URL('/login', HOME_PAGE_BASE_URL);
-        loginUrl.searchParams.set('redirect_url', 'applepi://auth/callback');
-        loginUrl.searchParams.set('desktop_login_ts', Date.now().toString());
+        // 1. Open the home-page login route with our deeplink callback. The
+        // home page handles both fresh Google login and already-authenticated
+        // browser sessions.
+        const loginUrl = getDesktopLoginPageUrl();
 
         // 2. Subscribe to the applepi-deeplink event from Rust before opening the
         // browser — Rust emits it as soon as the OS hands us the URL.
         const tokensPromise = new Promise<{ accessToken: string; refreshToken: string }>(
           (resolve, reject) => {
-            rejectPending = reject;
-            const timeoutId = setTimeout(() => reject(new Error('Login timed out')), 300_000);
+            let settled = false;
+            const timeoutId = setTimeout(() => {
+              rejectWithCleanup(new Error('Login timed out'));
+            }, 300_000);
             const consumedAuthCallbacks = new Set<string>();
+
+            const resolveWithCleanup = (tokens: { accessToken: string; refreshToken: string }) => {
+              if (settled) return;
+              settled = true;
+              clearTimeout(timeoutId);
+              resolve(tokens);
+            };
+            const rejectWithCleanup = (error: Error) => {
+              if (settled) return;
+              settled = true;
+              clearTimeout(timeoutId);
+              reject(error);
+            };
+            rejectPending = rejectWithCleanup;
+
             listen<string>('applepi-deeplink', (event) => {
               try {
                 const urlObj = new URL(event.payload);
@@ -97,28 +123,32 @@
                   return;
                 }
                 const dedupeKey = urlObj.toString();
-                if (consumedAuthCallbacks.has(dedupeKey)) return;
+                if (consumedAuthCallbacks.has(dedupeKey)) {
+                  return;
+                }
                 consumedAuthCallbacks.add(dedupeKey);
                 const accessToken = urlObj.searchParams.get('access_token');
                 const refreshToken = urlObj.searchParams.get('refresh_token');
                 if (!accessToken || !refreshToken) {
-                  reject(new Error(urlObj.searchParams.get('error') ?? 'Missing tokens'));
+                  rejectWithCleanup(new Error(urlObj.searchParams.get('error') ?? 'Missing tokens'));
                   return;
                 }
-                clearTimeout(timeoutId);
-                resolve({ accessToken, refreshToken });
+                resolveWithCleanup({ accessToken, refreshToken });
               } catch (err) {
-                reject(err instanceof Error ? err : new Error(String(err)));
+                rejectWithCleanup(err instanceof Error ? err : new Error(String(err)));
               }
             }).then((unlisten) => {
               // Detach the listener once the promise settles so a later
               // unrelated deeplink does not silently re-trigger login UI.
               tokensPromise.finally(() => unlisten()).catch(() => undefined);
+            }).catch((err) => {
+              rejectWithCleanup(err instanceof Error ? err : new Error(String(err)));
             });
           },
         );
+        void tokensPromise.catch(() => undefined);
 
-        await open(loginUrl.toString());
+        await open(loginUrl);
         const tokens = await tokensPromise;
         if (isCancelled) return;
 
@@ -159,6 +189,7 @@
         if (!isCancelled) {
           console.error('[UserLoginStatus] Desktop login failed:', error);
         }
+        rejectPending?.(error instanceof Error ? error : new Error(String(error)));
       } finally {
         if (!isCancelled) {
           isLoggingIn = false;

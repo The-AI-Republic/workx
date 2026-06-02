@@ -1101,6 +1101,15 @@ export class ServerAgentBootstrap {
             return null;
           }
         },
+        refreshAuthTokens: async (refreshToken: string) => {
+          try {
+            const { refreshDesktopAuthTokens } = await import('@/desktop-runtime/auth/runtimeProfileFetch');
+            return await refreshDesktopAuthTokens(refreshToken);
+          } catch (err) {
+            console.warn('[ServerAgentBootstrap] runtime token refresh failed:', err);
+            return null;
+          }
+        },
         // ChatGPT OAuth: runtime owns the 127.0.0.1:1455 callback server
         // (was Rust `start_oauth_callback_server`, now deleted) and the token
         // storage (was WebView `ChatGPTOAuthDesktopStorage` → keytar).
@@ -1200,9 +1209,40 @@ export class ServerAgentBootstrap {
     const config = agentConfig.getConfig();
     const useOwnApiKey = config.preferences?.useOwnApiKey === true;
     const credentialStore = getCredentialStore();
-    const accessToken = await credentialStore.get('auth', 'access_token').catch(() => null);
+    let accessToken = await credentialStore.get('auth', 'access_token').catch(() => null);
+    const refreshToken = await credentialStore.get('auth', 'refresh_token').catch(() => null);
+    const hadStoredAuth = Boolean(accessToken || refreshToken);
+    let profile: Awaited<ReturnType<typeof import('@/desktop-runtime/auth/runtimeProfileFetch').fetchUserProfileServerSide>> = null;
+    let profileError: string | undefined;
 
-    const shouldUseBackend = Boolean(accessToken && !useOwnApiKey);
+    if (hadStoredAuth) {
+      await this.runtimeState.setAuthState({
+        mode: useOwnApiKey ? 'own_api_key' : 'login',
+        hasToken: true,
+        profileStatus: 'loading',
+        lastError: undefined,
+      });
+      try {
+        const { fetchUserProfileServerSide, refreshDesktopAuthTokens } = await import('@/desktop-runtime/auth/runtimeProfileFetch');
+        profile = accessToken ? await fetchUserProfileServerSide(accessToken) : null;
+        if (!profile && refreshToken) {
+          const refreshed = await refreshDesktopAuthTokens(refreshToken);
+          if (refreshed?.accessToken && refreshed.refreshToken) {
+            await Promise.all([
+              credentialStore.set('auth', 'access_token', refreshed.accessToken),
+              credentialStore.set('auth', 'refresh_token', refreshed.refreshToken),
+            ]);
+            accessToken = refreshed.accessToken;
+            profile = await fetchUserProfileServerSide(accessToken);
+          }
+        }
+      } catch (error) {
+        profileError = error instanceof Error ? error.message : String(error);
+      }
+    }
+
+    const hasUsableLogin = Boolean(accessToken && profile);
+    const shouldUseBackend = Boolean(hasUsableLogin && !useOwnApiKey);
     const tokenGetter = shouldUseBackend
       ? async () => getCredentialStore().get('auth', 'access_token')
       : undefined;
@@ -1214,32 +1254,16 @@ export class ServerAgentBootstrap {
     this.currentAuthManager = authManager;
     await this.applyAuthManagerToSessions(authManager);
 
-    if (accessToken) {
+    if (hadStoredAuth) {
       await this.runtimeState.setAuthState({
-        mode: useOwnApiKey ? 'own_api_key' : 'login',
-        hasToken: true,
-        profileStatus: 'loading',
-        lastError: undefined,
+        mode: hasUsableLogin
+          ? useOwnApiKey ? 'own_api_key' : 'login'
+          : useOwnApiKey ? 'own_api_key' : 'none',
+        hasToken: hasUsableLogin,
+        profile,
+        profileStatus: hasUsableLogin ? 'ready' : 'failed',
+        lastError: hasUsableLogin ? undefined : profileError ?? 'Stored desktop login expired or profile unavailable',
       });
-      try {
-        const { fetchUserProfileServerSide } = await import('@/desktop-runtime/auth/runtimeProfileFetch');
-        const profile = await fetchUserProfileServerSide(accessToken);
-        await this.runtimeState.setAuthState({
-          mode: useOwnApiKey ? 'own_api_key' : 'login',
-          hasToken: true,
-          profile,
-          profileStatus: profile ? 'ready' : 'failed',
-          lastError: profile ? undefined : 'Profile unavailable',
-        });
-      } catch (error) {
-        await this.runtimeState.setAuthState({
-          mode: useOwnApiKey ? 'own_api_key' : 'login',
-          hasToken: true,
-          profile: null,
-          profileStatus: 'failed',
-          lastError: error instanceof Error ? error.message : String(error),
-        });
-      }
     } else {
       await this.runtimeState.setAuthState({
         mode: useOwnApiKey ? 'own_api_key' : 'none',

@@ -56,6 +56,15 @@ export interface AuthServiceDeps {
    */
   fetchUserProfile?: (accessToken: string) => Promise<unknown | null>;
 
+  /**
+   * Refresh desktop-owned auth tokens. Used when a stored access token exists
+   * but no longer validates against the profile/session endpoint.
+   */
+  refreshAuthTokens?: (refreshToken: string) => Promise<{
+    accessToken: string;
+    refreshToken: string;
+  } | null>;
+
   /** Runtime-owned desktop auth/access state contract (Track 44). */
   runtimeState?: RuntimeStateController;
 
@@ -113,6 +122,31 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
     return normalizeRuntimeProfile(raw);
   }
 
+  async function validateOrRefreshStoredLogin(credentialStore: ReturnType<NonNullable<AuthServiceDeps['getCredentialStore']>>): Promise<{
+    accessToken: string | null;
+    profile: RuntimeUserProfileSnapshot | null;
+    refreshed: boolean;
+  }> {
+    let accessToken = await credentialStore.get(AUTH_SERVICE, ACCESS_TOKEN_ACCOUNT);
+    const refreshToken = await credentialStore.get(AUTH_SERVICE, REFRESH_TOKEN_ACCOUNT);
+    let profile = accessToken ? await refreshProfile(accessToken) : null;
+
+    if (!profile && refreshToken && deps.refreshAuthTokens && (deps.fetchUserProfile || !accessToken)) {
+      const refreshed = await deps.refreshAuthTokens(refreshToken);
+      if (refreshed?.accessToken && refreshed.refreshToken) {
+        await Promise.all([
+          credentialStore.set(AUTH_SERVICE, ACCESS_TOKEN_ACCOUNT, refreshed.accessToken),
+          credentialStore.set(AUTH_SERVICE, REFRESH_TOKEN_ACCOUNT, refreshed.refreshToken),
+        ]);
+        accessToken = refreshed.accessToken;
+        profile = await refreshProfile(accessToken);
+        return { accessToken, profile, refreshed: true };
+      }
+    }
+
+    return { accessToken, profile, refreshed: false };
+  }
+
   return {
     /**
      * Complete a desktop OAuth login by accepting tokens from the WebView and
@@ -160,12 +194,13 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
       let user: RuntimeUserProfileSnapshot | null = null;
       try {
         user = await refreshProfile(accessToken);
+        const profileStatus = user ? 'ready' : deps.fetchUserProfile ? 'failed' : 'idle';
         await deps.runtimeState?.setAuthState({
           mode: 'login',
           hasToken: true,
           profile: user,
-          profileStatus: user ? 'ready' : 'failed',
-          lastError: user ? undefined : 'Profile unavailable',
+          profileStatus,
+          lastError: user || !deps.fetchUserProfile ? undefined : 'Profile unavailable',
         });
       } catch (error) {
         await deps.runtimeState?.setAuthState({
@@ -202,7 +237,8 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
       }
       const credentialStore = deps.getCredentialStore();
       const accessToken = await credentialStore.get(AUTH_SERVICE, ACCESS_TOKEN_ACCOUNT);
-      if (!accessToken) {
+      const refreshToken = await credentialStore.get(AUTH_SERVICE, REFRESH_TOKEN_ACCOUNT);
+      if (!accessToken && !refreshToken) {
         if (deps.runtimeState) {
           await deps.runtimeState.setAuthState({
             mode: 'none',
@@ -217,9 +253,10 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
       }
 
       const existingAuthState = deps.runtimeState?.getAuthState();
+      const mode = existingAuthState?.mode === 'own_api_key' ? 'own_api_key' : 'login';
       if (deps.runtimeState && existingAuthState?.profileStatus !== 'ready') {
         await deps.runtimeState.setAuthState({
-          mode: 'login',
+          mode,
           hasToken: true,
           profileStatus: 'loading',
           lastError: undefined,
@@ -228,35 +265,54 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
 
       let user: RuntimeUserProfileSnapshot | null = null;
       try {
-        user = await refreshProfile(accessToken);
+        const validated = await validateOrRefreshStoredLogin(credentialStore);
+        user = validated.profile;
+        const hasUsableToken = Boolean(validated.accessToken && (user || !deps.fetchUserProfile));
+        const profileStatus = user ? 'ready' : deps.fetchUserProfile ? 'failed' : 'idle';
         if (deps.runtimeState) {
           await deps.runtimeState.setAuthState({
-            mode: 'login',
-            hasToken: true,
+            mode: hasUsableToken ? mode : mode === 'own_api_key' ? 'own_api_key' : 'none',
+            hasToken: hasUsableToken,
             profile: user,
-            profileStatus: user ? 'ready' : 'failed',
-            lastError: user ? undefined : 'Profile unavailable',
+            profileStatus: hasUsableToken ? profileStatus : 'failed',
+            lastError: hasUsableToken ? undefined : 'Stored desktop login expired or profile unavailable',
           });
           return deps.runtimeState.getAuthState();
+        }
+        if (!hasUsableToken) {
+          return {
+            hasValidToken: false,
+            hasToken: false,
+            user: null,
+            profile: null,
+            profileStatus: 'failed',
+          };
         }
       } catch (error) {
         if (deps.runtimeState) {
           await deps.runtimeState.setAuthState({
-            mode: 'login',
-            hasToken: true,
+            mode: mode === 'own_api_key' ? 'own_api_key' : 'none',
+            hasToken: false,
             profile: null,
             profileStatus: 'failed',
             lastError: error instanceof Error ? error.message : String(error),
           });
           return deps.runtimeState.getAuthState();
         }
+        return {
+          hasValidToken: false,
+          hasToken: false,
+          user: null,
+          profile: null,
+          profileStatus: 'failed',
+        };
       }
       return {
         hasValidToken: true,
         hasToken: true,
         user,
         profile: user,
-        profileStatus: user ? 'ready' : 'failed',
+        profileStatus: user ? 'ready' : deps.fetchUserProfile ? 'failed' : 'idle',
       };
     },
 

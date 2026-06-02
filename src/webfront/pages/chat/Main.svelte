@@ -84,6 +84,14 @@
       config.updateConfig({ preferences: { ...agentConfig.preferences, zoomLevel: 100 } });
     }).catch(() => {});
   }
+
+  function requestLogin() {
+    if (platform.platformName === 'desktop') {
+      window.dispatchEvent(new CustomEvent('applepi:request-login'));
+      return;
+    }
+    window.open(getLoginPageUrl(), '_blank', 'noopener,noreferrer');
+  }
   let compactionNotification: { show: boolean; tokensSaved: number; compactionCount: number; isWarning: boolean } = $state({
     show: false,
     tokensSaved: 0,
@@ -1643,10 +1651,10 @@
             </p>
             <ul class="m-0 pl-6 list-disc">
               <li class="mb-1">
-                <a href={getLoginPageUrl()} target="_blank" rel="noopener noreferrer"
-                  class="underline {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-bright-green hover:text-term-yellow'}">
+                <button onclick={requestLogin}
+                  class="bg-none border-none p-0 underline cursor-pointer text-left text-[inherit] {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-bright-green hover:text-term-yellow'}">
                   {$_t("Log in to your account")}
-                </a>
+                </button>
               </li>
               <li class="mb-1">
                 <button onclick={() => push('/settings')}

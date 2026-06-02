@@ -20,6 +20,13 @@ export interface RuntimeUserProfile {
   userType?: number;
 }
 
+export interface RuntimeDesktopTokens {
+  accessToken: string;
+  refreshToken: string;
+  tokenType?: string;
+  expiresIn?: number;
+}
+
 function decodeBase64UrlJson(segment: string): Record<string, unknown> | null {
   try {
     const base64 = segment.replace(/-/g, '+').replace(/_/g, '/');
@@ -34,6 +41,28 @@ function decodeBase64UrlJson(segment: string): Record<string, unknown> | null {
 
 function pickString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+}
+
+function normalizeProfile(data: Record<string, unknown>): RuntimeUserProfile | null {
+  const profile = {
+    id: pickString(data.id) ?? pickString(data.user_id),
+    name:
+      pickString(data.firstName) ??
+      pickString(data.name) ??
+      pickString(data.display_name) ??
+      pickString(data.username),
+    email: pickString(data.email),
+    avatar:
+      pickString(data.avatar) ??
+      pickString(data.avatar_url) ??
+      pickString(data.picture),
+    userType: typeof data.user_type === 'number'
+      ? data.user_type
+      : typeof data.userType === 'number'
+        ? data.userType
+        : 0,
+  };
+  return profile.id || profile.name || profile.email ? profile : null;
 }
 
 export function profileFromAccessToken(accessToken: string): RuntimeUserProfile | null {
@@ -58,6 +87,30 @@ export function profileFromAccessToken(accessToken: string): RuntimeUserProfile 
   };
 }
 
+async function fetchJsonRecord(url: string, init: RequestInit): Promise<{
+  ok: boolean;
+  status: number;
+  statusText: string;
+  data: Record<string, unknown> | null;
+}> {
+  const response = await fetch(url, init);
+  if (!response.ok) {
+    return {
+      ok: false,
+      status: response.status,
+      statusText: response.statusText,
+      data: null,
+    };
+  }
+  const data = await response.json();
+  return {
+    ok: true,
+    status: response.status,
+    statusText: response.statusText,
+    data: data && typeof data === 'object' ? data as Record<string, unknown> : null,
+  };
+}
+
 /**
  * Resolve the base URL for the auth backend. Identical default to the
  * webfront's `HOME_PAGE_BASE_URL`, overridable via env for tests / staging.
@@ -78,34 +131,75 @@ export async function fetchUserProfileServerSide(
   if (!accessToken) return null;
   const baseUrl = resolveAuthBaseUrl();
   try {
-    const response = await fetch(`${baseUrl}/api/v1/users/profile`, {
+    const desktopSession = await fetchJsonRecord(`${baseUrl}/auth/desktop/session`, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
     });
-    if (!response.ok) {
-      console.warn(`[runtime-auth] profile fetch failed from ${baseUrl}: ${response.status} ${response.statusText}`);
+    if (desktopSession.ok) {
+      return desktopSession.data ? normalizeProfile(desktopSession.data) : null;
+    }
+
+    // Older home-page deployments did not expose the desktop session endpoint.
+    // Fall back only for that case; auth failures should remain auth failures.
+    if (desktopSession.status !== 404) {
+      console.warn(`[runtime-auth] desktop session fetch failed from ${baseUrl}: ${desktopSession.status} ${desktopSession.statusText}`);
       return null;
     }
-    const data = (await response.json()) as Record<string, unknown>;
-    return {
-      id: (data.id as string | undefined) ?? (data.user_id as string | undefined),
-      name:
-        (data.firstName as string | undefined) ??
-        (data.name as string | undefined) ??
-        (data.display_name as string | undefined) ??
-        (data.username as string | undefined),
-      email: data.email as string | undefined,
-      avatar:
-        (data.avatar as string | undefined) ??
-        (data.avatar_url as string | undefined) ??
-        (data.picture as string | undefined),
-      userType: (data.user_type as number | undefined) ?? 0,
-    };
+
+    const profileResponse = await fetchJsonRecord(`${baseUrl}/api/v1/users/profile`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!profileResponse.ok) {
+      console.warn(`[runtime-auth] profile fetch failed from ${baseUrl}: ${profileResponse.status} ${profileResponse.statusText}`);
+      return null;
+    }
+    return profileResponse.data ? normalizeProfile(profileResponse.data) : null;
   } catch (error) {
     console.warn(`[runtime-auth] profile fetch threw from ${baseUrl}:`, error);
     return profileFromAccessToken(accessToken);
+  }
+}
+
+export async function refreshDesktopAuthTokens(
+  refreshToken: string,
+): Promise<RuntimeDesktopTokens | null> {
+  if (!refreshToken) return null;
+  const baseUrl = resolveAuthBaseUrl();
+  try {
+    const response = await fetch(`${baseUrl}/auth/desktop/refresh`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${refreshToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!response.ok) {
+      console.warn(`[runtime-auth] desktop token refresh failed from ${baseUrl}: ${response.status} ${response.statusText}`);
+      return null;
+    }
+    const data = await response.json() as Record<string, unknown>;
+    const accessToken = pickString(data.access_token);
+    const nextRefreshToken = pickString(data.refresh_token);
+    if (!accessToken || !nextRefreshToken) {
+      console.warn(`[runtime-auth] desktop token refresh from ${baseUrl} returned incomplete tokens`);
+      return null;
+    }
+    return {
+      accessToken,
+      refreshToken: nextRefreshToken,
+      tokenType: pickString(data.token_type),
+      expiresIn: typeof data.expires_in === 'number' ? data.expires_in : undefined,
+    };
+  } catch (error) {
+    console.warn(`[runtime-auth] desktop token refresh threw from ${baseUrl}:`, error);
+    return null;
   }
 }
