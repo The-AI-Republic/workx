@@ -130,6 +130,31 @@ install_for_current_os() {
   esac
 }
 
+desktop_env_value() {
+  local key="$1"
+  local env_file="$ROOT_DIR/src/desktop/.env"
+  local line value
+  if [[ ! -f "$env_file" ]]; then
+    return 0
+  fi
+  line="$(grep -E "^[[:space:]]*${key}=" "$env_file" | tail -n 1 || true)"
+  if [[ -z "$line" ]]; then
+    return 0
+  fi
+  value="${line#*=}"
+  value="${value%\"}"
+  value="${value#\"}"
+  value="${value%\'}"
+  value="${value#\'}"
+  printf '%s\n' "$value"
+}
+
+EFFECTIVE_HOME_PAGE_URL="${VITE_HOME_PAGE_BASE_URL:-$(desktop_env_value VITE_HOME_PAGE_BASE_URL)}"
+echo "ApplePi build home page URL: ${EFFECTIVE_HOME_PAGE_URL:-https://airepublic.com}"
+if [[ -n "${APPLEPI_HOME_PAGE_BASE_URL:-}" && -z "${VITE_HOME_PAGE_BASE_URL:-}" ]]; then
+  echo "Note: APPLEPI_HOME_PAGE_BASE_URL affects runtime Node code only; set VITE_HOME_PAGE_BASE_URL for the desktop WebView build."
+fi
+
 cd "$ROOT_DIR/tauri"
 
 if [[ "${APPLEPI_SIGN:-0}" == "1" ]]; then

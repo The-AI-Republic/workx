@@ -133,6 +133,25 @@ npm run tauri:build
 
 Output: `tauri/target/release/bundle/{deb,appimage,nsis,dmg}/`
 
+#### Local Desktop Package Testing
+
+For a normal desktop package that talks to production login:
+
+```bash
+./build.sh --install
+```
+
+For local homepage/login testing through `https://localhome.airepublic.com`:
+
+```bash
+VITE_HOME_PAGE_BASE_URL=https://localhome.airepublic.com ./build.sh --install
+```
+
+You can also set `VITE_HOME_PAGE_BASE_URL=https://localhome.airepublic.com` in
+`src/desktop/.env`. The desktop web UI and runtime sidecar read the homepage URL
+during the build, so a package built with `VITE_HOME_PAGE_BASE_URL=https://airepublic.com`
+will keep opening production until it is rebuilt with the local value.
+
 ---
 
 ### Apple Pi Server (Headless Mode)
