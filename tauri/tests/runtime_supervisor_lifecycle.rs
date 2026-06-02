@@ -343,19 +343,41 @@ async fn orphan_cleanup_on_supervisor_drop() {
     let pid = child.id().expect("child pid");
     drop(child);
     // kill_on_drop signals the child but doesn't synchronously reap.
-    // Wait briefly, then poll until the process is gone or we time out.
+    // Wait briefly, then poll until the process is no longer running or we
+    // time out. A short-lived killed child can remain as a zombie until Tokio's
+    // background reaper collects it, especially under coverage instrumentation.
     let deadline = Instant::now() + Duration::from_secs(2);
     while Instant::now() < deadline {
-        if !process_is_alive(pid) {
+        if !process_is_running(pid) {
             return;
         }
         tokio::time::sleep(Duration::from_millis(50)).await;
     }
-    panic!("orphan child pid {} still alive after drop", pid);
+    panic!("orphan child pid {} still running after drop", pid);
+}
+
+#[cfg(target_os = "linux")]
+fn process_is_running(pid: u32) -> bool {
+    let stat_path = format!("/proc/{pid}/stat");
+    if let Ok(stat) = std::fs::read_to_string(stat_path) {
+        if let Some(close_paren) = stat.rfind(')') {
+            let after_comm = stat[close_paren + 1..].trim_start();
+            if after_comm.starts_with('Z') {
+                return false;
+            }
+            return true;
+        }
+    }
+    posix_process_exists(pid)
+}
+
+#[cfg(all(unix, not(target_os = "linux")))]
+fn process_is_running(pid: u32) -> bool {
+    posix_process_exists(pid)
 }
 
 #[cfg(unix)]
-fn process_is_alive(pid: u32) -> bool {
+fn posix_process_exists(pid: u32) -> bool {
     // SAFETY: kill(pid, 0) is the standard POSIX liveness check; it never
     // alters the process, just reports whether a signal could be delivered.
     // Returns 0 if the process exists, -1 with ESRCH if not.
@@ -367,7 +389,7 @@ fn process_is_alive(pid: u32) -> bool {
 }
 
 #[cfg(not(unix))]
-fn process_is_alive(_pid: u32) -> bool {
+fn process_is_running(_pid: u32) -> bool {
     // Best-effort: this test only fires on Unix CI. Returning false here
     // means the test will pass on non-Unix without actually verifying.
     false
