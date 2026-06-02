@@ -102,7 +102,10 @@ let _instance: ServerAgentBootstrap | null = null;
 export interface ServerAgentBootstrapOptions {
   profile?: 'server' | 'desktop-runtime';
   dataDir?: string;
+  /** Primary channel (UI/runtime transport). Kept for backward compatibility. */
   channel?: ChannelAdapter;
+  /** Additional channels to register at initialize() time (e.g. app-server). */
+  channels?: ChannelAdapter[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -118,6 +121,12 @@ export class ServerAgentBootstrap {
   // /plugin reload, matching claudy's asymmetric enable semantics).
   private pluginRegistry: import('@/core/plugins/PluginRegistry').PluginRegistry | null = null;
   private channel: ChannelAdapter | null = null;
+  /** All registered channels by channelId (multi-channel support). */
+  private channels = new Map<string, ChannelAdapter>();
+  /** The primary channel id — events for unowned sessions route here. */
+  private primaryChannelId: string | null = null;
+  /** sessionId → owning channelId, so events route to the originating channel. */
+  private sessionOwners = new Map<string, string>();
   private sessionIndex: SessionIndex | null = null;
   private transcriptStore: TranscriptStore | null = null;
   private backupManager: BackupManager | null = null;
@@ -141,6 +150,55 @@ export class ServerAgentBootstrap {
   private initialized = false;
 
   constructor(private readonly options: ServerAgentBootstrapOptions = {}) {}
+
+  /**
+   * Record the channel that owns a session so agent events for that session are
+   * routed only to the originating channel. No-op when channelId is absent.
+   */
+  private recordSessionOwner(sessionId: string, channelId?: string): void {
+    if (channelId && this.channels.has(channelId)) {
+      this.sessionOwners.set(sessionId, channelId);
+    }
+  }
+
+  /**
+   * Register an additional channel after initialization (e.g. the app-server
+   * channel started once config is read). Idempotent per channelId.
+   */
+  async registerChannel(channel: ChannelAdapter): Promise<void> {
+    if (this.channels.has(channel.channelId)) return;
+    const channelManager = getChannelManager();
+    await channelManager.registerChannel(channel);
+    this.channels.set(channel.channelId, channel);
+    if (!this.primaryChannelId) this.primaryChannelId = channel.channelId;
+  }
+
+  /**
+   * Unregister a previously registered channel and drop any session ownership
+   * routed to it. The primary channel cannot be unregistered.
+   */
+  async unregisterChannel(channelId: string): Promise<void> {
+    if (channelId === this.primaryChannelId) {
+      throw new Error('Cannot unregister the primary channel');
+    }
+    if (!this.channels.has(channelId)) return;
+    const channelManager = getChannelManager();
+    await channelManager.unregisterChannel(channelId);
+    this.channels.delete(channelId);
+    for (const [sessionId, owner] of this.sessionOwners) {
+      if (owner === channelId) this.sessionOwners.delete(sessionId);
+    }
+  }
+
+  /**
+   * Create a fresh agent session and return its id. Used by callers such as the
+   * app-server that need a dedicated session per external connection.
+   */
+  async createSession(): Promise<string> {
+    if (!this.registry) throw new Error('AgentRegistry not initialized');
+    const session = await this.registry.createSession({ type: 'primary' });
+    return session.sessionId;
+  }
 
   /**
    * Initialize the server agent system.
@@ -398,10 +456,16 @@ export class ServerAgentBootstrap {
           return agent;
         },
         eventDispatcherFactory: (sessionId) => (event) => {
-          // Dispatch to ServerChannel -> WebSocket clients with sessionId
-          channelManager.dispatchEvent({ msg: event.msg, sessionId }, this.channel!.channelId).catch((error) => {
-            console.error('[ServerAgentBootstrap] Failed to dispatch event:', error);
-          });
+          // Route to the channel that owns this session (UI vs app-server
+          // isolation). Falls back to the primary channel for sessions with no
+          // recorded owner (e.g. the initial primary session before any turn).
+          const targetChannelId =
+            this.sessionOwners.get(sessionId) ?? this.primaryChannelId ?? this.channel?.channelId;
+          if (targetChannelId) {
+            channelManager.dispatchEvent({ msg: event.msg, sessionId }, targetChannelId).catch((error) => {
+              console.error('[ServerAgentBootstrap] Failed to dispatch event:', error);
+            });
+          }
 
           // Also log to transcript store (Track 24.5: secret-redacted at rest —
           // non-blocking, the entry is kept, only detected secrets become ***).
@@ -436,6 +500,9 @@ export class ServerAgentBootstrap {
         if (!targetSession?.agent) {
           throw new Error(`Session not found: ${context.sessionId}`);
         }
+        // Record channel ownership so agent events route to the originating
+        // channel only (UI vs app-server isolation).
+        this.recordSessionOwner(context.sessionId, context.channelId);
         console.log('[ServerAgentBootstrap] Processing submission:', op.type, 'session:', context.sessionId);
         // Track 13: thread channel origin so the input funnel can apply the
         // bridge-safe slash gate (connector input must not leak raw /config).
@@ -446,8 +513,16 @@ export class ServerAgentBootstrap {
       };
 
       channelManager.setAgentHandler(agentHandler);
-      await channelManager.registerChannel(this.channel);
-      console.log('[ServerAgentBootstrap] Channel registered');
+
+      // Register the primary channel plus any additional channels (multi-channel
+      // support — e.g. the desktop app-server channel alongside the UI channel).
+      const extraChannels = this.options.channels ?? [];
+      this.primaryChannelId = this.channel.channelId;
+      for (const ch of [this.channel, ...extraChannels]) {
+        await channelManager.registerChannel(ch);
+        this.channels.set(ch.channelId, ch);
+      }
+      console.log(`[ServerAgentBootstrap] Channel(s) registered: ${[...this.channels.keys()].join(', ')}`);
 
       // 8. Initialize persistence
       this.sessionIndex = new SessionIndex(dataDir);
@@ -1289,9 +1364,13 @@ export class ServerAgentBootstrap {
         if (!this.registry) throw new Error('AgentRegistry not initialized');
         const targetSession = this.registry.getSession(context.sessionId);
         if (!targetSession?.agent) throw new Error(`Session not found: ${context.sessionId}`);
+        // Record which channel owns this session so agent events route back to
+        // the originating channel only (UI vs app-server isolation).
+        this.recordSessionOwner(context.sessionId, context.channelId);
         // Track 13: derive origin from the chat channel (on-host WS chat maps
         // to `local` and skips the gate; remote/relay maps to `remote`).
-        await targetSession.agent.submitOperation(op, {
+        // The submission id is returned and surfaced to callers as runId.
+        return targetSession.agent.submitOperation(op, {
           tabId: context.tabId,
           origin: deriveInputOrigin(context),
         });
