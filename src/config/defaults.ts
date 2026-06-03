@@ -174,9 +174,25 @@ export function getDefaultAgentConfig(): IAgentConfig {
     tools: { ...DEFAULT_TOOLS_CONFIG },
     storage: { ...DEFAULT_STORAGE_CONFIG },
     approval: { ...DEFAULT_APPROVAL_CONFIG },
-    enabledPlugins: {}
+    enabledPlugins: {},
+    appServer: { ...DEFAULT_APP_SERVER_CONFIG }
   };
 }
+
+/** Default app-server config — disabled, loopback, token-required. */
+export const DEFAULT_APP_SERVER_CONFIG = {
+  enabled: false,
+  transport: 'websocket' as const,
+  bindHost: '127.0.0.1',
+  port: 18101,
+  requireAuth: true,
+  rejectBrowserOrigins: true,
+  allowLan: false,
+  maxConnections: 16,
+  maxPayloadBytes: 1_048_576,
+  maxBufferedBytes: 4_194_304,
+  requestQueueCapacity: 128,
+};
 
 
 // Storage keys

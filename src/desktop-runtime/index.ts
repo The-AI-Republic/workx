@@ -19,6 +19,7 @@ import {
 } from './protocol/controlBridge';
 import { StdioRuntimeChannel } from './channels/StdioRuntimeChannel';
 import { PiRuntimeBootstrap } from './PiRuntimeBootstrap';
+import { DesktopAppServerManager } from './app-server/DesktopAppServerManager';
 
 async function loadHost(): Promise<DesktopRuntimeHost> {
   const raw = process.env.APPLEPI_DESKTOP_RUNTIME_HOST;
@@ -36,6 +37,7 @@ async function main(): Promise<void> {
   setDesktopRuntimeControlBridge(controlBridge);
 
   let bootstrap: PiRuntimeBootstrap | null = null;
+  let appServerManager: DesktopAppServerManager | null = null;
   let helloAcked = false;
 
   const sendHelloOk = (nonce?: string): void => {
@@ -69,7 +71,11 @@ async function main(): Promise<void> {
         carrier.send({ type: 'pong', id: frame.id, ts: Date.now() });
         break;
       case 'shutdown':
-        void bootstrap?.shutdown().finally(() => process.exit(0));
+        void Promise.resolve(appServerManager?.stop('runtime shutdown'))
+          .catch(() => undefined)
+          .finally(() => {
+            void Promise.resolve(bootstrap?.shutdown()).finally(() => process.exit(0));
+          });
         break;
     }
   });
@@ -95,11 +101,21 @@ async function main(): Promise<void> {
   bootstrap = new PiRuntimeBootstrap({ channel });
   await bootstrap.initialize();
 
+  // App-server mode: optional local callable WebSocket endpoint alongside the
+  // UI. Disabled by default; failure here never crashes the runtime.
+  appServerManager = new DesktopAppServerManager({ bootstrap });
+  appServerManager.registerServices();
+  await appServerManager.startFromConfig();
+
   const shutdown = (signal: string) => {
-    void Promise.resolve(bootstrap?.shutdown()).finally(() => {
-      console.error(`[desktop-runtime] shutdown after ${signal}`);
-      process.exit(0);
-    });
+    void Promise.resolve(appServerManager?.stop('runtime shutdown'))
+      .catch(() => undefined)
+      .finally(() => {
+        void Promise.resolve(bootstrap?.shutdown()).finally(() => {
+          console.error(`[desktop-runtime] shutdown after ${signal}`);
+          process.exit(0);
+        });
+      });
   };
 
   process.on('SIGTERM', () => shutdown('SIGTERM'));
