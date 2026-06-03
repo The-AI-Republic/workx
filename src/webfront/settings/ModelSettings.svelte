@@ -12,6 +12,7 @@
   import { LLM_API_URL } from '../lib/constants';
   import { t, _t } from '../lib/i18n';
   import { getInitializedUIClient } from '@/core/messaging';
+  import type { AgentAccessState } from '@/core/services/runtime-state';
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
   import { platform } from '../stores/platformStore';
@@ -124,16 +125,19 @@
     chatgptOAuthSigningIn = true;
     chatgptOAuthError = '';
     try {
-      const { ChatGPTOAuthService } = await import('@/core/auth/ChatGPTOAuthService');
-
       if (platform.platformName === 'desktop') {
-        const { ChatGPTOAuthDesktopFlow } = await import('@/desktop/auth/ChatGPTOAuthDesktopFlow');
-        const { ChatGPTOAuthDesktopStorage } = await import('@/desktop/auth/ChatGPTOAuthDesktopStorage');
-        const storage = new ChatGPTOAuthDesktopStorage();
-        const oauthService = new ChatGPTOAuthService(storage);
-        const flow = new ChatGPTOAuthDesktopFlow(oauthService);
-        await flow.login();
+        // Track 43: the runtime owns the OAuth callback HTTP server and the
+        // token storage. The UI just asks for the auth URL, opens it, and
+        // awaits completion.
+        const client = await getInitializedUIClient();
+        const { authUrl } = await client.serviceRequest<{ authUrl: string }>(
+          'auth.chatgpt.startLogin',
+        );
+        const { open } = await import('@tauri-apps/plugin-shell');
+        await open(authUrl);
+        await client.serviceRequest('auth.chatgpt.awaitCompletion');
       } else {
+        const { ChatGPTOAuthService } = await import('@/core/auth/ChatGPTOAuthService');
         const { ChatGPTOAuthExtensionFlow } = await import('@/extension/auth/ChatGPTOAuthExtensionFlow');
         const { ChatGPTOAuthExtensionStorage } = await import('@/extension/auth/ChatGPTOAuthExtensionStorage');
         const storage = new ChatGPTOAuthExtensionStorage();
@@ -171,21 +175,29 @@
     }
   }
 
+  /**
+   * Extension-only OAuth service factory. Desktop uses the runtime's
+   * `auth.chatgpt.*` services instead (the runtime owns ChatGPT tokens
+   * after Track 43's cutover).
+   */
   async function getChatGPTOAuthService() {
     const { ChatGPTOAuthService } = await import('@/core/auth/ChatGPTOAuthService');
     if (platform.platformName === 'desktop') {
-      const { ChatGPTOAuthDesktopStorage } = await import('@/desktop/auth/ChatGPTOAuthDesktopStorage');
-      return new ChatGPTOAuthService(new ChatGPTOAuthDesktopStorage());
-    } else {
-      const { ChatGPTOAuthExtensionStorage } = await import('@/extension/auth/ChatGPTOAuthExtensionStorage');
-      return new ChatGPTOAuthService(new ChatGPTOAuthExtensionStorage());
+      throw new Error('Desktop ChatGPT OAuth runs in the runtime; call auth.chatgpt.* services instead');
     }
+    const { ChatGPTOAuthExtensionStorage } = await import('@/extension/auth/ChatGPTOAuthExtensionStorage');
+    return new ChatGPTOAuthService(new ChatGPTOAuthExtensionStorage());
   }
 
   async function handleChatGPTDisconnect() {
     try {
-      const oauthService = await getChatGPTOAuthService();
-      await oauthService.logout();
+      if (platform.platformName === 'desktop') {
+        const client = await getInitializedUIClient();
+        await client.serviceRequest('auth.chatgpt.logout');
+      } else {
+        const oauthService = await getChatGPTOAuthService();
+        await oauthService.logout();
+      }
       chatgptOAuthConnected = false;
 
       // Revert authMethod to api_key
@@ -209,6 +221,14 @@
 
   async function checkChatGPTOAuthStatus() {
     try {
+      if (platform.platformName === 'desktop') {
+        const client = await getInitializedUIClient();
+        const { connected } = await client.serviceRequest<{ connected: boolean }>(
+          'auth.chatgpt.isConnected',
+        );
+        chatgptOAuthConnected = connected;
+        return;
+      }
       const oauthService = await getChatGPTOAuthService();
       const isAuth = await oauthService.isAuthenticated();
       chatgptOAuthConnected = isAuth;
@@ -601,17 +621,7 @@
 
     try {
       const newValue = !useOwnApiKey;
-      useOwnApiKey = newValue;
       showApiKeyWarning = false; // Reset warning when switching modes
-
-      // Update config preferences
-      const config = settingsConfig.getConfig();
-      await settingsConfig.updateConfig({
-        preferences: {
-          ...config.preferences,
-          useOwnApiKey: newValue,
-        },
-      });
 
       // Send updated auth state to service worker
       // useOwnApiKey=false means route through backend
@@ -620,7 +630,24 @@
         useOwnApiKey: newValue,
       };
 
-      await (await getInitializedUIClient()).serviceRequest('agent.initAuth', authPayload);
+      const response = await (await getInitializedUIClient()).serviceRequest<{
+        success: boolean;
+        access?: AgentAccessState;
+      }>('agent.initAuth', authPayload);
+      if (!response?.success) {
+        throw new Error('Runtime rejected API mode update');
+      }
+
+      // Persist the user's preference after the runtime confirms the effective
+      // access state. The runtime remains the source of truth for display.
+      const config = settingsConfig.getConfig();
+      await settingsConfig.updateConfig({
+        preferences: {
+          ...config.preferences,
+          useOwnApiKey: newValue,
+        },
+      });
+        useOwnApiKey = response.access ? response.access.mode === 'api_key' : newValue;
 
       getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(err => console.warn('[ModelSettings] Failed to send configUpdate:', err));
 
@@ -635,7 +662,6 @@
       });
     } catch (error) {
       console.error('[ModelSettings] Failed to toggle useOwnApiKey:', error);
-      useOwnApiKey = !useOwnApiKey; // Revert on error
       showMessage(t('Failed to update API mode'), 'error');
     }
   }

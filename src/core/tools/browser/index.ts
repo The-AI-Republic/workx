@@ -35,13 +35,13 @@ export async function createBrowserController(tabId?: number): Promise<BrowserCo
     );
     return new ExtensionBrowserController(tabId);
   } else {
-    const { CDPBrowserController } = await import(
-      // @ts-expect-error - desktop-only module, resolved at build time
-      '@/desktop/tools/browser/CDPBrowserController'
+    // Track 43: native CDP browser control was removed; the desktop
+    // builtin MCP server (chrome-devtools-mcp) is the only browser
+    // automation surface now. Calling this factory in desktop mode is a
+    // bug — the agent should route through MCP tools instead.
+    throw new Error(
+      'Desktop native browser controller is removed; use the MCP browser server tools instead.',
     );
-    const controller = new CDPBrowserController();
-    await controller.initialize();
-    return controller;
   }
 }
 
@@ -64,9 +64,8 @@ export async function createDebuggerClient(): Promise<DebuggerClient> {
     );
     return new ChromeDebuggerClient();
   } else {
-    const { CDPDebuggerClient } = await import(
-      '@/desktop/tools/browser/CDPDebuggerClient'
+    throw new Error(
+      'Desktop CDP debugger client is removed; the runtime sidecar drives the chrome-devtools-mcp MCP server instead.',
     );
-    return new CDPDebuggerClient();
   }
 }

@@ -1,8 +1,9 @@
 <script lang="ts">
   import Fuse from 'fuse.js';
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { settingsRegistry, type SettingsSearchItem } from '../settingsSearchRegistry';
   import { _t } from '../../lib/i18n';
+  import { registerShortcut, registerShortcutContext } from '../../shortcuts/useShortcut';
 
   let {
     isDesktop = false,
@@ -37,6 +38,43 @@
 
   onDestroy(() => {
     if (debounceTimer) clearTimeout(debounceTimer);
+  });
+
+  onMount(() => {
+    const unregisterContext = registerShortcutContext('SettingsSearch', {
+      active: () => document.activeElement === inputElement && query.trim().length > 0,
+    });
+    const unregisterNext = registerShortcut('settingsSearch:next', 'SettingsSearch', () => {
+      const count = visibleResults.length;
+      if (count > 0) {
+        focusedIndex = focusedIndex < count - 1 ? focusedIndex + 1 : 0;
+        scrollFocusedIntoView();
+      }
+    });
+    const unregisterPrevious = registerShortcut('settingsSearch:previous', 'SettingsSearch', () => {
+      const count = visibleResults.length;
+      if (count > 0) {
+        focusedIndex = focusedIndex > 0 ? focusedIndex - 1 : count - 1;
+        scrollFocusedIntoView();
+      }
+    });
+    const unregisterAccept = registerShortcut('settingsSearch:accept', 'SettingsSearch', () => {
+      const count = visibleResults.length;
+      if (focusedIndex >= 0 && focusedIndex < count) {
+        selectResult(visibleResults[focusedIndex].item);
+      }
+    });
+    const unregisterDismiss = registerShortcut('settingsSearch:dismiss', 'SettingsSearch', () => {
+      clearSearch();
+    });
+
+    return () => {
+      unregisterContext();
+      unregisterNext();
+      unregisterPrevious();
+      unregisterAccept();
+      unregisterDismiss();
+    };
   });
 
   /**

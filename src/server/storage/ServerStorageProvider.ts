@@ -2,12 +2,12 @@
  * ServerStorageProvider
  *
  * Server-mode implementation of StorageProvider using better-sqlite3.
- * Analogous to SQLiteStorageProvider (desktop/Tauri) but runs in Node.js.
+ * Analogous to the desktop runtime storage provider but runs in Node.js.
  *
  * - Dynamic import of better-sqlite3
  * - WAL mode for concurrent access
  * - SAVEPOINT transactions
- * - Same table schema as Rust db_storage.rs
+ * - Same table schema as the desktop runtime SQLite adapter
  *
  * @module server/storage/ServerStorageProvider
  */
@@ -43,10 +43,17 @@ const CHUNK_SIZE = 900;
 
 export class ServerStorageProvider implements StorageProvider {
   private db: import('better-sqlite3').Database | null = null;
-  private dataDir: string;
+  private dataDir: string | null;
+  private dbPath: string | null;
 
-  constructor(dataDir: string) {
-    this.dataDir = dataDir;
+  constructor(dataDirOrOptions: string | { dataDir?: string; dbPath?: string }) {
+    if (typeof dataDirOrOptions === 'string') {
+      this.dataDir = dataDirOrOptions;
+      this.dbPath = null;
+    } else {
+      this.dataDir = dataDirOrOptions.dataDir ?? null;
+      this.dbPath = dataDirOrOptions.dbPath ?? null;
+    }
   }
 
   async initialize(): Promise<void> {
@@ -56,12 +63,15 @@ export class ServerStorageProvider implements StorageProvider {
     const { join } = await import('node:path');
     const { existsSync, mkdirSync } = await import('node:fs');
 
-    const dir = join(this.dataDir, 'storage');
+    const dir = this.dbPath
+      ? this.dbPath.replace(/[\\/][^\\/]*$/, '') || '.'
+      : join(this.dataDir ?? '', 'storage');
+    const dbPath = this.dbPath ?? join(dir, 'storage.db');
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
     }
 
-    this.db = new Database(join(dir, 'storage.db'));
+    this.db = new Database(dbPath);
     this.db.pragma('journal_mode = WAL');
     this.db.pragma('foreign_keys = ON');
   }

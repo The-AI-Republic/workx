@@ -1,14 +1,14 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { push } from 'svelte-spa-router';
-  import { userStore, userInitials, getLoginPageUrl } from '../../stores/userStore';
+  import { userStore, userInitials, getDesktopLoginPageUrl, getLoginPageUrl } from '../../stores/userStore';
   import { uiTheme } from '../../stores/themeStore';
   import { platform } from '../../stores/platformStore';
   import { HOME_PAGE_BASE_URL, LLM_API_URL } from '../../lib/constants';
   import Tooltip from './Tooltip.svelte';
   import PopupCard from './PopupCard.svelte';
   import { _t } from '../../lib/i18n';
-  import { fetchUserProfile } from '../../lib/apis';
+  import type { RuntimeAuthState } from '@/core/services/runtime-state';
 
   let isLoggingIn = $state(false);
   let cancelLogin: (() => void) | null = $state(null);
@@ -49,77 +49,153 @@
     }
   }
 
+  onMount(() => {
+    const handleLoginRequest = () => {
+      if (platform.platformName !== 'desktop' || isLoggingIn) return;
+      void openLoginPage();
+    };
+    window.addEventListener('applepi:request-login', handleLoginRequest);
+    return () => window.removeEventListener('applepi:request-login', handleLoginRequest);
+  });
+
   onDestroy(() => {
     hidePromoTooltip();
   });
 
   async function openLoginPage() {
     if (platform.platformName === 'desktop') {
-      // Desktop mode: use DesktopAuthService with deep link OAuth
+      // Desktop mode: open the browser to /login, await the applepi-deeplink
+      // deeplink (Rust → WebView event), and forward both tokens to the
+      // runtime via `auth.completeLogin`. The WebView never touches the OS
+      // keychain after the Track 43 cutover — the runtime owns credentials.
       isLoggingIn = true;
-
-      // Create a cancellation mechanism
       let isCancelled = false;
+      let rejectPending: ((err: Error) => void) | null = null;
+
       cancelLogin = () => {
         isCancelled = true;
         isLoggingIn = false;
         cancelLogin = null;
-        // Reject the pending login promise so the deep link callback cannot
-        // silently authenticate the user after they cancelled.
-        authService.cancelLogin();
+        rejectPending?.(new Error('Login cancelled'));
         console.log('[UserLoginStatus] Login cancelled by user');
       };
 
       try {
-        const { getDesktopAuthService } = await import('@/desktop/auth/DesktopAuthService');
-        const authService = getDesktopAuthService(HOME_PAGE_BASE_URL);
-        await authService.initialize();
-        const session = await authService.login();
+        const [{ open }, { listen }, { getInitializedUIClient }] = await Promise.all([
+          import('@tauri-apps/plugin-shell'),
+          import('@tauri-apps/api/event'),
+          import('@/core/messaging'),
+        ]);
 
-        // Check if cancelled while waiting
+        // 1. Open the home-page login route with our deeplink callback. The
+        // home page handles both fresh Google login and already-authenticated
+        // browser sessions.
+        const loginUrl = getDesktopLoginPageUrl();
+
+        // 2. Subscribe to the applepi-deeplink event from Rust before opening the
+        // browser — Rust emits it as soon as the OS hands us the URL.
+        const tokensPromise = new Promise<{ accessToken: string; refreshToken: string }>(
+          (resolve, reject) => {
+            let settled = false;
+            const timeoutId = setTimeout(() => {
+              rejectWithCleanup(new Error('Login timed out'));
+            }, 300_000);
+            const consumedAuthCallbacks = new Set<string>();
+
+            const resolveWithCleanup = (tokens: { accessToken: string; refreshToken: string }) => {
+              if (settled) return;
+              settled = true;
+              clearTimeout(timeoutId);
+              resolve(tokens);
+            };
+            const rejectWithCleanup = (error: Error) => {
+              if (settled) return;
+              settled = true;
+              clearTimeout(timeoutId);
+              reject(error);
+            };
+            rejectPending = rejectWithCleanup;
+
+            listen<string>('applepi-deeplink', (event) => {
+              try {
+                const urlObj = new URL(event.payload);
+                if (urlObj.host !== 'auth' || urlObj.pathname !== '/callback') {
+                  return;
+                }
+                const dedupeKey = urlObj.toString();
+                if (consumedAuthCallbacks.has(dedupeKey)) {
+                  return;
+                }
+                consumedAuthCallbacks.add(dedupeKey);
+                const accessToken = urlObj.searchParams.get('access_token');
+                const refreshToken = urlObj.searchParams.get('refresh_token');
+                if (!accessToken || !refreshToken) {
+                  rejectWithCleanup(new Error(urlObj.searchParams.get('error') ?? 'Missing tokens'));
+                  return;
+                }
+                resolveWithCleanup({ accessToken, refreshToken });
+              } catch (err) {
+                rejectWithCleanup(err instanceof Error ? err : new Error(String(err)));
+              }
+            }).then((unlisten) => {
+              // Detach the listener once the promise settles so a later
+              // unrelated deeplink does not silently re-trigger login UI.
+              tokensPromise.finally(() => unlisten()).catch(() => undefined);
+            }).catch((err) => {
+              rejectWithCleanup(err instanceof Error ? err : new Error(String(err)));
+            });
+          },
+        );
+        void tokensPromise.catch(() => undefined);
+
+        await open(loginUrl);
+        const tokens = await tokensPromise;
         if (isCancelled) return;
 
-        // Fetch user profile using same API as extension to get accurate userType
-        const accessToken = await authService.getAccessToken();
-        const profile = accessToken ? await fetchUserProfile(accessToken) : null;
+        // 3. Hand tokens to the runtime. The runtime persists them in the
+        // keychain (via the Rust keychain control-frame bridge), creates a
+        // backend-routing AuthManager whose tokenGetter reads from that same
+        // credential store, and pushes the new AuthManager into every
+        // active session's model client.
+        const client = await getInitializedUIClient();
+        const completion = await client.serviceRequest<{
+          success: boolean;
+          state?: RuntimeAuthState;
+          user?: { name?: string | null; email?: string | null; avatar?: string | null; userType?: number } | null;
+        }>(
+          'auth.completeLogin',
+          { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken, backendBaseUrl: LLM_API_URL },
+        );
+        if (isCancelled) return;
 
-        // Update user store - prefer profile data (has accurate userType)
+        // 4. Update the UI userStore from the runtime response. Desktop
+        // profile lookup belongs to the runtime; the WebView does not retry
+        // profile calls with raw tokens after login.
+        const profile = completion?.state?.profile ?? completion?.user ?? null;
         if (profile) {
           userStore.setUser({
-            name: profile.name || session.given_name || session.name || null,
-            email: profile.email || session.email,
-            avatar: profile.avatar || session.picture || null,
-            userType: profile.userType,
+            name: profile.name ?? null,
+            email: profile.email,
+            avatar: profile.avatar ?? null,
+            userType: profile.userType ?? 0,
           });
         } else {
-          // Fallback to session data
-          userStore.setUser({
-            name: session.given_name || session.name || null,
-            email: session.email,
-            avatar: session.picture || null,
-            userType: (session.subscription as any)?.plan_id ?? 0,
-          });
+          // The runtime has accepted and stored the token. Keep the desktop UI
+          // in logged-in state even if the profile endpoint is unavailable.
+          userStore.setUser({ name: null, email: null, avatar: null, userType: 0 });
         }
-
-        // Tell the agent to switch to backend routing mode (direct call, same process)
-        try {
-          const { getDesktopAgentBootstrap } = await import('@/desktop/agent/DesktopAgentBootstrap');
-          const bootstrap = getDesktopAgentBootstrap();
-          const tokenGetter = () => authService.getAccessToken();
-          await bootstrap.setAuthMode(false, LLM_API_URL, tokenGetter);
-          console.log('[UserLoginStatus] Desktop auth mode set to backend routing');
-        } catch (authError) {
-          console.warn('[UserLoginStatus] Failed to set desktop auth mode:', authError);
-        }
+        console.log('[UserLoginStatus] Desktop auth completed via runtime');
       } catch (error) {
         if (!isCancelled) {
           console.error('[UserLoginStatus] Desktop login failed:', error);
         }
+        rejectPending?.(error instanceof Error ? error : new Error(String(error)));
       } finally {
         if (!isCancelled) {
           isLoggingIn = false;
           cancelLogin = null;
         }
+        rejectPending = null;
       }
     } else {
       // Extension mode: open login page in a new tab

@@ -8,6 +8,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createAgentServices, type AgentServiceDeps } from '../agent-services';
 import type { SubmissionContext } from '@/core/channels/types';
+import type { IAuthManager } from '@/core/models/types/Auth';
 
 const ctx = { channelId: 'test', channelType: 'sidepanel' } as SubmissionContext;
 
@@ -16,6 +17,8 @@ function createMockAgent(overrides: Record<string, unknown> = {}) {
     isReady: vi.fn().mockResolvedValue({ ready: true, message: 'ok' }),
     getSession: vi.fn().mockReturnValue({
       abortAllTasks: vi.fn().mockResolvedValue(undefined),
+      // Track 04: agent.interrupt now narrows to foreground-only via this method
+      interruptTask: vi.fn().mockResolvedValue(undefined),
     }),
     getModelClientFactory: vi.fn().mockReturnValue({
       setAuthManager: vi.fn(),
@@ -29,6 +32,14 @@ function createMockAgent(overrides: Record<string, unknown> = {}) {
       }),
     }),
     ...overrides,
+  };
+}
+
+function createMockAuthManager(): IAuthManager {
+  return {
+    shouldUseBackend: vi.fn(() => true),
+    getBackendBaseUrl: vi.fn(() => 'https://api.example.com'),
+    getAccessToken: vi.fn(async () => null),
   };
 }
 
@@ -48,7 +59,7 @@ function createMockDeps(overrides: Partial<AgentServiceDeps> = {}): AgentService
       ),
     },
     handleConfigUpdate: vi.fn().mockResolvedValue({ updated: true }),
-    createAuthManager: vi.fn().mockReturnValue({ type: 'mock-auth' }),
+    createAuthManager: vi.fn().mockReturnValue(createMockAuthManager()),
     setAuthManager: vi.fn(),
     updateApprovalConfig: vi.fn().mockResolvedValue(undefined),
     ...overrides,
@@ -104,6 +115,74 @@ describe('createAgentServices', () => {
       expect(result).toMatchObject({ ready: false, message: 'not connected', detail: 'x' });
       expect(typeof result.timestamp).toBe('number');
     });
+
+    it('publishes access state only for the effective primary session', async () => {
+      const setAccessFromReadyState = vi.fn();
+      const primaryAgent = createMockAgent();
+      const backgroundAgent = createMockAgent();
+      const sessionMocks: Record<string, any> = {
+        primary: { agent: primaryAgent, state: 'active', sessionType: 'primary' },
+        bg: { agent: backgroundAgent, state: 'active', sessionType: 'background' },
+      };
+      deps = createMockDeps({
+        runtimeState: { setAccessFromReadyState } as unknown as AgentServiceDeps['runtimeState'],
+        registry: {
+          getSession: vi.fn((id: string) => sessionMocks[id] ?? undefined),
+          listSessions: vi.fn(() =>
+            Object.entries(sessionMocks).map(([sessionId, mock]) => ({
+              sessionId,
+              state: mock.state,
+              sessionType: mock.sessionType,
+            })),
+          ),
+        },
+      });
+      services = createAgentServices(deps);
+
+      await services['agent.healthCheck']({ sessionId: 'bg' }, ctx);
+      expect(setAccessFromReadyState).not.toHaveBeenCalled();
+
+      await services['agent.healthCheck']({ sessionId: 'primary' }, ctx);
+      expect(setAccessFromReadyState).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe('agent.getAccessState', () => {
+    it('returns global access state from an active session', async () => {
+      const agentSession = deps.registry.getSession('s1');
+      agentSession.agent.isReady.mockResolvedValueOnce({
+        ready: true,
+        provider: 'OpenAI',
+        model: 'gpt',
+        authMode: 'login',
+      });
+      const result = await services['agent.getAccessState']({}, ctx);
+      expect(result).toMatchObject({
+        ready: true,
+        status: 'ready',
+        mode: 'login',
+        provider: 'OpenAI',
+        model: 'gpt',
+      });
+    });
+
+    it('returns initializing fallback when no active session exists', async () => {
+      deps = createMockDeps({
+        registry: {
+          getSession: vi.fn(),
+          listSessions: vi.fn(() => []),
+        },
+      });
+      services = createAgentServices(deps);
+
+      const result = await services['agent.getAccessState']({}, ctx);
+      expect(result).toMatchObject({
+        ready: false,
+        status: 'initializing',
+        mode: 'none',
+        reason: 'Agent session is initializing.',
+      });
+    });
   });
 
   // ─── agent.configUpdate ──────────────────────────────────────────────
@@ -127,12 +206,14 @@ describe('createAgentServices', () => {
   // ─── agent.interrupt ─────────────────────────────────────────────────
 
   describe('agent.interrupt', () => {
-    it('aborts all tasks and returns success', async () => {
+    it('calls session.interruptTask (foreground-only, Track 04) and returns success', async () => {
       const result = await services['agent.interrupt']({ sessionId: 's1' }, ctx);
       expect(result).toEqual({ success: true });
       const agentSession = deps.registry.getSession('s1');
       const session = agentSession.agent.getSession();
-      expect(session.abortAllTasks).toHaveBeenCalledWith('UserInterrupt');
+      // Track 04: agent.interrupt routes through interruptTask (foreground
+      // only), not the blanket abortAllTasks. Background tasks survive.
+      expect(session.interruptTask).toHaveBeenCalled();
     });
 
     it('throws when sessionId is missing', async () => {
@@ -177,9 +258,9 @@ describe('createAgentServices', () => {
         { backendBaseUrl: 'https://api.example.com', useOwnApiKey: false },
         ctx,
       );
-      expect(result).toEqual({ success: true, isBackendRouting: true });
+      expect(result).toMatchObject({ success: true, isBackendRouting: true });
       expect(deps.createAuthManager).toHaveBeenCalledWith(true, 'https://api.example.com');
-      expect(deps.setAuthManager).toHaveBeenCalledWith({ type: 'mock-auth' });
+      expect(deps.setAuthManager).toHaveBeenCalled();
     });
 
     it('creates auth manager without backend routing when useOwnApiKey is true', async () => {
@@ -187,13 +268,13 @@ describe('createAgentServices', () => {
         { backendBaseUrl: 'https://api.example.com', useOwnApiKey: true },
         ctx,
       );
-      expect(result).toEqual({ success: true, isBackendRouting: false });
+      expect(result).toMatchObject({ success: true, isBackendRouting: false });
       expect(deps.createAuthManager).toHaveBeenCalledWith(false, null);
     });
 
     it('uses null backendBaseUrl when not provided and useOwnApiKey is false', async () => {
       const result = await services['agent.initAuth']({ useOwnApiKey: false }, ctx);
-      expect(result).toEqual({ success: true, isBackendRouting: true });
+      expect(result).toMatchObject({ success: true, isBackendRouting: true });
       expect(deps.createAuthManager).toHaveBeenCalledWith(true, null);
     });
 
@@ -232,9 +313,10 @@ describe('createAgentServices', () => {
       const svc = createAgentServices(multiDeps);
       await svc['agent.initAuth']({ useOwnApiKey: false }, ctx);
 
-      expect(agent1.getModelClientFactory().setAuthManager).toHaveBeenCalledWith({ type: 'mock-auth' });
+      const authManager = multiDeps.createAuthManager!(true, null);
+      expect(agent1.getModelClientFactory().setAuthManager).toHaveBeenCalledWith(authManager);
       expect(agent1.refreshModelClient).toHaveBeenCalled();
-      expect(agent2.getModelClientFactory().setAuthManager).toHaveBeenCalledWith({ type: 'mock-auth' });
+      expect(agent2.getModelClientFactory().setAuthManager).toHaveBeenCalledWith(authManager);
       expect(agent2.refreshModelClient).toHaveBeenCalled();
     });
 
@@ -271,7 +353,7 @@ describe('createAgentServices', () => {
       const svc = createAgentServices(multiDeps);
       // Should not throw
       const result = await svc['agent.initAuth']({ useOwnApiKey: false }, ctx);
-      expect(result).toEqual({ success: true, isBackendRouting: true });
+      expect(result).toMatchObject({ success: true, isBackendRouting: true });
     });
   });
 

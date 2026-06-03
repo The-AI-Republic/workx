@@ -158,6 +158,13 @@
     getInitializedUIClient().then(c => c.serviceRequest('session.setMaxConcurrent', { maxConcurrent: value })).catch(() => {
       console.warn('[GeneralSettings] Failed to update max concurrent sessions');
     });
+  }
+
+  // Code-mode workspace root (desktop). Trim; empty ⇒ unset (tools disabled).
+  function handleWorkspaceRootChange(event: Event) {
+    const v = (event.target as HTMLInputElement).value.trim();
+    currentPreferences.workspaceRoot = v.length ? v : undefined;
+    autoSave();
 
     autoSave();
   }
@@ -436,6 +443,41 @@
             ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
             : 'font-terminal text-term-dim-green'}"
         >{$_t("Maximum number of parallel agent sessions, including scheduled tasks")}</div>
+      </div>
+    </div>
+
+    <!-- Code Mode Workspace (desktop) -->
+    <div
+      class="rounded-xl px-5 py-4 border
+        {currentTheme === 'modern'
+          ? 'bg-chat-surface dark:bg-chat-surface-dark border-chat-border dark:border-chat-border-dark'
+          : 'bg-term-bg border-term-dim-green'}"
+    >
+      <div>
+        <label
+          for="workspaceRoot"
+          class="block mb-2 text-sm font-medium
+            {currentTheme === 'modern'
+              ? 'font-chat text-chat-text dark:text-chat-text-dark'
+              : 'font-terminal text-term-green'}"
+        >{$_t("Code Mode Workspace Folder")}</label>
+        <input
+          id="workspaceRoot"
+          type="text"
+          spellcheck="false"
+          placeholder="/absolute/path/to/your/project"
+          value={currentPreferences.workspaceRoot ?? ''}
+          onchange={handleWorkspaceRootChange}
+          class="w-full py-2.5 px-2.5 rounded-md text-sm transition-all duration-200
+            {currentTheme === 'modern'
+              ? 'font-chat bg-chat-surface dark:bg-chat-surface-dark text-chat-text dark:text-chat-text-dark border border-chat-border dark:border-chat-border-dark focus:outline-none focus:border-chat-primary dark:focus:border-chat-primary-dark focus:ring-3 focus:ring-chat-primary/10 dark:focus:ring-chat-primary-dark/10'
+              : 'font-terminal bg-term-bg text-term-green border border-term-dim-green focus:outline-none focus:border-term-bright-green focus:ring-3 focus:ring-term-green/10'}"
+        />
+        <div class="mt-1.5 text-sm leading-relaxed
+          {currentTheme === 'modern'
+            ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
+            : 'font-terminal text-term-dim-green'}"
+        >{$_t("Desktop only. In Code mode the agent reads/edits/writes files only inside this folder. Leave empty to disable code-mode file tools.")}</div>
       </div>
     </div>
 

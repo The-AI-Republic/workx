@@ -11,6 +11,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TurnManager } from '@/core/TurnManager';
+import { ModelClientError } from '@/core/models/ModelClient';
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -22,6 +23,15 @@ function createMocks() {
     getTabId: vi.fn().mockReturnValue(1),
     emitEvent: vi.fn().mockResolvedValue(undefined),
     recordTurnContext: vi.fn().mockResolvedValue(undefined),
+    compact: vi.fn().mockResolvedValue({
+      success: true,
+      tokensBefore: 90000,
+      tokensAfter: 20000,
+      itemsTrimmed: 10,
+      triggerReason: 'auto',
+    }),
+    getCompactionCount: vi.fn().mockReturnValue(1),
+    buildTurnInputWithHistory: vi.fn().mockResolvedValue([]),
     showRawAgentReasoning: vi.fn().mockReturnValue(false),
     getMemoryService: vi.fn().mockReturnValue(null),
   } as any;
@@ -38,6 +48,12 @@ function createMocks() {
     getSummary: vi.fn().mockReturnValue({ enabled: false }),
     getBaseInstructions: vi.fn().mockReturnValue(undefined),
     getUserInstructions: vi.fn().mockReturnValue(undefined),
+    getSelectedModelKey: vi.fn().mockReturnValue('openai:gpt-4'),
+    getUnattended: vi.fn().mockReturnValue(false),
+    getUnattendedResetCapMs: vi.fn().mockReturnValue(undefined),
+    setActiveToolAllowList: vi.fn(),
+    clearActiveToolAllowList: vi.fn(),
+    isAllowedByActiveToolAllowList: vi.fn().mockReturnValue(true),
   } as any;
 
   const toolRegistry = {
@@ -843,6 +859,53 @@ describe('TurnManager - runTurn retry logic', () => {
     );
     expect(streamErrorCalls.length).toBeGreaterThanOrEqual(1);
   });
+
+  it('compacts and retries with rebuilt input on context overflow', async () => {
+    const { session, turnContext, toolRegistry } = createMocks();
+    turnContext.getToolsConfig.mockReturnValue({ enable_all_tools: false });
+    toolRegistry.listTools.mockReturnValue([]);
+
+    const firstStream = {
+      async *[Symbol.asyncIterator]() {
+        throw new ModelClientError('request too large', 413);
+      },
+    };
+    const secondStream = {
+      async *[Symbol.asyncIterator]() {
+        yield {
+          type: 'Completed',
+          tokenUsage: {
+            input_tokens: 10,
+            cached_input_tokens: 0,
+            output_tokens: 1,
+            reasoning_output_tokens: 0,
+            total_tokens: 11,
+          },
+        };
+      },
+    };
+
+    session.buildTurnInputWithHistory.mockResolvedValue([{ type: 'message', role: 'user', content: [] }]);
+
+    const mockModelClient = {
+      stream: vi.fn().mockResolvedValueOnce(firstStream).mockResolvedValueOnce(secondStream),
+    };
+    turnContext.getModelClient.mockReturnValue(mockModelClient);
+
+    const tm = new TurnManager(session, turnContext, toolRegistry, {
+      maxRetries: 0,
+      retryDelayMs: 1,
+    });
+
+    await expect(tm.runTurn([{ type: 'message', role: 'user', content: [] }])).resolves.toBeDefined();
+
+    expect(session.compact).toHaveBeenCalledWith('auto', mockModelClient);
+    expect(session.buildTurnInputWithHistory).toHaveBeenCalledWith([]);
+    expect(mockModelClient.stream).toHaveBeenCalledTimes(2);
+    expect(mockModelClient.stream.mock.calls[1][0].input).toEqual([
+      { type: 'message', role: 'user', content: [] },
+    ]);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -1007,6 +1070,11 @@ describe('TurnManager - useNativeWebSearch toggle', () => {
       getBaseInstructions: vi.fn().mockReturnValue(undefined),
       getUserInstructions: vi.fn().mockReturnValue(undefined),
       getSelectedModelKey: vi.fn().mockReturnValue('openai:gpt-4'),
+      getUnattended: vi.fn().mockReturnValue(false),
+      getUnattendedResetCapMs: vi.fn().mockReturnValue(undefined),
+      setActiveToolAllowList: vi.fn(),
+      clearActiveToolAllowList: vi.fn(),
+      isAllowedByActiveToolAllowList: vi.fn().mockReturnValue(true),
     } as any;
 
     const toolRegistry = {

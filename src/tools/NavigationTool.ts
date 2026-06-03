@@ -163,34 +163,69 @@ export class NavigationTool extends BaseTool {
       throw new Error(`Target tab ${tabId} not found or inaccessible`);
     }
 
-    switch (request.action) {
-      case 'navigate':
-        return this.navigateToUrl(targetTab.id!, request);
+    this.emitNavigationProgress(options, request, 'loading', targetTab.url);
 
-      case 'reload':
-        return this.reloadPage(targetTab.id!, request);
+    try {
+      let result: NavigationToolResponse;
+      switch (request.action) {
+        case 'navigate':
+          result = await this.navigateToUrl(targetTab.id!, request);
+          break;
 
-      case 'goBack':
-        return this.goBack(targetTab.id!, request);
+        case 'reload':
+          result = await this.reloadPage(targetTab.id!, request);
+          break;
 
-      case 'goForward':
-        return this.goForward(targetTab.id!, request);
+        case 'goBack':
+          result = await this.goBack(targetTab.id!, request);
+          break;
 
-      case 'getHistory':
-        return this.getHistory(request);
+        case 'goForward':
+          result = await this.goForward(targetTab.id!, request);
+          break;
 
-      case 'stop':
-        return this.stopNavigation(targetTab.id!, request);
+        case 'getHistory':
+          result = await this.getHistory(request);
+          break;
 
-      case 'getCurrentUrl':
-        return this.getCurrentUrl(targetTab.id!, request);
+        case 'stop':
+          result = await this.stopNavigation(targetTab.id!, request);
+          break;
 
-      case 'waitForLoad':
-        return this.waitForLoad(targetTab.id!, request);
+        case 'getCurrentUrl':
+          result = await this.getCurrentUrl(targetTab.id!, request);
+          break;
 
-      default:
-        throw new Error(`Unsupported navigation action: ${request.action}`);
+        case 'waitForLoad':
+          result = await this.waitForLoad(targetTab.id!, request);
+          break;
+
+        default:
+          throw new Error(`Unsupported navigation action: ${request.action}`);
+      }
+
+      this.emitNavigationProgress(options, request, 'loaded', result.url || targetTab.url);
+      return result;
+    } catch (error) {
+      this.emitNavigationProgress(options, request, 'failed', request.url || targetTab.url);
+      throw error;
     }
+  }
+
+  private emitNavigationProgress(
+    options: BaseToolOptions | undefined,
+    request: NavigationToolRequest,
+    status: 'loading' | 'loaded' | 'failed',
+    url?: string,
+  ): void {
+    options?.onProgress?.({
+      toolUseID: options.callId ?? 'browser_navigation',
+      data: {
+        type: 'navigation_progress',
+        url: url || request.url || '',
+        status,
+      },
+    });
   }
 
   /**

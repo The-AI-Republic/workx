@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 /**
  * PromptLoader tests
@@ -40,8 +40,12 @@ describe('PromptLoader', () => {
     // Composed browserx prompt includes intro, safety, tools, policies
     expect(prompt).toContain('BrowserX');
     expect(prompt).toContain('Safety and Ethics');
+    expect(prompt).toContain('System Semantics');
+    expect(prompt).toContain('Action Risk and Approval');
+    expect(prompt).toContain('Work Loop');
     expect(prompt).toContain('DOMTool');
-    expect(prompt).toContain('Task Execution Policies');
+    expect(prompt).toContain('Communication');
+    expect(prompt).not.toContain('Task Execution Policies');
   });
 
   it('composes pi agent prompt with runtime context', async () => {
@@ -72,6 +76,63 @@ describe('PromptLoader', () => {
     // Should NOT contain browserx-specific tools
     expect(prompt).not.toContain('DOMTool');
     expect(prompt).not.toContain('PageVisionTool');
+  });
+
+  it('composes applepi server prompt with server identity', async () => {
+    const { loadPrompt, configurePromptComposer } = await import('@/core/PromptLoader');
+
+    configurePromptComposer('applepi-server', {
+      os: 'linux',
+      shell: 'bash',
+      cwd: '/srv/browserx',
+      browserConnection: 'mcp',
+    });
+
+    const prompt = await loadPrompt();
+
+    expect(prompt).toContain('Apple Pi Server');
+    expect(prompt).toContain('headless automation agent');
+    expect(prompt).toContain('/srv/browserx');
+    expect(prompt).toContain('TerminalTool');
+    expect(prompt).not.toContain('DOMTool');
+  });
+
+  it('appends registered prompt extensions after the base prompt', async () => {
+    const { loadPrompt, configurePromptComposer, registerPromptExtension } = await import('@/core/PromptLoader');
+
+    configurePromptComposer('browserx');
+    registerPromptExtension('test-memory', () => 'MEMORY_EXTENSION_MARKER');
+    registerPromptExtension('test-skills', () => 'SKILLS_EXTENSION_MARKER');
+
+    const prompt = await loadPrompt();
+
+    expect(prompt.indexOf('MEMORY_EXTENSION_MARKER')).toBeGreaterThan(prompt.indexOf('## Communication'));
+    expect(prompt.indexOf('SKILLS_EXTENSION_MARKER')).toBeGreaterThan(prompt.indexOf('MEMORY_EXTENSION_MARKER'));
+  });
+
+  it('isolates session-scoped prompt extensions by session id', async () => {
+    const {
+      loadPrompt,
+      configurePromptComposer,
+      registerPromptExtension,
+      unregisterSessionPromptExtensions,
+    } = await import('@/core/PromptLoader');
+
+    configurePromptComposer('browserx');
+    registerPromptExtension('session-only', () => 'SESSION_A_MARKER', {
+      type: 'session',
+      sessionId: 'session-a',
+    });
+
+    const promptA = await loadPrompt(undefined, { sessionId: 'session-a' });
+    const promptB = await loadPrompt(undefined, { sessionId: 'session-b' });
+
+    expect(promptA).toContain('SESSION_A_MARKER');
+    expect(promptB).not.toContain('SESSION_A_MARKER');
+
+    unregisterSessionPromptExtensions('session-a');
+    const promptAfterCleanup = await loadPrompt(undefined, { sessionId: 'session-a' });
+    expect(promptAfterCleanup).not.toContain('SESSION_A_MARKER');
   });
 
   it('includes fresh currentDateTime on each loadPrompt call', async () => {
@@ -114,6 +175,9 @@ describe('PromptLoader', () => {
     // Should fall back to default browserx prompt
     expect(prompt).toContain('BrowserX');
     expect(prompt).toContain('Core Directive');
+    expect(prompt).toContain('System Semantics');
+    expect(prompt).toContain('Action Risk and Approval');
+    expect(prompt).toContain('Work Loop');
 
     // Should have logged the error
     expect(errorSpy).toHaveBeenCalledWith(

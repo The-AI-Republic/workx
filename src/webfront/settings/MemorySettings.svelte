@@ -10,6 +10,29 @@
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
 
+  type MemorySnapshotEntry = {
+    time: string;
+    category: string;
+    text: string;
+    truncated: boolean;
+  };
+
+  type MemorySnapshotDay = {
+    date: string;
+    entries: MemorySnapshotEntry[];
+    truncated: boolean;
+  };
+
+  type MemorySnapshot = {
+    available: boolean;
+    enabled: boolean;
+    coreMemory?: string;
+    coreMemoryChars?: number;
+    coreMemoryTruncated?: boolean;
+    dailyFiles?: MemorySnapshotDay[];
+    dailyEntryCount?: number;
+  };
+
   let {
     settingsConfig,
     highlightSettingId = undefined,
@@ -34,6 +57,9 @@
   let isSaving = $state(false);
   let saveMessage = $state('');
   let saveMessageType: 'success' | 'error' | '' = $state('');
+  let memorySnapshot = $state<MemorySnapshot | null>(null);
+  let memorySnapshotLoading = $state(false);
+  let memoryClearInProgress = $state(false);
 
   // Memory API key status
   let hasOpenAIKey = $state(false);
@@ -55,6 +81,7 @@
   onMount(async () => {
     await loadPreferences();
     await checkOpenAIKey();
+    await loadMemorySnapshot();
   });
 
   async function checkOpenAIKey() {
@@ -71,6 +98,9 @@
       const config = settingsConfig.getConfig();
       originalPreferences = { ...config.preferences };
       currentPreferences = { ...config.preferences };
+      if (!(currentPreferences.memoryEnabled ?? false)) {
+        memorySnapshot = null;
+      }
     } catch (error) {
       console.error('[MemorySettings] Failed to load preferences:', error);
       saveMessage = 'Failed to load preferences';
@@ -109,7 +139,52 @@
     }
   }
 
-  function handleMemoryEnabledChange(value: boolean) {
+  async function loadMemorySnapshot() {
+    if (!(currentPreferences.memoryEnabled ?? false)) {
+      memorySnapshot = null;
+      return;
+    }
+
+    try {
+      memorySnapshotLoading = true;
+      const client = await getInitializedUIClient();
+      const snapshot = await client.serviceRequest('memory.getSnapshot', {
+        days: 7,
+        entriesPerDay: 20,
+      }) as MemorySnapshot;
+      memorySnapshot = snapshot.available ? snapshot : null;
+    } catch (error) {
+      console.warn('[MemorySettings] Memory snapshot unavailable:', error);
+      memorySnapshot = null;
+    } finally {
+      memorySnapshotLoading = false;
+    }
+  }
+
+  async function clearAllMemory() {
+    if (memoryClearInProgress) return;
+    if (!confirm($_t('Clear all stored memory?'))) return;
+
+    try {
+      memoryClearInProgress = true;
+      const client = await getInitializedUIClient();
+      await client.serviceRequest('memory.clearAll', { confirm: true });
+      await loadMemorySnapshot();
+      saveMessage = 'Memory cleared';
+      saveMessageType = 'success';
+      onSaved?.({ success: true });
+    } catch (error) {
+      console.error('[MemorySettings] Failed to clear memory:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      saveMessage = `Failed to clear memory: ${errorMsg}`;
+      saveMessageType = 'error';
+      onSaved?.({ success: false, error: errorMsg });
+    } finally {
+      memoryClearInProgress = false;
+    }
+  }
+
+  async function handleMemoryEnabledChange(value: boolean) {
     currentPreferences.memoryEnabled = value;
 
     if (value && isPaidUser) {
@@ -118,7 +193,8 @@
       currentPreferences.memoryUseOwnApiKey = true;
     }
 
-    autoSave();
+    await autoSave();
+    await loadMemorySnapshot();
   }
 
   function handleMemoryUseOwnKeyChange(value: boolean) {
@@ -241,6 +317,92 @@
         {/if}
       </div>
     </div>
+
+    {#if currentPreferences.memoryEnabled && memorySnapshot}
+      <div
+        class="rounded-xl px-5 py-4 border
+          {currentTheme === 'modern'
+            ? 'bg-chat-surface dark:bg-chat-surface-dark border-chat-border dark:border-chat-border-dark'
+            : 'bg-term-bg border-term-dim-green'}"
+        data-setting-id="memory-current"
+      >
+        <div class="flex items-center justify-between gap-4 mb-3">
+          <span class="text-[15px] font-medium
+            {currentTheme === 'modern'
+              ? 'font-chat text-chat-text dark:text-chat-text-dark'
+              : 'font-terminal text-term-green'}"
+          >{$_t("Current memory")}</span>
+          <button
+            class="px-3 py-1.5 rounded-md border text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
+              {currentTheme === 'modern'
+                ? 'font-chat text-chat-status-error dark:text-chat-status-error-dark border-chat-status-error/40 dark:border-chat-status-error-dark/40 bg-transparent hover:bg-chat-status-error/10 dark:hover:bg-chat-status-error-dark/10'
+                : 'font-terminal text-term-red border-term-red/50 bg-transparent hover:bg-term-red/10'}"
+            disabled={memoryClearInProgress || memorySnapshotLoading}
+            onclick={clearAllMemory}
+          >{memoryClearInProgress ? $_t("Clearing...") : $_t("Clear all")}</button>
+        </div>
+
+        {#if memorySnapshotLoading}
+          <div class="text-sm
+            {currentTheme === 'modern'
+              ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
+              : 'font-terminal text-term-dim-green'}"
+          >{$_t("Loading memory...")}</div>
+        {:else}
+          <div class="flex flex-col gap-3 text-sm
+            {currentTheme === 'modern'
+              ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
+              : 'font-terminal text-term-dim-green'}"
+          >
+            <div>
+              <div class="font-medium mb-1
+                {currentTheme === 'modern'
+                  ? 'text-chat-text dark:text-chat-text-dark'
+                  : 'text-term-green'}"
+              >{$_t("Core memory")}</div>
+              <pre class="m-0 whitespace-pre-wrap max-h-52 overflow-auto rounded-lg p-3 text-xs
+                {currentTheme === 'modern'
+                  ? 'bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
+                  : 'bg-term-black text-term-green'}"
+              >{memorySnapshot.coreMemory?.trim() || $_t("No core memory stored.")}</pre>
+              {#if memorySnapshot.coreMemoryTruncated}
+                <div class="mt-1 text-xs">{$_t("Core memory preview is truncated.")}</div>
+              {/if}
+            </div>
+
+            <div>
+              <div class="font-medium mb-1
+                {currentTheme === 'modern'
+                  ? 'text-chat-text dark:text-chat-text-dark'
+                  : 'text-term-green'}"
+              >{$_t("Recent daily memory")}</div>
+              {#if (memorySnapshot.dailyFiles?.length ?? 0) === 0}
+                <div>{$_t("No daily memory stored.")}</div>
+              {:else}
+                <div class="flex flex-col gap-2">
+                  {#each memorySnapshot.dailyFiles ?? [] as day}
+                    <div>
+                      <div class="text-xs font-medium mb-1">{day.date}</div>
+                      <ul class="m-0 pl-4 flex flex-col gap-1">
+                        {#each day.entries as entry}
+                          <li>
+                            <span class="font-medium">{entry.time} · {entry.category}</span>
+                            <span> — {entry.text}{entry.truncated ? '...' : ''}</span>
+                          </li>
+                        {/each}
+                      </ul>
+                      {#if day.truncated}
+                        <div class="mt-1 text-xs">{$_t("More entries hidden.")}</div>
+                      {/if}
+                    </div>
+                  {/each}
+                </div>
+              {/if}
+            </div>
+          </div>
+        {/if}
+      </div>
+    {/if}
 
     <!-- How Memory Works -->
     <div

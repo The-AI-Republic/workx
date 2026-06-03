@@ -1,19 +1,11 @@
 // Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod browser_commands;
 mod commands;
-mod db_storage;
-mod http_commands;
 mod keychain_commands;
-mod mcp_manager;
-mod oauth_server;
-mod sandbox;
-mod rollout_db;
+mod ripgrep_commands;
+mod runtime_supervisor;
 mod scheduler_commands;
-mod skills_commands;
-mod storage_commands;
-mod terminal_commands;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -135,6 +127,10 @@ mod tests {
 }
 
 fn main() {
+    fn is_app_deep_link(url: &str) -> bool {
+        url.starts_with("applepi://")
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -149,8 +145,8 @@ fn main() {
             // On Windows/Linux, deep link URLs come as CLI arguments
             // Check if any argument looks like our deep link
             for arg in args {
-                if arg.starts_with("airepublic-pi://") {
-                    let _ = app.emit("auth-callback", &arg);
+                if is_app_deep_link(&arg) {
+                    let _ = app.emit("applepi-deeplink", &arg);
 
                     // Bring the window to focus
                     if let Some(window) = app.get_webview_window("main") {
@@ -174,14 +170,19 @@ fn main() {
                 }
             }
 
-            // Register the deep link protocol handler at runtime.
-            // On Linux this creates/updates the .desktop file and registers with xdg-mime.
-            // On Windows this creates the registry entries.
-            // On macOS this is handled at compile time via Info.plist, so register() is a no-op.
-            #[cfg(desktop)]
-            {
-                if let Err(e) = app.deep_link().register("airepublic-pi") {
-                    eprintln!("[Pi] Failed to register deep link handler: {}", e);
+            // Register the deep link protocol handler at runtime where there is no
+            // installer-provided desktop entry. On Linux, .deb/.rpm installs already
+            // provide the handler through `/usr/share/applications/ApplePi.desktop`;
+            // runtime registration would add a second user-level `pi-handler.desktop`.
+            #[cfg(windows)]
+            if let Err(e) = app.deep_link().register("applepi") {
+                eprintln!("[Pi] Failed to register deep link handler: {}", e);
+            }
+
+            #[cfg(target_os = "linux")]
+            if app.env().appimage.is_some() {
+                if let Err(e) = app.deep_link().register("applepi") {
+                    eprintln!("[Pi] Failed to register AppImage deep link handler: {}", e);
                 }
             }
 
@@ -201,8 +202,8 @@ fn main() {
                 app.deep_link().on_open_url(move |event| {
                     for url in event.urls() {
                         let url_str = url.as_str();
-                        if url_str.starts_with("airepublic-pi://") {
-                            let _ = handle.emit("auth-callback", url_str);
+                        if is_app_deep_link(url_str) {
+                            let _ = handle.emit("applepi-deeplink", url_str);
                             if let Some(window) = handle.get_webview_window("main") {
                                 let _ = window.show();
                                 let _ = window.set_focus();
@@ -224,12 +225,18 @@ fn main() {
                     let handle2 = app.handle().clone();
                     std::thread::spawn(move || {
                         // Retry emitting the deep link until the frontend has mounted
-                        // its auth-callback listener. The webview must be fully loaded
-                        // before it can receive events.
-                        let delays = [500, 1000, 1500, 2000, 3000];
+                        // its applepi-deeplink listener. The webview must be fully loaded
+                        // before it can receive events. On a cold start the runtime
+                        // sidecar is also spawning in parallel; on slow machines a
+                        // larger window catches deeplinks that would otherwise miss.
+                        // Total budget ~16s with the final unconditional fallback at
+                        // the end. Stops early once the window is visible AND a
+                        // matching URL was emitted.
+                        let delays = [
+                            500, 1000, 1500, 2000, 3000, 4000, 5000,
+                        ];
                         for delay_ms in delays {
                             std::thread::sleep(Duration::from_millis(delay_ms));
-                            // Check if the main window is ready (visible = frontend loaded)
                             let window_ready = handle2
                                 .get_webview_window("main")
                                 .and_then(|w| w.is_visible().ok())
@@ -238,8 +245,8 @@ fn main() {
                                 continue;
                             }
                             for url in &initial {
-                                if url.starts_with("airepublic-pi://") {
-                                    let _ = handle2.emit("auth-callback", url);
+                                if is_app_deep_link(url) {
+                                    let _ = handle2.emit("applepi-deeplink", url);
                                     if let Some(window) = handle2.get_webview_window("main") {
                                         let _ = window.show();
                                         let _ = window.set_focus();
@@ -248,10 +255,12 @@ fn main() {
                                 }
                             }
                         }
-                        // Final attempt regardless of window state
+                        // Final attempt regardless of window state — the WebView
+                        // may have its listener attached even if `is_visible()`
+                        // is still false (autostart minimized to tray, etc.).
                         for url in &initial {
-                            if url.starts_with("airepublic-pi://") {
-                                let _ = handle2.emit("auth-callback", url);
+                            if is_app_deep_link(url) {
+                                let _ = handle2.emit("applepi-deeplink", url);
                                 if let Some(window) = handle2.get_webview_window("main") {
                                     let _ = window.show();
                                     let _ = window.set_focus();
@@ -331,90 +340,27 @@ fn main() {
 
             Ok(())
         })
-        .manage(terminal_commands::PtySessionRegistry::new())
+        .manage(runtime_supervisor::RuntimeSupervisorState::default())
         .invoke_handler(tauri::generate_handler![
             commands::greet,
             commands::get_platform_info,
             commands::get_project_root,
-            mcp_manager::mcp_connect,
-            mcp_manager::mcp_list_tools,
-            mcp_manager::mcp_call_tool,
-            mcp_manager::mcp_list_resources,
-            mcp_manager::mcp_read_resource,
-            mcp_manager::mcp_disconnect,
-            mcp_manager::get_browser_mcp_sidecar_path,
-            // Config storage commands
-            storage_commands::config_storage_get,
-            storage_commands::config_storage_set,
-            storage_commands::config_storage_remove,
-            storage_commands::config_storage_set_many,
-            storage_commands::config_storage_remove_many,
-            storage_commands::config_storage_get_all,
-            storage_commands::config_storage_clear,
-            storage_commands::config_storage_get_size,
-            storage_commands::config_storage_get_chunk,
-            storage_commands::config_storage_append_chunk,
-            storage_commands::config_storage_commit,
-            // Browser detection and CDP commands
-            browser_commands::find_running_browsers,
-            browser_commands::file_exists,
-            browser_commands::get_home_dir,
-            browser_commands::is_port_available,
-            browser_commands::launch_chrome,
-            browser_commands::get_chrome_ws_endpoint,
-            browser_commands::kill_process,
-            // Terminal command execution
-            terminal_commands::terminal_execute,
-            terminal_commands::terminal_write_stdin,
-            // Sandbox commands
-            sandbox::status::sandbox_check_status,
-            sandbox::status::sandbox_install_runtime,
-            // HTTP proxy command
-            http_commands::http_fetch,
-            http_commands::http_append_body_chunk,
-            // Keychain commands
+            runtime_supervisor::runtime_start,
+            runtime_supervisor::runtime_agent_send,
+            runtime_supervisor::runtime_shutdown,
+            // Ripgrep-backed code search (grep/glob tools)
+            ripgrep_commands::ripgrep_execute,
+            // Keychain: ONLY exposed to the runtime sidecar via the
+            // keychain.* control frames in runtime_supervisor.rs. These
+            // Tauri commands are kept registered so the keychain crate's
+            // permissions are wired (Tauri 2 capability system), but the
+            // WebView does not invoke them after Track 43's cutover —
+            // ControlFrameCredentialStore is the only credential entry point.
             keychain_commands::keychain_get,
             keychain_commands::keychain_set,
             keychain_commands::keychain_delete,
             keychain_commands::keychain_list_accounts,
-            // Rollout database commands
-            rollout_db::rollout_db_init,
-            rollout_db::rollout_db_put_metadata,
-            rollout_db::rollout_db_get_metadata,
-            rollout_db::rollout_db_delete_metadata,
-            rollout_db::rollout_db_get_all_metadata,
-            rollout_db::rollout_db_add_items,
-            rollout_db::rollout_db_get_items,
-            rollout_db::rollout_db_get_last_sequence,
-            rollout_db::rollout_db_delete_items_by_rollout_ids,
-            rollout_db::rollout_db_cleanup_expired,
-            rollout_db::rollout_db_get_stats,
-            rollout_db::rollout_db_list_conversations,
-            rollout_db::rollout_db_close,
-            // OAuth callback server
-            oauth_server::start_oauth_callback_server,
-            // Skills filesystem commands
-            skills_commands::skills_ensure_dir,
-            skills_commands::skills_list_dirs,
-            skills_commands::skills_read_file,
-            skills_commands::skills_write_file,
-            skills_commands::skills_remove_dir,
-            // SQLite storage commands
-            db_storage::storage_init,
-            db_storage::storage_close,
-            db_storage::storage_get,
-            db_storage::storage_set,
-            db_storage::storage_delete,
-            db_storage::storage_get_many,
-            db_storage::storage_set_many,
-            db_storage::storage_delete_many,
-            db_storage::storage_list,
-            db_storage::storage_query,
-            db_storage::storage_count,
-            db_storage::storage_clear,
-            db_storage::storage_vacuum,
-            db_storage::storage_batch,
-            // Scheduler OS-level job commands
+            // Scheduler OS-level job commands (OS-trust boundary kept in Rust).
             scheduler_commands::scheduler_register_os_job,
             scheduler_commands::scheduler_remove_os_job,
             scheduler_commands::scheduler_list_os_jobs,
@@ -424,17 +370,26 @@ fn main() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| {
-            if let RunEvent::WindowEvent {
-                label,
-                event: WindowEvent::CloseRequested { api, .. },
-                ..
-            } = event
-            {
-                // Prevent the window from being destroyed — hide it to tray instead
-                api.prevent_close();
-                if let Some(window) = app.get_webview_window(&label) {
-                    let _ = window.hide();
+            match event {
+                RunEvent::WindowEvent {
+                    label,
+                    event: WindowEvent::CloseRequested { api, .. },
+                    ..
+                } => {
+                    // Prevent the window from being destroyed — hide it to tray instead
+                    api.prevent_close();
+                    if let Some(window) = app.get_webview_window(&label) {
+                        let _ = window.hide();
+                    }
                 }
+                // Best-effort: stop the runtime sidecar promptly on app teardown
+                // so a `node` child is never orphaned (kill_on_drop is the backstop).
+                RunEvent::ExitRequested { .. } | RunEvent::Exit => {
+                    runtime_supervisor::kill_on_exit(
+                        app.state::<runtime_supervisor::RuntimeSupervisorState>().inner(),
+                    );
+                }
+                _ => {}
             }
         });
 }

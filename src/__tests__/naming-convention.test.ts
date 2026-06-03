@@ -72,9 +72,12 @@ describe('Tier 1: Shared/Core uses "applepi"', () => {
     expect(src).toMatch(/CREDENTIAL_SERVICE\s*=\s*['"]applepi['"]/);
   });
 
-  it('KeytarCredentialStore service prefix is "applepi"', () => {
-    const src = readSource('src/desktop/storage/KeytarCredentialStore.ts');
-    expect(src).toMatch(/SERVICE_PREFIX\s*=\s*['"]applepi['"]/);
+  it('Runtime credential store service prefix defaults to "applepi"', () => {
+    // Track 43: KeytarCredentialStore (WebView) was deleted. The keychain
+    // service prefix now lives on the runtime side, in the
+    // ControlFrameCredentialStore default and in the Rust handshake.
+    const src = readSource('src/desktop-runtime/credentials/ControlFrameCredentialStore.ts');
+    expect(src).toMatch(/servicePrefix\s*=\s*['"]applepi['"]/);
   });
 
   it('Desktop hotkeys use "applepi:" event prefix', () => {
@@ -88,8 +91,8 @@ describe('Tier 1: Shared/Core uses "applepi"', () => {
     expect(src).toMatch(/AgentType\s*=.*['"]applepi['"]/);
   });
 
-  it('GoogleDocPlugin uses "data-applepi-injected" attribute', () => {
-    const src = readSource('src/tools/dom/plugins/GoogleDocPlugin.ts');
+  it('GoogleDocAddon uses "data-applepi-injected" attribute', () => {
+    const src = readSource('src/extension/tools/dom/addons/GoogleDocAddon.ts');
     expect(src).toContain('data-applepi-injected');
   });
 });
@@ -105,7 +108,7 @@ describe('Tier 2: Extension-specific retains "browserx"', () => {
   });
 
   it('DomService uses "browserx:show-visual-effect" event', () => {
-    const src = readSource('src/tools/dom/DomService.ts');
+    const src = readSource('src/extension/tools/dom/DomService.ts');
     expect(src).toContain('browserx:show-visual-effect');
   });
 
@@ -145,9 +148,19 @@ describe('Tier 3: Desktop user-facing uses "Apple Pi"', () => {
     expect(src).toContain('Apple Pi');
   });
 
-  it('tauri.conf.json productName is "Apple Pi"', () => {
+  it('tauri.conf.json package identity is space-free', () => {
     const conf = JSON.parse(readSource('tauri/tauri.conf.json'));
-    expect(conf.productName).toBe('Apple Pi');
+    expect(conf.productName).toBe('ApplePi');
+    expect(conf.mainBinaryName).toBe('ApplePi');
+    expect(conf.app.windows[0].title).toBe('Apple Pi');
+  });
+
+  it('Linux desktop scheme handler forwards callback URLs to ApplePi', () => {
+    const desktop = readSource('tauri/templates/linux-desktop.desktop');
+    expect(desktop).toContain('Name=Apple Pi');
+    expect(desktop).toContain('StartupWMClass=ApplePi');
+    expect(desktop).toContain('Exec={{exec}} %u');
+    expect(desktop).toContain('MimeType=x-scheme-handler/applepi');
   });
 });
 
@@ -160,10 +173,10 @@ describe('Guard-rails: no cross-tier naming leaks', () => {
   // (excluding imports, comments, and the AgentType union which intentionally includes both)
   const coreFiles: [string, string][] = [
     ['src/config/AgentConfig.ts', 'AgentConfig'],
-    ['src/desktop/storage/KeytarCredentialStore.ts', 'KeytarCredentialStore'],
+    ['src/desktop-runtime/credentials/ControlFrameCredentialStore.ts', 'ControlFrameCredentialStore'],
     ['src/core/registry/AgentSession.ts', 'AgentSession'],
     ['src/desktop/hotkeys.ts', 'hotkeys'],
-    ['src/tools/dom/plugins/GoogleDocPlugin.ts', 'GoogleDocPlugin'],
+    ['src/extension/tools/dom/addons/GoogleDocAddon.ts', 'GoogleDocAddon'],
     ['src/desktop/index.html', 'desktop index.html'],
     ['src/storage/IndexedDBAdapter.ts', 'IndexedDBAdapter'],
   ];

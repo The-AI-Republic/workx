@@ -12,6 +12,7 @@ const mockSession = {
   sessionId: 'conv_test_123',
   abortAllTasks: vi.fn(),
   close: vi.fn(),
+  dispose: vi.fn(),
   setTabId: vi.fn(),
 };
 
@@ -261,8 +262,12 @@ describe('AgentSession', () => {
 
       await session.terminate('error');
 
-      expect(mockAgent.getSession().abortAllTasks).toHaveBeenCalled();
-      expect(mockAgent.getSession().close).toHaveBeenCalled();
+      expect(mockAgent.getSession().dispose).toHaveBeenCalledWith({
+        reason: 'Error',
+        recordCloseEvent: true,
+      });
+      expect(mockAgent.getSession().abortAllTasks).not.toHaveBeenCalled();
+      expect(mockAgent.getSession().close).not.toHaveBeenCalled();
       expect(mockAgent.cleanup).toHaveBeenCalled();
       expect(session.agent).toBeNull();
     });

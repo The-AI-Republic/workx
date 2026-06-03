@@ -19,11 +19,12 @@
   import ApprovalSettings from '../../settings/ApprovalSettings.svelte';
   import SecuritySettings from '../../settings/SecuritySettings.svelte';
   import MemorySettings from '../../settings/MemorySettings.svelte';
+  import KeyboardShortcutsSettings from '../../settings/KeyboardShortcutsSettings.svelte';
   import { t } from '../../lib/i18n';
   import { uiTheme } from '../../stores/themeStore';
 
   // Navigation state - includes 'advanced-model-config' for 3rd level menu
-  type NavigationView = 'menu' | 'model-config' | 'advanced-model-config' | 'general' | 'memory' | 'storage' | 'tools' | 'mcp-servers' | 'extension' | 'approval' | 'security';
+  type NavigationView = 'menu' | 'model-config' | 'advanced-model-config' | 'general' | 'memory' | 'storage' | 'tools' | 'mcp-servers' | 'extension' | 'approval' | 'security' | 'keyboard-shortcuts';
   let currentView: NavigationView = $state('menu');
   let hasUnsavedChanges: boolean = $state(false);
   let showUnsavedDialog: boolean = $state(false);
@@ -228,6 +229,13 @@
         />
       {:else if currentView === 'security'}
         <SecuritySettings
+          onBack={handleBack}
+          onSaved={() => {}}
+          bind:isDirty={hasUnsavedChanges}
+        />
+      {:else if currentView === 'keyboard-shortcuts'}
+        <KeyboardShortcutsSettings
+          {settingsConfig}
           onBack={handleBack}
           onSaved={() => {}}
           bind:isDirty={hasUnsavedChanges}

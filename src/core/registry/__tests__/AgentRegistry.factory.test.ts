@@ -9,6 +9,25 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AgentRegistry } from '@/core/registry/AgentRegistry';
 
+const mocks = vi.hoisted(() => {
+  const extensionToolRegistry = {
+    setApprovalGate: vi.fn(),
+    setPaymentCapability: vi.fn(),
+  };
+  const x402Capability = { tryPay: vi.fn() };
+  const createPaymentCapability = vi.fn(() => x402Capability);
+  class NoopSigner {}
+
+  return {
+    extensionToolRegistry,
+    x402Capability,
+    createPaymentCapability,
+    NoopSigner,
+    isX402Enabled: vi.fn(),
+    getX402Config: vi.fn(),
+  };
+});
+
 // ---------------------------------------------------------------------------
 // Mock RepublicAgent used by the extension (non-factory) path
 // ---------------------------------------------------------------------------
@@ -27,9 +46,18 @@ vi.mock('@/core/RepublicAgent', () => ({
     cleanup = vi.fn();
     setEventDispatcher = vi.fn();
     getApprovalManager = vi.fn().mockReturnValue({});
-    getToolRegistry = vi.fn().mockReturnValue({ setApprovalGate: vi.fn() });
+    getToolRegistry = vi.fn().mockReturnValue(mocks.extensionToolRegistry);
+    getHookDispatcher = vi.fn().mockReturnValue({ fire: vi.fn().mockResolvedValue({}) });
+    getEngine = vi.fn().mockReturnValue(null);
     agentId = 'agent_ext';
   },
+}));
+
+vi.mock('@/core/payments/x402', () => ({
+  createPaymentCapability: mocks.createPaymentCapability,
+  NoopSigner: mocks.NoopSigner,
+  getX402Config: mocks.getX402Config,
+  isX402Enabled: mocks.isX402Enabled,
 }));
 
 vi.mock('@/config/AgentConfig', () => ({
@@ -63,7 +91,12 @@ function createFactoryAgent() {
     cleanup: vi.fn(),
     setEventDispatcher: vi.fn(),
     getApprovalManager: vi.fn().mockReturnValue({}),
-    getToolRegistry: vi.fn().mockReturnValue({ setApprovalGate: vi.fn() }),
+    getToolRegistry: vi.fn().mockReturnValue({
+      setApprovalGate: vi.fn(),
+      setPaymentCapability: vi.fn(),
+    }),
+    getHookDispatcher: vi.fn().mockReturnValue({ fire: vi.fn().mockResolvedValue({}) }),
+    getEngine: vi.fn().mockReturnValue(null),
     agentId: 'agent_factory',
   };
 }
@@ -78,6 +111,11 @@ describe('AgentRegistry — factory path (server/desktop)', () => {
   beforeEach(() => {
     AgentRegistry.resetInstance();
     vi.clearAllMocks();
+    mocks.extensionToolRegistry.setApprovalGate.mockClear();
+    mocks.extensionToolRegistry.setPaymentCapability.mockClear();
+    mocks.createPaymentCapability.mockClear();
+    mocks.isX402Enabled.mockClear();
+    mocks.getX402Config.mockClear();
 
     // Chrome mock for extension path tests
     Object.defineProperty(globalThis, 'chrome', {
@@ -150,6 +188,74 @@ describe('AgentRegistry — factory path (server/desktop)', () => {
       expect((session.agent as any).agentId).toBe('agent_ext');
     });
 
+    it('Track 23: wires extension x402 capability on the real extension path', async () => {
+      const registry = new AgentRegistry({ maxConcurrent: 3 });
+      registry.initialize(mockConfig);
+
+      await registry.createSession({ type: 'primary' });
+
+      expect(mocks.createPaymentCapability).toHaveBeenCalledWith(
+        expect.objectContaining({
+          platform: 'extension',
+          isEnabled: mocks.isX402Enabled,
+          signer: expect.any(mocks.NoopSigner),
+        }),
+      );
+      expect(mocks.extensionToolRegistry.setPaymentCapability).toHaveBeenCalledWith(
+        mocks.x402Capability,
+      );
+    });
+
+    it('Track 10: onAgentCreated fires for the agentFactory path (null runner)', async () => {
+      const factoryAgent = createFactoryAgent();
+      const agentFactory = vi.fn().mockResolvedValue(factoryAgent);
+      const onAgentCreated = vi.fn().mockResolvedValue(undefined);
+
+      const registry = new AgentRegistry({
+        maxConcurrent: 3,
+        agentFactory,
+        onAgentCreated,
+      });
+      registry.initialize(mockConfig);
+
+      await registry.createSession({ type: 'scheduled' });
+
+      expect(onAgentCreated).toHaveBeenCalledTimes(1);
+      expect(onAgentCreated).toHaveBeenCalledWith(factoryAgent, {
+        subAgentRunner: null,
+      });
+    });
+
+    it('Track 10: onAgentCreated fires for the extension path with a runner slot', async () => {
+      const onAgentCreated = vi.fn().mockResolvedValue(undefined);
+      const registry = new AgentRegistry({ maxConcurrent: 3, onAgentCreated });
+      registry.initialize(mockConfig);
+
+      await registry.createSession({ type: 'primary' });
+
+      expect(onAgentCreated).toHaveBeenCalledTimes(1);
+      const [agentArg, ctxArg] = onAgentCreated.mock.calls[0];
+      expect(agentArg).toBeDefined();
+      // subAgentRunner is null in the mocked extension path (engine is null)
+      expect(ctxArg).toHaveProperty('subAgentRunner');
+    });
+
+    it('Track 10: a throwing onAgentCreated is non-fatal (session still created)', async () => {
+      const factoryAgent = createFactoryAgent();
+      const agentFactory = vi.fn().mockResolvedValue(factoryAgent);
+      const onAgentCreated = vi.fn().mockRejectedValue(new Error('binder boom'));
+
+      const registry = new AgentRegistry({
+        maxConcurrent: 3,
+        agentFactory,
+        onAgentCreated,
+      });
+      registry.initialize(mockConfig);
+
+      const session = await registry.createSession({ type: 'scheduled' });
+      expect(session.agent).toBe(factoryAgent);
+    });
+
     it('should propagate agentFactory errors', async () => {
       const agentFactory = vi.fn().mockRejectedValue(new Error('Factory init failed'));
 
@@ -202,10 +308,16 @@ describe('AgentRegistry — factory path (server/desktop)', () => {
 
       // Factory should be called with the session ID
       expect(eventDispatcherFactory).toHaveBeenCalledWith(session.sessionId);
-      // Agent should have its event dispatcher set
-      expect(factoryAgent.setEventDispatcher).toHaveBeenCalledWith(
-        eventDispatcherFactory.mock.results[0].value
-      );
+      // Agent's dispatcher is set to the telemetry-decorated wrapper which
+      // ALWAYS forwards to the factory's real dispatcher (Track 16).
+      expect(factoryAgent.setEventDispatcher).toHaveBeenCalledTimes(1);
+      const wired = factoryAgent.setEventDispatcher.mock.calls[0][0];
+      const realDispatcher = eventDispatcherFactory.mock.results[0].value;
+      expect(typeof wired).toBe('function');
+      expect(wired).not.toBe(realDispatcher); // decorated, not identical
+      const evt = { id: 'e1', msg: { type: 'TurnStarted', data: {} } };
+      wired(evt);
+      expect(realDispatcher).toHaveBeenCalledWith(evt); // forwards regardless
     });
 
     it('should use extension event dispatcher when eventDispatcherFactory not provided', async () => {

@@ -13,7 +13,7 @@ import type { IToolsConfig } from '../config/types';
 import type { ToolDefinition, Platform } from './BaseTool';
 // Static import to avoid Vite's modulepreload polyfill being injected
 // The polyfill uses `document` which doesn't exist in service workers
-import { registerTools } from './index';
+import { registerExtensionTools as registerTools } from '../extension/tools/registerExtensionTools';
 
 /**
  * Detect the current platform based on build mode

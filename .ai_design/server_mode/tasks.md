@@ -62,7 +62,7 @@ Goal: Reliable, file-based state management.
 ## Phase 5: OpenClaw Plugin Integration
 Goal: Connectivity through third-party platform plugins.
 
-- [ ] **Implement `ChannelPluginBridge`**
+- [ ] **Implement `ConnectorBridge`**
     - [ ] Build the bridge between OpenClaw adapters and Pi's `ChannelManager`.
     - [ ] Implement **Worker Thread isolation** and IPC for plugins.
 - [ ] **Plugin Registry & Discovery**

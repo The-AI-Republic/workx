@@ -38,6 +38,7 @@ const EVENT_SCOPE_MAP: Record<string, EventScope> = {
   'ToolExecutionEnd': 'thread',
   'ToolExecutionError': 'thread',
   'ToolExecutionTimeout': 'thread',
+  'ToolExecutionProgress': 'thread',
   'McpToolCallBegin': 'thread',
   'McpToolCallEnd': 'thread',
   'ExecCommandBegin': 'thread',
@@ -53,6 +54,8 @@ const EVENT_SCOPE_MAP: Record<string, EventScope> = {
   'ApprovalGranted': 'thread',
   'ApprovalDenied': 'thread',
   'ApprovalAutoApproved': 'thread',
+  // Channel-scoped: global approval-policy setting change (not per-conversation)
+  'ApprovalPolicyChanged': 'channel',
   'PatchApplyBegin': 'thread',
   'PatchApplyEnd': 'thread',
 
@@ -81,12 +84,19 @@ const EVENT_SCOPE_MAP: Record<string, EventScope> = {
   'ExitedReviewMode': 'thread',
   'PlanUpdate': 'thread',
   'TaskUpdate': 'thread',
+  'BackgroundTaskStarted': 'thread',
+  'BackgroundTaskOutputDelta': 'thread',
+  'BackgroundTaskStateChanged': 'thread',
+  'BackgroundTaskTerminated': 'thread',
   'ConversationPath': 'thread',
   'GetHistoryEntryResponse': 'thread',
 
   // Channel-scoped: global/settings events
   'BackgroundEvent': 'channel',
   'StateUpdate': 'channel',
+  // Carries its own sessionId; routed to the right thread by the channel
+  // handler so deferred switches on background sessions still update the UI.
+  'ModeChanged': 'channel',
   'SessionConfigured': 'channel',
   'Notification': 'channel',
   'ShutdownComplete': 'channel',

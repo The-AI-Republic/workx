@@ -58,6 +58,14 @@ export class CoreMemoryManager {
   }
 
   /**
+   * Reset core memory to the empty template.
+   */
+  async clearAll(): Promise<void> {
+    await this.fs.ensureDir(this.memoryDir);
+    await this.fs.writeFile(this.filePath, DEFAULT_CORE_MEMORY);
+  }
+
+  /**
    * Remove core-memory lines matching the given search terms.
    * Headings are preserved so the template structure stays intact.
    */

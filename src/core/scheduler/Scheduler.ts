@@ -115,12 +115,24 @@ export class Scheduler {
    *
    * @param getChannelManager - returns the ChannelManager (called per-event for lazy resolution)
    * @param channelId - target channel ID
+   * @param tap - optional observer invoked with the raw scheduler event
+   *   before channel dispatch. Used by the telemetry bridge — the scheduler
+   *   is a separate emitter family that bypasses the agent chokepoint. Must
+   *   never throw (guarded here regardless).
    */
   connectToChannel(
     getChannelManager: () => { dispatchEvent(event: any, channelId: string): Promise<void> },
-    channelId: string
+    channelId: string,
+    tap?: (event: Record<string, unknown>) => void
   ): void {
     this.setEventEmitter((event) => {
+      if (tap) {
+        try {
+          tap(event);
+        } catch {
+          // telemetry must never break scheduler dispatch
+        }
+      }
       try {
         getChannelManager().dispatchEvent(
           { msg: { type: 'BackgroundEvent', data: { message: 'scheduler_job_status', level: 'info', schedulerEvent: event } } },

@@ -11,14 +11,14 @@ import type { Prompt, ModelFamily } from '@/core/models/types/ResponsesAPI';
 import type { ResponseItem } from '@/core/protocol/types';
 
 // Mock the ScreenshotFileManager dependency
-vi.mock('@/tools/screenshot/ScreenshotFileManager', () => ({
+vi.mock('@/extension/tools/screenshot/ScreenshotFileManager', () => ({
   ScreenshotFileManager: {
     getScreenshot: vi.fn(),
   },
 }));
 
 // Import the mocked module so we can control its behavior per-test
-import { ScreenshotFileManager } from '@/tools/screenshot/ScreenshotFileManager';
+import { ScreenshotFileManager } from '@/extension/tools/screenshot/ScreenshotFileManager';
 
 const mockedGetScreenshot = vi.mocked(ScreenshotFileManager.getScreenshot);
 
@@ -100,6 +100,20 @@ describe('get_full_instructions', () => {
     const result = get_full_instructions(prompt, model);
 
     expect(result).toBe('Custom base.\nExtra guidance.');
+  });
+
+  it('should include each instruction source exactly once when override is present', () => {
+    const prompt = makePrompt({
+      base_instructions_override: 'Runtime composed prompt.',
+      user_instructions: 'User instruction block.',
+    });
+    const model = makeModel({ base_instructions: 'Model fallback prompt.' });
+
+    const result = get_full_instructions(prompt, model);
+
+    expect(result.match(/Runtime composed prompt\./g)).toHaveLength(1);
+    expect(result.match(/User instruction block\./g)).toHaveLength(1);
+    expect(result).not.toContain('Model fallback prompt.');
   });
 
   it('should not add extra newline when user_instructions is empty string', () => {

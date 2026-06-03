@@ -4,12 +4,14 @@
   import { getInitializedUIClient } from '@/core/messaging';
   import type { UIChannelClient } from '@/core/messaging';
   import type { JobStatusChangedEvent } from '@/core/models/types/SchedulerContracts';
-  import type { Event } from '@/core/protocol/types';
+  import type { Event, InputItem } from '@/core/protocol/types';
+  import type { AgentAccessState } from '@/core/services/runtime-state';
   import type { ProcessedEvent } from '@/types/ui';
   import { STYLE_PRESETS } from '@/types/ui';
 
   import TerminalMessage from '../../components/TerminalMessage.svelte';
   import MessageInput from '../../components/MessageInput.svelte';
+  import MessageSelector from '../../components/chat/MessageSelector.svelte';
   import EventDisplay from '../../components/event_display/EventDisplay.svelte';
   import { EventProcessor } from '../../components/event_display/EventProcessor';
   import { welcomeAsciiLines } from '../../constants/welcomeAscii';
@@ -31,8 +33,11 @@
   // Multi-thread support
   import { get } from 'svelte/store';
   import ThreadBar from '../../components/threads/ThreadBar.svelte';
-  import { threadStore } from '../../stores/threadStore';
+  import BackgroundTasksBadge from '../../components/BackgroundTasksBadge.svelte';
+  import { threadStore, activeThread } from '../../stores/threadStore';
+  import { MODES, DEFAULT_MODE, type AgentMode } from '@/prompts/PromptComposer';
   import { ThreadEventRouter } from '../../routing/ThreadEventRouter';
+  import { handleBackgroundTaskEvent, startBackgroundTaskPolling, stopBackgroundTaskPolling } from '../../stores/backgroundTaskStore';
   // UI channel client (platform-agnostic)
   let client: UIChannelClient | null = $state(null);
   let unsubscribers: Array<() => void> = $state([]);
@@ -40,6 +45,10 @@
   let messages: Array<{ type: 'user' | 'agent'; content: string; timestamp: number }> = $state([]);
   let processedEvents: ProcessedEvent[] = $state([]);
   let inputText: string = $state('');
+  // Track 24.3: predicted next user message (bound into MessageInput).
+  let nextSuggestion: string | null = $state(null);
+  // Track 15: rewind turn-selector overlay visibility.
+  let showRewindSelector: boolean = $state(false);
   let isConnected: boolean = $state(false);
   let isProcessing: boolean = $state(false);
   let showWelcome = $derived(!isProcessing && processedEvents.length === 0 && messages.length === 0);
@@ -48,6 +57,19 @@
   let agentReady: boolean = $state(false);
   let healthStatus: { ready: boolean; message?: string; provider?: string; model?: string; authMode?: 'login' | 'api_key' | 'none' } = $state({ ready: false, authMode: 'none' });
   let zoomLevel: number = $state(parseInt(document.documentElement.style.fontSize) || 100);
+
+  function applyAccessState(access: AgentAccessState): void {
+    isConnected = true;
+    agentReady = access.ready;
+    healthStatus = {
+      ready: access.ready,
+      message: access.reason,
+      provider: access.provider,
+      model: access.model,
+      authMode: access.mode,
+    };
+    agentStore.updateFromAccessState(access);
+  }
 
   function onZoomChanged(e: Event) {
     zoomLevel = (e as CustomEvent<number>).detail;
@@ -61,6 +83,14 @@
       const agentConfig = config.getConfig();
       config.updateConfig({ preferences: { ...agentConfig.preferences, zoomLevel: 100 } });
     }).catch(() => {});
+  }
+
+  function requestLogin() {
+    if (platform.platformName === 'desktop') {
+      window.dispatchEvent(new CustomEvent('applepi:request-login'));
+      return;
+    }
+    window.open(getLoginPageUrl(), '_blank', 'noopener,noreferrer');
   }
   let compactionNotification: { show: boolean; tokensSaved: number; compactionCount: number; isWarning: boolean } = $state({
     show: false,
@@ -148,11 +178,19 @@
       threadRouter.setActiveSession(activeSessionId);
 
       threadRouter.onActiveThread((channelEvent) => {
+        if (channelEvent.msg.type.startsWith('BackgroundTask')) {
+          handleBackgroundTaskEvent(channelEvent.msg);
+          return;
+        }
         const event: Event = { id: `evt_${Date.now()}`, msg: channelEvent.msg };
         handleEvent(event);
       });
 
       threadRouter.onBackgroundThread((channelEvent) => {
+        if (channelEvent.msg.type.startsWith('BackgroundTask')) {
+          handleBackgroundTaskEvent(channelEvent.msg);
+          return;
+        }
         const event: Event = { id: `evt_${Date.now()}`, msg: channelEvent.msg };
         handleEventForSession(event, channelEvent.sessionId!);
       });
@@ -160,9 +198,26 @@
       threadRouter.onChannel((channelEvent) => {
         const { msg } = channelEvent;
         if (msg.type === 'StateUpdate' && 'data' in msg) {
-          const data = (msg as any).data;
-          if (data && 'tabId' in data) {
+          const data = msg.data;
+          if (data?.scope === 'desktop-runtime' && data.kind === 'agent.accessChanged' && data.access) {
+            applyAccessState(data.access as AgentAccessState);
+          } else if (data && 'tabId' in data) {
             currentTabId = data.tabId!;
+          }
+        } else if (msg.type === 'ModeChanged' && 'data' in msg) {
+          // Backend is the source of truth — commit on applied, show pending
+          // otherwise. Never flip optimistically on click.
+          const { sessionId, mode, applied } = (msg as any).data;
+          if (applied) {
+            threadStore.setThreadMode(sessionId, mode);
+            const event: Event = { id: `evt_${Date.now()}`, msg };
+            if (sessionId === activeSessionId) {
+              handleEvent(event);
+            } else {
+              handleEventForSession(event, sessionId);
+            }
+          } else {
+            threadStore.setThreadPendingMode(sessionId, mode);
           }
         } else if (msg.type === 'BackgroundEvent' && 'data' in msg) {
           const data = (msg as any).data;
@@ -178,13 +233,39 @@
       unsubscribers.push(
         client.onEvent('*', (channelEvent) => threadRouter.route(channelEvent))
       );
+      startBackgroundTaskPolling(() => {
+        if (!client || !activeSessionId) return null;
+        return {
+          async listTaskStates() {
+            const response = await client!.serviceRequest<{ tasks?: import('@/core/tasks/types').TaskState[] }>(
+              'session.listTaskStates',
+              { sessionId: activeSessionId },
+            );
+            return response.tasks ?? [];
+          },
+          async getTaskOutput(taskId: string, fromSeq = 0) {
+            const response = await client!.serviceRequest<{ chunks?: import('@/core/tasks/TaskOutputStore').TaskOutputChunk[] }>(
+              'session.getTaskOutput',
+              { sessionId: activeSessionId, taskId, fromSeq },
+            );
+            return response.chunks ?? [];
+          },
+          retainTask(taskId: string, retain: boolean) {
+            void client!.serviceRequest('session.retainTask', {
+              sessionId: activeSessionId,
+              taskId,
+              retain,
+            });
+          },
+        };
+      });
     } catch (error) {
       console.error('[App] UIChannelClient initialization failed:', error);
     }
 
     // Check if this is a scheduled job execution (US3: T022)
     // Extension: detected via URL params from chrome.tabs.create
-    // Desktop: detected via DOM event from DesktopAgentBootstrap job launcher
+    // Desktop: detected via DOM event from the runtime job launcher
     const urlParams = new URLSearchParams(window.location.search);
     const jobIdParam = urlParams.get('scheduledJob');
     const sessionIdParam = urlParams.get('sessionId');
@@ -236,6 +317,7 @@
         unsub();
       }
       unsubscribers = [];
+      stopBackgroundTaskPolling();
     };
   });
 
@@ -510,6 +592,13 @@
         return;
       }
 
+      if (platform.platformName === 'desktop') {
+        console.log('[App] Sending agent.getAccessState serviceRequest...');
+        const access = await (await getInitializedUIClient()).serviceRequest<AgentAccessState>('agent.getAccessState');
+        applyAccessState(access);
+        return;
+      }
+
       console.log('[App] Sending agent.healthCheck serviceRequest...');
       const response = await (await getInitializedUIClient()).serviceRequest<{
         type?: string;
@@ -601,6 +690,7 @@
     // Update processing state
     if (msg.type === 'TaskStarted') {
       isProcessing = true;
+      nextSuggestion = null; // Track 24.3: a new turn invalidates the prediction.
       // Note: We don't clear history here - user wants to see full conversation
       // History is only cleared when user explicitly clicks "New Conversation"
     } else if (msg.type === 'TaskComplete' || msg.type === 'TaskFailed') {
@@ -617,6 +707,11 @@
     // Keep legacy Error message handling for backward compatibility
     // Note: AgentMessage case removed - agent messages are now handled by EventProcessor
     switch (msg.type) {
+      case 'PromptSuggestion':
+        if ('data' in msg && msg.data?.suggestion) {
+          nextSuggestion = msg.data.suggestion;
+        }
+        break;
       case 'Error':
         if ('data' in msg && msg.data && 'message' in msg.data) {
           messages = [...messages, {
@@ -659,9 +754,11 @@
     }
   }
 
-  async function sendMessage(overrideText?: string) {
+  async function sendMessage(overrideText?: string, attachments?: InputItem[]) {
     const text = overrideText ?? inputText.trim();
-    if (!text) return;
+    // Track 13: allow image-only submissions (text may be empty when the
+    // user pastes a screenshot and sends without typing).
+    if (!text && !(attachments && attachments.length)) return;
 
     // Check if connected
     if (!isConnected) {
@@ -692,7 +789,7 @@
       category: 'message',
       timestamp: new Date(),
       title: 'user',
-      content: text,
+      content: text || (attachments && attachments.length ? `[${attachments.length} image(s)]` : ''),
       style: { textColor: 'text-cyan-400' },
       streaming: false,
       collapsible: false,
@@ -702,10 +799,13 @@
     // Send to agent with tab context
     try {
       if (!client) throw new Error('Message service not available');
+      const items: InputItem[] = [];
+      if (text) items.push({ type: 'text', text });
+      if (attachments && attachments.length) items.push(...attachments);
       await client.submitOp(
         {
           type: 'UserInput',
-          items: [{ type: 'text', text }],
+          items,
         },
         {
           tabId: currentTabId, // Include current tab selection in context
@@ -861,6 +961,57 @@
         content: t('Failed to load conversation. Please try again.'),
         timestamp: Date.now(),
       }];
+    }
+  }
+
+  /**
+   * Track 15: handle a completed rewind. The backend forked a NEW conversation
+   * (source untouched) and returned its id + history. Swap the UI to it,
+   * render the sliced history, and (for a plain `conversation` rewind)
+   * repopulate the input with the rewound-to user turn's text (D8).
+   */
+  async function handleRewound(result: {
+    sessionId: string;
+    history?: unknown[];
+    rewoundText?: string;
+  }) {
+    showRewindSelector = false;
+    const newId = result?.sessionId;
+    if (!newId) return;
+
+    // Clear current UI state.
+    messages = [];
+    processedEvents = [];
+    inputText = '';
+    isProcessing = false;
+    eventProcessor.reset();
+
+    // Id swap: register a thread for the forked conversation and switch to it
+    // (the source conversation remains in history, untouched).
+    if (!threadStore.getThread(newId)) {
+      threadStore.createThread(newId, 'New Thread');
+    }
+    threadStates.set(newId, {
+      messages: [],
+      processedEvents: [],
+      inputText: '',
+      isProcessing: false,
+      currentTabId: -1,
+      eventProcessor: new EventProcessor(),
+    });
+    activeSessionId = newId;
+    threadStore.setActiveThread(newId);
+    threadRouter.setActiveSession(newId);
+
+    try {
+      await restoreConversationHistory(newId);
+    } catch (error) {
+      console.error('[App] Failed to restore rewound conversation:', error);
+    }
+
+    // D8: repopulate input AFTER restore (restore/loadThreadState clobbers it).
+    if (result.rewoundText) {
+      inputText = result.rewoundText;
     }
   }
 
@@ -1269,6 +1420,26 @@
   }
 
   /**
+   * Request a per-session persona mode switch for the active thread.
+   * Backend is the source of truth — we do NOT flip the UI optimistically.
+   * The tab commits its mode only when a ModeChanged{applied:true} event
+   * arrives (see threadRouter.onChannel). Deferred switches surface as a
+   * pending state until the running task completes.
+   */
+  async function setSessionMode(mode: AgentMode) {
+    if (!activeSessionId || !client) return;
+    if (($activeThread?.mode ?? DEFAULT_MODE) === mode && !$activeThread?.pendingMode) return;
+    try {
+      await client.submitOp(
+        { type: 'SetSessionMode', mode },
+        { sessionId: activeSessionId },
+      );
+    } catch (error) {
+      console.error('Failed to set session mode:', error);
+    }
+  }
+
+  /**
    * Handle new thread button click from ThreadBar
    */
   async function handleNewThread() {
@@ -1395,6 +1566,34 @@
             {/if}
           </div>
           <div class="flex items-center space-x-2">
+            <BackgroundTasksBadge />
+            {#if platform.platformName !== 'extension' && activeSessionId}
+              {@const activeMode = $activeThread?.mode ?? DEFAULT_MODE}
+              {@const pendingMode = $activeThread?.pendingMode ?? null}
+              <div class="flex items-center gap-1" role="group" aria-label={$_t("Agent mode")}>
+                {#each Object.values(MODES).filter((m) => !m.agentTypes || m.agentTypes.includes('applepi') || m.agentTypes.includes('applepi-server')) as modeSpec (modeSpec.id)}
+                  {@const isActive = activeMode === modeSpec.id && !pendingMode}
+                  {@const isPending = pendingMode === modeSpec.id}
+                  <button
+                    type="button"
+                    onclick={() => setSessionMode(modeSpec.id)}
+                    title={isPending ? $_t("Switching after current task…") : $_t("Switch agent mode")}
+                    aria-pressed={isActive}
+                    class="text-xs px-2 py-0.5 rounded font-[inherit] cursor-pointer transition-opacity
+                      {isActive
+                        ? (currentTheme === 'modern'
+                            ? 'bg-chat-accent/15 text-chat-accent dark:text-chat-accent-dark font-semibold'
+                            : 'bg-[rgba(34,197,94,0.15)] border border-term-dim-green text-term-bright-green')
+                        : (currentTheme === 'modern'
+                            ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:opacity-100 opacity-70'
+                            : 'text-term-dim-green hover:text-term-green opacity-70 hover:opacity-100')}
+                      {isPending ? 'animate-pulse' : ''}"
+                  >
+                    {modeSpec.label}{#if isPending}…{/if}
+                  </button>
+                {/each}
+              </div>
+            {/if}
             {#if isProcessing}
               <TerminalMessage type="warning" content={$_t("[PROCESSING]")} />
             {/if}
@@ -1452,10 +1651,10 @@
             </p>
             <ul class="m-0 pl-6 list-disc">
               <li class="mb-1">
-                <a href={getLoginPageUrl()} target="_blank" rel="noopener noreferrer"
-                  class="underline {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-bright-green hover:text-term-yellow'}">
+                <button onclick={requestLogin}
+                  class="bg-none border-none p-0 underline cursor-pointer text-left text-[inherit] {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-bright-green hover:text-term-yellow'}">
                   {$_t("Log in to your account")}
-                </a>
+                </button>
               </li>
               <li class="mb-1">
                 <button onclick={() => push('/settings')}
@@ -1513,6 +1712,7 @@
           <div class="pr-2 py-2 pl-0">
             <MessageInput
               bind:value={inputText}
+              bind:suggestion={nextSuggestion}
               onSubmit={sendMessage}
               onStop={stopAgent}
               onSelectConversation={resumeConversation}
@@ -1522,12 +1722,20 @@
               placeholder={$_t(">> Enter command...")}
               onTabSelected={handleTabSelected}
               onCommandOutput={handleCommandOutput}
+              onOpenRewindSelector={() => showRewindSelector = true}
             />
           </div>
 
         </div>
       </div>
   </div>
+
+  <!-- Track 15: rewind turn-selector overlay (command-invoked) -->
+  <MessageSelector
+    show={showRewindSelector}
+    onClose={() => showRewindSelector = false}
+    onRewound={handleRewound}
+  />
 
 <style>
   /* Animations - kept as they use @keyframes */

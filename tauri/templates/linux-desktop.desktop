@@ -1,0 +1,10 @@
+[Desktop Entry]
+Categories={{categories}}
+Comment={{comment}}
+Exec={{exec}} %u
+StartupWMClass=ApplePi
+Icon={{icon}}
+Name=Apple Pi
+Terminal=false
+Type=Application
+MimeType=x-scheme-handler/applepi

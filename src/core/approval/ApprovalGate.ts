@@ -22,6 +22,12 @@ import { RiskLevel, scoreToRiskLevel } from './types';
 import type { PolicyRulesEngine } from './PolicyRulesEngine';
 import type { ApprovalManager, ApprovalRequest } from '../ApprovalManager';
 import type { ApprovalConfigStorage } from './ApprovalConfigStorage';
+import type { HookDispatcher, HookExecutionSnapshot } from '../hooks/HookDispatcher';
+import type { HookInput } from '../hooks/types';
+
+export interface ApprovalCheckOptions {
+  hookSnapshot?: HookExecutionSnapshot;
+}
 
 export class ApprovalGate {
   private approvalManager: ApprovalManager;
@@ -32,6 +38,8 @@ export class ApprovalGate {
   private trustedDomains: string[] = [];
   private blockedDomains: string[] = [];
   private configStorage: ApprovalConfigStorage | null = null;
+  private hookDispatcher: HookDispatcher | null = null;
+  private inFlightApprovalChecks = new Map<string, Promise<ApprovalCheckResult>>();
 
   constructor(approvalManager: ApprovalManager, policyEngine: PolicyRulesEngine) {
     this.approvalManager = approvalManager;
@@ -81,6 +89,13 @@ export class ApprovalGate {
   }
 
   /**
+   * Set the hook dispatcher for PermissionRequest/PermissionDenied hooks.
+   */
+  setHookDispatcher(dispatcher: HookDispatcher): void {
+    this.hookDispatcher = dispatcher;
+  }
+
+  /**
    * Check whether a tool call should be approved, denied, or sent to user.
    *
    * @param toolName - Name of the tool
@@ -93,7 +108,8 @@ export class ApprovalGate {
     toolName: string,
     parameters: Record<string, any>,
     assessor?: IRiskAssessor,
-    context?: Partial<ApprovalContext>
+    context?: Partial<ApprovalContext>,
+    options?: ApprovalCheckOptions
   ): Promise<ApprovalCheckResult> {
     // Build full context
     const fullContext: ApprovalContext = {
@@ -190,7 +206,76 @@ export class ApprovalGate {
       return 'auto_approve';
     }
 
-    // decision === 'ask_user': delegate to ApprovalManager
+    const inFlight = this.inFlightApprovalChecks.get(memoryKey);
+    if (inFlight) {
+      const result = await inFlight;
+      const rememberedAfterWait = this.sessionMemory.get(memoryKey);
+      if (rememberedAfterWait) {
+        const withinMargin = rememberedAfterWait.approvedRiskScore === undefined
+          || assessment.score <= rememberedAfterWait.approvedRiskScore + RISK_CEILING_MARGIN;
+        if (withinMargin) {
+          await this.recordHistory(toolName, assessment.score, assessment.level, rememberedAfterWait.decision, 'auto', ['Remembered session decision']);
+          return rememberedAfterWait.decision;
+        }
+      }
+      return result;
+    }
+
+    const approvalCheck = this.runUserApprovalFlow(
+      toolName,
+      parameters,
+      assessment,
+      domain,
+      fullContext,
+      options,
+    );
+    this.inFlightApprovalChecks.set(memoryKey, approvalCheck);
+    try {
+      return await approvalCheck;
+    } finally {
+      if (this.inFlightApprovalChecks.get(memoryKey) === approvalCheck) {
+        this.inFlightApprovalChecks.delete(memoryKey);
+      }
+    }
+  }
+
+  private async runUserApprovalFlow(
+    toolName: string,
+    parameters: Record<string, any>,
+    assessment: RiskAssessment,
+    domain: string | undefined,
+    fullContext: ApprovalContext,
+    options?: ApprovalCheckOptions,
+  ): Promise<ApprovalCheckResult> {
+    if (this.hookDispatcher) {
+      const hookInput: HookInput = {
+        hook_event_name: 'PermissionRequest',
+        session_id: fullContext.sessionId ?? '',
+        tool_name: toolName,
+        tool_input: parameters,
+        risk_score: assessment.score,
+        risk_level: assessment.level,
+        current_domain: domain,
+      };
+      try {
+        const hookResult = await this.hookDispatcher.fire('PermissionRequest', hookInput, {
+          snapshot: options?.hookSnapshot,
+        });
+        if (hookResult.permissionDecision === 'approve') {
+          await this.recordHistory(toolName, assessment.score, assessment.level, 'auto_approve', 'auto', ['Approved by hook']);
+          return 'auto_approve';
+        }
+        if (hookResult.permissionDecision === 'block') {
+          await this.recordHistory(toolName, assessment.score, assessment.level, 'deny', 'auto', ['Blocked by hook']);
+          this.firePermissionDeniedHook(toolName, parameters, 'Blocked by hook', fullContext.sessionId);
+          return 'deny';
+        }
+      } catch {
+        // Hook failure should not block the approval flow
+      }
+    }
+
+    // Delegate to ApprovalManager
     // ('deny' is already handled by the early return after ruleDecision check above)
     const approvalRequest: ApprovalRequest = {
       id: `approval_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -224,6 +309,7 @@ export class ApprovalGate {
     }
 
     await this.recordHistory(toolName, assessment.score, assessment.level, 'deny', 'user', assessment.factors);
+    this.firePermissionDeniedHook(toolName, parameters, response.reason ?? 'Denied by user', fullContext.sessionId);
     // Return user's alternative text alongside denial when present
     if (response.reason && response.reason !== 'Denied by user') {
       return { decision: 'deny', reason: response.reason };
@@ -319,6 +405,26 @@ export class ApprovalGate {
     } catch {
       // Non-critical: don't block tool execution on history save failure
     }
+  }
+
+  /**
+   * Fire PermissionDenied hook (informational, fire-and-forget).
+   */
+  private firePermissionDeniedHook(
+    toolName: string,
+    parameters: Record<string, any>,
+    reason: string,
+    sessionId?: string,
+  ): void {
+    if (!this.hookDispatcher) return;
+    const hookInput: HookInput = {
+      hook_event_name: 'PermissionDenied',
+      session_id: sessionId ?? '',
+      tool_name: toolName,
+      tool_input: parameters,
+      approval_decision: 'deny',
+    };
+    this.hookDispatcher.fire('PermissionDenied', hookInput).catch(() => {});
   }
 
   /**

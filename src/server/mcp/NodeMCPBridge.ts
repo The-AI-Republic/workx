@@ -1,8 +1,9 @@
 /**
  * Node.js MCP Bridge (stdio transport)
  *
- * Server-mode replacement for RustMCPBridge. Uses the official MCP SDK's
- * StdioClientTransport (child_process.spawn) instead of Tauri IPC.
+ * Server-mode and desktop-runtime stdio MCP bridge. Replaces the deleted
+ * RustMCPBridge (Track 43): MCP runs entirely inside the Node runtime now.
+ * Uses the official MCP SDK's StdioClientTransport (child_process.spawn).
  *
  * Implements IMCPClientAdapter so MCPManager can use it transparently.
  */
@@ -158,6 +159,9 @@ export class NodeMCPBridge implements IMCPClientAdapter {
       inputSchema: tool.inputSchema as IMCPTool['inputSchema'],
       outputSchema: tool.outputSchema as IMCPTool['outputSchema'],
       annotations: tool.annotations ? {
+        readOnlyHint: tool.annotations.readOnlyHint,
+        destructiveHint: tool.annotations.destructiveHint,
+        openWorldHint: tool.annotations.openWorldHint,
         audience: tool.annotations.readOnlyHint ? ['user' as const] : undefined,
         priority: undefined,
         costLevel: tool.annotations.destructiveHint ? 'high' as const : undefined,

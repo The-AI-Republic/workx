@@ -2,6 +2,8 @@
  * Core protocol types
  */
 
+import type { AgentMode } from '../../prompts/PromptComposer';
+
 // Constants from protocol
 export const USER_INSTRUCTIONS_OPEN_TAG = '<user_instructions>';
 export const USER_INSTRUCTIONS_CLOSE_TAG = '</user_instructions>';
@@ -23,6 +25,12 @@ export interface Submission {
     tabId?: number;
     /** Feature 015: Session ID for multi-agent routing */
     sessionId?: string;
+    /**
+     * Track 12: when true, this submission runs unattended — the retry
+     * orchestrator waits out 429/529 instead of hard-failing. Set by
+     * scheduler/connector drivers; overrides the platform default.
+     */
+    unattended?: boolean;
   };
 }
 
@@ -101,6 +109,11 @@ export type Op =
   | { type: 'ListCustomPrompts' }
   | { type: 'Compact' }
   | { type: 'ManualCompact' } // Manual compaction trigger from UI
+  | {
+    type: 'SetSessionMode';
+    /** Target agent persona mode for this session (per-session, hot-switch) */
+    mode: AgentMode;
+  }
   | {
     type: 'Review';
     review_request: ReviewRequest;

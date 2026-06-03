@@ -88,3 +88,4 @@ tauri/binaries/
 yarn.lock
 pnpm-lock.yaml
 
+tauri/sidecar/

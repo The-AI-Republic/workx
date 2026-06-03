@@ -10,6 +10,7 @@ import type { StorageProvider } from './StorageProvider';
 import type { CredentialStore } from './CredentialStore';
 import type { ConfigStorageProvider } from './ConfigStorageProvider';
 import type { StorageFactoryOptions } from './types';
+import { isDesktopRuntimeProfile } from '@/runtime/profile';
 
 export type { StorageProvider } from './StorageProvider';
 export type { CredentialStore } from './CredentialStore';
@@ -81,12 +82,16 @@ export async function createStorageProvider(
     return new IndexedDBStorageProvider();
   }
   if (__BUILD_MODE__ === 'desktop') {
-    const { SQLiteStorageProvider } = await import(
-      '@/desktop/storage/SQLiteStorageProvider'
-    );
-    return new SQLiteStorageProvider();
+    throw new Error('Desktop WebView storage is owned by the runtime sidecar. Use runtime services instead.');
   }
   if (__BUILD_MODE__ === 'server') {
+    if (isDesktopRuntimeProfile()) {
+      const { getDesktopRuntimeHost } = await import('@/desktop-runtime/host');
+      const { DesktopRuntimeStorageProvider } = await import(
+        '@/desktop-runtime/storage/DesktopRuntimeStorageProvider'
+      );
+      return new DesktopRuntimeStorageProvider(getDesktopRuntimeHost().storageDbPath);
+    }
     const { getDataDir } = await import('@/server/config/server-config');
     const { ServerStorageProvider } = await import(
       '@/server/storage/ServerStorageProvider'
@@ -115,12 +120,30 @@ export async function createCredentialStore(): Promise<CredentialStore> {
     return new ChromeCredentialStore();
   }
   if (__BUILD_MODE__ === 'desktop') {
-    const { KeytarCredentialStore } = await import(
-      '@/desktop/storage/KeytarCredentialStore'
+    // Track 43: after the desktop cutover the WebView is no longer allowed to
+    // open the OS keychain. Credentials live in the runtime sidecar (the
+    // ControlFrameCredentialStore branch under `__BUILD_MODE__ === 'server'`
+    // below). UIs that need auth state should call the `auth.*` runtime
+    // services; UIs that need a per-key secret should ask the runtime.
+    throw new Error(
+      'WebView credentials are runtime-owned after Track 43; use auth.* runtime services instead of createCredentialStore() on desktop',
     );
-    return new KeytarCredentialStore();
   }
   if (__BUILD_MODE__ === 'server') {
+    if (isDesktopRuntimeProfile()) {
+      const { getDesktopRuntimeHost } = await import('@/desktop-runtime/host');
+      const { ControlFrameCredentialStore } = await import(
+        '@/desktop-runtime/credentials/ControlFrameCredentialStore'
+      );
+      const { getDesktopRuntimeControlBridge } = await import(
+        '@/desktop-runtime/protocol/controlBridge'
+      );
+      const host = getDesktopRuntimeHost();
+      return new ControlFrameCredentialStore(
+        getDesktopRuntimeControlBridge().keychain,
+        host.keychainServicePrefix ?? 'applepi',
+      );
+    }
     const { getDataDir } = await import('@/server/config/server-config');
     const { FileCredentialStore } = await import(
       '@/server/storage/FileCredentialStore'
@@ -150,12 +173,19 @@ export async function createConfigStorage(): Promise<ConfigStorageProvider> {
     return new ChromeConfigStorage();
   }
   if (__BUILD_MODE__ === 'desktop') {
-    const { TauriConfigStorage } = await import(
-      '@/desktop/storage/TauriConfigStorage'
+    const { RuntimeRelayConfigStorageProvider } = await import(
+      '@/desktop-runtime/storage/RuntimeRelayConfigStorageProvider'
     );
-    return new TauriConfigStorage();
+    return new RuntimeRelayConfigStorageProvider();
   }
   if (__BUILD_MODE__ === 'server') {
+    if (isDesktopRuntimeProfile()) {
+      const { getDesktopRuntimeHost } = await import('@/desktop-runtime/host');
+      const { DesktopRuntimeConfigStorageProvider } = await import(
+        '@/desktop-runtime/storage/DesktopRuntimeConfigStorageProvider'
+      );
+      return new DesktopRuntimeConfigStorageProvider(getDesktopRuntimeHost().configJsonPath);
+    }
     const { getDataDir } = await import('@/server/config/server-config');
     const { FileConfigStorageProvider } = await import(
       '@/server/storage/FileConfigStorageProvider'

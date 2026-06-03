@@ -5,6 +5,7 @@
 
 import type { ReviewDecision } from './protocol/types';
 import type { Event } from './protocol/types';
+import type { PlanReviewPlan } from '../tools/planReview/types';
 import type { AgentConfig } from '../config/AgentConfig';
 
 export interface ApprovalRequest {
@@ -123,6 +124,10 @@ export class ApprovalManager {
           explanation: request.description || request.title,
           command: request.details.command,
           timeout,
+          // Track 14: surface the structured plan so the approval card can
+          // render an editable Plan Review view. Undefined for all other
+          // request types (omitted from the event).
+          plan: (request.details.parameters as { plan?: PlanReviewPlan } | undefined)?.plan,
         },
       },
     });
@@ -324,7 +329,22 @@ export class ApprovalManager {
    * Update approval policy
    */
   async updatePolicy(updates: Partial<ApprovalPolicy>): Promise<void> {
+    const previousMode = this.policy.mode;
     this.policy = { ...this.policy, ...updates };
+
+    if (this.policy.mode !== previousMode) {
+      this.emitEvent({
+        id: `evt_approval_policy_changed_${Date.now()}`,
+        msg: {
+          type: 'ApprovalPolicyChanged',
+          data: {
+            mode: this.policy.mode,
+            previousMode,
+            timestamp: Date.now(),
+          },
+        },
+      });
+    }
   }
 
   /**

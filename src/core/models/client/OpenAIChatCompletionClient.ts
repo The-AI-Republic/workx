@@ -42,6 +42,8 @@ export interface OpenAIChatCompletionConfig {
   modelConfig?: IModelConfig;
   /** Use credentials (cookies) for authentication - for backend routing */
   useCredentials?: boolean;
+  /** Track 11: allow the model to emit multiple tool calls per response. Default false. */
+  parallelToolCalls?: boolean;
 }
 
 /**
@@ -85,6 +87,7 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
       provider: config.provider,
       modelConfig: config.modelConfig,
       useCredentials: config.useCredentials,
+      parallelToolCalls: config.parallelToolCalls,
     }, retryConfig);
 
     // Backend routing: rewrite /chat/completions to /completions
@@ -816,7 +819,7 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
         });
 
         requestParams.tool_choice = 'auto';
-        requestParams.parallel_tool_calls = false;
+        requestParams.parallel_tool_calls = this.parallelToolCalls;
       }
 
       // Use OpenAI SDK's chat completions API with streaming

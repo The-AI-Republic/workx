@@ -57,6 +57,9 @@ vi.mock('@/core/RepublicAgent', () => {
       getApprovalManager() {
         return {};
       }
+      getHookDispatcher() {
+        return { fire: vi.fn().mockResolvedValue({}) };
+      }
       getModelClientFactory() {
         return { setAuthManager: vi.fn() };
       }
@@ -67,6 +70,9 @@ vi.mock('@/core/RepublicAgent', () => {
         return { ready: true };
       }
       async getNextEvent() {
+        return null;
+      }
+      getEngine() {
         return null;
       }
     },
