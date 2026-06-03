@@ -2,10 +2,10 @@
  * Request Serialization Keys
  *
  * Maps a method + target to a serialization key and access mode so the
- * scheduler can serialize conflicting mutations while letting independent /
+ * request queue can serialize conflicting mutations while letting independent /
  * read-only requests run concurrently.
  *
- * @module app-server/scheduling/requestSerialization
+ * @module app-server/queue/requestSerialization
  */
 
 export type RequestAccessMode = 'read' | 'write';

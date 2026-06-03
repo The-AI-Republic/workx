@@ -71,6 +71,7 @@ export class DesktopAppServerManager {
         auth,
         profile: 'desktop-runtime',
         sessionFactory: () => this.opts.bootstrap.createSession(),
+        sessionDisposer: (key) => this.opts.bootstrap.releaseSession(key),
       });
 
       // Register the channel BEFORE starting the transport so events route as

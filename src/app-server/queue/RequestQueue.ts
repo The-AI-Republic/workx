@@ -1,19 +1,19 @@
 /**
- * Bounded Request Scheduler
+ * Bounded Request Queue
  *
  * Enforces a global inbound-queue capacity (returning OVERLOADED when full) and
  * serializes conflicting requests by resource key (writes exclusive, reads
  * shared). A per-connection RPC gate prevents queued work from starting after
  * the connection closes.
  *
- * @module app-server/scheduling/RequestScheduler
+ * @module app-server/queue/RequestQueue
  */
 
 import { overloaded, type ErrorShape } from '@applepi/ws-server';
 import type { ConnectionRpcGate } from '../connection/ConnectionRpcGate';
 import type { RequestAccessMode } from './requestSerialization';
 
-export interface ScheduledRequest {
+export interface QueuedRequest {
   connectionId: string;
   requestId: string;
   /** Serialization key (from resolveSerialization). */
@@ -25,7 +25,7 @@ export interface ScheduledRequest {
   run: () => Promise<void>;
 }
 
-export interface RequestSchedulerOptions {
+export interface RequestQueueOptions {
   capacity: number;
 }
 
@@ -37,6 +37,14 @@ export interface RequestSchedulerOptions {
 class RWLock {
   private writeTail: Promise<void> = Promise.resolve();
   private activeReads = new Set<Promise<unknown>>();
+
+  /**
+   * Number of requests currently referencing this lock — in-flight OR queued.
+   * The owning map entry must only be removed when this hits zero, otherwise a
+   * still-queued request and a freshly-created replacement lock for the same
+   * key could run concurrently and break serialization.
+   */
+  refs = 0;
 
   async runWrite<T>(fn: () => Promise<T>): Promise<T> {
     const prior = this.writeTail;
@@ -64,18 +72,14 @@ class RWLock {
       this.activeReads.delete(p);
     }
   }
-
-  get idle(): boolean {
-    return this.activeReads.size === 0;
-  }
 }
 
-export class RequestScheduler {
+export class RequestQueue {
   private size = 0;
   private locks = new Map<string, RWLock>();
   private shuttingDown = false;
 
-  constructor(private readonly opts: RequestSchedulerOptions) {}
+  constructor(private readonly opts: RequestQueueOptions) {}
 
   get inFlight(): number {
     return this.size;
@@ -88,7 +92,7 @@ export class RequestScheduler {
    *
    * Health/readiness checks should bypass the scheduler entirely.
    */
-  enqueue(req: ScheduledRequest): { accepted: boolean; error?: ErrorShape; done?: Promise<void> } {
+  enqueue(req: QueuedRequest): { accepted: boolean; error?: ErrorShape; done?: Promise<void> } {
     if (this.shuttingDown) {
       return { accepted: false, error: overloaded(500, 'Server shutting down') };
     }
@@ -103,7 +107,7 @@ export class RequestScheduler {
     return { accepted: true, done };
   }
 
-  private async dispatch(req: ScheduledRequest): Promise<void> {
+  private async dispatch(req: QueuedRequest): Promise<void> {
     const guarded = async (): Promise<void> => {
       // Drop work whose connection closed while queued.
       if (req.gate && !req.gate.tryEnter()) return;
@@ -125,14 +129,24 @@ export class RequestScheduler {
       this.locks.set(req.serialKey, lock);
     }
 
-    if (req.mode === 'write') {
-      await lock.runWrite(guarded);
-    } else {
-      await lock.runRead(guarded);
+    // Reference the lock for the whole queued+running lifetime so a concurrent
+    // same-key request always shares THIS lock. Only drop the map entry once no
+    // request references it — deleting earlier (e.g. while a write is still
+    // queued) would let a replacement lock run concurrently and break
+    // serialization.
+    lock.refs += 1;
+    try {
+      if (req.mode === 'write') {
+        await lock.runWrite(guarded);
+      } else {
+        await lock.runRead(guarded);
+      }
+    } finally {
+      lock.refs -= 1;
+      if (lock.refs === 0 && this.locks.get(req.serialKey) === lock) {
+        this.locks.delete(req.serialKey);
+      }
     }
-
-    // Opportunistically drop idle locks to avoid unbounded growth.
-    if (lock.idle) this.locks.delete(req.serialKey);
   }
 
   async shutdown(_reason: string): Promise<void> {

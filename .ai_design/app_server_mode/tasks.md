@@ -132,7 +132,7 @@ This checklist implements the design in `design.md`.
 ### Backpressure
 
 - [ ] Add `OVERLOADED` to `packages/ws-server/src/errors.ts`.
-- [ ] Add `src/app-server/scheduling/RequestScheduler.ts`.
+- [ ] Add `src/app-server/queue/RequestQueue.ts`.
 - [ ] Enforce global request queue capacity.
 - [ ] Enforce optional per-connection queue capacity.
 - [ ] Return retryable overload response when saturated.
@@ -147,7 +147,7 @@ This checklist implements the design in `design.md`.
 
 ### Request Serialization
 
-- [ ] Add `src/app-server/scheduling/requestSerialization.ts`.
+- [ ] Add `src/app-server/queue/requestSerialization.ts`.
 - [ ] Serialize `chat.send`, `chat.abort`, and session mutations by session key.
 - [ ] Serialize config writes globally.
 - [ ] Serialize credential writes globally.

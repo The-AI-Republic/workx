@@ -2,7 +2,7 @@
  * App-Server Request Processor
  *
  * Owns protocol behavior: handshake, auth, scope enforcement, request
- * scheduling/serialization, and method dispatch to the shared handlers. The
+ * queueing/serialization, and method dispatch to the shared handlers. The
  * transport only forwards raw connection events here.
  *
  * @module app-server/AppServerRequestProcessor
@@ -33,8 +33,8 @@ import {
 } from '@applepi/ws-server';
 import type { AppServerConnectionRegistry, ConnectionSocket } from './AppServerConnectionRegistry';
 import type { AppServerAuth } from './connection/AppServerAuth';
-import type { RequestScheduler } from './scheduling/RequestScheduler';
-import { resolveSerialization } from './scheduling/requestSerialization';
+import type { RequestQueue } from './queue/RequestQueue';
+import { resolveSerialization } from './queue/requestSerialization';
 import type { AppServerRateLimiter } from './connection/rateLimiter';
 import type { ConnectionWatchdog } from './connection/ConnectionWatchdog';
 import type { AppServerStatusController } from './status/AppServerStatus';
@@ -60,12 +60,14 @@ export interface AppServerRequestProcessorDeps {
   channelType: string;
   registry: AppServerConnectionRegistry;
   auth: AppServerAuth;
-  scheduler: RequestScheduler;
+  queue: RequestQueue;
   rateLimiter: AppServerRateLimiter;
   watchdog: ConnectionWatchdog;
   status: AppServerStatusController;
   /** Create a dedicated agent session for a connection; returns its id. */
   sessionFactory: () => Promise<string>;
+  /** Tear down a connection's dedicated session on disconnect (prevents leaks). */
+  sessionDisposer?: (sessionKey: string) => Promise<void>;
   /** Allowed scopes a connection may be granted (intersected with requested). */
   allowedScopes?: string[];
   now?: () => number;
@@ -164,7 +166,7 @@ export class AppServerRequestProcessor {
       return;
     }
 
-    // Health/readiness bypass the scheduler so they stay observable under load.
+    // Health/readiness bypass the queue so they stay observable under load.
     if (req.method === 'health') {
       await this.runHandler(connectionId, req.id, req.method, req.params, handler);
       return;
@@ -177,7 +179,7 @@ export class AppServerRequestProcessor {
     });
 
     conn.requestIds.add(req.id);
-    const result = this.deps.scheduler.enqueue({
+    const result = this.deps.queue.enqueue({
       connectionId,
       requestId: req.id,
       serialKey: serialization.key,
@@ -196,10 +198,19 @@ export class AppServerRequestProcessor {
   onClose(connectionId: string): void {
     const conn = this.deps.registry.get(connectionId);
     if (!conn) return;
+    const sessionKey = conn.sessionKey;
     this.deps.watchdog.clearHandshakeTimeout(connectionId);
     this.deps.rateLimiter.clear(connectionId);
     this.deps.registry.remove(connectionId);
     this.deps.status.setConnections(this.deps.registry.count());
+
+    // Dispose the connection's dedicated session so sessions don't accumulate
+    // for the life of the runtime. Fire-and-forget — onClose is a sync sink.
+    if (sessionKey && this.deps.sessionDisposer) {
+      void this.deps.sessionDisposer(sessionKey).catch((err) => {
+        console.error(`[AppServerRequestProcessor] session dispose failed for ${sessionKey}:`, err);
+      });
+    }
   }
 
   // ───────────────────────────────────────────────────────────────────────

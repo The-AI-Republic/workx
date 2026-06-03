@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ConnectionRpcGate } from '../connection/ConnectionRpcGate';
-import { resolveSerialization, serializationKeyString } from '../scheduling/requestSerialization';
+import { resolveSerialization, serializationKeyString } from '../queue/requestSerialization';
 import { AppServerRateLimiter } from '../connection/rateLimiter';
 import { handleHealthRequest, buildHealthBody } from '../transport/httpHealth';
 import { AppServerConnectionRegistry } from '../AppServerConnectionRegistry';

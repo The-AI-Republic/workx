@@ -4,7 +4,7 @@ import { registerMethodHandler } from '@applepi/ws-server';
 import { AppServerRequestProcessor } from '../AppServerRequestProcessor';
 import { AppServerConnectionRegistry } from '../AppServerConnectionRegistry';
 import { AppServerAuth, InMemoryTokenStore } from '../connection/AppServerAuth';
-import { RequestScheduler } from '../scheduling/RequestScheduler';
+import { RequestQueue } from '../queue/RequestQueue';
 import { AppServerRateLimiter } from '../connection/rateLimiter';
 import { ConnectionWatchdog } from '../connection/ConnectionWatchdog';
 import { AppServerStatusController } from '../status/AppServerStatus';
@@ -30,6 +30,7 @@ interface Harness {
   auth: AppServerAuth;
   token: string;
   sockets: Map<string, { sent: unknown[]; close: ReturnType<typeof vi.fn> }>;
+  disposed: string[];
   open: (id: string) => void;
   send: (id: string, frame: unknown) => Promise<void>;
   frames: (id: string) => any[];
@@ -43,6 +44,7 @@ async function makeHarness(opts?: { capacity?: number; requireAuth?: boolean }):
   const token = await auth.ensureToken();
   const status = new AppServerStatusController();
   let sessionCounter = 0;
+  const disposed: string[] = [];
 
   const sockets = new Map<string, { sent: unknown[]; close: ReturnType<typeof vi.fn> }>();
 
@@ -51,11 +53,14 @@ async function makeHarness(opts?: { capacity?: number; requireAuth?: boolean }):
     channelType: 'websocket',
     registry,
     auth,
-    scheduler: new RequestScheduler({ capacity: opts?.capacity ?? 128 }),
+    queue: new RequestQueue({ capacity: opts?.capacity ?? 128 }),
     rateLimiter: new AppServerRateLimiter({ windowMs: 1000, max: 1000 }),
     watchdog: new ConnectionWatchdog({ handshakeTimeoutMs: 10_000 }),
     status,
     sessionFactory: async () => `sess_${++sessionCounter}`,
+    sessionDisposer: async (key) => {
+      disposed.push(key);
+    },
   });
 
   return {
@@ -63,6 +68,7 @@ async function makeHarness(opts?: { capacity?: number; requireAuth?: boolean }):
     auth,
     token,
     sockets,
+    disposed,
     open: (id: string) => {
       const sent: unknown[] = [];
       const close = vi.fn();
@@ -200,5 +206,23 @@ describe('AppServerRequestProcessor', () => {
     h.processor.onClose('c1');
     // A subsequent message for the closed connection is a no-op (no throw).
     await expect(h.send('c1', { type: 'req', id: randomUUID(), method: 'health' })).resolves.toBeUndefined();
+  });
+
+  it('disposes the connection session on close (no session leak)', async () => {
+    const h = await makeHarness();
+    h.open('c1');
+    await h.send('c1', connectFrame(h.token));
+    expect(h.last('c1').payload.sessionKey).toBe('sess_1');
+    h.processor.onClose('c1');
+    await Promise.resolve(); // let the fire-and-forget disposer settle
+    expect(h.disposed).toEqual(['sess_1']);
+  });
+
+  it('does not dispose a session for a connection that never authenticated', async () => {
+    const h = await makeHarness();
+    h.open('c1');
+    h.processor.onClose('c1'); // closed before any successful connect
+    await Promise.resolve();
+    expect(h.disposed).toEqual([]);
   });
 });

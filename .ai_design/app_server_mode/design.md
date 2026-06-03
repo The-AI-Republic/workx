@@ -416,8 +416,8 @@ src/app-server/
   transport/
     AppServerWebSocketTransport.ts
     httpHealth.ts
-  scheduling/
-    RequestScheduler.ts
+  queue/
+    RequestQueue.ts
     requestSerialization.ts
   status/
     AppServerStatus.ts
@@ -783,7 +783,7 @@ interface ScheduledRequest {
   context: MethodContext;
 }
 
-class RequestScheduler {
+class RequestQueue {
   enqueue(request: ScheduledRequest): EnqueueResult;
   shutdown(reason: string): Promise<void>;
 }
@@ -804,7 +804,7 @@ Slow outbound client rules:
 
 ## Request Serialization
 
-Add `src/app-server/scheduling/requestSerialization.ts`.
+Add `src/app-server/queue/requestSerialization.ts`.
 
 Serialization keys:
 
@@ -883,7 +883,7 @@ Responsibilities:
 - Enforce connected/authenticated state.
 - Enforce method scopes via existing `authorize.ts` logic.
 - Deduplicate request IDs if the protocol requires it.
-- Enqueue through `RequestScheduler`.
+- Enqueue through `RequestQueue`.
 - Dispatch to existing server handlers.
 - Send response frames.
 - Track active requests by connection.
@@ -1159,7 +1159,7 @@ Exit criteria:
 
 Tasks:
 
-- Add bounded `RequestScheduler`.
+- Add bounded `RequestQueue`.
 - Add `OVERLOADED` error.
 - Add `ConnectionRpcGate`.
 - Add request serialization.
@@ -1239,8 +1239,8 @@ Exit criteria:
 - `src/app-server/connection/ConnectionRpcGate.ts`: disconnect gate.
 - `src/app-server/connection/ConnectionWatchdog.ts`: heartbeat/slow unauth cleanup.
 - `src/app-server/connection/rateLimiter.ts`: reusable rate limiter or wrapper.
-- `src/app-server/scheduling/RequestScheduler.ts`: bounded request queue.
-- `src/app-server/scheduling/requestSerialization.ts`: resource serialization.
+- `src/app-server/queue/RequestQueue.ts`: bounded request queue.
+- `src/app-server/queue/requestSerialization.ts`: resource serialization.
 - `src/app-server/status/AppServerStatus.ts`: status controller.
 
 ### Desktop Runtime
@@ -1313,7 +1313,7 @@ Do not write `.applepi-server/config.json` from desktop app-server settings.
 | UI sees external sessions unexpectedly | Start with UI receiving global runtime events; add session ownership router in Phase 2 if needed. |
 | App-server port conflict crashes desktop app | Catch startup failures and publish app-server error status only. |
 | Local browser page calls app-server | Reject all `Origin` headers by default and require token. |
-| Unbounded memory under many requests | Bounded RequestScheduler and overload responses. |
+| Unbounded memory under many requests | Bounded RequestQueue and overload responses. |
 | Slow WebSocket client stalls event delivery | Per-connection outbound caps and slow-consumer disconnect. |
 | Concurrent mutation corrupts session/config state | Request serialization by resource key. |
 | Disconnect leaves queued work that later starts | ConnectionRpcGate. |

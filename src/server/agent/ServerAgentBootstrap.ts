@@ -193,11 +193,28 @@ export class ServerAgentBootstrap {
   /**
    * Create a fresh agent session and return its id. Used by callers such as the
    * app-server that need a dedicated session per external connection.
+   *
+   * Created as `type: 'api'` + `internal: true`: never the registry's primary
+   * session (so external connections can't hijack the UI's primary-session
+   * pointer) and outside the user concurrency budget (the app-server transport
+   * bounds connection count itself).
    */
   async createSession(): Promise<string> {
     if (!this.registry) throw new Error('AgentRegistry not initialized');
-    const session = await this.registry.createSession({ type: 'primary' });
+    const session = await this.registry.createSession({ type: 'api', internal: true });
     return session.sessionId;
+  }
+
+  /**
+   * Tear down a session created via {@link createSession} and drop its event
+   * routing. Called when an app-server connection closes so dedicated sessions
+   * don't accumulate for the life of the runtime.
+   */
+  async releaseSession(sessionId: string): Promise<void> {
+    this.sessionOwners.delete(sessionId);
+    if (this.registry) {
+      await this.registry.removeSession(sessionId);
+    }
   }
 
   /**

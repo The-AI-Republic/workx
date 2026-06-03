@@ -1,7 +1,7 @@
 /**
  * App-Server Manager (host-agnostic)
  *
- * Owns the transport, request processor, connection registry, scheduler, and
+ * Owns the transport, request processor, connection registry, request queue, and
  * status controller. Knows nothing about the desktop control bridge or
  * keychain — those are injected (auth + sessionFactory) by the host
  * integration (DesktopAppServerManager). The same manager can back a future
@@ -19,7 +19,7 @@ import { AppServerWebSocketTransport, type AppServerListenInfo } from './transpo
 import { AppServerAuth } from './connection/AppServerAuth';
 import { AppServerRateLimiter } from './connection/rateLimiter';
 import { ConnectionWatchdog } from './connection/ConnectionWatchdog';
-import { RequestScheduler } from './scheduling/RequestScheduler';
+import { RequestQueue } from './queue/RequestQueue';
 import { AppServerStatusController, type AppServerStatusSnapshot } from './status/AppServerStatus';
 
 export interface AppServerManagerDeps {
@@ -27,6 +27,8 @@ export interface AppServerManagerDeps {
   auth: AppServerAuth;
   /** Create a dedicated agent session per connection. */
   sessionFactory: () => Promise<string>;
+  /** Tear down a connection's dedicated session on disconnect. */
+  sessionDisposer?: (sessionKey: string) => Promise<void>;
   /** Runtime profile, for health responses. */
   profile?: string;
   channelId?: string;
@@ -40,7 +42,7 @@ export class AppServerManager {
   private readonly channel: AppServerChannel;
   private readonly config: IAppServerConfig;
   private transport: AppServerWebSocketTransport | null = null;
-  private scheduler: RequestScheduler | null = null;
+  private queue: RequestQueue | null = null;
   private watchdog: ConnectionWatchdog | null = null;
   private listenInfo: AppServerListenInfo | null = null;
 
@@ -79,7 +81,7 @@ export class AppServerManager {
 
     await this.deps.auth.ensureToken();
 
-    this.scheduler = new RequestScheduler({ capacity: this.config.requestQueueCapacity });
+    this.queue = new RequestQueue({ capacity: this.config.requestQueueCapacity });
     this.watchdog = new ConnectionWatchdog({ handshakeTimeoutMs: this.deps.handshakeTimeoutMs ?? 10_000 });
     const rateLimiter = new AppServerRateLimiter({ windowMs: 1000, max: 50 });
 
@@ -88,11 +90,12 @@ export class AppServerManager {
       channelType: 'websocket',
       registry: this.registry,
       auth: this.deps.auth,
-      scheduler: this.scheduler,
+      queue: this.queue,
       rateLimiter,
       watchdog: this.watchdog,
       status: this.status,
       sessionFactory: this.deps.sessionFactory,
+      sessionDisposer: this.deps.sessionDisposer,
       allowedScopes: this.deps.allowedScopes,
     });
 
@@ -121,11 +124,11 @@ export class AppServerManager {
   async stop(reason = 'stop'): Promise<void> {
     this.status.set({ status: 'stopping' });
     await this.transport?.stop(reason);
-    await this.scheduler?.shutdown(reason);
+    await this.queue?.shutdown(reason);
     this.watchdog?.stopAll();
     this.registry.clear();
     this.transport = null;
-    this.scheduler = null;
+    this.queue = null;
     this.watchdog = null;
     this.listenInfo = null;
     this.status.set({ status: this.config.enabled ? 'disabled' : 'disabled', connections: 0, url: undefined });
