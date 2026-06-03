@@ -112,10 +112,9 @@ async function fetchJsonRecord(url: string, init: RequestInit): Promise<{
 }
 
 /**
- * Resolve the base URL for the auth backend. Identical default to the
- * webfront's `HOME_PAGE_BASE_URL`, overridable via env for tests / staging.
+ * Resolve the base URL for the hosted auth backend, when one is configured.
  */
-function resolveAuthBaseUrl(): string {
+function resolveAuthBaseUrl(): string | null {
   return resolveRuntimeUrls().homePageBaseUrl;
 }
 
@@ -130,6 +129,7 @@ export async function fetchUserProfileServerSide(
 ): Promise<RuntimeUserProfile | null> {
   if (!accessToken) return null;
   const baseUrl = resolveAuthBaseUrl();
+  if (!baseUrl) return profileFromAccessToken(accessToken);
   try {
     const desktopSession = await fetchJsonRecord(`${baseUrl}/auth/desktop/session`, {
       method: 'GET',
@@ -172,6 +172,7 @@ export async function refreshDesktopAuthTokens(
 ): Promise<RuntimeDesktopTokens | null> {
   if (!refreshToken) return null;
   const baseUrl = resolveAuthBaseUrl();
+  if (!baseUrl) return null;
   try {
     const response = await fetch(`${baseUrl}/auth/desktop/refresh`, {
       method: 'POST',

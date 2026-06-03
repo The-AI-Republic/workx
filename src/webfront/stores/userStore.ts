@@ -105,11 +105,13 @@ export const userInitials: Readable<string> = derived(userStore, ($user) =>
 );
 
 // Get the login page URL derived from HOME_PAGE_BASE_URL
-export function getLoginPageUrl(): string {
+export function getLoginPageUrl(): string | null {
+  if (!HOME_PAGE_BASE_URL) return null;
   return new URL('/login', HOME_PAGE_BASE_URL).toString();
 }
 
-export function getDesktopLoginPageUrl(): string {
+export function getDesktopLoginPageUrl(): string | null {
+  if (!HOME_PAGE_BASE_URL) return null;
   const loginUrl = new URL('/login', HOME_PAGE_BASE_URL);
   loginUrl.searchParams.set('redirect_url', 'applepi://auth/callback');
   loginUrl.searchParams.set('desktop_login_ts', Date.now().toString());

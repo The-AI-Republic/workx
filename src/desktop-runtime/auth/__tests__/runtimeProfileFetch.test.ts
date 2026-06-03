@@ -37,17 +37,17 @@ describe('profileFromAccessToken', () => {
 });
 
 describe('fetchUserProfileServerSide', () => {
-  const originalHomeUrl = process.env.VITE_HOME_PAGE_BASE_URL;
+  const originalHomeUrl = process.env.VITE_AUTH_BASE_URL;
 
   beforeEach(() => {
-    process.env.VITE_HOME_PAGE_BASE_URL = 'https://home.example.com';
+    process.env.VITE_AUTH_BASE_URL = 'https://home.example.com';
   });
 
   afterEach(() => {
     if (originalHomeUrl === undefined) {
-      delete process.env.VITE_HOME_PAGE_BASE_URL;
+      delete process.env.VITE_AUTH_BASE_URL;
     } else {
-      process.env.VITE_HOME_PAGE_BASE_URL = originalHomeUrl;
+      process.env.VITE_AUTH_BASE_URL = originalHomeUrl;
     }
     vi.unstubAllGlobals();
   });
@@ -114,17 +114,17 @@ describe('fetchUserProfileServerSide', () => {
 });
 
 describe('refreshDesktopAuthTokens', () => {
-  const originalHomeUrl = process.env.VITE_HOME_PAGE_BASE_URL;
+  const originalHomeUrl = process.env.VITE_AUTH_BASE_URL;
 
   beforeEach(() => {
-    process.env.VITE_HOME_PAGE_BASE_URL = 'https://home.example.com';
+    process.env.VITE_AUTH_BASE_URL = 'https://home.example.com';
   });
 
   afterEach(() => {
     if (originalHomeUrl === undefined) {
-      delete process.env.VITE_HOME_PAGE_BASE_URL;
+      delete process.env.VITE_AUTH_BASE_URL;
     } else {
-      process.env.VITE_HOME_PAGE_BASE_URL = originalHomeUrl;
+      process.env.VITE_AUTH_BASE_URL = originalHomeUrl;
     }
     vi.unstubAllGlobals();
   });

@@ -41,6 +41,11 @@ export async function fetchUserProfile(providedToken?: string): Promise<UserProf
     }
 
     const baseUrl = HOME_PAGE_BASE_URL;
+    if (!baseUrl) {
+      console.warn('[API] Hosted auth base URL is not configured for fetching user profile');
+      return null;
+    }
+
     const response = await fetch(`${baseUrl}/api/v1/users/profile`, {
       method: 'GET',
       headers: {

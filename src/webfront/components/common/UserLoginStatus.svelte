@@ -17,10 +17,11 @@
   let showPromoTooltip = $state(false);
   let promoTooltipTimer: ReturnType<typeof setTimeout> | null = null;
   let hasShownPromoTooltip = $state(false);
+  const hasHostedAuth = HOME_PAGE_BASE_URL.length > 0;
 
   // Watch for user state changes to show promo tooltip when not logged in (only once)
   $effect(() => {
-    if (!$userStore.isLoading && !$userStore.isLoggedIn && !hasShownPromoTooltip) {
+    if (hasHostedAuth && !$userStore.isLoading && !$userStore.isLoggedIn && !hasShownPromoTooltip) {
       showPromoTooltipWithTimer();
     } else if ($userStore.isLoggedIn) {
       hidePromoTooltip();
@@ -63,6 +64,11 @@
   });
 
   async function openLoginPage() {
+    if (!hasHostedAuth) {
+      console.warn('[UserLoginStatus] Hosted auth is not configured');
+      return;
+    }
+
     if (platform.platformName === 'desktop') {
       // Desktop mode: open the browser to /login, await the applepi-deeplink
       // deeplink (Rust → WebView event), and forward both tokens to the
@@ -91,6 +97,7 @@
         // home page handles both fresh Google login and already-authenticated
         // browser sessions.
         const loginUrl = getDesktopLoginPageUrl();
+        if (!loginUrl) throw new Error('Hosted auth is not configured');
 
         // 2. Subscribe to the applepi-deeplink event from Rust before opening the
         // browser — Rust emits it as soon as the OS hands us the URL.
@@ -200,7 +207,7 @@
     } else {
       // Extension mode: open login page in a new tab
       const loginUrl = getLoginPageUrl();
-      chrome.tabs.create({ url: loginUrl });
+      if (loginUrl) chrome.tabs.create({ url: loginUrl });
     }
   }
 
@@ -231,6 +238,7 @@
   async function openUserCenter(event: MouseEvent) {
     event.preventDefault();
     showMenu = false;
+    if (!hasHostedAuth) return;
     const userCenterUrl = `${HOME_PAGE_BASE_URL}/user-center/info`;
 
     if (platform.platformName === 'desktop') {
@@ -290,7 +298,7 @@
       {#snippet content()}<div class="min-w-[180px]">
         <!-- User Info Section -->
         <a
-          href="{HOME_PAGE_BASE_URL}/user-center/info"
+          href={hasHostedAuth ? `${HOME_PAGE_BASE_URL}/user-center/info` : undefined}
           class="flex items-center gap-3 p-3 no-underline cursor-pointer rounded transition-colors duration-150
             {$uiTheme === 'modern'
               ? 'hover:bg-white/10'
@@ -348,7 +356,7 @@
         </button>
       </div>{/snippet}
     </PopupCard>
-  {:else}
+  {:else if hasHostedAuth}
     <!-- Not logged in state - show login link -->
     <Tooltip content={isLoggingIn ? $_t("Click to cancel login") : (showPromoTooltip ? $_t("Login to get free credits") : $_t("Sign in to your account"))}>
       <button

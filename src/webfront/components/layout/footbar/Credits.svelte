@@ -206,7 +206,7 @@
       </div>
 
       <!-- Upgrade Button -->
-      {#if credits.plan_id < PLAN_ID_PLUS}
+      {#if credits.plan_id < PLAN_ID_PLUS && HOME_PAGE_BASE_URL}
         <a
           href="{HOME_PAGE_BASE_URL}/pricing"
           target="_blank"
