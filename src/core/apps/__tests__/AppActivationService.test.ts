@@ -112,6 +112,43 @@ describe('AppActivationService', () => {
     });
   });
 
+  it('removes the runtime MCP server when activation connect fails', async () => {
+    const store = new AppLocalStore(new MemoryConfigStorage());
+    const manifest = makeManifest({ auth: { type: 'none' } });
+    await store.upsertInstalledApp(createInstalledRecord(manifest));
+    await store.saveManifest(manifest.appId, manifest);
+
+    const manager = makeManager();
+    manager.connect.mockRejectedValueOnce(new Error('connection refused'));
+    manager.getServer.mockReturnValueOnce({
+      id: 'server-1',
+      name: 'linear',
+      url: 'https://mcp.linear.example/mcp',
+      enabled: true,
+      timeout: 30_000,
+      transport: 'streamable-http',
+      platform: 'desktop',
+      runtime: true,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    const service = new AppActivationService(
+      store,
+      { getOAuthToken: vi.fn() } as any,
+      async () => manager as any,
+    );
+
+    await expect(service.activate(manifest.appId)).resolves.toMatchObject({
+      status: 'error',
+      message: 'connection refused',
+    });
+    expect(manager.removeServer).toHaveBeenCalledWith('server-1');
+    const install = await store.getInstalledApp(manifest.appId);
+    expect(install).toMatchObject({ connectionStatus: 'ready' });
+    expect(install).not.toHaveProperty('runtimeServerId');
+  });
+
   it('refreshes expired DCR OAuth tokens through discovered metadata before activation', async () => {
     const store = new AppLocalStore(new MemoryConfigStorage());
     const manifest = makeManifest({

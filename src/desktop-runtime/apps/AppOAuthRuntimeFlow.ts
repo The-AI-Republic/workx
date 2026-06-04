@@ -88,6 +88,7 @@ export class AppOAuthRuntimeFlow {
     if (!Number.isInteger(port) || port <= 0) {
       throw new Error(`Invalid OAuth callback port: ${callbackUrl.port}`);
     }
+    const listenHost = callbackUrl.hostname === 'localhost' ? '127.0.0.1' : callbackUrl.hostname;
 
     let server: Server | null = null;
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -177,7 +178,7 @@ export class AppOAuthRuntimeFlow {
 
     await new Promise<void>((resolve, reject) => {
       server!.once('error', reject);
-      server!.listen(port, () => resolve());
+      server!.listen(port, listenHost, () => resolve());
     });
 
     return { promise, close };
@@ -200,8 +201,8 @@ async function openExternalUrl(url: string): Promise<void> {
       stdio: 'ignore',
     });
     child.once('error', reject);
+    child.once('spawn', resolve);
     child.unref();
-    setTimeout(resolve, 0);
   });
 }
 

@@ -85,6 +85,7 @@ export class AppActivationService {
       };
     }
 
+    let runtimeServerId: string | null = null;
     try {
       const endpoint = manifest.runtime.endpoint ?? manifest.runtime.url;
       if (!endpoint) {
@@ -98,6 +99,7 @@ export class AppActivationService {
         platform: 'desktop',
         enabled: true,
       });
+      runtimeServerId = server.id;
 
       await manager.connect(server.id, { headers: authHeaders });
       const connection = manager.getConnection(server.id);
@@ -116,6 +118,13 @@ export class AppActivationService {
         toolNames,
       };
     } catch (error) {
+      if (runtimeServerId && manager.getServer(runtimeServerId)) {
+        try {
+          await manager.removeServer(runtimeServerId);
+        } catch (cleanupError) {
+          console.warn('[AppActivationService] Failed to remove failed runtime server:', cleanupError);
+        }
+      }
       const message = error instanceof Error ? error.message : String(error);
       await this.patchStatus(appId, manifest.auth?.type && manifest.auth.type !== 'none' ? 'auth_error' : 'ready', message);
       return { status: 'error', appId, serverName, message };
