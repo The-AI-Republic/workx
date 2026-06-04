@@ -1,7 +1,9 @@
-/**
- * Cookie utility functions for handling authentication cookies
- * Adapted for Chrome extension sidepanel - uses chrome.cookies API
- */
+import { resolveAuthConfig } from '@/config/authConfig';
+
+const authConfig = resolveAuthConfig();
+
+export const AUTH_COOKIE_NAMES = authConfig.cookieNames;
+export const AUTH_COOKIE_DOMAIN = authConfig.cookieDomain;
 
 /**
  * Get a cookie value by name using Chrome extension cookies API
@@ -10,7 +12,8 @@
  * @returns Cookie value or null if not found
  */
 export async function getCookie(name: string, domain?: string): Promise<string | null> {
-  const cookieDomain = domain || import.meta.env.VITE_COOKIE_DOMAIN || '.airepublic.com';
+  const cookieDomain = domain || AUTH_COOKIE_DOMAIN;
+  if (!cookieDomain) return null;
 
   try {
     // Use chrome.cookies API for extension context
@@ -46,10 +49,10 @@ export async function getCookie(name: string, domain?: string): Promise<string |
  */
 export async function isAuthenticated(): Promise<boolean> {
   // Check for the actual access token cookie (httpOnly, set by server)
-  // This is more reliable than checking the ai_auth_status indicator cookie
+  // This is more reliable than checking the auth status indicator cookie
   // which is set by client-side JavaScript on the website and may not exist
   // until the user visits the website in the current browser session
-  const accessToken = await getCookie('ai_access');
+  const accessToken = await getCookie(AUTH_COOKIE_NAMES.access);
   return accessToken !== null && accessToken.length > 0;
 }
 
@@ -58,7 +61,7 @@ export async function isAuthenticated(): Promise<boolean> {
  * @returns Access token or null
  */
 export async function getAccessToken(): Promise<string | null> {
-  return getCookie('ai_access');
+  return getCookie(AUTH_COOKIE_NAMES.access);
 }
 
 /**
@@ -66,7 +69,7 @@ export async function getAccessToken(): Promise<string | null> {
  * @returns Refresh token or null
  */
 export async function getRefreshToken(): Promise<string | null> {
-  return getCookie('ai_refresh');
+  return getCookie(AUTH_COOKIE_NAMES.refresh);
 }
 
 /**
@@ -74,7 +77,7 @@ export async function getRefreshToken(): Promise<string | null> {
  * @returns CSRF token or null
  */
 export async function getCsrfToken(): Promise<string | null> {
-  return getCookie('ai_csrf');
+  return getCookie(AUTH_COOKIE_NAMES.csrf);
 }
 
 /**
@@ -82,7 +85,7 @@ export async function getCsrfToken(): Promise<string | null> {
  * @returns User name or null
  */
 export async function getUserName(): Promise<string | null> {
-  return getCookie('ai_user_name');
+  return getCookie(AUTH_COOKIE_NAMES.userName);
 }
 
 /**
@@ -90,7 +93,7 @@ export async function getUserName(): Promise<string | null> {
  * @returns User email or null
  */
 export async function getUserEmail(): Promise<string | null> {
-  return getCookie('ai_user_email');
+  return getCookie(AUTH_COOKIE_NAMES.userEmail);
 }
 
 /**
@@ -98,12 +101,13 @@ export async function getUserEmail(): Promise<string | null> {
  * Note: In Chrome extension context, this requires the cookies permission
  */
 export async function clearAuthCookies(): Promise<void> {
-  const cookieDomain = import.meta.env.VITE_COOKIE_DOMAIN || '.airepublic.com';
+  const cookieDomain = AUTH_COOKIE_DOMAIN;
+  if (!cookieDomain) return;
   const url = `https://${cookieDomain.replace(/^\./, '')}`;
 
   try {
     if (typeof chrome !== 'undefined' && chrome.cookies) {
-      const cookieNames = ['ai_access', 'ai_refresh', 'ai_csrf', 'ai_auth_status', 'ai_user_name', 'ai_user_email'];
+      const cookieNames = Object.values(AUTH_COOKIE_NAMES);
 
       await Promise.all(
         cookieNames.map((name) =>
@@ -125,7 +129,8 @@ export async function clearAuthCookies(): Promise<void> {
  * @param days Number of days until expiration
  */
 export async function setCookie(name: string, value: string, days: number): Promise<void> {
-  const cookieDomain = import.meta.env.VITE_COOKIE_DOMAIN || '.airepublic.com';
+  const cookieDomain = AUTH_COOKIE_DOMAIN;
+  if (!cookieDomain) return;
   const url = `https://${cookieDomain.replace(/^\./, '')}`;
 
   try {

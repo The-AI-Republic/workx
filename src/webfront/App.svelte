@@ -11,7 +11,7 @@
   import Doctor from './pages/diagnostics/Doctor.svelte';
   import Usage from './pages/usage/Usage.svelte';
   import { userStore } from './stores/userStore';
-  import { isAuthenticated } from './lib/utils/cookie';
+  import { AUTH_COOKIE_DOMAIN, AUTH_COOKIE_NAMES, isAuthenticated } from './lib/utils/cookie';
   import { fetchUserProfile } from './lib/apis';
   import { LLM_API_URL } from './lib/constants';
   import { AgentConfig } from '@/config/AgentConfig';
@@ -56,10 +56,6 @@
     // Catch-all route - redirect to chat
     '*': Chat,
   };
-
-  // Cookie domain for filtering cookie change events
-  const COOKIE_DOMAIN = import.meta.env.VITE_COOKIE_DOMAIN || '.airepublic.com';
-  const AUTH_COOKIE_NAME = 'ai_access';
 
   // Store the cookie change listener for cleanup
   let cookieChangeListener: ((changeInfo: chrome.cookies.CookieChangeInfo) => void) | null = $state(null);
@@ -267,8 +263,9 @@
 
         // Only react to auth cookie changes on our domain
         if (
-          cookie.name === AUTH_COOKIE_NAME &&
-          cookie.domain.includes(COOKIE_DOMAIN.replace(/^\./, ''))
+          AUTH_COOKIE_DOMAIN &&
+          cookie.name === AUTH_COOKIE_NAMES.access &&
+          cookie.domain.includes(AUTH_COOKIE_DOMAIN.replace(/^\./, ''))
         ) {
           console.log('[App] Auth cookie changed:', removed ? 'removed' : 'set');
           checkAndUpdateAuth();

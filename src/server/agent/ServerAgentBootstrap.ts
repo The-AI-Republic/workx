@@ -1152,7 +1152,7 @@ export class ServerAgentBootstrap {
     const appsDeps: import('@/core/services').AppsServiceDeps | undefined =
       profile === 'desktop-runtime' && runtimeState
         ? {
-            marketplaceBaseUrl: runtimeState.getUrls().homePageBaseUrl,
+            marketplaceBaseUrl: runtimeState.getUrls().homePageBaseUrl ?? 'https://airepublic.com',
             getAccessToken: () => getCredentialStore().get('auth', 'access_token'),
             connectAccount: appOAuthFlow ? (appId: string) => appOAuthFlow!.connect(appId) : undefined,
           }

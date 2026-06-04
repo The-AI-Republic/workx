@@ -58,9 +58,10 @@ function isPlatformSupported(toolDef: ToolDefinition, platform: Platform): boole
 }
 
 function createDesktopAppAgentToolDeps(): AppAgentToolDeps {
+  const marketplaceBaseUrl = resolveRuntimeUrls().homePageBaseUrl ?? 'https://airepublic.com';
   const store = new AppLocalStore();
   const marketplace = new AppMarketplaceClient({
-    baseUrl: resolveRuntimeUrls().homePageBaseUrl,
+    baseUrl: marketplaceBaseUrl,
     getAccessToken: () => getCredentialStore().get('auth', 'access_token'),
   });
   const installer = new AppInstallService(marketplace, store);

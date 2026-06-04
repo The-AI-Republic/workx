@@ -149,10 +149,15 @@ desktop_env_value() {
   printf '%s\n' "$value"
 }
 
-EFFECTIVE_HOME_PAGE_URL="${VITE_HOME_PAGE_BASE_URL:-$(desktop_env_value VITE_HOME_PAGE_BASE_URL)}"
-echo "ApplePi build home page URL: ${EFFECTIVE_HOME_PAGE_URL:-https://airepublic.com}"
-if [[ -n "${APPLEPI_HOME_PAGE_BASE_URL:-}" && -z "${VITE_HOME_PAGE_BASE_URL:-}" ]]; then
-  echo "Note: APPLEPI_HOME_PAGE_BASE_URL affects runtime Node code only; set VITE_HOME_PAGE_BASE_URL for the desktop WebView build."
+EFFECTIVE_AUTH_BASE_URL="${VITE_AUTH_BASE_URL:-$(desktop_env_value VITE_AUTH_BASE_URL)}"
+if [[ -z "$EFFECTIVE_AUTH_BASE_URL" ]]; then
+  EFFECTIVE_AUTH_BASE_URL="${VITE_HOME_PAGE_BASE_URL:-$(desktop_env_value VITE_HOME_PAGE_BASE_URL)}"
+fi
+echo "ApplePi build auth base URL: ${EFFECTIVE_AUTH_BASE_URL:-not configured}"
+if [[ -n "${APPLEPI_AUTH_BASE_URL:-}" && -z "${VITE_AUTH_BASE_URL:-}" ]]; then
+  echo "Note: APPLEPI_AUTH_BASE_URL affects runtime Node code only; set VITE_AUTH_BASE_URL for the desktop WebView build."
+elif [[ -n "${APPLEPI_HOME_PAGE_BASE_URL:-}" && -z "${VITE_HOME_PAGE_BASE_URL:-}" && -z "${VITE_AUTH_BASE_URL:-}" ]]; then
+  echo "Note: APPLEPI_HOME_PAGE_BASE_URL affects runtime Node code only; set VITE_AUTH_BASE_URL for the desktop WebView build."
 fi
 
 cd "$ROOT_DIR/tauri"
