@@ -1129,6 +1129,9 @@ export class ServerAgentBootstrap {
     let chatgptStorage:
       | InstanceType<typeof import('@/desktop-runtime/auth/RuntimeChatGPTOAuthStorage').RuntimeChatGPTOAuthStorage>
       | undefined;
+    let appOAuthFlow:
+      | InstanceType<typeof import('@/desktop-runtime/apps/AppOAuthRuntimeFlow').AppOAuthRuntimeFlow>
+      | undefined;
     if (profile === 'desktop-runtime') {
       try {
         const { RuntimeChatGPTOAuthFlow } = await import('@/desktop-runtime/auth/RuntimeChatGPTOAuthFlow');
@@ -1138,7 +1141,22 @@ export class ServerAgentBootstrap {
       } catch (e) {
         console.warn('[ServerAgentBootstrap] ChatGPT runtime auth wiring failed:', e);
       }
+      try {
+        const { AppOAuthRuntimeFlow } = await import('@/desktop-runtime/apps/AppOAuthRuntimeFlow');
+        appOAuthFlow = new AppOAuthRuntimeFlow();
+      } catch (e) {
+        console.warn('[ServerAgentBootstrap] App OAuth runtime wiring failed:', e);
+      }
     }
+
+    const appsDeps: import('@/core/services').AppsServiceDeps | undefined =
+      profile === 'desktop-runtime' && runtimeState
+        ? {
+            marketplaceBaseUrl: runtimeState.getUrls().homePageBaseUrl,
+            getAccessToken: () => getCredentialStore().get('auth', 'access_token'),
+            connectAccount: appOAuthFlow ? (appId: string) => appOAuthFlow!.connect(appId) : undefined,
+          }
+        : undefined;
 
     const count = registerAllServices(serviceRegistry, {
       mcp: mcpDeps,
@@ -1217,6 +1235,7 @@ export class ServerAgentBootstrap {
       },
       memory: this.registry ? { registry: this.registry } : undefined,
       runtime: runtimeState ? { runtimeState } : undefined,
+      apps: appsDeps,
     });
 
     console.log(`[ServerAgentBootstrap] Registered ${count} service handlers`);

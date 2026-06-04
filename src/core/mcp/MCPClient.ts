@@ -6,6 +6,8 @@
  */
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { SSEClientTransport, type SSEClientTransportOptions } from './transports/SSEClientTransport';
 import type {
   IMCPClientAdapter,
@@ -29,6 +31,9 @@ export interface MCPClientOptions {
 
   /** Decrypted API key (if any) */
   apiKey?: string;
+
+  /** Runtime-supplied request headers, for app connector OAuth tokens */
+  headers?: Record<string, string>;
 
   /** Callback when connection status changes */
   onStatusChange?: (status: MCPConnectionStatus, error?: string) => void;
@@ -54,7 +59,7 @@ export interface MCPClientOptions {
  */
 export class MCPClient implements IMCPClientAdapter {
   private client: Client | null = null;
-  private transport: SSEClientTransport | null = null;
+  private transport: Transport | null = null;
   private status: MCPConnectionStatus = 'disconnected';
   private serverInfo: IMCPServerInfo | undefined;
   private capabilities: IMCPCapabilities | undefined;
@@ -101,14 +106,7 @@ export class MCPClient implements IMCPClientAdapter {
     this.setStatus('connecting');
 
     try {
-      // Create transport
-      const transportOptions: SSEClientTransportOptions = {
-        url: this.options.config.url,
-        apiKey: this.options.apiKey,
-        timeout: this.options.config.timeout,
-      };
-
-      this.transport = new SSEClientTransport(transportOptions);
+      this.transport = this.createTransport();
 
       // Create MCP client with ApplePi identity
       this.client = new Client(
@@ -175,6 +173,32 @@ export class MCPClient implements IMCPClientAdapter {
       await this.cleanup();
       throw new Error(`Failed to connect to MCP server: ${errorMessage}`);
     }
+  }
+
+  private createTransport(): Transport {
+    const headers = this.buildHeaders();
+    if (this.options.config.transport === 'streamable-http') {
+      return new StreamableHTTPClientTransport(new URL(this.options.config.url), {
+        requestInit: { headers },
+      });
+    }
+
+    const transportOptions: SSEClientTransportOptions = {
+      url: this.options.config.url,
+      apiKey: this.options.apiKey,
+      timeout: this.options.config.timeout,
+      headers,
+    };
+
+    return new SSEClientTransport(transportOptions);
+  }
+
+  private buildHeaders(): Record<string, string> {
+    const headers: Record<string, string> = { ...(this.options.headers ?? {}) };
+    if (this.options.apiKey && !headers.Authorization) {
+      headers.Authorization = `Bearer ${this.options.apiKey}`;
+    }
+    return headers;
   }
 
   /**

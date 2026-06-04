@@ -58,7 +58,7 @@ export const MCPTimeoutSchema = z
 /**
  * Schema for transport type.
  */
-export const MCPTransportTypeSchema = z.enum(['sse', 'stdio']);
+export const MCPTransportTypeSchema = z.enum(['streamable-http', 'sse', 'stdio']);
 
 /**
  * Schema for platform scope.
@@ -78,6 +78,7 @@ export const MCPServerConfigSchema = z.object({
   transport: MCPTransportTypeSchema.default('sse'),
   platform: MCPPlatformScopeSchema.default('shared'),
   builtin: z.boolean().optional(),
+  runtime: z.boolean().optional(),
   command: z.string().optional(),
   args: z.array(z.string()).optional(),
   env: z.record(z.string()).optional(),
@@ -101,6 +102,7 @@ export const MCPServerConfigCreateSchema = z.object({
   transport: MCPTransportTypeSchema.default('sse'),
   platform: MCPPlatformScopeSchema.default('shared'),
   builtin: z.boolean().optional(),
+  runtime: z.boolean().optional(),
   command: z.string().optional(),
   args: z.array(z.string()).optional(),
   env: z.record(z.string()).optional(),
@@ -109,8 +111,8 @@ export const MCPServerConfigCreateSchema = z.object({
   pluginId: z.string().optional(),
 }).refine(
   (data) => {
-    // SSE transport requires url
-    if (data.transport === 'sse' && (!data.url || data.url.trim() === '')) {
+    // Remote transports require url
+    if ((data.transport === 'sse' || data.transport === 'streamable-http') && (!data.url || data.url.trim() === '')) {
       return false;
     }
     // stdio transport requires command
@@ -120,7 +122,7 @@ export const MCPServerConfigCreateSchema = z.object({
     return true;
   },
   {
-    message: 'SSE transport requires url; stdio transport requires command',
+    message: 'Remote transports require url; stdio transport requires command',
   }
 );
 
@@ -297,6 +299,7 @@ export function createServerConfig(
     transport: (validated.transport ?? 'sse') as MCPTransportType,
     platform: (validated.platform ?? 'shared') as MCPPlatformScope,
     builtin: validated.builtin,
+    runtime: validated.runtime,
     command: validated.command,
     args: validated.args,
     env: validated.env,

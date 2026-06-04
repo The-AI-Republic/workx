@@ -20,6 +20,7 @@ import type {
   MCPManagerEvent,
   MCPPlatformScope,
   IMCPManager,
+  RuntimeAuthContext,
 } from './types';
 import { MCPClient } from './MCPClient';
 import {
@@ -141,7 +142,7 @@ export class MCPManager implements IMCPManager {
     }
 
     // Check server limit (exclude builtins from count)
-    const userServers = Array.from(this.servers.values()).filter(s => !s.builtin);
+    const userServers = Array.from(this.servers.values()).filter(s => !s.builtin && !s.runtime);
     if (userServers.length >= MAX_SERVERS) {
       throw new Error(`Maximum of ${MAX_SERVERS} user MCP servers allowed`);
     }
@@ -160,7 +161,7 @@ export class MCPManager implements IMCPManager {
     });
 
     // Only persist non-builtin servers
-    if (!config.builtin) {
+    if (!config.builtin && !config.runtime) {
       await this.persistServers();
     }
 
@@ -187,7 +188,7 @@ export class MCPManager implements IMCPManager {
     this.servers.set(id, updated);
 
     // Persist to storage (only non-builtin servers)
-    if (!updated.builtin) {
+    if (!updated.builtin && !updated.runtime) {
       await this.persistServers();
     }
 
@@ -259,6 +260,36 @@ export class MCPManager implements IMCPManager {
     }
   }
 
+  async addRuntimeServer(input: IMCPServerConfigCreate): Promise<IMCPServerConfig> {
+    this.ensureInitialized();
+
+    const existing = this.getServerByName(input.name);
+    if (existing?.runtime) {
+      await this.removeServer(existing.id);
+    } else if (existing) {
+      throw new Error(`Server with name "${input.name}" already exists`);
+    }
+
+    const config = createServerConfig(
+      {
+        ...input,
+        runtime: true,
+        enabled: input.enabled ?? true,
+      },
+      Array.from(this.servers.values()),
+    );
+
+    this.servers.set(config.id, config);
+    this.connections.set(config.id, {
+      configId: config.id,
+      status: 'disconnected',
+      tools: [],
+      resources: [],
+    });
+    this.emit({ type: 'config-added', config });
+    return config;
+  }
+
   /**
    * Get all server configurations visible to the current platform.
    * Returns 'shared' servers plus servers matching the current platform.
@@ -299,7 +330,7 @@ export class MCPManager implements IMCPManager {
    * Connect to an MCP server.
    * Creates the appropriate adapter (MCPClient for SSE, NodeMCPBridge for stdio).
    */
-  async connect(id: string): Promise<void> {
+  async connect(id: string, authContext?: RuntimeAuthContext): Promise<void> {
     this.ensureInitialized();
 
     const config = this.servers.get(id);
@@ -318,7 +349,7 @@ export class MCPManager implements IMCPManager {
 
     try {
       // Create the appropriate adapter based on transport type
-      const adapter = await this.createAdapter(config);
+      const adapter = await this.createAdapter(config, authContext);
 
       await adapter.connect();
 
@@ -549,7 +580,7 @@ export class MCPManager implements IMCPManager {
   /**
    * Create the appropriate adapter for a server configuration.
    */
-  private async createAdapter(config: IMCPServerConfig): Promise<IMCPClientAdapter> {
+  private async createAdapter(config: IMCPServerConfig, authContext?: RuntimeAuthContext): Promise<IMCPClientAdapter> {
     const callbacks = {
       onStatusChange: (status: MCPConnectionStatus, error?: string) => {
         this.updateConnectionStatus(config.id, status, error);
@@ -587,6 +618,7 @@ export class MCPManager implements IMCPManager {
     return new MCPClient({
       config,
       apiKey,
+      headers: authContext?.headers,
       ...callbacks,
     });
   }
@@ -675,8 +707,8 @@ export class MCPManager implements IMCPManager {
   }
 
   private async persistServers(): Promise<void> {
-    // Only persist non-builtin servers
-    const configs = Array.from(this.servers.values()).filter(s => !s.builtin);
+    // Only persist user/plugin servers, never builtin or runtime app servers.
+    const configs = Array.from(this.servers.values()).filter(s => !s.builtin && !s.runtime);
     await saveServers(configs);
   }
 

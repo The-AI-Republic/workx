@@ -13,10 +13,11 @@ import type { JsonSchema, ToolDefinition, ToolHandler } from '../../tools/BaseTo
 
 /**
  * Transport type for MCP server communication.
+ * - 'streamable-http': Streamable HTTP (preferred remote transport)
  * - 'sse': Server-Sent Events (works on both extension and desktop)
  * - 'stdio': Standard I/O subprocess (desktop only, handled by Rust rmcp)
  */
-export type MCPTransportType = 'sse' | 'stdio';
+export type MCPTransportType = 'streamable-http' | 'sse' | 'stdio';
 
 /**
  * Platform scope for MCP server visibility.
@@ -63,6 +64,9 @@ export interface IMCPServerConfig {
   /** Whether this is a builtin server (cannot be deleted by user) */
   builtin?: boolean;
 
+  /** Runtime-only server, registered for the current process and never persisted */
+  runtime?: boolean;
+
   /** Command to execute (required for stdio transport) */
   command?: string;
 
@@ -102,6 +106,7 @@ export interface IMCPServerConfigCreate {
   transport?: MCPTransportType;
   platform?: MCPPlatformScope;
   builtin?: boolean;
+  runtime?: boolean;
   command?: string;
   args?: string[];
   env?: Record<string, string>;
@@ -125,6 +130,10 @@ export interface IMCPServerConfigUpdate {
   args?: string[];
   env?: Record<string, string>;
   cwd?: string;
+}
+
+export interface RuntimeAuthContext {
+  headers?: Record<string, string>;
 }
 
 // =============================================================================
@@ -314,6 +323,11 @@ export interface IMCPManager {
   addServer(config: IMCPServerConfigCreate): Promise<IMCPServerConfig>;
 
   /**
+   * Add a runtime-only MCP server configuration.
+   */
+  addRuntimeServer(config: IMCPServerConfigCreate): Promise<IMCPServerConfig>;
+
+  /**
    * Update an existing MCP server configuration.
    */
   updateServer(id: string, update: IMCPServerConfigUpdate): Promise<IMCPServerConfig>;
@@ -343,7 +357,7 @@ export interface IMCPManager {
   /**
    * Connect to an MCP server.
    */
-  connect(id: string): Promise<void>;
+  connect(id: string, authContext?: RuntimeAuthContext): Promise<void>;
 
   /**
    * Disconnect from an MCP server.

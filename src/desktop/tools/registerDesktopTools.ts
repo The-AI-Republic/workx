@@ -19,7 +19,7 @@ import { WebSearchTool, WEB_SEARCH_CONCURRENCY } from '../../tools/WebSearchTool
 import { SettingTool } from '../../tools/SettingTool';
 import { registerResourceFetchTool } from '../../tools/ResourceFetchTool';
 import { MCPManager } from '../../core/mcp/MCPManager';
-import { registerMCPTools } from '../../core/mcp/MCPToolAdapter';
+import { registerMCPTools, unregisterMCPTools } from '../../core/mcp/MCPToolAdapter';
 import { TerminalTool } from './terminal/TerminalTool';
 import { registerFileSearchTools } from '../../tools/file-search/register';
 import { TerminalRiskAssessor } from '../../core/approval/assessors/TerminalRiskAssessor';
@@ -27,6 +27,18 @@ import { McpBrowserRiskAssessor } from '../../core/approval/assessors/McpBrowser
 import { StaticRiskAssessor } from '../../core/approval/assessors/StaticRiskAssessor';
 import { SettingToolRiskAssessor } from '../../core/approval/assessors/SettingToolRiskAssessor';
 import type { IRiskAssessor } from '../../core/approval/types';
+import {
+  AppActivationService,
+  AppInstallService,
+  AppLocalStore,
+  AppMarketplaceClient,
+  AppMetadataIndex,
+  registerAppAgentTools,
+  type AppAgentToolDeps,
+  type AppConnectionStatus,
+} from '../../core/apps';
+import { getCredentialStore } from '../../core/storage';
+import { resolveRuntimeUrls } from '../../config/runtimeUrls';
 
 /**
  * Check if a tool supports the given platform based on its metadata
@@ -43,6 +55,76 @@ function isPlatformSupported(toolDef: ToolDefinition, platform: Platform): boole
   }
 
   return platforms.includes(platform);
+}
+
+function createDesktopAppAgentToolDeps(): AppAgentToolDeps {
+  const store = new AppLocalStore();
+  const marketplace = new AppMarketplaceClient({
+    baseUrl: resolveRuntimeUrls().homePageBaseUrl,
+    getAccessToken: () => getCredentialStore().get('auth', 'access_token'),
+  });
+  const installer = new AppInstallService(marketplace, store);
+  const index = new AppMetadataIndex(store);
+  const activation = new AppActivationService(
+    store,
+    undefined,
+    undefined,
+    (appId: string, status: AppConnectionStatus, lastError?: string) =>
+      installer.reportStatus(appId, status, lastError),
+  );
+
+  return { store, index, activation };
+}
+
+async function registerActiveRuntimeAppMCPTools(
+  registry: ToolRegistry,
+  riskAssessor?: IRiskAssessor,
+): Promise<void> {
+  const mcpManager = await MCPManager.getInstance('desktop');
+  for (const connection of mcpManager.getConnections()) {
+    if (connection.status !== 'connected' || connection.tools.length === 0) continue;
+    const config = mcpManager.getServer(connection.configId);
+    if (!config?.runtime) continue;
+    await registerMCPTools(mcpManager, config.name, connection.tools, registry, riskAssessor);
+  }
+}
+
+async function setupRuntimeAppMCPRegistration(
+  registry: ToolRegistry,
+  riskAssessor?: IRiskAssessor,
+): Promise<void> {
+  const mcpManager = await MCPManager.getInstance('desktop');
+  const registeredToolsByServer = new Map<string, import('../../core/mcp/types').IMCPTool[]>();
+
+  for (const connection of mcpManager.getConnections()) {
+    if (connection.status !== 'connected' || connection.tools.length === 0) continue;
+    const config = mcpManager.getServer(connection.configId);
+    if (config?.runtime) {
+      registeredToolsByServer.set(connection.configId, connection.tools);
+    }
+  }
+
+  mcpManager.on('event', (event) => {
+    if (event.type !== 'tools-updated') return;
+
+    const config = mcpManager.getServer(event.configId);
+    if (!config?.runtime) return;
+
+    const previousTools = registeredToolsByServer.get(event.configId);
+    if (previousTools && previousTools.length > 0) {
+      unregisterMCPTools(config.name, previousTools, registry).catch((error) => {
+        console.error('[registerDesktopTools] Failed to unregister app MCP tools:', error);
+      });
+      registeredToolsByServer.delete(event.configId);
+    }
+
+    if (event.tools.length > 0) {
+      registerMCPTools(mcpManager, config.name, event.tools, registry, riskAssessor).catch((error) => {
+        console.error('[registerDesktopTools] Failed to register app MCP tools:', error);
+      });
+      registeredToolsByServer.set(event.configId, event.tools);
+    }
+  });
 }
 
 /**
@@ -102,6 +184,14 @@ export async function registerDesktopToolsImpl(
   // Desktop is the signer home; the wired capability requires explicit
   // human approval (ApprovalGate) above the trivial threshold.
   await registerResourceFetchTool(registry);
+
+  try {
+    await registerAppAgentTools(registry, createDesktopAppAgentToolDeps());
+    await registerActiveRuntimeAppMCPTools(registry, staticAssessor);
+    await setupRuntimeAppMCPRegistration(registry, staticAssessor);
+  } catch (error) {
+    console.error('[registerDesktopTools] Failed to register app connector tools:', error);
+  }
 
   // ──────────────────────────────────────────────────────────────────────
   // Register browser tools via MCPManager builtin server

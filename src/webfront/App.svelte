@@ -7,6 +7,7 @@
   import SchedulerCalendar from './pages/scheduler/SchedulerCalendar.svelte';
   import AppShell from './components/layout/AppShell.svelte';
   import Skills from './pages/skills/Skills.svelte';
+  import Apps from './pages/apps/Apps.svelte';
   import Doctor from './pages/diagnostics/Doctor.svelte';
   import Usage from './pages/usage/Usage.svelte';
   import { userStore } from './stores/userStore';
@@ -42,6 +43,9 @@
 
     // Skills page
     '/skills': Skills,
+
+    // Apps page
+    '/apps': Apps,
 
     // Usage page
     '/usage': Usage,
