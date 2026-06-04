@@ -33,6 +33,12 @@ interface ImportMetaEnv {
   readonly VITE_AUTH_STATUS_COOKIE_NAME: string;
   readonly VITE_AUTH_USER_NAME_COOKIE_NAME: string;
   readonly VITE_AUTH_USER_EMAIL_COOKIE_NAME: string;
+  readonly VITE_AUTH_LOGIN_PATH: string;
+  readonly VITE_AUTH_DESKTOP_SESSION_PATH: string;
+  readonly VITE_AUTH_DESKTOP_REFRESH_PATH: string;
+  readonly VITE_AUTH_PROFILE_PATH: string;
+  readonly VITE_AUTH_USER_CENTER_PATH: string;
+  readonly VITE_AUTH_PRICING_PATH: string;
   /** API base URL for fetching user profile */
   readonly VITE_API_BASE_URL: string;
   /** Vault secret for wrapping the encryption key (32+ characters, from .env) */

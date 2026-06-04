@@ -10,6 +10,7 @@
  */
 
 import { resolveRuntimeUrls } from '@/config/runtimeUrls';
+import { resolveAuthConfig, type AuthRoutePaths } from '@/config/authConfig';
 
 export interface RuntimeUserProfile {
   id?: string;
@@ -118,6 +119,13 @@ function resolveAuthBaseUrl(): string | null {
   return resolveRuntimeUrls().homePageBaseUrl;
 }
 
+function resolveHostedAuthUrl(route: keyof AuthRoutePaths): string | null {
+  const baseUrl = resolveAuthBaseUrl();
+  const path = resolveAuthConfig().routes[route];
+  if (!baseUrl || !path) return null;
+  return new URL(path, baseUrl).toString();
+}
+
 /**
  * Fetch the authenticated user profile using a known-good access token.
  * Returns null on any error — callers treat null as "no profile available"
@@ -128,28 +136,32 @@ export async function fetchUserProfileServerSide(
   accessToken: string,
 ): Promise<RuntimeUserProfile | null> {
   if (!accessToken) return null;
-  const baseUrl = resolveAuthBaseUrl();
-  if (!baseUrl) return profileFromAccessToken(accessToken);
+  const desktopSessionUrl = resolveHostedAuthUrl('desktopSession');
+  const profileUrl = resolveHostedAuthUrl('profile');
+  if (!desktopSessionUrl && !profileUrl) return profileFromAccessToken(accessToken);
   try {
-    const desktopSession = await fetchJsonRecord(`${baseUrl}/auth/desktop/session`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    if (desktopSession.ok) {
-      return desktopSession.data ? normalizeProfile(desktopSession.data) : null;
+    if (desktopSessionUrl) {
+      const desktopSession = await fetchJsonRecord(desktopSessionUrl, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (desktopSession.ok) {
+        return desktopSession.data ? normalizeProfile(desktopSession.data) : null;
+      }
+
+      // Older hosted auth deployments may not expose a desktop session endpoint.
+      // Fall back only for that case; auth failures should remain auth failures.
+      if (desktopSession.status !== 404) {
+        console.warn(`[runtime-auth] desktop session fetch failed from ${desktopSessionUrl}: ${desktopSession.status} ${desktopSession.statusText}`);
+        return null;
+      }
     }
 
-    // Older home-page deployments did not expose the desktop session endpoint.
-    // Fall back only for that case; auth failures should remain auth failures.
-    if (desktopSession.status !== 404) {
-      console.warn(`[runtime-auth] desktop session fetch failed from ${baseUrl}: ${desktopSession.status} ${desktopSession.statusText}`);
-      return null;
-    }
-
-    const profileResponse = await fetchJsonRecord(`${baseUrl}/api/v1/users/profile`, {
+    if (!profileUrl) return null;
+    const profileResponse = await fetchJsonRecord(profileUrl, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -157,12 +169,12 @@ export async function fetchUserProfileServerSide(
       },
     });
     if (!profileResponse.ok) {
-      console.warn(`[runtime-auth] profile fetch failed from ${baseUrl}: ${profileResponse.status} ${profileResponse.statusText}`);
+      console.warn(`[runtime-auth] profile fetch failed from ${profileUrl}: ${profileResponse.status} ${profileResponse.statusText}`);
       return null;
     }
     return profileResponse.data ? normalizeProfile(profileResponse.data) : null;
   } catch (error) {
-    console.warn(`[runtime-auth] profile fetch threw from ${baseUrl}:`, error);
+    console.warn('[runtime-auth] profile fetch threw:', error);
     return profileFromAccessToken(accessToken);
   }
 }
@@ -171,10 +183,10 @@ export async function refreshDesktopAuthTokens(
   refreshToken: string,
 ): Promise<RuntimeDesktopTokens | null> {
   if (!refreshToken) return null;
-  const baseUrl = resolveAuthBaseUrl();
-  if (!baseUrl) return null;
+  const desktopRefreshUrl = resolveHostedAuthUrl('desktopRefresh');
+  if (!desktopRefreshUrl) return null;
   try {
-    const response = await fetch(`${baseUrl}/auth/desktop/refresh`, {
+    const response = await fetch(desktopRefreshUrl, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${refreshToken}`,
@@ -183,14 +195,14 @@ export async function refreshDesktopAuthTokens(
       body: JSON.stringify({ refresh_token: refreshToken }),
     });
     if (!response.ok) {
-      console.warn(`[runtime-auth] desktop token refresh failed from ${baseUrl}: ${response.status} ${response.statusText}`);
+      console.warn(`[runtime-auth] desktop token refresh failed from ${desktopRefreshUrl}: ${response.status} ${response.statusText}`);
       return null;
     }
     const data = await response.json() as Record<string, unknown>;
     const accessToken = pickString(data.access_token);
     const nextRefreshToken = pickString(data.refresh_token);
     if (!accessToken || !nextRefreshToken) {
-      console.warn(`[runtime-auth] desktop token refresh from ${baseUrl} returned incomplete tokens`);
+      console.warn(`[runtime-auth] desktop token refresh from ${desktopRefreshUrl} returned incomplete tokens`);
       return null;
     }
     return {
@@ -200,7 +212,7 @@ export async function refreshDesktopAuthTokens(
       expiresIn: typeof data.expires_in === 'number' ? data.expires_in : undefined,
     };
   } catch (error) {
-    console.warn(`[runtime-auth] desktop token refresh threw from ${baseUrl}:`, error);
+    console.warn(`[runtime-auth] desktop token refresh threw from ${desktopRefreshUrl}:`, error);
     return null;
   }
 }

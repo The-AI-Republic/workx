@@ -3,7 +3,7 @@
   import PopupCard from '../../common/PopupCard.svelte';
   import { userStore } from '../../../stores/userStore';
   import { uiTheme } from '../../../stores/themeStore';
-  import { HOME_PAGE_BASE_URL } from '../../../lib/constants';
+  import { AUTH_ROUTE_PATHS, buildHostedAuthUrl } from '../../../lib/constants';
   import { _t } from '../../../lib/i18n';
 
   const PLAN_NAMES: Record<number, string> = {
@@ -23,6 +23,7 @@
   };
 
   const PLAN_ID_PLUS = 2;
+  const pricingUrl = buildHostedAuthUrl(AUTH_ROUTE_PATHS.pricing);
 
   let showDetailsPopup = $state(false);
 
@@ -206,9 +207,9 @@
       </div>
 
       <!-- Upgrade Button -->
-      {#if credits.plan_id < PLAN_ID_PLUS && HOME_PAGE_BASE_URL}
+      {#if credits.plan_id < PLAN_ID_PLUS && pricingUrl}
         <a
-          href="{HOME_PAGE_BASE_URL}/pricing"
+          href={pricingUrl}
           target="_blank"
           rel="noopener noreferrer"
           class="flex items-center justify-center gap-2 w-full mt-3 p-2.5 bg-gradient-to-r from-violet-500 to-blue-500 text-white text-sm font-semibold no-underline rounded-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg hover:shadow-violet-500/30

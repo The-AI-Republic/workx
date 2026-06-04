@@ -3,7 +3,7 @@
  */
 
 import { getAccessToken } from '../../utils/cookie';
-import { HOME_PAGE_BASE_URL, BACKEND_GENERAL_API } from '../../constants';
+import { AUTH_ROUTE_PATHS, BACKEND_GENERAL_API, buildHostedAuthUrl } from '../../constants';
 
 export interface UserProfile {
   id?: string;
@@ -40,13 +40,13 @@ export async function fetchUserProfile(providedToken?: string): Promise<UserProf
       return null;
     }
 
-    const baseUrl = HOME_PAGE_BASE_URL;
-    if (!baseUrl) {
-      console.warn('[API] Hosted auth base URL is not configured for fetching user profile');
+    const profileUrl = buildHostedAuthUrl(AUTH_ROUTE_PATHS.profile);
+    if (!profileUrl) {
+      console.warn('[API] Hosted auth profile URL is not configured');
       return null;
     }
 
-    const response = await fetch(`${baseUrl}/api/v1/users/profile`, {
+    const response = await fetch(profileUrl, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${accessToken}`,

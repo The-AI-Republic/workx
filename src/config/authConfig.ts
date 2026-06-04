@@ -9,14 +9,25 @@ export interface AuthCookieNames {
   userEmail: string;
 }
 
+export interface AuthRoutePaths {
+  login: string | null;
+  desktopSession: string | null;
+  desktopRefresh: string | null;
+  profile: string | null;
+  userCenter: string | null;
+  pricing: string | null;
+}
+
 export interface AuthConfig {
   authBaseUrl: string | null;
   cookieDomain: string | null;
   cookieNames: AuthCookieNames;
+  routes: AuthRoutePaths;
   source: {
     authBaseUrl: AuthConfigSource;
     cookieDomain: AuthConfigSource;
     cookieNames: AuthConfigSource;
+    routes: AuthConfigSource;
   };
 }
 
@@ -41,6 +52,18 @@ function processEnv(): Record<string, string | undefined> {
 
 function firstNonEmpty(...values: Array<string | undefined>): string | undefined {
   return values.find((value) => typeof value === 'string' && value.trim().length > 0);
+}
+
+function routePath(
+  env: Record<string, string | undefined>,
+  vite: Record<string, string | undefined>,
+  name: string,
+): string | null {
+  return firstNonEmpty(
+    env[`APPLEPI_AUTH_${name}_PATH`],
+    env[`VITE_AUTH_${name}_PATH`],
+    vite[`VITE_AUTH_${name}_PATH`],
+  ) ?? null;
 }
 
 export function resolveAuthConfig(): AuthConfig {
@@ -70,19 +93,30 @@ export function resolveAuthConfig(): AuthConfig {
     userName: firstNonEmpty(env.VITE_AUTH_USER_NAME_COOKIE_NAME, vite.VITE_AUTH_USER_NAME_COOKIE_NAME) ?? DEFAULT_COOKIE_NAMES.userName,
     userEmail: firstNonEmpty(env.VITE_AUTH_USER_EMAIL_COOKIE_NAME, vite.VITE_AUTH_USER_EMAIL_COOKIE_NAME) ?? DEFAULT_COOKIE_NAMES.userEmail,
   };
+  const routes: AuthRoutePaths = {
+    login: routePath(env, vite, 'LOGIN'),
+    desktopSession: routePath(env, vite, 'DESKTOP_SESSION'),
+    desktopRefresh: routePath(env, vite, 'DESKTOP_REFRESH'),
+    profile: routePath(env, vite, 'PROFILE'),
+    userCenter: routePath(env, vite, 'USER_CENTER'),
+    pricing: routePath(env, vite, 'PRICING'),
+  };
 
   const usesDefaultCookieNames = Object.entries(cookieNames).every(
     ([key, value]) => value === DEFAULT_COOKIE_NAMES[key as keyof AuthCookieNames],
   );
+  const usesDefaultRoutes = Object.values(routes).every((route) => route === null);
 
   return {
     authBaseUrl,
     cookieDomain,
     cookieNames,
+    routes,
     source: {
       authBaseUrl: authBaseUrl ? 'env' : 'default',
       cookieDomain: cookieDomain ? 'env' : 'default',
       cookieNames: usesDefaultCookieNames ? 'default' : 'env',
+      routes: usesDefaultRoutes ? 'default' : 'env',
     },
   };
 }

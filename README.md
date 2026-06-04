@@ -71,6 +71,12 @@ cp .env.example src/desktop/.env
 | `VITE_AUTH_COOKIE_DOMAIN` | Optional cookie domain for hosted auth | `.example.com` |
 | `VITE_AUTH_ACCESS_COOKIE_NAME` | Hosted auth access-token cookie name | `access_token` |
 | `VITE_AUTH_REFRESH_COOKIE_NAME` | Hosted auth refresh-token cookie name | `refresh_token` |
+| `VITE_AUTH_LOGIN_PATH` | Optional hosted login path | `/signin` |
+| `VITE_AUTH_PROFILE_PATH` | Optional hosted profile API path | `/profile` |
+| `VITE_AUTH_DESKTOP_SESSION_PATH` | Optional desktop session API path | `/desktop/session` |
+| `VITE_AUTH_DESKTOP_REFRESH_PATH` | Optional desktop token refresh API path | `/desktop/refresh` |
+| `VITE_AUTH_USER_CENTER_PATH` | Optional hosted account path | `/account` |
+| `VITE_AUTH_PRICING_PATH` | Optional hosted plan upgrade path | `/plans` |
 
 ---
 

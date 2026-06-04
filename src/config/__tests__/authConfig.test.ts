@@ -14,6 +14,13 @@ const ENV_KEYS = [
   'VITE_AUTH_STATUS_COOKIE_NAME',
   'VITE_AUTH_USER_NAME_COOKIE_NAME',
   'VITE_AUTH_USER_EMAIL_COOKIE_NAME',
+  'VITE_AUTH_LOGIN_PATH',
+  'VITE_AUTH_DESKTOP_SESSION_PATH',
+  'VITE_AUTH_DESKTOP_REFRESH_PATH',
+  'VITE_AUTH_PROFILE_PATH',
+  'VITE_AUTH_USER_CENTER_PATH',
+  'VITE_AUTH_PRICING_PATH',
+  'APPLEPI_AUTH_DESKTOP_SESSION_PATH',
 ] as const;
 
 const originalEnv = new Map<string, string | undefined>();
@@ -50,10 +57,19 @@ describe('resolveAuthConfig', () => {
         userName: 'user_name',
         userEmail: 'user_email',
       },
+      routes: {
+        login: null,
+        desktopSession: null,
+        desktopRefresh: null,
+        profile: null,
+        userCenter: null,
+        pricing: null,
+      },
       source: {
         authBaseUrl: 'default',
         cookieDomain: 'default',
         cookieNames: 'default',
+        routes: 'default',
       },
     });
   });
@@ -67,6 +83,12 @@ describe('resolveAuthConfig', () => {
     process.env.VITE_AUTH_STATUS_COOKIE_NAME = 'custom_status';
     process.env.VITE_AUTH_USER_NAME_COOKIE_NAME = 'custom_name';
     process.env.VITE_AUTH_USER_EMAIL_COOKIE_NAME = 'custom_email';
+    process.env.VITE_AUTH_LOGIN_PATH = '/signin';
+    process.env.VITE_AUTH_DESKTOP_SESSION_PATH = '/desktop/session';
+    process.env.VITE_AUTH_DESKTOP_REFRESH_PATH = '/desktop/refresh';
+    process.env.VITE_AUTH_PROFILE_PATH = '/profile';
+    process.env.VITE_AUTH_USER_CENTER_PATH = '/account';
+    process.env.VITE_AUTH_PRICING_PATH = '/plans';
 
     expect(resolveAuthConfig()).toMatchObject({
       authBaseUrl: 'https://auth.example.com',
@@ -79,12 +101,28 @@ describe('resolveAuthConfig', () => {
         userName: 'custom_name',
         userEmail: 'custom_email',
       },
+      routes: {
+        login: '/signin',
+        desktopSession: '/desktop/session',
+        desktopRefresh: '/desktop/refresh',
+        profile: '/profile',
+        userCenter: '/account',
+        pricing: '/plans',
+      },
       source: {
         authBaseUrl: 'env',
         cookieDomain: 'env',
         cookieNames: 'env',
+        routes: 'env',
       },
     });
+  });
+
+  it('prefers runtime route aliases over VITE route values', () => {
+    process.env.APPLEPI_AUTH_DESKTOP_SESSION_PATH = '/runtime/session';
+    process.env.VITE_AUTH_DESKTOP_SESSION_PATH = '/vite/session';
+
+    expect(resolveAuthConfig().routes.desktopSession).toBe('/runtime/session');
   });
 
   it('keeps legacy env aliases for existing private builds', () => {

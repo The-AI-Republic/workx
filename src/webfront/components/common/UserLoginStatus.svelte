@@ -4,7 +4,7 @@
   import { userStore, userInitials, getDesktopLoginPageUrl, getLoginPageUrl } from '../../stores/userStore';
   import { uiTheme } from '../../stores/themeStore';
   import { platform } from '../../stores/platformStore';
-  import { HOME_PAGE_BASE_URL, LLM_API_URL } from '../../lib/constants';
+  import { AUTH_ROUTE_PATHS, HOME_PAGE_BASE_URL, LLM_API_URL, buildHostedAuthUrl } from '../../lib/constants';
   import Tooltip from './Tooltip.svelte';
   import PopupCard from './PopupCard.svelte';
   import { _t } from '../../lib/i18n';
@@ -17,7 +17,7 @@
   let showPromoTooltip = $state(false);
   let promoTooltipTimer: ReturnType<typeof setTimeout> | null = null;
   let hasShownPromoTooltip = $state(false);
-  const hasHostedAuth = HOME_PAGE_BASE_URL.length > 0;
+  const hasHostedAuth = Boolean(HOME_PAGE_BASE_URL && AUTH_ROUTE_PATHS.login);
 
   // Watch for user state changes to show promo tooltip when not logged in (only once)
   $effect(() => {
@@ -238,8 +238,8 @@
   async function openUserCenter(event: MouseEvent) {
     event.preventDefault();
     showMenu = false;
-    if (!hasHostedAuth) return;
-    const userCenterUrl = `${HOME_PAGE_BASE_URL}/user-center/info`;
+    const userCenterUrl = buildHostedAuthUrl(AUTH_ROUTE_PATHS.userCenter);
+    if (!userCenterUrl) return;
 
     if (platform.platformName === 'desktop') {
       // Desktop mode: use Tauri shell plugin to open in browser
@@ -298,7 +298,7 @@
       {#snippet content()}<div class="min-w-[180px]">
         <!-- User Info Section -->
         <a
-          href={hasHostedAuth ? `${HOME_PAGE_BASE_URL}/user-center/info` : undefined}
+          href={buildHostedAuthUrl(AUTH_ROUTE_PATHS.userCenter) ?? undefined}
           class="flex items-center gap-3 p-3 no-underline cursor-pointer rounded transition-colors duration-150
             {$uiTheme === 'modern'
               ? 'hover:bg-white/10'
