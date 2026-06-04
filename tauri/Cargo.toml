@@ -6,6 +6,7 @@ authors = ["AI Republic"]
 license = "UNLICENSED"
 repository = ""
 edition = "2021"
+default-run = "pi"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
