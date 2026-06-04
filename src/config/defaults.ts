@@ -200,6 +200,7 @@ export const STORAGE_KEYS = {
   CONFIG: 'agent_config',
   CONFIG_VERSION: 'config_version',
   APPROVAL_HISTORY: 'approval_history',
+  DESKTOP_WELCOME_COMPLETED: 'desktop_welcome_completed',
 } as const;
 
 // Configuration limits

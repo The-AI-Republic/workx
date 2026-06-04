@@ -21,6 +21,12 @@
   import PinUnlockOverlay from './components/vault/PinUnlockOverlay.svelte';
   import ShortcutProvider from './shortcuts/ShortcutProvider.svelte';
   import { registerShortcut } from './shortcuts/useShortcut';
+  import DesktopWelcome from './pages/welcome/DesktopWelcome.svelte';
+  import { markDesktopWelcomeCompleted } from '@/desktop/ui/desktopWelcome';
+
+  let { showDesktopWelcome: initialShowDesktopWelcome = false }: {
+    showDesktopWelcome?: boolean;
+  } = $props();
 
   // Zoom constants
   const MIN_ZOOM = 50;
@@ -60,6 +66,12 @@
   // Store the cookie change listener for cleanup
   let cookieChangeListener: ((changeInfo: chrome.cookies.CookieChangeInfo) => void) | null = $state(null);
   let runtimeStateUnlisten: (() => void) | null = null;
+
+  function getInitialDesktopWelcomeState(): boolean {
+    return platform.platformName === 'desktop' && initialShowDesktopWelcome;
+  }
+
+  let showDesktopWelcome = $state(getInitialDesktopWelcomeState());
 
   /**
    * Check and update authentication state
@@ -237,6 +249,11 @@
     setZoom(zoom + delta);
   }
 
+  async function completeDesktopWelcome(): Promise<void> {
+    await markDesktopWelcomeCompleted();
+    showDesktopWelcome = false;
+  }
+
   // Check user authentication when sidepanel opens
   // Note: Locale is already initialized in main.ts before app mounts
   onMount(() => {
@@ -297,6 +314,8 @@
   <AppShell>
     {#if $vaultStore.isLocked}
       <PinUnlockOverlay onUnlocked={() => refreshVaultStatus()} />
+    {:else if showDesktopWelcome}
+      <DesktopWelcome onComplete={completeDesktopWelcome} />
     {:else}
       <Router {routes} />
     {/if}
