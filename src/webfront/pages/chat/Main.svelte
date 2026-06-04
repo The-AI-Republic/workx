@@ -90,7 +90,10 @@
       window.dispatchEvent(new CustomEvent('applepi:request-login'));
       return;
     }
-    window.open(getLoginPageUrl(), '_blank', 'noopener,noreferrer');
+    const loginUrl = getLoginPageUrl();
+    if (loginUrl) {
+      window.open(loginUrl, '_blank', 'noopener,noreferrer');
+    }
   }
   let compactionNotification: { show: boolean; tokensSaved: number; compactionCount: number; isWarning: boolean } = $state({
     show: false,

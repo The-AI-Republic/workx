@@ -37,18 +37,32 @@ describe('profileFromAccessToken', () => {
 });
 
 describe('fetchUserProfileServerSide', () => {
-  const originalHomeUrl = process.env.VITE_HOME_PAGE_BASE_URL;
+  const originalEnv = new Map<string, string | undefined>();
+  const envKeys = [
+    'VITE_AUTH_BASE_URL',
+    'VITE_AUTH_DESKTOP_SESSION_PATH',
+    'VITE_AUTH_PROFILE_PATH',
+  ];
 
   beforeEach(() => {
-    process.env.VITE_HOME_PAGE_BASE_URL = 'https://home.example.com';
+    for (const key of envKeys) {
+      originalEnv.set(key, process.env[key]);
+    }
+    process.env.VITE_AUTH_BASE_URL = 'https://home.example.com';
+    process.env.VITE_AUTH_DESKTOP_SESSION_PATH = '/desktop/session';
+    process.env.VITE_AUTH_PROFILE_PATH = '/profile';
   });
 
   afterEach(() => {
-    if (originalHomeUrl === undefined) {
-      delete process.env.VITE_HOME_PAGE_BASE_URL;
-    } else {
-      process.env.VITE_HOME_PAGE_BASE_URL = originalHomeUrl;
+    for (const key of envKeys) {
+      const original = originalEnv.get(key);
+      if (original === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = original;
+      }
     }
+    originalEnv.clear();
     vi.unstubAllGlobals();
   });
 
@@ -65,7 +79,7 @@ describe('fetchUserProfileServerSide', () => {
     const profile = await fetchUserProfileServerSide('access-token');
 
     expect(fetchMock).toHaveBeenCalledOnce();
-    expect(fetchMock).toHaveBeenCalledWith('https://home.example.com/auth/desktop/session', expect.objectContaining({
+    expect(fetchMock).toHaveBeenCalledWith('https://home.example.com/desktop/session', expect.objectContaining({
       method: 'GET',
       headers: expect.objectContaining({ Authorization: 'Bearer access-token' }),
     }));
@@ -78,9 +92,9 @@ describe('fetchUserProfileServerSide', () => {
     });
   });
 
-  it('falls back to the legacy profile endpoint only when desktop session is missing', async () => {
+  it('falls back to the configured profile endpoint only when desktop session is missing', async () => {
     const fetchMock = vi.fn(async (url: string) => {
-      if (url.endsWith('/auth/desktop/session')) {
+      if (url.endsWith('/desktop/session')) {
         return new Response('', { status: 404, statusText: 'Not Found' });
       }
       return new Response(JSON.stringify({ id: 'u2', name: 'Fallback' }), { status: 200 });
@@ -90,7 +104,7 @@ describe('fetchUserProfileServerSide', () => {
     const profile = await fetchUserProfileServerSide('access-token');
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock).toHaveBeenLastCalledWith('https://home.example.com/api/v1/users/profile', expect.objectContaining({
+    expect(fetchMock).toHaveBeenLastCalledWith('https://home.example.com/profile', expect.objectContaining({
       method: 'GET',
       headers: expect.objectContaining({ Authorization: 'Bearer access-token' }),
     }));
@@ -114,18 +128,30 @@ describe('fetchUserProfileServerSide', () => {
 });
 
 describe('refreshDesktopAuthTokens', () => {
-  const originalHomeUrl = process.env.VITE_HOME_PAGE_BASE_URL;
+  const originalEnv = new Map<string, string | undefined>();
+  const envKeys = [
+    'VITE_AUTH_BASE_URL',
+    'VITE_AUTH_DESKTOP_REFRESH_PATH',
+  ];
 
   beforeEach(() => {
-    process.env.VITE_HOME_PAGE_BASE_URL = 'https://home.example.com';
+    for (const key of envKeys) {
+      originalEnv.set(key, process.env[key]);
+    }
+    process.env.VITE_AUTH_BASE_URL = 'https://home.example.com';
+    process.env.VITE_AUTH_DESKTOP_REFRESH_PATH = '/desktop/refresh';
   });
 
   afterEach(() => {
-    if (originalHomeUrl === undefined) {
-      delete process.env.VITE_HOME_PAGE_BASE_URL;
-    } else {
-      process.env.VITE_HOME_PAGE_BASE_URL = originalHomeUrl;
+    for (const key of envKeys) {
+      const original = originalEnv.get(key);
+      if (original === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = original;
+      }
     }
+    originalEnv.clear();
     vi.unstubAllGlobals();
   });
 
@@ -140,7 +166,7 @@ describe('refreshDesktopAuthTokens', () => {
 
     const tokens = await refreshDesktopAuthTokens('old-rt');
 
-    expect(fetchMock).toHaveBeenCalledWith('https://home.example.com/auth/desktop/refresh', expect.objectContaining({
+    expect(fetchMock).toHaveBeenCalledWith('https://home.example.com/desktop/refresh', expect.objectContaining({
       method: 'POST',
       headers: expect.objectContaining({ Authorization: 'Bearer old-rt' }),
       body: JSON.stringify({ refresh_token: 'old-rt' }),

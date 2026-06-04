@@ -66,9 +66,17 @@ cp .env.example src/desktop/.env
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `VITE_HOME_PAGE_BASE_URL` | AI Republic home page URL | `https://airepublic.com` |
-| `VITE_BACKEND_API_BASE_URL` | Backend API endpoint | `https://api.airepublic.com` |
-| `VITE_COOKIE_DOMAIN` | Cookie domain for auth | `.airepublic.com` |
+| `VITE_AUTH_BASE_URL` | Optional hosted login/account base URL | `https://auth.example.com` |
+| `VITE_BACKEND_API_BASE_URL` | Optional backend API endpoint | `https://api.example.com` |
+| `VITE_AUTH_COOKIE_DOMAIN` | Optional cookie domain for hosted auth | `.example.com` |
+| `VITE_AUTH_ACCESS_COOKIE_NAME` | Hosted auth access-token cookie name | `access_token` |
+| `VITE_AUTH_REFRESH_COOKIE_NAME` | Hosted auth refresh-token cookie name | `refresh_token` |
+| `VITE_AUTH_LOGIN_PATH` | Optional hosted login path | `/signin` |
+| `VITE_AUTH_PROFILE_PATH` | Optional hosted profile API path | `/profile` |
+| `VITE_AUTH_DESKTOP_SESSION_PATH` | Optional desktop session API path | `/desktop/session` |
+| `VITE_AUTH_DESKTOP_REFRESH_PATH` | Optional desktop token refresh API path | `/desktop/refresh` |
+| `VITE_AUTH_USER_CENTER_PATH` | Optional hosted account path | `/account` |
+| `VITE_AUTH_PRICING_PATH` | Optional hosted plan upgrade path | `/plans` |
 
 ---
 
@@ -135,22 +143,21 @@ Output: `tauri/target/release/bundle/{deb,appimage,nsis,dmg}/`
 
 #### Local Desktop Package Testing
 
-For a normal desktop package that talks to production login:
+For a normal desktop package:
 
 ```bash
 ./build.sh --install
 ```
 
-For local homepage/login testing through `https://localhome.airepublic.com`:
+For local hosted-login testing:
 
 ```bash
-VITE_HOME_PAGE_BASE_URL=https://localhome.airepublic.com ./build.sh --install
+VITE_AUTH_BASE_URL=https://auth.example.local ./build.sh --install
 ```
 
-You can also set `VITE_HOME_PAGE_BASE_URL=https://localhome.airepublic.com` in
-`src/desktop/.env`. The desktop web UI and runtime sidecar read the homepage URL
-during the build, so a package built with `VITE_HOME_PAGE_BASE_URL=https://airepublic.com`
-will keep opening production until it is rebuilt with the local value.
+You can also set `VITE_AUTH_BASE_URL=https://auth.example.local` in
+`src/desktop/.env`. The desktop web UI and runtime sidecar read the hosted auth
+URL during the build, so changing it requires rebuilding the desktop package.
 
 ---
 

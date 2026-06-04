@@ -2,8 +2,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resolveRuntimeUrls } from '../runtimeUrls';
 
 const ENV_KEYS = [
+  'APPLEPI_AUTH_BASE_URL',
   'APPLEPI_HOME_PAGE_BASE_URL',
   'APPLEPI_BACKEND_API_BASE_URL',
+  'VITE_AUTH_BASE_URL',
   'VITE_HOME_PAGE_BASE_URL',
   'VITE_BACKEND_API_BASE_URL',
 ] as const;
@@ -30,11 +32,11 @@ describe('resolveRuntimeUrls', () => {
     originalEnv.clear();
   });
 
-  it('uses production defaults when no runtime env is set', () => {
+  it('leaves hosted auth unconfigured when no runtime env is set', () => {
     const urls = resolveRuntimeUrls();
 
     expect(urls).toMatchObject({
-      homePageBaseUrl: 'https://airepublic.com',
+      homePageBaseUrl: null,
       backendApiBaseUrl: null,
       llmApiUrl: '/api/llm',
       deeplinkRedirectUrl: 'applepi://auth/callback',
@@ -47,8 +49,8 @@ describe('resolveRuntimeUrls', () => {
     });
   });
 
-  it('prefers APPLEPI env values over VITE env values', () => {
-    process.env.APPLEPI_HOME_PAGE_BASE_URL = 'https://localhome.airepublic.com';
+  it('prefers APPLEPI auth env values over VITE env values', () => {
+    process.env.APPLEPI_AUTH_BASE_URL = 'https://auth.example.com';
     process.env.VITE_HOME_PAGE_BASE_URL = 'https://vite-home.example.com';
     process.env.APPLEPI_BACKEND_API_BASE_URL = 'https://backend.example.com';
     process.env.VITE_BACKEND_API_BASE_URL = 'https://vite-backend.example.com';
@@ -56,7 +58,7 @@ describe('resolveRuntimeUrls', () => {
     const urls = resolveRuntimeUrls();
 
     expect(urls).toMatchObject({
-      homePageBaseUrl: 'https://localhome.airepublic.com',
+      homePageBaseUrl: 'https://auth.example.com',
       backendApiBaseUrl: 'https://backend.example.com',
       llmApiUrl: 'https://backend.example.com/api/llm',
       source: {
@@ -67,14 +69,14 @@ describe('resolveRuntimeUrls', () => {
     });
   });
 
-  it('falls back to process VITE env values', () => {
-    process.env.VITE_HOME_PAGE_BASE_URL = 'https://vite-home.example.com';
+  it('falls back to process VITE auth env values', () => {
+    process.env.VITE_AUTH_BASE_URL = 'https://vite-auth.example.com';
     process.env.VITE_BACKEND_API_BASE_URL = 'https://vite-backend.example.com';
 
     const urls = resolveRuntimeUrls();
 
     expect(urls).toMatchObject({
-      homePageBaseUrl: 'https://vite-home.example.com',
+      homePageBaseUrl: 'https://vite-auth.example.com',
       backendApiBaseUrl: 'https://vite-backend.example.com',
       llmApiUrl: 'https://vite-backend.example.com/api/llm',
       source: {
@@ -83,5 +85,15 @@ describe('resolveRuntimeUrls', () => {
         llmApiUrl: 'env',
       },
     });
+  });
+
+  it('keeps legacy home page env aliases for existing builds', () => {
+    process.env.APPLEPI_HOME_PAGE_BASE_URL = 'https://legacy-runtime.example.com';
+    process.env.VITE_HOME_PAGE_BASE_URL = 'https://legacy-vite.example.com';
+
+    const urls = resolveRuntimeUrls();
+
+    expect(urls.homePageBaseUrl).toBe('https://legacy-runtime.example.com');
+    expect(urls.source.homePageBaseUrl).toBe('env');
   });
 });
