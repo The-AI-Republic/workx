@@ -614,8 +614,10 @@ export class MCPManager implements IMCPManager {
 
     // Try the bundled sidecar binary first (production builds).
     // Fall back to npx + node_modules for dev mode where no sidecar is built.
+    // Desktop browser automation should attach to the user's running Chrome
+    // profile after Chrome's remote-debugging permission prompt.
     let command = 'npx';
-    let args = ['chrome-devtools-mcp', '--no-usage-statistics', '--isolated', '--chromeArg=--no-sandbox', '--chromeArg=--disable-setuid-sandbox'];
+    let args = ['chrome-devtools-mcp', '--no-usage-statistics', '--autoConnect'];
     let cwd: string | undefined;
 
     if (__BUILD_MODE__ === 'server') {
@@ -624,7 +626,7 @@ export class MCPManager implements IMCPManager {
         const host = getOptionalDesktopRuntimeHost();
         if (host?.browserMcpSidecarPath) {
           command = host.browserMcpSidecarPath;
-          args = ['--no-usage-statistics', '--isolated', '--chromeArg=--no-sandbox', '--chromeArg=--disable-setuid-sandbox'];
+          args = ['--no-usage-statistics', '--autoConnect'];
         } else if (host?.projectRoot) {
           cwd = host.projectRoot;
         }
