@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "ਕੰਮ ਦੇ ਕਾਰਜਾਂ ਲਈ ਤੁਹਾਡੇ ਬਰਾਊਜ਼ਰ ਅੰਦਰਲਾ AI ਏਜੈਂਟ"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "ਕਿਸੇ ਵੀ ਵੈੱਬਪੇਜ ਤੋਂ ਸੰਰਚਿਤ ਡਾਟਾ ਕੱਢਣ ਲਈ Browserx ਨੂੰ ਕਹਿੰਦੇ ਹੋ"
+    "message": "ਕਿਸੇ ਵੀ ਵੈੱਬਪੇਜ ਤੋਂ ਸੰਰਚਿਤ ਡਾਟਾ ਕੱਢਣ ਲਈ WorkX ਨੂੰ ਕਹਿੰਦੇ ਹੋ"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "ਮੱਧ-ਖਤਰੇ ਅਤੇ ਉੱਪਰ (ਖਤਰਾ > 30) ਲਈ ਪੁੱਛੋ। ਜ਼ਿਆਦਾਤਰ ਯੂਜ਼ਰਾਂ ਲਈ ਸਿਫ਼ਾਰਸ਼ੀ।"
@@ -310,13 +310,13 @@
     "message": "ਬ੍ਰਾਊਜ਼ਰ ਆਟੋਮੇਸ਼ਨ ਟੂਲ ਟੌਗਲਜ਼"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx (ਅਲਫ਼ਾ)"
+    "message": "WorkX (ਅਲਫ਼ਾ)"
   },
   "CWD": {
     "message": "CWD:"
@@ -386,7 +386,7 @@
     "message": "ਖੋਜ ਸਾਫ਼ ਕਰੋ"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "ਆਪਣੀ ਟੂਲਬਾਰ ਵਿੱਚ Browserx ਆਈਕਨ 'ਤੇ ਕਲਿੱਕ ਕਰੋ ਜਾਂ Alt+Shift+C ਦਬਾਓ"
+    "message": "ਆਪਣੀ ਟੂਲਬਾਰ ਵਿੱਚ WorkX ਆਈਕਨ 'ਤੇ ਕਲਿੱਕ ਕਰੋ ਜਾਂ Alt+Shift+C ਦਬਾਓ"
   },
   "Click_to_cancel_login": {
     "message": "ਲਾਗਇਨ ਰੱਦ ਕਰਨ ਲਈ ਕਲਿੱਕ ਕਰੋ"
@@ -677,7 +677,7 @@
     "message": "PIN ਸੁਰੱਖਿਆ ਯੋਗ ਕਰੋ"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": "browserx ਸ਼ੁਰੂ ਹੋਣ 'ਤੇ ਆਟੋ-ਕਨੈਕਟ ਯੋਗ ਕਰੋ"
+    "message": "WorkX ਸ਼ੁਰੂ ਹੋਣ 'ਤੇ ਆਟੋ-ਕਨੈਕਟ ਯੋਗ ਕਰੋ"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "ਅਕਸਰ ਪਹੁੰਚੀ ਜਾਣ ਵਾਲੀ ਡਾਟਾ ਨੂੰ ਸਟੋਰ ਕਰਕੇ ਪ੍ਰਦਰਸ਼ਨ ਸੁਧਾਰਣ ਲਈ ਕੈਸ਼ਿੰਗ ਚਾਲੂ ਕਰੋ"
@@ -734,7 +734,7 @@
     "message": "ਇਸ ਦੀ ਵਿਆਖਿਆ ਕਰੋ: ${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "Browserx ਨਾਲ ਵਿਆਖਿਆ ਕਰੋ"
+    "message": "WorkX ਨਾਲ ਵਿਆਖਿਆ ਕਰੋ"
   },
   "Export": {
     "message": "ਨਿਰਯਾਤ"
@@ -761,7 +761,7 @@
     "message": "ਡਾਟਾ ਕੱਢੋ:"
   },
   "Extract_data_with_Browserx": {
-    "message": "Browserx ਨਾਲ ਡਾਟਾ ਕੱਢੋ"
+    "message": "WorkX ਨਾਲ ਡਾਟਾ ਕੱਢੋ"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "ਪੇਜਾਂ ਤੋਂ ਵਿਸ਼ੇਸ਼ ਡਾਟਾ ਪੈਟਰਨ ਕੱਢੋ"
@@ -956,7 +956,7 @@
     "message": "ਇਸ ਲਿਖਤ ਨੂੰ ਸੁਧਾਰੋ: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "Browserx ਨਾਲ ਸੁਧਾਰੋ"
+    "message": "WorkX ਨਾਲ ਸੁਧਾਰੋ"
   },
   "In": {
     "message": "ਵਿੱਚ:"
@@ -1547,7 +1547,7 @@
     "message": "ਰੀਟ੍ਰਾਈ ਹੋ ਰਿਹਾ ਹੈ"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "ਕਿਸੇ ਵੀ ਟੈਕਸਟ 'ਤੇ ਰਾਈਟ-ਕਲਿੱਕ ਕਰਕੇ Browserx ਨਾਲ ਇਸਦੀ ਵਿਆਖਿਆ ਕਰੋ ਜਾਂ ਸੁਧਾਰੋ।"
+    "message": "ਕਿਸੇ ਵੀ ਟੈਕਸਟ 'ਤੇ ਰਾਈਟ-ਕਲਿੱਕ ਕਰਕੇ WorkX ਨਾਲ ਇਸਦੀ ਵਿਆਖਿਆ ਕਰੋ ਜਾਂ ਸੁਧਾਰੋ।"
   },
   "Risk_Score": {
     "message": "ਖਤਰਾ ਸਕੋਰ:"
@@ -2042,7 +2042,7 @@
     "message": "ਵੈੱਬ ਖੋਜ"
   },
   "Welcome_to_Browserx": {
-    "message": "Browserx ਵਿੱਚ ਤੁਹਾਡਾ ਸਵਾਗਤ ਹੈ"
+    "message": "WorkX ਵਿੱਚ ਤੁਹਾਡਾ ਸਵਾਗਤ ਹੈ"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "ਸੈਂਡਬਾਕਸ ਕਮਾਂਡਾਂ ਨੂੰ ਨੈੱਟਵਰਕ ਤੱਕ ਪਹੁੰਚ ਹੋ ਸਕਦੀ ਹੈ ਜਾਂ ਨਹੀਂ"
@@ -2093,7 +2093,7 @@
     "message": "ਉਪਲਬਧ"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "ਕੈਸ਼ਡ"

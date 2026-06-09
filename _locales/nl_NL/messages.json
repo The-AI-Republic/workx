@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "Algemene in-browser AI-agent voor werktaken"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Vraag Browserx om gestructureerde gegevens van elke webpagina te extraheren"
+    "message": "Vraag WorkX om gestructureerde gegevens van elke webpagina te extraheren"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Vraag om toestemming voor gemiddeld risico en hoger (risico > 30). Aanbevolen voor de meeste gebruikers."
@@ -310,13 +310,13 @@
     "message": "Schakelaars voor browserautomatiseringstools"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "Huidige map:"
@@ -386,7 +386,7 @@
     "message": "Zoekopdracht wissen"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Klik op het Browserx-pictogram in uw werkbalk of druk op Alt+Shift+C"
+    "message": "Klik op het WorkX-pictogram in uw werkbalk of druk op Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "Klik om inloggen te annuleren"
@@ -677,7 +677,7 @@
     "message": "PIN-beveiliging inschakelen"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": "Automatisch verbinden inschakelen wanneer Browserx start"
+    "message": "Automatisch verbinden inschakelen wanneer WorkX start"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Caching inschakelen om de prestaties te verbeteren door vaak geraadpleegde gegevens op te slaan"
@@ -734,7 +734,7 @@
     "message": "Leg dit uit: ${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "Uitleg met Browserx"
+    "message": "Uitleg met WorkX"
   },
   "Export": {
     "message": "Exporteren"
@@ -761,7 +761,7 @@
     "message": "Gegevens extraheren:"
   },
   "Extract_data_with_Browserx": {
-    "message": "Gegevens extraheren met Browserx"
+    "message": "Gegevens extraheren met WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Specifieke gegevenspatronen van pagina's extraheren"
@@ -956,7 +956,7 @@
     "message": "Verbeter deze tekst: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "Verbeter met Browserx"
+    "message": "Verbeter met WorkX"
   },
   "In": {
     "message": "In:"
@@ -1547,7 +1547,7 @@
     "message": "Opnieuw proberen"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Klik met de rechtermuisknop op tekst om het uit te leggen of te verbeteren met Browserx"
+    "message": "Klik met de rechtermuisknop op tekst om het uit te leggen of te verbeteren met WorkX"
   },
   "Risk_Score": {
     "message": "Risicoscore:"
@@ -2042,7 +2042,7 @@
     "message": "Zoeken op het web"
   },
   "Welcome_to_Browserx": {
-    "message": "Welkom bij Browserx"
+    "message": "Welkom bij WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Of sandboxed-commando's toegang tot het netwerk hebben"
@@ -2093,7 +2093,7 @@
     "message": "beschikbaar"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "gecachet"

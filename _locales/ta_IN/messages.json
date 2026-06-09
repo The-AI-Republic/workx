@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "பணி பணிகளுக்கான பொதுவான உலாவி-உள்ள AI ஏஜெண்ட்"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Browserx-ஐ எந்தவொரு வலைப்பக்கத்திலிருந்தும் கட்டமைக்கப்பட்ட தரவுகளைப் பிரித்தெடுக்கக் கேட்கவும்"
+    "message": "WorkX-ஐ எந்தவொரு வலைப்பக்கத்திலிருந்தும் கட்டமைக்கப்பட்ட தரவுகளைப் பிரித்தெடுக்கக் கேட்கவும்"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "நடுத்தர-ஆபத்து மற்றும் அதற்கு மேல் (ஆபத்து > 30) கேளுங்கள். பெரும்பாலான பயனர்களுக்கு பரிந்துரைக்கப்படுகிறது."
@@ -310,13 +310,13 @@
     "message": "உலாவி தானியக்க கருவி மாற்றிகள்"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx (அல்ஃபா)"
+    "message": "WorkX (அல்ஃபா)"
   },
   "CWD": {
     "message": "CWD:"
@@ -386,7 +386,7 @@
     "message": "தேடலை அழிக்கவும்"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "உங்கள் கருவிப்பட்டியில் உள்ள Browserx ஐகானைக் கிளிக் செய்யவும் அல்லது Alt+Shift+C ஐ அழுத்தவும்"
+    "message": "உங்கள் கருவிப்பட்டியில் உள்ள WorkX ஐகானைக் கிளிக் செய்யவும் அல்லது Alt+Shift+C ஐ அழுத்தவும்"
   },
   "Click_to_cancel_login": {
     "message": "உள்நுழைவை ரத்து செய்ய கிளிக் செய்யவும்"
@@ -677,7 +677,7 @@
     "message": "PIN பாதுகாப்பை இயக்கு"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": "browserx தொடங்கும் போது auto-connect ஐ இயக்கு"
+    "message": "WorkX தொடங்கும் போது auto-connect ஐ இயக்கு"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "அடிக்கடி அணுகப்படும் தரவைச் சேமிப்பதன் மூலம் செயல்திறனை மேம்படுத்த, கேசிங்-ஐ செயல்படுத்து"
@@ -734,7 +734,7 @@
     "message": "இதைக் விளக்கவும்: ${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "Browserx மூலம் விளக்கவும்"
+    "message": "WorkX மூலம் விளக்கவும்"
   },
   "Export": {
     "message": "ஏற்றுமதி"
@@ -761,7 +761,7 @@
     "message": "தரவைப் பிரித்தெடுக்கவும்:"
   },
   "Extract_data_with_Browserx": {
-    "message": "Browserx மூலம் தரவை எடுக்கவும்"
+    "message": "WorkX மூலம் தரவை எடுக்கவும்"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "பக்கங்களிலிருந்து குறிப்பிட்ட தரவு வடிவங்களைப் பிரித்தெடுக்கவும்"
@@ -956,7 +956,7 @@
     "message": "இந்த உரையை மேம்படுத்தவும்: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "Browserx-உடன் மேம்படுத்தவும்"
+    "message": "WorkX-உடன் மேம்படுத்தவும்"
   },
   "In": {
     "message": "இல்:"
@@ -1547,7 +1547,7 @@
     "message": "மீண்டும் முயற்சிக்கிறது"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "எந்த உரையிலும் வலது-கிளிக் செய்து BrowserX மூலம் விளக்கவும் அல்லது மேம்படுத்தவும்"
+    "message": "எந்த உரையிலும் வலது-கிளிக் செய்து WorkX மூலம் விளக்கவும் அல்லது மேம்படுத்தவும்"
   },
   "Risk_Score": {
     "message": "ஆபத்து மதிப்பெண்:"
@@ -2042,7 +2042,7 @@
     "message": "வலைத் தேடல்"
   },
   "Welcome_to_Browserx": {
-    "message": "Browserx-க்கு வரவேற்கிறோம்"
+    "message": "WorkX-க்கு வரவேற்கிறோம்"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "சாண்ட்பாக்ஸ் கட்டளைகள் நெட்வொர்க்கை அணுக முடியுமா"
@@ -2093,7 +2093,7 @@
     "message": "கிடைக்கும்"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "கேஷ் செய்யப்பட்ட"

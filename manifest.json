@@ -42,7 +42,7 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Browserx Agent",
+    "default_title": "WorkX Agent",
     "default_icon": {
       "16": "static/AI RepublicLOGO01.png",
       "48": "static/AI RepublicLOGO01.png",

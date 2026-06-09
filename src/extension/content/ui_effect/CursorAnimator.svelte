@@ -270,7 +270,7 @@
     height="48"
     draggable="false"
   />
-  <div class="cursor-label">BrowserX</div>
+  <div class="cursor-label">WorkX</div>
 </div>
 
 <style>

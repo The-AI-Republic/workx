@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "סוכן AI כללי בדפדפן למשימות עבודה"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "בקש מ-Browserx לחלץ נתונים מובנים מכל דף אינטרנט"
+    "message": "בקש מ-WorkX לחלץ נתונים מובנים מכל דף אינטרנט"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "בקש עבור סיכון בינוני ומעלה (סיכון > 30). מומלץ לרוב המשתמשים."
@@ -310,13 +310,13 @@
     "message": "מתגים לכלי אוטומציה של הדפדפן"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx (אלפא)"
+    "message": "WorkX (אלפא)"
   },
   "CWD": {
     "message": "CWD:"
@@ -386,7 +386,7 @@
     "message": "נקה חיפוש"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "לחץ על סמל Browserx בסרגל הכלים או הקש Alt+Shift+C"
+    "message": "לחץ על סמל WorkX בסרגל הכלים או הקש Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "לחץ כדי לבטל את הכניסה"
@@ -677,7 +677,7 @@
     "message": "הפעלת הגנת PIN"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": "הפעל חיבור אוטומטי כאשר browserx מתחיל"
+    "message": "הפעל חיבור אוטומטי כאשר WorkX מתחיל"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "הפעל מטמון לשיפור ביצועים על‑ידי אחסון נתונים שנגישים בתדירות גבוהה"
@@ -734,7 +734,7 @@
     "message": "הסבר זאת: ${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "הסבר עם Browserx"
+    "message": "הסבר עם WorkX"
   },
   "Export": {
     "message": "ייצוא"
@@ -761,7 +761,7 @@
     "message": "חילוץ נתונים:"
   },
   "Extract_data_with_Browserx": {
-    "message": "חילוץ נתונים עם Browserx"
+    "message": "חילוץ נתונים עם WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "חילוץ תבניות נתונים ספציפיות מהדפים"
@@ -956,7 +956,7 @@
     "message": "שפר את הטקסט הזה: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "שפר עם Browserx"
+    "message": "שפר עם WorkX"
   },
   "In": {
     "message": "ב:"
@@ -1547,7 +1547,7 @@
     "message": "מנסה שוב"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "לחץ לחיצה ימנית על כל טקסט כדי לקבל הסבר או לשפר אותו באמצעות Browserx"
+    "message": "לחץ לחיצה ימנית על כל טקסט כדי לקבל הסבר או לשפר אותו באמצעות WorkX"
   },
   "Risk_Score": {
     "message": "ציון סיכון:"
@@ -2042,7 +2042,7 @@
     "message": "חיפוש באינטרנט"
   },
   "Welcome_to_Browserx": {
-    "message": "ברוכים הבאים ל‑Browserx"
+    "message": "ברוכים הבאים ל‑WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "האם פקודות מבודדות יכולות לגשת לרשת"
@@ -2093,7 +2093,7 @@
     "message": "זמין"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "במטמון"

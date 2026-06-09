@@ -25,7 +25,7 @@ describe('PromptLoader', () => {
     const prompt = await loadPrompt();
 
     // Default prompt is the renamed agent_prompt.md (browserx-specific)
-    expect(prompt).toContain('BrowserX');
+    expect(prompt).toContain('WorkX');
     expect(prompt).toContain('browser automation agent');
     expect(prompt).toContain('Core Directive');
   });
@@ -38,7 +38,7 @@ describe('PromptLoader', () => {
     const prompt = await loadPrompt();
 
     // Composed browserx prompt includes intro, safety, tools, policies
-    expect(prompt).toContain('BrowserX');
+    expect(prompt).toContain('WorkX');
     expect(prompt).toContain('Safety and Ethics');
     expect(prompt).toContain('System Semantics');
     expect(prompt).toContain('Action Risk and Approval');
@@ -173,7 +173,7 @@ describe('PromptLoader', () => {
     const prompt = await loadPrompt();
 
     // Should fall back to default browserx prompt
-    expect(prompt).toContain('BrowserX');
+    expect(prompt).toContain('WorkX');
     expect(prompt).toContain('Core Directive');
     expect(prompt).toContain('System Semantics');
     expect(prompt).toContain('Action Risk and Approval');
@@ -202,8 +202,8 @@ describe('PromptLoader', () => {
     const prompt = await loadPrompt();
 
     // In test/extension mode (__BUILD_MODE__ is undefined), fallback should be browserx
-    expect(prompt).toContain('BrowserX');
-    // Must not contain "ApplePi" or standalone "Pi" (only "BrowserX" identity)
+    expect(prompt).toContain('WorkX');
+    // Must not contain "ApplePi" or standalone "Pi" (only "WorkX" identity)
     expect(prompt).not.toMatch(/\bApplePi\b/);
     expect(prompt).not.toMatch(/\bPi\b/);
     expect(prompt).not.toContain('desktop automation agent');

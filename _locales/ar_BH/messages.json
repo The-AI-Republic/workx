@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "وكيل ذكاء اصطناعي عام داخل المتصفح لمهام العمل"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "اطلب من Browserx استخراج بيانات مُهيكلة من أي صفحة ويب"
+    "message": "اطلب من WorkX استخراج بيانات مُهيكلة من أي صفحة ويب"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "اطلب للأعمال ذات المخاطر المتوسطة وما فوق (المخاطر > 30). يُنصح به لمعظم المستخدمين."
@@ -310,13 +310,13 @@
     "message": "مفاتيح أتمتة المتصفح"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx (ألفا)"
+    "message": "WorkX (ألفا)"
   },
   "CWD": {
     "message": "دليل العمل الحالي:"
@@ -386,7 +386,7 @@
     "message": "مسح البحث"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "انقر على أيقونة Browserx في شريط الأدوات أو اضغط Alt+Shift+C"
+    "message": "انقر على أيقونة WorkX في شريط الأدوات أو اضغط Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "انقر لإلغاء تسجيل الدخول"
@@ -677,7 +677,7 @@
     "message": "تفعيل حماية PIN"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": "تمكين الاتصال التلقائي عند بدء تشغيل browserx"
+    "message": "تمكين الاتصال التلقائي عند بدء تشغيل WorkX"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "تمكين التخزين المؤقت لتحسين الأداء عن طريق تخزين البيانات التي يتم الوصول إليها بشكل متكرر"
@@ -734,7 +734,7 @@
     "message": "اشرح هذا: ${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "اشرح باستخدام Browserx"
+    "message": "اشرح باستخدام WorkX"
   },
   "Export": {
     "message": "تصدير"
@@ -761,7 +761,7 @@
     "message": "استخراج البيانات:"
   },
   "Extract_data_with_Browserx": {
-    "message": "استخراج البيانات باستخدام Browserx"
+    "message": "استخراج البيانات باستخدام WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "استخراج أنماط بيانات محددة من الصفحات"
@@ -956,7 +956,7 @@
     "message": "تحسين هذا النص: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "تحسين باستخدام Browserx"
+    "message": "تحسين باستخدام WorkX"
   },
   "In": {
     "message": "في:"
@@ -1547,7 +1547,7 @@
     "message": "إعادة المحاولة"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "انقر بزر الفأرة الأيمن على أي نص لتوضيحه أو تحسينه باستخدام Browserx"
+    "message": "انقر بزر الفأرة الأيمن على أي نص لتوضيحه أو تحسينه باستخدام WorkX"
   },
   "Risk_Score": {
     "message": "درجة المخاطرة:"
@@ -2042,7 +2042,7 @@
     "message": "بحث الويب"
   },
   "Welcome_to_Browserx": {
-    "message": "مرحبًا بك في Browserx"
+    "message": "مرحبًا بك في WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "ما إذا كانت الأوامر المعزولة يمكنها الوصول إلى الشبكة"
@@ -2093,7 +2093,7 @@
     "message": "متاح"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "مخزن مؤقتًا"

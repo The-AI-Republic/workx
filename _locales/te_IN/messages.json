@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "పని పనుల కోసం సాధారణ బ్రౌజర్-లోపలి AI ఏజెంట్"
@@ -315,13 +315,13 @@
     "message": "బ్రౌజర్ ఆటోమేషన్ సాధనాల టాగుల్‌లు"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "CWD:"
@@ -391,7 +391,7 @@
     "message": "శోధనను క్లియర్ చేయండి"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "మీ టూల్‌బార్‌లోని Browserx ఐకాన్‌పై క్లిక్ చేయండి లేదా Alt+Shift+C నొక్కండి"
+    "message": "మీ టూల్‌బార్‌లోని WorkX ఐకాన్‌పై క్లిక్ చేయండి లేదా Alt+Shift+C నొక్కండి"
   },
   "Click_to_cancel_login": {
     "message": "లాగిన్ రద్దు చేయడానికి క్లిక్ చేయండి"
@@ -766,7 +766,7 @@
     "message": "డేటాను వెలికితీయండి:"
   },
   "Extract_data_with_Browserx": {
-    "message": "Browserx తో డేటాను వెలికితీయండి"
+    "message": "WorkX తో డేటాను వెలికితీయండి"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "పేజీల నుండి నిర్దిష్ట డేటా నమూనాలను వెలికితీయండి"
@@ -961,7 +961,7 @@
     "message": "ఈ పాఠ్యాన్ని మెరుగుపరచండి: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "Browserx తో మెరుగుపరచండి"
+    "message": "WorkX తో మెరుగుపరచండి"
   },
   "In": {
     "message": "లో:"
@@ -1552,7 +1552,7 @@
     "message": "పునఃప్రయత్నిస్తోంది"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "ఏదైనా పాఠ్యంపై రైట్‑క్లిక్ చేసి Browserx ద్వారా వివరణ లేదా మెరుగుపరచండి"
+    "message": "ఏదైనా పాఠ్యంపై రైట్‑క్లిక్ చేసి WorkX ద్వారా వివరణ లేదా మెరుగుపరచండి"
   },
   "Risk_Score": {
     "message": "రిస్క్ స్కోరు:"
@@ -2047,7 +2047,7 @@
     "message": "వెబ్ శోధన"
   },
   "Welcome_to_Browserx": {
-    "message": "Browserx కు స్వాగతం"
+    "message": "WorkX కు స్వాగతం"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "సాండ్‌బాక్స్ కమాండ్లు నెట్‌వర్క్‌ను యాక్సెస్ చేయగలవా"
@@ -2098,7 +2098,7 @@
     "message": "లభ్యం"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "క్యాష్ చేయబడింది"

@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "Kinatibuk-ang AI ahente sa browser para sa mga buluhaton sa trabaho"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Pangayoa ang Browserx nga mokuha og structured data gikan sa bisan unsang webpage"
+    "message": "Pangayoa ang WorkX nga mokuha og structured data gikan sa bisan unsang webpage"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Pangutan-a alang sa medium-risk ug pataas (risk > 30). Girekomenda para sa kadaghanan nga mga tiggamit."
@@ -310,13 +310,13 @@
     "message": "Mga toggle sa automation sa browser"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "CWD:"
@@ -386,7 +386,7 @@
     "message": "Limpyohi ang pagpangita"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "I-klik ang icon sa Browserx sa imong toolbar o pindota ang Alt+Shift+C"
+    "message": "I-klik ang icon sa WorkX sa imong toolbar o pindota ang Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "I-klik aron kanselahon ang pag-login"
@@ -677,7 +677,7 @@
     "message": "Pag-activate sa Proteksyon sa PIN"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": "Pag-aktibo sa awtomatikong koneksyon kung magsugod ang browserx"
+    "message": "Pag-aktibo sa awtomatikong koneksyon kung magsugod ang WorkX"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Pag-aktibo sa caching aron mapauswag ang paggana pinaagi sa pagtipig sa datos nga kanunay nga ma-access"
@@ -739,7 +739,7 @@
     "message": "Ipasabut kini: ${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "Ipasabut gamit ang Browserx"
+    "message": "Ipasabut gamit ang WorkX"
   },
   "Export": {
     "message": "I-export"
@@ -766,7 +766,7 @@
     "message": "Pagkuha sa Data:"
   },
   "Extract_data_with_Browserx": {
-    "message": "Pagkuha og datos gamit ang Browserx"
+    "message": "Pagkuha og datos gamit ang WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Kuhaa ang espesipikong data patterns gikan sa mga panid"
@@ -961,7 +961,7 @@
     "message": "Pagpaayo niini nga teksto: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "Pagpaayo gamit ang Browserx"
+    "message": "Pagpaayo gamit ang WorkX"
   },
   "In": {
     "message": "Sa:"
@@ -1552,7 +1552,7 @@
     "message": "Nag-usab"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "I-right-click ang bisan unsang teksto aron ipasabot o mapauswag kini gamit ang Browserx"
+    "message": "I-right-click ang bisan unsang teksto aron ipasabot o mapauswag kini gamit ang WorkX"
   },
   "Risk_Score": {
     "message": "Score sa Peligro:"
@@ -2047,7 +2047,7 @@
     "message": "Web Search"
   },
   "Welcome_to_Browserx": {
-    "message": "Maayong pag-abot sa Browserx"
+    "message": "Maayong pag-abot sa WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Kung ang mga sandboxed nga sugo makasulod sa network"
@@ -2098,7 +2098,7 @@
     "message": "magamit"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "na-cache"

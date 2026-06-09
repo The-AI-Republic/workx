@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "Obecný AI agent pro pracovní úkoly v prohlížeči"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Požádat Browserx o extrakci strukturovaných dat z jakékoli webové stránky"
+    "message": "Požádat WorkX o extrakci strukturovaných dat z jakékoli webové stránky"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Žádat o schválení pro středně rizikové a vyšší (riziko > 30). Doporučeno pro většinu uživatelů."
@@ -310,13 +310,13 @@
     "message": "Přepínače nástrojů pro automatizaci prohlížeče"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "CWD:"
@@ -386,7 +386,7 @@
     "message": "Vymazat hledání"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Klikněte na ikonu Browserx v panelu nástrojů nebo stiskněte Alt+Shift+C"
+    "message": "Klikněte na ikonu WorkX v panelu nástrojů nebo stiskněte Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "Kliknutím zrušíte přihlášení"
@@ -677,7 +677,7 @@
     "message": "Povolit ochranu PIN kódem"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": "Povolit automatické připojení při spuštění browserx"
+    "message": "Povolit automatické připojení při spuštění WorkX"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Povolit ukládání do mezipaměti pro zlepšení výkonu – ukládá často používaná data"
@@ -734,7 +734,7 @@
     "message": "Vysvětlete toto: ${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "Vysvětlete pomocí Browserx"
+    "message": "Vysvětlete pomocí WorkX"
   },
   "Export": {
     "message": "Exportovat"
@@ -761,7 +761,7 @@
     "message": "Extrahovat data:"
   },
   "Extract_data_with_Browserx": {
-    "message": "Extrahovat data pomocí Browserx"
+    "message": "Extrahovat data pomocí WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Extrahovat konkrétní datové vzory ze stránek"
@@ -956,7 +956,7 @@
     "message": "Vylepšit tento text: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "Vylepšit pomocí Browserx"
+    "message": "Vylepšit pomocí WorkX"
   },
   "In": {
     "message": "V:"
@@ -1547,7 +1547,7 @@
     "message": "Opakuji"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Klikněte pravým tlačítkem na libovolný text a vysvětlete nebo vylepšete jej pomocí Browserx"
+    "message": "Klikněte pravým tlačítkem na libovolný text a vysvětlete nebo vylepšete jej pomocí WorkX"
   },
   "Risk_Score": {
     "message": "Skóre rizika:"
@@ -2042,7 +2042,7 @@
     "message": "Webové vyhledávání"
   },
   "Welcome_to_Browserx": {
-    "message": "Vítejte v Browserx"
+    "message": "Vítejte v WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Zda sandboxované příkazy mohou přistupovat k síti"
@@ -2093,7 +2093,7 @@
     "message": "k dispozici"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "v mezipaměti"

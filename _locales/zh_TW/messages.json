@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "適用於工作任務的通用瀏覽器內 AI 助理"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "請求 Browserx 從任何網頁提取結構化資料"
+    "message": "請求 WorkX 從任何網頁提取結構化資料"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "對中等風險及以上的操作請求批准（風險 > 30）。建議大多數使用者使用。"
@@ -310,13 +310,13 @@
     "message": "瀏覽器自動化工具切換"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx（Alpha）"
+    "message": "WorkX（Alpha）"
   },
   "CWD": {
     "message": "當前工作目錄："
@@ -386,7 +386,7 @@
     "message": "清除搜尋"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "點擊工具列中的 Browserx 圖示或按 Alt+Shift+C"
+    "message": "點擊工具列中的 WorkX 圖示或按 Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "點擊以取消登入"
@@ -677,7 +677,7 @@
     "message": "啟用 PIN 保護"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": "啟用 browserx 啟動時自動連接"
+    "message": "啟用 WorkX 啟動時自動連接"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "啟用快取以儲存常用資料，提升效能"
@@ -734,7 +734,7 @@
     "message": "說明此內容：${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "使用 Browserx 說明"
+    "message": "使用 WorkX 說明"
   },
   "Export": {
     "message": "匯出"
@@ -761,7 +761,7 @@
     "message": "提取資料："
   },
   "Extract_data_with_Browserx": {
-    "message": "使用 Browserx 提取資料"
+    "message": "使用 WorkX 提取資料"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "從頁面中提取特定資料模式"
@@ -956,7 +956,7 @@
     "message": "改進此文字：${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "使用 Browserx 改進"
+    "message": "使用 WorkX 改進"
   },
   "In": {
     "message": "於："
@@ -1547,7 +1547,7 @@
     "message": "重試中"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "右鍵點擊任意文字，即可使用 Browserx 進行說明或改進"
+    "message": "右鍵點擊任意文字，即可使用 WorkX 進行說明或改進"
   },
   "Risk_Score": {
     "message": "風險分數："
@@ -2042,7 +2042,7 @@
     "message": "網路搜尋"
   },
   "Welcome_to_Browserx": {
-    "message": "歡迎使用 Browserx"
+    "message": "歡迎使用 WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "沙盒指令是否可以存取網路"
@@ -2093,7 +2093,7 @@
     "message": "可用"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "已快取"

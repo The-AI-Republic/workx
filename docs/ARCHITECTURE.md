@@ -6,7 +6,7 @@ WorkX is a tri-platform AI agent built from a shared core with platform-specific
 
 | App | Platform | Entry Point | Channel | Build |
 |-----|----------|-------------|---------|-------|
-| **BrowserX** | Chrome Extension | `src/extension/background/service-worker.ts` | `SidePanelChannel` / `TabPageChannel` (chrome.runtime) | `vite.config.mjs` |
+| **WorkX** | Chrome Extension | `src/extension/background/service-worker.ts` | `SidePanelChannel` / `TabPageChannel` (chrome.runtime) | `vite.config.mjs` |
 | **WorkX** | Desktop (Tauri) | `src/desktop/main.ts` | `TauriChannel` (Tauri events) | `vite.config.desktop.mts` |
 | **WorkX Server** | Headless (Node.js) | `src/server/index.ts` | `ServerChannel` (WebSocket) | `vite.config.server.mts` |
 

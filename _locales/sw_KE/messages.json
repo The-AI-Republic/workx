@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "Wakala wa AI kwenye kivinjari kwa ajili ya majukumu ya kazi"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Tumia Browserx kutoa data iliyopangwa muundo kutoka kwa ukurasa wowote wa wavuti"
+    "message": "Tumia WorkX kutoa data iliyopangwa muundo kutoka kwa ukurasa wowote wa wavuti"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Uliza kwa hatari ya kati na juu (hatari > 30). Inapendekezwa kwa watumiaji wengi."
@@ -310,13 +310,13 @@
     "message": "Vibadilisha zana za otomatiki za kivinjari"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "CWD:"
@@ -386,7 +386,7 @@
     "message": "Futa utafutaji"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Bofya ikoni ya Browserx kwenye toolbar au bonyeza Alt+Shift+C"
+    "message": "Bofya ikoni ya WorkX kwenye toolbar au bonyeza Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "Bofya ili kughairi kuingia"
@@ -677,7 +677,7 @@
     "message": "Washa Ulinzi wa PIN"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": "Washa kuunganisha kiotomatiki wakati browserx inapoanza"
+    "message": "Washa kuunganisha kiotomatiki wakati WorkX inapoanza"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Wezesha uhifadhi wa kache ili kuboresha utendaji kwa kuhifadhi data inayotumiwa mara kwa mara"
@@ -734,7 +734,7 @@
     "message": "Eleza hii: ${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "Eleza kwa Browserx"
+    "message": "Eleza kwa WorkX"
   },
   "Export": {
     "message": "Hamisha"
@@ -761,7 +761,7 @@
     "message": "Chambua Data:"
   },
   "Extract_data_with_Browserx": {
-    "message": "Chukua data kwa Browserx"
+    "message": "Chukua data kwa WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Chambua mifumo maalum ya data kutoka kwenye kurasa"
@@ -956,7 +956,7 @@
     "message": "Boresha maandishi haya: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "Boresha kwa Browserx"
+    "message": "Boresha kwa WorkX"
   },
   "In": {
     "message": "Katika:"
@@ -1547,7 +1547,7 @@
     "message": "Inajaribu tena"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Bofya kulia kwenye maandishi yoyote ili kuyafafanua au kuyaboresha kwa Browserx"
+    "message": "Bofya kulia kwenye maandishi yoyote ili kuyafafanua au kuyaboresha kwa WorkX"
   },
   "Risk_Score": {
     "message": "Alama ya Hatari:"
@@ -2042,7 +2042,7 @@
     "message": "Utafutaji wa Wavuti"
   },
   "Welcome_to_Browserx": {
-    "message": "Karibu kwenye Browserx"
+    "message": "Karibu kwenye WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Je, amri za sandbox zinaweza kufikia mtandao"
@@ -2093,7 +2093,7 @@
     "message": "inapatikana"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "imehifadhiwa"

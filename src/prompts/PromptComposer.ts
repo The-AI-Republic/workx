@@ -44,7 +44,7 @@ export interface AgentModeSpec {
   label: string;
   /**
    * Platforms that offer this mode. Omitted = all non-browserx platforms.
-   * Browserx never exposes modes (composer forces 'general' for it).
+   * WorkX never exposes modes (composer forces 'general' for it).
    */
   agentTypes?: AgentType[];
 }

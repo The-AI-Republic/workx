@@ -24,7 +24,7 @@ describe('PromptComposer', () => {
       const prompt = composer.composeMainInstruction('browserx');
 
       expectInOrder(prompt, [
-        'You are BrowserX',
+        'You are WorkX',
         '## System Semantics',
         '## Safety and Ethics',
         '## Action Risk and Approval',

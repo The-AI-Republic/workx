@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "Splošni AI agent v brskalniku za delovne naloge"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Vprašajte Browserx, naj izlušči strukturirane podatke iz katerekoli spletne strani"
+    "message": "Vprašajte WorkX, naj izlušči strukturirane podatke iz katerekoli spletne strani"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Vprašaj za srednje tveganje in višje (tveganje > 30). Priporočeno za večino uporabnikov."
@@ -310,13 +310,13 @@
     "message": "Preklopi orodij za avtomatizacijo brskalnika"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "CWD:"
@@ -386,7 +386,7 @@
     "message": "Počisti iskanje"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Kliknite ikono Browserx v orodni vrstici ali pritisnite Alt+Shift+C"
+    "message": "Kliknite ikono WorkX v orodni vrstici ali pritisnite Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "Kliknite za preklic prijave"
@@ -677,7 +677,7 @@
     "message": "Omogoči zaščito s PIN-om"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": "Omogoči samodejno povezavo ob zagonu browserx"
+    "message": "Omogoči samodejno povezavo ob zagonu WorkX"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Omogoči predpomnjenje za izboljšanje zmogljivosti z shranjevanjem pogosto dostopanih podatkov"
@@ -734,7 +734,7 @@
     "message": "Razloži to: ${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "Razloži z Browserx"
+    "message": "Razloži z WorkX"
   },
   "Export": {
     "message": "Izvozi"
@@ -761,7 +761,7 @@
     "message": "Izvleči podatke:"
   },
   "Extract_data_with_Browserx": {
-    "message": "Izvleci podatke z Browserx"
+    "message": "Izvleci podatke z WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Izvleci določene vzorce podatkov s strani"
@@ -956,7 +956,7 @@
     "message": "Izboljšaj to besedilo: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "Izboljšaj z Browserx"
+    "message": "Izboljšaj z WorkX"
   },
   "In": {
     "message": "V:"
@@ -1547,7 +1547,7 @@
     "message": "Ponovno poskušanje"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Z desnim klikom na poljubno besedilo ga razložite ali izboljšajte z Browserx"
+    "message": "Z desnim klikom na poljubno besedilo ga razložite ali izboljšajte z WorkX"
   },
   "Risk_Score": {
     "message": "Ocena tveganja:"
@@ -2042,7 +2042,7 @@
     "message": "Spletno iskanje"
   },
   "Welcome_to_Browserx": {
-    "message": "Dobrodošli v Browserx"
+    "message": "Dobrodošli v WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Ali lahko ukazi v peskovniku dostopajo do omrežja"
@@ -2093,7 +2093,7 @@
     "message": "na voljo"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "predpomnjeno"

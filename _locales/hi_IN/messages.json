@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "काम के कार्यों के लिए सामान्य इन-ब्राउज़र AI एजेंट"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Browserx को किसी भी वेबपेज से संरचित डेटा निकालने के लिए कहें"
+    "message": "WorkX को किसी भी वेबपेज से संरचित डेटा निकालने के लिए कहें"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "मध्यम जोखिम और उससे ऊपर (जोखिम > 30) के लिए पूछें। अधिकांश उपयोगकर्ताओं के लिए अनुशंसित।"
@@ -310,13 +310,13 @@
     "message": "ब्राउज़र ऑटोमेशन टूल चालू/बंद करने के विकल्प"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "CWD:"
@@ -386,7 +386,7 @@
     "message": "खोज साफ़ करें"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "टूलबार में Browserx आइकन पर क्लिक करें या Alt+Shift+C दबाएँ"
+    "message": "टूलबार में WorkX आइकन पर क्लिक करें या Alt+Shift+C दबाएँ"
   },
   "Click_to_cancel_login": {
     "message": "लॉगिन रद्द करने के लिए क्लिक करें"
@@ -739,7 +739,7 @@
     "message": "इसकी व्याख्या करें: ${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "Browserx के साथ समझाएँ"
+    "message": "WorkX के साथ समझाएँ"
   },
   "Export": {
     "message": "निर्यात"
@@ -766,7 +766,7 @@
     "message": "डेटा निकालें:"
   },
   "Extract_data_with_Browserx": {
-    "message": "Browserx के साथ डेटा निकालें"
+    "message": "WorkX के साथ डेटा निकालें"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "पृष्ठों से विशिष्ट डेटा पैटर्न निकालें"
@@ -961,7 +961,7 @@
     "message": "इस पाठ को सुधारें: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "Browserx के साथ सुधारें"
+    "message": "WorkX के साथ सुधारें"
   },
   "In": {
     "message": "में:"
@@ -1552,7 +1552,7 @@
     "message": "पुनः प्रयास किया जा रहा है"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "किसी भी टेक्स्ट पर राइट‑क्लिक करके Browserx से समझाएँ या सुधारें"
+    "message": "किसी भी टेक्स्ट पर राइट‑क्लिक करके WorkX से समझाएँ या सुधारें"
   },
   "Risk_Score": {
     "message": "जोखिम स्कोर:"
@@ -2047,7 +2047,7 @@
     "message": "वेब सर्च"
   },
   "Welcome_to_Browserx": {
-    "message": "Browserx में आपका स्वागत है"
+    "message": "WorkX में आपका स्वागत है"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "क्या सैंडबॉक्स्ड कमांड नेटवर्क तक पहुंच सकते हैं"
@@ -2098,7 +2098,7 @@
     "message": "उपलब्ध"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "कैश्ड"

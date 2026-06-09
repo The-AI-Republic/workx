@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "Általános, böngészőben futó AI-ügynök munkafeladatokhoz"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "A Browserx képes strukturált adatot kinyerni bármely weboldalról"
+    "message": "A WorkX képes strukturált adatot kinyerni bármely weboldalról"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Kérdezzen közepes kockázatú és magasabb (kockázat > 30) esetén. A legtöbb felhasználónak ajánlott."
@@ -310,13 +310,13 @@
     "message": "Böngészőautomatizálási eszközök kapcsolói"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "Munkakönyvtár:"
@@ -386,7 +386,7 @@
     "message": "Keresés törlése"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Kattintson a Browserx ikonra az eszköztárban, vagy nyomja meg az Alt+Shift+C kombinációt"
+    "message": "Kattintson a WorkX ikonra az eszköztárban, vagy nyomja meg az Alt+Shift+C kombinációt"
   },
   "Click_to_cancel_login": {
     "message": "Kattintson a bejelentkezés megszakításához"
@@ -677,7 +677,7 @@
     "message": "PIN védelem engedélyezése"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": "Automatikus csatlakozás engedélyezése a browserx indításakor"
+    "message": "Automatikus csatlakozás engedélyezése a WorkX indításakor"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Engedélyezze a gyorsítótárazást a teljesítmény javításához, amely a gyakran használt adatokat tárolja."
@@ -734,7 +734,7 @@
     "message": "Magyarázd el ezt: ${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "Magyarázd el a Browserx-szel"
+    "message": "Magyarázd el a WorkX-szel"
   },
   "Export": {
     "message": "Exportálás"
@@ -761,7 +761,7 @@
     "message": "Adatok kinyerése:"
   },
   "Extract_data_with_Browserx": {
-    "message": "Adatok kinyerése a Browserx segítségével"
+    "message": "Adatok kinyerése a WorkX segítségével"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Specifikus adatminták kinyerése az oldalakról"
@@ -956,7 +956,7 @@
     "message": "Javítsa ezt a szöveget: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "Javítsa a Browserx segítségével"
+    "message": "Javítsa a WorkX segítségével"
   },
   "In": {
     "message": "Be:"
@@ -1547,7 +1547,7 @@
     "message": "Újrapróbálkozás"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Kattintson jobb gombbal bármely szövegre, hogy a Browserx-szel magyarázzon vagy javítson rajta"
+    "message": "Kattintson jobb gombbal bármely szövegre, hogy a WorkX-szel magyarázzon vagy javítson rajta"
   },
   "Risk_Score": {
     "message": "Kockázati pontszám:"
@@ -2042,7 +2042,7 @@
     "message": "Webkeresés"
   },
   "Welcome_to_Browserx": {
-    "message": "Üdvözöljük a Browserx-nél"
+    "message": "Üdvözöljük a WorkX-nél"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "A sandboxolt parancsok hozzáférhetnek-e a hálózathoz"
@@ -2093,7 +2093,7 @@
     "message": "elérhető"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "gyorsítótárazott"

@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "Γενικός πράκτορας AI εντός του προγράμματος περιήγησης για επαγγελματικές εργασίες"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Ζητήστε από το Browserx να εξάγει δομημένα δεδομένα από οποιαδήποτε ιστοσελίδα"
+    "message": "Ζητήστε από το WorkX να εξάγει δομημένα δεδομένα από οποιαδήποτε ιστοσελίδα"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Ζητήστε για ενδιάμεσο κίνδυνο και άνω (κίνδυνος > 30). Συνιστάται για τους περισσότερους χρήστες."
@@ -310,13 +310,13 @@
     "message": "Διακόπτες αυτοματοποίησης περιηγητή"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "CWD:"
@@ -386,7 +386,7 @@
     "message": "Καθαρισμός αναζήτησης"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Κάντε κλικ στο εικονίδιο Browserx στη γραμμή εργαλείων ή πατήστε Alt+Shift+C"
+    "message": "Κάντε κλικ στο εικονίδιο WorkX στη γραμμή εργαλείων ή πατήστε Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "Κάντε κλικ για να ακυρώσετε τη σύνδεση"
@@ -677,7 +677,7 @@
     "message": "Ενεργοποίηση Προστασίας PIN"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": "Ενεργοποίηση αυτόματης σύνδεσης κατά την εκκίνηση του browserx"
+    "message": "Ενεργοποίηση αυτόματης σύνδεσης κατά την εκκίνηση του WorkX"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Ενεργοποίηση της προσωρινής αποθήκευσης (cache) για βελτίωση της απόδοσης, αποθηκεύοντας δεδομένα στα οποία γίνεται συχνή πρόσβαση."
@@ -734,7 +734,7 @@
     "message": "Εξηγήστε αυτό: ${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "Εξήγηση με Browserx"
+    "message": "Εξήγηση με WorkX"
   },
   "Export": {
     "message": "Εξαγωγή"
@@ -761,7 +761,7 @@
     "message": "Εξαγωγή Δεδομένων:"
   },
   "Extract_data_with_Browserx": {
-    "message": "Εξαγωγή δεδομένων με Browserx"
+    "message": "Εξαγωγή δεδομένων με WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Εξαγωγή συγκεκριμένων προτύπων δεδομένων από σελίδες"
@@ -956,7 +956,7 @@
     "message": "Βελτιώστε αυτό το κείμενο: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "Βελτιώστε με το Browserx"
+    "message": "Βελτιώστε με το WorkX"
   },
   "In": {
     "message": "Σε:"
@@ -1547,7 +1547,7 @@
     "message": "Επανάληψη"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Κάντε δεξί κλικ σε οποιοδήποτε κείμενο για να το εξηγήσετε ή να το βελτιώσετε με το Browserx"
+    "message": "Κάντε δεξί κλικ σε οποιοδήποτε κείμενο για να το εξηγήσετε ή να το βελτιώσετε με το WorkX"
   },
   "Risk_Score": {
     "message": "Σκορ κινδύνου:"
@@ -2042,7 +2042,7 @@
     "message": "Αναζήτηση Web"
   },
   "Welcome_to_Browserx": {
-    "message": "Καλώς ήρθατε στο Browserx"
+    "message": "Καλώς ήρθατε στο WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Εάν οι εντολές σε απομονωμένο περιβάλλον μπορούν να έχουν πρόσβαση στο δίκτυο"
@@ -2093,7 +2093,7 @@
     "message": "διαθέσιμο"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "στην κρυφή μνήμη"

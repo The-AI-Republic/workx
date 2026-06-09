@@ -1,29 +1,41 @@
 # Naming & Compatibility Policy
 
-The user-facing desktop/server product is **WorkX** (formerly "Apple Pi").
-The browser extension remains **BrowserX**.
+The user-facing product is **WorkX** across **all surfaces** — desktop, server,
+and the Chrome extension (formerly "Apple Pi" on desktop/server and "BrowserX"
+on the extension).
 
 This document is the source of truth for *what* carries the WorkX name, what
-intentionally still carries the legacy `applepi` / `pi` codename, and *why*.
-It is enforced by `src/__tests__/naming-convention.test.ts`.
+intentionally still carries a legacy internal codename (`applepi` / `pi` for
+desktop/server, `browserx` for the extension), and *why*. It is enforced by
+`src/__tests__/naming-convention.test.ts`.
 
 ## Three-tier naming convention
 
-| Tier | Scope | Identifier |
-|------|-------|------------|
-| 1 | Shared / core internal codename | `applepi` (lowercase) |
-| 2 | Extension-specific | `browserx` |
-| 3 | Desktop/server **user-facing product name** | `WorkX` |
+| Tier | Scope | User-facing name | Internal codename (retained) |
+|------|-------|------------------|------------------------------|
+| 1 | Shared / core | WorkX | `applepi` (lowercase) |
+| 2 | Extension-specific | WorkX | `browserx` (lowercase) |
+| 3 | Desktop/server product | WorkX | `applepi` / `pi` |
 
-The Apple trademark exposure lived entirely in **Tier 3**. The rename therefore
-changed only the user-facing product surface and left the Tier 1 internal
-codename in place.
+The Apple trademark exposure lived entirely in the desktop/server product name;
+the extension was unified to the same **WorkX** brand for consistency. In both
+cases only the **user-facing** surface was renamed — the lowercase internal
+codenames (`applepi`, `browserx`) are retained as functional/persistence
+identifiers.
 
-## Renamed to WorkX (Tier 3 — user-facing)
+## Renamed to WorkX (user-facing)
 
-Window/app title, Tauri `productName`/`mainBinaryName`, desktop agent prompt
-identity, long/short descriptions, locale display strings, README/docs headline
-branding, tray menu, notification fallback title, and systemd job descriptions.
+**Desktop/server:** window/app title, Tauri `productName`/`mainBinaryName`,
+desktop agent prompt identity, long/short descriptions, locale display strings,
+README/docs branding, tray menu, notification fallback title, systemd job
+descriptions.
+
+**Extension:** `extension_name` and all locale message **values** (the chat
+agent label, context-menu items, welcome strings, etc. — i18n keys and `$_t`
+references are unchanged), manifest action `default_title`, the extension agent
+prompt identity (`default_browserx_agent_prompt.md`, `browserx_intro.md`), the
+shadow-agent prompt identity, raw HTML titles, the on-page cursor automation
+label, and keyboard-shortcut descriptions.
 
 ## Intentionally retained as `applepi` / `pi` (Tier 1 — legacy/internal)
 
@@ -47,6 +59,25 @@ retired **gradually**; until then they are kept verbatim, not aliased.
 | `PiRuntimeBootstrap` | `src/desktop-runtime/PiRuntimeBootstrap.ts` | Internal desktop-runtime class name |
 | hotkey events `applepi:*`, attr `data-applepi-injected` | `src/desktop/hotkeys.ts`, DOM addons | Internal event / DOM contract |
 | crontab marker `pi-scheduler-*` | `tauri/src/scheduler_commands.rs` | Removal-identity marker for existing crontab entries |
+
+## Intentionally retained as `browserx` (Tier 2 — legacy/internal)
+
+The extension's user-facing brand is now WorkX, but the lowercase `browserx`
+codename is retained as functional/persistence identity, for the same reasons
+as Tier 1. Renaming these orphans stored data or breaks DOM/event contracts.
+
+| Identifier | Location | Why kept |
+|-----------|----------|----------|
+| `browserx-credential:` prefix | `src/extension/storage/ChromeCredentialStore.ts` | Extension credential store — rename orphans stored API keys |
+| events `browserx:*`, `browserx:visual-effect` | `DomService.ts`, content-script, contracts | Runtime DOM event contract |
+| element ids `browserx-visual-effects-host` | content-script | Runtime DOM element contract |
+| tab group title `browserx`, session prefix `browserx_s_` | `src/core/TabManager.ts`, `AgentSession.ts` | Rename orphans existing Chrome tab groups |
+| agent type `browserx`, event titles `'browserx'` | `PromptComposer.ts`, `Main.svelte` | Runtime agent identity |
+| `.browserx` data dir, `/etc/browserx`, `ProgramData\BrowserX` policy | `src/server/agent/ServerAgentBootstrap.ts` | Server data dir / enterprise policy path contract |
+| i18n keys (`"Browserx"`, `"Explain_with_Browserx"`, …) | `_locales/*/messages.json` | i18n lookup keys referenced by `$_t(...)`; only **values** were rebranded |
+| prompt fragment files `browserx_intro.md`, `default_browserx_agent_prompt.md` | `src/prompts/` | Internal filenames (content rebranded to WorkX) |
+| code identifiers `BrowserxExtensionSchema`, manifest key `browserx` | `src/core/plugins/PluginManifest.ts` | Plugin-manifest data contract |
+| GitHub repo refs `browserx/*` | plugin tests/fixtures | External repository identifiers |
 
 ## Deep links
 

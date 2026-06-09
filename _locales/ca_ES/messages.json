@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "Agent d'IA general al navegador per a tasques de treball"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Demaneu a Browserx que extregui dades estructurades de qualsevol pàgina web"
+    "message": "Demaneu a WorkX que extregui dades estructurades de qualsevol pàgina web"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Demana per a riscos mitjans i superiors (risc > 30). Recomanat per a la majoria d'usuaris."
@@ -310,13 +310,13 @@
     "message": "Commutadors d'eines d'automatització del navegador"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx (Alfa)"
+    "message": "WorkX (Alfa)"
   },
   "CWD": {
     "message": "CWD:"
@@ -386,7 +386,7 @@
     "message": "Neteja la cerca"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Feu clic a la icona de Browserx a la barra d'eines o premeu Alt+Maj+C"
+    "message": "Feu clic a la icona de WorkX a la barra d'eines o premeu Alt+Maj+C"
   },
   "Click_to_cancel_login": {
     "message": "Feu clic per cancel·lar l'inici de sessió"
@@ -677,7 +677,7 @@
     "message": "Activar protecció amb PIN"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": "Activa la connexió automàtica en iniciar browserx"
+    "message": "Activa la connexió automàtica en iniciar WorkX"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Activa la memòria cau per millorar el rendiment emmagatzemant dades d'accés freqüent"
@@ -734,7 +734,7 @@
     "message": "Explica això: ${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "Explica amb Browserx"
+    "message": "Explica amb WorkX"
   },
   "Export": {
     "message": "Exportar"
@@ -761,7 +761,7 @@
     "message": "Extreu dades:"
   },
   "Extract_data_with_Browserx": {
-    "message": "Extreu dades amb Browserx"
+    "message": "Extreu dades amb WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Extreu patrons de dades específics de les pàgines"
@@ -956,7 +956,7 @@
     "message": "Millora aquest text: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "Millora amb Browserx"
+    "message": "Millora amb WorkX"
   },
   "In": {
     "message": "A:"
@@ -1547,7 +1547,7 @@
     "message": "Reintentant"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Fes clic dret a qualsevol text per explicar-lo o millorar-lo amb Browserx"
+    "message": "Fes clic dret a qualsevol text per explicar-lo o millorar-lo amb WorkX"
   },
   "Risk_Score": {
     "message": "Puntuació de risc:"
@@ -2042,7 +2042,7 @@
     "message": "Cerca web"
   },
   "Welcome_to_Browserx": {
-    "message": "Benvingut a Browserx"
+    "message": "Benvingut a WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Si les ordres aïllades poden accedir a la xarxa"
@@ -2093,7 +2093,7 @@
     "message": "disponible"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "en memòria cau"

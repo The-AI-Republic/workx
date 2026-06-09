@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "Agen AI serbaguna dalam peramban untuk tugas pekerjaan"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Minta Browserx mengekstrak data terstruktur dari halaman web mana pun"
+    "message": "Minta WorkX mengekstrak data terstruktur dari halaman web mana pun"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Minta konfirmasi untuk risiko menengah ke atas (risiko > 30). Direkomendasikan untuk kebanyakan pengguna."
@@ -310,13 +310,13 @@
     "message": "Pengalih Alat Otomasi Peramban"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "CWD:"
@@ -386,7 +386,7 @@
     "message": "Bersihkan pencarian"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Klik ikon Browserx di bilah alat atau tekan Alt+Shift+C"
+    "message": "Klik ikon WorkX di bilah alat atau tekan Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "Klik untuk membatalkan masuk"
@@ -677,7 +677,7 @@
     "message": "Aktifkan Perlindungan PIN"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": "Aktifkan sambungan otomatis saat browserx dimulai"
+    "message": "Aktifkan sambungan otomatis saat WorkX dimulai"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Aktifkan caching untuk meningkatkan kinerja dengan menyimpan data yang sering diakses"
@@ -734,7 +734,7 @@
     "message": "Jelaskan ini: ${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "Jelaskan dengan Browserx"
+    "message": "Jelaskan dengan WorkX"
   },
   "Export": {
     "message": "Ekspor"
@@ -761,7 +761,7 @@
     "message": "Ekstrak Data:"
   },
   "Extract_data_with_Browserx": {
-    "message": "Ekstrak data dengan Browserx"
+    "message": "Ekstrak data dengan WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Ekstrak pola data spesifik dari halaman"
@@ -956,7 +956,7 @@
     "message": "Tingkatkan teks ini: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "Tingkatkan dengan Browserx"
+    "message": "Tingkatkan dengan WorkX"
   },
   "In": {
     "message": "Dalam:"
@@ -1547,7 +1547,7 @@
     "message": "Mencoba kembali"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Klik kanan pada teks apa pun untuk menjelaskan atau memperbaikinya dengan Browserx"
+    "message": "Klik kanan pada teks apa pun untuk menjelaskan atau memperbaikinya dengan WorkX"
   },
   "Risk_Score": {
     "message": "Skor Risiko:"
@@ -2042,7 +2042,7 @@
     "message": "Pencarian Web"
   },
   "Welcome_to_Browserx": {
-    "message": "Selamat datang di Browserx"
+    "message": "Selamat datang di WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Apakah perintah sandbox dapat mengakses jaringan"
@@ -2093,7 +2093,7 @@
     "message": "tersedia"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "tersimpan"

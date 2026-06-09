@@ -4,10 +4,13 @@
  * Enforces the three-tier naming convention (originally spec
  * 022-project-rename-pi). See docs/NAMING.md for the full compatibility policy.
  *
- *   Tier 1 — Shared / Core      → uses "applepi" (legacy internal codename,
- *                                  retained for backward compatibility)
- *   Tier 2 — Extension-specific → retains "browserx"
- *   Tier 3 — Desktop user-facing → uses "WorkX" (renamed from "Apple Pi")
+ * The user-facing brand is "WorkX" on every surface; the lowercase codenames
+ * below are retained internally for backward compatibility.
+ *
+ *   Tier 1 — Shared / Core      → internal codename "applepi"
+ *   Tier 2 — Extension-specific → internal codename "browserx" (user-facing
+ *                                  extension brand renamed to "WorkX")
+ *   Tier 3 — Desktop user-facing → "WorkX" (renamed from "Apple Pi")
  *
  * Deep links: "workx://" is canonical; "applepi://" is retained as a registered
  * fallback. Any rename that breaks these conventions will fail CI.

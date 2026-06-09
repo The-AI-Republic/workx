@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "İş görevleri için genel tarayıcı içi AI ajanı"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Herhangi bir web sayfasından yapılandırılmış veri çıkarmak için Browserx'i kullanın"
+    "message": "Herhangi bir web sayfasından yapılandırılmış veri çıkarmak için WorkX'i kullanın"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Orta risk ve üzeri için sor (risk > 30). Çoğu kullanıcı için önerilir."
@@ -310,13 +310,13 @@
     "message": "Tarayıcı otomasyon aracı anahtarları"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx (Alfa)"
+    "message": "WorkX (Alfa)"
   },
   "CWD": {
     "message": "Çalışma Dizini:"
@@ -386,7 +386,7 @@
     "message": "Aramayı temizle"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Araç çubuğunuzdaki Browserx simgesine tıklayın veya Alt+Shift+C tuşlarına basın"
+    "message": "Araç çubuğunuzdaki WorkX simgesine tıklayın veya Alt+Shift+C tuşlarına basın"
   },
   "Click_to_cancel_login": {
     "message": "Oturumu iptal etmek için tıklayın"
@@ -677,7 +677,7 @@
     "message": "PIN Korumasını Etkinleştir"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": "Browserx başlatıldığında otomatik bağlanmayı etkinleştir"
+    "message": "WorkX başlatıldığında otomatik bağlanmayı etkinleştir"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Sık kullanılan verileri depolayarak performansı artırmak için önbelleği etkinleştir"
@@ -734,7 +734,7 @@
     "message": "Bunu açıkla: ${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "Browserx ile Açıkla"
+    "message": "WorkX ile Açıkla"
   },
   "Export": {
     "message": "Dışa Aktar"
@@ -761,7 +761,7 @@
     "message": "Veri Çıkar:"
   },
   "Extract_data_with_Browserx": {
-    "message": "Browserx ile veri çıkar"
+    "message": "WorkX ile veri çıkar"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Sayfalardan belirli veri kalıplarını çıkar"
@@ -956,7 +956,7 @@
     "message": "Bu metni iyileştir: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "Browserx ile iyileştir"
+    "message": "WorkX ile iyileştir"
   },
   "In": {
     "message": "İçinde:"
@@ -1547,7 +1547,7 @@
     "message": "Yeniden deneniyor"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Herhangi bir metne sağ tıklayarak Browserx ile açıklama ekleyin veya geliştirin"
+    "message": "Herhangi bir metne sağ tıklayarak WorkX ile açıklama ekleyin veya geliştirin"
   },
   "Risk_Score": {
     "message": "Risk Puanı:"
@@ -2042,7 +2042,7 @@
     "message": "Web Arama"
   },
   "Welcome_to_Browserx": {
-    "message": "Browserx'e Hoş Geldiniz"
+    "message": "WorkX'e Hoş Geldiniz"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Korumalı komutların ağa erişip erişemeyeceği"
@@ -2093,7 +2093,7 @@
     "message": "mevcut"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "önbelleğe alındı"

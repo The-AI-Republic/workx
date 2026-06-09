@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "Универсален AI агент в браузъра за работни задачи"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Помолете Browserx да извлече структурирани данни от всяка уеб страница"
+    "message": "Помолете WorkX да извлече структурирани данни от всяка уеб страница"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Питане за среден риск и по-висок (риск > 30). Препоръчва се за повечето потребители."
@@ -310,13 +310,13 @@
     "message": "Превключватели за инструменти за автоматизация на браузъра"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx (Алфа)"
+    "message": "WorkX (Алфа)"
   },
   "CWD": {
     "message": "Текуща директория:"
@@ -386,7 +386,7 @@
     "message": "Изчисти търсенето"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Щракнете върху иконата Browserx в лентата с инструменти или натиснете Alt+Shift+C"
+    "message": "Щракнете върху иконата WorkX в лентата с инструменти или натиснете Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "Кликнете, за да отмените входа"
@@ -677,7 +677,7 @@
     "message": "Активиране на защита с ПИН"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": "Активиране на автоматично свързване при стартиране на browserx"
+    "message": "Активиране на автоматично свързване при стартиране на WorkX"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Активиране на кеширане за подобряване на производителността чрез съхранение на често достъпвани данни"
@@ -734,7 +734,7 @@
     "message": "Обясни това: ${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "Обясни с Browserx"
+    "message": "Обясни с WorkX"
   },
   "Export": {
     "message": "Експорт"
@@ -761,7 +761,7 @@
     "message": "Извличане на данни:"
   },
   "Extract_data_with_Browserx": {
-    "message": "Извличане на данни с Browserx"
+    "message": "Извличане на данни с WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Извличане на конкретни модели данни от страници"
@@ -956,7 +956,7 @@
     "message": "Подобри този текст: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "Подобри с Browserx"
+    "message": "Подобри с WorkX"
   },
   "In": {
     "message": "В:"
@@ -1547,7 +1547,7 @@
     "message": "Повтаря се"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Щракнете с десния бутон върху всеки текст, за да го обясните или подобрите с Browserx"
+    "message": "Щракнете с десния бутон върху всеки текст, за да го обясните или подобрите с WorkX"
   },
   "Risk_Score": {
     "message": "Оценка на риска:"
@@ -2042,7 +2042,7 @@
     "message": "Уеб търсене"
   },
   "Welcome_to_Browserx": {
-    "message": "Добре дошъл в Browserx"
+    "message": "Добре дошъл в WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Дали изолирани команди могат да достъпват мрежата"
@@ -2093,7 +2093,7 @@
     "message": "налично"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "кеширано"

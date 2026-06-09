@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "Yleinen selaimen tekoälyagentti työtehtäviin"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Pyydä Browserx:ia poimimaan jäsenneltyä dataa mistä tahansa verkkosivusta"
+    "message": "Pyydä WorkX:ia poimimaan jäsenneltyä dataa mistä tahansa verkkosivusta"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Kysy keskiriskisistä ja korkeammista (riski > 30). Suositellaan useimmille käyttäjille."
@@ -310,13 +310,13 @@
     "message": "Selainautomaatiotyökalujen kytkimet"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "Työkansio:"
@@ -386,7 +386,7 @@
     "message": "Tyhjennä haku"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Napsauta Browserx-kuvaketta työkalupalkissa tai paina Alt+Shift+C"
+    "message": "Napsauta WorkX-kuvaketta työkalupalkissa tai paina Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "Napsauta peruuttaaksesi kirjautumisen"
@@ -677,7 +677,7 @@
     "message": "Ota PIN-suojaus käyttöön"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": "Ota automaattinen yhdistäminen käyttöön, kun browserx käynnistyy"
+    "message": "Ota automaattinen yhdistäminen käyttöön, kun WorkX käynnistyy"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Ota välimuisti käyttöön suorituskyvyn parantamiseksi tallentamalla usein käytettyä dataa"
@@ -734,7 +734,7 @@
     "message": "Selitä tämä: ${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "Selitä Browserxilla"
+    "message": "Selitä WorkXilla"
   },
   "Export": {
     "message": "Vie"
@@ -761,7 +761,7 @@
     "message": "Poimi tietoja:"
   },
   "Extract_data_with_Browserx": {
-    "message": "Poimi data Browserxilla"
+    "message": "Poimi data WorkXilla"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Poimi sivuilta erityisiä tietomalleja"
@@ -956,7 +956,7 @@
     "message": "Paranna tätä tekstiä: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "Paranna Browserxillä"
+    "message": "Paranna WorkXillä"
   },
   "In": {
     "message": "Sisään:"
@@ -1547,7 +1547,7 @@
     "message": "Yritetään uudelleen"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Napsauta tekstiä hiiren oikealla painikkeella selittääksesi tai parantaaksesi sitä Browserx"
+    "message": "Napsauta tekstiä hiiren oikealla painikkeella selittääksesi tai parantaaksesi sitä WorkX"
   },
   "Risk_Score": {
     "message": "Riskipisteet:"
@@ -2042,7 +2042,7 @@
     "message": "Verkkohaku"
   },
   "Welcome_to_Browserx": {
-    "message": "Tervetuloa Browserxiin"
+    "message": "Tervetuloa WorkXiin"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Voivatko hiekkalaatikkokomennot käyttää verkkoa"
@@ -2093,7 +2093,7 @@
     "message": "saatavilla"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "välimuistissa"

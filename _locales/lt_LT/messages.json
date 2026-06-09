@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "Universalus AI agentas naršyklėje darbo užduotims"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Paprašyti Browserx išgauti struktūruotus duomenis iš bet kurio tinklalapio"
+    "message": "Paprašyti WorkX išgauti struktūruotus duomenis iš bet kurio tinklalapio"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Klausti dėl vidutinės rizikos ir aukštesnės (rizika > 30). Rekomenduojama daugumai vartotojų."
@@ -310,13 +310,13 @@
     "message": "Naršyklės automatizacijos įrankių jungikliai"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "Dabartinis darbinis katalogas:"
@@ -386,7 +386,7 @@
     "message": "Išvalyti paiešką"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Spustelėkite Browserx piktogramą įrankių juostoje arba paspauskite Alt+Shift+C"
+    "message": "Spustelėkite WorkX piktogramą įrankių juostoje arba paspauskite Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "Spustelėkite, kad atšauktumėte prisijungimą"
@@ -677,7 +677,7 @@
     "message": "Įjungti PIN apsaugą"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": "Įjungti automatinį prisijungimą, kai browserx paleidžiamas"
+    "message": "Įjungti automatinį prisijungimą, kai WorkX paleidžiamas"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Įjungti talpyklą, kad pagerintumėte našumą saugant dažnai naudojamus duomenis"
@@ -734,7 +734,7 @@
     "message": "Paaiškinkite tai: ${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "Paaiškinkite su Browserx"
+    "message": "Paaiškinkite su WorkX"
   },
   "Export": {
     "message": "Eksportuoti"
@@ -761,7 +761,7 @@
     "message": "Išgauti duomenis:"
   },
   "Extract_data_with_Browserx": {
-    "message": "Išgauti duomenis su Browserx"
+    "message": "Išgauti duomenis su WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Išgauti konkrečius duomenų šablonus iš puslapių"
@@ -956,7 +956,7 @@
     "message": "Patobulinkite šį tekstą: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "Patobulinti su Browserx"
+    "message": "Patobulinti su WorkX"
   },
   "In": {
     "message": "Į:"
@@ -1547,7 +1547,7 @@
     "message": "Kartojama"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Spustelėkite dešiniuoju pelės mygtuku bet kurį tekstą, kad paaiškintumėte arba patobulintumėte jį su Browserx"
+    "message": "Spustelėkite dešiniuoju pelės mygtuku bet kurį tekstą, kad paaiškintumėte arba patobulintumėte jį su WorkX"
   },
   "Risk_Score": {
     "message": "Rizikos įvertis:"
@@ -2042,7 +2042,7 @@
     "message": "Web paieška"
   },
   "Welcome_to_Browserx": {
-    "message": "Sveiki atvykę į Browserx"
+    "message": "Sveiki atvykę į WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Ar smėlio dėžės komandos gali pasiekti tinklą"
@@ -2093,7 +2093,7 @@
     "message": "prieinama"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "podėlyje"

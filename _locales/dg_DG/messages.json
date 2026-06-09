@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "much general in-browser AI agent for work tasks wow"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "much ask Browserx to extract structured data from any webpage wow"
+    "message": "much ask WorkX to extract structured data from any webpage wow"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "ask for medium-risk and above (risk > 30). very recommended for most users wow"
@@ -310,13 +310,13 @@
     "message": "much browser automation tool toggles wow"
   },
   "BrowserX": {
-    "message": "BrowserX wow"
+    "message": "WorkX wow"
   },
   "Browserx": {
-    "message": "Browserx wow"
+    "message": "WorkX wow"
   },
   "Browserx_Alpha": {
-    "message": "much Browserx wow (Alpha)"
+    "message": "much WorkX wow (Alpha)"
   },
   "CWD": {
     "message": "CWD: very"
@@ -386,7 +386,7 @@
     "message": "clear search wow"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "much click the Browserx icon in your toolbar or press Alt+Shift+C wow"
+    "message": "much click the WorkX icon in your toolbar or press Alt+Shift+C wow"
   },
   "Click_to_cancel_login": {
     "message": "click to cancel login wow"
@@ -677,7 +677,7 @@
     "message": "enable PIN protection wow"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": "Enable auto-connect when browserx starts wow"
+    "message": "Enable auto-connect when WorkX starts wow"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "much enable caching to improve performance by storing frequently accessed data wow"
@@ -734,7 +734,7 @@
     "message": "Explain this: ${info.selectionText} wow"
   },
   "Explain_with_Browserx": {
-    "message": "Explain with Browserx wow"
+    "message": "Explain with WorkX wow"
   },
   "Export": {
     "message": "export wow"
@@ -761,7 +761,7 @@
     "message": "much extract data: wow"
   },
   "Extract_data_with_Browserx": {
-    "message": "much extract data with Browserx wow"
+    "message": "much extract data with WorkX wow"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "such extract specific data patterns wow, from pages"
@@ -956,7 +956,7 @@
     "message": "much improve this text: ${info.selectionText} wow"
   },
   "Improve_with_Browserx": {
-    "message": "much improve with Browserx wow"
+    "message": "much improve with WorkX wow"
   },
   "In": {
     "message": "In: wow"
@@ -1547,7 +1547,7 @@
     "message": "Retrying wow"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "so right-click on any text to explain or improve it with Browserx wow"
+    "message": "so right-click on any text to explain or improve it with WorkX wow"
   },
   "Risk_Score": {
     "message": "Risk Score: wow"
@@ -2042,7 +2042,7 @@
     "message": "much web search wow"
   },
   "Welcome_to_Browserx": {
-    "message": "such welcome to Browserx wow"
+    "message": "such welcome to WorkX wow"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "whether sandboxed commands can access the network wow"
@@ -2093,7 +2093,7 @@
     "message": "available wow"
   },
   "browserx": {
-    "message": "browserx wow"
+    "message": "WorkX wow"
   },
   "cached": {
     "message": "cached wow"

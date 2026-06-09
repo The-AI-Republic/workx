@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "عامل هوش مصنوعی عمومی درون مرورگر برای وظایف کاری"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "درخواست از Browserx برای استخراج داده‌های ساختاریافته از هر صفحه وب"
+    "message": "درخواست از WorkX برای استخراج داده‌های ساختاریافته از هر صفحه وب"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "درخواست برای ریسک متوسط و بالاتر (ریسک > ۳۰). برای اکثر کاربران توصیه می‌شود."
@@ -310,13 +310,13 @@
     "message": "تغییر وضعیت ابزارهای خودکار مرورگر"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx (آلفا)"
+    "message": "WorkX (آلفا)"
   },
   "CWD": {
     "message": "دایرکتوری کاری:"
@@ -682,7 +682,7 @@
     "message": "فعال‌سازی حفاظت PIN"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": "فعال‌سازی اتصال خودکار هنگام شروع browserx"
+    "message": "فعال‌سازی اتصال خودکار هنگام شروع WorkX"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "فعال‌سازی کش برای بهبود عملکرد با ذخیره‌سازی داده‌های پرکاربرد"
@@ -739,7 +739,7 @@
     "message": "این را توضیح بده: ${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "توضیح با Browserx"
+    "message": "توضیح با WorkX"
   },
   "Export": {
     "message": "صادرات"
@@ -766,7 +766,7 @@
     "message": "استخراج داده:"
   },
   "Extract_data_with_Browserx": {
-    "message": "استخراج داده‌ها با Browserx"
+    "message": "استخراج داده‌ها با WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "استخراج الگوهای داده‌ای خاص از صفحات"
@@ -961,7 +961,7 @@
     "message": "بهبود این متن: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "بهبود با Browserx"
+    "message": "بهبود با WorkX"
   },
   "In": {
     "message": "در:"
@@ -1552,7 +1552,7 @@
     "message": "در حال تلاش مجدد"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "روی هر متنی کلیک راست کنید تا با Browserx آن را توضیح یا بهبود دهید"
+    "message": "روی هر متنی کلیک راست کنید تا با WorkX آن را توضیح یا بهبود دهید"
   },
   "Risk_Score": {
     "message": "امتیاز ریسک:"
@@ -2047,7 +2047,7 @@
     "message": "جستجوی وب"
   },
   "Welcome_to_Browserx": {
-    "message": "به Browserx خوش آمدید"
+    "message": "به WorkX خوش آمدید"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "آیا دستورات ایزوله می‌توانند به شبکه دسترسی داشته باشند"
@@ -2098,7 +2098,7 @@
     "message": "در دسترس"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "کش‌شده"

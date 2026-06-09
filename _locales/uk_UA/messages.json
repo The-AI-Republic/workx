@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "Універсальний AI‑агент у браузері для робочих задач"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Отримати структуровані дані з будь‑якої веб‑сторінки за допомогою Browserx"
+    "message": "Отримати структуровані дані з будь‑якої веб‑сторінки за допомогою WorkX"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Запитувати для середнього ризику та вище (ризик > 30). Рекомендовано більшості користувачів."
@@ -310,13 +310,13 @@
     "message": "Перемикачі інструментів автоматизації браузера"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "CWD:"
@@ -386,7 +386,7 @@
     "message": "Очистити пошук"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Клацніть іконку Browserx у панелі інструментів або натисніть Alt+Shift+C"
+    "message": "Клацніть іконку WorkX у панелі інструментів або натисніть Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "Натисніть, щоб скасувати вхід"
@@ -677,7 +677,7 @@
     "message": "Увімкнути захист PIN-кодом"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": "Увімкнути автоматичне підключення при запуску browserx"
+    "message": "Увімкнути автоматичне підключення при запуску WorkX"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Увімкнути кешування для підвищення продуктивності шляхом збереження часто використовуваних даних"
@@ -734,7 +734,7 @@
     "message": "Поясніть це: ${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "Пояснити за допомогою Browserx"
+    "message": "Пояснити за допомогою WorkX"
   },
   "Export": {
     "message": "Експорт"
@@ -761,7 +761,7 @@
     "message": "Витягти дані:"
   },
   "Extract_data_with_Browserx": {
-    "message": "Витягнути дані за допомогою Browserx"
+    "message": "Витягнути дані за допомогою WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Витягти специфічні шаблони даних зі сторінок"
@@ -956,7 +956,7 @@
     "message": "Покращити цей текст: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "Покращити за допомогою Browserx"
+    "message": "Покращити за допомогою WorkX"
   },
   "In": {
     "message": "У:"
@@ -1547,7 +1547,7 @@
     "message": "Повторна спроба"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Клацніть правою кнопкою миші на будь‑якому тексті, щоб пояснити або покращити його за допомогою Browserx"
+    "message": "Клацніть правою кнопкою миші на будь‑якому тексті, щоб пояснити або покращити його за допомогою WorkX"
   },
   "Risk_Score": {
     "message": "Оцінка ризику:"
@@ -2042,7 +2042,7 @@
     "message": "Веб-пошук"
   },
   "Welcome_to_Browserx": {
-    "message": "Ласкаво просимо до Browserx"
+    "message": "Ласкаво просимо до WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Чи можуть пісочні команди отримувати доступ до мережі"
@@ -2093,7 +2093,7 @@
     "message": "доступно"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "кешовано"

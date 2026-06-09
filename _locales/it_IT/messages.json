@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "Assistente AI generale nel browser per attività lavorative"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Chieda a Browserx di estrarre dati strutturati da qualsiasi pagina web"
+    "message": "Chieda a WorkX di estrarre dati strutturati da qualsiasi pagina web"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Richiedi per rischi medio e superiori (rischio > 30). Consigliato per la maggior parte degli utenti."
@@ -310,13 +310,13 @@
     "message": "Interruttori degli strumenti di automazione del browser"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "CWD:"
@@ -386,7 +386,7 @@
     "message": "Cancella ricerca"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Faccia clic sull'icona BrowserX nella barra degli strumenti o prema Alt+Shift+C"
+    "message": "Faccia clic sull'icona WorkX nella barra degli strumenti o prema Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "Fare clic per annullare l'accesso"
@@ -677,7 +677,7 @@
     "message": "Abilita protezione PIN"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": "Abiliti la connessione automatica all'avvio di Browserx"
+    "message": "Abiliti la connessione automatica all'avvio di WorkX"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Abilita la cache per migliorare le prestazioni memorizzando i dati più frequentemente accessibili"
@@ -734,7 +734,7 @@
     "message": "Spieghi questo: ${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "Spieghi con Browserx"
+    "message": "Spieghi con WorkX"
   },
   "Export": {
     "message": "Esporta"
@@ -761,7 +761,7 @@
     "message": "Estrarre dati:"
   },
   "Extract_data_with_Browserx": {
-    "message": "Estrai dati con Browserx"
+    "message": "Estrai dati con WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Estrai modelli di dati specifici dalle pagine"
@@ -956,7 +956,7 @@
     "message": "Migliora questo testo: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "Migliora con Browserx"
+    "message": "Migliora con WorkX"
   },
   "In": {
     "message": "In:"
@@ -1547,7 +1547,7 @@
     "message": "Riprova"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Faccia clic con il tasto destro su un testo qualsiasi per spiegarlo o migliorarlo con Browserx"
+    "message": "Faccia clic con il tasto destro su un testo qualsiasi per spiegarlo o migliorarlo con WorkX"
   },
   "Risk_Score": {
     "message": "Punteggio di rischio:"
@@ -2042,7 +2042,7 @@
     "message": "Ricerca web"
   },
   "Welcome_to_Browserx": {
-    "message": "Benvenuto in Browserx"
+    "message": "Benvenuto in WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Se i comandi sandbox possono accedere alla rete"
@@ -2093,7 +2093,7 @@
     "message": "disponibile"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "in cache"

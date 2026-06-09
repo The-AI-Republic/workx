@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "Agent AI general în browser pentru sarcini de lucru"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Solicită Browserx să extragă date structurate din orice pagină web"
+    "message": "Solicită WorkX să extragă date structurate din orice pagină web"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Solicită pentru riscuri medii și mai mari (risc > 30). Recomandat pentru majoritatea utilizatorilor."
@@ -310,13 +310,13 @@
     "message": "Comutatoare pentru automatizarea browserului"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "CWD:"
@@ -386,7 +386,7 @@
     "message": "Șterge căutarea"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Fă clic pe pictograma Browserx din bara de instrumente sau apasă Alt+Shift+C"
+    "message": "Fă clic pe pictograma WorkX din bara de instrumente sau apasă Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "Faceți clic pentru a anula autentificarea"
@@ -677,7 +677,7 @@
     "message": "Activează protecția PIN"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": "Activează reconectarea automată la pornirea browserx"
+    "message": "Activează reconectarea automată la pornirea WorkX"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Activează caching-ul pentru a îmbunătăți performanța prin stocarea datelor accesate frecvent"
@@ -734,7 +734,7 @@
     "message": "Explică asta: ${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "Explică cu Browserx"
+    "message": "Explică cu WorkX"
   },
   "Export": {
     "message": "Exportă"
@@ -761,7 +761,7 @@
     "message": "Extrage date:"
   },
   "Extract_data_with_Browserx": {
-    "message": "Extrage date cu Browserx"
+    "message": "Extrage date cu WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Extrage modele specifice de date din pagini"
@@ -956,7 +956,7 @@
     "message": "Îmbunătățește acest text: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "Îmbunătățește cu Browserx"
+    "message": "Îmbunătățește cu WorkX"
   },
   "In": {
     "message": "In:"
@@ -1547,7 +1547,7 @@
     "message": "Se reîncearcă"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Fă clic dreapta pe orice text pentru a-l explica sau îmbunătăți cu Browserx"
+    "message": "Fă clic dreapta pe orice text pentru a-l explica sau îmbunătăți cu WorkX"
   },
   "Risk_Score": {
     "message": "Scor de risc:"
@@ -2042,7 +2042,7 @@
     "message": "Căutare pe web"
   },
   "Welcome_to_Browserx": {
-    "message": "Bine ați venit la Browserx"
+    "message": "Bine ați venit la WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Dacă comenzile sandbox pot accesa rețeaua"
@@ -2093,7 +2093,7 @@
     "message": "disponibil"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "în cache"

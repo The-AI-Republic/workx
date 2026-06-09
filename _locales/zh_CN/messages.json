@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "用于工作任务的通用浏览器内 AI 智能体"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "请求 Browserx 从任意网页提取结构化数据"
+    "message": "请求 WorkX 从任意网页提取结构化数据"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "对中等风险及以上（风险 > 30）进行询问。推荐给大多数用户。"
@@ -310,13 +310,13 @@
     "message": "浏览器自动化工具切换"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "当前工作目录："
@@ -386,7 +386,7 @@
     "message": "清除搜索"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "点击工具栏中的 Browserx 图标或按 Alt+Shift+C"
+    "message": "点击工具栏中的 WorkX 图标或按 Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "点击以取消登录"
@@ -734,7 +734,7 @@
     "message": "解释此内容：${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "使用 Browserx 解释"
+    "message": "使用 WorkX 解释"
   },
   "Export": {
     "message": "导出"
@@ -761,7 +761,7 @@
     "message": "提取数据："
   },
   "Extract_data_with_Browserx": {
-    "message": "使用 Browserx 提取数据"
+    "message": "使用 WorkX 提取数据"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "从页面中提取特定数据模式"
@@ -956,7 +956,7 @@
     "message": "改进此文本: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "使用 Browserx 改进"
+    "message": "使用 WorkX 改进"
   },
   "In": {
     "message": "在:"
@@ -1547,7 +1547,7 @@
     "message": "正在重试"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "右键单击任意文本，以使用 Browserx 进行解释或改进"
+    "message": "右键单击任意文本，以使用 WorkX 进行解释或改进"
   },
   "Risk_Score": {
     "message": "风险评分："
@@ -2042,7 +2042,7 @@
     "message": "网页搜索"
   },
   "Welcome_to_Browserx": {
-    "message": "欢迎使用 Browserx"
+    "message": "欢迎使用 WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "沙箱命令是否可以访问网络"
@@ -2093,7 +2093,7 @@
     "message": "可用"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "已缓存"

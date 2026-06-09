@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "業務タスク向けの汎用ブラウザ内 AI エージェント"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "任意のウェブページからBrowserxに構造化データを抽出させる"
+    "message": "任意のウェブページからWorkXに構造化データを抽出させる"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "中リスク以上（リスク > 30）を確認します。ほとんどのユーザーに推奨。"
@@ -310,13 +310,13 @@
     "message": "ブラウザ自動化ツールの切替"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx（Alpha）"
+    "message": "WorkX（Alpha）"
   },
   "CWD": {
     "message": "CWD："
@@ -386,7 +386,7 @@
     "message": "検索をクリア"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "ツールバーのBrowserxアイコンをクリックするか、Alt+Shift+C を押してください"
+    "message": "ツールバーのWorkXアイコンをクリックするか、Alt+Shift+C を押してください"
   },
   "Click_to_cancel_login": {
     "message": "クリックしてログインをキャンセル"
@@ -677,7 +677,7 @@
     "message": "PIN 保護を有効にする"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": "browserx 起動時に自動接続を有効にする"
+    "message": "WorkX 起動時に自動接続を有効にする"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "頻繁にアクセスされるデータを保存し、パフォーマンスを向上させるにはキャッシュを有効化"
@@ -734,7 +734,7 @@
     "message": "これを説明してください: ${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "Browserx で説明"
+    "message": "WorkX で説明"
   },
   "Export": {
     "message": "エクスポート"
@@ -761,7 +761,7 @@
     "message": "データ抽出:"
   },
   "Extract_data_with_Browserx": {
-    "message": "Browserxでデータを抽出"
+    "message": "WorkXでデータを抽出"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "ページから特定のデータパターンを抽出"
@@ -956,7 +956,7 @@
     "message": "このテキストを改善: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "Browserx で改善"
+    "message": "WorkX で改善"
   },
   "In": {
     "message": "入力:"
@@ -2042,7 +2042,7 @@
     "message": "Web検索"
   },
   "Welcome_to_Browserx": {
-    "message": "Browserxへようこそ"
+    "message": "WorkXへようこそ"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "サンドボックス化されたコマンドがネットワークにアクセスできるかどうか"
@@ -2093,7 +2093,7 @@
     "message": "利用可能"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "キャッシュ済み"

@@ -1,14 +1,14 @@
-# BrowserX
+# WorkX
 
 **AI-Powered Personal Assistant — Chrome Extension, Desktop App & Headless Server**
 
-BrowserX is a privacy-preserving, general-purpose AI personal assistant available as a **Chrome extension (BrowserX)**, a **desktop application (WorkX)**, and a **headless server (WorkX Server)**. The agent interprets natural language commands and autonomously performs tasks across web browsing, planning, and more.
+WorkX is a privacy-preserving, general-purpose AI personal assistant available as a **Chrome extension (WorkX)**, a **desktop application (WorkX)**, and a **headless server (WorkX Server)**. The agent interprets natural language commands and autonomously performs tasks across web browsing, planning, and more.
 
 ### Naming Convention
 
 | Product | Platform | Identifier |
 |---------|----------|------------|
-| **BrowserX** | Chrome Extension | `browserx` |
+| **WorkX** | Chrome Extension | `browserx` |
 | **WorkX** | Desktop (Win/Mac/Linux) | `applepi` |
 | **WorkX Server** | Headless (Docker/K8s) | `applepi-server` |
 
@@ -33,7 +33,7 @@ All three platforms share a common core (`src/core/`) — see [Architecture](doc
 
 **Current Status:** Alpha Testing
 
-BrowserX is currently in active alpha development and is intended **exclusively** for personal evaluation or internal organizational use.
+WorkX is currently in active alpha development and is intended **exclusively** for personal evaluation or internal organizational use.
 
 **Usage Restrictions:**
 - Personal evaluation and learning: Allowed
@@ -80,7 +80,7 @@ cp .env.example src/desktop/.env
 
 ---
 
-### BrowserX (Chrome Extension)
+### WorkX (Chrome Extension)
 
 ```bash
 npm install
@@ -237,7 +237,7 @@ If no Chrome is available, the server degrades gracefully — planning and web s
 
 ## Internationalization (i18n)
 
-BrowserX supports 50+ languages via Chrome's `_locales` system, auto-translated using Fireworks AI.
+WorkX supports 50+ languages via Chrome's `_locales` system, auto-translated using Fireworks AI.
 
 | Function | Usage | Context |
 |----------|-------|---------|

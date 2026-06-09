@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "En generell AI-agent i nettleseren for arbeidsoppgaver"
@@ -220,7 +220,7 @@
     }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Be Browserx om å hente ut strukturert data fra en hvilken som helst nettside"
+    "message": "Be WorkX om å hente ut strukturert data fra en hvilken som helst nettside"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Spør om handlinger med middels risiko og høyere (risiko > 30). Anbefalt for de fleste brukere."
@@ -310,13 +310,13 @@
     "message": "Brytere for nettleserautomatisering"
   },
   "BrowserX": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "Browserx": {
-    "message": "Browserx"
+    "message": "WorkX"
   },
   "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "Arbeidskatalog:"
@@ -386,7 +386,7 @@
     "message": "Tøm søk"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Klikk på Browserx-ikonet i verktøylinjen eller trykk Alt+Shift+C"
+    "message": "Klikk på WorkX-ikonet i verktøylinjen eller trykk Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "Klikk for å avbryte innlogging"
@@ -677,7 +677,7 @@
     "message": "Aktiver PIN-beskyttelse"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": "Aktiver automatisk tilkobling når Browserx starter"
+    "message": "Aktiver automatisk tilkobling når WorkX starter"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Aktiver caching for å forbedre ytelsen ved å lagre ofte hentet data"
@@ -734,7 +734,7 @@
     "message": "Forklar dette: ${info.selectionText}"
   },
   "Explain_with_Browserx": {
-    "message": "Forklar med Browserx"
+    "message": "Forklar med WorkX"
   },
   "Export": {
     "message": "Eksporter"
@@ -761,7 +761,7 @@
     "message": "Ekstraher data:"
   },
   "Extract_data_with_Browserx": {
-    "message": "Ekstraher data med Browserx"
+    "message": "Ekstraher data med WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Ekstraher spesifikke datamønstre fra sider"
@@ -956,7 +956,7 @@
     "message": "Forbedre denne teksten: ${info.selectionText}"
   },
   "Improve_with_Browserx": {
-    "message": "Forbedre med Browserx"
+    "message": "Forbedre med WorkX"
   },
   "In": {
     "message": "In:"
@@ -1547,7 +1547,7 @@
     "message": "Prøver på nytt"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Høyreklikk på hvilken som helst tekst for å forklare eller forbedre den med Browserx"
+    "message": "Høyreklikk på hvilken som helst tekst for å forklare eller forbedre den med WorkX"
   },
   "Risk_Score": {
     "message": "Risikoscore:"
@@ -2042,7 +2042,7 @@
     "message": "Websøk"
   },
   "Welcome_to_Browserx": {
-    "message": "Velkommen til Browserx"
+    "message": "Velkommen til WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Om sandkassekommandoer kan få tilgang til nettverket"
@@ -2093,7 +2093,7 @@
     "message": "tilgjengelig"
   },
   "browserx": {
-    "message": "browserx"
+    "message": "WorkX"
   },
   "cached": {
     "message": "bufret"
