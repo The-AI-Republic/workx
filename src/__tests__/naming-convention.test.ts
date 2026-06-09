@@ -1,13 +1,16 @@
 /**
  * Naming Convention Guard-Rail Tests
  *
- * Enforces the three-tier naming convention from spec 022-project-rename-pi:
+ * Enforces the three-tier naming convention (originally spec
+ * 022-project-rename-pi). See docs/NAMING.md for the full compatibility policy.
  *
- *   Tier 1 — Shared / Core    → uses "applepi"
+ *   Tier 1 — Shared / Core      → uses "applepi" (legacy internal codename,
+ *                                  retained for backward compatibility)
  *   Tier 2 — Extension-specific → retains "browserx"
- *   Tier 3 — Desktop user-facing → uses "WorkX"
+ *   Tier 3 — Desktop user-facing → uses "WorkX" (renamed from "Apple Pi")
  *
- * Any rename that breaks these conventions will fail CI.
+ * Deep links: "workx://" is canonical; "applepi://" is retained as a registered
+ * fallback. Any rename that breaks these conventions will fail CI.
  */
 
 import { describe, it, expect } from 'vitest';
