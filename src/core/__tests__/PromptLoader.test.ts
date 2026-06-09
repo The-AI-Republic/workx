@@ -61,8 +61,8 @@ describe('PromptLoader', () => {
 
     const prompt = await loadPrompt();
 
-    // Apple Pi-specific content
-    expect(prompt).toContain('Apple Pi');
+    // WorkX-specific content
+    expect(prompt).toContain('WorkX');
     expect(prompt).toContain('desktop automation agent');
     expect(prompt).toContain('TerminalTool');
 
@@ -90,7 +90,7 @@ describe('PromptLoader', () => {
 
     const prompt = await loadPrompt();
 
-    expect(prompt).toContain('Apple Pi Server');
+    expect(prompt).toContain('WorkX Server');
     expect(prompt).toContain('headless automation agent');
     expect(prompt).toContain('/srv/browserx');
     expect(prompt).toContain('TerminalTool');

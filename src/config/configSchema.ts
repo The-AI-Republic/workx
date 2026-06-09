@@ -141,7 +141,7 @@ export const SECTIONS: Record<string, Section> = {
           alias: 'general.language',
         },
       }),
-      // Default persona mode for NEW conversations (Apple Pi only). The active
+      // Default persona mode for NEW conversations (WorkX only). The active
       // per-session mode is changed at runtime via SetSessionMode, not here.
       // When adding a mode, extend this enum and AgentMode in PromptComposer.
       defaultMode: configField(z.enum(['general', 'code']).default('general'), {

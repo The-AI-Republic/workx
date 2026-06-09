@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Apple Pi Identity Management CLI
+ * WorkX Identity Management CLI
  *
  * Manages owner platform identities for channel plugins.
  *

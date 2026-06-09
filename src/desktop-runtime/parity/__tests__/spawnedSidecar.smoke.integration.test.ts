@@ -1,7 +1,7 @@
 /**
  * Track 45 Goal 1 — spawned-sidecar protocol & lifecycle smoke test.
  *
- * Boots the real Apple Pi desktop runtime sidecar
+ * Boots the real WorkX desktop runtime sidecar
  * (`tauri/sidecar/desktop-runtime/index.mjs`) and asserts three
  * end-to-end behaviors that today's CI does not cover:
  *

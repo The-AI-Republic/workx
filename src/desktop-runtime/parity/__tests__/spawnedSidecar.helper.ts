@@ -1,7 +1,7 @@
 /**
  * Track 45 Goal 1 — spawned-sidecar test helper.
  *
- * Spawns the real Apple Pi desktop runtime sidecar
+ * Spawns the real WorkX desktop runtime sidecar
  * (`tauri/sidecar/desktop-runtime/index.mjs`) as a Node child process,
  * drives the `hello`/`hello-ok` handshake using the production
  * `StdioFrameCarrier`, and exposes a small request/response surface

@@ -4,7 +4,7 @@
  * Track 15 — Conversation Rewind & Fork. `computeRewindSlice` is the shared,
  * UI/transport-independent core API used by all three rewind triggers:
  *   1. ext/desktop  — the `session.rewind` service handler (selector-driven);
- *   2. Apple Pi Server — the `sessions.rewind` WS RPC (operator-driven);
+ *   2. WorkX Server — the `sessions.rewind` WS RPC (operator-driven);
  *   3. Track 14 / Plan Review — on plan rejection, call
  *      `computeRewindSlice(currentConvId, beginPlanSequence)` and feed the
  *      result into the registry fork seam (`SessionConfig.fork`). Callers

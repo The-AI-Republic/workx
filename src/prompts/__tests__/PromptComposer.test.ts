@@ -38,7 +38,7 @@ describe('PromptComposer', () => {
       const prompt = composer.composeMainInstruction('applepi');
 
       expectInOrder(prompt, [
-        'You are Apple Pi',
+        'You are WorkX',
         '## System Semantics',
         '## Safety and Ethics',
         '## Action Risk and Approval',

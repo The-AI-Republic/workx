@@ -583,7 +583,7 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
           toolCallsArray = Array.from(this.chatCompletionToolCalls.values());
 
           if (toolCallsArray.length > 1) {
-            console.warn('[OpenAIChatCompletionClient] Multiple tool calls detected, but ApplePi uses parallel_tool_calls=false:', toolCallsArray);
+            console.warn('[OpenAIChatCompletionClient] Multiple tool calls detected, but WorkX uses parallel_tool_calls=false:', toolCallsArray);
           }
         }
 

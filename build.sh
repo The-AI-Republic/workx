@@ -7,7 +7,7 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   cat <<'EOF'
 Usage: ./build.sh [--install] [cargo-tauri-build-args...]
 
-Builds the ApplePi Tauri desktop app for local testing.
+Builds the WorkX Tauri desktop app for local testing.
 
 By default this runs an unsigned build:
   cargo tauri build --no-sign
@@ -72,7 +72,7 @@ install_ubuntu() {
   fi
 
   local deb
-  deb="$(latest_match "$ROOT_DIR/tauri/target/release/bundle/deb/ApplePi_*_amd64.deb")"
+  deb="$(latest_match "$ROOT_DIR/tauri/target/release/bundle/deb/WorkX_*_amd64.deb")"
   echo "Installing $deb"
   sudo apt install --reinstall "$deb"
 }
@@ -153,7 +153,7 @@ EFFECTIVE_AUTH_BASE_URL="${VITE_AUTH_BASE_URL:-$(desktop_env_value VITE_AUTH_BAS
 if [[ -z "$EFFECTIVE_AUTH_BASE_URL" ]]; then
   EFFECTIVE_AUTH_BASE_URL="${VITE_HOME_PAGE_BASE_URL:-$(desktop_env_value VITE_HOME_PAGE_BASE_URL)}"
 fi
-echo "ApplePi build auth base URL: ${EFFECTIVE_AUTH_BASE_URL:-not configured}"
+echo "WorkX build auth base URL: ${EFFECTIVE_AUTH_BASE_URL:-not configured}"
 if [[ -n "${APPLEPI_AUTH_BASE_URL:-}" && -z "${VITE_AUTH_BASE_URL:-}" ]]; then
   echo "Note: APPLEPI_AUTH_BASE_URL affects runtime Node code only; set VITE_AUTH_BASE_URL for the desktop WebView build."
 elif [[ -n "${APPLEPI_HOME_PAGE_BASE_URL:-}" && -z "${VITE_HOME_PAGE_BASE_URL:-}" && -z "${VITE_AUTH_BASE_URL:-}" ]]; then

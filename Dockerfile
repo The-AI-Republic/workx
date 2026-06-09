@@ -1,4 +1,4 @@
-# Apple Pi Server Mode — Production Image
+# WorkX Server Mode — Production Image
 #
 # Two deployment modes for browser automation:
 #

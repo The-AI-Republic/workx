@@ -384,7 +384,7 @@ async fn handle_control_frame(app: &AppHandle, state: &RuntimeSupervisorState, f
             .map(|_| json!(null)),
         // ── notifications (OS-trust; uses tauri-plugin-notification) ──────
         "notification.show" => {
-            let title = params.get("title").and_then(Value::as_str).unwrap_or("Apple Pi");
+            let title = params.get("title").and_then(Value::as_str).unwrap_or("WorkX");
             let body = params.get("body").and_then(Value::as_str).unwrap_or("");
             use tauri_plugin_notification::NotificationExt;
             match app.notification().builder().title(title).body(body).show() {

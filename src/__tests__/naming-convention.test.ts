@@ -5,7 +5,7 @@
  *
  *   Tier 1 — Shared / Core    → uses "applepi"
  *   Tier 2 — Extension-specific → retains "browserx"
- *   Tier 3 — Desktop user-facing → uses "Apple Pi"
+ *   Tier 3 — Desktop user-facing → uses "WorkX"
  *
  * Any rename that breaks these conventions will fail CI.
  */
@@ -134,33 +134,44 @@ describe('Tier 2: Extension-specific retains "browserx"', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Tier 3: Desktop user-facing → uses "Apple Pi"
+// Tier 3: Desktop user-facing → uses "WorkX"
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('Tier 3: Desktop user-facing uses "Apple Pi"', () => {
-  it('desktop index.html title is "Apple Pi"', () => {
+describe('Tier 3: Desktop user-facing uses "WorkX"', () => {
+  it('desktop index.html title is "WorkX"', () => {
     const src = readSource('src/desktop/index.html');
-    expect(src).toContain('<title>Apple Pi</title>');
+    expect(src).toContain('<title>WorkX</title>');
   });
 
-  it('default agent prompt identifies as "Apple Pi"', () => {
+  it('default agent prompt identifies as "WorkX"', () => {
     const src = readSource('src/prompts/default_applepi_agent_prompt.md');
-    expect(src).toContain('Apple Pi');
+    expect(src).toContain('WorkX');
   });
 
   it('tauri.conf.json package identity is space-free', () => {
     const conf = JSON.parse(readSource('tauri/tauri.conf.json'));
-    expect(conf.productName).toBe('ApplePi');
-    expect(conf.mainBinaryName).toBe('ApplePi');
-    expect(conf.app.windows[0].title).toBe('Apple Pi');
+    expect(conf.productName).toBe('WorkX');
+    expect(conf.mainBinaryName).toBe('WorkX');
+    expect(conf.app.windows[0].title).toBe('WorkX');
   });
 
-  it('Linux desktop scheme handler forwards callback URLs to ApplePi', () => {
+  it('deep-link registers both legacy "applepi" and new "workx" schemes', () => {
+    const conf = JSON.parse(readSource('tauri/tauri.conf.json'));
+    const schemes = conf.plugins['deep-link'].desktop.schemes;
+    // `applepi` is retained for backward compatibility; `workx` is the new
+    // canonical scheme.
+    expect(schemes).toContain('applepi');
+    expect(schemes).toContain('workx');
+  });
+
+  it('Linux desktop scheme handler forwards callback URLs to WorkX (both schemes)', () => {
     const desktop = readSource('tauri/templates/linux-desktop.desktop');
-    expect(desktop).toContain('Name=Apple Pi');
-    expect(desktop).toContain('StartupWMClass=ApplePi');
+    expect(desktop).toContain('Name=WorkX');
+    expect(desktop).toContain('StartupWMClass=WorkX');
     expect(desktop).toContain('Exec={{exec}} %u');
-    expect(desktop).toContain('MimeType=x-scheme-handler/applepi');
+    // Both the legacy and new scheme handlers are registered.
+    expect(desktop).toContain('x-scheme-handler/applepi');
+    expect(desktop).toContain('x-scheme-handler/workx');
   });
 });
 
@@ -204,10 +215,10 @@ describe('Guard-rails: no cross-tier naming leaks', () => {
     expect(cleaned).not.toMatch(/['"]pi-credential:/);
   });
 
-  // Desktop user-facing title must not be bare "Pi" (should be "Apple Pi")
+  // Desktop user-facing title must not be bare "Pi" (should be "WorkX")
   it('desktop index.html title is not bare "Pi"', () => {
     const src = readSource('src/desktop/index.html');
-    // Should not have <title>Pi</title> — must be "Apple Pi"
+    // Should not have <title>Pi</title> — must be "WorkX"
     expect(src).not.toContain('<title>Pi</title>');
   });
 });

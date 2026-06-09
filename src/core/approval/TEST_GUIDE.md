@@ -289,7 +289,7 @@ npm run build
 
 ---
 
-## 4. Manual Testing (Desktop / Pi)
+## 4. Manual Testing (Desktop / WorkX)
 
 ### Prerequisites
 ```bash
@@ -369,7 +369,7 @@ npm run tauri:dev
 10. Verify: Prompt reappears (session memory cleared)
 
 ### Scenario 6: Desktop Terminal Safety
-1. Open Pi desktop app
+1. Open WorkX desktop app
 2. Ask agent: "List files in current directory"
 3. Verify: `ls` auto-approved
 4. Ask agent: "Delete the temp folder"

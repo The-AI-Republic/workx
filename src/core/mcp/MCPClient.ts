@@ -2,7 +2,7 @@
  * MCP Client Wrapper
  *
  * Wraps the official MCP SDK Client with our custom SSE transport.
- * Provides a simplified interface for ApplePi integration.
+ * Provides a simplified interface for WorkX integration.
  */
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -41,7 +41,7 @@ export interface MCPClientOptions {
 }
 
 /**
- * MCPClient wraps the MCP SDK Client with ApplePi-specific functionality.
+ * MCPClient wraps the MCP SDK Client with WorkX-specific functionality.
  *
  * Usage:
  * ```typescript
@@ -110,7 +110,7 @@ export class MCPClient implements IMCPClientAdapter {
 
       this.transport = new SSEClientTransport(transportOptions);
 
-      // Create MCP client with ApplePi identity
+      // Create MCP client with WorkX identity
       this.client = new Client(
         {
           name: 'applepi',

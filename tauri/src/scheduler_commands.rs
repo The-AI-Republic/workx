@@ -424,7 +424,7 @@ fn register_systemd_job(job_id: &str, scheduled_time: i64) -> Result<(), String>
 
     // Write service file
     let service_content = format!(
-        "[Unit]\nDescription=Pi Scheduler Job {job_id}\n\n[Service]\nType=oneshot\nExecStart={open_cmd} \"{deep_link}\"\n",
+        "[Unit]\nDescription=WorkX Scheduler Job {job_id}\n\n[Service]\nType=oneshot\nExecStart={open_cmd} \"{deep_link}\"\n",
         job_id = job_id,
         open_cmd = open_cmd,
         deep_link = deep_link,
@@ -435,7 +435,7 @@ fn register_systemd_job(job_id: &str, scheduled_time: i64) -> Result<(), String>
     // Write timer file
     let calendar = dt.format("%Y-%m-%d %H:%M:%S").to_string();
     let timer_content = format!(
-        "[Unit]\nDescription=Pi Scheduler Job Timer {job_id}\n\n[Timer]\nOnCalendar={calendar}\nPersistent=true\n\n[Install]\nWantedBy=timers.target\n",
+        "[Unit]\nDescription=WorkX Scheduler Job Timer {job_id}\n\n[Timer]\nOnCalendar={calendar}\nPersistent=true\n\n[Install]\nWantedBy=timers.target\n",
         job_id = job_id,
         calendar = calendar,
     );

@@ -344,7 +344,7 @@ export interface IUserPreferences {
    */
   language?: string;
   /**
-   * Default agent persona mode for NEW conversations (Apple Pi only).
+   * Default agent persona mode for NEW conversations (WorkX only).
    * - 'general': desktop automation agent (existing behavior)
    * - 'code': professional software engineering agent
    * This only seeds new sessions. The ACTIVE mode is per-session and changed

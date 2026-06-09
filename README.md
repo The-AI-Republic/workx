@@ -2,15 +2,15 @@
 
 **AI-Powered Personal Assistant — Chrome Extension, Desktop App & Headless Server**
 
-BrowserX is a privacy-preserving, general-purpose AI personal assistant available as a **Chrome extension (BrowserX)**, a **desktop application (Apple Pi)**, and a **headless server (Apple Pi Server)**. The agent interprets natural language commands and autonomously performs tasks across web browsing, planning, and more.
+BrowserX is a privacy-preserving, general-purpose AI personal assistant available as a **Chrome extension (BrowserX)**, a **desktop application (WorkX)**, and a **headless server (WorkX Server)**. The agent interprets natural language commands and autonomously performs tasks across web browsing, planning, and more.
 
 ### Naming Convention
 
 | Product | Platform | Identifier |
 |---------|----------|------------|
 | **BrowserX** | Chrome Extension | `browserx` |
-| **Apple Pi** | Desktop (Win/Mac/Linux) | `applepi` |
-| **Apple Pi Server** | Headless (Docker/K8s) | `applepi-server` |
+| **WorkX** | Desktop (Win/Mac/Linux) | `applepi` |
+| **WorkX Server** | Headless (Docker/K8s) | `applepi-server` |
 
 - **Core agent class**: `RepublicAgent` (developed by AI Republic)
 - **Internal npm scope**: `@applepi`
@@ -95,7 +95,7 @@ Then load in Chrome:
 
 ---
 
-### Apple Pi (Desktop App)
+### WorkX (Desktop App)
 
 #### System Dependencies
 
@@ -161,9 +161,9 @@ URL during the build, so changing it requires rebuilding the desktop package.
 
 ---
 
-### Apple Pi Server (Headless Mode)
+### WorkX Server (Headless Mode)
 
-Apple Pi Server runs the agent as a headless WebSocket/HTTP service for server deployments, Docker containers, and Kubernetes.
+WorkX Server runs the agent as a headless WebSocket/HTTP service for server deployments, Docker containers, and Kubernetes.
 
 ```bash
 npm install

@@ -1,14 +1,14 @@
-# Pi Architecture
+# WorkX Architecture
 
-Pi is a tri-platform AI agent built from a shared core with platform-specific adapters for Chrome extensions, desktop (Tauri), and headless server (Node.js).
+WorkX is a tri-platform AI agent built from a shared core with platform-specific adapters for Chrome extensions, desktop (Tauri), and headless server (Node.js).
 
 ## Platform Overview
 
 | App | Platform | Entry Point | Channel | Build |
 |-----|----------|-------------|---------|-------|
 | **BrowserX** | Chrome Extension | `src/extension/background/service-worker.ts` | `SidePanelChannel` / `TabPageChannel` (chrome.runtime) | `vite.config.mjs` |
-| **Apple Pi** | Desktop (Tauri) | `src/desktop/main.ts` | `TauriChannel` (Tauri events) | `vite.config.desktop.mts` |
-| **Apple Pi Server** | Headless (Node.js) | `src/server/index.ts` | `ServerChannel` (WebSocket) | `vite.config.server.mts` |
+| **WorkX** | Desktop (Tauri) | `src/desktop/main.ts` | `TauriChannel` (Tauri events) | `vite.config.desktop.mts` |
+| **WorkX Server** | Headless (Node.js) | `src/server/index.ts` | `ServerChannel` (WebSocket) | `vite.config.server.mts` |
 
 ## High-Level Diagram
 
@@ -256,7 +256,7 @@ Clients connect via WebSocket and communicate using JSON request/response frames
 
 ### Browser Automation
 
-Apple Pi Server connects to Chrome via `chrome-devtools-mcp` MCP server. Three deployment patterns:
+WorkX Server connects to Chrome via `chrome-devtools-mcp` MCP server. Three deployment patterns:
 
 | Pattern | Env Var | Use Case |
 |---------|---------|----------|

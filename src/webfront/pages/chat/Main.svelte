@@ -1561,7 +1561,7 @@
         <!-- Status Line -->
         <div class="shrink-0 flex justify-between mb-2">
           <div class="flex items-center space-x-2">
-            <TerminalMessage type="system" content={platform.platformName === 'extension' ? $_t("Browserx (Alpha)") : $_t("Apple Pi: Your personal AI (Alpha)")} />
+            <TerminalMessage type="system" content={platform.platformName === 'extension' ? $_t("Browserx (Alpha)") : $_t("WorkX: Your personal AI (Alpha)")} />
             {#if zoomLevel !== 100}
               <button onclick={resetZoom} class="text-sm leading-relaxed font-[inherit] opacity-70 hover:opacity-100 cursor-pointer {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}" title="Reset zoom to 100%">
                 [{zoomLevel}%] ✕

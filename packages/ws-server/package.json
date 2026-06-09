@@ -1,7 +1,7 @@
 {
     "name": "@applepi/ws-server",
     "version": "1.0.0",
-    "description": "Apple Pi Server WebSocket Protocol and Logic",
+    "description": "WorkX Server WebSocket Protocol and Logic",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "scripts": {

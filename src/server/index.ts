@@ -1,7 +1,7 @@
 /**
  * Server Mode Entry Point
  *
- * Starts the Apple Pi Server: loads env, creates ServerAgentBootstrap,
+ * Starts the WorkX Server: loads env, creates ServerAgentBootstrap,
  * starts HTTP+WS server on configured port.
  *
  * @module server/index
@@ -374,7 +374,7 @@ async function main(): Promise<void> {
   const wsProto = tlsEnabled ? 'wss' : 'ws';
 
   console.log('═══════════════════════════════════════════════════════');
-  console.log('  Apple Pi Server Mode');
+  console.log('  WorkX Server Mode');
   console.log(`  Port: ${PORT}  Bind: ${BIND}  Auth: ${config.server.auth.mode}  TLS: ${tlsEnabled ? 'on' : 'off'}`);
   console.log('═══════════════════════════════════════════════════════');
 

@@ -208,7 +208,7 @@ export class RepublicAgent {
     const modelClient = await this.modelClientFactory.createClientForCurrentModel();
 
     // Create initial TurnContext with the model client.
-    // Track 12: headless deployments (Apple Pi Server) default to unattended
+    // Track 12: headless deployments (WorkX Server) default to unattended
     // so scheduled/connector sessions wait out rate limits instead of
     // hard-failing with no human to retry.
     const taskContext = new TurnContext(modelClient, {
