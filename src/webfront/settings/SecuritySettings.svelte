@@ -221,7 +221,7 @@
   .back-button {
     background: none;
     border: none;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
     cursor: pointer;
     padding: 0.25rem;
     border-radius: 0.375rem;
@@ -229,15 +229,15 @@
   }
 
   .back-button:hover {
-    color: var(--browserx-text);
-    background: var(--browserx-surface);
+    color: var(--workx-text);
+    background: var(--workx-surface);
   }
 
   .settings-view-title {
     margin: 0;
     font-size: 1rem;
     font-weight: 600;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .settings-section {
@@ -247,13 +247,13 @@
   .section-title {
     margin: 0 0 0.25rem;
     font-size: 0.9rem;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .section-description {
     margin: 0 0 1rem;
     font-size: 0.8rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
     line-height: 1.4;
   }
 
@@ -262,9 +262,9 @@
     margin-bottom: 0.75rem;
     border-radius: 0.375rem;
     font-size: 0.8rem;
-    color: var(--browserx-success, #00ff00);
+    color: var(--workx-success, #00ff00);
     background: rgba(0, 255, 0, 0.1);
-    border: 1px solid var(--browserx-success, #00ff00);
+    border: 1px solid var(--workx-success, #00ff00);
   }
 
   .setting-item {
@@ -272,7 +272,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 0.75rem 0;
-    border-bottom: 1px solid var(--browserx-border);
+    border-bottom: 1px solid var(--workx-border);
   }
 
   .setting-info {
@@ -283,12 +283,12 @@
 
   .setting-label {
     font-size: 0.85rem;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .setting-value {
     font-size: 0.75rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
   }
 
   .pin-actions {
@@ -301,8 +301,8 @@
     border-radius: 0.375rem;
     font-size: 0.8rem;
     cursor: pointer;
-    background: var(--browserx-primary, #00ff00);
-    color: var(--browserx-background, #000);
+    background: var(--workx-primary, #00ff00);
+    color: var(--workx-background, #000);
     border: none;
     font-weight: 500;
   }
@@ -314,22 +314,22 @@
 
   .btn-secondary {
     background: transparent;
-    color: var(--browserx-text);
-    border: 1px solid var(--browserx-border);
+    color: var(--workx-text);
+    border: 1px solid var(--workx-border);
   }
 
   .btn-danger {
     background: transparent;
-    color: var(--browserx-error, #ff0000);
-    border: 1px solid var(--browserx-error, #ff0000);
+    color: var(--workx-error, #ff0000);
+    border: 1px solid var(--workx-error, #ff0000);
   }
 
   .inline-form {
     padding: 0.75rem;
     margin-top: 0.5rem;
-    border: 1px solid var(--browserx-border);
+    border: 1px solid var(--workx-border);
     border-radius: 0.375rem;
-    background: var(--browserx-surface);
+    background: var(--workx-surface);
   }
 
   .form-field {
@@ -340,7 +340,7 @@
     display: block;
     font-size: 0.75rem;
     margin-bottom: 0.125rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
   }
 
   .form-field input {
@@ -349,27 +349,27 @@
     font-size: 1rem;
     letter-spacing: 0.2em;
     text-align: center;
-    background: var(--browserx-background);
-    border: 1px solid var(--browserx-border);
+    background: var(--workx-background);
+    border: 1px solid var(--workx-border);
     border-radius: 0.375rem;
-    color: var(--browserx-text);
+    color: var(--workx-text);
     box-sizing: border-box;
   }
 
   .form-field input:focus {
     outline: none;
-    border-color: var(--browserx-primary);
+    border-color: var(--workx-primary);
   }
 
   .form-error {
-    color: var(--browserx-error, #ff0000);
+    color: var(--workx-error, #ff0000);
     font-size: 0.75rem;
     margin-bottom: 0.5rem;
   }
 
   .form-warning {
     font-size: 0.8rem;
-    color: var(--browserx-warning, #ffff00);
+    color: var(--workx-warning, #ffff00);
     margin: 0 0 0.5rem;
     line-height: 1.3;
   }

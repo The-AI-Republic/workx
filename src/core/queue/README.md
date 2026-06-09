@@ -21,8 +21,8 @@ for rationale, API, and the explicit non-goals list.
 ## What's not here (deferred)
 
 - `engineId` filter on dequeue — per-engine queue isolation already
-  prevents cross-agent leaks in BrowserX.
+  prevents cross-agent leaks in WorkX.
 - Consecutive-prompt batching — requires a `workload` field on submissions.
 - `remove(uuid)` / `popAll(filter)` — no current call site needs them.
 - Persistent audit log — tracked in
-  [#215](https://github.com/The-AI-Republic/browserx/issues/215).
+  [#215](https://github.com/The-AI-Republic/workx/issues/215).

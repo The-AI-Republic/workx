@@ -3,7 +3,7 @@
 // Track 08 — Centralized Message Queue
 //
 // Priority-aware command queue. Adapted from claudy/utils/messageQueueManager.ts
-// with BrowserX-specific simplifications (no agentId filter — per-engine queue
+// with WorkX-specific simplifications (no agentId filter — per-engine queue
 // isolation already prevents cross-talk; no batching, no remove-by-id — see
 // design.md → "NOT in v1 scope").
 

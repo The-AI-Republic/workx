@@ -219,7 +219,7 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
+  "Ask_WorkX_to_extract_structured_data__88fc": {
     "message": "A WorkX képes strukturált adatot kinyerni bármely weboldalról"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
@@ -309,13 +309,13 @@
   "Browser_automation_tool_toggles": {
     "message": "Böngészőautomatizálási eszközök kapcsolói"
   },
-  "BrowserX": {
+  "WorkX": {
     "message": "WorkX"
   },
-  "Browserx": {
+  "WorkX": {
     "message": "WorkX"
   },
-  "Browserx_Alpha": {
+  "WorkX_Alpha": {
     "message": "WorkX (Alpha)"
   },
   "CWD": {
@@ -385,7 +385,7 @@
   "Clear_search": {
     "message": "Keresés törlése"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
     "message": "Kattintson a WorkX ikonra az eszköztárban, vagy nyomja meg az Alt+Shift+C kombinációt"
   },
   "Click_to_cancel_login": {
@@ -676,7 +676,7 @@
   "Enable_PIN_Protection": {
     "message": "PIN védelem engedélyezése"
   },
-  "Enable_auto_connect_when_browserx_starts": {
+  "Enable_auto_connect_when_workx_starts": {
     "message": "Automatikus csatlakozás engedélyezése a WorkX indításakor"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
@@ -733,7 +733,7 @@
   "Explain_this_info_selectionText": {
     "message": "Magyarázd el ezt: ${info.selectionText}"
   },
-  "Explain_with_Browserx": {
+  "Explain_with_WorkX": {
     "message": "Magyarázd el a WorkX-szel"
   },
   "Export": {
@@ -760,7 +760,7 @@
   "Extract_Data": {
     "message": "Adatok kinyerése:"
   },
-  "Extract_data_with_Browserx": {
+  "Extract_data_with_WorkX": {
     "message": "Adatok kinyerése a WorkX segítségével"
   },
   "Extract_specific_data_patterns_from_page_4658": {
@@ -955,7 +955,7 @@
   "Improve_this_text_info_selectionText": {
     "message": "Javítsa ezt a szöveget: ${info.selectionText}"
   },
-  "Improve_with_Browserx": {
+  "Improve_with_WorkX": {
     "message": "Javítsa a WorkX segítségével"
   },
   "In": {
@@ -2041,7 +2041,7 @@
   "Web_Search": {
     "message": "Webkeresés"
   },
-  "Welcome_to_Browserx": {
+  "Welcome_to_WorkX": {
     "message": "Üdvözöljük a WorkX-nél"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
@@ -2092,7 +2092,7 @@
   "available": {
     "message": "elérhető"
   },
-  "browserx": {
+  "workx": {
     "message": "WorkX"
   },
   "cached": {

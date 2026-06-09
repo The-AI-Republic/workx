@@ -73,7 +73,7 @@ function setupMinimalDomMock(sendCommand: ReturnType<typeof vi.fn>) {
       if (expr.includes('window.innerWidth') || expr.includes('innerHeight')) {
         return { result: { value: { width: 1024, height: 768, scrollX: 0, scrollY: 0, pageWidth: 1024, pageHeight: 2000, devicePixelRatio: 1 } } };
       }
-      if (expr.includes('browserx:show-visual-effect') || expr.includes('CustomEvent')) {
+      if (expr.includes('workx:show-visual-effect') || expr.includes('CustomEvent')) {
         return { result: { value: { success: true } } };
       }
       return { result: { value: null } };

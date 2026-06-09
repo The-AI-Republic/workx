@@ -2,22 +2,22 @@
  * PromptComposer
  *
  * Dynamically composes system prompts from fragment files based on
- * agent type (browserx vs pi) and runtime context.
+ * agent type (workx vs pi) and runtime context.
  *
  * Never called by the agent directly — only by PromptLoader.
  */
 
 // Build-time fragment imports
-import browserxIntro from './fragments/browserx_intro.md?raw';
-import piIntro from './fragments/applepi_intro.md?raw';
-import piServerIntro from './fragments/applepi_server_intro.md?raw';
+import workxIntro from './fragments/workx_intro.md?raw';
+import desktopIntro from './fragments/workx_desktop_intro.md?raw';
+import serverIntro from './fragments/workx_server_intro.md?raw';
 import coderIntro from './fragments/coder_intro.md?raw';
 import systemSemantics from './fragments/system_semantics.md?raw';
 import safety from './fragments/safety.md?raw';
 import actionRiskAndApproval from './fragments/action_risk_and_approval.md?raw';
 import workLoop from './fragments/work_loop.md?raw';
-import browserxTools from './fragments/browserx_tools.md?raw';
-import piTools from './fragments/pi_tools.md?raw';
+import workxTools from './fragments/workx_tools.md?raw';
+import desktopTools from './fragments/workx_desktop_tools.md?raw';
 import coderTools from './fragments/coder_tools.md?raw';
 import codeGuardrails from './fragments/code_guardrails.md?raw';
 import communication from './fragments/communication.md?raw';
@@ -26,7 +26,7 @@ import compactSummaryPrefix from './fragments/compact_summary_prefix.md?raw';
 import planReview from './fragments/plan_review.md?raw';
 import { resolvePersona } from './PersonaLoader';
 
-export type AgentType = 'browserx' | 'applepi' | 'applepi-server';
+export type AgentType = 'workx' | 'workx-desktop' | 'workx-server';
 
 /**
  * Agent persona mode. Orthogonal to AgentType.
@@ -43,7 +43,7 @@ export interface AgentModeSpec {
   /** Display label for UI selectors */
   label: string;
   /**
-   * Platforms that offer this mode. Omitted = all non-browserx platforms.
+   * Platforms that offer this mode. Omitted = all non-workx platforms.
    * WorkX never exposes modes (composer forces 'general' for it).
    */
   agentTypes?: AgentType[];
@@ -55,7 +55,7 @@ export interface AgentModeSpec {
  */
 export const MODES: Record<AgentMode, AgentModeSpec> = {
   general: { id: 'general', label: 'General' },
-  code: { id: 'code', label: 'Code', agentTypes: ['applepi', 'applepi-server'] },
+  code: { id: 'code', label: 'Code', agentTypes: ['workx-desktop', 'workx-server'] },
 };
 
 type FragmentContent = string | ((args: {
@@ -75,10 +75,10 @@ interface FragmentSpec {
 }
 
 export const FRAGMENTS: FragmentSpec[] = [
-  { id: 'browserx-intro', order: 10, agentTypes: ['browserx'], content: browserxIntro },
-  { id: 'applepi-intro', order: 10, agentTypes: ['applepi'], modes: ['general'], content: piIntro },
-  { id: 'applepi-server-intro', order: 10, agentTypes: ['applepi-server'], modes: ['general'], content: piServerIntro },
-  { id: 'coder-intro', order: 10, agentTypes: ['applepi', 'applepi-server'], modes: ['code'], content: coderIntro },
+  { id: 'workx-intro', order: 10, agentTypes: ['workx'], content: workxIntro },
+  { id: 'workx-desktop-intro', order: 10, agentTypes: ['workx-desktop'], modes: ['general'], content: desktopIntro },
+  { id: 'workx-server-intro', order: 10, agentTypes: ['workx-server'], modes: ['general'], content: serverIntro },
+  { id: 'coder-intro', order: 10, agentTypes: ['workx-desktop', 'workx-server'], modes: ['code'], content: coderIntro },
   {
     id: 'persona',
     order: 20,
@@ -94,24 +94,24 @@ export const FRAGMENTS: FragmentSpec[] = [
   { id: 'action-risk-and-approval', order: 60, content: actionRiskAndApproval },
   { id: 'work-loop', order: 70, content: workLoop },
   {
-    id: 'browserx-tools',
+    id: 'workx-tools',
     order: 80,
-    agentTypes: ['browserx'],
+    agentTypes: ['workx'],
     requiresCodingInstructions: true,
-    content: browserxTools,
+    content: workxTools,
   },
   {
-    id: 'pi-tools',
+    id: 'workx-desktop-tools',
     order: 80,
-    agentTypes: ['applepi', 'applepi-server'],
+    agentTypes: ['workx-desktop', 'workx-server'],
     modes: ['general'],
     requiresCodingInstructions: true,
-    content: piTools,
+    content: desktopTools,
   },
   {
     id: 'coder-tools',
     order: 80,
-    agentTypes: ['applepi', 'applepi-server'],
+    agentTypes: ['workx-desktop', 'workx-server'],
     modes: ['code'],
     requiresCodingInstructions: true,
     content: coderTools,
@@ -178,7 +178,7 @@ export class PromptComposer {
   ): string {
     const requestedMode: AgentMode = typeof modeOrContext === 'string' ? modeOrContext : DEFAULT_MODE;
     const runtimeContext = typeof modeOrContext === 'string' ? context : modeOrContext;
-    const effectiveMode: AgentMode = agentType === 'browserx' ? 'general' : requestedMode;
+    const effectiveMode: AgentMode = agentType === 'workx' ? 'general' : requestedMode;
     const persona = resolvePersona(runtimeContext?.personaName);
 
     return FRAGMENTS
@@ -222,7 +222,7 @@ export class PromptComposer {
       lines.push(`- Current date/time: ${context.currentDateTime}`);
     }
 
-    if (agentType === 'applepi' || agentType === 'applepi-server') {
+    if (agentType === 'workx-desktop' || agentType === 'workx-server') {
       // Desktop agent gets OS/platform details
       if (context.os) {
         const osLabel: Record<string, string> = {

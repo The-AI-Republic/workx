@@ -298,8 +298,8 @@ export class RepublicAgent {
     }
 
     const agentType = this.platformAdapter.platformId === 'desktop'
-      ? 'applepi' as const
-      : 'browserx' as const;
+      ? 'workx-desktop' as const
+      : 'workx' as const;
 
     configurePromptComposer(agentType, {
       browserConnection: this.platformAdapter.platformId === 'extension' ? 'extension' : 'mcp',

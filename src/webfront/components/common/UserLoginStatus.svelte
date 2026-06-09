@@ -55,8 +55,8 @@
       if (platform.platformName !== 'desktop' || isLoggingIn) return;
       void openLoginPage();
     };
-    window.addEventListener('applepi:request-login', handleLoginRequest);
-    return () => window.removeEventListener('applepi:request-login', handleLoginRequest);
+    window.addEventListener('workx:request-login', handleLoginRequest);
+    return () => window.removeEventListener('workx:request-login', handleLoginRequest);
   });
 
   onDestroy(() => {
@@ -70,7 +70,7 @@
     }
 
     if (platform.platformName === 'desktop') {
-      // Desktop mode: open the browser to /login, await the applepi-deeplink
+      // Desktop mode: open the browser to /login, await the workx-deeplink
       // deeplink (Rust → WebView event), and forward both tokens to the
       // runtime via `auth.completeLogin`. The WebView never touches the OS
       // keychain after the Track 43 cutover — the runtime owns credentials.
@@ -99,7 +99,7 @@
         const loginUrl = getDesktopLoginPageUrl();
         if (!loginUrl) throw new Error('Hosted auth is not configured');
 
-        // 2. Subscribe to the applepi-deeplink event from Rust before opening the
+        // 2. Subscribe to the workx-deeplink event from Rust before opening the
         // browser — Rust emits it as soon as the OS hands us the URL.
         const tokensPromise = new Promise<{ accessToken: string; refreshToken: string }>(
           (resolve, reject) => {
@@ -123,7 +123,7 @@
             };
             rejectPending = rejectWithCleanup;
 
-            listen<string>('applepi-deeplink', (event) => {
+            listen<string>('workx-deeplink', (event) => {
               try {
                 const urlObj = new URL(event.payload);
                 if (urlObj.host !== 'auth' || urlObj.pathname !== '/callback') {

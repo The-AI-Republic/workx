@@ -1,7 +1,7 @@
 /**
  * Dot-path get/set + deep clone — dependency-free.
  *
- * BrowserX has no lodash; the policy resolver needs deterministic deep
+ * WorkX has no lodash; the policy resolver needs deterministic deep
  * set-by-path so the post-merge pin can defeat the one-level merges in
  * `buildRuntimeConfig`. Arrays are **replaced**, never concatenated — an
  * org allowlist must be exactly the admin's list.

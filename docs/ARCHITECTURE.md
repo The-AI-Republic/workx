@@ -138,7 +138,7 @@ Desktop and server use the same SQLite schema (defined in `tauri/src/rollout_db.
 
 - Extension: `chrome.storage.local`
 - Desktop: Tauri storage commands (Rust backend)
-- Server: `FileConfigStorageProvider` — reads/writes `$APPLEPI_DATA_DIR/config-storage.json`
+- Server: `FileConfigStorageProvider` — reads/writes `$WORKX_DATA_DIR/config-storage.json`
 
 ## MCP (Model Context Protocol)
 
@@ -332,7 +332,7 @@ Server mode uses `FileCredentialStore` (AES-256-GCM encrypted file) for secure A
 ### How Credentials Are Stored
 
 - **Encryption:** AES-256-GCM with scrypt key derivation from `VITE_VAULT_SECRET`
-- **File location:** `$APPLEPI_DATA_DIR/credentials.enc`
+- **File location:** `$WORKX_DATA_DIR/credentials.enc`
 - **Key format:** Each credential is stored as `service:account` → encrypted value
 
 ### Setup

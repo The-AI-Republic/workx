@@ -10,8 +10,8 @@
  * @module server/handlers/credentials
  */
 
-import { registerMethodHandler, type MethodContext } from '@applepi/ws-server';
-import { invalidRequest, unauthorized } from '@applepi/ws-server';
+import { registerMethodHandler, type MethodContext } from '@workx/ws-server';
+import { invalidRequest, unauthorized } from '@workx/ws-server';
 import { getConnectionAuth } from '../auth/authorize';
 import { getServerConfig } from '../config/server-config';
 

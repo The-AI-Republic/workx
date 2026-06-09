@@ -4,7 +4,7 @@
  * Design parity with claudy's services/SessionMemory/sessionMemoryUtils.ts:
  *   minimumMessageTokensToInit, minimumTokensBetweenUpdate, toolCallsBetweenUpdates
  *
- * Browserx defaults are higher (15k / 8k / 5 vs claudy's 10k / 5k / 3) because
+ * WorkX defaults are higher (15k / 8k / 5 vs claudy's 10k / 5k / 3) because
  * browser turns routinely include large DOM snapshots, screenshots, and
  * page_text dumps that inflate per-turn token usage relative to code-only
  * sessions.

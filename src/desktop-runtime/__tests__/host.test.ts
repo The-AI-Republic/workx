@@ -13,15 +13,15 @@ afterEach(() => {
 
 describe('desktop runtime host', () => {
   it('requires Rust-provided desktop paths by default', async () => {
-    delete process.env.APPLEPI_DESKTOP_RUNTIME_ALLOW_DEV_HOST;
-    delete process.env.APPLEPI_DESKTOP_CONFIG_DIR;
+    delete process.env.WORKX_DESKTOP_RUNTIME_ALLOW_DEV_HOST;
+    delete process.env.WORKX_DESKTOP_CONFIG_DIR;
 
-    await expect(createDevDesktopRuntimeHost()).rejects.toThrow('APPLEPI_DESKTOP_RUNTIME_HOST is required');
+    await expect(createDevDesktopRuntimeHost()).rejects.toThrow('WORKX_DESKTOP_RUNTIME_HOST is required');
   });
 
   it('allows the dev fallback only through an explicit local-development override', async () => {
-    process.env.APPLEPI_DESKTOP_RUNTIME_ALLOW_DEV_HOST = 'true';
-    process.env.APPLEPI_DESKTOP_CONFIG_DIR = '/tmp/apple-pi-dev-test';
+    process.env.WORKX_DESKTOP_RUNTIME_ALLOW_DEV_HOST = 'true';
+    process.env.WORKX_DESKTOP_CONFIG_DIR = '/tmp/apple-pi-dev-test';
 
     const host = await createDevDesktopRuntimeHost();
 

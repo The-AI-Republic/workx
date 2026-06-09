@@ -219,7 +219,7 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
+  "Ask_WorkX_to_extract_structured_data__88fc": {
     "message": "WorkX को किसी भी वेबपेज से संरचित डेटा निकालने के लिए कहें"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
@@ -309,13 +309,13 @@
   "Browser_automation_tool_toggles": {
     "message": "ब्राउज़र ऑटोमेशन टूल चालू/बंद करने के विकल्प"
   },
-  "BrowserX": {
+  "WorkX": {
     "message": "WorkX"
   },
-  "Browserx": {
+  "WorkX": {
     "message": "WorkX"
   },
-  "Browserx_Alpha": {
+  "WorkX_Alpha": {
     "message": "WorkX (Alpha)"
   },
   "CWD": {
@@ -385,7 +385,7 @@
   "Clear_search": {
     "message": "खोज साफ़ करें"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
     "message": "टूलबार में WorkX आइकन पर क्लिक करें या Alt+Shift+C दबाएँ"
   },
   "Click_to_cancel_login": {
@@ -676,7 +676,7 @@
   "Enable_PIN_Protection": {
     "message": "PIN सुरक्षा सक्षम करें"
   },
-  "Enable_auto_connect_when_browserx_starts": {
+  "Enable_auto_connect_when_workx_starts": {
     "message": "ब्रा‍उज़रएक्स शुरू होने पर ऑटो-कनेक्ट सक्षम करें"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
@@ -738,7 +738,7 @@
   "Explain_this_info_selectionText": {
     "message": "इसकी व्याख्या करें: ${info.selectionText}"
   },
-  "Explain_with_Browserx": {
+  "Explain_with_WorkX": {
     "message": "WorkX के साथ समझाएँ"
   },
   "Export": {
@@ -765,7 +765,7 @@
   "Extract_Data": {
     "message": "डेटा निकालें:"
   },
-  "Extract_data_with_Browserx": {
+  "Extract_data_with_WorkX": {
     "message": "WorkX के साथ डेटा निकालें"
   },
   "Extract_specific_data_patterns_from_page_4658": {
@@ -960,7 +960,7 @@
   "Improve_this_text_info_selectionText": {
     "message": "इस पाठ को सुधारें: ${info.selectionText}"
   },
-  "Improve_with_Browserx": {
+  "Improve_with_WorkX": {
     "message": "WorkX के साथ सुधारें"
   },
   "In": {
@@ -2046,7 +2046,7 @@
   "Web_Search": {
     "message": "वेब सर्च"
   },
-  "Welcome_to_Browserx": {
+  "Welcome_to_WorkX": {
     "message": "WorkX में आपका स्वागत है"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
@@ -2097,7 +2097,7 @@
   "available": {
     "message": "उपलब्ध"
   },
-  "browserx": {
+  "workx": {
     "message": "WorkX"
   },
   "cached": {

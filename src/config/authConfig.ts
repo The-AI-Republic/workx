@@ -60,7 +60,7 @@ function routePath(
   name: string,
 ): string | null {
   return firstNonEmpty(
-    env[`APPLEPI_AUTH_${name}_PATH`],
+    env[`WORKX_AUTH_${name}_PATH`],
     env[`VITE_AUTH_${name}_PATH`],
     vite[`VITE_AUTH_${name}_PATH`],
   ) ?? null;
@@ -71,8 +71,8 @@ export function resolveAuthConfig(): AuthConfig {
   const vite = viteEnv();
 
   const authBaseUrl = firstNonEmpty(
-    env.APPLEPI_AUTH_BASE_URL,
-    env.APPLEPI_HOME_PAGE_BASE_URL,
+    env.WORKX_AUTH_BASE_URL,
+    env.WORKX_HOME_PAGE_BASE_URL,
     env.VITE_AUTH_BASE_URL,
     env.VITE_HOME_PAGE_BASE_URL,
     vite.VITE_AUTH_BASE_URL,

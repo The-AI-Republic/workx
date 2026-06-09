@@ -62,4 +62,4 @@ export const agentDisplayName: string =
     ? 'WorkX'
     : __BUILD_MODE__ === 'server'
       ? 'WorkX Server'
-      : 'BrowserX';
+      : 'WorkX';

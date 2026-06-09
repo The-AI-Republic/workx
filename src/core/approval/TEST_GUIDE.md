@@ -158,7 +158,7 @@ Test the full interception path inside ToolRegistry.execute():
 | User rejects | Score 50 + mock manager returns reject | Error: APPROVAL_DENIED |
 | No gate set | Don't call setApprovalGate() | Tool executes (no interception) |
 
-### 2.2 BrowserxAgent Wiring (`BrowserxAgent.ts`)
+### 2.2 WorkXAgent Wiring (`WorkXAgent.ts`)
 
 Verify platform-conditional setup:
 

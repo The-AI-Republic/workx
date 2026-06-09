@@ -2,7 +2,7 @@
  * x402 Protocol Types (Track 23)
  *
  * HTTP 402 Payment Required micropayments (USDC). Ported in spirit from
- * claudy's `services/x402/types.ts` but adapted to browserx's per-platform
+ * claudy's `services/x402/types.ts` but adapted to workx's per-platform
  * capability model — there is no global fetch interceptor; payment is an
  * explicit capability the resource-fetch tool opts into.
  *
@@ -31,7 +31,7 @@ export function isPaymentNetwork(value: unknown): value is PaymentNetwork {
   return typeof value === 'string' && (PAYMENT_NETWORKS as readonly string[]).includes(value);
 }
 
-/** The three browserx deploy targets. */
+/** The three workx deploy targets. */
 export type PaymentPlatform = 'extension' | 'desktop' | 'server';
 
 /** Payment requirement parsed from the `x-payment-required` 402 header. */

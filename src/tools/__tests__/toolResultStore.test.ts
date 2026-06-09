@@ -302,7 +302,7 @@ describe('FileToolResultStore', () => {
   let store: FileToolResultStore;
 
   beforeEach(async () => {
-    rootDir = await mkdtemp(join(tmpdir(), 'browserx-toolstore-'));
+    rootDir = await mkdtemp(join(tmpdir(), 'workx-toolstore-'));
     store = new FileToolResultStore(rootDir);
   });
 

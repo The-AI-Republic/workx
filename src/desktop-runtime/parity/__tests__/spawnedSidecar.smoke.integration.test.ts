@@ -40,7 +40,7 @@ describe('spawned-sidecar protocol smoke (Track 45 Goal 1)', () => {
   let sidecar: SpawnedSidecar;
 
   beforeAll(async () => {
-    tmpConfigDir = mkdtempSync(join(tmpdir(), 'applepi-track45-'));
+    tmpConfigDir = mkdtempSync(join(tmpdir(), 'workx-track45-'));
     sidecar = await spawnSidecar({ tmpConfigDir });
   }, 60_000);
 

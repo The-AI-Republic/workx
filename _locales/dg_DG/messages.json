@@ -219,7 +219,7 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
+  "Ask_WorkX_to_extract_structured_data__88fc": {
     "message": "much ask WorkX to extract structured data from any webpage wow"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
@@ -309,13 +309,13 @@
   "Browser_automation_tool_toggles": {
     "message": "much browser automation tool toggles wow"
   },
-  "BrowserX": {
+  "WorkX": {
     "message": "WorkX wow"
   },
-  "Browserx": {
+  "WorkX": {
     "message": "WorkX wow"
   },
-  "Browserx_Alpha": {
+  "WorkX_Alpha": {
     "message": "much WorkX wow (Alpha)"
   },
   "CWD": {
@@ -385,7 +385,7 @@
   "Clear_search": {
     "message": "clear search wow"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
     "message": "much click the WorkX icon in your toolbar or press Alt+Shift+C wow"
   },
   "Click_to_cancel_login": {
@@ -676,7 +676,7 @@
   "Enable_PIN_Protection": {
     "message": "enable PIN protection wow"
   },
-  "Enable_auto_connect_when_browserx_starts": {
+  "Enable_auto_connect_when_workx_starts": {
     "message": "Enable auto-connect when WorkX starts wow"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
@@ -733,7 +733,7 @@
   "Explain_this_info_selectionText": {
     "message": "Explain this: ${info.selectionText} wow"
   },
-  "Explain_with_Browserx": {
+  "Explain_with_WorkX": {
     "message": "Explain with WorkX wow"
   },
   "Export": {
@@ -760,7 +760,7 @@
   "Extract_Data": {
     "message": "much extract data: wow"
   },
-  "Extract_data_with_Browserx": {
+  "Extract_data_with_WorkX": {
     "message": "much extract data with WorkX wow"
   },
   "Extract_specific_data_patterns_from_page_4658": {
@@ -955,7 +955,7 @@
   "Improve_this_text_info_selectionText": {
     "message": "much improve this text: ${info.selectionText} wow"
   },
-  "Improve_with_Browserx": {
+  "Improve_with_WorkX": {
     "message": "much improve with WorkX wow"
   },
   "In": {
@@ -2041,7 +2041,7 @@
   "Web_Search": {
     "message": "much web search wow"
   },
-  "Welcome_to_Browserx": {
+  "Welcome_to_WorkX": {
     "message": "such welcome to WorkX wow"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
@@ -2092,7 +2092,7 @@
   "available": {
     "message": "available wow"
   },
-  "browserx": {
+  "workx": {
     "message": "WorkX wow"
   },
   "cached": {

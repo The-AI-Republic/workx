@@ -113,7 +113,7 @@ export class MCPClient implements IMCPClientAdapter {
       // Create MCP client with WorkX identity
       this.client = new Client(
         {
-          name: 'applepi',
+          name: 'workx',
           version: '1.0.0',
         },
         {

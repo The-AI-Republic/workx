@@ -24,7 +24,7 @@ Examples:
   ./build.sh --install --bundles deb
   ./build.sh --debug
 
-Set APPLEPI_SIGN=1 to omit --no-sign and use Tauri signing env vars.
+Set WORKX_SIGN=1 to omit --no-sign and use Tauri signing env vars.
 EOF
   exit 0
 fi
@@ -154,15 +154,15 @@ if [[ -z "$EFFECTIVE_AUTH_BASE_URL" ]]; then
   EFFECTIVE_AUTH_BASE_URL="${VITE_HOME_PAGE_BASE_URL:-$(desktop_env_value VITE_HOME_PAGE_BASE_URL)}"
 fi
 echo "WorkX build auth base URL: ${EFFECTIVE_AUTH_BASE_URL:-not configured}"
-if [[ -n "${APPLEPI_AUTH_BASE_URL:-}" && -z "${VITE_AUTH_BASE_URL:-}" ]]; then
-  echo "Note: APPLEPI_AUTH_BASE_URL affects runtime Node code only; set VITE_AUTH_BASE_URL for the desktop WebView build."
-elif [[ -n "${APPLEPI_HOME_PAGE_BASE_URL:-}" && -z "${VITE_HOME_PAGE_BASE_URL:-}" && -z "${VITE_AUTH_BASE_URL:-}" ]]; then
-  echo "Note: APPLEPI_HOME_PAGE_BASE_URL affects runtime Node code only; set VITE_AUTH_BASE_URL for the desktop WebView build."
+if [[ -n "${WORKX_AUTH_BASE_URL:-}" && -z "${VITE_AUTH_BASE_URL:-}" ]]; then
+  echo "Note: WORKX_AUTH_BASE_URL affects runtime Node code only; set VITE_AUTH_BASE_URL for the desktop WebView build."
+elif [[ -n "${WORKX_HOME_PAGE_BASE_URL:-}" && -z "${VITE_HOME_PAGE_BASE_URL:-}" && -z "${VITE_AUTH_BASE_URL:-}" ]]; then
+  echo "Note: WORKX_HOME_PAGE_BASE_URL affects runtime Node code only; set VITE_AUTH_BASE_URL for the desktop WebView build."
 fi
 
 cd "$ROOT_DIR/tauri"
 
-if [[ "${APPLEPI_SIGN:-0}" == "1" ]]; then
+if [[ "${WORKX_SIGN:-0}" == "1" ]]; then
   cargo tauri build "${BUILD_ARGS[@]}"
 else
   cargo tauri build --no-sign "${BUILD_ARGS[@]}"

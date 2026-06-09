@@ -2,7 +2,7 @@
  * HookDispatcher — Single entry-point for firing hooks.
  *
  * Owns matching → sync/async split → execution → aggregation → once cleanup.
- * Emits hook observability events through the BrowserX event flow.
+ * Emits hook observability events through the WorkX event flow.
  * Call sites use `fire(event, input)` and never touch lower-level pieces directly.
  */
 
@@ -28,7 +28,7 @@ export interface HookFireOptions {
   snapshot?: HookExecutionSnapshot;
 }
 
-/** Callback to emit EventMsg into the BrowserX event pipeline. */
+/** Callback to emit EventMsg into the WorkX event pipeline. */
 export type HookEventEmitter = (msg: EventMsg) => void;
 
 export interface HookExecutionSnapshot {

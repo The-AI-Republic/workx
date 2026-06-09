@@ -219,7 +219,7 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
+  "Ask_WorkX_to_extract_structured_data__88fc": {
     "message": "Vprašajte WorkX, naj izlušči strukturirane podatke iz katerekoli spletne strani"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
@@ -309,13 +309,13 @@
   "Browser_automation_tool_toggles": {
     "message": "Preklopi orodij za avtomatizacijo brskalnika"
   },
-  "BrowserX": {
+  "WorkX": {
     "message": "WorkX"
   },
-  "Browserx": {
+  "WorkX": {
     "message": "WorkX"
   },
-  "Browserx_Alpha": {
+  "WorkX_Alpha": {
     "message": "WorkX (Alpha)"
   },
   "CWD": {
@@ -385,7 +385,7 @@
   "Clear_search": {
     "message": "Počisti iskanje"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
     "message": "Kliknite ikono WorkX v orodni vrstici ali pritisnite Alt+Shift+C"
   },
   "Click_to_cancel_login": {
@@ -676,7 +676,7 @@
   "Enable_PIN_Protection": {
     "message": "Omogoči zaščito s PIN-om"
   },
-  "Enable_auto_connect_when_browserx_starts": {
+  "Enable_auto_connect_when_workx_starts": {
     "message": "Omogoči samodejno povezavo ob zagonu WorkX"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
@@ -733,7 +733,7 @@
   "Explain_this_info_selectionText": {
     "message": "Razloži to: ${info.selectionText}"
   },
-  "Explain_with_Browserx": {
+  "Explain_with_WorkX": {
     "message": "Razloži z WorkX"
   },
   "Export": {
@@ -760,7 +760,7 @@
   "Extract_Data": {
     "message": "Izvleči podatke:"
   },
-  "Extract_data_with_Browserx": {
+  "Extract_data_with_WorkX": {
     "message": "Izvleci podatke z WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
@@ -955,7 +955,7 @@
   "Improve_this_text_info_selectionText": {
     "message": "Izboljšaj to besedilo: ${info.selectionText}"
   },
-  "Improve_with_Browserx": {
+  "Improve_with_WorkX": {
     "message": "Izboljšaj z WorkX"
   },
   "In": {
@@ -2041,7 +2041,7 @@
   "Web_Search": {
     "message": "Spletno iskanje"
   },
-  "Welcome_to_Browserx": {
+  "Welcome_to_WorkX": {
     "message": "Dobrodošli v WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
@@ -2092,7 +2092,7 @@
   "available": {
     "message": "na voljo"
   },
-  "browserx": {
+  "workx": {
     "message": "WorkX"
   },
   "cached": {

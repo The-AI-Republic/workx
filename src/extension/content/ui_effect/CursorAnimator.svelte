@@ -11,7 +11,7 @@
    * - Speed boost when queue depth > 3 (1.5x faster)
    * - Smooth easing curves (easeInOutCubic default)
    * - Embedded SVG cursor (no file loading)
-   * - "browserx" label below cursor with capsule design
+   * - "workx" label below cursor with capsule design
    *
    * @component
    */
@@ -162,7 +162,7 @@
    * @param targetY - Target Y coordinate
    */
   function triggerRipple(targetX: number, targetY: number) {
-    const event = new CustomEvent('browserx:trigger-ripple', {
+    const event = new CustomEvent('workx:trigger-ripple', {
       bubbles: true,
       composed: true,
       detail: { x: targetX, y: targetY },

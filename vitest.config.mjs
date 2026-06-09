@@ -50,7 +50,7 @@ export default defineConfig({
       '@tools': resolve(__dirname, 'src/tools'),
       '@protocol': resolve(__dirname, 'src/protocol'),
       '@types': resolve(__dirname, 'src/types'),
-      '@applepi/ws-server': resolve(__dirname, 'packages/ws-server/src')
+      '@workx/ws-server': resolve(__dirname, 'packages/ws-server/src')
     }
   }
 });

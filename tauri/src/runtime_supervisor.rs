@@ -217,14 +217,14 @@ fn desktop_host(app: &AppHandle) -> Result<DesktopRuntimeHost, String> {
         log_dir: log_dir.to_string_lossy().to_string(),
         browser_mcp_sidecar_path,
         project_root,
-        keychain_service_prefix: "applepi".to_string(),
+        keychain_service_prefix: "workx".to_string(),
         platform: std::env::consts::OS.to_string(),
         arch: std::env::consts::ARCH.to_string(),
     })
 }
 
 fn runtime_entry_path(app: &AppHandle) -> PathBuf {
-    if let Ok(path) = std::env::var("APPLEPI_DESKTOP_RUNTIME_ENTRY") {
+    if let Ok(path) = std::env::var("WORKX_DESKTOP_RUNTIME_ENTRY") {
         return PathBuf::from(path);
     }
     if let Ok(path) = app
@@ -457,9 +457,9 @@ async fn handle_control_frame(app: &AppHandle, state: &RuntimeSupervisorState, f
 /// happy path) and fall back to a small list of well-known install
 /// locations. The first one that exists wins.
 ///
-/// The `APPLEPI_NODE_BIN` env var overrides everything for power users / CI.
+/// The `WORKX_NODE_BIN` env var overrides everything for power users / CI.
 fn resolve_node_bin(app: &AppHandle) -> String {
-    if let Ok(custom) = std::env::var("APPLEPI_NODE_BIN") {
+    if let Ok(custom) = std::env::var("WORKX_NODE_BIN") {
         if !custom.is_empty() {
             return custom;
         }
@@ -526,8 +526,8 @@ async fn spawn_once(
     let mut command = Command::new(&node_bin);
     command
         .arg(entry)
-        .env("APPLEPI_RUNTIME_PROFILE", "desktop-runtime")
-        .env("APPLEPI_DESKTOP_RUNTIME_HOST", host_json);
+        .env("WORKX_RUNTIME_PROFILE", "desktop-runtime")
+        .env("WORKX_DESKTOP_RUNTIME_HOST", host_json);
     if std::env::var_os("NODE_EXTRA_CA_CERTS").is_none() {
         if let Some(root_ca) = mkcert_root_ca_path() {
             command.env("NODE_EXTRA_CA_CERTS", root_ca);
@@ -541,7 +541,7 @@ async fn spawn_once(
         .kill_on_drop(true)
         .spawn()
         .map_err(|e| format!(
-            "Failed to spawn desktop runtime via '{}': {}. Install Node.js 20.19+ or 22+ (https://nodejs.org), or set APPLEPI_NODE_BIN to a node binary path.",
+            "Failed to spawn desktop runtime via '{}': {}. Install Node.js 20.19+ or 22+ (https://nodejs.org), or set WORKX_NODE_BIN to a node binary path.",
             node_bin, e,
         ))?;
 

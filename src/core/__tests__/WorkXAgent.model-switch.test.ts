@@ -1,5 +1,5 @@
 /**
- * Unit Tests: BrowserxAgent - Model Switch (handleModelConfigChange)
+ * Unit Tests: WorkXAgent - Model Switch (handleModelConfigChange)
  *
  * Covers the model switching behavior triggered by config-changed events:
  * 1. Model switch without active task applies immediately
@@ -98,7 +98,7 @@ declare const __BUILD_MODE__: string;
 // Imports (after mocks)
 // ---------------------------------------------------------------------------
 
-import { RepublicAgent as BrowserxAgent } from '@/core/RepublicAgent';
+import { RepublicAgent as WorkXAgent } from '@/core/RepublicAgent';
 import { AgentConfig } from '@/config/AgentConfig';
 import type { IConfigChangeEvent } from '@/config/types';
 
@@ -189,9 +189,9 @@ function makeMockModelClient(label: string) {
 // Test Suite
 // ---------------------------------------------------------------------------
 
-describe('BrowserxAgent - handleModelConfigChange', () => {
+describe('WorkXAgent - handleModelConfigChange', () => {
   let config: ReturnType<typeof createMockConfig>;
-  let agent: BrowserxAgent;
+  let agent: WorkXAgent;
 
   beforeEach(() => {
     uuidCounter = 0;
@@ -316,7 +316,7 @@ describe('BrowserxAgent - handleModelConfigChange', () => {
     };
 
     config = createMockConfig();
-    agent = new BrowserxAgent(config as unknown as AgentConfig, mockPlatformAdapter as any);
+    agent = new WorkXAgent(config as unknown as AgentConfig, mockPlatformAdapter as any);
   });
 
   // =========================================================================

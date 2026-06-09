@@ -22,15 +22,15 @@ export function defaultManagedDirPath(): string {
   const plat = (globalThis as { process?: { platform?: string } }).process
     ?.platform;
   if (plat === 'darwin') {
-    return '/Library/Application Support/ApplePi/managed-settings.d';
+    return '/Library/Application Support/WorkX/managed-settings.d';
   }
   if (plat === 'win32') {
     const programData =
       (globalThis as { process?: { env?: Record<string, string | undefined> } })
         .process?.env?.ProgramData ?? 'C:\\ProgramData';
-    return `${programData}\\ApplePi\\managed-settings.d`;
+    return `${programData}\\WorkX\\managed-settings.d`;
   }
-  return '/etc/applepi/managed-settings.d';
+  return '/etc/workx/managed-settings.d';
 }
 
 export class ManagedDirSource implements PolicySource {

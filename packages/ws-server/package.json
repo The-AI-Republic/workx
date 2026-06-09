@@ -1,5 +1,5 @@
 {
-    "name": "@applepi/ws-server",
+    "name": "@workx/ws-server",
     "version": "1.0.0",
     "description": "WorkX Server WebSocket Protocol and Logic",
     "main": "dist/index.js",

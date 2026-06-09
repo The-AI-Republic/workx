@@ -1,7 +1,7 @@
 //! Test-only fake desktop-runtime child for Track 45 supervisor lifecycle
 //! tests. Mimics the real runtime's stdio protocol surface with
 //! configurable failure modes driven by env vars. Wired into supervisor
-//! tests via `APPLEPI_NODE_BIN=env!(CARGO_BIN_EXE_fake-runtime-child)`,
+//! tests via `WORKX_NODE_BIN=env!(CARGO_BIN_EXE_fake-runtime-child)`,
 //! which makes the supervisor invoke this binary in place of `node`.
 //! The first arg (the entry path `index.mjs` the supervisor passes
 //! after the node binary) is read but ignored.

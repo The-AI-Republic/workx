@@ -32,7 +32,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: resolve(__dirname, 'src/extension/content/content-script.ts'),
-      name: 'BrowserxContentScript',
+      name: 'WorkXContentScript',
       formats: ['iife'],
       fileName: () => 'content.js'
     },

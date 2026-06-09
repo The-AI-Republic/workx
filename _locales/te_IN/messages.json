@@ -219,7 +219,7 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
+  "Ask_WorkX_to_extract_structured_data__88fc": {
     "message": "ఏదైనా వెబ్‌పేజీ నుండి నిర్మాణాత్మక డేటాను వెలికితీయడానికి $1$ ని అడగండి",
     "placeholders": {
       "1": {
@@ -314,13 +314,13 @@
   "Browser_automation_tool_toggles": {
     "message": "బ్రౌజర్ ఆటోమేషన్ సాధనాల టాగుల్‌లు"
   },
-  "BrowserX": {
+  "WorkX": {
     "message": "WorkX"
   },
-  "Browserx": {
+  "WorkX": {
     "message": "WorkX"
   },
-  "Browserx_Alpha": {
+  "WorkX_Alpha": {
     "message": "WorkX (Alpha)"
   },
   "CWD": {
@@ -390,7 +390,7 @@
   "Clear_search": {
     "message": "శోధనను క్లియర్ చేయండి"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
     "message": "మీ టూల్‌బార్‌లోని WorkX ఐకాన్‌పై క్లిక్ చేయండి లేదా Alt+Shift+C నొక్కండి"
   },
   "Click_to_cancel_login": {
@@ -681,7 +681,7 @@
   "Enable_PIN_Protection": {
     "message": "PIN రక్షణను సక్రియం చేయండి"
   },
-  "Enable_auto_connect_when_browserx_starts": {
+  "Enable_auto_connect_when_workx_starts": {
     "message": "బ్రౌజర్‌ఎక్స్ ప్రారంభమైనప్పుడు ఆటో-కనెక్షన్‌ను సక్రియం చేయండి"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
@@ -738,7 +738,7 @@
   "Explain_this_info_selectionText": {
     "message": "ఇది వివరించండి: ${info.selectionText}"
   },
-  "Explain_with_Browserx": {
+  "Explain_with_WorkX": {
     "message": "బ్రౌజర్‌ఎక్స్‌తో వివరించండి"
   },
   "Export": {
@@ -765,7 +765,7 @@
   "Extract_Data": {
     "message": "డేటాను వెలికితీయండి:"
   },
-  "Extract_data_with_Browserx": {
+  "Extract_data_with_WorkX": {
     "message": "WorkX తో డేటాను వెలికితీయండి"
   },
   "Extract_specific_data_patterns_from_page_4658": {
@@ -960,7 +960,7 @@
   "Improve_this_text_info_selectionText": {
     "message": "ఈ పాఠ్యాన్ని మెరుగుపరచండి: ${info.selectionText}"
   },
-  "Improve_with_Browserx": {
+  "Improve_with_WorkX": {
     "message": "WorkX తో మెరుగుపరచండి"
   },
   "In": {
@@ -2046,7 +2046,7 @@
   "Web_Search": {
     "message": "వెబ్ శోధన"
   },
-  "Welcome_to_Browserx": {
+  "Welcome_to_WorkX": {
     "message": "WorkX కు స్వాగతం"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
@@ -2097,7 +2097,7 @@
   "available": {
     "message": "లభ్యం"
   },
-  "browserx": {
+  "workx": {
     "message": "WorkX"
   },
   "cached": {

@@ -43,9 +43,9 @@ import {
 } from './connection/watchdog';
 import { checkRateLimit, clearRateLimits } from './connection/rate-limiter';
 import { authorizeMethod, removeConnectionAuth, getConnectionAuth } from './auth/authorize';
-import { RequestFrameSchema, makeResponse, makeErrorResponse, makeEvent } from '@applepi/ws-server';
-import { getMethodHandler, type MethodContext } from '@applepi/ws-server';
-import { invalidRequest, WS_CLOSE, type ErrorShape } from '@applepi/ws-server';
+import { RequestFrameSchema, makeResponse, makeErrorResponse, makeEvent } from '@workx/ws-server';
+import { getMethodHandler, type MethodContext } from '@workx/ws-server';
+import { invalidRequest, WS_CLOSE, type ErrorShape } from '@workx/ws-server';
 import { canAcceptConnection, isPayloadTooLarge, isDuplicate } from './limits/resource-limits';
 import { removeLogSubscriber } from './handlers/logs';
 import { getHealthStatus } from './handlers/health';

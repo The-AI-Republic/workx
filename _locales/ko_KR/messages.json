@@ -219,7 +219,7 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
+  "Ask_WorkX_to_extract_structured_data__88fc": {
     "message": "WorkX에 웹 페이지에서 구조화된 데이터를 추출하도록 요청"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
@@ -309,13 +309,13 @@
   "Browser_automation_tool_toggles": {
     "message": "브라우저 자동화 도구 토글"
   },
-  "BrowserX": {
+  "WorkX": {
     "message": "WorkX"
   },
-  "Browserx": {
+  "WorkX": {
     "message": "WorkX"
   },
-  "Browserx_Alpha": {
+  "WorkX_Alpha": {
     "message": "WorkX (Alpha)"
   },
   "CWD": {
@@ -385,7 +385,7 @@
   "Clear_search": {
     "message": "검색 지우기"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
     "message": "도구 모음의 WorkX 아이콘을 클릭하거나 Alt+Shift+C를 누르세요"
   },
   "Click_to_cancel_login": {
@@ -676,7 +676,7 @@
   "Enable_PIN_Protection": {
     "message": "PIN 보호 활성화"
   },
-  "Enable_auto_connect_when_browserx_starts": {
+  "Enable_auto_connect_when_workx_starts": {
     "message": "WorkX 시작 시 자동 연결을 활성화합니다"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
@@ -733,7 +733,7 @@
   "Explain_this_info_selectionText": {
     "message": "다음 내용을 설명하십시오: ${info.selectionText}"
   },
-  "Explain_with_Browserx": {
+  "Explain_with_WorkX": {
     "message": "WorkX로 설명하기"
   },
   "Export": {
@@ -760,7 +760,7 @@
   "Extract_Data": {
     "message": "데이터 추출:"
   },
-  "Extract_data_with_Browserx": {
+  "Extract_data_with_WorkX": {
     "message": "WorkX로 데이터 추출"
   },
   "Extract_specific_data_patterns_from_page_4658": {
@@ -955,7 +955,7 @@
   "Improve_this_text_info_selectionText": {
     "message": "다음 텍스트를 개선하세요: ${info.selectionText}"
   },
-  "Improve_with_Browserx": {
+  "Improve_with_WorkX": {
     "message": "WorkX로 개선하기"
   },
   "In": {
@@ -2041,7 +2041,7 @@
   "Web_Search": {
     "message": "웹 검색"
   },
-  "Welcome_to_Browserx": {
+  "Welcome_to_WorkX": {
     "message": "WorkX에 오신 것을 환영합니다"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
@@ -2092,7 +2092,7 @@
   "available": {
     "message": "사용 가능"
   },
-  "browserx": {
+  "workx": {
     "message": "WorkX"
   },
   "cached": {

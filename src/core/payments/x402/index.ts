@@ -2,7 +2,7 @@
  * x402 Agentic Payments (Track 23) — public barrel.
  *
  * HTTP 402 micropayments as an explicit, per-platform, default-OFF capability.
- * Not a global fetch interceptor (browserx has no chokepoint and its web tools
+ * Not a global fetch interceptor (workx has no chokepoint and its web tools
  * are Chrome/CDP-driven and cannot see HTTP status) — only the resource-fetch
  * tool consumes this, and browser navigation 402s are never auto-paid.
  *

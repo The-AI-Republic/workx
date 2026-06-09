@@ -374,7 +374,7 @@ fn list_schtasks_jobs() -> Result<Vec<String>, String> {
 // ─────────────────────────────────────────────────────────────────────────
 
 #[cfg(target_os = "linux")]
-const SYSTEMD_PREFIX: &str = "pi-scheduler-";
+const SYSTEMD_PREFIX: &str = "workx-scheduler-";
 
 #[cfg(target_os = "linux")]
 fn get_home_dir() -> Result<String, String> {
@@ -473,7 +473,7 @@ fn register_crontab_fallback(job_id: &str, scheduled_time: i64) -> Result<(), St
         .ok_or_else(|| "Invalid timestamp".to_string())?;
 
     let deep_link = format!("workx://scheduler/trigger?jobId={}", job_id);
-    let marker = format!("pi-scheduler-{}", job_id);
+    let marker = format!("workx-scheduler-{}", job_id);
     let cron_entry = format!(
         "{min} {hour} {day} {month} * xdg-open \"{deep_link}\"; crontab -l 2>/dev/null | grep -v '{marker}' | crontab - # {marker}",
         min = dt.minute(),
@@ -547,7 +547,7 @@ fn remove_systemd_job(job_id: &str) -> Result<(), String> {
     // Also clean up crontab entry if it exists
     if let Ok(output) = Command::new("crontab").arg("-l").output() {
         let existing = String::from_utf8_lossy(&output.stdout).to_string();
-        let marker = format!("pi-scheduler-{}", job_id);
+        let marker = format!("workx-scheduler-{}", job_id);
         if existing.contains(&marker) {
             let filtered: Vec<&str> = existing
                 .lines()

@@ -219,7 +219,7 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
+  "Ask_WorkX_to_extract_structured_data__88fc": {
     "message": "WorkX-ஐ எந்தவொரு வலைப்பக்கத்திலிருந்தும் கட்டமைக்கப்பட்ட தரவுகளைப் பிரித்தெடுக்கக் கேட்கவும்"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
@@ -309,13 +309,13 @@
   "Browser_automation_tool_toggles": {
     "message": "உலாவி தானியக்க கருவி மாற்றிகள்"
   },
-  "BrowserX": {
+  "WorkX": {
     "message": "WorkX"
   },
-  "Browserx": {
+  "WorkX": {
     "message": "WorkX"
   },
-  "Browserx_Alpha": {
+  "WorkX_Alpha": {
     "message": "WorkX (அல்ஃபா)"
   },
   "CWD": {
@@ -385,7 +385,7 @@
   "Clear_search": {
     "message": "தேடலை அழிக்கவும்"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
     "message": "உங்கள் கருவிப்பட்டியில் உள்ள WorkX ஐகானைக் கிளிக் செய்யவும் அல்லது Alt+Shift+C ஐ அழுத்தவும்"
   },
   "Click_to_cancel_login": {
@@ -676,7 +676,7 @@
   "Enable_PIN_Protection": {
     "message": "PIN பாதுகாப்பை இயக்கு"
   },
-  "Enable_auto_connect_when_browserx_starts": {
+  "Enable_auto_connect_when_workx_starts": {
     "message": "WorkX தொடங்கும் போது auto-connect ஐ இயக்கு"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
@@ -733,7 +733,7 @@
   "Explain_this_info_selectionText": {
     "message": "இதைக் விளக்கவும்: ${info.selectionText}"
   },
-  "Explain_with_Browserx": {
+  "Explain_with_WorkX": {
     "message": "WorkX மூலம் விளக்கவும்"
   },
   "Export": {
@@ -760,7 +760,7 @@
   "Extract_Data": {
     "message": "தரவைப் பிரித்தெடுக்கவும்:"
   },
-  "Extract_data_with_Browserx": {
+  "Extract_data_with_WorkX": {
     "message": "WorkX மூலம் தரவை எடுக்கவும்"
   },
   "Extract_specific_data_patterns_from_page_4658": {
@@ -955,7 +955,7 @@
   "Improve_this_text_info_selectionText": {
     "message": "இந்த உரையை மேம்படுத்தவும்: ${info.selectionText}"
   },
-  "Improve_with_Browserx": {
+  "Improve_with_WorkX": {
     "message": "WorkX-உடன் மேம்படுத்தவும்"
   },
   "In": {
@@ -2041,7 +2041,7 @@
   "Web_Search": {
     "message": "வலைத் தேடல்"
   },
-  "Welcome_to_Browserx": {
+  "Welcome_to_WorkX": {
     "message": "WorkX-க்கு வரவேற்கிறோம்"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
@@ -2092,7 +2092,7 @@
   "available": {
     "message": "கிடைக்கும்"
   },
-  "browserx": {
+  "workx": {
     "message": "WorkX"
   },
   "cached": {

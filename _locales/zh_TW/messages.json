@@ -219,7 +219,7 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
+  "Ask_WorkX_to_extract_structured_data__88fc": {
     "message": "請求 WorkX 從任何網頁提取結構化資料"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
@@ -309,13 +309,13 @@
   "Browser_automation_tool_toggles": {
     "message": "瀏覽器自動化工具切換"
   },
-  "BrowserX": {
+  "WorkX": {
     "message": "WorkX"
   },
-  "Browserx": {
+  "WorkX": {
     "message": "WorkX"
   },
-  "Browserx_Alpha": {
+  "WorkX_Alpha": {
     "message": "WorkX（Alpha）"
   },
   "CWD": {
@@ -385,7 +385,7 @@
   "Clear_search": {
     "message": "清除搜尋"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
     "message": "點擊工具列中的 WorkX 圖示或按 Alt+Shift+C"
   },
   "Click_to_cancel_login": {
@@ -676,7 +676,7 @@
   "Enable_PIN_Protection": {
     "message": "啟用 PIN 保護"
   },
-  "Enable_auto_connect_when_browserx_starts": {
+  "Enable_auto_connect_when_workx_starts": {
     "message": "啟用 WorkX 啟動時自動連接"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
@@ -733,7 +733,7 @@
   "Explain_this_info_selectionText": {
     "message": "說明此內容：${info.selectionText}"
   },
-  "Explain_with_Browserx": {
+  "Explain_with_WorkX": {
     "message": "使用 WorkX 說明"
   },
   "Export": {
@@ -760,7 +760,7 @@
   "Extract_Data": {
     "message": "提取資料："
   },
-  "Extract_data_with_Browserx": {
+  "Extract_data_with_WorkX": {
     "message": "使用 WorkX 提取資料"
   },
   "Extract_specific_data_patterns_from_page_4658": {
@@ -955,7 +955,7 @@
   "Improve_this_text_info_selectionText": {
     "message": "改進此文字：${info.selectionText}"
   },
-  "Improve_with_Browserx": {
+  "Improve_with_WorkX": {
     "message": "使用 WorkX 改進"
   },
   "In": {
@@ -2041,7 +2041,7 @@
   "Web_Search": {
     "message": "網路搜尋"
   },
-  "Welcome_to_Browserx": {
+  "Welcome_to_WorkX": {
     "message": "歡迎使用 WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
@@ -2092,7 +2092,7 @@
   "available": {
     "message": "可用"
   },
-  "browserx": {
+  "workx": {
     "message": "WorkX"
   },
   "cached": {
