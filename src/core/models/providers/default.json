@@ -372,5 +372,95 @@
         }
       }
     ]
+  },
+  "anthropic": {
+    "id": "anthropic",
+    "name": "Anthropic",
+    "apiKey": "",
+    "organization": null,
+    "baseUrl": "https://api.anthropic.com",
+    "version": null,
+    "headers": {},
+    "timeout": 30000,
+    "retryConfig": {
+      "maxRetries": 3,
+      "initialDelay": 1000,
+      "maxDelay": 10000,
+      "backoffMultiplier": 2
+    },
+    "models": [
+      {
+        "name": "Claude Opus 4.8",
+        "modelKey": "claude-opus-4-8",
+        "creator": "Anthropic",
+        "contextWindow": 200000,
+        "maxOutputTokens": 32000,
+        "supportsReasoning": true,
+        "reasoningEfforts": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "supportsReasoningSummaries": false,
+        "supportsVerbosity": false,
+        "supportsImage": true,
+        "releaseDate": "2025-12-15",
+        "deprecated": false,
+        "pricing": {
+          "inputToken": "$5.00 / 1M tokens, Cached: $0.50 / 1M tokens",
+          "outputToken": "$25.00 / 1M tokens",
+          "link": "https://www.anthropic.com/pricing"
+        },
+        "supportBackendMode": 0
+      },
+      {
+        "name": "Claude Sonnet 4.6",
+        "modelKey": "claude-sonnet-4-6",
+        "creator": "Anthropic",
+        "contextWindow": 200000,
+        "maxOutputTokens": 64000,
+        "supportsReasoning": true,
+        "reasoningEfforts": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "supportsReasoningSummaries": false,
+        "supportsVerbosity": false,
+        "supportsImage": true,
+        "releaseDate": "2025-09-29",
+        "deprecated": false,
+        "pricing": {
+          "inputToken": "$3.00 / 1M tokens, Cached: $0.30 / 1M tokens",
+          "outputToken": "$15.00 / 1M tokens",
+          "link": "https://www.anthropic.com/pricing"
+        },
+        "supportBackendMode": 0
+      },
+      {
+        "name": "Claude Fable 5",
+        "modelKey": "claude-fable-5",
+        "creator": "Anthropic",
+        "contextWindow": 200000,
+        "maxOutputTokens": 32000,
+        "supportsReasoning": true,
+        "reasoningEfforts": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "supportsReasoningSummaries": false,
+        "supportsVerbosity": false,
+        "supportsImage": true,
+        "releaseDate": "2026-05-20",
+        "deprecated": false,
+        "pricing": {
+          "inputToken": "$5.00 / 1M tokens, Cached: $0.50 / 1M tokens",
+          "outputToken": "$25.00 / 1M tokens",
+          "link": "https://www.anthropic.com/pricing"
+        },
+        "supportBackendMode": 0
+      }
+    ]
   }
 }

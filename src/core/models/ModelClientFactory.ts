@@ -10,6 +10,7 @@ import { GoogleCompletionClient } from './client/GoogleCompletionClient';
 import { GroqClient } from './client/GroqClient';
 import { FireworksChatCompletionClient } from './client/FireworksChatCompletionClient';
 import { TogetherChatCompletionClient } from './client/TogetherChatCompletionClient';
+import { AnthropicClient } from './client/AnthropicClient';
 import { AgentConfig } from '../../config/AgentConfig';
 import { getConfigStorage } from '../storage/ConfigStorageProvider';
 import type { IAuthManager } from './types/Auth';
@@ -675,9 +676,21 @@ export class ModelClientFactory {
           reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
         });
 
+      case 'anthropic':
+        return new AnthropicClient({
+          apiKey: config.apiKey,
+          baseUrl: resolvedBaseUrl,
+          organization,
+          sessionId,
+          modelFamily,
+          provider,
+          modelConfig,
+          reasoningEffort: reasoningEffort as any,
+          reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
+        });
+
       case 'openai':
       case 'xai':
-      case 'anthropic':
       default:
         return new OpenAIResponsesClient({
           apiKey: config.apiKey,
