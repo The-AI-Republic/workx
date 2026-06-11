@@ -69,7 +69,7 @@ export async function createDevDesktopRuntimeHost(): Promise<DesktopRuntimeHost>
   }
 
   const configDir = process.env.WORKX_DESKTOP_CONFIG_DIR
-    ?? path.join(os.homedir(), '.config', 'apple-pi-dev');
+    ?? path.join(os.homedir(), '.config', 'workx-dev');
 
   return assertDesktopRuntimeHost({
     configDir,

@@ -191,7 +191,7 @@ struct DesktopRuntimeHost {
 }
 
 fn desktop_host(app: &AppHandle) -> Result<DesktopRuntimeHost, String> {
-    let project_dirs = ProjectDirs::from("com", "airepublic", "pi")
+    let project_dirs = ProjectDirs::from("com", "airepublic", "workx")
         .ok_or_else(|| "Failed to resolve desktop config dir".to_string())?;
     let config_dir = project_dirs.config_dir().to_path_buf();
     let cache_dir = project_dirs.cache_dir().to_path_buf();

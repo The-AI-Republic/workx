@@ -140,7 +140,7 @@ pub async fn scheduler_clear_os_jobs() -> Result<(), String> {
 // ─────────────────────────────────────────────────────────────────────────
 
 #[cfg(target_os = "macos")]
-const PLIST_PREFIX: &str = "com.airepublic.pi.scheduler.";
+const PLIST_PREFIX: &str = "com.airepublic.workx.scheduler.";
 
 #[cfg(target_os = "macos")]
 fn get_home_dir() -> Result<String, String> {
@@ -281,7 +281,7 @@ fn list_launchd_jobs() -> Result<Vec<String>, String> {
 // ─────────────────────────────────────────────────────────────────────────
 
 #[cfg(target_os = "windows")]
-const SCHTASKS_PREFIX: &str = "PiScheduler_";
+const SCHTASKS_PREFIX: &str = "WorkXScheduler_";
 
 #[cfg(target_os = "windows")]
 fn schtasks_name(job_id: &str) -> String {
