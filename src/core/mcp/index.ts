@@ -2,7 +2,7 @@
  * MCP Server Integration Module
  *
  * Provides integration with MCP (Model Context Protocol) servers
- * to extend ApplePi agent capabilities with external tools.
+ * to extend WorkX agent capabilities with external tools.
  */
 
 // Type definitions

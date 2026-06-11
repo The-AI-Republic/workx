@@ -979,7 +979,7 @@ export class DomService {
       const expression = `
         (function() {
           try {
-            const event = new CustomEvent('browserx:show-visual-effect', {
+            const event = new CustomEvent('workx:show-visual-effect', {
               detail: { type: ${JSON.stringify(type)}, x: ${x ?? 'undefined'}, y: ${y ?? 'undefined'} },
               bubbles: false,
               cancelable: false

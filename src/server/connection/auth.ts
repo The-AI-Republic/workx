@@ -7,7 +7,7 @@
  */
 
 import { getServerConfig, type ServerConfig } from '../config/server-config';
-import { unauthorized, type ErrorShape } from '@applepi/ws-server';
+import { unauthorized, type ErrorShape } from '@workx/ws-server';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Auth modes

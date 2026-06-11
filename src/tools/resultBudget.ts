@@ -21,7 +21,7 @@ import {
 
 /**
  * Narrowed alias for the function_call_output variant of ResponseItem.
- * BrowserX doesn't have a dedicated FunctionCallOutput type, so we extract
+ * WorkX doesn't have a dedicated FunctionCallOutput type, so we extract
  * the discriminant here.
  */
 export type FunctionCallOutputItem = Extract<ResponseItem, { type: 'function_call_output' }>;

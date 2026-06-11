@@ -1,7 +1,7 @@
 /**
  * Track 13 — bridge-safe slash gate.
  *
- * BrowserX analog of claudy's `isBridgeSafeCommand` (commands.ts:674-678).
+ * WorkX analog of claudy's `isBridgeSafeCommand` (commands.ts:674-678).
  * When input arrives over an untrusted channel (connector / remote relay),
  * a leading `/command` must not be forwarded raw to the model (it would leak
  * `/config`-style intent) nor be treated as an executable UI command (the UI

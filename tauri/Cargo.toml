@@ -1,12 +1,12 @@
 [package]
-name = "pi"
+name = "workx"
 version = "0.1.1"
-description = "Pi - AI-powered personal assistant agent"
+description = "WorkX - AI-powered personal assistant agent"
 authors = ["AI Republic"]
 license = "UNLICENSED"
 repository = ""
 edition = "2021"
-default-run = "pi"
+default-run = "workx"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -45,7 +45,7 @@ custom-protocol = ["tauri/custom-protocol"]
 dark-icon = []
 
 # Track 45 Goal 2: fake desktop-runtime child used by the supervisor
-# lifecycle tests. Wired in via APPLEPI_NODE_BIN=env!(CARGO_BIN_EXE_fake-runtime-child)
+# lifecycle tests. Wired in via WORKX_NODE_BIN=env!(CARGO_BIN_EXE_fake-runtime-child)
 # so the supervisor invokes this binary in place of `node`. The fake reads
 # stdio frames and is driven by env knobs documented in the source file.
 [[bin]]

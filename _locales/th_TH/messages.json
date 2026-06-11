@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "เอเย่นต์ AI สำหรับงานทั่วไปในเบราว์เซอร์"
@@ -177,7 +177,7 @@
     "message": "สว่างเสมอ"
   },
   "Apple_Pi_Your_personal_AI_Alpha": {
-    "message": "Apple Pi:ปัญญาประดิษฐ์ส่วนตัวของคุณ(Alpha)"
+    "message": "WorkX:ปัญญาประดิษฐ์ส่วนตัวของคุณ(Alpha)"
   },
   "Approval_Safety": {
     "message": "การอนุมัติและความปลอดภัย"
@@ -219,7 +219,7 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
+  "Ask_WorkX_to_extract_structured_data__88fc": {
     "message": "ขอให้บราวเซอร์เอ็กซ์ดึงข้อมูลที่มีโครงสร้างจากหน้าเว็บใดก็ได้"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
@@ -309,14 +309,11 @@
   "Browser_automation_tool_toggles": {
     "message": "สวิตช์เครื่องมืออัตโนมัติของเบราว์เซอร์"
   },
-  "BrowserX": {
-    "message": "BrowserX"
+  "WorkX": {
+    "message": "WorkX"
   },
-  "Browserx": {
-    "message": "Browserx"
-  },
-  "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+  "WorkX_Alpha": {
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "CWD:"
@@ -385,8 +382,8 @@
   "Clear_search": {
     "message": "ล้างการค้นหา"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "คลิกไอคอนBrowserxในแถบเครื่องมือของคุณหรือกดAlt+Shift+C"
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
+    "message": "คลิกไอคอนWorkXในแถบเครื่องมือของคุณหรือกดAlt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "คลิกเพื่อยกเลิกการเข้าสู่ระบบ"
@@ -676,8 +673,8 @@
   "Enable_PIN_Protection": {
     "message": "เปิดการป้องกันPIN"
   },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": "เปิดใช้งานการเชื่อมต่ออัตโนมัติเมื่อbrowserxเริ่มทำงาน"
+  "Enable_auto_connect_when_workx_starts": {
+    "message": "เปิดใช้งานการเชื่อมต่ออัตโนมัติเมื่อWorkXเริ่มทำงาน"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "เปิดใช้งานการแคชเพื่อปรับปรุงประสิทธิภาพโดยเก็บข้อมูลที่เข้าถึงบ่อย"
@@ -738,8 +735,8 @@
   "Explain_this_info_selectionText": {
     "message": "อธิบายสิ่งนี้: ${info.selectionText}"
   },
-  "Explain_with_Browserx": {
-    "message": "อธิบายด้วยBrowserx"
+  "Explain_with_WorkX": {
+    "message": "อธิบายด้วยWorkX"
   },
   "Export": {
     "message": "ส่งออก"
@@ -765,8 +762,8 @@
   "Extract_Data": {
     "message": "ดึงข้อมูล:"
   },
-  "Extract_data_with_Browserx": {
-    "message": "ดึงข้อมูลด้วย Browserx"
+  "Extract_data_with_WorkX": {
+    "message": "ดึงข้อมูลด้วย WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "ดึงรูปแบบข้อมูลเฉพาะจากหน้าเว็บ"
@@ -960,8 +957,8 @@
   "Improve_this_text_info_selectionText": {
     "message": "ปรับปรุงข้อความนี้: ${info.selectionText}"
   },
-  "Improve_with_Browserx": {
-    "message": "ปรับปรุงด้วยBrowserx"
+  "Improve_with_WorkX": {
+    "message": "ปรับปรุงด้วยWorkX"
   },
   "In": {
     "message": "ใน:"
@@ -1552,7 +1549,7 @@
     "message": "กำลังลองใหม่"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "คลิกขวาที่ข้อความใดก็ได้เพื่ออธิบายหรือปรับปรุงด้วย Browserx"
+    "message": "คลิกขวาที่ข้อความใดก็ได้เพื่ออธิบายหรือปรับปรุงด้วย WorkX"
   },
   "Risk_Score": {
     "message": "คะแนนความเสี่ยง:"
@@ -2046,8 +2043,8 @@
   "Web_Search": {
     "message": "การค้นหาเว็บ"
   },
-  "Welcome_to_Browserx": {
-    "message": "ยินดีต้อนรับสู่Browserx"
+  "Welcome_to_WorkX": {
+    "message": "ยินดีต้อนรับสู่WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "คำสั่งแซนด์บ็อกซ์สามารถเข้าถึงเครือข่ายได้หรือไม่"
@@ -2097,8 +2094,8 @@
   "available": {
     "message": "พร้อมใช้งาน"
   },
-  "browserx": {
-    "message": "browserx"
+  "workx": {
+    "message": "WorkX"
   },
   "cached": {
     "message": "แคช"

@@ -11,7 +11,7 @@
  * Built-in personas are bundled from `./styles/*.md` via Vite `import.meta.glob`
  * (safe on every target incl. the Vite-SSR server build — decision D3).
  *
- * Filesystem-backed personas (project/user `.browserx/styles` dirs) are
+ * Filesystem-backed personas (project/user `.workx/styles` dirs) are
  * provided by Node-only callers via `registerExternalPersonas` so this module
  * stays pure and never imports `node:fs` (which would break the extension
  * bundle and the sync compose path). Resolution precedence:

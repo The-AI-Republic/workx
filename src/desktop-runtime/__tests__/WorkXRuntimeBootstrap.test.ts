@@ -1,5 +1,5 @@
 /**
- * PiRuntimeBootstrap contract test.
+ * WorkXRuntimeBootstrap contract test.
  *
  * Asserts that the desktop runtime bootstrap is locked to the
  * `desktop-runtime` profile, threads the host configDir as the data
@@ -30,7 +30,7 @@ vi.mock('../host', () => ({
     storageDbPath: '/fixture/config/storage.db',
     rolloutDbPath: '/fixture/config/rollouts.db',
     configJsonPath: '/fixture/config/config.json',
-    keychainServicePrefix: 'applepi',
+    keychainServicePrefix: 'workx',
   }),
 }));
 
@@ -38,7 +38,7 @@ vi.mock('@/runtime/profile', () => ({
   getRuntimeProfile: () => 'desktop-runtime',
 }));
 
-import { PiRuntimeBootstrap } from '../PiRuntimeBootstrap';
+import { WorkXRuntimeBootstrap } from '../WorkXRuntimeBootstrap';
 
 /**
  * Stand-in for ChannelAdapter — concrete enough to satisfy the interface
@@ -71,10 +71,10 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe('PiRuntimeBootstrap', () => {
+describe('WorkXRuntimeBootstrap', () => {
   it('forwards profile="desktop-runtime", host.configDir as dataDir, and the channel to ServerAgentBootstrap', () => {
     const channel = makeFakeChannel();
-    new PiRuntimeBootstrap({ channel });
+    new WorkXRuntimeBootstrap({ channel });
 
     expect(recordedOptions).toHaveLength(1);
     expect(recordedOptions[0]).toEqual({
@@ -86,7 +86,7 @@ describe('PiRuntimeBootstrap', () => {
 
   it('honors an explicit dataDirOverride for tests, but cannot downgrade the profile', () => {
     const channel = makeFakeChannel();
-    new PiRuntimeBootstrap({ channel, dataDirOverride: '/tmp/override' });
+    new WorkXRuntimeBootstrap({ channel, dataDirOverride: '/tmp/override' });
 
     expect(recordedOptions[0]?.profile).toBe('desktop-runtime');
     expect(recordedOptions[0]?.dataDir).toBe('/tmp/override');

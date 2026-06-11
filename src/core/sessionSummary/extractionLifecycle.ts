@@ -2,7 +2,7 @@
  * Per-session "is an extraction running right now?" flag map, plus the
  * compaction interlock that waits for in-flight extractions to finish.
  *
- * Module-level state is keyed by sessionId so multiple parallel BrowserX
+ * Module-level state is keyed by sessionId so multiple parallel WorkX
  * sessions don't stomp on each other.
  *
  * The flag is only ever cleared inside the spawning code's `finally {}`

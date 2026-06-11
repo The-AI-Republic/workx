@@ -33,4 +33,4 @@ export const NOT_CODE_MODE_MSG =
   'The file tools are available in Code mode only. Switch this session to Code mode to read/edit/write project files.';
 
 export const NO_WORKSPACE_MSG =
-  'No project folder is selected. Code-mode file tools are disabled until you choose a workspace folder in Apple Pi settings.';
+  'No project folder is selected. Code-mode file tools are disabled until you choose a workspace folder in WorkX settings.';

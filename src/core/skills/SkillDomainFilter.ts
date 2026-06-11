@@ -1,7 +1,7 @@
 /**
  * SkillDomainFilter — bidirectional conditional activation by website domain.
  *
- * BrowserX equivalent of Claudy's `paths`-based conditional skills. Skills
+ * WorkX equivalent of Claudy's `paths`-based conditional skills. Skills
  * with a `domains` field are dormant until the active tab matches; they
  * deactivate when the tab moves away (unlike Claudy's monotonic file-path
  * activation, since tab context does not accumulate).

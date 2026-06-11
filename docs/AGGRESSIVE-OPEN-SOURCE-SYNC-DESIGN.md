@@ -15,7 +15,7 @@
 
 ### Before (Current)
 ```
-private-browserx/
+private-workx/
 ├── open_source/
 │   ├── docs/
 │   ├── scripts/
@@ -29,7 +29,7 @@ private-browserx/
 
 ### After (Target)
 ```
-private-browserx/
+private-workx/
 ├── docs/             # Merged from open_source/
 ├── scripts/          # Merged from open_source/
 ├── src/              # All code consolidated

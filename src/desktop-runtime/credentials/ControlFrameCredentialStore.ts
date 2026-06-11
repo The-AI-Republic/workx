@@ -10,7 +10,7 @@ export interface KeychainBridge {
 export class ControlFrameCredentialStore implements CredentialStore {
   constructor(
     private readonly bridge: KeychainBridge,
-    private readonly servicePrefix = 'applepi',
+    private readonly servicePrefix = 'workx',
   ) {}
 
   private serviceName(service: string): string {

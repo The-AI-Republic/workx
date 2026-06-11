@@ -2,7 +2,7 @@
  * PluginManifest — Zod schema for `plugin.json`.
  *
  * Mirrors claudy's `PluginManifestSchema` (claudy/utils/plugins/schemas.ts:884-898)
- * adapted to the BrowserX type model. The schema is composed by spreading
+ * adapted to the WorkX type model. The schema is composed by spreading
  * partial sub-schema shapes — each slot owns one top-level key and ships its
  * own union of accepted forms (string path | array | inline object).
  *
@@ -81,8 +81,8 @@ const HooksConfigSchema = z.record(z.string(), z.array(z.unknown()));
 // Permissive MCP server map — full validation happens inside MCPManager.addServer
 const McpServerRecordSchema = z.record(z.string(), z.record(z.string(), z.unknown()));
 
-// BrowserX-specific extensions
-const BrowserxExtensionSchema = z
+// WorkX-specific extensions
+const WorkXExtensionSchema = z
   .object({
     domains: z.array(z.string()).optional(),
     platforms: z.array(z.enum(['desktop', 'extension', 'server'])).optional(),
@@ -158,9 +158,9 @@ const PluginManifestUserConfigSchema = lazySchema(() =>
   }),
 );
 
-const PluginManifestBrowserxSchema = lazySchema(() =>
+const PluginManifestWorkXSchema = lazySchema(() =>
   z.object({
-    browserx: BrowserxExtensionSchema,
+    workx: WorkXExtensionSchema,
   }),
 );
 
@@ -177,7 +177,7 @@ export const PluginManifestSchema = z.object({
   ...PluginManifestCommandsSchema().partial().shape,
   ...PluginManifestSettingsSchema().partial().shape,
   ...PluginManifestUserConfigSchema().partial().shape,
-  ...PluginManifestBrowserxSchema().partial().shape,
+  ...PluginManifestWorkXSchema().partial().shape,
 });
 
 /** Strict variant for `/plugin validate <path>` (Phase 10c plugin-author UX). */

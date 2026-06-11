@@ -12,8 +12,8 @@
  */
 
 // Import default prompts as raw strings at build time (fallbacks)
-import defaultPiExtensionPrompt from '../prompts/default_browserx_agent_prompt.md?raw';
-import defaultPiPrompt from '../prompts/default_applepi_agent_prompt.md?raw';
+import defaultExtensionPrompt from '../prompts/default_workx_agent_prompt.md?raw';
+import defaultDesktopPrompt from '../prompts/default_workx_desktop_agent_prompt.md?raw';
 import userInstructions from '../prompts/user_instruction.md?raw';
 import { PromptComposer, type AgentType, type AgentMode, type RuntimeContext, DEFAULT_MODE } from '../prompts/PromptComposer';
 import type { ToolRegistry } from '../tools/ToolRegistry';
@@ -34,7 +34,7 @@ type PromptExtensionFn = (ctx: PromptRuntimeContext) => string;
 
 // Module-level singleton — configured once, used on every loadPrompt() call
 let composer: PromptComposer | null = null;
-let configuredAgentType: AgentType = 'browserx';
+let configuredAgentType: AgentType = 'workx';
 let staticContext: Partial<RuntimeContext> = {};
 
 /** Global prompt extensions appended after the main system prompt, keyed by name. */
@@ -179,9 +179,9 @@ export async function loadPrompt(
   // Fallback: return static default prompt based on build mode
   let fallback: string;
   if (typeof __BUILD_MODE__ !== 'undefined' && (__BUILD_MODE__ === 'desktop' || __BUILD_MODE__ === 'server')) {
-    fallback = defaultPiPrompt;
+    fallback = defaultDesktopPrompt;
   } else {
-    fallback = defaultPiExtensionPrompt;
+    fallback = defaultExtensionPrompt;
   }
   return appendExtensions(fallback, ctx);
 }

@@ -8,7 +8,7 @@
 
 import { getHealthStatus, setHealthChannels, type HealthStatus } from '../handlers/health';
 import { getChannelManager } from '@/core/channels/ChannelManager';
-import { makeEvent } from '@applepi/ws-server';
+import { makeEvent } from '@workx/ws-server';
 import { getTrackedConnections } from '../connection/watchdog';
 import { shouldReceiveEvent } from '../auth/authorize';
 

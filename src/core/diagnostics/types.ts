@@ -4,7 +4,7 @@
  * A platform-shared registry of discrete, side-effect-free checks. Each check
  * returns a uniform pass/warn/fail result; `buildDoctorReport` aggregates them
  * into a single `DoctorReport`. Mirrors claudy's "discrete checks → one
- * aggregate" pattern, generalized for BrowserX's three deploy targets.
+ * aggregate" pattern, generalized for WorkX's three deploy targets.
  *
  * @module core/diagnostics/types
  */

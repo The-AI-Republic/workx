@@ -31,7 +31,7 @@ describe('userStore login URL helpers', () => {
     const url = new URL(desktopLoginPageUrl!);
     expect(url.origin).toBe('https://home.example.com');
     expect(url.pathname).toBe('/signin');
-    expect(url.searchParams.get('redirect_url')).toBe('applepi://auth/callback');
+    expect(url.searchParams.get('redirect_url')).toBe('workx://auth/callback');
     expect(url.searchParams.get('desktop_login_ts')).toMatch(/^\d+$/);
   });
 

@@ -50,7 +50,7 @@ describe('AgentSession', () => {
       expect(session.sessionLetter).toBe('a');
       expect(session.state).toBe('initializing');
       expect(session.metadata.type).toBe('primary');
-      expect(session.metadata.tabGroupName).toBe('browserx_s_a');
+      expect(session.metadata.tabGroupName).toBe('workx_s_a');
     });
 
     it('creates session with scheduled type', () => {
@@ -61,7 +61,7 @@ describe('AgentSession', () => {
 
       expect(session.metadata.type).toBe('scheduled');
       expect(session.sessionLetter).toBe('b');
-      expect(session.metadata.tabGroupName).toBe('browserx_s_b');
+      expect(session.metadata.tabGroupName).toBe('workx_s_b');
     });
 
     it('uses provided tabId', () => {

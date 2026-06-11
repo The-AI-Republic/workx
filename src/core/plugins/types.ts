@@ -24,7 +24,7 @@ export type PluginId = string;
  */
 export type PluginScope = 'managed' | 'user' | 'project' | 'local';
 
-/** Runtime platforms. Used in `manifest.browserx.platforms` for opt-in restriction. */
+/** Runtime platforms. Used in `manifest.workx.platforms` for opt-in restriction. */
 export type PluginPlatform = 'desktop' | 'extension' | 'server';
 
 /** Capability slots a plugin can contribute to (v1). */
@@ -121,8 +121,8 @@ export interface PluginManifest {
   settings?: Record<string, unknown>;
   userConfig?: Record<string, PluginUserConfigOption>;
 
-  /** BrowserX-specific extensions; never required for claudy compat. */
-  browserx?: {
+  /** WorkX-specific extensions; never required for claudy compat. */
+  workx?: {
     domains?: string[];
     platforms?: PluginPlatform[];
     toolExposure?: Record<string, {

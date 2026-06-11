@@ -345,28 +345,28 @@
   .search-icon {
     position: absolute;
     left: 0.75rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
     pointer-events: none;
   }
 
   .search-input {
     width: 100%;
     padding: 0.625rem 2.25rem 0.625rem 2.25rem;
-    background: var(--browserx-surface);
-    border: 1px solid var(--browserx-border);
+    background: var(--workx-surface);
+    border: 1px solid var(--workx-border);
     border-radius: 0.5rem;
-    color: var(--browserx-text);
+    color: var(--workx-text);
     font-size: 0.875rem;
     outline: none;
     transition: border-color 0.2s;
   }
 
   .search-input::placeholder {
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
   }
 
   .search-input:focus {
-    border-color: var(--browserx-primary);
+    border-color: var(--workx-primary);
   }
 
   .clear-button {
@@ -381,14 +381,14 @@
     background: none;
     border: none;
     border-radius: 0.25rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
     cursor: pointer;
     transition: color 0.2s, background-color 0.2s;
   }
 
   .clear-button:hover {
-    color: var(--browserx-text);
-    background: color-mix(in srgb, var(--browserx-text) 10%, transparent);
+    color: var(--workx-text);
+    background: color-mix(in srgb, var(--workx-text) 10%, transparent);
   }
 
   .search-results {
@@ -398,8 +398,8 @@
     right: 0;
     max-height: 24rem;
     overflow-y: auto;
-    background: var(--browserx-surface);
-    border: 1px solid var(--browserx-border);
+    background: var(--workx-surface);
+    border: 1px solid var(--workx-border);
     border-radius: 0.5rem;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     z-index: 100;
@@ -417,7 +417,7 @@
   }
 
   .result-item.focused .result-button {
-    background: color-mix(in srgb, var(--browserx-primary) 12%, transparent);
+    background: color-mix(in srgb, var(--workx-primary) 12%, transparent);
   }
 
   .result-button {
@@ -430,11 +430,11 @@
     text-align: left;
     cursor: pointer;
     transition: background-color 0.15s;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .result-button:hover {
-    background: color-mix(in srgb, var(--browserx-text) 6%, var(--browserx-surface));
+    background: color-mix(in srgb, var(--workx-text) 6%, var(--workx-surface));
   }
 
   .result-header {
@@ -447,22 +447,22 @@
   .result-label {
     font-size: 0.875rem;
     font-weight: 600;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .result-section-badge {
     font-size: 0.875rem;
     font-weight: 500;
     padding: 0.0625rem 0.375rem;
-    background: color-mix(in srgb, var(--browserx-primary) 12%, transparent);
-    color: var(--browserx-primary);
+    background: color-mix(in srgb, var(--workx-primary) 12%, transparent);
+    color: var(--workx-primary);
     border-radius: 0.25rem;
     white-space: nowrap;
   }
 
   .result-description {
     font-size: 0.875rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
     line-height: 1.4;
   }
 
@@ -470,14 +470,14 @@
     padding: 1.25rem 0.75rem;
     text-align: center;
     font-size: 0.875rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
   }
 
   .more-results {
     padding: 0.5rem 0.75rem;
     text-align: center;
     font-size: 0.875rem;
-    color: var(--browserx-text-secondary);
-    border-top: 1px solid var(--browserx-border);
+    color: var(--workx-text-secondary);
+    border-top: 1px solid var(--workx-border);
   }
 </style>
