@@ -15,7 +15,7 @@
 
 ### Before (Current)
 ```
-private-browserx/
+private-workx/
 ├── open_source/
 │   ├── docs/
 │   ├── scripts/
@@ -29,7 +29,7 @@ private-browserx/
 
 ### After (Target)
 ```
-private-browserx/
+private-workx/
 ├── docs/             # Merged from open_source/
 ├── scripts/          # Merged from open_source/
 ├── src/              # All code consolidated
@@ -124,7 +124,7 @@ jobs:
 
       - name: Clone public repo
         run: |
-          git clone https://x-access-token:${{ secrets.PRIVATE_SYNC_TO_OSS }}@github.com/The-AI-Republic/browserx.git public-repo
+          git clone https://x-access-token:${{ secrets.PRIVATE_SYNC_TO_OSS }}@github.com/The-AI-Republic/workx.git public-repo
           cd public-repo
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

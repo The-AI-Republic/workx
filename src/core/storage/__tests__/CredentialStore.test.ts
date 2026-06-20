@@ -138,25 +138,25 @@ describe('ChromeCredentialStore', () => {
 
     it('should return stored credential value', async () => {
       // Pre-populate storage
-      await chrome.storage.local.set({ 'browserx-credential:openai:default': 'sk-test123' });
+      await chrome.storage.local.set({ 'workx-credential:openai:default': 'sk-test123' });
       const result = await store.get('openai', 'default');
       expect(result).toBe('sk-test123');
     });
 
     it('should use correct key format', async () => {
-      await chrome.storage.local.set({ 'browserx-credential:anthropic:user@test.com': 'key-abc' });
+      await chrome.storage.local.set({ 'workx-credential:anthropic:user@test.com': 'key-abc' });
       const result = await store.get('anthropic', 'user@test.com');
       expect(result).toBe('key-abc');
     });
 
     it('should return null for wrong account', async () => {
-      await chrome.storage.local.set({ 'browserx-credential:openai:account1': 'key1' });
+      await chrome.storage.local.set({ 'workx-credential:openai:account1': 'key1' });
       const result = await store.get('openai', 'account2');
       expect(result).toBeNull();
     });
 
     it('should return null for wrong service', async () => {
-      await chrome.storage.local.set({ 'browserx-credential:openai:default': 'key1' });
+      await chrome.storage.local.set({ 'workx-credential:openai:default': 'key1' });
       const result = await store.get('anthropic', 'default');
       expect(result).toBeNull();
     });
@@ -165,8 +165,8 @@ describe('ChromeCredentialStore', () => {
   describe('set', () => {
     it('should store a credential', async () => {
       await store.set('openai', 'default', 'sk-mykey');
-      const data = await chrome.storage.local.get('browserx-credential:openai:default');
-      const stored = data['browserx-credential:openai:default'];
+      const data = await chrome.storage.local.get('workx-credential:openai:default');
+      const stored = data['workx-credential:openai:default'];
       // Stored value is an EncryptedCredential object (via VaultManager mock)
       expect(stored).toEqual({ version: 1, ciphertext: 'sk-mykey', iv: 'test-iv' });
     });

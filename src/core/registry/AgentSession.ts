@@ -64,7 +64,7 @@ export class AgentSession {
       lastActivityAt: now,
       tabId: config.tabId ?? null,
       tabGroupId: null,
-      tabGroupName: `browserx_s_${this._sessionLetter}`,
+      tabGroupName: `workx_s_${this._sessionLetter}`,
     };
   }
 
@@ -298,7 +298,7 @@ export class AgentSession {
 
   /**
    * T027: Create a Chrome tab group for this session
-   * Creates a tab group with name browserx_s_<letter> and a distinct color
+   * Creates a tab group with name workx_s_<letter> and a distinct color
    * @returns The created tab group ID, or null if creation failed
    */
   async createTabGroup(): Promise<number | null> {

@@ -58,14 +58,14 @@ jobs:
           fi
 
       - name: Zip extension
-        run: cd dist && zip -r ../browserx.zip ./*
+        run: cd dist && zip -r ../workx.zip ./*
 
-      - name: Upload browserx.zip to release
+      - name: Upload workx.zip to release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release upload "${{ github.event.release.tag_name }}" \
-            browserx.zip \
+            workx.zip \
             --clobber
 
       - name: Create Chrome Web Store review PR
@@ -94,7 +94,7 @@ jobs:
 
           ### What happens when this PR is merged
           The **publish-chrome** workflow will automatically:
-          1. Download \`browserx.zip\` from the GitHub Release
+          1. Download \`workx.zip\` from the GitHub Release
           2. Upload it to the Chrome Web Store
           3. Publish the extension
 

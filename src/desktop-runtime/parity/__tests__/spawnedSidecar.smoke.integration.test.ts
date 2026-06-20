@@ -1,7 +1,7 @@
 /**
  * Track 45 Goal 1 — spawned-sidecar protocol & lifecycle smoke test.
  *
- * Boots the real Apple Pi desktop runtime sidecar
+ * Boots the real WorkX desktop runtime sidecar
  * (`tauri/sidecar/desktop-runtime/index.mjs`) and asserts three
  * end-to-end behaviors that today's CI does not cover:
  *
@@ -40,7 +40,7 @@ describe('spawned-sidecar protocol smoke (Track 45 Goal 1)', () => {
   let sidecar: SpawnedSidecar;
 
   beforeAll(async () => {
-    tmpConfigDir = mkdtempSync(join(tmpdir(), 'applepi-track45-'));
+    tmpConfigDir = mkdtempSync(join(tmpdir(), 'workx-track45-'));
     sidecar = await spawnSidecar({ tmpConfigDir });
   }, 60_000);
 

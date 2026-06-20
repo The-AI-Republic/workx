@@ -275,7 +275,7 @@ step('7c) self-test (import the runtime entry — catches missing bundled deps)'
       configJsonPath: path.join(fakeConfigDir, 'config.json'),
       cacheDir: path.join(fakeConfigDir, 'cache'),
       logDir: path.join(fakeConfigDir, 'logs'),
-      keychainServicePrefix: 'applepi-selftest',
+      keychainServicePrefix: 'workx-selftest',
       platform: process.platform,
       arch: process.arch,
     });
@@ -290,8 +290,8 @@ step('7c) self-test (import the runtime entry — catches missing bundled deps)'
         env: {
           ...process.env,
           NODE_PATH: '',
-          APPLEPI_RUNTIME_PROFILE: 'desktop-runtime',
-          APPLEPI_DESKTOP_RUNTIME_HOST: host,
+          WORKX_RUNTIME_PROFILE: 'desktop-runtime',
+          WORKX_DESKTOP_RUNTIME_HOST: host,
         },
         timeout: 10_000,
       },

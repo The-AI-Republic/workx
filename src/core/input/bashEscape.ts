@@ -1,7 +1,7 @@
 /**
  * Track 13 — funnel Stage 4: `!` shell escape (design §6.6, §7.3).
  *
- * BrowserX has no upstream "input mode" layer (claudy detects `!` in
+ * WorkX has no upstream "input mode" layer (claudy detects `!` in
  * `inputModes.ts` *before* its funnel); the funnel detects it itself.
  *
  * Layer boundary: the funnel's job is input *normalization*, not execution.

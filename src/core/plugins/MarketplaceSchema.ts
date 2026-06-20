@@ -1,7 +1,7 @@
 /**
  * MarketplaceSchema — Zod for `marketplace.json` (a git-backed catalogue
  * listing installable plugins). Mirrors claudy's PluginMarketplaceSchema,
- * trimmed to the BrowserX type model.
+ * trimmed to the WorkX type model.
  *
  * Reference: design.md § Marketplace (Phase 10b).
  */

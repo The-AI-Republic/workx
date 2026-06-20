@@ -1,7 +1,7 @@
 /**
  * Hook & Event System — Type Definitions
  *
- * Defines all types for the BrowserX hook system, inspired by claudy's
+ * Defines all types for the WorkX hook system, inspired by claudy's
  * 28-event hook architecture adapted for browser automation context.
  */
 
@@ -10,7 +10,7 @@
 // ---------------------------------------------------------------------------
 
 /**
- * Hook events supported by BrowserX.
+ * Hook events supported by WorkX.
  * Phase 1 ships the first 11; remaining events added in later phases.
  */
 export type HookEvent =
@@ -207,7 +207,7 @@ export interface HookInput {
   readonly stop_reason?: string;
   readonly is_background?: boolean;
 
-  // BrowserX-specific context
+  // WorkX-specific context
   readonly current_url?: string;
   readonly current_domain?: string;
   readonly tab_id?: number;

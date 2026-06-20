@@ -113,7 +113,7 @@ export function getLoginPageUrl(): string | null {
 export function getDesktopLoginPageUrl(): string | null {
   if (!HOME_PAGE_BASE_URL || !AUTH_ROUTE_PATHS.login) return null;
   const loginUrl = new URL(AUTH_ROUTE_PATHS.login, HOME_PAGE_BASE_URL);
-  loginUrl.searchParams.set('redirect_url', 'applepi://auth/callback');
+  loginUrl.searchParams.set('redirect_url', 'workx://auth/callback');
   loginUrl.searchParams.set('desktop_login_ts', Date.now().toString());
   return loginUrl.toString();
 }

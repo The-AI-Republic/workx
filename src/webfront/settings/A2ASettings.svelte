@@ -747,7 +747,7 @@
               />
               <span>{$_t("Enabled")}</span>
             </label>
-            <div class="help-text">{$_t("Enable auto-connect when browserx starts")}</div>
+            <div class="help-text">{$_t("Enable auto-connect when workx starts")}</div>
           </div>
 
           <div class="form-group">
@@ -799,7 +799,7 @@
   .back-button {
     background: none;
     border: none;
-    color: var(--browserx-primary);
+    color: var(--workx-primary);
     cursor: pointer;
     font-size: 0.9375rem;
     font-weight: 500;
@@ -819,13 +819,13 @@
     margin: 0 0 0.5rem 0;
     font-size: 1.5rem;
     font-weight: 600;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .settings-description {
     margin: 0 0 1.5rem 0;
     font-size: 0.875rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
     line-height: 1.5;
   }
 
@@ -843,14 +843,14 @@
     justify-content: center;
     gap: 1rem;
     padding: 3rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
   }
 
   .loading-spinner {
     width: 24px;
     height: 24px;
-    border: 2px solid var(--browserx-border);
-    border-top-color: var(--browserx-primary);
+    border: 2px solid var(--workx-border);
+    border-top-color: var(--workx-primary);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }
@@ -862,9 +862,9 @@
   }
 
   .settings-card {
-    background: var(--browserx-surface);
+    background: var(--workx-surface);
     border-radius: 0.75rem;
-    border: 1px solid var(--browserx-border);
+    border: 1px solid var(--workx-border);
   }
 
   .collapsible-section {
@@ -877,21 +877,21 @@
     align-items: center;
     gap: 0.75rem;
     padding: 1rem;
-    background: var(--browserx-surface);
+    background: var(--workx-surface);
     border: none;
     cursor: pointer;
     transition: background 0.2s;
   }
 
   .section-header:hover {
-    background: color-mix(in srgb, var(--browserx-surface) 90%, var(--browserx-text));
+    background: color-mix(in srgb, var(--workx-surface) 90%, var(--workx-text));
   }
 
   .section-title {
     margin: 0;
     font-size: 1rem;
     font-weight: 600;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .expand-icon {
@@ -910,13 +910,13 @@
 
   .section-content {
     padding: 1rem;
-    border-top: 1px solid var(--browserx-border);
+    border-top: 1px solid var(--workx-border);
   }
 
   .empty-state {
     text-align: center;
     padding: 1.5rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
   }
 
   .empty-state p {
@@ -935,9 +935,9 @@
     justify-content: space-between;
     align-items: flex-start;
     padding: 0.75rem;
-    background: var(--browserx-background);
+    background: var(--workx-background);
     border-radius: 0.5rem;
-    border: 1px solid var(--browserx-border);
+    border: 1px solid var(--workx-border);
   }
 
   .agent-info {
@@ -954,12 +954,12 @@
 
   .agent-name {
     font-weight: 600;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .agent-url {
     font-size: 0.875rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
     word-break: break-all;
   }
 
@@ -970,8 +970,8 @@
     border-radius: 1rem;
     text-transform: uppercase;
     letter-spacing: 0.025em;
-    background: color-mix(in srgb, var(--browserx-primary) 15%, transparent);
-    color: var(--browserx-primary);
+    background: color-mix(in srgb, var(--workx-primary) 15%, transparent);
+    color: var(--workx-primary);
   }
 
   .status-badge {
@@ -984,23 +984,23 @@
   }
 
   .badge-success {
-    background: color-mix(in srgb, var(--browserx-success) 15%, transparent);
-    color: var(--browserx-success);
+    background: color-mix(in srgb, var(--workx-success) 15%, transparent);
+    color: var(--workx-success);
   }
 
   .badge-warning {
-    background: color-mix(in srgb, var(--browserx-warning, #f59e0b) 15%, transparent);
-    color: var(--browserx-warning, #f59e0b);
+    background: color-mix(in srgb, var(--workx-warning, #f59e0b) 15%, transparent);
+    color: var(--workx-warning, #f59e0b);
   }
 
   .badge-error {
-    background: color-mix(in srgb, var(--browserx-error) 15%, transparent);
-    color: var(--browserx-error);
+    background: color-mix(in srgb, var(--workx-error) 15%, transparent);
+    color: var(--workx-error);
   }
 
   .badge-neutral {
-    background: color-mix(in srgb, var(--browserx-text-secondary) 15%, transparent);
-    color: var(--browserx-text-secondary);
+    background: color-mix(in srgb, var(--workx-text-secondary) 15%, transparent);
+    color: var(--workx-text-secondary);
   }
 
   .error-message {
@@ -1009,10 +1009,10 @@
     gap: 0.375rem;
     margin-top: 0.5rem;
     padding: 0.5rem;
-    background: color-mix(in srgb, var(--browserx-error) 10%, transparent);
+    background: color-mix(in srgb, var(--workx-error) 10%, transparent);
     border-radius: 0.375rem;
     font-size: 0.875rem;
-    color: var(--browserx-error);
+    color: var(--workx-error);
   }
 
   .error-message svg {
@@ -1023,14 +1023,14 @@
   .agent-card-details {
     margin-top: 0.5rem;
     padding: 0.625rem;
-    background: color-mix(in srgb, var(--browserx-surface) 50%, var(--browserx-background));
+    background: color-mix(in srgb, var(--workx-surface) 50%, var(--workx-background));
     border-radius: 0.375rem;
-    border: 1px solid var(--browserx-border);
+    border: 1px solid var(--workx-border);
   }
 
   .card-field {
     font-size: 0.875rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
     margin-bottom: 0.25rem;
   }
 
@@ -1040,7 +1040,7 @@
 
   .card-label {
     font-weight: 600;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .agent-actions {
@@ -1062,7 +1062,7 @@
 
   .limit-message {
     text-align: center;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
     font-size: 0.875rem;
     margin-top: 0.5rem;
   }
@@ -1075,9 +1075,9 @@
 
   .skill-item {
     padding: 0.75rem;
-    background: var(--browserx-background);
+    background: var(--workx-background);
     border-radius: 0.5rem;
-    border: 1px solid var(--browserx-border);
+    border: 1px solid var(--workx-border);
   }
 
   .skill-info {
@@ -1094,21 +1094,21 @@
 
   .skill-name {
     font-weight: 600;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .skill-agent {
     font-size: 0.875rem;
     padding: 0.125rem 0.375rem;
-    background: color-mix(in srgb, var(--browserx-primary) 10%, transparent);
-    color: var(--browserx-primary);
+    background: color-mix(in srgb, var(--workx-primary) 10%, transparent);
+    color: var(--workx-primary);
     border-radius: 0.25rem;
   }
 
   .skill-description {
     margin: 0;
     font-size: 0.875rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
     line-height: 1.4;
   }
 
@@ -1122,8 +1122,8 @@
   .skill-tag {
     font-size: 0.875rem;
     padding: 0.125rem 0.375rem;
-    background: color-mix(in srgb, var(--browserx-text-secondary) 10%, transparent);
-    color: var(--browserx-text-secondary);
+    background: color-mix(in srgb, var(--workx-text-secondary) 10%, transparent);
+    color: var(--workx-text-secondary);
     border-radius: 0.25rem;
     line-height: 1.3;
   }
@@ -1145,23 +1145,23 @@
   }
 
   .btn-primary {
-    background: var(--browserx-primary);
+    background: var(--workx-primary);
     color: white;
-    border-color: var(--browserx-primary);
+    border-color: var(--workx-primary);
   }
 
   .btn-primary:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--browserx-primary) 85%, black);
+    background: color-mix(in srgb, var(--workx-primary) 85%, black);
   }
 
   .btn-secondary {
     background: transparent;
-    color: var(--browserx-primary);
-    border-color: var(--browserx-primary);
+    color: var(--workx-primary);
+    border-color: var(--workx-primary);
   }
 
   .btn-secondary:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--browserx-primary) 10%, transparent);
+    background: color-mix(in srgb, var(--workx-primary) 10%, transparent);
   }
 
   .btn-small {
@@ -1173,17 +1173,17 @@
     padding: 0.375rem;
     background: transparent;
     border: none;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
   }
 
   .btn-icon:hover:not(:disabled) {
-    color: var(--browserx-text);
-    background: var(--browserx-border);
+    color: var(--workx-text);
+    background: var(--workx-border);
   }
 
   .btn-danger:hover:not(:disabled) {
-    color: var(--browserx-error);
-    background: color-mix(in srgb, var(--browserx-error) 10%, transparent);
+    color: var(--workx-error);
+    background: color-mix(in srgb, var(--workx-error) 10%, transparent);
   }
 
   /* Form styles */
@@ -1200,24 +1200,24 @@
     margin-bottom: 0.5rem;
     font-size: 0.875rem;
     font-weight: 500;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .form-input {
     width: 100%;
     padding: 0.625rem;
-    border: 1px solid var(--browserx-border);
+    border: 1px solid var(--workx-border);
     border-radius: 0.375rem;
-    background: var(--browserx-surface);
-    color: var(--browserx-text);
+    background: var(--workx-surface);
+    color: var(--workx-text);
     font-size: 0.875rem;
     transition: all 0.2s;
   }
 
   .form-input:focus {
     outline: none;
-    border-color: var(--browserx-primary);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--browserx-primary) 10%, transparent);
+    border-color: var(--workx-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--workx-primary) 10%, transparent);
   }
 
   .form-select {
@@ -1231,20 +1231,20 @@
     gap: 0.5rem;
     cursor: pointer;
     font-size: 0.9375rem;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .form-checkbox {
     width: 18px;
     height: 18px;
     cursor: pointer;
-    accent-color: var(--browserx-primary);
+    accent-color: var(--workx-primary);
   }
 
   .help-text {
     margin-top: 0.375rem;
     font-size: 0.875rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
     line-height: 1.4;
   }
 
@@ -1253,10 +1253,10 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem;
-    background: color-mix(in srgb, var(--browserx-error) 10%, transparent);
+    background: color-mix(in srgb, var(--workx-error) 10%, transparent);
     border-radius: 0.5rem;
     font-size: 0.875rem;
-    color: var(--browserx-error);
+    color: var(--workx-error);
     margin-top: 1rem;
   }
 
@@ -1276,7 +1276,7 @@
   }
 
   .modal-content {
-    background: var(--browserx-background);
+    background: var(--workx-background);
     border-radius: 0.75rem;
     width: 100%;
     max-width: 420px;
@@ -1290,20 +1290,20 @@
     justify-content: space-between;
     align-items: center;
     padding: 1rem 1.25rem;
-    border-bottom: 1px solid var(--browserx-border);
+    border-bottom: 1px solid var(--workx-border);
   }
 
   .modal-header h3 {
     margin: 0;
     font-size: 1.125rem;
     font-weight: 600;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .close-btn {
     background: none;
     border: none;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
     cursor: pointer;
     padding: 0.25rem;
     border-radius: 0.375rem;
@@ -1314,8 +1314,8 @@
   }
 
   .close-btn:hover {
-    color: var(--browserx-text);
-    background: var(--browserx-surface);
+    color: var(--workx-text);
+    background: var(--workx-surface);
   }
 
   .modal-body {
@@ -1327,7 +1327,7 @@
     justify-content: flex-end;
     gap: 0.75rem;
     padding: 1rem 1.25rem;
-    border-top: 1px solid var(--browserx-border);
+    border-top: 1px solid var(--workx-border);
   }
 
   /* Messages */
@@ -1343,12 +1343,12 @@
   }
 
   .message.success {
-    color: var(--browserx-success);
-    background: color-mix(in srgb, var(--browserx-success) 10%, transparent);
+    color: var(--workx-success);
+    background: color-mix(in srgb, var(--workx-success) 10%, transparent);
   }
 
   .message.error {
-    color: var(--browserx-error);
-    background: color-mix(in srgb, var(--browserx-error) 10%, transparent);
+    color: var(--workx-error);
+    background: color-mix(in srgb, var(--workx-error) 10%, transparent);
   }
 </style>

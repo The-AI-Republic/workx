@@ -86,7 +86,7 @@ export { MarketplaceSchema, MarketplaceEntrySchema, PluginSourceSchema } from '.
 export type { Marketplace, MarketplaceEntry } from './MarketplaceSchema';
 export { MarketplaceRegistry } from './MarketplaceRegistry';
 export type { MarketplaceRegistryDeps } from './MarketplaceRegistry';
-export { PluginCache, BROWSERX_PLUGIN_ORPHAN_TTL_MS } from './PluginCache';
+export { PluginCache, WORKX_PLUGIN_ORPHAN_TTL_MS } from './PluginCache';
 export type { PluginCacheFsDeps } from './PluginCache';
 export {
   gitClone,

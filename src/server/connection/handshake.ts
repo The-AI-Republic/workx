@@ -18,15 +18,15 @@ import {
   makeEvent,
   resolveClientInfo,
   negotiateProtocolVersion,
-} from '@applepi/ws-server';
-import type { ChallengePayload, HelloOkPayload, ConnectRequest, ResolvedClientInfo } from '@applepi/ws-server';
-import { WS_CLOSE, unauthorized, invalidRequest } from '@applepi/ws-server';
+} from '@workx/ws-server';
+import type { ChallengePayload, HelloOkPayload, ConnectRequest, ResolvedClientInfo } from '@workx/ws-server';
+import { WS_CLOSE, unauthorized, invalidRequest } from '@workx/ws-server';
 import { verifyAuth } from './auth';
 import { resolveScopes, isValidRole, type Role } from '../auth/roles';
 import { setConnectionAuth } from '../auth/authorize';
 import { getServerConfig } from '../config/server-config';
-import { getRegisteredMethods } from '@applepi/ws-server';
-import { EVENT_SCOPE_MAP, BROADCAST_EVENTS } from '@applepi/ws-server';
+import { getRegisteredMethods } from '@workx/ws-server';
+import { EVENT_SCOPE_MAP, BROADCAST_EVENTS } from '@workx/ws-server';
 import { getHealthStatus } from '../handlers/health';
 
 // ─────────────────────────────────────────────────────────────────────────

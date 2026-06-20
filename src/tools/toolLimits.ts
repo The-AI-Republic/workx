@@ -24,7 +24,7 @@ export const PREVIEW_SIZE_BYTES = 2_000;
  *   - finite N    → min(N, default)
  *
  * Mirrors Claudy's `getPersistenceThreshold` (without the GrowthBook override,
- * which BrowserX doesn't have).
+ * which WorkX doesn't have).
  */
 export function getPersistenceThreshold(
   _toolName: string,

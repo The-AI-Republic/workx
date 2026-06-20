@@ -8,7 +8,7 @@
  */
 
 import type { EventMsg } from '@/core/protocol/events';
-import { makeEvent, type EventFrame } from '@applepi/ws-server';
+import { makeEvent, type EventFrame } from '@workx/ws-server';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Constants

@@ -2,7 +2,7 @@
  * securityCheck — dangerous managed-change assessment (Track 20).
  *
  * Pure, platform-agnostic. Detects when a *newly applied* policy WEAKENS
- * security vs the previously applied one (BrowserX-domain: approvals relaxed,
+ * security vs the previously applied one (WorkX-domain: approvals relaxed,
  * risky tools enabled, allowlist widened, sandbox opened). Interactive
  * runtimes warn the user; the headless server auto-applies + emits a redacted
  * audit (the emit lives in the server bootstrap — core must not import the

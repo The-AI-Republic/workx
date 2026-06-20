@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "وكيل ذكاء اصطناعي عام داخل المتصفح لمهام العمل"
@@ -177,7 +177,7 @@
     "message": "دائمًا فاتح"
   },
   "Apple_Pi_Your_personal_AI_Alpha": {
-    "message": "Apple Pi: الذكاء الاصطناعي الشخصي الخاص بك (ألفا)"
+    "message": "WorkX: الذكاء الاصطناعي الشخصي الخاص بك (ألفا)"
   },
   "Approval_Safety": {
     "message": "الموافقة والسلامة"
@@ -219,8 +219,8 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "اطلب من Browserx استخراج بيانات مُهيكلة من أي صفحة ويب"
+  "Ask_WorkX_to_extract_structured_data__88fc": {
+    "message": "اطلب من WorkX استخراج بيانات مُهيكلة من أي صفحة ويب"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "اطلب للأعمال ذات المخاطر المتوسطة وما فوق (المخاطر > 30). يُنصح به لمعظم المستخدمين."
@@ -309,14 +309,11 @@
   "Browser_automation_tool_toggles": {
     "message": "مفاتيح أتمتة المتصفح"
   },
-  "BrowserX": {
-    "message": "BrowserX"
+  "WorkX": {
+    "message": "WorkX"
   },
-  "Browserx": {
-    "message": "Browserx"
-  },
-  "Browserx_Alpha": {
-    "message": "Browserx (ألفا)"
+  "WorkX_Alpha": {
+    "message": "WorkX (ألفا)"
   },
   "CWD": {
     "message": "دليل العمل الحالي:"
@@ -385,8 +382,8 @@
   "Clear_search": {
     "message": "مسح البحث"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "انقر على أيقونة Browserx في شريط الأدوات أو اضغط Alt+Shift+C"
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
+    "message": "انقر على أيقونة WorkX في شريط الأدوات أو اضغط Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "انقر لإلغاء تسجيل الدخول"
@@ -676,8 +673,8 @@
   "Enable_PIN_Protection": {
     "message": "تفعيل حماية PIN"
   },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": "تمكين الاتصال التلقائي عند بدء تشغيل browserx"
+  "Enable_auto_connect_when_workx_starts": {
+    "message": "تمكين الاتصال التلقائي عند بدء تشغيل WorkX"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "تمكين التخزين المؤقت لتحسين الأداء عن طريق تخزين البيانات التي يتم الوصول إليها بشكل متكرر"
@@ -733,8 +730,8 @@
   "Explain_this_info_selectionText": {
     "message": "اشرح هذا: ${info.selectionText}"
   },
-  "Explain_with_Browserx": {
-    "message": "اشرح باستخدام Browserx"
+  "Explain_with_WorkX": {
+    "message": "اشرح باستخدام WorkX"
   },
   "Export": {
     "message": "تصدير"
@@ -760,8 +757,8 @@
   "Extract_Data": {
     "message": "استخراج البيانات:"
   },
-  "Extract_data_with_Browserx": {
-    "message": "استخراج البيانات باستخدام Browserx"
+  "Extract_data_with_WorkX": {
+    "message": "استخراج البيانات باستخدام WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "استخراج أنماط بيانات محددة من الصفحات"
@@ -955,8 +952,8 @@
   "Improve_this_text_info_selectionText": {
     "message": "تحسين هذا النص: ${info.selectionText}"
   },
-  "Improve_with_Browserx": {
-    "message": "تحسين باستخدام Browserx"
+  "Improve_with_WorkX": {
+    "message": "تحسين باستخدام WorkX"
   },
   "In": {
     "message": "في:"
@@ -1547,7 +1544,7 @@
     "message": "إعادة المحاولة"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "انقر بزر الفأرة الأيمن على أي نص لتوضيحه أو تحسينه باستخدام Browserx"
+    "message": "انقر بزر الفأرة الأيمن على أي نص لتوضيحه أو تحسينه باستخدام WorkX"
   },
   "Risk_Score": {
     "message": "درجة المخاطرة:"
@@ -2041,8 +2038,8 @@
   "Web_Search": {
     "message": "بحث الويب"
   },
-  "Welcome_to_Browserx": {
-    "message": "مرحبًا بك في Browserx"
+  "Welcome_to_WorkX": {
+    "message": "مرحبًا بك في WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "ما إذا كانت الأوامر المعزولة يمكنها الوصول إلى الشبكة"
@@ -2092,8 +2089,8 @@
   "available": {
     "message": "متاح"
   },
-  "browserx": {
-    "message": "browserx"
+  "workx": {
+    "message": "WorkX"
   },
   "cached": {
     "message": "مخزن مؤقتًا"

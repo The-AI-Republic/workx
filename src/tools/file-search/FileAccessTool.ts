@@ -164,7 +164,7 @@ export class EditFileTool extends FileAccessTool {
       // can't populate a cache that doesn't exist, so "read the file first"
       // would loop the model forever. Distinct, terminal message.
       if (h.cache === undefined) {
-        return `Cannot edit "${path}": no session file cache is available, so the read-before-edit safety check cannot run. This requires an active Apple Pi desktop session — do not retry.`;
+        return `Cannot edit "${path}": no session file cache is available, so the read-before-edit safety check cannot run. This requires an active WorkX desktop session — do not retry.`;
       }
       if (!entry) return `Read the file first: call read_file("${path}") before editing it.`;
       if (entry.isPartialView) return `The cached view of "${path}" is partial. read_file it (fully) before editing.`;
@@ -211,7 +211,7 @@ export class WriteFileTool extends FileAccessTool {
 
     if (st.exists) {
       if (h.cache === undefined) {
-        return `Cannot overwrite "${path}": no session file cache is available to verify a prior read. This requires an active Apple Pi desktop session — do not retry.`;
+        return `Cannot overwrite "${path}": no session file cache is available to verify a prior read. This requires an active WorkX desktop session — do not retry.`;
       }
       if (!entry || entry.isPartialView) {
         return `"${path}" exists. read_file it before overwriting with write_file.`;

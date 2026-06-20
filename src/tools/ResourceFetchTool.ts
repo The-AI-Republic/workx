@@ -1,7 +1,7 @@
 /**
  * ResourceFetchTool (Track 23) — the ONLY payable surface.
  *
- * browserx has no central fetch chokepoint and its web tools are Chrome/CDP
+ * workx has no central fetch chokepoint and its web tools are Chrome/CDP
  * driven (they cannot even observe an HTTP 402). So x402 is NOT a transparent
  * interceptor: this dedicated, agent-initiated tool performs a real Node
  * `fetch` (pattern proven by NavigationTool.checkUrlAccessibility) and is the

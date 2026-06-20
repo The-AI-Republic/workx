@@ -2,7 +2,7 @@
  * MCP Tool Adapter
  * Task: T032-T035, T038-T039, T042 [US2]
  *
- * Adapts MCP tools to ApplePi ToolDefinition format and creates
+ * Adapts MCP tools to WorkX ToolDefinition format and creates
  * handlers that route tool calls through MCPManager.
  */
 
@@ -18,7 +18,7 @@ import type { IRiskAssessor } from '../approval/types';
 import type { ToolRegistrationOptions } from '../../tools/ToolRegistry';
 
 /**
- * Adapts MCP tools to ApplePi ToolDefinition format.
+ * Adapts MCP tools to WorkX ToolDefinition format.
  */
 export class MCPToolAdapter implements IMCPToolAdapter {
   /**

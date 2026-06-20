@@ -36,7 +36,7 @@ import {
 } from '../core/storage/CredentialStore';
 
 // Credential store constants
-const CREDENTIAL_SERVICE = 'applepi';
+const CREDENTIAL_SERVICE = 'workx';
 const CREDENTIAL_ACCOUNT_PREFIX = 'provider-apikey-';
 export const CREDENTIAL_SECURED_MARKER = '[SECURED]';
 

@@ -9,7 +9,7 @@ import { getDesktopRuntimeHost } from './host';
  * The desktop-runtime invariants are enforced internally — callers cannot
  * downgrade the profile or aim the bootstrap at a server data directory.
  */
-export interface PiRuntimeBootstrapOptions {
+export interface WorkXRuntimeBootstrapOptions {
   /** ChannelAdapter for runtime↔UI traffic; in production this is the stdio channel. */
   channel: ChannelAdapter;
   /**
@@ -55,14 +55,14 @@ export interface PiRuntimeBootstrapOptions {
  *                            configJsonPath, cacheDir, logDir,
  *                            browserMcpSidecarPath, projectRoot, keychain
  *                            service prefix, platform, arch.
- *   - **Prompt persona**:    `applepi` (the desktop persona), NOT
- *                            `applepi-server`.
+ *   - **Prompt persona**:    `workx` (the desktop persona), NOT
+ *                            `workx-server`.
  *   - **Server-only suppression**: backup manager, connector loader, health
  *                            HTTP, diagnostics monitor, config-file watcher
  *                            are all disabled.
  */
-export class PiRuntimeBootstrap extends ServerAgentBootstrap {
-  constructor(options: PiRuntimeBootstrapOptions) {
+export class WorkXRuntimeBootstrap extends ServerAgentBootstrap {
+  constructor(options: WorkXRuntimeBootstrapOptions) {
     // Defense in depth: the runtime entrypoint sets the profile env var
     // before this constructor runs. If a future refactor reorders init or
     // someone constructs this class outside the runtime, fail loudly
@@ -70,7 +70,7 @@ export class PiRuntimeBootstrap extends ServerAgentBootstrap {
     const currentProfile = getRuntimeProfile();
     if (currentProfile !== 'desktop-runtime') {
       throw new Error(
-        `PiRuntimeBootstrap requires APPLEPI_RUNTIME_PROFILE='desktop-runtime' to be set before construction (got '${currentProfile}'). The runtime entrypoint (src/desktop-runtime/index.ts) sets this; if you are instantiating from a test, mock @/runtime/profile.`,
+        `WorkXRuntimeBootstrap requires WORKX_RUNTIME_PROFILE='desktop-runtime' to be set before construction (got '${currentProfile}'). The runtime entrypoint (src/desktop-runtime/index.ts) sets this; if you are instantiating from a test, mock @/runtime/profile.`,
       );
     }
     const host = getDesktopRuntimeHost();

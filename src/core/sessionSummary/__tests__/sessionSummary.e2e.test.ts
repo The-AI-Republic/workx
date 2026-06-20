@@ -98,7 +98,7 @@ describe('session summary e2e loop', () => {
 
   it('triggers extraction, writes summary.md, waits during compaction, and folds summary into prompt', async () => {
     _resetExtractionLifecycleForTests();
-    const memoryRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'browserx-summary-e2e-'));
+    const memoryRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'workx-summary-e2e-'));
     tempRoots.push(memoryRoot);
     const nodeFs = new NodeTempFs();
     const sessionId = 'session-e2e';

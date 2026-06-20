@@ -2,7 +2,7 @@
  * USD cost calculator — Track 18.
  *
  * Pure functions over the numeric `MODEL_COST_TABLE`. No accumulation state:
- * browserx's cost accumulators are `TokenUsageStore` (durable per-record
+ * workx's cost accumulators are `TokenUsageStore` (durable per-record
  * history) and `SessionState` (live cumulative) — a parallel singleton would
  * be a competing source of truth.
  */
@@ -20,7 +20,7 @@ export interface CostResult {
 /**
  * Compute USD cost for a `TokenUsage` under a `"providerId:modelId"` key.
  *
- * Invariant (verified across every browserx model client — all OpenAI-family,
+ * Invariant (verified across every workx model client — all OpenAI-family,
  * no Anthropic-native client exists): `cached_input_tokens` is a SUBSET of
  * `input_tokens`. So uncached input = `max(0, input - cached)` (clamp guards
  * a provider ever reporting cached > prompt). `reasoning_output_tokens` is

@@ -250,30 +250,30 @@ describe('HookExecutor', () => {
         OPENAI_API_KEY: 'sk-secret',
         ANTHROPIC_API_KEY: 'sk-also-secret',
         AWS_SECRET_ACCESS_KEY: 'aws-secret',
-        BROWSERX_BACKEND_TOKEN: 'token',
+        WORKX_BACKEND_TOKEN: 'token',
       });
       expect(env.PATH).toBe('/usr/bin');
       expect(env.HOME).toBe('/home/u');
       expect(env.OPENAI_API_KEY).toBeUndefined();
       expect(env.ANTHROPIC_API_KEY).toBeUndefined();
       expect(env.AWS_SECRET_ACCESS_KEY).toBeUndefined();
-      expect(env.BROWSERX_BACKEND_TOKEN).toBeUndefined();
+      expect(env.WORKX_BACKEND_TOKEN).toBeUndefined();
     });
 
-    it('honors BROWSERX_HOOK_ENV opt-in allowlist', () => {
+    it('honors WORKX_HOOK_ENV opt-in allowlist', () => {
       const env = HookExecutor.buildHookEnv({
         PATH: '/usr/bin',
         MY_HOOK_VAR: 'value',
         OTHER_VAR: 'should-not-leak',
-        BROWSERX_HOOK_ENV: 'MY_HOOK_VAR',
+        WORKX_HOOK_ENV: 'MY_HOOK_VAR',
       });
       expect(env.MY_HOOK_VAR).toBe('value');
       expect(env.OTHER_VAR).toBeUndefined();
-      // BROWSERX_HOOK_ENV itself is not in the allowlist, so it doesn't propagate
-      expect(env.BROWSERX_HOOK_ENV).toBeUndefined();
+      // WORKX_HOOK_ENV itself is not in the allowlist, so it doesn't propagate
+      expect(env.WORKX_HOOK_ENV).toBeUndefined();
     });
 
-    it('handles missing BROWSERX_HOOK_ENV gracefully', () => {
+    it('handles missing WORKX_HOOK_ENV gracefully', () => {
       const env = HookExecutor.buildHookEnv({ PATH: '/x' });
       expect(env.PATH).toBe('/x');
     });

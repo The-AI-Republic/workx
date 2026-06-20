@@ -271,7 +271,7 @@ export class GoogleDocAddon extends DomAddon {
         nodeType: 1, // ELEMENT_NODE
         nodeName: 'DIV',
         localName: 'div',
-        attributes: ['class', wrapperClass, 'data-applepi-injected', 'true'],
+        attributes: ['class', wrapperClass, 'data-workx-injected', 'true'],
         tier: 'semantic',
         children: [textNode]
       };

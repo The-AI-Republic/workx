@@ -90,35 +90,35 @@ describe('source allow/blocklist', () => {
   });
 
   it('github matcher is path-anchored — no substring / adjacent / embed bypass', () => {
-    const m = { type: 'github', repo: 'browserx/official' } as const;
+    const m = { type: 'github', repo: 'workx/official' } as const;
     // legitimate forms still match
-    expect(sourceMatches('https://github.com/browserx/official', m)).toBe(true);
-    expect(sourceMatches('https://github.com/browserx/official.git', m)).toBe(true);
-    expect(sourceMatches('https://github.com/browserx/official/', m)).toBe(true);
-    expect(sourceMatches('git@github.com:browserx/official.git', m)).toBe(true);
-    expect(sourceMatches('browserx/official', m)).toBe(true); // bare
-    // adjacent-name collision must NOT satisfy an allowlist of browserx/official
-    expect(sourceMatches('https://github.com/browserx/official-evil', m)).toBe(false);
-    expect(sourceMatches('https://github.com/browserx/officialX.git', m)).toBe(false);
+    expect(sourceMatches('https://github.com/workx/official', m)).toBe(true);
+    expect(sourceMatches('https://github.com/workx/official.git', m)).toBe(true);
+    expect(sourceMatches('https://github.com/workx/official/', m)).toBe(true);
+    expect(sourceMatches('git@github.com:workx/official.git', m)).toBe(true);
+    expect(sourceMatches('workx/official', m)).toBe(true); // bare
+    // adjacent-name collision must NOT satisfy an allowlist of workx/official
+    expect(sourceMatches('https://github.com/workx/official-evil', m)).toBe(false);
+    expect(sourceMatches('https://github.com/workx/officialX.git', m)).toBe(false);
     // wrong host / querystring embedding must NOT match
-    expect(sourceMatches('https://evil.com/?x=github.com/browserx/official', m)).toBe(false);
-    expect(sourceMatches('https://github.com.evil.com/browserx/official', m)).toBe(false);
+    expect(sourceMatches('https://evil.com/?x=github.com/workx/official', m)).toBe(false);
+    expect(sourceMatches('https://github.com.evil.com/workx/official', m)).toBe(false);
   });
 
   it('allowlist is not bypassable by an adjacent github repo name', () => {
     const policy: PolicySettings = {
-      strictKnownMarketplaces: [{ type: 'github', repo: 'browserx/official' }],
+      strictKnownMarketplaces: [{ type: 'github', repo: 'workx/official' }],
     };
-    expect(isSourceAllowedByPolicy('https://github.com/browserx/official.git', policy)).toBe(true);
-    expect(isSourceAllowedByPolicy('https://github.com/browserx/official-evil', policy)).toBe(false);
+    expect(isSourceAllowedByPolicy('https://github.com/workx/official.git', policy)).toBe(true);
+    expect(isSourceAllowedByPolicy('https://github.com/workx/official-evil', policy)).toBe(false);
   });
 });
 
 describe('impersonation guards', () => {
-  it('blocks browserx/airepublic "official"-looking names', () => {
-    expect(isBlockedOfficialName('browserx-official')).toBe(true);
+  it('blocks workx/airepublic "official"-looking names', () => {
+    expect(isBlockedOfficialName('workx-official')).toBe(true);
     expect(isBlockedOfficialName('official-airepublic-plugins')).toBe(true);
-    expect(isBlockedOfficialName('browserx_marketplace')).toBe(true);
+    expect(isBlockedOfficialName('workx_marketplace')).toBe(true);
     expect(isBlockedOfficialName('community-plugins')).toBe(false);
   });
 

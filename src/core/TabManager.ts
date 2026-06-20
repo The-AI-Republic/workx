@@ -30,7 +30,7 @@ export class TabManager {
 
   // Tab group management (merged from TabGroupManager - T014)
   private groupId: number | null = null;
-  private readonly groupTitle = 'browserx';
+  private readonly groupTitle = 'workx';
   private readonly groupColor = 'blue' as const;
 
   // Event callbacks (stateless - just notify about tab events)
@@ -174,11 +174,11 @@ export class TabManager {
 
 
   /**
-   * Ensure ApplePi tab group exists (merged from TabGroupManager)
-   * Finds or prepares to create the "applepi" tab group
+   * Ensure WorkX tab group exists (merged from TabGroupManager)
+   * Finds or prepares to create the "workx" tab group
    * Gracefully degrades if chrome.tabGroups API is unavailable
    */
-  private async ensureApplePiGroup(): Promise<void> {
+  private async ensureWorkXGroup(): Promise<void> {
     // Check if tab groups API is available
     if (typeof chrome === 'undefined' || !chrome.tabGroups) {
       console.warn('[TabManager] Tab Groups API not available, grouping disabled');
@@ -187,13 +187,13 @@ export class TabManager {
     }
 
     try {
-      // Try to find existing ApplePi group
+      // Try to find existing WorkX group
       const groups = await chrome.tabGroups.query({ title: this.groupTitle });
 
       if (groups.length > 0) {
         // Use existing group
         this.groupId = groups[0].id;
-        console.log(`[TabManager] Found existing ApplePi tab group: ${this.groupId}`);
+        console.log(`[TabManager] Found existing WorkX tab group: ${this.groupId}`);
 
         // Ensure it has the correct color
         await chrome.tabGroups.update(this.groupId, {
@@ -201,7 +201,7 @@ export class TabManager {
           color: this.groupColor as chrome.tabGroups.Color,
         });
       } else {
-        console.log('[TabManager] No existing ApplePi tab group found, will create on first tab');
+        console.log('[TabManager] No existing WorkX tab group found, will create on first tab');
       }
     } catch (error) {
       console.error('[TabManager] Failed to initialize tab group:', error);
@@ -210,10 +210,10 @@ export class TabManager {
   }
 
   /**
-   * Create ApplePi tab group (merged from TabGroupManager)
+   * Create WorkX tab group (merged from TabGroupManager)
    * @param tabId - Initial tab to add to the group
    */
-  private async createApplePiGroup(tabId: number): Promise<void> {
+  private async createWorkXGroup(tabId: number): Promise<void> {
     try {
       // Ensure tab is in a normal window
       let tab = await chrome.tabs.get(tabId);
@@ -224,7 +224,7 @@ export class TabManager {
 
       const normalizedTab = await this.ensureTabInNormalWindow(tab);
       if (!normalizedTab) {
-        console.warn(`[TabManager] Cannot create ApplePi group: tab ${tabId} could not be moved to a normal window`);
+        console.warn(`[TabManager] Cannot create WorkX group: tab ${tabId} could not be moved to a normal window`);
         return;
       }
       tab = normalizedTab;
@@ -241,7 +241,7 @@ export class TabManager {
       });
 
       this.groupId = groupId;
-      console.log(`[TabManager] Created ApplePi tab group: ${this.groupId}`);
+      console.log(`[TabManager] Created WorkX tab group: ${this.groupId}`);
     } catch (error) {
       console.error('[TabManager] Failed to create tab group:', error);
       this.groupId = null;
@@ -389,7 +389,7 @@ export class TabManager {
   }
 
   /**
-   * Add tab to ApplePi group
+   * Add tab to WorkX group
    * Gracefully degrades if tab groups API is unavailable
    * @param tabId - Tab ID to add to group
    * @returns The group ID, or null if grouping failed
@@ -432,7 +432,7 @@ export class TabManager {
 
       // If we don't have a group yet, create one
       if (this.groupId === null) {
-        await this.createApplePiGroup(tabId);
+        await this.createWorkXGroup(tabId);
         return this.groupId;
       }
 
@@ -442,7 +442,7 @@ export class TabManager {
         groupId: this.groupId,
       });
 
-      console.log(`[TabManager] Added tab ${tabId} to ApplePi group ${this.groupId}`);
+      console.log(`[TabManager] Added tab ${tabId} to WorkX group ${this.groupId}`);
       return this.groupId;
     } catch (error) {
       console.error(`[TabManager] Failed to add tab ${tabId} to group:`, error);
@@ -451,7 +451,7 @@ export class TabManager {
   }
 
   /**
-   * Remove tab from ApplePi group
+   * Remove tab from WorkX group
    * Gracefully degrades if tab groups API is unavailable
    * @param tabId - Tab ID to remove from group
    */
@@ -476,10 +476,10 @@ export class TabManager {
         return;
       }
 
-      // Only remove from our ApplePi group
+      // Only remove from our WorkX group
       if (this.groupId !== null && tab.groupId === this.groupId) {
         await chrome.tabs.ungroup(tabId);
-        console.log(`[TabManager] Removed tab ${tabId} from ApplePi group ${this.groupId}`);
+        console.log(`[TabManager] Removed tab ${tabId} from WorkX group ${this.groupId}`);
       } else {
         console.log(`[TabManager] Tab ${tabId} is in a different group (${tab.groupId}), not removing`);
       }
@@ -489,9 +489,9 @@ export class TabManager {
   }
 
   /**
-   * Reset TabManager by ungrouping all tabs from "applepi" groups (tabs stay open)
-   * All "applepi" groups (both collapsed and expanded) will be deleted after ungrouping their tabs
-   * Called during session reset and initialization to clean up all applepi groups
+   * Reset TabManager by ungrouping all tabs from "workx" groups (tabs stay open)
+   * All "workx" groups (both collapsed and expanded) will be deleted after ungrouping their tabs
+   * Called during session reset and initialization to clean up all workx groups
    */
   async reset(): Promise<void> {
     // Skip if API is unavailable
@@ -532,7 +532,7 @@ export class TabManager {
           await chrome.tabs.ungroup(tabIds as [number, ...number[]]);
         }
       } catch (error) {
-        console.error(`[TabManager] Failed to reset applepi group ${group.id}:`, error);
+        console.error(`[TabManager] Failed to reset workx group ${group.id}:`, error);
       }
     }
 
@@ -540,7 +540,7 @@ export class TabManager {
   }
 
   /**
-   * Remove all tabs from all ApplePi groups (ungroup without closing)
+   * Remove all tabs from all WorkX groups (ungroup without closing)
    * Used when switching tabs to ensure consistency
    */
   async clearAllTabsFromGroup(): Promise<void> {
@@ -574,7 +574,7 @@ export class TabManager {
 
       this.groupId = null;
     } catch (error) {
-      console.error('[TabManager] Failed to clear tabs from ApplePi groups:', error);
+      console.error('[TabManager] Failed to clear tabs from WorkX groups:', error);
     }
   }
 

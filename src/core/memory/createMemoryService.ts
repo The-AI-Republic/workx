@@ -31,7 +31,7 @@ export async function createMemoryService(
   init: MemoryServiceInit
 ): Promise<MemoryService | null> {
   if (__BUILD_MODE__ === 'extension') {
-    return null; // Memory not supported in BrowserX extension
+    return null; // Memory not supported in WorkX extension
   }
 
   try {

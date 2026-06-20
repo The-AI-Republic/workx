@@ -7,11 +7,11 @@ import {
 } from '../analytics';
 
 describe('installTelemetry gate (Test 3.b)', () => {
-  const orig = process.env.APPLEPI_NO_TELEMETRY;
+  const orig = process.env.WORKX_NO_TELEMETRY;
   beforeEach(() => _resetForTesting());
   afterEach(() => {
-    if (orig === undefined) delete process.env.APPLEPI_NO_TELEMETRY;
-    else process.env.APPLEPI_NO_TELEMETRY = orig;
+    if (orig === undefined) delete process.env.WORKX_NO_TELEMETRY;
+    else process.env.WORKX_NO_TELEMETRY = orig;
   });
 
   it('telemetryEnabled:false → sink attached but nothing emitted', async () => {
@@ -50,8 +50,8 @@ describe('installTelemetry gate (Test 3.b)', () => {
     expect(seen.map((e) => e.name)).toEqual(['b']);
   });
 
-  it('APPLEPI_NO_TELEMETRY forces off even if telemetryEnabled:true', async () => {
-    process.env.APPLEPI_NO_TELEMETRY = '1';
+  it('WORKX_NO_TELEMETRY forces off even if telemetryEnabled:true', async () => {
+    process.env.WORKX_NO_TELEMETRY = '1';
     const seen: TelemetryEvent[] = [];
     installTelemetry({
       getTelemetryEnabled: () => true,

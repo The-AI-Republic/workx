@@ -14,7 +14,7 @@ import type { EncryptedCredential } from '@/core/crypto/types';
 /**
  * Storage key prefix for credentials
  */
-const CREDENTIAL_PREFIX = 'browserx-credential:';
+const CREDENTIAL_PREFIX = 'workx-credential:';
 
 /**
  * Creates a storage key from service and account

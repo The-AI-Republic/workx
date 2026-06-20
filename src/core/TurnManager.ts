@@ -248,7 +248,7 @@ export class TurnManager {
     }
 
     // Track 12: a single retry orchestrator wraps the whole turn. Each retry
-    // re-runs tryRunTurn from rebuilt clean history (browserx records history
+    // re-runs tryRunTurn from rebuilt clean history (workx records history
     // only on turn success — orphan-free by construction).
     try {
       const result = await withModelRetry(() => this.tryRunTurn(buildPrompt()), {

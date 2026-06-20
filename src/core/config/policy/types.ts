@@ -2,12 +2,12 @@
  * Managed / Policy Settings — shared types (Track 20).
  *
  * A single admin-controlled configuration tier that sits ABOVE every existing
- * config layer in BOTH of BrowserX's independent config systems (the agent
+ * config layer in BOTH of WorkX's independent config systems (the agent
  * config and the server config). Platform-native {@link PolicySource}s feed a
  * shared resolver; the resolved policy is overlaid post-merge and a declared
  * subset of keys is frozen against every write surface.
  *
- * Namespacing: BrowserX has two config systems, so a single policy document
+ * Namespacing: WorkX has two config systems, so a single policy document
  * uses fully-qualified dot-paths prefixed by namespace — `agent.*` for the
  * agent config (extension/desktop/server) and `server.*` for the headless
  * server config. {@link applyPolicy} filters to its namespace before applying.

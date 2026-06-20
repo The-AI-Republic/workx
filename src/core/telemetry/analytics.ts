@@ -2,7 +2,7 @@
  * Centralized telemetry core — public API for event logging.
  *
  * Ported from claudy `services/analytics/index.ts` (queue-then-drain +
- * marker-type privacy discipline) and hardened for browserx's hot event
+ * marker-type privacy discipline) and hardened for workx's hot event
  * seam: the pre-attach queue is **bounded** (claudy's is unbounded), and
  * the privacy gate is checked at `logEvent` entry (claudy gates per-backend).
  *
@@ -28,7 +28,7 @@ export type TelemetryMeta_VERIFIED_NOT_CONTENT = never;
 /**
  * Marker type for values intentionally routed to PII-tagged `_PROTO_*` keys.
  *
- * browserx v1 has no privileged sink, so {@link stripProtoFields} is enforced
+ * workx v1 has no privileged sink, so {@link stripProtoFields} is enforced
  * **centrally in {@link logEvent}** before the event reaches *any* sink — a
  * `_PROTO_*` key can never leave the core. The marker + strip are kept as the
  * seam for a future privileged-sink split; today they are a belt-and-braces

@@ -1,6 +1,6 @@
 /**
  * Chrome extension background service worker
- * Central coordinator for the Browserx agent
+ * Central coordinator for the WorkX agent
  *
  * Feature 015: Multi-agent instances
  * - Replaced singleton agent with AgentRegistry
@@ -1372,20 +1372,20 @@ function setupChromeListeners(): void {
  */
 function setupContextMenus(): void {
   chrome.contextMenus.create({
-    id: 'browserx-explain',
-    title: t('Explain with Browserx'),
+    id: 'workx-explain',
+    title: t('Explain with WorkX'),
     contexts: ['selection'],
   });
 
   chrome.contextMenus.create({
-    id: 'browserx-improve',
-    title: t('Improve with Browserx'),
+    id: 'workx-improve',
+    title: t('Improve with WorkX'),
     contexts: ['selection'],
   });
 
   chrome.contextMenus.create({
-    id: 'browserx-extract',
-    title: t('Extract data with Browserx'),
+    id: 'workx-extract',
+    title: t('Extract data with WorkX'),
     contexts: ['page', 'frame'],
   });
 }
@@ -1460,7 +1460,7 @@ async function handleContextMenuClick(
   };
 
   switch (info.menuItemId) {
-    case 'browserx-explain':
+    case 'workx-explain':
       if (info.selectionText) {
         submission.op = {
           type: 'UserInput',
@@ -1474,7 +1474,7 @@ async function handleContextMenuClick(
       }
       break;
 
-    case 'browserx-improve':
+    case 'workx-improve':
       if (info.selectionText) {
         submission.op = {
           type: 'UserInput',
@@ -1488,7 +1488,7 @@ async function handleContextMenuClick(
       }
       break;
 
-    case 'browserx-extract':
+    case 'workx-extract':
       submission.op = {
         type: 'UserInput',
         items: [

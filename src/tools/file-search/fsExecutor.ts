@@ -32,7 +32,7 @@ export type WriteOutcome =
 
 export class FsUnsupportedPlatformError extends Error {
   constructor() {
-    super('Code-mode file tools are available on the Apple Pi desktop app only.');
+    super('Code-mode file tools are available on the WorkX desktop app only.');
     this.name = 'FsUnsupportedPlatformError';
   }
 }

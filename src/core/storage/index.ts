@@ -141,7 +141,7 @@ export async function createCredentialStore(): Promise<CredentialStore> {
       const host = getDesktopRuntimeHost();
       return new ControlFrameCredentialStore(
         getDesktopRuntimeControlBridge().keychain,
-        host.keychainServicePrefix ?? 'applepi',
+        host.keychainServicePrefix ?? 'workx',
       );
     }
     const { getDataDir } = await import('@/server/config/server-config');

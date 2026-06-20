@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resolveAuthConfig } from '../authConfig';
 
 const ENV_KEYS = [
-  'APPLEPI_AUTH_BASE_URL',
-  'APPLEPI_HOME_PAGE_BASE_URL',
+  'WORKX_AUTH_BASE_URL',
+  'WORKX_HOME_PAGE_BASE_URL',
   'VITE_AUTH_BASE_URL',
   'VITE_HOME_PAGE_BASE_URL',
   'VITE_AUTH_COOKIE_DOMAIN',
@@ -20,7 +20,7 @@ const ENV_KEYS = [
   'VITE_AUTH_PROFILE_PATH',
   'VITE_AUTH_USER_CENTER_PATH',
   'VITE_AUTH_PRICING_PATH',
-  'APPLEPI_AUTH_DESKTOP_SESSION_PATH',
+  'WORKX_AUTH_DESKTOP_SESSION_PATH',
 ] as const;
 
 const originalEnv = new Map<string, string | undefined>();
@@ -119,7 +119,7 @@ describe('resolveAuthConfig', () => {
   });
 
   it('prefers runtime route aliases over VITE route values', () => {
-    process.env.APPLEPI_AUTH_DESKTOP_SESSION_PATH = '/runtime/session';
+    process.env.WORKX_AUTH_DESKTOP_SESSION_PATH = '/runtime/session';
     process.env.VITE_AUTH_DESKTOP_SESSION_PATH = '/vite/session';
 
     expect(resolveAuthConfig().routes.desktopSession).toBe('/runtime/session');

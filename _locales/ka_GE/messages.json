@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "საერთო AI აგენტი ბრაუზერში სამუშაო დავალებებისთვის"
@@ -177,7 +177,7 @@
     "message": "ყოველთვის ნათელი"
   },
   "Apple_Pi_Your_personal_AI_Alpha": {
-    "message": "Apple Pi: თქვენი პერსონალური AI (Alpha)"
+    "message": "WorkX: თქვენი პერსონალური AI (Alpha)"
   },
   "Approval_Safety": {
     "message": "დამტკიცება & უსაფრთხოება"
@@ -219,8 +219,8 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "ვთხოვოთ Browserx-ს, რომ სტრუქტურირებული მონაცემები ნებისმიერი ვებგვერდიდან გამოვიყვანოს"
+  "Ask_WorkX_to_extract_structured_data__88fc": {
+    "message": "ვთხოვოთ WorkX-ს, რომ სტრუქტურირებული მონაცემები ნებისმიერი ვებგვერდიდან გამოვიყვანოს"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "მოთხოვნა საშუალო-რისკის და უფრო მაღალი (რისკი > 30). რეკომენდებულია უმეტეს მომხმარებლებისთვის."
@@ -309,14 +309,11 @@
   "Browser_automation_tool_toggles": {
     "message": "ბრაუზერის ავტომატიზაციის ხელსაწყოების გადამრთველები"
   },
-  "BrowserX": {
-    "message": "BrowserX"
+  "WorkX": {
+    "message": "WorkX"
   },
-  "Browserx": {
-    "message": "Browserx"
-  },
-  "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+  "WorkX_Alpha": {
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "CWD:"
@@ -385,8 +382,8 @@
   "Clear_search": {
     "message": "ძიების გასუფთავება"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "დააჭირეთ Browserx-ის ხატულას თქვენი ხელსაწყოთა პანელში ან დააჭირეთ Alt+Shift+C"
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
+    "message": "დააჭირეთ WorkX-ის ხატულას თქვენი ხელსაწყოთა პანელში ან დააჭირეთ Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "დააწკაპეთ შესვლის გაუქმებისთვის"
@@ -676,8 +673,8 @@
   "Enable_PIN_Protection": {
     "message": "PIN-განაცვის ჩართვა"
   },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": "ავტო-შეერთების ჩართვა, როდესაც browserx იწყება"
+  "Enable_auto_connect_when_workx_starts": {
+    "message": "ავტო-შეერთების ჩართვა, როდესაც WorkX იწყება"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "ქეშის ჩართვა წარმადობის გასაუმჯობესებლად ხშირად გამოყენებული მონაცემების შენახვით"
@@ -733,8 +730,8 @@
   "Explain_this_info_selectionText": {
     "message": "განმარტეთ ეს: ${info.selectionText}"
   },
-  "Explain_with_Browserx": {
-    "message": "განმარტება Browserx-ით"
+  "Explain_with_WorkX": {
+    "message": "განმარტება WorkX-ით"
   },
   "Export": {
     "message": "გატანა"
@@ -760,8 +757,8 @@
   "Extract_Data": {
     "message": "მონაცემების ამოღება:"
   },
-  "Extract_data_with_Browserx": {
-    "message": "მონაცემების გამოღება Browserx-ით"
+  "Extract_data_with_WorkX": {
+    "message": "მონაცემების გამოღება WorkX-ით"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "გვერდებიდან კონკრეტული მონაცემთა შაბლონების ამოღება"
@@ -955,8 +952,8 @@
   "Improve_this_text_info_selectionText": {
     "message": "გაუმჯობესეთ ეს ტექსტი: ${info.selectionText}"
   },
-  "Improve_with_Browserx": {
-    "message": "გაუმჯობესეთ Browserx-ით"
+  "Improve_with_WorkX": {
+    "message": "გაუმჯობესეთ WorkX-ით"
   },
   "In": {
     "message": "შიგნით:"
@@ -1547,7 +1544,7 @@
     "message": "ხელახლა ცდა"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "ნებისმიერ ტექსტზე მარჯვენა ღილაკით დააწკაპუნეთ, რომ Browserx-ით განმარტოთ ან გააუმჯობესოთ იგი."
+    "message": "ნებისმიერ ტექსტზე მარჯვენა ღილაკით დააწკაპუნეთ, რომ WorkX-ით განმარტოთ ან გააუმჯობესოთ იგი."
   },
   "Risk_Score": {
     "message": "რისკის ქულა:"
@@ -2041,8 +2038,8 @@
   "Web_Search": {
     "message": "ვებ‑ძიება"
   },
-  "Welcome_to_Browserx": {
-    "message": "მოგესალმებით Browserx-ში"
+  "Welcome_to_WorkX": {
+    "message": "მოგესალმებით WorkX-ში"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "შეიძლება თუ არა სანდბოქსის ბრძანებებს ქსელთან წვდომა"
@@ -2092,8 +2089,8 @@
   "available": {
     "message": "ხელმისაწვდომი"
   },
-  "browserx": {
-    "message": "browserx"
+  "workx": {
+    "message": "WorkX"
   },
   "cached": {
     "message": "ქეშირებული"
