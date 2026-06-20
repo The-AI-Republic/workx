@@ -98,7 +98,7 @@ A user on the bound desktop app delegates a resource-heavy task to a remote head
 
 A maintainer adds a runtime capability once and it is available across desktop, sidecar, and server, without re-implementing the init dance per platform.
 
-**Why this priority**: Maintainability. `DesktopAgentBootstrap` / `ServerAgentBootstrap` / `PiRuntimeBootstrap` triplicate the same sequence; divergence is a recurring bug source. Pure refactor — no user-visible behavior change.
+**Why this priority**: Maintainability. `DesktopAgentBootstrap` / `ServerAgentBootstrap` / `WorkXRuntimeBootstrap` triplicate the same sequence; divergence is a recurring bug source. Pure refactor — no user-visible behavior change.
 
 **Independent Test**: A representative runtime change (e.g., a new shared tool registration) is made once in the unified bootstrap and verified present in all three carriers.
 
@@ -176,7 +176,7 @@ This **confirms D4** (single-tenant appliance). Multi-user would need a principa
 - **FR-4**: The server MUST optionally serve the `web` bundle; the served UI MUST connect back to the same origin's WS and authenticate (loopback `none` or `token`).
 - **FR-5**: The same `web` bundle MUST support a configurable remote runtime URL (standalone deploy / desktop-pointed-remote) without a rebuild.
 - **FR-6**: A headless `A2AServer` endpoint MUST be implemented (agent card + `message/send` → the instance's `RepublicAgent`/`ToolRegistry`) such that the existing desktop A2A client can connect and delegate with no desktop architectural change.
-- **FR-7**: `DesktopAgentBootstrap` / `ServerAgentBootstrap` / `PiRuntimeBootstrap` MUST be unified into one `RuntimeBootstrap` + thin carrier + optional headless layers, with no behavior change to existing platforms.
+- **FR-7**: `DesktopAgentBootstrap` / `ServerAgentBootstrap` / `WorkXRuntimeBootstrap` MUST be unified into one `RuntimeBootstrap` + thin carrier + optional headless layers, with no behavior change to existing platforms.
 - **NFR-1**: Single-tenant only; no requirement to isolate multiple end-users (D4).
 - **NFR-2**: Existing extension/desktop behavior MUST be unchanged by every phase (additive only).
 - **NFR-3**: Existing third-party `@workx/ws-server` method-RPC clients MUST keep working (UI uses the same protocol; no breaking protocol changes).
