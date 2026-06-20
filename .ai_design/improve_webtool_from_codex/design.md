@@ -1,10 +1,10 @@
-# Improving workx Web-Operation Tools — Lessons from the OpenAI Codex Chrome Extension
+# Improving WorkX Web-Operation Tools — Lessons from the OpenAI Codex Chrome Extension
 
 **Status:** Reviewed — ready to implement (v2)
 **Date:** 2026-06-12 (v1 analysis; v2 design review same day)
 **Sources analyzed:**
 - OpenAI Codex Chrome extension v1.1.5 (store build, deobfuscated). Line references in this doc point to the prettified bundles (`background.pretty.js` ~7,100 lines, `codex-content.pretty.js` ~1,350 lines) produced with `js-beautify` from `/Users/irichard/Downloads/1.1.5_0/`.
-- workx extension source at HEAD (`37a092dd`).
+- WorkX extension source at HEAD (`37a092dd`).
 
 ---
 
@@ -12,7 +12,7 @@
 
 Codex's extension and ours solve the same problem — letting an LLM agent operate Chrome tabs — with **opposite architectures**:
 
-| | **Codex** | **workx** |
+| | **Codex** | **WorkX** |
 |---|---|---|
 | Intelligence location | Local CLI process; extension is a thin bridge | Inside the extension (tools, DOM serializer, agent loop) |
 | Transport | Native messaging (`com.openai.codexextension`), JSON-RPC 2.0 | In-process tool calls |
@@ -20,7 +20,7 @@ Codex's extension and ours solve the same problem — letting an LLM agent opera
 | Page reading | None in extension (CLI drives `DOMSnapshot`/`Page.captureScreenshot` itself over the passthrough) | `DomService` builds VirtualDOM from `DOM.getDocument` + `Accessibility.getFullAXTree` + `DOMSnapshot.captureSnapshot`, serialized for the LLM |
 | Events | All `chrome.debugger.onEvent` CDP events + download state changes pushed to the CLI (bg:6984) | Pull-only; no event push into agent loop |
 
-We should **not** copy the thin-bridge architecture — being self-contained is a workx product feature. But Codex's extension is production-hardened in exactly the layer where we are weakest: **debugger lifecycle, input dispatch correctness, viewport determinism, tab ownership/cleanup, and overlay robustness**. This doc enumerates 10 concrete improvements, each with their implementation details and a ready-to-implement plan for ours.
+We should **not** copy the thin-bridge architecture — being self-contained is a WorkX product feature. But Codex's extension is production-hardened in exactly the layer where we are weakest: **debugger lifecycle, input dispatch correctness, viewport determinism, tab ownership/cleanup, and overlay robustness**. This doc enumerates 10 concrete improvements, each with their implementation details and a ready-to-implement plan for ours.
 
 Priority summary (details in §4):
 
@@ -45,7 +45,7 @@ Every claim in §3 was re-verified against the code during review. Results, corr
 - **Duplicate service trees:** `src/tools/screenshot/{ScreenshotService,CoordinateActionService}.ts` and `src/tools/PageVisionTool.ts` are near-copies of the `src/extension/tools/*` versions, and `src/tools/PageVisionTool.ts:255-376` calls its own tree's `forTab()` — both trees attach `chrome.debugger` independently. **Decision:** the registry is defined by interface in `src/core/tools/browser/` (next to `DebuggerClient.ts`) with the Chrome implementation in `src/extension/tools/browser/`; both tool trees import the same singleton. Consolidating the duplicated trees is desirable but explicitly out of scope here — PR-1 only repoints both trees' attach calls.
 
 **Integration points pinned (replaces the loose references in v1):**
-- *Tab binding:* a workx session binds **one tab at a time** via `Session.setTabId` → `sessionState` (`src/core/Session.ts:1081-1082`, cleared at `:995`); tasks carry `scopedTabIds` and `Session.abortTasksForTab(tabId, reason)` exists (`Session.ts:2310-2313`). The §3.6 lease design is therefore *simpler* than Codex's multi-tab session: lease lifecycle hooks into `setTabId` (claim on bind, release+detach on rebind/clear) and into task completion/abort paths, not into a multi-tab finalize protocol. `finalizeTabs(keep[])`-style multi-tab semantics become relevant only if/when multi-tab sessions ship; the lease store schema below already supports it.
+- *Tab binding:* a WorkX session binds **one tab at a time** via `Session.setTabId` → `sessionState` (`src/core/Session.ts:1081-1082`, cleared at `:995`); tasks carry `scopedTabIds` and `Session.abortTasksForTab(tabId, reason)` exists (`Session.ts:2310-2313`). The §3.6 lease design is therefore *simpler* than Codex's multi-tab session: lease lifecycle hooks into `setTabId` (claim on bind, release+detach on rebind/clear) and into task completion/abort paths, not into a multi-tab finalize protocol. `finalizeTabs(keep[])`-style multi-tab semantics become relevant only if/when multi-tab sessions ship; the lease store schema below already supports it.
 - *Turn-end hook:* `TurnManager` (`src/core/TurnManager.ts`) runs turns; session cleanup at `Session.ts:995` is where leases/debuggers must be released. DownloadWatcher and dialog events (§3.8/§3.9) surface through the existing session event path used by tool progress (`BaseToolOptions.onProgress`) rather than a new bus.
 - *Tool registration:* new `browser_viewport` tool registers in `src/extension/tools/registerExtensionTools.ts` alongside `dom_tool` (`:129`) and `page_vision` (`:304`).
 - *Feature gating:* compile-time flags (`vite.featureFlags.mjs`) are deliberately heavyweight (rebuild-only, registry-synced). **Decision:** behavior switches in this work use `ServiceConfig` runtime options instead — `useContentQuads` (default true, `getBoxModel` fallback), `useLifecycleReadiness` (default true, heuristic fallback), `viewportOverride` (default off except `page_vision` flows).
@@ -128,7 +128,7 @@ with a default of **1280x720** (the viewport tool description, bg:3967, says: "o
 
 ---
 
-## 3. Findings: what Codex does better, and what to change in workx
+## 3. Findings: what Codex does better, and what to change in WorkX
 
 ### 3.1 [P0] Centralize debugger attachment — one registry, per-tab locks, refcounts
 
@@ -232,9 +232,9 @@ class DebuggerSessionRegistry {
 
 **Our current state:** `TabManager` (`src/core/TabManager.ts:28-67`) maintains one global "workx" tab group and closure callbacks; there is no ownership record distinguishing agent-created tabs from user tabs the agent borrowed, no turn-end contract (tools just leave tabs open and debuggers attached — `ScreenshotService`/`CoordinateActionService` never detach), and no persistence, so a service-worker restart forgets which tabs were ours.
 
-**Proposed change (incremental, not a full port — adjusted in review for workx's single-tab session model, §1.5):**
+**Proposed change (incremental, not a full port — adjusted in review for WorkX's single-tab session model, §1.5):**
 
-A workx session binds one tab at a time (`Session.setTabId`, `src/core/Session.ts:1081`), so we don't need Codex's multi-tab finalize protocol yet — but we do need ownership records, guaranteed detach, and stale-state GC. The store schema is multi-tab-ready so multi-tab sessions later only change the callers.
+A WorkX session binds one tab at a time (`Session.setTabId`, `src/core/Session.ts:1081`), so we don't need Codex's multi-tab finalize protocol yet — but we do need ownership records, guaranteed detach, and stale-state GC. The store schema is multi-tab-ready so multi-tab sessions later only change the callers.
 
 1. `TabLeaseStore` (chrome.storage.session): `{ tabId, sessionId, turnId, origin: 'agent'|'user', claimedAt }`. Claim inside `Session.setTabId` (origin `user` when binding an existing tab, `agent` when a tool created it); reject claiming tabs leased to another live session; reject `chrome://`/`chrome-extension://` (we already validate URLs for navigation at `NavigationTool.ts:560+` — extend to claiming).
 2. Per-session `lifecycleQueue` promise chain so claim/release/cleanup don't interleave (Codex `runLifecycle`, bg:6230-6237) — lives next to the lease store, invoked from `Session`.
@@ -293,7 +293,7 @@ Smaller Codex behaviors worth copying:
 
 ## 4. What we already do better (keep, don't regress)
 
-For fairness and to scope the doc: Codex's extension contains **no page-reading intelligence** — no DOM serializer, no a11y-tree fusion, no token-budgeted compaction; all of that lives in their CLI where we can't see it. Things workx should keep:
+For fairness and to scope the doc: Codex's extension contains **no page-reading intelligence** — no DOM serializer, no a11y-tree fusion, no token-budgeted compaction; all of that lives in their CLI where we can't see it. Things WorkX should keep:
 
 - The `DomService` snapshot fusion (DOM tree + per-frame a11y tree + DOMSnapshot paint-order/layout) and the serialization pipeline with filters/simplifiers/compaction metrics — this is the core IP of `browser_dom` v3 and has no counterpart in the Codex extension.
 - The rich `type()` engine (text-anchored `insertAfter/insertBefore/replace/replaceAll`, rich-text editor detection for Quill/Slate/ProseMirror/Lexical, paste-vs-char-by-char strategies, formatting shortcuts) — far beyond `Input.insertText`.
@@ -342,7 +342,7 @@ Phasing: **PR-1** = items 1–3 + 3b. **PR-2** = items 4–6. **PR-3** = 7–8. 
 ## 6. Risks
 
 - **Emulation overrides are user-visible** if the agent operates a tab the user is watching; mitigation in §3.3 (match current CSS viewport, always clear on release; never apply to user-claimed tabs unless a vision flow needs it).
-- **Refcounted detach changes timing** of the Chrome debugger infobar ("workx is debugging this browser") — it will now disappear at turn end rather than lingering; verify the UX and that re-attach latency (~50ms) per turn is acceptable.
+- **Refcounted detach changes timing** of the Chrome debugger infobar ("WorkX is debugging this browser") — it will now disappear at turn end rather than lingering; verify the UX and that re-attach latency (~50ms) per turn is acceptable.
 - **`getContentQuads` migration** changes click coordinates on transformed/inline elements; gate behind a config flag for one release with fallback to `getBoxModel`.
 - **OOPIF attachment** raises the number of debugger targets; Chrome shows one infobar regardless, but cleanup paths must include targets (registry handles via `targetId → tabId` map, mirroring Codex `Fe`).
 
