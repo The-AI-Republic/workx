@@ -127,8 +127,11 @@ mod tests {
 }
 
 fn main() {
+    // Accept both the legacy `applepi://` scheme (kept for backward
+    // compatibility) and the new `workx://` scheme. `applepi` is being
+    // gradually retired; new links should use `workx`.
     fn is_app_deep_link(url: &str) -> bool {
-        url.starts_with("applepi://")
+        url.starts_with("applepi://") || url.starts_with("workx://")
     }
 
     tauri::Builder::default()
@@ -146,7 +149,7 @@ fn main() {
             // Check if any argument looks like our deep link
             for arg in args {
                 if is_app_deep_link(&arg) {
-                    let _ = app.emit("applepi-deeplink", &arg);
+                    let _ = app.emit("workx-deeplink", &arg);
 
                     // Bring the window to focus
                     if let Some(window) = app.get_webview_window("main") {
@@ -170,19 +173,25 @@ fn main() {
                 }
             }
 
-            // Register the deep link protocol handler at runtime where there is no
+            // Register the deep link protocol handlers at runtime where there is no
             // installer-provided desktop entry. On Linux, .deb/.rpm installs already
-            // provide the handler through `/usr/share/applications/ApplePi.desktop`;
-            // runtime registration would add a second user-level `pi-handler.desktop`.
+            // provide the handler through `/usr/share/applications/WorkX.desktop`;
+            // runtime registration would add a second user-level handler.
+            // Both schemes are registered: `applepi` (legacy, kept for backward
+            // compatibility) and `workx` (new canonical scheme).
             #[cfg(windows)]
-            if let Err(e) = app.deep_link().register("applepi") {
-                eprintln!("[Pi] Failed to register deep link handler: {}", e);
+            for scheme in ["applepi", "workx"] {
+                if let Err(e) = app.deep_link().register(scheme) {
+                    eprintln!("[WorkX] Failed to register deep link handler '{}': {}", scheme, e);
+                }
             }
 
             #[cfg(target_os = "linux")]
             if app.env().appimage.is_some() {
-                if let Err(e) = app.deep_link().register("applepi") {
-                    eprintln!("[Pi] Failed to register AppImage deep link handler: {}", e);
+                for scheme in ["applepi", "workx"] {
+                    if let Err(e) = app.deep_link().register(scheme) {
+                        eprintln!("[WorkX] Failed to register AppImage deep link handler '{}': {}", scheme, e);
+                    }
                 }
             }
 
@@ -203,7 +212,7 @@ fn main() {
                     for url in event.urls() {
                         let url_str = url.as_str();
                         if is_app_deep_link(url_str) {
-                            let _ = handle.emit("applepi-deeplink", url_str);
+                            let _ = handle.emit("workx-deeplink", url_str);
                             if let Some(window) = handle.get_webview_window("main") {
                                 let _ = window.show();
                                 let _ = window.set_focus();
@@ -225,7 +234,7 @@ fn main() {
                     let handle2 = app.handle().clone();
                     std::thread::spawn(move || {
                         // Retry emitting the deep link until the frontend has mounted
-                        // its applepi-deeplink listener. The webview must be fully loaded
+                        // its workx-deeplink listener. The webview must be fully loaded
                         // before it can receive events. On a cold start the runtime
                         // sidecar is also spawning in parallel; on slow machines a
                         // larger window catches deeplinks that would otherwise miss.
@@ -246,7 +255,7 @@ fn main() {
                             }
                             for url in &initial {
                                 if is_app_deep_link(url) {
-                                    let _ = handle2.emit("applepi-deeplink", url);
+                                    let _ = handle2.emit("workx-deeplink", url);
                                     if let Some(window) = handle2.get_webview_window("main") {
                                         let _ = window.show();
                                         let _ = window.set_focus();
@@ -260,7 +269,7 @@ fn main() {
                         // is still false (autostart minimized to tray, etc.).
                         for url in &initial {
                             if is_app_deep_link(url) {
-                                let _ = handle2.emit("applepi-deeplink", url);
+                                let _ = handle2.emit("workx-deeplink", url);
                                 if let Some(window) = handle2.get_webview_window("main") {
                                     let _ = window.show();
                                     let _ = window.set_focus();
@@ -273,7 +282,7 @@ fn main() {
             }
             // Create tray menu
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let show = MenuItem::with_id(app, "show", "Open Pi", true, None::<&str>)?;
+            let show = MenuItem::with_id(app, "show", "Open WorkX", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show, &quit])?;
 
             // Detect initial theme

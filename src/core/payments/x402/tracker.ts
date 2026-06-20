@@ -3,7 +3,7 @@
  *
  * Track 18 (USD cost tracking) does not exist in src/, so x402 carries its
  * own self-contained ledger (ported in spirit from claudy). Unlike claudy
- * (single-process CLI), the browserx **server runs concurrent sessions**, so
+ * (single-process CLI), the workx **server runs concurrent sessions**, so
  * the ledger is keyed by `sessionId` — one session's spend never counts
  * against another's cap and `resetX402SessionPayments(sessionId)` (wired into
  * Session.reset()) clears only that conversation. A future Track 18 can

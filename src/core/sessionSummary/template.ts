@@ -4,7 +4,7 @@
  * 10 sections: 8 ported from claudy's session memory template
  * (services/SessionMemory/prompts.ts), with the two coding-centric sections
  * ("Files and Functions", "Codebase and System Documentation") replaced by
- * "Pages Visited" and "Forms Filled / Interactions Performed" since BrowserX
+ * "Pages Visited" and "Forms Filled / Interactions Performed" since WorkX
  * sessions are browser-automation, not code editing.
  *
  * The extractor sub-agent rewrites this file in place each extraction.

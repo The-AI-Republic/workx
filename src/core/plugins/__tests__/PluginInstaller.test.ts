@@ -14,7 +14,7 @@ import type { LoadedPlugin } from '../types';
 
 const CATALOGUE = JSON.stringify({
   name: 'official',
-  owner: { name: 'browserx' },
+  owner: { name: 'workx' },
   plugins: [
     { name: 'gh-workflow', source: { type: 'path', path: '/src/gh' }, version: '0.3.1', dependencies: ['common'] },
     { name: 'common', source: { type: 'path', path: '/src/common' }, version: '1.0.0' },

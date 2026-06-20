@@ -6,7 +6,7 @@
  * @module server/auth/roles
  */
 
-import type { Scope } from '@applepi/ws-server';
+import type { Scope } from '@workx/ws-server';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Roles

@@ -181,7 +181,7 @@
     margin: 0 0 1.5rem 0;
     font-size: 1.5rem;
     font-weight: 600;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .categories-grid {
@@ -200,8 +200,8 @@
     flex-direction: column;
     align-items: flex-start;
     padding: 1.25rem;
-    background: var(--browserx-surface);
-    border: 1px solid var(--browserx-border);
+    background: var(--workx-surface);
+    border: 1px solid var(--workx-border);
     border-radius: 0.5rem;
     cursor: pointer;
     transition: all 0.2s;
@@ -210,8 +210,8 @@
   }
 
   .category-card:hover {
-    background: color-mix(in srgb, var(--browserx-surface) 90%, var(--browserx-text));
-    border-color: var(--browserx-primary);
+    background: color-mix(in srgb, var(--workx-surface) 90%, var(--workx-text));
+    border-color: var(--workx-primary);
     transform: translateY(-2px);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   }
@@ -234,22 +234,22 @@
     height: 24px;
     margin-right: 0.75rem;
     padding: 0.375rem;
-    background: color-mix(in srgb, var(--browserx-primary) 10%, transparent);
+    background: color-mix(in srgb, var(--workx-primary) 10%, transparent);
     border-radius: 0.375rem;
-    color: var(--browserx-primary);
+    color: var(--workx-primary);
   }
 
   .category-label {
     margin: 0;
     font-size: 1.125rem;
     font-weight: 600;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .category-description {
     margin: 0;
     font-size: 0.875rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
     line-height: 1.5;
   }
 </style>

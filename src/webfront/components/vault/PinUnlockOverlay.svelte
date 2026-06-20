@@ -178,7 +178,7 @@
   .unlock-overlay {
     position: fixed;
     inset: 0;
-    background: var(--browserx-background, #000);
+    background: var(--workx-background, #000);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -195,7 +195,7 @@
   }
 
   .lock-icon {
-    color: var(--browserx-primary, #00ff00);
+    color: var(--workx-primary, #00ff00);
     margin-bottom: 1rem;
     opacity: 0.8;
   }
@@ -203,14 +203,14 @@
   .unlock-title {
     margin: 0 0 0.5rem;
     font-size: 1.25rem;
-    color: var(--browserx-text, #00ff00);
+    color: var(--workx-text, #00ff00);
     text-align: center;
   }
 
   .unlock-description {
     margin: 0 0 1.5rem;
     font-size: 0.85rem;
-    color: var(--browserx-text-secondary, #00cc00);
+    color: var(--workx-text-secondary, #00cc00);
     text-align: center;
     line-height: 1.4;
   }
@@ -233,27 +233,27 @@
     font-size: 1.5rem;
     letter-spacing: 0.4em;
     text-align: center;
-    background: var(--browserx-surface, #0a0a0a);
-    border: 1px solid var(--browserx-border, #00cc00);
+    background: var(--workx-surface, #0a0a0a);
+    border: 1px solid var(--workx-border, #00cc00);
     border-radius: 0.5rem;
-    color: var(--browserx-text, #00ff00);
+    color: var(--workx-text, #00ff00);
     box-sizing: border-box;
   }
 
   .pin-field input:focus {
     outline: none;
-    border-color: var(--browserx-primary, #00ff00);
+    border-color: var(--workx-primary, #00ff00);
   }
 
   .unlock-error {
-    color: var(--browserx-error, #ff0000);
+    color: var(--workx-error, #ff0000);
     font-size: 0.8rem;
     margin-bottom: 0.75rem;
     text-align: center;
   }
 
   .lockout-message {
-    color: var(--browserx-warning, #ffff00);
+    color: var(--workx-warning, #ffff00);
     font-size: 0.9rem;
     text-align: center;
     margin-bottom: 1rem;
@@ -274,8 +274,8 @@
     font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
-    background: var(--browserx-primary, #00ff00);
-    color: var(--browserx-background, #000);
+    background: var(--workx-primary, #00ff00);
+    color: var(--workx-background, #000);
     border: none;
   }
 
@@ -287,7 +287,7 @@
   .btn-forgot {
     background: none;
     border: none;
-    color: var(--browserx-text-secondary, #00cc00);
+    color: var(--workx-text-secondary, #00cc00);
     font-size: 0.8rem;
     cursor: pointer;
     margin-top: 1rem;
@@ -295,7 +295,7 @@
   }
 
   .btn-forgot:hover {
-    color: var(--browserx-text, #00ff00);
+    color: var(--workx-text, #00ff00);
     text-decoration: underline;
   }
 
@@ -307,7 +307,7 @@
   .forgot-warning {
     margin: 0 0 1rem;
     font-size: 0.85rem;
-    color: var(--browserx-error, #ff0000);
+    color: var(--workx-error, #ff0000);
     line-height: 1.4;
   }
 
@@ -322,22 +322,22 @@
     border-radius: 0.375rem;
     font-size: 0.85rem;
     cursor: pointer;
-    border: 1px solid var(--browserx-border, #00cc00);
+    border: 1px solid var(--workx-border, #00cc00);
   }
 
   .btn-cancel {
     background: transparent;
-    color: var(--browserx-text-secondary, #00cc00);
+    color: var(--workx-text-secondary, #00cc00);
   }
 
   .btn-cancel:hover:not(:disabled) {
-    background: var(--browserx-surface, #0a0a0a);
+    background: var(--workx-surface, #0a0a0a);
   }
 
   .btn-danger {
     background: transparent;
-    color: var(--browserx-error, #ff0000);
-    border-color: var(--browserx-error, #ff0000);
+    color: var(--workx-error, #ff0000);
+    border-color: var(--workx-error, #ff0000);
   }
 
   .btn-danger:hover:not(:disabled) {

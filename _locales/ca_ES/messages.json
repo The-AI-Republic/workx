@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "Agent d'IA general al navegador per a tasques de treball"
@@ -177,7 +177,7 @@
     "message": "Sempre clar"
   },
   "Apple_Pi_Your_personal_AI_Alpha": {
-    "message": "Apple Pi: La teva IA personal (Alpha)"
+    "message": "WorkX: La teva IA personal (Alpha)"
   },
   "Approval_Safety": {
     "message": "Aprovació i seguretat"
@@ -219,8 +219,8 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Demaneu a Browserx que extregui dades estructurades de qualsevol pàgina web"
+  "Ask_WorkX_to_extract_structured_data__88fc": {
+    "message": "Demaneu a WorkX que extregui dades estructurades de qualsevol pàgina web"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Demana per a riscos mitjans i superiors (risc > 30). Recomanat per a la majoria d'usuaris."
@@ -309,14 +309,11 @@
   "Browser_automation_tool_toggles": {
     "message": "Commutadors d'eines d'automatització del navegador"
   },
-  "BrowserX": {
-    "message": "BrowserX"
+  "WorkX": {
+    "message": "WorkX"
   },
-  "Browserx": {
-    "message": "Browserx"
-  },
-  "Browserx_Alpha": {
-    "message": "Browserx (Alfa)"
+  "WorkX_Alpha": {
+    "message": "WorkX (Alfa)"
   },
   "CWD": {
     "message": "CWD:"
@@ -385,8 +382,8 @@
   "Clear_search": {
     "message": "Neteja la cerca"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Feu clic a la icona de Browserx a la barra d'eines o premeu Alt+Maj+C"
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
+    "message": "Feu clic a la icona de WorkX a la barra d'eines o premeu Alt+Maj+C"
   },
   "Click_to_cancel_login": {
     "message": "Feu clic per cancel·lar l'inici de sessió"
@@ -676,8 +673,8 @@
   "Enable_PIN_Protection": {
     "message": "Activar protecció amb PIN"
   },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": "Activa la connexió automàtica en iniciar browserx"
+  "Enable_auto_connect_when_workx_starts": {
+    "message": "Activa la connexió automàtica en iniciar WorkX"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Activa la memòria cau per millorar el rendiment emmagatzemant dades d'accés freqüent"
@@ -733,8 +730,8 @@
   "Explain_this_info_selectionText": {
     "message": "Explica això: ${info.selectionText}"
   },
-  "Explain_with_Browserx": {
-    "message": "Explica amb Browserx"
+  "Explain_with_WorkX": {
+    "message": "Explica amb WorkX"
   },
   "Export": {
     "message": "Exportar"
@@ -760,8 +757,8 @@
   "Extract_Data": {
     "message": "Extreu dades:"
   },
-  "Extract_data_with_Browserx": {
-    "message": "Extreu dades amb Browserx"
+  "Extract_data_with_WorkX": {
+    "message": "Extreu dades amb WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Extreu patrons de dades específics de les pàgines"
@@ -955,8 +952,8 @@
   "Improve_this_text_info_selectionText": {
     "message": "Millora aquest text: ${info.selectionText}"
   },
-  "Improve_with_Browserx": {
-    "message": "Millora amb Browserx"
+  "Improve_with_WorkX": {
+    "message": "Millora amb WorkX"
   },
   "In": {
     "message": "A:"
@@ -1547,7 +1544,7 @@
     "message": "Reintentant"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Fes clic dret a qualsevol text per explicar-lo o millorar-lo amb Browserx"
+    "message": "Fes clic dret a qualsevol text per explicar-lo o millorar-lo amb WorkX"
   },
   "Risk_Score": {
     "message": "Puntuació de risc:"
@@ -2041,8 +2038,8 @@
   "Web_Search": {
     "message": "Cerca web"
   },
-  "Welcome_to_Browserx": {
-    "message": "Benvingut a Browserx"
+  "Welcome_to_WorkX": {
+    "message": "Benvingut a WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Si les ordres aïllades poden accedir a la xarxa"
@@ -2092,8 +2089,8 @@
   "available": {
     "message": "disponible"
   },
-  "browserx": {
-    "message": "browserx"
+  "workx": {
+    "message": "WorkX"
   },
   "cached": {
     "message": "en memòria cau"

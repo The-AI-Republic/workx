@@ -3,7 +3,7 @@
  *
  * Ported from claudy's `readFileState` (utils/fileStateCache.ts). This is the
  * ONLY state shared between read_file and edit_file/write_file, and the entire
- * trust mechanism of code-mode editing. See .ai_design/applepi_file_tools.
+ * trust mechanism of code-mode editing. See .ai_design/workx_file_tools.
  *
  * Invariants (design §6):
  *  - R2: keyed by normalized absolute path; one instance per Session.

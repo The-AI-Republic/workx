@@ -46,7 +46,7 @@ export const nodeGitRunner: GitRunner = (args, opts): Promise<GitRunResult> => {
 };
 
 export async function nodeMkTempDir(): Promise<string> {
-  return fs.mkdtemp(path.join(os.tmpdir(), 'browserx-plugin-'));
+  return fs.mkdtemp(path.join(os.tmpdir(), 'workx-plugin-'));
 }
 
 export async function nodeWalkFiles(root: string): Promise<string[]> {

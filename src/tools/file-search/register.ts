@@ -4,7 +4,7 @@
  * Read-only ⇒ each is registered with a StaticRiskAssessor(0) so the
  * approval gate auto-approves them (no user prompt), exactly like the
  * read-only terminal commands. Called from the desktop and server tool
- * registrars; never registered for the browserx extension (no FS/process).
+ * registrars; never registered for the workx extension (no FS/process).
  */
 
 import type { ToolRegistry } from '../ToolRegistry';

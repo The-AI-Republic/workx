@@ -368,9 +368,9 @@ export async function lock(): Promise<void> {
 
 /** Reset vault — clears all credentials and metadata (forgot PIN) */
 export async function reset(): Promise<void> {
-  // Clear all browserx-credential:* keys
+  // Clear all workx-credential:* keys
   const allKeys = await chromeStorageGetAll();
-  const credentialKeys = Object.keys(allKeys).filter(k => k.startsWith('browserx-credential:'));
+  const credentialKeys = Object.keys(allKeys).filter(k => k.startsWith('workx-credential:'));
   if (credentialKeys.length > 0) {
     await chromeStorageRemove(credentialKeys);
   }

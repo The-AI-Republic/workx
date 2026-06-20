@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock dependencies before importing the module under test
-vi.mock('@applepi/ws-server', () => {
+vi.mock('@workx/ws-server', () => {
   const handlers = new Map<string, Function>();
   return {
     registerMethodHandler: vi.fn((method: string, handler: Function) => {
@@ -22,10 +22,10 @@ vi.mock('../../config/server-config', () => ({
 }));
 
 import { registerCredentialsHandlers, type CredentialHandlerDeps } from '../credentials';
-import { getMethodHandler } from '@applepi/ws-server';
+import { getMethodHandler } from '@workx/ws-server';
 import { getConnectionAuth } from '../../auth/authorize';
 import { getServerConfig } from '../../config/server-config';
-import type { MethodContext } from '@applepi/ws-server';
+import type { MethodContext } from '@workx/ws-server';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -213,7 +213,7 @@ describe('credentials handlers', () => {
     it('handlers are not registered before registerCredentialsHandlers is called', async () => {
       vi.resetModules();
 
-      vi.doMock('@applepi/ws-server', () => {
+      vi.doMock('@workx/ws-server', () => {
         const handlers = new Map<string, Function>();
         return {
           registerMethodHandler: vi.fn((method: string, handler: Function) => {
@@ -233,7 +233,7 @@ describe('credentials handlers', () => {
 
       // Import fresh module — no handlers registered yet
       await import('../credentials');
-      const { getMethodHandler: freshGet } = await import('@applepi/ws-server');
+      const { getMethodHandler: freshGet } = await import('@workx/ws-server');
 
       expect(freshGet('credentials.list')).toBeUndefined();
       expect(freshGet('credentials.set')).toBeUndefined();
@@ -243,7 +243,7 @@ describe('credentials handlers', () => {
     it('throws "not initialized" when deps are forced to null', async () => {
       vi.resetModules();
 
-      vi.doMock('@applepi/ws-server', () => {
+      vi.doMock('@workx/ws-server', () => {
         const handlers = new Map<string, Function>();
         return {
           registerMethodHandler: vi.fn((method: string, handler: Function) => {
@@ -262,7 +262,7 @@ describe('credentials handlers', () => {
       }));
 
       const { registerCredentialsHandlers: freshRegister } = await import('../credentials');
-      const { getMethodHandler: freshGet } = await import('@applepi/ws-server');
+      const { getMethodHandler: freshGet } = await import('@workx/ws-server');
 
       // Register with null deps (cast) to get handler refs while _deps stays null
       freshRegister(null as any);

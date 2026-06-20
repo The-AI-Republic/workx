@@ -98,7 +98,7 @@
   }
 
   .dialog-content {
-    background: var(--browserx-background);
+    background: var(--workx-background);
     border-radius: 0.5rem;
     padding: 1.5rem;
     max-width: 400px;
@@ -126,13 +126,13 @@
     margin: 0 0 0.75rem 0;
     font-size: 1.25rem;
     font-weight: 600;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .dialog-message {
     margin: 0 0 1.5rem 0;
     font-size: 0.9375rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
     line-height: 1.5;
   }
 
@@ -153,21 +153,21 @@
   }
 
   .btn-danger {
-    background: var(--browserx-error);
+    background: var(--workx-error);
     color: white;
   }
 
   .btn-danger:hover {
-    background: color-mix(in srgb, var(--browserx-error) 90%, black);
+    background: color-mix(in srgb, var(--workx-error) 90%, black);
   }
 
   .btn-secondary {
-    background: var(--browserx-surface);
-    color: var(--browserx-text);
-    border: 1px solid var(--browserx-border);
+    background: var(--workx-surface);
+    color: var(--workx-text);
+    border: 1px solid var(--workx-border);
   }
 
   .btn-secondary:hover {
-    background: color-mix(in srgb, var(--browserx-surface) 80%, var(--browserx-text));
+    background: color-mix(in srgb, var(--workx-surface) 80%, var(--workx-text));
   }
 </style>

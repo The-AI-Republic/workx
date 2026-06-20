@@ -23,7 +23,7 @@ describe('ReadPersistedResultTool', () => {
   let tool: ReadPersistedResultTool;
 
   beforeEach(async () => {
-    parent = await mkdtemp(join(tmpdir(), 'browserx-rpr-'));
+    parent = await mkdtemp(join(tmpdir(), 'workx-rpr-'));
     rootDir = join(parent, 'root');
     await mkdir(rootDir, { recursive: true });
 

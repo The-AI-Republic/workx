@@ -5,7 +5,7 @@ let overrideProfile: RuntimeProfile | null = null;
 export function setRuntimeProfile(profile: RuntimeProfile): void {
   overrideProfile = profile;
   if (typeof process !== 'undefined') {
-    process.env.APPLEPI_RUNTIME_PROFILE = profile;
+    process.env.WORKX_RUNTIME_PROFILE = profile;
   }
 }
 
@@ -13,7 +13,7 @@ export function getRuntimeProfile(): RuntimeProfile {
   if (overrideProfile) return overrideProfile;
 
   if (typeof process !== 'undefined') {
-    const envProfile = process.env.APPLEPI_RUNTIME_PROFILE;
+    const envProfile = process.env.WORKX_RUNTIME_PROFILE;
     if (
       envProfile === 'extension' ||
       envProfile === 'desktop-webview' ||

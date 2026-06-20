@@ -1,10 +1,12 @@
+import { resolveAuthConfig } from './authConfig';
+
 export type RuntimeUrlSource = 'env' | 'default';
 
 export interface RuntimeUrlConfig {
-  homePageBaseUrl: string;
+  homePageBaseUrl: string | null;
   backendApiBaseUrl: string | null;
   llmApiUrl: string | null;
-  deeplinkRedirectUrl: 'applepi://auth/callback';
+  deeplinkRedirectUrl: 'workx://auth/callback';
   source: {
     homePageBaseUrl: RuntimeUrlSource;
     backendApiBaseUrl: RuntimeUrlSource;
@@ -30,32 +32,26 @@ function firstNonEmpty(...values: Array<string | undefined>): string | undefined
 export function resolveRuntimeUrls(): RuntimeUrlConfig {
   const env = processEnv();
   const vite = viteEnv();
+  const authConfig = resolveAuthConfig();
 
-  const homeFromEnv = firstNonEmpty(
-    env.APPLEPI_HOME_PAGE_BASE_URL,
-    env.VITE_HOME_PAGE_BASE_URL,
-    vite.VITE_HOME_PAGE_BASE_URL,
-  );
   const backendFromEnv = firstNonEmpty(
-    env.APPLEPI_BACKEND_API_BASE_URL,
+    env.WORKX_BACKEND_API_BASE_URL,
     env.VITE_BACKEND_API_BASE_URL,
     vite.VITE_BACKEND_API_BASE_URL,
   );
 
-  const homePageBaseUrl = homeFromEnv ?? 'https://airepublic.com';
   const backendApiBaseUrl = backendFromEnv ?? null;
 
   return {
-    homePageBaseUrl,
+    homePageBaseUrl: authConfig.authBaseUrl,
     backendApiBaseUrl,
     llmApiUrl: backendApiBaseUrl ? `${backendApiBaseUrl}/api/llm` : '/api/llm',
-    deeplinkRedirectUrl: 'applepi://auth/callback',
+    deeplinkRedirectUrl: 'workx://auth/callback',
     source: {
-      homePageBaseUrl: homeFromEnv ? 'env' : 'default',
+      homePageBaseUrl: authConfig.source.authBaseUrl,
       backendApiBaseUrl: backendFromEnv ? 'env' : 'default',
       llmApiUrl: backendFromEnv ? 'env' : 'default',
       deeplinkRedirectUrl: 'default',
     },
   };
 }
-

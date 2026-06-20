@@ -246,7 +246,7 @@ function mergeToolPolicy(base: ShadowToolPolicy, override?: ShadowToolPolicy): S
 }
 
 function defaultSystemPrompt(kind: string): string {
-  return `You are an internal BrowserX shadow agent for ${kind}. Complete only the delegated runtime task and return concise output.`;
+  return `You are an internal WorkX shadow agent for ${kind}. Complete only the delegated runtime task and return concise output.`;
 }
 
 /**

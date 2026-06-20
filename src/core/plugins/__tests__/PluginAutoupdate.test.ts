@@ -21,9 +21,9 @@ const SHA_NEW = 'b'.repeat(40);
 function catalogue(sha: string, force = false) {
   return JSON.stringify({
     name: 'official',
-    owner: { name: 'browserx' },
+    owner: { name: 'workx' },
     forceRemoveDeletedPlugins: force,
-    plugins: [{ name: 'gh', source: { type: 'github', repo: 'browserx/gh', sha } }],
+    plugins: [{ name: 'gh', source: { type: 'github', repo: 'workx/gh', sha } }],
   });
 }
 

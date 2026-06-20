@@ -17,7 +17,7 @@ import type { HooksConfig, HookEvent, HookCommand, HookMatcherEntry } from '@/co
  *
  * Rationale for the value:
  * - Legitimate skills typically declare 1–10 hooks (one per matched tool).
- * - A skill with one hook per tool name across BrowserX's ~20 first-party
+ * - A skill with one hook per tool name across WorkX's ~20 first-party
  *   tools, plus a few generic matchers, comfortably fits under 50.
  * - Setting the cap at 100 leaves 2× headroom for plugin-rich setups while
  *   still bounding worst-case memory + per-hook-event dispatch cost.

@@ -7,8 +7,8 @@
  * @module server/connection/watchdog
  */
 
-import { makeEvent } from '@applepi/ws-server';
-import { WS_CLOSE } from '@applepi/ws-server';
+import { makeEvent } from '@workx/ws-server';
+import { WS_CLOSE } from '@workx/ws-server';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Constants

@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "কাজের জন্য সাধারণ ব্রাউজার-ভিত্তিক AI এজেন্ট"
@@ -177,7 +177,7 @@
     "message": "সর্বদা হালকা"
   },
   "Apple_Pi_Your_personal_AI_Alpha": {
-    "message": "Apple Pi: আপনার ব্যক্তিগত AI (Alpha)"
+    "message": "WorkX: আপনার ব্যক্তিগত AI (Alpha)"
   },
   "Approval_Safety": {
     "message": "অনুমোদন ও নিরাপত্তা"
@@ -219,8 +219,8 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Browserx-কে যেকোনো ওয়েবপেজ থেকে কাঠামোবদ্ধ ডেটা বের করতে বলুন"
+  "Ask_WorkX_to_extract_structured_data__88fc": {
+    "message": "WorkX-কে যেকোনো ওয়েবপেজ থেকে কাঠামোবদ্ধ ডেটা বের করতে বলুন"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "মাঝারি-ঝুঁকি এবং তার উপরে (ঝুঁকি > 30) জিজ্ঞাসা করুন। অধিকাংশ ব্যবহারকারীর জন্য সুপারিশ করা হয়।"
@@ -309,14 +309,11 @@
   "Browser_automation_tool_toggles": {
     "message": "ব্রাউজার অটোমেশন টুল টগলস"
   },
-  "BrowserX": {
-    "message": "BrowserX"
+  "WorkX": {
+    "message": "WorkX"
   },
-  "Browserx": {
-    "message": "Browserx"
-  },
-  "Browserx_Alpha": {
-    "message": "Browserx (আলফা)"
+  "WorkX_Alpha": {
+    "message": "WorkX (আলফা)"
   },
   "CWD": {
     "message": "CWD:"
@@ -385,8 +382,8 @@
   "Clear_search": {
     "message": "অনুসন্ধান পরিষ্কার করুন"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "আপনার টুলবারে Browserx আইকন ক্লিক করুন অথবা Alt+Shift+C চাপুন"
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
+    "message": "আপনার টুলবারে WorkX আইকন ক্লিক করুন অথবা Alt+Shift+C চাপুন"
   },
   "Click_to_cancel_login": {
     "message": "লগইন বাতিল করতে ক্লিক করুন"
@@ -676,8 +673,8 @@
   "Enable_PIN_Protection": {
     "message": "PIN সুরক্ষা সক্রিয় করুন"
   },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": "browserx শুরু হলে অটো-সংযোগ সক্রিয় করুন"
+  "Enable_auto_connect_when_workx_starts": {
+    "message": "WorkX শুরু হলে অটো-সংযোগ সক্রিয় করুন"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "প্রায়ই ব্যবহৃত ডেটা সংরক্ষণ করে পারফরম্যান্স উন্নত করতে ক্যাশিং সক্রিয় করুন"
@@ -733,8 +730,8 @@
   "Explain_this_info_selectionText": {
     "message": "এটি ব্যাখ্যা করুন: ${info.selectionText}"
   },
-  "Explain_with_Browserx": {
-    "message": "Browserx দিয়ে ব্যাখ্যা করুন"
+  "Explain_with_WorkX": {
+    "message": "WorkX দিয়ে ব্যাখ্যা করুন"
   },
   "Export": {
     "message": "রপ্তানি"
@@ -760,8 +757,8 @@
   "Extract_Data": {
     "message": "ডেটা বের করুন:"
   },
-  "Extract_data_with_Browserx": {
-    "message": "Browserx দিয়ে ডেটা বের করুন"
+  "Extract_data_with_WorkX": {
+    "message": "WorkX দিয়ে ডেটা বের করুন"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "পৃষ্ঠাগুলি থেকে নির্দিষ্ট ডেটা প্যাটার্ন বের করুন"
@@ -955,8 +952,8 @@
   "Improve_this_text_info_selectionText": {
     "message": "এই টেক্সট উন্নত করুন: ${info.selectionText}"
   },
-  "Improve_with_Browserx": {
-    "message": "Browserx দিয়ে উন্নত করুন"
+  "Improve_with_WorkX": {
+    "message": "WorkX দিয়ে উন্নত করুন"
   },
   "In": {
     "message": "এতে:"
@@ -1547,7 +1544,7 @@
     "message": "পুনঃপ্রয়াস করা হচ্ছে"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "যেকোনো লেখার উপর রাইট-ক্লিক করে Browserx-এর সাহায্যে এটি ব্যাখ্যা বা উন্নত করুন"
+    "message": "যেকোনো লেখার উপর রাইট-ক্লিক করে WorkX-এর সাহায্যে এটি ব্যাখ্যা বা উন্নত করুন"
   },
   "Risk_Score": {
     "message": "ঝুঁকি স্কোর:"
@@ -2046,8 +2043,8 @@
   "Web_Search": {
     "message": "ওয়েব অনুসন্ধান"
   },
-  "Welcome_to_Browserx": {
-    "message": "Browserx-এ স্বাগতম"
+  "Welcome_to_WorkX": {
+    "message": "WorkX-এ স্বাগতম"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "স্যান্ডবক্সড কমান্ডগুলো নেটওয়ার্কে প্রবেশ করতে পারে কিনা"
@@ -2097,8 +2094,8 @@
   "available": {
     "message": "উপলব্ধ"
   },
-  "browserx": {
-    "message": "browserx"
+  "workx": {
+    "message": "WorkX"
   },
   "cached": {
     "message": "ক্যাশ করা"

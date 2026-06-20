@@ -1,5 +1,5 @@
 /**
- * Logging utilities for ApplePi
+ * Logging utilities for WorkX
  * Provides trace-level logging for Gemini streaming debugging
  */
 
