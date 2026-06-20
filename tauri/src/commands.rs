@@ -9,7 +9,7 @@ pub struct PlatformInfo {
 
 #[tauri::command]
 pub fn greet(name: &str) -> String {
-    format!("Hello, {}! Welcome to Pi.", name)
+    format!("Hello, {}! Welcome to WorkX.", name)
 }
 
 #[tauri::command]
@@ -40,13 +40,13 @@ mod tests {
     #[test]
     fn test_greet_format() {
         let result = greet("Alice");
-        assert_eq!(result, "Hello, Alice! Welcome to Pi.");
+        assert_eq!(result, "Hello, Alice! Welcome to WorkX.");
     }
 
     #[test]
     fn test_greet_empty_name() {
         let result = greet("");
-        assert_eq!(result, "Hello, ! Welcome to Pi.");
+        assert_eq!(result, "Hello, ! Welcome to WorkX.");
     }
 
     #[test]
@@ -60,12 +60,12 @@ mod tests {
     #[test]
     fn test_greet_special_characters() {
         let result = greet("<script>alert('xss')</script>");
-        assert_eq!(result, "Hello, <script>alert('xss')</script>! Welcome to Pi.");
+        assert_eq!(result, "Hello, <script>alert('xss')</script>! Welcome to WorkX.");
     }
 
     #[test]
     fn test_greet_unicode() {
         let result = greet("caf\u{00e9}");
-        assert_eq!(result, "Hello, caf\u{00e9}! Welcome to Pi.");
+        assert_eq!(result, "Hello, caf\u{00e9}! Welcome to WorkX.");
     }
 }

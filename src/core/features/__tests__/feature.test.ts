@@ -26,13 +26,13 @@ describe('feature.ts (no Vite define — vitest)', () => {
   });
 
   it('does not depend on process.env (delete it, still false)', () => {
-    const saved = process.env.APPLEPI_FEATURE_MCP;
-    delete process.env.APPLEPI_FEATURE_MCP;
-    process.env.APPLEPI_FEATURE_A2A = 'true'; // must NOT leak into compiled const
+    const saved = process.env.WORKX_FEATURE_MCP;
+    delete process.env.WORKX_FEATURE_MCP;
+    process.env.WORKX_FEATURE_A2A = 'true'; // must NOT leak into compiled const
     expect(MCP).toBe(false);
     expect(A2A).toBe(false);
-    if (saved !== undefined) process.env.APPLEPI_FEATURE_MCP = saved;
-    delete process.env.APPLEPI_FEATURE_A2A;
+    if (saved !== undefined) process.env.WORKX_FEATURE_MCP = saved;
+    delete process.env.WORKX_FEATURE_A2A;
   });
 
   it('FLAG_SNAPSHOT keys exactly match the canonical registry', () => {
@@ -61,12 +61,12 @@ describe('vite.featureFlags.mjs', () => {
     });
   });
 
-  it('APPLEPI_FEATURE_<NAME> overrides exactly one flag at build time', () => {
-    const d = featureDefine('extension', { APPLEPI_FEATURE_X402: '1' });
+  it('WORKX_FEATURE_<NAME> overrides exactly one flag at build time', () => {
+    const d = featureDefine('extension', { WORKX_FEATURE_X402: '1' });
     expect(d.__FEATURE_X402__).toBe('true');
     expect(d.__FEATURE_MCP__).toBe('true'); // unchanged default
     expect(d.__FEATURE_VOICE__).toBe('false'); // unchanged default
-    const d2 = featureDefine('desktop', { APPLEPI_FEATURE_VOICE: 'false' });
+    const d2 = featureDefine('desktop', { WORKX_FEATURE_VOICE: 'false' });
     expect(d2.__FEATURE_VOICE__).toBe('false'); // desktop default true -> overridden
   });
 

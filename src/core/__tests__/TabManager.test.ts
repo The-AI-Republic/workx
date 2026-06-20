@@ -93,8 +93,8 @@ describe('TabManager', () => {
     it('should call reset() during initialization to clean up existing groups', async () => {
       await createInitializedTabManager();
       // reset() queries for collapsed and expanded pi groups
-      expect(chrome.tabGroups.query).toHaveBeenCalledWith({ title: 'browserx', collapsed: true });
-      expect(chrome.tabGroups.query).toHaveBeenCalledWith({ title: 'browserx', collapsed: false });
+      expect(chrome.tabGroups.query).toHaveBeenCalledWith({ title: 'workx', collapsed: true });
+      expect(chrome.tabGroups.query).toHaveBeenCalledWith({ title: 'workx', collapsed: false });
     });
   });
 
@@ -390,11 +390,11 @@ describe('TabManager', () => {
       (chrome.tabGroups.update as any).mockResolvedValue({});
 
       const result = await tm.addTabToGroup(10);
-      // createBrowserXGroup should have been called, setting groupId
+      // createWorkXGroup should have been called, setting groupId
       expect(result).toBe(77);
       expect(chrome.tabs.group).toHaveBeenCalledWith({ tabIds: 10 });
       expect(chrome.tabGroups.update).toHaveBeenCalledWith(77, {
-        title: 'browserx',
+        title: 'workx',
         color: 'blue',
         collapsed: false,
       });
@@ -552,8 +552,8 @@ describe('TabManager', () => {
     it('should ungroup tabs from collapsed and expanded groups', async () => {
       const tm = await createInitializedTabManager();
 
-      const collapsedGroup = { id: 1, title: 'browserx', collapsed: true };
-      const expandedGroup = { id: 2, title: 'browserx', collapsed: false };
+      const collapsedGroup = { id: 1, title: 'workx', collapsed: true };
+      const expandedGroup = { id: 2, title: 'workx', collapsed: false };
 
       (chrome.tabGroups.query as any).mockImplementation((params: any) => {
         if (params.collapsed === true) return Promise.resolve([collapsedGroup]);
@@ -581,7 +581,7 @@ describe('TabManager', () => {
     it('should skip ungrouping for groups with no tabs', async () => {
       const tm = await createInitializedTabManager();
 
-      (chrome.tabGroups.query as any).mockResolvedValue([{ id: 3, title: 'browserx', collapsed: false }]);
+      (chrome.tabGroups.query as any).mockResolvedValue([{ id: 3, title: 'workx', collapsed: false }]);
       (chrome.tabs.query as any).mockResolvedValue([]); // no tabs in group
 
       await tm.reset();
@@ -592,8 +592,8 @@ describe('TabManager', () => {
       const tm = await createInitializedTabManager();
 
       (chrome.tabGroups.query as any).mockResolvedValue([
-        { id: 1, title: 'browserx', collapsed: false },
-        { id: 2, title: 'browserx', collapsed: false },
+        { id: 1, title: 'workx', collapsed: false },
+        { id: 2, title: 'workx', collapsed: false },
       ]);
 
       (chrome.tabs.query as any).mockImplementation((params: any) => {
@@ -612,7 +612,7 @@ describe('TabManager', () => {
     it('should filter out tabs with undefined IDs', async () => {
       const tm = await createInitializedTabManager();
 
-      (chrome.tabGroups.query as any).mockResolvedValue([{ id: 5, title: 'browserx', collapsed: false }]);
+      (chrome.tabGroups.query as any).mockResolvedValue([{ id: 5, title: 'workx', collapsed: false }]);
       (chrome.tabs.query as any).mockResolvedValue([
         { id: 10 },
         { id: undefined },
@@ -629,7 +629,7 @@ describe('TabManager', () => {
       const tm = await createInitializedTabManager();
       (tm as any).groupId = 42;
 
-      (chrome.tabGroups.query as any).mockResolvedValue([{ id: 42, title: 'browserx', collapsed: false }]);
+      (chrome.tabGroups.query as any).mockResolvedValue([{ id: 42, title: 'workx', collapsed: false }]);
       (chrome.tabs.query as any).mockResolvedValue([{ id: 1 }]);
       (chrome.tabs.ungroup as any).mockResolvedValue(undefined);
 
@@ -662,8 +662,8 @@ describe('TabManager', () => {
       (tm as any).groupId = 1;
 
       (chrome.tabGroups.query as any).mockResolvedValue([
-        { id: 1, title: 'browserx' },
-        { id: 2, title: 'browserx' },
+        { id: 1, title: 'workx' },
+        { id: 2, title: 'workx' },
       ]);
       (chrome.tabs.query as any).mockImplementation((params: any) => {
         if (params.groupId === 1) return Promise.resolve([{ id: 10 }, { id: 11 }]);
@@ -683,7 +683,7 @@ describe('TabManager', () => {
       const tm = await createInitializedTabManager();
 
       (chrome.tabGroups.query as any).mockResolvedValue([
-        { id: 1, title: 'browserx' },
+        { id: 1, title: 'workx' },
       ]);
       (chrome.tabs.query as any).mockResolvedValue([]);
 
@@ -695,8 +695,8 @@ describe('TabManager', () => {
       const tm = await createInitializedTabManager();
 
       (chrome.tabGroups.query as any).mockResolvedValue([
-        { id: 1, title: 'browserx' },
-        { id: 2, title: 'browserx' },
+        { id: 1, title: 'workx' },
+        { id: 2, title: 'workx' },
       ]);
       (chrome.tabs.query as any).mockImplementation((params: any) => {
         if (params.groupId === 1) return Promise.resolve([{ id: 10 }]);
@@ -725,7 +725,7 @@ describe('TabManager', () => {
       const tm = await createInitializedTabManager();
       (tm as any).groupId = 99;
 
-      (chrome.tabGroups.query as any).mockResolvedValue([{ id: 99, title: 'browserx' }]);
+      (chrome.tabGroups.query as any).mockResolvedValue([{ id: 99, title: 'workx' }]);
       (chrome.tabs.query as any).mockResolvedValue([{ id: 1 }]);
       (chrome.tabs.ungroup as any).mockResolvedValue(undefined);
 

@@ -59,7 +59,7 @@ export const platform: PlatformCapabilities = {
  */
 export const agentDisplayName: string =
   __BUILD_MODE__ === 'desktop'
-    ? 'Apple Pi'
+    ? 'WorkX'
     : __BUILD_MODE__ === 'server'
-      ? 'Apple Pi Server'
-      : 'BrowserX';
+      ? 'WorkX Server'
+      : 'WorkX';

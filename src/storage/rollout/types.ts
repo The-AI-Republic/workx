@@ -10,7 +10,7 @@ import type { PlanArtifactPayload } from '../../tools/planReview/types';
 // Constants
 // ============================================================================
 
-export const DB_NAME = 'ApplePiRollouts';
+export const DB_NAME = 'WorkXRollouts';
 export const DB_VERSION = 2;
 export const STORE_ROLLOUTS = 'rollouts';
 export const STORE_ROLLOUT_ITEMS = 'rollout_items';

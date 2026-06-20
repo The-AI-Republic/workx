@@ -4,7 +4,7 @@
   import { userStore, userInitials, getDesktopLoginPageUrl, getLoginPageUrl } from '../../stores/userStore';
   import { uiTheme } from '../../stores/themeStore';
   import { platform } from '../../stores/platformStore';
-  import { HOME_PAGE_BASE_URL, LLM_API_URL } from '../../lib/constants';
+  import { AUTH_ROUTE_PATHS, HOME_PAGE_BASE_URL, LLM_API_URL, buildHostedAuthUrl } from '../../lib/constants';
   import Tooltip from './Tooltip.svelte';
   import PopupCard from './PopupCard.svelte';
   import { _t } from '../../lib/i18n';
@@ -17,10 +17,11 @@
   let showPromoTooltip = $state(false);
   let promoTooltipTimer: ReturnType<typeof setTimeout> | null = null;
   let hasShownPromoTooltip = $state(false);
+  const hasHostedAuth = Boolean(HOME_PAGE_BASE_URL && AUTH_ROUTE_PATHS.login);
 
   // Watch for user state changes to show promo tooltip when not logged in (only once)
   $effect(() => {
-    if (!$userStore.isLoading && !$userStore.isLoggedIn && !hasShownPromoTooltip) {
+    if (hasHostedAuth && !$userStore.isLoading && !$userStore.isLoggedIn && !hasShownPromoTooltip) {
       showPromoTooltipWithTimer();
     } else if ($userStore.isLoggedIn) {
       hidePromoTooltip();
@@ -54,8 +55,8 @@
       if (platform.platformName !== 'desktop' || isLoggingIn) return;
       void openLoginPage();
     };
-    window.addEventListener('applepi:request-login', handleLoginRequest);
-    return () => window.removeEventListener('applepi:request-login', handleLoginRequest);
+    window.addEventListener('workx:request-login', handleLoginRequest);
+    return () => window.removeEventListener('workx:request-login', handleLoginRequest);
   });
 
   onDestroy(() => {
@@ -63,8 +64,13 @@
   });
 
   async function openLoginPage() {
+    if (!hasHostedAuth) {
+      console.warn('[UserLoginStatus] Hosted auth is not configured');
+      return;
+    }
+
     if (platform.platformName === 'desktop') {
-      // Desktop mode: open the browser to /login, await the applepi-deeplink
+      // Desktop mode: open the browser to /login, await the workx-deeplink
       // deeplink (Rust → WebView event), and forward both tokens to the
       // runtime via `auth.completeLogin`. The WebView never touches the OS
       // keychain after the Track 43 cutover — the runtime owns credentials.
@@ -91,8 +97,9 @@
         // home page handles both fresh Google login and already-authenticated
         // browser sessions.
         const loginUrl = getDesktopLoginPageUrl();
+        if (!loginUrl) throw new Error('Hosted auth is not configured');
 
-        // 2. Subscribe to the applepi-deeplink event from Rust before opening the
+        // 2. Subscribe to the workx-deeplink event from Rust before opening the
         // browser — Rust emits it as soon as the OS hands us the URL.
         const tokensPromise = new Promise<{ accessToken: string; refreshToken: string }>(
           (resolve, reject) => {
@@ -116,7 +123,7 @@
             };
             rejectPending = rejectWithCleanup;
 
-            listen<string>('applepi-deeplink', (event) => {
+            listen<string>('workx-deeplink', (event) => {
               try {
                 const urlObj = new URL(event.payload);
                 if (urlObj.host !== 'auth' || urlObj.pathname !== '/callback') {
@@ -200,7 +207,7 @@
     } else {
       // Extension mode: open login page in a new tab
       const loginUrl = getLoginPageUrl();
-      chrome.tabs.create({ url: loginUrl });
+      if (loginUrl) chrome.tabs.create({ url: loginUrl });
     }
   }
 
@@ -231,7 +238,8 @@
   async function openUserCenter(event: MouseEvent) {
     event.preventDefault();
     showMenu = false;
-    const userCenterUrl = `${HOME_PAGE_BASE_URL}/user-center/info`;
+    const userCenterUrl = buildHostedAuthUrl(AUTH_ROUTE_PATHS.userCenter);
+    if (!userCenterUrl) return;
 
     if (platform.platformName === 'desktop') {
       // Desktop mode: use Tauri shell plugin to open in browser
@@ -290,7 +298,7 @@
       {#snippet content()}<div class="min-w-[180px]">
         <!-- User Info Section -->
         <a
-          href="{HOME_PAGE_BASE_URL}/user-center/info"
+          href={buildHostedAuthUrl(AUTH_ROUTE_PATHS.userCenter) ?? undefined}
           class="flex items-center gap-3 p-3 no-underline cursor-pointer rounded transition-colors duration-150
             {$uiTheme === 'modern'
               ? 'hover:bg-white/10'
@@ -348,7 +356,7 @@
         </button>
       </div>{/snippet}
     </PopupCard>
-  {:else}
+  {:else if hasHostedAuth}
     <!-- Not logged in state - show login link -->
     <Tooltip content={isLoggingIn ? $_t("Click to cancel login") : (showPromoTooltip ? $_t("Login to get free credits") : $_t("Sign in to your account"))}>
       <button

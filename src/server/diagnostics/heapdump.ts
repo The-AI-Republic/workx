@@ -1,7 +1,7 @@
 /**
  * Heap dump + memory diagnostics (Track 17) — SERVER ONLY (node `v8`/`fs`).
  *
- * Ported from claudy's `utils/heapDumpService.ts`, adapted to BrowserX:
+ * Ported from claudy's `utils/heapDumpService.ts`, adapted to WorkX:
  *   - writes under `{getDataDir()}/diagnostics/` (server dataDir / Track 09
  *     convention) — never `~/Desktop`, never the inert `getToolResultStore()`;
  *   - diagnostics JSON is written BEFORE the snapshot, because V8 snapshot

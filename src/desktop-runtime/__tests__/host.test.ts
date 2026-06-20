@@ -13,22 +13,22 @@ afterEach(() => {
 
 describe('desktop runtime host', () => {
   it('requires Rust-provided desktop paths by default', async () => {
-    delete process.env.APPLEPI_DESKTOP_RUNTIME_ALLOW_DEV_HOST;
-    delete process.env.APPLEPI_DESKTOP_CONFIG_DIR;
+    delete process.env.WORKX_DESKTOP_RUNTIME_ALLOW_DEV_HOST;
+    delete process.env.WORKX_DESKTOP_CONFIG_DIR;
 
-    await expect(createDevDesktopRuntimeHost()).rejects.toThrow('APPLEPI_DESKTOP_RUNTIME_HOST is required');
+    await expect(createDevDesktopRuntimeHost()).rejects.toThrow('WORKX_DESKTOP_RUNTIME_HOST is required');
   });
 
   it('allows the dev fallback only through an explicit local-development override', async () => {
-    process.env.APPLEPI_DESKTOP_RUNTIME_ALLOW_DEV_HOST = 'true';
-    process.env.APPLEPI_DESKTOP_CONFIG_DIR = '/tmp/apple-pi-dev-test';
+    process.env.WORKX_DESKTOP_RUNTIME_ALLOW_DEV_HOST = 'true';
+    process.env.WORKX_DESKTOP_CONFIG_DIR = '/tmp/workx-dev-test';
 
     const host = await createDevDesktopRuntimeHost();
 
-    expect(host.configDir).toBe('/tmp/apple-pi-dev-test');
-    expect(host.storageDbPath).toBe('/tmp/apple-pi-dev-test/storage.db');
-    expect(host.rolloutDbPath).toBe('/tmp/apple-pi-dev-test/rollouts.db');
-    expect(host.configJsonPath).toBe('/tmp/apple-pi-dev-test/config.json');
+    expect(host.configDir).toBe('/tmp/workx-dev-test');
+    expect(host.storageDbPath).toBe('/tmp/workx-dev-test/storage.db');
+    expect(host.rolloutDbPath).toBe('/tmp/workx-dev-test/rollouts.db');
+    expect(host.configJsonPath).toBe('/tmp/workx-dev-test/config.json');
   });
 
   it('rejects incomplete host path handshakes', () => {

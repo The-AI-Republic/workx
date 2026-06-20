@@ -3,7 +3,7 @@
  *
  * Platform-agnostic `diagnostics.*` service handlers. Auto-registered on
  * extension, desktop, and server by `registerAllServices`. Distinct from the
- * `@applepi/ws-server` `health` method — that stays a status probe; this
+ * `@workx/ws-server` `health` method — that stays a status probe; this
  * serves the full (redacted) `DoctorReport` to authenticated callers.
  *
  * @module core/services/diagnostics-services

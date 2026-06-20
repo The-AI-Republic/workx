@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "Opći AI agent u pregledniku za radne zadatke"
@@ -177,7 +177,7 @@
     "message": "Uvijek svijetlo"
   },
   "Apple_Pi_Your_personal_AI_Alpha": {
-    "message": "Apple Pi: Vaš osobni AI (Alpha)"
+    "message": "WorkX: Vaš osobni AI (Alpha)"
   },
   "Approval_Safety": {
     "message": "Odobrenje i sigurnost"
@@ -219,8 +219,8 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Zatražite od Browserx da izvuče strukturirane podatke s bilo koje web stranice"
+  "Ask_WorkX_to_extract_structured_data__88fc": {
+    "message": "Zatražite od WorkX da izvuče strukturirane podatke s bilo koje web stranice"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Zatraži odobrenje za srednji rizik i više (rizik > 30). Preporučeno za većinu korisnika."
@@ -309,14 +309,11 @@
   "Browser_automation_tool_toggles": {
     "message": "Prekidači alata za automatizaciju preglednika"
   },
-  "BrowserX": {
-    "message": "BrowserX"
+  "WorkX": {
+    "message": "WorkX"
   },
-  "Browserx": {
-    "message": "Browserx"
-  },
-  "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+  "WorkX_Alpha": {
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "CWD:"
@@ -385,8 +382,8 @@
   "Clear_search": {
     "message": "Obriši pretragu"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Kliknite ikonu Browserx u alatnoj traci ili pritisnite Alt+Shift+C"
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
+    "message": "Kliknite ikonu WorkX u alatnoj traci ili pritisnite Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "Kliknite za otkazivanje prijave"
@@ -676,8 +673,8 @@
   "Enable_PIN_Protection": {
     "message": "Omogući zaštitu PIN-om"
   },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": "Omogući automatsko povezivanje pri pokretanju browserx-a"
+  "Enable_auto_connect_when_workx_starts": {
+    "message": "Omogući automatsko povezivanje pri pokretanju WorkX-a"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Omogući predmemoriranje za poboljšanje performansi pohranom često pristupanih podataka"
@@ -738,8 +735,8 @@
   "Explain_this_info_selectionText": {
     "message": "Objasni ovo: ${info.selectionText}"
   },
-  "Explain_with_Browserx": {
-    "message": "Objasni s Browserx-om"
+  "Explain_with_WorkX": {
+    "message": "Objasni s WorkX-om"
   },
   "Export": {
     "message": "Izvezi"
@@ -765,8 +762,8 @@
   "Extract_Data": {
     "message": "Izvuci podatke:"
   },
-  "Extract_data_with_Browserx": {
-    "message": "Izvuci podatke pomoću Browserx"
+  "Extract_data_with_WorkX": {
+    "message": "Izvuci podatke pomoću WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Izvuci određene obrasce podataka s stranica"
@@ -960,8 +957,8 @@
   "Improve_this_text_info_selectionText": {
     "message": "Poboljšaj ovaj tekst: ${info.selectionText}"
   },
-  "Improve_with_Browserx": {
-    "message": "Poboljšaj s Browserx"
+  "Improve_with_WorkX": {
+    "message": "Poboljšaj s WorkX"
   },
   "In": {
     "message": "U:"
@@ -1552,7 +1549,7 @@
     "message": "Ponovno pokušavanje"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Desnim klikom na bilo koji tekst možete ga objasniti ili poboljšati uz Browserx."
+    "message": "Desnim klikom na bilo koji tekst možete ga objasniti ili poboljšati uz WorkX."
   },
   "Risk_Score": {
     "message": "Ocjena rizika:"
@@ -2046,8 +2043,8 @@
   "Web_Search": {
     "message": "Web pretraživanje"
   },
-  "Welcome_to_Browserx": {
-    "message": "Dobrodošli u Browserx"
+  "Welcome_to_WorkX": {
+    "message": "Dobrodošli u WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Mogu li sandboxirane naredbe pristupiti mreži"
@@ -2097,8 +2094,8 @@
   "available": {
     "message": "dostupno"
   },
-  "browserx": {
-    "message": "browserx"
+  "workx": {
+    "message": "WorkX"
   },
   "cached": {
     "message": "keširano"

@@ -43,7 +43,7 @@ import { TranscriptStore } from '../persistence/TranscriptStore';
 import { BackupManager } from '../persistence/backup';
 import { ApprovalManager } from '../exec/approval-manager';
 import { ConnectorRegistry } from '../channel-connectors/connector-registry';
-import { ApplePiConnectorApi } from '../channel-connectors/applepi-connector-api';
+import { WorkXConnectorApi } from '../channel-connectors/workx-connector-api';
 import { discoverConnectors } from '../channel-connectors/connector-loader';
 import { ConnectorBridge } from '../channel-connectors/connector-bridge';
 import { HealthMonitor } from '../health/health-monitor';
@@ -102,10 +102,7 @@ let _instance: ServerAgentBootstrap | null = null;
 export interface ServerAgentBootstrapOptions {
   profile?: 'server' | 'desktop-runtime';
   dataDir?: string;
-  /** Primary channel (UI/runtime transport). Kept for backward compatibility. */
   channel?: ChannelAdapter;
-  /** Additional channels to register at initialize() time (e.g. app-server). */
-  channels?: ChannelAdapter[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -121,12 +118,6 @@ export class ServerAgentBootstrap {
   // /plugin reload, matching claudy's asymmetric enable semantics).
   private pluginRegistry: import('@/core/plugins/PluginRegistry').PluginRegistry | null = null;
   private channel: ChannelAdapter | null = null;
-  /** All registered channels by channelId (multi-channel support). */
-  private channels = new Map<string, ChannelAdapter>();
-  /** The primary channel id — events for unowned sessions route here. */
-  private primaryChannelId: string | null = null;
-  /** sessionId → owning channelId, so events route to the originating channel. */
-  private sessionOwners = new Map<string, string>();
   private sessionIndex: SessionIndex | null = null;
   private transcriptStore: TranscriptStore | null = null;
   private backupManager: BackupManager | null = null;
@@ -152,72 +143,6 @@ export class ServerAgentBootstrap {
   constructor(private readonly options: ServerAgentBootstrapOptions = {}) {}
 
   /**
-   * Record the channel that owns a session so agent events for that session are
-   * routed only to the originating channel. No-op when channelId is absent.
-   */
-  private recordSessionOwner(sessionId: string, channelId?: string): void {
-    if (channelId && this.channels.has(channelId)) {
-      this.sessionOwners.set(sessionId, channelId);
-    }
-  }
-
-  /**
-   * Register an additional channel after initialization (e.g. the app-server
-   * channel started once config is read). Idempotent per channelId.
-   */
-  async registerChannel(channel: ChannelAdapter): Promise<void> {
-    if (this.channels.has(channel.channelId)) return;
-    const channelManager = getChannelManager();
-    await channelManager.registerChannel(channel);
-    this.channels.set(channel.channelId, channel);
-    if (!this.primaryChannelId) this.primaryChannelId = channel.channelId;
-  }
-
-  /**
-   * Unregister a previously registered channel and drop any session ownership
-   * routed to it. The primary channel cannot be unregistered.
-   */
-  async unregisterChannel(channelId: string): Promise<void> {
-    if (channelId === this.primaryChannelId) {
-      throw new Error('Cannot unregister the primary channel');
-    }
-    if (!this.channels.has(channelId)) return;
-    const channelManager = getChannelManager();
-    await channelManager.unregisterChannel(channelId);
-    this.channels.delete(channelId);
-    for (const [sessionId, owner] of this.sessionOwners) {
-      if (owner === channelId) this.sessionOwners.delete(sessionId);
-    }
-  }
-
-  /**
-   * Create a fresh agent session and return its id. Used by callers such as the
-   * app-server that need a dedicated session per external connection.
-   *
-   * Created as `type: 'api'` + `internal: true`: never the registry's primary
-   * session (so external connections can't hijack the UI's primary-session
-   * pointer) and outside the user concurrency budget (the app-server transport
-   * bounds connection count itself).
-   */
-  async createSession(): Promise<string> {
-    if (!this.registry) throw new Error('AgentRegistry not initialized');
-    const session = await this.registry.createSession({ type: 'api', internal: true });
-    return session.sessionId;
-  }
-
-  /**
-   * Tear down a session created via {@link createSession} and drop its event
-   * routing. Called when an app-server connection closes so dedicated sessions
-   * don't accumulate for the life of the runtime.
-   */
-  async releaseSession(sessionId: string): Promise<void> {
-    this.sessionOwners.delete(sessionId);
-    if (this.registry) {
-      await this.registry.removeSession(sessionId);
-    }
-  }
-
-  /**
    * Initialize the server agent system.
    */
   async initialize(): Promise<void> {
@@ -231,8 +156,8 @@ export class ServerAgentBootstrap {
     // Track 20 policy block below. The first call memoizes the pinned config,
     // so calling it here would cache a config with NO admin policy applied.
     const profile = this.options.profile ?? 'server';
-    const dataDir = this.options.dataDir ?? process.env.APPLEPI_DATA_DIR ??
-      `${process.env.HOME ?? process.env.USERPROFILE ?? '/tmp'}/.applepi-server/data`;
+    const dataDir = this.options.dataDir ?? process.env.WORKX_DATA_DIR ??
+      `${process.env.HOME ?? process.env.USERPROFILE ?? '/tmp'}/.workx-server/data`;
 
     try {
       // 0. Initialize StorageProvider (used by subsystems)
@@ -277,7 +202,7 @@ export class ServerAgentBootstrap {
       }
 
       // 1b. Track 20: register the managed-file policy source (fleet policy is
-      // mounted via ConfigMap/Secret at APPLEPI_POLICY_PATH) and resolve it
+      // mounted via ConfigMap/Secret at WORKX_POLICY_PATH) and resolve it
       // BEFORE the first getServerConfig() / AgentConfig.getInstance() so both
       // config systems' first hydration already sees admin policy. Fail-open.
       try {
@@ -285,7 +210,7 @@ export class ServerAgentBootstrap {
           // Fleet remote path is highest precedence (first-wins), then the
           // ConfigMap/Secret-mounted managed file.
           new RemotePolicySource(),
-          new ManagedFileSource(process.env.APPLEPI_POLICY_PATH),
+          new ManagedFileSource(process.env.WORKX_POLICY_PATH),
           new ManagedDirSource(),
         ]);
         await resolveActivePolicy();
@@ -473,16 +398,10 @@ export class ServerAgentBootstrap {
           return agent;
         },
         eventDispatcherFactory: (sessionId) => (event) => {
-          // Route to the channel that owns this session (UI vs app-server
-          // isolation). Falls back to the primary channel for sessions with no
-          // recorded owner (e.g. the initial primary session before any turn).
-          const targetChannelId =
-            this.sessionOwners.get(sessionId) ?? this.primaryChannelId ?? this.channel?.channelId;
-          if (targetChannelId) {
-            channelManager.dispatchEvent({ msg: event.msg, sessionId }, targetChannelId).catch((error) => {
-              console.error('[ServerAgentBootstrap] Failed to dispatch event:', error);
-            });
-          }
+          // Dispatch to ServerChannel -> WebSocket clients with sessionId
+          channelManager.dispatchEvent({ msg: event.msg, sessionId }, this.channel!.channelId).catch((error) => {
+            console.error('[ServerAgentBootstrap] Failed to dispatch event:', error);
+          });
 
           // Also log to transcript store (Track 24.5: secret-redacted at rest —
           // non-blocking, the entry is kept, only detected secrets become ***).
@@ -517,9 +436,6 @@ export class ServerAgentBootstrap {
         if (!targetSession?.agent) {
           throw new Error(`Session not found: ${context.sessionId}`);
         }
-        // Record channel ownership so agent events route to the originating
-        // channel only (UI vs app-server isolation).
-        this.recordSessionOwner(context.sessionId, context.channelId);
         console.log('[ServerAgentBootstrap] Processing submission:', op.type, 'session:', context.sessionId);
         // Track 13: thread channel origin so the input funnel can apply the
         // bridge-safe slash gate (connector input must not leak raw /config).
@@ -530,16 +446,8 @@ export class ServerAgentBootstrap {
       };
 
       channelManager.setAgentHandler(agentHandler);
-
-      // Register the primary channel plus any additional channels (multi-channel
-      // support — e.g. the desktop app-server channel alongside the UI channel).
-      const extraChannels = this.options.channels ?? [];
-      this.primaryChannelId = this.channel.channelId;
-      for (const ch of [this.channel, ...extraChannels]) {
-        await channelManager.registerChannel(ch);
-        this.channels.set(ch.channelId, ch);
-      }
-      console.log(`[ServerAgentBootstrap] Channel(s) registered: ${[...this.channels.keys()].join(', ')}`);
+      await channelManager.registerChannel(this.channel);
+      console.log('[ServerAgentBootstrap] Channel registered');
 
       // 8. Initialize persistence
       this.sessionIndex = new SessionIndex(dataDir);
@@ -811,14 +719,14 @@ export class ServerAgentBootstrap {
       const { McpSlotLoader } = await import('@/core/plugins/loaders/McpSlotLoader');
       const { AgentConfig } = await import('@/config/AgentConfig');
 
-      const pluginsRoot = path.join(os.homedir(), '.browserx', 'plugins');
+      const pluginsRoot = path.join(os.homedir(), '.workx', 'plugins');
       const provider = new NodePluginProvider(pluginsRoot);
       await provider.initialize();
 
       const agentConfig = await AgentConfig.getInstance();
 
-      // Phase 10c: admin policy (read once, cached). /etc/browserx/policy.json
-      // (Linux/Mac) or %ProgramData%\BrowserX\policy.json (Windows). Missing/
+      // Phase 10c: admin policy (read once, cached). /etc/workx/policy.json
+      // (Linux/Mac) or %ProgramData%\WorkX\policy.json (Windows). Missing/
       // corrupt → empty policy. Built HERE (before bootstrapEnabledPlugins +
       // MarketplaceRegistry) so block / force-enable / source guards apply.
       const {
@@ -830,8 +738,8 @@ export class ServerAgentBootstrap {
       } = await import('@/core/plugins/policy');
       const policyPath =
         process.platform === 'win32'
-          ? path.join(process.env.ProgramData ?? 'C:\\ProgramData', 'BrowserX', 'policy.json')
-          : '/etc/browserx/policy.json';
+          ? path.join(process.env.ProgramData ?? 'C:\\ProgramData', 'WorkX', 'policy.json')
+          : '/etc/workx/policy.json';
       const policyLoader = new PolicyLoader({
         readPolicyText: async () => {
           try {
@@ -978,7 +886,7 @@ export class ServerAgentBootstrap {
           await fsmod.promises.mkdir(nodePath.dirname(p), { recursive: true });
           await fsmod.promises.writeFile(p, c, 'utf-8');
         },
-        filePath: nodePath.join(os.homedir(), '.browserx', 'installed_plugins_v2.json'),
+        filePath: nodePath.join(os.homedir(), '.workx', 'installed_plugins_v2.json'),
       });
 
       const fetchPlugin = createGitFetchPlugin(
@@ -1022,7 +930,7 @@ export class ServerAgentBootstrap {
       const { PluginCache } = await import('@/core/plugins/PluginCache');
       const fsmod = await import('node:fs');
       const pluginCache = new PluginCache(
-        nodePath.join(os.homedir(), '.browserx'),
+        nodePath.join(os.homedir(), '.workx'),
         {
           readText: async (p: string) => {
             try {
@@ -1405,13 +1313,9 @@ export class ServerAgentBootstrap {
         if (!this.registry) throw new Error('AgentRegistry not initialized');
         const targetSession = this.registry.getSession(context.sessionId);
         if (!targetSession?.agent) throw new Error(`Session not found: ${context.sessionId}`);
-        // Record which channel owns this session so agent events route back to
-        // the originating channel only (UI vs app-server isolation).
-        this.recordSessionOwner(context.sessionId, context.channelId);
         // Track 13: derive origin from the chat channel (on-host WS chat maps
         // to `local` and skips the gate; remote/relay maps to `remote`).
-        // The submission id is returned and surfaced to callers as runId.
-        return targetSession.agent.submitOperation(op, {
+        await targetSession.agent.submitOperation(op, {
           tabId: context.tabId,
           origin: deriveInputOrigin(context),
         });
@@ -1588,7 +1492,7 @@ export class ServerAgentBootstrap {
       const definitions = await discoverConnectors();
 
       for (const definition of definitions) {
-        const api = new ApplePiConnectorApi();
+        const api = new WorkXConnectorApi();
         await definition.register(api);
 
         const registrations = api.getRegistrations();
@@ -1628,8 +1532,8 @@ export class ServerAgentBootstrap {
       const { registerExternalPersonas } = await import('@/prompts/PersonaLoader');
       registerExternalPersonas(
         scanDiskPersonas([
-          join(homeDir, '.browserx', 'styles'),
-          join(process.cwd(), '.browserx', 'styles'),
+          join(homeDir, '.workx', 'styles'),
+          join(process.cwd(), '.workx', 'styles'),
         ]),
       );
     } catch (e) {
@@ -1647,7 +1551,7 @@ export class ServerAgentBootstrap {
       personaName: isDesktopRuntime ? undefined : getServerConfig().server.persona,
     };
 
-    configurePromptComposer(isDesktopRuntime ? 'applepi' : 'applepi-server', staticContext);
+    configurePromptComposer(isDesktopRuntime ? 'workx-desktop' : 'workx-server', staticContext);
     console.log(`[ServerAgentBootstrap] PromptComposer configured for ${isDesktopRuntime ? 'desktop runtime' : 'server'} mode`);
   }
 

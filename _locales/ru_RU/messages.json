@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "Общий AI‑агент в браузере для рабочих задач"
@@ -177,7 +177,7 @@
     "message": "Всегда светлый"
   },
   "Apple_Pi_Your_personal_AI_Alpha": {
-    "message": "Apple Pi: ваш персональный ИИ (Alpha)"
+    "message": "WorkX: ваш персональный ИИ (Alpha)"
   },
   "Approval_Safety": {
     "message": "Одобрение и безопасность"
@@ -219,8 +219,8 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Попросить Browserx извлечь структурированные данные с любой веб‑страницы"
+  "Ask_WorkX_to_extract_structured_data__88fc": {
+    "message": "Попросить WorkX извлечь структурированные данные с любой веб‑страницы"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Запрашивать средний и более высокий риск (risk > 30). Рекомендуется большинству пользователей."
@@ -309,14 +309,11 @@
   "Browser_automation_tool_toggles": {
     "message": "Переключатели инструментов автоматизации браузера"
   },
-  "BrowserX": {
-    "message": "BrowserX"
+  "WorkX": {
+    "message": "WorkX"
   },
-  "Browserx": {
-    "message": "Browserx"
-  },
-  "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+  "WorkX_Alpha": {
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "Текущий каталог:"
@@ -385,8 +382,8 @@
   "Clear_search": {
     "message": "Очистить поиск"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Нажмите значок Browserx на панели инструментов или нажмите Alt+Shift+C"
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
+    "message": "Нажмите значок WorkX на панели инструментов или нажмите Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "Нажмите, чтобы отменить вход"
@@ -676,8 +673,8 @@
   "Enable_PIN_Protection": {
     "message": "Включить защиту PIN-кодом"
   },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": "Включить автоматическое подключение при запуске browserx"
+  "Enable_auto_connect_when_workx_starts": {
+    "message": "Включить автоматическое подключение при запуске WorkX"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Включить кэширование для повышения производительности за счёт хранения часто используемых данных"
@@ -733,8 +730,8 @@
   "Explain_this_info_selectionText": {
     "message": "Объясните это: ${info.selectionText}"
   },
-  "Explain_with_Browserx": {
-    "message": "Объяснить с помощью Browserx"
+  "Explain_with_WorkX": {
+    "message": "Объяснить с помощью WorkX"
   },
   "Export": {
     "message": "Экспорт"
@@ -760,8 +757,8 @@
   "Extract_Data": {
     "message": "Извлечь данные:"
   },
-  "Extract_data_with_Browserx": {
-    "message": "Извлечь данные с помощью Browserx"
+  "Extract_data_with_WorkX": {
+    "message": "Извлечь данные с помощью WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Извлекать определённые шаблоны данных со страниц"
@@ -955,8 +952,8 @@
   "Improve_this_text_info_selectionText": {
     "message": "Улучшить этот текст: ${info.selectionText}"
   },
-  "Improve_with_Browserx": {
-    "message": "Улучшить с помощью Browserx"
+  "Improve_with_WorkX": {
+    "message": "Улучшить с помощью WorkX"
   },
   "In": {
     "message": "В:"
@@ -1547,7 +1544,7 @@
     "message": "Повторная попытка"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Щёлкните правой кнопкой мыши любой текст, чтобы объяснить или улучшить его с помощью Browserx"
+    "message": "Щёлкните правой кнопкой мыши любой текст, чтобы объяснить или улучшить его с помощью WorkX"
   },
   "Risk_Score": {
     "message": "Оценка риска:"
@@ -2041,8 +2038,8 @@
   "Web_Search": {
     "message": "Веб‑поиск"
   },
-  "Welcome_to_Browserx": {
-    "message": "Добро пожаловать в Browserx"
+  "Welcome_to_WorkX": {
+    "message": "Добро пожаловать в WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Могут ли изолированные команды получать доступ к сети"
@@ -2092,8 +2089,8 @@
   "available": {
     "message": "доступно"
   },
-  "browserx": {
-    "message": "browserx"
+  "workx": {
+    "message": "WorkX"
   },
   "cached": {
     "message": "кешировано"

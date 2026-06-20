@@ -304,7 +304,7 @@
   .back-button {
     background: none;
     border: none;
-    color: var(--browserx-primary);
+    color: var(--workx-primary);
     cursor: pointer;
     font-size: 0.9375rem;
     font-weight: 500;
@@ -324,7 +324,7 @@
     margin: 0 0 1.5rem 0;
     font-size: 1.5rem;
     font-weight: 600;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .settings-form {
@@ -341,17 +341,17 @@
   }
 
   .settings-card {
-    background: var(--browserx-surface);
+    background: var(--workx-surface);
     border-radius: 0.75rem;
     padding: 1rem 1.25rem;
-    border: 1px solid var(--browserx-border);
+    border: 1px solid var(--workx-border);
   }
 
   .section-title {
     margin: 0 0 1rem 0;
     font-size: 1.125rem;
     font-weight: 600;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .form-group {
@@ -363,16 +363,16 @@
     margin-bottom: 0.5rem;
     font-size: 0.875rem;
     font-weight: 500;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .form-input {
     width: 100%;
     padding: 0.625rem;
-    border: 1px solid var(--browserx-border);
+    border: 1px solid var(--workx-border);
     border-radius: 0.375rem;
-    background: var(--browserx-surface);
-    color: var(--browserx-text);
+    background: var(--workx-surface);
+    color: var(--workx-text);
     font-size: 0.875rem;
     transition: all 0.2s;
   }
@@ -380,30 +380,30 @@
   .form-input:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-    background: color-mix(in srgb, var(--browserx-surface) 80%, var(--browserx-border));
+    background: color-mix(in srgb, var(--workx-surface) 80%, var(--workx-border));
   }
 
   .form-input:focus:not(:disabled) {
     outline: none;
-    border-color: var(--browserx-primary);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--browserx-primary) 10%, transparent);
+    border-color: var(--workx-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--workx-primary) 10%, transparent);
   }
 
   .form-select {
     width: 100%;
     padding: 0.625rem;
-    border: 1px solid var(--browserx-border);
+    border: 1px solid var(--workx-border);
     border-radius: 0.375rem;
-    background: var(--browserx-surface);
-    color: var(--browserx-text);
+    background: var(--workx-surface);
+    color: var(--workx-text);
     font-size: 0.875rem;
     transition: all 0.2s;
   }
 
   .form-select:focus {
     outline: none;
-    border-color: var(--browserx-primary);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--browserx-primary) 10%, transparent);
+    border-color: var(--workx-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--workx-primary) 10%, transparent);
   }
 
   .checkbox-label {
@@ -412,7 +412,7 @@
     gap: 0.5rem;
     cursor: pointer;
     font-size: 0.9375rem;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .checkbox-label input:disabled {
@@ -423,7 +423,7 @@
     width: 18px;
     height: 18px;
     cursor: pointer;
-    accent-color: var(--browserx-primary);
+    accent-color: var(--workx-primary);
   }
 
   .form-checkbox:disabled {
@@ -434,7 +434,7 @@
   .help-text {
     margin-top: 0.375rem;
     font-size: 0.875rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
     line-height: 1.4;
   }
 
@@ -449,9 +449,9 @@
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
-    border: 1px solid var(--browserx-primary);
+    border: 1px solid var(--workx-primary);
     background: transparent;
-    color: var(--browserx-primary);
+    color: var(--workx-primary);
   }
 
   .btn:disabled {
@@ -460,18 +460,18 @@
   }
 
   .btn:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--browserx-primary) 15%, transparent);
+    background: color-mix(in srgb, var(--workx-primary) 15%, transparent);
   }
 
   /* Modern Chat theme - filled buttons */
   :global(.settings-modal-container.modern) .btn-primary {
-    background: var(--browserx-primary);
+    background: var(--workx-primary);
     color: white;
     border: none;
   }
 
   :global(.settings-modal-container.modern) .btn-primary:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--browserx-primary) 85%, black);
+    background: color-mix(in srgb, var(--workx-primary) 85%, black);
   }
 
   .message {
@@ -485,12 +485,12 @@
   }
 
   .message.success {
-    color: var(--browserx-success);
-    background: color-mix(in srgb, var(--browserx-success) 10%, transparent);
+    color: var(--workx-success);
+    background: color-mix(in srgb, var(--workx-success) 10%, transparent);
   }
 
   .message.error {
-    color: var(--browserx-error);
-    background: color-mix(in srgb, var(--browserx-error) 10%, transparent);
+    color: var(--workx-error);
+    background: color-mix(in srgb, var(--workx-error) 10%, transparent);
   }
 </style>

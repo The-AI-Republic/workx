@@ -116,7 +116,7 @@ export default defineConfig({
   define: {
     __BUILD_MODE__: JSON.stringify('extension'),
     // Track 22 — compile-time feature flags (per-platform matrix). The SW
-    // has no process.env; APPLEPI_FEATURE_* here is a build-time-only knob.
+    // has no process.env; WORKX_FEATURE_* here is a build-time-only knob.
     ...featureDefine('extension', process.env),
   },
   build: {

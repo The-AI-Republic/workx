@@ -1,7 +1,7 @@
 /**
  * A2A Tool Adapter
  *
- * Adapts A2A skills to browserx ToolDefinition format.
+ * Adapts A2A skills to workx ToolDefinition format.
  * Provides skill-to-tool mapping, risk assessment, and registration helpers.
  *
  * Mirrors the MCPToolAdapter pattern from src/core/mcp/MCPToolAdapter.ts.

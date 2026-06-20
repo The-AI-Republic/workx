@@ -10,7 +10,7 @@
  *  - consecutive-overload counting → model fallback,
  *  - background-source fast-bail.
  *
- * It is a plain async function (no generator/yield): browserx emits status on
+ * It is a plain async function (no generator/yield): workx emits status on
  * the event bus via callbacks, so there is no need for claudy's yielded
  * heartbeat message.
  *
@@ -306,7 +306,7 @@ async function chunkedSleep(
 /**
  * Run `operation` with the unified retry/fallback policy. `operation` is the
  * whole turn (e.g. `() => this.tryRunTurn(prompt)`); restarting it replays
- * clean prior history (browserx records history only on turn success — no
+ * clean prior history (workx records history only on turn success — no
  * orphan-tool_use hazard, design Divergence 5).
  */
 export async function withModelRetry<T>(

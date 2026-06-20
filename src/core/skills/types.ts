@@ -42,7 +42,7 @@ export interface Skill {
   compatibility?: string;
   createdAt: string;
   updatedAt: string;
-  // ── Track 03: extended Claudy-parity + BrowserX-specific fields ──
+  // ── Track 03: extended Claudy-parity + WorkX-specific fields ──
   whenToUse?: string;
   argumentHint?: string;
   model?: SkillModel;

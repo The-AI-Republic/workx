@@ -71,47 +71,6 @@ export interface IAgentConfig {
    * `/plugin enable|disable`. Absent → no plugins enabled.
    */
   enabledPlugins?: Record<string, boolean>;
-
-  /**
-   * App-server mode: lets the installed desktop app expose a local callable
-   * WebSocket endpoint alongside the UI. Disabled by default. Not LLM-writable
-   * (intentionally absent from the agent-facing config schema sections).
-   * @see src/app-server/appServerConfig.ts for normalization/validation.
-   */
-  appServer?: IAppServerConfig;
-}
-
-/** App-server transport kind. Only `websocket` in the MVP. */
-export type AppServerTransport = 'websocket' | 'unix-socket';
-
-/**
- * App-server mode configuration. See `.ai_design/app_server_mode/design.md`.
- */
-export interface IAppServerConfig {
-  /** Master switch. When false, no listener is started. */
-  enabled: boolean;
-  /** Transport kind. */
-  transport: AppServerTransport;
-  /** Bind host (TCP transport). Loopback by default. */
-  bindHost: string;
-  /** Bind port (TCP transport). 0 = OS-assigned (reported back via status). */
-  port: number;
-  /** Unix socket / named pipe path (when transport = unix-socket). */
-  socketPath?: string;
-  /** Require a capability token during connect. */
-  requireAuth: boolean;
-  /** Reject any upgrade request carrying an Origin header. */
-  rejectBrowserOrigins: boolean;
-  /** Allow binding to a non-loopback host. */
-  allowLan: boolean;
-  /** Maximum concurrent connections. */
-  maxConnections: number;
-  /** Maximum inbound frame size in bytes. */
-  maxPayloadBytes: number;
-  /** Maximum per-connection outbound buffer before slow-consumer disconnect. */
-  maxBufferedBytes: number;
-  /** Bounded inbound request queue capacity. */
-  requestQueueCapacity: number;
 }
 
 // Model pricing information
@@ -385,11 +344,11 @@ export interface IUserPreferences {
    */
   language?: string;
   /**
-   * Default agent persona mode for NEW conversations (Apple Pi only).
+   * Default agent persona mode for NEW conversations (WorkX only).
    * - 'general': desktop automation agent (existing behavior)
    * - 'code': professional software engineering agent
    * This only seeds new sessions. The ACTIVE mode is per-session and changed
-   * at runtime via SetSessionMode; it is not stored here. Ignored by browserx.
+   * at runtime via SetSessionMode; it is not stored here. Ignored by workx.
    * Default: 'general'.
    */
   defaultMode?: AgentMode;
@@ -438,7 +397,7 @@ export interface IUserPreferences {
   experimental?: Record<string, boolean>;
   /**
    * Track 24.2: selected output-style persona name. Resolved against built-in
-   * `src/prompts/styles/*.md` (and filesystem `.browserx/styles` on the
+   * `src/prompts/styles/*.md` (and filesystem `.workx/styles` on the
    * server). Unknown/unset → the prompt is composed unchanged.
    */
   personaName?: string;

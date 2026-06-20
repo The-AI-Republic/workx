@@ -101,14 +101,14 @@ export class HookMatcher {
 
   /**
    * Extract the primary action parameter from tool parameters.
-   * Looks for common action-like fields used in BrowserX tools.
+   * Looks for common action-like fields used in WorkX tools.
    */
   private static extractAction(
     parameters?: Record<string, unknown>,
   ): string | undefined {
     if (!parameters) return undefined;
 
-    // BrowserX browser_dom uses 'action'
+    // WorkX browser_dom uses 'action'
     if (typeof parameters.action === 'string') {
       return parameters.action;
     }

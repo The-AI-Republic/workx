@@ -2,7 +2,7 @@
  * Plugin policy — admin-owned governance, separate from user settings.
  *
  * Policy lives in a platform-specific location (NOT agentConfig — it's
- * admin-deployed, e.g. /etc/browserx/policy.json or chrome.storage.managed).
+ * admin-deployed, e.g. /etc/workx/policy.json or chrome.storage.managed).
  * The reader is injected so this module stays platform-agnostic + testable.
  *
  * Reference: design.md § Hardening (policySettings, PluginPolicy,
@@ -182,13 +182,13 @@ export function isSourceInBlocklist(ref: string, policy: PolicySettings): boolea
 
 // ── Impersonation guards ───────────────────────────────────────────
 
-/** Empty for v1 — BrowserX has no official marketplaces yet. */
+/** Empty for v1 — WorkX has no official marketplaces yet. */
 export const ALLOWED_OFFICIAL_MARKETPLACE_NAMES: readonly string[] = [];
 
 export const BLOCKED_OFFICIAL_NAME_PATTERN =
-  /(official.*\b(browserx|airepublic)\b|\b(browserx|airepublic)\b.*official|^(browserx|airepublic)[-_](marketplace|plugins|official))/i;
+  /(official.*\b(workx|airepublic)\b|\b(workx|airepublic)\b.*official|^(workx|airepublic)[-_](marketplace|plugins|official))/i;
 
-const OFFICIAL_GITHUB_ORG = 'browserx';
+const OFFICIAL_GITHUB_ORG = 'workx';
 
 function containsNonAscii(value: string): boolean {
   for (let i = 0; i < value.length; i += 1) {
@@ -206,7 +206,7 @@ export function isBlockedOfficialName(name: string): boolean {
   return false;
 }
 
-/** A reserved (allowed-official) name must come from the BrowserX org. */
+/** A reserved (allowed-official) name must come from the WorkX org. */
 export function validateOfficialNameSource(
   name: string,
   ref: string,

@@ -11,7 +11,7 @@
  * Reference: design.md § Versioned cache layout + § Marketplace uninstall.
  */
 
-export const BROWSERX_PLUGIN_ORPHAN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+export const WORKX_PLUGIN_ORPHAN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export interface PluginCacheFsDeps {
   readText: (path: string) => Promise<string | null>;
@@ -100,7 +100,7 @@ export class PluginCache {
             continue;
           }
           const ts = Number(markerRaw);
-          if (Number.isFinite(ts) && this.now() - ts > BROWSERX_PLUGIN_ORPHAN_TTL_MS) {
+          if (Number.isFinite(ts) && this.now() - ts > WORKX_PLUGIN_ORPHAN_TTL_MS) {
             await this.fs.removeDir(vdir);
             removed.push(vdir);
           }

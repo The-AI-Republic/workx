@@ -3,7 +3,7 @@
  *
  * When a tool result exceeds its threshold, the full content is persisted to a
  * backing store and the model receives a <persisted-output> preview + a
- * retrieval reference instead of a truncated tail. This is the BrowserX port
+ * retrieval reference instead of a truncated tail. This is the WorkX port
  * of Claudy's `toolResultStorage.ts` model, generalized for our multi-platform
  * runtime:
  *

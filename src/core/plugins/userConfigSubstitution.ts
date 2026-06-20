@@ -1,7 +1,7 @@
 /**
  * User Config Substitution — three functions with three different semantics.
  *
- * Mirrors claudy's `pluginOptionsStorage.ts:326-400`. Adapted to BrowserX
+ * Mirrors claudy's `pluginOptionsStorage.ts:326-400`. Adapted to WorkX
  * with the same regex patterns and the same literal placeholder string
  * (verbatim — plugins authored for claudy expect that fingerprint).
  *
@@ -91,7 +91,7 @@ export function substituteUserConfigVariables(
  * content when a sensitive value would otherwise have been substituted.
  *
  * **Verbatim from claudy** — plugins authored for claudy and ported to
- * BrowserX will display the same fingerprint. Do not localize or rewrite.
+ * WorkX will display the same fingerprint. Do not localize or rewrite.
  */
 export function sensitiveContentPlaceholder(key: string): string {
   return `[sensitive option '${key}' not available in skill content]`;

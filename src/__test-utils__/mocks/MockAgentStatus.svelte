@@ -1,8 +1,8 @@
 <script lang="ts">
-  import type { BrowserxAgent } from '../../src/core/BrowserxAgent';
+  import type { WorkXAgent } from '../../src/core/WorkXAgent';
 
   let { agent, reactive = false, showStatus = false }: {
-    agent: BrowserxAgent;
+    agent: WorkXAgent;
     reactive?: boolean;
     showStatus?: boolean;
   } = $props();

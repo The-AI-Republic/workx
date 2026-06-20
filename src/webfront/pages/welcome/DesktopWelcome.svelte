@@ -14,7 +14,7 @@
     {
       eyebrow: 'Step 1 of 3',
       title: 'Start with a direct request',
-      body: 'Apple Pi opens to a conversation. Ask for the outcome you want and include the app, site, or files it should use.',
+      body: 'WorkX opens to a conversation. Ask for the outcome you want and include the app, site, or files it should use.',
       points: [
         'Use the message box for everyday tasks.',
         'Open a new thread when the task changes.',
@@ -34,7 +34,7 @@
     {
       eyebrow: 'Step 3 of 3',
       title: 'Use desktop capabilities',
-      body: 'Apple Pi can run desktop-oriented workflows such as scheduled tasks, memory, skills, and code-mode workspaces when enabled.',
+      body: 'WorkX can run desktop-oriented workflows such as scheduled tasks, memory, skills, and code-mode workspaces when enabled.',
       points: [
         'Use Scheduler for tasks that should run later.',
         'Enable Memory only when you want cross-conversation recall.',
@@ -83,7 +83,7 @@
       <div class="space-y-6">
         <div class="space-y-3">
           <p class="text-sm font-medium uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">
-            Welcome to Apple Pi
+            Welcome to WorkX
           </p>
           <h1 class="max-w-xl text-4xl font-semibold leading-tight text-chat-text dark:text-chat-text-dark sm:text-5xl">
             A quick guide before your first task
@@ -165,7 +165,7 @@
                 disabled={completing}
                 onclick={completeGuide}
               >
-                {completing ? 'Saving...' : 'Start using Apple Pi'}
+                {completing ? 'Saving...' : 'Start using WorkX'}
               </button>
             {:else}
               <button

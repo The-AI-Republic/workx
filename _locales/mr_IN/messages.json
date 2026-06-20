@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "कार्यांसाठी एक सामान्य इन-ब्राउझर AI एजंट"
@@ -177,7 +177,7 @@
     "message": "नेहमी उजळ"
   },
   "Apple_Pi_Your_personal_AI_Alpha": {
-    "message": "Apple Pi: तुमचा वैयक्तिक AI (Alpha)"
+    "message": "WorkX: तुमचा वैयक्तिक AI (Alpha)"
   },
   "Approval_Safety": {
     "message": "मंजुरी व सुरक्षा"
@@ -219,8 +219,8 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Browserx ला कोणत्याही वेबपृष्ठावरून संरचित डेटा एक्स्ट्रॅक्ट करण्यास सांगा"
+  "Ask_WorkX_to_extract_structured_data__88fc": {
+    "message": "WorkX ला कोणत्याही वेबपृष्ठावरून संरचित डेटा एक्स्ट्रॅक्ट करण्यास सांगा"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "मध्यम-जोखीम व त्यापेक्षा जास्त (जोखीम > 30) विचारा. बहुतेक वापरकर्त्यांसाठी शिफारस केलेले."
@@ -309,14 +309,11 @@
   "Browser_automation_tool_toggles": {
     "message": "ब्राउझर ऑटोमेशन साधन टॉगल्स"
   },
-  "BrowserX": {
-    "message": "BrowserX"
+  "WorkX": {
+    "message": "WorkX"
   },
-  "Browserx": {
-    "message": "Browserx"
-  },
-  "Browserx_Alpha": {
-    "message": "Browserx (अल्फा)"
+  "WorkX_Alpha": {
+    "message": "WorkX (अल्फा)"
   },
   "CWD": {
     "message": "CWD:"
@@ -385,8 +382,8 @@
   "Clear_search": {
     "message": "शोध साफ करा"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "टूलबारमधील Browserx आयकॉनवर क्लिक करा किंवा Alt+Shift+C दाबा"
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
+    "message": "टूलबारमधील WorkX आयकॉनवर क्लिक करा किंवा Alt+Shift+C दाबा"
   },
   "Click_to_cancel_login": {
     "message": "लॉगिन रद्द करण्यासाठी क्लिक करा"
@@ -676,8 +673,8 @@
   "Enable_PIN_Protection": {
     "message": "PIN संरक्षण सक्षम करा"
   },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": "browserx सुरू होताना स्वयंचलित कनेक्शन सक्षम करा"
+  "Enable_auto_connect_when_workx_starts": {
+    "message": "WorkX सुरू होताना स्वयंचलित कनेक्शन सक्षम करा"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "वारंवार प्रवेश होणारा डेटा साठवून कार्यक्षमता सुधारण्यासाठी कॅशिंग सक्षम करा"
@@ -733,8 +730,8 @@
   "Explain_this_info_selectionText": {
     "message": "हे स्पष्ट करा: ${info.selectionText}"
   },
-  "Explain_with_Browserx": {
-    "message": "Browserx सह स्पष्ट करा"
+  "Explain_with_WorkX": {
+    "message": "WorkX सह स्पष्ट करा"
   },
   "Export": {
     "message": "निर्यात"
@@ -760,8 +757,8 @@
   "Extract_Data": {
     "message": "डेटा काढा:"
   },
-  "Extract_data_with_Browserx": {
-    "message": "Browserx सह डेटा काढा"
+  "Extract_data_with_WorkX": {
+    "message": "WorkX सह डेटा काढा"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "पृष्ठांमधून विशिष्ट डेटा पॅटर्न काढा"
@@ -955,8 +952,8 @@
   "Improve_this_text_info_selectionText": {
     "message": "हा मजकूर सुधारित करा: ${info.selectionText}"
   },
-  "Improve_with_Browserx": {
-    "message": "Browserx सह सुधारित करा"
+  "Improve_with_WorkX": {
+    "message": "WorkX सह सुधारित करा"
   },
   "In": {
     "message": "मध्ये:"
@@ -1547,7 +1544,7 @@
     "message": "पुन्हा प्रयत्न करत आहे"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "कोणत्याही मजकूरावर उजवी बटण क्लिक करून Browserx सह तो स्पष्ट करा किंवा सुधारा"
+    "message": "कोणत्याही मजकूरावर उजवी बटण क्लिक करून WorkX सह तो स्पष्ट करा किंवा सुधारा"
   },
   "Risk_Score": {
     "message": "जोखीम गुण:"
@@ -2041,8 +2038,8 @@
   "Web_Search": {
     "message": "वेब शोध"
   },
-  "Welcome_to_Browserx": {
-    "message": "Browserx मध्ये आपले स्वागत आहे"
+  "Welcome_to_WorkX": {
+    "message": "WorkX मध्ये आपले स्वागत आहे"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "सँडबॉक्स कमांड्स नेटवर्कला प्रवेश करू शकतात का"
@@ -2092,8 +2089,8 @@
   "available": {
     "message": "उपलब्ध"
   },
-  "browserx": {
-    "message": "browserx"
+  "workx": {
+    "message": "WorkX"
   },
   "cached": {
     "message": "कॅश्ड"

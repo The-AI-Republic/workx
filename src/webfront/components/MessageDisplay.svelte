@@ -163,7 +163,7 @@
       {#if message.role === 'user'}
         {$_t("You")}
       {:else if message.role === 'assistant'}
-        {$_t("Browserx")}
+        {$_t("WorkX")}
       {:else}
         {$_t("System")}
       {/if}

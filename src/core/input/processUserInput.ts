@@ -6,7 +6,7 @@
  * `UserPromptSubmit` hook sees expanded input. One placement serves the
  * extension, the desktop app, and all three server input sources.
  *
- * Stage order mirrors claudy's `processUserInputBase` adapted to BrowserX's
+ * Stage order mirrors claudy's `processUserInputBase` adapted to WorkX's
  * `InputItem[]` / capability / Track-09 vocabulary
  * (design §4.4). Phases land incrementally:
  *

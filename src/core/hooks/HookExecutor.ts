@@ -410,13 +410,13 @@ export class HookExecutor {
    * The agent process holds model API keys, OAuth tokens, and backend
    * credentials in its environment; passing all of `process.env` to a
    * user-configured hook would let any hook script exfiltrate those secrets.
-   * Users can opt specific variables in via `BROWSERX_HOOK_ENV` (comma-separated).
+   * Users can opt specific variables in via `WORKX_HOOK_ENV` (comma-separated).
    */
   static buildHookEnv(env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
     const out: NodeJS.ProcessEnv = {};
-    const extra = env.BROWSERX_HOOK_ENV
+    const extra = env.WORKX_HOOK_ENV
       ? new Set(
-          env.BROWSERX_HOOK_ENV.split(',')
+          env.WORKX_HOOK_ENV.split(',')
             .map((s) => s.trim())
             .filter(Boolean),
         )

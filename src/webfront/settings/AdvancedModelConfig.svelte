@@ -325,7 +325,7 @@
   .back-button {
     background: none;
     border: none;
-    color: var(--browserx-primary);
+    color: var(--workx-primary);
     cursor: pointer;
     font-size: 0.9375rem;
     font-weight: 500;
@@ -345,19 +345,19 @@
     margin: 0 0 0.25rem 0;
     font-size: 1.5rem;
     font-weight: 600;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .config-subtitle {
     margin: 0 0 1.5rem 0;
     font-size: 0.875rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
   }
 
   .loading {
     padding: 2rem;
     text-align: center;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
   }
 
   .config-display {
@@ -370,8 +370,8 @@
   .config-section {
     margin-bottom: 0;
     padding: 1rem 1.25rem;
-    background: var(--browserx-surface);
-    border: 1px solid var(--browserx-border);
+    background: var(--workx-surface);
+    border: 1px solid var(--workx-border);
     border-radius: 0.75rem;
   }
 
@@ -379,16 +379,16 @@
     margin: 0 0 1rem 0;
     font-size: 1.125rem;
     font-weight: 600;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .subsection-title {
     margin: 1.5rem 0 1rem 0;
     font-size: 1rem;
     font-weight: 600;
-    color: var(--browserx-text);
+    color: var(--workx-text);
     padding-top: 1rem;
-    border-top: 1px solid var(--browserx-border);
+    border-top: 1px solid var(--workx-border);
   }
 
   .info-grid {
@@ -417,20 +417,20 @@
   .info-label {
     font-size: 0.875rem;
     font-weight: 500;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.025em;
   }
 
   .info-value {
     font-size: 0.9375rem;
-    color: var(--browserx-text);
+    color: var(--workx-text);
     word-break: break-word;
   }
 
   .info-value.code {
     font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-    background: var(--browserx-background);
+    background: var(--workx-background);
     padding: 0.25rem 0.5rem;
     border-radius: 0.25rem;
     font-size: 0.875rem;
@@ -441,7 +441,7 @@
   }
 
   .info-link {
-    color: var(--browserx-primary);
+    color: var(--workx-primary);
     text-decoration: none;
     font-size: 0.875rem;
     word-break: break-all;
@@ -472,13 +472,13 @@
   }
 
   .tag.enabled {
-    background: color-mix(in srgb, var(--browserx-success, #22c55e) 15%, transparent);
-    color: var(--browserx-success, #22c55e);
+    background: color-mix(in srgb, var(--workx-success, #22c55e) 15%, transparent);
+    color: var(--workx-success, #22c55e);
   }
 
   .tag.disabled {
-    background: var(--browserx-background);
-    color: var(--browserx-text-secondary);
+    background: var(--workx-background);
+    color: var(--workx-text-secondary);
   }
 
   .tag.deprecated {
