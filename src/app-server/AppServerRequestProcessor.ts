@@ -30,7 +30,7 @@ import {
   type ChallengePayload,
   type HelloOkPayload,
   type ErrorShape,
-} from '@applepi/ws-server';
+} from '@workx/ws-server';
 import type { AppServerConnectionRegistry, ConnectionSocket } from './AppServerConnectionRegistry';
 import type { AppServerAuth } from './connection/AppServerAuth';
 import type { RequestQueue } from './queue/RequestQueue';

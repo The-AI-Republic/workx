@@ -1,4 +1,4 @@
-# Apple Pi App-Server Mode Implementation Tasks
+# WorkX App-Server Mode Implementation Tasks
 
 Status: Ready for implementation
 Date: 2026-06-02
@@ -83,7 +83,7 @@ This checklist implements the design in `design.md`.
 ### Desktop Runtime Integration
 
 - [ ] Add `src/desktop-runtime/app-server/DesktopAppServerManager.ts`.
-- [ ] Start manager after `PiRuntimeBootstrap.initialize()` in `src/desktop-runtime/index.ts`.
+- [ ] Start manager after `WorkXRuntimeBootstrap.initialize()` in `src/desktop-runtime/index.ts`.
 - [ ] Register `AppServerChannel` with bootstrap.
 - [ ] Stop manager before bootstrap shutdown.
 - [ ] Catch app-server startup errors and keep sidecar running.
@@ -91,7 +91,7 @@ This checklist implements the design in `design.md`.
 
 ### Handlers
 
-- [ ] Make `src/server/handlers/config.ts` use the desktop `AgentConfig` services in desktop app-server mode (not `.applepi-server/config.json`).
+- [ ] Make `src/server/handlers/config.ts` use the desktop `AgentConfig` services in desktop app-server mode (not `.workx-server/config.json`).
 - [ ] Confirm `src/server/handlers/credentials.ts` loopback/token/TLS checks hold for desktop app-server mode.
 - [ ] Ensure `src/server/handlers/logs.ts` subscriptions are per connection and cleaned up on disconnect.
 

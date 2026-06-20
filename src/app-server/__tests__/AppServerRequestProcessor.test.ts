@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { registerMethodHandler } from '@applepi/ws-server';
+import { registerMethodHandler } from '@workx/ws-server';
 import { AppServerRequestProcessor } from '../AppServerRequestProcessor';
 import { AppServerConnectionRegistry } from '../AppServerConnectionRegistry';
 import { AppServerAuth, InMemoryTokenStore } from '../connection/AppServerAuth';

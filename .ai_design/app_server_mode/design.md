@@ -1,11 +1,11 @@
-# Apple Pi App-Server Mode Design
+# WorkX App-Server Mode Design
 
 Status: Ready for implementation
 Date: 2026-06-02
 
 ## Goal
 
-Enable one installed Apple Pi desktop app to serve both roles:
+Enable one installed WorkX desktop app to serve both roles:
 
 1. Normal interactive UI app.
 2. Local callable app-server that another process, program, script, or agent can call.
@@ -18,11 +18,11 @@ The first production target is local machine automation through a loopback WebSo
 - Do not use the stale desktop WebSocket path in `src/desktop/channels/WebSocketChannel.ts` and `src/desktop/channels/websocket/WebSocketServer.ts`.
 - Do not move runtime ownership from the Node sidecar to Rust/Tauri.
 - Do not build a second agent process just for app-server mode.
-- Do not replace the current `@applepi/ws-server` protocol in the MVP.
+- Do not replace the current `@workx/ws-server` protocol in the MVP.
 
 ## Executive Summary
 
-Apple Pi already has most of the server-mode pieces:
+WorkX already has most of the server-mode pieces:
 
 - A headless WebSocket/HTTP server in `src/server/index.ts`.
 - A typed protocol package in `packages/ws-server`.
@@ -35,7 +35,7 @@ The main gap is that the desktop runtime currently registers one channel only: `
 
 The most important implementation change is to make `ServerAgentBootstrap` multi-channel capable. Once the bootstrap can register more than one `ChannelAdapter`, the desktop app can keep the UI channel and add an app-server channel without creating a second agent runtime.
 
-Codex's app-server implementation provides the stability lessons Apple Pi should copy:
+Codex's app-server implementation provides the stability lessons WorkX should copy:
 
 - Explicit initialize/connect handshake per connection.
 - Strong local transport security: reject browser `Origin` requests and require auth for non-loopback.
@@ -47,7 +47,7 @@ Codex's app-server implementation provides the stability lessons Apple Pi should
 - Health and readiness endpoints.
 - Tests that verify per-connection isolation and shutdown behavior.
 
-## Current Apple Pi Architecture
+## Current WorkX Architecture
 
 ### Headless Server
 
@@ -108,7 +108,7 @@ This is enough protocol surface to make app-server mode useful immediately.
 The desktop app already runs the agent in a Node sidecar:
 
 - `src/desktop-runtime/index.ts`
-- `src/desktop-runtime/PiRuntimeBootstrap.ts`
+- `src/desktop-runtime/WorkXRuntimeBootstrap.ts`
 - `src/desktop-runtime/channels/StdioRuntimeChannel.ts`
 - `src/desktop-runtime/protocol/stdioCarrier.ts`
 - `src/desktop-runtime/protocol/controlBridge.ts`
@@ -117,7 +117,7 @@ The desktop app already runs the agent in a Node sidecar:
 
 Rust/Tauri supervises the sidecar process, sends length-prefixed JSON frames over stdio, and relays runtime events to the web UI.
 
-`PiRuntimeBootstrap` is a desktop specialization of `ServerAgentBootstrap`. It passes a `StdioRuntimeChannel` into the shared bootstrap.
+`WorkXRuntimeBootstrap` is a desktop specialization of `ServerAgentBootstrap`. It passes a `StdioRuntimeChannel` into the shared bootstrap.
 
 ### Shared Bootstrap Gap
 
@@ -143,7 +143,7 @@ channelManager.dispatchEvent(
 );
 ```
 
-This is the core reason an installed Apple Pi app cannot yet behave as both UI and app-server through the same runtime. The runtime is structurally single-channel even though `ChannelManager` already supports multiple channels.
+This is the core reason an installed WorkX app cannot yet behave as both UI and app-server through the same runtime. The runtime is structurally single-channel even though `ChannelManager` already supports multiple channels.
 
 ### Stale Desktop WebSocket Path
 
@@ -179,7 +179,7 @@ Key implementation patterns to copy:
 
 Transport code only accepts bytes/connections and forwards normalized events to the processor. The processor owns protocol behavior.
 
-Apple Pi should copy the separation:
+WorkX should copy the separation:
 
 - WebSocket listener accepts and authenticates connections.
 - Connection registry tracks authenticated clients.
@@ -192,19 +192,19 @@ Codex uses bounded channels with `CHANNEL_CAPACITY = 128`.
 
 If inbound request queues are full, Codex returns JSON-RPC error code `-32001` with message `Server overloaded; retry later.`
 
-Apple Pi should add an equivalent overload path in `packages/ws-server/src/errors.ts` and never let an external caller create an unbounded queue of work.
+WorkX should add an equivalent overload path in `packages/ws-server/src/errors.ts` and never let an external caller create an unbounded queue of work.
 
 ### Origin Rejection
 
 Codex's WebSocket transport rejects any HTTP request with an `Origin` header. This prevents random browser pages from calling a local app-server through loopback.
 
-Apple Pi app-server mode should reject `Origin` by default. Browser-origin access should require an explicit allowlist later, not be enabled by accident.
+WorkX app-server mode should reject `Origin` by default. Browser-origin access should require an explicit allowlist later, not be enabled by accident.
 
 ### Auth Policy
 
 Codex refuses unauthenticated non-loopback WebSocket listeners. It also supports capability-token and signed-bearer-token auth modes.
 
-Apple Pi MVP should:
+WorkX MVP should:
 
 - Bind only to `127.0.0.1` by default.
 - Require a generated capability token for app-server mode.
@@ -215,13 +215,13 @@ Apple Pi MVP should:
 
 Codex tracks initialized state, experimental API state, opt-out notification methods, client info, and outbound writer state per connection.
 
-Apple Pi already tracks connection metadata in the server path. Desktop app-server mode should use the same concept and avoid global connection flags.
+WorkX already tracks connection metadata in the server path. Desktop app-server mode should use the same concept and avoid global connection flags.
 
 ### Slow Consumer Protection
 
 Codex's outbound router disconnects slow connections when the outbound queue is saturated.
 
-Apple Pi should enforce:
+WorkX should enforce:
 
 - Maximum WebSocket `bufferedAmount`.
 - Maximum per-connection outbound queue length.
@@ -231,7 +231,7 @@ Apple Pi should enforce:
 
 Codex serializes requests by resource key. Mutating requests against the same thread/process/config resource are exclusive. Non-conflicting reads can run in parallel.
 
-Apple Pi should introduce the same idea before exposing desktop app-server mode broadly. At minimum:
+WorkX should introduce the same idea before exposing desktop app-server mode broadly. At minimum:
 
 - Chat mutation requests for the same session are serialized.
 - Config and credential writes are serialized globally.
@@ -242,23 +242,23 @@ Apple Pi should introduce the same idea before exposing desktop app-server mode 
 
 Codex has a `ConnectionRpcGate` that prevents queued handlers from starting after a connection closes while allowing in-flight handlers to finish.
 
-Apple Pi needs this because a local tool may disconnect while a request is queued. The server must not start the queued request later with no active requester.
+WorkX needs this because a local tool may disconnect while a request is queued. The server must not start the queued request later with no active requester.
 
 ### In-Process Mode
 
-Codex's `in_process.rs` keeps app-server semantics but removes socket transport. This is important conceptually for Apple Pi: app-server behavior is an API surface, not just a WebSocket listener.
+Codex's `in_process.rs` keeps app-server semantics but removes socket transport. This is important conceptually for WorkX: app-server behavior is an API surface, not just a WebSocket listener.
 
-Apple Pi desktop app-server should run in-process inside the same Node runtime sidecar. The WebSocket transport is just one caller transport.
+WorkX desktop app-server should run in-process inside the same Node runtime sidecar. The WebSocket transport is just one caller transport.
 
 ## Target Architecture
 
 ```text
-                Installed Apple Pi desktop app
+                Installed WorkX desktop app
 
   Web UI <-> Tauri runtime_supervisor <-> Node sidecar process
                                             |
                                             v
-                               PiRuntimeBootstrap
+                               WorkXRuntimeBootstrap
                                             |
                                             v
                                   ChannelManager
@@ -489,7 +489,7 @@ Add validation in `src/config/configSchema.ts`. This file uses Zod plus per-fiel
 - `maxBufferedBytes`: integer `65536..67108864`.
 - `requestQueueCapacity`: integer `1..4096`.
 
-Desktop app-server must not use `src/server/config/server-config.ts`. That file is for the standalone server environment variables and `.applepi-server/config.json`.
+Desktop app-server must not use `src/server/config/server-config.ts`. That file is for the standalone server environment variables and `.workx-server/config.json`.
 
 ## Runtime Status And Services
 
@@ -908,7 +908,7 @@ Required changes:
 
 - Add `channelId` and `channelType` to `MethodContext`.
 - Remove hardcoded `server-main` assumptions.
-- Make config handlers use desktop `AgentConfig` services in desktop app-server mode, not `.applepi-server/config.json`.
+- Make config handlers use desktop `AgentConfig` services in desktop app-server mode, not `.workx-server/config.json`.
 - Keep credential writes requiring loopback or TLS. Desktop app-server loopback with token is acceptable for MVP.
 
 Recommended dependency shape:
@@ -929,7 +929,7 @@ Create `src/desktop-runtime/app-server/DesktopAppServerManager.ts`.
 
 Responsibilities:
 
-- Read `appServer` config after `PiRuntimeBootstrap.initialize()`.
+- Read `appServer` config after `WorkXRuntimeBootstrap.initialize()`.
 - Ensure capability token exists if enabled.
 - Create `AppServerConnectionRegistry`.
 - Create `AppServerChannel`.
@@ -942,7 +942,7 @@ Responsibilities:
 Modify `src/desktop-runtime/index.ts`:
 
 ```ts
-const bootstrap = new PiRuntimeBootstrap({ channel, host });
+const bootstrap = new WorkXRuntimeBootstrap({ channel, host });
 await bootstrap.initialize();
 
 const appServerManager = new DesktopAppServerManager({
@@ -1090,7 +1090,7 @@ Add tests for:
 
 Add desktop-runtime integration tests that start:
 
-- `PiRuntimeBootstrap`.
+- `WorkXRuntimeBootstrap`.
 - `StdioRuntimeChannel`.
 - `DesktopAppServerManager`.
 - WebSocket test client.
@@ -1180,7 +1180,7 @@ Exit criteria:
 Tasks:
 
 - Generate TypeScript client types from `packages/ws-server`.
-- Add an `applepi-app-server-test-client`.
+- Add a `workx-app-server-test-client`.
 - Add external client examples.
 - Add stable event sequence numbers.
 - Add v2 API planning for thread/turn naming.
@@ -1247,7 +1247,7 @@ Exit criteria:
 
 - `src/desktop-runtime/index.ts`: start/stop `DesktopAppServerManager`.
 - `src/desktop-runtime/app-server/DesktopAppServerManager.ts`: desktop integration.
-- `src/desktop-runtime/PiRuntimeBootstrap.ts`: expose register/unregister channel through inherited bootstrap.
+- `src/desktop-runtime/WorkXRuntimeBootstrap.ts`: expose register/unregister channel through inherited bootstrap.
 
 ### Handlers
 
@@ -1303,7 +1303,7 @@ Keep these separate:
 - Headless server config: `src/server/config/server-config.ts`.
 - Desktop app-server config: `IAgentConfig.appServer`.
 
-Do not write `.applepi-server/config.json` from desktop app-server settings.
+Do not write `.workx-server/config.json` from desktop app-server settings.
 
 ## Risks And Mitigations
 
@@ -1324,7 +1324,7 @@ Do not write `.applepi-server/config.json` from desktop app-server settings.
 
 The feature is complete when:
 
-- Apple Pi desktop can run UI and app-server mode in the same installed app process tree.
+- WorkX desktop can run UI and app-server mode in the same installed app process tree.
 - App-server is disabled by default.
 - When enabled, the desktop sidecar listens on loopback WebSocket.
 - External local process can authenticate and call `chat.send`.
@@ -1340,7 +1340,7 @@ The feature is complete when:
 
 ## Source Research References
 
-Apple Pi:
+WorkX:
 
 - `README.md`
 - `package.json`
@@ -1368,7 +1368,7 @@ Apple Pi:
 - `src/core/services/runtime-services.ts`
 - `src/core/services/agent-services.ts`
 - `src/desktop-runtime/index.ts`
-- `src/desktop-runtime/PiRuntimeBootstrap.ts`
+- `src/desktop-runtime/WorkXRuntimeBootstrap.ts`
 - `src/desktop-runtime/channels/StdioRuntimeChannel.ts`
 - `src/desktop-runtime/protocol/frames.ts`
 - `src/desktop-runtime/protocol/stdioCarrier.ts`
