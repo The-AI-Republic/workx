@@ -17,19 +17,26 @@
 # both light and dark OS chrome.
 #
 # Usage:   scripts/regenerate-icons.sh
-# Requires ImageMagick (`convert` / `identify`).
+# Requires ImageMagick (`convert` / `identify`) and the Tauri CLI (`cargo tauri`).
 
 set -euo pipefail
 
-if ! command -v convert >/dev/null 2>&1; then
-  echo "error: ImageMagick (convert) is required" >&2
-  exit 1
-fi
+for tool in convert identify cargo; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    echo "error: required tool '$tool' was not found" >&2
+    exit 1
+  fi
+done
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BRAND="$REPO_ROOT/assets/brand"
 ICONS_DIR="$REPO_ROOT/tauri/icons"
 EXT_LOGO="$REPO_ROOT/src/static/AI RepublicLOGO01.png"
+
+if ! (cd "$REPO_ROOT/tauri" && cargo tauri --version >/dev/null 2>&1); then
+  echo "error: cargo tauri is required to generate a valid macOS icon.icns" >&2
+  exit 1
+fi
 
 WHITE_SVG="$BRAND/workx_icon_white.svg"
 BLACK_SVG="$BRAND/workx_icon_black.svg"
@@ -95,7 +102,10 @@ convert "$MASTER" \
   -delete 0 "$ICONS_DIR/icon.ico"
 
 echo "Building icon.icns ..."
-convert "$MASTER" -resize 1024x1024 "$ICONS_DIR/icon.icns"
+TAURI_ICON_TMP="$TMP/tauri-icons"
+mkdir -p "$TAURI_ICON_TMP"
+(cd "$REPO_ROOT/tauri" && cargo tauri icon "$MASTER" -o "$TAURI_ICON_TMP" >/dev/null)
+cp "$TAURI_ICON_TMP/icon.icns" "$ICONS_DIR/icon.icns"
 
 # ── Chrome extension toolbar / store icon (single source, Chrome downscales) ──
 if [[ -f "$EXT_LOGO" ]]; then
