@@ -87,7 +87,7 @@
 
   function requestLogin() {
     if (platform.platformName === 'desktop') {
-      window.dispatchEvent(new CustomEvent('applepi:request-login'));
+      window.dispatchEvent(new CustomEvent('workx:request-login'));
       return;
     }
     const loginUrl = getLoginPageUrl();
@@ -491,7 +491,7 @@
         id: `${idPrefix}_${i}_${Date.now()}`,
         category: 'message',
         timestamp: new Date(),
-        title: isUser ? 'user' : 'browserx',
+        title: isUser ? 'user' : 'workx',
         content: text,
         style: isUser ? { textColor: 'text-cyan-400' } : STYLE_PRESETS.agent_message,
         streaming: false,
@@ -1028,7 +1028,7 @@
     try {
       if (success) {
         // Extract result summary from the processed events
-        const lastAgentEvent = processedEvents.filter(e => e.title === 'browserx').pop();
+        const lastAgentEvent = processedEvents.filter(e => e.title === 'workx').pop();
         const resultSummary = lastAgentEvent?.content?.slice(0, 500) || 'Job completed';
 
         await (await getInitializedUIClient()).serviceRequest('scheduler.complete', {
@@ -1141,7 +1141,7 @@
         id: `scheduled_error_${Date.now()}`,
         category: 'message',
         timestamp: new Date(),
-        title: 'browserx',
+        title: 'workx',
         content: `Failed to execute scheduled task: ${error instanceof Error ? error.message : 'Unknown error'}`,
         style: STYLE_PRESETS.error,
         streaming: false,
@@ -1561,7 +1561,7 @@
         <!-- Status Line -->
         <div class="shrink-0 flex justify-between mb-2">
           <div class="flex items-center space-x-2">
-            <TerminalMessage type="system" content={platform.platformName === 'extension' ? $_t("Browserx (Alpha)") : $_t("Apple Pi: Your personal AI (Alpha)")} />
+            <TerminalMessage type="system" content={platform.platformName === 'extension' ? $_t("WorkX (Alpha)") : $_t("WorkX: Your personal AI (Alpha)")} />
             {#if zoomLevel !== 100}
               <button onclick={resetZoom} class="text-sm leading-relaxed font-[inherit] opacity-70 hover:opacity-100 cursor-pointer {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}" title="Reset zoom to 100%">
                 [{zoomLevel}%] ✕
@@ -1574,7 +1574,7 @@
               {@const activeMode = $activeThread?.mode ?? DEFAULT_MODE}
               {@const pendingMode = $activeThread?.pendingMode ?? null}
               <div class="flex items-center gap-1" role="group" aria-label={$_t("Agent mode")}>
-                {#each Object.values(MODES).filter((m) => !m.agentTypes || m.agentTypes.includes('applepi') || m.agentTypes.includes('applepi-server')) as modeSpec (modeSpec.id)}
+                {#each Object.values(MODES).filter((m) => !m.agentTypes || m.agentTypes.includes('workx') || m.agentTypes.includes('workx-server')) as modeSpec (modeSpec.id)}
                   {@const isActive = activeMode === modeSpec.id && !pendingMode}
                   {@const isPending = pendingMode === modeSpec.id}
                   <button

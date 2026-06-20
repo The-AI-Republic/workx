@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resolveRuntimeUrls } from '../runtimeUrls';
 
 const ENV_KEYS = [
-  'APPLEPI_AUTH_BASE_URL',
-  'APPLEPI_HOME_PAGE_BASE_URL',
-  'APPLEPI_BACKEND_API_BASE_URL',
+  'WORKX_AUTH_BASE_URL',
+  'WORKX_HOME_PAGE_BASE_URL',
+  'WORKX_BACKEND_API_BASE_URL',
   'VITE_AUTH_BASE_URL',
   'VITE_HOME_PAGE_BASE_URL',
   'VITE_BACKEND_API_BASE_URL',
@@ -39,7 +39,7 @@ describe('resolveRuntimeUrls', () => {
       homePageBaseUrl: null,
       backendApiBaseUrl: null,
       llmApiUrl: '/api/llm',
-      deeplinkRedirectUrl: 'applepi://auth/callback',
+      deeplinkRedirectUrl: 'workx://auth/callback',
       source: {
         homePageBaseUrl: 'default',
         backendApiBaseUrl: 'default',
@@ -49,10 +49,10 @@ describe('resolveRuntimeUrls', () => {
     });
   });
 
-  it('prefers APPLEPI auth env values over VITE env values', () => {
-    process.env.APPLEPI_AUTH_BASE_URL = 'https://auth.example.com';
+  it('prefers WORKX auth env values over VITE env values', () => {
+    process.env.WORKX_AUTH_BASE_URL = 'https://auth.example.com';
     process.env.VITE_HOME_PAGE_BASE_URL = 'https://vite-home.example.com';
-    process.env.APPLEPI_BACKEND_API_BASE_URL = 'https://backend.example.com';
+    process.env.WORKX_BACKEND_API_BASE_URL = 'https://backend.example.com';
     process.env.VITE_BACKEND_API_BASE_URL = 'https://vite-backend.example.com';
 
     const urls = resolveRuntimeUrls();
@@ -88,7 +88,7 @@ describe('resolveRuntimeUrls', () => {
   });
 
   it('keeps legacy home page env aliases for existing builds', () => {
-    process.env.APPLEPI_HOME_PAGE_BASE_URL = 'https://legacy-runtime.example.com';
+    process.env.WORKX_HOME_PAGE_BASE_URL = 'https://legacy-runtime.example.com';
     process.env.VITE_HOME_PAGE_BASE_URL = 'https://legacy-vite.example.com';
 
     const urls = resolveRuntimeUrls();

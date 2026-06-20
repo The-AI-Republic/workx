@@ -6,7 +6,7 @@ export interface RuntimeUrlConfig {
   homePageBaseUrl: string | null;
   backendApiBaseUrl: string | null;
   llmApiUrl: string | null;
-  deeplinkRedirectUrl: 'applepi://auth/callback';
+  deeplinkRedirectUrl: 'workx://auth/callback';
   source: {
     homePageBaseUrl: RuntimeUrlSource;
     backendApiBaseUrl: RuntimeUrlSource;
@@ -35,7 +35,7 @@ export function resolveRuntimeUrls(): RuntimeUrlConfig {
   const authConfig = resolveAuthConfig();
 
   const backendFromEnv = firstNonEmpty(
-    env.APPLEPI_BACKEND_API_BASE_URL,
+    env.WORKX_BACKEND_API_BASE_URL,
     env.VITE_BACKEND_API_BASE_URL,
     vite.VITE_BACKEND_API_BASE_URL,
   );
@@ -46,7 +46,7 @@ export function resolveRuntimeUrls(): RuntimeUrlConfig {
     homePageBaseUrl: authConfig.authBaseUrl,
     backendApiBaseUrl,
     llmApiUrl: backendApiBaseUrl ? `${backendApiBaseUrl}/api/llm` : '/api/llm',
-    deeplinkRedirectUrl: 'applepi://auth/callback',
+    deeplinkRedirectUrl: 'workx://auth/callback',
     source: {
       homePageBaseUrl: authConfig.source.authBaseUrl,
       backendApiBaseUrl: backendFromEnv ? 'env' : 'default',

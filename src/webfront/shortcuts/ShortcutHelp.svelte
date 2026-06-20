@@ -38,7 +38,7 @@
     justify-content: space-between;
     gap: 16px;
     padding: 12px 0;
-    border-bottom: 1px solid var(--browserx-border, #333);
+    border-bottom: 1px solid var(--workx-border, #333);
   }
 
   .shortcut-copy {
@@ -58,9 +58,9 @@
   kbd {
     flex-shrink: 0;
     padding: 4px 8px;
-    border: 1px solid var(--browserx-border, #444);
+    border: 1px solid var(--workx-border, #444);
     border-radius: 4px;
-    background: color-mix(in srgb, var(--browserx-surface, #111) 90%, white);
+    background: color-mix(in srgb, var(--workx-surface, #111) 90%, white);
     font: inherit;
     font-size: 12px;
   }

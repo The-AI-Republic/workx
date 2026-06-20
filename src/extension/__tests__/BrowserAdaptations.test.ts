@@ -180,12 +180,12 @@ describe('Browser Adaptations Contract Compliance', () => {
     });
 
     it('should store auth token structure matching Rust', async () => {
-      interface BrowserxAuth {
+      interface WorkXAuth {
         accessToken: string;
         expiresAt?: number;
       }
 
-      const auth: BrowserxAuth = {
+      const auth: WorkXAuth = {
         accessToken: 'token_123',
         expiresAt: Date.now() + 3600000,
       };

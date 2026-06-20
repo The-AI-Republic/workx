@@ -2,7 +2,7 @@
  * A2A Client Wrapper
  *
  * Wraps the @a2a-js/sdk Client with authentication and connection management.
- * Provides a simplified interface for browserx integration.
+ * Provides a simplified interface for workx integration.
  *
  * Mirrors the MCPClient pattern from src/core/mcp/MCPClient.ts.
  */
@@ -42,7 +42,7 @@ export interface A2AClientOptions {
 }
 
 /**
- * A2AClient wraps the @a2a-js/sdk Client with browserx-specific functionality.
+ * A2AClient wraps the @a2a-js/sdk Client with workx-specific functionality.
  *
  * Usage:
  * ```typescript

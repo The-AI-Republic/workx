@@ -6,10 +6,10 @@ import {
 } from '../privacy';
 
 describe('telemetry core: privacy', () => {
-  const orig = process.env.APPLEPI_NO_TELEMETRY;
+  const orig = process.env.WORKX_NO_TELEMETRY;
   afterEach(() => {
-    if (orig === undefined) delete process.env.APPLEPI_NO_TELEMETRY;
-    else process.env.APPLEPI_NO_TELEMETRY = orig;
+    if (orig === undefined) delete process.env.WORKX_NO_TELEMETRY;
+    else process.env.WORKX_NO_TELEMETRY = orig;
   });
 
   it('Test 1.e: resolvePrivacyLevel truth table', () => {
@@ -24,18 +24,18 @@ describe('telemetry core: privacy', () => {
     expect(isTelemetryAllowed(false, false)).toBe(false);
   });
 
-  it('readEnvOptOut honors APPLEPI_NO_TELEMETRY truthiness', () => {
-    delete process.env.APPLEPI_NO_TELEMETRY;
+  it('readEnvOptOut honors WORKX_NO_TELEMETRY truthiness', () => {
+    delete process.env.WORKX_NO_TELEMETRY;
     expect(readEnvOptOut()).toBe(false);
-    process.env.APPLEPI_NO_TELEMETRY = '0';
+    process.env.WORKX_NO_TELEMETRY = '0';
     expect(readEnvOptOut()).toBe(false);
-    process.env.APPLEPI_NO_TELEMETRY = 'false';
+    process.env.WORKX_NO_TELEMETRY = 'false';
     expect(readEnvOptOut()).toBe(false);
-    process.env.APPLEPI_NO_TELEMETRY = '';
+    process.env.WORKX_NO_TELEMETRY = '';
     expect(readEnvOptOut()).toBe(false);
-    process.env.APPLEPI_NO_TELEMETRY = '1';
+    process.env.WORKX_NO_TELEMETRY = '1';
     expect(readEnvOptOut()).toBe(true);
-    process.env.APPLEPI_NO_TELEMETRY = 'true';
+    process.env.WORKX_NO_TELEMETRY = 'true';
     expect(readEnvOptOut()).toBe(true);
   });
 });

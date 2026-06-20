@@ -505,7 +505,7 @@ describe('Action Reliability: Click', () => {
 
     // Verify a visual effect Runtime.evaluate was called
     const runtimeCall = runtimeCalls.find((call: any[]) =>
-      call[2].expression.includes('browserx:show-visual-effect') &&
+      call[2].expression.includes('workx:show-visual-effect') &&
       call[2].expression.includes('"ripple"')
     );
 
@@ -684,7 +684,7 @@ describe('Action Reliability: Click', () => {
     // CDP MIGRATION: Runtime.evaluate for visual effects should NOT be called when disabled
     // Note: Runtime.evaluate may still be called for readyState, SPA content checks, etc.
     const visualEffectCalls = (mockChrome.debugger.sendCommand as any).mock.calls.filter(
-      (call: any[]) => call[1] === 'Runtime.evaluate' && call[2]?.expression?.includes('browserx:show-visual-effect')
+      (call: any[]) => call[1] === 'Runtime.evaluate' && call[2]?.expression?.includes('workx:show-visual-effect')
     );
     expect(visualEffectCalls.length).toBe(0);
   });

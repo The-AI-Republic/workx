@@ -46,7 +46,7 @@ describe('NodePluginProvider + PluginRegistry (E2E-1)', () => {
   let tmpRoot: string;
 
   beforeEach(async () => {
-    tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'browserx-plugins-'));
+    tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'workx-plugins-'));
   });
 
   afterEach(async () => {

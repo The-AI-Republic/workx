@@ -1,7 +1,7 @@
 /**
  * Managed / Policy Settings Tier (Track 20) — public barrel.
  *
- * One shared resolver feeds both BrowserX config systems via the post-merge
+ * One shared resolver feeds both WorkX config systems via the post-merge
  * pin ({@link applyPolicy}) and the write-surface guards. Platform-native
  * sources live with their platform; this barrel exposes the shared core.
  *

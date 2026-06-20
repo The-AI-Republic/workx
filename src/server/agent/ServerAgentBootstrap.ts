@@ -43,7 +43,7 @@ import { TranscriptStore } from '../persistence/TranscriptStore';
 import { BackupManager } from '../persistence/backup';
 import { ApprovalManager } from '../exec/approval-manager';
 import { ConnectorRegistry } from '../channel-connectors/connector-registry';
-import { ApplePiConnectorApi } from '../channel-connectors/applepi-connector-api';
+import { WorkXConnectorApi } from '../channel-connectors/workx-connector-api';
 import { discoverConnectors } from '../channel-connectors/connector-loader';
 import { ConnectorBridge } from '../channel-connectors/connector-bridge';
 import { HealthMonitor } from '../health/health-monitor';
@@ -231,8 +231,8 @@ export class ServerAgentBootstrap {
     // Track 20 policy block below. The first call memoizes the pinned config,
     // so calling it here would cache a config with NO admin policy applied.
     const profile = this.options.profile ?? 'server';
-    const dataDir = this.options.dataDir ?? process.env.APPLEPI_DATA_DIR ??
-      `${process.env.HOME ?? process.env.USERPROFILE ?? '/tmp'}/.applepi-server/data`;
+    const dataDir = this.options.dataDir ?? process.env.WORKX_DATA_DIR ??
+      `${process.env.HOME ?? process.env.USERPROFILE ?? '/tmp'}/.workx-server/data`;
 
     try {
       // 0. Initialize StorageProvider (used by subsystems)
@@ -277,7 +277,7 @@ export class ServerAgentBootstrap {
       }
 
       // 1b. Track 20: register the managed-file policy source (fleet policy is
-      // mounted via ConfigMap/Secret at APPLEPI_POLICY_PATH) and resolve it
+      // mounted via ConfigMap/Secret at WORKX_POLICY_PATH) and resolve it
       // BEFORE the first getServerConfig() / AgentConfig.getInstance() so both
       // config systems' first hydration already sees admin policy. Fail-open.
       try {
@@ -285,7 +285,7 @@ export class ServerAgentBootstrap {
           // Fleet remote path is highest precedence (first-wins), then the
           // ConfigMap/Secret-mounted managed file.
           new RemotePolicySource(),
-          new ManagedFileSource(process.env.APPLEPI_POLICY_PATH),
+          new ManagedFileSource(process.env.WORKX_POLICY_PATH),
           new ManagedDirSource(),
         ]);
         await resolveActivePolicy();
@@ -811,14 +811,14 @@ export class ServerAgentBootstrap {
       const { McpSlotLoader } = await import('@/core/plugins/loaders/McpSlotLoader');
       const { AgentConfig } = await import('@/config/AgentConfig');
 
-      const pluginsRoot = path.join(os.homedir(), '.browserx', 'plugins');
+      const pluginsRoot = path.join(os.homedir(), '.workx', 'plugins');
       const provider = new NodePluginProvider(pluginsRoot);
       await provider.initialize();
 
       const agentConfig = await AgentConfig.getInstance();
 
-      // Phase 10c: admin policy (read once, cached). /etc/browserx/policy.json
-      // (Linux/Mac) or %ProgramData%\BrowserX\policy.json (Windows). Missing/
+      // Phase 10c: admin policy (read once, cached). /etc/workx/policy.json
+      // (Linux/Mac) or %ProgramData%\WorkX\policy.json (Windows). Missing/
       // corrupt → empty policy. Built HERE (before bootstrapEnabledPlugins +
       // MarketplaceRegistry) so block / force-enable / source guards apply.
       const {
@@ -830,8 +830,8 @@ export class ServerAgentBootstrap {
       } = await import('@/core/plugins/policy');
       const policyPath =
         process.platform === 'win32'
-          ? path.join(process.env.ProgramData ?? 'C:\\ProgramData', 'BrowserX', 'policy.json')
-          : '/etc/browserx/policy.json';
+          ? path.join(process.env.ProgramData ?? 'C:\\ProgramData', 'WorkX', 'policy.json')
+          : '/etc/workx/policy.json';
       const policyLoader = new PolicyLoader({
         readPolicyText: async () => {
           try {
@@ -978,7 +978,7 @@ export class ServerAgentBootstrap {
           await fsmod.promises.mkdir(nodePath.dirname(p), { recursive: true });
           await fsmod.promises.writeFile(p, c, 'utf-8');
         },
-        filePath: nodePath.join(os.homedir(), '.browserx', 'installed_plugins_v2.json'),
+        filePath: nodePath.join(os.homedir(), '.workx', 'installed_plugins_v2.json'),
       });
 
       const fetchPlugin = createGitFetchPlugin(
@@ -1022,7 +1022,7 @@ export class ServerAgentBootstrap {
       const { PluginCache } = await import('@/core/plugins/PluginCache');
       const fsmod = await import('node:fs');
       const pluginCache = new PluginCache(
-        nodePath.join(os.homedir(), '.browserx'),
+        nodePath.join(os.homedir(), '.workx'),
         {
           readText: async (p: string) => {
             try {
@@ -1607,7 +1607,7 @@ export class ServerAgentBootstrap {
       const definitions = await discoverConnectors();
 
       for (const definition of definitions) {
-        const api = new ApplePiConnectorApi();
+        const api = new WorkXConnectorApi();
         await definition.register(api);
 
         const registrations = api.getRegistrations();
@@ -1647,8 +1647,8 @@ export class ServerAgentBootstrap {
       const { registerExternalPersonas } = await import('@/prompts/PersonaLoader');
       registerExternalPersonas(
         scanDiskPersonas([
-          join(homeDir, '.browserx', 'styles'),
-          join(process.cwd(), '.browserx', 'styles'),
+          join(homeDir, '.workx', 'styles'),
+          join(process.cwd(), '.workx', 'styles'),
         ]),
       );
     } catch (e) {
@@ -1666,7 +1666,7 @@ export class ServerAgentBootstrap {
       personaName: isDesktopRuntime ? undefined : getServerConfig().server.persona,
     };
 
-    configurePromptComposer(isDesktopRuntime ? 'applepi' : 'applepi-server', staticContext);
+    configurePromptComposer(isDesktopRuntime ? 'workx-desktop' : 'workx-server', staticContext);
     console.log(`[ServerAgentBootstrap] PromptComposer configured for ${isDesktopRuntime ? 'desktop runtime' : 'server'} mode`);
   }
 

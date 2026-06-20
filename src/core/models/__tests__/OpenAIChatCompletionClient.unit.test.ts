@@ -356,7 +356,7 @@ describe('OpenAIChatCompletionClient - Tool Call Handling', () => {
 
   describe('Multiple tool calls in single turn', () => {
     it('should handle multiple tool calls correctly', () => {
-      // BrowserX sets parallel_tool_calls to false, so only one tool call should be emitted
+      // WorkX sets parallel_tool_calls to false, so only one tool call should be emitted
       // But the accumulator should support multiple tool calls
 
       client['chatCompletionToolCalls'].set(0, {

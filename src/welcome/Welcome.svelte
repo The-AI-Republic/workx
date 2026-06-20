@@ -10,7 +10,7 @@
 <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
   <div class="max-w-2xl mx-auto p-8 bg-white dark:bg-gray-800 rounded-lg shadow-xl">
     <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-      {$_t("Welcome to Browserx")}
+      {$_t("Welcome to WorkX")}
     </h1>
 
     <p class="text-lg text-gray-600 dark:text-gray-300 mb-6">
@@ -26,7 +26,7 @@
           <div>
             <strong class="text-gray-800 dark:text-gray-200">{$_t("Open Side Panel:")}</strong>
             <span class="text-gray-600 dark:text-gray-400">
-              {$_t("Click the Browserx icon in your toolbar or press Alt+Shift+C")}
+              {$_t("Click the WorkX icon in your toolbar or press Alt+Shift+C")}
             </span>
           </div>
         </div>
@@ -36,7 +36,7 @@
           <div>
             <strong class="text-gray-800 dark:text-gray-200">{$_t("Use Context Menu:")}</strong>
             <span class="text-gray-600 dark:text-gray-400">
-              {$_t("Right-click on any text to explain or improve it with Browserx")}
+              {$_t("Right-click on any text to explain or improve it with WorkX")}
             </span>
           </div>
         </div>
@@ -46,7 +46,7 @@
           <div>
             <strong class="text-gray-800 dark:text-gray-200">{$_t("Extract Data:")}</strong>
             <span class="text-gray-600 dark:text-gray-400">
-              {$_t("Ask Browserx to extract structured data from any webpage")}
+              {$_t("Ask WorkX to extract structured data from any webpage")}
             </span>
           </div>
         </div>

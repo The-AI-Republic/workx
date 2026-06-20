@@ -38,16 +38,16 @@ export function isTelemetryAllowed(
 }
 
 /**
- * Read the `APPLEPI_NO_TELEMETRY` opt-out behind a guard that is safe in the
+ * Read the `WORKX_NO_TELEMETRY` opt-out behind a guard that is safe in the
  * extension service worker (no `process` there). Lifted from the
  * `typeof process !== 'undefined'` pattern in `utils/logger.ts`.
  */
 export function readEnvOptOut(): boolean {
   if (
     typeof process !== 'undefined' &&
-    process.env?.APPLEPI_NO_TELEMETRY != null
+    process.env?.WORKX_NO_TELEMETRY != null
   ) {
-    const v = process.env.APPLEPI_NO_TELEMETRY;
+    const v = process.env.WORKX_NO_TELEMETRY;
     return v !== '' && v !== 'false' && v !== '0';
   }
   return false;

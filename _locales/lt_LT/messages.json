@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "Universalus AI agentas naršyklėje darbo užduotims"
@@ -177,7 +177,7 @@
     "message": "Visada šviesus"
   },
   "Apple_Pi_Your_personal_AI_Alpha": {
-    "message": "Apple Pi: Jūsų asmeninis AI (Alpha)"
+    "message": "WorkX: Jūsų asmeninis AI (Alpha)"
   },
   "Approval_Safety": {
     "message": "Patvirtinimas ir saugumas"
@@ -219,8 +219,8 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Paprašyti Browserx išgauti struktūruotus duomenis iš bet kurio tinklalapio"
+  "Ask_WorkX_to_extract_structured_data__88fc": {
+    "message": "Paprašyti WorkX išgauti struktūruotus duomenis iš bet kurio tinklalapio"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Klausti dėl vidutinės rizikos ir aukštesnės (rizika > 30). Rekomenduojama daugumai vartotojų."
@@ -309,14 +309,11 @@
   "Browser_automation_tool_toggles": {
     "message": "Naršyklės automatizacijos įrankių jungikliai"
   },
-  "BrowserX": {
-    "message": "BrowserX"
+  "WorkX": {
+    "message": "WorkX"
   },
-  "Browserx": {
-    "message": "Browserx"
-  },
-  "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+  "WorkX_Alpha": {
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "Dabartinis darbinis katalogas:"
@@ -385,8 +382,8 @@
   "Clear_search": {
     "message": "Išvalyti paiešką"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Spustelėkite Browserx piktogramą įrankių juostoje arba paspauskite Alt+Shift+C"
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
+    "message": "Spustelėkite WorkX piktogramą įrankių juostoje arba paspauskite Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "Spustelėkite, kad atšauktumėte prisijungimą"
@@ -676,8 +673,8 @@
   "Enable_PIN_Protection": {
     "message": "Įjungti PIN apsaugą"
   },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": "Įjungti automatinį prisijungimą, kai browserx paleidžiamas"
+  "Enable_auto_connect_when_workx_starts": {
+    "message": "Įjungti automatinį prisijungimą, kai WorkX paleidžiamas"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Įjungti talpyklą, kad pagerintumėte našumą saugant dažnai naudojamus duomenis"
@@ -733,8 +730,8 @@
   "Explain_this_info_selectionText": {
     "message": "Paaiškinkite tai: ${info.selectionText}"
   },
-  "Explain_with_Browserx": {
-    "message": "Paaiškinkite su Browserx"
+  "Explain_with_WorkX": {
+    "message": "Paaiškinkite su WorkX"
   },
   "Export": {
     "message": "Eksportuoti"
@@ -760,8 +757,8 @@
   "Extract_Data": {
     "message": "Išgauti duomenis:"
   },
-  "Extract_data_with_Browserx": {
-    "message": "Išgauti duomenis su Browserx"
+  "Extract_data_with_WorkX": {
+    "message": "Išgauti duomenis su WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Išgauti konkrečius duomenų šablonus iš puslapių"
@@ -955,8 +952,8 @@
   "Improve_this_text_info_selectionText": {
     "message": "Patobulinkite šį tekstą: ${info.selectionText}"
   },
-  "Improve_with_Browserx": {
-    "message": "Patobulinti su Browserx"
+  "Improve_with_WorkX": {
+    "message": "Patobulinti su WorkX"
   },
   "In": {
     "message": "Į:"
@@ -1547,7 +1544,7 @@
     "message": "Kartojama"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Spustelėkite dešiniuoju pelės mygtuku bet kurį tekstą, kad paaiškintumėte arba patobulintumėte jį su Browserx"
+    "message": "Spustelėkite dešiniuoju pelės mygtuku bet kurį tekstą, kad paaiškintumėte arba patobulintumėte jį su WorkX"
   },
   "Risk_Score": {
     "message": "Rizikos įvertis:"
@@ -2041,8 +2038,8 @@
   "Web_Search": {
     "message": "Web paieška"
   },
-  "Welcome_to_Browserx": {
-    "message": "Sveiki atvykę į Browserx"
+  "Welcome_to_WorkX": {
+    "message": "Sveiki atvykę į WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Ar smėlio dėžės komandos gali pasiekti tinklą"
@@ -2092,8 +2089,8 @@
   "available": {
     "message": "prieinama"
   },
-  "browserx": {
-    "message": "browserx"
+  "workx": {
+    "message": "WorkX"
   },
   "cached": {
     "message": "podėlyje"

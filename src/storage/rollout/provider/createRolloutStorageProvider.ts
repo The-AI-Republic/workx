@@ -2,7 +2,7 @@
  * Factory for creating the appropriate RolloutStorageProvider
  * based on the current build mode.
  *
- * - Extension: IndexedDBRolloutStorageProvider (IndexedDB "ApplePiRollouts")
+ * - Extension: IndexedDBRolloutStorageProvider (IndexedDB "WorkXRollouts")
  * - Desktop:   Runtime sidecar only; WebView rollout storage is disabled
  * - Server:    TSRolloutStorageProvider (better-sqlite3 → SQLite)
  */

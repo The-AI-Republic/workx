@@ -18,11 +18,11 @@ import {
   setDesktopRuntimeControlBridge,
 } from './protocol/controlBridge';
 import { StdioRuntimeChannel } from './channels/StdioRuntimeChannel';
-import { PiRuntimeBootstrap } from './PiRuntimeBootstrap';
+import { WorkXRuntimeBootstrap } from './WorkXRuntimeBootstrap';
 import { DesktopAppServerManager } from './app-server/DesktopAppServerManager';
 
 async function loadHost(): Promise<DesktopRuntimeHost> {
-  const raw = process.env.APPLEPI_DESKTOP_RUNTIME_HOST;
+  const raw = process.env.WORKX_DESKTOP_RUNTIME_HOST;
   if (raw) return assertDesktopRuntimeHost(JSON.parse(raw) as DesktopRuntimeHost);
   return createDevDesktopRuntimeHost();
 }
@@ -36,7 +36,7 @@ async function main(): Promise<void> {
   const controlBridge = new DesktopRuntimeControlBridge(carrier);
   setDesktopRuntimeControlBridge(controlBridge);
 
-  let bootstrap: PiRuntimeBootstrap | null = null;
+  let bootstrap: WorkXRuntimeBootstrap | null = null;
   let appServerManager: DesktopAppServerManager | null = null;
   let helloAcked = false;
 
@@ -98,7 +98,7 @@ async function main(): Promise<void> {
   }, 2_000);
 
   const channel = new StdioRuntimeChannel(carrier);
-  bootstrap = new PiRuntimeBootstrap({ channel });
+  bootstrap = new WorkXRuntimeBootstrap({ channel });
   await bootstrap.initialize();
 
   // App-server mode: optional local callable WebSocket endpoint alongside the

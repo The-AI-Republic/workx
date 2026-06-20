@@ -82,7 +82,7 @@ export class ChatGPTOAuthService {
       id_token_add_organizations: 'true',
       codex_cli_simplified_flow: 'true',
       state,
-      originator: 'browserx',
+      originator: 'workx',
     });
     return `${AUTH_ENDPOINT}?${params.toString()}`;
   }

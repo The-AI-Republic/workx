@@ -15,8 +15,8 @@ import { getServerConfig } from '../config/server-config';
 import { getServerAgentBootstrap } from './ServerAgentBootstrap';
 import { getTrackedConnections, shutdownWatchdog } from '../connection/watchdog';
 import { resetAllRateLimits } from '../connection/rate-limiter';
-import { makeEvent } from '@applepi/ws-server';
-import { WS_CLOSE } from '@applepi/ws-server';
+import { makeEvent } from '@workx/ws-server';
+import { WS_CLOSE } from '@workx/ws-server';
 
 let _shutdownInProgress = false;
 

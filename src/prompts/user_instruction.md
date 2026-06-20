@@ -1,1 +1,1 @@
-# Browserx Chrome Web Agent - User Instructions
+# WorkX Chrome Web Agent - User Instructions

@@ -43,7 +43,7 @@ export default defineConfig({
       '@/server': resolve(__dirname, 'src/server'),
       '@/desktop': resolve(__dirname, 'src/desktop'),
       '@/desktop-runtime': resolve(__dirname, 'src/desktop-runtime'),
-      '@applepi/ws-server': resolve(__dirname, 'packages/ws-server/src/index.ts'),
+      '@workx/ws-server': resolve(__dirname, 'packages/ws-server/src/index.ts'),
     },
   },
 });

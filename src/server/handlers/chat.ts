@@ -6,8 +6,8 @@
  * @module server/handlers/chat
  */
 
-import { registerMethodHandler, type MethodContext } from '@applepi/ws-server';
-import { invalidRequest } from '@applepi/ws-server';
+import { registerMethodHandler, type MethodContext } from '@workx/ws-server';
+import { invalidRequest } from '@workx/ws-server';
 import type { Op, InputItem, SandboxPolicy } from '@/core/protocol/types';
 import type { SubmissionContext } from '@/core/channels/types';
 

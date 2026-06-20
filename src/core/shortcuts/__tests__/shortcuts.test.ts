@@ -26,7 +26,7 @@ describe('shortcut parser', () => {
 });
 
 describe('DOM keyboard normalization', () => {
-  it('normalizes keyboard events used by Browserx', () => {
+  it('normalizes keyboard events used by WorkX', () => {
     const event = new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true });
     expect(keyboardEventToKeystroke(event)).toEqual({
       key: 'enter',

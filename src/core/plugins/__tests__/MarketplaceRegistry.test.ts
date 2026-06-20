@@ -4,14 +4,14 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { MarketplaceRegistry } from '../MarketplaceRegistry';
-import { PluginCache, BROWSERX_PLUGIN_ORPHAN_TTL_MS } from '../PluginCache';
+import { PluginCache, WORKX_PLUGIN_ORPHAN_TTL_MS } from '../PluginCache';
 
 const CAT = JSON.stringify({
   name: 'official',
-  owner: { name: 'browserx' },
+  owner: { name: 'workx' },
   plugins: [
     { name: 'gh', source: { type: 'path', path: '/x/gh' }, version: '1.0.0' },
-    { name: 'fmt', source: { type: 'github', repo: 'browserx/fmt', sha: 'a'.repeat(40) } },
+    { name: 'fmt', source: { type: 'github', repo: 'workx/fmt', sha: 'a'.repeat(40) } },
   ],
 });
 
@@ -127,7 +127,7 @@ describe('PluginCache', () => {
     expect(fs.files.has(`${v1}/.orphaned_at`)).toBe(true);
 
     // advance past TTL; v2 is "installed" (protected), v1 should be swept
-    now += BROWSERX_PLUGIN_ORPHAN_TTL_MS + 1;
+    now += WORKX_PLUGIN_ORPHAN_TTL_MS + 1;
     removed = await c.gcOrphans(['official'], new Set([v2]));
     expect(removed).toEqual([v1]);
   });

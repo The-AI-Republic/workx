@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "İş görevleri için genel tarayıcı içi AI ajanı"
@@ -177,7 +177,7 @@
     "message": "Her zaman aydınlık"
   },
   "Apple_Pi_Your_personal_AI_Alpha": {
-    "message": "Apple Pi: Kişisel AI'niz (Alpha)"
+    "message": "WorkX: Kişisel AI'niz (Alpha)"
   },
   "Approval_Safety": {
     "message": "Onay ve Güvenlik"
@@ -219,8 +219,8 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Herhangi bir web sayfasından yapılandırılmış veri çıkarmak için Browserx'i kullanın"
+  "Ask_WorkX_to_extract_structured_data__88fc": {
+    "message": "Herhangi bir web sayfasından yapılandırılmış veri çıkarmak için WorkX'i kullanın"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Orta risk ve üzeri için sor (risk > 30). Çoğu kullanıcı için önerilir."
@@ -309,14 +309,11 @@
   "Browser_automation_tool_toggles": {
     "message": "Tarayıcı otomasyon aracı anahtarları"
   },
-  "BrowserX": {
-    "message": "BrowserX"
+  "WorkX": {
+    "message": "WorkX"
   },
-  "Browserx": {
-    "message": "Browserx"
-  },
-  "Browserx_Alpha": {
-    "message": "Browserx (Alfa)"
+  "WorkX_Alpha": {
+    "message": "WorkX (Alfa)"
   },
   "CWD": {
     "message": "Çalışma Dizini:"
@@ -385,8 +382,8 @@
   "Clear_search": {
     "message": "Aramayı temizle"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Araç çubuğunuzdaki Browserx simgesine tıklayın veya Alt+Shift+C tuşlarına basın"
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
+    "message": "Araç çubuğunuzdaki WorkX simgesine tıklayın veya Alt+Shift+C tuşlarına basın"
   },
   "Click_to_cancel_login": {
     "message": "Oturumu iptal etmek için tıklayın"
@@ -676,8 +673,8 @@
   "Enable_PIN_Protection": {
     "message": "PIN Korumasını Etkinleştir"
   },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": "Browserx başlatıldığında otomatik bağlanmayı etkinleştir"
+  "Enable_auto_connect_when_workx_starts": {
+    "message": "WorkX başlatıldığında otomatik bağlanmayı etkinleştir"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Sık kullanılan verileri depolayarak performansı artırmak için önbelleği etkinleştir"
@@ -733,8 +730,8 @@
   "Explain_this_info_selectionText": {
     "message": "Bunu açıkla: ${info.selectionText}"
   },
-  "Explain_with_Browserx": {
-    "message": "Browserx ile Açıkla"
+  "Explain_with_WorkX": {
+    "message": "WorkX ile Açıkla"
   },
   "Export": {
     "message": "Dışa Aktar"
@@ -760,8 +757,8 @@
   "Extract_Data": {
     "message": "Veri Çıkar:"
   },
-  "Extract_data_with_Browserx": {
-    "message": "Browserx ile veri çıkar"
+  "Extract_data_with_WorkX": {
+    "message": "WorkX ile veri çıkar"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Sayfalardan belirli veri kalıplarını çıkar"
@@ -955,8 +952,8 @@
   "Improve_this_text_info_selectionText": {
     "message": "Bu metni iyileştir: ${info.selectionText}"
   },
-  "Improve_with_Browserx": {
-    "message": "Browserx ile iyileştir"
+  "Improve_with_WorkX": {
+    "message": "WorkX ile iyileştir"
   },
   "In": {
     "message": "İçinde:"
@@ -1547,7 +1544,7 @@
     "message": "Yeniden deneniyor"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Herhangi bir metne sağ tıklayarak Browserx ile açıklama ekleyin veya geliştirin"
+    "message": "Herhangi bir metne sağ tıklayarak WorkX ile açıklama ekleyin veya geliştirin"
   },
   "Risk_Score": {
     "message": "Risk Puanı:"
@@ -2041,8 +2038,8 @@
   "Web_Search": {
     "message": "Web Arama"
   },
-  "Welcome_to_Browserx": {
-    "message": "Browserx'e Hoş Geldiniz"
+  "Welcome_to_WorkX": {
+    "message": "WorkX'e Hoş Geldiniz"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Korumalı komutların ağa erişip erişemeyeceği"
@@ -2092,8 +2089,8 @@
   "available": {
     "message": "mevcut"
   },
-  "browserx": {
-    "message": "browserx"
+  "workx": {
+    "message": "WorkX"
   },
   "cached": {
     "message": "önbelleğe alındı"

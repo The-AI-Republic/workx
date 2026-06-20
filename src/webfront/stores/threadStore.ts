@@ -47,7 +47,7 @@ export interface ThreadStoreState {
 /**
  * Persistence key for config storage
  */
-const STORAGE_KEY = 'browserx_sidepanel_threads';
+const STORAGE_KEY = 'workx_sidepanel_threads';
 
 /**
  * Create the thread store

@@ -6,10 +6,11 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.airepublic.pi</string>
+			<string>com.airepublic.workx</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>applepi</string>
+				<string>workx</string>
 			</array>
 		</dict>
 	</array>

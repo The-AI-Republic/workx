@@ -1,7 +1,7 @@
 /**
  * Diagnostic check registry + report aggregator (Track 17).
  *
- * Module-singleton registry (same pattern as `@applepi/ws-server`'s method
+ * Module-singleton registry (same pattern as `@workx/ws-server`'s method
  * map and the other `core/*` registries). `buildDoctorReport` filters checks
  * by the runtime `platformId`, runs each under a hard per-check timeout with
  * full isolation (one throwing/hung check cannot break the report), and rolls

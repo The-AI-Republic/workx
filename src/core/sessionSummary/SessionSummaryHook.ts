@@ -16,7 +16,7 @@
  * engine is ready. Lifetime is bound to the Session.
  *
  * Mirrors claudy's `services/SessionMemory/sessionMemory.ts` architecture
- * but adapted to browserx's internal shadow-agent runtime.
+ * but adapted to workx's internal shadow-agent runtime.
  */
 
 import type { RepublicAgentEngine } from '@/core/engine/RepublicAgentEngine';

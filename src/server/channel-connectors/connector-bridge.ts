@@ -2,7 +2,7 @@
  * Channel Connector Bridge
  *
  * Translates between OpenClaw connector inbound/outbound messages
- * and ApplePi's ChannelManager submission/event system.
+ * and WorkX's ChannelManager submission/event system.
  *
  * One bridge per connector account.
  *

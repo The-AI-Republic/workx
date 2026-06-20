@@ -16,7 +16,7 @@ describe('sweepToolResults', () => {
   let dataDir: string;
 
   beforeEach(async () => {
-    dataDir = await mkdtemp(join(tmpdir(), 'browserx-toolsweep-'));
+    dataDir = await mkdtemp(join(tmpdir(), 'workx-toolsweep-'));
   });
 
   afterEach(async () => {

@@ -18,7 +18,7 @@ export interface ModelRate {
   outputPer1M: number;
   /**
    * USD per 1M cached input tokens. `cached_input_tokens` is a *subset* of
-   * `input_tokens` across all browserx clients, so cost.ts charges
+   * `input_tokens` across all workx clients, so cost.ts charges
    * `(input - cached)` at `inputPer1M` and `cached` at this rate. Providers
    * with no cache discount set this == `inputPer1M` (net == full input rate).
    */

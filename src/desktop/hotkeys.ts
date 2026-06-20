@@ -58,12 +58,12 @@ const DESKTOP_SHORTCUT_HANDLERS: Partial<Record<ShortcutAction, () => void | Pro
   'app:focusInput': async () => {
     console.log('[Hotkeys] Focus input triggered');
     await showAndFocusWindow();
-    window.dispatchEvent(new CustomEvent('applepi:focus-input'));
+    window.dispatchEvent(new CustomEvent('workx:focus-input'));
   },
   'app:quickAction': async () => {
     console.log('[Hotkeys] Quick action triggered');
     await showAndFocusWindow();
-    window.dispatchEvent(new CustomEvent('applepi:quick-action'));
+    window.dispatchEvent(new CustomEvent('workx:quick-action'));
   },
 };
 

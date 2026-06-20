@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "Ejen AI dalam pelayar untuk tugasan"
@@ -177,7 +177,7 @@
     "message": "Sentiasa terang"
   },
   "Apple_Pi_Your_personal_AI_Alpha": {
-    "message": "Apple Pi: AI peribadi anda (Alpha)"
+    "message": "WorkX: AI peribadi anda (Alpha)"
   },
   "Approval_Safety": {
     "message": "Kelulusan & Keselamatan"
@@ -219,8 +219,8 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Minta Browserx mengekstrak data berstruktur daripada mana-mana halaman web"
+  "Ask_WorkX_to_extract_structured_data__88fc": {
+    "message": "Minta WorkX mengekstrak data berstruktur daripada mana-mana halaman web"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Minta untuk risiko sederhana ke atas (risiko > 30). Disyorkan untuk kebanyakan pengguna."
@@ -309,14 +309,11 @@
   "Browser_automation_tool_toggles": {
     "message": "Togol alat automasi pelayar"
   },
-  "BrowserX": {
-    "message": "BrowserX"
+  "WorkX": {
+    "message": "WorkX"
   },
-  "Browserx": {
-    "message": "Browserx"
-  },
-  "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+  "WorkX_Alpha": {
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "CWD:"
@@ -385,8 +382,8 @@
   "Clear_search": {
     "message": "Kosongkan carian"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Klik ikon Browserx dalam bar alat anda atau tekan Alt+Shift+C"
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
+    "message": "Klik ikon WorkX dalam bar alat anda atau tekan Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "Klik untuk batalkan log masuk"
@@ -676,8 +673,8 @@
   "Enable_PIN_Protection": {
     "message": "Dayakan Perlindungan PIN"
   },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": "Dayakan sambungan automatik apabila browserx dimulakan"
+  "Enable_auto_connect_when_workx_starts": {
+    "message": "Dayakan sambungan automatik apabila WorkX dimulakan"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Aktifkan cache untuk meningkatkan prestasi dengan menyimpan data yang sering diakses"
@@ -733,8 +730,8 @@
   "Explain_this_info_selectionText": {
     "message": "Terangkan ini: ${info.selectionText}"
   },
-  "Explain_with_Browserx": {
-    "message": "Terangkan dengan Browserx"
+  "Explain_with_WorkX": {
+    "message": "Terangkan dengan WorkX"
   },
   "Export": {
     "message": "Eksport"
@@ -760,8 +757,8 @@
   "Extract_Data": {
     "message": "Ekstrak Data:"
   },
-  "Extract_data_with_Browserx": {
-    "message": "Ekstrak data dengan Browserx"
+  "Extract_data_with_WorkX": {
+    "message": "Ekstrak data dengan WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Ekstrak corak data khusus daripada halaman"
@@ -955,8 +952,8 @@
   "Improve_this_text_info_selectionText": {
     "message": "Tingkatkan teks ini: ${info.selectionText}"
   },
-  "Improve_with_Browserx": {
-    "message": "Tingkatkan dengan Browserx"
+  "Improve_with_WorkX": {
+    "message": "Tingkatkan dengan WorkX"
   },
   "In": {
     "message": "Dalam:"
@@ -1547,7 +1544,7 @@
     "message": "Mencuba semula"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Klik kanan pada mana-mana teks untuk menjelaskan atau memperbaikinya dengan Browserx"
+    "message": "Klik kanan pada mana-mana teks untuk menjelaskan atau memperbaikinya dengan WorkX"
   },
   "Risk_Score": {
     "message": "Skor Risiko:"
@@ -2041,8 +2038,8 @@
   "Web_Search": {
     "message": "Carian Web"
   },
-  "Welcome_to_Browserx": {
-    "message": "Selamat datang ke Browserx"
+  "Welcome_to_WorkX": {
+    "message": "Selamat datang ke WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Sama ada arahan sandbox dapat mengakses rangkaian"
@@ -2092,8 +2089,8 @@
   "available": {
     "message": "tersedia"
   },
-  "browserx": {
-    "message": "browserx"
+  "workx": {
+    "message": "WorkX"
   },
   "cached": {
     "message": "dicache"

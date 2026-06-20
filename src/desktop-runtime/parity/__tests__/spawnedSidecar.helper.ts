@@ -1,7 +1,7 @@
 /**
  * Track 45 Goal 1 — spawned-sidecar test helper.
  *
- * Spawns the real Apple Pi desktop runtime sidecar
+ * Spawns the real WorkX desktop runtime sidecar
  * (`tauri/sidecar/desktop-runtime/index.mjs`) as a Node child process,
  * drives the `hello`/`hello-ok` handshake using the production
  * `StdioFrameCarrier`, and exposes a small request/response surface
@@ -43,7 +43,7 @@ const PING_DEADLINE_MS = 5_000;
 export interface SpawnSidecarOptions {
   /**
    * Absolute path to a writable directory used as
-   * `APPLEPI_DESKTOP_CONFIG_DIR`. `createDevDesktopRuntimeHost` will
+   * `WORKX_DESKTOP_CONFIG_DIR`. `createDevDesktopRuntimeHost` will
    * build storage/rollouts/config paths under it. The caller is
    * responsible for cleanup.
    */
@@ -92,9 +92,9 @@ export async function spawnSidecar(opts: SpawnSidecarOptions): Promise<SpawnedSi
     stdio: ['pipe', 'pipe', 'pipe'],
     env: {
       ...process.env,
-      APPLEPI_RUNTIME_PROFILE: 'desktop-runtime',
-      APPLEPI_DESKTOP_RUNTIME_ALLOW_DEV_HOST: 'true',
-      APPLEPI_DESKTOP_CONFIG_DIR: opts.tmpConfigDir,
+      WORKX_RUNTIME_PROFILE: 'desktop-runtime',
+      WORKX_DESKTOP_RUNTIME_ALLOW_DEV_HOST: 'true',
+      WORKX_DESKTOP_CONFIG_DIR: opts.tmpConfigDir,
       // Quiet a couple of optional integrations the dev host doesn't need.
       NODE_NO_WARNINGS: '1',
     },

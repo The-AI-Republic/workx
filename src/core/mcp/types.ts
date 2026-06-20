@@ -1,7 +1,7 @@
 /**
  * MCP Server Integration Type Definitions
  *
- * These types define the contracts for MCP server integration in ApplePi.
+ * These types define the contracts for MCP server integration in WorkX.
  * They are used for configuration, runtime state, and tool integration.
  */
 
@@ -414,7 +414,7 @@ export interface IMCPManager {
 // =============================================================================
 
 /**
- * Adapts MCP tools to ApplePi ToolDefinition format.
+ * Adapts MCP tools to WorkX ToolDefinition format.
  */
 export interface IMCPToolAdapter {
   /**
