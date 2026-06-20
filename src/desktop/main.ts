@@ -2,8 +2,7 @@
  * Desktop Entry Point
  *
  * Initializes desktop-specific services (tray, hotkeys).
- * Note: The agent and channel setup is handled by DesktopAgentBootstrap
- * which is initialized from desktop/ui/main.ts.
+ * The agent runtime is supervised by Rust as a desktop-runtime sidecar.
  *
  * @module desktop/main
  */
@@ -12,8 +11,8 @@ import { initializeHotkeys } from './hotkeys';
 import { initializeTray } from './tray';
 import { initializeAutoStart } from './autostart';
 import { initializeUpdater } from './updater';
-import { getDesktopAgentBootstrap } from './agent/DesktopAgentBootstrap';
 import { AgentConfig } from '@/config/AgentConfig';
+import { invoke } from '@tauri-apps/api/core';
 
 /**
  * Initialize the desktop-specific services
@@ -67,12 +66,11 @@ async function initializeDesktop(): Promise<void> {
 async function cleanup(): Promise<void> {
   console.log('[Desktop] Shutting down...');
 
-  // Shutdown the agent bootstrap
+  // Shutdown the Rust-supervised desktop runtime sidecar.
   try {
-    const bootstrap = getDesktopAgentBootstrap();
-    await bootstrap.shutdown();
+    await invoke('runtime_shutdown');
   } catch (error) {
-    console.error('[Desktop] Failed to shutdown agent bootstrap:', error);
+    console.error('[Desktop] Failed to shutdown desktop runtime:', error);
   }
 }
 

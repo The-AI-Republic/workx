@@ -36,6 +36,16 @@ export interface SessionConfig {
   };
 
   /**
+   * Fork data for a Track 15 rewind: seed a brand-new conversation from a
+   * sliced prefix of `sourceConversationId`'s rollout. The source rollout is
+   * never mutated (append-only storage; fork = new rollout).
+   */
+  fork?: {
+    sourceConversationId: string;
+    rolloutItems: unknown[];
+  };
+
+  /**
    * Mark as an internal infrastructure session (e.g. bootstrap fallback agent).
    * Internal sessions bypass the concurrent limit and are excluded from user-facing counts.
    */
@@ -70,7 +80,7 @@ export interface SessionMetadata {
   /** Chrome tab group ID for this session */
   tabGroupId: number | null;
 
-  /** Tab group name: browserx_s_<letter> */
+  /** Tab group name: workx_s_<letter> */
   tabGroupName: string;
 }
 
@@ -154,6 +164,24 @@ export interface RegistryConfig {
 
   /** Optional factory to create event dispatchers per session (replaces chrome.runtime.sendMessage) */
   eventDispatcherFactory?: (sessionId: string) => ((event: { msg: import('../protocol/events').EventMsg }) => void);
+
+  /**
+   * Track 10: invoked after an agent is created AND its sub-agent tool is
+   * registered, for BOTH the agentFactory path and the extension default
+   * path. Lets the platform bootstrap bind per-session plugin
+   * contributions (hooks + sub-agent types) without each path
+   * re-implementing the wiring.
+   *
+   * `subAgentRunner` is the per-session runner (or null if registration
+   * failed) so a `PluginSessionBinder` can attach. Non-fatal: a thrown
+   * callback is logged, not propagated.
+   */
+  onAgentCreated?: (
+    agent: import('../RepublicAgent').RepublicAgent,
+    ctx: {
+      subAgentRunner: import('../../tools/AgentTool/SubAgentRunner').SubAgentRunner | null;
+    },
+  ) => Promise<void> | void;
 }
 
 /**

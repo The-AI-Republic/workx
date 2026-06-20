@@ -10,7 +10,7 @@
  * @module server/tools/registerServerTools
  */
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import type { ToolRegistry } from '@/tools/ToolRegistry';
 import type { IRiskAssessor } from '@/core/approval/types';
 
@@ -30,11 +30,18 @@ const RETRY_DELAY_MS = 2000;
  * Register server-mode tools.
  *
  * 1. Registers cross-platform tools (planning, web search)
- * 2. Attempts to connect chrome-devtools-mcp for browser automation
- * 3. Sets up dynamic MCP tool registration for user-configured servers
+ * 2. Registers `read_persisted_result` for retrieving persisted tool outputs (track 09)
+ * 3. Attempts to connect chrome-devtools-mcp for browser automation
+ * 4. Sets up dynamic MCP tool registration for user-configured servers
+ *
+ * @param registry Tool registry to populate
+ * @param dataDir  Server data directory; when provided, enables
+ *                 `read_persisted_result` rooted at `{dataDir}/sessions`. Must
+ *                 match the rootDir of the session's FileToolResultStore.
  */
 export async function registerServerTools(
-  registry: ToolRegistry
+  registry: ToolRegistry,
+  dataDir?: string,
 ): Promise<void> {
   // ──────────────────────────────────────────────────────────────────────
   // Cross-platform tools
@@ -70,7 +77,7 @@ export async function registerServerTools(
   }
 
   try {
-    const { WebSearchTool } = await import('@/tools/WebSearchTool');
+    const { WebSearchTool, WEB_SEARCH_CONCURRENCY } = await import('@/tools/WebSearchTool');
     const { StaticRiskAssessor } = await import('@/core/approval/assessors/StaticRiskAssessor');
 
     const webSearchTool = new WebSearchTool();
@@ -89,7 +96,10 @@ export async function registerServerTools(
             },
           });
         },
-        new StaticRiskAssessor(0)
+        {
+          riskAssessor: new StaticRiskAssessor(0),
+          runtime: { concurrency: WEB_SEARCH_CONCURRENCY },
+        }
       );
       console.log('[registerServerTools] Web search tool registered');
     }
@@ -98,10 +108,74 @@ export async function registerServerTools(
   }
 
   // ──────────────────────────────────────────────────────────────────────
+  // Track 23: resource_fetch (the only payable x402 surface). Payment
+  // behavior is governed by the capability wired in ServerAgentBootstrap
+  // (default-deny unless server.x402 allowlists the payee).
+  // ──────────────────────────────────────────────────────────────────────
+
+  try {
+    const { registerResourceFetchTool } = await import('@/tools/ResourceFetchTool');
+    await registerResourceFetchTool(registry);
+    console.log('[registerServerTools] resource_fetch tool registered');
+  } catch (err) {
+    console.warn('[registerServerTools] Failed to register resource_fetch tool:', err);
+  }
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Track 09: read_persisted_result — retrieval path for FileToolResultStore
+  // ──────────────────────────────────────────────────────────────────────
+
+  if (dataDir) {
+    try {
+      const { ReadPersistedResultTool } = await import('./ReadPersistedResultTool');
+      const { StaticRiskAssessor } = await import('@/core/approval/assessors/StaticRiskAssessor');
+      const { join } = await import('node:path');
+
+      const rootDir = join(dataDir, 'sessions');
+      const tool = new ReadPersistedResultTool(rootDir);
+      const definition = tool.getDefinition();
+
+      if (!registry.getTool('read_persisted_result')) {
+        await registry.register(
+          definition,
+          async (params) => tool.execute(params as { path?: unknown }),
+          {
+            riskAssessor: new StaticRiskAssessor(0),
+            runtime: {
+              concurrency: {
+                isConcurrencySafe: () => true,
+                isReadOnly: () => true,
+                isDestructive: () => false,
+              },
+              ui: {
+                getActivityDescription: (input: Record<string, unknown>) =>
+                  `Reading persisted result: ${input.path ?? '<unknown>'}`,
+              },
+              // Infinity: this tool's output is exactly the persisted content;
+              // re-persisting would create a circular loop.
+              result: { maxResultSizeChars: Number.POSITIVE_INFINITY },
+            },
+          },
+        );
+        console.log('[registerServerTools] read_persisted_result tool registered');
+      }
+    } catch (err) {
+      console.warn('[registerServerTools] Failed to register read_persisted_result:', err);
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────
   // Browser automation via chrome-devtools-mcp
   // ──────────────────────────────────────────────────────────────────────
 
   await registerBrowserTools(registry);
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Ripgrep-backed read-only search tools (grep, glob) — server
+  // ──────────────────────────────────────────────────────────────────────
+
+  const { registerFileSearchTools } = await import('@/tools/file-search/register');
+  await registerFileSearchTools(registry, ['server']);
 
   // ──────────────────────────────────────────────────────────────────────
   // Dynamic MCP tool registration for user-configured servers
@@ -280,7 +354,8 @@ function findChromeBinary(): string | null {
 
   for (const candidate of candidates) {
     try {
-      const result = execSync(`which ${candidate}`, { encoding: 'utf-8' }).trim();
+      // Track 24.4: arg-array exec — no shell, no string interpolation.
+      const result = execFileSync('which', [candidate], { encoding: 'utf-8' }).trim();
       if (result) return result;
     } catch {
       // Not found

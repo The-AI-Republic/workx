@@ -10,6 +10,7 @@
 import { z } from 'zod';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { applyPolicy, getActivePolicySync } from '@/core/config/policy';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Configuration schema
@@ -38,6 +39,25 @@ const ExecConfigSchema = z.object({
   approvalTimeoutMs: z.number().default(300_000),
 });
 
+// Track 23 (x402) — Track 20 (managed policy) does not exist in src/, so the
+// server payee allowlist + caps live here, mirroring ExecConfigSchema. The
+// private key is NOT here (it is in FileCredentialStore); nothing in this
+// schema is secret. Default: disabled + empty allowlist ⇒ default-DENY.
+const X402AllowlistEntrySchema = z.object({
+  domain: z.string(),
+  maxPerRequestUSD: z.number().nonnegative(),
+});
+
+const X402ConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  network: z
+    .enum(['base', 'base-sepolia', 'ethereum', 'ethereum-sepolia'])
+    .default('base'),
+  allowlist: z.array(X402AllowlistEntrySchema).default([]),
+  maxPerDayUSD: z.number().nonnegative().default(0),
+  maxSessionSpendUSD: z.number().nonnegative().default(5),
+});
+
 const QueueConfigSchema = z.object({
   cap: z.number().default(20),
   debounceMs: z.number().default(1_000),
@@ -57,6 +77,13 @@ const LimitsConfigSchema = z.object({
   maxSessions: z.number().default(1_000),
   maxHistoryBytes: z.number().default(6_291_456),
   sessionRetentionDays: z.number().default(30),
+  // Track 18: USD budget caps for unattended scheduler jobs. 0 = disabled.
+  // maxUsdPerDay pauses the job queue once the day's summed cost exceeds it
+  // (post-hoc, blocks subsequent jobs). maxUsdPerJob flags an individual
+  // over-budget job in the logs. Hot-reloadable via the existing
+  // onConfigReload wiring (a candidate Track 20 lockedKeys policy key).
+  maxUsdPerDay: z.number().default(0),
+  maxUsdPerJob: z.number().default(0),
   queue: QueueConfigSchema.default({}),
 });
 
@@ -82,10 +109,16 @@ export const ServerConfigSchema = z.object({
       trustedProxies: z.array(z.string()).default([]),
       allowedOrigins: z.array(z.string()).default([]),
       exec: ExecConfigSchema.default({}),
+      x402: X402ConfigSchema.default({}),
       channels: z.record(z.string(), z.unknown()).default({}),
       limits: LimitsConfigSchema.default({}),
       backup: BackupConfigSchema.default({}),
       shutdownGracePeriodMs: z.number().default(10_000),
+      // Track 24.2: operator-pinned output-style persona for all unattended
+      // jobs. Resolved against built-in styles + .workx/styles dirs.
+      // TODO(track-20): allow a managed-policy key to override this once
+      // Track 20 lands.
+      persona: z.string().optional(),
     })
     .default({}),
   owner: OwnerConfigSchema.default({}),
@@ -99,13 +132,13 @@ export type ServerConfig = z.infer<typeof ServerConfigSchema>;
 
 const DEFAULT_DATA_DIR = path.join(
   process.env.HOME ?? process.env.USERPROFILE ?? '/tmp',
-  '.applepi-server',
+  '.workx-server',
   'data'
 );
 
 const DEFAULT_CONFIG_PATH = path.join(
   process.env.HOME ?? process.env.USERPROFILE ?? '/tmp',
-  '.applepi-server',
+  '.workx-server',
   'config.json'
 );
 
@@ -124,8 +157,8 @@ let _onReloadCallbacks: Array<(cfg: ServerConfig) => void> = [];
  * Priority: env vars > config.json > defaults.
  */
 export function loadServerConfig(): ServerConfig {
-  const configPath = process.env.APPLEPI_CONFIG_PATH ?? DEFAULT_CONFIG_PATH;
-  _dataDir = process.env.APPLEPI_DATA_DIR ?? DEFAULT_DATA_DIR;
+  const configPath = process.env.WORKX_CONFIG_PATH ?? DEFAULT_CONFIG_PATH;
+  _dataDir = process.env.WORKX_DATA_DIR ?? DEFAULT_DATA_DIR;
 
   let fileConfig: Record<string, unknown> = {};
   if (fs.existsSync(configPath)) {
@@ -141,8 +174,14 @@ export function loadServerConfig(): ServerConfig {
   const merged = applyEnvOverrides(fileConfig);
   const parsed = ServerConfigSchema.parse(merged);
 
-  _config = parsed;
-  return parsed;
+  // Track 20: pin admin policy as the highest-priority tier, AFTER
+  // env>file>defaults resolution. No-op until a policy source is resolved.
+  // The existing onConfigReload callbacks deliver this pinned object, so
+  // hot-reload re-applies policy with no new seam.
+  const resolved = applyPolicy(parsed, getActivePolicySync(), 'server');
+
+  _config = resolved;
+  return resolved;
 }
 
 /**
@@ -176,7 +215,7 @@ export function onConfigReload(cb: (cfg: ServerConfig) => void): () => void {
  * Start watching config file for changes.
  */
 export function watchConfig(): void {
-  const configPath = process.env.APPLEPI_CONFIG_PATH ?? DEFAULT_CONFIG_PATH;
+  const configPath = process.env.WORKX_CONFIG_PATH ?? DEFAULT_CONFIG_PATH;
   if (!fs.existsSync(configPath)) return;
 
   _watcher = fs.watch(configPath, { persistent: false }, () => {
@@ -211,20 +250,20 @@ function applyEnvOverrides(base: Record<string, unknown>): Record<string, unknow
   const server = (base.server ?? {}) as Record<string, unknown>;
   const auth = (server.auth ?? {}) as Record<string, unknown>;
 
-  if (process.env.APPLEPI_SERVER_PORT) {
-    server.port = parseInt(process.env.APPLEPI_SERVER_PORT, 10);
+  if (process.env.WORKX_SERVER_PORT) {
+    server.port = parseInt(process.env.WORKX_SERVER_PORT, 10);
   }
-  if (process.env.APPLEPI_SERVER_BIND) {
-    server.bind = process.env.APPLEPI_SERVER_BIND;
+  if (process.env.WORKX_SERVER_BIND) {
+    server.bind = process.env.WORKX_SERVER_BIND;
   }
-  if (process.env.APPLEPI_SERVER_AUTH_MODE) {
-    auth.mode = process.env.APPLEPI_SERVER_AUTH_MODE;
+  if (process.env.WORKX_SERVER_AUTH_MODE) {
+    auth.mode = process.env.WORKX_SERVER_AUTH_MODE;
   }
-  if (process.env.APPLEPI_SERVER_TOKEN) {
-    auth.token = process.env.APPLEPI_SERVER_TOKEN;
+  if (process.env.WORKX_SERVER_TOKEN) {
+    auth.token = process.env.WORKX_SERVER_TOKEN;
   }
-  if (process.env.APPLEPI_SERVER_PASSWORD) {
-    auth.password = process.env.APPLEPI_SERVER_PASSWORD;
+  if (process.env.WORKX_SERVER_PASSWORD) {
+    auth.password = process.env.WORKX_SERVER_PASSWORD;
   }
 
   server.auth = auth;

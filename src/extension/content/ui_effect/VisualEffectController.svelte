@@ -212,7 +212,7 @@
           }
 
           // 3. Animate cursor to target position
-          // The cursor will automatically trigger ripple when it arrives via 'browserx:trigger-ripple' event
+          // The cursor will automatically trigger ripple when it arrives via 'workx:trigger-ripple' event
           if (cursorAnimatorRef && config.enableCursorAnimation && x !== undefined && y !== undefined) {
             console.log('[VisualEffectController] Animating cursor to:', x, y);
             cursorAnimatorRef.animateTo(x, y);
@@ -260,7 +260,7 @@
       }
     };
 
-    document.addEventListener('browserx:show-visual-effect', directVisualEffectHandler);
+    document.addEventListener('workx:show-visual-effect', directVisualEffectHandler);
 
     // Listen for ripple trigger events from cursor animator
     const rippleHandler = (event: Event) => {
@@ -286,21 +286,21 @@
       }
     };
 
-    document.addEventListener('browserx:trigger-ripple', rippleHandler);
+    document.addEventListener('workx:trigger-ripple', rippleHandler);
 
     // Listen for stop agent events from control buttons
     const stopAgentHandler = () => {
       handleStopAgentButton();
     };
 
-    document.addEventListener('browserx:stop-agent', stopAgentHandler);
+    document.addEventListener('workx:stop-agent', stopAgentHandler);
 
     // Cleanup function
     eventListenerCleanup = () => {
       document.removeEventListener(VISUAL_EFFECT_EVENT_NAME, visualEffectHandler);
-      document.removeEventListener('browserx:show-visual-effect', directVisualEffectHandler);
-      document.removeEventListener('browserx:trigger-ripple', rippleHandler);
-      document.removeEventListener('browserx:stop-agent', stopAgentHandler);
+      document.removeEventListener('workx:show-visual-effect', directVisualEffectHandler);
+      document.removeEventListener('workx:trigger-ripple', rippleHandler);
+      document.removeEventListener('workx:stop-agent', stopAgentHandler);
     };
   }
 

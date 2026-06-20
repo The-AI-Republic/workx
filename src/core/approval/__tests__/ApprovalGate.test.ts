@@ -171,6 +171,181 @@ describe('ApprovalGate', () => {
     });
   });
 
+  describe('hook dispatcher integration', () => {
+    function emptyAgg(extra: Record<string, unknown> = {}) {
+      return {
+        shouldContinue: true,
+        additionalContext: [],
+        systemMessages: [],
+        results: [],
+        totalDuration: 0,
+        ...extra,
+      };
+    }
+
+    /**
+     * Build a dispatcher stub that returns a Promise (matches the real
+     * HookDispatcher.fire signature). Tests previously returned plain objects
+     * and tripped `.catch is not a function` in firePermissionDeniedHook.
+     */
+    function makeDispatcherStub(
+      fireImpl: (event: string, input: any) => unknown,
+    ) {
+      const fire = vi.fn(async (event: string, input: any) => {
+        const result = fireImpl(event, input);
+        if (result instanceof Promise) return result;
+        return result;
+      });
+      return {
+        fire,
+        getRegistry: vi.fn(),
+        setEventEmitter: vi.fn(),
+      };
+    }
+
+    it('fires PermissionRequest hook on ask_user path and respects approve decision', async () => {
+      const dispatcher = makeDispatcherStub(() =>
+        emptyAgg({ permissionDecision: 'approve' }),
+      );
+      gate.setHookDispatcher(dispatcher as any);
+
+      const assessor = createAssessor(50);
+      const decision = await gate.check('dom_tool', { action: 'click' }, assessor);
+
+      expect(dispatcher.fire).toHaveBeenCalledWith(
+        'PermissionRequest',
+        expect.objectContaining({
+          hook_event_name: 'PermissionRequest',
+          tool_name: 'dom_tool',
+          tool_input: { action: 'click' },
+        }),
+        { snapshot: undefined },
+      );
+      // Hook said 'approve' → bypass user prompt
+      expect(decision).toBe('auto_approve');
+      expect(mockManager.requestApproval).not.toHaveBeenCalled();
+    });
+
+    it('honors permissionDecision=block from PermissionRequest hook', async () => {
+      const fireCalls: string[] = [];
+      const dispatcher = makeDispatcherStub((event) => {
+        fireCalls.push(event);
+        if (event === 'PermissionRequest') {
+          return emptyAgg({ permissionDecision: 'block' });
+        }
+        return emptyAgg();
+      });
+      gate.setHookDispatcher(dispatcher as any);
+
+      const assessor = createAssessor(50);
+      const decision = await gate.check('dom_tool', { action: 'type' }, assessor);
+
+      expect(decision).toBe('deny');
+      // No prompt to the user — hook denied it
+      expect(mockManager.requestApproval).not.toHaveBeenCalled();
+      // And PermissionDenied followed up
+      expect(fireCalls).toEqual(['PermissionRequest', 'PermissionDenied']);
+    });
+
+    it('fires PermissionDenied when the user rejects an approval request', async () => {
+      mockManager = createMockApprovalManager('reject');
+      gate = new ApprovalGate(mockManager as any, policyEngine);
+
+      const dispatcher = makeDispatcherStub(() => emptyAgg());
+      gate.setHookDispatcher(dispatcher as any);
+
+      const assessor = createAssessor(50);
+      const decision = await gate.check('dom_tool', { action: 'click' }, assessor);
+
+      expect(decision).toBe('deny');
+      // First the request, then the denial
+      const events = dispatcher.fire.mock.calls.map((c: any[]) => c[0]);
+      expect(events).toContain('PermissionRequest');
+      expect(events).toContain('PermissionDenied');
+    });
+
+    it('falls back to normal approval when the dispatcher throws', async () => {
+      const dispatcher = makeDispatcherStub(() => {
+        throw new Error('hook system exploded');
+      });
+      gate.setHookDispatcher(dispatcher as any);
+
+      const assessor = createAssessor(50);
+      const decision = await gate.check('dom_tool', { action: 'click' }, assessor);
+
+      // Hook failure must not break the gate — falls through to the user prompt
+      expect(mockManager.requestApproval).toHaveBeenCalled();
+      expect(decision).toBe('auto_approve'); // mock manager approves
+    });
+  });
+
+  describe('concurrent approval serialization', () => {
+    function emptyAgg(extra: Record<string, unknown> = {}) {
+      return {
+        shouldContinue: true,
+        additionalContext: [],
+        systemMessages: [],
+        results: [],
+        totalDuration: 0,
+        ...extra,
+      };
+    }
+
+    function makeDispatcherStub() {
+      return {
+        fire: vi.fn(async () => emptyAgg()),
+        getRegistry: vi.fn(),
+        setEventEmitter: vi.fn(),
+      };
+    }
+
+    it('collapses concurrent same-key checks into one hook fire and one prompt', async () => {
+      let resolveApproval!: (value: any) => void;
+      mockManager.requestApproval.mockImplementation(() =>
+        new Promise((resolve) => {
+          resolveApproval = resolve;
+        })
+      );
+      const dispatcher = makeDispatcherStub();
+      gate.setHookDispatcher(dispatcher as any);
+
+      const assessor = createAssessor(50);
+      const checks = [
+        gate.check('dom_tool', { action: 'click' }, assessor),
+        gate.check('dom_tool', { action: 'click' }, assessor),
+        gate.check('dom_tool', { action: 'click' }, assessor),
+      ];
+
+      await vi.waitFor(() => {
+        expect(mockManager.requestApproval).toHaveBeenCalledTimes(1);
+        expect(dispatcher.fire).toHaveBeenCalledTimes(1);
+      });
+
+      gate.rememberDecision('dom_tool', { action: 'click' }, 'auto_approve');
+      resolveApproval({ id: 'test', decision: 'approve', timestamp: Date.now() });
+
+      await expect(Promise.all(checks)).resolves.toEqual([
+        'auto_approve',
+        'auto_approve',
+        'auto_approve',
+      ]);
+    });
+
+    it('does not collapse distinct approval keys', async () => {
+      const dispatcher = makeDispatcherStub();
+      gate.setHookDispatcher(dispatcher as any);
+
+      const assessor = createAssessor(50);
+      await Promise.all([
+        gate.check('browser_dom', { action: 'click' }, assessor),
+        gate.check('browser_dom', { action: 'type' }, assessor),
+      ]);
+
+      expect(mockManager.requestApproval).toHaveBeenCalledTimes(2);
+      expect(dispatcher.fire).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe('context passing', () => {
     it('should pass context to assessor and enhancers', async () => {
       const assessSpy = vi.fn().mockReturnValue({

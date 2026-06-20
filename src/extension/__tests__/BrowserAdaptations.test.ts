@@ -54,6 +54,9 @@ describe('Browser Adaptations Contract Compliance', () => {
     });
 
     it('should construct request body matching Rust structure', () => {
+      // Track 11: parallel_tool_calls is now config-driven (default false);
+      // this structural fixture uses the default. The provider matrix is
+      // covered by parallelToolCalls.config.test.ts.
       const requestBody = {
         model: 'gpt-4',
         instructions: 'You are helpful',
@@ -177,12 +180,12 @@ describe('Browser Adaptations Contract Compliance', () => {
     });
 
     it('should store auth token structure matching Rust', async () => {
-      interface BrowserxAuth {
+      interface WorkXAuth {
         accessToken: string;
         expiresAt?: number;
       }
 
-      const auth: BrowserxAuth = {
+      const auth: WorkXAuth = {
         accessToken: 'token_123',
         expiresAt: Date.now() + 3600000,
       };

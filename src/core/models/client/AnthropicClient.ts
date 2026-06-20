@@ -1,5 +1,5 @@
 /**
- * Anthropic (Claude) API client implementation for pi
+ * Anthropic (Claude) API client implementation for WorkX
  *
  * Uses the official `@anthropic-ai/sdk` Messages API. Extends OpenAIResponsesClient
  * to reuse the shared plumbing (model/provider accessors, retry loop, ResponseStream
@@ -47,6 +47,19 @@ const THINKING_BUDGET_BY_EFFORT: Record<ReasoningEffortConfig, number> = {
   medium: 10000,
   high: 24000,
 };
+
+/** Models where Anthropic supports adaptive thinking through thinking.type=adaptive. */
+const ADAPTIVE_THINKING_MODELS = new Set([
+  'claude-opus-4-8',
+  'claude-sonnet-4-6',
+]);
+
+/** Models where adaptive thinking is always enabled and the thinking field must be omitted. */
+const ALWAYS_ON_ADAPTIVE_THINKING_MODELS = new Set([
+  'claude-fable-5',
+  'claude-mythos-5',
+  'claude-mythos-preview',
+]);
 
 /**
  * Per-content-block accumulator used while streaming a single Anthropic message.
@@ -128,16 +141,32 @@ export class AnthropicClient extends OpenAIResponsesClient {
       payload.tools = tools;
     }
 
-    // Extended thinking: enable when the model supports reasoning and an effort is set.
+    // Reasoning: prefer Anthropic's adaptive thinking + effort for current models,
+    // and only fall back to manual budget_tokens for models that still require it.
     if (this.modelFamily.supports_reasoning && this.reasoningEffort) {
-      const budget = this.thinkingBudgetFromEffort(this.reasoningEffort, maxTokens);
-      if (budget >= MIN_THINKING_BUDGET) {
-        payload.thinking = { type: 'enabled', budget_tokens: budget };
-        // When thinking is enabled, Anthropic requires temperature to be unset (defaults to 1).
+      if (this.usesAlwaysOnAdaptiveThinking()) {
+        payload.output_config = { effort: this.reasoningEffort };
+      } else if (this.supportsAdaptiveThinking()) {
+        payload.thinking = { type: 'adaptive' };
+        payload.output_config = { effort: this.reasoningEffort };
+      } else {
+        const budget = this.thinkingBudgetFromEffort(this.reasoningEffort, maxTokens);
+        if (budget >= MIN_THINKING_BUDGET) {
+          payload.thinking = { type: 'enabled', budget_tokens: budget };
+          // When thinking is enabled, Anthropic requires temperature to be unset (defaults to 1).
+        }
       }
     }
 
     return payload;
+  }
+
+  private supportsAdaptiveThinking(): boolean {
+    return ADAPTIVE_THINKING_MODELS.has(this.currentModel);
+  }
+
+  private usesAlwaysOnAdaptiveThinking(): boolean {
+    return ALWAYS_ON_ADAPTIVE_THINKING_MODELS.has(this.currentModel);
   }
 
   /**

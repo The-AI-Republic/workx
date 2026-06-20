@@ -49,6 +49,14 @@ export class TurnState {
     this.pendingApprovals.clear();
   }
 
+  rejectPendingApprovals(): void {
+    const resolvers = [...this.pendingApprovals.values()];
+    this.pendingApprovals.clear();
+    for (const resolver of resolvers) {
+      resolver('reject');
+    }
+  }
+
   /**
    * Push input to the pending input queue
    * @param input Input item to queue

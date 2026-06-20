@@ -10,6 +10,7 @@ import { ModelClient } from './models/ModelClient';
 import type { AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSummaryConfig } from './protocol/types';
 import type { IToolsConfig } from '../config/types';
 import { DEFAULT_TOOLS_CONFIG } from '../config/defaults';
+import { type AgentMode, DEFAULT_MODE } from '../prompts/PromptComposer';
 
 /**
  * browser environment policy for task execution
@@ -24,6 +25,8 @@ export interface TurnContextConfig {
   sessionId?: string;
   /** Base instructions override */
   baseInstructions?: string;
+  /** Agent persona mode for this session (drives prompt composition) */
+  agentMode?: AgentMode;
   /** User instructions for this turn */
   userInstructions?: string;
   /** Approval policy for commands */
@@ -42,6 +45,19 @@ export interface TurnContextConfig {
   summary?: ReasoningSummaryConfig;
   /** Enable review mode */
   reviewMode?: boolean;
+  /**
+   * Track 12: when true, the retry orchestrator treats 429/529 as
+   * unconditionally retryable and waits until the limit resets instead of
+   * hard-failing. Derived from platform (server ⇒ true) + scheduler/
+   * connector submission drivers; defaults false (attended).
+   */
+  unattended?: boolean;
+  /**
+   * Track 12: optional ceiling on a single unattended reset-wait. Set by the
+   * platform resolver for extension (MV3 SW lifetime). Undefined ⇒ orchestrator
+   * default (6 h).
+   */
+  unattendedResetCapMs?: number;
 }
 
 /**
@@ -51,13 +67,17 @@ export class TurnContext {
   private modelClient: ModelClient;
   private sessionId: string;
   private baseInstructions?: string;
+  private agentMode: AgentMode;
   private userInstructions?: string;
   private approvalPolicy: AskForApproval;
   private sandboxPolicy: SandboxPolicy;
   private browserEnvironmentPolicy: BrowserEnvironmentPolicy;
   private toolsConfig: IToolsConfig;
   private reviewMode: boolean;
+  private unattended: boolean;
+  private unattendedResetCapMs?: number;
   private _selectedModelKey?: string;
+  private activeToolAllowList?: ReadonlySet<string>;
 
   constructor(
     modelClient: ModelClient,
@@ -68,11 +88,14 @@ export class TurnContext {
     // Initialize with defaults or provided config
     this.sessionId = config.sessionId || ''; // Default to empty string
     this.baseInstructions = config.baseInstructions;
+    this.agentMode = config.agentMode ?? DEFAULT_MODE;
     this.userInstructions = config.userInstructions;
     this.approvalPolicy = config.approvalPolicy || 'on-request';
     this.sandboxPolicy = config.sandboxPolicy || { mode: 'workspace-write' };
     this.browserEnvironmentPolicy = config.browserEnvironmentPolicy || 'preserve';
     this.reviewMode = config.reviewMode || false;
+    this.unattended = config.unattended || false;
+    this.unattendedResetCapMs = config.unattendedResetCapMs;
 
     // Default tools configuration with all IToolsConfig fields
     this.toolsConfig = {
@@ -91,6 +114,9 @@ export class TurnContext {
     if (config.baseInstructions !== undefined) {
       this.baseInstructions = config.baseInstructions;
     }
+    if (config.agentMode !== undefined) {
+      this.agentMode = config.agentMode;
+    }
     if (config.userInstructions !== undefined) {
       this.userInstructions = config.userInstructions;
     }
@@ -108,6 +134,12 @@ export class TurnContext {
     }
     if (config.reviewMode !== undefined) {
       this.reviewMode = config.reviewMode;
+    }
+    if (config.unattended !== undefined) {
+      this.unattended = config.unattended;
+    }
+    if (config.unattendedResetCapMs !== undefined) {
+      this.unattendedResetCapMs = config.unattendedResetCapMs;
     }
 
     // Update model client if model changed
@@ -134,6 +166,21 @@ export class TurnContext {
    */
   getBaseInstructions(): string | undefined {
     return this.baseInstructions;
+  }
+
+  /**
+   * Get the agent persona mode for this session.
+   */
+  getAgentMode(): AgentMode {
+    return this.agentMode;
+  }
+
+  /**
+   * Set the agent persona mode for this session.
+   * Callers must recompose base instructions afterwards.
+   */
+  setAgentMode(mode: AgentMode): void {
+    this.agentMode = mode;
   }
 
   /**
@@ -265,6 +312,20 @@ export class TurnContext {
     }
   }
 
+  setActiveToolAllowList(toolNames?: readonly string[]): void {
+    this.activeToolAllowList = toolNames && toolNames.length > 0
+      ? new Set(toolNames)
+      : undefined;
+  }
+
+  getActiveToolAllowList(): readonly string[] | undefined {
+    return this.activeToolAllowList ? [...this.activeToolAllowList] : undefined;
+  }
+
+  isAllowedByActiveToolAllowList(toolName: string): boolean {
+    return !this.activeToolAllowList || this.activeToolAllowList.has(toolName);
+  }
+
   /**
    * Replace the model client instance.
    * Used for cross-provider model switching where setModel() alone is insufficient.
@@ -307,7 +368,14 @@ export class TurnContext {
    * Get model context window size
    */
   getModelContextWindow(): number | undefined {
-    return this.modelClient.getModelContextWindow();
+    return this.modelClient.getModelContextWindow?.();
+  }
+
+  /**
+   * Get the model-specific token count where automatic compaction should begin.
+   */
+  getAutoCompactTokenLimit(): number | undefined {
+    return this.modelClient.getAutoCompactTokenLimit?.();
   }
 
   /**
@@ -339,12 +407,35 @@ export class TurnContext {
   }
 
   /**
+   * Track 12: whether this turn runs unattended (persistent rate-limit retry).
+   */
+  getUnattended(): boolean {
+    return this.unattended;
+  }
+
+  /**
+   * Set unattended posture (used by scheduler/connector submission drivers).
+   */
+  setUnattended(enabled: boolean): void {
+    this.unattended = enabled;
+  }
+
+  /**
+   * Track 12: per-platform ceiling on a single unattended reset-wait
+   * (undefined ⇒ orchestrator default).
+   */
+  getUnattendedResetCapMs(): number | undefined {
+    return this.unattendedResetCapMs;
+  }
+
+  /**
    * Create a copy of this turn context
    */
   clone(): TurnContext {
     const cloned = new TurnContext(this.modelClient, {
       sessionId: this.sessionId,
       baseInstructions: this.baseInstructions,
+      agentMode: this.agentMode,
       userInstructions: this.userInstructions,
       approvalPolicy: this.approvalPolicy,
       sandboxPolicy: structuredClone(this.sandboxPolicy),

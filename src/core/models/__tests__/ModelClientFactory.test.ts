@@ -40,6 +40,9 @@ vi.mock('../client/FireworksChatCompletionClient', () => ({
 vi.mock('../client/TogetherChatCompletionClient', () => ({
   TogetherChatCompletionClient: vi.fn(),
 }));
+vi.mock('../client/AnthropicClient', () => ({
+  AnthropicClient: vi.fn(),
+}));
 
 // Import the mocked constructors so we can re-set implementations after mockReset
 import { OpenAIResponsesClient } from '../client/OpenAIResponsesClient';
@@ -48,6 +51,7 @@ import { GoogleCompletionClient } from '../client/GoogleCompletionClient';
 import { GroqClient } from '../client/GroqClient';
 import { FireworksChatCompletionClient } from '../client/FireworksChatCompletionClient';
 import { TogetherChatCompletionClient } from '../client/TogetherChatCompletionClient';
+import { AnthropicClient } from '../client/AnthropicClient';
 
 // ---------------------------------------------------------------------------
 // Re-establish mock implementations before each test (mockReset: true clears them)
@@ -71,6 +75,9 @@ function setupClientMocks() {
   (TogetherChatCompletionClient as unknown as Mock).mockImplementation((opts: any) => ({
     _type: 'TogetherChatCompletionClient', _opts: opts,
   }));
+  (AnthropicClient as unknown as Mock).mockImplementation((opts: any) => ({
+    _type: 'AnthropicClient', _opts: opts,
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -81,12 +88,14 @@ function createMockAgentConfig(overrides: {
   providerApiKey?: string | null;
   providerData?: any;
   modelData?: any;
+  toolsConfig?: any;
 } = {}) {
   const {
     selectedModelKey = 'openai:gpt-5',
     providerApiKey = 'sk-test-key-1234567890',
     providerData = null,
     modelData = null,
+    toolsConfig = {},
   } = overrides;
 
   const defaultModelData = modelData ?? {
@@ -104,6 +113,7 @@ function createMockAgentConfig(overrides: {
     getModelByKey: vi.fn().mockReturnValue(defaultModelData),
     getProviderApiKey: vi.fn().mockResolvedValue(providerApiKey),
     getProvider: vi.fn().mockReturnValue(providerData),
+    getToolsConfig: vi.fn().mockReturnValue(toolsConfig),
   } as any;
 }
 
@@ -224,7 +234,7 @@ describe('ModelClientFactory', () => {
     it.each([
       ['openai', 'OpenAIResponsesClient'],
       ['xai', 'OpenAIResponsesClient'],
-      ['anthropic', 'OpenAIResponsesClient'],
+      ['anthropic', 'AnthropicClient'],
       ['groq', 'GroqClient'],
       ['google-ai-studio', 'GoogleCompletionClient'],
       ['fireworks', 'FireworksChatCompletionClient'],
@@ -261,6 +271,21 @@ describe('ModelClientFactory', () => {
       (factory as any).config = createMockAgentConfig({ selectedModelKey: 'openai:gpt-5.1' });
       const client2 = await factory.createClient('openai');
       expect(client1).not.toBe(client2);
+    });
+
+    it('should use construction-time tools config in the cache key', async () => {
+      await factory.initialize(createMockAgentConfig({
+        toolsConfig: { parallelToolCalls: false },
+      }));
+      const client1 = await factory.createClient('openai');
+
+      (factory as any).config = createMockAgentConfig({
+        toolsConfig: { parallelToolCalls: true },
+      });
+      const client2 = await factory.createClient('openai');
+
+      expect(client1).not.toBe(client2);
+      expect((client2 as any)._opts.parallelToolCalls).toBe(true);
     });
 
     it('should separate backend-routed and direct clients in cache', async () => {
@@ -689,6 +714,7 @@ describe('ModelClientFactory', () => {
         ['google-ai-studio', 'Google AI Studio', 'google-ai-studio:gemini'],
         ['fireworks', 'Fireworks AI', 'fireworks:llama'],
         ['together', 'Together AI', 'together:qwen'],
+        ['anthropic', 'Anthropic', 'anthropic:claude-sonnet-4-6'],
       ];
       for (const [pid, expectedName, selectedKey] of cases) {
         await factory.initialize(createMockAgentConfig({

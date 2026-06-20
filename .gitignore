@@ -69,7 +69,7 @@ tmp/
 # Vitest
 .vitest/
 
-# Tauri / Desktop App (Pi)
+# Tauri / Desktop App (WorkX)
 tauri/target/
 tauri/gen/
 tauri/binaries/
@@ -88,3 +88,4 @@ tauri/binaries/
 yarn.lock
 pnpm-lock.yaml
 
+tauri/sidecar/

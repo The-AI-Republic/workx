@@ -255,6 +255,7 @@ export class WebScrapingTool extends BaseTool {
 
       // Get the target tab
       const tab = await this.getTab(tabId, request.url);
+      this.emitScrapingProgress(options, request, 'started', 0);
 
       // Wait for readiness if specified
       if (request.waitFor) {
@@ -263,10 +264,14 @@ export class WebScrapingTool extends BaseTool {
 
       // Handle pagination if configured
       if (request.pagination) {
-        return await this.scrapePaginated(tab.id!, request);
+        this.emitScrapingProgress(options, request, 'extracting', 0);
+        const result = await this.scrapePaginated(tab.id!, request);
+        this.emitScrapingProgress(options, request, 'completed', JSON.stringify(result.data).length);
+        return result;
       }
 
       // Execute single page scraping
+      this.emitScrapingProgress(options, request, 'extracting', 0);
       const data = await this.executeScraping(tab.id!, request.patterns);
 
       // Capture screenshot if requested
@@ -275,7 +280,7 @@ export class WebScrapingTool extends BaseTool {
         screenshot = await this.captureScreenshot(tab.id!);
       }
 
-      return {
+      const result = {
         data,
         metadata: {
           url: tab.url || '',
@@ -285,10 +290,30 @@ export class WebScrapingTool extends BaseTool {
         },
         screenshot,
       };
+      this.emitScrapingProgress(options, request, 'completed', JSON.stringify(data).length);
+      return result;
 
     } catch (error) {
+      this.emitScrapingProgress(options, request, 'failed', 0);
       throw new Error(`Scraping failed: ${error instanceof Error ? error.message : String(error)}`);
     }
+  }
+
+  private emitScrapingProgress(
+    options: BaseToolOptions | undefined,
+    request: ScrapingConfig,
+    status: 'started' | 'extracting' | 'completed' | 'failed',
+    bytesExtracted: number,
+  ): void {
+    options?.onProgress?.({
+      toolUseID: options.callId ?? 'web_scraping',
+      data: {
+        type: 'scraping_progress',
+        contentType: request.screenshot ? 'page+screenshot' : 'page',
+        bytesExtracted,
+        status,
+      },
+    });
   }
 
   /**

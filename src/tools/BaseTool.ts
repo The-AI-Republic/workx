@@ -97,9 +97,12 @@ export interface ToolExecutionRequest {
   parameters: Record<string, any>;
   sessionId: string;
   turnId: string;
+  callId?: string; // Original tool_call ID from the model response
   tabId?: number; // Current session's bound tab ID
   timeout?: number;
   metadata?: Record<string, any>; // Additional context (currentUrl, currentDomain, cwd, etc.)
+  onProgress?: import('./runtimeMetadata').ToolProgressCallback; // Optional progress callback
+  signal?: AbortSignal;
 }
 
 /**
@@ -165,7 +168,17 @@ export interface ToolContext {
   sessionId: string;
   turnId: string;
   toolName: string;
+  callId?: string;
   metadata?: Record<string, any>;
+  onProgress?: import('./runtimeMetadata').ToolProgressCallback;
+  signal?: AbortSignal;
+  /**
+   * x402 payment capability (Track 23). Populated centrally by
+   * ToolRegistry.execute from the platform-wired capability. ONLY the
+   * resource-fetch tool consumes this; browser navigation tools are never
+   * given a payable path by construction.
+   */
+  payments?: import('../core/payments/x402/types').PaymentCapability;
 }
 
 /**
@@ -189,6 +202,9 @@ export interface BaseToolOptions {
   timeout?: number;
   retries?: number;
   metadata?: Record<string, any>;
+  callId?: string;
+  onProgress?: import('./runtimeMetadata').ToolProgressCallback;
+  signal?: AbortSignal;
 }
 
 /**

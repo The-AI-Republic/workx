@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "Generel AI-agent i browseren til arbejdsopgaver"
@@ -177,7 +177,7 @@
     "message": "Altid lys"
   },
   "Apple_Pi_Your_personal_AI_Alpha": {
-    "message": "Apple Pi: Din personlige AI (Alpha)"
+    "message": "WorkX: Din personlige AI (Alpha)"
   },
   "Approval_Safety": {
     "message": "Godkendelse & Sikkerhed"
@@ -219,8 +219,8 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Bed Browserx om at udtrække strukturerede data fra enhver webside"
+  "Ask_WorkX_to_extract_structured_data__88fc": {
+    "message": "Bed WorkX om at udtrække strukturerede data fra enhver webside"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Spørg om handlinger med medium risiko og derover (risiko > 30). Anbefales for de fleste brugere."
@@ -309,14 +309,11 @@
   "Browser_automation_tool_toggles": {
     "message": "Skift for browserautomatiseringsværktøjer"
   },
-  "BrowserX": {
-    "message": "BrowserX"
+  "WorkX": {
+    "message": "WorkX"
   },
-  "Browserx": {
-    "message": "Browserx"
-  },
-  "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+  "WorkX_Alpha": {
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "Aktuel mappe:"
@@ -385,8 +382,8 @@
   "Clear_search": {
     "message": "Ryd søgning"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Klik på Browserx‑ikonet i værktøjslinjen eller tryk Alt+Shift+C"
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
+    "message": "Klik på WorkX‑ikonet i værktøjslinjen eller tryk Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "Klik for at annullere login"
@@ -676,8 +673,8 @@
   "Enable_PIN_Protection": {
     "message": "Aktiver PIN-beskyttelse"
   },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": "Aktiver automatisk tilslutning, når browserx starter"
+  "Enable_auto_connect_when_workx_starts": {
+    "message": "Aktiver automatisk tilslutning, når WorkX starter"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Aktiver caching for at forbedre ydeevnen ved at gemme ofte tilgået data"
@@ -733,8 +730,8 @@
   "Explain_this_info_selectionText": {
     "message": "Forklar dette: ${info.selectionText}"
   },
-  "Explain_with_Browserx": {
-    "message": "Forklar med Browserx"
+  "Explain_with_WorkX": {
+    "message": "Forklar med WorkX"
   },
   "Export": {
     "message": "Eksporter"
@@ -760,8 +757,8 @@
   "Extract_Data": {
     "message": "Udtræk data:"
   },
-  "Extract_data_with_Browserx": {
-    "message": "Udtræk data med Browserx"
+  "Extract_data_with_WorkX": {
+    "message": "Udtræk data med WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Udtræk specifikke datamønstre fra sider"
@@ -955,8 +952,8 @@
   "Improve_this_text_info_selectionText": {
     "message": "Forbedr denne tekst: ${info.selectionText}"
   },
-  "Improve_with_Browserx": {
-    "message": "Forbedr med Browserx"
+  "Improve_with_WorkX": {
+    "message": "Forbedr med WorkX"
   },
   "In": {
     "message": "I:"
@@ -1547,7 +1544,7 @@
     "message": "Genforsøger"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Højreklik på enhver tekst for at forklare eller forbedre den med Browserx"
+    "message": "Højreklik på enhver tekst for at forklare eller forbedre den med WorkX"
   },
   "Risk_Score": {
     "message": "Risikoscore:"
@@ -2041,8 +2038,8 @@
   "Web_Search": {
     "message": "Websøgning"
   },
-  "Welcome_to_Browserx": {
-    "message": "Velkommen til Browserx"
+  "Welcome_to_WorkX": {
+    "message": "Velkommen til WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Om sandboxede kommandoer kan få adgang til netværket"
@@ -2092,8 +2089,8 @@
   "available": {
     "message": "tilgængelig"
   },
-  "browserx": {
-    "message": "browserx"
+  "workx": {
+    "message": "WorkX"
   },
   "cached": {
     "message": "cachet"

@@ -130,8 +130,8 @@
   }
 
   .pin-dialog {
-    background: var(--browserx-background, #000);
-    border: 1px solid var(--browserx-border, #00cc00);
+    background: var(--workx-background, #000);
+    border: 1px solid var(--workx-border, #00cc00);
     border-radius: 0.5rem;
     padding: 1.5rem;
     width: 320px;
@@ -141,13 +141,13 @@
   .pin-dialog-title {
     margin: 0 0 0.5rem;
     font-size: 1.1rem;
-    color: var(--browserx-text, #00ff00);
+    color: var(--workx-text, #00ff00);
   }
 
   .pin-dialog-description {
     margin: 0 0 1rem;
     font-size: 0.85rem;
-    color: var(--browserx-text-secondary, #00cc00);
+    color: var(--workx-text-secondary, #00cc00);
     line-height: 1.4;
   }
 
@@ -159,7 +159,7 @@
     display: block;
     font-size: 0.8rem;
     margin-bottom: 0.25rem;
-    color: var(--browserx-text-secondary, #00cc00);
+    color: var(--workx-text-secondary, #00cc00);
   }
 
   .pin-field input {
@@ -168,20 +168,20 @@
     font-size: 1.2rem;
     letter-spacing: 0.3em;
     text-align: center;
-    background: var(--browserx-surface, #0a0a0a);
-    border: 1px solid var(--browserx-border, #00cc00);
+    background: var(--workx-surface, #0a0a0a);
+    border: 1px solid var(--workx-border, #00cc00);
     border-radius: 0.375rem;
-    color: var(--browserx-text, #00ff00);
+    color: var(--workx-text, #00ff00);
     box-sizing: border-box;
   }
 
   .pin-field input:focus {
     outline: none;
-    border-color: var(--browserx-primary, #00ff00);
+    border-color: var(--workx-primary, #00ff00);
   }
 
   .pin-error {
-    color: var(--browserx-error, #ff0000);
+    color: var(--workx-error, #ff0000);
     font-size: 0.8rem;
     margin-bottom: 0.75rem;
   }
@@ -198,17 +198,17 @@
     border-radius: 0.375rem;
     font-size: 0.85rem;
     cursor: pointer;
-    border: 1px solid var(--browserx-border, #00cc00);
+    border: 1px solid var(--workx-border, #00cc00);
   }
 
   .btn-cancel {
     background: transparent;
-    color: var(--browserx-text-secondary, #00cc00);
+    color: var(--workx-text-secondary, #00cc00);
   }
 
   .btn-submit {
-    background: var(--browserx-primary, #00ff00);
-    color: var(--browserx-background, #000);
+    background: var(--workx-primary, #00ff00);
+    color: var(--workx-background, #000);
     font-weight: 600;
   }
 
@@ -218,6 +218,6 @@
   }
 
   .btn-cancel:hover:not(:disabled) {
-    background: var(--browserx-surface, #0a0a0a);
+    background: var(--workx-surface, #0a0a0a);
   }
 </style>

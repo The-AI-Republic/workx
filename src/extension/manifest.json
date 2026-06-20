@@ -4,6 +4,7 @@
   "version": "0.0.36",
   "description": "__MSG_extension_description__",
   "default_locale": "en",
+  "managed_storage": "managed-schema.json",
   "permissions": [
     "tabs",
     "tabGroups",
@@ -26,7 +27,7 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "prompts/default_browserx_agent_prompt.md",
+        "prompts/default_workx_agent_prompt.md",
         "prompts/user_instruction.md",
         "*.map",
         "content.js.map"
@@ -41,7 +42,7 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Browserx Agent",
+    "default_title": "WorkX Agent",
     "default_icon": {
       "16": "static/AI RepublicLOGO01.png",
       "48": "static/AI RepublicLOGO01.png",
@@ -73,7 +74,7 @@
       "suggested_key": {
         "default": "Alt+Shift+C"
       },
-      "description": "Toggle Browserx side panel"
+      "description": "Toggle WorkX side panel"
     },
     "quick-action": {
       "suggested_key": {

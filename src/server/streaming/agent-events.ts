@@ -8,7 +8,7 @@
  */
 
 import type { EventMsg } from '@/core/protocol/events';
-import { makeEvent, type EventFrame } from '@applepi/ws-server';
+import { makeEvent, type EventFrame } from '@workx/ws-server';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Sequence numbering
@@ -59,6 +59,15 @@ export function toAgentEvent(event: EventMsg): EventFrame | null {
         kind: 'tool.error',
         toolName: event.data.tool_name,
         error: event.data.error,
+      }, seq);
+
+    case 'ToolExecutionProgress':
+      return makeEvent('agent', {
+        kind: 'tool.progress',
+        toolName: event.data.tool_name,
+        callId: event.data.call_id,
+        progressData: event.data.progress_data,
+        timestamp: event.data.timestamp,
       }, seq);
 
     // ── MCP tool calls ────────────────────────────────────────────────

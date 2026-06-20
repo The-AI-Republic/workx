@@ -1,7 +1,7 @@
 /**
  * MCP Server Integration Type Definitions
  *
- * These types define the contracts for MCP server integration in ApplePi.
+ * These types define the contracts for MCP server integration in WorkX.
  * They are used for configuration, runtime state, and tool integration.
  */
 
@@ -80,6 +80,14 @@ export interface IMCPServerConfig {
 
   /** Unix timestamp of last update */
   updatedAt: number;
+
+  /**
+   * Track 10: plugin owner. Present when this server was registered by a
+   * plugin (manifest.mcpServers slot). Used by `MCPManager.removeByPluginId`
+   * for scoped removal on plugin disable. ID format: `<pluginName>@<marketplace>`.
+   * Absent for user-added or builtin servers.
+   */
+  pluginId?: string;
 }
 
 /**
@@ -98,6 +106,8 @@ export interface IMCPServerConfigCreate {
   args?: string[];
   env?: Record<string, string>;
   cwd?: string;
+  /** Track 10: plugin owner (absent for user-added servers). */
+  pluginId?: string;
 }
 
 /**
@@ -208,6 +218,11 @@ export interface IMCPTool {
 
   /** Optional annotations */
   annotations?: {
+    /** Raw MCP hints — preserved for concurrency classification */
+    readOnlyHint?: boolean;
+    destructiveHint?: boolean;
+    openWorldHint?: boolean;
+    /** Display-oriented fields */
     audience?: ('user' | 'assistant')[];
     priority?: number;
     costLevel?: 'low' | 'medium' | 'high';
@@ -309,6 +324,13 @@ export interface IMCPManager {
   removeServer(id: string): Promise<void>;
 
   /**
+   * Track 10: scoped removal — remove every server owned by a given plugin.
+   * Each server is disconnected before drop. Per-server errors logged but
+   * don't halt the loop.
+   */
+  removeByPluginId(pluginId: string): Promise<void>;
+
+  /**
    * Get all server configurations.
    */
   getServers(): IMCPServerConfig[];
@@ -378,7 +400,7 @@ export interface IMCPManager {
 // =============================================================================
 
 /**
- * Adapts MCP tools to ApplePi ToolDefinition format.
+ * Adapts MCP tools to WorkX ToolDefinition format.
  */
 export interface IMCPToolAdapter {
   /**
@@ -414,7 +436,7 @@ export interface IMCPToolAdapter {
 
 /**
  * Unified client adapter interface for MCP connections.
- * Both MCPClient (SSE) and RustMCPBridge (stdio) implement this interface,
+ * Both MCPClient (SSE) and NodeMCPBridge (stdio) implement this interface,
  * allowing MCPManager to work with either transport transparently.
  */
 export interface IMCPClientAdapter {

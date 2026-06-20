@@ -75,6 +75,21 @@ describe('TurnState', () => {
       expect(retrieved1).toBeUndefined();
       expect(retrieved2).toBeUndefined();
     });
+
+    it('should reject and clear pending approvals', () => {
+      const resolver1 = vi.fn() as any;
+      const resolver2 = vi.fn() as any;
+
+      turnState.insertPendingApproval('exec-1', resolver1);
+      turnState.insertPendingApproval('exec-2', resolver2);
+
+      turnState.rejectPendingApprovals();
+
+      expect(resolver1).toHaveBeenCalledWith('reject');
+      expect(resolver2).toHaveBeenCalledWith('reject');
+      expect(turnState.removePendingApproval('exec-1')).toBeUndefined();
+      expect(turnState.removePendingApproval('exec-2')).toBeUndefined();
+    });
   });
 
   describe('Pending Input', () => {

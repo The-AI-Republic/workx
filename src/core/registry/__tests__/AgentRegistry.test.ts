@@ -35,6 +35,8 @@ vi.mock('@/core/RepublicAgent', () => ({
     setEventDispatcher = vi.fn();
     getApprovalManager = vi.fn().mockReturnValue({});
     getToolRegistry = vi.fn().mockReturnValue({ setApprovalGate: vi.fn() });
+    getHookDispatcher = vi.fn().mockReturnValue({ fire: vi.fn().mockResolvedValue({}) });
+    getEngine = vi.fn().mockReturnValue(null);
     agentId = 'agent_mock';
   },
 }));

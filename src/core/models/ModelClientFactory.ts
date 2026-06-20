@@ -1,5 +1,5 @@
 /**
- * Model Client Factory for pi
+ * Model Client Factory for WorkX
  * Creates and manages model client instances with provider selection and caching
  */
 
@@ -45,6 +45,20 @@ const STORAGE_KEYS = {
 } as const;
 
 const DEFAULT_MODEL = 'gpt-5';
+
+interface ClientConstructionSignature {
+  selectedModelKey: string;
+  parallelToolCalls: boolean;
+  providerBaseUrl: string | null;
+  providerOrganization: string | null;
+  model: {
+    modelKey: string | null;
+    supportsReasoning: boolean;
+    supportsReasoningSummaries: boolean;
+    serviceTier: string | null;
+    supportBackendMode: number | null;
+  };
+}
 
 /**
  * Factory for creating and managing model clients
@@ -138,6 +152,26 @@ export class ModelClientFactory {
 
 
   /**
+   * Create a model client for a specific model key (e.g., 'openai:gpt-4o').
+   * Used by sub-agents to honor model overrides from SubAgentTypeConfig.
+   * Falls back to createClientForCurrentModel() if modelKey is not provided.
+   */
+  async createClientForModelKey(modelKey?: string): Promise<ModelClient> {
+    if (!modelKey) {
+      return this.createClientForCurrentModel();
+    }
+    if (!this.config) {
+      throw new ModelClientError('ModelClientFactory not initialized - call initialize() first');
+    }
+    const modelData = this.config.getModelByKey(modelKey);
+    if (!modelData) {
+      throw new ModelClientError(`Model ${modelKey} not found`);
+    }
+    const provider = this.mapProviderIdToType(modelData.provider.id);
+    return this.createClient(provider);
+  }
+
+  /**
    * Map provider ID from config to ModelProvider type
    * @param providerId Provider ID from config (e.g., 'openai', 'xai', 'anthropic', 'groq')
    * @returns ModelProvider type
@@ -162,7 +196,8 @@ export class ModelClientFactory {
     // Add routing type and OAuth status to cache key to separate clients
     const oauthActive = this.authManager?.isChatGPTOAuthActive?.() ? 'oauth' : 'direct';
     const routingType = this.isBackendRouting() ? 'backend' : oauthActive;
-    const cacheKey = `${provider}-${selectedModelKey}-${routingType}`;
+    const constructionSignature = this.hashObject(this.getClientConstructionSignature(provider));
+    const cacheKey = `${provider}-${selectedModelKey}-${routingType}-${constructionSignature}`;
 
     // Check cache first
     const cached = this.clientCache.get(cacheKey);
@@ -203,6 +238,9 @@ export class ModelClientFactory {
     const accessToken = await this.authManager?.getAccessToken();
     // Use real token if available (desktop), fall back to dummy key (extension uses cookies)
     const apiKey = accessToken || 'backend-routed';
+
+    // Track 11: resolve the parallel-tool-calls flag from tools config.
+    const parallelToolCalls = this.resolveParallelToolCalls();
 
     // Get model metadata for configuration
     let modelConfig: any = undefined;
@@ -287,6 +325,7 @@ export class ModelClientFactory {
         reasoningEffort: reasoningEffort as any,
         reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
         useCredentials: true,
+        parallelToolCalls,
       });
     }
 
@@ -299,6 +338,7 @@ export class ModelClientFactory {
       provider: backendProvider,
       modelConfig,
       useCredentials: true,
+      parallelToolCalls,
     });
   }
 
@@ -308,7 +348,8 @@ export class ModelClientFactory {
    * @returns Model client instance
    */
   createClientWithConfig(config: ModelClientConfig): ModelClient {
-    const cacheKey = `${config.provider}-${this.hashConfig(config)}`;
+    const constructionSignature = this.hashObject(this.getClientConstructionSignature(config.provider));
+    const cacheKey = `${config.provider}-${this.hashConfig(config)}-${constructionSignature}`;
 
     // Check cache first
     const cached = this.clientCache.get(cacheKey);
@@ -547,6 +588,9 @@ export class ModelClientFactory {
    * @returns Model client instance
    */
   private instantiateClient(config: ModelClientConfig): ModelClient {
+    // Track 11: resolve the parallel-tool-calls flag from tools config.
+    const parallelToolCalls = this.resolveParallelToolCalls();
+
     // Get provider name from config
     const providerName = config.provider;
     const baseUrl = config.options?.baseUrl;
@@ -580,7 +624,7 @@ export class ModelClientFactory {
     const modelFamily = {
       family: selectedModel,
       base_instructions: providerName === 'google-ai-studio'
-        ? 'You are Gemini 2.5 Pro integrated with the Apple Pi agent. Provide accurate answers and suggest tool usage when relevant.'
+        ? 'You are Gemini 2.5 Pro integrated with the WorkX agent. Provide accurate answers and suggest tool usage when relevant.'
         : 'You are a helpful coding assistant.',
       supports_reasoning: supportsReasoning,
       supports_reasoning_summaries: supportsReasoningSummaries,
@@ -596,13 +640,15 @@ export class ModelClientFactory {
       displayName = 'Fireworks AI';
     } else if (providerName === 'together') {
       displayName = 'Together AI';
+    } else if (providerName === 'anthropic') {
+      displayName = 'Anthropic';
     }
 
     const provider = {
       name: displayName,
       base_url: resolvedBaseUrl,
       wire_api: providerName === 'google-ai-studio' ? 'Chat' as const : 'Responses' as const,
-      requires_openai_auth: providerName !== 'google-ai-studio',
+      requires_openai_auth: providerName !== 'google-ai-studio' && providerName !== 'anthropic',
       ...(providerName === 'google-ai-studio' && {
         env_key: 'GOOGLE_AI_STUDIO_API_KEY',
         env_key_instructions: 'Set a Google AI Studio key in Settings to enable Gemini.',
@@ -631,6 +677,7 @@ export class ModelClientFactory {
           modelFamily,
           provider,
           modelConfig,
+          parallelToolCalls,
         });
 
       case 'together':
@@ -642,6 +689,7 @@ export class ModelClientFactory {
           modelFamily,
           provider,
           modelConfig,
+          parallelToolCalls,
         });
 
       case 'fireworks':
@@ -653,6 +701,7 @@ export class ModelClientFactory {
           modelFamily,
           provider,
           modelConfig,
+          parallelToolCalls,
         });
 
       case 'google-ai-studio':
@@ -674,6 +723,7 @@ export class ModelClientFactory {
           modelConfig,
           reasoningEffort: reasoningEffort as any,
           reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
+          parallelToolCalls,
         });
 
       case 'anthropic':
@@ -703,6 +753,7 @@ export class ModelClientFactory {
           reasoningEffort: reasoningEffort as any,
           reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
           serviceTier,
+          parallelToolCalls,
         });
     }
   }
@@ -713,12 +764,15 @@ export class ModelClientFactory {
    * @returns Hash string
    */
   private hashConfig(config: ModelClientConfig): string {
-    const str = JSON.stringify({
+    return this.hashObject({
       provider: config.provider,
       apiKey: config.apiKey?.slice(0, 10) || 'null', // Only use first 10 chars for privacy
       options: config.options || {},
     });
+  }
 
+  private hashObject(value: unknown): string {
+    const str = JSON.stringify(value);
     // Simple hash function
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
@@ -728,6 +782,27 @@ export class ModelClientFactory {
     }
 
     return hash.toString(36);
+  }
+
+  private getClientConstructionSignature(provider: ModelProvider): ClientConstructionSignature {
+    const selectedModelKey = this.config?.getConfig().selectedModelKey || 'unknown';
+    const providerConfig = this.config?.getProvider?.(provider);
+    const modelData = this.config?.getModelByKey?.(selectedModelKey);
+    const model = modelData?.model;
+
+    return {
+      selectedModelKey,
+      parallelToolCalls: this.resolveParallelToolCalls(),
+      providerBaseUrl: providerConfig?.baseUrl ?? null,
+      providerOrganization: providerConfig?.organization ?? null,
+      model: {
+        modelKey: model?.modelKey ?? null,
+        supportsReasoning: model?.supportsReasoning ?? false,
+        supportsReasoningSummaries: model?.supportsReasoningSummaries ?? false,
+        serviceTier: model?.serviceTier ?? null,
+        supportBackendMode: model?.supportBackendMode ?? null,
+      },
+    };
   }
 
   /**
@@ -743,6 +818,16 @@ export class ModelClientFactory {
    * Get selected model from config
    * Returns the modelKey of the currently selected model
    */
+  /**
+   * Track 11: resolve the config-driven parallel-tool-calls flag.
+   * The `getToolsConfig?.()` guard is load-bearing — `this.config` may be a
+   * partial mock or an early-bootstrap config without the method. Defaults
+   * to false in that case.
+   */
+  private resolveParallelToolCalls(): boolean {
+    return this.config?.getToolsConfig?.()?.parallelToolCalls ?? false;
+  }
+
   getSelectedModel(): string {
     if (this.config) {
       // Get selectedModelKey from config

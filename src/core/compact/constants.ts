@@ -7,6 +7,7 @@
 import type { CompactionConfig } from './types';
 import compactSummarization from '../../prompts/fragments/compact_summarization.md?raw';
 import compactSummaryPrefix from '../../prompts/fragments/compact_summary_prefix.md?raw';
+import { DEFAULT_AUTO_COMPACT_RATIO } from './tokenPressure';
 
 /**
  * Prompt sent to LLM for summarization.
@@ -34,7 +35,7 @@ export const TRUNCATION_MARKER = '\n[...tokens truncated]';
  * Default compaction configuration.
  */
 export const DEFAULT_COMPACTION_CONFIG: CompactionConfig = {
-  triggerThreshold: 0.85, // 85% of context window
+  triggerThreshold: DEFAULT_AUTO_COMPACT_RATIO,
   userMessageBudget: 20000, // tokens for user messages
   maxRetries: 3, // retry attempts
   baseBackoffMs: 100, // exponential backoff base

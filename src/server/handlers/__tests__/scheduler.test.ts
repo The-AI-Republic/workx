@@ -10,7 +10,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Capture registered handlers so we can call them directly
 const handlerMap = new Map<string, Function>();
-vi.mock('@applepi/ws-server', () => ({
+vi.mock('@workx/ws-server', () => ({
   registerMethodHandler: (name: string, handler: Function) => {
     handlerMap.set(name, handler);
   },

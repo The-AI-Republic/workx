@@ -1,0 +1,10 @@
+[Desktop Entry]
+Categories={{categories}}
+Comment={{comment}}
+Exec={{exec}} %u
+StartupWMClass=WorkX
+Icon={{icon}}
+Name=WorkX
+Terminal=false
+Type=Application
+MimeType=x-scheme-handler/applepi;x-scheme-handler/workx;

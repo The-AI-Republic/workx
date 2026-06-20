@@ -62,7 +62,7 @@ Goal: Reliable, file-based state management.
 ## Phase 5: OpenClaw Plugin Integration
 Goal: Connectivity through third-party platform plugins.
 
-- [ ] **Implement `ChannelPluginBridge`**
+- [ ] **Implement `ConnectorBridge`**
     - [ ] Build the bridge between OpenClaw adapters and Pi's `ChannelManager`.
     - [ ] Implement **Worker Thread isolation** and IPC for plugins.
 - [ ] **Plugin Registry & Discovery**
@@ -78,7 +78,7 @@ Goal: Harden the agent for private deployment.
     - [ ] Implement `owner.identities` mapping and **Static Whitelisting**.
     - [ ] Implement pairing request flow for unverified senders (if enabled).
 - [ ] **CLI Identity Tool**
-    - [ ] Create `scripts/applepi-identity.js` for local management of platform IDs.
+    - [ ] Create `scripts/workx-identity.js` for local management of platform IDs.
 - [ ] **Resource Limits & Guardrails**
     - [ ] Implement concurrency limits (max runs/sub-agents).
     - [ ] Implement message queue policies (`summarize` on overflow) and deduplication.

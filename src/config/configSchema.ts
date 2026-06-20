@@ -9,6 +9,7 @@
  */
 
 import { z } from 'zod';
+import { isKeyLocked } from '../core/config/policy';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -140,7 +141,24 @@ export const SECTIONS: Record<string, Section> = {
           alias: 'general.language',
         },
       }),
+      // Default persona mode for NEW conversations (WorkX only). The active
+      // per-session mode is changed at runtime via SetSessionMode, not here.
+      // When adding a mode, extend this enum and AgentMode in PromptComposer.
+      defaultMode: configField(z.enum(['general', 'code']).default('general'), {
+        llm_access: {
+          read: true,
+          write: true,
+          label: 'Default Mode',
+          description:
+            'Default agent persona for new conversations: general (desktop automation) or code (software engineering)',
+          category: 'general',
+          alias: 'general.defaultMode',
+        },
+      }),
       // Plain fields — no LLM access
+      // workspaceRoot is deliberately NOT llm_access: the agent must not be
+      // able to relocate its own filesystem jail. User-set via folder picker.
+      workspaceRoot: configField(z.string().optional()),
       autoSync: configField(z.boolean().default(true)),
       telemetryEnabled: configField(z.boolean().default(false)),
       useOwnApiKey: configField(z.boolean().optional()),
@@ -193,6 +211,11 @@ export const SECTIONS: Record<string, Section> = {
       webSearch: toolToggle('Web Search', 'Enable web search capabilities'),
       fileOperations: toolToggle('File Operations', 'Enable file read/write operations', false),
       mcpTools: toolToggle('MCP Tools', 'Enable Model Context Protocol tools', false),
+      dynamicToolLoading: configField(z.union([z.boolean(), z.literal('auto')]).default('auto')),
+      dynamicToolLoadingThresholdPercent: configField(z.number().min(0).max(100).default(2)),
+      alwaysLoadTools: configField(z.array(z.string()).default([])),
+      deferTools: configField(z.array(z.string()).default([])),
+      hiddenTools: configField(z.array(z.string()).default([])),
     },
   },
 
@@ -266,15 +289,29 @@ export type ResolveResult = ResolvedField | DeniedField;
  * Also checks aliases: if direct lookup fails, tries alias resolution.
  */
 export function resolve(path: string, action: 'read' | 'write'): ResolveResult {
-  // Try direct resolution first
-  const direct = resolveDirectPath(path, action);
-  if (direct) return direct;
+  // Try direct resolution first, then alias resolution.
+  const result =
+    resolveDirectPath(path, action) ??
+    resolveByAlias(path, action) ?? {
+      denied: true as const,
+      reason: `Path "${path}" is not accessible`,
+    };
 
-  // Fall back to alias resolution
-  const aliased = resolveByAlias(path, action);
-  if (aliased) return aliased;
+  // Track 20: the LLM setting_tool is the third config write surface. Deny
+  // writes to organization-managed (locked) paths using the resolver's
+  // canonical path (covers alias resolution too).
+  if (
+    action === 'write' &&
+    !('denied' in result) &&
+    isKeyLocked('agent', result.path)
+  ) {
+    return {
+      denied: true,
+      reason: `Field "${result.path}" is managed by your organization and cannot be changed.`,
+    };
+  }
 
-  return { denied: true, reason: `Path "${path}" is not accessible` };
+  return result;
 }
 
 function resolveDirectPath(path: string, action: 'read' | 'write'): ResolveResult | null {

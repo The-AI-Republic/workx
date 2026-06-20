@@ -2,13 +2,14 @@
  * Session Method Handlers
  *
  * Handles sessions.list, sessions.get, sessions.patch,
- * sessions.reset, sessions.delete, sessions.compact.
+ * sessions.reset, sessions.delete, sessions.compact, sessions.turns,
+ * sessions.rewind.
  *
  * @module server/handlers/sessions
  */
 
-import { registerMethodHandler, type MethodContext } from '@applepi/ws-server';
-import { invalidRequest, notFound } from '@applepi/ws-server';
+import { registerMethodHandler, type MethodContext } from '@workx/ws-server';
+import { invalidRequest, notFound } from '@workx/ws-server';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Dependencies
@@ -21,6 +22,14 @@ export interface SessionHandlerDeps {
   resetSession: (key: string) => Promise<void>;
   deleteSession: (key: string) => Promise<void>;
   compactSession: (key: string) => Promise<unknown>;
+  /** Track 15: list the conversation's user turns for a rewind picker. */
+  listSessionTurns: (key: string) => Promise<unknown>;
+  /** Track 15: fork the conversation to an earlier turn (source untouched). */
+  rewindSession: (
+    key: string,
+    targetSequence: number,
+    mode?: 'conversation' | 'summarize_up_to'
+  ) => Promise<unknown>;
 }
 
 let _deps: SessionHandlerDeps | null = null;
@@ -34,6 +43,8 @@ export function registerSessionHandlers(deps: SessionHandlerDeps): void {
   registerMethodHandler('sessions.reset', handleSessionsReset);
   registerMethodHandler('sessions.delete', handleSessionsDelete);
   registerMethodHandler('sessions.compact', handleSessionsCompact);
+  registerMethodHandler('sessions.turns', handleSessionsTurns);
+  registerMethodHandler('sessions.rewind', handleSessionsRewind);
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -121,4 +132,42 @@ async function handleSessionsCompact(
 
   const result = await _deps.compactSession(key);
   return { status: 'compacted', key, ...((result as Record<string, unknown>) ?? {}) };
+}
+
+async function handleSessionsTurns(
+  params: Record<string, unknown> | undefined,
+  _ctx: MethodContext
+): Promise<unknown> {
+  if (!_deps) throw new Error('Session handlers not initialized');
+
+  const key = params?.key as string;
+  if (!key) throw invalidRequest('"key" is required');
+
+  const turns = await _deps.listSessionTurns(key);
+  return { key, turns };
+}
+
+async function handleSessionsRewind(
+  params: Record<string, unknown> | undefined,
+  _ctx: MethodContext
+): Promise<unknown> {
+  if (!_deps) throw new Error('Session handlers not initialized');
+
+  const key = params?.key as string;
+  if (!key) throw invalidRequest('"key" is required');
+  const targetSequence = params?.targetSequence as number;
+  if (typeof targetSequence !== 'number') {
+    throw invalidRequest('"targetSequence" (number) is required');
+  }
+  const mode = params?.mode as 'conversation' | 'summarize_up_to' | undefined;
+
+  const result = await _deps.rewindSession(key, targetSequence, mode);
+  // The response explicitly states side effects are NOT rewound (D6) and
+  // names the new forked conversation id so the operator can re-target it.
+  return {
+    status: 'rewound',
+    key,
+    sideEffectsNotRewound: true,
+    ...((result as Record<string, unknown>) ?? {}),
+  };
 }

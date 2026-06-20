@@ -17,7 +17,7 @@ vi.mock('../constants', () => ({
   NO_SUMMARY_PLACEHOLDER: '(no summary available)',
   TRUNCATION_MARKER: '\n[...tokens truncated]',
   DEFAULT_COMPACTION_CONFIG: {
-    triggerThreshold: 0.85,
+    triggerThreshold: 0.8,
     userMessageBudget: 20000,
     maxRetries: 3,
     baseBackoffMs: 100,
@@ -130,18 +130,18 @@ describe('CompactService', () => {
   // =========================================================================
   describe('shouldCompact', () => {
     it('should return true when tokens exceed threshold', () => {
-      // Default threshold is 0.85. 91000 / 100000 = 0.91 > 0.85
+      // Default threshold is 0.8. 91000 / 100000 = 0.91 > 0.8
       expect(service.shouldCompact(91000, 100000)).toBe(true);
     });
 
     it('should return false when tokens are below threshold', () => {
-      // 80000 / 100000 = 0.80 < 0.85
-      expect(service.shouldCompact(80000, 100000)).toBe(false);
+      // 79999 / 100000 is just below 0.8
+      expect(service.shouldCompact(79999, 100000)).toBe(false);
     });
 
     it('should return true when tokens exactly equal threshold', () => {
-      // 85000 / 100000 = 0.85 >= 0.85
-      expect(service.shouldCompact(85000, 100000)).toBe(true);
+      // 80000 / 100000 = 0.8 >= 0.8
+      expect(service.shouldCompact(80000, 100000)).toBe(true);
     });
 
     it('should return false when contextWindow is 0', () => {
@@ -153,7 +153,7 @@ describe('CompactService', () => {
     });
 
     it('should return true when currentTokens exceed contextWindow', () => {
-      // 150000 / 100000 = 1.5 >= 0.85
+      // 150000 / 100000 = 1.5 >= 0.8
       expect(service.shouldCompact(150000, 100000)).toBe(true);
     });
 
@@ -170,18 +170,18 @@ describe('CompactService', () => {
     });
 
     it('should handle very small context window', () => {
-      // 10 / 10 = 1.0 >= 0.85
+      // 10 / 10 = 1.0 >= 0.8
       expect(service.shouldCompact(10, 10)).toBe(true);
-      // 8 / 10 = 0.8 < 0.85
-      expect(service.shouldCompact(8, 10)).toBe(false);
+      // 7 / 10 = 0.7 < 0.8
+      expect(service.shouldCompact(7, 10)).toBe(false);
     });
 
     it('should handle very large token counts', () => {
       expect(service.shouldCompact(950000, 1000000)).toBe(true);
-      // 850000 / 1000000 = 0.85 >= 0.85
-      expect(service.shouldCompact(850000, 1000000)).toBe(true);
-      // 840000 / 1000000 = 0.84 < 0.85
-      expect(service.shouldCompact(840000, 1000000)).toBe(false);
+      // 800000 / 1000000 = 0.8 >= 0.8
+      expect(service.shouldCompact(800000, 1000000)).toBe(true);
+      // 799999 / 1000000 is just below 0.8
+      expect(service.shouldCompact(799999, 1000000)).toBe(false);
     });
   });
 
@@ -192,7 +192,7 @@ describe('CompactService', () => {
     it('should return default config when no overrides provided', () => {
       const config = service.getConfig();
       expect(config).toEqual({
-        triggerThreshold: 0.85,
+        triggerThreshold: 0.8,
         userMessageBudget: 20000,
         maxRetries: 3,
         baseBackoffMs: 100,
@@ -256,8 +256,8 @@ describe('CompactService', () => {
     });
 
     it('should affect shouldCompact behavior after update', () => {
-      // Default threshold 0.85: 80% usage should not trigger
-      expect(service.shouldCompact(80000, 100000)).toBe(false);
+      // Default threshold 0.8: just-below-80% usage should not trigger
+      expect(service.shouldCompact(79999, 100000)).toBe(false);
       // Update threshold to 0.7
       service.updateConfig({ triggerThreshold: 0.7 });
       // Now 80% usage should trigger
@@ -399,10 +399,9 @@ describe('CompactService', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Network timeout');
-      // The while loop runs while retriesUsed <= maxRetries (3).
-      // Each failure increments retriesUsed, and the loop exits when retriesUsed > maxRetries.
-      // So retriesUsed ends at maxRetries + 1 = 4.
-      expect(result.retriesUsed).toBe(4);
+      // Track 12: retriesUsed now counts retries actually performed.
+      // maxRetries=3 → 3 retries, then the 4th attempt throws.
+      expect(result.retriesUsed).toBe(3);
       expect(result.tokensBefore).toBe(10000);
       expect(result.tokensAfter).toBe(10000);
       expect(result.triggerReason).toBe('auto');
@@ -444,10 +443,9 @@ describe('CompactService', () => {
       const result = await customService.compact(history, 'auto', mockClient, 5000);
 
       expect(result.success).toBe(false);
-      // With maxRetries=1: loop runs while retriesUsed<=1.
-      // Attempt 1 fails -> retriesUsed=1 (<=1, sleep & continue)
-      // Attempt 2 fails -> retriesUsed=2 (>1, return failure)
-      expect(result.retriesUsed).toBe(2);
+      // Track 12: maxRetries=1 → 1 retry performed (attempt 1 fails & retries,
+      // attempt 2 fails & throws). retriesUsed counts retries performed.
+      expect(result.retriesUsed).toBe(1);
       // 1 initial attempt + 1 retry = 2 total calls
       expect(mockClient.stream).toHaveBeenCalledTimes(2);
     });
@@ -603,9 +601,12 @@ describe('CompactService', () => {
 
       const result = await service.compact(history, 'auto', mockClient, 5000);
 
-      // With only 1 item, trimming cannot happen; falls back to regular retry logic
+      // With only 1 item, trimming cannot happen. Track 12: context-overflow
+      // is non-retryable (retrying an un-trimmable oversized request is
+      // pointless), so it fails immediately with no retries.
       expect(result.success).toBe(false);
-      expect(result.retriesUsed).toBe(4);
+      expect(result.retriesUsed).toBe(0);
+      expect(mockClient.stream).toHaveBeenCalledTimes(1);
     });
 
     it('should combine trimming and retries when both occur', async () => {
@@ -746,7 +747,7 @@ describe('CompactService', () => {
     it('should create instance with default config', () => {
       const svc = new CompactService();
       expect(svc.getConfig()).toEqual({
-        triggerThreshold: 0.85,
+        triggerThreshold: 0.8,
         userMessageBudget: 20000,
         maxRetries: 3,
         baseBackoffMs: 100,
@@ -774,7 +775,7 @@ describe('CompactService', () => {
     it('should accept empty config object', () => {
       const svc = new CompactService({});
       expect(svc.getConfig()).toEqual({
-        triggerThreshold: 0.85,
+        triggerThreshold: 0.8,
         userMessageBudget: 20000,
         maxRetries: 3,
         baseBackoffMs: 100,
@@ -861,8 +862,8 @@ describe('CompactService', () => {
       const result = await svc.compact(history, 'auto', mockClient, 5000);
 
       expect(result.success).toBe(false);
-      // With maxRetries=0: first failure increments retriesUsed to 1 (>0), returns failure
-      expect(result.retriesUsed).toBe(1);
+      // Track 12: maxRetries=0 → no retries performed.
+      expect(result.retriesUsed).toBe(0);
       // Only the initial attempt, no retries
       expect(mockClient.stream).toHaveBeenCalledTimes(1);
     });

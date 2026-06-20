@@ -10,17 +10,18 @@
  * @module desktop/tools/registerDesktopTools
  */
 
-import { ToolRegistry } from '../../tools/ToolRegistry';
+import { ToolRegistry, type ToolRegistrationOptions } from '../../tools/ToolRegistry';
 import type { IToolsConfig } from '../../config/types';
 import type { ToolDefinition, Platform } from '../../tools/BaseTool';
 import { PlanningTool } from '../../tools/PlanningTool';
 import { getTaskStore } from '../../core/taskmanager';
-import { WebSearchTool } from '../../tools/WebSearchTool';
+import { WebSearchTool, WEB_SEARCH_CONCURRENCY } from '../../tools/WebSearchTool';
 import { SettingTool } from '../../tools/SettingTool';
+import { registerResourceFetchTool } from '../../tools/ResourceFetchTool';
 import { MCPManager } from '../../core/mcp/MCPManager';
 import { registerMCPTools } from '../../core/mcp/MCPToolAdapter';
 import { TerminalTool } from './terminal/TerminalTool';
-import { invoke } from '@tauri-apps/api/core';
+import { registerFileSearchTools } from '../../tools/file-search/register';
 import { TerminalRiskAssessor } from '../../core/approval/assessors/TerminalRiskAssessor';
 import { McpBrowserRiskAssessor } from '../../core/approval/assessors/McpBrowserRiskAssessor';
 import { StaticRiskAssessor } from '../../core/approval/assessors/StaticRiskAssessor';
@@ -71,7 +72,7 @@ export async function registerDesktopToolsImpl(
   const staticAssessor = new StaticRiskAssessor();
 
   // Helper to register a BaseTool instance
-  const registerTool = async (toolName: string, toolInstance: any, riskAssessor?: IRiskAssessor) => {
+  const registerTool = async (toolName: string, toolInstance: any, riskAssessor?: IRiskAssessor | ToolRegistrationOptions) => {
     if (registry.getTool(toolName)) {
       return;
     }
@@ -90,9 +91,17 @@ export async function registerDesktopToolsImpl(
           turnId: context.turnId,
           toolName: context.toolName,
         },
+        callId: context.callId,
+        onProgress: context.onProgress,
+        signal: context.signal,
       });
     }, riskAssessor);
   };
+
+  // ── resource_fetch (Track 23 — the only x402-payable surface) ─────────
+  // Desktop is the signer home; the wired capability requires explicit
+  // human approval (ApprovalGate) above the trivial threshold.
+  await registerResourceFetchTool(registry);
 
   // ──────────────────────────────────────────────────────────────────────
   // Register browser tools via MCPManager builtin server
@@ -162,9 +171,12 @@ export async function registerDesktopToolsImpl(
     console.error('[registerDesktopTools] Failed to register PlanningTool (StorageProvider unavailable):', error);
   }
 
-  // Web search tool (zero risk)
+  // Web search tool (zero risk; read-only — Track 14 shared profile)
   const webSearchTool = new WebSearchTool();
-  await registerTool('web_search', webSearchTool, new StaticRiskAssessor(0));
+  await registerTool('web_search', webSearchTool, {
+    riskAssessor: new StaticRiskAssessor(0),
+    runtime: { concurrency: WEB_SEARCH_CONCURRENCY },
+  });
 
   // Setting tool - always enabled for reading/writing allowlisted settings via chat
   const settingTool = new SettingTool();
@@ -174,13 +186,7 @@ export async function registerDesktopToolsImpl(
   // Register terminal tool (desktop only)
   // ──────────────────────────────────────────────────────────────────────
   const terminalTool = new TerminalTool();
-  let osName: string | undefined;
-  try {
-    const platformInfo = await invoke<{ os: string; arch: string; version: string }>('get_platform_info');
-    osName = platformInfo.os;
-  } catch (error) {
-    console.warn('[registerDesktopTools] Failed to get platform info:', error);
-  }
+  const osName = process.platform;
 
   // Initialize sandbox support and fetch status for dynamic tool description
   let sandboxStatus;
@@ -222,4 +228,9 @@ export async function registerDesktopToolsImpl(
       terminalAssessor
     );
   }
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Register ripgrep-backed read-only search tools (grep, glob) — desktop
+  // ──────────────────────────────────────────────────────────────────────
+  await registerFileSearchTools(registry, ['desktop']);
 }

@@ -49,7 +49,7 @@ function defaultProvider(): ModelProviderInfo {
     name: 'Anthropic',
     base_url: 'https://api.anthropic.com',
     wire_api: 'Responses',
-    requires_openai_auth: true,
+    requires_openai_auth: false,
   };
 }
 
@@ -244,7 +244,7 @@ describe('AnthropicClient request building', () => {
     });
   });
 
-  it('enables extended thinking with a budget derived from reasoning effort', async () => {
+  it('uses adaptive thinking and output_config effort for Sonnet 4.6', async () => {
     mocks.create.mockReturnValue(asyncStreamFrom([{ type: 'message_stop' }]));
     const client = new AnthropicClient(defaultConfig({ reasoningEffort: 'high' }));
 
@@ -252,8 +252,45 @@ describe('AnthropicClient request building', () => {
     await collectEvents(stream);
 
     const payload = mocks.create.mock.calls[0][0];
-    expect(payload.thinking).toEqual({ type: 'enabled', budget_tokens: 24000 });
+    expect(payload.thinking).toEqual({ type: 'adaptive' });
+    expect(payload.output_config).toEqual({ effort: 'high' });
     expect(payload.temperature).toBeUndefined();
+  });
+
+  it('omits thinking and sends effort for always-on adaptive thinking models', async () => {
+    mocks.create.mockReturnValue(asyncStreamFrom([{ type: 'message_stop' }]));
+    const client = new AnthropicClient(defaultConfig({
+      reasoningEffort: 'medium',
+      modelFamily: {
+        ...defaultModelFamily(),
+        family: 'claude-fable-5',
+      },
+    }));
+
+    const stream = await client.stream(userPrompt('think carefully'));
+    await collectEvents(stream);
+
+    const payload = mocks.create.mock.calls[0][0];
+    expect(payload.thinking).toBeUndefined();
+    expect(payload.output_config).toEqual({ effort: 'medium' });
+  });
+
+  it('uses manual thinking budgets for non-adaptive reasoning models', async () => {
+    mocks.create.mockReturnValue(asyncStreamFrom([{ type: 'message_stop' }]));
+    const client = new AnthropicClient(defaultConfig({
+      reasoningEffort: 'high',
+      modelFamily: {
+        ...defaultModelFamily(),
+        family: 'claude-haiku-4-5-20251001',
+      },
+    }));
+
+    const stream = await client.stream(userPrompt('think hard'));
+    await collectEvents(stream);
+
+    const payload = mocks.create.mock.calls[0][0];
+    expect(payload.thinking).toEqual({ type: 'enabled', budget_tokens: 24000 });
+    expect(payload.output_config).toBeUndefined();
   });
 
   it('omits thinking when reasoning effort is not set', async () => {

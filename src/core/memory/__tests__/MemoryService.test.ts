@@ -5,8 +5,8 @@
  * getFormattedGlobalContext, formatGlobalMemoryContext.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MemoryService } from '../MemoryService';
+import { describe, it, expect, vi } from 'vitest';
+import { MAX_CORE_MEMORY_CHARS, MemoryService } from '../MemoryService';
 import { DailyMemoryStore } from '../DailyMemoryStore';
 import { MemorySearcher, type SearchResult } from '../MemorySearcher';
 import { CoreMemoryManager } from '../CoreMemoryManager';
@@ -25,6 +25,7 @@ function createMockDailyStore(): DailyMemoryStore {
     listDays: vi.fn().mockResolvedValue([]),
     searchKeywords: vi.fn().mockResolvedValue([]),
     removeEntries: vi.fn().mockResolvedValue(0),
+    clearAll: vi.fn().mockResolvedValue(0),
     ensureDir: vi.fn().mockResolvedValue(undefined),
   } as unknown as DailyMemoryStore;
 }
@@ -43,6 +44,7 @@ function createMockCoreManager(): CoreMemoryManager {
   return {
     mergeCoreFacts: vi.fn().mockResolvedValue(undefined),
     removeFacts: vi.fn().mockResolvedValue(0),
+    clearAll: vi.fn().mockResolvedValue(undefined),
     getCoreMemoryContent: vi.fn().mockResolvedValue('# User Profile'),
     ensureFile: vi.fn().mockResolvedValue(undefined),
   } as unknown as CoreMemoryManager;
@@ -73,6 +75,8 @@ describe('MemoryService.formatGlobalMemoryContext', () => {
     const result = service.formatGlobalMemoryContext('');
     expect(result).toContain('Long-Term Memory');
     expect(result).toContain('save_memory');
+    expect(result).toContain('facts that can be derived');
+    expect(result).toContain('Memory can become stale');
     expect(result).not.toContain('<agent_memory>');
   });
 
@@ -99,6 +103,81 @@ describe('MemoryService.formatGlobalMemoryContext', () => {
     const result = service.formatGlobalMemoryContext('  content  ');
     expect(result).toContain('content');
     expect(result).not.toContain('  content  ');
+  });
+
+  it('uses the deliberate 8000-character core-memory v1 cap', () => {
+    expect(MAX_CORE_MEMORY_CHARS).toBe(8000);
+
+    const { service } = createService();
+    const result = service.formatGlobalMemoryContext('x'.repeat(MAX_CORE_MEMORY_CHARS + 10));
+
+    expect(result).toContain('[... truncated -- core memory exceeds size limit]');
+  });
+});
+
+describe('MemoryService privacy snapshot and clear', () => {
+  it('returns a bounded path-free snapshot', async () => {
+    const coreManager = createMockCoreManager();
+    (coreManager.getCoreMemoryContent as ReturnType<typeof vi.fn>).mockResolvedValue('core memory');
+    const dailyStore = createMockDailyStore();
+    (dailyStore.readRecentDays as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        date: '2026-05-18',
+        entries: [
+          {
+            time: '09:00',
+            category: 'project',
+            text: 'a'.repeat(1200),
+            sourceDate: '2026-05-18',
+          },
+          {
+            time: '10:00',
+            category: 'general',
+            text: 'short',
+            sourceDate: '2026-05-18',
+          },
+        ],
+      },
+    ]);
+    const { service } = createService({ coreManager, dailyStore });
+
+    const snapshot = await service.getSnapshot({ days: 3, entriesPerDay: 1 });
+
+    expect(snapshot).toMatchObject({
+      enabled: true,
+      coreMemory: 'core memory',
+      dailyEntryCount: 2,
+      dailyFiles: [
+        {
+          date: '2026-05-18',
+          truncated: true,
+          entries: [
+            {
+              time: '09:00',
+              category: 'project',
+              truncated: true,
+            },
+          ],
+        },
+      ],
+    });
+    expect(snapshot.dailyFiles[0]!.entries[0]!.text).toHaveLength(1000);
+    expect(JSON.stringify(snapshot)).not.toContain('/memory');
+  });
+
+  it('clears core and daily memory then refreshes injection cache', async () => {
+    const coreManager = createMockCoreManager();
+    const dailyStore = createMockDailyStore();
+    (dailyStore.clearAll as ReturnType<typeof vi.fn>).mockResolvedValue(3);
+    const { service } = createService({ coreManager, dailyStore });
+    const refresh = vi.spyOn(service, 'refreshGlobalContextCache').mockResolvedValue(undefined);
+
+    const result = await service.clearAll();
+
+    expect(coreManager.clearAll).toHaveBeenCalled();
+    expect(dailyStore.clearAll).toHaveBeenCalled();
+    expect(refresh).toHaveBeenCalled();
+    expect(result).toEqual({ coreCleared: true, dailyEntriesCleared: 3 });
   });
 });
 

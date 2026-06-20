@@ -36,6 +36,13 @@ export class AgentSession {
   private _storage: SessionStorage | null = null;
   private _internal: boolean;
   private _submitting = false;
+  /**
+   * (Track 04 / Q9) Tab id of the chat panel that owns this session.
+   * When this tab closes, the entire session is torn down. When any
+   * other tab closes, only tasks scoped to that tab are aborted.
+   * Populated by the chat-panel registration handler at panel-open time.
+   */
+  private _uiTabId: number | undefined = undefined;
 
   /**
    * Create a new AgentSession
@@ -57,7 +64,7 @@ export class AgentSession {
       lastActivityAt: now,
       tabId: config.tabId ?? null,
       tabGroupId: null,
-      tabGroupName: `browserx_s_${this._sessionLetter}`,
+      tabGroupName: `workx_s_${this._sessionLetter}`,
     };
   }
 
@@ -93,6 +100,21 @@ export class AgentSession {
   /** Underlying RepublicAgent instance */
   get agent(): RepublicAgent | null {
     return this._agent;
+  }
+
+  /** (Track 04 / Q9) Tab id of the chat panel that owns this session, if any. */
+  get uiTabId(): number | undefined {
+    return this._uiTabId;
+  }
+
+  /**
+   * (Track 04 / Q9) Register which tab is hosting the chat panel for this
+   * session. Called by the panel-open handler at session start so the
+   * service worker can distinguish chat-panel close (full shutdown) from
+   * working-tab close (selective abort).
+   */
+  setUiTabId(tabId: number): void {
+    this._uiTabId = tabId;
   }
 
   // ==========================================================================
@@ -276,7 +298,7 @@ export class AgentSession {
 
   /**
    * T027: Create a Chrome tab group for this session
-   * Creates a tab group with name browserx_s_<letter> and a distinct color
+   * Creates a tab group with name workx_s_<letter> and a distinct color
    * @returns The created tab group ID, or null if creation failed
    */
   async createTabGroup(): Promise<number | null> {
@@ -450,9 +472,9 @@ export class AgentSession {
     if (this._agent) {
       try {
         const session = this._agent.getSession();
-        // Use 'UserInterrupt' as the abort reason for session termination
-        await session.abortAllTasks('UserInterrupt');
-        await session.close();
+        const abortReason =
+          reason === 'tabClosed' ? 'TabClosed' : reason === 'error' ? 'Error' : 'UserInterrupt';
+        await session.dispose({ reason: abortReason, recordCloseEvent: true });
         await this._agent.cleanup();
       } catch (error) {
         console.error(`[AgentSession] Error during agent cleanup:`, error);

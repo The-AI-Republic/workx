@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "用于工作任务的通用浏览器内 AI 智能体"
@@ -177,7 +177,7 @@
     "message": "始终亮色"
   },
   "Apple_Pi_Your_personal_AI_Alpha": {
-    "message": "Apple Pi: 您的个人 AI (Alpha)"
+    "message": "WorkX: 您的个人 AI (Alpha)"
   },
   "Approval_Safety": {
     "message": "批准与安全"
@@ -219,8 +219,8 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "请求 Browserx 从任意网页提取结构化数据"
+  "Ask_WorkX_to_extract_structured_data__88fc": {
+    "message": "请求 WorkX 从任意网页提取结构化数据"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "对中等风险及以上（风险 > 30）进行询问。推荐给大多数用户。"
@@ -309,14 +309,11 @@
   "Browser_automation_tool_toggles": {
     "message": "浏览器自动化工具切换"
   },
-  "BrowserX": {
-    "message": "BrowserX"
+  "WorkX": {
+    "message": "WorkX"
   },
-  "Browserx": {
-    "message": "Browserx"
-  },
-  "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+  "WorkX_Alpha": {
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "当前工作目录："
@@ -385,8 +382,8 @@
   "Clear_search": {
     "message": "清除搜索"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "点击工具栏中的 Browserx 图标或按 Alt+Shift+C"
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
+    "message": "点击工具栏中的 WorkX 图标或按 Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "点击以取消登录"
@@ -676,7 +673,7 @@
   "Enable_PIN_Protection": {
     "message": "启用 PIN 保护"
   },
-  "Enable_auto_connect_when_browserx_starts": {
+  "Enable_auto_connect_when_workx_starts": {
     "message": "浏览器启动时启用自动连接"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
@@ -733,8 +730,8 @@
   "Explain_this_info_selectionText": {
     "message": "解释此内容：${info.selectionText}"
   },
-  "Explain_with_Browserx": {
-    "message": "使用 Browserx 解释"
+  "Explain_with_WorkX": {
+    "message": "使用 WorkX 解释"
   },
   "Export": {
     "message": "导出"
@@ -760,8 +757,8 @@
   "Extract_Data": {
     "message": "提取数据："
   },
-  "Extract_data_with_Browserx": {
-    "message": "使用 Browserx 提取数据"
+  "Extract_data_with_WorkX": {
+    "message": "使用 WorkX 提取数据"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "从页面中提取特定数据模式"
@@ -955,8 +952,8 @@
   "Improve_this_text_info_selectionText": {
     "message": "改进此文本: ${info.selectionText}"
   },
-  "Improve_with_Browserx": {
-    "message": "使用 Browserx 改进"
+  "Improve_with_WorkX": {
+    "message": "使用 WorkX 改进"
   },
   "In": {
     "message": "在:"
@@ -1547,7 +1544,7 @@
     "message": "正在重试"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "右键单击任意文本，以使用 Browserx 进行解释或改进"
+    "message": "右键单击任意文本，以使用 WorkX 进行解释或改进"
   },
   "Risk_Score": {
     "message": "风险评分："
@@ -2041,8 +2038,8 @@
   "Web_Search": {
     "message": "网页搜索"
   },
-  "Welcome_to_Browserx": {
-    "message": "欢迎使用 Browserx"
+  "Welcome_to_WorkX": {
+    "message": "欢迎使用 WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "沙箱命令是否可以访问网络"
@@ -2092,8 +2089,8 @@
   "available": {
     "message": "可用"
   },
-  "browserx": {
-    "message": "browserx"
+  "workx": {
+    "message": "WorkX"
   },
   "cached": {
     "message": "已缓存"

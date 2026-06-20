@@ -1,13 +1,12 @@
 /**
  * Sandbox Manager
  *
- * Manages sandbox configuration, status detection, and execution mode resolution
- * for the terminal tool's OS-native sandbox feature.
+ * Manages terminal execution configuration and sandbox mode resolution.
  *
  * @module desktop/tools/terminal/SandboxManager
  */
 
-import { invoke } from '@tauri-apps/api/core';
+import { getConfigStorage } from '@/core/storage/ConfigStorageProvider';
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -122,19 +121,20 @@ export class SandboxManager {
   }
 
   /**
-   * Check sandbox runtime availability via Tauri command
+   * Check sandbox runtime availability.
+   *
+   * The runtime sidecar path no longer exposes the old Tauri sandbox command
+   * bridge. Until sandboxing is ported into the sidecar, sandboxed terminal
+   * execution is reported as unavailable and callers must refuse sandboxed
+   * commands.
    */
   async checkStatus(): Promise<SandboxStatusResult> {
-    try {
-      this._status = await invoke<SandboxStatusResult>('sandbox_check_status');
-    } catch (error) {
-      this._status = {
-        status: 'unavailable',
-        runtime: 'none',
-        os: 'unknown',
-        message: `Failed to check sandbox status: ${error}`,
-      };
-    }
+    this._status = {
+      status: 'unavailable',
+      runtime: 'runtime-sidecar',
+      os: process.platform,
+      message: 'Sandboxed terminal execution has not been ported to the runtime sidecar.',
+    };
     return this._status;
   }
 
@@ -143,31 +143,27 @@ export class SandboxManager {
    */
   async loadConfig(): Promise<void> {
     try {
-      const mode = await invoke<string | null>('config_storage_get', {
-        key: CONFIG_KEYS.executionMode,
-      });
+      const storage = getConfigStorage();
+
+      const mode = await storage.get<string>(CONFIG_KEYS.executionMode);
       if (mode === 'safe' || mode === 'power' || mode === 'auto') {
         this._executionMode = mode;
       }
 
-      const access = await invoke<string | null>('config_storage_get', {
-        key: CONFIG_KEYS.workspaceAccess,
-      });
+      const access = await storage.get<string>(CONFIG_KEYS.workspaceAccess);
       if (access === 'rw' || access === 'ro' || access === 'none') {
         this._workspaceAccess = access;
       }
 
-      const network = await invoke<string | null>('config_storage_get', {
-        key: CONFIG_KEYS.networkMode,
-      });
+      const network = await storage.get<string>(CONFIG_KEYS.networkMode);
       if (network === 'host' || network === 'sandbox') {
         this._networkMode = network;
       }
 
-      const mounts = await invoke<string | null>('config_storage_get', {
-        key: CONFIG_KEYS.bindMounts,
-      });
-      if (mounts) {
+      const mounts = await storage.get<BindMount[] | string>(CONFIG_KEYS.bindMounts);
+      if (Array.isArray(mounts)) {
+        this._bindMounts = mounts;
+      } else if (typeof mounts === 'string') {
         try {
           const parsed = JSON.parse(mounts);
           if (Array.isArray(parsed)) {
@@ -194,10 +190,7 @@ export class SandboxManager {
    */
   async setExecutionMode(mode: ExecutionMode): Promise<void> {
     this._executionMode = mode;
-    await invoke('config_storage_set', {
-      key: CONFIG_KEYS.executionMode,
-      value: mode,
-    });
+    await getConfigStorage().set(CONFIG_KEYS.executionMode, mode);
   }
 
   /**
@@ -205,10 +198,7 @@ export class SandboxManager {
    */
   async setWorkspaceAccess(access: WorkspaceAccess): Promise<void> {
     this._workspaceAccess = access;
-    await invoke('config_storage_set', {
-      key: CONFIG_KEYS.workspaceAccess,
-      value: access,
-    });
+    await getConfigStorage().set(CONFIG_KEYS.workspaceAccess, access);
   }
 
   /**
@@ -216,10 +206,7 @@ export class SandboxManager {
    */
   async setNetworkMode(mode: NetworkMode): Promise<void> {
     this._networkMode = mode;
-    await invoke('config_storage_set', {
-      key: CONFIG_KEYS.networkMode,
-      value: mode,
-    });
+    await getConfigStorage().set(CONFIG_KEYS.networkMode, mode);
   }
 
   /**
@@ -227,10 +214,7 @@ export class SandboxManager {
    */
   async setBindMounts(mounts: BindMount[]): Promise<void> {
     this._bindMounts = mounts;
-    await invoke('config_storage_set', {
-      key: CONFIG_KEYS.bindMounts,
-      value: JSON.stringify(mounts),
-    });
+    await getConfigStorage().set(CONFIG_KEYS.bindMounts, mounts);
   }
 
   /**
@@ -272,7 +256,7 @@ export class SandboxManager {
   }
 
   /**
-   * Get the sandbox configuration for passing to Tauri invoke
+   * Get the sandbox configuration for command execution
    */
   getSandboxConfig(llmSandboxed?: boolean): SandboxConfig {
     return {
@@ -291,16 +275,12 @@ export class SandboxManager {
   }
 
   /**
-   * Install sandbox runtime (Linux only)
+   * Install sandbox runtime.
    */
   async installRuntime(): Promise<SandboxInstallResult> {
-    try {
-      return await invoke<SandboxInstallResult>('sandbox_install_runtime');
-    } catch (error) {
-      return {
-        success: false,
-        message: `Installation failed: ${error}`,
-      };
-    }
+    return {
+      success: false,
+      message: 'Sandbox installation is not available from the runtime sidecar yet.',
+    };
   }
 }

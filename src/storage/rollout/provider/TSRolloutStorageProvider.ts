@@ -2,10 +2,8 @@
  * TSRolloutStorageProvider
  *
  * TypeScript/Node.js implementation of RolloutStorageProvider using better-sqlite3.
- * Same schema as the Rust rollout_db.rs used by desktop (TauriRolloutStorageProvider),
- * but executed directly in-process via better-sqlite3.
  *
- * Used by server mode where Tauri IPC is not available.
+ * Used by server mode and by the desktop runtime sidecar.
  */
 
 import type { RolloutStorageProvider, StorageStats } from './RolloutStorageProvider';
@@ -19,10 +17,17 @@ import type {
 
 export class TSRolloutStorageProvider implements RolloutStorageProvider {
   private db: import('better-sqlite3').Database | null = null;
-  private dataDir: string;
+  private dataDir: string | null;
+  private dbPath: string | null;
 
-  constructor(dataDir: string) {
-    this.dataDir = dataDir;
+  constructor(dataDirOrOptions: string | { dataDir?: string; dbPath?: string }) {
+    if (typeof dataDirOrOptions === 'string') {
+      this.dataDir = dataDirOrOptions;
+      this.dbPath = null;
+    } else {
+      this.dataDir = dataDirOrOptions.dataDir ?? null;
+      this.dbPath = dataDirOrOptions.dbPath ?? null;
+    }
   }
 
   // ==========================================================================
@@ -34,12 +39,15 @@ export class TSRolloutStorageProvider implements RolloutStorageProvider {
     const { join } = await import('node:path');
     const { existsSync, mkdirSync } = await import('node:fs');
 
-    const dir = join(this.dataDir, 'rollouts');
+    const dir = this.dbPath
+      ? this.dbPath.replace(/[\\/][^\\/]*$/, '') || '.'
+      : join(this.dataDir ?? '', 'rollouts');
+    const dbPath = this.dbPath ?? join(dir, 'rollouts.db');
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
     }
 
-    this.db = new Database(join(dir, 'rollouts.db'));
+    this.db = new Database(dbPath);
     this.db.pragma('journal_mode = WAL');
     this.db.pragma('foreign_keys = ON');
 
