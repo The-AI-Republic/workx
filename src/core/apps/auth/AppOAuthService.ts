@@ -255,7 +255,7 @@ export class AppOAuthService {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        client_name: `Apple Pi - ${manifest.name}`,
+        client_name: `WorkX - ${manifest.name}`,
         redirect_uris: [redirectUri],
         grant_types: ['authorization_code', 'refresh_token'],
         response_types: ['code'],

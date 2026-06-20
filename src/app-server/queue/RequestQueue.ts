@@ -9,7 +9,7 @@
  * @module app-server/queue/RequestQueue
  */
 
-import { overloaded, type ErrorShape } from '@applepi/ws-server';
+import { overloaded, type ErrorShape } from '@workx/ws-server';
 import type { ConnectionRpcGate } from '../connection/ConnectionRpcGate';
 import type { RequestAccessMode } from './requestSerialization';
 

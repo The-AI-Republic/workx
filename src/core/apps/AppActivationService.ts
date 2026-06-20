@@ -57,7 +57,7 @@ export class AppActivationService {
       const providerStatus = manifest.providerRegistration?.status;
       const message = providerStatus === 'blocked' || providerStatus === 'restricted' || providerStatus === 'unsupported'
         ? 'Provider registration is blocked for this app.'
-        : 'Apple Pi provider registration is required before this app can connect.';
+        : 'WorkX provider registration is required before this app can connect.';
       await this.patchStatus(appId, 'blocked_by_provider_registration', message);
       return { status: 'blocked_by_provider_registration', appId, message };
     }

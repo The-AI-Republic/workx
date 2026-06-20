@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { get as httpGet } from 'node:http';
 import { WebSocket } from 'ws';
-import { registerMethodHandler } from '@applepi/ws-server';
+import { registerMethodHandler } from '@workx/ws-server';
 import { AppServerManager } from '../AppServerManager';
 import { AppServerAuth, InMemoryTokenStore } from '../connection/AppServerAuth';
 

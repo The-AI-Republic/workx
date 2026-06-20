@@ -7,7 +7,7 @@
  * @module app-server/connection/rateLimiter
  */
 
-import { rateLimited, type ErrorShape } from '@applepi/ws-server';
+import { rateLimited, type ErrorShape } from '@workx/ws-server';
 
 export interface RateLimiterOptions {
   /** Window length in milliseconds. */

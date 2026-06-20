@@ -23,7 +23,7 @@ import type {
   ConnectionState,
 } from '@/core/channels/types';
 import type { EventMsg } from '@/core/protocol/events';
-import { makeEvent, EVENT_SCOPE_MAP, BROADCAST_EVENTS } from '@applepi/ws-server';
+import { makeEvent, EVENT_SCOPE_MAP, BROADCAST_EVENTS } from '@workx/ws-server';
 import { redactEventMsgSecrets } from '@/server/security/eventRedaction';
 import type { AppServerConnectionRegistry } from './AppServerConnectionRegistry';
 

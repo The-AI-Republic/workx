@@ -13,7 +13,7 @@ import { createServer as createHttpServer, type IncomingMessage, type ServerResp
 import { randomUUID } from 'node:crypto';
 import { existsSync, unlinkSync } from 'node:fs';
 import { platform } from 'node:os';
-import { WS_CLOSE } from '@applepi/ws-server';
+import { WS_CLOSE } from '@workx/ws-server';
 import type { AppServerRequestProcessor } from '../AppServerRequestProcessor';
 import type { AppServerStatusController } from '../status/AppServerStatus';
 import type { ConnectionSocket } from '../AppServerConnectionRegistry';
