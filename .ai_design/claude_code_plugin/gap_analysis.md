@@ -1,106 +1,111 @@
-# Gap Analysis — BrowserX vs Claude Code Plugin System
+# Gap Analysis — WorkX vs Claude Code Plugin System
 
-## Already Aligned
+This was originally a forward-looking gap analysis. The gaps it identified have
+since been closed by the implementation in `src/core/plugins/`. Each table below
+shows how a Claude Code concept maps to WorkX and **how the gap was closed**.
 
-### Skills (~80% aligned)
+## Skills
 
-| Claude Code | BrowserX | Gap |
+| Claude Code | WorkX | Resolution |
 |---|---|---|
-| `SKILL.md` with YAML frontmatter | `SkillParser.ts` parses same format | Minor frontmatter field differences |
-| `skills/` directory convention | Skills stored in platform-specific providers | Need file-based discovery from plugin dirs |
-| `$ARGUMENTS` placeholder | `$0`, `$1` variable substitution | Need to add `$ARGUMENTS` support |
-| `commands/` directory (legacy) | Not used | Need to support as alias |
-| `disable-model-invocation` frontmatter | `invocationMode: manual` | Semantically similar, map between them |
-| Namespaced names (`/plugin:skill`) | Flat names (`/skill`) | Need namespacing layer |
+| `SKILL.md` with YAML frontmatter | `SkillParser` parses the same format | Aligned; `SkillSlotLoader` reuses the parser |
+| `skills/` directory convention | `SkillSlotLoader` scans `skills/` (single `SKILL.md` or `<sub>/SKILL.md`) | Closed — file-based discovery from plugin dirs |
+| Namespaced names (`/plugin:skill`) | Plugin skills registered as `pluginName:bareName` | Closed (`SkillSlotLoader.ts`) |
+| `${CLAUDE_PLUGIN_ROOT}` in skill bodies | Substituted at load via `substituteContent()` | Closed (`userConfigSubstitution.ts`) |
 
-### MCP Servers (~90% aligned)
+> Note: WorkX skills do not implement Claude Code's `$ARGUMENTS` placeholder.
+> Positional argument substitution (`$@`, `$N`) is implemented for plugin
+> **commands**, not skills (see below).
 
-| Claude Code | BrowserX | Gap |
+## Commands
+
+| Claude Code | WorkX | Resolution |
 |---|---|---|
-| `.mcp.json` at plugin root | `MCPConfig.ts` loads server configs | Need to load from plugin directory |
-| `${CLAUDE_PLUGIN_ROOT}` in paths | Not supported | Need env variable expansion |
-| SSE + stdio transports | Both supported (`MCPClient` + `RustMCPBridge`/`NodeMCPBridge`) | Aligned |
-| Auto-start on plugin enable | Manual add via `MCPManager.addServer()` | Need auto-start lifecycle |
+| `commands/` directory of `.md` files | `CommandSlotLoader` scans `commands/` (or inline manifest map) | Closed |
+| Namespaced commands | Registered as `pluginName:bareName` | Closed |
+| `$ARGUMENTS` / positional args | `$@` (all args) and `$N` (1-indexed positional) | Closed, single-pass safe substitution |
 
-### Agent Concepts (~50% aligned)
+## MCP Servers
 
-| Claude Code | BrowserX | Gap |
+| Claude Code | WorkX | Resolution |
 |---|---|---|
-| Agent markdown with frontmatter | Agent concepts exist but no markdown loader | Need markdown-based agent definitions |
-| `agents/` directory | No convention | Need directory convention |
-| Namespaced agents | Not applicable yet | Need namespacing |
-| `settings.json` → default agent | `AgentConfig` exists | Need plugin settings → agent activation |
+| `.mcp.json` / inline `mcpServers` | `McpSlotLoader` reads inline `mcpServers` from the manifest | Closed (inline); path-referenced configs deferred |
+| `${CLAUDE_PLUGIN_ROOT}` in configs | Expanded via `substituteRuntime()` (plugin vars + strict user-config) | Closed |
+| SSE + stdio transports | Both supported via existing `MCPManager` bridges | Aligned |
+| Auto-register on enable | `McpSlotLoader` calls `MCPManager.addServer({ pluginId })`; removed on disable | Closed |
 
-### Event System (~40% aligned for hooks)
+## Sub-agents
 
-| Claude Code | BrowserX | Gap |
+| Claude Code | WorkX | Resolution |
 |---|---|---|
-| `hooks.json` with event matchers | No hook file format | Need hook config parser |
-| `PreToolUse`, `PostToolUse` events | Tool execution in `TurnManager` | Need pre/post injection points |
-| `SessionStart`, `SessionEnd` | Session lifecycle in `Session.ts` | Need hook dispatch at lifecycle points |
-| `UserPromptSubmit` | `Submission` op | Need hook dispatch |
-| `command` hook type (shell exec) | Not available in extension | Platform-specific support |
-| `prompt` hook type (LLM eval) | Model infrastructure exists | Need prompt hook runner |
-| `agent` hook type (agentic verifier) | Agent infra exists | Need agent hook runner |
+| Agent markdown with frontmatter | `SubAgentSlotLoader` parses `agents/*.md` frontmatter | Closed |
+| `agents/` directory | Scanned per `manifest.agents` | Closed |
+| Namespaced agents | Registered as `pluginName:agentName` in `SubAgentRunner` (per session) | Closed |
+| Trust boundary | Sensitive frontmatter (`permissionMode`, `hooks`, `mcpServers`) is dropped with a warning | Hardened beyond Claude Code |
 
-## Not Present in BrowserX
+## Hooks
 
-### Plugin Manifest & Discovery
+Hooks are **implemented** (the original design had deferred them). They are
+registered per session by `HookSlotLoader` into the `HookRegistry`.
 
-- No `.claude-plugin/plugin.json` loader
-- No plugin directory convention
-- No auto-discovery of components from directories
-- No manifest validation
+| Claude Code | WorkX | Resolution |
+|---|---|---|
+| `hooks` with event matchers | Inline `manifest.hooks` (object/array) | Closed (inline); path-referenced hook files deferred |
+| `PreToolUse`, `PostToolUse` | Supported, plus `PostToolUseFailure` | Closed |
+| `SessionStart`, `SessionEnd` | Supported | Closed |
+| `UserPromptSubmit`, `Stop` | Supported | Closed |
+| `PreCompact` | Supported, plus `PostCompact` | Closed |
+| `command` hook type (shell) | Supported on desktop/server | Closed |
+| `prompt` hook type (LLM) | Supported on all surfaces | Closed |
+| (n/a) | `http` hook type, `PermissionRequest`/`PermissionDenied`, `TaskCreated`/`TaskCompleted`, `ConfigChange` | WorkX additions |
 
-### Plugin Lifecycle Management
+## Plugin Manifest & Discovery
 
-- No install/uninstall/enable/disable flow
-- No plugin scopes (user, project, local)
-- No plugin caching (copy to local cache)
-- No `--plugin-dir` dev mode flag
-- No `/reload-plugins` command
+- `plugin.json` at the plugin root, validated by `PluginManifestSchema` (Zod).
+- Lenient by default (unknown keys stripped for forward-compat); a `.strict()`
+  variant powers author validation.
+- `PluginLoader.loadFromDir()` parses the manifest; slot loaders discover
+  components at enable time.
 
-### Hook System
+## Plugin Lifecycle Management
 
-- No `hooks.json` file format
-- No event → matcher → hook dispatch pipeline
-- No shell command execution as hooks (extension can't do this at all)
-- No `prompt` or `agent` hook types
+- `PluginRegistry` owns enable/disable/reload/bootstrap with per-plugin
+  serialization and rollback.
+- `PluginInstaller` / `PluginUninstaller` own install (deps → policy →
+  materialize → SHA-verify) and uninstall (disable → orphan-mark).
+- Scopes: `managed`, `user`, `project`, `local`.
+- `PluginCache` provides a versioned cache and 7-day orphan GC.
 
-### LSP Servers
+## Marketplace
 
-- No `.lsp.json` support
-- No Language Server Protocol integration
-- Not applicable for Chrome extension (no filesystem access)
+- `marketplace.json` catalogues, fetched by git clone (`git.ts`,
+  `MarketplaceRegistry`).
+- Dependency closure resolution (`dependencyResolver.ts`, post-order).
+- SHA-pinned, fail-closed installs and `PluginAutoupdate`.
 
-### Marketplace
+## Still Not Present in WorkX
 
-- No `marketplace.json` format support
-- No marketplace discovery or browsing
-- No version-based update checking
-- No marketplace UI in settings
+| Feature | Status |
+|---|---|
+| LSP servers (`.lsp.json`) | Not implemented |
+| Native (non-MCP) tool registration from plugins | Not implemented (MCP only) |
+| Extension-side marketplace/installer | Not wired (server + desktop only in v1) |
+| Path-referenced hook / MCP config files | Deferred (inline only today) |
 
-### Plugin Settings
-
-- No `settings.json` loading from plugins
-- No plugin-level default configuration
-
-## Claude Code Features NOT Applicable to BrowserX
+## Claude Code Features Not Applicable to WorkX
 
 | Feature | Reason |
 |---|---|
-| File editing hooks (Write/Edit matchers) | BrowserX doesn't do file editing (browser-focused) |
-| Git-related hooks | BrowserX doesn't interact with git |
-| LSP in extension | Chrome extension has no filesystem or language server access |
-| Shell hooks in extension | Chrome extensions are sandboxed |
-| `PreCompact` event | BrowserX may handle context differently |
+| File-editing hooks (Write/Edit matchers) | WorkX is browser/automation-focused |
+| LSP in the extension | Chrome extensions have no filesystem or language-server access |
+| Shell (`command`) hooks in the extension | Chrome extensions are sandboxed |
 
-## BrowserX-Specific Considerations
+## WorkX-Specific Considerations
 
 | Concern | Detail |
 |---|---|
-| Browser tools | BrowserX has browser-specific tools (DOM, navigation, form automation) — plugins may want to provide new browser tools |
-| Approval system | BrowserX has a sophisticated approval gate — plugins may need to declare risk levels |
-| Multi-model support | BrowserX supports many model providers — plugin `prompt` hooks need model routing |
-| Channel adapters | Server mode has OpenClaw plugins for Slack/Telegram — separate from Claude Code plugins |
-| Content scripts | Extension injects content scripts — not part of plugin system |
+| `workx` manifest namespace | `domains`, `platforms`, `toolExposure` declared without breaking Claude Code compatibility |
+| User config | `userConfig` options (typed, optionally `sensitive`) resolved via the credential store |
+| Approval system | Plugin MCP servers still flow through the existing approval gate |
+| Multi-model support | Plugin `prompt` hooks route through `ModelClientFactory` |
+| Channel adapters | Server messaging adapters (`src/server/channels/`) are a separate system |
