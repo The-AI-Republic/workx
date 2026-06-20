@@ -13,8 +13,38 @@ import { DEFAULT_COMPACTION_CONFIG, SUMMARIZATION_PROMPT } from './constants';
 import { SummaryGenerator } from './SummaryGenerator';
 import { HistoryReconstructor } from './HistoryReconstructor';
 import { calculateBackoff, sleep } from './utils';
+import { withModelRetry } from '../models/resilience/withRetry';
 import type { ModelClient } from '../models/ModelClient';
 import { isOutputTextDelta, isCompleted } from '../models/types/ResponseEvent';
+
+// Track 05b: compaction interlock + summary hint
+import {
+  EXTRACTION_WAIT_TIMEOUT_MS,
+  EXTRACTION_STALE_THRESHOLD_MS,
+} from '../sessionSummary/sessionSummaryUtils';
+import { waitForSessionSummaryExtraction } from '../sessionSummary/extractionLifecycle';
+import { isSessionSummaryEmpty } from '../sessionSummary/SessionSummaryFileStore';
+import { truncateSessionSummaryForCompact } from '../sessionSummary/truncate';
+import type { SessionSummaryHook } from '../sessionSummary/SessionSummaryHook';
+import type { SessionSummaryTelemetryName } from '../protocol/events';
+import {
+  ShadowAgentKind,
+  ShadowContextPolicy,
+  ShadowFailurePolicy,
+  type ShadowAgentScheduler,
+} from '../shadowAgent';
+
+/**
+ * Track 05b: opt-in extras the caller (Session) threads through. Optional
+ * so existing direct callers / test fixtures of `CompactService.compact()`
+ * don't have to update.
+ */
+export interface CompactExtras {
+  sessionId?: string;
+  sessionSummaryHook?: SessionSummaryHook | null;
+  shadowScheduler?: ShadowAgentScheduler;
+  enableShadowPrepare?: boolean;
+}
 
 /**
  * Main service for orchestrating chat history compaction
@@ -73,7 +103,8 @@ export class CompactService {
     trigger: CompactionTrigger,
     modelClient: ModelClient,
     tokensBefore: number = 0,
-    baseInstructions?: string
+    baseInstructions?: string,
+    extras?: CompactExtras,
   ): Promise<CompactionResult> {
     console.debug('[Compaction] Starting', {
       trigger,
@@ -81,16 +112,148 @@ export class CompactService {
       historyLength: history.length,
     });
 
+    // Track 05b: compaction interlock. If a summary extraction is mid-write
+    // for this session, wait up to 15s for it to finish before destructively
+    // rewriting history. After the wait, read the (possibly fresh) summary
+    // file and fold its content into the summarization prompt as a hint.
+    const sessionId = extras?.sessionId;
+    const summaryHook = extras?.sessionSummaryHook;
+    let sessionSummaryHint: string | undefined;
+
+    if (sessionId) {
+      const waitResult = await waitForSessionSummaryExtraction(sessionId);
+      if (waitResult === 'timeout') {
+        this.emitSummaryTelemetry(
+          summaryHook,
+          'compact_extraction_wait_timeout',
+          sessionId,
+          { waited_ms: EXTRACTION_WAIT_TIMEOUT_MS },
+        );
+      } else if (waitResult === 'stale') {
+        this.emitSummaryTelemetry(
+          summaryHook,
+          'compact_extraction_wait_timeout',
+          sessionId,
+          {
+            waited_ms: EXTRACTION_STALE_THRESHOLD_MS,
+            stale: true,
+          },
+        );
+      }
+
+      // Pick up whatever the latest summary on disk is (or empty if missing).
+      if (summaryHook) {
+        const fresh = await summaryHook.readSummaryFromDisk();
+        if (fresh && !isSessionSummaryEmpty(fresh)) {
+          sessionSummaryHint = truncateSessionSummaryForCompact(fresh);
+        } else {
+          this.emitSummaryTelemetry(
+            summaryHook,
+            'compact_skipped_empty_summary',
+            sessionId,
+            {},
+          );
+        }
+      }
+    }
+
+    if (extras?.enableShadowPrepare && extras.shadowScheduler) {
+      try {
+        const shadow = await extras.shadowScheduler.run({
+          kind: ShadowAgentKind.Compact,
+          prompt: 'Prepare a concise compaction context note for the provided conversation. Return only the note.',
+          contextPolicy: ShadowContextPolicy.CompactCandidate,
+          context: { compactCandidateHistory: history },
+          failurePolicy: ShadowFailurePolicy.Fallback,
+          fallback: () => undefined,
+          dedupeKey: sessionId ? `${sessionId}:compact` : undefined,
+          metadata: { sessionId, trigger, phase: 'compact_prepare' },
+        });
+        if (shadow.status === 'completed' && shadow.outputText?.trim()) {
+          const shadowHint = shadow.outputText.trim();
+          sessionSummaryHint = sessionSummaryHint
+            ? `${sessionSummaryHint}\n\nShadow compaction note:\n${shadowHint}`
+            : shadowHint;
+        }
+      } catch (err) {
+        console.warn(
+          '[Compaction] shadow prepare failed; using direct compaction:',
+          err instanceof Error ? err.message : String(err),
+        );
+      }
+    }
+
     let workingHistory = [...history];
     let itemsTrimmed = 0;
     let retriesUsed = 0;
 
-    // Retry loop with exponential backoff
-    while (retriesUsed <= this.config.maxRetries) {
+    // Track 12: transient-error retry/backoff is delegated to the single
+    // orchestrator. The outer loop is retained only for the bespoke
+    // context-overflow self-heal (trim oldest item and re-summarize), which
+    // is domain logic, not a transient retry.
+    for (;;) {
+      let summaryText: string;
       try {
-        // Generate summary using embedded streaming logic
-        const summaryText = await this.generateSummaryWithModel(workingHistory, modelClient, baseInstructions);
+        summaryText = await withModelRetry(
+          () =>
+            this.generateSummaryWithModel(
+              workingHistory,
+              modelClient,
+              baseInstructions,
+              sessionSummaryHint,
+            ),
+          {
+            maxRetries: this.config.maxRetries,
+            unattended: false,
+            // 'compact' is a foreground-retry source (claudy parity): a
+            // failed compaction blocks progress, so retry 429/529 rather
+            // than fast-bail.
+            source: 'foreground',
+            sleep: (ms) => sleep(ms),
+            computeBackoffMs: (attempt) =>
+              calculateBackoff(attempt, this.config.baseBackoffMs),
+            // Context-overflow is self-healed by trimming below, not by
+            // retrying the same oversized input.
+            isNonRetryable: (e) =>
+              this.isContextOverflowError(
+                e instanceof Error ? e.message : String(e),
+              ),
+            onRetryNotice: () => {
+              retriesUsed++;
+            },
+          },
+        );
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
 
+        // Context overflow: trim oldest item and re-summarize (not a retry).
+        if (
+          this.isContextOverflowError(errorMessage) &&
+          workingHistory.length > 1
+        ) {
+          console.debug('[Compaction] Context overflow, trimming oldest item');
+          workingHistory = this.trimOldestItem(workingHistory);
+          itemsTrimmed++;
+          continue;
+        }
+
+        console.error('[Compaction] Failed after max retries', {
+          error: errorMessage,
+          retriesUsed,
+        });
+        return {
+          success: false,
+          tokensBefore,
+          tokensAfter: tokensBefore,
+          itemsTrimmed,
+          error: errorMessage,
+          retriesUsed,
+          triggerReason: trigger,
+        };
+      }
+
+      {
         // Collect and select user messages
         const userMessages = this.summaryGenerator.collectUserMessages(workingHistory);
         const selectedMessages = this.historyReconstructor.selectUserMessages(
@@ -135,63 +298,23 @@ export class CompactService {
           trigger,
         });
 
+        // Track 05b: emit telemetry when the summary hint was folded in.
+        if (sessionId && sessionSummaryHint) {
+          this.emitSummaryTelemetry(
+            summaryHook,
+            'compact_with_summary',
+            sessionId,
+            {
+              tokens_before: tokensBefore,
+              tokens_after: tokensAfter,
+              summary_token_count: Math.ceil(sessionSummaryHint.length / 4),
+            },
+          );
+        }
+
         return result;
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-
-        // Check if this is a context overflow error
-        if (this.isContextOverflowError(errorMessage)) {
-          // Trim oldest items and retry
-          if (workingHistory.length > 1) {
-            console.debug('[Compaction] Context overflow, trimming oldest item');
-            workingHistory = this.trimOldestItem(workingHistory);
-            itemsTrimmed++;
-            continue; // Don't count as retry
-          }
-        }
-
-        // Regular error - retry with backoff
-        retriesUsed++;
-
-        if (retriesUsed <= this.config.maxRetries) {
-          const delay = calculateBackoff(retriesUsed, this.config.baseBackoffMs);
-          console.debug('[Compaction] Retrying after error', {
-            error: errorMessage,
-            retriesUsed,
-            maxRetries: this.config.maxRetries,
-            delayMs: delay,
-          });
-          await sleep(delay);
-        } else {
-          // Max retries exceeded
-          console.error('[Compaction] Failed after max retries', {
-            error: errorMessage,
-            retriesUsed,
-          });
-
-          return {
-            success: false,
-            tokensBefore,
-            tokensAfter: tokensBefore,
-            itemsTrimmed,
-            error: errorMessage,
-            retriesUsed,
-            triggerReason: trigger,
-          };
-        }
       }
     }
-
-    // Should not reach here, but handle gracefully
-    return {
-      success: false,
-      tokensBefore,
-      tokensAfter: tokensBefore,
-      itemsTrimmed,
-      error: 'Unexpected compaction termination',
-      retriesUsed,
-      triggerReason: trigger,
-    };
   }
 
   /**
@@ -249,15 +372,31 @@ export class CompactService {
   private async generateSummaryWithModel(
     history: ResponseItem[],
     modelClient: ModelClient,
-    baseInstructions?: string
+    baseInstructions?: string,
+    sessionSummaryHint?: string,
   ): Promise<string> {
+    // Track 05b: when a session-summary hint is available, prepend it to the
+    // summarization prompt so the LLM has the running narrative in hand
+    // before it summarizes. The hint is already truncated by the caller; we
+    // just wrap it in a clear delimiter.
+    const promptText =
+      sessionSummaryHint && sessionSummaryHint.length > 0
+        ? `${SUMMARIZATION_PROMPT}
+
+The following is a running session-summary distilled from earlier in this conversation. Use it as context but produce your own summary that captures the conversation in full:
+
+<session_summary>
+${sessionSummaryHint}
+</session_summary>`
+        : SUMMARIZATION_PROMPT;
+
     // Build summary request: history + summarization prompt
     const summaryRequest: ResponseItem[] = [
       ...history,
       {
         type: 'message' as const,
         role: 'user',
-        content: [{ type: 'input_text' as const, text: SUMMARIZATION_PROMPT }],
+        content: [{ type: 'input_text' as const, text: promptText }],
       },
     ];
 
@@ -281,6 +420,31 @@ export class CompactService {
     }
 
     return summaryText.trim();
+  }
+
+  /**
+   * Track 05b: emit a SessionSummaryTelemetry event through the hook's
+   * public emitter. Falls back to a no-op when no hook is wired up — tests
+   * and direct callers won't see telemetry, which is fine.
+   *
+   * `sessionId` is logged but the hook already knows its own session, so
+   * it isn't passed through.
+   */
+  private emitSummaryTelemetry(
+    hook: SessionSummaryHook | null | undefined,
+    event: SessionSummaryTelemetryName,
+    _sessionId: string,
+    payload: Record<string, unknown>,
+  ): void {
+    if (!hook) return;
+    try {
+      hook.emitTelemetry(event, payload);
+    } catch (err) {
+      console.warn(
+        '[Compaction] session-summary telemetry emit failed:',
+        err instanceof Error ? err.message : String(err),
+      );
+    }
   }
 
   /**

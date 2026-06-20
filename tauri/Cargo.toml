@@ -1,14 +1,12 @@
-[workspace]
-members = ["sandbox-helper", "sandbox-types"]
-
 [package]
-name = "pi"
-version = "0.1.0"
-description = "Pi - AI-powered personal assistant agent"
+name = "workx"
+version = "0.1.1"
+description = "WorkX - AI-powered personal assistant agent"
 authors = ["AI Republic"]
 license = "UNLICENSED"
 repository = ""
 edition = "2021"
+default-run = "workx"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -31,29 +29,27 @@ uuid = { version = "1.0", features = ["v4"] }
 png = "0.17"
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
 directories = "5"
-rusqlite = { version = "0.31", features = ["bundled"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-native-roots"] }
-base64 = "0.22"
-rmcp = { version = "0.15", features = ["client", "transport-child-process"] }
+# rmcp removed: the deleted mcp_manager.rs was its only user; MCP runs in the
+# runtime sidecar now via the NodeMCPBridge.
 which = "7"
 tempfile = "3"
 log = "0.4"
 async-trait = "0.1"
 chrono = "0.4"
 dirs = "5"
-portable-pty = "0.8"
-sandbox-types = { path = "sandbox-types" }
-strip-ansi-escapes = "0.2"
-
-[target.'cfg(windows)'.dependencies]
-windows = { version = "0.58", features = [
-    "Win32_Security",
-    "Win32_System_Threading",
-    "Win32_Foundation",
-] }
-win32job = "2"
 
 [features]
 default = ["custom-protocol", "dark-icon"]
 custom-protocol = ["tauri/custom-protocol"]
 dark-icon = []
+
+# Track 45 Goal 2: fake desktop-runtime child used by the supervisor
+# lifecycle tests. Wired in via WORKX_NODE_BIN=env!(CARGO_BIN_EXE_fake-runtime-child)
+# so the supervisor invokes this binary in place of `node`. The fake reads
+# stdio frames and is driven by env knobs documented in the source file.
+[[bin]]
+name = "fake-runtime-child"
+path = "tests/bin/fake_runtime_child.rs"
+test = false
+bench = false

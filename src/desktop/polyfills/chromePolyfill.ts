@@ -5,7 +5,8 @@
  * using chrome.tabs, chrome.runtime.getURL, etc. don't crash.
  *
  * Storage is handled by ConfigStorageProvider (not polyfilled here).
- * Message routing is handled by UIChannelClient → TauriTransport (not polyfilled here).
+ * Message routing is handled by UIChannelClient → RuntimeRelayTauriTransport
+ * (not polyfilled here).
  *
  * @module desktop/polyfills/chromePolyfill
  */
@@ -144,7 +145,7 @@ export const chromePolyfill = {
  *
  * Only installs if chrome is not already defined. On WebView2 (Windows),
  * chrome may be partially defined — specific desktop code paths should use
- * Tauri-native APIs (TauriConfigStorage, etc.) rather than relying on this polyfill.
+ * runtime/relay-backed APIs rather than relying on this polyfill.
  */
 export function installChromePolyfill(): void {
   if (typeof window !== 'undefined' && !('chrome' in window)) {

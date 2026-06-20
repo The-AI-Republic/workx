@@ -26,6 +26,7 @@ const mockChrome = {
   storage: mockChromeStorage,
   tabs: {
     query: vi.fn(),
+    get: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     remove: vi.fn(),

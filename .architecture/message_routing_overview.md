@@ -1,6 +1,6 @@
 # Message Routing Architecture
 
-Unified, channel-agnostic message routing system for BrowserX. Any frontend channel (browser extension, desktop app, Slack bot, WhatsApp, web UI, CLI, etc.) connects to the same agent backend through a shared pipeline:
+Unified, channel-agnostic message routing system for WorkX. Any frontend channel (browser extension, desktop app, Slack bot, WhatsApp, web UI, CLI, etc.) connects to the same agent backend through a shared pipeline:
 
 ```
 Frontend Channel           (any client: web UI, Slack, WhatsApp, CLI, etc.)

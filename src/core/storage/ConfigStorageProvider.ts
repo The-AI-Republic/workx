@@ -2,7 +2,8 @@
  * Config Storage Provider Interface
  *
  * Simple key-value storage abstraction for configuration data.
- * Extension mode uses chrome.storage.local, desktop mode uses Tauri commands.
+ * Extension mode uses chrome.storage.local, desktop UI uses the runtime relay,
+ * and server/runtime mode uses local files.
  *
  * This is separate from StorageProvider which handles structured data
  * (conversations, messages) with query support.
@@ -22,7 +23,7 @@
  * const config = await storage.get('agent_config');
  * ```
  *
- * @example Desktop Mode (Tauri)
+ * @example Desktop Mode (runtime relay)
  * ```typescript
  * const storage = getConfigStorage();
  * await storage.set('mcp_servers', [{ name: 'server1', ... }]);

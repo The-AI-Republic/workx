@@ -1,7 +1,7 @@
 /**
  * Tests for bootstrap-level scheduler event completion handling.
  *
- * Both ServerAgentBootstrap and DesktopAgentBootstrap use the same pattern:
+ * ServerAgentBootstrap uses this same scheduler completion pattern:
  * - Track `runningSchedulerJobId` and `runningJobStartTime` when a job launches
  * - Intercept TaskComplete/TurnAborted/Error events from the agent
  * - Call scheduler.completeJob() / scheduler.failJob() with extracted data

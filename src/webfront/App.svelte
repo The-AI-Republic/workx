@@ -7,16 +7,20 @@
   import SchedulerCalendar from './pages/scheduler/SchedulerCalendar.svelte';
   import AppShell from './components/layout/AppShell.svelte';
   import Skills from './pages/skills/Skills.svelte';
+  import Doctor from './pages/diagnostics/Doctor.svelte';
   import Usage from './pages/usage/Usage.svelte';
   import { userStore } from './stores/userStore';
-  import { isAuthenticated } from './lib/utils/cookie';
+  import { AUTH_COOKIE_DOMAIN, AUTH_COOKIE_NAMES, isAuthenticated } from './lib/utils/cookie';
   import { fetchUserProfile } from './lib/apis';
   import { LLM_API_URL } from './lib/constants';
   import { AgentConfig } from '@/config/AgentConfig';
   import { getInitializedUIClient } from '@/core/messaging';
+  import type { DesktopRuntimeStateSnapshot, RuntimeAuthState } from '@/core/services/runtime-state';
   import { platform } from './stores/platformStore';
   import { vaultStore, refreshVaultStatus } from './stores/vaultStore';
   import PinUnlockOverlay from './components/vault/PinUnlockOverlay.svelte';
+  import ShortcutProvider from './shortcuts/ShortcutProvider.svelte';
+  import { registerShortcut } from './shortcuts/useShortcut';
 
   // Zoom constants
   const MIN_ZOOM = 50;
@@ -42,16 +46,16 @@
     // Usage page
     '/usage': Usage,
 
+    // Operational diagnostics (Track 17)
+    '/doctor': Doctor,
+
     // Catch-all route - redirect to chat
     '*': Chat,
   };
 
-  // Cookie domain for filtering cookie change events
-  const COOKIE_DOMAIN = import.meta.env.VITE_COOKIE_DOMAIN || '.airepublic.com';
-  const AUTH_COOKIE_NAME = 'ai_access';
-
   // Store the cookie change listener for cleanup
   let cookieChangeListener: ((changeInfo: chrome.cookies.CookieChangeInfo) => void) | null = $state(null);
+  let runtimeStateUnlisten: (() => void) | null = null;
 
   /**
    * Check and update authentication state
@@ -76,62 +80,79 @@
   }
 
   /**
-   * Desktop: update userStore from keychain tokens.
-   * Uses the same /api/v1/users/profile endpoint as the extension to get
-   * accurate userType (subscription tier), instead of relying on the
-   * /auth/desktop/session endpoint which may not return subscription info.
-   * Agent auth mode is already set during DesktopAgentBootstrap.initialize().
+   * Desktop: update userStore from the runtime's auth state. After the
+   * Track 43 cutover the WebView no longer reads the OS keychain — the
+   * runtime owns credentials and exposes auth state through the
+   * `auth.getState` service.
+   *
+   * Retry on failure: the runtime sidecar spawns in parallel with the
+   * WebView mount. The runtime's `ServerAgentBootstrap.registerServices`
+   * (which makes `auth.getState` callable) runs late in `initialize()`,
+   * so on a fast UI / slow runtime, a request issued at onMount can
+   * arrive before the service is registered and reject with "Unknown
+   * service: auth.getState". Retry with bounded backoff so a real
+   * "no token" result is distinguishable from a transient race.
    */
   async function updateDesktopUserStore(): Promise<void> {
-    try {
-      const { getDesktopAuthService } = await import('@/desktop/auth/DesktopAuthService');
-      const { HOME_PAGE_BASE_URL: homeUrl } = await import('./lib/constants');
-      const authService = getDesktopAuthService(homeUrl);
-      await authService.initialize();
+    const RETRY_DELAYS_MS = [0, 400, 1000, 2000]; // ≤ ~3.5s total budget
+    const { getInitializedUIClient } = await import('@/core/messaging');
+    const client = await getInitializedUIClient();
 
-      if (await authService.hasValidToken()) {
-        const accessToken = await authService.getAccessToken();
-        if (!accessToken) {
-          userStore.setNotLoggedIn();
-          return;
+    for (let attempt = 0; attempt < RETRY_DELAYS_MS.length; attempt++) {
+      if (RETRY_DELAYS_MS[attempt] > 0) {
+        await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt]));
+      }
+      try {
+        const snapshot = await client.serviceRequest<DesktopRuntimeStateSnapshot>('runtime.getStateSnapshot');
+        applyDesktopAuthState(snapshot.auth);
+        return;
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        // "Unknown service" means the runtime bootstrap hasn't registered
+        // the handler yet; retry. Other errors are real failures — also
+        // retry (cheap) but log so we can spot patterns.
+        const isTransient = /Unknown service/i.test(msg);
+        if (!isTransient) {
+          console.warn(`[App] Desktop auth.getState failed (attempt ${attempt + 1}):`, error);
         }
-
-        // Use the same profile API as the extension to get accurate userType
-        const profile = await fetchUserProfile(accessToken);
-        if (profile) {
-          userStore.setUser({
-            name: profile.name,
-            email: profile.email,
-            avatar: profile.avatar,
-            userType: profile.userType,
-          });
-          console.log('[App] Desktop userStore updated for:', profile.email, 'userType:', profile.userType);
-
-          // Notify the agent to re-check auth status (fixes race condition where agent checks too early)
-          authService.notifyAuthChange();
-          return;
-        }
-
-        // Fallback: use session data if profile fetch fails
-        console.warn('[App] Profile fetch failed, falling back to session data');
-        const session = await authService.getSession();
-        if (session) {
-          userStore.setUser({
-            name: session.given_name || session.name || null,
-            email: session.email,
-            avatar: session.picture || null,
-            userType: (session.subscription as any)?.plan_id ?? 0,
-          });
-          console.log('[App] Desktop userStore updated (fallback) for:', session.email);
-          authService.notifyAuthChange();
-          return;
+        if (attempt === RETRY_DELAYS_MS.length - 1) {
+          if (!isTransient) {
+            console.warn('[App] Falling back to logged-out state after auth.getState exhausted retries');
+          }
         }
       }
-    } catch (error) {
-      console.warn('[App] Desktop userStore update failed:', error);
     }
-
     userStore.setNotLoggedIn();
+  }
+
+  function applyDesktopAuthState(state: RuntimeAuthState | null | undefined): void {
+    if (state?.hasToken || state?.hasValidToken) {
+      userStore.setUser({
+        name: state.profile?.name ?? state.user?.name ?? null,
+        email: state.profile?.email ?? state.user?.email ?? null,
+        avatar: state.profile?.avatar ?? state.user?.avatar ?? null,
+        userType: state.profile?.userType ?? state.user?.userType ?? 0,
+      });
+      console.log('[App] Desktop userStore updated for:', state.profile?.email ?? state.user?.email ?? 'stored token');
+      return;
+    }
+    userStore.setNotLoggedIn();
+  }
+
+  async function wireDesktopRuntimeStateEvents(): Promise<void> {
+    if (platform.platformName !== 'desktop' || runtimeStateUnlisten) return;
+    try {
+      const client = await getInitializedUIClient();
+      runtimeStateUnlisten = client.onEvent('StateUpdate', (event) => {
+        const data = event.msg.data;
+        if (data?.scope !== 'desktop-runtime') return;
+        if (data.kind === 'auth.stateChanged') {
+          applyDesktopAuthState(data.auth as RuntimeAuthState);
+        }
+      });
+    } catch (error) {
+      console.warn('[App] Failed to subscribe to desktop runtime state:', error);
+    }
   }
 
   /**
@@ -207,25 +228,9 @@
     }
   }
 
-  function handleZoom(e: KeyboardEvent) {
-    if (!(e.ctrlKey || e.metaKey)) return;
-
+  function zoomBy(delta: number) {
     const zoom = parseInt(document.documentElement.style.fontSize) || 100;
-    switch (e.key) {
-      case '=':
-      case '+':
-        e.preventDefault();
-        setZoom(zoom + ZOOM_STEP);
-        break;
-      case '-':
-        e.preventDefault();
-        setZoom(zoom - ZOOM_STEP);
-        break;
-      case '0':
-        e.preventDefault();
-        setZoom(100);
-        break;
-    }
+    setZoom(zoom + delta);
   }
 
   // Check user authentication when sidepanel opens
@@ -235,13 +240,16 @@
     refreshVaultStatus();
 
     // Register zoom keyboard shortcuts and restore saved zoom level
-    window.addEventListener('keydown', handleZoom);
+    const unregisterZoomIn = registerShortcut('app:zoomIn', 'Global', () => zoomBy(ZOOM_STEP));
+    const unregisterZoomOut = registerShortcut('app:zoomOut', 'Global', () => zoomBy(-ZOOM_STEP));
+    const unregisterZoomReset = registerShortcut('app:zoomReset', 'Global', () => setZoom(100));
     AgentConfig.getInstance().then((config) => {
       const zoom = config.getConfig().preferences?.zoomLevel;
       if (zoom && zoom !== 100) applyZoom(zoom);
     }).catch(() => {});
 
     // Initial auth check
+    wireDesktopRuntimeStateEvents();
     checkAndUpdateAuth();
 
     // Listen for cookie changes to detect login/logout from other pages
@@ -251,8 +259,9 @@
 
         // Only react to auth cookie changes on our domain
         if (
-          cookie.name === AUTH_COOKIE_NAME &&
-          cookie.domain.includes(COOKIE_DOMAIN.replace(/^\./, ''))
+          AUTH_COOKIE_DOMAIN &&
+          cookie.name === AUTH_COOKIE_NAMES.access &&
+          cookie.domain.includes(AUTH_COOKIE_DOMAIN.replace(/^\./, ''))
         ) {
           console.log('[App] Auth cookie changed:', removed ? 'removed' : 'set');
           checkAndUpdateAuth();
@@ -262,24 +271,31 @@
       chrome.cookies.onChanged.addListener(cookieChangeListener);
       console.log('[App] Cookie change listener registered');
     }
+
+    return () => {
+      unregisterZoomIn();
+      unregisterZoomOut();
+      unregisterZoomReset();
+    };
   });
 
   onDestroy(() => {
-    // Clean up zoom keyboard shortcut listener
-    window.removeEventListener('keydown', handleZoom);
-
     // Clean up cookie change listener
     if (cookieChangeListener && typeof chrome !== 'undefined' && chrome.cookies?.onChanged) {
       chrome.cookies.onChanged.removeListener(cookieChangeListener);
       console.log('[App] Cookie change listener removed');
     }
+    runtimeStateUnlisten?.();
+    runtimeStateUnlisten = null;
   });
 </script>
 
-<AppShell>
-  {#if $vaultStore.isLocked}
-    <PinUnlockOverlay onUnlocked={() => refreshVaultStatus()} />
-  {:else}
-    <Router {routes} />
-  {/if}
-</AppShell>
+<ShortcutProvider>
+  <AppShell>
+    {#if $vaultStore.isLocked}
+      <PinUnlockOverlay onUnlocked={() => refreshVaultStatus()} />
+    {:else}
+      <Router {routes} />
+    {/if}
+  </AppShell>
+</ShortcutProvider>

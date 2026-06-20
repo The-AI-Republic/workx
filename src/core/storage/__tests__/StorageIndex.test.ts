@@ -14,45 +14,37 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock the dynamic imports used by the factory functions
 const mockIndexedDBStorageProvider = vi.fn();
-const mockSQLiteStorageProvider = vi.fn();
 const mockChromeCredentialStore = vi.fn();
-const mockKeytarCredentialStore = vi.fn();
 const mockChromeConfigStorage = vi.fn();
-const mockTauriConfigStorage = vi.fn();
+const mockRuntimeRelayConfigStorageProvider = vi.fn();
 
 vi.mock('@/extension/storage/IndexedDBStorageProvider', () => ({
   IndexedDBStorageProvider: mockIndexedDBStorageProvider,
-}));
-
-vi.mock('@/desktop/storage/SQLiteStorageProvider', () => ({
-  SQLiteStorageProvider: mockSQLiteStorageProvider,
 }));
 
 vi.mock('@/extension/storage/ChromeCredentialStore', () => ({
   ChromeCredentialStore: mockChromeCredentialStore,
 }));
 
-vi.mock('@/desktop/storage/KeytarCredentialStore', () => ({
-  KeytarCredentialStore: mockKeytarCredentialStore,
-}));
+// Track 43: KeytarCredentialStore is no longer a desktop dependency — the
+// WebView is forbidden from opening the OS keychain. The desktop branch of
+// `createCredentialStore` throws instead of constructing one.
 
 vi.mock('@/extension/storage/ChromeConfigStorage', () => ({
   ChromeConfigStorage: mockChromeConfigStorage,
 }));
 
-vi.mock('@/desktop/storage/TauriConfigStorage', () => ({
-  TauriConfigStorage: mockTauriConfigStorage,
+vi.mock('@/desktop-runtime/storage/RuntimeRelayConfigStorageProvider', () => ({
+  RuntimeRelayConfigStorageProvider: mockRuntimeRelayConfigStorageProvider,
 }));
 
 describe('Storage Index Module', () => {
   beforeEach(() => {
     vi.resetModules();
     mockIndexedDBStorageProvider.mockClear();
-    mockSQLiteStorageProvider.mockClear();
     mockChromeCredentialStore.mockClear();
-    mockKeytarCredentialStore.mockClear();
     mockChromeConfigStorage.mockClear();
-    mockTauriConfigStorage.mockClear();
+    mockRuntimeRelayConfigStorageProvider.mockClear();
   });
 
   describe('createStorageProvider', () => {

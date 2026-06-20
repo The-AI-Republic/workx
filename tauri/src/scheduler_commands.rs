@@ -4,7 +4,7 @@
 //! so jobs fire even when the app is fully quit.
 //!
 //! Each job is registered as an OS-level scheduled entry that opens the app via deep link:
-//! `airepublic-pi://scheduler/trigger?jobId={jobId}`
+//! `workx://scheduler/trigger?jobId={jobId}`
 
 use std::fs;
 use std::path::PathBuf;
@@ -140,7 +140,7 @@ pub async fn scheduler_clear_os_jobs() -> Result<(), String> {
 // ─────────────────────────────────────────────────────────────────────────
 
 #[cfg(target_os = "macos")]
-const PLIST_PREFIX: &str = "com.airepublic.pi.scheduler.";
+const PLIST_PREFIX: &str = "com.airepublic.workx.scheduler.";
 
 #[cfg(target_os = "macos")]
 fn get_home_dir() -> Result<String, String> {
@@ -172,7 +172,7 @@ fn register_launchd_job(job_id: &str, scheduled_time: i64) -> Result<(), String>
         fs::create_dir_all(parent).map_err(|e| format!("Failed to create directory: {}", e))?;
     }
 
-    let deep_link = format!("airepublic-pi://scheduler/trigger?jobId={}", job_id);
+    let deep_link = format!("workx://scheduler/trigger?jobId={}", job_id);
 
     let plist_file = format!("{}{}.plist", PLIST_PREFIX, job_id);
     let plist_content = format!(
@@ -281,7 +281,7 @@ fn list_launchd_jobs() -> Result<Vec<String>, String> {
 // ─────────────────────────────────────────────────────────────────────────
 
 #[cfg(target_os = "windows")]
-const SCHTASKS_PREFIX: &str = "PiScheduler_";
+const SCHTASKS_PREFIX: &str = "WorkXScheduler_";
 
 #[cfg(target_os = "windows")]
 fn schtasks_name(job_id: &str) -> String {
@@ -301,7 +301,7 @@ fn register_schtasks_job(job_id: &str, scheduled_time: i64) -> Result<(), String
     let job_name = schtasks_name(job_id);
     let date_str = dt.format("%m/%d/%Y").to_string();
     let time_str = dt.format("%H:%M").to_string();
-    let deep_link = format!("airepublic-pi://scheduler/trigger?jobId={}", job_id);
+    let deep_link = format!("workx://scheduler/trigger?jobId={}", job_id);
 
     let output = Command::new("schtasks.exe")
         .args([
@@ -374,7 +374,7 @@ fn list_schtasks_jobs() -> Result<Vec<String>, String> {
 // ─────────────────────────────────────────────────────────────────────────
 
 #[cfg(target_os = "linux")]
-const SYSTEMD_PREFIX: &str = "pi-scheduler-";
+const SYSTEMD_PREFIX: &str = "workx-scheduler-";
 
 #[cfg(target_os = "linux")]
 fn get_home_dir() -> Result<String, String> {
@@ -412,7 +412,7 @@ fn register_systemd_job(job_id: &str, scheduled_time: i64) -> Result<(), String>
         .map_err(|e| format!("Failed to create systemd user dir: {}", e))?;
 
     let unit_name = format!("{}{}", SYSTEMD_PREFIX, job_id);
-    let deep_link = format!("airepublic-pi://scheduler/trigger?jobId={}", job_id);
+    let deep_link = format!("workx://scheduler/trigger?jobId={}", job_id);
 
     // Find the right command to open deep links (xdg-open may not be available on headless)
     let open_cmd = if Command::new("xdg-open").arg("--version").output().is_ok() {
@@ -424,7 +424,7 @@ fn register_systemd_job(job_id: &str, scheduled_time: i64) -> Result<(), String>
 
     // Write service file
     let service_content = format!(
-        "[Unit]\nDescription=Pi Scheduler Job {job_id}\n\n[Service]\nType=oneshot\nExecStart={open_cmd} \"{deep_link}\"\n",
+        "[Unit]\nDescription=WorkX Scheduler Job {job_id}\n\n[Service]\nType=oneshot\nExecStart={open_cmd} \"{deep_link}\"\n",
         job_id = job_id,
         open_cmd = open_cmd,
         deep_link = deep_link,
@@ -435,7 +435,7 @@ fn register_systemd_job(job_id: &str, scheduled_time: i64) -> Result<(), String>
     // Write timer file
     let calendar = dt.format("%Y-%m-%d %H:%M:%S").to_string();
     let timer_content = format!(
-        "[Unit]\nDescription=Pi Scheduler Job Timer {job_id}\n\n[Timer]\nOnCalendar={calendar}\nPersistent=true\n\n[Install]\nWantedBy=timers.target\n",
+        "[Unit]\nDescription=WorkX Scheduler Job Timer {job_id}\n\n[Timer]\nOnCalendar={calendar}\nPersistent=true\n\n[Install]\nWantedBy=timers.target\n",
         job_id = job_id,
         calendar = calendar,
     );
@@ -472,8 +472,8 @@ fn register_crontab_fallback(job_id: &str, scheduled_time: i64) -> Result<(), St
         .single()
         .ok_or_else(|| "Invalid timestamp".to_string())?;
 
-    let deep_link = format!("airepublic-pi://scheduler/trigger?jobId={}", job_id);
-    let marker = format!("pi-scheduler-{}", job_id);
+    let deep_link = format!("workx://scheduler/trigger?jobId={}", job_id);
+    let marker = format!("workx-scheduler-{}", job_id);
     let cron_entry = format!(
         "{min} {hour} {day} {month} * xdg-open \"{deep_link}\"; crontab -l 2>/dev/null | grep -v '{marker}' | crontab - # {marker}",
         min = dt.minute(),
@@ -547,7 +547,7 @@ fn remove_systemd_job(job_id: &str) -> Result<(), String> {
     // Also clean up crontab entry if it exists
     if let Ok(output) = Command::new("crontab").arg("-l").output() {
         let existing = String::from_utf8_lossy(&output.stdout).to_string();
-        let marker = format!("pi-scheduler-{}", job_id);
+        let marker = format!("workx-scheduler-{}", job_id);
         if existing.contains(&marker) {
             let filtered: Vec<&str> = existing
                 .lines()

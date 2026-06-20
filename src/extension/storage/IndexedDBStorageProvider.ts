@@ -12,7 +12,7 @@ import type { ListOptions, QueryFilter, Transaction } from '@/core/storage/types
 /**
  * Database name and version
  */
-const DB_NAME = 'browserx-storage';
+const DB_NAME = 'workx-storage';
 const DB_VERSION = 3;
 
 /**

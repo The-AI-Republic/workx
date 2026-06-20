@@ -1,0 +1,65 @@
+schema_version: 1
+updated: 2026-05-20
+aliases:
+  improve_consistentcy0520:
+    - improve_consistency_0520
+status_values:
+  design_status: [ready, done, open, abandoned, deferred]
+  code_status: [done, open, abandoned, deferred]
+tracks:
+  - { id: "01", path: "01_hook_event_system_DONE", design_status: done, code_status: done, pr: 198, merge_date: 2026-05-13 }
+  - { id: "02", path: "02_tool_metadata_concurrency_DONE", design_status: done, code_status: done, pr: 197, merge_date: 2026-05-13 }
+  - { id: "03", path: "03_command_skill_system_DONE", design_status: done, code_status: done, pr: 204, merge_date: 2026-05-14 }
+  - { id: "04", path: "04_typed_task_families_DONE", design_status: done, code_status: done, pr: 205, merge_date: 2026-05-13 }
+  - { id: "05", path: "05_session_memory_DONE", design_status: done, code_status: done, pr: 167, merge_date: 2026-05-12 }
+  - { id: "05b", path: "05b_auto_extraction_compaction_interlock_DONE", design_status: done, code_status: done, pr: 206, merge_date: 2026-05-14 }
+  - { id: "06", path: "06_multi_agent_coordination_ABANDONED", design_status: abandoned, code_status: abandoned }
+  - { id: "07", path: "07_centralized_state_DONE", design_status: done, code_status: done, pr: 214, merge_date: 2026-05-14 }
+  - { id: "08", path: "08_centralized_message_queue_DONE", design_status: done, code_status: done, pr: 219, merge_date: 2026-05-14 }
+  - { id: "09", path: "09_tool_result_persistence_DONE", design_status: done, code_status: done, pr: 213, merge_date: 2026-05-14 }
+  - { id: "10", path: "10_plugin_system_DONE", design_status: done, code_status: done }
+  - { id: "11", path: "11_parallel_tool_calls_DONE", design_status: done, code_status: done, pr: 221, merge_date: 2026-05-15 }
+  - { id: "12", path: "12_rate_limit_resilience_DONE", design_status: done, code_status: done, pr: 230, merge_date: 2026-05-16 }
+  - { id: "13", path: "13_input_pipeline_mentions_DONE", design_status: done, code_status: done, pr: 229, merge_date: 2026-05-16 }
+  - { id: "14", path: "14_plan_review_DONE", design_status: done, code_status: done, pr: 233, merge_date: 2026-05-16 }
+  - { id: "15", path: "15_conversation_rewind_DONE", design_status: done, code_status: done, pr: 234, merge_date: 2026-05-16 }
+  - { id: "16", path: "16_telemetry_analytics_DONE", design_status: done, code_status: done, pr: 239, merge_date: 2026-05-18 }
+  - { id: "17", path: "17_operational_diagnostics_DONE", design_status: done, code_status: done, pr: 232, merge_date: 2026-05-16 }
+  - { id: "18", path: "18_usd_cost_tracking_DONE", design_status: done, code_status: done, pr: 231, merge_date: 2026-05-16 }
+  - { id: "19", path: "19_migration_framework_DEFERRED", design_status: deferred, code_status: deferred }
+  - { id: "20", path: "20_managed_policy_settings_DONE", design_status: done, code_status: done, pr: 237, merge_date: 2026-05-16 }
+  - { id: "21", path: "21_remote_bridge_relay_DEFERRED", design_status: deferred, code_status: deferred }
+  - { id: "22", path: "22_feature_flags_lazy_loading_DONE", design_status: done, code_status: done, pr: 242, merge_date: 2026-05-18 }
+  - { id: "23", path: "23_agentic_payments_x402_DONE", design_status: done, code_status: done, pr: 238, merge_date: 2026-05-18 }
+  - { id: "24", path: "24_minor_ux_hardening_followups_DONE", design_status: done, code_status: done, pr: 240, merge_date: 2026-05-16 }
+  - { id: "25", path: "25_context_compaction_robustness_DONE", design_status: done, code_status: done }
+  - { id: "26", path: "26_track01_hook_system_completion_DONE", design_status: done, code_status: done }
+  - { id: "27", path: "27_track02_progress_ux_sibling_abort_DONE", design_status: done, code_status: done }
+  - { id: "28", path: "28_track03_skill_security_server_parity_DONE", design_status: done, code_status: done }
+  - { id: "29", path: "29_track04_background_task_delivery_DONE", design_status: done, code_status: done }
+  - { id: "30", path: "30_track05_memory_privacy_ui_DONE", design_status: done, code_status: done }
+  - { id: "31", path: "31_track05b_session_summary_e2e_DONE", design_status: done, code_status: done }
+  - { id: "32", path: "32_track09_tool_result_persistence_wiring_DONE", design_status: done, code_status: done }
+  - { id: "33", path: "33_int_tool_exec_route_consistency_DONE", design_status: done, code_status: done }
+  - { id: "34", path: "34_int_extractor_task_seam_DONE", design_status: done, code_status: done }
+  - { id: "35", path: "35_int_reactive_config_staleness_DONE", design_status: done, code_status: done }
+  - { id: "36", path: "36_int_concurrent_approval_serialization_DONE", design_status: done, code_status: done }
+  - { id: "37", path: "37_int_persisted_result_durability_DONE", design_status: done, code_status: done }
+  - { id: "38", path: "38_keyboard_shortcut_system_DONE", design_status: done, code_status: done, pr: 241, merge_date: 2026-05-18 }
+  - { id: "39", path: "39_dynamic_tool_management_DONE", design_status: done, code_status: done }
+  - { id: "40", path: "40_subagent_runtime_optimization_DONE", design_status: done, code_status: done, pr: 243, merge_date: 2026-05-18 }
+  - { id: "41", path: "41_shadow_agent_runtime_DONE", design_status: done, code_status: done, pr: 245, merge_date: 2026-05-18 }
+  - { id: "42", path: "42_system_prompt_content_improvements_DONE", design_status: done, code_status: done, pr: 244, merge_date: 2026-05-18 }
+  - { id: "43", path: "43_apple_pi_runtime_decoupling_DONE", design_status: done, code_status: done, pr: "246+255", merge_date: 2026-05-20 }
+  - { id: "44", path: "44_desktop_runtime_state_ownership_DONE", design_status: done, code_status: done, pr: 256, merge_date: 2026-05-20 }
+  - { id: "45", path: "45_track43_runtime_integration_followups", design_status: ready, code_status: open }
+  - { id: "improve_consistentcy0520", path: "improve_consistentcy0520", design_status: ready, code_status: open }
+legacy_design_sets:
+  - applepi_agent_modes
+  - applepi_file_tools
+  - message_routing_v2
+  - migrate_main_engine
+  - server_mode
+  - simplify_session
+  - sub_agent_improvements
+  - subagent

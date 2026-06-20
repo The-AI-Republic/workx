@@ -2,7 +2,7 @@
  * MCP Tool Adapter
  * Task: T032-T035, T038-T039, T042 [US2]
  *
- * Adapts MCP tools to ApplePi ToolDefinition format and creates
+ * Adapts MCP tools to WorkX ToolDefinition format and creates
  * handlers that route tool calls through MCPManager.
  */
 
@@ -15,9 +15,10 @@ import type {
   IMCPContent,
 } from './types';
 import type { IRiskAssessor } from '../approval/types';
+import type { ToolRegistrationOptions } from '../../tools/ToolRegistry';
 
 /**
- * Adapts MCP tools to ApplePi ToolDefinition format.
+ * Adapts MCP tools to WorkX ToolDefinition format.
  */
 export class MCPToolAdapter implements IMCPToolAdapter {
   /**
@@ -172,7 +173,7 @@ export function getMCPToolAdapter(): MCPToolAdapter {
  * Registry interface matching ToolRegistry
  */
 export interface IToolRegistry {
-  register(tool: ToolDefinition, handler: ToolHandler, riskAssessor?: IRiskAssessor): Promise<void>;
+  register(tool: ToolDefinition, handler: ToolHandler, riskAssessor?: IRiskAssessor | ToolRegistrationOptions): Promise<void>;
   unregister(toolName: string): Promise<void>;
 }
 
@@ -199,8 +200,41 @@ export async function registerMCPTools(
     const definition = adapter.adaptTool(tool, serverName);
     const handler = adapter.createHandler(manager, serverName, tool.name);
 
+    // Derive runtime metadata from raw MCP annotation hints
+    const readOnly = tool.annotations?.readOnlyHint ?? false;
+    const destructive = tool.annotations?.destructiveHint ?? false;
+
+    // Track 14 audit: readOnlyHint is the MCP server's own, unverified
+    // self-declaration. Trusting it for the Plan Review freeze is only
+    // acceptable for the vetted built-in 'browser' server (chrome-devtools-
+    // mcp). A user-configured server self-declaring readOnlyHint:true on a
+    // mutating tool would otherwise bypass the freeze, so for any other
+    // server isReadOnly is forced false (frozen during review). Concurrency
+    // behavior is left on the raw hint to avoid an unrelated regression.
+    const TRUSTED_READONLY_MCP_SERVERS = new Set(['browser']);
+    const freezeReadOnly = TRUSTED_READONLY_MCP_SERVERS.has(serverName) ? readOnly : false;
+
     try {
-      await registry.register(definition, handler, riskAssessor);
+      await registry.register(definition, handler, {
+        riskAssessor,
+        runtime: {
+          concurrency: {
+            isConcurrencySafe: () => readOnly,
+            isReadOnly: () => freezeReadOnly,
+            isDestructive: () => destructive,
+          },
+          result: {
+            maxResultSizeChars: 50_000,
+          },
+        },
+        exposure: {
+          source: 'mcp',
+          mode: 'deferred',
+          serverName,
+          displayName: `${serverName}: ${tool.name}`,
+          searchHint: tool.description,
+        },
+      });
     } catch (error) {
       // Tool might already be registered (e.g., during reconnect)
       console.warn(`[MCPToolAdapter] Failed to register tool ${definition.type === 'function' ? definition.function.name : definition.type}:`, error);

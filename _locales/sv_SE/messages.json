@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "Generell AI-agent i webbläsaren för arbetsuppgifter"
@@ -177,7 +177,7 @@
     "message": "Alltid ljust"
   },
   "Apple_Pi_Your_personal_AI_Alpha": {
-    "message": "Apple Pi: Din personliga AI (Alpha)"
+    "message": "WorkX: Din personliga AI (Alpha)"
   },
   "Approval_Safety": {
     "message": "Godkännande & Säkerhet"
@@ -219,8 +219,8 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Be Browserx att extrahera strukturerad data från vilken webbsida som helst"
+  "Ask_WorkX_to_extract_structured_data__88fc": {
+    "message": "Be WorkX att extrahera strukturerad data från vilken webbsida som helst"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Fråga för medelrisk och högre (risk > 30). Rekommenderas för de flesta användare."
@@ -309,14 +309,11 @@
   "Browser_automation_tool_toggles": {
     "message": "Växlar för webbläsarautomatiseringsverktyg"
   },
-  "BrowserX": {
-    "message": "BrowserX"
+  "WorkX": {
+    "message": "WorkX"
   },
-  "Browserx": {
-    "message": "Browserx"
-  },
-  "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+  "WorkX_Alpha": {
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "Aktuell katalog:"
@@ -385,8 +382,8 @@
   "Clear_search": {
     "message": "Rensa sökning"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Klicka på Browserx-ikonen i verktygsfältet eller tryck Alt+Shift+C"
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
+    "message": "Klicka på WorkX-ikonen i verktygsfältet eller tryck Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "Klicka för att avbryta inloggning"
@@ -676,8 +673,8 @@
   "Enable_PIN_Protection": {
     "message": "Aktivera PIN-skydd"
   },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": "Aktivera automatisk anslutning när Browserx startar"
+  "Enable_auto_connect_when_workx_starts": {
+    "message": "Aktivera automatisk anslutning när WorkX startar"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Aktivera cachelagring för att förbättra prestanda genom att lagra ofta åtkomna data"
@@ -733,8 +730,8 @@
   "Explain_this_info_selectionText": {
     "message": "Förklara detta: ${info.selectionText}"
   },
-  "Explain_with_Browserx": {
-    "message": "Förklara med Browserx"
+  "Explain_with_WorkX": {
+    "message": "Förklara med WorkX"
   },
   "Export": {
     "message": "Exportera"
@@ -760,8 +757,8 @@
   "Extract_Data": {
     "message": "Extrahera data:"
   },
-  "Extract_data_with_Browserx": {
-    "message": "Extrahera data med Browserx"
+  "Extract_data_with_WorkX": {
+    "message": "Extrahera data med WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Extrahera specifika datamönster från sidor"
@@ -955,8 +952,8 @@
   "Improve_this_text_info_selectionText": {
     "message": "Förbättra denna text: ${info.selectionText}"
   },
-  "Improve_with_Browserx": {
-    "message": "Förbättra med Browserx"
+  "Improve_with_WorkX": {
+    "message": "Förbättra med WorkX"
   },
   "In": {
     "message": "I:"
@@ -1547,7 +1544,7 @@
     "message": "Försöker igen"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Högerklicka på någon text för att förklara eller förbättra den med Browserx"
+    "message": "Högerklicka på någon text för att förklara eller förbättra den med WorkX"
   },
   "Risk_Score": {
     "message": "Riskpoäng:"
@@ -2041,8 +2038,8 @@
   "Web_Search": {
     "message": "Webbsökning"
   },
-  "Welcome_to_Browserx": {
-    "message": "Välkommen till Browserx"
+  "Welcome_to_WorkX": {
+    "message": "Välkommen till WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Om sandlåda-kommandon kan komma åt nätverket"
@@ -2092,8 +2089,8 @@
   "available": {
     "message": "tillgänglig"
   },
-  "browserx": {
-    "message": "browserx"
+  "workx": {
+    "message": "WorkX"
   },
   "cached": {
     "message": "cachad"

@@ -4,6 +4,7 @@
   import type { IToolsConfig } from '@/config/types';
   import { t, _t } from '../lib/i18n';
   import { getInitializedUIClient } from '@/core/messaging';
+  import { getConfigStorage } from '@/core/storage/ConfigStorageProvider';
   import { uiTheme } from '../stores/themeStore';
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
@@ -32,7 +33,7 @@
   let saveMessage = $state('');
   let saveMessageType: 'success' | 'error' | '' = $state('');
 
-  // Terminal sandbox settings (persisted via Tauri config_storage)
+  // Terminal sandbox settings (persisted through the runtime config service)
   let executionMode: 'safe' | 'power' | 'auto' = $state('auto');
   let workspaceAccess: 'rw' | 'ro' | 'none' = $state('rw');
   let networkMode: 'host' | 'sandbox' = $state('host');
@@ -83,37 +84,32 @@
   }
 
   async function loadTerminalSandboxSettings() {
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('config_storage_get', { key: 'test' });
-      isDesktop = true;
-    } catch {
-      isDesktop = false;
+    if (__BUILD_MODE__ !== 'desktop') {
       return;
     }
 
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
+    isDesktop = true;
 
-      const mode = await invoke<string | null>('config_storage_get', { key: 'terminal.executionMode' });
+    try {
+      const storage = getConfigStorage();
+
+      const mode = await storage.get<string>('terminal.executionMode');
       if (mode === 'safe' || mode === 'power' || mode === 'auto') executionMode = mode;
 
-      const access = await invoke<string | null>('config_storage_get', { key: 'terminal.sandbox.workspaceAccess' });
+      const access = await storage.get<string>('terminal.sandbox.workspaceAccess');
       if (access === 'rw' || access === 'ro' || access === 'none') workspaceAccess = access;
 
-      const network = await invoke<string | null>('config_storage_get', { key: 'terminal.sandbox.networkMode' });
+      const network = await storage.get<string>('terminal.sandbox.networkMode');
       if (network === 'host' || network === 'sandbox') networkMode = network;
 
-      const mountsJson = await invoke<string | null>('config_storage_get', { key: 'terminal.sandbox.bindMounts' });
-      if (mountsJson) {
-        try {
-          const parsed = JSON.parse(mountsJson);
-          if (Array.isArray(parsed)) bindMounts = parsed;
-        } catch { /* keep defaults */ }
+      const mounts = await storage.get<Array<{ hostPath: string; access: 'rw' | 'ro' }> | string>('terminal.sandbox.bindMounts');
+      if (Array.isArray(mounts)) {
+        bindMounts = mounts;
+      } else if (typeof mounts === 'string') {
+        try { bindMounts = JSON.parse(mounts); } catch { /* keep defaults */ }
       }
 
-      const status = await invoke<{ status: string; runtime: string }>('sandbox_check_status');
-      sandboxStatus = `${status.status} (${status.runtime})`;
+      sandboxStatus = 'unavailable (runtime)';
     } catch (error) {
       console.warn('[ToolsSettings] Failed to load terminal sandbox settings:', error);
     }
@@ -121,8 +117,7 @@
 
   async function saveTerminalSandboxSetting(key: string, value: string) {
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('config_storage_set', { key, value });
+      await getConfigStorage().set(key, value);
     } catch (error) {
       console.error('[ToolsSettings] Failed to save sandbox setting:', error);
     }
@@ -152,12 +147,12 @@
     bindMounts = [...bindMounts, { hostPath: path, access: newBindMountAccess }];
     newBindMountPath = '';
     newBindMountAccess = 'ro';
-    await saveTerminalSandboxSetting('terminal.sandbox.bindMounts', JSON.stringify(bindMounts));
+    await getConfigStorage().set('terminal.sandbox.bindMounts', bindMounts);
   }
 
   async function removeBindMount(index: number) {
     bindMounts = bindMounts.filter((_, i) => i !== index);
-    await saveTerminalSandboxSetting('terminal.sandbox.bindMounts', JSON.stringify(bindMounts));
+    await getConfigStorage().set('terminal.sandbox.bindMounts', bindMounts);
   }
 
   function handleInput() {

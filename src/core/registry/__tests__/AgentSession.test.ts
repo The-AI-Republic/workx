@@ -12,6 +12,7 @@ const mockSession = {
   sessionId: 'conv_test_123',
   abortAllTasks: vi.fn(),
   close: vi.fn(),
+  dispose: vi.fn(),
   setTabId: vi.fn(),
 };
 
@@ -49,7 +50,7 @@ describe('AgentSession', () => {
       expect(session.sessionLetter).toBe('a');
       expect(session.state).toBe('initializing');
       expect(session.metadata.type).toBe('primary');
-      expect(session.metadata.tabGroupName).toBe('browserx_s_a');
+      expect(session.metadata.tabGroupName).toBe('workx_s_a');
     });
 
     it('creates session with scheduled type', () => {
@@ -60,7 +61,7 @@ describe('AgentSession', () => {
 
       expect(session.metadata.type).toBe('scheduled');
       expect(session.sessionLetter).toBe('b');
-      expect(session.metadata.tabGroupName).toBe('browserx_s_b');
+      expect(session.metadata.tabGroupName).toBe('workx_s_b');
     });
 
     it('uses provided tabId', () => {
@@ -261,8 +262,12 @@ describe('AgentSession', () => {
 
       await session.terminate('error');
 
-      expect(mockAgent.getSession().abortAllTasks).toHaveBeenCalled();
-      expect(mockAgent.getSession().close).toHaveBeenCalled();
+      expect(mockAgent.getSession().dispose).toHaveBeenCalledWith({
+        reason: 'Error',
+        recordCloseEvent: true,
+      });
+      expect(mockAgent.getSession().abortAllTasks).not.toHaveBeenCalled();
+      expect(mockAgent.getSession().close).not.toHaveBeenCalled();
       expect(mockAgent.cleanup).toHaveBeenCalled();
       expect(session.agent).toBeNull();
     });

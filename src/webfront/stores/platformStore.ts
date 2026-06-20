@@ -21,6 +21,9 @@ export interface PlatformCapabilities {
   /** Can auto-start on OS login (desktop only) */
   hasAutoStart: boolean;
 
+  /** Supports agent long-term memory (desktop/server only) */
+  hasMemory: boolean;
+
   /** Has touch-optimized input (mobile only) */
   hasTouchInput: boolean;
 
@@ -40,6 +43,9 @@ export const platform: PlatformCapabilities = {
   hasGlobalHotkeys: __BUILD_MODE__ === 'desktop',
   hasAutoStart: __BUILD_MODE__ === 'desktop',
 
+  // Memory support (desktop/server only)
+  hasMemory: __BUILD_MODE__ !== 'extension',
+
   // Mobile-only features (for future use)
   hasTouchInput: false, // Will be: __BUILD_MODE__ === 'mobile'
 
@@ -53,7 +59,7 @@ export const platform: PlatformCapabilities = {
  */
 export const agentDisplayName: string =
   __BUILD_MODE__ === 'desktop'
-    ? 'Apple Pi'
+    ? 'WorkX'
     : __BUILD_MODE__ === 'server'
-      ? 'Apple Pi Server'
-      : 'BrowserX';
+      ? 'WorkX Server'
+      : 'WorkX';

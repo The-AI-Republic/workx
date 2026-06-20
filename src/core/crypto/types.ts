@@ -69,8 +69,8 @@ export interface VaultUnlockResult {
 
 /** Storage keys for vault data */
 export const VAULT_STORAGE_KEYS = {
-  METADATA: 'browserx-vault-metadata',
-  SESSION: 'browserx-vault-session',
+  METADATA: 'workx-vault-metadata',
+  SESSION: 'workx-vault-session',
 } as const;
 
 /** Current vault metadata schema version */

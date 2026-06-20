@@ -21,6 +21,8 @@ let mockUserNotifierInstance: Record<string, any>;
 let mockApprovalManagerInstance: Record<string, any>;
 let mockDiffTrackerInstance: Record<string, any>;
 let mockTabManagerInstance: Record<string, any>;
+let mockPlatformAdapter: Record<string, any>;
+let mockEngineInstance: Record<string, any>;
 let uuidCounter: number;
 
 // ---------------------------------------------------------------------------
@@ -38,6 +40,9 @@ vi.mock('../PromptLoader', () => ({
   loadUserInstructions: vi.fn(async () => 'user-instructions'),
   isComposerConfigured: vi.fn(() => false),
   configurePromptComposer: vi.fn(),
+  registerPromptExtension: vi.fn(),
+  unregisterPromptExtension: vi.fn(),
+  unregisterSessionPromptExtensions: vi.fn(),
 }));
 
 vi.mock('../../tools/registerPlatformTools', () => ({
@@ -54,11 +59,21 @@ vi.mock('../tasks/RegularTask', () => ({
   RegularTask: vi.fn(() => ({})),
 }));
 
+vi.mock('../engine/RepublicAgentEngine', () => ({
+  RepublicAgentEngine: vi.fn(() => mockEngineInstance),
+}));
+
+vi.mock('../../tools/MemoryTools', () => ({
+  registerMemoryTools: vi.fn(async () => undefined),
+}));
+
 vi.mock('../TurnContext', () => ({
   TurnContext: vi.fn(() => ({
     setUserInstructions: vi.fn(),
     setBaseInstructions: vi.fn(),
     getSessionId: vi.fn(() => 'session-1'),
+    getAgentMode: vi.fn(() => 'general'),
+    setAgentMode: vi.fn(),
   })),
 }));
 
@@ -96,8 +111,10 @@ declare const __BUILD_MODE__: string;
 
 import { RepublicAgent } from '../RepublicAgent';
 import { AgentConfig } from '../../config/AgentConfig';
+import { Session } from '../Session';
 import type { Op } from '../protocol/types';
 import type { Event } from '../protocol/events';
+import { loadPrompt, unregisterSessionPromptExtensions } from '../PromptLoader';
 
 // ---------------------------------------------------------------------------
 // Helper: create mock AgentConfig (plain object, not through vi.mock)
@@ -125,6 +142,7 @@ function createMockConfig(): AgentConfig {
     getProviderApiKey: vi.fn().mockResolvedValue('sk-test-key-123'),
     getToolsConfig: vi.fn().mockReturnValue({}),
     on: vi.fn(),
+    off: vi.fn(),
     updateToolsConfig: vi.fn(),
   } as unknown as AgentConfig;
 }
@@ -144,28 +162,45 @@ describe('RepublicAgent', () => {
     mockSessionInstance = {
       sessionId: 'conv-123',
       setEventEmitter: vi.fn(),
+      setHookDispatcher: vi.fn(),
+      getHookDispatcher: vi.fn().mockReturnValue(null),
       setTurnContext: vi.fn(),
       getTurnContext: vi.fn().mockReturnValue({
         setUserInstructions: vi.fn(),
         setBaseInstructions: vi.fn(),
         setModelClient: vi.fn(),
         setSelectedModelKey: vi.fn(),
+        getAgentMode: vi.fn(() => 'general'),
+        setAgentMode: vi.fn(),
       }),
       updateTurnContext: vi.fn(),
       getTabId: vi.fn().mockReturnValue(-1),
       setTabId: vi.fn(),
       getId: vi.fn().mockReturnValue('session-id-1'),
+      getSessionId: vi.fn().mockReturnValue('conv-123'),
+      getAgentMode: vi.fn().mockReturnValue('general'),
+      setAgentMode: vi.fn(),
       getConversationHistory: vi.fn().mockReturnValue({ items: [] }),
       addPendingInput: vi.fn(),
       spawnTask: vi.fn().mockResolvedValue(undefined),
       requestInterrupt: vi.fn(),
       clearInterrupt: vi.fn(),
       abortAllTasks: vi.fn().mockResolvedValue(undefined),
+      // Track 04: per-task abort path
+      abortTask: vi.fn().mockResolvedValue(undefined),
       hasRunningTask: vi.fn().mockReturnValue(false),
+      getRunningTasks: vi.fn().mockReturnValue(new Map()),
       addToHistory: vi.fn(),
       getHistoryEntry: vi.fn(),
       clearHistory: vi.fn(),
       shutdown: vi.fn().mockResolvedValue(undefined),
+      dispose: vi.fn().mockResolvedValue(undefined),
+      refreshMemoryService: vi.fn().mockResolvedValue(undefined),
+      // Track 05b: session-summary hook accessors
+      setSessionSummaryHook: vi.fn(),
+      getSessionSummaryHook: vi.fn().mockReturnValue(null),
+      registerPostTurnHook: vi.fn().mockReturnValue(() => undefined),
+      initialize: vi.fn().mockResolvedValue(undefined),
       initializeSession: vi.fn().mockResolvedValue(undefined),
       notifyApproval: vi.fn(),
       compact: vi.fn().mockResolvedValue({
@@ -178,15 +213,18 @@ describe('RepublicAgent', () => {
       getDefaultModel: vi.fn().mockReturnValue('test-model'),
       getDefaultCwd: vi.fn().mockReturnValue('/'),
       isStorageEnabled: vi.fn().mockReturnValue(true),
+      getMemoryService: vi.fn().mockReturnValue(null),
     };
 
     mockToolRegistryInstance = {
       register: vi.fn(),
-      getTool: vi.fn(),
+      unregister: vi.fn().mockResolvedValue(undefined),
+      getTool: vi.fn().mockReturnValue(null),
       getAllTools: vi.fn().mockReturnValue([]),
       cleanup: vi.fn().mockResolvedValue(undefined),
       clear: vi.fn(),
       setApprovalGate: vi.fn(),
+      getApprovalGate: vi.fn().mockReturnValue(undefined),
     };
 
     mockModelClientFactoryInstance = {
@@ -229,8 +267,37 @@ describe('RepublicAgent', () => {
       clearAllTabsFromGroup: vi.fn().mockResolvedValue(undefined),
     };
 
+    mockPlatformAdapter = {
+      platformId: 'extension',
+      hasRealTabs: true,
+      hasBrowserTools: true,
+      initialize: vi.fn().mockResolvedValue(undefined),
+      createTab: vi.fn().mockResolvedValue(100),
+      closeTab: vi.fn().mockResolvedValue(undefined),
+      validateTab: vi.fn().mockResolvedValue({ valid: true }),
+      switchTab: vi.fn().mockResolvedValue(undefined),
+      getBrowserController: vi.fn().mockResolvedValue(null),
+      registerPlatformTools: vi.fn().mockResolvedValue(undefined),
+      getConfigStorage: vi.fn().mockReturnValue({ get: vi.fn(), set: vi.fn() }),
+      getCredentialStore: vi.fn().mockReturnValue({ get: vi.fn(), set: vi.fn(), delete: vi.fn() }),
+      getStorageProvider: vi.fn().mockReturnValue({ get: vi.fn(), set: vi.fn(), delete: vi.fn() }),
+      createScheduler: vi.fn().mockReturnValue({ schedule: vi.fn(), cancel: vi.fn() }),
+      dispose: vi.fn().mockResolvedValue(undefined),
+    };
+
+    mockEngineInstance = {
+      initialize: vi.fn().mockResolvedValue(undefined),
+      submitOperation: vi.fn().mockReturnValue('engine-sub-1'),
+      onEvent: vi.fn(),
+      dispose: vi.fn().mockResolvedValue(undefined),
+      getSession: vi.fn().mockReturnValue(mockSessionInstance),
+      getToolRegistry: vi.fn().mockReturnValue(mockToolRegistryInstance),
+      isReady: vi.fn().mockReturnValue(true),
+      isDisposed: vi.fn().mockReturnValue(false),
+    };
+
     config = createMockConfig();
-    agent = new RepublicAgent(config, undefined, undefined, mockUserNotifierInstance as any);
+    agent = new RepublicAgent(config, mockPlatformAdapter as any, undefined, undefined, mockUserNotifierInstance as any);
   });
 
   // =========================================================================
@@ -243,7 +310,7 @@ describe('RepublicAgent', () => {
     });
 
     it('should use the provided agentId when one is supplied', () => {
-      const custom = new RepublicAgent(config, undefined, 'my-agent');
+      const custom = new RepublicAgent(config, mockPlatformAdapter as any, undefined, 'my-agent');
       expect(custom.agentId).toBe('my-agent');
     });
 
@@ -277,6 +344,31 @@ describe('RepublicAgent', () => {
       expect(notifier.notifyInfo).toBeDefined();
     });
 
+    it('passes supplied SessionServices to Session construction', () => {
+      const services = {
+        rollout: null,
+        notifier: { notify: vi.fn(), error: vi.fn(), success: vi.fn() },
+        showRawAgentReasoning: false,
+      };
+
+      new RepublicAgent(
+        config,
+        mockPlatformAdapter as any,
+        undefined,
+        'with-services',
+        mockUserNotifierInstance as any,
+        services as any,
+      );
+
+      expect(Session).toHaveBeenLastCalledWith(
+        config,
+        true,
+        services,
+        mockToolRegistryInstance,
+        undefined,
+      );
+    });
+
     it('should wire up session event emitter during construction', () => {
       const session = agent.getSession();
       expect(session.setEventEmitter).toHaveBeenCalledTimes(1);
@@ -285,6 +377,58 @@ describe('RepublicAgent', () => {
 
     it('should subscribe to config-changed events during construction', () => {
       expect(config.on as Mock).toHaveBeenCalledWith('config-changed', expect.any(Function));
+    });
+  });
+
+  describe('config subscriptions', () => {
+    function configChangeHandler() {
+      return (config.on as Mock).mock.calls.find(
+        ([eventName]) => eventName === 'config-changed'
+      )![1] as Function;
+    }
+
+    it('refreshes the current model client when tools config changes outside a running task', async () => {
+      await agent.initialize();
+      mockModelClientFactoryInstance.clearCache.mockClear();
+      mockModelClientFactoryInstance.createClientForCurrentModel.mockClear();
+
+      const newClient = { getModel: vi.fn().mockReturnValue('tools-refresh') };
+      mockModelClientFactoryInstance.createClientForCurrentModel.mockResolvedValueOnce(newClient);
+
+      configChangeHandler()({
+        type: 'config-changed',
+        section: 'tools',
+        oldValue: { parallelToolCalls: false },
+        newValue: { parallelToolCalls: true },
+        timestamp: Date.now(),
+      });
+
+      await vi.waitFor(() => {
+        expect(mockModelClientFactoryInstance.clearCache).toHaveBeenCalled();
+        expect(mockModelClientFactoryInstance.createClientForCurrentModel).toHaveBeenCalledTimes(1);
+      });
+      expect(mockSessionInstance.getTurnContext().setModelClient).toHaveBeenCalledWith(newClient);
+      expect(mockSessionInstance.getTurnContext().setSelectedModelKey).toHaveBeenCalledWith('openai:gpt-5');
+    });
+
+    it('defers tools config refresh while a task is running', async () => {
+      await agent.initialize();
+      mockModelClientFactoryInstance.clearCache.mockClear();
+      mockModelClientFactoryInstance.createClientForCurrentModel.mockClear();
+      mockSessionInstance.getRunningTasks.mockReturnValue(new Set(['task_1']));
+
+      configChangeHandler()({
+        type: 'config-changed',
+        section: 'tools',
+        oldValue: { parallelToolCalls: false },
+        newValue: { parallelToolCalls: true },
+        timestamp: Date.now(),
+      });
+
+      await vi.waitFor(() => {
+        expect(mockModelClientFactoryInstance.clearCache).toHaveBeenCalled();
+      });
+      expect(mockModelClientFactoryInstance.createClientForCurrentModel).not.toHaveBeenCalled();
     });
   });
 
@@ -336,6 +480,38 @@ describe('RepublicAgent', () => {
       await agent.initialize();
       expect(mockSessionInstance.setTurnContext).toHaveBeenCalled();
     });
+
+    // ─── Track 05b: session-summary hook wiring ────────────────────────────
+    describe('syncSessionSummaryHook', () => {
+      it('does NOT construct a hook when preferences.sessionSummaryEnabled is false', async () => {
+        // Default mock has the flag absent → defaults to false
+        await agent.initialize();
+        expect(mockSessionInstance.setSessionSummaryHook).not.toHaveBeenCalled();
+      });
+
+      it('detaches an existing hook when the flag flips off', async () => {
+        const existingHook = { detach: vi.fn() };
+        mockSessionInstance.getSessionSummaryHook.mockReturnValue(existingHook);
+
+        await agent.initialize();
+
+        expect(existingHook.detach).toHaveBeenCalledTimes(1);
+        expect(mockSessionInstance.setSessionSummaryHook).toHaveBeenCalledWith(null);
+      });
+
+      it('does not crash when build mode is not desktop/server (extension build)', async () => {
+        // The default test env defines __BUILD_MODE__ via vitest config or a
+        // global; the function gracefully returns early on extension builds.
+        // Either path is acceptable — this assertion just guards against an
+        // unhandled rejection from syncSessionSummaryHook.
+        (config.getConfig as Mock).mockReturnValue({
+          ...((config.getConfig as Mock)() as Record<string, unknown>),
+          preferences: { sessionSummaryEnabled: true },
+        });
+
+        await expect(agent.initialize()).resolves.toBeUndefined();
+      });
+    });
   });
 
   // =========================================================================
@@ -352,17 +528,16 @@ describe('RepublicAgent', () => {
       expect(id1).not.toBe(id2);
     });
 
-    it('should process a Shutdown op and emit ShutdownComplete', async () => {
-      const dispatcherSpy = vi.fn();
-      agent.setEventDispatcher(dispatcherSpy);
+    it('should process a Shutdown op by disposing the engine', async () => {
+      await agent.initialize();
 
       await agent.submitOperation({ type: 'Shutdown' });
       await new Promise(r => setTimeout(r, 0));
 
-      const shutdownEvent = dispatcherSpy.mock.calls.find(
-        (call: any[]) => call[0]?.msg?.type === 'ShutdownComplete'
-      );
-      expect(shutdownEvent).toBeDefined();
+      // Shutdown now goes straight to dispose(); we no longer also submit a
+      // separate Shutdown op (that double-handles teardown).
+      expect(mockEngineInstance.dispose).toHaveBeenCalled();
+      expect(mockEngineInstance.submitOperation).not.toHaveBeenCalledWith({ type: 'Shutdown' });
     });
 
     it('should process a GetPath op and emit ConversationPath', async () => {
@@ -379,22 +554,93 @@ describe('RepublicAgent', () => {
       expect(pathEvent![0].msg.data.path).toBe('conv-123');
     });
 
-    it('should process an AddToHistory op and delegate to session', async () => {
+    it('should no-op SetSessionMode when requested mode is already active', async () => {
+      await agent.initialize();
+      vi.mocked(loadPrompt).mockClear();
+      mockSessionInstance.setAgentMode.mockClear();
+
+      const dispatcherSpy = vi.fn();
+      agent.setEventDispatcher(dispatcherSpy);
+
+      await agent.submitOperation({ type: 'SetSessionMode', mode: 'general' });
+      await new Promise(r => setTimeout(r, 0));
+
+      const modeEvent = dispatcherSpy.mock.calls.find(
+        (call: any[]) => call[0]?.msg?.type === 'ModeChanged'
+      );
+      expect(modeEvent?.[0].msg.data).toEqual({
+        sessionId: 'session-id-1',
+        mode: 'general',
+        applied: true,
+      });
+      expect(mockSessionInstance.setAgentMode).not.toHaveBeenCalled();
+      expect(loadPrompt).not.toHaveBeenCalled();
+    });
+
+    it('should defer SetSessionMode while a task is running and apply it on next user input', async () => {
+      await agent.initialize();
+      const turnContext = mockSessionInstance.getTurnContext();
+      vi.mocked(loadPrompt).mockClear();
+      mockSessionInstance.setAgentMode.mockClear();
+      turnContext.setAgentMode.mockClear();
+      turnContext.setBaseInstructions.mockClear();
+
+      const dispatcherSpy = vi.fn();
+      agent.setEventDispatcher(dispatcherSpy);
+
+      mockSessionInstance.getRunningTasks.mockReturnValue(new Map([['task-1', { id: 'task-1' }]]));
+
+      await agent.submitOperation({ type: 'SetSessionMode', mode: 'code' });
+      await new Promise(r => setTimeout(r, 0));
+
+      expect(mockSessionInstance.setAgentMode).not.toHaveBeenCalled();
+      expect(dispatcherSpy.mock.calls.some(
+        (call: any[]) =>
+          call[0]?.msg?.type === 'ModeChanged' &&
+          call[0]?.msg?.data?.mode === 'code' &&
+          call[0]?.msg?.data?.applied === false
+      )).toBe(true);
+
+      mockSessionInstance.getRunningTasks.mockReturnValue(new Map());
+
+      await agent.submitOperation({
+        type: 'UserInput',
+        items: [{ type: 'text', text: 'apply the pending mode' }],
+      });
+      await new Promise(r => setTimeout(r, 0));
+
+      expect(mockSessionInstance.setAgentMode).toHaveBeenCalledWith('code');
+      expect(turnContext.setAgentMode).toHaveBeenCalledWith('code');
+      expect(loadPrompt).toHaveBeenCalledWith(
+        'code',
+        expect.objectContaining({ sessionId: 'conv-123' }),
+      );
+      expect(turnContext.setBaseInstructions).toHaveBeenCalledWith('base-instructions');
+      expect(dispatcherSpy.mock.calls.some(
+        (call: any[]) =>
+          call[0]?.msg?.type === 'ModeChanged' &&
+          call[0]?.msg?.data?.mode === 'code' &&
+          call[0]?.msg?.data?.applied === true
+      )).toBe(true);
+    });
+
+    it('should process an AddToHistory op and delegate to engine', async () => {
+      await agent.initialize();
+
       await agent.submitOperation({
         type: 'AddToHistory',
         text: 'Hello world',
       });
       await new Promise(r => setTimeout(r, 0));
 
-      expect(mockSessionInstance.addToHistory).toHaveBeenCalledWith(
-        expect.objectContaining({
-          text: 'Hello world',
-          type: 'user',
-        })
-      );
+      expect(mockEngineInstance.submitOperation).toHaveBeenCalledWith({
+        type: 'AddToHistory',
+        text: 'Hello world',
+      });
     });
 
     it('should emit AgentMessage for unimplemented op types', async () => {
+      await agent.initialize();
       const dispatcherSpy = vi.fn();
       agent.setEventDispatcher(dispatcherSpy);
 
@@ -411,9 +657,8 @@ describe('RepublicAgent', () => {
       expect(agentMsg![0].msg.data.message).toContain('not yet implemented');
     });
 
-    it('should process ExecApproval and delegate to session.notifyApproval', async () => {
-      const dispatcherSpy = vi.fn();
-      agent.setEventDispatcher(dispatcherSpy);
+    it('should process ExecApproval and delegate to engine', async () => {
+      await agent.initialize();
 
       await agent.submitOperation({
         type: 'ExecApproval',
@@ -422,12 +667,17 @@ describe('RepublicAgent', () => {
       });
       await new Promise(r => setTimeout(r, 0));
 
-      expect(mockSessionInstance.notifyApproval).toHaveBeenCalledWith('exec-1', 'approve');
+      expect(mockEngineInstance.submitOperation).toHaveBeenCalledWith({
+        type: 'ExecApproval',
+        callId: 'exec-1',
+        decision: 'approve',
+        remember: undefined,
+        alternativeText: undefined,
+      });
     });
 
-    it('should process PatchApproval and delegate to session.notifyApproval', async () => {
-      const dispatcherSpy = vi.fn();
-      agent.setEventDispatcher(dispatcherSpy);
+    it('should process PatchApproval and delegate to engine', async () => {
+      await agent.initialize();
 
       await agent.submitOperation({
         type: 'PatchApproval',
@@ -436,30 +686,33 @@ describe('RepublicAgent', () => {
       });
       await new Promise(r => setTimeout(r, 0));
 
-      expect(mockSessionInstance.notifyApproval).toHaveBeenCalledWith('patch-1', 'reject');
+      expect(mockEngineInstance.submitOperation).toHaveBeenCalledWith({
+        type: 'PatchApproval',
+        patchId: 'patch-1',
+        decision: 'reject',
+      });
     });
 
-    it('should process Interrupt op and abort all tasks', async () => {
-      const dispatcherSpy = vi.fn();
-      agent.setEventDispatcher(dispatcherSpy);
+    it('should process Interrupt op and delegate to engine', async () => {
+      await agent.initialize();
 
       await agent.submitOperation({ type: 'Interrupt' });
       await new Promise(r => setTimeout(r, 0));
 
-      expect(mockSessionInstance.requestInterrupt).toHaveBeenCalled();
-      expect(mockSessionInstance.abortAllTasks).toHaveBeenCalledWith('UserInterrupt');
-      expect(mockSessionInstance.clearInterrupt).toHaveBeenCalled();
-
-      const abortEvent = dispatcherSpy.mock.calls.find(
-        (call: any[]) => call[0]?.msg?.type === 'TurnAborted'
+      expect(mockUserNotifierInstance.notifyWarning).toHaveBeenCalledWith(
+        'Task Interrupted',
+        'The current task has been interrupted by user request'
       );
-      expect(abortEvent).toBeDefined();
-      expect(abortEvent![0].msg.data.reason).toBe('user_interrupt');
+      expect(mockEngineInstance.submitOperation).toHaveBeenCalledWith({
+        type: 'Interrupt',
+        reason: 'user_interrupt',
+      });
     });
 
     it('should emit Error event when processing a submission that throws', async () => {
-      mockSessionInstance.addToHistory.mockImplementation(() => {
-        throw new Error('storage failure');
+      await agent.initialize();
+      mockEngineInstance.submitOperation.mockImplementation(() => {
+        throw new Error('engine failure');
       });
 
       const dispatcherSpy = vi.fn();
@@ -478,23 +731,21 @@ describe('RepublicAgent', () => {
         (call: any[]) => call[0]?.msg?.type === 'Error'
       );
       expect(errorEvent).toBeDefined();
-      expect(errorEvent![0].msg.data.message).toContain('storage failure');
+      expect(errorEvent![0].msg.data.message).toContain('engine failure');
     });
 
     it('should process multiple submissions sequentially', async () => {
-      const dispatcherSpy = vi.fn();
-      agent.setEventDispatcher(dispatcherSpy);
+      await agent.initialize();
 
       await agent.submitOperation({ type: 'AddToHistory', text: 'first' });
       await agent.submitOperation({ type: 'AddToHistory', text: 'second' });
       await new Promise(r => setTimeout(r, 10));
 
-      expect(mockSessionInstance.addToHistory).toHaveBeenCalledTimes(2);
-      expect(mockSessionInstance.addToHistory).toHaveBeenCalledWith(
-        expect.objectContaining({ text: 'first' })
+      expect(mockEngineInstance.submitOperation).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'AddToHistory', text: 'first' })
       );
-      expect(mockSessionInstance.addToHistory).toHaveBeenCalledWith(
-        expect.objectContaining({ text: 'second' })
+      expect(mockEngineInstance.submitOperation).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'AddToHistory', text: 'second' })
       );
     });
 
@@ -551,7 +802,8 @@ describe('RepublicAgent', () => {
     it('should remove events from the queue once returned', async () => {
       agent.setEventDispatcher(vi.fn());
 
-      await agent.submitOperation({ type: 'Shutdown' });
+      // Use GetPath (orchestration op, no engine needed)
+      await agent.submitOperation({ type: 'GetPath' });
       await new Promise(r => setTimeout(r, 0));
 
       // Drain all events
@@ -573,21 +825,25 @@ describe('RepublicAgent', () => {
   // =========================================================================
 
   describe('cancelTask()', () => {
-    it('should call session.abortAllTasks when the task is running', async () => {
+    it('should call session.abortTask with the specific submission id (Track 04)', async () => {
       mockSessionInstance.hasRunningTask.mockReturnValue(true);
 
       await agent.cancelTask('sub_1');
 
       expect(mockSessionInstance.hasRunningTask).toHaveBeenCalledWith('sub_1');
-      expect(mockSessionInstance.abortAllTasks).toHaveBeenCalledWith('UserInterrupt');
+      // Track 04: per-task abort, not blanket abortAllTasks, so cancelling
+      // task A doesn't kill unrelated background tasks.
+      expect(mockSessionInstance.abortTask).toHaveBeenCalledWith('sub_1', 'UserInterrupt');
+      expect(mockSessionInstance.abortAllTasks).not.toHaveBeenCalled();
     });
 
-    it('should not call abortAllTasks when no task is running for the given id', async () => {
+    it('should not call abortTask when no task is running for the given id', async () => {
       mockSessionInstance.hasRunningTask.mockReturnValue(false);
 
       await agent.cancelTask('sub_nonexistent');
 
       expect(mockSessionInstance.hasRunningTask).toHaveBeenCalledWith('sub_nonexistent');
+      expect(mockSessionInstance.abortTask).not.toHaveBeenCalled();
       expect(mockSessionInstance.abortAllTasks).not.toHaveBeenCalled();
     });
   });
@@ -608,6 +864,26 @@ describe('RepublicAgent', () => {
       await agent.cleanup();
 
       expect(mockUserNotifierInstance.clearAll).toHaveBeenCalled();
+    });
+
+    it('removes session-scoped prompt extensions after disposing the session', async () => {
+      vi.mocked(unregisterSessionPromptExtensions).mockClear();
+
+      await agent.cleanup();
+
+      expect(unregisterSessionPromptExtensions).toHaveBeenCalledWith('conv-123');
+      expect(mockSessionInstance.dispose).toHaveBeenCalled();
+      expect(mockSessionInstance.dispose.mock.invocationCallOrder[0]).toBeLessThan(
+        vi.mocked(unregisterSessionPromptExtensions).mock.invocationCallOrder[0],
+      );
+    });
+
+    it('unsubscribes config hook watcher and removes config hooks on cleanup', async () => {
+      await agent.initialize();
+      await agent.cleanup();
+
+      expect(config.off as Mock).toHaveBeenCalledWith('config-changed', expect.any(Function));
+      expect(agent.getHookRegistry().getMatchingHooks('PreToolUse')).toHaveLength(0);
     });
 
     it('should clear submission and event queues', async () => {
@@ -709,6 +985,8 @@ describe('RepublicAgent', () => {
 
   describe('interrupt()', () => {
     it('should call session.requestInterrupt()', async () => {
+      await agent.initialize();
+
       await agent.interrupt();
       await new Promise(r => setTimeout(r, 0));
 
@@ -716,6 +994,8 @@ describe('RepublicAgent', () => {
     });
 
     it('should notify the user about the interruption', async () => {
+      await agent.initialize();
+
       await agent.interrupt();
       await new Promise(r => setTimeout(r, 0));
 
@@ -725,28 +1005,17 @@ describe('RepublicAgent', () => {
       );
     });
 
-    it('should submit an Interrupt operation to the submission queue', async () => {
+    it('should submit an Interrupt operation to the engine', async () => {
+      await agent.initialize();
       agent.setEventDispatcher(vi.fn());
 
       await agent.interrupt();
       await new Promise(r => setTimeout(r, 10));
 
-      // The Interrupt handler calls abortAllTasks
-      expect(mockSessionInstance.abortAllTasks).toHaveBeenCalledWith('UserInterrupt');
-    });
-
-    it('should emit a TurnAborted event after interrupt processing', async () => {
-      const dispatcherSpy = vi.fn();
-      agent.setEventDispatcher(dispatcherSpy);
-
-      await agent.interrupt();
-      await new Promise(r => setTimeout(r, 10));
-
-      const abortedEvent = dispatcherSpy.mock.calls.find(
-        (call: any[]) => call[0]?.msg?.type === 'TurnAborted'
-      );
-      expect(abortedEvent).toBeDefined();
-      expect(abortedEvent![0].msg.data.reason).toBe('user_interrupt');
+      expect(mockEngineInstance.submitOperation).toHaveBeenCalledWith({
+        type: 'Interrupt',
+        reason: 'user_interrupt',
+      });
     });
   });
 
@@ -820,6 +1089,12 @@ describe('RepublicAgent', () => {
 
       expect(mockModelClientFactoryInstance.createClientForCurrentModel).toHaveBeenCalled();
       expect(mockSessionInstance.setTurnContext).toHaveBeenCalled();
+    });
+
+    it('should refresh the memory service after replacing the model client', async () => {
+      await agent.refreshModelClient();
+
+      expect(mockSessionInstance.refreshMemoryService).toHaveBeenCalledWith(config);
     });
 
     it('should not throw if createClientForCurrentModel fails', async () => {
@@ -924,6 +1199,12 @@ describe('RepublicAgent', () => {
       expect(turnCtx.setBaseInstructions).toHaveBeenCalledWith('base-instructions');
     });
 
+    it('should refresh the memory service after hot-swapping the model client', async () => {
+      await agent.hotSwapModelClient();
+
+      expect(mockSessionInstance.refreshMemoryService).toHaveBeenCalledWith(config);
+    });
+
     it('should reuse existing TurnContext unlike refreshModelClient which creates a new one', async () => {
       // hotSwapModelClient: does NOT call session.setTurnContext
       await agent.hotSwapModelClient();
@@ -965,7 +1246,8 @@ describe('RepublicAgent', () => {
     it('should process events through userNotifier.processEvent', async () => {
       agent.setEventDispatcher(vi.fn());
 
-      await agent.submitOperation({ type: 'Shutdown' });
+      // Use GetPath (orchestration op, no engine needed)
+      await agent.submitOperation({ type: 'GetPath' });
       await new Promise(r => setTimeout(r, 0));
 
       expect(mockUserNotifierInstance.processEvent).toHaveBeenCalled();
@@ -977,67 +1259,27 @@ describe('RepublicAgent', () => {
   // =========================================================================
 
   describe('Compact operations', () => {
-    it('should emit CompactionCompleted event for Compact op', async () => {
-      const dispatcherSpy = vi.fn();
-      agent.setEventDispatcher(dispatcherSpy);
+    it('should delegate Compact op to engine', async () => {
+      await agent.initialize();
 
       await agent.submitOperation({ type: 'Compact' });
       await new Promise(r => setTimeout(r, 0));
 
-      const compactionEvent = dispatcherSpy.mock.calls.find(
-        (call: any[]) => call[0]?.msg?.type === 'CompactionCompleted'
-      );
-      expect(compactionEvent).toBeDefined();
-      expect(compactionEvent![0].msg.data.success).toBe(true);
-      expect(compactionEvent![0].msg.data.triggerReason).toBe('auto');
+      expect(mockEngineInstance.submitOperation).toHaveBeenCalledWith({
+        type: 'Compact',
+        mode: 'auto',
+      });
     });
 
-    it('should emit CompactionCompleted event for ManualCompact op', async () => {
-      const dispatcherSpy = vi.fn();
-      agent.setEventDispatcher(dispatcherSpy);
+    it('should delegate ManualCompact op to engine', async () => {
+      await agent.initialize();
 
       await agent.submitOperation({ type: 'ManualCompact' });
       await new Promise(r => setTimeout(r, 0));
 
-      const compactionEvent = dispatcherSpy.mock.calls.find(
-        (call: any[]) => call[0]?.msg?.type === 'CompactionCompleted'
-      );
-      expect(compactionEvent).toBeDefined();
-      expect(compactionEvent![0].msg.data.triggerReason).toBe('manual');
-    });
-
-    it('should emit Error event when compaction fails', async () => {
-      mockSessionInstance.compact.mockRejectedValue(new Error('compaction failed'));
-
-      const dispatcherSpy = vi.fn();
-      agent.setEventDispatcher(dispatcherSpy);
-
-      await agent.submitOperation({ type: 'Compact' });
-      await new Promise(r => setTimeout(r, 0));
-
-      const errorEvent = dispatcherSpy.mock.calls.find(
-        (call: any[]) => call[0]?.msg?.type === 'Error' &&
-          call[0]?.msg?.data?.message?.includes('compaction failed')
-      );
-      expect(errorEvent).toBeDefined();
-    });
-
-    it('should include compaction statistics in CompactionCompleted event', async () => {
-      const dispatcherSpy = vi.fn();
-      agent.setEventDispatcher(dispatcherSpy);
-
-      await agent.submitOperation({ type: 'Compact' });
-      await new Promise(r => setTimeout(r, 0));
-
-      const compactionEvent = dispatcherSpy.mock.calls.find(
-        (call: any[]) => call[0]?.msg?.type === 'CompactionCompleted'
-      );
-      expect(compactionEvent).toBeDefined();
-      const data = compactionEvent![0].msg.data;
-      expect(data.tokensBefore).toBe(5000);
-      expect(data.tokensAfter).toBe(2000);
-      expect(data.itemsTrimmed).toBe(10);
-      expect(data.compactionCount).toBe(1);
+      expect(mockEngineInstance.submitOperation).toHaveBeenCalledWith({
+        type: 'ManualCompact',
+      });
     });
   });
 

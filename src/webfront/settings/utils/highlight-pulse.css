@@ -1,6 +1,6 @@
 @keyframes highlightPulse {
   0%, 100% { background-color: transparent; }
-  25%, 75% { background-color: color-mix(in srgb, var(--browserx-primary) 15%, transparent); }
+  25%, 75% { background-color: color-mix(in srgb, var(--workx-primary) 15%, transparent); }
 }
 
 .highlight-pulse {

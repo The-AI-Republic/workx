@@ -5,7 +5,7 @@
  * Follows TSRolloutStorageProvider pattern (FR-011):
  * - Dynamic import of better-sqlite3
  * - WAL mode
- * - Same table schema as Rust db_storage.rs
+ * - Same table schema as the desktop runtime SQLite adapter
  *
  * @module server/storage/NodeSQLiteAdapter
  */
@@ -25,14 +25,23 @@ const ADAPTER_STORES = [
   'schedule_exceptions',
   'execution_records',
   'token_usage_records',
+  // Track 04
+  'task_output_chunks',
 ];
 
 export class NodeSQLiteAdapter implements StorageAdapter {
   private db: import('better-sqlite3').Database | null = null;
-  private dataDir: string;
+  private dataDir: string | null;
+  private dbPath: string | null;
 
-  constructor(dataDir: string) {
-    this.dataDir = dataDir;
+  constructor(dataDirOrOptions: string | { dataDir?: string; dbPath?: string }) {
+    if (typeof dataDirOrOptions === 'string') {
+      this.dataDir = dataDirOrOptions;
+      this.dbPath = null;
+    } else {
+      this.dataDir = dataDirOrOptions.dataDir ?? null;
+      this.dbPath = dataDirOrOptions.dbPath ?? null;
+    }
   }
 
   async initialize(): Promise<void> {
@@ -42,12 +51,15 @@ export class NodeSQLiteAdapter implements StorageAdapter {
     const { join } = await import('node:path');
     const { existsSync, mkdirSync } = await import('node:fs');
 
-    const dir = join(this.dataDir, 'storage');
+    const dir = this.dbPath
+      ? this.dbPath.replace(/[\\/][^\\/]*$/, '') || '.'
+      : join(this.dataDir ?? '', 'storage');
+    const dbPath = this.dbPath ?? join(dir, 'storage.db');
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
     }
 
-    this.db = new Database(join(dir, 'storage.db'));
+    this.db = new Database(dbPath);
     this.db.pragma('journal_mode = WAL');
     this.db.pragma('foreign_keys = ON');
 
@@ -56,6 +68,8 @@ export class NodeSQLiteAdapter implements StorageAdapter {
       scheduler_jobs: ['by_status', 'by_scheduled_time', 'by_status_time', 'by_created_at'],
       agent_sessions: ['by_type', 'by_state'],
       token_usage_records: ['by_session', 'by_timestamp', 'by_model'],
+      // Track 04: delta-poll range scans + FIFO eviction
+      task_output_chunks: ['by_task_id', 'by_task_seq', 'by_created_at'],
     };
 
     // Create tables for all adapter stores

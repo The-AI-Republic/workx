@@ -23,6 +23,8 @@ vi.mock('@/core/RepublicAgent', () => ({
     cleanup = () => {};
     getApprovalManager = () => ({});
     getToolRegistry = () => ({ setApprovalGate: () => {} });
+    getHookDispatcher = () => ({ fire: async () => ({}) });
+    getEngine = () => null;
     agentId = 'agent_mock';
   },
 }));
@@ -216,13 +218,13 @@ describe('Multi-Session Integration', () => {
         type: 'primary',
         tabId: 42,
         state: 'idle',
-        tabGroupName: 'browserx_s_a',
+        tabGroupName: 'workx_s_a',
       });
       expect(sessions.find((s) => s.type === 'scheduled')).toMatchObject({
         type: 'scheduled',
         tabId: 43,
         state: 'idle',
-        tabGroupName: 'browserx_s_b',
+        tabGroupName: 'workx_s_b',
       });
     });
 

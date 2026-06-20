@@ -11,6 +11,8 @@
   import { getInitializedUIClient } from '@/core/messaging';
   import { t, _t } from '../lib/i18n';
   import { highlightSetting } from './utils/highlightSetting';
+  import { isPolicyLocked, managedTooltip } from './utils/policyLock';
+  import ManagedBadge from '../components/common/ManagedBadge.svelte';
   import './utils/highlight-pulse.css';
 
   let {
@@ -104,7 +106,15 @@
     }
   }
 
+  // Track 20: approval mode is a prime org-lockable control.
+  const approvalModeLocked = isPolicyLocked(
+    settingsConfig.getConfig(),
+    'approval.mode'
+  );
+  const managedHint = managedTooltip(settingsConfig.getConfig());
+
   function handleModeChange(mode: ApprovalMode) {
+    if (approvalModeLocked) return; // enforced server-side too; UI guard
     config.mode = mode;
     isDirty = true;
   }
@@ -153,10 +163,13 @@
     <div class="settings-body">
       <!-- Approval Mode -->
       <section class="setting-section" data-setting-id="approval-mode">
-        <h4 class="subsection-title">{$_t("Approval Mode")}</h4>
+        <h4 class="subsection-title">
+          {$_t("Approval Mode")}
+          <ManagedBadge locked={approvalModeLocked} tooltip={managedHint} />
+        </h4>
         <p class="subsection-description">{$_t("Controls how aggressively the agent asks for approval.")}</p>
 
-        <div class="mode-options">
+        <div class="mode-options" class:policy-locked={approvalModeLocked}>
           {#each APPROVAL_MODES as mode}
             <label class="mode-option" class:selected={config.mode === mode}>
               <input
@@ -164,6 +177,7 @@
                 name="approval-mode"
                 value={mode}
                 checked={config.mode === mode}
+                disabled={approvalModeLocked}
                 onchange={() => handleModeChange(mode)}
               />
               <div class="mode-content">
@@ -268,7 +282,7 @@
     gap: 0.375rem;
     background: none;
     border: none;
-    color: var(--browserx-primary);
+    color: var(--workx-primary);
     cursor: pointer;
     font-size: 0.875rem;
     padding: 0.25rem 0.5rem;
@@ -277,14 +291,14 @@
   }
 
   .back-button:hover {
-    background: var(--browserx-surface);
+    background: var(--workx-surface);
   }
 
   .section-title {
     margin: 0;
     font-size: 1.25rem;
     font-weight: 600;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .settings-body {
@@ -295,8 +309,8 @@
 
   .setting-section {
     padding: 1rem;
-    background: var(--browserx-surface);
-    border: 1px solid var(--browserx-border);
+    background: var(--workx-surface);
+    border: 1px solid var(--workx-border);
     border-radius: 0.5rem;
   }
 
@@ -304,13 +318,13 @@
     margin: 0 0 0.25rem 0;
     font-size: 0.9375rem;
     font-weight: 600;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .subsection-description {
     margin: 0 0 0.75rem 0;
     font-size: 0.875rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
   }
 
   .mode-options {
@@ -319,24 +333,30 @@
     gap: 0.5rem;
   }
 
+  /* Track 20: org-managed (policy-locked) control */
+  .mode-options.policy-locked {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
   .mode-option {
     display: flex;
     align-items: flex-start;
     gap: 0.75rem;
     padding: 0.75rem;
-    border: 1px solid var(--browserx-border);
+    border: 1px solid var(--workx-border);
     border-radius: 0.375rem;
     cursor: pointer;
     transition: all 0.2s;
   }
 
   .mode-option:hover {
-    border-color: var(--browserx-primary);
+    border-color: var(--workx-primary);
   }
 
   .mode-option.selected {
-    border-color: var(--browserx-primary);
-    background: color-mix(in srgb, var(--browserx-primary) 10%, transparent);
+    border-color: var(--workx-primary);
+    background: color-mix(in srgb, var(--workx-primary) 10%, transparent);
   }
 
   .mode-option input[type="radio"] {
@@ -352,12 +372,12 @@
   .mode-label {
     font-weight: 600;
     font-size: 0.875rem;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .mode-desc {
     font-size: 0.875rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
   }
 
   .domain-input-row {
@@ -370,20 +390,20 @@
     flex: 1;
     padding: 0.5rem 0.75rem;
     font-size: 0.875rem;
-    background: var(--browserx-background);
-    border: 1px solid var(--browserx-border);
+    background: var(--workx-background);
+    border: 1px solid var(--workx-border);
     border-radius: 0.375rem;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .domain-input::placeholder {
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
   }
 
   .add-button {
     padding: 0.5rem 1rem;
     font-size: 0.875rem;
-    background: var(--browserx-primary);
+    background: var(--workx-primary);
     color: white;
     border: none;
     border-radius: 0.375rem;
@@ -445,7 +465,7 @@
     padding: 0.625rem 1.5rem;
     font-size: 0.875rem;
     font-weight: 600;
-    background: var(--browserx-primary);
+    background: var(--workx-primary);
     color: white;
     border: none;
     border-radius: 0.375rem;
@@ -475,6 +495,6 @@
     align-items: center;
     justify-content: center;
     padding: 2rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
   }
 </style>

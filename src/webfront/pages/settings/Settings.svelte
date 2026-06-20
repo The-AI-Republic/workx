@@ -18,11 +18,13 @@
   import MCPSettings from '../../settings/MCPSettings.svelte';
   import ApprovalSettings from '../../settings/ApprovalSettings.svelte';
   import SecuritySettings from '../../settings/SecuritySettings.svelte';
+  import MemorySettings from '../../settings/MemorySettings.svelte';
+  import KeyboardShortcutsSettings from '../../settings/KeyboardShortcutsSettings.svelte';
   import { t } from '../../lib/i18n';
   import { uiTheme } from '../../stores/themeStore';
 
   // Navigation state - includes 'advanced-model-config' for 3rd level menu
-  type NavigationView = 'menu' | 'model-config' | 'advanced-model-config' | 'general' | 'storage' | 'tools' | 'mcp-servers' | 'extension' | 'approval' | 'security';
+  type NavigationView = 'menu' | 'model-config' | 'advanced-model-config' | 'general' | 'memory' | 'storage' | 'tools' | 'mcp-servers' | 'extension' | 'approval' | 'security' | 'keyboard-shortcuts';
   let currentView: NavigationView = $state('menu');
   let hasUnsavedChanges: boolean = $state(false);
   let showUnsavedDialog: boolean = $state(false);
@@ -176,6 +178,15 @@
           onSaved={() => {}}
           bind:isDirty={hasUnsavedChanges}
         />
+      {:else if currentView === 'memory'}
+        <MemorySettings
+          {settingsConfig}
+          {highlightSettingId}
+          onBack={handleBack}
+          onSaved={() => {}}
+          onNavigateTo={(view) => navigateTo(view as NavigationView)}
+          bind:isDirty={hasUnsavedChanges}
+        />
       {:else if currentView === 'storage'}
         <StorageSettings
           {settingsConfig}
@@ -222,6 +233,13 @@
           onSaved={() => {}}
           bind:isDirty={hasUnsavedChanges}
         />
+      {:else if currentView === 'keyboard-shortcuts'}
+        <KeyboardShortcutsSettings
+          {settingsConfig}
+          onBack={handleBack}
+          onSaved={() => {}}
+          bind:isDirty={hasUnsavedChanges}
+        />
       {/if}
     </div>
 
@@ -246,47 +264,47 @@
     overflow: visible !important;
     background: rgba(0, 0, 0, 0.5);
     /* Terminal theme (default) */
-    --browserx-primary: #00ff00;
-    --browserx-secondary: #00cc00;
-    --browserx-background: #000000;
-    --browserx-surface: #0a0a0a;
-    --browserx-text: #00ff00;
-    --browserx-text-secondary: #00cc00;
-    --browserx-border: #00cc00;
-    --browserx-error: #ff0000;
-    --browserx-success: #00ff00;
-    --browserx-warning: #ffff00;
+    --workx-primary: #00ff00;
+    --workx-secondary: #00cc00;
+    --workx-background: #000000;
+    --workx-surface: #0a0a0a;
+    --workx-text: #00ff00;
+    --workx-text-secondary: #00cc00;
+    --workx-border: #00cc00;
+    --workx-error: #ff0000;
+    --workx-success: #00ff00;
+    --workx-warning: #ffff00;
     color-scheme: dark;
   }
 
   /* Modern Chat theme — light */
   .settings-page.modern {
-    --browserx-primary: var(--color-chat-primary, #2563eb);
-    --browserx-secondary: var(--color-chat-primary, #2563eb);
-    --browserx-background: var(--color-chat-bg, #ffffff);
-    --browserx-surface: var(--color-chat-surface, #f7f7f8);
-    --browserx-text: var(--color-chat-text, #0d0d0d);
-    --browserx-text-secondary: var(--color-chat-text-secondary, #6e6e80);
-    --browserx-border: var(--color-chat-border, #e5e5e5);
-    --browserx-error: var(--color-chat-error, #dc2626);
-    --browserx-success: var(--color-chat-status-success, #047857);
-    --browserx-warning: var(--color-chat-status-warning, #b45309);
+    --workx-primary: var(--color-chat-primary, #2563eb);
+    --workx-secondary: var(--color-chat-primary, #2563eb);
+    --workx-background: var(--color-chat-bg, #ffffff);
+    --workx-surface: var(--color-chat-surface, #f7f7f8);
+    --workx-text: var(--color-chat-text, #0d0d0d);
+    --workx-text-secondary: var(--color-chat-text-secondary, #6e6e80);
+    --workx-border: var(--color-chat-border, #e5e5e5);
+    --workx-error: var(--color-chat-error, #dc2626);
+    --workx-success: var(--color-chat-status-success, #047857);
+    --workx-warning: var(--color-chat-status-warning, #b45309);
     background: rgba(0, 0, 0, 0.3);
     color-scheme: light;
   }
 
   /* Modern Chat theme — dark */
   :global(.dark) .settings-page.modern {
-    --browserx-primary: var(--color-chat-primary-dark, #60a5fa);
-    --browserx-secondary: var(--color-chat-primary-dark, #60a5fa);
-    --browserx-background: var(--color-chat-bg-dark, #212121);
-    --browserx-surface: var(--color-chat-surface-dark, #2f2f2f);
-    --browserx-text: var(--color-chat-text-dark, #ececec);
-    --browserx-text-secondary: var(--color-chat-text-secondary-dark, #b4b4b4);
-    --browserx-border: var(--color-chat-border-dark, #3e3e3e);
-    --browserx-error: var(--color-chat-error-dark, #f87171);
-    --browserx-success: var(--color-chat-status-success-dark, #34d399);
-    --browserx-warning: var(--color-chat-status-warning-dark, #fbbf24);
+    --workx-primary: var(--color-chat-primary-dark, #60a5fa);
+    --workx-secondary: var(--color-chat-primary-dark, #60a5fa);
+    --workx-background: var(--color-chat-bg-dark, #212121);
+    --workx-surface: var(--color-chat-surface-dark, #2f2f2f);
+    --workx-text: var(--color-chat-text-dark, #ececec);
+    --workx-text-secondary: var(--color-chat-text-secondary-dark, #b4b4b4);
+    --workx-border: var(--color-chat-border-dark, #3e3e3e);
+    --workx-error: var(--color-chat-error-dark, #f87171);
+    --workx-success: var(--color-chat-status-success-dark, #34d399);
+    --workx-warning: var(--color-chat-status-warning-dark, #fbbf24);
     color-scheme: dark;
   }
 
@@ -298,9 +316,9 @@
     border-radius: 0.5rem;
     display: flex;
     flex-direction: column;
-    background: var(--browserx-background);
-    border: 1px solid var(--browserx-border);
-    color: var(--browserx-text);
+    background: var(--workx-background);
+    border: 1px solid var(--workx-border);
+    color: var(--workx-text);
   }
 
   .settings-page.modern .settings-container {
@@ -313,20 +331,20 @@
     justify-content: space-between;
     align-items: center;
     padding: 1rem 1.5rem;
-    border-bottom: 1px solid var(--browserx-border);
+    border-bottom: 1px solid var(--workx-border);
   }
 
   .settings-title {
     margin: 0;
     font-size: 1.25rem;
     font-weight: 600;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .close-button {
     background: none;
     border: none;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
     cursor: pointer;
     padding: 0.25rem;
     border-radius: 0.375rem;
@@ -337,8 +355,8 @@
   }
 
   .close-button:hover {
-    color: var(--browserx-text);
-    background: var(--browserx-surface);
+    color: var(--workx-text);
+    background: var(--workx-surface);
   }
 
   .settings-content {
@@ -353,14 +371,14 @@
     justify-content: center;
     gap: 1rem;
     padding: 3rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
   }
 
   .loading-spinner {
     width: 24px;
     height: 24px;
-    border: 2px solid var(--browserx-border);
-    border-top-color: var(--browserx-primary);
+    border: 2px solid var(--workx-border);
+    border-top-color: var(--workx-primary);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }

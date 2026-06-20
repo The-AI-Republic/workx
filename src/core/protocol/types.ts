@@ -2,12 +2,14 @@
  * Core protocol types
  */
 
+import type { AgentMode } from '../../prompts/PromptComposer';
+
 // Constants from protocol
 export const USER_INSTRUCTIONS_OPEN_TAG = '<user_instructions>';
 export const USER_INSTRUCTIONS_CLOSE_TAG = '</user_instructions>';
 export const ENVIRONMENT_CONTEXT_OPEN_TAG = '<environment_context>';
 export const ENVIRONMENT_CONTEXT_CLOSE_TAG = '</environment_context>';
-export const USER_MESSAGE_BEGIN = '## My request for Apple Pi:';
+export const USER_MESSAGE_BEGIN = '## My request for WorkX:';
 
 /**
  * Submission Queue Entry - requests from user
@@ -23,6 +25,12 @@ export interface Submission {
     tabId?: number;
     /** Feature 015: Session ID for multi-agent routing */
     sessionId?: string;
+    /**
+     * Track 12: when true, this submission runs unattended — the retry
+     * orchestrator waits out 429/529 instead of hard-failing. Set by
+     * scheduler/connector drivers; overrides the platform default.
+     */
+    unattended?: boolean;
   };
 }
 
@@ -102,6 +110,11 @@ export type Op =
   | { type: 'Compact' }
   | { type: 'ManualCompact' } // Manual compaction trigger from UI
   | {
+    type: 'SetSessionMode';
+    /** Target agent persona mode for this session (per-session, hot-switch) */
+    mode: AgentMode;
+  }
+  | {
     type: 'Review';
     review_request: ReviewRequest;
   }
@@ -118,7 +131,7 @@ export type Op =
 
 /**
  * Determines the conditions under which the user is consulted to approve
- * running the command proposed by ApplePi.
+ * running the command proposed by WorkX.
  */
 export type AskForApproval =
   | 'untrusted'

@@ -190,7 +190,7 @@ export interface VisualEffectEventDetail {
 /**
  * CustomEvent name for visual effect events
  */
-export const VISUAL_EFFECT_EVENT_NAME = 'browserx:visual-effect';
+export const VISUAL_EFFECT_EVENT_NAME = 'workx:visual-effect';
 
 /**
  * Type guard to check if event is valid VisualEffectEvent

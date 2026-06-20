@@ -1,14 +1,14 @@
-# Pi Architecture
+# WorkX Architecture
 
-Pi is a tri-platform AI agent built from a shared core with platform-specific adapters for Chrome extensions, desktop (Tauri), and headless server (Node.js).
+WorkX is a tri-platform AI agent built from a shared core with platform-specific adapters for Chrome extensions, desktop (Tauri), and headless server (Node.js).
 
 ## Platform Overview
 
 | App | Platform | Entry Point | Channel | Build |
 |-----|----------|-------------|---------|-------|
-| **BrowserX** | Chrome Extension | `src/extension/background/service-worker.ts` | `SidePanelChannel` / `TabPageChannel` (chrome.runtime) | `vite.config.mjs` |
-| **Apple Pi** | Desktop (Tauri) | `src/desktop/main.ts` | `TauriChannel` (Tauri events) | `vite.config.desktop.mts` |
-| **Apple Pi Server** | Headless (Node.js) | `src/server/index.ts` | `ServerChannel` (WebSocket) | `vite.config.server.mts` |
+| **WorkX** | Chrome Extension | `src/extension/background/service-worker.ts` | `SidePanelChannel` / `TabPageChannel` (chrome.runtime) | `vite.config.mjs` |
+| **WorkX** | Desktop (Tauri) | `src/desktop/main.ts` | `TauriChannel` (Tauri events) | `vite.config.desktop.mts` |
+| **WorkX Server** | Headless (Node.js) | `src/server/index.ts` | `ServerChannel` (WebSocket) | `vite.config.server.mts` |
 
 ## High-Level Diagram
 
@@ -138,7 +138,7 @@ Desktop and server use the same SQLite schema (defined in `tauri/src/rollout_db.
 
 - Extension: `chrome.storage.local`
 - Desktop: Tauri storage commands (Rust backend)
-- Server: `FileConfigStorageProvider` — reads/writes `$APPLEPI_DATA_DIR/config-storage.json`
+- Server: `FileConfigStorageProvider` — reads/writes `$WORKX_DATA_DIR/config-storage.json`
 
 ## MCP (Model Context Protocol)
 
@@ -256,7 +256,7 @@ Clients connect via WebSocket and communicate using JSON request/response frames
 
 ### Browser Automation
 
-Apple Pi Server connects to Chrome via `chrome-devtools-mcp` MCP server. Three deployment patterns:
+WorkX Server connects to Chrome via `chrome-devtools-mcp` MCP server. Three deployment patterns:
 
 | Pattern | Env Var | Use Case |
 |---------|---------|----------|
@@ -332,7 +332,7 @@ Server mode uses `FileCredentialStore` (AES-256-GCM encrypted file) for secure A
 ### How Credentials Are Stored
 
 - **Encryption:** AES-256-GCM with scrypt key derivation from `VITE_VAULT_SECRET`
-- **File location:** `$APPLEPI_DATA_DIR/credentials.enc`
+- **File location:** `$WORKX_DATA_DIR/credentials.enc`
 - **Key format:** Each credential is stored as `service:account` → encrypted value
 
 ### Setup

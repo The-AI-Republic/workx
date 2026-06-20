@@ -19,6 +19,11 @@ import type {
 } from './protocol/events';
 import type { CompactionResult } from './compact/types';
 import { estimateRequestTokens } from './compact/utils';
+import {
+  getAutoCompactRatio,
+  getAutoCompactTokenLimit,
+  shouldAutoCompactTokens,
+} from './compact/tokenPressure';
 import { TokenUsageStore } from '@/storage/TokenUsageStore';
 import type { TokenUsageRecord } from '@/storage/types';
 
@@ -27,9 +32,14 @@ import type { TokenUsageRecord } from '@/storage/types';
  */
 export interface TaskState {
   submissionId: string;
-  status: 'idle' | 'running' | 'completed' | 'failed' | 'cancelled' | 'unknown';
+  status: 'idle' | 'running' | 'completed' | 'failed' | 'killed' | 'unknown';
   currentTurnIndex: number;
-  tokenUsage: {
+  /**
+   * Token budget tracking (remaining capacity / compaction trigger).
+   * Distinct from cumulative `tokenUsage` shape used by TaskNotification +
+   * BackgroundAgentTaskState — see src/core/tasks/types.ts for that.
+   */
+  tokenBudget: {
     used: number;
     max: number;
   };
@@ -61,6 +71,23 @@ export interface TaskOptions {
   timeoutMs?: number;
   /** Auto-compact when token limit reached */
   autoCompact?: boolean;
+  /** Max turns before forced stop. Overrides the static MAX_TURNS (500) default. */
+  maxTurns?: number;
+  /** Callback that drains cross-agent messages injected between turns */
+  drainPendingMessages?: () => string[];
+  /**
+   * (Track 04) Optional output store. When set, the runner appends chunks
+   * at turn boundaries and on terminal/abort flush so background sub-agent
+   * panels can poll live progress and the output survives reloads.
+   * Foreground RegularTasks leave this undefined and skip persistence.
+   */
+  taskOutputStore?: import('./tasks/TaskOutputStore').TaskOutputStore;
+  /**
+   * (Track 04) Task id for output-store writes. Distinct from `submissionId`
+   * (transport-layer) — this is the stable BackgroundAgentTaskState.id /
+   * runId. Required when taskOutputStore is set; ignored otherwise.
+   */
+  taskId?: string;
 }
 
 interface LoopOutcome {
@@ -72,6 +99,10 @@ interface LoopOutcome {
     total?: TokenUsage;
     last?: TokenUsage;
   };
+  /** Track 18: USD cost summed across this task's turns (sibling of tokenUsage). */
+  totalCostUSD?: number;
+  /** Track 18: true if any turn used a model absent from the cost table. */
+  costEstimated?: boolean;
 }
 
 interface LoopOutcomeInit {
@@ -81,6 +112,8 @@ interface LoopOutcomeInit {
   totalTokenUsage?: TokenUsage;
   lastTokenUsage?: TokenUsage;
   abortedReason?: TurnAbortReason;
+  totalCostUSD?: number;
+  costEstimated?: boolean;
 }
 
 /**
@@ -99,7 +132,6 @@ export class TaskRunner {
   private cancelResolve: (() => void) | null = null;
   private state: TaskState;
   private static readonly MAX_TURNS = 500;
-  private static readonly COMPACTION_THRESHOLD = 0.85; // 85% of the context window
 
   constructor(
     session: Session,
@@ -129,7 +161,7 @@ export class TaskRunner {
       submissionId,
       status: 'idle',
       currentTurnIndex: 0,
-      tokenUsage: {
+      tokenBudget: {
         used: 0,
         max: contextWindow,
       },
@@ -146,7 +178,7 @@ export class TaskRunner {
     if (this.cancelResolve) {
       this.cancelResolve();
     }
-    this.state.status = 'cancelled';
+    this.state.status = 'killed';
     this.state.abortReason = 'user_interrupt';
   }
 
@@ -177,7 +209,7 @@ export class TaskRunner {
       this.state.status = 'running';
       this.state.abortReason = undefined;
       this.state.compactionPerformed = false;
-      this.state.tokenUsage.used = 0;
+      this.state.tokenBudget.used = 0;
       this.state.currentTurnIndex = 0;
       this.state.tokenUsageDetail = undefined;
       this.state.lastAgentMessage = undefined;
@@ -203,23 +235,29 @@ export class TaskRunner {
       this.state.compactionPerformed = outcome.compactionPerformed;
       this.state.lastAgentMessage = outcome.lastAgentMessage;
       this.state.tokenUsageDetail = outcome.tokenUsage;
-      this.state.tokenUsage.used = outcome.tokenUsage.total
+      this.state.tokenBudget.used = outcome.tokenUsage.total
         ? outcome.tokenUsage.total.total_tokens
         : 0;
 
       if (outcome.abortedReason) {
-        this.state.status = 'cancelled';
+        this.state.status = 'killed';
         this.state.abortReason = outcome.abortedReason;
         if (outcome.abortedReason === 'automatic_abort') {
+          const maxTurns = this.options.maxTurns ?? TaskRunner.MAX_TURNS;
           await this.emitBackgroundEvent(
-            `Task stopped after reaching the maximum of ${TaskRunner.MAX_TURNS} turns`,
+            `Task stopped after reaching the maximum of ${maxTurns} turns`,
             'warning'
           );
         }
         await this.emitAbortedEvent(outcome.abortedReason);
 
-        // Fire-and-forget: persist partial token usage for aborted tasks
-        this.persistTokenUsage(outcome.tokenUsage.total, outcome.turnCount);
+        // Fire-and-forget: persist partial token usage + cost for aborted tasks
+        this.persistTokenUsage(
+          outcome.tokenUsage.total,
+          outcome.turnCount,
+          outcome.totalCostUSD,
+          outcome.costEstimated ?? false,
+        );
 
         return {
           success: false,
@@ -237,8 +275,16 @@ export class TaskRunner {
       };
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.state.status = this.cancelled ? 'cancelled' : 'failed';
+      this.state.status = this.cancelled ? 'killed' : 'failed';
       this.state.lastError = err;
+
+      // A thrown task has no reliable final usage, so partial cost/tokens are
+      // intentionally not persisted here — only the aborted and completed
+      // paths persist (unchanged from pre-cost-tracking behavior).
+
+      // Track 04: flush pending chunks before re-throwing so polling
+      // consumers see the tail of a task that died mid-turn.
+      await this.flushTaskOutput();
 
       if (this.cancelled && !this.state.abortReason) {
         this.state.abortReason = 'user_interrupt';
@@ -266,32 +312,57 @@ export class TaskRunner {
     let compactionPerformed = false;
     let totalTokenUsage: TokenUsage | undefined;
     let lastTokenUsage: TokenUsage | undefined;
+    // Track 18: per-task USD accumulator, summed from each turn's cost.
+    let totalCostUSD: number | undefined;
+    let costEstimated = false;
 
     while (!this.cancelled) {
       if (signal?.aborted) {
         this.cancel();
+        // Track 04: flush pending output before resolving so polling
+        // consumers see the tail of an aborted run.
+        await this.flushTaskOutput();
         return this.buildLoopOutcome({
           turnCount,
           compactionPerformed,
           lastAgentMessage,
           totalTokenUsage,
           lastTokenUsage,
+          totalCostUSD,
+          costEstimated,
           abortedReason: 'user_interrupt',
         });
       }
 
-      if (turnCount >= TaskRunner.MAX_TURNS) {
+      const effectiveMaxTurns = this.options.maxTurns ?? TaskRunner.MAX_TURNS;
+      if (turnCount >= effectiveMaxTurns) {
         return this.buildLoopOutcome({
           turnCount,
           compactionPerformed,
           lastAgentMessage,
           totalTokenUsage,
           lastTokenUsage,
+          totalCostUSD,
+          costEstimated,
           abortedReason: 'automatic_abort',
         });
       }
 
+      // Drain cross-agent messages FIRST so they land in this turn, not the
+      // next one. Pushing into addPendingInput after getPendingInput() has
+      // already snapshotted the queue would silently defer drained messages
+      // by a full turn (or lose them entirely on the final turn).
+      if (this.options.drainPendingMessages) {
+        const messages = this.options.drainPendingMessages();
+        if (messages.length > 0) {
+          this.session.addPendingInput(
+            messages.map(msg => ({ type: 'text' as const, text: msg }))
+          );
+        }
+      }
+
       const pendingInput = (await this.session.getPendingInput()) as ResponseItem[];
+
       let turnInput = await this.buildNormalTurnInput(pendingInput);
 
       // Pre-request compaction check: estimate tokens and compact if needed
@@ -300,6 +371,12 @@ export class TaskRunner {
         if (compacted) {
           compactionPerformed = true;
           turnInput = await this.buildNormalTurnInput([]);
+          // Track 04: record the compaction in the chunk stream.
+          await this.appendTaskOutputEvent({
+            kind: 'compaction',
+            stage: 'pre_request',
+            turn: turnCount,
+          });
         }
       }
 
@@ -310,6 +387,8 @@ export class TaskRunner {
           lastAgentMessage,
           totalTokenUsage,
           lastTokenUsage,
+          totalCostUSD,
+          costEstimated,
           abortedReason: 'user_interrupt',
         });
       }
@@ -323,18 +402,42 @@ export class TaskRunner {
           totalTokenUsage = this.aggregateTokenUsage(totalTokenUsage, turnResult.totalTokenUsage);
           lastTokenUsage = turnResult.totalTokenUsage;
         }
+        // Track 18: fold this turn's USD cost into the per-task total.
+        if (typeof turnResult.turnCostUSD === 'number') {
+          totalCostUSD = (totalCostUSD ?? 0) + turnResult.turnCostUSD;
+          if (turnResult.turnCostEstimated) {
+            costEstimated = true;
+          }
+        }
 
         turnCount += 1;
         this.state.currentTurnIndex = turnCount;
+
+        // Track 04: emit per-turn event chunk + the assistant message (if any).
+        await this.appendTaskOutputEvent({
+          kind: 'turn',
+          index: turnCount,
+          tokens: lastTokenUsage,
+        });
+        if (processResult.lastAgentMessage) {
+          await this.appendTaskOutputChunk('message', processResult.lastAgentMessage);
+        }
 
         if (processResult.tokenLimitReached && this.options.autoCompact) {
           const compacted = await this.attemptAutoCompact(turnCount, totalTokenUsage);
           if (compacted) {
             compactionPerformed = true;
+            await this.appendTaskOutputEvent({
+              kind: 'compaction',
+              stage: 'post_turn',
+              turn: turnCount,
+            });
           }
         }
 
         if (processResult.taskComplete) {
+          await this.appendTaskOutputEvent({ kind: 'complete', turn: turnCount });
+          await this.flushTaskOutput();
           return this.buildLoopOutcome({
             turnCount,
             compactionPerformed,
@@ -382,6 +485,8 @@ export class TaskRunner {
         total: init.totalTokenUsage,
         last: init.lastTokenUsage,
       },
+      totalCostUSD: init.totalCostUSD,
+      costEstimated: init.costEstimated,
     };
   }
 
@@ -404,6 +509,7 @@ export class TaskRunner {
 
   private async emitTaskStarted(): Promise<void> {
     const contextWindow = this.turnContext.getModelContextWindow();
+    const autoCompactLimit = this.turnContext.getAutoCompactTokenLimit?.();
     const toolsConfig = this.turnContext.getToolsConfig();
     const enabledTools = Object.entries(toolsConfig)
       .filter(([, enabled]) => Boolean(enabled))
@@ -418,7 +524,7 @@ export class TaskRunner {
       approval_policy: this.turnContext.getApprovalPolicy(),
       sandbox_policy: this.turnContext.getSandboxPolicy(),
       auto_compact: this.options.autoCompact !== false,
-      compaction_threshold: TaskRunner.COMPACTION_THRESHOLD,
+      compaction_threshold: getAutoCompactRatio(contextWindow, autoCompactLimit),
       tools: enabledTools,
       tools_config: toolsConfig as Record<string, unknown>,
       timeout_ms: this.options.timeoutMs,
@@ -457,34 +563,81 @@ export class TaskRunner {
       };
     }
 
+    // Track 18: the cost computed once in core (TurnManager) rides the live
+    // TaskComplete event so every consumer (UI, server per-job, desktop)
+    // reads it instead of recomputing.
+    if (typeof outcome.totalCostUSD === 'number') {
+      data.cost_usd = outcome.totalCostUSD;
+      data.cost_estimated = outcome.costEstimated ?? false;
+    }
+
     await this.emitEvent({
       type: 'TaskComplete',
       data,
     });
 
+    // Track 24.3: predict the user's next message (ext/desktop only; the
+    // generator self-gates off on the server build). Strictly fire-and-forget
+    // — deferred into a microtask and fully swallowed so it can never block,
+    // delay, or fail task completion.
+    Promise.resolve()
+      .then(() => this.session.maybeGenerateSuggestion?.())
+      .catch((e) => console.debug('[TaskRunner] prompt suggestion error (ignored):', e));
+
     // Fire-and-forget: persist token usage record
-    this.persistTokenUsage(outcome.tokenUsage.total, outcome.turnCount);
+    this.persistTokenUsage(
+      outcome.tokenUsage.total,
+      outcome.turnCount,
+      outcome.totalCostUSD,
+      outcome.costEstimated ?? false,
+    );
   }
 
-  private persistTokenUsage(total: TokenUsage | undefined, turnCount: number): void {
+  /**
+   * Track 18: the single fold-once seam. Called exactly once per task
+   * (emitTaskComplete on the normal path, or the aborted path in run_task —
+   * mutually exclusive). Each engine (parent and every sub-agent) self-reports
+   * its own cost here; the parent's totalTokenUsage never includes sub-agent
+   * tokens, so summing TokenUsageRecord.costUSD per session is double-count
+   * free. Cumulative cost also lands in SessionState here via this.session.
+   */
+  private persistTokenUsage(
+    total: TokenUsage | undefined,
+    turnCount: number,
+    costUSD?: number,
+    costEstimated: boolean = false,
+  ): void {
     try {
       const usage = total ?? { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0, reasoning_output_tokens: 0, total_tokens: 0 };
+      const resolvedCost = costUSD ?? 0;
       const record: TokenUsageRecord = {
         id: `${this.session.getSessionId()}_${this.submissionId}_${Date.now()}`,
         sessionId: this.session.getSessionId(),
         taskId: this.submissionId,
         model: this.turnContext.getModel(),
+        // Provider-qualified key — the same model id is priced differently
+        // across providers (e.g. kimi-k2-thinking on moonshot/fireworks/
+        // together), so cost history must record the composite. Caveat: on a
+        // Track-12 mid-task downgrade this stores only the final model, so the
+        // per-model breakdown attributes the task's blended cost to it; the
+        // session/day totals stay exact (they sum the per-record costUSD).
+        provider_model: this.turnContext.getSelectedModelKey(),
         timestamp: new Date().toISOString(),
         input_tokens: usage.input_tokens,
         cached_input_tokens: usage.cached_input_tokens,
         output_tokens: usage.output_tokens,
         reasoning_output_tokens: usage.reasoning_output_tokens,
         total_tokens: usage.total_tokens,
+        costUSD: resolvedCost,
+        costEstimated,
         turn_count: turnCount,
       };
       TokenUsageStore.getInstance().save(record).catch((err) =>
         console.warn('[TaskRunner] Token usage save failed:', err)
       );
+      // Live cumulative for /cost + resume. Same single seam — no parallel
+      // path, no double-count.
+      this.session.addCost(resolvedCost, costEstimated);
     } catch (err) {
       console.warn('[TaskRunner] Token usage persist failed:', err);
     }
@@ -663,15 +816,39 @@ export class TaskRunner {
       await this.session.recordConversationItemsDual(itemsToRecord);
     }
 
+    // Post-turn hooks must observe the committed history. TurnManager builds
+    // the turn delta, while TaskRunner is the first point after the in-memory
+    // and durable conversation writes have completed.
+    const sess = this.session as unknown as {
+      firePostTurnHooks?: (ctx: unknown) => Promise<void>;
+      getSessionId?: () => string;
+      getConversationHistory?: () => { items: ResponseItem[] };
+    };
+    if (typeof sess.firePostTurnHooks === 'function') {
+      const historyItems =
+        typeof sess.getConversationHistory === 'function'
+          ? sess.getConversationHistory().items
+          : [];
+      const sessionId =
+        typeof sess.getSessionId === 'function' ? sess.getSessionId() : '';
+      await sess.firePostTurnHooks({
+        sessionId,
+        history: historyItems,
+        committedDelta: itemsToRecord,
+        totalTokenUsage,
+        lastTurnHadToolCalls: Boolean(turnResult.lastTurnHadToolCalls),
+      });
+    }
+
     // Extract last assistant message from recorded items
     const lastAgentMessage = this.getLastAssistantMessageFromTurn(itemsToRecord);
 
     // Check token limits
     const contextWindow = this.turnContext.getModelContextWindow();
+    const autoCompactLimit = this.turnContext.getAutoCompactTokenLimit?.();
     const tokenLimitReached = Boolean(
       totalTokenUsage &&
-      contextWindow &&
-      totalTokenUsage.total_tokens >= contextWindow * TaskRunner.COMPACTION_THRESHOLD
+      shouldAutoCompactTokens(totalTokenUsage.total_tokens, contextWindow, autoCompactLimit)
     );
 
     return {
@@ -718,14 +895,15 @@ export class TaskRunner {
     const toolsConfig = this.turnContext.getToolsConfig();
     const toolCount = Object.values(toolsConfig).filter(Boolean).length;
     const estimatedTokens = estimateRequestTokens(turnInput, instructionsLength, toolCount);
-    const threshold = contextWindow * TaskRunner.COMPACTION_THRESHOLD;
+    const autoCompactLimit = this.turnContext.getAutoCompactTokenLimit?.();
+    const threshold = getAutoCompactTokenLimit(contextWindow, autoCompactLimit);
 
-    if (estimatedTokens >= threshold) {
+    if (typeof threshold === 'number' && estimatedTokens >= threshold) {
       console.debug('[TaskRunner] Pre-request compaction check', {
         estimatedTokens,
         contextWindow,
         thresholdTokens: threshold,
-        thresholdRatio: TaskRunner.COMPACTION_THRESHOLD,
+        thresholdRatio: getAutoCompactRatio(contextWindow, autoCompactLimit),
       });
       return true;
     }
@@ -737,7 +915,7 @@ export class TaskRunner {
    * Attempt automatic compaction when token limit is reached
    */
   private async attemptAutoCompact(turnIndex: number, usage?: TokenUsage): Promise<boolean> {
-    const usageNote = usage ? ` (tokens: ${usage.total_tokens}/${this.state.tokenUsage.max})` : '';
+    const usageNote = usage ? ` (tokens: ${usage.total_tokens}/${this.state.tokenBudget.max})` : '';
 
     try {
       // Get model client for LLM-based summarization
@@ -751,7 +929,7 @@ export class TaskRunner {
       // FR-009: Invalidate cached token state after successful compaction
       // Update state to reflect post-compaction token count
       if (result.success) {
-        this.state.tokenUsage.used = result.tokensAfter;
+        this.state.tokenBudget.used = result.tokensAfter;
         console.debug('[TaskRunner] Token state invalidated after compaction', {
           before: result.tokensBefore,
           after: result.tokensAfter,
@@ -832,6 +1010,72 @@ export class TaskRunner {
     });
   }
 
+  // ── Track 04: chunk emission helpers ─────────────────────────────────
+
+  /**
+   * Append a structured event chunk (turn boundary, compaction, complete)
+   * to the task's output stream. No-op if no TaskOutputStore is configured.
+   */
+  private async appendTaskOutputEvent(payload: Record<string, unknown>): Promise<void> {
+    const store = this.options.taskOutputStore;
+    const taskId = this.options.taskId;
+    if (!store || !taskId) return;
+    try {
+      const fromSeq = await store.getLastSeq(taskId);
+      await store.appendChunk(taskId, 'event', JSON.stringify(payload));
+      await this.emitTaskOutputDelta(taskId, fromSeq, await store.getLastSeq(taskId), 'event');
+    } catch (err) {
+      console.warn(`[TaskRunner] appendChunk(event) failed for ${taskId}:`, err);
+    }
+  }
+
+  /** Append a single chunk of a specific kind. */
+  private async appendTaskOutputChunk(
+    kind: 'stdout' | 'stderr' | 'event' | 'message',
+    data: string,
+  ): Promise<void> {
+    const store = this.options.taskOutputStore;
+    const taskId = this.options.taskId;
+    if (!store || !taskId || data.length === 0) return;
+    try {
+      const fromSeq = await store.getLastSeq(taskId);
+      await store.appendChunk(taskId, kind, data);
+      await this.emitTaskOutputDelta(taskId, fromSeq, await store.getLastSeq(taskId), kind);
+    } catch (err) {
+      console.warn(`[TaskRunner] appendChunk(${kind}) failed for ${taskId}:`, err);
+    }
+  }
+
+  private async emitTaskOutputDelta(
+    taskId: string,
+    fromSeq: number,
+    toSeq: number,
+    kind: 'stdout' | 'stderr' | 'event' | 'message',
+  ): Promise<void> {
+    if (toSeq <= fromSeq) return;
+    await this.emitEvent({
+      type: 'BackgroundTaskOutputDelta',
+      data: {
+        taskId,
+        fromSeq,
+        toSeq,
+        kindCounts: { [kind]: toSeq - fromSeq },
+      },
+    });
+  }
+
+  /** Drain pending writes in the in-memory queue. */
+  private async flushTaskOutput(): Promise<void> {
+    const store = this.options.taskOutputStore;
+    const taskId = this.options.taskId;
+    if (!store || !taskId) return;
+    try {
+      await store.flush(taskId);
+    } catch (err) {
+      console.warn(`[TaskRunner] flush failed for ${taskId}:`, err);
+    }
+  }
+
   /**
    * Get task status for a submission
    */
@@ -851,9 +1095,12 @@ export class TaskRunner {
    */
   getTokenUsage(_submissionId: string): { used: number; max: number; compactionThreshold: number } {
     return {
-      used: this.state.tokenUsage.used,
-      max: this.state.tokenUsage.max,
-      compactionThreshold: TaskRunner.COMPACTION_THRESHOLD,
+      used: this.state.tokenBudget.used,
+      max: this.state.tokenBudget.max,
+      compactionThreshold: getAutoCompactRatio(
+        this.turnContext.getModelContextWindow(),
+        this.turnContext.getAutoCompactTokenLimit?.(),
+      ),
     };
   }
 }

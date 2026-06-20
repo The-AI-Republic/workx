@@ -23,7 +23,7 @@ function log(message, color = colors.reset) {
 
 function build() {
   try {
-    log('\n🔨 Building Browserx Chrome Extension...', colors.yellow);
+    log('\n🔨 Building WorkX Chrome Extension...', colors.yellow);
     
     // Clean dist directory
     const distPath = path.join(__dirname, '..', 'dist');
@@ -45,6 +45,12 @@ function build() {
     const manifestSrc = path.join(__dirname, '..', 'manifest.json');
     const manifestDest = path.join(distPath, 'manifest.json');
     fs.copyFileSync(manifestSrc, manifestDest);
+
+    // Track 20: Chrome managed_storage schema (admin enterprise policy channel)
+    const managedSchemaSrc = path.join(__dirname, '..', 'managed-schema.json');
+    if (fs.existsSync(managedSchemaSrc)) {
+      fs.copyFileSync(managedSchemaSrc, path.join(distPath, 'managed-schema.json'));
+    }
 
     // Copy and fix HTML files
     log('\n📄 Copying and fixing HTML files...', colors.yellow);

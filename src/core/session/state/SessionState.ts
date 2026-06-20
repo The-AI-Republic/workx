@@ -19,6 +19,11 @@ export interface SessionStateExport {
   compactionCount?: number;
   lastCompactionTime?: number;
   lastCompactionTokensSaved?: number;
+  // Track 18: cumulative USD cost (restored on resume; a Track-15 fork
+  // starts a fresh accumulator because a fork is seeded from sliced rollout
+  // items, not this export).
+  cumulativeCostUSD?: number;
+  hasUnknownModelCost?: boolean;
 }
 
 /**
@@ -51,6 +56,12 @@ export class SessionState {
   /** Tokens saved in last compaction */
   private lastCompactionTokensSaved?: number;
 
+  /** Track 18: cumulative USD cost for this session (live total). */
+  private cumulativeCostUSD: number;
+
+  /** Track 18: true if any cost was priced via the fallback rate. */
+  private hasUnknownModelCost: boolean;
+
   constructor() {
     this.approvedCommands = new Set();
     this.history = [];
@@ -60,6 +71,8 @@ export class SessionState {
     this.compactionCount = 0;
     this.lastCompactionTime = undefined;
     this.lastCompactionTokensSaved = undefined;
+    this.cumulativeCostUSD = 0;
+    this.hasUnknownModelCost = false;
   }
 
   // ===== History Management =====
@@ -168,6 +181,44 @@ export class SessionState {
    */
   updateRateLimits(limits: RateLimitSnapshot): void {
     this.latestRateLimits = { ...limits };
+  }
+
+  /**
+   * Track 12: read back the latest stored rate-limit snapshot. Shared
+   * prerequisite for Tracks 12/18/25 — previously absent, which is why
+   * `Session.sendTokenCountEvent` hardcoded `rateLimits = undefined`.
+   * @returns the latest snapshot, or undefined if none recorded yet.
+   */
+  getRateLimits(): RateLimitSnapshot | undefined {
+    return this.latestRateLimits ? { ...this.latestRateLimits } : undefined;
+  }
+
+  // ===== Cost Tracking (Track 18) =====
+
+  /**
+   * Fold a task's USD cost into the cumulative session total. Called once
+   * per task at the single persist seam (TaskRunner.persistTokenUsage), so
+   * there is no double-count and no parallel path.
+   * @param usd USD cost for the task (>= 0)
+   * @param estimated true if priced via the fallback rate (unknown model)
+   */
+  addCost(usd: number, estimated: boolean): void {
+    if (Number.isFinite(usd) && usd > 0) {
+      this.cumulativeCostUSD += usd;
+    }
+    if (estimated) {
+      this.hasUnknownModelCost = true;
+    }
+  }
+
+  /**
+   * @returns cumulative USD cost and whether any of it is estimated.
+   */
+  getCostInfo(): { cumulativeCostUSD: number; hasUnknownModelCost: boolean } {
+    return {
+      cumulativeCostUSD: this.cumulativeCostUSD,
+      hasUnknownModelCost: this.hasUnknownModelCost,
+    };
   }
 
   // ===== Approved Commands =====
@@ -283,6 +334,8 @@ export class SessionState {
       compactionCount: this.compactionCount,
       lastCompactionTime: this.lastCompactionTime,
       lastCompactionTokensSaved: this.lastCompactionTokensSaved,
+      cumulativeCostUSD: this.cumulativeCostUSD,
+      hasUnknownModelCost: this.hasUnknownModelCost,
     };
   }
 
@@ -328,6 +381,16 @@ export class SessionState {
     }
     if (data.lastCompactionTokensSaved !== undefined) {
       state.lastCompactionTokensSaved = data.lastCompactionTokensSaved;
+    }
+
+    // Track 18: restore cumulative cost on resume (same session). A
+    // Track-15 fork does not call import() from this export, so a fork
+    // correctly starts a fresh accumulator.
+    if (data.cumulativeCostUSD !== undefined) {
+      state.cumulativeCostUSD = data.cumulativeCostUSD;
+    }
+    if (data.hasUnknownModelCost !== undefined) {
+      state.hasUnknownModelCost = data.hasUnknownModelCost;
     }
 
     return state;

@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "業務タスク向けの汎用ブラウザ内 AI エージェント"
@@ -177,7 +177,7 @@
     "message": "常にライト"
   },
   "Apple_Pi_Your_personal_AI_Alpha": {
-    "message": "Apple Pi: あなたのパーソナルAI (Alpha)"
+    "message": "WorkX: あなたのパーソナルAI (Alpha)"
   },
   "Approval_Safety": {
     "message": "承認と安全性"
@@ -219,8 +219,8 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "任意のウェブページからBrowserxに構造化データを抽出させる"
+  "Ask_WorkX_to_extract_structured_data__88fc": {
+    "message": "任意のウェブページからWorkXに構造化データを抽出させる"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "中リスク以上（リスク > 30）を確認します。ほとんどのユーザーに推奨。"
@@ -309,14 +309,11 @@
   "Browser_automation_tool_toggles": {
     "message": "ブラウザ自動化ツールの切替"
   },
-  "BrowserX": {
-    "message": "BrowserX"
+  "WorkX": {
+    "message": "WorkX"
   },
-  "Browserx": {
-    "message": "Browserx"
-  },
-  "Browserx_Alpha": {
-    "message": "Browserx（Alpha）"
+  "WorkX_Alpha": {
+    "message": "WorkX（Alpha）"
   },
   "CWD": {
     "message": "CWD："
@@ -385,8 +382,8 @@
   "Clear_search": {
     "message": "検索をクリア"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "ツールバーのBrowserxアイコンをクリックするか、Alt+Shift+C を押してください"
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
+    "message": "ツールバーのWorkXアイコンをクリックするか、Alt+Shift+C を押してください"
   },
   "Click_to_cancel_login": {
     "message": "クリックしてログインをキャンセル"
@@ -676,8 +673,8 @@
   "Enable_PIN_Protection": {
     "message": "PIN 保護を有効にする"
   },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": "browserx 起動時に自動接続を有効にする"
+  "Enable_auto_connect_when_workx_starts": {
+    "message": "WorkX 起動時に自動接続を有効にする"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "頻繁にアクセスされるデータを保存し、パフォーマンスを向上させるにはキャッシュを有効化"
@@ -733,8 +730,8 @@
   "Explain_this_info_selectionText": {
     "message": "これを説明してください: ${info.selectionText}"
   },
-  "Explain_with_Browserx": {
-    "message": "Browserx で説明"
+  "Explain_with_WorkX": {
+    "message": "WorkX で説明"
   },
   "Export": {
     "message": "エクスポート"
@@ -760,8 +757,8 @@
   "Extract_Data": {
     "message": "データ抽出:"
   },
-  "Extract_data_with_Browserx": {
-    "message": "Browserxでデータを抽出"
+  "Extract_data_with_WorkX": {
+    "message": "WorkXでデータを抽出"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "ページから特定のデータパターンを抽出"
@@ -955,8 +952,8 @@
   "Improve_this_text_info_selectionText": {
     "message": "このテキストを改善: ${info.selectionText}"
   },
-  "Improve_with_Browserx": {
-    "message": "Browserx で改善"
+  "Improve_with_WorkX": {
+    "message": "WorkX で改善"
   },
   "In": {
     "message": "入力:"
@@ -2041,8 +2038,8 @@
   "Web_Search": {
     "message": "Web検索"
   },
-  "Welcome_to_Browserx": {
-    "message": "Browserxへようこそ"
+  "Welcome_to_WorkX": {
+    "message": "WorkXへようこそ"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "サンドボックス化されたコマンドがネットワークにアクセスできるかどうか"
@@ -2092,8 +2089,8 @@
   "available": {
     "message": "利用可能"
   },
-  "browserx": {
-    "message": "browserx"
+  "workx": {
+    "message": "WorkX"
   },
   "cached": {
     "message": "キャッシュ済み"

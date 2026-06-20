@@ -17,7 +17,11 @@ import { SemanticElementEnhancer } from '../approval/enhancers/SemanticElementEn
 import { ApprovalConfigStorage } from '../approval/ApprovalConfigStorage';
 import { getConfigStorage } from '../storage/ConfigStorageProvider';
 import { getChannelManager } from '../channels/ChannelManager';
+import { withTelemetry } from '../telemetry/TelemetryBridge';
 import { TabManager } from '../TabManager';
+import { createSessionServices } from '../session/state/SessionServices';
+import { SessionCacheManager } from '../../storage/SessionCacheManager';
+import { IndexedDBAdapter } from '../../storage/IndexedDBAdapter';
 import type { InitialHistory } from '../session/state/types';
 import type {
   SessionConfig,
@@ -140,20 +144,45 @@ export class AgentRegistry {
     // Allocate a session letter
     const letterIndex = this._allocateLetterIndex();
 
-    // Build InitialHistory if resume data is present
+    // Build InitialHistory if resume or fork data is present (Track 15:
+    // fork seeds a NEW conversation from a sliced rollout; source untouched).
     const initialHistory: InitialHistory | undefined = sessionConfig.resume
       ? { mode: 'resumed', sessionId: sessionConfig.resume.sessionId, rolloutItems: sessionConfig.resume.rolloutItems }
+      : sessionConfig.fork
+      ? { mode: 'forked', rolloutItems: sessionConfig.fork.rolloutItems, sourceConversationId: sessionConfig.fork.sourceConversationId }
       : undefined;
 
     // T057: Wrap agent creation in try-catch for graceful error handling
     let agent: RepublicAgent;
     try {
       if (this._registryConfig.agentFactory) {
-        // Server/Desktop path: use provided factory for agent creation
+        // Server/Desktop path: use provided factory for agent creation.
+        // The factory owns sub-agent registration + plugin binding
+        // internally (see ServerAgentBootstrap), so onAgentCreated
+        // is invoked with a null runner here for contract symmetry only —
+        // those platforms don't set the callback.
         agent = await this._registryConfig.agentFactory(this._config, initialHistory);
+        if (this._registryConfig.onAgentCreated) {
+          try {
+            await this._registryConfig.onAgentCreated(agent, { subAgentRunner: null });
+          } catch (cbErr) {
+            console.warn('[AgentRegistry] onAgentCreated callback failed (non-fatal):', cbErr);
+          }
+        }
       } else {
-        // Extension path: create agent and wire events through ChannelManager
-        agent = new RepublicAgent(this._config, initialHistory, undefined, new UserNotifier());
+        // Extension path: create agent and wire events through ChannelManager.
+        // Use a fresh adapter per agent so RepublicAgent.cleanup()'s dispose()
+        // call cannot poison other sessions' shared adapter. ExtensionPlatformAdapter
+        // is cheap to construct (TabManager is a singleton, retrieved on init),
+        // so per-session instances are inexpensive and remove the cross-session
+        // dispose hazard if/when dispose() grows real cleanup logic.
+        const { ExtensionPlatformAdapter } = await import('../../extension/platform/ExtensionPlatformAdapter');
+        const platformAdapter = new ExtensionPlatformAdapter();
+        await platformAdapter.initialize();
+        const services = await createSessionServices({
+          sessionCache: new SessionCacheManager(new IndexedDBAdapter()),
+        }, false);
+        agent = new RepublicAgent(this._config, platformAdapter, initialHistory, undefined, new UserNotifier(), services);
         await agent.initialize();
 
         // Configure extension-specific approval gate
@@ -163,6 +192,8 @@ export class AgentRegistry {
         const approvalGate = new ApprovalGate(approvalManager, policyEngine);
         approvalGate.addEnhancer(new DomainSensitivityEnhancer());
         approvalGate.addEnhancer(new SemanticElementEnhancer());
+        // Wire hook dispatcher so PermissionRequest/PermissionDenied hooks fire
+        approvalGate.setHookDispatcher(agent.getHookDispatcher());
         const configStorage = new ApprovalConfigStorage(() => getConfigStorage());
         approvalGate.setConfigStorage(configStorage);
         try {
@@ -174,6 +205,58 @@ export class AgentRegistry {
           console.warn('[AgentRegistry] Failed to load approval config, using defaults:', error);
         }
         toolRegistry.setApprovalGate(approvalGate);
+
+        // Track 23: x402 capability on the real extension session path.
+        // The extension never holds a key and never auto-pays; the capability
+        // only surfaces HTTP 402 requirements through resource_fetch.
+        try {
+          const { createPaymentCapability, NoopSigner, getX402Config, isX402Enabled } =
+            await import('@/core/payments/x402');
+          toolRegistry.setPaymentCapability(
+            createPaymentCapability({
+              platform: 'extension',
+              isEnabled: isX402Enabled,
+              getCaps: async () => {
+                const c = await getX402Config();
+                return {
+                  network: c.network,
+                  maxPaymentPerRequestUSD: c.maxPaymentPerRequestUSD,
+                  maxSessionSpendUSD: c.maxSessionSpendUSD,
+                };
+              },
+              signer: new NoopSigner(),
+              audit: (level, message, data) => {
+                const fn =
+                  level === 'warn' ? console.warn : level === 'error' ? console.error : console.log;
+                fn(`[x402] ${message}`, data ?? '');
+              },
+            }),
+          );
+        } catch (error) {
+          console.warn('[AgentRegistry] x402 capability wiring failed (non-fatal):', error);
+        }
+
+        // Register sub-agent tool on extension path
+        const engine = agent.getEngine();
+        let subAgentRunner: import('../../tools/AgentTool/SubAgentRunner').SubAgentRunner | null = null;
+        if (engine) {
+          try {
+            const { registerSubAgentTool } = await import('@/tools/AgentTool/register');
+            subAgentRunner = await registerSubAgentTool(engine);
+          } catch (err) {
+            console.warn('[AgentRegistry] sub_agent tool registration failed (non-fatal):', err);
+          }
+        }
+
+        // Track 10: let the platform bootstrap bind per-session plugin
+        // contributions (hooks + sub-agent types). Non-fatal.
+        if (this._registryConfig.onAgentCreated) {
+          try {
+            await this._registryConfig.onAgentCreated(agent, { subAgentRunner });
+          } catch (cbErr) {
+            console.warn('[AgentRegistry] onAgentCreated callback failed (non-fatal):', cbErr);
+          }
+        }
       }
     } catch (initError) {
       // Agent initialization failed - clean up and emit error event
@@ -204,16 +287,21 @@ export class AgentRegistry {
       session.setStorage(this._storage);
     }
 
-    // Wire event dispatcher with the unified sessionId
+    // Wire event dispatcher with the unified sessionId.
+    // Decorate with the telemetry bridge: it observes the per-session event
+    // chokepoint (allowlist-only, privacy-typed, no-op until a sink+gate are
+    // wired) and ALWAYS forwards to the real dispatcher. Zero Track-01 change.
     if (this._registryConfig.eventDispatcherFactory) {
-      agent.setEventDispatcher(this._registryConfig.eventDispatcherFactory(session.sessionId));
+      agent.setEventDispatcher(
+        withTelemetry(this._registryConfig.eventDispatcherFactory(session.sessionId)),
+      );
     } else {
       // Extension path: route events through ChannelManager
-      agent.setEventDispatcher((event) => {
+      agent.setEventDispatcher(withTelemetry((event) => {
         import('@/core/channels/ChannelManager').then(({ getChannelManager }) => {
           getChannelManager().broadcastEvent({ msg: event.msg, sessionId: session.sessionId }).catch(() => {});
         }).catch(() => {});
-      });
+      }));
     }
 
     // Attach agent to session
@@ -242,8 +330,10 @@ export class AgentRegistry {
     // Subscribe to session events and forward to registry listeners
     session.on((event) => this._emitEvent(event));
 
-    // If resuming, initialize the agent's session to replay history
-    if (sessionConfig.resume) {
+    // If resuming or forking, initialize the agent's session so history is
+    // reconstructed (and, for fork, persisted to the new rollout) before the
+    // session is marked ready (Track 15).
+    if (sessionConfig.resume || sessionConfig.fork) {
       await agent.getSession().initialize();
     }
 

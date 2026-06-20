@@ -21,7 +21,7 @@
   /* Chat Font */
   --font-chat: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 
-  /* BrowserX Semantic Colors — Light */
+  /* WorkX Semantic Colors — Light */
   --color-bx-primary: #4f46e5;
   --color-bx-secondary: #6366f1;
   --color-bx-bg: #ffffff;
@@ -33,7 +33,7 @@
   --color-bx-success: #10b981;
   --color-bx-warning: #f59e0b;
 
-  /* BrowserX Semantic Colors — Dark */
+  /* WorkX Semantic Colors — Dark */
   --color-bx-primary-dark: #6366f1;
   --color-bx-secondary-dark: #818cf8;
   --color-bx-bg-dark: #111827;

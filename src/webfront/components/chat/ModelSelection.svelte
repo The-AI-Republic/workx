@@ -8,10 +8,12 @@
   import { AgentConfig } from '@/config/AgentConfig';
   import { userStore } from '../../stores/userStore';
   import { uiTheme } from '../../stores/themeStore';
+  import { selectedModelKey as modelKeyStore } from '../../stores/modelStore';
   import Tooltip from '../common/Tooltip.svelte';
   import PopupCard from '../common/PopupCard.svelte';
   import { t, _t } from '../../lib/i18n';
   import { getInitializedUIClient } from '@/core/messaging';
+  import { registerShortcut, registerShortcutContext } from '../../shortcuts/useShortcut';
 
   let { onModelChanged }: {
     onModelChanged?: (value: { modelId: string; modelName: string }) => void;
@@ -20,10 +22,12 @@
   // State
   let isOpen = $state(false);
   let isLoading = $state(true);
-  let selectedModelKey = $state('');
-  let selectedModelName = $state('');
   let useOwnApiKey = $state(false);
   let currentTheme = $derived($uiTheme);
+
+  // Reactive selected model — backed by AgentConfig 'config-changed' events so
+  // changes made elsewhere (e.g. ModelSettings) are reflected here without a remount.
+  let selectedModelKey = $derived($modelKeyStore);
 
   // Model data
   interface ModelSelectionItem {
@@ -35,6 +39,11 @@
     supportBackendMode?: number;
   }
   let modelSelectionItems: ModelSelectionItem[] = $state([]);
+
+  // Derived name lookup — recomputes whenever selectedModelKey or modelSelectionItems change.
+  let selectedModelName = $derived(
+    modelSelectionItems.find((m) => m.modelId === selectedModelKey)?.modelName ?? ''
+  );
 
   // Subscribe to stores
   let isUserLoggedIn = $derived($userStore.isLoggedIn);
@@ -114,7 +123,6 @@
       const config = await AgentConfig.getInstance();
       const agentConfig = config.getConfig();
 
-      selectedModelKey = agentConfig.selectedModelKey;
       useOwnApiKey = agentConfig.preferences?.useOwnApiKey ?? false;
 
       // Build model selection array
@@ -141,24 +149,20 @@
 
       modelSelectionItems = tempModelItems;
 
-      // If no model is selected, default to the free user model
-      if (!selectedModelKey || selectedModelKey === '') {
+      // If no model is selected, fall back to the free user default (or first
+      // available). setSelectedModel fires a 'model' change event, which the
+      // modelStore picks up — selectedModelKey updates reactively.
+      const currentKey = agentConfig.selectedModelKey;
+      if (!currentKey || currentKey === '') {
         const freeUserDefault = modelSelectionItems.find(m => m.modelId === FREE_USER_DEFAULT_COMPOUND_KEY);
         if (freeUserDefault) {
-          selectedModelKey = FREE_USER_DEFAULT_COMPOUND_KEY;
-          await config.setSelectedModel(selectedModelKey);
-          console.log('[ModelSelection] Set default model to:', selectedModelKey);
+          await config.setSelectedModel(FREE_USER_DEFAULT_COMPOUND_KEY);
+          console.log('[ModelSelection] Set default model to:', FREE_USER_DEFAULT_COMPOUND_KEY);
         } else if (modelSelectionItems.length > 0) {
-          selectedModelKey = modelSelectionItems[0].modelId;
-          await config.setSelectedModel(selectedModelKey);
-          console.log('[ModelSelection] Free user default not found, using first model:', selectedModelKey);
+          const firstId = modelSelectionItems[0].modelId;
+          await config.setSelectedModel(firstId);
+          console.log('[ModelSelection] Free user default not found, using first model:', firstId);
         }
-      }
-
-      // Set the selected model name
-      const selectedItem = modelSelectionItems.find(m => m.modelId === selectedModelKey);
-      if (selectedItem) {
-        selectedModelName = selectedItem.modelName;
       }
     } catch (error) {
       console.error('[ModelSelection] Failed to load models:', error);
@@ -193,9 +197,8 @@
     try {
       const config = await AgentConfig.getInstance();
       await config.setSelectedModel(modelId);
+      // selectedModelKey / selectedModelName update reactively via modelStore
 
-      selectedModelKey = modelId;
-      selectedModelName = modelName;
       isOpen = false;
 
       // Notify backend of config update
@@ -207,14 +210,18 @@
     }
   }
 
-  function handleKeyDown(event: KeyboardEvent) {
-    if (event.key === 'Escape') {
+  $effect(() => {
+    const unregisterContext = registerShortcutContext('ModelPicker', { active: () => isOpen });
+    const unregisterDismiss = registerShortcut('modelPicker:dismiss', 'ModelPicker', () => {
       isOpen = false;
-    }
-  }
-</script>
+    });
 
-<svelte:window onkeydown={handleKeyDown} />
+    return () => {
+      unregisterContext();
+      unregisterDismiss();
+    };
+  });
+</script>
 
 <div class="relative inline-flex">
   <PopupCard title="" show={isOpen} onClose={closeDropdown}>

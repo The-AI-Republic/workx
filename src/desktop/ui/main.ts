@@ -5,7 +5,7 @@
  * with desktop-specific styling and initialization.
  *
  * Architecture:
- * 1. Initialize agent bootstrap (RepublicAgent + TauriChannel + ChannelManager)
+ * 1. Start the Rust-supervised desktop runtime sidecar through the relay transport
  * 2. Initialize desktop services (tray, hotkeys)
  * 3. Mount the UI app
  *
@@ -14,21 +14,18 @@
 
 // IMPORTANT: Install polyfills FIRST before any other imports
 // Chrome polyfill: compatibility for components that use chrome.* directly
-// Fetch proxy: routes external HTTP through Rust to bypass CORS
 import { installChromePolyfill } from '../polyfills/chromePolyfill';
-import { installFetchProxy } from '../polyfills/fetchProxy';
 installChromePolyfill();
-installFetchProxy();
 
 import './desktop.css';
 import '../../webfront/styles.css';
 import { mount } from 'svelte';
 import App from '../../webfront/App.svelte';
 import { initializeDesktop } from '../main';
-import { initializeDesktopAgent } from '../agent/DesktopAgentBootstrap';
+import { getInitializedUIClient } from '@/core/messaging';
 import { initLocale } from '../../webfront/lib/i18n';
 import { AgentConfig } from '@/config/AgentConfig';
-import { initializeConfigStorage, initializeCredentialStore } from '@/core/storage';
+import { initializeConfigStorage } from '@/core/storage';
 
 // Add desktop-mode and terminal-mode classes to body
 document.body.classList.add('desktop-mode', 'terminal-mode');
@@ -48,22 +45,62 @@ async function init() {
     // Continue - will fall back to in-memory storage
   }
 
-  // 0.5. Initialize credential store (for secure API key storage)
+  // 1. Subscribe to runtime lifecycle events before starting the sidecar so
+  // the very first `runtime:ready` / `runtime:reconnecting` event flips the
+  // UI status indicator (no race with relay startup).
   try {
-    await initializeCredentialStore();
-    console.log('[Desktop] Credential store initialized');
+    const { initializeRuntimeStatusStore } = await import('@/webfront/stores/runtimeStatusStore');
+    await initializeRuntimeStatusStore();
   } catch (error) {
-    console.warn('[Desktop] Failed to initialize credential store:', error);
+    console.warn('[Desktop] Runtime status store not initialized:', error);
   }
 
-  // 1. Initialize the agent bootstrap first
-  // This creates RepublicAgent + TauriChannel + ChannelManager
+  // 1a. Start the sidecar runtime relay. The relay transport asks Rust to
+  // supervise the Node runtime and routes all agent/channel traffic through it.
   try {
-    await initializeDesktopAgent();
-    console.log('[Desktop] Agent bootstrap initialized');
+    await getInitializedUIClient();
+    console.log('[Desktop] Sidecar runtime relay initialized');
   } catch (error) {
-    console.error('[Desktop] Failed to initialize agent bootstrap:', error);
-    // Continue anyway - the app will show error state
+    console.error('[Desktop] Failed to initialize sidecar runtime relay:', error);
+    // Continue anyway - the app will show connection/error state
+  }
+
+  // 1b. Route deeplinks from Rust to runtime services. The Rust supervisor
+  // emits every `workx://...` URL as an `workx-deeplink` event; the WebView
+  // is the only listener — it parses and routes by path.
+  try {
+    const { listen } = await import('@tauri-apps/api/event');
+    const maxConsumedSchedulerDeeplinks = 128;
+    const consumedSchedulerDeeplinks = new Set<string>();
+    await listen<string>('workx-deeplink', async (event) => {
+      try {
+        const url = new URL(event.payload);
+        if (url.host === 'scheduler' && url.pathname === '/trigger') {
+          const dedupeKey = url.toString();
+          if (consumedSchedulerDeeplinks.has(dedupeKey)) return;
+          consumedSchedulerDeeplinks.add(dedupeKey);
+          if (consumedSchedulerDeeplinks.size > maxConsumedSchedulerDeeplinks) {
+            const oldest = consumedSchedulerDeeplinks.values().next().value;
+            if (oldest) consumedSchedulerDeeplinks.delete(oldest);
+          }
+          const jobId = url.searchParams.get('jobId');
+          if (!jobId) {
+            console.warn('[Desktop] Scheduler deeplink missing jobId:', event.payload);
+            return;
+          }
+          const client = await getInitializedUIClient();
+          await client.serviceRequest('scheduler.trigger', { jobId });
+          console.log(`[Desktop] Scheduler deeplink routed to runtime for job ${jobId}`);
+        }
+        // /auth/callback deeplinks are handled by UserLoginStatus.svelte's
+        // own listener (it's the one expecting the login completion); routing
+        // here would race that listener.
+      } catch (err) {
+        console.warn('[Desktop] Failed to route deeplink:', err);
+      }
+    });
+  } catch (error) {
+    console.warn('[Desktop] Deeplink router not registered:', error);
   }
 
   // 2. Initialize desktop services (tray, hotkeys)
@@ -92,7 +129,7 @@ async function init() {
   console.log('[Desktop] App mounted');
 
   // Listen for focus input events from hotkeys
-  window.addEventListener('applepi:focus-input', () => {
+  window.addEventListener('workx:focus-input', () => {
     const inputElement = document.querySelector('textarea, input[type="text"]');
     if (inputElement instanceof HTMLElement) {
       inputElement.focus();
@@ -100,7 +137,7 @@ async function init() {
   });
 
   // Listen for quick action events from hotkeys
-  window.addEventListener('applepi:quick-action', () => {
+  window.addEventListener('workx:quick-action', () => {
     console.log('[Desktop] Quick action requested');
   });
 

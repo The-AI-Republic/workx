@@ -80,6 +80,8 @@ export const CACHE_CONSTANTS = {
   SESSION_EVICTION_PERCENTAGE: 0.5
 } as const;
 
+const AUTO_EVICTION_PROTECTED_KINDS = new Set(['tool_result']);
+
 /**
  * Error types
  */
@@ -412,17 +414,20 @@ export class SessionCacheManager {
     const evictionPercentage = config.sessionEvictionPercentage;
 
     // Get all items for session, sorted by timestamp (oldest first)
-    const entries = await this.dbAdapter.queryByIndex<SessionCacheEntry>(
+    const entries = (await this.dbAdapter.queryByIndex<SessionCacheEntry>(
       STORE_NAMES.CACHE_ITEMS,
       INDEX_NAMES.BY_SESSION,
       sessionId
-    );
+    )).filter(entry => !AUTO_EVICTION_PROTECTED_KINDS.has(entry.customMetadata?.kind));
 
     entries.sort((a, b) => a.timestamp - b.timestamp);
 
     // Calculate number of items to evict
     const evictCount = Math.ceil(entries.length * evictionPercentage);
     const itemsToEvict = entries.slice(0, evictCount);
+    if (itemsToEvict.length === 0) {
+      return;
+    }
 
     // Delete evicted items
     const keys = itemsToEvict.map(e => e.storageKey);
@@ -431,6 +436,52 @@ export class SessionCacheManager {
     // Update session metadata
     const evictedSize = itemsToEvict.reduce((sum, e) => sum + e.dataSize, 0);
     await this.updateSessionMetadata(sessionId, -evictedSize, -evictCount);
+  }
+
+  /**
+   * Production quota-pressure eviction across cache_items.
+   * Evicts ordinary cache entries oldest-first until targetBytes is reached.
+   * System-managed persisted tool-result blobs are protected because rollout
+   * history may hold read-back pointers to them.
+   */
+  async evictOldestCacheItems(targetBytes: number): Promise<number> {
+    await this.initialize();
+    if (targetBytes <= 0) return 0;
+
+    const entries = (await this.dbAdapter.getAll<SessionCacheEntry>(
+      STORE_NAMES.CACHE_ITEMS,
+    )).filter(entry => !AUTO_EVICTION_PROTECTED_KINDS.has(entry.customMetadata?.kind));
+
+    entries.sort((a, b) => a.timestamp - b.timestamp);
+
+    const toDelete: SessionCacheEntry[] = [];
+    let freed = 0;
+    for (const entry of entries) {
+      if (freed >= targetBytes) break;
+      toDelete.push(entry);
+      freed += entry.dataSize;
+    }
+
+    if (toDelete.length === 0) return 0;
+
+    await this.dbAdapter.batchDelete(
+      STORE_NAMES.CACHE_ITEMS,
+      toDelete.map(entry => entry.storageKey),
+    );
+
+    const sessionSizeMap = new Map<string, { size: number; count: number }>();
+    for (const entry of toDelete) {
+      const existing = sessionSizeMap.get(entry.sessionId) ?? { size: 0, count: 0 };
+      sessionSizeMap.set(entry.sessionId, {
+        size: existing.size + entry.dataSize,
+        count: existing.count + 1,
+      });
+    }
+    for (const [sessionId, { size, count }] of sessionSizeMap) {
+      await this.updateSessionMetadata(sessionId, -size, -count);
+    }
+
+    return freed;
   }
 
   /**

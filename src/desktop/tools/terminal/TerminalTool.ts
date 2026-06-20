@@ -8,7 +8,7 @@
  * @module desktop/tools/terminal/TerminalTool
  */
 
-import { invoke } from '@tauri-apps/api/core';
+import { exec as execCommand, type ExecException } from 'node:child_process';
 import { SecurityFilter, type SecurityConfig, type FilterResult } from './SecurityFilter';
 import {
   SandboxManager,
@@ -161,24 +161,26 @@ export class TerminalTool {
 
     // Resolve sandbox mode
     const sandboxConfig = this.sandboxManager.getSandboxConfig(opts.sandboxed);
+    if (sandboxConfig.sandboxed && !this.sandboxManager.isAvailable()) {
+      return {
+        success: false,
+        exitCode: -1,
+        stdout: '',
+        stderr: '',
+        executionTimeMs: Date.now() - startTime,
+        error: this.sandboxManager.status?.message ?? 'Sandboxed terminal execution is unavailable',
+        sandboxed: false,
+      };
+    }
 
     try {
-      const result = await invoke<{
-        exitCode: number;
-        stdout: string;
-        stderr: string;
-        sandboxed: boolean;
-      }>('terminal_execute', {
+      const result = await this.executeInRuntime({
         command,
         cwd: opts.cwd || this.defaultCwd,
         env: opts.env,
         timeout: opts.timeout,
         captureStdout: opts.captureStdout,
         captureStderr: opts.captureStderr,
-        sandboxed: sandboxConfig.sandboxed,
-        workspaceAccess: sandboxConfig.workspaceAccess,
-        networkMode: sandboxConfig.networkMode,
-        bindMounts: sandboxConfig.bindMounts,
       });
 
       return {
@@ -200,6 +202,38 @@ export class TerminalTool {
         sandboxed: false,
       };
     }
+  }
+
+  private executeInRuntime(options: {
+    command: string;
+    cwd?: string | null;
+    env?: Record<string, string>;
+    timeout?: number;
+    captureStdout?: boolean;
+    captureStderr?: boolean;
+  }): Promise<{ exitCode: number; stdout: string; stderr: string; sandboxed: boolean }> {
+    return new Promise((resolve) => {
+      execCommand(
+        options.command,
+        {
+          cwd: options.cwd ?? undefined,
+          env: options.env ? { ...process.env, ...options.env } : process.env,
+          timeout: options.timeout,
+          maxBuffer: 10 * 1024 * 1024,
+          encoding: 'utf8',
+        },
+        (error: ExecException | null, stdout, stderr) => {
+          const exitCode = typeof error?.code === 'number' ? error.code : error ? -1 : 0;
+          const timeoutMessage = error?.signal === 'SIGTERM' ? 'Command timed out or was terminated' : '';
+          resolve({
+            exitCode,
+            stdout: options.captureStdout === false ? '' : stdout,
+            stderr: options.captureStderr === false ? '' : [stderr, timeoutMessage].filter(Boolean).join('\n'),
+            sandboxed: false,
+          });
+        },
+      );
+    });
   }
 
   /**

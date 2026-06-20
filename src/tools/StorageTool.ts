@@ -18,6 +18,7 @@ import {
   CorruptedDataError as SessionCorruptedDataError,
   CACHE_CONSTANTS
 } from '../storage/SessionCacheManager';
+import { CACHE_TOOL_RESULT_KIND } from './resultStore';
 
 // ============================================================================
 // Cache Tool API Types (Tool Definition Data Structures)
@@ -616,6 +617,12 @@ export class StorageTool extends BaseTool {
         );
       }
 
+      const item = await this.cacheManager.read(request.storageKey);
+      const protectedError = this.createToolResultMutationError(request.storageKey, item.customMetadata);
+      if (protectedError) {
+        return protectedError;
+      }
+
       // Call SessionCacheManager.delete()
       const deleted = await this.cacheManager.delete(request.storageKey);
 
@@ -665,6 +672,12 @@ export class StorageTool extends BaseTool {
         );
       }
 
+      const item = await this.cacheManager.read(request.storageKey);
+      const protectedError = this.createToolResultMutationError(request.storageKey, item.customMetadata);
+      if (protectedError) {
+        return protectedError;
+      }
+
       // Call SessionCacheManager.update()
       const metadata = await this.cacheManager.update(
         request.storageKey,
@@ -686,6 +699,21 @@ export class StorageTool extends BaseTool {
   // ============================================================================
   // Error Handling
   // ============================================================================
+
+  private createToolResultMutationError(
+    storageKey: string,
+    customMetadata?: Record<string, any>
+  ): CacheErrorResponse | null {
+    if (customMetadata?.kind !== CACHE_TOOL_RESULT_KIND) {
+      return null;
+    }
+
+    return this.createErrorResponse(
+      CacheErrorType.VALIDATION_ERROR,
+      `Item "${storageKey}" is a system-managed persisted tool result and cannot be deleted or updated through cache_storage_tool`,
+      { storageKey, kind: CACHE_TOOL_RESULT_KIND }
+    );
+  }
 
   /**
    * Convert SessionCacheManager errors to CacheErrorResponse

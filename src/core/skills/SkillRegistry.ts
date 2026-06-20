@@ -1,9 +1,17 @@
 import type { ISkillProvider } from './SkillProvider';
 import type { Skill, SkillMeta, InvocationMode } from './types';
-import { substituteVariables, validateSkill, parseSkillMd } from './SkillParser';
+import { substituteVariables, validateSkill, parseSkillMd, normalizeFrontmatter, projectMeta } from './SkillParser';
+import type { SkillDomainFilter } from './SkillDomainFilter';
+import type { SkillValidationContext } from './SkillParser';
 
 /** Built-in command names that skills cannot use */
-const RESERVED_COMMAND_NAMES = new Set(['new', 'help', 'settings']);
+const RESERVED_COMMAND_NAMES = new Set([
+  'new',
+  'help',
+  'settings',
+  'plugin',
+  'doctor',
+]);
 
 /**
  * Central coordinator for skill lifecycle.
@@ -12,9 +20,29 @@ const RESERVED_COMMAND_NAMES = new Set(['new', 'help', 'settings']);
 export class SkillRegistry {
   private metas: SkillMeta[] = [];
   private provider: ISkillProvider;
+  private domainFilter: SkillDomainFilter | null = null;
+  private getValidationContext?: () => SkillValidationContext | undefined;
 
-  constructor(provider: ISkillProvider) {
+  constructor(
+    provider: ISkillProvider,
+    domainFilter?: SkillDomainFilter,
+    getValidationContext?: () => SkillValidationContext | undefined,
+  ) {
     this.provider = provider;
+    this.domainFilter = domainFilter ?? null;
+    this.getValidationContext = getValidationContext;
+  }
+
+  setValidationContextProvider(
+    getValidationContext: (() => SkillValidationContext | undefined) | undefined,
+  ): void {
+    this.getValidationContext = getValidationContext;
+  }
+
+  /** Track 03 Phase 3 — attach a domain filter (or replace one) post-construction. */
+  setDomainFilter(filter: SkillDomainFilter | null): void {
+    this.domainFilter = filter;
+    if (filter) filter.init(this.metas);
   }
 
   // ── Discovery ───────────────────────────────────────────────────
@@ -22,17 +50,33 @@ export class SkillRegistry {
   /** Discover all skills and load Level 1 metadata */
   async discover(): Promise<SkillMeta[]> {
     this.metas = await this.provider.listMeta();
+    if (this.domainFilter) this.domainFilter.init(this.metas);
     return this.metas;
   }
 
-  /** Get all skill metadata (cached from last discover()) */
+  /**
+   * Get all skill metadata (cached from last discover()).
+   *
+   * When a domain filter is attached, returns only the skills currently
+   * available for the active tab (unconditional + matching conditional).
+   * Without a filter, returns the full list (extension/desktop/server
+   * fallback).
+   */
   getSkillMetas(): SkillMeta[] {
+    return this.domainFilter ? this.domainFilter.getAvailableSkills() : this.metas;
+  }
+
+  /**
+   * Returns all metas regardless of domain filter — for callers that need to
+   * reason about the full skill catalog (CRUD ops, /help typeahead).
+   */
+  getAllSkillMetas(): SkillMeta[] {
     return this.metas;
   }
 
-  /** Get auto-invocable skills (mode=auto|hybrid AND trusted) */
+  /** Get auto-invocable skills (mode=auto|hybrid AND trusted), filtered by domain when applicable. */
   getAutoInvocableSkills(): SkillMeta[] {
-    return this.metas.filter(
+    return this.getSkillMetas().filter(
       (s) => (s.invocationMode === 'auto' || s.invocationMode === 'hybrid') && s.trusted
     );
   }
@@ -60,6 +104,15 @@ export class SkillRegistry {
     return this.provider.loadReference(skillName, refPath);
   }
 
+  /**
+   * Load the full Skill record (Level 2) — body + extended fields.
+   * Use this when you need `context`, `agent`, `hooks`, `allowedTools`, etc.
+   * For substituted body only, use `invoke()`.
+   */
+  async loadFull(name: string): Promise<Skill | null> {
+    return this.provider.load(name);
+  }
+
   // ── System Prompt ───────────────────────────────────────────────
 
   /**
@@ -72,6 +125,7 @@ export class SkillRegistry {
     const parts: string[] = [];
     parts.push('You have access to user-defined skills. When a skill is relevant to the user\'s request, invoke it using the use_skill tool.');
     parts.push('When the user types a message starting with /skill-name, invoke that skill using the use_skill tool.');
+    parts.push('Only invoke skills that are listed as available or explicitly loaded. Do not guess skill names. If no listed skill fits, proceed with normal tools.');
 
     const autoSkills = this.getAutoInvocableSkills();
     if (autoSkills.length > 0) {
@@ -94,18 +148,19 @@ export class SkillRegistry {
         `Skill name "${skill.name}" conflicts with a built-in command`
       );
     }
+    const knownAgents = this.getValidationContext?.()?.knownAgents;
+    if (skill.agent && knownAgents && !knownAgents.includes(skill.agent)) {
+      const suffix = knownAgents.length > 0
+        ? ` Known agents: ${knownAgents.join(', ')}.`
+        : ' No sub-agent types are registered.';
+      throw new Error(`Invalid skill: agent: Unknown sub-agent type "${skill.agent}".${suffix}`);
+    }
 
     await this.provider.save(skill);
 
     // Update cached metadata
     const existingIndex = this.metas.findIndex((m) => m.name === skill.name);
-    const meta: SkillMeta = {
-      name: skill.name,
-      description: skill.description,
-      invocationMode: skill.invocationMode,
-      trusted: skill.trusted,
-      source: skill.source,
-    };
+    const meta: SkillMeta = projectMeta(skill);
 
     if (existingIndex >= 0) {
       this.metas[existingIndex] = meta;
@@ -120,6 +175,30 @@ export class SkillRegistry {
 
     // Remove from cached metadata
     this.metas = this.metas.filter((m) => m.name !== name);
+  }
+
+  /**
+   * Track 10: scoped removal — delete every skill owned by a given plugin.
+   *
+   * Called by `PluginRegistry.disable(pluginId)` to atomically unload one
+   * plugin's skills without touching user-created or other-plugin skills.
+   *
+   * Per-skill errors are logged but don't halt the loop; final state is
+   * "no metas with this pluginId remain". If a provider.delete throws,
+   * the corresponding meta is still removed from cache — disable semantics
+   * win over storage consistency (next reload will reconcile).
+   */
+  async removeByPluginId(pluginId: string): Promise<void> {
+    const targets = this.metas.filter((m) => m.pluginId === pluginId);
+    for (const target of targets) {
+      try {
+        await this.provider.delete(target.name);
+      } catch (e) {
+        // Surface but don't halt — see PluginRegistry rollback-failure policy
+        console.warn(`[SkillRegistry.removeByPluginId] ${target.name}:`, e);
+      }
+    }
+    this.metas = this.metas.filter((m) => m.pluginId !== pluginId);
   }
 
   /** Export a skill as standard-compliant SKILL.md */
@@ -156,12 +235,13 @@ export class SkillRegistry {
     const parsed = parseSkillMd(content);
 
     // Validate
-    const validation = validateSkill(parsed);
+    const validation = validateSkill(parsed, undefined, this.getValidationContext?.());
     if (!validation.valid) {
       throw new Error(`Invalid skill: ${validation.errors.join(', ')}`);
     }
 
     const now = new Date().toISOString();
+    const fields = normalizeFrontmatter(parsed.frontmatter);
     const skill: Skill = {
       name: parsed.frontmatter.name,
       description: parsed.frontmatter.description,
@@ -170,13 +250,23 @@ export class SkillRegistry {
       trusted: false,
       source: 'imported',
       sourceUrl,
-      metadata: parsed.frontmatter.metadata,
-      allowedTools: parsed.frontmatter['allowed-tools']
-        ? parsed.frontmatter['allowed-tools'].split(/\s+/)
-        : undefined,
-      compatibility: parsed.frontmatter.compatibility,
+      metadata: fields.metadata,
+      allowedTools: fields.allowedTools,
+      compatibility: fields.compatibility,
       createdAt: now,
       updatedAt: now,
+      // Track 03 normalized fields
+      whenToUse: fields.whenToUse,
+      argumentHint: fields.argumentHint,
+      model: fields.model,
+      effort: fields.effort,
+      context: fields.context,
+      agent: fields.agent,
+      hooks: fields.hooks,
+      domains: fields.domains,
+      userInvocable: fields.userInvocable,
+      disableModelInvocation: fields.disableModelInvocation,
+      version: fields.version,
     };
 
     await this.save(skill);

@@ -6,7 +6,7 @@
  * @module server/handlers/tools
  */
 
-import { registerMethodHandler, type MethodContext } from '@applepi/ws-server';
+import { registerMethodHandler, type MethodContext } from '@workx/ws-server';
 
 export interface ToolsHandlerDeps {
   getToolCatalog: () => Promise<unknown[]>;

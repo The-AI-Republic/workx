@@ -21,12 +21,12 @@ function mockScriptResult(value: any) {
 }
 
 /**
- * Configure the global chrome mock so that tabs.query returns a single tab
+ * Configure the global chrome mock so that tabs.get returns the bound tab
  * and scripting.executeScript returns the given value.
  */
 function setupChromeForExtraction(scriptReturnValue: any, tabOverrides: Partial<chrome.tabs.Tab> = {}) {
   const tab = { id: 1, url: 'https://example.com', ...tabOverrides } as chrome.tabs.Tab;
-  (chrome.tabs.query as ReturnType<typeof vi.fn>).mockResolvedValue([tab]);
+  (chrome.tabs.get as ReturnType<typeof vi.fn>).mockResolvedValue(tab);
 
   // Ensure chrome.scripting exists
   (chrome as any).scripting = {
@@ -43,6 +43,10 @@ describe('DataExtractionTool', () => {
 
   beforeEach(() => {
     tool = new DataExtractionTool();
+    const rawExecute = tool.execute.bind(tool);
+    vi.spyOn(tool, 'execute').mockImplementation((request, options) =>
+      rawExecute(request, { metadata: { tabId: 1 }, ...options }),
+    );
 
     // Ensure chrome.scripting is always present (the global setup only provides tabs/storage/runtime)
     (chrome as any).scripting = {
@@ -396,9 +400,9 @@ describe('DataExtractionTool', () => {
   describe('Auto Extraction (mode = "auto" / default)', () => {
     it('should combine pattern, semantic, and table extraction', async () => {
       // auto mode calls extractByPatterns, extractSemantic, extractTables sequentially
-      // Each calls chrome.scripting.executeScript once + chrome.tabs.query once
+      // Each calls chrome.scripting.executeScript once using the bound tab.
       const tab = { id: 1, url: 'https://example.com' } as chrome.tabs.Tab;
-      (chrome.tabs.query as ReturnType<typeof vi.fn>).mockResolvedValue([tab]);
+      (chrome.tabs.get as ReturnType<typeof vi.fn>).mockResolvedValue(tab);
 
       const executeScript = vi.fn()
         // 1st call: pattern extraction
@@ -598,7 +602,7 @@ describe('DataExtractionTool', () => {
   // -------------------------------------------------------------------------
   describe('Error Handling', () => {
     it('should return success false when tab has no id', async () => {
-      (chrome.tabs.query as ReturnType<typeof vi.fn>).mockResolvedValue([{ url: 'https://x.com' }]);
+      (chrome.tabs.get as ReturnType<typeof vi.fn>).mockResolvedValue({ url: 'https://x.com' });
       (chrome as any).scripting = {
         executeScript: vi.fn(),
       };
@@ -607,12 +611,12 @@ describe('DataExtractionTool', () => {
       expect(result.success).toBe(true);
       // The inner result from executeImpl returns success: false
       expect(result.data.success).toBe(false);
-      expect(result.data.error).toContain('No active tab');
+      expect(result.data.error).toContain('Bound tab not found');
     });
 
     it('should return success false when scripting throws', async () => {
       const tab = { id: 1, url: 'https://example.com' } as chrome.tabs.Tab;
-      (chrome.tabs.query as ReturnType<typeof vi.fn>).mockResolvedValue([tab]);
+      (chrome.tabs.get as ReturnType<typeof vi.fn>).mockResolvedValue(tab);
       (chrome as any).scripting = {
         executeScript: vi.fn().mockRejectedValue(new Error('Script injection failed')),
       };
