@@ -9,7 +9,7 @@ import { getDefaultAgentConfig } from '@/config/defaults';
 
 describe('appServerConfig', () => {
   afterEach(() => {
-    delete process.env.APPLEPI_APP_SERVER_DEV_ALLOW_NO_AUTH;
+    delete process.env.WORKX_APP_SERVER_DEV_ALLOW_NO_AUTH;
   });
 
   it('applies defaults for an empty config', () => {
@@ -50,7 +50,7 @@ describe('appServerConfig', () => {
   });
 
   it('permits requireAuth=false with the dev override env', () => {
-    process.env.APPLEPI_APP_SERVER_DEV_ALLOW_NO_AUTH = '1';
+    process.env.WORKX_APP_SERVER_DEV_ALLOW_NO_AUTH = '1';
     const cfg = normalizeAppServerConfig({ requireAuth: false });
     expect(cfg.requireAuth).toBe(false);
   });

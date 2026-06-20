@@ -18,7 +18,7 @@ export type { IAppServerConfig, AppServerTransport };
 export const APP_SERVER_DEFAULTS: IAppServerConfig = { ...DEFAULT_APP_SERVER_CONFIG };
 
 /** Env override that permits `requireAuth: false` (development only). */
-const DEV_ALLOW_NO_AUTH_ENV = 'APPLEPI_APP_SERVER_DEV_ALLOW_NO_AUTH';
+const DEV_ALLOW_NO_AUTH_ENV = 'WORKX_APP_SERVER_DEV_ALLOW_NO_AUTH';
 
 export class AppServerConfigError extends Error {}
 
