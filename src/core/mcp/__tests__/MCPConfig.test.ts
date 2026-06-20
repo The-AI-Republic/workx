@@ -9,6 +9,7 @@ import {
   MCPServerUrlSchema,
   MCPTimeoutSchema,
   MCPTransportTypeSchema,
+  MCPAuthModeSchema,
   MCPPlatformScopeSchema,
   MCPServerConfigSchema,
   MCPServerConfigCreateSchema,
@@ -183,14 +184,23 @@ describe('MCPConfig Validation Schemas', () => {
   });
 
   describe('MCPTransportTypeSchema', () => {
-    it('should accept sse and stdio', () => {
+    it('should accept sse, streamable-http, and stdio', () => {
       expect(() => MCPTransportTypeSchema.parse('sse')).not.toThrow();
+      expect(() => MCPTransportTypeSchema.parse('streamable-http')).not.toThrow();
       expect(() => MCPTransportTypeSchema.parse('stdio')).not.toThrow();
     });
 
     it('should reject invalid transport types', () => {
       expect(() => MCPTransportTypeSchema.parse('websocket')).toThrow();
       expect(() => MCPTransportTypeSchema.parse('')).toThrow();
+    });
+  });
+
+  describe('MCPAuthModeSchema', () => {
+    it('should accept supported auth modes', () => {
+      expect(() => MCPAuthModeSchema.parse('none')).not.toThrow();
+      expect(() => MCPAuthModeSchema.parse('api-key')).not.toThrow();
+      expect(() => MCPAuthModeSchema.parse('session-jwt')).not.toThrow();
     });
   });
 
@@ -240,6 +250,22 @@ describe('MCPConfig Validation Schemas', () => {
       expect(result.transport).toBe('stdio');
       expect(result.command).toBe('npx');
       expect(result.args).toEqual(['chrome-devtools-mcp']);
+    });
+
+    it('should accept streamable HTTP with session JWT auth and static headers', () => {
+      const input = {
+        name: 'ai-hub',
+        url: 'https://gateway.example.com/mcp',
+        transport: 'streamable-http' as const,
+        authMode: 'session-jwt' as const,
+        headers: { 'X-Air-Tool-Discovery': 'folded' },
+      };
+
+      const result = MCPServerConfigCreateSchema.parse(input);
+
+      expect(result.transport).toBe('streamable-http');
+      expect(result.authMode).toBe('session-jwt');
+      expect(result.headers).toEqual({ 'X-Air-Tool-Discovery': 'folded' });
     });
 
     it('should reject SSE transport without url', () => {

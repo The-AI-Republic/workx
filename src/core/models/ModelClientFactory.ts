@@ -50,6 +50,7 @@ interface ClientConstructionSignature {
   parallelToolCalls: boolean;
   providerBaseUrl: string | null;
   providerOrganization: string | null;
+  gatewayLlmBaseUrl: string | null;
   model: {
     modelKey: string | null;
     supportsReasoning: boolean;
@@ -206,7 +207,10 @@ export class ModelClientFactory {
 
     // If using backend routing (logged in), create backend-routed client
     if (this.isBackendRouting()) {
-      const client = await this.createBackendRoutedClient(provider);
+      const gatewayLlmBaseUrl = this.authManager?.getGatewayLlmBaseUrl?.();
+      const client = gatewayLlmBaseUrl
+        ? await this.createGatewayRoutedClient(provider, gatewayLlmBaseUrl)
+        : await this.createBackendRoutedClient(provider);
       this.clientCache.set(cacheKey, client);
       return client;
     }
@@ -337,6 +341,64 @@ export class ModelClientFactory {
       provider: backendProvider,
       modelConfig,
       useCredentials: true,
+      parallelToolCalls,
+    });
+  }
+
+  /**
+   * Create a first-party AI Hub gateway client.
+   *
+   * The hub gateway exposes an OpenAI-compatible /v1 Chat Completions surface.
+   * Unlike legacy ai-assistant backend routing, auth is a user JWT bearer token
+   * passed as the OpenAI SDK apiKey; no browser cookies or /openai path rewrite
+   * are involved.
+   */
+  private async createGatewayRoutedClient(provider: ModelProvider, gatewayLlmBaseUrl: string): Promise<ModelClient> {
+    const accessToken = await this.authManager?.getAccessToken();
+    if (!accessToken) {
+      throw new ModelClientError('AI Hub gateway routing requires a session access token');
+    }
+
+    const parallelToolCalls = this.resolveParallelToolCalls();
+    let modelConfig: any = undefined;
+    let supportsReasoning = false;
+    let supportsReasoningSummaries = false;
+    let selectedModel = DEFAULT_MODEL;
+
+    if (this.config) {
+      const configData = this.config.getConfig();
+      const modelData = this.config.getModelByKey(configData.selectedModelKey);
+      if (modelData?.model) {
+        modelConfig = modelData.model;
+        supportsReasoning = modelData.model.supportsReasoning ?? false;
+        supportsReasoningSummaries = modelData.model.supportsReasoningSummaries ?? false;
+        selectedModel = modelData.model.modelKey;
+      }
+    }
+
+    const modelFamily = {
+      family: selectedModel,
+      base_instructions: 'You are a helpful coding assistant.',
+      supports_reasoning: supportsReasoning,
+      supports_reasoning_summaries: supportsReasoningSummaries,
+      needs_special_apply_patch_instructions: false,
+    };
+
+    const gatewayProvider = {
+      name: 'AI Hub',
+      base_url: gatewayLlmBaseUrl,
+      wire_api: 'Chat' as const,
+      requires_openai_auth: true,
+    };
+
+    return new OpenAIChatCompletionClient({
+      apiKey: accessToken,
+      baseUrl: gatewayLlmBaseUrl,
+      sessionId: this.generateConversationId(),
+      modelFamily,
+      provider: gatewayProvider,
+      modelConfig,
+      useCredentials: false,
       parallelToolCalls,
     });
   }
@@ -780,6 +842,7 @@ export class ModelClientFactory {
       parallelToolCalls: this.resolveParallelToolCalls(),
       providerBaseUrl: providerConfig?.baseUrl ?? null,
       providerOrganization: providerConfig?.organization ?? null,
+      gatewayLlmBaseUrl: this.authManager?.getGatewayLlmBaseUrl?.() ?? null,
       model: {
         modelKey: model?.modelKey ?? null,
         supportsReasoning: model?.supportsReasoning ?? false,

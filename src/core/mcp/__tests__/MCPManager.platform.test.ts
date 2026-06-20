@@ -10,6 +10,13 @@ import { setConfigStorage, type ConfigStorageProvider } from '../../storage/Conf
 
 // Map-based ConfigStorageProvider mock
 const store = new Map<string, any>();
+const HUB_ENV_KEYS = [
+  'WORKX_AI_HUB_GATEWAY_BASE_URL',
+  'WORKX_AI_HUB_MCP_URL',
+  'VITE_AI_HUB_GATEWAY_BASE_URL',
+  'VITE_AI_HUB_MCP_URL',
+] as const;
+const originalHubEnv = new Map<string, string | undefined>();
 
 function createMockConfigStorage(): ConfigStorageProvider {
   return {
@@ -88,6 +95,10 @@ describe('MCPManager Platform Features', () => {
   beforeEach(() => {
     // Clear mock storage and install ConfigStorageProvider
     store.clear();
+    for (const key of HUB_ENV_KEYS) {
+      originalHubEnv.set(key, process.env[key]);
+      delete process.env[key];
+    }
     mockStorage = createMockConfigStorage();
     setConfigStorage(mockStorage);
 
@@ -98,6 +109,15 @@ describe('MCPManager Platform Features', () => {
   });
 
   afterEach(() => {
+    for (const key of HUB_ENV_KEYS) {
+      const original = originalHubEnv.get(key);
+      if (original === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = original;
+      }
+    }
+    originalHubEnv.clear();
     MCPManager.resetInstance();
   });
 
@@ -110,6 +130,22 @@ describe('MCPManager Platform Features', () => {
     it('should accept desktop platform', async () => {
       const manager = await MCPManager.getInstance('desktop');
       expect(manager.getPlatform()).toBe('desktop');
+    });
+
+    it('should seed AI Hub MCP only when a gateway URL is configured', async () => {
+      process.env.WORKX_AI_HUB_GATEWAY_BASE_URL = 'https://gateway.example.com';
+
+      const manager = await MCPManager.getInstance('desktop');
+      const hubServer = manager.getServerByName('ai-hub');
+
+      expect(hubServer).toMatchObject({
+        name: 'ai-hub',
+        url: 'https://gateway.example.com/mcp',
+        transport: 'streamable-http',
+        authMode: 'session-jwt',
+        headers: { 'X-Air-Tool-Discovery': 'folded' },
+        builtin: true,
+      });
     });
 
     it('should filter servers by platform scope', async () => {

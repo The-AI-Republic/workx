@@ -32,6 +32,12 @@ export interface IAuthManager {
   getBackendBaseUrl(): string | null;
 
   /**
+   * Get the AI Hub OpenAI-compatible base URL when first-party gateway routing is enabled.
+   * The URL is expected to be the API root (for example, https://hub.example.com/v1).
+   */
+  getGatewayLlmBaseUrl?(): string | null;
+
+  /**
    * Get the current access token for backend authentication.
    * Desktop apps must provide this since they don't have browser cookies.
    * Chrome extension can return null (cookies are sent via credentials: 'include').
@@ -63,6 +69,7 @@ export class AuthManager implements IAuthManager {
   private _shouldUseBackend: boolean;
   private _backendBaseUrl: string | null;
   private _tokenGetter: (() => Promise<string | null>) | null;
+  private _gatewayLlmBaseUrl: string | null;
   private _chatGPTOAuthActive: boolean;
   private _chatGPTTokenGetter: (() => Promise<string | null>) | null;
 
@@ -72,11 +79,17 @@ export class AuthManager implements IAuthManager {
    * @param backendBaseUrl - Backend URL to use when routing through backend
    * @param tokenGetter - Optional async function to retrieve the access token (required for desktop)
    */
-  constructor(shouldUseBackend: boolean, backendBaseUrl: string | null, tokenGetter?: () => Promise<string | null>) {
+  constructor(
+    shouldUseBackend: boolean,
+    backendBaseUrl: string | null,
+    tokenGetter?: () => Promise<string | null>,
+    options?: { gatewayLlmBaseUrl?: string | null },
+  ) {
     this._shouldUseBackend = shouldUseBackend;
     // Only set backend URL if using backend routing
     this._backendBaseUrl = shouldUseBackend ? backendBaseUrl : null;
     this._tokenGetter = tokenGetter ?? null;
+    this._gatewayLlmBaseUrl = shouldUseBackend ? options?.gatewayLlmBaseUrl ?? null : null;
     this._chatGPTOAuthActive = false;
     this._chatGPTTokenGetter = null;
   }
@@ -93,6 +106,13 @@ export class AuthManager implements IAuthManager {
    */
   getBackendBaseUrl(): string | null {
     return this._backendBaseUrl;
+  }
+
+  /**
+   * Get AI Hub gateway LLM URL for first-party routing.
+   */
+  getGatewayLlmBaseUrl(): string | null {
+    return this._gatewayLlmBaseUrl;
   }
 
   /**
@@ -134,4 +154,3 @@ export class AuthManager implements IAuthManager {
     return null;
   }
 }
-

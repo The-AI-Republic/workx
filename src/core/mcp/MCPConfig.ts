@@ -6,7 +6,7 @@
  */
 
 import { z } from 'zod';
-import type { IMCPServerConfig, IMCPServerConfigCreate, IMCPServerConfigUpdate, MCPTransportType, MCPPlatformScope } from './types';
+import type { IMCPServerConfig, IMCPServerConfigCreate, IMCPServerConfigUpdate, MCPTransportType, MCPPlatformScope, MCPAuthMode } from './types';
 import {
   getConfigStorage,
   type ConfigStorageProvider
@@ -58,7 +58,12 @@ export const MCPTimeoutSchema = z
 /**
  * Schema for transport type.
  */
-export const MCPTransportTypeSchema = z.enum(['sse', 'stdio']);
+export const MCPTransportTypeSchema = z.enum(['sse', 'streamable-http', 'stdio']);
+
+/**
+ * Schema for remote auth mode.
+ */
+export const MCPAuthModeSchema = z.enum(['none', 'api-key', 'session-jwt']);
 
 /**
  * Schema for platform scope.
@@ -76,6 +81,8 @@ export const MCPServerConfigSchema = z.object({
   enabled: z.boolean(),
   timeout: MCPTimeoutSchema,
   transport: MCPTransportTypeSchema.default('sse'),
+  authMode: MCPAuthModeSchema.optional(),
+  headers: z.record(z.string()).optional(),
   platform: MCPPlatformScopeSchema.default('shared'),
   builtin: z.boolean().optional(),
   command: z.string().optional(),
@@ -99,6 +106,8 @@ export const MCPServerConfigCreateSchema = z.object({
   enabled: z.boolean().default(true),
   timeout: MCPTimeoutSchema,
   transport: MCPTransportTypeSchema.default('sse'),
+  authMode: MCPAuthModeSchema.optional(),
+  headers: z.record(z.string()).optional(),
   platform: MCPPlatformScopeSchema.default('shared'),
   builtin: z.boolean().optional(),
   command: z.string().optional(),
@@ -109,8 +118,8 @@ export const MCPServerConfigCreateSchema = z.object({
   pluginId: z.string().optional(),
 }).refine(
   (data) => {
-    // SSE transport requires url
-    if (data.transport === 'sse' && (!data.url || data.url.trim() === '')) {
+    // HTTP transports require url
+    if ((data.transport === 'sse' || data.transport === 'streamable-http') && (!data.url || data.url.trim() === '')) {
       return false;
     }
     // stdio transport requires command
@@ -120,7 +129,7 @@ export const MCPServerConfigCreateSchema = z.object({
     return true;
   },
   {
-    message: 'SSE transport requires url; stdio transport requires command',
+    message: 'HTTP transports require url; stdio transport requires command',
   }
 );
 
@@ -135,6 +144,8 @@ export const MCPServerConfigUpdateSchema = z.object({
   enabled: z.boolean().optional(),
   timeout: MCPTimeoutSchema.optional(),
   transport: MCPTransportTypeSchema.optional(),
+  authMode: MCPAuthModeSchema.optional(),
+  headers: z.record(z.string()).optional(),
   platform: MCPPlatformScopeSchema.optional(),
   command: z.string().optional(),
   args: z.array(z.string()).optional(),
@@ -295,6 +306,8 @@ export function createServerConfig(
     enabled: validated.enabled ?? true,
     timeout: validated.timeout ?? 30000,
     transport: (validated.transport ?? 'sse') as MCPTransportType,
+    authMode: (validated.authMode ?? (validated.apiKey ? 'api-key' : 'none')) as MCPAuthMode,
+    headers: validated.headers,
     platform: (validated.platform ?? 'shared') as MCPPlatformScope,
     builtin: validated.builtin,
     command: validated.command,
@@ -341,6 +354,8 @@ export function updateServerConfig(
     enabled: validated.enabled ?? existing.enabled,
     timeout: validated.timeout ?? existing.timeout,
     transport: validated.transport ?? existing.transport,
+    authMode: validated.authMode ?? existing.authMode,
+    headers: validated.headers !== undefined ? validated.headers : existing.headers,
     platform: validated.platform ?? existing.platform,
     command: validated.command !== undefined ? validated.command : existing.command,
     args: validated.args !== undefined ? validated.args : existing.args,

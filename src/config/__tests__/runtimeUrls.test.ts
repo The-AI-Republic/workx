@@ -5,9 +5,19 @@ const ENV_KEYS = [
   'WORKX_AUTH_BASE_URL',
   'WORKX_HOME_PAGE_BASE_URL',
   'WORKX_BACKEND_API_BASE_URL',
+  'WORKX_AI_HUB_GATEWAY_BASE_URL',
+  'WORKX_AI_HUB_LLM_API_URL',
+  'WORKX_AI_HUB_MCP_URL',
+  'WORKX_AI_HUB_CATALOG_URL',
+  'WORKX_LLM_ROUTING_MODE',
   'VITE_AUTH_BASE_URL',
   'VITE_HOME_PAGE_BASE_URL',
   'VITE_BACKEND_API_BASE_URL',
+  'VITE_AI_HUB_GATEWAY_BASE_URL',
+  'VITE_AI_HUB_LLM_API_URL',
+  'VITE_AI_HUB_MCP_URL',
+  'VITE_AI_HUB_CATALOG_URL',
+  'VITE_LLM_ROUTING_MODE',
 ] as const;
 
 const originalEnv = new Map<string, string | undefined>();
@@ -39,11 +49,21 @@ describe('resolveRuntimeUrls', () => {
       homePageBaseUrl: null,
       backendApiBaseUrl: null,
       llmApiUrl: '/api/llm',
+      aiHubGatewayBaseUrl: null,
+      aiHubLlmApiUrl: null,
+      aiHubMcpUrl: null,
+      aiHubCatalogUrl: null,
+      llmRoutingMode: 'legacy',
       deeplinkRedirectUrl: 'workx://auth/callback',
       source: {
         homePageBaseUrl: 'default',
         backendApiBaseUrl: 'default',
         llmApiUrl: 'default',
+        aiHubGatewayBaseUrl: 'default',
+        aiHubLlmApiUrl: 'default',
+        aiHubMcpUrl: 'default',
+        aiHubCatalogUrl: 'default',
+        llmRoutingMode: 'default',
         deeplinkRedirectUrl: 'default',
       },
     });
@@ -95,5 +115,41 @@ describe('resolveRuntimeUrls', () => {
 
     expect(urls.homePageBaseUrl).toBe('https://legacy-runtime.example.com');
     expect(urls.source.homePageBaseUrl).toBe('env');
+  });
+
+  it('derives AI Hub LLM and MCP endpoints from the gateway base URL', () => {
+    process.env.WORKX_AI_HUB_GATEWAY_BASE_URL = 'https://gateway.example.com';
+    process.env.WORKX_AI_HUB_CATALOG_URL = 'https://hub.example.com/apps';
+
+    const urls = resolveRuntimeUrls();
+
+    expect(urls).toMatchObject({
+      aiHubGatewayBaseUrl: 'https://gateway.example.com',
+      aiHubLlmApiUrl: 'https://gateway.example.com/v1',
+      aiHubMcpUrl: 'https://gateway.example.com/mcp',
+      aiHubCatalogUrl: 'https://hub.example.com/apps',
+      llmRoutingMode: 'ai-hub',
+      source: {
+        aiHubGatewayBaseUrl: 'env',
+        aiHubLlmApiUrl: 'env',
+        aiHubMcpUrl: 'env',
+        aiHubCatalogUrl: 'env',
+        llmRoutingMode: 'default',
+      },
+    });
+  });
+
+  it('honors explicit AI Hub endpoint overrides and routing mode', () => {
+    process.env.WORKX_AI_HUB_GATEWAY_BASE_URL = 'https://gateway.example.com';
+    process.env.WORKX_AI_HUB_LLM_API_URL = 'https://llm.example.com/openai';
+    process.env.WORKX_AI_HUB_MCP_URL = 'https://mcp.example.com/mcp';
+    process.env.WORKX_LLM_ROUTING_MODE = 'legacy';
+
+    const urls = resolveRuntimeUrls();
+
+    expect(urls.aiHubLlmApiUrl).toBe('https://llm.example.com/openai');
+    expect(urls.aiHubMcpUrl).toBe('https://mcp.example.com/mcp');
+    expect(urls.llmRoutingMode).toBe('legacy');
+    expect(urls.source.llmRoutingMode).toBe('env');
   });
 });
