@@ -100,7 +100,7 @@ step('3) copy runtime bundle (index.mjs + code-split chunks under assets/) + pac
   // Node treats `.js` chunks under `assets/` as ESM.
   fs.writeFileSync(
     path.join(sidecarDir, 'package.json'),
-    JSON.stringify({ name: 'apple-pi-desktop-runtime', type: 'module', private: true }, null, 2),
+    JSON.stringify({ name: 'workx-desktop-runtime', type: 'module', private: true }, null, 2),
   );
 });
 
@@ -173,7 +173,7 @@ step('5) copy Node binary used for this build', () => {
   // runs. The binary's rpath includes its own directory, so bundling the
   // dylib next to it makes the copy self-contained.
   if (process.platform === 'darwin') {
-    const linked = execSync(`otool -L "${realNode}"`, { encoding: 'utf8' });
+    const linked = execFileSync('otool', ['-L', realNode], { encoding: 'utf8' });
     const m = linked.match(/@rpath\/(libnode[^\s]*\.dylib)/);
     if (m) {
       const libName = m[1];
