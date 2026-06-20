@@ -25,4 +25,4 @@ for rationale, API, and the explicit non-goals list.
 - Consecutive-prompt batching — requires a `workload` field on submissions.
 - `remove(uuid)` / `popAll(filter)` — no current call site needs them.
 - Persistent audit log — tracked in
-  [#215](https://github.com/The-AI-Republic/browserx/issues/215).
+  [#215](https://github.com/The-AI-Republic/workx/issues/215).
