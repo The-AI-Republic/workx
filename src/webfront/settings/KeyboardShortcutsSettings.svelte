@@ -230,9 +230,9 @@
   .back-button,
   .reset-button,
   .shortcut-controls button {
-    border: 1px solid var(--browserx-border);
-    background: var(--browserx-surface);
-    color: var(--browserx-text);
+    border: 1px solid var(--workx-border);
+    background: var(--workx-surface);
+    color: var(--workx-text);
     border-radius: 4px;
     padding: 0.45rem 0.65rem;
     cursor: pointer;
@@ -262,7 +262,7 @@
     grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
     gap: 1rem;
     padding: 1rem 0;
-    border-bottom: 1px solid var(--browserx-border);
+    border-bottom: 1px solid var(--workx-border);
   }
 
   .shortcut-label {
@@ -286,9 +286,9 @@
 
   .shortcut-controls input {
     min-width: 0;
-    border: 1px solid var(--browserx-border);
-    background: var(--browserx-bg);
-    color: var(--browserx-text);
+    border: 1px solid var(--workx-border);
+    background: var(--workx-bg);
+    color: var(--workx-text);
     border-radius: 4px;
     padding: 0.45rem 0.55rem;
   }

@@ -7,8 +7,8 @@
  * @module server/handlers/scheduler
  */
 
-import { registerMethodHandler, type MethodContext } from '@applepi/ws-server';
-import { invalidRequest } from '@applepi/ws-server';
+import { registerMethodHandler, type MethodContext } from '@workx/ws-server';
+import { invalidRequest } from '@workx/ws-server';
 import type { Scheduler } from '../../core/scheduler/Scheduler';
 import type { JobResultRecord } from '../../core/models/types/Scheduler';
 

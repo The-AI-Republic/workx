@@ -44,6 +44,24 @@ describe('SessionSummaryFileStore', () => {
     expect(store.pathFor(sessionId)).toMatch(/sessions[/\\]s1[/\\]summary\.md$/);
   });
 
+  it('pathFor handles roots with trailing separators', () => {
+    const trailing = new SessionSummaryFileStore(fs, `${memoryRoot}/`);
+    expect(trailing.pathFor(sessionId)).toBe('/tmp/memory/sessions/s1/summary.md');
+  });
+
+  it('pathFor preserves Windows-style separators', () => {
+    const windows = new SessionSummaryFileStore(fs, 'C:\\Users\\agent\\memory');
+    expect(windows.pathFor(sessionId)).toBe('C:\\Users\\agent\\memory\\sessions\\s1\\summary.md');
+  });
+
+  it('pathFor handles filesystem roots without duplicate separators', () => {
+    const posixRoot = new SessionSummaryFileStore(fs, '/');
+    const windowsRoot = new SessionSummaryFileStore(fs, 'C:\\');
+
+    expect(posixRoot.pathFor(sessionId)).toBe('/sessions/s1/summary.md');
+    expect(windowsRoot.pathFor(sessionId)).toBe('C:\\sessions\\s1\\summary.md');
+  });
+
   it('ensureScaffold writes the template on first call', async () => {
     const file = await store.ensureScaffold(sessionId);
     expect(fs.files.get(file)).toBe(SESSION_SUMMARY_TEMPLATE);

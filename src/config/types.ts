@@ -344,11 +344,11 @@ export interface IUserPreferences {
    */
   language?: string;
   /**
-   * Default agent persona mode for NEW conversations (Apple Pi only).
+   * Default agent persona mode for NEW conversations (WorkX only).
    * - 'general': desktop automation agent (existing behavior)
    * - 'code': professional software engineering agent
    * This only seeds new sessions. The ACTIVE mode is per-session and changed
-   * at runtime via SetSessionMode; it is not stored here. Ignored by browserx.
+   * at runtime via SetSessionMode; it is not stored here. Ignored by workx.
    * Default: 'general'.
    */
   defaultMode?: AgentMode;
@@ -397,7 +397,7 @@ export interface IUserPreferences {
   experimental?: Record<string, boolean>;
   /**
    * Track 24.2: selected output-style persona name. Resolved against built-in
-   * `src/prompts/styles/*.md` (and filesystem `.browserx/styles` on the
+   * `src/prompts/styles/*.md` (and filesystem `.workx/styles` on the
    * server). Unknown/unset → the prompt is composed unchanged.
    */
   personaName?: string;

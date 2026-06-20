@@ -33,7 +33,7 @@ function endpoint(): string | undefined {
 /** True only when explicitly opted in AND an endpoint is configured. */
 export function isOtelSinkEnabled(): boolean {
   if (typeof process === 'undefined') return false;
-  const flag = process.env.APPLEPI_OTEL_TELEMETRY;
+  const flag = process.env.WORKX_OTEL_TELEMETRY;
   const enabled = flag != null && flag !== '' && flag !== '0' && flag !== 'false';
   return enabled && !!endpoint();
 }
@@ -83,7 +83,7 @@ export function createOtelSink(): TelemetrySink | null {
         {
           resource: {
             attributes: [
-              { key: 'service.name', value: { stringValue: 'browserx' } },
+              { key: 'service.name', value: { stringValue: 'workx' } },
             ],
           },
           scopeLogs: [

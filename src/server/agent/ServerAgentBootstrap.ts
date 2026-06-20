@@ -18,7 +18,7 @@ import { RepublicAgent } from '@/core/RepublicAgent';
 import { AgentConfig, CREDENTIAL_SECURED_MARKER } from '@/config/AgentConfig';
 import { getConfigStorage, setConfigStorage } from '@/core/storage/ConfigStorageProvider';
 import { getCredentialStore } from '@/core/storage';
-import { AuthManager } from '@/core/models/types/Auth';
+import { AuthManager, type IAuthManager } from '@/core/models/types/Auth';
 import { FileConfigStorageProvider } from '../storage/FileConfigStorageProvider';
 import { configurePromptComposer } from '@/core/PromptLoader';
 import type { RuntimeContext } from '@/prompts/PromptComposer';
@@ -43,7 +43,7 @@ import { TranscriptStore } from '../persistence/TranscriptStore';
 import { BackupManager } from '../persistence/backup';
 import { ApprovalManager } from '../exec/approval-manager';
 import { ConnectorRegistry } from '../channel-connectors/connector-registry';
-import { ApplePiConnectorApi } from '../channel-connectors/applepi-connector-api';
+import { WorkXConnectorApi } from '../channel-connectors/workx-connector-api';
 import { discoverConnectors } from '../channel-connectors/connector-loader';
 import { ConnectorBridge } from '../channel-connectors/connector-bridge';
 import { HealthMonitor } from '../health/health-monitor';
@@ -64,6 +64,7 @@ import { schedulePeriodicSweep } from '../maintenance/toolResultCleanup';
 import { RolloutRecorder } from '@/storage/rollout';
 import { createSessionServices } from '@/core/session/state/SessionServices';
 import { registerUseSkillTool } from '@/core/skills/registerUseSkillTool';
+import { RuntimeStateController, accessStateFromReadyState } from '@/core/services/runtime-state';
 
 // Handler registrations
 import { registerChatHandlers } from '../handlers/chat';
@@ -131,6 +132,8 @@ export class ServerAgentBootstrap {
   private schedulerAlarms: ServerSchedulerAlarms | null = null;
   private runningSchedulerJobId: string | null = null;
   private runningJobStartTime: number = 0;
+  private currentAuthManager: IAuthManager | null = null;
+  private runtimeState: RuntimeStateController | null = null;
   private toolResultSweep: { stop: () => void } | null = null;
   // Track 15: periodic rollout TTL cleanup (the server otherwise never prunes
   // expired/forked rollouts — only the extension had alarm-based cleanup).
@@ -153,8 +156,8 @@ export class ServerAgentBootstrap {
     // Track 20 policy block below. The first call memoizes the pinned config,
     // so calling it here would cache a config with NO admin policy applied.
     const profile = this.options.profile ?? 'server';
-    const dataDir = this.options.dataDir ?? process.env.APPLEPI_DATA_DIR ??
-      `${process.env.HOME ?? process.env.USERPROFILE ?? '/tmp'}/.applepi-server/data`;
+    const dataDir = this.options.dataDir ?? process.env.WORKX_DATA_DIR ??
+      `${process.env.HOME ?? process.env.USERPROFILE ?? '/tmp'}/.workx-server/data`;
 
     try {
       // 0. Initialize StorageProvider (used by subsystems)
@@ -199,7 +202,7 @@ export class ServerAgentBootstrap {
       }
 
       // 1b. Track 20: register the managed-file policy source (fleet policy is
-      // mounted via ConfigMap/Secret at APPLEPI_POLICY_PATH) and resolve it
+      // mounted via ConfigMap/Secret at WORKX_POLICY_PATH) and resolve it
       // BEFORE the first getServerConfig() / AgentConfig.getInstance() so both
       // config systems' first hydration already sees admin policy. Fail-open.
       try {
@@ -207,7 +210,7 @@ export class ServerAgentBootstrap {
           // Fleet remote path is highest precedence (first-wins), then the
           // ConfigMap/Secret-mounted managed file.
           new RemotePolicySource(),
-          new ManagedFileSource(process.env.APPLEPI_POLICY_PATH),
+          new ManagedFileSource(process.env.WORKX_POLICY_PATH),
           new ManagedDirSource(),
         ]);
         await resolveActivePolicy();
@@ -254,6 +257,10 @@ export class ServerAgentBootstrap {
           }, false);
           const agent = new RepublicAgent(cfg, platformAdapter, initialHistory, undefined, undefined, services);
           await agent.initialize();
+          if (this.currentAuthManager) {
+            agent.getModelClientFactory().setAuthManager(this.currentAuthManager);
+            await agent.refreshModelClient();
+          }
 
           if (profile === 'server') {
             // Register server-mode tools on each new agent. Pass `dataDir` so
@@ -642,6 +649,10 @@ export class ServerAgentBootstrap {
     const serviceRegistry = channelManager.getServiceRegistry();
     const profile = this.options.profile ?? 'server';
     const platformScope = profile === 'desktop-runtime' ? 'desktop' : 'server';
+    const agentConfigForSnapshot = await AgentConfig.getInstance();
+    const runtimeState = profile === 'desktop-runtime'
+      ? this.getOrCreateRuntimeState(channelManager, agentConfigForSnapshot)
+      : undefined;
 
     // Get MCPManager instance
     let mcpDeps: import('@/core/services').MCPServiceDeps | undefined;
@@ -708,14 +719,14 @@ export class ServerAgentBootstrap {
       const { McpSlotLoader } = await import('@/core/plugins/loaders/McpSlotLoader');
       const { AgentConfig } = await import('@/config/AgentConfig');
 
-      const pluginsRoot = path.join(os.homedir(), '.browserx', 'plugins');
+      const pluginsRoot = path.join(os.homedir(), '.workx', 'plugins');
       const provider = new NodePluginProvider(pluginsRoot);
       await provider.initialize();
 
       const agentConfig = await AgentConfig.getInstance();
 
-      // Phase 10c: admin policy (read once, cached). /etc/browserx/policy.json
-      // (Linux/Mac) or %ProgramData%\BrowserX\policy.json (Windows). Missing/
+      // Phase 10c: admin policy (read once, cached). /etc/workx/policy.json
+      // (Linux/Mac) or %ProgramData%\WorkX\policy.json (Windows). Missing/
       // corrupt → empty policy. Built HERE (before bootstrapEnabledPlugins +
       // MarketplaceRegistry) so block / force-enable / source guards apply.
       const {
@@ -727,8 +738,8 @@ export class ServerAgentBootstrap {
       } = await import('@/core/plugins/policy');
       const policyPath =
         process.platform === 'win32'
-          ? path.join(process.env.ProgramData ?? 'C:\\ProgramData', 'BrowserX', 'policy.json')
-          : '/etc/browserx/policy.json';
+          ? path.join(process.env.ProgramData ?? 'C:\\ProgramData', 'WorkX', 'policy.json')
+          : '/etc/workx/policy.json';
       const policyLoader = new PolicyLoader({
         readPolicyText: async () => {
           try {
@@ -875,7 +886,7 @@ export class ServerAgentBootstrap {
           await fsmod.promises.mkdir(nodePath.dirname(p), { recursive: true });
           await fsmod.promises.writeFile(p, c, 'utf-8');
         },
-        filePath: nodePath.join(os.homedir(), '.browserx', 'installed_plugins_v2.json'),
+        filePath: nodePath.join(os.homedir(), '.workx', 'installed_plugins_v2.json'),
       });
 
       const fetchPlugin = createGitFetchPlugin(
@@ -919,7 +930,7 @@ export class ServerAgentBootstrap {
       const { PluginCache } = await import('@/core/plugins/PluginCache');
       const fsmod = await import('node:fs');
       const pluginCache = new PluginCache(
-        nodePath.join(os.homedir(), '.browserx'),
+        nodePath.join(os.homedir(), '.workx'),
         {
           readText: async (p: string) => {
             try {
@@ -1056,7 +1067,10 @@ export class ServerAgentBootstrap {
               return new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter);
             }
           : undefined,
-        setAuthManager: profile === 'desktop-runtime' ? () => undefined : undefined,
+        setAuthManager: profile === 'desktop-runtime' ? (authManager) => {
+          this.currentAuthManager = authManager;
+        } : undefined,
+        runtimeState,
       } : undefined,
       // Track 43: runtime-owned auth services (auth.completeLogin / getState /
       // logout + ChatGPT OAuth). Desktop runtime only — server mode handles
@@ -1069,8 +1083,12 @@ export class ServerAgentBootstrap {
             : undefined;
           return new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter);
         },
-        setAuthManager: () => undefined,
+        setAuthManager: (authManager) => {
+          this.currentAuthManager = authManager;
+        },
         getCredentialStore: () => getCredentialStore(),
+        runtimeState,
+        refreshAccessState: () => this.refreshDesktopRuntimeAccessState(),
         // The runtime owns the access token after cutover; the UI must not
         // receive it. The runtime performs the profile fetch itself and
         // returns only the redacted profile shape the UI needs.
@@ -1080,6 +1098,15 @@ export class ServerAgentBootstrap {
             return await fetchUserProfileServerSide(accessToken);
           } catch (err) {
             console.warn('[ServerAgentBootstrap] runtime profile fetch failed:', err);
+            return null;
+          }
+        },
+        refreshAuthTokens: async (refreshToken: string) => {
+          try {
+            const { refreshDesktopAuthTokens } = await import('@/desktop-runtime/auth/runtimeProfileFetch');
+            return await refreshDesktopAuthTokens(refreshToken);
+          } catch (err) {
+            console.warn('[ServerAgentBootstrap] runtime token refresh failed:', err);
             return null;
           }
         },
@@ -1097,9 +1124,157 @@ export class ServerAgentBootstrap {
         },
       },
       memory: this.registry ? { registry: this.registry } : undefined,
+      runtime: runtimeState ? { runtimeState } : undefined,
     });
 
     console.log(`[ServerAgentBootstrap] Registered ${count} service handlers`);
+
+    if (profile === 'desktop-runtime') {
+      await this.hydrateDesktopRuntimeAuthState();
+    }
+  }
+
+  private getOrCreateRuntimeState(
+    channelManager: ReturnType<typeof getChannelManager>,
+    agentConfig: AgentConfig,
+  ): RuntimeStateController {
+    if (this.runtimeState) return this.runtimeState;
+    this.runtimeState = new RuntimeStateController({
+      emitStateUpdate: (msg) => {
+        channelManager.broadcastEvent({ msg }).catch((error) => {
+          console.warn('[ServerAgentBootstrap] Failed to broadcast runtime state update:', error);
+        });
+      },
+      getEffectiveConfig: () => {
+        const config = agentConfig.getConfig();
+        return {
+          selectedModelKey: config.selectedModelKey,
+          preferences: {
+            useOwnApiKey: config.preferences?.useOwnApiKey,
+          },
+          policy: config.policy
+            ? {
+                lockedKeys: config.policy.lockedKeys,
+              }
+            : undefined,
+        };
+      },
+      getRuntimeStatus: () => ({ status: 'ready', lastError: null }),
+    });
+    return this.runtimeState;
+  }
+
+  private async applyAuthManagerToSessions(authManager: IAuthManager | null): Promise<void> {
+    if (!this.registry) return;
+    for (const meta of this.registry.listSessions()) {
+      if (meta.state === 'terminated') continue;
+      const agentSession = this.registry.getSession(meta.sessionId);
+      if (!agentSession?.agent) continue;
+      agentSession.agent.getModelClientFactory().setAuthManager(authManager);
+      await agentSession.agent.refreshModelClient();
+    }
+  }
+
+  private async refreshDesktopRuntimeAccessState() {
+    if (!this.runtimeState || !this.registry) {
+      return this.runtimeState?.getAccessState();
+    }
+    const sessions = this.registry.listSessions();
+    const primary = sessions.find((s) => s.type === 'primary' && s.state !== 'terminated')
+      ?? sessions.find((s) => s.state !== 'terminated');
+    if (!primary) {
+      return this.runtimeState.setAccessState({
+        status: 'initializing',
+        mode: 'none',
+        ready: false,
+        reason: 'Agent session is initializing.',
+      });
+    }
+    const agent = this.registry.getSession(primary.sessionId)?.agent;
+    if (!agent) {
+      return this.runtimeState.setAccessState({
+        status: 'initializing',
+        mode: 'none',
+        ready: false,
+        reason: 'Agent session is initializing.',
+      });
+    }
+    const ready = await agent.isReady();
+    return this.runtimeState.setAccessState(accessStateFromReadyState(ready));
+  }
+
+  private async hydrateDesktopRuntimeAuthState(): Promise<void> {
+    if (!this.runtimeState || !this.registry || (this.options.profile ?? 'server') !== 'desktop-runtime') return;
+    const agentConfig = await AgentConfig.getInstance();
+    const config = agentConfig.getConfig();
+    const useOwnApiKey = config.preferences?.useOwnApiKey === true;
+    const credentialStore = getCredentialStore();
+    let accessToken = await credentialStore.get('auth', 'access_token').catch(() => null);
+    const refreshToken = await credentialStore.get('auth', 'refresh_token').catch(() => null);
+    const hadStoredAuth = Boolean(accessToken || refreshToken);
+    let profile: Awaited<ReturnType<typeof import('@/desktop-runtime/auth/runtimeProfileFetch').fetchUserProfileServerSide>> = null;
+    let profileError: string | undefined;
+
+    if (hadStoredAuth) {
+      await this.runtimeState.setAuthState({
+        mode: useOwnApiKey ? 'own_api_key' : 'login',
+        hasToken: true,
+        profileStatus: 'loading',
+        lastError: undefined,
+      });
+      try {
+        const { fetchUserProfileServerSide, refreshDesktopAuthTokens } = await import('@/desktop-runtime/auth/runtimeProfileFetch');
+        profile = accessToken ? await fetchUserProfileServerSide(accessToken) : null;
+        if (!profile && refreshToken) {
+          const refreshed = await refreshDesktopAuthTokens(refreshToken);
+          if (refreshed?.accessToken && refreshed.refreshToken) {
+            await Promise.all([
+              credentialStore.set('auth', 'access_token', refreshed.accessToken),
+              credentialStore.set('auth', 'refresh_token', refreshed.refreshToken),
+            ]);
+            accessToken = refreshed.accessToken;
+            profile = await fetchUserProfileServerSide(accessToken);
+          }
+        }
+      } catch (error) {
+        profileError = error instanceof Error ? error.message : String(error);
+      }
+    }
+
+    const hasUsableLogin = Boolean(accessToken && profile);
+    const shouldUseBackend = Boolean(hasUsableLogin && !useOwnApiKey);
+    const tokenGetter = shouldUseBackend
+      ? async () => getCredentialStore().get('auth', 'access_token')
+      : undefined;
+    const authManager = new AuthManager(
+      shouldUseBackend,
+      shouldUseBackend ? this.runtimeState.getUrls().llmApiUrl : null,
+      tokenGetter,
+    );
+    this.currentAuthManager = authManager;
+    await this.applyAuthManagerToSessions(authManager);
+
+    if (hadStoredAuth) {
+      await this.runtimeState.setAuthState({
+        mode: hasUsableLogin
+          ? useOwnApiKey ? 'own_api_key' : 'login'
+          : useOwnApiKey ? 'own_api_key' : 'none',
+        hasToken: hasUsableLogin,
+        profile,
+        profileStatus: hasUsableLogin ? 'ready' : 'failed',
+        lastError: hasUsableLogin ? undefined : profileError ?? 'Stored desktop login expired or profile unavailable',
+      });
+    } else {
+      await this.runtimeState.setAuthState({
+        mode: useOwnApiKey ? 'own_api_key' : 'none',
+        hasToken: false,
+        profile: null,
+        profileStatus: 'idle',
+        lastError: undefined,
+      });
+    }
+
+    await this.refreshDesktopRuntimeAccessState();
   }
 
   /**
@@ -1317,7 +1492,7 @@ export class ServerAgentBootstrap {
       const definitions = await discoverConnectors();
 
       for (const definition of definitions) {
-        const api = new ApplePiConnectorApi();
+        const api = new WorkXConnectorApi();
         await definition.register(api);
 
         const registrations = api.getRegistrations();
@@ -1357,8 +1532,8 @@ export class ServerAgentBootstrap {
       const { registerExternalPersonas } = await import('@/prompts/PersonaLoader');
       registerExternalPersonas(
         scanDiskPersonas([
-          join(homeDir, '.browserx', 'styles'),
-          join(process.cwd(), '.browserx', 'styles'),
+          join(homeDir, '.workx', 'styles'),
+          join(process.cwd(), '.workx', 'styles'),
         ]),
       );
     } catch (e) {
@@ -1376,7 +1551,7 @@ export class ServerAgentBootstrap {
       personaName: isDesktopRuntime ? undefined : getServerConfig().server.persona,
     };
 
-    configurePromptComposer(isDesktopRuntime ? 'applepi' : 'applepi-server', staticContext);
+    configurePromptComposer(isDesktopRuntime ? 'workx-desktop' : 'workx-server', staticContext);
     console.log(`[ServerAgentBootstrap] PromptComposer configured for ${isDesktopRuntime ? 'desktop runtime' : 'server'} mode`);
   }
 

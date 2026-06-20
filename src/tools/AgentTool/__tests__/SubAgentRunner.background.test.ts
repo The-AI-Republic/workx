@@ -7,7 +7,7 @@
  * - failed background runs inject <status>failed</status>
  * - cancelled / interrupted runs inject <status>cancelled</status>
  * - foreground path is unchanged (SubAgentResult, no notification)
- * - background forces approvalPolicy = 'never' even when type says 'inherit'
+ * - background rejects unsafe inherited approval instead of silently downgrading
  * - cleanup runs exactly once for background (after the detached promise settles)
  * - send_message → drain hook is wired (the drain callback comes from the registry)
  */
@@ -400,11 +400,32 @@ describe('SubAgentRunner.run() — foreground (regression)', () => {
 });
 
 describe('SubAgentRunner.prepare() — approval policy for background', () => {
-  it('forces approvalPolicy = never even when type config says inherit', async () => {
+  it('rejects background runs that would silently downgrade inherited approval', async () => {
     const parent = createParentEngine();
     const runner = new SubAgentRunner({
       parentEngine: parent as never,
       customTypes: [makeType({ approvalPolicy: 'inherit' })],
+    });
+
+    const result = await runner.run({
+      type: 'worker',
+      prompt: 'task',
+      background: true,
+    });
+
+    expect(result).toMatchObject({
+      success: false,
+      stopReason: 'error',
+      error: expect.stringContaining('cannot inherit approval'),
+    });
+    expect(parent.__childEngine.__capturedConfig).toBeUndefined();
+  });
+
+  it('allows read-only background profiles to inherit by downgrading to never', async () => {
+    const parent = createParentEngine();
+    const runner = new SubAgentRunner({
+      parentEngine: parent as never,
+      customTypes: [makeType({ agentType: AgentType.Researcher, approvalPolicy: 'inherit' })],
     });
 
     await runner.run({
@@ -416,7 +437,7 @@ describe('SubAgentRunner.prepare() — approval policy for background', () => {
 
     const config = parent.__childEngine.__capturedConfig as Record<string, unknown>;
     expect(config.approvalPolicy).toBe('never');
-    // approvalGate must not be passed through when forcing 'never'
+    // approvalGate must not be passed through when downgrading safe background work to 'never'
     expect(config.approvalGate).toBeUndefined();
   });
 
@@ -535,7 +556,7 @@ describe('SubAgentRunner fork context mode', () => {
     expect(result.error).toContain('does not allow context mode');
   });
 
-  it('rejects recursive fork mode when parent history already contains fork boilerplate', async () => {
+  it('rejects recursive fork mode using runtime session metadata', async () => {
     const parent = createParentEngine();
     parent.getSession = () => ({
       getSessionId: () => 'parent-session',
@@ -544,10 +565,11 @@ describe('SubAgentRunner fork context mode', () => {
           {
             type: 'message',
             role: 'user',
-            content: [{ type: 'input_text', text: '<forked-subagent-task>\nPrior fork' }],
+            content: [{ type: 'input_text', text: 'Prior delegated work' }],
           },
         ],
       }),
+      isForkedSubAgentContext: () => true,
       getTaskOutputStore: () => undefined,
       registerTaskState: vi.fn(),
     } as any);
@@ -569,7 +591,7 @@ describe('SubAgentRunner fork context mode', () => {
 
     if ('kind' in result) throw new Error('expected foreground result');
     expect(result.success).toBe(false);
-    expect(result.error).toContain('already contains forked sub-agent context');
+    expect(result.error).toContain('cannot spawn another forked sub-agent');
     expect(parent.createChildEngine).not.toHaveBeenCalled();
   });
 });

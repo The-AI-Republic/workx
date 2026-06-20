@@ -232,7 +232,7 @@ describe('Desktop runtime providers — fixture compatibility', () => {
       configJsonPath,
       JSON.stringify({
         agent_config: { selectedModelKey: 'openai/gpt-5' },
-        applepi_credentials: { hasAuth: true },
+        workx_credentials: { hasAuth: true },
       }),
       'utf-8',
     );
@@ -245,7 +245,7 @@ describe('Desktop runtime providers — fixture compatibility', () => {
     const onDisk = JSON.parse(fs.readFileSync(configJsonPath, 'utf-8'));
     expect(onDisk).toEqual({
       agent_config: { selectedModelKey: 'openai/gpt-5' },
-      applepi_credentials: { hasAuth: true },
+      workx_credentials: { hasAuth: true },
       desktopRuntime: { startedAt: 12345 },
     });
     expect(fs.existsSync(path.join(configDir, 'config-storage.json'))).toBe(false);

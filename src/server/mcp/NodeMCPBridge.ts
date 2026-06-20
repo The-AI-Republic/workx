@@ -71,7 +71,7 @@ export class NodeMCPBridge implements IMCPClientAdapter {
 
       // Create MCP SDK client
       this.client = new Client(
-        { name: 'applepi-server', version: '1.0.0' },
+        { name: 'workx-server', version: '1.0.0' },
         { capabilities: {} },
       );
 

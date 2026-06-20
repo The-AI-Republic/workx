@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
+  envDir: resolve(__dirname, 'src/desktop'),
   define: {
     __BUILD_MODE__: JSON.stringify('server'),
   },
@@ -42,7 +43,7 @@ export default defineConfig({
       '@/server': resolve(__dirname, 'src/server'),
       '@/desktop': resolve(__dirname, 'src/desktop'),
       '@/desktop-runtime': resolve(__dirname, 'src/desktop-runtime'),
-      '@applepi/ws-server': resolve(__dirname, 'packages/ws-server/src/index.ts'),
+      '@workx/ws-server': resolve(__dirname, 'packages/ws-server/src/index.ts'),
     },
   },
 });

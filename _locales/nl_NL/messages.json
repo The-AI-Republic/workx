@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "Algemene in-browser AI-agent voor werktaken"
@@ -177,7 +177,7 @@
     "message": "Altijd licht"
   },
   "Apple_Pi_Your_personal_AI_Alpha": {
-    "message": "Apple Pi: jouw persoonlijke AI (Alpha)"
+    "message": "WorkX: jouw persoonlijke AI (Alpha)"
   },
   "Approval_Safety": {
     "message": "Goedkeuring & Veiligheid"
@@ -219,8 +219,8 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Vraag Browserx om gestructureerde gegevens van elke webpagina te extraheren"
+  "Ask_WorkX_to_extract_structured_data__88fc": {
+    "message": "Vraag WorkX om gestructureerde gegevens van elke webpagina te extraheren"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Vraag om toestemming voor gemiddeld risico en hoger (risico > 30). Aanbevolen voor de meeste gebruikers."
@@ -309,14 +309,11 @@
   "Browser_automation_tool_toggles": {
     "message": "Schakelaars voor browserautomatiseringstools"
   },
-  "BrowserX": {
-    "message": "BrowserX"
+  "WorkX": {
+    "message": "WorkX"
   },
-  "Browserx": {
-    "message": "Browserx"
-  },
-  "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+  "WorkX_Alpha": {
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "Huidige map:"
@@ -385,8 +382,8 @@
   "Clear_search": {
     "message": "Zoekopdracht wissen"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Klik op het Browserx-pictogram in uw werkbalk of druk op Alt+Shift+C"
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
+    "message": "Klik op het WorkX-pictogram in uw werkbalk of druk op Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "Klik om inloggen te annuleren"
@@ -676,8 +673,8 @@
   "Enable_PIN_Protection": {
     "message": "PIN-beveiliging inschakelen"
   },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": "Automatisch verbinden inschakelen wanneer Browserx start"
+  "Enable_auto_connect_when_workx_starts": {
+    "message": "Automatisch verbinden inschakelen wanneer WorkX start"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Caching inschakelen om de prestaties te verbeteren door vaak geraadpleegde gegevens op te slaan"
@@ -733,8 +730,8 @@
   "Explain_this_info_selectionText": {
     "message": "Leg dit uit: ${info.selectionText}"
   },
-  "Explain_with_Browserx": {
-    "message": "Uitleg met Browserx"
+  "Explain_with_WorkX": {
+    "message": "Uitleg met WorkX"
   },
   "Export": {
     "message": "Exporteren"
@@ -760,8 +757,8 @@
   "Extract_Data": {
     "message": "Gegevens extraheren:"
   },
-  "Extract_data_with_Browserx": {
-    "message": "Gegevens extraheren met Browserx"
+  "Extract_data_with_WorkX": {
+    "message": "Gegevens extraheren met WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Specifieke gegevenspatronen van pagina's extraheren"
@@ -955,8 +952,8 @@
   "Improve_this_text_info_selectionText": {
     "message": "Verbeter deze tekst: ${info.selectionText}"
   },
-  "Improve_with_Browserx": {
-    "message": "Verbeter met Browserx"
+  "Improve_with_WorkX": {
+    "message": "Verbeter met WorkX"
   },
   "In": {
     "message": "In:"
@@ -1547,7 +1544,7 @@
     "message": "Opnieuw proberen"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Klik met de rechtermuisknop op tekst om het uit te leggen of te verbeteren met Browserx"
+    "message": "Klik met de rechtermuisknop op tekst om het uit te leggen of te verbeteren met WorkX"
   },
   "Risk_Score": {
     "message": "Risicoscore:"
@@ -2041,8 +2038,8 @@
   "Web_Search": {
     "message": "Zoeken op het web"
   },
-  "Welcome_to_Browserx": {
-    "message": "Welkom bij Browserx"
+  "Welcome_to_WorkX": {
+    "message": "Welkom bij WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Of sandboxed-commando's toegang tot het netwerk hebben"
@@ -2092,8 +2089,8 @@
   "available": {
     "message": "beschikbaar"
   },
-  "browserx": {
-    "message": "browserx"
+  "workx": {
+    "message": "WorkX"
   },
   "cached": {
     "message": "gecachet"

@@ -6,7 +6,7 @@
  * Mechanism (diverges from claudy on purpose):
  *   claudy's `feature('X')` folds only because Bun macro-inlines the call.
  *   Vite `define` is textual identifier substitution and cannot fold an
- *   object-indexed function return, so we mirror browserx's proven house
+ *   object-indexed function return, so we mirror workx's proven house
  *   pattern instead: ONE bare typed injected constant per flag (exactly how
  *   the 80 `__BUILD_MODE__` sites work, e.g. src/config/AgentConfig.ts:76).
  *

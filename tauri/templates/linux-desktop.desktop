@@ -2,9 +2,9 @@
 Categories={{categories}}
 Comment={{comment}}
 Exec={{exec}} %u
-StartupWMClass=ApplePi
+StartupWMClass=WorkX
 Icon={{icon}}
-Name=Apple Pi
+Name=WorkX
 Terminal=false
 Type=Application
-MimeType=x-scheme-handler/applepi
+MimeType=x-scheme-handler/applepi;x-scheme-handler/workx;

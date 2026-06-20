@@ -16,7 +16,7 @@
  * engine is ready. Lifetime is bound to the Session.
  *
  * Mirrors claudy's `services/SessionMemory/sessionMemory.ts` architecture
- * but adapted to browserx's internal shadow-agent runtime.
+ * but adapted to workx's internal shadow-agent runtime.
  */
 
 import type { RepublicAgentEngine } from '@/core/engine/RepublicAgentEngine';
@@ -64,11 +64,14 @@ export interface SessionSummaryHookOptions {
 
 /**
  * Context passed to the post-turn callback. Kept minimal: everything the
- * hook needs is derivable from these four fields.
+ * hook needs is derivable from the committed history plus the current turn
+ * delta.
  */
 export interface PostTurnContext {
   sessionId: string;
   history: ResponseItem[];
+  /** Response items committed by the just-completed turn. */
+  committedDelta?: ResponseItem[];
   totalTokenUsage?: { total_tokens?: number; input_tokens?: number; output_tokens?: number };
   lastTurnHadToolCalls: boolean;
 }
@@ -134,7 +137,11 @@ export class SessionSummaryHook {
 
     // Register the sync prompt-extension callback. PromptLoader calls it on
     // every loadPrompt(); we return the truncated cached content.
-    registerPromptExtension(PROMPT_EXTENSION_NAME, () => this.renderForPrompt());
+    registerPromptExtension(
+      PROMPT_EXTENSION_NAME,
+      () => this.renderForPrompt(),
+      { type: 'session', sessionId: this.sessionId },
+    );
 
     this.telemetry.emit('init', {
       config: { ...this.config },
@@ -162,7 +169,10 @@ export class SessionSummaryHook {
     this.unregisterPostTurn = undefined;
 
     try {
-      unregisterPromptExtension(PROMPT_EXTENSION_NAME);
+      unregisterPromptExtension(PROMPT_EXTENSION_NAME, {
+        type: 'session',
+        sessionId: this.sessionId,
+      });
     } catch (err) {
       console.warn('[SessionSummary] unregisterPromptExtension failed', err);
     }

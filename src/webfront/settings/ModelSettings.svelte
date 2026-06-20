@@ -12,6 +12,7 @@
   import { LLM_API_URL } from '../lib/constants';
   import { t, _t } from '../lib/i18n';
   import { getInitializedUIClient } from '@/core/messaging';
+  import type { AgentAccessState } from '@/core/services/runtime-state';
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
   import { platform } from '../stores/platformStore';
@@ -620,17 +621,7 @@
 
     try {
       const newValue = !useOwnApiKey;
-      useOwnApiKey = newValue;
       showApiKeyWarning = false; // Reset warning when switching modes
-
-      // Update config preferences
-      const config = settingsConfig.getConfig();
-      await settingsConfig.updateConfig({
-        preferences: {
-          ...config.preferences,
-          useOwnApiKey: newValue,
-        },
-      });
 
       // Send updated auth state to service worker
       // useOwnApiKey=false means route through backend
@@ -639,7 +630,24 @@
         useOwnApiKey: newValue,
       };
 
-      await (await getInitializedUIClient()).serviceRequest('agent.initAuth', authPayload);
+      const response = await (await getInitializedUIClient()).serviceRequest<{
+        success: boolean;
+        access?: AgentAccessState;
+      }>('agent.initAuth', authPayload);
+      if (!response?.success) {
+        throw new Error('Runtime rejected API mode update');
+      }
+
+      // Persist the user's preference after the runtime confirms the effective
+      // access state. The runtime remains the source of truth for display.
+      const config = settingsConfig.getConfig();
+      await settingsConfig.updateConfig({
+        preferences: {
+          ...config.preferences,
+          useOwnApiKey: newValue,
+        },
+      });
+        useOwnApiKey = response.access ? response.access.mode === 'api_key' : newValue;
 
       getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(err => console.warn('[ModelSettings] Failed to send configUpdate:', err));
 
@@ -654,7 +662,6 @@
       });
     } catch (error) {
       console.error('[ModelSettings] Failed to toggle useOwnApiKey:', error);
-      useOwnApiKey = !useOwnApiKey; // Revert on error
       showMessage(t('Failed to update API mode'), 'error');
     }
   }
@@ -1182,7 +1189,7 @@
   .back-button {
     background: none;
     border: none;
-    color: var(--browserx-primary);
+    color: var(--workx-primary);
     cursor: pointer;
     font-size: 0.9375rem;
     font-weight: 500;
@@ -1202,10 +1209,10 @@
   }
 
   .settings-card {
-    background: var(--browserx-surface);
+    background: var(--workx-surface);
     border-radius: 0.75rem;
     padding: 1rem 1.25rem;
-    border: 1px solid var(--browserx-border);
+    border: 1px solid var(--workx-border);
   }
 
   .section-header {
@@ -1219,7 +1226,7 @@
     margin: 0 0 1rem 0;
     font-size: 1.125rem;
     font-weight: 600;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .section-header .section-title {
@@ -1237,13 +1244,13 @@
   }
 
   .auth-status.authenticated {
-    color: var(--browserx-success);
-    background: color-mix(in srgb, var(--browserx-success) 10%, transparent);
+    color: var(--workx-success);
+    background: color-mix(in srgb, var(--workx-success) 10%, transparent);
   }
 
   .auth-status.not-authenticated {
-    color: var(--browserx-error);
-    background: color-mix(in srgb, var(--browserx-error) 10%, transparent);
+    color: var(--workx-error);
+    background: color-mix(in srgb, var(--workx-error) 10%, transparent);
   }
 
   .form-group {
@@ -1255,7 +1262,7 @@
     margin-bottom: 0.5rem;
     font-size: 0.875rem;
     font-weight: 500;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .input-group {
@@ -1266,10 +1273,10 @@
   .api-key-input {
     flex: 1;
     padding: 0.75rem 3rem 0.75rem 0.75rem;
-    border: 1px solid var(--browserx-border);
+    border: 1px solid var(--workx-border);
     border-radius: 0.5rem;
-    background: var(--browserx-surface);
-    color: var(--browserx-text);
+    background: var(--workx-surface);
+    color: var(--workx-text);
     font-size: 0.875rem;
     font-family: 'SF Mono', 'Monaco', monospace;
     transition: all 0.2s;
@@ -1277,8 +1284,8 @@
 
   .api-key-input:focus {
     outline: none;
-    border-color: var(--browserx-primary);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--browserx-primary) 10%, transparent);
+    border-color: var(--workx-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--workx-primary) 10%, transparent);
   }
 
   .api-key-input:disabled {
@@ -1293,7 +1300,7 @@
     transform: translateY(-50%);
     background: none;
     border: none;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
     cursor: pointer;
     padding: 0.25rem;
     border-radius: 0.25rem;
@@ -1304,16 +1311,16 @@
   }
 
   .visibility-toggle:hover {
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .form-select {
     width: 100%;
     padding: 0.75rem;
-    border: 1px solid var(--browserx-border);
+    border: 1px solid var(--workx-border);
     border-radius: 0.5rem;
-    background: var(--browserx-surface);
-    color: var(--browserx-text);
+    background: var(--workx-surface);
+    color: var(--workx-text);
     font-size: 0.875rem;
     cursor: pointer;
     transition: all 0.2s;
@@ -1321,8 +1328,8 @@
 
   .form-select:focus {
     outline: none;
-    border-color: var(--browserx-primary);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--browserx-primary) 10%, transparent);
+    border-color: var(--workx-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--workx-primary) 10%, transparent);
   }
 
   .form-select:disabled {
@@ -1333,7 +1340,7 @@
   .help-text {
     margin-top: 0.5rem;
     font-size: 0.875rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
   }
 
   .button-group {
@@ -1352,9 +1359,9 @@
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
-    border: 1px solid var(--browserx-primary);
+    border: 1px solid var(--workx-primary);
     background: transparent;
-    color: var(--browserx-primary);
+    color: var(--workx-primary);
   }
 
   .btn:disabled {
@@ -1363,37 +1370,37 @@
   }
 
   .btn:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--browserx-primary) 15%, transparent);
+    background: color-mix(in srgb, var(--workx-primary) 15%, transparent);
   }
 
   /* Modern Chat theme - filled buttons */
   :global(.settings-modal-container.modern) .btn-primary {
-    background: var(--browserx-primary);
+    background: var(--workx-primary);
     color: white;
     border: none;
   }
 
   :global(.settings-modal-container.modern) .btn-primary:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--browserx-primary) 85%, black);
+    background: color-mix(in srgb, var(--workx-primary) 85%, black);
   }
 
   .btn-secondary {
-    background: var(--browserx-surface);
-    color: var(--browserx-text);
-    border: 1px solid var(--browserx-border);
+    background: var(--workx-surface);
+    color: var(--workx-text);
+    border: 1px solid var(--workx-border);
   }
 
   .btn-secondary:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--browserx-surface) 80%, var(--browserx-text));
+    background: color-mix(in srgb, var(--workx-surface) 80%, var(--workx-text));
   }
 
   .btn-danger {
-    background: var(--browserx-error);
+    background: var(--workx-error);
     color: white;
   }
 
   .btn-danger:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--browserx-error) 90%, black);
+    background: color-mix(in srgb, var(--workx-error) 90%, black);
   }
 
   .spinner {
@@ -1422,19 +1429,19 @@
 
   .test-result.success,
   .message.success {
-    color: var(--browserx-success);
-    background: color-mix(in srgb, var(--browserx-success) 10%, transparent);
+    color: var(--workx-success);
+    background: color-mix(in srgb, var(--workx-success) 10%, transparent);
   }
 
   .test-result.error,
   .message.error {
-    color: var(--browserx-error);
-    background: color-mix(in srgb, var(--browserx-error) 10%, transparent);
+    color: var(--workx-error);
+    background: color-mix(in srgb, var(--workx-error) 10%, transparent);
   }
 
   .message.info {
-    color: var(--browserx-primary);
-    background: color-mix(in srgb, var(--browserx-primary) 10%, transparent);
+    color: var(--workx-primary);
+    background: color-mix(in srgb, var(--workx-primary) 10%, transparent);
   }
 
   .message.warning {
@@ -1447,12 +1454,12 @@
     gap: 0.75rem;
     padding: 1rem;
     border-radius: 0.5rem;
-    background: var(--browserx-surface);
-    border: 1px solid var(--browserx-border);
+    background: var(--workx-surface);
+    border: 1px solid var(--workx-border);
   }
 
   .security-notice svg {
-    color: var(--browserx-primary);
+    color: var(--workx-primary);
     flex-shrink: 0;
     margin-top: 0.125rem;
   }
@@ -1460,12 +1467,12 @@
   .security-title {
     font-weight: 600;
     margin-bottom: 0.25rem;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .security-text {
     font-size: 0.875rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
     line-height: 1.5;
   }
 
@@ -1473,8 +1480,8 @@
   .provider-info-container {
     margin-top: 1rem;
     padding: 0.75rem;
-    background: var(--browserx-surface);
-    border: 1px solid var(--browserx-border);
+    background: var(--workx-surface);
+    border: 1px solid var(--workx-border);
     border-radius: 0.5rem;
   }
 
@@ -1488,7 +1495,7 @@
   }
 
   .provider-info-row:not(:last-child) {
-    border-bottom: 1px solid var(--browserx-border);
+    border-bottom: 1px solid var(--workx-border);
   }
 
   .provider-info-left {
@@ -1500,14 +1507,14 @@
   .provider-info-label {
     font-size: 0.875rem;
     font-weight: 500;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
     flex-shrink: 0;
   }
 
   .provider-info-value {
     font-size: 0.875rem;
     font-weight: 600;
-    color: var(--browserx-text);
+    color: var(--workx-text);
     max-width: 150px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1517,7 +1524,7 @@
   .more-config-btn {
     background: none;
     border: none;
-    color: var(--browserx-primary);
+    color: var(--workx-primary);
     cursor: pointer;
     font-size: 0.875rem;
     font-weight: 500;
@@ -1527,7 +1534,7 @@
   }
 
   .more-config-btn:hover {
-    background: color-mix(in srgb, var(--browserx-primary) 10%, transparent);
+    background: color-mix(in srgb, var(--workx-primary) 10%, transparent);
   }
 
   /* Toggle Switch Styles */
@@ -1536,8 +1543,8 @@
     justify-content: space-between;
     align-items: center;
     padding: 0.75rem;
-    background: var(--browserx-surface);
-    border: 1px solid var(--browserx-border);
+    background: var(--workx-surface);
+    border: 1px solid var(--workx-border);
     border-radius: 0.5rem;
   }
 
@@ -1550,19 +1557,19 @@
   .toggle-label {
     font-size: 0.9375rem;
     font-weight: 600;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .toggle-description {
     font-size: 0.875rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
   }
 
   .toggle-switch {
     position: relative;
     width: 44px;
     height: 24px;
-    background: var(--browserx-border);
+    background: var(--workx-border);
     border: none;
     border-radius: 12px;
     cursor: pointer;
@@ -1571,7 +1578,7 @@
   }
 
   .toggle-switch.active {
-    background: var(--browserx-primary);
+    background: var(--workx-primary);
   }
 
   .toggle-slider {
@@ -1607,22 +1614,22 @@
 
   .disabled-input input {
     cursor: not-allowed;
-    background: var(--browserx-background);
+    background: var(--workx-background);
   }
 
   /* Backend Mode Status */
   .auth-status.backend-mode {
-    color: var(--browserx-primary);
-    background: color-mix(in srgb, var(--browserx-primary) 10%, transparent);
+    color: var(--workx-primary);
+    background: color-mix(in srgb, var(--workx-primary) 10%, transparent);
   }
 
   .security-notice.backend-notice {
-    border-color: var(--browserx-primary);
-    background: color-mix(in srgb, var(--browserx-primary) 5%, var(--browserx-surface));
+    border-color: var(--workx-primary);
+    background: color-mix(in srgb, var(--workx-primary) 5%, var(--workx-surface));
   }
 
   .security-notice.backend-notice svg {
-    color: var(--browserx-primary);
+    color: var(--workx-primary);
   }
 
   /* ChatGPT OAuth styles */
@@ -1642,7 +1649,7 @@
   }
 
   .chatgpt-oauth-status.signing-in {
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
   }
 
   .chatgpt-oauth-status .btn-sm {
@@ -1656,14 +1663,14 @@
     align-items: center;
     gap: 0.75rem;
     margin: 0.5rem 0;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
   }
 
   .form-divider::before,
   .form-divider::after {
     content: '';
     flex: 1;
-    border-top: 1px solid var(--browserx-border);
+    border-top: 1px solid var(--workx-border);
   }
 
   .divider-text {

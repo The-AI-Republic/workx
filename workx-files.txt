@@ -21,7 +21,7 @@ src/background/index.ts
 src/background/service-worker.ts
 src/core/QueueProcessor.ts
 src/core/events/EventMapping.ts
-src/core/BrowserxAgent.ts
+src/core/WorkXAgent.ts
 src/core/UserNotifier.ts
 src/core/tasks/SessionTask.ts
 src/core/TurnContext.ts

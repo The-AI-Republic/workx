@@ -51,11 +51,11 @@ describe('RolloutWriter', () => {
       expect(writer).toBeDefined();
     });
 
-    it('should create IndexedDB database "ApplePiRollouts"', async () => {
+    it('should create IndexedDB database "WorkXRollouts"', async () => {
       writer = await RolloutWriter.create(rolloutId, 0, provider);
 
       const dbs = await indexedDB.databases();
-      const dbExists = dbs.some((db: any) => db.name === 'ApplePiRollouts');
+      const dbExists = dbs.some((db: any) => db.name === 'WorkXRollouts');
       expect(dbExists).toBe(true);
     });
   });

@@ -26,10 +26,21 @@ describe('pathUtils', () => {
     expect(o.a).toEqual({ b: 1 });
   });
 
+  it('setByPath ignores prototype-pollution segments', () => {
+    const o: Record<string, unknown> = {};
+    setByPath(o, '__proto__.polluted', true);
+    setByPath(o, 'safe.constructor.polluted', true);
+    setByPath(o, 'safe.prototype.polluted', true);
+
+    expect(o).toEqual({});
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
   it('getByPath returns undefined for missing segments', () => {
     expect(getByPath({ a: { b: 1 } }, 'a.b')).toBe(1);
     expect(getByPath({ a: 1 }, 'a.b.c')).toBeUndefined();
     expect(getByPath(null, 'a')).toBeUndefined();
+    expect(getByPath({}, '__proto__.toString')).toBeUndefined();
   });
 
   it('deleteByPath removes the leaf and prunes empty parents', () => {
@@ -52,6 +63,14 @@ describe('pathUtils', () => {
     expect(
       flattenLeafPaths({ a: { b: 1, c: [1, 2] }, d: 'x' }).sort()
     ).toEqual(['a.b', 'a.c', 'd']);
+  });
+
+  it('flattenLeafPaths skips prototype-pollution keys', () => {
+    const obj = JSON.parse(
+      '{"safe":1,"__proto__":{"polluted":true},"nested":{"constructor":{"x":1},"prototype":{"y":2},"ok":3}}'
+    );
+
+    expect(flattenLeafPaths(obj).sort()).toEqual(['nested.ok', 'safe']);
   });
 
   it('deepClone is independent of the source', () => {

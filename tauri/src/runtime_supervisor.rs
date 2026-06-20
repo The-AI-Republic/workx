@@ -1,6 +1,7 @@
 use directories::ProjectDirs;
 use serde::Serialize;
 use serde_json::{json, Value};
+use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::atomic::{AtomicI64, Ordering};
@@ -22,6 +23,45 @@ const RESTART_MAX_MS: u64 = 30_000;
 const MAX_RESTART_ATTEMPTS: u32 = 10;
 /// Grace period after a cooperative `shutdown` frame before a hard kill.
 const SHUTDOWN_GRACE: Duration = Duration::from_secs(5);
+/// Recent-stderr ring buffer caps (Track 45 Goal 3). Bounded by lines OR
+/// bytes — whichever cap is exceeded first triggers FIFO eviction. Kept
+/// across child (re)spawn within one supervisor lifetime so a multi-restart
+/// failure can still surface the stderr that explains the original crash.
+const STDERR_RING_LINE_CAP: usize = 200;
+const STDERR_RING_BYTE_CAP: usize = 64 * 1024;
+
+/// Restart backoff for the Nth attempt (1-indexed). Doubles each attempt
+/// starting from `RESTART_BASE_MS`, capped at `RESTART_MAX_MS`. Extracted
+/// for Track 45 Goal 2 lifecycle tests so the formula can be asserted
+/// directly without driving the full supervise loop.
+///
+/// attempt | backoff
+/// --------|--------
+///   1     |   500 ms
+///   2     |  1000 ms
+///   3     |  2000 ms
+///   4     |  4000 ms
+///   5     |  8000 ms
+///   6     | 16000 ms
+///   7+    | 30000 ms (capped)
+fn backoff_ms_for_attempt(attempt: u32) -> u64 {
+    if attempt == 0 {
+        return 0;
+    }
+    let shift = (attempt - 1).min(6);
+    (RESTART_BASE_MS << shift).min(RESTART_MAX_MS)
+}
+
+#[derive(Clone, Serialize)]
+struct RingLine {
+    /// Child generation (matches `RuntimeSupervisor.generation` at the time the line was emitted).
+    generation: u64,
+    /// Unix-epoch milliseconds when the line was captured.
+    #[serde(rename = "tsMs")]
+    ts_ms: i64,
+    /// stderr line without the trailing `\n`.
+    line: String,
+}
 
 #[derive(Default)]
 pub struct RuntimeSupervisorState {
@@ -40,6 +80,82 @@ struct RuntimeSupervisor {
     supervising: bool,
     /// A supervise() loop is active; prevents duplicate supervisors.
     loop_running: bool,
+    /// Recent stderr lines, FIFO bounded by `STDERR_RING_LINE_CAP` and
+    /// `STDERR_RING_BYTE_CAP`. Drained by the `diagnostics.recentStderr`
+    /// control-frame handler.
+    recent_stderr: VecDeque<RingLine>,
+    /// Running sum of `recent_stderr` line byte lengths, kept in sync with
+    /// the deque so the byte-cap check is O(1).
+    recent_stderr_bytes: usize,
+}
+
+/// Marker appended to a stderr line that the ring buffer had to truncate
+/// because the line alone exceeded `STDERR_RING_BYTE_CAP`. Without this,
+/// the eviction loop below would drop the entire oversized line on the
+/// next push — silently losing the most diagnostically useful evidence
+/// for cases like a serialized panic backtrace.
+const STDERR_TRUNCATION_MARKER: &str = " …[truncated]";
+
+/// Peel every newline-terminated line out of `pending` (a raw-byte
+/// buffer that accumulates across `read()` calls) and return each as a
+/// `String`. Any bytes after the last `\n` stay in `pending` for the
+/// next call.
+///
+/// Pending is `Vec<u8>` (not `String`) so multi-byte UTF-8 characters
+/// split across read boundaries are NOT corrupted by an early
+/// `String::from_utf8_lossy` pass. Conversion happens per-line, once
+/// the line is whole.
+///
+/// Trailing `\r` is stripped after the `\n` so CRLF terminations produce
+/// the same line as bare `\n`.
+fn extract_completed_lines_from_pending(pending: &mut Vec<u8>) -> Vec<String> {
+    let mut completed = Vec::new();
+    while let Some(idx) = pending.iter().position(|b| *b == b'\n') {
+        // Drain the line including its `\n`.
+        let mut line_bytes: Vec<u8> = pending.drain(..=idx).collect();
+        // Drop the trailing `\n`.
+        line_bytes.pop();
+        // Drop a trailing `\r` if present (CRLF normalization).
+        if line_bytes.last() == Some(&b'\r') {
+            line_bytes.pop();
+        }
+        completed.push(String::from_utf8_lossy(&line_bytes).into_owned());
+    }
+    completed
+}
+
+impl RuntimeSupervisor {
+    /// Push one completed stderr line into the ring buffer, evicting from
+    /// the front until both caps are satisfied. A single line larger than
+    /// `STDERR_RING_BYTE_CAP` is truncated to fit (with a marker) rather
+    /// than being silently dropped after self-eviction.
+    fn push_stderr_line(&mut self, generation: u64, mut line: String) {
+        // Pre-truncate any single oversized line so it can fit inside the
+        // byte cap without forcing the eviction loop to drop it entirely.
+        // UTF-8-safe truncation: walk back to the nearest char boundary.
+        let max_payload = STDERR_RING_BYTE_CAP.saturating_sub(STDERR_TRUNCATION_MARKER.len());
+        if line.len() > max_payload {
+            let mut cut = max_payload;
+            while cut > 0 && !line.is_char_boundary(cut) {
+                cut -= 1;
+            }
+            line.truncate(cut);
+            line.push_str(STDERR_TRUNCATION_MARKER);
+        }
+
+        let len = line.len();
+        self.recent_stderr.push_back(RingLine { generation, ts_ms: now_ms(), line });
+        self.recent_stderr_bytes += len;
+        while self.recent_stderr.len() > STDERR_RING_LINE_CAP
+            || self.recent_stderr_bytes > STDERR_RING_BYTE_CAP
+        {
+            if let Some(evicted) = self.recent_stderr.pop_front() {
+                self.recent_stderr_bytes = self.recent_stderr_bytes.saturating_sub(evicted.line.len());
+            } else {
+                break;
+            }
+        }
+    }
 }
 
 fn now_ms() -> i64 {
@@ -75,7 +191,7 @@ struct DesktopRuntimeHost {
 }
 
 fn desktop_host(app: &AppHandle) -> Result<DesktopRuntimeHost, String> {
-    let project_dirs = ProjectDirs::from("com", "airepublic", "pi")
+    let project_dirs = ProjectDirs::from("com", "airepublic", "workx")
         .ok_or_else(|| "Failed to resolve desktop config dir".to_string())?;
     let config_dir = project_dirs.config_dir().to_path_buf();
     let cache_dir = project_dirs.cache_dir().to_path_buf();
@@ -101,14 +217,14 @@ fn desktop_host(app: &AppHandle) -> Result<DesktopRuntimeHost, String> {
         log_dir: log_dir.to_string_lossy().to_string(),
         browser_mcp_sidecar_path,
         project_root,
-        keychain_service_prefix: "applepi".to_string(),
+        keychain_service_prefix: "workx".to_string(),
         platform: std::env::consts::OS.to_string(),
         arch: std::env::consts::ARCH.to_string(),
     })
 }
 
 fn runtime_entry_path(app: &AppHandle) -> PathBuf {
-    if let Ok(path) = std::env::var("APPLEPI_DESKTOP_RUNTIME_ENTRY") {
+    if let Ok(path) = std::env::var("WORKX_DESKTOP_RUNTIME_ENTRY") {
         return PathBuf::from(path);
     }
     if let Ok(path) = app
@@ -120,6 +236,27 @@ fn runtime_entry_path(app: &AppHandle) -> PathBuf {
         }
     }
     PathBuf::from("../dist/desktop-runtime/index.mjs")
+}
+
+fn mkcert_root_ca_path() -> Option<PathBuf> {
+    let mut candidates: Vec<PathBuf> = Vec::new();
+
+    if let Ok(caroot) = std::env::var("CAROOT") {
+        candidates.push(PathBuf::from(caroot).join("rootCA.pem"));
+    }
+    if let Some(data_dir) = dirs::data_dir() {
+        candidates.push(data_dir.join("mkcert").join("rootCA.pem"));
+    }
+    if let Some(data_local_dir) = dirs::data_local_dir() {
+        candidates.push(data_local_dir.join("mkcert").join("rootCA.pem"));
+    }
+    if let Some(home_dir) = dirs::home_dir() {
+        candidates.push(home_dir.join(".local").join("share").join("mkcert").join("rootCA.pem"));
+        candidates.push(home_dir.join("Library").join("Application Support").join("mkcert").join("rootCA.pem"));
+        candidates.push(home_dir.join("AppData").join("Local").join("mkcert").join("rootCA.pem"));
+    }
+
+    candidates.into_iter().find(|path| path.exists())
 }
 
 async fn write_frame(stdin: &mut ChildStdin, frame: &Value) -> Result<(), String> {
@@ -247,7 +384,7 @@ async fn handle_control_frame(app: &AppHandle, state: &RuntimeSupervisorState, f
             .map(|_| json!(null)),
         // ── notifications (OS-trust; uses tauri-plugin-notification) ──────
         "notification.show" => {
-            let title = params.get("title").and_then(Value::as_str).unwrap_or("Apple Pi");
+            let title = params.get("title").and_then(Value::as_str).unwrap_or("WorkX");
             let body = params.get("body").and_then(Value::as_str).unwrap_or("");
             use tauri_plugin_notification::NotificationExt;
             match app.notification().builder().title(title).body(body).show() {
@@ -275,12 +412,17 @@ async fn handle_control_frame(app: &AppHandle, state: &RuntimeSupervisorState, f
         }
         // ── diagnostics ────────────────────────────────────────────────────
         "diagnostics.recentStderr" => {
-            // Recent stderr is captured by the supervisor stderr task and
-            // emitted as `runtime:stderr` events to the UI; the runtime
-            // itself doesn't get a copy, so it asks back here. A real
-            // implementation would back this with a ring buffer; for now
-            // return an empty list (no leak) so callers handle gracefully.
-            Ok(json!({ "lines": [] }))
+            // The stderr drain task pushes each completed line into a
+            // bounded ring buffer (Track 45 Goal 3). Caps are
+            // STDERR_RING_LINE_CAP lines and STDERR_RING_BYTE_CAP bytes;
+            // FIFO eviction. The buffer is retained across child
+            // (re)spawn within one supervisor lifetime so a restart loop
+            // still surfaces the stderr that explains the original crash.
+            // Each entry carries `generation` so callers can correlate
+            // lines with restart attempts.
+            let guard = state.inner.lock().await;
+            let lines: Vec<RingLine> = guard.recent_stderr.iter().cloned().collect();
+            Ok(json!({ "lines": lines }))
         }
         _ => Err(format!("Unknown control method: {}", method)),
     };
@@ -302,6 +444,10 @@ async fn handle_control_frame(app: &AppHandle, state: &RuntimeSupervisorState, f
 /// good handshake, `Err` on spawn failure.
 /// Resolve a `node` binary to invoke for the runtime sidecar.
 ///
+/// Production packages include the exact Node binary that built the native
+/// sidecar deps. Prefer that binary so native addons such as better-sqlite3
+/// cannot be accidentally loaded with a different system Node ABI.
+///
 /// macOS Finder-launched apps and Windows .exe launches typically run with a
 /// minimal PATH that does NOT include Homebrew (`/usr/local/bin`,
 /// `/opt/homebrew/bin`), NVM (`~/.nvm/versions/node/.../bin`), Volta, or
@@ -311,13 +457,27 @@ async fn handle_control_frame(app: &AppHandle, state: &RuntimeSupervisorState, f
 /// happy path) and fall back to a small list of well-known install
 /// locations. The first one that exists wins.
 ///
-/// The `APPLEPI_NODE_BIN` env var overrides everything for power users / CI.
-fn resolve_node_bin() -> String {
-    if let Ok(custom) = std::env::var("APPLEPI_NODE_BIN") {
+/// The `WORKX_NODE_BIN` env var overrides everything for power users / CI.
+fn resolve_node_bin(app: &AppHandle) -> String {
+    if let Ok(custom) = std::env::var("WORKX_NODE_BIN") {
         if !custom.is_empty() {
             return custom;
         }
     }
+
+    let bundled_name = if cfg!(target_os = "windows") { "node.exe" } else { "node" };
+    if let Ok(path) = app
+        .path()
+        .resolve(
+            format!("desktop-runtime/{}", bundled_name),
+            tauri::path::BaseDirectory::Resource,
+        )
+    {
+        if path.exists() {
+            return path.to_string_lossy().to_string();
+        }
+    }
+
     // Bare `node` if PATH has it. The Command spawn below also tries this
     // form, so the explicit existence check is a small optimization for
     // platforms with normal PATHs.
@@ -361,19 +521,27 @@ async fn spawn_once(
     let host = desktop_host(app)?;
     let host_json = serde_json::to_string(&host).map_err(|e| e.to_string())?;
     let entry = runtime_entry_path(app);
-    let node_bin = resolve_node_bin();
+    let node_bin = resolve_node_bin(app);
 
-    let mut child = Command::new(&node_bin)
+    let mut command = Command::new(&node_bin);
+    command
         .arg(entry)
-        .env("APPLEPI_RUNTIME_PROFILE", "desktop-runtime")
-        .env("APPLEPI_DESKTOP_RUNTIME_HOST", host_json)
+        .env("WORKX_RUNTIME_PROFILE", "desktop-runtime")
+        .env("WORKX_DESKTOP_RUNTIME_HOST", host_json);
+    if std::env::var_os("NODE_EXTRA_CA_CERTS").is_none() {
+        if let Some(root_ca) = mkcert_root_ca_path() {
+            command.env("NODE_EXTRA_CA_CERTS", root_ca);
+        }
+    }
+
+    let mut child = command
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true)
         .spawn()
         .map_err(|e| format!(
-            "Failed to spawn desktop runtime via '{}': {}. Install Node.js 20.19+ or 22+ (https://nodejs.org), or set APPLEPI_NODE_BIN to a node binary path.",
+            "Failed to spawn desktop runtime via '{}': {}. Install Node.js 20.19+ or 22+ (https://nodejs.org), or set WORKX_NODE_BIN to a node binary path.",
             node_bin, e,
         ))?;
 
@@ -403,17 +571,59 @@ async fn spawn_once(
     let last_pong = Arc::new(AtomicI64::new(now_ms()));
 
     // stderr drain (diagnostics only; never parsed as protocol).
+    //
+    // Track 45 Goal 3: in addition to emitting raw chunks as
+    // `runtime:stderr` Tauri events (UI behavior, unchanged), split each
+    // chunk on `\n` and push completed lines into the supervisor's
+    // bounded ring buffer so `diagnostics.recentStderr` returns real
+    // data instead of an empty list. A trailing partial sequence is
+    // carried across `read()` boundaries as raw bytes — see
+    // `extract_completed_lines_from_pending` for the byte-level
+    // splitter — so a multi-byte UTF-8 character split across reads
+    // is not corrupted by an early `from_utf8_lossy` pass.
     {
         let app_err = app.clone();
+        let inner_err = inner.clone();
         tauri::async_runtime::spawn(async move {
             let mut reader = BufReader::new(stderr);
             let mut buf = [0_u8; 4096];
+            // Raw byte buffer for partial-line carry-over. Converting to
+            // String only happens once a full line has been extracted,
+            // which is the only point where UTF-8 boundaries are
+            // guaranteed to be either intact or genuinely malformed.
+            let mut pending: Vec<u8> = Vec::new();
             loop {
                 match reader.read(&mut buf).await {
-                    Ok(0) | Err(_) => break,
+                    Ok(0) | Err(_) => {
+                        // EOF / read error: flush any unterminated trailing
+                        // text as a final ring line so it isn't lost.
+                        if !pending.is_empty() {
+                            let trailing = String::from_utf8_lossy(&pending).to_string();
+                            pending.clear();
+                            let mut g = inner_err.lock().await;
+                            g.push_stderr_line(generation, trailing);
+                        }
+                        break;
+                    }
                     Ok(n) => {
-                        let text = String::from_utf8_lossy(&buf[..n]).to_string();
-                        let _ = app_err.emit("runtime:stderr", text);
+                        // UI event: emit the raw chunk lossy-decoded.
+                        // Unchanged behavior; UI doesn't depend on
+                        // boundary-precise UTF-8.
+                        let _ = app_err.emit(
+                            "runtime:stderr",
+                            String::from_utf8_lossy(&buf[..n]).to_string(),
+                        );
+
+                        // Ring buffer: extend pending bytes, then peel
+                        // off any complete lines (terminated by `\n`).
+                        pending.extend_from_slice(&buf[..n]);
+                        let completed = extract_completed_lines_from_pending(&mut pending);
+                        if !completed.is_empty() {
+                            let mut g = inner_err.lock().await;
+                            for line in completed {
+                                g.push_stderr_line(generation, line);
+                            }
+                        }
                     }
                 }
             }
@@ -551,8 +761,7 @@ async fn supervise(app: AppHandle, inner: Arc<Mutex<RuntimeSupervisor>>) {
             inner.lock().await.loop_running = false;
             return;
         }
-        let shift = (attempt - 1).min(6);
-        let backoff = (RESTART_BASE_MS << shift).min(RESTART_MAX_MS);
+        let backoff = backoff_ms_for_attempt(attempt);
         let _ = app.emit(
             "runtime:reconnecting",
             json!({ "attempt": attempt, "delayMs": backoff }),
@@ -629,5 +838,210 @@ pub fn kill_on_exit(state: &RuntimeSupervisorState) {
         if let Some(child) = guard.child.as_mut() {
             let _ = child.start_kill();
         }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Track 45 Goal 2 (pure unit tests) — backoff math + ring buffer
+//
+// Process-driven lifecycle tests live in
+// `tauri/tests/runtime_supervisor_lifecycle.rs` because they need
+// `env!("CARGO_BIN_EXE_fake-runtime-child")`, which Cargo only sets for
+// integration tests under `tests/`.
+//
+// Tests in this module exercise internal helpers
+// (`backoff_ms_for_attempt`, `RuntimeSupervisor::push_stderr_line`,
+// `STDERR_RING_*` constants) without depending on subprocess machinery.
+// ─────────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod unit_tests {
+    use super::*;
+
+    // ─── backoff math (Track 45 Goal 2) ─────────────────────────────
+
+    #[test]
+    fn backoff_ms_for_attempt_doubles_then_caps() {
+        assert_eq!(backoff_ms_for_attempt(0), 0);
+        assert_eq!(backoff_ms_for_attempt(1), RESTART_BASE_MS); // 500
+        assert_eq!(backoff_ms_for_attempt(2), RESTART_BASE_MS * 2); // 1000
+        assert_eq!(backoff_ms_for_attempt(3), RESTART_BASE_MS * 4); // 2000
+        assert_eq!(backoff_ms_for_attempt(4), RESTART_BASE_MS * 8); // 4000
+        assert_eq!(backoff_ms_for_attempt(5), RESTART_BASE_MS * 16); // 8000
+        assert_eq!(backoff_ms_for_attempt(6), RESTART_BASE_MS * 32); // 16000
+        // Attempt 7+ caps at RESTART_MAX_MS (30s). 500 << 6 = 32000, capped.
+        assert_eq!(backoff_ms_for_attempt(7), RESTART_MAX_MS);
+        assert_eq!(backoff_ms_for_attempt(10), RESTART_MAX_MS);
+        assert_eq!(backoff_ms_for_attempt(MAX_RESTART_ATTEMPTS), RESTART_MAX_MS);
+    }
+
+    #[test]
+    fn cumulative_backoff_through_max_attempts_matches_design_doc() {
+        // 500 + 1000 + 2000 + 4000 + 8000 + 16000 + 4 × 30000 = 151_500 ms
+        // (~151.5 s real time through MAX_RESTART_ATTEMPTS). Documents the
+        // current "any successful handshake resets attempt to 0" semantics
+        // (supervise loop, the `Ok(true) => attempt = 0` arm): the cap
+        // only fires on consecutive pre-handshake failures.
+        let sum: u64 = (1..=MAX_RESTART_ATTEMPTS).map(backoff_ms_for_attempt).sum();
+        assert_eq!(sum, 151_500);
+    }
+
+    // ─── ring buffer behavior (Track 45 Goal 3) ─────────────────────
+
+    #[test]
+    fn ring_buffer_evicts_by_line_cap() {
+        let mut sup = RuntimeSupervisor::default();
+        for i in 0..(STDERR_RING_LINE_CAP + 50) {
+            sup.push_stderr_line(1, format!("line {i}"));
+        }
+        assert_eq!(sup.recent_stderr.len(), STDERR_RING_LINE_CAP);
+        // Oldest line evicted: 50 of the 250 inserted are gone from the front.
+        assert_eq!(
+            sup.recent_stderr.front().unwrap().line,
+            format!("line {}", 50)
+        );
+        // Newest preserved.
+        assert_eq!(
+            sup.recent_stderr.back().unwrap().line,
+            format!("line {}", STDERR_RING_LINE_CAP + 50 - 1)
+        );
+    }
+
+    #[test]
+    fn ring_buffer_evicts_by_byte_cap() {
+        let mut sup = RuntimeSupervisor::default();
+        // Each line is ~1 KiB. The byte cap is 64 KiB, so ~64 lines fit
+        // before byte-cap eviction begins, well below LINE_CAP.
+        let big_line = "x".repeat(1024);
+        for _ in 0..200 {
+            sup.push_stderr_line(1, big_line.clone());
+        }
+        assert!(sup.recent_stderr.len() < STDERR_RING_LINE_CAP);
+        assert!(
+            sup.recent_stderr_bytes <= STDERR_RING_BYTE_CAP,
+            "byte cap should hold: {} > {}",
+            sup.recent_stderr_bytes, STDERR_RING_BYTE_CAP
+        );
+    }
+
+    #[test]
+    fn ring_buffer_retains_across_generations() {
+        let mut sup = RuntimeSupervisor::default();
+        sup.push_stderr_line(7, "from child 7".into());
+        sup.push_stderr_line(8, "from child 8".into());
+        // Buffer survives child (re)spawn within one supervisor lifetime,
+        // which is what makes it diagnostic across restart loops.
+        assert_eq!(sup.recent_stderr.len(), 2);
+        let front = sup.recent_stderr.front().unwrap();
+        let back = sup.recent_stderr.back().unwrap();
+        assert_eq!(front.generation, 7);
+        assert_eq!(back.generation, 8);
+        assert!(front.ts_ms > 0);
+        assert!(back.ts_ms >= front.ts_ms);
+    }
+
+    #[test]
+    fn ring_buffer_truncates_oversized_single_line() {
+        // Regression: a single line larger than STDERR_RING_BYTE_CAP used
+        // to be silently dropped by the eviction loop (it would pop the
+        // line it had just pushed because the buffer was still over-cap).
+        // Diagnostic data — exactly the kind we want to preserve — was
+        // lost. Push one giant line and assert it survives, truncated.
+        let mut sup = RuntimeSupervisor::default();
+        let huge = "a".repeat(STDERR_RING_BYTE_CAP * 2);
+        sup.push_stderr_line(1, huge);
+        assert_eq!(sup.recent_stderr.len(), 1, "oversized line must not be dropped");
+        let kept = &sup.recent_stderr.front().unwrap().line;
+        assert!(
+            kept.ends_with(STDERR_TRUNCATION_MARKER),
+            "truncated line must carry the marker so callers know data was elided",
+        );
+        assert!(
+            kept.len() <= STDERR_RING_BYTE_CAP,
+            "truncated line must fit inside the byte cap",
+        );
+        assert!(sup.recent_stderr_bytes <= STDERR_RING_BYTE_CAP);
+    }
+
+    // ─── stderr line extraction (UTF-8 boundary safety) ─────────────
+
+    #[test]
+    fn extract_completed_lines_splits_on_newline() {
+        let mut pending: Vec<u8> = b"line one\nline two\npartial".to_vec();
+        let lines = extract_completed_lines_from_pending(&mut pending);
+        assert_eq!(lines, vec!["line one".to_string(), "line two".to_string()]);
+        assert_eq!(pending, b"partial");
+    }
+
+    #[test]
+    fn extract_completed_lines_strips_crlf() {
+        let mut pending: Vec<u8> = b"windows-style\r\nbare\n".to_vec();
+        let lines = extract_completed_lines_from_pending(&mut pending);
+        assert_eq!(lines, vec!["windows-style".to_string(), "bare".to_string()]);
+        assert!(pending.is_empty());
+    }
+
+    #[test]
+    fn extract_completed_lines_preserves_multibyte_across_read_boundaries() {
+        // Regression: the previous String-based implementation called
+        // `String::from_utf8_lossy(&buf[..n]).to_string()` on each raw
+        // read, which corrupts a multi-byte UTF-8 character that
+        // straddles a read boundary (chunk 1 ends with bytes 1-2 of a
+        // 3-byte char, chunk 2 starts with byte 3). Each half becomes a
+        // U+FFFD replacement char, permanently losing the original.
+        //
+        // Simulate that scenario: feed `pending` two byte chunks that
+        // together encode a CJK ideographic full stop (U+3002 = 0xE3
+        // 0x80 0x82), split across reads with no newline between them,
+        // then a trailing `\n`. The extractor must NOT extract anything
+        // until the `\n` arrives, and when it does the character must
+        // be intact.
+        let mut pending: Vec<u8> = Vec::new();
+
+        // First "read": last two bytes of the multi-byte char.
+        pending.extend_from_slice(b"prefix");
+        pending.extend_from_slice(&[0xE3, 0x80]); // first two bytes of U+3002
+        let lines = extract_completed_lines_from_pending(&mut pending);
+        assert!(lines.is_empty(), "no newline yet → no extraction");
+
+        // Second "read": final byte + a newline.
+        pending.extend_from_slice(&[0x82]); // last byte of U+3002
+        pending.extend_from_slice(b" suffix\n");
+        let lines = extract_completed_lines_from_pending(&mut pending);
+        assert_eq!(lines.len(), 1);
+        // The character survives intact, NOT as two U+FFFD chars.
+        assert_eq!(lines[0], "prefix\u{3002} suffix");
+        assert!(pending.is_empty());
+    }
+
+    #[test]
+    fn extract_completed_lines_uses_lossy_for_genuinely_malformed_bytes() {
+        // A real malformed sequence (no terminator continuation) inside
+        // a completed line still gets `from_utf8_lossy`'d to U+FFFD —
+        // that's correct lossy behavior for actually-broken input, as
+        // opposed to broken-by-buffering input.
+        let mut pending: Vec<u8> = vec![b'o', b'k', 0xFF, 0xFE, b'\n'];
+        let lines = extract_completed_lines_from_pending(&mut pending);
+        assert_eq!(lines.len(), 1);
+        assert!(lines[0].contains('\u{FFFD}'));
+    }
+
+    #[test]
+    fn ring_buffer_truncates_oversized_line_at_utf8_boundary() {
+        // The truncation walks back to a char boundary so we never split
+        // a multi-byte UTF-8 sequence — important because the stderr task
+        // upstream uses `String::from_utf8_lossy` which can emit valid
+        // multi-byte characters near the cut point.
+        let mut sup = RuntimeSupervisor::default();
+        // A long string of 3-byte UTF-8 chars (CJK punctuation).
+        let huge: String = "。".repeat(STDERR_RING_BYTE_CAP);
+        sup.push_stderr_line(1, huge);
+        let kept = &sup.recent_stderr.front().unwrap().line;
+        // The marker is ASCII; the part before it must still be valid UTF-8.
+        let before_marker = kept.trim_end_matches(STDERR_TRUNCATION_MARKER);
+        assert!(
+            std::str::from_utf8(before_marker.as_bytes()).is_ok(),
+            "truncated payload must remain valid UTF-8",
+        );
     }
 }

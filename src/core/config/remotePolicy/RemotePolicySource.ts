@@ -4,7 +4,7 @@
  * Highest-precedence server/desktop source. Wraps {@link fetchRemotePolicy}
  * with cache-via-ConfigStorageProvider + fail-open (stale cache on error,
  * never hard-deny) + a 1h background poll. Eligibility = "endpoint
- * configured" (BrowserX has no Anthropic-subscription analog). No remote
+ * configured" (WorkX has no Anthropic-subscription analog). No remote
  * fetcher on the extension — Chrome managed storage is its channel.
  *
  * @module core/config/remotePolicy/RemotePolicySource
@@ -42,7 +42,7 @@ export class RemotePolicySource implements PolicySource {
   }
 
   private get endpoint(): string | undefined {
-    return this.opts.endpoint ?? process.env.APPLEPI_POLICY_ENDPOINT;
+    return this.opts.endpoint ?? process.env.WORKX_POLICY_ENDPOINT;
   }
 
   private async readCache(): Promise<CacheRecord | null> {

@@ -6,7 +6,7 @@ import type { TelemetryEvent } from '../analytics';
 describe('Phase 4: OTLP sink ships dark', () => {
   const env = { ...process.env };
   beforeEach(() => {
-    delete process.env.APPLEPI_OTEL_TELEMETRY;
+    delete process.env.WORKX_OTEL_TELEMETRY;
     delete process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
     delete process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT;
   });
@@ -22,9 +22,9 @@ describe('Phase 4: OTLP sink ships dark', () => {
   });
 
   it('still null with only the flag (no endpoint) or only an endpoint', () => {
-    process.env.APPLEPI_OTEL_TELEMETRY = '1';
+    process.env.WORKX_OTEL_TELEMETRY = '1';
     expect(createOtelSink()).toBeNull();
-    delete process.env.APPLEPI_OTEL_TELEMETRY;
+    delete process.env.WORKX_OTEL_TELEMETRY;
     process.env.OTEL_EXPORTER_OTLP_ENDPOINT = 'http://collector:4318';
     expect(createOtelSink()).toBeNull();
   });
@@ -33,7 +33,7 @@ describe('Phase 4: OTLP sink ships dark', () => {
     vi.useFakeTimers();
     const fetchMock = vi.fn().mockResolvedValue({ ok: true });
     vi.stubGlobal('fetch', fetchMock);
-    process.env.APPLEPI_OTEL_TELEMETRY = '1';
+    process.env.WORKX_OTEL_TELEMETRY = '1';
     process.env.OTEL_EXPORTER_OTLP_ENDPOINT = 'http://collector:4318/';
 
     const sink = createOtelSink();
@@ -54,7 +54,7 @@ describe('Phase 4: OTLP sink ships dark', () => {
     vi.stubGlobal('fetch', () => {
       throw new Error('no fetch');
     });
-    process.env.APPLEPI_OTEL_TELEMETRY = 'true';
+    process.env.WORKX_OTEL_TELEMETRY = 'true';
     process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT = 'http://c:4318';
     const sink = createOtelSink()!;
     expect(() => sink.write({ name: 'x', metadata: {} })).not.toThrow();

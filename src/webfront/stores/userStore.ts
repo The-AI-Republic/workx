@@ -6,6 +6,7 @@
  */
 
 import { writable, type Writable, derived, type Readable } from 'svelte/store';
+import { AUTH_ROUTE_PATHS, HOME_PAGE_BASE_URL } from '../lib/constants';
 
 export interface UserState {
   isLoggedIn: boolean;
@@ -104,7 +105,15 @@ export const userInitials: Readable<string> = derived(userStore, ($user) =>
 );
 
 // Get the login page URL derived from HOME_PAGE_BASE_URL
-export function getLoginPageUrl(): string {
-  const baseUrl = import.meta.env.VITE_HOME_PAGE_BASE_URL || 'https://airepublic.com';
-  return `${baseUrl}/login`;
+export function getLoginPageUrl(): string | null {
+  if (!HOME_PAGE_BASE_URL || !AUTH_ROUTE_PATHS.login) return null;
+  return new URL(AUTH_ROUTE_PATHS.login, HOME_PAGE_BASE_URL).toString();
+}
+
+export function getDesktopLoginPageUrl(): string | null {
+  if (!HOME_PAGE_BASE_URL || !AUTH_ROUTE_PATHS.login) return null;
+  const loginUrl = new URL(AUTH_ROUTE_PATHS.login, HOME_PAGE_BASE_URL);
+  loginUrl.searchParams.set('redirect_url', 'workx://auth/callback');
+  loginUrl.searchParams.set('desktop_login_ts', Date.now().toString());
+  return loginUrl.toString();
 }

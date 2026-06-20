@@ -1,25 +1,25 @@
-# BrowserX
+# WorkX
 
 **AI-Powered Personal Assistant — Chrome Extension, Desktop App & Headless Server**
 
-BrowserX is a privacy-preserving, general-purpose AI personal assistant available as a **Chrome extension (BrowserX)**, a **desktop application (Apple Pi)**, and a **headless server (Apple Pi Server)**. The agent interprets natural language commands and autonomously performs tasks across web browsing, planning, and more.
+WorkX is a privacy-preserving, general-purpose AI personal assistant available as a **Chrome extension (WorkX)**, a **desktop application (WorkX)**, and a **headless server (WorkX Server)**. The agent interprets natural language commands and autonomously performs tasks across web browsing, planning, and more.
 
 ### Naming Convention
 
 | Product | Platform | Identifier |
 |---------|----------|------------|
-| **BrowserX** | Chrome Extension | `browserx` |
-| **Apple Pi** | Desktop (Win/Mac/Linux) | `applepi` |
-| **Apple Pi Server** | Headless (Docker/K8s) | `applepi-server` |
+| **WorkX** | Chrome Extension | `workx` |
+| **WorkX** | Desktop (Win/Mac/Linux) | `workx` |
+| **WorkX Server** | Headless (Docker/K8s) | `workx-server` |
 
 - **Core agent class**: `RepublicAgent` (developed by AI Republic)
-- **Internal npm scope**: `@applepi`
-- **Extension-layer identifiers**: `browserx` (events, credentials, tab groups)
-- **Shared/core identifiers**: `applepi` (DB names, config keys, event prefixes)
+- **Internal npm scope**: `@workx`
+- **Extension-layer identifiers**: `workx` (events, credentials, tab groups)
+- **Shared/core identifiers**: `workx` (DB names, config keys, event prefixes)
 
 All three platforms share a common core (`src/core/`) — see [Architecture](docs/ARCHITECTURE.md) for details.
 
-![UI Screenshot](/src/static/applepi_UI.png)
+![UI Screenshot](/src/static/workx_UI.png)
 
 ---
 
@@ -33,7 +33,7 @@ All three platforms share a common core (`src/core/`) — see [Architecture](doc
 
 **Current Status:** Alpha Testing
 
-BrowserX is currently in active alpha development and is intended **exclusively** for personal evaluation or internal organizational use.
+WorkX is currently in active alpha development and is intended **exclusively** for personal evaluation or internal organizational use.
 
 **Usage Restrictions:**
 - Personal evaluation and learning: Allowed
@@ -66,13 +66,21 @@ cp .env.example src/desktop/.env
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `VITE_HOME_PAGE_BASE_URL` | AI Republic home page URL | `https://airepublic.com` |
-| `VITE_BACKEND_API_BASE_URL` | Backend API endpoint | `https://api.airepublic.com` |
-| `VITE_COOKIE_DOMAIN` | Cookie domain for auth | `.airepublic.com` |
+| `VITE_AUTH_BASE_URL` | Optional hosted login/account base URL | `https://auth.example.com` |
+| `VITE_BACKEND_API_BASE_URL` | Optional backend API endpoint | `https://api.example.com` |
+| `VITE_AUTH_COOKIE_DOMAIN` | Optional cookie domain for hosted auth | `.example.com` |
+| `VITE_AUTH_ACCESS_COOKIE_NAME` | Hosted auth access-token cookie name | `access_token` |
+| `VITE_AUTH_REFRESH_COOKIE_NAME` | Hosted auth refresh-token cookie name | `refresh_token` |
+| `VITE_AUTH_LOGIN_PATH` | Optional hosted login path | `/signin` |
+| `VITE_AUTH_PROFILE_PATH` | Optional hosted profile API path | `/profile` |
+| `VITE_AUTH_DESKTOP_SESSION_PATH` | Optional desktop session API path | `/desktop/session` |
+| `VITE_AUTH_DESKTOP_REFRESH_PATH` | Optional desktop token refresh API path | `/desktop/refresh` |
+| `VITE_AUTH_USER_CENTER_PATH` | Optional hosted account path | `/account` |
+| `VITE_AUTH_PRICING_PATH` | Optional hosted plan upgrade path | `/plans` |
 
 ---
 
-### BrowserX (Chrome Extension)
+### WorkX (Chrome Extension)
 
 ```bash
 npm install
@@ -87,7 +95,7 @@ Then load in Chrome:
 
 ---
 
-### Apple Pi (Desktop App)
+### WorkX (Desktop App)
 
 #### System Dependencies
 
@@ -133,11 +141,29 @@ npm run tauri:build
 
 Output: `tauri/target/release/bundle/{deb,appimage,nsis,dmg}/`
 
+#### Local Desktop Package Testing
+
+For a normal desktop package:
+
+```bash
+./build.sh --install
+```
+
+For local hosted-login testing:
+
+```bash
+VITE_AUTH_BASE_URL=https://auth.example.local ./build.sh --install
+```
+
+You can also set `VITE_AUTH_BASE_URL=https://auth.example.local` in
+`src/desktop/.env`. The desktop web UI and runtime sidecar read the hosted auth
+URL during the build, so changing it requires rebuilding the desktop package.
+
 ---
 
-### Apple Pi Server (Headless Mode)
+### WorkX Server (Headless Mode)
 
-Apple Pi Server runs the agent as a headless WebSocket/HTTP service for server deployments, Docker containers, and Kubernetes.
+WorkX Server runs the agent as a headless WebSocket/HTTP service for server deployments, Docker containers, and Kubernetes.
 
 ```bash
 npm install
@@ -152,12 +178,12 @@ Configuration priority: **env vars** > **config.json** > **defaults**
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `APPLEPI_SERVER_PORT` | Server port | `18100` |
-| `APPLEPI_SERVER_BIND` | Bind mode (`loopback`, `lan`, `tailnet`, `auto`) | `auto` |
-| `APPLEPI_SERVER_AUTH_MODE` | Auth (`none`, `token`, `password`, `trusted-proxy`) | `none` |
-| `APPLEPI_SERVER_TOKEN` | Auth token | — |
-| `APPLEPI_DATA_DIR` | Data directory | `~/.applepi-server/data` |
-| `APPLEPI_CONFIG_PATH` | Config file path | `~/.applepi-server/config.json` |
+| `WORKX_SERVER_PORT` | Server port | `18100` |
+| `WORKX_SERVER_BIND` | Bind mode (`loopback`, `lan`, `tailnet`, `auto`) | `auto` |
+| `WORKX_SERVER_AUTH_MODE` | Auth (`none`, `token`, `password`, `trusted-proxy`) | `none` |
+| `WORKX_SERVER_TOKEN` | Auth token | — |
+| `WORKX_DATA_DIR` | Data directory | `~/.workx-server/data` |
+| `WORKX_CONFIG_PATH` | Config file path | `~/.workx-server/config.json` |
 | `CHROME_BIN` | Chrome binary path | Auto-detected |
 | `CHROME_REMOTE_URL` | Remote browser URL | — |
 
@@ -167,14 +193,14 @@ See `src/server/config/server-config.ts` for the full Zod-validated config schem
 
 ```bash
 # With bundled Chrome (default)
-docker build -t applepi-server .
+docker build -t workx-server .
 
 # Slim image (remote browser only)
-docker build --build-arg INSTALL_CHROME=false -t applepi-server-slim .
+docker build --build-arg INSTALL_CHROME=false -t workx-server-slim .
 
 # Run
-docker run -d -p 18100:18100 -v applepi-data:/data \
-  -e APPLEPI_SERVER_AUTH_MODE=token -e APPLEPI_SERVER_TOKEN=secret applepi-server
+docker run -d -p 18100:18100 -v workx-data:/data \
+  -e WORKX_SERVER_AUTH_MODE=token -e WORKX_SERVER_TOKEN=secret workx-server
 
 # Or use Docker Compose
 docker compose up -d
@@ -211,7 +237,7 @@ If no Chrome is available, the server degrades gracefully — planning and web s
 
 ## Internationalization (i18n)
 
-BrowserX supports 50+ languages via Chrome's `_locales` system, auto-translated using Fireworks AI.
+WorkX supports 50+ languages via Chrome's `_locales` system, auto-translated using Fireworks AI.
 
 | Function | Usage | Context |
 |----------|-------|---------|

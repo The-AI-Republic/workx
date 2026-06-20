@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { ResolvedPolicy } from '@/core/config/policy';
 
-const ENV_KEYS = ['APPLEPI_CONFIG_PATH', 'APPLEPI_DATA_DIR', 'APPLEPI_SERVER_PORT'];
+const ENV_KEYS = ['WORKX_CONFIG_PATH', 'WORKX_DATA_DIR', 'WORKX_SERVER_PORT'];
 const saved: Record<string, string | undefined> = {};
 
 let loadServerConfig: typeof import('../server-config').loadServerConfig;
@@ -37,7 +37,7 @@ afterEach(() => {
 
 describe('Track 20 — server-config policy pin', () => {
   it('no policy → env override wins as before', async () => {
-    process.env.APPLEPI_SERVER_PORT = '1234';
+    process.env.WORKX_SERVER_PORT = '1234';
     const cfg = loadServerConfig();
     expect(cfg.server.port).toBe(1234);
   });
@@ -54,7 +54,7 @@ describe('Track 20 — server-config policy pin', () => {
       },
     ]);
     await resolveActivePolicy();
-    process.env.APPLEPI_SERVER_PORT = '1234';
+    process.env.WORKX_SERVER_PORT = '1234';
     const cfg = loadServerConfig();
     expect(cfg.server.port).toBe(9999); // policy > env > file > defaults
   });

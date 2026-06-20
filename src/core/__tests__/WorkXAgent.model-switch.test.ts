@@ -1,5 +1,5 @@
 /**
- * Unit Tests: BrowserxAgent - Model Switch (handleModelConfigChange)
+ * Unit Tests: WorkXAgent - Model Switch (handleModelConfigChange)
  *
  * Covers the model switching behavior triggered by config-changed events:
  * 1. Model switch without active task applies immediately
@@ -43,6 +43,9 @@ vi.mock('@/core/PromptLoader', () => ({
   loadUserInstructions: vi.fn(async () => 'user-instructions'),
   isComposerConfigured: vi.fn(() => false),
   configurePromptComposer: vi.fn(),
+  registerPromptExtension: vi.fn(),
+  unregisterPromptExtension: vi.fn(),
+  unregisterSessionPromptExtensions: vi.fn(),
 }));
 
 vi.mock('@/tools/registerPlatformTools', () => ({
@@ -95,7 +98,7 @@ declare const __BUILD_MODE__: string;
 // Imports (after mocks)
 // ---------------------------------------------------------------------------
 
-import { RepublicAgent as BrowserxAgent } from '@/core/RepublicAgent';
+import { RepublicAgent as WorkXAgent } from '@/core/RepublicAgent';
 import { AgentConfig } from '@/config/AgentConfig';
 import type { IConfigChangeEvent } from '@/config/types';
 
@@ -186,9 +189,9 @@ function makeMockModelClient(label: string) {
 // Test Suite
 // ---------------------------------------------------------------------------
 
-describe('BrowserxAgent - handleModelConfigChange', () => {
+describe('WorkXAgent - handleModelConfigChange', () => {
   let config: ReturnType<typeof createMockConfig>;
-  let agent: BrowserxAgent;
+  let agent: WorkXAgent;
 
   beforeEach(() => {
     uuidCounter = 0;
@@ -215,6 +218,8 @@ describe('BrowserxAgent - handleModelConfigChange', () => {
       getTabId: vi.fn().mockReturnValue(-1),
       setTabId: vi.fn(),
       getId: vi.fn().mockReturnValue('session-id-1'),
+      getSessionId: vi.fn().mockReturnValue('conv-123'),
+      getAgentMode: vi.fn().mockReturnValue('general'),
       getConversationHistory: vi.fn().mockReturnValue({
         items: [
           { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'hello' }] },
@@ -231,6 +236,13 @@ describe('BrowserxAgent - handleModelConfigChange', () => {
       getHistoryEntry: vi.fn(),
       clearHistory: vi.fn(),
       shutdown: vi.fn().mockResolvedValue(undefined),
+      dispose: vi.fn().mockResolvedValue(undefined),
+      refreshMemoryService: vi.fn().mockResolvedValue(undefined),
+      getMemoryService: vi.fn().mockReturnValue(null),
+      getSessionSummaryHook: vi.fn().mockReturnValue(null),
+      setSessionSummaryHook: vi.fn(),
+      registerPostTurnHook: vi.fn().mockReturnValue(() => undefined),
+      initialize: vi.fn().mockResolvedValue(undefined),
       initializeSession: vi.fn().mockResolvedValue(undefined),
       notifyApproval: vi.fn(),
       compact: vi.fn().mockResolvedValue({
@@ -254,6 +266,7 @@ describe('BrowserxAgent - handleModelConfigChange', () => {
 
     mockModelClientFactoryInstance = {
       initialize: vi.fn().mockResolvedValue(undefined),
+      clearCache: vi.fn(),
       createClientForCurrentModel: vi.fn().mockResolvedValue(
         makeMockModelClient('default-model')
       ),
@@ -303,7 +316,7 @@ describe('BrowserxAgent - handleModelConfigChange', () => {
     };
 
     config = createMockConfig();
-    agent = new BrowserxAgent(config as unknown as AgentConfig, mockPlatformAdapter as any);
+    agent = new WorkXAgent(config as unknown as AgentConfig, mockPlatformAdapter as any);
   });
 
   // =========================================================================
@@ -330,13 +343,15 @@ describe('BrowserxAgent - handleModelConfigChange', () => {
       expect(mockTurnContextInstance.setSelectedModelKey).toHaveBeenCalledWith('anthropic:claude-4');
 
       // Should emit a BackgroundEvent confirming the immediate switch
-      const infoEvent = dispatcherSpy.mock.calls.find(
-        (call: any[]) =>
-          call[0]?.msg?.type === 'BackgroundEvent' &&
-          call[0]?.msg?.data?.level === 'info' &&
-          call[0]?.msg?.data?.message?.includes('Model switched to anthropic:claude-4')
-      );
-      expect(infoEvent).toBeDefined();
+      await vi.waitFor(() => {
+        const infoEvent = dispatcherSpy.mock.calls.find(
+          (call: any[]) =>
+            call[0]?.msg?.type === 'BackgroundEvent' &&
+            call[0]?.msg?.data?.level === 'info' &&
+            call[0]?.msg?.data?.message?.includes('Model switched to anthropic:claude-4')
+        );
+        expect(infoEvent).toBeDefined();
+      });
     });
 
     it('should not call createClientForCurrentModel when oldValue equals newValue', async () => {
@@ -787,18 +802,19 @@ describe('BrowserxAgent - handleModelConfigChange', () => {
   // =========================================================================
 
   describe('Edge cases', () => {
-    it('should ignore config-changed events with non-model section', async () => {
-      // Emit a non-model config change - the handler should not fire
+    it('should ignore config-changed events unrelated to model client construction', async () => {
+      // Emit a config change that should not affect the active model client.
       const handlers = config._handlers.get('config-changed');
       expect(handlers).toBeDefined();
       expect(handlers!.size).toBeGreaterThan(0);
 
-      // Emit a provider change
+      // Provider and tools changes intentionally refresh model-client construction;
+      // preferences changes should not.
       config._emit({
         type: 'config-changed',
-        section: 'provider',
+        section: 'preferences',
         oldValue: null,
-        newValue: { id: 'new-provider' },
+        newValue: { showRawAgentReasoning: true },
         timestamp: Date.now(),
       });
 

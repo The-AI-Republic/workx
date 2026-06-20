@@ -28,7 +28,7 @@ function deps(overrides = {}) {
 
 const ENTRY: MarketplaceEntry = {
   name: 'gh',
-  source: { type: 'github', repo: 'browserx/gh' },
+  source: { type: 'github', repo: 'workx/gh' },
   version: '0.3.1',
 };
 
@@ -91,7 +91,7 @@ describe('createGitFetchPlugin', () => {
     const d = deps({ resolveHeadSha: vi.fn(async () => sha) });
     const fetchPlugin = createGitFetchPlugin(d, () => ({
       name: 'gh',
-      source: { type: 'github', repo: 'browserx/gh', sha },
+      source: { type: 'github', repo: 'workx/gh', sha },
       version: '1.0.0',
     }));
     const result = await fetchPlugin('gh@official');

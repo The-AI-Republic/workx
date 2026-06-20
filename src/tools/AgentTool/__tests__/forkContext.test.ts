@@ -74,7 +74,7 @@ describe('buildForkedSubAgentInitialHistory', () => {
     expect(JSON.stringify(initialHistory.rolloutItems[0])).toContain('Do task');
   });
 
-  it('rejects recursive fork history containing the fork directive tag', () => {
+  it('does not reject based on model-visible fork directive text', () => {
     const parentSession = {
       getSessionId: () => 'parent-session',
       getConversationHistory: () => ({
@@ -91,14 +91,14 @@ describe('buildForkedSubAgentInitialHistory', () => {
       getSession: () => parentSession,
     } as any;
 
-    expect(() =>
-      buildForkedSubAgentInitialHistory(parentEngine, 'Do task', {
-        runId: 'run-1',
-        typeId: 'worker',
-        agentType: AgentType.Worker,
-        contextMode: SubAgentContextMode.Fork,
-      }),
-    ).toThrow('already contains forked sub-agent context');
+    const initialHistory = buildForkedSubAgentInitialHistory(parentEngine, 'Do task', {
+      runId: 'run-1',
+      typeId: 'worker',
+      agentType: AgentType.Worker,
+      contextMode: SubAgentContextMode.Fork,
+    });
+
+    expect(initialHistory.mode).toBe('forked');
   });
 
   it('detects fork directive tags in response items', () => {

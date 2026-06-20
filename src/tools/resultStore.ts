@@ -3,7 +3,7 @@
  *
  * When a tool result exceeds its threshold, the full content is persisted to a
  * backing store and the model receives a <persisted-output> preview + a
- * retrieval reference instead of a truncated tail. This is the BrowserX port
+ * retrieval reference instead of a truncated tail. This is the WorkX port
  * of Claudy's `toolResultStorage.ts` model, generalized for our multi-platform
  * runtime:
  *
@@ -37,6 +37,16 @@ export interface PersistedResult {
   preview: string;
   /** True iff the preview was truncated (there's more in the persisted blob). */
   hasMore: boolean;
+  /** Ownership metadata used by cleanup/eviction to avoid breaking rollouts. */
+  owner?: PersistedResultOwner;
+}
+
+export type PersistedResultOwner =
+  | { kind: 'persistent_rollout'; sessionId: string; callId: string }
+  | { kind: 'transient_session'; sessionId: string; callId: string };
+
+export interface PersistToolResultOptions {
+  owner?: PersistedResultOwner;
 }
 
 /**
@@ -47,7 +57,12 @@ export interface PersistedResult {
  * and must not throw on duplicate writes.
  */
 export interface ToolResultStore {
-  persist(sessionId: string, toolUseId: string, content: string): Promise<PersistedResult>;
+  persist(
+    sessionId: string,
+    toolUseId: string,
+    content: string,
+    options?: PersistToolResultOptions,
+  ): Promise<PersistedResult>;
   retrieve(reference: string): Promise<string | null>;
   cleanup(sessionId: string): Promise<void>;
 }
@@ -171,6 +186,7 @@ export class CacheToolResultStore implements ToolResultStore {
     sessionId: string,
     toolUseId: string,
     content: string,
+    options: PersistToolResultOptions = {},
   ): Promise<PersistedResult> {
     if (content.length > CACHE_MAX_ITEM_SIZE) {
       throw new ToolResultTooLargeForStoreError(content.length, CACHE_MAX_ITEM_SIZE);
@@ -181,7 +197,7 @@ export class CacheToolResultStore implements ToolResultStore {
       `tool_result:${toolUseId}`,
       undefined,
       undefined,
-      { kind: CACHE_TOOL_RESULT_KIND, toolUseId },
+      { kind: CACHE_TOOL_RESULT_KIND, toolUseId, owner: options.owner },
     );
     const { preview, hasMore } = generatePreview(content, PREVIEW_SIZE_BYTES);
     return {
@@ -190,6 +206,7 @@ export class CacheToolResultStore implements ToolResultStore {
       originalSize: content.length,
       preview,
       hasMore,
+      owner: options.owner,
     };
   }
 
@@ -224,7 +241,10 @@ export class CacheToolResultStore implements ToolResultStore {
       entries.map(async (m) => {
         try {
           const full = await this.cache.read(m.storageKey);
-          if (full.customMetadata?.kind === CACHE_TOOL_RESULT_KIND) {
+          if (
+            full.customMetadata?.kind === CACHE_TOOL_RESULT_KIND &&
+            (full.customMetadata as { owner?: PersistedResultOwner }).owner?.kind === 'transient_session'
+          ) {
             targets.push(m.storageKey);
           }
         } catch {
@@ -252,14 +272,21 @@ export class FileToolResultStore implements ToolResultStore {
     return join(this.rootDir, sessionId, 'tool-results', `${toolUseId}.txt`);
   }
 
+  private async metaPathFor(sessionId: string, toolUseId: string): Promise<string> {
+    const { join } = await import('node:path');
+    return join(this.rootDir, sessionId, 'tool-results', `${toolUseId}.meta.json`);
+  }
+
   async persist(
     sessionId: string,
     toolUseId: string,
     content: string,
+    options: PersistToolResultOptions = {},
   ): Promise<PersistedResult> {
     const { writeFile, mkdir } = await import('node:fs/promises');
     const { dirname } = await import('node:path');
     const filepath = await this.pathFor(sessionId, toolUseId);
+    const metaPath = await this.metaPathFor(sessionId, toolUseId);
     await mkdir(dirname(filepath), { recursive: true });
     try {
       await writeFile(filepath, content, { encoding: 'utf-8', flag: 'wx' });
@@ -270,6 +297,15 @@ export class FileToolResultStore implements ToolResultStore {
       // the caller will fall back to legacy truncation.
       if (e?.code !== 'EEXIST') throw e;
     }
+    await writeFile(
+      metaPath,
+      JSON.stringify(
+        { kind: CACHE_TOOL_RESULT_KIND, toolUseId, owner: options.owner },
+        null,
+        2,
+      ),
+      { encoding: 'utf-8' },
+    );
     const { preview, hasMore } = generatePreview(content, PREVIEW_SIZE_BYTES);
     return {
       reference: filepath,
@@ -277,6 +313,7 @@ export class FileToolResultStore implements ToolResultStore {
       originalSize: content.length,
       preview,
       hasMore,
+      owner: options.owner,
     };
   }
 
@@ -291,11 +328,40 @@ export class FileToolResultStore implements ToolResultStore {
   }
 
   async cleanup(sessionId: string): Promise<void> {
-    const { rm } = await import('node:fs/promises');
+    const { readdir, readFile, rm, unlink } = await import('node:fs/promises');
     const { join } = await import('node:path');
     const dir = join(this.rootDir, sessionId, 'tool-results');
     try {
-      await rm(dir, { recursive: true, force: true });
+      const entries = await readdir(dir).catch((e: any) => {
+        if (e?.code === 'ENOENT') return [];
+        throw e;
+      });
+      await Promise.all(
+        entries
+          .filter((entry) => entry.endsWith('.txt'))
+          .map(async (entry) => {
+            const toolUseId = entry.slice(0, -'.txt'.length);
+            const filePath = join(dir, entry);
+            const metaPath = join(dir, `${toolUseId}.meta.json`);
+            let owner: PersistedResultOwner | undefined;
+            try {
+              const meta = JSON.parse(await readFile(metaPath, 'utf-8')) as {
+                owner?: PersistedResultOwner;
+              };
+              owner = meta.owner;
+            } catch {
+              owner = undefined;
+            }
+            if (owner?.kind !== 'transient_session') return;
+            await Promise.all([
+              unlink(filePath).catch(() => undefined),
+              unlink(metaPath).catch(() => undefined),
+            ]);
+          }),
+      );
+      // Remove the now-empty transient result directory when cleanup deleted
+      // every owned result. ENOTEMPTY is expected when persistent owners remain.
+      await rm(dir, { recursive: false, force: true }).catch(() => undefined);
     } catch (e) {
       console.warn('[FileToolResultStore] cleanup failed:', e);
     }

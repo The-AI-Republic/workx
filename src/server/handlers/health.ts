@@ -6,7 +6,7 @@
  * @module server/handlers/health
  */
 
-import { registerMethodHandler, type MethodContext } from '@applepi/ws-server';
+import { registerMethodHandler, type MethodContext } from '@workx/ws-server';
 import { getConnectionCount } from '../connection/watchdog';
 import type { DiagnosticStatus } from '@/core/diagnostics';
 

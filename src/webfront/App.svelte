@@ -10,11 +10,12 @@
   import Doctor from './pages/diagnostics/Doctor.svelte';
   import Usage from './pages/usage/Usage.svelte';
   import { userStore } from './stores/userStore';
-  import { isAuthenticated } from './lib/utils/cookie';
+  import { AUTH_COOKIE_DOMAIN, AUTH_COOKIE_NAMES, isAuthenticated } from './lib/utils/cookie';
   import { fetchUserProfile } from './lib/apis';
   import { LLM_API_URL } from './lib/constants';
   import { AgentConfig } from '@/config/AgentConfig';
   import { getInitializedUIClient } from '@/core/messaging';
+  import type { DesktopRuntimeStateSnapshot, RuntimeAuthState } from '@/core/services/runtime-state';
   import { platform } from './stores/platformStore';
   import { vaultStore, refreshVaultStatus } from './stores/vaultStore';
   import PinUnlockOverlay from './components/vault/PinUnlockOverlay.svelte';
@@ -52,12 +53,9 @@
     '*': Chat,
   };
 
-  // Cookie domain for filtering cookie change events
-  const COOKIE_DOMAIN = import.meta.env.VITE_COOKIE_DOMAIN || '.airepublic.com';
-  const AUTH_COOKIE_NAME = 'ai_access';
-
   // Store the cookie change listener for cleanup
   let cookieChangeListener: ((changeInfo: chrome.cookies.CookieChangeInfo) => void) | null = $state(null);
+  let runtimeStateUnlisten: (() => void) | null = null;
 
   /**
    * Check and update authentication state
@@ -105,23 +103,8 @@
         await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt]));
       }
       try {
-        const state = await client.serviceRequest<{
-          hasValidToken: boolean;
-          user: { name?: string; email?: string; avatar?: string; userType?: number } | null;
-        }>('auth.getState');
-
-        if (state?.hasValidToken && state.user) {
-          userStore.setUser({
-            name: state.user.name ?? null,
-            email: state.user.email ?? '',
-            avatar: state.user.avatar ?? null,
-            userType: state.user.userType ?? 0,
-          });
-          console.log('[App] Desktop userStore updated for:', state.user.email);
-          return;
-        }
-        // hasValidToken=false is a real "not logged in" answer — stop retrying.
-        userStore.setNotLoggedIn();
+        const snapshot = await client.serviceRequest<DesktopRuntimeStateSnapshot>('runtime.getStateSnapshot');
+        applyDesktopAuthState(snapshot.auth);
         return;
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
@@ -140,6 +123,36 @@
       }
     }
     userStore.setNotLoggedIn();
+  }
+
+  function applyDesktopAuthState(state: RuntimeAuthState | null | undefined): void {
+    if (state?.hasToken || state?.hasValidToken) {
+      userStore.setUser({
+        name: state.profile?.name ?? state.user?.name ?? null,
+        email: state.profile?.email ?? state.user?.email ?? null,
+        avatar: state.profile?.avatar ?? state.user?.avatar ?? null,
+        userType: state.profile?.userType ?? state.user?.userType ?? 0,
+      });
+      console.log('[App] Desktop userStore updated for:', state.profile?.email ?? state.user?.email ?? 'stored token');
+      return;
+    }
+    userStore.setNotLoggedIn();
+  }
+
+  async function wireDesktopRuntimeStateEvents(): Promise<void> {
+    if (platform.platformName !== 'desktop' || runtimeStateUnlisten) return;
+    try {
+      const client = await getInitializedUIClient();
+      runtimeStateUnlisten = client.onEvent('StateUpdate', (event) => {
+        const data = event.msg.data;
+        if (data?.scope !== 'desktop-runtime') return;
+        if (data.kind === 'auth.stateChanged') {
+          applyDesktopAuthState(data.auth as RuntimeAuthState);
+        }
+      });
+    } catch (error) {
+      console.warn('[App] Failed to subscribe to desktop runtime state:', error);
+    }
   }
 
   /**
@@ -236,6 +249,7 @@
     }).catch(() => {});
 
     // Initial auth check
+    wireDesktopRuntimeStateEvents();
     checkAndUpdateAuth();
 
     // Listen for cookie changes to detect login/logout from other pages
@@ -245,8 +259,9 @@
 
         // Only react to auth cookie changes on our domain
         if (
-          cookie.name === AUTH_COOKIE_NAME &&
-          cookie.domain.includes(COOKIE_DOMAIN.replace(/^\./, ''))
+          AUTH_COOKIE_DOMAIN &&
+          cookie.name === AUTH_COOKIE_NAMES.access &&
+          cookie.domain.includes(AUTH_COOKIE_DOMAIN.replace(/^\./, ''))
         ) {
           console.log('[App] Auth cookie changed:', removed ? 'removed' : 'set');
           checkAndUpdateAuth();
@@ -270,6 +285,8 @@
       chrome.cookies.onChanged.removeListener(cookieChangeListener);
       console.log('[App] Cookie change listener removed');
     }
+    runtimeStateUnlisten?.();
+    runtimeStateUnlisten = null;
   });
 </script>
 

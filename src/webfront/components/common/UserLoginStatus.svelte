@@ -1,14 +1,14 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { push } from 'svelte-spa-router';
-  import { userStore, userInitials, getLoginPageUrl } from '../../stores/userStore';
+  import { userStore, userInitials, getDesktopLoginPageUrl, getLoginPageUrl } from '../../stores/userStore';
   import { uiTheme } from '../../stores/themeStore';
   import { platform } from '../../stores/platformStore';
-  import { HOME_PAGE_BASE_URL, LLM_API_URL } from '../../lib/constants';
+  import { AUTH_ROUTE_PATHS, HOME_PAGE_BASE_URL, LLM_API_URL, buildHostedAuthUrl } from '../../lib/constants';
   import Tooltip from './Tooltip.svelte';
   import PopupCard from './PopupCard.svelte';
   import { _t } from '../../lib/i18n';
-  import { fetchUserProfile } from '../../lib/apis';
+  import type { RuntimeAuthState } from '@/core/services/runtime-state';
 
   let isLoggingIn = $state(false);
   let cancelLogin: (() => void) | null = $state(null);
@@ -17,10 +17,11 @@
   let showPromoTooltip = $state(false);
   let promoTooltipTimer: ReturnType<typeof setTimeout> | null = null;
   let hasShownPromoTooltip = $state(false);
+  const hasHostedAuth = Boolean(HOME_PAGE_BASE_URL && AUTH_ROUTE_PATHS.login);
 
   // Watch for user state changes to show promo tooltip when not logged in (only once)
   $effect(() => {
-    if (!$userStore.isLoading && !$userStore.isLoggedIn && !hasShownPromoTooltip) {
+    if (hasHostedAuth && !$userStore.isLoading && !$userStore.isLoggedIn && !hasShownPromoTooltip) {
       showPromoTooltipWithTimer();
     } else if ($userStore.isLoggedIn) {
       hidePromoTooltip();
@@ -49,13 +50,27 @@
     }
   }
 
+  onMount(() => {
+    const handleLoginRequest = () => {
+      if (platform.platformName !== 'desktop' || isLoggingIn) return;
+      void openLoginPage();
+    };
+    window.addEventListener('workx:request-login', handleLoginRequest);
+    return () => window.removeEventListener('workx:request-login', handleLoginRequest);
+  });
+
   onDestroy(() => {
     hidePromoTooltip();
   });
 
   async function openLoginPage() {
+    if (!hasHostedAuth) {
+      console.warn('[UserLoginStatus] Hosted auth is not configured');
+      return;
+    }
+
     if (platform.platformName === 'desktop') {
-      // Desktop mode: open the browser to /login, await the auth-callback
+      // Desktop mode: open the browser to /login, await the workx-deeplink
       // deeplink (Rust → WebView event), and forward both tokens to the
       // runtime via `auth.completeLogin`. The WebView never touches the OS
       // keychain after the Track 43 cutover — the runtime owns credentials.
@@ -78,40 +93,69 @@
           import('@/core/messaging'),
         ]);
 
-        // 1. Open the browser to the login URL with our deeplink callback.
-        const loginUrl = new URL('/login', HOME_PAGE_BASE_URL);
-        loginUrl.searchParams.set('redirect_url', 'applepi://auth/callback');
-        loginUrl.searchParams.set('desktop_login_ts', Date.now().toString());
+        // 1. Open the home-page login route with our deeplink callback. The
+        // home page handles both fresh Google login and already-authenticated
+        // browser sessions.
+        const loginUrl = getDesktopLoginPageUrl();
+        if (!loginUrl) throw new Error('Hosted auth is not configured');
 
-        // 2. Subscribe to the auth-callback event from Rust before opening the
+        // 2. Subscribe to the workx-deeplink event from Rust before opening the
         // browser — Rust emits it as soon as the OS hands us the URL.
         const tokensPromise = new Promise<{ accessToken: string; refreshToken: string }>(
           (resolve, reject) => {
-            rejectPending = reject;
-            const timeoutId = setTimeout(() => reject(new Error('Login timed out')), 300_000);
-            listen<string>('auth-callback', (event) => {
+            let settled = false;
+            const timeoutId = setTimeout(() => {
+              rejectWithCleanup(new Error('Login timed out'));
+            }, 300_000);
+            const consumedAuthCallbacks = new Set<string>();
+
+            const resolveWithCleanup = (tokens: { accessToken: string; refreshToken: string }) => {
+              if (settled) return;
+              settled = true;
+              clearTimeout(timeoutId);
+              resolve(tokens);
+            };
+            const rejectWithCleanup = (error: Error) => {
+              if (settled) return;
+              settled = true;
+              clearTimeout(timeoutId);
+              reject(error);
+            };
+            rejectPending = rejectWithCleanup;
+
+            listen<string>('workx-deeplink', (event) => {
               try {
                 const urlObj = new URL(event.payload);
+                if (urlObj.host !== 'auth' || urlObj.pathname !== '/callback') {
+                  return;
+                }
+                const dedupeKey = urlObj.toString();
+                if (consumedAuthCallbacks.has(dedupeKey)) {
+                  return;
+                }
+                consumedAuthCallbacks.add(dedupeKey);
                 const accessToken = urlObj.searchParams.get('access_token');
                 const refreshToken = urlObj.searchParams.get('refresh_token');
                 if (!accessToken || !refreshToken) {
-                  reject(new Error(urlObj.searchParams.get('error') ?? 'Missing tokens'));
+                  rejectWithCleanup(new Error(urlObj.searchParams.get('error') ?? 'Missing tokens'));
                   return;
                 }
-                clearTimeout(timeoutId);
-                resolve({ accessToken, refreshToken });
+                resolveWithCleanup({ accessToken, refreshToken });
               } catch (err) {
-                reject(err instanceof Error ? err : new Error(String(err)));
+                rejectWithCleanup(err instanceof Error ? err : new Error(String(err)));
               }
             }).then((unlisten) => {
               // Detach the listener once the promise settles so a later
               // unrelated deeplink does not silently re-trigger login UI.
               tokensPromise.finally(() => unlisten()).catch(() => undefined);
+            }).catch((err) => {
+              rejectWithCleanup(err instanceof Error ? err : new Error(String(err)));
             });
           },
         );
+        void tokensPromise.catch(() => undefined);
 
-        await open(loginUrl.toString());
+        await open(loginUrl);
         const tokens = await tokensPromise;
         if (isCancelled) return;
 
@@ -121,19 +165,20 @@
         // credential store, and pushes the new AuthManager into every
         // active session's model client.
         const client = await getInitializedUIClient();
-        const completion = await client.serviceRequest<{ success: boolean; user: any }>(
+        const completion = await client.serviceRequest<{
+          success: boolean;
+          state?: RuntimeAuthState;
+          user?: { name?: string | null; email?: string | null; avatar?: string | null; userType?: number } | null;
+        }>(
           'auth.completeLogin',
           { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken, backendBaseUrl: LLM_API_URL },
         );
-        const accessToken = tokens.accessToken;
         if (isCancelled) return;
 
-        // 4. Update the UI userStore from the runtime response, with a local
-        // profile fetch fallback if the runtime didn't fetch one for us.
-        let profile: any = completion?.user ?? null;
-        if (!profile) {
-          profile = await fetchUserProfile(accessToken);
-        }
+        // 4. Update the UI userStore from the runtime response. Desktop
+        // profile lookup belongs to the runtime; the WebView does not retry
+        // profile calls with raw tokens after login.
+        const profile = completion?.state?.profile ?? completion?.user ?? null;
         if (profile) {
           userStore.setUser({
             name: profile.name ?? null,
@@ -141,12 +186,17 @@
             avatar: profile.avatar ?? null,
             userType: profile.userType ?? 0,
           });
+        } else {
+          // The runtime has accepted and stored the token. Keep the desktop UI
+          // in logged-in state even if the profile endpoint is unavailable.
+          userStore.setUser({ name: null, email: null, avatar: null, userType: 0 });
         }
         console.log('[UserLoginStatus] Desktop auth completed via runtime');
       } catch (error) {
         if (!isCancelled) {
           console.error('[UserLoginStatus] Desktop login failed:', error);
         }
+        rejectPending?.(error instanceof Error ? error : new Error(String(error)));
       } finally {
         if (!isCancelled) {
           isLoggingIn = false;
@@ -157,7 +207,7 @@
     } else {
       // Extension mode: open login page in a new tab
       const loginUrl = getLoginPageUrl();
-      chrome.tabs.create({ url: loginUrl });
+      if (loginUrl) chrome.tabs.create({ url: loginUrl });
     }
   }
 
@@ -188,7 +238,8 @@
   async function openUserCenter(event: MouseEvent) {
     event.preventDefault();
     showMenu = false;
-    const userCenterUrl = `${HOME_PAGE_BASE_URL}/user-center/info`;
+    const userCenterUrl = buildHostedAuthUrl(AUTH_ROUTE_PATHS.userCenter);
+    if (!userCenterUrl) return;
 
     if (platform.platformName === 'desktop') {
       // Desktop mode: use Tauri shell plugin to open in browser
@@ -247,7 +298,7 @@
       {#snippet content()}<div class="min-w-[180px]">
         <!-- User Info Section -->
         <a
-          href="{HOME_PAGE_BASE_URL}/user-center/info"
+          href={buildHostedAuthUrl(AUTH_ROUTE_PATHS.userCenter) ?? undefined}
           class="flex items-center gap-3 p-3 no-underline cursor-pointer rounded transition-colors duration-150
             {$uiTheme === 'modern'
               ? 'hover:bg-white/10'
@@ -305,7 +356,7 @@
         </button>
       </div>{/snippet}
     </PopupCard>
-  {:else}
+  {:else if hasHostedAuth}
     <!-- Not logged in state - show login link -->
     <Tooltip content={isLoggingIn ? $_t("Click to cancel login") : (showPromoTooltip ? $_t("Login to get free credits") : $_t("Sign in to your account"))}>
       <button

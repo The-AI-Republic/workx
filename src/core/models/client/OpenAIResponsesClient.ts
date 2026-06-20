@@ -1194,7 +1194,7 @@ export class OpenAIResponsesClient extends ModelClient {
         type: 'json_schema',
         strict: true,
         schema: outputSchema,
-        name: 'pi_output_schema',
+        name: 'workx_output_schema',
       };
     }
 

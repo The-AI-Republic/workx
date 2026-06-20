@@ -7,6 +7,7 @@
 
 import { writable, type Writable } from 'svelte/store';
 import { t } from '../lib/i18n';
+import type { AgentAccessState } from '@/core/services/runtime-state';
 
 /**
  * Agent state interface
@@ -94,6 +95,19 @@ function createAgentStore() {
         message: response.message,
         provider: response.provider,
         model: response.model,
+      });
+    },
+
+    /**
+     * Update state from the runtime-owned access state contract.
+     */
+    updateFromAccessState: (access: AgentAccessState) => {
+      set({
+        ready: access.ready,
+        authMode: access.mode,
+        message: access.reason,
+        provider: access.provider,
+        model: access.model,
       });
     },
 

@@ -5,6 +5,7 @@
   import type { UIChannelClient } from '@/core/messaging';
   import type { JobStatusChangedEvent } from '@/core/models/types/SchedulerContracts';
   import type { Event, InputItem } from '@/core/protocol/types';
+  import type { AgentAccessState } from '@/core/services/runtime-state';
   import type { ProcessedEvent } from '@/types/ui';
   import { STYLE_PRESETS } from '@/types/ui';
 
@@ -57,6 +58,19 @@
   let healthStatus: { ready: boolean; message?: string; provider?: string; model?: string; authMode?: 'login' | 'api_key' | 'none' } = $state({ ready: false, authMode: 'none' });
   let zoomLevel: number = $state(parseInt(document.documentElement.style.fontSize) || 100);
 
+  function applyAccessState(access: AgentAccessState): void {
+    isConnected = true;
+    agentReady = access.ready;
+    healthStatus = {
+      ready: access.ready,
+      message: access.reason,
+      provider: access.provider,
+      model: access.model,
+      authMode: access.mode,
+    };
+    agentStore.updateFromAccessState(access);
+  }
+
   function onZoomChanged(e: Event) {
     zoomLevel = (e as CustomEvent<number>).detail;
   }
@@ -69,6 +83,17 @@
       const agentConfig = config.getConfig();
       config.updateConfig({ preferences: { ...agentConfig.preferences, zoomLevel: 100 } });
     }).catch(() => {});
+  }
+
+  function requestLogin() {
+    if (platform.platformName === 'desktop') {
+      window.dispatchEvent(new CustomEvent('workx:request-login'));
+      return;
+    }
+    const loginUrl = getLoginPageUrl();
+    if (loginUrl) {
+      window.open(loginUrl, '_blank', 'noopener,noreferrer');
+    }
   }
   let compactionNotification: { show: boolean; tokensSaved: number; compactionCount: number; isWarning: boolean } = $state({
     show: false,
@@ -176,8 +201,10 @@
       threadRouter.onChannel((channelEvent) => {
         const { msg } = channelEvent;
         if (msg.type === 'StateUpdate' && 'data' in msg) {
-          const data = (msg as any).data;
-          if (data && 'tabId' in data) {
+          const data = msg.data;
+          if (data?.scope === 'desktop-runtime' && data.kind === 'agent.accessChanged' && data.access) {
+            applyAccessState(data.access as AgentAccessState);
+          } else if (data && 'tabId' in data) {
             currentTabId = data.tabId!;
           }
         } else if (msg.type === 'ModeChanged' && 'data' in msg) {
@@ -464,7 +491,7 @@
         id: `${idPrefix}_${i}_${Date.now()}`,
         category: 'message',
         timestamp: new Date(),
-        title: isUser ? 'user' : 'browserx',
+        title: isUser ? 'user' : 'workx',
         content: text,
         style: isUser ? { textColor: 'text-cyan-400' } : STYLE_PRESETS.agent_message,
         streaming: false,
@@ -565,6 +592,13 @@
         isConnected = false;
         agentReady = false;
         healthStatus = { ready: false, message: t('Message service not available'), authMode: 'none' };
+        return;
+      }
+
+      if (platform.platformName === 'desktop') {
+        console.log('[App] Sending agent.getAccessState serviceRequest...');
+        const access = await (await getInitializedUIClient()).serviceRequest<AgentAccessState>('agent.getAccessState');
+        applyAccessState(access);
         return;
       }
 
@@ -994,7 +1028,7 @@
     try {
       if (success) {
         // Extract result summary from the processed events
-        const lastAgentEvent = processedEvents.filter(e => e.title === 'browserx').pop();
+        const lastAgentEvent = processedEvents.filter(e => e.title === 'workx').pop();
         const resultSummary = lastAgentEvent?.content?.slice(0, 500) || 'Job completed';
 
         await (await getInitializedUIClient()).serviceRequest('scheduler.complete', {
@@ -1107,7 +1141,7 @@
         id: `scheduled_error_${Date.now()}`,
         category: 'message',
         timestamp: new Date(),
-        title: 'browserx',
+        title: 'workx',
         content: `Failed to execute scheduled task: ${error instanceof Error ? error.message : 'Unknown error'}`,
         style: STYLE_PRESETS.error,
         streaming: false,
@@ -1527,7 +1561,7 @@
         <!-- Status Line -->
         <div class="shrink-0 flex justify-between mb-2">
           <div class="flex items-center space-x-2">
-            <TerminalMessage type="system" content={platform.platformName === 'extension' ? $_t("Browserx (Alpha)") : $_t("Apple Pi: Your personal AI (Alpha)")} />
+            <TerminalMessage type="system" content={platform.platformName === 'extension' ? $_t("WorkX (Alpha)") : $_t("WorkX: Your personal AI (Alpha)")} />
             {#if zoomLevel !== 100}
               <button onclick={resetZoom} class="text-sm leading-relaxed font-[inherit] opacity-70 hover:opacity-100 cursor-pointer {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}" title="Reset zoom to 100%">
                 [{zoomLevel}%] ✕
@@ -1540,7 +1574,7 @@
               {@const activeMode = $activeThread?.mode ?? DEFAULT_MODE}
               {@const pendingMode = $activeThread?.pendingMode ?? null}
               <div class="flex items-center gap-1" role="group" aria-label={$_t("Agent mode")}>
-                {#each Object.values(MODES).filter((m) => !m.agentTypes || m.agentTypes.includes('applepi') || m.agentTypes.includes('applepi-server')) as modeSpec (modeSpec.id)}
+                {#each Object.values(MODES).filter((m) => !m.agentTypes || m.agentTypes.includes('workx') || m.agentTypes.includes('workx-server')) as modeSpec (modeSpec.id)}
                   {@const isActive = activeMode === modeSpec.id && !pendingMode}
                   {@const isPending = pendingMode === modeSpec.id}
                   <button
@@ -1620,10 +1654,10 @@
             </p>
             <ul class="m-0 pl-6 list-disc">
               <li class="mb-1">
-                <a href={getLoginPageUrl()} target="_blank" rel="noopener noreferrer"
-                  class="underline {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-bright-green hover:text-term-yellow'}">
+                <button onclick={requestLogin}
+                  class="bg-none border-none p-0 underline cursor-pointer text-left text-[inherit] {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-bright-green hover:text-term-yellow'}">
                   {$_t("Log in to your account")}
-                </a>
+                </button>
               </li>
               <li class="mb-1">
                 <button onclick={() => push('/settings')}

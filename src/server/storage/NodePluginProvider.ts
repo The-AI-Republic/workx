@@ -3,7 +3,7 @@
  * (Node.js) runtime.
  *
  * Layout: `<root>/<pluginDir>/plugin.json` per plugin. `<root>` is supplied
- * by the platform bootstrap (server uses `~/.browserx/plugins`, i.e.
+ * by the platform bootstrap (server uses `~/.workx/plugins`, i.e.
  * `os.homedir()`). This is also the reference implementation
  * the desktop (Tauri) and extension (IDB) adapters mirror — kept dependency-
  * free (only Node `fs`/`path`) so it's unit-testable without platform plumbing.

@@ -9,7 +9,7 @@ export const USER_INSTRUCTIONS_OPEN_TAG = '<user_instructions>';
 export const USER_INSTRUCTIONS_CLOSE_TAG = '</user_instructions>';
 export const ENVIRONMENT_CONTEXT_OPEN_TAG = '<environment_context>';
 export const ENVIRONMENT_CONTEXT_CLOSE_TAG = '</environment_context>';
-export const USER_MESSAGE_BEGIN = '## My request for Apple Pi:';
+export const USER_MESSAGE_BEGIN = '## My request for WorkX:';
 
 /**
  * Submission Queue Entry - requests from user
@@ -131,7 +131,7 @@ export type Op =
 
 /**
  * Determines the conditions under which the user is consulted to approve
- * running the command proposed by ApplePi.
+ * running the command proposed by WorkX.
  */
 export type AskForApproval =
   | 'untrusted'

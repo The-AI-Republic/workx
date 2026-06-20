@@ -203,7 +203,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
           lastActivityAt: Date.now(),
           tabId: 100,
           tabGroupId: null,
-          tabGroupName: 'browserx_s_a',
+          tabGroupName: 'workx_s_a',
           persistedAt: Date.now(),
         },
         {
@@ -215,7 +215,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
           lastActivityAt: Date.now() - 1000,
           tabId: 101,
           tabGroupId: null,
-          tabGroupName: 'browserx_s_b',
+          tabGroupName: 'workx_s_b',
           persistedAt: Date.now() - 1000,
         },
       ];
@@ -240,7 +240,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
           lastActivityAt: Date.now(),
           tabId: null,
           tabGroupId: null,
-          tabGroupName: 'browserx_s_a',
+          tabGroupName: 'workx_s_a',
           persistedAt: Date.now(),
         },
         {
@@ -252,7 +252,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
           lastActivityAt: Date.now(),
           tabId: null,
           tabGroupId: null,
-          tabGroupName: 'browserx_s_b',
+          tabGroupName: 'workx_s_b',
           persistedAt: Date.now(),
         },
       ];
@@ -278,7 +278,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         lastActivityAt: Date.now() - 1000,
         tabId: 200,
         tabGroupId: null,
-        tabGroupName: 'browserx_s_c',
+        tabGroupName: 'workx_s_c',
         persistedAt: Date.now() - 1000,
       };
 
@@ -302,7 +302,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         lastActivityAt: Date.now(),
         tabId: null,
         tabGroupId: null,
-        tabGroupName: 'browserx_s_a',
+        tabGroupName: 'workx_s_a',
         persistedAt: Date.now(),
       };
 
@@ -331,7 +331,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         lastActivityAt: Date.now(),
         tabId: null,
         tabGroupId: null,
-        tabGroupName: 'browserx_s_d',
+        tabGroupName: 'workx_s_d',
         persistedAt: Date.now(),
       };
 
@@ -404,7 +404,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         lastActivityAt: now - 48 * 60 * 60 * 1000,
         tabId: null,
         tabGroupId: null,
-        tabGroupName: 'browserx_s_a',
+        tabGroupName: 'workx_s_a',
         persistedAt: now - 48 * 60 * 60 * 1000,
       };
 
@@ -417,7 +417,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         lastActivityAt: now - 1 * 60 * 60 * 1000,
         tabId: null,
         tabGroupId: null,
-        tabGroupName: 'browserx_s_b',
+        tabGroupName: 'workx_s_b',
         persistedAt: now - 1 * 60 * 60 * 1000,
       };
 
@@ -444,7 +444,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         lastActivityAt: Date.now() - 1000,
         tabId: null,
         tabGroupId: null,
-        tabGroupName: 'browserx_s_a',
+        tabGroupName: 'workx_s_a',
         persistedAt: Date.now() - 1000,
       };
 
@@ -483,7 +483,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         lastActivityAt: session.metadata.lastActivityAt,
         tabId: 500,
         tabGroupId: null,
-        tabGroupName: `browserx_s_${session.sessionLetter}`,
+        tabGroupName: `workx_s_${session.sessionLetter}`,
         persistedAt: Date.now(),
       };
 
@@ -519,7 +519,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         lastActivityAt: Date.now(),
         tabId: null,
         tabGroupId: null,
-        tabGroupName: 'browserx_s_a',
+        tabGroupName: 'workx_s_a',
         persistedAt: Date.now(),
       };
 
@@ -557,7 +557,7 @@ describe('SessionStorage Unit Tests', () => {
       lastActivityAt: Date.now(),
       tabId: null,
       tabGroupId: null,
-      tabGroupName: 'browserx_s_a',
+      tabGroupName: 'workx_s_a',
     };
 
     await storage.persistSession(metadata);
@@ -583,7 +583,7 @@ describe('SessionStorage Unit Tests', () => {
       lastActivityAt: Date.now(),
       tabId: 100,
       tabGroupId: null,
-      tabGroupName: 'browserx_s_b',
+      tabGroupName: 'workx_s_b',
       persistedAt: Date.now(),
     };
 
@@ -612,7 +612,7 @@ describe('SessionStorage Unit Tests', () => {
         lastActivityAt: Date.now(),
         tabId: null,
         tabGroupId: null,
-        tabGroupName: 'browserx_s_a',
+        tabGroupName: 'workx_s_a',
         persistedAt: Date.now(),
       },
     ];

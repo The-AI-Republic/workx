@@ -762,15 +762,25 @@ export interface ToolExecutionEndEvent {
 
 export interface ToolExecutionErrorEvent {
   tool_name: string;
+  call_id?: string;
   session_id?: string;
+  turn_id?: string;
+  code?: string;
   error: string;
+  details?: unknown;
   duration?: number;
 }
 
 export interface ToolExecutionTimeoutEvent {
   tool_name: string;
+  call_id?: string;
   session_id?: string;
+  turn_id?: string;
+  code?: string;
+  error?: string;
+  details?: unknown;
   timeout_ms: number;
+  duration?: number;
 }
 
 export interface ToolExecutionProgressEvent {
@@ -907,11 +917,30 @@ export interface ServiceResponseEvent {
   error?: string;
 }
 
-export interface StateUpdateEvent {
+export interface GenericStateUpdateEvent {
   sessionId?: string;
   tabId?: number;
   [key: string]: unknown;
 }
+
+export interface DesktopRuntimeAuthStateUpdateEvent {
+  scope: 'desktop-runtime';
+  kind: 'auth.stateChanged';
+  auth: unknown;
+  [key: string]: unknown;
+}
+
+export interface DesktopRuntimeAccessStateUpdateEvent {
+  scope: 'desktop-runtime';
+  kind: 'agent.accessChanged';
+  access: unknown;
+  [key: string]: unknown;
+}
+
+export type StateUpdateEvent =
+  | DesktopRuntimeAuthStateUpdateEvent
+  | DesktopRuntimeAccessStateUpdateEvent
+  | GenericStateUpdateEvent;
 
 // Hook system event payloads
 

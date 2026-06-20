@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
  * Vitest handles these imports, so we can test the actual behavior.
  *
  * When PromptComposer is not configured (default), loadPrompt() returns
- * the default bundled prompt (default_browserx_agent_prompt.md).
+ * the default bundled prompt (default_workx_agent_prompt.md).
  *
  * When configured via configurePromptComposer(), loadPrompt() returns
  * a dynamically composed prompt.
@@ -24,8 +24,8 @@ describe('PromptLoader', () => {
 
     const prompt = await loadPrompt();
 
-    // Default prompt is the renamed agent_prompt.md (browserx-specific)
-    expect(prompt).toContain('BrowserX');
+    // Default prompt is the renamed agent_prompt.md (workx-specific)
+    expect(prompt).toContain('WorkX');
     expect(prompt).toContain('browser automation agent');
     expect(prompt).toContain('Core Directive');
   });
@@ -33,12 +33,12 @@ describe('PromptLoader', () => {
   it('returns composed prompt after configurePromptComposer is called', async () => {
     const { loadPrompt, configurePromptComposer } = await import('@/core/PromptLoader');
 
-    configurePromptComposer('browserx', { browserConnection: 'extension' });
+    configurePromptComposer('workx', { browserConnection: 'extension' });
 
     const prompt = await loadPrompt();
 
-    // Composed browserx prompt includes intro, safety, tools, policies
-    expect(prompt).toContain('BrowserX');
+    // Composed workx prompt includes intro, safety, tools, policies
+    expect(prompt).toContain('WorkX');
     expect(prompt).toContain('Safety and Ethics');
     expect(prompt).toContain('System Semantics');
     expect(prompt).toContain('Action Risk and Approval');
@@ -51,7 +51,7 @@ describe('PromptLoader', () => {
   it('composes pi agent prompt with runtime context', async () => {
     const { loadPrompt, configurePromptComposer } = await import('@/core/PromptLoader');
 
-    configurePromptComposer('applepi', {
+    configurePromptComposer('workx-desktop', {
       os: 'linux',
       arch: 'x86_64',
       shell: 'bash',
@@ -61,8 +61,8 @@ describe('PromptLoader', () => {
 
     const prompt = await loadPrompt();
 
-    // Apple Pi-specific content
-    expect(prompt).toContain('Apple Pi');
+    // WorkX-specific content
+    expect(prompt).toContain('WorkX');
     expect(prompt).toContain('desktop automation agent');
     expect(prompt).toContain('TerminalTool');
 
@@ -73,26 +73,26 @@ describe('PromptLoader', () => {
     expect(prompt).toContain('/home/testuser');
     expect(prompt).toContain('MCP browser automation server');
 
-    // Should NOT contain browserx-specific tools
+    // Should NOT contain workx-specific tools
     expect(prompt).not.toContain('DOMTool');
     expect(prompt).not.toContain('PageVisionTool');
   });
 
-  it('composes applepi server prompt with server identity', async () => {
+  it('composes workx server prompt with server identity', async () => {
     const { loadPrompt, configurePromptComposer } = await import('@/core/PromptLoader');
 
-    configurePromptComposer('applepi-server', {
+    configurePromptComposer('workx-server', {
       os: 'linux',
       shell: 'bash',
-      cwd: '/srv/browserx',
+      cwd: '/srv/workx',
       browserConnection: 'mcp',
     });
 
     const prompt = await loadPrompt();
 
-    expect(prompt).toContain('Apple Pi Server');
+    expect(prompt).toContain('WorkX Server');
     expect(prompt).toContain('headless automation agent');
-    expect(prompt).toContain('/srv/browserx');
+    expect(prompt).toContain('/srv/workx');
     expect(prompt).toContain('TerminalTool');
     expect(prompt).not.toContain('DOMTool');
   });
@@ -100,7 +100,7 @@ describe('PromptLoader', () => {
   it('appends registered prompt extensions after the base prompt', async () => {
     const { loadPrompt, configurePromptComposer, registerPromptExtension } = await import('@/core/PromptLoader');
 
-    configurePromptComposer('browserx');
+    configurePromptComposer('workx');
     registerPromptExtension('test-memory', () => 'MEMORY_EXTENSION_MARKER');
     registerPromptExtension('test-skills', () => 'SKILLS_EXTENSION_MARKER');
 
@@ -110,10 +110,35 @@ describe('PromptLoader', () => {
     expect(prompt.indexOf('SKILLS_EXTENSION_MARKER')).toBeGreaterThan(prompt.indexOf('MEMORY_EXTENSION_MARKER'));
   });
 
+  it('isolates session-scoped prompt extensions by session id', async () => {
+    const {
+      loadPrompt,
+      configurePromptComposer,
+      registerPromptExtension,
+      unregisterSessionPromptExtensions,
+    } = await import('@/core/PromptLoader');
+
+    configurePromptComposer('workx');
+    registerPromptExtension('session-only', () => 'SESSION_A_MARKER', {
+      type: 'session',
+      sessionId: 'session-a',
+    });
+
+    const promptA = await loadPrompt(undefined, { sessionId: 'session-a' });
+    const promptB = await loadPrompt(undefined, { sessionId: 'session-b' });
+
+    expect(promptA).toContain('SESSION_A_MARKER');
+    expect(promptB).not.toContain('SESSION_A_MARKER');
+
+    unregisterSessionPromptExtensions('session-a');
+    const promptAfterCleanup = await loadPrompt(undefined, { sessionId: 'session-a' });
+    expect(promptAfterCleanup).not.toContain('SESSION_A_MARKER');
+  });
+
   it('includes fresh currentDateTime on each loadPrompt call', async () => {
     const { loadPrompt, configurePromptComposer } = await import('@/core/PromptLoader');
 
-    configurePromptComposer('browserx');
+    configurePromptComposer('workx');
 
     const prompt1 = await loadPrompt();
     // Small delay to ensure different timestamp
@@ -139,7 +164,7 @@ describe('PromptLoader', () => {
     const PromptComposerModule = await import('@/prompts/PromptComposer');
 
     // Configure the composer, then sabotage its method to throw
-    configurePromptComposer('browserx');
+    configurePromptComposer('workx');
     vi.spyOn(PromptComposerModule.PromptComposer.prototype, 'composeMainInstruction')
       .mockImplementation(() => { throw new Error('fragment import failed'); });
 
@@ -147,8 +172,8 @@ describe('PromptLoader', () => {
 
     const prompt = await loadPrompt();
 
-    // Should fall back to default browserx prompt
-    expect(prompt).toContain('BrowserX');
+    // Should fall back to default workx prompt
+    expect(prompt).toContain('WorkX');
     expect(prompt).toContain('Core Directive');
     expect(prompt).toContain('System Semantics');
     expect(prompt).toContain('Action Risk and Approval');
@@ -166,20 +191,20 @@ describe('PromptLoader', () => {
 
     expect(isComposerConfigured()).toBe(false);
 
-    configurePromptComposer('browserx');
+    configurePromptComposer('workx');
 
     expect(isComposerConfigured()).toBe(true);
   });
 
-  it('returns browserx default prompt (not pi) when composer is not configured', async () => {
+  it('returns workx default prompt (not pi) when composer is not configured', async () => {
     const { loadPrompt } = await import('@/core/PromptLoader');
 
     const prompt = await loadPrompt();
 
-    // In test/extension mode (__BUILD_MODE__ is undefined), fallback should be browserx
-    expect(prompt).toContain('BrowserX');
-    // Must not contain "ApplePi" or standalone "Pi" (only "BrowserX" identity)
-    expect(prompt).not.toMatch(/\bApplePi\b/);
+    // In test/extension mode (__BUILD_MODE__ is undefined), fallback should be workx
+    expect(prompt).toContain('WorkX');
+    // Extension default: identifies as WorkX, no leftover "Pi", and is the
+    // browser (not desktop) prompt.
     expect(prompt).not.toMatch(/\bPi\b/);
     expect(prompt).not.toContain('desktop automation agent');
   });

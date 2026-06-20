@@ -14,7 +14,7 @@
 //   - RUNTIME (FeatureFlagRecorder + Track 20): code is present but inert;
 //     flips without a rebuild. NOT this file.
 //
-// `APPLEPI_FEATURE_<NAME>` env vars override a default at BUILD time only
+// `WORKX_FEATURE_<NAME>` env vars override a default at BUILD time only
 // (they change what gets baked) — they are a CI/per-build knob, never a
 // production runtime override. The extension service worker has no
 // `process.env` at all, so an extension flag is a pure baked constant.
@@ -62,7 +62,7 @@ export function featureDefine(platform, env = {}) {
   /** @type {Record<string, string>} */
   const out = {};
   for (const name of FLAG_NAMES) {
-    const override = env[`APPLEPI_FEATURE_${name}`];
+    const override = env[`WORKX_FEATURE_${name}`];
     const value =
       override === undefined ? defaults[name] : override === '1' || override === 'true';
     out[`__FEATURE_${name}__`] = JSON.stringify(value);

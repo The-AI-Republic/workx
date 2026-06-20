@@ -13,11 +13,15 @@
 
 import type { ResponseItem } from '../core/protocol/types';
 import { ContentReplacementState } from './replacementState';
-import { buildPersistedOutputMessage, type ToolResultStore } from './resultStore';
+import {
+  buildPersistedOutputMessage,
+  type PersistedResultOwner,
+  type ToolResultStore,
+} from './resultStore';
 
 /**
  * Narrowed alias for the function_call_output variant of ResponseItem.
- * BrowserX doesn't have a dedicated FunctionCallOutput type, so we extract
+ * WorkX doesn't have a dedicated FunctionCallOutput type, so we extract
  * the discriminant here.
  */
 export type FunctionCallOutputItem = Extract<ResponseItem, { type: 'function_call_output' }>;
@@ -39,6 +43,8 @@ export interface EnforceToolResultBudgetOptions {
   skipToolNames: ReadonlySet<string>;
   /** Optional call_id → tool_name resolver for the skip-list. */
   toolNameByCallId?: ToolNameByCallId;
+  /** Optional call_id → persisted-result owner metadata. */
+  ownerByCallId?: (callId: string) => PersistedResultOwner | undefined;
 }
 
 /**
@@ -157,7 +163,9 @@ export async function enforceToolResultBudget(
       const r = next[idx];
       if (!r || r.type !== 'function_call_output') return { idx, error: 'invalid' };
       try {
-        const persisted = await opts.store.persist(opts.sessionId, r.call_id, r.output);
+        const persisted = await opts.store.persist(opts.sessionId, r.call_id, r.output, {
+          owner: opts.ownerByCallId?.(r.call_id),
+        });
         const message = buildPersistedOutputMessage(persisted);
         return { idx, message };
       } catch (err) {

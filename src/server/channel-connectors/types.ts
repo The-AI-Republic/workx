@@ -2,7 +2,7 @@
  * OpenClaw-Compatible Connector Types
  *
  * Types for the channel connector system. Any OpenClaw-compatible
- * channel connector (Slack, Telegram, etc.) can run unmodified on ApplePi.
+ * channel connector (Slack, Telegram, etc.) can run unmodified on WorkX.
  *
  * @module server/channel-connectors/types
  */
@@ -26,7 +26,7 @@ export interface OpenClawConnectorDefinition {
 }
 
 /**
- * API provided to connectors by the host (ApplePi).
+ * API provided to connectors by the host (WorkX).
  */
 export interface OpenClawConnectorApi {
   /** Register a channel connector */

@@ -11,6 +11,12 @@
  */
 
 import type { ServiceHandler } from '@/core/channels/ServiceRegistry';
+import type { IAuthManager } from '@/core/models/types/Auth';
+import {
+  normalizeRuntimeProfile,
+  type RuntimeStateController,
+  type RuntimeUserProfileSnapshot,
+} from './runtime-state';
 
 const AUTH_SERVICE = 'auth';
 const ACCESS_TOKEN_ACCOUNT = 'access_token';
@@ -29,8 +35,8 @@ export interface AuthServiceDeps {
    * to push the new auth manager into existing sessions' model clients —
    * matches the existing `agent.initAuth` contract.
    */
-  createAuthManager?: (shouldUseBackend: boolean, backendBaseUrl: string | null) => unknown;
-  setAuthManager?: (authManager: unknown) => void;
+  createAuthManager?: (shouldUseBackend: boolean, backendBaseUrl: string | null) => IAuthManager;
+  setAuthManager?: (authManager: IAuthManager | null) => void;
 
   /**
    * Resolve the runtime credential store. The desktop runtime returns the
@@ -49,6 +55,21 @@ export interface AuthServiceDeps {
    * a populated user payload. Lets the UI keep its own profile fetch.
    */
   fetchUserProfile?: (accessToken: string) => Promise<unknown | null>;
+
+  /**
+   * Refresh desktop-owned auth tokens. Used when a stored access token exists
+   * but no longer validates against the profile/session endpoint.
+   */
+  refreshAuthTokens?: (refreshToken: string) => Promise<{
+    accessToken: string;
+    refreshToken: string;
+  } | null>;
+
+  /** Runtime-owned desktop auth/access state contract (Track 44). */
+  runtimeState?: RuntimeStateController;
+
+  /** Recompute access after auth transitions using the live agent/session. */
+  refreshAccessState?: () => Promise<unknown>;
 
   /**
    * ChatGPT OAuth flow controller. Owns the 127.0.0.1:1455 callback server
@@ -77,7 +98,7 @@ export interface AuthServiceDeps {
 
 function applyAuthManagerToSessions(
   registry: AuthServiceDeps['registry'],
-  authManager: unknown,
+  authManager: IAuthManager | null,
 ): Promise<void> {
   const sessions = registry.listSessions() as Array<{ sessionId: string; state: string }>;
   return Promise.all(
@@ -95,6 +116,36 @@ function applyAuthManagerToSessions(
 
 export function createAuthServices(deps: AuthServiceDeps): Record<string, ServiceHandler> {
   const { registry } = deps;
+
+  async function refreshProfile(accessToken: string): Promise<RuntimeUserProfileSnapshot | null> {
+    const raw = deps.fetchUserProfile ? await deps.fetchUserProfile(accessToken) : null;
+    return normalizeRuntimeProfile(raw);
+  }
+
+  async function validateOrRefreshStoredLogin(credentialStore: ReturnType<NonNullable<AuthServiceDeps['getCredentialStore']>>): Promise<{
+    accessToken: string | null;
+    profile: RuntimeUserProfileSnapshot | null;
+    refreshed: boolean;
+  }> {
+    let accessToken = await credentialStore.get(AUTH_SERVICE, ACCESS_TOKEN_ACCOUNT);
+    const refreshToken = await credentialStore.get(AUTH_SERVICE, REFRESH_TOKEN_ACCOUNT);
+    let profile = accessToken ? await refreshProfile(accessToken) : null;
+
+    if (!profile && refreshToken && deps.refreshAuthTokens && (deps.fetchUserProfile || !accessToken)) {
+      const refreshed = await deps.refreshAuthTokens(refreshToken);
+      if (refreshed?.accessToken && refreshed.refreshToken) {
+        await Promise.all([
+          credentialStore.set(AUTH_SERVICE, ACCESS_TOKEN_ACCOUNT, refreshed.accessToken),
+          credentialStore.set(AUTH_SERVICE, REFRESH_TOKEN_ACCOUNT, refreshed.refreshToken),
+        ]);
+        accessToken = refreshed.accessToken;
+        profile = await refreshProfile(accessToken);
+        return { accessToken, profile, refreshed: true };
+      }
+    }
+
+    return { accessToken, profile, refreshed: false };
+  }
 
   return {
     /**
@@ -133,8 +184,37 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
         await applyAuthManagerToSessions(registry, authManager);
       }
 
-      const user = deps.fetchUserProfile ? await deps.fetchUserProfile(accessToken) : null;
-      return { success: true, user };
+      await deps.runtimeState?.setAuthState({
+        mode: 'login',
+        hasToken: true,
+        profileStatus: 'loading',
+        lastError: undefined,
+      });
+
+      let user: RuntimeUserProfileSnapshot | null = null;
+      try {
+        user = await refreshProfile(accessToken);
+        const profileStatus = user ? 'ready' : deps.fetchUserProfile ? 'failed' : 'idle';
+        await deps.runtimeState?.setAuthState({
+          mode: 'login',
+          hasToken: true,
+          profile: user,
+          profileStatus,
+          lastError: user || !deps.fetchUserProfile ? undefined : 'Profile unavailable',
+        });
+      } catch (error) {
+        await deps.runtimeState?.setAuthState({
+          mode: 'login',
+          hasToken: true,
+          profile: null,
+          profileStatus: 'failed',
+          lastError: error instanceof Error ? error.message : String(error),
+        });
+      }
+
+      const auth = deps.runtimeState?.getAuthState();
+      const access = await deps.refreshAccessState?.() ?? deps.runtimeState?.getAccessState();
+      return { success: true, state: auth, access, user: auth?.profile ?? user };
     },
 
     /**
@@ -144,15 +224,96 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
      */
     'auth.getState': async () => {
       if (!deps.getCredentialStore) {
-        return { hasValidToken: false, user: null };
+        if (deps.runtimeState) {
+          await deps.runtimeState.setAuthState({
+            mode: 'none',
+            hasToken: false,
+            profile: null,
+            profileStatus: 'idle',
+          });
+          return deps.runtimeState.getAuthState();
+        }
+        return { hasValidToken: false, hasToken: false, user: null, profile: null, profileStatus: 'idle' };
       }
       const credentialStore = deps.getCredentialStore();
       const accessToken = await credentialStore.get(AUTH_SERVICE, ACCESS_TOKEN_ACCOUNT);
-      if (!accessToken) {
-        return { hasValidToken: false, user: null };
+      const refreshToken = await credentialStore.get(AUTH_SERVICE, REFRESH_TOKEN_ACCOUNT);
+      if (!accessToken && !refreshToken) {
+        if (deps.runtimeState) {
+          await deps.runtimeState.setAuthState({
+            mode: 'none',
+            hasToken: false,
+            profile: null,
+            profileStatus: 'idle',
+            lastError: undefined,
+          });
+          return deps.runtimeState.getAuthState();
+        }
+        return { hasValidToken: false, hasToken: false, user: null, profile: null, profileStatus: 'idle' };
       }
-      const user = deps.fetchUserProfile ? await deps.fetchUserProfile(accessToken) : null;
-      return { hasValidToken: true, user };
+
+      const existingAuthState = deps.runtimeState?.getAuthState();
+      const mode = existingAuthState?.mode === 'own_api_key' ? 'own_api_key' : 'login';
+      if (deps.runtimeState && existingAuthState?.profileStatus !== 'ready') {
+        await deps.runtimeState.setAuthState({
+          mode,
+          hasToken: true,
+          profileStatus: 'loading',
+          lastError: undefined,
+        });
+      }
+
+      let user: RuntimeUserProfileSnapshot | null = null;
+      try {
+        const validated = await validateOrRefreshStoredLogin(credentialStore);
+        user = validated.profile;
+        const hasUsableToken = Boolean(validated.accessToken && (user || !deps.fetchUserProfile));
+        const profileStatus = user ? 'ready' : deps.fetchUserProfile ? 'failed' : 'idle';
+        if (deps.runtimeState) {
+          await deps.runtimeState.setAuthState({
+            mode: hasUsableToken ? mode : mode === 'own_api_key' ? 'own_api_key' : 'none',
+            hasToken: hasUsableToken,
+            profile: user,
+            profileStatus: hasUsableToken ? profileStatus : 'failed',
+            lastError: hasUsableToken ? undefined : 'Stored desktop login expired or profile unavailable',
+          });
+          return deps.runtimeState.getAuthState();
+        }
+        if (!hasUsableToken) {
+          return {
+            hasValidToken: false,
+            hasToken: false,
+            user: null,
+            profile: null,
+            profileStatus: 'failed',
+          };
+        }
+      } catch (error) {
+        if (deps.runtimeState) {
+          await deps.runtimeState.setAuthState({
+            mode: mode === 'own_api_key' ? 'own_api_key' : 'none',
+            hasToken: false,
+            profile: null,
+            profileStatus: 'failed',
+            lastError: error instanceof Error ? error.message : String(error),
+          });
+          return deps.runtimeState.getAuthState();
+        }
+        return {
+          hasValidToken: false,
+          hasToken: false,
+          user: null,
+          profile: null,
+          profileStatus: 'failed',
+        };
+      }
+      return {
+        hasValidToken: true,
+        hasToken: true,
+        user,
+        profile: user,
+        profileStatus: user ? 'ready' : deps.fetchUserProfile ? 'failed' : 'idle',
+      };
     },
 
     /**
@@ -173,7 +334,24 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
         deps.setAuthManager(authManager);
         await applyAuthManagerToSessions(registry, authManager);
       }
-      return { success: true };
+      const auth = deps.runtimeState
+        ? await deps.runtimeState.setAuthState({
+            mode: 'none',
+            hasToken: false,
+            profile: null,
+            profileStatus: 'idle',
+            lastError: undefined,
+          })
+        : undefined;
+      const access = deps.runtimeState
+        ? await deps.refreshAccessState?.() ?? await deps.runtimeState.setAccessState({
+          status: 'needs_login',
+          mode: 'none',
+          ready: false,
+          reason: 'Log in to your account or configure an API key.',
+        })
+        : undefined;
+      return { success: true, state: auth, access };
     },
 
     // ─── ChatGPT OAuth (runtime-owned callback server) ────────────────────

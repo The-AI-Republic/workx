@@ -23,7 +23,16 @@ import { RepublicAgentEngine } from './engine/RepublicAgentEngine';
 import { AutoCompactHook } from './compact/autoCompactHook';
 import { type IUserNotifier, NoOpNotifier } from './IUserNotifier';
 import { v4 as uuidv4 } from 'uuid';
-import { loadPrompt, loadUserInstructions, configurePromptComposer, isComposerConfigured, registerPromptExtension, unregisterPromptExtension } from './PromptLoader';
+import {
+  loadPrompt,
+  loadUserInstructions,
+  configurePromptComposer,
+  isComposerConfigured,
+  registerPromptExtension,
+  unregisterPromptExtension,
+  unregisterSessionPromptExtensions,
+  type PromptRuntimeContext,
+} from './PromptLoader';
 import type { AgentMode } from '../prompts/PromptComposer';
 import { MODES } from '../prompts/PromptComposer';
 import { HookRegistry } from './hooks/HookRegistry';
@@ -85,6 +94,7 @@ export class RepublicAgent {
   private hookDispatcher: HookDispatcher;
   private configHookUnsubscribe: (() => void) | null = null;
   private autoCompactHook: AutoCompactHook | null = null;
+  private cleanupPromise: Promise<void> | null = null;
 
   constructor(
     config: AgentConfig,
@@ -198,7 +208,7 @@ export class RepublicAgent {
     const modelClient = await this.modelClientFactory.createClientForCurrentModel();
 
     // Create initial TurnContext with the model client.
-    // Track 12: headless deployments (Apple Pi Server) default to unattended
+    // Track 12: headless deployments (WorkX Server) default to unattended
     // so scheduled/connector sessions wait out rate limits instead of
     // hard-failing with no human to retry.
     const taskContext = new TurnContext(modelClient, {
@@ -217,7 +227,10 @@ export class RepublicAgent {
     // Load and set instructions
     const userInstructions = await loadUserInstructions();
     taskContext.setUserInstructions(userInstructions);
-    const baseInstructions = await loadPrompt(this.session.getAgentMode());
+    const baseInstructions = await loadPrompt(
+      this.session.getAgentMode(),
+      this.getPromptRuntimeContext(taskContext),
+    );
     taskContext.setBaseInstructions(baseInstructions);
 
     // Set the turn context on the session
@@ -285,8 +298,8 @@ export class RepublicAgent {
     }
 
     const agentType = this.platformAdapter.platformId === 'desktop'
-      ? 'applepi' as const
-      : 'browserx' as const;
+      ? 'workx-desktop' as const
+      : 'workx' as const;
 
     configurePromptComposer(agentType, {
       browserConnection: this.platformAdapter.platformId === 'extension' ? 'extension' : 'mcp',
@@ -443,7 +456,7 @@ export class RepublicAgent {
     if (turnCtx) {
       turnCtx.setAgentMode(mode);
       try {
-        const baseInstructions = await loadPrompt(mode);
+        const baseInstructions = await loadPrompt(mode, this.getPromptRuntimeContext(turnCtx));
         turnCtx.setBaseInstructions(baseInstructions);
       } catch (error) {
         console.error('[RepublicAgent] Failed to recompose prompt on mode switch:', error);
@@ -529,6 +542,15 @@ export class RepublicAgent {
     this.autoCompactHook.attach((fn) => this.session.registerPostTurnHook(fn));
   }
 
+  private getPromptRuntimeContext(turnContext?: TurnContext): PromptRuntimeContext {
+    return {
+      sessionId: this.session.getSessionId(),
+      mode: this.session.getAgentMode(),
+      toolRegistry: this.toolRegistry,
+      turnContext: turnContext ?? this.session.getTurnContext(),
+    };
+  }
+
   private async syncMemoryTools(): Promise<void> {
     const ms = this.session.getMemoryService();
 
@@ -544,7 +566,7 @@ export class RepublicAgent {
       registerPromptExtension(RepublicAgent.MEMORY_PROMPT_EXTENSION, () => {
         const svc = this.session.getMemoryService();
         return svc ? svc.getCachedGlobalContext() : '';
-      });
+      }, { type: 'session', sessionId: this.session.getSessionId() });
     } else {
       // Unregister tools
       for (const name of RepublicAgent.MEMORY_TOOL_NAMES) {
@@ -554,7 +576,10 @@ export class RepublicAgent {
       }
 
       // Unregister prompt extension
-      unregisterPromptExtension(RepublicAgent.MEMORY_PROMPT_EXTENSION);
+      unregisterPromptExtension(RepublicAgent.MEMORY_PROMPT_EXTENSION, {
+        type: 'session',
+        sessionId: this.session.getSessionId(),
+      });
     }
   }
 
@@ -592,7 +617,10 @@ export class RepublicAgent {
         ),
       );
 
-      const baseInstructions = await loadPrompt(this.session.getAgentMode());
+      const baseInstructions = await loadPrompt(
+        this.session.getAgentMode(),
+        this.getPromptRuntimeContext(taskContext),
+      );
       taskContext.setBaseInstructions(baseInstructions);
     } catch (error) {
       console.error('[RepublicAgent] Failed to refresh model client:', error);
@@ -633,7 +661,10 @@ export class RepublicAgent {
       ),
     );
 
-    const baseInstructions = await loadPrompt(this.session.getAgentMode());
+    const baseInstructions = await loadPrompt(
+      this.session.getAgentMode(),
+      this.getPromptRuntimeContext(turnCtx),
+    );
     turnCtx.setBaseInstructions(baseInstructions);
   }
 
@@ -1362,6 +1393,14 @@ export class RepublicAgent {
    * Cleanup resources
    */
   async cleanup(): Promise<void> {
+    if (this.cleanupPromise) {
+      return this.cleanupPromise;
+    }
+    this.cleanupPromise = this.cleanupOnce();
+    return this.cleanupPromise;
+  }
+
+  private async cleanupOnce(): Promise<void> {
     // Fire SessionEnd hooks with short timeout (1.5s) before tearing things down.
     // Failures here must not block shutdown.
     try {
@@ -1386,6 +1425,8 @@ export class RepublicAgent {
     if (this.engine) {
       await this.engine.dispose();
     }
+    await this.session.dispose({ reason: 'Shutdown' });
+    unregisterSessionPromptExtensions(this.session.getSessionId());
     await this.toolRegistry.cleanup();
     this.toolRegistry.clear();
     this.eventQueue = [];

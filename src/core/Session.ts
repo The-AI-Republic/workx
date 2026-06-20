@@ -53,12 +53,25 @@ import type {
 /**
  * Post-turn hook signature. Owned by Session because TurnManager is per-task
  * but hooks (notably the session-summary extractor) live the length of the
- * session. TurnManager fires hooks via `session.firePostTurnHooks(ctx)`.
+ * session. TaskRunner fires hooks after committing the turn delta.
  */
 export type PostTurnHook = (ctx: PostTurnContext) => Promise<void> | void;
 
 /** Lightweight alias so the field declaration doesn't pull the full class. */
 type SessionSummaryHookHandle = SessionSummaryHook;
+
+export interface SessionDisposeOptions {
+  /** Abort reason used for any active tasks still running during disposal. */
+  reason?: TurnAbortReason;
+  /** Defaults to true; set false only for legacy callers that already aborted. */
+  abortTasks?: boolean;
+  /** Preserve Session.close()'s rollout close marker when requested. */
+  recordCloseEvent?: boolean;
+  /** Defaults to true. */
+  flushRollout?: boolean;
+  /** Defaults to true, but cleanup only runs for non-persistent sessions. */
+  cleanupToolResults?: boolean;
+}
 
 // Title generation imports
 import { TitleGenerator } from './title';
@@ -107,6 +120,7 @@ export class Session {
   private _mockCwd = '/'; // For backward compatibility in tests
   private eventEmitter: ((event: Event) => Promise<void>) | null = null;
   private isPersistent: boolean = true;
+  private isForkedContext = false;
   private toolRegistry: ToolRegistry | null = null; // Tool registry from RepublicAgent
 
   // Runtime state (not persisted, lives in Session only)
@@ -149,6 +163,9 @@ export class Session {
   private initError: Error | null = null;
   private hookDispatcher: HookDispatcher | null = null;
   private terminalTaskHookEmitted: Set<string> = new Set();
+  private disposeState: 'active' | 'disposing' | 'disposed' = 'active';
+  private disposePromise: Promise<void> | null = null;
+  private conversationCommitChain: Promise<void> = Promise.resolve();
 
   // Track 05b: per-session post-turn callbacks (e.g. session-summary
   // extractor). TurnManager is created per-task; the callback list lives on
@@ -185,6 +202,7 @@ export class Session {
         this.sessionId = crypto.randomUUID();
       }
     }
+    this.isForkedContext = initialHistory?.mode === 'forked';
 
     // Handle both new and old signatures for backward compatibility
     if (typeof configOrIsPersistent === 'boolean') {
@@ -564,6 +582,22 @@ export class Session {
    */
   getSessionId(): string {
     return this.sessionId;
+  }
+
+  /**
+   * True for durable top-level sessions. Non-persistent child/fork sessions
+   * can clean transient stores on dispose because no rollout will resume them.
+   */
+  isPersistentSession(): boolean {
+    return this.isPersistent;
+  }
+
+  /**
+   * Runtime metadata for sub-agent recursion guards. This deliberately does
+   * not depend on model-visible fork directive text.
+   */
+  isForkedSubAgentContext(): boolean {
+    return this.isForkedContext;
   }
 
   /**
@@ -970,47 +1004,7 @@ export class Session {
    * Close session and cleanup resources using RolloutRecorder
    */
   async close(): Promise<void> {
-    await this.closeMemoryService();
-
-    // Tool result persistence cleanup (track 09).
-    //
-    // Only purge persisted results on close for non-persistent sessions.
-    // Persistent sessions can be resumed — the rollout still contains
-    // <persisted-output> messages pointing at these storage keys / file
-    // paths, and the agent must be able to retrieve the full content on
-    // resume. Stale entries from persistent sessions are reclaimed via
-    // server-mode TTL sweep / cache quota eviction instead.
-    if (this.toolResultStore && !this.isPersistent) {
-      try {
-        await this.toolResultStore.cleanup(this.sessionId);
-      } catch (error) {
-        console.error('Failed to clean up tool result store:', error);
-      }
-    }
-
-    if (this.services?.rollout) {
-      try {
-        // Record session close event
-        const closeEvent: EventMsg = {
-          type: 'BackgroundEvent',
-          data: {
-            message: `Session closed: ${this.sessionId} (${this.getMessageCount()} messages)`
-          }
-        };
-
-        const rolloutItems: RolloutItem[] = [{
-          type: 'event_msg',
-          payload: closeEvent
-        }];
-
-        await this.services.rollout.recordItems(rolloutItems);
-
-        // Flush and close rollout recorder
-        await this.services.rollout.flush();
-      } catch (error) {
-        console.error('Failed to close rollout recorder:', error);
-      }
-    }
+    await this.dispose({ recordCloseEvent: true });
   }
 
   /**
@@ -1581,17 +1575,57 @@ export class Session {
    * Graceful shutdown
    */
   async shutdown(): Promise<void> {
+    await this.dispose({ reason: 'Shutdown' });
+  }
+
+  /**
+   * Idempotent terminal cleanup for a Session. This is the single place that
+   * stops active work, detaches session-owned hooks, closes memory services,
+   * cleans transient tool result storage, and flushes rollout state.
+   */
+  async dispose(options: SessionDisposeOptions = {}): Promise<void> {
+    if (this.disposeState === 'disposed') return;
+    if (this.disposeState === 'disposing' && this.disposePromise) {
+      return this.disposePromise;
+    }
+
+    this.disposeState = 'disposing';
+    this.disposePromise = this.disposeCore(options)
+      .finally(() => {
+        this.disposeState = 'disposed';
+      });
+    return this.disposePromise;
+  }
+
+  private async disposeCore(options: SessionDisposeOptions): Promise<void> {
+    const {
+      reason = 'Shutdown',
+      abortTasks = true,
+      recordCloseEvent = false,
+      flushRollout = true,
+      cleanupToolResults = true,
+    } = options;
+
+    if (abortTasks) {
+      try {
+        await this.abortAllTasks(reason);
+      } catch (err) {
+        console.warn(
+          '[Session] abortAllTasks failed during dispose:',
+          err instanceof Error ? err.message : String(err),
+        );
+        this.activeTasks.clear();
+        this.foregroundTaskId = null;
+      }
+    }
+
     try {
-      await this.abortAllTasks('Shutdown');
+      this.clearEvictionTimer();
     } catch (err) {
       console.warn(
-        '[Session] abortAllTasks failed during shutdown:',
+        '[Session] clearEvictionTimer failed during dispose:',
         err instanceof Error ? err.message : String(err),
       );
-      this.activeTasks.clear();
-      this.foregroundTaskId = null;
-    } finally {
-      this.clearEvictionTimer();
     }
 
     // Track 05b: detach the session-summary hook (unregisters post-turn
@@ -1609,9 +1643,55 @@ export class Session {
 
     await this.closeMemoryService();
 
+    // Tool result persistence cleanup (track 09).
+    //
+    // Only purge persisted results on dispose for non-persistent sessions.
+    // Persistent sessions can be resumed — the rollout still contains
+    // <persisted-output> messages pointing at these storage keys / file
+    // paths, and the agent must be able to retrieve the full content on
+    // resume. Stale entries from persistent sessions are reclaimed via
+    // server-mode TTL sweep / cache quota eviction instead.
+    if (cleanupToolResults && this.toolResultStore && !this.isPersistent) {
+      try {
+        await this.toolResultStore.cleanup(this.sessionId);
+      } catch (error) {
+        console.error('Failed to clean up tool result store:', error);
+      }
+    }
+
+    try {
+      await this.shadowAgentScheduler?.shutdown();
+    } catch (err) {
+      console.warn(
+        '[Session] shadowAgentScheduler.shutdown failed during dispose:',
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+    this.shadowAgentScheduler = null;
+
+    await this.waitForConversationCommits();
+
     if (this.services?.rollout) {
       try {
-        await this.services.rollout.flush();
+        if (recordCloseEvent) {
+          const closeEvent: EventMsg = {
+            type: 'BackgroundEvent',
+            data: {
+              message: `Session closed: ${this.sessionId} (${this.getMessageCount()} messages)`
+            }
+          };
+
+          const rolloutItems: RolloutItem[] = [{
+            type: 'event_msg',
+            payload: closeEvent
+          }];
+
+          await this.services.rollout.recordItems(rolloutItems);
+        }
+
+        if (flushRollout) {
+          await this.services.rollout.flush();
+        }
       } catch (e) {
         console.error('Failed to flush rollout recorder:', e);
       }
@@ -2496,20 +2576,34 @@ export class Session {
    *
    * Records ResponseItems to both SessionState (in-memory history) and
    * RolloutRecorder (persistent storage).
+   * Concurrent callers are serialized through conversationCommitChain; callers
+   * only need to await their own returned promise.
    */
   async recordConversationItemsDual(items: ResponseItem[]): Promise<void> {
-    // If incoming items contain any DOM snapshot output, compress previous snapshots in history first
-    // This keeps the latest snapshot fresh for LLM reasoning
-    if (items.some(item => isDOMSnapshotOutput(item))) {
-      // Compress previous DOM snapshots BEFORE recording new items
-      this.sessionState.compressPreviousDomSnapshot();
+    const commit = this.conversationCommitChain.then(async () => {
+      // If incoming items contain any DOM snapshot output, compress previous snapshots in history first
+      // This keeps the latest snapshot fresh for LLM reasoning
+      if (items.some(item => isDOMSnapshotOutput(item))) {
+        // Compress previous DOM snapshots BEFORE recording new items
+        this.sessionState.compressPreviousDomSnapshot();
+      }
+
+      // Record to SessionState (in-memory history)
+      this.sessionState.recordItems(items);
+
+      // Persist to rollout storage
+      await this.persistRolloutResponseItems(items);
+    });
+    this.conversationCommitChain = commit.catch(() => undefined);
+    return commit;
+  }
+
+  private async waitForConversationCommits(): Promise<void> {
+    try {
+      await this.conversationCommitChain;
+    } catch {
+      // Individual commit failures are already handled by their callers.
     }
-
-    // Record to SessionState (in-memory history)
-    this.sessionState.recordItems(items);
-
-    // Persist to rollout storage
-    await this.persistRolloutResponseItems(items);
   }
 
   /**

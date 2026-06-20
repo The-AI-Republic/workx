@@ -3078,37 +3078,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pi"
-version = "0.1.1"
-dependencies = [
- "async-trait",
- "chrono",
- "directories",
- "dirs 5.0.1",
- "keyring",
- "lazy_static",
- "log",
- "png 0.17.16",
- "reqwest 0.12.28",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-autostart",
- "tauri-plugin-deep-link",
- "tauri-plugin-global-shortcut",
- "tauri-plugin-notification",
- "tauri-plugin-process",
- "tauri-plugin-shell",
- "tauri-plugin-single-instance",
- "tauri-plugin-updater",
- "tempfile",
- "tokio",
- "uuid",
- "which",
-]
-
-[[package]]
 name = "pin-project-lite"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6343,6 +6312,37 @@ dependencies = [
  "serde_json",
  "unicode-xid",
  "wasmparser",
+]
+
+[[package]]
+name = "workx"
+version = "0.1.1"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "directories",
+ "dirs 5.0.1",
+ "keyring",
+ "lazy_static",
+ "log",
+ "png 0.17.16",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-autostart",
+ "tauri-plugin-deep-link",
+ "tauri-plugin-global-shortcut",
+ "tauri-plugin-notification",
+ "tauri-plugin-process",
+ "tauri-plugin-shell",
+ "tauri-plugin-single-instance",
+ "tauri-plugin-updater",
+ "tempfile",
+ "tokio",
+ "uuid",
+ "which",
 ]
 
 [[package]]

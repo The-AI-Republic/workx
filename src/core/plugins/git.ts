@@ -180,7 +180,7 @@ export function gitErrorHint(stderr: string): string | null {
     return 'SSH auth failed. Check your key/agent (or use an HTTPS source).';
   }
   if (/timed out|timeout/i.test(stderr)) {
-    return 'Clone timed out. Increase BROWSERX_PLUGIN_GIT_TIMEOUT_MS or check connectivity.';
+    return 'Clone timed out. Increase WORKX_PLUGIN_GIT_TIMEOUT_MS or check connectivity.';
   }
   return null;
 }
@@ -201,7 +201,7 @@ const DEFAULT_TIMEOUT_MS = 120_000;
 export function gitTimeoutMs(): number {
   const env =
     typeof process !== 'undefined'
-      ? process.env?.BROWSERX_PLUGIN_GIT_TIMEOUT_MS
+      ? process.env?.WORKX_PLUGIN_GIT_TIMEOUT_MS
       : undefined;
   const n = env ? Number(env) : NaN;
   return Number.isFinite(n) && n > 0 ? n : DEFAULT_TIMEOUT_MS;

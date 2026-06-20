@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "General in-browser AI agent for work tasks"
@@ -177,7 +177,7 @@
     "message": "Always light"
   },
   "Apple_Pi_Your_personal_AI_Alpha": {
-    "message": "Apple Pi: Your personal AI (Alpha)"
+    "message": "WorkX: Your personal AI (Alpha)"
   },
   "Approval_Safety": {
     "message": "Approval & Safety"
@@ -219,8 +219,8 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Ask Browserx to extract structured data from any webpage"
+  "Ask_WorkX_to_extract_structured_data__88fc": {
+    "message": "Ask WorkX to extract structured data from any webpage"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Ask for medium-risk and above (risk > 30). Recommended for most users."
@@ -309,14 +309,11 @@
   "Browser_automation_tool_toggles": {
     "message": "Browser automation tool toggles"
   },
-  "BrowserX": {
-    "message": "BrowserX"
+  "WorkX": {
+    "message": "WorkX"
   },
-  "Browserx": {
-    "message": "Browserx"
-  },
-  "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+  "WorkX_Alpha": {
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "CWD:"
@@ -385,8 +382,8 @@
   "Clear_search": {
     "message": "Clear search"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Click the Browserx icon in your toolbar or press Alt+Shift+C"
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
+    "message": "Click the WorkX icon in your toolbar or press Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "Click to cancel login"
@@ -676,8 +673,8 @@
   "Enable_PIN_Protection": {
     "message": "Enable PIN Protection"
   },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": "Enable auto-connect when browserx starts"
+  "Enable_auto_connect_when_workx_starts": {
+    "message": "Enable auto-connect when WorkX starts"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Enable caching to improve performance by storing frequently accessed data"
@@ -733,8 +730,8 @@
   "Explain_this_info_selectionText": {
     "message": "Explain this: ${info.selectionText}"
   },
-  "Explain_with_Browserx": {
-    "message": "Explain with Browserx"
+  "Explain_with_WorkX": {
+    "message": "Explain with WorkX"
   },
   "Export": {
     "message": "Export"
@@ -760,8 +757,8 @@
   "Extract_Data": {
     "message": "Extract Data:"
   },
-  "Extract_data_with_Browserx": {
-    "message": "Extract data with Browserx"
+  "Extract_data_with_WorkX": {
+    "message": "Extract data with WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Extract specific data patterns from pages"
@@ -955,8 +952,8 @@
   "Improve_this_text_info_selectionText": {
     "message": "Improve this text: ${info.selectionText}"
   },
-  "Improve_with_Browserx": {
-    "message": "Improve with Browserx"
+  "Improve_with_WorkX": {
+    "message": "Improve with WorkX"
   },
   "In": {
     "message": "In:"
@@ -1547,7 +1544,7 @@
     "message": "Retrying"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Right-click on any text to explain or improve it with Browserx"
+    "message": "Right-click on any text to explain or improve it with WorkX"
   },
   "Risk_Score": {
     "message": "Risk Score:"
@@ -2041,8 +2038,8 @@
   "Web_Search": {
     "message": "Web Search"
   },
-  "Welcome_to_Browserx": {
-    "message": "Welcome to Browserx"
+  "Welcome_to_WorkX": {
+    "message": "Welcome to WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Whether sandboxed commands can access the network"
@@ -2092,8 +2089,8 @@
   "available": {
     "message": "available"
   },
-  "browserx": {
-    "message": "browserx"
+  "workx": {
+    "message": "WorkX"
   },
   "cached": {
     "message": "cached"

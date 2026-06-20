@@ -71,6 +71,7 @@ design, zero runtime impact — no follow-up track).**
 | 30 | [Session Memory Privacy UI](./30_track05_memory_privacy_ui_DONE/design.md) ✅ DONE (2026-05-18) | Track 05 | P2 | Memory settings now show a bounded current-memory snapshot via `memory.getSnapshot`, support confirmed `memory.clearAll`, hide when no memory service is available, and codify the intentional 8000-character core-memory v1 cap. |
 | 31 | [Session Summary E2E Coverage](./31_track05b_session_summary_e2e_DONE/design.md) ✅ DONE (2026-05-18) | Track 05b | P2 | Added a deterministic Node integration harness for post-turn trigger → real `summary.md` write → compaction interlock wait → `<session_summary>` fold, and recorded `preferences.sessionSummaryEnabled` as the accepted v1 flag location. |
 | 32 | [Tool Result Persistence Wiring](./32_track09_tool_result_persistence_wiring_DONE/design.md) ✅ DONE (2026-05-18) | Track 09 | **P1** | Production bootstraps now pass `SessionServices` into `RepublicAgent`/`Session`, extension/desktop use cache-backed stores, server uses `{dataDir}/sessions`, and integration coverage proves persist/read-back/tier-2/cleanup/resume paths with a real store. |
+| 45 | [Apple Pi Runtime Integration Follow-ups](./45_track43_runtime_integration_followups/design.md) ✅ DONE (2026-05-20) | Track 43 | **P1** | Closed three Track 43 verification gaps: (1) spawned-sidecar protocol & lifecycle smoke test — boots the real Apple Pi sidecar, runs handshake + `ping`/`pong` + graceful shutdown; (2) Rust supervisor lifecycle suite — 9 process-level integration tests against a fake-child binary + inline unit tests for the backoff formula; (3) real `diagnostics.recentStderr` ring buffer (200 lines / 64 KiB FIFO, generation + `tsMs` tagged) replacing the stub. The deferred "full `PARITY_SCENARIOS`-vs-real-runtime" comparison (needs deterministic agent fixtures) and multi-OS packaged smoke (release-engineer at tag time) are documented in tasks.md as out of scope. |
 
 > Note (Track 07): the narrowed shipped scope (reactive `modelStore` + `ApprovalPolicyChanged`)
 > is fully and correctly implemented. The only inconsistency is that `07_*/design.md` and
@@ -108,7 +109,14 @@ the single-track gaps in 26–32**. Filed as bug-report tracks (detail + fix in 
 | 40 | [Sub-Agent Runtime Optimization](./40_subagent_runtime_optimization_DONE/design.md) ✅ DONE | P1 | Medium–Large | PR #243 plus follow-ups completed typed sub-agent behavior, fork context mode, child history seams, skill integration, events, task-state coverage, and the final explicit fork-recursion/tag guard. |
 | 41 | [Shadow Agent Runtime](./41_shadow_agent_runtime_DONE/design.md) ✅ DONE (PR #245, merged 2026-05-18) | P1 | Medium–Large | Runtime-only `ShadowAgentRunner`/scheduler for internal background jobs; session-summary extraction migrated off quiet sub-agents, with diagnostics/failure policies and compaction prep covered by tests. |
 | 42 | [System Prompt Content Improvements](./42_system_prompt_content_improvements_DONE/design.md) ✅ DONE (PR #244, merged 2026-05-18) | P1 | Small–Medium | Compare claudy's prompt sections with BrowserX's composed prompt; add missing system semantics/action-risk/memory-staleness/skill anti-guessing guidance while trimming verbose duplicated planning/tool-loop prose. |
-| 43 | [Apple Pi Runtime Decoupling](./43_apple_pi_runtime_decoupling/design.md) ⚠ PARTIAL | P1 | XL | Desktop now defaults to the Rust-supervised runtime sidecar relay, with the legacy WebView bootstrap no longer called by UI startup/shutdown/login flows. Remaining work: runtime config relay cleanup, deleting retired bootstrap/Rust command surfaces, packaging/native-addon proof, and full parity/hardening. |
+| 43 | [Apple Pi Runtime Decoupling](./43_apple_pi_runtime_decoupling_DONE/design.md) ✅ CUTOVER DONE (PRs #246 + #255, merged 2026-05-18 / 2026-05-20) | P1 | XL | Desktop now defaults to the Rust-supervised runtime sidecar relay; legacy WebView bootstrap removed from UI startup/shutdown/login flows. P1/P2/P3 + automatable P4 closed. Highest-value remaining code-side verification gaps (spawned-sidecar parity, Rust supervisor lifecycle `tokio::test`s, real `diagnostics.recentStderr` ring-buffer) are tracked in [Track 45](./45_track43_runtime_integration_followups/design.md); multi-OS packaged smoke remains release-engineer at tag time. |
+| 44 | [Desktop Runtime State Ownership Contract](./44_desktop_runtime_state_ownership_DONE/design.md) ✅ DONE (PR #256, merged 2026-05-20) | P1 | Medium–Large | Runtime-owned desktop auth/access/profile state, startup snapshot, global access service, UI state derivation, generic deeplink delivery, shared URL resolution, and packaged Node/native-addon validation. |
+
+### Cross-Track Consistency Track (added 2026-05-20)
+
+| Track | Priority | Effort | Value |
+|-------|----------|--------|-------|
+| [improve_consistentcy0520](./improve_consistentcy0520/design.md) | P0/P1 | Medium-Large | Cross-track hardening pass for DONE-track integration drift: session-scoped prompt/runtime context, unified teardown, post-turn commit order, config generations, approval/tool lifecycle, storage lifetime, and track-status hygiene. |
 
 ## Dependency Graph
 
@@ -175,6 +183,8 @@ claudy ToolSearch comparison        ──> 39_dynamic_tool_management_DONE (def
 claudy AgentTool/forkSubagent       ──> 40_subagent_runtime_optimization (enum AgentType + isolated/forked subagent modes)
 claudy runForkedAgent               ──> 41_shadow_agent_runtime_DONE (runtime-only shadow agents for internal background jobs)
 claudy system prompt comparison     ──> 42_system_prompt_content_improvements_DONE (system semantics + action risk + prompt-size reduction)
+43_apple_pi_runtime_decoupling_DONE ──> 44_desktop_runtime_state_ownership_DONE (runtime/UI/Tauri state boundary + auth/access/env parity)
+43_apple_pi_runtime_decoupling_DONE ──> 45_track43_runtime_integration_followups (spawned-sidecar parity, supervisor tokio tests, diagnostics ring-buffer, schema consolidation)
 
 Integration-fix order: 34 (Critical) → 33 / 37 / 35 (P1) → 36 (P2)
   (37 BUG-3 TieredEvictor ordering == 29 G3 == 32 P5 — ONE shared decision, no drift)

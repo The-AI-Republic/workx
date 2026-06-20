@@ -115,7 +115,7 @@ export const ServerConfigSchema = z.object({
       backup: BackupConfigSchema.default({}),
       shutdownGracePeriodMs: z.number().default(10_000),
       // Track 24.2: operator-pinned output-style persona for all unattended
-      // jobs. Resolved against built-in styles + .browserx/styles dirs.
+      // jobs. Resolved against built-in styles + .workx/styles dirs.
       // TODO(track-20): allow a managed-policy key to override this once
       // Track 20 lands.
       persona: z.string().optional(),
@@ -132,13 +132,13 @@ export type ServerConfig = z.infer<typeof ServerConfigSchema>;
 
 const DEFAULT_DATA_DIR = path.join(
   process.env.HOME ?? process.env.USERPROFILE ?? '/tmp',
-  '.applepi-server',
+  '.workx-server',
   'data'
 );
 
 const DEFAULT_CONFIG_PATH = path.join(
   process.env.HOME ?? process.env.USERPROFILE ?? '/tmp',
-  '.applepi-server',
+  '.workx-server',
   'config.json'
 );
 
@@ -157,8 +157,8 @@ let _onReloadCallbacks: Array<(cfg: ServerConfig) => void> = [];
  * Priority: env vars > config.json > defaults.
  */
 export function loadServerConfig(): ServerConfig {
-  const configPath = process.env.APPLEPI_CONFIG_PATH ?? DEFAULT_CONFIG_PATH;
-  _dataDir = process.env.APPLEPI_DATA_DIR ?? DEFAULT_DATA_DIR;
+  const configPath = process.env.WORKX_CONFIG_PATH ?? DEFAULT_CONFIG_PATH;
+  _dataDir = process.env.WORKX_DATA_DIR ?? DEFAULT_DATA_DIR;
 
   let fileConfig: Record<string, unknown> = {};
   if (fs.existsSync(configPath)) {
@@ -215,7 +215,7 @@ export function onConfigReload(cb: (cfg: ServerConfig) => void): () => void {
  * Start watching config file for changes.
  */
 export function watchConfig(): void {
-  const configPath = process.env.APPLEPI_CONFIG_PATH ?? DEFAULT_CONFIG_PATH;
+  const configPath = process.env.WORKX_CONFIG_PATH ?? DEFAULT_CONFIG_PATH;
   if (!fs.existsSync(configPath)) return;
 
   _watcher = fs.watch(configPath, { persistent: false }, () => {
@@ -250,20 +250,20 @@ function applyEnvOverrides(base: Record<string, unknown>): Record<string, unknow
   const server = (base.server ?? {}) as Record<string, unknown>;
   const auth = (server.auth ?? {}) as Record<string, unknown>;
 
-  if (process.env.APPLEPI_SERVER_PORT) {
-    server.port = parseInt(process.env.APPLEPI_SERVER_PORT, 10);
+  if (process.env.WORKX_SERVER_PORT) {
+    server.port = parseInt(process.env.WORKX_SERVER_PORT, 10);
   }
-  if (process.env.APPLEPI_SERVER_BIND) {
-    server.bind = process.env.APPLEPI_SERVER_BIND;
+  if (process.env.WORKX_SERVER_BIND) {
+    server.bind = process.env.WORKX_SERVER_BIND;
   }
-  if (process.env.APPLEPI_SERVER_AUTH_MODE) {
-    auth.mode = process.env.APPLEPI_SERVER_AUTH_MODE;
+  if (process.env.WORKX_SERVER_AUTH_MODE) {
+    auth.mode = process.env.WORKX_SERVER_AUTH_MODE;
   }
-  if (process.env.APPLEPI_SERVER_TOKEN) {
-    auth.token = process.env.APPLEPI_SERVER_TOKEN;
+  if (process.env.WORKX_SERVER_TOKEN) {
+    auth.token = process.env.WORKX_SERVER_TOKEN;
   }
-  if (process.env.APPLEPI_SERVER_PASSWORD) {
-    auth.password = process.env.APPLEPI_SERVER_PASSWORD;
+  if (process.env.WORKX_SERVER_PASSWORD) {
+    auth.password = process.env.WORKX_SERVER_PASSWORD;
   }
 
   server.auth = auth;

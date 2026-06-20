@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "పని పనుల కోసం సాధారణ బ్రౌజర్-లోపలి AI ఏజెంట్"
@@ -177,7 +177,7 @@
     "message": "ఎప్పుడూ వెలుగు"
   },
   "Apple_Pi_Your_personal_AI_Alpha": {
-    "message": "Apple Pi: మీ వ్యక్తిగత AI (Alpha)"
+    "message": "WorkX: మీ వ్యక్తిగత AI (Alpha)"
   },
   "Approval_Safety": {
     "message": "అనుమతి & భద్రత"
@@ -219,7 +219,7 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
+  "Ask_WorkX_to_extract_structured_data__88fc": {
     "message": "ఏదైనా వెబ్‌పేజీ నుండి నిర్మాణాత్మక డేటాను వెలికితీయడానికి $1$ ని అడగండి",
     "placeholders": {
       "1": {
@@ -314,14 +314,11 @@
   "Browser_automation_tool_toggles": {
     "message": "బ్రౌజర్ ఆటోమేషన్ సాధనాల టాగుల్‌లు"
   },
-  "BrowserX": {
-    "message": "BrowserX"
+  "WorkX": {
+    "message": "WorkX"
   },
-  "Browserx": {
-    "message": "Browserx"
-  },
-  "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+  "WorkX_Alpha": {
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "CWD:"
@@ -390,8 +387,8 @@
   "Clear_search": {
     "message": "శోధనను క్లియర్ చేయండి"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "మీ టూల్‌బార్‌లోని Browserx ఐకాన్‌పై క్లిక్ చేయండి లేదా Alt+Shift+C నొక్కండి"
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
+    "message": "మీ టూల్‌బార్‌లోని WorkX ఐకాన్‌పై క్లిక్ చేయండి లేదా Alt+Shift+C నొక్కండి"
   },
   "Click_to_cancel_login": {
     "message": "లాగిన్ రద్దు చేయడానికి క్లిక్ చేయండి"
@@ -681,7 +678,7 @@
   "Enable_PIN_Protection": {
     "message": "PIN రక్షణను సక్రియం చేయండి"
   },
-  "Enable_auto_connect_when_browserx_starts": {
+  "Enable_auto_connect_when_workx_starts": {
     "message": "బ్రౌజర్‌ఎక్స్ ప్రారంభమైనప్పుడు ఆటో-కనెక్షన్‌ను సక్రియం చేయండి"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
@@ -738,7 +735,7 @@
   "Explain_this_info_selectionText": {
     "message": "ఇది వివరించండి: ${info.selectionText}"
   },
-  "Explain_with_Browserx": {
+  "Explain_with_WorkX": {
     "message": "బ్రౌజర్‌ఎక్స్‌తో వివరించండి"
   },
   "Export": {
@@ -765,8 +762,8 @@
   "Extract_Data": {
     "message": "డేటాను వెలికితీయండి:"
   },
-  "Extract_data_with_Browserx": {
-    "message": "Browserx తో డేటాను వెలికితీయండి"
+  "Extract_data_with_WorkX": {
+    "message": "WorkX తో డేటాను వెలికితీయండి"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "పేజీల నుండి నిర్దిష్ట డేటా నమూనాలను వెలికితీయండి"
@@ -960,8 +957,8 @@
   "Improve_this_text_info_selectionText": {
     "message": "ఈ పాఠ్యాన్ని మెరుగుపరచండి: ${info.selectionText}"
   },
-  "Improve_with_Browserx": {
-    "message": "Browserx తో మెరుగుపరచండి"
+  "Improve_with_WorkX": {
+    "message": "WorkX తో మెరుగుపరచండి"
   },
   "In": {
     "message": "లో:"
@@ -1552,7 +1549,7 @@
     "message": "పునఃప్రయత్నిస్తోంది"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "ఏదైనా పాఠ్యంపై రైట్‑క్లిక్ చేసి Browserx ద్వారా వివరణ లేదా మెరుగుపరచండి"
+    "message": "ఏదైనా పాఠ్యంపై రైట్‑క్లిక్ చేసి WorkX ద్వారా వివరణ లేదా మెరుగుపరచండి"
   },
   "Risk_Score": {
     "message": "రిస్క్ స్కోరు:"
@@ -2046,8 +2043,8 @@
   "Web_Search": {
     "message": "వెబ్ శోధన"
   },
-  "Welcome_to_Browserx": {
-    "message": "Browserx కు స్వాగతం"
+  "Welcome_to_WorkX": {
+    "message": "WorkX కు స్వాగతం"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "సాండ్‌బాక్స్ కమాండ్లు నెట్‌వర్క్‌ను యాక్సెస్ చేయగలవా"
@@ -2097,8 +2094,8 @@
   "available": {
     "message": "లభ్యం"
   },
-  "browserx": {
-    "message": "browserx"
+  "workx": {
+    "message": "WorkX"
   },
   "cached": {
     "message": "క్యాష్ చేయబడింది"

@@ -7,7 +7,7 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   cat <<'EOF'
 Usage: ./build.sh [--install] [cargo-tauri-build-args...]
 
-Builds the ApplePi Tauri desktop app for local testing.
+Builds the WorkX Tauri desktop app for local testing.
 
 By default this runs an unsigned build:
   cargo tauri build --no-sign
@@ -24,7 +24,7 @@ Examples:
   ./build.sh --install --bundles deb
   ./build.sh --debug
 
-Set APPLEPI_SIGN=1 to omit --no-sign and use Tauri signing env vars.
+Set WORKX_SIGN=1 to omit --no-sign and use Tauri signing env vars.
 EOF
   exit 0
 fi
@@ -72,7 +72,7 @@ install_ubuntu() {
   fi
 
   local deb
-  deb="$(latest_match "$ROOT_DIR/tauri/target/release/bundle/deb/ApplePi_*_amd64.deb")"
+  deb="$(latest_match "$ROOT_DIR/tauri/target/release/bundle/deb/WorkX_*_amd64.deb")"
   echo "Installing $deb"
   sudo apt install --reinstall "$deb"
 }
@@ -130,9 +130,39 @@ install_for_current_os() {
   esac
 }
 
+desktop_env_value() {
+  local key="$1"
+  local env_file="$ROOT_DIR/src/desktop/.env"
+  local line value
+  if [[ ! -f "$env_file" ]]; then
+    return 0
+  fi
+  line="$(grep -E "^[[:space:]]*${key}=" "$env_file" | tail -n 1 || true)"
+  if [[ -z "$line" ]]; then
+    return 0
+  fi
+  value="${line#*=}"
+  value="${value%\"}"
+  value="${value#\"}"
+  value="${value%\'}"
+  value="${value#\'}"
+  printf '%s\n' "$value"
+}
+
+EFFECTIVE_AUTH_BASE_URL="${VITE_AUTH_BASE_URL:-$(desktop_env_value VITE_AUTH_BASE_URL)}"
+if [[ -z "$EFFECTIVE_AUTH_BASE_URL" ]]; then
+  EFFECTIVE_AUTH_BASE_URL="${VITE_HOME_PAGE_BASE_URL:-$(desktop_env_value VITE_HOME_PAGE_BASE_URL)}"
+fi
+echo "WorkX build auth base URL: ${EFFECTIVE_AUTH_BASE_URL:-not configured}"
+if [[ -n "${WORKX_AUTH_BASE_URL:-}" && -z "${VITE_AUTH_BASE_URL:-}" ]]; then
+  echo "Note: WORKX_AUTH_BASE_URL affects runtime Node code only; set VITE_AUTH_BASE_URL for the desktop WebView build."
+elif [[ -n "${WORKX_HOME_PAGE_BASE_URL:-}" && -z "${VITE_HOME_PAGE_BASE_URL:-}" && -z "${VITE_AUTH_BASE_URL:-}" ]]; then
+  echo "Note: WORKX_HOME_PAGE_BASE_URL affects runtime Node code only; set VITE_AUTH_BASE_URL for the desktop WebView build."
+fi
+
 cd "$ROOT_DIR/tauri"
 
-if [[ "${APPLEPI_SIGN:-0}" == "1" ]]; then
+if [[ "${WORKX_SIGN:-0}" == "1" ]]; then
   cargo tauri build "${BUILD_ARGS[@]}"
 else
   cargo tauri build --no-sign "${BUILD_ARGS[@]}"

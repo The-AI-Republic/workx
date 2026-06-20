@@ -1,0 +1,99 @@
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { resolveRuntimeUrls } from '../runtimeUrls';
+
+const ENV_KEYS = [
+  'WORKX_AUTH_BASE_URL',
+  'WORKX_HOME_PAGE_BASE_URL',
+  'WORKX_BACKEND_API_BASE_URL',
+  'VITE_AUTH_BASE_URL',
+  'VITE_HOME_PAGE_BASE_URL',
+  'VITE_BACKEND_API_BASE_URL',
+] as const;
+
+const originalEnv = new Map<string, string | undefined>();
+
+describe('resolveRuntimeUrls', () => {
+  beforeEach(() => {
+    for (const key of ENV_KEYS) {
+      originalEnv.set(key, process.env[key]);
+      delete process.env[key];
+    }
+  });
+
+  afterEach(() => {
+    for (const key of ENV_KEYS) {
+      const original = originalEnv.get(key);
+      if (original === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = original;
+      }
+    }
+    originalEnv.clear();
+  });
+
+  it('leaves hosted auth unconfigured when no runtime env is set', () => {
+    const urls = resolveRuntimeUrls();
+
+    expect(urls).toMatchObject({
+      homePageBaseUrl: null,
+      backendApiBaseUrl: null,
+      llmApiUrl: '/api/llm',
+      deeplinkRedirectUrl: 'workx://auth/callback',
+      source: {
+        homePageBaseUrl: 'default',
+        backendApiBaseUrl: 'default',
+        llmApiUrl: 'default',
+        deeplinkRedirectUrl: 'default',
+      },
+    });
+  });
+
+  it('prefers WORKX auth env values over VITE env values', () => {
+    process.env.WORKX_AUTH_BASE_URL = 'https://auth.example.com';
+    process.env.VITE_HOME_PAGE_BASE_URL = 'https://vite-home.example.com';
+    process.env.WORKX_BACKEND_API_BASE_URL = 'https://backend.example.com';
+    process.env.VITE_BACKEND_API_BASE_URL = 'https://vite-backend.example.com';
+
+    const urls = resolveRuntimeUrls();
+
+    expect(urls).toMatchObject({
+      homePageBaseUrl: 'https://auth.example.com',
+      backendApiBaseUrl: 'https://backend.example.com',
+      llmApiUrl: 'https://backend.example.com/api/llm',
+      source: {
+        homePageBaseUrl: 'env',
+        backendApiBaseUrl: 'env',
+        llmApiUrl: 'env',
+      },
+    });
+  });
+
+  it('falls back to process VITE auth env values', () => {
+    process.env.VITE_AUTH_BASE_URL = 'https://vite-auth.example.com';
+    process.env.VITE_BACKEND_API_BASE_URL = 'https://vite-backend.example.com';
+
+    const urls = resolveRuntimeUrls();
+
+    expect(urls).toMatchObject({
+      homePageBaseUrl: 'https://vite-auth.example.com',
+      backendApiBaseUrl: 'https://vite-backend.example.com',
+      llmApiUrl: 'https://vite-backend.example.com/api/llm',
+      source: {
+        homePageBaseUrl: 'env',
+        backendApiBaseUrl: 'env',
+        llmApiUrl: 'env',
+      },
+    });
+  });
+
+  it('keeps legacy home page env aliases for existing builds', () => {
+    process.env.WORKX_HOME_PAGE_BASE_URL = 'https://legacy-runtime.example.com';
+    process.env.VITE_HOME_PAGE_BASE_URL = 'https://legacy-vite.example.com';
+
+    const urls = resolveRuntimeUrls();
+
+    expect(urls.homePageBaseUrl).toBe('https://legacy-runtime.example.com');
+    expect(urls.source.homePageBaseUrl).toBe('env');
+  });
+});

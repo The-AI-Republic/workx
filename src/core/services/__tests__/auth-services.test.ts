@@ -90,7 +90,46 @@ describe('createAuthServices', () => {
       // Session refresh ran with the new auth manager.
       const session = deps.registry.getSession('s1');
       expect(session.agent.refreshModelClient).toHaveBeenCalled();
-      expect(result).toMatchObject({ success: true, user: { token: 'at-1' } });
+      expect(result).toMatchObject({ success: true, user: { email: 'u@test' } });
+    });
+
+    it('does not mark login failed when profile fetching is not configured', async () => {
+      const runtimeAuthState = {
+        mode: 'none',
+        hasToken: false,
+        profile: null,
+        profileStatus: 'idle',
+      };
+      deps = buildDeps({
+        fetchUserProfile: undefined,
+        runtimeState: {
+          setAuthState: vi.fn(async (next) => {
+            Object.assign(runtimeAuthState, next);
+            return runtimeAuthState;
+          }),
+          getAuthState: vi.fn(() => runtimeAuthState),
+          getAccessState: vi.fn(() => undefined),
+        } as never,
+      });
+      svc = createAuthServices(deps);
+
+      const result = await svc['auth.completeLogin']!({
+        accessToken: 'at-1',
+        refreshToken: 'rt-1',
+        backendBaseUrl: 'https://api.example.com',
+      }, TEST_CONTEXT);
+
+      expect(result).toMatchObject({
+        success: true,
+        state: {
+          mode: 'login',
+          hasToken: true,
+          profile: null,
+          profileStatus: 'idle',
+          lastError: undefined,
+        },
+        user: null,
+      });
     });
 
     it('rejects when either token is missing', async () => {
@@ -114,19 +153,82 @@ describe('createAuthServices', () => {
   describe('auth.getState', () => {
     it('returns hasValidToken=false when no token is persisted', async () => {
       const res = await svc['auth.getState']!({}, TEST_CONTEXT);
-      expect(res).toEqual({ hasValidToken: false, user: null });
+      expect(res).toMatchObject({ hasValidToken: false, hasToken: false, user: null, profile: null });
     });
 
     it('returns hasValidToken=true and the user payload when a token is present', async () => {
       await deps.credentialStore.set('auth', 'access_token', 'fresh-at');
       const res = await svc['auth.getState']!({}, TEST_CONTEXT);
-      expect(res).toMatchObject({ hasValidToken: true, user: { token: 'fresh-at' } });
+      expect(res).toMatchObject({ hasValidToken: true, hasToken: true, user: { email: 'u@test' } });
+    });
+
+    it('keeps a stored token valid when profile fetching is not configured', async () => {
+      deps = buildDeps({ fetchUserProfile: undefined });
+      svc = createAuthServices(deps);
+      await deps.credentialStore.set('auth', 'access_token', 'stored-at');
+
+      const res = await svc['auth.getState']!({}, TEST_CONTEXT);
+
+      expect(res).toMatchObject({
+        hasValidToken: true,
+        hasToken: true,
+        user: null,
+        profile: null,
+        profileStatus: 'idle',
+      });
+    });
+
+    it('refreshes stored desktop tokens when the access token no longer loads a profile', async () => {
+      const fetchUserProfile = vi.fn(async (token: string) => (
+        token === 'new-at' ? { email: 'fresh@test' } : null
+      ));
+      const refreshAuthTokens = vi.fn(async () => ({
+        accessToken: 'new-at',
+        refreshToken: 'new-rt',
+      }));
+      deps = buildDeps({ fetchUserProfile, refreshAuthTokens });
+      svc = createAuthServices(deps);
+      await deps.credentialStore.set('auth', 'access_token', 'old-at');
+      await deps.credentialStore.set('auth', 'refresh_token', 'old-rt');
+
+      const res = await svc['auth.getState']!({}, TEST_CONTEXT);
+
+      expect(fetchUserProfile).toHaveBeenCalledWith('old-at');
+      expect(refreshAuthTokens).toHaveBeenCalledWith('old-rt');
+      expect(fetchUserProfile).toHaveBeenCalledWith('new-at');
+      expect(deps.credentialStore.set).toHaveBeenCalledWith('auth', 'access_token', 'new-at');
+      expect(deps.credentialStore.set).toHaveBeenCalledWith('auth', 'refresh_token', 'new-rt');
+      expect(res).toMatchObject({
+        hasValidToken: true,
+        hasToken: true,
+        user: { email: 'fresh@test' },
+      });
+    });
+
+    it('does not report a stale stored desktop token as valid when refresh fails', async () => {
+      const fetchUserProfile = vi.fn(async () => null);
+      const refreshAuthTokens = vi.fn(async () => null);
+      deps = buildDeps({ fetchUserProfile, refreshAuthTokens });
+      svc = createAuthServices(deps);
+      await deps.credentialStore.set('auth', 'access_token', 'old-at');
+      await deps.credentialStore.set('auth', 'refresh_token', 'old-rt');
+
+      const res = await svc['auth.getState']!({}, TEST_CONTEXT);
+
+      expect(refreshAuthTokens).toHaveBeenCalledWith('old-rt');
+      expect(res).toMatchObject({
+        hasValidToken: false,
+        hasToken: false,
+        user: null,
+        profile: null,
+        profileStatus: 'failed',
+      });
     });
 
     it('degrades gracefully on platforms without a credential store', async () => {
       const localSvc = createAuthServices({ ...deps, getCredentialStore: undefined });
       const res = await localSvc['auth.getState']!({}, TEST_CONTEXT);
-      expect(res).toEqual({ hasValidToken: false, user: null });
+      expect(res).toMatchObject({ hasValidToken: false, hasToken: false, user: null, profile: null });
     });
   });
 
@@ -142,14 +244,14 @@ describe('createAuthServices', () => {
       expect(deps.createAuthManager).toHaveBeenCalledWith(false, null);
       const session = deps.registry.getSession('s1');
       expect(session.agent.refreshModelClient).toHaveBeenCalled();
-      expect(res).toEqual({ success: true });
+      expect(res).toMatchObject({ success: true });
     });
 
     it('swallows credential delete failures (the keychain entries may already be absent)', async () => {
       deps.credentialStore.delete.mockRejectedValueOnce(new Error('not found'));
       deps.credentialStore.delete.mockRejectedValueOnce(new Error('not found'));
       const res = await svc['auth.logout']!({}, TEST_CONTEXT);
-      expect(res).toEqual({ success: true });
+      expect(res).toMatchObject({ success: true });
     });
   });
 });

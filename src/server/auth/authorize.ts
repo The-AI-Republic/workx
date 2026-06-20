@@ -6,9 +6,9 @@
  * @module server/auth/authorize
  */
 
-import { METHOD_REGISTRY, EVENT_SCOPE_MAP, BROADCAST_EVENTS } from '@applepi/ws-server';
-import type { ErrorShape } from '@applepi/ws-server';
-import { unauthorized } from '@applepi/ws-server';
+import { METHOD_REGISTRY, EVENT_SCOPE_MAP, BROADCAST_EVENTS } from '@workx/ws-server';
+import type { ErrorShape } from '@workx/ws-server';
+import { unauthorized } from '@workx/ws-server';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Connection scope store

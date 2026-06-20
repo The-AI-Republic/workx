@@ -50,7 +50,7 @@ const CONFIG = {
 
   // Fixed values that should never be translated (brand name)
   fixedValues: {
-    extension_name: 'BrowserX',
+    extension_name: 'WorkX',
   },
 
   // Keys whose English source text comes from _locales/en/messages.json (not key_map.json)
@@ -219,14 +219,14 @@ function loadEnglishMessages(localesRoot) {
 
 /**
  * Validate and fix extension_name in a locale
- * - extension_name must always be "BrowserX" (no translation)
+ * - extension_name must always be "WorkX" (no translation)
  * Returns: { fixed: boolean, issues: string[] }
  */
 function validateManifestKeys(messages) {
   const issues = [];
   let fixed = false;
 
-  // Check extension_name - must always be "BrowserX"
+  // Check extension_name - must always be "WorkX"
   if (messages.extension_name) {
     const expected = CONFIG.fixedValues.extension_name;
     if (messages.extension_name.message !== expected) {

@@ -21,7 +21,7 @@ import type { EventMsg } from '@/core/protocol/events';
 import type { ChannelEvent } from '@/core/channels/types';
 import type { Op } from '@/core/protocol/types';
 import { shouldReceiveEvent } from '../auth/authorize';
-import { makeEvent } from '@applepi/ws-server';
+import { makeEvent } from '@workx/ws-server';
 import { getTrackedConnections, touchConnection } from '../connection/watchdog';
 import { redactEventMsgSecrets } from '../security/eventRedaction';
 
