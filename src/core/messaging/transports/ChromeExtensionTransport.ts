@@ -9,10 +9,11 @@
 
 import type { Op } from '@/core/protocol/types';
 import type { EventMsg } from '@/core/protocol/events';
+import type { ChannelEvent } from '@/core/channels/types';
 import type { UIChannelTransport } from './types';
 
 export class ChromeExtensionTransport implements UIChannelTransport {
-  private listeners = new Set<(event: EventMsg) => void>();
+  private listeners = new Set<(event: ChannelEvent) => void>();
   private messageListener: ((message: any) => void) | null = null;
 
   async sendOp(op: Op, context?: Record<string, unknown>): Promise<void> {
@@ -27,7 +28,7 @@ export class ChromeExtensionTransport implements UIChannelTransport {
     }
   }
 
-  onEvent(handler: (event: EventMsg) => void): () => void {
+  onEvent(handler: (event: ChannelEvent) => void): () => void {
     this.listeners.add(handler);
     return () => {
       this.listeners.delete(handler);
@@ -37,21 +38,21 @@ export class ChromeExtensionTransport implements UIChannelTransport {
   async initialize(): Promise<void> {
     // Set up the chrome.runtime.onMessage listener to filter for events
     this.messageListener = (message: any) => {
-      let eventMsg: EventMsg | null = null;
+      let channelEvent: ChannelEvent | null = null;
 
-      // SidePanelChannel format: { type: 'event', event: EventMsg }
+      // SidePanelChannel format: { type: 'event', event: EventMsg, sessionId?: string }
       if (message?.type === 'event' && message.event) {
-        eventMsg = message.event as EventMsg;
+        channelEvent = { msg: message.event as EventMsg, sessionId: message.sessionId };
       }
       // Legacy event format: { type: 'EVENT', payload: { msg: EventMsg } }
       else if (message?.type === 'EVENT' && message.payload?.msg) {
-        eventMsg = message.payload.msg as EventMsg;
+        channelEvent = { msg: message.payload.msg as EventMsg };
       }
 
-      if (eventMsg) {
+      if (channelEvent) {
         for (const handler of this.listeners) {
           try {
-            handler(eventMsg);
+            handler(channelEvent);
           } catch (err) {
             console.error('[ChromeExtensionTransport] Event handler threw:', err);
           }

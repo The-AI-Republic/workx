@@ -1,0 +1,288 @@
+/**
+ * Tests for session service handlers
+ *
+ * Verifies all session.* service handlers route correctly by sessionId,
+ * enforce required parameters, and delegate to AgentSession/AgentRegistry.
+ */
+
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createSessionServices, type SessionServiceDeps } from '../session-services';
+import type { SubmissionContext } from '@/core/channels/types';
+
+const ctx = { channelId: 'test', channelType: 'sidepanel' } as SubmissionContext;
+
+function createMockDeps(overrides: Partial<SessionServiceDeps> = {}): SessionServiceDeps {
+  // Cache session mocks so getSession returns the same reference
+  const sessionMocks: Record<string, any> = {
+    s1: {
+      sessionId: 's1',
+      agent: {
+        refreshModelClient: vi.fn().mockResolvedValue(undefined),
+        getSession: vi.fn().mockReturnValue({
+          abortAllTasks: vi.fn().mockResolvedValue(undefined),
+          close: vi.fn().mockResolvedValue(undefined),
+          getConversationHistory: vi.fn().mockReturnValue({ items: [{ role: 'user', content: 'hi' }] }),
+        }),
+      },
+      getState: vi.fn().mockReturnValue({
+        sessionId: 's1',
+        isActiveTurn: false,
+        tabId: 42,
+        history: [{ role: 'user', content: 'hi' }],
+      }),
+      reset: vi.fn().mockResolvedValue(undefined),
+    },
+  };
+
+  return {
+    registry: {
+      listSessions: vi.fn().mockReturnValue([
+        { sessionId: 's1', type: 'primary', state: 'idle' },
+        { sessionId: 's2', type: 'scheduled', state: 'active' },
+      ]),
+      getMaxConcurrent: vi.fn().mockReturnValue(5),
+      getActiveCount: vi.fn().mockReturnValue(2),
+      canCreateSession: vi.fn().mockReturnValue(true),
+      createSession: vi.fn().mockResolvedValue({
+        sessionId: 's-new',
+        sessionLetter: 'c',
+        agent: {
+          refreshModelClient: vi.fn().mockResolvedValue(undefined),
+          getSession: vi.fn().mockReturnValue({
+            getConversationHistory: vi.fn().mockReturnValue({ items: [{ role: 'user', content: 'resumed' }] }),
+          }),
+        },
+      }),
+      removeSession: vi.fn().mockResolvedValue(undefined),
+      getSession: vi.fn().mockImplementation((id: string) => sessionMocks[id]),
+      getPrimarySession: vi.fn().mockReturnValue({ sessionId: 's1' }),
+      setMaxConcurrent: vi.fn(),
+    },
+    ...overrides,
+  };
+}
+
+describe('session-services', () => {
+  let deps: SessionServiceDeps;
+  let services: ReturnType<typeof createSessionServices>;
+
+  beforeEach(() => {
+    deps = createMockDeps();
+    services = createSessionServices(deps);
+  });
+
+  describe('session.getState', () => {
+    it('returns state for a valid sessionId', async () => {
+      const result = await services['session.getState']({ sessionId: 's1' }, ctx);
+
+      expect(result).toMatchObject({
+        sessionId: 's1',
+        isActiveTurn: false,
+        tabId: 42,
+        activeSessionCount: 2,
+        maxConcurrentSessions: 5,
+      });
+    });
+
+    it('throws when sessionId is missing', async () => {
+      await expect(services['session.getState']({}, ctx)).rejects.toThrow('sessionId is required');
+    });
+
+    it('throws when session not found', async () => {
+      await expect(services['session.getState']({ sessionId: 'unknown' }, ctx)).rejects.toThrow(
+        'Session not found: unknown'
+      );
+    });
+  });
+
+  describe('session.reset', () => {
+    it('resets session and calls resetTabs', async () => {
+      const resetTabs = vi.fn().mockResolvedValue(undefined);
+      deps = createMockDeps({ resetTabs });
+      services = createSessionServices(deps);
+
+      // Grab the session mock before calling reset (getSession returns same ref)
+      const session = deps.registry.getSession('s1');
+      const result = await services['session.reset']({ sessionId: 's1' }, ctx);
+
+      expect(session.reset).toHaveBeenCalled();
+      expect(resetTabs).toHaveBeenCalled();
+      expect(result).toHaveProperty('timestamp');
+    });
+
+    it('works without resetTabs callback', async () => {
+      const result = await services['session.reset']({ sessionId: 's1' }, ctx);
+      expect(result).toHaveProperty('timestamp');
+    });
+
+    it('throws for missing sessionId', async () => {
+      await expect(services['session.reset']({}, ctx)).rejects.toThrow('sessionId is required');
+    });
+  });
+
+  describe('session.resume', () => {
+    it('loads history, closes primary, and creates session with resume config', async () => {
+      const loadRolloutHistory = vi.fn().mockResolvedValue({
+        sessionId: 'conv-123',
+        rolloutItems: [{ type: 'event_msg', payload: {} }],
+      });
+      deps = createMockDeps({ loadRolloutHistory });
+      services = createSessionServices(deps);
+
+      const result = await services['session.resume']({ sessionId: 'conv-123' }, ctx);
+
+      // Should load rollout history
+      expect(loadRolloutHistory).toHaveBeenCalledWith('conv-123');
+
+      // Should close the existing primary session first
+      expect(deps.registry.removeSession).toHaveBeenCalledWith('s1');
+
+      // Should create new session with resume data
+      expect(deps.registry.createSession).toHaveBeenCalledWith({
+        type: 'primary',
+        resume: {
+          sessionId: 'conv-123',
+          rolloutItems: [{ type: 'event_msg', payload: {} }],
+        },
+      });
+
+      // Should return history from the new session
+      expect(result).toEqual({
+        sessionId: 'conv-123',
+        history: [{ role: 'user', content: 'resumed' }],
+      });
+    });
+
+    it('skips closing when no primary session exists', async () => {
+      const loadRolloutHistory = vi.fn().mockResolvedValue({
+        sessionId: 'conv-123',
+        rolloutItems: [{ type: 'event_msg', payload: {} }],
+      });
+      deps = createMockDeps({ loadRolloutHistory });
+      (deps.registry.getPrimarySession as any).mockReturnValue(undefined);
+      services = createSessionServices(deps);
+
+      await services['session.resume']({ sessionId: 'conv-123' }, ctx);
+
+      expect(deps.registry.removeSession).not.toHaveBeenCalled();
+      expect(deps.registry.createSession).toHaveBeenCalled();
+    });
+
+    it('throws when loadRolloutHistory not provided', async () => {
+      await expect(services['session.resume']({ sessionId: 's1' }, ctx)).rejects.toThrow(
+        'Session resume not supported'
+      );
+    });
+
+    it('throws when history not found (returns null)', async () => {
+      const loadRolloutHistory = vi.fn().mockResolvedValue(null);
+      deps = createMockDeps({ loadRolloutHistory });
+      services = createSessionServices(deps);
+
+      await expect(services['session.resume']({ sessionId: 'unknown' }, ctx)).rejects.toThrow(
+        'Conversation not found or has no history'
+      );
+    });
+
+    it('throws for missing sessionId', async () => {
+      const loadRolloutHistory = vi.fn();
+      deps = createMockDeps({ loadRolloutHistory });
+      services = createSessionServices(deps);
+
+      await expect(services['session.resume']({}, ctx)).rejects.toThrow('sessionId is required');
+    });
+  });
+
+  describe('session.list', () => {
+    it('returns all sessions with registry metadata', async () => {
+      const result = await services['session.list']({}, ctx);
+
+      expect(result).toEqual({
+        sessions: [
+          { sessionId: 's1', type: 'primary', state: 'idle' },
+          { sessionId: 's2', type: 'scheduled', state: 'active' },
+        ],
+        maxConcurrent: 5,
+        activeCount: 2,
+      });
+    });
+  });
+
+  describe('session.getActiveCount', () => {
+    it('returns count and capacity info', async () => {
+      const result = await services['session.getActiveCount']({}, ctx);
+
+      expect(result).toEqual({
+        activeCount: 2,
+        maxConcurrent: 5,
+        canCreateSession: true,
+      });
+    });
+  });
+
+  describe('session.create', () => {
+    it('creates a new session and returns its info', async () => {
+      // Make getSession return a session with agent for the newly created session
+      (deps.registry.getSession as any).mockImplementation((id: string) => {
+        if (id === 's-new') {
+          return {
+            agent: { refreshModelClient: vi.fn().mockResolvedValue(undefined) },
+          };
+        }
+        return undefined;
+      });
+
+      const result = await services['session.create']({}, ctx);
+
+      expect(deps.registry.createSession).toHaveBeenCalledWith({ type: 'primary' });
+      expect(result).toEqual({
+        success: true,
+        sessionId: 's-new',
+        sessionLetter: 'c',
+      });
+    });
+
+    it('returns error when at capacity', async () => {
+      (deps.registry.canCreateSession as any).mockReturnValue(false);
+
+      const result = await services['session.create']({}, ctx);
+
+      expect(result).toEqual({
+        success: false,
+        error: 'Maximum concurrent sessions reached',
+      });
+      expect(deps.registry.createSession).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('session.setMaxConcurrent', () => {
+    it('updates the limit', async () => {
+      const result = await services['session.setMaxConcurrent']({ maxConcurrent: 8 }, ctx);
+
+      expect(deps.registry.setMaxConcurrent).toHaveBeenCalledWith(8);
+      expect(result).toEqual({ success: true });
+    });
+
+    it('throws for non-numeric value', async () => {
+      await expect(
+        services['session.setMaxConcurrent']({ maxConcurrent: 'five' }, ctx)
+      ).rejects.toThrow('maxConcurrent must be a number');
+    });
+  });
+
+  describe('session.close', () => {
+    it('removes the session', async () => {
+      const result = await services['session.close']({ sessionId: 's1' }, ctx);
+
+      expect(deps.registry.removeSession).toHaveBeenCalledWith('s1');
+      expect(result).toEqual({ success: true });
+    });
+
+    it('returns error for missing sessionId', async () => {
+      const result = await services['session.close']({}, ctx);
+
+      expect(result).toEqual({ success: false, error: 'sessionId is required' });
+      expect(deps.registry.removeSession).not.toHaveBeenCalled();
+    });
+  });
+});

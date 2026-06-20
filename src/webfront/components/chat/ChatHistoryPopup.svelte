@@ -8,7 +8,7 @@
   let {
     onSelectConversation = () => {},
   }: {
-    onSelectConversation?: (conversationId: string) => void;
+    onSelectConversation?: (sessionId: string) => void;
   } = $props();
 
   let showPopup: boolean = $state(false);
@@ -22,8 +22,8 @@
     showPopup = false;
   }
 
-  function handleSelectConversation(conversationId: string) {
-    onSelectConversation(conversationId);
+  function handleSelectConversation(sessionId: string) {
+    onSelectConversation(sessionId);
     closePopup();
   }
 </script>

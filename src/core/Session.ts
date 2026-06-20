@@ -7,12 +7,15 @@
  */
 
 import type { InputItem, AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSummaryConfig, Event, ResponseItem, ConversationHistory, ReviewDecision } from './protocol/types';
+import { FileStateCache } from './files/FileStateCache';
 import { mapResponseItemToEventMessages } from './events/EventMapping';
 import type { EventMsg } from './protocol/events';
 import { RolloutRecorder, type RolloutItem } from '../storage/rollout';
 import { v4 as uuidv4 } from 'uuid';
+import { resetX402SessionPayments } from './payments/x402/tracker';
 import { TurnContext } from './TurnContext';
-import type { AgentConfig } from '../config/AgentConfig';
+import { type AgentMode, DEFAULT_MODE } from '../prompts/PromptComposer';
+import { AgentConfig } from '../config/AgentConfig';
 import type { SessionTask } from './tasks/SessionTask';
 import type { ToolRegistry } from '../tools/ToolRegistry';
 
@@ -21,16 +24,77 @@ import { SessionState, type SessionStateExport } from './session/state/SessionSt
 import { type SessionServices, createSessionServices } from './session/state/SessionServices';
 import { ActiveTurn } from './session/state/ActiveTurn';
 import type { TokenUsageInfo, RunningTask, RateLimitSnapshot, TurnAbortReason, InitialHistory } from './session/state/types';
+import { TaskKind } from './session/state/types';
+import { toRateLimitSnapshotEvent, evaluateEarlyWarning } from './models/types/RateLimits';
 import { isDOMSnapshotOutput, compressSnapshot } from './session/state/SnapshotCompressor';
+import type { HookDispatcher } from './hooks/HookDispatcher';
+import { getToolRuntimeContext } from './hooks/toolRuntimeContext';
 
 // Compaction imports
 import { CompactService } from './compact/CompactService';
 import type { CompactionResult, CompactionTrigger } from './compact/types';
 import { estimateRequestTokens } from './compact/utils';
+import {
+  calculateTokenWarningState,
+  shouldAutoCompactTokens,
+} from './compact/tokenPressure';
 import type { ModelClient } from './models/ModelClient';
+
+// Memory system
+import type { MemoryService } from './memory/MemoryService';
+import { createMemoryService } from './memory/createMemoryService';
+
+// Track 05b: session summary auto-extraction
+import type {
+  PostTurnContext,
+  SessionSummaryHook,
+} from './sessionSummary/SessionSummaryHook';
+
+/**
+ * Post-turn hook signature. Owned by Session because TurnManager is per-task
+ * but hooks (notably the session-summary extractor) live the length of the
+ * session. TaskRunner fires hooks after committing the turn delta.
+ */
+export type PostTurnHook = (ctx: PostTurnContext) => Promise<void> | void;
+
+/** Lightweight alias so the field declaration doesn't pull the full class. */
+type SessionSummaryHookHandle = SessionSummaryHook;
+
+export interface SessionDisposeOptions {
+  /** Abort reason used for any active tasks still running during disposal. */
+  reason?: TurnAbortReason;
+  /** Defaults to true; set false only for legacy callers that already aborted. */
+  abortTasks?: boolean;
+  /** Preserve Session.close()'s rollout close marker when requested. */
+  recordCloseEvent?: boolean;
+  /** Defaults to true. */
+  flushRollout?: boolean;
+  /** Defaults to true, but cleanup only runs for non-persistent sessions. */
+  cleanupToolResults?: boolean;
+}
 
 // Title generation imports
 import { TitleGenerator } from './title';
+import { PromptSuggestionGenerator } from './suggestions/promptSuggestion';
+import { SUGGESTION_COOLDOWN_MS } from './suggestions/constants';
+
+// Track 04: typed tasks
+import type { BackgroundAgentTaskState, TaskState } from './tasks/types';
+import { isTerminalTaskStatus } from './tasks/types';
+import type { AgentContext } from '../tools/AgentTool/types';
+import { PANEL_GRACE_MS, STOPPED_DISPLAY_MS } from './tasks/timing';
+import type { TaskOutputStore } from './tasks/TaskOutputStore';
+import type { ShadowAgentScheduler } from './shadowAgent';
+
+// Track 09: tool result persistence
+import {
+  createToolResultStore,
+  type ToolResultStore,
+} from '../tools/resultStore';
+import {
+  ContentReplacementState,
+  type ContentReplacementRecord,
+} from '../tools/replacementState';
 
 /**
  * Execution state of the session
@@ -47,7 +111,7 @@ export type ExecutionState =
  * Session class managing conversation state
  */
 export class Session {
-  readonly conversationId: string;
+  readonly sessionId: string;
   private config?: AgentConfig;
   private sessionState: SessionState; // Pure data state
   private services: SessionServices | null = null; // Service collection
@@ -56,6 +120,7 @@ export class Session {
   private _mockCwd = '/'; // For backward compatibility in tests
   private eventEmitter: ((event: Event) => Promise<void>) | null = null;
   private isPersistent: boolean = true;
+  private isForkedContext = false;
   private toolRegistry: ToolRegistry | null = null; // Tool registry from RepublicAgent
 
   // Runtime state (not persisted, lives in Session only)
@@ -64,9 +129,62 @@ export class Session {
   private interruptRequested: boolean = false;
   private compactService: CompactService;
   private titleGenerator: TitleGenerator;
+  private suggestionGenerator: PromptSuggestionGenerator;
+  private suggestionInFlight = false;
+  private lastSuggestionAt = 0;
+  private _memoryService: MemoryService | null = null;
+
+  // ─── Track 04: typed task registry ────────────────────────────────────
+  /**
+   * Cross-turn registry of every tracked task (foreground + background).
+   * Lives alongside `activeTurn` which still holds foreground-only turn
+   * state (approvals, pending input). See design.md §Concurrency Seam.
+   */
+  private activeTasks: Map<string, RunningTask> = new Map();
+  /** Single-valued pointer to the currently-foreground task, if any. */
+  private foregroundTaskId: string | null = null;
+  /** Lazily-started eviction timer that walks `activeTasks` for terminal tasks. */
+  private evictionTimerId: ReturnType<typeof setInterval> | null = null;
+  /** Optional output store shared with background sub-agent task runners. */
+  private taskOutputStore: TaskOutputStore | null = null;
   // Title generation stage: 0 = not started, 1 = generated at 2 messages, 2 = generated at 5 messages (final)
   private titleGenerationStage: number = 0;
   private initializationPromise: Promise<void> | null = null;
+  // Active agent persona mode. Source of truth for this session; seeded from
+  // preferences.defaultMode at construction, changed at runtime via
+  // RepublicAgent.setSessionMode. Distinct from initialHistory.mode.
+  private agentMode: AgentMode = DEFAULT_MODE;
+  /**
+   * Fatal initialization error for a non-persistent child/forked session.
+   * A forked sub-agent told it inherited the parent conversation must not
+   * silently run with empty history, so this is surfaced from initialize()
+   * rather than swallowed (see constructor non-persistent branch).
+   */
+  private initError: Error | null = null;
+  private hookDispatcher: HookDispatcher | null = null;
+  private terminalTaskHookEmitted: Set<string> = new Set();
+  private disposeState: 'active' | 'disposing' | 'disposed' = 'active';
+  private disposePromise: Promise<void> | null = null;
+  private conversationCommitChain: Promise<void> = Promise.resolve();
+
+  // Track 05b: per-session post-turn callbacks (e.g. session-summary
+  // extractor). TurnManager is created per-task; the callback list lives on
+  // Session so listeners survive across multiple TurnManager instances.
+  // The session-summary hook itself is owned here and disposed in shutdown().
+  private postTurnHooks: PostTurnHook[] = [];
+  private _sessionSummaryHook: SessionSummaryHookHandle | null = null;
+  private shadowAgentScheduler: ShadowAgentScheduler | null = null;
+  private shadowCompactPrepareEnabled = false;
+
+  // Tool result persistence (track 09). Both fields are undefined when the
+  // platform deps required to build a store aren't available — TurnManager
+  // detects that and short-circuits persistence, falling back to passthrough.
+  private toolResultStore: ToolResultStore | undefined;
+  private replacementState: ContentReplacementState | undefined;
+  // Per-session read-before-edit freshness substrate (code mode). One per
+  // Session ⇒ sub-agents (own Session) auto-isolate. Always present (the
+  // map is cheap); only meaningful when the file tools are used.
+  private readonly fileStateCache: FileStateCache = new FileStateCache();
 
   constructor(
     configOrIsPersistent?: AgentConfig | boolean,
@@ -75,15 +193,16 @@ export class Session {
     toolRegistry?: ToolRegistry,
     initialHistory?: InitialHistory
   ) {
-    // For resumed mode, use the provided conversationId; otherwise generate a new one
-    if (initialHistory?.mode === 'resumed' && initialHistory.conversationId) {
-      this.conversationId = initialHistory.conversationId;
+    // For resumed mode, use the provided sessionId; otherwise generate a new one
+    if (initialHistory?.mode === 'resumed' && initialHistory.sessionId) {
+      this.sessionId = initialHistory.sessionId;
     } else {
-      this.conversationId = uuidv4();
-      if (!this.conversationId) {
-        this.conversationId = crypto.randomUUID();
+      this.sessionId = uuidv4();
+      if (!this.sessionId) {
+        this.sessionId = crypto.randomUUID();
       }
     }
+    this.isForkedContext = initialHistory?.mode === 'forked';
 
     // Handle both new and old signatures for backward compatibility
     if (typeof configOrIsPersistent === 'boolean') {
@@ -96,11 +215,17 @@ export class Session {
       this.isPersistent = isPersistent ?? true;
     }
 
+    // Seed the persona mode from the global default. New sessions (including
+    // scheduled-job sessions) capture the default at creation time; the active
+    // mode then lives on the session and is changed via SetSessionMode.
+    this.agentMode = this.config?.getConfig().preferences?.defaultMode ?? DEFAULT_MODE;
+
     // Initialize session state
     this.sessionState = new SessionState(); // Pure data state
     this.toolRegistry = toolRegistry ?? null; // Tool registry from RepublicAgent
     this.compactService = new CompactService(); // Initialize compaction service
     this.titleGenerator = new TitleGenerator(); // Initialize title generation service
+    this.suggestionGenerator = new PromptSuggestionGenerator(); // Track 24.3
 
     // Initialize services (merged from initialize() method)
     if (services) {
@@ -122,7 +247,8 @@ export class Session {
       setReasoningSummary: () => { },
     } as any;
     this.turnContext = new TurnContext(dummyClient, {
-      sessionId: this.conversationId,
+      sessionId: this.sessionId,
+      agentMode: this.agentMode,
       approvalPolicy: 'on-request',
       sandboxPolicy: { mode: 'workspace-write' },
     });
@@ -132,6 +258,42 @@ export class Session {
     // Session starts with no tab binding (tabId = -1)
     // Tab binding is handled by the UI when the side panel opens
     this.sessionState.setTabId(-1);
+
+    // Tool result persistence wiring (track 09).
+    //
+    // The replacementState's onRecord callback writes every persisted decision
+    // to the rollout recorder so it survives resume — preserving prompt-cache
+    // stability across replays.
+    //
+    // The store is platform-dependent. If the required deps aren't present
+    // (e.g. SessionCacheManager not provided), we leave both fields undefined;
+    // TurnManager treats that as "feature off" and passes results through
+    // unmodified.
+    this.replacementState = new ContentReplacementState({
+      onRecord: (rec: ContentReplacementRecord) => {
+        const rollout = this.services?.rollout;
+        if (!rollout) return;
+        rollout
+          .recordItems([{ type: 'content_replacement', payload: rec }])
+          .catch((err) => {
+            console.error('[Session] Failed to record content_replacement:', err);
+          });
+      },
+    });
+    try {
+      this.toolResultStore = createToolResultStore({
+        cache: this.services?.sessionCache,
+        serverRootDir: this.services?.serverRootDir,
+      });
+    } catch (err) {
+      // Missing dep for this platform is normal during early bootstrap or
+      // tests — log once and continue without persistence.
+      console.warn(
+        '[Session] Tool result persistence disabled:',
+        err instanceof Error ? err.message : err,
+      );
+      this.toolResultStore = undefined;
+    }
 
     // Handle initial history
     const historyMode = initialHistory ?? { mode: 'new' as const };
@@ -143,19 +305,38 @@ export class Session {
     // The initialization happens in the background
     if (this.isPersistent && (historyMode.mode === 'new' || historyMode.mode === 'forked')) {
       // Create new rollout
-      this.initializationPromise = this.initializeSession('create', this.conversationId, this.config).then(() => {
-        // For forked mode, persist the forked history after rollout is created
+      this.initializationPromise = this.initializeSession('create', this.sessionId, this.config).then(() => {
+        // For forked mode, reconstruct THEN persist the forked history after
+        // the new rollout is created. recordInitialHistory() does
+        // reconstructHistoryFromRollout() -> persistRolloutResponseItems();
+        // this is its sole correct caller (Track 15, Phase 0a — previously
+        // this branch persisted an empty sessionState because nothing
+        // reconstructed historyMode.rolloutItems first).
         if (historyMode.mode === 'forked') {
-          const history = this.sessionState.historySnapshot();
-          return this.persistRolloutResponseItems(history);
+          return this.recordInitialHistory(historyMode);
         }
       }).catch(err => {
         console.error('Failed to initialize session:', err);
       });
     } else if (this.isPersistent && historyMode.mode === 'resumed') {
       // Resume from existing rollout (note: initializeSession will also reconstruct history)
-      this.initializationPromise = this.initializeSession('resume', this.conversationId, this.config).catch(err => {
+      this.initializationPromise = this.initializeSession('resume', this.sessionId, this.config).catch(err => {
         console.error('Failed to resume session:', err);
+      });
+    } else if (!this.isPersistent && historyMode.mode !== 'new') {
+      // Non-persistent child sessions (sub-agents, shadow agents, forks)
+      // still need their in-memory parent/fork history reconstructed before
+      // the first turn. There is no rollout writer to await, but keeping the
+      // same initialization seam lets engines call session.initialize()
+      // uniformly.
+      this.initializationPromise = this.recordInitialHistory(historyMode).catch(err => {
+        console.error('Failed to initialize non-persistent session history:', err);
+        // Forked/child context is a correctness precondition: surface the
+        // failure via initialize() so the sub-agent runner reports an error
+        // instead of running with empty history. Recorded as a flag rather
+        // than a rejected promise to avoid an unhandled-rejection before
+        // initialize() is awaited.
+        this.initError = err instanceof Error ? err : new Error(String(err));
       });
     }
   }
@@ -166,12 +347,12 @@ export class Session {
    */
   private async getOrCreateConversation(): Promise<string> {
     if (!this.services?.rollout) {
-      return this.conversationId;
+      return this.sessionId;
     }
 
     // For RolloutRecorder, we don't need to list/find conversations
-    // The conversationId is already set and RolloutRecorder handles persistence
-    return this.conversationId;
+    // The sessionId is already set and RolloutRecorder handles persistence
+    return this.sessionId;
   }
 
   /**
@@ -187,7 +368,7 @@ export class Session {
     const sessionMetaItems: RolloutItem[] = [{
       type: 'session_meta',
       payload: {
-        id: this.conversationId,
+        id: this.sessionId,
         timestamp: new Date().toISOString(),
         ...(tabId > 0 ? { tabId } : {}),
         originator: 'chrome-extension',
@@ -207,8 +388,8 @@ export class Session {
    */
   setTurnContext(context: TurnContext): void {
     // Ensure the turn context has the correct session ID
-    if (context.getSessionId() !== this.conversationId) {
-      context.update({ sessionId: this.conversationId });
+    if (context.getSessionId() !== this.sessionId) {
+      context.update({ sessionId: this.sessionId });
     }
     this.turnContext = context;
   }
@@ -298,7 +479,7 @@ export class Session {
     };
   } {
     return {
-      id: this.conversationId,
+      id: this.sessionId,
       state: this.sessionState.export(),
       metadata: {
         created: this.sessionState.getConversationHistory().metadata?.startTime || Date.now(),
@@ -328,7 +509,7 @@ export class Session {
     session.sessionState = SessionState.import(data.state);
 
     Object.assign(session, {
-      conversationId: data.id,
+      sessionId: data.id,
     });
 
     return session;
@@ -372,6 +553,20 @@ export class Session {
   }
 
   /**
+   * Set the hook dispatcher for task lifecycle hooks.
+   */
+  setHookDispatcher(dispatcher: HookDispatcher): void {
+    this.hookDispatcher = dispatcher;
+  }
+
+  /**
+   * Get the hook dispatcher (for passing to TurnManager).
+   */
+  getHookDispatcher(): HookDispatcher | null {
+    return this.hookDispatcher;
+  }
+
+  /**
    * Emit an event
    */
   async emitEvent(event: Event): Promise<void> {
@@ -386,7 +581,93 @@ export class Session {
    * Get session ID (conversation ID)
    */
   getSessionId(): string {
-    return this.conversationId;
+    return this.sessionId;
+  }
+
+  /**
+   * True for durable top-level sessions. Non-persistent child/fork sessions
+   * can clean transient stores on dispose because no rollout will resume them.
+   */
+  isPersistentSession(): boolean {
+    return this.isPersistent;
+  }
+
+  /**
+   * Runtime metadata for sub-agent recursion guards. This deliberately does
+   * not depend on model-visible fork directive text.
+   */
+  isForkedSubAgentContext(): boolean {
+    return this.isForkedContext;
+  }
+
+  /**
+   * Track 18: fold a task's USD cost into the cumulative session total.
+   * Delegated to SessionState so it persists in the session export and is
+   * restored on resume. Called once per task from TaskRunner.persistTokenUsage.
+   */
+  addCost(usd: number, estimated: boolean): void {
+    this.sessionState.addCost(usd, estimated);
+  }
+
+  /**
+   * Track 18: cumulative USD cost for this session (live total) and whether
+   * any of it was priced via the fallback rate. Backs the /cost surface.
+   */
+  getCostInfo(): { cumulativeCostUSD: number; hasUnknownModelCost: boolean } {
+    return this.sessionState.getCostInfo();
+  }
+
+  // ─── Track 05b: post-turn hooks + session-summary hook ──────────────────
+
+  /**
+   * Register a callback that fires after every successful turn (after the
+   * `Completed` event in TurnManager). Returns an unregister function.
+   *
+   * Errors thrown inside hooks are swallowed by firePostTurnHooks so a
+   * misbehaving hook can't break the turn.
+   */
+  registerPostTurnHook(fn: PostTurnHook): () => void {
+    this.postTurnHooks.push(fn);
+    return () => {
+      const i = this.postTurnHooks.indexOf(fn);
+      if (i >= 0) this.postTurnHooks.splice(i, 1);
+    };
+  }
+
+  /**
+   * Fire all registered post-turn hooks. Called by TurnManager's `Completed`
+   * case. Sequential await preserves ordering; errors are caught per-hook.
+   */
+  async firePostTurnHooks(ctx: PostTurnContext): Promise<void> {
+    if (this.postTurnHooks.length === 0) return;
+    for (const hook of this.postTurnHooks) {
+      try {
+        await hook(ctx);
+      } catch (err) {
+        console.warn(
+          '[Session] postTurnHook failed:',
+          err instanceof Error ? err.message : String(err),
+        );
+      }
+    }
+  }
+
+  /** Attach the session-summary hook (constructed by RepublicAgent). */
+  setSessionSummaryHook(hook: SessionSummaryHookHandle | null): void {
+    this._sessionSummaryHook = hook;
+  }
+
+  /** Read access for tests, manual extraction, and the compaction interlock. */
+  getSessionSummaryHook(): SessionSummaryHookHandle | null {
+    return this._sessionSummaryHook;
+  }
+
+  setShadowAgentScheduler(scheduler: ShadowAgentScheduler | null): void {
+    this.shadowAgentScheduler = scheduler;
+  }
+
+  setShadowCompactPreparationEnabled(enabled: boolean): void {
+    this.shadowCompactPrepareEnabled = enabled;
   }
 
   /**
@@ -397,6 +678,9 @@ export class Session {
     // Wait for background initialization if it's in progress
     if (this.initializationPromise) {
       await this.initializationPromise;
+    }
+    if (this.initError) {
+      throw this.initError;
     }
     return Promise.resolve();
   }
@@ -565,13 +849,23 @@ export class Session {
     // Get base instructions from turn context (same as TurnManager does for normal turns)
     const baseInstructions = this.turnContext?.getBaseInstructions?.();
 
-    // Use CompactService for LLM-based compaction
+    // Use CompactService for LLM-based compaction.
+    // Track 05b: thread sessionId + sessionSummaryHook so the service can
+    // (a) await any in-flight summary extraction before destructively
+    // rewriting history, and (b) fold the cached summary into the
+    // summarization prompt as a hint.
     const result = await this.compactService.compact(
       items,
       trigger,
       modelClient,
       tokensBefore,
-      baseInstructions
+      baseInstructions,
+      {
+        sessionId: this.sessionId,
+        sessionSummaryHook: this._sessionSummaryHook,
+        shadowScheduler: this.shadowAgentScheduler ?? undefined,
+        enableShadowPrepare: this.shadowCompactPrepareEnabled,
+      },
     );
 
     if (result.success && result.newHistory) {
@@ -595,7 +889,10 @@ export class Session {
   shouldCompact(contextWindow: number): boolean {
     const tokenInfo = this.getTokenUsageInfo();
     const currentTokens = tokenInfo?.total_tokens ?? 0;
-    return this.compactService.shouldCompact(currentTokens, contextWindow);
+    const autoCompactLimit =
+      tokenInfo?.auto_compact_token_limit ??
+      this.turnContext?.getAutoCompactTokenLimit?.();
+    return shouldAutoCompactTokens(currentTokens, contextWindow, autoCompactLimit);
   }
 
   /**
@@ -654,7 +951,7 @@ export class Session {
       // RolloutRecorder might have a getStatistics method or similar
       // For now, we'll return basic info
       rolloutStats = {
-        conversationId: this.conversationId,
+        sessionId: this.sessionId,
         messageCount: this.getMessageCount(),
         hasRollout: true
       };
@@ -673,6 +970,8 @@ export class Session {
    * Reset session to initial state (for new conversation) using RolloutRecorder
    */
   async reset(): Promise<void> {
+    await this.closeMemoryService();
+
     // Shutdown old RolloutRecorder if it exists
     if (this.services?.rollout) {
       try {
@@ -685,8 +984,11 @@ export class Session {
     // Clear conversation history
     this.clearHistory();
 
+    // Track 23: a new conversation starts at $0 x402 spend (this session only)
+    resetX402SessionPayments(this.sessionId);
+
     // Create new conversation ID
-    Object.assign(this, { conversationId: uuidv4() });
+    Object.assign(this, { sessionId: uuidv4() });
 
     // Reset tab binding to -1 (unbound)
     // Tab will be auto-bound by UI when side panel reopens
@@ -694,7 +996,7 @@ export class Session {
 
     // Initialize new RolloutRecorder for the new conversation
     if (this.isPersistent) {
-      await this.initializeSession('create', this.conversationId, this.config);
+      await this.initializeSession('create', this.sessionId, this.config);
     }
   }
 
@@ -702,36 +1004,68 @@ export class Session {
    * Close session and cleanup resources using RolloutRecorder
    */
   async close(): Promise<void> {
-    if (this.services?.rollout) {
-      try {
-        // Record session close event
-        const closeEvent: EventMsg = {
-          type: 'BackgroundEvent',
-          data: {
-            message: `Session closed: ${this.conversationId} (${this.getMessageCount()} messages)`
-          }
-        };
-
-        const rolloutItems: RolloutItem[] = [{
-          type: 'event_msg',
-          payload: closeEvent
-        }];
-
-        await this.services.rollout.recordItems(rolloutItems);
-
-        // Flush and close rollout recorder
-        await this.services.rollout.flush();
-      } catch (error) {
-        console.error('Failed to close rollout recorder:', error);
-      }
-    }
+    await this.dispose({ recordCloseEvent: true });
   }
 
   /**
    * Get session ID (conversation ID)
    */
   getId(): string {
-    return this.conversationId;
+    return this.sessionId;
+  }
+
+  /**
+   * Get the active agent persona mode for this session.
+   */
+  getAgentMode(): AgentMode {
+    return this.agentMode;
+  }
+
+  /**
+   * Set the active agent persona mode for this session.
+   * RepublicAgent owns recomposing the prompt after this; Session only
+   * holds the value as the per-session source of truth.
+   */
+  setAgentMode(mode: AgentMode): void {
+    this.agentMode = mode;
+  }
+
+  /**
+   * Get the tool result store (track 09). May be undefined if no backing store
+   * is available for the current platform; callers should treat that as
+   * "persistence disabled" and pass tool results through unchanged.
+   */
+  getToolResultStore(): ToolResultStore | undefined {
+    return this.toolResultStore;
+  }
+
+  /**
+   * The user-selected code-mode workspace root (absolute path), or undefined
+   * if none is set. Resolved from preferences.workspaceRoot. The file/search
+   * tools operate inside this directory and use it as the security jail
+   * anchor; undefined ⇒ those tools are disabled (never the app cwd).
+   */
+  getWorkspaceRoot(): string | undefined {
+    const root = this.config?.getConfig().preferences?.workspaceRoot;
+    return root && root.trim() ? root : undefined;
+  }
+
+  /**
+   * The per-session read-before-edit freshness cache (code mode). Populated
+   * by read_file; gated/rewritten by edit_file/write_file. One per Session so
+   * sub-agents are isolated (design R2/SC-10).
+   */
+  getFileStateCache(): FileStateCache {
+    return this.fileStateCache;
+  }
+
+  /**
+   * Get the content-replacement state (track 09). Mutated in place by
+   * TurnManager during tier-1 and tier-2 persistence; survives resume via
+   * the rollout `content_replacement` items.
+   */
+  getContentReplacementState(): ContentReplacementState | undefined {
+    return this.replacementState;
   }
 
   /**
@@ -746,6 +1080,147 @@ export class Session {
    */
   setTabId(tabId: number): void {
     this.sessionState.setTabId(tabId);
+  }
+
+  /**
+   * Get the memory service (null if memory is disabled or unsupported)
+   */
+  getMemoryService(): MemoryService | null {
+    return this._memoryService;
+  }
+
+  /**
+   * Set the memory service (called during initialization)
+   */
+  setMemoryService(service: MemoryService | null): void {
+    console.log(`[Memory] setMemoryService called with: ${service ? 'MemoryService instance' : 'null'}`, new Error().stack?.split('\n').slice(1, 4).join('\n'));
+    this._memoryService = service;
+  }
+
+  /**
+   * Rebuild the memory service from current config/auth state.
+   * Used on startup and after runtime config/auth changes.
+   */
+  async refreshMemoryService(configOverride?: AgentConfig): Promise<void> {
+    await this.closeMemoryService();
+
+    // Initialize memory service (for desktop/server only)
+    // Memory uses file-based storage with a cheap LLM for search operations.
+    try {
+      if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ !== 'extension') {
+        const agentConfig = configOverride || this.config || await AgentConfig.getInstance();
+        const preferences = agentConfig.getConfig().preferences;
+        const memoryEnabled = preferences?.memoryEnabled ?? false;
+
+        console.log(`[Memory] Init check: BUILD_MODE=${__BUILD_MODE__}, memoryEnabled=${memoryEnabled}, preferences=`, JSON.stringify({ memoryEnabled: preferences?.memoryEnabled, memoryUseOwnApiKey: preferences?.memoryUseOwnApiKey }));
+
+        // Determine API key source for the cheap memory LLM
+        const memoryUseOwnApiKey = preferences?.memoryUseOwnApiKey ?? true;
+        const useBackendForMemory = !memoryUseOwnApiKey;
+
+        const openaiApiKey = await agentConfig.getProviderApiKey('openai');
+
+        // Build backend routing config if applicable
+        let backendBaseUrl: string | undefined;
+        if (useBackendForMemory) {
+          const { LLM_API_URL } = await import('../config/constants');
+          if (LLM_API_URL) {
+            backendBaseUrl = LLM_API_URL;
+          }
+        }
+
+        // Create a dedicated LLM caller for memory keyword generation and relevance filtering.
+        // Prefers a cheap model (gpt-4o-mini) via OpenAI API key. Falls back to the
+        // user's current main LLM provider/model when no OpenAI key is available.
+        const { OpenAIChatCompletionClient } = await import('./models/client/OpenAIChatCompletionClient');
+        const { DEFAULT_EXTRACTION_MODEL } = await import('./memory/types');
+        const extractionModel = preferences?.extractionModel ?? DEFAULT_EXTRACTION_MODEL;
+
+        const memoryApiKey = useBackendForMemory
+          ? (openaiApiKey || 'backend-routed')
+          : (openaiApiKey || '');
+
+        let llmCaller = null;
+
+        if (memoryApiKey) {
+          // Preferred path: dedicated gpt-4o-mini client via OpenAI key.
+          // Track 11 note: memory extraction is a single tool-less completion;
+          // it intentionally does not take the agent's parallelToolCalls flag.
+          const memoryLLMClient = new OpenAIChatCompletionClient({
+            apiKey: memoryApiKey,
+            baseUrl: useBackendForMemory && backendBaseUrl ? backendBaseUrl + '/openai' : undefined,
+            sessionId: 'memory-search',
+            modelFamily: {
+              family: extractionModel,
+              base_instructions: '',
+              supports_reasoning: false,
+              supports_reasoning_summaries: false,
+              needs_special_apply_patch_instructions: false,
+            },
+            provider: {
+              name: 'OpenAI',
+              wire_api: 'Chat' as const,
+              requires_openai_auth: true,
+            },
+            ...(useBackendForMemory && backendBaseUrl && { useCredentials: true }),
+          });
+
+          llmCaller = {
+            complete: async (systemPrompt: string, userPrompt: string) => {
+              const response = await memoryLLMClient.complete({
+                model: extractionModel,
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: userPrompt }
+                ]
+              });
+              return response.choices[0]?.message?.content || '';
+            }
+          };
+        }
+
+        // Fallback: if no OpenAI key available, use the user's selected main LLM
+        // for memory operations (search keyword generation, relevance filtering).
+        // This ensures memory works regardless of which provider the user chose.
+        if (!llmCaller) {
+          llmCaller = await this.createFallbackMemoryLLMCaller(agentConfig);
+          if (llmCaller) {
+            console.info('[Memory] No OpenAI API key — using main LLM provider for memory operations.');
+          }
+        }
+
+        console.log(`[Memory] llmCaller=${llmCaller ? 'available' : 'null'}, memoryApiKey=${memoryApiKey ? 'set' : 'empty'}, openaiApiKey=${openaiApiKey ? 'set' : 'empty'}`);
+
+        const memoryService = await createMemoryService({
+          config: { enabled: memoryEnabled },
+          llmCaller,
+        });
+
+        console.log(`[Memory] createMemoryService result: ${memoryService ? 'initialized' : 'null'}`);
+
+        if (memoryEnabled && !memoryService) {
+          console.warn('[Memory] Memory is enabled but failed to initialize. Check logs for details.');
+        }
+
+        this.setMemoryService(memoryService);
+      }
+    } catch (err) {
+      console.error('[Memory] Initialization failed:', err);
+    }
+  }
+
+  /**
+   * Close memory service and release its resources.
+   */
+  private async closeMemoryService(): Promise<void> {
+    if (this._memoryService) {
+      try {
+        await this._memoryService.close();
+      } catch (error) {
+        console.error('Failed to close memory service:', error);
+      }
+      this._memoryService = null;
+    }
   }
 
   /**
@@ -903,18 +1378,18 @@ export class Session {
    */
   async initializeSession(
     mode: 'create' | 'resume',
-    conversationId: string,
+    sessionId: string,
     config?: AgentConfig
   ): Promise<void> {
     try {
-      const uuid = conversationId;
+      const uuid = sessionId;
 
       if (mode === 'create') {
         // Create new rollout
         const rollout = await RolloutRecorder.create(
           {
             type: 'create',
-            conversationId: uuid,
+            sessionId: uuid,
           },
           config as any
         );
@@ -984,6 +1459,100 @@ export class Session {
         this.services.rollout = null;
       }
     }
+
+    await this.refreshMemoryService(config);
+  }
+
+  /**
+   * Create a memory LLM caller that mirrors the user's current main LLM provider/model.
+   * Used as a fallback when no OpenAI API key is available.
+   */
+  private async createFallbackMemoryLLMCaller(
+    agentConfig: AgentConfig
+  ): Promise<{ complete: (systemPrompt: string, userPrompt: string) => Promise<string> } | null> {
+    try {
+      const fullConfig = agentConfig.getConfig();
+      const modelData = agentConfig.getModelByKey(fullConfig.selectedModelKey);
+      if (!modelData) return null;
+
+      const providerId = modelData.provider.id;
+      const providerApiKey = await agentConfig.getProviderApiKey(providerId);
+      if (!providerApiKey) return null;
+
+      const modelKey = modelData.model.modelKey;
+      const baseUrl = modelData.provider.baseUrl || undefined;
+
+      if (providerId === 'google-ai-studio') {
+        const { GoogleCompletionClient } = await import('./models/client/GoogleCompletionClient');
+        const client = new GoogleCompletionClient({
+          apiKey: providerApiKey,
+          baseUrl,
+          provider: {
+            name: 'Google AI Studio',
+            wire_api: 'Chat' as const,
+            requires_openai_auth: false,
+          },
+          modelFamily: {
+            family: modelKey,
+            base_instructions: '',
+            supports_reasoning: false,
+            supports_reasoning_summaries: false,
+            needs_special_apply_patch_instructions: false,
+          },
+        });
+
+        return {
+          complete: async (systemPrompt: string, userPrompt: string) => {
+            const response = await client.complete({
+              model: modelKey,
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt }
+              ]
+            });
+            return response.choices[0]?.message?.content || '';
+          }
+        };
+      }
+
+      // All other providers use OpenAI-compatible Chat Completions API.
+      // Track 11 note: memory-search is a single tool-less completion; it
+      // intentionally does not take the agent's parallelToolCalls flag.
+      const { OpenAIChatCompletionClient } = await import('./models/client/OpenAIChatCompletionClient');
+      const client = new OpenAIChatCompletionClient({
+        apiKey: providerApiKey,
+        baseUrl,
+        sessionId: 'memory-search',
+        modelFamily: {
+          family: modelKey,
+          base_instructions: '',
+          supports_reasoning: false,
+          supports_reasoning_summaries: false,
+          needs_special_apply_patch_instructions: false,
+        },
+        provider: {
+          name: modelData.provider.name || providerId,
+          wire_api: 'Chat' as const,
+          requires_openai_auth: true,
+        },
+      });
+
+      return {
+        complete: async (systemPrompt: string, userPrompt: string) => {
+          const response = await client.complete({
+            model: modelKey,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ]
+          });
+          return response.choices[0]?.message?.content || '';
+        }
+      };
+    } catch (err) {
+      console.warn('[Memory] Failed to create fallback memory LLM caller:', err);
+      return null;
+    }
   }
 
   /**
@@ -1006,9 +1575,123 @@ export class Session {
    * Graceful shutdown
    */
   async shutdown(): Promise<void> {
+    await this.dispose({ reason: 'Shutdown' });
+  }
+
+  /**
+   * Idempotent terminal cleanup for a Session. This is the single place that
+   * stops active work, detaches session-owned hooks, closes memory services,
+   * cleans transient tool result storage, and flushes rollout state.
+   */
+  async dispose(options: SessionDisposeOptions = {}): Promise<void> {
+    if (this.disposeState === 'disposed') return;
+    if (this.disposeState === 'disposing' && this.disposePromise) {
+      return this.disposePromise;
+    }
+
+    this.disposeState = 'disposing';
+    this.disposePromise = this.disposeCore(options)
+      .finally(() => {
+        this.disposeState = 'disposed';
+      });
+    return this.disposePromise;
+  }
+
+  private async disposeCore(options: SessionDisposeOptions): Promise<void> {
+    const {
+      reason = 'Shutdown',
+      abortTasks = true,
+      recordCloseEvent = false,
+      flushRollout = true,
+      cleanupToolResults = true,
+    } = options;
+
+    if (abortTasks) {
+      try {
+        await this.abortAllTasks(reason);
+      } catch (err) {
+        console.warn(
+          '[Session] abortAllTasks failed during dispose:',
+          err instanceof Error ? err.message : String(err),
+        );
+        this.activeTasks.clear();
+        this.foregroundTaskId = null;
+      }
+    }
+
+    try {
+      this.clearEvictionTimer();
+    } catch (err) {
+      console.warn(
+        '[Session] clearEvictionTimer failed during dispose:',
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+
+    // Track 05b: detach the session-summary hook (unregisters post-turn
+    // callback + prompt extension). Safe to call without an attached hook.
+    try {
+      this._sessionSummaryHook?.detach();
+    } catch (err) {
+      console.warn(
+        '[Session] sessionSummaryHook.detach failed:',
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+    this._sessionSummaryHook = null;
+    this.postTurnHooks.length = 0;
+
+    await this.closeMemoryService();
+
+    // Tool result persistence cleanup (track 09).
+    //
+    // Only purge persisted results on dispose for non-persistent sessions.
+    // Persistent sessions can be resumed — the rollout still contains
+    // <persisted-output> messages pointing at these storage keys / file
+    // paths, and the agent must be able to retrieve the full content on
+    // resume. Stale entries from persistent sessions are reclaimed via
+    // server-mode TTL sweep / cache quota eviction instead.
+    if (cleanupToolResults && this.toolResultStore && !this.isPersistent) {
+      try {
+        await this.toolResultStore.cleanup(this.sessionId);
+      } catch (error) {
+        console.error('Failed to clean up tool result store:', error);
+      }
+    }
+
+    try {
+      await this.shadowAgentScheduler?.shutdown();
+    } catch (err) {
+      console.warn(
+        '[Session] shadowAgentScheduler.shutdown failed during dispose:',
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+    this.shadowAgentScheduler = null;
+
+    await this.waitForConversationCommits();
+
     if (this.services?.rollout) {
       try {
-        await this.services.rollout.flush();
+        if (recordCloseEvent) {
+          const closeEvent: EventMsg = {
+            type: 'BackgroundEvent',
+            data: {
+              message: `Session closed: ${this.sessionId} (${this.getMessageCount()} messages)`
+            }
+          };
+
+          const rolloutItems: RolloutItem[] = [{
+            type: 'event_msg',
+            payload: closeEvent
+          }];
+
+          await this.services.rollout.recordItems(rolloutItems);
+        }
+
+        if (flushRollout) {
+          await this.services.rollout.flush();
+        }
       } catch (e) {
         console.error('Failed to flush rollout recorder:', e);
       }
@@ -1150,17 +1833,60 @@ export class Session {
    * @param subId Submission ID
    */
   async sendTokenCountEvent(subId: string): Promise<void> {
-    // Get token info from SessionState
-    const tokenInfo = undefined; // Would need getTokenInfo method from SessionState
-    const rateLimits = undefined; // Would need getRateLimits method from SessionState
+    // Track 12: read the real values from SessionState (both were previously
+    // hardcoded undefined — the getters now exist). The stored snapshot is
+    // adapted to the flat RateLimitSnapshotEvent wire shape.
+    const tokenInfo = this.sessionState.getTokenInfo();
+    const contextWindow =
+      tokenInfo?.model_context_window ??
+      this.turnContext?.getModelContextWindow?.();
+    const autoCompactTokenLimit =
+      tokenInfo?.auto_compact_token_limit ??
+      this.turnContext?.getAutoCompactTokenLimit?.();
+    const usage = tokenInfo
+      ? {
+          input_tokens: tokenInfo.input_tokens ?? 0,
+          cached_input_tokens:
+            tokenInfo.cache_creation_input_tokens ??
+            tokenInfo.cache_read_input_tokens ??
+            0,
+          output_tokens: tokenInfo.output_tokens ?? 0,
+          reasoning_output_tokens: 0,
+          total_tokens: tokenInfo.total_tokens ?? 0,
+        }
+      : undefined;
+    const protocolTokenInfo = usage
+      ? {
+          total_token_usage: usage,
+          last_token_usage: usage,
+          model_context_window: contextWindow,
+          auto_compact_token_limit: autoCompactTokenLimit,
+        }
+      : undefined;
+    const tokenWarningState = calculateTokenWarningState({
+      currentTokens: tokenInfo?.total_tokens,
+      contextWindow,
+      autoCompactTokenLimit,
+    });
+    const snapshot = this.sessionState.getRateLimits();
+    const rateLimits = snapshot
+      ? toRateLimitSnapshotEvent(snapshot)
+      : undefined;
+
+    // Track 18: ride the cumulative session cost out on the same event
+    // (purely additive on Track 12's repair).
+    const cost = this.sessionState.getCostInfo();
 
     const event: Event = {
       id: subId,
       msg: {
         type: 'TokenCount',
         data: {
-          info: tokenInfo,
+          info: protocolTokenInfo,
+          token_warning_state: tokenWarningState,
           rate_limits: rateLimits,
+          cost: cost.cumulativeCostUSD,
+          cost_estimated: cost.hasUnknownModelCost,
         },
       } as EventMsg,
     };
@@ -1232,17 +1958,56 @@ export class Session {
     task: RunningTask,
     reason: TurnAbortReason
   ): Promise<void> {
-    // Check if task already finished
-    // The AbortController will have no effect if the task already completed
+    await this.fireStopHook(subId, task, reason);
+    // ── Track 04 Q7 ordering ──────────────────────────────────────────
+    // Step 1: resolve pending approvals owned by this task with 'denied'
+    //         so the awaiting tool call unwinds cleanly. Note: ActiveTurn
+    //         doesn't track per-task approvals today (single foreground
+    //         turn assumption), so this drains all pending approvals only
+    //         when the aborted task is the foreground task.
+    const isForeground = this.foregroundTaskId === subId;
+    if (isForeground && this.activeTurn) {
+      try {
+        this.activeTurn.rejectPendingApprovalsAndClearInput();
+      } catch (e) {
+        console.warn(`[Session] rejectPendingApprovals failed during abort:`, e);
+      }
+    }
 
-    // Abort the task via AbortController
+    // Step 3 (re-ordered: must be set before abortController fires so the
+    // SubAgentRunner detached IIFE sees the flag during its await): mark
+    // the AgentContext cancelled. Suppresses misleading task-notification
+    // from SubAgentRunner.ts:127.
+    if (task.context) {
+      task.context.cancelled = true;
+    }
+
+    // Step 4: abort the controller.
     task.abortController.abort();
 
+    // Step 5: delegate to the task's own abort hook.
     try {
       await task.task.abort(this, subId);
     } catch (error) {
       console.warn(`Task abort() failed for ${subId}:`, error);
     }
+
+    // Step 6: update typed state to terminal + set eviction grace.
+    if (task.taskState && !isTerminalTaskStatus(task.taskState.status)) {
+      const prevStatus = task.taskState.status;
+      task.taskState.status = 'killed';
+      task.taskState.endTime = Date.now();
+      if (!task.taskState.retain) {
+        task.taskState.evictAfter = Date.now() + PANEL_GRACE_MS;
+      }
+      // Cancelled background tasks have their notification suppressed; treat
+      // them as notified so the eviction timer can later reclaim their
+      // chunks. (See design.md Q5/Q7 and SubAgentRunner.ts:127.)
+      task.taskState.notified = true;
+      this.emitBackgroundTaskStateChanged(task.taskState, prevStatus);
+      this.ensureEvictionTimer();
+    }
+    this.fireTaskCompletedHook(subId, task.task.constructor.name).catch(() => {});
 
     // Emit TurnAborted event
     const event: Event = {
@@ -1270,17 +2035,29 @@ export class Session {
    * @param reason Reason for aborting all tasks
    */
   async abortAllTasks(reason: TurnAbortReason): Promise<void> {
-    // Take all running tasks
+    // Take all running tasks from the foreground ActiveTurn
     const tasks = this.takeAllRunningTasks();
+
+    // Also pull background tasks tracked in activeTasks but not in the
+    // foreground turn (Track 04). Hard-shutdown paths call this and expect
+    // everything to be killed.
+    const allIds = new Set<string>(tasks.keys());
+    for (const id of this.activeTasks.keys()) allIds.add(id);
 
     // Abort each task
     const abortPromises: Promise<void>[] = [];
-    for (const [subId, task] of tasks) {
-      abortPromises.push(this.handleTaskAbort(subId, task, reason));
+    for (const id of allIds) {
+      const task = tasks.get(id) ?? this.activeTasks.get(id);
+      if (!task) continue;
+      abortPromises.push(this.handleTaskAbort(id, task, reason));
     }
 
     // Wait for all aborts to complete (parallel execution)
     await Promise.all(abortPromises);
+
+    // Drain the typed-task registry too
+    this.activeTasks.clear();
+    this.foregroundTaskId = null;
   }
 
   /**
@@ -1301,6 +2078,34 @@ export class Session {
         this.activeTurn = null;
       }
     }
+
+    // Track 04: update typed-state to terminal + set eviction grace.
+    // Background sub-agents have their notification flag set by
+    // SubAgentRunner.safeEnqueueNotification; foreground RegularTasks are
+    // notified immediately here (no async notification path).
+    const t = this.activeTasks.get(subId);
+    if (t?.taskState && !isTerminalTaskStatus(t.taskState.status)) {
+      const prevStatus = t.taskState.status;
+      t.taskState.status = 'completed';
+      t.taskState.endTime = Date.now();
+      if (!t.taskState.isBackgrounded) {
+        // Foreground: no async notification path — the result already
+        // returned via the tool call, so consider it notified.
+        t.taskState.notified = true;
+      }
+      if (!t.taskState.retain) {
+        t.taskState.evictAfter = Date.now() + PANEL_GRACE_MS;
+      }
+      this.emitBackgroundTaskStateChanged(t.taskState, prevStatus);
+      this.ensureEvictionTimer();
+    }
+    if (this.foregroundTaskId === subId) {
+      this.foregroundTaskId = null;
+    }
+    const taskType = this.activeTasks.get(subId)?.task.constructor.name;
+    this.fireTaskCompletedHook(subId, taskType).catch(() => {});
+    // Note: we leave the entry in activeTasks for the eviction grace window.
+    // The eviction timer removes it once gates pass.
   }
 
   /**
@@ -1317,13 +2122,30 @@ export class Session {
     task: SessionTask,
     context: TurnContext,
     subId: string,
-    input: InputItem[]
+    input: InputItem[],
+    opts: { background?: boolean; scopedTabIds?: number[] } = {}
   ): Promise<void> {
-    // Abort all existing tasks before spawning new one
-    await this.abortAllTasks('UserInterrupt');
+    // Track 04: foreground replacement no longer kills background tasks.
+    // Only abort the prior foreground task if this spawn is foreground.
+    if (!opts.background) {
+      if (this.foregroundTaskId) {
+        await this.abortTask(this.foregroundTaskId, 'UserInterrupt');
+      }
+      this.foregroundTaskId = subId;
+    }
 
     // Create AbortController for cancellation
     const abortController = new AbortController();
+
+    // Fire TaskCreated hook (fire-and-forget)
+    if (this.hookDispatcher) {
+      this.hookDispatcher.fire('TaskCreated', {
+        hook_event_name: 'TaskCreated',
+        session_id: this.sessionId,
+        task_id: subId,
+        task_type: task.constructor.name,
+      }).catch(() => {});
+    }
 
     // Create promise wrapper for task execution
     const promise = (async (): Promise<string | null> => {
@@ -1332,6 +2154,7 @@ export class Session {
         const result = await task.run(this, context, subId, input);
         // On success, call completion handler
         await this.onTaskFinished(subId, result);
+
         return result;
       } catch (error) {
         // On error, call abort handler
@@ -1346,14 +2169,309 @@ export class Session {
       abortController,
       task,
       promise,
-      startTime: Date.now()
+      startTime: Date.now(),
+      scopedTabIds: opts.scopedTabIds,
     };
 
     // Register as new active task (creates new ActiveTurn and adds task)
     this.registerNewActiveTask(subId, runningTask);
 
+    // Track 04: also insert into the cross-turn typed-task registry.
+    // SubAgentRunner.prepare will subsequently call registerTaskState to
+    // populate the taskState + context fields for background sub-agents.
+    this.activeTasks.set(subId, runningTask);
+
     // Execute asynchronously (fire-and-forget, don't await)
     // The promise will handle completion/abortion internally
+  }
+
+  /**
+   * (Track 04 / Q2) Attach or create a typed BackgroundAgentTaskState in
+   * this session's activeTasks. Called by SubAgentRunner.prepare after it
+   * builds the typed state.
+   *
+   * Two code paths reach here:
+   *
+   * 1. The task came through Session.spawnTask first — there's a matching
+   *    RunningTask entry already; this call attaches state + context to it.
+   *    NOTE on the `existing` branch: the caller may pass `abortController`
+   *    via `bits`, but we intentionally KEEP the spawn's own controller
+   *    rather than swap it. Reason: the spawn's controller is already wired
+   *    into the task's promise chain; replacing it mid-run would leave the
+   *    real run uncancellable.
+   *
+   * 2. The task was spawned by a child engine (sub-agent) whose flow does
+   *    NOT go through the parent session's spawnTask — there's no matching
+   *    entry. We create a synthetic RunningTask owned by the sub-agent's
+   *    AbortController so the parent session can track / abort / display it.
+   *
+   * ⚠️  WARNING: AbortController duality for sub-agents.
+   * The sub-agent runs inside its own RepublicAgentEngine which has its
+   * own Session. That child session's spawnTask creates its OWN
+   * AbortController, separate from the one stored here (which comes from
+   * SubAgentRunner.prepare and is wired into AgentContext).
+   *
+   * Aborting via THIS (parent) session's abortTask fires only the parent-
+   * side controller. That signal reaches the child's model call via the
+   * `signal:` option passed to engine.run(...), and the resulting thrown
+   * abort error propagates through the child's task promise → child's
+   * onTaskAborted. So abort DOES propagate, but through the model-error
+   * path, NOT by the child session's controller being fired directly.
+   *
+   * If you change this code, preserve that property — or move sub-agent
+   * tracking to the child session entirely and have the parent only hold
+   * a read-through projection.
+   *
+   * @param state - The typed task state. state.id must equal the runId.
+   * @param bits - Runtime bits: AgentContext for cancel propagation,
+   *               AbortController for per-task abort (synthetic path only),
+   *               scopedTabIds for tab-close granularity.
+   */
+  registerTaskState(
+    state: BackgroundAgentTaskState,
+    bits: {
+      context: AgentContext;
+      abortController?: AbortController;
+      scopedTabIds?: number[];
+    }
+  ): void {
+    const existing = this.activeTasks.get(state.id);
+    if (existing) {
+      // Attach-only path: preserve the spawn's existing AbortController.
+      // `bits.abortController` is deliberately ignored — see JSDoc.
+      existing.taskState = state;
+      existing.context = bits.context;
+      if (bits.scopedTabIds !== undefined) {
+        existing.scopedTabIds = bits.scopedTabIds;
+      }
+      this.emitBackgroundTaskStarted(state);
+      return;
+    }
+    // Synthetic registration path: sub-agent owned by a child engine that
+    // didn't go through this session's spawnTask.
+    const abortController = bits.abortController ?? new AbortController();
+    const synthetic: RunningTask = {
+      // Sub-agents don't have a meaningful SessionTask kind. Use Regular
+      // as a sentinel; the handleTaskAbort path keys off taskState +
+      // context, not kind.
+      kind: TaskKind.Regular,
+      abortController,
+      // A no-op SessionTask shim. The real abort path is:
+      //   parent.abortTask(id) -> handleTaskAbort
+      //     -> context.cancelled = true
+      //     -> abortController.abort()
+      //     -> (model call inside child engine throws, child task ends)
+      // This shim's abort() is intentionally a no-op because the work
+      // happens through the context + abortController above.
+      task: {
+        kind: () => TaskKind.Regular,
+        run: async () => null,
+        abort: async () => undefined,
+      },
+      promise: Promise.resolve(null),
+      startTime: state.startTime,
+      taskState: state,
+      context: bits.context,
+      scopedTabIds: bits.scopedTabIds,
+    };
+    this.activeTasks.set(state.id, synthetic);
+    this.emitBackgroundTaskStarted(state);
+  }
+
+  /**
+   * (Track 04) Abort a single task by id. Per-task variant of abortAllTasks.
+   * Walks the same handleTaskAbort path (which is the Q7-ordering source
+   * of truth: approvals → deny, pending input → drop, context.cancelled
+   * → set, abort, await, terminal-state update, ActiveTurn cleanup).
+   */
+  async abortTask(id: string, reason: TurnAbortReason): Promise<void> {
+    const t = this.activeTasks.get(id);
+    if (!t) return;
+    await this.handleTaskAbort(id, t, reason);
+    // Also drain from ActiveTurn so hasRunningTask reports false immediately
+    // even if the task's promise never resolves (e.g., synthetic sub-agent
+    // entries created by SubAgentRunner whose promise is Promise.resolve(null)
+    // but never went through ActiveTurn anyway, and edge-case mocks).
+    if (this.activeTurn) {
+      const isEmpty = this.activeTurn.removeTask(id);
+      if (isEmpty) this.activeTurn = null;
+    }
+    this.activeTasks.delete(id);
+    if (this.foregroundTaskId === id) {
+      this.foregroundTaskId = null;
+    }
+  }
+
+  /**
+   * (Track 04 / Q9) Abort all tasks scoped to a specific tab. Used by the
+   * service worker when a working tab closes (chat-panel tab close still
+   * routes through abortAllTasks).
+   */
+  async abortTasksForTab(tabId: number, reason: TurnAbortReason): Promise<void> {
+    const toAbort: string[] = [];
+    for (const [id, t] of this.activeTasks) {
+      if (t.scopedTabIds?.includes(tabId)) toAbort.push(id);
+    }
+    await Promise.all(toAbort.map(id => this.abortTask(id, reason)));
+  }
+
+  /** (Track 04) Internal full-record listing — runtime + typed-state pairs. */
+  listActiveTasks(): RunningTask[] {
+    return [...this.activeTasks.values()];
+  }
+
+  /** (Track 04) Projection of typed task states for UI and engine API. */
+  listTaskStates(): TaskState[] {
+    const out: TaskState[] = [];
+    for (const t of this.activeTasks.values()) {
+      if (t.taskState) out.push(t.taskState);
+    }
+    return out;
+  }
+
+  /** (Track 04) Lookup the full RunningTask record. */
+  getTask(id: string): RunningTask | undefined {
+    return this.activeTasks.get(id);
+  }
+
+  private emitBackgroundTaskStarted(state: BackgroundAgentTaskState): void {
+    if (!this.eventEmitter) return;
+    void this.eventEmitter({
+      id: uuidv4(),
+      msg: {
+        type: 'BackgroundTaskStarted',
+        data: {
+          taskId: state.id,
+          type: 'background_agent',
+          description: state.description,
+          startTime: state.startTime,
+        },
+      },
+    });
+  }
+
+  private emitBackgroundTaskStateChanged(
+    state: BackgroundAgentTaskState,
+    prevStatus: BackgroundAgentTaskState['status'],
+  ): void {
+    if (!this.eventEmitter || prevStatus === state.status) return;
+    void this.eventEmitter({
+      id: uuidv4(),
+      msg: {
+        type: 'BackgroundTaskStateChanged',
+        data: {
+          taskId: state.id,
+          prevStatus,
+          status: state.status,
+        },
+      },
+    });
+    if (isTerminalTaskStatus(state.status)) {
+      const status = state.status as 'completed' | 'failed' | 'killed';
+      void this.eventEmitter({
+        id: uuidv4(),
+        msg: {
+          type: 'BackgroundTaskTerminated',
+          data: {
+            taskId: state.id,
+            status,
+            endTime: state.endTime ?? Date.now(),
+            durationMs: (state.endTime ?? Date.now()) - state.startTime,
+            summary: state.lastAgentMessage,
+          },
+        },
+      });
+    }
+  }
+
+  markBackgroundTaskStateChanged(
+    state: BackgroundAgentTaskState,
+    prevStatus: BackgroundAgentTaskState['status'],
+  ): void {
+    this.emitBackgroundTaskStateChanged(state, prevStatus);
+  }
+
+  /** (Track 04) Get the foreground task id, if any. */
+  getForegroundTaskId(): string | null {
+    return this.foregroundTaskId;
+  }
+
+  /**
+   * (Track 04 / Q10) UI-driven retain toggle. Called by BackgroundTaskPanel
+   * mount/unmount. retain=true blocks eviction; retain=false re-arms
+   * evictAfter for terminal tasks.
+   */
+  retainTask(id: string, retain: boolean): void {
+    const t = this.activeTasks.get(id);
+    if (!t?.taskState) return;
+    t.taskState.retain = retain;
+    if (retain) {
+      t.taskState.evictAfter = undefined;
+    } else if (isTerminalTaskStatus(t.taskState.status)) {
+      t.taskState.evictAfter = Date.now() + PANEL_GRACE_MS;
+    }
+  }
+
+  /** (Track 04) Inject the shared TaskOutputStore (called at engine startup). */
+  setTaskOutputStore(store: TaskOutputStore): void {
+    this.taskOutputStore = store;
+  }
+
+  /** (Track 04) Get the shared TaskOutputStore, if set. */
+  getTaskOutputStore(): TaskOutputStore | null {
+    return this.taskOutputStore;
+  }
+
+  /**
+   * (Track 04) Lazily start the eviction timer. Runs every STOPPED_DISPLAY_MS
+   * and processes terminal tasks whose grace window has elapsed.
+   */
+  private ensureEvictionTimer(): void {
+    if (this.evictionTimerId !== null) return;
+    this.evictionTimerId = setInterval(() => {
+      void this.runEvictionTick();
+    }, STOPPED_DISPLAY_MS);
+  }
+
+  private clearEvictionTimer(): void {
+    if (this.evictionTimerId === null) return;
+    clearInterval(this.evictionTimerId);
+    this.evictionTimerId = null;
+  }
+
+  private async runEvictionTick(): Promise<void> {
+    const now = Date.now();
+    const toEvict: string[] = [];
+    for (const [id, t] of this.activeTasks) {
+      const state = t.taskState;
+      if (!state) continue;
+      if (!state.notified) continue;
+      if (!isTerminalTaskStatus(state.status)) continue;
+      if (state.retain) continue;
+      if (state.evictAfter !== undefined && now < state.evictAfter) continue;
+      toEvict.push(id);
+    }
+    if (toEvict.length === 0) {
+      // Stop the timer when there's nothing terminal awaiting eviction.
+      // It will restart lazily next time a task terminates.
+      const hasTerminal = [...this.activeTasks.values()].some(
+        t => t.taskState && isTerminalTaskStatus(t.taskState.status),
+      );
+      if (!hasTerminal && this.evictionTimerId !== null) {
+        this.clearEvictionTimer();
+      }
+      return;
+    }
+    for (const id of toEvict) {
+      if (this.taskOutputStore) {
+        try {
+          await this.taskOutputStore.cleanupTask(id);
+        } catch (err) {
+          console.warn(`[Session] cleanupTask failed for ${id}:`, err);
+        }
+      }
+      this.activeTasks.delete(id);
+    }
   }
 
   /**
@@ -1363,7 +2481,52 @@ export class Session {
    * Used when user explicitly interrupts execution.
    */
   async interruptTask(): Promise<void> {
-    await this.abortAllTasks('UserInterrupt');
+    // Track 04: narrow to foreground-only — background tasks survive
+    // user interrupts. The chat-panel tab close path still goes through
+    // abortAllTasks for hard shutdown.
+    if (this.foregroundTaskId) {
+      await this.abortTask(this.foregroundTaskId, 'UserInterrupt');
+    }
+  }
+
+  private async fireStopHook(
+    subId: string,
+    task: RunningTask,
+    reason: TurnAbortReason,
+  ): Promise<void> {
+    if (!this.hookDispatcher) return;
+    const isBackground = task.taskState?.isBackgrounded === true || this.foregroundTaskId !== subId;
+    try {
+      await this.hookDispatcher.fire(
+        'Stop',
+        {
+          hook_event_name: 'Stop',
+          session_id: this.sessionId,
+          task_id: subId,
+          task_type: task.task.constructor.name,
+          stop_reason: reason,
+          is_background: isBackground,
+          ...(await getToolRuntimeContext(this)),
+        },
+        { timeoutOverride: 1 },
+      );
+    } catch (err) {
+      console.warn('[Session] Stop hook failed during abort:', err);
+    }
+  }
+
+  private async fireTaskCompletedHook(
+    subId: string,
+    taskType?: string,
+  ): Promise<void> {
+    if (!this.hookDispatcher || this.terminalTaskHookEmitted.has(subId)) return;
+    this.terminalTaskHookEmitted.add(subId);
+    await this.hookDispatcher.fire('TaskCompleted', {
+      hook_event_name: 'TaskCompleted',
+      session_id: this.sessionId,
+      task_id: subId,
+      task_type: taskType,
+    });
   }
 
   // ========================================================================
@@ -1413,20 +2576,34 @@ export class Session {
    *
    * Records ResponseItems to both SessionState (in-memory history) and
    * RolloutRecorder (persistent storage).
+   * Concurrent callers are serialized through conversationCommitChain; callers
+   * only need to await their own returned promise.
    */
   async recordConversationItemsDual(items: ResponseItem[]): Promise<void> {
-    // If incoming items contain any DOM snapshot output, compress previous snapshots in history first
-    // This keeps the latest snapshot fresh for LLM reasoning
-    if (items.some(item => isDOMSnapshotOutput(item))) {
-      // Compress previous DOM snapshots BEFORE recording new items
-      this.sessionState.compressPreviousDomSnapshot();
+    const commit = this.conversationCommitChain.then(async () => {
+      // If incoming items contain any DOM snapshot output, compress previous snapshots in history first
+      // This keeps the latest snapshot fresh for LLM reasoning
+      if (items.some(item => isDOMSnapshotOutput(item))) {
+        // Compress previous DOM snapshots BEFORE recording new items
+        this.sessionState.compressPreviousDomSnapshot();
+      }
+
+      // Record to SessionState (in-memory history)
+      this.sessionState.recordItems(items);
+
+      // Persist to rollout storage
+      await this.persistRolloutResponseItems(items);
+    });
+    this.conversationCommitChain = commit.catch(() => undefined);
+    return commit;
+  }
+
+  private async waitForConversationCommits(): Promise<void> {
+    try {
+      await this.conversationCommitChain;
+    } catch {
+      // Individual commit failures are already handled by their callers.
     }
-
-    // Record to SessionState (in-memory history)
-    this.sessionState.recordItems(items);
-
-    // Persist to rollout storage
-    await this.persistRolloutResponseItems(items);
   }
 
   /**
@@ -1576,6 +2753,49 @@ export class Session {
   }
 
   /**
+   * Track 24.3: after a completed turn, predict the user's likely next
+   * message and emit it for one-tap accept in the interactive UI.
+   *
+   * Gated OFF on the headless server build — there is no user to suggest to,
+   * so the extra model call would be pure cost. Fire-and-forget; never blocks
+   * task completion. Mirrors {@link maybeGenerateTitle}'s background pattern.
+   */
+  async maybeGenerateSuggestion(): Promise<void> {
+    const { getRuntimeProfile } = await import('@/runtime/profile');
+    if (getRuntimeProfile() === 'server') {
+      return;
+    }
+    // Single-flight + cooldown: a slow background call must not stack with the
+    // next task's completion, and rapid retried/aborted completions must not
+    // each spawn a model call.
+    if (this.suggestionInFlight) return;
+    if (Date.now() - this.lastSuggestionAt < SUGGESTION_COOLDOWN_MS) return;
+
+    const history = this.sessionState.historySnapshot();
+    if (this.suggestionGenerator.countAssistantTurns(history) < 2) {
+      return;
+    }
+    const modelClient = this.getModelClientForTitle();
+    if (!modelClient) return;
+
+    this.suggestionInFlight = true;
+    try {
+      const result = await this.suggestionGenerator.generateSuggestion(history, modelClient);
+      this.lastSuggestionAt = Date.now();
+      if (result.success && result.suggestion) {
+        await this.emitEvent({
+          id: crypto.randomUUID(),
+          msg: { type: 'PromptSuggestion', data: { suggestion: result.suggestion } },
+        });
+      } else if (!result.success) {
+        console.debug('[Session] Prompt suggestion generation failed:', result.error);
+      }
+    } finally {
+      this.suggestionInFlight = false;
+    }
+  }
+
+  /**
    * Reconstruct history from rollout
    *
    * Reconstructs conversation history from rollout storage, handling both
@@ -1593,17 +2813,47 @@ export class Session {
       if (rolloutItem.type === 'response_item') {
         // Regular response item
         responseItems.push(rolloutItem.payload as ResponseItem);
+        // Track 09: seed seenIds from any function_call_output we've seen.
+        // This freezes "seen but unreplaced" decisions so tier-2 can't
+        // retroactively persist an output that the model already observed
+        // unchanged.
+        const r = rolloutItem.payload as any;
+        if (r && r.type === 'function_call_output' && typeof r.call_id === 'string') {
+          this.replacementState?.freezeUnreplaced(r.call_id);
+        }
       } else if (rolloutItem.type === 'compacted') {
         // Compacted history with summary
         // The compacted item should contain a summary that replaces multiple items
         const compactedData = rolloutItem.payload as any;
-        if (compactedData.summary) {
+        // CompactedItem declares `message` (storage/rollout/types.ts). Earlier
+        // notes referenced `summary`; read `message` first and fall back to
+        // `summary` for forward/backward tolerance (Track 15, Phase 0b — this
+        // is what summarize_up_to emits and what fork-replay reads back).
+        const compactedText = compactedData.message ?? compactedData.summary;
+        if (compactedText) {
           // Add summary as a system message
           responseItems.push({
             role: 'system',
-            content: compactedData.summary,
+            content: compactedText,
             type: 'message'
           } as ResponseItem);
+        }
+      } else if (rolloutItem.type === 'content_replacement') {
+        // Track 09: re-seed the replacement state with the exact preview
+        // string the model saw on the original turn. seedFromResume
+        // deliberately bypasses the rollout onRecord callback so we don't
+        // re-record everything. A corrupted / older-format payload must
+        // not poison the rest of resume — validate shape, skip on mismatch.
+        const p = rolloutItem.payload as any;
+        if (
+          p &&
+          typeof p === 'object' &&
+          typeof p.toolUseId === 'string' &&
+          typeof p.replacement === 'string'
+        ) {
+          this.replacementState?.seedFromResume(p);
+        } else {
+          console.warn('[Session] Skipping malformed content_replacement rollout record');
         }
       }
       // Other rollout item types (event_msg, etc.) are not added to history
@@ -1641,6 +2891,8 @@ export class Session {
       total_tokens: tokenUsage.total_tokens,
       cache_creation_input_tokens: tokenUsage.cached_input_tokens,
       cache_read_input_tokens: 0, // Not provided in TokenUsage
+      model_context_window: this.turnContext?.getModelContextWindow?.(),
+      auto_compact_token_limit: this.turnContext?.getAutoCompactTokenLimit?.(),
     };
 
     // Update SessionState
@@ -1648,6 +2900,21 @@ export class Session {
 
     // Send token count event
     await this.sendTokenCountEvent(subId);
+  }
+
+  /**
+   * Track 12: record a rate-limit snapshot observed on the live model
+   * stream (the `RateLimits` ResponseEvent in TurnManager). This is the
+   * public entrypoint that makes the snapshot path actually fire in
+   * production — without it the parsed snapshot was dropped and
+   * `sendTokenCountEvent` could only ever emit `undefined`.
+   *
+   * @param rateLimits Rate limit snapshot parsed by the provider client
+   */
+  async recordRateLimits(rateLimits: RateLimitSnapshot): Promise<void> {
+    // Reactive emission (not tied to a specific submission) — use a fresh
+    // correlation id, consistent with how other mid-stream events are id'd.
+    await this.updateRateLimits(uuidv4(), rateLimits);
   }
 
   /**
@@ -1665,6 +2932,31 @@ export class Session {
   ): Promise<void> {
     // Update SessionState
     this.sessionState.updateRateLimits(rateLimits);
+
+    // Track 12: emit an early warning when quota is being burned faster than
+    // the window sustains (before the API actually rejects).
+    const warning = evaluateEarlyWarning(rateLimits);
+    if (warning) {
+      const resetSuffix =
+        warning.resets_in_seconds !== undefined
+          ? `, resets in ${Math.ceil(warning.resets_in_seconds)}s`
+          : '';
+      await this.sendEvent({
+        id: subId,
+        msg: {
+          type: 'RateLimitWarning',
+          data: {
+            window: warning.window,
+            used_percent: warning.used_percent,
+            time_progress: warning.time_progress,
+            resets_in_seconds: warning.resets_in_seconds,
+            message:
+              `Approaching rate limit: ${warning.used_percent.toFixed(0)}% of ` +
+              `the ${warning.window} window used${resetSuffix}`,
+          },
+        } as EventMsg,
+      });
+    }
 
     // Send token count event
     await this.sendTokenCountEvent(subId);
@@ -1750,6 +3042,26 @@ export class Session {
     }
   }
 
+  /**
+   * Flush any queued rollout writes to durable storage.
+   *
+   * The static RolloutRecorder read path bypasses this live session's
+   * writer (writes are serialized through RolloutWriter.writeQueue), so any
+   * caller that needs to read this conversation's items while it is still
+   * live — e.g. the Track 15 rewind selector / slice fn — MUST call this
+   * first, otherwise queued-but-unflushed turns are invisible (Track 15,
+   * D13 / Phase 0c). No-op if this session has no rollout recorder.
+   */
+  async flushRollout(): Promise<void> {
+    if (this.services?.rollout) {
+      try {
+        await this.services.rollout.flush();
+      } catch (e) {
+        console.error('Failed to flush rollout recorder:', e);
+      }
+    }
+  }
+
   // ========================================================================
   // Task Management Helper Methods (Feature 012)
   // ========================================================================
@@ -1816,6 +3128,27 @@ export class Session {
 
     // Determine abort reason from error
     const reason: any = error?.name === 'AbortError' ? 'user_interrupt' : 'error';
+
+    // Track 04: update typed state. handleTaskAbort already does this for
+    // explicit Session.abortTask paths; this handler covers the case where
+    // a task threw an error that wasn't a direct abort.
+    const t = this.activeTasks.get(subId);
+    if (t?.taskState && !isTerminalTaskStatus(t.taskState.status)) {
+      const prevStatus = t.taskState.status;
+      t.taskState.status = reason === 'user_interrupt' ? 'killed' : 'failed';
+      t.taskState.endTime = Date.now();
+      t.taskState.notified = true;
+      if (!t.taskState.retain) {
+        t.taskState.evictAfter = Date.now() + PANEL_GRACE_MS;
+      }
+      this.emitBackgroundTaskStateChanged(t.taskState, prevStatus);
+      this.ensureEvictionTimer();
+    }
+    if (this.foregroundTaskId === subId) {
+      this.foregroundTaskId = null;
+    }
+    const taskType = this.activeTasks.get(subId)?.task.constructor.name;
+    this.fireTaskCompletedHook(subId, taskType).catch(() => {});
 
     // Emit TurnAborted event (if eventEmitter is set)
     if (this.eventEmitter) {

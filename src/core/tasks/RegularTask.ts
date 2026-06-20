@@ -20,6 +20,13 @@ import type { ToolRegistry } from '../../tools/ToolRegistry';
  */
 export class RegularTask implements SessionTask {
   private agentTask: AgentTask | null = null;
+  private maxTurns?: number;
+  private drainPendingMessages?: () => string[];
+
+  constructor(options?: { maxTurns?: number; drainPendingMessages?: () => string[] }) {
+    this.maxTurns = options?.maxTurns;
+    this.drainPendingMessages = options?.drainPendingMessages;
+  }
 
   /**
    * Return task kind
@@ -46,17 +53,34 @@ export class RegularTask implements SessionTask {
       session.getToolRegistry() as ToolRegistry // Tool registry is required
     );
 
+    // Wire hook dispatcher if available
+    const hookDispatcher = session.getHookDispatcher();
+    if (hookDispatcher) {
+      turnManager.setHookDispatcher(hookDispatcher);
+    }
+
     // Convert InputItem[] to ResponseItem[] for AgentTask
     const responseItems = this.convertInput(input);
 
-    // Delegate to AgentTask coordinator (browser-specific layer)
+    // Delegate to AgentTask coordinator (browser-specific layer).
+    // (Track 04) If the session has a TaskOutputStore (set by the engine
+    // when a background sub-agent is running), thread it through so the
+    // underlying TaskRunner persists chunks. subId doubles as the taskId
+    // — for background_agent tasks subId is the runId set by SubAgentRunner.
+    const taskOutputStore = session.getTaskOutputStore?.() ?? undefined;
     this.agentTask = new AgentTask(
       session,
       context,
       turnManager,
       session.getSessionId(),
       subId,
-      responseItems
+      responseItems,
+      {
+        maxTurns: this.maxTurns,
+        drainPendingMessages: this.drainPendingMessages,
+        taskOutputStore: taskOutputStore ?? undefined,
+        taskId: taskOutputStore ? subId : undefined,
+      }
     );
 
     try {

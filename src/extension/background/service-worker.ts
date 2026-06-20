@@ -1,6 +1,6 @@
 /**
  * Chrome extension background service worker
- * Central coordinator for the Browserx agent
+ * Central coordinator for the WorkX agent
  *
  * Feature 015: Multi-agent instances
  * - Replaced singleton agent with AgentRegistry
@@ -10,8 +10,12 @@
 
 import { RepublicAgent } from '../../core/RepublicAgent';
 import { UserNotifier } from '../../core/UserNotifier';
+import { installTelemetry, schedulerTelemetryTap } from '../../core/telemetry';
+import { RingSink } from '../telemetry/RingSink';
 import type { Submission } from '../../core/protocol/types';
 import { ApprovalGate } from '../../core/approval/ApprovalGate';
+import { registerPlanReviewTools } from '../../tools/planReview/PlanReviewTools';
+import { setDynamicRuntimeContext } from '../../core/PromptLoader';
 import { PolicyRulesEngine } from '../../core/approval/PolicyRulesEngine';
 import { getDefaultRules } from '../../core/approval/defaultRules';
 import { DomainSensitivityEnhancer } from '../../core/approval/enhancers/DomainSensitivityEnhancer';
@@ -21,18 +25,25 @@ import { getConfigStorage } from '../../core/storage/ConfigStorageProvider';
 import { AuthManager } from '../../core/models/types/Auth';
 import { CacheManager } from '../../storage/CacheManager';
 import { StorageQuotaManager } from '../../storage/StorageQuotaManager';
+import type { TieredEvictor, EvictionTier } from '../../storage/StorageQuotaManager';
+import { SessionCacheManager } from '../../storage/SessionCacheManager';
 import { RolloutRecorder } from '../../storage/rollout';
+import { IndexedDBRolloutStorageProvider } from '../../storage/rollout/provider/IndexedDBRolloutStorageProvider';
 import { AgentConfig } from '../../config/AgentConfig';
 import { STORAGE_KEYS } from '../../config/defaults';
 import { DEFAULT_APPROVAL_CONFIG } from '../../core/approval/types';
 import { TabManager } from '../../core/TabManager';
 import { LLM_API_URL } from '../../config/constants';
-import { MCPManager } from '../../core/mcp/MCPManager';
-import { registerMCPTools, unregisterMCPTools } from '../../core/mcp/MCPToolAdapter';
+// Track 22: MCP/A2A are gated behind compile-time feature flags. Manager
+// classes and tool-adapter helpers load via dynamic import() inside the
+// feature-gated init blocks, so an OFF build tree-shakes core/mcp +
+// core/a2a out of the extension bundle entirely. Only type-only imports
+// remain at top level (erased at compile time — zero bundle cost).
+import type { MCPManager as MCPManagerT } from '../../core/mcp/MCPManager';
 import type { MCPManagerEvent } from '../../core/mcp/types';
-import { A2AManager } from '../../core/a2a/A2AManager';
-import { registerA2ASkills, unregisterA2ASkills } from '../../core/a2a/A2AToolAdapter';
+import type { A2AManager as A2AManagerT } from '../../core/a2a/A2AManager';
 import type { A2AManagerEvent } from '../../core/a2a/types';
+import { MCP, A2A } from '../../core/features/feature';
 
 // Skills imports
 import { SkillRegistry } from '../../core/skills';
@@ -43,43 +54,96 @@ import { registerPromptExtension } from '../../core/PromptLoader';
 // Scheduler imports
 import { Scheduler, ScheduleManager, JobExecutor, ScheduleEventStorage, ExecutionStorage } from '../../core/scheduler';
 import { SchedulerAlarms } from './scheduler-alarms';
-import { createStorageAdapter } from '../../storage/createStorageAdapter';
 import { parseAlarmName } from '../../core/models/types/SchedulerContracts';
 
-// Storage initialization — static imports required because dynamic import()
-// is banned in Chrome extension service workers by the HTML specification.
+// Static imports required because dynamic import() is banned in Chrome
+// extension service workers by the HTML specification.
+// See: https://github.com/w3c/ServiceWorker/issues/1356
 import { setConfigStorage } from '../../core/storage/ConfigStorageProvider';
 import { setCredentialStore } from '../../core/storage/CredentialStore';
 import { setStorageProvider, isStorageProviderInitialized } from '../../core/storage';
 import { ChromeConfigStorage } from '../../extension/storage/ChromeConfigStorage';
+import { ChromeManagedConfigSource } from '../../extension/storage/ChromeManagedConfigSource';
+import {
+  registerPolicySources,
+  resolveActivePolicy,
+  onPolicyChanged,
+  assessAndRecord,
+} from '../../core/config/policy';
 import { ChromeCredentialStore } from '../../extension/storage/ChromeCredentialStore';
 import * as VaultManager from '../../core/crypto/VaultManager';
+// Modules previously loaded via dynamic import() — must be static in service workers
+import { IndexedDBAdapter } from '../../storage/IndexedDBAdapter';
+import type { StorageAdapter } from '../../storage/StorageAdapter';
+import { TokenUsageStore } from '../../storage/TokenUsageStore';
+import { TaskOutputStore } from '../../core/tasks/TaskOutputStore';
+import { TaskOutputManager } from '../../core/tasks/TaskOutputManager';
+import { getChannelManager } from '../../core/channels/ChannelManager';
+import { registerAllServices } from '../../core/services';
+import { CompactService } from '../../core/compact/CompactService';
+import type { ResponseItem } from '../../core/protocol/types';
+import { SidePanelChannel } from '../../extension/channels/SidePanelChannel';
+import { ChatGPTOAuthExtensionStorage } from '../auth/ChatGPTOAuthExtensionStorage';
+import { ChatGPTOAuthService } from '../../core/auth/ChatGPTOAuthService';
 // Multi-agent registry imports (Feature 015)
 import { AgentRegistry, SessionStorage } from '../../core/registry';
 import type { SessionConfig } from '../../core/registry/types';
+import { DEFAULT_MAX_CONCURRENT } from '../../core/registry/types';
 import { PRIMARY_SESSION_ALIAS } from '../../core/models/types/SessionContracts';
 import { t } from '../../webfront/lib/i18n';
+import { getActionForExtensionCommand, type ShortcutAction } from '../../core/shortcuts';
 
 // Global instances
-/**
- * @deprecated Feature 015: Use registry.getPrimarySession().agent instead.
- * This variable is kept only for backward compatibility during migration.
- * All new code should use AgentRegistry to access agent instances.
- */
-let agent: RepublicAgent | null = null;
-let registry: AgentRegistry | null = null; // Feature 015: Multi-agent registry
+let registry: AgentRegistry | null = null;
 let cacheManager: CacheManager | null = null;
 let storageQuotaManager: StorageQuotaManager | null = null;
+let sessionCacheManager: SessionCacheManager | null = null;
+let taskOutputStore: TaskOutputStore | null = null;
+let taskOutputManager: TaskOutputManager | null = null;
 let agentConfig: AgentConfig | null = null;
-let mcpManager: MCPManager | null = null; // MCP server connection manager
-let a2aManager: A2AManager | null = null; // A2A agent connection manager
+let mcpManager: MCPManagerT | null = null; // MCP server connection manager
+let a2aManager: A2AManagerT | null = null; // A2A agent connection manager
 let currentAuthManager: AuthManager | null = null; // Preserve auth state across agent recreation
 let scheduler: Scheduler | null = null; // Job scheduler
 let schedulerAlarms: SchedulerAlarms | null = null;
 let sessionStorage: SessionStorage | null = null; // Feature 015: Session persistence
 let skillRegistry: SkillRegistry | null = null; // Agent skills
+// Track 10: global plugin registry (skills + MCP slots; per-session
+// hooks/agents binding is a documented follow-up needing an
+// AgentRegistry.onAgentCreated hook on the extension path).
+let pluginRegistry: import('@/core/plugins/PluginRegistry').PluginRegistry | null = null;
+// Track 10: IDB provider's virtual-path resolvers, for per-session binding.
+let pluginFsResolvers: {
+  readFile: (p: string) => Promise<string | null>;
+  listDirs: (p: string) => Promise<string[]>;
+} | null = null;
 let isInitialized = false;
 let initializationPromise: Promise<void> | null = null;
+
+function findTaskState(taskId: string): import('../../core/tasks/types').TaskState | undefined {
+  if (!registry) return undefined;
+  for (const meta of registry.listSessions()) {
+    const agent = registry.getSession(meta.sessionId)?.agent;
+    const state = agent?.getSession().getTask(taskId)?.taskState;
+    if (state) return state;
+  }
+  return undefined;
+}
+
+function createExtensionTieredEvictor(): TieredEvictor {
+  return {
+    async evictTier(tier: EvictionTier, targetBytes: number): Promise<number> {
+      if (targetBytes <= 0) return 0;
+      if (tier === 0) {
+        return taskOutputManager?.evictOldestChunks(targetBytes) ?? 0;
+      }
+      if (tier === 1) {
+        return sessionCacheManager?.evictOldestCacheItems(targetBytes) ?? 0;
+      }
+      return 0;
+    },
+  };
+}
 
 /**
  * Configure platform-specific approval gate and tab closure handler for extension mode.
@@ -94,6 +158,8 @@ async function configureExtensionPlatform(targetAgent: RepublicAgent): Promise<v
   const approvalGate = new ApprovalGate(approvalManager, policyEngine);
   approvalGate.addEnhancer(new DomainSensitivityEnhancer());
   approvalGate.addEnhancer(new SemanticElementEnhancer());
+  // Wire hook dispatcher so PermissionRequest/PermissionDenied hooks fire
+  approvalGate.setHookDispatcher(targetAgent.getHookDispatcher());
 
   // Extension mode uses ConfigStorageProvider for approval config
   const configStorage = new ApprovalConfigStorage(() => getConfigStorage());
@@ -110,12 +176,38 @@ async function configureExtensionPlatform(targetAgent: RepublicAgent): Promise<v
 
   toolRegistry.setApprovalGate(approvalGate);
 
+  // Plan Review (Track 14): register Begin/Submit closures here, where the
+  // registry + core ApprovalManager are in scope (ToolContext exposes
+  // neither). Feed the registry's freeze flag into the system prompt each
+  // turn so the read-only-exploration guidance persists across the review.
+  await registerPlanReviewTools({
+    registry: toolRegistry,
+    approvalManager,
+    approvalGate,
+    platformId: 'extension',
+    recordPlanArtifact: (payload) =>
+      targetAgent.getSession().persistRolloutItems([{ type: 'plan_artifact', payload }]),
+  });
+  setDynamicRuntimeContext((ctx) => ({
+    planReviewActive: ctx.toolRegistry?.isPlanReviewActive?.() ?? toolRegistry.isPlanReviewActive(),
+  }));
+
   // Tab closure handler
   const tabManager = TabManager.getInstance();
   const session = targetAgent.getSession();
   const notifier = targetAgent.getUserNotifier();
 
   tabManager.onTabClosure(async (closedTabId: number) => {
+    // Track 04 / Q9: tab close has two cases:
+    //
+    // (a) The session's main tab closes -> hard shutdown of the session.
+    //     Existing behavior, preserved.
+    //
+    // (b) A working tab (referenced by some background task's scopedTabIds
+    //     but not the session's main tab) closes -> only abort tasks
+    //     scoped to that tab. Background tasks NOT touching that tab keep
+    //     running. This is what makes background sub-agents survive
+    //     incidental working-tab closures.
     if (session.getTabId() === closedTabId) {
       session.setTabId(-1);
       await session.abortAllTasks('TabClosed');
@@ -123,6 +215,10 @@ async function configureExtensionPlatform(targetAgent: RepublicAgent): Promise<v
         'Tab Closed',
         'The tab was closed or crashed. All tasks have been stopped.'
       );
+    } else {
+      // Working-tab close: selective abort. abortTasksForTab filters
+      // internally and is a no-op when no tasks are scoped to the tab.
+      await session.abortTasksForTab(closedTabId, 'TabClosed');
     }
   });
 }
@@ -160,8 +256,72 @@ async function doInitialize(): Promise<void> {
   const tabManager = TabManager.getInstance();
   await tabManager.initialize();
 
+  // Initialize ConfigStorage and CredentialStore BEFORE any code that needs them.
+  // AgentConfig, MCPManager, A2AManager, ApprovalConfigStorage all depend on ConfigStorage.
+  try {
+    setConfigStorage(new ChromeConfigStorage());
+    console.log('[ServiceWorker] Config storage initialized (early)');
+  } catch (error) {
+    console.warn('[ServiceWorker] Failed to initialize config storage:', error);
+  }
+
+  try {
+    setCredentialStore(new ChromeCredentialStore());
+    console.log('[ServiceWorker] Credential store initialized (early)');
+  } catch (error) {
+    console.warn('[ServiceWorker] Failed to initialize credential store:', error);
+  }
+
+  // Track 20: register the Chrome-native managed-policy source and resolve it
+  // BEFORE AgentConfig.getInstance() so the first buildRuntimeConfig already
+  // sees admin policy. Fail-open: no managed storage → no policy.
+  try {
+    registerPolicySources([new ChromeManagedConfigSource()]);
+    await resolveActivePolicy();
+    console.log('[ServiceWorker] Managed policy resolved (early)');
+  } catch (error) {
+    console.warn('[ServiceWorker] Managed policy resolution failed:', error);
+  }
+
+  // Inject RolloutRecorder provider before any session creation triggers it.
+  // Direct instantiation avoids dynamic import() which is banned in service workers.
+  try {
+    const rolloutProvider = new IndexedDBRolloutStorageProvider();
+    await rolloutProvider.initialize();
+    RolloutRecorder.setProvider(rolloutProvider);
+  } catch (error) {
+    console.warn('[ServiceWorker] Failed to initialize rollout provider:', error);
+  }
+
   // Initialize configuration singleton first
   agentConfig = await AgentConfig.getInstance();
+
+  // Centralized telemetry: live privacy gate + bounded in-memory ring
+  // (best-effort/ephemeral — MV3 SW eviction; no remote egress). No-op
+  // unless telemetryEnabled (read live).
+  installTelemetry({
+    getTelemetryEnabled: () =>
+      agentConfig?.getConfig().preferences?.telemetryEnabled,
+    sink: RingSink,
+  });
+
+  // Track 20: when admin pushes a managed-policy change (chrome.storage
+  // managed area, auto-wired via the source's subscribe), re-hydrate so the
+  // pin re-applies and the UI re-renders locked fields.
+  onPolicyChanged((p) => {
+    const a = assessAndRecord(p);
+    if (a.weakened) {
+      console.warn(
+        '[ServiceWorker] Organization applied a managed policy that weakens security:',
+        a.reasons.join('; ')
+      );
+    }
+    AgentConfig.getInstance()
+      .then((c) => c.reload())
+      .catch((err) =>
+        console.warn('[ServiceWorker] policy reload failed:', err)
+      );
+  });
 
   // Initialize ONLY StorageProvider early — PlanningTool requires it via getTaskStore()
   // during tool registration in registry.createSession().
@@ -180,47 +340,114 @@ async function doInitialize(): Promise<void> {
   // Feature 015: Initialize AgentRegistry instead of singleton agent
   // Load max concurrent sessions from user preferences
   const config = agentConfig!.getConfig();
-  const maxConcurrentSessions = config.preferences?.maxConcurrentSessions ?? 3;
-  registry = AgentRegistry.getInstance({ maxConcurrent: maxConcurrentSessions });
+  const maxConcurrentSessions = config.preferences?.maxConcurrentSessions ?? DEFAULT_MAX_CONCURRENT;
+  registry = AgentRegistry.getInstance({
+    maxConcurrent: maxConcurrentSessions,
+    // Track 10: bind enabled plugins' hooks + sub-agent types to each new
+    // session. Reads module-level pluginRegistry/resolvers lazily — they're
+    // set by initializePlugins() before real sessions are created.
+    onAgentCreated: async (agent, { subAgentRunner }) => {
+      if (taskOutputStore) {
+        agent.getSession().setTaskOutputStore(taskOutputStore);
+      }
+      if (skillRegistry && subAgentRunner) {
+        skillRegistry.setValidationContextProvider(() => ({
+          knownAgents: subAgentRunner.getTypes().map((t) => t.id),
+        }));
+      }
+      await registerSkillsToolOnAgent(agent);
+      if (!pluginRegistry || !pluginFsResolvers || !subAgentRunner) return;
+      try {
+        const { PluginSessionBinder } = await import('@/core/plugins/PluginSessionBinder');
+        const binder = new PluginSessionBinder({
+          hookRegistry: agent.getHookRegistry(),
+          subAgentRunner,
+          readFile: pluginFsResolvers.readFile,
+          listDirs: pluginFsResolvers.listDirs,
+        });
+        const enabled = pluginRegistry
+          .getPlugins()
+          .filter((p) => p.state.status === 'enabled');
+        await binder.applyEnabledPlugins(enabled);
+        pluginRegistry.registerSessionBinder(binder);
+      } catch (e) {
+        console.warn('[ServiceWorker] plugin session bind failed (non-fatal):', e);
+      }
+    },
+  });
   registry.initialize(agentConfig!);
 
-  // Feature 015 (T039): Initialize session persistence
-  await initializeSessionPersistence();
+  // Initialize IndexedDB storage adapter early — shared by session persistence and TokenUsageStore.
+  // Created here so TokenUsageStore works even if session persistence fails.
+  try {
+    const storageAdapter = new IndexedDBAdapter();
+    await storageAdapter.initialize();
+    TokenUsageStore.setAdapter(storageAdapter);
+    sessionCacheManager = new SessionCacheManager(storageAdapter);
+    taskOutputStore = new TaskOutputStore(storageAdapter);
+    taskOutputManager = new TaskOutputManager({
+      adapter: storageAdapter,
+      store: taskOutputStore,
+      getTaskState: (taskId) => findTaskState(taskId),
+    });
 
-  // Create primary session (replaces singleton agent creation)
-  // This maintains backward compatibility - agent variable points to primary session's agent
-  const primarySession = await registry.createSession({ type: 'primary' });
-  agent = primarySession.agent;
+    // Feature 015 (T039): Initialize session persistence (uses same adapter)
+    await initializeSessionPersistence(storageAdapter);
+  } catch (error) {
+    console.error('[ServiceWorker] Failed to initialize IndexedDB adapter:', error);
+  }
 
-  console.log(`[ServiceWorker] Primary session created: ${primarySession.sessionId}`);
+  // Create initial session (always at least one)
+  const initialSession = await registry.createSession({ type: 'primary' });
+  if (taskOutputStore && initialSession.agent) {
+    initialSession.agent.getSession().setTaskOutputStore(taskOutputStore);
+  }
+
+  console.log(`[ServiceWorker] Initial session created: ${initialSession.sessionId}`);
 
   // Initialize auth manager from stored config preferences
   // This ensures backend routing is set up correctly on service worker startup
   await initializeAuthFromConfig();
 
-  // Initialize MCP manager
-  mcpManager = await MCPManager.getInstance();
+  // Track 22: MCP gated behind the MCP compile-time flag. When OFF this
+  // whole block is dead-code-eliminated and the dynamic import() chunk is
+  // never emitted, so core/mcp leaves the extension bundle.
+  if (MCP) {
+    // Initialize MCP manager
+    const { MCPManager } = await import('../../core/mcp/MCPManager');
+    mcpManager = await MCPManager.getInstance();
 
-  // Subscribe to MCP events for tool registration/unregistration
-  setupMCPToolRegistration();
+    // Subscribe to MCP events for tool registration/unregistration
+    // (sync — handler attaches immediately, before any auto-connect)
+    setupMCPToolRegistration();
 
-  // Auto-connect enabled MCP servers (T064: service worker lifecycle handling)
-  await autoConnectEnabledMCPServers();
+    // Auto-connect enabled MCP servers (T064: service worker lifecycle handling)
+    await autoConnectEnabledMCPServers();
+  }
 
   // Setup message handlers
   setupMessageHandlers();
 
-  // Initialize A2A manager
-  a2aManager = await A2AManager.getInstance();
+  // Track 22: A2A gated behind the A2A compile-time flag (same DCE rationale).
+  if (A2A) {
+    // Initialize A2A manager
+    const { A2AManager } = await import('../../core/a2a/A2AManager');
+    a2aManager = await A2AManager.getInstance();
 
-  // Subscribe to A2A events for tool registration/unregistration
-  setupA2AToolRegistration();
+    // Subscribe to A2A events for tool registration/unregistration
+    // (sync — handler attaches immediately, before any auto-connect)
+    setupA2AToolRegistration();
 
-  // Auto-connect enabled A2A agents
-  await autoConnectEnabledA2AAgents();
+    // Auto-connect enabled A2A agents
+    await autoConnectEnabledA2AAgents();
+  }
 
   // Initialize Skills
   await initializeSkills();
+
+  // Track 10: initialize the plugin system (after skills — the skill slot
+  // loader targets the global skillRegistry).
+  await initializePlugins();
 
   // Initialize Scheduler
   await initializeScheduler();
@@ -244,7 +471,7 @@ async function doInitialize(): Promise<void> {
  * This ensures useOwnApiKey setting is respected on service worker startup
  */
 async function initializeAuthFromConfig(): Promise<void> {
-  if (!agentConfig || !agent) return;
+  if (!agentConfig || !registry) return;
 
   try {
     const config = agentConfig.getConfig();
@@ -265,22 +492,34 @@ async function initializeAuthFromConfig(): Promise<void> {
     const authManager = new AuthManager(shouldUseBackend, backendBaseUrl);
     currentAuthManager = authManager;
 
-    const factory = agent.getModelClientFactory();
-    factory.setAuthManager(authManager);
+    // Apply auth to all active sessions
+    const sessions = registry.listSessions() as Array<{ sessionId: string; state: string }>;
+    for (const s of sessions) {
+      if (s.state === 'terminated') continue;
+      const agentSession = registry.getSession(s.sessionId);
+      if (agentSession?.agent) {
+        const factory = agentSession.agent.getModelClientFactory();
+        factory.setAuthManager(authManager);
+      }
+    }
 
-    console.log('[ServiceWorker] Auth initialized, isBackendRouting:', factory.isBackendRouting());
+    console.log('[ServiceWorker] Auth initialized, shouldUseBackend:', shouldUseBackend);
 
     // Check for ChatGPT OAuth tokens and configure token getter
     try {
-      const { ChatGPTOAuthExtensionStorage } = await import('../auth/ChatGPTOAuthExtensionStorage');
-      const { ChatGPTOAuthService } = await import('@/core/auth/ChatGPTOAuthService');
-
       const oauthStorage = new ChatGPTOAuthExtensionStorage();
       const oauthService = new ChatGPTOAuthService(oauthStorage);
 
       if (await oauthService.isAuthenticated()) {
         authManager.setChatGPTOAuth(() => oauthService.getValidAccessToken());
-        factory.setAuthManager(authManager);
+        // Re-apply auth with OAuth to all sessions
+        for (const s of sessions) {
+          if (s.state === 'terminated') continue;
+          const agentSession = registry.getSession(s.sessionId);
+          if (agentSession?.agent) {
+            agentSession.agent.getModelClientFactory().setAuthManager(authManager);
+          }
+        }
         console.log('[ServiceWorker] ChatGPT OAuth restored from storage');
       }
     } catch (oauthError) {
@@ -296,17 +535,13 @@ async function initializeAuthFromConfig(): Promise<void> {
  * Feature 015 (T039): Initialize session persistence
  * Sets up IndexedDB storage for session persistence and loads any persisted sessions
  */
-async function initializeSessionPersistence(): Promise<void> {
+async function initializeSessionPersistence(storageAdapter: StorageAdapter): Promise<void> {
   if (!registry) {
     console.warn('[ServiceWorker] Cannot initialize session persistence - registry not ready');
     return;
   }
 
   try {
-    // Initialize storage adapter (IndexedDB on extension, SQLite on desktop/server)
-    const storageAdapter = await createStorageAdapter();
-    await storageAdapter.initialize();
-
     // Create session storage
     sessionStorage = new SessionStorage(storageAdapter);
 
@@ -348,27 +583,26 @@ async function initializeSessionPersistence(): Promise<void> {
  * @returns The agent to use for this message
  */
 function getAgentForMessage(message: { payload?: { sessionId?: string; context?: { sessionId?: string } } }): RepublicAgent | null {
-  // Feature 015: Route by sessionId if provided, otherwise use primary session
-  // Check both payload.sessionId (direct) and payload.context.sessionId (from Submission)
+  // Route by sessionId — no fallback to a "primary" session
   const sessionId = message.payload?.sessionId ?? message.payload?.context?.sessionId;
 
-  if (sessionId && registry) {
-    const agentSession = registry.getSession(sessionId);
-    if (agentSession?.agent) {
-      return agentSession.agent;
-    }
-    // If specific session not found, fall back to primary
-    console.warn(`[ServiceWorker] Session ${sessionId} not found, using primary`);
+  if (!sessionId) {
+    console.warn('[ServiceWorker] No sessionId in message, cannot route');
+    return null;
   }
 
-  // Default to primary session (backward compatibility)
-  if (registry) {
-    const primarySession = registry.getPrimarySession();
-    return primarySession?.agent ?? null;
+  if (!registry) {
+    console.warn('[ServiceWorker] Registry not initialized');
+    return null;
   }
 
-  // Legacy fallback to global agent variable
-  return agent;
+  const agentSession = registry.getSession(sessionId);
+  if (agentSession?.agent) {
+    return agentSession.agent;
+  }
+
+  console.warn(`[ServiceWorker] Session ${sessionId} not found`);
+  return null;
 }
 
 /**
@@ -380,32 +614,31 @@ function getAgentForMessage(message: { payload?: { sessionId?: string; context?:
  */
 async function registerServiceHandlers(): Promise<void> {
   try {
-    const { getChannelManager } = await import('@/core/channels/ChannelManager');
-    const { registerAllServices } = await import('@/core/services');
-    const { SidePanelChannel } = await import('@/extension/channels/SidePanelChannel');
-
     const channelManager = getChannelManager();
 
     // Register SidePanelChannel if not already registered
     if (!channelManager.getChannel('sidepanel-main')) {
       const sidePanelChannel = new SidePanelChannel();
 
-      // Set the agent handler to route non-ServiceRequest Ops to the agent
+      // Set the agent handler to route non-ServiceRequest Ops to the correct session
       channelManager.setAgentHandler(async (op, context) => {
-        const targetAgent = agent ?? registry?.getPrimarySession()?.agent;
-        if (!targetAgent) throw new Error('No agent available');
-        await targetAgent.submitOperation(op, { tabId: context.tabId });
+        if (!context.sessionId) {
+          throw new Error('No sessionId in submission context — cannot route operation');
+        }
+        if (!registry) {
+          throw new Error('AgentRegistry not initialized');
+        }
+
+        const targetSession = registry.getSession(context.sessionId);
+        if (!targetSession?.agent) {
+          throw new Error(`Session not found: ${context.sessionId}`);
+        }
+
+        await targetSession.agent.submitOperation(op, { tabId: context.tabId });
       });
 
       await channelManager.registerChannel(sidePanelChannel);
-
-      // Wire event forwarding from agent to channel
-      const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
-      if (primaryAgent) {
-        primaryAgent.setEventDispatcher((event) => {
-          channelManager.dispatchEvent(event.msg, 'sidepanel-main').catch(() => {});
-        });
-      }
+      // Note: event dispatchers are wired per-session in AgentRegistry.createSession()
     }
 
     const serviceRegistry = channelManager.getServiceRegistry();
@@ -421,32 +654,69 @@ async function registerServiceHandlers(): Promise<void> {
       },
     };
 
-    // Wire scheduler events to ChannelManager (unified dispatch)
+    // Wire scheduler events to ChannelManager (unified dispatch) + telemetry
+    // tap (scheduler is a separate emitter family bypassing the chokepoint)
     if (scheduler) {
-      scheduler.connectToChannel(() => channelManager, 'sidepanel-main');
+      scheduler.connectToChannel(() => channelManager, 'sidepanel-main', schedulerTelemetryTap);
     }
+
+    if (!registry) throw new Error('AgentRegistry not initialized');
 
     const count = registerAllServices(serviceRegistry, {
       mcp: mcpManager ? { mcpManager } : undefined,
       scheduler: scheduler ? { scheduler } : undefined,
+      diagnostics: {
+        buildCtx: () => ({
+          platformId: 'extension',
+          channelManager: getChannelManager(),
+          mcpManager: mcpManager ?? undefined,
+          skillRegistry: skillRegistry ?? undefined,
+          scheduler: scheduler ?? undefined,
+        }),
+      },
       skills: skillRegistry ? { skillRegistry } : undefined,
+      plugins: pluginRegistry ? { pluginRegistry } : undefined,
       vault: {
-        vaultManager: (await import('@/core/crypto/VaultManager')) as any,
+        vaultManager: VaultManager as any,
       },
       a2a: a2aManager ? { a2aManager } : undefined,
       session: {
-        getAgent: () => {
-          const targetAgent = registry?.getPrimarySession()?.agent ?? agent;
-          return targetAgent;
-        },
-        registry: registry ?? undefined,
+        registry,
         resetTabs: async () => {
           const tabManager = TabManager.getInstance();
           await tabManager.reset();
         },
+        loadRolloutHistory: async (sessionId: string) => {
+          const initialHistory = await RolloutRecorder.getRolloutHistory(sessionId);
+          if (initialHistory.type !== 'resumed' || !initialHistory.payload?.history) return null;
+          return { sessionId, rolloutItems: initialHistory.payload.history };
+        },
+        // Track 15 (D9): summarize_up_to summarizer, sourced from the live
+        // primary agent's existing ModelClientFactory (no client built here).
+        summarizeForRewind: async (items: ResponseItem[]) => {
+          const reg = registry;
+          const primary = reg?.getPrimarySession();
+          const agent = primary ? reg?.getSession(primary.sessionId)?.agent : null;
+          if (!agent) return undefined;
+          try {
+            const modelClient = await agent.getModelClientFactory().createClientForCurrentModel();
+            const result = await new CompactService().compact(
+              items,
+              'manual',
+              modelClient,
+              0,
+              undefined,
+              { sessionId: agent.getSession().getSessionId() },
+            );
+            return result.success ? result.summaryText : undefined;
+          } catch (err) {
+            console.warn('[service-worker] summarizeForRewind failed:', err);
+            return undefined;
+          }
+        },
       },
       agent: {
-        getAgent: () => registry?.getPrimarySession()?.agent ?? agent,
+        registry,
         updateApprovalConfig: async (config: Record<string, unknown>) => {
           const result = await chrome.storage.local.get(STORAGE_KEYS.CONFIG);
           const storedConfig = (result[STORAGE_KEYS.CONFIG] || {}) as Record<string, any>;
@@ -456,55 +726,11 @@ async function registerServiceHandlers(): Promise<void> {
         },
       },
       storage: { storageProvider: chromeStorageAdapter },
+      memory: registry ? { registry } : undefined,
     });
 
-    // Extension-specific overrides: session.resume and agent.configUpdate
-    // These need access to service-worker closures (agent, registry, currentAuthManager, etc.)
-    serviceRegistry.register('session.resume', async (params) => {
-      if (!agent) throw new Error('Agent not initialized');
-
-      const { conversationId } = params as { conversationId: string };
-      console.log('[ServiceWorker] Resuming session:', conversationId);
-
-      const currentSession = agent.getSession();
-      await currentSession.abortAllTasks('UserInterrupt');
-
-      const tabManager = TabManager.getInstance();
-      await tabManager.reset();
-      await currentSession.close();
-
-      const initialHistory = await RolloutRecorder.getRolloutHistory(conversationId);
-      if (initialHistory.type !== 'resumed' || !initialHistory.payload?.history) {
-        throw new Error('Conversation not found or has no history');
-      }
-
-      agent = new RepublicAgent(agentConfig!, {
-        mode: 'resumed' as const,
-        conversationId,
-        rolloutItems: initialHistory.payload.history,
-      }, undefined, new UserNotifier());
-
-      // Wire event dispatch through channel
-      agent.setEventDispatcher((event) => {
-        channelManager.dispatchEvent(event.msg, 'sidepanel-main').catch(() => {});
-      });
-
-      if (currentAuthManager) {
-        const factory = agent.getModelClientFactory();
-        factory.setAuthManager(currentAuthManager);
-      }
-
-      await agent.initialize();
-      await configureExtensionPlatform(agent);
-
-      const session = agent.getSession();
-      await session.initialize();
-      const history = session.getConversationHistory();
-
-      console.log('[ServiceWorker] Session resumed with', history.items.length, 'items');
-      return { conversationId, history: history.items };
-    });
-
+    // Extension-specific override: agent.configUpdate
+    // Needs access to service-worker closures (registry, agentConfig, etc.)
     serviceRegistry.register('agent.configUpdate', async () => {
       try {
         if (agentConfig) {
@@ -513,53 +739,30 @@ async function registerServiceHandlers(): Promise<void> {
           agentConfig = await AgentConfig.getInstance();
         }
 
-        if (registry) {
-          await registry.cleanup();
-          registry.initialize(agentConfig);
+        if (!registry) {
+          throw new Error('AgentRegistry not initialized');
+        }
 
-          const primarySession = await registry.createSession({ type: 'primary' });
-          agent = primarySession.agent;
+        // Cleanup all sessions and re-create them with new config
+        await registry.cleanup();
+        registry.initialize(agentConfig);
 
-          // Wire event dispatch through channel
-          agent!.setEventDispatcher((event) => {
-            channelManager.dispatchEvent(event.msg, 'sidepanel-main').catch(() => {});
-          });
+        const newSession = await registry.createSession({ type: 'primary' });
 
-          if (currentAuthManager && agent) {
-            const factory = agent.getModelClientFactory();
+        if (currentAuthManager && newSession.agent) {
+          const agentSession = registry.getSession(newSession.sessionId);
+          if (agentSession?.agent) {
+            const factory = agentSession.agent.getModelClientFactory();
             factory.setAuthManager(currentAuthManager);
-            await agent.refreshModelClient();
-          } else if (!currentAuthManager) {
-            await initializeAuthFromConfig();
+            await agentSession.agent.refreshModelClient();
           }
-        } else {
-          if (agent) {
-            const session = agent.getSession();
-            await session.close();
-            await agent.cleanup();
-          }
-
-          agent = new RepublicAgent(agentConfig, undefined, undefined, new UserNotifier());
-          agent.setEventDispatcher((event) => {
-            channelManager.dispatchEvent(event.msg, 'sidepanel-main').catch(() => {});
-          });
-
-          if (currentAuthManager) {
-            const factory = agent.getModelClientFactory();
-            factory.setAuthManager(currentAuthManager);
-          }
-          await agent.initialize();
-          await configureExtensionPlatform(agent);
-          if (!currentAuthManager) {
-            await initializeAuthFromConfig();
-          } else {
-            await agent.refreshModelClient();
-          }
+        } else if (!currentAuthManager) {
+          await initializeAuthFromConfig();
         }
 
         // Notify UI via channel
         channelManager.dispatchEvent(
-          { type: 'BackgroundEvent', data: { message: 'Agent reinitialized', level: 'info' } },
+          { msg: { type: 'BackgroundEvent', data: { message: 'Agent reinitialized', level: 'info' } } },
           'sidepanel-main'
         ).catch(() => {});
 
@@ -580,23 +783,21 @@ async function registerServiceHandlers(): Promise<void> {
       const authManager = new AuthManager(shouldUseBackend, shouldUseBackend ? (backendBaseUrl ?? null) : null);
       currentAuthManager = authManager;
 
-      const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
-      if (primaryAgent) {
-        const factory = primaryAgent.getModelClientFactory();
-        factory.setAuthManager(authManager);
-        await primaryAgent.refreshModelClient();
+      // Apply auth to all active sessions
+      if (registry) {
+        const sessions = registry.listSessions() as Array<{ sessionId: string; state: string }>;
+        for (const s of sessions) {
+          if (s.state === 'terminated') continue;
+          const agentSession = registry.getSession(s.sessionId);
+          if (agentSession?.agent) {
+            const factory = agentSession.agent.getModelClientFactory();
+            factory.setAuthManager(authManager);
+            await agentSession.agent.refreshModelClient();
+          }
+        }
       }
 
       return { success: true, isBackendRouting: shouldUseBackend };
-    });
-
-    serviceRegistry.register('session.setMaxConcurrent', async (params) => {
-      const { maxConcurrent } = params as { maxConcurrent: number };
-      if (registry && typeof maxConcurrent === 'number') {
-        registry.setMaxConcurrent(maxConcurrent);
-        return { success: true };
-      }
-      throw new Error('Invalid request or registry not initialized');
     });
 
     console.log(`[ServiceWorker] Registered ${count} service handlers on ChannelManager (+ extension overrides)`);
@@ -639,8 +840,8 @@ function setupMessageHandlers(): void {
  */
 async function initializeScheduler(): Promise<void> {
   try {
-    // Initialize storage adapter (IndexedDB on extension, SQLite on desktop/server)
-    const storageAdapter = await createStorageAdapter();
+    // Initialize storage adapter (IndexedDB — static import for service worker compatibility)
+    const storageAdapter = new IndexedDBAdapter();
     await storageAdapter.initialize();
 
     // Create new model components
@@ -761,17 +962,28 @@ async function autoConnectEnabledMCPServers(): Promise<void> {
 /**
  * Setup MCP tool registration event handling
  * Registers/unregisters MCP tools with ToolRegistry when connections change
- * Feature 015: Uses primary session's tool registry
+ * Applies to all active sessions' tool registries.
  */
 function setupMCPToolRegistration(): void {
-  // Feature 015: Get tool registry from primary session
-  const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
-  if (!mcpManager || !primaryAgent) {
-    console.warn('[ServiceWorker] Cannot setup MCP tool registration - manager or agent not ready');
+  if (!mcpManager || !registry) {
+    console.warn('[ServiceWorker] Cannot setup MCP tool registration - manager or registry not ready');
     return;
   }
 
-  const toolRegistry = primaryAgent.getToolRegistry();
+  /** Get tool registries from all active sessions */
+  function getAllToolRegistries() {
+    const registries: ReturnType<RepublicAgent['getToolRegistry']>[] = [];
+    for (const meta of registry!.listSessions() as Array<{ sessionId: string; state: string }>) {
+      if (meta.state === 'terminated') continue;
+      const s = registry!.getSession(meta.sessionId);
+      if (s?.agent) registries.push(s.agent.getToolRegistry());
+    }
+    return registries;
+  }
+
+  // Use the first active session's registry for the tracked-tools map
+  // (tool names are the same across sessions)
+  const getAnyToolRegistry = () => getAllToolRegistries()[0];
 
   // Track registered tools per server for cleanup
   const registeredServerTools = new Map<string, string[]>();
@@ -790,18 +1002,23 @@ function setupMCPToolRegistration(): void {
         // First unregister any previously registered tools for this server
         const previousTools = registeredServerTools.get(serverName);
         if (previousTools) {
-          for (const toolName of previousTools) {
-            try {
-              await toolRegistry.unregister(toolName);
-            } catch (e) {
-              // Ignore - tool might not be registered
+          for (const tr of getAllToolRegistries()) {
+            for (const toolName of previousTools) {
+              try { await tr.unregister(toolName); } catch { /* ignore */ }
             }
           }
         }
 
-        // Register new tools
+        // Register new tools on all sessions
         try {
-          await registerMCPTools(mcpManager!, serverName, tools, toolRegistry);
+          // Track 22: lazy adapter import — keeps core/mcp/MCPToolAdapter out
+          // of OFF builds (this whole function is unreferenced when MCP is
+          // off, so it tree-shakes), without delaying the .on() subscription
+          // above. import() is cached after the first event.
+          const { registerMCPTools } = await import('../../core/mcp/MCPToolAdapter');
+          for (const tr of getAllToolRegistries()) {
+            await registerMCPTools(mcpManager!, serverName, tools, tr);
+          }
           // Track registered tool names
           registeredServerTools.set(
             serverName,
@@ -819,15 +1036,13 @@ function setupMCPToolRegistration(): void {
 
       const serverName = server.name;
 
-      // If disconnecting or error, unregister tools
+      // If disconnecting or error, unregister tools from all sessions
       if (status === 'disconnected' || status === 'error') {
         const previousTools = registeredServerTools.get(serverName);
         if (previousTools) {
-          for (const toolName of previousTools) {
-            try {
-              await toolRegistry.unregister(toolName);
-            } catch (e) {
-              // Ignore - tool might not be registered
+          for (const tr of getAllToolRegistries()) {
+            for (const toolName of previousTools) {
+              try { await tr.unregister(toolName); } catch { /* ignore */ }
             }
           }
           registeredServerTools.delete(serverName);
@@ -851,44 +1066,56 @@ function setupMCPToolRegistration(): void {
  * Mirrors the setupMCPToolRegistration() pattern.
  */
 function setupA2AToolRegistration(): void {
-  const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
-  if (!a2aManager || !primaryAgent) {
-    console.warn('[ServiceWorker] Cannot setup A2A tool registration - manager or agent not ready');
+  if (!a2aManager || !registry) {
+    console.warn('[ServiceWorker] Cannot setup A2A tool registration - manager or registry not ready');
     return;
   }
 
-  const toolRegistry = primaryAgent.getToolRegistry();
+  /** Get tool registries from all active sessions */
+  function getAllToolRegistries() {
+    const registries: ReturnType<RepublicAgent['getToolRegistry']>[] = [];
+    for (const meta of registry!.listSessions() as Array<{ sessionId: string; state: string }>) {
+      if (meta.state === 'terminated') continue;
+      const s = registry!.getSession(meta.sessionId);
+      if (s?.agent) registries.push(s.agent.getToolRegistry());
+    }
+    return registries;
+  }
 
-  // Track registered skill names per agent for cleanup
+  // Track registered skill names per a2a agent for cleanup
   const registeredAgentSkills = new Map<string, string[]>();
 
   a2aManager.on('event', async (event: A2AManagerEvent) => {
     if (event.type === 'skills-updated') {
       const { configId, skills } = event;
-      const agentConfig = a2aManager!.getAgent(configId);
-      if (!agentConfig) return;
+      const a2aAgentConfig = a2aManager!.getAgent(configId);
+      if (!a2aAgentConfig) return;
 
-      const agentName = agentConfig.name;
+      const agentName = a2aAgentConfig.name;
       const connection = a2aManager!.getConnection(configId);
 
       // If connected and skills available, register them
       if (connection?.status === 'connected' && skills.length > 0) {
-        // First unregister any previously registered skills for this agent
+        // First unregister any previously registered skills
         const previousSkills = registeredAgentSkills.get(agentName);
         if (previousSkills) {
-          for (const toolName of previousSkills) {
-            try {
-              await toolRegistry.unregister(toolName);
-            } catch {
-              // Ignore - tool might not be registered
+          for (const tr of getAllToolRegistries()) {
+            for (const toolName of previousSkills) {
+              try { await tr.unregister(toolName); } catch { /* ignore */ }
             }
           }
         }
 
-        // Register new skills
+        // Register new skills on all sessions
         try {
-          await registerA2ASkills(a2aManager!, agentName, skills, toolRegistry, agentConfig.trusted);
-          // Track registered tool names
+          // Track 22: lazy adapter import — keeps core/a2a/A2AToolAdapter out
+          // of OFF builds (this whole function is unreferenced when A2A is
+          // off, so it tree-shakes), without delaying the .on() subscription
+          // above. import() is cached after the first event.
+          const { registerA2ASkills } = await import('../../core/a2a/A2AToolAdapter');
+          for (const tr of getAllToolRegistries()) {
+            await registerA2ASkills(a2aManager!, agentName, skills, tr, a2aAgentConfig.trusted);
+          }
           registeredAgentSkills.set(
             agentName,
             skills.map((s) => `${agentName}__${s.id}`)
@@ -900,20 +1127,18 @@ function setupA2AToolRegistration(): void {
       }
     } else if (event.type === 'connection-status-changed') {
       const { configId, status } = event;
-      const agentConfig = a2aManager!.getAgent(configId);
-      if (!agentConfig) return;
+      const a2aAgentConfig = a2aManager!.getAgent(configId);
+      if (!a2aAgentConfig) return;
 
-      const agentName = agentConfig.name;
+      const agentName = a2aAgentConfig.name;
 
-      // If disconnecting or error, unregister skills
+      // If disconnecting or error, unregister skills from all sessions
       if (status === 'disconnected' || status === 'error') {
         const previousSkills = registeredAgentSkills.get(agentName);
         if (previousSkills) {
-          for (const toolName of previousSkills) {
-            try {
-              await toolRegistry.unregister(toolName);
-            } catch {
-              // Ignore - tool might not be registered
+          for (const tr of getAllToolRegistries()) {
+            for (const toolName of previousSkills) {
+              try { await tr.unregister(toolName); } catch { /* ignore */ }
             }
           }
           registeredAgentSkills.delete(agentName);
@@ -970,16 +1195,141 @@ async function initializeSkills(): Promise<void> {
     await storageProvider.initialize();
 
     const skillProvider = new IndexedDBSkillProvider(storageProvider);
-    skillRegistry = new SkillRegistry(skillProvider);
+
+    // Track 03 Phase 3 — wire domain-based conditional activation.
+    const { SkillDomainFilter } = await import('@/core/skills/SkillDomainFilter');
+    const { ActiveTabService } = await import('@/core/tabs/ActiveTabService');
+    const { createDebouncedActiveTabHandler } = await import('@/core/tabs/debounceActiveTab');
+    const { startChromeActiveTabAdapter } = await import('./ChromeActiveTabAdapter');
+
+    const activeTabService = new ActiveTabService();
+    const skillDomainFilter = new SkillDomainFilter();
+
+    // Subscribe FIRST so the seed snapshot from the adapter reaches the filter
+    // (adapter starts firing events immediately on startup).
+    const activeTabDebounce = createDebouncedActiveTabHandler((snap) => {
+      skillDomainFilter.onActiveTabChange(snap.hostname);
+    });
+    activeTabService.subscribe((snap) => {
+      activeTabDebounce.handle(snap);
+    });
+    const stopAdapter = startChromeActiveTabAdapter(activeTabService);
+
+    skillRegistry = new SkillRegistry(skillProvider, skillDomainFilter);
     await skillRegistry.discover();
 
+    // Race fix (B3): the seed snapshot likely arrived between subscribe() and
+    // discover(), so the filter handled it against empty maps. Replay it now
+    // that init() has populated the conditional/active maps.
+    const seedSnapshot = activeTabService.getCurrent();
+    if (seedSnapshot) skillDomainFilter.onActiveTabChange(seedSnapshot.hostname);
+
     // Register dynamic prompt extension for auto-invocable skills
-    registerPromptExtension(() => skillRegistry?.buildSkillsSystemPrompt() ?? '');
+    registerPromptExtension('skills', () => skillRegistry?.buildSkillsSystemPrompt() ?? '');
+    await registerSkillsToolOnExistingSessions();
+
+    // Stash adapter cleanup on the registry handle so HMR/teardown can reach it.
+    (skillRegistry as unknown as { __disposeTabAdapter?: () => void }).__disposeTabAdapter = () => {
+      activeTabDebounce.cancel();
+      stopAdapter();
+    };
 
     console.log('[ServiceWorker] Skills initialized');
   } catch (error) {
     console.warn('[ServiceWorker] Failed to initialize skills:', error);
     // Non-fatal — skills are optional
+  }
+}
+
+async function registerSkillsToolOnAgent(agent: RepublicAgent): Promise<void> {
+  if (!skillRegistry) return;
+  const { registerUseSkillTool } = await import('@/core/skills/registerUseSkillTool');
+  await registerUseSkillTool({
+    toolRegistry: agent.getToolRegistry(),
+    hookRegistry: agent.getHookRegistry(),
+    skillRegistry,
+    getTurnContext: () => agent.getSession().getTurnContext(),
+  });
+}
+
+async function registerSkillsToolOnExistingSessions(): Promise<void> {
+  if (!registry) return;
+  for (const meta of registry.listSessions()) {
+    const agent = registry.getSession(meta.sessionId)?.agent;
+    if (agent) {
+      await registerSkillsToolOnAgent(agent);
+    }
+  }
+}
+
+/**
+ * Track 10: initialize the global plugin system for the extension.
+ *
+ * Wires the globally-reachable slots — skills (the same SkillRegistry the
+ * skills service uses) + MCP (the singleton MCPManager). Hooks + sub-agent
+ * types are per-session (created in AgentRegistry's extension path) and are
+ * a documented follow-up needing an AgentRegistry.onAgentCreated hook;
+ * commands are global storage. Plugins live in an IDB-virtualized store.
+ */
+async function initializePlugins(): Promise<void> {
+  try {
+    const { IndexedDBStorageProvider } = await import('../storage/IndexedDBStorageProvider');
+    const { IndexedDBPluginProvider } = await import('../storage/IndexedDBPluginProvider');
+    const { PluginRegistry } = await import('@/core/plugins/PluginRegistry');
+    const { SkillSlotLoader } = await import('@/core/plugins/loaders/SkillSlotLoader');
+    const { McpSlotLoader } = await import('@/core/plugins/loaders/McpSlotLoader');
+    const { AgentConfig } = await import('@/config/AgentConfig');
+
+    const storageProvider = new IndexedDBStorageProvider();
+    await storageProvider.initialize();
+    const provider = new IndexedDBPluginProvider(storageProvider);
+    await provider.initialize();
+    pluginFsResolvers = { readFile: provider.readFile, listDirs: provider.listDirs };
+
+    const agentConfig = await AgentConfig.getInstance();
+
+    pluginRegistry = new PluginRegistry({
+      provider,
+      // Virtual-path resolvers from the IDB provider keep the slot loaders
+      // platform-agnostic.
+      skillSlot: skillRegistry
+        ? new SkillSlotLoader({
+            skillRegistry,
+            readFile: provider.readFile,
+            listDirs: provider.listDirs,
+          })
+        : undefined,
+      mcpSlot: mcpManager ? new McpSlotLoader(mcpManager) : undefined,
+      // hooks / agents: per-session (AgentRegistry extension path) — follow-up
+      getEnabledFromConfig: () => agentConfig.getConfig().enabledPlugins ?? {},
+      persistEnabled: async (id, enabled) => {
+        const current = agentConfig.getConfig().enabledPlugins ?? {};
+        agentConfig.updateConfig({
+          enabledPlugins: { ...current, [id]: enabled },
+        });
+      },
+    });
+
+    const metas = await provider.listMeta();
+    for (const m of metas) {
+      try {
+        pluginRegistry.register(await provider.load(`${m.name}@local`));
+      } catch (e) {
+        console.warn(`[ServiceWorker] plugin load ${m.name} failed:`, e);
+      }
+    }
+    await pluginRegistry.bootstrapEnabledPlugins();
+
+    agentConfig.on('config-changed', (e: { section?: string }) => {
+      if (e.section === 'enabledPlugins') {
+        void pluginRegistry?.reconcileFromConfig();
+      }
+    });
+
+    console.log(`[ServiceWorker] Plugins initialized (${metas.length} discovered)`);
+  } catch (error) {
+    console.warn('[ServiceWorker] Failed to initialize plugins:', error);
+    // Non-fatal — plugins are optional
   }
 }
 
@@ -1022,20 +1372,20 @@ function setupChromeListeners(): void {
  */
 function setupContextMenus(): void {
   chrome.contextMenus.create({
-    id: 'browserx-explain',
-    title: t('Explain with Browserx'),
+    id: 'workx-explain',
+    title: t('Explain with WorkX'),
     contexts: ['selection'],
   });
 
   chrome.contextMenus.create({
-    id: 'browserx-improve',
-    title: t('Improve with Browserx'),
+    id: 'workx-improve',
+    title: t('Improve with WorkX'),
     contexts: ['selection'],
   });
 
   chrome.contextMenus.create({
-    id: 'browserx-extract',
-    title: t('Extract data with Browserx'),
+    id: 'workx-extract',
+    title: t('Extract data with WorkX'),
     contexts: ['page', 'frame'],
   });
 }
@@ -1044,34 +1394,62 @@ function setupContextMenus(): void {
  * Handle keyboard commands
  */
 function handleCommand(command: string): void {
-  switch (command) {
-    case 'toggle-sidepanel':
-      // Toggle side panel
+  const action = getActionForExtensionCommand(command);
+  if (!action) {
+    console.warn('[ServiceWorker] Unknown keyboard command:', command);
+    return;
+  }
+
+  handleShortcutAction(action);
+}
+
+/**
+ * Handle shared shortcut actions from extension commands.
+ */
+function handleShortcutAction(action: ShortcutAction): void {
+  switch (action) {
+    case 'app:toggleWindow':
       chrome.sidePanel.open({ windowId: chrome.windows.WINDOW_ID_CURRENT });
       break;
 
-    case 'quick-action':
-      // Trigger quick action on current tab
+    case 'app:quickAction':
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs[0]?.id) {
           executeQuickAction(tabs[0].id);
         }
       });
       break;
+
+    default:
+      console.warn('[ServiceWorker] No extension shortcut handler for action:', action);
   }
 }
 
 /**
+ * Get the most recently active session's agent.
+ * Used by context menu and quick action which don't have a UI-selected sessionId.
+ */
+function getMostRecentAgent(): RepublicAgent | null {
+  if (!registry) return null;
+  const sessions = registry.listSessions() as Array<{ sessionId: string; state: string; lastActivityAt: number }>;
+  const active = sessions
+    .filter(s => s.state !== 'terminated')
+    .sort((a, b) => (b.lastActivityAt ?? 0) - (a.lastActivityAt ?? 0));
+  if (active.length === 0) return null;
+  const session = registry.getSession(active[0].sessionId);
+  return session?.agent ?? null;
+}
+
+/**
  * Handle context menu clicks
- * Feature 015: Uses primary session
+ * Routes to most recently active session.
  */
 async function handleContextMenuClick(
   info: chrome.contextMenus.OnClickData,
   tab?: chrome.tabs.Tab
 ): Promise<void> {
-  // Feature 015: Get primary agent
-  const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
-  if (!tab?.id || !primaryAgent) return;
+  const targetAgent = getMostRecentAgent();
+  if (!tab?.id || !targetAgent) return;
 
   const submission: Partial<Submission> = {
     id: `ctx_${Date.now()}`,
@@ -1082,7 +1460,7 @@ async function handleContextMenuClick(
   };
 
   switch (info.menuItemId) {
-    case 'browserx-explain':
+    case 'workx-explain':
       if (info.selectionText) {
         submission.op = {
           type: 'UserInput',
@@ -1096,7 +1474,7 @@ async function handleContextMenuClick(
       }
       break;
 
-    case 'browserx-improve':
+    case 'workx-improve':
       if (info.selectionText) {
         submission.op = {
           type: 'UserInput',
@@ -1110,7 +1488,7 @@ async function handleContextMenuClick(
       }
       break;
 
-    case 'browserx-extract':
+    case 'workx-extract':
       submission.op = {
         type: 'UserInput',
         items: [
@@ -1127,9 +1505,9 @@ async function handleContextMenuClick(
       break;
   }
 
-  // Submit to agent (Feature 015: uses primary agent from above)
+  // Submit to agent
   if (submission.op) {
-    await primaryAgent.submitOperation(submission.op);
+    await targetAgent.submitOperation(submission.op);
 
     // Open side panel to show results
     chrome.sidePanel.open({ tabId: tab.id });
@@ -1185,23 +1563,8 @@ async function executeTabCommand(
  * Initialize storage layer
  */
 async function initializeStorage(): Promise<void> {
-  // Initialize config storage provider
-  // NOTE: Static imports used — dynamic import() is banned in service workers.
-  try {
-    setConfigStorage(new ChromeConfigStorage());
-    console.log('[ServiceWorker] Config storage initialized');
-  } catch (error) {
-    console.warn('[ServiceWorker] Failed to initialize config storage:', error);
-    // Continue - will fall back to chrome.storage.local directly
-  }
-
-  // Initialize credential store (for secure API key storage)
-  try {
-    setCredentialStore(new ChromeCredentialStore());
-    console.log('[ServiceWorker] Credential store initialized');
-  } catch (error) {
-    console.warn('[ServiceWorker] Failed to initialize credential store:', error);
-  }
+  // ConfigStorage and CredentialStore are initialized early in doInitialize()
+  // (before AgentConfig.getInstance()) so they're available when needed.
 
   // Initialize vault encryption (Feature 034: Credential Security)
   try {
@@ -1234,7 +1597,10 @@ async function initializeStorage(): Promise<void> {
   });
 
   // Initialize storage quota manager
-  storageQuotaManager = new StorageQuotaManager(cacheManager);
+  storageQuotaManager = new StorageQuotaManager({
+    cacheManager,
+    tieredEvictor: createExtensionTieredEvictor(),
+  });
   await storageQuotaManager.initialize();
 
   // Check storage quota
@@ -1254,12 +1620,11 @@ async function executeQuickAction(tabId: number): Promise<void> {
   // Get current page context
   const tab = await chrome.tabs.get(tabId);
 
-  // Feature 015: Get primary agent
-  const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
-  if (!primaryAgent) return;
+  const targetAgent = getMostRecentAgent();
+  if (!targetAgent) return;
 
   // Submit quick analysis request
-  await primaryAgent.submitOperation({
+  await targetAgent.submitOperation({
     type: 'UserInput',
     items: [
       {
@@ -1291,29 +1656,19 @@ function setupPeriodicTasks(): void {
   setInterval(async () => {
     // Feature 015: Process events from all sessions
     if (registry) {
-      let channelManager: import('@/core/channels/ChannelManager').ChannelManager | null = null;
+      let channelMgr: ReturnType<typeof getChannelManager> | null = null;
       try {
-        const { getChannelManager } = await import('@/core/channels/ChannelManager');
-        channelManager = getChannelManager();
+        channelMgr = getChannelManager();
       } catch { /* channel not ready */ }
 
       for (const sessionMeta of registry.listSessions()) {
         const session = registry.getSession(sessionMeta.sessionId);
         if (session?.agent) {
           const event = await session.agent.getNextEvent();
-          if (event && channelManager) {
-            await channelManager.broadcastEvent(event.msg);
+          if (event && channelMgr) {
+            await channelMgr.broadcastEvent({ msg: event.msg, sessionId: sessionMeta.sessionId });
           }
         }
-      }
-    } else if (agent) {
-      // Legacy fallback
-      const event = await agent.getNextEvent();
-      if (event) {
-        try {
-          const { getChannelManager } = await import('@/core/channels/ChannelManager');
-          await getChannelManager().broadcastEvent(event.msg);
-        } catch { /* channel not ready */ }
       }
     }
   }, 100); // Check every 100ms
@@ -1474,18 +1829,9 @@ chrome.runtime.onInstalled.addListener(async () => {
  * Feature 015: Clean up registry instead of singleton agent
  */
 chrome.runtime.onSuspend.addListener(async () => {
-  // Feature 015: Cleanup registry (which cleans up all sessions)
+  // Cleanup registry (which cleans up all sessions)
   if (registry) {
     await registry.cleanup();
-  } else if (agent) {
-    /**
-     * @deprecated Legacy fallback for shutdown - should rarely execute.
-     * Feature 015: This path exists only if registry failed to initialize.
-     */
-    console.warn('[ServiceWorker] Using legacy cleanup fallback - registry not available');
-    const session = agent.getSession();
-    await session.close();
-    await agent.cleanup();
   }
 
   if (cacheManager) {
@@ -1500,7 +1846,6 @@ chrome.runtime.onSuspend.addListener(async () => {
   isInitialized = false;
   initializationPromise = null;
   registry = null;
-  agent = null;
 });
 
 // ============================================================================
@@ -1562,4 +1907,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 initialize();
 
 // Export for testing (Feature 015: include registry and sessionStorage)
-export { agent, registry, sessionStorage, initialize };
+export { registry, sessionStorage, initialize };

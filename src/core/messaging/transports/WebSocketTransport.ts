@@ -2,7 +2,7 @@
  * WebSocket Transport
  *
  * UIChannelTransport implementation for the web UI connecting to the
- * Apple Pi Server. Handles the wire protocol:
+ * WorkX Server. Handles the wire protocol:
  *
  *   1. Server sends `connect.challenge` event
  *   2. Client sends `connect` request (handshake)
@@ -17,6 +17,7 @@
 
 import type { Op } from '@/core/protocol/types';
 import type { EventMsg } from '@/core/protocol/events';
+import type { ChannelEvent } from '@/core/channels/types';
 import type { UIChannelTransport } from './types';
 
 export interface WebSocketTransportConfig {
@@ -44,7 +45,7 @@ const SERVICE_METHOD_MAP: Record<string, string> = {
 
 export class WebSocketTransport implements UIChannelTransport {
   private ws: WebSocket | null = null;
-  private listeners = new Set<(event: EventMsg) => void>();
+  private listeners = new Set<(event: ChannelEvent) => void>();
   private config: WebSocketTransportConfig;
   private connectionId: string | null = null;
   private pendingRpcs = new Map<string, PendingRpc>();
@@ -106,7 +107,7 @@ export class WebSocketTransport implements UIChannelTransport {
     });
   }
 
-  onEvent(handler: (event: EventMsg) => void): () => void {
+  onEvent(handler: (event: ChannelEvent) => void): () => void {
     this.listeners.add(handler);
     return () => {
       this.listeners.delete(handler);
@@ -311,7 +312,7 @@ export class WebSocketTransport implements UIChannelTransport {
       protocolVersion: payload?.protocolVersion ?? 1,
       client: {
         id: 'web-ui',
-        displayName: 'Apple Pi Web UI',
+        displayName: 'WorkX Web UI',
         version: '1.0.0',
         platform: 'web',
         mode: 'channel',

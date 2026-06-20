@@ -81,12 +81,14 @@ function createMockAgentConfig(overrides: {
   providerApiKey?: string | null;
   providerData?: any;
   modelData?: any;
+  toolsConfig?: any;
 } = {}) {
   const {
     selectedModelKey = 'openai:gpt-5',
     providerApiKey = 'sk-test-key-1234567890',
     providerData = null,
     modelData = null,
+    toolsConfig = {},
   } = overrides;
 
   const defaultModelData = modelData ?? {
@@ -104,6 +106,7 @@ function createMockAgentConfig(overrides: {
     getModelByKey: vi.fn().mockReturnValue(defaultModelData),
     getProviderApiKey: vi.fn().mockResolvedValue(providerApiKey),
     getProvider: vi.fn().mockReturnValue(providerData),
+    getToolsConfig: vi.fn().mockReturnValue(toolsConfig),
   } as any;
 }
 
@@ -261,6 +264,21 @@ describe('ModelClientFactory', () => {
       (factory as any).config = createMockAgentConfig({ selectedModelKey: 'openai:gpt-5.1' });
       const client2 = await factory.createClient('openai');
       expect(client1).not.toBe(client2);
+    });
+
+    it('should use construction-time tools config in the cache key', async () => {
+      await factory.initialize(createMockAgentConfig({
+        toolsConfig: { parallelToolCalls: false },
+      }));
+      const client1 = await factory.createClient('openai');
+
+      (factory as any).config = createMockAgentConfig({
+        toolsConfig: { parallelToolCalls: true },
+      });
+      const client2 = await factory.createClient('openai');
+
+      expect(client1).not.toBe(client2);
+      expect((client2 as any)._opts.parallelToolCalls).toBe(true);
     });
 
     it('should separate backend-routed and direct clients in cache', async () => {

@@ -6,24 +6,9 @@
  */
 
 import type { StorageAdapter } from './StorageAdapter';
-import { createStorageAdapter } from './createStorageAdapter';
 import type { TokenUsageRecord, SessionUsageSummary, DailyUsageSummary } from './types';
 
 const STORE_NAME = 'token_usage_records';
-
-let adapterPromise: Promise<StorageAdapter> | null = null;
-let adapterInstance: StorageAdapter | null = null;
-
-function getAdapter(): Promise<StorageAdapter> {
-  if (adapterInstance) return Promise.resolve(adapterInstance);
-  if (!adapterPromise) {
-    adapterPromise = createStorageAdapter().then((adapter) => {
-      adapterInstance = adapter;
-      return adapter;
-    });
-  }
-  return adapterPromise;
-}
 
 export class TokenUsageStore {
   private static instance: TokenUsageStore | null = null;
@@ -33,6 +18,15 @@ export class TokenUsageStore {
     this.adapter = adapter || null;
   }
 
+  /**
+   * Inject a StorageAdapter for the singleton instance.
+   * Each platform bootstrap should call this early with the appropriate adapter.
+   */
+  static setAdapter(adapter: StorageAdapter): void {
+    const store = TokenUsageStore.getInstance();
+    store.adapter = adapter;
+  }
+
   static getInstance(): TokenUsageStore {
     if (!TokenUsageStore.instance) {
       TokenUsageStore.instance = new TokenUsageStore();
@@ -40,14 +34,18 @@ export class TokenUsageStore {
     return TokenUsageStore.instance;
   }
 
-  private async db(): Promise<StorageAdapter> {
-    if (this.adapter) return this.adapter;
-    return getAdapter();
+  private db(): StorageAdapter | null {
+    if (!this.adapter) {
+      console.warn('[TokenUsageStore] Adapter not set. Call TokenUsageStore.setAdapter() first.');
+      return null;
+    }
+    return this.adapter;
   }
 
   async save(record: TokenUsageRecord): Promise<void> {
+    const adapter = this.db();
+    if (!adapter) return;
     try {
-      const adapter = await this.db();
       await adapter.put(STORE_NAME, record);
     } catch (err) {
       console.warn('[TokenUsageStore] Save failed:', err);
@@ -55,24 +53,28 @@ export class TokenUsageStore {
   }
 
   async getAll(): Promise<TokenUsageRecord[]> {
-    const adapter = await this.db();
+    const adapter = this.db();
+    if (!adapter) return [];
     return adapter.getAll<TokenUsageRecord>(STORE_NAME);
   }
 
   async getBySession(sessionId: string): Promise<TokenUsageRecord[]> {
-    const adapter = await this.db();
+    const adapter = this.db();
+    if (!adapter) return [];
     return adapter.queryByIndex<TokenUsageRecord>(STORE_NAME, 'by_session', sessionId);
   }
 
   async getByDateRange(start: string, end: string): Promise<TokenUsageRecord[]> {
-    const adapter = await this.db();
+    const adapter = this.db();
+    if (!adapter) return [];
     return adapter.queryByIndex<TokenUsageRecord>(
       STORE_NAME, 'by_timestamp', IDBKeyRange.bound(start, end)
     );
   }
 
   async getByModel(model: string): Promise<TokenUsageRecord[]> {
-    const adapter = await this.db();
+    const adapter = this.db();
+    if (!adapter) return [];
     return adapter.queryByIndex<TokenUsageRecord>(STORE_NAME, 'by_model', model);
   }
 
@@ -106,6 +108,8 @@ export class TokenUsageStore {
         output_tokens: entry.records.reduce((s, r) => s + r.output_tokens, 0),
         reasoning_output_tokens: entry.records.reduce((s, r) => s + r.reasoning_output_tokens, 0),
         total_tokens: entry.records.reduce((s, r) => s + r.total_tokens, 0),
+        costUSD: entry.records.reduce((s, r) => s + (r.costUSD ?? 0), 0),
+        costEstimated: entry.records.some((r) => r.costEstimated === true),
         turn_count: entry.records.reduce((s, r) => s + r.turn_count, 0),
       });
     }
@@ -120,26 +124,35 @@ export class TokenUsageStore {
       const date = r.timestamp.slice(0, 10); // YYYY-MM-DD
       let entry = map.get(date);
       if (!entry) {
-        entry = { date, total_tokens: 0, input_tokens: 0, output_tokens: 0, byModel: {} };
+        entry = { date, total_tokens: 0, input_tokens: 0, output_tokens: 0, costUSD: 0, byModel: {} };
         map.set(date, entry);
       }
       entry.total_tokens += r.total_tokens;
       entry.input_tokens += r.input_tokens;
       entry.output_tokens += r.output_tokens;
+      entry.costUSD += r.costUSD ?? 0;
       entry.byModel[r.model] = (entry.byModel[r.model] || 0) + r.total_tokens;
     }
 
     return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
   }
 
-  static aggregateByModel(records: TokenUsageRecord[]): Record<string, { total_tokens: number; taskCount: number }> {
-    const result: Record<string, { total_tokens: number; taskCount: number }> = {};
+  static aggregateByModel(records: TokenUsageRecord[]): Record<string, { total_tokens: number; taskCount: number; costUSD: number; costEstimated: boolean }> {
+    const result: Record<string, { total_tokens: number; taskCount: number; costUSD: number; costEstimated: boolean }> = {};
     for (const r of records) {
-      if (!result[r.model]) {
-        result[r.model] = { total_tokens: 0, taskCount: 0 };
+      // Track 18: key per provider-qualified model when available so cost
+      // is attributed to the right provider (same model id can be priced
+      // differently across providers); fall back to the raw id.
+      const key = r.provider_model ?? r.model;
+      if (!result[key]) {
+        result[key] = { total_tokens: 0, taskCount: 0, costUSD: 0, costEstimated: false };
       }
-      result[r.model].total_tokens += r.total_tokens;
-      result[r.model].taskCount += 1;
+      result[key].total_tokens += r.total_tokens;
+      result[key].taskCount += 1;
+      result[key].costUSD += r.costUSD ?? 0;
+      if (r.costEstimated) {
+        result[key].costEstimated = true;
+      }
     }
     return result;
   }

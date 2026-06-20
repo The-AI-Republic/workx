@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import '../../__test-utils__/chrome-storage-mock';
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
@@ -43,6 +43,7 @@ describe('SessionCacheManager', () => {
   });
 
   afterEach(async () => {
+    vi.restoreAllMocks();
     await manager.close();
 
     const dbs = await indexedDB.databases();
@@ -51,6 +52,32 @@ describe('SessionCacheManager', () => {
         indexedDB.deleteDatabase(db.name);
       }
     }
+  });
+
+  describe('production tiered eviction', () => {
+    it('evicts oldest ordinary cache items and protects tool_result blobs', async () => {
+      const nowSpy = vi.spyOn(Date, 'now');
+      nowSpy.mockReturnValue(1_000);
+      const ordinaryOld = await manager.write('session1', { data: 'old'.repeat(100) }, 'old');
+      nowSpy.mockReturnValue(2_000);
+      const protectedResult = await manager.write(
+        'session1',
+        { data: 'persisted'.repeat(100) },
+        'tool result',
+        undefined,
+        undefined,
+        { kind: 'tool_result' },
+      );
+      nowSpy.mockReturnValue(3_000);
+      const ordinaryNew = await manager.write('session1', { data: 'new'.repeat(100) }, 'new');
+
+      const freed = await manager.evictOldestCacheItems(1);
+
+      expect(freed).toBeGreaterThan(0);
+      await expect(manager.read(ordinaryOld.storageKey)).rejects.toBeInstanceOf(ItemNotFoundError);
+      await expect(manager.read(protectedResult.storageKey)).resolves.toMatchObject({ data: { data: 'persisted'.repeat(100) } });
+      await expect(manager.read(ordinaryNew.storageKey)).resolves.toMatchObject({ data: { data: 'new'.repeat(100) } });
+    });
   });
 
   // Storage Key Generation
@@ -348,6 +375,29 @@ describe('SessionCacheManager', () => {
 
       const updated = await manager.getConfig();
       expect(updated.sessionEvictionPercentage).toBe(0.7);
+    });
+
+    it('should not evict persisted tool result entries', async () => {
+      const protectedItem = await manager.write(
+        'conv_auto_guard',
+        { content: 'persisted result' },
+        'tool_result:call_123',
+        undefined,
+        undefined,
+        { kind: 'tool_result', toolUseId: 'call_123' }
+      );
+      await manager.write('conv_auto_guard', { data: 1 }, 'ordinary 1');
+      await manager.write('conv_auto_guard', { data: 2 }, 'ordinary 2');
+
+      await (manager as any).autoEvict('conv_auto_guard');
+
+      const stillPresent = await manager.read(protectedItem.storageKey);
+      expect(stillPresent.customMetadata?.kind).toBe('tool_result');
+
+      const remaining = await manager.list('conv_auto_guard');
+      expect(remaining).toHaveLength(2);
+      expect(remaining.some(item => item.storageKey === protectedItem.storageKey)).toBe(true);
+      expect(remaining.filter(item => item.description.startsWith('ordinary'))).toHaveLength(1);
     });
   });
 

@@ -8,7 +8,7 @@
  */
 
 import type { Op } from '@/core/protocol/types';
-import type { EventMsg } from '@/core/protocol/events';
+import type { ChannelEvent } from '@/core/channels/types';
 
 /**
  * Transport interface for UIChannelClient.
@@ -19,7 +19,7 @@ export interface UIChannelTransport {
   sendOp(op: Op, context?: Record<string, unknown>): Promise<void>;
 
   /** Register a handler for incoming events. Returns an unlisten function. */
-  onEvent(handler: (event: EventMsg) => void): () => void;
+  onEvent(handler: (event: ChannelEvent) => void): () => void;
 
   /** Initialize the transport (establish connections, etc.) */
   initialize(): Promise<void>;

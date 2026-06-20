@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
-import { StorageTool } from '@/tools/StorageTool';
+import { StorageTool } from '@/extension/tools/StorageTool';
 import { IndexedDBAdapter } from '@/storage/IndexedDBAdapter';
 
 describe('Storage Tool Cache - Integration Tests', () => {

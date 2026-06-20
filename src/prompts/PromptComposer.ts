@@ -2,24 +2,128 @@
  * PromptComposer
  *
  * Dynamically composes system prompts from fragment files based on
- * agent type (browserx vs pi) and runtime context.
+ * agent type (workx vs pi) and runtime context.
  *
  * Never called by the agent directly — only by PromptLoader.
  */
 
 // Build-time fragment imports
-import browserxIntro from './fragments/browserx_intro.md?raw';
-import piIntro from './fragments/applepi_intro.md?raw';
-import piServerIntro from './fragments/applepi_server_intro.md?raw';
+import workxIntro from './fragments/workx_intro.md?raw';
+import desktopIntro from './fragments/workx_desktop_intro.md?raw';
+import serverIntro from './fragments/workx_server_intro.md?raw';
+import coderIntro from './fragments/coder_intro.md?raw';
+import systemSemantics from './fragments/system_semantics.md?raw';
 import safety from './fragments/safety.md?raw';
-import browserxTools from './fragments/browserx_tools.md?raw';
-import piTools from './fragments/pi_tools.md?raw';
-import taskPolicies from './fragments/task_execution_policies.md?raw';
-import approvalPolicies from './fragments/approval_policies.md?raw';
+import actionRiskAndApproval from './fragments/action_risk_and_approval.md?raw';
+import workLoop from './fragments/work_loop.md?raw';
+import workxTools from './fragments/workx_tools.md?raw';
+import desktopTools from './fragments/workx_desktop_tools.md?raw';
+import coderTools from './fragments/coder_tools.md?raw';
+import codeGuardrails from './fragments/code_guardrails.md?raw';
+import communication from './fragments/communication.md?raw';
 import compactSummarization from './fragments/compact_summarization.md?raw';
 import compactSummaryPrefix from './fragments/compact_summary_prefix.md?raw';
+import planReview from './fragments/plan_review.md?raw';
+import { resolvePersona } from './PersonaLoader';
 
-export type AgentType = 'browserx' | 'applepi' | 'applepi-server';
+export type AgentType = 'workx' | 'workx-desktop' | 'workx-server';
+
+/**
+ * Agent persona mode. Orthogonal to AgentType.
+ *
+ * Adding a mode is additive: extend this union, add a MODES entry, and add
+ * fragment manifest rows owned by the new mode. No composer logic changes.
+ */
+export type AgentMode = 'general' | 'code';
+
+export const DEFAULT_MODE: AgentMode = 'general';
+
+export interface AgentModeSpec {
+  id: AgentMode;
+  /** Display label for UI selectors */
+  label: string;
+  /**
+   * Platforms that offer this mode. Omitted = all non-workx platforms.
+   * WorkX never exposes modes (composer forces 'general' for it).
+   */
+  agentTypes?: AgentType[];
+}
+
+/**
+ * Mode registry. The single source of truth for which modes exist and how
+ * they are labelled. UI selectors and slash commands render from this.
+ */
+export const MODES: Record<AgentMode, AgentModeSpec> = {
+  general: { id: 'general', label: 'General' },
+  code: { id: 'code', label: 'Code', agentTypes: ['workx-desktop', 'workx-server'] },
+};
+
+type FragmentContent = string | ((args: {
+  agentType: AgentType;
+  mode: AgentMode;
+  context?: RuntimeContext;
+  composer: PromptComposer;
+}) => string | null | undefined);
+
+interface FragmentSpec {
+  id: string;
+  order: number;
+  content: FragmentContent;
+  agentTypes?: AgentType[];
+  modes?: AgentMode[];
+  requiresCodingInstructions?: boolean;
+}
+
+export const FRAGMENTS: FragmentSpec[] = [
+  { id: 'workx-intro', order: 10, agentTypes: ['workx'], content: workxIntro },
+  { id: 'workx-desktop-intro', order: 10, agentTypes: ['workx-desktop'], modes: ['general'], content: desktopIntro },
+  { id: 'workx-server-intro', order: 10, agentTypes: ['workx-server'], modes: ['general'], content: serverIntro },
+  { id: 'coder-intro', order: 10, agentTypes: ['workx-desktop', 'workx-server'], modes: ['code'], content: coderIntro },
+  {
+    id: 'persona',
+    order: 20,
+    content: ({ context }) => resolvePersona(context?.personaName)?.prompt,
+  },
+  {
+    id: 'runtime-metadata',
+    order: 30,
+    content: ({ agentType, context, composer }) => composer.buildRuntimeMetadata(agentType, context),
+  },
+  { id: 'system-semantics', order: 40, content: systemSemantics },
+  { id: 'safety', order: 50, content: safety },
+  { id: 'action-risk-and-approval', order: 60, content: actionRiskAndApproval },
+  { id: 'work-loop', order: 70, content: workLoop },
+  {
+    id: 'workx-tools',
+    order: 80,
+    agentTypes: ['workx'],
+    requiresCodingInstructions: true,
+    content: workxTools,
+  },
+  {
+    id: 'workx-desktop-tools',
+    order: 80,
+    agentTypes: ['workx-desktop', 'workx-server'],
+    modes: ['general'],
+    requiresCodingInstructions: true,
+    content: desktopTools,
+  },
+  {
+    id: 'coder-tools',
+    order: 80,
+    agentTypes: ['workx-desktop', 'workx-server'],
+    modes: ['code'],
+    requiresCodingInstructions: true,
+    content: coderTools,
+  },
+  { id: 'communication', order: 90, content: communication },
+  { id: 'code-guardrails', order: 100, modes: ['code'], content: codeGuardrails },
+  {
+    id: 'plan-review',
+    order: 110,
+    content: ({ context }) => context?.planReviewActive ? planReview : null,
+  },
+];
 
 export interface RuntimeContext {
   /** Operating system: 'linux' | 'macos' | 'windows' */
@@ -40,46 +144,53 @@ export interface RuntimeContext {
   currentDateTime?: string;
   /** Available memory in GB */
   memoryGB?: number;
+  /**
+   * Track 14 Plan Review: when true, the read-only-exploration fragment
+   * is appended so the model keeps proposing (not executing) across
+   * turns. Re-evaluated every compose() call → persists for the whole
+   * review. Orthogonal to the agent operating-mode axis.
+   */
+  planReviewActive?: boolean;
+  /** Selected output-style persona name (Track 24.2). Unknown → no-op. */
+  personaName?: string;
 }
 
 export class PromptComposer {
   /**
-   * Compose the main agent system prompt.
+   * Compose the main agent system prompt for an (agentType, mode) pair.
    *
    * Assembled sections:
-   * 1. Self-intro + core directive + capabilities (agent-specific)
-   * 2. Runtime metadata (injected fresh each call)
-   * 3. Safety guidance (shared)
-   * 4. Tool guidance + operation strategy (agent-specific, static for MVP)
-   * 5. Task execution policies (shared)
+   * 1. Self-intro + core directive + capabilities (agent/mode-specific)
+   * 2. Output-style persona, if configured
+   * 3. Runtime metadata (injected fresh each call)
+   * 4. System semantics, safety, action risk, and work loop (shared)
+   * 5. Tool guidance + operation strategy (agent/mode-specific)
+   * 6. Communication guidance (shared)
+   * 7. Code guardrails, when code mode is active
+   * 8. Plan review mode guidance, when active
    */
-  composeMainInstruction(agentType: AgentType, context?: RuntimeContext): string {
-    const sections: string[] = [];
+  composeMainInstruction(agentType: AgentType, context?: RuntimeContext): string;
+  composeMainInstruction(agentType: AgentType, mode?: AgentMode, context?: RuntimeContext): string;
+  composeMainInstruction(
+    agentType: AgentType,
+    modeOrContext: AgentMode | RuntimeContext = DEFAULT_MODE,
+    context?: RuntimeContext
+  ): string {
+    const requestedMode: AgentMode = typeof modeOrContext === 'string' ? modeOrContext : DEFAULT_MODE;
+    const runtimeContext = typeof modeOrContext === 'string' ? context : modeOrContext;
+    const effectiveMode: AgentMode = agentType === 'workx' ? 'general' : requestedMode;
+    const persona = resolvePersona(runtimeContext?.personaName);
 
-    // 1. Agent identity & mission
-    const intro = agentType === 'browserx'
-      ? browserxIntro
-      : agentType === 'applepi-server'
-        ? piServerIntro
-        : piIntro;
-    sections.push(intro);
-
-    // 2. Runtime metadata
-    sections.push(this.buildRuntimeMetadata(agentType, context));
-
-    // 3. Safety & ethics
-    sections.push(safety);
-
-    // 4. Tool guidance (static listing for MVP)
-    sections.push(agentType === 'browserx' ? browserxTools : piTools);
-
-    // 5. Task execution policies
-    sections.push(taskPolicies);
-
-    // 6. Approval policies
-    sections.push(approvalPolicies);
-
-    return sections.filter(Boolean).join('\n\n');
+    return FRAGMENTS
+      .filter((fragment) => !fragment.agentTypes || fragment.agentTypes.includes(agentType))
+      .filter((fragment) => !fragment.modes || fragment.modes.includes(effectiveMode))
+      .filter((fragment) => !fragment.requiresCodingInstructions || !persona || persona.keepCodingInstructions)
+      .sort((a, b) => a.order - b.order)
+      .map((fragment) => typeof fragment.content === 'function'
+        ? fragment.content({ agentType, mode: effectiveMode, context: runtimeContext, composer: this })
+        : fragment.content)
+      .filter((section): section is string => Boolean(section))
+      .join('\n\n');
   }
 
   /**
@@ -99,7 +210,7 @@ export class PromptComposer {
   /**
    * Build runtime metadata section.
    */
-  private buildRuntimeMetadata(
+  buildRuntimeMetadata(
     agentType: AgentType,
     context?: RuntimeContext
   ): string {
@@ -111,7 +222,7 @@ export class PromptComposer {
       lines.push(`- Current date/time: ${context.currentDateTime}`);
     }
 
-    if (agentType === 'applepi' || agentType === 'applepi-server') {
+    if (agentType === 'workx-desktop' || agentType === 'workx-server') {
       // Desktop agent gets OS/platform details
       if (context.os) {
         const osLabel: Record<string, string> = {

@@ -34,28 +34,37 @@ export class AgentSession {
   private _eventListeners: Set<SessionEventListener> = new Set();
   private _tabClosureUnsubscribe: (() => void) | null = null;
   private _storage: SessionStorage | null = null;
+  private _internal: boolean;
+  private _submitting = false;
+  /**
+   * (Track 04 / Q9) Tab id of the chat panel that owns this session.
+   * When this tab closes, the entire session is torn down. When any
+   * other tab closes, only tasks scoped to that tab are aborted.
+   * Populated by the chat-panel registration handler at panel-open time.
+   */
+  private _uiTabId: number | undefined = undefined;
 
   /**
    * Create a new AgentSession
    * @param config Session configuration
    * @param letterIndex Index for session letter assignment (0-25)
    */
-  constructor(config: SessionConfig, letterIndex: number = 0) {
-    this._sessionId = `session_${uuidv4()}`;
+  constructor(config: SessionConfig & { sessionId?: string }, letterIndex: number = 0) {
+    this._internal = config.internal ?? false;
+    this._sessionId = config.sessionId ?? uuidv4();
     this._sessionLetter = SESSION_LETTERS[letterIndex % SESSION_LETTERS.length];
 
     const now = Date.now();
     this._metadata = {
       sessionId: this._sessionId,
       sessionLetter: this._sessionLetter,
-      conversationId: '', // Set when agent is attached
       type: config.type,
       state: 'initializing',
       createdAt: now,
       lastActivityAt: now,
       tabId: config.tabId ?? null,
       tabGroupId: null,
-      tabGroupName: `browserx_s_${this._sessionLetter}`,
+      tabGroupName: `workx_s_${this._sessionLetter}`,
     };
   }
 
@@ -83,9 +92,29 @@ export class AgentSession {
     return { ...this._metadata };
   }
 
+  /** Whether this is an internal infrastructure session */
+  get internal(): boolean {
+    return this._internal;
+  }
+
   /** Underlying RepublicAgent instance */
   get agent(): RepublicAgent | null {
     return this._agent;
+  }
+
+  /** (Track 04 / Q9) Tab id of the chat panel that owns this session, if any. */
+  get uiTabId(): number | undefined {
+    return this._uiTabId;
+  }
+
+  /**
+   * (Track 04 / Q9) Register which tab is hosting the chat panel for this
+   * session. Called by the panel-open handler at session start so the
+   * service worker can distinguish chat-panel close (full shutdown) from
+   * working-tab close (selective abort).
+   */
+  setUiTabId(tabId: number): void {
+    this._uiTabId = tabId;
   }
 
   // ==========================================================================
@@ -102,7 +131,6 @@ export class AgentSession {
     }
 
     this._agent = agent;
-    this._metadata.conversationId = agent.getSession().conversationId;
     this._updateActivity();
   }
 
@@ -172,8 +200,53 @@ export class AgentSession {
   }
 
   // ==========================================================================
+  // State Query
+  // ==========================================================================
+
+  /**
+   * Get the current session state snapshot.
+   * Returns per-session data (history, tabId, active turn).
+   * Registry-level aggregates (activeSessionCount, maxConcurrent) are added
+   * by the service handler — they don't belong on a single session.
+   */
+  getState(): { sessionId: string; isActiveTurn: boolean; tabId: number | null; history: unknown[] } {
+    if (!this._agent) {
+      return {
+        sessionId: this._sessionId,
+        isActiveTurn: false,
+        tabId: this._metadata.tabId,
+        history: [],
+      };
+    }
+
+    const session = this._agent.getSession();
+    const conversationHistory = session.getConversationHistory();
+
+    return {
+      sessionId: this._sessionId,
+      isActiveTurn: session.isActiveTurn(),
+      tabId: session.getTabId(),
+      history: conversationHistory.items,
+    };
+  }
+
+  // ==========================================================================
   // Operations
   // ==========================================================================
+
+  /**
+   * Reset the session: abort running tasks and clear conversation history.
+   * Platform-specific cleanup (e.g. tab reset) is handled by the caller.
+   */
+  async reset(): Promise<void> {
+    if (!this._agent) {
+      throw new Error(`Session ${this._sessionId} has no agent attached`);
+    }
+
+    const session = this._agent.getSession();
+    await session.abortAllTasks('UserInterrupt');
+    await session.reset();
+  }
 
   /**
    * Submit an operation to the agent
@@ -189,25 +262,34 @@ export class AgentSession {
       throw new Error(`Session ${this._sessionId} is terminated`);
     }
 
-    // Mark as active before submitting
-    if (this._state === 'idle') {
-      this.markActive();
+    if (this._submitting) {
+      throw new Error(`Session ${this._sessionId} is already processing a submission`);
     }
 
-    this._updateActivity();
+    this._submitting = true;
+    try {
+      // Mark as active before submitting
+      if (this._state === 'idle') {
+        this.markActive();
+      }
 
-    const submissionId = await this._agent.submitOperation(operation, {
-      tabId: this._metadata.tabId ?? undefined,
-    });
+      this._updateActivity();
 
-    return submissionId;
+      const submissionId = await this._agent.submitOperation(operation, {
+        tabId: this._metadata.tabId ?? undefined,
+      });
+
+      return submissionId;
+    } finally {
+      this._submitting = false;
+    }
   }
 
   /**
-   * Get the underlying agent's conversation ID
+   * Get the session ID (same across all layers)
    */
-  getConversationId(): string {
-    return this._metadata.conversationId;
+  getSessionId(): string {
+    return this._sessionId;
   }
 
   // ==========================================================================
@@ -216,7 +298,7 @@ export class AgentSession {
 
   /**
    * T027: Create a Chrome tab group for this session
-   * Creates a tab group with name browserx_s_<letter> and a distinct color
+   * Creates a tab group with name workx_s_<letter> and a distinct color
    * @returns The created tab group ID, or null if creation failed
    */
   async createTabGroup(): Promise<number | null> {
@@ -390,9 +472,9 @@ export class AgentSession {
     if (this._agent) {
       try {
         const session = this._agent.getSession();
-        // Use 'UserInterrupt' as the abort reason for session termination
-        await session.abortAllTasks('UserInterrupt');
-        await session.close();
+        const abortReason =
+          reason === 'tabClosed' ? 'TabClosed' : reason === 'error' ? 'Error' : 'UserInterrupt';
+        await session.dispose({ reason: abortReason, recordCloseEvent: true });
         await this._agent.cleanup();
       } catch (error) {
         console.error(`[AgentSession] Error during agent cleanup:`, error);

@@ -1,5 +1,5 @@
 /**
- * Logging utilities for ApplePi
+ * Logging utilities for WorkX
  * Provides trace-level logging for Gemini streaming debugging
  */
 
@@ -33,18 +33,18 @@ export class GeminiLogger {
   /**
    * Log stream start event
    */
-  static streamStart(modelName: string, conversationId: string): void {
+  static streamStart(modelName: string, sessionId: string): void {
     if (!this.enabled) return;
-    console.log(`[Gemini] Stream starting - Model: ${modelName}, Conversation: ${conversationId}`);
+    console.log(`[Gemini] Stream starting - Model: ${modelName}, Conversation: ${sessionId}`);
   }
 
   /**
    * Log stream end event
    */
-  static streamEnd(conversationId: string, totalChunks?: number): void {
+  static streamEnd(sessionId: string, totalChunks?: number): void {
     if (!this.enabled) return;
     const chunksInfo = totalChunks !== undefined ? `, Total chunks: ${totalChunks}` : '';
-    console.log(`[Gemini] Stream ended - Conversation: ${conversationId}${chunksInfo}`);
+    console.log(`[Gemini] Stream ended - Conversation: ${sessionId}${chunksInfo}`);
   }
 
   /**

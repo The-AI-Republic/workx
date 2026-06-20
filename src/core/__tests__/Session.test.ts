@@ -2,7 +2,7 @@
  * Unit Tests: Session
  *
  * Comprehensive tests for the Session class covering:
- * - Constructor (old/new signatures, isPersistent, conversationId)
+ * - Constructor (old/new signatures, isPersistent, sessionId)
  * - initialize()
  * - addToHistory() / getConversationHistory() / clearHistory()
  * - export() / import()
@@ -21,6 +21,7 @@ import { TurnContext } from '@/core/TurnContext';
 import type { SessionServices } from '@/core/session/state/SessionServices';
 import type { SessionTask } from '@/core/tasks/SessionTask';
 import { TaskKind } from '@/core/session/state/types';
+import type { BackgroundAgentTaskState } from '@/core/tasks/types';
 import type { ResponseItem, InputItem } from '@/core/protocol/types';
 
 // Mock RolloutRecorder so the constructor never touches disk
@@ -125,38 +126,38 @@ describe('Session', () => {
   // Constructor
   // =========================================================================
   describe('Constructor', () => {
-    it('should generate a unique conversationId', () => {
+    it('should generate a unique sessionId', () => {
       const session = new Session(undefined, false);
-      expect(session.conversationId).toBe('test-uuid-1');
+      expect(session.sessionId).toBe('test-uuid-1');
     });
 
     it('should accept old boolean-only signature for backward compatibility', () => {
       const session = new Session(false);
       // isPersistent should be false
-      expect(session.conversationId).toBeTruthy();
+      expect(session.sessionId).toBeTruthy();
     });
 
     it('should default isPersistent to true when no arguments', () => {
       // We can verify by checking that initializeSession is called (persistent path)
-      // Just verify construction succeeds and conversationId is set
+      // Just verify construction succeeds and sessionId is set
       const session = new Session();
-      expect(session.conversationId).toBeTruthy();
+      expect(session.sessionId).toBeTruthy();
     });
 
-    it('should use provided conversationId for resumed mode', () => {
+    it('should use provided sessionId for resumed mode', () => {
       const session = new Session(undefined, false, undefined, undefined, {
         mode: 'resumed',
-        conversationId: 'my-custom-id',
+        sessionId: 'my-custom-id',
         rolloutItems: [],
       });
-      expect(session.conversationId).toBe('my-custom-id');
+      expect(session.sessionId).toBe('my-custom-id');
     });
 
-    it('should generate new conversationId for new mode', () => {
+    it('should generate new sessionId for new mode', () => {
       const session = new Session(undefined, false, undefined, undefined, {
         mode: 'new',
       });
-      expect(session.conversationId).toBe('test-uuid-1');
+      expect(session.sessionId).toBe('test-uuid-1');
     });
 
     it('should set tabId to -1 initially', () => {
@@ -206,6 +207,29 @@ describe('Session', () => {
       const session = new Session(undefined, false);
       await session.initialize();
       await expect(session.initialize()).resolves.toBeUndefined();
+    });
+
+    it('surfaces a non-persistent forked history init failure instead of swallowing it', async () => {
+      // Regression: a forked sub-agent is told it inherited the parent
+      // conversation. If reconstruct/persist fails it must NOT silently run
+      // with empty history — initialize() has to reject so the runner reports it.
+      const consoleErr = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const recordSpy = vi
+        .spyOn(Session.prototype as any, 'recordInitialHistory')
+        .mockRejectedValue(new Error('forked reconstruct failed'));
+
+      try {
+        const session = new Session(undefined, false, undefined, undefined, {
+          mode: 'forked',
+          sourceConversationId: 'parent-session',
+          rolloutItems: [],
+        });
+        await expect(session.initialize()).rejects.toThrow('forked reconstruct failed');
+        expect(consoleErr).toHaveBeenCalled();
+      } finally {
+        recordSpy.mockRestore();
+        consoleErr.mockRestore();
+      }
     });
   });
 
@@ -407,7 +431,7 @@ describe('Session', () => {
 
       const exported = session.export();
 
-      expect(exported.id).toBe(session.conversationId);
+      expect(exported.id).toBe(session.sessionId);
       expect(exported.state).toBeDefined();
       expect(exported.state.history).toBeDefined();
       expect(exported.state.history.items).toHaveLength(1);
@@ -430,14 +454,14 @@ describe('Session', () => {
       expect((history.items[1] as any).role).toBe('assistant');
     });
 
-    it('should preserve conversationId through import', async () => {
+    it('should preserve sessionId through import', async () => {
       const session = new Session(undefined, false);
-      const originalId = session.conversationId;
+      const originalId = session.sessionId;
 
       const exported = session.export();
       const imported = Session.import(exported);
 
-      expect(imported.conversationId).toBe(originalId);
+      expect(imported.sessionId).toBe(originalId);
     });
 
     it('should accept optional services and toolRegistry in import', () => {
@@ -626,8 +650,8 @@ describe('Session', () => {
       });
 
       it('should return false when tokens are below threshold', () => {
-        // 80 tokens is below 90% of 100
-        session.addTokenUsage(80);
+        // 79 tokens is below the default 80% threshold for a 100-token window.
+        session.addTokenUsage(79);
         expect(session.shouldCompact(100)).toBe(false);
       });
     });
@@ -686,7 +710,7 @@ describe('Session', () => {
       expect(task.kind).toHaveBeenCalled();
     });
 
-    it('interruptTask should abort all running tasks', async () => {
+    it('interruptTask aborts the foreground task (Track 04)', async () => {
       const task = makeMockTask({
         run: vi.fn().mockImplementation(() => new Promise(() => {})), // never resolves
       });
@@ -694,8 +718,114 @@ describe('Session', () => {
       await session.spawnTask(task, turnContext, 'sub-1', []);
       expect(session.hasRunningTask('sub-1')).toBe(true);
 
+      // Track 04: interruptTask narrows to foreground-only. The spawn above
+      // has no `background: true`, so it IS the foreground task — should be
+      // killed.
       await session.interruptTask();
       expect(session.hasRunningTask('sub-1')).toBe(false);
+    });
+
+    // ─────────────────────────────────────────────────────────────────
+    // Track 04: concurrency seam — background tasks survive foreground
+    // ─────────────────────────────────────────────────────────────────
+
+    it('foreground spawn does NOT abort background tasks (Track 04 concurrency seam)', async () => {
+      const bg = makeMockTask({
+        run: vi.fn().mockImplementation(() => new Promise(() => {})),
+      });
+      const fg1 = makeMockTask({
+        run: vi.fn().mockImplementation(() => new Promise(() => {})),
+      });
+      const fg2 = makeMockTask({
+        run: vi.fn().mockImplementation(() => new Promise(() => {})),
+      });
+
+      // Spawn background first.
+      await session.spawnTask(bg, turnContext, 'bg-1', [], { background: true });
+      expect(session.hasRunningTask('bg-1')).toBe(true);
+      expect(bg.abort).not.toHaveBeenCalled();
+
+      // Spawn first foreground.
+      await session.spawnTask(fg1, turnContext, 'fg-1', []);
+      expect(session.getForegroundTaskId()).toBe('fg-1');
+
+      // Spawn second foreground — replaces fg1 but MUST NOT touch bg-1.
+      await session.spawnTask(fg2, turnContext, 'fg-2', []);
+      expect(session.getForegroundTaskId()).toBe('fg-2');
+      expect(fg1.abort).toHaveBeenCalled();   // prior foreground killed
+      expect(bg.abort).not.toHaveBeenCalled(); // background SURVIVES
+      expect(session.getTask('bg-1')).toBeDefined();
+    });
+
+    it('interruptTask kills foreground only, leaves background tasks running', async () => {
+      const bg = makeMockTask({
+        run: vi.fn().mockImplementation(() => new Promise(() => {})),
+      });
+      const fg = makeMockTask({
+        run: vi.fn().mockImplementation(() => new Promise(() => {})),
+      });
+
+      await session.spawnTask(bg, turnContext, 'bg-1', [], { background: true });
+      await session.spawnTask(fg, turnContext, 'fg-1', []);
+
+      await session.interruptTask();
+
+      expect(fg.abort).toHaveBeenCalled();
+      expect(bg.abort).not.toHaveBeenCalled();
+      expect(session.getForegroundTaskId()).toBeNull();
+    });
+
+    it('abortTask(id) isolates — aborting one background leaves siblings running', async () => {
+      const a = makeMockTask({ run: vi.fn().mockImplementation(() => new Promise(() => {})) });
+      const b = makeMockTask({ run: vi.fn().mockImplementation(() => new Promise(() => {})) });
+      const c = makeMockTask({ run: vi.fn().mockImplementation(() => new Promise(() => {})) });
+
+      await session.spawnTask(a, turnContext, 'bg-a', [], { background: true });
+      await session.spawnTask(b, turnContext, 'bg-b', [], { background: true });
+      await session.spawnTask(c, turnContext, 'bg-c', [], { background: true });
+
+      await session.abortTask('bg-b', 'UserInterrupt');
+
+      expect(b.abort).toHaveBeenCalled();
+      expect(a.abort).not.toHaveBeenCalled();
+      expect(c.abort).not.toHaveBeenCalled();
+      // bg-b removed; bg-a and bg-c still tracked.
+      expect(session.getTask('bg-b')).toBeUndefined();
+      expect(session.getTask('bg-a')).toBeDefined();
+      expect(session.getTask('bg-c')).toBeDefined();
+    });
+
+    it('abortTasksForTab aborts only tasks scoped to the closed tab', async () => {
+      const onTab42 = makeMockTask({ run: vi.fn().mockImplementation(() => new Promise(() => {})) });
+      const onTab99 = makeMockTask({ run: vi.fn().mockImplementation(() => new Promise(() => {})) });
+      const unscoped = makeMockTask({ run: vi.fn().mockImplementation(() => new Promise(() => {})) });
+
+      await session.spawnTask(onTab42, turnContext, 't42', [], {
+        background: true,
+        scopedTabIds: [42],
+      });
+      await session.spawnTask(onTab99, turnContext, 't99', [], {
+        background: true,
+        scopedTabIds: [99],
+      });
+      await session.spawnTask(unscoped, turnContext, 'tn', [], { background: true });
+
+      await session.abortTasksForTab(42, 'TabClosed');
+
+      expect(onTab42.abort).toHaveBeenCalled();
+      expect(onTab99.abort).not.toHaveBeenCalled();
+      expect(unscoped.abort).not.toHaveBeenCalled();
+    });
+
+    it('listActiveTasks + listTaskStates project correctly', async () => {
+      const fg = makeMockTask({ run: vi.fn().mockImplementation(() => new Promise(() => {})) });
+      await session.spawnTask(fg, turnContext, 'fg-1', []);
+
+      expect(session.listActiveTasks()).toHaveLength(1);
+      // Foreground spawn doesn't get a taskState attached (SubAgentRunner is
+      // the only registerTaskState caller in production). So listTaskStates
+      // is empty for a foreground-only setup.
+      expect(session.listTaskStates()).toHaveLength(0);
     });
 
     it('abortAllTasks should call abort on each task', async () => {
@@ -707,6 +837,96 @@ describe('Session', () => {
       await session.abortAllTasks('UserInterrupt');
 
       expect(task.abort).toHaveBeenCalled();
+    });
+
+    it('fires TaskCompleted exactly once for successful, failed, and aborted tasks', async () => {
+      const fire = vi.fn().mockResolvedValue({ shouldContinue: true });
+      session.setHookDispatcher({ fire } as any);
+
+      await session.spawnTask(makeMockTask({ run: vi.fn().mockResolvedValue('done') }), turnContext, 'ok', []);
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      await session.spawnTask(makeMockTask({ run: vi.fn().mockRejectedValue(new Error('boom')) }), turnContext, 'fail', []);
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      const aborting = makeMockTask({ run: vi.fn().mockImplementation(() => new Promise(() => {})) });
+      await session.spawnTask(aborting, turnContext, 'abort', []);
+      await session.abortTask('abort', 'UserInterrupt');
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      const completed = fire.mock.calls
+        .filter(([event]) => event === 'TaskCompleted')
+        .map(([, input]) => input.task_id);
+      expect(completed).toEqual(['ok', 'fail', 'abort']);
+    });
+
+    it('fires Stop on accepted abort and a throwing hook cannot veto the abort', async () => {
+      const fire = vi.fn(async (event: string) => {
+        if (event === 'Stop') throw new Error('stop hook failed');
+        return { shouldContinue: true };
+      });
+      session.setHookDispatcher({ fire } as any);
+      const task = makeMockTask({
+        run: vi.fn().mockImplementation(() => new Promise(() => {})),
+      });
+
+      await session.spawnTask(task, turnContext, 'stoppable', []);
+      await session.abortTask('stoppable', 'UserInterrupt');
+
+      expect(task.abort).toHaveBeenCalled();
+      expect(session.hasRunningTask('stoppable')).toBe(false);
+      expect(fire).toHaveBeenCalledWith(
+        'Stop',
+        expect.objectContaining({
+          hook_event_name: 'Stop',
+          session_id: session.sessionId,
+          task_id: 'stoppable',
+          stop_reason: 'UserInterrupt',
+          is_background: false,
+        }),
+        expect.objectContaining({ timeoutOverride: 1 }),
+      );
+    });
+
+    it('shutdown aborts active typed tasks and clears the eviction timer', async () => {
+      vi.useFakeTimers();
+      try {
+        const task = makeMockTask({
+          run: vi.fn().mockImplementation(() => new Promise(() => {})),
+        });
+        const context: any = { cancelled: false };
+
+        await session.spawnTask(task, turnContext, 'bg-shutdown', [], { background: true });
+        const taskState: BackgroundAgentTaskState = {
+          id: 'bg-shutdown',
+          type: 'background_agent',
+          status: 'running',
+          description: 'shutdown test',
+          startTime: Date.now(),
+          outputOffset: 0,
+          notified: false,
+          isBackgrounded: true,
+          retain: false,
+          runId: 'bg-shutdown',
+          parentSessionId: 'test-session',
+          prompt: 'test',
+          toolUseCount: 0,
+          tokenUsage: { input: 0, output: 0, total: 0 },
+        };
+        session.registerTaskState(taskState, { context });
+
+        (session as any).ensureEvictionTimer();
+        expect(vi.getTimerCount()).toBeGreaterThan(0);
+
+        await session.shutdown();
+
+        expect(task.abort).toHaveBeenCalled();
+        expect(context.cancelled).toBe(true);
+        expect(session.getTask('bg-shutdown')).toBeUndefined();
+        expect(vi.getTimerCount()).toBe(0);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('should clean up task from activeTurn after task completes', async () => {
@@ -925,14 +1145,14 @@ describe('Session', () => {
   // Session ID accessors
   // =========================================================================
   describe('Session ID accessors', () => {
-    it('getSessionId() should return conversationId', () => {
+    it('getSessionId() should return sessionId', () => {
       const session = new Session(undefined, false);
-      expect(session.getSessionId()).toBe(session.conversationId);
+      expect(session.getSessionId()).toBe(session.sessionId);
     });
 
-    it('getId() should return conversationId', () => {
+    it('getId() should return sessionId', () => {
       const session = new Session(undefined, false);
-      expect(session.getId()).toBe(session.conversationId);
+      expect(session.getId()).toBe(session.sessionId);
     });
   });
 
@@ -959,12 +1179,12 @@ describe('Session', () => {
       expect(session.getTurnContext()).toBe(newContext);
     });
 
-    it('setTurnContext should align the context sessionId to conversationId', () => {
+    it('setTurnContext should align the context sessionId to sessionId', () => {
       const newContext = makeMockTurnContext();
-      // The mock context has sessionId 'test-session', which differs from the session's conversationId
+      // The mock context has sessionId 'test-session', which differs from the session's sessionId
       session.setTurnContext(newContext);
 
-      expect(newContext.getSessionId()).toBe(session.conversationId);
+      expect(newContext.getSessionId()).toBe(session.sessionId);
     });
 
     it('should allow updating turn context', () => {
@@ -1210,6 +1430,95 @@ describe('Session', () => {
       await session.recordConversationItemsDual([makeMessage('assistant', 'a1')]);
 
       expect(session.getMessageCount()).toBe(2);
+    });
+  });
+
+  describe('Track 12: recordRateLimits wiring', () => {
+    it('stores the snapshot and emits a populated TokenCount (no longer inert)', async () => {
+      const session = new Session(undefined, false);
+      const events: any[] = [];
+      session.setEventEmitter(async (e) => {
+        events.push(e);
+      });
+
+      await session.recordRateLimits({
+        primary: { used_percent: 40, window_minutes: 300 },
+      });
+
+      const tokenCount = events.find((e) => e.msg.type === 'TokenCount');
+      expect(tokenCount).toBeDefined();
+      // Previously this was always undefined (the dead-data bug).
+      expect(tokenCount.msg.data.rate_limits).toEqual({
+        primary_used_percent: 40,
+        secondary_used_percent: 0,
+        primary_to_secondary_ratio_percent: 0,
+        primary_window_minutes: 300,
+        secondary_window_minutes: 0,
+      });
+    });
+
+    it('emits token warning state from the canonical auto-compact threshold', async () => {
+      const session = new Session(undefined, false);
+      const events: any[] = [];
+      session.setEventEmitter(async (e) => {
+        events.push(e);
+      });
+      session.setTurnContext({
+        getSessionId: () => session.sessionId,
+        update: vi.fn(),
+        getModelContextWindow: () => 100000,
+        getAutoCompactTokenLimit: () => 80000,
+      } as any);
+      session.addTokenUsage(85000);
+
+      await session.sendTokenCountEvent('sub-1');
+
+      const tokenCount = events.find((e) => e.msg.type === 'TokenCount');
+      expect(tokenCount.msg.data.info.total_token_usage.total_tokens).toBe(85000);
+      expect(tokenCount.msg.data.info.auto_compact_token_limit).toBe(80000);
+      expect(tokenCount.msg.data.token_warning_state).toMatchObject({
+        current_tokens: 85000,
+        context_window: 100000,
+        auto_compact_token_limit: 80000,
+        is_above_auto_compact_threshold: true,
+      });
+    });
+
+    it('emits RateLimitWarning on a fast-burn snapshot', async () => {
+      const session = new Session(undefined, false);
+      const events: any[] = [];
+      session.setEventEmitter(async (e) => {
+        events.push(e);
+      });
+
+      // 92% used but only ~28% of the window elapsed → burning too fast.
+      await session.recordRateLimits({
+        primary: {
+          used_percent: 92,
+          window_minutes: 300,
+          resets_in_seconds: 215 * 60,
+        },
+      });
+
+      const warning = events.find((e) => e.msg.type === 'RateLimitWarning');
+      expect(warning).toBeDefined();
+      expect(warning.msg.data.window).toBe('primary');
+      expect(warning.msg.data.used_percent).toBe(92);
+    });
+
+    it('does not emit RateLimitWarning when usage is sustainable', async () => {
+      const session = new Session(undefined, false);
+      const events: any[] = [];
+      session.setEventEmitter(async (e) => {
+        events.push(e);
+      });
+
+      await session.recordRateLimits({
+        primary: { used_percent: 20, window_minutes: 300, resets_in_seconds: 60 },
+      });
+
+      expect(events.find((e) => e.msg.type === 'RateLimitWarning')).toBeUndefined();
+      expect(events.find((e) => e.msg.type === 'TokenCount')).toBeDefined();
     });
   });
 });

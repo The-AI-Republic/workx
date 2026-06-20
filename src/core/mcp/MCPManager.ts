@@ -2,8 +2,8 @@
  * MCP Manager Singleton
  *
  * Central manager for all MCP server connections.
- * Supports both SSE (extension + desktop) and stdio (desktop only) transports.
- * Routes to MCPClient (SSE) or RustMCPBridge (stdio) based on server config.
+ * Supports SSE (extension + desktop UI through runtime) and stdio (runtime sidecar).
+ * Routes to MCPClient (SSE) or NodeMCPBridge (stdio) based on server config.
  */
 
 import type {
@@ -30,8 +30,15 @@ import {
 } from './MCPConfig';
 import { decryptApiKey } from '../../utils/encryption';
 
-/** Maximum number of MCP servers allowed (excluding builtins) */
-const MAX_SERVERS = 5;
+/**
+ * Maximum number of MCP servers allowed (excluding builtins).
+ *
+ * Track 10 (Q8 decision) raised this from 5 → 100. The original cap was
+ * conservative; 100 is plenty for any reasonable user-plus-plugin
+ * combination. No per-source exemption needed — plugin-installed servers
+ * count toward the same ceiling.
+ */
+const MAX_SERVERS = 100;
 
 /** Builtin browser server ID — deterministic UUID for desktop.
  *  Must be a valid UUID to pass MCPServerConfigSchema validation. */
@@ -42,7 +49,7 @@ const BUILTIN_BROWSER_SERVER_ID = '00000000-0000-4000-8000-000000000001';
  *
  * This is a singleton class that:
  * - Loads/saves server configurations from storage
- * - Manages IMCPClientAdapter instances (MCPClient or RustMCPBridge)
+ * - Manages IMCPClientAdapter instances (MCPClient or NodeMCPBridge)
  * - Filters servers by platform (shared + current platform)
  * - Seeds builtin servers (e.g., browser server on desktop)
  * - Aggregates tools and resources from all connected servers
@@ -227,6 +234,32 @@ export class MCPManager implements IMCPManager {
   }
 
   /**
+   * Track 10: scoped removal — remove every server owned by a given plugin.
+   *
+   * Called by `PluginRegistry.disable(pluginId)` to unload one plugin's
+   * MCP servers. Each server is removed via `removeServer`, which already
+   * disconnects before drop and emits `config-removed` per server.
+   *
+   * Best-effort: per-server errors are logged but don't halt the loop, so
+   * a server whose `removeServer` throws may remain in `this.servers`.
+   * The loop attempts removal of every matching server regardless. Builtin
+   * and user-added servers are unaffected (no `pluginId`).
+   */
+  async removeByPluginId(pluginId: string): Promise<void> {
+    this.ensureInitialized();
+    const targets = Array.from(this.servers.values()).filter(
+      (s) => s.pluginId === pluginId,
+    );
+    for (const target of targets) {
+      try {
+        await this.removeServer(target.id);
+      } catch (e) {
+        console.warn(`[MCPManager.removeByPluginId] ${target.name}:`, e);
+      }
+    }
+  }
+
+  /**
    * Get all server configurations visible to the current platform.
    * Returns 'shared' servers plus servers matching the current platform.
    */
@@ -264,7 +297,7 @@ export class MCPManager implements IMCPManager {
 
   /**
    * Connect to an MCP server.
-   * Creates the appropriate adapter (MCPClient for SSE, RustMCPBridge for stdio).
+   * Creates the appropriate adapter (MCPClient for SSE, NodeMCPBridge for stdio).
    */
   async connect(id: string): Promise<void> {
     this.ensureInitialized();
@@ -531,16 +564,17 @@ export class MCPManager implements IMCPManager {
 
     if (config.transport === 'stdio') {
       if (__BUILD_MODE__ === 'server') {
-        // Server mode: use Node.js child_process via MCP SDK's StdioClientTransport
+        // Server and desktop-runtime both build under `server` mode — both
+        // use Node's child_process via the MCP SDK. (Track 43: the legacy
+        // RustMCPBridge has been deleted along with the Rust mcp_manager
+        // command surface; the desktop runtime is the agent process and
+        // owns MCP stdio directly.)
         const { NodeMCPBridge } = await import('@/server/mcp/NodeMCPBridge');
         return new NodeMCPBridge({ config, ...callbacks });
       }
-      // Desktop mode: use Tauri IPC to Rust for stdio
-      const { RustMCPBridge } = await import('./RustMCPBridge');
-      return new RustMCPBridge({
-        config,
-        ...callbacks,
-      });
+      throw new Error(
+        'stdio MCP servers are runtime-owned; the WebView build cannot create stdio MCP clients. Route through the runtime via mcp.* services.',
+      );
     }
 
     // Default: SSE transport
@@ -578,27 +612,30 @@ export class MCPManager implements IMCPManager {
       }
     }
 
-    const { invoke } = await import('@tauri-apps/api/core');
-
     // Try the bundled sidecar binary first (production builds).
     // Fall back to npx + node_modules for dev mode where no sidecar is built.
     let command = 'npx';
     let args = ['chrome-devtools-mcp', '--no-usage-statistics', '--isolated', '--chromeArg=--no-sandbox', '--chromeArg=--disable-setuid-sandbox'];
     let cwd: string | undefined;
 
-    try {
-      const sidecarPath = await invoke<string>('get_browser_mcp_sidecar_path');
-      command = sidecarPath;
-      args = ['--no-usage-statistics', '--isolated', '--chromeArg=--no-sandbox', '--chromeArg=--disable-setuid-sandbox'];
-      // sidecar resolves its own paths — no cwd needed
-    } catch {
-      // Resolve project root so npx can find chrome-devtools-mcp in node_modules
+    if (__BUILD_MODE__ === 'server') {
       try {
-        cwd = await invoke<string>('get_project_root');
+        const { getOptionalDesktopRuntimeHost } = await import('@/desktop-runtime/host');
+        const host = getOptionalDesktopRuntimeHost();
+        if (host?.browserMcpSidecarPath) {
+          command = host.browserMcpSidecarPath;
+          args = ['--no-usage-statistics', '--isolated', '--chromeArg=--no-sandbox', '--chromeArg=--disable-setuid-sandbox'];
+        } else if (host?.projectRoot) {
+          cwd = host.projectRoot;
+        }
       } catch (err) {
-        console.warn('[MCPManager] Failed to resolve project root:', err);
+        console.warn('[MCPManager] Failed to resolve desktop runtime MCP host paths:', err);
       }
     }
+    // Track 43: the `__BUILD_MODE__ === 'desktop'` branch that resolved the
+    // sidecar path via Tauri `invoke('get_browser_mcp_sidecar_path')` is
+    // gone — MCP runs in the runtime and the runtime host handshake carries
+    // `browserMcpSidecarPath` directly.
 
     const now = Date.now();
     const builtinConfig: IMCPServerConfig = {

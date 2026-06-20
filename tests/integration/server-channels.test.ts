@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ChannelPluginBridge } from '@/server/plugins/channel-bridge';
-import type { ChannelPlugin, ChannelGatewayContext, ChannelOutboundContext, InboundMessage } from '@/server/plugins/types';
+import { ConnectorBridge } from '@/server/channel-connectors/connector-bridge';
+import type {
+  ChannelConnector,
+  ChannelGatewayContext,
+  ChannelOutboundContext,
+  InboundMessage,
+} from '@/server/channel-connectors/types';
 
 vi.mock('@/server/config/server-config', () => ({
   getServerConfig: () => ({
@@ -16,7 +21,7 @@ vi.mock('@/server/config/server-config', () => ({
 }));
 
 describe('Server Channels Integration (OpenClaw Plugins)', () => {
-  let mockPlugin: ChannelPlugin;
+  let mockPlugin: ChannelConnector;
   let gatewayContext: ChannelGatewayContext | undefined;
 
   beforeEach(() => {
@@ -45,7 +50,7 @@ describe('Server Channels Integration (OpenClaw Plugins)', () => {
   });
 
   it('should initialize bridge and correctly translate inbound messages', async () => {
-    const bridge = new ChannelPluginBridge(mockPlugin, 'test-account');
+    const bridge = new ConnectorBridge(mockPlugin, 'test-account');
     await bridge.initialize();
 
     expect(mockPlugin.gateway.start).toHaveBeenCalled();
@@ -74,10 +79,9 @@ describe('Server Channels Integration (OpenClaw Plugins)', () => {
     expect(submissionCtx.userId).toBe('U_OWNER');
     expect(submissionCtx.sessionId).toBe('slack:test-account:C123');
 
-    // Simulate an outbound event via the replyCallback
+    // Simulate an outbound event via the replyCallback (ChannelEvent envelope)
     const replyEvent = {
-      type: 'AgentMessage',
-      data: { message: 'Hello from agent' }
+      msg: { type: 'AgentMessage', data: { message: 'Hello from agent' } }
     };
 
     await submissionCtx.replyCallback(replyEvent as any);

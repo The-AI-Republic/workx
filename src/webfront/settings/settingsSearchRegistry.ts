@@ -20,6 +20,8 @@ export interface SettingsSearchItem {
 export enum SettingsSection {
   MODEL_CONFIG = 'model-config',
   GENERAL = 'general',
+  KEYBOARD_SHORTCUTS = 'keyboard-shortcuts',
+  MEMORY = 'memory',
   STORAGE = 'storage',
   TOOLS = 'tools',
   MCP_SERVERS = 'mcp-servers',
@@ -32,7 +34,7 @@ export interface ConditionalRule {
   value: string;
 }
 
-export type NavigationView = 'menu' | 'model-config' | 'advanced-model-config' | 'general' | 'storage' | 'tools' | 'mcp-servers' | 'approval' | 'extension';
+export type NavigationView = 'menu' | 'model-config' | 'advanced-model-config' | 'general' | 'keyboard-shortcuts' | 'memory' | 'storage' | 'tools' | 'mcp-servers' | 'approval' | 'extension';
 
 export const settingsRegistry: SettingsSearchItem[] = [
   // ── Model Config ──────────────────────────────────────────────────────
@@ -97,6 +99,28 @@ export const settingsRegistry: SettingsSearchItem[] = [
     keywords: ['token', 'usage', 'cost', 'consumption', 'display'],
     navigationTarget: 'general',
     elementId: 'showTokenUsage',
+  },
+  {
+    id: 'shortcuts.keyboard',
+    labelKey: 'Keyboard Shortcuts',
+    descriptionKey: 'View and customize app keyboard shortcuts',
+    section: SettingsSection.KEYBOARD_SHORTCUTS,
+    sectionLabelKey: 'Keyboard Shortcuts',
+    keywords: ['keyboard', 'shortcuts', 'hotkeys', 'keys', 'commands'],
+    navigationTarget: 'keyboard-shortcuts',
+    elementId: 'keyboard-shortcuts',
+  },
+  // ── Memory ──────────────────────────────────────────────────────────
+  {
+    id: 'memory.enabled',
+    labelKey: 'Agent Memory',
+    descriptionKey: 'Remember facts across conversations. Works with any LLM provider.',
+    section: SettingsSection.MEMORY,
+    sectionLabelKey: 'Memory',
+    keywords: ['memory', 'remember', 'facts', 'long-term', 'preferences'],
+    navigationTarget: 'memory',
+    elementId: 'memoryEnabled',
+    conditional: { type: 'platform', value: 'desktop' },
   },
   {
     id: 'general.language',

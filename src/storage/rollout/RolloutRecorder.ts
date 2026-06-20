@@ -124,11 +124,11 @@ export class RolloutRecorder {
     params: Extract<RolloutRecorderParams, { type: 'create' }>,
     config?: IAgentConfigWithStorage
   ): Promise<RolloutRecorder> {
-    const { conversationId, instructions } = params;
+    const { sessionId, instructions } = params;
 
     // Validate conversation ID
-    if (!isValidConversationId(conversationId)) {
-      throw createInvalidIdError(conversationId);
+    if (!isValidConversationId(sessionId)) {
+      throw createInvalidIdError(sessionId);
     }
 
     // Calculate expiration
@@ -136,17 +136,17 @@ export class RolloutRecorder {
 
     // Initialize writer with provider
     const provider = await RolloutRecorder.getProvider();
-    const writer = await RolloutWriter.create(conversationId, 0, provider);
+    const writer = await RolloutWriter.create(sessionId, 0, provider);
 
     // Create metadata record with placeholder title
     const now = Date.now();
     const metadata: RolloutMetadataRecord = {
-      id: conversationId,
+      id: sessionId,
       created: now,
       updated: now,
       expiresAt,
       sessionMeta: {
-        id: conversationId,
+        id: sessionId,
         timestamp: getCurrentTimestamp(),
         originator: 'chrome-extension',
         cliVersion: '1.0.0', // TODO: Load from package.json or config
@@ -158,7 +158,7 @@ export class RolloutRecorder {
     };
 
     // Lazy initialization: don't write metadata or sessionMetaItem yet
-    const recorder = new RolloutRecorder(writer, conversationId, false);
+    const recorder = new RolloutRecorder(writer, sessionId, false);
     recorder.pendingMetadata = metadata;
     recorder.pendingSessionMeta = {
       type: 'session_meta',
@@ -405,7 +405,7 @@ export class RolloutRecorder {
     const history = await RolloutRecorder.loadAllItems(rolloutId);
 
     const resumedHistory: ResumedHistory = {
-      conversationId: rolloutId,
+      sessionId: rolloutId,
       history,
       rolloutId,
     };

@@ -3,24 +3,25 @@ import { UIChannelClient } from '../UIChannelClient';
 import type { UIChannelTransport } from '../transports/types';
 import type { Op } from '@/core/protocol/types';
 import type { EventMsg } from '@/core/protocol/events';
+import type { ChannelEvent } from '@/core/channels/types';
 
 // ---------------------------------------------------------------------------
 // Mock Transport
 // ---------------------------------------------------------------------------
 
 function createMockTransport(): UIChannelTransport & {
-  _handlers: Array<(event: EventMsg) => void>;
+  _handlers: Array<(event: ChannelEvent) => void>;
   _simulateEvent(event: EventMsg): void;
 } {
-  const handlers: Array<(event: EventMsg) => void> = [];
+  const handlers: Array<(event: ChannelEvent) => void> = [];
 
   return {
     _handlers: handlers,
     _simulateEvent(event: EventMsg) {
-      for (const h of handlers) h(event);
+      for (const h of handlers) h({ msg: event });
     },
     sendOp: vi.fn().mockResolvedValue(undefined),
-    onEvent: vi.fn((handler: (event: EventMsg) => void) => {
+    onEvent: vi.fn((handler: (event: ChannelEvent) => void) => {
       handlers.push(handler);
       return () => {
         const idx = handlers.indexOf(handler);
@@ -164,16 +165,18 @@ describe('UIChannelClient', () => {
   });
 
   describe('onEvent', () => {
-    it('dispatches non-ServiceResponse events to handlers', () => {
+    it('dispatches non-ServiceResponse events as full ChannelEvent', () => {
       const handler = vi.fn();
       client.onEvent('AgentMessageDelta', handler);
 
-      transport._simulateEvent({
+      const eventMsg = {
         type: 'AgentMessageDelta',
         data: { delta: 'hello' },
-      } as any);
+      } as any;
+      transport._simulateEvent(eventMsg);
 
-      expect(handler).toHaveBeenCalledWith({ delta: 'hello' });
+      // Typed handlers now receive the full ChannelEvent envelope
+      expect(handler).toHaveBeenCalledWith({ msg: eventMsg });
     });
 
     it('returns an unsubscribe function', () => {
@@ -190,14 +193,15 @@ describe('UIChannelClient', () => {
       expect(handler).not.toHaveBeenCalled();
     });
 
-    it('dispatches wildcard events', () => {
+    it('dispatches wildcard events as full ChannelEvent', () => {
       const handler = vi.fn();
       client.onEvent('*', handler);
 
       const event = { type: 'TaskComplete', data: { submission_id: '1' } } as any;
       transport._simulateEvent(event);
 
-      expect(handler).toHaveBeenCalledWith(event);
+      // Wildcard handlers receive the full ChannelEvent envelope
+      expect(handler).toHaveBeenCalledWith({ msg: event });
     });
   });
 
@@ -244,6 +248,79 @@ describe('UIChannelClient', () => {
 
       expect(await promise1).toBe('A');
       expect(await promise2).toBe('B');
+    });
+  });
+
+  describe('ChannelEvent sessionId propagation', () => {
+    it('wildcard handler receives sessionId from envelope', () => {
+      const handler = vi.fn();
+      client.onEvent('*', handler);
+
+      // Simulate event with sessionId in the envelope
+      const channelEvent: ChannelEvent = {
+        msg: { type: 'AgentMessage', data: { message: 'hello' } } as any,
+        sessionId: 'session-abc',
+      };
+      for (const h of transport._handlers) h(channelEvent);
+
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({ sessionId: 'session-abc' })
+      );
+    });
+
+    it('wildcard handler receives events without sessionId', () => {
+      const handler = vi.fn();
+      client.onEvent('*', handler);
+
+      // Simulate event without sessionId
+      const channelEvent: ChannelEvent = {
+        msg: { type: 'AgentMessage', data: { message: 'hello' } } as any,
+      };
+      for (const h of transport._handlers) h(channelEvent);
+
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({ msg: expect.objectContaining({ type: 'AgentMessage' }) })
+      );
+      expect(handler.mock.calls[0][0].sessionId).toBeUndefined();
+    });
+
+    it('typed handlers receive full ChannelEvent with sessionId', () => {
+      const handler = vi.fn();
+      client.onEvent('AgentMessage', handler);
+
+      // Simulate event with sessionId — typed handler gets full envelope
+      const channelEvent: ChannelEvent = {
+        msg: { type: 'AgentMessage', data: { message: 'world' } } as any,
+        sessionId: 'session-xyz',
+      };
+      for (const h of transport._handlers) h(channelEvent);
+
+      // Typed handlers now receive full ChannelEvent with sessionId
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({ sessionId: 'session-xyz' })
+      );
+      expect(handler.mock.calls[0][0].msg.data).toEqual({ message: 'world' });
+    });
+
+    it('dispatches both typed and wildcard with same ChannelEvent', () => {
+      const typedHandler = vi.fn();
+      const wildcardHandler = vi.fn();
+      client.onEvent('AgentMessage', typedHandler);
+      client.onEvent('*', wildcardHandler);
+
+      const channelEvent: ChannelEvent = {
+        msg: { type: 'AgentMessage', data: { message: 'dual' } } as any,
+        sessionId: 'session-dual',
+      };
+      for (const h of transport._handlers) h(channelEvent);
+
+      // Both typed and wildcard handlers get full ChannelEvent envelope
+      expect(typedHandler).toHaveBeenCalledWith(
+        expect.objectContaining({ sessionId: 'session-dual' })
+      );
+      expect(wildcardHandler).toHaveBeenCalledWith(
+        expect.objectContaining({ sessionId: 'session-dual' })
+      );
     });
   });
 });

@@ -787,6 +787,36 @@ describe('ApprovalManager', () => {
       expect(p1).toEqual(p2);
       expect(p1).not.toBe(p2); // different object references
     });
+
+    it('should emit ApprovalPolicyChanged when mode changes', async () => {
+      await manager.updatePolicy({ mode: 'never_ask' });
+
+      const evt = emittedEvents.find(e => e.msg.type === 'ApprovalPolicyChanged');
+      expect(evt).toBeDefined();
+      expect((evt!.msg as any).data.mode).toBe('never_ask');
+      expect((evt!.msg as any).data.previousMode).toBe('always_ask');
+      expect(typeof (evt!.msg as any).data.timestamp).toBe('number');
+    });
+
+    it('should not emit ApprovalPolicyChanged when mode is unchanged', async () => {
+      // Initial mode is 'always_ask'; updating only the threshold should not fire the event
+      await manager.updatePolicy({ riskThreshold: 'high' });
+
+      const evt = emittedEvents.find(e => e.msg.type === 'ApprovalPolicyChanged');
+      expect(evt).toBeUndefined();
+    });
+
+    it('should report the actual previousMode across successive updates', async () => {
+      await manager.updatePolicy({ mode: 'auto_approve_safe' });
+      await manager.updatePolicy({ mode: 'never_ask' });
+
+      const events = emittedEvents.filter(e => e.msg.type === 'ApprovalPolicyChanged');
+      expect(events).toHaveLength(2);
+      expect((events[0].msg as any).data.previousMode).toBe('always_ask');
+      expect((events[0].msg as any).data.mode).toBe('auto_approve_safe');
+      expect((events[1].msg as any).data.previousMode).toBe('auto_approve_safe');
+      expect((events[1].msg as any).data.mode).toBe('never_ask');
+    });
   });
 
   // -----------------------------------------------------------------------

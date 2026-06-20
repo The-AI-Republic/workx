@@ -1,12 +1,12 @@
-# Apple Pi Server Mode — Production Image
+# WorkX Server Mode — Production Image
 #
 # Two deployment modes for browser automation:
 #
 # 1. Bundled Chrome (default): Chrome installed in image, works standalone
-#    docker build -t applepi-server .
+#    docker build -t workx-server .
 #
 # 2. Slim (remote browser): No Chrome, connects to external browser pool
-#    docker build --build-arg INSTALL_CHROME=false -t applepi-server-slim .
+#    docker build --build-arg INSTALL_CHROME=false -t workx-server-slim .
 #    Then set CHROME_REMOTE_URL=http://chrome-pool:9222 at runtime
 
 # Stage 1: Build the server bundle
@@ -54,9 +54,9 @@ COPY --from=builder /app/dist/server ./dist/server
 COPY --from=builder /app/dist/web ./dist/web
 
 # Default configuration
-ENV APPLEPI_SERVER_PORT=18100
-ENV APPLEPI_SERVER_BIND=auto
-ENV APPLEPI_DATA_DIR=/data
+ENV WORKX_SERVER_PORT=18100
+ENV WORKX_SERVER_BIND=auto
+ENV WORKX_DATA_DIR=/data
 ENV NODE_ENV=production
 
 # Credential encryption requires VITE_VAULT_SECRET at runtime:

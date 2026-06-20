@@ -165,7 +165,8 @@
         await getClient();
         if (destroyed) return;
         eventUnsubscribers.push(
-          channelClient.onEvent('BackgroundEvent', (data: any) => {
+          channelClient.onEvent('BackgroundEvent', (channelEvent) => {
+            const data = 'data' in channelEvent.msg ? (channelEvent.msg as any).data : undefined;
             if (data?.message === 'scheduler_job_status') {
               debouncedRefresh();
             }

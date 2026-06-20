@@ -1,7 +1,7 @@
 /**
  * Web Authentication Service
  *
- * Handles OAuth authentication for the Apple Pi web UI (server mode)
+ * Handles OAuth authentication for the WorkX web UI (server mode)
  * using a popup window + postMessage flow.
  *
  * Flow:
@@ -15,8 +15,8 @@
  */
 
 const STORAGE_KEYS = {
-  ACCESS: 'browserx_access_token',
-  REFRESH: 'browserx_refresh_token',
+  ACCESS: 'workx_access_token',
+  REFRESH: 'workx_refresh_token',
 } as const;
 
 const WEB_CALLBACK_PATH = '/auth/web/callback';
@@ -80,7 +80,7 @@ export class WebAuthService {
     // Open popup immediately (must be synchronous from click handler)
     this.popupWindow = window.open(
       loginUrl,
-      'browserx-auth',
+      'workx-auth',
       'width=500,height=600,popup=yes',
     );
 

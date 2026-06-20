@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ChannelManager } from '../ChannelManager';
 import type { ChannelAdapter } from '../ChannelAdapter';
-import type { Op, EventMsg } from '@/core/protocol/types';
+import type { Op } from '@/core/protocol/types';
 import type { SubmissionContext } from '../types';
+import type { ChannelEvent } from '../types';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -83,9 +84,10 @@ describe('ChannelManager — ServiceRequest routing', () => {
     // Agent handler should NOT have been called
     expect(agentHandler).not.toHaveBeenCalled();
 
-    // Channel should have received a ServiceResponse
+    // Channel should have received a ServiceResponse wrapped in ChannelEvent
     expect(channel.sendEvent).toHaveBeenCalledOnce();
-    const sentEvent = (channel.sendEvent as ReturnType<typeof vi.fn>).mock.calls[0][0] as EventMsg;
+    const envelope = (channel.sendEvent as ReturnType<typeof vi.fn>).mock.calls[0][0] as ChannelEvent;
+    const sentEvent = envelope.msg;
     expect(sentEvent.type).toBe('ServiceResponse');
     expect((sentEvent as any).data.success).toBe(true);
     expect((sentEvent as any).data.data).toEqual(['s1']);
@@ -124,8 +126,8 @@ describe('ChannelManager — ServiceRequest routing', () => {
       makeContext('ch-3')
     );
 
-    const sentEvent = (channel.sendEvent as ReturnType<typeof vi.fn>).mock.calls[0][0];
-    expect(sentEvent).toEqual({
+    const envelope = (channel.sendEvent as ReturnType<typeof vi.fn>).mock.calls[0][0] as ChannelEvent;
+    expect(envelope.msg).toEqual({
       type: 'ServiceResponse',
       data: {
         requestId: 'req-456',
@@ -150,8 +152,8 @@ describe('ChannelManager — ServiceRequest routing', () => {
       makeContext('ch-4')
     );
 
-    const sentEvent = (channel.sendEvent as ReturnType<typeof vi.fn>).mock.calls[0][0];
-    expect(sentEvent).toEqual({
+    const envelope = (channel.sendEvent as ReturnType<typeof vi.fn>).mock.calls[0][0] as ChannelEvent;
+    expect(envelope.msg).toEqual({
       type: 'ServiceResponse',
       data: {
         requestId: 'req-err',
@@ -172,8 +174,8 @@ describe('ChannelManager — ServiceRequest routing', () => {
       makeContext('ch-5')
     );
 
-    const sentEvent = (channel.sendEvent as ReturnType<typeof vi.fn>).mock.calls[0][0];
-    expect(sentEvent).toEqual({
+    const envelope = (channel.sendEvent as ReturnType<typeof vi.fn>).mock.calls[0][0] as ChannelEvent;
+    expect(envelope.msg).toEqual({
       type: 'ServiceResponse',
       data: {
         requestId: 'req-unknown',
@@ -197,8 +199,45 @@ describe('ChannelManager — ServiceRequest routing', () => {
     );
 
     expect(channel.sendEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'ServiceResponse' }),
+      expect.objectContaining({ msg: expect.objectContaining({ type: 'ServiceResponse' }) }),
       'user-42'
     );
+  });
+
+  it('propagates sessionId from SubmissionContext into ChannelEvent envelope', async () => {
+    const channel = createMockChannel('ch-7');
+    await manager.registerChannel(channel);
+
+    manager.getServiceRegistry().register('test.session', async () => 'ok');
+
+    const callback = getSubmissionCallback(channel);
+    const context = {
+      channelId: 'ch-7',
+      channelType: 'sidepanel',
+      sessionId: 'session-abc-123',
+    } as SubmissionContext;
+
+    await callback(makeServiceRequestOp('test.session', {}, 'req-sid'), context);
+
+    const envelope = (channel.sendEvent as ReturnType<typeof vi.fn>).mock.calls[0][0] as ChannelEvent;
+    expect(envelope.sessionId).toBe('session-abc-123');
+    expect(envelope.msg.type).toBe('ServiceResponse');
+  });
+
+  it('broadcastEvent sends ChannelEvent to all registered channels', async () => {
+    const ch1 = createMockChannel('broadcast-1');
+    const ch2 = createMockChannel('broadcast-2');
+    await manager.registerChannel(ch1);
+    await manager.registerChannel(ch2);
+
+    const event: ChannelEvent = {
+      msg: { type: 'AgentMessage', data: { message: 'broadcast test' } } as any,
+      sessionId: 'session-broadcast',
+    };
+
+    await manager.broadcastEvent(event);
+
+    expect(ch1.sendEvent).toHaveBeenCalledWith(event);
+    expect(ch2.sendEvent).toHaveBeenCalledWith(event);
   });
 });

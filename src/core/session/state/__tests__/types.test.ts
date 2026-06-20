@@ -53,7 +53,7 @@ describe('isNewHistory', () => {
   it('should return false for resumed history', () => {
     const history: InitialHistory = {
       mode: 'resumed',
-      conversationId: 'conv-1',
+      sessionId: 'conv-1',
       rolloutItems: [],
     };
     expect(isNewHistory(history)).toBe(false);
@@ -81,7 +81,7 @@ describe('isResumedHistory', () => {
   it('should return true for resumed history', () => {
     const history: InitialHistory = {
       mode: 'resumed',
-      conversationId: 'conv-123',
+      sessionId: 'conv-123',
       rolloutItems: [{ id: '1' }],
     };
     expect(isResumedHistory(history)).toBe(true);
@@ -101,14 +101,14 @@ describe('isResumedHistory', () => {
     expect(isResumedHistory(history)).toBe(false);
   });
 
-  it('should narrow type to include conversationId and rolloutItems', () => {
+  it('should narrow type to include sessionId and rolloutItems', () => {
     const history: InitialHistory = {
       mode: 'resumed',
-      conversationId: 'conv-abc',
+      sessionId: 'conv-abc',
       rolloutItems: [{ data: 'test' }],
     };
     if (isResumedHistory(history)) {
-      expect(history.conversationId).toBe('conv-abc');
+      expect(history.sessionId).toBe('conv-abc');
       expect(history.rolloutItems).toEqual([{ data: 'test' }]);
     }
   });
@@ -116,7 +116,7 @@ describe('isResumedHistory', () => {
   it('should handle empty rolloutItems', () => {
     const history: InitialHistory = {
       mode: 'resumed',
-      conversationId: 'conv-empty',
+      sessionId: 'conv-empty',
       rolloutItems: [],
     };
     expect(isResumedHistory(history)).toBe(true);
@@ -141,7 +141,7 @@ describe('isForkedHistory', () => {
   it('should return false for resumed history', () => {
     const history: InitialHistory = {
       mode: 'resumed',
-      conversationId: 'conv-1',
+      sessionId: 'conv-1',
       rolloutItems: [],
     };
     expect(isForkedHistory(history)).toBe(false);
@@ -180,7 +180,7 @@ describe('Type guard mutual exclusivity', () => {
   it('resumed history: only isResumedHistory returns true', () => {
     const history: InitialHistory = {
       mode: 'resumed',
-      conversationId: 'conv-1',
+      sessionId: 'conv-1',
       rolloutItems: [],
     };
     expect(isNewHistory(history)).toBe(false);
@@ -202,13 +202,14 @@ describe('Type guard mutual exclusivity', () => {
 
 describe('TurnAbortReason type', () => {
   it('should accept valid abort reason strings', () => {
-    const reasons: TurnAbortReason[] = ['Replaced', 'UserInterrupt', 'Error', 'Timeout', 'TabClosed'];
-    expect(reasons).toHaveLength(5);
+    const reasons: TurnAbortReason[] = ['Replaced', 'UserInterrupt', 'Error', 'Timeout', 'TabClosed', 'Shutdown'];
+    expect(reasons).toHaveLength(6);
     expect(reasons).toContain('Replaced');
     expect(reasons).toContain('UserInterrupt');
     expect(reasons).toContain('Error');
     expect(reasons).toContain('Timeout');
     expect(reasons).toContain('TabClosed');
+    expect(reasons).toContain('Shutdown');
   });
 });
 
@@ -234,20 +235,16 @@ describe('Interface structure verification', () => {
 
   it('should create a valid RateLimitSnapshot', () => {
     const snapshot: RateLimitSnapshot = {
-      limit_requests: 1000,
-      limit_tokens: 100000,
-      remaining_requests: 999,
-      remaining_tokens: 99000,
-      reset_requests: '2025-01-01T00:00:00Z',
-      reset_tokens: '2025-01-01T00:01:00Z',
+      primary: { used_percent: 90, window_minutes: 300, resets_in_seconds: 600 },
+      secondary: { used_percent: 30, window_minutes: 10080 },
     };
-    expect(snapshot.limit_requests).toBe(1000);
-    expect(snapshot.remaining_tokens).toBe(99000);
+    expect(snapshot.primary?.used_percent).toBe(90);
+    expect(snapshot.secondary?.used_percent).toBe(30);
   });
 
   it('should allow partial RateLimitSnapshot', () => {
     const snapshot: RateLimitSnapshot = {};
-    expect(snapshot.limit_requests).toBeUndefined();
+    expect(snapshot.primary).toBeUndefined();
   });
 
   it('should create a valid SessionExport', () => {
@@ -257,7 +254,7 @@ describe('Interface structure verification', () => {
         history: { messages: [] },
         approvedCommands: ['cmd1', 'cmd2'],
         tokenInfo: { total_tokens: 500 },
-        latestRateLimits: { remaining_requests: 10 },
+        latestRateLimits: { primary: { used_percent: 10 } },
       },
       metadata: {
         created: Date.now(),
@@ -289,21 +286,21 @@ describe('Interface structure verification', () => {
 
   it('should create a valid ConfigureSession', () => {
     const config: ConfigureSession = {
-      conversationId: 'conv-1',
+      sessionId: 'conv-1',
       instructions: 'You are a helpful assistant',
       cwd: '/home/user',
       model: 'gpt-4',
     };
-    expect(config.conversationId).toBe('conv-1');
+    expect(config.sessionId).toBe('conv-1');
     expect(config.instructions).toBe('You are a helpful assistant');
     expect(config.model).toBe('gpt-4');
   });
 
-  it('should allow minimal ConfigureSession with only conversationId', () => {
+  it('should allow minimal ConfigureSession with only sessionId', () => {
     const config: ConfigureSession = {
-      conversationId: 'conv-minimal',
+      sessionId: 'conv-minimal',
     };
-    expect(config.conversationId).toBe('conv-minimal');
+    expect(config.sessionId).toBe('conv-minimal');
     expect(config.instructions).toBeUndefined();
     expect(config.cwd).toBeUndefined();
     expect(config.model).toBeUndefined();

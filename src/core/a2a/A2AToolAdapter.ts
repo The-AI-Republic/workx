@@ -1,7 +1,7 @@
 /**
  * A2A Tool Adapter
  *
- * Adapts A2A skills to browserx ToolDefinition format.
+ * Adapts A2A skills to workx ToolDefinition format.
  * Provides skill-to-tool mapping, risk assessment, and registration helpers.
  *
  * Mirrors the MCPToolAdapter pattern from src/core/mcp/MCPToolAdapter.ts.
@@ -11,6 +11,7 @@ import type { IA2ASkill, IA2AContent, IA2AManager } from './types';
 import type { ToolDefinition, ToolHandler, ToolContext } from '../../tools/BaseTool';
 import type { IRiskAssessor, RiskAssessment, ApprovalContext } from '../approval/types';
 import { RiskLevel } from '../approval/types';
+import type { ToolRegistrationOptions } from '../../tools/ToolRegistry';
 
 // ============================================================================
 // Prefixed Name Utilities
@@ -215,7 +216,7 @@ interface IToolRegistry {
   register(
     tool: ToolDefinition,
     handler: ToolHandler,
-    riskAssessor?: IRiskAssessor
+    riskAssessor?: IRiskAssessor | ToolRegistrationOptions
   ): Promise<void>;
   unregister(toolName: string): Promise<void>;
 }
@@ -242,7 +243,20 @@ export async function registerA2ASkills(
   for (const skill of skills) {
     const toolDef = adaptSkill(skill, agentName);
     const handler = createHandler(manager, agentName, skill.id);
-    await registry.register(toolDef, handler, riskAssessor);
+    await registry.register(toolDef, handler, {
+      riskAssessor,
+      exposure: {
+        source: 'a2a',
+        mode: 'deferred',
+        serverName: agentName,
+        displayName: `${agentName}: ${skill.name ?? skill.id}`,
+        searchHint: [
+          skill.name,
+          skill.description,
+          ...(skill.tags ?? []),
+        ].filter(Boolean).join(' '),
+      },
+    });
   }
 }
 

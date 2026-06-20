@@ -13,7 +13,7 @@ const mockAgentFactory = vi.hoisted(() => {
     createMockAgent: () => ({
       initialize: async () => undefined,
       getSession: () => ({
-        conversationId: 'conv_test_' + Math.random().toString(36).slice(2),
+        sessionId: 'session_test_' + Math.random().toString(36).slice(2),
         abortAllTasks: () => {},
         close: () => {},
         setTabId: () => {},
@@ -27,13 +27,16 @@ const mockAgentFactory = vi.hoisted(() => {
 
 vi.mock('@/core/RepublicAgent', () => ({
   RepublicAgent: class MockRepublicAgent {
+    private _session = mockAgentFactory.createMockAgent().getSession();
     initialize = vi.fn().mockResolvedValue(undefined);
-    getSession = mockAgentFactory.createMockAgent().getSession;
+    getSession = vi.fn(() => this._session);
     submitOperation = vi.fn().mockResolvedValue('sub_123');
     cleanup = vi.fn();
     setEventDispatcher = vi.fn();
     getApprovalManager = vi.fn().mockReturnValue({});
     getToolRegistry = vi.fn().mockReturnValue({ setApprovalGate: vi.fn() });
+    getHookDispatcher = vi.fn().mockReturnValue({ fire: vi.fn().mockResolvedValue({}) });
+    getEngine = vi.fn().mockReturnValue(null);
     agentId = 'agent_mock';
   },
 }));
@@ -110,7 +113,7 @@ describe('AgentRegistry', () => {
 
       const session = await registry.createSession({ type: 'primary' });
 
-      expect(session.sessionId).toMatch(/^session_/);
+      expect(session.sessionId).toMatch(/^session_test_/);
       expect(session.metadata.type).toBe('primary');
       expect(session.state).toBe('idle'); // Should be ready after creation
     });
@@ -305,9 +308,9 @@ describe('AgentRegistry', () => {
   });
 
   describe('concurrent limits', () => {
-    it('defaults to 3 concurrent sessions', () => {
+    it('defaults to DEFAULT_MAX_CONCURRENT sessions', () => {
       const registry = AgentRegistry.getInstance();
-      expect(registry.getMaxConcurrent()).toBe(3);
+      expect(registry.getMaxConcurrent()).toBe(5);
     });
 
     it('accepts custom limit in constructor', () => {

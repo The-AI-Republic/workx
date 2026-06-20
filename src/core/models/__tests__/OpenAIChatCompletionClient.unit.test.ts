@@ -37,7 +37,7 @@ describe('OpenAIChatCompletionClient - Text Accumulation', () => {
     client = new OpenAIChatCompletionClient({
       apiKey: 'test-api-key',
       baseUrl: 'https://api.openai.com/v1',
-      conversationId: 'test-conversation',
+      sessionId: 'test-conversation',
       modelFamily: {
         family: 'gpt-4o',
         base_instructions: 'You are a helpful assistant.',
@@ -202,7 +202,7 @@ describe('OpenAIChatCompletionClient - Event Conversion Integration', () => {
     client = new OpenAIChatCompletionClient({
       apiKey: 'test-api-key',
       baseUrl: 'https://api.openai.com/v1',
-      conversationId: 'test-conversation',
+      sessionId: 'test-conversation',
       modelFamily: {
         family: 'gpt-4o',
         base_instructions: 'You are a helpful assistant.',
@@ -246,7 +246,7 @@ describe('OpenAIChatCompletionClient - Tool Call Handling', () => {
     client = new OpenAIChatCompletionClient({
       apiKey: 'test-api-key',
       baseUrl: 'https://api.openai.com/v1',
-      conversationId: 'test-conversation',
+      sessionId: 'test-conversation',
       modelFamily: {
         family: 'gpt-4o',
         base_instructions: 'You are a helpful assistant.',
@@ -356,7 +356,7 @@ describe('OpenAIChatCompletionClient - Tool Call Handling', () => {
 
   describe('Multiple tool calls in single turn', () => {
     it('should handle multiple tool calls correctly', () => {
-      // BrowserX sets parallel_tool_calls to false, so only one tool call should be emitted
+      // WorkX sets parallel_tool_calls to false, so only one tool call should be emitted
       // But the accumulator should support multiple tool calls
 
       client['chatCompletionToolCalls'].set(0, {
@@ -390,7 +390,7 @@ describe('OpenAIChatCompletionClient - Multi-Turn Mixed Content', () => {
     client = new OpenAIChatCompletionClient({
       apiKey: 'test-api-key',
       baseUrl: 'https://api.openai.com/v1',
-      conversationId: 'test-conversation',
+      sessionId: 'test-conversation',
       modelFamily: {
         family: 'gpt-4o',
         base_instructions: 'You are a helpful assistant.',
@@ -475,7 +475,7 @@ describe('OpenAIChatCompletionClient - Payload Conversion', () => {
     client = new OpenAIChatCompletionClient({
       apiKey: 'test-api-key',
       baseUrl: 'https://api.openai.com/v1',
-      conversationId: 'test-conversation',
+      sessionId: 'test-conversation',
       modelFamily: {
         family: 'gpt-4o',
         base_instructions: 'You are a helpful assistant.',

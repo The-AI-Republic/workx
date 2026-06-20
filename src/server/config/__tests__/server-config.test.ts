@@ -14,13 +14,13 @@ let tmpDir: string;
 const savedEnv: Record<string, string | undefined> = {};
 
 const ENV_KEYS = [
-  'APPLEPI_CONFIG_PATH',
-  'APPLEPI_DATA_DIR',
-  'APPLEPI_SERVER_PORT',
-  'APPLEPI_SERVER_BIND',
-  'APPLEPI_SERVER_AUTH_MODE',
-  'APPLEPI_SERVER_TOKEN',
-  'APPLEPI_SERVER_PASSWORD',
+  'WORKX_CONFIG_PATH',
+  'WORKX_DATA_DIR',
+  'WORKX_SERVER_PORT',
+  'WORKX_SERVER_BIND',
+  'WORKX_SERVER_AUTH_MODE',
+  'WORKX_SERVER_TOKEN',
+  'WORKX_SERVER_PASSWORD',
 ];
 
 beforeEach(async () => {
@@ -92,7 +92,7 @@ describe('loadServerConfig', () => {
     fs.writeFileSync(configPath, JSON.stringify({
       server: { port: 9999, auth: { mode: 'token', token: 'abc' } },
     }));
-    process.env.APPLEPI_CONFIG_PATH = configPath;
+    process.env.WORKX_CONFIG_PATH = configPath;
 
     const config = loadServerConfig();
     expect(config.server.port).toBe(9999);
@@ -101,7 +101,7 @@ describe('loadServerConfig', () => {
   });
 
   it('uses defaults when config file does not exist', () => {
-    process.env.APPLEPI_CONFIG_PATH = path.join(tmpDir, 'nonexistent.json');
+    process.env.WORKX_CONFIG_PATH = path.join(tmpDir, 'nonexistent.json');
     const config = loadServerConfig();
     expect(config.server.port).toBe(18100);
   });
@@ -109,7 +109,7 @@ describe('loadServerConfig', () => {
   it('uses defaults when config file has invalid JSON', () => {
     const configPath = path.join(tmpDir, 'bad.json');
     fs.writeFileSync(configPath, '{invalid json');
-    process.env.APPLEPI_CONFIG_PATH = configPath;
+    process.env.WORKX_CONFIG_PATH = configPath;
 
     const config = loadServerConfig();
     expect(config.server.port).toBe(18100);
@@ -121,43 +121,43 @@ describe('loadServerConfig', () => {
 // ---------------------------------------------------------------------------
 
 describe('env var overrides', () => {
-  it('APPLEPI_SERVER_PORT overrides file config', () => {
+  it('WORKX_SERVER_PORT overrides file config', () => {
     const configPath = path.join(tmpDir, 'config.json');
     fs.writeFileSync(configPath, JSON.stringify({ server: { port: 8000 } }));
-    process.env.APPLEPI_CONFIG_PATH = configPath;
-    process.env.APPLEPI_SERVER_PORT = '4444';
+    process.env.WORKX_CONFIG_PATH = configPath;
+    process.env.WORKX_SERVER_PORT = '4444';
 
     const config = loadServerConfig();
     expect(config.server.port).toBe(4444);
   });
 
-  it('APPLEPI_SERVER_BIND overrides default', () => {
-    process.env.APPLEPI_CONFIG_PATH = path.join(tmpDir, 'none.json');
-    process.env.APPLEPI_SERVER_BIND = 'lan';
+  it('WORKX_SERVER_BIND overrides default', () => {
+    process.env.WORKX_CONFIG_PATH = path.join(tmpDir, 'none.json');
+    process.env.WORKX_SERVER_BIND = 'lan';
 
     const config = loadServerConfig();
     expect(config.server.bind).toBe('lan');
   });
 
-  it('APPLEPI_SERVER_AUTH_MODE overrides default', () => {
-    process.env.APPLEPI_CONFIG_PATH = path.join(tmpDir, 'none.json');
-    process.env.APPLEPI_SERVER_AUTH_MODE = 'token';
+  it('WORKX_SERVER_AUTH_MODE overrides default', () => {
+    process.env.WORKX_CONFIG_PATH = path.join(tmpDir, 'none.json');
+    process.env.WORKX_SERVER_AUTH_MODE = 'token';
 
     const config = loadServerConfig();
     expect(config.server.auth.mode).toBe('token');
   });
 
-  it('APPLEPI_SERVER_TOKEN overrides config file token', () => {
-    process.env.APPLEPI_CONFIG_PATH = path.join(tmpDir, 'none.json');
-    process.env.APPLEPI_SERVER_TOKEN = 'env-token-123';
+  it('WORKX_SERVER_TOKEN overrides config file token', () => {
+    process.env.WORKX_CONFIG_PATH = path.join(tmpDir, 'none.json');
+    process.env.WORKX_SERVER_TOKEN = 'env-token-123';
 
     const config = loadServerConfig();
     expect(config.server.auth.token).toBe('env-token-123');
   });
 
-  it('APPLEPI_SERVER_PASSWORD overrides config file password', () => {
-    process.env.APPLEPI_CONFIG_PATH = path.join(tmpDir, 'none.json');
-    process.env.APPLEPI_SERVER_PASSWORD = 'env-pass';
+  it('WORKX_SERVER_PASSWORD overrides config file password', () => {
+    process.env.WORKX_CONFIG_PATH = path.join(tmpDir, 'none.json');
+    process.env.WORKX_SERVER_PASSWORD = 'env-pass';
 
     const config = loadServerConfig();
     expect(config.server.auth.password).toBe('env-pass');
@@ -169,9 +169,9 @@ describe('env var overrides', () => {
 // ---------------------------------------------------------------------------
 
 describe('getDataDir', () => {
-  it('returns APPLEPI_DATA_DIR when set', () => {
-    process.env.APPLEPI_CONFIG_PATH = path.join(tmpDir, 'none.json');
-    process.env.APPLEPI_DATA_DIR = '/custom/data';
+  it('returns WORKX_DATA_DIR when set', () => {
+    process.env.WORKX_CONFIG_PATH = path.join(tmpDir, 'none.json');
+    process.env.WORKX_DATA_DIR = '/custom/data';
     loadServerConfig();
     expect(getDataDir()).toBe('/custom/data');
   });
@@ -183,13 +183,13 @@ describe('getDataDir', () => {
 
 describe('getServerConfig', () => {
   it('auto-loads on first call', () => {
-    process.env.APPLEPI_CONFIG_PATH = path.join(tmpDir, 'none.json');
+    process.env.WORKX_CONFIG_PATH = path.join(tmpDir, 'none.json');
     const config = getServerConfig();
     expect(config.server.port).toBe(18100);
   });
 
   it('returns cached config on subsequent calls', () => {
-    process.env.APPLEPI_CONFIG_PATH = path.join(tmpDir, 'none.json');
+    process.env.WORKX_CONFIG_PATH = path.join(tmpDir, 'none.json');
     const first = getServerConfig();
     const second = getServerConfig();
     expect(first).toBe(second);
@@ -202,9 +202,9 @@ describe('getServerConfig', () => {
 
 describe('redactConfig', () => {
   it('redacts token and password', () => {
-    process.env.APPLEPI_CONFIG_PATH = path.join(tmpDir, 'none.json');
-    process.env.APPLEPI_SERVER_TOKEN = 'secret';
-    process.env.APPLEPI_SERVER_PASSWORD = 'hidden';
+    process.env.WORKX_CONFIG_PATH = path.join(tmpDir, 'none.json');
+    process.env.WORKX_SERVER_TOKEN = 'secret';
+    process.env.WORKX_SERVER_PASSWORD = 'hidden';
 
     const config = loadServerConfig();
     const redacted = redactConfig(config);
@@ -214,8 +214,8 @@ describe('redactConfig', () => {
   });
 
   it('does not modify original config', () => {
-    process.env.APPLEPI_CONFIG_PATH = path.join(tmpDir, 'none.json');
-    process.env.APPLEPI_SERVER_TOKEN = 'original';
+    process.env.WORKX_CONFIG_PATH = path.join(tmpDir, 'none.json');
+    process.env.WORKX_SERVER_TOKEN = 'original';
 
     const config = loadServerConfig();
     redactConfig(config);
@@ -224,7 +224,7 @@ describe('redactConfig', () => {
   });
 
   it('returns deep clone', () => {
-    process.env.APPLEPI_CONFIG_PATH = path.join(tmpDir, 'none.json');
+    process.env.WORKX_CONFIG_PATH = path.join(tmpDir, 'none.json');
     const config = loadServerConfig();
     const redacted = redactConfig(config);
 

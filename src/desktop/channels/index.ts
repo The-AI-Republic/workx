@@ -1,11 +1,10 @@
 /**
  * Desktop Channels
  *
- * Exports channel adapters for Tauri desktop mode.
+ * Exports optional desktop websocket channel adapters.
  *
  * @module desktop/channels
  */
 
-export { TauriChannel } from './TauriChannel';
 export { WebSocketChannel } from './WebSocketChannel';
 export * from './websocket';

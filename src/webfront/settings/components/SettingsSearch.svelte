@@ -1,8 +1,9 @@
 <script lang="ts">
   import Fuse from 'fuse.js';
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { settingsRegistry, type SettingsSearchItem } from '../settingsSearchRegistry';
   import { _t } from '../../lib/i18n';
+  import { registerShortcut, registerShortcutContext } from '../../shortcuts/useShortcut';
 
   let {
     isDesktop = false,
@@ -37,6 +38,43 @@
 
   onDestroy(() => {
     if (debounceTimer) clearTimeout(debounceTimer);
+  });
+
+  onMount(() => {
+    const unregisterContext = registerShortcutContext('SettingsSearch', {
+      active: () => document.activeElement === inputElement && query.trim().length > 0,
+    });
+    const unregisterNext = registerShortcut('settingsSearch:next', 'SettingsSearch', () => {
+      const count = visibleResults.length;
+      if (count > 0) {
+        focusedIndex = focusedIndex < count - 1 ? focusedIndex + 1 : 0;
+        scrollFocusedIntoView();
+      }
+    });
+    const unregisterPrevious = registerShortcut('settingsSearch:previous', 'SettingsSearch', () => {
+      const count = visibleResults.length;
+      if (count > 0) {
+        focusedIndex = focusedIndex > 0 ? focusedIndex - 1 : count - 1;
+        scrollFocusedIntoView();
+      }
+    });
+    const unregisterAccept = registerShortcut('settingsSearch:accept', 'SettingsSearch', () => {
+      const count = visibleResults.length;
+      if (focusedIndex >= 0 && focusedIndex < count) {
+        selectResult(visibleResults[focusedIndex].item);
+      }
+    });
+    const unregisterDismiss = registerShortcut('settingsSearch:dismiss', 'SettingsSearch', () => {
+      clearSearch();
+    });
+
+    return () => {
+      unregisterContext();
+      unregisterNext();
+      unregisterPrevious();
+      unregisterAccept();
+      unregisterDismiss();
+    };
   });
 
   /**
@@ -81,14 +119,19 @@
     });
   }
 
-  // Reactively rebuild index when $_t store changes (locale change)
+  // Reactively rebuild index when $_t store changes (locale change).
+  // Use local variables to avoid reading $state we just wrote (which would
+  // cause Svelte 5's effect to re-subscribe and loop infinitely).
   $effect(() => {
     const translate = $_t;
-    searchableItems = buildSearchableItems(translate);
-    fuseIndex = buildFuseIndex(searchableItems);
+    const items = buildSearchableItems(translate);
+    const fuse = buildFuseIndex(items);
+    searchableItems = items;
+    fuseIndex = fuse;
     // Re-run search with current query if index was rebuilt
-    if (query.trim()) {
-      performSearch(query);
+    const q = query.trim();
+    if (q) {
+      results = fuse.search(q);
     }
   });
 
@@ -302,28 +345,28 @@
   .search-icon {
     position: absolute;
     left: 0.75rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
     pointer-events: none;
   }
 
   .search-input {
     width: 100%;
     padding: 0.625rem 2.25rem 0.625rem 2.25rem;
-    background: var(--browserx-surface);
-    border: 1px solid var(--browserx-border);
+    background: var(--workx-surface);
+    border: 1px solid var(--workx-border);
     border-radius: 0.5rem;
-    color: var(--browserx-text);
+    color: var(--workx-text);
     font-size: 0.875rem;
     outline: none;
     transition: border-color 0.2s;
   }
 
   .search-input::placeholder {
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
   }
 
   .search-input:focus {
-    border-color: var(--browserx-primary);
+    border-color: var(--workx-primary);
   }
 
   .clear-button {
@@ -338,14 +381,14 @@
     background: none;
     border: none;
     border-radius: 0.25rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
     cursor: pointer;
     transition: color 0.2s, background-color 0.2s;
   }
 
   .clear-button:hover {
-    color: var(--browserx-text);
-    background: color-mix(in srgb, var(--browserx-text) 10%, transparent);
+    color: var(--workx-text);
+    background: color-mix(in srgb, var(--workx-text) 10%, transparent);
   }
 
   .search-results {
@@ -355,8 +398,8 @@
     right: 0;
     max-height: 24rem;
     overflow-y: auto;
-    background: var(--browserx-surface);
-    border: 1px solid var(--browserx-border);
+    background: var(--workx-surface);
+    border: 1px solid var(--workx-border);
     border-radius: 0.5rem;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     z-index: 100;
@@ -374,7 +417,7 @@
   }
 
   .result-item.focused .result-button {
-    background: color-mix(in srgb, var(--browserx-primary) 12%, transparent);
+    background: color-mix(in srgb, var(--workx-primary) 12%, transparent);
   }
 
   .result-button {
@@ -387,11 +430,11 @@
     text-align: left;
     cursor: pointer;
     transition: background-color 0.15s;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .result-button:hover {
-    background: color-mix(in srgb, var(--browserx-text) 6%, var(--browserx-surface));
+    background: color-mix(in srgb, var(--workx-text) 6%, var(--workx-surface));
   }
 
   .result-header {
@@ -404,22 +447,22 @@
   .result-label {
     font-size: 0.875rem;
     font-weight: 600;
-    color: var(--browserx-text);
+    color: var(--workx-text);
   }
 
   .result-section-badge {
     font-size: 0.875rem;
     font-weight: 500;
     padding: 0.0625rem 0.375rem;
-    background: color-mix(in srgb, var(--browserx-primary) 12%, transparent);
-    color: var(--browserx-primary);
+    background: color-mix(in srgb, var(--workx-primary) 12%, transparent);
+    color: var(--workx-primary);
     border-radius: 0.25rem;
     white-space: nowrap;
   }
 
   .result-description {
     font-size: 0.875rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
     line-height: 1.4;
   }
 
@@ -427,14 +470,14 @@
     padding: 1.25rem 0.75rem;
     text-align: center;
     font-size: 0.875rem;
-    color: var(--browserx-text-secondary);
+    color: var(--workx-text-secondary);
   }
 
   .more-results {
     padding: 0.5rem 0.75rem;
     text-align: center;
     font-size: 0.875rem;
-    color: var(--browserx-text-secondary);
-    border-top: 1px solid var(--browserx-border);
+    color: var(--workx-text-secondary);
+    border-top: 1px solid var(--workx-border);
   }
 </style>

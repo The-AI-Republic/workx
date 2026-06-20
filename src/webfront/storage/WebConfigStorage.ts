@@ -9,7 +9,7 @@
 
 import type { ConfigStorageProvider } from '@/core/storage/ConfigStorageProvider';
 
-const PREFIX = 'applepi:';
+const PREFIX = 'workx:';
 
 export class WebConfigStorage implements ConfigStorageProvider {
   async get<T>(key: string): Promise<T | null> {

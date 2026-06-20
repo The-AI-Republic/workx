@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "BrowserX"
+    "message": "WorkX"
   },
   "extension_description": {
     "message": "Agente de IA geral no navegador para tarefas de trabalho"
@@ -177,7 +177,7 @@
     "message": "Sempre claro"
   },
   "Apple_Pi_Your_personal_AI_Alpha": {
-    "message": "Apple Pi: sua IA pessoal (Alpha)"
+    "message": "WorkX: sua IA pessoal (Alpha)"
   },
   "Approval_Safety": {
     "message": "Aprovação e Segurança"
@@ -219,8 +219,8 @@
       }
     }
   },
-  "Ask_Browserx_to_extract_structured_data__88fc": {
-    "message": "Solicitar ao Browserx que extraia dados estruturados de qualquer página web"
+  "Ask_WorkX_to_extract_structured_data__88fc": {
+    "message": "Solicitar ao WorkX que extraia dados estruturados de qualquer página web"
   },
   "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
     "message": "Solicitar para risco médio e acima (risco > 30). Recomendado para a maioria dos usuários."
@@ -309,14 +309,11 @@
   "Browser_automation_tool_toggles": {
     "message": "Alternâncias das ferramentas de automação do navegador"
   },
-  "BrowserX": {
-    "message": "BrowserX"
+  "WorkX": {
+    "message": "WorkX"
   },
-  "Browserx": {
-    "message": "Browserx"
-  },
-  "Browserx_Alpha": {
-    "message": "Browserx (Alpha)"
+  "WorkX_Alpha": {
+    "message": "WorkX (Alpha)"
   },
   "CWD": {
     "message": "CWD:"
@@ -385,8 +382,8 @@
   "Clear_search": {
     "message": "Limpar pesquisa"
   },
-  "Click_the_Browserx_icon_in_your_toolbar__d881": {
-    "message": "Clique no ícone do Browserx na barra de ferramentas ou pressione Alt+Shift+C"
+  "Click_the_WorkX_icon_in_your_toolbar__d881": {
+    "message": "Clique no ícone do WorkX na barra de ferramentas ou pressione Alt+Shift+C"
   },
   "Click_to_cancel_login": {
     "message": "Clique para cancelar o login"
@@ -676,8 +673,8 @@
   "Enable_PIN_Protection": {
     "message": "Ativar proteção por PIN"
   },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": "Habilitar conexão automática ao iniciar o browserx"
+  "Enable_auto_connect_when_workx_starts": {
+    "message": "Habilitar conexão automática ao iniciar o WorkX"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Ativar cache para melhorar o desempenho armazenando dados frequentemente acessados"
@@ -733,8 +730,8 @@
   "Explain_this_info_selectionText": {
     "message": "Explique isso: ${info.selectionText}"
   },
-  "Explain_with_Browserx": {
-    "message": "Explicar com Browserx"
+  "Explain_with_WorkX": {
+    "message": "Explicar com WorkX"
   },
   "Export": {
     "message": "Exportar"
@@ -760,8 +757,8 @@
   "Extract_Data": {
     "message": "Extrair dados:"
   },
-  "Extract_data_with_Browserx": {
-    "message": "Extrair dados com Browserx"
+  "Extract_data_with_WorkX": {
+    "message": "Extrair dados com WorkX"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Extrair padrões de dados específicos das páginas"
@@ -955,8 +952,8 @@
   "Improve_this_text_info_selectionText": {
     "message": "Melhore este texto: ${info.selectionText}"
   },
-  "Improve_with_Browserx": {
-    "message": "Melhorar com Browserx"
+  "Improve_with_WorkX": {
+    "message": "Melhorar com WorkX"
   },
   "In": {
     "message": "Em:"
@@ -1547,7 +1544,7 @@
     "message": "Tentando novamente"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
-    "message": "Clique com o botão direito em qualquer texto para explicar ou melhorar com o Browserx"
+    "message": "Clique com o botão direito em qualquer texto para explicar ou melhorar com o WorkX"
   },
   "Risk_Score": {
     "message": "Pontuação de risco:"
@@ -2041,8 +2038,8 @@
   "Web_Search": {
     "message": "Busca na Web"
   },
-  "Welcome_to_Browserx": {
-    "message": "Bem-vindo ao Browserx"
+  "Welcome_to_WorkX": {
+    "message": "Bem-vindo ao WorkX"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
     "message": "Se comandos em sandbox podem acessar a rede"
@@ -2092,8 +2089,8 @@
   "available": {
     "message": "disponível"
   },
-  "browserx": {
-    "message": "browserx"
+  "workx": {
+    "message": "WorkX"
   },
   "cached": {
     "message": "em cache"

@@ -52,7 +52,7 @@ A user launches the desktop application. They see "Apple Pi" as the application 
 1. **Given** a user launches the desktop app, **When** the window appears, **Then** the title bar reads "Apple Pi"
 2. **Given** a user views the app in their operating system's application list, **When** they look at the app name, **Then** they see "Apple Pi"
 3. **Given** a user views the app's about or description, **When** they read the description, **Then** it references "Apple Pi" as the product name
-4. **Given** a user triggers a deep-link, **When** the URL scheme is used, **Then** it uses the "airepublic-pi" scheme (code-level, not user-facing)
+4. **Given** a user triggers a deep-link, **When** the URL scheme is used, **Then** it uses the "applepi" scheme (code-level, not user-facing)
 
 ---
 
@@ -107,7 +107,7 @@ All 50+ language locale files reflect the correct branding: "BrowserX" as the ex
 ### Edge Cases
 
 - What happens when a user has the old version installed and upgrades? Extension name in Chrome remains "BrowserX" (unchanged for extension users). Desktop app name updates from "Pi" to "Apple Pi" automatically.
-- How does the system handle existing bookmarks, shortcuts, or saved references? Deep-link schemes use "airepublic-pi" (already in place), Chrome extension ID is unchanged.
+- How does the system handle existing bookmarks, shortcuts, or saved references? Deep-link schemes use "applepi" (already in place), Chrome extension ID is unchanged.
 - What happens to existing git history and references? Git history is preserved; only forward-looking references change. No history rewrite.
 - How are prompt files handled? Extension prompt files (`default_browserx_agent_prompt.md`, `browserx_intro.md`, `browserx_tools.md`) keep their names since they are extension-specific. Desktop prompt (`default_pi_agent_prompt.md`) keeps its name and has content updated to say "Apple Pi".
 - What about the `CLAUDE.md` file? It contains extensive documentation referencing "browserx" — these references should be updated to "pi" in code-level contexts while preserving "BrowserX" for extension-specific documentation.
@@ -151,7 +151,7 @@ Non-UI config and code-level values stay "Pi" / "pi":
 - **FR-014**: The Tauri `longDescription` MUST stay as "Pi" (config metadata, not directly visible in UI)
 - **FR-017**: The Tauri `identifier` MUST remain `com.airepublic.pi` (code-level, unchanged)
 - **FR-018**: The Cargo package name MUST remain `pi` (code-level, unchanged)
-- **FR-019**: The deep-link scheme MUST remain `airepublic-pi` (code-level, unchanged)
+- **FR-019**: The deep-link scheme MUST remain `applepi` (code-level, unchanged)
 
 #### Shared/Core Code Renaming (rename `browserx` → `pi`)
 
@@ -195,7 +195,7 @@ These are in extension-specific directories (`src/extension/`, `_locales/`, exte
 ## Assumptions
 
 - The Chrome extension ID (assigned by Chrome Web Store) does not change — only display names and internal code references change
-- The Tauri app identifier (`com.airepublic.pi`) and deep-link scheme (`airepublic-pi`) remain unchanged as they are code-level
+- The Tauri app identifier (`com.airepublic.pi`) and deep-link scheme (`applepi`) remain unchanged as they are code-level
 - The Cargo crate name remains `pi` as it is code-level
 - Git history is preserved; this is a forward-looking rename, not a history rewrite
 - Extension-specific CSS (`--browserx-*`), custom events (`browserx:*`), locale keys, and prompt files retain `browserx` naming — no rename needed

@@ -15,7 +15,12 @@ import { createVaultServices, type VaultServiceDeps } from './vault-services';
 import { createA2AServices, type A2AServiceDeps } from './a2a-services';
 import { createSessionServices, type SessionServiceDeps } from './session-services';
 import { createAgentServices, type AgentServiceDeps } from './agent-services';
+import { createAuthServices, type AuthServiceDeps } from './auth-services';
 import { createStorageServices, type StorageServiceDeps } from './storage-services';
+import { createPluginsServices, type PluginsServiceDeps } from './plugins-services';
+import { createDiagnosticsServices, type DiagnosticsServiceDeps } from './diagnostics-services';
+import { createMemoryServices, type MemoryServiceDeps } from './memory-services';
+import { createRuntimeServices, type RuntimeServiceDeps } from './runtime-services';
 
 /**
  * Dependencies for registering all services.
@@ -29,7 +34,12 @@ export interface AllServiceDeps {
   a2a?: A2AServiceDeps;
   session?: SessionServiceDeps;
   agent?: AgentServiceDeps;
+  auth?: AuthServiceDeps;
   storage?: StorageServiceDeps;
+  plugins?: PluginsServiceDeps;
+  diagnostics?: DiagnosticsServiceDeps;
+  memory?: MemoryServiceDeps;
+  runtime?: RuntimeServiceDeps;
 }
 
 /**
@@ -51,7 +61,12 @@ export function registerAllServices(
     ['a2a', createA2AServices],
     ['session', createSessionServices],
     ['agent', createAgentServices],
+    ['auth', createAuthServices],
     ['storage', createStorageServices],
+    ['plugins', createPluginsServices],
+    ['diagnostics', createDiagnosticsServices],
+    ['memory', createMemoryServices],
+    ['runtime', createRuntimeServices],
   ];
 
   for (const [key, factory] of factories) {
@@ -76,4 +91,9 @@ export { createVaultServices, type VaultServiceDeps } from './vault-services';
 export { createA2AServices, type A2AServiceDeps } from './a2a-services';
 export { createSessionServices, type SessionServiceDeps } from './session-services';
 export { createAgentServices, type AgentServiceDeps } from './agent-services';
+export { createAuthServices, type AuthServiceDeps } from './auth-services';
 export { createStorageServices, type StorageServiceDeps } from './storage-services';
+export { createPluginsServices, type PluginsServiceDeps } from './plugins-services';
+export { createDiagnosticsServices, type DiagnosticsServiceDeps } from './diagnostics-services';
+export { createMemoryServices, type MemoryServiceDeps } from './memory-services';
+export { createRuntimeServices, type RuntimeServiceDeps } from './runtime-services';

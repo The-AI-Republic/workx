@@ -2,7 +2,7 @@
  * Web UI Entry Point (Server Mode)
  *
  * Entry point for the web-served SPA that connects to the
- * Apple Pi Server via WebSocket.
+ * WorkX Server via WebSocket.
  *
  * @module webfront/web-main
  */

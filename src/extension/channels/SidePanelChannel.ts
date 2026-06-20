@@ -13,8 +13,10 @@ import type {
   ChannelCapabilities,
   SubmissionHandler,
   SubmissionContext,
+  ChannelEvent,
 } from '@/core/channels/types';
-import type { EventMsg, Op } from '@/core/protocol/types';
+import type { EventMsg } from '@/core/protocol/events';
+import type { Op } from '@/core/protocol/types';
 
 /**
  * Message types for side panel communication
@@ -74,7 +76,7 @@ export class SidePanelChannel implements ChannelAdapter {
           channelType: this.channelType,
           tabId: message.tabId ?? sender.tab?.id,
           sessionId: message.sessionId,
-          replyCallback: async (event: EventMsg) => {
+          replyCallback: async (event) => {
             await this.sendEvent(event);
           },
         };
@@ -120,10 +122,11 @@ export class SidePanelChannel implements ChannelAdapter {
     this.submissionHandler = handler;
   }
 
-  async sendEvent(event: EventMsg, _targetClientId?: string): Promise<void> {
+  async sendEvent(event: ChannelEvent, _targetClientId?: string): Promise<void> {
     const message: SidePanelMessage = {
       type: 'event',
-      event,
+      event: event.msg,
+      sessionId: event.sessionId,
     };
 
     try {

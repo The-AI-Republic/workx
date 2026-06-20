@@ -4,7 +4,7 @@
  * Cross-platform persistence for approval configuration and history.
  * Uses a storage getter function for platform abstraction
  * (ConfigStorageProvider — backed by ChromeConfigStorage on extension,
- * TauriConfigStorage on desktop).
+ * runtime-relayed config storage on desktop).
  */
 
 import type { IApprovalConfig, ApprovalHistoryEntry } from './types';

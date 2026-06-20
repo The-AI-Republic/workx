@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { push } from 'svelte-spa-router';
   import TabContext from './common/TabContext.svelte';
   import ModelSelection from './chat/ModelSelection.svelte';
@@ -15,9 +15,12 @@
   import { commandRegistry, parseCommandInput } from '../commands';
   import type { FilteredCommand } from '../commands';
   import { initBuiltinCommands, registerSkillCommands } from '../commands/builtinCommands';
+  import type { InputItem } from '@/core/protocol/types';
+  import { registerShortcut, registerShortcutContext } from '../shortcuts/useShortcut';
 
   let {
     value = $bindable(''),
+    suggestion = $bindable<string | null>(null),
     placeholder = t('>> Enter command...'),
     onSubmit = () => {},
     onStop = () => {},
@@ -28,23 +31,91 @@
     onModelChanged,
     onTabSelected,
     onCommandOutput,
+    onOpenRewindSelector,
   }: {
     value?: string;
+    /** Track 24.3: predicted next message; chip + Tab-accept. */
+    suggestion?: string | null;
     placeholder?: string;
-    onSubmit?: (value: string) => void;
+    /** Track 13: optional `attachments` carries pasted screenshots as
+     *  `image` InputItems. Second arg is optional → backward compatible. */
+    onSubmit?: (value: string, attachments?: InputItem[]) => void;
     onStop?: () => void;
-    onSelectConversation?: (conversationId: string) => void;
+    onSelectConversation?: (sessionId: string) => void;
     onNewConversation?: () => void;
     tabId?: number;
     isProcessing?: boolean;
     onModelChanged?: (data: { modelId: string; modelName: string }) => void;
     onTabSelected?: (data: { tabId: number }) => void;
     onCommandOutput?: (data: { title: string; content: string }) => void;
+    /** Track 15: open the rewind turn-selector overlay. */
+    onOpenRewindSelector?: () => void;
   } = $props();
 
   let isFocused = $state(false);
 
+  // Track 13: screenshots captured from the web clipboard, sent alongside
+  // the prompt as `image` InputItems (the core funnel disk-backs them).
+  let pendingAttachments: InputItem[] = $state([]);
+  // In-flight FileReader decodes — awaited before submit so a paste followed
+  // immediately by Enter cannot drop the image (decode race).
+  let pendingReads: Promise<void>[] = [];
+
   let currentTheme = $derived($uiTheme);
+
+  function clearAttachments(): void {
+    pendingAttachments = [];
+    pendingReads = [];
+  }
+
+  /** Track 24.3: dismiss the next-message suggestion chip. */
+  function dismissSuggestion(): void {
+    suggestion = null;
+  }
+
+  /** Submit the current value plus any pending attachments, then reset. */
+  async function submitWithAttachments(): Promise<void> {
+    suggestion = null; // Track 24.3: a sent message invalidates the prediction.
+    if (pendingReads.length) {
+      await Promise.all(pendingReads);
+    }
+    // Preserve the exact prior call signature when there are no attachments
+    // (backward compatible — callers/tests expecting one arg are unaffected).
+    if (pendingAttachments.length) {
+      onSubmit(value, pendingAttachments);
+      clearAttachments();
+    } else {
+      onSubmit(value);
+    }
+  }
+
+  /** Pull image files out of a clipboard event into pendingAttachments. */
+  function captureClipboardImages(event: ClipboardEvent): void {
+    const items = event.clipboardData?.items;
+    if (!items) return;
+    // DataTransferItemList is not iterable under our lib target — index it.
+    for (let idx = 0; idx < items.length; idx++) {
+      const it = items[idx];
+      if (it.kind !== 'file' || !it.type.startsWith('image/')) continue;
+      const file = it.getAsFile();
+      if (!file) continue;
+      const read = new Promise<void>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === 'string') {
+            pendingAttachments = [
+              ...pendingAttachments,
+              { type: 'image', image_url: reader.result },
+            ];
+          }
+          resolve();
+        };
+        reader.onerror = () => resolve();
+        reader.readAsDataURL(file);
+      });
+      pendingReads = [...pendingReads, read];
+    }
+  }
 
   // Long-press detection for scheduling
   const LONG_PRESS_DURATION = 500; // milliseconds
@@ -75,6 +146,13 @@
       },
       onOpenSettings: () => {
         push('/settings');
+      },
+      onSubmitText: (text: string) => onSubmit(text),
+      onOpenRewindSelector: () => {
+        onOpenRewindSelector?.();
+      },
+      onOpenDoctor: () => {
+        push('/doctor');
       },
     });
 
@@ -124,7 +202,7 @@
 
   function updateFilter(): void {
     const query = filterText;
-    filteredCommands = commandRegistry.filter(query);
+    filteredCommands = commandRegistry.filter(query, lastExecuted);
     selectedIndex = 0;
   }
 
@@ -154,15 +232,19 @@
     }
   }
 
-  function handleKeyDown(event: KeyboardEvent) {
+  function clearErrorOnPrintableKey(event: KeyboardEvent) {
     ensureBuiltins();
 
     // Clear error on any typing
     if (errorMessage && event.key.length === 1) {
       clearError();
     }
+  }
 
-    // Command mode keyboard handling
+  function handleKeyDown(event: KeyboardEvent) {
+    if (event.defaultPrevented) return;
+    clearErrorOnPrintableKey(event);
+
     if (isCommandMode) {
       if (event.key === 'ArrowDown') {
         event.preventDefault();
@@ -185,38 +267,65 @@
       }
       if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault();
-        if (filteredCommands.length > 0 && selectedIndex < filteredCommands.length) {
-          // Execute selected command from dropdown
-          const selected = filteredCommands[selectedIndex];
-          executeCommand(selected.command.name);
-        } else {
-          // Try to parse and execute directly
-          const parsed = parseCommandInput(value);
-          if (parsed) {
-            executeCommand(parsed.commandName, parsed.args);
-          }
-        }
+        acceptSlashCommand();
         return;
       }
     }
 
-    // Normal mode: Submit on Enter (without Shift)
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault();
-      if (value.trim()) {
-        // Check if it looks like a command
-        if (value.trim().startsWith('/')) {
-          const parsed = parseCommandInput(value);
-          if (parsed) {
-            ensureBuiltins();
-            executeCommand(parsed.commandName, parsed.args);
-            return;
-          }
-        }
-        onSubmit(value);
+    // Track 24.3: Tab accepts the suggestion only when the command palette is
+    // closed AND the input is empty OR the typed text is a prefix of the
+    // suggestion. Guarantees Tab never hijacks the palette (handled above) or
+    // normal typing / focus traversal.
+    if (event.key === 'Tab' && !event.shiftKey && suggestion && !isCommandMode) {
+      const isPrefix =
+        value.length > 0 && suggestion.toLowerCase().startsWith(value.toLowerCase());
+      if (value.trim() === '' || isPrefix) {
+        event.preventDefault();
+        value = suggestion;
+        suggestion = null;
+        return;
       }
     }
-    // Allow Shift+Enter for new line (default textarea behavior)
+    // Escape dismisses a visible suggestion (command mode consumes Escape above).
+    if (event.key === 'Escape' && suggestion && !isCommandMode) {
+      event.preventDefault();
+      suggestion = null;
+      return;
+    }
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      submitCurrentInput();
+    }
+  }
+
+  function submitCurrentInput() {
+    ensureBuiltins();
+    if (value.trim() || pendingAttachments.length) {
+      // Check if it looks like a command (UI commands stay client-side —
+      // they navigate the Svelte router / fire callbacks and cannot run
+      // in core; Track 03 owns this UI-only surface).
+      if (value.trim().startsWith('/')) {
+        const parsed = parseCommandInput(value);
+        if (parsed) {
+          executeCommand(parsed.commandName, parsed.args);
+          return;
+        }
+      }
+      void submitWithAttachments();
+    }
+  }
+
+  function acceptSlashCommand() {
+    ensureBuiltins();
+    if (filteredCommands.length > 0 && selectedIndex < filteredCommands.length) {
+      const selected = filteredCommands[selectedIndex];
+      executeCommand(selected.command.name);
+    } else {
+      const parsed = parseCommandInput(value);
+      if (parsed) {
+        executeCommand(parsed.commandName, parsed.args);
+      }
+    }
   }
 
   function handleInput(): void {
@@ -225,6 +334,11 @@
     // Clear error on input
     if (errorMessage) {
       clearError();
+    }
+
+    // Track 24.3: drop the suggestion once typing diverges from it.
+    if (suggestion && !suggestion.toLowerCase().startsWith(value.toLowerCase())) {
+      suggestion = null;
     }
 
     // Check for command mode activation: "/" as first char in field
@@ -261,6 +375,8 @@
 
   function handlePaste(event: ClipboardEvent): void {
     ensureBuiltins();
+    // Track 13: capture pasted screenshots (previously dropped entirely).
+    captureClipboardImages(event);
     // If field is empty and pasted text starts with "/", enter command mode after paste
     if (value === '' || value === undefined) {
       const pastedText = event.clipboardData?.getData('text') || '';
@@ -299,8 +415,8 @@
 
     if (isProcessing) {
       onStop();
-    } else if (value.trim()) {
-      // Check if it looks like a command
+    } else if (value.trim() || pendingAttachments.length) {
+      // UI commands stay client-side (see handleKeyDown note).
       if (value.trim().startsWith('/')) {
         ensureBuiltins();
         const parsed = parseCommandInput(value);
@@ -309,7 +425,7 @@
           return;
         }
       }
-      onSubmit(value);
+      submitWithAttachments();
     }
   }
 
@@ -345,21 +461,58 @@
       clearTimeout(errorTimeout);
     }
   });
+
+  onMount(() => {
+    const unregisterChatContext = registerShortcutContext('Chat', { active: () => isFocused });
+    const unregisterSlashContext = registerShortcutContext('SlashCommand', {
+      active: () => isFocused && isCommandMode && showDropdown,
+    });
+    const unregisterSubmit = registerShortcut('chat:submit', 'Chat', () => {
+      submitCurrentInput();
+    });
+    const unregisterNewline = registerShortcut('chat:newline', 'Chat', () => false);
+    const unregisterSlashNext = registerShortcut('slash:next', 'SlashCommand', () => {
+      if (filteredCommands.length > 0) {
+        selectedIndex = (selectedIndex + 1) % filteredCommands.length;
+      }
+    });
+    const unregisterSlashPrevious = registerShortcut('slash:previous', 'SlashCommand', () => {
+      if (filteredCommands.length > 0) {
+        selectedIndex = (selectedIndex - 1 + filteredCommands.length) % filteredCommands.length;
+      }
+    });
+    const unregisterSlashDismiss = registerShortcut('slash:dismiss', 'SlashCommand', () => {
+      resetCommandMode();
+    });
+    const unregisterSlashAccept = registerShortcut('slash:accept', 'SlashCommand', () => {
+      acceptSlashCommand();
+    });
+
+    return () => {
+      unregisterChatContext();
+      unregisterSlashContext();
+      unregisterSubmit();
+      unregisterNewline();
+      unregisterSlashNext();
+      unregisterSlashPrevious();
+      unregisterSlashDismiss();
+      unregisterSlashAccept();
+    };
+  });
 </script>
 
 <div class="w-full">
   <!-- Tab Context Display -->
-  <div class="mb-2 flex items-center gap-2">
+  <div class="mb-2 flex flex-wrap items-center gap-2">
     {#if platform.hasTabSelection}
       <!-- Only apply mousedown preventDefault to TabContext area for drag behavior -->
       <div class="contents" onmousedown={(e) => e.preventDefault()}>
         <TabContext {tabId} onTabSelected={handleTabSelected} />
       </div>
     {/if}
-    <ApprovalModeIndicator />
-    <div class="flex-1"></div>
+    <div class="flex-1 min-w-0"></div>
     <!-- Top Right Button Group - NOT inside mousedown preventDefault area -->
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-2 shrink-0">
       <ChatHistoryPopup onSelectConversation={onSelectConversation} />
       <Tooltip content={$_t("New Conversation")} placement="left">
         <button
@@ -393,6 +546,35 @@
       onSelect={handleDropdownSelect}
     />
 
+    <!-- Track 13: pasted-image attachment indicator -->
+    {#if pendingAttachments.length > 0}
+      <div class="mb-1 flex items-center gap-2 text-xs {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
+        <span>📎 {pendingAttachments.length} {pendingAttachments.length === 1 ? $_t('image attached') : $_t('images attached')}</span>
+        <button
+          type="button"
+          class="underline cursor-pointer bg-transparent border-none p-0 {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-dim-green hover:text-term-green'}"
+          onclick={clearAttachments}
+          aria-label={$_t('Clear attached images')}
+        >{$_t('clear')}</button>
+      </div>
+    {/if}
+
+    <!-- Track 24.3: next-message suggestion chip (Tab to accept, × to dismiss).
+         Visible exactly when Tab will accept: palette closed AND input empty
+         OR the typed text is a live prefix of the suggestion. -->
+    {#if suggestion && !isCommandMode && (!value.trim() || suggestion.toLowerCase().startsWith(value.toLowerCase()))}
+      <div class="mb-1 flex items-center gap-2 text-xs {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
+        <span class="opacity-70">Tab ↹</span>
+        <span class="truncate">{suggestion}</span>
+        <button
+          type="button"
+          class="cursor-pointer bg-transparent border-none p-0 {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-dim-green hover:text-term-green'}"
+          onclick={dismissSuggestion}
+          aria-label={$_t('Dismiss suggestion')}
+        >✕</button>
+      </div>
+    {/if}
+
     <div
       class="input-shell flex flex-col overflow-hidden transition-all duration-200
         {currentTheme === 'modern'
@@ -424,6 +606,7 @@
         <div class="shrink-0">
           <ModelSelection onModelChanged={handleModelChanged} />
         </div>
+        <ApprovalModeIndicator />
 
         <!-- Spacer to push button to the right -->
         <div class="flex-1"></div>

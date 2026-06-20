@@ -810,7 +810,7 @@ describe('A2AToolAdapter — registerA2ASkills', () => {
 
     await registerA2ASkills(manager, 'agent', skills, registry, true);
 
-    const riskAssessor = registry.register.mock.calls[0][2];
+    const riskAssessor = registry.register.mock.calls[0][2].riskAssessor;
     const assessment = riskAssessor.assess('tool', {});
     expect(assessment.action).toBe('auto_approve');
   });
@@ -822,7 +822,7 @@ describe('A2AToolAdapter — registerA2ASkills', () => {
 
     await registerA2ASkills(manager, 'agent', skills, registry, false);
 
-    const riskAssessor = registry.register.mock.calls[0][2];
+    const riskAssessor = registry.register.mock.calls[0][2].riskAssessor;
     const assessment = riskAssessor.assess('tool', {});
     expect(assessment.action).toBe('ask_user');
   });

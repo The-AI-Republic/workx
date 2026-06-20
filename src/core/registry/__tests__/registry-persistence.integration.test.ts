@@ -39,13 +39,14 @@ vi.mock('@/core/RepublicAgent', () => {
         return undefined;
       }
       setEventDispatcher = vi.fn();
+      private _session = {
+        sessionId: `session_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        abortAllTasks: vi.fn().mockResolvedValue(undefined),
+        close: vi.fn().mockResolvedValue(undefined),
+        setTabId: vi.fn(),
+      };
       getSession() {
-        return {
-          conversationId: `conv_${Date.now()}`,
-          abortAllTasks: vi.fn().mockResolvedValue(undefined),
-          close: vi.fn().mockResolvedValue(undefined),
-          setTabId: vi.fn(),
-        };
+        return this._session;
       }
       async submitOperation() {
         return 'op_123';
@@ -55,6 +56,9 @@ vi.mock('@/core/RepublicAgent', () => {
       }
       getApprovalManager() {
         return {};
+      }
+      getHookDispatcher() {
+        return { fire: vi.fn().mockResolvedValue({}) };
       }
       getModelClientFactory() {
         return { setAuthManager: vi.fn() };
@@ -66,6 +70,9 @@ vi.mock('@/core/RepublicAgent', () => {
         return { ready: true };
       }
       async getNextEvent() {
+        return null;
+      }
+      getEngine() {
         return null;
       }
     },
@@ -190,27 +197,25 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         {
           sessionId: 'session_1',
           sessionLetter: 'a',
-          conversationId: 'conv_1',
           type: 'scheduled',
           state: 'idle',
           createdAt: Date.now() - 1000,
           lastActivityAt: Date.now(),
           tabId: 100,
           tabGroupId: null,
-          tabGroupName: 'browserx_s_a',
+          tabGroupName: 'workx_s_a',
           persistedAt: Date.now(),
         },
         {
           sessionId: 'session_2',
           sessionLetter: 'b',
-          conversationId: 'conv_2',
           type: 'scheduled',
           state: 'idle',
           createdAt: Date.now() - 2000,
           lastActivityAt: Date.now() - 1000,
           tabId: 101,
           tabGroupId: null,
-          tabGroupName: 'browserx_s_b',
+          tabGroupName: 'workx_s_b',
           persistedAt: Date.now() - 1000,
         },
       ];
@@ -229,27 +234,25 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         {
           sessionId: 'session_active',
           sessionLetter: 'a',
-          conversationId: 'conv_1',
           type: 'scheduled',
           state: 'idle',
           createdAt: Date.now(),
           lastActivityAt: Date.now(),
           tabId: null,
           tabGroupId: null,
-          tabGroupName: 'browserx_s_a',
+          tabGroupName: 'workx_s_a',
           persistedAt: Date.now(),
         },
         {
           sessionId: 'session_terminated',
           sessionLetter: 'b',
-          conversationId: 'conv_2',
           type: 'scheduled',
           state: 'terminated',
           createdAt: Date.now(),
           lastActivityAt: Date.now(),
           tabId: null,
           tabGroupId: null,
-          tabGroupName: 'browserx_s_b',
+          tabGroupName: 'workx_s_b',
           persistedAt: Date.now(),
         },
       ];
@@ -269,14 +272,13 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
       const persistedSession: PersistedSession = {
         sessionId: 'session_to_resume',
         sessionLetter: 'c',
-        conversationId: 'conv_resume',
         type: 'scheduled',
         state: 'idle',
         createdAt: Date.now() - 5000,
         lastActivityAt: Date.now() - 1000,
         tabId: 200,
         tabGroupId: null,
-        tabGroupName: 'browserx_s_c',
+        tabGroupName: 'workx_s_c',
         persistedAt: Date.now() - 1000,
       };
 
@@ -294,14 +296,13 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
       const persistedSession: PersistedSession = {
         sessionId: activeSession.sessionId, // Same ID as active session
         sessionLetter: 'a',
-        conversationId: 'conv_active',
         type: 'scheduled',
         state: 'idle',
         createdAt: Date.now(),
         lastActivityAt: Date.now(),
         tabId: null,
         tabGroupId: null,
-        tabGroupName: 'browserx_s_a',
+        tabGroupName: 'workx_s_a',
         persistedAt: Date.now(),
       };
 
@@ -312,7 +313,9 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
     });
 
     it('should return null when max concurrent sessions reached', async () => {
-      // Fill up to max concurrent (default 3)
+      // Set a low limit to test the constraint
+      registry.setMaxConcurrent(3);
+      // Fill up to max concurrent
       await registry.createSession({ type: 'primary' });
       await registry.createSession({ type: 'scheduled' });
       await registry.createSession({ type: 'scheduled' });
@@ -322,14 +325,13 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
       const persistedSession: PersistedSession = {
         sessionId: 'session_overflow',
         sessionLetter: 'd',
-        conversationId: 'conv_overflow',
         type: 'scheduled',
         state: 'idle',
         createdAt: Date.now(),
         lastActivityAt: Date.now(),
         tabId: null,
         tabGroupId: null,
-        tabGroupName: 'browserx_s_d',
+        tabGroupName: 'workx_s_d',
         persistedAt: Date.now(),
       };
 
@@ -396,28 +398,26 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
       const oldSession: PersistedSession = {
         sessionId: 'old_session',
         sessionLetter: 'a',
-        conversationId: 'conv_old',
         type: 'scheduled',
         state: 'idle',
         createdAt: now - 48 * 60 * 60 * 1000, // 48 hours ago
         lastActivityAt: now - 48 * 60 * 60 * 1000,
         tabId: null,
         tabGroupId: null,
-        tabGroupName: 'browserx_s_a',
+        tabGroupName: 'workx_s_a',
         persistedAt: now - 48 * 60 * 60 * 1000,
       };
 
       const recentSession: PersistedSession = {
         sessionId: 'recent_session',
         sessionLetter: 'b',
-        conversationId: 'conv_recent',
         type: 'scheduled',
         state: 'idle',
         createdAt: now - 1 * 60 * 60 * 1000, // 1 hour ago
         lastActivityAt: now - 1 * 60 * 60 * 1000,
         tabId: null,
         tabGroupId: null,
-        tabGroupName: 'browserx_s_b',
+        tabGroupName: 'workx_s_b',
         persistedAt: now - 1 * 60 * 60 * 1000,
       };
 
@@ -438,14 +438,13 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
       const terminatedSession: PersistedSession = {
         sessionId: 'terminated_session',
         sessionLetter: 'a',
-        conversationId: 'conv_terminated',
         type: 'scheduled',
         state: 'terminated',
         createdAt: Date.now() - 1000, // Very recent
         lastActivityAt: Date.now() - 1000,
         tabId: null,
         tabGroupId: null,
-        tabGroupName: 'browserx_s_a',
+        tabGroupName: 'workx_s_a',
         persistedAt: Date.now() - 1000,
       };
 
@@ -478,14 +477,13 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
       const persistedSession: PersistedSession = {
         sessionId: originalSessionId,
         sessionLetter: session.sessionLetter,
-        conversationId: session.metadata.conversationId,
         type: 'scheduled',
         state: 'idle',
         createdAt: session.metadata.createdAt,
         lastActivityAt: session.metadata.lastActivityAt,
         tabId: 500,
         tabGroupId: null,
-        tabGroupName: `browserx_s_${session.sessionLetter}`,
+        tabGroupName: `workx_s_${session.sessionLetter}`,
         persistedAt: Date.now(),
       };
 
@@ -515,14 +513,13 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
       const primarySession: PersistedSession = {
         sessionId: 'primary_old',
         sessionLetter: 'a',
-        conversationId: 'conv_primary',
         type: 'primary',
         state: 'idle',
         createdAt: Date.now(),
         lastActivityAt: Date.now(),
         tabId: null,
         tabGroupId: null,
-        tabGroupName: 'browserx_s_a',
+        tabGroupName: 'workx_s_a',
         persistedAt: Date.now(),
       };
 
@@ -554,14 +551,13 @@ describe('SessionStorage Unit Tests', () => {
     const metadata: SessionMetadata = {
       sessionId: 'session_unit',
       sessionLetter: 'a',
-      conversationId: 'conv_unit',
       type: 'scheduled',
       state: 'idle',
       createdAt: Date.now(),
       lastActivityAt: Date.now(),
       tabId: null,
       tabGroupId: null,
-      tabGroupName: 'browserx_s_a',
+      tabGroupName: 'workx_s_a',
     };
 
     await storage.persistSession(metadata);
@@ -581,14 +577,13 @@ describe('SessionStorage Unit Tests', () => {
     const mockSession: PersistedSession = {
       sessionId: 'session_get',
       sessionLetter: 'b',
-      conversationId: 'conv_get',
       type: 'scheduled',
       state: 'active',
       createdAt: Date.now(),
       lastActivityAt: Date.now(),
       tabId: 100,
       tabGroupId: null,
-      tabGroupName: 'browserx_s_b',
+      tabGroupName: 'workx_s_b',
       persistedAt: Date.now(),
     };
 
@@ -611,14 +606,13 @@ describe('SessionStorage Unit Tests', () => {
       {
         sessionId: 'scheduled_1',
         sessionLetter: 'a',
-        conversationId: 'conv_1',
         type: 'scheduled',
         state: 'idle',
         createdAt: Date.now(),
         lastActivityAt: Date.now(),
         tabId: null,
         tabGroupId: null,
-        tabGroupName: 'browserx_s_a',
+        tabGroupName: 'workx_s_a',
         persistedAt: Date.now(),
       },
     ];

@@ -1,5 +1,5 @@
 /**
- * Lightweight content script used by Browserx.
+ * Lightweight content script used by WorkX.
  *
  * CDP MIGRATION:
  * - DOM tool: Migrated to CDP (003-cdp-dom-refactor)
@@ -15,7 +15,7 @@ import VisualEffectController from './ui_effect/VisualEffectController.svelte';
 
 // Unique instance ID for debugging
 const INSTANCE_ID = Math.random().toString(36).substring(7);
-console.log(`[Browserx] Content script loading - Instance ID: ${INSTANCE_ID}, Frame: ${window.self === window.top ? 'MAIN' : 'IFRAME'}, URL: ${window.location.href}`);
+console.log(`[WorkX] Content script loading - Instance ID: ${INSTANCE_ID}, Frame: ${window.self === window.top ? 'MAIN' : 'IFRAME'}, URL: ${window.location.href}`);
 
 let visualEffectController: any = null;
 let visualEffectShadowHost: HTMLElement | null = null;
@@ -38,26 +38,26 @@ interface PageContext {
 }
 
 function initialize(): void {
-	console.log(`[Browserx] Initializing Instance ${INSTANCE_ID} - Frame: ${window.self === window.top ? 'MAIN' : 'IFRAME'}`);
+	console.log(`[WorkX] Initializing Instance ${INSTANCE_ID} - Frame: ${window.self === window.top ? 'MAIN' : 'IFRAME'}`);
 
 	// Double-check we're in the main frame (shouldn't happen with all_frames: false, but defensive)
 	if (window.self !== window.top) {
-		console.warn(`[Browserx] Instance ${INSTANCE_ID} - Running in IFRAME despite all_frames: false! Aborting initialization.`);
+		console.warn(`[WorkX] Instance ${INSTANCE_ID} - Running in IFRAME despite all_frames: false! Aborting initialization.`);
 		return;
 	}
 
 	// Check for existing initialization marker
-	if ((window as any).__browserx_content_script_loaded__) {
-		console.error(`[Browserx] Instance ${INSTANCE_ID} - DUPLICATE INITIALIZATION DETECTED! Another instance already loaded.`);
-		console.error(`[Browserx] Existing instance ID: ${(window as any).__browserx_instance_id__}`);
+	if ((window as any).__workx_content_script_loaded__) {
+		console.error(`[WorkX] Instance ${INSTANCE_ID} - DUPLICATE INITIALIZATION DETECTED! Another instance already loaded.`);
+		console.error(`[WorkX] Existing instance ID: ${(window as any).__workx_instance_id__}`);
 		return;
 	}
 
 	// Mark as initialized
-	(window as any).__browserx_content_script_loaded__ = true;
-	(window as any).__browserx_instance_id__ = INSTANCE_ID;
+	(window as any).__workx_content_script_loaded__ = true;
+	(window as any).__workx_instance_id__ = INSTANCE_ID;
 
-	console.log(`[Browserx] Instance ${INSTANCE_ID} - Content script initialized (main frame only)`);
+	console.log(`[WorkX] Instance ${INSTANCE_ID} - Content script initialized (main frame only)`);
 
 	// Setup lazy initialization for visual effects
 	// Visual effects will only initialize when DomService first needs them
@@ -69,11 +69,11 @@ function initialize(): void {
  * Visual effects only initialize when DomService first needs them (saves memory/CPU on non-working tabs)
  */
 function setupVisualEffectsListener(): void {
-	document.addEventListener('browserx:init-visual-effects', () => {
+	document.addEventListener('workx:init-visual-effects', () => {
 		if (!visualEffectController) {
-			console.log(`[Browserx] Instance ${INSTANCE_ID} - Lazy initializing visual effects...`);
+			console.log(`[WorkX] Instance ${INSTANCE_ID} - Lazy initializing visual effects...`);
 			initializeVisualEffects();
-			(window as any).__browserx_visual_effects_initialized__ = true;
+			(window as any).__workx_visual_effects_initialized__ = true;
 		}
 	}, { once: true }); // Only listen once
 }
@@ -85,32 +85,32 @@ function setupVisualEffectsListener(): void {
  */
 function initializeVisualEffects(): void {
 	try {
-		console.log(`[Browserx] Instance ${INSTANCE_ID} - Initializing visual effects...`);
+		console.log(`[WorkX] Instance ${INSTANCE_ID} - Initializing visual effects...`);
 
 		// Check if visual effects already exist in DOM (from another instance)
-		const existingHosts = document.querySelectorAll('#browserx-visual-effects-host');
+		const existingHosts = document.querySelectorAll('#workx-visual-effects-host');
 		if (existingHosts.length > 0) {
-			console.error(`[Browserx] Instance ${INSTANCE_ID} - DUPLICATE VISUAL EFFECTS DETECTED! Found ${existingHosts.length} existing host(s)`);
+			console.error(`[WorkX] Instance ${INSTANCE_ID} - DUPLICATE VISUAL EFFECTS DETECTED! Found ${existingHosts.length} existing host(s)`);
 			existingHosts.forEach((host, idx) => {
-				console.error(`[Browserx] Existing host ${idx}:`, host);
+				console.error(`[WorkX] Existing host ${idx}:`, host);
 			});
 
 			// Clean up duplicates
 			existingHosts.forEach((host, idx) => {
 				if (idx < existingHosts.length - 1) { // Keep the last one
-					console.log(`[Browserx] Removing duplicate host ${idx}`);
+					console.log(`[WorkX] Removing duplicate host ${idx}`);
 					host.remove();
 				}
 			});
 
 			visualEffectShadowHost = existingHosts[existingHosts.length - 1] as HTMLElement;
-			console.log(`[Browserx] Instance ${INSTANCE_ID} - Reusing existing visual effects host`);
+			console.log(`[WorkX] Instance ${INSTANCE_ID} - Reusing existing visual effects host`);
 			return;
 		}
 
 		// Create shadow host element
 		visualEffectShadowHost = document.createElement('div');
-		visualEffectShadowHost.id = 'browserx-visual-effects-host';
+		visualEffectShadowHost.id = 'workx-visual-effects-host';
 		visualEffectShadowHost.dataset.instanceId = INSTANCE_ID;
 		visualEffectShadowHost.style.cssText = 'position: fixed; top: 0; left: 0; width: 0; height: 0; z-index: 2147483647;';
 
@@ -125,19 +125,19 @@ function initializeVisualEffects(): void {
 		// Append to document body
 		document.body.appendChild(visualEffectShadowHost);
 
-		console.log(`[Browserx] Instance ${INSTANCE_ID} - Visual effects initialized successfully`);
+		console.log(`[WorkX] Instance ${INSTANCE_ID} - Visual effects initialized successfully`);
 
 		// Log all cursors in the DOM for debugging
 		setTimeout(() => {
 			const cursors = document.querySelectorAll('[data-testid="cursor-animator"]');
-			console.log(`[Browserx] Instance ${INSTANCE_ID} - Cursor count in DOM: ${cursors.length}`);
+			console.log(`[WorkX] Instance ${INSTANCE_ID} - Cursor count in DOM: ${cursors.length}`);
 			if (cursors.length > 1) {
-				console.error(`[Browserx] Instance ${INSTANCE_ID} - MULTIPLE CURSORS DETECTED!`);
+				console.error(`[WorkX] Instance ${INSTANCE_ID} - MULTIPLE CURSORS DETECTED!`);
 			}
 		}, 1000);
 	} catch (error) {
 		// Graceful degradation - visual effects failure never blocks content script
-		console.error(`[Browserx] Instance ${INSTANCE_ID} - Failed to initialize visual effects:`, error);
+		console.error(`[WorkX] Instance ${INSTANCE_ID} - Failed to initialize visual effects:`, error);
 	}
 }
 
@@ -172,13 +172,13 @@ function getPageContext(): PageContext {
 }
 
 window.addEventListener('pagehide', () => {
-	console.log(`[Browserx] Instance ${INSTANCE_ID} - Page hiding, cleaning up...`);
+	console.log(`[WorkX] Instance ${INSTANCE_ID} - Page hiding, cleaning up...`);
 
 	// Clean up visual effects
 	if (visualEffectController) {
 		unmount(visualEffectController);
 		visualEffectController = null;
-		console.log(`[Browserx] Instance ${INSTANCE_ID} - Visual effects destroyed`);
+		console.log(`[WorkX] Instance ${INSTANCE_ID} - Visual effects destroyed`);
 	}
 	if (visualEffectShadowHost && visualEffectShadowHost.parentNode) {
 		visualEffectShadowHost.parentNode.removeChild(visualEffectShadowHost);
@@ -186,9 +186,9 @@ window.addEventListener('pagehide', () => {
 	}
 
 	// Clear initialization flags
-	delete (window as any).__browserx_content_script_loaded__;
-	delete (window as any).__browserx_instance_id__;
-	console.log(`[Browserx] Instance ${INSTANCE_ID} - Cleanup complete`);
+	delete (window as any).__workx_content_script_loaded__;
+	delete (window as any).__workx_instance_id__;
+	console.log(`[WorkX] Instance ${INSTANCE_ID} - Cleanup complete`);
 });
 
 initialize();
@@ -196,25 +196,25 @@ initialize();
 export { getPageContext };
 
 // Diagnostic utility - accessible from browser console
-(window as any).browserxDebug = {
+(window as any).workxDebug = {
 	getInstanceInfo: () => {
 		const info = {
 			instanceId: INSTANCE_ID,
 			isMainFrame: window.self === window.top,
 			url: window.location.href,
-			initialized: !!(window as any).__browserx_content_script_loaded__,
-			storedInstanceId: (window as any).__browserx_instance_id__,
+			initialized: !!(window as any).__workx_content_script_loaded__,
+			storedInstanceId: (window as any).__workx_instance_id__,
 			visualEffectController: !!visualEffectController,
 			shadowHost: !!visualEffectShadowHost,
-			hostsInDOM: document.querySelectorAll('#browserx-visual-effects-host').length,
+			hostsInDOM: document.querySelectorAll('#workx-visual-effects-host').length,
 			cursorsInDOM: document.querySelectorAll('[data-testid="cursor-animator"]').length,
 			overlaysInDOM: document.querySelectorAll('[data-testid="visual-effect-overlay"]').length,
 		};
 
-		console.log('[Browserx Debug Info]', info);
+		console.log('[WorkX Debug Info]', info);
 
 		// List all hosts
-		const hosts = document.querySelectorAll('#browserx-visual-effects-host');
+		const hosts = document.querySelectorAll('#workx-visual-effects-host');
 		hosts.forEach((host, idx) => {
 			console.log(`Host ${idx}:`, {
 				element: host,
@@ -226,8 +226,8 @@ export { getPageContext };
 	},
 
 	cleanupDuplicates: () => {
-		console.log('[Browserx] Cleaning up duplicate visual effects...');
-		const hosts = document.querySelectorAll('#browserx-visual-effects-host');
+		console.log('[WorkX] Cleaning up duplicate visual effects...');
+		const hosts = document.querySelectorAll('#workx-visual-effects-host');
 		console.log(`Found ${hosts.length} host(s)`);
 
 		if (hosts.length > 1) {
@@ -244,6 +244,6 @@ export { getPageContext };
 	}
 };
 
-console.log(`[Browserx] Instance ${INSTANCE_ID} - Debug utility available: window.browserxDebug.getInstanceInfo()`);
-console.log(`[Browserx] Instance ${INSTANCE_ID} - To cleanup duplicates: window.browserxDebug.cleanupDuplicates()`);
+console.log(`[WorkX] Instance ${INSTANCE_ID} - Debug utility available: window.workxDebug.getInstanceInfo()`);
+console.log(`[WorkX] Instance ${INSTANCE_ID} - To cleanup duplicates: window.workxDebug.cleanupDuplicates()`);
 

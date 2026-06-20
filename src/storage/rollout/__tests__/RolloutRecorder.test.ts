@@ -92,7 +92,7 @@ describe('RolloutRecorder', () => {
     it('should create new rollout with conversationId', async () => {
       const params: RolloutRecorderParams = {
         type: 'create',
-        conversationId,
+        sessionId: conversationId,
       };
 
       const recorder = await RolloutRecorder.create(params);
@@ -100,23 +100,23 @@ describe('RolloutRecorder', () => {
       expect(recorder.getRolloutId()).toBe(conversationId);
     });
 
-    it('should create IndexedDB database "ApplePiRollouts"', async () => {
+    it('should create IndexedDB database "WorkXRollouts"', async () => {
       const params: RolloutRecorderParams = {
         type: 'create',
-        conversationId,
+        sessionId: conversationId,
       };
 
       await RolloutRecorder.create(params);
 
       const dbs = await indexedDB.databases();
-      const dbExists = dbs.some((db: any) => db.name === 'ApplePiRollouts');
+      const dbExists = dbs.some((db: any) => db.name === 'WorkXRollouts');
       expect(dbExists).toBe(true);
     });
 
     it('should create rollouts record with default 60-day expiration', async () => {
       const params: RolloutRecorderParams = {
         type: 'create',
-        conversationId,
+        sessionId: conversationId,
       };
 
       const recorder = await RolloutRecorder.create(params);
@@ -134,7 +134,7 @@ describe('RolloutRecorder', () => {
     it('should write SessionMeta as first item (sequence 0)', async () => {
       const params: RolloutRecorderParams = {
         type: 'create',
-        conversationId,
+        sessionId: conversationId,
         instructions: 'Test instructions',
       };
 
@@ -148,7 +148,7 @@ describe('RolloutRecorder', () => {
     it('should support custom TTL config (30 days)', async () => {
       const params: RolloutRecorderParams = {
         type: 'create',
-        conversationId,
+        sessionId: conversationId,
       };
       const config: IAgentConfigWithStorage = {
         storage: { rolloutTTL: 30 },
@@ -163,7 +163,7 @@ describe('RolloutRecorder', () => {
     it('should support permanent storage (no expiration)', async () => {
       const params: RolloutRecorderParams = {
         type: 'create',
-        conversationId,
+        sessionId: conversationId,
       };
       const config: IAgentConfigWithStorage = {
         storage: { rolloutTTL: 'permanent' },
@@ -178,7 +178,7 @@ describe('RolloutRecorder', () => {
     it('should reject invalid conversation ID (non-UUID)', async () => {
       const params: RolloutRecorderParams = {
         type: 'create',
-        conversationId: 'not-a-uuid',
+        sessionId: 'not-a-uuid',
       };
 
       await expect(RolloutRecorder.create(params)).rejects.toThrow(/Invalid conversation ID/);
@@ -187,7 +187,7 @@ describe('RolloutRecorder', () => {
     it('should include instructions in SessionMeta', async () => {
       const params: RolloutRecorderParams = {
         type: 'create',
-        conversationId,
+        sessionId: conversationId,
         instructions: 'Help me debug',
       };
 
@@ -201,7 +201,7 @@ describe('RolloutRecorder', () => {
       // Create a rollout and trigger lazy initialization by recording an item
       const params: RolloutRecorderParams = {
         type: 'create',
-        conversationId,
+        sessionId: conversationId,
       };
       const recorder = await RolloutRecorder.create(params);
       await recorder.recordItems([
@@ -225,7 +225,7 @@ describe('RolloutRecorder', () => {
       // Create rollout with items
       const createParams: RolloutRecorderParams = {
         type: 'create',
-        conversationId: '1234b6c0-94b8-4f7b-a530-2aeb6098ae0e',
+        sessionId: '1234b6c0-94b8-4f7b-a530-2aeb6098ae0e',
       };
       const recorder1 = await RolloutRecorder.create(createParams);
       await recorder1.recordItems([
@@ -265,7 +265,7 @@ describe('RolloutRecorder', () => {
     beforeEach(async () => {
       const params: RolloutRecorderParams = {
         type: 'create',
-        conversationId,
+        sessionId: conversationId,
       };
       recorder = await RolloutRecorder.create(params);
     });
@@ -347,7 +347,7 @@ describe('RolloutRecorder', () => {
     beforeEach(async () => {
       const params: RolloutRecorderParams = {
         type: 'create',
-        conversationId,
+        sessionId: conversationId,
       };
       recorder = await RolloutRecorder.create(params);
     });
@@ -382,7 +382,7 @@ describe('RolloutRecorder', () => {
     it('should return correct conversation ID', async () => {
       const params: RolloutRecorderParams = {
         type: 'create',
-        conversationId,
+        sessionId: conversationId,
       };
       const recorder = await RolloutRecorder.create(params);
 
@@ -392,7 +392,7 @@ describe('RolloutRecorder', () => {
     it('should return stable value across lifetime', async () => {
       const params: RolloutRecorderParams = {
         type: 'create',
-        conversationId,
+        sessionId: conversationId,
       };
       const recorder = await RolloutRecorder.create(params);
 
@@ -408,7 +408,7 @@ describe('RolloutRecorder', () => {
     it('should flush pending writes before shutdown', async () => {
       const params: RolloutRecorderParams = {
         type: 'create',
-        conversationId,
+        sessionId: conversationId,
       };
       const recorder = await RolloutRecorder.create(params);
 
@@ -426,7 +426,7 @@ describe('RolloutRecorder', () => {
     it('should be idempotent (multiple shutdowns)', async () => {
       const params: RolloutRecorderParams = {
         type: 'create',
-        conversationId,
+        sessionId: conversationId,
       };
       const recorder = await RolloutRecorder.create(params);
 
@@ -440,7 +440,7 @@ describe('RolloutRecorder', () => {
     it('should make instance unusable after shutdown', async () => {
       const params: RolloutRecorderParams = {
         type: 'create',
-        conversationId,
+        sessionId: conversationId,
       };
       const recorder = await RolloutRecorder.create(params);
       await recorder.shutdown();
@@ -506,7 +506,7 @@ describe('RolloutRecorder', () => {
       // Create rollout with items
       const params: RolloutRecorderParams = {
         type: 'create',
-        conversationId,
+        sessionId: conversationId,
       };
       const recorder = await RolloutRecorder.create(params);
       await recorder.recordItems([
@@ -521,14 +521,14 @@ describe('RolloutRecorder', () => {
       expect(history.type).toBe('resumed');
       if (history.type === 'resumed') {
         expect(history.payload.history.length).toBeGreaterThan(0);
-        expect(history.payload.conversationId).toBe(conversationId);
+        expect(history.payload.sessionId).toBe(conversationId);
       }
     });
 
     it('should handle rollout with only session meta', async () => {
       const params: RolloutRecorderParams = {
         type: 'create',
-        conversationId,
+        sessionId: conversationId,
       };
       const recorder = await RolloutRecorder.create(params);
       // Trigger lazy initialization by recording a single item
@@ -555,7 +555,7 @@ describe('RolloutRecorder', () => {
     it('should return correct counts after recording items', async () => {
       const params: RolloutRecorderParams = {
         type: 'create',
-        conversationId,
+        sessionId: conversationId,
       };
       const recorder = await RolloutRecorder.create(params);
       await recorder.recordItems([
@@ -576,13 +576,13 @@ describe('RolloutRecorder', () => {
       const id1 = conversationId;
       const id2 = '1111b6c0-94b8-4f7b-a530-2aeb6098ae0e';
 
-      const rec1 = await RolloutRecorder.create({ type: 'create', conversationId: id1 });
+      const rec1 = await RolloutRecorder.create({ type: 'create', sessionId: id1 });
       await rec1.recordItems([
         { type: 'response_item', payload: { type: 'message', content: 'A' } },
       ]);
       await rec1.shutdown();
 
-      const rec2 = await RolloutRecorder.create({ type: 'create', conversationId: id2 });
+      const rec2 = await RolloutRecorder.create({ type: 'create', sessionId: id2 });
       await rec2.recordItems([
         { type: 'response_item', payload: { type: 'message', content: 'B' } },
       ]);
@@ -598,7 +598,7 @@ describe('RolloutRecorder', () => {
   describe('Section 9: cleanupExpired() static method - T018', () => {
     it('should delete expired rollouts', async () => {
       // Create a rollout first so the DB/stores exist
-      const params: RolloutRecorderParams = { type: 'create', conversationId };
+      const params: RolloutRecorderParams = { type: 'create', sessionId: conversationId };
       const recorder = await RolloutRecorder.create(params);
       await recorder.recordItems([
         { type: 'response_item', payload: { type: 'Message', content: 'test' } },
@@ -612,7 +612,7 @@ describe('RolloutRecorder', () => {
 
     it('should return count of deleted rollouts', async () => {
       // Create a rollout first so the DB/stores exist
-      const params: RolloutRecorderParams = { type: 'create', conversationId };
+      const params: RolloutRecorderParams = { type: 'create', sessionId: conversationId };
       const recorder = await RolloutRecorder.create(params);
       await recorder.recordItems([
         { type: 'response_item', payload: { type: 'Message', content: 'test' } },
@@ -627,7 +627,7 @@ describe('RolloutRecorder', () => {
       // Create permanent rollout and trigger initialization
       const params: RolloutRecorderParams = {
         type: 'create',
-        conversationId,
+        sessionId: conversationId,
       };
       const config: IAgentConfigWithStorage = {
         storage: { rolloutTTL: 'permanent' },
@@ -648,7 +648,7 @@ describe('RolloutRecorder', () => {
 
     it('should cascade delete rollout items', async () => {
       // Create a rollout first so the DB/stores exist
-      const params: RolloutRecorderParams = { type: 'create', conversationId };
+      const params: RolloutRecorderParams = { type: 'create', sessionId: conversationId };
       const recorder = await RolloutRecorder.create(params);
       await recorder.recordItems([
         { type: 'response_item', payload: { type: 'Message', content: 'test' } },

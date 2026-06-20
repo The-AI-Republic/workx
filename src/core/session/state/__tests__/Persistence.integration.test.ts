@@ -167,18 +167,16 @@ describe('Persistence Integration', () => {
 
     it('should preserve rate limits through export/import', () => {
       state.updateRateLimits({
-        limit_requests: 1000,
-        remaining_requests: 950,
-        limit_tokens: 100000,
-        remaining_tokens: 95000,
+        primary: { used_percent: 65, window_minutes: 300, resets_in_seconds: 900 },
+        secondary: { used_percent: 20, window_minutes: 10080 },
       });
 
       const exported = state.export();
       const imported = SessionState.import(exported);
 
       const reimported = imported.export();
-      expect(reimported.latestRateLimits?.remaining_requests).toBe(950);
-      expect(reimported.latestRateLimits?.remaining_tokens).toBe(95000);
+      expect(reimported.latestRateLimits?.primary?.used_percent).toBe(65);
+      expect(reimported.latestRateLimits?.secondary?.used_percent).toBe(20);
     });
 
     it('should handle complete state export/import', () => {
@@ -187,7 +185,7 @@ describe('Persistence Integration', () => {
         { role: 'user' as const, content: 'Test', timestamp: Date.now() },
       ] as any);
       state.addTokenUsage(200);
-      state.updateRateLimits({ remaining_requests: 500 });
+      state.updateRateLimits({ primary: { used_percent: 50 } });
       state.addApprovedCommand('test-command');
 
       const exported = state.export();
@@ -196,7 +194,7 @@ describe('Persistence Integration', () => {
 
       expect(reimported.history.items.length).toBe(1);
       expect(reimported.tokenInfo?.total_tokens).toBe(200);
-      expect(reimported.latestRateLimits?.remaining_requests).toBe(500);
+      expect(reimported.latestRateLimits?.primary?.used_percent).toBe(50);
       expect(reimported.approvedCommands).toContain('test-command');
     });
   });

@@ -7,6 +7,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AgentRegistry } from '@/core/registry/AgentRegistry';
+import { setConfigStorage, type ConfigStorageProvider } from '@/core/storage/ConfigStorageProvider';
 
 // Mock RepublicAgent with class
 vi.mock('@/core/RepublicAgent', () => {
@@ -27,9 +28,11 @@ vi.mock('@/core/RepublicAgent', () => {
       setEventDispatcher(_fn: any) {}
       getSession() {
         return {
+          sessionId: `session_${Date.now()}_${Math.random().toString(36).slice(2)}`,
           conversationId: `conv_${Date.now()}`,
           abortAllTasks: vi.fn().mockResolvedValue(undefined),
           close: vi.fn().mockResolvedValue(undefined),
+          dispose: vi.fn().mockResolvedValue(undefined),
           setTabId: vi.fn(),
         };
       }
@@ -40,7 +43,13 @@ vi.mock('@/core/RepublicAgent', () => {
         return {};
       }
       getToolRegistry() {
-        return { getTool: vi.fn(), setApprovalGate: vi.fn() };
+        return { getTool: vi.fn(), setApprovalGate: vi.fn(), setPaymentCapability: vi.fn() };
+      }
+      getHookDispatcher() {
+        return { fire: vi.fn().mockResolvedValue({}) };
+      }
+      getEngine() {
+        return null;
       }
     },
   };
@@ -79,6 +88,43 @@ describe('Session Creation Performance (SC-006)', () => {
     vi.clearAllMocks();
     AgentRegistry.resetInstance();
     global.chrome = mockChrome as any;
+    const storageData = new Map<string, unknown>();
+    const configStorage: ConfigStorageProvider = {
+      async get<T>(key: string): Promise<T | null> {
+        return storageData.has(key) ? (storageData.get(key) as T) : null;
+      },
+      async set<T>(key: string, value: T): Promise<void> {
+        storageData.set(key, value);
+      },
+      async remove(key: string): Promise<void> {
+        storageData.delete(key);
+      },
+      async getMany<T = unknown>(keys: string[]): Promise<Record<string, T>> {
+        const result: Record<string, T> = {};
+        for (const key of keys) {
+          if (storageData.has(key)) result[key] = storageData.get(key) as T;
+        }
+        return result;
+      },
+      async setMany<T = unknown>(items: Record<string, T>): Promise<void> {
+        for (const [key, value] of Object.entries(items)) {
+          storageData.set(key, value);
+        }
+      },
+      async removeMany(keys: string[]): Promise<void> {
+        for (const key of keys) storageData.delete(key);
+      },
+      async getAll(): Promise<Record<string, unknown>> {
+        return Object.fromEntries(storageData);
+      },
+      async clear(): Promise<void> {
+        storageData.clear();
+      },
+      async getBytesInUse(): Promise<number> {
+        return 0;
+      },
+    };
+    setConfigStorage(configStorage);
 
     registry = AgentRegistry.getInstance({ maxConcurrent: 10 });
     registry.initialize(mockConfig as any);

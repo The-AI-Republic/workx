@@ -24,10 +24,10 @@ import type { ListOptions, QueryFilter, Transaction } from './types';
  *
  * @example Desktop Mode (SQLite)
  * ```typescript
- * const provider = new SQLiteStorageProvider({ path: '~/.pi/data/pi.db' });
+ * const provider = await createStorageProvider();
  * await provider.initialize();
  * const messages = await provider.query('messages', {
- *   where: { conversationId: 'conv-123' },
+ *   where: { sessionId: 'conv-123' },
  *   orderBy: 'timestamp',
  *   order: 'asc'
  * });

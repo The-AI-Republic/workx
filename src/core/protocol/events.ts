@@ -2,6 +2,7 @@
  * Event types
  */
 
+import type { PlanReviewPlan } from '../../tools/planReview/types';
 import type {
   ReviewRequest,
   ResponseItem,
@@ -11,6 +12,7 @@ import type {
   ReasoningSummaryConfig,
 } from './types';
 import type { TaskSummary } from '../taskmanager/types';
+import type { AgentMode } from '../../prompts/PromptComposer';
 
 /**
  * Event Queue Entry - responses from agent
@@ -71,6 +73,7 @@ export type EventMsg =
   | { type: 'ApprovalRequested'; data: ApprovalRequestedEvent }
   | { type: 'ApprovalGranted'; data: ApprovalGrantedEvent }
   | { type: 'ApprovalDenied'; data: ApprovalDeniedEvent }
+  | { type: 'ApprovalPolicyChanged'; data: ApprovalPolicyChangedEvent }
   // DiffTracker events
   | { type: 'ChangeAdded'; data: ChangeAddedEvent }
   | { type: 'ChangesRetrieved'; data: ChangesRetrievedEvent }
@@ -84,10 +87,12 @@ export type EventMsg =
   // Tool registry events
   | { type: 'ToolRegistered'; data: ToolRegisteredEvent }
   | { type: 'ToolUnregistered'; data: ToolUnregisteredEvent }
+  | { type: 'ToolExposureUpdated'; data: ToolExposureUpdatedEvent }
   | { type: 'ToolExecutionStart'; data: ToolExecutionStartEvent }
   | { type: 'ToolExecutionEnd'; data: ToolExecutionEndEvent }
   | { type: 'ToolExecutionError'; data: ToolExecutionErrorEvent }
   | { type: 'ToolExecutionTimeout'; data: ToolExecutionTimeoutEvent }
+  | { type: 'ToolExecutionProgress'; data: ToolExecutionProgressEvent }
   // Reasoning stream events
   | { type: 'ReasoningSummaryDelta'; data: ReasoningSummaryDeltaEvent }
   | { type: 'ReasoningContentDelta'; data: ReasoningContentDeltaEvent }
@@ -95,8 +100,13 @@ export type EventMsg =
   // Turn lifecycle events
   | { type: 'TurnStarted'; data: TurnStartedEvent }
   | { type: 'TurnComplete'; data: TurnCompleteEvent }
+  | { type: 'PromptSuggestion'; data: PromptSuggestionEvent }
   | { type: 'ContextUpdated'; data: ContextUpdatedEvent }
   | { type: 'TurnRetry'; data: TurnRetryEvent }
+  // Track 12: rate-limit resilience events
+  | { type: 'RateLimitWaiting'; data: RateLimitWaitingEvent }
+  | { type: 'RateLimitWarning'; data: RateLimitWarningEvent }
+  | { type: 'ModelDowngraded'; data: ModelDowngradedEvent }
   // Browser action events
   | { type: 'DOMActionStart'; data: DOMActionStartEvent }
   | { type: 'StorageActionStart'; data: StorageActionStartEvent }
@@ -104,13 +114,142 @@ export type EventMsg =
   // Service routing events
   | { type: 'ServiceResponse'; data: ServiceResponseEvent }
   | { type: 'StateUpdate'; data: StateUpdateEvent }
+  // Per-session agent persona mode
+  | { type: 'ModeChanged'; data: ModeChangedEvent }
+  // Hook system events
+  | { type: 'HookFired'; data: HookFiredEvent }
+  | { type: 'HookBlocked'; data: HookBlockedEvent }
+  | { type: 'HookResult'; data: HookResultEvent }
+  // Sub-agent lifecycle events
+  | { type: 'SubAgentStart'; data: SubAgentStartEvent }
+  | { type: 'SubAgentComplete'; data: SubAgentCompleteEvent }
+  | { type: 'SubAgentError'; data: SubAgentErrorEvent }
+  | { type: 'SubAgentWarning'; data: SubAgentWarningEvent }
+  // Shadow-agent runtime events (internal observability; UI ignores by default)
+  | { type: 'ShadowAgentStarted'; data: ShadowAgentRuntimeEventData }
+  | { type: 'ShadowAgentCompleted'; data: ShadowAgentRuntimeEventData }
+  | { type: 'ShadowAgentFailed'; data: ShadowAgentRuntimeEventData }
+  | { type: 'ShadowAgentCancelled'; data: ShadowAgentRuntimeEventData }
+  | { type: 'ShadowAgentCoalesced'; data: ShadowAgentRuntimeEventData }
+  | { type: 'ShadowAgentTimedOut'; data: ShadowAgentRuntimeEventData }
+  | { type: 'ShadowAgentFallbackUsed'; data: ShadowAgentRuntimeEventData }
+  // Session summary telemetry (internal observability; UI ignores by default)
+  | { type: 'SessionSummaryTelemetry'; data: SessionSummaryTelemetryEventData }
+  // Track 04: typed-task layer events (background sub-agents only in v1)
+  | { type: 'BackgroundTaskStarted'; data: BackgroundTaskStartedEvent }
+  | { type: 'BackgroundTaskOutputDelta'; data: BackgroundTaskOutputDeltaEvent }
+  | { type: 'BackgroundTaskStateChanged'; data: BackgroundTaskStateChangedEvent }
+  | { type: 'BackgroundTaskTerminated'; data: BackgroundTaskTerminatedEvent }
 ;
 
+// ─── Track 04 event payloads ──────────────────────────────────────────────
+
+export interface BackgroundTaskStartedEvent {
+  taskId: string;
+  type: 'background_agent';
+  description: string;
+  startTime: number;
+}
+
+/**
+ * Metadata-only delta event. Chunks themselves stay in TaskOutputStore;
+ * subscribers poll engine.getTaskOutput(taskId, fromSeq) when interested.
+ */
+export interface BackgroundTaskOutputDeltaEvent {
+  taskId: string;
+  fromSeq: number;
+  toSeq: number;
+  /** Per-kind chunk counts in this delta range (for UI badges). */
+  kindCounts: Partial<Record<'stdout' | 'stderr' | 'event' | 'message', number>>;
+}
+
+export interface BackgroundTaskStateChangedEvent {
+  taskId: string;
+  prevStatus: 'pending' | 'running' | 'completed' | 'failed' | 'killed';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'killed';
+}
+
+export interface BackgroundTaskTerminatedEvent {
+  taskId: string;
+  status: 'completed' | 'failed' | 'killed';
+  endTime: number;
+  durationMs: number;
+  summary?: string;
+}
+
 // Individual event payload types
+
+/**
+ * Internal telemetry for the session-summary feature (Track 05b).
+ *
+ * Emitted by the SessionSummaryHook and the compaction interlock. UI consumers
+ * ignore this event type; only the (future) observability sink reads it.
+ * Mirrors claudy's dedicated services/analytics channel — separate from
+ * user-facing events.
+ */
+export type SessionSummaryTelemetryName =
+  | 'init'
+  | 'file_read'
+  | 'extraction'
+  | 'manual_extraction'
+  | 'loaded'
+  | 'compact_skipped_empty_summary'
+  | 'compact_with_summary'
+  | 'compact_extraction_wait_timeout';
+
+export interface SessionSummaryTelemetryEventData {
+  /** Discriminator within the SessionSummaryTelemetry envelope. */
+  event: SessionSummaryTelemetryName;
+  /** Owning session. Not duplicated into payload. */
+  sessionId: string;
+  /** Event-specific fields. Shape depends on `event`; see design §11. */
+  payload: Record<string, unknown>;
+  /** Index signature so this is assignable to `EngineEvent.msg.data`. */
+  [key: string]: unknown;
+}
+
+/**
+ * Convenience alias so call sites can construct a fully-formed envelope.
+ * Equivalent to `Extract<EventMsg, { type: 'SessionSummaryTelemetry' }>`.
+ */
+export interface SessionSummaryTelemetryEvent {
+  type: 'SessionSummaryTelemetry';
+  data: SessionSummaryTelemetryEventData;
+}
+
+export interface ShadowAgentRuntimeEventData {
+  run_id: string;
+  kind: string;
+  priority: string;
+  status?: string;
+  duration_ms?: number;
+  timeout_ms?: number;
+  failure_policy: string;
+  model?: string;
+  parent_engine_id?: string;
+  child_engine_id?: string;
+  dedupe_key?: string;
+  message?: string;
+  error?: string;
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown;
+}
 
 export interface ErrorEvent {
   message: string;
   code?: string;
+}
+
+/**
+ * Emitted when a session's agent persona mode changes (or is requested but
+ * deferred because a task is in flight). The UI is the consumer — it commits
+ * the tab's mode on `applied: true` and shows a pending state otherwise.
+ */
+export interface ModeChangedEvent {
+  sessionId: string;
+  mode: AgentMode;
+  /** true = applied to the live turn context now; false = deferred */
+  applied: boolean;
 }
 
 export interface TaskStartedEvent {
@@ -142,6 +281,10 @@ export interface TaskCompleteEvent {
   last_agent_message?: string;
   turn_count?: number;
   token_usage?: TaskTokenUsageSummary;
+  /** Track 18: USD cost for this task, computed once in core. */
+  cost_usd?: number;
+  /** Track 18: true if any turn was priced via the fallback rate. */
+  cost_estimated?: boolean;
   compaction_performed?: boolean;
   aborted?: boolean;
   abort_reason?: TurnAbortReason;
@@ -161,11 +304,27 @@ export interface TokenUsageInfo {
   total_token_usage: TokenUsage;
   last_token_usage: TokenUsage;
   model_context_window?: number;
+  auto_compact_token_limit?: number;
 }
 
 export interface TokenCountEvent {
   info?: TokenUsageInfo;
+  token_warning_state?: {
+    current_tokens: number;
+    context_window?: number;
+    auto_compact_token_limit?: number;
+    percent_used?: number;
+    percent_left?: number;
+    is_above_warning_threshold: boolean;
+    is_above_error_threshold: boolean;
+    is_above_auto_compact_threshold: boolean;
+    is_at_blocking_limit: boolean;
+  };
   rate_limits?: RateLimitSnapshotEvent;
+  /** Track 18: cumulative session USD cost (additive rider on Track 12's fix). */
+  cost?: number;
+  /** Track 18: true if any of the cumulative cost was estimated. */
+  cost_estimated?: boolean;
 }
 
 export interface RateLimitSnapshotEvent {
@@ -285,6 +444,7 @@ export interface BackgroundEventEvent {
   message: string;
   level?: 'info' | 'warning' | 'error';
   schedulerEvent?: unknown;
+  sessionEvent?: unknown;
 }
 
 export interface StreamErrorEvent {
@@ -469,6 +629,8 @@ export interface ApprovalRequestedEvent {
   explanation: string;
   command?: string;
   timeout?: number;
+  /** Track 14: structured plan for the editable Plan Review card. */
+  plan?: PlanReviewPlan;
 }
 
 /**
@@ -488,6 +650,16 @@ export interface ApprovalDeniedEvent {
   id: string;
   tool_name: string;
   reason: string;
+  timestamp: number;
+}
+
+/**
+ * Event emitted when the ApprovalManager policy changes (mode, thresholds, lists).
+ * Lets subscribers (UI, event log) react without polling getPolicy().
+ */
+export interface ApprovalPolicyChangedEvent {
+  mode: 'always_ask' | 'auto_approve_safe' | 'auto_reject_unsafe' | 'never_ask';
+  previousMode: 'always_ask' | 'auto_approve_safe' | 'auto_reject_unsafe' | 'never_ask';
   timestamp: number;
 }
 
@@ -558,6 +730,19 @@ export interface ToolUnregisteredEvent {
   unregistration_time?: number;
 }
 
+export interface ToolExposureUpdatedEvent {
+  session_id?: string;
+  dynamic_enabled: boolean;
+  always_count: number;
+  deferred_count: number;
+  hidden_count: number;
+  selected_count: number;
+  estimated_deferred_schema_chars: number;
+  estimated_deferred_schema_tokens: number;
+  threshold_tokens?: number;
+  selected_tools?: string[];
+}
+
 export interface ToolExecutionStartEvent {
   tool_name: string;
   call_id?: string;
@@ -577,15 +762,34 @@ export interface ToolExecutionEndEvent {
 
 export interface ToolExecutionErrorEvent {
   tool_name: string;
+  call_id?: string;
   session_id?: string;
+  turn_id?: string;
+  code?: string;
   error: string;
+  details?: unknown;
   duration?: number;
 }
 
 export interface ToolExecutionTimeoutEvent {
   tool_name: string;
+  call_id?: string;
   session_id?: string;
+  turn_id?: string;
+  code?: string;
+  error?: string;
+  details?: unknown;
   timeout_ms: number;
+  duration?: number;
+}
+
+export interface ToolExecutionProgressEvent {
+  tool_name: string;
+  call_id?: string;
+  session_id?: string;
+  turn_id?: string;
+  progress_data: import('../../tools/runtimeMetadata').ToolProgressData;
+  timestamp: number;
 }
 
 // Reasoning stream event payloads
@@ -615,6 +819,11 @@ export interface TurnCompleteEvent {
   success?: boolean;
 }
 
+/** Track 24.3: predicted next user message for one-tap accept (ext/desktop). */
+export interface PromptSuggestionEvent {
+  suggestion: string;
+}
+
 export interface ContextUpdatedEvent {
   session_id?: string;
   context_type?: string;
@@ -624,6 +833,51 @@ export interface TurnRetryEvent {
   turn_id?: string;
   attempt?: number;
   reason?: string;
+}
+
+// Track 12: rate-limit resilience event payloads
+
+/**
+ * Emitted before a long unattended wait for a rate-limit window to reset, so
+ * a remote operator sees "waiting N ms for limit reset" instead of an opaque
+ * failure.
+ */
+export interface RateLimitWaitingEvent {
+  /** Milliseconds the agent will wait before the next attempt. */
+  delay_ms: number;
+  /** Persistent attempt counter (not the attended retry count). */
+  attempt: number;
+  /** HTTP status that triggered the wait (429 / 529), if known. */
+  status_code?: number;
+  /** Classified error kind: 'rate_limit' | 'overloaded' | 'server' | ... */
+  kind: string;
+}
+
+/**
+ * Early warning that quota is being consumed faster than the window sustains
+ * (time-relative threshold) or that a static threshold was crossed.
+ */
+export interface RateLimitWarningEvent {
+  /** Which window: 'primary' | 'secondary'. */
+  window: string;
+  /** Percent of the window consumed (0-100). */
+  used_percent: number;
+  /** Fraction of the window elapsed (0-1), when computable. */
+  time_progress?: number;
+  /** Seconds until the window resets, when known. */
+  resets_in_seconds?: number;
+  /** Human-readable summary for surfacing in the UI/transcript. */
+  message: string;
+}
+
+/**
+ * Emitted when sustained provider overload forces a model downgrade. Never
+ * silent — output quality changed.
+ */
+export interface ModelDowngradedEvent {
+  from_model?: string;
+  to_model: string;
+  reason: string;
 }
 
 // Browser action event payloads
@@ -663,9 +917,97 @@ export interface ServiceResponseEvent {
   error?: string;
 }
 
-export interface StateUpdateEvent {
+export interface GenericStateUpdateEvent {
   sessionId?: string;
   tabId?: number;
   [key: string]: unknown;
 }
 
+export interface DesktopRuntimeAuthStateUpdateEvent {
+  scope: 'desktop-runtime';
+  kind: 'auth.stateChanged';
+  auth: unknown;
+  [key: string]: unknown;
+}
+
+export interface DesktopRuntimeAccessStateUpdateEvent {
+  scope: 'desktop-runtime';
+  kind: 'agent.accessChanged';
+  access: unknown;
+  [key: string]: unknown;
+}
+
+export type StateUpdateEvent =
+  | DesktopRuntimeAuthStateUpdateEvent
+  | DesktopRuntimeAccessStateUpdateEvent
+  | GenericStateUpdateEvent;
+
+// Hook system event payloads
+
+export interface HookFiredEvent {
+  hook_event_name: string;
+  hook_count: number;
+  tool_name?: string;
+}
+
+export interface HookBlockedEvent {
+  hook_event_name: string;
+  tool_name?: string;
+  stop_reason?: string;
+}
+
+export interface HookResultEvent {
+  hook_event_name: string;
+  hook_id: string;
+  execution_id: string;
+  source: string;
+  command_type: string;
+  outcome: string;
+  duration_ms: number;
+  tool_name?: string;
+  exit_code?: number;
+  blocked?: boolean;
+  permission_decision?: 'approve' | 'block';
+  updated_input?: boolean;
+  updated_output?: boolean;
+  additional_context?: boolean;
+  error?: string;
+}
+
+// Sub-agent lifecycle event payloads
+
+export interface SubAgentStartEvent {
+  runId: string;
+  subAgentType: string;
+  agentType?: string;
+  contextMode?: string;
+  executionMode?: string;
+  description: string;
+}
+
+export interface SubAgentCompleteEvent {
+  runId: string;
+  subAgentType: string;
+  agentType?: string;
+  contextMode?: string;
+  executionMode?: string;
+  turnCount: number;
+  tokenUsage?: {
+    input: number;
+    output: number;
+    total: number;
+  };
+  duration: number;
+}
+
+export interface SubAgentErrorEvent {
+  runId?: string;
+  subAgentType?: string;
+  error: string;
+}
+
+export interface SubAgentWarningEvent {
+  runId: string;
+  subAgentType: string;
+  warning: string;
+}
