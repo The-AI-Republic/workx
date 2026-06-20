@@ -34,6 +34,12 @@ function normalizeState(state: AppLocalState | null): AppLocalState {
 }
 
 export class AppLocalStore {
+  // Serializes read-modify-write critical sections against this instance. The
+  // whole store is a single storage blob, so concurrent flows (sync-queue
+  // drain, activation status patches, installs) would otherwise each read the
+  // old blob and the last writer would silently clobber the others.
+  private writeLock: Promise<unknown> = Promise.resolve();
+
   constructor(private readonly storage: ConfigStorageProvider = getConfigStorage()) {}
 
   async getState(): Promise<AppLocalState> {
@@ -47,23 +53,45 @@ export class AppLocalStore {
     });
   }
 
+  /** Run a read-modify-write op exclusively, chained after any in-flight write. */
+  private runExclusive<T>(op: () => Promise<T>): Promise<T> {
+    const run = this.writeLock.then(op, op);
+    // Keep the lock chain alive across both success and failure without
+    // leaking unhandled rejections; the original `run` still rejects to caller.
+    this.writeLock = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
+
   private async mutate(mutator: (state: AppLocalState) => void): Promise<AppLocalState> {
-    const state = await this.getState();
-    mutator(state);
-    await this.saveState(state);
-    return state;
+    return this.runExclusive(async () => {
+      const state = await this.getState();
+      mutator(state);
+      await this.saveState(state);
+      return state;
+    });
   }
 
   async getDeviceId(): Promise<string> {
-    const state = await this.getState();
-    if (state.deviceId) {
-      return state.deviceId;
+    const existing = (await this.getState()).deviceId;
+    if (existing) {
+      return existing;
     }
 
-    const deviceId = globalThis.crypto?.randomUUID?.() ?? `device_${Math.random().toString(36).slice(2)}_${now()}`;
-    state.deviceId = deviceId;
-    await this.saveState(state);
-    return deviceId;
+    return this.runExclusive(async () => {
+      // Re-read inside the lock so two concurrent callers can't each generate
+      // (and persist) a different device id.
+      const state = await this.getState();
+      if (state.deviceId) {
+        return state.deviceId;
+      }
+      const deviceId = globalThis.crypto?.randomUUID?.() ?? `device_${Math.random().toString(36).slice(2)}_${now()}`;
+      state.deviceId = deviceId;
+      await this.saveState(state);
+      return deviceId;
+    });
   }
 
   async listInstalledApps(): Promise<InstalledAppRecord[]> {
@@ -87,20 +115,20 @@ export class AppLocalStore {
   }
 
   async patchInstalledApp(appId: string, patch: Partial<InstalledAppRecord>): Promise<InstalledAppRecord | null> {
-    const state = await this.getState();
-    const current = state.installedApps[appId];
-    if (!current) {
-      return null;
-    }
-
-    const updated: InstalledAppRecord = {
-      ...current,
-      ...patch,
-      appId: current.appId,
-      updatedAt: now(),
-    };
-    state.installedApps[appId] = updated;
-    await this.saveState(state);
+    let updated: InstalledAppRecord | null = null;
+    await this.mutate(state => {
+      const current = state.installedApps[appId];
+      if (!current) {
+        return;
+      }
+      updated = {
+        ...current,
+        ...patch,
+        appId: current.appId,
+        updatedAt: now(),
+      };
+      state.installedApps[appId] = updated;
+    });
     return updated;
   }
 

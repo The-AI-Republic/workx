@@ -90,10 +90,19 @@ async function registerActiveRuntimeAppMCPTools(
   }
 }
 
+/**
+ * Wire the runtime-app MCP `tools-updated` observer for this session's registry.
+ *
+ * The MCPManager is a process singleton while each agent session owns its own
+ * ToolRegistry, so this attaches one listener per session. It returns an
+ * unsubscribe that the platform adapter MUST call on dispose() — otherwise
+ * listeners (and the dead registries they close over) accumulate on the
+ * long-lived singleton across sessions.
+ */
 async function setupRuntimeAppMCPRegistration(
   registry: ToolRegistry,
   riskAssessor?: IRiskAssessor,
-): Promise<void> {
+): Promise<() => void> {
   const mcpManager = await MCPManager.getInstance('desktop');
   const registeredToolsByServer = new Map<string, import('../../core/mcp/types').IMCPTool[]>();
 
@@ -105,7 +114,7 @@ async function setupRuntimeAppMCPRegistration(
     }
   }
 
-  mcpManager.on('event', (event) => {
+  const handler = (event: import('../../core/mcp/types').MCPManagerEvent): void => {
     if (event.type !== 'tools-updated') return;
 
     const config = mcpManager.getServer(event.configId);
@@ -125,7 +134,10 @@ async function setupRuntimeAppMCPRegistration(
       });
       registeredToolsByServer.set(event.configId, event.tools);
     }
-  });
+  };
+
+  mcpManager.on('event', handler);
+  return () => mcpManager.off('event', handler);
 }
 
 /**
@@ -142,7 +154,8 @@ export async function registerDesktopToolsImpl(
   registry: ToolRegistry,
   toolsConfig: IToolsConfig,
   modelConfig?: { name: string; supportsImage?: boolean }
-): Promise<void> {
+): Promise<(() => void) | undefined> {
+  let disposeRuntimeAppMCPRegistration: (() => void) | undefined;
   const platform: Platform = 'desktop';
   const enableBrowserTools =
     toolsConfig.enable_all_tools === true ||
@@ -189,7 +202,7 @@ export async function registerDesktopToolsImpl(
   try {
     await registerAppAgentTools(registry, createDesktopAppAgentToolDeps());
     await registerActiveRuntimeAppMCPTools(registry, staticAssessor);
-    await setupRuntimeAppMCPRegistration(registry, staticAssessor);
+    disposeRuntimeAppMCPRegistration = await setupRuntimeAppMCPRegistration(registry, staticAssessor);
   } catch (error) {
     console.error('[registerDesktopTools] Failed to register app connector tools:', error);
   }
@@ -324,4 +337,6 @@ export async function registerDesktopToolsImpl(
   // Register ripgrep-backed read-only search tools (grep, glob) — desktop
   // ──────────────────────────────────────────────────────────────────────
   await registerFileSearchTools(registry, ['desktop']);
+
+  return disposeRuntimeAppMCPRegistration;
 }

@@ -22,6 +22,7 @@ export class DesktopPlatformAdapter implements IPlatformAdapter {
 
   private browserConnected = false;
   private toolRegistry: ToolRegistry | null = null;
+  private disposeRuntimeAppMCPRegistration: (() => void) | null = null;
   private emitEvent: ((msg: { type: string; data: Record<string, unknown> }) => void) | null = null;
 
   async initialize(): Promise<void> {
@@ -124,10 +125,11 @@ export class DesktopPlatformAdapter implements IPlatformAdapter {
     capabilities: ModelCapabilities
   ): Promise<void> {
     const { registerDesktopToolsImpl } = await import('../../desktop/tools/registerDesktopTools');
-    await registerDesktopToolsImpl(registry, toolsConfig, {
-      name: '',
-      supportsImage: capabilities.supportsImage,
-    });
+    this.disposeRuntimeAppMCPRegistration =
+      (await registerDesktopToolsImpl(registry, toolsConfig, {
+        name: '',
+        supportsImage: capabilities.supportsImage,
+      })) ?? null;
   }
 
   getConfigStorage(): IConfigStorage {
@@ -187,6 +189,17 @@ export class DesktopPlatformAdapter implements IPlatformAdapter {
   }
 
   async dispose(): Promise<void> {
+    // Detach the per-session runtime-app MCP `tools-updated` listener from the
+    // process-singleton MCPManager so listeners don't accumulate across sessions.
+    if (this.disposeRuntimeAppMCPRegistration) {
+      try {
+        this.disposeRuntimeAppMCPRegistration();
+      } catch (error) {
+        console.warn('[DesktopPlatformAdapter] Error detaching runtime app MCP listener:', error);
+      }
+      this.disposeRuntimeAppMCPRegistration = null;
+    }
+
     // Disconnect MCP browser connection if it was established
     if (this.browserConnected) {
       try {
