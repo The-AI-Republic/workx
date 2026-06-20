@@ -124,7 +124,7 @@ jobs:
 
       - name: Clone public repo
         run: |
-          git clone https://x-access-token:${{ secrets.PRIVATE_SYNC_TO_OSS }}@github.com/The-AI-Republic/browserx.git public-repo
+          git clone https://x-access-token:${{ secrets.PRIVATE_SYNC_TO_OSS }}@github.com/The-AI-Republic/workx.git public-repo
           cd public-repo
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
