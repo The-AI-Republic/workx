@@ -67,11 +67,13 @@ const ALWAYS_ON_ADAPTIVE_THINKING_MODELS = new Set([
  * input and emit a single OutputItemDone when the block stops.
  */
 interface BlockAccumulator {
-  type: 'text' | 'thinking' | 'tool_use' | 'other';
+  type: 'text' | 'thinking' | 'redacted_thinking' | 'tool_use' | 'other';
   text: string;
   toolId?: string;
   toolName?: string;
   toolInputJson: string;
+  signature: string;
+  redactedData: string;
 }
 
 /**
@@ -147,12 +149,12 @@ export class AnthropicClient extends OpenAIResponsesClient {
       if (this.usesAlwaysOnAdaptiveThinking()) {
         payload.output_config = { effort: this.reasoningEffort };
       } else if (this.supportsAdaptiveThinking()) {
-        payload.thinking = { type: 'adaptive' };
+        payload.thinking = { type: 'adaptive', display: 'summarized' };
         payload.output_config = { effort: this.reasoningEffort };
       } else {
         const budget = this.thinkingBudgetFromEffort(this.reasoningEffort, maxTokens);
         if (budget >= MIN_THINKING_BUDGET) {
-          payload.thinking = { type: 'enabled', budget_tokens: budget };
+          payload.thinking = { type: 'enabled', budget_tokens: budget, display: 'summarized' };
           // When thinking is enabled, Anthropic requires temperature to be unset (defaults to 1).
         }
       }
@@ -259,7 +261,7 @@ export class AnthropicClient extends OpenAIResponsesClient {
             type: 'tool_use',
             id: item.call_id,
             name: item.name,
-            input: this.safeParseJson(item.input),
+            input: this.convertCustomToolInput(item.input),
           }]);
           break;
         }
@@ -273,9 +275,14 @@ export class AnthropicClient extends OpenAIResponsesClient {
           break;
         }
 
-        // Reasoning items are intentionally skipped: replaying Claude thinking
-        // requires the original signed `thinking` blocks, which we do not persist.
-        case 'reasoning':
+        case 'reasoning': {
+          const block = this.convertReasoningToAnthropicBlock(item);
+          if (block) {
+            push('assistant', [block]);
+          }
+          break;
+        }
+
         case 'web_search_call':
         case 'local_shell_call':
         case 'other':
@@ -402,6 +409,49 @@ export class AnthropicClient extends OpenAIResponsesClient {
     }
   }
 
+  private convertCustomToolInput(input: string | undefined): any {
+    if (!input || !input.trim()) {
+      return { input: '' };
+    }
+    try {
+      const parsed = JSON.parse(input);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        if ('input' in parsed) {
+          return parsed;
+        }
+        return { input };
+      }
+    } catch {
+      // Freeform custom tool input is expected to be plain text.
+    }
+    return { input };
+  }
+
+  private convertReasoningToAnthropicBlock(
+    item: Extract<ResponseItem, { type: 'reasoning' }>
+  ): any | null {
+    if (item.encrypted_content_type === 'redacted_thinking') {
+      if (!item.encrypted_content) {
+        return null;
+      }
+      return { type: 'redacted_thinking', data: item.encrypted_content };
+    }
+
+    if (item.encrypted_content_type !== 'signature' || !item.encrypted_content) {
+      return null;
+    }
+
+    const thinking = item.content
+      ?.map((content) => content.text)
+      .join('') ?? '';
+
+    return {
+      type: 'thinking',
+      thinking,
+      signature: item.encrypted_content,
+    };
+  }
+
   // ---------------------------------------------------------------------------
   // Streaming
   // ---------------------------------------------------------------------------
@@ -490,13 +540,41 @@ export class AnthropicClient extends OpenAIResponsesClient {
             toolId: block.id,
             toolName: block.name,
             toolInputJson: '',
+            signature: '',
+            redactedData: '',
           });
-        } else if (block.type === 'thinking' || block.type === 'redacted_thinking') {
-          this.blocks.set(index, { type: 'thinking', text: '', toolInputJson: '' });
+        } else if (block.type === 'thinking') {
+          this.blocks.set(index, {
+            type: 'thinking',
+            text: block.thinking ?? '',
+            toolInputJson: '',
+            signature: block.signature ?? '',
+            redactedData: '',
+          });
+        } else if (block.type === 'redacted_thinking') {
+          this.blocks.set(index, {
+            type: 'redacted_thinking',
+            text: '',
+            toolInputJson: '',
+            signature: '',
+            redactedData: block.data ?? '',
+          });
         } else if (block.type === 'text') {
-          this.blocks.set(index, { type: 'text', text: '', toolInputJson: '' });
+          this.blocks.set(index, {
+            type: 'text',
+            text: block.text ?? '',
+            toolInputJson: '',
+            signature: '',
+            redactedData: '',
+          });
         } else {
-          this.blocks.set(index, { type: 'other', text: '', toolInputJson: '' });
+          this.blocks.set(index, {
+            type: 'other',
+            text: '',
+            toolInputJson: '',
+            signature: '',
+            redactedData: '',
+          });
         }
         break;
       }
@@ -513,8 +591,9 @@ export class AnthropicClient extends OpenAIResponsesClient {
           events.push({ type: 'ReasoningContentDelta', delta: delta.thinking ?? '' });
         } else if (delta.type === 'input_json_delta') {
           if (acc) acc.toolInputJson += delta.partial_json ?? '';
+        } else if (delta.type === 'signature_delta') {
+          if (acc) acc.signature += delta.signature ?? '';
         }
-        // signature_delta: ignored (no persisted thinking replay).
         break;
       }
 
@@ -569,13 +648,30 @@ export class AnthropicClient extends OpenAIResponsesClient {
     }
 
     if (acc.type === 'thinking') {
-      if (!acc.text) {
+      if (!acc.text && !acc.signature) {
         return null;
       }
       return {
         type: 'reasoning',
         summary: [],
-        content: [{ type: 'reasoning_text', text: acc.text }],
+        content: acc.text ? [{ type: 'reasoning_text', text: acc.text }] : [],
+        ...(acc.signature && {
+          encrypted_content: acc.signature,
+          encrypted_content_type: 'signature',
+        }),
+      };
+    }
+
+    if (acc.type === 'redacted_thinking') {
+      if (!acc.redactedData) {
+        return null;
+      }
+      return {
+        type: 'reasoning',
+        summary: [],
+        content: [],
+        encrypted_content: acc.redactedData,
+        encrypted_content_type: 'redacted_thinking',
       };
     }
 

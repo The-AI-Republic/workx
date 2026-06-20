@@ -191,6 +191,89 @@ describe('AnthropicClient request building', () => {
     ]);
   });
 
+  it('wraps custom tool call history input without dropping freeform text', async () => {
+    mocks.create.mockReturnValue(asyncStreamFrom([{ type: 'message_stop' }]));
+    const client = new AnthropicClient(defaultConfig({ reasoningEffort: undefined }));
+
+    const prompt: Prompt = {
+      input: [
+        { type: 'custom_tool_call', name: 'apply_patch', input: '*** Begin Patch', call_id: 'toolu_custom' },
+        { type: 'custom_tool_call_output', call_id: 'toolu_custom', output: 'ok' },
+      ],
+      tools: [{
+        type: 'custom',
+        custom: {
+          name: 'apply_patch',
+          description: 'Apply a patch',
+          format: { type: 'grammar', syntax: 'lark', definition: 'start: /.+/' },
+        },
+      } as any],
+    };
+
+    const stream = await client.stream(prompt);
+    await collectEvents(stream);
+
+    const payload = mocks.create.mock.calls[0][0];
+    expect(payload.tools[0].input_schema).toEqual({
+      type: 'object',
+      properties: { input: { type: 'string', description: 'Tool input' } },
+      required: ['input'],
+    });
+    expect(payload.messages).toEqual([
+      {
+        role: 'assistant',
+        content: [{
+          type: 'tool_use',
+          id: 'toolu_custom',
+          name: 'apply_patch',
+          input: { input: '*** Begin Patch' },
+        }],
+      },
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_custom', content: 'ok' }] },
+    ]);
+  });
+
+  it('round-trips encrypted reasoning blocks for Anthropic tool-use continuity', async () => {
+    mocks.create.mockReturnValue(asyncStreamFrom([{ type: 'message_stop' }]));
+    const client = new AnthropicClient(defaultConfig({ reasoningEffort: 'medium' }));
+
+    const prompt: Prompt = {
+      input: [
+        {
+          type: 'reasoning',
+          summary: [],
+          content: [{ type: 'reasoning_text', text: 'Need weather first.' }],
+          encrypted_content: 'sig_123',
+          encrypted_content_type: 'signature',
+        },
+        { type: 'function_call', name: 'get_weather', arguments: '{"city":"SF"}', call_id: 'toolu_1' },
+        {
+          type: 'reasoning',
+          summary: [],
+          content: [],
+          encrypted_content: 'redacted_123',
+          encrypted_content_type: 'redacted_thinking',
+        },
+      ],
+      tools: [],
+    };
+
+    const stream = await client.stream(prompt);
+    await collectEvents(stream);
+
+    const payload = mocks.create.mock.calls[0][0];
+    expect(payload.messages).toEqual([
+      {
+        role: 'assistant',
+        content: [
+          { type: 'thinking', thinking: 'Need weather first.', signature: 'sig_123' },
+          { type: 'tool_use', id: 'toolu_1', name: 'get_weather', input: { city: 'SF' } },
+          { type: 'redacted_thinking', data: 'redacted_123' },
+        ],
+      },
+    ]);
+  });
+
   it('merges adjacent same-role items into a single message', async () => {
     mocks.create.mockReturnValue(asyncStreamFrom([{ type: 'message_stop' }]));
     const client = new AnthropicClient(defaultConfig({ reasoningEffort: undefined }));
@@ -252,7 +335,7 @@ describe('AnthropicClient request building', () => {
     await collectEvents(stream);
 
     const payload = mocks.create.mock.calls[0][0];
-    expect(payload.thinking).toEqual({ type: 'adaptive' });
+    expect(payload.thinking).toEqual({ type: 'adaptive', display: 'summarized' });
     expect(payload.output_config).toEqual({ effort: 'high' });
     expect(payload.temperature).toBeUndefined();
   });
@@ -289,7 +372,11 @@ describe('AnthropicClient request building', () => {
     await collectEvents(stream);
 
     const payload = mocks.create.mock.calls[0][0];
-    expect(payload.thinking).toEqual({ type: 'enabled', budget_tokens: 24000 });
+    expect(payload.thinking).toEqual({
+      type: 'enabled',
+      budget_tokens: 24000,
+      display: 'summarized',
+    });
     expect(payload.output_config).toBeUndefined();
   });
 
@@ -362,6 +449,7 @@ describe('AnthropicClient streaming', () => {
       { type: 'message_start', message: { id: 'msg_2', usage: { input_tokens: 5 } } },
       { type: 'content_block_start', index: 0, content_block: { type: 'thinking', thinking: '' } },
       { type: 'content_block_delta', index: 0, delta: { type: 'thinking_delta', thinking: 'Let me think' } },
+      { type: 'content_block_delta', index: 0, delta: { type: 'signature_delta', signature: 'sig_stream' } },
       { type: 'content_block_stop', index: 0 },
       { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 7 } },
       { type: 'message_stop' },
@@ -378,6 +466,32 @@ describe('AnthropicClient streaming', () => {
       type: 'reasoning',
       summary: [],
       content: [{ type: 'reasoning_text', text: 'Let me think' }],
+      encrypted_content: 'sig_stream',
+      encrypted_content_type: 'signature',
+    });
+  });
+
+  it('preserves redacted thinking blocks from the stream', async () => {
+    const events = [
+      { type: 'message_start', message: { id: 'msg_redacted', usage: { input_tokens: 5 } } },
+      { type: 'content_block_start', index: 0, content_block: { type: 'redacted_thinking', data: 'opaque-data' } },
+      { type: 'content_block_stop', index: 0 },
+      { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 7 } },
+      { type: 'message_stop' },
+    ];
+    mocks.create.mockReturnValue(asyncStreamFrom(events));
+    const client = new AnthropicClient(defaultConfig({ reasoningEffort: 'medium' }));
+
+    const stream = await client.stream(userPrompt('hi'));
+    const out = await collectEvents(stream);
+
+    const reasoningItem = out.find(e => e.type === 'OutputItemDone')?.item;
+    expect(reasoningItem).toEqual({
+      type: 'reasoning',
+      summary: [],
+      content: [],
+      encrypted_content: 'opaque-data',
+      encrypted_content_type: 'redacted_thinking',
     });
   });
 });
