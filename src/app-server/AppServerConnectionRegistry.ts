@@ -31,7 +31,6 @@ export interface AppServerConnectionState {
   subscriptions: Set<string>;
   /** In-flight request ids (for dedupe + cleanup). */
   requestIds: Set<string>;
-  isLoopback: boolean;
   createdAt: number;
   lastSeenAt: number;
   gate: ConnectionRpcGate;
@@ -43,7 +42,6 @@ export class AppServerConnectionRegistry {
   add(params: {
     connectionId: string;
     socket: ConnectionSocket;
-    isLoopback: boolean;
     now: number;
   }): AppServerConnectionState {
     const state: AppServerConnectionState = {
@@ -54,7 +52,6 @@ export class AppServerConnectionRegistry {
       scopes: [],
       subscriptions: new Set(),
       requestIds: new Set(),
-      isLoopback: params.isLoopback,
       createdAt: params.now,
       lastSeenAt: params.now,
       gate: new ConnectionRpcGate(),

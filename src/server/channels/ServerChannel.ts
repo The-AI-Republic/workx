@@ -17,13 +17,13 @@ import type {
   SubmissionContext,
   ChannelCapabilities,
 } from '@/core/channels/types';
-import type { EventMsg } from '@/core/protocol/events';
 import type { ChannelEvent } from '@/core/channels/types';
 import type { Op } from '@/core/protocol/types';
 import { shouldReceiveEvent } from '../auth/authorize';
 import { makeEvent } from '@workx/ws-server';
 import { getTrackedConnections, touchConnection } from '../connection/watchdog';
 import { redactEventMsgSecrets } from '../security/eventRedaction';
+import { eventMsgToName } from './eventWireName';
 
 type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
 
@@ -91,7 +91,7 @@ export class ServerChannel implements ChannelAdapter {
 
     this.eventSeq++;
     const eventMsg = redactEventMsgSecrets(event.msg);
-    const eventName = this.eventMsgToName(eventMsg);
+    const eventName = eventMsgToName(eventMsg);
     const payload = event.sessionId ? { ...eventMsg, sessionId: event.sessionId } : eventMsg;
     const frame = JSON.stringify(makeEvent(eventName, payload, this.eventSeq));
 
@@ -165,58 +165,5 @@ export class ServerChannel implements ChannelAdapter {
 
   getConnectionState(): ConnectionState {
     return this.connectionState;
-  }
-
-  /**
-   * Map an EventMsg type to a wire event name.
-   */
-  private eventMsgToName(event: EventMsg): string {
-    // Agent message deltas → chat events
-    if (
-      event.type === 'AgentMessageDelta' ||
-      event.type === 'AgentMessage' ||
-      event.type === 'AgentReasoning' ||
-      event.type === 'AgentReasoningDelta'
-    ) {
-      return 'chat';
-    }
-
-    // Tool and execution events → agent events
-    if (
-      event.type === 'ToolExecutionStart' ||
-      event.type === 'ToolExecutionEnd' ||
-      event.type === 'ToolExecutionProgress' ||
-      event.type === 'McpToolCallBegin' ||
-      event.type === 'McpToolCallEnd' ||
-      event.type === 'ExecCommandBegin' ||
-      event.type === 'ExecCommandEnd' ||
-      event.type === 'TurnStarted' ||
-      event.type === 'TurnComplete' ||
-      event.type === 'TaskStarted' ||
-      event.type === 'TaskComplete'
-    ) {
-      return 'agent';
-    }
-
-    // Approval events
-    if (event.type === 'ExecApprovalRequest' || event.type === 'ApplyPatchApprovalRequest') {
-      return 'exec.approval.requested';
-    }
-
-    // Health events
-    if (event.type === 'Error' || event.type === 'StreamError') {
-      return 'health';
-    }
-
-    // Service routing events (message_routing_v2)
-    if (event.type === 'ServiceResponse') {
-      return 'service.response';
-    }
-    if (event.type === 'StateUpdate') {
-      return 'state.update';
-    }
-
-    // Default: use the raw type as event name
-    return event.type;
   }
 }

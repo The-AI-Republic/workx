@@ -73,7 +73,7 @@ async function makeHarness(opts?: { capacity?: number; requireAuth?: boolean }):
       const sent: unknown[] = [];
       const close = vi.fn();
       sockets.set(id, { sent, close });
-      processor.onOpen(id, { send: (d) => sent.push(d), close, bufferedAmount: () => 0 }, true);
+      processor.onOpen(id, { send: (d) => sent.push(d), close, bufferedAmount: () => 0 });
     },
     send: (id, frame) => processor.onMessage(id, JSON.stringify(frame)),
     frames: (id) => (sockets.get(id)!.sent as string[]).map((s) => JSON.parse(s)),

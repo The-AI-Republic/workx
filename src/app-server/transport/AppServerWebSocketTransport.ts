@@ -43,8 +43,6 @@ export interface AppServerWebSocketTransportOptions {
   profile: string;
 }
 
-const LOOPBACK_ADDRS = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
-
 export class AppServerWebSocketTransport {
   private httpServer: Server | null = null;
   private wss: { close: (cb?: () => void) => void; clients: Set<unknown> } | null = null;
@@ -82,10 +80,8 @@ export class AppServerWebSocketTransport {
     });
     this.wss = wss as unknown as { close: (cb?: () => void) => void; clients: Set<unknown> };
 
-    wss.on('connection', (ws: import('ws').WebSocket, req: IncomingMessage) => {
+    wss.on('connection', (ws: import('ws').WebSocket) => {
       const connectionId = `appsrv_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
-      const remote = req.socket.remoteAddress ?? '';
-      const isLoopback = LOOPBACK_ADDRS.has(remote);
       this.connectionCount += 1;
 
       const socket: ConnectionSocket = {
@@ -96,7 +92,7 @@ export class AppServerWebSocketTransport {
         bufferedAmount: () => ws.bufferedAmount,
       };
 
-      this.opts.processor.onOpen(connectionId, socket, isLoopback);
+      this.opts.processor.onOpen(connectionId, socket);
 
       ws.on('message', (data: import('ws').RawData) => {
         const raw = data.toString();

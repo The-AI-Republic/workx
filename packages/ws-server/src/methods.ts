@@ -96,6 +96,20 @@ export const BROADCAST_EVENTS = new Set([
   'connect.hello-ok',
 ]);
 
+/**
+ * Build the wire-event list a connection may receive given its scopes: always
+ * the broadcast events, plus every scoped event the connection is entitled to.
+ * Shared by the headless-server handshake and the desktop app-server so the two
+ * advertise an identical event set from the same source of truth.
+ */
+export function buildAvailableEvents(scopes: string[]): string[] {
+  const events = new Set<string>(BROADCAST_EVENTS);
+  for (const [eventName, requiredScope] of Object.entries(EVENT_SCOPE_MAP)) {
+    if (scopes.includes(requiredScope)) events.add(eventName);
+  }
+  return Array.from(events);
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Handler function type
 // ─────────────────────────────────────────────────────────────────────────

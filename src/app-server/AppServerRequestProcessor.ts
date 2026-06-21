@@ -20,9 +20,8 @@ import {
   makeEvent,
   getMethodHandler,
   getRegisteredMethods,
+  buildAvailableEvents,
   METHOD_REGISTRY,
-  EVENT_SCOPE_MAP,
-  BROADCAST_EVENTS,
   invalidRequest,
   unauthorized,
   WS_CLOSE,
@@ -81,8 +80,8 @@ export class AppServerRequestProcessor {
   }
 
   /** Called when the transport accepts a new connection. */
-  onOpen(connectionId: string, socket: ConnectionSocket, isLoopback: boolean): void {
-    this.deps.registry.add({ connectionId, socket, isLoopback, now: this.now() });
+  onOpen(connectionId: string, socket: ConnectionSocket): void {
+    this.deps.registry.add({ connectionId, socket, now: this.now() });
     this.deps.status.setConnections(this.deps.registry.count());
 
     const challenge: ChallengePayload = {
@@ -142,13 +141,6 @@ export class AppServerRequestProcessor {
       return;
     }
 
-    // Rate limit.
-    const rl = this.deps.rateLimiter.check(connectionId, this.now());
-    if (rl) {
-      conn.socket.send(JSON.stringify(makeErrorResponse(req.id, rl)));
-      return;
-    }
-
     // Authorize scope.
     const spec = METHOD_REGISTRY[req.method];
     if (!spec) {
@@ -166,9 +158,18 @@ export class AppServerRequestProcessor {
       return;
     }
 
-    // Health/readiness bypass the queue so they stay observable under load.
+    // Health/readiness bypass BOTH the rate limiter and the queue so they stay
+    // observable under load — a throttled liveness probe reads as an unhealthy
+    // server and can trigger a needless restart of a healthy sidecar.
     if (req.method === 'health') {
       await this.runHandler(connectionId, req.id, req.method, req.params, handler);
+      return;
+    }
+
+    // Rate limit (after the health bypass).
+    const rl = this.deps.rateLimiter.check(connectionId, this.now());
+    if (rl) {
+      conn.socket.send(JSON.stringify(makeErrorResponse(req.id, rl)));
       return;
     }
 
@@ -336,14 +337,6 @@ export class AppServerRequestProcessor {
     };
     conn.socket.send(JSON.stringify(makeResponse(req.id, helloOk)));
   }
-}
-
-function buildAvailableEvents(scopes: string[]): string[] {
-  const events = new Set<string>(BROADCAST_EVENTS);
-  for (const [name, scope] of Object.entries(EVENT_SCOPE_MAP)) {
-    if (scopes.includes(scope)) events.add(name);
-  }
-  return Array.from(events);
 }
 
 function isErrorShape(err: unknown): err is ErrorShape {
