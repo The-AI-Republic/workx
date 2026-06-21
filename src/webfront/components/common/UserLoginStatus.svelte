@@ -204,6 +204,56 @@
         }
         rejectPending = null;
       }
+    } else if (platform.platformName === 'web') {
+      // Web mode: popup OAuth flow via WebAuthService
+      isLoggingIn = true;
+
+      let isCancelled = false;
+      cancelLogin = () => {
+        isCancelled = true;
+        isLoggingIn = false;
+        cancelLogin = null;
+        webAuthService?.cancelLogin();
+        console.log('[UserLoginStatus] Web login cancelled by user');
+      };
+
+      let webAuthService: Awaited<ReturnType<typeof import('../../auth/WebAuthService').getWebAuthService>> | null = null;
+      try {
+        const { getWebAuthService } = await import('../../auth/WebAuthService');
+        webAuthService = getWebAuthService(HOME_PAGE_BASE_URL);
+        const session = await webAuthService.login();
+
+        if (isCancelled) return;
+
+        const accessToken = await webAuthService.getAccessToken();
+        const profile = accessToken ? await fetchUserProfile(accessToken) : null;
+
+        if (profile) {
+          userStore.setUser({
+            name: profile.name || session.given_name || session.name || null,
+            email: profile.email || session.email,
+            avatar: profile.avatar || session.picture || null,
+            userType: profile.userType,
+          });
+        } else {
+          userStore.setUser({
+            name: session.given_name || session.name || null,
+            email: session.email,
+            avatar: session.picture || null,
+            userType: (session.subscription as any)?.plan_id ?? 0,
+          });
+        }
+        console.log('[UserLoginStatus] Web login successful for:', session.email);
+      } catch (error) {
+        if (!isCancelled) {
+          console.error('[UserLoginStatus] Web login failed:', error);
+        }
+      } finally {
+        if (!isCancelled) {
+          isLoggingIn = false;
+          cancelLogin = null;
+        }
+      }
     } else {
       // Extension mode: open login page in a new tab
       const loginUrl = getLoginPageUrl();
@@ -235,6 +285,18 @@
     push('/settings');
   }
 
+  async function handleLogout() {
+    showMenu = false;
+    try {
+      const { getWebAuthService } = await import('../../auth/WebAuthService');
+      const authService = getWebAuthService();
+      await authService.logout();
+    } catch (error) {
+      console.warn('[UserLoginStatus] Logout error:', error);
+    }
+    userStore.setNotLoggedIn();
+  }
+
   async function openUserCenter(event: MouseEvent) {
     event.preventDefault();
     showMenu = false;
@@ -245,6 +307,8 @@
       // Desktop mode: use Tauri shell plugin to open in browser
       const { open } = await import('@tauri-apps/plugin-shell');
       await open(userCenterUrl);
+    } else if (platform.platformName === 'web') {
+      window.open(userCenterUrl, '_blank');
     } else {
       // Extension mode: use chrome.tabs.create
       chrome.tabs.create({ url: userCenterUrl });
@@ -354,6 +418,22 @@
           </svg>
           <span>{$_t("Settings")}</span>
         </button>
+
+        {#if platform.platformName === 'web'}
+          <button
+            class="flex items-center gap-2.5 w-full py-2.5 px-3 bg-transparent border-none cursor-pointer text-sm text-left transition-colors duration-150
+              {$uiTheme === 'modern'
+                ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat rounded-md m-1 w-[calc(100%-8px)] hover:bg-white/10'
+                : 'text-term-green font-terminal hover:bg-term-green/10'}"
+            onclick={handleLogout}
+            role="menuitem"
+          >
+            <svg class="w-[18px] h-[18px] shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span>{$_t("Logout")}</span>
+          </button>
+        {/if}
       </div>{/snippet}
     </PopupCard>
   {:else if hasHostedAuth}

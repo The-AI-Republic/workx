@@ -1311,7 +1311,12 @@ export class ServerAgentBootstrap {
           throw new Error('No sessionId — cannot route chat submission');
         }
         if (!this.registry) throw new Error('AgentRegistry not initialized');
-        const targetSession = this.registry.getSession(context.sessionId);
+        // The handshake assigns each connection a routing alias
+        // (`ws:main:<connId>`) that is not itself a registry key. For the main
+        // chat surface that alias maps to the server's primary session, so fall
+        // back to it when the alias doesn't resolve to an explicit session.
+        const targetSession =
+          this.registry.getSession(context.sessionId) ?? this.registry.getPrimarySession();
         if (!targetSession?.agent) throw new Error(`Session not found: ${context.sessionId}`);
         // Track 13: derive origin from the chat channel (on-host WS chat maps
         // to `local` and skips the gate; remote/relay maps to `remote`).
