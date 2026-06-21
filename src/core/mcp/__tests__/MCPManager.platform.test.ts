@@ -213,7 +213,7 @@ describe('MCPManager Platform Features', () => {
       expect(browserServer?.transport).toBe('stdio');
       expect(browserServer?.platform).toBe('desktop');
       expect(browserServer?.command).toBe('npx');
-      expect(browserServer?.args).toEqual(['chrome-devtools-mcp', '--no-usage-statistics', '--isolated', '--chromeArg=--no-sandbox', '--chromeArg=--disable-setuid-sandbox']);
+      expect(browserServer?.args).toEqual(['chrome-devtools-mcp', '--no-usage-statistics', '--autoConnect']);
       expect(browserServer?.timeout).toBe(180000);
     });
 

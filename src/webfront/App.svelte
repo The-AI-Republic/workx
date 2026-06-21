@@ -12,7 +12,7 @@
   import { userStore } from './stores/userStore';
   import { AUTH_COOKIE_DOMAIN, AUTH_COOKIE_NAMES, isAuthenticated } from './lib/utils/cookie';
   import { fetchUserProfile } from './lib/apis';
-  import { LLM_API_URL } from './lib/constants';
+  import { HOME_PAGE_BASE_URL, LLM_API_URL } from './lib/constants';
   import { AgentConfig } from '@/config/AgentConfig';
   import { getInitializedUIClient } from '@/core/messaging';
   import type { DesktopRuntimeStateSnapshot, RuntimeAuthState } from '@/core/services/runtime-state';
@@ -21,6 +21,15 @@
   import PinUnlockOverlay from './components/vault/PinUnlockOverlay.svelte';
   import ShortcutProvider from './shortcuts/ShortcutProvider.svelte';
   import { registerShortcut } from './shortcuts/useShortcut';
+  import DesktopWelcome from './pages/welcome/DesktopWelcome.svelte';
+
+  let {
+    showDesktopWelcome: initialShowDesktopWelcome = false,
+    onDesktopWelcomeComplete,
+  }: {
+    showDesktopWelcome?: boolean;
+    onDesktopWelcomeComplete?: () => void | Promise<void>;
+  } = $props();
 
   // Zoom constants
   const MIN_ZOOM = 50;
@@ -56,6 +65,13 @@
   // Store the cookie change listener for cleanup
   let cookieChangeListener: ((changeInfo: chrome.cookies.CookieChangeInfo) => void) | null = $state(null);
   let runtimeStateUnlisten: (() => void) | null = null;
+  let showDesktopWelcome = $state(false);
+
+  $effect(() => {
+    if (platform.platformName === 'desktop' && initialShowDesktopWelcome) {
+      showDesktopWelcome = true;
+    }
+  });
 
   /**
    * Check and update authentication state
@@ -69,6 +85,9 @@
       if (platform.platformName === 'desktop') {
         // Desktop: update userStore from keychain (agent auth already set by bootstrap)
         await updateDesktopUserStore();
+      } else if (platform.platformName === 'web') {
+        // Web: check localStorage for stored auth tokens
+        await updateWebUserStore();
       } else {
         // Extension: check cookies, update userStore, send INIT_AUTH
         await checkExtensionAuth();
@@ -156,6 +175,57 @@
   }
 
   /**
+   * Web: check localStorage for stored auth tokens and update userStore.
+   * Uses the same profile API and session endpoints as the desktop app.
+   */
+  async function updateWebUserStore(): Promise<void> {
+    try {
+      const { getWebAuthService } = await import('./auth/WebAuthService');
+      const authService = getWebAuthService(HOME_PAGE_BASE_URL);
+
+      if (await authService.hasValidToken()) {
+        const accessToken = await authService.getAccessToken();
+        if (!accessToken) {
+          userStore.setNotLoggedIn();
+          return;
+        }
+
+        const profile = await fetchUserProfile(accessToken);
+        if (profile) {
+          userStore.setUser({
+            name: profile.name,
+            email: profile.email,
+            avatar: profile.avatar,
+            userType: profile.userType,
+          });
+          console.log('[App] Web userStore updated for:', profile.email, 'userType:', profile.userType);
+          return;
+        }
+
+        // Fallback: use session data if profile fetch fails
+        console.warn('[App] Profile fetch failed, falling back to session data');
+        try {
+          const session = await authService.getSession();
+          userStore.setUser({
+            name: session.given_name || session.name || null,
+            email: session.email,
+            avatar: session.picture || null,
+            userType: (session.subscription as any)?.plan_id ?? 0,
+          });
+          console.log('[App] Web userStore updated (fallback) for:', session.email);
+          return;
+        } catch {
+          // Session fetch also failed
+        }
+      }
+    } catch (error) {
+      console.warn('[App] Web userStore update failed:', error);
+    }
+
+    userStore.setNotLoggedIn();
+  }
+
+  /**
    * Extension: check cookies, update userStore, send INIT_AUTH to service worker
    */
   async function checkExtensionAuth(): Promise<void> {
@@ -233,6 +303,11 @@
     setZoom(zoom + delta);
   }
 
+  async function completeDesktopWelcome(): Promise<void> {
+    await onDesktopWelcomeComplete?.();
+    showDesktopWelcome = false;
+  }
+
   // Check user authentication when sidepanel opens
   // Note: Locale is already initialized in main.ts before app mounts
   onMount(() => {
@@ -294,6 +369,8 @@
   <AppShell>
     {#if $vaultStore.isLocked}
       <PinUnlockOverlay onUnlocked={() => refreshVaultStatus()} />
+    {:else if showDesktopWelcome}
+      <DesktopWelcome onComplete={completeDesktopWelcome} />
     {:else}
       <Router {routes} />
     {/if}

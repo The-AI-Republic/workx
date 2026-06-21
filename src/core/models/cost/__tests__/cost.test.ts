@@ -46,6 +46,20 @@ describe('calculateUSDCost', () => {
     expect(r.costUSD).toBeCloseTo(DEFAULT_FALLBACK_RATE.inputPer1M, 10);
   });
 
+  it('uses concrete Anthropic model rates from provider metadata', () => {
+    const opus = calculateUSDCost('anthropic:claude-opus-4-8', usage({
+      input_tokens: 1_000_000,
+      cached_input_tokens: 100_000,
+      output_tokens: 1_000_000,
+    }));
+    expect(opus.estimated).toBe(false);
+    expect(opus.costUSD).toBeCloseTo(0.9 * 5.0 + 0.1 * 0.5 + 25.0, 10);
+
+    expect(calculateUSDCost('anthropic:claude-sonnet-4-6', usage({ input_tokens: 1_000_000 })).estimated).toBe(false);
+    expect(calculateUSDCost('anthropic:claude-fable-5', usage({ input_tokens: 1_000_000 })).estimated).toBe(false);
+    expect(calculateUSDCost('anthropic:claude-haiku-4-5-20251001', usage({ input_tokens: 1_000_000 })).estimated).toBe(false);
+  });
+
   it('treats a bare (non-provider-qualified) model id as unknown/estimated', () => {
     const r = calculateUSDCost('gpt-5.1', usage({ output_tokens: 1_000_000 }));
     expect(r.estimated).toBe(true);

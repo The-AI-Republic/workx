@@ -18,6 +18,8 @@ export enum ErrorCode {
   AGENT_TIMEOUT = 'AGENT_TIMEOUT',
   UNAVAILABLE = 'UNAVAILABLE',
   DISCONNECTED = 'DISCONNECTED',
+  /** Inbound request queue is saturated; the caller should retry later. */
+  OVERLOADED = 'OVERLOADED',
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -88,5 +90,14 @@ export function unavailable(message?: string, details?: unknown): ErrorShape {
     message: message ?? 'Service temporarily unavailable',
     details,
     retryable: true,
+  };
+}
+
+export function overloaded(retryAfterMs = 250, message?: string): ErrorShape {
+  return {
+    code: ErrorCode.OVERLOADED,
+    message: message ?? 'Server overloaded; retry later.',
+    retryable: true,
+    retryAfterMs,
   };
 }

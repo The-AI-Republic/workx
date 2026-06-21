@@ -71,6 +71,47 @@ export interface IAgentConfig {
    * `/plugin enable|disable`. Absent → no plugins enabled.
    */
   enabledPlugins?: Record<string, boolean>;
+
+  /**
+   * App-server mode: lets the installed desktop app expose a local callable
+   * WebSocket endpoint alongside the UI. Disabled by default. Not LLM-writable
+   * (intentionally absent from the agent-facing config schema sections).
+   * @see src/app-server/appServerConfig.ts for normalization/validation.
+   */
+  appServer?: IAppServerConfig;
+}
+
+/** App-server transport kind. Only `websocket` in the MVP. */
+export type AppServerTransport = 'websocket' | 'unix-socket';
+
+/**
+ * App-server mode configuration. See `.ai_design/app_server_mode/design.md`.
+ */
+export interface IAppServerConfig {
+  /** Master switch. When false, no listener is started. */
+  enabled: boolean;
+  /** Transport kind. */
+  transport: AppServerTransport;
+  /** Bind host (TCP transport). Loopback by default. */
+  bindHost: string;
+  /** Bind port (TCP transport). 0 = OS-assigned (reported back via status). */
+  port: number;
+  /** Unix socket / named pipe path (when transport = unix-socket). */
+  socketPath?: string;
+  /** Require a capability token during connect. */
+  requireAuth: boolean;
+  /** Reject any upgrade request carrying an Origin header. */
+  rejectBrowserOrigins: boolean;
+  /** Allow binding to a non-loopback host. */
+  allowLan: boolean;
+  /** Maximum concurrent connections. */
+  maxConnections: number;
+  /** Maximum inbound frame size in bytes. */
+  maxPayloadBytes: number;
+  /** Maximum per-connection outbound buffer before slow-consumer disconnect. */
+  maxBufferedBytes: number;
+  /** Bounded inbound request queue capacity. */
+  requestQueueCapacity: number;
 }
 
 // Model pricing information
@@ -584,6 +625,8 @@ export interface IStoredConfig {
   hooks?: HooksConfig;
   /** Track 10: per-plugin enable state, keyed by `<name>@<marketplace>` */
   enabledPlugins?: Record<string, boolean>;
+  /** Desktop app-server settings. Disabled by default. */
+  appServer?: IAppServerConfig;
 }
 
 // Storage interfaces
@@ -641,7 +684,7 @@ export interface IExportData {
 // Event interfaces for config changes
 export interface IConfigChangeEvent {
   type: 'config-changed';
-  section: 'model' | 'provider' | 'profile' | 'preferences' | 'cache' | 'extension' | 'security' | 'approval' | 'hooks' | 'tools' | 'policy' | 'enabledPlugins';
+  section: 'model' | 'provider' | 'profile' | 'preferences' | 'cache' | 'extension' | 'security' | 'approval' | 'hooks' | 'tools' | 'policy' | 'enabledPlugins' | 'appServer';
   oldValue?: any;
   newValue: any;
   timestamp: number;

@@ -26,6 +26,9 @@ import type { Op } from '@/core/protocol/types';
 import type { SubmissionContext } from '@/core/channels/types';
 import { deriveInputOrigin } from '@/core/input/types';
 import type { EventMsg } from '@/core/protocol/events';
+import { A2AServer, type A2AAgentBridge, type A2ATurnResult } from '@/core/a2a/A2AServer';
+import { A2AEventTap, interpretTurnEvent } from '@/core/a2a/A2AEventTap';
+import type { ToolDefinition } from '@/tools/BaseTool';
 
 import { getServerConfig, loadServerConfig, watchConfig, stopWatchingConfig, onConfigReload } from '../config/server-config';
 import {
@@ -103,7 +106,10 @@ let _instance: ServerAgentBootstrap | null = null;
 export interface ServerAgentBootstrapOptions {
   profile?: 'server' | 'desktop-runtime';
   dataDir?: string;
+  /** Primary channel (UI/runtime transport). Kept for backward compatibility. */
   channel?: ChannelAdapter;
+  /** Additional channels to register at initialize() time (e.g. app-server). */
+  channels?: ChannelAdapter[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -119,6 +125,12 @@ export class ServerAgentBootstrap {
   // /plugin reload, matching claudy's asymmetric enable semantics).
   private pluginRegistry: import('@/core/plugins/PluginRegistry').PluginRegistry | null = null;
   private channel: ChannelAdapter | null = null;
+  /** All registered channels by channelId (multi-channel support). */
+  private channels = new Map<string, ChannelAdapter>();
+  /** The primary channel id — events for unowned sessions route here. */
+  private primaryChannelId: string | null = null;
+  /** sessionId → owning channelId, so events route to the originating channel. */
+  private sessionOwners = new Map<string, string>();
   private sessionIndex: SessionIndex | null = null;
   private transcriptStore: TranscriptStore | null = null;
   private backupManager: BackupManager | null = null;
@@ -135,6 +147,12 @@ export class ServerAgentBootstrap {
   private runningJobStartTime: number = 0;
   private currentAuthManager: IAuthManager | null = null;
   private runtimeState: RuntimeStateController | null = null;
+  // FR-6 (server decoupling): headless A2A delegation endpoint. The tap lets
+  // the A2A bridge observe the agent event stream; turns are serialized via the
+  // chain so concurrent delegations don't collide on the shared primary session.
+  private readonly a2aEventTap = new A2AEventTap();
+  private a2aServer: A2AServer | null = null;
+  private a2aTurnChain: Promise<unknown> = Promise.resolve();
   private toolResultSweep: { stop: () => void } | null = null;
   private desktopHubMcpEventHooked = false;
   private desktopHubRegisteredToolsBySession = new Map<string, IMCPTool[]>();
@@ -144,6 +162,72 @@ export class ServerAgentBootstrap {
   private initialized = false;
 
   constructor(private readonly options: ServerAgentBootstrapOptions = {}) {}
+
+  /**
+   * Record the channel that owns a session so agent events for that session are
+   * routed only to the originating channel. No-op when channelId is absent.
+   */
+  private recordSessionOwner(sessionId: string, channelId?: string): void {
+    if (channelId && this.channels.has(channelId)) {
+      this.sessionOwners.set(sessionId, channelId);
+    }
+  }
+
+  /**
+   * Register an additional channel after initialization (e.g. the app-server
+   * channel started once config is read). Idempotent per channelId.
+   */
+  async registerChannel(channel: ChannelAdapter): Promise<void> {
+    if (this.channels.has(channel.channelId)) return;
+    const channelManager = getChannelManager();
+    await channelManager.registerChannel(channel);
+    this.channels.set(channel.channelId, channel);
+    if (!this.primaryChannelId) this.primaryChannelId = channel.channelId;
+  }
+
+  /**
+   * Unregister a previously registered channel and drop any session ownership
+   * routed to it. The primary channel cannot be unregistered.
+   */
+  async unregisterChannel(channelId: string): Promise<void> {
+    if (channelId === this.primaryChannelId) {
+      throw new Error('Cannot unregister the primary channel');
+    }
+    if (!this.channels.has(channelId)) return;
+    const channelManager = getChannelManager();
+    await channelManager.unregisterChannel(channelId);
+    this.channels.delete(channelId);
+    for (const [sessionId, owner] of this.sessionOwners) {
+      if (owner === channelId) this.sessionOwners.delete(sessionId);
+    }
+  }
+
+  /**
+   * Create a fresh agent session and return its id. Used by callers such as the
+   * app-server that need a dedicated session per external connection.
+   *
+   * Created as `type: 'api'` + `internal: true`: never the registry's primary
+   * session (so external connections can't hijack the UI's primary-session
+   * pointer) and outside the user concurrency budget (the app-server transport
+   * bounds connection count itself).
+   */
+  async createSession(): Promise<string> {
+    if (!this.registry) throw new Error('AgentRegistry not initialized');
+    const session = await this.registry.createSession({ type: 'api', internal: true });
+    return session.sessionId;
+  }
+
+  /**
+   * Tear down a session created via {@link createSession} and drop its event
+   * routing. Called when an app-server connection closes so dedicated sessions
+   * don't accumulate for the life of the runtime.
+   */
+  async releaseSession(sessionId: string): Promise<void> {
+    this.sessionOwners.delete(sessionId);
+    if (this.registry) {
+      await this.registry.removeSession(sessionId);
+    }
+  }
 
   /**
    * Initialize the server agent system.
@@ -405,10 +489,21 @@ export class ServerAgentBootstrap {
           return agent;
         },
         eventDispatcherFactory: (sessionId) => (event) => {
-          // Dispatch to ServerChannel -> WebSocket clients with sessionId
-          channelManager.dispatchEvent({ msg: event.msg, sessionId }, this.channel!.channelId).catch((error) => {
-            console.error('[ServerAgentBootstrap] Failed to dispatch event:', error);
-          });
+          // Route to the channel that owns this session (UI vs app-server
+          // isolation). Falls back to the primary channel for sessions with no
+          // recorded owner (e.g. the initial primary session before any turn).
+          const targetChannelId =
+            this.sessionOwners.get(sessionId) ?? this.primaryChannelId ?? this.channel?.channelId;
+          if (targetChannelId) {
+            channelManager.dispatchEvent({ msg: event.msg, sessionId }, targetChannelId).catch((error) => {
+              console.error('[ServerAgentBootstrap] Failed to dispatch event:', error);
+            });
+          }
+
+          // FR-6: forward to the A2A bridge when a delegated turn is in flight.
+          if (this.a2aEventTap.active) {
+            this.a2aEventTap.emit(sessionId, event.msg);
+          }
 
           // Also log to transcript store (Track 24.5: secret-redacted at rest —
           // non-blocking, the entry is kept, only detected secrets become ***).
@@ -443,6 +538,9 @@ export class ServerAgentBootstrap {
         if (!targetSession?.agent) {
           throw new Error(`Session not found: ${context.sessionId}`);
         }
+        // Record channel ownership so agent events route to the originating
+        // channel only (UI vs app-server isolation).
+        this.recordSessionOwner(context.sessionId, context.channelId);
         console.log('[ServerAgentBootstrap] Processing submission:', op.type, 'session:', context.sessionId);
         // Track 13: thread channel origin so the input funnel can apply the
         // bridge-safe slash gate (connector input must not leak raw /config).
@@ -453,8 +551,16 @@ export class ServerAgentBootstrap {
       };
 
       channelManager.setAgentHandler(agentHandler);
-      await channelManager.registerChannel(this.channel);
-      console.log('[ServerAgentBootstrap] Channel registered');
+
+      // Register the primary channel plus any additional channels (multi-channel
+      // support — e.g. the desktop app-server channel alongside the UI channel).
+      const extraChannels = this.options.channels ?? [];
+      this.primaryChannelId = this.channel.channelId;
+      for (const ch of [this.channel, ...extraChannels]) {
+        await channelManager.registerChannel(ch);
+        this.channels.set(ch.channelId, ch);
+      }
+      console.log(`[ServerAgentBootstrap] Channel(s) registered: ${[...this.channels.keys()].join(', ')}`);
 
       // 8. Initialize persistence
       this.sessionIndex = new SessionIndex(dataDir);
@@ -609,6 +715,18 @@ export class ServerAgentBootstrap {
           this.buildDiagnosticContext(),
         );
         this.diagnosticsMonitor.start();
+      }
+
+      // 15c. FR-6 (server decoupling): optionally expose the headless A2A
+      // delegation endpoint. Opt-in via WORKX_SERVER_A2A_ENABLED — the endpoint
+      // is not yet behind the WS auth handshake, so it should only be enabled on
+      // trusted binds (loopback/tailnet) until per-request auth lands.
+      if (profile === 'server' && isA2AEnabled()) {
+        this.a2aServer = new A2AServer({
+          bridge: this.buildA2ABridge(),
+          identity: buildA2AIdentity(),
+        });
+        console.log('[ServerAgentBootstrap] A2A delegation endpoint enabled');
       }
 
       this.initialized = true;
@@ -1451,11 +1569,31 @@ export class ServerAgentBootstrap {
           throw new Error('No sessionId — cannot route chat submission');
         }
         if (!this.registry) throw new Error('AgentRegistry not initialized');
-        const targetSession = this.registry.getSession(context.sessionId);
+        // A dedicated channel (e.g. the desktop app-server) submits against a
+        // real, per-connection session id and owns its own event stream. The
+        // primary chat surface instead submits under a connection alias
+        // (`ws:main:<connId>`) that is not itself a registry key and maps to the
+        // server's primary session.
+        const isDedicatedChannel =
+          !!context.channelId &&
+          context.channelId !== this.primaryChannelId &&
+          this.channels.has(context.channelId);
+        // Only the aliased primary surface falls back to the primary session.
+        // For a dedicated channel an unresolved session must fail loudly rather
+        // than silently execute the request against the UI's live conversation.
+        const targetSession =
+          this.registry.getSession(context.sessionId) ??
+          (isDedicatedChannel ? undefined : this.registry.getPrimarySession());
         if (!targetSession?.agent) throw new Error(`Session not found: ${context.sessionId}`);
+        // Route this session's agent events back to the originating channel so a
+        // dedicated connection receives its own stream (and the UI does not).
+        // recordSessionOwner no-ops unless channelId is a registered channel, so
+        // the primary-surface alias keeps default primary-channel routing.
+        this.recordSessionOwner(context.sessionId, context.channelId);
         // Track 13: derive origin from the chat channel (on-host WS chat maps
         // to `local` and skips the gate; remote/relay maps to `remote`).
-        await targetSession.agent.submitOperation(op, {
+        // Return the submission id so callers can surface it as a stable runId.
+        return await targetSession.agent.submitOperation(op, {
           tabId: context.tabId,
           origin: deriveInputOrigin(context),
         });
@@ -1945,6 +2083,117 @@ export class ServerAgentBootstrap {
     return this.registry;
   }
 
+  /** The headless A2A server, if enabled (FR-6). Null when disabled. */
+  getA2AServer(): A2AServer | null {
+    return this.a2aServer;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // A2A delegation bridge (FR-6)
+  // ─────────────────────────────────────────────────────────────────────
+
+  /**
+   * Build the bridge that routes A2A `message/send` requests into the local
+   * agent's turn loop. Turns run on the primary session (single-tenant
+   * appliance, D4) and are serialized so concurrent delegations don't collide.
+   */
+  private buildA2ABridge(): A2AAgentBridge {
+    return {
+      runTurn: (params) => {
+        // Serialize: chain each turn after the previous one settles.
+        const run = this.a2aTurnChain.then(
+          () => this.runA2ATurn(params),
+          () => this.runA2ATurn(params)
+        );
+        this.a2aTurnChain = run.catch(() => undefined);
+        return run;
+      },
+      listToolNames: () => {
+        const registry = this.registry?.getPrimarySession()?.agent?.getToolRegistry();
+        if (!registry) return [];
+        try {
+          return registry
+            .listTools()
+            .map(toolDefinitionName)
+            .filter((name): name is string => !!name);
+        } catch {
+          return [];
+        }
+      },
+    };
+  }
+
+  /** Run a single delegated turn and resolve with the final assistant text. */
+  private async runA2ATurn(params: {
+    text: string;
+    contextId: string;
+    taskId: string;
+    signal: AbortSignal;
+  }): Promise<A2ATurnResult> {
+    const { text, signal } = params;
+    if (!this.registry) {
+      return { text: '', success: false, error: 'Agent registry not initialized' };
+    }
+
+    const session = await this.registry.getOrCreatePrimarySession();
+    const sessionId = session.sessionId;
+
+    const op: Op = {
+      type: 'UserTurn',
+      items: [{ type: 'text', text }],
+      tabId: 0,
+      // Headless delegation has no human to answer approval prompts, so the
+      // turn must run non-interactively. Single-tenant appliance only (D4).
+      approval_policy: 'never',
+      sandbox_policy: { mode: 'danger-full-access' },
+      model: 'default',
+      summary: { enabled: true },
+    };
+
+    return await new Promise<A2ATurnResult>((resolve) => {
+      let settled = false;
+      let submissionId: string | undefined;
+
+      const finish = (result: A2ATurnResult): void => {
+        if (settled) return;
+        settled = true;
+        unsubscribe();
+        clearTimeout(timer);
+        resolve(result);
+      };
+
+      const unsubscribe = this.a2aEventTap.on(sessionId, (msg) => {
+        // Wait until our submission id is known before matching terminal events.
+        // Real turns take far longer to complete than submit() takes to resolve,
+        // so nothing is missed by ignoring events in that brief window.
+        if (submissionId === undefined) return;
+        // Resolve on TaskComplete (success) or TurnAborted (cancel / abort /
+        // error-reason), both correlated by submission_id. See interpretTurnEvent.
+        const outcome = interpretTurnEvent(msg, submissionId);
+        if (outcome) finish(outcome);
+      });
+
+      if (signal.aborted) {
+        finish({ text: '', success: false, error: 'aborted' });
+        return;
+      }
+      signal.addEventListener('abort', () => {
+        session.agent?.submitOperation({ type: 'Interrupt' }, {}).catch(() => undefined);
+      });
+
+      const timer = setTimeout(() => {
+        finish({ text: '', success: false, error: 'A2A turn timed out' });
+      }, A2A_TURN_TIMEOUT_MS);
+
+      session.submit(op).then(
+        (id) => {
+          submissionId = id;
+        },
+        (err) => finish({ text: '', success: false, error: err instanceof Error ? err.message : String(err) })
+      );
+    });
+  }
+
   getChannel(): ChannelAdapter | null {
     return this.channel;
   }
@@ -2026,6 +2275,56 @@ export class ServerAgentBootstrap {
     this.channel = null;
     this.initialized = false;
     console.log('[ServerAgentBootstrap] Shutdown complete');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// A2A helpers (FR-6)
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Max wall-clock for a single delegated A2A turn before it is failed. */
+const A2A_TURN_TIMEOUT_MS = 10 * 60 * 1000;
+
+/** Whether the headless A2A endpoint is opt-in enabled. */
+function isA2AEnabled(): boolean {
+  const flag = process.env.WORKX_SERVER_A2A_ENABLED;
+  return flag === '1' || flag === 'true';
+}
+
+/** Build the agent-card identity from env, defaulting to the local server. */
+function buildA2AIdentity(): { name: string; description: string; version: string; url: string } {
+  const port = process.env.WORKX_SERVER_PORT ?? '18100';
+  const base = (process.env.WORKX_SERVER_PUBLIC_URL ?? `http://localhost:${port}`).replace(/\/$/, '');
+  return {
+    name: process.env.WORKX_SERVER_A2A_NAME ?? 'WorkX Agent',
+    description:
+      process.env.WORKX_SERVER_A2A_DESCRIPTION ??
+      'Headless WorkX agent. Delegate natural-language tasks via A2A message/send.',
+    version: process.env.WORKX_SERVER_A2A_VERSION ?? '1.0.0',
+    // The agent card is served at /.well-known/agent-card.json; this is the
+    // JSON-RPC endpoint the client POSTs to (see A2A_RPC_PATH in server/index).
+    url: `${base}${A2A_RPC_PATH}`,
+  };
+}
+
+/** Path of the A2A JSON-RPC endpoint (also referenced by server/index.ts). */
+export const A2A_RPC_PATH = '/a2a';
+/** Path of the A2A agent-card discovery document. */
+export const A2A_CARD_PATH = '/.well-known/agent-card.json';
+
+/** Extract a tool's name from the ToolDefinition union, if it has one. */
+function toolDefinitionName(def: ToolDefinition): string | null {
+  switch (def.type) {
+    case 'function':
+      return def.function?.name ?? null;
+    case 'custom':
+      return def.custom?.name ?? null;
+    case 'local_shell':
+      return 'local_shell';
+    case 'web_search':
+      return 'web_search';
+    default:
+      return null;
   }
 }
 

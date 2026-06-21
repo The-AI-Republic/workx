@@ -101,7 +101,7 @@ export class ScreenshotFileManager {
 
   /**
    * Download screenshot as a file using Chrome downloads API
-   * 
+   *
    * @param base64DataOrFilename - Base64 screenshot data OR filename (if omitted, reads from storage)
    * @param filename - Optional filename (defaults to screenshot_TIMESTAMP.png)
    * @returns Promise that resolves with the download ID

@@ -220,100 +220,180 @@ describe('WebSocketTransport', () => {
     Object.assign((globalThis as any).WebSocket, OrigCtor);
   });
 
+  /**
+   * Drive the server handshake: server sends `connect.challenge`, the client
+   * replies with a `connect` request, server answers `hello-ok`. Resolves once
+   * initialize() completes. Clears `send` mock so later assertions are clean.
+   */
+  async function completeHandshake(): Promise<void> {
+    const initPromise = transport.initialize();
+    mockWs._open(); // socket open — server only sends the challenge after this
+    mockWs._message({
+      type: 'event',
+      event: 'connect.challenge',
+      payload: { protocolVersion: 1, nonce: 'n1' },
+    });
+    // Client should have sent exactly one `connect` request.
+    const calls = mockWs.send.mock.calls;
+    const connectFrame = JSON.parse(calls[calls.length - 1][0]);
+    expect(connectFrame.method).toBe('connect');
+    expect(connectFrame.params.client.mode).toBe('operator');
+    mockWs._message({
+      type: 'res',
+      id: connectFrame.id,
+      ok: true,
+      payload: { type: 'hello-ok', server: { connId: 'c1' } },
+    });
+    await initPromise;
+    mockWs.send.mockClear();
+  }
+
+  const userTurnOp = () =>
+    ({
+      type: 'UserTurn',
+      items: [{ type: 'text', text: 'hi' }],
+      model: 'test-model',
+      tabId: 0,
+      approval_policy: 'untrusted',
+      sandbox_policy: { mode: 'danger-full-access' },
+    }) as any;
+
   it('sendOp throws when not connected', async () => {
-    await expect(transport.sendOp({ type: 'response.create' } as any)).rejects.toThrow(
+    await expect(transport.sendOp({ type: 'Interrupt' } as any)).rejects.toThrow(
       'WebSocket not connected',
     );
   });
 
-  it('sendOp sends JSON message over WebSocket', async () => {
-    const initPromise = transport.initialize();
-    mockWs._open();
-    await initPromise;
-
-    const op = { type: 'conversation.item.create' } as any;
-    const context = { sessionId: 'sess-4' };
-    await transport.sendOp(op, context);
-
-    expect(mockWs.send).toHaveBeenCalledTimes(1);
-    const sent = JSON.parse(mockWs.send.mock.calls[0][0]);
-    expect(sent).toEqual({
-      type: 'req',
-      method: 'chat.send',
-      params: { op, sessionId: 'sess-4' },
-    });
-  });
-
-  it('initialize connects to WebSocket', async () => {
+  it('initialize completes the connect handshake', async () => {
     const initPromise = transport.initialize();
     expect(mockWs.url).toBe('ws://localhost:8080');
     mockWs._open();
-    await initPromise;
+    mockWs._message({
+      type: 'event',
+      event: 'connect.challenge',
+      payload: { protocolVersion: 1, nonce: 'n1' },
+    });
+    const calls = mockWs.send.mock.calls;
+    const connectFrame = JSON.parse(calls[calls.length - 1][0]);
+    expect(connectFrame).toMatchObject({ type: 'req', method: 'connect' });
+    mockWs._message({
+      type: 'res',
+      id: connectFrame.id,
+      ok: true,
+      payload: { type: 'hello-ok', server: { connId: 'c1' } },
+    });
+    await expect(initPromise).resolves.toBeUndefined();
   });
 
-  it('events with sessionId in payload are dispatched correctly', async () => {
-    const initPromise = transport.initialize();
-    mockWs._open();
-    await initPromise;
+  it('translates a UserTurn op into a chat.send request', async () => {
+    await completeHandshake();
+
+    await transport.sendOp(userTurnOp());
+
+    expect(mockWs.send).toHaveBeenCalledTimes(1);
+    const sent = JSON.parse(mockWs.send.mock.calls[0][0]);
+    expect(sent.type).toBe('req');
+    expect(sent.method).toBe('chat.send');
+    expect(sent.params).toMatchObject({
+      items: [{ type: 'text', text: 'hi' }],
+      model: 'test-model',
+      tabId: 0,
+      approval_policy: 'untrusted',
+      sandbox_policy: { mode: 'danger-full-access' },
+    });
+  });
+
+  it('translates an Interrupt op into a chat.abort request', async () => {
+    await completeHandshake();
+
+    await transport.sendOp({ type: 'Interrupt' } as any);
+
+    const sent = JSON.parse(mockWs.send.mock.calls[0][0]);
+    expect(sent.method).toBe('chat.abort');
+  });
+
+  it('translates an ExecApproval op into exec.approval.resolve', async () => {
+    await completeHandshake();
+
+    await transport.sendOp({ type: 'ExecApproval', id: 'a1', decision: 'reject', alternativeText: 'no' } as any);
+
+    const sent = JSON.parse(mockWs.send.mock.calls[0][0]);
+    expect(sent.method).toBe('exec.approval.resolve');
+    expect(sent.params).toMatchObject({ id: 'a1', decision: 'reject', reason: 'no' });
+  });
+
+  it('passes a chat EventMsg payload through, with sessionId', async () => {
+    await completeHandshake();
 
     const handler = vi.fn();
     transport.onEvent(handler);
 
-    const eventMsg = fakeEventMsg();
-    mockWs._message({ type: 'event', payload: { msg: eventMsg, sessionId: 'sess-5' } });
+    // The server sends the raw EventMsg as the event payload (the `event` name
+    // is only a scope category); sessionId is merged into the payload.
+    mockWs._message({
+      type: 'event',
+      event: 'chat',
+      payload: { type: 'AgentMessageDelta', data: { delta: 'Hello' }, sessionId: 'sess-1' },
+    });
 
     expect(handler).toHaveBeenCalledTimes(1);
     const received: ChannelEvent = handler.mock.calls[0][0];
-    expect(received.msg).toEqual(eventMsg);
-    expect(received.sessionId).toBe('sess-5');
+    expect(received.msg).toMatchObject({ type: 'AgentMessageDelta', data: { delta: 'Hello' } });
+    expect(received.sessionId).toBe('sess-1');
   });
 
-  it('malformed messages are ignored', async () => {
-    const initPromise = transport.initialize();
-    mockWs._open();
-    await initPromise;
+  it('passes an agent EventMsg payload through', async () => {
+    await completeHandshake();
+
+    const handler = vi.fn();
+    transport.onEvent(handler);
+
+    const msg = { type: 'ToolExecutionStart', data: { tool_name: 'dom', call_id: 'c1', params: { a: 1 } } };
+    mockWs._message({ type: 'event', event: 'agent', payload: msg });
+
+    const received: ChannelEvent = handler.mock.calls[0][0];
+    expect(received.msg).toEqual(msg);
+  });
+
+  it('ignores unknown and malformed messages', async () => {
+    await completeHandshake();
 
     const handler = vi.fn();
     transport.onEvent(handler);
 
     mockWs._message({ type: 'other', payload: {} });
-    mockWs._message({ type: 'event', payload: {} });
+    mockWs._message({ type: 'event', event: 'tick', payload: { ts: 1 } }); // not EventMsg-shaped
+    mockWs._message({ type: 'event', event: 'agent', payload: {} }); // no `type`
     mockWs.onmessage?.({ data: 'not-json{{{' });
 
     expect(handler).not.toHaveBeenCalled();
   });
 
   it('destroy closes WebSocket and clears listeners', async () => {
-    const initPromise = transport.initialize();
-    mockWs._open();
-    await initPromise;
+    await completeHandshake();
 
     transport.onEvent(vi.fn());
     await transport.destroy();
 
     expect(mockWs.close).toHaveBeenCalledTimes(1);
-    await expect(transport.sendOp({ type: 'response.create' } as any)).rejects.toThrow(
+    await expect(transport.sendOp({ type: 'Interrupt' } as any)).rejects.toThrow(
       'WebSocket not connected',
     );
   });
 
   it('unlisten from onEvent works', async () => {
-    const initPromise = transport.initialize();
-    mockWs._open();
-    await initPromise;
+    await completeHandshake();
 
     const handler = vi.fn();
     const unlisten = transport.onEvent(handler);
     unlisten();
 
-    mockWs._message({ type: 'event', payload: { msg: fakeEventMsg(), sessionId: 'x' } });
+    mockWs._message({ type: 'event', event: 'chat', payload: { type: 'AgentMessageDelta', data: { delta: 'x' } } });
     expect(handler).not.toHaveBeenCalled();
   });
 
   it('handler errors do not break dispatch loop', async () => {
-    const initPromise = transport.initialize();
-    mockWs._open();
-    await initPromise;
+    await completeHandshake();
 
     const errorHandler = vi.fn(() => { throw new Error('handler boom'); });
     const goodHandler = vi.fn();
@@ -321,7 +401,7 @@ describe('WebSocketTransport', () => {
     transport.onEvent(goodHandler);
 
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    mockWs._message({ type: 'event', payload: { msg: fakeEventMsg(), sessionId: 'err-test' } });
+    mockWs._message({ type: 'event', event: 'chat', payload: { type: 'AgentMessageDelta', data: { delta: 'x' } } });
 
     expect(errorHandler).toHaveBeenCalledTimes(1);
     expect(goodHandler).toHaveBeenCalledTimes(1);

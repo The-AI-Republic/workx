@@ -95,7 +95,7 @@ export interface SessionListResponse {
  */
 export interface SessionMetadataSummary {
   sessionId: string;
-  type: 'primary' | 'scheduled';
+  type: 'primary' | 'scheduled' | 'api';
   state: 'initializing' | 'active' | 'idle' | 'terminated';
   tabId: number | null;
   tabGroupName: string;

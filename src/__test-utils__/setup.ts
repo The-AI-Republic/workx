@@ -10,6 +10,42 @@
 import { beforeEach, vi } from 'vitest';
 import { mockChromeStorage, resetChromeStorageMock } from './chrome-storage-mock';
 
+// Node >= 22 defines an experimental `localStorage`/`sessionStorage` global
+// that evaluates to `undefined` unless Node is started with
+// `--localstorage-file`. It shadows jsdom's Web Storage in the vitest
+// environment, so code guarded by `typeof localStorage !== 'undefined'`
+// sees `undefined` and every test touching Web Storage breaks. Install a
+// spec-shaped in-memory replacement so tests behave like a real browser.
+function createWebStorage(): Storage {
+  const store = new Map<string, string>();
+  return {
+    get length() {
+      return store.size;
+    },
+    clear: () => {
+      store.clear();
+    },
+    getItem: (key: string) => (store.has(String(key)) ? store.get(String(key))! : null),
+    key: (index: number) => Array.from(store.keys())[index] ?? null,
+    removeItem: (key: string) => {
+      store.delete(String(key));
+    },
+    setItem: (key: string, value: string) => {
+      store.set(String(key), String(value));
+    },
+  } as Storage;
+}
+
+for (const name of ['localStorage', 'sessionStorage'] as const) {
+  if (globalThis[name] === undefined) {
+    Object.defineProperty(globalThis, name, {
+      value: createWebStorage(),
+      writable: true,
+      configurable: true,
+    });
+  }
+}
+
 // Unified chrome mock — uses the full MockStorageArea for storage while
 // keeping lightweight stubs for runtime / tabs / etc.
 const mockChrome = {

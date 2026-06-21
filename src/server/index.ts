@@ -9,8 +9,10 @@
 
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http';
 import { createServer as createHttpsServer } from 'node:https';
-import { readFileSync } from 'node:fs';
-import { randomUUID } from 'node:crypto';
+import { readFileSync, existsSync, statSync, createReadStream } from 'node:fs';
+import { join, extname, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { randomUUID, timingSafeEqual } from 'node:crypto';
 
 // Polyfill EventSource for Node.js (required by SSE MCP transport)
 if (typeof globalThis.EventSource === 'undefined') {
@@ -31,7 +33,12 @@ try {
 }
 
 import { loadServerConfig, getServerConfig } from './config/server-config';
-import { initializeServerAgent, getServerAgentBootstrap } from './agent/ServerAgentBootstrap';
+import {
+  initializeServerAgent,
+  getServerAgentBootstrap,
+  A2A_CARD_PATH,
+  A2A_RPC_PATH,
+} from './agent/ServerAgentBootstrap';
 import { registerShutdownHandlers, gracefulShutdown } from './agent/shutdown';
 import { sendChallenge, handleConnectRequest, cancelHandshake, type WsHandle } from './connection/handshake';
 import {
@@ -98,6 +105,80 @@ if (tlsEnabled) {
   httpServer = createHttpServer(handleHttpRequest);
 }
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const WEB_ROOT = join(__dirname, '..', 'web');
+
+const MIME_TYPES: Record<string, string> = {
+  '.html': 'text/html',
+  '.js': 'application/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+};
+
+/** Max accepted A2A request body size (1 MiB) — guards against unbounded reads. */
+const A2A_MAX_BODY_BYTES = 1024 * 1024;
+
+/** Constant-time string compare that does not leak length via early return. */
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
+
+/**
+ * Authorize an inbound A2A request against the server's configured token.
+ *
+ * The A2A HTTP endpoint is separate from the WS handshake, so it enforces the
+ * same `WORKX_SERVER_TOKEN` here. When a token is configured the caller must
+ * present it via `Authorization: Bearer <token>` or `X-API-Key: <token>`
+ * (both supported by the desktop A2A client). When no token is configured the
+ * endpoint relies on the opt-in flag + a trusted bind, matching its docs.
+ */
+function isA2ARequestAuthorized(req: IncomingMessage): boolean {
+  const token = config.server.auth.token;
+  if (!token) return true; // no token configured → trusted-bind posture
+
+  const authHeader = req.headers['authorization'];
+  if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+    if (safeEqual(authHeader.slice('Bearer '.length).trim(), token)) return true;
+  }
+  const apiKey = req.headers['x-api-key'];
+  if (typeof apiKey === 'string' && safeEqual(apiKey.trim(), token)) return true;
+
+  return false;
+}
+
+/** Read and JSON-parse a request body, bounded by {@link A2A_MAX_BODY_BYTES}. */
+function readJsonBody(req: IncomingMessage): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    req.on('data', (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > A2A_MAX_BODY_BYTES) {
+        reject(new Error('Request body too large'));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => {
+      try {
+        resolve(JSON.parse(Buffer.concat(chunks).toString('utf-8')));
+      } catch {
+        reject(new Error('Invalid JSON'));
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
 function handleHttpRequest(req: IncomingMessage, res: ServerResponse): void {
   // Health endpoint (UNAUTHENTICATED — K8s/Docker liveness/readiness probe).
   // Track 17 security boundary: this returns ONLY the HealthStatus shape (a
@@ -109,6 +190,91 @@ function handleHttpRequest(req: IncomingMessage, res: ServerResponse): void {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(status));
     return;
+  }
+
+  // A2A delegation endpoint (FR-6, server decoupling). Only mounted when the
+  // bootstrap enabled it (WORKX_SERVER_A2A_ENABLED). The agent card is a public
+  // discovery document; the JSON-RPC endpoint routes message/send into the
+  // local agent.
+  const a2aServer = getServerAgentBootstrap().getA2AServer();
+  if (a2aServer) {
+    const reqPath = new URL(req.url ?? '/', `http://${req.headers.host}`).pathname;
+
+    if (req.method === 'GET' && reqPath === A2A_CARD_PATH) {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
+      res.end(JSON.stringify(a2aServer.getAgentCard()));
+      return;
+    }
+
+    if (req.method === 'POST' && reqPath === A2A_RPC_PATH) {
+      if (!isA2ARequestAuthorized(req)) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            jsonrpc: '2.0',
+            id: null,
+            error: { code: -32001, message: 'Unauthorized' },
+          })
+        );
+        return;
+      }
+      readJsonBody(req)
+        .then((body) => a2aServer.handleRpc(body))
+        .then((result) => {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(result));
+        })
+        .catch((err) => {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              jsonrpc: '2.0',
+              id: null,
+              error: { code: -32700, message: err instanceof Error ? err.message : 'Parse error' },
+            })
+          );
+        });
+      return;
+    }
+  }
+
+  // Static file serving for web UI
+  if (req.method === 'GET') {
+    const urlPath = new URL(req.url ?? '/', `http://${req.headers.host}`).pathname;
+    const filePath = join(WEB_ROOT, urlPath === '/' ? 'index.html' : urlPath);
+
+    // Prevent path traversal
+    if (!filePath.startsWith(WEB_ROOT)) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Forbidden' }));
+      return;
+    }
+
+    if (existsSync(filePath) && statSync(filePath).isFile()) {
+      const ext = extname(filePath);
+      // Hashed assets (chunks/*-[hash].js, assets/*-[hash].css) are immutable
+      const isHashed = /[-\.][a-f0-9]{8,}\.\w+$/.test(filePath);
+      const cacheControl = isHashed
+        ? 'public, max-age=31536000, immutable'
+        : 'no-cache';
+      res.writeHead(200, {
+        'Content-Type': MIME_TYPES[ext] ?? 'application/octet-stream',
+        'Cache-Control': cacheControl,
+      });
+      createReadStream(filePath).pipe(res);
+      return;
+    }
+
+    // SPA fallback: serve index.html for unmatched routes
+    const indexPath = join(WEB_ROOT, 'index.html');
+    if (existsSync(indexPath)) {
+      res.writeHead(200, {
+        'Content-Type': 'text/html',
+        'Cache-Control': 'no-cache',
+      });
+      createReadStream(indexPath).pipe(res);
+      return;
+    }
   }
 
   // All other requests → 404
@@ -398,6 +564,7 @@ async function main(): Promise<void> {
   httpServer.listen(PORT, BIND, () => {
     const host = BIND === '0.0.0.0' ? 'localhost' : BIND;
     console.log(`[Server] Listening on ${BIND}:${PORT}`);
+    console.log(`[Server] Web UI: ${proto}://${host}:${PORT}`);
     console.log(`[Server] Health: ${proto}://${host}:${PORT}/health`);
     console.log(`[Server] WebSocket: ${wsProto}://${host}:${PORT}`);
   });
