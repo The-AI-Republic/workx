@@ -668,6 +668,7 @@ export class ServerAgentBootstrap {
       const mcpManager = await MCPManager.getInstance(platformScope);
       if (profile === 'desktop-runtime') {
         mcpManager.setSessionTokenProvider(async () => getCredentialStore().get('auth', 'access_token'));
+        mcpManager.setSessionTokenRefreshProvider(() => this.refreshDesktopRuntimeSessionTokens());
       }
       mcpDeps = { mcpManager: mcpManager as any };
     } catch (error) {
@@ -1075,8 +1076,11 @@ export class ServerAgentBootstrap {
                 ? async () => getCredentialStore().get('auth', 'access_token')
                 : undefined;
               const urls = runtimeState?.getUrls();
-              const gatewayLlmBaseUrl = urls?.llmRoutingMode === 'ai-hub' ? urls.aiHubLlmApiUrl : null;
-              return new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter, { gatewayLlmBaseUrl });
+              const gatewayLlmBaseUrl = urls?.llmRoutingMode === 'ai-hub' ? urls.gatewayLlmApiUrl : null;
+              return new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter, {
+                gatewayLlmBaseUrl,
+                refreshAccessToken: () => this.refreshDesktopRuntimeSessionTokens(),
+              });
             }
           : undefined,
         setAuthManager: profile === 'desktop-runtime' ? (authManager) => {
@@ -1094,8 +1098,11 @@ export class ServerAgentBootstrap {
             ? async () => getCredentialStore().get('auth', 'access_token')
             : undefined;
           const urls = runtimeState?.getUrls();
-          const gatewayLlmBaseUrl = urls?.llmRoutingMode === 'ai-hub' ? urls.aiHubLlmApiUrl : null;
-          return new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter, { gatewayLlmBaseUrl });
+          const gatewayLlmBaseUrl = urls?.llmRoutingMode === 'ai-hub' ? urls.gatewayLlmApiUrl : null;
+          return new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter, {
+            gatewayLlmBaseUrl,
+            refreshAccessToken: () => this.refreshDesktopRuntimeSessionTokens(),
+          });
         },
         setAuthManager: (authManager) => {
           this.currentAuthManager = authManager;
@@ -1219,6 +1226,29 @@ export class ServerAgentBootstrap {
     return this.runtimeState.setAccessState(accessStateFromReadyState(ready));
   }
 
+  private async refreshDesktopRuntimeSessionTokens(): Promise<string | null> {
+    const credentialStore = getCredentialStore();
+    const refreshToken = await credentialStore.get('auth', 'refresh_token').catch(() => null);
+    if (!refreshToken) return null;
+
+    try {
+      const { refreshDesktopAuthTokens } = await import('@/desktop-runtime/auth/runtimeProfileFetch');
+      const refreshed = await refreshDesktopAuthTokens(refreshToken);
+      if (!refreshed?.accessToken || !refreshed.refreshToken) {
+        return null;
+      }
+      await Promise.all([
+        credentialStore.set('auth', 'access_token', refreshed.accessToken),
+        credentialStore.set('auth', 'refresh_token', refreshed.refreshToken),
+      ]);
+      await this.refreshDesktopRuntimeAccessState().catch(() => undefined);
+      return refreshed.accessToken;
+    } catch (err) {
+      console.warn('[ServerAgentBootstrap] runtime token refresh failed:', err);
+      return null;
+    }
+  }
+
   private async ensureDesktopRuntimeHubMcpConnected(): Promise<void> {
     if ((this.options.profile ?? 'server') !== 'desktop-runtime' || !this.registry) return;
 
@@ -1229,7 +1259,9 @@ export class ServerAgentBootstrap {
       const { MCPManager } = await import('@/core/mcp/MCPManager');
       const mcpManager = await MCPManager.getInstance('desktop');
       mcpManager.setSessionTokenProvider(async () => getCredentialStore().get('auth', 'access_token'));
-      const hubServer = mcpManager.getServerByName('ai-hub');
+      mcpManager.setSessionTokenRefreshProvider(() => this.refreshDesktopRuntimeSessionTokens());
+      const serverName = this.runtimeState?.getUrls().gatewayMcpName ?? 'gateway';
+      const hubServer = mcpManager.getServerByName(serverName);
       if (!hubServer) return;
 
       if (!this.desktopHubMcpEventHooked) {
@@ -1237,9 +1269,9 @@ export class ServerAgentBootstrap {
         mcpManager.on('event', (event) => {
           if (event.type !== 'tools-updated' || event.configId !== hubServer.id) return;
           const config = mcpManager.getServer(event.configId);
-          if (!config || config.name !== 'ai-hub') return;
+          if (!config || config.name !== serverName) return;
           this.registerDesktopHubMcpTools(mcpManager, config.name, event.tools).catch((error) => {
-            console.warn('[ServerAgentBootstrap] Failed to update AI Hub MCP tools:', error);
+            console.warn('[ServerAgentBootstrap] Failed to update gateway MCP tools:', error);
           });
         });
       }
@@ -1254,7 +1286,7 @@ export class ServerAgentBootstrap {
         await this.registerDesktopHubMcpTools(mcpManager, hubServer.name, connected.tools);
       }
     } catch (error) {
-      console.warn('[ServerAgentBootstrap] AI Hub MCP connection unavailable:', error);
+      console.warn('[ServerAgentBootstrap] Gateway MCP connection unavailable:', error);
     }
   }
 
@@ -1292,12 +1324,13 @@ export class ServerAgentBootstrap {
     try {
       const { MCPManager } = await import('@/core/mcp/MCPManager');
       const mcpManager = await MCPManager.getInstance('desktop');
-      const hubServer = mcpManager.getServerByName('ai-hub');
+      const serverName = this.runtimeState?.getUrls().gatewayMcpName ?? 'gateway';
+      const hubServer = mcpManager.getServerByName(serverName);
       if (!hubServer) return;
       await this.registerDesktopHubMcpTools(mcpManager, hubServer.name, []);
       await mcpManager.disconnect(hubServer.id);
     } catch (error) {
-      console.warn('[ServerAgentBootstrap] Failed to disconnect AI Hub MCP:', error);
+      console.warn('[ServerAgentBootstrap] Failed to disconnect gateway MCP:', error);
     }
   }
 
@@ -1350,8 +1383,9 @@ export class ServerAgentBootstrap {
       tokenGetter,
       {
         gatewayLlmBaseUrl: shouldUseBackend && this.runtimeState.getUrls().llmRoutingMode === 'ai-hub'
-          ? this.runtimeState.getUrls().aiHubLlmApiUrl
+          ? this.runtimeState.getUrls().gatewayLlmApiUrl
           : null,
+        refreshAccessToken: () => this.refreshDesktopRuntimeSessionTokens(),
       },
     );
     this.currentAuthManager = authManager;

@@ -5,14 +5,35 @@ const ENV_KEYS = [
   'WORKX_AUTH_BASE_URL',
   'WORKX_HOME_PAGE_BASE_URL',
   'WORKX_BACKEND_API_BASE_URL',
+  'WORKX_GATEWAY_BASE_URL',
+  'WORKX_GATEWAY_API_BASE_URL',
+  'WORKX_GATEWAY_LLM_API_URL',
+  'WORKX_GATEWAY_MCP_URL',
+  'WORKX_GATEWAY_CATALOG_URL',
+  'WORKX_GATEWAY_MCP_NAME',
+  'WORKX_GATEWAY_MCP_AUTH_MODE',
+  'WORKX_GATEWAY_MCP_API_KEY',
+  'WORKX_GATEWAY_MCP_TOOL_DISCOVERY',
   'WORKX_AI_HUB_GATEWAY_BASE_URL',
   'WORKX_AI_HUB_LLM_API_URL',
   'WORKX_AI_HUB_MCP_URL',
   'WORKX_AI_HUB_CATALOG_URL',
+  'WORKX_AI_HUB_MCP_NAME',
+  'WORKX_AI_HUB_MCP_AUTH_MODE',
+  'WORKX_AI_HUB_MCP_API_KEY',
+  'WORKX_AI_HUB_MCP_TOOL_DISCOVERY',
   'WORKX_LLM_ROUTING_MODE',
   'VITE_AUTH_BASE_URL',
   'VITE_HOME_PAGE_BASE_URL',
   'VITE_BACKEND_API_BASE_URL',
+  'VITE_GATEWAY_BASE_URL',
+  'VITE_GATEWAY_API_BASE_URL',
+  'VITE_GATEWAY_LLM_API_URL',
+  'VITE_GATEWAY_MCP_URL',
+  'VITE_GATEWAY_CATALOG_URL',
+  'VITE_GATEWAY_MCP_NAME',
+  'VITE_GATEWAY_MCP_AUTH_MODE',
+  'VITE_GATEWAY_MCP_TOOL_DISCOVERY',
   'VITE_AI_HUB_GATEWAY_BASE_URL',
   'VITE_AI_HUB_LLM_API_URL',
   'VITE_AI_HUB_MCP_URL',
@@ -49,6 +70,14 @@ describe('resolveRuntimeUrls', () => {
       homePageBaseUrl: null,
       backendApiBaseUrl: null,
       llmApiUrl: '/api/llm',
+      gatewayBaseUrl: null,
+      gatewayLlmApiUrl: null,
+      gatewayMcpUrl: null,
+      gatewayCatalogUrl: null,
+      gatewayMcpName: 'gateway',
+      gatewayMcpAuthMode: 'none',
+      gatewayMcpApiKey: null,
+      gatewayMcpToolDiscovery: null,
       aiHubGatewayBaseUrl: null,
       aiHubLlmApiUrl: null,
       aiHubMcpUrl: null,
@@ -59,6 +88,14 @@ describe('resolveRuntimeUrls', () => {
         homePageBaseUrl: 'default',
         backendApiBaseUrl: 'default',
         llmApiUrl: 'default',
+        gatewayBaseUrl: 'default',
+        gatewayLlmApiUrl: 'default',
+        gatewayMcpUrl: 'default',
+        gatewayCatalogUrl: 'default',
+        gatewayMcpName: 'default',
+        gatewayMcpAuthMode: 'default',
+        gatewayMcpApiKey: 'default',
+        gatewayMcpToolDiscovery: 'default',
         aiHubGatewayBaseUrl: 'default',
         aiHubLlmApiUrl: 'default',
         aiHubMcpUrl: 'default',
@@ -117,19 +154,29 @@ describe('resolveRuntimeUrls', () => {
     expect(urls.source.homePageBaseUrl).toBe('env');
   });
 
-  it('derives AI Hub LLM and MCP endpoints from the gateway base URL', () => {
-    process.env.WORKX_AI_HUB_GATEWAY_BASE_URL = 'https://gateway.example.com';
-    process.env.WORKX_AI_HUB_CATALOG_URL = 'https://hub.example.com/apps';
+  it('derives gateway LLM and MCP endpoints from the generic gateway base URL', () => {
+    process.env.WORKX_GATEWAY_BASE_URL = 'https://gateway.example.com';
+    process.env.WORKX_GATEWAY_CATALOG_URL = 'https://gateway.example.com/apps';
 
     const urls = resolveRuntimeUrls();
 
     expect(urls).toMatchObject({
+      gatewayBaseUrl: 'https://gateway.example.com',
+      gatewayLlmApiUrl: 'https://gateway.example.com/v1',
+      gatewayMcpUrl: 'https://gateway.example.com/mcp',
+      gatewayCatalogUrl: 'https://gateway.example.com/apps',
+      gatewayMcpName: 'gateway',
+      gatewayMcpAuthMode: 'none',
       aiHubGatewayBaseUrl: 'https://gateway.example.com',
       aiHubLlmApiUrl: 'https://gateway.example.com/v1',
       aiHubMcpUrl: 'https://gateway.example.com/mcp',
-      aiHubCatalogUrl: 'https://hub.example.com/apps',
+      aiHubCatalogUrl: 'https://gateway.example.com/apps',
       llmRoutingMode: 'ai-hub',
       source: {
+        gatewayBaseUrl: 'env',
+        gatewayLlmApiUrl: 'env',
+        gatewayMcpUrl: 'env',
+        gatewayCatalogUrl: 'env',
         aiHubGatewayBaseUrl: 'env',
         aiHubLlmApiUrl: 'env',
         aiHubMcpUrl: 'env',
@@ -139,17 +186,35 @@ describe('resolveRuntimeUrls', () => {
     });
   });
 
-  it('honors explicit AI Hub endpoint overrides and routing mode', () => {
+  it('honors explicit first-party gateway overlay settings and legacy aliases', () => {
     process.env.WORKX_AI_HUB_GATEWAY_BASE_URL = 'https://gateway.example.com';
     process.env.WORKX_AI_HUB_LLM_API_URL = 'https://llm.example.com/openai';
     process.env.WORKX_AI_HUB_MCP_URL = 'https://mcp.example.com/mcp';
+    process.env.WORKX_AI_HUB_MCP_NAME = 'ai-hub';
+    process.env.WORKX_AI_HUB_MCP_AUTH_MODE = 'session-jwt';
+    process.env.WORKX_AI_HUB_MCP_TOOL_DISCOVERY = 'folded';
     process.env.WORKX_LLM_ROUTING_MODE = 'legacy';
 
     const urls = resolveRuntimeUrls();
 
+    expect(urls.gatewayLlmApiUrl).toBe('https://llm.example.com/openai');
+    expect(urls.gatewayMcpUrl).toBe('https://mcp.example.com/mcp');
+    expect(urls.gatewayMcpName).toBe('ai-hub');
+    expect(urls.gatewayMcpAuthMode).toBe('session-jwt');
+    expect(urls.gatewayMcpToolDiscovery).toBe('folded');
     expect(urls.aiHubLlmApiUrl).toBe('https://llm.example.com/openai');
     expect(urls.aiHubMcpUrl).toBe('https://mcp.example.com/mcp');
     expect(urls.llmRoutingMode).toBe('legacy');
     expect(urls.source.llmRoutingMode).toBe('env');
+  });
+
+  it('defaults gateway MCP auth to api-key when an env key is configured', () => {
+    process.env.WORKX_GATEWAY_BASE_URL = 'https://gateway.example.com';
+    process.env.WORKX_GATEWAY_MCP_API_KEY = 'gw-key';
+
+    const urls = resolveRuntimeUrls();
+
+    expect(urls.gatewayMcpAuthMode).toBe('api-key');
+    expect(urls.gatewayMcpApiKey).toBe('gw-key');
   });
 });

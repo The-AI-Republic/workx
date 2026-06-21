@@ -96,6 +96,30 @@ describe('StreamableHttpMCPClient', () => {
     expect(headers.get('X-Air-Tool-Discovery')).toBe('folded');
   });
 
+  it('refreshes and retries session JWT fetches once after a 401', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('{}', { status: 401 }))
+      .mockResolvedValueOnce(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const refreshTokenProvider = vi.fn(async () => 'jwt-new');
+    const client = new StreamableHttpMCPClient({
+      config: config(),
+      tokenProvider: async () => 'jwt-old',
+      refreshTokenProvider,
+    });
+
+    await client.connect();
+    const response = await mocks.transports[0].opts.fetch('https://gateway.example.com/mcp');
+
+    expect(response.status).toBe(200);
+    expect(refreshTokenProvider).toHaveBeenCalledTimes(1);
+    const firstHeaders = fetchMock.mock.calls[0][1].headers as Headers;
+    const secondHeaders = fetchMock.mock.calls[1][1].headers as Headers;
+    expect(firstHeaders.get('Authorization')).toBe('Bearer jwt-old');
+    expect(secondHeaders.get('Authorization')).toBe('Bearer jwt-new');
+  });
+
   it('refreshes tools after app activation changes folded discovery output', async () => {
     const client = new StreamableHttpMCPClient({
       config: config(),

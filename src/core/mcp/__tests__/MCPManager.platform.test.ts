@@ -11,8 +11,19 @@ import { setConfigStorage, type ConfigStorageProvider } from '../../storage/Conf
 // Map-based ConfigStorageProvider mock
 const store = new Map<string, any>();
 const HUB_ENV_KEYS = [
+  'WORKX_GATEWAY_BASE_URL',
+  'WORKX_GATEWAY_MCP_URL',
+  'WORKX_GATEWAY_MCP_NAME',
+  'WORKX_GATEWAY_MCP_AUTH_MODE',
+  'WORKX_GATEWAY_MCP_API_KEY',
+  'WORKX_GATEWAY_MCP_TOOL_DISCOVERY',
   'WORKX_AI_HUB_GATEWAY_BASE_URL',
   'WORKX_AI_HUB_MCP_URL',
+  'WORKX_AI_HUB_MCP_NAME',
+  'WORKX_AI_HUB_MCP_AUTH_MODE',
+  'WORKX_AI_HUB_MCP_TOOL_DISCOVERY',
+  'VITE_GATEWAY_BASE_URL',
+  'VITE_GATEWAY_MCP_URL',
   'VITE_AI_HUB_GATEWAY_BASE_URL',
   'VITE_AI_HUB_MCP_URL',
 ] as const;
@@ -132,8 +143,27 @@ describe('MCPManager Platform Features', () => {
       expect(manager.getPlatform()).toBe('desktop');
     });
 
-    it('should seed AI Hub MCP only when a gateway URL is configured', async () => {
+    it('should seed generic gateway MCP only when a gateway URL is configured', async () => {
+      process.env.WORKX_GATEWAY_BASE_URL = 'https://gateway.example.com';
+
+      const manager = await MCPManager.getInstance('desktop');
+      const hubServer = manager.getServerByName('gateway');
+
+      expect(hubServer).toMatchObject({
+        name: 'gateway',
+        url: 'https://gateway.example.com/mcp',
+        transport: 'streamable-http',
+        authMode: 'none',
+        builtin: true,
+      });
+      expect(hubServer?.headers).toBeUndefined();
+    });
+
+    it('should seed first-party gateway MCP only when overlay config asks for it', async () => {
       process.env.WORKX_AI_HUB_GATEWAY_BASE_URL = 'https://gateway.example.com';
+      process.env.WORKX_AI_HUB_MCP_NAME = 'ai-hub';
+      process.env.WORKX_AI_HUB_MCP_AUTH_MODE = 'session-jwt';
+      process.env.WORKX_AI_HUB_MCP_TOOL_DISCOVERY = 'folded';
 
       const manager = await MCPManager.getInstance('desktop');
       const hubServer = manager.getServerByName('ai-hub');

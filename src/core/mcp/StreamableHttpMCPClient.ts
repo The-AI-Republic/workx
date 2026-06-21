@@ -1,8 +1,8 @@
 /**
  * MCP Streamable HTTP client.
  *
- * Used for first-party AI Hub app tools and any remote MCP server that exposes
- * the MCP Streamable HTTP transport at a single endpoint.
+ * Used for remote MCP servers that expose the MCP Streamable HTTP transport at
+ * a single endpoint.
  */
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -23,6 +23,7 @@ export interface StreamableHttpMCPClientOptions {
   config: IMCPServerConfig;
   apiKey?: string;
   tokenProvider?: () => Promise<string | null>;
+  refreshTokenProvider?: () => Promise<string | null>;
   onStatusChange?: (status: MCPConnectionStatus, error?: string) => void;
   onToolsChange?: (tools: IMCPTool[]) => void;
   onResourcesChange?: (resources: IMCPResource[]) => void;
@@ -258,21 +259,39 @@ export class StreamableHttpMCPClient implements IMCPClientAdapter {
 
   private createAuthenticatedFetch(): typeof fetch {
     return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-      const headers = new Headers(init?.headers ?? {});
-      for (const [key, value] of Object.entries(this.options.config.headers ?? {})) {
-        if (!headers.has(key)) headers.set(key, value);
-      }
       const authMode = this.options.config.authMode ?? (this.options.apiKey ? 'api-key' : 'none');
 
-      if (authMode === 'session-jwt') {
-        const token = await this.options.tokenProvider?.();
-        if (!token) throw new Error('MCP session-jwt auth requires an access token');
-        headers.set('Authorization', `Bearer ${token}`);
-      } else if (authMode === 'api-key' && this.options.apiKey) {
-        headers.set('Authorization', `Bearer ${this.options.apiKey}`);
+      const send = async (sessionToken?: string | null): Promise<Response> => {
+        const headers = new Headers(init?.headers ?? {});
+        for (const [key, value] of Object.entries(this.options.config.headers ?? {})) {
+          if (!headers.has(key)) headers.set(key, value);
+        }
+
+        if (authMode === 'session-jwt') {
+          if (!sessionToken) throw new Error('MCP session-jwt auth requires an access token');
+          headers.set('Authorization', `Bearer ${sessionToken}`);
+        } else if (authMode === 'api-key' && this.options.apiKey) {
+          headers.set('Authorization', `Bearer ${this.options.apiKey}`);
+        }
+
+        return fetch(input, { ...init, headers });
+      };
+
+      if (authMode !== 'session-jwt') {
+        return send();
       }
 
-      return fetch(input, { ...init, headers });
+      let token = await this.options.tokenProvider?.();
+      if (!token) {
+        token = await this.options.refreshTokenProvider?.();
+      }
+      const response = await send(token);
+      if (response.status !== 401 || !this.options.refreshTokenProvider) {
+        return response;
+      }
+
+      const refreshed = await this.options.refreshTokenProvider();
+      return refreshed ? send(refreshed) : response;
     };
   }
 

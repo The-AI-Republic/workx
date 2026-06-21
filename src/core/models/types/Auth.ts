@@ -32,7 +32,7 @@ export interface IAuthManager {
   getBackendBaseUrl(): string | null;
 
   /**
-   * Get the AI Hub OpenAI-compatible base URL when first-party gateway routing is enabled.
+   * Get the OpenAI-compatible gateway base URL when gateway routing is enabled.
    * The URL is expected to be the API root (for example, https://hub.example.com/v1).
    */
   getGatewayLlmBaseUrl?(): string | null;
@@ -44,6 +44,13 @@ export interface IAuthManager {
    * @returns Access token or null
    */
   getAccessToken(): Promise<string | null>;
+
+  /**
+   * Refresh the session access token and return the new value when possible.
+   * Desktop runtime implementations use the stored refresh token and update the
+   * credential store before returning.
+   */
+  refreshAccessToken?(): Promise<string | null>;
 
   /**
    * Check if ChatGPT OAuth is the active authentication method
@@ -69,6 +76,7 @@ export class AuthManager implements IAuthManager {
   private _shouldUseBackend: boolean;
   private _backendBaseUrl: string | null;
   private _tokenGetter: (() => Promise<string | null>) | null;
+  private _tokenRefresher: (() => Promise<string | null>) | null;
   private _gatewayLlmBaseUrl: string | null;
   private _chatGPTOAuthActive: boolean;
   private _chatGPTTokenGetter: (() => Promise<string | null>) | null;
@@ -83,12 +91,16 @@ export class AuthManager implements IAuthManager {
     shouldUseBackend: boolean,
     backendBaseUrl: string | null,
     tokenGetter?: () => Promise<string | null>,
-    options?: { gatewayLlmBaseUrl?: string | null },
+    options?: {
+      gatewayLlmBaseUrl?: string | null;
+      refreshAccessToken?: () => Promise<string | null>;
+    },
   ) {
     this._shouldUseBackend = shouldUseBackend;
     // Only set backend URL if using backend routing
     this._backendBaseUrl = shouldUseBackend ? backendBaseUrl : null;
     this._tokenGetter = tokenGetter ?? null;
+    this._tokenRefresher = options?.refreshAccessToken ?? null;
     this._gatewayLlmBaseUrl = shouldUseBackend ? options?.gatewayLlmBaseUrl ?? null : null;
     this._chatGPTOAuthActive = false;
     this._chatGPTTokenGetter = null;
@@ -109,7 +121,7 @@ export class AuthManager implements IAuthManager {
   }
 
   /**
-   * Get AI Hub gateway LLM URL for first-party routing.
+   * Get gateway LLM URL for gateway routing.
    */
   getGatewayLlmBaseUrl(): string | null {
     return this._gatewayLlmBaseUrl;
@@ -124,6 +136,13 @@ export class AuthManager implements IAuthManager {
       return this._tokenGetter();
     }
     return null;
+  }
+
+  async refreshAccessToken(): Promise<string | null> {
+    if (this._tokenRefresher) {
+      return this._tokenRefresher();
+    }
+    return this.getAccessToken();
   }
 
   /**

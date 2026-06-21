@@ -117,6 +117,7 @@ function createMockAuthManager(overrides: {
   shouldUseBackend?: boolean;
   backendBaseUrl?: string | null;
   accessToken?: string | null;
+  refreshedAccessToken?: string | null;
   gatewayLlmBaseUrl?: string | null;
 } = {}): IAuthManager {
   return {
@@ -124,6 +125,7 @@ function createMockAuthManager(overrides: {
     getBackendBaseUrl: vi.fn().mockReturnValue(overrides.backendBaseUrl ?? null),
     getGatewayLlmBaseUrl: vi.fn().mockReturnValue(overrides.gatewayLlmBaseUrl ?? null),
     getAccessToken: vi.fn().mockResolvedValue(overrides.accessToken ?? null),
+    refreshAccessToken: vi.fn().mockResolvedValue(overrides.refreshedAccessToken ?? null),
   };
 }
 
@@ -488,7 +490,7 @@ describe('ModelClientFactory', () => {
       expect((client as any)._opts.reasoningSummary).toEqual({ enabled: true });
     });
 
-    it('should create a Chat Completions client for AI Hub gateway routing with session JWT bearer auth', async () => {
+    it('should create a Chat Completions client for gateway routing with dynamic session JWT bearer auth', async () => {
       await factory.initialize(createMockAgentConfig({
         modelData: {
           model: { modelKey: 'gpt-5', name: 'GPT-5', supportsReasoning: true, supportBackendMode: 1, contextWindow: 128000, maxOutputTokens: 8192, creator: 'OpenAI' },
@@ -500,15 +502,18 @@ describe('ModelClientFactory', () => {
         backendBaseUrl: 'https://legacy.example.com/api/llm',
         gatewayLlmBaseUrl: 'https://gateway.example.com/v1',
         accessToken: 'jwt-123',
+        refreshedAccessToken: 'jwt-456',
       }));
 
       const client = await factory.createClient('openai');
 
       expect((client as any)._type).toBe('OpenAIChatCompletionClient');
       expect((client as any)._opts.baseUrl).toBe('https://gateway.example.com/v1');
-      expect((client as any)._opts.apiKey).toBe('jwt-123');
-      expect((client as any)._opts.provider.name).toBe('AI Hub');
+      expect((client as any)._opts.apiKey).toBe('gateway-routed');
+      expect((client as any)._opts.provider.name).toBe('Gateway');
       expect((client as any)._opts.useCredentials).toBe(false);
+      await expect((client as any)._opts.getAuthorizationToken()).resolves.toBe('jwt-123');
+      await expect((client as any)._opts.refreshAuthorizationToken()).resolves.toBe('jwt-456');
     });
 
     it('should cache backend-routed clients', async () => {

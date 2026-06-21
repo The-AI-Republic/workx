@@ -28,7 +28,7 @@ import {
   createServerConfig,
   updateServerConfig,
 } from './MCPConfig';
-import { decryptApiKey } from '../../utils/encryption';
+import { decryptApiKey, encryptApiKey } from '../../utils/encryption';
 import { resolveRuntimeUrls } from '../../config/runtimeUrls';
 
 /**
@@ -44,8 +44,8 @@ const MAX_SERVERS = 100;
 /** Builtin browser server ID — deterministic UUID for desktop.
  *  Must be a valid UUID to pass MCPServerConfigSchema validation. */
 const BUILTIN_BROWSER_SERVER_ID = '00000000-0000-4000-8000-000000000001';
-const BUILTIN_AI_HUB_SERVER_ID = '00000000-0000-4000-8000-000000000002';
-const BUILTIN_AI_HUB_SERVER_NAME = 'ai-hub';
+const BUILTIN_GATEWAY_SERVER_ID = '00000000-0000-4000-8000-000000000002';
+const BUILTIN_GATEWAY_SERVER_NAME = 'gateway';
 
 /**
  * MCPManager manages multiple MCP server connections.
@@ -75,6 +75,7 @@ export class MCPManager implements IMCPManager {
   private initialized: boolean = false;
   private platform: MCPPlatformScope;
   private sessionTokenProvider: (() => Promise<string | null>) | null = null;
+  private sessionTokenRefreshProvider: (() => Promise<string | null>) | null = null;
 
   private constructor(platform?: MCPPlatformScope) {
     // Detect platform from build mode if not specified
@@ -302,6 +303,10 @@ export class MCPManager implements IMCPManager {
    */
   setSessionTokenProvider(provider: (() => Promise<string | null>) | null): void {
     this.sessionTokenProvider = provider;
+  }
+
+  setSessionTokenRefreshProvider(provider: (() => Promise<string | null>) | null): void {
+    this.sessionTokenRefreshProvider = provider;
   }
 
   // ==========================================================================
@@ -602,6 +607,7 @@ export class MCPManager implements IMCPManager {
         config,
         apiKey,
         tokenProvider: this.sessionTokenProvider ?? undefined,
+        refreshTokenProvider: this.sessionTokenRefreshProvider ?? undefined,
         ...callbacks,
       });
     }
@@ -684,35 +690,38 @@ export class MCPManager implements IMCPManager {
       });
     }
 
-    this.seedAiHubServer();
+    this.seedGatewayServer();
   }
 
-  private seedAiHubServer(): void {
+  private seedGatewayServer(): void {
     const urls = resolveRuntimeUrls();
-    if (!urls.aiHubMcpUrl) {
+    if (!urls.gatewayMcpUrl) {
       return;
     }
 
-    if (this.servers.has(BUILTIN_AI_HUB_SERVER_ID)) {
+    if (this.servers.has(BUILTIN_GATEWAY_SERVER_ID)) {
       return;
     }
 
+    const serverName = urls.gatewayMcpName || BUILTIN_GATEWAY_SERVER_NAME;
     for (const config of this.servers.values()) {
-      if (config.name === BUILTIN_AI_HUB_SERVER_NAME) {
+      if (config.name === serverName) {
         return;
       }
     }
 
     const now = Date.now();
+    const headers = urls.gatewayMcpToolDiscovery
+      ? { 'X-Air-Tool-Discovery': urls.gatewayMcpToolDiscovery }
+      : undefined;
     const builtinConfig: IMCPServerConfig = {
-      id: BUILTIN_AI_HUB_SERVER_ID,
-      name: BUILTIN_AI_HUB_SERVER_NAME,
-      url: urls.aiHubMcpUrl,
+      id: BUILTIN_GATEWAY_SERVER_ID,
+      name: serverName,
+      url: urls.gatewayMcpUrl,
       transport: 'streamable-http',
-      authMode: 'session-jwt',
-      headers: {
-        'X-Air-Tool-Discovery': 'folded',
-      },
+      authMode: urls.gatewayMcpAuthMode,
+      apiKey: urls.gatewayMcpApiKey ? encryptApiKey(urls.gatewayMcpApiKey) : undefined,
+      headers,
       platform: 'desktop',
       builtin: true,
       enabled: true,

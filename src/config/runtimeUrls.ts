@@ -6,6 +6,14 @@ export interface RuntimeUrlConfig {
   homePageBaseUrl: string | null;
   backendApiBaseUrl: string | null;
   llmApiUrl: string | null;
+  gatewayBaseUrl: string | null;
+  gatewayLlmApiUrl: string | null;
+  gatewayMcpUrl: string | null;
+  gatewayCatalogUrl: string | null;
+  gatewayMcpName: string;
+  gatewayMcpAuthMode: 'none' | 'api-key' | 'session-jwt';
+  gatewayMcpApiKey: string | null;
+  gatewayMcpToolDiscovery: string | null;
   aiHubGatewayBaseUrl: string | null;
   aiHubLlmApiUrl: string | null;
   aiHubMcpUrl: string | null;
@@ -16,6 +24,14 @@ export interface RuntimeUrlConfig {
     homePageBaseUrl: RuntimeUrlSource;
     backendApiBaseUrl: RuntimeUrlSource;
     llmApiUrl: RuntimeUrlSource;
+    gatewayBaseUrl: RuntimeUrlSource;
+    gatewayLlmApiUrl: RuntimeUrlSource;
+    gatewayMcpUrl: RuntimeUrlSource;
+    gatewayCatalogUrl: RuntimeUrlSource;
+    gatewayMcpName: RuntimeUrlSource;
+    gatewayMcpAuthMode: RuntimeUrlSource;
+    gatewayMcpApiKey: RuntimeUrlSource;
+    gatewayMcpToolDiscovery: RuntimeUrlSource;
     aiHubGatewayBaseUrl: RuntimeUrlSource;
     aiHubLlmApiUrl: RuntimeUrlSource;
     aiHubMcpUrl: RuntimeUrlSource;
@@ -51,6 +67,15 @@ function normalizeRoutingMode(value: string | undefined): 'legacy' | 'ai-hub' | 
   return null;
 }
 
+function normalizeMcpAuthMode(value: string | undefined): 'none' | 'api-key' | 'session-jwt' | null {
+  if (!value) return null;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'none' || normalized === 'off') return 'none';
+  if (normalized === 'api-key' || normalized === 'apikey' || normalized === 'bearer') return 'api-key';
+  if (normalized === 'session-jwt' || normalized === 'jwt' || normalized === 'session') return 'session-jwt';
+  return null;
+}
+
 export function resolveRuntimeUrls(): RuntimeUrlConfig {
   const env = processEnv();
   const vite = viteEnv();
@@ -63,65 +88,125 @@ export function resolveRuntimeUrls(): RuntimeUrlConfig {
   );
 
   const backendApiBaseUrl = backendFromEnv ?? null;
-  const aiHubGatewayBaseUrl = firstNonEmpty(
+  const gatewayBaseUrl = firstNonEmpty(
+    env.WORKX_GATEWAY_BASE_URL,
+    env.WORKX_GATEWAY_API_BASE_URL,
     env.WORKX_AI_HUB_GATEWAY_BASE_URL,
     env.WORKX_HUB_GATEWAY_BASE_URL,
+    env.VITE_GATEWAY_BASE_URL,
+    env.VITE_GATEWAY_API_BASE_URL,
     env.VITE_AI_HUB_GATEWAY_BASE_URL,
     env.VITE_HUB_GATEWAY_BASE_URL,
+    vite.VITE_GATEWAY_BASE_URL,
+    vite.VITE_GATEWAY_API_BASE_URL,
     vite.VITE_AI_HUB_GATEWAY_BASE_URL,
     vite.VITE_HUB_GATEWAY_BASE_URL,
   ) ?? null;
-  const aiHubLlmFromEnv = firstNonEmpty(
+  const gatewayLlmFromEnv = firstNonEmpty(
+    env.WORKX_GATEWAY_LLM_API_URL,
     env.WORKX_AI_HUB_LLM_API_URL,
     env.WORKX_HUB_LLM_API_URL,
+    env.VITE_GATEWAY_LLM_API_URL,
     env.VITE_AI_HUB_LLM_API_URL,
     env.VITE_HUB_LLM_API_URL,
+    vite.VITE_GATEWAY_LLM_API_URL,
     vite.VITE_AI_HUB_LLM_API_URL,
     vite.VITE_HUB_LLM_API_URL,
   );
-  const aiHubMcpFromEnv = firstNonEmpty(
+  const gatewayMcpFromEnv = firstNonEmpty(
+    env.WORKX_GATEWAY_MCP_URL,
     env.WORKX_AI_HUB_MCP_URL,
     env.WORKX_HUB_MCP_URL,
+    env.VITE_GATEWAY_MCP_URL,
     env.VITE_AI_HUB_MCP_URL,
     env.VITE_HUB_MCP_URL,
+    vite.VITE_GATEWAY_MCP_URL,
     vite.VITE_AI_HUB_MCP_URL,
     vite.VITE_HUB_MCP_URL,
   );
-  const aiHubCatalogUrl = firstNonEmpty(
+  const gatewayCatalogUrl = firstNonEmpty(
+    env.WORKX_GATEWAY_CATALOG_URL,
     env.WORKX_AI_HUB_CATALOG_URL,
     env.WORKX_HUB_CATALOG_URL,
+    env.VITE_GATEWAY_CATALOG_URL,
     env.VITE_AI_HUB_CATALOG_URL,
     env.VITE_HUB_CATALOG_URL,
+    vite.VITE_GATEWAY_CATALOG_URL,
     vite.VITE_AI_HUB_CATALOG_URL,
     vite.VITE_HUB_CATALOG_URL,
   ) ?? null;
-  const aiHubLlmApiUrl = aiHubLlmFromEnv ?? (aiHubGatewayBaseUrl ? joinUrl(aiHubGatewayBaseUrl, '/v1') : null);
-  const aiHubMcpUrl = aiHubMcpFromEnv ?? (aiHubGatewayBaseUrl ? joinUrl(aiHubGatewayBaseUrl, '/mcp') : null);
+  const gatewayLlmApiUrl = gatewayLlmFromEnv ?? (gatewayBaseUrl ? joinUrl(gatewayBaseUrl, '/v1') : null);
+  const gatewayMcpUrl = gatewayMcpFromEnv ?? (gatewayBaseUrl ? joinUrl(gatewayBaseUrl, '/mcp') : null);
+  const gatewayMcpNameFromEnv = firstNonEmpty(
+    env.WORKX_GATEWAY_MCP_NAME,
+    env.WORKX_AI_HUB_MCP_NAME,
+    env.VITE_GATEWAY_MCP_NAME,
+    env.VITE_AI_HUB_MCP_NAME,
+    vite.VITE_GATEWAY_MCP_NAME,
+    vite.VITE_AI_HUB_MCP_NAME,
+  );
+  const gatewayMcpApiKey = firstNonEmpty(
+    env.WORKX_GATEWAY_MCP_API_KEY,
+    env.WORKX_AI_HUB_MCP_API_KEY,
+  ) ?? null;
+  const requestedMcpAuthMode = normalizeMcpAuthMode(firstNonEmpty(
+    env.WORKX_GATEWAY_MCP_AUTH_MODE,
+    env.WORKX_AI_HUB_MCP_AUTH_MODE,
+    env.VITE_GATEWAY_MCP_AUTH_MODE,
+    env.VITE_AI_HUB_MCP_AUTH_MODE,
+    vite.VITE_GATEWAY_MCP_AUTH_MODE,
+    vite.VITE_AI_HUB_MCP_AUTH_MODE,
+  ));
+  const gatewayMcpAuthMode = requestedMcpAuthMode ?? (gatewayMcpApiKey ? 'api-key' : 'none');
+  const gatewayMcpToolDiscovery = firstNonEmpty(
+    env.WORKX_GATEWAY_MCP_TOOL_DISCOVERY,
+    env.WORKX_AI_HUB_MCP_TOOL_DISCOVERY,
+    env.VITE_GATEWAY_MCP_TOOL_DISCOVERY,
+    env.VITE_AI_HUB_MCP_TOOL_DISCOVERY,
+    vite.VITE_GATEWAY_MCP_TOOL_DISCOVERY,
+    vite.VITE_AI_HUB_MCP_TOOL_DISCOVERY,
+  ) ?? null;
   const requestedRoutingMode = normalizeRoutingMode(firstNonEmpty(
     env.WORKX_LLM_ROUTING_MODE,
     env.VITE_LLM_ROUTING_MODE,
     vite.VITE_LLM_ROUTING_MODE,
   ));
-  const llmRoutingMode = requestedRoutingMode ?? (aiHubLlmApiUrl ? 'ai-hub' : 'legacy');
+  const llmRoutingMode = requestedRoutingMode ?? (gatewayLlmApiUrl ? 'ai-hub' : 'legacy');
 
   return {
     homePageBaseUrl: authConfig.authBaseUrl,
     backendApiBaseUrl,
     llmApiUrl: backendApiBaseUrl ? `${backendApiBaseUrl}/api/llm` : '/api/llm',
-    aiHubGatewayBaseUrl,
-    aiHubLlmApiUrl,
-    aiHubMcpUrl,
-    aiHubCatalogUrl,
+    gatewayBaseUrl,
+    gatewayLlmApiUrl,
+    gatewayMcpUrl,
+    gatewayCatalogUrl,
+    gatewayMcpName: gatewayMcpNameFromEnv ?? 'gateway',
+    gatewayMcpAuthMode,
+    gatewayMcpApiKey,
+    gatewayMcpToolDiscovery,
+    aiHubGatewayBaseUrl: gatewayBaseUrl,
+    aiHubLlmApiUrl: gatewayLlmApiUrl,
+    aiHubMcpUrl: gatewayMcpUrl,
+    aiHubCatalogUrl: gatewayCatalogUrl,
     llmRoutingMode,
     deeplinkRedirectUrl: 'workx://auth/callback',
     source: {
       homePageBaseUrl: authConfig.source.authBaseUrl,
       backendApiBaseUrl: backendFromEnv ? 'env' : 'default',
       llmApiUrl: backendFromEnv ? 'env' : 'default',
-      aiHubGatewayBaseUrl: aiHubGatewayBaseUrl ? 'env' : 'default',
-      aiHubLlmApiUrl: aiHubLlmFromEnv || aiHubGatewayBaseUrl ? 'env' : 'default',
-      aiHubMcpUrl: aiHubMcpFromEnv || aiHubGatewayBaseUrl ? 'env' : 'default',
-      aiHubCatalogUrl: aiHubCatalogUrl ? 'env' : 'default',
+      gatewayBaseUrl: gatewayBaseUrl ? 'env' : 'default',
+      gatewayLlmApiUrl: gatewayLlmFromEnv || gatewayBaseUrl ? 'env' : 'default',
+      gatewayMcpUrl: gatewayMcpFromEnv || gatewayBaseUrl ? 'env' : 'default',
+      gatewayCatalogUrl: gatewayCatalogUrl ? 'env' : 'default',
+      gatewayMcpName: gatewayMcpNameFromEnv ? 'env' : 'default',
+      gatewayMcpAuthMode: requestedMcpAuthMode ? 'env' : 'default',
+      gatewayMcpApiKey: gatewayMcpApiKey ? 'env' : 'default',
+      gatewayMcpToolDiscovery: gatewayMcpToolDiscovery ? 'env' : 'default',
+      aiHubGatewayBaseUrl: gatewayBaseUrl ? 'env' : 'default',
+      aiHubLlmApiUrl: gatewayLlmFromEnv || gatewayBaseUrl ? 'env' : 'default',
+      aiHubMcpUrl: gatewayMcpFromEnv || gatewayBaseUrl ? 'env' : 'default',
+      aiHubCatalogUrl: gatewayCatalogUrl ? 'env' : 'default',
       llmRoutingMode: requestedRoutingMode ? 'env' : 'default',
       deeplinkRedirectUrl: 'default',
     },

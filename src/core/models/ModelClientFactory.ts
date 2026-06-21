@@ -346,17 +346,16 @@ export class ModelClientFactory {
   }
 
   /**
-   * Create a first-party AI Hub gateway client.
+   * Create a remote gateway client.
    *
-   * The hub gateway exposes an OpenAI-compatible /v1 Chat Completions surface.
-   * Unlike legacy ai-assistant backend routing, auth is a user JWT bearer token
-   * passed as the OpenAI SDK apiKey; no browser cookies or /openai path rewrite
-   * are involved.
+   * The gateway exposes an OpenAI-compatible /v1 Chat Completions surface. Auth
+   * is resolved per request so cached clients do not pin an expired session JWT.
    */
   private async createGatewayRoutedClient(provider: ModelProvider, gatewayLlmBaseUrl: string): Promise<ModelClient> {
-    const accessToken = await this.authManager?.getAccessToken();
+    const tokenProvider = async () => this.authManager?.getAccessToken() ?? null;
+    const accessToken = await tokenProvider();
     if (!accessToken) {
-      throw new ModelClientError('AI Hub gateway routing requires a session access token');
+      throw new ModelClientError('Gateway routing requires a session access token');
     }
 
     const parallelToolCalls = this.resolveParallelToolCalls();
@@ -385,14 +384,14 @@ export class ModelClientFactory {
     };
 
     const gatewayProvider = {
-      name: 'AI Hub',
+      name: 'Gateway',
       base_url: gatewayLlmBaseUrl,
       wire_api: 'Chat' as const,
       requires_openai_auth: true,
     };
 
     return new OpenAIChatCompletionClient({
-      apiKey: accessToken,
+      apiKey: 'gateway-routed',
       baseUrl: gatewayLlmBaseUrl,
       sessionId: this.generateConversationId(),
       modelFamily,
@@ -400,6 +399,8 @@ export class ModelClientFactory {
       modelConfig,
       useCredentials: false,
       parallelToolCalls,
+      getAuthorizationToken: tokenProvider,
+      refreshAuthorizationToken: async () => this.authManager?.refreshAccessToken?.() ?? null,
     });
   }
 
