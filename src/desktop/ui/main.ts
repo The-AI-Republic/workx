@@ -26,6 +26,7 @@ import { getInitializedUIClient } from '@/core/messaging';
 import { initLocale } from '../../webfront/lib/i18n';
 import { AgentConfig } from '@/config/AgentConfig';
 import { initializeConfigStorage } from '@/core/storage';
+import { markDesktopWelcomeCompleted, shouldShowDesktopWelcome } from './desktopWelcome';
 
 // Add desktop-mode and terminal-mode classes to body
 document.body.classList.add('desktop-mode', 'terminal-mode');
@@ -35,11 +36,13 @@ document.body.classList.add('desktop-mode', 'terminal-mode');
  */
 async function init() {
   console.log('[Desktop] Initializing...');
+  let showDesktopWelcome = false;
 
   // 0. Initialize config storage first (before anything else needs it)
   try {
     await initializeConfigStorage();
     console.log('[Desktop] Config storage initialized');
+    showDesktopWelcome = await shouldShowDesktopWelcome();
   } catch (error) {
     console.warn('[Desktop] Failed to initialize config storage:', error);
     // Continue - will fall back to in-memory storage
@@ -124,6 +127,10 @@ async function init() {
   // 5. Mount the main app
   const app = mount(App, {
     target: document.getElementById('app')!,
+    props: {
+      showDesktopWelcome,
+      onDesktopWelcomeComplete: markDesktopWelcomeCompleted,
+    },
   });
 
   console.log('[Desktop] App mounted');
