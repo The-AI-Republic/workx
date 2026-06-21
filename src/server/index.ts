@@ -33,7 +33,12 @@ try {
 }
 
 import { loadServerConfig, getServerConfig } from './config/server-config';
-import { initializeServerAgent, getServerAgentBootstrap } from './agent/ServerAgentBootstrap';
+import {
+  initializeServerAgent,
+  getServerAgentBootstrap,
+  A2A_CARD_PATH,
+  A2A_RPC_PATH,
+} from './agent/ServerAgentBootstrap';
 import { registerShutdownHandlers, gracefulShutdown } from './agent/shutdown';
 import { sendChallenge, handleConnectRequest, cancelHandshake, type WsHandle } from './connection/handshake';
 import {
@@ -115,6 +120,34 @@ const MIME_TYPES: Record<string, string> = {
   '.woff2': 'font/woff2',
 };
 
+/** Max accepted A2A request body size (1 MiB) — guards against unbounded reads. */
+const A2A_MAX_BODY_BYTES = 1024 * 1024;
+
+/** Read and JSON-parse a request body, bounded by {@link A2A_MAX_BODY_BYTES}. */
+function readJsonBody(req: IncomingMessage): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    req.on('data', (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > A2A_MAX_BODY_BYTES) {
+        reject(new Error('Request body too large'));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => {
+      try {
+        resolve(JSON.parse(Buffer.concat(chunks).toString('utf-8')));
+      } catch {
+        reject(new Error('Invalid JSON'));
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
 function handleHttpRequest(req: IncomingMessage, res: ServerResponse): void {
   // Health endpoint (UNAUTHENTICATED — K8s/Docker liveness/readiness probe).
   // Track 17 security boundary: this returns ONLY the HealthStatus shape (a
@@ -126,6 +159,41 @@ function handleHttpRequest(req: IncomingMessage, res: ServerResponse): void {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(status));
     return;
+  }
+
+  // A2A delegation endpoint (FR-6, server decoupling). Only mounted when the
+  // bootstrap enabled it (WORKX_SERVER_A2A_ENABLED). The agent card is a public
+  // discovery document; the JSON-RPC endpoint routes message/send into the
+  // local agent.
+  const a2aServer = getServerAgentBootstrap().getA2AServer();
+  if (a2aServer) {
+    const reqPath = new URL(req.url ?? '/', `http://${req.headers.host}`).pathname;
+
+    if (req.method === 'GET' && reqPath === A2A_CARD_PATH) {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
+      res.end(JSON.stringify(a2aServer.getAgentCard()));
+      return;
+    }
+
+    if (req.method === 'POST' && reqPath === A2A_RPC_PATH) {
+      readJsonBody(req)
+        .then((body) => a2aServer.handleRpc(body))
+        .then((result) => {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(result));
+        })
+        .catch((err) => {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              jsonrpc: '2.0',
+              id: null,
+              error: { code: -32700, message: err instanceof Error ? err.message : 'Parse error' },
+            })
+          );
+        });
+      return;
+    }
   }
 
   // Static file serving for web UI
