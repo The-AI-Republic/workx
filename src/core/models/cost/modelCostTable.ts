@@ -56,6 +56,12 @@ export const MODEL_COST_TABLE: Record<string, ModelRate> = {
 
   // together
   'together:moonshotai/Kimi-K2-Thinking': { inputPer1M: 1.2, outputPer1M: 4.0, cachedInputPer1M: 1.2 },
+
+  // anthropic — cache hit/refresh rate used for cached input
+  'anthropic:claude-opus-4-8': { inputPer1M: 5.0, outputPer1M: 25.0, cachedInputPer1M: 0.5 },
+  'anthropic:claude-sonnet-4-6': { inputPer1M: 3.0, outputPer1M: 15.0, cachedInputPer1M: 0.3 },
+  'anthropic:claude-fable-5': { inputPer1M: 10.0, outputPer1M: 50.0, cachedInputPer1M: 1.0 },
+  'anthropic:claude-haiku-4-5-20251001': { inputPer1M: 1.0, outputPer1M: 5.0, cachedInputPer1M: 0.1 },
 };
 
 /**

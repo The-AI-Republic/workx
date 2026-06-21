@@ -241,6 +241,11 @@ export type ResponseItem =
     summary: ReasoningItemReasoningSummary[];
     content?: ReasoningItemContent[];
     encrypted_content?: string;
+    /**
+     * Generic encrypted reasoning payload marker for providers that require
+     * exact block round-tripping across tool-use turns.
+     */
+    encrypted_content_type?: 'signature' | 'redacted_thinking';
   }
   | {
     type: 'web_search_call';

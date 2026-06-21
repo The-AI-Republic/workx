@@ -1,5 +1,5 @@
 /**
- * Model Client Factory for pi
+ * Model Client Factory for WorkX
  * Creates and manages model client instances with provider selection and caching
  */
 
@@ -10,6 +10,7 @@ import { GoogleCompletionClient } from './client/GoogleCompletionClient';
 import { GroqClient } from './client/GroqClient';
 import { FireworksChatCompletionClient } from './client/FireworksChatCompletionClient';
 import { TogetherChatCompletionClient } from './client/TogetherChatCompletionClient';
+import { AnthropicClient } from './client/AnthropicClient';
 import { AgentConfig } from '../../config/AgentConfig';
 import { getConfigStorage } from '../storage/ConfigStorageProvider';
 import type { IAuthManager } from './types/Auth';
@@ -639,13 +640,15 @@ export class ModelClientFactory {
       displayName = 'Fireworks AI';
     } else if (providerName === 'together') {
       displayName = 'Together AI';
+    } else if (providerName === 'anthropic') {
+      displayName = 'Anthropic';
     }
 
     const provider = {
       name: displayName,
       base_url: resolvedBaseUrl,
       wire_api: providerName === 'google-ai-studio' ? 'Chat' as const : 'Responses' as const,
-      requires_openai_auth: providerName !== 'google-ai-studio',
+      requires_openai_auth: providerName !== 'google-ai-studio' && providerName !== 'anthropic',
       ...(providerName === 'google-ai-studio' && {
         env_key: 'GOOGLE_AI_STUDIO_API_KEY',
         env_key_instructions: 'Set a Google AI Studio key in Settings to enable Gemini.',
@@ -723,9 +726,21 @@ export class ModelClientFactory {
           parallelToolCalls,
         });
 
+      case 'anthropic':
+        return new AnthropicClient({
+          apiKey: config.apiKey,
+          baseUrl: resolvedBaseUrl,
+          organization,
+          sessionId,
+          modelFamily,
+          provider,
+          modelConfig,
+          reasoningEffort: reasoningEffort as any,
+          reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
+        });
+
       case 'openai':
       case 'xai':
-      case 'anthropic':
       default:
         return new OpenAIResponsesClient({
           apiKey: config.apiKey,

@@ -40,6 +40,9 @@ vi.mock('../client/FireworksChatCompletionClient', () => ({
 vi.mock('../client/TogetherChatCompletionClient', () => ({
   TogetherChatCompletionClient: vi.fn(),
 }));
+vi.mock('../client/AnthropicClient', () => ({
+  AnthropicClient: vi.fn(),
+}));
 
 // Import the mocked constructors so we can re-set implementations after mockReset
 import { OpenAIResponsesClient } from '../client/OpenAIResponsesClient';
@@ -48,6 +51,7 @@ import { GoogleCompletionClient } from '../client/GoogleCompletionClient';
 import { GroqClient } from '../client/GroqClient';
 import { FireworksChatCompletionClient } from '../client/FireworksChatCompletionClient';
 import { TogetherChatCompletionClient } from '../client/TogetherChatCompletionClient';
+import { AnthropicClient } from '../client/AnthropicClient';
 
 // ---------------------------------------------------------------------------
 // Re-establish mock implementations before each test (mockReset: true clears them)
@@ -70,6 +74,9 @@ function setupClientMocks() {
   }));
   (TogetherChatCompletionClient as unknown as Mock).mockImplementation((opts: any) => ({
     _type: 'TogetherChatCompletionClient', _opts: opts,
+  }));
+  (AnthropicClient as unknown as Mock).mockImplementation((opts: any) => ({
+    _type: 'AnthropicClient', _opts: opts,
   }));
 }
 
@@ -227,7 +234,7 @@ describe('ModelClientFactory', () => {
     it.each([
       ['openai', 'OpenAIResponsesClient'],
       ['xai', 'OpenAIResponsesClient'],
-      ['anthropic', 'OpenAIResponsesClient'],
+      ['anthropic', 'AnthropicClient'],
       ['groq', 'GroqClient'],
       ['google-ai-studio', 'GoogleCompletionClient'],
       ['fireworks', 'FireworksChatCompletionClient'],
@@ -707,6 +714,7 @@ describe('ModelClientFactory', () => {
         ['google-ai-studio', 'Google AI Studio', 'google-ai-studio:gemini'],
         ['fireworks', 'Fireworks AI', 'fireworks:llama'],
         ['together', 'Together AI', 'together:qwen'],
+        ['anthropic', 'Anthropic', 'anthropic:claude-sonnet-4-6'],
       ];
       for (const [pid, expectedName, selectedKey] of cases) {
         await factory.initialize(createMockAgentConfig({
