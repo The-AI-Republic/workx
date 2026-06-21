@@ -2,7 +2,7 @@
  * Default centralized agent configuration values
  */
 
-import type { IAgentConfig, IUserPreferences, ICacheSettings, IExtensionSettings, IPermissionSettings, IToolsConfig, IStorageConfig, IStoredConfig, IProviderConfig } from './types';
+import type { IAgentConfig, IUserPreferences, ICacheSettings, IExtensionSettings, IPermissionSettings, IToolsConfig, IStorageConfig, IStoredConfig, IProviderConfig, IAppServerConfig } from './types';
 import { DEFAULT_APPROVAL_CONFIG } from '../core/approval/types';
 import { DEFAULT_MODE } from '../prompts/PromptComposer';
 import defaultProviders from '../core/models/providers/default.json';
@@ -160,6 +160,21 @@ export const DEFAULT_TOOLS_CONFIG: IToolsConfig = {
   }
 };
 
+/** Default app-server config — disabled, loopback, token-required. */
+export const DEFAULT_APP_SERVER_CONFIG: IAppServerConfig = {
+  enabled: false,
+  transport: 'websocket',
+  bindHost: '127.0.0.1',
+  port: 18101,
+  requireAuth: true,
+  rejectBrowserOrigins: true,
+  allowLan: false,
+  maxConnections: 16,
+  maxPayloadBytes: 1_048_576,
+  maxBufferedBytes: 4_194_304,
+  requestQueueCapacity: 128,
+};
+
 // Helper to create default config without module-level execution
 export function getDefaultAgentConfig(): IAgentConfig {
   return {
@@ -174,7 +189,8 @@ export function getDefaultAgentConfig(): IAgentConfig {
     tools: { ...DEFAULT_TOOLS_CONFIG },
     storage: { ...DEFAULT_STORAGE_CONFIG },
     approval: { ...DEFAULT_APPROVAL_CONFIG },
-    enabledPlugins: {}
+    enabledPlugins: {},
+    appServer: { ...DEFAULT_APP_SERVER_CONFIG },
   };
 }
 
@@ -322,7 +338,11 @@ export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig 
         ...DEFAULT_APPROVAL_CONFIG.timeouts,
         ...(partial.approval?.timeouts || {})
       }
-    }
+    },
+    appServer: {
+      ...DEFAULT_APP_SERVER_CONFIG,
+      ...(partial.appServer || {}),
+    },
   };
 }
 
@@ -351,7 +371,8 @@ export function getDefaultStoredConfig(): IStoredConfig {
     activeProfile: null,
     tools: { ...DEFAULT_TOOLS_CONFIG },
     storage: { ...DEFAULT_STORAGE_CONFIG },
-    approval: { ...DEFAULT_APPROVAL_CONFIG }
+    approval: { ...DEFAULT_APPROVAL_CONFIG },
+    appServer: { ...DEFAULT_APP_SERVER_CONFIG },
   };
 }
 
@@ -452,7 +473,11 @@ export function buildRuntimeConfig(stored: IStoredConfig | null): IAgentConfig {
       }
     },
     // Track 10: per-plugin enable state round-trips verbatim
-    enabledPlugins: stored.enabledPlugins ?? {}
+    enabledPlugins: stored.enabledPlugins ?? {},
+    appServer: {
+      ...DEFAULT_APP_SERVER_CONFIG,
+      ...(stored.appServer || {}),
+    },
   };
 
   // Track 20: pin admin policy AFTER all merging so the one-level merges above
@@ -494,6 +519,7 @@ export function extractStoredConfig(config: IAgentConfig): IStoredConfig {
     storage: config.storage,
     approval: config.approval,
     // Track 10: persist per-plugin enable state
-    enabledPlugins: config.enabledPlugins
+    enabledPlugins: config.enabledPlugins,
+    appServer: config.appServer,
   };
 }

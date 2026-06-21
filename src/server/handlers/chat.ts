@@ -16,8 +16,24 @@ import type { SubmissionContext } from '@/core/channels/types';
 // ─────────────────────────────────────────────────────────────────────────
 
 export interface ChatHandlerDeps {
-  submitOp: (op: Op, context: SubmissionContext) => Promise<void>;
+  /**
+   * Submit an Op to the agent. Returns the runtime submission id (runId) so
+   * callers (e.g. external app-server automation) get a stable identifier.
+   */
+  submitOp: (op: Op, context: SubmissionContext) => Promise<string | void>;
   getHistory: (sessionKey: string) => Promise<unknown[]>;
+}
+
+/**
+ * Resolve the originating channel for a submission. App-server / multi-channel
+ * callers populate `ctx.channelId`/`ctx.channelType`; the headless server omits
+ * them and falls back to the historical `server-main`/`server` identity.
+ */
+function callerChannel(ctx: MethodContext): { channelId: string; channelType: SubmissionContext['channelType'] } {
+  return {
+    channelId: ctx.channelId ?? 'server-main',
+    channelType: (ctx.channelType as SubmissionContext['channelType']) ?? 'server',
+  };
 }
 
 let _deps: ChatHandlerDeps | null = null;
@@ -63,16 +79,16 @@ async function handleChatSend(
   };
 
   const submissionContext: SubmissionContext = {
-    channelId: 'server-main',
-    channelType: 'server',
+    ...callerChannel(ctx),
     userId: ctx.userId,
     sessionId: ctx.sessionKey,
   };
 
-  // Submit asynchronously — response streaming is handled by events
-  await _deps.submitOp(op, submissionContext);
+  // Submit asynchronously — response streaming is handled by events.
+  // The submission id is surfaced as runId for stable automation.
+  const runId = await _deps.submitOp(op, submissionContext);
 
-  return { status: 'started', sessionKey: ctx.sessionKey };
+  return { status: 'started', sessionKey: ctx.sessionKey, runId: runId ?? undefined, accepted: true };
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -88,8 +104,7 @@ async function handleChatAbort(
   const op: Op = { type: 'Interrupt' };
 
   const submissionContext: SubmissionContext = {
-    channelId: 'server-main',
-    channelType: 'server',
+    ...callerChannel(ctx),
     userId: ctx.userId,
     sessionId: ctx.sessionKey,
   };
@@ -138,8 +153,7 @@ async function handleChatInject(
   };
 
   const submissionContext: SubmissionContext = {
-    channelId: 'server-main',
-    channelType: 'server',
+    ...callerChannel(ctx),
     userId: ctx.userId,
     sessionId: ctx.sessionKey,
   };

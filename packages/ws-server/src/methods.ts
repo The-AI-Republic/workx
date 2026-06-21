@@ -96,6 +96,20 @@ export const BROADCAST_EVENTS = new Set([
   'connect.hello-ok',
 ]);
 
+/**
+ * Build the wire-event list a connection may receive given its scopes: always
+ * the broadcast events, plus every scoped event the connection is entitled to.
+ * Shared by the headless-server handshake and the desktop app-server so the two
+ * advertise an identical event set from the same source of truth.
+ */
+export function buildAvailableEvents(scopes: string[]): string[] {
+  const events = new Set<string>(BROADCAST_EVENTS);
+  for (const [eventName, requiredScope] of Object.entries(EVENT_SCOPE_MAP)) {
+    if (scopes.includes(requiredScope)) events.add(eventName);
+  }
+  return Array.from(events);
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Handler function type
 // ─────────────────────────────────────────────────────────────────────────
@@ -112,6 +126,14 @@ export interface MethodContext {
   scopes: string[];
   userId?: string;
   sessionKey?: string;
+  /**
+   * Caller channel identity. Populated by the dispatcher so handlers route
+   * submissions/events through the originating channel instead of a hardcoded
+   * one. Optional for backward compatibility: the headless server omits these
+   * and handlers fall back to the `server-main`/`server` defaults.
+   */
+  channelId?: string;
+  channelType?: string;
   /** Send an event frame back to this connection */
   sendEvent: (event: string, payload?: unknown) => void;
 }

@@ -25,8 +25,7 @@ import { verifyAuth } from './auth';
 import { resolveScopes, isValidRole, type Role } from '../auth/roles';
 import { setConnectionAuth } from '../auth/authorize';
 import { getServerConfig } from '../config/server-config';
-import { getRegisteredMethods } from '@workx/ws-server';
-import { EVENT_SCOPE_MAP, BROADCAST_EVENTS } from '@workx/ws-server';
+import { getRegisteredMethods, buildAvailableEvents } from '@workx/ws-server';
 import { getHealthStatus } from '../handlers/health';
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -277,27 +276,6 @@ export async function handleConnectRequest(
     clientInfo,
     sessionKey,
   };
-}
-
-/**
- * Build the list of events this connection will receive based on scopes.
- */
-function buildAvailableEvents(scopes: string[]): string[] {
-  const events = new Set<string>();
-
-  // Broadcast events are always included
-  for (const evt of BROADCAST_EVENTS) {
-    events.add(evt);
-  }
-
-  // Add scoped events
-  for (const [eventName, requiredScope] of Object.entries(EVENT_SCOPE_MAP)) {
-    if (scopes.includes(requiredScope)) {
-      events.add(eventName);
-    }
-  }
-
-  return Array.from(events);
 }
 
 /**
