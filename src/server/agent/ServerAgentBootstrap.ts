@@ -26,6 +26,9 @@ import type { Op } from '@/core/protocol/types';
 import type { SubmissionContext } from '@/core/channels/types';
 import { deriveInputOrigin } from '@/core/input/types';
 import type { EventMsg } from '@/core/protocol/events';
+import { A2AServer, type A2AAgentBridge, type A2ATurnResult } from '@/core/a2a/A2AServer';
+import { A2AEventTap, interpretTurnEvent } from '@/core/a2a/A2AEventTap';
+import type { ToolDefinition } from '@/tools/BaseTool';
 
 import { getServerConfig, loadServerConfig, watchConfig, stopWatchingConfig, onConfigReload } from '../config/server-config';
 import {
@@ -143,6 +146,12 @@ export class ServerAgentBootstrap {
   private runningJobStartTime: number = 0;
   private currentAuthManager: IAuthManager | null = null;
   private runtimeState: RuntimeStateController | null = null;
+  // FR-6 (server decoupling): headless A2A delegation endpoint. The tap lets
+  // the A2A bridge observe the agent event stream; turns are serialized via the
+  // chain so concurrent delegations don't collide on the shared primary session.
+  private readonly a2aEventTap = new A2AEventTap();
+  private a2aServer: A2AServer | null = null;
+  private a2aTurnChain: Promise<unknown> = Promise.resolve();
   private toolResultSweep: { stop: () => void } | null = null;
   // Track 15: periodic rollout TTL cleanup (the server otherwise never prunes
   // expired/forked rollouts — only the extension had alarm-based cleanup).
@@ -484,6 +493,11 @@ export class ServerAgentBootstrap {
             });
           }
 
+          // FR-6: forward to the A2A bridge when a delegated turn is in flight.
+          if (this.a2aEventTap.active) {
+            this.a2aEventTap.emit(sessionId, event.msg);
+          }
+
           // Also log to transcript store (Track 24.5: secret-redacted at rest —
           // non-blocking, the entry is kept, only detected secrets become ***).
           if (this.transcriptStore) {
@@ -694,6 +708,18 @@ export class ServerAgentBootstrap {
           this.buildDiagnosticContext(),
         );
         this.diagnosticsMonitor.start();
+      }
+
+      // 15c. FR-6 (server decoupling): optionally expose the headless A2A
+      // delegation endpoint. Opt-in via WORKX_SERVER_A2A_ENABLED — the endpoint
+      // is not yet behind the WS auth handshake, so it should only be enabled on
+      // trusted binds (loopback/tailnet) until per-request auth lands.
+      if (profile === 'server' && isA2AEnabled()) {
+        this.a2aServer = new A2AServer({
+          bridge: this.buildA2ABridge(),
+          identity: buildA2AIdentity(),
+        });
+        console.log('[ServerAgentBootstrap] A2A delegation endpoint enabled');
       }
 
       this.initialized = true;
@@ -1917,6 +1943,117 @@ export class ServerAgentBootstrap {
     return this.registry;
   }
 
+  /** The headless A2A server, if enabled (FR-6). Null when disabled. */
+  getA2AServer(): A2AServer | null {
+    return this.a2aServer;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // A2A delegation bridge (FR-6)
+  // ─────────────────────────────────────────────────────────────────────
+
+  /**
+   * Build the bridge that routes A2A `message/send` requests into the local
+   * agent's turn loop. Turns run on the primary session (single-tenant
+   * appliance, D4) and are serialized so concurrent delegations don't collide.
+   */
+  private buildA2ABridge(): A2AAgentBridge {
+    return {
+      runTurn: (params) => {
+        // Serialize: chain each turn after the previous one settles.
+        const run = this.a2aTurnChain.then(
+          () => this.runA2ATurn(params),
+          () => this.runA2ATurn(params)
+        );
+        this.a2aTurnChain = run.catch(() => undefined);
+        return run;
+      },
+      listToolNames: () => {
+        const registry = this.registry?.getPrimarySession()?.agent?.getToolRegistry();
+        if (!registry) return [];
+        try {
+          return registry
+            .listTools()
+            .map(toolDefinitionName)
+            .filter((name): name is string => !!name);
+        } catch {
+          return [];
+        }
+      },
+    };
+  }
+
+  /** Run a single delegated turn and resolve with the final assistant text. */
+  private async runA2ATurn(params: {
+    text: string;
+    contextId: string;
+    taskId: string;
+    signal: AbortSignal;
+  }): Promise<A2ATurnResult> {
+    const { text, signal } = params;
+    if (!this.registry) {
+      return { text: '', success: false, error: 'Agent registry not initialized' };
+    }
+
+    const session = await this.registry.getOrCreatePrimarySession();
+    const sessionId = session.sessionId;
+
+    const op: Op = {
+      type: 'UserTurn',
+      items: [{ type: 'text', text }],
+      tabId: 0,
+      // Headless delegation has no human to answer approval prompts, so the
+      // turn must run non-interactively. Single-tenant appliance only (D4).
+      approval_policy: 'never',
+      sandbox_policy: { mode: 'danger-full-access' },
+      model: 'default',
+      summary: { enabled: true },
+    };
+
+    return await new Promise<A2ATurnResult>((resolve) => {
+      let settled = false;
+      let submissionId: string | undefined;
+
+      const finish = (result: A2ATurnResult): void => {
+        if (settled) return;
+        settled = true;
+        unsubscribe();
+        clearTimeout(timer);
+        resolve(result);
+      };
+
+      const unsubscribe = this.a2aEventTap.on(sessionId, (msg) => {
+        // Wait until our submission id is known before matching terminal events.
+        // Real turns take far longer to complete than submit() takes to resolve,
+        // so nothing is missed by ignoring events in that brief window.
+        if (submissionId === undefined) return;
+        // Resolve on TaskComplete (success) or TurnAborted (cancel / abort /
+        // error-reason), both correlated by submission_id. See interpretTurnEvent.
+        const outcome = interpretTurnEvent(msg, submissionId);
+        if (outcome) finish(outcome);
+      });
+
+      if (signal.aborted) {
+        finish({ text: '', success: false, error: 'aborted' });
+        return;
+      }
+      signal.addEventListener('abort', () => {
+        session.agent?.submitOperation({ type: 'Interrupt' }, {}).catch(() => undefined);
+      });
+
+      const timer = setTimeout(() => {
+        finish({ text: '', success: false, error: 'A2A turn timed out' });
+      }, A2A_TURN_TIMEOUT_MS);
+
+      session.submit(op).then(
+        (id) => {
+          submissionId = id;
+        },
+        (err) => finish({ text: '', success: false, error: err instanceof Error ? err.message : String(err) })
+      );
+    });
+  }
+
   getChannel(): ChannelAdapter | null {
     return this.channel;
   }
@@ -1998,6 +2135,56 @@ export class ServerAgentBootstrap {
     this.channel = null;
     this.initialized = false;
     console.log('[ServerAgentBootstrap] Shutdown complete');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// A2A helpers (FR-6)
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Max wall-clock for a single delegated A2A turn before it is failed. */
+const A2A_TURN_TIMEOUT_MS = 10 * 60 * 1000;
+
+/** Whether the headless A2A endpoint is opt-in enabled. */
+function isA2AEnabled(): boolean {
+  const flag = process.env.WORKX_SERVER_A2A_ENABLED;
+  return flag === '1' || flag === 'true';
+}
+
+/** Build the agent-card identity from env, defaulting to the local server. */
+function buildA2AIdentity(): { name: string; description: string; version: string; url: string } {
+  const port = process.env.WORKX_SERVER_PORT ?? '18100';
+  const base = (process.env.WORKX_SERVER_PUBLIC_URL ?? `http://localhost:${port}`).replace(/\/$/, '');
+  return {
+    name: process.env.WORKX_SERVER_A2A_NAME ?? 'WorkX Agent',
+    description:
+      process.env.WORKX_SERVER_A2A_DESCRIPTION ??
+      'Headless WorkX agent. Delegate natural-language tasks via A2A message/send.',
+    version: process.env.WORKX_SERVER_A2A_VERSION ?? '1.0.0',
+    // The agent card is served at /.well-known/agent-card.json; this is the
+    // JSON-RPC endpoint the client POSTs to (see A2A_RPC_PATH in server/index).
+    url: `${base}${A2A_RPC_PATH}`,
+  };
+}
+
+/** Path of the A2A JSON-RPC endpoint (also referenced by server/index.ts). */
+export const A2A_RPC_PATH = '/a2a';
+/** Path of the A2A agent-card discovery document. */
+export const A2A_CARD_PATH = '/.well-known/agent-card.json';
+
+/** Extract a tool's name from the ToolDefinition union, if it has one. */
+function toolDefinitionName(def: ToolDefinition): string | null {
+  switch (def.type) {
+    case 'function':
+      return def.function?.name ?? null;
+    case 'custom':
+      return def.custom?.name ?? null;
+    case 'local_shell':
+      return 'local_shell';
+    case 'web_search':
+      return 'web_search';
+    default:
+      return null;
   }
 }
 
