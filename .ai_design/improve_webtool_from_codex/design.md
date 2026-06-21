@@ -1,7 +1,7 @@
 # Improving WorkX Web-Operation Tools — Lessons from the OpenAI Codex Chrome Extension
 
-**Status:** Reviewed — ready to implement (v2)
-**Date:** 2026-06-12 (v1 analysis; v2 design review same day)
+**Status:** Reviewed — ready to implement (v3)
+**Date:** 2026-06-12 (v1 analysis; v2 design review same day); 2026-06-20 (v3 implementation-readiness corrections)
 **Sources analyzed:**
 - OpenAI Codex Chrome extension v1.1.5 (store build, deobfuscated). Line references in this doc point to the prettified bundles (`background.pretty.js` ~7,100 lines, `codex-content.pretty.js` ~1,350 lines) produced with `js-beautify` from `/Users/irichard/Downloads/1.1.5_0/`.
 - WorkX extension source at HEAD (`37a092dd`).
@@ -45,18 +45,46 @@ Every claim in §3 was re-verified against the code during review. Results, corr
 - **Duplicate service trees:** `src/tools/screenshot/{ScreenshotService,CoordinateActionService}.ts` and `src/tools/PageVisionTool.ts` are near-copies of the `src/extension/tools/*` versions, and `src/tools/PageVisionTool.ts:255-376` calls its own tree's `forTab()` — both trees attach `chrome.debugger` independently. **Decision:** the registry is defined by interface in `src/core/tools/browser/` (next to `DebuggerClient.ts`) with the Chrome implementation in `src/extension/tools/browser/`; both tool trees import the same singleton. Consolidating the duplicated trees is desirable but explicitly out of scope here — PR-1 only repoints both trees' attach calls.
 
 **Integration points pinned (replaces the loose references in v1):**
-- *Tab binding:* a WorkX session binds **one tab at a time** via `Session.setTabId` → `sessionState` (`src/core/Session.ts:1081-1082`, cleared at `:995`); tasks carry `scopedTabIds` and `Session.abortTasksForTab(tabId, reason)` exists (`Session.ts:2310-2313`). The §3.6 lease design is therefore *simpler* than Codex's multi-tab session: lease lifecycle hooks into `setTabId` (claim on bind, release+detach on rebind/clear) and into task completion/abort paths, not into a multi-tab finalize protocol. `finalizeTabs(keep[])`-style multi-tab semantics become relevant only if/when multi-tab sessions ship; the lease store schema below already supports it.
-- *Turn-end hook:* `TurnManager` (`src/core/TurnManager.ts`) runs turns; session cleanup at `Session.ts:995` is where leases/debuggers must be released. DownloadWatcher and dialog events (§3.8/§3.9) surface through the existing session event path used by tool progress (`BaseToolOptions.onProgress`) rather than a new bus.
+- *Tab binding:* a WorkX session binds **one tab at a time** via `Session.setTabId` → `sessionState` (`src/core/Session.ts:1081-1082`, cleared at `:995`); tasks carry `scopedTabIds` and `Session.abortTasksForTab(tabId, reason)` exists (`Session.ts:2310-2313`). The §3.6 lease design is therefore *simpler* than Codex's multi-tab session. **Lease lifecycle hooks into `RepublicAgent.handleTabBinding` (CASES 1/2/3), not the `Session.setTabId` leaf setter** — `setTabId` is synchronous, is bypassed by several bind paths, and runs *after* the tab has already switched, so it cannot `await` a claim or reject a bind (see §1.6 #7). Release+detach hook into the rebind/clear and task completion/abort paths, not a multi-tab finalize protocol. `finalizeTabs(keep[])`-style multi-tab semantics become relevant only if/when multi-tab sessions ship; the lease store schema below already supports it.
+- *Turn-end hook:* `TurnManager` (`src/core/TurnManager.ts`) runs turns; session cleanup at `Session.ts:995` is where leases/debuggers must be released. DownloadWatcher and dialog events (§3.8/§3.9) surface through `Session.emitEvent`/`setEventEmitter` — the session-level background-event bus — **not** `BaseToolOptions.onProgress` (which is scoped to a single tool call and dies when that call returns, so it cannot deliver an async download completion; see §1.6 #9).
 - *Tool registration:* new `browser_viewport` tool registers in `src/extension/tools/registerExtensionTools.ts` alongside `dom_tool` (`:129`) and `page_vision` (`:304`).
 - *Feature gating:* compile-time flags (`vite.featureFlags.mjs`) are deliberately heavyweight (rebuild-only, registry-synced). **Decision:** behavior switches in this work use `ServiceConfig` runtime options instead — `useContentQuads` (default true, `getBoxModel` fallback), `useLifecycleReadiness` (default true, heuristic fallback), `viewportOverride` (default off except `page_vision` flows).
 
 **Scope decisions locked during review:**
-1. Viewport override (§3.3) is **not** applied at every attach (Codex can; their tabs live in a dedicated agent group). It is applied: (a) during `page_vision` screenshot+action turns, and (b) when the agent explicitly calls `browser_viewport set`. It is cleared on tab release and at session unbind. Until §3.3 lands, the immediate P0 fix for the vision DPR bug is one line in `ScreenshotService.captureViewport`: read DPR once and downscale the PNG to CSS pixels (or set `clip: {x:0,y:0,width,height,scale:1/dpr}` on `Page.captureScreenshot`) — ship this in PR-1 with the input fixes.
+1. Viewport override (§3.3) is **not** applied at every attach (Codex can; their tabs live in a dedicated agent group). It is applied: (a) during `page_vision` screenshot+action turns, and (b) when the agent explicitly calls `browser_viewport set`. It is cleared on tab release and at session unbind. Until §3.3 lands, the immediate P0 fix for the vision DPR bug is one change in `ScreenshotService.captureViewport`: read `devicePixelRatio` at capture time and **downscale the captured PNG to `innerWidth × innerHeight` CSS pixels** — ship this in PR-1 with the input fixes. (Do **not** use `Page.captureScreenshot` `clip.scale = 1/dpr`: `clip.scale` is the page-scale factor, not a DPR override, and is version-dependent and lossy on fractional DPR — see §1.6 #1.)
 2. Cursor arrival handshake (§3.5 optional part) is deferred indefinitely — we don't animate a cursor before clicks today, so there is nothing to synchronize. Ping-or-inject + self-healing overlay stay in PR-3.
 3. OOPIF (§3.7) stays last (PR-4) and starts with **read-only** support (snapshot grafting); per-target input routing ships only after snapshot support proves stable in dogfood.
 4. The 10 findings hold after review; no Codex behavior examined was found *worse* than ours in a way that changes the recommendations.
 
 **Acceptance criteria per PR** are added to §5 and mirrored in `tasks.md`.
+
+---
+
+## 1.6 v3 corrections (implementation-readiness pass)
+
+A second verification pass (2026-06-20) cross-checked every proposed *solution* — not just the bugs — against the code at HEAD and against CDP semantics. The diagnoses all held (including the subtle coordinate-space one in §3.4); the corrections below are folded into §3/§5/§7 and are **binding** where they conflict with older prose.
+
+1. **DPR hotfix — drop the `clip.scale = 1/dpr` option.** `Page.captureScreenshot`'s `clip.scale` is the *page-scale* factor, not a `deviceScaleFactor` override; in the current `captureBeyondViewport:false` capture mode its interaction with device DPR is Chrome-version-dependent and lossy on fractional DPR (1.25/1.5/1.75). The hotfix is **downscale the captured PNG to `innerWidth × innerHeight`**, reading `devicePixelRatio` at capture time. The structural fix is unchanged: `Emulation.setDeviceMetricsOverride({deviceScaleFactor:1})`. (§3.3, item 3b, T08)
+
+2. **Registry concurrency contract pinned.** `forceDetach` MUST run inside `withTabLock` and reset the tab entry (refcount → 0, `enabledDomains` cleared) so a concurrent `acquire` re-attaches cleanly instead of reusing a dying client; stale handles' `release()` become no-ops. The per-tab mutex MUST chain with `.catch`/`.finally` so a rejected operation cannot poison the lock. A single command timeout force-detaches the *shared* tab and therefore collaterally fails every concurrent command on it — acceptable, but call it out (consider gating force-detach on an actual wedged check rather than firing on every timeout). The single `onEvent`/`onDetach` listener pair also fixes a real listener *leak*, not just N-listener overhead. (§3.1, §3.2, §7.1)
+
+3. **`page_vision` acquires once per action, not per service.** `Screenshot`/`Coordinate` services are constructed per call, so the migration must `acquire(tabId)` once at the start of a vision action and `release()` at the end (passing one handle to both services) — otherwise the refcount churns attach→detach *between* the screenshot and the click. (§7.1, T03)
+
+4. **Keyboard table — shifted chars and keypad.** Capital/shifted characters (`A`, `!`) must set the Shift modifier bit and use the table's `shiftKey`/`shiftKeyCode`; keypad keys must forward `location`. (§3.4, §7.2, T04)
+
+5. **Mouse `buttons` bookkeeping.** `mouseReleased` clears the released button from the `buttons` bitmask (`buttons:0` for a simple click release); the `mouseMoved` precursor uses `button:'none'`, `buttons:0`. Double-click = two press/release pairs (`clickCount` 1 then 2); right-click sets `button:'right'` + `buttons:2`. Note `ClickOptions` exposes `clickType:'single'|'double'` (not `clickCount`) — map at the boundary. (§3.4, §7.2, T05/T06)
+
+6. **Coordinate fix clicks the clipped point.** Intersect the content quad with `{0,0,innerWidth,innerHeight}` and dispatch at the *intersection's* center, not the whole quad's center (matters for partially-scrolled elements). Transformed/rotated quads and active pinch-zoom remain edge cases — kept behind the `useContentQuads` flag with `getBoxModel` fallback. (§3.4)
+
+7. **Tab-lease hook moves to `RepublicAgent.handleTabBinding`, not `Session.setTabId`.** `setTabId` is a synchronous leaf setter that several bind paths bypass and that runs *after* the tab switch — it cannot `await` a claim or reject a bind. Claim/release belong in `handleTabBinding` (`src/core/RepublicAgent.ts`, CASES 1/2/3). GC and live claims must share the per-session `lifecycleQueue` to avoid a startup-GC-vs-claim race. Agent-origin tabs are auto-closed on release **only while still unfocused/inactive** — never close a tab the user has since focused (the deliverable/handoff semantics that would generalize this stay deferred). Reuse the blocked-scheme list from `NavigationTool.validateAndNormalizeUrl` by *extracting/sharing* it (it is a private instance method on `NavigationTool` today), not by reaching into it. (§3.6, §7.4, T12)
+
+8. **Page-readiness prerequisites.** `Page.enable` is required before `Page.setLifecycleEventsEnabled` and before `Page.javascriptDialogOpening` fires (§7.3 already states this; §3.8 prose now does too). `NavigationTool` attaches **no** debugger today, so switching to `Page.navigate` adds an attach + a debugger infobar to a previously un-debugged tab — a real UX cost; keep `chrome.tabs.update`+poll as the no-debugger fallback. Specify the dialog auto-response default (dismiss / `false` unless a tool opts in). (§3.8)
+
+9. **Downloads.** The `downloads` permission is **already present** in `manifest.json` (added 2025-11) — no manifest change. Download/dialog events MUST surface via `Session.emitEvent`/`setEventEmitter` (the session-level background-event bus), **not** `BaseToolOptions.onProgress`, which lives only for the duration of one tool call and cannot receive an async download completion that arrives after the click tool already returned. (§1.5, §3.9, T19)
+
+10. **OOPIF (§3.7) is a substantial rewrite, not a natural extension** — kept last, read-only first. The node-id scheme does *not* extend cleanly: `frameId` is a synthetic 0–5 index unrelated to CDP `targetId`, and `backendNodeId`s collide across targets. `ChromeDebuggerClient.sendCommand` currently hard-rejects any non-`tabId` target, so target-addressed sends need a new routing path first. Mouse input is dispatched to the **page** session with translated coordinates, not to `{targetId}`. One-shot `getTargets()` races late-loading OOPIFs — prefer `Target.setAutoAttach({flatten:true})`. (`FrameRegistry` lives in `DomSnapshot.ts`, not `DOMTool.ts`.) (§3.7, T22–T24)
+
+Minor drift corrected throughout: WorkX's content script is statically registered (`run_at:"document_idle"`, `all_frames:false`), not Codex's empty-`content_scripts`/`document_start` model; the overlay host mounts on `document.body` (not `documentElement`); ping-or-inject idempotency is already provided by the `window.__workx_content_script_loaded__` guard.
 
 ---
 
@@ -160,8 +188,10 @@ class DebuggerSessionRegistry {
 - Single `chrome.debugger.onEvent` + `onDetach` listener pair registered once; dispatch by `source.tabId`.
 - Attach is idempotent and tolerates "already attached" only when *we* hold the registry entry; otherwise surface the DevTools-conflict error (keep the existing `ALREADY_ATTACHED: DevTools is open` UX from `DomService.forTab`).
 - `onDetach` clears registry state and notifies subscribers (replaces `DomService.handleDebuggerDetach`, `DomService.ts:742-755`).
-- Port `DomService`, `ScreenshotService`, `CoordinateActionService`, and `ExtensionBrowserController` onto `acquire()/release()`; delete both `1+1` probes.
-- Domain enabling moves into the registry (`enabledDomains` per tab) so `Page.enable`/`DOM.enable` aren't re-sent per service.
+- Port `DomService`, `ScreenshotService`, `CoordinateActionService`, and `ExtensionBrowserController` onto `acquire()/release()`; delete both `1+1` probes. **`page_vision` acquires once per action and releases at the end** (one handle shared by both services), since those services are constructed per call — otherwise the refcount churns attach→detach between screenshot and click (§1.6 #3).
+- Domain enabling moves into the registry (`enabledDomains` per tab) so `Page.enable`/`DOM.enable` aren't re-sent per service. The registry MUST clear `enabledDomains` on every detach path (including `forceDetach`/`onDetach`) or a re-attach silently runs with no domains enabled.
+
+**Concurrency contract (pinned, §1.6 #2):** `acquire`, `release`, and `forceDetach` all run inside `withTabLock`. `forceDetach` resets the tab entry (refcount → 0, `enabledDomains` cleared) so a concurrent `acquire` re-attaches a clean client rather than reusing a dying one; stale handles' `release()` then no-op. Implement the per-tab mutex as a promise chain built with `.catch`/`.finally` so a rejected operation can't poison the lock for subsequent waiters. The consolidated single `onEvent`/`onDetach` pair also removes a current listener *leak* (today `DomService` adds a global `onDetach` listener per instance that the `handleDebuggerDetach` path never removes), not just N-listener overhead.
 
 ### 3.2 [P0] Per-command CDP timeouts with force-detach recovery
 
@@ -173,7 +203,8 @@ class DebuggerSessionRegistry {
 
 - In `ChromeDebuggerClient.sendCommand`, wrap in `Promise.race` with `timeoutMs` (new optional param; default 10_000; export `CdpCommandTimeoutError`). Mirror Codex's `Mn()` validation: only positive finite numbers override the default.
 - Per-call overrides where warranted: `Accessibility.getFullAXTree` and `DOMSnapshot.captureSnapshot` get `snapshotTimeout`-derived budgets; `Input.*` keeps a short 5s.
-- On timeout, the `DebuggerSessionRegistry` (§3.1) marks the tab wedged and force-detaches (Codex `hn`): clear registry first, `chrome.debugger.detach` wrapped in try/ignore. Next `acquire()` re-attaches.
+- On timeout, the `DebuggerSessionRegistry` (§3.1) marks the tab wedged and force-detaches (Codex `hn`): under `withTabLock`, clear registry first, then `chrome.debugger.detach` wrapped in try/ignore. Next `acquire()` re-attaches.
+- **Blast radius (note, §1.6 #2):** force-detaching the shared tab abandons *all* in-flight commands on it, so one slow `Accessibility.getFullAXTree` timing out will also fail a concurrent `Page.captureScreenshot` from `page_vision`. This is acceptable, but document it — and consider gating force-detach on an actual wedged check (Codex's `$n(a)`) rather than firing on every timeout. The late `chrome.debugger.sendCommand` callback that fires *after* the race lost is harmless: a JS Promise can't settle twice, so it's a silent no-op; force-detach is what neutralizes the stale in-flight CDP op (which CDP itself cannot cancel).
 
 ### 3.3 [P1] Viewport emulation: `deviceScaleFactor: 1` + agent-facing viewport tool
 
@@ -182,7 +213,7 @@ class DebuggerSessionRegistry {
 **Our current state:** we fight DPR everywhere instead of normalizing it:
 
 - `DomService.buildSnapshot` reads `window.devicePixelRatio` via `Runtime.evaluate` and divides every DOMSnapshot rect (`DomService.ts:445-461`, `buildLayoutMap` at :765).
-- `Page.captureScreenshot` output is in device pixels (`ScreenshotService.ts:37-41`), so on a 2x display the vision model sees a 2x image while `CoordinateActionService.clickAt` dispatches in CSS pixels. **Confirmed active bug, not a risk** (see §1.5): the `page_vision` prompt explicitly tells the model to provide image-pixel coordinates (`PageVisionTool.ts:75-83`), which are dispatched unscaled (`PageVisionTool.ts:293-296`) — on DPR>1 displays every vision-driven click lands at DPR× the intended position, and the bounds-clipping at `PageVisionTool.ts:393` masks it. Immediate fix ships in PR-1 (capture at `scale: 1/dpr` via the `clip` param, or downscale the PNG); the emulation override below is the structural fix. There is a `ViewportDetector` (`src/extension/tools/screenshot/ViewportDetector.ts`) but no normalization at capture time.
+- `Page.captureScreenshot` output is in device pixels (`ScreenshotService.ts:37-41`), so on a 2x display the vision model sees a 2x image while `CoordinateActionService.clickAt` dispatches in CSS pixels. **Confirmed active bug, not a risk** (see §1.5): the `page_vision` prompt explicitly tells the model to provide image-pixel coordinates (`PageVisionTool.ts:75-83`), which are dispatched unscaled (`PageVisionTool.ts:293-296`) — on DPR>1 displays every vision-driven click lands at DPR× the intended position, and the bounds-clipping at `PageVisionTool.ts:393` masks it. Immediate fix ships in PR-1 (**downscale the captured PNG to `innerWidth × innerHeight`**, reading `devicePixelRatio` at capture time — *not* `clip.scale = 1/dpr`, see §1.6 #1); the emulation override below is the structural fix. There is a `ViewportDetector` (`src/extension/tools/screenshot/ViewportDetector.ts`) but no normalization at capture time.
 - No way for the agent to test responsive layouts.
 
 **Proposed change:**
@@ -204,11 +235,11 @@ class DebuggerSessionRegistry {
 
 **Proposed change:** new shared module `src/extension/tools/input/InputDispatcher.ts`:
 
-- `keyDefinitions.ts`: US-layout table mapping `key` → `{ code, keyCode, key, text?, location? }` (port Puppeteer's `USKeyboardLayout` shape; ~250 entries, MIT-licensed reference). `dispatchKey(handle, key, modifiers)` emits `keyDown` (with `windowsVirtualKeyCode`, `code`, `text` when printable) + `keyUp`. `rawKeyDown` for modifier-only presses.
-- `click(handle, {x, y, button = 'left', clickCount = 1, modifiers})`: `mouseMoved` → `mousePressed` → `mouseReleased`, with `buttons` bitmask set during press.
+- `keyDefinitions.ts`: US-layout table mapping `key` → `{ code, keyCode, key, text?, shiftKey?, shiftKeyCode?, location? }` (port Puppeteer's `USKeyboardLayout` shape; ~250 entries, MIT-licensed reference). `dispatchKey(handle, key, modifiers)` emits `keyDown` (with `windowsVirtualKeyCode`, `code`, `text` when printable) + `keyUp`. `rawKeyDown` for modifier-only presses. **Shifted/capital characters** (`A`, `!`) must set the Shift modifier bit and use the table's `shiftKey`/`shiftKeyCode`; **keypad keys** must forward `location` (§1.6 #4).
+- `click(handle, {x, y, button = 'left', clickCount = 1, modifiers})`: `mouseMoved` → `mousePressed` → `mouseReleased`. `mouseMoved` uses `button:'none'`, `buttons:0`; `mousePressed` sets the button's bit in `buttons`; **`mouseReleased` clears it (`buttons:0` for a simple click)**. Double-click = two press/release pairs with `clickCount` 1 then 2; right-click sets `button:'right'` + `buttons:2` (§1.6 #5).
 - `insertText` fast-path retained for bulk typing (current `typePaste`/`Input.insertText` logic in `DomService.ts:1682` stays).
 - `DomService.click/keypress`, `CoordinateActionService.*`, and `FormAutomationTool` all route through it; `DOMTool.executeClick` forwards `options`.
-- Element targeting switches `DOM.getBoxModel` → `DOM.getContentQuads` with quad-area selection (largest visible quad), viewport intersection check, and `DOM.scrollIntoViewIfNeeded` fallback (existing call at `DomService.ts:1106` kept).
+- Element targeting switches `DOM.getBoxModel` → `DOM.getContentQuads` with quad-area selection (largest visible quad), viewport intersection check, and `DOM.scrollIntoViewIfNeeded` fallback (existing call at `DomService.ts:1106` kept). **Dispatch at the center of the quad∩viewport *intersection*, not the whole quad's center** — otherwise a partially-scrolled element clicks an off-screen point (§1.6 #6). Rotated/transformed quads (non-axis-aligned) and active pinch-zoom (`window.innerWidth` ≠ visual viewport) remain edge cases; the `useContentQuads` flag keeps `getBoxModel` as a fallback for one release. Note this fix is consistent with §3.3's `deviceScaleFactor:1` only when no visual-viewport scale is in play — implement them together.
 
 ### 3.5 [P2] Overlay robustness: ping-or-inject, self-healing, arrival sync
 
@@ -217,13 +248,13 @@ class DebuggerSessionRegistry {
 **Our current state:**
 
 - Visual effects are triggered by `Runtime.evaluate` dispatching a `workx:show-visual-effect` CustomEvent (`DomService.ts:971-1008`), which **silently no-ops if the content script never loaded** (CSP-blocked at document_start, pre-existing tabs from before install, `file://` etc.). `ensureVisualEffectsInitialized` is a stub whose entire body is commented out (`DomService.ts:913-956`) — dead code.
-- The Svelte overlay mounts a closed shadow root at z-index 2147483647 (`src/extension/content/content-script.ts:111-122`) — good — but there is **no MutationObserver re-mount**: any page that prunes unknown DOM nodes (several SPAs do on hydration) permanently removes our overlay.
+- The Svelte overlay mounts a closed shadow-root host on **`document.body`** (`src/extension/content/content-script.ts:126`) at z-index 2147483647 — good — but there is **no MutationObserver re-mount**: any page that prunes unknown DOM nodes (several SPAs do on hydration) permanently removes our overlay. (Idempotency on re-injection is already handled by the `window.__workx_content_script_loaded__` guard and the existing `#workx-visual-effects-host` dedupe, so ping-or-inject below is safe to call repeatedly.)
 - Effects are fire-and-forget; the ripple may render after the click already navigated.
 
 **Proposed change:**
 
 - Add `ensureContentScript(tabId)` to the extension platform layer implementing Codex's ping-or-inject: `chrome.tabs.sendMessage(tabId, {type:'WORKX_PING'})` with a short race-timeout (Codex `Oe`, bg:4156-4165) → on failure `chrome.scripting.executeScript({files:[contentScript], injectImmediately:true, target:{tabId}})` → re-ping; dedupe concurrent injections with a `Map<tabId, Promise<boolean>>`. Call it from `DomService.triggerVisualEffect` and delete the dead `ensureVisualEffectsInitialized`.
-- In `content-script.ts`, watch `documentElement` with `MutationObserver({childList:true})` and re-mount the shadow host if disconnected; tag the host with a `dataset` marker to detect/replace impostor nodes (Codex content:1152-1190).
+- In `content-script.ts`, watch the host's parent (`document.body`, where the host actually mounts — or `documentElement` with `subtree:true`) with `MutationObserver({childList:true})` and re-mount the shadow host if `!host.isConnected`; tag the host with a `dataset` marker to detect/replace impostor nodes (Codex content:1152-1190). **Guard against re-entrancy:** the re-mount is itself a `childList` mutation, so check `host.isConnected` before re-appending (or disconnect the observer around the re-append) to avoid a tight loop.
 - Optional (pairs with §3.4): animate cursor to target and await an arrival ack (sequence-numbered `chrome.runtime.sendMessage`, Codex's `AGENT_CURSOR_ARRIVED` protocol, bg:7008-7022) before dispatching `mousePressed`, capped by a ~1.5s timeout so a broken overlay never blocks the action.
 
 ### 3.6 [P1] Tab ownership: leases, turn finalization, and user-visible state
@@ -234,12 +265,12 @@ class DebuggerSessionRegistry {
 
 **Proposed change (incremental, not a full port — adjusted in review for WorkX's single-tab session model, §1.5):**
 
-A WorkX session binds one tab at a time (`Session.setTabId`, `src/core/Session.ts:1081`), so we don't need Codex's multi-tab finalize protocol yet — but we do need ownership records, guaranteed detach, and stale-state GC. The store schema is multi-tab-ready so multi-tab sessions later only change the callers.
+A WorkX session binds one tab at a time, so we don't need Codex's multi-tab finalize protocol yet — but we do need ownership records, guaranteed detach, and stale-state GC. The store schema is multi-tab-ready so multi-tab sessions later only change the callers.
 
-1. `TabLeaseStore` (chrome.storage.session): `{ tabId, sessionId, turnId, origin: 'agent'|'user', claimedAt }`. Claim inside `Session.setTabId` (origin `user` when binding an existing tab, `agent` when a tool created it); reject claiming tabs leased to another live session; reject `chrome://`/`chrome-extension://` (we already validate URLs for navigation at `NavigationTool.ts:560+` — extend to claiming).
-2. Per-session `lifecycleQueue` promise chain so claim/release/cleanup don't interleave (Codex `runLifecycle`, bg:6230-6237) — lives next to the lease store, invoked from `Session`.
-3. Release hooks: `Session.setTabId(-1)` / session cleanup (`Session.ts:995`) and `abortTasksForTab` (`Session.ts:2310`) release the lease and best-effort detach the tab's debugger via the registry (fixes the §3.1 leak even before refcounting lands). Agent-origin tabs are closed on release unless the turn result marked them as deliverables; user-origin tabs are always left open.
-4. Stale-lease GC at service-worker start and session start: drop leases whose `chrome.tabs.get` throws (Codex `resumeHandoffIfPresent`, bg:6166-6193) — this is what makes leases safe across MV3 service-worker restarts.
+1. `TabLeaseStore` (chrome.storage.session): `{ tabId, sessionId, turnId, origin: 'agent'|'user', claimedAt }`. Claim inside **`RepublicAgent.handleTabBinding` (CASES 1/2/3), not the `Session.setTabId` leaf setter** (§1.6 #7 — `setTabId` is sync, bypassed, and runs after the tab switch, so it can't `await` a claim or reject a bind): origin `user` when binding an existing tab, `agent` when a tool created it; reject claiming tabs leased to another live session; reject `chrome://`/`chrome-extension://`. Reuse the blocked-scheme list from `NavigationTool.validateAndNormalizeUrl` (a private instance method today) by **extracting it into a shared helper** — don't reach into `NavigationTool`.
+2. Per-session `lifecycleQueue` promise chain so claim/release/cleanup don't interleave (Codex `runLifecycle`, bg:6230-6237) — lives next to the lease store, invoked from `RepublicAgent`/`Session`. **The startup `gcStale()` (item 4) must run through this same queue** so a sweep can't drop a lease that an in-flight claim is concurrently writing.
+3. Release hooks: session cleanup (`Session.ts:995`) and `abortTasksForTab` (`Session.ts:2310`) release the lease and best-effort detach the tab's debugger via the registry (fixes the §3.1 leak even before refcounting lands). Agent-origin tabs are closed on release **only while still inactive/unfocused** — re-check the tab's focused/active state at release time and never close a tab the user has since adopted and is viewing (origin is fixed at claim time, so it alone is not sufficient; the deliverable/handoff semantics that would generalize this are deferred, §3.6.6). User-origin tabs are always left open.
+4. Stale-lease GC at service-worker start and session start: drop leases whose `chrome.tabs.get` throws (Codex `resumeHandoffIfPresent`, bg:6166-6193) — this is what makes leases safe across MV3 service-worker restarts. Runs under the `lifecycleQueue` (see item 2).
 5. UX polish (P2): badge favicons of agent-controlled tabs (SVG data-URI overlay, Codex bg:4180-4195) and name the existing `TabManager` "workx" tab group from the task title (`nameSession`).
 6. Deferred until multi-tab sessions exist: `finalizeTabs(keep[])` deliverable/handoff semantics and handoff-resume across turns.
 
@@ -252,8 +283,9 @@ A WorkX session binds one tab at a time (`Session.setTabId`, `src/core/Session.t
 **Proposed change:**
 
 - Extend `DebuggerSessionRegistry` with target attachment: enumerate `chrome.debugger.getTargets()`, attach to `type === 'iframe'` targets belonging to the tab, maintain `targetId → tabId` for cleanup (Codex `Fe`).
-- `DomService.buildSnapshot`: for each attached OOPIF target, run the same `DOM.getDocument`/`getFullAXTree`/`DOMSnapshot.captureSnapshot` triple against the target and graft the subtree under the owning `<iframe>` VirtualNode. The existing `frameId:backendNodeId` node-id scheme (`DOMTool.ts:452-478`, `FrameRegistry`) extends naturally: frame index already disambiguates; the frame registry gains a `targetId` column so actions route commands to the right debuggee.
-- Actions: `DomService.click/type` look up the node's frame's `targetId` and send `Input.*`/`DOM.*` to `{targetId}` instead of `{tabId}`. Note `Input.dispatchMouseEvent` coordinates for OOPIFs are relative to the OOPIF's viewport — translate via the iframe element's content quad in the parent frame.
+- `DomService.buildSnapshot`: for each attached OOPIF target, run the same `DOM.getDocument`/`getFullAXTree`/`DOMSnapshot.captureSnapshot` triple against the target and graft the subtree under the owning `<iframe>` VirtualNode. **This is not a "natural extension" of the node-id scheme (§1.6 #10) — it is a substantial cross-cutting change.** `frameId` in the `frameId:backendNodeId` id is a *synthetic 0–5 index* (`FrameRegistry` in `DomSnapshot.ts`, capped at 5) with no relation to CDP `targetId`, and `backendNodeId`s are unique only *per target*, so they collide across OOPIFs. The frame registry must gain a real `targetId` column, and every `DOM.getBoxModel`/`scrollIntoViewIfNeeded`/`Input.*` call site (4+ in `DomService`) must become target-aware. Prerequisite: `ChromeDebuggerClient.sendCommand` currently *hard-rejects* any non-`tabId` target — a target-addressed send path must land first.
+- Discovery: prefer `Target.setAutoAttach({autoAttach:true, waitForDebuggerOnStart:false, flatten:true})` + `Target.attachedToTarget` events over a one-shot `getTargets()` enumeration, which races OOPIFs that finish loading after the snapshot (silently missing subtree).
+- Actions: input is dispatched to the **page session** using main-frame coordinates = (iframe content-quad offset in the parent) + (element offset within the OOPIF), **not** `Input.*` sent to `{targetId}` (that targets the wrong session and mis-places clicks). DOM/AX *reads* are per-target; mouse *input* is page-session with translated coordinates. Account for nested-iframe scroll, iframe CSS `transform`, and pinch-zoom (`Page.getLayoutMetrics.visualViewport`) when translating.
 - Raise/remove `MAX_IFRAMES` with a byte-budget instead of a count cap (serializer already tracks metrics via `CompactionMetrics`).
 
 ### 3.8 [P1] Event-driven page readiness (replace polling heuristics)
@@ -267,10 +299,10 @@ A WorkX session binds one tab at a time (`Session.setTabId`, `src/core/Session.t
 
 **Proposed change:**
 
-- On attach (registry, §3.1), `Page.setLifecycleEventsEnabled({enabled: true})`. New `PageReadiness` helper subscribes to forwarded events and exposes `waitFor(tabId, {until: 'load'|'DOMContentLoaded'|'networkAlmostIdle'|'networkIdle', timeoutMs})` — `networkAlmostIdle`/`networkIdle` come free with lifecycle events (no `Network.enable` needed).
-- `NavigationTool.navigateToUrl` switches `chrome.tabs.update` + status polling → `Page.navigate` via the registry handle (returns `frameId`/`loaderId` for correlation) + `waitFor('load' | 'networkAlmostIdle')`.
+- On attach (registry, §3.1), `Page.enable` **then** `Page.setLifecycleEventsEnabled({enabled: true})` (the latter requires the Page domain enabled). New `PageReadiness` helper subscribes to forwarded events and exposes `waitFor(tabId, {until: 'load'|'DOMContentLoaded'|'networkAlmostIdle'|'networkIdle', timeoutMs})` — `networkAlmostIdle`/`networkIdle` are *lifecycle* signals that come free with lifecycle events (no `Network.enable` needed; only raw `Network.*` domain events would require it).
+- `NavigationTool.navigateToUrl` switches `chrome.tabs.update` + status polling → `Page.navigate` via the registry handle (returns `frameId`/`loaderId` for correlation) + `waitFor('load' | 'networkAlmostIdle')`. **Cost to weigh (§1.6 #8):** `NavigationTool` attaches no debugger today, so `Page.navigate` newly attaches one (and shows the debugger infobar) just to navigate. Keep `chrome.tabs.update` + the readiness wait as a no-debugger fallback; an existing `Page.navigate` path lives in `ExtensionBrowserController` for reference.
 - `DomService.waitForPageLoad` becomes: `waitFor('networkAlmostIdle', {timeoutMs: 8000})` fail-open, keeping a *single* cheap content check before returning (one `Runtime.evaluate`) instead of the 1s polling loop. Keep the heuristic loop only as fallback when lifecycle events are unavailable.
-- Forward `Page.javascriptDialogOpening` to the agent loop and auto-respond or surface it as a tool result — today a `confirm()` dialog deadlocks any pending CDP evaluate.
+- Forward `Page.javascriptDialogOpening` (fires once `Page.enable` is on) to the agent loop and respond via `Page.handleJavaScriptDialog` — today a `confirm()` dialog deadlocks any pending CDP evaluate. Specify the default: auto-dismiss (`accept: false`) unless a tool opts into accepting, since the chosen response becomes the page's `confirm()`/`alert()` return value.
 
 ### 3.9 [P1] Download tracking
 
@@ -278,7 +310,7 @@ A WorkX session binds one tab at a time (`Session.setTabId`, `src/core/Session.t
 
 **Our current state:** no download awareness. An agent that clicks "Export CSV" cannot learn whether/where the file landed.
 
-**Proposed change:** `DownloadWatcher` in the background service worker mirroring Codex's state machine (`handleDownloadCreated`/`handleDownloadChanged`, bg:5963-5990): track `id → {filename, url}`, emit `started/completed/interrupted` into the session event bus, expose last-N downloads via a small `browser_downloads` tool action or fold into navigation tool results ("download started: report.csv"). Requires adding the `downloads` permission to `manifest.json`.
+**Proposed change:** `DownloadWatcher` in the background service worker mirroring Codex's state machine (`handleDownloadCreated`/`handleDownloadChanged`, bg:5963-5990): track `id → {filename, url}`, emit `started/completed/interrupted` via **`Session.emitEvent`** — the session-level background-event bus — **not** `BaseToolOptions.onProgress` (§1.6 #9: `onProgress` is scoped to a single tool call and is already gone by the time an async download completes). Expose last-N downloads via a small `browser_downloads` tool action or fold into navigation tool results ("download started: report.csv"). The `downloads` permission is **already present** in `manifest.json` (added 2025-11) — no manifest change needed.
 
 ### 3.10 [P2] Operational hardening grab-bag
 
@@ -311,11 +343,11 @@ Ordered by dependency; see `tasks.md` for the checklist form.
 | 1 | `DebuggerSessionRegistry` (locks, refcounts, single event dispatch, force-detach); deprecate `ExtensionBrowserController` | §3.1, §3.2, §1.5 | M | new `core/tools/browser/DebuggerSessionRegistry.ts` (interface) + `extension/tools/browser/ChromeDebuggerSessionRegistry.ts` (impl); rewire `DomService.ts`, both `ScreenshotService.ts` / `CoordinateActionService.ts` trees, `ChromeDebuggerClient.ts` |
 | 2 | CDP command timeouts + `CdpCommandTimeoutError` | §3.2 | S | `ChromeDebuggerClient.ts`, registry |
 | 3 | `InputDispatcher` + key definitions table + click option plumbing + `getContentQuads` targeting (`useContentQuads` config, fallback `getBoxModel`) | §3.4 | M | new `input/InputDispatcher.ts`, `input/keyDefinitions.ts`; `DomService.ts` click/keypress, `CoordinateActionService.ts`, `DOMTool.ts` |
-| 3b | **Vision DPR hotfix**: capture screenshots at CSS-pixel scale (`Page.captureScreenshot` `clip.scale = 1/dpr`) | §3.3, §1.5 | XS | `ScreenshotService.ts` (both trees) |
+| 3b | **Vision DPR hotfix**: downscale the captured PNG to `innerWidth × innerHeight` CSS pixels (read `devicePixelRatio` at capture time — **not** `clip.scale`, §1.6 #1) | §3.3, §1.5 | XS | `ScreenshotService.ts` (both trees) |
 | 4 | Viewport override service + `browser_viewport` tool; DPR simplification in snapshot path | §3.3 | M | new `browser/ViewportOverrideService.ts`, new tool in `registerExtensionTools.ts`, `DomService.buildLayoutMap`, `ScreenshotService.ts` |
-| 5 | Tab leases (claim in `Session.setTabId`, release at `Session.ts:995` / `abortTasksForTab`) + stale GC | §3.6 | M | new `core/TabLeaseStore.ts`, `Session.ts`, `TabManager.ts` |
+| 5 | Tab leases (claim in `RepublicAgent.handleTabBinding` — §1.6 #7; release at `Session.ts:995` / `abortTasksForTab`) + shared-`lifecycleQueue` stale GC; close agent tabs only if unfocused | §3.6 | M | new `core/TabLeaseStore.ts`, `RepublicAgent.ts`, `Session.ts`, `TabManager.ts` |
 | 6 | Lifecycle-event page readiness; rewire navigation + snapshot waiting; dialog handling | §3.8 | M | new `browser/PageReadiness.ts`, `NavigationTool.ts`, `DomService.waitForPageLoad` |
-| 7 | Download watcher + permission | §3.9 | S | new `background/DownloadWatcher.ts`, `manifest.json` |
+| 7 | Download watcher (emit via `Session.emitEvent`, §1.6 #9; `downloads` permission already present) | §3.9 | S | new `background/DownloadWatcher.ts` |
 | 8 | Overlay ping-or-inject + MutationObserver self-heal (arrival sync deferred, §1.5) | §3.5 | S | `content-script.ts`, platform adapter, `DomService.triggerVisualEffect` |
 | 9 | OOPIF: target attachment + read-only snapshot grafting first; input routing after dogfood | §3.7 | L | registry, `DomService.ts`, `DomSnapshot.ts`, `FrameRegistry` |
 | 10 | Hardening grab-bag (deferred reload, instance id, typed errors, `withTimeout`) | §3.10 | S | service worker, `DOMTool.ts`, utils |
@@ -344,11 +376,13 @@ Phasing: **PR-1** = items 1–3 + 3b. **PR-2** = items 4–6. **PR-3** = 7–8. 
 - **Emulation overrides are user-visible** if the agent operates a tab the user is watching; mitigation in §3.3 (match current CSS viewport, always clear on release; never apply to user-claimed tabs unless a vision flow needs it).
 - **Refcounted detach changes timing** of the Chrome debugger infobar ("WorkX is debugging this browser") — it will now disappear at turn end rather than lingering; verify the UX and that re-attach latency (~50ms) per turn is acceptable.
 - **`getContentQuads` migration** changes click coordinates on transformed/inline elements; gate behind a config flag for one release with fallback to `getBoxModel`.
-- **OOPIF attachment** raises the number of debugger targets; Chrome shows one infobar regardless, but cleanup paths must include targets (registry handles via `targetId → tabId` map, mirroring Codex `Fe`).
+- **OOPIF attachment** raises the number of debugger targets; Chrome shows one infobar regardless, but cleanup paths must include targets (registry handles via `targetId → tabId` map, mirroring Codex `Fe`). Scope is larger than a "natural extension" — see §1.6 #10 / §3.7.
+- **Lease auto-close** could close a tab the user has adopted; mitigation in §3.6.3 (re-check focused/active state at release; never close a focused tab).
+- **Timeout force-detach blast radius:** one command timeout fails all concurrent commands on the shared tab (§1.6 #2 / §3.2); gate on a wedged check if this proves disruptive in dogfood.
 
 ---
 
-## 7. Appendix: implementation contracts (v2)
+## 7. Appendix: implementation contracts (v3)
 
 Authoritative interfaces for PR-1/PR-2. Implementations may add private members but must not change these shapes without updating this doc.
 
@@ -380,12 +414,17 @@ export interface DebuggerSessionRegistry {
 }
 // Singleton impl: src/extension/tools/browser/ChromeDebuggerSessionRegistry.ts
 // - one chrome.debugger.onEvent + onDetach listener total, dispatch by source.tabId
-// - per-tab async mutex serializing attach/detach (Codex xt())
-// - per-tab Set<string> enabledDomains; ensureDomain sends `${domain}.enable` once
+// - per-tab async mutex serializing attach/detach (Codex xt()); promise-chain built
+//   with .catch/.finally so a rejected op cannot poison the lock for later waiters
+// - acquire/release/forceDetach ALL run inside withTabLock; forceDetach resets the
+//   tab entry (refs->0, enabledDomains cleared) so concurrent acquire re-attaches clean;
+//   stale handles' release() then no-op
+// - per-tab Set<string> enabledDomains; ensureDomain sends `${domain}.enable` once;
+//   cleared on EVERY detach path (release-at-0, forceDetach, onDetach)
 // - default command timeout 10_000ms (Codex an); timeout => forceDetach + rethrow typed error
 ```
 
-Migration notes: `ChromeDebuggerClient` becomes a thin adapter over a `DebuggerHandle` (kept because `DomService`/core code consumes the `DebuggerClient` interface); `DomService.instances` cache stays, but `DomService.detach()` calls `handle.release()` instead of `chrome.debugger.detach`. `ScreenshotService.forTab`/`CoordinateActionService.forTab` (both trees) replace probe-attach with `registry.acquire(tabId)` and must `release()` — they hold the handle on the service instance; `PageVisionTool` releases at the end of each action since these services are constructed per call.
+Migration notes: `ChromeDebuggerClient` becomes a thin adapter over a `DebuggerHandle` (kept because `DomService`/core code consumes the `DebuggerClient` interface); `DomService.instances` cache stays, but `DomService.detach()` calls `handle.release()` instead of `chrome.debugger.detach`. `ScreenshotService.forTab`/`CoordinateActionService.forTab` (both trees) replace probe-attach with `registry.acquire(tabId)` and must `release()`. **`PageVisionTool` acquires the handle ONCE at the start of a vision action and `release()`s after the whole screenshot→click sequence (§1.6 #3), passing that one handle to both services** — not one acquire/release per service call, which would detach the tab between screenshot and click. Both service trees must import the *same* singleton registry module (single source-of-truth import path) or the coordination is defeated by two registries.
 
 ### 7.2 InputDispatcher
 
@@ -408,7 +447,7 @@ export const InputDispatcher: {
 };
 ```
 
-Dispatch rules (from CDP/Playwright convention): `keyDown` carries `key`, `code`, `windowsVirtualKeyCode`, and `text` when the key produces a character (so `Enter` sends `text: "\r"`); use `rawKeyDown` when no text should be produced (modifier-held navigation); `keyUp` mirrors `keyDown` minus `text`. `click` sets `buttons` bitmask during press and `pointerType: 'mouse'`.
+Dispatch rules (from CDP/Playwright convention): `keyDown` carries `key`, `code`, `windowsVirtualKeyCode`, and `text` when the key produces a character (so `Enter` sends `text: "\r"`); use `rawKeyDown` when no text should be produced (modifier-held navigation); `keyUp` mirrors `keyDown` minus `text`. Shifted/capital chars set the Shift modifier bit + `shiftKey`/`shiftKeyCode`; keypad keys forward `location` (§1.6 #4). `click`: `mouseMoved` (`button:'none'`, `buttons:0`) → `mousePressed` (button bit set in `buttons`) → `mouseReleased` (released button **cleared** from `buttons`); `pointerType: 'mouse'` (§1.6 #5).
 
 ### 7.3 PageReadiness
 
@@ -439,4 +478,4 @@ export interface TabLeaseStore {
 }
 ```
 
-Call sites: `Session.setTabId` (`src/core/Session.ts:1081`) claims/releases on rebind; session cleanup (`Session.ts:995`) and `abortTasksForTab` (`Session.ts:2310`) release + `registry.forceDetach`; service-worker startup runs `gcStale()`.
+Call sites: `RepublicAgent.handleTabBinding` (CASES 1/2/3) claims/releases on rebind (**not** `Session.setTabId` — §1.6 #7); session cleanup (`Session.ts:995`) and `abortTasksForTab` (`Session.ts:2310`) release + `registry.forceDetach`; service-worker startup runs `gcStale()` through the per-session `lifecycleQueue`.
