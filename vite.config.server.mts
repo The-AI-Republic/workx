@@ -37,6 +37,10 @@ export default defineConfig({
     noExternal: [
       // Force these into the bundle so path aliases resolve
       /^@\//,
+      // Bundle workspace packages
+      /^@workx\//,
+      // Bundle CJS packages that don't support named ESM exports
+      'rrule',
     ],
   },
   resolve: {
