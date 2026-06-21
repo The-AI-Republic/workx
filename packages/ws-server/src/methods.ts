@@ -112,6 +112,14 @@ export interface MethodContext {
   scopes: string[];
   userId?: string;
   sessionKey?: string;
+  /**
+   * Caller channel identity. Populated by the dispatcher so handlers route
+   * submissions/events through the originating channel instead of a hardcoded
+   * one. Optional for backward compatibility: the headless server omits these
+   * and handlers fall back to the `server-main`/`server` defaults.
+   */
+  channelId?: string;
+  channelType?: string;
   /** Send an event frame back to this connection */
   sendEvent: (event: string, payload?: unknown) => void;
 }
