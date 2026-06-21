@@ -104,7 +104,7 @@ export class AnthropicClient extends OpenAIResponsesClient {
       apiKey: this.apiKey || 'dummy-key', // validated at request time
       baseURL: this.baseUrl,
       dangerouslyAllowBrowser: true, // required for Chrome extension / browser runtime
-      maxRetries: 0, // retries handled by the inherited stream() loop
+      maxRetries: 0, // single attempt; retry/backoff is owned by TurnManager.runTurn
       timeout: 600000, // 10 minutes for long thinking/tool turns
       defaultHeaders: {
         // Allow direct browser-origin requests from the extension runtime.
@@ -288,6 +288,30 @@ export class AnthropicClient extends OpenAIResponsesClient {
         case 'other':
         default:
           break;
+      }
+    }
+
+    // Anthropic requires every thinking / redacted_thinking block to appear at the
+    // START of an assistant message, before any text or tool_use block. Streamed
+    // history is normally already in this order, but a turn that interleaves a
+    // tool_use between two reasoning blocks (or records the message before the
+    // reasoning) would otherwise emit a thinking block after tool_use and get a 400.
+    // Stable-partition each assistant message so thinking blocks lead.
+    for (const message of messages) {
+      if (message.role !== 'assistant') {
+        continue;
+      }
+      const thinking: any[] = [];
+      const rest: any[] = [];
+      for (const block of message.content) {
+        if (block?.type === 'thinking' || block?.type === 'redacted_thinking') {
+          thinking.push(block);
+        } else {
+          rest.push(block);
+        }
+      }
+      if (thinking.length > 0 && rest.length > 0) {
+        message.content = [...thinking, ...rest];
       }
     }
 
@@ -752,6 +776,11 @@ export class AnthropicClient extends OpenAIResponsesClient {
   /**
    * Non-streaming completion using the Anthropic Messages API.
    * Overrides the OpenAI Chat Completions implementation.
+   *
+   * Text-only: this path maps user/assistant text and the system prompt. It does
+   * NOT carry tool calls, tool results, images, or thinking blocks, and is only
+   * used for simple text completions (e.g. memory merge/search). Agentic tool
+   * turns go through stream().
    */
   async complete(request: CompletionRequest): Promise<CompletionResponse> {
     this.validateRequest(request);

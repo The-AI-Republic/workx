@@ -266,9 +266,11 @@ describe('AnthropicClient request building', () => {
       {
         role: 'assistant',
         content: [
+          // Anthropic requires thinking-family blocks to lead, before tool_use,
+          // even though the source history interleaved tool_use between them.
           { type: 'thinking', thinking: 'Need weather first.', signature: 'sig_123' },
-          { type: 'tool_use', id: 'toolu_1', name: 'get_weather', input: { city: 'SF' } },
           { type: 'redacted_thinking', data: 'redacted_123' },
+          { type: 'tool_use', id: 'toolu_1', name: 'get_weather', input: { city: 'SF' } },
         ],
       },
     ]);
