@@ -107,7 +107,7 @@
     "zod": "^3.23.8"
   },
   "optionalDependencies": {
-    "better-sqlite3": "^11.7.0",
+    "better-sqlite3": "^12.10.0",
     "dotenv": "^16.4.7"
   }
 }
