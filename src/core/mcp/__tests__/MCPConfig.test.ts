@@ -254,18 +254,18 @@ describe('MCPConfig Validation Schemas', () => {
 
     it('should accept streamable HTTP with session JWT auth and static headers', () => {
       const input = {
-        name: 'ai-hub',
+        name: 'gateway',
         url: 'https://gateway.example.com/mcp',
         transport: 'streamable-http' as const,
         authMode: 'session-jwt' as const,
-        headers: { 'X-Air-Tool-Discovery': 'folded' },
+        headers: { 'X-Custom-Tool-Discovery': 'folded' },
       };
 
       const result = MCPServerConfigCreateSchema.parse(input);
 
       expect(result.transport).toBe('streamable-http');
       expect(result.authMode).toBe('session-jwt');
-      expect(result.headers).toEqual({ 'X-Air-Tool-Discovery': 'folded' });
+      expect(result.headers).toEqual({ 'X-Custom-Tool-Discovery': 'folded' });
     });
 
     it('should reject SSE transport without url', () => {

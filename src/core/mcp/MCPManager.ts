@@ -711,8 +711,8 @@ export class MCPManager implements IMCPManager {
     }
 
     const now = Date.now();
-    const headers = urls.gatewayMcpToolDiscovery
-      ? { 'X-Air-Tool-Discovery': urls.gatewayMcpToolDiscovery }
+    const headers = urls.gatewayMcpToolDiscovery && urls.gatewayMcpToolDiscoveryHeader
+      ? { [urls.gatewayMcpToolDiscoveryHeader]: urls.gatewayMcpToolDiscovery }
       : undefined;
     const builtinConfig: IMCPServerConfig = {
       id: BUILTIN_GATEWAY_SERVER_ID,

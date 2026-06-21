@@ -32,13 +32,13 @@ vi.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
 function config(overrides: Partial<IMCPServerConfig> = {}): IMCPServerConfig {
   return {
     id: '550e8400-e29b-41d4-a716-446655440000',
-    name: 'ai-hub',
+    name: 'gateway',
     url: 'https://gateway.example.com/mcp',
     enabled: true,
     timeout: 30000,
     transport: 'streamable-http',
     authMode: 'session-jwt',
-    headers: { 'X-Air-Tool-Discovery': 'folded' },
+    headers: { 'X-Custom-Tool-Discovery': 'folded' },
     platform: 'desktop',
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -58,6 +58,7 @@ describe('StreamableHttpMCPClient', () => {
       this.opts = opts;
       this.onclose = undefined;
       this.onerror = undefined;
+      this.protocolVersion = '2025-01-01';
       this.close = vi.fn(async () => undefined);
       mocks.transports.push(this);
     });
@@ -77,7 +78,7 @@ describe('StreamableHttpMCPClient', () => {
     }));
   });
 
-  it('injects the session JWT and folded discovery header into transport fetches', async () => {
+  it('injects the session JWT and configured headers into transport fetches', async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response('{}'));
     vi.stubGlobal('fetch', fetchMock);
     const client = new StreamableHttpMCPClient({
@@ -93,7 +94,18 @@ describe('StreamableHttpMCPClient', () => {
     const [, requestInit] = fetchMock.mock.calls[0] as unknown as [RequestInfo | URL, RequestInit];
     const headers = requestInit.headers as Headers;
     expect(headers.get('Authorization')).toBe('Bearer jwt-123');
-    expect(headers.get('X-Air-Tool-Discovery')).toBe('folded');
+    expect(headers.get('X-Custom-Tool-Discovery')).toBe('folded');
+  });
+
+  it('reports the negotiated protocol version after connect', async () => {
+    const client = new StreamableHttpMCPClient({
+      config: config(),
+      tokenProvider: async () => 'jwt-123',
+    });
+
+    await client.connect();
+
+    expect(client.getProtocolVersion()).toBe('2025-01-01');
   });
 
   it('refreshes and retries session JWT fetches once after a 401', async () => {

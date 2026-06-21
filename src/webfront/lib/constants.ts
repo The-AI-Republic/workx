@@ -10,10 +10,10 @@ export const AUTH_ROUTE_PATHS = authConfig.routes;
 
 export const BACKEND_GENERAL_API = `${BACKEND_API_BASE_URL}/api/v1`;
 export const LLM_API_URL = runtimeUrls.llmApiUrl ?? `${BACKEND_API_BASE_URL}/api/llm`;
-export const AI_HUB_GATEWAY_BASE_URL = runtimeUrls.aiHubGatewayBaseUrl ?? '';
-export const AI_HUB_LLM_API_URL = runtimeUrls.aiHubLlmApiUrl ?? '';
-export const AI_HUB_MCP_URL = runtimeUrls.aiHubMcpUrl ?? '';
-export const AI_HUB_CATALOG_URL = runtimeUrls.aiHubCatalogUrl ?? '';
+export const GATEWAY_BASE_URL = runtimeUrls.gatewayBaseUrl ?? '';
+export const GATEWAY_LLM_API_URL = runtimeUrls.gatewayLlmApiUrl ?? '';
+export const GATEWAY_MCP_URL = runtimeUrls.gatewayMcpUrl ?? '';
+export const GATEWAY_CATALOG_URL = runtimeUrls.gatewayCatalogUrl ?? '';
 export const LLM_ROUTING_MODE = runtimeUrls.llmRoutingMode;
 
 export function buildHostedAuthUrl(path: string | null): string | null {

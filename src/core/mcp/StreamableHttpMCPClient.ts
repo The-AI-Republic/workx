@@ -70,17 +70,23 @@ export class StreamableHttpMCPClient implements IMCPClientAdapter {
         if (this.status === 'connected') this.setStatus('error', 'Connection lost');
       };
 
-      await Promise.race([
-        this.client.connect(this.transport),
-        new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error(`Connection timeout after ${timeout}ms`)), timeout);
-        }),
-      ]);
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      try {
+        await Promise.race([
+          this.client.connect(this.transport),
+          new Promise<never>((_, reject) => {
+            timeoutId = setTimeout(() => reject(new Error(`Connection timeout after ${timeout}ms`)), timeout);
+          }),
+        ]);
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId);
+      }
 
       const serverVersion = this.client.getServerVersion();
       if (serverVersion) {
         this.serverInfo = { name: serverVersion.name, version: serverVersion.version };
       }
+      this.protocolVersion = (this.transport as { protocolVersion?: string }).protocolVersion;
 
       const serverCaps = this.client.getServerCapabilities();
       if (serverCaps) {
@@ -141,12 +147,15 @@ export class StreamableHttpMCPClient implements IMCPClientAdapter {
     const timeout = this.options.config.timeout || 30000;
 
     try {
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
       const result = await Promise.race([
         this.client!.callTool({ name, arguments: args }),
         new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error(`Tool call timeout after ${timeout}ms`)), timeout);
+          timeoutId = setTimeout(() => reject(new Error(`Tool call timeout after ${timeout}ms`)), timeout);
         }),
-      ]);
+      ]).finally(() => {
+        if (timeoutId) clearTimeout(timeoutId);
+      });
 
       if (name === 'app_activate' || name === 'app_deactivate') {
         await this.listTools().catch((error) => {

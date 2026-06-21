@@ -1076,7 +1076,7 @@ export class ServerAgentBootstrap {
                 ? async () => getCredentialStore().get('auth', 'access_token')
                 : undefined;
               const urls = runtimeState?.getUrls();
-              const gatewayLlmBaseUrl = urls?.llmRoutingMode === 'ai-hub' ? urls.gatewayLlmApiUrl : null;
+              const gatewayLlmBaseUrl = urls?.llmRoutingMode === 'gateway' ? urls.gatewayLlmApiUrl : null;
               return new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter, {
                 gatewayLlmBaseUrl,
                 refreshAccessToken: () => this.refreshDesktopRuntimeSessionTokens(),
@@ -1098,7 +1098,7 @@ export class ServerAgentBootstrap {
             ? async () => getCredentialStore().get('auth', 'access_token')
             : undefined;
           const urls = runtimeState?.getUrls();
-          const gatewayLlmBaseUrl = urls?.llmRoutingMode === 'ai-hub' ? urls.gatewayLlmApiUrl : null;
+          const gatewayLlmBaseUrl = urls?.llmRoutingMode === 'gateway' ? urls.gatewayLlmApiUrl : null;
           return new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter, {
             gatewayLlmBaseUrl,
             refreshAccessToken: () => this.refreshDesktopRuntimeSessionTokens(),
@@ -1382,7 +1382,7 @@ export class ServerAgentBootstrap {
       shouldUseBackend ? this.runtimeState.getUrls().llmApiUrl : null,
       tokenGetter,
       {
-        gatewayLlmBaseUrl: shouldUseBackend && this.runtimeState.getUrls().llmRoutingMode === 'ai-hub'
+        gatewayLlmBaseUrl: shouldUseBackend && this.runtimeState.getUrls().llmRoutingMode === 'gateway'
           ? this.runtimeState.getUrls().gatewayLlmApiUrl
           : null,
         refreshAccessToken: () => this.refreshDesktopRuntimeSessionTokens(),

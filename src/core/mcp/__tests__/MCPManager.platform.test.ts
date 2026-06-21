@@ -16,16 +16,10 @@ const HUB_ENV_KEYS = [
   'WORKX_GATEWAY_MCP_NAME',
   'WORKX_GATEWAY_MCP_AUTH_MODE',
   'WORKX_GATEWAY_MCP_API_KEY',
+  'WORKX_GATEWAY_MCP_TOOL_DISCOVERY_HEADER',
   'WORKX_GATEWAY_MCP_TOOL_DISCOVERY',
-  'WORKX_AI_HUB_GATEWAY_BASE_URL',
-  'WORKX_AI_HUB_MCP_URL',
-  'WORKX_AI_HUB_MCP_NAME',
-  'WORKX_AI_HUB_MCP_AUTH_MODE',
-  'WORKX_AI_HUB_MCP_TOOL_DISCOVERY',
   'VITE_GATEWAY_BASE_URL',
   'VITE_GATEWAY_MCP_URL',
-  'VITE_AI_HUB_GATEWAY_BASE_URL',
-  'VITE_AI_HUB_MCP_URL',
 ] as const;
 const originalHubEnv = new Map<string, string | undefined>();
 
@@ -159,21 +153,22 @@ describe('MCPManager Platform Features', () => {
       expect(hubServer?.headers).toBeUndefined();
     });
 
-    it('should seed first-party gateway MCP only when overlay config asks for it', async () => {
-      process.env.WORKX_AI_HUB_GATEWAY_BASE_URL = 'https://gateway.example.com';
-      process.env.WORKX_AI_HUB_MCP_NAME = 'ai-hub';
-      process.env.WORKX_AI_HUB_MCP_AUTH_MODE = 'session-jwt';
-      process.env.WORKX_AI_HUB_MCP_TOOL_DISCOVERY = 'folded';
+    it('should seed gateway MCP with overlay-provided name, auth, and headers', async () => {
+      process.env.WORKX_GATEWAY_BASE_URL = 'https://gateway.example.com';
+      process.env.WORKX_GATEWAY_MCP_NAME = 'first-party-gateway';
+      process.env.WORKX_GATEWAY_MCP_AUTH_MODE = 'session-jwt';
+      process.env.WORKX_GATEWAY_MCP_TOOL_DISCOVERY_HEADER = 'X-Custom-Tool-Discovery';
+      process.env.WORKX_GATEWAY_MCP_TOOL_DISCOVERY = 'folded';
 
       const manager = await MCPManager.getInstance('desktop');
-      const hubServer = manager.getServerByName('ai-hub');
+      const hubServer = manager.getServerByName('first-party-gateway');
 
       expect(hubServer).toMatchObject({
-        name: 'ai-hub',
+        name: 'first-party-gateway',
         url: 'https://gateway.example.com/mcp',
         transport: 'streamable-http',
         authMode: 'session-jwt',
-        headers: { 'X-Air-Tool-Discovery': 'folded' },
+        headers: { 'X-Custom-Tool-Discovery': 'folded' },
         builtin: true,
       });
     });
