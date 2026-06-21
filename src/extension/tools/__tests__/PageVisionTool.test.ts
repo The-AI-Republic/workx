@@ -110,6 +110,7 @@ function setupScreenshotMocks(
   mocks.screenshotServiceForTab.mockResolvedValue({
     captureViewport: mocks.screenshotServiceCaptureViewport,
     captureWithScroll: mocks.screenshotServiceCaptureWithScroll,
+    release: vi.fn().mockResolvedValue(undefined),
   });
   mocks.screenshotFileManagerSaveScreenshot.mockResolvedValue(undefined);
 }
@@ -125,6 +126,7 @@ function setupCoordinateActionMocks() {
     typeAt: mocks.coordinateActionServiceTypeAt,
     scrollTo: mocks.coordinateActionServiceScrollTo,
     keypressAt: mocks.coordinateActionServiceKeypressAt,
+    release: vi.fn().mockResolvedValue(undefined),
   });
 }
 
