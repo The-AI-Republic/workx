@@ -153,6 +153,65 @@ describe('A2AServer', () => {
     });
   });
 
+  describe('in-flight task is observable (working task published)', () => {
+    it('non-blocking send returns a working task that tasks/get can resolve mid-run', async () => {
+      let resolveTurn!: (r: A2ATurnResult) => void;
+      const bridge = makeBridge({
+        runTurn: vi.fn(() => new Promise<A2ATurnResult>((res) => (resolveTurn = res))),
+      });
+      const server = makeServer(bridge);
+
+      const req = messageSendRequest('a long task', 'nb-1');
+      (req.params as any).configuration = { blocking: false };
+
+      const first = resultOf(await server.handleRpc(req));
+      expect(first.kind).toBe('task');
+      expect(first.status.state).toBe('working');
+      const taskId = first.id as string;
+
+      // Mid-run: the task exists in the store, so tasks/get resolves it.
+      const got = resultOf(
+        await server.handleRpc({ jsonrpc: '2.0', id: 'g1', method: 'tasks/get', params: { id: taskId } })
+      );
+      expect(got.id).toBe(taskId);
+      expect(got.status.state).toBe('working');
+
+      resolveTurn({ text: 'done', success: true });
+    });
+
+    it('tasks/cancel finds the running task instead of taskNotFound', async () => {
+      // The real bridge resolves a turn when it is aborted (via TurnAborted);
+      // mirror that so cancel can drive the executor to a terminal state.
+      const bridge = makeBridge({
+        runTurn: vi.fn(
+          (p: { signal: AbortSignal }) =>
+            new Promise<A2ATurnResult>((res) => {
+              p.signal.addEventListener('abort', () =>
+                res({ text: '', success: false, error: 'aborted' })
+              );
+            })
+        ),
+      });
+      const server = makeServer(bridge);
+
+      const req = messageSendRequest('cancel me', 'nb-2');
+      (req.params as any).configuration = { blocking: false };
+      const first = resultOf(await server.handleRpc(req));
+      const taskId = first.id as string;
+
+      const cancelResponse = (await server.handleRpc({
+        jsonrpc: '2.0',
+        id: 'c1',
+        method: 'tasks/cancel',
+        params: { id: taskId },
+      })) as { error?: { code: number; message: string } };
+
+      // The fix: an intermediate task exists, so cancel does not 404 with
+      // "Task not found" (the pre-fix behavior).
+      expect(cancelResponse.error?.message ?? '').not.toMatch(/not found/i);
+    });
+  });
+
   describe('errors', () => {
     it('returns a JSON-RPC error for an unknown method', async () => {
       const server = makeServer(makeBridge());

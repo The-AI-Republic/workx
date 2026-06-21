@@ -114,6 +114,11 @@ class WorkXAgentExecutor implements AgentExecutor {
         return;
       }
 
+      // Publish an initial non-terminal task so the task exists in the store
+      // while the (potentially long) turn runs — this is what lets a concurrent
+      // tasks/get or tasks/cancel resolve it instead of hitting taskNotFound.
+      eventBus.publish(makeTask(taskId, contextId, 'working'));
+
       const result = await this.bridge.runTurn({
         text,
         contextId,
@@ -254,7 +259,7 @@ function extractText(parts: Part[] | undefined): string {
 function makeTask(
   taskId: string,
   contextId: string,
-  state: 'completed' | 'failed' | 'canceled',
+  state: 'working' | 'submitted' | 'completed' | 'failed' | 'canceled',
   errorMessage?: string,
   responseText?: string
 ): Task {

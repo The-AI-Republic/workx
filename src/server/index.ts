@@ -12,7 +12,7 @@ import { createServer as createHttpsServer } from 'node:https';
 import { readFileSync, existsSync, statSync, createReadStream } from 'node:fs';
 import { join, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, timingSafeEqual } from 'node:crypto';
 
 // Polyfill EventSource for Node.js (required by SSE MCP transport)
 if (typeof globalThis.EventSource === 'undefined') {
@@ -123,6 +123,37 @@ const MIME_TYPES: Record<string, string> = {
 /** Max accepted A2A request body size (1 MiB) — guards against unbounded reads. */
 const A2A_MAX_BODY_BYTES = 1024 * 1024;
 
+/** Constant-time string compare that does not leak length via early return. */
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
+
+/**
+ * Authorize an inbound A2A request against the server's configured token.
+ *
+ * The A2A HTTP endpoint is separate from the WS handshake, so it enforces the
+ * same `WORKX_SERVER_TOKEN` here. When a token is configured the caller must
+ * present it via `Authorization: Bearer <token>` or `X-API-Key: <token>`
+ * (both supported by the desktop A2A client). When no token is configured the
+ * endpoint relies on the opt-in flag + a trusted bind, matching its docs.
+ */
+function isA2ARequestAuthorized(req: IncomingMessage): boolean {
+  const token = config.server.auth.token;
+  if (!token) return true; // no token configured → trusted-bind posture
+
+  const authHeader = req.headers['authorization'];
+  if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+    if (safeEqual(authHeader.slice('Bearer '.length).trim(), token)) return true;
+  }
+  const apiKey = req.headers['x-api-key'];
+  if (typeof apiKey === 'string' && safeEqual(apiKey.trim(), token)) return true;
+
+  return false;
+}
+
 /** Read and JSON-parse a request body, bounded by {@link A2A_MAX_BODY_BYTES}. */
 function readJsonBody(req: IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
@@ -176,6 +207,17 @@ function handleHttpRequest(req: IncomingMessage, res: ServerResponse): void {
     }
 
     if (req.method === 'POST' && reqPath === A2A_RPC_PATH) {
+      if (!isA2ARequestAuthorized(req)) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            jsonrpc: '2.0',
+            id: null,
+            error: { code: -32001, message: 'Unauthorized' },
+          })
+        );
+        return;
+      }
       readJsonBody(req)
         .then((body) => a2aServer.handleRpc(body))
         .then((result) => {

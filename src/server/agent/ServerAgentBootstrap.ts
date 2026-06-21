@@ -27,7 +27,7 @@ import type { SubmissionContext } from '@/core/channels/types';
 import { deriveInputOrigin } from '@/core/input/types';
 import type { EventMsg } from '@/core/protocol/events';
 import { A2AServer, type A2AAgentBridge, type A2ATurnResult } from '@/core/a2a/A2AServer';
-import { A2AEventTap } from '@/core/a2a/A2AEventTap';
+import { A2AEventTap, interpretTurnEvent } from '@/core/a2a/A2AEventTap';
 import type { ToolDefinition } from '@/tools/BaseTool';
 
 import { getServerConfig, loadServerConfig, watchConfig, stopWatchingConfig, onConfigReload } from '../config/server-config';
@@ -1916,18 +1916,14 @@ export class ServerAgentBootstrap {
       };
 
       const unsubscribe = this.a2aEventTap.on(sessionId, (msg) => {
-        if (msg.type !== 'TaskComplete') return;
-        // Once our submission id is known, only accept the matching completion
-        // (or one without an id, for older event shapes). Before then, ignore —
-        // real turns take far longer to complete than submit() takes to resolve.
-        const data = (msg as Extract<EventMsg, { type: 'TaskComplete' }>).data;
+        // Wait until our submission id is known before matching terminal events.
+        // Real turns take far longer to complete than submit() takes to resolve,
+        // so nothing is missed by ignoring events in that brief window.
         if (submissionId === undefined) return;
-        if (data.submission_id && data.submission_id !== submissionId) return;
-        finish({
-          text: data.last_agent_message ?? '',
-          success: !data.aborted,
-          error: data.aborted ? (data.abort_reason ?? 'aborted') : undefined,
-        });
+        // Resolve on TaskComplete (success) or TurnAborted (cancel / abort /
+        // error-reason), both correlated by submission_id. See interpretTurnEvent.
+        const outcome = interpretTurnEvent(msg, submissionId);
+        if (outcome) finish(outcome);
       });
 
       if (signal.aborted) {
