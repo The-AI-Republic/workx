@@ -9,7 +9,9 @@
 
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http';
 import { createServer as createHttpsServer } from 'node:https';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync, statSync, createReadStream } from 'node:fs';
+import { join, extname, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 
 // Polyfill EventSource for Node.js (required by SSE MCP transport)
@@ -98,6 +100,21 @@ if (tlsEnabled) {
   httpServer = createHttpServer(handleHttpRequest);
 }
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const WEB_ROOT = join(__dirname, '..', 'web');
+
+const MIME_TYPES: Record<string, string> = {
+  '.html': 'text/html',
+  '.js': 'application/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+};
+
 function handleHttpRequest(req: IncomingMessage, res: ServerResponse): void {
   // Health endpoint (UNAUTHENTICATED — K8s/Docker liveness/readiness probe).
   // Track 17 security boundary: this returns ONLY the HealthStatus shape (a
@@ -109,6 +126,45 @@ function handleHttpRequest(req: IncomingMessage, res: ServerResponse): void {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(status));
     return;
+  }
+
+  // Static file serving for web UI
+  if (req.method === 'GET') {
+    const urlPath = new URL(req.url ?? '/', `http://${req.headers.host}`).pathname;
+    const filePath = join(WEB_ROOT, urlPath === '/' ? 'index.html' : urlPath);
+
+    // Prevent path traversal
+    if (!filePath.startsWith(WEB_ROOT)) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Forbidden' }));
+      return;
+    }
+
+    if (existsSync(filePath) && statSync(filePath).isFile()) {
+      const ext = extname(filePath);
+      // Hashed assets (chunks/*-[hash].js, assets/*-[hash].css) are immutable
+      const isHashed = /[-\.][a-f0-9]{8,}\.\w+$/.test(filePath);
+      const cacheControl = isHashed
+        ? 'public, max-age=31536000, immutable'
+        : 'no-cache';
+      res.writeHead(200, {
+        'Content-Type': MIME_TYPES[ext] ?? 'application/octet-stream',
+        'Cache-Control': cacheControl,
+      });
+      createReadStream(filePath).pipe(res);
+      return;
+    }
+
+    // SPA fallback: serve index.html for unmatched routes
+    const indexPath = join(WEB_ROOT, 'index.html');
+    if (existsSync(indexPath)) {
+      res.writeHead(200, {
+        'Content-Type': 'text/html',
+        'Cache-Control': 'no-cache',
+      });
+      createReadStream(indexPath).pipe(res);
+      return;
+    }
   }
 
   // All other requests → 404
@@ -398,6 +454,7 @@ async function main(): Promise<void> {
   httpServer.listen(PORT, BIND, () => {
     const host = BIND === '0.0.0.0' ? 'localhost' : BIND;
     console.log(`[Server] Listening on ${BIND}:${PORT}`);
+    console.log(`[Server] Web UI: ${proto}://${host}:${PORT}`);
     console.log(`[Server] Health: ${proto}://${host}:${PORT}/health`);
     console.log(`[Server] WebSocket: ${wsProto}://${host}:${PORT}`);
   });
