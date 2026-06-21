@@ -1403,11 +1403,31 @@ export class ServerAgentBootstrap {
           throw new Error('No sessionId — cannot route chat submission');
         }
         if (!this.registry) throw new Error('AgentRegistry not initialized');
-        const targetSession = this.registry.getSession(context.sessionId);
+        // A dedicated channel (e.g. the desktop app-server) submits against a
+        // real, per-connection session id and owns its own event stream. The
+        // primary chat surface instead submits under a connection alias
+        // (`ws:main:<connId>`) that is not itself a registry key and maps to the
+        // server's primary session.
+        const isDedicatedChannel =
+          !!context.channelId &&
+          context.channelId !== this.primaryChannelId &&
+          this.channels.has(context.channelId);
+        // Only the aliased primary surface falls back to the primary session.
+        // For a dedicated channel an unresolved session must fail loudly rather
+        // than silently execute the request against the UI's live conversation.
+        const targetSession =
+          this.registry.getSession(context.sessionId) ??
+          (isDedicatedChannel ? undefined : this.registry.getPrimarySession());
         if (!targetSession?.agent) throw new Error(`Session not found: ${context.sessionId}`);
+        // Route this session's agent events back to the originating channel so a
+        // dedicated connection receives its own stream (and the UI does not).
+        // recordSessionOwner no-ops unless channelId is a registered channel, so
+        // the primary-surface alias keeps default primary-channel routing.
+        this.recordSessionOwner(context.sessionId, context.channelId);
         // Track 13: derive origin from the chat channel (on-host WS chat maps
         // to `local` and skips the gate; remote/relay maps to `remote`).
-        await targetSession.agent.submitOperation(op, {
+        // Return the submission id so callers can surface it as a stable runId.
+        return await targetSession.agent.submitOperation(op, {
           tabId: context.tabId,
           origin: deriveInputOrigin(context),
         });

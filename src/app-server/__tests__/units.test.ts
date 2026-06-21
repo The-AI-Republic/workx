@@ -10,8 +10,8 @@ import {
   isScopeEligible,
   isSessionEligible,
   extractRunId,
-  eventMsgToName,
 } from '../AppServerChannel';
+import { eventMsgToName } from '@/server/channels/eventWireName';
 import type { EventMsg } from '@/core/protocol/events';
 import type { AppServerStatusSnapshot } from '../status/AppServerStatus';
 
@@ -99,7 +99,7 @@ describe('AppServerConnectionRegistry', () => {
 
   it('adds, gets, counts, and removes connections', () => {
     const reg = new AppServerConnectionRegistry();
-    reg.add({ connectionId: 'c1', socket, isLoopback: true, now: 1 });
+    reg.add({ connectionId: 'c1', socket, now: 1 });
     expect(reg.count()).toBe(1);
     expect(reg.get('c1')?.connectionId).toBe('c1');
     const removed = reg.remove('c1');

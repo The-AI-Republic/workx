@@ -131,7 +131,7 @@ export class AppServerManager {
     this.queue = null;
     this.watchdog = null;
     this.listenInfo = null;
-    this.status.set({ status: this.config.enabled ? 'disabled' : 'disabled', connections: 0, url: undefined });
+    this.status.set({ status: 'disabled', connections: 0, url: undefined });
   }
 
   /** Rotate the capability token. Existing connections remain until they close. */

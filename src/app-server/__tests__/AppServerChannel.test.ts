@@ -18,7 +18,7 @@ function addAuthedConn(
   scopes: string[],
 ) {
   const f = fakeSocket();
-  const conn = reg.add({ connectionId: id, socket: f.socket, isLoopback: true, now: 0 });
+  const conn = reg.add({ connectionId: id, socket: f.socket, now: 0 });
   conn.authenticated = true;
   conn.sessionKey = sessionKey;
   conn.subscriptions.add(sessionKey);
@@ -60,7 +60,7 @@ describe('AppServerChannel.sendEvent', () => {
   it('skips unauthenticated connections', async () => {
     const reg = new AppServerConnectionRegistry();
     const f = fakeSocket();
-    reg.add({ connectionId: 'c', socket: f.socket, isLoopback: true, now: 0 }); // not authenticated
+    reg.add({ connectionId: 'c', socket: f.socket, now: 0 }); // not authenticated
     const channel = new AppServerChannel(reg);
     await channel.sendEvent({ msg: { type: 'AgentMessageDelta', data: {} } as unknown as EventMsg, sessionId: 'x' });
     expect(f.sent).toHaveLength(0);

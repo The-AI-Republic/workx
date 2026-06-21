@@ -25,6 +25,7 @@ import type {
 import type { EventMsg } from '@/core/protocol/events';
 import { makeEvent, EVENT_SCOPE_MAP, BROADCAST_EVENTS } from '@workx/ws-server';
 import { redactEventMsgSecrets } from '@/server/security/eventRedaction';
+import { eventMsgToName } from '@/server/channels/eventWireName';
 import type { AppServerConnectionRegistry } from './AppServerConnectionRegistry';
 
 export const APP_SERVER_CHANNEL_ID = 'desktop-app-server';
@@ -137,39 +138,4 @@ export function isSessionEligible(
 export function extractRunId(msg: EventMsg): string | undefined {
   const data = (msg as { data?: { submission_id?: string; turn_id?: string } }).data;
   return data?.submission_id ?? data?.turn_id;
-}
-
-export function eventMsgToName(event: EventMsg): string {
-  if (
-    event.type === 'AgentMessageDelta' ||
-    event.type === 'AgentMessage' ||
-    event.type === 'AgentReasoning' ||
-    event.type === 'AgentReasoningDelta'
-  ) {
-    return 'chat';
-  }
-  if (
-    event.type === 'ToolExecutionStart' ||
-    event.type === 'ToolExecutionEnd' ||
-    event.type === 'ToolExecutionProgress' ||
-    event.type === 'McpToolCallBegin' ||
-    event.type === 'McpToolCallEnd' ||
-    event.type === 'ExecCommandBegin' ||
-    event.type === 'ExecCommandEnd' ||
-    event.type === 'TurnStarted' ||
-    event.type === 'TurnComplete' ||
-    event.type === 'TaskStarted' ||
-    event.type === 'TaskComplete'
-  ) {
-    return 'agent';
-  }
-  if (event.type === 'ExecApprovalRequest' || event.type === 'ApplyPatchApprovalRequest') {
-    return 'exec.approval.requested';
-  }
-  if (event.type === 'Error' || event.type === 'StreamError') {
-    return 'health';
-  }
-  if (event.type === 'ServiceResponse') return 'service.response';
-  if (event.type === 'StateUpdate') return 'state.update';
-  return event.type;
 }
