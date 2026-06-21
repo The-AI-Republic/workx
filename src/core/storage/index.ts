@@ -192,6 +192,12 @@ export async function createConfigStorage(): Promise<ConfigStorageProvider> {
     );
     return new FileConfigStorageProvider(getDataDir());
   }
+  if (__BUILD_MODE__ === 'web') {
+    const { WebConfigStorage } = await import(
+      '@/webfront/storage/WebConfigStorage'
+    );
+    return new WebConfigStorage();
+  }
   throw new Error(`Unsupported build mode for ConfigStorage: ${__BUILD_MODE__}`);
 }
 

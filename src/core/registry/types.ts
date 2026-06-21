@@ -16,8 +16,12 @@ export type SessionState = 'initializing' | 'active' | 'idle' | 'terminated';
  * Session type discriminator
  * - primary: User's main interactive session (side panel)
  * - scheduled: Session created for scheduled task execution
+ * - api: Dedicated session for an external app-server connection. Never the
+ *   registry's primary session, so app-server clients can't hijack the UI's
+ *   primary-session pointer; created `internal` so it bypasses the user
+ *   concurrency budget (the app-server transport bounds connections itself).
  */
-export type SessionType = 'primary' | 'scheduled';
+export type SessionType = 'primary' | 'scheduled' | 'api';
 
 /**
  * Configuration for creating a new session
