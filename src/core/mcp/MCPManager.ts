@@ -43,6 +43,13 @@ const MAX_SERVERS = 100;
 /** Builtin browser server ID — deterministic UUID for desktop.
  *  Must be a valid UUID to pass MCPServerConfigSchema validation. */
 const BUILTIN_BROWSER_SERVER_ID = '00000000-0000-4000-8000-000000000001';
+const BROWSER_MCP_AUTO_CONNECT_ARGS = ['--no-usage-statistics', '--autoConnect'];
+
+function createBrowserMcpArgs(includePackageName: boolean): string[] {
+  return includePackageName
+    ? ['chrome-devtools-mcp', ...BROWSER_MCP_AUTO_CONNECT_ARGS]
+    : [...BROWSER_MCP_AUTO_CONNECT_ARGS];
+}
 
 /**
  * MCPManager manages multiple MCP server connections.
@@ -615,7 +622,7 @@ export class MCPManager implements IMCPManager {
     // Try the bundled sidecar binary first (production builds).
     // Fall back to npx + node_modules for dev mode where no sidecar is built.
     let command = 'npx';
-    let args = ['chrome-devtools-mcp', '--no-usage-statistics', '--isolated', '--chromeArg=--no-sandbox', '--chromeArg=--disable-setuid-sandbox'];
+    let args = createBrowserMcpArgs(true);
     let cwd: string | undefined;
 
     if (__BUILD_MODE__ === 'server') {
@@ -624,7 +631,7 @@ export class MCPManager implements IMCPManager {
         const host = getOptionalDesktopRuntimeHost();
         if (host?.browserMcpSidecarPath) {
           command = host.browserMcpSidecarPath;
-          args = ['--no-usage-statistics', '--isolated', '--chromeArg=--no-sandbox', '--chromeArg=--disable-setuid-sandbox'];
+          args = createBrowserMcpArgs(false);
         } else if (host?.projectRoot) {
           cwd = host.projectRoot;
         }
