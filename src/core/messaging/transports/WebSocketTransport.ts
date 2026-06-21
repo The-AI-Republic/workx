@@ -43,6 +43,48 @@ const SERVICE_METHOD_MAP: Record<string, string> = {
   'agent.healthCheck': 'health',
 };
 
+/**
+ * Translate a conversation Op into the server's method + params.
+ * The server reconstructs an Op from these params (see server/handlers/chat.ts
+ * and server/handlers/exec.ts), so this is the inverse of that contract.
+ * Returns null for ops the server has no method for.
+ */
+function opToServerRequest(
+  op: Op,
+  context?: Record<string, unknown>,
+): { method: string; params: Record<string, unknown> } | null {
+  switch (op.type) {
+    case 'UserTurn':
+      return {
+        method: 'chat.send',
+        params: {
+          items: op.items,
+          model: op.model,
+          tabId: op.tabId,
+          approval_policy: op.approval_policy,
+          sandbox_policy: op.sandbox_policy,
+          ...context,
+        },
+      };
+    case 'Interrupt':
+      return { method: 'chat.abort', params: { ...context } };
+    case 'ExecApproval':
+    case 'PatchApproval':
+      return {
+        method: 'exec.approval.resolve',
+        params: {
+          id: op.id,
+          // Server accepts only 'approve' | 'reject'; 'request_change' is a
+          // rejection carrying alternative instructions.
+          decision: op.decision === 'approve' ? 'approve' : 'reject',
+          reason: op.type === 'ExecApproval' ? op.alternativeText : undefined,
+        },
+      };
+    default:
+      return null;
+  }
+}
+
 export class WebSocketTransport implements UIChannelTransport {
   private ws: WebSocket | null = null;
   private listeners = new Set<(event: ChannelEvent) => void>();
@@ -98,13 +140,16 @@ export class WebSocketTransport implements UIChannelTransport {
       return;
     }
 
-    // Regular Ops (UserTurn, Interrupt, etc.) → chat.send
-    this.send({
-      type: 'req',
-      id: crypto.randomUUID(),
-      method: 'chat.send',
-      params: { op, ...context },
-    });
+    // Regular conversation Ops → the server's chat/exec methods.
+    const req = opToServerRequest(op, context);
+    if (!req) {
+      // No server-side equivalent for this op — drop it rather than send a
+      // malformed chat.send the server would reject. ServiceRequests that the
+      // server doesn't register surface as a rejected ServiceResponse above.
+      console.warn('[WebSocketTransport] No server mapping for op type:', op.type);
+      return;
+    }
+    this.send({ type: 'req', id: crypto.randomUUID(), method: req.method, params: req.params });
   }
 
   onEvent(handler: (event: ChannelEvent) => void): () => void {
@@ -186,7 +231,7 @@ export class WebSocketTransport implements UIChannelTransport {
 
     for (const handler of this.listeners) {
       try {
-        handler(responseEvent);
+        handler({ msg: responseEvent });
       } catch (err) {
         console.error('[WebSocketTransport] Event handler threw:', err);
       }
@@ -249,9 +294,10 @@ export class WebSocketTransport implements UIChannelTransport {
     // Convert server event to EventMsg and dispatch
     const eventMsg = this.toEventMsg(eventName, frame.payload);
     if (eventMsg) {
+      const sessionId = (frame.payload as { sessionId?: string } | undefined)?.sessionId;
       for (const handler of this.listeners) {
         try {
-          handler(eventMsg);
+          handler({ msg: eventMsg, sessionId });
         } catch (err) {
           console.error('[WebSocketTransport] Event handler threw:', err);
         }
@@ -315,7 +361,12 @@ export class WebSocketTransport implements UIChannelTransport {
         displayName: 'WorkX Web UI',
         version: '1.0.0',
         platform: 'web',
-        mode: 'channel',
+        // The role is derived from `mode` server-side (see server/auth/roles.ts).
+        // The web UI is a full operator surface (chat, sessions, config,
+        // credentials, approvals), so it connects as `operator` to receive the
+        // matching scopes. In `none`+same-origin / loopback this is a trusted,
+        // single-user local connection.
+        mode: 'operator',
       },
     };
 
@@ -335,24 +386,19 @@ export class WebSocketTransport implements UIChannelTransport {
   }
 
   /**
-   * Convert a server event (event name + payload) to an EventMsg.
-   * Server events like 'agent.delta', 'chat.stream', etc. are mapped
-   * to the EventMsg types the UI expects.
+   * Convert a server wire event into the EventMsg the UI consumes.
+   *
+   * The server sends the raw EventMsg as the event payload — see
+   * server/channels/ServerChannel.ts (`payload = the EventMsg`, optionally with
+   * `sessionId` merged in). The wire `event` name is only a scope-routing
+   * category (`chat`/`agent`/`health`/…, from `eventMsgToName`) and carries no
+   * decoding information, so we pass the payload through as the EventMsg.
+   * Returns null for payloads that aren't EventMsg-shaped (e.g. tick frames).
    */
-  private toEventMsg(eventName: string, payload: unknown): EventMsg | null {
-    // The server emits events with names like 'agent.delta', 'agent.done', etc.
-    // Map these to EventMsg types that the UI components understand.
-    // The payload structure varies per event — pass it through.
-
-    // If the payload already has a `type` field matching EventMsg conventions, use it directly
+  private toEventMsg(_eventName: string, payload: unknown): EventMsg | null {
     if (payload && typeof payload === 'object' && 'type' in payload) {
       return payload as EventMsg;
     }
-
-    // Otherwise wrap as a generic event
-    return {
-      type: eventName,
-      data: payload,
-    } as EventMsg;
+    return null;
   }
 }
