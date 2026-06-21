@@ -10,6 +10,8 @@ export type {
   IMCPServerConfig,
   IMCPServerConfigCreate,
   IMCPServerConfigUpdate,
+  MCPTransportType,
+  MCPAuthMode,
   MCPConnectionStatus,
   IMCPServerInfo,
   IMCPCapabilities,
@@ -33,6 +35,8 @@ export {
   MCPServerNameSchema,
   MCPServerUrlSchema,
   MCPTimeoutSchema,
+  MCPTransportTypeSchema,
+  MCPAuthModeSchema,
   MCPServerConfigSchema,
   MCPServerConfigCreateSchema,
   MCPServerConfigUpdateSchema,
@@ -48,6 +52,7 @@ export {
 
 // Client and Manager
 export { MCPClient, type MCPClientOptions } from './MCPClient';
+export { StreamableHttpMCPClient, type StreamableHttpMCPClientOptions } from './StreamableHttpMCPClient';
 export { MCPManager } from './MCPManager';
 
 // Tool Adapter

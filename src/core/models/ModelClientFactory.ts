@@ -51,6 +51,7 @@ interface ClientConstructionSignature {
   parallelToolCalls: boolean;
   providerBaseUrl: string | null;
   providerOrganization: string | null;
+  gatewayLlmBaseUrl: string | null;
   model: {
     modelKey: string | null;
     supportsReasoning: boolean;
@@ -207,7 +208,10 @@ export class ModelClientFactory {
 
     // If using backend routing (logged in), create backend-routed client
     if (this.isBackendRouting()) {
-      const client = await this.createBackendRoutedClient(provider);
+      const gatewayLlmBaseUrl = this.authManager?.getGatewayLlmBaseUrl?.();
+      const client = gatewayLlmBaseUrl
+        ? await this.createGatewayRoutedClient(provider, gatewayLlmBaseUrl)
+        : await this.createBackendRoutedClient(provider);
       this.clientCache.set(cacheKey, client);
       return client;
     }
@@ -339,6 +343,65 @@ export class ModelClientFactory {
       modelConfig,
       useCredentials: true,
       parallelToolCalls,
+    });
+  }
+
+  /**
+   * Create a remote gateway client.
+   *
+   * The gateway exposes an OpenAI-compatible /v1 Chat Completions surface. Auth
+   * is resolved per request so cached clients do not pin an expired session JWT.
+   */
+  private async createGatewayRoutedClient(provider: ModelProvider, gatewayLlmBaseUrl: string): Promise<ModelClient> {
+    const tokenProvider = async () => this.authManager?.getAccessToken() ?? null;
+    const accessToken = await tokenProvider();
+    if (!accessToken) {
+      throw new ModelClientError('Gateway routing requires a session access token');
+    }
+
+    const parallelToolCalls = this.resolveParallelToolCalls();
+    let modelConfig: any = undefined;
+    let supportsReasoning = false;
+    let supportsReasoningSummaries = false;
+    let selectedModel = DEFAULT_MODEL;
+
+    if (this.config) {
+      const configData = this.config.getConfig();
+      const modelData = this.config.getModelByKey(configData.selectedModelKey);
+      if (modelData?.model) {
+        modelConfig = modelData.model;
+        supportsReasoning = modelData.model.supportsReasoning ?? false;
+        supportsReasoningSummaries = modelData.model.supportsReasoningSummaries ?? false;
+        selectedModel = modelData.model.modelKey;
+      }
+    }
+
+    const modelFamily = {
+      family: selectedModel,
+      base_instructions: 'You are a helpful coding assistant.',
+      supports_reasoning: supportsReasoning,
+      supports_reasoning_summaries: supportsReasoningSummaries,
+      needs_special_apply_patch_instructions: false,
+    };
+
+    const gatewayProvider = {
+      name: 'Gateway',
+      base_url: gatewayLlmBaseUrl,
+      wire_api: 'Chat' as const,
+      requires_openai_auth: true,
+    };
+
+    return new OpenAIChatCompletionClient({
+      apiKey: 'gateway-routed',
+      baseUrl: gatewayLlmBaseUrl,
+      sessionId: this.generateConversationId(),
+      modelFamily,
+      provider: gatewayProvider,
+      modelConfig,
+      useCredentials: false,
+      parallelToolCalls,
+      getAuthorizationToken: tokenProvider,
+      refreshAuthorizationToken: async () => this.authManager?.refreshAccessToken?.() ?? null,
     });
   }
 
@@ -795,6 +858,7 @@ export class ModelClientFactory {
       parallelToolCalls: this.resolveParallelToolCalls(),
       providerBaseUrl: providerConfig?.baseUrl ?? null,
       providerOrganization: providerConfig?.organization ?? null,
+      gatewayLlmBaseUrl: this.authManager?.getGatewayLlmBaseUrl?.() ?? null,
       model: {
         modelKey: model?.modelKey ?? null,
         supportsReasoning: model?.supportsReasoning ?? false,

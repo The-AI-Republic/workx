@@ -68,6 +68,7 @@ import { RolloutRecorder } from '@/storage/rollout';
 import { createSessionServices } from '@/core/session/state/SessionServices';
 import { registerUseSkillTool } from '@/core/skills/registerUseSkillTool';
 import { RuntimeStateController, accessStateFromReadyState } from '@/core/services/runtime-state';
+import type { IMCPTool } from '@/core/mcp/types';
 
 // Handler registrations
 import { registerChatHandlers } from '../handlers/chat';
@@ -153,6 +154,8 @@ export class ServerAgentBootstrap {
   private a2aServer: A2AServer | null = null;
   private a2aTurnChain: Promise<unknown> = Promise.resolve();
   private toolResultSweep: { stop: () => void } | null = null;
+  private desktopHubMcpEventHooked = false;
+  private desktopHubRegisteredToolsBySession = new Map<string, IMCPTool[]>();
   // Track 15: periodic rollout TTL cleanup (the server otherwise never prunes
   // expired/forked rollouts — only the extension had alarm-based cleanup).
   private rolloutTtlSweep: ReturnType<typeof setInterval> | null = null;
@@ -344,6 +347,10 @@ export class ServerAgentBootstrap {
           if (this.currentAuthManager) {
             agent.getModelClientFactory().setAuthManager(this.currentAuthManager);
             await agent.refreshModelClient();
+          }
+
+          if (profile === 'desktop-runtime') {
+            await this.ensureDesktopRuntimeHubMcpConnected();
           }
 
           if (profile === 'server') {
@@ -777,6 +784,10 @@ export class ServerAgentBootstrap {
     try {
       const { MCPManager } = await import('@/core/mcp/MCPManager');
       const mcpManager = await MCPManager.getInstance(platformScope);
+      if (profile === 'desktop-runtime') {
+        mcpManager.setSessionTokenProvider(async () => getCredentialStore().get('auth', 'access_token'));
+        mcpManager.setSessionTokenRefreshProvider(() => this.refreshDesktopRuntimeSessionTokens());
+      }
       mcpDeps = { mcpManager: mcpManager as any };
     } catch (error) {
       console.warn('[ServerAgentBootstrap] MCPManager not available for service registration:', error);
@@ -1182,7 +1193,12 @@ export class ServerAgentBootstrap {
               const tokenGetter = shouldUseBackend
                 ? async () => getCredentialStore().get('auth', 'access_token')
                 : undefined;
-              return new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter);
+              const urls = runtimeState?.getUrls();
+              const gatewayLlmBaseUrl = urls?.llmRoutingMode === 'gateway' ? urls.gatewayLlmApiUrl : null;
+              return new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter, {
+                gatewayLlmBaseUrl,
+                refreshAccessToken: () => this.refreshDesktopRuntimeSessionTokens(),
+              });
             }
           : undefined,
         setAuthManager: profile === 'desktop-runtime' ? (authManager) => {
@@ -1199,7 +1215,12 @@ export class ServerAgentBootstrap {
           const tokenGetter = shouldUseBackend
             ? async () => getCredentialStore().get('auth', 'access_token')
             : undefined;
-          return new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter);
+          const urls = runtimeState?.getUrls();
+          const gatewayLlmBaseUrl = urls?.llmRoutingMode === 'gateway' ? urls.gatewayLlmApiUrl : null;
+          return new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter, {
+            gatewayLlmBaseUrl,
+            refreshAccessToken: () => this.refreshDesktopRuntimeSessionTokens(),
+          });
         },
         setAuthManager: (authManager) => {
           this.currentAuthManager = authManager;
@@ -1207,6 +1228,8 @@ export class ServerAgentBootstrap {
         getCredentialStore: () => getCredentialStore(),
         runtimeState,
         refreshAccessState: () => this.refreshDesktopRuntimeAccessState(),
+        afterLogin: () => this.ensureDesktopRuntimeHubMcpConnected(),
+        afterLogout: () => this.disconnectDesktopRuntimeHubMcp(),
         // The runtime owns the access token after cutover; the UI must not
         // receive it. The runtime performs the profile fetch itself and
         // returns only the redacted profile shape the UI needs.
@@ -1321,6 +1344,114 @@ export class ServerAgentBootstrap {
     return this.runtimeState.setAccessState(accessStateFromReadyState(ready));
   }
 
+  private async refreshDesktopRuntimeSessionTokens(): Promise<string | null> {
+    const credentialStore = getCredentialStore();
+    const refreshToken = await credentialStore.get('auth', 'refresh_token').catch(() => null);
+    if (!refreshToken) return null;
+
+    try {
+      const { refreshDesktopAuthTokens } = await import('@/desktop-runtime/auth/runtimeProfileFetch');
+      const refreshed = await refreshDesktopAuthTokens(refreshToken);
+      if (!refreshed?.accessToken || !refreshed.refreshToken) {
+        return null;
+      }
+      await Promise.all([
+        credentialStore.set('auth', 'access_token', refreshed.accessToken),
+        credentialStore.set('auth', 'refresh_token', refreshed.refreshToken),
+      ]);
+      await this.refreshDesktopRuntimeAccessState().catch(() => undefined);
+      return refreshed.accessToken;
+    } catch (err) {
+      console.warn('[ServerAgentBootstrap] runtime token refresh failed:', err);
+      return null;
+    }
+  }
+
+  private async ensureDesktopRuntimeHubMcpConnected(): Promise<void> {
+    if ((this.options.profile ?? 'server') !== 'desktop-runtime' || !this.registry) return;
+
+    try {
+      const accessToken = await getCredentialStore().get('auth', 'access_token').catch(() => null);
+      if (!accessToken) return;
+
+      const { MCPManager } = await import('@/core/mcp/MCPManager');
+      const mcpManager = await MCPManager.getInstance('desktop');
+      mcpManager.setSessionTokenProvider(async () => getCredentialStore().get('auth', 'access_token'));
+      mcpManager.setSessionTokenRefreshProvider(() => this.refreshDesktopRuntimeSessionTokens());
+      const serverName = this.runtimeState?.getUrls().gatewayMcpName ?? 'gateway';
+      const hubServer = mcpManager.getServerByName(serverName);
+      if (!hubServer) return;
+
+      if (!this.desktopHubMcpEventHooked) {
+        this.desktopHubMcpEventHooked = true;
+        mcpManager.on('event', (event) => {
+          if (event.type !== 'tools-updated' || event.configId !== hubServer.id) return;
+          const config = mcpManager.getServer(event.configId);
+          if (!config || config.name !== serverName) return;
+          this.registerDesktopHubMcpTools(mcpManager, config.name, event.tools).catch((error) => {
+            console.warn('[ServerAgentBootstrap] Failed to update gateway MCP tools:', error);
+          });
+        });
+      }
+
+      const connection = mcpManager.getConnection(hubServer.id);
+      if (connection?.status !== 'connected' && connection?.status !== 'connecting') {
+        await mcpManager.connect(hubServer.id);
+      }
+
+      const connected = mcpManager.getConnection(hubServer.id);
+      if (connected?.status === 'connected') {
+        await this.registerDesktopHubMcpTools(mcpManager, hubServer.name, connected.tools);
+      }
+    } catch (error) {
+      console.warn('[ServerAgentBootstrap] Gateway MCP connection unavailable:', error);
+    }
+  }
+
+  private async registerDesktopHubMcpTools(
+    mcpManager: any,
+    serverName: string,
+    tools: IMCPTool[],
+  ): Promise<void> {
+    if (!this.registry) return;
+    const { registerMCPTools, unregisterMCPTools } = await import('@/core/mcp/MCPToolAdapter');
+
+    for (const meta of this.registry.listSessions()) {
+      if (meta.state === 'terminated') continue;
+      const agentSession = this.registry.getSession(meta.sessionId);
+      const registry = agentSession?.agent?.getToolRegistry?.();
+      if (!registry) continue;
+
+      const previousTools = this.desktopHubRegisteredToolsBySession.get(meta.sessionId);
+      if (previousTools && previousTools.length > 0) {
+        await unregisterMCPTools(serverName, previousTools, registry);
+      }
+
+      if (tools.length > 0) {
+        await registerMCPTools(mcpManager, serverName, tools, registry);
+        this.desktopHubRegisteredToolsBySession.set(meta.sessionId, tools);
+      } else {
+        this.desktopHubRegisteredToolsBySession.delete(meta.sessionId);
+      }
+    }
+  }
+
+  private async disconnectDesktopRuntimeHubMcp(): Promise<void> {
+    if ((this.options.profile ?? 'server') !== 'desktop-runtime' || !this.registry) return;
+
+    try {
+      const { MCPManager } = await import('@/core/mcp/MCPManager');
+      const mcpManager = await MCPManager.getInstance('desktop');
+      const serverName = this.runtimeState?.getUrls().gatewayMcpName ?? 'gateway';
+      const hubServer = mcpManager.getServerByName(serverName);
+      if (!hubServer) return;
+      await this.registerDesktopHubMcpTools(mcpManager, hubServer.name, []);
+      await mcpManager.disconnect(hubServer.id);
+    } catch (error) {
+      console.warn('[ServerAgentBootstrap] Failed to disconnect gateway MCP:', error);
+    }
+  }
+
   private async hydrateDesktopRuntimeAuthState(): Promise<void> {
     if (!this.runtimeState || !this.registry || (this.options.profile ?? 'server') !== 'desktop-runtime') return;
     const agentConfig = await AgentConfig.getInstance();
@@ -1368,6 +1499,12 @@ export class ServerAgentBootstrap {
       shouldUseBackend,
       shouldUseBackend ? this.runtimeState.getUrls().llmApiUrl : null,
       tokenGetter,
+      {
+        gatewayLlmBaseUrl: shouldUseBackend && this.runtimeState.getUrls().llmRoutingMode === 'gateway'
+          ? this.runtimeState.getUrls().gatewayLlmApiUrl
+          : null,
+        refreshAccessToken: () => this.refreshDesktopRuntimeSessionTokens(),
+      },
     );
     this.currentAuthManager = authManager;
     await this.applyAuthManagerToSessions(authManager);
@@ -1393,6 +1530,9 @@ export class ServerAgentBootstrap {
     }
 
     await this.refreshDesktopRuntimeAccessState();
+    if (hasUsableLogin && !useOwnApiKey) {
+      await this.ensureDesktopRuntimeHubMcpConnected();
+    }
   }
 
   /**

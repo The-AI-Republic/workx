@@ -2,6 +2,7 @@ import { push } from 'svelte-spa-router';
 import { commandRegistry } from './CommandRegistry';
 import type { SkillMeta } from '@/core/skills/types';
 import { getInitializedUIClient } from '@/core/messaging';
+import { openGatewayCatalog, type GatewayCatalogOpenResult } from '../lib/gatewayCatalog';
 import {
   getX402Config,
   saveX402Config,
@@ -127,6 +128,18 @@ export function initBuiltinCommands(callbacks: BuiltinCommandCallbacks): void {
   });
 
   commandRegistry.register({
+    name: 'apps',
+    description: 'Open the AI Hub app catalog',
+    whenToUse:
+      'Use when you want to install, connect, or manage Hub apps that can appear through the gateway MCP server.',
+    loadedFrom: 'builtin',
+    action: async () => {
+      const { title, content } = await runAppsCommand();
+      activeCallbacks?.onCommandOutput(title, content);
+    },
+  });
+
+  commandRegistry.register({
     name: 'x402',
     description: 'Configure x402 crypto micropayments (USDC) — disabled by default',
     argumentHint: '[status|enable|disable|set-limit|set-session|network|setup|remove]',
@@ -159,6 +172,32 @@ export function initBuiltinCommands(callbacks: BuiltinCommandCallbacks): void {
       push('/usage');
     },
   });
+}
+
+export async function runAppsCommand(
+  openCatalog: () => Promise<GatewayCatalogOpenResult> = openGatewayCatalog,
+): Promise<{ title: string; content: string }> {
+  const title = 'Apps';
+  try {
+    const result = await openCatalog();
+    if (!result.opened || !result.url) {
+      return {
+        title,
+        content:
+          'Hub app catalog is not configured. Set WORKX_GATEWAY_CATALOG_URL to the Hub apps page.',
+      };
+    }
+    return {
+      title,
+      content: `Opened Hub app catalog:\n${result.url}`,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      title,
+      content: `Failed to open Hub app catalog: ${message}`,
+    };
+  }
 }
 
 const X402_NETWORKS: PaymentNetwork[] = [

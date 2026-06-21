@@ -28,7 +28,8 @@ import {
   createServerConfig,
   updateServerConfig,
 } from './MCPConfig';
-import { decryptApiKey } from '../../utils/encryption';
+import { decryptApiKey, encryptApiKey } from '../../utils/encryption';
+import { resolveRuntimeUrls } from '../../config/runtimeUrls';
 
 /**
  * Maximum number of MCP servers allowed (excluding builtins).
@@ -50,6 +51,8 @@ function createBrowserMcpArgs(includePackageName: boolean): string[] {
     ? ['chrome-devtools-mcp', ...BROWSER_MCP_AUTO_CONNECT_ARGS]
     : [...BROWSER_MCP_AUTO_CONNECT_ARGS];
 }
+const BUILTIN_GATEWAY_SERVER_ID = '00000000-0000-4000-8000-000000000002';
+const BUILTIN_GATEWAY_SERVER_NAME = 'gateway';
 
 /**
  * MCPManager manages multiple MCP server connections.
@@ -78,6 +81,8 @@ export class MCPManager implements IMCPManager {
   private eventHandlers: Set<(event: MCPManagerEvent) => void> = new Set();
   private initialized: boolean = false;
   private platform: MCPPlatformScope;
+  private sessionTokenProvider: (() => Promise<string | null>) | null = null;
+  private sessionTokenRefreshProvider: (() => Promise<string | null>) | null = null;
 
   private constructor(platform?: MCPPlatformScope) {
     // Detect platform from build mode if not specified
@@ -296,6 +301,19 @@ export class MCPManager implements IMCPManager {
       }
     }
     return undefined;
+  }
+
+  /**
+   * Set the runtime-owned session token provider used by built-in session-JWT
+   * MCP servers. The token is resolved per request and is never persisted into
+   * the MCP server configuration.
+   */
+  setSessionTokenProvider(provider: (() => Promise<string | null>) | null): void {
+    this.sessionTokenProvider = provider;
+  }
+
+  setSessionTokenRefreshProvider(provider: (() => Promise<string | null>) | null): void {
+    this.sessionTokenRefreshProvider = provider;
   }
 
   // ==========================================================================
@@ -584,6 +602,23 @@ export class MCPManager implements IMCPManager {
       );
     }
 
+    if (config.transport === 'streamable-http') {
+      let apiKey: string | undefined;
+      if (config.apiKey) {
+        const decrypted = decryptApiKey(config.apiKey);
+        apiKey = decrypted ?? undefined;
+      }
+
+      const { StreamableHttpMCPClient } = await import('./StreamableHttpMCPClient');
+      return new StreamableHttpMCPClient({
+        config,
+        apiKey,
+        tokenProvider: this.sessionTokenProvider ?? undefined,
+        refreshTokenProvider: this.sessionTokenRefreshProvider ?? undefined,
+        ...callbacks,
+      });
+    }
+
     // Default: SSE transport
     let apiKey: string | undefined;
     if (config.apiKey) {
@@ -607,56 +642,97 @@ export class MCPManager implements IMCPManager {
       return;
     }
 
-    // Check if builtin browser server already exists
-    if (this.servers.has(BUILTIN_BROWSER_SERVER_ID)) {
+    const hasBrowserServer = this.servers.has(BUILTIN_BROWSER_SERVER_ID)
+      || Array.from(this.servers.values()).some((config) => config.name === 'browser');
+
+    if (!hasBrowserServer) {
+      // Try the bundled sidecar binary first (production builds).
+      // Fall back to npx + node_modules for dev mode where no sidecar is built.
+      let command = 'npx';
+      let args = createBrowserMcpArgs(true);
+      let cwd: string | undefined;
+
+      if (__BUILD_MODE__ === 'server') {
+        try {
+          const { getOptionalDesktopRuntimeHost } = await import('@/desktop-runtime/host');
+          const host = getOptionalDesktopRuntimeHost();
+          if (host?.browserMcpSidecarPath) {
+            command = host.browserMcpSidecarPath;
+            args = createBrowserMcpArgs(false);
+          } else if (host?.projectRoot) {
+            cwd = host.projectRoot;
+          }
+        } catch (err) {
+          console.warn('[MCPManager] Failed to resolve desktop runtime MCP host paths:', err);
+        }
+      }
+      // Track 43: the `__BUILD_MODE__ === 'desktop'` branch that resolved the
+      // sidecar path via Tauri `invoke('get_browser_mcp_sidecar_path')` is
+      // gone — MCP runs in the runtime and the runtime host handshake carries
+      // `browserMcpSidecarPath` directly.
+
+      const now = Date.now();
+      const builtinConfig: IMCPServerConfig = {
+        id: BUILTIN_BROWSER_SERVER_ID,
+        name: 'browser',
+        url: '',
+        transport: 'stdio',
+        platform: 'desktop',
+        builtin: true,
+        command,
+        args,
+        cwd,
+        enabled: true,
+        timeout: 180000, // 3 min — browser tools can be slow
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      this.servers.set(builtinConfig.id, builtinConfig);
+      this.connections.set(builtinConfig.id, {
+        configId: builtinConfig.id,
+        status: 'disconnected',
+        tools: [],
+        resources: [],
+      });
+    }
+
+    this.seedGatewayServer();
+  }
+
+  private seedGatewayServer(): void {
+    const urls = resolveRuntimeUrls();
+    if (!urls.gatewayMcpUrl) {
       return;
     }
 
-    // Check if a server named 'browser' already exists (user-created)
+    if (this.servers.has(BUILTIN_GATEWAY_SERVER_ID)) {
+      return;
+    }
+
+    const serverName = urls.gatewayMcpName || BUILTIN_GATEWAY_SERVER_NAME;
     for (const config of this.servers.values()) {
-      if (config.name === 'browser') {
+      if (config.name === serverName) {
         return;
       }
     }
 
-    // Try the bundled sidecar binary first (production builds).
-    // Fall back to npx + node_modules for dev mode where no sidecar is built.
-    let command = 'npx';
-    let args = createBrowserMcpArgs(true);
-    let cwd: string | undefined;
-
-    if (__BUILD_MODE__ === 'server') {
-      try {
-        const { getOptionalDesktopRuntimeHost } = await import('@/desktop-runtime/host');
-        const host = getOptionalDesktopRuntimeHost();
-        if (host?.browserMcpSidecarPath) {
-          command = host.browserMcpSidecarPath;
-          args = createBrowserMcpArgs(false);
-        } else if (host?.projectRoot) {
-          cwd = host.projectRoot;
-        }
-      } catch (err) {
-        console.warn('[MCPManager] Failed to resolve desktop runtime MCP host paths:', err);
-      }
-    }
-    // Track 43: the `__BUILD_MODE__ === 'desktop'` branch that resolved the
-    // sidecar path via Tauri `invoke('get_browser_mcp_sidecar_path')` is
-    // gone — MCP runs in the runtime and the runtime host handshake carries
-    // `browserMcpSidecarPath` directly.
-
     const now = Date.now();
+    const headers = urls.gatewayMcpToolDiscovery && urls.gatewayMcpToolDiscoveryHeader
+      ? { [urls.gatewayMcpToolDiscoveryHeader]: urls.gatewayMcpToolDiscovery }
+      : undefined;
     const builtinConfig: IMCPServerConfig = {
-      id: BUILTIN_BROWSER_SERVER_ID,
-      name: 'browser',
-      url: '',
-      transport: 'stdio',
+      id: BUILTIN_GATEWAY_SERVER_ID,
+      name: serverName,
+      url: urls.gatewayMcpUrl,
+      transport: 'streamable-http',
+      authMode: urls.gatewayMcpAuthMode,
+      apiKey: urls.gatewayMcpApiKey ? encryptApiKey(urls.gatewayMcpApiKey) : undefined,
+      headers,
       platform: 'desktop',
       builtin: true,
-      command,
-      args,
-      cwd,
       enabled: true,
-      timeout: 180000, // 3 min — browser tools can be slow
+      timeout: 180000,
       createdAt: now,
       updatedAt: now,
     };
