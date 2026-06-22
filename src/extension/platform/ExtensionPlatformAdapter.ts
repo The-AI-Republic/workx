@@ -51,6 +51,20 @@ export class ExtensionPlatformAdapter implements IPlatformAdapter {
     }
   }
 
+  async claimTabLease(tabId: number, sessionId: string, origin: 'agent' | 'user'): Promise<void> {
+    const { getTabLeaseStore, getLeaseLifecycleQueue } = await import('../tools/browser/tabLeaseStore');
+    await getLeaseLifecycleQueue().run(sessionId, () =>
+      getTabLeaseStore().claim({ tabId, sessionId, origin })
+    );
+  }
+
+  async releaseTabLease(tabId: number, sessionId: string): Promise<void> {
+    const { getTabLeaseStore, getLeaseLifecycleQueue } = await import('../tools/browser/tabLeaseStore');
+    await getLeaseLifecycleQueue().run(sessionId, () =>
+      getTabLeaseStore().release(sessionId, tabId)
+    );
+  }
+
   async validateTab(tabId: number): Promise<TabValidationResult> {
     const validation = await this.tabManager.validateTab(tabId);
 

@@ -98,6 +98,15 @@ export interface IPlatformAdapter {
   validateTab(tabId: number): Promise<TabValidationResult>;
   switchTab(fromTabId: number, toTabId: number): Promise<void>;
 
+  /**
+   * Record/clear tab ownership for a session (extension-only; optional). Used by
+   * the tab-lease system so a tab leased to one live session can't be claimed by
+   * another, and so leases are GC'd across service-worker restarts. Best-effort:
+   * callers ignore failures so lease bookkeeping never breaks tab binding.
+   */
+  claimTabLease?(tabId: number, sessionId: string, origin: 'agent' | 'user'): Promise<void>;
+  releaseTabLease?(tabId: number, sessionId: string): Promise<void>;
+
   // Browser Controller
   getBrowserController(tabId: number): Promise<IBrowserController | null>;
 
