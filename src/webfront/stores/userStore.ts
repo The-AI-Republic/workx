@@ -6,7 +6,14 @@
  */
 
 import { writable, type Writable, derived, type Readable } from 'svelte/store';
-import { AUTH_ROUTE_PATHS, HOME_PAGE_BASE_URL } from '../lib/constants';
+import {
+  AUTH_ROUTE_PATHS,
+  HOME_PAGE_BASE_URL,
+  AUTH_OIDC_AUTHORIZE_PATH,
+  AUTH_OIDC_TOKEN_PATH,
+  AUTH_OIDC_CLIENT_ID,
+  DESKTOP_OIDC_REDIRECT_URI,
+} from '../lib/constants';
 
 export interface UserState {
   isLoggedIn: boolean;
@@ -113,7 +120,45 @@ export function getLoginPageUrl(): string | null {
 export function getDesktopLoginPageUrl(): string | null {
   if (!HOME_PAGE_BASE_URL || !AUTH_ROUTE_PATHS.login) return null;
   const loginUrl = new URL(AUTH_ROUTE_PATHS.login, HOME_PAGE_BASE_URL);
-  loginUrl.searchParams.set('redirect_url', 'workx://auth/callback');
+  loginUrl.searchParams.set('redirect_url', DESKTOP_OIDC_REDIRECT_URI);
   loginUrl.searchParams.set('desktop_login_ts', Date.now().toString());
   return loginUrl.toString();
+}
+
+/** Desktop OIDC public client id (PKCE, no secret). */
+export const DESKTOP_OIDC_CLIENT_ID = AUTH_OIDC_CLIENT_ID;
+/** Custom-scheme deep-link used as the OIDC redirect_uri. */
+export const DESKTOP_OIDC_REDIRECT = DESKTOP_OIDC_REDIRECT_URI;
+
+/**
+ * Whether the desktop OIDC + PKCE login flow is configured. Requires a hosted
+ * auth base URL and an OIDC client id; the authorize/token paths default to the
+ * standard OIDC routes when not explicitly set.
+ */
+export function hasDesktopOidc(): boolean {
+  return Boolean(HOME_PAGE_BASE_URL && AUTH_OIDC_CLIENT_ID);
+}
+
+/** Build the OIDC token endpoint URL (code -> tokens exchange). */
+export function getDesktopTokenUrl(): string | null {
+  if (!HOME_PAGE_BASE_URL) return null;
+  return new URL(AUTH_OIDC_TOKEN_PATH, HOME_PAGE_BASE_URL).toString();
+}
+
+/**
+ * Build the OIDC authorization URL (Authorization Code + PKCE) the desktop
+ * opens in the external browser. The callback returns to
+ * `workx://auth/callback?code=…&state=…`.
+ */
+export function getDesktopAuthorizeUrl(opts: { codeChallenge: string; state: string }): string | null {
+  if (!hasDesktopOidc()) return null;
+  const url = new URL(AUTH_OIDC_AUTHORIZE_PATH, HOME_PAGE_BASE_URL);
+  url.searchParams.set('response_type', 'code');
+  url.searchParams.set('client_id', AUTH_OIDC_CLIENT_ID);
+  url.searchParams.set('redirect_uri', DESKTOP_OIDC_REDIRECT_URI);
+  url.searchParams.set('scope', 'openid profile email');
+  url.searchParams.set('code_challenge', opts.codeChallenge);
+  url.searchParams.set('code_challenge_method', 'S256');
+  url.searchParams.set('state', opts.state);
+  return url.toString();
 }

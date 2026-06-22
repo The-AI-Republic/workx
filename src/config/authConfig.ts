@@ -11,6 +11,10 @@ export interface AuthCookieNames {
 
 export interface AuthRoutePaths {
   login: string | null;
+  /** OIDC authorization endpoint (Authorization Code + PKCE). */
+  authorize: string | null;
+  /** OIDC token endpoint (code -> tokens exchange). */
+  token: string | null;
   desktopSession: string | null;
   desktopRefresh: string | null;
   profile: string | null;
@@ -23,6 +27,8 @@ export interface AuthConfig {
   cookieDomain: string | null;
   cookieNames: AuthCookieNames;
   routes: AuthRoutePaths;
+  /** OIDC public client id for the desktop app (PKCE, no secret). */
+  oidcClientId: string | null;
   source: {
     authBaseUrl: AuthConfigSource;
     cookieDomain: AuthConfigSource;
@@ -95,12 +101,20 @@ export function resolveAuthConfig(): AuthConfig {
   };
   const routes: AuthRoutePaths = {
     login: routePath(env, vite, 'LOGIN'),
+    authorize: routePath(env, vite, 'AUTHORIZE'),
+    token: routePath(env, vite, 'TOKEN'),
     desktopSession: routePath(env, vite, 'DESKTOP_SESSION'),
     desktopRefresh: routePath(env, vite, 'DESKTOP_REFRESH'),
     profile: routePath(env, vite, 'PROFILE'),
     userCenter: routePath(env, vite, 'USER_CENTER'),
     pricing: routePath(env, vite, 'PRICING'),
   };
+
+  const oidcClientId = firstNonEmpty(
+    env.WORKX_AUTH_OIDC_CLIENT_ID,
+    env.VITE_AUTH_OIDC_CLIENT_ID,
+    vite.VITE_AUTH_OIDC_CLIENT_ID,
+  ) ?? null;
 
   const usesDefaultCookieNames = Object.entries(cookieNames).every(
     ([key, value]) => value === DEFAULT_COOKIE_NAMES[key as keyof AuthCookieNames],
@@ -112,6 +126,7 @@ export function resolveAuthConfig(): AuthConfig {
     cookieDomain,
     cookieNames,
     routes,
+    oidcClientId,
     source: {
       authBaseUrl: authBaseUrl ? 'env' : 'default',
       cookieDomain: cookieDomain ? 'env' : 'default',
