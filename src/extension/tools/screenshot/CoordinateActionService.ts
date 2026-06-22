@@ -8,6 +8,7 @@
 import type { Coordinates, KeyModifiers, CoordinateActionOptions } from './types';
 import { getDebuggerSessionRegistry } from '../browser/ChromeDebuggerSessionRegistry';
 import type { DebuggerHandle } from '@/core/tools/browser/DebuggerSessionRegistry';
+import { dispatchKey, click as dispatchClick } from '../input/InputDispatcher';
 
 export class CoordinateActionService {
   private tabId: number;
@@ -38,24 +39,12 @@ export class CoordinateActionService {
       const clickCount = options?.clickCount || 1;
       const modifiers = this.encodeModifiers(options?.modifiers);
 
-      // Dispatch mouse pressed event
-      await this.sendCommand('Input.dispatchMouseEvent', {
-        type: 'mousePressed',
-        x: coordinates.x,
-        y: coordinates.y,
+      // Route through the shared dispatcher: mouseMoved -> mousePressed ->
+      // mouseReleased with correct `buttons` bookkeeping.
+      await dispatchClick((method, params) => this.sendCommand(method, params), coordinates.x, coordinates.y, {
         button,
         clickCount,
-        modifiers
-      });
-
-      // Dispatch mouse released event
-      await this.sendCommand('Input.dispatchMouseEvent', {
-        type: 'mouseReleased',
-        x: coordinates.x,
-        y: coordinates.y,
-        button,
-        clickCount,
-        modifiers
+        modifiers,
       });
 
       // Wait after action if specified
@@ -154,21 +143,8 @@ export class CoordinateActionService {
     try {
       const modifiers = this.encodeModifiers(options?.modifiers);
 
-      // Dispatch key down event
-      await this.sendCommand('Input.dispatchKeyEvent', {
-        type: 'keyDown',
-        key,
-        code: `Key${key.toUpperCase()}`,
-        modifiers
-      });
-
-      // Dispatch key up event
-      await this.sendCommand('Input.dispatchKeyEvent', {
-        type: 'keyUp',
-        key,
-        code: `Key${key.toUpperCase()}`,
-        modifiers
-      });
+      // Correct key synthesis via the shared dispatcher (real code/keyCode/text).
+      await dispatchKey((method, params) => this.sendCommand(method, params), key, { modifiers });
 
       // Wait after action if specified
       if (options?.waitAfter) {
