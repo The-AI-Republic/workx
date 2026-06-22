@@ -44,8 +44,8 @@
   // Free user model restriction
   // FREE_USER_DEFAULT_MODEL: Simple model name pattern for matching
   // FREE_USER_DEFAULT_COMPOUND_KEY: Format providerId:modelKey (not a raw model key)
-  const FREE_USER_DEFAULT_MODEL = 'kimi-k2-thinking';
-  const FREE_USER_DEFAULT_COMPOUND_KEY = 'fireworks:fireworks/models/kimi-k2-thinking';
+  const FREE_USER_DEFAULT_MODEL = 'kimi-k2p6';
+  const FREE_USER_DEFAULT_COMPOUND_KEY = 'fireworks:fireworks/models/kimi-k2p6';
 
   // Subscribe to user store
   let isUserLoggedIn = $derived($userStore.isLoggedIn);

@@ -49,9 +49,9 @@
   let isUserLoggedIn = $derived($userStore.isLoggedIn);
   let isFreeUser = $derived($userStore.userType === 0);
 
-  // Default model for free users (Kimi K2 Thinking)
-  const FREE_USER_DEFAULT_MODEL = 'kimi-k2-thinking';
-  const FREE_USER_DEFAULT_COMPOUND_KEY = 'fireworks:fireworks/models/kimi-k2-thinking';
+  // Default model for free users (Kimi K2.6)
+  const FREE_USER_DEFAULT_MODEL = 'kimi-k2p6';
+  const FREE_USER_DEFAULT_COMPOUND_KEY = 'fireworks:fireworks/models/kimi-k2p6';
 
   // Check if a model is available for free users
   function isModelAvailableForFreeUser(modelKey: string): boolean {
