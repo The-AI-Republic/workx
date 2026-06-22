@@ -42,6 +42,7 @@ export class DomService {
       snapshotTimeout: 120000,
       retryAttempts: 2,
       enableMetrics: true,
+      useContentQuads: false,
       ...config
     };
 
@@ -701,6 +702,78 @@ export class DomService {
   }
 
   /**
+   * Resolve a click point using DOM.getContentQuads (viewport-relative CSS
+   * pixels). Picks the center of the largest quad∩viewport intersection so
+   * partially-scrolled elements still click a visible point; scrolls into view
+   * and retries once when nothing is visible.
+   */
+  private async resolveClickPointViaContentQuads(backendNodeId: number): Promise<{ x: number; y: number }> {
+    const viewport = await this.getViewportSizeCss();
+
+    const fetchQuads = async (): Promise<number[][]> => {
+      const result = await this.sendCommand<any>('DOM.getContentQuads', { backendNodeId });
+      return (result?.quads ?? []) as number[][];
+    };
+
+    let quads = await fetchQuads();
+    if (quads.length === 0) {
+      throw new Error('ELEMENT_NOT_VISIBLE: Element has no content quads. It may be hidden or display:none.');
+    }
+
+    let point = this.pickVisibleQuadCenter(quads, viewport);
+    if (!point) {
+      // Off-screen: scroll into view and retry once.
+      await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId }).catch(() => { });
+      await new Promise(resolve => setTimeout(resolve, 100));
+      quads = await fetchQuads();
+      point = this.pickVisibleQuadCenter(quads, viewport);
+    }
+
+    if (!point) {
+      // Best effort: center of the first quad (may be partially off-screen).
+      const q = quads[0];
+      point = { x: (q[0] + q[4]) / 2, y: (q[1] + q[5]) / 2 };
+    }
+    return point;
+  }
+
+  /**
+   * Choose the center of the largest quad clipped to the viewport rect
+   * {0,0,width,height}. Returns null when no quad intersects the viewport.
+   */
+  private pickVisibleQuadCenter(
+    quads: number[][],
+    viewport: { width: number; height: number }
+  ): { x: number; y: number } | null {
+    let best: { area: number; x: number; y: number } | null = null;
+    for (const q of quads) {
+      if (!q || q.length < 8) continue;
+      const xs = [q[0], q[2], q[4], q[6]];
+      const ys = [q[1], q[3], q[5], q[7]];
+      const ixMin = Math.max(Math.min(...xs), 0);
+      const ixMax = Math.min(Math.max(...xs), viewport.width);
+      const iyMin = Math.max(Math.min(...ys), 0);
+      const iyMax = Math.min(Math.max(...ys), viewport.height);
+      const iw = ixMax - ixMin;
+      const ih = iyMax - iyMin;
+      if (iw <= 0 || ih <= 0) continue; // no visible intersection
+      const area = iw * ih;
+      if (!best || area > best.area) {
+        best = { area, x: (ixMin + ixMax) / 2, y: (iyMin + iyMax) / 2 };
+      }
+    }
+    return best ? { x: best.x, y: best.y } : null;
+  }
+
+  private async getViewportSizeCss(): Promise<{ width: number; height: number }> {
+    const result = await this.sendCommand<any>('Runtime.evaluate', {
+      expression: '({ width: window.innerWidth, height: window.innerHeight })',
+      returnByValue: true
+    });
+    return result.result.value;
+  }
+
+  /**
    * Get page metadata via CDP Runtime.evaluate (platform-agnostic).
    * Replaces chrome.tabs.get() which is only available in extension mode.
    */
@@ -1055,70 +1128,84 @@ export class DomService {
       // (in case we found the node in a different frame than specified)
       const resolvedBackendNodeId = node.backendNodeId;
 
-      // Get box model for coordinates
-      let boxModel;
-      try {
-        boxModel = await this.sendCommand<any>('DOM.getBoxModel', { backendNodeId: resolvedBackendNodeId });
-      } catch (error: any) {
-        // SVG elements don't have box models - try getting content quads instead
-        if (error.message?.includes('Could not compute box model')) {
-          if (node?.nodeName?.toLowerCase() === 'svg' || node?.nodeName?.toLowerCase().includes('svg')) {
-            console.warn('[DomService] SVG element detected - using alternative click method');
-            // For SVG, try to get bounding rect via JavaScript
-            throw new Error('SVG_CLICK_NOT_SUPPORTED: Direct SVG element clicking not yet fully implemented. Consider clicking parent element.');
-          }
-        }
-        throw error;
-      }
+      // Resolve the click point in viewport-relative CSS pixels.
+      let centerX: number;
+      let centerY: number;
 
-      let { content } = boxModel.model;
-
-      // Element visibility verification
-      const width = Math.abs(content[2] - content[0]);
-      const height = Math.abs(content[5] - content[1]);
-      if (width === 0 || height === 0) {
-        throw new Error('ELEMENT_NOT_VISIBLE: Element has zero width or height. It may be hidden or display:none.');
-      }
-
-      // Calculate initial center coordinates
-      let centerX = (content[0] + content[2]) / 2;
-      let centerY = (content[1] + content[5]) / 2;
-
-      // Check if element is within viewport and scroll if needed
-      // Only check viewport if visual effects are enabled (optimization)
-      if (this.config.enableVisualEffects) {
-        const viewportResult = await this.sendCommand<any>('Runtime.evaluate', {
-          expression: '({ width: window.innerWidth, height: window.innerHeight, scrollX: window.scrollX, scrollY: window.scrollY })',
-          returnByValue: true
-        });
-        const viewport = viewportResult.result.value;
-
-        // Element is in viewport if its center is visible on screen
-        // Note: content coordinates are absolute (relative to document), not viewport
-        const isInViewport =
-          centerX >= viewport.scrollX &&
-          centerX <= viewport.scrollX + viewport.width &&
-          centerY >= viewport.scrollY &&
-          centerY <= viewport.scrollY + viewport.height;
-
-        if (!isInViewport) {
-          // Scroll element into view
-          await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId: resolvedBackendNodeId });
-
-          // Wait for scroll animation to complete
-          await new Promise(resolve => setTimeout(resolve, 100));
-
-          // Get box model AGAIN after scrolling (element position has changed)
-          const updatedBoxModel = await this.sendCommand<any>('DOM.getBoxModel', { backendNodeId: resolvedBackendNodeId });
-          content = updatedBoxModel.model.content;
-
-          // Recalculate center coordinates with new position
-          centerX = (content[0] + content[2]) / 2;
-          centerY = (content[1] + content[5]) / 2;
-        }
+      if (this.config.useContentQuads) {
+        // getContentQuads returns viewport-relative quads and handles
+        // inline/SVG/transformed elements (no box model required). We click the
+        // center of the quad∩viewport intersection — no document-scroll offsets
+        // (see design §3.4 / §1.6 #6).
+        const point = await this.resolveClickPointViaContentQuads(resolvedBackendNodeId);
+        centerX = point.x;
+        centerY = point.y;
       } else {
-        // Visual effects disabled - still scroll into view if needed, but don't wait
-        await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId: resolvedBackendNodeId }).catch(() => { });
+        // Get box model for coordinates
+        let boxModel;
+        try {
+          boxModel = await this.sendCommand<any>('DOM.getBoxModel', { backendNodeId: resolvedBackendNodeId });
+        } catch (error: any) {
+          // SVG elements don't have box models - try getting content quads instead
+          if (error.message?.includes('Could not compute box model')) {
+            if (node?.nodeName?.toLowerCase() === 'svg' || node?.nodeName?.toLowerCase().includes('svg')) {
+              console.warn('[DomService] SVG element detected - using alternative click method');
+              // For SVG, try to get bounding rect via JavaScript
+              throw new Error('SVG_CLICK_NOT_SUPPORTED: Direct SVG element clicking not yet fully implemented. Consider clicking parent element.');
+            }
+          }
+          throw error;
+        }
+
+        let { content } = boxModel.model;
+
+        // Element visibility verification
+        const width = Math.abs(content[2] - content[0]);
+        const height = Math.abs(content[5] - content[1]);
+        if (width === 0 || height === 0) {
+          throw new Error('ELEMENT_NOT_VISIBLE: Element has zero width or height. It may be hidden or display:none.');
+        }
+
+        // Calculate initial center coordinates
+        centerX = (content[0] + content[2]) / 2;
+        centerY = (content[1] + content[5]) / 2;
+
+        // Check if element is within viewport and scroll if needed
+        // Only check viewport if visual effects are enabled (optimization)
+        if (this.config.enableVisualEffects) {
+          const viewportResult = await this.sendCommand<any>('Runtime.evaluate', {
+            expression: '({ width: window.innerWidth, height: window.innerHeight, scrollX: window.scrollX, scrollY: window.scrollY })',
+            returnByValue: true
+          });
+          const viewport = viewportResult.result.value;
+
+          // Element is in viewport if its center is visible on screen
+          // Note: content coordinates are absolute (relative to document), not viewport
+          const isInViewport =
+            centerX >= viewport.scrollX &&
+            centerX <= viewport.scrollX + viewport.width &&
+            centerY >= viewport.scrollY &&
+            centerY <= viewport.scrollY + viewport.height;
+
+          if (!isInViewport) {
+            // Scroll element into view
+            await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId: resolvedBackendNodeId });
+
+            // Wait for scroll animation to complete
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Get box model AGAIN after scrolling (element position has changed)
+            const updatedBoxModel = await this.sendCommand<any>('DOM.getBoxModel', { backendNodeId: resolvedBackendNodeId });
+            content = updatedBoxModel.model.content;
+
+            // Recalculate center coordinates with new position
+            centerX = (content[0] + content[2]) / 2;
+            centerY = (content[1] + content[5]) / 2;
+          }
+        } else {
+          // Visual effects disabled - still scroll into view if needed, but don't wait
+          await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId: resolvedBackendNodeId }).catch(() => { });
+        }
       }
 
       // CDP MIGRATION: Trigger ripple visual effect BEFORE click (with correct coordinates)
