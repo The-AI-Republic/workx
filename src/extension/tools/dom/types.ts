@@ -247,6 +247,13 @@ export interface ServiceConfig {
   snapshotTimeout: number;
   retryAttempts: number;
   enableMetrics?: boolean; // Enable performance metrics collection
+  /**
+   * Use DOM.getContentQuads (viewport-relative) for click targeting instead of
+   * DOM.getBoxModel. Fixes the scrolled-page in-viewport misclassification and
+   * supports inline/SVG/transformed elements. Default off pending dogfood;
+   * falls back to getBoxModel when off.
+   */
+  useContentQuads?: boolean;
 }
 
 // Performance metrics interface
