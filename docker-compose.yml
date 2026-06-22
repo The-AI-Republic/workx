@@ -11,7 +11,11 @@ services:
     environment:
       - WORKX_SERVER_PORT=18100
       - WORKX_SERVER_BIND=auto
-      - WORKX_SERVER_AUTH_MODE=token
+      # Web UI connects from the server's own origin; `none` mode accepts
+      # loopback + same-origin browser connections (see buildExpectedOrigins
+      # in src/server/connection/auth.ts). Use `token` for network-exposed
+      # deployments without the browser UI.
+      - WORKX_SERVER_AUTH_MODE=${WORKX_SERVER_AUTH_MODE:-none}
       - WORKX_SERVER_TOKEN=${WORKX_SERVER_TOKEN}
       - WORKX_DATA_DIR=/data
       - WORKX_CONFIG_PATH=/app/config.json
