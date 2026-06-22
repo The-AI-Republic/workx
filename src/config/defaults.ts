@@ -179,7 +179,7 @@ export const DEFAULT_APP_SERVER_CONFIG: IAppServerConfig = {
 export function getDefaultAgentConfig(): IAgentConfig {
   return {
     version: '2.1.0',
-    selectedModelKey: 'fireworks:accounts/fireworks/models/kimi-k2-thinking', // Default to Kimi K2 on Fireworks for fresh install
+    selectedModelKey: 'fireworks:accounts/fireworks/models/kimi-k2p6', // Default to Kimi K2.6 on Fireworks for fresh install
     providers: getDefaultProviders(),
     profiles: {},
     activeProfile: null,
@@ -363,7 +363,7 @@ export function getDefaultProviders(): Record<string, IProviderConfig> {
 export function getDefaultStoredConfig(): IStoredConfig {
   return {
     version: '2.1.0',
-    selectedModelKey: 'fireworks:accounts/fireworks/models/kimi-k2-thinking', // Default to Kimi K2 on Fireworks for fresh install
+    selectedModelKey: 'fireworks:accounts/fireworks/models/kimi-k2p6', // Default to Kimi K2.6 on Fireworks for fresh install
     providerKeys: {}, // Empty - no API keys configured by default
     preferences: { ...DEFAULT_USER_PREFERENCES },
     cache: { ...DEFAULT_CACHE_SETTINGS },
