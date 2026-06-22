@@ -10,6 +10,7 @@
   import Tooltip from '../../components/common/Tooltip.svelte';
   import { t, _t } from '../../lib/i18n';
   import { registerShortcut, registerShortcutContext } from '../../shortcuts/useShortcut';
+  import { isModelAvailableForFreeUser } from '../../lib/freeUserModels';
 
   // Props
   let {
@@ -41,20 +42,9 @@
     onModelChange?: (data: { modelId: string }) => void;
   } = $props();
 
-  // Free user model restriction
-  // FREE_USER_DEFAULT_MODEL: Simple model name pattern for matching
-  // FREE_USER_DEFAULT_COMPOUND_KEY: Format providerId:modelKey (not a raw model key)
-  const FREE_USER_DEFAULT_MODEL = 'kimi-k2p6';
-  const FREE_USER_DEFAULT_COMPOUND_KEY = 'fireworks:fireworks/models/kimi-k2p6';
-
   // Subscribe to user store
   let isUserLoggedIn = $derived($userStore.isLoggedIn);
   let isFreeUser = $derived($userStore.userType === 0);
-
-  // Check if a model is available for free users
-  function isModelAvailableForFreeUser(modelKey: string): boolean {
-    return modelKey.toLowerCase().includes(FREE_USER_DEFAULT_MODEL);
-  }
 
   let isOpen = $state(false);
   let focusedIndex = $state(-1);

@@ -16,10 +16,7 @@
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
   import { platform } from '../stores/platformStore';
-
-  // Default compound key for free users (Fireworks Kimi K2.6)
-  // Format: providerId:modelKey (compound key, not a raw model key)
-  const FREE_USER_DEFAULT_COMPOUND_KEY = 'fireworks:fireworks/models/kimi-k2p6';
+  import { FREE_USER_DEFAULT_COMPOUND_KEY } from '../lib/freeUserModels';
 
   let {
     settingsConfig,

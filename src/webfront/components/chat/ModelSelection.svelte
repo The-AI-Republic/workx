@@ -12,6 +12,7 @@
   import Tooltip from '../common/Tooltip.svelte';
   import PopupCard from '../common/PopupCard.svelte';
   import { t, _t } from '../../lib/i18n';
+  import { FREE_USER_DEFAULT_COMPOUND_KEY, isModelAvailableForFreeUser } from '../../lib/freeUserModels';
   import { getInitializedUIClient } from '@/core/messaging';
   import { registerShortcut, registerShortcutContext } from '../../shortcuts/useShortcut';
 
@@ -49,14 +50,6 @@
   let isUserLoggedIn = $derived($userStore.isLoggedIn);
   let isFreeUser = $derived($userStore.userType === 0);
 
-  // Default model for free users (Kimi K2.6)
-  const FREE_USER_DEFAULT_MODEL = 'kimi-k2p6';
-  const FREE_USER_DEFAULT_COMPOUND_KEY = 'fireworks:fireworks/models/kimi-k2p6';
-
-  // Check if a model is available for free users
-  function isModelAvailableForFreeUser(modelKey: string): boolean {
-    return modelKey.toLowerCase().includes(FREE_USER_DEFAULT_MODEL);
-  }
 
   // Filter models based on useOwnApiKey setting
   let filteredModelItems = $derived(isUserLoggedIn && !useOwnApiKey
