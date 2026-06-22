@@ -116,4 +116,36 @@ describe('ChromeDebuggerSessionRegistry', () => {
   it('installs exactly one chrome.debugger.onDetach listener', () => {
     expect(env.detachListeners.length).toBe(1);
   });
+
+  it('does not time out a command that resolves promptly', async () => {
+    const h = await registry.acquire(1);
+    const res = await h.sendCommand('Runtime.evaluate', { expression: '1' });
+    expect(res).toEqual({});
+    expect(env.detach).not.toHaveBeenCalled();
+    expect(registry.isAttached(1)).toBe(true);
+  });
+
+  it('times out a wedged command, force-detaches, and re-attaches on next acquire', async () => {
+    vi.useFakeTimers();
+    try {
+      const h = await registry.acquire(1);
+      // Make the next command hang: never invoke the chrome callback.
+      env.sendCommand.mockImplementationOnce(() => {});
+
+      const pending = h.sendCommand('Page.navigate', { url: 'x' }, { timeoutMs: 1000 });
+      const rejects = expect(pending).rejects.toThrow(/CDP_COMMAND_TIMEOUT/);
+      await vi.advanceTimersByTimeAsync(1000);
+      await rejects;
+
+      // Force-detached the wedged tab.
+      expect(env.detach).toHaveBeenCalledTimes(1);
+      expect(registry.isAttached(1)).toBe(false);
+
+      // Next acquire re-attaches cleanly.
+      await registry.acquire(1);
+      expect(env.attach).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

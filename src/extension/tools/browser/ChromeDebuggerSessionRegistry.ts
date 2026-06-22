@@ -10,11 +10,49 @@
 
 import { ChromeDebuggerClient } from './ChromeDebuggerClient';
 import type { CDPDomain, CDPEventCallback, DebuggerTarget } from '@/core/tools/browser/DebuggerClient';
-import type {
-  DebuggerHandle,
-  DebuggerSessionRegistry,
-  DebuggerDetachCallback,
+import {
+  CdpCommandTimeoutError,
+  type DebuggerHandle,
+  type DebuggerSessionRegistry,
+  type DebuggerDetachCallback,
+  type SendCommandOptions,
 } from '@/core/tools/browser/DebuggerSessionRegistry';
+
+/** Default per-command timeout for interactive commands. */
+const DEFAULT_CDP_TIMEOUT_MS = 10_000;
+/** Short timeout for input dispatch — a wedged Input.* is unambiguous. */
+const INPUT_CDP_TIMEOUT_MS = 5_000;
+/**
+ * Longer budget for snapshot-heavy commands that can legitimately take many
+ * seconds on large pages. Well under DomService's overall `snapshotTimeout`
+ * (120s) but enough to catch a genuinely wedged renderer.
+ */
+const SLOW_CDP_TIMEOUT_MS = 60_000;
+const SLOW_METHODS = new Set<string>([
+  'DOM.getDocument',
+  'Accessibility.getFullAXTree',
+  'DOMSnapshot.captureSnapshot',
+  'Page.captureScreenshot',
+]);
+
+function defaultTimeoutForMethod(method: string): number {
+  if (SLOW_METHODS.has(method)) return SLOW_CDP_TIMEOUT_MS;
+  if (method.startsWith('Input.')) return INPUT_CDP_TIMEOUT_MS;
+  return DEFAULT_CDP_TIMEOUT_MS;
+}
+
+/**
+ * Race a promise against a timeout that rejects with `onTimeout()`. The timer is
+ * always cleared so it can't fire after the command settled. A late underlying
+ * resolution is harmless — a JS promise can only settle once.
+ */
+function raceWithTimeout<T>(p: Promise<T>, ms: number, onTimeout: () => Error): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => reject(onTimeout()), ms);
+  });
+  return Promise.race([p, timeout]).finally(() => clearTimeout(timer)) as Promise<T>;
+}
 
 /** Per-tab shared session state. */
 interface TabSession {
@@ -186,8 +224,30 @@ export class ChromeDebuggerSessionRegistry implements DebuggerSessionRegistry {
       isAttached: () => !released && registry.sessions.has(tabId),
 
       // ── DebuggerClient: commands ──
-      sendCommand: <T = unknown>(method: string, params?: Record<string, unknown>) =>
-        client.sendCommand<T>(method, params),
+      // Each command is raced against a per-method timeout. On timeout the tab
+      // is presumed wedged and force-detached so the next acquire re-attaches
+      // clean. NOTE (blast radius): force-detach abandons ALL in-flight commands
+      // on the shared tab, so one timed-out command fails its concurrent
+      // siblings too. Acceptable for a wedged renderer; see design §1.6 #2.
+      sendCommand: async <T = unknown>(
+        method: string,
+        params?: Record<string, unknown>,
+        opts?: SendCommandOptions
+      ): Promise<T> => {
+        const timeoutMs = opts?.timeoutMs ?? defaultTimeoutForMethod(method);
+        try {
+          return await raceWithTimeout(
+            client.sendCommand<T>(method, params),
+            timeoutMs,
+            () => new CdpCommandTimeoutError(method, timeoutMs)
+          );
+        } catch (error) {
+          if (error instanceof CdpCommandTimeoutError) {
+            await registry.forceDetach(tabId);
+          }
+          throw error;
+        }
+      },
 
       // ── DebuggerClient: events / domains ──
       onEvent: (cb: CDPEventCallback) => {

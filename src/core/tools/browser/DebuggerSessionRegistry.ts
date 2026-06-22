@@ -34,6 +34,32 @@ import type { DebuggerClient } from './DebuggerClient';
 export type DebuggerDetachCallback = (reason: string) => void;
 
 /**
+ * Thrown when a single CDP command does not resolve within its timeout. The
+ * registry force-detaches the (presumed wedged) tab before rethrowing, so the
+ * next `acquire` re-attaches cleanly.
+ */
+export class CdpCommandTimeoutError extends Error {
+  constructor(
+    public readonly method: string,
+    public readonly timeoutMs: number
+  ) {
+    super(`CDP_COMMAND_TIMEOUT: '${method}' did not resolve within ${timeoutMs}ms`);
+    this.name = 'CdpCommandTimeoutError';
+  }
+}
+
+/** Options for a single CDP command sent through a {@link DebuggerHandle}. */
+export interface SendCommandOptions {
+  /**
+   * Override the per-command timeout (ms). Defaults to a per-method budget:
+   * a short default for interactive commands, a longer one for snapshot-heavy
+   * commands (`DOM.getDocument`, `Accessibility.getFullAXTree`,
+   * `DOMSnapshot.captureSnapshot`, `Page.captureScreenshot`).
+   */
+  timeoutMs?: number;
+}
+
+/**
  * A refcounted handle to a shared per-tab debugger session.
  *
  * Extends {@link DebuggerClient} so existing consumers that already program
@@ -44,6 +70,17 @@ export type DebuggerDetachCallback = (reason: string) => void;
 export interface DebuggerHandle extends DebuggerClient {
   /** The tab this handle is bound to. */
   readonly tabId: number;
+
+  /**
+   * Send a CDP command, raced against a per-command timeout. On timeout the
+   * registry force-detaches the tab and throws {@link CdpCommandTimeoutError}.
+   * Widens {@link DebuggerClient.sendCommand} with an optional `opts`.
+   */
+  sendCommand<T = unknown>(
+    method: string,
+    params?: Record<string, unknown>,
+    opts?: SendCommandOptions
+  ): Promise<T>;
 
   /**
    * Subscribe to external/forced detach of the shared session. The callback
