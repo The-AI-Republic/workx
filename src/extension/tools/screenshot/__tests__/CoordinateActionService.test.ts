@@ -412,33 +412,36 @@ describe('CoordinateActionService', () => {
   // keypressAt
   // ==========================================================================
   describe('keypressAt', () => {
-    it('sends keyDown then keyUp with correct key and code', async () => {
+    it('sends keyDown then keyUp with correct key, code, virtual key code, and text', async () => {
       await service.keypressAt('Enter');
 
       expect(mockSendCommand).toHaveBeenCalledTimes(2);
 
-      expect(mockSendCommand).toHaveBeenNthCalledWith(1, 'Input.dispatchKeyEvent', {
+      expect(mockSendCommand).toHaveBeenNthCalledWith(1, 'Input.dispatchKeyEvent', expect.objectContaining({
         type: 'keyDown',
         key: 'Enter',
-        code: 'KeyENTER',
+        code: 'Enter',
+        windowsVirtualKeyCode: 13,
+        text: '\r',
         modifiers: 0,
-      });
+      }));
 
-      expect(mockSendCommand).toHaveBeenNthCalledWith(2, 'Input.dispatchKeyEvent', {
+      expect(mockSendCommand).toHaveBeenNthCalledWith(2, 'Input.dispatchKeyEvent', expect.objectContaining({
         type: 'keyUp',
         key: 'Enter',
-        code: 'KeyENTER',
+        code: 'Enter',
+        windowsVirtualKeyCode: 13,
         modifiers: 0,
-      });
+      }));
     });
 
-    it('generates uppercase code from the key name', async () => {
+    it('uses the correct physical code for a letter', async () => {
       await service.keypressAt('a');
 
       expect(mockSendCommand).toHaveBeenNthCalledWith(
         1,
         'Input.dispatchKeyEvent',
-        expect.objectContaining({ key: 'a', code: 'KeyA' })
+        expect.objectContaining({ key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, text: 'a' })
       );
     });
 
@@ -447,19 +450,19 @@ describe('CoordinateActionService', () => {
         modifiers: { ctrl: true },
       });
 
-      expect(mockSendCommand).toHaveBeenNthCalledWith(1, 'Input.dispatchKeyEvent', {
+      expect(mockSendCommand).toHaveBeenNthCalledWith(1, 'Input.dispatchKeyEvent', expect.objectContaining({
         type: 'keyDown',
         key: 'c',
         code: 'KeyC',
         modifiers: 2,
-      });
+      }));
 
-      expect(mockSendCommand).toHaveBeenNthCalledWith(2, 'Input.dispatchKeyEvent', {
+      expect(mockSendCommand).toHaveBeenNthCalledWith(2, 'Input.dispatchKeyEvent', expect.objectContaining({
         type: 'keyUp',
         key: 'c',
         code: 'KeyC',
         modifiers: 2,
-      });
+      }));
     });
 
     it('encodes combined modifiers on keypress events', async () => {
@@ -487,7 +490,7 @@ describe('CoordinateActionService', () => {
       expect(mockSendCommand).toHaveBeenNthCalledWith(
         1,
         'Input.dispatchKeyEvent',
-        expect.objectContaining({ key: 'Tab', code: 'KeyTAB' })
+        expect.objectContaining({ key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 })
       );
     });
 
@@ -497,7 +500,7 @@ describe('CoordinateActionService', () => {
       expect(mockSendCommand).toHaveBeenNthCalledWith(
         1,
         'Input.dispatchKeyEvent',
-        expect.objectContaining({ key: 'Escape', code: 'KeyESCAPE' })
+        expect.objectContaining({ key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
       );
     });
 

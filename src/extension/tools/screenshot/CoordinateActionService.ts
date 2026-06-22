@@ -6,6 +6,7 @@
  */
 
 import type { Coordinates, KeyModifiers, CoordinateActionOptions } from './types';
+import { dispatchKey } from '../input/InputDispatcher';
 
 export class CoordinateActionService {
   private tabId: number;
@@ -150,21 +151,8 @@ export class CoordinateActionService {
     try {
       const modifiers = this.encodeModifiers(options?.modifiers);
 
-      // Dispatch key down event
-      await this.sendCommand('Input.dispatchKeyEvent', {
-        type: 'keyDown',
-        key,
-        code: `Key${key.toUpperCase()}`,
-        modifiers
-      });
-
-      // Dispatch key up event
-      await this.sendCommand('Input.dispatchKeyEvent', {
-        type: 'keyUp',
-        key,
-        code: `Key${key.toUpperCase()}`,
-        modifiers
-      });
+      // Correct key synthesis via the shared dispatcher (real code/keyCode/text).
+      await dispatchKey((method, params) => this.sendCommand(method, params), key, { modifiers });
 
       // Wait after action if specified
       if (options?.waitAfter) {

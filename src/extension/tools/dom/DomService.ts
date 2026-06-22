@@ -15,6 +15,7 @@ import { computeHeuristics, classifyNode, determineInteractionType, detectFramew
 import type { TypeOptions } from '../../../types/domTool';
 import { DomAddon, type DomAddonContext } from './addons/DomAddon';
 import { googleDocAddon } from './addons/GoogleDocAddon';
+import { dispatchKey } from '../input/InputDispatcher';
 import type { DebuggerClient, CDPEventCallback } from '../../../core/tools/browser/DebuggerClient';
 // Static import — forTab() is only used in extension builds where DOMTool is registered.
 // Dynamic import() is banned in Chrome extension service workers.
@@ -2676,18 +2677,10 @@ export class DomService {
         if (modifiers.includes('Meta')) modifierBits |= 4;
       }
 
-      await this.sendCommand('Input.dispatchKeyEvent', {
-        type: 'keyDown',
-        key,
-        code: `Key${key.toUpperCase()}`,
-        modifiers: modifierBits
-      });
-
-      await this.sendCommand('Input.dispatchKeyEvent', {
-        type: 'keyUp',
-        key,
-        code: `Key${key.toUpperCase()}`,
-        modifiers: modifierBits
+      // Correct key synthesis: real `code`/`windowsVirtualKeyCode`/`text` so
+      // pages (and legacy keyCode handlers) actually receive the keypress.
+      await dispatchKey((method, params) => this.sendCommand(method, params), key, {
+        modifiers: modifierBits,
       });
 
       // Invalidate snapshot - let getSerializedDom() rebuild when needed
