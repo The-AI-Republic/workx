@@ -6,7 +6,7 @@
  */
 
 import type { Coordinates, KeyModifiers, CoordinateActionOptions } from './types';
-import { dispatchKey } from '../input/InputDispatcher';
+import { dispatchKey, click as dispatchClick } from '../input/InputDispatcher';
 
 export class CoordinateActionService {
   private tabId: number;
@@ -35,24 +35,12 @@ export class CoordinateActionService {
       const clickCount = options?.clickCount || 1;
       const modifiers = this.encodeModifiers(options?.modifiers);
 
-      // Dispatch mouse pressed event
-      await this.sendCommand('Input.dispatchMouseEvent', {
-        type: 'mousePressed',
-        x: coordinates.x,
-        y: coordinates.y,
+      // Route through the shared dispatcher: mouseMoved -> mousePressed ->
+      // mouseReleased with correct `buttons` bookkeeping.
+      await dispatchClick((method, params) => this.sendCommand(method, params), coordinates.x, coordinates.y, {
         button,
         clickCount,
-        modifiers
-      });
-
-      // Dispatch mouse released event
-      await this.sendCommand('Input.dispatchMouseEvent', {
-        type: 'mouseReleased',
-        x: coordinates.x,
-        y: coordinates.y,
-        button,
-        clickCount,
-        modifiers
+        modifiers,
       });
 
       // Wait after action if specified

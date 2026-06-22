@@ -16,28 +16,20 @@ describe('CoordinateActionService', () => {
   // clickAt
   // ==========================================================================
   describe('clickAt', () => {
-    it('sends mousePressed then mouseReleased with correct coordinates', async () => {
+    it('sends mouseMoved, mousePressed, then mouseReleased with correct coordinates', async () => {
       await service.clickAt({ x: 100, y: 200 });
 
-      expect(mockSendCommand).toHaveBeenCalledTimes(2);
+      expect(mockSendCommand).toHaveBeenCalledTimes(3);
 
-      expect(mockSendCommand).toHaveBeenNthCalledWith(1, 'Input.dispatchMouseEvent', {
-        type: 'mousePressed',
-        x: 100,
-        y: 200,
-        button: 'left',
-        clickCount: 1,
-        modifiers: 0,
-      });
-
-      expect(mockSendCommand).toHaveBeenNthCalledWith(2, 'Input.dispatchMouseEvent', {
-        type: 'mouseReleased',
-        x: 100,
-        y: 200,
-        button: 'left',
-        clickCount: 1,
-        modifiers: 0,
-      });
+      expect(mockSendCommand).toHaveBeenNthCalledWith(1, 'Input.dispatchMouseEvent', expect.objectContaining({
+        type: 'mouseMoved', x: 100, y: 200, button: 'none', buttons: 0,
+      }));
+      expect(mockSendCommand).toHaveBeenNthCalledWith(2, 'Input.dispatchMouseEvent', expect.objectContaining({
+        type: 'mousePressed', x: 100, y: 200, button: 'left', buttons: 1, clickCount: 1, modifiers: 0,
+      }));
+      expect(mockSendCommand).toHaveBeenNthCalledWith(3, 'Input.dispatchMouseEvent', expect.objectContaining({
+        type: 'mouseReleased', x: 100, y: 200, button: 'left', buttons: 0, clickCount: 1, modifiers: 0,
+      }));
     });
 
     it('uses custom button, clickCount, and modifiers from options', async () => {
@@ -46,38 +38,22 @@ describe('CoordinateActionService', () => {
         { button: 'right', clickCount: 2, modifiers: { shift: true } }
       );
 
-      expect(mockSendCommand).toHaveBeenCalledTimes(2);
+      expect(mockSendCommand).toHaveBeenCalledTimes(3);
 
-      expect(mockSendCommand).toHaveBeenNthCalledWith(1, 'Input.dispatchMouseEvent', {
-        type: 'mousePressed',
-        x: 50,
-        y: 75,
-        button: 'right',
-        clickCount: 2,
-        modifiers: 8,
-      });
-
-      expect(mockSendCommand).toHaveBeenNthCalledWith(2, 'Input.dispatchMouseEvent', {
-        type: 'mouseReleased',
-        x: 50,
-        y: 75,
-        button: 'right',
-        clickCount: 2,
-        modifiers: 8,
-      });
+      expect(mockSendCommand).toHaveBeenNthCalledWith(2, 'Input.dispatchMouseEvent', expect.objectContaining({
+        type: 'mousePressed', x: 50, y: 75, button: 'right', buttons: 2, clickCount: 2, modifiers: 8,
+      }));
+      expect(mockSendCommand).toHaveBeenNthCalledWith(3, 'Input.dispatchMouseEvent', expect.objectContaining({
+        type: 'mouseReleased', x: 50, y: 75, button: 'right', buttons: 0, clickCount: 2, modifiers: 8,
+      }));
     });
 
     it('defaults button to left, clickCount to 1, modifiers to 0 when options is undefined', async () => {
       await service.clickAt({ x: 0, y: 0 });
 
-      expect(mockSendCommand).toHaveBeenNthCalledWith(1, 'Input.dispatchMouseEvent', {
-        type: 'mousePressed',
-        x: 0,
-        y: 0,
-        button: 'left',
-        clickCount: 1,
-        modifiers: 0,
-      });
+      expect(mockSendCommand).toHaveBeenNthCalledWith(2, 'Input.dispatchMouseEvent', expect.objectContaining({
+        type: 'mousePressed', x: 0, y: 0, button: 'left', buttons: 1, clickCount: 1, modifiers: 0,
+      }));
     });
 
     it('wraps sendCommand errors with COORDINATE_CLICK_FAILED', async () => {
@@ -200,30 +176,21 @@ describe('CoordinateActionService', () => {
       await vi.advanceTimersByTimeAsync(100);
       await promise;
 
-      // clickAt produces 2 calls (mousePressed + mouseReleased), then insertText = 3 total
-      expect(mockSendCommand).toHaveBeenCalledTimes(3);
+      // clickAt produces 3 calls (mouseMoved, mousePressed, mouseReleased), then insertText = 4 total
+      expect(mockSendCommand).toHaveBeenCalledTimes(4);
 
-      // First two calls are the click (mousePressed, mouseReleased)
-      expect(mockSendCommand).toHaveBeenNthCalledWith(1, 'Input.dispatchMouseEvent', {
-        type: 'mousePressed',
-        x: 300,
-        y: 400,
-        button: 'left',
-        clickCount: 1,
-        modifiers: 0,
-      });
+      expect(mockSendCommand).toHaveBeenNthCalledWith(1, 'Input.dispatchMouseEvent', expect.objectContaining({
+        type: 'mouseMoved', x: 300, y: 400,
+      }));
+      expect(mockSendCommand).toHaveBeenNthCalledWith(2, 'Input.dispatchMouseEvent', expect.objectContaining({
+        type: 'mousePressed', x: 300, y: 400, button: 'left', clickCount: 1,
+      }));
+      expect(mockSendCommand).toHaveBeenNthCalledWith(3, 'Input.dispatchMouseEvent', expect.objectContaining({
+        type: 'mouseReleased', x: 300, y: 400, button: 'left', clickCount: 1,
+      }));
 
-      expect(mockSendCommand).toHaveBeenNthCalledWith(2, 'Input.dispatchMouseEvent', {
-        type: 'mouseReleased',
-        x: 300,
-        y: 400,
-        button: 'left',
-        clickCount: 1,
-        modifiers: 0,
-      });
-
-      // Third call is the text insertion
-      expect(mockSendCommand).toHaveBeenNthCalledWith(3, 'Input.insertText', {
+      // Last call is the text insertion
+      expect(mockSendCommand).toHaveBeenNthCalledWith(4, 'Input.insertText', {
         text: 'Hello World',
       });
     });
@@ -237,11 +204,11 @@ describe('CoordinateActionService', () => {
       await vi.advanceTimersByTimeAsync(100);
       await promise;
 
-      // Internal click should always use clickCount: 1
+      // Internal click (mousePressed = 2nd call) should always use clickCount: 1
       expect(mockSendCommand).toHaveBeenNthCalledWith(
-        1,
+        2,
         'Input.dispatchMouseEvent',
-        expect.objectContaining({ clickCount: 1 })
+        expect.objectContaining({ type: 'mousePressed', clickCount: 1 })
       );
     });
 
@@ -256,8 +223,9 @@ describe('CoordinateActionService', () => {
     });
 
     it('wraps errors from insertText with COORDINATE_TYPE_FAILED', async () => {
-      // Click succeeds, but insertText fails
+      // Click succeeds (mouseMoved, mousePressed, mouseReleased), but insertText fails
       mockSendCommand
+        .mockResolvedValueOnce(undefined) // mouseMoved
         .mockResolvedValueOnce(undefined) // mousePressed
         .mockResolvedValueOnce(undefined) // mouseReleased
         .mockRejectedValueOnce(new Error('Input domain error'));
