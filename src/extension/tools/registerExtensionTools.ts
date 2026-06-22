@@ -21,6 +21,7 @@ import { DOMTool } from './DOMTool';
 import { NavigationTool } from './NavigationTool';
 import { StorageTool } from './StorageTool';
 import { PageVisionTool } from './PageVisionTool';
+import { ViewportTool } from './ViewportTool';
 
 // Cross-platform tools (also used in extension)
 import { PlanningTool } from '../../tools/PlanningTool';
@@ -328,6 +329,23 @@ export async function registerExtensionTools(
         console.log(`PageVisionTool disabled: Model "${modelConfig.name}" does not support image input`);
       }
     }
+
+    // ── browser_viewport ────────────────────────────────────────────────
+    await registerTool('viewport_tool', new ViewportTool(), {
+      riskAssessor: staticRiskAssessor,
+      runtime: {
+        concurrency: {
+          // set/reset mutate emulation state — not concurrency-safe.
+          isConcurrencySafe: () => false,
+          isReadOnly: () => false,
+          isDestructive: () => false,
+        },
+        ui: {
+          getActivityDescription: (input) =>
+            input.action === 'reset' ? 'Resetting viewport' : 'Setting viewport',
+        },
+      },
+    });
 
     // ── planning_tool ───────────────────────────────────────────────────
     try {
