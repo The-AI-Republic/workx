@@ -262,6 +262,40 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
         );
       }
 
+      // Defense-in-depth: the runtime — which owns credentials — decides where
+      // the authorization code + PKCE verifier may be sent, rather than blindly
+      // trusting the WebView-supplied tokenUrl. Require TLS (loopback may use
+      // http for local dev) and, when the runtime knows its own auth origin
+      // (WORKX_AUTH_BASE_URL / WORKX_HOME_PAGE_BASE_URL), require an exact match.
+      let parsedTokenUrl: URL;
+      try {
+        parsedTokenUrl = new URL(tokenUrl);
+      } catch {
+        throw new Error('auth.exchangeOIDCCode: invalid tokenUrl');
+      }
+      const isLoopback =
+        parsedTokenUrl.hostname === 'localhost' || parsedTokenUrl.hostname === '127.0.0.1';
+      if (parsedTokenUrl.protocol !== 'https:' && !(parsedTokenUrl.protocol === 'http:' && isLoopback)) {
+        throw new Error('auth.exchangeOIDCCode: tokenUrl must use https');
+      }
+      const runtimeAuthBase =
+        typeof process !== 'undefined'
+          ? process.env?.WORKX_AUTH_BASE_URL || process.env?.WORKX_HOME_PAGE_BASE_URL
+          : undefined;
+      if (runtimeAuthBase) {
+        let expectedOrigin: string | null = null;
+        try {
+          expectedOrigin = new URL(runtimeAuthBase).origin;
+        } catch {
+          expectedOrigin = null;
+        }
+        if (expectedOrigin && expectedOrigin !== parsedTokenUrl.origin) {
+          throw new Error(
+            'auth.exchangeOIDCCode: tokenUrl origin does not match the configured auth origin',
+          );
+        }
+      }
+
       const body = new URLSearchParams({
         grant_type: 'authorization_code',
         code,

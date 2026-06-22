@@ -12,6 +12,7 @@ import {
   AUTH_OIDC_AUTHORIZE_PATH,
   AUTH_OIDC_TOKEN_PATH,
   AUTH_OIDC_CLIENT_ID,
+  AUTH_OIDC_ENABLED,
   DESKTOP_OIDC_REDIRECT_URI,
 } from '../lib/constants';
 
@@ -131,12 +132,14 @@ export const DESKTOP_OIDC_CLIENT_ID = AUTH_OIDC_CLIENT_ID;
 export const DESKTOP_OIDC_REDIRECT = DESKTOP_OIDC_REDIRECT_URI;
 
 /**
- * Whether the desktop OIDC + PKCE login flow is configured. Requires a hosted
- * auth base URL and an OIDC client id; the authorize/token paths default to the
- * standard OIDC routes when not explicitly set.
+ * Whether the desktop OIDC + PKCE login flow is enabled. Requires the explicit
+ * `AUTH_OIDC_ENABLED` kill-switch (default off) plus a hosted auth base URL and
+ * an OIDC client id. When disabled, the desktop falls back to the legacy
+ * desktop-token flow so login never hard-breaks before the hosted
+ * `workx-desktop` OIDC client is registered.
  */
 export function hasDesktopOidc(): boolean {
-  return Boolean(HOME_PAGE_BASE_URL && AUTH_OIDC_CLIENT_ID);
+  return Boolean(AUTH_OIDC_ENABLED && HOME_PAGE_BASE_URL && AUTH_OIDC_CLIENT_ID);
 }
 
 /** Build the OIDC token endpoint URL (code -> tokens exchange). */

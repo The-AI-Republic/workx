@@ -13,6 +13,12 @@ export const AUTH_OIDC_AUTHORIZE_PATH = AUTH_ROUTE_PATHS.authorize ?? '/auth/aut
 export const AUTH_OIDC_TOKEN_PATH = AUTH_ROUTE_PATHS.token ?? '/auth/token';
 /** Public desktop OIDC client id (PKCE). */
 export const AUTH_OIDC_CLIENT_ID = authConfig.oidcClientId ?? 'workx-desktop';
+/**
+ * Kill-switch for desktop OIDC+PKCE login (default OFF). Enable per-environment
+ * once the hosted `workx-desktop` OIDC client is registered; otherwise the
+ * legacy desktop-token flow is used so login never hard-breaks pre-registration.
+ */
+export const AUTH_OIDC_ENABLED = authConfig.oidcEnabled;
 /** Custom-scheme deep-link the desktop registers for the OIDC redirect. */
 export const DESKTOP_OIDC_REDIRECT_URI = 'workx://auth/callback';
 
