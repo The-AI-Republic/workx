@@ -5,6 +5,7 @@
  */
 
 import type { ScreenshotCaptureOptions, ViewportBounds, ScrollOffset } from './types';
+import { downscalePngToCssPixels } from './downscale';
 
 export class ScreenshotService {
   private tabId: number;
@@ -30,18 +31,22 @@ export class ScreenshotService {
     viewport: ViewportBounds;
   }> {
     try {
-      // Get viewport bounds before capture
-      const viewport = await this.getViewportBounds();
+      // Get viewport bounds (+ DPR) before capture
+      const { devicePixelRatio, ...viewport } = await this.getViewportBounds();
 
-      // Capture screenshot using CDP
+      // Capture screenshot using CDP (device pixels)
       const screenshot = await this.sendCommand<{ data: string }>('Page.captureScreenshot', {
         format: options?.format || 'png',
         quality: options?.quality,
         captureBeyondViewport: false // Only capture visible viewport
       });
 
+      // Downscale to CSS pixels so the image the model sees matches the
+      // coordinate space clicks are dispatched in (no-op when DPR == 1).
+      const base64Data = await downscalePngToCssPixels(screenshot.data, devicePixelRatio);
+
       return {
-        base64Data: screenshot.data,
+        base64Data,
         viewport
       };
     } catch (error: any) {
@@ -101,19 +106,20 @@ export class ScreenshotService {
   /**
    * Get current viewport bounds
    */
-  private async getViewportBounds(): Promise<ViewportBounds> {
+  private async getViewportBounds(): Promise<ViewportBounds & { devicePixelRatio: number }> {
     const result = await this.sendCommand<any>('Runtime.evaluate', {
-      expression: '({ width: window.innerWidth, height: window.innerHeight, scroll_x: window.scrollX, scroll_y: window.scrollY })',
+      expression: '({ width: window.innerWidth, height: window.innerHeight, scroll_x: window.scrollX, scroll_y: window.scrollY, device_pixel_ratio: window.devicePixelRatio })',
       returnByValue: true
     });
 
-    const { width, height, scroll_x, scroll_y } = result.result.value;
+    const { width, height, scroll_x, scroll_y, device_pixel_ratio } = result.result.value;
 
     return {
       width,
       height,
       scroll_x,
-      scroll_y
+      scroll_y,
+      devicePixelRatio: device_pixel_ratio ?? 1
     };
   }
 

@@ -70,7 +70,7 @@ describe('ScreenshotService', () => {
       await service.captureViewport();
 
       expect(mockSendCommand).toHaveBeenCalledWith('Runtime.evaluate', {
-        expression: '({ width: window.innerWidth, height: window.innerHeight, scroll_x: window.scrollX, scroll_y: window.scrollY })',
+        expression: '({ width: window.innerWidth, height: window.innerHeight, scroll_x: window.scrollX, scroll_y: window.scrollY, device_pixel_ratio: window.devicePixelRatio })',
         returnByValue: true,
       });
     });
