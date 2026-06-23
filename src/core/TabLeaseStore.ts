@@ -106,13 +106,17 @@ export class TabLeaseStore {
   /** Drop leases whose tab no longer exists. Returns the number dropped. */
   async gcStale(): Promise<number> {
     const leases = await this.readAll();
+    const entries = Object.entries(leases);
+    // Check liveness in parallel so we don't hold the lease lock for N
+    // sequential chrome.tabs.get round-trips.
+    const liveness = await Promise.all(entries.map(([, lease]) => this.tabExists(lease.tabId)));
     let dropped = 0;
-    for (const [tabId, lease] of Object.entries(leases)) {
-      if (!(await this.tabExists(lease.tabId))) {
+    entries.forEach(([tabId], i) => {
+      if (!liveness[i]) {
         delete leases[Number(tabId)];
         dropped++;
       }
-    }
+    });
     if (dropped > 0) await this.writeAll(leases);
     return dropped;
   }

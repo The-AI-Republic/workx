@@ -94,4 +94,15 @@ describe('PageReadiness', () => {
     const result = await navPromise;
     expect(result).toEqual({ frameId: 'F1', loaderId: 'L1' });
   });
+
+  it('caps the seen loaderId map across many navigations', async () => {
+    const { handle, fire, tick } = fakeHandle();
+    const pr = new PageReadiness(handle);
+    await tick();
+    for (let i = 0; i < 20; i++) {
+      fire('Page.lifecycleEvent', { loaderId: `L${i}`, name: 'load' });
+    }
+    expect((pr as any).seen.size).toBeLessThanOrEqual(8);
+    pr.dispose();
+  });
 });
