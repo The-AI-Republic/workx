@@ -148,4 +148,19 @@ describe('ChromeDebuggerSessionRegistry', () => {
       vi.useRealTimers();
     }
   });
+
+  it('a stale handle release after force-detach does not detach the re-acquired session', async () => {
+    const staleHandle = await registry.acquire(1); // session A
+    await registry.forceDetach(1); // A torn down (detach #1)
+    const fresh = await registry.acquire(1); // session B (attach #2), refs=1
+    expect(env.attach).toHaveBeenCalledTimes(2);
+
+    // Releasing the stale handle from session A must NOT decrement/detach B.
+    await staleHandle.release();
+    expect(env.detach).toHaveBeenCalledTimes(1); // only A's force-detach
+    expect(registry.isAttached(1)).toBe(true); // B is still live
+
+    await fresh.release();
+    expect(env.detach).toHaveBeenCalledTimes(2); // now B detaches at refcount 0
+  });
 });

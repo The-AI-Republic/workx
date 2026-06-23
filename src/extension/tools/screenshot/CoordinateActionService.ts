@@ -196,6 +196,16 @@ export class CoordinateActionService {
   }
 
   /**
+   * Public viewport size via the shared debugger session (CSS pixels). Used by
+   * page_vision coordinate validation so it routes through the acquired handle
+   * instead of a separate raw chrome.debugger call.
+   */
+  async getViewportSize(): Promise<{ width: number; height: number }> {
+    const { width, height } = await this.getViewportBounds();
+    return { width, height };
+  }
+
+  /**
    * Get current viewport bounds
    */
   private async getViewportBounds(): Promise<{
