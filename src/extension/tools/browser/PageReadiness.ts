@@ -137,6 +137,13 @@ export class PageReadiness {
         if (!set) {
           set = new Set();
           this.seen.set(loaderId, set);
+          // Bound memory across many navigations (Map preserves insertion
+          // order — evict the oldest loaderId).
+          while (this.seen.size > 8) {
+            const oldest = this.seen.keys().next().value;
+            if (oldest === undefined || oldest === loaderId) break;
+            this.seen.delete(oldest);
+          }
         }
         set.add(name);
       }

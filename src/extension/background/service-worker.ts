@@ -1815,7 +1815,9 @@ async function performRolloutCleanup(): Promise<void> {
 chrome.runtime.onStartup.addListener(() => {
   initialize();
   // Drop tab leases whose tab no longer exists (orphans from a prior session).
-  void import('../tools/browser/tabLeaseStore').then(({ gcStaleTabLeases }) => gcStaleTabLeases());
+  void import('../tools/browser/tabLeaseStore')
+    .then(({ gcStaleTabLeases }) => gcStaleTabLeases())
+    .catch(() => {});
 });
 
 /**

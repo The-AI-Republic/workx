@@ -52,15 +52,17 @@ export class ExtensionPlatformAdapter implements IPlatformAdapter {
   }
 
   async claimTabLease(tabId: number, sessionId: string, origin: 'agent' | 'user'): Promise<void> {
-    const { getTabLeaseStore, getLeaseLifecycleQueue } = await import('../tools/browser/tabLeaseStore');
-    await getLeaseLifecycleQueue().run(sessionId, () =>
+    const { getTabLeaseStore, getLeaseLifecycleQueue, LEASE_QUEUE_KEY } = await import('../tools/browser/tabLeaseStore');
+    // Serialize on a single global key — the store is one shared blob, so a
+    // per-session key would let different sessions' read-modify-writes race.
+    await getLeaseLifecycleQueue().run(LEASE_QUEUE_KEY, () =>
       getTabLeaseStore().claim({ tabId, sessionId, origin })
     );
   }
 
   async releaseTabLease(tabId: number, sessionId: string): Promise<void> {
-    const { getTabLeaseStore, getLeaseLifecycleQueue } = await import('../tools/browser/tabLeaseStore');
-    await getLeaseLifecycleQueue().run(sessionId, () =>
+    const { getTabLeaseStore, getLeaseLifecycleQueue, LEASE_QUEUE_KEY } = await import('../tools/browser/tabLeaseStore');
+    await getLeaseLifecycleQueue().run(LEASE_QUEUE_KEY, () =>
       getTabLeaseStore().release(sessionId, tabId)
     );
   }

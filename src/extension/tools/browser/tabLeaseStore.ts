@@ -33,6 +33,14 @@ async function tabExists(tabId: number): Promise<boolean> {
   }
 }
 
+/**
+ * Single queue key for ALL lease mutations. The lease store is one global blob
+ * in chrome.storage.session, so claim/release/GC must be serialized globally —
+ * keying the queue per-session would let two sessions' read-modify-write of the
+ * shared blob interleave and lose an update.
+ */
+export const LEASE_QUEUE_KEY = '__workx_leases__';
+
 let storeSingleton: TabLeaseStore | null = null;
 let queueSingleton: LeaseLifecycleQueue | null = null;
 
@@ -57,7 +65,7 @@ export function getLeaseLifecycleQueue(): LeaseLifecycleQueue {
  */
 export async function gcStaleTabLeases(): Promise<number> {
   try {
-    return await getLeaseLifecycleQueue().run('__gc__', () => getTabLeaseStore().gcStale());
+    return await getLeaseLifecycleQueue().run(LEASE_QUEUE_KEY, () => getTabLeaseStore().gcStale());
   } catch (error) {
     console.warn('[tabLeaseStore] stale-lease GC failed:', error);
     return 0;

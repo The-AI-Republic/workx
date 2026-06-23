@@ -27,7 +27,12 @@ interface ViewportToolRequest extends BaseToolRequest {
 }
 
 /** Handles held per tab while an override is active (module-scoped state). */
-const activeOverrides = new Map<number, DebuggerHandle>();
+interface ActiveOverride {
+  handle: DebuggerHandle;
+  /** Unsubscribe from the session's detach notification. */
+  unsub: () => void;
+}
+const activeOverrides = new Map<number, ActiveOverride>();
 
 export class ViewportTool extends BaseTool {
   protected toolDefinition: ToolDefinition = createToolDefinition(
@@ -83,30 +88,43 @@ export class ViewportTool extends BaseTool {
   private async set(tabId: number, request: ViewportToolRequest): Promise<unknown> {
     // Reuse a held handle for this tab, or acquire one and keep it so the
     // override survives subsequent tool calls until reset.
-    const handle = activeOverrides.get(tabId) ?? (await getDebuggerSessionRegistry().acquire(tabId));
+    let entry = activeOverrides.get(tabId);
+    const freshlyAcquired = !entry;
+    if (!entry) {
+      const handle = await getDebuggerSessionRegistry().acquire(tabId);
+      // Clean up if the session detaches externally (tab closed, infobar closed,
+      // force-detach) so we don't leak a dead handle or a stuck override entry.
+      const unsub = handle.onDetach(() => {
+        activeOverrides.delete(tabId);
+      });
+      entry = { handle, unsub };
+    }
     try {
-      const service = new ViewportOverrideService((method, params) => handle.sendCommand(method, params));
+      const service = new ViewportOverrideService((method, params) => entry!.handle.sendCommand(method, params));
       const applied = await service.setOverride({ width: request.width, height: request.height });
-      activeOverrides.set(tabId, handle);
+      activeOverrides.set(tabId, entry);
       return { action: 'set', applied };
     } catch (error) {
-      // On failure, don't leak the handle if we just acquired it.
-      if (!activeOverrides.has(tabId)) {
-        await handle.release();
+      // On failure, don't leak a freshly-acquired handle.
+      if (freshlyAcquired) {
+        entry.unsub();
+        activeOverrides.delete(tabId);
+        await entry.handle.release();
       }
       throw error;
     }
   }
 
   private async reset(tabId: number): Promise<unknown> {
-    const handle = activeOverrides.get(tabId);
-    if (!handle) {
+    const entry = activeOverrides.get(tabId);
+    if (!entry) {
       return { action: 'reset', wasActive: false };
     }
     activeOverrides.delete(tabId);
-    const service = new ViewportOverrideService((method, params) => handle.sendCommand(method, params));
+    entry.unsub();
+    const service = new ViewportOverrideService((method, params) => entry.handle.sendCommand(method, params));
     await service.clearOverride();
-    await handle.release();
+    await entry.handle.release();
     return { action: 'reset', wasActive: true };
   }
 }

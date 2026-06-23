@@ -21,6 +21,20 @@ let visualEffectController: any = null;
 let visualEffectShadowHost: HTMLElement | null = null;
 let visualEffectObserver: MutationObserver | null = null;
 
+// Respond to readiness pings from the background's ping-or-inject
+// (ensureContentScript). Registered at module scope so it answers even for a
+// duplicate instance whose initialize() returns early. Without this, the ping
+// always fails and the background re-injects on every call.
+if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+	chrome.runtime.onMessage.addListener((msg: any, _sender, sendResponse) => {
+		if (msg?.type === 'WORKX_PING') {
+			sendResponse({ pong: true, instanceId: INSTANCE_ID });
+			return true;
+		}
+		return undefined;
+	});
+}
+
 interface PageContext {
 	url: string;
 	title: string;
