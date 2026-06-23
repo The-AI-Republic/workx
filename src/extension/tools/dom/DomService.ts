@@ -733,7 +733,9 @@ export class DomService {
       // Nothing visible. If the element is also zero-area (collapsed/hidden),
       // refuse — matching the box-model path's ELEMENT_NOT_VISIBLE rather than
       // silently clicking a degenerate element.
-      const maxArea = Math.max(0, ...quads.map((q) => this.quadArea(q)));
+      // reduce() (not Math.max(...spread)) to avoid a call-stack overflow on a
+      // pathologically large quad array.
+      const maxArea = quads.reduce((m, q) => Math.max(m, this.quadArea(q)), 0);
       if (maxArea <= 0) {
         throw new Error('ELEMENT_NOT_VISIBLE: Element has zero width or height. It may be hidden or display:none.');
       }
