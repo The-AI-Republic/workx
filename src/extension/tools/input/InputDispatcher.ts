@@ -63,12 +63,18 @@ export async function dispatchKey(
   options?: DispatchKeyOptions
 ): Promise<void> {
   const def = getKeyDefinition(key);
-  const modifiers = options?.modifiers ?? 0;
+  let modifiers = options?.modifiers ?? 0;
 
   let text = def.text;
   // With Shift held, a letter produces its uppercase character.
   if (text && modifiers & MODIFIER_BITS.shift && /^[a-z]$/.test(text)) {
     text = text.toUpperCase();
+  }
+  // An already-uppercase letter implies Shift — encode it so the synthesized
+  // KeyboardEvent (event.shiftKey, code+shiftKey reconstruction) matches a real
+  // keystroke rather than reporting shiftKey:false for 'A'.
+  if (text && /^[A-Z]$/.test(text)) {
+    modifiers |= MODIFIER_BITS.shift;
   }
   const isPrintable = text !== undefined;
 
@@ -99,7 +105,7 @@ export async function dispatchKey(
  */
 export async function click(send: CdpSend, x: number, y: number, options?: ClickOptions): Promise<void> {
   const button = options?.button ?? 'left';
-  const clickCount = options?.clickCount ?? 1;
+  const clickCount = Math.max(1, options?.clickCount ?? 1);
   const modifiers = options?.modifiers ?? 0;
   const heldButtons = BUTTON_MASK[button];
 
@@ -112,26 +118,33 @@ export async function click(send: CdpSend, x: number, y: number, options?: Click
     modifiers,
     pointerType: 'mouse',
   });
-  await send('Input.dispatchMouseEvent', {
-    type: 'mousePressed',
-    x,
-    y,
-    button,
-    buttons: heldButtons,
-    clickCount,
-    modifiers,
-    pointerType: 'mouse',
-  });
-  await send('Input.dispatchMouseEvent', {
-    type: 'mouseReleased',
-    x,
-    y,
-    button,
-    buttons: 0,
-    clickCount,
-    modifiers,
-    pointerType: 'mouse',
-  });
+
+  // A double-click is NOT one press/release with clickCount:2 — the renderer
+  // derives `dblclick` only after observing successive click cycles with an
+  // incrementing clickCount. So emit `clickCount` full press/release cycles
+  // (count 1, then 2, …), matching Puppeteer/Playwright.
+  for (let n = 1; n <= clickCount; n++) {
+    await send('Input.dispatchMouseEvent', {
+      type: 'mousePressed',
+      x,
+      y,
+      button,
+      buttons: heldButtons,
+      clickCount: n,
+      modifiers,
+      pointerType: 'mouse',
+    });
+    await send('Input.dispatchMouseEvent', {
+      type: 'mouseReleased',
+      x,
+      y,
+      button,
+      buttons: 0,
+      clickCount: n,
+      modifiers,
+      pointerType: 'mouse',
+    });
+  }
 }
 
 /** Insert text directly (fast path for bulk typing; not per-key synthesis). */

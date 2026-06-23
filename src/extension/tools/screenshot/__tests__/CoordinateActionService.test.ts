@@ -32,19 +32,30 @@ describe('CoordinateActionService', () => {
       }));
     });
 
-    it('uses custom button, clickCount, and modifiers from options', async () => {
+    it('uses custom button and modifiers from options', async () => {
       await service.clickAt(
         { x: 50, y: 75 },
-        { button: 'right', clickCount: 2, modifiers: { shift: true } }
+        { button: 'right', modifiers: { shift: true } }
       );
 
       expect(mockSendCommand).toHaveBeenCalledTimes(3);
 
       expect(mockSendCommand).toHaveBeenNthCalledWith(2, 'Input.dispatchMouseEvent', expect.objectContaining({
-        type: 'mousePressed', x: 50, y: 75, button: 'right', buttons: 2, clickCount: 2, modifiers: 8,
+        type: 'mousePressed', x: 50, y: 75, button: 'right', buttons: 2, clickCount: 1, modifiers: 8,
       }));
       expect(mockSendCommand).toHaveBeenNthCalledWith(3, 'Input.dispatchMouseEvent', expect.objectContaining({
-        type: 'mouseReleased', x: 50, y: 75, button: 'right', buttons: 0, clickCount: 2, modifiers: 8,
+        type: 'mouseReleased', x: 50, y: 75, button: 'right', buttons: 0, clickCount: 1, modifiers: 8,
+      }));
+    });
+
+    it('double-click emits two press/release cycles (5 events)', async () => {
+      await service.clickAt({ x: 1, y: 2 }, { clickCount: 2 });
+      expect(mockSendCommand).toHaveBeenCalledTimes(5);
+      expect(mockSendCommand).toHaveBeenNthCalledWith(2, 'Input.dispatchMouseEvent', expect.objectContaining({
+        type: 'mousePressed', clickCount: 1,
+      }));
+      expect(mockSendCommand).toHaveBeenNthCalledWith(4, 'Input.dispatchMouseEvent', expect.objectContaining({
+        type: 'mousePressed', clickCount: 2,
       }));
     });
 
