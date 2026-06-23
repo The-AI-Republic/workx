@@ -1269,6 +1269,10 @@ export class ServerAgentBootstrap {
       // Stateless BYOK connection probe — runs the real provider call from the
       // runtime (no CORS), so the webview never has to reach LLM APIs directly.
       models: {},
+      // Expose the runtime credential store (OS keychain) to the desktop
+      // webview, which cannot reach it directly. Without this, webview-side
+      // BYOK API key saves are silently dropped.
+      credentials: {},
     });
 
     console.log(`[ServerAgentBootstrap] Registered ${count} service handlers`);

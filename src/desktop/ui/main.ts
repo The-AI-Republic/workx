@@ -25,7 +25,8 @@ import { initializeDesktop } from '../main';
 import { getInitializedUIClient } from '@/core/messaging';
 import { initLocale } from '../../webfront/lib/i18n';
 import { AgentConfig } from '@/config/AgentConfig';
-import { initializeConfigStorage } from '@/core/storage';
+import { initializeConfigStorage, setCredentialStore } from '@/core/storage';
+import { RuntimeRelayCredentialStore } from '@/webfront/credentials/RuntimeRelayCredentialStore';
 import { markDesktopWelcomeCompleted, shouldShowDesktopWelcome } from './desktopWelcome';
 
 // Add desktop-mode and terminal-mode classes to body
@@ -47,6 +48,11 @@ async function init() {
     console.warn('[Desktop] Failed to initialize config storage:', error);
     // Continue - will fall back to in-memory storage
   }
+
+  // 0b. Install the credential store. The OS keychain lives in the sidecar, so
+  // the webview relays credential ops over the runtime channel. Without this,
+  // AgentConfig.getCredentials() is null and BYOK API keys are silently dropped.
+  setCredentialStore(new RuntimeRelayCredentialStore());
 
   // 1. Subscribe to runtime lifecycle events before starting the sidecar so
   // the very first `runtime:ready` / `runtime:reconnecting` event flips the
