@@ -86,7 +86,24 @@ const PUNCTUATION: Record<string, { code: string; keyCode: number }> = {
   ',': { code: 'Comma', keyCode: 188 }, '<': { code: 'Comma', keyCode: 188 },
   '.': { code: 'Period', keyCode: 190 }, '>': { code: 'Period', keyCode: 190 },
   '/': { code: 'Slash', keyCode: 191 }, '?': { code: 'Slash', keyCode: 191 },
+  // Shifted number-row symbols share the digit's physical code.
+  '!': { code: 'Digit1', keyCode: 49 }, '@': { code: 'Digit2', keyCode: 50 },
+  '#': { code: 'Digit3', keyCode: 51 }, '$': { code: 'Digit4', keyCode: 52 },
+  '%': { code: 'Digit5', keyCode: 53 }, '^': { code: 'Digit6', keyCode: 54 },
+  '&': { code: 'Digit7', keyCode: 55 }, '*': { code: 'Digit8', keyCode: 56 },
+  '(': { code: 'Digit9', keyCode: 57 }, ')': { code: 'Digit0', keyCode: 48 },
 };
+
+/**
+ * Characters that require Shift on a US layout. Dispatching these should encode
+ * the Shift modifier so the synthesized KeyboardEvent matches a real keystroke
+ * (event.shiftKey true), like the uppercase-letter path. Uppercase A–Z are
+ * handled separately by a regex.
+ */
+export const SHIFTED_CHARS = new Set([
+  '~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+',
+  '{', '}', '|', ':', '"', '<', '>', '?',
+]);
 
 /**
  * Resolve a key string to its CDP definition. Handles named keys, aliases,

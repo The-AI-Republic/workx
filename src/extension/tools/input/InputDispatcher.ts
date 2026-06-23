@@ -10,7 +10,7 @@
  * @module extension/tools/input/InputDispatcher
  */
 
-import { getKeyDefinition } from './keyDefinitions';
+import { getKeyDefinition, SHIFTED_CHARS } from './keyDefinitions';
 
 /** Sends a CDP command; satisfied by DomService/CoordinateActionService senders. */
 export type CdpSend = <T = unknown>(method: string, params: Record<string, unknown>) => Promise<T>;
@@ -70,10 +70,11 @@ export async function dispatchKey(
   if (text && modifiers & MODIFIER_BITS.shift && /^[a-z]$/.test(text)) {
     text = text.toUpperCase();
   }
-  // An already-uppercase letter implies Shift — encode it so the synthesized
-  // KeyboardEvent (event.shiftKey, code+shiftKey reconstruction) matches a real
-  // keystroke rather than reporting shiftKey:false for 'A'.
-  if (text && /^[A-Z]$/.test(text)) {
+  // A character that requires Shift on a US layout (uppercase letter, or a
+  // shifted symbol like '?', '!', '~') implies Shift — encode it so the
+  // synthesized KeyboardEvent (event.shiftKey, code+shiftKey reconstruction)
+  // matches a real keystroke rather than reporting shiftKey:false.
+  if (text && (/^[A-Z]$/.test(text) || SHIFTED_CHARS.has(text))) {
     modifiers |= MODIFIER_BITS.shift;
   }
   const isPrintable = text !== undefined;
