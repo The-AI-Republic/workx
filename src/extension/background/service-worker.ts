@@ -665,6 +665,9 @@ async function registerServiceHandlers(): Promise<void> {
     const count = registerAllServices(serviceRegistry, {
       mcp: mcpManager ? { mcpManager } : undefined,
       scheduler: scheduler ? { scheduler } : undefined,
+      // Stateless BYOK connection probe — runs the real provider call from the
+      // service worker (no CORS), matching desktop/server behavior.
+      models: {},
       diagnostics: {
         buildCtx: () => ({
           platformId: 'extension',

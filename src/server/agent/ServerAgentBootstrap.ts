@@ -1266,6 +1266,9 @@ export class ServerAgentBootstrap {
       },
       memory: this.registry ? { registry: this.registry } : undefined,
       runtime: runtimeState ? { runtimeState } : undefined,
+      // Stateless BYOK connection probe — runs the real provider call from the
+      // runtime (no CORS), so the webview never has to reach LLM APIs directly.
+      models: {},
     });
 
     console.log(`[ServerAgentBootstrap] Registered ${count} service handlers`);
