@@ -153,6 +153,69 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
     return { accessToken, profile, refreshed: false };
   }
 
+  /**
+   * Persist a fresh token pair, switch the agent to backend routing, update the
+   * runtime auth state, and fetch the profile. Shared by `auth.completeLogin`
+   * (tokens supplied directly) and `auth.exchangeOIDCCode` (tokens obtained
+   * from an OIDC code exchange).
+   */
+  async function finalizeLogin(
+    accessToken: string,
+    refreshToken: string,
+    backendBaseUrl: string | null,
+  ) {
+    if (!deps.getCredentialStore) {
+      throw new Error('finalizeLogin: credential store not available on this platform');
+    }
+    const credentialStore = deps.getCredentialStore();
+    await Promise.all([
+      credentialStore.set(AUTH_SERVICE, ACCESS_TOKEN_ACCOUNT, accessToken),
+      credentialStore.set(AUTH_SERVICE, REFRESH_TOKEN_ACCOUNT, refreshToken),
+    ]);
+
+    // Switch the agent to backend routing exactly like `agent.initAuth`. Doing
+    // it here in one round-trip removes a race window where the tokens are
+    // persisted but the AuthManager still has no tokenGetter.
+    if (deps.createAuthManager && deps.setAuthManager) {
+      const authManager = deps.createAuthManager(true, backendBaseUrl ?? null);
+      deps.setAuthManager(authManager);
+      await applyAuthManagerToSessions(registry, authManager);
+    }
+
+    await deps.runtimeState?.setAuthState({
+      mode: 'login',
+      hasToken: true,
+      profileStatus: 'loading',
+      lastError: undefined,
+    });
+
+    let user: RuntimeUserProfileSnapshot | null = null;
+    try {
+      user = await refreshProfile(accessToken);
+      const profileStatus = user ? 'ready' : deps.fetchUserProfile ? 'failed' : 'idle';
+      await deps.runtimeState?.setAuthState({
+        mode: 'login',
+        hasToken: true,
+        profile: user,
+        profileStatus,
+        lastError: user || !deps.fetchUserProfile ? undefined : 'Profile unavailable',
+      });
+    } catch (error) {
+      await deps.runtimeState?.setAuthState({
+        mode: 'login',
+        hasToken: true,
+        profile: null,
+        profileStatus: 'failed',
+        lastError: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    const auth = deps.runtimeState?.getAuthState();
+    const access = await deps.refreshAccessState?.() ?? deps.runtimeState?.getAccessState();
+    await deps.afterLogin?.();
+    return { success: true, state: auth, access, user: auth?.profile ?? user };
+  }
+
   return {
     /**
      * Complete a desktop OAuth login by accepting tokens from the WebView and
@@ -172,56 +235,88 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
       if (!accessToken || !refreshToken) {
         throw new Error('auth.completeLogin: accessToken and refreshToken are required');
       }
-      if (!deps.getCredentialStore) {
-        throw new Error('auth.completeLogin: credential store not available on this platform');
+      return finalizeLogin(accessToken, refreshToken, backendBaseUrl ?? null);
+    },
+
+    /**
+     * Complete a desktop OIDC + PKCE login. The WebView opens the hosted
+     * `/authorize` flow, receives `workx://auth/callback?code=…` via the deep
+     * link, and forwards the authorization code (plus the PKCE `code_verifier`)
+     * here. The runtime exchanges it at the OIDC token endpoint — keeping the
+     * exchange off the WebView — then stores the resulting tokens exactly like
+     * `auth.completeLogin`.
+     */
+    'auth.exchangeOIDCCode': async (params) => {
+      const { code, codeVerifier, tokenUrl, clientId, redirectUri, backendBaseUrl } =
+        (params ?? {}) as {
+          code?: string;
+          codeVerifier?: string;
+          tokenUrl?: string;
+          clientId?: string;
+          redirectUri?: string;
+          backendBaseUrl?: string | null;
+        };
+      if (!code || !codeVerifier || !tokenUrl || !clientId || !redirectUri) {
+        throw new Error(
+          'auth.exchangeOIDCCode: code, codeVerifier, tokenUrl, clientId, and redirectUri are required',
+        );
       }
-      const credentialStore = deps.getCredentialStore();
-      await Promise.all([
-        credentialStore.set(AUTH_SERVICE, ACCESS_TOKEN_ACCOUNT, accessToken),
-        credentialStore.set(AUTH_SERVICE, REFRESH_TOKEN_ACCOUNT, refreshToken),
-      ]);
 
-      // Switch the agent to backend routing exactly like `agent.initAuth`.
-      // Doing both here in one round-trip removes a race window where the
-      // tokens are persisted but the AuthManager still has no tokenGetter.
-      if (deps.createAuthManager && deps.setAuthManager) {
-        const authManager = deps.createAuthManager(true, backendBaseUrl ?? null);
-        deps.setAuthManager(authManager);
-        await applyAuthManagerToSessions(registry, authManager);
-      }
-
-      await deps.runtimeState?.setAuthState({
-        mode: 'login',
-        hasToken: true,
-        profileStatus: 'loading',
-        lastError: undefined,
-      });
-
-      let user: RuntimeUserProfileSnapshot | null = null;
+      // Defense-in-depth: the runtime — which owns credentials — decides where
+      // the authorization code + PKCE verifier may be sent, rather than blindly
+      // trusting the WebView-supplied tokenUrl. Require TLS (loopback may use
+      // http for local dev) and, when the runtime knows its own auth origin
+      // (WORKX_AUTH_BASE_URL / WORKX_HOME_PAGE_BASE_URL), require an exact match.
+      let parsedTokenUrl: URL;
       try {
-        user = await refreshProfile(accessToken);
-        const profileStatus = user ? 'ready' : deps.fetchUserProfile ? 'failed' : 'idle';
-        await deps.runtimeState?.setAuthState({
-          mode: 'login',
-          hasToken: true,
-          profile: user,
-          profileStatus,
-          lastError: user || !deps.fetchUserProfile ? undefined : 'Profile unavailable',
-        });
-      } catch (error) {
-        await deps.runtimeState?.setAuthState({
-          mode: 'login',
-          hasToken: true,
-          profile: null,
-          profileStatus: 'failed',
-          lastError: error instanceof Error ? error.message : String(error),
-        });
+        parsedTokenUrl = new URL(tokenUrl);
+      } catch {
+        throw new Error('auth.exchangeOIDCCode: invalid tokenUrl');
+      }
+      const isLoopback =
+        parsedTokenUrl.hostname === 'localhost' || parsedTokenUrl.hostname === '127.0.0.1';
+      if (parsedTokenUrl.protocol !== 'https:' && !(parsedTokenUrl.protocol === 'http:' && isLoopback)) {
+        throw new Error('auth.exchangeOIDCCode: tokenUrl must use https');
+      }
+      const runtimeAuthBase =
+        typeof process !== 'undefined'
+          ? process.env?.WORKX_AUTH_BASE_URL || process.env?.WORKX_HOME_PAGE_BASE_URL
+          : undefined;
+      if (runtimeAuthBase) {
+        let expectedOrigin: string | null = null;
+        try {
+          expectedOrigin = new URL(runtimeAuthBase).origin;
+        } catch {
+          expectedOrigin = null;
+        }
+        if (expectedOrigin && expectedOrigin !== parsedTokenUrl.origin) {
+          throw new Error(
+            'auth.exchangeOIDCCode: tokenUrl origin does not match the configured auth origin',
+          );
+        }
       }
 
-      const auth = deps.runtimeState?.getAuthState();
-      const access = await deps.refreshAccessState?.() ?? deps.runtimeState?.getAccessState();
-      await deps.afterLogin?.();
-      return { success: true, state: auth, access, user: auth?.profile ?? user };
+      const body = new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: redirectUri,
+        client_id: clientId,
+        code_verifier: codeVerifier,
+      });
+      const response = await fetch(tokenUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
+      });
+      if (!response.ok) {
+        const errorBody = await response.text().catch(() => '');
+        throw new Error(`auth.exchangeOIDCCode: token exchange failed (${response.status}): ${errorBody}`);
+      }
+      const data = (await response.json()) as { access_token?: string; refresh_token?: string };
+      if (!data.access_token || !data.refresh_token) {
+        throw new Error('auth.exchangeOIDCCode: token endpoint did not return access_token and refresh_token');
+      }
+      return finalizeLogin(data.access_token, data.refresh_token, backendBaseUrl ?? null);
     },
 
     /**

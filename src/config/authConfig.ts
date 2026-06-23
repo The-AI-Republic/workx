@@ -11,6 +11,10 @@ export interface AuthCookieNames {
 
 export interface AuthRoutePaths {
   login: string | null;
+  /** OIDC authorization endpoint (Authorization Code + PKCE). */
+  authorize: string | null;
+  /** OIDC token endpoint (code -> tokens exchange). */
+  token: string | null;
   desktopSession: string | null;
   desktopRefresh: string | null;
   profile: string | null;
@@ -23,6 +27,15 @@ export interface AuthConfig {
   cookieDomain: string | null;
   cookieNames: AuthCookieNames;
   routes: AuthRoutePaths;
+  /** OIDC public client id for the desktop app (PKCE, no secret). */
+  oidcClientId: string | null;
+  /**
+   * Explicit kill-switch for desktop OIDC+PKCE login. Defaults to OFF so a
+   * build never hard-cuts to OIDC before the hosted `workx-desktop` client is
+   * registered; enable per-environment (`WORKX_/VITE_AUTH_OIDC_ENABLED=true`)
+   * once that client exists, otherwise the legacy desktop-token flow runs.
+   */
+  oidcEnabled: boolean;
   source: {
     authBaseUrl: AuthConfigSource;
     cookieDomain: AuthConfigSource;
@@ -52,6 +65,13 @@ function processEnv(): Record<string, string | undefined> {
 
 function firstNonEmpty(...values: Array<string | undefined>): string | undefined {
   return values.find((value) => typeof value === 'string' && value.trim().length > 0);
+}
+
+/** Parse a boolean-ish env value ("true"/"1"/"yes"/"on"); default false. */
+function parseBoolEnv(value: string | undefined): boolean {
+  if (!value) return false;
+  const v = value.trim().toLowerCase();
+  return v === 'true' || v === '1' || v === 'yes' || v === 'on';
 }
 
 function routePath(
@@ -95,12 +115,26 @@ export function resolveAuthConfig(): AuthConfig {
   };
   const routes: AuthRoutePaths = {
     login: routePath(env, vite, 'LOGIN'),
+    authorize: routePath(env, vite, 'AUTHORIZE'),
+    token: routePath(env, vite, 'TOKEN'),
     desktopSession: routePath(env, vite, 'DESKTOP_SESSION'),
     desktopRefresh: routePath(env, vite, 'DESKTOP_REFRESH'),
     profile: routePath(env, vite, 'PROFILE'),
     userCenter: routePath(env, vite, 'USER_CENTER'),
     pricing: routePath(env, vite, 'PRICING'),
   };
+
+  const oidcClientId = firstNonEmpty(
+    env.WORKX_AUTH_OIDC_CLIENT_ID,
+    env.VITE_AUTH_OIDC_CLIENT_ID,
+    vite.VITE_AUTH_OIDC_CLIENT_ID,
+  ) ?? null;
+
+  const oidcEnabled = parseBoolEnv(firstNonEmpty(
+    env.WORKX_AUTH_OIDC_ENABLED,
+    env.VITE_AUTH_OIDC_ENABLED,
+    vite.VITE_AUTH_OIDC_ENABLED,
+  ));
 
   const usesDefaultCookieNames = Object.entries(cookieNames).every(
     ([key, value]) => value === DEFAULT_COOKIE_NAMES[key as keyof AuthCookieNames],
@@ -112,6 +146,8 @@ export function resolveAuthConfig(): AuthConfig {
     cookieDomain,
     cookieNames,
     routes,
+    oidcClientId,
+    oidcEnabled,
     source: {
       authBaseUrl: authBaseUrl ? 'env' : 'default',
       cookieDomain: cookieDomain ? 'env' : 'default',

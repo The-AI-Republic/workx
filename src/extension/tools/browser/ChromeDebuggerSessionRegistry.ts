@@ -212,6 +212,7 @@ export class ChromeDebuggerSessionRegistry implements DebuggerSessionRegistry {
   }
 
   private makeHandle(tabId: number, session: TabSession): DebuggerHandle {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias -- captured for use inside the handle's nested callbacks
     const registry = this;
     const client = session.client;
     let released = false;

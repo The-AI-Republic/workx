@@ -1,14 +1,31 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { push } from 'svelte-spa-router';
-  import { userStore, userInitials, getDesktopLoginPageUrl, getLoginPageUrl } from '../../stores/userStore';
+  import {
+    userStore,
+    userInitials,
+    getDesktopLoginPageUrl,
+    getLoginPageUrl,
+    getDesktopAuthorizeUrl,
+    getDesktopTokenUrl,
+    hasDesktopOidc,
+    DESKTOP_OIDC_CLIENT_ID,
+    DESKTOP_OIDC_REDIRECT,
+  } from '../../stores/userStore';
   import { uiTheme } from '../../stores/themeStore';
   import { platform } from '../../stores/platformStore';
   import { AUTH_ROUTE_PATHS, HOME_PAGE_BASE_URL, LLM_API_URL, buildHostedAuthUrl } from '../../lib/constants';
+  import { generatePKCEChallenge, randomUrlToken } from '@/core/auth/PKCEHelper';
   import Tooltip from './Tooltip.svelte';
   import PopupCard from './PopupCard.svelte';
   import { _t } from '../../lib/i18n';
   import type { RuntimeAuthState } from '@/core/services/runtime-state';
+
+  type DesktopLoginCompletion = {
+    success: boolean;
+    state?: RuntimeAuthState;
+    user?: { name?: string | null; email?: string | null; avatar?: string | null; userType?: number } | null;
+  };
 
   let isLoggingIn = $state(false);
   let cancelLogin: (() => void) | null = $state(null);
@@ -70,10 +87,10 @@
     }
 
     if (platform.platformName === 'desktop') {
-      // Desktop mode: open the browser to /login, await the workx-deeplink
-      // deeplink (Rust → WebView event), and forward both tokens to the
-      // runtime via `auth.completeLogin`. The WebView never touches the OS
-      // keychain after the Track 43 cutover — the runtime owns credentials.
+      // Desktop mode: open the home-page login in the external browser, await
+      // the workx://auth/callback deep link (Rust → WebView event), and let the
+      // runtime own credentials. Prefer OIDC + PKCE (authorization code); fall
+      // back to the legacy desktop-token flow only when OIDC is unconfigured.
       isLoggingIn = true;
       let isCancelled = false;
       let rejectPending: ((err: Error) => void) | null = null;
@@ -93,86 +110,118 @@
           import('@/core/messaging'),
         ]);
 
-        // 1. Open the home-page login route with our deeplink callback. The
-        // home page handles both fresh Google login and already-authenticated
-        // browser sessions.
-        const loginUrl = getDesktopLoginPageUrl();
+        // 1. Build the login URL. OIDC requires a PKCE pair + CSRF `state` that
+        // we hold in this closure until the callback returns the matching code.
+        const useOidc = hasDesktopOidc();
+        let codeVerifier = '';
+        let expectedState = '';
+        let loginUrl: string | null;
+        if (useOidc) {
+          const pkce = await generatePKCEChallenge();
+          codeVerifier = pkce.codeVerifier;
+          expectedState = randomUrlToken();
+          loginUrl = getDesktopAuthorizeUrl({ codeChallenge: pkce.codeChallenge, state: expectedState });
+        } else {
+          loginUrl = getDesktopLoginPageUrl();
+        }
         if (!loginUrl) throw new Error('Hosted auth is not configured');
 
         // 2. Subscribe to the workx-deeplink event from Rust before opening the
-        // browser — Rust emits it as soon as the OS hands us the URL.
-        const tokensPromise = new Promise<{ accessToken: string; refreshToken: string }>(
-          (resolve, reject) => {
-            let settled = false;
-            const timeoutId = setTimeout(() => {
-              rejectWithCleanup(new Error('Login timed out'));
-            }, 300_000);
-            const consumedAuthCallbacks = new Set<string>();
+        // browser. Resolve the parsed callback query params so the OIDC and
+        // legacy branches can each read what they need.
+        const callbackParams = new Promise<URLSearchParams>((resolve, reject) => {
+          let settled = false;
+          const timeoutId = setTimeout(() => {
+            rejectWithCleanup(new Error('Login timed out'));
+          }, 300_000);
+          const consumedAuthCallbacks = new Set<string>();
 
-            const resolveWithCleanup = (tokens: { accessToken: string; refreshToken: string }) => {
-              if (settled) return;
-              settled = true;
-              clearTimeout(timeoutId);
-              resolve(tokens);
-            };
-            const rejectWithCleanup = (error: Error) => {
-              if (settled) return;
-              settled = true;
-              clearTimeout(timeoutId);
-              reject(error);
-            };
-            rejectPending = rejectWithCleanup;
+          const resolveWithCleanup = (params: URLSearchParams) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timeoutId);
+            resolve(params);
+          };
+          const rejectWithCleanup = (error: Error) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timeoutId);
+            reject(error);
+          };
+          rejectPending = rejectWithCleanup;
 
-            listen<string>('workx-deeplink', (event) => {
-              try {
-                const urlObj = new URL(event.payload);
-                if (urlObj.host !== 'auth' || urlObj.pathname !== '/callback') {
-                  return;
-                }
-                const dedupeKey = urlObj.toString();
-                if (consumedAuthCallbacks.has(dedupeKey)) {
-                  return;
-                }
-                consumedAuthCallbacks.add(dedupeKey);
-                const accessToken = urlObj.searchParams.get('access_token');
-                const refreshToken = urlObj.searchParams.get('refresh_token');
-                if (!accessToken || !refreshToken) {
-                  rejectWithCleanup(new Error(urlObj.searchParams.get('error') ?? 'Missing tokens'));
-                  return;
-                }
-                resolveWithCleanup({ accessToken, refreshToken });
-              } catch (err) {
-                rejectWithCleanup(err instanceof Error ? err : new Error(String(err)));
+          listen<string>('workx-deeplink', (event) => {
+            try {
+              const urlObj = new URL(event.payload);
+              if (urlObj.host !== 'auth' || urlObj.pathname !== '/callback') {
+                return;
               }
-            }).then((unlisten) => {
-              // Detach the listener once the promise settles so a later
-              // unrelated deeplink does not silently re-trigger login UI.
-              tokensPromise.finally(() => unlisten()).catch(() => undefined);
-            }).catch((err) => {
+              const dedupeKey = urlObj.toString();
+              if (consumedAuthCallbacks.has(dedupeKey)) {
+                return;
+              }
+              consumedAuthCallbacks.add(dedupeKey);
+              const oauthError = urlObj.searchParams.get('error');
+              if (oauthError) {
+                rejectWithCleanup(
+                  new Error(urlObj.searchParams.get('error_description') ?? oauthError),
+                );
+                return;
+              }
+              resolveWithCleanup(urlObj.searchParams);
+            } catch (err) {
               rejectWithCleanup(err instanceof Error ? err : new Error(String(err)));
-            });
-          },
-        );
-        void tokensPromise.catch(() => undefined);
+            }
+          }).then((unlisten) => {
+            // Detach the listener once the promise settles so a later
+            // unrelated deeplink does not silently re-trigger login UI.
+            callbackParams.finally(() => unlisten()).catch(() => undefined);
+          }).catch((err) => {
+            rejectWithCleanup(err instanceof Error ? err : new Error(String(err)));
+          });
+        });
+        void callbackParams.catch(() => undefined);
 
         await open(loginUrl);
-        const tokens = await tokensPromise;
+        const params = await callbackParams;
         if (isCancelled) return;
 
-        // 3. Hand tokens to the runtime. The runtime persists them in the
-        // keychain (via the Rust keychain control-frame bridge), creates a
-        // backend-routing AuthManager whose tokenGetter reads from that same
-        // credential store, and pushes the new AuthManager into every
-        // active session's model client.
+        // 3. Hand off to the runtime, which persists tokens in the keychain (via
+        // the Rust keychain control-frame bridge), creates a backend-routing
+        // AuthManager, and pushes it into every active session's model client.
         const client = await getInitializedUIClient();
-        const completion = await client.serviceRequest<{
-          success: boolean;
-          state?: RuntimeAuthState;
-          user?: { name?: string | null; email?: string | null; avatar?: string | null; userType?: number } | null;
-        }>(
-          'auth.completeLogin',
-          { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken, backendBaseUrl: LLM_API_URL },
-        );
+        let completion: DesktopLoginCompletion;
+
+        if (useOidc) {
+          // OIDC: validate the CSRF `state`, then exchange the code for tokens
+          // inside the runtime (public PKCE client — no secret in the WebView).
+          const returnedState = params.get('state');
+          if (!returnedState || returnedState !== expectedState) {
+            throw new Error('Login failed: state mismatch (possible CSRF)');
+          }
+          const code = params.get('code');
+          if (!code) throw new Error('Login failed: missing authorization code');
+          const tokenUrl = getDesktopTokenUrl();
+          if (!tokenUrl) throw new Error('Hosted auth is not configured');
+          completion = await client.serviceRequest<DesktopLoginCompletion>('auth.exchangeOIDCCode', {
+            code,
+            codeVerifier,
+            tokenUrl,
+            clientId: DESKTOP_OIDC_CLIENT_ID,
+            redirectUri: DESKTOP_OIDC_REDIRECT,
+            backendBaseUrl: LLM_API_URL,
+          });
+        } else {
+          // Legacy desktop-token flow: tokens are embedded in the callback URL.
+          const accessToken = params.get('access_token');
+          const refreshToken = params.get('refresh_token');
+          if (!accessToken || !refreshToken) throw new Error('Missing tokens');
+          completion = await client.serviceRequest<DesktopLoginCompletion>('auth.completeLogin', {
+            accessToken,
+            refreshToken,
+            backendBaseUrl: LLM_API_URL,
+          });
+        }
         if (isCancelled) return;
 
         // 4. Update the UI userStore from the runtime response. Desktop
