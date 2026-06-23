@@ -105,5 +105,24 @@ describe('DomService getContentQuads targeting', () => {
       });
       await expect(service.resolveClickPointViaContentQuads(42)).rejects.toThrow('ELEMENT_NOT_VISIBLE');
     });
+
+    it('throws ELEMENT_NOT_VISIBLE for a zero-area (collapsed) element instead of clicking it', async () => {
+      // Degenerate quad (all points equal) → no visible intersection, zero area.
+      const service = await makeService('cq-8', (method) => {
+        if (method === 'Runtime.evaluate') return { result: { value: { width: 800, height: 600 } } };
+        if (method === 'DOM.getContentQuads') return { quads: [[100, 100, 100, 100, 100, 100, 100, 100]] };
+        return {};
+      });
+      await expect(service.resolveClickPointViaContentQuads(42)).rejects.toThrow('ELEMENT_NOT_VISIBLE');
+    });
+
+    it('throws when the viewport size cannot be read', async () => {
+      const service = await makeService('cq-9', (method) => {
+        if (method === 'Runtime.evaluate') return { result: { value: undefined } };
+        if (method === 'DOM.getContentQuads') return { quads: [[10, 10, 20, 10, 20, 20, 10, 20]] };
+        return {};
+      });
+      await expect(service.resolveClickPointViaContentQuads(42)).rejects.toThrow('ELEMENT_NOT_VISIBLE');
+    });
   });
 });
