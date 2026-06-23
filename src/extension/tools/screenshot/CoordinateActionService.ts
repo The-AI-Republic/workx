@@ -6,10 +6,14 @@
  */
 
 import type { Coordinates, KeyModifiers, CoordinateActionOptions } from './types';
+import { getDebuggerSessionRegistry } from '../browser/ChromeDebuggerSessionRegistry';
+import type { DebuggerHandle } from '@/core/tools/browser/DebuggerSessionRegistry';
 
 export class CoordinateActionService {
   private tabId: number;
   private sendCommand: <T = any>(method: string, params?: any) => Promise<T>;
+  /** Shared debugger session reference, when created via forTab(). */
+  private handle: DebuggerHandle | null = null;
 
   constructor(
     tabId: number,
@@ -192,6 +196,16 @@ export class CoordinateActionService {
   }
 
   /**
+   * Public viewport size via the shared debugger session (CSS pixels). Used by
+   * page_vision coordinate validation so it routes through the acquired handle
+   * instead of a separate raw chrome.debugger call.
+   */
+  async getViewportSize(): Promise<{ width: number; height: number }> {
+    const { width, height } = await this.getViewportBounds();
+    return { width, height };
+  }
+
+  /**
    * Get current viewport bounds
    */
   private async getViewportBounds(): Promise<{
@@ -209,46 +223,28 @@ export class CoordinateActionService {
   }
 
   /**
-   * Create CoordinateActionService for a specific tab
-   * Uses chrome.debugger to send CDP commands
+   * Create CoordinateActionService for a specific tab.
+   *
+   * Acquires a shared, refcounted debugger session from the registry instead of
+   * attaching independently (the old `Runtime.evaluate('1+1')` probe raced with
+   * other services and never detached). Callers MUST {@link release} the service
+   * when done; page_vision acquires once per action.
    */
   static async forTab(tabId: number): Promise<CoordinateActionService> {
-    // Check if debugger is already attached
-    let isAttached = false;
-    try {
-      await chrome.debugger.sendCommand({ tabId }, 'Runtime.evaluate', {
-        expression: '1+1',
-        returnByValue: true
-      });
-      isAttached = true;
-    } catch (error: any) {
-      // Debugger not attached - will attach below
-      isAttached = false;
-    }
+    const handle = await getDebuggerSessionRegistry().acquire(tabId);
 
-    // Attach debugger if not already attached
-    if (!isAttached) {
-      try {
-        await chrome.debugger.attach({ tabId }, '1.3');
-      } catch (error: any) {
-        console.error(`[CoordinateActionService] Failed to attach debugger to tab ${tabId}:`, error);
+    const sendCommand = <T = any>(method: string, params?: any): Promise<T> =>
+      handle.sendCommand<T>(method, params);
 
-        // Check for common errors
-        if (error.message?.includes('Another debugger is already attached')) {
-          // Debugger is attached by another process (DevTools, DomService, etc.) - this is OK
-        } else if (error.message?.includes('Cannot access')) {
-          throw new Error(`CDP_CONNECTION_LOST: Cannot attach debugger to tab ${tabId}. Tab may be a protected page (chrome://, chrome-extension://, etc.)`);
-        } else {
-          throw new Error(`CDP_CONNECTION_LOST: Failed to attach debugger to tab ${tabId}: ${error.message}`);
-        }
-      }
-    }
+    const service = new CoordinateActionService(tabId, sendCommand);
+    service.handle = handle;
+    return service;
+  }
 
-    // Create send command wrapper
-    const sendCommand = async <T = any>(method: string, params?: any): Promise<T> => {
-      return await chrome.debugger.sendCommand({ tabId }, method, params) as T;
-    };
-
-    return new CoordinateActionService(tabId, sendCommand);
+  /** Release this service's reference to the shared debugger session. */
+  async release(): Promise<void> {
+    const handle = this.handle;
+    this.handle = null;
+    await handle?.release();
   }
 }

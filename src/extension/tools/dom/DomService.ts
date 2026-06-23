@@ -16,14 +16,19 @@ import type { TypeOptions } from '../../../types/domTool';
 import { DomAddon, type DomAddonContext } from './addons/DomAddon';
 import { googleDocAddon } from './addons/GoogleDocAddon';
 import type { DebuggerClient, CDPEventCallback } from '../../../core/tools/browser/DebuggerClient';
+import type { DebuggerHandle } from '../../../core/tools/browser/DebuggerSessionRegistry';
 // Static import — forTab() is only used in extension builds where DOMTool is registered.
 // Dynamic import() is banned in Chrome extension service workers.
-import { ChromeDebuggerClient } from '../browser/ChromeDebuggerClient';
+import { getDebuggerSessionRegistry } from '../browser/ChromeDebuggerSessionRegistry';
 
 export class DomService {
   private static instances = new Map<string, DomService>();
 
   private client: DebuggerClient;
+  /** Set on the extension forTab() path; null on the desktop forClient() path. */
+  private handle: DebuggerHandle | null = null;
+  /** Unsubscribe from the shared session's detach notifications. */
+  private detachUnsubscribe: (() => void) | null = null;
   private instanceKey: string;
   private tabId: number;
   private isAttached: boolean = false;
@@ -74,20 +79,21 @@ export class DomService {
   static async forTab(tabId: number, config?: Partial<ServiceConfig>): Promise<DomService> {
     const key = `tab:${tabId}`;
     if (!this.instances.has(key)) {
-      const client = new ChromeDebuggerClient();
+      // Acquire a shared, refcounted debugger session for this tab. The registry
+      // throws `ALREADY_ATTACHED:` / `ATTACH_FAILED:` on conflict.
+      const handle = await getDebuggerSessionRegistry().acquire(tabId);
       try {
-        await client.attach({ tabId });
-      } catch (error: any) {
-        if (error.message?.toLowerCase().includes('already attached')) {
-          throw new Error('ALREADY_ATTACHED: DevTools is open on this tab. Please close DevTools.');
-        }
-        throw new Error(`ATTACH_FAILED: ${error.message}`);
+        const service = new DomService(handle, key, config);
+        service.tabId = tabId;
+        service.handle = handle;
+        await service.enableDomains();
+        service.setupEventListeners();
+        this.instances.set(key, service);
+      } catch (error) {
+        // Don't leak the reference if setup fails after a successful acquire.
+        await handle.release();
+        throw error;
       }
-      const service = new DomService(client, key, config);
-      service.tabId = tabId;
-      await service.enableDomains();
-      service.setupEventListeners();
-      this.instances.set(key, service);
     }
     return this.instances.get(key)!;
   }
@@ -130,16 +136,17 @@ export class DomService {
     this.boundHandleCdpEvent = this.handleCdpEvent.bind(this);
     this.client.onEvent(this.boundHandleCdpEvent);
 
-    // Listen for debugger detach (extension-only, chrome.debugger.onDetach)
-    if (typeof chrome !== 'undefined' && chrome.debugger?.onDetach) {
-      this.boundHandleDebuggerDetach = this.handleDebuggerDetach.bind(this);
-      chrome.debugger.onDetach.addListener(this.boundHandleDebuggerDetach);
+    // Reconcile on external/forced detach via the shared session handle. The
+    // registry owns the single chrome.debugger.onDetach listener and fans it
+    // out, so DomService no longer registers its own (extension/forTab path
+    // only; the desktop forClient path has no handle).
+    if (this.handle) {
+      this.detachUnsubscribe = this.handle.onDetach((reason) => this.handleDebuggerDetach(reason));
     }
   }
 
-  // Bound event handler references for cleanup
+  // Bound event handler reference for cleanup
   private boundHandleCdpEvent: CDPEventCallback | null = null;
-  private boundHandleDebuggerDetach: ((source: chrome.debugger.Debuggee, reason: string) => void) | null = null;
 
   async detach(): Promise<void> {
     if (!this.isAttached) return;
@@ -150,12 +157,19 @@ export class DomService {
         this.client.offEvent(this.boundHandleCdpEvent);
         this.boundHandleCdpEvent = null;
       }
-      if (this.boundHandleDebuggerDetach && typeof chrome !== 'undefined' && chrome.debugger?.onDetach) {
-        chrome.debugger.onDetach.removeListener(this.boundHandleDebuggerDetach);
-        this.boundHandleDebuggerDetach = null;
+      if (this.detachUnsubscribe) {
+        this.detachUnsubscribe();
+        this.detachUnsubscribe = null;
       }
 
-      await this.client.detach();
+      // forTab: release our refcount (detaches the shared session at zero).
+      // forClient (desktop): detach the pre-attached client directly.
+      if (this.handle) {
+        await this.handle.release();
+        this.handle = null;
+      } else {
+        await this.client.detach();
+      }
       this.isAttached = false;
       this.currentSnapshot = null;
       DomService.instances.delete(this.instanceKey);
@@ -738,13 +752,16 @@ export class DomService {
     }
   }
 
-  // Handle CDP connection loss (extension-only, chrome.debugger.onDetach)
-  private handleDebuggerDetach(source: chrome.debugger.Debuggee, reason: string): void {
-    if (source.tabId !== this.tabId) return;
-
+  // Handle CDP connection loss, fanned out from the registry's single
+  // chrome.debugger.onDetach listener (already filtered to this tab).
+  private handleDebuggerDetach(reason: string): void {
     console.error(`[DomService] CDP_CONNECTION_LOST: Debugger detached from tab ${this.tabId}. Reason: ${reason}`);
     this.isAttached = false;
     this.currentSnapshot = null;
+    // The shared session is already gone; drop our handle (release() would
+    // no-op) and our subscription (the registry already cleared subscribers).
+    this.handle = null;
+    this.detachUnsubscribe = null;
     DomService.instances.delete(this.instanceKey);
 
     // If detach was unexpected (not user-initiated), log for debugging
