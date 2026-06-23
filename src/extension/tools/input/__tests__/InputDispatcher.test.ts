@@ -132,4 +132,23 @@ describe('keyDefinitions punctuation + dispatchKey shift', () => {
     await dispatchKey(send, 'A');
     expect(send.mock.calls[0][1]).toMatchObject({ type: 'keyDown', text: 'A', modifiers: MODIFIER_BITS.shift });
   });
+
+  it('maps shifted number-row symbols to the digit code and encodes Shift', async () => {
+    expect(getKeyDefinition('!')).toMatchObject({ code: 'Digit1', keyCode: 49, text: '!' });
+    const send = vi.fn().mockResolvedValue(undefined);
+    await dispatchKey(send, '!');
+    expect(send.mock.calls[0][1]).toMatchObject({ type: 'keyDown', code: 'Digit1', modifiers: MODIFIER_BITS.shift });
+  });
+
+  it('encodes Shift for a shifted punctuation symbol', async () => {
+    const send = vi.fn().mockResolvedValue(undefined);
+    await dispatchKey(send, '?');
+    expect(send.mock.calls[0][1]).toMatchObject({ type: 'keyDown', code: 'Slash', modifiers: MODIFIER_BITS.shift });
+  });
+
+  it('does not encode Shift for an unshifted symbol', async () => {
+    const send = vi.fn().mockResolvedValue(undefined);
+    await dispatchKey(send, '/');
+    expect(send.mock.calls[0][1]).toMatchObject({ type: 'keyDown', code: 'Slash', modifiers: 0 });
+  });
 });
