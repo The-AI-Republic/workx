@@ -113,6 +113,13 @@ function createMockAgentConfig(overrides: {
     getModelByKey: vi.fn().mockReturnValue(defaultModelData),
     getProviderApiKey: vi.fn().mockResolvedValue(providerApiKey),
     getProvider: vi.fn().mockReturnValue(providerData),
+    getProviders: vi.fn().mockReturnValue({
+      openai: { id: 'openai' },
+      xai: { id: 'xai' },
+      anthropic: { id: 'anthropic' },
+      'google-ai-studio': { id: 'google-ai-studio' },
+      deepseek: { id: 'deepseek' },
+    }),
     getToolsConfig: vi.fn().mockReturnValue(toolsConfig),
   } as any;
 }
@@ -348,7 +355,7 @@ describe('ModelClientFactory', () => {
     });
 
     it('should map all valid provider IDs without error', async () => {
-      const validProviders: ModelProvider[] = ['openai', 'xai', 'anthropic', 'groq', 'google-ai-studio', 'fireworks', 'moonshot', 'together'];
+      const validProviders: ModelProvider[] = ['openai', 'xai', 'anthropic', 'groq', 'google-ai-studio', 'fireworks', 'moonshot', 'together', 'deepseek'];
       for (const pid of validProviders) {
         const f = new ModelClientFactory();
         await f.initialize(createMockAgentConfig({
@@ -650,15 +657,18 @@ describe('ModelClientFactory', () => {
   // getConfigurationStatus
   // =========================================================================
   describe('getConfigurationStatus', () => {
-    it('should return status for all 8 providers with correct isDefault', async () => {
+    it('should return status for the live provider catalog with correct isDefault', async () => {
       await factory.initialize(createMockAgentConfig({ providerApiKey: null }));
       const status = await factory.getConfigurationStatus();
 
       expect(Object.keys(status)).toEqual(
-        expect.arrayContaining(['openai', 'xai', 'anthropic', 'groq', 'google-ai-studio', 'fireworks', 'moonshot', 'together'])
+        expect.arrayContaining(['openai', 'xai', 'anthropic', 'google-ai-studio', 'deepseek'])
       );
+      // Removed providers must NOT appear once they leave the catalog.
+      expect(status).not.toHaveProperty('groq');
+      expect(status).not.toHaveProperty('moonshot');
       expect(status.openai.isDefault).toBe(true);
-      expect(status.groq.isDefault).toBe(false);
+      expect(status.xai.isDefault).toBe(false);
     });
 
     it('should reflect hasApiKey correctly', async () => {

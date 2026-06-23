@@ -32,6 +32,7 @@
       maxOutputTokens: number;
       baseUrl: string;
       selected: boolean;
+      isCustom?: boolean;
       pricing?: {
         inputToken: string;
         outputToken: string;
@@ -58,6 +59,7 @@
   interface GroupedModel {
     modelName: string;
     modelKey: string; // First provider's modelKey, used for free user check
+    isCustom: boolean; // True for user-defined custom endpoints (BYOK) — bypass free-tier lock
     providers: Array<{
       modelId: string;
       modelKey: string;
@@ -81,6 +83,10 @@
     for (const item of modelSelectionItems) {
       const existing = groups.get(item.modelName);
       if (existing) {
+        // A group is "custom" only if EVERY provider in it is custom, so a name
+        // collision between a built-in and a BYOK endpoint can't unlock the
+        // built-in for free users (mixed groups safe-fail to non-custom).
+        existing.isCustom = existing.isCustom && (item.isCustom ?? false);
         // Check for duplicate provider before adding
         const isDuplicate = existing.providers.some((p) => p.providerId === item.providerId);
         if (isDuplicate) {
@@ -106,6 +112,7 @@
         groups.set(item.modelName, {
           modelName: item.modelName,
           modelKey: item.modelKey, // Store modelKey for free user check
+          isCustom: item.isCustom ?? false,
           providers: [
             {
               modelId: item.modelId,
@@ -145,7 +152,7 @@
     if (disabled) return;
 
     // Block selection for free users trying to select premium models
-    if (isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(group.modelKey)) {
+    if (isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(group.modelKey, group.isCustom)) {
       // Model is locked for free users - don't allow selection
       return;
     }
@@ -173,7 +180,8 @@
     event: MouseEvent,
     modelId: string,
     modelName: string,
-    modelKey: string
+    modelKey: string,
+    isCustom = false
   ) {
     if (disabled) {
       event.stopPropagation();
@@ -181,7 +189,7 @@
     }
 
     // Block selection for free users trying to select premium models
-    if (isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(modelKey)) {
+    if (isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(modelKey, isCustom)) {
       // Model is locked for free users - don't allow selection
       // We don't stop propagation here so parent tooltip can catch the click
       return;
@@ -388,7 +396,7 @@
         {@const hasError = pendingProviderErrors.get(group.modelName)}
         {@const firstProvider = group.providers[0]}
         {@const isLockedForFreeUser =
-          isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(group.modelKey)}
+          isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(group.modelKey, group.isCustom)}
 
         <Tooltip
           content={$_t("Please upgrade the plan to unblock world's most advanced models")}
@@ -465,7 +473,8 @@
                               e,
                               provider.modelId,
                               group.modelName,
-                              provider.modelKey
+                              provider.modelKey,
+                              group.isCustom
                             )}
                         >
                           <span class="provider-name">{provider.providerName}</span>

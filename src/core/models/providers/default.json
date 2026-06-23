@@ -165,12 +165,12 @@
       }
     ]
   },
-  "moonshot": {
-    "id": "moonshot",
-    "name": "Moonshot AI",
+  "deepseek": {
+    "id": "deepseek",
+    "name": "DeepSeek",
     "apiKey": "",
     "organization": null,
-    "baseUrl": "https://api.moonshot.ai/v1",
+    "baseUrl": "https://api.deepseek.com",
     "version": null,
     "headers": {},
     "timeout": 30000,
@@ -182,127 +182,24 @@
     },
     "models": [
       {
-        "name": "Kimi K2.6",
-        "modelKey": "kimi-k2.6",
-        "creator": "Moonshot AI",
-        "contextWindow": 262144,
-        "maxOutputTokens": 16384,
+        "name": "DeepSeek V4 Flash",
+        "modelKey": "deepseek-v4-flash",
+        "creator": "DeepSeek",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 65536,
         "supportsReasoning": true,
-        "reasoningEfforts": [
-          "low",
-          "medium",
-          "high"
-        ],
+        "reasoningEfforts": [],
         "supportsReasoningSummaries": false,
         "supportsVerbosity": false,
-        "supportsImage": true,
-        "releaseDate": "2026-04-20",
+        "supportsImage": false,
+        "releaseDate": null,
         "deprecated": false,
         "pricing": {
-          "inputToken": "Cache Hit: $0.16 / 1M tokens, Cache Miss: $0.95 / 1M tokens",
-          "outputToken": "$4.00 / 1M tokens",
-          "link": "https://platform.moonshot.ai/docs/pricing/chat"
-        }
-      }
-    ]
-  },
-  "groq": {
-    "id": "groq",
-    "name": "Groq",
-    "apiKey": "",
-    "organization": null,
-    "baseUrl": "https://api.groq.com/openai/v1",
-    "version": null,
-    "headers": {},
-    "timeout": 30000,
-    "retryConfig": {
-      "maxRetries": 3,
-      "initialDelay": 1000,
-      "maxDelay": 10000,
-      "backoffMultiplier": 2
-    },
-    "models": []
-  },
-  "fireworks": {
-    "id": "fireworks",
-    "name": "Fireworks AI",
-    "apiKey": "",
-    "organization": null,
-    "baseUrl": "https://api.fireworks.ai/inference/v1",
-    "version": null,
-    "headers": {},
-    "timeout": 30000,
-    "retryConfig": {
-      "maxRetries": 3,
-      "initialDelay": 1000,
-      "maxDelay": 10000,
-      "backoffMultiplier": 2
-    },
-    "models": [
-      {
-        "name": "Kimi K2.6",
-        "modelKey": "accounts/fireworks/models/kimi-k2p6",
-        "creator": "Moonshot AI",
-        "contextWindow": 262144,
-        "maxOutputTokens": 16384,
-        "supportsReasoning": true,
-        "reasoningEfforts": [
-          "low",
-          "medium",
-          "high"
-        ],
-        "supportsReasoningSummaries": false,
-        "supportsVerbosity": false,
-        "supportsImage": true,
-        "releaseDate": "2026-04-20",
-        "deprecated": false,
-        "pricing": {
-          "inputToken": "$0.95 / 1M tokens, Cached: $0.16 / 1M tokens",
-          "outputToken": "$4.00 / 1M tokens",
-          "link": "https://fireworks.ai/models/fireworks/kimi-k2p6"
+          "inputToken": "Cache Hit: $0.0028 / 1M tokens, Cache Miss: $0.14 / 1M tokens",
+          "outputToken": "$0.28 / 1M tokens",
+          "link": "https://api-docs.deepseek.com/quick_start/pricing"
         },
         "supportBackendMode": 2
-      }
-    ]
-  },
-  "together": {
-    "id": "together",
-    "name": "Together AI",
-    "apiKey": "",
-    "organization": null,
-    "baseUrl": "https://api.together.xyz/v1",
-    "version": null,
-    "headers": {},
-    "timeout": 30000,
-    "retryConfig": {
-      "maxRetries": 3,
-      "initialDelay": 1000,
-      "maxDelay": 10000,
-      "backoffMultiplier": 2
-    },
-    "models": [
-      {
-        "name": "Kimi K2.6",
-        "modelKey": "moonshotai/Kimi-K2.6",
-        "creator": "Moonshot AI",
-        "contextWindow": 256000,
-        "maxOutputTokens": 16384,
-        "supportsReasoning": true,
-        "reasoningEfforts": [
-          "low",
-          "medium",
-          "high"
-        ],
-        "supportsReasoningSummaries": false,
-        "supportsVerbosity": false,
-        "supportsImage": true,
-        "releaseDate": "2026-04-20",
-        "deprecated": false,
-        "pricing": {
-          "inputToken": "$1.20 / 1M tokens, Cached: $0.20 / 1M tokens",
-          "outputToken": "$4.50 / 1M tokens",
-          "link": "https://www.together.ai/models/kimi-k26"
-        }
       }
     ]
   },

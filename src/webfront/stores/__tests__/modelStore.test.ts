@@ -77,9 +77,9 @@ describe('modelStore', () => {
   it('re-reads from getConfig() rather than trusting the event payload', () => {
     // updateModelConfig emits full IModelConfig objects, not string keys.
     // The store must ignore the payload and re-read the canonical selectedModelKey.
-    state.mockSelectedModelKey ='fireworks:kimi-k2';
-    fireConfigEvent('model', { name: 'Kimi K2', modelKey: 'kimi-k2' } /* wrong shape on purpose */);
+    state.mockSelectedModelKey ='deepseek:deepseek-v4-flash';
+    fireConfigEvent('model', { name: 'DeepSeek V4 Flash', modelKey: 'deepseek-v4-flash' } /* wrong shape on purpose */);
 
-    expect(get(selectedModelKey)).toBe('fireworks:kimi-k2');
+    expect(get(selectedModelKey)).toBe('deepseek:deepseek-v4-flash');
   });
 });
