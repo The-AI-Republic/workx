@@ -730,11 +730,31 @@ export class DomService {
     }
 
     if (!point) {
+      // Nothing visible. If the element is also zero-area (collapsed/hidden),
+      // refuse — matching the box-model path's ELEMENT_NOT_VISIBLE rather than
+      // silently clicking a degenerate element.
+      const maxArea = Math.max(0, ...quads.map((q) => this.quadArea(q)));
+      if (maxArea <= 0) {
+        throw new Error('ELEMENT_NOT_VISIBLE: Element has zero width or height. It may be hidden or display:none.');
+      }
       // Best effort: center of the first quad (may be partially off-screen).
       const q = quads[0];
       point = { x: (q[0] + q[4]) / 2, y: (q[1] + q[5]) / 2 };
     }
     return point;
+  }
+
+  /** Polygon area of a CDP content quad [x1,y1,x2,y2,x3,y3,x4,y4] (shoelace). */
+  private quadArea(q: number[]): number {
+    if (!q || q.length < 8) return 0;
+    return (
+      Math.abs(
+        q[0] * q[3] - q[2] * q[1] +
+        q[2] * q[5] - q[4] * q[3] +
+        q[4] * q[7] - q[6] * q[5] +
+        q[6] * q[1] - q[0] * q[7]
+      ) / 2
+    );
   }
 
   /**
@@ -770,7 +790,11 @@ export class DomService {
       expression: '({ width: window.innerWidth, height: window.innerHeight })',
       returnByValue: true
     });
-    return result.result.value;
+    const value = result?.result?.value;
+    if (!value || typeof value.width !== 'number' || typeof value.height !== 'number') {
+      throw new Error('ELEMENT_NOT_VISIBLE: Failed to read viewport size for click targeting.');
+    }
+    return value;
   }
 
   /**
