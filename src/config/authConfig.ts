@@ -18,16 +18,31 @@ export interface AuthRoutePaths {
   pricing: string | null;
 }
 
+/**
+ * OIDC authorization-code + PKCE login configuration. Present only when an
+ * OIDC `client_id` is configured (via `WORKX_AUTH_CLIENT_ID` / `VITE_AUTH_CLIENT_ID`).
+ * When absent, the client uses the legacy deep-link token flow.
+ */
+export interface AuthOidcConfig {
+  clientId: string;
+  authorizePath: string;
+  tokenPath: string;
+  redirectUri: string;
+  scopes: string[];
+}
+
 export interface AuthConfig {
   authBaseUrl: string | null;
   cookieDomain: string | null;
   cookieNames: AuthCookieNames;
   routes: AuthRoutePaths;
+  oidc: AuthOidcConfig | null;
   source: {
     authBaseUrl: AuthConfigSource;
     cookieDomain: AuthConfigSource;
     cookieNames: AuthConfigSource;
     routes: AuthConfigSource;
+    oidc: AuthConfigSource;
   };
 }
 
@@ -66,6 +81,39 @@ function routePath(
   ) ?? null;
 }
 
+function authSeam(
+  env: Record<string, string | undefined>,
+  vite: Record<string, string | undefined>,
+  name: string,
+): string | undefined {
+  return firstNonEmpty(
+    env[`WORKX_AUTH_${name}`],
+    env[`VITE_AUTH_${name}`],
+    vite[`VITE_AUTH_${name}`],
+  );
+}
+
+function resolveOidcConfig(
+  env: Record<string, string | undefined>,
+  vite: Record<string, string | undefined>,
+): AuthOidcConfig | null {
+  const clientId = authSeam(env, vite, 'CLIENT_ID');
+  // OIDC is opt-in: without a client id we fall back to the legacy deep-link flow.
+  if (!clientId) return null;
+
+  const scopes = (authSeam(env, vite, 'SCOPES') ?? 'openid profile email')
+    .split(/\s+/)
+    .filter((scope) => scope.length > 0);
+
+  return {
+    clientId,
+    authorizePath: authSeam(env, vite, 'AUTHORIZE_PATH') ?? '/auth/authorize',
+    tokenPath: authSeam(env, vite, 'TOKEN_PATH') ?? '/auth/token',
+    redirectUri: authSeam(env, vite, 'REDIRECT_URI') ?? 'workx://auth/callback',
+    scopes: scopes.length > 0 ? scopes : ['openid', 'profile', 'email'],
+  };
+}
+
 export function resolveAuthConfig(): AuthConfig {
   const env = processEnv();
   const vite = viteEnv();
@@ -102,6 +150,8 @@ export function resolveAuthConfig(): AuthConfig {
     pricing: routePath(env, vite, 'PRICING'),
   };
 
+  const oidc = resolveOidcConfig(env, vite);
+
   const usesDefaultCookieNames = Object.entries(cookieNames).every(
     ([key, value]) => value === DEFAULT_COOKIE_NAMES[key as keyof AuthCookieNames],
   );
@@ -112,11 +162,13 @@ export function resolveAuthConfig(): AuthConfig {
     cookieDomain,
     cookieNames,
     routes,
+    oidc,
     source: {
       authBaseUrl: authBaseUrl ? 'env' : 'default',
       cookieDomain: cookieDomain ? 'env' : 'default',
       cookieNames: usesDefaultCookieNames ? 'default' : 'env',
       routes: usesDefaultRoutes ? 'default' : 'env',
+      oidc: oidc ? 'env' : 'default',
     },
   };
 }

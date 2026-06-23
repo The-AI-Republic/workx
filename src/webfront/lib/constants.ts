@@ -7,6 +7,10 @@ const authConfig = resolveAuthConfig();
 export const HOME_PAGE_BASE_URL = runtimeUrls.homePageBaseUrl ?? '';
 export const BACKEND_API_BASE_URL = runtimeUrls.backendApiBaseUrl ?? '';
 export const AUTH_ROUTE_PATHS = authConfig.routes;
+// OIDC auth-code + PKCE config (present only when an auth client id is configured)
+// and the auth-server base URL used for its /authorize + /token endpoints.
+export const AUTH_OIDC = authConfig.oidc;
+export const AUTH_BASE_URL = authConfig.authBaseUrl ?? HOME_PAGE_BASE_URL;
 
 export const BACKEND_GENERAL_API = `${BACKEND_API_BASE_URL}/api/v1`;
 export const LLM_API_URL = runtimeUrls.llmApiUrl ?? `${BACKEND_API_BASE_URL}/api/llm`;

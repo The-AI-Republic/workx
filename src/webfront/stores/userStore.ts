@@ -6,7 +6,14 @@
  */
 
 import { writable, type Writable, derived, type Readable } from 'svelte/store';
-import { AUTH_ROUTE_PATHS, HOME_PAGE_BASE_URL } from '../lib/constants';
+import { AUTH_ROUTE_PATHS, HOME_PAGE_BASE_URL, AUTH_OIDC, AUTH_BASE_URL } from '../lib/constants';
+import {
+  buildAuthorizeUrl,
+  exchangeAuthorizationCode,
+  generatePkce,
+  parseCallback,
+  randomState,
+} from '../auth/desktopOidc';
 
 export interface UserState {
   isLoggedIn: boolean;
@@ -116,4 +123,54 @@ export function getDesktopLoginPageUrl(): string | null {
   loginUrl.searchParams.set('redirect_url', 'workx://auth/callback');
   loginUrl.searchParams.set('desktop_login_ts', Date.now().toString());
   return loginUrl.toString();
+}
+
+/**
+ * A desktop login session: the URL to open in the system browser, plus a
+ * `complete()` that turns the `workx://auth/callback` deep-link URL into tokens.
+ *
+ * When an OIDC client id is configured the session uses authorization-code +
+ * PKCE (state-validated, code exchanged at the token endpoint). Otherwise it
+ * uses the legacy deep-link flow where tokens arrive directly in the callback
+ * URL. The caller (UI) is identical for both — open `authorizeUrl`, then call
+ * `complete(callbackUrl)`.
+ */
+export interface DesktopLoginSession {
+  authorizeUrl: string;
+  complete(callbackUrl: string): Promise<{ accessToken: string; refreshToken: string }>;
+}
+
+export async function beginDesktopLogin(): Promise<DesktopLoginSession | null> {
+  if (AUTH_OIDC && AUTH_BASE_URL) {
+    const oidc = AUTH_OIDC;
+    const authBaseUrl = AUTH_BASE_URL;
+    const { codeVerifier, codeChallenge } = await generatePkce();
+    const state = randomState();
+    return {
+      authorizeUrl: buildAuthorizeUrl(authBaseUrl, oidc, { state, codeChallenge }),
+      async complete(callbackUrl: string) {
+        const { code, state: returnedState } = parseCallback(callbackUrl);
+        if (returnedState !== state) {
+          throw new Error('OIDC state mismatch — possible CSRF, login aborted');
+        }
+        return exchangeAuthorizationCode(authBaseUrl, oidc, { code, codeVerifier });
+      },
+    };
+  }
+
+  // Legacy deep-link flow: tokens are returned directly in the callback URL.
+  const authorizeUrl = getDesktopLoginPageUrl();
+  if (!authorizeUrl) return null;
+  return {
+    authorizeUrl,
+    async complete(callbackUrl: string) {
+      const url = new URL(callbackUrl);
+      const accessToken = url.searchParams.get('access_token');
+      const refreshToken = url.searchParams.get('refresh_token');
+      if (!accessToken || !refreshToken) {
+        throw new Error(url.searchParams.get('error') ?? 'Missing tokens in callback');
+      }
+      return { accessToken, refreshToken };
+    },
+  };
 }
