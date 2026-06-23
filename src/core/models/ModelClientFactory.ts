@@ -18,7 +18,7 @@ import type { IAuthManager } from './types/Auth';
 /**
  * Supported model providers
  */
-export type ModelProvider = 'openai' | 'xai' | 'anthropic' | 'groq' | 'google-ai-studio' | 'fireworks' | 'moonshot' | 'together';
+export type ModelProvider = 'openai' | 'xai' | 'anthropic' | 'groq' | 'google-ai-studio' | 'fireworks' | 'moonshot' | 'together' | 'deepseek' | (string & {});
 
 /**
  * Configuration for model client creation
@@ -178,7 +178,13 @@ export class ModelClientFactory {
    * @returns ModelProvider type
    */
   private mapProviderIdToType(providerId: string): ModelProvider {
-    if (providerId === 'openai' || providerId === 'xai' || providerId === 'anthropic' || providerId === 'groq' || providerId === 'google-ai-studio' || providerId === 'fireworks' || providerId === 'moonshot' || providerId === 'together') {
+    if (providerId === 'openai' || providerId === 'xai' || providerId === 'anthropic' || providerId === 'groq' || providerId === 'google-ai-studio' || providerId === 'fireworks' || providerId === 'moonshot' || providerId === 'together' || providerId === 'deepseek') {
+      return providerId;
+    }
+    // User-defined custom providers (BYOK) have arbitrary ids. Allow any provider
+    // that exists in config and is flagged isCustom through; it routes by its
+    // apiFormat in instantiateClient. Reject anything else as unsupported.
+    if (this.config?.getProvider(providerId)?.isCustom) {
       return providerId;
     }
     throw new ModelClientError(`Unsupported provider: ${providerId}`);
@@ -206,8 +212,13 @@ export class ModelClientFactory {
       return cached;
     }
 
+    // User-defined custom providers (BYOK) always use direct API-key mode — the
+    // backend gateway only knows about built-in providers, so never route a
+    // custom endpoint through it even when the user is logged in.
+    const isCustomProvider = !!this.config?.getProvider(provider)?.isCustom;
+
     // If using backend routing (logged in), create backend-routed client
-    if (this.isBackendRouting()) {
+    if (!isCustomProvider && this.isBackendRouting()) {
       const gatewayLlmBaseUrl = this.authManager?.getGatewayLlmBaseUrl?.();
       const client = gatewayLlmBaseUrl
         ? await this.createGatewayRoutedClient(provider, gatewayLlmBaseUrl)
@@ -533,7 +544,7 @@ export class ModelClientFactory {
    * @returns Promise resolving to configuration status
    */
   async getConfigurationStatus(): Promise<Record<ModelProvider, { hasApiKey: boolean; isDefault: boolean }>> {
-    const [openaiHasKey, xaiHasKey, anthropicHasKey, groqHasKey, googleAiStudioHasKey, fireworksHasKey, moonshotHasKey, togetherHasKey, defaultProvider] = await Promise.all([
+    const [openaiHasKey, xaiHasKey, anthropicHasKey, groqHasKey, googleAiStudioHasKey, fireworksHasKey, moonshotHasKey, togetherHasKey, deepseekHasKey, defaultProvider] = await Promise.all([
       this.hasValidApiKey('openai'),
       this.hasValidApiKey('xai'),
       this.hasValidApiKey('anthropic'),
@@ -542,10 +553,15 @@ export class ModelClientFactory {
       this.hasValidApiKey('fireworks'),
       this.hasValidApiKey('moonshot'),
       this.hasValidApiKey('together'),
+      this.hasValidApiKey('deepseek'),
       this.getDefaultProvider(),
     ]);
 
     return {
+      deepseek: {
+        hasApiKey: deepseekHasKey,
+        isDefault: defaultProvider === 'deepseek',
+      },
       moonshot: {
         hasApiKey: moonshotHasKey,
         isDefault: defaultProvider === 'moonshot',
@@ -728,10 +744,33 @@ export class ModelClientFactory {
       reasoningEffort = 'medium'; // Default reasoning effort
     }
 
+    // User-defined custom providers (BYOK) route by their wire API format rather
+    // than by provider id. Default to Chat Completions — the broadly compatible
+    // baseline most OpenAI-compatible servers implement; 'responses' is opt-in.
+    const customProvider = this.config?.getProvider(providerName);
+    if (customProvider?.isCustom) {
+      const clientArgs = {
+        apiKey: config.apiKey,
+        baseUrl: resolvedBaseUrl,
+        organization,
+        sessionId,
+        modelFamily,
+        provider,
+        modelConfig,
+        reasoningEffort: reasoningEffort as any,
+        reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
+        parallelToolCalls,
+      };
+      return customProvider.apiFormat === 'responses'
+        ? new OpenAIResponsesClient(clientArgs)
+        : new OpenAIChatCompletionClient(clientArgs);
+    }
+
     // Direct provider-to-client mapping
     // This is the single source of truth for which client each provider uses
     switch (providerName) {
       case 'moonshot':
+      case 'deepseek':
         return new OpenAIChatCompletionClient({
           apiKey: config.apiKey,
           baseUrl: resolvedBaseUrl,

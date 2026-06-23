@@ -51,21 +51,18 @@ export const MODEL_COST_TABLE: Record<string, ModelRate> = {
   'google-ai-studio:gemini-3-pro-preview': { inputPer1M: 2.0, outputPer1M: 12.0, cachedInputPer1M: 2.0 },
   'google-ai-studio:gemini-2.5-pro': { inputPer1M: 1.25, outputPer1M: 10.0, cachedInputPer1M: 1.25 },
 
-  // moonshot — Cache Miss = input rate, Cache Hit = cached rate
+  // deepseek — Cache Miss = input rate, Cache Hit = cached rate (free-tier default)
+  'deepseek:deepseek-v4-flash': { inputPer1M: 0.14, outputPer1M: 0.28, cachedInputPer1M: 0.0028 },
+
+  // legacy — Kimi (moonshot/fireworks/together) retired from the picker; rows
+  // retained so historical usage records still cost correctly.
   'moonshot:kimi-k2.6': { inputPer1M: 0.95, outputPer1M: 4.0, cachedInputPer1M: 0.16 },
-  // legacy
   'moonshot:kimi-k2-thinking': { inputPer1M: 0.6, outputPer1M: 2.5, cachedInputPer1M: 0.15 },
   'moonshot:kimi-k2-thinking-turbo': { inputPer1M: 1.15, outputPer1M: 8.0, cachedInputPer1M: 0.15 },
-
-  // fireworks
   'fireworks:accounts/fireworks/models/kimi-k2p6': { inputPer1M: 0.95, outputPer1M: 4.0, cachedInputPer1M: 0.16 },
-  // legacy
   'fireworks:accounts/fireworks/models/kimi-k2-thinking': { inputPer1M: 0.6, outputPer1M: 2.5, cachedInputPer1M: 0.6 },
   'fireworks:accounts/fireworks/models/kimi-k2p5': { inputPer1M: 0.6, outputPer1M: 0.3, cachedInputPer1M: 0.1 },
-
-  // together
   'together:moonshotai/Kimi-K2.6': { inputPer1M: 1.2, outputPer1M: 4.5, cachedInputPer1M: 0.2 },
-  // legacy
   'together:moonshotai/Kimi-K2-Thinking': { inputPer1M: 1.2, outputPer1M: 4.0, cachedInputPer1M: 1.2 },
 
   // anthropic — cache hit/refresh rate used for cached input

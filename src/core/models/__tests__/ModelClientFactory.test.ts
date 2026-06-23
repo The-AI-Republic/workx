@@ -348,7 +348,7 @@ describe('ModelClientFactory', () => {
     });
 
     it('should map all valid provider IDs without error', async () => {
-      const validProviders: ModelProvider[] = ['openai', 'xai', 'anthropic', 'groq', 'google-ai-studio', 'fireworks', 'moonshot', 'together'];
+      const validProviders: ModelProvider[] = ['openai', 'xai', 'anthropic', 'groq', 'google-ai-studio', 'fireworks', 'moonshot', 'together', 'deepseek'];
       for (const pid of validProviders) {
         const f = new ModelClientFactory();
         await f.initialize(createMockAgentConfig({

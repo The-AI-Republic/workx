@@ -179,7 +179,7 @@ export const DEFAULT_APP_SERVER_CONFIG: IAppServerConfig = {
 export function getDefaultAgentConfig(): IAgentConfig {
   return {
     version: '2.1.0',
-    selectedModelKey: 'fireworks:accounts/fireworks/models/kimi-k2p6', // Default to Kimi K2.6 on Fireworks for fresh install
+    selectedModelKey: 'deepseek:deepseek-v4-flash', // Default to DeepSeek V4 Flash (free-tier) for fresh install
     providers: getDefaultProviders(),
     profiles: {},
     activeProfile: null,
@@ -363,7 +363,7 @@ export function getDefaultProviders(): Record<string, IProviderConfig> {
 export function getDefaultStoredConfig(): IStoredConfig {
   return {
     version: '2.1.0',
-    selectedModelKey: 'fireworks:accounts/fireworks/models/kimi-k2p6', // Default to Kimi K2.6 on Fireworks for fresh install
+    selectedModelKey: 'deepseek:deepseek-v4-flash', // Default to DeepSeek V4 Flash (free-tier) for fresh install
     providerKeys: {}, // Empty - no API keys configured by default
     preferences: { ...DEFAULT_USER_PREFERENCES },
     cache: { ...DEFAULT_CACHE_SETTINGS },
@@ -392,6 +392,19 @@ export function buildRuntimeConfig(stored: IStoredConfig | null): IAgentConfig {
 
   // Get fresh providers from default.json
   const providers = getDefaultProviders();
+
+  // Re-inject user-defined custom providers (BYOK). These have no default.json
+  // entry, so their full definition is persisted in stored.customProviders and
+  // restored here BEFORE selectedModelKey validation so a selected custom model
+  // is not treated as missing. The persisted apiKey is the secured marker; the
+  // real key is fetched from the CredentialStore at request time by provider id.
+  if (stored.customProviders) {
+    for (const custom of stored.customProviders) {
+      if (custom?.id) {
+        providers[custom.id] = { ...custom, isCustom: true };
+      }
+    }
+  }
 
   // Apply stored API keys and auth method to providers
   for (const [providerId, storedProvider] of Object.entries(stored.providerKeys)) {
@@ -494,8 +507,16 @@ export function buildRuntimeConfig(stored: IStoredConfig | null): IAgentConfig {
 export function extractStoredConfig(config: IAgentConfig): IStoredConfig {
   // Extract only id, API keys and organization from providers
   const providerKeys: Record<string, { id: string; apiKey: string; organization?: string | null }> = {};
+  // User-defined custom providers are persisted in full (default.json has no
+  // entry to rehydrate them from). Their secret lives in the CredentialStore;
+  // the persisted apiKey field is just the secured marker.
+  const customProviders: IProviderConfig[] = [];
 
   for (const [providerId, provider] of Object.entries(config.providers)) {
+    if (provider.isCustom) {
+      customProviders.push(provider);
+      continue;
+    }
     // Only store if there's an API key configured or an auth method set
     if (provider.apiKey || provider.authMethod) {
       providerKeys[providerId] = {
@@ -511,6 +532,7 @@ export function extractStoredConfig(config: IAgentConfig): IStoredConfig {
     version: config.version,
     selectedModelKey: config.selectedModelKey,
     providerKeys,
+    ...(customProviders.length > 0 ? { customProviders } : {}),
     preferences: config.preferences,
     cache: config.cache,
     extension: config.extension,

@@ -16,24 +16,29 @@
 
 /**
  * Composite key ("providerId:modelKey") used as the free-user default when no
- * model is selected. Must match the runtime composite key exactly — note the
- * `accounts/` segment that is part of the Fireworks raw model key.
+ * model is selected. Must match the runtime composite key exactly.
  */
-export const FREE_USER_DEFAULT_COMPOUND_KEY = 'fireworks:accounts/fireworks/models/kimi-k2p6';
+export const FREE_USER_DEFAULT_COMPOUND_KEY = 'deepseek:deepseek-v4-flash';
 
 /**
- * Raw model keys (lowercased) that free users are allowed to select. This is
- * the same Kimi K2.6 model offered across Fireworks, Moonshot, and Together —
- * the providers diverge on spelling (`kimi-k2p6` vs `kimi-k2.6`), so an explicit
- * allow-list is used instead of a substring match.
+ * Raw model keys (lowercased) that free users are allowed to select. Currently
+ * the single DeepSeek V4 Flash model, served through the backend gateway for
+ * free-tier users. An explicit allow-list is used instead of a substring match.
  */
 const FREE_USER_MODEL_KEYS = new Set<string>([
-  'accounts/fireworks/models/kimi-k2p6',
-  'kimi-k2.6',
-  'moonshotai/kimi-k2.6',
+  'deepseek-v4-flash',
 ]);
 
-/** True when `modelKey` (a raw model key) is selectable by a free user. */
-export function isModelAvailableForFreeUser(modelKey: string): boolean {
+/**
+ * True when `modelKey` (a raw model key) is selectable by a free user.
+ *
+ * User-added custom endpoints are BYOK — they run on the user's own API key and
+ * billing, so they are never gated behind the free-tier allow-list. Pass
+ * `isCustom = true` for models that belong to a custom (user-defined) provider.
+ */
+export function isModelAvailableForFreeUser(modelKey: string, isCustom = false): boolean {
+  if (isCustom) {
+    return true;
+  }
   return FREE_USER_MODEL_KEYS.has(modelKey.toLowerCase());
 }

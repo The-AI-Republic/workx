@@ -32,6 +32,7 @@
       maxOutputTokens: number;
       baseUrl: string;
       selected: boolean;
+      isCustom?: boolean;
       pricing?: {
         inputToken: string;
         outputToken: string;
@@ -58,6 +59,7 @@
   interface GroupedModel {
     modelName: string;
     modelKey: string; // First provider's modelKey, used for free user check
+    isCustom: boolean; // True for user-defined custom endpoints (BYOK) — bypass free-tier lock
     providers: Array<{
       modelId: string;
       modelKey: string;
@@ -106,6 +108,7 @@
         groups.set(item.modelName, {
           modelName: item.modelName,
           modelKey: item.modelKey, // Store modelKey for free user check
+          isCustom: item.isCustom ?? false,
           providers: [
             {
               modelId: item.modelId,
@@ -145,7 +148,7 @@
     if (disabled) return;
 
     // Block selection for free users trying to select premium models
-    if (isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(group.modelKey)) {
+    if (isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(group.modelKey, group.isCustom)) {
       // Model is locked for free users - don't allow selection
       return;
     }
@@ -388,7 +391,7 @@
         {@const hasError = pendingProviderErrors.get(group.modelName)}
         {@const firstProvider = group.providers[0]}
         {@const isLockedForFreeUser =
-          isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(group.modelKey)}
+          isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(group.modelKey, group.isCustom)}
 
         <Tooltip
           content={$_t("Please upgrade the plan to unblock world's most advanced models")}

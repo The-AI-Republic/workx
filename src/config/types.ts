@@ -321,6 +321,27 @@ export interface IProviderConfig {
   authMethod?: 'api_key' | 'chatgpt_oauth';
 
   /**
+   * Whether this is a user-defined custom provider (optional).
+   * Custom providers are added at runtime via the "Add Custom Endpoint" UI
+   * (BYOK). Unlike built-in providers — whose metadata is reloaded from
+   * default.json on every boot — custom providers are persisted in full
+   * (see IStoredConfig.customProviders) and re-injected into the runtime
+   * catalog. Custom models bypass free-tier gating (the user supplies the key).
+   */
+  isCustom?: boolean;
+
+  /**
+   * Wire API format for this provider (optional).
+   * Determines which OpenAI-compatible client a custom provider routes through:
+   * - 'chat_completions' (default) → OpenAI Chat Completions API. The broadly
+   *   compatible baseline (vLLM, Ollama, OpenRouter, DeepSeek, most gateways).
+   * - 'responses' → OpenAI Responses API. Opt-in; few third-party servers
+   *   implement it.
+   * Only consulted for custom providers; built-in providers route by id.
+   */
+  apiFormat?: 'chat_completions' | 'responses';
+
+  /**
    * Models hosted by this provider
    * Array of models available through this provider's API
    * MUST contain at least one model
@@ -605,6 +626,18 @@ export interface IStoredConfig {
   modelForTitleGenerate?: string;
   /** Provider API keys and organization IDs only */
   providerKeys: Record<string, IStoredProviderConfig>;
+  /**
+   * User-defined custom providers (BYOK), persisted in full.
+   *
+   * Built-in provider metadata is reloaded from default.json each boot and is
+   * NOT stored here; only `providerKeys` carries their secrets. Custom
+   * providers have no default.json entry, so their complete definition
+   * (baseUrl, models, apiFormat, …) is persisted here and re-injected into the
+   * runtime catalog by buildRuntimeConfig. The `apiKey` field holds the
+   * CREDENTIAL_SECURED_MARKER, never the raw key (the key lives in the
+   * CredentialStore, keyed by the custom provider id).
+   */
+  customProviders?: IProviderConfig[];
   /** User preferences */
   preferences: IUserPreferences;
   /** Cache settings */

@@ -38,6 +38,7 @@
     providerId: string;
     providerName: string;
     supportBackendMode?: number;
+    isCustom?: boolean;
   }
   let modelSelectionItems: ModelSelectionItem[] = $state([]);
 
@@ -60,6 +61,7 @@
   interface GroupedModel {
     modelName: string;
     modelKey: string; // First provider's modelKey, used for free user check
+    isCustom: boolean; // True for user-defined custom endpoints (BYOK) — bypass free-tier lock
     providers: Array<{
       modelId: string;
       modelKey: string;
@@ -88,6 +90,7 @@
         groups.set(item.modelName, {
           modelName: item.modelName,
           modelKey: item.modelKey,
+          isCustom: item.isCustom ?? false,
           providers: [{
             modelId: item.modelId,
             modelKey: item.modelKey,
@@ -136,6 +139,7 @@
             providerId: provider.id,
             providerName: provider.name,
             supportBackendMode: model.supportBackendMode,
+            isCustom: provider.isCustom ?? false,
           });
         }
       }
@@ -175,14 +179,14 @@
     isOpen = false;
   }
 
-  async function selectModel(modelId: string, modelName: string, modelKey: string) {
+  async function selectModel(modelId: string, modelName: string, modelKey: string, isCustom = false) {
     if (modelId === selectedModelKey) {
       isOpen = false;
       return;
     }
 
     // Block selection for free users trying to select premium models
-    if (isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(modelKey)) {
+    if (isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(modelKey, isCustom)) {
       // Model is locked for free users - don't allow selection
       return;
     }
@@ -257,7 +261,7 @@
       {#each groupedModels as group (group.modelName)}
         {@const isSelected = selectedGroup?.modelName === group.modelName}
         {@const hasMultipleProviders = group.providers.length > 1}
-        {@const isLockedForFreeUser = isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(group.modelKey)}
+        {@const isLockedForFreeUser = isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(group.modelKey, group.isCustom)}
 
         <div class="{currentTheme === 'modern'
           ? 'border-b border-white/10 last:border-b-0'
@@ -298,7 +302,7 @@
                         {currentTheme === 'modern'
                           ? 'font-chat bg-white/10 border border-white/20 rounded-2xl text-white/80 py-1 px-2.5 hover:bg-white/15 hover:border-white/30 hover:text-chat-tooltip-text dark:hover:text-chat-tooltip-text-dark ' + (isProviderSelected ? 'bg-blue-400/25 border-chat-primary dark:border-chat-primary-dark text-chat-primary dark:text-chat-primary-dark' : '')
                           : 'font-terminal bg-transparent border border-term-dim-green/40 rounded py-1 px-2 text-term-dim-green hover:border-term-green hover:bg-term-green/10 ' + (isProviderSelected ? 'bg-term-green/20 border-term-bright-green text-term-bright-green' : '')}"
-                      onclick={() => selectModel(provider.modelId, group.modelName, provider.modelKey)}
+                      onclick={() => selectModel(provider.modelId, group.modelName, provider.modelKey, group.isCustom)}
                       role="option"
                       aria-selected={isProviderSelected}
                     >
@@ -337,7 +341,7 @@
                   {currentTheme === 'modern'
                     ? 'font-chat text-sm py-2.5 px-3.5 text-chat-tooltip-text dark:text-chat-tooltip-text-dark hover:bg-white/10 ' + (isSelected ? 'bg-blue-400/20 text-chat-primary dark:text-chat-primary-dark' : '')
                     : 'font-terminal text-sm py-2 px-3 text-term-dim-green hover:bg-term-green/10 hover:text-term-green ' + (isSelected ? 'bg-term-green/15 text-term-bright-green' : '')}"
-                onclick={() => selectModel(group.providers[0].modelId, group.modelName, group.providers[0].modelKey)}
+                onclick={() => selectModel(group.providers[0].modelId, group.modelName, group.providers[0].modelKey, group.isCustom)}
                 role="option"
                 aria-selected={isSelected}
               >

@@ -72,6 +72,24 @@
   let chatgptOAuthSigningIn = $state(false);
   let chatgptOAuthError = $state('');
 
+  // Custom endpoint (BYOK) form state
+  let customName = $state('');
+  let customBaseUrl = $state('');
+  let customModelHandle = $state('');
+  let customApiKey = $state('');
+  let customApiFormat: 'chat_completions' | 'responses' = $state('chat_completions');
+  let customContextWindow = $state(128000);
+  let isAddingCustom = $state(false);
+  let customError = $state('');
+  interface CustomEndpointItem {
+    id: string;
+    name: string;
+    baseUrl: string;
+    modelKey: string;
+    apiFormat: 'chat_completions' | 'responses';
+  }
+  let customEndpoints: CustomEndpointItem[] = $state([]);
+
   // Derived state from user store
   let isUserLoggedIn = $derived($userStore.isLoggedIn);
   let isFreeUser = $derived($userStore.userType === 0);
@@ -99,6 +117,7 @@
       link: string;
     };
     supportBackendMode?: number;
+    isCustom?: boolean;
   }
   let modelSelectionItems: ModelSelectionItem[] = $state([]);
 
@@ -309,11 +328,13 @@
             reasoningEfforts: model.reasoningEfforts,
             pricing: model.pricing,
             supportBackendMode: model.supportBackendMode,
+            isCustom: provider.isCustom ?? false,
           });
         }
       }
 
       modelSelectionItems = tempModelItems;
+      loadCustomEndpoints();
       console.log(
         '[ModelSettings] Available model IDs:',
         modelSelectionItems.map((m) => m.modelId)
@@ -441,6 +462,140 @@
       showMessage(t('Failed to save API key'), 'error');
     } finally {
       isSaving = false;
+    }
+  }
+
+  /** Refresh the list of user-defined custom endpoints from the live config. */
+  function loadCustomEndpoints() {
+    if (!settingsConfig) return;
+    const providers = settingsConfig.getProviders();
+    customEndpoints = Object.values(providers)
+      .filter((p) => p.isCustom)
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        baseUrl: p.baseUrl || '',
+        modelKey: p.models?.[0]?.modelKey || '',
+        apiFormat: p.apiFormat === 'responses' ? 'responses' : 'chat_completions',
+      }));
+  }
+
+  /**
+   * Add a user-defined custom endpoint (BYOK). Modelled as a runtime provider
+   * with a single model so it flows through the existing model picker, cost,
+   * and credential machinery. The provider definition is persisted in full (see
+   * IStoredConfig.customProviders); the key goes to the credential store.
+   */
+  async function addCustomEndpoint() {
+    if (!settingsConfig || isAddingCustom) return;
+    customError = '';
+
+    const name = customName.trim();
+    const baseUrl = customBaseUrl.trim();
+    const modelKey = customModelHandle.trim();
+    const key = customApiKey.trim();
+
+    if (!name || !baseUrl || !modelKey) {
+      customError = t('Display name, API base URL, and model handle are required.');
+      return;
+    }
+    if (!/^https:\/\//i.test(baseUrl)) {
+      customError = t('API base URL must start with https://');
+      return;
+    }
+    try {
+      // eslint-disable-next-line no-new
+      new URL(baseUrl);
+    } catch {
+      customError = t('API base URL is not a valid URL.');
+      return;
+    }
+    const contextWindow =
+      typeof customContextWindow === 'number' && customContextWindow > 0 ? customContextWindow : 128000;
+
+    try {
+      isAddingCustom = true;
+      const id = `custom-${Date.now().toString(36)}`;
+
+      settingsConfig.addProvider({
+        id,
+        name,
+        apiKey: '',
+        baseUrl,
+        timeout: 30000,
+        retryConfig: { maxRetries: 3, initialDelay: 1000, maxDelay: 10000, backoffMultiplier: 2 },
+        isCustom: true,
+        apiFormat: customApiFormat,
+        models: [
+          {
+            name,
+            modelKey,
+            creator: 'Custom',
+            contextWindow,
+            maxOutputTokens: Math.min(16384, contextWindow),
+            supportsReasoning: false,
+            supportsImage: false,
+            supportBackendMode: 0,
+          },
+        ],
+      });
+
+      if (key) {
+        await settingsConfig.setProviderApiKey(id, key);
+      }
+
+      // Reset the form
+      customName = '';
+      customBaseUrl = '';
+      customModelHandle = '';
+      customApiKey = '';
+      customApiFormat = 'chat_completions';
+      customContextWindow = 128000;
+
+      await loadSettings();
+      loadCustomEndpoints();
+      showMessage(t('Custom endpoint added.'), 'success');
+      getInitializedUIClient()
+        .then((c) => c.serviceRequest('agent.configUpdate'))
+        .catch((err) => console.warn('[ModelSettings] Failed to send configUpdate:', err));
+    } catch (error) {
+      console.error('[ModelSettings] Failed to add custom endpoint:', error);
+      customError = error instanceof Error ? error.message : t('Failed to add custom endpoint.');
+    } finally {
+      isAddingCustom = false;
+    }
+  }
+
+  /** Remove a custom endpoint, switching away from it first if it is selected. */
+  async function deleteCustomEndpoint(id: string) {
+    if (!settingsConfig || isAddingCustom) return;
+    try {
+      isAddingCustom = true;
+
+      // deleteProvider rejects removing the provider that hosts the selected
+      // model, so switch to another available model first.
+      if (selectedModelKey.startsWith(`${id}:`)) {
+        const fallback = modelSelectionItems.find((m) => !m.modelId.startsWith(`${id}:`));
+        if (fallback) {
+          await settingsConfig.setSelectedModel(fallback.modelId);
+          selectedModelKey = fallback.modelId;
+        }
+      }
+
+      await settingsConfig.deleteProviderApiKey(id).catch(() => {});
+      settingsConfig.deleteProvider(id);
+
+      await loadSettings();
+      loadCustomEndpoints();
+      showMessage(t('Custom endpoint removed.'), 'success');
+      getInitializedUIClient()
+        .then((c) => c.serviceRequest('agent.configUpdate'))
+        .catch((err) => console.warn('[ModelSettings] Failed to send configUpdate:', err));
+    } catch (error) {
+      console.error('[ModelSettings] Failed to remove custom endpoint:', error);
+      showMessage(t('Failed to remove custom endpoint.'), 'error');
+    } finally {
+      isAddingCustom = false;
     }
   }
 
@@ -1144,6 +1299,123 @@
     {/if}
   </div>
 
+  <!-- Custom Endpoints (BYOK) -->
+  <div class="settings-section settings-card">
+    <h3 class="section-title">{t("Custom Endpoints")}</h3>
+    <p class="custom-help">
+      {t("Add any OpenAI-compatible LLM endpoint with your own API key. Added models appear in the model picker above and run on your own key and billing.")}
+    </p>
+
+    {#if customEndpoints.length > 0}
+      <div class="custom-list">
+        {#each customEndpoints as ep (ep.id)}
+          <div class="custom-item">
+            <div class="custom-item-info">
+              <div class="custom-item-name">{ep.name}</div>
+              <div class="custom-item-meta">
+                {ep.modelKey} · {ep.baseUrl} · {ep.apiFormat === 'responses' ? t('Responses API') : t('Chat Completions')}
+              </div>
+            </div>
+            <button
+              type="button"
+              class="btn btn-danger btn-sm"
+              onclick={() => deleteCustomEndpoint(ep.id)}
+              disabled={isAddingCustom}
+            >
+              {t("Remove")}
+            </button>
+          </div>
+        {/each}
+      </div>
+    {/if}
+
+    <div class="form-group">
+      <label class="form-label" for="custom-name">{t("Display name")}</label>
+      <input
+        id="custom-name"
+        class="api-key-input"
+        bind:value={customName}
+        placeholder={t("My LLM")}
+        disabled={isAddingCustom}
+        autocomplete="off"
+      />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="custom-base-url">{t("API base URL")}</label>
+      <input
+        id="custom-base-url"
+        class="api-key-input"
+        bind:value={customBaseUrl}
+        placeholder="https://api.example.com/v1"
+        disabled={isAddingCustom}
+        autocomplete="off"
+        spellcheck="false"
+      />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="custom-model">{t("Model handle")}</label>
+      <input
+        id="custom-model"
+        class="api-key-input"
+        bind:value={customModelHandle}
+        placeholder="model-name"
+        disabled={isAddingCustom}
+        autocomplete="off"
+        spellcheck="false"
+      />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="custom-key">{t("API key")}</label>
+      <input
+        id="custom-key"
+        type="password"
+        class="api-key-input"
+        bind:value={customApiKey}
+        placeholder="sk-..."
+        disabled={isAddingCustom}
+        autocomplete="off"
+        spellcheck="false"
+      />
+    </div>
+    <div class="form-row">
+      <div class="form-group form-group-half">
+        <label class="form-label" for="custom-format">{t("API format")}</label>
+        <select id="custom-format" class="api-key-input" bind:value={customApiFormat} disabled={isAddingCustom}>
+          <option value="chat_completions">{t("Chat Completions (recommended)")}</option>
+          <option value="responses">{t("Responses API")}</option>
+        </select>
+      </div>
+      <div class="form-group form-group-half">
+        <label class="form-label" for="custom-ctx">{t("Context window")}</label>
+        <input
+          id="custom-ctx"
+          type="number"
+          min="1"
+          class="api-key-input"
+          bind:value={customContextWindow}
+          disabled={isAddingCustom}
+        />
+      </div>
+    </div>
+
+    {#if customError}
+      <div class="message error">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="15" y1="9" x2="9" y2="15"></line>
+          <line x1="9" y1="9" x2="15" y2="15"></line>
+        </svg>
+        {customError}
+      </div>
+    {/if}
+
+    <div class="button-group">
+      <button type="button" class="btn btn-primary" onclick={addCustomEndpoint} disabled={isAddingCustom}>
+        {isAddingCustom ? t("Adding...") : t("Add Endpoint")}
+      </button>
+    </div>
+  </div>
+
   <!-- Security Notice -->
   <div class="settings-section settings-card">
     <h3 class="section-title">{t("Security & Privacy")}</h3>
@@ -1674,5 +1946,67 @@
     font-size: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+  }
+
+  /* Custom endpoints (BYOK) */
+  .custom-help {
+    margin: 0 0 1rem 0;
+    font-size: 0.85rem;
+    color: var(--workx-text-secondary, var(--workx-text));
+    opacity: 0.8;
+    line-height: 1.4;
+  }
+
+  .custom-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .custom-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--workx-border);
+    border-radius: 0.5rem;
+    background: var(--workx-surface);
+  }
+
+  .custom-item-info {
+    min-width: 0;
+  }
+
+  .custom-item-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--workx-text);
+  }
+
+  .custom-item-meta {
+    font-size: 0.75rem;
+    color: var(--workx-text-secondary, var(--workx-text));
+    opacity: 0.75;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .form-row {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .form-group-half {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .btn-sm {
+    padding: 0.35rem 0.7rem;
+    font-size: 0.8rem;
+    flex-shrink: 0;
   }
 </style>
