@@ -71,6 +71,17 @@ describe('beginDesktopLogin', () => {
     ).rejects.toThrow(/state mismatch/);
   });
 
+  it('OIDC mode: rejects a callback with no state (CSRF guard, cannot bypass)', async () => {
+    process.env.VITE_AUTH_BASE_URL = 'https://idp.example.com';
+    process.env.VITE_AUTH_CLIENT_ID = 'workx-desktop';
+    const { beginDesktopLogin } = await loadUserStore();
+
+    const session = await beginDesktopLogin();
+    await expect(
+      session!.complete('workx://auth/callback?code=abc'),
+    ).rejects.toThrow(/state mismatch/);
+  });
+
   it('legacy mode: no client id -> deep-link login URL, tokens read from callback', async () => {
     process.env.VITE_AUTH_BASE_URL = 'https://idp.example.com';
     process.env.VITE_AUTH_LOGIN_PATH = '/login';

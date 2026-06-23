@@ -43,7 +43,7 @@ describe('resolveAuthConfig.oidc', () => {
       authorizePath: '/auth/authorize',
       tokenPath: '/auth/token',
       redirectUri: 'workx://auth/callback',
-      scopes: ['openid', 'profile', 'email'],
+      scopes: ['openid', 'profile', 'email', 'offline_access'],
     });
   });
 

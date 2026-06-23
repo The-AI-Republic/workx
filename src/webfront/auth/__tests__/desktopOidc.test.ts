@@ -121,6 +121,6 @@ describe('exchangeAuthorizationCode', () => {
     );
     await expect(
       exchangeAuthorizationCode(BASE, OIDC, { code: 'abc', codeVerifier: 'ver' }),
-    ).rejects.toThrow(/did not include access and refresh tokens/);
+    ).rejects.toThrow(/did not return both access and refresh tokens/);
   });
 });

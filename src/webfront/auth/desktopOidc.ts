@@ -122,7 +122,10 @@ export async function exchangeAuthorizationCode(
 
   const data = (await response.json()) as { access_token?: string; refresh_token?: string };
   if (!data.access_token || !data.refresh_token) {
-    throw new Error('Token endpoint response did not include access and refresh tokens');
+    throw new Error(
+      'Token endpoint did not return both access and refresh tokens — ensure the IdP ' +
+        'issues a refresh token for this client (e.g. request the "offline_access" scope)',
+    );
   }
   return { accessToken: data.access_token, refreshToken: data.refresh_token };
 }

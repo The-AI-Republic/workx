@@ -101,7 +101,11 @@ function resolveOidcConfig(
   // OIDC is opt-in: without a client id we fall back to the legacy deep-link flow.
   if (!clientId) return null;
 
-  const scopes = (authSeam(env, vite, 'SCOPES') ?? 'openid profile email')
+  // `offline_access` is requested by default so the IdP reliably issues a
+  // refresh token — the desktop runtime requires one for silent re-auth.
+  // Deployments that gate scopes can override via `*_AUTH_SCOPES`.
+  const defaultScopes = 'openid profile email offline_access';
+  const scopes = (authSeam(env, vite, 'SCOPES') ?? defaultScopes)
     .split(/\s+/)
     .filter((scope) => scope.length > 0);
 
@@ -110,7 +114,7 @@ function resolveOidcConfig(
     authorizePath: authSeam(env, vite, 'AUTHORIZE_PATH') ?? '/auth/authorize',
     tokenPath: authSeam(env, vite, 'TOKEN_PATH') ?? '/auth/token',
     redirectUri: authSeam(env, vite, 'REDIRECT_URI') ?? 'workx://auth/callback',
-    scopes: scopes.length > 0 ? scopes : ['openid', 'profile', 'email'],
+    scopes: scopes.length > 0 ? scopes : defaultScopes.split(/\s+/),
   };
 }
 
