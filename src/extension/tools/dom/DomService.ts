@@ -15,6 +15,14 @@ import { computeHeuristics, classifyNode, determineInteractionType, detectFramew
 import type { TypeOptions } from '../../../types/domTool';
 import { DomAddon, type DomAddonContext } from './addons/DomAddon';
 import { googleDocAddon } from './addons/GoogleDocAddon';
+import { dispatchKey, click as dispatchClick, type MouseButton } from '../input/InputDispatcher';
+
+/** Options for {@link DomService.click}. */
+export interface ClickActionOptions {
+  button?: MouseButton;
+  clickCount?: number;
+  modifiers?: number;
+}
 import type { DebuggerClient, CDPEventCallback } from '../../../core/tools/browser/DebuggerClient';
 import type { DebuggerHandle } from '../../../core/tools/browser/DebuggerSessionRegistry';
 // Static import — forTab() is only used in extension builds where DOMTool is registered.
@@ -1025,7 +1033,7 @@ export class DomService {
   }
 
   // Action methods (T037-T045 will implement these)
-  async click(nodeId: number | string): Promise<ActionResult> {
+  async click(nodeId: number | string, options?: ClickActionOptions): Promise<ActionResult> {
     const start = Date.now();
 
     // Parse frame-scoped node ID
@@ -1141,20 +1149,13 @@ export class DomService {
       // CDP MIGRATION: Trigger ripple visual effect BEFORE click (with correct coordinates)
       await this.triggerVisualEffect('ripple', centerX, centerY);
 
-      // Dispatch click at the correct position
-      await this.sendCommand('Input.dispatchMouseEvent', {
-        type: 'mousePressed',
-        x: centerX,
-        y: centerY,
-        button: 'left',
-        clickCount: 1
-      });
-
-      await this.sendCommand('Input.dispatchMouseEvent', {
-        type: 'mouseReleased',
-        x: centerX,
-        y: centerY,
-        button: 'left'
+      // Dispatch click at the correct position. Routes through the shared
+      // dispatcher: mouseMoved -> mousePressed -> mouseReleased with correct
+      // `buttons` bookkeeping, honoring the requested button/clickCount.
+      await dispatchClick((method, params) => this.sendCommand(method, params), centerX, centerY, {
+        button: options?.button,
+        clickCount: options?.clickCount,
+        modifiers: options?.modifiers,
       });
 
       // Invalidate snapshot - let getSerializedDom() rebuild when needed
@@ -2693,18 +2694,10 @@ export class DomService {
         if (modifiers.includes('Meta')) modifierBits |= 4;
       }
 
-      await this.sendCommand('Input.dispatchKeyEvent', {
-        type: 'keyDown',
-        key,
-        code: `Key${key.toUpperCase()}`,
-        modifiers: modifierBits
-      });
-
-      await this.sendCommand('Input.dispatchKeyEvent', {
-        type: 'keyUp',
-        key,
-        code: `Key${key.toUpperCase()}`,
-        modifiers: modifierBits
+      // Correct key synthesis: real `code`/`windowsVirtualKeyCode`/`text` so
+      // pages (and legacy keyCode handlers) actually receive the keypress.
+      await dispatchKey((method, params) => this.sendCommand(method, params), key, {
+        modifiers: modifierBits,
       });
 
       // Invalidate snapshot - let getSerializedDom() rebuild when needed
