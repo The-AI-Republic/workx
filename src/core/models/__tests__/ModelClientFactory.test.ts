@@ -40,6 +40,9 @@ vi.mock('../client/FireworksChatCompletionClient', () => ({
 vi.mock('../client/TogetherChatCompletionClient', () => ({
   TogetherChatCompletionClient: vi.fn(),
 }));
+vi.mock('../client/AnthropicClient', () => ({
+  AnthropicClient: vi.fn(),
+}));
 
 // Import the mocked constructors so we can re-set implementations after mockReset
 import { OpenAIResponsesClient } from '../client/OpenAIResponsesClient';
@@ -48,6 +51,7 @@ import { GoogleCompletionClient } from '../client/GoogleCompletionClient';
 import { GroqClient } from '../client/GroqClient';
 import { FireworksChatCompletionClient } from '../client/FireworksChatCompletionClient';
 import { TogetherChatCompletionClient } from '../client/TogetherChatCompletionClient';
+import { AnthropicClient } from '../client/AnthropicClient';
 
 // ---------------------------------------------------------------------------
 // Re-establish mock implementations before each test (mockReset: true clears them)
@@ -70,6 +74,9 @@ function setupClientMocks() {
   }));
   (TogetherChatCompletionClient as unknown as Mock).mockImplementation((opts: any) => ({
     _type: 'TogetherChatCompletionClient', _opts: opts,
+  }));
+  (AnthropicClient as unknown as Mock).mockImplementation((opts: any) => ({
+    _type: 'AnthropicClient', _opts: opts,
   }));
 }
 
@@ -117,11 +124,15 @@ function createMockAuthManager(overrides: {
   shouldUseBackend?: boolean;
   backendBaseUrl?: string | null;
   accessToken?: string | null;
+  refreshedAccessToken?: string | null;
+  gatewayLlmBaseUrl?: string | null;
 } = {}): IAuthManager {
   return {
     shouldUseBackend: vi.fn().mockReturnValue(overrides.shouldUseBackend ?? false),
     getBackendBaseUrl: vi.fn().mockReturnValue(overrides.backendBaseUrl ?? null),
+    getGatewayLlmBaseUrl: vi.fn().mockReturnValue(overrides.gatewayLlmBaseUrl ?? null),
     getAccessToken: vi.fn().mockResolvedValue(overrides.accessToken ?? null),
+    refreshAccessToken: vi.fn().mockResolvedValue(overrides.refreshedAccessToken ?? null),
   };
 }
 
@@ -227,7 +238,7 @@ describe('ModelClientFactory', () => {
     it.each([
       ['openai', 'OpenAIResponsesClient'],
       ['xai', 'OpenAIResponsesClient'],
-      ['anthropic', 'OpenAIResponsesClient'],
+      ['anthropic', 'AnthropicClient'],
       ['groq', 'GroqClient'],
       ['google-ai-studio', 'GoogleCompletionClient'],
       ['fireworks', 'FireworksChatCompletionClient'],
@@ -486,6 +497,32 @@ describe('ModelClientFactory', () => {
       expect((client as any)._opts.reasoningSummary).toEqual({ enabled: true });
     });
 
+    it('should create a Chat Completions client for gateway routing with dynamic session JWT bearer auth', async () => {
+      await factory.initialize(createMockAgentConfig({
+        modelData: {
+          model: { modelKey: 'gpt-5', name: 'GPT-5', supportsReasoning: true, supportBackendMode: 1, contextWindow: 128000, maxOutputTokens: 8192, creator: 'OpenAI' },
+          provider: { id: 'openai', name: 'OpenAI', apiKey: '', timeout: 30000, models: [] },
+        },
+      }));
+      factory.setAuthManager(createMockAuthManager({
+        shouldUseBackend: true,
+        backendBaseUrl: 'https://legacy.example.com/api/llm',
+        gatewayLlmBaseUrl: 'https://gateway.example.com/v1',
+        accessToken: 'jwt-123',
+        refreshedAccessToken: 'jwt-456',
+      }));
+
+      const client = await factory.createClient('openai');
+
+      expect((client as any)._type).toBe('OpenAIChatCompletionClient');
+      expect((client as any)._opts.baseUrl).toBe('https://gateway.example.com/v1');
+      expect((client as any)._opts.apiKey).toBe('gateway-routed');
+      expect((client as any)._opts.provider.name).toBe('Gateway');
+      expect((client as any)._opts.useCredentials).toBe(false);
+      await expect((client as any)._opts.getAuthorizationToken()).resolves.toBe('jwt-123');
+      await expect((client as any)._opts.refreshAuthorizationToken()).resolves.toBe('jwt-456');
+    });
+
     it('should cache backend-routed clients', async () => {
       await factory.initialize(createMockAgentConfig({
         modelData: {
@@ -707,6 +744,7 @@ describe('ModelClientFactory', () => {
         ['google-ai-studio', 'Google AI Studio', 'google-ai-studio:gemini'],
         ['fireworks', 'Fireworks AI', 'fireworks:llama'],
         ['together', 'Together AI', 'together:qwen'],
+        ['anthropic', 'Anthropic', 'anthropic:claude-sonnet-4-6'],
       ];
       for (const [pid, expectedName, selectedKey] of cases) {
         await factory.initialize(createMockAgentConfig({

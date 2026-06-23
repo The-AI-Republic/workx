@@ -8,6 +8,7 @@ import { describe, it, expect } from 'vitest';
 import { calculateUSDCost, formatCost } from '../cost';
 import { MODEL_COST_TABLE, DEFAULT_FALLBACK_RATE } from '../modelCostTable';
 import type { TokenUsage } from '../../types/TokenUsage';
+import defaultProviders from '../../providers/default.json';
 
 const usage = (p: Partial<TokenUsage>): TokenUsage => ({
   input_tokens: 0,
@@ -46,6 +47,20 @@ describe('calculateUSDCost', () => {
     expect(r.costUSD).toBeCloseTo(DEFAULT_FALLBACK_RATE.inputPer1M, 10);
   });
 
+  it('uses concrete Anthropic model rates from provider metadata', () => {
+    const opus = calculateUSDCost('anthropic:claude-opus-4-8', usage({
+      input_tokens: 1_000_000,
+      cached_input_tokens: 100_000,
+      output_tokens: 1_000_000,
+    }));
+    expect(opus.estimated).toBe(false);
+    expect(opus.costUSD).toBeCloseTo(0.9 * 5.0 + 0.1 * 0.5 + 25.0, 10);
+
+    expect(calculateUSDCost('anthropic:claude-sonnet-4-6', usage({ input_tokens: 1_000_000 })).estimated).toBe(false);
+    expect(calculateUSDCost('anthropic:claude-fable-5', usage({ input_tokens: 1_000_000 })).estimated).toBe(false);
+    expect(calculateUSDCost('anthropic:claude-haiku-4-5-20251001', usage({ input_tokens: 1_000_000 })).estimated).toBe(false);
+  });
+
   it('treats a bare (non-provider-qualified) model id as unknown/estimated', () => {
     const r = calculateUSDCost('gpt-5.1', usage({ output_tokens: 1_000_000 }));
     expect(r.estimated).toBe(true);
@@ -69,5 +84,21 @@ describe('formatCost', () => {
   it('uses 4 dp at/under $0.50 and 2 dp above', () => {
     expect(formatCost(0.1234)).toBe('$0.1234');
     expect(formatCost(1.239)).toBe('$1.24');
+  });
+});
+
+describe('cost table ↔ catalog coverage', () => {
+  // The cost table is hand-coupled to providers/default.json by string
+  // convention. A model added to the catalog but missing here silently
+  // degrades to DEFAULT_FALLBACK_RATE (estimated=true). Guard that drift.
+  it('has a rate for every model in default.json', () => {
+    const missing: string[] = [];
+    for (const [providerId, provider] of Object.entries(defaultProviders as Record<string, { models?: Array<{ modelKey: string }> }>)) {
+      for (const model of provider.models ?? []) {
+        const compositeKey = `${providerId}:${model.modelKey}`;
+        if (!(compositeKey in MODEL_COST_TABLE)) missing.push(compositeKey);
+      }
+    }
+    expect(missing).toEqual([]);
   });
 });

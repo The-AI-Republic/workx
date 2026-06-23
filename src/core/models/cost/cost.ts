@@ -20,8 +20,7 @@ export interface CostResult {
 /**
  * Compute USD cost for a `TokenUsage` under a `"providerId:modelId"` key.
  *
- * Invariant (verified across every workx model client — all OpenAI-family,
- * no Anthropic-native client exists): `cached_input_tokens` is a SUBSET of
+ * Invariant (verified across every WorkX model client): `cached_input_tokens` is a SUBSET of
  * `input_tokens`. So uncached input = `max(0, input - cached)` (clamp guards
  * a provider ever reporting cached > prompt). `reasoning_output_tokens` is
  * billed at the output rate. Unknown key → `DEFAULT_FALLBACK_RATE` +

@@ -71,6 +71,12 @@ export interface AuthServiceDeps {
   /** Recompute access after auth transitions using the live agent/session. */
   refreshAccessState?: () => Promise<unknown>;
 
+  /** Optional post-login hook for runtime-owned integrations such as built-in MCP servers. */
+  afterLogin?: () => Promise<void>;
+
+  /** Optional post-logout hook for runtime-owned integrations. */
+  afterLogout?: () => Promise<void>;
+
   /**
    * ChatGPT OAuth flow controller. Owns the 127.0.0.1:1455 callback server
    * inside the runtime. Replaces the deleted Rust `start_oauth_callback_server`
@@ -214,6 +220,7 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
 
       const auth = deps.runtimeState?.getAuthState();
       const access = await deps.refreshAccessState?.() ?? deps.runtimeState?.getAccessState();
+      await deps.afterLogin?.();
       return { success: true, state: auth, access, user: auth?.profile ?? user };
     },
 
@@ -351,6 +358,7 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
           reason: 'Log in to your account or configure an API key.',
         })
         : undefined;
+      await deps.afterLogout?.();
       return { success: true, state: auth, access };
     },
 

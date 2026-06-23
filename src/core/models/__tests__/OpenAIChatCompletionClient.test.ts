@@ -7,6 +7,7 @@
  */
 
 import { describe, expect, it, beforeEach, vi, afterEach } from 'vitest';
+import OpenAI from 'openai';
 import { OpenAIChatCompletionClient, type OpenAIChatCompletionConfig } from '../client/OpenAIChatCompletionClient';
 import { ModelClientError } from '../ModelClient';
 import type {
@@ -66,6 +67,7 @@ describe('OpenAIChatCompletionClient', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.resetAllMocks();
   });
 
@@ -91,6 +93,37 @@ describe('OpenAIChatCompletionClient', () => {
       const customConfig = { ...config, baseUrl: 'https://custom.api.com/v1' };
       const customClient = new OpenAIChatCompletionClient(customConfig);
       expect(customClient.getProvider().name).toBe('openai');
+    });
+
+    it('injects a fresh bearer token and retries once after refresh on 401', async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(new Response(JSON.stringify({ detail: 'expired' }), { status: 401 }))
+        .mockResolvedValueOnce(new Response('{}', { status: 200 }));
+      vi.stubGlobal('fetch', fetchMock);
+      const getAuthorizationToken = vi.fn(async () => 'jwt-old');
+      const refreshAuthorizationToken = vi.fn(async () => 'jwt-new');
+
+      new OpenAIChatCompletionClient({
+        ...config,
+        apiKey: 'gateway-routed',
+        baseUrl: 'https://gateway.example.com/v1',
+        getAuthorizationToken,
+        refreshAuthorizationToken,
+      });
+
+      const sdkConfig = (OpenAI as any).mock.calls.at(-1)[0];
+      const response = await sdkConfig.fetch('https://gateway.example.com/v1/chat/completions', {
+        headers: new Headers({ Authorization: 'Bearer gateway-routed' }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(getAuthorizationToken).toHaveBeenCalledTimes(1);
+      expect(refreshAuthorizationToken).toHaveBeenCalledTimes(1);
+      const firstHeaders = fetchMock.mock.calls[0][1].headers as Headers;
+      const secondHeaders = fetchMock.mock.calls[1][1].headers as Headers;
+      expect(firstHeaders.get('Authorization')).toBe('Bearer jwt-old');
+      expect(secondHeaders.get('Authorization')).toBe('Bearer jwt-new');
     });
   });
 

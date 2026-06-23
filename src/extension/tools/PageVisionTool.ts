@@ -250,9 +250,11 @@ Simply provide coordinates based on visual analysis of the screenshot image.
     tabId: number,
     request: ScreenshotToolRequest
   ): Promise<ScreenshotResponseData> {
+    // Acquire the shared debugger session once for this action; released below.
+    // Acquired inside the try so a forTab failure is still logged.
+    let screenshotService: ScreenshotService | undefined;
     try {
-      // Create screenshot service
-      const screenshotService = await ScreenshotService.forTab(tabId);
+      screenshotService = await ScreenshotService.forTab(tabId);
 
       // Capture screenshot (with or without scroll)
       const { base64Data, viewport } = request.scroll_offset
@@ -272,6 +274,8 @@ Simply provide coordinates based on visual analysis of the screenshot image.
     } catch (error: any) {
       this.log('error', `Screenshot failed: ${error.message}`, { tabId });
       throw error;
+    } finally {
+      await screenshotService?.release();
     }
   }
 
@@ -286,23 +290,27 @@ Simply provide coordinates based on visual analysis of the screenshot image.
       throw new Error('VALIDATION_ERROR: coordinates required for click action');
     }
 
-    // Validate coordinates
-    await this.validateCoordinates(tabId, request.coordinates);
-
-    // Create coordinate action service
+    // Acquire the shared debugger session once for this action. Acquired before
+    // validateCoordinates so the tab stays attached for the whole sequence.
     const actionService = await CoordinateActionService.forTab(tabId);
+    try {
+      // Validate coordinates
+      await this.validateCoordinates(actionService, request.coordinates);
 
-    // Execute click
-    await actionService.clickAt(request.coordinates, {
-      button: request.options?.button,
-      modifiers: request.options?.modifiers,
-      waitAfter: request.options?.wait_after_action || 100,
-    });
+      // Execute click
+      await actionService.clickAt(request.coordinates, {
+        button: request.options?.button,
+        modifiers: request.options?.modifiers,
+        waitAfter: request.options?.wait_after_action || 100,
+      });
 
-    return {
-      coordinates_used: request.coordinates,
-      action_timestamp: new Date().toISOString(),
-    };
+      return {
+        coordinates_used: request.coordinates,
+        action_timestamp: new Date().toISOString(),
+      };
+    } finally {
+      await actionService.release();
+    }
   }
 
   /**
@@ -319,21 +327,24 @@ Simply provide coordinates based on visual analysis of the screenshot image.
       throw new Error('VALIDATION_ERROR: text required for type action');
     }
 
-    // Validate coordinates
-    await this.validateCoordinates(tabId, request.coordinates);
-
-    // Create coordinate action service
+    // Acquire once for this action (before validateCoordinates).
     const actionService = await CoordinateActionService.forTab(tabId);
+    try {
+      // Validate coordinates
+      await this.validateCoordinates(actionService, request.coordinates);
 
-    // Execute type
-    await actionService.typeAt(request.coordinates, request.text, {
-      waitAfter: request.options?.wait_after_action || 100,
-    });
+      // Execute type
+      await actionService.typeAt(request.coordinates, request.text, {
+        waitAfter: request.options?.wait_after_action || 100,
+      });
 
-    return {
-      coordinates_used: request.coordinates,
-      action_timestamp: new Date().toISOString(),
-    };
+      return {
+        coordinates_used: request.coordinates,
+        action_timestamp: new Date().toISOString(),
+      };
+    } finally {
+      await actionService.release();
+    }
   }
 
   /**
@@ -347,18 +358,21 @@ Simply provide coordinates based on visual analysis of the screenshot image.
       throw new Error('VALIDATION_ERROR: coordinates required for scroll action');
     }
 
-    // Create coordinate action service
+    // Acquire once for this action.
     const actionService = await CoordinateActionService.forTab(tabId);
+    try {
+      // Execute scroll
+      await actionService.scrollTo(request.coordinates, {
+        waitAfter: request.options?.wait_after_action || 200,
+      });
 
-    // Execute scroll
-    await actionService.scrollTo(request.coordinates, {
-      waitAfter: request.options?.wait_after_action || 200,
-    });
-
-    return {
-      coordinates_used: request.coordinates,
-      action_timestamp: new Date().toISOString(),
-    };
+      return {
+        coordinates_used: request.coordinates,
+        action_timestamp: new Date().toISOString(),
+      };
+    } finally {
+      await actionService.release();
+    }
   }
 
   /**
@@ -372,18 +386,21 @@ Simply provide coordinates based on visual analysis of the screenshot image.
       throw new Error('VALIDATION_ERROR: key required for keypress action');
     }
 
-    // Create coordinate action service
+    // Acquire once for this action.
     const actionService = await CoordinateActionService.forTab(tabId);
+    try {
+      // Execute keypress
+      await actionService.keypressAt(request.key, {
+        modifiers: request.options?.modifiers,
+        waitAfter: request.options?.wait_after_action || 100,
+      });
 
-    // Execute keypress
-    await actionService.keypressAt(request.key, {
-      modifiers: request.options?.modifiers,
-      waitAfter: request.options?.wait_after_action || 100,
-    });
-
-    return {
-      action_timestamp: new Date().toISOString(),
-    };
+      return {
+        action_timestamp: new Date().toISOString(),
+      };
+    } finally {
+      await actionService.release();
+    }
   }
 
   /**
@@ -400,20 +417,16 @@ Simply provide coordinates based on visual analysis of the screenshot image.
    * @returns Clipped coordinates guaranteed to be within viewport bounds
    */
   private async validateCoordinates(
-    tabId: number,
+    actionService: CoordinateActionService,
     coordinates: { x: number; y: number }
   ): Promise<{ x: number; y: number; clipped: boolean }> {
-    // Get viewport bounds via CDP
-    const result = await chrome.debugger.sendCommand({ tabId }, 'Runtime.evaluate', {
-      expression: '({ width: window.innerWidth, height: window.innerHeight })',
-      returnByValue: true
-    }) as { result?: { value: { width: number; height: number } } };
+    // Get viewport bounds via the acquired shared session (not a raw
+    // chrome.debugger call), so this stays coordinated with the registry.
+    const viewport = await actionService.getViewportSize();
 
-    if (!result?.result?.value) {
+    if (!viewport || typeof viewport.width !== 'number' || typeof viewport.height !== 'number') {
       throw new Error('INVALID_COORDINATES: Failed to get viewport bounds');
     }
-
-    const viewport = result.result.value;
 
     // Calculate valid bounds (0 to width-1, 0 to height-1)
     const maxX = viewport.width - 1;
