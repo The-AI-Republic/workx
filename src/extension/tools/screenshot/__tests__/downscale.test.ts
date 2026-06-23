@@ -62,6 +62,24 @@ describe('downscalePngToCssPixels', () => {
     expect(out).not.toBe(sample);
   });
 
+  it('preserves the requested image format when re-encoding', async () => {
+    const convertArgs: any[] = [];
+    (globalThis as any).createImageBitmap = vi.fn(async () => ({ width: 200, height: 100, close: vi.fn() }));
+    (globalThis as any).OffscreenCanvas = class {
+      constructor(public width: number, public height: number) {}
+      getContext() {
+        return { drawImage: vi.fn() };
+      }
+      convertToBlob(opts: any) {
+        convertArgs.push(opts);
+        return Promise.resolve({ arrayBuffer: async () => new Uint8Array([1]).buffer });
+      }
+    };
+
+    await downscalePngToCssPixels(sample, 2, { mimeType: 'image/jpeg', quality: 0.8 });
+    expect(convertArgs[0]).toEqual({ type: 'image/jpeg', quality: 0.8 });
+  });
+
   it('falls back to the original image if the pipeline throws', async () => {
     (globalThis as any).createImageBitmap = vi.fn(async () => {
       throw new Error('decode failed');
