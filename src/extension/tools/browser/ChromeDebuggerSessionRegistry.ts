@@ -124,11 +124,17 @@ export class ChromeDebuggerSessionRegistry implements DebuggerSessionRegistry {
   // Internal
   // ───────────────────────────────────────────────────────────────────────────
 
-  /** Release one reference; detach the shared session at refcount zero. */
-  private releaseTab(tabId: number): Promise<void> {
+  /**
+   * Release one reference held by `owned`; detach the shared session at
+   * refcount zero. The identity check (`session !== owned`) makes a release from
+   * a handle whose session was already force/externally detached (and possibly
+   * replaced by a re-acquire) a no-op — otherwise it would decrement/detach an
+   * unrelated session bound to the same tabId.
+   */
+  private releaseTab(tabId: number, owned: TabSession): Promise<void> {
     return this.withTabLock(tabId, async () => {
       const session = this.sessions.get(tabId);
-      if (!session) return;
+      if (!session || session !== owned) return;
       session.refs--;
       if (session.refs <= 0) {
         this.sessions.delete(tabId);
@@ -280,7 +286,9 @@ export class ChromeDebuggerSessionRegistry implements DebuggerSessionRegistry {
         // Remove this handle's subscriptions from the shared client/session.
         for (const cb of ownEventCallbacks) client.offEvent(cb);
         for (const cb of ownDetachCallbacks) session.detachCallbacks.delete(cb);
-        await registry.releaseTab(tabId);
+        // Pass the captured session so we only decrement OUR session, never a
+        // replacement bound to the same tabId after a force/external detach.
+        await registry.releaseTab(tabId, session);
       },
     };
 

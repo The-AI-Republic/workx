@@ -295,7 +295,7 @@ Simply provide coordinates based on visual analysis of the screenshot image.
     const actionService = await CoordinateActionService.forTab(tabId);
     try {
       // Validate coordinates
-      await this.validateCoordinates(tabId, request.coordinates);
+      await this.validateCoordinates(actionService, request.coordinates);
 
       // Execute click
       await actionService.clickAt(request.coordinates, {
@@ -331,7 +331,7 @@ Simply provide coordinates based on visual analysis of the screenshot image.
     const actionService = await CoordinateActionService.forTab(tabId);
     try {
       // Validate coordinates
-      await this.validateCoordinates(tabId, request.coordinates);
+      await this.validateCoordinates(actionService, request.coordinates);
 
       // Execute type
       await actionService.typeAt(request.coordinates, request.text, {
@@ -417,20 +417,16 @@ Simply provide coordinates based on visual analysis of the screenshot image.
    * @returns Clipped coordinates guaranteed to be within viewport bounds
    */
   private async validateCoordinates(
-    tabId: number,
+    actionService: CoordinateActionService,
     coordinates: { x: number; y: number }
   ): Promise<{ x: number; y: number; clipped: boolean }> {
-    // Get viewport bounds via CDP
-    const result = await chrome.debugger.sendCommand({ tabId }, 'Runtime.evaluate', {
-      expression: '({ width: window.innerWidth, height: window.innerHeight })',
-      returnByValue: true
-    }) as { result?: { value: { width: number; height: number } } };
+    // Get viewport bounds via the acquired shared session (not a raw
+    // chrome.debugger call), so this stays coordinated with the registry.
+    const viewport = await actionService.getViewportSize();
 
-    if (!result?.result?.value) {
+    if (!viewport || typeof viewport.width !== 'number' || typeof viewport.height !== 'number') {
       throw new Error('INVALID_COORDINATES: Failed to get viewport bounds');
     }
-
-    const viewport = result.result.value;
 
     // Calculate valid bounds (0 to width-1, 0 to height-1)
     const maxX = viewport.width - 1;
