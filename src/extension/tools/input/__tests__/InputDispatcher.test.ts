@@ -99,10 +99,37 @@ describe('click', () => {
     }));
   });
 
-  it('supports right-click and double-click', async () => {
+  it('supports right-click', async () => {
     const send = vi.fn().mockResolvedValue(undefined);
-    await click(send, 1, 2, { button: 'right', clickCount: 2 });
-    expect(send.mock.calls[1][1]).toMatchObject({ button: 'right', buttons: 2, clickCount: 2 });
-    expect(send.mock.calls[2][1]).toMatchObject({ button: 'right', buttons: 0, clickCount: 2 });
+    await click(send, 1, 2, { button: 'right' });
+    expect(send.mock.calls[1][1]).toMatchObject({ type: 'mousePressed', button: 'right', buttons: 2, clickCount: 1 });
+    expect(send.mock.calls[2][1]).toMatchObject({ type: 'mouseReleased', button: 'right', buttons: 0, clickCount: 1 });
+  });
+
+  it('double-click emits two full press/release cycles with incrementing clickCount', async () => {
+    const send = vi.fn().mockResolvedValue(undefined);
+    await click(send, 1, 2, { clickCount: 2 });
+    // mouseMoved, press(1), release(1), press(2), release(2)
+    expect(send).toHaveBeenCalledTimes(5);
+    expect(send.mock.calls[0][1]).toMatchObject({ type: 'mouseMoved' });
+    expect(send.mock.calls[1][1]).toMatchObject({ type: 'mousePressed', clickCount: 1 });
+    expect(send.mock.calls[2][1]).toMatchObject({ type: 'mouseReleased', clickCount: 1 });
+    expect(send.mock.calls[3][1]).toMatchObject({ type: 'mousePressed', clickCount: 2 });
+    expect(send.mock.calls[4][1]).toMatchObject({ type: 'mouseReleased', clickCount: 2 });
+  });
+});
+
+describe('keyDefinitions punctuation + dispatchKey shift', () => {
+  it('maps punctuation to a real code + virtual key code (not ASCII)', () => {
+    expect(getKeyDefinition('.')).toMatchObject({ code: 'Period', keyCode: 190, text: '.' });
+    expect(getKeyDefinition('/')).toMatchObject({ code: 'Slash', keyCode: 191, text: '/' });
+    // No bogus ASCII-derived keyCode (e.g. '.' must not be 46 = VK_DELETE).
+    expect(getKeyDefinition('.').keyCode).not.toBe(46);
+  });
+
+  it('encodes the Shift modifier for an already-uppercase letter', async () => {
+    const send = vi.fn().mockResolvedValue(undefined);
+    await dispatchKey(send, 'A');
+    expect(send.mock.calls[0][1]).toMatchObject({ type: 'keyDown', text: 'A', modifiers: MODIFIER_BITS.shift });
   });
 });

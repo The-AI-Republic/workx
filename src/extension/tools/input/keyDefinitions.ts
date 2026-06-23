@@ -73,6 +73,21 @@ const ALIASES: Record<string, string> = {
 const A_CODE = 'a'.charCodeAt(0);
 const Z_CODE = 'z'.charCodeAt(0);
 
+/** US punctuation → physical `code` + Windows virtual key code. */
+const PUNCTUATION: Record<string, { code: string; keyCode: number }> = {
+  '`': { code: 'Backquote', keyCode: 192 }, '~': { code: 'Backquote', keyCode: 192 },
+  '-': { code: 'Minus', keyCode: 189 }, '_': { code: 'Minus', keyCode: 189 },
+  '=': { code: 'Equal', keyCode: 187 }, '+': { code: 'Equal', keyCode: 187 },
+  '[': { code: 'BracketLeft', keyCode: 219 }, '{': { code: 'BracketLeft', keyCode: 219 },
+  ']': { code: 'BracketRight', keyCode: 221 }, '}': { code: 'BracketRight', keyCode: 221 },
+  '\\': { code: 'Backslash', keyCode: 220 }, '|': { code: 'Backslash', keyCode: 220 },
+  ';': { code: 'Semicolon', keyCode: 186 }, ':': { code: 'Semicolon', keyCode: 186 },
+  "'": { code: 'Quote', keyCode: 222 }, '"': { code: 'Quote', keyCode: 222 },
+  ',': { code: 'Comma', keyCode: 188 }, '<': { code: 'Comma', keyCode: 188 },
+  '.': { code: 'Period', keyCode: 190 }, '>': { code: 'Period', keyCode: 190 },
+  '/': { code: 'Slash', keyCode: 191 }, '?': { code: 'Slash', keyCode: 191 },
+};
+
 /**
  * Resolve a key string to its CDP definition. Handles named keys, aliases,
  * function keys (F1–F24), single letters/digits, and falls back to treating an
@@ -101,9 +116,14 @@ export function getKeyDefinition(key: string): KeyDefinition {
     if (ch >= '0' && ch <= '9') {
       return { key: ch, code: `Digit${ch}`, keyCode: ch.charCodeAt(0), text: ch };
     }
-    // Other printable single character (punctuation/symbols): provide text so
-    // it inserts; we don't model a precise physical code for every symbol.
-    return { key: ch, code: '', keyCode: ch.toUpperCase().charCodeAt(0), text: ch };
+    const punct = PUNCTUATION[ch];
+    if (punct) {
+      return { key: ch, code: punct.code, keyCode: punct.keyCode, text: ch };
+    }
+    // Other printable single character: provide text so it inserts. We don't
+    // model a physical code for it, and we deliberately emit keyCode:0 rather
+    // than a wrong virtual key code derived from the character's ASCII value.
+    return { key: ch, code: '', keyCode: 0, text: ch };
   }
 
   // Unknown multi-char key: pass through with no virtual code.
