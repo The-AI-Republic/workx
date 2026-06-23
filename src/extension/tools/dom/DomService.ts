@@ -15,15 +15,28 @@ import { computeHeuristics, classifyNode, determineInteractionType, detectFramew
 import type { TypeOptions } from '../../../types/domTool';
 import { DomAddon, type DomAddonContext } from './addons/DomAddon';
 import { googleDocAddon } from './addons/GoogleDocAddon';
+import { dispatchKey, click as dispatchClick, type MouseButton } from '../input/InputDispatcher';
+
+/** Options for {@link DomService.click}. */
+export interface ClickActionOptions {
+  button?: MouseButton;
+  clickCount?: number;
+  modifiers?: number;
+}
 import type { DebuggerClient, CDPEventCallback } from '../../../core/tools/browser/DebuggerClient';
+import type { DebuggerHandle } from '../../../core/tools/browser/DebuggerSessionRegistry';
 // Static import — forTab() is only used in extension builds where DOMTool is registered.
 // Dynamic import() is banned in Chrome extension service workers.
-import { ChromeDebuggerClient } from '../browser/ChromeDebuggerClient';
+import { getDebuggerSessionRegistry } from '../browser/ChromeDebuggerSessionRegistry';
 
 export class DomService {
   private static instances = new Map<string, DomService>();
 
   private client: DebuggerClient;
+  /** Set on the extension forTab() path; null on the desktop forClient() path. */
+  private handle: DebuggerHandle | null = null;
+  /** Unsubscribe from the shared session's detach notifications. */
+  private detachUnsubscribe: (() => void) | null = null;
   private instanceKey: string;
   private tabId: number;
   private isAttached: boolean = false;
@@ -42,6 +55,7 @@ export class DomService {
       snapshotTimeout: 120000,
       retryAttempts: 2,
       enableMetrics: true,
+      useContentQuads: false,
       ...config
     };
 
@@ -74,20 +88,21 @@ export class DomService {
   static async forTab(tabId: number, config?: Partial<ServiceConfig>): Promise<DomService> {
     const key = `tab:${tabId}`;
     if (!this.instances.has(key)) {
-      const client = new ChromeDebuggerClient();
+      // Acquire a shared, refcounted debugger session for this tab. The registry
+      // throws `ALREADY_ATTACHED:` / `ATTACH_FAILED:` on conflict.
+      const handle = await getDebuggerSessionRegistry().acquire(tabId);
       try {
-        await client.attach({ tabId });
-      } catch (error: any) {
-        if (error.message?.toLowerCase().includes('already attached')) {
-          throw new Error('ALREADY_ATTACHED: DevTools is open on this tab. Please close DevTools.');
-        }
-        throw new Error(`ATTACH_FAILED: ${error.message}`);
+        const service = new DomService(handle, key, config);
+        service.tabId = tabId;
+        service.handle = handle;
+        await service.enableDomains();
+        service.setupEventListeners();
+        this.instances.set(key, service);
+      } catch (error) {
+        // Don't leak the reference if setup fails after a successful acquire.
+        await handle.release();
+        throw error;
       }
-      const service = new DomService(client, key, config);
-      service.tabId = tabId;
-      await service.enableDomains();
-      service.setupEventListeners();
-      this.instances.set(key, service);
     }
     return this.instances.get(key)!;
   }
@@ -130,16 +145,17 @@ export class DomService {
     this.boundHandleCdpEvent = this.handleCdpEvent.bind(this);
     this.client.onEvent(this.boundHandleCdpEvent);
 
-    // Listen for debugger detach (extension-only, chrome.debugger.onDetach)
-    if (typeof chrome !== 'undefined' && chrome.debugger?.onDetach) {
-      this.boundHandleDebuggerDetach = this.handleDebuggerDetach.bind(this);
-      chrome.debugger.onDetach.addListener(this.boundHandleDebuggerDetach);
+    // Reconcile on external/forced detach via the shared session handle. The
+    // registry owns the single chrome.debugger.onDetach listener and fans it
+    // out, so DomService no longer registers its own (extension/forTab path
+    // only; the desktop forClient path has no handle).
+    if (this.handle) {
+      this.detachUnsubscribe = this.handle.onDetach((reason) => this.handleDebuggerDetach(reason));
     }
   }
 
-  // Bound event handler references for cleanup
+  // Bound event handler reference for cleanup
   private boundHandleCdpEvent: CDPEventCallback | null = null;
-  private boundHandleDebuggerDetach: ((source: chrome.debugger.Debuggee, reason: string) => void) | null = null;
 
   async detach(): Promise<void> {
     if (!this.isAttached) return;
@@ -150,12 +166,19 @@ export class DomService {
         this.client.offEvent(this.boundHandleCdpEvent);
         this.boundHandleCdpEvent = null;
       }
-      if (this.boundHandleDebuggerDetach && typeof chrome !== 'undefined' && chrome.debugger?.onDetach) {
-        chrome.debugger.onDetach.removeListener(this.boundHandleDebuggerDetach);
-        this.boundHandleDebuggerDetach = null;
+      if (this.detachUnsubscribe) {
+        this.detachUnsubscribe();
+        this.detachUnsubscribe = null;
       }
 
-      await this.client.detach();
+      // forTab: release our refcount (detaches the shared session at zero).
+      // forClient (desktop): detach the pre-attached client directly.
+      if (this.handle) {
+        await this.handle.release();
+        this.handle = null;
+      } else {
+        await this.client.detach();
+      }
       this.isAttached = false;
       this.currentSnapshot = null;
       DomService.instances.delete(this.instanceKey);
@@ -701,6 +724,104 @@ export class DomService {
   }
 
   /**
+   * Resolve a click point using DOM.getContentQuads (viewport-relative CSS
+   * pixels). Picks the center of the largest quad∩viewport intersection so
+   * partially-scrolled elements still click a visible point; scrolls into view
+   * and retries once when nothing is visible.
+   */
+  private async resolveClickPointViaContentQuads(backendNodeId: number): Promise<{ x: number; y: number }> {
+    const viewport = await this.getViewportSizeCss();
+
+    const fetchQuads = async (): Promise<number[][]> => {
+      const result = await this.sendCommand<any>('DOM.getContentQuads', { backendNodeId });
+      return (result?.quads ?? []) as number[][];
+    };
+
+    let quads = await fetchQuads();
+    if (quads.length === 0) {
+      throw new Error('ELEMENT_NOT_VISIBLE: Element has no content quads. It may be hidden or display:none.');
+    }
+
+    let point = this.pickVisibleQuadCenter(quads, viewport);
+    if (!point) {
+      // Off-screen: scroll into view and retry once.
+      await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId }).catch(() => { });
+      await new Promise(resolve => setTimeout(resolve, 100));
+      quads = await fetchQuads();
+      point = this.pickVisibleQuadCenter(quads, viewport);
+    }
+
+    if (!point) {
+      // Nothing visible. If the element is also zero-area (collapsed/hidden),
+      // refuse — matching the box-model path's ELEMENT_NOT_VISIBLE rather than
+      // silently clicking a degenerate element.
+      // reduce() (not Math.max(...spread)) to avoid a call-stack overflow on a
+      // pathologically large quad array.
+      const maxArea = quads.reduce((m, q) => Math.max(m, this.quadArea(q)), 0);
+      if (maxArea <= 0) {
+        throw new Error('ELEMENT_NOT_VISIBLE: Element has zero width or height. It may be hidden or display:none.');
+      }
+      // Best effort: center of the first quad (may be partially off-screen).
+      const q = quads[0];
+      point = { x: (q[0] + q[4]) / 2, y: (q[1] + q[5]) / 2 };
+    }
+    return point;
+  }
+
+  /** Polygon area of a CDP content quad [x1,y1,x2,y2,x3,y3,x4,y4] (shoelace). */
+  private quadArea(q: number[]): number {
+    if (!q || q.length < 8) return 0;
+    return (
+      Math.abs(
+        q[0] * q[3] - q[2] * q[1] +
+        q[2] * q[5] - q[4] * q[3] +
+        q[4] * q[7] - q[6] * q[5] +
+        q[6] * q[1] - q[0] * q[7]
+      ) / 2
+    );
+  }
+
+  /**
+   * Choose the center of the largest quad clipped to the viewport rect
+   * {0,0,width,height}. Returns null when no quad intersects the viewport.
+   */
+  private pickVisibleQuadCenter(
+    quads: number[][],
+    viewport: { width: number; height: number }
+  ): { x: number; y: number } | null {
+    let best: { area: number; x: number; y: number } | null = null;
+    for (const q of quads) {
+      if (!q || q.length < 8) continue;
+      const xs = [q[0], q[2], q[4], q[6]];
+      const ys = [q[1], q[3], q[5], q[7]];
+      const ixMin = Math.max(Math.min(...xs), 0);
+      const ixMax = Math.min(Math.max(...xs), viewport.width);
+      const iyMin = Math.max(Math.min(...ys), 0);
+      const iyMax = Math.min(Math.max(...ys), viewport.height);
+      const iw = ixMax - ixMin;
+      const ih = iyMax - iyMin;
+      if (iw <= 0 || ih <= 0) continue; // no visible intersection
+      const area = iw * ih;
+      if (!best || area > best.area) {
+        best = { area, x: (ixMin + ixMax) / 2, y: (iyMin + iyMax) / 2 };
+      }
+    }
+    return best ? { x: best.x, y: best.y } : null;
+  }
+
+  private async getViewportSizeCss(): Promise<{ width: number; height: number }> {
+    const result = await this.sendCommand<any>('Runtime.evaluate', {
+      expression: '({ width: window.innerWidth, height: window.innerHeight })',
+      returnByValue: true
+    });
+    const value = result?.result?.value;
+    if (!value || typeof value.width !== 'number' || typeof value.height !== 'number') {
+      throw new Error('ELEMENT_NOT_VISIBLE: Failed to read viewport size for click targeting.');
+    }
+    return value;
+  }
+
+  /**
    * Get page metadata via CDP Runtime.evaluate (platform-agnostic).
    * Replaces chrome.tabs.get() which is only available in extension mode.
    */
@@ -738,13 +859,16 @@ export class DomService {
     }
   }
 
-  // Handle CDP connection loss (extension-only, chrome.debugger.onDetach)
-  private handleDebuggerDetach(source: chrome.debugger.Debuggee, reason: string): void {
-    if (source.tabId !== this.tabId) return;
-
+  // Handle CDP connection loss, fanned out from the registry's single
+  // chrome.debugger.onDetach listener (already filtered to this tab).
+  private handleDebuggerDetach(reason: string): void {
     console.error(`[DomService] CDP_CONNECTION_LOST: Debugger detached from tab ${this.tabId}. Reason: ${reason}`);
     this.isAttached = false;
     this.currentSnapshot = null;
+    // The shared session is already gone; drop our handle (release() would
+    // no-op) and our subscription (the registry already cleared subscribers).
+    this.handle = null;
+    this.detachUnsubscribe = null;
     DomService.instances.delete(this.instanceKey);
 
     // If detach was unexpected (not user-initiated), log for debugging
@@ -1008,7 +1132,7 @@ export class DomService {
   }
 
   // Action methods (T037-T045 will implement these)
-  async click(nodeId: number | string): Promise<ActionResult> {
+  async click(nodeId: number | string, options?: ClickActionOptions): Promise<ActionResult> {
     const start = Date.now();
 
     // Parse frame-scoped node ID
@@ -1055,89 +1179,96 @@ export class DomService {
       // (in case we found the node in a different frame than specified)
       const resolvedBackendNodeId = node.backendNodeId;
 
-      // Get box model for coordinates
-      let boxModel;
-      try {
-        boxModel = await this.sendCommand<any>('DOM.getBoxModel', { backendNodeId: resolvedBackendNodeId });
-      } catch (error: any) {
-        // SVG elements don't have box models - try getting content quads instead
-        if (error.message?.includes('Could not compute box model')) {
-          if (node?.nodeName?.toLowerCase() === 'svg' || node?.nodeName?.toLowerCase().includes('svg')) {
-            console.warn('[DomService] SVG element detected - using alternative click method');
-            // For SVG, try to get bounding rect via JavaScript
-            throw new Error('SVG_CLICK_NOT_SUPPORTED: Direct SVG element clicking not yet fully implemented. Consider clicking parent element.');
-          }
-        }
-        throw error;
-      }
+      // Resolve the click point in viewport-relative CSS pixels.
+      let centerX: number;
+      let centerY: number;
 
-      let { content } = boxModel.model;
-
-      // Element visibility verification
-      const width = Math.abs(content[2] - content[0]);
-      const height = Math.abs(content[5] - content[1]);
-      if (width === 0 || height === 0) {
-        throw new Error('ELEMENT_NOT_VISIBLE: Element has zero width or height. It may be hidden or display:none.');
-      }
-
-      // Calculate initial center coordinates
-      let centerX = (content[0] + content[2]) / 2;
-      let centerY = (content[1] + content[5]) / 2;
-
-      // Check if element is within viewport and scroll if needed
-      // Only check viewport if visual effects are enabled (optimization)
-      if (this.config.enableVisualEffects) {
-        const viewportResult = await this.sendCommand<any>('Runtime.evaluate', {
-          expression: '({ width: window.innerWidth, height: window.innerHeight, scrollX: window.scrollX, scrollY: window.scrollY })',
-          returnByValue: true
-        });
-        const viewport = viewportResult.result.value;
-
-        // Element is in viewport if its center is visible on screen
-        // Note: content coordinates are absolute (relative to document), not viewport
-        const isInViewport =
-          centerX >= viewport.scrollX &&
-          centerX <= viewport.scrollX + viewport.width &&
-          centerY >= viewport.scrollY &&
-          centerY <= viewport.scrollY + viewport.height;
-
-        if (!isInViewport) {
-          // Scroll element into view
-          await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId: resolvedBackendNodeId });
-
-          // Wait for scroll animation to complete
-          await new Promise(resolve => setTimeout(resolve, 100));
-
-          // Get box model AGAIN after scrolling (element position has changed)
-          const updatedBoxModel = await this.sendCommand<any>('DOM.getBoxModel', { backendNodeId: resolvedBackendNodeId });
-          content = updatedBoxModel.model.content;
-
-          // Recalculate center coordinates with new position
-          centerX = (content[0] + content[2]) / 2;
-          centerY = (content[1] + content[5]) / 2;
-        }
+      if (this.config.useContentQuads) {
+        // getContentQuads returns viewport-relative quads and handles
+        // inline/SVG/transformed elements (no box model required). We click the
+        // center of the quad∩viewport intersection — no document-scroll offsets
+        // (see design §3.4 / §1.6 #6).
+        const point = await this.resolveClickPointViaContentQuads(resolvedBackendNodeId);
+        centerX = point.x;
+        centerY = point.y;
       } else {
-        // Visual effects disabled - still scroll into view if needed, but don't wait
-        await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId: resolvedBackendNodeId }).catch(() => { });
+        // Get box model for coordinates
+        let boxModel;
+        try {
+          boxModel = await this.sendCommand<any>('DOM.getBoxModel', { backendNodeId: resolvedBackendNodeId });
+        } catch (error: any) {
+          // SVG elements don't have box models - try getting content quads instead
+          if (error.message?.includes('Could not compute box model')) {
+            if (node?.nodeName?.toLowerCase() === 'svg' || node?.nodeName?.toLowerCase().includes('svg')) {
+              console.warn('[DomService] SVG element detected - using alternative click method');
+              // For SVG, try to get bounding rect via JavaScript
+              throw new Error('SVG_CLICK_NOT_SUPPORTED: Direct SVG element clicking not yet fully implemented. Consider clicking parent element.');
+            }
+          }
+          throw error;
+        }
+
+        let { content } = boxModel.model;
+
+        // Element visibility verification
+        const width = Math.abs(content[2] - content[0]);
+        const height = Math.abs(content[5] - content[1]);
+        if (width === 0 || height === 0) {
+          throw new Error('ELEMENT_NOT_VISIBLE: Element has zero width or height. It may be hidden or display:none.');
+        }
+
+        // Calculate initial center coordinates
+        centerX = (content[0] + content[2]) / 2;
+        centerY = (content[1] + content[5]) / 2;
+
+        // Check if element is within viewport and scroll if needed
+        // Only check viewport if visual effects are enabled (optimization)
+        if (this.config.enableVisualEffects) {
+          const viewportResult = await this.sendCommand<any>('Runtime.evaluate', {
+            expression: '({ width: window.innerWidth, height: window.innerHeight, scrollX: window.scrollX, scrollY: window.scrollY })',
+            returnByValue: true
+          });
+          const viewport = viewportResult.result.value;
+
+          // Element is in viewport if its center is visible on screen
+          // Note: content coordinates are absolute (relative to document), not viewport
+          const isInViewport =
+            centerX >= viewport.scrollX &&
+            centerX <= viewport.scrollX + viewport.width &&
+            centerY >= viewport.scrollY &&
+            centerY <= viewport.scrollY + viewport.height;
+
+          if (!isInViewport) {
+            // Scroll element into view
+            await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId: resolvedBackendNodeId });
+
+            // Wait for scroll animation to complete
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Get box model AGAIN after scrolling (element position has changed)
+            const updatedBoxModel = await this.sendCommand<any>('DOM.getBoxModel', { backendNodeId: resolvedBackendNodeId });
+            content = updatedBoxModel.model.content;
+
+            // Recalculate center coordinates with new position
+            centerX = (content[0] + content[2]) / 2;
+            centerY = (content[1] + content[5]) / 2;
+          }
+        } else {
+          // Visual effects disabled - still scroll into view if needed, but don't wait
+          await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId: resolvedBackendNodeId }).catch(() => { });
+        }
       }
 
       // CDP MIGRATION: Trigger ripple visual effect BEFORE click (with correct coordinates)
       await this.triggerVisualEffect('ripple', centerX, centerY);
 
-      // Dispatch click at the correct position
-      await this.sendCommand('Input.dispatchMouseEvent', {
-        type: 'mousePressed',
-        x: centerX,
-        y: centerY,
-        button: 'left',
-        clickCount: 1
-      });
-
-      await this.sendCommand('Input.dispatchMouseEvent', {
-        type: 'mouseReleased',
-        x: centerX,
-        y: centerY,
-        button: 'left'
+      // Dispatch click at the correct position. Routes through the shared
+      // dispatcher: mouseMoved -> mousePressed -> mouseReleased with correct
+      // `buttons` bookkeeping, honoring the requested button/clickCount.
+      await dispatchClick((method, params) => this.sendCommand(method, params), centerX, centerY, {
+        button: options?.button,
+        clickCount: options?.clickCount,
+        modifiers: options?.modifiers,
       });
 
       // Invalidate snapshot - let getSerializedDom() rebuild when needed
@@ -2676,18 +2807,10 @@ export class DomService {
         if (modifiers.includes('Meta')) modifierBits |= 4;
       }
 
-      await this.sendCommand('Input.dispatchKeyEvent', {
-        type: 'keyDown',
-        key,
-        code: `Key${key.toUpperCase()}`,
-        modifiers: modifierBits
-      });
-
-      await this.sendCommand('Input.dispatchKeyEvent', {
-        type: 'keyUp',
-        key,
-        code: `Key${key.toUpperCase()}`,
-        modifiers: modifierBits
+      // Correct key synthesis: real `code`/`windowsVirtualKeyCode`/`text` so
+      // pages (and legacy keyCode handlers) actually receive the keypress.
+      await dispatchKey((method, params) => this.sendCommand(method, params), key, {
+        modifiers: modifierBits,
       });
 
       // Invalidate snapshot - let getSerializedDom() rebuild when needed

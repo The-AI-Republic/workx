@@ -233,24 +233,16 @@ describe('DomService', () => {
       await service.detach();
     });
 
-    it('should remove chrome.debugger.onDetach listener if set', async () => {
-      // Setup chrome.debugger.onDetach mock
-      const removeListenerFn = vi.fn();
-      (globalThis as any).chrome = {
-        ...(globalThis as any).chrome,
-        debugger: {
-          onDetach: {
-            addListener: vi.fn(),
-            removeListener: removeListenerFn,
-          }
-        }
-      };
+    it('does not touch chrome.debugger.onDetach on the desktop forClient path', async () => {
+      // The registry owns the single chrome.debugger.onDetach listener for the
+      // forTab path; the desktop forClient path has no handle and must not
+      // register/remove chrome.debugger listeners directly.
       const client = createMockClient({ attached: true });
       const service = await DomService.forClient(client, 'detach-key-4');
-      // The setupEventListeners should have registered a listener
-      expect((service as any).boundHandleDebuggerDetach).not.toBeNull();
+      expect((service as any).handle).toBeNull();
+      expect((service as any).detachUnsubscribe).toBeNull();
       await service.detach();
-      expect(removeListenerFn).toHaveBeenCalled();
+      expect(client.detach).toHaveBeenCalled();
     });
   });
 
@@ -701,25 +693,17 @@ describe('DomService', () => {
   // handleDebuggerDetach
   // ==========================================================================
   describe('handleDebuggerDetach', () => {
-    it('should clean up on detach for matching tabId', async () => {
+    // The registry fans out detach already filtered to this tab, so the handler
+    // now takes only a reason (no source/tabId filtering of its own).
+    it('should clean up on detach', async () => {
       const client = createMockClient({ attached: true });
       const service = await DomService.forClient(client, 'dbg-detach-1');
       (service as any).tabId = 42;
       (service as any).currentSnapshot = { some: 'data' };
       const handler = (service as any).handleDebuggerDetach.bind(service);
-      handler({ tabId: 42 }, 'target_closed');
+      handler('target_closed');
       expect((service as any).isAttached).toBe(false);
       expect(service.getCurrentSnapshot()).toBeNull();
-    });
-
-    it('should ignore detach for non-matching tabId', async () => {
-      const client = createMockClient({ attached: true });
-      const service = await DomService.forClient(client, 'dbg-detach-2');
-      (service as any).tabId = 42;
-      (service as any).isAttached = true;
-      const handler = (service as any).handleDebuggerDetach.bind(service);
-      handler({ tabId: 99 }, 'target_closed');
-      expect((service as any).isAttached).toBe(true);
     });
 
     it('should log extra warning for unexpected detach reasons', async () => {
@@ -728,7 +712,7 @@ describe('DomService', () => {
       (service as any).tabId = 42;
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const handler = (service as any).handleDebuggerDetach.bind(service);
-      handler({ tabId: 42 }, 'crashed');
+      handler('crashed');
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Unexpected debugger detach'));
       warnSpy.mockRestore();
     });
@@ -739,7 +723,7 @@ describe('DomService', () => {
       (service as any).tabId = 42;
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const handler = (service as any).handleDebuggerDetach.bind(service);
-      handler({ tabId: 42 }, 'canceled_by_user');
+      handler('canceled_by_user');
       expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining('Unexpected debugger detach'));
       warnSpy.mockRestore();
     });

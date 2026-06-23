@@ -5,10 +5,15 @@
  */
 
 import type { ScreenshotCaptureOptions, ViewportBounds, ScrollOffset } from './types';
+import { getDebuggerSessionRegistry } from '../browser/ChromeDebuggerSessionRegistry';
+import type { DebuggerHandle } from '@/core/tools/browser/DebuggerSessionRegistry';
+import { downscalePngToCssPixels } from './downscale';
 
 export class ScreenshotService {
   private tabId: number;
   private sendCommand: <T = any>(method: string, params?: any) => Promise<T>;
+  /** Shared debugger session reference, when created via forTab(). */
+  private handle: DebuggerHandle | null = null;
 
   constructor(
     tabId: number,
@@ -30,18 +35,27 @@ export class ScreenshotService {
     viewport: ViewportBounds;
   }> {
     try {
-      // Get viewport bounds before capture
-      const viewport = await this.getViewportBounds();
+      // Get viewport bounds (+ DPR) before capture
+      const { devicePixelRatio, ...viewport } = await this.getViewportBounds();
 
-      // Capture screenshot using CDP
+      // Capture screenshot using CDP (device pixels)
+      const format = options?.format || 'png';
       const screenshot = await this.sendCommand<{ data: string }>('Page.captureScreenshot', {
-        format: options?.format || 'png',
+        format,
         quality: options?.quality,
         captureBeyondViewport: false // Only capture visible viewport
       });
 
+      // Downscale to CSS pixels so the image the model sees matches the
+      // coordinate space clicks are dispatched in (no-op when DPR == 1).
+      // Preserve the requested image format when re-encoding.
+      const base64Data = await downscalePngToCssPixels(screenshot.data, devicePixelRatio, {
+        mimeType: `image/${format}`,
+        quality: options?.quality != null ? options.quality / 100 : undefined,
+      });
+
       return {
-        base64Data: screenshot.data,
+        base64Data,
         viewport
       };
     } catch (error: any) {
@@ -101,71 +115,55 @@ export class ScreenshotService {
   /**
    * Get current viewport bounds
    */
-  private async getViewportBounds(): Promise<ViewportBounds> {
+  private async getViewportBounds(): Promise<ViewportBounds & { devicePixelRatio: number }> {
     const result = await this.sendCommand<any>('Runtime.evaluate', {
-      expression: '({ width: window.innerWidth, height: window.innerHeight, scroll_x: window.scrollX, scroll_y: window.scrollY })',
+      expression: '({ width: window.innerWidth, height: window.innerHeight, scroll_x: window.scrollX, scroll_y: window.scrollY, device_pixel_ratio: window.devicePixelRatio })',
       returnByValue: true
     });
 
-    const { width, height, scroll_x, scroll_y } = result.result.value;
+    const { width, height, scroll_x, scroll_y, device_pixel_ratio } = result.result.value;
 
     return {
       width,
       height,
       scroll_x,
-      scroll_y
+      scroll_y,
+      devicePixelRatio: device_pixel_ratio ?? 1
     };
   }
 
   /**
-   * Create ScreenshotService for a specific tab
-   * Uses chrome.debugger to send CDP commands
+   * Create ScreenshotService for a specific tab.
+   *
+   * Acquires a shared, refcounted debugger session from the registry instead of
+   * attaching independently (which previously raced with DomService/page_vision
+   * via a `Runtime.evaluate('1+1')` probe and never detached). Callers MUST
+   * {@link release} the service when done; page_vision acquires once per action.
    */
   static async forTab(tabId: number): Promise<ScreenshotService> {
-    // Check if debugger is already attached
-    let isAttached = false;
+    const handle = await getDebuggerSessionRegistry().acquire(tabId);
+
+    // Enable Page domain (required for screenshots; deduped across the session).
     try {
-      await chrome.debugger.sendCommand({ tabId }, 'Runtime.evaluate', {
-        expression: '1+1',
-        returnByValue: true
-      });
-      isAttached = true;
+      await handle.enableDomain('Page');
     } catch (error: any) {
-      // Debugger not attached - will attach below
-      isAttached = false;
-    }
-
-    // Attach debugger if not already attached
-    if (!isAttached) {
-      try {
-        await chrome.debugger.attach({ tabId }, '1.3');
-      } catch (error: any) {
-        console.error(`[ScreenshotService] Failed to attach debugger to tab ${tabId}:`, error);
-
-        // Check for common errors
-        if (error.message?.includes('Another debugger is already attached')) {
-          // Debugger is attached by another process (DevTools, DomService, etc.) - this is OK
-        } else if (error.message?.includes('Cannot access')) {
-          throw new Error(`CDP_CONNECTION_LOST: Cannot attach debugger to tab ${tabId}. Tab may be a protected page (chrome://, chrome-extension://, etc.)`);
-        } else {
-          throw new Error(`CDP_CONNECTION_LOST: Failed to attach debugger to tab ${tabId}: ${error.message}`);
-        }
-      }
-    }
-
-    // Enable Page domain (required for screenshots)
-    try {
-      await chrome.debugger.sendCommand({ tabId }, 'Page.enable', {});
-    } catch (error: any) {
+      await handle.release();
       console.error(`[ScreenshotService] Failed to enable Page domain:`, error);
       throw new Error(`SCREENSHOT_FAILED: Failed to enable Page domain: ${error.message}`);
     }
 
-    // Create send command wrapper
-    const sendCommand = async <T = any>(method: string, params?: any): Promise<T> => {
-      return await chrome.debugger.sendCommand({ tabId }, method, params) as T;
-    };
+    const sendCommand = <T = any>(method: string, params?: any): Promise<T> =>
+      handle.sendCommand<T>(method, params);
 
-    return new ScreenshotService(tabId, sendCommand);
+    const service = new ScreenshotService(tabId, sendCommand);
+    service.handle = handle;
+    return service;
+  }
+
+  /** Release this service's reference to the shared debugger session. */
+  async release(): Promise<void> {
+    const handle = this.handle;
+    this.handle = null;
+    await handle?.release();
   }
 }
