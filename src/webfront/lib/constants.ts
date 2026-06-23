@@ -19,6 +19,12 @@ export const AUTH_OIDC_CLIENT_ID = authConfig.oidcClientId ?? 'workx-desktop';
  * legacy desktop-token flow is used so login never hard-breaks pre-registration.
  */
 export const AUTH_OIDC_ENABLED = authConfig.oidcEnabled;
+/**
+ * OIDC scopes requested at authorize time. Defaults to the identity scopes;
+ * override via `WORKX_/VITE_AUTH_OIDC_SCOPES` (e.g. add `chat apps models`) so
+ * the issued token carries the `svc:hub` audience required by the Hub gateway.
+ */
+export const AUTH_OIDC_SCOPES = authConfig.oidcScopes ?? 'openid profile email';
 /** Custom-scheme deep-link the desktop registers for the OIDC redirect. */
 export const DESKTOP_OIDC_REDIRECT_URI = 'workx://auth/callback';
 

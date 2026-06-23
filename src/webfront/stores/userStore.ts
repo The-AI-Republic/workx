@@ -13,6 +13,7 @@ import {
   AUTH_OIDC_TOKEN_PATH,
   AUTH_OIDC_CLIENT_ID,
   AUTH_OIDC_ENABLED,
+  AUTH_OIDC_SCOPES,
   DESKTOP_OIDC_REDIRECT_URI,
 } from '../lib/constants';
 
@@ -159,7 +160,7 @@ export function getDesktopAuthorizeUrl(opts: { codeChallenge: string; state: str
   url.searchParams.set('response_type', 'code');
   url.searchParams.set('client_id', AUTH_OIDC_CLIENT_ID);
   url.searchParams.set('redirect_uri', DESKTOP_OIDC_REDIRECT_URI);
-  url.searchParams.set('scope', 'openid profile email');
+  url.searchParams.set('scope', AUTH_OIDC_SCOPES);
   url.searchParams.set('code_challenge', opts.codeChallenge);
   url.searchParams.set('code_challenge_method', 'S256');
   url.searchParams.set('state', opts.state);

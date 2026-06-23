@@ -36,6 +36,14 @@ export interface AuthConfig {
    * once that client exists, otherwise the legacy desktop-token flow runs.
    */
   oidcEnabled: boolean;
+  /**
+   * Space-separated OIDC scopes the desktop requests at authorize time. Null
+   * when unset, in which case the caller applies the default
+   * (`openid profile email`). Set `WORKX_/VITE_AUTH_OIDC_SCOPES` to request the
+   * Hub gateway scopes (`chat apps models`) so the issued token carries the
+   * `svc:hub` audience needed to reach the AI Hub gateway.
+   */
+  oidcScopes: string | null;
   source: {
     authBaseUrl: AuthConfigSource;
     cookieDomain: AuthConfigSource;
@@ -136,6 +144,12 @@ export function resolveAuthConfig(): AuthConfig {
     vite.VITE_AUTH_OIDC_ENABLED,
   ));
 
+  const oidcScopes = firstNonEmpty(
+    env.WORKX_AUTH_OIDC_SCOPES,
+    env.VITE_AUTH_OIDC_SCOPES,
+    vite.VITE_AUTH_OIDC_SCOPES,
+  ) ?? null;
+
   const usesDefaultCookieNames = Object.entries(cookieNames).every(
     ([key, value]) => value === DEFAULT_COOKIE_NAMES[key as keyof AuthCookieNames],
   );
@@ -148,6 +162,7 @@ export function resolveAuthConfig(): AuthConfig {
     routes,
     oidcClientId,
     oidcEnabled,
+    oidcScopes,
     source: {
       authBaseUrl: authBaseUrl ? 'env' : 'default',
       cookieDomain: cookieDomain ? 'env' : 'default',
