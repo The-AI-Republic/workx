@@ -39,15 +39,20 @@ export class ScreenshotService {
       const { devicePixelRatio, ...viewport } = await this.getViewportBounds();
 
       // Capture screenshot using CDP (device pixels)
+      const format = options?.format || 'png';
       const screenshot = await this.sendCommand<{ data: string }>('Page.captureScreenshot', {
-        format: options?.format || 'png',
+        format,
         quality: options?.quality,
         captureBeyondViewport: false // Only capture visible viewport
       });
 
       // Downscale to CSS pixels so the image the model sees matches the
       // coordinate space clicks are dispatched in (no-op when DPR == 1).
-      const base64Data = await downscalePngToCssPixels(screenshot.data, devicePixelRatio);
+      // Preserve the requested image format when re-encoding.
+      const base64Data = await downscalePngToCssPixels(screenshot.data, devicePixelRatio, {
+        mimeType: `image/${format}`,
+        quality: options?.quality != null ? options.quality / 100 : undefined,
+      });
 
       return {
         base64Data,

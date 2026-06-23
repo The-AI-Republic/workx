@@ -17,18 +17,28 @@
  * @module extension/tools/screenshot/downscale
  */
 
+export interface DownscaleOptions {
+  /** Image MIME type to decode and re-encode as (default 'image/png'). */
+  mimeType?: string;
+  /** Encoder quality for lossy formats (jpeg/webp), 0–1. */
+  quality?: number;
+}
+
 export async function downscalePngToCssPixels(
   base64Data: string,
-  devicePixelRatio: number
+  devicePixelRatio: number,
+  options?: DownscaleOptions
 ): Promise<string> {
   if (!(devicePixelRatio > 1)) return base64Data;
   if (typeof createImageBitmap !== 'function' || typeof OffscreenCanvas === 'undefined') {
     return base64Data;
   }
 
+  const mimeType = options?.mimeType ?? 'image/png';
+
   try {
     const bytes = base64ToBytes(base64Data);
-    const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+    const bitmap = await createImageBitmap(new Blob([bytes], { type: mimeType }));
     const targetWidth = Math.max(1, Math.round(bitmap.width / devicePixelRatio));
     const targetHeight = Math.max(1, Math.round(bitmap.height / devicePixelRatio));
 
@@ -41,7 +51,9 @@ export async function downscalePngToCssPixels(
     ctx.drawImage(bitmap, 0, 0, targetWidth, targetHeight);
     bitmap.close?.();
 
-    const blob = await canvas.convertToBlob({ type: 'image/png' });
+    // Preserve the requested format so a jpeg/webp capture isn't silently
+    // turned into PNG bytes.
+    const blob = await canvas.convertToBlob({ type: mimeType, quality: options?.quality });
     return bytesToBase64(new Uint8Array(await blob.arrayBuffer()));
   } catch (error) {
     console.warn('[ScreenshotService] DPR downscale failed; using device-pixel image:', error);
