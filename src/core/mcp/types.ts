@@ -13,10 +13,16 @@ import type { JsonSchema, ToolDefinition, ToolHandler } from '../../tools/BaseTo
 
 /**
  * Transport type for MCP server communication.
- * - 'sse': Server-Sent Events (works on both extension and desktop)
+ * - 'sse': legacy Server-Sent Events (works on both extension and desktop)
+ * - 'streamable-http': MCP Streamable HTTP (recommended for remote servers)
  * - 'stdio': Standard I/O subprocess (desktop only, handled by Rust rmcp)
  */
-export type MCPTransportType = 'sse' | 'stdio';
+export type MCPTransportType = 'sse' | 'streamable-http' | 'stdio';
+
+/**
+ * Authentication source for remote MCP servers.
+ */
+export type MCPAuthMode = 'none' | 'api-key' | 'session-jwt';
 
 /**
  * Platform scope for MCP server visibility.
@@ -56,6 +62,12 @@ export interface IMCPServerConfig {
 
   /** Transport type (default: 'sse') */
   transport: MCPTransportType;
+
+  /** Auth source for HTTP transports. Defaults to api-key when apiKey exists, otherwise none. */
+  authMode?: MCPAuthMode;
+
+  /** Extra static HTTP headers for remote transports. */
+  headers?: Record<string, string>;
 
   /** Platform scope (default: 'shared') */
   platform: MCPPlatformScope;
@@ -100,6 +112,8 @@ export interface IMCPServerConfigCreate {
   enabled?: boolean;
   timeout?: number;
   transport?: MCPTransportType;
+  authMode?: MCPAuthMode;
+  headers?: Record<string, string>;
   platform?: MCPPlatformScope;
   builtin?: boolean;
   command?: string;
@@ -120,6 +134,8 @@ export interface IMCPServerConfigUpdate {
   enabled?: boolean;
   timeout?: number;
   transport?: MCPTransportType;
+  authMode?: MCPAuthMode;
+  headers?: Record<string, string>;
   platform?: MCPPlatformScope;
   command?: string;
   args?: string[];

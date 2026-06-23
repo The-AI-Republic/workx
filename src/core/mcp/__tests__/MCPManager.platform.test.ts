@@ -10,6 +10,18 @@ import { setConfigStorage, type ConfigStorageProvider } from '../../storage/Conf
 
 // Map-based ConfigStorageProvider mock
 const store = new Map<string, any>();
+const HUB_ENV_KEYS = [
+  'WORKX_GATEWAY_BASE_URL',
+  'WORKX_GATEWAY_MCP_URL',
+  'WORKX_GATEWAY_MCP_NAME',
+  'WORKX_GATEWAY_MCP_AUTH_MODE',
+  'WORKX_GATEWAY_MCP_API_KEY',
+  'WORKX_GATEWAY_MCP_TOOL_DISCOVERY_HEADER',
+  'WORKX_GATEWAY_MCP_TOOL_DISCOVERY',
+  'VITE_GATEWAY_BASE_URL',
+  'VITE_GATEWAY_MCP_URL',
+] as const;
+const originalHubEnv = new Map<string, string | undefined>();
 
 function createMockConfigStorage(): ConfigStorageProvider {
   return {
@@ -88,6 +100,10 @@ describe('MCPManager Platform Features', () => {
   beforeEach(() => {
     // Clear mock storage and install ConfigStorageProvider
     store.clear();
+    for (const key of HUB_ENV_KEYS) {
+      originalHubEnv.set(key, process.env[key]);
+      delete process.env[key];
+    }
     mockStorage = createMockConfigStorage();
     setConfigStorage(mockStorage);
 
@@ -98,6 +114,15 @@ describe('MCPManager Platform Features', () => {
   });
 
   afterEach(() => {
+    for (const key of HUB_ENV_KEYS) {
+      const original = originalHubEnv.get(key);
+      if (original === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = original;
+      }
+    }
+    originalHubEnv.clear();
     MCPManager.resetInstance();
   });
 
@@ -110,6 +135,42 @@ describe('MCPManager Platform Features', () => {
     it('should accept desktop platform', async () => {
       const manager = await MCPManager.getInstance('desktop');
       expect(manager.getPlatform()).toBe('desktop');
+    });
+
+    it('should seed generic gateway MCP only when a gateway URL is configured', async () => {
+      process.env.WORKX_GATEWAY_BASE_URL = 'https://gateway.example.com';
+
+      const manager = await MCPManager.getInstance('desktop');
+      const hubServer = manager.getServerByName('gateway');
+
+      expect(hubServer).toMatchObject({
+        name: 'gateway',
+        url: 'https://gateway.example.com/mcp',
+        transport: 'streamable-http',
+        authMode: 'none',
+        builtin: true,
+      });
+      expect(hubServer?.headers).toBeUndefined();
+    });
+
+    it('should seed gateway MCP with overlay-provided name, auth, and headers', async () => {
+      process.env.WORKX_GATEWAY_BASE_URL = 'https://gateway.example.com';
+      process.env.WORKX_GATEWAY_MCP_NAME = 'first-party-gateway';
+      process.env.WORKX_GATEWAY_MCP_AUTH_MODE = 'session-jwt';
+      process.env.WORKX_GATEWAY_MCP_TOOL_DISCOVERY_HEADER = 'X-Custom-Tool-Discovery';
+      process.env.WORKX_GATEWAY_MCP_TOOL_DISCOVERY = 'folded';
+
+      const manager = await MCPManager.getInstance('desktop');
+      const hubServer = manager.getServerByName('first-party-gateway');
+
+      expect(hubServer).toMatchObject({
+        name: 'first-party-gateway',
+        url: 'https://gateway.example.com/mcp',
+        transport: 'streamable-http',
+        authMode: 'session-jwt',
+        headers: { 'X-Custom-Tool-Discovery': 'folded' },
+        builtin: true,
+      });
     });
 
     it('should filter servers by platform scope', async () => {

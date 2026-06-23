@@ -39,23 +39,40 @@ export const MODEL_COST_TABLE: Record<string, ModelRate> = {
   'xai:grok-4-1-fast-reasoning': { inputPer1M: 0.2, outputPer1M: 0.5, cachedInputPer1M: 0.2 },
 
   // openai — Default tier (Priority tier intentionally not modeled)
+  'openai:gpt-5.5': { inputPer1M: 5.0, outputPer1M: 30.0, cachedInputPer1M: 0.5 },
+  'openai:gpt-5.4': { inputPer1M: 2.5, outputPer1M: 15.0, cachedInputPer1M: 0.25 },
+  // legacy (retired from picker; retained so historical usage records cost correctly)
   'openai:gpt-5.1': { inputPer1M: 1.25, outputPer1M: 10.0, cachedInputPer1M: 0.125 },
   'openai:gpt-5.2': { inputPer1M: 1.75, outputPer1M: 14.0, cachedInputPer1M: 0.175 },
 
   // google-ai-studio — ≤200K base tier; client always reports cached=0
+  'google-ai-studio:gemini-3.1-pro': { inputPer1M: 2.0, outputPer1M: 12.0, cachedInputPer1M: 0.2 },
+  // legacy
   'google-ai-studio:gemini-3-pro-preview': { inputPer1M: 2.0, outputPer1M: 12.0, cachedInputPer1M: 2.0 },
   'google-ai-studio:gemini-2.5-pro': { inputPer1M: 1.25, outputPer1M: 10.0, cachedInputPer1M: 1.25 },
 
   // moonshot — Cache Miss = input rate, Cache Hit = cached rate
+  'moonshot:kimi-k2.6': { inputPer1M: 0.95, outputPer1M: 4.0, cachedInputPer1M: 0.16 },
+  // legacy
   'moonshot:kimi-k2-thinking': { inputPer1M: 0.6, outputPer1M: 2.5, cachedInputPer1M: 0.15 },
   'moonshot:kimi-k2-thinking-turbo': { inputPer1M: 1.15, outputPer1M: 8.0, cachedInputPer1M: 0.15 },
 
   // fireworks
+  'fireworks:accounts/fireworks/models/kimi-k2p6': { inputPer1M: 0.95, outputPer1M: 4.0, cachedInputPer1M: 0.16 },
+  // legacy
   'fireworks:accounts/fireworks/models/kimi-k2-thinking': { inputPer1M: 0.6, outputPer1M: 2.5, cachedInputPer1M: 0.6 },
   'fireworks:accounts/fireworks/models/kimi-k2p5': { inputPer1M: 0.6, outputPer1M: 0.3, cachedInputPer1M: 0.1 },
 
   // together
+  'together:moonshotai/Kimi-K2.6': { inputPer1M: 1.2, outputPer1M: 4.5, cachedInputPer1M: 0.2 },
+  // legacy
   'together:moonshotai/Kimi-K2-Thinking': { inputPer1M: 1.2, outputPer1M: 4.0, cachedInputPer1M: 1.2 },
+
+  // anthropic — cache hit/refresh rate used for cached input
+  'anthropic:claude-opus-4-8': { inputPer1M: 5.0, outputPer1M: 25.0, cachedInputPer1M: 0.5 },
+  'anthropic:claude-sonnet-4-6': { inputPer1M: 3.0, outputPer1M: 15.0, cachedInputPer1M: 0.3 },
+  'anthropic:claude-fable-5': { inputPer1M: 10.0, outputPer1M: 50.0, cachedInputPer1M: 1.0 },
+  'anthropic:claude-haiku-4-5-20251001': { inputPer1M: 1.0, outputPer1M: 5.0, cachedInputPer1M: 0.1 },
 };
 
 /**

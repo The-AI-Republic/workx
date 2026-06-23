@@ -371,7 +371,10 @@ Snapshots only return elements visible in the current viewport (inViewport: true
 
     // Always use CDP-based implementation (content-script implementation removed)
     const domService = await DomService.forTab(tabId);
-    return await domService.click(nodeId);
+    return await domService.click(nodeId, {
+      button: options?.button,
+      clickCount: options?.clickType === 'double' ? 2 : 1,
+    });
   }
 
   /**

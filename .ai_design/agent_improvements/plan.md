@@ -762,7 +762,7 @@ const { PERMISSION_MODES } = await import('../types/permissions.js')
 1. Before imports (3 side effects in parallel):
    - startMdmRawRead() — OS policy checks
    - startKeychainPrefetch() — Credential prefetch
-   
+
 2. Module imports (~135ms, parallel with above)
 
 3. Initialization:

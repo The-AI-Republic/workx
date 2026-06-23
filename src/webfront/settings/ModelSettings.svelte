@@ -16,10 +16,7 @@
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
   import { platform } from '../stores/platformStore';
-
-  // Default compound key for free users (Fireworks Kimi K2 Thinking)
-  // Format: providerId:modelKey (compound key, not a raw model key)
-  const FREE_USER_DEFAULT_COMPOUND_KEY = 'fireworks:fireworks/models/kimi-k2-thinking';
+  import { FREE_USER_DEFAULT_COMPOUND_KEY } from '../lib/freeUserModels';
 
   let {
     settingsConfig,
@@ -332,7 +329,7 @@
             selectedModelKey = FREE_USER_DEFAULT_COMPOUND_KEY;
             console.log('[ModelSettings] Using free user default model:', selectedModelKey);
           } else {
-            // Fallback to first available model if kimi-k2-thinking not found
+            // Fallback to first available model if kimi-k2p6 not found
             selectedModelKey = modelSelectionItems[0].modelId;
             console.log('[ModelSettings] Free user default not found, using first model:', selectedModelKey);
           }

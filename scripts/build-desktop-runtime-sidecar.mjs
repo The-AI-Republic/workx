@@ -100,7 +100,7 @@ step('3) copy runtime bundle (index.mjs + code-split chunks under assets/) + pac
   // Node treats `.js` chunks under `assets/` as ESM.
   fs.writeFileSync(
     path.join(sidecarDir, 'package.json'),
-    JSON.stringify({ name: 'apple-pi-desktop-runtime', type: 'module', private: true }, null, 2),
+    JSON.stringify({ name: 'workx-desktop-runtime', type: 'module', private: true }, null, 2),
   );
 });
 
@@ -159,11 +159,36 @@ step('4) copy better-sqlite3 native addon + lib + minimal runtime closure', () =
 });
 
 step('5) copy Node binary used for this build', () => {
-  copyFile(process.execPath, bundledNodePath);
+  // Resolve symlinks (e.g. /opt/homebrew/bin/node → Cellar) so the shared-
+  // library probe below inspects the real binary.
+  const realNode = fs.realpathSync(process.execPath);
+  copyFile(realNode, bundledNodePath);
   if (process.platform !== 'win32') {
     fs.chmodSync(bundledNodePath, 0o755);
   }
-  info(`bundled ${process.version} from ${process.execPath}`);
+
+  // Official Node builds are statically linked, but Homebrew links node
+  // against a shared libnode (@rpath/libnode.X.dylib). A bare copy of such
+  // a binary dies with SIGABRT (dyld: Library not loaded) the moment it
+  // runs. The binary's rpath includes its own directory, so bundling the
+  // dylib next to it makes the copy self-contained.
+  if (process.platform === 'darwin') {
+    const linked = execFileSync('otool', ['-L', realNode], { encoding: 'utf8' });
+    const m = linked.match(/@rpath\/(libnode[^\s]*\.dylib)/);
+    if (m) {
+      const libName = m[1];
+      const libPath = path.join(path.dirname(realNode), '..', 'lib', libName);
+      if (!fs.existsSync(libPath)) {
+        throw new Error(
+          `node is linked against shared ${libName} but it was not found at ${libPath}. ` +
+          `Use an official Node build (nodejs.org / nvm) or fix the library path.`,
+        );
+      }
+      copyFile(libPath, path.join(sidecarDir, libName));
+      info(`bundled shared ${libName} alongside node (dynamically-linked build detected)`);
+    }
+  }
+  info(`bundled ${process.version} from ${realNode}`);
 });
 
 step('6) copy sqlite-vec native artifact (if installed)', () => {

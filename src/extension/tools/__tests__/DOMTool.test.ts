@@ -475,7 +475,10 @@ describe('DOMTool', () => {
         withTab(1)
       );
       expect(result.success).toBe(true);
-      expect(mockDomServiceInstance.click).toHaveBeenCalledWith('0:42');
+      expect(mockDomServiceInstance.click).toHaveBeenCalledWith(
+        '0:42',
+        expect.objectContaining({ clickCount: 1 })
+      );
     });
 
     it('should route type to DomService.type with node_id, text, and options', async () => {

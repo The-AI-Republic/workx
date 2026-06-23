@@ -44,6 +44,10 @@ export interface OpenAIChatCompletionConfig {
   useCredentials?: boolean;
   /** Track 11: allow the model to emit multiple tool calls per response. Default false. */
   parallelToolCalls?: boolean;
+  /** Resolve bearer auth just before each request. Used by gateway-routed clients. */
+  getAuthorizationToken?: () => Promise<string | null>;
+  /** Refresh bearer auth after a 401 and return the replacement token. */
+  refreshAuthorizationToken?: () => Promise<string | null>;
 }
 
 /**
@@ -90,52 +94,37 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
       parallelToolCalls: config.parallelToolCalls,
     }, retryConfig);
 
-    // Backend routing: rewrite /chat/completions to /completions
-    if (config.useCredentials) {
+    // Backend/gateway routing: rewrite backend URLs when needed and resolve
+    // bearer auth per request so cached clients do not pin stale session JWTs.
+    if (config.useCredentials || config.getAuthorizationToken || config.refreshAuthorizationToken) {
       const customFetch = async (url: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-        let urlObj: URL;
-
-        // Robustly convert to URL object
-        if (url instanceof URL) {
-          urlObj = new URL(url.href);
-        } else if (typeof Request !== 'undefined' && url instanceof Request) {
-          urlObj = new URL(url.url);
-        } else {
-          urlObj = new URL(String(url));
+        const urlObj = this.normalizeFetchUrl(url);
+        if (config.useCredentials) {
+          urlObj.searchParams.delete('key');
         }
 
-        // Remove the dummy API key that we injected
-        urlObj.searchParams.delete('key');
+        const send = async (token?: string | null): Promise<Response> => {
+          const headers = new Headers(init?.headers ?? {});
+          if (token) {
+            headers.set('Authorization', `Bearer ${token}`);
+          }
+          const fetchInit: RequestInit = { ...init, headers };
+          if (config.useCredentials) {
+            fetchInit.credentials = 'include';
+          }
+          return fetch(urlObj.toString(), fetchInit);
+        };
 
-        const fetchInit = { ...init, credentials: 'include' as RequestCredentials };
-        const response = await fetch(urlObj.toString(), fetchInit);
-
-        if (!response.ok) {
-          const clonedResponse = response.clone();
-          try {
-            const body = await clonedResponse.text();
-            if (body) {
-              const errorData = JSON.parse(body);
-              if (errorData.detail && !errorData.error) {
-                const transformedBody = JSON.stringify({
-                  error: {
-                    message: errorData.detail,
-                    type: 'api_error',
-                    code: response.status.toString(),
-                  },
-                });
-                return new Response(transformedBody, {
-                  status: response.status,
-                  statusText: response.statusText,
-                  headers: response.headers,
-                });
-              }
-            }
-          } catch {
-            // If we can't parse the body, let the original response through
+        const token = await config.getAuthorizationToken?.();
+        let response = await send(token);
+        if (response.status === 401 && config.refreshAuthorizationToken) {
+          const refreshed = await config.refreshAuthorizationToken();
+          if (refreshed) {
+            response = await send(refreshed);
           }
         }
-        return response;
+
+        return this.transformFastApiErrorResponse(response);
       };
 
       this.client = new OpenAI({
@@ -146,6 +135,48 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
         maxRetries: 0,
         fetch: customFetch,
       });
+    }
+  }
+
+  private normalizeFetchUrl(url: RequestInfo | URL): URL {
+    if (url instanceof URL) {
+      return new URL(url.href);
+    }
+    if (typeof Request !== 'undefined' && url instanceof Request) {
+      return new URL(url.url);
+    }
+    return new URL(String(url));
+  }
+
+  private async transformFastApiErrorResponse(response: Response): Promise<Response> {
+    if (response.ok) {
+      return response;
+    }
+
+    const clonedResponse = response.clone();
+    try {
+      const body = await clonedResponse.text();
+      if (!body) {
+        return response;
+      }
+      const errorData = JSON.parse(body);
+      if (!errorData.detail || errorData.error) {
+        return response;
+      }
+      const transformedBody = JSON.stringify({
+        error: {
+          message: errorData.detail,
+          type: 'api_error',
+          code: response.status.toString(),
+        },
+      });
+      return new Response(transformedBody, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+      });
+    } catch {
+      return response;
     }
   }
 
