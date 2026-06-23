@@ -54,7 +54,9 @@
 
   // Filter models based on useOwnApiKey setting
   let filteredModelItems = $derived(isUserLoggedIn && !useOwnApiKey
-    ? modelSelectionItems.filter(item => (item.supportBackendMode ?? 0) > 0)
+    // Custom (BYOK) endpoints are direct-only but must remain selectable in
+    // backend mode — they run on the user's own key.
+    ? modelSelectionItems.filter(item => (item.supportBackendMode ?? 0) > 0 || item.isCustom)
     : modelSelectionItems);
 
   // Group models by name
@@ -76,6 +78,10 @@
     for (const item of filteredModelItems) {
       const existing = groups.get(item.modelName);
       if (existing) {
+        // A group is "custom" only if EVERY provider in it is custom. A name
+        // collision between a built-in and a BYOK endpoint must NOT unlock the
+        // built-in for free users, so mixed groups safe-fail to non-custom.
+        existing.isCustom = existing.isCustom && (item.isCustom ?? false);
         // Check for duplicate provider before adding
         const isDuplicate = existing.providers.some(p => p.providerId === item.providerId);
         if (!isDuplicate) {

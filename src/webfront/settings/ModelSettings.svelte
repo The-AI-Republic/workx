@@ -16,7 +16,7 @@
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
   import { platform } from '../stores/platformStore';
-  import { FREE_USER_DEFAULT_COMPOUND_KEY } from '../lib/freeUserModels';
+  import { FREE_USER_DEFAULT_COMPOUND_KEY, isModelAvailableForFreeUser } from '../lib/freeUserModels';
 
   let {
     settingsConfig,
@@ -125,7 +125,9 @@
   // supportBackendMode > 0 means the model supports backend routing
   let filteredModelItems = $derived(
     isUserLoggedIn && !useOwnApiKey
-      ? modelSelectionItems.filter(item => (item.supportBackendMode ?? 0) > 0)
+      // Custom (BYOK) endpoints are direct-only (supportBackendMode 0) but must
+      // still be selectable in backend mode — they run on the user's own key.
+      ? modelSelectionItems.filter(item => (item.supportBackendMode ?? 0) > 0 || item.isCustom)
       : modelSelectionItems
   );
 
@@ -495,8 +497,8 @@
     const modelKey = customModelHandle.trim();
     const key = customApiKey.trim();
 
-    if (!name || !baseUrl || !modelKey) {
-      customError = t('Display name, API base URL, and model handle are required.');
+    if (!name || !baseUrl || !modelKey || !key) {
+      customError = t('Display name, API base URL, model handle, and API key are required.');
       return;
     }
     if (!/^https:\/\//i.test(baseUrl)) {
@@ -510,8 +512,12 @@
       customError = t('API base URL is not a valid URL.');
       return;
     }
-    const contextWindow =
+    // Floor the context window so a tiny/empty value can't silently clamp
+    // maxOutputTokens to an unusable size (e.g. user types 100 → 100-token cap).
+    const requestedContext =
       typeof customContextWindow === 'number' && customContextWindow > 0 ? customContextWindow : 128000;
+    const contextWindow = Math.max(4096, requestedContext);
+    const maxOutputTokens = Math.min(16384, contextWindow);
 
     try {
       isAddingCustom = true;
@@ -532,7 +538,7 @@
             modelKey,
             creator: 'Custom',
             contextWindow,
-            maxOutputTokens: Math.min(16384, contextWindow),
+            maxOutputTokens,
             supportsReasoning: false,
             supportsImage: false,
             supportBackendMode: 0,
@@ -573,9 +579,18 @@
       isAddingCustom = true;
 
       // deleteProvider rejects removing the provider that hosts the selected
-      // model, so switch to another available model first.
+      // model, so switch to another available model first. For free users, the
+      // fallback must itself be free-tier-allowed — otherwise we'd silently park
+      // them on a premium model that every subsequent message fails on.
       if (selectedModelKey.startsWith(`${id}:`)) {
-        const fallback = modelSelectionItems.find((m) => !m.modelId.startsWith(`${id}:`));
+        const candidates = modelSelectionItems.filter((m) => !m.modelId.startsWith(`${id}:`));
+        let fallback = candidates[0];
+        if (isFreeUser) {
+          fallback =
+            candidates.find((m) => m.modelId === FREE_USER_DEFAULT_COMPOUND_KEY) ??
+            candidates.find((m) => isModelAvailableForFreeUser(m.modelKey, m.isCustom)) ??
+            candidates[0];
+        }
         if (fallback) {
           await settingsConfig.setSelectedModel(fallback.modelId);
           selectedModelKey = fallback.modelId;

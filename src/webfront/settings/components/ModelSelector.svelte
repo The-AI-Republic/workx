@@ -83,6 +83,10 @@
     for (const item of modelSelectionItems) {
       const existing = groups.get(item.modelName);
       if (existing) {
+        // A group is "custom" only if EVERY provider in it is custom, so a name
+        // collision between a built-in and a BYOK endpoint can't unlock the
+        // built-in for free users (mixed groups safe-fail to non-custom).
+        existing.isCustom = existing.isCustom && (item.isCustom ?? false);
         // Check for duplicate provider before adding
         const isDuplicate = existing.providers.some((p) => p.providerId === item.providerId);
         if (isDuplicate) {
@@ -176,7 +180,8 @@
     event: MouseEvent,
     modelId: string,
     modelName: string,
-    modelKey: string
+    modelKey: string,
+    isCustom = false
   ) {
     if (disabled) {
       event.stopPropagation();
@@ -184,7 +189,7 @@
     }
 
     // Block selection for free users trying to select premium models
-    if (isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(modelKey)) {
+    if (isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(modelKey, isCustom)) {
       // Model is locked for free users - don't allow selection
       // We don't stop propagation here so parent tooltip can catch the click
       return;
@@ -468,7 +473,8 @@
                               e,
                               provider.modelId,
                               group.modelName,
-                              provider.modelKey
+                              provider.modelKey,
+                              group.isCustom
                             )}
                         >
                           <span class="provider-name">{provider.providerName}</span>

@@ -540,61 +540,25 @@ export class ModelClientFactory {
   }
 
   /**
-   * Get configuration status for all providers
-   * @returns Promise resolving to configuration status
+   * Get configuration status for all providers.
+   *
+   * Iterates the live provider catalog rather than a hardcoded list, so it
+   * stays correct as providers are added/removed (including user-defined custom
+   * BYOK providers) without hand-editing a parallel ladder.
+   * @returns Promise resolving to configuration status keyed by provider id
    */
   async getConfigurationStatus(): Promise<Record<ModelProvider, { hasApiKey: boolean; isDefault: boolean }>> {
-    const [openaiHasKey, xaiHasKey, anthropicHasKey, groqHasKey, googleAiStudioHasKey, fireworksHasKey, moonshotHasKey, togetherHasKey, deepseekHasKey, defaultProvider] = await Promise.all([
-      this.hasValidApiKey('openai'),
-      this.hasValidApiKey('xai'),
-      this.hasValidApiKey('anthropic'),
-      this.hasValidApiKey('groq'),
-      this.hasValidApiKey('google-ai-studio'),
-      this.hasValidApiKey('fireworks'),
-      this.hasValidApiKey('moonshot'),
-      this.hasValidApiKey('together'),
-      this.hasValidApiKey('deepseek'),
-      this.getDefaultProvider(),
-    ]);
+    const providerIds = Object.keys(this.config?.getProviders() ?? {});
+    const defaultProvider = await this.getDefaultProvider();
 
-    return {
-      deepseek: {
-        hasApiKey: deepseekHasKey,
-        isDefault: defaultProvider === 'deepseek',
-      },
-      moonshot: {
-        hasApiKey: moonshotHasKey,
-        isDefault: defaultProvider === 'moonshot',
-      },
-      fireworks: {
-        hasApiKey: fireworksHasKey,
-        isDefault: defaultProvider === 'fireworks',
-      },
-      together: {
-        hasApiKey: togetherHasKey,
-        isDefault: defaultProvider === 'together',
-      },
-      openai: {
-        hasApiKey: openaiHasKey,
-        isDefault: defaultProvider === 'openai',
-      },
-      xai: {
-        hasApiKey: xaiHasKey,
-        isDefault: defaultProvider === 'xai',
-      },
-      anthropic: {
-        hasApiKey: anthropicHasKey,
-        isDefault: defaultProvider === 'anthropic',
-      },
-      groq: {
-        hasApiKey: groqHasKey,
-        isDefault: defaultProvider === 'groq',
-      },
-      'google-ai-studio': {
-        hasApiKey: googleAiStudioHasKey,
-        isDefault: defaultProvider === 'google-ai-studio',
-      },
-    };
+    const entries = await Promise.all(
+      providerIds.map(
+        async (id) =>
+          [id, { hasApiKey: await this.hasValidApiKey(id), isDefault: defaultProvider === id }] as const
+      )
+    );
+
+    return Object.fromEntries(entries) as Record<ModelProvider, { hasApiKey: boolean; isDefault: boolean }>;
   }
 
   /**
