@@ -150,6 +150,71 @@ describe('createAuthServices', () => {
     });
   });
 
+  describe('auth.exchangeOIDCCode', () => {
+    it('exchanges the code at the token endpoint and persists the returned tokens', async () => {
+      const fetchMock = vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ access_token: 'oidc-at', refresh_token: 'oidc-rt' }),
+        text: async () => '',
+      }));
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = fetchMock as never;
+      try {
+        const result = await svc['auth.exchangeOIDCCode']!({
+          code: 'auth-code',
+          codeVerifier: 'verifier',
+          tokenUrl: 'https://testhome.example.com/auth/token',
+          clientId: 'workx-desktop',
+          redirectUri: 'workx://auth/callback',
+          backendBaseUrl: 'https://api.example.com',
+        }, TEST_CONTEXT);
+
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+        expect(url).toBe('https://testhome.example.com/auth/token');
+        const sentBody = String(init.body);
+        expect(sentBody).toContain('grant_type=authorization_code');
+        expect(sentBody).toContain('code=auth-code');
+        expect(sentBody).toContain('code_verifier=verifier');
+        expect(sentBody).toContain('client_id=workx-desktop');
+        // Tokens obtained from the exchange flow through the shared finalizeLogin path.
+        expect(deps.credentialStore.set).toHaveBeenCalledWith('auth', 'access_token', 'oidc-at');
+        expect(deps.credentialStore.set).toHaveBeenCalledWith('auth', 'refresh_token', 'oidc-rt');
+        expect(deps.createAuthManager).toHaveBeenCalledWith(true, 'https://api.example.com');
+        expect(result).toMatchObject({ success: true, user: { email: 'u@test' } });
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    it('throws when the token endpoint returns a non-2xx response', async () => {
+      const fetchMock = vi.fn(async () => ({
+        ok: false,
+        status: 400,
+        json: async () => ({}),
+        text: async () => 'invalid_grant',
+      }));
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = fetchMock as never;
+      try {
+        await expect(svc['auth.exchangeOIDCCode']!({
+          code: 'bad', codeVerifier: 'v', tokenUrl: 'https://t/auth/token',
+          clientId: 'workx-desktop', redirectUri: 'workx://auth/callback',
+        }, TEST_CONTEXT)).rejects.toThrow(/token exchange failed \(400\)/);
+        expect(deps.credentialStore.set).not.toHaveBeenCalled();
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    it('rejects when required params are missing', async () => {
+      await expect(svc['auth.exchangeOIDCCode']!({ code: 'c' }, TEST_CONTEXT)).rejects.toThrow(
+        /code, codeVerifier, tokenUrl, clientId, and redirectUri are required/,
+      );
+    });
+  });
+
   describe('auth.getState', () => {
     it('returns hasValidToken=false when no token is persisted', async () => {
       const res = await svc['auth.getState']!({}, TEST_CONTEXT);

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ScreenshotService } from '../ScreenshotService';
+import { __resetDebuggerSessionRegistryForTests } from '../../browser/ChromeDebuggerSessionRegistry';
 
 describe('ScreenshotService', () => {
   const TAB_ID = 1;
@@ -70,7 +71,7 @@ describe('ScreenshotService', () => {
       await service.captureViewport();
 
       expect(mockSendCommand).toHaveBeenCalledWith('Runtime.evaluate', {
-        expression: '({ width: window.innerWidth, height: window.innerHeight, scroll_x: window.scrollX, scroll_y: window.scrollY })',
+        expression: '({ width: window.innerWidth, height: window.innerHeight, scroll_x: window.scrollX, scroll_y: window.scrollY, device_pixel_ratio: window.devicePixelRatio })',
         returnByValue: true,
       });
     });
@@ -344,137 +345,100 @@ describe('ScreenshotService', () => {
   // forTab — static factory
   // ==========================================================================
   describe('forTab', () => {
-    let mockDebuggerSendCommand: ReturnType<typeof vi.fn>;
-    let mockDebuggerAttach: ReturnType<typeof vi.fn>;
+    // forTab now acquires a shared, refcounted debugger session from the
+    // registry (which uses the real ChromeDebuggerClient over chrome.debugger),
+    // instead of the old `Runtime.evaluate('1+1')` probe + raw attach.
+    let runtime: { lastError: { message: string } | undefined };
 
     beforeEach(() => {
-      mockDebuggerSendCommand = vi.fn();
-      mockDebuggerAttach = vi.fn().mockResolvedValue(undefined);
-
-      // Set up chrome.debugger mock
-      (globalThis as any).chrome.debugger = {
-        sendCommand: mockDebuggerSendCommand,
-        attach: mockDebuggerAttach,
+      runtime = { lastError: undefined };
+      (globalThis as any).chrome = {
+        ...(globalThis as any).chrome,
+        runtime,
+        debugger: {
+          attach: vi.fn((_d: any, _v: string, cb: () => void) => cb()),
+          detach: vi.fn((_d: any, cb: () => void) => cb()),
+          sendCommand: vi.fn((_d: any, method: string, _p: any, cb: (r: unknown) => void) => {
+            if (method === 'Runtime.evaluate') {
+              return cb({ result: { value: { width: 800, height: 600, scroll_x: 0, scroll_y: 0 } } });
+            }
+            if (method === 'Page.captureScreenshot') return cb({ data: 'screenshotFromTab' });
+            return cb({});
+          }),
+          onEvent: { addListener: vi.fn(), removeListener: vi.fn() },
+          onDetach: { addListener: vi.fn(), removeListener: vi.fn() },
+        },
       };
+      __resetDebuggerSessionRegistryForTests();
     });
 
-    it('returns a ScreenshotService instance', async () => {
-      // Debugger not attached yet (sendCommand throws), then attach + Page.enable succeeds
-      mockDebuggerSendCommand
-        .mockRejectedValueOnce(new Error('Not attached'))
-        .mockResolvedValueOnce(undefined); // Page.enable
-
+    it('returns a ScreenshotService instance and attaches once', async () => {
       const svc = await ScreenshotService.forTab(42);
-
       expect(svc).toBeInstanceOf(ScreenshotService);
+      expect((globalThis as any).chrome.debugger.attach).toHaveBeenCalledTimes(1);
     });
 
-    it('attaches debugger when not already attached', async () => {
-      mockDebuggerSendCommand
-        .mockRejectedValueOnce(new Error('Not attached'))
-        .mockResolvedValueOnce(undefined); // Page.enable
-
-      await ScreenshotService.forTab(10);
-
-      expect(mockDebuggerAttach).toHaveBeenCalledWith({ tabId: 10 }, '1.3');
-    });
-
-    it('skips attach when debugger is already attached', async () => {
-      // First sendCommand (check) succeeds = already attached
-      mockDebuggerSendCommand
-        .mockResolvedValueOnce({ result: { value: 2 } }) // runtime check
-        .mockResolvedValueOnce(undefined); // Page.enable
-
-      await ScreenshotService.forTab(5);
-
-      expect(mockDebuggerAttach).not.toHaveBeenCalled();
-    });
-
-    it('enables Page domain after attaching', async () => {
-      mockDebuggerSendCommand
-        .mockRejectedValueOnce(new Error('Not attached'))
-        .mockResolvedValueOnce(undefined); // Page.enable
-
+    it('enables the Page domain', async () => {
       await ScreenshotService.forTab(7);
-
-      expect(mockDebuggerSendCommand).toHaveBeenCalledWith(
+      expect((globalThis as any).chrome.debugger.sendCommand).toHaveBeenCalledWith(
         { tabId: 7 },
         'Page.enable',
-        {}
+        undefined,
+        expect.any(Function)
       );
     });
 
-    it('throws CDP_CONNECTION_LOST for "Cannot access" error', async () => {
-      mockDebuggerSendCommand.mockRejectedValueOnce(new Error('Not attached'));
-      mockDebuggerAttach.mockRejectedValueOnce(new Error('Cannot access this tab'));
-
-      await expect(ScreenshotService.forTab(1)).rejects.toThrow(
-        'CDP_CONNECTION_LOST: Cannot attach debugger to tab 1'
-      );
+    it('reuses a single attach for the shared session', async () => {
+      await ScreenshotService.forTab(9);
+      await ScreenshotService.forTab(9);
+      expect((globalThis as any).chrome.debugger.attach).toHaveBeenCalledTimes(1);
     });
 
-    it('throws CDP_CONNECTION_LOST for unknown attach errors', async () => {
-      mockDebuggerSendCommand.mockRejectedValueOnce(new Error('Not attached'));
-      mockDebuggerAttach.mockRejectedValueOnce(new Error('Some unknown error'));
-
-      await expect(ScreenshotService.forTab(3)).rejects.toThrow(
-        'CDP_CONNECTION_LOST: Failed to attach debugger to tab 3: Some unknown error'
+    it('surfaces ALREADY_ATTACHED when a foreign debugger holds the tab', async () => {
+      (globalThis as any).chrome.debugger.attach.mockImplementationOnce(
+        (_d: any, _v: string, cb: () => void) => {
+          runtime.lastError = { message: 'Another debugger is already attached' };
+          cb();
+          runtime.lastError = undefined;
+        }
       );
-    });
-
-    it('ignores "Another debugger is already attached" error', async () => {
-      mockDebuggerSendCommand
-        .mockRejectedValueOnce(new Error('Not attached'))
-        .mockResolvedValueOnce(undefined); // Page.enable
-      mockDebuggerAttach.mockRejectedValueOnce(
-        new Error('Another debugger is already attached')
-      );
-
-      const svc = await ScreenshotService.forTab(4);
-      expect(svc).toBeInstanceOf(ScreenshotService);
+      await expect(ScreenshotService.forTab(1)).rejects.toThrow(/ALREADY_ATTACHED/);
     });
 
     it('throws SCREENSHOT_FAILED when Page.enable fails', async () => {
-      mockDebuggerSendCommand
-        .mockRejectedValueOnce(new Error('Not attached')) // check
-        .mockRejectedValueOnce(new Error('Page domain not supported')); // Page.enable
-
+      (globalThis as any).chrome.debugger.sendCommand.mockImplementation(
+        (_d: any, method: string, _p: any, cb: (r: unknown) => void) => {
+          if (method === 'Page.enable') {
+            runtime.lastError = { message: 'Page domain not supported' };
+            cb(undefined);
+            runtime.lastError = undefined;
+            return;
+          }
+          cb({});
+        }
+      );
       await expect(ScreenshotService.forTab(8)).rejects.toThrow(
-        'SCREENSHOT_FAILED: Failed to enable Page domain: Page domain not supported'
+        /SCREENSHOT_FAILED: Failed to enable Page domain/
       );
     });
 
-    it('created service uses chrome.debugger.sendCommand wrapper', async () => {
-      mockDebuggerSendCommand
-        .mockResolvedValueOnce({ result: { value: 2 } }) // check attached
-        .mockResolvedValueOnce(undefined) // Page.enable
-        .mockResolvedValueOnce({ result: { value: { width: 800, height: 600, scroll_x: 0, scroll_y: 0 } } }) // getViewportBounds
-        .mockResolvedValueOnce({ data: 'screenshotFromTab' }); // captureScreenshot
-
+    it('created service routes captures through the shared session', async () => {
       const svc = await ScreenshotService.forTab(55);
       const result = await svc.captureViewport();
 
       expect(result.base64Data).toBe('screenshotFromTab');
-      // Verify the wrapper passes tabId correctly
-      expect(mockDebuggerSendCommand).toHaveBeenCalledWith(
+      expect((globalThis as any).chrome.debugger.sendCommand).toHaveBeenCalledWith(
         { tabId: 55 },
         'Page.captureScreenshot',
-        expect.any(Object)
+        expect.any(Object),
+        expect.any(Function)
       );
     });
 
-    it('checks debugger attachment with Runtime.evaluate expression 1+1', async () => {
-      mockDebuggerSendCommand
-        .mockResolvedValueOnce({ result: { value: 2 } })
-        .mockResolvedValueOnce(undefined);
-
-      await ScreenshotService.forTab(11);
-
-      expect(mockDebuggerSendCommand).toHaveBeenCalledWith(
-        { tabId: 11 },
-        'Runtime.evaluate',
-        { expression: '1+1', returnByValue: true }
-      );
+    it('release() detaches the shared session at refcount zero', async () => {
+      const svc = await ScreenshotService.forTab(12);
+      await svc.release();
+      expect((globalThis as any).chrome.debugger.detach).toHaveBeenCalledTimes(1);
     });
   });
 });

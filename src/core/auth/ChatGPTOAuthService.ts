@@ -10,6 +10,8 @@
  * @module core/auth/ChatGPTOAuthService
  */
 
+import { generatePKCEChallenge } from './PKCEHelper';
+
 /** OAuth token set obtained from OpenAI's auth server */
 export interface ChatGPTTokens {
   accessToken: string;
@@ -53,19 +55,11 @@ export class ChatGPTOAuthService {
 
   /**
    * Generate PKCE challenge pair for a new login flow.
-   * Code verifier: 32 random bytes, base64url-encoded.
-   * Code challenge: SHA-256 hash of verifier, base64url-encoded.
+   * Delegates to the shared {@link generatePKCEChallenge} helper so the
+   * desktop OIDC flow and this ChatGPT flow stay identical.
    */
   async generatePKCEChallenge(): Promise<{ codeVerifier: string; codeChallenge: string }> {
-    const randomBytes = crypto.getRandomValues(new Uint8Array(32));
-    const codeVerifier = base64UrlEncode(randomBytes);
-
-    const encoder = new TextEncoder();
-    const data = encoder.encode(codeVerifier);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const codeChallenge = base64UrlEncode(new Uint8Array(hashBuffer));
-
-    return { codeVerifier, codeChallenge };
+    return generatePKCEChallenge();
   }
 
   /**
@@ -203,14 +197,4 @@ export class ChatGPTOAuthService {
     this.refreshPromise = null;
     await this.storage.clearTokens();
   }
-}
-
-/**
- * Base64url encode a Uint8Array (no padding, URL-safe).
- */
-function base64UrlEncode(bytes: Uint8Array): string {
-  const binary = Array.from(bytes)
-    .map((b) => String.fromCharCode(b))
-    .join('');
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }

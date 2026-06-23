@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => {
     coordinateActionServiceTypeAt: vi.fn(),
     coordinateActionServiceScrollTo: vi.fn(),
     coordinateActionServiceKeypressAt: vi.fn(),
+    coordinateActionServiceGetViewportSize: vi.fn(),
   };
 });
 
@@ -85,7 +86,7 @@ function makeTab(overrides: Partial<chrome.tabs.Tab> = {}): chrome.tabs.Tab {
 /** Default viewport bounds returned by CDP Runtime.evaluate for validateCoordinates */
 const defaultViewport = { width: 1280, height: 720 };
 
-/** Sets up chrome.debugger.sendCommand to return viewport bounds */
+/** Sets up the viewport size used by coordinate validation (now via the service). */
 function setupDebuggerViewport(
   viewport: { width: number; height: number } = defaultViewport
 ) {
@@ -93,6 +94,8 @@ function setupDebuggerViewport(
   c.debugger.sendCommand.mockResolvedValue({
     result: { value: viewport },
   });
+  // validateCoordinates routes through CoordinateActionService.getViewportSize().
+  mocks.coordinateActionServiceGetViewportSize.mockResolvedValue(viewport);
 }
 
 /** Sets up all mocks for a successful screenshot flow */
@@ -110,6 +113,7 @@ function setupScreenshotMocks(
   mocks.screenshotServiceForTab.mockResolvedValue({
     captureViewport: mocks.screenshotServiceCaptureViewport,
     captureWithScroll: mocks.screenshotServiceCaptureWithScroll,
+    release: vi.fn().mockResolvedValue(undefined),
   });
   mocks.screenshotFileManagerSaveScreenshot.mockResolvedValue(undefined);
 }
@@ -120,11 +124,14 @@ function setupCoordinateActionMocks() {
   mocks.coordinateActionServiceTypeAt.mockResolvedValue(undefined);
   mocks.coordinateActionServiceScrollTo.mockResolvedValue(undefined);
   mocks.coordinateActionServiceKeypressAt.mockResolvedValue(undefined);
+  mocks.coordinateActionServiceGetViewportSize.mockResolvedValue({ width: 1280, height: 720 });
   mocks.coordinateActionServiceForTab.mockResolvedValue({
     clickAt: mocks.coordinateActionServiceClickAt,
     typeAt: mocks.coordinateActionServiceTypeAt,
     scrollTo: mocks.coordinateActionServiceScrollTo,
     keypressAt: mocks.coordinateActionServiceKeypressAt,
+    getViewportSize: mocks.coordinateActionServiceGetViewportSize,
+    release: vi.fn().mockResolvedValue(undefined),
   });
 }
 
@@ -596,18 +603,13 @@ describe('PageVisionTool', () => {
       );
     });
 
-    it('should validate coordinates via CDP before clicking', async () => {
+    it('should validate coordinates via the shared session before clicking', async () => {
       await tool.execute(
         { action: 'click', coordinates: { x: 100, y: 200 } },
         withTab(1)
       );
-      expect(chromeMock().debugger.sendCommand).toHaveBeenCalledWith(
-        { tabId: 1 },
-        'Runtime.evaluate',
-        expect.objectContaining({
-          expression: expect.stringContaining('window.innerWidth'),
-        })
-      );
+      // Routes through the acquired service handle, not a raw chrome.debugger call.
+      expect(mocks.coordinateActionServiceGetViewportSize).toHaveBeenCalled();
     });
 
     it('should fail when CoordinateActionService.forTab throws', async () => {
@@ -745,11 +747,7 @@ describe('PageVisionTool', () => {
         { action: 'type', coordinates: { x: 100, y: 200 }, text: 'test' },
         withTab(1)
       );
-      expect(chromeMock().debugger.sendCommand).toHaveBeenCalledWith(
-        { tabId: 1 },
-        'Runtime.evaluate',
-        expect.any(Object)
-      );
+      expect(mocks.coordinateActionServiceGetViewportSize).toHaveBeenCalled();
     });
 
     it('should handle empty string text', async () => {
@@ -1101,7 +1099,7 @@ describe('PageVisionTool', () => {
     });
 
     it('should fail when viewport bounds cannot be retrieved', async () => {
-      chromeMock().debugger.sendCommand.mockResolvedValueOnce({});
+      mocks.coordinateActionServiceGetViewportSize.mockResolvedValueOnce({} as any);
       const result = await tool.execute(
         { action: 'click', coordinates: { x: 100, y: 200 } },
         withTab(1)
@@ -1110,8 +1108,8 @@ describe('PageVisionTool', () => {
       expect(result.error).toContain('Failed to get viewport bounds');
     });
 
-    it('should fail when debugger.sendCommand returns null result', async () => {
-      chromeMock().debugger.sendCommand.mockResolvedValueOnce(null);
+    it('should fail when viewport bounds are null', async () => {
+      mocks.coordinateActionServiceGetViewportSize.mockResolvedValueOnce(null as any);
       const result = await tool.execute(
         { action: 'click', coordinates: { x: 100, y: 200 } },
         withTab(1)
@@ -1120,8 +1118,8 @@ describe('PageVisionTool', () => {
       expect(result.error).toContain('Failed to get viewport bounds');
     });
 
-    it('should fail when debugger.sendCommand throws', async () => {
-      chromeMock().debugger.sendCommand.mockRejectedValueOnce(
+    it('should fail when the viewport lookup throws', async () => {
+      mocks.coordinateActionServiceGetViewportSize.mockRejectedValueOnce(
         new Error('Debugger detached')
       );
       const result = await tool.execute(

@@ -1084,6 +1084,8 @@ export class RepublicAgent {
         });
 
         this.session.setTabId(createdTabId);
+        // Record ownership: the agent created this tab (best-effort; extension-only).
+        void this.platformAdapter.claimTabLease?.(createdTabId, this.session.getId(), 'agent').catch(() => {});
 
         this.emitEvent({
           type: 'StateUpdate',
@@ -1128,6 +1130,7 @@ export class RepublicAgent {
       if (!this.platformAdapter.hasRealTabs) {
         // Desktop/server: just update session tabId
         this.session.setTabId(newTabId);
+        void this.platformAdapter.claimTabLease?.(newTabId, this.session.getId(), 'user').catch(() => {});
       } else {
         // Extension: validate tab before switching
         const validation = await this.platformAdapter.validateTab(newTabId);
@@ -1146,6 +1149,11 @@ export class RepublicAgent {
         try {
           await this.platformAdapter.switchTab(currentTabId, newTabId);
           this.session.setTabId(newTabId);
+          // Release the previous tab's lease and claim the new one (user-origin).
+          if (currentTabId !== -1) {
+            void this.platformAdapter.releaseTabLease?.(currentTabId, this.session.getId()).catch(() => {});
+          }
+          void this.platformAdapter.claimTabLease?.(newTabId, this.session.getId(), 'user').catch(() => {});
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : 'Unknown error during tab switching';
 

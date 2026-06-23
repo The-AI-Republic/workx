@@ -140,6 +140,41 @@ export class ChromeDebuggerClient implements DebuggerClient {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // OOPIF support (design §3.7) — address commands at a specific CDP target
+  // (cross-origin iframe / worker), not just the tab. Prerequisite for
+  // per-target snapshot reads; previously sendCommand hard-rejected any
+  // non-tabId target.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /** Send a CDP command to a specific child target (e.g. an OOPIF). */
+  async sendCommandToTarget<T = unknown>(
+    targetId: string,
+    method: string,
+    params?: Record<string, unknown>
+  ): Promise<T> {
+    if (!this.attached) {
+      throw new Error('Debugger not attached');
+    }
+    const debuggee: chrome.debugger.Debuggee = { targetId };
+    return new Promise<T>((resolve, reject) => {
+      chrome.debugger.sendCommand(debuggee, method, params, (result) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
+        resolve(result as T);
+      });
+    });
+  }
+
+  /** Enumerate debuggable targets (used to discover OOPIF iframe targets). */
+  async getTargets(): Promise<chrome.debugger.TargetInfo[]> {
+    return new Promise<chrome.debugger.TargetInfo[]>((resolve) => {
+      chrome.debugger.getTargets((targets) => resolve(targets));
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Event Handling
   // ─────────────────────────────────────────────────────────────────────────
 

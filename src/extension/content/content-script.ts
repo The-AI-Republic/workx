@@ -19,6 +19,21 @@ console.log(`[WorkX] Content script loading - Instance ID: ${INSTANCE_ID}, Frame
 
 let visualEffectController: any = null;
 let visualEffectShadowHost: HTMLElement | null = null;
+let visualEffectObserver: MutationObserver | null = null;
+
+// Respond to readiness pings from the background's ping-or-inject
+// (ensureContentScript). Registered at module scope so it answers even for a
+// duplicate instance whose initialize() returns early. Without this, the ping
+// always fails and the background re-injects on every call.
+if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+	chrome.runtime.onMessage.addListener((msg: any, _sender, sendResponse) => {
+		if (msg?.type === 'WORKX_PING') {
+			sendResponse({ pong: true, instanceId: INSTANCE_ID });
+			return true;
+		}
+		return undefined;
+	});
+}
 
 interface PageContext {
 	url: string;
@@ -125,6 +140,19 @@ function initializeVisualEffects(): void {
 		// Append to document body
 		document.body.appendChild(visualEffectShadowHost);
 
+		// Self-heal: some SPAs prune unknown nodes on hydration, permanently
+		// removing our overlay. Re-mount the host if the page disconnects it.
+		// Guard re-entrancy — the re-append is itself a childList mutation — by
+		// disconnecting the observer around the re-append.
+		visualEffectObserver = new MutationObserver(() => {
+			if (visualEffectShadowHost && !visualEffectShadowHost.isConnected && document.body) {
+				visualEffectObserver?.disconnect();
+				document.body.appendChild(visualEffectShadowHost);
+				visualEffectObserver?.observe(document.body, { childList: true });
+			}
+		});
+		visualEffectObserver.observe(document.body, { childList: true });
+
 		console.log(`[WorkX] Instance ${INSTANCE_ID} - Visual effects initialized successfully`);
 
 		// Log all cursors in the DOM for debugging
@@ -179,6 +207,10 @@ window.addEventListener('pagehide', () => {
 		unmount(visualEffectController);
 		visualEffectController = null;
 		console.log(`[WorkX] Instance ${INSTANCE_ID} - Visual effects destroyed`);
+	}
+	if (visualEffectObserver) {
+		visualEffectObserver.disconnect();
+		visualEffectObserver = null;
 	}
 	if (visualEffectShadowHost && visualEffectShadowHost.parentNode) {
 		visualEffectShadowHost.parentNode.removeChild(visualEffectShadowHost);
