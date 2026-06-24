@@ -88,6 +88,21 @@ export function profileFromAccessToken(accessToken: string): RuntimeUserProfile 
   };
 }
 
+/**
+ * True when the access token's JWT `exp` claim is in the past (with a small
+ * skew). A token we cannot decode, or one without an `exp` claim, is treated as
+ * NOT expired here — eviction stays conservative and defers to the home-page
+ * validity check, so a transient/undecodable case never drops a good session.
+ */
+export function isAccessTokenExpired(accessToken: string, skewSeconds = 30): boolean {
+  const [, payloadSegment] = accessToken.split('.');
+  if (!payloadSegment) return false;
+  const payload = decodeBase64UrlJson(payloadSegment);
+  const exp = payload && typeof payload.exp === 'number' ? payload.exp : null;
+  if (exp === null) return false;
+  return exp * 1000 <= Date.now() + skewSeconds * 1000;
+}
+
 async function fetchJsonRecord(url: string, init: RequestInit): Promise<{
   ok: boolean;
   status: number;
@@ -183,6 +198,73 @@ export async function refreshDesktopAuthTokens(
   refreshToken: string,
 ): Promise<RuntimeDesktopTokens | null> {
   if (!refreshToken) return null;
+  // OIDC sessions MUST refresh at the OIDC token endpoint (RFC 6749
+  // refresh_token grant). The legacy /auth/desktop/refresh endpoint mints legacy
+  // session tokens WITHOUT the gateway (svc:hub) audience, so refreshing an OIDC
+  // session through it silently downgrades the token to legacy — which the Hub
+  // gateway then rejects as "Invalid JWT". Gate on the OIDC kill-switch; legacy
+  // refresh remains only for legacy (non-OIDC) deployments.
+  if (resolveAuthConfig().oidcEnabled) {
+    return refreshViaOidc(refreshToken);
+  }
+  return refreshViaLegacyDesktop(refreshToken);
+}
+
+/**
+ * Refresh via the OIDC token endpoint (`/auth/token`) using the standard
+ * `refresh_token` grant for the public PKCE desktop client. Preserves the
+ * gateway audience that the legacy desktop-refresh endpoint would strip.
+ */
+async function refreshViaOidc(
+  refreshToken: string,
+): Promise<RuntimeDesktopTokens | null> {
+  const tokenUrl = resolveHostedAuthUrl('token');
+  if (!tokenUrl) return null;
+  const clientId = resolveAuthConfig().oidcClientId;
+  if (!clientId) {
+    console.warn('[runtime-auth] OIDC token refresh skipped: no oidcClientId configured');
+    return null;
+  }
+  try {
+    const response = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Accept: 'application/json',
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+        client_id: clientId,
+      }).toString(),
+    });
+    if (!response.ok) {
+      console.warn(`[runtime-auth] OIDC token refresh failed from ${tokenUrl}: ${response.status} ${response.statusText}`);
+      return null;
+    }
+    const data = await response.json() as Record<string, unknown>;
+    const accessToken = pickString(data.access_token);
+    if (!accessToken) {
+      console.warn(`[runtime-auth] OIDC token refresh from ${tokenUrl} returned no access_token`);
+      return null;
+    }
+    return {
+      accessToken,
+      // OIDC may rotate the refresh token; if the response omits it, keep ours.
+      refreshToken: pickString(data.refresh_token) ?? refreshToken,
+      tokenType: pickString(data.token_type),
+      expiresIn: typeof data.expires_in === 'number' ? data.expires_in : undefined,
+    };
+  } catch (error) {
+    console.warn(`[runtime-auth] OIDC token refresh threw from ${tokenUrl}:`, error);
+    return null;
+  }
+}
+
+/** Legacy desktop-session refresh (`/auth/desktop/refresh`). Non-OIDC only. */
+async function refreshViaLegacyDesktop(
+  refreshToken: string,
+): Promise<RuntimeDesktopTokens | null> {
   const desktopRefreshUrl = resolveHostedAuthUrl('desktopRefresh');
   if (!desktopRefreshUrl) return null;
   try {

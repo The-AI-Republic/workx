@@ -1499,6 +1499,26 @@ export class ServerAgentBootstrap {
     }
 
     const hasUsableLogin = Boolean(accessToken && profile);
+
+    // Auth-state consistency (desktop): the stored login is only valid if BOTH
+    // (1) a token exists in the vault AND (2) it still authenticates against the
+    // home page (the profile fetch above). When that fails and the access token
+    // is actually expired (or absent), the session is dead — evict it from the
+    // vault so workx never shows a stale "logged in" while the home page is
+    // logged out. A non-expired token that merely failed to validate is kept
+    // (treated as a transient/network error, not a logout).
+    if (hadStoredAuth && !hasUsableLogin) {
+      const { isAccessTokenExpired } = await import('@/desktop-runtime/auth/runtimeProfileFetch');
+      const accessExpired = accessToken ? isAccessTokenExpired(accessToken) : true;
+      if (accessExpired) {
+        await Promise.all([
+          credentialStore.delete('auth', 'access_token').catch(() => undefined),
+          credentialStore.delete('auth', 'refresh_token').catch(() => undefined),
+        ]);
+        accessToken = null;
+      }
+    }
+
     const shouldUseBackend = Boolean(hasUsableLogin && !useOwnApiKey);
     const tokenGetter = shouldUseBackend
       ? async () => getCredentialStore().get('auth', 'access_token')
