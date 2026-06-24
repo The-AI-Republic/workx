@@ -10,6 +10,7 @@ export interface RuntimeUrlConfig {
   gatewayLlmApiUrl: string | null;
   gatewayMcpUrl: string | null;
   gatewayCatalogUrl: string | null;
+  gatewayCatalogApiBaseUrl: string | null;
   gatewayMcpName: string;
   gatewayMcpAuthMode: 'none' | 'api-key' | 'session-jwt';
   gatewayMcpApiKey: string | null;
@@ -25,6 +26,7 @@ export interface RuntimeUrlConfig {
     gatewayLlmApiUrl: RuntimeUrlSource;
     gatewayMcpUrl: RuntimeUrlSource;
     gatewayCatalogUrl: RuntimeUrlSource;
+    gatewayCatalogApiBaseUrl: RuntimeUrlSource;
     gatewayMcpName: RuntimeUrlSource;
     gatewayMcpAuthMode: RuntimeUrlSource;
     gatewayMcpApiKey: RuntimeUrlSource;
@@ -52,6 +54,15 @@ function firstNonEmpty(...values: Array<string | undefined>): string | undefined
 function joinUrl(baseUrl: string, path: string): string {
   const relativePath = path.replace(/^\/+/, '');
   return new URL(relativePath, baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`).toString().replace(/\/$/, '');
+}
+
+/** Origin (scheme + host[:port]) of a URL, or null when it can't be parsed. */
+function originOf(url: string): string | null {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
 }
 
 function normalizeRoutingMode(value: string | undefined): 'legacy' | 'gateway' | null {
@@ -108,6 +119,18 @@ export function resolveRuntimeUrls(): RuntimeUrlConfig {
   ) ?? null;
   const gatewayLlmApiUrl = gatewayLlmFromEnv ?? (gatewayBaseUrl ? joinUrl(gatewayBaseUrl, 'v1') : null);
   const gatewayMcpUrl = gatewayMcpFromEnv ?? (gatewayBaseUrl ? joinUrl(gatewayBaseUrl, 'mcp') : null);
+  // Native Apps catalog API root (Hub `GET /api/v1/apps/...`). Prefer an explicit
+  // override, else reuse the catalog UI URL's origin (the catalog page and its
+  // JSON API are served by the same Hub host), else derive from the gateway base.
+  const gatewayCatalogApiFromEnv = firstNonEmpty(
+    env.WORKX_GATEWAY_CATALOG_API_URL,
+    env.VITE_GATEWAY_CATALOG_API_URL,
+    vite.VITE_GATEWAY_CATALOG_API_URL,
+  );
+  const gatewayCatalogApiBaseUrl =
+    gatewayCatalogApiFromEnv ??
+    (gatewayCatalogUrl ? joinUrl(originOf(gatewayCatalogUrl) ?? gatewayCatalogUrl, 'api/v1/apps') : null) ??
+    (gatewayBaseUrl ? joinUrl(gatewayBaseUrl, 'api/v1/apps') : null);
   const gatewayMcpNameFromEnv = firstNonEmpty(
     env.WORKX_GATEWAY_MCP_NAME,
     env.VITE_GATEWAY_MCP_NAME,
@@ -150,6 +173,7 @@ export function resolveRuntimeUrls(): RuntimeUrlConfig {
     gatewayLlmApiUrl,
     gatewayMcpUrl,
     gatewayCatalogUrl,
+    gatewayCatalogApiBaseUrl,
     gatewayMcpName: gatewayMcpNameFromEnv ?? 'gateway',
     gatewayMcpAuthMode,
     gatewayMcpApiKey,
@@ -165,6 +189,7 @@ export function resolveRuntimeUrls(): RuntimeUrlConfig {
       gatewayLlmApiUrl: gatewayLlmFromEnv || gatewayBaseUrl ? 'env' : 'default',
       gatewayMcpUrl: gatewayMcpFromEnv || gatewayBaseUrl ? 'env' : 'default',
       gatewayCatalogUrl: gatewayCatalogUrl ? 'env' : 'default',
+      gatewayCatalogApiBaseUrl: gatewayCatalogApiFromEnv ? 'env' : 'default',
       gatewayMcpName: gatewayMcpNameFromEnv ? 'env' : 'default',
       gatewayMcpAuthMode: requestedMcpAuthMode ? 'env' : 'default',
       gatewayMcpApiKey: gatewayMcpApiKey ? 'env' : 'default',

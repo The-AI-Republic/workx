@@ -9,6 +9,7 @@
   import Skills from './pages/skills/Skills.svelte';
   import Doctor from './pages/diagnostics/Doctor.svelte';
   import Usage from './pages/usage/Usage.svelte';
+  import Apps from './pages/apps/Apps.svelte';
   import { userStore } from './stores/userStore';
   import { AUTH_COOKIE_DOMAIN, AUTH_COOKIE_NAMES, isAuthenticated } from './lib/utils/cookie';
   import { fetchUserProfile } from './lib/apis';
@@ -51,6 +52,9 @@
 
     // Skills page
     '/skills': Skills,
+
+    // Apps marketplace (Hub catalog)
+    '/apps': Apps,
 
     // Usage page
     '/usage': Usage,
