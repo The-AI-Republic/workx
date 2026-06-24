@@ -419,6 +419,25 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
     },
 
     /**
+     * Return the current access token for the WebView to authenticate
+     * first-party control-plane calls (e.g. the Apps catalog mutations) on
+     * desktop, where the WebView has no cookies and the runtime owns
+     * credentials. Refreshes from the stored refresh token when needed.
+     * Returns `{ accessToken: null }` when there is no valid login.
+     */
+    'auth.getAccessToken': async (): Promise<{ accessToken: string | null }> => {
+      if (!deps.getCredentialStore) {
+        return { accessToken: null };
+      }
+      try {
+        const { accessToken } = await validateOrRefreshStoredLogin(deps.getCredentialStore());
+        return { accessToken: accessToken ?? null };
+      } catch {
+        return { accessToken: null };
+      }
+    },
+
+    /**
      * Clear stored credentials. Sessions are recreated with a no-backend
      * auth manager so they fall back to user-supplied API keys until the
      * user logs in again.

@@ -82,4 +82,58 @@ describe('apps marketplace api', () => {
     await expect(installApp('a1')).rejects.toBeInstanceOf(AppsApiError);
     expect(global.fetch).not.toHaveBeenCalled();
   });
+
+  it('uses an explicit accessToken override (desktop) without probing cookies', async () => {
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => ({
+      ok: true, status: 200, statusText: 'OK', json: async () => ({ appId: 'a1', installStatus: 'installed' }),
+    }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { installApp } = await loadModule();
+    const card = await installApp('a1', 'desktop-tok');
+
+    expect(getAccessToken).not.toHaveBeenCalled();
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer desktop-tok');
+    expect(card).toMatchObject({ appId: 'a1', installStatus: 'installed' });
+  });
+
+  it('drops catalog rows that have no usable id', async () => {
+    global.fetch = vi.fn(async (_url: string, _init?: RequestInit) => ({
+      ok: true, status: 200, statusText: 'OK',
+      json: async () => ({ items: [{ appId: 'keep' }, { slug: 'no-id' }, {}] }),
+    })) as unknown as typeof fetch;
+
+    const { fetchMarketplace } = await loadModule();
+    const page = await fetchMarketplace();
+    expect(page.items.map((a) => a.appId)).toEqual(['keep']);
+  });
+
+  it('coerces non-string fields to null instead of leaking [object Object]', async () => {
+    global.fetch = vi.fn(async (_url: string, _init?: RequestInit) => ({
+      ok: true, status: 200, statusText: 'OK',
+      json: async () => ({ items: [{ appId: 'a1', name: '', description: { en: 'x' }, iconUrl: { url: 'y' } }] }),
+    })) as unknown as typeof fetch;
+
+    const { fetchMarketplace } = await loadModule();
+    const [app] = (await fetchMarketplace()).items;
+    expect(app.description).toBeNull();
+    expect(app.iconUrl).toBeNull();
+    // Empty-string name falls back rather than rendering a blank card.
+    expect(app.name).toBe('a1');
+  });
+
+  it('caches the browser token across calls within the TTL', async () => {
+    getAccessToken.mockResolvedValue('tok-1');
+    global.fetch = vi.fn(async (_url: string, _init?: RequestInit) => ({
+      ok: true, status: 200, statusText: 'OK', json: async () => ({ items: [] }),
+    })) as unknown as typeof fetch;
+
+    const { fetchMarketplace } = await loadModule();
+    await fetchMarketplace({ query: 'a' });
+    await fetchMarketplace({ query: 'ab' });
+    await fetchMarketplace({ query: 'abc' });
+    // Token probe is memoized: one resolution despite three requests.
+    expect(getAccessToken).toHaveBeenCalledTimes(1);
+  });
 });

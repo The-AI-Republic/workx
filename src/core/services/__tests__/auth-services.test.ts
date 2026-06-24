@@ -215,6 +215,25 @@ describe('createAuthServices', () => {
     });
   });
 
+  describe('auth.getAccessToken', () => {
+    it('returns the stored access token for first-party control-plane calls', async () => {
+      await deps.credentialStore.set('auth', 'access_token', 'fresh-at');
+      const res = await svc['auth.getAccessToken']!({}, TEST_CONTEXT);
+      expect(res).toEqual({ accessToken: 'fresh-at' });
+    });
+
+    it('returns accessToken=null when nothing is stored', async () => {
+      const res = await svc['auth.getAccessToken']!({}, TEST_CONTEXT);
+      expect(res).toEqual({ accessToken: null });
+    });
+
+    it('returns accessToken=null when no credential store is available', async () => {
+      const localSvc = createAuthServices({ ...deps, getCredentialStore: undefined });
+      const res = await localSvc['auth.getAccessToken']!({}, TEST_CONTEXT);
+      expect(res).toEqual({ accessToken: null });
+    });
+  });
+
   describe('auth.getState', () => {
     it('returns hasValidToken=false when no token is persisted', async () => {
       const res = await svc['auth.getState']!({}, TEST_CONTEXT);

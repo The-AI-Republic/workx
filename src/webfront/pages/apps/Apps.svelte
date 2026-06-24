@@ -1,6 +1,8 @@
 <script lang="ts">
   import { uiTheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
+  import { platform } from '../../stores/platformStore';
+  import { getInitializedUIClient } from '@/core/messaging';
   import {
     fetchMarketplace,
     installApp,
@@ -25,6 +27,30 @@
   let searchController: AbortController | null = null;
   let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
+  // On desktop the WebView has no cookies — the runtime owns credentials — so
+  // the token comes from the `auth.getAccessToken` runtime service. Cache it
+  // briefly so a marketplace request per search keystroke doesn't round-trip.
+  const DESKTOP_TOKEN_TTL_MS = 30_000;
+  let desktopTokenCache: { value: string | null; at: number } | null = null;
+
+  async function resolveAccessToken(): Promise<string | null> {
+    if (platform.platformName !== 'desktop') return null;
+    const now = Date.now();
+    if (desktopTokenCache && now - desktopTokenCache.at < DESKTOP_TOKEN_TTL_MS) {
+      return desktopTokenCache.value;
+    }
+    let value: string | null = null;
+    try {
+      const client = await getInitializedUIClient();
+      const res = await client.serviceRequest<{ accessToken: string | null }>('auth.getAccessToken');
+      value = res?.accessToken ?? null;
+    } catch {
+      value = null;
+    }
+    desktopTokenCache = { value, at: now };
+    return value;
+  }
+
   async function load(q = '') {
     if (!configured) {
       loading = false;
@@ -37,7 +63,8 @@
     loading = true;
     error = null;
     try {
-      const page = await fetchMarketplace({ query: q, signal: controller.signal });
+      const accessToken = await resolveAccessToken();
+      const page = await fetchMarketplace({ query: q, signal: controller.signal, accessToken });
       if (controller.signal.aborted) return;
       apps = page.items;
     } catch (err) {
@@ -53,12 +80,25 @@
     searchTimer = setTimeout(() => load(query), 250);
   }
 
-  async function handleInstall(app: MarketplaceApp) {
+  /**
+   * Run an install/activate mutation, then apply the updated card in place
+   * (the Hub echoes the new card) rather than refetching the whole catalog.
+   * Falls back to a refetch only when the Hub returns no card.
+   */
+  async function runAction(
+    app: MarketplaceApp,
+    action: (appId: string, accessToken?: string | null) => Promise<MarketplaceApp | null>,
+  ) {
     pendingId = app.appId;
     error = null;
     try {
-      await installApp(app.appId);
-      await load(query);
+      const accessToken = await resolveAccessToken();
+      const updated = await action(app.appId, accessToken);
+      if (updated) {
+        apps = apps.map((a) => (a.appId === app.appId ? updated : a));
+      } else {
+        await load(query);
+      }
     } catch (err) {
       error = err instanceof AppsApiError ? err.message : String(err);
     } finally {
@@ -66,18 +106,8 @@
     }
   }
 
-  async function handleActivate(app: MarketplaceApp) {
-    pendingId = app.appId;
-    error = null;
-    try {
-      await activateApp(app.appId);
-      await load(query);
-    } catch (err) {
-      error = err instanceof AppsApiError ? err.message : String(err);
-    } finally {
-      pendingId = null;
-    }
-  }
+  const handleInstall = (app: MarketplaceApp) => runAction(app, installApp);
+  const handleActivate = (app: MarketplaceApp) => runAction(app, activateApp);
 
   function isInstalled(app: MarketplaceApp): boolean {
     return app.installStatus === 'installed';

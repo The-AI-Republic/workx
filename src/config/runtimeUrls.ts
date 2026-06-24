@@ -189,7 +189,7 @@ export function resolveRuntimeUrls(): RuntimeUrlConfig {
       gatewayLlmApiUrl: gatewayLlmFromEnv || gatewayBaseUrl ? 'env' : 'default',
       gatewayMcpUrl: gatewayMcpFromEnv || gatewayBaseUrl ? 'env' : 'default',
       gatewayCatalogUrl: gatewayCatalogUrl ? 'env' : 'default',
-      gatewayCatalogApiBaseUrl: gatewayCatalogApiFromEnv || gatewayCatalogUrl || gatewayBaseUrl ? 'env' : 'default',
+      gatewayCatalogApiBaseUrl: gatewayCatalogApiFromEnv ? 'env' : 'default',
       gatewayMcpName: gatewayMcpNameFromEnv ? 'env' : 'default',
       gatewayMcpAuthMode: requestedMcpAuthMode ? 'env' : 'default',
       gatewayMcpApiKey: gatewayMcpApiKey ? 'env' : 'default',

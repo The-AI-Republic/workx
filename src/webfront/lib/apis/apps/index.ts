@@ -59,54 +59,98 @@ function catalogUrl(path: string): string {
   return `${base}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
+// Short-lived cache for the best-effort browser token. Without it, the
+// cookie+WebAuthService probe (which can trigger a network refresh) would run
+// on every request — including each debounced search keystroke.
+const BROWSER_TOKEN_TTL_MS = 30_000;
+let browserTokenCache: { value: string | null; at: number } | null = null;
+
+/** Clear the cached browser token (e.g. on logout). Exposed for tests. */
+export function clearCatalogTokenCache(): void {
+  browserTokenCache = null;
+}
+
 /**
- * Best-effort session token for catalog requests. Tries browser cookies
- * (extension / web), then the web auth service. Returns null when no token is
- * obtainable (e.g. desktop, where the runtime owns credentials) — callers fall
- * back to the public catalog for reads and prompt sign-in for mutations.
+ * Best-effort session token from the browser surfaces — cookies (extension /
+ * web), then the web auth service. Returns null on desktop, where the runtime
+ * owns credentials; desktop callers pass an explicit token instead (see
+ * `accessToken` on the exported functions). Cached for {@link BROWSER_TOKEN_TTL_MS}.
  */
-async function getCatalogToken(): Promise<string | null> {
+async function getBrowserToken(): Promise<string | null> {
+  const now = Date.now();
+  if (browserTokenCache && now - browserTokenCache.at < BROWSER_TOKEN_TTL_MS) {
+    return browserTokenCache.value;
+  }
+  let value: string | null = null;
   try {
-    const cookieToken = await getAccessToken();
-    if (cookieToken) return cookieToken;
+    value = (await getAccessToken()) ?? null;
   } catch {
     // ignore — cookie surface unavailable
   }
-  try {
-    const { getWebAuthService } = await import('../../../auth/WebAuthService');
-    const authService = getWebAuthService(HOME_PAGE_BASE_URL);
-    if (await authService.hasValidToken()) {
-      return await authService.getAccessToken();
+  if (!value) {
+    try {
+      const { getWebAuthService } = await import('../../../auth/WebAuthService');
+      const authService = getWebAuthService(HOME_PAGE_BASE_URL);
+      if (await authService.hasValidToken()) {
+        value = (await authService.getAccessToken()) ?? null;
+      }
+    } catch {
+      // ignore — web auth surface unavailable
     }
-  } catch {
-    // ignore — web auth surface unavailable
   }
-  return null;
+  browserTokenCache = { value, at: now };
+  return value;
 }
 
-async function authHeaders(): Promise<Record<string, string>> {
+/** Resolve the token to use: an explicit override (desktop) wins, else browser. */
+async function resolveToken(accessToken?: string | null): Promise<string | null> {
+  if (accessToken) return accessToken;
+  return getBrowserToken();
+}
+
+async function authHeaders(accessToken?: string | null): Promise<Record<string, string>> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  const token = await getCatalogToken();
+  const token = await resolveToken(accessToken);
   if (token) headers.Authorization = `Bearer ${token}`;
   return headers;
 }
 
+/**
+ * A usable string value, or null. Strings pass through; numbers/booleans are
+ * stringified; objects/arrays/null/undefined become null so a non-string Hub
+ * value never reaches the UI as "[object Object]".
+ */
+function asString(value: unknown): string | null {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return null;
+}
+
+/** First usable, non-empty string among the candidates. */
+function firstString(...candidates: unknown[]): string {
+  for (const candidate of candidates) {
+    const str = asString(candidate);
+    if (str && str.trim().length > 0) return str;
+  }
+  return '';
+}
+
 function normalizeApp(raw: Record<string, unknown>): MarketplaceApp {
   return {
-    appId: String(raw.appId ?? raw.id ?? ''),
-    slug: String(raw.slug ?? ''),
-    name: String(raw.name ?? raw.slug ?? raw.appId ?? 'Untitled app'),
-    description: (raw.description as string | null) ?? null,
-    iconUrl: (raw.iconUrl as string | null) ?? null,
-    categories: Array.isArray(raw.categories) ? (raw.categories as string[]) : [],
-    tags: Array.isArray(raw.tags) ? (raw.tags as string[]) : [],
-    installStatus: String(raw.installStatus ?? raw.status ?? 'uninstalled'),
+    appId: firstString(raw.appId, raw.id),
+    slug: asString(raw.slug) ?? '',
+    name: firstString(raw.name, raw.slug, raw.appId) || 'Untitled app',
+    description: asString(raw.description),
+    iconUrl: asString(raw.iconUrl),
+    categories: Array.isArray(raw.categories) ? (raw.categories as unknown[]).map(String) : [],
+    tags: Array.isArray(raw.tags) ? (raw.tags as unknown[]).map(String) : [],
+    installStatus: firstString(raw.installStatus, raw.status) || 'uninstalled',
     enabled: Boolean(raw.enabled),
     isActivated: Boolean(raw.isActivated),
-    suggestedAction: (raw.suggestedAction as string | null) ?? null,
-    version: (raw.version as string | null) ?? null,
-    monetizationTier: (raw.monetizationTier as string | null) ?? null,
-    trustTier: (raw.trustTier as string | null) ?? null,
+    suggestedAction: asString(raw.suggestedAction),
+    version: asString(raw.version),
+    monetizationTier: asString(raw.monetizationTier),
+    trustTier: asString(raw.trustTier),
   };
 }
 
@@ -119,6 +163,8 @@ export async function fetchMarketplace(options: {
   cursor?: string;
   limit?: number;
   signal?: AbortSignal;
+  /** Explicit token (desktop). When omitted, a browser token is used if present. */
+  accessToken?: string | null;
 } = {}): Promise<MarketplacePage> {
   const params = new URLSearchParams();
   if (options.query?.trim()) params.set('q', options.query.trim());
@@ -129,7 +175,7 @@ export async function fetchMarketplace(options: {
 
   const response = await fetch(url, {
     method: 'GET',
-    headers: await authHeaders(),
+    headers: await authHeaders(options.accessToken),
     credentials: 'include',
     signal: options.signal,
   });
@@ -139,15 +185,28 @@ export async function fetchMarketplace(options: {
   }
 
   const data = (await response.json()) as { items?: unknown[]; nextCursor?: string | null };
+  // Drop rows with no usable id — an empty appId would collide as a Svelte
+  // #each key and produce a malformed `/apps//install` mutation path.
   const items = Array.isArray(data.items)
-    ? data.items.map((item) => normalizeApp(item as Record<string, unknown>))
+    ? data.items.map((item) => normalizeApp(item as Record<string, unknown>)).filter((app) => app.appId)
     : [];
   return { items, nextCursor: data.nextCursor ?? null };
 }
 
-/** Mutate an app (install / uninstall / activate / deactivate). Requires auth. */
-async function appAction(appId: string, action: string, method: 'POST' | 'DELETE'): Promise<MarketplaceApp | null> {
-  const token = await getCatalogToken();
+/**
+ * Mutate an app (install / uninstall / activate / deactivate). Requires auth.
+ * Pass `accessToken` on desktop, where the runtime owns credentials.
+ */
+async function appAction(
+  appId: string,
+  action: string,
+  method: 'POST' | 'DELETE',
+  accessToken?: string | null,
+): Promise<MarketplaceApp | null> {
+  if (!appId) {
+    throw new AppsApiError('Cannot manage an app without an id.', 400);
+  }
+  const token = await resolveToken(accessToken);
   if (!token) {
     throw new AppsApiError('Sign in to manage apps.', 401);
   }
@@ -159,8 +218,8 @@ async function appAction(appId: string, action: string, method: 'POST' | 'DELETE
   if (!response.ok) {
     throw new AppsApiError(`Failed to ${action} app: ${response.status} ${response.statusText}`, response.status);
   }
-  // Mutation responses vary by action; the caller typically refetches. Return
-  // the parsed card when the Hub echoes one, otherwise null.
+  // Mutation responses vary by action. Return the parsed card when the Hub
+  // echoes one, otherwise null so the caller can refetch.
   try {
     const data = (await response.json()) as Record<string, unknown>;
     return data && (data.appId || data.id) ? normalizeApp(data) : null;
@@ -169,18 +228,18 @@ async function appAction(appId: string, action: string, method: 'POST' | 'DELETE
   }
 }
 
-export function installApp(appId: string): Promise<MarketplaceApp | null> {
-  return appAction(appId, 'install', 'POST');
+export function installApp(appId: string, accessToken?: string | null): Promise<MarketplaceApp | null> {
+  return appAction(appId, 'install', 'POST', accessToken);
 }
 
-export function uninstallApp(appId: string): Promise<MarketplaceApp | null> {
-  return appAction(appId, 'uninstall', 'DELETE');
+export function uninstallApp(appId: string, accessToken?: string | null): Promise<MarketplaceApp | null> {
+  return appAction(appId, 'uninstall', 'DELETE', accessToken);
 }
 
-export function activateApp(appId: string): Promise<MarketplaceApp | null> {
-  return appAction(appId, 'activate', 'POST');
+export function activateApp(appId: string, accessToken?: string | null): Promise<MarketplaceApp | null> {
+  return appAction(appId, 'activate', 'POST', accessToken);
 }
 
-export function deactivateApp(appId: string): Promise<MarketplaceApp | null> {
-  return appAction(appId, 'deactivate', 'POST');
+export function deactivateApp(appId: string, accessToken?: string | null): Promise<MarketplaceApp | null> {
+  return appAction(appId, 'deactivate', 'POST', accessToken);
 }
