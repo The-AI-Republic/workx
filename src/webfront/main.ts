@@ -10,7 +10,7 @@ import { mount } from 'svelte';
 import App from './App.svelte';
 import { initLocale } from './lib/i18n';
 import { AgentConfig } from '@/config/AgentConfig';
-import { initializeConfigStorage } from '@/core/storage';
+import { initializeConfigStorage, initializeCredentialStore } from '@/core/storage';
 
 // Add terminal-mode class to body for terminal styling
 document.body.classList.add('terminal-mode');
@@ -26,6 +26,15 @@ async function init() {
     await initializeConfigStorage();
   } catch (error) {
     console.warn('[Extension] Failed to initialize config storage:', error);
+  }
+
+  // The side panel has its own JS context, separate from the service worker.
+  // AgentConfig writes BYOK keys through this singleton, so initialize it here
+  // before settings code creates its local AgentConfig instance.
+  try {
+    await initializeCredentialStore();
+  } catch (error) {
+    console.warn('[Extension] Failed to initialize credential storage:', error);
   }
 
   // Initialize locale

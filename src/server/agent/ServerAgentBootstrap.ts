@@ -84,6 +84,7 @@ import { ServerLogSink } from '../telemetry/ServerLogSink';
 import { registerExecHandlers } from '../handlers/exec';
 import { registerSchedulerHandlers } from '../handlers/scheduler';
 import { registerCredentialsHandlers } from '../handlers/credentials';
+import { registerModelHandlers } from '../handlers/models';
 import { emitLog } from '../handlers/logs';
 
 // Scheduler
@@ -1709,6 +1710,7 @@ export class ServerAgentBootstrap {
     registerConfigHandlers();
     registerHealthHandlers();
     registerLogsHandlers();
+    registerModelHandlers();
 
     registerToolsHandlers({
       getToolCatalog: async () => {

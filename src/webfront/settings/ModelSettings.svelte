@@ -118,6 +118,7 @@
     };
     supportBackendMode?: number;
     isCustom?: boolean;
+    apiFormat?: 'chat_completions' | 'responses';
   }
   let modelSelectionItems: ModelSelectionItem[] = $state([]);
 
@@ -331,6 +332,7 @@
             pricing: model.pricing,
             supportBackendMode: model.supportBackendMode,
             isCustom: provider.isCustom ?? false,
+            apiFormat: provider.apiFormat === 'responses' ? 'responses' : 'chat_completions',
           });
         }
       }
@@ -652,7 +654,15 @@
       const client = await getInitializedUIClient();
       const result = await client.serviceRequest<{ valid: boolean; error?: string }>(
         'models.testConnection',
-        { providerId, baseUrl, apiKey, model: modelKey, organization: organization ?? null },
+        {
+          providerId,
+          baseUrl,
+          apiKey,
+          model: modelKey,
+          organization: organization ?? null,
+          apiFormat: selectedItem.apiFormat ?? null,
+          isCustom: selectedItem.isCustom ?? false,
+        },
       );
 
       if (result.valid) {

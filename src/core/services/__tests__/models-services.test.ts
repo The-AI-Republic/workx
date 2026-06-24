@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createModelServices } from '../models-services';
+import { createModelServices, testModelConnection } from '../models-services';
 
 const handler = createModelServices({})['models.testConnection'];
+const context = {} as Parameters<typeof handler>[1];
 
 function jsonResponse(status: number, body: unknown = {}): Response {
   return new Response(JSON.stringify(body), {
@@ -23,6 +24,7 @@ const OPENAI = {
 
 describe('models.testConnection', () => {
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -30,7 +32,7 @@ describe('models.testConnection', () => {
     const fetchMock = vi.fn<FetchFn>(async () => jsonResponse(200, { data: [] }));
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await handler(OPENAI, {} as any);
+    const result = await handler(OPENAI, context);
 
     expect(result).toEqual({ valid: true });
     const [url, init] = fetchMock.mock.calls[0];
@@ -43,7 +45,7 @@ describe('models.testConnection', () => {
 
   it('reports invalid API key on 401', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(401, { error: 'unauthorized' })));
-    const result = await handler(OPENAI, {} as any);
+    const result = await handler(OPENAI, context);
     expect(result).toEqual({ valid: false, error: 'Invalid API key' });
   });
 
@@ -54,7 +56,7 @@ describe('models.testConnection', () => {
       .mockResolvedValueOnce(jsonResponse(200, { id: 'x' }));
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await handler(OPENAI, {} as any);
+    const result = await handler(OPENAI, context);
 
     expect(result).toEqual({ valid: true });
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -65,13 +67,41 @@ describe('models.testConnection', () => {
     expect(body.max_tokens).toBe(1);
   });
 
+  it('preserves base URL query params when appending probe paths', async () => {
+    const fetchMock = vi
+      .fn<FetchFn>()
+      .mockResolvedValueOnce(jsonResponse(404))
+      .mockResolvedValueOnce(jsonResponse(200));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await handler(
+      {
+        providerId: 'custom-azure',
+        baseUrl: 'https://example.openai.azure.com/openai/deployments/test/chat/completions?api-version=2024-02-15',
+        apiKey: 'sk-custom',
+        model: 'deployment-name',
+        isCustom: true,
+        apiFormat: 'chat_completions',
+      },
+      context,
+    );
+
+    expect(result).toEqual({ valid: true });
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      'https://example.openai.azure.com/openai/deployments/test/models?api-version=2024-02-15',
+    );
+    expect(fetchMock.mock.calls[1][0]).toBe(
+      'https://example.openai.azure.com/openai/deployments/test/chat/completions?api-version=2024-02-15',
+    );
+  });
+
   it('treats a 400 from the minimal payload as a valid key', async () => {
     const fetchMock = vi
       .fn<FetchFn>()
       .mockResolvedValueOnce(jsonResponse(404))
       .mockResolvedValueOnce(jsonResponse(400, { error: 'bad request' }));
     vi.stubGlobal('fetch', fetchMock);
-    expect(await handler(OPENAI, {} as any)).toEqual({ valid: true });
+    expect(await handler(OPENAI, context)).toEqual({ valid: true });
   });
 
   it('uses Anthropic auth headers + messages endpoint on fallback', async () => {
@@ -82,8 +112,8 @@ describe('models.testConnection', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     await handler(
-      { providerId: 'anthropic', baseUrl: 'https://api.anthropic.com/v1/messages', apiKey: 'ak', model: 'claude-3' },
-      {} as any,
+      { providerId: 'anthropic', baseUrl: 'https://api.anthropic.com', apiKey: 'ak', model: 'claude-3' },
+      context,
     );
 
     const [listUrl, listInit] = fetchMock.mock.calls[0];
@@ -94,12 +124,79 @@ describe('models.testConnection', () => {
     expect(msgUrl).toBe('https://api.anthropic.com/v1/messages');
   });
 
+  it('uses Google AI Studio native models endpoint with API key query auth', async () => {
+    const fetchMock = vi.fn<FetchFn>(async () => jsonResponse(200, { models: [] }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await handler(
+      {
+        providerId: 'google-ai-studio',
+        baseUrl: 'https://generativelanguage.googleapis.com',
+        apiKey: 'AIza-test',
+        model: 'gemini-3.1-pro',
+      },
+      context,
+    );
+
+    expect(result).toEqual({ valid: true });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('https://generativelanguage.googleapis.com/v1beta/models?key=AIza-test');
+    expect(init?.method).toBe('GET');
+    expect((init?.headers as Record<string, string> | undefined)?.Authorization).toBeUndefined();
+  });
+
+  it('reports invalid Google API keys from the Google 400 error shape', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(400, {
+      error: { message: 'API key not valid. Please pass a valid API key.' },
+    })));
+
+    expect(await handler(
+      {
+        providerId: 'google-ai-studio',
+        baseUrl: 'https://generativelanguage.googleapis.com',
+        apiKey: 'bad',
+        model: 'gemini-3.1-pro',
+      },
+      context,
+    )).toEqual({ valid: false, error: 'Invalid API key' });
+  });
+
+  it('falls back to /responses for custom Responses API providers', async () => {
+    const fetchMock = vi
+      .fn<FetchFn>()
+      .mockResolvedValueOnce(jsonResponse(404))
+      .mockResolvedValueOnce(jsonResponse(200));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await handler(
+      {
+        providerId: 'custom-abc',
+        baseUrl: 'https://api.example.com/v1',
+        apiKey: 'sk-custom',
+        model: 'custom-model',
+        apiFormat: 'responses',
+        isCustom: true,
+      },
+      context,
+    );
+
+    expect(result).toEqual({ valid: true });
+    const [url, init] = fetchMock.mock.calls[1];
+    expect(url).toBe('https://api.example.com/v1/responses');
+    const body = JSON.parse(init?.body as string);
+    expect(body).toMatchObject({ model: 'custom-model', input: 'ping', max_output_tokens: 1 });
+  });
+
   it('validates required params', async () => {
-    expect(await handler({ baseUrl: 'https://x/v1' }, {} as any)).toEqual({
+    expect(await testModelConnection()).toEqual({
       valid: false,
       error: 'API key is required',
     });
-    expect(await handler({ apiKey: 'k' }, {} as any)).toEqual({
+    expect(await handler({ baseUrl: 'https://x/v1' }, context)).toEqual({
+      valid: false,
+      error: 'API key is required',
+    });
+    expect(await handler({ apiKey: 'k' }, context)).toEqual({
       valid: false,
       error: 'Base URL is required',
     });
@@ -107,6 +204,27 @@ describe('models.testConnection', () => {
 
   it('returns a network error message when fetch throws', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('ECONNREFUSED'); }));
-    expect(await handler(OPENAI, {} as any)).toEqual({ valid: false, error: 'ECONNREFUSED' });
+    expect(await handler(OPENAI, context)).toEqual({ valid: false, error: 'ECONNREFUSED' });
+  });
+
+  it('times out a hanging provider request', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn<FetchFn>(
+      (_url, init) => new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => {
+          reject(new DOMException('Aborted', 'AbortError'));
+        });
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const resultPromise = handler(OPENAI, context);
+    await vi.advanceTimersByTimeAsync(30_000);
+
+    await expect(resultPromise).resolves.toEqual({
+      valid: false,
+      error: 'Connection test timed out after 30 seconds',
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

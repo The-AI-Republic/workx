@@ -29,10 +29,23 @@ export interface ModelsServiceDeps {
   enabled?: boolean;
 }
 
-interface TestConnectionResult {
+export interface TestConnectionResult {
   valid: boolean;
   error?: string;
 }
+
+interface TestConnectionParams {
+  providerId?: unknown;
+  baseUrl?: unknown;
+  apiKey?: unknown;
+  model?: unknown;
+  organization?: unknown;
+  apiFormat?: unknown;
+  isCustom?: unknown;
+}
+
+const TEST_CONNECTION_TIMEOUT_MS = 30_000;
+const TRAILING_OPERATION_PATH = /\/(chat\/completions|completions|messages|responses|models)$/i;
 
 /**
  * Strip a trailing operation path so we can derive sibling endpoints. Stored
@@ -42,9 +55,11 @@ interface TestConnectionResult {
  * `/models` and the completion endpoint uniformly.
  */
 function rootOf(baseUrl: string): string {
-  return baseUrl
+  const url = new URL(baseUrl);
+  url.pathname = url.pathname
     .replace(/\/+$/, '')
-    .replace(/\/(chat\/completions|completions|messages)$/i, '');
+    .replace(TRAILING_OPERATION_PATH, '') || '/';
+  return url.toString();
 }
 
 function authHeaders(
@@ -60,65 +75,209 @@ function authHeaders(
   return headers;
 }
 
+function joinUrl(root: string, path: string): string {
+  const url = new URL(root);
+  const rootPath = url.pathname.replace(/\/+$/, '');
+  const childPath = path.replace(/^\/+/, '');
+  url.pathname = `${rootPath}/${childPath}`.replace(/\/{2,}/g, '/');
+  return url.toString();
+}
+
+function ensureVersion(root: string, version: string): string {
+  const url = new URL(root);
+  return new RegExp(`/${version}$`, 'i').test(url.pathname.replace(/\/+$/, ''))
+    ? url.toString()
+    : joinUrl(url.toString(), version);
+}
+
+function googleRootOf(baseUrl: string): string {
+  const url = new URL(baseUrl);
+  url.pathname = url.pathname
+    .replace(/\/+$/, '')
+    .replace(/\/v1beta\/openai$/i, '')
+    .replace(/\/v1beta$/i, '')
+    .replace(/\/v1$/i, '') || '/';
+  return url.toString();
+}
+
+function withApiKey(url: string, apiKey: string): string {
+  const parsed = new URL(url);
+  parsed.searchParams.set('key', apiKey);
+  return parsed.toString();
+}
+
+function isAbortError(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'name' in error
+    && error.name === 'AbortError';
+}
+
+async function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), TEST_CONNECTION_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: init.signal ?? controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function responseText(response: Response): Promise<string> {
+  try {
+    return await response.text();
+  } catch {
+    return '';
+  }
+}
+
+function invalidApiKeyMessage(status: number, body: string): string | null {
+  if (status === 401 || status === 403) return 'Invalid API key';
+  if (status !== 400) return null;
+
+  const text = body.toLowerCase();
+  if (
+    text.includes('invalid_api_key') ||
+    text.includes('api key not valid') ||
+    text.includes('invalid api key') ||
+    text.includes('invalid authentication') ||
+    text.includes('authentication failed')
+  ) {
+    return 'Invalid API key';
+  }
+  return null;
+}
+
 /**
  * Map an HTTP status to a verdict, or `null` when inconclusive (caller may
  * fall back to a completion probe before surfacing an error).
  */
-function classify(status: number, ok: boolean): TestConnectionResult | null {
-  if (ok) return { valid: true };
+async function classify(
+  response: Response,
+  opts: { allowBadRequestAsValid?: boolean } = {},
+): Promise<TestConnectionResult | null> {
+  if (response.ok) return { valid: true };
+  const body = await responseText(response);
+  const authError = invalidApiKeyMessage(response.status, body);
+  if (authError) return { valid: false, error: authError };
   // The request reached the model and authenticated, but our deliberately
   // minimal payload was rejected — the key itself is valid.
-  if (status === 400 || status === 422) return { valid: true };
-  if (status === 401 || status === 403) return { valid: false, error: 'Invalid API key' };
+  if (opts.allowBadRequestAsValid && (response.status === 400 || response.status === 422)) {
+    return { valid: true };
+  }
   return null;
+}
+
+function usesResponsesProbe(providerId: string, apiFormat: string, isCustom: boolean): boolean {
+  if (isCustom) return apiFormat === 'responses';
+  return providerId === 'openai' || providerId === 'xai' || providerId === 'groq';
+}
+
+async function testGoogleConnection(root: string, apiKey: string, model: string): Promise<TestConnectionResult> {
+  const versionRoot = joinUrl(googleRootOf(root), 'v1beta');
+  const listed = await fetchWithTimeout(withApiKey(joinUrl(versionRoot, 'models'), apiKey), { method: 'GET' });
+  const listedVerdict = await classify(listed);
+  if (listedVerdict) return listedVerdict;
+
+  if (!model) return { valid: false, error: `API error: ${listed.status}` };
+
+  const completed = await fetchWithTimeout(
+    withApiKey(joinUrl(versionRoot, `models/${encodeURIComponent(model)}:generateContent`), apiKey),
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: 'ping' }] }],
+        generationConfig: { maxOutputTokens: 1 },
+      }),
+    },
+  );
+  const completedVerdict = await classify(completed, { allowBadRequestAsValid: true });
+  if (completedVerdict) return completedVerdict;
+  return { valid: false, error: `API error: ${completed.status}` };
+}
+
+async function testAnthropicConnection(
+  baseUrl: string,
+  apiKey: string,
+  model: string,
+): Promise<TestConnectionResult> {
+  const root = ensureVersion(rootOf(baseUrl), 'v1');
+  const headers = authHeaders('anthropic', apiKey, null);
+
+  const listed = await fetchWithTimeout(joinUrl(root, 'models'), { method: 'GET', headers });
+  const listedVerdict = await classify(listed);
+  if (listedVerdict) return listedVerdict;
+
+  if (!model) return { valid: false, error: `API error: ${listed.status}` };
+
+  const completed = await fetchWithTimeout(joinUrl(root, 'messages'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify({
+      model,
+      max_tokens: 1,
+      messages: [{ role: 'user', content: 'ping' }],
+    }),
+  });
+  const completedVerdict = await classify(completed, { allowBadRequestAsValid: true });
+  if (completedVerdict) return completedVerdict;
+  return { valid: false, error: `API error: ${completed.status}` };
+}
+
+export async function testModelConnection(params: TestConnectionParams = {}): Promise<TestConnectionResult> {
+  const providerId = String(params.providerId ?? '');
+  const baseUrl = String(params.baseUrl ?? '');
+  const apiKey = String(params.apiKey ?? '');
+  const model = String(params.model ?? '');
+  const organization = params.organization ? String(params.organization) : null;
+  const apiFormat = String(params.apiFormat ?? '');
+  const isCustom = params.isCustom === true;
+
+  if (!apiKey) return { valid: false, error: 'API key is required' };
+  if (!baseUrl) return { valid: false, error: 'Base URL is required' };
+
+  try {
+    if (providerId === 'google-ai-studio') {
+      return await testGoogleConnection(baseUrl, apiKey, model);
+    }
+    if (providerId === 'anthropic') {
+      return await testAnthropicConnection(baseUrl, apiKey, model);
+    }
+
+    const root = rootOf(baseUrl);
+    const headers = authHeaders(providerId, apiKey, organization);
+
+    // 1) Prompt-free probe: list models. Sufficient for virtually all
+    //    OpenAI-compatible providers.
+    const listed = await fetchWithTimeout(joinUrl(root, 'models'), { method: 'GET', headers });
+    const listedVerdict = await classify(listed);
+    if (listedVerdict) return listedVerdict;
+
+    // 2) Provider doesn't implement /models (404/405) or returned an
+    //    inconclusive status — fall back to a single 1-token completion,
+    //    matching the provider wire API where possible.
+    if (model) {
+      const useResponses = usesResponsesProbe(providerId, apiFormat, isCustom);
+      const completed = await fetchWithTimeout(joinUrl(root, useResponses ? 'responses' : 'chat/completions'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify(useResponses
+          ? { model, input: 'ping', max_output_tokens: 1 }
+          : { model, max_tokens: 1, messages: [{ role: 'user', content: 'ping' }] }),
+      });
+      const completedVerdict = await classify(completed, { allowBadRequestAsValid: true });
+      if (completedVerdict) return completedVerdict;
+      return { valid: false, error: `API error: ${completed.status}` };
+    }
+
+    return { valid: false, error: `API error: ${listed.status}` };
+  } catch (error) {
+    if (isAbortError(error)) return { valid: false, error: 'Connection test timed out after 30 seconds' };
+    return { valid: false, error: error instanceof Error ? error.message : 'Network error' };
+  }
 }
 
 export function createModelServices(_deps: ModelsServiceDeps): Record<string, ServiceHandler> {
   return {
-    'models.testConnection': async (params): Promise<TestConnectionResult> => {
-      const providerId = String(params.providerId ?? '');
-      const baseUrl = String(params.baseUrl ?? '');
-      const apiKey = String(params.apiKey ?? '');
-      const model = String(params.model ?? '');
-      const organization = params.organization ? String(params.organization) : null;
-
-      if (!apiKey) return { valid: false, error: 'API key is required' };
-      if (!baseUrl) return { valid: false, error: 'Base URL is required' };
-
-      const root = rootOf(baseUrl);
-      const headers = authHeaders(providerId, apiKey, organization);
-
-      try {
-        // 1) Prompt-free probe: list models. Sufficient for virtually all
-        //    OpenAI-compatible providers and Anthropic.
-        const listed = await fetch(`${root}/models`, { method: 'GET', headers });
-        const listedVerdict = classify(listed.status, listed.ok);
-        if (listedVerdict) return listedVerdict;
-
-        // 2) Provider doesn't implement /models (404/405) or returned an
-        //    inconclusive status — fall back to a single 1-token completion,
-        //    which every chat provider supports, to confirm auth + reachability.
-        if (model) {
-          const isAnthropic = providerId === 'anthropic';
-          const url = isAnthropic ? `${root}/messages` : `${root}/chat/completions`;
-          const completed = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...headers },
-            body: JSON.stringify({
-              model,
-              max_tokens: 1,
-              messages: [{ role: 'user', content: 'ping' }],
-            }),
-          });
-          const completedVerdict = classify(completed.status, completed.ok);
-          if (completedVerdict) return completedVerdict;
-          return { valid: false, error: `API error: ${completed.status}` };
-        }
-
-        return { valid: false, error: `API error: ${listed.status}` };
-      } catch (error) {
-        return { valid: false, error: error instanceof Error ? error.message : 'Network error' };
-      }
-    },
+    'models.testConnection': async (params): Promise<TestConnectionResult> => testModelConnection(params ?? {}),
   };
 }
