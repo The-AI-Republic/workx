@@ -383,7 +383,10 @@ export class ModelClientFactory {
         modelConfig = modelData.model;
         supportsReasoning = modelData.model.supportsReasoning ?? false;
         supportsReasoningSummaries = modelData.model.supportsReasoningSummaries ?? false;
-        selectedModel = modelData.model.modelKey;
+        // The Hub gateway resolves the canonical "<owner>/<model>" slug; for our
+        // first-party catalog the provider id is the owner. (A catalog-driven
+        // slug lookup would be the robust long-term form.)
+        selectedModel = `${modelData.provider.id}/${modelData.model.modelKey}`;
       }
     }
 
