@@ -46,6 +46,7 @@ describe('METHOD_REGISTRY', () => {
     expect(METHOD_REGISTRY['credentials.list'].scope).toBe('credentials.read');
     expect(METHOD_REGISTRY['credentials.set'].scope).toBe('credentials.write');
     expect(METHOD_REGISTRY['credentials.delete'].scope).toBe('credentials.write');
+    expect(METHOD_REGISTRY['models.testConnection'].scope).toBe('credentials.write');
   });
 
   it('contains approval method', () => {

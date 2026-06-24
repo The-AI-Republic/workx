@@ -665,6 +665,13 @@ async function registerServiceHandlers(): Promise<void> {
     const count = registerAllServices(serviceRegistry, {
       mcp: mcpManager ? { mcpManager } : undefined,
       scheduler: scheduler ? { scheduler } : undefined,
+      // Stateless BYOK connection probe — runs the real provider call from the
+      // service worker (no CORS), matching desktop/server behavior.
+      models: {},
+      // Credential store relay (parity with desktop/server). The side panel uses
+      // ChromeCredentialStore directly, so these are unused in practice here, but
+      // registering keeps the service surface uniform across platforms.
+      credentials: {},
       diagnostics: {
         buildCtx: () => ({
           platformId: 'extension',

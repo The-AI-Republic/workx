@@ -71,6 +71,9 @@ export const METHOD_REGISTRY: Record<string, MethodSpec> = {
   'credentials.set': { scope: 'credentials.write' },
   'credentials.delete': { scope: 'credentials.write' },
 
+  // Model connection checks send caller-supplied API keys over the transport.
+  'models.testConnection': { scope: 'credentials.write' },
+
   // Execution approvals
   'exec.approval.resolve': { scope: 'operator.approvals' },
 };

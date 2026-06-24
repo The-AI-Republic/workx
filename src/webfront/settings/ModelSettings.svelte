@@ -118,6 +118,7 @@
     };
     supportBackendMode?: number;
     isCustom?: boolean;
+    apiFormat?: 'chat_completions' | 'responses';
   }
   let modelSelectionItems: ModelSelectionItem[] = $state([]);
 
@@ -331,6 +332,7 @@
             pricing: model.pricing,
             supportBackendMode: model.supportBackendMode,
             isCustom: provider.isCustom ?? false,
+            apiFormat: provider.apiFormat === 'responses' ? 'responses' : 'chat_completions',
           });
         }
       }
@@ -642,10 +644,34 @@
         return;
       }
 
-      if (providerId === 'anthropic') {
-        await testAnthropicConnection(baseUrl, modelKey);
+      // Route the probe through the runtime (desktop sidecar / extension service
+      // worker / server) rather than the webview. LLM provider APIs reject
+      // browser-origin requests via CORS — and the Tauri webview cannot reach
+      // them at all — so a direct in-webview fetch always failed on desktop. The
+      // runtime makes the real call from Node where there is no CORS. The handler
+      // is prompt-free where possible (lists models; falls back to one 1-token
+      // completion only when a provider lacks a models endpoint).
+      const client = await getInitializedUIClient();
+      const result = await client.serviceRequest<{ valid: boolean; error?: string }>(
+        'models.testConnection',
+        {
+          providerId,
+          baseUrl,
+          apiKey,
+          model: modelKey,
+          organization: organization ?? null,
+          apiFormat: selectedItem.apiFormat ?? null,
+          isCustom: selectedItem.isCustom ?? false,
+        },
+      );
+
+      if (result.valid) {
+        testResult = { valid: true };
+        showMessage(t('Connection test successful!'), 'success');
       } else {
-        await testOpenAICompatibleConnection(baseUrl, modelKey, organization);
+        const errorMsg = result.error || t('Network error');
+        testResult = { valid: false, error: errorMsg };
+        showMessage(t('Connection test failed: $1$', { substitutions: [errorMsg] }), 'error');
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : t('Network error');
@@ -653,74 +679,6 @@
       showMessage(t('Failed to test connection'), 'error');
     } finally {
       isTesting = false;
-    }
-  }
-
-  async function testAnthropicConnection(baseUrl: string, modelKey: string) {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    };
-
-    const response = await fetch(baseUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        model: modelKey,
-        max_tokens: 1,
-        messages: [{ role: 'user', content: 'test' }],
-      }),
-    });
-
-    if (response.ok || response.status === 400) {
-      testResult = { valid: true };
-      showMessage(t('Connection test successful!'), 'success');
-    } else if (response.status === 401) {
-      testResult = { valid: false, error: t('Invalid API key') };
-      showMessage(t('Connection test failed: Invalid API key'), 'error');
-    } else {
-      testResult = { valid: false, error: `API error: ${response.status}` };
-      showMessage(t('Connection test failed: $1$', { substitutions: [`API error ${response.status}`] }), 'error');
-    }
-  }
-
-  async function testOpenAICompatibleConnection(
-    baseUrl: string,
-    modelKey: string,
-    organization: string | null
-  ) {
-    const { default: OpenAI } = await import('openai');
-
-    const client = new OpenAI({
-      apiKey: apiKey,
-      baseURL: baseUrl,
-      organization: organization || undefined,
-      timeout: 30000,
-      maxRetries: 0,
-      dangerouslyAllowBrowser: true,
-    });
-
-    try {
-      await client.chat.completions.create({
-        model: modelKey,
-        messages: [{ role: 'user', content: 'test' }],
-        max_tokens: 1,
-      });
-      testResult = { valid: true };
-      showMessage(t('Connection test successful!'), 'success');
-    } catch (error: any) {
-      if (error?.status === 401 || error?.code === 'invalid_api_key') {
-        testResult = { valid: false, error: t('Invalid API key') };
-        showMessage(t('Connection test failed: Invalid API key'), 'error');
-      } else if (error?.status === 400) {
-        testResult = { valid: true };
-        showMessage(t('Connection test successful! (API key is valid)'), 'success');
-      } else {
-        const errorMsg = error?.message || t('Network error');
-        testResult = { valid: false, error: errorMsg };
-        showMessage(t('Connection test failed: $1$', { substitutions: [errorMsg] }), 'error');
-      }
     }
   }
 
