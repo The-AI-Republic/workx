@@ -611,9 +611,9 @@ export class TaskRunner {
   private async emitTaskFailed(message: string): Promise<void> {
     const data: TaskFailedEvent = {
       submission_id: this.submissionId,
-      // `reason` is the human-readable text some consumers surface directly
-      // (e.g. UserNotifier's OS notification body), so use the message — not a
-      // category label, or the notification reads "Task Failed: error".
+      // All three carry the human-readable failure text. `reason` is a free
+      // string some consumers read directly, so it gets the message rather than
+      // a category label.
       reason: message,
       error: message,
       message,
