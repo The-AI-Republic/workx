@@ -421,13 +421,13 @@ describe('UserNotifier', () => {
       expect(cb.mock.calls[0][0].message).toContain('/foo/bar.ts');
     });
 
-    it('should handle TaskFailed events', async () => {
+    it('should NOT raise an OS notification on TaskFailed (disabled pending dedicated design)', async () => {
       const cb = vi.fn();
       notifier.onNotification(cb);
       await notifier.processEvent(makeEvent('TaskFailed', { reason: 'timeout' }));
-      expect(cb).toHaveBeenCalledTimes(1);
-      expect(cb.mock.calls[0][0].type).toBe('error');
-      expect(cb.mock.calls[0][0].message).toBe('timeout');
+      // The failure is surfaced in-chat by EventProcessor; no OS-level
+      // notification is raised here.
+      expect(cb).not.toHaveBeenCalled();
     });
 
     it('should silently handle unknown event types', async () => {

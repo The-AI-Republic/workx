@@ -646,9 +646,10 @@ export class UserNotifier implements IUserNotifier {
         break;
 
       case 'TaskFailed':
-        if (eventMsg.data?.reason) {
-          await this.notifyError('Task Failed', eventMsg.data.reason);
-        }
+        // OS notification for task failures is intentionally disabled pending a
+        // dedicated notification design. The failure is still surfaced in-chat
+        // (EventProcessor renders the "Task failed" entry with the reason); we
+        // just don't raise an OS-level notification with raw error text here.
         break;
 
       default:

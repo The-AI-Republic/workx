@@ -12,6 +12,7 @@ import type { InputItem, Event, ResponseItem } from './protocol/types';
 import type {
   EventMsg,
   TaskCompleteEvent,
+  TaskFailedEvent,
   TaskStartedEvent,
   TokenUsage,
   TurnAbortReason,
@@ -286,12 +287,20 @@ export class TaskRunner {
       // consumers see the tail of a task that died mid-turn.
       await this.flushTaskOutput();
 
-      if (this.cancelled && !this.state.abortReason) {
-        this.state.abortReason = 'user_interrupt';
-        await this.emitAbortedEvent('user_interrupt');
+      if (this.cancelled) {
+        if (!this.state.abortReason) {
+          this.state.abortReason = 'user_interrupt';
+          await this.emitAbortedEvent('user_interrupt');
+        }
+        // A user stop is already represented by the aborted event above (which
+        // the engine resolves on), so do NOT also emit TaskFailed — that would
+        // render a spurious red "Task failed" entry for an intentional cancel.
+      } else {
+        // Emit a TERMINAL failure event (not the generic `Error` event, which
+        // clears no "processing" state and resolves no awaiter — leaving the UI
+        // stuck spinning). TaskFailed renders the reason and ends the turn.
+        await this.emitTaskFailed(err.message);
       }
-
-      await this.emitErrorEvent(`Task execution failed: ${err.message}`);
 
       return {
         success: false,
@@ -591,6 +600,28 @@ export class TaskRunner {
       outcome.totalCostUSD,
       outcome.costEstimated ?? false,
     );
+  }
+
+  /**
+   * Terminal failure event. Unlike the generic `Error` event, `TaskFailed`
+   * resolves the turn for every consumer: the UI clears its "processing" state
+   * and renders the reason, and the engine's `waitForCompletion()` returns a
+   * failure. Carries `submission_id` so the engine matches the right awaiter.
+   */
+  private async emitTaskFailed(message: string): Promise<void> {
+    const data: TaskFailedEvent = {
+      submission_id: this.submissionId,
+      // All three carry the human-readable failure text. `reason` is a free
+      // string some consumers read directly, so it gets the message rather than
+      // a category label.
+      reason: message,
+      error: message,
+      message,
+    };
+    await this.emitEvent({
+      type: 'TaskFailed',
+      data,
+    });
   }
 
   /**

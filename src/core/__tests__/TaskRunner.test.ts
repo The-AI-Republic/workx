@@ -544,6 +544,31 @@ describe('TaskRunner', () => {
       expect(runner.getTaskStatus(SUBMISSION_ID)).toBe('killed');
     });
 
+    it('should NOT emit TaskFailed on cancellation (only the aborted event)', async () => {
+      const input: InputItem[] = [{ type: 'message', role: 'user', content: [{ type: 'input_text', text: 'go' }] } as any];
+
+      (turnManager.runTurn as Mock).mockImplementation(
+        () => new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Task cancelled')), 10);
+        }),
+      );
+
+      const runner = new TaskRunner(
+        session, turnContext, turnManager, SUBMISSION_ID, input,
+      );
+
+      const runPromise = runner.run_task();
+      runner.cancel();
+      await runPromise;
+
+      // A user stop is an abort, not a failure — emitting TaskFailed would
+      // render a spurious red "Task failed" entry for an intentional cancel.
+      const failed = (session.emitEvent as Mock).mock.calls.find(
+        (call: any[]) => call[0].msg.type === 'TaskFailed',
+      );
+      expect(failed).toBeUndefined();
+    });
+
     // -------------------------------------------------------------------
     // Cancellation via AbortSignal
     // -------------------------------------------------------------------
@@ -620,7 +645,7 @@ describe('TaskRunner', () => {
       expect(runner.getTaskStatus(SUBMISSION_ID)).toBe('failed');
     });
 
-    it('should emit Error event when task execution fails', async () => {
+    it('should emit a terminal TaskFailed event when task execution fails', async () => {
       const input: InputItem[] = [{ type: 'message', role: 'user', content: [{ type: 'input_text', text: 'go' }] } as any];
 
       (turnManager.runTurn as Mock).mockRejectedValueOnce(new Error('network error'));
@@ -631,11 +656,15 @@ describe('TaskRunner', () => {
 
       await runner.run_task();
 
-      const errorEvent = (session.emitEvent as Mock).mock.calls.find(
-        (call: any[]) => call[0].msg.type === 'Error',
+      // The catch path emits TaskFailed (terminal) rather than the generic
+      // Error event — so the UI clears its processing state and the engine's
+      // waitForCompletion() resolves the awaiter with the failure reason.
+      const failedEvent = (session.emitEvent as Mock).mock.calls.find(
+        (call: any[]) => call[0].msg.type === 'TaskFailed',
       );
-      expect(errorEvent).toBeDefined();
-      expect(errorEvent![0].msg.data.message).toContain('network error');
+      expect(failedEvent).toBeDefined();
+      expect(failedEvent![0].msg.data.submission_id).toBe(SUBMISSION_ID);
+      expect(failedEvent![0].msg.data.message).toContain('network error');
     });
 
     it('should convert non-Error throws to Error objects', async () => {

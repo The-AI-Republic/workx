@@ -583,6 +583,8 @@ export interface NotificationEvent {
 }
 
 export interface TaskFailedEvent {
+  /** Submission this failure terminates (lets the engine match the awaiter). */
+  submission_id?: string;
   reason: string;
   error?: string;
   message?: string;

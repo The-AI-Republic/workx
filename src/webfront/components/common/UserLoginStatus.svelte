@@ -337,9 +337,18 @@
   async function handleLogout() {
     showMenu = false;
     try {
-      const { getWebAuthService } = await import('../../auth/WebAuthService');
-      const authService = getWebAuthService();
-      await authService.logout();
+      if (platform.platformName === 'desktop') {
+        // Desktop: the session token lives in the runtime keychain, so logout
+        // must go through the runtime `auth.logout` service — it evicts the
+        // tokens from the vault and flips the runtime auth state to logged-out.
+        // (WebAuthService.logout only clears webfront localStorage, which is why
+        // the button was previously hidden on desktop and logout did nothing.)
+        const { getInitializedUIClient } = await import('@/core/messaging');
+        await (await getInitializedUIClient()).serviceRequest('auth.logout');
+      } else {
+        const { getWebAuthService } = await import('../../auth/WebAuthService');
+        await getWebAuthService().logout();
+      }
     } catch (error) {
       console.warn('[UserLoginStatus] Logout error:', error);
     }
@@ -468,21 +477,19 @@
           <span>{$_t("Settings")}</span>
         </button>
 
-        {#if platform.platformName === 'web'}
-          <button
-            class="flex items-center gap-2.5 w-full py-2.5 px-3 bg-transparent border-none cursor-pointer text-sm text-left transition-colors duration-150
-              {$uiTheme === 'modern'
-                ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat rounded-md m-1 w-[calc(100%-8px)] hover:bg-white/10'
-                : 'text-term-green font-terminal hover:bg-term-green/10'}"
-            onclick={handleLogout}
-            role="menuitem"
-          >
-            <svg class="w-[18px] h-[18px] shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            <span>{$_t("Logout")}</span>
-          </button>
-        {/if}
+        <button
+          class="flex items-center gap-2.5 w-full py-2.5 px-3 bg-transparent border-none cursor-pointer text-sm text-left transition-colors duration-150
+            {$uiTheme === 'modern'
+              ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat rounded-md m-1 w-[calc(100%-8px)] hover:bg-white/10'
+              : 'text-term-green font-terminal hover:bg-term-green/10'}"
+          onclick={handleLogout}
+          role="menuitem"
+        >
+          <svg class="w-[18px] h-[18px] shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          <span>{$_t("Logout")}</span>
+        </button>
       </div>{/snippet}
     </PopupCard>
   {:else if hasHostedAuth}
