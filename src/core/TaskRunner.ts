@@ -287,15 +287,20 @@ export class TaskRunner {
       // consumers see the tail of a task that died mid-turn.
       await this.flushTaskOutput();
 
-      if (this.cancelled && !this.state.abortReason) {
-        this.state.abortReason = 'user_interrupt';
-        await this.emitAbortedEvent('user_interrupt');
+      if (this.cancelled) {
+        if (!this.state.abortReason) {
+          this.state.abortReason = 'user_interrupt';
+          await this.emitAbortedEvent('user_interrupt');
+        }
+        // A user stop is already represented by the aborted event above (which
+        // the engine resolves on), so do NOT also emit TaskFailed — that would
+        // render a spurious red "Task failed" entry for an intentional cancel.
+      } else {
+        // Emit a TERMINAL failure event (not the generic `Error` event, which
+        // clears no "processing" state and resolves no awaiter — leaving the UI
+        // stuck spinning). TaskFailed renders the reason and ends the turn.
+        await this.emitTaskFailed(err.message);
       }
-
-      // Emit a TERMINAL failure event (not the generic `Error` event, which
-      // clears no "processing" state and resolves no awaiter — leaving the UI
-      // stuck spinning). TaskFailed renders the reason and ends the turn.
-      await this.emitTaskFailed(err.message);
 
       return {
         success: false,
@@ -606,7 +611,10 @@ export class TaskRunner {
   private async emitTaskFailed(message: string): Promise<void> {
     const data: TaskFailedEvent = {
       submission_id: this.submissionId,
-      reason: 'error',
+      // `reason` is the human-readable text some consumers surface directly
+      // (e.g. UserNotifier's OS notification body), so use the message — not a
+      // category label, or the notification reads "Task Failed: error".
+      reason: message,
       error: message,
       message,
     };

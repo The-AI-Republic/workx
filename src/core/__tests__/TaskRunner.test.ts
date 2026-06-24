@@ -544,6 +544,31 @@ describe('TaskRunner', () => {
       expect(runner.getTaskStatus(SUBMISSION_ID)).toBe('killed');
     });
 
+    it('should NOT emit TaskFailed on cancellation (only the aborted event)', async () => {
+      const input: InputItem[] = [{ type: 'message', role: 'user', content: [{ type: 'input_text', text: 'go' }] } as any];
+
+      (turnManager.runTurn as Mock).mockImplementation(
+        () => new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Task cancelled')), 10);
+        }),
+      );
+
+      const runner = new TaskRunner(
+        session, turnContext, turnManager, SUBMISSION_ID, input,
+      );
+
+      const runPromise = runner.run_task();
+      runner.cancel();
+      await runPromise;
+
+      // A user stop is an abort, not a failure — emitting TaskFailed would
+      // render a spurious red "Task failed" entry for an intentional cancel.
+      const failed = (session.emitEvent as Mock).mock.calls.find(
+        (call: any[]) => call[0].msg.type === 'TaskFailed',
+      );
+      expect(failed).toBeUndefined();
+    });
+
     // -------------------------------------------------------------------
     // Cancellation via AbortSignal
     // -------------------------------------------------------------------
