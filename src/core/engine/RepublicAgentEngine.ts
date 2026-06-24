@@ -950,7 +950,7 @@ export class RepublicAgentEngine {
       // waitForCompletion() callers don't lose their completion signals.
       const eventSubmissionId = (event.msg.data as { submission_id?: string } | undefined)?.submission_id;
       if (eventSubmissionId && eventSubmissionId !== submissionId &&
-          (event.msg.type === 'TaskComplete' || event.msg.type === 'TurnAborted')) {
+          (event.msg.type === 'TaskComplete' || event.msg.type === 'TurnAborted' || event.msg.type === 'TaskFailed')) {
         this.eventQueue.push(event);
         // Wake any other waiter blocked on getNextEvent()
         if (this.eventWaiters.length > 0) {
@@ -975,6 +975,23 @@ export class RepublicAgentEngine {
             total_tokens: (tokenUsage.total.input_tokens ?? 0) + (tokenUsage.total.output_tokens ?? 0),
           } : undefined,
           stopReason: 'completed',
+          engineId: this.engineId,
+          submissionId,
+        };
+      }
+
+      // TaskRunner emits TaskFailed as the terminal event when a turn throws
+      // (e.g. the gateway returns 402/401). Resolve the awaiter as a failure
+      // carrying the reason, instead of hanging until interruption.
+      if (event.msg.type === 'TaskFailed' && event.msg.data?.submission_id === submissionId) {
+        const data = event.msg.data as { message?: string; error?: string; reason?: string } | undefined;
+        return {
+          success: false,
+          response: null,
+          turnCount: 0,
+          tokenUsage: undefined,
+          stopReason: 'error',
+          error: data?.message ?? data?.error ?? data?.reason ?? 'Task failed',
           engineId: this.engineId,
           submissionId,
         };
