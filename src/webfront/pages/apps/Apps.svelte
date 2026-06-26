@@ -7,10 +7,16 @@
     fetchMarketplace,
     installApp,
     activateApp,
+    getAuthStatus,
+    startOAuth,
+    submitApiKey,
+    needsAuth,
     isAppsCatalogConfigured,
     AppsApiError,
     type MarketplaceApp,
+    type ManualSetupField,
   } from '../../lib/apis/apps';
+  import { openExternalUrl } from '../../lib/gatewayCatalog';
 
   let currentTheme = $derived($uiTheme);
   let modern = $derived(currentTheme === 'modern');
@@ -113,11 +119,126 @@
     return app.installStatus === 'installed';
   }
 
+  /** True when an installed app still needs the user to connect a credential. */
+  function appNeedsConnect(app: MarketplaceApp): boolean {
+    return isInstalled(app) && needsAuth(app.auth);
+  }
+
+  // ─── Connect-auth flow ────────────────────────────────────────────────────
+  /** appId currently mid OAuth (browser open + polling). */
+  let oauthPendingId = $state<string | null>(null);
+  /** appId whose manual-credential form is open. */
+  let apiKeyFormId = $state<string | null>(null);
+  let apiKeyFields = $state<ManualSetupField[]>([]);
+  let apiKeyValues = $state<Record<string, string>>({});
+  let apiKeyError = $state<string | null>(null);
+  let apiKeySubmitting = $state(false);
+  let pollController: { cancelled: boolean } | null = null;
+
+  /** Patch one app's auth block in place (after a connect succeeds). */
+  function applyAuth(appId: string, auth: MarketplaceApp['auth']) {
+    apps = apps.map((a) => (a.appId === appId ? { ...a, auth } : a));
+  }
+
+  async function handleConnect(app: MarketplaceApp) {
+    const type = app.auth?.type ?? 'oauth2';
+    if (type === 'api_key' || type === 'basic') {
+      apiKeyError = null;
+      apiKeyFields = app.auth?.manualFields ?? [];
+      apiKeyValues = Object.fromEntries(apiKeyFields.map((f) => [f.key, '']));
+      apiKeyFormId = app.appId;
+      return;
+    }
+    await connectOAuth(app);
+  }
+
+  async function connectOAuth(app: MarketplaceApp) {
+    error = null;
+    oauthPendingId = app.appId;
+    pollController = { cancelled: false };
+    const controller = pollController;
+    try {
+      const accessToken = await resolveAccessToken();
+      const { authorizationUrl } = await startOAuth(app.appId, { accessToken });
+      await openExternalUrl(authorizationUrl);
+      // The provider redirects to the Hub callback (not back into the app), so
+      // poll the Hub for the new connection until it lands or we time out.
+      const connected = await pollAuthUntilConnected(app.appId, controller);
+      if (controller.cancelled) return;
+      if (connected) {
+        await load(query); // refresh suggestedAction / isActivated
+      } else {
+        error = `Couldn't confirm the ${app.name} connection. Finish in your browser, then Retry.`;
+      }
+    } catch (err) {
+      if (!controller.cancelled) error = err instanceof Error ? err.message : String(err);
+    } finally {
+      if (oauthPendingId === app.appId) oauthPendingId = null;
+    }
+  }
+
+  /** Poll auth status (~every 2.5s, ~90s budget) until connected. */
+  async function pollAuthUntilConnected(
+    appId: string,
+    controller: { cancelled: boolean },
+  ): Promise<boolean> {
+    const accessToken = await resolveAccessToken();
+    const deadline = Date.now() + 90_000;
+    while (!controller.cancelled && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 2500));
+      if (controller.cancelled) return false;
+      try {
+        const status = await getAuthStatus(appId, accessToken);
+        if (status) applyAuth(appId, status);
+        if (status && status.status === 'connected') return true;
+      } catch {
+        // transient — keep polling within the budget
+      }
+    }
+    return false;
+  }
+
+  function cancelOAuth() {
+    if (pollController) pollController.cancelled = true;
+    oauthPendingId = null;
+  }
+
+  function closeApiKeyForm() {
+    apiKeyFormId = null;
+    apiKeyError = null;
+    apiKeyValues = {};
+  }
+
+  async function submitApiKeyForm(app: MarketplaceApp) {
+    apiKeyError = null;
+    const missing = apiKeyFields.filter((f) => !f.optional && !(apiKeyValues[f.key] ?? '').trim());
+    if (missing.length) {
+      apiKeyError = `Enter ${missing.map((f) => f.label).join(', ')}.`;
+      return;
+    }
+    apiKeySubmitting = true;
+    try {
+      const accessToken = await resolveAccessToken();
+      const fields = Object.fromEntries(
+        Object.entries(apiKeyValues).filter(([, v]) => (v ?? '').trim()),
+      );
+      const auth = await submitApiKey(app.appId, fields, { accessToken });
+      if (auth) applyAuth(app.appId, auth);
+      closeApiKeyForm();
+      await load(query);
+    } catch (err) {
+      apiKeyError = err instanceof AppsApiError ? err.message : String(err);
+    } finally {
+      apiKeySubmitting = false;
+    }
+  }
+
   $effect(() => {
     load();
     return () => {
       searchController?.abort();
       if (searchTimer) clearTimeout(searchTimer);
+      if (pollController) pollController.cancelled = true;
     };
   });
 </script>
@@ -218,26 +339,8 @@
               </p>
             {/if}
 
-            <div class="mt-auto flex items-center gap-2 pt-1">
-              {#if isInstalled(app)}
-                {#if app.isActivated}
-                  <span class="text-xs px-2 py-1 rounded
-                    {modern ? 'bg-green-500/15 text-green-600 dark:text-green-400' : 'text-term-green'}">
-                    {$_t('Active')}
-                  </span>
-                {:else}
-                  <button
-                    disabled={pendingId === app.appId}
-                    onclick={() => handleActivate(app)}
-                    class="text-xs px-2.5 py-1 rounded cursor-pointer disabled:opacity-50
-                      {modern
-                        ? 'bg-chat-button-hover dark:bg-chat-button-hover-dark text-chat-text dark:text-chat-text-dark font-chat'
-                        : 'border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
-                  >
-                    {pendingId === app.appId ? $_t('Working…') : $_t('Activate')}
-                  </button>
-                {/if}
-              {:else}
+            <div class="mt-auto flex items-center gap-2 pt-1 flex-wrap">
+              {#if !isInstalled(app)}
                 <button
                   disabled={pendingId === app.appId}
                   onclick={() => handleInstall(app)}
@@ -248,6 +351,51 @@
                 >
                   {pendingId === app.appId ? $_t('Working…') : $_t('Install')}
                 </button>
+              {:else if appNeedsConnect(app)}
+                {#if oauthPendingId === app.appId}
+                  <span class="text-xs {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
+                    {$_t('Connecting… finish in your browser')}
+                  </span>
+                  <button
+                    onclick={cancelOAuth}
+                    class="text-xs px-2 py-1 rounded cursor-pointer
+                      {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:underline' : 'text-term-dim-green hover:underline'}"
+                  >
+                    {$_t('Cancel')}
+                  </button>
+                {:else}
+                  <button
+                    onclick={() => handleConnect(app)}
+                    class="text-xs px-2.5 py-1 rounded cursor-pointer
+                      {modern
+                        ? 'bg-chat-primary dark:bg-chat-primary-dark text-white font-chat hover:opacity-90'
+                        : 'border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
+                  >
+                    {app.auth?.status === 'expired' ? $_t('Reconnect') : $_t('Connect')}
+                  </button>
+                {/if}
+              {:else if app.isActivated}
+                <span class="text-xs px-2 py-1 rounded
+                  {modern ? 'bg-green-500/15 text-green-600 dark:text-green-400' : 'text-term-green'}">
+                  {$_t('Active')}
+                </span>
+              {:else}
+                <button
+                  disabled={pendingId === app.appId}
+                  onclick={() => handleActivate(app)}
+                  class="text-xs px-2.5 py-1 rounded cursor-pointer disabled:opacity-50
+                    {modern
+                      ? 'bg-chat-button-hover dark:bg-chat-button-hover-dark text-chat-text dark:text-chat-text-dark font-chat'
+                      : 'border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
+                >
+                  {pendingId === app.appId ? $_t('Working…') : $_t('Activate')}
+                </button>
+              {/if}
+              {#if app.auth?.accountHint && app.auth?.status === 'connected'}
+                <span class="text-[10px] truncate max-w-[120px]
+                  {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
+                  {app.auth.accountHint}
+                </span>
               {/if}
               {#if app.version}
                 <span class="ml-auto text-[10px]
@@ -256,6 +404,57 @@
                 </span>
               {/if}
             </div>
+
+            {#if apiKeyFormId === app.appId}
+              <div class="flex flex-col gap-2 mt-1 p-2 rounded
+                {modern ? 'bg-chat-bg dark:bg-chat-bg-dark' : 'border border-term-dim-green'}">
+                {#each apiKeyFields as field (field.key)}
+                  <label class="flex flex-col gap-1 text-xs
+                    {modern ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-green'}">
+                    <span>{field.label}{field.optional ? '' : ' *'}</span>
+                    <input
+                      type={field.type === 'secret' ? 'password' : 'text'}
+                      bind:value={apiKeyValues[field.key]}
+                      placeholder={field.placeholder ?? ''}
+                      autocomplete="off"
+                      class="px-2 py-1 rounded text-xs
+                        {modern
+                          ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark'
+                          : 'bg-transparent border border-term-dim-green text-term-green'}"
+                    />
+                  </label>
+                {/each}
+                {#if apiKeyError}
+                  <p class="m-0 text-xs text-red-500">{apiKeyError}</p>
+                {/if}
+                <div class="flex items-center gap-2">
+                  <button
+                    disabled={apiKeySubmitting}
+                    onclick={() => submitApiKeyForm(app)}
+                    class="text-xs px-2.5 py-1 rounded cursor-pointer disabled:opacity-50
+                      {modern
+                        ? 'bg-chat-primary dark:bg-chat-primary-dark text-white font-chat hover:opacity-90'
+                        : 'border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
+                  >
+                    {apiKeySubmitting ? $_t('Saving…') : $_t('Save')}
+                  </button>
+                  <button
+                    onclick={closeApiKeyForm}
+                    class="text-xs px-2 py-1 rounded cursor-pointer
+                      {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:underline' : 'text-term-dim-green hover:underline'}"
+                  >
+                    {$_t('Cancel')}
+                  </button>
+                  {#if app.auth?.setupUrl}
+                    <a href={app.auth.setupUrl} target="_blank" rel="noopener noreferrer"
+                      class="ml-auto text-[10px] underline
+                        {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
+                      {$_t('Where do I get this?')}
+                    </a>
+                  {/if}
+                </div>
+              </div>
+            {/if}
           </div>
         {/each}
       </div>

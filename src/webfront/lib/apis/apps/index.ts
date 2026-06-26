@@ -29,11 +29,49 @@ export interface MarketplaceApp {
   version: string | null;
   monetizationTier: string | null;
   trustTier: string | null;
+  /** Auth requirement + connection state, embedded on the card by the Hub. */
+  auth: AppAuthInfo | null;
 }
 
 export interface MarketplacePage {
   items: MarketplaceApp[];
   nextCursor: string | null;
+}
+
+/** A declared manual-credential field (api_key / basic apps). */
+export interface ManualSetupField {
+  key: string;
+  label: string;
+  /** "secret" renders a password input; "text" a plain one. */
+  type: string;
+  /** Optional validation regex (search semantics) the value must match. */
+  validation: string | null;
+  placeholder: string | null;
+  optional: boolean;
+}
+
+/**
+ * Per-app auth requirement, from the Hub's `GET /auth/status` (also embedded on
+ * each marketplace card as `auth`). Drives the connect UI.
+ */
+export interface AppAuthInfo {
+  /** "none" | "oauth2" | "api_key" | "basic". */
+  type: string;
+  /** "connected" | "needs_auth" | "expired" | "auth_error" | "ready". */
+  status: string;
+  connectionStatus: string | null;
+  accountHint: string | null;
+  /** Declared fields for the api_key/basic credential form (empty for oauth2). */
+  manualFields: ManualSetupField[];
+  /** Provider setup page (where to mint a token), when the Hub supplies one. */
+  setupUrl: string | null;
+}
+
+/** True when the app needs the user to connect a credential before use. */
+export function needsAuth(info: AppAuthInfo | null | undefined): boolean {
+  if (!info) return false;
+  if (info.type === 'none') return false;
+  return info.status !== 'connected';
 }
 
 export class AppsApiError extends Error {
@@ -135,6 +173,39 @@ function firstString(...candidates: unknown[]): string {
   return '';
 }
 
+function normalizeManualField(raw: Record<string, unknown>): ManualSetupField {
+  return {
+    key: asString(raw.key) ?? '',
+    label: firstString(raw.label, raw.key) || 'Value',
+    type: asString(raw.type) ?? 'text',
+    validation: asString(raw.validation),
+    placeholder: asString(raw.placeholder),
+    optional: Boolean(raw.optional),
+  };
+}
+
+/** Parse the Hub's auth status block (from a card's `auth` or `GET /auth/status`). */
+function normalizeAuth(raw: unknown): AppAuthInfo | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const obj = raw as Record<string, unknown>;
+  const type = asString(obj.type);
+  if (!type) return null;
+  const manual = (obj.manualSetup ?? {}) as Record<string, unknown>;
+  const fields = Array.isArray(manual.fields)
+    ? (manual.fields as unknown[])
+        .map((f) => normalizeManualField(f as Record<string, unknown>))
+        .filter((f) => f.key)
+    : [];
+  return {
+    type,
+    status: firstString(obj.status, obj.connectionStatus) || 'needs_auth',
+    connectionStatus: asString(obj.connectionStatus),
+    accountHint: asString(obj.accountHint),
+    manualFields: fields,
+    setupUrl: asString(manual.setupUrl),
+  };
+}
+
 function normalizeApp(raw: Record<string, unknown>): MarketplaceApp {
   return {
     appId: firstString(raw.appId, raw.id),
@@ -151,6 +222,7 @@ function normalizeApp(raw: Record<string, unknown>): MarketplaceApp {
     version: asString(raw.version),
     monetizationTier: asString(raw.monetizationTier),
     trustTier: asString(raw.trustTier),
+    auth: normalizeAuth(raw.auth),
   };
 }
 
@@ -242,4 +314,92 @@ export function activateApp(appId: string, accessToken?: string | null): Promise
 
 export function deactivateApp(appId: string, accessToken?: string | null): Promise<MarketplaceApp | null> {
   return appAction(appId, 'deactivate', 'POST', accessToken);
+}
+
+/**
+ * Pull a human-readable message from a failed Hub response. Hub control-plane
+ * APIs use `{error:{message}}`; some validation paths use `{detail}`. Falls back
+ * to the status line.
+ */
+async function hubErrorDetail(response: Response, fallback: string): Promise<string> {
+  try {
+    const body = (await response.json()) as { detail?: unknown; error?: { message?: unknown } };
+    return (
+      asString(body?.error?.message) ??
+      asString(body?.detail) ??
+      `${fallback}: ${response.status} ${response.statusText}`
+    );
+  } catch {
+    return `${fallback}: ${response.status} ${response.statusText}`;
+  }
+}
+
+/** Fetch the app's current auth requirement + connection state. */
+export async function getAuthStatus(
+  appId: string,
+  accessToken?: string | null,
+): Promise<AppAuthInfo | null> {
+  if (!appId) throw new AppsApiError('Cannot read auth status without an id.', 400);
+  const response = await fetch(catalogUrl(`/${encodeURIComponent(appId)}/auth/status`), {
+    method: 'GET',
+    headers: await authHeaders(accessToken),
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    throw new AppsApiError(`Failed to read auth status: ${response.status} ${response.statusText}`, response.status);
+  }
+  return normalizeAuth(await response.json());
+}
+
+export interface OAuthStart {
+  authorizationUrl: string;
+  state: string;
+  expiresIn: number | null;
+}
+
+/** Begin an OAuth connect: returns the provider authorize URL to open. */
+export async function startOAuth(
+  appId: string,
+  options: { returnUrl?: string; accessToken?: string | null } = {},
+): Promise<OAuthStart> {
+  const token = await resolveToken(options.accessToken);
+  if (!token) throw new AppsApiError('Sign in to connect apps.', 401);
+  const response = await fetch(catalogUrl(`/${encodeURIComponent(appId)}/auth/oauth/start`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    credentials: 'include',
+    body: JSON.stringify({ returnUrl: options.returnUrl ?? null }),
+  });
+  if (!response.ok) {
+    throw new AppsApiError(await hubErrorDetail(response, 'Failed to start OAuth'), response.status);
+  }
+  const data = (await response.json()) as Record<string, unknown>;
+  const url = asString(data.authorizationUrl);
+  if (!url) throw new AppsApiError('The Hub returned no authorization URL.', 502);
+  return {
+    authorizationUrl: url,
+    state: asString(data.state) ?? '',
+    expiresIn: typeof data.expiresIn === 'number' ? data.expiresIn : null,
+  };
+}
+
+/** Submit a manual credential (api_key / basic apps). */
+export async function submitApiKey(
+  appId: string,
+  fields: Record<string, string>,
+  options: { accountHint?: string; accessToken?: string | null } = {},
+): Promise<AppAuthInfo | null> {
+  const token = await resolveToken(options.accessToken);
+  if (!token) throw new AppsApiError('Sign in to connect apps.', 401);
+  const response = await fetch(catalogUrl(`/${encodeURIComponent(appId)}/auth/api-key`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    credentials: 'include',
+    body: JSON.stringify({ fields, accountHint: options.accountHint ?? null }),
+  });
+  if (!response.ok) {
+    throw new AppsApiError(await hubErrorDetail(response, 'Failed to save credential'), response.status);
+  }
+  // The Hub echoes the new connection; re-read status for the canonical shape.
+  return getAuthStatus(appId, options.accessToken);
 }
