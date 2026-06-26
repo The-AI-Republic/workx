@@ -322,15 +322,22 @@ export function deactivateApp(appId: string, accessToken?: string | null): Promi
  * to the status line.
  */
 async function hubErrorDetail(response: Response, fallback: string): Promise<string> {
+  const statusLine = `${fallback}: ${response.status} ${response.statusText}`;
   try {
-    const body = (await response.json()) as { detail?: unknown; error?: { message?: unknown } };
+    const body = (await response.json()) as {
+      detail?: unknown;
+      error?: { message?: unknown };
+    };
+    // Hub envelope: {error:{message}}. FastAPI validation: {detail:[{msg}]} (a
+    // list) or {detail:"..."} (a string). firstString skips empty/non-strings.
+    const fromList = Array.isArray(body?.detail)
+      ? firstString(...(body.detail as unknown[]).map((d) => (d as { msg?: unknown })?.msg))
+      : '';
     return (
-      asString(body?.error?.message) ??
-      asString(body?.detail) ??
-      `${fallback}: ${response.status} ${response.statusText}`
+      firstString(body?.error?.message, body?.detail, fromList) || statusLine
     );
   } catch {
-    return `${fallback}: ${response.status} ${response.statusText}`;
+    return statusLine;
   }
 }
 
@@ -400,6 +407,21 @@ export async function submitApiKey(
   if (!response.ok) {
     throw new AppsApiError(await hubErrorDetail(response, 'Failed to save credential'), response.status);
   }
-  // The Hub echoes the new connection; re-read status for the canonical shape.
-  return getAuthStatus(appId, options.accessToken);
+  // The credential is now saved. Re-read status for the canonical shape, but
+  // best-effort: a transient failure on the re-read must NOT surface as if the
+  // save itself failed. Fall back to the connection the POST echoed.
+  const saved = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  try {
+    return await getAuthStatus(appId, options.accessToken);
+  } catch {
+    const connection = (saved.connection ?? {}) as Record<string, unknown>;
+    return {
+      type: 'api_key',
+      status: 'connected',
+      connectionStatus: 'connected',
+      accountHint: asString(connection.accountHint),
+      manualFields: [],
+      setupUrl: null,
+    };
+  }
 }

@@ -213,4 +213,39 @@ describe('apps marketplace api', () => {
     const { submitApiKey: submit2 } = await loadModule();
     await expect(submit2('a1', { api_key: 'bad' }, { accessToken: 't' })).rejects.toThrow('does not match');
   });
+
+  it('treats a successful POST as success even if the status re-read fails', async () => {
+    getAccessToken.mockResolvedValue('tok');
+    const fetchMock = vi.fn()
+      // POST succeeds, echoing the connection…
+      .mockResolvedValueOnce({ ok: true, status: 200, statusText: 'OK', json: async () => ({ status: 'connected', connection: { accountHint: 'me@x.com' } }) })
+      // …but the canonical re-read throws.
+      .mockResolvedValueOnce({ ok: false, status: 503, statusText: 'Unavailable', json: async () => ({}) });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const { submitApiKey } = await loadModule();
+    const auth = await submitApiKey('a1', { api_key: 'pat-x' }, { accessToken: 't' });
+    // Must NOT reject — the credential was saved. Falls back to the POST echo.
+    expect(auth).toMatchObject({ type: 'api_key', status: 'connected', accountHint: 'me@x.com' });
+  });
+
+  it('surfaces a FastAPI list-shaped {detail} (not a generic status line)', async () => {
+    getAccessToken.mockResolvedValue('tok');
+    global.fetch = vi.fn(async () => ({
+      ok: false, status: 422, statusText: 'Unprocessable',
+      json: async () => ({ detail: [{ loc: ['body', 'fields', 'api_key'], msg: 'value is not a valid token' }] }),
+    })) as unknown as typeof fetch;
+    const { submitApiKey } = await loadModule();
+    await expect(submitApiKey('a1', { api_key: 'x' }, { accessToken: 't' })).rejects.toThrow('value is not a valid token');
+  });
+
+  it('falls back to a status line when the Hub error message is empty', async () => {
+    getAccessToken.mockResolvedValue('tok');
+    global.fetch = vi.fn(async () => ({
+      ok: false, status: 400, statusText: 'Bad Request',
+      json: async () => ({ error: { message: '' } }),
+    })) as unknown as typeof fetch;
+    const { startOAuth } = await loadModule();
+    // Not a blank message — the status line carries through.
+    await expect(startOAuth('a1', { accessToken: 't' })).rejects.toThrow('400 Bad Request');
+  });
 });

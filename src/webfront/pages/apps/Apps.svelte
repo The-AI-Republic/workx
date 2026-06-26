@@ -125,15 +125,29 @@
   }
 
   // ─── Connect-auth flow ────────────────────────────────────────────────────
-  /** appId currently mid OAuth (browser open + polling). */
-  let oauthPendingId = $state<string | null>(null);
+  /** appIds currently mid OAuth (browser open + polling). */
+  let oauthPendingIds = $state<string[]>([]);
+  /** Per-app connect error, shown inline on the card (never gates the grid). */
+  let connectErrors = $state<Record<string, string>>({});
   /** appId whose manual-credential form is open. */
   let apiKeyFormId = $state<string | null>(null);
   let apiKeyFields = $state<ManualSetupField[]>([]);
   let apiKeyValues = $state<Record<string, string>>({});
   let apiKeyError = $state<string | null>(null);
   let apiKeySubmitting = $state(false);
-  let pollController: { cancelled: boolean } | null = null;
+  /** In-flight OAuth polls keyed by appId, so concurrent connects don't leak. */
+  const pollers = new Map<string, { cancelled: boolean }>();
+
+  function isOauthPending(appId: string): boolean {
+    return oauthPendingIds.includes(appId);
+  }
+  function setConnectError(appId: string, message: string | null) {
+    if (message) connectErrors = { ...connectErrors, [appId]: message };
+    else {
+      const { [appId]: _drop, ...rest } = connectErrors;
+      connectErrors = rest;
+    }
+  }
 
   /** Patch one app's auth block in place (after a connect succeeds). */
   function applyAuth(appId: string, auth: MarketplaceApp['auth']) {
@@ -141,6 +155,7 @@
   }
 
   async function handleConnect(app: MarketplaceApp) {
+    setConnectError(app.appId, null);
     const type = app.auth?.type ?? 'oauth2';
     if (type === 'api_key' || type === 'basic') {
       apiKeyError = null;
@@ -153,27 +168,36 @@
   }
 
   async function connectOAuth(app: MarketplaceApp) {
-    error = null;
-    oauthPendingId = app.appId;
-    pollController = { cancelled: false };
-    const controller = pollController;
+    const appId = app.appId;
+    setConnectError(appId, null);
+    // Replace any previous in-flight poll for THIS app, then track by appId so a
+    // connect on another app never cancels or leaks this one.
+    const prev = pollers.get(appId);
+    if (prev) prev.cancelled = true;
+    const controller = { cancelled: false };
+    pollers.set(appId, controller);
+    if (!oauthPendingIds.includes(appId)) oauthPendingIds = [...oauthPendingIds, appId];
     try {
       const accessToken = await resolveAccessToken();
-      const { authorizationUrl } = await startOAuth(app.appId, { accessToken });
+      const { authorizationUrl } = await startOAuth(appId, { accessToken });
       await openExternalUrl(authorizationUrl);
       // The provider redirects to the Hub callback (not back into the app), so
       // poll the Hub for the new connection until it lands or we time out.
-      const connected = await pollAuthUntilConnected(app.appId, controller);
+      const connected = await pollAuthUntilConnected(appId, controller);
       if (controller.cancelled) return;
       if (connected) {
         await load(query); // refresh suggestedAction / isActivated
       } else {
-        error = `Couldn't confirm the ${app.name} connection. Finish in your browser, then Retry.`;
+        setConnectError(appId, `Couldn't confirm the ${app.name} connection. Finish in your browser, then Retry.`);
       }
     } catch (err) {
-      if (!controller.cancelled) error = err instanceof Error ? err.message : String(err);
+      if (!controller.cancelled) setConnectError(appId, err instanceof Error ? err.message : String(err));
     } finally {
-      if (oauthPendingId === app.appId) oauthPendingId = null;
+      // Only clear if this is still the active controller for the app.
+      if (pollers.get(appId) === controller) {
+        pollers.delete(appId);
+        oauthPendingIds = oauthPendingIds.filter((id) => id !== appId);
+      }
     }
   }
 
@@ -182,13 +206,13 @@
     appId: string,
     controller: { cancelled: boolean },
   ): Promise<boolean> {
-    const accessToken = await resolveAccessToken();
     const deadline = Date.now() + 90_000;
     while (!controller.cancelled && Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, 2500));
       if (controller.cancelled) return false;
       try {
-        const status = await getAuthStatus(appId, accessToken);
+        // Re-resolve the token each round so a mid-poll refresh is picked up.
+        const status = await getAuthStatus(appId, await resolveAccessToken());
         if (status) applyAuth(appId, status);
         if (status && status.status === 'connected') return true;
       } catch {
@@ -198,9 +222,11 @@
     return false;
   }
 
-  function cancelOAuth() {
-    if (pollController) pollController.cancelled = true;
-    oauthPendingId = null;
+  function cancelOAuth(appId: string) {
+    const controller = pollers.get(appId);
+    if (controller) controller.cancelled = true;
+    pollers.delete(appId);
+    oauthPendingIds = oauthPendingIds.filter((id) => id !== appId);
   }
 
   function closeApiKeyForm() {
@@ -238,7 +264,8 @@
     return () => {
       searchController?.abort();
       if (searchTimer) clearTimeout(searchTimer);
-      if (pollController) pollController.cancelled = true;
+      for (const controller of pollers.values()) controller.cancelled = true;
+      pollers.clear();
     };
   });
 </script>
@@ -352,12 +379,12 @@
                   {pendingId === app.appId ? $_t('Working…') : $_t('Install')}
                 </button>
               {:else if appNeedsConnect(app)}
-                {#if oauthPendingId === app.appId}
+                {#if isOauthPending(app.appId)}
                   <span class="text-xs {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
                     {$_t('Connecting… finish in your browser')}
                   </span>
                   <button
-                    onclick={cancelOAuth}
+                    onclick={() => cancelOAuth(app.appId)}
                     class="text-xs px-2 py-1 rounded cursor-pointer
                       {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:underline' : 'text-term-dim-green hover:underline'}"
                   >
@@ -404,6 +431,10 @@
                 </span>
               {/if}
             </div>
+
+            {#if connectErrors[app.appId]}
+              <p class="m-0 text-xs text-red-500">{connectErrors[app.appId]}</p>
+            {/if}
 
             {#if apiKeyFormId === app.appId}
               <div class="flex flex-col gap-2 mt-1 p-2 rounded
