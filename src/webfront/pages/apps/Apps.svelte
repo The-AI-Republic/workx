@@ -57,7 +57,7 @@
     return value;
   }
 
-  async function load(q = '') {
+  async function load(q = '', { background = false }: { background?: boolean } = {}) {
     if (!configured) {
       loading = false;
       error = null;
@@ -66,18 +66,23 @@
     searchController?.abort();
     const controller = new AbortController();
     searchController = controller;
-    loading = true;
-    error = null;
+    // A background refresh (focus/visibility) must not blank the grid: only show
+    // the page spinner when there's nothing to show yet, and don't surface its
+    // errors over the existing list (keep stale data on a transient failure).
+    const showSpinner = !background || apps.length === 0;
+    if (showSpinner) loading = true;
+    if (!background) error = null;
     try {
       const accessToken = await resolveAccessToken();
       const page = await fetchMarketplace({ query: q, signal: controller.signal, accessToken });
       if (controller.signal.aborted) return;
       apps = page.items;
+      if (background) error = null; // a successful refresh clears any stale error
     } catch (err) {
       if (controller.signal.aborted) return;
-      error = err instanceof Error ? err.message : String(err);
+      if (!background) error = err instanceof Error ? err.message : String(err);
     } finally {
-      if (!controller.signal.aborted) loading = false;
+      if (showSpinner && !controller.signal.aborted) loading = false;
     }
   }
 
@@ -112,8 +117,51 @@
     }
   }
 
-  const handleInstall = (app: MarketplaceApp) => runAction(app, installApp);
   const handleActivate = (app: MarketplaceApp) => runAction(app, activateApp);
+
+  /**
+   * Install, then — since installing an app means making it usable — immediately
+   * launch the connect flow if it needs a credential (OAuth browser / form). One
+   * click does install + connect; the inline "Connect"/"Reconnect" affordance is
+   * only a fallback for an installed app whose connection is missing/expired.
+   */
+  async function handleInstall(app: MarketplaceApp) {
+    pendingId = app.appId;
+    error = null;
+    setConnectError(app.appId, null);
+    // Keep the card busy (pendingId) across BOTH install and the post-install
+    // auth probe, so no live "Connect" button appears in the gap — otherwise a
+    // click there could launch a second OAuth alongside the auto-connect.
+    try {
+      try {
+        const accessToken = await resolveAccessToken();
+        const result = await installApp(app.appId, accessToken);
+        if (result) apps = apps.map((a) => (a.appId === app.appId ? result : a));
+        else await load(query);
+      } catch (err) {
+        error = err instanceof AppsApiError ? err.message : String(err);
+        return;
+      }
+      // Auto-connect. A probe/connect failure surfaces inline (per-app), never
+      // the page-level error — so it can't blank the grid.
+      try {
+        const auth = await getAuthStatus(app.appId, await resolveAccessToken());
+        if (auth) applyAuth(app.appId, auth);
+        if (needsAuth(auth)) {
+          const current = apps.find((a) => a.appId === app.appId) ?? app;
+          // Hand off gaplessly: handleConnect synchronously sets its own busy
+          // state (oauthPendingIds / apiKeyFormId) before its first await, so
+          // clearing pendingId here never exposes a clickable Connect button.
+          pendingId = null;
+          await handleConnect({ ...current, auth });
+        }
+      } catch (err) {
+        setConnectError(app.appId, err instanceof Error ? err.message : String(err));
+      }
+    } finally {
+      if (pendingId === app.appId) pendingId = null;
+    }
+  }
 
   function isInstalled(app: MarketplaceApp): boolean {
     return app.installStatus === 'installed';
@@ -169,11 +217,11 @@
 
   async function connectOAuth(app: MarketplaceApp) {
     const appId = app.appId;
+    // Already connecting this app? Don't launch a second browser tab / poll.
+    // (Covers a stray Connect click racing the post-install auto-connect.)
+    if (pollers.has(appId)) return;
     setConnectError(appId, null);
-    // Replace any previous in-flight poll for THIS app, then track by appId so a
-    // connect on another app never cancels or leaks this one.
-    const prev = pollers.get(appId);
-    if (prev) prev.cancelled = true;
+    // Tracked by appId so a connect on another app never cancels or leaks this one.
     const controller = { cancelled: false };
     pollers.set(appId, controller);
     if (!oauthPendingIds.includes(appId)) oauthPendingIds = [...oauthPendingIds, appId];
@@ -259,11 +307,34 @@
     }
   }
 
+  // Connecting an app finishes in the external browser, so the user returns to
+  // WorkX afterward. Refetch on window focus / tab-visible so install/connect
+  // state updates on return — no manual refresh. (In-window connects already
+  // update live via the OAuth poll / inline forms.)
+  //
+  // Background refresh: never blanks the grid (see load's `background`). Debounced
+  // so the focus + visibilitychange pair (and rapid alt-tabbing) coalesce into
+  // one refetch.
+  let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  function refreshOnReturn() {
+    if (!configured) return;
+    if (refreshTimer) clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(() => load(query, { background: true }), 300);
+  }
+  function onVisibility() {
+    if (document.visibilityState === 'visible') refreshOnReturn();
+  }
+
   $effect(() => {
     load();
+    window.addEventListener('focus', refreshOnReturn);
+    document.addEventListener('visibilitychange', onVisibility);
     return () => {
+      window.removeEventListener('focus', refreshOnReturn);
+      document.removeEventListener('visibilitychange', onVisibility);
       searchController?.abort();
       if (searchTimer) clearTimeout(searchTimer);
+      if (refreshTimer) clearTimeout(refreshTimer);
       for (const controller of pollers.values()) controller.cancelled = true;
       pollers.clear();
     };
