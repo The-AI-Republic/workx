@@ -198,8 +198,12 @@ export async function registerMCPTools(
 
   // Builtin servers (e.g. the AI Hub gateway) are first-party: their tools are
   // exempt from the user-facing `mcpTools` toggle so activated Hub apps work
-  // without the user enabling generic MCP tools.
-  const isBuiltinServer = manager.getServers().some((s) => s.name === serverName && s.builtin === true);
+  // without the user enabling generic MCP tools. `getServers` is optional-chained
+  // so a partial manager (e.g. test doubles) degrades to non-builtin instead of
+  // throwing.
+  const isBuiltinServer = (manager.getServers?.() ?? []).some(
+    (s) => s.name === serverName && s.builtin === true,
+  );
 
   for (const tool of tools) {
     const definition = adapter.adaptTool(tool, serverName);
