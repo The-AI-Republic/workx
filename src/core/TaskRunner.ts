@@ -118,6 +118,45 @@ interface LoopOutcomeInit {
 }
 
 /**
+ * Build a human-readable description of a thrown value for the TaskFailed event,
+ * so the UI never shows a bare "Task failed" with no reason. Prefers the error
+ * message; falls back to the error name/constructor when the message is empty
+ * (some model/gateway clients throw with an empty message), and appends the
+ * cause when present.
+ */
+export function describeTaskError(error: unknown): string {
+  if (error instanceof Error) {
+    const name = error.name && error.name !== 'Error' ? error.name : '';
+    const message = (error.message ?? '').trim();
+    let text = message
+      ? name && !message.startsWith(name)
+        ? `${name}: ${message}`
+        : message
+      : name || error.constructor?.name || 'Unknown error';
+    const cause = (error as { cause?: unknown }).cause;
+    const causeText =
+      cause instanceof Error
+        ? (cause.message || cause.name || '').trim()
+        : typeof cause === 'string'
+          ? cause.trim()
+          : '';
+    if (causeText && !text.includes(causeText)) {
+      text = `${text} (cause: ${causeText})`;
+    }
+    return text;
+  }
+  if (typeof error === 'string' && error.trim()) return error.trim();
+  if (error == null) return 'Unknown error';
+  try {
+    const json = JSON.stringify(error);
+    if (json && json !== '{}') return json;
+  } catch {
+    /* fall through to String() */
+  }
+  return String(error) || 'Unknown error';
+}
+
+/**
  * TaskRunner handles the execution of a complete task which may involve multiple turns
  * Enhanced with AgentTask coordination - maintains the majority of task execution logic
  */
@@ -276,6 +315,9 @@ export class TaskRunner {
       };
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
+      // A descriptive reason so the UI shows more than a bare "Task failed"
+      // (covers errors thrown with an empty message — name/cause are surfaced).
+      const detail = describeTaskError(error);
       this.state.status = this.cancelled ? 'killed' : 'failed';
       this.state.lastError = err;
 
@@ -299,12 +341,12 @@ export class TaskRunner {
         // Emit a TERMINAL failure event (not the generic `Error` event, which
         // clears no "processing" state and resolves no awaiter — leaving the UI
         // stuck spinning). TaskFailed renders the reason and ends the turn.
-        await this.emitTaskFailed(err.message);
+        await this.emitTaskFailed(detail);
       }
 
       return {
         success: false,
-        error: err.message,
+        error: detail,
       };
     } finally {
       // Clean up abort handler if it was set up
