@@ -109,7 +109,10 @@ export const MCPServerConfigCreateSchema = z.object({
   authMode: MCPAuthModeSchema.optional(),
   headers: z.record(z.string()).optional(),
   platform: MCPPlatformScopeSchema.default('shared'),
-  builtin: z.boolean().optional(),
+  // NOTE: `builtin` is intentionally NOT accepted from the create payload. It is
+  // an authorization signal — builtin/first-party servers (the AI Hub gateway)
+  // are exempt from the user `mcpTools` toggle — so it must only ever be set by
+  // internal seeding (seedGatewayServer), never by a user-supplied addServer.
   command: z.string().optional(),
   args: z.array(z.string()).optional(),
   env: z.record(z.string()).optional(),
@@ -309,7 +312,9 @@ export function createServerConfig(
     authMode: (validated.authMode ?? (validated.apiKey ? 'api-key' : 'none')) as MCPAuthMode,
     headers: validated.headers,
     platform: (validated.platform ?? 'shared') as MCPPlatformScope,
-    builtin: validated.builtin,
+    // `builtin` is never taken from user input — only internal seeding sets it
+    // (it exempts a server from the mcpTools toggle). User-created servers are
+    // always non-builtin.
     command: validated.command,
     args: validated.args,
     env: validated.env,
