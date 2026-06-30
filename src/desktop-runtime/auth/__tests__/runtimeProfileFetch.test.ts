@@ -193,7 +193,7 @@ describe('refreshDesktopAuthTokens', () => {
   // "Invalid JWT". A persisted clientId+tokenUrl must force the OIDC
   // refresh_token grant even when the env kill-switch is off.
   it('uses the OIDC refresh grant from a persisted override when env has no OIDC config', async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify({
       access_token: 'new-at',
       refresh_token: 'new-rt',
       token_type: 'Bearer',
@@ -208,12 +208,12 @@ describe('refreshDesktopAuthTokens', () => {
 
     // OIDC token endpoint (the override), not the legacy /desktop/refresh path.
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [calledUrl, calledInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const [calledUrl, calledInit] = fetchMock.mock.calls[0];
     expect(calledUrl).toBe('https://testhome.example.com/auth/token');
     // RFC 6749 refresh_token grant: form-encoded with the bound client_id.
-    expect((calledInit.headers as Record<string, string>)['Content-Type'])
+    expect((calledInit?.headers as Record<string, string>)['Content-Type'])
       .toBe('application/x-www-form-urlencoded');
-    const body = new URLSearchParams(String(calledInit.body));
+    const body = new URLSearchParams(String(calledInit?.body));
     expect(body.get('grant_type')).toBe('refresh_token');
     expect(body.get('refresh_token')).toBe('old-rt');
     expect(body.get('client_id')).toBe('workx-desktop-test');
