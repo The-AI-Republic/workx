@@ -196,6 +196,11 @@ export async function registerMCPTools(
 ): Promise<void> {
   const adapter = getMCPToolAdapter();
 
+  // Builtin servers (e.g. the AI Hub gateway) are first-party: their tools are
+  // exempt from the user-facing `mcpTools` toggle so activated Hub apps work
+  // without the user enabling generic MCP tools.
+  const isBuiltinServer = manager.getServers().some((s) => s.name === serverName && s.builtin === true);
+
   for (const tool of tools) {
     const definition = adapter.adaptTool(tool, serverName);
     const handler = adapter.createHandler(manager, serverName, tool.name);
@@ -233,6 +238,7 @@ export async function registerMCPTools(
           serverName,
           displayName: `${serverName}: ${tool.name}`,
           searchHint: tool.description,
+          builtin: isBuiltinServer,
         },
       });
     } catch (error) {

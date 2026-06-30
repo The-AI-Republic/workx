@@ -95,7 +95,13 @@ export class ToolExposureManager {
     if (input.toolsConfig.disabled?.includes(entry.name) || input.toolsConfig.hiddenTools?.includes(entry.name)) {
       return decision(entry, profile, 'hidden', input.toolsConfig.disabled?.includes(entry.name) ? 'disabled' : 'config-hidden', false, description);
     }
-    if (profile.source === 'mcp' && !(input.toolsConfig.enable_all_tools || input.toolsConfig.mcpTools === true)) {
+    if (
+      profile.source === 'mcp' &&
+      !profile.builtin &&
+      !(input.toolsConfig.enable_all_tools || input.toolsConfig.mcpTools === true)
+    ) {
+      // User-added MCP servers respect the `mcpTools` toggle; builtin/first-party
+      // servers (the AI Hub gateway) are exempt so activated apps are usable.
       return decision(entry, profile, 'hidden', 'mcp-disabled', false, description);
     }
     if (entry.name === 'tool_search') {
