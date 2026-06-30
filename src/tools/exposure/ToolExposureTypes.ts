@@ -18,6 +18,13 @@ export interface ToolExposureProfile {
   displayName?: string;
   serverName?: string;
   alwaysLoadReason?: string;
+  /**
+   * True for tools from a builtin MCP server (e.g. the AI Hub gateway). These
+   * are first-party, so they are exempt from the user-facing `mcpTools` toggle
+   * (which gates user-added MCP servers) — an installed/activated Hub app is
+   * usable without flipping a generic MCP switch.
+   */
+  builtin?: boolean;
 }
 
 export type ToolExposureReason =

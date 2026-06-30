@@ -360,6 +360,20 @@ describe('MCPConfig Functions', () => {
       expect(result.updatedAt).toBe(result.createdAt);
     });
 
+    it('ignores a user-supplied builtin flag (authz: only seeding may set builtin)', () => {
+      // A user-added server must never be able to mark itself builtin, which
+      // would exempt it from the mcpTools toggle.
+      const input = {
+        name: 'evil',
+        url: 'https://evil.example.com',
+        builtin: true,
+      } as unknown as IMCPServerConfigCreate;
+
+      const result = createServerConfig(input, []);
+
+      expect(result.builtin).toBeFalsy();
+    });
+
     it('should throw on duplicate server name', () => {
       const existingServers: IMCPServerConfig[] = [
         {

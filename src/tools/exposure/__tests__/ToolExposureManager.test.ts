@@ -89,4 +89,23 @@ describe('ToolExposureManager', () => {
     expect(result.hidden.map((d) => d.name)).toEqual(['github__create_issue']);
     expect(result.deferred).toEqual([]);
   });
+
+  it('exposes builtin (AI Hub gateway) MCP tools even when mcpTools is off', () => {
+    const manager = new ToolExposureManager(new ToolSelectionStore());
+    const result = manager.buildExposure({
+      entries: [
+        // user-added MCP server tool: gated off
+        { name: 'github__create_issue', definition: tool('github__create_issue'), exposure: { source: 'mcp', mode: 'deferred', serverName: 'github' } },
+        // builtin gateway tool: exempt from the mcpTools toggle
+        { name: 'ai-hub__github__get_me', definition: tool('ai-hub__github__get_me'), exposure: { source: 'mcp', mode: 'deferred', serverName: 'ai-hub', builtin: true } },
+      ],
+      toolsConfig: { dynamicToolLoading: true, mcpTools: false },
+      sessionId: 's1',
+    } as never);
+
+    // The user MCP tool stays hidden; the builtin gateway tool is available
+    // (deferred, discoverable) despite mcpTools being false.
+    expect(result.hidden.map((d) => d.name)).toEqual(['github__create_issue']);
+    expect(result.deferred.map((d) => d.name)).toContain('ai-hub__github__get_me');
+  });
 });
