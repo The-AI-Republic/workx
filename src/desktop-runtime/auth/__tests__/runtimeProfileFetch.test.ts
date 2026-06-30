@@ -186,4 +186,57 @@ describe('refreshDesktopAuthTokens', () => {
 
     await expect(refreshDesktopAuthTokens('old-rt')).resolves.toBeNull();
   });
+
+  // Regression: the desktop sidecar's process.env has no OIDC auth vars (those
+  // are WebView-only), so without a persisted override the refresh would
+  // wrongly take the legacy path and the gateway rejects the result as
+  // "Invalid JWT". A persisted clientId+tokenUrl must force the OIDC
+  // refresh_token grant even when the env kill-switch is off.
+  it('uses the OIDC refresh grant from a persisted override when env has no OIDC config', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      access_token: 'new-at',
+      refresh_token: 'new-rt',
+      token_type: 'Bearer',
+      expires_in: 3600,
+    }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const tokens = await refreshDesktopAuthTokens('old-rt', {
+      clientId: 'workx-desktop-test',
+      tokenUrl: 'https://testhome.example.com/auth/token',
+    });
+
+    // OIDC token endpoint (the override), not the legacy /desktop/refresh path.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [calledUrl, calledInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(calledUrl).toBe('https://testhome.example.com/auth/token');
+    // RFC 6749 refresh_token grant: form-encoded with the bound client_id.
+    expect((calledInit.headers as Record<string, string>)['Content-Type'])
+      .toBe('application/x-www-form-urlencoded');
+    const body = new URLSearchParams(String(calledInit.body));
+    expect(body.get('grant_type')).toBe('refresh_token');
+    expect(body.get('refresh_token')).toBe('old-rt');
+    expect(body.get('client_id')).toBe('workx-desktop-test');
+    expect(tokens).toEqual({
+      accessToken: 'new-at',
+      refreshToken: 'new-rt',
+      tokenType: 'Bearer',
+      expiresIn: 3600,
+    });
+  });
+
+  it('keeps the existing refresh token when the OIDC response omits a new one', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      access_token: 'new-at',
+    }), { status: 200 })));
+
+    const tokens = await refreshDesktopAuthTokens('old-rt', {
+      clientId: 'workx-desktop-test',
+      tokenUrl: 'https://testhome.example.com/auth/token',
+    });
+
+    expect(tokens?.accessToken).toBe('new-at');
+    // OIDC may omit refresh_token on rotation-less refresh; we retain ours.
+    expect(tokens?.refreshToken).toBe('old-rt');
+  });
 });
