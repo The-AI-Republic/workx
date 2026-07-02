@@ -74,6 +74,19 @@
     if (!client) return;
     lastResumeNonce = req.nonce;
     clearResumeRequest();
+
+    // Switch the active thread to the requested session *before* resuming, the
+    // same way handleRewound does for a session swap. resumeConversation ->
+    // restoreConversationHistory only renders into the UI when the restored
+    // session is the active one, so without this the resumed conversation would
+    // load into threadStates but never appear on screen.
+    if (!threadStore.getThread(req.sessionId)) {
+      threadStore.createThread(req.sessionId, 'New Thread');
+    }
+    activeSessionId = req.sessionId;
+    threadStore.setActiveThread(req.sessionId);
+    threadRouter.setActiveSession(req.sessionId);
+
     void resumeConversation(req.sessionId);
   });
 

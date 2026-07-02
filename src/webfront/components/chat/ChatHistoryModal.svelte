@@ -24,6 +24,14 @@
 
   const PAGE_SIZE = 20;
 
+  // Focus the dialog when it opens so the Escape-to-close keydown handler
+  // (below) actually receives keys — otherwise focus stays on the "more…"
+  // trigger in the left panel and Escape never reaches the modal.
+  let modalEl = $state<HTMLDivElement | null>(null);
+  $effect(() => {
+    if (show && modalEl) modalEl.focus();
+  });
+
   function handleSelect(sessionId: string) {
     onSelectConversation(sessionId);
     onClose();
@@ -40,6 +48,7 @@
 
 {#if show}
   <div
+    bind:this={modalEl}
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
     onclick={handleBackdrop}
     onkeydown={handleKey}
