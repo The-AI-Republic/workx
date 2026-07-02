@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { NAV_ITEMS, isNavActive } from '../../stores/layoutStore';
+  import { PANEL_NAV_ITEMS, isNavActive } from '../../stores/layoutStore';
   import { location, push } from 'svelte-spa-router';
   import { uiTheme } from '../../stores/themeStore';
   import UserLoginStatus from '../common/UserLoginStatus.svelte';
+  import MoreMenu from './MoreMenu.svelte';
   import NavTab from './NavTab.svelte';
 
   let currentTheme = $derived($uiTheme);
@@ -17,7 +18,7 @@
     ? 'bg-chat-surface dark:bg-chat-surface-dark'
     : 'bg-term-bg'}">
   <div class="flex flex-col gap-1">
-    {#each NAV_ITEMS as item (item.id)}
+    {#each PANEL_NAV_ITEMS as item (item.id)}
       <NavTab
         {item}
         active={isNavActive(item.route, $location)}
@@ -26,6 +27,9 @@
     {/each}
   </div>
   <div class="grow"></div>
+  <div class="flex flex-col gap-1">
+    <MoreMenu />
+  </div>
   <div class="pt-3
     {currentTheme === 'modern'
       ? 'border-t border-chat-border dark:border-chat-border-dark'
