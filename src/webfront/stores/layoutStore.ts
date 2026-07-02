@@ -49,7 +49,7 @@ export interface NavItem {
 /**
  * Canonical list of top-level navigation destinations.
  * Icons are inline SVG strings (24x24 viewBox, stroke-based, currentColor)
- * matching the style used in FooterBar.svelte.
+ * matching the style used in NavTab.svelte.
  */
 export const NAV_ITEMS: NavItem[] = [
   {
