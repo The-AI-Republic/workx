@@ -17,10 +17,11 @@ const WIDE_BREAKPOINT = '(min-width: 1500px)';
 /**
  * Readable store that tracks whether the viewport is in "wide" mode
  * (>= 769 px). Falls back to `false` when running outside a browser
- * (SSR / tests).
+ * (SSR / tests). `window.matchMedia` is absent under jsdom, so guard for
+ * it too — otherwise subscribing throws in the test environment.
  */
 export const isWideMode: Readable<boolean> = readable(false, (set) => {
-  if (typeof window === 'undefined') {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
     return;
   }
 
