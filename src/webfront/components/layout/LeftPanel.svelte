@@ -5,14 +5,26 @@
   import UserLoginStatus from '../common/UserLoginStatus.svelte';
   import NavTab from './NavTab.svelte';
 
+  let {
+    /**
+     * Invoked after the user activates a navigation item. Lets a host (e.g. the
+     * narrow-mode slide-in drawer in AppShell) close itself on navigation. No-op
+     * by default so the docked wide-mode panel is unaffected.
+     */
+    onNavigate,
+  }: {
+    onNavigate?: () => void;
+  } = $props();
+
   let currentTheme = $derived($uiTheme);
 
   function handleNavigate(data: { route: string }) {
     push(data.route);
+    onNavigate?.();
   }
 </script>
 
-<div class="flex flex-col h-full w-full p-3
+<div class="flex flex-col h-full w-full p-3 overflow-y-auto
   {currentTheme === 'modern'
     ? 'bg-chat-surface dark:bg-chat-surface-dark'
     : 'bg-term-bg'}">
