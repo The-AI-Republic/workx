@@ -38,6 +38,8 @@
   import { MODES, DEFAULT_MODE, type AgentMode } from '@/prompts/PromptComposer';
   import { ThreadEventRouter } from '../../routing/ThreadEventRouter';
   import { handleBackgroundTaskEvent, startBackgroundTaskPolling, stopBackgroundTaskPolling } from '../../stores/backgroundTaskStore';
+  // Resume-request bridge from the left-panel Chat History section.
+  import { resumeRequest, clearResumeRequest } from '../../stores/chatHistoryStore';
   // UI channel client (platform-agnostic)
   let client: UIChannelClient | null = $state(null);
   let unsubscribers: Array<() => void> = $state([]);
@@ -57,6 +59,23 @@
   let agentReady: boolean = $state(false);
   let healthStatus: { ready: boolean; message?: string; provider?: string; model?: string; authMode?: 'login' | 'api_key' | 'none' } = $state({ ready: false, authMode: 'none' });
   let zoomLevel: number = $state(parseInt(document.documentElement.style.fontSize) || 100);
+
+  // Handle "resume this conversation" requests published by the left-panel
+  // Chat History section. The section can't call resumeConversation directly
+  // (separate component), so it sets a request in the store; we act on it once
+  // the client is ready. Tracking the nonce (and clearing the request) avoids
+  // re-resuming a stale conversation when this page remounts.
+  let lastResumeNonce = 0;
+  $effect(() => {
+    const req = $resumeRequest;
+    if (!req || req.nonce === lastResumeNonce) return;
+    // `client` is a dependency: when it becomes ready this effect re-runs and
+    // processes a request that arrived before initialization finished.
+    if (!client) return;
+    lastResumeNonce = req.nonce;
+    clearResumeRequest();
+    void resumeConversation(req.sessionId);
+  });
 
   function applyAccessState(access: AgentAccessState): void {
     isConnected = true;
