@@ -1570,33 +1570,6 @@
           </div>
           <div class="flex items-center space-x-2">
             <BackgroundTasksBadge />
-            {#if platform.platformName !== 'extension' && activeSessionId}
-              {@const activeMode = $activeThread?.mode ?? DEFAULT_MODE}
-              {@const pendingMode = $activeThread?.pendingMode ?? null}
-              <div class="flex items-center gap-1" role="group" aria-label={$_t("Agent mode")}>
-                {#each Object.values(MODES).filter((m) => !m.agentTypes || m.agentTypes.includes('workx') || m.agentTypes.includes('workx-server')) as modeSpec (modeSpec.id)}
-                  {@const isActive = activeMode === modeSpec.id && !pendingMode}
-                  {@const isPending = pendingMode === modeSpec.id}
-                  <button
-                    type="button"
-                    onclick={() => setSessionMode(modeSpec.id)}
-                    title={isPending ? $_t("Switching after current task…") : $_t("Switch agent mode")}
-                    aria-pressed={isActive}
-                    class="text-xs px-2 py-0.5 rounded font-[inherit] cursor-pointer transition-opacity
-                      {isActive
-                        ? (currentTheme === 'modern'
-                            ? 'bg-chat-accent/15 text-chat-accent dark:text-chat-accent-dark font-semibold'
-                            : 'bg-[rgba(34,197,94,0.15)] border border-term-dim-green text-term-bright-green')
-                        : (currentTheme === 'modern'
-                            ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:opacity-100 opacity-70'
-                            : 'text-term-dim-green hover:text-term-green opacity-70 hover:opacity-100')}
-                      {isPending ? 'animate-pulse' : ''}"
-                  >
-                    {modeSpec.label}{#if isPending}…{/if}
-                  </button>
-                {/each}
-              </div>
-            {/if}
             {#if isProcessing}
               <TerminalMessage type="warning" content={$_t("[PROCESSING]")} />
             {/if}
@@ -1669,49 +1642,39 @@
           </div>
         {/if}
 
-        <!-- Messages - scrollable area -->
-        <div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-4" bind:this={scrollContainer}>
-          {#if showWelcome}
-            <div class="welcome-screen mb-6 max-w-full
-              {currentTheme === 'modern'
-                ? 'flex flex-col items-center justify-center text-center border-none bg-transparent min-h-[50vh] gap-3 p-6'
-                : 'flex flex-col items-start gap-3 p-6 border border-term-dim-green rounded bg-[rgba(0,0,0,0.6)]'}"
-              role="presentation"
-            >
-              {#if $userStore.isLoggedIn && ($userStore.userName || $userStore.userEmail)}
-                <p class="m-0 mb-2 font-semibold text-lg
-                  {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark text-xl' : 'text-term-bright-green'}">{$_t("Hello $NAME$", { substitutions: [$userStore.userName || $userStore.userEmail] })}</p>
-              {/if}
-              <pre class="welcome-ascii m-0 font-terminal text-[0.4rem] leading-none whitespace-pre">{#each welcomeAsciiLines as line, index (index)}<span class={line.color}>{line.text}</span>{/each}</pre>
-              <p class="m-0 text-[0.95rem] text-term-blue">
-                {platform.platformName === 'extension' ? $_t("General in-browser AI agent for work tasks") : $_t("Your personal AI assistant")}
-              </p>
-              <p class="m-0 text-[0.95rem] text-term-dim-green">
-                {$_t("Developed and supported by AI Republic")}
-              </p>
-              <a
-                class="underline {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-bright-green hover:text-term-yellow'}"
-                href="https://airepublic.com"
-                target="_blank"
-                rel="noreferrer noopener"
-              >
-                {$_t("Learn more")}
-              </a>
+        <!-- Agent mode toggle (relocated from status line to the input footer) -->
+        {#snippet modeToggle()}
+          {#if platform.platformName !== 'extension' && $activeThread?.sessionId}
+            {@const activeMode = $activeThread?.mode ?? DEFAULT_MODE}
+            {@const pendingMode = $activeThread?.pendingMode ?? null}
+            <div class="flex items-center gap-1 px-3 pb-2" role="group" aria-label={$_t("Agent mode")}>
+              {#each Object.values(MODES).filter((m) => !m.agentTypes || m.agentTypes.includes('workx') || m.agentTypes.includes('workx-server')) as modeSpec (modeSpec.id)}
+                {@const isActive = activeMode === modeSpec.id && !pendingMode}
+                {@const isPending = pendingMode === modeSpec.id}
+                <button
+                  type="button"
+                  onclick={() => setSessionMode(modeSpec.id)}
+                  title={isPending ? $_t("Switching after current task…") : $_t("Switch agent mode")}
+                  aria-pressed={isActive}
+                  class="text-xs px-2 py-0.5 rounded font-[inherit] cursor-pointer transition-opacity
+                    {isActive
+                      ? (currentTheme === 'modern'
+                          ? 'bg-chat-accent/15 text-chat-accent dark:text-chat-accent-dark font-semibold'
+                          : 'bg-[rgba(34,197,94,0.15)] border border-term-dim-green text-term-bright-green')
+                      : (currentTheme === 'modern'
+                          ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:opacity-100 opacity-70'
+                          : 'text-term-dim-green hover:text-term-green opacity-70 hover:opacity-100')}
+                    {isPending ? 'animate-pulse' : ''}"
+                >
+                  {modeSpec.label}{#if isPending}…{/if}
+                </button>
+              {/each}
             </div>
           {/if}
+        {/snippet}
 
-          {#each messages as message (message.timestamp)}
-            <TerminalMessage type={message.type === 'user' ? 'input' : getMessageType(message)} content={message.content} />
-          {/each}
-
-          {#each processedEvents as event (event.id)}
-            <EventDisplay {event} />
-          {/each}
-        </div>
-
-        <!-- Fixed bottom controls container -->
-        <div class="shrink-0 border-t {currentTheme === 'modern' ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
-          <!-- Input area -->
+        <!-- Input area + mode toggle footer; rendered in both welcome and conversation layouts -->
+        {#snippet inputArea()}
           <div class="pr-2 py-2 pl-0">
             <MessageInput
               bind:value={inputText}
@@ -1728,8 +1691,65 @@
               onOpenRewindSelector={() => showRewindSelector = true}
             />
           </div>
+          {@render modeToggle()}
+        {/snippet}
 
-        </div>
+        {#snippet welcomeCard()}
+          <div class="welcome-screen shrink-0 mt-4 mb-6 max-w-full
+            {currentTheme === 'modern'
+              ? 'flex flex-col items-center text-center border-none bg-transparent gap-3 p-6'
+              : 'flex flex-col items-start gap-3 p-6 border border-term-dim-green rounded bg-[rgba(0,0,0,0.6)]'}"
+            role="presentation"
+          >
+            {#if $userStore.isLoggedIn && ($userStore.userName || $userStore.userEmail)}
+              <p class="m-0 mb-2 font-semibold text-lg
+                {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark text-xl' : 'text-term-bright-green'}">{$_t("Hello $NAME$", { substitutions: [$userStore.userName || $userStore.userEmail] })}</p>
+            {/if}
+            <pre class="welcome-ascii m-0 font-terminal text-[0.4rem] leading-none whitespace-pre">{#each welcomeAsciiLines as line, index (index)}<span class={line.color}>{line.text}</span>{/each}</pre>
+            <p class="m-0 text-[0.95rem] text-term-blue">
+              {platform.platformName === 'extension' ? $_t("General in-browser AI agent for work tasks") : $_t("Your personal AI assistant")}
+            </p>
+            <p class="m-0 text-[0.95rem] text-term-dim-green">
+              {$_t("Developed and supported by AI Republic")}
+            </p>
+            <a
+              class="underline {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-bright-green hover:text-term-yellow'}"
+              href="https://airepublic.com"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              {$_t("Learn more")}
+            </a>
+          </div>
+        {/snippet}
+
+        {#if showWelcome}
+          <!-- Welcome / landing state: ASCII art quietly at the top, input as the visual center -->
+          <div class="flex-1 min-h-0 flex flex-col overflow-y-auto overflow-x-hidden">
+            {@render welcomeCard()}
+            <div class="flex-1 min-h-0 flex flex-col">
+              <div class="w-full max-w-[720px] mx-auto my-auto">
+                {@render inputArea()}
+              </div>
+            </div>
+          </div>
+        {:else}
+          <!-- Conversation state: messages scroll, input pinned to the bottom -->
+          <div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-4" bind:this={scrollContainer}>
+            {#each messages as message (message.timestamp)}
+              <TerminalMessage type={message.type === 'user' ? 'input' : getMessageType(message)} content={message.content} />
+            {/each}
+
+            {#each processedEvents as event (event.id)}
+              <EventDisplay {event} />
+            {/each}
+          </div>
+
+          <!-- Fixed bottom controls container -->
+          <div class="shrink-0 border-t {currentTheme === 'modern' ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
+            {@render inputArea()}
+          </div>
+        {/if}
       </div>
   </div>
 
