@@ -25,8 +25,11 @@
     drawerOpen = false;
   }
 
+  // Bound to the window (not the backdrop) so Escape reliably closes the
+  // drawer — a backdrop div never receives keyboard focus, so a key handler
+  // on it would never fire.
   function handleDrawerKey(e: KeyboardEvent) {
-    if (e.key === 'Escape') closeDrawer();
+    if (drawerOpen && e.key === 'Escape') closeDrawer();
   }
 
   // Close the drawer whenever the route changes (covers navigation triggered
@@ -43,6 +46,8 @@
     if ($isWideMode) closeDrawer();
   });
 </script>
+
+<svelte:window onkeydown={handleDrawerKey} />
 
 <div class="flex flex-row h-screen overflow-hidden">
   {#if $isWideMode}
@@ -86,7 +91,6 @@
     class="fixed inset-0 z-40 bg-black/50"
     transition:fade={{ duration: 150 }}
     onclick={closeDrawer}
-    onkeydown={handleDrawerKey}
     role="button"
     tabindex="-1"
     aria-label={$_t('Close menu')}
