@@ -1644,7 +1644,7 @@
 
         <!-- Agent mode toggle (relocated from status line to the input footer) -->
         {#snippet modeToggle()}
-          {#if platform.platformName !== 'extension' && activeSessionId}
+          {#if platform.platformName !== 'extension' && $activeThread?.sessionId}
             {@const activeMode = $activeThread?.mode ?? DEFAULT_MODE}
             {@const pendingMode = $activeThread?.pendingMode ?? null}
             <div class="flex items-center gap-1 px-3 pb-2" role="group" aria-label={$_t("Agent mode")}>
@@ -1727,8 +1727,8 @@
           <!-- Welcome / landing state: ASCII art quietly at the top, input as the visual center -->
           <div class="flex-1 min-h-0 flex flex-col overflow-y-auto overflow-x-hidden">
             {@render welcomeCard()}
-            <div class="flex-1 min-h-0 flex flex-col justify-center">
-              <div class="w-full max-w-[720px] mx-auto">
+            <div class="flex-1 min-h-0 flex flex-col">
+              <div class="w-full max-w-[720px] mx-auto my-auto">
                 {@render inputArea()}
               </div>
             </div>
