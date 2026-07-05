@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
-import { TaskRunner, type TaskOptions } from '@/core/TaskRunner';
+import { TaskRunner, describeTaskError, type TaskOptions } from '@/core/TaskRunner';
 import type { Session } from '@/core/Session';
 import type { TurnContext } from '@/core/TurnContext';
 import type { TurnManager, TurnRunResult } from '@/core/TurnManager';
@@ -1197,5 +1197,34 @@ describe('TaskRunner', () => {
       const usage = runner.getTokenUsage(SUBMISSION_ID);
       expect(usage.used).toBe(92000);
     });
+  });
+});
+
+describe('describeTaskError', () => {
+  it('uses the error message when present', () => {
+    expect(describeTaskError(new Error('boom'))).toBe('boom');
+  });
+
+  it('prefixes a meaningful error name', () => {
+    const e = new Error('rate limited');
+    e.name = 'ModelClientError';
+    expect(describeTaskError(e)).toBe('ModelClientError: rate limited');
+  });
+
+  it('falls back to the error name when the message is empty (no bare blank)', () => {
+    const e = new Error('');
+    e.name = 'ModelClientError';
+    expect(describeTaskError(e)).toBe('ModelClientError');
+  });
+
+  it('appends the cause when present', () => {
+    const e = new Error('upstream failed', { cause: new Error('429 rate limit') });
+    expect(describeTaskError(e)).toBe('upstream failed (cause: 429 rate limit)');
+  });
+
+  it('handles non-Error throws', () => {
+    expect(describeTaskError('plain string')).toBe('plain string');
+    expect(describeTaskError({ code: 402 })).toBe('{"code":402}');
+    expect(describeTaskError(undefined)).toBe('Unknown error');
   });
 });
