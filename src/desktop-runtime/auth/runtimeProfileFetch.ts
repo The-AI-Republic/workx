@@ -196,16 +196,25 @@ export async function fetchUserProfileServerSide(
 
 export async function refreshDesktopAuthTokens(
   refreshToken: string,
+  // OIDC client config captured at login and persisted by the runtime. The
+  // sidecar's process.env does NOT carry the WebView-only auth vars
+  // (VITE_/WORKX_AUTH_OIDC_*), so without this override resolveAuthConfig()
+  // resolves a null clientId / oidcEnabled=false and refresh wrongly falls back
+  // to legacy. Passing the login-time clientId+tokenUrl makes refresh rebuild
+  // the exact OIDC request login used.
+  oidcOverride?: { clientId?: string | null; tokenUrl?: string | null },
 ): Promise<RuntimeDesktopTokens | null> {
   if (!refreshToken) return null;
   // OIDC sessions MUST refresh at the OIDC token endpoint (RFC 6749
   // refresh_token grant). The legacy /auth/desktop/refresh endpoint mints legacy
   // session tokens WITHOUT the gateway (svc:hub) audience, so refreshing an OIDC
   // session through it silently downgrades the token to legacy — which the Hub
-  // gateway then rejects as "Invalid JWT". Gate on the OIDC kill-switch; legacy
-  // refresh remains only for legacy (non-OIDC) deployments.
-  if (resolveAuthConfig().oidcEnabled) {
-    return refreshViaOidc(refreshToken);
+  // gateway then rejects as "Invalid JWT". Use OIDC when we either have a
+  // persisted OIDC client config (from login) or the env kill-switch is on;
+  // legacy refresh remains only for legacy (non-OIDC) deployments.
+  const hasPersistedOidc = Boolean(oidcOverride?.clientId && oidcOverride?.tokenUrl);
+  if (hasPersistedOidc || resolveAuthConfig().oidcEnabled) {
+    return refreshViaOidc(refreshToken, oidcOverride);
   }
   return refreshViaLegacyDesktop(refreshToken);
 }
@@ -217,10 +226,14 @@ export async function refreshDesktopAuthTokens(
  */
 async function refreshViaOidc(
   refreshToken: string,
+  oidcOverride?: { clientId?: string | null; tokenUrl?: string | null },
 ): Promise<RuntimeDesktopTokens | null> {
-  const tokenUrl = resolveHostedAuthUrl('token');
+  // Prefer the login-time OIDC config (persisted by the runtime) over env: the
+  // sidecar's process.env lacks the WebView auth vars, so resolveAuthConfig()
+  // would yield null here in a real desktop session.
+  const tokenUrl = oidcOverride?.tokenUrl || resolveHostedAuthUrl('token');
   if (!tokenUrl) return null;
-  const clientId = resolveAuthConfig().oidcClientId;
+  const clientId = oidcOverride?.clientId || resolveAuthConfig().oidcClientId;
   if (!clientId) {
     console.warn('[runtime-auth] OIDC token refresh skipped: no oidcClientId configured');
     return null;
