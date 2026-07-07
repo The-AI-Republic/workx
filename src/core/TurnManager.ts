@@ -4,6 +4,7 @@
  */
 
 import { Session } from './Session';
+import { safeErrorMessage } from './errors/sanitizeError';
 import type { ToolDefinition } from '../tools/BaseTool';
 import { SUBMIT_PLAN_TOOL_NAME } from '../tools/planReview/types';
 import { TurnContext } from './TurnContext';
@@ -815,7 +816,7 @@ export class TurnManager {
         return {
           type: 'function_call_output',
           call_id,
-          output: `Error: ${error instanceof Error ? error.message : String(error)}`,
+          output: `Error: ${safeErrorMessage(error)}`,
         };
       }
     } else if (item.type === 'message' || item.type === 'reasoning' || item.type === 'web_search_call') {
@@ -858,7 +859,7 @@ export class TurnManager {
               return {
                 type: 'function_call_output',
                 call_id: call.id,
-                output: `Error: ${error instanceof Error ? error.message : String(error)}`,
+                output: `Error: ${safeErrorMessage(error)}`,
               };
             }
           },
@@ -910,7 +911,7 @@ export class TurnManager {
             return {
               type: 'function_call_output',
               call_id: callId,
-              output: `Error: ${error instanceof Error ? error.message : String(error)}`,
+              output: `Error: ${safeErrorMessage(error)}`,
             };
           }
         }
@@ -1058,7 +1059,7 @@ export class TurnManager {
       };
 
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
+      const errorMsg = safeErrorMessage(error);
 
       // Handle approval denial with a descriptive message for the LLM
       // Check this first — denials are normal control flow, not tool failures.
@@ -1194,7 +1195,7 @@ export class TurnManager {
           return {
             type: 'function_call_output',
             call_id: call.id,
-            output: `Error: ${error instanceof Error ? error.message : String(error)}`,
+            output: `Error: ${safeErrorMessage(error)}`,
           };
         }
       },

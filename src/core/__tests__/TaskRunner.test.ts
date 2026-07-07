@@ -1227,4 +1227,15 @@ describe('describeTaskError', () => {
     expect(describeTaskError({ code: 402 })).toBe('{"code":402}');
     expect(describeTaskError(undefined)).toBe('Unknown error');
   });
+
+  it('redacts secrets so a credential never reaches the TaskFailed message', () => {
+    const withBearer = describeTaskError(new Error('request failed: Authorization: Bearer abc.def.ghi'));
+    expect(withBearer).not.toContain('abc.def.ghi');
+    expect(withBearer).toContain('***');
+
+    const withKey = describeTaskError(new Error('auth failed for sk-ant-secret0123456789abcdef'));
+    expect(withKey).not.toContain('sk-ant-secret0123456789abcdef');
+    // The non-secret part of the reason is preserved.
+    expect(withKey).toContain('auth failed for');
+  });
 });
