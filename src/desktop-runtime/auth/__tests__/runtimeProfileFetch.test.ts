@@ -3,6 +3,7 @@ import {
   fetchUserProfileServerSide,
   profileFromAccessToken,
   refreshDesktopAuthTokens,
+  refreshDesktopAuthTokensDetailed,
 } from '../runtimeProfileFetch';
 
 function jwtWithPayload(payload: Record<string, unknown>): string {
@@ -238,5 +239,78 @@ describe('refreshDesktopAuthTokens', () => {
     expect(tokens?.accessToken).toBe('new-at');
     // OIDC may omit refresh_token on rotation-less refresh; we retain ours.
     expect(tokens?.refreshToken).toBe('old-rt');
+  });
+});
+
+// The auto-relogin fallback needs to tell an expired/revoked refresh token
+// (must re-open login) apart from a transient failure (retry later, do NOT pop
+// the browser). refreshDesktopAuthTokensDetailed reports that distinction.
+describe('refreshDesktopAuthTokensDetailed', () => {
+  const oidc = {
+    clientId: 'workx-desktop-test',
+    tokenUrl: 'https://testhome.example.com/auth/token',
+  };
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('flags a 400 invalid_grant (expired/revoked refresh token) as unrecoverable', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(
+      JSON.stringify({ error: 'invalid_grant', error_description: 'Refresh token expired' }),
+      { status: 400 },
+    )));
+
+    const result = await refreshDesktopAuthTokensDetailed('old-rt', oidc);
+
+    expect(result.tokens).toBeNull();
+    expect(result.unrecoverable).toBe(true);
+  });
+
+  it('flags a 401 from the token endpoint as unrecoverable', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 401 })));
+
+    const result = await refreshDesktopAuthTokensDetailed('old-rt', oidc);
+
+    expect(result.tokens).toBeNull();
+    expect(result.unrecoverable).toBe(true);
+  });
+
+  it('treats a 503 as transient (recoverable) — must not force re-login', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 503 })));
+
+    const result = await refreshDesktopAuthTokensDetailed('old-rt', oidc);
+
+    expect(result.tokens).toBeNull();
+    expect(result.unrecoverable).toBe(false);
+  });
+
+  it('treats a network error as transient (recoverable)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('ECONNREFUSED'); }));
+
+    const result = await refreshDesktopAuthTokensDetailed('old-rt', oidc);
+
+    expect(result.tokens).toBeNull();
+    expect(result.unrecoverable).toBe(false);
+  });
+
+  it('reports success with unrecoverable=false and the refreshed tokens', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      access_token: 'new-at',
+      refresh_token: 'new-rt',
+    }), { status: 200 })));
+
+    const result = await refreshDesktopAuthTokensDetailed('old-rt', oidc);
+
+    expect(result.unrecoverable).toBe(false);
+    expect(result.tokens?.accessToken).toBe('new-at');
+    expect(result.tokens?.refreshToken).toBe('new-rt');
+  });
+
+  it('treats a missing refresh token as unrecoverable (must log in)', async () => {
+    const result = await refreshDesktopAuthTokensDetailed('', oidc);
+
+    expect(result.tokens).toBeNull();
+    expect(result.unrecoverable).toBe(true);
   });
 });

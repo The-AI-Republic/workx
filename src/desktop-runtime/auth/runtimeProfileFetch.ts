@@ -194,7 +194,42 @@ export async function fetchUserProfileServerSide(
   }
 }
 
+/**
+ * Outcome of a desktop token refresh attempt.
+ *
+ * `unrecoverable` distinguishes "the server definitively rejected the refresh
+ * token" (expired/revoked — only a fresh interactive login can recover) from a
+ * transient failure (network error, 5xx) where a later retry may still succeed.
+ * Callers use this to decide whether to auto-open the login flow: we must NOT
+ * re-trigger login on a transient blip or we'd repeatedly pop the browser.
+ */
+export interface DesktopTokenRefreshResult {
+  tokens: RuntimeDesktopTokens | null;
+  unrecoverable: boolean;
+}
+
+/**
+ * HTTP statuses from the token endpoint that mean the refresh token itself is
+ * bad (expired/revoked/invalid client) — the standard OAuth `invalid_grant`
+ * family. These are unrecoverable without a new interactive login. 5xx / 429 /
+ * network errors are transient and deliberately excluded.
+ */
+function isUnrecoverableAuthStatus(status: number): boolean {
+  return status === 400 || status === 401 || status === 403;
+}
+
 export async function refreshDesktopAuthTokens(
+  refreshToken: string,
+  oidcOverride?: { clientId?: string | null; tokenUrl?: string | null },
+): Promise<RuntimeDesktopTokens | null> {
+  return (await refreshDesktopAuthTokensDetailed(refreshToken, oidcOverride)).tokens;
+}
+
+/**
+ * Like {@link refreshDesktopAuthTokens} but also reports whether a failure is
+ * unrecoverable (expired/revoked refresh token → needs interactive re-login).
+ */
+export async function refreshDesktopAuthTokensDetailed(
   refreshToken: string,
   // OIDC client config captured at login and persisted by the runtime. The
   // sidecar's process.env does NOT carry the WebView-only auth vars
@@ -203,8 +238,9 @@ export async function refreshDesktopAuthTokens(
   // to legacy. Passing the login-time clientId+tokenUrl makes refresh rebuild
   // the exact OIDC request login used.
   oidcOverride?: { clientId?: string | null; tokenUrl?: string | null },
-): Promise<RuntimeDesktopTokens | null> {
-  if (!refreshToken) return null;
+): Promise<DesktopTokenRefreshResult> {
+  // No refresh token at all → nothing to refresh; only a login recovers.
+  if (!refreshToken) return { tokens: null, unrecoverable: true };
   // OIDC sessions MUST refresh at the OIDC token endpoint (RFC 6749
   // refresh_token grant). The legacy /auth/desktop/refresh endpoint mints legacy
   // session tokens WITHOUT the gateway (svc:hub) audience, so refreshing an OIDC
@@ -227,16 +263,17 @@ export async function refreshDesktopAuthTokens(
 async function refreshViaOidc(
   refreshToken: string,
   oidcOverride?: { clientId?: string | null; tokenUrl?: string | null },
-): Promise<RuntimeDesktopTokens | null> {
+): Promise<DesktopTokenRefreshResult> {
   // Prefer the login-time OIDC config (persisted by the runtime) over env: the
   // sidecar's process.env lacks the WebView auth vars, so resolveAuthConfig()
-  // would yield null here in a real desktop session.
+  // would yield null here in a real desktop session. A missing config is
+  // recoverable by re-login (the WebView holds the config), so flag it as such.
   const tokenUrl = oidcOverride?.tokenUrl || resolveHostedAuthUrl('token');
-  if (!tokenUrl) return null;
+  if (!tokenUrl) return { tokens: null, unrecoverable: true };
   const clientId = oidcOverride?.clientId || resolveAuthConfig().oidcClientId;
   if (!clientId) {
     console.warn('[runtime-auth] OIDC token refresh skipped: no oidcClientId configured');
-    return null;
+    return { tokens: null, unrecoverable: true };
   }
   try {
     const response = await fetch(tokenUrl, {
@@ -253,33 +290,37 @@ async function refreshViaOidc(
     });
     if (!response.ok) {
       console.warn(`[runtime-auth] OIDC token refresh failed from ${tokenUrl}: ${response.status} ${response.statusText}`);
-      return null;
+      return { tokens: null, unrecoverable: isUnrecoverableAuthStatus(response.status) };
     }
     const data = await response.json() as Record<string, unknown>;
     const accessToken = pickString(data.access_token);
     if (!accessToken) {
       console.warn(`[runtime-auth] OIDC token refresh from ${tokenUrl} returned no access_token`);
-      return null;
+      return { tokens: null, unrecoverable: false };
     }
     return {
-      accessToken,
-      // OIDC may rotate the refresh token; if the response omits it, keep ours.
-      refreshToken: pickString(data.refresh_token) ?? refreshToken,
-      tokenType: pickString(data.token_type),
-      expiresIn: typeof data.expires_in === 'number' ? data.expires_in : undefined,
+      tokens: {
+        accessToken,
+        // OIDC may rotate the refresh token; if the response omits it, keep ours.
+        refreshToken: pickString(data.refresh_token) ?? refreshToken,
+        tokenType: pickString(data.token_type),
+        expiresIn: typeof data.expires_in === 'number' ? data.expires_in : undefined,
+      },
+      unrecoverable: false,
     };
   } catch (error) {
+    // Network/transport error — transient, do NOT force re-login.
     console.warn(`[runtime-auth] OIDC token refresh threw from ${tokenUrl}:`, error);
-    return null;
+    return { tokens: null, unrecoverable: false };
   }
 }
 
 /** Legacy desktop-session refresh (`/auth/desktop/refresh`). Non-OIDC only. */
 async function refreshViaLegacyDesktop(
   refreshToken: string,
-): Promise<RuntimeDesktopTokens | null> {
+): Promise<DesktopTokenRefreshResult> {
   const desktopRefreshUrl = resolveHostedAuthUrl('desktopRefresh');
-  if (!desktopRefreshUrl) return null;
+  if (!desktopRefreshUrl) return { tokens: null, unrecoverable: false };
   try {
     const response = await fetch(desktopRefreshUrl, {
       method: 'POST',
@@ -291,23 +332,26 @@ async function refreshViaLegacyDesktop(
     });
     if (!response.ok) {
       console.warn(`[runtime-auth] desktop token refresh failed from ${desktopRefreshUrl}: ${response.status} ${response.statusText}`);
-      return null;
+      return { tokens: null, unrecoverable: isUnrecoverableAuthStatus(response.status) };
     }
     const data = await response.json() as Record<string, unknown>;
     const accessToken = pickString(data.access_token);
     const nextRefreshToken = pickString(data.refresh_token);
     if (!accessToken || !nextRefreshToken) {
       console.warn(`[runtime-auth] desktop token refresh from ${desktopRefreshUrl} returned incomplete tokens`);
-      return null;
+      return { tokens: null, unrecoverable: false };
     }
     return {
-      accessToken,
-      refreshToken: nextRefreshToken,
-      tokenType: pickString(data.token_type),
-      expiresIn: typeof data.expires_in === 'number' ? data.expires_in : undefined,
+      tokens: {
+        accessToken,
+        refreshToken: nextRefreshToken,
+        tokenType: pickString(data.token_type),
+        expiresIn: typeof data.expires_in === 'number' ? data.expires_in : undefined,
+      },
+      unrecoverable: false,
     };
   } catch (error) {
     console.warn(`[runtime-auth] desktop token refresh threw from ${desktopRefreshUrl}:`, error);
-    return null;
+    return { tokens: null, unrecoverable: false };
   }
 }

@@ -58,6 +58,11 @@
   let healthStatus: { ready: boolean; message?: string; provider?: string; model?: string; authMode?: 'login' | 'api_key' | 'none' } = $state({ ready: false, authMode: 'none' });
   let zoomLevel: number = $state(parseInt(document.documentElement.style.fontSize) || 100);
 
+  // Guards the auto-relogin so an expired desktop session opens the login flow
+  // exactly once per expiry (reset when access returns to ready), rather than
+  // popping the browser on every subsequent access-state emission.
+  let sessionReloginPrompted = false;
+
   function applyAccessState(access: AgentAccessState): void {
     isConnected = true;
     agentReady = access.ready;
@@ -69,6 +74,20 @@
       authMode: access.mode,
     };
     agentStore.updateFromAccessState(access);
+
+    // Auto-relogin: when the runtime reports the desktop session expired
+    // (refresh token revoked/expired), re-open the login flow instead of
+    // leaving the user on a dead "Invalid JWT" error. The `session_expired`
+    // reason is the runtime's stable sentinel for "must re-login" (as opposed
+    // to a fresh logout or a transient failure, which must not auto-pop login).
+    if (access.status === 'needs_login' && access.reason === 'session_expired') {
+      if (!sessionReloginPrompted) {
+        sessionReloginPrompted = true;
+        requestLogin();
+      }
+    } else if (access.ready) {
+      sessionReloginPrompted = false;
+    }
   }
 
   function onZoomChanged(e: Event) {
