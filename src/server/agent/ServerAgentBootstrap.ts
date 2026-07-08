@@ -1377,9 +1377,23 @@ export class ServerAgentBootstrap {
     if (!refreshToken) return null;
 
     try {
-      const { refreshDesktopAuthTokens } = await import('@/desktop-runtime/auth/runtimeProfileFetch');
-      const refreshed = await refreshDesktopAuthTokens(refreshToken, await this.readPersistedOidcConfig());
+      const { refreshDesktopAuthTokensDetailed } = await import('@/desktop-runtime/auth/runtimeProfileFetch');
+      const result = await refreshDesktopAuthTokensDetailed(refreshToken, await this.readPersistedOidcConfig());
+      const refreshed = result.tokens;
       if (!refreshed?.accessToken || !refreshed.refreshToken) {
+        if (result.unrecoverable) {
+          // The refresh token is expired/revoked — no silent recovery is
+          // possible. Signal the WebView (via access state) to re-open login
+          // instead of surfacing a dead "Invalid JWT" task failure. The
+          // `session_expired` reason is a stable sentinel the UI matches on to
+          // auto-trigger the login flow exactly once.
+          await this.runtimeState?.setAccessState({
+            status: 'needs_login',
+            mode: 'login',
+            ready: false,
+            reason: 'session_expired',
+          }).catch(() => undefined);
+        }
         return null;
       }
       await Promise.all([
