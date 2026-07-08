@@ -153,11 +153,66 @@ jobs:
 
       - name: Create desktop .env
         shell: bash
+        # Full desktop config for a production release. Environment-specific
+        # values (hostnames, OIDC client id, cookie domain) come from repo/org
+        # Actions `vars`, each with a prod default so a release still builds if a
+        # var is unset. Structural values (paths, MCP name, scopes, routing mode)
+        # are identical across environments and written literally. VITE_* is what
+        # the packaged WebView inlines; the WORKX_* mirror keeps runtime-side
+        # parity with src/desktop/.env. Keep this in sync with
+        # src/desktop/.env.production.example.
+        #
+        # IMPORTANT before the first prod release: confirm the prod hostnames
+        # below and register the prod OIDC client (VITE_AUTH_OIDC_CLIENT_ID) in
+        # the home-page IdP with redirect workx://auth/callback + require_pkce.
         run: |
           cat > src/desktop/.env << 'EOF'
-          VITE_AUTH_COOKIE_DOMAIN=${{ vars.VITE_AUTH_COOKIE_DOMAIN }}
-          VITE_AUTH_BASE_URL=${{ vars.VITE_AUTH_BASE_URL }}
-          VITE_BACKEND_API_BASE_URL=${{ vars.VITE_BACKEND_API_BASE_URL }}
+          # --- Home-page auth / backend (environment-specific) ---
+          VITE_AUTH_COOKIE_DOMAIN=${{ vars.VITE_AUTH_COOKIE_DOMAIN || '.airepublic.com' }}
+          VITE_AUTH_BASE_URL=${{ vars.VITE_AUTH_BASE_URL || 'https://home.airepublic.com' }}
+          VITE_BACKEND_API_BASE_URL=${{ vars.VITE_BACKEND_API_BASE_URL || 'https://api.airepublic.com' }}
+          VITE_AUTH_ACCESS_COOKIE_NAME=ai_access
+          VITE_AUTH_REFRESH_COOKIE_NAME=ai_refresh
+          VITE_AUTH_CSRF_COOKIE_NAME=ai_csrf
+          VITE_AUTH_STATUS_COOKIE_NAME=ai_auth_status
+          VITE_AUTH_USER_NAME_COOKIE_NAME=ai_user_name
+          VITE_AUTH_USER_EMAIL_COOKIE_NAME=ai_user_email
+          VITE_AUTH_LOGIN_PATH=/login
+          VITE_AUTH_DESKTOP_SESSION_PATH=/auth/desktop/session
+          VITE_AUTH_DESKTOP_REFRESH_PATH=/auth/desktop/refresh
+          VITE_AUTH_PROFILE_PATH=/api/v1/users/profile
+          VITE_AUTH_USER_CENTER_PATH=/user-center/info
+          VITE_AUTH_PRICING_PATH=/pricing
+
+          # --- AI Hub gateway routing (LLM -> {gateway}/v1, MCP -> {gateway}/mcp) ---
+          VITE_LLM_ROUTING_MODE=gateway
+          VITE_GATEWAY_BASE_URL=${{ vars.VITE_GATEWAY_BASE_URL || 'https://gateway.airepublic.com' }}
+          VITE_GATEWAY_CATALOG_URL=${{ vars.VITE_GATEWAY_CATALOG_URL || 'https://hub.airepublic.com/apps' }}
+          VITE_GATEWAY_MCP_NAME=ai-hub
+          VITE_GATEWAY_MCP_AUTH_MODE=session-jwt
+          VITE_GATEWAY_MCP_TOOL_DISCOVERY=flat
+
+          # --- OIDC Auth-Code + PKCE login (svc:hub audience) ---
+          VITE_AUTH_OIDC_ENABLED=true
+          VITE_AUTH_OIDC_CLIENT_ID=${{ vars.VITE_AUTH_OIDC_CLIENT_ID || 'workx-desktop' }}
+          VITE_AUTH_OIDC_SCOPES=openid profile email chat apps models offline_access
+
+          # --- Runtime-side mirror (Node/Tauri sidecar reads WORKX_*) ---
+          WORKX_AUTH_BASE_URL=${{ vars.VITE_AUTH_BASE_URL || 'https://home.airepublic.com' }}
+          WORKX_BACKEND_API_BASE_URL=${{ vars.VITE_BACKEND_API_BASE_URL || 'https://api.airepublic.com' }}
+          WORKX_AUTH_DESKTOP_SESSION_PATH=/auth/desktop/session
+          WORKX_AUTH_DESKTOP_REFRESH_PATH=/auth/desktop/refresh
+          WORKX_AUTH_PROFILE_PATH=/api/v1/users/profile
+          WORKX_LLM_ROUTING_MODE=gateway
+          WORKX_GATEWAY_BASE_URL=${{ vars.VITE_GATEWAY_BASE_URL || 'https://gateway.airepublic.com' }}
+          WORKX_GATEWAY_CATALOG_URL=${{ vars.VITE_GATEWAY_CATALOG_URL || 'https://hub.airepublic.com/apps' }}
+          WORKX_GATEWAY_MCP_NAME=ai-hub
+          WORKX_GATEWAY_MCP_AUTH_MODE=session-jwt
+          WORKX_GATEWAY_MCP_TOOL_DISCOVERY_HEADER=X-Air-Tool-Discovery
+          WORKX_GATEWAY_MCP_TOOL_DISCOVERY=flat
+          WORKX_AUTH_OIDC_ENABLED=true
+          WORKX_AUTH_OIDC_CLIENT_ID=${{ vars.VITE_AUTH_OIDC_CLIENT_ID || 'workx-desktop' }}
+          WORKX_AUTH_OIDC_SCOPES=openid profile email chat apps models offline_access
           EOF
 
       - name: Setup Rust toolchain
