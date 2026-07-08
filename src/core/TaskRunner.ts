@@ -7,6 +7,7 @@
 import { Session } from './Session';
 import { TurnManager } from './TurnManager';
 import { TurnContext } from './TurnContext';
+import { redactSecretsInText } from '@/core/diagnostics/redact';
 import type { ProcessedResponseItem, TurnRunResult } from './TurnManager';
 import type { InputItem, Event, ResponseItem } from './protocol/types';
 import type {
@@ -125,6 +126,13 @@ interface LoopOutcomeInit {
  * cause when present.
  */
 export function describeTaskError(error: unknown): string {
+  // Single exit through the secret redactor: whatever reason we build below,
+  // it must never surface a credential (a Bearer token, api key, etc.) in the
+  // TaskFailed message shown to the user.
+  return redactSecretsInText(describeTaskErrorRaw(error));
+}
+
+function describeTaskErrorRaw(error: unknown): string {
   if (error instanceof Error) {
     const name = error.name && error.name !== 'Error' ? error.name : '';
     const message = (error.message ?? '').trim();
