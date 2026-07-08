@@ -2,7 +2,7 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "WorkX",
   "mainBinaryName": "WorkX",
-  "version": "0.1.1",
+  "version": "../package.json",
   "identifier": "com.airepublic.workx",
   "build": {
     "beforeBuildCommand": { "script": "npm run build:desktop && npm run build:desktop-runtime-sidecar && npm run build:sidecar && npm run build:ripgrep-sidecar", "cwd": ".." },
