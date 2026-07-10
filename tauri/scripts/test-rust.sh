@@ -38,4 +38,7 @@ for bin in chrome-devtools-mcp rg; do
 done
 
 echo "Running Rust tests..."
-cargo test --manifest-path "$MANIFEST" 2>&1
+# --features test-support builds the fake-runtime-child helper bin that the
+# supervisor lifecycle integration test references via CARGO_BIN_EXE_*. The bin
+# is gated out of production builds (see tauri/Cargo.toml), so tests must opt in.
+cargo test --manifest-path "$MANIFEST" --features test-support 2>&1

@@ -11,6 +11,12 @@
 //! `env!("CARGO_BIN_EXE_<name>")` for integration tests under
 //! `tests/`. Pure unit tests (backoff math, ring buffer) live inline
 //! in `runtime_supervisor.rs` where they can access private items.
+//!
+//! Gated on the `test-support` feature, which builds the fake-runtime-child
+//! bin this file references via `CARGO_BIN_EXE_fake-runtime-child`. Without the
+//! feature (e.g. a bare `cargo test`) the bin isn't built and this file compiles
+//! to nothing rather than failing the `env!`. The test runner enables it.
+#![cfg(feature = "test-support")]
 
 use serde_json::{json, Value};
 use std::process::Stdio as StdStdio;
