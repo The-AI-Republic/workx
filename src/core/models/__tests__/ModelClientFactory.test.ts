@@ -279,7 +279,7 @@ describe('ModelClientFactory', () => {
       const client1 = await factory.createClient('openai');
 
       // Simulate config change without clearing cache
-      (factory as any).config = createMockAgentConfig({ selectedModelKey: 'openai:gpt-5.1' });
+      (factory as any).config = createMockAgentConfig({ selectedModelKey: 'openai:gpt-5.6-sol' });
       const client2 = await factory.createClient('openai');
       expect(client1).not.toBe(client2);
     });
@@ -646,10 +646,10 @@ describe('ModelClientFactory', () => {
       const config = createMockAgentConfig();
       config.getProvider.mockReturnValue({
         id: 'openai', name: 'OpenAI',
-        models: [{ modelKey: 'gpt-5' }, { modelKey: 'gpt-5.1' }],
+        models: [{ modelKey: 'gpt-5.6-sol' }, { modelKey: 'gpt-5.6-terra' }],
       });
       await factory.initialize(config);
-      expect(factory.getSupportedModels('openai')).toEqual(['gpt-5', 'gpt-5.1']);
+      expect(factory.getSupportedModels('openai')).toEqual(['gpt-5.6-sol', 'gpt-5.6-terra']);
     });
   });
 

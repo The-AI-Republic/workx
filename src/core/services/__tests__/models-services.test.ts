@@ -133,7 +133,7 @@ describe('models.testConnection', () => {
         providerId: 'google-ai-studio',
         baseUrl: 'https://generativelanguage.googleapis.com',
         apiKey: 'AIza-test',
-        model: 'gemini-3.1-pro',
+        model: 'gemini-3.5-flash',
       },
       context,
     );
@@ -155,7 +155,7 @@ describe('models.testConnection', () => {
         providerId: 'google-ai-studio',
         baseUrl: 'https://generativelanguage.googleapis.com',
         apiKey: 'bad',
-        model: 'gemini-3.1-pro',
+        model: 'gemini-3.5-flash',
       },
       context,
     )).toEqual({ valid: false, error: 'Invalid API key' });

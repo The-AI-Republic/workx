@@ -51,6 +51,7 @@ const THINKING_BUDGET_BY_EFFORT: Record<ReasoningEffortConfig, number> = {
 /** Models where Anthropic supports adaptive thinking through thinking.type=adaptive. */
 const ADAPTIVE_THINKING_MODELS = new Set([
   'claude-opus-4-8',
+  'claude-sonnet-5',
   'claude-sonnet-4-6',
 ]);
 

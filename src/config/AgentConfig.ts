@@ -275,10 +275,10 @@ export class AgentConfig implements IConfigService {
 
   /**
    * Set the selected model by composite key
-   * @param compositeKey - Model key in format "providerId:modelKey" (e.g., "openai:gpt-5.1")
+   * @param compositeKey - Model key in format "providerId:modelKey" (e.g., "openai:gpt-5.6-sol")
    * @throws Error if model is not found
    * @example
-   * await agentConfig.setSelectedModel('openai:gpt-5.1');
+   * await agentConfig.setSelectedModel('openai:gpt-5.6-sol');
    */
   async setSelectedModel(compositeKey: string): Promise<void> {
     this.ensureInitialized();
@@ -624,11 +624,11 @@ export class AgentConfig implements IConfigService {
   /**
    * Create a composite model key from provider ID and model key
    * @param providerId - Provider identifier (e.g., 'openai', 'xai')
-   * @param modelKey - Model's API identifier (e.g., 'gpt-5.1', 'grok-4-1-fast-reasoning')
+   * @param modelKey - Model's API identifier (e.g., 'gpt-5.6-sol', 'grok-4.5')
    * @returns Composite key in format "providerId:modelKey"
    * @example
-   * const key = AgentConfig.createModelKey('openai', 'gpt-5.1');
-   * console.log(key); // "openai:gpt-5.1"
+   * const key = AgentConfig.createModelKey('openai', 'gpt-5.6-sol');
+   * console.log(key); // "openai:gpt-5.6-sol"
    */
   static createModelKey(providerId: string, modelKey: string): string {
     return `${providerId}:${modelKey}`;
@@ -636,12 +636,12 @@ export class AgentConfig implements IConfigService {
 
   /**
    * Get model by composite key
-   * @param compositeKey - Model key in format "providerId:modelKey" (e.g., "openai:gpt-5.1")
+   * @param compositeKey - Model key in format "providerId:modelKey" (e.g., "openai:gpt-5.6-sol")
    * @returns Model config with provider context, or null if not found
    * @example
-   * const result = agentConfig.getModelByKey('openai:gpt-5.1');
+   * const result = agentConfig.getModelByKey('openai:gpt-5.6-sol');
    * if (result) {
-   *   console.log(result.model.name); // "GPT-5.1"
+   *   console.log(result.model.name); // "GPT-5.6 Sol"
    *   console.log(result.provider.name); // "OpenAI"
    * }
    */

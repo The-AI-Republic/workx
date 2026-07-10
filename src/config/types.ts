@@ -30,7 +30,7 @@ export interface IAgentConfig {
 
   /**
    * Currently selected model key
-   * Format: "providerId:modelKey" (e.g., "openai:gpt-5.1", "xai:grok-4-1-fast-reasoning")
+   * Format: "providerId:modelKey" (e.g., "openai:gpt-5.6-sol", "xai:grok-4.5")
    * Uniquely identifies a model across all providers
    */
   selectedModelKey: string;
@@ -260,7 +260,7 @@ export interface IModelConfig {
    * Track 12: fallback model key (optional).
    * When sustained provider overload (consecutive 529s) is detected, the
    * retry orchestrator downgrades to this model and retries. Must be a
-   * composite key (`provider:modelKey`, e.g. `openai:gpt-5.1`) of a
+   * composite key (`provider:modelKey`, e.g. `openai:gpt-5.6-sol`) of a
    * generally-available model. Undefined ⇒ no downgrade (the run fails
    * after the retry budget instead).
    */

@@ -417,8 +417,8 @@ describe('AgentConfig', () => {
     });
 
     it('should create composite model key via static method', () => {
-      const key = AgentConfig.createModelKey('openai', 'gpt-5.1');
-      expect(key).toBe('openai:gpt-5.1');
+      const key = AgentConfig.createModelKey('openai', 'gpt-5.6-sol');
+      expect(key).toBe('openai:gpt-5.6-sol');
     });
 
     it('should set selected model via setSelectedModel', async () => {
