@@ -7,6 +7,7 @@ import { DEFAULT_APPROVAL_CONFIG } from '../core/approval/types';
 import { DEFAULT_MODE } from '../prompts/PromptComposer';
 import defaultProviders from '../core/models/providers/default.json';
 import { applyPolicy, getActivePolicySync } from '../core/config/policy';
+import { getRemoteProviders } from './remoteCatalog';
 
 export const DEFAULT_USER_PREFERENCES: IUserPreferences = {
   autoSync: true,
@@ -353,6 +354,13 @@ export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig 
  * Loaded from JSON configuration file
  */
 export function getDefaultProviders(): Record<string, IProviderConfig> {
+  // Private builds may override the bundled catalog with one fetched from the
+  // backend at startup (see remoteCatalog + AgentConfig.initialize). When present
+  // it full-replaces default.json; otherwise we fall back to the bundled copy.
+  const remote = getRemoteProviders();
+  if (remote) {
+    return remote;
+  }
   // Return a deep copy to avoid mutation of the imported JSON
   return JSON.parse(JSON.stringify(defaultProviders));
 }

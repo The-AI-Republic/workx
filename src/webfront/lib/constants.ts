@@ -36,6 +36,8 @@ export const GATEWAY_MCP_URL = runtimeUrls.gatewayMcpUrl ?? '';
 export const GATEWAY_CATALOG_URL = runtimeUrls.gatewayCatalogUrl ?? '';
 /** Hub Apps catalog JSON API root, e.g. `https://hub.example.com/api/v1/apps`. */
 export const GATEWAY_CATALOG_API_BASE_URL = runtimeUrls.gatewayCatalogApiBaseUrl ?? '';
+/** Public LLM model catalog endpoint (private builds); '' when not configured. */
+export const MODEL_CATALOG_URL = runtimeUrls.modelCatalogUrl ?? '';
 export const LLM_ROUTING_MODE = runtimeUrls.llmRoutingMode;
 
 export function buildHostedAuthUrl(path: string | null): string | null {
