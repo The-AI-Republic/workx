@@ -90,8 +90,16 @@ jobs:
         # derives the extension version the same way), so the desktop bundle and
         # the extension always ship under the same version. Manual runs fall back
         # to package.json. Strip a leading `v` from the tag.
+        #
+        # The tag is passed via env (RELEASE_TAG) rather than inlined into the
+        # script: an attacker-controlled ${{ github.event.release.tag_name }}
+        # spliced straight into `run:` would be a shell-injection sink in a job
+        # that holds the signing key + AWS creds. As an env value it reaches the
+        # shell as data, never as code.
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          TAG="${{ github.event.release.tag_name }}"
+          TAG="$RELEASE_TAG"
           if [ -n "$TAG" ]; then
             V="${TAG#v}"
           else
