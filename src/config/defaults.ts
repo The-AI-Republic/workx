@@ -427,24 +427,36 @@ export function buildRuntimeConfig(stored: IStoredConfig | null): IAgentConfig {
     }
   }
 
+  // True when `key` is a "providerId:modelKey" that exists in the current
+  // providers. Also rejects malformed keys (no colon).
+  const modelKeyExists = (key: string): boolean => {
+    const colonIndex = key.indexOf(':');
+    if (colonIndex <= 0) return false;
+    const providerId = key.slice(0, colonIndex);
+    const modelKey = key.slice(colonIndex + 1);
+    return !!providers[providerId]?.models?.some((m: { modelKey: string }) => m.modelKey === modelKey);
+  };
+
   // Validate stored selectedModelKey exists in providers, fallback to default if not
   let selectedModelKey = stored.selectedModelKey || '';
-  if (selectedModelKey) {
-    const colonIndex = selectedModelKey.indexOf(':');
-    if (colonIndex > 0) {
-      const providerId = selectedModelKey.slice(0, colonIndex);
-      const modelKey = selectedModelKey.slice(colonIndex + 1);
-      const provider = providers[providerId];
-      const modelExists = provider?.models?.some((m: { modelKey: string }) => m.modelKey === modelKey);
-      if (!modelExists) {
-        console.warn(`[buildRuntimeConfig] Stored selectedModelKey "${selectedModelKey}" not found, falling back to default`);
-        selectedModelKey = defaults.selectedModelKey;
+  if (selectedModelKey && !modelKeyExists(selectedModelKey)) {
+    console.warn(`[buildRuntimeConfig] Stored selectedModelKey "${selectedModelKey}" not found, falling back to default`);
+    selectedModelKey = defaults.selectedModelKey;
+  }
+  // The hardcoded default can itself be absent from a backend-replaced catalog
+  // (full-replace via remoteCatalog). Guard so we never hand downstream a key
+  // that isn't in the catalog: use the first available provider model instead.
+  if (selectedModelKey && !modelKeyExists(selectedModelKey)) {
+    let fallback = '';
+    for (const [providerId, provider] of Object.entries(providers)) {
+      const firstModel = provider?.models?.[0]?.modelKey;
+      if (firstModel) {
+        fallback = `${providerId}:${firstModel}`;
+        break;
       }
-    } else {
-      // Invalid format (no colon), use default
-      console.warn(`[buildRuntimeConfig] Invalid selectedModelKey format "${selectedModelKey}", falling back to default`);
-      selectedModelKey = defaults.selectedModelKey;
     }
+    console.warn(`[buildRuntimeConfig] Fallback selectedModelKey "${selectedModelKey}" not in catalog; using first available "${fallback || '(none)'}"`);
+    selectedModelKey = fallback;
   }
 
   const merged: IAgentConfig = {

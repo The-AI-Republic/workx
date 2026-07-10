@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetchRemoteCatalog, getRemoteProviders, clearRemoteCatalog } from '../remoteCatalog';
-import { getDefaultProviders } from '../defaults';
+import { getDefaultProviders, buildRuntimeConfig, getDefaultStoredConfig } from '../defaults';
 
 const CATALOG_URL = 'https://api.example.com/api/v1/workx/models';
 
@@ -93,6 +93,27 @@ describe('remoteCatalog', () => {
     mockFetchOnce(() => { throw new Error('boom'); });
     expect(await fetchRemoteCatalog()).toBeNull();
     expect(getRemoteProviders()).toBeNull();
+  });
+
+  it('buildRuntimeConfig falls back to the first available model when the hardcoded default is absent from a replaced catalog', async () => {
+    process.env.WORKX_MODEL_CATALOG_URL = CATALOG_URL;
+    // Remote catalog has only anthropic:remote-opus-x — the hardcoded default
+    // deepseek:deepseek-v4-flash is NOT present.
+    mockFetchOnce(() => jsonResponse(VALID_CATALOG));
+    await fetchRemoteCatalog();
+
+    const stored = { ...getDefaultStoredConfig(), selectedModelKey: 'deepseek:deepseek-v4-flash' };
+    const config = buildRuntimeConfig(stored);
+
+    // Must not keep a key that isn't in the replaced catalog.
+    expect(config.selectedModelKey).toBe('anthropic:remote-opus-x');
+  });
+
+  it('buildRuntimeConfig keeps the default when it IS present in the catalog', async () => {
+    // No remote catalog -> bundled default.json, which contains the default.
+    const stored = { ...getDefaultStoredConfig(), selectedModelKey: 'deepseek:deepseek-v4-flash' };
+    const config = buildRuntimeConfig(stored);
+    expect(config.selectedModelKey).toBe('deepseek:deepseek-v4-flash');
   });
 
   it('dedupes concurrent fetches into a single request', async () => {
