@@ -7,6 +7,7 @@ import { DEFAULT_APPROVAL_CONFIG } from '../core/approval/types';
 import { DEFAULT_MODE } from '../prompts/PromptComposer';
 import defaultProviders from '../core/models/providers/default.json';
 import { applyPolicy, getActivePolicySync } from '../core/config/policy';
+import { getRemoteProviders } from './remoteCatalog';
 
 export const DEFAULT_USER_PREFERENCES: IUserPreferences = {
   autoSync: true,
@@ -353,6 +354,13 @@ export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig 
  * Loaded from JSON configuration file
  */
 export function getDefaultProviders(): Record<string, IProviderConfig> {
+  // Private builds may override the bundled catalog with one fetched from the
+  // backend at startup (see remoteCatalog + AgentConfig.initialize). When present
+  // it full-replaces default.json; otherwise we fall back to the bundled copy.
+  const remote = getRemoteProviders();
+  if (remote) {
+    return remote;
+  }
   // Return a deep copy to avoid mutation of the imported JSON
   return JSON.parse(JSON.stringify(defaultProviders));
 }
@@ -419,24 +427,36 @@ export function buildRuntimeConfig(stored: IStoredConfig | null): IAgentConfig {
     }
   }
 
+  // True when `key` is a "providerId:modelKey" that exists in the current
+  // providers. Also rejects malformed keys (no colon).
+  const modelKeyExists = (key: string): boolean => {
+    const colonIndex = key.indexOf(':');
+    if (colonIndex <= 0) return false;
+    const providerId = key.slice(0, colonIndex);
+    const modelKey = key.slice(colonIndex + 1);
+    return !!providers[providerId]?.models?.some((m: { modelKey: string }) => m.modelKey === modelKey);
+  };
+
   // Validate stored selectedModelKey exists in providers, fallback to default if not
   let selectedModelKey = stored.selectedModelKey || '';
-  if (selectedModelKey) {
-    const colonIndex = selectedModelKey.indexOf(':');
-    if (colonIndex > 0) {
-      const providerId = selectedModelKey.slice(0, colonIndex);
-      const modelKey = selectedModelKey.slice(colonIndex + 1);
-      const provider = providers[providerId];
-      const modelExists = provider?.models?.some((m: { modelKey: string }) => m.modelKey === modelKey);
-      if (!modelExists) {
-        console.warn(`[buildRuntimeConfig] Stored selectedModelKey "${selectedModelKey}" not found, falling back to default`);
-        selectedModelKey = defaults.selectedModelKey;
+  if (selectedModelKey && !modelKeyExists(selectedModelKey)) {
+    console.warn(`[buildRuntimeConfig] Stored selectedModelKey "${selectedModelKey}" not found, falling back to default`);
+    selectedModelKey = defaults.selectedModelKey;
+  }
+  // The hardcoded default can itself be absent from a backend-replaced catalog
+  // (full-replace via remoteCatalog). Guard so we never hand downstream a key
+  // that isn't in the catalog: use the first available provider model instead.
+  if (selectedModelKey && !modelKeyExists(selectedModelKey)) {
+    let fallback = '';
+    for (const [providerId, provider] of Object.entries(providers)) {
+      const firstModel = provider?.models?.[0]?.modelKey;
+      if (firstModel) {
+        fallback = `${providerId}:${firstModel}`;
+        break;
       }
-    } else {
-      // Invalid format (no colon), use default
-      console.warn(`[buildRuntimeConfig] Invalid selectedModelKey format "${selectedModelKey}", falling back to default`);
-      selectedModelKey = defaults.selectedModelKey;
     }
+    console.warn(`[buildRuntimeConfig] Fallback selectedModelKey "${selectedModelKey}" not in catalog; using first available "${fallback || '(none)'}"`);
+    selectedModelKey = fallback;
   }
 
   const merged: IAgentConfig = {
