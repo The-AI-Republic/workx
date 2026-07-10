@@ -4,10 +4,15 @@
  * The extension authenticates via the home-page session cookies on the
  * *.airepublic.com domain. The legacy ai-assistant backend accepted those cookies
  * directly (`credentials: 'include'`), but the AI Hub gateway requires a Bearer
- * JWT. Because the `chrome.cookies` API is available in the MV3 service worker and
- * can read the (httpOnly) access-token cookie, the service worker can read the same
- * JWT the sidepanel uses and present it as a bearer token — no cross-context bridge
- * or separate token store is required.
+ * JWT. `chrome.cookies` (SW-safe, reads httpOnly cookies) lets the service worker
+ * read the same access-token cookie the sidepanel uses and present it as a bearer.
+ *
+ * The `/auth/desktop/refresh` endpoint returns rotated tokens in its JSON body (it
+ * does not Set-Cookie the httpOnly access cookie), so a refreshed token can't be
+ * re-read from the cookie. We therefore cache the freshest access token in memory
+ * and prefer it over the cookie. The cache is lost when the MV3 worker is evicted,
+ * which just falls back to the cookie + a fresh refresh — correct, if slightly less
+ * efficient.
  *
  * @module extension/auth/extensionSessionToken
  */
@@ -16,12 +21,24 @@ import { getAccessToken, getRefreshToken } from '@/webfront/lib/utils/cookie';
 
 const REFRESH_PATH = '/auth/desktop/refresh';
 
-/** Best-effort JWT expiry check (no signature verification — that's the gateway's job). */
+/** Freshest known access token (from a refresh body or a valid cookie). */
+let cachedAccessToken: string | null = null;
+/** In-flight refresh, so concurrent callers share one POST (avoids refresh-token rotation races). */
+let inflightRefresh: Promise<string | null> | null = null;
+
+/**
+ * Best-effort JWT expiry check (no signature verification — that's the gateway's job).
+ * Decodes the base64url payload. Returns false on decode failure (treat as needing refresh)
+ * or when past `exp`; true when unexpired or when there is no `exp` claim.
+ */
 function isJwtUnexpired(token: string): boolean {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return false;
-    const payload = JSON.parse(atob(parts[1]));
+    // base64url → base64 (+ padding) before decoding.
+    let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    b64 += '='.repeat((4 - (b64.length % 4)) % 4);
+    const payload = JSON.parse(atob(b64));
     return payload.exp ? payload.exp * 1000 > Date.now() : true;
   } catch {
     return false;
@@ -29,38 +46,63 @@ function isJwtUnexpired(token: string): boolean {
 }
 
 /**
- * Read the current session access token from the auth cookie, refreshing it via the
- * home-page refresh endpoint when expired. Returns null when unauthenticated.
- * Used as the gateway client's per-request bearer-token getter.
+ * Current session access token: in-memory cache → auth cookie → refresh.
+ * Returns null when unauthenticated. Used as the gateway client's bearer getter.
  */
 export async function getSessionAccessToken(): Promise<string | null> {
-  const token = await getAccessToken();
-  if (token && isJwtUnexpired(token)) return token;
+  if (cachedAccessToken && isJwtUnexpired(cachedAccessToken)) return cachedAccessToken;
+
+  const cookieToken = await getAccessToken();
+  if (cookieToken && isJwtUnexpired(cookieToken)) {
+    cachedAccessToken = cookieToken;
+    return cookieToken;
+  }
+
   return refreshSessionAccessToken();
 }
 
 /**
- * Refresh the session tokens using the refresh cookie, then re-read the (rotated)
- * access-token cookie. `credentials: 'include'` lets the refresh response's
- * Set-Cookie update the cookie jar. Best-effort: returns whatever access token is
- * available afterwards (or null). Also used as the client's 401 refresh hook.
+ * Refresh via the home-page refresh endpoint and return the rotated access token
+ * from the response BODY (the endpoint does not Set-Cookie the access cookie).
+ * Returns null on any failure (invalid refresh token, HTTP error, network error) so
+ * callers surface a real auth failure instead of retrying a stale token. Concurrent
+ * calls share one in-flight request. Also the gateway client's 401 refresh hook.
  */
-export async function refreshSessionAccessToken(): Promise<string | null> {
+export function refreshSessionAccessToken(): Promise<string | null> {
+  if (inflightRefresh) return inflightRefresh;
+  inflightRefresh = doRefresh().finally(() => {
+    inflightRefresh = null;
+  });
+  return inflightRefresh;
+}
+
+async function doRefresh(): Promise<string | null> {
   const refreshToken = await getRefreshToken();
-  if (!refreshToken) return getAccessToken();
+  if (!refreshToken) {
+    cachedAccessToken = null;
+    return null;
+  }
 
   const authBaseUrl = resolveAuthConfig().authBaseUrl;
-  if (!authBaseUrl) return getAccessToken();
+  if (!authBaseUrl) return null;
 
   try {
-    await fetch(`${authBaseUrl}${REFRESH_PATH}`, {
+    const response = await fetch(`${authBaseUrl}${REFRESH_PATH}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: refreshToken }),
       credentials: 'include',
     });
+    if (!response.ok) {
+      cachedAccessToken = null;
+      return null;
+    }
+    const data = await response.json();
+    const accessToken: string | null = data?.access_token ?? null;
+    cachedAccessToken = accessToken;
+    return accessToken;
   } catch (error) {
     console.warn('[ExtensionSessionToken] Token refresh failed:', error);
+    return null;
   }
-  return getAccessToken();
 }

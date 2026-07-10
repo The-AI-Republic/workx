@@ -1203,8 +1203,14 @@ export class Session {
               wire_api: 'Chat' as const,
               requires_openai_auth: true,
             },
+            // refreshAuthorizationToken re-reads the credential store on 401 (the
+            // desktop runtime refreshes that token in the background), mirroring the
+            // main-chat gateway client which supplies both hooks.
             ...(useGatewayForMemory
-              ? { getAuthorizationToken: memoryAuthTokenGetter }
+              ? {
+                  getAuthorizationToken: memoryAuthTokenGetter,
+                  refreshAuthorizationToken: memoryAuthTokenGetter,
+                }
               : (useBackendForMemory && backendBaseUrl ? { useCredentials: true } : {})),
           });
 
