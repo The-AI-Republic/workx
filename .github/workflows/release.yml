@@ -1,11 +1,19 @@
-name: Release
+name: Release (Chrome extension)
+
+# Publishing a GitHub Release builds the Chrome extension, attaches workx.zip to
+# the Release, and opens the Chrome Web Store publish PR.
+#
+# The desktop app is NOT built here anymore — it moved to release-desktop.yml,
+# which builds/signs and pushes to the workx-desktop-releases S3 bucket that the
+# in-app auto-updater reads. Both workflows fire on the same `release: released`
+# event, so one GitHub Release ships both surfaces; desktop builds once, to S3.
 
 on:
+  # `released` fires only on publishing a non-prerelease Release (including a
+  # draft that is later published) — matches release-desktop.yml so both
+  # surfaces ship together and prereleases/drafts never auto-publish.
   release:
-    types: [created]
-
-env:
-  CARGO_TERM_COLOR: always
+    types: [released]
 
 jobs:
   build-extension:
@@ -108,154 +116,3 @@ jobs:
             --body-file /tmp/pr-body.md \
             --base main \
             --head "$BRANCH"
-
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: macOS-universal
-            runner: macos-latest
-            args: --target universal-apple-darwin
-          - name: Windows-x64
-            runner: windows-latest
-            args: --target x86_64-pc-windows-msvc
-          - name: Linux-x64
-            runner: ubuntu-22.04
-            args: --target x86_64-unknown-linux-gnu
-
-    name: ${{ matrix.name }}
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 60
-    permissions:
-      contents: write
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Extract version from tag
-        id: version
-        shell: bash
-        run: |
-          TAG="${GITHUB_REF#refs/tags/v}"
-          echo "version=$TAG" >> "$GITHUB_OUTPUT"
-          echo "Building version: $TAG"
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - run: npm ci
-
-      - name: Sync version into config files
-        run: node scripts/sync-version.js ${{ steps.version.outputs.version }}
-
-      - name: Create desktop .env
-        shell: bash
-        # Full desktop config for a production release. Environment-specific
-        # values (hostnames, OIDC client id, cookie domain) come from repo/org
-        # Actions `vars`, each with a prod default so a release still builds if a
-        # var is unset. Structural values (paths, MCP name, scopes, routing mode)
-        # are identical across environments and written literally. VITE_* is what
-        # the packaged WebView inlines; the WORKX_* mirror keeps runtime-side
-        # parity with src/desktop/.env. Keep this in sync with
-        # src/desktop/.env.production.example.
-        #
-        # IMPORTANT before the first prod release: confirm the prod hostnames
-        # below and register the prod OIDC client (VITE_AUTH_OIDC_CLIENT_ID) in
-        # the home-page IdP with redirect workx://auth/callback + require_pkce.
-        run: |
-          cat > src/desktop/.env << 'EOF'
-          # --- Home-page auth / backend (environment-specific) ---
-          VITE_AUTH_COOKIE_DOMAIN=${{ vars.VITE_AUTH_COOKIE_DOMAIN || '.airepublic.com' }}
-          VITE_AUTH_BASE_URL=${{ vars.VITE_AUTH_BASE_URL || 'https://home.airepublic.com' }}
-          VITE_BACKEND_API_BASE_URL=${{ vars.VITE_BACKEND_API_BASE_URL || 'https://api.airepublic.com' }}
-          VITE_AUTH_ACCESS_COOKIE_NAME=ai_access
-          VITE_AUTH_REFRESH_COOKIE_NAME=ai_refresh
-          VITE_AUTH_CSRF_COOKIE_NAME=ai_csrf
-          VITE_AUTH_STATUS_COOKIE_NAME=ai_auth_status
-          VITE_AUTH_USER_NAME_COOKIE_NAME=ai_user_name
-          VITE_AUTH_USER_EMAIL_COOKIE_NAME=ai_user_email
-          VITE_AUTH_LOGIN_PATH=/login
-          VITE_AUTH_DESKTOP_SESSION_PATH=/auth/desktop/session
-          VITE_AUTH_DESKTOP_REFRESH_PATH=/auth/desktop/refresh
-          VITE_AUTH_PROFILE_PATH=/api/v1/users/profile
-          VITE_AUTH_USER_CENTER_PATH=/user-center/info
-          VITE_AUTH_PRICING_PATH=/pricing
-
-          # --- AI Hub gateway routing (LLM -> {gateway}/v1, MCP -> {gateway}/mcp) ---
-          VITE_LLM_ROUTING_MODE=gateway
-          VITE_GATEWAY_BASE_URL=${{ vars.VITE_GATEWAY_BASE_URL || 'https://gateway.airepublic.com' }}
-          VITE_GATEWAY_CATALOG_URL=${{ vars.VITE_GATEWAY_CATALOG_URL || 'https://hub.airepublic.com/apps' }}
-          VITE_GATEWAY_MCP_NAME=ai-hub
-          VITE_GATEWAY_MCP_AUTH_MODE=session-jwt
-          VITE_GATEWAY_MCP_TOOL_DISCOVERY=flat
-
-          # --- OIDC Auth-Code + PKCE login (svc:hub audience) ---
-          VITE_AUTH_OIDC_ENABLED=true
-          VITE_AUTH_OIDC_CLIENT_ID=${{ vars.VITE_AUTH_OIDC_CLIENT_ID || 'workx-desktop' }}
-          VITE_AUTH_OIDC_SCOPES=openid profile email chat apps models offline_access
-
-          # --- Runtime-side mirror (Node/Tauri sidecar reads WORKX_*) ---
-          WORKX_AUTH_BASE_URL=${{ vars.VITE_AUTH_BASE_URL || 'https://home.airepublic.com' }}
-          WORKX_BACKEND_API_BASE_URL=${{ vars.VITE_BACKEND_API_BASE_URL || 'https://api.airepublic.com' }}
-          WORKX_AUTH_DESKTOP_SESSION_PATH=/auth/desktop/session
-          WORKX_AUTH_DESKTOP_REFRESH_PATH=/auth/desktop/refresh
-          WORKX_AUTH_PROFILE_PATH=/api/v1/users/profile
-          WORKX_LLM_ROUTING_MODE=gateway
-          WORKX_GATEWAY_BASE_URL=${{ vars.VITE_GATEWAY_BASE_URL || 'https://gateway.airepublic.com' }}
-          WORKX_GATEWAY_CATALOG_URL=${{ vars.VITE_GATEWAY_CATALOG_URL || 'https://hub.airepublic.com/apps' }}
-          WORKX_GATEWAY_MCP_NAME=ai-hub
-          WORKX_GATEWAY_MCP_AUTH_MODE=session-jwt
-          WORKX_GATEWAY_MCP_TOOL_DISCOVERY_HEADER=X-Air-Tool-Discovery
-          WORKX_GATEWAY_MCP_TOOL_DISCOVERY=flat
-          WORKX_AUTH_OIDC_ENABLED=true
-          WORKX_AUTH_OIDC_CLIENT_ID=${{ vars.VITE_AUTH_OIDC_CLIENT_ID || 'workx-desktop' }}
-          WORKX_AUTH_OIDC_SCOPES=openid profile email chat apps models offline_access
-          EOF
-
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ contains(matrix.args, 'universal-apple-darwin') && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
-
-      - name: Cache Rust dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            tauri/target
-          key: ${{ matrix.runner }}-cargo-${{ hashFiles('tauri/Cargo.lock') }}
-          restore-keys: |
-            ${{ matrix.runner }}-cargo-
-
-      - name: Install Linux system dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            librsvg2-dev \
-            patchelf \
-            libssl-dev \
-            libgtk-3-dev \
-            libayatana-appindicator3-dev
-
-      - name: Install tauri-cli
-        run: cargo install tauri-cli --version "^2" --locked
-
-      - name: Build and upload with tauri-action
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        with:
-          projectPath: tauri
-          tauriScript: cargo tauri
-          args: ${{ matrix.args }}
-          tagName: ${{ github.event.release.tag_name }}
-          releaseName: ${{ github.event.release.name }}
-          releaseId: ${{ github.event.release.id }}

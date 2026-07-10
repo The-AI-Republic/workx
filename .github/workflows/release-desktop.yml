@@ -2,7 +2,8 @@ name: Release desktop bundles (S3)
 
 # Cross-OS build + sign + S3 upload + updater-manifest publish for the WorkX
 # Tauri desktop app. Modeled on the pi-dash `pidash-desktop-releases` pipeline.
-# Triggered manually (workflow_dispatch); once proven we can add a tag trigger.
+# Fires when a stable GitHub Release is published (release: released), with a
+# manual workflow_dispatch fallback for hotfixes.
 #
 # Per platform this workflow:
 #   1. builds the Tauri bundle + updater artifact + matching `.sig`
@@ -24,10 +25,19 @@ name: Release desktop bundles (S3)
 #   VITE_VAULT_SECRET                   - credential-encryption vault secret (>=32 chars)
 
 on:
+  # Primary path: publishing a stable GitHub Release builds + signs + pushes to
+  # S3, which is where the app's auto-updater reads latest.json from.
+  #   `released` (NOT `created`) fires only when a non-prerelease Release is
+  #   published — including a draft that is later published — so prereleases and
+  #   in-progress drafts never auto-ship to users. release.yml fires on the same
+  #   event to build the Chrome extension, so one Release ships both surfaces.
+  release:
+    types: [released]
+  # Manual fallback (re-run a target, publish a hotfix without a Release, etc.).
   workflow_dispatch:
     inputs:
       release_notes:
-        description: 'Release notes shown in the in-app updater dialog (plain text).'
+        description: 'Release notes shown in the in-app updater dialog (plain text). Ignored on release-triggered runs, which use the Release body.'
         required: false
         default: ''
 
@@ -73,12 +83,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Read version from package.json
+      - name: Resolve release version
         id: version
         shell: bash
+        # On a Release run the tag is authoritative (matches release.yml, which
+        # derives the extension version the same way), so the desktop bundle and
+        # the extension always ship under the same version. Manual runs fall back
+        # to package.json. Strip a leading `v` from the tag.
+        #
+        # The tag is passed via env (RELEASE_TAG) rather than inlined into the
+        # script: an attacker-controlled ${{ github.event.release.tag_name }}
+        # spliced straight into `run:` would be a shell-injection sink in a job
+        # that holds the signing key + AWS creds. As an env value it reaches the
+        # shell as data, never as code.
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          V=$(node -p "require('./package.json').version")
-          if [ -z "$V" ]; then echo "ERROR: could not read version from package.json"; exit 1; fi
+          TAG="$RELEASE_TAG"
+          if [ -n "$TAG" ]; then
+            V="${TAG#v}"
+          else
+            V=$(node -p "require('./package.json').version")
+          fi
+          if [ -z "$V" ]; then echo "ERROR: could not resolve release version"; exit 1; fi
           echo "version=$V" >> "$GITHUB_OUTPUT"
           echo "Building WorkX desktop v$V for ${{ matrix.tauri-targets }}"
 
@@ -94,10 +121,10 @@ jobs:
 
       - name: Create desktop .env (production)
         shell: bash
-        # Keep in sync with release.yml and src/desktop/.env.production.example.
-        # Environment-specific values come from repo/org Actions `vars` with prod
-        # defaults; structural values are literal. VITE_* is inlined into the
-        # WebView bundle; WORKX_* mirrors it for the Node/Tauri sidecar.
+        # Keep in sync with src/desktop/.env.production.example. Environment-
+        # specific values come from repo/org Actions `vars` with prod defaults;
+        # structural values are literal. VITE_* is inlined into the WebView
+        # bundle; WORKX_* mirrors it for the Node/Tauri sidecar.
         run: |
           cat > src/desktop/.env << 'EOF'
           VITE_AUTH_COOKIE_DOMAIN=${{ vars.VITE_AUTH_COOKIE_DOMAIN || '.airepublic.com' }}
@@ -199,7 +226,9 @@ jobs:
         shell: bash
         env:
           VERSION: ${{ steps.version.outputs.version }}
-          NOTES: ${{ inputs.release_notes }}
+          # Release-triggered runs use the Release body; manual runs use the
+          # input; fall back to the version so the updater dialog is never blank.
+          NOTES: ${{ github.event.release.body || inputs.release_notes || format('WorkX {0}', steps.version.outputs.version) }}
         run: |
           set -euo pipefail
           RELEASES_BASE_URL="https://${S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com"
