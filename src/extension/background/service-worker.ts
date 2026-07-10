@@ -33,7 +33,8 @@ import { AgentConfig } from '../../config/AgentConfig';
 import { STORAGE_KEYS } from '../../config/defaults';
 import { DEFAULT_APPROVAL_CONFIG } from '../../core/approval/types';
 import { TabManager } from '../../core/TabManager';
-import { LLM_API_URL } from '../../config/constants';
+import { LLM_API_URL, GATEWAY_LLM_API_URL, LLM_ROUTING_MODE } from '../../config/constants';
+import { getSessionAccessToken, refreshSessionAccessToken } from '../auth/extensionSessionToken';
 // Track 22: MCP/A2A are gated behind compile-time feature flags. Manager
 // classes and tool-adapter helpers load via dynamic import() inside the
 // feature-gated init blocks, so an OFF build tree-shakes core/mcp +
@@ -467,6 +468,31 @@ async function doInitialize(): Promise<void> {
 }
 
 /**
+ * Build an AuthManager for the extension service worker.
+ *
+ * In account-credits mode (`shouldUseBackend`), route account LLM through the AI Hub
+ * gateway when configured (`LLM_ROUTING_MODE === 'gateway'`), reading the session JWT
+ * from the auth cookie via chrome.cookies (SW-safe) as a per-request bearer token.
+ * When the gateway is not configured, `gatewayLlmBaseUrl` is null and routing falls
+ * back to the legacy ai-assistant /api/llm cookie path. Own-key mode is unaffected.
+ */
+function buildExtensionAuthManager(
+  shouldUseBackend: boolean,
+  backendBaseUrl: string | null,
+): AuthManager {
+  const gatewayLlmBaseUrl =
+    shouldUseBackend && LLM_ROUTING_MODE === 'gateway' && GATEWAY_LLM_API_URL
+      ? GATEWAY_LLM_API_URL
+      : null;
+  return new AuthManager(
+    shouldUseBackend,
+    backendBaseUrl,
+    shouldUseBackend ? getSessionAccessToken : undefined,
+    { gatewayLlmBaseUrl, refreshAccessToken: refreshSessionAccessToken },
+  );
+}
+
+/**
  * Initialize AuthManager from stored config preferences
  * This ensures useOwnApiKey setting is respected on service worker startup
  */
@@ -489,7 +515,7 @@ async function initializeAuthFromConfig(): Promise<void> {
       backendBaseUrl
     });
 
-    const authManager = new AuthManager(shouldUseBackend, backendBaseUrl);
+    const authManager = buildExtensionAuthManager(shouldUseBackend, backendBaseUrl);
     currentAuthManager = authManager;
 
     // Apply auth to all active sessions
@@ -787,7 +813,7 @@ async function registerServiceHandlers(): Promise<void> {
       };
 
       const shouldUseBackend = useOwnApiKey === false;
-      const authManager = new AuthManager(shouldUseBackend, shouldUseBackend ? (backendBaseUrl ?? null) : null);
+      const authManager = buildExtensionAuthManager(shouldUseBackend, shouldUseBackend ? (backendBaseUrl ?? null) : null);
       currentAuthManager = authManager;
 
       // Apply auth to all active sessions
