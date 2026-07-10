@@ -1120,14 +1120,38 @@ export class Session {
 
         const openaiApiKey = await agentConfig.getProviderApiKey('openai');
 
-        // Build backend routing config if applicable
-        let backendBaseUrl: string | undefined;
+        // Build platform routing config for "account credits" memory (own-key off).
+        // Prefer the AI Hub gateway (/v1, metered on the unified credit wallet); fall
+        // back to the legacy ai-assistant /api/llm path only when the gateway is not
+        // configured (llmRoutingMode !== 'gateway'). Own-key memory is unaffected and
+        // calls the user's OpenAI key directly.
+        let backendBaseUrl: string | undefined;    // legacy ai-assistant /api/llm
+        let gatewayLlmBaseUrl: string | undefined;  // AI Hub gateway /v1
         if (useBackendForMemory) {
-          const { LLM_API_URL } = await import('../config/constants');
-          if (LLM_API_URL) {
-            backendBaseUrl = LLM_API_URL;
+          const { resolveRuntimeUrls } = await import('../config/runtimeUrls');
+          const urls = resolveRuntimeUrls();
+          if (urls.llmRoutingMode === 'gateway' && urls.gatewayLlmApiUrl) {
+            // Only route memory through the gateway when a session JWT is actually
+            // available (desktop, logged in). Otherwise fall back to the legacy path
+            // so server profiles / logged-out states keep working as before.
+            try {
+              const { getCredentialStore } = await import('@/core/storage');
+              const token = await getCredentialStore().get('auth', 'access_token');
+              if (token) {
+                gatewayLlmBaseUrl = urls.gatewayLlmApiUrl;
+              }
+            } catch {
+              // credential store unavailable — fall through to legacy backend
+            }
+          }
+          if (!gatewayLlmBaseUrl) {
+            const { LLM_API_URL } = await import('../config/constants');
+            if (LLM_API_URL) {
+              backendBaseUrl = LLM_API_URL;
+            }
           }
         }
+        const useGatewayForMemory = !!gatewayLlmBaseUrl;
 
         // Create a dedicated LLM caller for memory keyword generation and relevance filtering.
         // Prefers a cheap model (gpt-4o-mini) via OpenAI API key. Falls back to the
@@ -1140,15 +1164,37 @@ export class Session {
           ? (openaiApiKey || 'backend-routed')
           : (openaiApiKey || '');
 
+        // The gateway resolves models by "<provider>/<model>" slug; the legacy backend and
+        // own-key paths use the bare id. Only prefix a bare id; pass through an existing
+        // "owner/model" slug, and normalize the "owner:model" config form to a slash.
+        const memoryRequestModel = !useGatewayForMemory
+          ? extractionModel
+          : extractionModel.includes('/')
+            ? extractionModel
+            : extractionModel.includes(':')
+              ? extractionModel.replace(':', '/')
+              : `openai/${extractionModel}`;
+
         let llmCaller = null;
 
         if (memoryApiKey) {
           // Preferred path: dedicated gpt-4o-mini client via OpenAI key.
           // Track 11 note: memory extraction is a single tool-less completion;
           // it intentionally does not take the agent's parallelToolCalls flag.
+          //
+          // Gateway account-credits memory authenticates per-request with the
+          // desktop session JWT (Bearer), same as main-chat gateway routing.
+          let memoryAuthTokenGetter: (() => Promise<string | null>) | undefined;
+          if (useGatewayForMemory) {
+            const { getCredentialStore } = await import('@/core/storage');
+            memoryAuthTokenGetter = () => getCredentialStore().get('auth', 'access_token');
+          }
+
           const memoryLLMClient = new OpenAIChatCompletionClient({
-            apiKey: memoryApiKey,
-            baseUrl: useBackendForMemory && backendBaseUrl ? backendBaseUrl + '/openai' : undefined,
+            apiKey: useGatewayForMemory ? 'gateway-routed' : memoryApiKey,
+            baseUrl: useGatewayForMemory
+              ? gatewayLlmBaseUrl
+              : (useBackendForMemory && backendBaseUrl ? backendBaseUrl + '/openai' : undefined),
             sessionId: 'memory-search',
             modelFamily: {
               family: extractionModel,
@@ -1162,13 +1208,21 @@ export class Session {
               wire_api: 'Chat' as const,
               requires_openai_auth: true,
             },
-            ...(useBackendForMemory && backendBaseUrl && { useCredentials: true }),
+            // refreshAuthorizationToken re-reads the credential store on 401 (the
+            // desktop runtime refreshes that token in the background), mirroring the
+            // main-chat gateway client which supplies both hooks.
+            ...(useGatewayForMemory
+              ? {
+                  getAuthorizationToken: memoryAuthTokenGetter,
+                  refreshAuthorizationToken: memoryAuthTokenGetter,
+                }
+              : (useBackendForMemory && backendBaseUrl ? { useCredentials: true } : {})),
           });
 
           llmCaller = {
             complete: async (systemPrompt: string, userPrompt: string) => {
               const response = await memoryLLMClient.complete({
-                model: extractionModel,
+                model: memoryRequestModel,
                 messages: [
                   { role: 'system', content: systemPrompt },
                   { role: 'user', content: userPrompt }
