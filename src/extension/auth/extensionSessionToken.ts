@@ -23,6 +23,10 @@ const REFRESH_PATH = '/auth/desktop/refresh';
 
 /** Freshest known access token (from a refresh body or a valid cookie). */
 let cachedAccessToken: string | null = null;
+/** Freshest known refresh token. /auth/desktop/refresh rotates it and returns it in the
+ * body (not Set-Cookie), so we must keep the rotated value or the next refresh reuses the
+ * now-invalidated cookie value. Lost on MV3 worker eviction, which falls back to the cookie. */
+let cachedRefreshToken: string | null = null;
 /** In-flight refresh, so concurrent callers share one POST (avoids refresh-token rotation races). */
 let inflightRefresh: Promise<string | null> | null = null;
 
@@ -77,7 +81,8 @@ export function refreshSessionAccessToken(): Promise<string | null> {
 }
 
 async function doRefresh(): Promise<string | null> {
-  const refreshToken = await getRefreshToken();
+  // Prefer the rotated refresh token from a prior refresh over the (possibly stale) cookie.
+  const refreshToken = cachedRefreshToken ?? (await getRefreshToken());
   if (!refreshToken) {
     cachedAccessToken = null;
     return null;
@@ -95,14 +100,27 @@ async function doRefresh(): Promise<string | null> {
     });
     if (!response.ok) {
       cachedAccessToken = null;
+      cachedRefreshToken = null;
       return null;
     }
     const data = await response.json();
     const accessToken: string | null = data?.access_token ?? null;
+    // Keep the rotated refresh token so the next refresh doesn't reuse the invalidated one.
+    if (data?.refresh_token) cachedRefreshToken = data.refresh_token;
     cachedAccessToken = accessToken;
     return accessToken;
   } catch (error) {
     console.warn('[ExtensionSessionToken] Token refresh failed:', error);
     return null;
   }
+}
+
+/**
+ * Cheap synchronous-ish presence check: read the access-token cookie WITHOUT triggering
+ * a network refresh. Used to decide gateway-vs-legacy routing at AuthManager build time
+ * so init never blocks on the refresh endpoint (a token that exists-but-expired still
+ * selects the gateway; the per-request getter refreshes it lazily).
+ */
+export async function peekSessionAccessToken(): Promise<string | null> {
+  return cachedAccessToken ?? (await getAccessToken());
 }

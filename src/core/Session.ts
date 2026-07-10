@@ -1164,11 +1164,16 @@ export class Session {
           ? (openaiApiKey || 'backend-routed')
           : (openaiApiKey || '');
 
-        // The gateway resolves models by "<provider>/<model>" slug; the legacy
-        // backend and own-key paths use the bare model id.
-        const memoryRequestModel = useGatewayForMemory && !extractionModel.includes('/')
-          ? `openai/${extractionModel}`
-          : extractionModel;
+        // The gateway resolves models by "<provider>/<model>" slug; the legacy backend and
+        // own-key paths use the bare id. Only prefix a bare id; pass through an existing
+        // "owner/model" slug, and normalize the "owner:model" config form to a slash.
+        const memoryRequestModel = !useGatewayForMemory
+          ? extractionModel
+          : extractionModel.includes('/')
+            ? extractionModel
+            : extractionModel.includes(':')
+              ? extractionModel.replace(':', '/')
+              : `openai/${extractionModel}`;
 
         let llmCaller = null;
 
