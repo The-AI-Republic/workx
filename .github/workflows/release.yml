@@ -5,15 +5,15 @@ name: Release (Chrome extension)
 #
 # The desktop app is NOT built here anymore — it moved to release-desktop.yml,
 # which builds/signs and pushes to the workx-desktop-releases S3 bucket that the
-# in-app auto-updater reads. Both workflows fire on the same `release: created`
+# in-app auto-updater reads. Both workflows fire on the same `release: released`
 # event, so one GitHub Release ships both surfaces; desktop builds once, to S3.
 
 on:
+  # `released` fires only on publishing a non-prerelease Release (including a
+  # draft that is later published) — matches release-desktop.yml so both
+  # surfaces ship together and prereleases/drafts never auto-publish.
   release:
-    types: [created]
-
-env:
-  CARGO_TERM_COLOR: always
+    types: [released]
 
 jobs:
   build-extension:
