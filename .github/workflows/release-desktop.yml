@@ -24,10 +24,16 @@ name: Release desktop bundles (S3)
 #   VITE_VAULT_SECRET                   - credential-encryption vault secret (>=32 chars)
 
 on:
+  # Primary path: publishing a GitHub Release builds + signs + pushes to S3,
+  # which is where the app's auto-updater reads latest.json from. This is the
+  # sole release channel — release.yml no longer fires on release.
+  release:
+    types: [created]
+  # Manual fallback (re-run a target, publish a hotfix without a Release, etc.).
   workflow_dispatch:
     inputs:
       release_notes:
-        description: 'Release notes shown in the in-app updater dialog (plain text).'
+        description: 'Release notes shown in the in-app updater dialog (plain text). Ignored on release-triggered runs, which use the Release body.'
         required: false
         default: ''
 
@@ -199,7 +205,8 @@ jobs:
         shell: bash
         env:
           VERSION: ${{ steps.version.outputs.version }}
-          NOTES: ${{ inputs.release_notes }}
+          # Release-triggered runs use the Release body; manual runs use the input.
+          NOTES: ${{ github.event.release.body || inputs.release_notes }}
         run: |
           set -euo pipefail
           RELEASES_BASE_URL="https://${S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com"
