@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetchRemoteCatalog, getRemoteProviders, clearRemoteCatalog } from '../remoteCatalog';
 import { getDefaultProviders } from '../defaults';
 
-const CATALOG_URL = 'https://api.example.com/api/llm/config/catalog/workx';
+const CATALOG_URL = 'https://api.example.com/api/v1/workx/models';
 
 const VALID_CATALOG = {
   anthropic: {
