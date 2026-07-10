@@ -35,7 +35,7 @@ import { DEFAULT_APPROVAL_CONFIG } from '../../core/approval/types';
 import { TabManager } from '../../core/TabManager';
 import { LLM_API_URL } from '../../config/constants';
 import { resolveRuntimeUrls } from '../../config/runtimeUrls';
-import { getSessionAccessToken, refreshSessionAccessToken } from '../auth/extensionSessionToken';
+import { getSessionAccessToken, refreshSessionAccessToken, peekSessionAccessToken } from '../auth/extensionSessionToken';
 // Track 22: MCP/A2A are gated behind compile-time feature flags. Manager
 // classes and tool-adapter helpers load via dynamic import() inside the
 // feature-gated init blocks, so an OFF build tree-shakes core/mcp +
@@ -490,9 +490,11 @@ async function buildExtensionAuthManager(
   if (shouldUseBackend) {
     const urls = resolveRuntimeUrls();
     if (urls.llmRoutingMode === 'gateway' && urls.gatewayLlmApiUrl) {
-      // Gate on an actual token so createGatewayRoutedClient never throws for a
-      // logged-out user; without one, fall through to the legacy cookie path.
-      const token = await getSessionAccessToken();
+      // Gate on token PRESENCE (cheap cookie read, no network refresh at init time) so
+      // createGatewayRoutedClient never throws for a logged-out user; without one, fall
+      // through to the legacy cookie path. An expired-but-present cookie still selects the
+      // gateway — the per-request getter refreshes it lazily.
+      const token = await peekSessionAccessToken();
       if (token) {
         return new AuthManager(shouldUseBackend, backendBaseUrl, getSessionAccessToken, {
           gatewayLlmBaseUrl: urls.gatewayLlmApiUrl,
