@@ -192,6 +192,16 @@ export function extractAddedFileContent(diff: string, path?: string): string | n
   const file =
     (path && files.find((f) => f.path === path || f.newPath === path)) ||
     (files.length === 1 ? files[0] : null);
+  return file ? getAddedFileContent(file) : null;
+}
+
+/**
+ * Reconstruct the body of a newly-added file from an already-parsed diff.
+ * Returns null unless the file is a pure creation (new, no deletions). Prefer
+ * this over `extractAddedFileContent` when the diff has already been parsed —
+ * it avoids re-parsing the whole diff once per file.
+ */
+export function getAddedFileContent(file: ParsedFileDiff): string | null {
   if (!file || !file.isNew || file.deletions > 0) return null;
   const body: string[] = [];
   for (const h of file.hunks) {

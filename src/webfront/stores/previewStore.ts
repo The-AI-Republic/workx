@@ -23,7 +23,7 @@ import type { Event } from '@/core/protocol/types';
 import type { ArtifactRecord, ArtifactChange } from '@/types/ui';
 import {
   parseUnifiedDiff,
-  extractAddedFileContent,
+  getAddedFileContent,
   inferArtifactKind,
   type ParsedFileDiff,
 } from '../lib/diffParse';
@@ -128,7 +128,7 @@ function createPreviewStore() {
       const path = f.path || fallbackPath || '(unknown)';
       // Reconstruct this file's diff slice for the viewer.
       const fileDiff = sliceFileDiff(diff, f) ?? diff;
-      const added = f.isNew ? extractAddedFileContent(diff, f.path) : null;
+      const added = f.isNew ? getAddedFileContent(f) : null;
       upsert(sessionId, path, {
         change: changeForFile(f),
         diff: fileDiff,
