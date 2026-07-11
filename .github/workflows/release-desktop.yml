@@ -128,7 +128,7 @@ jobs:
         run: |
           cat > src/desktop/.env << 'EOF'
           VITE_AUTH_COOKIE_DOMAIN=${{ vars.VITE_AUTH_COOKIE_DOMAIN || '.airepublic.com' }}
-          VITE_AUTH_BASE_URL=${{ vars.VITE_AUTH_BASE_URL || 'https://home.airepublic.com' }}
+          VITE_AUTH_BASE_URL=${{ vars.VITE_AUTH_BASE_URL || 'https://airepublic.com' }}
           VITE_BACKEND_API_BASE_URL=${{ vars.VITE_BACKEND_API_BASE_URL || 'https://api.airepublic.com' }}
           VITE_MODEL_CATALOG_URL=${{ vars.VITE_MODEL_CATALOG_URL || 'https://api.airepublic.com/api/v1/workx/models' }}
           VITE_AUTH_ACCESS_COOKIE_NAME=ai_access
@@ -153,7 +153,7 @@ jobs:
           VITE_AUTH_OIDC_CLIENT_ID=${{ vars.VITE_AUTH_OIDC_CLIENT_ID || 'workx-desktop' }}
           VITE_AUTH_OIDC_SCOPES=openid profile email chat apps models offline_access
           VITE_VAULT_SECRET=${{ secrets.VITE_VAULT_SECRET }}
-          WORKX_AUTH_BASE_URL=${{ vars.VITE_AUTH_BASE_URL || 'https://home.airepublic.com' }}
+          WORKX_AUTH_BASE_URL=${{ vars.VITE_AUTH_BASE_URL || 'https://airepublic.com' }}
           WORKX_BACKEND_API_BASE_URL=${{ vars.VITE_BACKEND_API_BASE_URL || 'https://api.airepublic.com' }}
           WORKX_MODEL_CATALOG_URL=${{ vars.VITE_MODEL_CATALOG_URL || 'https://api.airepublic.com/api/v1/workx/models' }}
           WORKX_AUTH_DESKTOP_SESSION_PATH=/auth/desktop/session
