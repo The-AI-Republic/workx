@@ -323,8 +323,12 @@ jobs:
               upload_install_artifact "$(find_one "$BUNDLE_ROOT/msi" "*.msi")" "workx-windows-x64.msi"
               ;;
             linux-*)
+              # bundle.targets: "all" builds deb + rpm + AppImage; publish all
+              # three so the site can offer the right package per distro family
+              # (.deb Debian/Ubuntu, .rpm Fedora/RHEL, .AppImage universal).
               upload_install_artifact "$(find_one "$BUNDLE_ROOT/appimage" "*.AppImage")" "workx-linux-x64.AppImage"
               upload_install_artifact "$(find_one "$BUNDLE_ROOT/deb" "*.deb")" "workx-linux-x64.deb"
+              upload_install_artifact "$(find_one "$BUNDLE_ROOT/rpm" "*.rpm")" "workx-linux-x64.rpm"
               ;;
             *)
               echo "::warning::no first-install artifact mapping for $PRIMARY_TARGET"
