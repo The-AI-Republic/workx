@@ -295,7 +295,7 @@ interface ArtifactRecord {
 | `markdown` | Rendered doc | Reuse **`marked`** (already used in `MessageDisplay.svelte`); add a toggle for raw source vs rendered. |
 | `text` | Monospace `<pre>` | Plain, wrapped, with copy button. |
 | `code` | Syntax-highlighted read view | Add a light highlighter (e.g. `highlight.js` / `shiki`); no full editor. |
-| `diff` | Side-by-side or unified diff | New `DiffView.svelte`, driven by the existing `ContentBlock` `diff` shape (`additions`/`deletions`/`context`) and/or a lib (`diff2html`). Read-only in Phase 1 (no stage/revert). |
+| `diff` | Side-by-side or unified diff | New `DiffView.svelte`: **parse the unified-diff string with [`jsdiff`](https://github.com/kpdecker/jsdiff) (`parsePatch`) and hand-render** with themed Svelte markup. Read-only in Phase 1 (no stage/revert). See §6.1. |
 | `image` | `<img>` via asset protocol | Tauri asset protocol (§8). |
 | `csv` | Table | Parse to `ContentBlock` `table` and render. Also the interim path for **spreadsheet/Google-Sheet exports**. |
 | `html` | **Sandboxed webview** | Tauri webview / sandboxed iframe (§8). This is the "built-in browser" slice — reserved for genuine web/HTML previews and local dev-server URLs. |
@@ -305,6 +305,39 @@ Design principle (from §2.3): **default to a native, sandboxed, type-specific r
 use the webview only for web-shaped content.** This keeps the common case (markdown docs
 and code diffs — what the agent produces most) fast, themed, and dependency-light, and
 avoids over-relying on an embedded browser.
+
+### 6.1 Diff viewer — `jsdiff` (parse) + hand-rolled `DiffView.svelte` (render)
+
+The diff viewer splits cleanly into two layers, and we pick a different answer for each:
+
+- **Parsing** a unified diff (hunk headers `@@ -a,b +c,d @@`, `\ No newline at end of
+  file`, renames, binary markers) is fiddly and error-prone — **do not hand-roll this.**
+  Use **`jsdiff`** (the `diff` package): `parsePatch(str)` returns a structured
+  `{ oldFileName, newFileName, hunks: [{ oldStart, newStart, lines }] }[]`, i.e. already
+  split **per file** — which is exactly what the artifact list needs.
+- **Rendering** is where we have hard constraints a drop-in HTML lib fights: the
+  `terminal`/`modern` theme tokens, `_t` i18n, and `svelte/transition` consistency. So
+  we **hand-roll** a small (~50-line) `DiffView.svelte` over jsdiff's hunk data, styling
+  added/removed/context lines with existing theme colors.
+
+**Why not `diff2html`?** It bundles parse + render and emits its own HTML/CSS, which
+clashes with our two themes and bypasses `_t`. It's the faster drop-in, but it *owns the
+DOM*; jsdiff gives us the parse for free and leaves rendering under our control. (jsdiff
+and diff2html are not really competitors — jsdiff is a data/parse lib, diff2html is a
+renderer that happens to parse internally; we only want the parse half.)
+
+**Sourcing the diff string (important — the collector alone is not enough).** The
+`PatchApply*` events the §5.3 collector keys off carry only `path`/`num_files`/`success`
+— **no diff body**. The actual unified-diff text lives in **`TurnDiffEvent { diff,
+files_changed }`** (verified in `src/core/protocol/events.ts`; also
+`ApplyPatchApprovalRequestEvent.patch`). Because `TurnDiffEvent.diff` is a **whole-turn,
+all-files** diff, `DiffView` sources it there and uses `jsdiff.parsePatch()` to split by
+file, mapping each file back to its `ArtifactRecord.path`. Note the existing
+`ContentBlock` `diff` shape (`additions`/`deletions`/`context` — three flat arrays) is
+**lossy** (no line interleaving/position) and is unsuitable as the diff-viewer source;
+it remains fine for inline chat summaries only.
+
+**Dependency:** adds `diff` (jsdiff) to `package.json` — small, dependency-free, MIT.
 
 ---
 
@@ -364,7 +397,7 @@ core/agent  ──emits──▶  protocol events (events.ts)
                                                           ▼
                                     PreviewPanel.svelte (list + viewer)
                                      ├─ markdown → marked
-                                     ├─ diff     → DiffView.svelte
+                                     ├─ diff     → DiffView.svelte (jsdiff.parsePatch, from TurnDiffEvent)
                                      ├─ code     → highlighter
                                      ├─ html     → sandboxed webview
                                      └─ image    → asset protocol
@@ -380,7 +413,8 @@ The **only new upstream work** is the collector projection; everything else is U
 - `previewStore.ts` + `ArtifactRecord` type in `src/types/ui.ts`.
 - Collector in `EventProcessor.ts` for `PatchApply*` and file-ish `McpToolCall*`.
 - `PreviewPanel.svelte`: artifact list + markdown viewer (reuse `marked`) + `DiffView`
-  (read-only) + plain-text/code view.
+  (read-only; `jsdiff` parse of `TurnDiffEvent.diff`, hand-rolled render — §6.1) +
+  plain-text/code view. Adds the `diff` (jsdiff) dependency.
 - `AppShell.svelte`: third column in wide mode; right slide-in drawer in narrow mode.
 - "This turn's changes" filter.
 
