@@ -75,15 +75,21 @@ export async function downloadAndInstall(
  * @param intervalMinutes - How often to check for updates (default: 60 minutes)
  */
 export async function initializeUpdater(intervalMinutes = 60): Promise<void> {
-  // Initial check on launch
-  try {
-    const update = await checkForUpdate();
-    if (update) {
-      console.log(`[Updater] Update v${update.version} is available — will prompt user in a future release`);
-    }
-  } catch (error) {
-    console.warn('[Updater] Initial update check failed:', error);
-  }
+  // Initial check: fire-and-forget rather than awaited. `check()` is a network
+  // round-trip to the updater endpoint; awaiting it here put it on the startup
+  // path (initializeUpdater is awaited by initializeDesktop before the UI is
+  // interactive). Not awaiting keeps it off that path while still running
+  // immediately on every launch (a deferred timer would be skipped by sessions
+  // shorter than the delay).
+  void checkForUpdate()
+    .then((update) => {
+      if (update) {
+        console.log(`[Updater] Update v${update.version} is available — will prompt user in a future release`);
+      }
+    })
+    .catch((error) => {
+      console.warn('[Updater] Initial update check failed:', error);
+    });
 
   // Periodic checks
   setInterval(async () => {
