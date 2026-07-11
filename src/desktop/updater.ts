@@ -75,15 +75,21 @@ export async function downloadAndInstall(
  * @param intervalMinutes - How often to check for updates (default: 60 minutes)
  */
 export async function initializeUpdater(intervalMinutes = 60): Promise<void> {
-  // Initial check on launch
-  try {
-    const update = await checkForUpdate();
-    if (update) {
-      console.log(`[Updater] Update v${update.version} is available — will prompt user in a future release`);
-    }
-  } catch (error) {
-    console.warn('[Updater] Initial update check failed:', error);
-  }
+  // Initial check, deferred and non-blocking. `check()` is a network round-trip
+  // to the updater endpoint; running it inline used to sit on the cold-start
+  // critical path (it was awaited before the UI mounted). Fire it a few seconds
+  // after launch instead, once first paint and the sidecar handshake are done.
+  setTimeout(() => {
+    checkForUpdate()
+      .then((update) => {
+        if (update) {
+          console.log(`[Updater] Update v${update.version} is available — will prompt user in a future release`);
+        }
+      })
+      .catch((error) => {
+        console.warn('[Updater] Initial update check failed:', error);
+      });
+  }, 5000);
 
   // Periodic checks
   setInterval(async () => {
