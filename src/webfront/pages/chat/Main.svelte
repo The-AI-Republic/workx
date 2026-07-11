@@ -38,6 +38,9 @@
   import { MODES, DEFAULT_MODE, type AgentMode } from '@/prompts/PromptComposer';
   import { ThreadEventRouter } from '../../routing/ThreadEventRouter';
   import { handleBackgroundTaskEvent, startBackgroundTaskPolling, stopBackgroundTaskPolling } from '../../stores/backgroundTaskStore';
+  import { isWideMode } from '../../stores/layoutStore';
+  import PreviewPanel from '../../components/preview/PreviewPanel.svelte';
+  import { previewStore, previewPanelOpen, activeArtifactCount } from '../../stores/previewStore';
   // UI channel client (platform-agnostic)
   let client: UIChannelClient | null = $state(null);
   let unsubscribers: Array<() => void> = $state([]);
@@ -137,7 +140,11 @@
     eventProcessor: EventProcessor;
   }
   let threadStates: Map<string, ThreadConversationState> = new Map();
-  let activeSessionId: string | null = null;
+  let activeSessionId: string | null = $state(null);
+  // Keep the artifact preview panel pointed at whichever thread is active.
+  $effect(() => {
+    previewStore.setActiveSession(activeSessionId);
+  });
   const threadRouter = new ThreadEventRouter();
   let canCreateThread: boolean = true;
   let maxSessionsReached: boolean = false;
@@ -686,6 +693,9 @@
   function handleEvent(event: Event) {
     const msg = event.msg;
 
+    // Feed the artifact preview panel (WORKXOS-7) from the same event stream.
+    previewStore.collect(activeSessionId, event);
+
     // Process event through EventProcessor
     const processed = eventProcessor.processEvent(event);
 
@@ -904,6 +914,9 @@
 
     // Reset event processor
     eventProcessor.reset();
+
+    // Drop the preview panel's artifacts for this conversation.
+    previewStore.clearSession(activeSessionId);
 
     // Request session reset from backend
     try {
@@ -1491,6 +1504,9 @@
       threadStates.set(sessionId, state);
     }
 
+    // Feed the preview panel for this (possibly background) thread too.
+    previewStore.collect(sessionId, event);
+
     // Process event for this thread's state
     const processed = state.eventProcessor.processEvent(event);
     if (processed) {
@@ -1576,7 +1592,9 @@
           />
         {/if}
 
-    <div class="flex flex-col flex-1 min-h-0 max-w-[1500px] mx-auto w-full">
+    <!-- Chat + artifact preview panel row (WORKXOS-7) -->
+    <div class="flex flex-row flex-1 min-h-0 w-full overflow-hidden">
+    <div class="flex flex-col flex-1 min-h-0 w-full {$isWideMode && $previewPanelOpen ? '' : 'max-w-[1500px] mx-auto'}">
         <!-- Status Line -->
         <div class="shrink-0 flex justify-between mb-2">
           <div class="flex items-center space-x-2">
@@ -1589,6 +1607,24 @@
           </div>
           <div class="flex items-center space-x-2">
             <BackgroundTasksBadge />
+            {#if $activeArtifactCount > 0}
+              <button
+                type="button"
+                onclick={() => previewStore.toggle()}
+                aria-pressed={$previewPanelOpen}
+                title={$_t("Toggle preview panel")}
+                class="text-xs px-2 py-0.5 rounded font-[inherit] cursor-pointer transition-opacity flex items-center gap-1
+                  {$previewPanelOpen
+                    ? (currentTheme === 'modern'
+                        ? 'bg-chat-accent/15 text-chat-primary dark:text-chat-primary-dark font-semibold'
+                        : 'bg-[rgba(34,197,94,0.15)] border border-term-dim-green text-term-bright-green')
+                    : (currentTheme === 'modern'
+                        ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:opacity-100 opacity-70'
+                        : 'text-term-dim-green hover:text-term-green opacity-70 hover:opacity-100')}"
+              >
+                {$_t("Preview")} ({$activeArtifactCount})
+              </button>
+            {/if}
             {#if platform.platformName !== 'extension' && activeSessionId}
               {@const activeMode = $activeThread?.mode ?? DEFAULT_MODE}
               {@const pendingMode = $activeThread?.pendingMode ?? null}
@@ -1750,7 +1786,38 @@
 
         </div>
       </div>
+      <!-- /chat column -->
+
+      {#if $isWideMode && $previewPanelOpen}
+        <div
+          class="shrink-0 min-h-0 overflow-hidden border-l {currentTheme === 'modern' ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}"
+          style="width: var(--preview-panel-width, 420px)"
+        >
+          <PreviewPanel />
+        </div>
+      {/if}
+    </div>
+    <!-- /chat + preview row -->
   </div>
+
+  <!-- Narrow-mode: artifact preview as a right slide-in overlay -->
+  {#if !$isWideMode && $previewPanelOpen}
+    <div
+      class="fixed inset-0 z-40 bg-black/50"
+      role="button"
+      tabindex="-1"
+      aria-label={$_t('Close preview')}
+      onclick={() => previewStore.close()}
+    ></div>
+    <div
+      class="fixed inset-y-0 right-0 z-50 w-[90%] max-w-[460px] shadow-xl {currentTheme === 'modern' ? 'border-l border-chat-border dark:border-chat-border-dark' : 'border-l border-term-dim-green'}"
+      role="dialog"
+      aria-modal="true"
+      aria-label={$_t('Preview')}
+    >
+      <PreviewPanel />
+    </div>
+  {/if}
 
   <!-- Track 15: rewind turn-selector overlay (command-invoked) -->
   <MessageSelector

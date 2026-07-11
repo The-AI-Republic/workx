@@ -249,6 +249,52 @@ export type ContentBlock =
   | { type: 'table'; headers: string[]; rows: string[][] };
 
 // ============================================================================
+// Artifact Preview Types (WORKXOS-7)
+// ============================================================================
+
+/**
+ * ArtifactKind - how the preview panel should render a given artifact. Inferred
+ * from the file extension plus the originating event (a patch → 'diff').
+ */
+export type ArtifactKind =
+  | 'markdown'
+  | 'text'
+  | 'code'
+  | 'diff'
+  | 'image'
+  | 'csv'
+  | 'unknown';
+
+/** How the agent touched the file this turn. */
+export type ArtifactChange = 'added' | 'modified' | 'deleted' | 'read';
+
+/**
+ * ArtifactRecord - one file the agent created, changed, or read this session.
+ * Populated by `previewStore` from the same event stream the chat renders
+ * (PatchApply*, ApplyPatchApprovalRequest, TurnDiff). Content is carried inline
+ * when the event provides it (patch body / added-file body); the panel renders
+ * lazily from whatever is present, with a metadata-only fallback otherwise.
+ */
+export interface ArtifactRecord {
+  /** Stable id: `${sessionId}::${path}`. */
+  id: string;
+  /** File path as reported by the originating event. */
+  path: string;
+  /** Inferred render kind. */
+  kind: ArtifactKind;
+  /** Change type for the list badge. */
+  change: ArtifactChange;
+  /** Unified-diff text for this file, when available (patch/TurnDiff turns). */
+  diff?: string;
+  /** Full text content, when available (e.g. body of a newly-added file). */
+  content?: string;
+  /** Human summary if the event carried one. */
+  summary?: string;
+  /** When the record was last updated (ms epoch). */
+  updatedAt: number;
+}
+
+// ============================================================================
 // ProcessedEvent - Main UI Event Type
 // ============================================================================
 
