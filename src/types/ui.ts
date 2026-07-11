@@ -262,6 +262,7 @@ export type ArtifactKind =
   | 'code'
   | 'diff'
   | 'image'
+  | 'html'
   | 'csv'
   | 'unknown';
 

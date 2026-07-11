@@ -3,6 +3,7 @@ import {
   parseUnifiedDiff,
   extractAddedFileContent,
   inferArtifactKind,
+  inferLanguage,
 } from '../diffParse';
 
 const NEW_FILE_DIFF = `diff --git a/docs/design.md b/docs/design.md
@@ -107,7 +108,22 @@ describe('inferArtifactKind', () => {
     expect(inferArtifactKind('src/App.svelte')).toBe('code');
     expect(inferArtifactKind('data.csv')).toBe('csv');
     expect(inferArtifactKind('logo.png')).toBe('image');
+    expect(inferArtifactKind('diagram.svg')).toBe('image');
     expect(inferArtifactKind('notes.txt')).toBe('text');
     expect(inferArtifactKind('Makefile')).toBe('unknown');
+  });
+
+  it('maps html to its own kind (rendered web preview), not code', () => {
+    expect(inferArtifactKind('index.html')).toBe('html');
+    expect(inferArtifactKind('page.htm')).toBe('html');
+  });
+});
+
+describe('inferLanguage', () => {
+  it('returns the lowercased extension for the highlighter', () => {
+    expect(inferLanguage('src/app.TS')).toBe('ts');
+    expect(inferLanguage('a/b/query.sql')).toBe('sql');
+    expect(inferLanguage('Makefile')).toBe('');
+    expect(inferLanguage('noext')).toBe('');
   });
 });

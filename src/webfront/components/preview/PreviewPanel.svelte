@@ -22,6 +22,8 @@
     selectedArtifact,
   } from '../../stores/previewStore';
   import type { ArtifactRecord } from '@/types/ui';
+  import { highlightCode } from '../../lib/highlight';
+  import { inferLanguage } from '../../lib/diffParse';
   import DiffView from './DiffView.svelte';
 
   let { onClose = () => previewStore.close() }: { onClose?: () => void } = $props();
@@ -55,21 +57,41 @@
       case 'code': return '📝';
       case 'diff': return '±';
       case 'image': return '🖼️';
+      case 'html': return '🌐';
       case 'csv': return '▦';
       case 'text': return '📃';
       default: return '📎';
     }
   }
 
+  // A renderable image source, when the artifact carries inline image data.
+  // SVG content arrives as text on the event stream, so it renders via a
+  // script-inert `data:` URL (an <img> context never executes SVG scripts).
+  // Binary images (png/jpg) need a disk read behind a Tauri fs/asset
+  // capability — a later slice — so they fall back to the metadata card.
+  let imageSrc = $derived.by<string | null>(() => {
+    const a = $selectedArtifact;
+    if (!a || a.kind !== 'image' || !a.content) return null;
+    if (/\.svgx?$/i.test(a.path)) {
+      return `data:image/svg+xml;utf8,${encodeURIComponent(a.content)}`;
+    }
+    return null;
+  });
+
   // Which viewer to use for the selected artifact.
-  type ViewMode = 'markdown' | 'diff' | 'code' | 'empty';
+  type ViewMode = 'markdown' | 'html' | 'image' | 'diff' | 'code' | 'empty';
+  let canToggleSource = $derived(
+    ($selectedArtifact?.kind === 'markdown' || $selectedArtifact?.kind === 'html') &&
+      !!$selectedArtifact?.content,
+  );
   let viewMode = $derived.by<ViewMode>(() => {
     const a = $selectedArtifact;
     if (!a) return 'empty';
     if (a.kind === 'markdown' && a.content && !showSource) return 'markdown';
+    if (a.kind === 'html' && a.content && !showSource) return 'html';
+    if (imageSrc) return 'image';
     if (a.diff) return 'diff';
     if (a.content) return 'code';
-    if (a.kind === 'markdown' && a.content) return 'code'; // source view
     return 'empty';
   });
 
@@ -152,7 +174,7 @@
       <span class="truncate flex-1 font-mono" title={$selectedArtifact.path}>
         {dirname($selectedArtifact.path)}{dirname($selectedArtifact.path) ? '/' : ''}<span class="font-semibold {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-green'}">{basename($selectedArtifact.path)}</span>
       </span>
-      {#if $selectedArtifact.kind === 'markdown' && $selectedArtifact.content}
+      {#if canToggleSource}
         <button
           class="shrink-0 px-1.5 py-0.5 rounded cursor-pointer hover:opacity-100 opacity-80
             {currentTheme === 'modern' ? 'hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark' : 'hover:bg-term-green/10'}"
@@ -173,10 +195,28 @@
       <div class="preview-markdown px-4 py-3 text-sm leading-relaxed">
         {@html renderMarkdown($selectedArtifact!.content!)}
       </div>
+    {:else if viewMode === 'html'}
+      <!-- Rendered web preview (the "built-in browser" slice). Fully sandboxed:
+           empty `sandbox` disables scripts, forms and same-origin, so agent
+           HTML renders statically and can't reach the app or network. -->
+      <iframe
+        class="w-full h-full border-0 bg-white"
+        sandbox=""
+        srcdoc={$selectedArtifact!.content}
+        title={$_t('Web preview')}
+      ></iframe>
+    {:else if viewMode === 'image'}
+      <div class="flex items-center justify-center h-full p-4">
+        <img
+          src={imageSrc}
+          alt={basename($selectedArtifact!.path)}
+          class="max-w-full max-h-full object-contain"
+        />
+      </div>
     {:else if viewMode === 'diff'}
       <DiffView diff={$selectedArtifact!.diff!} />
     {:else if viewMode === 'code'}
-      <pre class="px-4 py-3 text-xs font-mono whitespace-pre-wrap break-words">{$selectedArtifact!.content}</pre>
+      <pre class="preview-code px-4 py-3 text-xs font-mono whitespace-pre-wrap break-words">{@html highlightCode($selectedArtifact!.content!, inferLanguage($selectedArtifact!.path))}</pre>
     {:else}
       <div class="flex flex-col items-center justify-center h-full gap-2 p-6 text-center text-sm
         {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
@@ -235,4 +275,11 @@
     padding-left: 0.8em;
     opacity: 0.85;
   }
+
+  /* Syntax-highlight token colors (see lib/highlight.ts). Chosen to stay legible
+     on both the modern (light/dark) and terminal themes. */
+  .preview-code :global(.hl-keyword) { color: #c678dd; }
+  .preview-code :global(.hl-string) { color: #98c379; }
+  .preview-code :global(.hl-number) { color: #d19a66; }
+  .preview-code :global(.hl-comment) { color: #7f848e; font-style: italic; }
 </style>

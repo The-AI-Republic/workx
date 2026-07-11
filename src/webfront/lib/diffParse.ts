@@ -214,10 +214,14 @@ export function getAddedFileContent(file: ParsedFileDiff): string | null {
 }
 
 const MARKDOWN_EXT = new Set(['md', 'markdown', 'mdx']);
+// HTML gets its own kind so the panel can offer a rendered web preview (the
+// "built-in browser" slice), with a raw-source toggle — distinct from generic
+// code, which only ever shows highlighted source.
+const HTML_EXT = new Set(['html', 'htm']);
 const CODE_EXT = new Set([
   'ts', 'tsx', 'js', 'jsx', 'mjs', 'cjs', 'svelte', 'vue', 'py', 'rs', 'go',
   'java', 'kt', 'c', 'h', 'cpp', 'cc', 'hpp', 'cs', 'rb', 'php', 'swift',
-  'sh', 'bash', 'zsh', 'sql', 'json', 'yaml', 'yml', 'toml', 'xml', 'html',
+  'sh', 'bash', 'zsh', 'sql', 'json', 'yaml', 'yml', 'toml', 'xml',
   'css', 'scss', 'less',
 ]);
 const IMAGE_EXT = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico']);
@@ -230,8 +234,16 @@ export function inferArtifactKind(path: string): import('@/types/ui').ArtifactKi
   const ext = dot >= 0 ? base.slice(dot + 1).toLowerCase() : '';
   if (MARKDOWN_EXT.has(ext)) return 'markdown';
   if (ext === 'csv') return 'csv';
+  if (HTML_EXT.has(ext)) return 'html';
   if (IMAGE_EXT.has(ext)) return 'image';
   if (CODE_EXT.has(ext)) return 'code';
   if (TEXT_EXT.has(ext)) return 'text';
   return 'unknown';
+}
+
+/** Language token for the syntax highlighter, from a path's extension. */
+export function inferLanguage(path: string): string {
+  const base = path.split('/').pop() || path;
+  const dot = base.lastIndexOf('.');
+  return dot >= 0 ? base.slice(dot + 1).toLowerCase() : '';
 }
