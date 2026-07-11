@@ -61,6 +61,27 @@ describe('parseUnifiedDiff', () => {
   it('returns an empty array for empty input', () => {
     expect(parseUnifiedDiff('')).toEqual([]);
   });
+
+  it('treats `--`/`++`-prefixed content lines as content, not file headers', () => {
+    // A deleted SQL comment (`-- old`) renders as `--- old` and an added one as
+    // `+++ new`; neither is a real `---`/`+++` file header.
+    const diff = `diff --git a/schema.sql b/schema.sql
+--- a/schema.sql
++++ b/schema.sql
+@@ -1,2 +1,2 @@
+--- old comment
++++ new comment
+`;
+    const files = parseUnifiedDiff(diff);
+    expect(files).toHaveLength(1);
+    expect(files[0].path).toBe('schema.sql');
+    const del = files[0].hunks[0].lines.find((l) => l.type === 'del');
+    const add = files[0].hunks[0].lines.find((l) => l.type === 'add');
+    expect(del?.text).toBe('-- old comment');
+    expect(add?.text).toBe('++ new comment');
+    expect(files[0].additions).toBe(1);
+    expect(files[0].deletions).toBe(1);
+  });
 });
 
 describe('extractAddedFileContent', () => {

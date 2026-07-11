@@ -94,6 +94,19 @@ describe('previewStore', () => {
     expect(get(activeArtifacts).map((a) => a.path).sort()).toEqual(['notes.md', 'src/x.ts']);
   });
 
+  it('slices each git-format file diff down to its own hunk body, not just headers', () => {
+    previewStore.collect('s1', turnDiffEvent(
+      `diff --git a/notes.md b/notes.md\n${NEW_DOC}diff --git a/src/x.ts b/src/x.ts\n${MOD_CODE}`,
+      2,
+    ));
+    const byPath = Object.fromEntries(get(activeArtifacts).map((a) => [a.path, a]));
+    // The slice must keep this file's hunk content and exclude the other file.
+    expect(byPath['notes.md'].diff).toContain('+# Notes');
+    expect(byPath['notes.md'].diff).not.toContain('const x');
+    expect(byPath['src/x.ts'].diff).toContain('+const x = 2;');
+    expect(byPath['src/x.ts'].diff).not.toContain('# Notes');
+  });
+
   it('isolates artifacts by session', () => {
     previewStore.collect('s1', approvalEvent('notes.md', NEW_DOC));
     previewStore.collect('s2', approvalEvent('src/x.ts', MOD_CODE));

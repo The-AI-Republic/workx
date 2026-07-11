@@ -266,9 +266,14 @@ export const activeArtifactCount: Readable<number> = derived(previewStore, ($s) 
  */
 function sliceFileDiff(diff: string, file: ParsedFileDiff): string | null {
   const lines = diff.split('\n');
+  // In git-format diffs each file carries BOTH a `diff --git` and a `--- `
+  // header; splitting on both would cut every file after its two header lines.
+  // Prefer `diff --git` as the boundary and only fall back to `--- ` for plain
+  // unified diffs that lack it.
+  const hasGitHeaders = lines.some((l) => l.startsWith('diff --git'));
   const starts: number[] = [];
   lines.forEach((l, i) => {
-    if (l.startsWith('diff --git') || l.startsWith('--- ')) starts.push(i);
+    if (hasGitHeaders ? l.startsWith('diff --git') : l.startsWith('--- ')) starts.push(i);
   });
   if (starts.length <= 1) return null;
   const wanted = file.newPath || file.oldPath || file.path;

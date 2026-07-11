@@ -86,7 +86,8 @@ export function parseUnifiedDiff(diff: string): ParsedFileDiff[] {
     return f;
   };
 
-  for (const raw of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
     if (raw.startsWith('diff --git')) {
       // Begin a new file block. Seed path from the `a/… b/…` header.
       current = startFile();
@@ -100,7 +101,18 @@ export function parseUnifiedDiff(diff: string): ParsedFileDiff[] {
       continue;
     }
 
-    if (raw.startsWith('--- ')) {
+    // A `--- ` line is a file header only when it is the old-path half of a
+    // `---`/`+++` pair AND either we're between files (no open hunk — always the
+    // case for git diffs, where `diff --git` resets the hunk) or the pair is
+    // immediately followed by an `@@` hunk (the boundary signal in plain
+    // unified diffs that lack `diff --git`). Inside a hunk a deleted line whose
+    // content starts with `-- ` (SQL/Lua/Ada comment, `++`-increment, etc.)
+    // renders as `--- …`/`+++ …`; these guards keep it as content, not a header.
+    if (
+      raw.startsWith('--- ') &&
+      lines[i + 1]?.startsWith('+++ ') &&
+      (hunk === null || lines[i + 2]?.startsWith('@@'))
+    ) {
       if (!current || current.hunks.length > 0) current = startFile();
       hunk = null;
       const p = raw.slice(4).trim();
@@ -110,18 +122,17 @@ export function parseUnifiedDiff(diff: string): ParsedFileDiff[] {
         current.oldPath = stripPrefix(p);
         if (!current.path) current.path = current.oldPath;
       }
-      continue;
-    }
-
-    if (raw.startsWith('+++ ')) {
-      if (!current) current = startFile();
-      const p = raw.slice(4).trim();
-      if (NULL_PATH.test(p)) {
+      // Consume the paired `+++ ` new-path header in lockstep so an added line
+      // whose content starts with `++ ` is never mistaken for a header.
+      const nxt = lines[i + 1];
+      const np = nxt.slice(4).trim();
+      if (NULL_PATH.test(np)) {
         current.isDeleted = true;
       } else {
-        current.newPath = stripPrefix(p);
+        current.newPath = stripPrefix(np);
         current.path = current.newPath;
       }
+      i += 1;
       continue;
     }
 
