@@ -298,7 +298,7 @@ interface ArtifactRecord {
 | `diff` | Side-by-side or unified diff | New `DiffView.svelte`: **parse the unified-diff string with [`jsdiff`](https://github.com/kpdecker/jsdiff) (`parsePatch`) and hand-render** with themed Svelte markup. Read-only in Phase 1 (no stage/revert). See §6.1. |
 | `image` | `<img>` via asset protocol | Tauri asset protocol (§8). |
 | `csv` | Table | Parse to `ContentBlock` `table` and render. Also the interim path for **spreadsheet/Google-Sheet exports**. |
-| `html` | **Sandboxed webview** | Tauri webview / sandboxed iframe (§8). This is the "built-in browser" slice — reserved for genuine web/HTML previews and local dev-server URLs. |
+| `html` | **Sandboxed webview** | Tauri's **native (system) webview — not a bundled browser engine** (§8.3). Sandboxed `<iframe>` for self-contained HTML/SVG/Mermaid artifacts; Tauri **v2 embedded child webview** for local dev-server URLs. The "built-in browser" slice, reserved for genuine web content. |
 | `unknown` / binary | Fallback | Metadata card + **"Open externally"** using existing `shell:allow-open`. |
 
 Design principle (from §2.3): **default to a native, sandboxed, type-specific renderer;
@@ -371,12 +371,25 @@ Reading agent-changed files and rendering web content needs care:
      explicit, reviewable addition — keep it least-privilege.
 2. **Images / binary via asset protocol.** Enable the Tauri **asset protocol** scoped to
    workspace roots to render images without inlining bytes.
-3. **HTML/webview sandboxing.** For the `html` viewer and local dev-server previews,
-   render inside a **sandboxed webview/iframe** with a **restrictive CSP** for that
-   surface. Note `tauri.conf.json` currently sets top-level **`"csp": null`**; the
-   preview webview must **not** inherit "no CSP" — give the preview surface its own
-   locked-down policy (no arbitrary remote script; local/preview origins only), matching
-   Codex's "no auth, no cookies, no extensions" isolation.
+3. **HTML/webview sandboxing.** WorkX is **Tauri v2** (`tauri = "2"`, `@tauri-apps/api
+   ^2.10`, schema `config/2`), so the web-preview surface uses Tauri's **native system
+   webview** (WKWebView / WebView2 / WebKitGTK). We do **not** integrate a browser engine
+   (Chromium/CEF/Servo) — that would add ~100MB+ and defeat the point of Tauri vs
+   Electron; the "built-in browser" is the platform webview, scoped and sandboxed. Pick
+   the mechanism by content:
+   - **Self-contained HTML/SVG/Mermaid artifacts** → a **sandboxed `<iframe>`** inside
+     the existing app window (`sandbox` attr + scoped CSP). Cheapest; docks in the panel.
+     Shares the app's webview context, so isolation comes from `sandbox` + CSP.
+   - **Local dev-server URLs** (Codex's actual "in-app browser" case) → a **Tauri v2
+     embedded child webview** (`WebviewWindow`, or an embedded `Webview` via v2's
+     multi-webview API). A separate native webview instance with its own origin/context,
+     own CSP, and **no shared cookies/profile/extensions** — matching Codex's "no auth,
+     no cookies, no extensions" isolation, with real navigation.
+
+   Either way, apply a **restrictive CSP** to this surface. Note `tauri.conf.json`
+   currently sets top-level **`"csp": null`**; the preview surface must **not** inherit
+   "no CSP" — give it its own locked-down policy (no arbitrary remote script;
+   local/preview origins only).
 4. **Never execute untrusted artifact content in the app's main context.** HTML/JS
    artifacts run only inside the sandboxed surface, never the Svelte app window.
 
