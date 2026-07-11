@@ -197,9 +197,37 @@ existing pieces (verified against the current tree at `main`):
   added for direct file reads (see §8).
 
 **Gap:** there is **no diff renderer, no code viewer, and no webview/preview component**
-today. The preview panel is greenfield — but the *data* to drive it (which files the
-agent touched, with paths and diff summaries) is already flowing through the event
-pipeline.
+today. The preview panel is greenfield. The *artifact metadata* (which files the agent
+touched, with paths and diff summaries) mostly flows through the pipeline already — **but
+the diff/content bodies do not** (see §4.1). Closing that is prerequisite work, not UI.
+
+### 4.1 Verified pipeline gaps — must close before the Phase 1 UI
+
+A code read of `EventProcessor.ts`, `events.ts`, and `Main.svelte` at `main` found the
+following. These are **blockers**: the panel cannot render diffs or reliably list
+artifacts until they are fixed, and they are the reason this is not yet build-ready.
+
+1. **`TurnDiffEvent` is never emitted and never handled.** The diff viewer's proposed
+   source (§6.1) does not reach the frontend today: no `src/core` code emits
+   `{ type: 'TurnDiff' }`, and `EventProcessor.ts` (case at ~line 181) falls it through
+   to the generic 'system' handler that JSON-stringifies it. **The unified-diff string is
+   not available to the UI.** → *Backend must emit `TurnDiffEvent` at turn end; the
+   frontend must handle it and route `diff` into `previewStore` (not stringify it).*
+2. **The one real patch body is discarded.** `ApplyPatchApprovalRequestEvent.patch`
+   carries the full patch string, but `EventProcessor.ts` (~line 752–754) overwrites it
+   with the placeholder `diff: t('(patch details)')`. → *Preserve `patch` through to the
+   collector instead of dropping it.*
+3. **`McpToolCallEnd` drops `toolParams`.** The file path captured at
+   `McpToolCallBegin` (`params`, ~line 444) is **not** re-emitted in the `End` metadata
+   (~line 512–515), so a collector keyed off `McpToolCallEnd` can't see which file was
+   touched. → *Carry `toolParams` (at least the path) into the End `ProcessedEvent`.*
+4. **No change-type semantics.** `McpToolCallEnd.result` is opaque — added vs modified
+   vs deleted must be **inferred** from `tool_name` (e.g. Write→modified/added,
+   Read→read). `PatchApply*` confirms only `path`/`num_files`/`success` (no body), as the
+   design already states. → *Define an explicit inference table in the collector.*
+
+Items 1–3 are small, localized edits in known files; they are the true Phase-1
+foundation. §10 promotes them to an explicit **Phase 0** so implementation starts there.
 
 ---
 
@@ -239,16 +267,21 @@ The panel has two regions:
   column** on the right. Chat area flexes; panel has a fixed/resizable width
   (`--preview-panel-width`, default ~380–460px).
 - **Narrow mode:** the Preview Panel becomes a **slide-in overlay from the right**,
-  mirroring the existing left-panel drawer pattern in `AppShell.svelte` (`fade`
-  backdrop + `fly` from `x:+`), opened by an artifact click or a header toggle.
+  opened by an artifact click or a header toggle.
 - **Empty state:** panel is collapsed/hidden until the agent produces its first
   previewable artifact, then auto-reveals (configurable). This avoids stealing chat
   width when there is nothing to show.
 
-Reuse the **exact drawer mechanics** already proven for the left panel (see the
-`AppShell.svelte` narrow-mode drawer: backdrop `role=button`, `role=dialog`, Esc to
-close, auto-close on wide→narrow transitions) so the right panel is symmetric and
-low-risk.
+**Correction (verified against `main`):** `AppShell.svelte` is a **flex** row (not grid)
+with a two-column wide layout; in **narrow mode there is _no_ left-panel drawer** — the
+left panel is simply hidden and nav collapses into `FooterBar.svelte`. So there is no
+existing "left drawer" to mirror. The reusable pattern is instead
+`src/webfront/components/chat/MessageSelector.svelte`, which already implements a
+dismissable overlay (`position: fixed inset-0 z-50`, backdrop click-to-close,
+`role="dialog"` + `aria-modal`, Esc-to-close). Model the right drawer on **that**
+(anchored `right-0 top-0 bottom-0`, `fly` from `x:+`). Adding the wide-mode third column
+is a low-friction insert: a `shrink-0` sibling with `width: var(--preview-panel-width)`
+and a `border-l` after the `flex-1` content column.
 
 ### 5.3 Trigger — how the panel populates
 
@@ -259,8 +292,11 @@ The panel subscribes to the same event stream the chat renders. Concretely:
 - `EventProcessor.ts` already sees `PatchApplyBegin/End` (→ `path`, `success`,
   `diffSummary`, `filesChanged`) and `McpToolCallEnd` for file-ish tools (write/read).
   Add a thin **collector** that, when such an event resolves, upserts an
-  `ArtifactRecord` into `previewStore` — **no new backend data is required**; it is a
-  projection of events already flowing.
+  `ArtifactRecord` into `previewStore` — a projection of events flowing through the
+  processor. **Caveat (see §4.1):** this is *not* purely additive — the collector needs
+  the Phase-0 fixes first, because today `McpToolCallEnd` drops `toolParams` (no path
+  reaches the collector) and the approval patch body is discarded. The artifact *list*
+  can be built from `PatchApply*` alone; artifact *content/diffs* require Phase 0.
 - Artifacts are **per-thread** (thread state already isolates `eventProcessor`), so the
   panel shows the active thread's artifacts and switches with the thread.
 - The list supports a **"This turn's changes"** filter (Codex's "Last turn changes"),
@@ -326,16 +362,19 @@ DOM*; jsdiff gives us the parse for free and leaves rendering under our control.
 and diff2html are not really competitors — jsdiff is a data/parse lib, diff2html is a
 renderer that happens to parse internally; we only want the parse half.)
 
-**Sourcing the diff string (important — the collector alone is not enough).** The
+**Sourcing the diff string (important — this is the Phase-0 dependency).** The
 `PatchApply*` events the §5.3 collector keys off carry only `path`/`num_files`/`success`
-— **no diff body**. The actual unified-diff text lives in **`TurnDiffEvent { diff,
-files_changed }`** (verified in `src/core/protocol/events.ts`; also
-`ApplyPatchApprovalRequestEvent.patch`). Because `TurnDiffEvent.diff` is a **whole-turn,
-all-files** diff, `DiffView` sources it there and uses `jsdiff.parsePatch()` to split by
-file, mapping each file back to its `ArtifactRecord.path`. Note the existing
-`ContentBlock` `diff` shape (`additions`/`deletions`/`context` — three flat arrays) is
-**lossy** (no line interleaving/position) and is unsuitable as the diff-viewer source;
-it remains fine for inline chat summaries only.
+— **no diff body**. The unified-diff text is defined on **`TurnDiffEvent { diff,
+files_changed }`** (`src/core/protocol/events.ts`), with `ApplyPatchApprovalRequestEvent.
+patch` as a secondary source. **But neither reaches the diff viewer today** (§4.1):
+`TurnDiffEvent` is never emitted or handled, and the approval `patch` is overwritten with
+a placeholder in `EventProcessor.ts`. So `DiffView` is only implementable **after Phase
+0** wires one of these through. Once wired, because `TurnDiffEvent.diff` is a
+**whole-turn, all-files** diff, `DiffView` uses `jsdiff.parsePatch()` to split by file
+and maps each file back to its `ArtifactRecord.path`. Note the existing `ContentBlock`
+`diff` shape (`additions`/`deletions`/`context` — three flat arrays) is **lossy** (no
+line interleaving/position) and is unsuitable as the diff-viewer source; it remains fine
+for inline chat summaries only.
 
 **Dependency:** adds `diff` (jsdiff) to `package.json` — small, dependency-free, MIT.
 
@@ -422,14 +461,45 @@ The **only new upstream work** is the collector projection; everything else is U
 
 ## 10. Phased implementation plan
 
+**Phase 0 — Pipeline enablement (prerequisite; see §4.1).** Without this, the diff
+viewer has no data. Small, localized edits:
+- **Emit `TurnDiffEvent`** at turn end from `src/core` (full unified diff + `files_changed`),
+  **or** (fallback) preserve `ApplyPatchApprovalRequestEvent.patch` instead of the
+  `'(patch details)'` placeholder in `EventProcessor.ts`. Emitting `TurnDiff` is preferred
+  — it covers non-approval turns too.
+- **Handle `TurnDiff` on the frontend**: stop routing it to the generic 'system'
+  stringify; capture `diff` for the collector.
+- **Carry `toolParams` (path) into `McpToolCallEnd`** metadata so the collector can
+  attribute file-ish tool calls.
+- *Exit criteria:* the active thread's unified-diff string and touched-file paths are
+  observable on the frontend (log/store), verified against a real edit turn.
+
 **Phase 1 — Docs & diffs (highest value, lowest risk).**
-- `previewStore.ts` + `ArtifactRecord` type in `src/types/ui.ts`.
-- Collector in `EventProcessor.ts` for `PatchApply*` and file-ish `McpToolCall*`.
-- `PreviewPanel.svelte`: artifact list + markdown viewer (reuse `marked`) + `DiffView`
-  (read-only; `jsdiff` parse of `TurnDiffEvent.diff`, hand-rolled render — §6.1) +
-  plain-text/code view. Adds the `diff` (jsdiff) dependency.
-- `AppShell.svelte`: third column in wide mode; right slide-in drawer in narrow mode.
-- "This turn's changes" filter.
+- `previewStore.ts` (factory pattern per `stores/threadStore.ts`) + `ArtifactRecord` /
+  `ArtifactKind` types in `src/types/ui.ts`.
+- Collector in `EventProcessor.ts` for `PatchApply*` and file-ish `McpToolCall*`, with an
+  explicit change-type inference table (§4.1 item 4). Per-thread (one collector per
+  thread's `EventProcessor`, matching existing isolation).
+- `PreviewPanel.svelte`: artifact list + markdown viewer (reuse `marked` config from
+  `MessageDisplay.svelte`) + `DiffView` (read-only; `jsdiff` parse — §6.1) +
+  plain-text/code view. Adds the `diff` (jsdiff) dependency. Strings via `_t`; colors via
+  `chat-*` / `term-*` theme tokens.
+- `AppShell.svelte`: third `shrink-0` column (`--preview-panel-width`) in wide mode;
+  right slide-in overlay in narrow mode modeled on `MessageSelector.svelte` (§5.2).
+- "This turn's changes" filter, keyed off `TaskStarted`/`TaskComplete` boundaries.
+
+**Phase 1 definition of done (file-by-file):**
+| File | Change |
+|---|---|
+| `src/core/**` (emitter) | Emit `TurnDiffEvent` at turn end (Phase 0) |
+| `src/webfront/components/event_display/EventProcessor.ts` | Handle `TurnDiff`; retain `toolParams`; preserve approval `patch`; collector upsert |
+| `src/types/ui.ts` | Add `ArtifactRecord`, `ArtifactKind` (§5.4) |
+| `src/webfront/stores/previewStore.ts` *(new)* | Per-thread artifacts map + selection |
+| `src/webfront/components/preview/PreviewPanel.svelte` *(new)* | List + viewer host |
+| `src/webfront/components/preview/DiffView.svelte` *(new)* | `jsdiff` parse + themed render |
+| `src/webfront/components/layout/AppShell.svelte` | Third column + narrow-mode right overlay |
+| `src/webfront/pages/chat/Main.svelte` | Wire `previewStore` to active thread; deep-link from chat events |
+| `package.json` | Add `diff` (jsdiff) |
 
 **Phase 2 — Web & media previews.**
 - Sandboxed `html` webview + local dev-server preview (the "built-in browser" slice).
@@ -476,8 +546,16 @@ The **only new upstream work** is the collector projection; everything else is U
 
 ## 13. Open questions
 
+- **Phase-0 diff source (decide first):** emit a new `TurnDiffEvent` from `src/core`
+  (preferred — covers every turn) vs preserve the existing `ApplyPatchApprovalRequest.
+  patch` (smaller change, but only present on approval-gated turns)? This gates the whole
+  diff viewer (§4.1).
 - Should the panel show **read** files (Cowork does) or only **changed** files? Proposed
   default: changed files by default, with a toggle to include reads.
+- **Terminal-theme markdown reuse:** `MessageDisplay.svelte`'s markdown CSS has some
+  hardcoded colors (e.g. links `#2196f3`, code-block bg) that aren't theme-aware. Reusing
+  its `marked` config is fine, but the preview viewer should fix these for the `terminal`
+  theme rather than inherit them.
 - Content sourcing for arbitrary paths: prefer event-stream content (§8a) vs adding a
   scoped `fs` capability (§8b)? Impacts the Tauri capability surface and review.
 - Width/resizing persistence — store `--preview-panel-width` in user settings?
