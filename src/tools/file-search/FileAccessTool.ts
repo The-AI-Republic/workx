@@ -182,6 +182,11 @@ export class EditFileTool extends FileAccessTool {
 
     if (res.ok === 'false') return `Edit not applied (${res.reason}): ${res.message}`;
 
+    // Whole-turn diff (WORKXOS-7 Phase 0): the pre-edit content is the cached
+    // entry (empty when creating a new file); the post-edit content is what the
+    // Rust layer wrote back.
+    h.turnDiffTracker?.record(key, displayPath(h.workspaceRoot, key), entry?.content ?? '', res.newContentLf);
+
     // Edit entry ⇒ offset undefined (R2): chainable, dedup-immune.
     h.cache?.set(key, { content: res.newContentLf, mtimeFloorMs: res.mtimeMs, offset: undefined, limit: undefined });
     return `Edited ${path} (${replaceAll ? 'all occurrences' : '1 occurrence'}).`;
@@ -227,7 +232,12 @@ export class WriteFileTool extends FileAccessTool {
     });
     if (res.written === 'false') return `Write not applied (${res.reason}): ${res.message}`;
 
-    h.cache?.set(key, { content: content.replace(/\r\n/g, '\n'), mtimeFloorMs: res.mtimeMs, offset: undefined, limit: undefined });
+    const contentLf = content.replace(/\r\n/g, '\n');
+    // Whole-turn diff (WORKXOS-7 Phase 0): overwrite ⇒ before is the cached
+    // content; create ⇒ before is empty.
+    h.turnDiffTracker?.record(key, displayPath(h.workspaceRoot, key), st.exists ? (entry?.content ?? '') : '', contentLf);
+
+    h.cache?.set(key, { content: contentLf, mtimeFloorMs: res.mtimeMs, offset: undefined, limit: undefined });
     return `${st.exists ? 'Overwrote' : 'Created'} ${path}.`;
   }
 }
@@ -236,4 +246,18 @@ export class WriteFileTool extends FileAccessTool {
 function absKey(workspaceRoot: string, p: string): string {
   const isAbs = /^([a-zA-Z]:[\\/]|[\\/])/.test(p);
   return isAbs ? p : `${workspaceRoot}/${p}`;
+}
+
+/**
+ * Path shown in the whole-turn diff header (WORKXOS-7 Phase 0). Prefer a
+ * workspace-relative path so the preview panel labels files by their
+ * project-relative name; fall back to the raw absolute path when it lies
+ * outside the workspace root.
+ */
+function displayPath(workspaceRoot: string, absPath: string): string {
+  const root = workspaceRoot.replace(/[\\/]+$/, '');
+  if (root && (absPath === root || absPath.startsWith(root + '/') || absPath.startsWith(root + '\\'))) {
+    return absPath.slice(root.length + 1).replace(/\\/g, '/');
+  }
+  return absPath.replace(/\\/g, '/');
 }

@@ -1430,6 +1430,7 @@ export class TurnManager {
           // omits these and the tools degrade gracefully.
           workspaceRoot: this.session.getWorkspaceRoot?.(),
           fileStateCache: this.session.getFileStateCache?.(),
+          turnDiffTracker: this.session.getTurnDiffTracker?.(), // WORKXOS-7 Phase 0: whole-turn diff
           agentMode: this.session.getAgentMode?.(), // §4.2: file tools are code-mode only
         },
       };

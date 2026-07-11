@@ -9,12 +9,15 @@
 
 import type { ToolContext } from '../BaseTool';
 import type { FileStateCache } from '../../core/files/FileStateCache';
+import type { TurnDiffTracker } from '../../core/diff/TurnDiffTracker';
 
 export interface SessionScope {
   /** Jail anchor; undefined ⇒ no workspace selected (tools disabled, R8). */
   workspaceRoot?: string;
   /** Read-before-edit substrate. Only the file-access tools consume it. */
   cache?: FileStateCache;
+  /** Whole-turn diff accumulator (WORKXOS-7 Phase 0). Written by edit/write. */
+  turnDiffTracker?: TurnDiffTracker;
   /** Per-session persona mode (§4.2). Undefined ⇒ session-less path. */
   agentMode?: string;
 }
@@ -25,6 +28,7 @@ export function sessionScope(context: ToolContext): SessionScope {
   return {
     workspaceRoot: typeof m.workspaceRoot === 'string' && m.workspaceRoot.trim() ? m.workspaceRoot : undefined,
     cache: (m.fileStateCache as FileStateCache | undefined) ?? undefined,
+    turnDiffTracker: (m.turnDiffTracker as TurnDiffTracker | undefined) ?? undefined,
     agentMode: typeof m.agentMode === 'string' ? m.agentMode : undefined,
   };
 }

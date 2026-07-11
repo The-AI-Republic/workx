@@ -482,6 +482,10 @@ export class TaskRunner {
           await this.appendTaskOutputChunk('message', processResult.lastAgentMessage);
         }
 
+        // WORKXOS-7 Phase 0: emit one whole-turn diff for the preview panel.
+        // Best-effort — a preview aid must never disturb the turn loop.
+        await this.emitTurnDiff();
+
         if (processResult.tokenLimitReached && this.options.autoCompact) {
           const compacted = await this.attemptAutoCompact(turnCount, totalTokenUsage);
           if (compacted) {
@@ -1075,6 +1079,35 @@ export class TaskRunner {
       msg,
     };
     await this.session.emitEvent(event);
+  }
+
+  /**
+   * WORKXOS-7 Phase 0: drain the per-session TurnDiffTracker into a single
+   * `TurnDiff` event so the preview panel gets a whole-turn diff on every turn
+   * (not just approval-gated ones). Purely a preview aid: any failure here —
+   * missing tracker, diff-compute throw, emit error — is swallowed and the
+   * tracker is always reset so the next turn starts clean. It must never
+   * perturb the agent turn loop.
+   */
+  private async emitTurnDiff(): Promise<void> {
+    try {
+      const tracker = this.session.getTurnDiffTracker?.();
+      if (!tracker || tracker.isEmpty()) return;
+      let result;
+      try {
+        result = tracker.computeDiff();
+      } finally {
+        tracker.reset();
+      }
+      if (result.filesChanged > 0 && result.diff) {
+        await this.emitEvent({
+          type: 'TurnDiff',
+          data: { diff: result.diff, files_changed: result.filesChanged },
+        });
+      }
+    } catch {
+      // Non-essential preview aid; never let it break the turn.
+    }
   }
 
   /**

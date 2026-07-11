@@ -8,6 +8,7 @@
 
 import type { InputItem, AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSummaryConfig, Event, ResponseItem, ConversationHistory, ReviewDecision } from './protocol/types';
 import { FileStateCache } from './files/FileStateCache';
+import { TurnDiffTracker } from './diff/TurnDiffTracker';
 import { mapResponseItemToEventMessages } from './events/EventMapping';
 import type { EventMsg } from './protocol/events';
 import { RolloutRecorder, type RolloutItem } from '../storage/rollout';
@@ -185,6 +186,10 @@ export class Session {
   // Session ⇒ sub-agents (own Session) auto-isolate. Always present (the
   // map is cheap); only meaningful when the file tools are used.
   private readonly fileStateCache: FileStateCache = new FileStateCache();
+  // Per-session whole-turn diff accumulator (WORKXOS-7 Phase 0). The file
+  // tools record before/after content here; TaskRunner drains it into one
+  // `TurnDiff` event per turn. One per Session ⇒ sub-agents auto-isolate.
+  private readonly turnDiffTracker: TurnDiffTracker = new TurnDiffTracker();
 
   constructor(
     configOrIsPersistent?: AgentConfig | boolean,
@@ -1057,6 +1062,15 @@ export class Session {
    */
   getFileStateCache(): FileStateCache {
     return this.fileStateCache;
+  }
+
+  /**
+   * The per-session whole-turn diff accumulator (WORKXOS-7 Phase 0). Written by
+   * the file-access tools after each successful write; drained by TaskRunner
+   * into one `TurnDiff` event per turn. One per Session ⇒ sub-agents isolate.
+   */
+  getTurnDiffTracker(): TurnDiffTracker {
+    return this.turnDiffTracker;
   }
 
   /**
