@@ -31,6 +31,27 @@ import { SSEEventParser } from '../SSEEventParser';
 import { get_full_instructions, get_formatted_input } from '../PromptHelpers';
 
 /**
+ * Heuristic: does a 401 body message describe a billing/credit/quota problem
+ * (which must be surfaced to the user verbatim) rather than an expired
+ * session/token/key? The AI Hub gateway returns 401 with `type: "auth_error"`
+ * for both, so the message text is the only discriminator available client-side.
+ * Defaults to `false` (treat as auth failure) when there is no message.
+ */
+export function isGatewayBillingMessage(message?: string): boolean {
+  if (!message) return false;
+  const m = message.toLowerCase();
+  return (
+    m.includes('credit account') ||
+    m.includes('credit balance') ||
+    m.includes('insufficient') ||
+    m.includes('quota') ||
+    m.includes('free tokens') ||
+    m.includes('free app call') ||
+    m.includes('daily free')
+  );
+}
+
+/**
  * SSE Event structure from OpenAI Responses API
  */
 interface SseEvent {
@@ -522,20 +543,7 @@ export class OpenAIResponsesClient extends ModelClient {
       yield* this.processSDKStream(sdkStream);
     } catch (error) {
       if (error instanceof ModelClientError && error.statusCode === 401) {
-        if (this.useCredentials) {
-          throw new ModelClientError(
-            'Session expired - please log in again to continue using the AI agent',
-            401,
-            'Backend',
-            false // Not retryable
-          );
-        }
-        throw new ModelClientError(
-          'Authentication failed - check API key',
-          401,
-          this.provider.name,
-          false // Not retryable
-        );
+        throw this.reclassifyGateway401(error);
       }
       throw error;
     }
@@ -1104,6 +1112,39 @@ export class OpenAIResponsesClient extends ModelClient {
       statusCode,
       this.provider.name,
       this.isRetryableHttpError(statusCode)
+    );
+  }
+
+  /**
+   * Map a 401 from a gateway-routed request to the user-facing error to throw.
+   *
+   * A 401 here is NOT always an expired session/API key. The AI Hub gateway
+   * returns 401 for billing conditions too — "no LLM credit account for this
+   * identity", "insufficient LLM credit balance", exhausted daily quota —
+   * each with a specific, actionable message and `type: "auth_error"`. The
+   * previous behavior masked all of them as "Session expired" / "check API
+   * key", hiding the real reason from the user and sending them into a
+   * pointless re-login. Preserve any gateway billing/credit/quota message so
+   * it reaches the UI; only fall back to the generic auth copy for a 401 that
+   * carries no such detail (i.e. a genuine session/token/key failure).
+   */
+  protected reclassifyGateway401(error: ModelClientError): ModelClientError {
+    if (isGatewayBillingMessage(error.message)) {
+      return error; // surface the real, actionable reason unchanged
+    }
+    if (this.useCredentials) {
+      return new ModelClientError(
+        'Session expired - please log in again to continue using the AI agent',
+        401,
+        'Backend',
+        false // Not retryable
+      );
+    }
+    return new ModelClientError(
+      'Authentication failed - check API key',
+      401,
+      this.provider.name,
+      false // Not retryable
     );
   }
 
