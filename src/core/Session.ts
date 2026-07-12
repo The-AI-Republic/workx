@@ -2417,6 +2417,7 @@ export class Session {
           taskId: state.id,
           prevStatus,
           status: state.status,
+          error: state.error,
         },
       },
     });
@@ -2432,6 +2433,7 @@ export class Session {
             endTime: state.endTime ?? Date.now(),
             durationMs: (state.endTime ?? Date.now()) - state.startTime,
             summary: state.lastAgentMessage,
+            error: state.error,
           },
         },
       });

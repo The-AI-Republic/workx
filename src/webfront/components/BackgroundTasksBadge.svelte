@@ -83,6 +83,7 @@
             type="button"
             class="task-row"
             on:click={() => handleSelect(task.id)}
+            title={task.status === 'failed' && task.error ? task.error : undefined}
           >
             <span class="task-status">{statusEmoji(task.status)}</span>
             <span class="task-desc">{task.description}</span>
