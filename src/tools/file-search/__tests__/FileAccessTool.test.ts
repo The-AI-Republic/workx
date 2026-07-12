@@ -171,4 +171,14 @@ describe('write_file', () => {
     const out = await new WriteFileTool().createHandler()({ path: 'n.ts', content: 'x' }, ctx());
     expect(out).toMatch(/Created n\.ts/);
   });
+  // WORKXOS-7 Phase 0: turn-diff bookkeeping runs after the write succeeds, so
+  // a throw in the tracker must never turn a successful write into an error.
+  it('reports the write as successful even if turn-diff tracking throws', async () => {
+    mockFs.stat.mockResolvedValue({ exists: false, mtimeMs: 0, size: 0 });
+    mockFs.writeIfUnchanged.mockResolvedValue({ written: 'true', mtimeMs: 1, size: 1, endings: 'LF', encoding: 'utf8', bom: false });
+    const boom = { record: () => { throw new Error('tracker exploded'); } };
+    const out = await new WriteFileTool().createHandler()(
+      { path: 'n.ts', content: 'x' }, ctx({ turnDiffTracker: boom }));
+    expect(out).toMatch(/Created n\.ts/);
+  });
 });

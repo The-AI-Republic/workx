@@ -33,6 +33,25 @@ abstract class FileAccessTool {
   abstract readonly riskAssessor: IRiskAssessor;
   protected abstract run(params: Record<string, any>, h: SessionScope & { workspaceRoot: string }): Promise<string>;
 
+  /**
+   * Record a completed write into the whole-turn diff tracker (WORKXOS-7
+   * Phase 0). This runs *after* the write has already succeeded, so a failure
+   * in diff bookkeeping must never turn a successful write into a reported
+   * tool error — swallow any throw so it can't perturb the turn loop.
+   */
+  protected recordTurnDiff(
+    h: SessionScope & { workspaceRoot: string },
+    key: string,
+    before: string,
+    after: string,
+  ): void {
+    try {
+      h.turnDiffTracker?.record(key, displayPath(h.workspaceRoot, key), before, after);
+    } catch {
+      // Diff tracking is a best-effort preview aid; never fail the write on it.
+    }
+  }
+
   toToolDefinition(platforms: Platform[]): ToolDefinition {
     return createToolDefinition(this.name, this.description, this.parameters, {
       required: this.required,
@@ -185,7 +204,7 @@ export class EditFileTool extends FileAccessTool {
     // Whole-turn diff (WORKXOS-7 Phase 0): the pre-edit content is the cached
     // entry (empty when creating a new file); the post-edit content is what the
     // Rust layer wrote back.
-    h.turnDiffTracker?.record(key, displayPath(h.workspaceRoot, key), entry?.content ?? '', res.newContentLf);
+    this.recordTurnDiff(h, key, entry?.content ?? '', res.newContentLf);
 
     // Edit entry ⇒ offset undefined (R2): chainable, dedup-immune.
     h.cache?.set(key, { content: res.newContentLf, mtimeFloorMs: res.mtimeMs, offset: undefined, limit: undefined });
@@ -235,7 +254,7 @@ export class WriteFileTool extends FileAccessTool {
     const contentLf = content.replace(/\r\n/g, '\n');
     // Whole-turn diff (WORKXOS-7 Phase 0): overwrite ⇒ before is the cached
     // content; create ⇒ before is empty.
-    h.turnDiffTracker?.record(key, displayPath(h.workspaceRoot, key), st.exists ? (entry?.content ?? '') : '', contentLf);
+    this.recordTurnDiff(h, key, st.exists ? (entry?.content ?? '') : '', contentLf);
 
     h.cache?.set(key, { content: contentLf, mtimeFloorMs: res.mtimeMs, offset: undefined, limit: undefined });
     return `${st.exists ? 'Overwrote' : 'Created'} ${path}.`;
