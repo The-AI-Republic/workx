@@ -2417,6 +2417,7 @@ export class Session {
           taskId: state.id,
           prevStatus,
           status: state.status,
+          error: state.error,
         },
       },
     });
@@ -2432,6 +2433,7 @@ export class Session {
             endTime: state.endTime ?? Date.now(),
             durationMs: (state.endTime ?? Date.now()) - state.startTime,
             summary: state.lastAgentMessage,
+            error: state.error,
           },
         },
       });
@@ -3190,6 +3192,12 @@ export class Session {
     if (t?.taskState && !isTerminalTaskStatus(t.taskState.status)) {
       const prevStatus = t.taskState.status;
       t.taskState.status = reason === 'user_interrupt' ? 'killed' : 'failed';
+      // Surface the failure reason here too, mirroring
+      // SubAgentRunner.markTypedTaskTerminated, so a task that threw outside
+      // the normal result flow still shows why it failed (not a bare "failed").
+      if (t.taskState.status === 'failed' && error?.message) {
+        t.taskState.error = error.message;
+      }
       t.taskState.endTime = Date.now();
       t.taskState.notified = true;
       if (!t.taskState.retain) {

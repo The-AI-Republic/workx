@@ -91,6 +91,12 @@
       {/if}
       <span>started {new Date(task.startTime).toLocaleTimeString()}</span>
     </div>
+    {#if task.status === 'failed' && task.error}
+      <div class="failure" role="alert">
+        <span class="failure-label">Failed:</span>
+        <span class="failure-message">{task.error}</span>
+      </div>
+    {/if}
     <div class="chunks">
       {#each chunksReversed as chunk (chunk.chunkId)}
         <div class="chunk chunk-{chunk.kind}">
@@ -145,6 +151,22 @@
   .status-completed { background: var(--success-light, #d1fae5); }
   .status-failed { background: var(--error-light, #fee2e2); }
   .status-killed { background: var(--bg-tertiary, #f3f4f6); }
+  .failure {
+    display: flex;
+    gap: 6px;
+    padding: 8px 12px;
+    background: var(--error-light, #fee2e2);
+    color: var(--error-color, #b91c1c);
+    font-size: 12px;
+    border-bottom: 1px solid var(--border-color, #eee);
+  }
+  .failure-label {
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .failure-message {
+    word-break: break-word;
+  }
   .close {
     background: transparent;
     border: none;
