@@ -102,6 +102,13 @@ export interface IAppServerConfig {
   requireAuth: boolean;
   /** Reject any upgrade request carrying an Origin header. */
   rejectBrowserOrigins: boolean;
+  /**
+   * Origins exempt from `rejectBrowserOrigins`. Supports exact origins
+   * (`chrome-extension://<id>`) and the `chrome-extension://*` wildcard used
+   * by the extension browser bridge. Web (`http/https`) origins are never
+   * valid entries. The capability token remains the actual auth boundary.
+   */
+  allowedOrigins?: string[];
   /** Allow binding to a non-loopback host. */
   allowLan: boolean;
   /** Maximum concurrent connections. */

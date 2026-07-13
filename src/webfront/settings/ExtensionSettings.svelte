@@ -35,6 +35,72 @@
   // For allowed origins input
   let allowedOriginsText = $state('');
 
+  // Desktop bridge card state (chrome.storage-backed, saved independently)
+  const chromeAvailable = typeof chrome !== 'undefined' && !!chrome.storage?.local;
+  let bridgeEnabled = $state(false);
+  let bridgeToken = $state('');
+  let bridgeUrl = $state('ws://127.0.0.1:18101');
+  let bridgeDirty = $state(false);
+  let bridgeSaving = $state(false);
+  let bridgeMessage = $state('');
+  let bridgeMessageType: 'success' | 'error' | '' = $state('');
+  let bridgeStatus = $state<{ status: string; lastError: string | null } | null>(null);
+
+  async function loadBridgeCard() {
+    if (!chromeAvailable) return;
+    try {
+      const { getBridgeSettings, BRIDGE_STATUS_KEY } = await import('@/extension/bridge/bridgeSettings');
+      const settings = await getBridgeSettings();
+      bridgeEnabled = settings.enabled;
+      bridgeToken = settings.token;
+      bridgeUrl = settings.url;
+
+      const raw = await chrome.storage.session.get(BRIDGE_STATUS_KEY);
+      bridgeStatus = (raw?.[BRIDGE_STATUS_KEY] as typeof bridgeStatus) ?? null;
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'session' && changes[BRIDGE_STATUS_KEY]) {
+          bridgeStatus = (changes[BRIDGE_STATUS_KEY].newValue as typeof bridgeStatus) ?? null;
+        }
+      });
+    } catch (error) {
+      console.warn('[ExtensionSettings] Failed to load desktop bridge settings:', error);
+    }
+  }
+
+  async function handleBridgeSave() {
+    if (!chromeAvailable) return;
+    try {
+      bridgeSaving = true;
+      const { setBridgeSettings } = await import('@/extension/bridge/bridgeSettings');
+      await setBridgeSettings({ enabled: bridgeEnabled, token: bridgeToken.trim(), url: bridgeUrl.trim() });
+      bridgeDirty = false;
+      bridgeMessage = 'Desktop bridge settings saved';
+      bridgeMessageType = 'success';
+      setTimeout(() => {
+        bridgeMessage = '';
+        bridgeMessageType = '';
+      }, 3000);
+    } catch (error) {
+      bridgeMessage = `Failed to save: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      bridgeMessageType = 'error';
+    } finally {
+      bridgeSaving = false;
+    }
+  }
+
+  function bridgeStatusLabel(status: string | undefined): string {
+    switch (status) {
+      case 'connected':
+        return 'Connected to WorkX Desktop';
+      case 'connecting':
+        return 'Connecting…';
+      case 'error':
+        return 'Connection failed';
+      default:
+        return 'Not connected (bridge disabled)';
+    }
+  }
+
   $effect(() => {
     if (highlightSettingId) {
       highlightSetting(highlightSettingId);
@@ -44,6 +110,7 @@
 
   onMount(async () => {
     await loadSettings();
+    await loadBridgeCard();
   });
 
   async function loadSettings() {
@@ -210,6 +277,74 @@
         <div class="help-text">{$_t("List of allowed origins (one per line). Supports wildcards (*).")}</div>
       </div>
     </div>
+
+    <!-- Desktop Bridge Section -->
+    {#if chromeAvailable}
+      <div class="section settings-card">
+        <h3 class="section-title">{$_t("Desktop Bridge")}</h3>
+        <div class="help-text" style="margin-bottom: 0.75rem;">
+          {$_t("Let the WorkX desktop app use this browser as its browser tool. Copy the pairing token from the desktop app's settings.")}
+        </div>
+
+        <div class="form-group" data-setting-id="bridge-enabled">
+          <label class="checkbox-label">
+            <input
+              type="checkbox"
+              bind:checked={bridgeEnabled}
+              oninput={() => (bridgeDirty = true)}
+              class="form-checkbox"
+            />
+            <span>{$_t("Enable Desktop Bridge")}</span>
+          </label>
+        </div>
+
+        <div class="form-group" data-setting-id="bridge-token">
+          <label for="bridge-token" class="form-label">{$_t("Pairing Token")}</label>
+          <input
+            id="bridge-token"
+            type="password"
+            bind:value={bridgeToken}
+            oninput={() => (bridgeDirty = true)}
+            class="form-input"
+            placeholder={$_t("Paste the token from WorkX Desktop → Settings → Tools")}
+            autocomplete="off"
+          />
+        </div>
+
+        <div class="form-group" data-setting-id="bridge-url">
+          <label for="bridge-url" class="form-label">{$_t("Desktop App URL")}</label>
+          <input
+            id="bridge-url"
+            type="text"
+            bind:value={bridgeUrl}
+            oninput={() => (bridgeDirty = true)}
+            class="form-input"
+            placeholder="ws://127.0.0.1:18101"
+          />
+          <div class="help-text">{$_t("Only change this if the desktop app-server uses a non-default port.")}</div>
+        </div>
+
+        <div class="form-group">
+          <div class="help-text">
+            <strong>{$_t("Status")}:</strong>
+            {$_t(bridgeStatusLabel(bridgeStatus?.status))}
+            {#if bridgeStatus?.status === 'error' && bridgeStatus?.lastError}
+              — {bridgeStatus.lastError}
+            {/if}
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button class="btn btn-primary" onclick={handleBridgeSave} disabled={!bridgeDirty || bridgeSaving}>
+            {bridgeSaving ? $_t('Saving...') : $_t('Save Bridge Settings')}
+          </button>
+        </div>
+
+        {#if bridgeMessage}
+          <div class="message {bridgeMessageType}">{bridgeMessage}</div>
+        {/if}
+      </div>
+    {/if}
 
     <!-- Save Button -->
     <div class="button-group">

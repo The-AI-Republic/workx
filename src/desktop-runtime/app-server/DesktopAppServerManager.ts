@@ -23,6 +23,8 @@ import { AppServerManager } from '@/app-server/AppServerManager';
 import { AppServerAuth } from '@/app-server/connection/AppServerAuth';
 import { normalizeAppServerConfig } from '@/app-server/appServerConfig';
 import type { AppServerStatusSnapshot } from '@/app-server/status/AppServerStatus';
+import { setBrowserBridgeHandle } from '@/tools/browserBridgeHandle';
+import { BrowserBridgeToolManager } from '../browser-bridge/BrowserBridgeToolManager';
 import { getDesktopRuntimeHost } from '../host';
 import { getDesktopRuntimeControlBridge } from '../protocol/controlBridge';
 import { KeychainTokenStore } from './KeychainTokenStore';
@@ -34,6 +36,7 @@ export interface DesktopAppServerManagerOptions {
 export class DesktopAppServerManager {
   private manager: AppServerManager | null = null;
   private channelRegistered = false;
+  private bridgeToolManager: BrowserBridgeToolManager | null = null;
 
   constructor(private readonly opts: DesktopAppServerManagerOptions) {}
 
@@ -79,6 +82,15 @@ export class DesktopAppServerManager {
       await this.opts.bootstrap.registerChannel(this.manager.getChannel());
       this.channelRegistered = true;
 
+      // Browser bridge: mirror extension-node tool catalogs into agent
+      // sessions, and let generic tool registration consult bridge state.
+      this.bridgeToolManager = new BrowserBridgeToolManager({
+        nodeBridge: this.manager.nodeBridge,
+        getRegistry: () => this.opts.bootstrap.getRegistry(),
+      });
+      this.bridgeToolManager.attach();
+      setBrowserBridgeHandle(this.bridgeToolManager);
+
       await this.manager.start();
       const status = this.manager.getStatus();
       console.error(`[DesktopAppServerManager] app-server ready at ${status.url ?? '(unknown)'}`);
@@ -92,6 +104,9 @@ export class DesktopAppServerManager {
   /** Stop the listener and unregister the channel. */
   async stop(reason = 'shutdown'): Promise<void> {
     try {
+      setBrowserBridgeHandle(null);
+      this.bridgeToolManager?.detach();
+      this.bridgeToolManager = null;
       await this.manager?.stop(reason);
       if (this.channelRegistered && this.manager) {
         await this.opts.bootstrap.unregisterChannel(this.manager.getChannel().channelId);
@@ -133,6 +148,21 @@ export class DesktopAppServerManager {
       'appServer.revealToken': async () => {
         if (!this.manager) throw new Error('App-server not running');
         return { token: await this.manager.revealToken() };
+      },
+      'browserBridge.getStatus': async () => {
+        const nodes = this.manager?.nodeBridge.getActiveNodes() ?? [];
+        return {
+          appServerEnabled: this.getStatus().enabled,
+          connected: nodes.length > 0,
+          nodes: nodes.map((n) => ({
+            clientId: n.clientId,
+            kind: n.kind,
+            displayName: n.displayName,
+            version: n.version,
+            toolCount: n.tools.length,
+            connectedAt: n.connectedAt,
+          })),
+        };
       },
       'appServer.setConfig': async () => {
         // Config is persisted via the normal config service; this just restarts

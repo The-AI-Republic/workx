@@ -352,6 +352,19 @@ export class ServerAgentBootstrap {
 
           if (profile === 'desktop-runtime') {
             await this.ensureDesktopRuntimeHubMcpConnected();
+
+            // Browser bridge: mirror the connected extension node's tool
+            // catalog onto this new session (sessions created before the
+            // node connected are handled by the manager's nodes-changed sync).
+            try {
+              const { getBrowserBridgeHandle } = await import('@/tools/browserBridgeHandle');
+              const bridge = getBrowserBridgeHandle();
+              if (bridge?.hasActiveNode()) {
+                await bridge.applyToRegistry(agent.getSession().sessionId, agent.getToolRegistry());
+              }
+            } catch (err) {
+              console.warn('[ServerAgentBootstrap] browser bridge tool registration failed (non-fatal):', err);
+            }
           }
 
           if (profile === 'server') {

@@ -105,8 +105,24 @@ export async function registerDesktopToolsImpl(
 
   // ──────────────────────────────────────────────────────────────────────
   // Register browser tools via MCPManager builtin server
+  //
+  // Skipped when the extension browser bridge has a live executor node —
+  // the bridge's proxy tools drive the user's real browser and take
+  // priority over the chrome-devtools-mcp automation browser. If the node
+  // disconnects later the MCP fallback can be brought up by re-running
+  // tool registration (session restart); v1 keeps this simple.
   // ──────────────────────────────────────────────────────────────────────
-  if (enableBrowserTools) {
+  let browserBridgeActive = false;
+  try {
+    const { getBrowserBridgeHandle } = await import('../../tools/browserBridgeHandle');
+    browserBridgeActive = getBrowserBridgeHandle()?.hasActiveNode() === true;
+  } catch {
+    // Handle module unavailable in this build — MCP fallback proceeds.
+  }
+  if (browserBridgeActive) {
+    console.log('[registerDesktopTools] Extension browser bridge active — skipping chrome-devtools-mcp fallback');
+  }
+  if (enableBrowserTools && !browserBridgeActive) {
     try {
       const mcpManager = await MCPManager.getInstance('desktop');
 

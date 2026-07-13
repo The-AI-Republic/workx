@@ -454,6 +454,16 @@ async function doInitialize(): Promise<void> {
   // Initialize Scheduler
   await initializeScheduler();
 
+  // Desktop browser bridge: serve as the WorkX desktop app's live-browser
+  // executor (mode:'node' connection to the local app-server). No-op unless
+  // the user enabled + paired it in settings.
+  try {
+    const { initializeBridge } = await import('../bridge/BridgeClient');
+    await initializeBridge();
+  } catch (err) {
+    console.warn('[ServiceWorker] Desktop bridge initialization failed (non-fatal):', err);
+  }
+
   // Register service handlers on ChannelManager (message_routing_v2)
   await registerServiceHandlers();
 

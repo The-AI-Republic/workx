@@ -169,6 +169,9 @@ export const DEFAULT_APP_SERVER_CONFIG: IAppServerConfig = {
   port: 18101,
   requireAuth: true,
   rejectBrowserOrigins: true,
+  // Extension bridge: extension origins may connect (token still required).
+  // Browser pages can't forge Origin, so http(s) origins stay locked out.
+  allowedOrigins: ['chrome-extension://*'],
   allowLan: false,
   maxConnections: 16,
   maxPayloadBytes: 1_048_576,
