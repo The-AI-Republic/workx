@@ -19,16 +19,13 @@
  * @module desktop-runtime/browser-bridge/BrowserBridgeToolManager
  */
 
+import type { NodeToolDescriptor } from '@workx/ws-server';
 import type { AgentRegistry } from '@/core/registry/AgentRegistry';
 import type { ToolRegistry } from '@/tools/ToolRegistry';
-import type { ToolDefinition } from '@/tools/BaseTool';
+import type { JsonSchema, ToolDefinition } from '@/tools/BaseTool';
 import type { BrowserBridgeHandle } from '@/tools/browserBridgeHandle';
 import { McpBrowserRiskAssessor } from '@/core/approval/assessors/McpBrowserRiskAssessor';
-import {
-  NodeInvokeFailure,
-  type NodeBridge,
-  type NodeToolDescriptor,
-} from '@/app-server/node-bridge/NodeBridge';
+import { NodeInvokeFailure, type NodeBridge } from '@/app-server/node-bridge/NodeBridge';
 
 export interface BrowserBridgeToolManagerDeps {
   nodeBridge: NodeBridge;
@@ -134,14 +131,16 @@ export class BrowserBridgeToolManager implements BrowserBridgeHandle {
         name: tool.name,
         description: tool.description,
         strict: false,
-        parameters: (tool.parameters ?? { type: 'object', properties: {} }) as Record<string, unknown>,
+        // Advertised schemas arrive as plain JSON over the wire; trust the
+        // executor's shape (same boundary cast as MCP tool registration).
+        parameters: (tool.parameters ?? { type: 'object', properties: {} }) as JsonSchema,
       },
       metadata: {
         platforms: ['desktop'],
         source: 'browser-bridge',
         readOnlyHint: tool.readOnly,
       },
-    } as ToolDefinition;
+    };
   }
 
   private async invoke(toolName: string, params: Record<string, unknown>): Promise<unknown> {
