@@ -106,23 +106,30 @@ export async function registerDesktopToolsImpl(
   // ──────────────────────────────────────────────────────────────────────
   // Register browser tools via MCPManager builtin server
   //
-  // Skipped when the extension browser bridge has a live executor node —
-  // the bridge's proxy tools drive the user's real browser and take
-  // priority over the chrome-devtools-mcp automation browser. If the node
-  // disconnects later the MCP fallback can be brought up by re-running
-  // tool registration (session restart); v1 keeps this simple.
+  // PARKED: desktop browser automation is extension-bridge only for now —
+  // the chrome-devtools-mcp path prompts the user for approval on every
+  // call, so it is deliberately NOT wired into sessions. The code below
+  // (plus the builtin server seeding in MCPManager) is kept compiled and
+  // tested for an easy re-enable: flip this flag and the bridge-aware
+  // skip logic takes over again (MCP registers only when no extension
+  // node is connected).
   // ──────────────────────────────────────────────────────────────────────
+  const MCP_BROWSER_FALLBACK_ENABLED: boolean = false;
+
   let browserBridgeActive = false;
   try {
     const { getBrowserBridgeHandle } = await import('../../tools/browserBridgeHandle');
     browserBridgeActive = getBrowserBridgeHandle()?.hasActiveNode() === true;
   } catch {
-    // Handle module unavailable in this build — MCP fallback proceeds.
+    // Handle module unavailable in this build.
   }
-  if (browserBridgeActive) {
-    console.log('[registerDesktopTools] Extension browser bridge active — skipping chrome-devtools-mcp fallback');
+  if (!browserBridgeActive && enableBrowserTools) {
+    console.log(
+      '[registerDesktopTools] No extension bridge node connected — browser tools unavailable ' +
+      '(chrome-devtools-mcp fallback is parked; pair the WorkX extension to enable browser automation)',
+    );
   }
-  if (enableBrowserTools && !browserBridgeActive) {
+  if (MCP_BROWSER_FALLBACK_ENABLED && enableBrowserTools && !browserBridgeActive) {
     try {
       const mcpManager = await MCPManager.getInstance('desktop');
 
