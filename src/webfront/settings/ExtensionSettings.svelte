@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { IExtensionSettings, IPermissionSettings } from '@/config/types';
-  import { _t } from '../lib/i18n';
+  import { _t, t } from '../lib/i18n';
   import { getInitializedUIClient } from '@/core/messaging';
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
@@ -45,6 +45,9 @@
   let bridgeMessage = $state('');
   let bridgeMessageType: 'success' | 'error' | '' = $state('');
   let bridgeStatus = $state<{ status: string; lastError: string | null } | null>(null);
+  let bridgeStatusListener:
+    | ((changes: Record<string, chrome.storage.StorageChange>, area: string) => void)
+    | null = null;
 
   async function loadBridgeCard() {
     if (!chromeAvailable) return;
@@ -57,15 +60,23 @@
 
       const raw = await chrome.storage.session.get(BRIDGE_STATUS_KEY);
       bridgeStatus = (raw?.[BRIDGE_STATUS_KEY] as typeof bridgeStatus) ?? null;
-      chrome.storage.onChanged.addListener((changes, area) => {
+      bridgeStatusListener = (changes, area) => {
         if (area === 'session' && changes[BRIDGE_STATUS_KEY]) {
           bridgeStatus = (changes[BRIDGE_STATUS_KEY].newValue as typeof bridgeStatus) ?? null;
         }
-      });
+      };
+      chrome.storage.onChanged.addListener(bridgeStatusListener);
     } catch (error) {
       console.warn('[ExtensionSettings] Failed to load desktop bridge settings:', error);
     }
   }
+
+  onDestroy(() => {
+    if (bridgeStatusListener && chromeAvailable) {
+      chrome.storage.onChanged.removeListener(bridgeStatusListener);
+      bridgeStatusListener = null;
+    }
+  });
 
   async function handleBridgeSave() {
     if (!chromeAvailable) return;
@@ -88,16 +99,17 @@
     }
   }
 
+  // Returns already-translated text (static keys so extract-i18n finds them).
   function bridgeStatusLabel(status: string | undefined): string {
     switch (status) {
       case 'connected':
-        return 'Connected to WorkX Desktop';
+        return t('Connected to WorkX Desktop');
       case 'connecting':
-        return 'Connecting…';
+        return t('Connecting…');
       case 'error':
-        return 'Connection failed';
+        return t('Connection failed');
       default:
-        return 'Not connected (bridge disabled)';
+        return t('Not connected (bridge disabled)');
     }
   }
 
@@ -327,7 +339,7 @@
         <div class="form-group">
           <div class="help-text">
             <strong>{$_t("Status")}:</strong>
-            {$_t(bridgeStatusLabel(bridgeStatus?.status))}
+            {bridgeStatusLabel(bridgeStatus?.status)}
             {#if bridgeStatus?.status === 'error' && bridgeStatus?.lastError}
               — {bridgeStatus.lastError}
             {/if}

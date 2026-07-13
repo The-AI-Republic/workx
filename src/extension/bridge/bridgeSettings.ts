@@ -22,6 +22,13 @@ export interface BridgeSettings {
 
 export const BRIDGE_SETTINGS_KEY = 'workx:bridge_settings';
 
+/**
+ * Keepalive alarm name. Lives here (not in BridgeClient) so the service
+ * worker can register its top-level alarm listener without statically
+ * importing the full client/executor module graph.
+ */
+export const BRIDGE_KEEPALIVE_ALARM = 'workx-bridge-keepalive';
+
 /** chrome.storage.session key the BridgeClient publishes live status under. */
 export const BRIDGE_STATUS_KEY = 'workx:bridge_status';
 

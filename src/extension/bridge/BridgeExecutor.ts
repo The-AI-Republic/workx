@@ -28,8 +28,42 @@ import type { NodeToolDescriptor } from '@workx/ws-server';
 /** Stable lease/session identity for desktop-driven execution. */
 export const BRIDGE_SESSION_ID = 'bridge:desktop';
 
-/** Extension tools that must NOT be advertised — the desktop has its own. */
-const EXCLUDED_TOOLS = new Set(['planning_tool', 'web_search', 'setting_tool']);
+/**
+ * Extension tools that must NOT be advertised or executed over the bridge:
+ * - planning_tool / web_search: the desktop has its own.
+ * - setting_tool: writes THIS extension's settings — never desktop-drivable.
+ * - page_vision: saves screenshots into extension-local storage and returns
+ *   an `image_file_id` reference the desktop runtime cannot resolve; a
+ *   bridge-mode variant returning inline data is a follow-up.
+ */
+const EXCLUDED_TOOLS = new Set(['planning_tool', 'web_search', 'setting_tool', 'page_vision']);
+
+/**
+ * Cap one node.result payload well below the app-server's 1 MB default
+ * frame limit (ws closes the connection on oversize frames — a huge scrape
+ * result must degrade into a truncated preview, not kill the bridge).
+ */
+const MAX_RESULT_BYTES = 768 * 1024;
+const TRUNCATED_PREVIEW_BYTES = 64 * 1024;
+
+/** Shrink oversized tool results to a truncated preview envelope. */
+export function capResultPayload(result: unknown): unknown {
+  let json: string;
+  try {
+    json = JSON.stringify(result) ?? 'null';
+  } catch {
+    json = String(result);
+  }
+  if (json.length <= MAX_RESULT_BYTES) return result;
+  return {
+    truncated: true,
+    original_bytes: json.length,
+    preview: json.slice(0, TRUNCATED_PREVIEW_BYTES),
+    note:
+      `Result was ${json.length} bytes and exceeded the bridge payload limit; ` +
+      'this is a truncated JSON preview. Narrow the request (e.g. scrape a selector, paginate the extraction).',
+  };
+}
 
 /** The executor-implemented tab management tool. */
 const BROWSER_TABS_TOOL = 'browser_tabs';
@@ -112,6 +146,20 @@ export class BridgeExecutor {
       }
 
       const registry = await this.ensureRegistry();
+
+      // Enforce the advertised surface: the desktop peer is token-trusted,
+      // but the executor still refuses anything it never offered (notably
+      // setting_tool, which writes this extension's own settings).
+      if (EXCLUDED_TOOLS.has(toolName) || !registry.getTool(toolName)) {
+        return {
+          ok: false,
+          error: {
+            code: 'TOOL_NOT_ADVERTISED',
+            message: `Tool '${toolName}' is not available over the desktop bridge.`,
+          },
+        };
+      }
+
       const tabId = this.currentTabId;
       if (tabId === null) {
         return {
@@ -140,7 +188,7 @@ export class BridgeExecutor {
       });
 
       if (response.success) {
-        return { ok: true, result: response.data };
+        return { ok: true, result: capResultPayload(response.data) };
       }
       return {
         ok: false,

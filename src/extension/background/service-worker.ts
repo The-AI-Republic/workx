@@ -94,6 +94,21 @@ import { DEFAULT_MAX_CONCURRENT } from '../../core/registry/types';
 import { PRIMARY_SESSION_ALIAS } from '../../core/models/types/SessionContracts';
 import { t } from '../../webfront/lib/i18n';
 import { getActionForExtensionCommand, type ShortcutAction } from '../../core/shortcuts';
+// Desktop browser bridge (static: dynamic import() is banned in SW, and the
+// keepalive alarm listener must be registered at module top level so the
+// alarm can wake a slept service worker).
+import { initializeBridge, getBridgeClient } from '../bridge/BridgeClient';
+import { BRIDGE_KEEPALIVE_ALARM } from '../bridge/bridgeSettings';
+
+// Desktop bridge keepalive: alarms fire even when the SW was terminated —
+// Chrome starts the worker to deliver them. Top-level registration is the
+// MV3 requirement for that wake path.
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name !== BRIDGE_KEEPALIVE_ALARM) return;
+  void getBridgeClient()
+    .reconcile()
+    .catch((err) => console.warn('[ServiceWorker] bridge keepalive reconcile failed:', err));
+});
 
 // Global instances
 let registry: AgentRegistry | null = null;
@@ -458,7 +473,6 @@ async function doInitialize(): Promise<void> {
   // executor (mode:'node' connection to the local app-server). No-op unless
   // the user enabled + paired it in settings.
   try {
-    const { initializeBridge } = await import('../bridge/BridgeClient');
     await initializeBridge();
   } catch (err) {
     console.warn('[ServiceWorker] Desktop bridge initialization failed (non-fatal):', err);

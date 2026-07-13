@@ -26,6 +26,7 @@ import {
 } from '@workx/ws-server';
 import { BridgeExecutor } from './BridgeExecutor';
 import {
+  BRIDGE_KEEPALIVE_ALARM,
   BRIDGE_STATUS_KEY,
   getBridgeSettings,
   onBridgeSettingsChanged,
@@ -36,7 +37,6 @@ const HEARTBEAT_INTERVAL_MS = 20_000;
 const REQUEST_TIMEOUT_MS = 15_000;
 const RECONNECT_MIN_MS = 5_000;
 const RECONNECT_MAX_MS = 60_000;
-export const BRIDGE_KEEPALIVE_ALARM = 'workx-bridge-keepalive';
 
 type BridgeStatus = 'disabled' | 'connecting' | 'connected' | 'error';
 
@@ -70,7 +70,14 @@ export class BridgeClient {
   /** Read settings and connect if enabled. Also reacts to settings changes. */
   async start(): Promise<void> {
     onBridgeSettingsChanged((next) => {
+      const prev = this.settings;
       this.settings = next;
+      // A changed token/URL must apply immediately — drop the live
+      // connection so reconcile() redials with the new parameters.
+      if (prev && this.ws && (prev.url !== next.url || prev.token !== next.token)) {
+        this.disconnect('settings changed');
+      }
+      this.reconnectDelayMs = RECONNECT_MIN_MS;
       void this.reconcile();
     });
     this.settings = await getBridgeSettings();
@@ -329,13 +336,11 @@ export function getBridgeClient(): BridgeClient {
 
 /**
  * Initialize the bridge in the service worker: start the client and arm the
- * keepalive alarm that revives the connection after a SW sleep.
+ * keepalive alarm that revives the connection after a SW sleep. The alarm
+ * LISTENER is registered synchronously at the service worker's module top
+ * level (MV3 requirement for wake events) — see service-worker.ts.
  */
 export async function initializeBridge(): Promise<void> {
-  chrome.alarms.onAlarm.addListener((alarm) => {
-    if (alarm.name !== BRIDGE_KEEPALIVE_ALARM) return;
-    void getBridgeClient().reconcile();
-  });
   try {
     await chrome.alarms.create(BRIDGE_KEEPALIVE_ALARM, { periodInMinutes: 1 });
   } catch (err) {

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { AgentConfig } from '@/config/AgentConfig';
-  import type { IToolsConfig } from '@/config/types';
+  import type { IAppServerConfig, IToolsConfig } from '@/config/types';
   import { t, _t } from '../lib/i18n';
   import { getInitializedUIClient } from '@/core/messaging';
   import { getConfigStorage } from '@/core/storage/ConfigStorageProvider';
@@ -84,9 +84,15 @@
     try {
       bridgeBusy = true;
       bridgeMessage = '';
-      const current = settingsConfig.getConfig().appServer ?? {};
-      await settingsConfig.updateConfig({ appServer: { ...current, enabled: true } as never });
+      const current = settingsConfig.getConfig().appServer;
+      // Partial shape is fine: normalizeAppServerConfig fills defaults at read.
+      const appServer = { ...(current ?? {}), enabled: true } as IAppServerConfig;
+      await settingsConfig.updateConfig({ appServer });
       const client = await getInitializedUIClient();
+      // Push the config into the runtime's AgentConfig BEFORE restarting —
+      // appServer.restart re-reads config in the sidecar process, which
+      // otherwise still holds the old in-memory `enabled: false`.
+      await client.serviceRequest('agent.configUpdate');
       await client.serviceRequest('appServer.restart');
       await refreshBridgeStatus();
       bridgeMessage = t('App server started. Now copy the pairing token into the extension.');
@@ -700,7 +706,7 @@
           </div>
 
           {#if bridgeView?.extensionConnected}
-            {#each bridgeView.nodes as node}
+            {#each bridgeView.nodes as node (node.displayName + node.version)}
               <div class="mb-4 text-sm {textClasses}">
                 ✓ {node.displayName || 'WorkX Extension'} v{node.version} — {node.toolCount} {$_t("browser tools available")}
               </div>
