@@ -1295,11 +1295,10 @@
       threadRouter.setActiveSession(sessionId);
       loadThreadState(sessionId);
 
-      // Update session limits
-      await updateSessionLimits();
-
-      // Auto-bind to active browser tab
-      await bindToActiveTab();
+      // Refresh session limits and auto-bind to the active browser tab. These
+      // are independent post-create round trips, so run them concurrently
+      // instead of serially to shave latency off thread creation.
+      await Promise.all([updateSessionLimits(), bindToActiveTab()]);
 
       console.log(`[App] Created new thread with session: ${sessionId}`);
     } catch (error) {

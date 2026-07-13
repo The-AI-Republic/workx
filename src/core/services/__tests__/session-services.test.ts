@@ -242,6 +242,24 @@ describe('session-services', () => {
       });
     });
 
+    it('does not re-run refreshModelClient on the create path (initialize already composed the client)', async () => {
+      // createSession already ran agent.initialize(); a second refreshModelClient()
+      // here would re-compose the prompt + reload instructions + refresh memory on
+      // the thread-creation critical path for no behavioral gain. Guard against it.
+      const refreshSpy = vi.fn().mockResolvedValue(undefined);
+      (deps.registry.getSession as any).mockImplementation((id: string) => {
+        if (id === 's-new') {
+          return { agent: { refreshModelClient: refreshSpy } };
+        }
+        return undefined;
+      });
+
+      const result = await services['session.create']({}, ctx);
+
+      expect(result.success).toBe(true);
+      expect(refreshSpy).not.toHaveBeenCalled();
+    });
+
     it('returns error when at capacity', async () => {
       (deps.registry.canCreateSession as any).mockReturnValue(false);
 

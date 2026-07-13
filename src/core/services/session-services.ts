@@ -300,14 +300,18 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
 
       const session = await registry.createSession({ type: 'primary' });
 
-      // Ensure backend routing configured properly for this new session
-      if (session?.agent) {
-        const agentSession = registry.getSession(session.sessionId);
-        if (agentSession?.agent) {
-          await agentSession.agent.refreshModelClient();
-        }
-      }
-
+      // NOTE: no refreshModelClient() here. createSession() already ran
+      // agent.initialize(), which composes the system prompt, loads user
+      // instructions, sets up the memory service, and builds the model client
+      // using the *current* auth state. Calling refreshModelClient() right
+      // after would re-compose the prompt, reload instructions, and refresh
+      // memory a second time on the thread-creation critical path — pure
+      // duplicate work (the model client itself is a factory cache hit). It
+      // cannot even change backend routing here: the new agent's factory has
+      // no authManager wired at this point, so it resolves to the same client
+      // initialize() already produced. Auth *changes* are handled separately
+      // by agent.initAuth / agent.configUpdate, which set the authManager on
+      // the session's factory and then call refreshModelClient() themselves.
       return {
         success: true,
         sessionId: session.sessionId,
