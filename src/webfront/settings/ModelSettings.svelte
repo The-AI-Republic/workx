@@ -990,7 +990,7 @@
     </div>
 
     <!-- ChatGPT OAuth Section (OpenAI only, direct API mode) -->
-    {#if currentProvider === 'openai' && useOwnApiKey}
+    {#if currentProvider === 'openai' && (!isUserLoggedIn || useOwnApiKey)}
       <div class="form-group chatgpt-oauth-section">
         <label class="form-label">{t("ChatGPT Subscription")}</label>
         {#if chatgptOAuthConnected}
