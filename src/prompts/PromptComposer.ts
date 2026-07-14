@@ -58,6 +58,15 @@ export const MODES: Record<AgentMode, AgentModeSpec> = {
   code: { id: 'code', label: 'Code', agentTypes: ['workx-desktop', 'workx-server'] },
 };
 
+/**
+ * Type guard for a persisted/untrusted agent mode value. Used when rehydrating
+ * a resumed session's mode from stored chat history, where an older or
+ * corrupted record may carry an unknown string. Unknown → coerce to general.
+ */
+export function isAgentMode(value: unknown): value is AgentMode {
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(MODES, value);
+}
+
 type FragmentContent = string | ((args: {
   agentType: AgentType;
   mode: AgentMode;

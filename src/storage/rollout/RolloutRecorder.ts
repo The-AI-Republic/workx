@@ -125,7 +125,7 @@ export class RolloutRecorder {
     params: Extract<RolloutRecorderParams, { type: 'create' }>,
     config?: IAgentConfigWithStorage
   ): Promise<RolloutRecorder> {
-    const { sessionId, instructions } = params;
+    const { sessionId, instructions, agentMode } = params;
 
     // Validate conversation ID
     if (!isValidConversationId(sessionId)) {
@@ -152,6 +152,7 @@ export class RolloutRecorder {
         originator: 'chrome-extension',
         cliVersion: APP_VERSION,
         instructions,
+        agentMode,
         title: generatePlaceholderTitle(), // Placeholder title: "YYYY-MM-DD_HH-mm_chat"
       },
       itemCount: 0,

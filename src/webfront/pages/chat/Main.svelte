@@ -541,10 +541,18 @@
     const response = await c.serviceRequest<{
       sessionId?: string;
       tabId?: number;
+      agentMode?: import('@/prompts/PromptComposer').AgentMode;
       history?: unknown[];
     }>('session.getState', { sessionId });
     const historyItems = response?.history as any[] | undefined;
     const tabId = response?.tabId ?? -1;
+
+    // Reflect the backend's (rehydrated) per-session mode on the thread so a
+    // resumed coding session shows the Code selector/badge instead of General.
+    // No-ops if the thread isn't present yet; setThreadMode is keyed by sessionId.
+    if (response?.agentMode) {
+      threadStore.setThreadMode(sessionId, response.agentMode);
+    }
 
     const { events, firstUserMessage } = historyItems && Array.isArray(historyItems)
       ? parseHistoryItems(historyItems, `restored_${sessionId}`)

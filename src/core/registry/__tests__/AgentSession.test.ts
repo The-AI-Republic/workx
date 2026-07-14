@@ -344,6 +344,7 @@ describe('AgentSession', () => {
         getConversationHistory: vi.fn().mockReturnValue({ items: [{ role: 'user' }, { role: 'assistant' }] }),
         isActiveTurn: vi.fn().mockReturnValue(true),
         getTabId: vi.fn().mockReturnValue(42),
+        getAgentMode: vi.fn().mockReturnValue('code'),
       };
       const agent = {
         getSession: vi.fn(() => agentSession),
@@ -359,6 +360,7 @@ describe('AgentSession', () => {
       expect(state.sessionId).toBe(session.sessionId);
       expect(state.isActiveTurn).toBe(true);
       expect(state.tabId).toBe(42);
+      expect(state.agentMode).toBe('code');
       expect(state.history).toHaveLength(2);
     });
   });

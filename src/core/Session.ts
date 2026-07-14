@@ -14,7 +14,7 @@ import { RolloutRecorder, type RolloutItem } from '../storage/rollout';
 import { v4 as uuidv4 } from 'uuid';
 import { resetX402SessionPayments } from './payments/x402/tracker';
 import { TurnContext } from './TurnContext';
-import { type AgentMode, DEFAULT_MODE } from '../prompts/PromptComposer';
+import { type AgentMode, DEFAULT_MODE, isAgentMode } from '../prompts/PromptComposer';
 import { AgentConfig } from '../config/AgentConfig';
 import type { SessionTask } from './tasks/SessionTask';
 import type { ToolRegistry } from '../tools/ToolRegistry';
@@ -1444,6 +1444,9 @@ export class Session {
           {
             type: 'create',
             sessionId: uuid,
+            // Tag the new conversation's history with the mode it starts in
+            // (per-turn hot-switches are additionally captured on turn_context).
+            agentMode: this.agentMode,
           },
           config as any
         );
@@ -2917,6 +2920,39 @@ export class Session {
 
     // Replace entire history with reconstructed items
     this.sessionState.replaceHistory(responseItems);
+
+    // Rehydrate the per-session agent mode from the tagged history so a resumed
+    // coding session continues in code mode (correct prompt + code-mode file
+    // tools) instead of silently reverting to the default. Prefer the most
+    // recent turn_context (authoritative per-turn, honors hot-switches); fall
+    // back to the session-level session_meta tag. Unknown/absent → leave the
+    // constructor default (seeded from preferences.defaultMode).
+    const resumedMode = this.resolveResumedAgentMode(rolloutItems);
+    if (resumedMode) {
+      this.setAgentMode(resumedMode);
+    }
+  }
+
+  /**
+   * Resolve the agent mode a resumed conversation should continue in, from its
+   * persisted rollout items. Returns undefined when the history predates mode
+   * tagging (so the caller keeps the constructor default).
+   */
+  private resolveResumedAgentMode(rolloutItems: RolloutItem[]): AgentMode | undefined {
+    let latestTurnMode: AgentMode | undefined;
+    let sessionMetaMode: AgentMode | undefined;
+
+    for (const item of rolloutItems) {
+      if (item.type === 'turn_context') {
+        const mode = (item.payload as { agentMode?: unknown } | undefined)?.agentMode;
+        if (isAgentMode(mode)) latestTurnMode = mode;
+      } else if (item.type === 'session_meta') {
+        const mode = (item.payload as { agentMode?: unknown } | undefined)?.agentMode;
+        if (isAgentMode(mode)) sessionMetaMode = mode;
+      }
+    }
+
+    return latestTurnMode ?? sessionMetaMode;
   }
 
   // ========================================================================

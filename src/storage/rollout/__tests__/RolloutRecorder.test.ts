@@ -194,6 +194,24 @@ describe('RolloutRecorder', () => {
       const recorder = await RolloutRecorder.create(params);
       expect(recorder).toBeDefined();
     });
+
+    it('should tag SessionMeta with the agent mode (WORKXOS-11)', async () => {
+      const recorder = await RolloutRecorder.create({
+        type: 'create',
+        sessionId: conversationId,
+        agentMode: 'code',
+      });
+      // Recording an item triggers the lazy session_meta write.
+      await recorder.recordItems([{ type: 'response_item', payload: { role: 'user', content: 'hi', type: 'message' } }]);
+      await recorder.flush();
+
+      const resumed = await RolloutRecorder.getRolloutHistory(conversationId);
+      expect(resumed.type).toBe('resumed');
+      const meta = resumed.type === 'resumed'
+        ? resumed.payload.history.find((i: RolloutItem) => i.type === 'session_meta')
+        : undefined;
+      expect((meta?.payload as { agentMode?: string } | undefined)?.agentMode).toBe('code');
+    });
   });
 
   describe('Section 2: Constructor (resume mode) - T011', () => {

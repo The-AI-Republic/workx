@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest';
-import { FRAGMENTS, PromptComposer, type AgentType } from '../PromptComposer';
+import { FRAGMENTS, PromptComposer, isAgentMode, type AgentType } from '../PromptComposer';
 import { registerExternalPersonas, clearExternalPersonas } from '../PersonaLoader';
 
 function expectInOrder(text: string, labels: string[]): void {
@@ -220,6 +220,20 @@ describe('PromptComposer', () => {
       const prompt = composer.composeMainInstruction('workx', { personaName: 'withcode' });
       expect(prompt).toContain('PERSONA_MARKER_ABC');
       expect(prompt).toContain('## Operation Strategy');
+    });
+  });
+
+  describe('isAgentMode', () => {
+    it('accepts registered modes and rejects everything else', () => {
+      expect(isAgentMode('general')).toBe(true);
+      expect(isAgentMode('code')).toBe(true);
+      expect(isAgentMode('research')).toBe(false);
+      expect(isAgentMode('')).toBe(false);
+      expect(isAgentMode(undefined)).toBe(false);
+      expect(isAgentMode(null)).toBe(false);
+      expect(isAgentMode(0)).toBe(false);
+      // Must not be fooled by inherited Object.prototype properties.
+      expect(isAgentMode('toString')).toBe(false);
     });
   });
 });

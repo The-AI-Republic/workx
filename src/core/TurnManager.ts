@@ -1510,6 +1510,9 @@ export class TurnManager {
       model: this.turnContext.getModel(),
       effort: this.turnContext.getEffort(),
       summary: this.turnContext.getSummary(),
+      // Authoritative per-turn mode tag; resume rehydrates from the most recent
+      // turn_context that carries it (mode is per-session and hot-switchable).
+      agentMode: this.getAgentMode(),
     };
 
     await this.session.recordTurnContext(turnContextItem);

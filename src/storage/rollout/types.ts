@@ -5,6 +5,9 @@
 // Type-only import (erased at compile; no runtime/layering coupling) so the
 // plan_artifact payload shape stays single-sourced with the tool + UI.
 import type { PlanArtifactPayload } from '../../tools/planReview/types';
+// Type-only import (erased at compile) so the persisted mode tag stays
+// single-sourced with the mode registry that defines it.
+import type { AgentMode } from '../../prompts/PromptComposer';
 
 // ============================================================================
 // Constants
@@ -38,6 +41,8 @@ export type RolloutRecorderParams =
     type: 'create';
     sessionId: ConversationId;
     instructions?: string;
+    /** Agent persona mode the session is created in (tags the history). */
+    agentMode?: AgentMode;
   }
   | {
     type: 'resume';
@@ -86,6 +91,13 @@ export interface SessionMeta {
    * - Updated to LLM-generated title after 3 user messages
    */
   title?: string;
+  /**
+   * Agent persona mode the session was created in ('general' | 'code').
+   * Tags the conversation so history listing and resume know whether it was a
+   * coding session. Absent on pre-feature rollouts → treated as 'general'.
+   * Per-turn mode (which may hot-switch) is captured on {@link TurnContextItem}.
+   */
+  agentMode?: AgentMode;
 }
 
 /**
@@ -130,6 +142,13 @@ export interface TurnContextItem {
   effort?: ReasoningEffort;
   /** Reasoning summary preference */
   summary: ReasoningSummary;
+  /**
+   * Agent persona mode active for this turn ('general' | 'code'). Because mode
+   * is per-session and hot-switchable, this is the authoritative per-turn tag;
+   * resume rehydrates the session mode from the most recent turn_context that
+   * carries it. Absent on pre-feature rollouts.
+   */
+  agentMode?: AgentMode;
 }
 
 /**

@@ -28,6 +28,7 @@ function createMockDeps(overrides: Partial<SessionServiceDeps> = {}): SessionSer
         sessionId: 's1',
         isActiveTurn: false,
         tabId: 42,
+        agentMode: 'code',
         history: [{ role: 'user', content: 'hi' }],
       }),
       reset: vi.fn().mockResolvedValue(undefined),
@@ -79,6 +80,7 @@ describe('session-services', () => {
         sessionId: 's1',
         isActiveTurn: false,
         tabId: 42,
+        agentMode: 'code',
         activeSessionCount: 2,
         maxConcurrentSessions: 5,
       });

@@ -16,6 +16,7 @@ import type {
 } from './types';
 import { VALID_STATE_TRANSITIONS, SESSION_LETTERS } from './types';
 import type { SessionStorage } from './SessionStorage';
+import { type AgentMode, DEFAULT_MODE } from '../../prompts/PromptComposer';
 
 /**
  * AgentSession wraps a RepublicAgent instance and provides:
@@ -209,12 +210,13 @@ export class AgentSession {
    * Registry-level aggregates (activeSessionCount, maxConcurrent) are added
    * by the service handler — they don't belong on a single session.
    */
-  getState(): { sessionId: string; isActiveTurn: boolean; tabId: number | null; history: unknown[] } {
+  getState(): { sessionId: string; isActiveTurn: boolean; tabId: number | null; agentMode: AgentMode; history: unknown[] } {
     if (!this._agent) {
       return {
         sessionId: this._sessionId,
         isActiveTurn: false,
         tabId: this._metadata.tabId,
+        agentMode: DEFAULT_MODE,
         history: [],
       };
     }
@@ -226,6 +228,9 @@ export class AgentSession {
       sessionId: this._sessionId,
       isActiveTurn: session.isActiveTurn(),
       tabId: session.getTabId(),
+      // Rehydrated per-session mode so the UI selector/tab badge reflects a
+      // resumed coding session instead of defaulting to General.
+      agentMode: session.getAgentMode(),
       history: conversationHistory.items,
     };
   }

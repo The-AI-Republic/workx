@@ -166,3 +166,55 @@ describe('Session — track 09 persistence interactions', () => {
     );
   });
 });
+
+describe('Session — resumed agent mode rehydration (WORKXOS-11)', () => {
+  it('rehydrates code mode from the persisted turn_context tag', () => {
+    const items: RolloutItem[] = [
+      { type: 'session_meta', payload: { id: 's', timestamp: 't', originator: 'desktop', cliVersion: '1', agentMode: 'code' } as any },
+      { type: 'turn_context', payload: { model: 'm', summary: 'auto', approvalPolicy: 'on-request', sandboxPolicy: 'workspace-write', agentMode: 'code' } as any },
+    ];
+    const session = new Session(undefined, false);
+    (session as any).reconstructHistoryFromRollout(items);
+    expect(session.getAgentMode()).toBe('code');
+  });
+
+  it('prefers the most recent turn_context mode over an earlier one (hot-switch)', () => {
+    const items: RolloutItem[] = [
+      { type: 'turn_context', payload: { agentMode: 'general' } as any },
+      { type: 'turn_context', payload: { agentMode: 'code' } as any },
+      { type: 'turn_context', payload: { agentMode: 'general' } as any },
+    ];
+    const session = new Session(undefined, false);
+    (session as any).reconstructHistoryFromRollout(items);
+    expect(session.getAgentMode()).toBe('general');
+  });
+
+  it('falls back to the session_meta tag when no turn_context carries a mode', () => {
+    const items: RolloutItem[] = [
+      { type: 'session_meta', payload: { id: 's', timestamp: 't', originator: 'desktop', cliVersion: '1', agentMode: 'code' } as any },
+      { type: 'turn_context', payload: { model: 'm' } as any },
+    ];
+    const session = new Session(undefined, false);
+    (session as any).reconstructHistoryFromRollout(items);
+    expect(session.getAgentMode()).toBe('code');
+  });
+
+  it('leaves the default mode for pre-feature history with no mode tag', () => {
+    const items: RolloutItem[] = [
+      { type: 'turn_context', payload: { model: 'm', summary: 'auto' } as any },
+    ];
+    const session = new Session(undefined, false);
+    expect(session.getAgentMode()).toBe('general');
+    (session as any).reconstructHistoryFromRollout(items);
+    expect(session.getAgentMode()).toBe('general');
+  });
+
+  it('ignores an unknown/corrupted persisted mode value', () => {
+    const items: RolloutItem[] = [
+      { type: 'turn_context', payload: { agentMode: 'bogus' } as any },
+    ];
+    const session = new Session(undefined, false);
+    (session as any).reconstructHistoryFromRollout(items);
+    expect(session.getAgentMode()).toBe('general');
+  });
+});
