@@ -99,6 +99,10 @@ import { getActionForExtensionCommand, type ShortcutAction } from '../../core/sh
 // alarm can wake a slept service worker).
 import { initializeBridge, getBridgeClient } from '../bridge/BridgeClient';
 import { BRIDGE_KEEPALIVE_ALARM } from '../bridge/bridgeSettings';
+// Static: the extension-default AgentRegistry path needs this adapter, and
+// dynamic import() is banned in the service worker. Injected via
+// RegistryConfig.platformAdapterFactory so shared core never imports it.
+import { ExtensionPlatformAdapter } from '../platform/ExtensionPlatformAdapter';
 
 // Desktop bridge keepalive: alarms fire even when the SW was terminated —
 // Chrome starts the worker to deliver them. Top-level registration is the
@@ -360,6 +364,7 @@ async function doInitialize(): Promise<void> {
   const maxConcurrentSessions = config.preferences?.maxConcurrentSessions ?? DEFAULT_MAX_CONCURRENT;
   registry = AgentRegistry.getInstance({
     maxConcurrent: maxConcurrentSessions,
+    platformAdapterFactory: () => new ExtensionPlatformAdapter(),
     // Track 10: bind enabled plugins' hooks + sub-agent types to each new
     // session. Reads module-level pluginRegistry/resolvers lazily — they're
     // set by initializePlugins() before real sessions are created.
