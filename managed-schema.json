@@ -2,15 +2,13 @@
   "type": "object",
   "properties": {
     "values": {
-      "type": "object",
-      "description": "Admin-provided configuration values, keyed by namespaced dot-path (e.g. \"agent.approval.mode\"). Highest priority — overrides user/stored/default values.",
-      "additionalProperties": true
+      "type": "string",
+      "description": "JSON-encoded object of admin-provided configuration values, keyed by namespaced dot-path (e.g. {\"agent.approval.mode\": \"strict\"}). Highest priority — overrides user/stored/default values. A JSON string because Chrome's managed-storage schema dialect cannot express an object with arbitrary-typed properties."
     },
     "lockedKeys": {
       "type": "array",
       "description": "Namespaced dot-paths the user/agent cannot change (e.g. \"agent.approval.mode\"). Locking an ancestor freezes the whole subtree.",
       "items": { "type": "string" }
     }
-  },
-  "additionalProperties": false
+  }
 }
