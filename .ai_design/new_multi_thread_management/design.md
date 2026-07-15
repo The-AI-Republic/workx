@@ -31,11 +31,17 @@ ceiling that exists today — it just stops applying to idle/suspended sessions.
   platforms** — the server's init-then-refresh double-work (D1) is fixed there too; auth is
   already per-connection on the server and maps cleanly to a construction input.
 - **Phase 3+ (lifecycle: state machine, ThreadIndex, LRU, left panel) is CLIENT-ONLY**
-  (extension + desktop). Server mode (`src/server/`, one process potentially serving multiple
-  authenticated users — `src/server/connection/auth.ts:20,152`) has no thread-list UI and
-  keeps its existing session handling. A process-wide LRU pool, single config sweep, and
-  user-less ThreadIndex would be incorrect on a shared process; tenant-scoping them is a
-  separate initiative if server users ever need the thread-list experience.
+  (extension + desktop). Server mode (`src/server/`) is today a **single-tenant headless
+  agent** — one user runs a dedicated instance (the `userId` in
+  `src/server/connection/auth.ts` authenticates that one user, it does not multiplex
+  tenants). So nothing in the lifecycle layer would be *incorrect* on the server; it is
+  excluded because (a) there is no thread-list UI to drive it — sessions are driven by
+  channel connectors (Slack/Telegram), a different interaction model, and (b) keeping the
+  first delivery client-scoped shrinks the blast radius. The server can adopt the lifecycle
+  layer later as a follow-up. **Caveat for that follow-up**: the server-mode design doc
+  positions the same architecture for future enterprise/multi-user deployments — if
+  multi-tenancy ever lands, the LRU pool, config sweep, and ThreadIndex must be
+  tenant-scoped at that point.
 
 Decisions taken with the team:
 
@@ -45,7 +51,7 @@ Decisions taken with the team:
 | PR #298 | Merge first; this design builds on top |
 | PR #326 | Closed unmerged; findings absorbed here (§9) |
 | Tabs vs threads | Decoupled — browser tabs are a leased session *resource*, not the session's identity |
-| Server mode | Phase 2 yes; Phase 3+ lifecycle out of scope (above) |
+| Server mode | Single-tenant headless today. Phase 2 yes; Phase 3+ lifecycle out of scope for the first delivery (no thread-list UI; channel-driven sessions), adoptable later |
 
 ## 2. Current Architecture (as-is)
 
