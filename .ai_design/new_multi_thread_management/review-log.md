@@ -59,3 +59,79 @@ approved; specification gaps). All findings below are resolved in DRAFT v2 unles
   and softened by auto-retry UX (§4.6).
 - **Durable (worker-death-surviving) pending-submit queue** — complexity not justified;
   loss is made visible instead of silent (§4.5).
+
+## Review round 2 — 2026-07-14 (against DRAFT v2; focus: implementation-readiness + goals satisfaction)
+
+Three reviewers: implementation-readiness (phase-by-phase walk vs code, 21 findings),
+goals re-evaluation (journey tracing, 14 findings), type/interface feasibility (8 contract
+checks). Round-1 verdict on v2's direction upheld; v2 was NOT implementation-ready.
+All findings below resolved in DRAFT v3 + the new implementation-spec.md.
+
+### Goal-by-goal verdict on v2 (drove the v3 changes)
+
+| Goal | v2 verdict | Chief gaps |
+|---|---|---|
+| 1 Parallel multi-session | PARTIAL | invisible background approvals; unspecified background streaming; tab focus contention |
+| 2 Well-managed instances | PARTIAL | "primary session" survived; viewed-set unowned; eager new-chat assemble |
+| 3 Thread model | PARTIAL | narrow-mode degraded; no search/rename/selection-highlight/New-Chat semantics |
+| 4 Absorb #326 | PARTIAL | self-asserted map; lazy-init punted; regression window from closing #326 |
+
+### Implementation blockers (v3 resolutions)
+
+| Finding | Resolution |
+|---|---|
+| No legacy↔new state mapping; 17 production call sites read the old 4-state enum | spec §15: mapping table + `legacyState()` compat getter; legacy event derived until Phase 5 |
+| The real send path bypasses `AgentSession.submit()` (ChannelManager → `agent.submitOperation` direct at `service-worker.ts:665-679`, `:1558`, `:1675`) — the guard v2 claimed to extend never runs for real messages | spec §3: submit-path rewiring is now an explicit 3a-2 task; guards installed at ChannelManager routing |
+| Optimistic render had no RPC: `session.getState` throws for suspended sessions; no rollout-read endpoint existed | spec §12: new `session.getRollout` wrapping the existing `loadRolloutHistory` hook + shared renderable transform |
+
+### Contract conflicts (v3 resolutions)
+
+| Finding | Resolution |
+|---|---|
+| `UserInput`/`SubmitResult` don't exist; submit chain is fire-and-forget id-only | spec §1: `SubmitInput = Extract<Op,{type:'UserInput'}>`; `SubmitAck` (ack, never turn result); outcomes via events only |
+| "AuthContext consumers must not cache" conflicted with `ModelClientFactory`'s structural need for a persistent auth handle (token closures invoked mid-stream) | spec §5: factory holds the AuthContext OBJECT, closures read `current()` at call time; `setAuthManager` + all 4 sweep-push sites deleted; "no cache" rule scoped to decision logic |
+| `RebuildReason` named but never enumerated; no reason→work mapping; `refreshModelClient` aliasing is a behavior change (drops fresh-TurnContext policy reset) for 7 call sites | spec §2: enum + work matrix + call-site inventory + intentional-change note; `pendingModeSwitch` stays separate |
+| v2 called all post-turn continuations fire-and-forget; only title generation is (hooks are awaited by TaskRunner; summary extraction registers a shadow job) | design §3.5 narrowed; spec §9: new tracking for title-gen ONLY |
+| `SessionRuntimeEvent` would default to 'channel' scope and never reach thread-keyed UI | spec §13: `EVENT_SCOPE_MAP` entry required; transports verified additive (no protocol changes) |
+| "ThreadIndex evolves SessionStorage" ambiguous; desktop is SQLite, not IndexedDB; `cleanupOrphanedSessions` HAS periodic callers (chrome.alarms + setInterval) | design §5.1/5.3 corrected; spec §11: new `thread_index` store, DB_VERSION 5→6, no secondary indexes |
+| §3.2's op queue presented as new work | spec §7: generalize existing `LeaseLifecycleQueue` (`TabLeaseStore.ts:140-157`) |
+| D2 evidence: BOTH refresh paths rebuild memory today; real divergence is replace-vs-mutate TurnContext | D2 corrected in design §2.1 |
+
+### Goals-driven design additions (v3)
+
+| Finding | Resolution |
+|---|---|
+| Background approval requests invisible — session silently stalls holding a live slot (new **D15**) | `awaitingInput` attribute of RUNNING + distinct badge + "N sessions need your input" aggregate + deep-link (design §3.1, §7.1, §7.2) |
+| Background streaming buffering unspecified; Phase 4 as written would regress A↔B switching; second window empty mid-turn | design §7.5: SessionManager replay ring + threadStore keeps conversation buffers |
+| Tab/focus contention between concurrent RUNNING sessions undefined | design §6.1: lease isolation + no focus stealing; foreground-needing automation raises awaitingInput |
+| "Primary session" survives in `session.turns`/`rewind` (new **D16**) | explicit `sessionId` params; `_primarySessionId` deleted; viewed-session set owned by SessionManager |
+| Viewed set had no owner/RPC | `session.setViewed` + ownership entry + disconnect expiry (spec §10) |
+| New chat eagerly assembles; busy possible on bare New Chat | Two-stage open (design §3.6) — index entry only; first submit hydrates; New Chat never busy; #326 lazy-init FULLY adopted |
+| Narrow mode degraded/under-specified | explicit parity list (design §7.2) |
+| Missing search/rename/selection highlight/New-Chat semantics/"more…" runtime-awareness | all added (design §7.2, §7.4) |
+| Phase 4 could ship before 3b/3c, amplifying D8/D9 under the new UX | Phase 4 gated on 3a+3b+3c (design §13.7, tasks.md header) |
+| Lean "Goal-3-first" alternative unexplored | design §12.4: rejected as end state (re-surfaces the cap) but Phase 3a milestone-sliced into 3a-1 (visible skeleton) / 3a-2 (heavy machinery) |
+| #326 absorption self-asserted; closing #326 reopened the latency regression until Phase 2 | PR body quoted below; expedited Phase-1 patch (spec §16) deletes the redundant refresh + ports the test now |
+| Bulk actions silence read as oversight | explicit non-goal |
+
+### PR #326 claim list (quoted for §9 verifiability)
+
+> **Changes**: (1) remove redundant `refreshModelClient()` from `session.create`
+> (`src/core/services/session-services.ts`) — `registry.createSession()` already runs
+> `agent.initialize()`; the refresh re-composed the prompt, reloaded instructions, and
+> refreshed memory a second time on the critical path; (2) `Main.svelte` — run
+> `updateSessionLimits()` + `bindToActiveTab()` concurrently via `Promise.all`;
+> (3) regression test asserting `session.create` no longer double-composes.
+> **Follow-ups (not in the PR)**: optimistic thread render; lazy agent init on first
+> message; return `activeCount`/`canCreateSession` in the `session.create` response;
+> make `session-overhead.perf.test.ts` drive the real path instead of mocking `initialize()`.
+
+### De-risks confirmed by round 2 (no action needed)
+
+- `SessionServices` and `InitialHistory` exist and are already threaded through both
+  construction paths — Phase 2 extends, not invents.
+- `threadStore` already exists keyed by `sessionId`.
+- Server never registered `onAgentCreated` — deleting it is extension-only.
+- `session.open` response shape unconstrained by the RPC envelope (ChannelManager wraps).
+- Tauri + WS transports pass new event types through — no protocol work.
+- D4 patch is mechanically straightforward as specified.

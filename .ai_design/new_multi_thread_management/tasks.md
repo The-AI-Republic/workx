@@ -1,128 +1,150 @@
 # Multi-Thread Session Management — Task Breakdown
 
-Companion to [design.md](./design.md) (v2). Each phase lands green independently.
-Lifecycle phases (3a/3b/3c/4) are **client-only** (extension + desktop); Phase 2 covers all
-platforms including server — see design.md §1 scope.
+Companion to [design.md](./design.md) (v3) and [implementation-spec.md](./implementation-spec.md)
+(spec § references below). Lifecycle phases (3a/3b/3c/4) are **client-only**; Phase 2 covers
+all platforms. **Gating: Phase 4 requires 3a + 3b + 3c** (design §13.7 — shipping the
+many-sessions UI while config-update still destroys sessions (D8) or tab closure kills them
+(D9) amplifies the exact bugs this design fixes).
 
 ## Phase 0 — Unblock (prerequisites)
 
 - [ ] Merge PR #298 (left-panel chat history)
 - [x] Close PR #326 with a comment linking this design (done 2026-07-14)
-- [ ] Land `simplify_session` prerequisites this design consumes: unified `sessionId`
-      end-to-end + `ChannelEvent{msg, sessionId}` envelope with per-session UI routing
-      (**gates Phase 3a and Phase 4**; Phases 1–2 are NOT blocked)
+- [ ] Land `simplify_session` prerequisites: unified `sessionId` end-to-end +
+      `ChannelEvent{msg, sessionId}` envelope with per-session UI routing
+      (**gates 3a and 4**; Phases 1–2 NOT blocked)
 
 ## Phase 1 — Correctness patches (small, independently shippable PRs)
 
-- [ ] **D4** Move `config-changed` subscription from `RepublicAgent` constructor to end of
-      `initialize()`; unsubscribe in `cleanupOnce()`
-      (`src/core/RepublicAgent.ts:316`, `:1411-1443`)
-- [ ] **D5** Running-work deferral in `refreshModelClient()`/`hotSwapModelClient()` — using
-      the **corrected** busy signal: `activeTurn` tasks ∪ `Session.activeTasks` (the current
-      `getRunningTasks()` misses background/sub-agent tasks; design §3.5)
-- [ ] **D2 (step 1)** Introduce `rebuildExecutionContext(reasons: Set<RebuildReason>)` that
-      mutates the existing `TurnContext`; deferral stores a pending-reason **set** (union
-      applied at turn boundary — a queued prompt-recompose must survive a later model change);
-      `refreshModelClient`/`hotSwapModelClient` become thin aliases
-- [ ] Regression tests: no listener after cleanup; no mid-turn swap (incl. background-task-only
-      case); TurnContext policy fields survive rebuild; reason-union applied
+- [ ] **Expedited #326 patch** (spec §16): delete the post-create `refreshModelClient()` in
+      `session.create` (`session-services.ts:307`) + port the no-double-compose regression
+      test — closes the user-facing latency regression opened by closing #326
+- [ ] **D4** Subscribe `config-changed` at end of `initialize()`; unsubscribe in
+      `cleanupOnce()` (`RepublicAgent.ts:316`, `:1411-1443`)
+- [ ] **D5** `Session.hasLiveBackgroundWork()` v1 — `activeTurn` tasks ∪ `activeTasks`
+      (spec §9); used by all rebuild deferral
+- [ ] **D2** `rebuildExecutionContext(reasons: Set<RebuildReason>)` per spec §2:
+      reason→work matrix, mutate-in-place TurnContext (intentional behavior change — verify
+      the 7 call sites), pending-reason set unioned at the flush point
+      (`RepublicAgent.ts:967-978`); `refreshModelClient`/`hotSwapModelClient` become aliases;
+      `pendingModeSwitch` stays separate
+- [ ] Regression tests: no listener after cleanup; no mid-turn swap (incl.
+      background-task-only case); TurnContext policy fields survive rebuild; reason-union
 
 ## Phase 2 — Construction unification (ALL platforms; one coordinated cutover PR)
 
-> Note: this phase changes `RepublicAgent.initialize()`'s signature and both construction
-> call sites together — it is a single coordinated cutover, not per-platform incremental.
+> Coordinated cutover: `initialize(auth)` changes a zero-arg signature and both construction
+> call sites together; test migration via `TestAuthContext.none()` (spec §4.2).
 
-- [ ] **`AuthContext`** (design §4.2): `current()` / `generation()` / `subscribe()`; owned by
-      platform bootstrap (`service-worker.ts`, `ServerAgentBootstrap.ts`)
-- [ ] **`AgentAssembler`** contract (§4.3) with phased internals construct → initialize →
-      wire (§4.4); `ServerAgentAssembler` from the `agentFactory` closure;
-      `ExtensionAgentAssembler` extracted from `AgentRegistry.ts:172-259` **absorbing the
-      `onAgentCreated` consumers** (`service-worker.ts:351-378`); delete `onAgentCreated`;
-      both platforms return a real `subAgentRunner`; telemetry wrapping stays in the registry
-- [ ] `RepublicAgent.initialize(auth)` — model client built once, correctly (**D1**); delete
-      server init-then-refresh (`ServerAgentBootstrap.ts:348-351`) AND `session.create`'s
-      post-create refresh (`session-services.ts:307`) — same request/response shape (shim
-      schedule §7.4)
-- [ ] `AssembledAgent.dispose()` as the single public teardown; `AgentSession.terminate()`
-      delegates; direct `agent.cleanup()` made non-public (**§4.2**)
-- [ ] Single `applyAuth()` sweep; delete the 4 hand-rolled loops (**D10**)
-- [ ] Single credential-store read per build; reason-scoped rebuild work (**D11**)
-- [ ] `SessionServices` threading for construction-graph `SessionCacheManager` sites
-      (`AgentRegistry.ts:183`, `service-worker.ts:388`) — StorageTool sites are out of scope
-- [ ] **Tests (absorb PR #326)**: assemble() composes prompt / inits memory exactly once, both
-      platforms; real-path perf assertion
+- [ ] **`AuthContext`** (design §4.2, spec §5): `current()`/`generation()`/`subscribe()`;
+      owned by platform bootstrap
+- [ ] **`ModelClientFactory` holds `AuthContext`** (spec §5): token closures read
+      `current()` at call time; DELETE `setAuthManager` and all four sweep-push sites (**D10**)
+- [ ] **`AgentAssembler`** (spec §4): `ServerAgentAssembler` from the closure;
+      `ExtensionAgentAssembler` absorbing the 10-item dependency inventory with lazy-getter
+      provider bag for late-bound service-worker state; delete `onAgentCreated`
+      (extension-only); both platforms return real `subAgentRunner`; telemetry wrapping
+      stays in the registry; `_setupTabClosureHandling` stays until 3c
+- [ ] `RepublicAgent.initialize(auth)` **required** param (**D1**); delete server
+      init-then-refresh (`ServerAgentBootstrap.ts:348-351`)
+- [ ] `AssembledAgent.dispose()` single teardown; `terminate()` delegates; `cleanup()`
+      non-public
+- [ ] Credential single-read + `onMissingKey` warning callback (**D11**, spec §6)
+- [ ] `SessionServices` extension for construction-graph cache sites (StorageTool out of scope)
+- [ ] **Tests**: assemble() composes prompt / inits memory exactly once, both platforms;
+      real-path perf assertion; token closure follows AuthContext change mid-lifetime
 
-## Phase 3a — Lifecycle state machine + ThreadIndex (client-only)
+## Phase 3a-1 — ThreadIndex + two-stage open (visible Goal-3 skeleton, low concurrency risk)
 
-- [ ] Runtime states + **transition table** (§3.1) enforced like today's
-      `VALID_STATE_TRANSITIONS`; illegal transitions throw
-- [ ] **Concurrency discipline** (§3.2): per-session op queue (single-flight `open`),
-      capacity mutex, delete tombstones, non-dispatchable SUSPENDING with submit-guard
-- [ ] `ThreadIndex` store (schema §5.1) + one-time backfill + lazy-index safety net (§5.2)
-- [ ] `open(sessionId?)` create-or-continue (multi-session-safe — replaces the
-      kill-the-primary resume, §3.3); `suspend()` (idempotent); LRU with **viewed-session
-      ineligibility** (§4.6); `busy` result + pending-open queue + `capacity-freed` drain
-- [ ] Generation counters on `AgentConfig`/`AuthContext`; post-assemble reconciliation (§3.4)
-- [ ] `Session.hasLiveBackgroundWork()` (§3.5); post-turn continuations register as tracked
-      work with grace timeout; `background-idle` event; RUNNING derived from it
-- [ ] Pending-submit queue in SessionManager (§4.5): bounded, ordered flush, retryable
-      returns on hydration failure
-- [ ] Soft delete + undelete + retention wipe; wire a periodic caller for the cleanup job (§5.3)
-- [ ] `SessionRuntimeEvent` emission (§7.1); legacy state event kept during migration
-- [ ] Delete `AgentRegistry.resumeSession()`; startup loads ThreadIndex only (**D7**)
-- [ ] RPC shims: `session.create` → `open()`; `session.resume` → `open(sessionId)`;
-      `session.rewind` → fork + `open`; deprecation telemetry on old verbs (§7.4)
-- [ ] MV3 recovery (§11): interrupted-turn marker on wake for RUNNING-at-death
-- [ ] Test matrix: double-open coalescing, delete-while-hydrating tombstone,
-      hydration-failure → SUSPENDED (retryable, never stuck), concurrent-eviction victim
-      reservation, suspend-vs-submit race, hydration-latency budget
-- [ ] Metrics (§10) via DiagnosticRegistry
+- [ ] `PerKeyOperationQueue` generalized from `LeaseLifecycleQueue` (spec §7)
+- [ ] `thread_index` store: IndexedDB `DB_VERSION` 5→6 + SQLite table (spec §11); schema §5.1
+- [ ] One-time backfill + lazy-index safety net (design §5.2)
+- [ ] **Two-stage `open()`** (design §3.6): no-sessionId → index entry only, no agent;
+      first submit hydrates. New chat never consumes a live slot
+- [ ] `session.getRollout` RPC (spec §12) + extract the shared raw-rollout→renderable
+      transform; replace `restoreAllThreadHistories`' live-agent pattern (**D14**)
+- [ ] `session.pin`/`unpin`/`rename`/`delete`/`undelete`; soft delete + retarget the
+      existing `session-cleanup` alarm (`service-worker.ts:1793,1824`) to retention (§5.3)
+- [ ] `session.setViewed` + per-surface viewed set with disconnect expiry (spec §10)
+- [ ] `session.turns`/`session.rewind` take explicit `sessionId`; delete
+      `_primarySessionId`/`getPrimarySession()` (**D16**)
+- [ ] Generation counters on `AgentConfig` (bump in `emitChangeEvent`) + `AuthContext` (spec §8)
+- [ ] `SessionRuntimeEvent` + `EVENT_SCOPE_MAP['session_runtime_state']='thread'` (spec §13)
+- [ ] Legacy↔new state mapping: `legacyState()` compat getter; new transition table replaces
+      `VALID_STATE_TRANSITIONS` (spec §15); legacy event keeps firing
 
-## Phase 3b — Central config propagation (client-only; can land before or after 3a)
+## Phase 3a-2 — Suspend/hydrate + capacity (the heavy machinery)
+
+- [ ] Full runtime state machine per design §3.1 (illegal transitions throw)
+- [ ] Single-flight open, capacity mutex, delete tombstones (design §3.2)
+- [ ] **Submit-path rewiring** (spec §3): the three `service-worker.ts` direct
+      `submitOperation` sites route through `SessionHandle.submit`; SUSPENDING/HYDRATING
+      hit the pending queue; guard actually guards production sends
+- [ ] Hydration (multi-session-safe, design §3.3): `open(sessionId)` without killing
+      anything; `session.create`/`resume` shims route to `open()`; deprecation telemetry
+- [ ] `suspend()` idempotent; LRU with viewed-session ineligibility; `busy` +
+      pending-open queue + `capacity-freed` drain (design §4.6)
+- [ ] Post-assemble generation re-check (design §3.4)
+- [ ] `hasLiveBackgroundWork()` v2: + `shadowScheduler.hasPending()` + title-gen
+      `_pendingContinuations` tracking with 30 s grace (spec §9); `background-idle` event
+- [ ] Pending-submit queue (design §4.5): bounded, ordered flush, retryable returns
+- [ ] `awaitingInput` attribute: approval-request/resolve wiring → runtime event (**D15**)
+- [ ] Delete `AgentRegistry.resumeSession()` (**D7**); startup loads ThreadIndex only
+- [ ] MV3: interrupted-turn marker on wake (design §11)
+- [ ] **Test matrix**: double-open coalescing; delete-while-hydrating; hydration-failure →
+      SUSPENDED retryable; concurrent-eviction victim reservation; suspend-vs-submit race;
+      queued-messages-on-failure; generation-race reconciliation; hydration-latency budget
+- [ ] Metrics (design §10) via DiagnosticRegistry
+
+## Phase 3b — Central config propagation (client-only; may precede 3a)
 
 - [ ] SessionManager subscribes once to `config-changed`; parallel sweep with per-session
       deferral (**D3**); remove per-agent self-subscription
-- [ ] Extension `agent.configUpdate` becomes the same in-place sweep; delete the destroy-all
-      override (`service-worker.ts:782-822`) (**D8**)
+- [ ] Extension `agent.configUpdate` = in-place sweep; delete destroy-all override
+      (`service-worker.ts:782-822`) (**D8**)
 
-## Phase 3c — Tab decoupling (client-only; orthogonal, sequence last)
+## Phase 3c — Tab decoupling (client-only; REQUIRED before Phase 4)
 
-- [ ] `TabGroupRegistry` over `TabLeaseStore` (§6): group lifecycle + letter allocation moved
-      from `AgentSession`/`AgentRegistry`
-- [ ] Remove `AgentSession._metadata.tabId/tabGroupId` and `Session.setTabId` (**D9**);
-      SessionHandle read-through view
-- [ ] Lazy tab/group acquisition on first browser-tool use; release on suspend
-- [ ] Tab closure releases lease + tool-level error; never terminates the session
+- [ ] `TabGroupRegistry` over `TabLeaseStore` (design §6): groups + letters moved from
+      `AgentSession`/`AgentRegistry`
+- [ ] Remove `AgentSession` tab fields + `Session.setTabId` (**D9**); handle read-through
+- [ ] Lazy acquisition; release on suspend; closure never terminates a session
+- [ ] **Contention rules** (design §6.1): no cross-session lease theft; no focus stealing
+      from non-viewed sessions — foreground-requiring automation raises `awaitingInput`
 
-## Phase 4 — UI (on top of PR #298; gated on Phase 0 simplify_session items)
+## Phase 4 — UI (gated on 3a + 3b + 3c + Phase-0 simplify_session)
 
-- [ ] `session.open`/`list`/`pin`/`unpin`/`delete`/`undelete` wiring in `Main.svelte` +
-      left panel; drop UI `session.getActiveCount` (**D14**)
-- [ ] Thread list: pinned-first sort, RUNNING indicator from `SessionRuntimeEvent`,
-      click-to-open with optimistic render from the **same** rollout snapshot hydration
-      replays (§7.2 no-divergence rule)
-- [ ] Send gated on IDLE; "sending…" for queued; failure surfaces: retry banner, busy
-      auto-retry, delete undo toast (§7.2)
-- [ ] Title lifecycle: "New chat" placeholder → `updateTitle` after first turn (§7.3)
-- [ ] Remove the in-chat tab strip; `threadStore` keyed by `sessionId`
-- [ ] Narrow-mode popup gains indicators
+- [ ] Left panel per design §7.2: pinned-first, selection highlight (one viewed per window),
+      `●` RUNNING vs `⏳` awaitingInput badges, "N sessions need your input" aggregate with
+      deep-link, search filter, rename, New-Chat demote semantics, runtime-aware "more…" modal
+- [ ] Click-to-open: optimistic render from `session.getRollout` snapshot (same-snapshot
+      rule); send gated on IDLE; "sending…" queue states; failure surfaces (retry banner,
+      busy auto-retry, delete undo toast)
+- [ ] **Background streaming** (design §7.5): SessionManager per-session replay ring;
+      `threadStore` keeps per-session conversation buffers — do NOT reduce to
+      index+state projection
+- [ ] `SidePanelThread` shape extension; remove `ThreadBar`/`ThreadTab` (spec §14)
+- [ ] Drop UI `session.getActiveCount` + `session.getState`-for-history (**D14**)
+- [ ] Narrow-mode parity list (design §7.2): pin, delete/undelete+undo, all badges,
+      open+failure banner, "sending…", search (rename/bulk = wide-only)
 
 ## Phase 5 — Convergence & cleanup
 
-- [ ] Per-agent prompt static context; remove first-agent-wins composer guard
+- [ ] Per-agent prompt static context; remove first-agent-wins guard
       (`PromptLoader.ts:36-85`) (**D6**)
-- [ ] Delete `refreshModelClient`/`hotSwapModelClient` aliases
-- [ ] Remove deprecated `session.create`/`resume` verbs if telemetry shows no external callers
-- [ ] Mechanical rename `AgentRegistry` → `SessionManager` (§12.1)
-- [ ] Update `.ai_design/architecture.md` session section to point here
+- [ ] Delete `refreshModelClient`/`hotSwapModelClient` aliases; delete legacy
+      `SessionStateChangedEvent` + `legacyState()` once consumers migrate
+- [ ] Remove deprecated `session.create`/`resume` if telemetry silent
+- [ ] Mechanical rename `AgentRegistry` → `SessionManager`
+- [ ] Update `.ai_design/architecture.md` session section
 
 ## Explicit non-goals (tracked separately)
 
-- `Session.ts` god-object decomposition (**D12**) — guardrail: new features go into injected
+- `Session.ts` god-object decomposition (**D12**) — guardrail: new features via injected
   collaborators
 - StorageTool-owned `SessionCacheManager` duplication (outside construction graph)
-- Engine/turn loop, tool orchestration, approval system changes
+- Bulk/multi-select thread actions (design §7.2)
+- Engine/turn loop, tool orchestration, approval-system changes
 - Sub-agent/shadow-agent creation changes
-- Server-mode lifecycle/tenant-scoping (design §1 scope decision)
-- Cross-machine session sync (§5.4)
-- Incremental turn checkpointing for MV3 RUNNING-death recovery (§11)
+- Server-mode lifecycle adoption (single-tenant headless today; design §1)
+- Cross-machine session sync; incremental turn checkpointing for MV3 (design §11)
