@@ -122,6 +122,10 @@
           expectedState = randomUrlToken();
           loginUrl = getDesktopAuthorizeUrl({ codeChallenge: pkce.codeChallenge, state: expectedState });
         } else {
+          // @deprecated Legacy desktop-token flow — reached only when OIDC is
+          // unconfigured (`hasDesktopOidc()` false). Superseded by the OIDC +
+          // PKCE branch above; kept as a fallback until every environment has
+          // its hosted `workx-desktop` OIDC client registered.
           loginUrl = getDesktopLoginPageUrl();
         }
         if (!loginUrl) throw new Error('Hosted auth is not configured');
