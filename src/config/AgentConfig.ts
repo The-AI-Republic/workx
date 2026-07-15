@@ -21,6 +21,7 @@ import {
   buildRuntimeConfig,
   extractStoredConfig
 } from './defaults';
+import { fetchRemoteCatalog } from './remoteCatalog';
 import { validateConfig, validateModelConfig, validateProviderConfig, detectProviderFromKey } from './validators';
 import {
   applyPolicy,
@@ -87,6 +88,11 @@ export class AgentConfig implements IConfigService {
     try {
       const storedConfig = await this.storage.get();
       console.log('[AgentConfig] initialize - storedConfig from storage:', storedConfig?.selectedModelKey);
+
+      // Private builds: load the model catalog from the backend and cache it so
+      // getDefaultProviders() (used by buildRuntimeConfig below) full-replaces the
+      // bundled default.json. No-op + fallback to default when unconfigured/failed.
+      await fetchRemoteCatalog();
 
       // Build full runtime config by merging stored data with default.json providers/models
       this.currentConfig = buildRuntimeConfig(storedConfig);

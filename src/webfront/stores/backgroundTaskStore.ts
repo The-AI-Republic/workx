@@ -107,7 +107,7 @@ export function handleBackgroundTaskEvent(msg: EventMsg): void {
           ...prev,
           tasks: {
             ...prev.tasks,
-            [msg.data.taskId]: { ...task, status: msg.data.status },
+            [msg.data.taskId]: { ...task, status: msg.data.status, error: msg.data.error ?? task.error },
           },
         };
       });
@@ -125,6 +125,7 @@ export function handleBackgroundTaskEvent(msg: EventMsg): void {
               status: msg.data.status,
               endTime: msg.data.endTime,
               lastAgentMessage: msg.data.summary,
+              error: msg.data.error ?? task.error,
             },
           },
         };

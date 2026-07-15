@@ -384,6 +384,12 @@ export class SubAgentRunner implements IAgentRunner {
         ? 'killed'
         : 'failed';
     ts.endTime = Date.now();
+    // Surface the failure reason (e.g. "no LLM credit account for this
+    // identity") so the background-task UI can render it instead of a bare
+    // "failed" status. result.error carries the message on failure.
+    if (ts.status === 'failed' && result.error) {
+      ts.error = result.error;
+    }
     ts.notified = true; // safeEnqueueNotification just ran (or was suppressed)
     if (result.tokenUsage) {
       ts.tokenUsage = {

@@ -3,6 +3,8 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 import sveltePreprocess from 'svelte-preprocess';
 import { resolve } from 'path';
 import { fileURLToPath } from 'url';
+// @ts-ignore - plain .mjs data module, no types (dependency-free by design)
+import { versionDefine } from './vite.version.mjs';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
@@ -25,6 +27,7 @@ export default defineConfig({
   root: 'src/webfront',
   define: {
     __BUILD_MODE__: JSON.stringify('web'),
+    ...versionDefine(),
   },
   build: {
     rollupOptions: {

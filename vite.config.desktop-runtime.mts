@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
 import { fileURLToPath } from 'url';
+// @ts-ignore - plain .mjs data module, no types (dependency-free by design)
+import { versionDefine } from './vite.version.mjs';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
@@ -8,6 +10,7 @@ export default defineConfig({
   envDir: resolve(__dirname, 'src/desktop'),
   define: {
     __BUILD_MODE__: JSON.stringify('server'),
+    ...versionDefine(),
   },
   build: {
     ssr: resolve(__dirname, 'src/desktop-runtime/index.ts'),

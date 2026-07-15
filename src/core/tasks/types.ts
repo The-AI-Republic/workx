@@ -54,6 +54,13 @@ export interface TaskStateBase {
   id: string;
   type: TaskType;
   status: TaskStatus;
+  /**
+   * Failure detail for a terminal `failed` task — the underlying model/gateway
+   * error message (e.g. "no LLM credit account for this identity"). Undefined
+   * unless the task failed. Without this field the background-task UI has no
+   * channel for the reason and collapses every failure to a generic status.
+   */
+  error?: string;
   description: string;
   toolUseId?: string;
   startTime: number;

@@ -1,11 +1,19 @@
-name: Release
+name: Release (Chrome extension)
+
+# Publishing a GitHub Release builds the Chrome extension, attaches workx.zip to
+# the Release, and opens the Chrome Web Store publish PR.
+#
+# The desktop app is NOT built here anymore — it moved to release-desktop.yml,
+# which builds/signs and pushes to the workx-desktop-releases S3 bucket that the
+# in-app auto-updater reads. Both workflows fire on the same `release: released`
+# event, so one GitHub Release ships both surfaces; desktop builds once, to S3.
 
 on:
+  # `released` fires only on publishing a non-prerelease Release (including a
+  # draft that is later published) — matches release-desktop.yml so both
+  # surfaces ship together and prereleases/drafts never auto-publish.
   release:
-    types: [created]
-
-env:
-  CARGO_TERM_COLOR: always
+    types: [released]
 
 jobs:
   build-extension:
@@ -108,99 +116,3 @@ jobs:
             --body-file /tmp/pr-body.md \
             --base main \
             --head "$BRANCH"
-
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: macOS-universal
-            runner: macos-latest
-            args: --target universal-apple-darwin
-          - name: Windows-x64
-            runner: windows-latest
-            args: --target x86_64-pc-windows-msvc
-          - name: Linux-x64
-            runner: ubuntu-22.04
-            args: --target x86_64-unknown-linux-gnu
-
-    name: ${{ matrix.name }}
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 60
-    permissions:
-      contents: write
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Extract version from tag
-        id: version
-        shell: bash
-        run: |
-          TAG="${GITHUB_REF#refs/tags/v}"
-          echo "version=$TAG" >> "$GITHUB_OUTPUT"
-          echo "Building version: $TAG"
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - run: npm ci
-
-      - name: Sync version into config files
-        run: node scripts/sync-version.js ${{ steps.version.outputs.version }}
-
-      - name: Create desktop .env
-        shell: bash
-        run: |
-          cat > src/desktop/.env << 'EOF'
-          VITE_AUTH_COOKIE_DOMAIN=${{ vars.VITE_AUTH_COOKIE_DOMAIN }}
-          VITE_AUTH_BASE_URL=${{ vars.VITE_AUTH_BASE_URL }}
-          VITE_BACKEND_API_BASE_URL=${{ vars.VITE_BACKEND_API_BASE_URL }}
-          EOF
-
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ contains(matrix.args, 'universal-apple-darwin') && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
-
-      - name: Cache Rust dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            tauri/target
-          key: ${{ matrix.runner }}-cargo-${{ hashFiles('tauri/Cargo.lock') }}
-          restore-keys: |
-            ${{ matrix.runner }}-cargo-
-
-      - name: Install Linux system dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            librsvg2-dev \
-            patchelf \
-            libssl-dev \
-            libgtk-3-dev \
-            libayatana-appindicator3-dev
-
-      - name: Install tauri-cli
-        run: cargo install tauri-cli --version "^2" --locked
-
-      - name: Build and upload with tauri-action
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        with:
-          projectPath: tauri
-          tauriScript: cargo tauri
-          args: ${{ matrix.args }}
-          tagName: ${{ github.event.release.tag_name }}
-          releaseName: ${{ github.event.release.name }}
-          releaseId: ${{ github.event.release.id }}

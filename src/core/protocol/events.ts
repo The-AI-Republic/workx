@@ -167,6 +167,8 @@ export interface BackgroundTaskStateChangedEvent {
   taskId: string;
   prevStatus: 'pending' | 'running' | 'completed' | 'failed' | 'killed';
   status: 'pending' | 'running' | 'completed' | 'failed' | 'killed';
+  /** Failure reason when status === 'failed' (e.g. a gateway/model error). */
+  error?: string;
 }
 
 export interface BackgroundTaskTerminatedEvent {
@@ -175,6 +177,8 @@ export interface BackgroundTaskTerminatedEvent {
   endTime: number;
   durationMs: number;
   summary?: string;
+  /** Failure reason when status === 'failed' (e.g. a gateway/model error). */
+  error?: string;
 }
 
 // Individual event payload types
