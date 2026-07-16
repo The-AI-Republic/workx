@@ -245,6 +245,7 @@ export class PromptComposer {
         extension: 'Chrome Extension (direct tab access)',
         cdp: 'Chrome DevTools Protocol',
         mcp: 'MCP browser automation server',
+        bridge: 'WorkX Chrome extension bridge (local_browser_tool; present only while the extension is connected)',
       };
       lines.push(`- Browser connection: ${label[context.browserConnection] || context.browserConnection}`);
     }

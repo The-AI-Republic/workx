@@ -1895,7 +1895,10 @@ export class ServerAgentBootstrap {
 
     const isDesktopRuntime = (this.options.profile ?? 'server') === 'desktop-runtime';
     const staticContext: Partial<RuntimeContext> = {
-      browserConnection: isDesktopRuntime ? 'mcp' : 'none',
+      // Desktop browser access is the WorkX-extension bridge (local_browser_tool),
+      // not the parked chrome-devtools-mcp path. The 'bridge' label spells out
+      // that the tool exists only while the extension is connected.
+      browserConnection: isDesktopRuntime ? 'bridge' : 'none',
       os: process.platform,
       arch: process.arch,
       shell: process.platform === 'win32' ? 'powershell' : 'bash',
