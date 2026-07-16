@@ -431,37 +431,62 @@ async function doInitialize(): Promise<void> {
   // This ensures backend routing is set up correctly on service worker startup
   await initializeAuthFromConfig();
 
+  // Desktop browser bridge: serve as the WorkX desktop app's live-browser
+  // executor (mode:'node' connection to the local app-server). Runs BEFORE the
+  // dynamic-import-based subsystems below: MV3 service workers reject dynamic
+  // import() (TypeError: import() is disallowed on ServiceWorkerGlobalScope),
+  // and an uncaught rejection from one of those blocks used to abort
+  // initialize() before the bridge ever started. The bridge's module graph is
+  // fully static, so it must not be held hostage by them.
+  try {
+    await initializeBridge();
+  } catch (err) {
+    console.warn('[ServiceWorker] Desktop bridge initialization failed (non-fatal):', err);
+  }
+
   // Track 22: MCP gated behind the MCP compile-time flag. When OFF this
   // whole block is dead-code-eliminated and the dynamic import() chunk is
   // never emitted, so core/mcp leaves the extension bundle.
+  // Non-fatal: the dynamic import() below throws in an MV3 service worker
+  // (disallowed by spec); until MCP is refactored to static imports it must
+  // not take down the rest of service-worker init.
   if (MCP) {
-    // Initialize MCP manager
-    const { MCPManager } = await import('../../core/mcp/MCPManager');
-    mcpManager = await MCPManager.getInstance();
+    try {
+      // Initialize MCP manager
+      const { MCPManager } = await import('../../core/mcp/MCPManager');
+      mcpManager = await MCPManager.getInstance();
 
-    // Subscribe to MCP events for tool registration/unregistration
-    // (sync — handler attaches immediately, before any auto-connect)
-    setupMCPToolRegistration();
+      // Subscribe to MCP events for tool registration/unregistration
+      // (sync — handler attaches immediately, before any auto-connect)
+      setupMCPToolRegistration();
 
-    // Auto-connect enabled MCP servers (T064: service worker lifecycle handling)
-    await autoConnectEnabledMCPServers();
+      // Auto-connect enabled MCP servers (T064: service worker lifecycle handling)
+      await autoConnectEnabledMCPServers();
+    } catch (err) {
+      console.warn('[ServiceWorker] MCP initialization failed (non-fatal):', err);
+    }
   }
 
   // Setup message handlers
   setupMessageHandlers();
 
-  // Track 22: A2A gated behind the A2A compile-time flag (same DCE rationale).
+  // Track 22: A2A gated behind the A2A compile-time flag (same DCE rationale,
+  // same non-fatal rationale as MCP above).
   if (A2A) {
-    // Initialize A2A manager
-    const { A2AManager } = await import('../../core/a2a/A2AManager');
-    a2aManager = await A2AManager.getInstance();
+    try {
+      // Initialize A2A manager
+      const { A2AManager } = await import('../../core/a2a/A2AManager');
+      a2aManager = await A2AManager.getInstance();
 
-    // Subscribe to A2A events for tool registration/unregistration
-    // (sync — handler attaches immediately, before any auto-connect)
-    setupA2AToolRegistration();
+      // Subscribe to A2A events for tool registration/unregistration
+      // (sync — handler attaches immediately, before any auto-connect)
+      setupA2AToolRegistration();
 
-    // Auto-connect enabled A2A agents
-    await autoConnectEnabledA2AAgents();
+      // Auto-connect enabled A2A agents
+      await autoConnectEnabledA2AAgents();
+    } catch (err) {
+      console.warn('[ServiceWorker] A2A initialization failed (non-fatal):', err);
+    }
   }
 
   // Initialize Skills
@@ -473,15 +498,6 @@ async function doInitialize(): Promise<void> {
 
   // Initialize Scheduler
   await initializeScheduler();
-
-  // Desktop browser bridge: serve as the WorkX desktop app's live-browser
-  // executor (mode:'node' connection to the local app-server). No-op unless
-  // the user enabled + paired it in settings.
-  try {
-    await initializeBridge();
-  } catch (err) {
-    console.warn('[ServiceWorker] Desktop bridge initialization failed (non-fatal):', err);
-  }
 
   // Register service handlers on ChannelManager (message_routing_v2)
   await registerServiceHandlers();
