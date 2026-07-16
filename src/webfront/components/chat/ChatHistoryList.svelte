@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { RolloutRecorder, type ConversationItem, type Cursor } from '@/storage/rollout';
+  import { type ConversationItem, type Cursor } from '@/storage/rollout';
+  import { listConversations as listConversationsPlatform } from '../../lib/conversationList';
   import { uiTheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
 
@@ -62,7 +63,7 @@
 
       // Load conversations with timeout
       const page = await Promise.race([
-        RolloutRecorder.listConversations(initialPageSize),
+        listConversationsPlatform(initialPageSize),
         timeoutPromise,
       ]);
 
@@ -99,7 +100,7 @@
     isLoadingMore = true;
 
     try {
-      const page = await RolloutRecorder.listConversations(morePageSize, nextCursor);
+      const page = await listConversationsPlatform(morePageSize, nextCursor);
       conversations = [...conversations, ...page.items];
       nextCursor = page.nextCursor;
       hasMoreOlder = page.nextCursor !== undefined;
