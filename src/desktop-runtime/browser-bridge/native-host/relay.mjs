@@ -31,6 +31,10 @@
  * @module desktop-runtime/browser-bridge/native-host/relay
  */
 
+/* global process, Buffer -- Node ≥22 script (Chrome spawns it via the bundled
+   sidecar node); the repo ESLint config assumes browser globals for src/
+   files, which lack the Node ones. WebSocket is global in both. */
+
 import { readFileSync } from 'node:fs';
 
 const APP_SERVER_URL = process.env.WORKX_APP_SERVER_URL || 'ws://127.0.0.1:18101';

@@ -114,11 +114,12 @@ describe.each(MANIFEST_PATHS)('manifest: %s', (relPath) => {
       for (const res of entry.resources ?? []) {
         // Skip glob patterns — build-time artifacts (source maps, etc.).
         if (res.includes('*')) continue;
-        // Prompt/static resources are emitted from src or public into dist at
-        // build; accept if present in either the manifest dir or dist.
+        // Source-truth only: never consult dist/ — a stale build artifact
+        // there once masked a manifest entry (content.js.map) that a clean
+        // CI checkout correctly rejected. Literal entries must exist in
+        // source; build-produced files must be covered by a glob.
         const candidates = [
           path.join(manifestDir, res),
-          path.join(ROOT, 'dist', res),
           path.join(ROOT, 'src', res),
         ];
         if (!candidates.some((c) => fs.existsSync(c))) missing.push(res);

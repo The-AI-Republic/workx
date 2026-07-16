@@ -32,8 +32,7 @@
     {
       "resources": [
         "prompts/user_instruction.md",
-        "*.map",
-        "content.js.map"
+        "*.map"
       ],
       "matches": [
         "<all_urls>"
