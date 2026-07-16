@@ -15,6 +15,7 @@
  */
 
 import path from 'node:path';
+import os from 'node:os';
 import type { ServerAgentBootstrap } from '@/server/agent/ServerAgentBootstrap';
 import type { ServiceHandler } from '@/core/channels/ServiceRegistry';
 import { getChannelManager } from '@/core/channels/ChannelManager';
@@ -25,6 +26,7 @@ import { normalizeAppServerConfig } from '@/app-server/appServerConfig';
 import type { AppServerStatusSnapshot } from '@/app-server/status/AppServerStatus';
 import { setBrowserBridgeHandle } from '@/tools/browserBridgeHandle';
 import { BrowserBridgeToolManager } from '../browser-bridge/BrowserBridgeToolManager';
+import { installNativeHost, WORKX_EXTENSION_ID } from '../browser-bridge/native-host/installNativeHost';
 import { getDesktopRuntimeHost } from '../host';
 import { getDesktopRuntimeControlBridge } from '../protocol/controlBridge';
 import { KeychainTokenStore } from './KeychainTokenStore';
@@ -94,6 +96,32 @@ export class DesktopAppServerManager {
       await this.manager.start();
       const status = this.manager.getStatus();
       console.error(`[DesktopAppServerManager] app-server ready at ${status.url ?? '(unknown)'}`);
+
+      // Register the Chrome-family native-messaging host so the extension can
+      // connectNative() with zero pairing. Best-effort: a failure here only
+      // loses the native path (the ws dev fallback still works) and must not
+      // take down the app-server.
+      if (status.url) {
+        try {
+          const nodePath = process.execPath;
+          await installNativeHost({
+            nodePath,
+            // relay.mjs ships next to the bundled node in the sidecar dir.
+            relayPath: path.join(path.dirname(nodePath), 'relay.mjs'),
+            appServerUrl: status.url,
+            token: (await this.manager.revealToken()) ?? '',
+            extensionId: WORKX_EXTENSION_ID,
+            dataDir: host.configDir,
+            home: os.homedir(),
+            platform: (host.platform as NodeJS.Platform) ?? process.platform,
+          });
+        } catch (err) {
+          console.warn(
+            '[DesktopAppServerManager] native-host install failed (bridge falls back to ws):',
+            err instanceof Error ? err.message : err,
+          );
+        }
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.error('[DesktopAppServerManager] app-server start failed (runtime continues):', message);

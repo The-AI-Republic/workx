@@ -19,6 +19,7 @@ import {
 } from './protocol/controlBridge';
 import { StdioRuntimeChannel } from './channels/StdioRuntimeChannel';
 import { WorkXRuntimeBootstrap } from './WorkXRuntimeBootstrap';
+import { DesktopAppServerManager } from './app-server/DesktopAppServerManager';
 
 async function loadHost(): Promise<DesktopRuntimeHost> {
   const raw = process.env.WORKX_DESKTOP_RUNTIME_HOST;
@@ -36,7 +37,15 @@ async function main(): Promise<void> {
   setDesktopRuntimeControlBridge(controlBridge);
 
   let bootstrap: WorkXRuntimeBootstrap | null = null;
+  let appServer: DesktopAppServerManager | null = null;
   let helloAcked = false;
+
+  // Stop the app-server listener before the bootstrap tears down its sessions,
+  // so in-flight bridge connections are rejected cleanly rather than orphaned.
+  const shutdownAll = async (): Promise<void> => {
+    await appServer?.stop('runtime shutdown').catch(() => undefined);
+    await bootstrap?.shutdown();
+  };
 
   const sendHelloOk = (nonce?: string): void => {
     helloAcked = true;
@@ -69,7 +78,7 @@ async function main(): Promise<void> {
         carrier.send({ type: 'pong', id: frame.id, ts: Date.now() });
         break;
       case 'shutdown':
-        void bootstrap?.shutdown().finally(() => process.exit(0));
+        void shutdownAll().finally(() => process.exit(0));
         break;
     }
   });
@@ -95,8 +104,19 @@ async function main(): Promise<void> {
   bootstrap = new WorkXRuntimeBootstrap({ channel });
   await bootstrap.initialize();
 
+  // Bring up the desktop app-server (the loopback WS listener the browser
+  // bridge connects to) and register its UI-facing status/control services.
+  // registerServices() runs unconditionally so the settings UI can always read
+  // status and toggle the listener; startFromConfig() only binds the listener
+  // when app-server config is enabled (it never throws — failures are logged
+  // and the runtime continues). When it binds, it also installs the Chrome
+  // native-messaging host so the extension can connect with zero pairing.
+  appServer = new DesktopAppServerManager({ bootstrap });
+  appServer.registerServices();
+  await appServer.startFromConfig();
+
   const shutdown = (signal: string) => {
-    void Promise.resolve(bootstrap?.shutdown()).finally(() => {
+    void shutdownAll().finally(() => {
       console.error(`[desktop-runtime] shutdown after ${signal}`);
       process.exit(0);
     });

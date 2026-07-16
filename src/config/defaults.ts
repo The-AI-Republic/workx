@@ -161,9 +161,17 @@ export const DEFAULT_TOOLS_CONFIG: IToolsConfig = {
   }
 };
 
-/** Default app-server config — disabled, loopback, token-required. */
+/**
+ * Default app-server config — enabled, loopback, token-required.
+ *
+ * Enabled by default so the browser bridge works out-of-box: the extension
+ * ships on-by-default with the native transport, and the desktop must be
+ * listening for it to connect. The listener is loopback-only (127.0.0.1),
+ * requires a capability token, and rejects non-extension browser origins, so
+ * the exposure is limited to local processes that already hold the token.
+ */
 export const DEFAULT_APP_SERVER_CONFIG: IAppServerConfig = {
-  enabled: false,
+  enabled: true,
   transport: 'websocket',
   bindHost: '127.0.0.1',
   port: 18101,
