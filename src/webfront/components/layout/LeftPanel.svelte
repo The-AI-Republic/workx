@@ -5,6 +5,8 @@
   import { userStore } from '../../stores/userStore';
   import UserLoginStatus from '../common/UserLoginStatus.svelte';
   import NavTab from './NavTab.svelte';
+  import LeftPanelSection from './LeftPanelSection.svelte';
+  import ChatHistorySection from './ChatHistorySection.svelte';
 
   // Settings is normally reached from UserLoginStatus's logged-in avatar menu.
   // Logged-out users have no avatar menu, so surface a dedicated Settings entry
@@ -36,11 +38,11 @@
   }
 </script>
 
-<div class="flex flex-col h-full w-full p-3 overflow-y-auto
+<div class="flex flex-col h-full w-full p-3 gap-2 overflow-y-auto
   {currentTheme === 'modern'
     ? 'bg-chat-surface dark:bg-chat-surface-dark'
     : 'bg-term-bg'}">
-  <div class="flex flex-col gap-1">
+  <LeftPanelSection>
     {#each NAV_ITEMS as item (item.id)}
       <NavTab
         {item}
@@ -48,7 +50,10 @@
         onNavigate={handleNavigate}
       />
     {/each}
-  </div>
+  </LeftPanelSection>
+
+  <ChatHistorySection />
+
   <div class="grow"></div>
   <div class="pt-3
     {currentTheme === 'modern'

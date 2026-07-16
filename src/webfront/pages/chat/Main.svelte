@@ -38,6 +38,8 @@
   import { MODES, DEFAULT_MODE, type AgentMode } from '@/prompts/PromptComposer';
   import { ThreadEventRouter } from '../../routing/ThreadEventRouter';
   import { handleBackgroundTaskEvent, startBackgroundTaskPolling, stopBackgroundTaskPolling } from '../../stores/backgroundTaskStore';
+  // Resume-request bridge from the left-panel Chat History section.
+  import { resumeRequest, clearResumeRequest } from '../../stores/chatHistoryStore';
   // UI channel client (platform-agnostic)
   let client: UIChannelClient | null = $state(null);
   let unsubscribers: Array<() => void> = $state([]);
@@ -58,6 +60,41 @@
   let healthStatus: { ready: boolean; message?: string; provider?: string; model?: string; authMode?: 'login' | 'api_key' | 'none' } = $state({ ready: false, authMode: 'none' });
   let zoomLevel: number = $state(parseInt(document.documentElement.style.fontSize) || 100);
 
+  // Handle "resume this conversation" requests published by the left-panel
+  // Chat History section. The section can't call resumeConversation directly
+  // (separate component), so it sets a request in the store; we act on it once
+  // the client is ready. Tracking the nonce (and clearing the request) avoids
+  // re-resuming a stale conversation when this page remounts.
+  let lastResumeNonce = 0;
+  $effect(() => {
+    const req = $resumeRequest;
+    if (!req || req.nonce === lastResumeNonce) return;
+    // `client` is a dependency: when it becomes ready this effect re-runs and
+    // processes a request that arrived before initialization finished.
+    if (!client) return;
+    lastResumeNonce = req.nonce;
+    clearResumeRequest();
+
+    // Switch the active thread to the requested session *before* resuming, the
+    // same way handleRewound does for a session swap. resumeConversation ->
+    // restoreConversationHistory only renders into the UI when the restored
+    // session is the active one, so without this the resumed conversation would
+    // load into threadStates but never appear on screen.
+    if (!threadStore.getThread(req.sessionId)) {
+      threadStore.createThread(req.sessionId, 'New Thread');
+    }
+    activeSessionId = req.sessionId;
+    threadStore.setActiveThread(req.sessionId);
+    threadRouter.setActiveSession(req.sessionId);
+
+    void resumeConversation(req.sessionId);
+  });
+
+  // Guards the auto-relogin so an expired desktop session opens the login flow
+  // exactly once per expiry (reset when access returns to ready), rather than
+  // popping the browser on every subsequent access-state emission.
+  let sessionReloginPrompted = false;
+
   function applyAccessState(access: AgentAccessState): void {
     isConnected = true;
     agentReady = access.ready;
@@ -69,6 +106,20 @@
       authMode: access.mode,
     };
     agentStore.updateFromAccessState(access);
+
+    // Auto-relogin: when the runtime reports the desktop session expired
+    // (refresh token revoked/expired), re-open the login flow instead of
+    // leaving the user on a dead "Invalid JWT" error. The `session_expired`
+    // reason is the runtime's stable sentinel for "must re-login" (as opposed
+    // to a fresh logout or a transient failure, which must not auto-pop login).
+    if (access.status === 'needs_login' && access.reason === 'session_expired') {
+      if (!sessionReloginPrompted) {
+        sessionReloginPrompted = true;
+        requestLogin();
+      }
+    } else if (access.ready) {
+      sessionReloginPrompted = false;
+    }
   }
 
   function onZoomChanged(e: Event) {

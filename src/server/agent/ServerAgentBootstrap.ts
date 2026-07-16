@@ -1246,7 +1246,7 @@ export class ServerAgentBootstrap {
         refreshAuthTokens: async (refreshToken: string) => {
           try {
             const { refreshDesktopAuthTokens } = await import('@/desktop-runtime/auth/runtimeProfileFetch');
-            return await refreshDesktopAuthTokens(refreshToken);
+            return await refreshDesktopAuthTokens(refreshToken, await this.readPersistedOidcConfig());
           } catch (err) {
             console.warn('[ServerAgentBootstrap] runtime token refresh failed:', err);
             return null;
@@ -1352,15 +1352,48 @@ export class ServerAgentBootstrap {
     return this.runtimeState.setAccessState(accessStateFromReadyState(ready));
   }
 
+  /**
+   * Read the OIDC client config captured at login. The sidecar's process.env
+   * has no access to the WebView-only auth vars, so the token-refresh path must
+   * reuse the clientId+tokenUrl persisted at login — otherwise it can't rebuild
+   * the OIDC token request and falls back to legacy refresh, which the gateway
+   * rejects as "Invalid JWT".
+   */
+  private async readPersistedOidcConfig(): Promise<{
+    clientId: string | null;
+    tokenUrl: string | null;
+  }> {
+    const credentialStore = getCredentialStore();
+    const [clientId, tokenUrl] = await Promise.all([
+      credentialStore.get('auth', 'oidc_client_id').catch(() => null),
+      credentialStore.get('auth', 'oidc_token_url').catch(() => null),
+    ]);
+    return { clientId, tokenUrl };
+  }
+
   private async refreshDesktopRuntimeSessionTokens(): Promise<string | null> {
     const credentialStore = getCredentialStore();
     const refreshToken = await credentialStore.get('auth', 'refresh_token').catch(() => null);
     if (!refreshToken) return null;
 
     try {
-      const { refreshDesktopAuthTokens } = await import('@/desktop-runtime/auth/runtimeProfileFetch');
-      const refreshed = await refreshDesktopAuthTokens(refreshToken);
+      const { refreshDesktopAuthTokensDetailed } = await import('@/desktop-runtime/auth/runtimeProfileFetch');
+      const result = await refreshDesktopAuthTokensDetailed(refreshToken, await this.readPersistedOidcConfig());
+      const refreshed = result.tokens;
       if (!refreshed?.accessToken || !refreshed.refreshToken) {
+        if (result.unrecoverable) {
+          // The refresh token is expired/revoked — no silent recovery is
+          // possible. Signal the WebView (via access state) to re-open login
+          // instead of surfacing a dead "Invalid JWT" task failure. The
+          // `session_expired` reason is a stable sentinel the UI matches on to
+          // auto-trigger the login flow exactly once.
+          await this.runtimeState?.setAccessState({
+            status: 'needs_login',
+            mode: 'login',
+            ready: false,
+            reason: 'session_expired',
+          }).catch(() => undefined);
+        }
         return null;
       }
       await Promise.all([
@@ -1483,7 +1516,7 @@ export class ServerAgentBootstrap {
         const { fetchUserProfileServerSide, refreshDesktopAuthTokens } = await import('@/desktop-runtime/auth/runtimeProfileFetch');
         profile = accessToken ? await fetchUserProfileServerSide(accessToken) : null;
         if (!profile && refreshToken) {
-          const refreshed = await refreshDesktopAuthTokens(refreshToken);
+          const refreshed = await refreshDesktopAuthTokens(refreshToken, await this.readPersistedOidcConfig());
           if (refreshed?.accessToken && refreshed.refreshToken) {
             await Promise.all([
               credentialStore.set('auth', 'access_token', refreshed.accessToken),

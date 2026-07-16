@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [svelte({ hot: false })],
   define: {
     __BUILD_MODE__: JSON.stringify('extension'),
+    __APP_VERSION__: JSON.stringify('0.0.0-test'),
   },
   test: {
     globals: true,

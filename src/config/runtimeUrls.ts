@@ -11,6 +11,12 @@ export interface RuntimeUrlConfig {
   gatewayMcpUrl: string | null;
   gatewayCatalogUrl: string | null;
   gatewayCatalogApiBaseUrl: string | null;
+  /**
+   * Public LLM model catalog endpoint (private WorkX builds). When set, the app
+   * fetches it at startup and full-replaces the bundled default.json model list.
+   * Opt-in: unset means the bundled default is used and no request is made.
+   */
+  modelCatalogUrl: string | null;
   gatewayMcpName: string;
   gatewayMcpAuthMode: 'none' | 'api-key' | 'session-jwt';
   gatewayMcpApiKey: string | null;
@@ -27,6 +33,7 @@ export interface RuntimeUrlConfig {
     gatewayMcpUrl: RuntimeUrlSource;
     gatewayCatalogUrl: RuntimeUrlSource;
     gatewayCatalogApiBaseUrl: RuntimeUrlSource;
+    modelCatalogUrl: RuntimeUrlSource;
     gatewayMcpName: RuntimeUrlSource;
     gatewayMcpAuthMode: RuntimeUrlSource;
     gatewayMcpApiKey: RuntimeUrlSource;
@@ -131,6 +138,13 @@ export function resolveRuntimeUrls(): RuntimeUrlConfig {
     gatewayCatalogApiFromEnv ??
     (gatewayCatalogUrl ? joinUrl(originOf(gatewayCatalogUrl) ?? gatewayCatalogUrl, 'api/v1/apps') : null) ??
     (gatewayBaseUrl ? joinUrl(gatewayBaseUrl, 'api/v1/apps') : null);
+  // Opt-in public model catalog. Only fetched when explicitly configured, so
+  // public/OSS builds keep using the bundled default.json.
+  const modelCatalogUrl = firstNonEmpty(
+    env.WORKX_MODEL_CATALOG_URL,
+    env.VITE_MODEL_CATALOG_URL,
+    vite.VITE_MODEL_CATALOG_URL,
+  ) ?? null;
   const gatewayMcpNameFromEnv = firstNonEmpty(
     env.WORKX_GATEWAY_MCP_NAME,
     env.VITE_GATEWAY_MCP_NAME,
@@ -174,6 +188,7 @@ export function resolveRuntimeUrls(): RuntimeUrlConfig {
     gatewayMcpUrl,
     gatewayCatalogUrl,
     gatewayCatalogApiBaseUrl,
+    modelCatalogUrl,
     gatewayMcpName: gatewayMcpNameFromEnv ?? 'gateway',
     gatewayMcpAuthMode,
     gatewayMcpApiKey,
@@ -190,6 +205,7 @@ export function resolveRuntimeUrls(): RuntimeUrlConfig {
       gatewayMcpUrl: gatewayMcpFromEnv || gatewayBaseUrl ? 'env' : 'default',
       gatewayCatalogUrl: gatewayCatalogUrl ? 'env' : 'default',
       gatewayCatalogApiBaseUrl: gatewayCatalogApiFromEnv ? 'env' : 'default',
+      modelCatalogUrl: modelCatalogUrl ? 'env' : 'default',
       gatewayMcpName: gatewayMcpNameFromEnv ? 'env' : 'default',
       gatewayMcpAuthMode: requestedMcpAuthMode ? 'env' : 'default',
       gatewayMcpApiKey: gatewayMcpApiKey ? 'env' : 'default',

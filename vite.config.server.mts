@@ -3,6 +3,8 @@ import { resolve } from 'path';
 import { fileURLToPath } from 'url';
 // @ts-ignore - plain .mjs data module, no types (dependency-free by design)
 import { featureDefine } from './vite.featureFlags.mjs';
+// @ts-ignore - plain .mjs data module, no types (dependency-free by design)
+import { versionDefine } from './vite.version.mjs';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
@@ -13,6 +15,7 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 export default defineConfig({
   define: {
     __BUILD_MODE__: JSON.stringify('server'),
+    ...versionDefine(),
     // Track 22 — server matrix. Bundle size barely matters here; the value
     // is keeping unvetted experimental paths out of the production image.
     ...featureDefine('server', process.env),
