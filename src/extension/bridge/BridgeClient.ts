@@ -32,6 +32,7 @@ import {
   onBridgeSettingsChanged,
   type BridgeSettings,
 } from './bridgeSettings';
+import { createBridgeTransport, type BridgeTransport } from './transport';
 
 const HEARTBEAT_INTERVAL_MS = 20_000;
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -48,7 +49,7 @@ interface PendingRequest {
 
 export class BridgeClient {
   private readonly executor = new BridgeExecutor();
-  private ws: WebSocket | null = null;
+  private transport: BridgeTransport | null = null;
   private status: BridgeStatus = 'disabled';
   private lastError: string | null = null;
   private settings: BridgeSettings | null = null;
@@ -72,9 +73,13 @@ export class BridgeClient {
     onBridgeSettingsChanged((next) => {
       const prev = this.settings;
       this.settings = next;
-      // A changed token/URL must apply immediately — drop the live
+      // A changed transport/token/URL must apply immediately — drop the live
       // connection so reconcile() redials with the new parameters.
-      if (prev && this.ws && (prev.url !== next.url || prev.token !== next.token)) {
+      if (
+        prev &&
+        this.transport &&
+        (prev.transport !== next.transport || prev.url !== next.url || prev.token !== next.token)
+      ) {
         this.disconnect('settings changed');
       }
       this.reconnectDelayMs = RECONNECT_MIN_MS;
@@ -87,15 +92,16 @@ export class BridgeClient {
   /** Re-check desired state vs actual (called by the keepalive alarm too). */
   async reconcile(): Promise<void> {
     if (!this.settings) this.settings = await getBridgeSettings();
-    const { enabled, token, url } = this.settings;
-    if (!enabled || !token || !url) {
+    const { enabled, token, url, transport } = this.settings;
+    // Native needs no token/url (Chrome brokers it); ws needs both.
+    const configured = transport === 'native' ? enabled : enabled && !!token && !!url;
+    if (!configured) {
       this.disconnect('bridge disabled');
       this.setStatus('disabled');
       return;
     }
-    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
-      return;
-    }
+    // A live/connecting transport already exists — nothing to do.
+    if (this.transport) return;
     this.connect();
   }
 
@@ -113,22 +119,17 @@ export class BridgeClient {
     const generation = ++this.generation;
     this.setStatus('connecting');
 
-    let ws: WebSocket;
-    try {
-      ws = new WebSocket(settings.url);
-    } catch (err) {
-      this.onConnectionLost(generation, err instanceof Error ? err.message : 'WebSocket constructor failed');
-      return;
-    }
-    this.ws = ws;
-
-    ws.onmessage = (event) => {
-      if (generation !== this.generation) return;
-      void this.onFrame(String(event.data));
-    };
-    ws.onclose = () => this.onConnectionLost(generation, 'connection closed');
-    ws.onerror = () => this.onConnectionLost(generation, 'connection error');
-    // The handshake is driven by the server's connect.challenge event.
+    const transport = createBridgeTransport(settings);
+    this.transport = transport;
+    transport.open({
+      onFrame: (raw) => {
+        if (generation !== this.generation) return;
+        void this.onFrame(raw);
+      },
+      onClose: (reason) => this.onConnectionLost(generation, reason),
+    });
+    // The handshake is driven by the server's connect.challenge event, which
+    // both transports deliver (the relay forwards it on the native path).
   }
 
   private disconnect(reason: string): void {
@@ -139,13 +140,9 @@ export class BridgeClient {
       this.reconnectTimer = null;
     }
     this.failPending(new Error(reason));
-    if (this.ws) {
-      try {
-        this.ws.close(1000, reason);
-      } catch {
-        // Already closed.
-      }
-      this.ws = null;
+    if (this.transport) {
+      this.transport.close(reason);
+      this.transport = null;
     }
     // Desktop is gone — free our tabs for the user's own sessions.
     void this.executor.releaseAll();
@@ -156,7 +153,7 @@ export class BridgeClient {
     this.generation += 1;
     this.stopHeartbeat();
     this.failPending(new Error(message));
-    this.ws = null;
+    this.transport = null;
     void this.executor.releaseAll();
 
     if (!this.settings?.enabled) {
@@ -215,7 +212,9 @@ export class BridgeClient {
     const settings = this.settings;
     if (!settings) return;
     try {
-      await this.request('connect', {
+      // Native transport: Chrome authorizes via the host manifest and the relay
+      // injects the capability token, so we send no `auth` here.
+      const connectParams: Record<string, unknown> = {
         client: {
           id: 'workx-extension',
           displayName: 'WorkX Chrome Extension',
@@ -223,9 +222,12 @@ export class BridgeClient {
           platform: 'chrome-extension',
           mode: 'node',
         },
-        auth: { token: settings.token },
         scopes: [...NODE_SCOPES],
-      });
+      };
+      if (this.transport?.requiresToken) {
+        connectParams.auth = { token: settings.token };
+      }
+      await this.request('connect', connectParams);
 
       const tools = await this.executor.getCatalog();
       await this.request('node.advertise', {
@@ -239,18 +241,18 @@ export class BridgeClient {
 
       this.setStatus('connected', null);
       this.reconnectDelayMs = RECONNECT_MIN_MS;
-      this.startHeartbeat();
-      console.log(`[BridgeClient] connected to desktop, advertised ${tools.length} tools`);
+      // Native transport relies on Chrome's onDisconnect for liveness — no
+      // heartbeat traffic. The WS fallback keeps the app-layer heartbeat.
+      if (this.transport?.usesHeartbeat) this.startHeartbeat();
+      console.log(
+        `[BridgeClient] connected to desktop (${settings.transport}), advertised ${tools.length} tools`,
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.warn('[BridgeClient] handshake failed:', message);
       this.lastError = message;
-      // Auth failures close the socket server-side; onclose schedules retry.
-      try {
-        this.ws?.close(1000, 'handshake failed');
-      } catch {
-        // ignore
-      }
+      // Drop the transport; onClose schedules the retry.
+      this.transport?.close('handshake failed');
     }
   }
 
@@ -278,9 +280,9 @@ export class BridgeClient {
   }
 
   private request(method: string, params: Record<string, unknown>): Promise<unknown> {
-    const ws = this.ws;
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-      return Promise.reject(new Error('bridge socket is not open'));
+    const transport = this.transport;
+    if (!transport?.isOpen) {
+      return Promise.reject(new Error('bridge transport is not open'));
     }
     const id = crypto.randomUUID();
     return new Promise<unknown>((resolve, reject) => {
@@ -289,7 +291,11 @@ export class BridgeClient {
         reject(new Error(`request '${method}' timed out`));
       }, REQUEST_TIMEOUT_MS);
       this.pending.set(id, { resolve, reject, timer });
-      ws.send(JSON.stringify({ type: 'req', id, method, params }));
+      if (!transport.send(JSON.stringify({ type: 'req', id, method, params }))) {
+        clearTimeout(timer);
+        this.pending.delete(id);
+        reject(new Error('bridge transport is not open'));
+      }
     });
   }
 
@@ -306,11 +312,7 @@ export class BridgeClient {
     this.heartbeatTimer = setInterval(() => {
       this.request('node.heartbeat', {}).catch(() => {
         // Missed heartbeat — force the reconnect path.
-        try {
-          this.ws?.close(1000, 'heartbeat failed');
-        } catch {
-          // ignore
-        }
+        this.transport?.close('heartbeat failed');
       });
     }, HEARTBEAT_INTERVAL_MS);
   }

@@ -2,6 +2,7 @@
   "manifest_version": 3,
   "name": "__MSG_extension_name__",
   "version": "0.0.36",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuGrXQeq//6CjDYhFkpKEjybAnrSajhU7loPt74c5E+KDWKRrsEqhOrTtglVTGOOOw8Sny3+muTuRoLOeNIgrtKtezG4I/8gYyZawVaG6sWdFlsI+YsBITxnsOnPEBOGFZaXq6FvjyAd7imivvE9Rz4DVs55pw0KSd4XjeSa+uPdqQ5KWg4tyJOadqrTGRolXo2GX+72/AqhW+ZDbjF/UF5Ve6+VvWIiAh4/xkzz63gJ1eD+UbNMyFiGjalT9on1zktglCo9D+UUXhDu6bVzTJkHDHUsXvnbkAW7sXyPljBqWXaZH5j6eEiFCc0KfSz2I1e68zRXMHYo8e+SjaNoseQIDAQAB",
   "description": "__MSG_extension_description__",
   "default_locale": "en",
   "storage": {
@@ -21,7 +22,8 @@
     "debugger",
     "downloads",
     "cookies",
-    "declarativeNetRequest"
+    "declarativeNetRequest",
+    "nativeMessaging"
   ],
   "host_permissions": [
     "<all_urls>"

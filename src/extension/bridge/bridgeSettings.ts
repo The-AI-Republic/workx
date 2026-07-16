@@ -14,13 +14,26 @@
 
 export interface BridgeSettings {
   enabled: boolean;
-  /** Desktop app-server WebSocket URL. */
+  /**
+   * Carrier for the bridge protocol:
+   *   - `native` (default, prod): chrome.runtime.connectNative → desktop relay.
+   *     No token/url needed — Chrome authorizes via the host manifest.
+   *   - `ws` (dev/fallback): direct WebSocket to `url` using `token`.
+   */
+  transport: 'native' | 'ws';
+  /** Desktop app-server WebSocket URL. Used by the `ws` transport only. */
   url: string;
-  /** Capability token issued by the desktop app (pairing). */
+  /** Capability token issued by the desktop app. Used by the `ws` transport only. */
   token: string;
 }
 
 export const BRIDGE_SETTINGS_KEY = 'workx:bridge_settings';
+
+/**
+ * Native-messaging host name. Must match the desktop-written host manifest's
+ * `name` and the extension's `chrome.runtime.connectNative(...)` argument.
+ */
+export const NATIVE_HOST_NAME = 'com.workx.desktop';
 
 /**
  * Keepalive alarm name. Lives here (not in BridgeClient) so the service
@@ -39,7 +52,11 @@ export interface BridgeStatusSnapshot {
 }
 
 export const DEFAULT_BRIDGE_SETTINGS: BridgeSettings = {
-  enabled: false,
+  // Native transport needs no pairing, so the bridge is on by default: the
+  // extension holds a native port to the desktop whenever the browser runs, and
+  // Chrome tears it down the moment the extension/browser goes away.
+  enabled: true,
+  transport: 'native',
   url: 'ws://127.0.0.1:18101',
   token: '',
 };
