@@ -2720,11 +2720,14 @@ export class Session {
   /**
    * Check if title generation should be triggered and execute if needed.
    * Two-stage title generation:
-   * - Stage 1: Generate title after 2 user messages (initial title)
+   * - Stage 1: Generate title from the first user message (initial title).
+   *   Called both when user messages are recorded and at task completion
+   *   (see TaskRunner), so a single-question conversation gets titled as
+   *   soon as the first AI response lands instead of keeping the
+   *   "MM-DD_HH-mm_chat" placeholder forever.
    * - Stage 2: Regenerate title after 5 user messages (final title with more context)
-   * @private
    */
-  private maybeGenerateTitle(): void {
+  maybeGenerateTitle(): void {
     // Skip if title generation is complete (stage 2) or no rollout service
     if (this.titleGenerationStage >= 2 || !this.services?.rollout) {
       return;
@@ -2734,11 +2737,11 @@ export class Session {
     const history = this.sessionState.historySnapshot();
     const userMessageCount = this.titleGenerator.countUserMessages(history);
 
-    // Stage 0 → 1: Generate title after 2 user messages
-    if (this.titleGenerationStage === 0 && userMessageCount >= 2) {
+    // Stage 0 → 1: Generate title from the first user message
+    if (this.titleGenerationStage === 0 && userMessageCount >= 1) {
       this.titleGenerationStage = 1;
 
-      // Run title generation asynchronously with first 2 messages
+      // Run title generation asynchronously with the first messages
       this.generateAndUpdateTitle(history, 2).catch((error) => {
         console.error('[Session] Failed to generate title (stage 1):', error);
         // Reset to allow retry

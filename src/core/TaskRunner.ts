@@ -643,6 +643,14 @@ export class TaskRunner {
       .then(() => this.session.maybeGenerateSuggestion?.())
       .catch((e) => console.debug('[TaskRunner] prompt suggestion error (ignored):', e));
 
+    // Title generation checkpoint at task completion: titles the conversation
+    // right after the first AI response (single-question chats would otherwise
+    // keep their placeholder title forever), and retries a generation that
+    // failed on the message-recording path. Fire-and-forget like above.
+    Promise.resolve()
+      .then(() => this.session.maybeGenerateTitle?.())
+      .catch((e) => console.debug('[TaskRunner] title generation error (ignored):', e));
+
     // Fire-and-forget: persist token usage record
     this.persistTokenUsage(
       outcome.tokenUsage.total,
