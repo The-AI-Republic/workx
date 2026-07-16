@@ -224,9 +224,17 @@ export class ModelClientFactory {
    * Build a client instance for a provider without touching the cache.
    * Used by createClient (which caches the result) and by
    * createEfficientClient (which must NOT share the cached main-conversation
-   * instance, because it overrides the instance's model via setModel()).
+   * instance).
+   *
+   * `modelKeyOverride` ("providerId:modelKey") makes every model-derived
+   * construction detail — gateway slug, modelConfig (max tokens, reasoning),
+   * backend wire protocol/endpoint — resolve from that model instead of the
+   * globally selected task model. Patching only the model name after
+   * construction (setModel) is NOT sufficient: gateway clients need the
+   * "<providerId>/<modelKey>" slug and the wrong modelConfig produces invalid
+   * request parameters (e.g. the task model's max_tokens on a smaller model).
    */
-  private async buildClient(provider: ModelProvider): Promise<ModelClient> {
+  private async buildClient(provider: ModelProvider, modelKeyOverride?: string): Promise<ModelClient> {
     // User-defined custom providers (BYOK) always use direct API-key mode — the
     // backend gateway only knows about built-in providers, so never route a
     // custom endpoint through it even when the user is logged in.
@@ -236,13 +244,13 @@ export class ModelClientFactory {
     if (!isCustomProvider && this.isBackendRouting()) {
       const gatewayLlmBaseUrl = this.authManager?.getGatewayLlmBaseUrl?.();
       return gatewayLlmBaseUrl
-        ? await this.createGatewayRoutedClient(provider, gatewayLlmBaseUrl)
-        : await this.createBackendRoutedClient(provider);
+        ? await this.createGatewayRoutedClient(provider, gatewayLlmBaseUrl, modelKeyOverride)
+        : await this.createBackendRoutedClient(provider, modelKeyOverride);
     }
 
     // Fall through to existing provider-specific logic for API key mode
     const config = await this.loadConfigForProvider(provider);
-    return this.instantiateClient(config);
+    return this.instantiateClient(config, modelKeyOverride);
   }
 
   /**
@@ -262,8 +270,9 @@ export class ModelClientFactory {
    * 4. The selected task model (same client as the main conversation).
    *
    * When a distinct efficient model resolves, a dedicated un-cached client
-   * instance is built and its model overridden — the cached main-conversation
-   * client is never mutated.
+   * instance is built with every model-derived construction detail (gateway
+   * slug, modelConfig, wire protocol) resolved from that model — the cached
+   * main-conversation client is never mutated.
    */
   async createEfficientClient(): Promise<ModelClient> {
     if (!this.config) {
@@ -336,10 +345,11 @@ export class ModelClientFactory {
       return this.createClientForCurrentModel();
     }
 
+    // Build a dedicated instance fully derived from the efficient model —
+    // slug/modelConfig/wire protocol all resolve from modelKeyOverride, and
+    // the cached main-conversation client is never touched.
     const provider = this.mapProviderIdToType(modelData.provider.id);
-    const client = await this.buildClient(provider);
-    client.setModel(modelData.model.modelKey);
-    return client;
+    return this.buildClient(provider, efficientKey);
   }
 
   /**
@@ -348,7 +358,7 @@ export class ModelClientFactory {
    * @param provider The provider (used for model metadata)
    * @returns Model client configured for backend routing
    */
-  private async createBackendRoutedClient(provider: ModelProvider): Promise<ModelClient> {
+  private async createBackendRoutedClient(provider: ModelProvider, modelKeyOverride?: string): Promise<ModelClient> {
     const backendUrl = this.authManager?.getBackendBaseUrl();
     if (!backendUrl) {
       throw new ModelClientError('Backend URL not available for backend routing');
@@ -371,7 +381,7 @@ export class ModelClientFactory {
 
     if (this.config) {
       const configData = this.config.getConfig();
-      const modelData = this.config.getModelByKey(configData.selectedModelKey);
+      const modelData = this.config.getModelByKey(modelKeyOverride ?? configData.selectedModelKey);
       if (modelData?.model) {
         modelConfig = modelData.model;
         supportsReasoning = modelData.model.supportsReasoning ?? false;
@@ -468,7 +478,7 @@ export class ModelClientFactory {
    * The gateway exposes an OpenAI-compatible /v1 Chat Completions surface. Auth
    * is resolved per request so cached clients do not pin an expired session JWT.
    */
-  private async createGatewayRoutedClient(provider: ModelProvider, gatewayLlmBaseUrl: string): Promise<ModelClient> {
+  private async createGatewayRoutedClient(provider: ModelProvider, gatewayLlmBaseUrl: string, modelKeyOverride?: string): Promise<ModelClient> {
     const tokenProvider = async () => this.authManager?.getAccessToken() ?? null;
     const accessToken = await tokenProvider();
     if (!accessToken) {
@@ -483,7 +493,7 @@ export class ModelClientFactory {
 
     if (this.config) {
       const configData = this.config.getConfig();
-      const modelData = this.config.getModelByKey(configData.selectedModelKey);
+      const modelData = this.config.getModelByKey(modelKeyOverride ?? configData.selectedModelKey);
       if (modelData?.model) {
         modelConfig = modelData.model;
         supportsReasoning = modelData.model.supportsReasoning ?? false;
@@ -738,7 +748,7 @@ export class ModelClientFactory {
    * @param config The client configuration
    * @returns Model client instance
    */
-  private instantiateClient(config: ModelClientConfig): ModelClient {
+  private instantiateClient(config: ModelClientConfig, modelKeyOverride?: string): ModelClient {
     // Track 11: resolve the parallel-tool-calls flag from tools config.
     const parallelToolCalls = this.resolveParallelToolCalls();
 
@@ -751,16 +761,17 @@ export class ModelClientFactory {
     const organization = config.options?.organization;
 
     // Get selected model and metadata
-    const selectedModel = this.getSelectedModel();
+    let selectedModel = this.getSelectedModel();
     let supportsReasoning = false;
     let supportsReasoningSummaries = false;
     let serviceTier: 'default' | 'flex' | 'priority' | undefined;
     let modelConfig: any = undefined;
     if (this.config) {
       const configData = this.config.getConfig();
-      const modelData = this.config.getModelByKey(configData.selectedModelKey);
+      const modelData = this.config.getModelByKey(modelKeyOverride ?? configData.selectedModelKey);
       if (modelData?.model) {
         modelConfig = modelData.model;
+        selectedModel = modelData.model.modelKey;
         supportsReasoning = modelData.model.supportsReasoning ?? false;
         supportsReasoningSummaries = modelData.model.supportsReasoningSummaries ?? false;
         // For OpenAI models, merge default serviceTier value with stored value

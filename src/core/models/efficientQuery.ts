@@ -20,7 +20,7 @@
 
 import type { ModelClient } from './ModelClient';
 import type { ResponseItem } from '../protocol/types';
-import { isOutputTextDelta } from './types/ResponseEvent';
+import { isOutputTextDelta, isCompleted } from './types/ResponseEvent';
 
 export interface EfficientQuery {
   /** Instruction for the utility task (appended after the input, if any). */
@@ -69,6 +69,13 @@ export async function queryEfficientLLM(
   for await (const event of stream) {
     if (isOutputTextDelta(event)) {
       text += event.delta;
+    }
+    // Stop at the Completed event rather than waiting for the producer to
+    // close the stream — a provider/gateway that keeps the SSE connection
+    // open (keep-alives, slow close) would otherwise block this loop long
+    // after the response finished.
+    if (isCompleted(event)) {
+      break;
     }
   }
 

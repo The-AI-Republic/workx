@@ -2719,19 +2719,23 @@ export class Session {
         }
       }
 
-      // Check if we should generate a title (after 3 user messages)
-      this.maybeGenerateTitle();
+      // Title generation is NOT triggered here: it runs exclusively from the
+      // TaskRunner completion checkpoint (maybeGenerateTitle), after the AI
+      // response has landed. Firing on message-recording would race the
+      // in-flight task turn with a concurrent background model call on the
+      // same provider/key — and would title the chat before any response.
     }
   }
 
   /**
    * Check if title generation should be triggered and execute if needed.
+   * Called from the TaskRunner completion checkpoint — i.e. after an AI
+   * response has completed — never while a turn is streaming.
    * Two-stage title generation:
-   * - Stage 1: Generate title from the first user message (initial title).
-   *   Called both when user messages are recorded and at task completion
-   *   (see TaskRunner), so a single-question conversation gets titled as
-   *   soon as the first AI response lands instead of keeping the
-   *   "MM-DD_HH-mm_chat" placeholder forever.
+   * - Stage 1: Generate title from the first user message(s) once the first
+   *   AI response lands, so single-question conversations don't keep the
+   *   "MM-DD_HH-mm_chat" placeholder forever. A failed attempt resets the
+   *   stage, so the next task completion retries it.
    * - Stage 2: Regenerate title after 5 user messages (final title with more context)
    */
   maybeGenerateTitle(): void {
@@ -2748,23 +2752,35 @@ export class Session {
     if (this.titleGenerationStage === 0 && userMessageCount >= 1) {
       this.titleGenerationStage = 1;
 
-      // Run title generation asynchronously with the first messages
-      this.generateAndUpdateTitle(history, 2).catch((error) => {
-        console.error('[Session] Failed to generate title (stage 1):', error);
-        // Reset to allow retry
-        this.titleGenerationStage = 0;
-      });
+      // Run title generation asynchronously with the first messages.
+      // generateAndUpdateTitle resolves `false` on failure (TitleGenerator
+      // swallows model errors into {success:false}, it does not throw), so a
+      // then-branch reset is required for the next completion to retry — a
+      // catch alone would never fire.
+      this.generateAndUpdateTitle(history, 2)
+        .then((ok) => {
+          if (!ok) this.titleGenerationStage = 0;
+        })
+        .catch((error) => {
+          console.error('[Session] Failed to generate title (stage 1):', error);
+          // Reset to allow retry
+          this.titleGenerationStage = 0;
+        });
     }
     // Stage 1 → 2: Regenerate title after 5 user messages (final)
     else if (this.titleGenerationStage === 1 && userMessageCount >= 5) {
       this.titleGenerationStage = 2;
 
       // Run title generation asynchronously with all 5 messages
-      this.generateAndUpdateTitle(history, 5).catch((error) => {
-        console.error('[Session] Failed to generate title (stage 2):', error);
-        // Reset to stage 1 to allow retry
-        this.titleGenerationStage = 1;
-      });
+      this.generateAndUpdateTitle(history, 5)
+        .then((ok) => {
+          if (!ok) this.titleGenerationStage = 1;
+        })
+        .catch((error) => {
+          console.error('[Session] Failed to generate title (stage 2):', error);
+          // Reset to stage 1 to allow retry
+          this.titleGenerationStage = 1;
+        });
     }
   }
 
@@ -2772,21 +2788,25 @@ export class Session {
    * Generate title using LLM and update rollout metadata.
    * @param history - Current conversation history
    * @param maxMessages - Maximum number of user messages to use for title generation
+   * @returns true when a title was generated AND persisted; false on any
+   *   failure (missing client/messages, model failure, storage failure) so
+   *   the caller can reset the stage counter and retry at the next
+   *   completion checkpoint.
    * @private
    */
-  private async generateAndUpdateTitle(history: ResponseItem[], maxMessages: number): Promise<void> {
+  private async generateAndUpdateTitle(history: ResponseItem[], maxMessages: number): Promise<boolean> {
     // Get model client for title generation (efficient model when available)
     const modelClient = await this.getEfficientModelClient();
     if (!modelClient) {
       console.warn('[Session] No model client available for title generation');
-      return;
+      return false;
     }
 
     // Extract user messages up to maxMessages
     const userMessages = this.titleGenerator.extractUserMessages(history, maxMessages);
     if (userMessages.length === 0) {
       console.warn('[Session] No user messages found for title generation');
-      return;
+      return false;
     }
 
     // Generate title
@@ -2796,12 +2816,16 @@ export class Session {
       try {
         await this.services.rollout.updateTitle(result.title);
         console.debug('[Session] Title updated (using %d messages):', maxMessages, result.title);
+        return true;
       } catch (error) {
         console.error('[Session] Failed to update title in storage:', error);
+        return false;
       }
-    } else if (!result.success) {
+    }
+    if (!result.success) {
       console.warn('[Session] Title generation failed:', result.error);
     }
+    return false;
   }
 
   /**
