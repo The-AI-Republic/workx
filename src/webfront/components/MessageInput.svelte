@@ -9,6 +9,7 @@
   import CommandError from './CommandError.svelte';
   import ApprovalModeIndicator from './common/ApprovalModeIndicator.svelte';
   import { uiTheme } from '../stores/themeStore';
+  import { isWideMode } from '../stores/layoutStore';
   import { platform } from '../stores/platformStore';
   import { schedulerStore } from '../stores/schedulerStore';
   import { t, _t } from '../lib/i18n';
@@ -513,7 +514,11 @@
     <div class="flex-1 min-w-0"></div>
     <!-- Top Right Button Group - NOT inside mousedown preventDefault area -->
     <div class="flex items-center gap-2 shrink-0">
-      <ChatHistoryPopup onSelectConversation={onSelectConversation} />
+      <!-- Wide mode relocates chat history to the left panel; keep the popup
+           reachable in narrow mode (no left panel is rendered there). -->
+      {#if !$isWideMode}
+        <ChatHistoryPopup onSelectConversation={onSelectConversation} />
+      {/if}
       <Tooltip content={$_t("New Conversation")} placement="left">
         <button
           class="p-1 bg-transparent cursor-pointer flex items-center justify-center transition-all duration-200 active:scale-95
