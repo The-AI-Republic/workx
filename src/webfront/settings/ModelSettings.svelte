@@ -958,7 +958,7 @@
           class="form-select"
           disabled={isInitializing || isSaving}
         >
-          <option value="">{$_t("Same as task model")}</option>
+          <option value="">{$_t("Auto (provider default)")}</option>
           {#each efficientModelOptions as item (item.modelId)}
             <option value={item.modelId}>{item.modelName}</option>
           {/each}

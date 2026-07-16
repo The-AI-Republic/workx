@@ -252,12 +252,14 @@ export class ModelClientFactory {
    *
    * Resolution order:
    * 1. Explicit user selection (config.efficientModelKey, legacy
-   *    modelForTitleGenerate) — honored only when it is from the same
-   *    provider as the selected task model.
+   *    modelForTitleGenerate) — in own-API-key mode it must be from the
+   *    same provider as the selected task model.
    * 2. Gateway default (env seam gatewayDefaultEfficientModel, e.g.
    *    "deepseek-v4-flash") when the user is logged in (backend routing)
    *    and made no explicit choice.
-   * 3. The selected task model (same client as the main conversation).
+   * 3. The task model provider's defaultEfficientModelKey from the model
+   *    catalog (default.json / remote catalog).
+   * 4. The selected task model (same client as the main conversation).
    *
    * When a distinct efficient model resolves, a dedicated un-cached client
    * instance is built and its model overridden — the cached main-conversation
@@ -307,7 +309,23 @@ export class ModelClientFactory {
       }
     }
 
-    // 3. Same as task model → share the normal (cached) client.
+    // 3. The task model's provider's catalog default (defaultEfficientModelKey
+    //    in default.json / remote catalog) — each integrated provider names
+    //    its recommended cheap model. Same provider by construction, so valid
+    //    in both routing modes.
+    if (!efficientKey) {
+      const providerDefault = cfg.providers[selectedProvider]?.defaultEfficientModelKey;
+      if (providerDefault) {
+        const providerDefaultKey = `${selectedProvider}:${providerDefault}`;
+        if (this.config.getModelByKey(providerDefaultKey)) {
+          efficientKey = providerDefaultKey;
+        } else {
+          console.warn(`[ModelClientFactory] Provider default efficient model ${providerDefaultKey} not in catalog; using task model`);
+        }
+      }
+    }
+
+    // 4. Same as task model → share the normal (cached) client.
     if (!efficientKey || efficientKey === selectedKey) {
       return this.createClientForCurrentModel();
     }

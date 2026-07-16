@@ -306,6 +306,16 @@ export interface IProviderConfig {
   version?: string | null;
 
   /**
+   * Default efficient model for this provider (optional).
+   * Bare model key (e.g. "gpt-4o-mini") of the provider's recommended cheap
+   * model for internal app-logistics tasks (titles, summaries). Used when the
+   * user hasn't explicitly chosen an efficient model and no gateway default
+   * applies; the model must exist in this provider's `models` list. Flows
+   * through the remote model catalog unchanged (same JSON shape).
+   */
+  defaultEfficientModelKey?: string | null;
+
+  /**
    * Custom HTTP headers (optional)
    * Additional headers to include in all API requests
    */
