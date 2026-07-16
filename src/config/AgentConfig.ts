@@ -301,15 +301,6 @@ export class AgentConfig implements IConfigService {
     const oldModelKey = this.currentConfig.selectedModelKey;
     this.currentConfig.selectedModelKey = compositeKey;
 
-    // Same-provider rule: switching the task model to another provider
-    // invalidates a previously chosen efficient model — revert it to
-    // "same as task model" rather than keeping a cross-provider pair.
-    const efficientKey = this.currentConfig.efficientModelKey;
-    if (efficientKey && efficientKey.split(':')[0] !== compositeKey.split(':')[0]) {
-      delete this.currentConfig.efficientModelKey;
-      this.emitChangeEvent('efficientModel', efficientKey, undefined);
-    }
-
     await this.storage.set(extractStoredConfig(this.currentConfig));
     this.emitChangeEvent('model', oldModelKey, compositeKey);
   }
@@ -319,9 +310,12 @@ export class AgentConfig implements IConfigService {
    * tool-use summaries, prompt suggestions). Pass null to clear the selection
    * and fall back to "same as task model".
    *
-   * Constraint: the efficient model must belong to the same provider as the
-   * currently selected task model — working LLM and efficient LLM from
-   * different providers are not allowed.
+   * Provider policy is NOT enforced here — the config layer doesn't know the
+   * routing mode. In gateway routing (logged in, not using own API key) any
+   * backend-supported model is allowed; in own-API-key mode the efficient
+   * model must share the task model's provider, enforced by the settings UI
+   * (dropdown contents) and at call time by
+   * ModelClientFactory.createEfficientClient (fallback to the task model).
    * @param compositeKey - Model key "providerId:modelKey", or null to clear
    */
   async setEfficientModel(compositeKey: string | null): Promise<void> {
@@ -339,13 +333,6 @@ export class AgentConfig implements IConfigService {
       const modelData = this.getModelByKey(compositeKey);
       if (!modelData) {
         throw new Error(`Model not found: ${compositeKey}`);
-      }
-      const selectedProvider = this.currentConfig.selectedModelKey.split(':')[0];
-      const efficientProvider = compositeKey.split(':')[0];
-      if (selectedProvider !== efficientProvider) {
-        throw new Error(
-          `Efficient model must be from the same provider as the task model (${selectedProvider}), got: ${efficientProvider}`
-        );
       }
       this.currentConfig.efficientModelKey = compositeKey;
     }

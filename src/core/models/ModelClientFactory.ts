@@ -272,11 +272,18 @@ export class ModelClientFactory {
     const selectedKey = cfg.selectedModelKey;
     const selectedProvider = selectedKey.split(':')[0];
 
-    // 1. Explicit selection (same-provider rule enforced defensively — the
-    //    setter validates too, but stored config may predate a provider switch).
+    // 1. Explicit selection. Provider policy: gateway routing (logged in,
+    //    not using own API key) accepts any catalog model — one gateway
+    //    credential routes them all. Own-API-key mode requires the efficient
+    //    model to share the task model's provider (different providers mean
+    //    different keys/endpoints); violations fall back to the task model.
     let efficientKey = cfg.efficientModelKey ?? cfg.modelForTitleGenerate;
-    if (efficientKey && efficientKey.split(':')[0] !== selectedProvider) {
-      console.warn(`[ModelClientFactory] Efficient model ${efficientKey} is not from provider ${selectedProvider}; using task model`);
+    if (
+      efficientKey &&
+      !this.isBackendRouting() &&
+      efficientKey.split(':')[0] !== selectedProvider
+    ) {
+      console.warn(`[ModelClientFactory] Efficient model ${efficientKey} is not from provider ${selectedProvider} (own-API-key mode); using task model`);
       efficientKey = undefined;
     }
 

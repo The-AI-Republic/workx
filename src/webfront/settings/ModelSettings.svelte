@@ -135,13 +135,27 @@
       : modelSelectionItems
   );
 
-  // Efficient-model candidates: working LLM and efficient LLM must come from
-  // the same provider, so offer only the task model's provider's models
-  // (respecting the same backend-mode filtering as the main selector).
+  // Efficient-model candidates. Gateway routing (logged in, not using own
+  // API key) routes any catalog model through one credential, so the provider
+  // doesn't matter — offer everything the main selector offers. Own-API-key
+  // mode requires the efficient model to share the task model's provider
+  // (different providers mean different keys/endpoints).
   let efficientModelOptions = $derived(
-    filteredModelItems.filter(
-      (item) => item.providerId === selectedModelKey.split(':')[0]
-    )
+    isUserLoggedIn && !useOwnApiKey
+      ? filteredModelItems
+      : filteredModelItems.filter(
+          (item) => item.providerId === selectedModelKey.split(':')[0]
+        )
+  );
+
+  // Displayed value: a stored selection that is no longer offered (e.g. a
+  // cross-provider pick after switching the task model's provider in
+  // own-API-key mode) renders as "Same as task model" — which matches the
+  // factory's runtime fallback.
+  let efficientModelDisplayValue = $derived(
+    efficientModelOptions.some((item) => item.modelId === efficientModelKey)
+      ? efficientModelKey
+      : ''
   );
 
   // Highlight setting effect
@@ -844,9 +858,6 @@
       }));
 
       await settingsConfig.setSelectedModel(modelId);
-      // A provider switch clears a cross-provider efficient model in config —
-      // re-sync the local selection so the UI reflects it.
-      efficientModelKey = settingsConfig.getConfig().efficientModelKey ?? '';
       getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(err => console.warn('[ModelSettings] Failed to send configUpdate:', err));
 
       const message = apiKey
@@ -936,12 +947,13 @@
       <div class="help-text">{t("Select the AI model to use for conversations.")}</div>
 
       <!-- Efficient model: cheap model for internal tasks (titles, summaries).
-           Same-provider only; '' = same as the task model. -->
+           Gateway mode offers any model; own-API-key mode is same-provider
+           only. '' = same as the task model. -->
       <div class="form-group" data-setting-id="efficient-model">
         <label for="efficient-model" class="form-label">{t("Efficient Model")}</label>
         <select
           id="efficient-model"
-          value={efficientModelKey}
+          value={efficientModelDisplayValue}
           onchange={handleEfficientModelChange}
           class="form-select"
           disabled={isInitializing || isSaving}
@@ -952,7 +964,11 @@
           {/each}
         </select>
         <div class="help-text">
-          {t("Lightweight model used for internal tasks like chat titles and summaries. Must be from the same provider as the task model.")}
+          {#if isUserLoggedIn && !useOwnApiKey}
+            {t("Lightweight model used for internal tasks like chat titles and summaries.")}
+          {:else}
+            {t("Lightweight model used for internal tasks like chat titles and summaries. Must be from the same provider as the task model.")}
+          {/if}
         </div>
       </div>
 
