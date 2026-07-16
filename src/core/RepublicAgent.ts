@@ -121,6 +121,9 @@ export class RepublicAgent {
     this.session = new Session(this.config, true, services, this.toolRegistry, initialHistory);
     // Wire up session event emitter to RepublicAgent's event queue
     this.session.setEventEmitter(async (event: Event) => this.emitEvent(event.msg));
+    // Wire the efficient-model client (cheap model for app-logistics tasks:
+    // titles, suggestions) — resolution policy lives in the factory.
+    this.session.setEfficientClientProvider(() => this.modelClientFactory.createEfficientClient());
 
     // Initialize hook system
     this.hookRegistry = new HookRegistry();

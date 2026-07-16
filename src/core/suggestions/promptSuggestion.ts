@@ -15,7 +15,7 @@
 import type { ResponseItem } from '../protocol/types';
 import type { ModelClient } from '../models/ModelClient';
 import { withModelRetry } from '../models/resilience/withRetry';
-import { isOutputTextDelta, isCompleted } from '../models/types/ResponseEvent';
+import { queryEfficientLLM } from '../models/efficientQuery';
 import { scanForSecrets } from '../security/secretScanner';
 import { DEFAULT_SUGGESTION_CONFIG, SUGGESTION_PROMPT } from './constants';
 import type { PromptSuggestionConfig, PromptSuggestionResult } from './types';
@@ -174,26 +174,11 @@ export class PromptSuggestionGenerator {
   }
 
   private async callModel(packedContext: string, modelClient: ModelClient): Promise<string> {
-    const input: ResponseItem[] = [
-      {
-        type: 'message' as const,
-        role: 'user',
-        content: [
-          {
-            type: 'input_text' as const,
-            text: SUGGESTION_PROMPT.replace('{packedContext}', packedContext),
-          },
-        ],
-      },
-    ];
-
-    const stream = await modelClient.stream({ input, tools: [] });
-    let out = '';
-    for await (const event of stream) {
-      if (isOutputTextDelta(event)) out += event.delta;
-      if (isCompleted(event)) break;
-    }
-    return out.trim();
+    // Routed through the shared efficient-LLM utility layer (the caller
+    // passes the efficient model's client when available).
+    return queryEfficientLLM(modelClient, {
+      instruction: SUGGESTION_PROMPT.replace('{packedContext}', packedContext),
+    });
   }
 
   /**

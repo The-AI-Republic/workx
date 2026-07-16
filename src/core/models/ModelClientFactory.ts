@@ -212,6 +212,21 @@ export class ModelClientFactory {
       return cached;
     }
 
+    const client = await this.buildClient(provider);
+
+    // Cache the client instance
+    this.clientCache.set(cacheKey, client);
+
+    return client;
+  }
+
+  /**
+   * Build a client instance for a provider without touching the cache.
+   * Used by createClient (which caches the result) and by
+   * createEfficientClient (which must NOT share the cached main-conversation
+   * instance, because it overrides the instance's model via setModel()).
+   */
+  private async buildClient(provider: ModelProvider): Promise<ModelClient> {
     // User-defined custom providers (BYOK) always use direct API-key mode — the
     // backend gateway only knows about built-in providers, so never route a
     // custom endpoint through it even when the user is logged in.
@@ -220,20 +235,85 @@ export class ModelClientFactory {
     // If using backend routing (logged in), create backend-routed client
     if (!isCustomProvider && this.isBackendRouting()) {
       const gatewayLlmBaseUrl = this.authManager?.getGatewayLlmBaseUrl?.();
-      const client = gatewayLlmBaseUrl
+      return gatewayLlmBaseUrl
         ? await this.createGatewayRoutedClient(provider, gatewayLlmBaseUrl)
         : await this.createBackendRoutedClient(provider);
-      this.clientCache.set(cacheKey, client);
-      return client;
     }
 
     // Fall through to existing provider-specific logic for API key mode
     const config = await this.loadConfigForProvider(provider);
-    const client = this.instantiateClient(config);
+    return this.instantiateClient(config);
+  }
 
-    // Cache the client instance
-    this.clientCache.set(cacheKey, client);
+  /**
+   * Create a client for the "efficient" model — the cheap model used for
+   * internal app-logistics tasks (title generation, tool-use summaries,
+   * prompt suggestions). Never used for user-facing tasks.
+   *
+   * Resolution order:
+   * 1. Explicit user selection (config.efficientModelKey, legacy
+   *    modelForTitleGenerate) — honored only when it is from the same
+   *    provider as the selected task model.
+   * 2. Gateway default (env seam gatewayDefaultEfficientModel, e.g.
+   *    "deepseek-v4-flash") when the user is logged in (backend routing)
+   *    and made no explicit choice.
+   * 3. The selected task model (same client as the main conversation).
+   *
+   * When a distinct efficient model resolves, a dedicated un-cached client
+   * instance is built and its model overridden — the cached main-conversation
+   * client is never mutated.
+   */
+  async createEfficientClient(): Promise<ModelClient> {
+    if (!this.config) {
+      throw new ModelClientError('ModelClientFactory not initialized - call initialize() first');
+    }
 
+    const cfg = this.config.getConfig();
+    const selectedKey = cfg.selectedModelKey;
+    const selectedProvider = selectedKey.split(':')[0];
+
+    // 1. Explicit selection (same-provider rule enforced defensively — the
+    //    setter validates too, but stored config may predate a provider switch).
+    let efficientKey = cfg.efficientModelKey ?? cfg.modelForTitleGenerate;
+    if (efficientKey && efficientKey.split(':')[0] !== selectedProvider) {
+      console.warn(`[ModelClientFactory] Efficient model ${efficientKey} is not from provider ${selectedProvider}; using task model`);
+      efficientKey = undefined;
+    }
+
+    // 2. Gateway default when logged in (single gateway credential routes any
+    //    catalog model, so this default may come from a different provider).
+    if (!efficientKey && this.isBackendRouting()) {
+      const { resolveRuntimeUrls } = await import('../../config/runtimeUrls');
+      const defaultModel = resolveRuntimeUrls().gatewayDefaultEfficientModel;
+      if (defaultModel) {
+        const sameProviderKey = `${selectedProvider}:${defaultModel}`;
+        if (this.config.getModelByKey(sameProviderKey)) {
+          efficientKey = sameProviderKey;
+        } else {
+          for (const [providerId, provider] of Object.entries(cfg.providers)) {
+            if (provider?.models?.some((m) => m.modelKey === defaultModel)) {
+              efficientKey = `${providerId}:${defaultModel}`;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // 3. Same as task model → share the normal (cached) client.
+    if (!efficientKey || efficientKey === selectedKey) {
+      return this.createClientForCurrentModel();
+    }
+
+    const modelData = this.config.getModelByKey(efficientKey);
+    if (!modelData) {
+      console.warn(`[ModelClientFactory] Efficient model ${efficientKey} not found in catalog; using task model`);
+      return this.createClientForCurrentModel();
+    }
+
+    const provider = this.mapProviderIdToType(modelData.provider.id);
+    const client = await this.buildClient(provider);
+    client.setModel(modelData.model.modelKey);
     return client;
   }
 

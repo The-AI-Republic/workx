@@ -459,9 +459,19 @@ export function buildRuntimeConfig(stored: IStoredConfig | null): IAgentConfig {
     selectedModelKey = fallback;
   }
 
+  // Validate the stored efficient model (legacy field read as fallback). An
+  // efficient model that no longer exists in the catalog silently reverts to
+  // "same as task model" (undefined) rather than breaking utility calls.
+  let efficientModelKey = stored.efficientModelKey || stored.modelForTitleGenerate || undefined;
+  if (efficientModelKey && !modelKeyExists(efficientModelKey)) {
+    console.warn(`[buildRuntimeConfig] Stored efficientModelKey "${efficientModelKey}" not found; using task model`);
+    efficientModelKey = undefined;
+  }
+
   const merged: IAgentConfig = {
     version: stored.version || defaults.version,
     selectedModelKey,
+    ...(efficientModelKey ? { efficientModelKey } : {}),
     providers,
     profiles: stored.profiles || {},
     activeProfile: stored.activeProfile || null,
@@ -551,6 +561,7 @@ export function extractStoredConfig(config: IAgentConfig): IStoredConfig {
   return {
     version: config.version,
     selectedModelKey: config.selectedModelKey,
+    ...(config.efficientModelKey ? { efficientModelKey: config.efficientModelKey } : {}),
     providerKeys,
     ...(customProviders.length > 0 ? { customProviders } : {}),
     preferences: config.preferences,

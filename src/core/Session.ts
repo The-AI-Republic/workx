@@ -149,6 +149,13 @@ export class Session {
   private taskOutputStore: TaskOutputStore | null = null;
   // Title generation stage: 0 = not started, 1 = generated at 2 messages, 2 = generated at 5 messages (final)
   private titleGenerationStage: number = 0;
+  /**
+   * Platform-injected provider of the "efficient" model client (cheap model
+   * for app-logistics tasks: titles, suggestions). Set by RepublicAgent from
+   * its ModelClientFactory; when absent, utility calls fall back to the
+   * task model's client from the turn context.
+   */
+  private efficientClientProvider: (() => Promise<ModelClient>) | null = null;
   private initializationPromise: Promise<void> | null = null;
   // Active agent persona mode. Source of truth for this session; seeded from
   // preferences.defaultMode at construction, changed at runtime via
@@ -2768,8 +2775,8 @@ export class Session {
    * @private
    */
   private async generateAndUpdateTitle(history: ResponseItem[], maxMessages: number): Promise<void> {
-    // Get model client for title generation
-    const modelClient = this.getModelClientForTitle();
+    // Get model client for title generation (efficient model when available)
+    const modelClient = await this.getEfficientModelClient();
     if (!modelClient) {
       console.warn('[Session] No model client available for title generation');
       return;
@@ -2798,13 +2805,37 @@ export class Session {
   }
 
   /**
-   * Get model client for title generation.
-   * Uses modelForTitleGenerate from config if set, otherwise uses main model.
+   * Inject the efficient-model client provider (platform wiring; see
+   * {@link efficientClientProvider}). Called by RepublicAgent after
+   * construction with `() => factory.createEfficientClient()`.
+   */
+  setEfficientClientProvider(provider: () => Promise<ModelClient>): void {
+    this.efficientClientProvider = provider;
+  }
+
+  /**
+   * Resolve the model client for app-logistics tasks (titles, suggestions):
+   * the injected efficient client when available, else the task model's
+   * client from the turn context.
+   * @private
+   */
+  private async getEfficientModelClient(): Promise<ModelClient | null> {
+    if (this.efficientClientProvider) {
+      try {
+        return await this.efficientClientProvider();
+      } catch (error) {
+        console.warn('[Session] Efficient model client unavailable, falling back to task model:', error);
+      }
+    }
+    return this.getModelClientForTitle();
+  }
+
+  /**
+   * Get the task model's client from the turn context (fallback path for
+   * utility tasks when no efficient client provider is injected).
    * @private
    */
   private getModelClientForTitle(): ModelClient | null {
-    // For now, return the turn context's model client
-    // TODO: Support separate model for title generation via config.modelForTitleGenerate
     if (this.turnContext && typeof this.turnContext.getModelClient === 'function') {
       return this.turnContext.getModelClient();
     }
@@ -2834,7 +2865,7 @@ export class Session {
     if (this.suggestionGenerator.countAssistantTurns(history) < 2) {
       return;
     }
-    const modelClient = this.getModelClientForTitle();
+    const modelClient = await this.getEfficientModelClient();
     if (!modelClient) return;
 
     this.suggestionInFlight = true;
