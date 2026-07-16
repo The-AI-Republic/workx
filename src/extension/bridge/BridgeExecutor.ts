@@ -7,14 +7,22 @@
  * browser tools. Reasoning AND approvals live on the desktop side; this
  * registry deliberately has no ApprovalGate (mirrors the headless server).
  *
+ * The desktop sees ONE advertised tool — `local_browser_tool` — whose
+ * `action` param fans out to the executor's own tabs handler or to the
+ * underlying registry tools (browser_dom, browser_navigation,
+ * data_extraction). See localBrowserTool.ts for the mapping and rationale.
+ * The underlying tools are reachable only through the facade, so tools that
+ * must never be desktop-driven (setting_tool, page_vision, planning_tool,
+ * web_search) are excluded simply by not being mapped.
+ *
  * Tab semantics mirror the extension agent: the executor holds one "current
  * tab" that tools operate on (tools receive it via `request.tabId` →
- * `metadata.tabId`), switched explicitly through the `browser_tabs` tool the
- * executor implements itself. Every tab the bridge works on is claimed in
- * the shared {@link TabLeaseStore} under the bridge's session id, so a
- * concurrently running extension agent session and the desktop-driven
- * session cannot stomp each other's tabs — same-tab contention surfaces as
- * a clean TAB_LEASED error to the desktop model.
+ * `metadata.tabId`), switched explicitly through the facade's tab actions.
+ * Every tab the bridge works on is claimed in the shared
+ * {@link TabLeaseStore} under the bridge's session id, so a concurrently
+ * running extension agent session and the desktop-driven session cannot
+ * stomp each other's tabs — same-tab contention surfaces as a clean
+ * TAB_LEASED error to the desktop model.
  *
  * @module extension/bridge/BridgeExecutor
  */
@@ -24,19 +32,14 @@ import { registerExtensionTools } from '../tools/registerExtensionTools';
 import { TabLeasedError } from '@/core/TabLeaseStore';
 import { getTabLeaseStore, getLeaseLifecycleQueue, LEASE_QUEUE_KEY } from '../tools/browser/tabLeaseStore';
 import type { NodeToolDescriptor } from '@workx/ws-server';
+import {
+  LOCAL_BROWSER_TOOL,
+  localBrowserToolDescriptor,
+  mapLocalBrowserAction,
+} from './localBrowserTool';
 
 /** Stable lease/session identity for desktop-driven execution. */
 export const BRIDGE_SESSION_ID = 'bridge:desktop';
-
-/**
- * Extension tools that must NOT be advertised or executed over the bridge:
- * - planning_tool / web_search: the desktop has its own.
- * - setting_tool: writes THIS extension's settings — never desktop-drivable.
- * - page_vision: saves screenshots into extension-local storage and returns
- *   an `image_file_id` reference the desktop runtime cannot resolve; a
- *   bridge-mode variant returning inline data is a follow-up.
- */
-const EXCLUDED_TOOLS = new Set(['planning_tool', 'web_search', 'setting_tool', 'page_vision']);
 
 /**
  * Cap one node.result payload well below the app-server's 1 MB default
@@ -99,39 +102,13 @@ export class BridgeExecutor {
     return this.initPromise;
   }
 
-  /** Tool catalog advertised to the desktop (browser tools + browser_tabs). */
+  /**
+   * Tool catalog advertised to the desktop: exactly ONE tool. The desktop
+   * model drives every browser capability through local_browser_tool's
+   * `action` param — see localBrowserTool.ts for the consolidation rationale.
+   */
   async getCatalog(): Promise<NodeToolDescriptor[]> {
-    const registry = await this.ensureRegistry();
-    const descriptors: NodeToolDescriptor[] = [
-      {
-        name: BROWSER_TABS_TOOL,
-        description:
-          'Manage which browser tab the other browser tools operate on. ' +
-          "Use action 'list' to see open tabs, 'select' to bind to an existing tab (tab_id), " +
-          "'open' to create a new tab (url), and 'close' to close the currently selected tab. " +
-          'You must select or open a tab before using other browser tools.',
-        parameters: {
-          type: 'object',
-          properties: {
-            action: { type: 'string', enum: ['list', 'select', 'open', 'close'] },
-            tab_id: { type: 'number', description: "Tab to select (for action 'select')" },
-            url: { type: 'string', description: "URL to open (for action 'open')" },
-          },
-          required: ['action'],
-        },
-      },
-    ];
-    for (const def of registry.listTools()) {
-      if (def.type !== 'function') continue;
-      const name = def.function.name;
-      if (EXCLUDED_TOOLS.has(name)) continue;
-      descriptors.push({
-        name,
-        description: def.function.description ?? '',
-        parameters: (def.function.parameters ?? { type: 'object', properties: {} }) as Record<string, unknown>,
-      });
-    }
-    return descriptors;
+    return [localBrowserToolDescriptor()];
   }
 
   /** Execute one desktop-dispatched tool call. Never throws — errors are shaped. */
@@ -141,35 +118,47 @@ export class BridgeExecutor {
     opts?: { invokeId?: string; timeoutMs?: number },
   ): Promise<BridgeExecutionResult> {
     try {
-      if (toolName === BROWSER_TABS_TOOL) {
-        return { ok: true, result: await this.handleTabsTool(parameters) };
-      }
-
-      const registry = await this.ensureRegistry();
-
       // Enforce the advertised surface: the desktop peer is token-trusted,
-      // but the executor still refuses anything it never offered (notably
-      // setting_tool, which writes this extension's own settings).
-      if (EXCLUDED_TOOLS.has(toolName) || !registry.getTool(toolName)) {
+      // but the executor still refuses anything it never offered (the
+      // underlying registry tools are reachable ONLY through the facade).
+      if (toolName !== LOCAL_BROWSER_TOOL) {
         return {
           ok: false,
           error: {
             code: 'TOOL_NOT_ADVERTISED',
-            message: `Tool '${toolName}' is not available over the desktop bridge.`,
+            message: `Tool '${toolName}' is not available over the desktop bridge. Use '${LOCAL_BROWSER_TOOL}'.`,
           },
         };
       }
 
-      const tabId = this.currentTabId;
-      if (tabId === null) {
-        return {
-          ok: false,
-          error: {
-            code: 'NO_TAB_SELECTED',
-            message: `No browser tab is selected. Call ${BROWSER_TABS_TOOL} with action 'select' or 'open' first.`,
-          },
-        };
+      const invocation = mapLocalBrowserAction(parameters);
+      if (invocation.target === 'error') {
+        return { ok: false, error: { code: invocation.code, message: invocation.message } };
       }
+      if (invocation.target === 'tabs') {
+        return { ok: true, result: await this.handleTabsTool(invocation.params) };
+      }
+
+      const registry = await this.ensureRegistry();
+
+      if (this.currentTabId === null) {
+        if (invocation.autoOpenTab) {
+          // navigate with no tab selected: open one instead of failing —
+          // the tab-first precondition is a footgun for small models.
+          await this.handleTabsTool({ action: 'open' });
+        } else {
+          return {
+            ok: false,
+            error: {
+              code: 'NO_TAB_SELECTED',
+              message:
+                "No browser tab is selected. Use action 'select_tab' or 'open_tab' first " +
+                "(or 'navigate', which auto-opens a tab).",
+            },
+          };
+        }
+      }
+      const tabId = this.currentTabId!;
 
       // Re-assert the lease before acting: the tab may have been closed (GC)
       // or stolen is impossible (claim by another session throws there, not
@@ -177,8 +166,8 @@ export class BridgeExecutor {
       await this.claimTab(tabId);
 
       const response = await registry.execute({
-        toolName,
-        parameters,
+        toolName: invocation.toolName,
+        parameters: invocation.params,
         sessionId: BRIDGE_SESSION_ID,
         turnId: opts?.invokeId ?? `bridge_${Date.now()}`,
         callId: opts?.invokeId,

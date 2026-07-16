@@ -24,7 +24,7 @@ function extractElementText(parameters: Record<string, any>): string {
   ].filter(v => typeof v === 'string').join(' ').toLowerCase();
 }
 
-/** Map MCP browser tool suffixes to risk scores */
+/** Map MCP browser tool suffixes / bridge action names to risk scores */
 const TOOL_RISK_MAP: Record<string, { score: number; factor: string }> = {
   'take_snapshot': { score: 0, factor: 'Read-only page snapshot' },
   'snapshot': { score: 0, factor: 'Read-only page snapshot' },
@@ -34,6 +34,16 @@ const TOOL_RISK_MAP: Record<string, { score: number; factor: string }> = {
   'new_page': { score: 20, factor: 'Opening new page' },
   'close_page': { score: 30, factor: 'Closing page' },
   'keypress': { score: 30, factor: 'Keypress event' },
+  // local_browser_tool (extension bridge) action names
+  'list_tabs': { score: 0, factor: 'Read-only tab listing' },
+  'select_tab': { score: 0, factor: 'Tab selection (no page effect)' },
+  'open_tab': { score: 20, factor: 'Opening new tab' },
+  'close_tab': { score: 30, factor: 'Closing tab' },
+  'navigate': { score: 35, factor: 'Page navigation' },
+  'back': { score: 10, factor: 'History navigation' },
+  'reload': { score: 15, factor: 'Page reload' },
+  'press_key': { score: 30, factor: 'Keypress event' },
+  'extract': { score: 5, factor: 'Read-only data extraction' },
 };
 
 export class McpBrowserRiskAssessor implements IRiskAssessor {
@@ -42,10 +52,14 @@ export class McpBrowserRiskAssessor implements IRiskAssessor {
     parameters: Record<string, any>,
     _context?: ApprovalContext
   ): RiskAssessment {
-    // Extract action from prefixed tool name (browser__click -> click)
+    // Single-tool surfaces (local_browser_tool) carry the operation in a
+    // params.action enum; prefixed MCP tools carry it in the name
+    // (browser__click -> click). Prefer the param — it is the more precise
+    // signal whenever both exist.
     const parts = toolName.split('__');
     const lastPart = parts[parts.length - 1];
-    const action = lastPart || toolName;
+    const paramAction = typeof parameters.action === 'string' ? parameters.action : '';
+    const action = paramAction || lastPart || toolName;
 
     const factors: string[] = [];
     let score: number;
