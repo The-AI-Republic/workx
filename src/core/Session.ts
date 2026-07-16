@@ -149,6 +149,13 @@ export class Session {
   private taskOutputStore: TaskOutputStore | null = null;
   // Title generation stage: 0 = not started, 1 = generated at 2 messages, 2 = generated at 5 messages (final)
   private titleGenerationStage: number = 0;
+  /**
+   * Platform-injected provider of the "efficient" model client (cheap model
+   * for app-logistics tasks: titles, suggestions). Set by RepublicAgent from
+   * its ModelClientFactory; when absent, utility calls fall back to the
+   * task model's client from the turn context.
+   */
+  private efficientClientProvider: (() => Promise<ModelClient>) | null = null;
   private initializationPromise: Promise<void> | null = null;
   // Active agent persona mode. Source of truth for this session; seeded from
   // preferences.defaultMode at construction, changed at runtime via
@@ -2712,19 +2719,26 @@ export class Session {
         }
       }
 
-      // Check if we should generate a title (after 3 user messages)
-      this.maybeGenerateTitle();
+      // Title generation is NOT triggered here: it runs exclusively from the
+      // TaskRunner completion checkpoint (maybeGenerateTitle), after the AI
+      // response has landed. Firing on message-recording would race the
+      // in-flight task turn with a concurrent background model call on the
+      // same provider/key — and would title the chat before any response.
     }
   }
 
   /**
    * Check if title generation should be triggered and execute if needed.
+   * Called from the TaskRunner completion checkpoint — i.e. after an AI
+   * response has completed — never while a turn is streaming.
    * Two-stage title generation:
-   * - Stage 1: Generate title after 2 user messages (initial title)
+   * - Stage 1: Generate title from the first user message(s) once the first
+   *   AI response lands, so single-question conversations don't keep the
+   *   "MM-DD_HH-mm_chat" placeholder forever. A failed attempt resets the
+   *   stage, so the next task completion retries it.
    * - Stage 2: Regenerate title after 5 user messages (final title with more context)
-   * @private
    */
-  private maybeGenerateTitle(): void {
+  maybeGenerateTitle(): void {
     // Skip if title generation is complete (stage 2) or no rollout service
     if (this.titleGenerationStage >= 2 || !this.services?.rollout) {
       return;
@@ -2734,27 +2748,39 @@ export class Session {
     const history = this.sessionState.historySnapshot();
     const userMessageCount = this.titleGenerator.countUserMessages(history);
 
-    // Stage 0 → 1: Generate title after 2 user messages
-    if (this.titleGenerationStage === 0 && userMessageCount >= 2) {
+    // Stage 0 → 1: Generate title from the first user message
+    if (this.titleGenerationStage === 0 && userMessageCount >= 1) {
       this.titleGenerationStage = 1;
 
-      // Run title generation asynchronously with first 2 messages
-      this.generateAndUpdateTitle(history, 2).catch((error) => {
-        console.error('[Session] Failed to generate title (stage 1):', error);
-        // Reset to allow retry
-        this.titleGenerationStage = 0;
-      });
+      // Run title generation asynchronously with the first messages.
+      // generateAndUpdateTitle resolves `false` on failure (TitleGenerator
+      // swallows model errors into {success:false}, it does not throw), so a
+      // then-branch reset is required for the next completion to retry — a
+      // catch alone would never fire.
+      this.generateAndUpdateTitle(history, 2)
+        .then((ok) => {
+          if (!ok) this.titleGenerationStage = 0;
+        })
+        .catch((error) => {
+          console.error('[Session] Failed to generate title (stage 1):', error);
+          // Reset to allow retry
+          this.titleGenerationStage = 0;
+        });
     }
     // Stage 1 → 2: Regenerate title after 5 user messages (final)
     else if (this.titleGenerationStage === 1 && userMessageCount >= 5) {
       this.titleGenerationStage = 2;
 
       // Run title generation asynchronously with all 5 messages
-      this.generateAndUpdateTitle(history, 5).catch((error) => {
-        console.error('[Session] Failed to generate title (stage 2):', error);
-        // Reset to stage 1 to allow retry
-        this.titleGenerationStage = 1;
-      });
+      this.generateAndUpdateTitle(history, 5)
+        .then((ok) => {
+          if (!ok) this.titleGenerationStage = 1;
+        })
+        .catch((error) => {
+          console.error('[Session] Failed to generate title (stage 2):', error);
+          // Reset to stage 1 to allow retry
+          this.titleGenerationStage = 1;
+        });
     }
   }
 
@@ -2762,21 +2788,25 @@ export class Session {
    * Generate title using LLM and update rollout metadata.
    * @param history - Current conversation history
    * @param maxMessages - Maximum number of user messages to use for title generation
+   * @returns true when a title was generated AND persisted; false on any
+   *   failure (missing client/messages, model failure, storage failure) so
+   *   the caller can reset the stage counter and retry at the next
+   *   completion checkpoint.
    * @private
    */
-  private async generateAndUpdateTitle(history: ResponseItem[], maxMessages: number): Promise<void> {
-    // Get model client for title generation
-    const modelClient = this.getModelClientForTitle();
+  private async generateAndUpdateTitle(history: ResponseItem[], maxMessages: number): Promise<boolean> {
+    // Get model client for title generation (efficient model when available)
+    const modelClient = await this.getEfficientModelClient();
     if (!modelClient) {
       console.warn('[Session] No model client available for title generation');
-      return;
+      return false;
     }
 
     // Extract user messages up to maxMessages
     const userMessages = this.titleGenerator.extractUserMessages(history, maxMessages);
     if (userMessages.length === 0) {
       console.warn('[Session] No user messages found for title generation');
-      return;
+      return false;
     }
 
     // Generate title
@@ -2786,22 +2816,50 @@ export class Session {
       try {
         await this.services.rollout.updateTitle(result.title);
         console.debug('[Session] Title updated (using %d messages):', maxMessages, result.title);
+        return true;
       } catch (error) {
         console.error('[Session] Failed to update title in storage:', error);
+        return false;
       }
-    } else if (!result.success) {
+    }
+    if (!result.success) {
       console.warn('[Session] Title generation failed:', result.error);
     }
+    return false;
   }
 
   /**
-   * Get model client for title generation.
-   * Uses modelForTitleGenerate from config if set, otherwise uses main model.
+   * Inject the efficient-model client provider (platform wiring; see
+   * {@link efficientClientProvider}). Called by RepublicAgent after
+   * construction with `() => factory.createEfficientClient()`.
+   */
+  setEfficientClientProvider(provider: () => Promise<ModelClient>): void {
+    this.efficientClientProvider = provider;
+  }
+
+  /**
+   * Resolve the model client for app-logistics tasks (titles, suggestions):
+   * the injected efficient client when available, else the task model's
+   * client from the turn context.
+   * @private
+   */
+  private async getEfficientModelClient(): Promise<ModelClient | null> {
+    if (this.efficientClientProvider) {
+      try {
+        return await this.efficientClientProvider();
+      } catch (error) {
+        console.warn('[Session] Efficient model client unavailable, falling back to task model:', error);
+      }
+    }
+    return this.getModelClientForTitle();
+  }
+
+  /**
+   * Get the task model's client from the turn context (fallback path for
+   * utility tasks when no efficient client provider is injected).
    * @private
    */
   private getModelClientForTitle(): ModelClient | null {
-    // For now, return the turn context's model client
-    // TODO: Support separate model for title generation via config.modelForTitleGenerate
     if (this.turnContext && typeof this.turnContext.getModelClient === 'function') {
       return this.turnContext.getModelClient();
     }
@@ -2831,7 +2889,7 @@ export class Session {
     if (this.suggestionGenerator.countAssistantTurns(history) < 2) {
       return;
     }
-    const modelClient = this.getModelClientForTitle();
+    const modelClient = await this.getEfficientModelClient();
     if (!modelClient) return;
 
     this.suggestionInFlight = true;

@@ -9,7 +9,8 @@
    */
   import { onMount } from 'svelte';
   import { push } from 'svelte-spa-router';
-  import { RolloutRecorder, type ConversationItem } from '@/storage/rollout';
+  import { type ConversationItem } from '@/storage/rollout';
+  import { listConversations as listConversationsPlatform } from '../../lib/conversationList';
   import { uiTheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
   import { requestResumeConversation } from '../../stores/chatHistoryStore';
@@ -34,7 +35,7 @@
     isLoading = true;
     error = null;
     try {
-      const page = await RolloutRecorder.listConversations(TOP_COUNT);
+      const page = await listConversationsPlatform(TOP_COUNT);
       conversations = page.items || [];
     } catch (err) {
       console.error('[ChatHistorySection] Failed to load conversations:', err);

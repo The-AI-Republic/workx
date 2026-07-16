@@ -22,6 +22,13 @@ export interface RuntimeUrlConfig {
   gatewayMcpApiKey: string | null;
   gatewayMcpToolDiscoveryHeader: string | null;
   gatewayMcpToolDiscovery: string | null;
+  /**
+   * Default efficient model (bare model key, e.g. "deepseek-v4-flash") applied
+   * when the user is logged in (gateway routing) and has not explicitly chosen
+   * an efficient model. Unset in OSS builds — the efficient model then defaults
+   * to the selected task model.
+   */
+  gatewayDefaultEfficientModel: string | null;
   llmRoutingMode: 'legacy' | 'gateway';
   deeplinkRedirectUrl: 'workx://auth/callback';
   source: {
@@ -172,6 +179,11 @@ export function resolveRuntimeUrls(): RuntimeUrlConfig {
   const gatewayMcpToolDiscoveryHeader = gatewayMcpToolDiscovery
     ? gatewayMcpToolDiscoveryHeaderFromEnv ?? 'X-Tool-Discovery'
     : null;
+  const gatewayDefaultEfficientModel = firstNonEmpty(
+    env.WORKX_GATEWAY_DEFAULT_EFFICIENT_MODEL,
+    env.VITE_GATEWAY_DEFAULT_EFFICIENT_MODEL,
+    vite.VITE_GATEWAY_DEFAULT_EFFICIENT_MODEL,
+  ) ?? null;
   const requestedRoutingMode = normalizeRoutingMode(firstNonEmpty(
     env.WORKX_LLM_ROUTING_MODE,
     env.VITE_LLM_ROUTING_MODE,
@@ -194,6 +206,7 @@ export function resolveRuntimeUrls(): RuntimeUrlConfig {
     gatewayMcpApiKey,
     gatewayMcpToolDiscoveryHeader,
     gatewayMcpToolDiscovery,
+    gatewayDefaultEfficientModel,
     llmRoutingMode,
     deeplinkRedirectUrl: 'workx://auth/callback',
     source: {
