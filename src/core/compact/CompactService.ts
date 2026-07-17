@@ -44,6 +44,12 @@ export interface CompactExtras {
   sessionSummaryHook?: SessionSummaryHook | null;
   shadowScheduler?: ShadowAgentScheduler;
   enableShadowPrepare?: boolean;
+  signal?: AbortSignal;
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (!signal?.aborted) return;
+  throw signal.reason instanceof Error ? signal.reason : new DOMException('Aborted', 'AbortError');
 }
 
 /**
@@ -106,6 +112,7 @@ export class CompactService {
     baseInstructions?: string,
     extras?: CompactExtras,
   ): Promise<CompactionResult> {
+    throwIfAborted(extras?.signal);
     console.debug('[Compaction] Starting', {
       trigger,
       tokensBefore,
@@ -122,6 +129,7 @@ export class CompactService {
 
     if (sessionId) {
       const waitResult = await waitForSessionSummaryExtraction(sessionId);
+      throwIfAborted(extras?.signal);
       if (waitResult === 'timeout') {
         this.emitSummaryTelemetry(
           summaryHook,
@@ -144,6 +152,7 @@ export class CompactService {
       // Pick up whatever the latest summary on disk is (or empty if missing).
       if (summaryHook) {
         const fresh = await summaryHook.readSummaryFromDisk();
+        throwIfAborted(extras?.signal);
         if (fresh && !isSessionSummaryEmpty(fresh)) {
           sessionSummaryHint = truncateSessionSummaryForCompact(fresh);
         } else {
@@ -169,6 +178,7 @@ export class CompactService {
           dedupeKey: sessionId ? `${sessionId}:compact` : undefined,
           metadata: { sessionId, trigger, phase: 'compact_prepare' },
         });
+        throwIfAborted(extras?.signal);
         if (shadow.status === 'completed' && shadow.outputText?.trim()) {
           const shadowHint = shadow.outputText.trim();
           sessionSummaryHint = sessionSummaryHint
@@ -194,14 +204,17 @@ export class CompactService {
     for (;;) {
       let summaryText: string;
       try {
+        throwIfAborted(extras?.signal);
         summaryText = await withModelRetry(
-          () =>
-            this.generateSummaryWithModel(
+          () => {
+            throwIfAborted(extras?.signal);
+            return this.generateSummaryWithModel(
               workingHistory,
               modelClient,
               baseInstructions,
               sessionSummaryHint,
-            ),
+            );
+          },
           {
             maxRetries: this.config.maxRetries,
             unattended: false,
@@ -254,6 +267,7 @@ export class CompactService {
       }
 
       {
+        throwIfAborted(extras?.signal);
         // Collect and select user messages
         const userMessages = this.summaryGenerator.collectUserMessages(workingHistory);
         const selectedMessages = this.historyReconstructor.selectUserMessages(

@@ -1,285 +1,425 @@
 /**
- * Thread Store for Side Panel Multi-Thread Support
+ * Canonical webfront projection for multi-thread session management.
  *
- * Manages sidepanel thread UI state using Svelte store.
- * Each thread corresponds to an AgentRegistry session.
- * sessionId is the universal key — same value used in UI, registry, and runtime.
- * Persists thread state via ConfigStorageProvider.
+ * Durable index/runtime data is supplied by the backend. Conversation buffers,
+ * replay cursors and pending sends are surface-local. Only the selected session
+ * id is persisted locally; the index is never duplicated into config storage.
  */
 
-import { writable, derived, get, type Writable } from 'svelte/store';
+import { derived, get, writable, type Writable } from 'svelte/store';
 import { getConfigStorage, isConfigStorageInitialized } from '@/core/storage/ConfigStorageProvider';
 import type { AgentMode } from '@/prompts/PromptComposer';
+import type { ProcessedEvent } from '@/types/ui';
+import type { EventProcessor } from '../components/event_display/EventProcessor';
+import type { ThreadIndexEntry } from '@/core/thread/ThreadIndexStore';
+import type { SessionRuntimeView, SubmitAck } from '@/core/registry/types';
 
-/**
- * Sidepanel thread representation
- * sessionId is the universal identifier (same as AgentSession.sessionId and Session.sessionId)
- */
-export interface SidePanelThread {
-  /** Universal session ID (same across UI, registry, and runtime) */
-  sessionId: string;
-  /** Display title */
-  title: string;
-  /** Creation timestamp for ordering */
-  createdAt: number;
-  /**
-   * Runtime-only active agent persona mode for this session. Undefined = not
-   * yet known (treat as the default mode). Committed only from a backend
-   * ModeChanged event — never optimistically, and never persisted.
-   */
-  mode?: AgentMode;
-  /**
-   * Runtime-only mode the user requested that is awaiting application (the
-   * session had a task in flight). Drives the "switching after current task…"
-   * UI. Cleared when the backend confirms the switch applied. Never persisted.
-   */
-  pendingMode?: AgentMode | null;
+export interface ThreadConversationState {
+  messages: Array<{ type: 'user' | 'agent'; content: string; timestamp: number }>;
+  processedEvents: ProcessedEvent[];
+  inputText: string;
+  isProcessing: boolean;
+  currentTabId: number;
+  eventProcessor?: EventProcessor;
 }
 
-/**
- * Thread store state
- */
+export interface ThreadAttachState {
+  cursor: { runtimeEpoch: string; eventSeq: number } | null;
+  snapshotRevision: number;
+  replayTruncated: boolean;
+  error: { message: string; retryable: boolean } | null;
+  attaching: boolean;
+}
+
+export interface PendingSubmission {
+  clientMessageId: string;
+  status: 'sending' | 'queued' | 'accepted' | 'failed' | 'delivery-unknown';
+  text: string;
+  createdAt: number;
+  submissionId?: string;
+  position?: number;
+  phase?: 'capacity' | 'hydration' | 'suspension';
+  reason?: string;
+}
+
+/** One row contains every piece of UI state for a conversation. */
+export interface SidePanelThread extends ThreadIndexEntry {
+  runtime: SessionRuntimeView;
+  conversation: ThreadConversationState;
+  attach: ThreadAttachState;
+  pendingSubmissions: PendingSubmission[];
+  pendingMode?: AgentMode | null;
+  attentionRequest?: {
+    requestId: string;
+    tabId: number;
+    reason: 'login' | 'permission' | 'user-gesture';
+    expiresAt: number;
+  };
+}
+
 export interface ThreadStoreState {
   threads: SidePanelThread[];
   activeSessionId: string | null;
+  nextCursor: string | null;
+  query: string;
+  loading: boolean;
+  pageDirty: boolean;
 }
 
-/**
- * Persistence key for config storage
- */
 const STORAGE_KEY = 'workx_sidepanel_threads';
+/** Stable for this web document and shared by every component in the surface. */
+export const documentSurfaceId = crypto.randomUUID();
 
-/**
- * Create the thread store
- */
+const DEFAULT_RUNTIME: SessionRuntimeView = {
+  state: 'suspended',
+  awaitingInputCount: 0,
+  awaitingInputKinds: [],
+  durability: 'ok',
+};
+
+function emptyConversation(): ThreadConversationState {
+  return {
+    messages: [],
+    processedEvents: [],
+    inputText: '',
+    isProcessing: false,
+    currentTabId: -1,
+  };
+}
+
+function emptyAttach(): ThreadAttachState {
+  return {
+    cursor: null,
+    snapshotRevision: 0,
+    replayTruncated: false,
+    error: null,
+    attaching: false,
+  };
+}
+
+function placeholderEntry(sessionId: string, title = ''): ThreadIndexEntry {
+  const now = Date.now();
+  return {
+    sessionId,
+    title,
+    searchTitle: title.trim().normalize('NFKC').toLowerCase(),
+    titleSource: null,
+    titleUpdatedAt: now,
+    createdAt: now,
+    lastActiveAt: now,
+    pinned: false,
+    deletedAt: null,
+    purgeAfter: null,
+    agentMode: 'general',
+    origin: { kind: 'new' },
+    schemaVersion: 1,
+  };
+}
+
+function projectEntry(
+  entry: ThreadIndexEntry,
+  runtime: SessionRuntimeView = DEFAULT_RUNTIME,
+  previous?: SidePanelThread,
+): SidePanelThread {
+  return {
+    ...entry,
+    runtime: { ...runtime, awaitingInputKinds: [...runtime.awaitingInputKinds] },
+    conversation: previous?.conversation ?? emptyConversation(),
+    attach: previous?.attach ?? emptyAttach(),
+    pendingSubmissions: previous?.pendingSubmissions ?? [],
+    pendingMode: previous?.pendingMode ?? null,
+    ...(previous?.attentionRequest ? { attentionRequest: previous.attentionRequest } : {}),
+  };
+}
+
+function compareThreads(a: SidePanelThread, b: SidePanelThread): number {
+  return Number(b.pinned) - Number(a.pinned)
+    || b.lastActiveAt - a.lastActiveAt
+    || a.sessionId.localeCompare(b.sessionId);
+}
+
 function createThreadStore() {
   const initialState: ThreadStoreState = {
     threads: [],
     activeSessionId: null,
+    nextCursor: null,
+    query: '',
+    loading: false,
+    pageDirty: false,
+  };
+  const { subscribe, set, update }: Writable<ThreadStoreState> = writable(initialState);
+
+  const mutateThread = (sessionId: string, mutate: (thread: SidePanelThread) => SidePanelThread): void => {
+    update((state) => ({
+      ...state,
+      threads: state.threads.map((thread) => thread.sessionId === sessionId ? mutate(thread) : thread),
+    }));
   };
 
-  const { subscribe, set, update }: Writable<ThreadStoreState> = writable(initialState);
+  const persistSelection = async (): Promise<void> => {
+    try {
+      if (!isConfigStorageInitialized()) return;
+      await getConfigStorage().set(STORAGE_KEY, { activeSessionId: get({ subscribe }).activeSessionId });
+    } catch (error) {
+      console.error('[ThreadStore] Failed to persist selection:', error);
+    }
+  };
 
   return {
     subscribe,
 
-    /**
-     * Create a new thread for a session
-     * @param sessionId The universal session ID
-     * @param title Optional initial title (defaults to "New Thread")
-     * @returns The created thread
-     */
-    createThread: (sessionId: string, title: string = 'New Thread'): SidePanelThread => {
-      const newThread: SidePanelThread = {
-        sessionId,
-        title,
-        createdAt: Date.now(),
-      };
-
-      update((state) => ({
-        threads: [...state.threads, newThread],
-        activeSessionId: newThread.sessionId,
-      }));
-
-      persistThreads();
-
-      return newThread;
-    },
-
-    /**
-     * Close a thread by session ID
-     * @param sessionId The session ID to close
-     */
-    closeThread: (sessionId: string): void => {
+    mergePage(
+      entries: Array<ThreadIndexEntry & { runtime?: SessionRuntimeView }>,
+      nextCursor: string | null,
+      options: { reset?: boolean; query?: string } = {},
+    ): void {
       update((state) => {
-        const threadIndex = state.threads.findIndex((t) => t.sessionId === sessionId);
-        if (threadIndex === -1) return state;
-
-        const newThreads = state.threads.filter((t) => t.sessionId !== sessionId);
-
-        let newActiveId = state.activeSessionId;
-        if (state.activeSessionId === sessionId && newThreads.length > 0) {
-          const newIndex = Math.min(threadIndex, newThreads.length - 1);
-          newActiveId = newThreads[newIndex]?.sessionId || null;
-        } else if (newThreads.length === 0) {
-          newActiveId = null;
+        const previous = new Map(state.threads.map((thread) => [thread.sessionId, thread]));
+        // A backend search/page reset must not discard the selected row's
+        // surface-local buffers merely because the row is outside this page.
+        const base = options.reset
+          ? state.threads.filter((thread) => thread.sessionId === state.activeSessionId)
+          : state.threads;
+        const merged = new Map(base.map((thread) => [thread.sessionId, thread]));
+        for (const entry of entries) {
+          if (entry.deletedAt !== null) {
+            merged.delete(entry.sessionId);
+            continue;
+          }
+          const { runtime = DEFAULT_RUNTIME, ...indexEntry } = entry;
+          merged.set(entry.sessionId, projectEntry(indexEntry, runtime, previous.get(entry.sessionId)));
         }
-
         return {
-          threads: newThreads,
-          activeSessionId: newActiveId,
+          ...state,
+          threads: [...merged.values()].sort(compareThreads),
+          nextCursor,
+          query: options.query ?? state.query,
+          loading: false,
+          pageDirty: false,
         };
       });
-
-      persistThreads();
     },
 
-    /**
-     * Set the active thread by session ID
-     * @param sessionId The session ID to activate
-     */
-    setActiveThread: (sessionId: string): void => {
+    mergeThread(entry: ThreadIndexEntry & { runtime?: SessionRuntimeView }): SidePanelThread {
+      let result!: SidePanelThread;
       update((state) => {
-        if (state.threads.some((t) => t.sessionId === sessionId)) {
-          return { ...state, activeSessionId: sessionId };
-        }
-        return state;
+        const previous = state.threads.find((thread) => thread.sessionId === entry.sessionId);
+        const { runtime = previous?.runtime ?? DEFAULT_RUNTIME, ...indexEntry } = entry;
+        result = projectEntry(indexEntry, runtime, previous);
+        const threads = state.threads.filter((thread) => thread.sessionId !== entry.sessionId);
+        if (result.deletedAt === null) threads.push(result);
+        return { ...state, threads: threads.sort(compareThreads) };
       });
-
-      persistThreads();
+      return result;
     },
 
-    /**
-     * Update a thread's title
-     * @param sessionId The session ID of the thread to update
-     * @param title The new title
-     */
-    updateThreadTitle: (sessionId: string, title: string): void => {
+    createThread(sessionId: string, title = ''): SidePanelThread {
+      const created = projectEntry(placeholderEntry(sessionId, title));
       update((state) => ({
         ...state,
-        threads: state.threads.map((t) => (t.sessionId === sessionId ? { ...t, title } : t)),
+        threads: [...state.threads.filter((thread) => thread.sessionId !== sessionId), created].sort(compareThreads),
+        activeSessionId: sessionId,
       }));
-
-      persistThreads();
+      void persistSelection();
+      return created;
     },
 
-    /**
-     * Commit a thread's active mode (from a backend ModeChanged event).
-     * Also clears any pendingMode since the switch has now settled.
-     * @param sessionId The session ID of the thread
-     * @param mode The applied agent mode
-     */
-    setThreadMode: (sessionId: string, mode: AgentMode): void => {
-      update((state) => ({
-        ...state,
-        threads: state.threads.map((t) =>
-          t.sessionId === sessionId ? { ...t, mode, pendingMode: null } : t
+    getThread(sessionId: string): SidePanelThread | undefined {
+      return get({ subscribe }).threads.find((thread) => thread.sessionId === sessionId);
+    },
+
+    getActiveThread(): SidePanelThread | undefined {
+      const state = get({ subscribe });
+      return state.threads.find((thread) => thread.sessionId === state.activeSessionId);
+    },
+
+    setActiveThread(sessionId: string): void {
+      update((state) => ({ ...state, activeSessionId: sessionId }));
+      void persistSelection();
+    },
+
+    setConversation(sessionId: string, conversation: ThreadConversationState): void {
+      mutateThread(sessionId, (thread) => ({ ...thread, conversation }));
+    },
+
+    patchConversation(sessionId: string, patch: Partial<ThreadConversationState>): void {
+      mutateThread(sessionId, (thread) => ({
+        ...thread,
+        conversation: { ...thread.conversation, ...patch },
+      }));
+    },
+
+    setAttach(sessionId: string, patch: Partial<ThreadAttachState>): void {
+      mutateThread(sessionId, (thread) => ({ ...thread, attach: { ...thread.attach, ...patch } }));
+    },
+
+    setRuntime(sessionId: string, runtime: SessionRuntimeView): void {
+      mutateThread(sessionId, (thread) => ({
+        ...thread,
+        runtime: { ...runtime, awaitingInputKinds: [...runtime.awaitingInputKinds] },
+      }));
+    },
+
+    ensureRuntimeStub(sessionId: string, runtime: SessionRuntimeView): void {
+      if (!get({ subscribe }).threads.some((thread) => thread.sessionId === sessionId)) {
+        this.mergeThread({ ...placeholderEntry(sessionId), runtime });
+      } else {
+        this.setRuntime(sessionId, runtime);
+      }
+    },
+
+    setAttention(sessionId: string, attentionRequest?: SidePanelThread['attentionRequest']): void {
+      mutateThread(sessionId, (thread) => ({ ...thread, attentionRequest }));
+    },
+
+    beginSubmission(sessionId: string, pending: PendingSubmission): void {
+      mutateThread(sessionId, (thread) => ({
+        ...thread,
+        pendingSubmissions: [
+          ...thread.pendingSubmissions.filter((item) => item.clientMessageId !== pending.clientMessageId),
+          pending,
+        ],
+      }));
+    },
+
+    applySubmitAck(sessionId: string, ack: SubmitAck): void {
+      mutateThread(sessionId, (thread) => ({
+        ...thread,
+        pendingSubmissions: thread.pendingSubmissions.map((item) => item.clientMessageId !== ack.clientMessageId
+          ? item
+          : ack.status === 'accepted'
+            ? { ...item, status: 'accepted', submissionId: ack.submissionId, reason: undefined }
+            : ack.status === 'queued'
+              ? { ...item, status: 'queued', position: ack.position, phase: ack.phase, reason: undefined }
+              : { ...item, status: 'failed', reason: ack.reason }),
+      }));
+    },
+
+    settleSubmission(
+      sessionId: string,
+      clientMessageId: string,
+      state: 'accepted' | 'failed',
+      submissionId?: string,
+      reason?: string,
+    ): void {
+      mutateThread(sessionId, (thread) => ({
+        ...thread,
+        pendingSubmissions: thread.pendingSubmissions.map((item) => item.clientMessageId === clientMessageId
+          ? { ...item, status: state, submissionId, reason }
+          : item),
+      }));
+    },
+
+    markOrphansDeliveryUnknown(sessionId: string): void {
+      mutateThread(sessionId, (thread) => ({
+        ...thread,
+        pendingSubmissions: thread.pendingSubmissions.map((item) =>
+          item.status === 'sending' || item.status === 'queued'
+            ? { ...item, status: 'delivery-unknown' }
+            : item),
+      }));
+    },
+
+    reconcileSubmissions(
+      sessionId: string,
+      acceptedClientMessageIds: ReadonlySet<string>,
+      completedClientMessageIds: ReadonlySet<string>,
+      markUnknown: boolean,
+    ): void {
+      mutateThread(sessionId, (thread) => ({
+        ...thread,
+        pendingSubmissions: thread.pendingSubmissions
+          .filter((item) => !completedClientMessageIds.has(item.clientMessageId))
+          .map((item) => {
+            if (acceptedClientMessageIds.has(item.clientMessageId)) {
+              return { ...item, status: 'accepted' as const, reason: undefined };
+            }
+            if (markUnknown && (item.status === 'sending' || item.status === 'queued')) {
+              return { ...item, status: 'delivery-unknown' as const };
+            }
+            return item;
+          }),
+      }));
+    },
+
+    dismissSubmission(sessionId: string, clientMessageId: string): void {
+      mutateThread(sessionId, (thread) => ({
+        ...thread,
+        pendingSubmissions: thread.pendingSubmissions.filter(
+          (item) => item.clientMessageId !== clientMessageId,
         ),
       }));
-
-      persistThreads();
     },
 
-    /**
-     * Set (or clear) a thread's pending mode — the user requested a switch but
-     * a task is in flight. Pass null to clear.
-     * @param sessionId The session ID of the thread
-     * @param mode The requested mode, or null to clear
-     */
-    setThreadPendingMode: (sessionId: string, mode: AgentMode | null): void => {
-      update((state) => ({
-        ...state,
-        threads: state.threads.map((t) =>
-          t.sessionId === sessionId ? { ...t, pendingMode: mode } : t
-        ),
+    updateThreadTitle(sessionId: string, title: string): void {
+      mutateThread(sessionId, (thread) => ({
+        ...thread,
+        title,
+        searchTitle: title.trim().normalize('NFKC').toLowerCase(),
       }));
-
-      persistThreads();
     },
 
-    /**
-     * Get a thread by session ID (direct lookup)
-     * @param sessionId The session ID to find
-     * @returns The thread or undefined
-     */
-    getThread: (sessionId: string): SidePanelThread | undefined => {
-      const state = get({ subscribe });
-      return state.threads.find((t) => t.sessionId === sessionId);
+    setThreadMode(sessionId: string, mode: AgentMode): void {
+      mutateThread(sessionId, (thread) => ({ ...thread, agentMode: mode, pendingMode: null }));
     },
 
-    /**
-     * Get the active thread
-     * @returns The active thread or undefined
-     */
-    getActiveThread: (): SidePanelThread | undefined => {
-      const state = get({ subscribe });
-      return state.threads.find((t) => t.sessionId === state.activeSessionId);
+    setThreadPendingMode(sessionId: string, mode: AgentMode | null): void {
+      mutateThread(sessionId, (thread) => ({ ...thread, pendingMode: mode }));
     },
 
-    /**
-     * Remove a thread by session ID
-     * @param sessionId The session ID
-     */
-    removeThread: (sessionId: string): void => {
-      threadStore.closeThread(sessionId);
+    markPageDirty(): void {
+      update((state) => ({ ...state, pageDirty: true }));
     },
 
-    /**
-     * Restore threads from config storage
-     * @returns Promise that resolves with restored state
-     */
-    restoreThreads: async (): Promise<ThreadStoreState> => {
+    setLoading(loading: boolean): void {
+      update((state) => ({ ...state, loading }));
+    },
+
+    closeThread(sessionId: string): void {
+      update((state) => {
+        const index = state.threads.findIndex((thread) => thread.sessionId === sessionId);
+        if (index < 0) return state;
+        const threads = state.threads.filter((thread) => thread.sessionId !== sessionId);
+        const activeSessionId = state.activeSessionId === sessionId
+          ? threads[Math.min(index, Math.max(0, threads.length - 1))]?.sessionId ?? null
+          : state.activeSessionId;
+        return { ...state, threads, activeSessionId };
+      });
+      void persistSelection();
+    },
+
+    removeThread(sessionId: string): void {
+      this.closeThread(sessionId);
+    },
+
+    async restoreThreads(): Promise<ThreadStoreState> {
       try {
-        if (!isConfigStorageInitialized()) {
-          console.warn('[ThreadStore] ConfigStorage not initialized, skipping restore');
-          return initialState;
-        }
-        const stored = await getConfigStorage().get<ThreadStoreState>(STORAGE_KEY);
-
-        if (stored && stored.threads && stored.threads.length > 0) {
-          const restored = sanitizePersistentState(stored);
-          set(restored);
-          return restored;
+        if (!isConfigStorageInitialized()) return get({ subscribe });
+        const stored = await getConfigStorage().get<{ activeSessionId?: string | null }>(STORAGE_KEY);
+        if (stored && typeof stored.activeSessionId === 'string') {
+          update((state) => ({ ...state, activeSessionId: stored.activeSessionId ?? null }));
         }
       } catch (error) {
-        console.error('[ThreadStore] Failed to restore threads:', error);
+        console.error('[ThreadStore] Failed to restore selection:', error);
       }
-
-      return initialState;
+      return get({ subscribe });
     },
 
-    /**
-     * Clear all threads (for reset)
-     */
-    clear: (): void => {
+    clear(): void {
       set(initialState);
-      persistThreads();
+      void persistSelection();
     },
 
-    /**
-     * Set the full state (for initialization/restoration)
-     */
-    setState: (state: ThreadStoreState): void => {
+    setState(state: ThreadStoreState): void {
       set(state);
-      persistThreads();
+      void persistSelection();
     },
   };
 }
 
-/**
- * Persist current thread state to config storage
- */
-async function persistThreads(): Promise<void> {
-  try {
-    if (!isConfigStorageInitialized()) {
-      console.warn('[ThreadStore] ConfigStorage not initialized, skipping persist');
-      return;
-    }
-    const state = sanitizePersistentState(get(threadStore));
-    await getConfigStorage().set(STORAGE_KEY, state);
-  } catch (error) {
-    console.error('[ThreadStore] Failed to persist threads:', error);
-  }
-}
-
-function sanitizePersistentState(state: ThreadStoreState): ThreadStoreState {
-  return {
-    activeSessionId: state.activeSessionId,
-    threads: state.threads.map((thread) => ({
-      sessionId: thread.sessionId,
-      title: thread.title,
-      createdAt: thread.createdAt,
-    })),
-  };
-}
-
-// Create the store singleton
 export const threadStore = createThreadStore();
-
-// Derived store for the active thread
-export const activeThread = derived(threadStore, ($threadStore) =>
-  $threadStore.threads.find((t) => t.sessionId === $threadStore.activeSessionId)
-);
-
-// Derived store for thread count
-export const threadCount = derived(threadStore, ($threadStore) => $threadStore.threads.length);
+export const activeThread = derived(threadStore, ($store) =>
+  $store.threads.find((thread) => thread.sessionId === $store.activeSessionId));
+export const threadCount = derived(threadStore, ($store) => $store.threads.length);
+export const attentionCount = derived(threadStore, ($store) =>
+  $store.threads.reduce((count, thread) => count + Number(thread.runtime.awaitingInputCount > 0), 0));

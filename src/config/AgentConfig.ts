@@ -47,6 +47,7 @@ export class AgentConfig implements IConfigService {
   private currentConfig: IAgentConfig;
   private eventHandlers: Map<string, Set<(e: IConfigChangeEvent) => void>>;
   private initialized: boolean = false;
+  private currentGeneration = 0;
 
   private constructor() {
     this.storage = new ConfigStorage();
@@ -1042,11 +1043,16 @@ export class AgentConfig implements IConfigService {
     this.eventHandlers.get(event)?.delete(handler);
   }
 
+  generation(): number {
+    return this.currentGeneration;
+  }
+
   private emitChangeEvent(
     section: IConfigChangeEvent['section'],
     oldValue: any,
     newValue: any
   ): void {
+    this.currentGeneration += 1;
     const handlers = this.eventHandlers.get('config-changed');
     if (handlers) {
       const event: IConfigChangeEvent = {
@@ -1054,7 +1060,8 @@ export class AgentConfig implements IConfigService {
         section,
         oldValue,
         newValue,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        generation: this.currentGeneration,
       };
       handlers.forEach(handler => handler(event));
     }

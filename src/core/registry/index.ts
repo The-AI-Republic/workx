@@ -3,7 +3,7 @@
  * Feature: 015-multi-agent-instances
  */
 
-export { AgentRegistry } from './AgentRegistry';
+export { SessionManager, SessionManager as AgentRegistry } from './SessionManager';
 export { AgentSession } from './AgentSession';
 export { SessionStorage, type PersistedSession } from './SessionStorage';
 export type {

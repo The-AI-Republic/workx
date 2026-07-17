@@ -1,451 +1,200 @@
-/**
- * Unit tests for threadStore — multi-thread tab management
- */
-
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { get } from 'svelte/store';
+import type { ThreadIndexEntry } from '@/core/thread/ThreadIndexStore';
 
-// Mock ConfigStorageProvider before importing threadStore
-const mockConfigStorage = {
+const storage = {
   get: vi.fn().mockResolvedValue(null),
   set: vi.fn().mockResolvedValue(undefined),
 };
 
 vi.mock('@/core/storage/ConfigStorageProvider', () => ({
   isConfigStorageInitialized: vi.fn(() => true),
-  getConfigStorage: vi.fn(() => mockConfigStorage),
+  getConfigStorage: vi.fn(() => storage),
 }));
 
-import { threadStore, activeThread, threadCount } from '@/webfront/stores/threadStore';
-import type { ThreadStoreState } from '@/webfront/stores/threadStore';
+import {
+  activeThread,
+  attentionCount,
+  threadCount,
+  threadStore,
+} from '../threadStore';
 import { isConfigStorageInitialized } from '@/core/storage/ConfigStorageProvider';
 
-describe('threadStore', () => {
+function entry(sessionId: string, overrides: Partial<ThreadIndexEntry> = {}): ThreadIndexEntry {
+  return {
+    sessionId,
+    title: sessionId,
+    searchTitle: sessionId,
+    titleSource: null,
+    titleUpdatedAt: 1,
+    createdAt: 1,
+    lastActiveAt: 1,
+    pinned: false,
+    deletedAt: null,
+    purgeAfter: null,
+    agentMode: 'general',
+    origin: { kind: 'new' },
+    schemaVersion: 1,
+    ...overrides,
+  };
+}
+
+const runtime = {
+  state: 'suspended' as const,
+  awaitingInputCount: 0,
+  awaitingInputKinds: [],
+  durability: 'ok' as const,
+};
+
+describe('canonical threadStore projection', () => {
   beforeEach(() => {
     threadStore.clear();
     vi.clearAllMocks();
-    // Re-setup mocks after clearAllMocks (because of mockReset: true in vitest config)
     vi.mocked(isConfigStorageInitialized).mockReturnValue(true);
-    mockConfigStorage.get.mockResolvedValue(null);
-    mockConfigStorage.set.mockResolvedValue(undefined);
+    storage.get.mockResolvedValue(null);
+    storage.set.mockResolvedValue(undefined);
   });
 
-  // =========================================================================
-  // createThread
-  // =========================================================================
-
-  describe('createThread', () => {
-    it('creates a thread with the given sessionId', () => {
-      const thread = threadStore.createThread('session_abc');
-
-      expect(thread.sessionId).toBe('session_abc');
-      expect(thread.title).toBe('New Thread');
-      expect(thread.createdAt).toBeGreaterThan(0);
-    });
-
-    it('auto-activates the newly created thread', () => {
-      const thread = threadStore.createThread('session_abc');
-      const state = get(threadStore);
-
-      expect(state.activeSessionId).toBe(thread.sessionId);
-    });
-
-    it('assigns unique sessionIds to each thread', () => {
-      const thread1 = threadStore.createThread('session_1');
-      const thread2 = threadStore.createThread('session_2');
-
-      expect(thread1.sessionId).not.toBe(thread2.sessionId);
-    });
-
-    it('uses a custom title when provided', () => {
-      const thread = threadStore.createThread('session_x', 'My Custom Thread');
-
-      expect(thread.title).toBe('My Custom Thread');
-    });
-
-    it('persists to config storage', () => {
-      threadStore.createThread('session_1');
-
-      expect(mockConfigStorage.set).toHaveBeenCalled();
-    });
-
-    it('adds thread to the threads array', () => {
-      threadStore.createThread('s1');
-      threadStore.createThread('s2');
-      const state = get(threadStore);
-
-      expect(state.threads).toHaveLength(2);
-    });
-
-    it('activates the last created thread when multiple are created', () => {
-      threadStore.createThread('s1');
-      const thread2 = threadStore.createThread('s2');
-      const state = get(threadStore);
-
-      expect(state.activeSessionId).toBe(thread2.sessionId);
-    });
+  it('merges a bounded page in pinned/recent/id order', () => {
+    threadStore.mergePage([
+      { ...entry('old', { lastActiveAt: 10 }), runtime },
+      { ...entry('pinned', { pinned: true, lastActiveAt: 1 }), runtime },
+      { ...entry('new', { lastActiveAt: 20 }), runtime },
+    ], 'next');
+    expect(get(threadStore).threads.map((row) => row.sessionId)).toEqual(['pinned', 'new', 'old']);
+    expect(get(threadStore).nextCursor).toBe('next');
   });
 
-  // =========================================================================
-  // closeThread
-  // =========================================================================
-
-  describe('closeThread', () => {
-    it('removes the specified thread', () => {
-      const thread = threadStore.createThread('s1');
-      threadStore.createThread('s2');
-      threadStore.closeThread(thread.sessionId);
-
-      const state = get(threadStore);
-      expect(state.threads.find((t) => t.sessionId === thread.sessionId)).toBeUndefined();
+  it('preserves surface-local buffers when an index event replaces a row', () => {
+    threadStore.mergeThread({ ...entry('a'), runtime });
+    threadStore.patchConversation('a', { inputText: 'draft', isProcessing: true });
+    threadStore.setAttach('a', {
+      cursor: { runtimeEpoch: 'epoch', eventSeq: 7 },
+      snapshotRevision: 4,
     });
 
-    it('selects an adjacent thread when closing the active thread', () => {
-      const thread1 = threadStore.createThread('s1');
-      const thread2 = threadStore.createThread('s2');
-      threadStore.createThread('s3');
+    threadStore.mergeThread({ ...entry('a', { title: 'renamed', lastActiveAt: 5 }), runtime });
+    const row = threadStore.getThread('a')!;
+    expect(row.title).toBe('renamed');
+    expect(row.conversation.inputText).toBe('draft');
+    expect(row.conversation.isProcessing).toBe(true);
+    expect(row.attach.cursor).toEqual({ runtimeEpoch: 'epoch', eventSeq: 7 });
+  });
 
-      // thread3 is active (last created). Switch to thread2, then close it.
-      threadStore.setActiveThread(thread2.sessionId);
-      threadStore.closeThread(thread2.sessionId);
+  it('persists only the local active selection', () => {
+    threadStore.mergeThread({ ...entry('a'), runtime });
+    threadStore.setActiveThread('a');
+    expect(storage.set).toHaveBeenLastCalledWith(
+      'workx_sidepanel_threads',
+      { activeSessionId: 'a' },
+    );
+    expect(storage.set.mock.calls[storage.set.mock.calls.length - 1]?.[1]).not.toHaveProperty('threads');
+  });
 
-      const state = get(threadStore);
-      // Should pick the thread at the same index or previous
-      expect(state.activeSessionId).not.toBe(thread2.sessionId);
-      expect(state.threads.some((t) => t.sessionId === state.activeSessionId)).toBe(true);
+  it('restores only a selection and waits for session.list to restore rows', async () => {
+    storage.get.mockResolvedValue({
+      activeSessionId: 'outside-first-page',
+      threads: [{ sessionId: 'stale-duplicate' }],
     });
+    const restored = await threadStore.restoreThreads();
+    expect(restored.activeSessionId).toBe('outside-first-page');
+    expect(restored.threads).toEqual([]);
+  });
 
-    it('sets activeSessionId to null when closing the last thread', () => {
-      const thread = threadStore.createThread('s1');
-      threadStore.closeThread(thread.sessionId);
-
-      const state = get(threadStore);
-      expect(state.activeSessionId).toBeNull();
-      expect(state.threads).toHaveLength(0);
+  it('tracks correlated send acknowledgement and explicit delivery uncertainty', () => {
+    threadStore.mergeThread({ ...entry('a'), runtime });
+    threadStore.beginSubmission('a', {
+      clientMessageId: 'm1',
+      status: 'sending',
+      text: 'hello',
+      createdAt: 1,
     });
-
-    it('is a no-op for an unknown thread ID', () => {
-      threadStore.createThread('s1');
-      const stateBefore = get(threadStore);
-
-      threadStore.closeThread('nonexistent');
-
-      const stateAfter = get(threadStore);
-      expect(stateAfter.threads).toEqual(stateBefore.threads);
+    threadStore.applySubmitAck('a', {
+      status: 'queued',
+      clientMessageId: 'm1',
+      position: 2,
+      phase: 'hydration',
     });
-
-    it('selects the first thread when closing the first thread', () => {
-      const thread1 = threadStore.createThread('s1');
-      const thread2 = threadStore.createThread('s2');
-      // Activate and close the first thread
-      threadStore.setActiveThread(thread1.sessionId);
-      threadStore.closeThread(thread1.sessionId);
-
-      const state = get(threadStore);
-      expect(state.activeSessionId).toBe(thread2.sessionId);
+    expect(threadStore.getThread('a')!.pendingSubmissions[0]).toMatchObject({
+      status: 'queued', position: 2, phase: 'hydration',
     });
+    threadStore.markOrphansDeliveryUnknown('a');
+    expect(threadStore.getThread('a')!.pendingSubmissions[0].status).toBe('delivery-unknown');
+  });
 
-    it('persists after closing', () => {
-      const thread = threadStore.createThread('s1');
-      vi.mocked(mockConfigStorage.set).mockClear();
-
-      threadStore.closeThread(thread.sessionId);
-      expect(mockConfigStorage.set).toHaveBeenCalled();
+  it('settles a queued submission from a backend event', () => {
+    threadStore.mergeThread({ ...entry('a'), runtime });
+    threadStore.beginSubmission('a', {
+      clientMessageId: 'm1', status: 'queued', text: 'hello', createdAt: 1,
+    });
+    threadStore.settleSubmission('a', 'm1', 'accepted', 'sub-1');
+    expect(threadStore.getThread('a')!.pendingSubmissions[0]).toMatchObject({
+      status: 'accepted', submissionId: 'sub-1',
     });
   });
 
-  // =========================================================================
-  // setActiveThread
-  // =========================================================================
-
-  describe('setActiveThread', () => {
-    it('sets the active thread ID', () => {
-      const thread1 = threadStore.createThread('s1');
-      threadStore.createThread('s2');
-
-      threadStore.setActiveThread(thread1.sessionId);
-      const state = get(threadStore);
-
-      expect(state.activeSessionId).toBe(thread1.sessionId);
-    });
-
-    it('is a no-op for a nonexistent thread ID', () => {
-      threadStore.createThread('s1');
-      const stateBefore = get(threadStore);
-
-      threadStore.setActiveThread('nonexistent');
-      const stateAfter = get(threadStore);
-
-      expect(stateAfter.activeSessionId).toBe(stateBefore.activeSessionId);
-    });
+  it('reconciles accepted and completed submissions from durable turn markers', () => {
+    threadStore.mergeThread({ ...entry('a'), runtime });
+    for (const clientMessageId of ['accepted', 'completed', 'unknown']) {
+      threadStore.beginSubmission('a', {
+        clientMessageId,
+        status: 'queued',
+        text: clientMessageId,
+        createdAt: 1,
+      });
+    }
+    threadStore.reconcileSubmissions(
+      'a',
+      new Set(['accepted', 'completed']),
+      new Set(['completed']),
+      true,
+    );
+    expect(threadStore.getThread('a')!.pendingSubmissions).toMatchObject([
+      { clientMessageId: 'accepted', status: 'accepted' },
+      { clientMessageId: 'unknown', status: 'delivery-unknown' },
+    ]);
   });
 
-  // =========================================================================
-  // updateThreadTitle
-  // =========================================================================
-
-  describe('updateThreadTitle', () => {
-    it('updates the title of the specified thread', () => {
-      const thread = threadStore.createThread('s1');
-      threadStore.updateThreadTitle(thread.sessionId, 'Renamed Thread');
-
-      const state = get(threadStore);
-      expect(state.threads.find((t) => t.sessionId === thread.sessionId)?.title).toBe('Renamed Thread');
+  it('keeps running and awaiting-input state distinct', () => {
+    threadStore.mergeThread({ ...entry('a'), runtime });
+    threadStore.setRuntime('a', {
+      state: 'running',
+      awaitingInputCount: 1,
+      awaitingInputKinds: ['foreground'],
+      durability: 'degraded',
+      durabilityReason: 'terminal-marker-write',
     });
-
-    it('does not affect other threads', () => {
-      const thread1 = threadStore.createThread('s1', 'Thread A');
-      const thread2 = threadStore.createThread('s2', 'Thread B');
-
-      threadStore.updateThreadTitle(thread1.sessionId, 'Updated A');
-
-      const state = get(threadStore);
-      expect(state.threads.find((t) => t.sessionId === thread2.sessionId)?.title).toBe('Thread B');
+    expect(threadStore.getThread('a')!.runtime).toMatchObject({
+      state: 'running', awaitingInputCount: 1, durability: 'degraded',
     });
+    expect(get(attentionCount)).toBe(1);
   });
 
-  // =========================================================================
-  // getThread
-  // =========================================================================
-
-  describe('getThread', () => {
-    it('returns the thread matching the sessionId', () => {
-      const thread = threadStore.createThread('session_123');
-      const found = threadStore.getThread('session_123');
-
-      expect(found?.sessionId).toBe(thread.sessionId);
-    });
-
-    it('returns undefined for an unknown sessionId', () => {
-      threadStore.createThread('session_abc');
-      const found = threadStore.getThread('unknown');
-
-      expect(found).toBeUndefined();
-    });
+  it('removes tombstones from a normal page without erasing other rows', () => {
+    threadStore.mergePage([
+      { ...entry('a'), runtime },
+      { ...entry('b'), runtime },
+    ], null);
+    threadStore.mergePage([
+      { ...entry('a', { deletedAt: 2, purgeAfter: 3 }), runtime },
+    ], null);
+    expect(get(threadStore).threads.map((row) => row.sessionId)).toEqual(['b']);
   });
 
-  // =========================================================================
-  // getActiveThread
-  // =========================================================================
-
-  describe('getActiveThread', () => {
-    it('returns the active thread', () => {
-      const thread = threadStore.createThread('s1');
-      const active = threadStore.getActiveThread();
-
-      expect(active?.sessionId).toBe(thread.sessionId);
-    });
-
-    it('returns undefined when no threads exist', () => {
-      expect(threadStore.getActiveThread()).toBeUndefined();
-    });
-
-    it('returns undefined after clearing all threads', () => {
-      threadStore.createThread('s1');
-      threadStore.clear();
-
-      expect(threadStore.getActiveThread()).toBeUndefined();
-    });
+  it('selects an adjacent row when the active row disappears', () => {
+    threadStore.mergePage([
+      { ...entry('a', { lastActiveAt: 2 }), runtime },
+      { ...entry('b'), runtime },
+    ], null);
+    threadStore.setActiveThread('a');
+    threadStore.closeThread('a');
+    expect(get(threadStore).activeSessionId).toBe('b');
   });
 
-  // =========================================================================
-  // removeThread
-  // =========================================================================
-
-  describe('removeThread', () => {
-    it('finds and removes the thread by sessionId', () => {
-      threadStore.createThread('session_to_remove');
-      threadStore.createThread('session_to_keep');
-
-      threadStore.removeThread('session_to_remove');
-
-      const state = get(threadStore);
-      expect(state.threads).toHaveLength(1);
-      expect(state.threads[0].sessionId).toBe('session_to_keep');
-    });
-
-    it('is a no-op for an unknown sessionId', () => {
-      threadStore.createThread('s1');
-      const before = get(threadStore);
-
-      threadStore.removeThread('nonexistent');
-
-      const after = get(threadStore);
-      expect(after.threads).toHaveLength(before.threads.length);
-    });
-  });
-
-  // =========================================================================
-  // restoreThreads
-  // =========================================================================
-
-  describe('restoreThreads', () => {
-    it('restores threads from config storage', async () => {
-      const stored: ThreadStoreState = {
-        threads: [
-          { sessionId: 's1', title: 'Restored', createdAt: 1000 },
-        ],
-        activeSessionId: 's1',
-      };
-      mockConfigStorage.get.mockResolvedValue(stored);
-
-      const result = await threadStore.restoreThreads();
-
-      expect(result.threads).toHaveLength(1);
-      expect(result.threads[0].title).toBe('Restored');
-      const state = get(threadStore);
-      expect(state.threads).toHaveLength(1);
-    });
-
-    it('strips runtime mode state when restoring persisted threads', async () => {
-      const stored: ThreadStoreState = {
-        threads: [
-          { sessionId: 's1', title: 'Restored', createdAt: 1000, mode: 'code', pendingMode: 'general' },
-        ],
-        activeSessionId: 's1',
-      };
-      mockConfigStorage.get.mockResolvedValue(stored);
-
-      const result = await threadStore.restoreThreads();
-
-      expect(result.threads[0].mode).toBeUndefined();
-      expect(result.threads[0].pendingMode).toBeUndefined();
-      const state = get(threadStore);
-      expect(state.threads[0].mode).toBeUndefined();
-      expect(state.threads[0].pendingMode).toBeUndefined();
-    });
-
-    it('returns initial state when storage is empty', async () => {
-      mockConfigStorage.get.mockResolvedValue(null);
-
-      const result = await threadStore.restoreThreads();
-
-      expect(result.threads).toHaveLength(0);
-      expect(result.activeSessionId).toBeNull();
-    });
-
-    it('returns initial state when storage has empty threads array', async () => {
-      mockConfigStorage.get.mockResolvedValue({ threads: [], activeSessionId: null });
-
-      const result = await threadStore.restoreThreads();
-
-      expect(result.threads).toHaveLength(0);
-    });
-
-    it('handles storage errors gracefully', async () => {
-      mockConfigStorage.get.mockRejectedValue(new Error('Storage failure'));
-
-      const result = await threadStore.restoreThreads();
-
-      expect(result.threads).toHaveLength(0);
-    });
-
-    it('skips restore when ConfigStorage is not initialized', async () => {
-      vi.mocked(isConfigStorageInitialized).mockReturnValue(false);
-
-      const result = await threadStore.restoreThreads();
-
-      expect(result.threads).toHaveLength(0);
-      expect(mockConfigStorage.get).not.toHaveBeenCalled();
-    });
-  });
-
-  // =========================================================================
-  // clear / setState
-  // =========================================================================
-
-  describe('clear', () => {
-    it('resets all threads and activeSessionId', () => {
-      threadStore.createThread('s1');
-      threadStore.createThread('s2');
-      threadStore.clear();
-
-      const state = get(threadStore);
-      expect(state.threads).toHaveLength(0);
-      expect(state.activeSessionId).toBeNull();
-    });
-  });
-
-  describe('runtime mode state persistence', () => {
-    it('keeps mode in memory but strips it from config storage writes', () => {
-      threadStore.createThread('s1');
-      mockConfigStorage.set.mockClear();
-
-      threadStore.setThreadMode('s1', 'code');
-      threadStore.setThreadPendingMode('s1', 'general');
-
-      const state = get(threadStore);
-      expect(state.threads[0].mode).toBe('code');
-      expect(state.threads[0].pendingMode).toBe('general');
-
-      const lastCall = mockConfigStorage.set.mock.calls[mockConfigStorage.set.mock.calls.length - 1];
-      const persisted = lastCall?.[1] as ThreadStoreState;
-      expect(persisted.threads[0].mode).toBeUndefined();
-      expect(persisted.threads[0].pendingMode).toBeUndefined();
-    });
-  });
-
-  describe('setState', () => {
-    it('replaces the full state', () => {
-      threadStore.createThread('original');
-
-      const newState: ThreadStoreState = {
-        threads: [
-          { sessionId: 'sx1', title: 'Set', createdAt: 500 },
-          { sessionId: 'sx2', title: 'State', createdAt: 600 },
-        ],
-        activeSessionId: 'sx2',
-      };
-
-      threadStore.setState(newState);
-
-      const state = get(threadStore);
-      expect(state.threads).toHaveLength(2);
-      expect(state.activeSessionId).toBe('sx2');
-    });
-
-    it('persists the new state', () => {
-      vi.mocked(mockConfigStorage.set).mockClear();
-      threadStore.setState({ threads: [], activeSessionId: null });
-
-      expect(mockConfigStorage.set).toHaveBeenCalled();
-    });
-  });
-
-  // =========================================================================
-  // Derived stores
-  // =========================================================================
-
-  describe('activeThread derived store', () => {
-    it('reflects the currently active thread', () => {
-      const thread = threadStore.createThread('s1');
-      const active = get(activeThread);
-
-      expect(active?.sessionId).toBe(thread.sessionId);
-    });
-
-    it('is undefined when no threads exist', () => {
-      expect(get(activeThread)).toBeUndefined();
-    });
-  });
-
-  describe('threadCount derived store', () => {
-    it('reflects the number of threads', () => {
-      expect(get(threadCount)).toBe(0);
-
-      threadStore.createThread('s1');
-      expect(get(threadCount)).toBe(1);
-
-      threadStore.createThread('s2');
-      expect(get(threadCount)).toBe(2);
-    });
-
-    it('decrements when a thread is closed', () => {
-      const thread = threadStore.createThread('s1');
-      threadStore.createThread('s2');
-
-      threadStore.closeThread(thread.sessionId);
-      expect(get(threadCount)).toBe(1);
-    });
+  it('exposes active and count derived projections', () => {
+    threadStore.mergeThread({ ...entry('a'), runtime });
+    threadStore.setActiveThread('a');
+    expect(get(activeThread)?.sessionId).toBe('a');
+    expect(get(threadCount)).toBe(1);
   });
 });

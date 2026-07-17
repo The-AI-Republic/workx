@@ -9,6 +9,10 @@
 
 import { beforeEach, vi } from 'vitest';
 import { mockChromeStorage, resetChromeStorageMock } from './chrome-storage-mock';
+import type {
+  BrowserTabDescriptor,
+  SessionBrowserResources,
+} from '../core/platform/IPlatformAdapter';
 
 // Node >= 22 defines an experimental `localStorage`/`sessionStorage` global
 // that evaluates to `undefined` unless Node is started with
@@ -68,6 +72,63 @@ const mockChrome = {
     remove: vi.fn(),
   },
 };
+
+function descriptor(tab: chrome.tabs.Tab | null | undefined): BrowserTabDescriptor {
+  if (!tab || typeof tab.id !== 'number') throw new Error('Tab not found');
+  const url = tab.url ?? '';
+  let hostname = '';
+  try { hostname = new URL(url).hostname; } catch { /* non-web test URL */ }
+  return {
+    tabId: tab.id,
+    url,
+    hostname,
+    title: tab.title,
+    status: tab.status === 'loading' || tab.status === 'complete' ? tab.status : undefined,
+  };
+}
+
+const testBrowserResources: SessionBrowserResources = {
+  sessionId: 'vitest-session',
+  async current() {
+    const tabs = await globalThis.chrome?.tabs?.query?.({ active: true, currentWindow: true });
+    return tabs?.[0] ? descriptor(tabs[0]) : null;
+  },
+  async listOwned() {
+    const tabs = await globalThis.chrome?.tabs?.query?.({});
+    return (tabs ?? []).map(descriptor);
+  },
+  async claimExisting(tabId) {
+    return descriptor(await globalThis.chrome.tabs.get(tabId));
+  },
+  async create(options = {}) {
+    return descriptor(await globalThis.chrome.tabs.create({ url: options.url, active: options.active }));
+  },
+  async getOwned(tabId) {
+    return descriptor(await globalThis.chrome.tabs.get(tabId));
+  },
+  async setCurrent(_tabId) {},
+  async navigate(tabId, url) {
+    const updated = await globalThis.chrome.tabs.update(tabId, { url });
+    return descriptor(updated ?? await globalThis.chrome.tabs.get(tabId));
+  },
+  async reload(tabId, options) {
+    await globalThis.chrome.tabs.reload(tabId, { bypassCache: options?.bypassCache ?? false });
+  },
+  async close(tabId) {
+    await globalThis.chrome.tabs.remove(tabId);
+  },
+  async captureVisible() {
+    return globalThis.chrome.tabs.captureVisibleTab();
+  },
+  async controller() { return null; },
+  async releaseAll() {},
+};
+
+Object.defineProperty(globalThis, '__WORKX_TEST_BROWSER_RESOURCES__', {
+  value: testBrowserResources,
+  writable: false,
+  configurable: true,
+});
 
 beforeEach(() => {
   // Install chrome on globalThis

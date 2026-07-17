@@ -12,12 +12,12 @@ import { mapResponseItemToEventMessages } from './events/EventMapping';
 import type { EventMsg } from './protocol/events';
 import { RolloutRecorder, type RolloutItem } from '../storage/rollout';
 import { v4 as uuidv4 } from 'uuid';
-import { resetX402SessionPayments } from './payments/x402/tracker';
 import { TurnContext } from './TurnContext';
 import { type AgentMode, DEFAULT_MODE } from '../prompts/PromptComposer';
 import { AgentConfig } from '../config/AgentConfig';
 import type { SessionTask } from './tasks/SessionTask';
 import type { ToolRegistry } from '../tools/ToolRegistry';
+import type { AgentDisposeReason } from './assembly/AgentAssembler';
 
 // New state management imports
 import { SessionState, type SessionStateExport } from './session/state/SessionState';
@@ -57,11 +57,27 @@ import type {
  */
 export type PostTurnHook = (ctx: PostTurnContext) => Promise<void> | void;
 
+export type LifecycleWorkKind =
+  | 'title'
+  | 'prompt-suggestion'
+  | 'session-summary'
+  | 'compaction';
+
+export interface LifecycleWorkLease {
+  readonly token: string;
+  readonly signal: AbortSignal;
+  finish(): void;
+}
+
 /** Lightweight alias so the field declaration doesn't pull the full class. */
 type SessionSummaryHookHandle = SessionSummaryHook;
 
 export interface SessionDisposeOptions {
+  /** Runtime-graph lifecycle reason, distinct from turn cancellation. */
+  lifecycleReason?: AgentDisposeReason;
   /** Abort reason used for any active tasks still running during disposal. */
+  abortReason?: TurnAbortReason;
+  /** @deprecated Compatibility alias for abortReason. */
   reason?: TurnAbortReason;
   /** Defaults to true; set false only for legacy callers that already aborted. */
   abortTasks?: boolean;
@@ -85,6 +101,8 @@ import type { AgentContext } from '../tools/AgentTool/types';
 import { PANEL_GRACE_MS, STOPPED_DISPLAY_MS } from './tasks/timing';
 import type { TaskOutputStore } from './tasks/TaskOutputStore';
 import type { ShadowAgentScheduler } from './shadowAgent';
+import { getRuntimeProfile } from '@/runtime/profile';
+import type { AgentPromptLoader } from './PromptLoader';
 
 // Track 09: tool result persistence
 import {
@@ -141,6 +159,15 @@ export class Session {
    * state (approvals, pending input). See design.md §Concurrency Seam.
    */
   private activeTasks: Map<string, RunningTask> = new Map();
+  /** Actual task liveness; unlike activeTasks this never retains terminal rows. */
+  private readonly runningTaskIds = new Set<string>();
+  private readonly lifecycleWorkTokens = new Map<
+    string,
+    { kind: LifecycleWorkKind; controller: AbortController; timer?: ReturnType<typeof setTimeout> }
+  >();
+  private readonly lifecycleWorkSettlements = new Map<string, Promise<unknown>>();
+  private lastBusy = false;
+  private shadowPendingUnsubscribe: (() => void) | null = null;
   /** Single-valued pointer to the currently-foreground task, if any. */
   private foregroundTaskId: string | null = null;
   /** Lazily-started eviction timer that walks `activeTasks` for terminal tasks. */
@@ -182,6 +209,7 @@ export class Session {
   private _sessionSummaryHook: SessionSummaryHookHandle | null = null;
   private shadowAgentScheduler: ShadowAgentScheduler | null = null;
   private shadowCompactPrepareEnabled = false;
+  private promptLoader: AgentPromptLoader | null = null;
 
   // Tool result persistence (track 09). Both fields are undefined when the
   // platform deps required to build a store aren't available — TurnManager
@@ -192,6 +220,7 @@ export class Session {
   // Session ⇒ sub-agents (own Session) auto-isolate. Always present (the
   // map is cheap); only meaningful when the file tools are used.
   private readonly fileStateCache: FileStateCache = new FileStateCache();
+  private readonly backgroundWorkListeners = new Set<(busy: boolean) => void>();
 
   constructor(
     configOrIsPersistent?: AgentConfig | boolean,
@@ -200,8 +229,8 @@ export class Session {
     toolRegistry?: ToolRegistry,
     initialHistory?: InitialHistory
   ) {
-    // For resumed mode, use the provided sessionId; otherwise generate a new one
-    if (initialHistory?.mode === 'resumed' && initialHistory.sessionId) {
+    // A manager/assembler-reserved ID is authoritative for every history mode.
+    if (initialHistory?.sessionId) {
       this.sessionId = initialHistory.sessionId;
     } else {
       this.sessionId = uuidv4();
@@ -262,10 +291,6 @@ export class Session {
 
     this.activeTurn = new ActiveTurn();
 
-    // Session starts with no tab binding (tabId = -1)
-    // Tab binding is handled by the UI when the side panel opens
-    this.sessionState.setTabId(-1);
-
     // Tool result persistence wiring (track 09).
     //
     // The replacementState's onRecord callback writes every persisted decision
@@ -303,7 +328,7 @@ export class Session {
     }
 
     // Handle initial history
-    const historyMode = initialHistory ?? { mode: 'new' as const };
+    const historyMode = initialHistory ?? { mode: 'new' as const, sessionId: this.sessionId };
 
 
     // For 'new' mode, SessionState is already initialized with empty history
@@ -324,11 +349,13 @@ export class Session {
         }
       }).catch(err => {
         console.error('Failed to initialize session:', err);
+        this.initError = err instanceof Error ? err : new Error(String(err));
       });
     } else if (this.isPersistent && historyMode.mode === 'resumed') {
       // Resume from existing rollout (note: initializeSession will also reconstruct history)
       this.initializationPromise = this.initializeSession('resume', this.sessionId, this.config).catch(err => {
         console.error('Failed to resume session:', err);
+        this.initError = err instanceof Error ? err : new Error(String(err));
       });
     } else if (!this.isPersistent && historyMode.mode !== 'new') {
       // Non-persistent child sessions (sub-agents, shadow agents, forks)
@@ -368,16 +395,13 @@ export class Session {
   async saveState(): Promise<void> {
     if (!this.services?.rollout) return;
 
-    // Record session metadata to rollout
-    // Include both cwd (for desktop) and tabId (for extension) so the
-    // session can be restored correctly in either runtime mode.
-    const tabId = this.sessionState.getTabId();
+    // Browser targets are runtime resources and are not persisted as Session
+    // ownership. Only durable identity belongs in session metadata.
     const sessionMetaItems: RolloutItem[] = [{
       type: 'session_meta',
       payload: {
         id: this.sessionId,
         timestamp: new Date().toISOString(),
-        ...(tabId > 0 ? { tabId } : {}),
         originator: 'chrome-extension',
         cliVersion: '1.0.0'
       }
@@ -509,7 +533,7 @@ export class Session {
     };
   }, services?: SessionServices, toolRegistry?: ToolRegistry): Session {
     // Create session with resumed history mode (no rollout items since we're importing directly)
-    const initialHistory: InitialHistory = { mode: 'new' }; // Use 'new' mode since we're setting state directly
+    const initialHistory: InitialHistory = { mode: 'new', sessionId: data.id }; // Use 'new' mode since we're setting state directly
     const session = new Session(undefined, true, services, toolRegistry, initialHistory);
 
     // Import SessionState
@@ -670,11 +694,127 @@ export class Session {
   }
 
   setShadowAgentScheduler(scheduler: ShadowAgentScheduler | null): void {
+    this.shadowPendingUnsubscribe?.();
+    this.shadowPendingUnsubscribe = null;
     this.shadowAgentScheduler = scheduler;
+    if (scheduler) {
+      this.shadowPendingUnsubscribe = scheduler.subscribePendingChanged(() => {
+        this.noteWorkMutation();
+      });
+    }
+    this.noteWorkMutation();
+  }
+
+  hasLiveBackgroundWork(): boolean {
+    return (this.activeTurn?.getTasks().size ?? 0) > 0
+      || this.runningTaskIds.size > 0
+      || this.shadowAgentScheduler?.hasPending() === true
+      || this.lifecycleWorkTokens.size > 0;
+  }
+
+  subscribeBackgroundWorkChanged(listener: (busy: boolean) => void): () => void {
+    this.backgroundWorkListeners.add(listener);
+    return () => this.backgroundWorkListeners.delete(listener);
+  }
+
+  reportDurabilityDegraded(reason: 'terminal-marker-write'): void {
+    const callback = this.services?.onDurabilityChanged;
+    if (!callback || this.disposeState === 'disposed') return;
+    queueMicrotask(() => {
+      if (this.disposeState === 'disposed') return;
+      Promise.resolve(callback(this.sessionId, 'degraded', reason)).catch((error) => {
+        console.warn('[Session] onDurabilityChanged failed:', error);
+      });
+    });
+  }
+
+  beginLifecycleWork(
+    kind: LifecycleWorkKind,
+    options: { abortAfterMs?: number } = {},
+  ): LifecycleWorkLease {
+    if (this.disposeState !== 'active') {
+      throw new Error(`Cannot start ${kind} work while session is ${this.disposeState}`);
+    }
+    const token = `${kind}:${crypto.randomUUID()}`;
+    const controller = new AbortController();
+    const entry: {
+      kind: LifecycleWorkKind;
+      controller: AbortController;
+      timer?: ReturnType<typeof setTimeout>;
+    } = { kind, controller };
+    this.lifecycleWorkTokens.set(token, entry);
+
+    let finished = false;
+    const finish = (): void => {
+      if (finished) return;
+      finished = true;
+      if (entry.timer) clearTimeout(entry.timer);
+      this.lifecycleWorkTokens.delete(token);
+      this.lifecycleWorkSettlements.delete(token);
+      this.noteWorkMutation();
+    };
+    if (options.abortAfterMs !== undefined) {
+      entry.timer = setTimeout(() => {
+        controller.abort(new Error(`${kind} lifecycle work exceeded ${options.abortAfterMs}ms`));
+        finish();
+      }, options.abortAfterMs);
+    }
+    this.noteWorkMutation();
+    return { token, signal: controller.signal, finish };
+  }
+
+  trackLifecycleWork<T>(lease: LifecycleWorkLease, work: Promise<T>): Promise<T> {
+    const settlement = work.finally(() => lease.finish());
+    this.lifecycleWorkSettlements.set(lease.token, settlement);
+    return settlement;
+  }
+
+  /** Abort and await detached lifecycle owners before a compat force-suspend. */
+  async cancelLifecycleWork(reason: string): Promise<void> {
+    for (const entry of this.lifecycleWorkTokens.values()) {
+      entry.controller.abort(new Error(reason));
+    }
+    if (this.lifecycleWorkSettlements.size > 0) {
+      await Promise.allSettled([...this.lifecycleWorkSettlements.values()]);
+    }
+  }
+
+  private finishRunningTask(subId: string): void {
+    if (!this.runningTaskIds.delete(subId)) return;
+    this.noteWorkMutation();
+  }
+
+  private noteWorkMutation(): void {
+    const busy = this.hasLiveBackgroundWork();
+    if (busy === this.lastBusy) return;
+    this.lastBusy = busy;
+    for (const listener of [...this.backgroundWorkListeners]) {
+      try {
+        listener(busy);
+      } catch (error) {
+        console.warn('[Session] background work listener failed:', error);
+      }
+    }
+    const callback = this.services?.onBackgroundWorkChanged;
+    if (!callback || this.disposeState === 'disposed') return;
+    queueMicrotask(() => {
+      if (this.disposeState === 'disposed') return;
+      Promise.resolve(callback(this.sessionId)).catch((error) => {
+        console.warn('[Session] onBackgroundWorkChanged failed:', error);
+      });
+    });
   }
 
   setShadowCompactPreparationEnabled(enabled: boolean): void {
     this.shadowCompactPrepareEnabled = enabled;
+  }
+
+  setPromptLoader(promptLoader: AgentPromptLoader): void {
+    this.promptLoader = promptLoader;
+  }
+
+  getPromptLoader(): AgentPromptLoader | null {
+    return this.promptLoader;
   }
 
   /**
@@ -833,7 +973,8 @@ export class Session {
    */
   async compact(
     trigger: CompactionTrigger = 'auto',
-    modelClient?: ModelClient
+    modelClient?: ModelClient,
+    signal?: AbortSignal,
   ): Promise<CompactionResult> {
     const items = this.sessionState.historySnapshot();
     const tokenInfo = this.getTokenUsageInfo();
@@ -872,10 +1013,16 @@ export class Session {
         sessionSummaryHook: this._sessionSummaryHook,
         shadowScheduler: this.shadowAgentScheduler ?? undefined,
         enableShadowPrepare: this.shadowCompactPrepareEnabled,
+        signal,
       },
     );
 
     if (result.success && result.newHistory) {
+      if (signal?.aborted || this.disposeState !== 'active') {
+        throw signal?.reason instanceof Error
+          ? signal.reason
+          : new DOMException('Compaction cancelled before commit', 'AbortError');
+      }
       // Replace history with compacted version from CompactService
       this.sessionState.replaceHistory(result.newHistory);
 
@@ -912,18 +1059,14 @@ export class Session {
   /**
    * Build initial context for review mode
    */
-  buildInitialContext(turnContext?: any): any[] {
-    // Replaced working directory with tab context
-    const tabId = turnContext?.tabId ?? -1;
-    const tabContext = tabId === -1 ? 'No tab bound' : `Tab ID: ${tabId}`;
-
+  buildInitialContext(_turnContext?: any): any[] {
     return [
       {
         role: 'system',
         content: [
           {
             type: 'input_text',
-            text: `Browser tab context: ${tabContext}`,
+            text: 'Browser context is resolved from this session\'s browser resources.',
           },
         ],
       },
@@ -971,40 +1114,6 @@ export class Session {
       storageStats: rolloutStats,
       persistent: this.isPersistent
     };
-  }
-
-  /**
-   * Reset session to initial state (for new conversation) using RolloutRecorder
-   */
-  async reset(): Promise<void> {
-    await this.closeMemoryService();
-
-    // Shutdown old RolloutRecorder if it exists
-    if (this.services?.rollout) {
-      try {
-        await this.services.rollout.shutdown();
-      } catch (error) {
-        console.error('Failed to shutdown old rollout recorder:', error);
-      }
-    }
-
-    // Clear conversation history
-    this.clearHistory();
-
-    // Track 23: a new conversation starts at $0 x402 spend (this session only)
-    resetX402SessionPayments(this.sessionId);
-
-    // Create new conversation ID
-    Object.assign(this, { sessionId: uuidv4() });
-
-    // Reset tab binding to -1 (unbound)
-    // Tab will be auto-bound by UI when side panel reopens
-    this.sessionState.setTabId(-1);
-
-    // Initialize new RolloutRecorder for the new conversation
-    if (this.isPersistent) {
-      await this.initializeSession('create', this.sessionId, this.config);
-    }
   }
 
   /**
@@ -1073,20 +1182,6 @@ export class Session {
    */
   getContentReplacementState(): ContentReplacementState | undefined {
     return this.replacementState;
-  }
-
-  /**
-   * Get current tab ID bound to this session
-   */
-  getTabId(): number {
-    return this.sessionState.getTabId();
-  }
-
-  /**
-   * Set tab ID for this session
-   */
-  setTabId(tabId: number): void {
-    this.sessionState.setTabId(tabId);
   }
 
   /**
@@ -1636,7 +1731,7 @@ export class Session {
    * Graceful shutdown
    */
   async shutdown(): Promise<void> {
-    await this.dispose({ reason: 'Shutdown' });
+    await this.dispose({ lifecycleReason: 'shutdown', abortReason: 'Shutdown' });
   }
 
   /**
@@ -1660,7 +1755,8 @@ export class Session {
 
   private async disposeCore(options: SessionDisposeOptions): Promise<void> {
     const {
-      reason = 'Shutdown',
+      lifecycleReason = 'shutdown',
+      abortReason = options.reason ?? 'Shutdown',
       abortTasks = true,
       recordCloseEvent = false,
       flushRollout = true,
@@ -1669,7 +1765,7 @@ export class Session {
 
     if (abortTasks) {
       try {
-        await this.abortAllTasks(reason);
+        await this.abortAllTasks(abortReason);
       } catch (err) {
         console.warn(
           '[Session] abortAllTasks failed during dispose:',
@@ -1678,6 +1774,10 @@ export class Session {
         this.activeTasks.clear();
         this.foregroundTaskId = null;
       }
+    }
+
+    for (const entry of this.lifecycleWorkTokens.values()) {
+      entry.controller.abort(new Error(`Session ${lifecycleReason}`));
     }
 
     try {
@@ -1692,7 +1792,7 @@ export class Session {
     // Track 05b: detach the session-summary hook (unregisters post-turn
     // callback + prompt extension). Safe to call without an attached hook.
     try {
-      this._sessionSummaryHook?.detach();
+      await this._sessionSummaryHook?.detach();
     } catch (err) {
       console.warn(
         '[Session] sessionSummaryHook.detach failed:',
@@ -1701,6 +1801,17 @@ export class Session {
     }
     this._sessionSummaryHook = null;
     this.postTurnHooks.length = 0;
+
+    if (this.lifecycleWorkSettlements.size > 0) {
+      await Promise.allSettled([...this.lifecycleWorkSettlements.values()]);
+    }
+    for (const entry of this.lifecycleWorkTokens.values()) {
+      if (entry.timer) clearTimeout(entry.timer);
+    }
+    this.lifecycleWorkTokens.clear();
+    this.lifecycleWorkSettlements.clear();
+    this.runningTaskIds.clear();
+    this.backgroundWorkListeners.clear();
 
     await this.closeMemoryService();
 
@@ -1721,6 +1832,8 @@ export class Session {
     }
 
     try {
+      this.shadowPendingUnsubscribe?.();
+      this.shadowPendingUnsubscribe = null;
       await this.shadowAgentScheduler?.shutdown();
     } catch (err) {
       console.warn(
@@ -2068,7 +2181,12 @@ export class Session {
       this.emitBackgroundTaskStateChanged(task.taskState, prevStatus);
       this.ensureEvictionTimer();
     }
-    this.fireTaskCompletedHook(subId, task.task.constructor.name).catch(() => {});
+    try {
+      await this.fireTaskCompletedHook(subId, task.task.constructor.name);
+    } catch (error) {
+      console.warn('[Session] TaskCompleted hook failed during abort:', error);
+    }
+    this.finishRunningTask(subId);
 
     // Emit TurnAborted event
     const event: Event = {
@@ -2118,6 +2236,8 @@ export class Session {
 
     // Drain the typed-task registry too
     this.activeTasks.clear();
+    this.runningTaskIds.clear();
+    this.noteWorkMutation();
     this.foregroundTaskId = null;
   }
 
@@ -2164,7 +2284,12 @@ export class Session {
       this.foregroundTaskId = null;
     }
     const taskType = this.activeTasks.get(subId)?.task.constructor.name;
-    this.fireTaskCompletedHook(subId, taskType).catch(() => {});
+    try {
+      await this.fireTaskCompletedHook(subId, taskType);
+    } catch (error) {
+      console.warn('[Session] TaskCompleted hook failed:', error);
+    }
+    this.finishRunningTask(subId);
     // Note: we leave the entry in activeTasks for the eviction grace window.
     // The eviction timer removes it once gates pass.
   }
@@ -2184,7 +2309,7 @@ export class Session {
     context: TurnContext,
     subId: string,
     input: InputItem[],
-    opts: { background?: boolean; scopedTabIds?: number[] } = {}
+    opts: { background?: boolean } = {}
   ): Promise<void> {
     // Track 04: foreground replacement no longer kills background tasks.
     // Only abort the prior foreground task if this spawn is foreground.
@@ -2198,40 +2323,13 @@ export class Session {
     // Create AbortController for cancellation
     const abortController = new AbortController();
 
-    // Fire TaskCreated hook (fire-and-forget)
-    if (this.hookDispatcher) {
-      this.hookDispatcher.fire('TaskCreated', {
-        hook_event_name: 'TaskCreated',
-        session_id: this.sessionId,
-        task_id: subId,
-        task_type: task.constructor.name,
-      }).catch(() => {});
-    }
-
-    // Create promise wrapper for task execution
-    const promise = (async (): Promise<string | null> => {
-      try {
-        // Execute task
-        const result = await task.run(this, context, subId, input);
-        // On success, call completion handler
-        await this.onTaskFinished(subId, result);
-
-        return result;
-      } catch (error) {
-        // On error, call abort handler
-        await this.onTaskAborted(subId, error);
-        return null;
-      }
-    })();
-
-    // Create RunningTask entry
+    // Register the task and liveness before the first async hook/task boundary.
     const runningTask: RunningTask = {
       kind: task.kind(),
       abortController,
       task,
-      promise,
+      promise: Promise.resolve(null),
       startTime: Date.now(),
-      scopedTabIds: opts.scopedTabIds,
     };
 
     // Register as new active task (creates new ActiveTurn and adds task)
@@ -2241,6 +2339,34 @@ export class Session {
     // SubAgentRunner.prepare will subsequently call registerTaskState to
     // populate the taskState + context fields for background sub-agents.
     this.activeTasks.set(subId, runningTask);
+
+    this.runningTaskIds.add(subId);
+    this.noteWorkMutation();
+
+    runningTask.promise = (async (): Promise<string | null> => {
+      try {
+        if (this.hookDispatcher) {
+          try {
+            await this.hookDispatcher.fire('TaskCreated', {
+              hook_event_name: 'TaskCreated',
+              session_id: this.sessionId,
+              task_id: subId,
+              task_type: task.constructor.name,
+            });
+          } catch (error) {
+            console.warn('[Session] TaskCreated hook failed:', error);
+          }
+        }
+        const result = await task.run(this, context, subId, input);
+        await this.onTaskFinished(subId, result);
+        return result;
+      } catch (error) {
+        await this.onTaskAborted(subId, error);
+        return null;
+      } finally {
+        this.finishRunningTask(subId);
+      }
+    })();
 
     // Execute asynchronously (fire-and-forget, don't await)
     // The promise will handle completion/abortion internally
@@ -2284,16 +2410,14 @@ export class Session {
    * a read-through projection.
    *
    * @param state - The typed task state. state.id must equal the runId.
-   * @param bits - Runtime bits: AgentContext for cancel propagation,
-   *               AbortController for per-task abort (synthetic path only),
-   *               scopedTabIds for tab-close granularity.
+   * @param bits - Runtime bits: AgentContext for cancel propagation and
+   *               AbortController for per-task abort (synthetic path only).
    */
   registerTaskState(
     state: BackgroundAgentTaskState,
     bits: {
       context: AgentContext;
       abortController?: AbortController;
-      scopedTabIds?: number[];
     }
   ): void {
     const existing = this.activeTasks.get(state.id);
@@ -2302,9 +2426,6 @@ export class Session {
       // `bits.abortController` is deliberately ignored — see JSDoc.
       existing.taskState = state;
       existing.context = bits.context;
-      if (bits.scopedTabIds !== undefined) {
-        existing.scopedTabIds = bits.scopedTabIds;
-      }
       this.emitBackgroundTaskStarted(state);
       return;
     }
@@ -2333,10 +2454,23 @@ export class Session {
       startTime: state.startTime,
       taskState: state,
       context: bits.context,
-      scopedTabIds: bits.scopedTabIds,
     };
     this.activeTasks.set(state.id, synthetic);
+    this.runningTaskIds.add(state.id);
+    this.noteWorkMutation();
     this.emitBackgroundTaskStarted(state);
+  }
+
+  /** Mark a child-engine task settled while retaining its terminal panel row. */
+  async completeTrackedBackgroundTask(id: string): Promise<void> {
+    const taskType = this.activeTasks.get(id)?.task.constructor.name;
+    try {
+      await this.fireTaskCompletedHook(id, taskType);
+    } catch (error) {
+      console.warn('[Session] background TaskCompleted hook failed:', error);
+    } finally {
+      this.finishRunningTask(id);
+    }
   }
 
   /**
@@ -2358,22 +2492,10 @@ export class Session {
       if (isEmpty) this.activeTurn = null;
     }
     this.activeTasks.delete(id);
+    this.finishRunningTask(id);
     if (this.foregroundTaskId === id) {
       this.foregroundTaskId = null;
     }
-  }
-
-  /**
-   * (Track 04 / Q9) Abort all tasks scoped to a specific tab. Used by the
-   * service worker when a working tab closes (chat-panel tab close still
-   * routes through abortAllTasks).
-   */
-  async abortTasksForTab(tabId: number, reason: TurnAbortReason): Promise<void> {
-    const toAbort: string[] = [];
-    for (const [id, t] of this.activeTasks) {
-      if (t.scopedTabIds?.includes(tabId)) toAbort.push(id);
-    }
-    await Promise.all(toAbort.map(id => this.abortTask(id, reason)));
   }
 
   /** (Track 04) Internal full-record listing — runtime + typed-state pairs. */
@@ -2751,13 +2873,14 @@ export class Session {
     // Stage 0 → 1: Generate title from the first user message
     if (this.titleGenerationStage === 0 && userMessageCount >= 1) {
       this.titleGenerationStage = 1;
+      const lease = this.beginLifecycleWork('title', { abortAfterMs: 30_000 });
 
       // Run title generation asynchronously with the first messages.
       // generateAndUpdateTitle resolves `false` on failure (TitleGenerator
       // swallows model errors into {success:false}, it does not throw), so a
       // then-branch reset is required for the next completion to retry — a
       // catch alone would never fire.
-      this.generateAndUpdateTitle(history, 2)
+      const work = this.generateAndUpdateTitle(history, 2, lease.signal)
         .then((ok) => {
           if (!ok) this.titleGenerationStage = 0;
         })
@@ -2766,13 +2889,15 @@ export class Session {
           // Reset to allow retry
           this.titleGenerationStage = 0;
         });
+      void this.trackLifecycleWork(lease, work);
     }
     // Stage 1 → 2: Regenerate title after 5 user messages (final)
     else if (this.titleGenerationStage === 1 && userMessageCount >= 5) {
       this.titleGenerationStage = 2;
+      const lease = this.beginLifecycleWork('title', { abortAfterMs: 30_000 });
 
       // Run title generation asynchronously with all 5 messages
-      this.generateAndUpdateTitle(history, 5)
+      const work = this.generateAndUpdateTitle(history, 5, lease.signal)
         .then((ok) => {
           if (!ok) this.titleGenerationStage = 1;
         })
@@ -2781,6 +2906,7 @@ export class Session {
           // Reset to stage 1 to allow retry
           this.titleGenerationStage = 1;
         });
+      void this.trackLifecycleWork(lease, work);
     }
   }
 
@@ -2794,7 +2920,11 @@ export class Session {
    *   completion checkpoint.
    * @private
    */
-  private async generateAndUpdateTitle(history: ResponseItem[], maxMessages: number): Promise<boolean> {
+  private async generateAndUpdateTitle(
+    history: ResponseItem[],
+    maxMessages: number,
+    signal?: AbortSignal,
+  ): Promise<boolean> {
     // Get model client for title generation (efficient model when available)
     const modelClient = await this.getEfficientModelClient();
     if (!modelClient) {
@@ -2814,6 +2944,10 @@ export class Session {
 
     if (result.success && result.title && this.services?.rollout) {
       try {
+        if (signal?.aborted || this.disposeState !== 'active') return false;
+        if (this.services.commitGeneratedTitle) {
+          return await this.services.commitGeneratedTitle(this.sessionId, result.title);
+        }
         await this.services.rollout.updateTitle(result.title);
         console.debug('[Session] Title updated (using %d messages):', maxMessages, result.title);
         return true;
@@ -2875,7 +3009,6 @@ export class Session {
    * task completion. Mirrors {@link maybeGenerateTitle}'s background pattern.
    */
   async maybeGenerateSuggestion(): Promise<void> {
-    const { getRuntimeProfile } = await import('@/runtime/profile');
     if (getRuntimeProfile() === 'server') {
       return;
     }
@@ -2889,24 +3022,40 @@ export class Session {
     if (this.suggestionGenerator.countAssistantTurns(history) < 2) {
       return;
     }
-    const modelClient = await this.getEfficientModelClient();
-    if (!modelClient) return;
-
     this.suggestionInFlight = true;
-    try {
-      const result = await this.suggestionGenerator.generateSuggestion(history, modelClient);
-      this.lastSuggestionAt = Date.now();
-      if (result.success && result.suggestion) {
-        await this.emitEvent({
-          id: crypto.randomUUID(),
-          msg: { type: 'PromptSuggestion', data: { suggestion: result.suggestion } },
-        });
-      } else if (!result.success) {
-        console.debug('[Session] Prompt suggestion generation failed:', result.error);
+    const lease = this.beginLifecycleWork('prompt-suggestion', { abortAfterMs: 30_000 });
+    const work = (async () => {
+      try {
+        const modelClient = await this.getEfficientModelClient();
+        if (!modelClient || lease.signal.aborted) return;
+        const result = await this.suggestionGenerator.generateSuggestion(history, modelClient);
+        if (lease.signal.aborted || this.disposeState !== 'active') return;
+        this.lastSuggestionAt = Date.now();
+        if (result.success && result.suggestion) {
+          await this.emitEvent({
+            id: crypto.randomUUID(),
+            msg: { type: 'PromptSuggestion', data: { suggestion: result.suggestion } },
+          });
+        } else if (!result.success) {
+          console.debug('[Session] Prompt suggestion generation failed:', result.error);
+        }
+      } finally {
+        this.suggestionInFlight = false;
       }
-    } finally {
-      this.suggestionInFlight = false;
+    })();
+    await this.trackLifecycleWork(lease, work);
+  }
+
+  /** Reserve every eligible detached continuation before TaskComplete is visible. */
+  schedulePostTurnContinuations(): void {
+    try {
+      this.maybeGenerateTitle();
+    } catch (error) {
+      console.debug('[Session] title continuation not scheduled:', error);
     }
+    void this.maybeGenerateSuggestion().catch((error) => {
+      console.debug('[Session] prompt suggestion error (ignored):', error);
+    });
   }
 
   /**
@@ -3150,9 +3299,11 @@ export class Session {
       // Forked session - reconstruct and persist
       this.reconstructHistoryFromRollout(initialHistory.rolloutItems);
 
-      // Persist forked history to new rollout
-      const history = this.sessionState.historySnapshot();
-      await this.persistRolloutResponseItems(history);
+      if (!initialHistory.historyAlreadyPersisted) {
+        // Immediate/ephemeral forks still copy their prefix during assembly.
+        const history = this.sessionState.historySnapshot();
+        await this.persistRolloutResponseItems(history);
+      }
     }
   }
 
@@ -3200,7 +3351,7 @@ export class Session {
    * @returns true if task exists in ActiveTurn
    */
   hasRunningTask(subId: string): boolean {
-    return this.activeTurn?.hasTask(subId) ?? false;
+    return this.runningTaskIds.has(subId);
   }
 
   /**
@@ -3268,7 +3419,12 @@ export class Session {
       this.foregroundTaskId = null;
     }
     const taskType = this.activeTasks.get(subId)?.task.constructor.name;
-    this.fireTaskCompletedHook(subId, taskType).catch(() => {});
+    try {
+      await this.fireTaskCompletedHook(subId, taskType);
+    } catch (hookError) {
+      console.warn('[Session] TaskCompleted hook failed after task error:', hookError);
+    }
+    this.finishRunningTask(subId);
 
     // Emit TurnAborted event (if eventEmitter is set)
     if (this.eventEmitter) {

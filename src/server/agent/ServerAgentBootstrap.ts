@@ -1,12 +1,12 @@
 /**
  * Server Agent Bootstrap
  *
- * Main orchestrator for server mode. Creates AgentRegistry with
+ * Main orchestrator for server mode. Creates SessionManager with
  * session-aware agent management, ServerChannel, ChannelManager,
  * connector loader, and maintenance timers.
  *
  * Pattern follows the extension service worker: no singleton agent,
- * all operations routed through AgentRegistry by sessionId.
+ * all operations routed through SessionManager by sessionId.
  *
  * @module server/agent/ServerAgentBootstrap
  */
@@ -19,9 +19,13 @@ import { AgentConfig, CREDENTIAL_SECURED_MARKER } from '@/config/AgentConfig';
 import { getConfigStorage, setConfigStorage } from '@/core/storage/ConfigStorageProvider';
 import { getCredentialStore } from '@/core/storage';
 import { AuthManager, type IAuthManager } from '@/core/models/types/Auth';
+import { createMutableAuthContext } from '@/core/auth/AuthContext';
+import type { AuthChangeReason } from '@/core/auth/AuthContext';
 import { FileConfigStorageProvider } from '../storage/FileConfigStorageProvider';
-import { configurePromptComposer } from '@/core/PromptLoader';
 import type { RuntimeContext } from '@/prompts/PromptComposer';
+import { ServerAgentAssembler } from './ServerAgentAssembler';
+import { ThreadIndexStore, loadRolloutSnapshot, refreshRolloutSnapshot } from '@/core/thread';
+import { SessionDeletionCoordinator } from '@/core/thread/SessionDeletionCoordinator';
 import type { Op } from '@/core/protocol/types';
 import type { SubmissionContext } from '@/core/channels/types';
 import { deriveInputOrigin } from '@/core/input/types';
@@ -67,7 +71,7 @@ import { schedulePeriodicSweep } from '../maintenance/toolResultCleanup';
 import { RolloutRecorder } from '@/storage/rollout';
 import { createSessionServices } from '@/core/session/state/SessionServices';
 import { registerUseSkillTool } from '@/core/skills/registerUseSkillTool';
-import { RuntimeStateController, accessStateFromReadyState } from '@/core/services/runtime-state';
+import { RuntimeStateController } from '@/core/services/runtime-state';
 import type { IMCPTool } from '@/core/mcp/types';
 
 // Handler registrations
@@ -96,7 +100,7 @@ import { ScheduleManager } from '@/core/scheduler/ScheduleManager';
 import { JobExecutor } from '@/core/scheduler/JobExecutor';
 
 // Session isolation
-import { AgentRegistry } from '@/core/registry/AgentRegistry';
+import { SessionManager } from '@/core/registry/SessionManager';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Singleton
@@ -118,7 +122,7 @@ export interface ServerAgentBootstrapOptions {
 // ─────────────────────────────────────────────────────────────────────────
 
 export class ServerAgentBootstrap {
-  private registry: AgentRegistry | null = null;
+  private registry: SessionManager | null = null;
   // Track 10: set in registerServices; read lazily by agentFactory to bind
   // per-session hook/agent plugin contributions. Null until services
   // register (the initial primary session, created before that, gets
@@ -147,6 +151,7 @@ export class ServerAgentBootstrap {
   private runningSchedulerJobId: string | null = null;
   private runningJobStartTime: number = 0;
   private currentAuthManager: IAuthManager | null = null;
+  private readonly authContext = createMutableAuthContext(null);
   private runtimeState: RuntimeStateController | null = null;
   // FR-6 (server decoupling): headless A2A delegation endpoint. The tap lets
   // the A2A bridge observe the agent event stream; turns are serialized via the
@@ -161,6 +166,11 @@ export class ServerAgentBootstrap {
   // expired/forked rollouts — only the extension had alarm-based cleanup).
   private rolloutTtlSweep: ReturnType<typeof setInterval> | null = null;
   private initialized = false;
+  private promptStaticContext: Readonly<Partial<RuntimeContext>> = Object.freeze({});
+  private threadIndexStore: ThreadIndexStore | null = null;
+  private deletionCoordinator: SessionDeletionCoordinator | null = null;
+  /** Explicit owner for the headless transport's default-session alias. */
+  private defaultSessionId: string | null = null;
 
   constructor(private readonly options: ServerAgentBootstrapOptions = {}) {}
 
@@ -213,7 +223,7 @@ export class ServerAgentBootstrap {
    * bounds connection count itself).
    */
   async createSession(): Promise<string> {
-    if (!this.registry) throw new Error('AgentRegistry not initialized');
+    if (!this.registry) throw new Error('SessionManager not initialized');
     const session = await this.registry.createSession({ type: 'api', internal: true });
     return session.sessionId;
   }
@@ -266,6 +276,7 @@ export class ServerAgentBootstrap {
           : new NodeSQLiteAdapter(dataDir);
         await tokenAdapter.initialize();
         TokenUsageStore.setAdapter(tokenAdapter);
+        this.threadIndexStore = new ThreadIndexStore(tokenAdapter);
       } catch (error) {
         console.warn('[ServerAgentBootstrap] TokenUsageStore initialization failed (non-fatal):', error);
       }
@@ -313,6 +324,10 @@ export class ServerAgentBootstrap {
 
       // 2. Get agent config
       const agentConfig = await AgentConfig.getInstance();
+      await this.threadIndexStore?.backfill({
+        rollouts: await (await RolloutRecorder.getProvider()).getAllMetadata(),
+        defaultMode: agentConfig.getConfig().preferences?.defaultMode,
+      });
 
       // 2b. Centralized telemetry: live privacy gate + the server sink
       // (existing emitLog → stdout + logs.tail; zero new transport).
@@ -331,28 +346,36 @@ export class ServerAgentBootstrap {
       this.channel = this.options.channel ?? new ServerChannel();
       const channelManager = getChannelManager();
 
-      // 5. Create AgentRegistry with factories
+      // 5. Create SessionManager with factories
       const { join } = await import('node:path');
       const serverRootDir = join(dataDir, 'sessions');
-      this.registry = new AgentRegistry({
+      this.registry = new SessionManager({
         maxConcurrent: 3,
-        agentFactory: async (cfg, initialHistory) => {
-          const platformAdapter = profile === 'desktop-runtime'
-            ? new (await import('@/desktop-runtime/platform/DesktopRuntimePlatformAdapter')).DesktopRuntimePlatformAdapter()
-            : new (await import('../platform/ServerPlatformAdapter')).ServerPlatformAdapter();
-          const services = await createSessionServices({
-            serverRootDir,
-          }, false);
-          const agent = new RepublicAgent(cfg, platformAdapter, initialHistory, undefined, undefined, services);
-          await agent.initialize();
-          if (this.currentAuthManager) {
-            agent.getModelClientFactory().setAuthManager(this.currentAuthManager);
-            await agent.refreshModelClient();
-          }
+        authContext: this.authContext,
+        lifecycleMode: profile === 'desktop-runtime' ? 'client' : 'eager',
+        threadIndexStore: this.threadIndexStore ?? undefined,
+        reconcileThreadIndex: async () => {
+          await this.threadIndexStore?.backfill({
+            rollouts: await (await RolloutRecorder.getProvider()).getAllMetadata(),
+            defaultMode: agentConfig.getConfig().preferences?.defaultMode,
+          });
+        },
+        loadRolloutSnapshot,
+        refreshRolloutSnapshot,
+        agentAssembler: new ServerAgentAssembler({
+          createPlatformAdapter: async (sessionId) => profile === 'desktop-runtime'
+            ? new (await import('@/desktop-runtime/platform/DesktopRuntimePlatformAdapter')).DesktopRuntimePlatformAdapter(sessionId)
+            : new (await import('../platform/ServerPlatformAdapter')).ServerPlatformAdapter(),
+          agentType: profile === 'desktop-runtime' ? 'workx-desktop' : 'workx-server',
+          promptStaticContext: this.promptStaticContext,
+          wireAgent: async (agent, input) => {
+          const cfg = input.config;
+          let subAgentRunner: import('@/tools/AgentTool/SubAgentRunner').SubAgentRunner | null = null;
+          const cleanupSteps: import('@/core/assembly/AgentAssembler').CleanupStep[] = [];
 
           if (profile === 'desktop-runtime') {
             // Approval gate — desktop parity with the extension wiring in
-            // AgentRegistry. The webview already renders ApprovalRequested
+            // SessionManager. The webview already renders ApprovalRequested
             // through the shared EventProcessor and returns ExecApproval ops
             // over the stdio channel; constructing the gate here is what
             // starts that round-trip. Deliberately NOT wrapped in try/catch:
@@ -405,10 +428,11 @@ export class ServerAgentBootstrap {
           if (engine) {
             try {
               const { registerSubAgentTool } = await import('@/tools/AgentTool/register');
-              const subAgentRunner = await registerSubAgentTool(engine);
+              subAgentRunner = await registerSubAgentTool(engine);
               if (this.skillRegistry) {
+                const runner = subAgentRunner;
                 this.skillRegistry.setValidationContextProvider(() => ({
-                  knownAgents: subAgentRunner.getTypes().map((t) => t.id),
+                  knownAgents: runner.getTypes().map((t) => t.id),
                 }));
               }
               console.log('[ServerAgentBootstrap] sub_agent tool registered');
@@ -435,7 +459,14 @@ export class ServerAgentBootstrap {
                   // immediately (claudy gh-36995). Teardown on session end is
                   // a documented follow-up; a stale binder for an ended
                   // session is a harmless no-op on prune.
-                  this.pluginRegistry.registerSessionBinder(binder);
+                  const unregister = this.pluginRegistry.registerSessionBinder(binder);
+                  cleanupSteps.push({
+                    id: 'plugin-binder',
+                    run: async () => {
+                      unregister();
+                      await binder.dispose();
+                    },
+                  });
                 } catch (bindErr) {
                   console.warn('[ServerAgentBootstrap] plugin session bind failed (non-fatal):', bindErr);
                 }
@@ -513,8 +544,14 @@ export class ServerAgentBootstrap {
             console.warn('[ServerAgentBootstrap] x402 capability wiring failed (non-fatal):', err);
           }
 
-          return agent;
-        },
+          return { subAgentRunner, cleanupSteps };
+          },
+        }),
+        assemblyServicesFactory: async () => createSessionServices({
+          serverRootDir,
+          commitGeneratedTitle: (sessionId, title) =>
+            this.registry?.commitGeneratedTitle(sessionId, title) ?? Promise.resolve(false),
+        }, false),
         eventDispatcherFactory: (sessionId) => (event) => {
           // Route to the channel that owns this session (UI vs app-server
           // isolation). Falls back to the primary channel for sessions with no
@@ -522,7 +559,12 @@ export class ServerAgentBootstrap {
           const targetChannelId =
             this.sessionOwners.get(sessionId) ?? this.primaryChannelId ?? this.channel?.channelId;
           if (targetChannelId) {
-            channelManager.dispatchEvent({ msg: event.msg, sessionId }, targetChannelId).catch((error) => {
+            channelManager.dispatchEvent({
+              msg: event.msg,
+              sessionId,
+              runtimeEpoch: event.runtimeEpoch,
+              eventSeq: event.eventSeq,
+            }, targetChannelId).catch((error) => {
               console.error('[ServerAgentBootstrap] Failed to dispatch event:', error);
             });
           }
@@ -548,10 +590,41 @@ export class ServerAgentBootstrap {
         },
       });
       this.registry.initialize(agentConfig);
+      if (this.threadIndexStore) {
+        this.deletionCoordinator = new SessionDeletionCoordinator({
+          index: this.threadIndexStore,
+          ensureNotLive: async (sessionId) => {
+            if (this.registry?.getSession(sessionId)) await this.registry.suspendSession(sessionId);
+          },
+          deleteRollout: (sessionId) => RolloutRecorder.deleteSession(sessionId),
+          deleteTokenUsage: async (sessionId) => {
+            const { TokenUsageStore } = await import('@/storage/TokenUsageStore');
+            await TokenUsageStore.getInstance().deleteSession(sessionId);
+          },
+          deleteLegacySession: async (sessionId) => {
+            this.sessionIndex?.delete(sessionId);
+            this.transcriptStore?.delete(sessionId);
+          },
+          deleteToolResults: async (sessionId) => {
+            const { rm } = await import('node:fs/promises');
+            const { join } = await import('node:path');
+            await rm(join(serverRootDir, sessionId, 'tool-results'), {
+              recursive: true,
+              force: true,
+            });
+          },
+          onPurged: (sessionId) => this.registry?.notifyThreadPurged(sessionId),
+        });
+        await this.deletionCoordinator.purgeDue();
+      }
+      await this.registry.recoverInterruptedTurns();
 
       // 6. Create initial primary session
-      const initialSession = await this.registry.createSession({ type: 'primary' });
-      console.log(`[ServerAgentBootstrap] Initial session created: ${initialSession.sessionId}`);
+      const initialSession = profile === 'desktop-runtime'
+        ? { sessionId: await this.registry.resolveSurfaceLessTarget() }
+        : await this.registry.createSession({ type: 'primary' });
+      this.defaultSessionId = initialSession.sessionId;
+      console.log(`[ServerAgentBootstrap] Initial session opened: ${initialSession.sessionId}`);
 
       // 7. Set agent handler — requires sessionId, no fallback
       const agentHandler: AgentHandler = async (op: Op, context: SubmissionContext) => {
@@ -559,11 +632,7 @@ export class ServerAgentBootstrap {
           throw new Error('No sessionId in submission context — cannot route operation');
         }
         if (!this.registry) {
-          throw new Error('AgentRegistry not initialized');
-        }
-        const targetSession = this.registry.getSession(context.sessionId);
-        if (!targetSession?.agent) {
-          throw new Error(`Session not found: ${context.sessionId}`);
+          throw new Error('SessionManager not initialized');
         }
         // Record channel ownership so agent events route to the originating
         // channel only (UI vs app-server isolation).
@@ -571,10 +640,24 @@ export class ServerAgentBootstrap {
         console.log('[ServerAgentBootstrap] Processing submission:', op.type, 'session:', context.sessionId);
         // Track 13: thread channel origin so the input funnel can apply the
         // bridge-safe slash gate (connector input must not leak raw /config).
-        await targetSession.agent.submitOperation(op, {
-          tabId: context.tabId,
-          origin: deriveInputOrigin(context),
-        });
+        if (op.type === 'UserInput') {
+          if (profile === 'desktop-runtime') {
+            throw new Error('UserInput must use the correlated session.submit service');
+          }
+          const targetSession = this.registry.getSession(context.sessionId);
+          if (!targetSession?.agent) throw new Error(`Session not found: ${context.sessionId}`);
+          await targetSession.agent.submitOperation(op, {
+            tabId: context.tabId,
+            origin: deriveInputOrigin(context),
+          });
+        } else if (op.type === 'ServiceRequest') {
+          throw new Error('ServiceRequest must use the service registry');
+        } else {
+          await this.registry.dispatchControl(context.sessionId, op, {
+            tabId: context.tabId,
+            origin: deriveInputOrigin(context),
+          });
+        }
       };
 
       channelManager.setAgentHandler(agentHandler);
@@ -611,10 +694,12 @@ export class ServerAgentBootstrap {
 
       // 9c. Track 15: periodic rollout TTL cleanup. Without this the server
       // never prunes expired/forked rollouts (every rewind makes a new one).
-      const ROLLOUT_TTL_SWEEP_MS = 6 * 60 * 60 * 1000; // 6h
-      const sweepRollouts = () =>
-        RolloutRecorder.cleanupExpired()
-          .then((n) => {
+      const ROLLOUT_TTL_SWEEP_MS = 2 * 60 * 60 * 1000;
+      const sweepRollouts = () => Promise.all([
+        RolloutRecorder.cleanupExpired(),
+        this.deletionCoordinator?.purgeDue() ?? Promise.resolve(0),
+      ])
+          .then(([n]) => {
             if (n > 0) console.log(`[ServerAgentBootstrap] Pruned ${n} expired rollout(s)`);
           })
           .catch((e) => console.error('[ServerAgentBootstrap] Rollout TTL cleanup failed:', e));
@@ -654,7 +739,9 @@ export class ServerAgentBootstrap {
       }
 
       // Update health status via first session in registry
-      const primarySession = this.registry.getPrimarySession();
+      const primarySession = this.defaultSessionId
+        ? this.registry.getSession(this.defaultSessionId)
+        : undefined;
       if (primarySession?.agent) {
         const readyState = await primarySession.agent.isReady();
         setHealthAgentStatus(readyState.ready);
@@ -693,7 +780,7 @@ export class ServerAgentBootstrap {
         watchConfig();
         onConfigReload((_newConfig) => {
           console.log('[ServerAgentBootstrap] Config reloaded');
-          // Hot-reload: iterate all sessions for refreshModelClient
+          // Reload once; SessionManager owns the all-settled live-graph sweep.
           this.handleConfigUpdate().catch((err) => {
             console.error('[ServerAgentBootstrap] Failed to handle config update:', err);
           });
@@ -764,34 +851,22 @@ export class ServerAgentBootstrap {
     }
   }
 
-  /**
-   * Handle configuration updates by iterating all sessions and hot-swapping
-   * their model clients.
-   */
+  /** Reload configuration; SessionManager is the sole live-graph subscriber. */
   private async handleConfigUpdate(): Promise<void> {
     if (!this.registry) return;
     const config = await AgentConfig.getInstance();
     await config.reload();
-    const effectiveApprovalConfig = config.getConfig().approval;
-    const applyApprovalConfig = (this.options.profile ?? 'server') === 'desktop-runtime'
-      ? (await import('@/desktop-runtime/approvalGate')).applyDesktopApprovalConfig
-      : null;
-    const sessions = this.registry.listSessions();
-    for (const s of sessions) {
-      if (s.state === 'terminated') continue;
-      const agentSession = this.registry.getSession(s.sessionId);
-      if (agentSession?.agent) {
-        const approvalGate = agentSession.agent.getToolRegistry().getApprovalGate();
-        if (applyApprovalConfig && approvalGate) {
-          applyApprovalConfig(approvalGate, effectiveApprovalConfig);
-        }
-        await agentSession.agent.hotSwapModelClient();
-      }
-    }
+    // SessionManager is the sole config subscriber and performs the allSettled sweep.
   }
 
   private async registerSkillsToolOnAgent(agent: RepublicAgent): Promise<void> {
     if (!this.skillRegistry) return;
+    const { SessionSkillView } = await import('@/core/skills/SessionSkillView');
+    const view = new SessionSkillView(this.skillRegistry, async () => {
+      const context = await agent.getPlatformAdapter().getCurrentPageContext?.();
+      return context?.currentDomain ?? null;
+    });
+    agent.getPromptLoader().registerExtension('skills', () => view.buildSystemPrompt());
     await registerUseSkillTool({
       toolRegistry: agent.getToolRegistry(),
       hookRegistry: agent.getHookRegistry(),
@@ -1246,8 +1321,8 @@ export class ServerAgentBootstrap {
               });
             }
           : undefined,
-        setAuthManager: profile === 'desktop-runtime' ? (authManager) => {
-          this.currentAuthManager = authManager;
+        updateAuthContext: profile === 'desktop-runtime' ? (authManager) => {
+          this.updateAuthManager(authManager);
         } : undefined,
         runtimeState,
         // Desktop runtime: persist approval config from the Settings picker
@@ -1283,8 +1358,8 @@ export class ServerAgentBootstrap {
             refreshAccessToken: () => this.refreshDesktopRuntimeSessionTokens(),
           });
         },
-        setAuthManager: (authManager) => {
-          this.currentAuthManager = authManager;
+        updateAuthContext: (authManager) => {
+          this.updateAuthManager(authManager);
         },
         getCredentialStore: () => getCredentialStore(),
         runtimeState,
@@ -1373,43 +1448,67 @@ export class ServerAgentBootstrap {
     return this.runtimeState;
   }
 
-  private async applyAuthManagerToSessions(authManager: IAuthManager | null): Promise<void> {
-    if (!this.registry) return;
-    for (const meta of this.registry.listSessions()) {
-      if (meta.state === 'terminated') continue;
-      const agentSession = this.registry.getSession(meta.sessionId);
-      if (!agentSession?.agent) continue;
-      agentSession.agent.getModelClientFactory().setAuthManager(authManager);
-      await agentSession.agent.refreshModelClient();
-    }
+  private updateAuthManager(
+    authManager: IAuthManager | null,
+    reason?: AuthChangeReason,
+  ): void {
+    const previous = this.currentAuthManager;
+    this.currentAuthManager = authManager;
+    this.authContext.update(
+      authManager,
+      reason ?? (authManager === null ? 'logout' : previous === null ? 'login' : 'routing'),
+    );
   }
 
   private async refreshDesktopRuntimeAccessState() {
-    if (!this.runtimeState || !this.registry) {
-      return this.runtimeState?.getAccessState();
+    if (!this.runtimeState) {
+      return undefined;
     }
-    const sessions = this.registry.listSessions();
-    const primary = sessions.find((s) => s.type === 'primary' && s.state !== 'terminated')
-      ?? sessions.find((s) => s.state !== 'terminated');
-    if (!primary) {
+    const config = await AgentConfig.getInstance();
+    const selectedModelKey = config.getConfig().selectedModelKey;
+    const selected = config.getModelByKey(selectedModelKey);
+    const provider = selected?.provider.name;
+    const model = selected?.model.name;
+    const auth = this.currentAuthManager;
+    const usesBackend = auth?.shouldUseBackend() ?? false;
+    if (usesBackend) {
+      const token = await auth?.getAccessToken().catch(() => null);
+      return this.runtimeState.setAccessState(token
+        ? {
+            status: 'ready',
+            mode: 'login',
+            ready: true,
+            provider,
+            model,
+          }
+        : {
+            status: 'needs_login',
+            mode: 'login',
+            ready: false,
+            provider,
+            model,
+            reason: 'Sign in to continue.',
+          });
+    }
+    if (!selected) {
       return this.runtimeState.setAccessState({
-        status: 'initializing',
-        mode: 'none',
+        status: 'error',
+        mode: 'api_key',
         ready: false,
-        reason: 'Agent session is initializing.',
+        reason: `Selected model is unavailable: ${selectedModelKey}`,
       });
     }
-    const agent = this.registry.getSession(primary.sessionId)?.agent;
-    if (!agent) {
-      return this.runtimeState.setAccessState({
-        status: 'initializing',
-        mode: 'none',
-        ready: false,
-        reason: 'Agent session is initializing.',
-      });
-    }
-    const ready = await agent.isReady();
-    return this.runtimeState.setAccessState(accessStateFromReadyState(ready));
+    const apiKey = await config.getProviderApiKey(selected.provider.id).catch(() => null);
+    return this.runtimeState.setAccessState(apiKey
+      ? { status: 'ready', mode: 'api_key', ready: true, provider, model }
+      : {
+          status: 'needs_api_key',
+          mode: 'api_key',
+          ready: false,
+          provider,
+          model,
+          reason: 'Configure an API key in Settings.',
+        });
   }
 
   /**
@@ -1652,8 +1751,7 @@ export class ServerAgentBootstrap {
         refreshAccessToken: () => this.refreshDesktopRuntimeSessionTokens(),
       },
     );
-    this.currentAuthManager = authManager;
-    await this.applyAuthManagerToSessions(authManager);
+    this.updateAuthManager(authManager, hasUsableLogin ? 'login' : 'routing');
 
     if (hadStoredAuth) {
       await this.runtimeState.setAuthState({
@@ -1702,6 +1800,7 @@ export class ServerAgentBootstrap {
       mcpManager,
       skillRegistry: this.skillRegistry ?? undefined,
       scheduler: this.scheduler ?? undefined,
+      lifecycle: this.registry ?? undefined,
     };
   }
 
@@ -1714,7 +1813,7 @@ export class ServerAgentBootstrap {
         if (!context.sessionId) {
           throw new Error('No sessionId — cannot route chat submission');
         }
-        if (!this.registry) throw new Error('AgentRegistry not initialized');
+        if (!this.registry) throw new Error('SessionManager not initialized');
         // A dedicated channel (e.g. the desktop app-server) submits against a
         // real, per-connection session id and owns its own event stream. The
         // primary chat surface instead submits under a connection alias
@@ -1729,7 +1828,9 @@ export class ServerAgentBootstrap {
         // than silently execute the request against the UI's live conversation.
         const targetSession =
           this.registry.getSession(context.sessionId) ??
-          (isDedicatedChannel ? undefined : this.registry.getPrimarySession());
+          (isDedicatedChannel || !this.defaultSessionId
+            ? undefined
+            : this.registry.getSession(this.defaultSessionId));
         if (!targetSession?.agent) throw new Error(`Session not found: ${context.sessionId}`);
         // Route this session's agent events back to the originating channel so a
         // dedicated connection receives its own stream (and the UI does not).
@@ -1979,8 +2080,8 @@ export class ServerAgentBootstrap {
       personaName: isDesktopRuntime ? undefined : getServerConfig().server.persona,
     };
 
-    configurePromptComposer(isDesktopRuntime ? 'workx-desktop' : 'workx-server', staticContext);
-    console.log(`[ServerAgentBootstrap] PromptComposer configured for ${isDesktopRuntime ? 'desktop runtime' : 'server'} mode`);
+    this.promptStaticContext = Object.freeze({ ...staticContext });
+    console.log(`[ServerAgentBootstrap] Prompt context configured for ${isDesktopRuntime ? 'desktop runtime' : 'server'} mode`);
   }
 
   /**
@@ -2050,17 +2151,14 @@ export class ServerAgentBootstrap {
           throw new Error(`Execution not found: ${executionId}`);
         }
 
-        const targetAgent = registryAgent;
-        if (!targetAgent) {
+        if (!registryAgent || !this.registry) {
           throw new Error('No agent available — cannot execute scheduled job');
         }
 
-        // submitOperation is fire-and-forget: it queues the operation, may abort
-        // a previous task (emitting TurnAborted), and returns before the new task
-        // completes. We set runningSchedulerJobId AFTER to avoid false-triggering
-        // handleSchedulerEventCompletion on the previous task's TurnAborted event.
-        await targetAgent.submitOperation(
-          {
+        const ack = await this.registry.enqueueSubmission({
+          sessionId,
+          clientMessageId: `scheduler:${executionId}`,
+          op: {
             type: 'UserInput',
             items: [{ type: 'text', text: execution.input }],
           },
@@ -2069,8 +2167,11 @@ export class ServerAgentBootstrap {
           //    degrades via systemNote, never aborts the turn.
           //  - Track 12 unattended: wait out 429/529 instead of
           //    hard-failing into scheduler.failJob() with no human.
-          { origin: { channel: 'scheduler' }, unattended: true }
-        );
+          context: { origin: { channel: 'scheduler' }, unattended: true },
+        });
+        if (ack.status === 'rejected') {
+          throw new Error(`Scheduled job submission rejected: ${ack.reason}`);
+        }
         this.runningSchedulerJobId = executionId;
         this.runningJobStartTime = Date.now();
       });
@@ -2081,7 +2182,7 @@ export class ServerAgentBootstrap {
       // 7b. Wire registry for session isolation in scheduled jobs
       if (this.registry) {
         this.scheduler.setRegistry(this.registry);
-        console.log('[ServerAgentBootstrap] AgentRegistry wired for scheduler session isolation');
+        console.log('[ServerAgentBootstrap] SessionManager wired for scheduler session isolation');
       }
 
       // 8. Start queue processor
@@ -2229,7 +2330,7 @@ export class ServerAgentBootstrap {
   // Accessors
   // ─────────────────────────────────────────────────────────────────────
 
-  getRegistry(): AgentRegistry | null {
+  getRegistry(): SessionManager | null {
     return this.registry;
   }
 
@@ -2259,7 +2360,9 @@ export class ServerAgentBootstrap {
         return run;
       },
       listToolNames: () => {
-        const registry = this.registry?.getPrimarySession()?.agent?.getToolRegistry();
+        const registry = this.registry && this.defaultSessionId
+          ? this.registry.getSession(this.defaultSessionId)?.agent?.getToolRegistry()
+          : undefined;
         if (!registry) return [];
         try {
           return registry
@@ -2285,7 +2388,13 @@ export class ServerAgentBootstrap {
       return { text: '', success: false, error: 'Agent registry not initialized' };
     }
 
-    const session = await this.registry.getOrCreatePrimarySession();
+    let session = this.defaultSessionId
+      ? this.registry.getSession(this.defaultSessionId)
+      : undefined;
+    if (!session || session.state === 'terminated') {
+      session = await this.registry.createSession({ type: 'primary' });
+      this.defaultSessionId = session.sessionId;
+    }
     const sessionId = session.sessionId;
 
     const op: Op = {
@@ -2423,6 +2532,7 @@ export class ServerAgentBootstrap {
     }
 
     this.channel = null;
+    this.defaultSessionId = null;
     this.initialized = false;
     console.log('[ServerAgentBootstrap] Shutdown complete');
   }

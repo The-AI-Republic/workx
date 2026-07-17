@@ -43,6 +43,10 @@ export type Op =
     type: 'UserInput';
     /** User input items */
     items: InputItem[];
+    /** Durable client correlation id used by lifecycle-managed submissions. */
+    clientMessageId?: string;
+    /** SHA-256 of the canonical input; supplied by the manager when available. */
+    inputDigest?: string;
   }
   | {
     type: 'UserTurn';

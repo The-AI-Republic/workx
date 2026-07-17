@@ -2,7 +2,7 @@
  * Desktop-runtime approval gate wiring.
  *
  * Mirrors the extension wiring (service-worker configureExtensionPlatform /
- * AgentRegistry extension branch): a risk-scored ApprovalGate over
+ * SessionManager extension branch): a risk-scored ApprovalGate over
  * ToolRegistry.execute, using the desktop rule set and desktop-relevant
  * enhancers. The desktop webview already renders ApprovalRequested events
  * through the shared EventProcessor and returns ExecApproval ops over the

@@ -38,6 +38,7 @@ describe('TurnManager hook runtime context', () => {
       sessionId: 'session-1',
       getSessionId: vi.fn(() => 'session-1'),
       getTabId: vi.fn(() => 42),
+      getToolRegistry: vi.fn(),
       getToolResultStore: vi.fn(() => undefined),
       getContentReplacementState: vi.fn(() => undefined),
       showRawAgentReasoning: vi.fn(() => false),
@@ -57,6 +58,12 @@ describe('TurnManager hook runtime context', () => {
       toolsConfig: { enable_all_tools: true, mcpTools: false } as never,
     });
     const toolRegistry = new ToolRegistry();
+    toolRegistry.setPageContextProvider(async () => ({
+      tabId: 42,
+      currentUrl: 'https://example.com/path?q=1',
+      currentDomain: 'example.com',
+    }));
+    session.getToolRegistry.mockReturnValue(toolRegistry);
     await toolRegistry.register(makeTool('browser_dom'), vi.fn(async () => ({ ok: true })));
 
     const hookRegistry = new HookRegistry();

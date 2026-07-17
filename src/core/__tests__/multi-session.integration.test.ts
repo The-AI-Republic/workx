@@ -4,8 +4,13 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { AgentRegistry } from '@/core/registry/AgentRegistry';
+import { SessionManager } from '@/core/registry/SessionManager';
 import type { SessionConfig } from '@/core/registry/types';
+import { lifecycleTestRegistryConfig } from '@/__test-utils__/lifecycleTestAssembler';
+
+function getTestRegistry(overrides = {}) {
+  return SessionManager.getInstance(lifecycleTestRegistryConfig(overrides));
+}
 
 // Mock dependencies
 vi.mock('@/core/RepublicAgent', () => ({
@@ -55,7 +60,7 @@ describe('Multi-Session Integration', () => {
   let mockConfig: any;
 
   beforeEach(() => {
-    AgentRegistry.resetInstance();
+    SessionManager.resetInstance();
     vi.clearAllMocks();
 
     // Re-set chrome mock after clearAllMocks
@@ -74,12 +79,12 @@ describe('Multi-Session Integration', () => {
   });
 
   afterEach(() => {
-    AgentRegistry.resetInstance();
+    SessionManager.resetInstance();
   });
 
   describe('US2: Agent Registry Manages Multiple Sessions', () => {
     it('creates multiple sessions with independent state', async () => {
-      const registry = AgentRegistry.getInstance();
+      const registry = getTestRegistry();
       registry.initialize(mockConfig);
 
       // Create primary session
@@ -114,12 +119,12 @@ describe('Multi-Session Integration', () => {
       expect(registry.getSession(scheduledSession1.sessionId)).toBe(scheduledSession1);
       expect(registry.getSession(scheduledSession2.sessionId)).toBe(scheduledSession2);
 
-      // Verify primary session is accessible via convenience method
-      expect(registry.getPrimarySession()).toBe(primarySession);
+      // Explicit IDs remain the only routing authority.
+      expect(registry.getSession(primarySession.sessionId)).toBe(primarySession);
     });
 
     it('enforces concurrent session limit', async () => {
-      const registry = AgentRegistry.getInstance({ maxConcurrent: 2 });
+      const registry = getTestRegistry({ maxConcurrent: 2 });
       registry.initialize(mockConfig);
 
       // Create sessions up to limit
@@ -137,7 +142,7 @@ describe('Multi-Session Integration', () => {
     });
 
     it('allows new sessions after removal', async () => {
-      const registry = AgentRegistry.getInstance({ maxConcurrent: 2 });
+      const registry = getTestRegistry({ maxConcurrent: 2 });
       registry.initialize(mockConfig);
 
       // Create sessions up to limit
@@ -158,7 +163,7 @@ describe('Multi-Session Integration', () => {
     });
 
     it('emits lifecycle events for session operations', async () => {
-      const registry = AgentRegistry.getInstance();
+      const registry = getTestRegistry();
       registry.initialize(mockConfig);
 
       const events: any[] = [];
@@ -202,55 +207,27 @@ describe('Multi-Session Integration', () => {
     });
 
     it('lists all sessions with metadata', async () => {
-      const registry = AgentRegistry.getInstance();
+      const registry = getTestRegistry();
       registry.initialize(mockConfig);
 
-      await registry.createSession({ type: 'primary', tabId: 42 });
-      await registry.createSession({
-        type: 'scheduled',
-        tabId: 43,
-      });
+      await registry.createSession({ type: 'primary' });
+      await registry.createSession({ type: 'scheduled' });
 
       const sessions = registry.listSessions();
 
       expect(sessions).toHaveLength(2);
       expect(sessions.find((s) => s.type === 'primary')).toMatchObject({
         type: 'primary',
-        tabId: 42,
         state: 'idle',
-        tabGroupName: 'workx_s_a',
       });
       expect(sessions.find((s) => s.type === 'scheduled')).toMatchObject({
         type: 'scheduled',
-        tabId: 43,
         state: 'idle',
-        tabGroupName: 'workx_s_b',
       });
     });
 
-    it('getOrCreatePrimarySession returns existing or creates new', async () => {
-      const registry = AgentRegistry.getInstance();
-      registry.initialize(mockConfig);
-
-      // First call creates primary session
-      const session1 = await registry.getOrCreatePrimarySession();
-      expect(session1.metadata.type).toBe('primary');
-
-      // Second call returns the same session
-      const session2 = await registry.getOrCreatePrimarySession();
-      expect(session2).toBe(session1);
-
-      // Remove primary session
-      await registry.removeSession(session1.sessionId);
-
-      // Next call creates new primary session
-      const session3 = await registry.getOrCreatePrimarySession();
-      expect(session3).not.toBe(session1);
-      expect(session3.metadata.type).toBe('primary');
-    });
-
     it('internal sessions bypass concurrent limit and are excluded from count', async () => {
-      const registry = AgentRegistry.getInstance({ maxConcurrent: 2 });
+      const registry = getTestRegistry({ maxConcurrent: 2 });
       registry.initialize(mockConfig);
 
       // Fill user-facing slots
@@ -275,7 +252,7 @@ describe('Multi-Session Integration', () => {
     });
 
     it('each session gets a unique sessionId from its agent', async () => {
-      const registry = AgentRegistry.getInstance();
+      const registry = getTestRegistry();
       registry.initialize(mockConfig);
 
       const s1 = await registry.createSession({ type: 'primary' });

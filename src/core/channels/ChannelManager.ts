@@ -199,6 +199,12 @@ export class ChannelManager {
                 service: op.service,
                 success: false,
                 error: error instanceof Error ? error.message : String(error),
+                errorCode: error && typeof error === 'object' && 'errorCode' in error
+                  ? String(error.errorCode)
+                  : undefined,
+                retryable: error && typeof error === 'object' && 'retryable' in error
+                  ? Boolean(error.retryable)
+                  : undefined,
               },
             },
             sessionId: context.sessionId,

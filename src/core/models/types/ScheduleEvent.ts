@@ -73,7 +73,7 @@ export interface ExecutionRecord {
   /** The input/prompt text for this execution (preserved for queued jobs) */
   input: string;
 
-  /** AgentRegistry session ID */
+  /** SessionManager session ID */
   sessionId: string | null;
 
   /** Execution lifecycle status */

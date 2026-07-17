@@ -2,7 +2,7 @@
  * Tests for session service handlers
  *
  * Verifies all session.* service handlers route correctly by sessionId,
- * enforce required parameters, and delegate to AgentSession/AgentRegistry.
+ * enforce required parameters, and delegate to AgentSession/SessionManager.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -55,7 +55,6 @@ function createMockDeps(overrides: Partial<SessionServiceDeps> = {}): SessionSer
       }),
       removeSession: vi.fn().mockResolvedValue(undefined),
       getSession: vi.fn().mockImplementation((id: string) => sessionMocks[id]),
-      getPrimarySession: vi.fn().mockReturnValue({ sessionId: 's1' }),
       setMaxConcurrent: vi.fn(),
     },
     ...overrides,
@@ -71,57 +70,8 @@ describe('session-services', () => {
     services = createSessionServices(deps);
   });
 
-  describe('session.getState', () => {
-    it('returns state for a valid sessionId', async () => {
-      const result = await services['session.getState']({ sessionId: 's1' }, ctx);
-
-      expect(result).toMatchObject({
-        sessionId: 's1',
-        isActiveTurn: false,
-        tabId: 42,
-        activeSessionCount: 2,
-        maxConcurrentSessions: 5,
-      });
-    });
-
-    it('throws when sessionId is missing', async () => {
-      await expect(services['session.getState']({}, ctx)).rejects.toThrow('sessionId is required');
-    });
-
-    it('throws when session not found', async () => {
-      await expect(services['session.getState']({ sessionId: 'unknown' }, ctx)).rejects.toThrow(
-        'Session not found: unknown'
-      );
-    });
-  });
-
-  describe('session.reset', () => {
-    it('resets session and calls resetTabs', async () => {
-      const resetTabs = vi.fn().mockResolvedValue(undefined);
-      deps = createMockDeps({ resetTabs });
-      services = createSessionServices(deps);
-
-      // Grab the session mock before calling reset (getSession returns same ref)
-      const session = deps.registry.getSession('s1');
-      const result = await services['session.reset']({ sessionId: 's1' }, ctx);
-
-      expect(session.reset).toHaveBeenCalled();
-      expect(resetTabs).toHaveBeenCalled();
-      expect(result).toHaveProperty('timestamp');
-    });
-
-    it('works without resetTabs callback', async () => {
-      const result = await services['session.reset']({ sessionId: 's1' }, ctx);
-      expect(result).toHaveProperty('timestamp');
-    });
-
-    it('throws for missing sessionId', async () => {
-      await expect(services['session.reset']({}, ctx)).rejects.toThrow('sessionId is required');
-    });
-  });
-
   describe('session.resume', () => {
-    it('loads history, closes primary, and creates session with resume config', async () => {
+    it('loads history and creates the resumed session without terminating another session', async () => {
       const loadRolloutHistory = vi.fn().mockResolvedValue({
         sessionId: 'conv-123',
         rolloutItems: [{ type: 'event_msg', payload: {} }],
@@ -133,9 +83,6 @@ describe('session-services', () => {
 
       // Should load rollout history
       expect(loadRolloutHistory).toHaveBeenCalledWith('conv-123');
-
-      // Should close the existing primary session first
-      expect(deps.registry.removeSession).toHaveBeenCalledWith('s1');
 
       // Should create new session with resume data
       expect(deps.registry.createSession).toHaveBeenCalledWith({
@@ -151,21 +98,6 @@ describe('session-services', () => {
         sessionId: 'conv-123',
         history: [{ role: 'user', content: 'resumed' }],
       });
-    });
-
-    it('skips closing when no primary session exists', async () => {
-      const loadRolloutHistory = vi.fn().mockResolvedValue({
-        sessionId: 'conv-123',
-        rolloutItems: [{ type: 'event_msg', payload: {} }],
-      });
-      deps = createMockDeps({ loadRolloutHistory });
-      (deps.registry.getPrimarySession as any).mockReturnValue(undefined);
-      services = createSessionServices(deps);
-
-      await services['session.resume']({ sessionId: 'conv-123' }, ctx);
-
-      expect(deps.registry.removeSession).not.toHaveBeenCalled();
-      expect(deps.registry.createSession).toHaveBeenCalled();
     });
 
     it('throws when loadRolloutHistory not provided', async () => {
@@ -222,11 +154,12 @@ describe('session-services', () => {
 
   describe('session.create', () => {
     it('creates a new session and returns its info', async () => {
+      const refreshModelClient = vi.fn().mockResolvedValue(undefined);
       // Make getSession return a session with agent for the newly created session
       (deps.registry.getSession as any).mockImplementation((id: string) => {
         if (id === 's-new') {
           return {
-            agent: { refreshModelClient: vi.fn().mockResolvedValue(undefined) },
+            agent: { refreshModelClient },
           };
         }
         return undefined;
@@ -235,6 +168,7 @@ describe('session-services', () => {
       const result = await services['session.create']({}, ctx);
 
       expect(deps.registry.createSession).toHaveBeenCalledWith({ type: 'primary' });
+      expect(refreshModelClient).not.toHaveBeenCalled();
       expect(result).toEqual({
         success: true,
         sessionId: 's-new',

@@ -11,9 +11,12 @@ import type {
   IStorageProvider,
   IScheduler,
   IBrowserController,
+  SessionBrowserResources,
+  BrowserTabDescriptor,
+  ForegroundGrant,
 } from '../../core/platform/IPlatformAdapter';
 import type { ToolRegistry } from '../../tools/ToolRegistry';
-import { TabManager } from '../../core/TabManager';
+import { getTabGroupRegistry, type TabGroupRegistry } from './TabGroupRegistry';
 
 export class ExtensionPlatformAdapter implements IPlatformAdapter {
   readonly platformId = 'extension' as const;
@@ -21,98 +24,67 @@ export class ExtensionPlatformAdapter implements IPlatformAdapter {
   readonly hasBrowserTools = true;
   readonly hasShellExec = false; // browser extension — no shell
 
-  private tabManager!: TabManager;
+  readonly browserResources: SessionBrowserResources;
+
+  constructor(
+    private readonly sessionId: string = crypto.randomUUID(),
+    private readonly tabGroups: TabGroupRegistry = getTabGroupRegistry(),
+    requestForeground?: (
+      tabId: number,
+      reason: 'login' | 'permission' | 'user-gesture',
+    ) => Promise<ForegroundGrant>,
+  ) {
+    this.browserResources = new ExtensionSessionBrowserResources(
+      sessionId,
+      tabGroups,
+      requestForeground,
+    );
+  }
 
   async initialize(): Promise<void> {
-    this.tabManager = TabManager.getInstance();
+    // Session browser resources are lazy and need no global bootstrap.
+  }
+
+  subscribeTabClosed(listener: (tabId: number) => void | Promise<void>): () => void {
+    return this.tabGroups.subscribeTabClosed(listener);
   }
 
   async createTab(options?: TabOptions): Promise<number> {
-    const createdTabId = await this.tabManager.createTab({
+    const tab = await this.browserResources.create({
       url: options?.url ?? 'about:blank',
-      active: options?.active ?? false,
+      active: false,
     });
-
-    if (!createdTabId) {
-      throw new Error('Failed to create tab: tab creation returned null');
-    }
-
-    // Manage tab groups (extension-specific behavior)
-    await this.tabManager.addTabToGroup(createdTabId);
-
-    return createdTabId;
+    return tab.tabId;
   }
 
   async closeTab(tabId: number): Promise<void> {
-    try {
-      await chrome.tabs.remove(tabId);
-    } catch {
-      // Tab may already be closed
-    }
-  }
-
-  async claimTabLease(tabId: number, sessionId: string, origin: 'agent' | 'user'): Promise<void> {
-    const { getTabLeaseStore, getLeaseLifecycleQueue, LEASE_QUEUE_KEY } = await import('../tools/browser/tabLeaseStore');
-    // Serialize on a single global key — the store is one shared blob, so a
-    // per-session key would let different sessions' read-modify-writes race.
-    await getLeaseLifecycleQueue().run(LEASE_QUEUE_KEY, () =>
-      getTabLeaseStore().claim({ tabId, sessionId, origin })
-    );
-  }
-
-  async releaseTabLease(tabId: number, sessionId: string): Promise<void> {
-    const { getTabLeaseStore, getLeaseLifecycleQueue, LEASE_QUEUE_KEY } = await import('../tools/browser/tabLeaseStore');
-    await getLeaseLifecycleQueue().run(LEASE_QUEUE_KEY, () =>
-      getTabLeaseStore().release(sessionId, tabId)
-    );
+    await this.browserResources.close(tabId);
   }
 
   async validateTab(tabId: number): Promise<TabValidationResult> {
-    const validation = await this.tabManager.validateTab(tabId);
-
-    if (validation.status === 'invalid') {
-      return { valid: false, reason: validation.reason as TabValidationResult['reason'] };
-    }
-    if (validation.status === 'checking') {
+    try {
+      await this.browserResources.getOwned(tabId);
+      return { valid: true };
+    } catch {
       return { valid: false, reason: 'not_found' };
     }
-    return { valid: true };
   }
 
-  async switchTab(fromTabId: number, toTabId: number): Promise<void> {
-    // Clear old tab from group
-    if (fromTabId !== -1) {
-      await this.tabManager.clearAllTabsFromGroup();
-    }
-    // Add new tab to group
-    await this.tabManager.addTabToGroup(toTabId);
+  async switchTab(_fromTabId: number, toTabId: number): Promise<void> {
+    // Switching the current target never releases another owned page.
+    await this.browserResources.claimExisting(toTabId, 'user');
+    await this.browserResources.setCurrent(toTabId);
+  }
+
+  async getCurrentPageContext(): Promise<{ tabId?: number; currentUrl?: string; currentDomain?: string }> {
+    const context = await this.browserResources.current();
+    return context
+      ? { tabId: context.tabId, currentUrl: context.url, currentDomain: context.hostname }
+      : {};
   }
 
   async getBrowserController(tabId: number): Promise<IBrowserController | null> {
-    return {
-      async navigate(url: string): Promise<void> {
-        await chrome.tabs.update(tabId, { url });
-      },
-      async getPageContent(): Promise<string> {
-        const [result] = await chrome.scripting.executeScript({
-          target: { tabId },
-          func: () => document.documentElement.outerHTML,
-        });
-        return (result?.result as string) ?? '';
-      },
-      async screenshot(): Promise<string> {
-        return await chrome.tabs.captureVisibleTab();
-      },
-      // Track 13: read the live page selection via the same chrome.scripting
-      // path used by getPageContent (no CDP needed in the extension).
-      async getSelectionText(): Promise<string> {
-        const [result] = await chrome.scripting.executeScript({
-          target: { tabId },
-          func: () => window.getSelection()?.toString() ?? '',
-        });
-        return (result?.result as string) ?? '';
-      },
-    };
+    return this.browserResources.controller(tabId);
   }
 
   async registerPlatformTools(
@@ -124,7 +96,7 @@ export class ExtensionPlatformAdapter implements IPlatformAdapter {
     await registerExtensionTools(registry, toolsConfig, {
       name: '',
       supportsImage: capabilities.supportsImage,
-    });
+    }, this.browserResources);
   }
 
   getConfigStorage(): IConfigStorage {
@@ -195,6 +167,125 @@ export class ExtensionPlatformAdapter implements IPlatformAdapter {
   }
 
   async dispose(): Promise<void> {
-    // Cleanup tab listeners
+    await this.browserResources.releaseAll();
+  }
+}
+
+class ExtensionSessionBrowserResources implements SessionBrowserResources {
+  constructor(
+    readonly sessionId: string,
+    private readonly groups: TabGroupRegistry,
+    private readonly requestForeground?: (
+      tabId: number,
+      reason: 'login' | 'permission' | 'user-gesture',
+    ) => Promise<ForegroundGrant>,
+  ) {}
+
+  current() {
+    return this.groups.browserContextFor(this.sessionId);
+  }
+
+  async listOwned(): Promise<BrowserTabDescriptor[]> {
+    const record = await this.groups.groupFor(this.sessionId);
+    if (!record) return [];
+    const rows = await Promise.all(record.tabIds.map((tabId) => this.describe(tabId).catch(() => null)));
+    return rows.filter((row): row is BrowserTabDescriptor => row !== null);
+  }
+
+  async claimExisting(tabId: number, origin: 'agent' | 'user'): Promise<BrowserTabDescriptor> {
+    await this.groups.claimExisting(this.sessionId, tabId, origin);
+    return this.describe(tabId);
+  }
+
+  async create(options: { url?: string; active?: false } = {}): Promise<BrowserTabDescriptor> {
+    const lease = await this.groups.createForSession(this.sessionId, {
+      url: options.url,
+      active: false,
+    });
+    return this.describe(lease.tabId);
+  }
+
+  async getOwned(tabId: number): Promise<BrowserTabDescriptor> {
+    if (!await this.groups.isOwned(this.sessionId, tabId)) {
+      throw new Error(`Tab ${tabId} is not owned by session ${this.sessionId}`);
+    }
+    return this.describe(tabId);
+  }
+
+  setCurrent(tabId: number): Promise<void> {
+    return this.groups.setCurrent(this.sessionId, tabId);
+  }
+
+  async navigate(tabId: number, url: string): Promise<BrowserTabDescriptor> {
+    await this.getOwned(tabId);
+    await chrome.tabs.update(tabId, { url });
+    await this.setCurrent(tabId);
+    return this.describe(tabId);
+  }
+
+  async reload(tabId: number, options?: { bypassCache?: boolean }): Promise<void> {
+    await this.getOwned(tabId);
+    await chrome.tabs.reload(tabId, { bypassCache: options?.bypassCache ?? false });
+  }
+
+  async close(tabId: number): Promise<void> {
+    await this.getOwned(tabId);
+    await chrome.tabs.remove(tabId).catch(() => undefined);
+    await this.groups.handleTabClosed(tabId);
+  }
+
+  async captureVisible(tabId: number, grant?: ForegroundGrant): Promise<string> {
+    await this.getOwned(tabId);
+    const effectiveGrant = grant ?? await this.requestForeground?.(tabId, 'user-gesture');
+    if (!effectiveGrant
+      || effectiveGrant.sessionId !== this.sessionId
+      || effectiveGrant.tabId !== tabId
+      || effectiveGrant.expiresAt <= Date.now()) {
+      throw new Error('FOREGROUND_REQUIRED');
+    }
+    await chrome.tabs.update(tabId, { active: true });
+    return chrome.tabs.captureVisibleTab();
+  }
+
+  async controller(tabId: number): Promise<IBrowserController | null> {
+    await this.getOwned(tabId);
+    const navigate = (url: string) => this.navigate(tabId, url);
+    const screenshot = () => this.captureVisible(tabId);
+    return {
+      async navigate(url: string): Promise<void> {
+        await navigate(url);
+      },
+      async getPageContent(): Promise<string> {
+        const [result] = await chrome.scripting.executeScript({
+          target: { tabId },
+          func: () => document.documentElement.outerHTML,
+        });
+        return (result?.result as string) ?? '';
+      },
+      screenshot,
+      async getSelectionText(): Promise<string> {
+        const [result] = await chrome.scripting.executeScript({
+          target: { tabId },
+          func: () => window.getSelection()?.toString() ?? '',
+        });
+        return (result?.result as string) ?? '';
+      },
+    };
+  }
+
+  releaseAll(): Promise<void> {
+    return this.groups.releaseAll(this.sessionId);
+  }
+
+  private async describe(tabId: number): Promise<BrowserTabDescriptor> {
+    const tab = await chrome.tabs.get(tabId);
+    const url = tab.url ?? '';
+    return {
+      tabId,
+      url,
+      hostname: /^https?:/i.test(url) ? new URL(url).hostname : '',
+      title: tab.title,
+      status: tab.status === 'loading' || tab.status === 'complete' ? tab.status : undefined,
+    };
   }
 }

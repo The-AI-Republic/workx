@@ -10,6 +10,9 @@ type MutableToolRuntimeContext = {
 
 interface RuntimeSessionLike {
   getTabId?(): number;
+  getToolRegistry?(): {
+    getCurrentPageContext?(): Promise<{ currentUrl?: string; currentDomain?: string }>;
+  } | null;
 }
 
 function parseDomain(url: string | undefined): string | undefined {
@@ -59,13 +62,10 @@ export async function getToolRuntimeContext(
   }
 
   try {
-    const chromeTabs = globalThis.chrome?.tabs;
-    if (chromeTabs?.get) {
-      const tab = await chromeTabs.get(tabId);
-      if (tab?.url) {
-        context.current_url = tab.url;
-        context.current_domain = parseDomain(tab.url);
-      }
+    const page = await session.getToolRegistry?.()?.getCurrentPageContext?.();
+    if (page?.currentUrl) {
+      context.current_url = page.currentUrl;
+      context.current_domain = page.currentDomain ?? parseDomain(page.currentUrl);
     }
   } catch {
     // Missing permissions, closed tabs, and headless runtimes all degrade to

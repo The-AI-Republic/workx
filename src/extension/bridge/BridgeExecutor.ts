@@ -19,7 +19,7 @@
  * tab" that tools operate on (tools receive it via `request.tabId` →
  * `metadata.tabId`), switched explicitly through the facade's tab actions.
  * Every tab the bridge works on is claimed in the shared
- * {@link TabLeaseStore} under the bridge's session id, so a concurrently
+ * {@link TabGroupRegistry} under the bridge's session id, so a concurrently
  * running extension agent session and the desktop-driven session cannot
  * stomp each other's tabs — same-tab contention surfaces as a clean
  * TAB_LEASED error to the desktop model.
@@ -29,17 +29,14 @@
 
 import { ToolRegistry } from '@/tools/ToolRegistry';
 import { registerExtensionTools } from '../tools/registerExtensionTools';
-import { TabLeasedError } from '@/core/TabLeaseStore';
-import { getTabLeaseStore, getLeaseLifecycleQueue, LEASE_QUEUE_KEY } from '../tools/browser/tabLeaseStore';
+import { ExtensionPlatformAdapter } from '../platform/ExtensionPlatformAdapter';
+import { getTabGroupRegistry, TabOwnedByAnotherSessionError } from '../platform/TabGroupRegistry';
 import type { NodeToolDescriptor } from '@workx/ws-server';
 import {
   LOCAL_BROWSER_TOOL,
   localBrowserToolDescriptor,
   mapLocalBrowserAction,
 } from './localBrowserTool';
-
-/** Stable lease/session identity for desktop-driven execution. */
-export const BRIDGE_SESSION_ID = 'bridge:desktop';
 
 /**
  * Cap one node.result payload well below the app-server's 1 MB default
@@ -90,15 +87,21 @@ export interface BridgeExecutionResult {
 }
 
 export class BridgeExecutor {
-  private registry: ToolRegistry | null = null;
-  private currentTabId: number | null = null;
-  private initPromise: Promise<ToolRegistry> | null = null;
+  private readonly registries = new Map<string, ToolRegistry>();
+  private readonly adapters = new Map<string, ExtensionPlatformAdapter>();
+  private readonly currentTabIds = new Map<string, number>();
+  private readonly initPromises = new Map<string, Promise<ToolRegistry>>();
+  private readonly pendingForeground = new Map<string, { tabId: number; reason: 'user-gesture' }>();
 
   /** Lazily build the dedicated tool registry (no approval gate — see module doc). */
-  private ensureRegistry(): Promise<ToolRegistry> {
-    if (this.registry) return Promise.resolve(this.registry);
-    if (!this.initPromise) {
-      this.initPromise = (async () => {
+  private ensureRegistry(sessionId: string): Promise<ToolRegistry> {
+    const current = this.registries.get(sessionId);
+    if (current) return Promise.resolve(current);
+    const existing = this.initPromises.get(sessionId);
+    if (existing) return existing;
+    const promise = (async () => {
+        const adapter = new ExtensionPlatformAdapter(sessionId);
+        await adapter.initialize();
         const registry = new ToolRegistry();
         await registerExtensionTools(
           registry,
@@ -106,12 +109,16 @@ export class BridgeExecutor {
           // supportsImage: screenshots are returned as data for the desktop
           // model to consume; the desktop side decides what to do with them.
           { name: 'bridge-executor', supportsImage: true },
+          adapter.browserResources,
         );
-        this.registry = registry;
+        this.adapters.set(sessionId, adapter);
+        this.registries.set(sessionId, registry);
         return registry;
       })();
-    }
-    return this.initPromise;
+    this.initPromises.set(sessionId, promise);
+    const clearPromise = () => this.initPromises.delete(sessionId);
+    void promise.then(clearPromise, clearPromise);
+    return promise;
   }
 
   /**
@@ -127,9 +134,27 @@ export class BridgeExecutor {
   async execute(
     toolName: string,
     parameters: Record<string, unknown>,
-    opts?: { invokeId?: string; timeoutMs?: number },
+    opts?: {
+      invokeId?: string;
+      timeoutMs?: number;
+      operation?: 'tool' | 'release-session' | 'browser-context';
+      sessionId?: string;
+      focusGrantId?: string;
+    },
   ): Promise<BridgeExecutionResult> {
     try {
+      const sessionId = opts?.sessionId;
+      if (!sessionId) {
+        return { ok: false, error: { code: 'SESSION_REQUIRED', message: 'Bridge sessionId is required' } };
+      }
+      if (opts.operation === 'release-session') {
+        await this.releaseSession(sessionId);
+        return { ok: true, result: { released: true } };
+      }
+      if (opts.operation === 'browser-context') {
+        return { ok: true, result: await this.getSessionBrowserContext(sessionId) };
+      }
+      const scopedParameters = { ...parameters };
       // Enforce the advertised surface: the desktop peer is token-trusted,
       // but the executor still refuses anything it never offered (the
       // underlying registry tools are reachable ONLY through the facade).
@@ -143,21 +168,21 @@ export class BridgeExecutor {
         };
       }
 
-      const invocation = mapLocalBrowserAction(parameters);
+      const invocation = mapLocalBrowserAction(scopedParameters);
       if (invocation.target === 'error') {
         return { ok: false, error: { code: invocation.code, message: invocation.message } };
       }
       if (invocation.target === 'tabs') {
-        return { ok: true, result: await this.handleTabsTool(invocation.params) };
+        return { ok: true, result: await this.handleTabsTool(sessionId, invocation.params) };
       }
 
-      const registry = await this.ensureRegistry();
+      const registry = await this.ensureRegistry(sessionId);
 
-      if (this.currentTabId === null) {
+      if (!this.currentTabIds.has(sessionId)) {
         if (invocation.autoOpenTab) {
           // navigate with no tab selected: open one instead of failing —
           // the tab-first precondition is a footgun for small models.
-          await this.handleTabsTool({ action: 'open' });
+          await this.handleTabsTool(sessionId, { action: 'open' });
         } else {
           return {
             ok: false,
@@ -170,17 +195,46 @@ export class BridgeExecutor {
           };
         }
       }
-      const tabId = this.currentTabId!;
+      const tabId = this.currentTabIds.get(sessionId)!;
+
+      const needsForeground = invocation.toolName === 'browser_dom'
+        && ['click', 'type', 'keypress'].includes(String(invocation.params.action));
+      if (needsForeground) {
+        const pending = this.pendingForeground.get(sessionId);
+        if (!opts?.focusGrantId) {
+          this.pendingForeground.set(sessionId, { tabId, reason: 'user-gesture' });
+          return {
+            ok: false,
+            error: {
+              code: 'FOREGROUND_REQUIRED',
+              message: 'This browser action needs the user-visible tab in the foreground.',
+              details: { tabId, reason: 'user-gesture' },
+            },
+          };
+        }
+        if (!pending || pending.tabId !== tabId) {
+          return {
+            ok: false,
+            error: {
+              code: 'INVALID_FOCUS_GRANT',
+              message: 'The foreground grant does not match this bridge session and tab.',
+            },
+          };
+        }
+        // One-shot consumption happens before the authorized focus side effect.
+        this.pendingForeground.delete(sessionId);
+        await chrome.tabs.update(tabId, { active: true });
+      }
 
       // Re-assert the lease before acting: the tab may have been closed (GC)
       // or stolen is impossible (claim by another session throws there, not
       // here) — re-claiming under our own session id just refreshes it.
-      await this.claimTab(tabId);
+      await this.claimTab(sessionId, tabId);
 
       const response = await registry.execute({
         toolName: invocation.toolName,
         parameters: invocation.params,
-        sessionId: BRIDGE_SESSION_ID,
+        sessionId,
         turnId: opts?.invokeId ?? `bridge_${Date.now()}`,
         callId: opts?.invokeId,
         tabId,
@@ -200,7 +254,7 @@ export class BridgeExecutor {
         },
       };
     } catch (err) {
-      if (err instanceof TabLeasedError) {
+      if (err instanceof TabOwnedByAnotherSessionError) {
         return {
           ok: false,
           error: {
@@ -220,13 +274,31 @@ export class BridgeExecutor {
 
   /** Release all bridge-held tab leases (desktop disconnected / bridge disabled). */
   async releaseAll(): Promise<void> {
-    this.currentTabId = null;
+    const sessionIds = [...this.currentTabIds.keys()];
+    await Promise.allSettled(sessionIds.map((sessionId) => this.releaseSession(sessionId)));
+  }
+
+  async releaseSession(sessionId: string): Promise<void> {
+    this.currentTabIds.delete(sessionId);
+    this.pendingForeground.delete(sessionId);
+    this.registries.delete(sessionId);
+    await this.adapters.get(sessionId)?.dispose().catch(() => undefined);
+    this.adapters.delete(sessionId);
+  }
+
+  async getSessionBrowserContext(sessionId: string): Promise<{
+    tabId: number;
+    url: string;
+    hostname: string;
+  } | null> {
+    const tabId = this.currentTabIds.get(sessionId);
+    if (tabId === undefined) return null;
     try {
-      await getLeaseLifecycleQueue().run(LEASE_QUEUE_KEY, () =>
-        getTabLeaseStore().releaseAll(BRIDGE_SESSION_ID),
-      );
-    } catch (err) {
-      console.warn('[BridgeExecutor] lease release failed:', err);
+      const tab = await chrome.tabs.get(tabId);
+      if (!tab.url || !/^https?:/i.test(tab.url)) return null;
+      return { tabId, url: tab.url, hostname: new URL(tab.url).hostname };
+    } catch {
+      return null;
     }
   }
 
@@ -234,28 +306,31 @@ export class BridgeExecutor {
   // browser_tabs
   // ───────────────────────────────────────────────────────────────────────
 
-  private async handleTabsTool(parameters: Record<string, unknown>): Promise<unknown> {
+  private async handleTabsTool(
+    sessionId: string,
+    parameters: Record<string, unknown>,
+  ): Promise<unknown> {
     const action = parameters.action as string;
     switch (action) {
       case 'list': {
         const tabs = await chrome.tabs.query({});
-        const store = getTabLeaseStore();
+        const groups = getTabGroupRegistry();
         const entries = await Promise.all(
           tabs
             .filter((t) => typeof t.id === 'number')
             .map(async (t) => {
-              const owner = await store.getOwner(t.id!).catch(() => null);
+              const owner = await groups.ownerOf(t.id!).catch(() => null);
               return {
                 tab_id: t.id!,
                 title: t.title ?? '',
                 url: t.url ?? '',
                 active: t.active === true,
                 window_id: t.windowId,
-                in_use_by_other_session: owner !== null && owner !== BRIDGE_SESSION_ID,
+                in_use_by_other_session: owner !== null && owner !== sessionId,
               };
             }),
         );
-        return { tabs: entries, current_tab_id: this.currentTabId };
+        return { tabs: entries, current_tab_id: this.currentTabIds.get(sessionId) ?? null };
       }
       case 'select': {
         const tabId = Number(parameters.tab_id);
@@ -264,27 +339,25 @@ export class BridgeExecutor {
         }
         const tab = await chrome.tabs.get(tabId).catch(() => null);
         if (!tab) throw new Error(`Tab ${tabId} not found`);
-        await this.claimTab(tabId);
-        this.currentTabId = tabId;
+        await this.ensureRegistry(sessionId);
+        await this.claimTab(sessionId, tabId, 'user');
+        await this.adapters.get(sessionId)!.browserResources.setCurrent(tabId);
+        this.currentTabIds.set(sessionId, tabId);
         return { selected: true, tab_id: tabId, title: tab.title ?? '', url: tab.url ?? '' };
       }
       case 'open': {
         const url = typeof parameters.url === 'string' && parameters.url.length > 0 ? parameters.url : 'about:blank';
         // Do not steal the user's focus — CDP-driven tools work on background tabs.
-        const tab = await chrome.tabs.create({ url, active: false });
-        if (typeof tab.id !== 'number') throw new Error('Failed to create tab');
-        await this.claimTab(tab.id);
-        this.currentTabId = tab.id;
-        return { opened: true, tab_id: tab.id, url };
+        await this.ensureRegistry(sessionId);
+        const tab = await this.adapters.get(sessionId)!.browserResources.create({ url, active: false });
+        this.currentTabIds.set(sessionId, tab.tabId);
+        return { opened: true, tab_id: tab.tabId, url };
       }
       case 'close': {
-        const tabId = this.currentTabId;
-        if (tabId === null) throw new Error('No tab is currently selected');
-        await chrome.tabs.remove(tabId).catch(() => undefined);
-        await getLeaseLifecycleQueue().run(LEASE_QUEUE_KEY, () =>
-          getTabLeaseStore().release(BRIDGE_SESSION_ID, tabId),
-        );
-        this.currentTabId = null;
+        const tabId = this.currentTabIds.get(sessionId);
+        if (tabId === undefined) throw new Error('No tab is currently selected');
+        await this.adapters.get(sessionId)?.browserResources.close(tabId).catch(() => undefined);
+        this.currentTabIds.delete(sessionId);
         return { closed: true, tab_id: tabId };
       }
       default:
@@ -292,9 +365,13 @@ export class BridgeExecutor {
     }
   }
 
-  private claimTab(tabId: number): Promise<void> {
-    return getLeaseLifecycleQueue().run(LEASE_QUEUE_KEY, () =>
-      getTabLeaseStore().claim({ tabId, sessionId: BRIDGE_SESSION_ID, origin: 'agent' }),
-    );
+  private async claimTab(
+    sessionId: string,
+    tabId: number,
+    origin: 'agent' | 'user' = 'agent',
+  ): Promise<void> {
+    await this.ensureRegistry(sessionId);
+    const resources = this.adapters.get(sessionId)!.browserResources;
+    await resources.claimExisting(tabId, origin);
   }
 }

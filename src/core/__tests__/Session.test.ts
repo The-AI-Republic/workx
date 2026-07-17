@@ -153,16 +153,12 @@ describe('Session', () => {
       expect(session.sessionId).toBe('my-custom-id');
     });
 
-    it('should generate new sessionId for new mode', () => {
+    it('should retain the authoritative sessionId for new mode', () => {
       const session = new Session(undefined, false, undefined, undefined, {
         mode: 'new',
+        sessionId: 'reserved-new-id',
       });
-      expect(session.sessionId).toBe('test-uuid-1');
-    });
-
-    it('should set tabId to -1 initially', () => {
-      const session = new Session(undefined, false);
-      expect(session.getTabId()).toBe(-1);
+      expect(session.sessionId).toBe('reserved-new-id');
     });
 
     it('should store services when provided', () => {
@@ -221,8 +217,10 @@ describe('Session', () => {
       try {
         const session = new Session(undefined, false, undefined, undefined, {
           mode: 'forked',
+          sessionId: 'fork-session',
           sourceConversationId: 'parent-session',
           rolloutItems: [],
+          historyAlreadyPersisted: false,
         });
         await expect(session.initialize()).rejects.toThrow('forked reconstruct failed');
         expect(consoleErr).toHaveBeenCalled();
@@ -795,28 +793,6 @@ describe('Session', () => {
       expect(session.getTask('bg-c')).toBeDefined();
     });
 
-    it('abortTasksForTab aborts only tasks scoped to the closed tab', async () => {
-      const onTab42 = makeMockTask({ run: vi.fn().mockImplementation(() => new Promise(() => {})) });
-      const onTab99 = makeMockTask({ run: vi.fn().mockImplementation(() => new Promise(() => {})) });
-      const unscoped = makeMockTask({ run: vi.fn().mockImplementation(() => new Promise(() => {})) });
-
-      await session.spawnTask(onTab42, turnContext, 't42', [], {
-        background: true,
-        scopedTabIds: [42],
-      });
-      await session.spawnTask(onTab99, turnContext, 't99', [], {
-        background: true,
-        scopedTabIds: [99],
-      });
-      await session.spawnTask(unscoped, turnContext, 'tn', [], { background: true });
-
-      await session.abortTasksForTab(42, 'TabClosed');
-
-      expect(onTab42.abort).toHaveBeenCalled();
-      expect(onTab99.abort).not.toHaveBeenCalled();
-      expect(unscoped.abort).not.toHaveBeenCalled();
-    });
-
     it('listActiveTasks + listTaskStates project correctly', async () => {
       const fg = makeMockTask({ run: vi.fn().mockImplementation(() => new Promise(() => {})) });
       await session.spawnTask(fg, turnContext, 'fg-1', []);
@@ -1056,32 +1032,6 @@ describe('Session', () => {
       expect(result).toHaveLength(2);
       expect((result[0] as any).role).toBe('user');
       expect((result[1] as any).role).toBe('assistant');
-    });
-  });
-
-  // =========================================================================
-  // Tab ID management
-  // =========================================================================
-  describe('Tab ID management', () => {
-    let session: Session;
-
-    beforeEach(() => {
-      session = new Session(undefined, false);
-    });
-
-    it('should start with tabId -1', () => {
-      expect(session.getTabId()).toBe(-1);
-    });
-
-    it('should update tabId via setTabId', () => {
-      session.setTabId(42);
-      expect(session.getTabId()).toBe(42);
-    });
-
-    it('should allow resetting tabId to -1', () => {
-      session.setTabId(10);
-      session.setTabId(-1);
-      expect(session.getTabId()).toBe(-1);
     });
   });
 
@@ -1343,21 +1293,22 @@ describe('Session', () => {
       session = new Session(undefined, false);
     });
 
-    it('should return system message with tab context', () => {
+    it('does not embed a caller-supplied raw tab id in core prompt context', () => {
       const context = session.buildInitialContext({ tabId: 5 });
       expect(context).toHaveLength(1);
       expect(context[0].role).toBe('system');
-      expect(context[0].content[0].text).toContain('Tab ID: 5');
+      expect(context[0].content[0].text).toContain("session's browser resources");
+      expect(context[0].content[0].text).not.toContain('Tab ID: 5');
     });
 
-    it('should indicate no tab bound when tabId is -1', () => {
+    it('uses the session-scoped browser resource contract for an unbound legacy tab', () => {
       const context = session.buildInitialContext({ tabId: -1 });
-      expect(context[0].content[0].text).toContain('No tab bound');
+      expect(context[0].content[0].text).toContain("session's browser resources");
     });
 
-    it('should default to no tab bound when no context provided', () => {
+    it('uses the session-scoped browser resource contract by default', () => {
       const context = session.buildInitialContext();
-      expect(context[0].content[0].text).toContain('No tab bound');
+      expect(context[0].content[0].text).toContain("session's browser resources");
     });
   });
 

@@ -1,7 +1,6 @@
 import type { ISkillProvider } from './SkillProvider';
 import type { Skill, SkillMeta, InvocationMode } from './types';
 import { substituteVariables, validateSkill, parseSkillMd, normalizeFrontmatter, projectMeta } from './SkillParser';
-import type { SkillDomainFilter } from './SkillDomainFilter';
 import type { SkillValidationContext } from './SkillParser';
 
 /** Built-in command names that skills cannot use */
@@ -20,16 +19,13 @@ const RESERVED_COMMAND_NAMES = new Set([
 export class SkillRegistry {
   private metas: SkillMeta[] = [];
   private provider: ISkillProvider;
-  private domainFilter: SkillDomainFilter | null = null;
   private getValidationContext?: () => SkillValidationContext | undefined;
 
   constructor(
     provider: ISkillProvider,
-    domainFilter?: SkillDomainFilter,
     getValidationContext?: () => SkillValidationContext | undefined,
   ) {
     this.provider = provider;
-    this.domainFilter = domainFilter ?? null;
     this.getValidationContext = getValidationContext;
   }
 
@@ -39,31 +35,22 @@ export class SkillRegistry {
     this.getValidationContext = getValidationContext;
   }
 
-  /** Track 03 Phase 3 — attach a domain filter (or replace one) post-construction. */
-  setDomainFilter(filter: SkillDomainFilter | null): void {
-    this.domainFilter = filter;
-    if (filter) filter.init(this.metas);
-  }
-
   // ── Discovery ───────────────────────────────────────────────────
 
   /** Discover all skills and load Level 1 metadata */
   async discover(): Promise<SkillMeta[]> {
     this.metas = await this.provider.listMeta();
-    if (this.domainFilter) this.domainFilter.init(this.metas);
     return this.metas;
   }
 
   /**
    * Get all skill metadata (cached from last discover()).
    *
-   * When a domain filter is attached, returns only the skills currently
-   * available for the active tab (unconditional + matching conditional).
-   * Without a filter, returns the full list (extension/desktop/server
-   * fallback).
+   * Prompt visibility is projected per live session by SessionSkillView;
+   * the shared catalog always returns the complete set.
    */
   getSkillMetas(): SkillMeta[] {
-    return this.domainFilter ? this.domainFilter.getAvailableSkills() : this.metas;
+    return this.metas;
   }
 
   /**
@@ -119,7 +106,7 @@ export class SkillRegistry {
    * Generate system prompt block for skills.
    * Lists auto-invocable skills and includes a generic instruction for /skill-name invocations.
    */
-  buildSkillsSystemPrompt(): string {
+  buildSkillsSystemPrompt(visibleMetas?: readonly SkillMeta[]): string {
     if (this.metas.length === 0) return '';
 
     const parts: string[] = [];
@@ -127,7 +114,9 @@ export class SkillRegistry {
     parts.push('When the user types a message starting with /skill-name, invoke that skill using the use_skill tool.');
     parts.push('Only invoke skills that are listed as available or explicitly loaded. Do not guess skill names. If no listed skill fits, proceed with normal tools.');
 
-    const autoSkills = this.getAutoInvocableSkills();
+    const autoSkills = (visibleMetas ?? this.getSkillMetas()).filter(
+      (skill) => (skill.invocationMode === 'auto' || skill.invocationMode === 'hybrid') && skill.trusted,
+    );
     if (autoSkills.length > 0) {
       const lines = autoSkills.map((s) => `- ${s.name}: ${s.description}`);
       parts.push(`\nAvailable skills for proactive use:\n${lines.join('\n')}`);
