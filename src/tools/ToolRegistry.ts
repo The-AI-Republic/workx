@@ -31,6 +31,7 @@ import {
   type ToolProgressCallback,
 } from './runtimeMetadata';
 import type { ToolExposureProfile, ToolRegistryExposureEntry } from './exposure';
+import type { BrowserPageContext } from '../core/platform/IPlatformAdapter';
 // Note: parseNodeId is dynamically imported in enrichDomParameters to keep
 // ToolRegistry cross-platform (extension-only DOM utils stay out of the
 // desktop/server bundles).
@@ -114,6 +115,7 @@ export class ToolRegistry {
   private approvalGate?: ApprovalGate;
   private preExecuteCheck?: PreExecuteCheck;
   private paymentCapability?: PaymentCapability;
+  private pageContextProvider?: () => Promise<BrowserPageContext>;
 
   constructor(eventCollector?: IEventCollector) {
     this.eventCollector = eventCollector;
@@ -132,6 +134,16 @@ export class ToolRegistry {
    */
   getApprovalGate(): ApprovalGate | undefined {
     return this.approvalGate;
+  }
+
+  /** Install the platform-specific source of browser page context used by approvals. */
+  setPageContextProvider(provider: (() => Promise<BrowserPageContext>) | undefined): void {
+    this.pageContextProvider = provider;
+  }
+
+  /** Resolve the current browser page without coupling core execution to a platform API. */
+  async getCurrentPageContext(): Promise<BrowserPageContext> {
+    return this.pageContextProvider ? this.pageContextProvider() : {};
   }
 
   /**

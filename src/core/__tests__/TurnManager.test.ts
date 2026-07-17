@@ -200,6 +200,101 @@ describe('TurnManager - executeToolCall tool lookup order', () => {
     expect(true).toBe(true); // Placeholder
   });
 
+  it('adds platform page context to browser approval metadata', async () => {
+    const browserToolDef = {
+      type: 'function' as const,
+      function: {
+        name: 'browser__click',
+        description: 'Click an element',
+        strict: false,
+        parameters: { type: 'object' as const, properties: {} },
+      },
+    };
+    (session as any).getTabId = vi.fn().mockReturnValue(1);
+    toolRegistry.setPageContextProvider(async () => ({
+      currentUrl: 'https://checkout.example/cart',
+      currentDomain: 'checkout.example',
+    }));
+    const executeSpy = vi.spyOn(toolRegistry, 'execute').mockResolvedValue({
+      success: true,
+      data: { clicked: true },
+      duration: 1,
+    });
+
+    await (turnManager as any).executeBrowserTool(browserToolDef, { uid: '42' });
+
+    expect(executeSpy).toHaveBeenCalledWith(expect.objectContaining({
+      toolName: 'browser__click',
+      metadata: expect.objectContaining({
+        currentUrl: 'https://checkout.example/cart',
+        currentDomain: 'checkout.example',
+      }),
+    }));
+  });
+
+  it('falls back to page context for relative requested URLs', async () => {
+    const browserToolDef = {
+      type: 'function' as const,
+      function: {
+        name: 'local_browser_tool',
+        description: 'Navigate relative to the current page',
+        strict: false,
+        parameters: { type: 'object' as const, properties: {} },
+      },
+    };
+    (session as any).getTabId = vi.fn().mockReturnValue(-1);
+    toolRegistry.setPageContextProvider(async () => ({
+      currentUrl: 'https://blocked.example/account',
+      currentDomain: 'blocked.example',
+    }));
+    const executeSpy = vi.spyOn(toolRegistry, 'execute').mockResolvedValue({
+      success: true,
+      data: { navigated: true },
+      duration: 1,
+    });
+
+    await (turnManager as any).executeBrowserTool(browserToolDef, {
+      action: 'navigate',
+      url: '/transfer',
+    });
+
+    expect(executeSpy).toHaveBeenCalledWith(expect.objectContaining({
+      metadata: expect.objectContaining({
+        currentUrl: 'https://blocked.example/account',
+        currentDomain: 'blocked.example',
+      }),
+    }));
+  });
+
+  it('treats a malformed page-context provider result as unavailable', async () => {
+    const browserToolDef = {
+      type: 'function' as const,
+      function: {
+        name: 'browser__click',
+        description: 'Click an element',
+        strict: false,
+        parameters: { type: 'object' as const, properties: {} },
+      },
+    };
+    (session as any).getTabId = vi.fn().mockReturnValue(-1);
+    toolRegistry.setPageContextProvider(async () => null as any);
+    const executeSpy = vi.spyOn(toolRegistry, 'execute').mockResolvedValue({
+      success: true,
+      data: { clicked: true },
+      duration: 1,
+    });
+
+    await expect(
+      (turnManager as any).executeBrowserTool(browserToolDef, { uid: '42' }),
+    ).resolves.toEqual({ clicked: true });
+    expect(executeSpy).toHaveBeenCalledWith(expect.objectContaining({
+      metadata: expect.objectContaining({
+        currentUrl: undefined,
+        currentDomain: undefined,
+      }),
+    }));
+  });
+
   it('should throw error when tool not found and MCP not supported', async () => {
     // Setup: Session without executeMcpTool method
     const sessionWithoutMcp = {

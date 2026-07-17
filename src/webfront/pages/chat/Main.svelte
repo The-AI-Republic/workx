@@ -595,7 +595,7 @@
       inputText: '',
       isProcessing: false,
       currentTabId: tabId,
-      eventProcessor: new EventProcessor(),
+      eventProcessor: new EventProcessor(sessionId),
     });
 
     // If this is the active thread, load into the UI
@@ -1051,7 +1051,7 @@
       inputText: '',
       isProcessing: false,
       currentTabId: -1,
-      eventProcessor: new EventProcessor(),
+      eventProcessor: new EventProcessor(newId),
     });
     activeSessionId = newId;
     threadStore.setActiveThread(newId);
@@ -1318,7 +1318,7 @@
         inputText: '',
         isProcessing: false,
         currentTabId: -1,
-        eventProcessor: new EventProcessor(),
+        eventProcessor: new EventProcessor(sessionId),
       };
       threadStates.set(sessionId, newState);
 
@@ -1402,7 +1402,7 @@
       inputText = '';
       isProcessing = false;
       currentTabId = -1;
-      eventProcessor = new EventProcessor();
+      eventProcessor = new EventProcessor(sessionId);
     }
 
     // Reset scroll position after loading new thread state
@@ -1518,7 +1518,7 @@
         inputText: '',
         isProcessing: false,
         currentTabId: -1,
-        eventProcessor: new EventProcessor(),
+        eventProcessor: new EventProcessor(sessionId),
       };
       threadStates.set(sessionId, state);
     }

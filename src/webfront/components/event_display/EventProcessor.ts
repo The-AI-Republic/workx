@@ -36,6 +36,8 @@ export class EventProcessor {
   private showReasoning: boolean = false;
   private maxOutputLines: number = 20;
 
+  constructor(private readonly sessionId?: string) {}
+
   /**
    * Process a single event and return a ProcessedEvent ready for UI display
    */
@@ -824,15 +826,18 @@ export class EventProcessor {
     alternativeText?: string
   ): void {
     getInitializedUIClient()
-      .then((client) => {
-        client.submitOp({
-          type: 'ExecApproval',
-          id,
-          decision,
-          ...(remember !== undefined && { remember }),
-          ...(alternativeText && { alternativeText }),
-        });
-      })
+      .then((client) =>
+        client.submitOp(
+          {
+            type: 'ExecApproval',
+            id,
+            decision,
+            ...(remember !== undefined && { remember }),
+            ...(alternativeText && { alternativeText }),
+          },
+          this.sessionId ? { sessionId: this.sessionId } : undefined
+        )
+      )
       .catch((error) => {
         console.error('[EventProcessor] Failed to send approval decision:', error);
       });

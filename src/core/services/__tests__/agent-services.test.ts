@@ -9,6 +9,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createAgentServices, type AgentServiceDeps } from '../agent-services';
 import type { SubmissionContext } from '@/core/channels/types';
 import type { IAuthManager } from '@/core/models/types/Auth';
+import {
+  __resetPolicyResolverForTests,
+  registerPolicySources,
+  resolveActivePolicy,
+} from '@/core/config/policy/PolicyResolver';
 
 const ctx = { channelId: 'test', channelType: 'sidepanel' } as SubmissionContext;
 
@@ -72,6 +77,7 @@ describe('createAgentServices', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    __resetPolicyResolverForTests();
     deps = createMockDeps();
     services = createAgentServices(deps);
   });
@@ -361,14 +367,14 @@ describe('createAgentServices', () => {
 
   describe('approval.updateConfig', () => {
     it('calls updateApprovalConfig and updates active sessions', async () => {
-      const config = { mode: 'strict', trustedDomains: ['a.com'], blockedDomains: ['b.com'] };
+      const config = { mode: 'balanced', trustedDomains: ['a.com'], blockedDomains: ['b.com'] };
       const result = await services['approval.updateConfig'](config, ctx);
       expect(result).toEqual({ success: true });
       expect(deps.updateApprovalConfig).toHaveBeenCalledWith(config);
 
       const agentSession = deps.registry.getSession('s1');
       const gate = agentSession.agent.getToolRegistry().getApprovalGate();
-      expect(gate.setMode).toHaveBeenCalledWith('strict');
+      expect(gate.setMode).toHaveBeenCalledWith('balanced');
       expect(gate.setTrustedDomains).toHaveBeenCalledWith(['a.com']);
       expect(gate.setBlockedDomains).toHaveBeenCalledWith(['b.com']);
     });
@@ -376,17 +382,17 @@ describe('createAgentServices', () => {
     it('works when updateApprovalConfig dep is not provided', async () => {
       const noDep = createMockDeps({ updateApprovalConfig: undefined });
       const svc = createAgentServices(noDep);
-      const result = await svc['approval.updateConfig']({ mode: 'auto' }, ctx);
+      const result = await svc['approval.updateConfig']({ mode: 'yolo' }, ctx);
       expect(result).toEqual({ success: true });
     });
 
     it('only sets fields that are present in the config', async () => {
-      const result = await services['approval.updateConfig']({ mode: 'permissive' }, ctx);
+      const result = await services['approval.updateConfig']({ mode: 'high_speed' }, ctx);
       expect(result).toEqual({ success: true });
 
       const agentSession = deps.registry.getSession('s1');
       const gate = agentSession.agent.getToolRegistry().getApprovalGate();
-      expect(gate.setMode).toHaveBeenCalledWith('permissive');
+      expect(gate.setMode).toHaveBeenCalledWith('high_speed');
       expect(gate.setTrustedDomains).not.toHaveBeenCalled();
       expect(gate.setBlockedDomains).not.toHaveBeenCalled();
     });
@@ -408,10 +414,10 @@ describe('createAgentServices', () => {
         },
       });
       const svc = createAgentServices(multiDeps);
-      await svc['approval.updateConfig']({ mode: 'strict' }, ctx);
+      await svc['approval.updateConfig']({ mode: 'balanced' }, ctx);
 
       const gate1 = activeAgent.getToolRegistry().getApprovalGate();
-      expect(gate1.setMode).toHaveBeenCalledWith('strict');
+      expect(gate1.setMode).toHaveBeenCalledWith('balanced');
       expect(terminatedAgent.getToolRegistry().getApprovalGate().setMode).not.toHaveBeenCalled();
     });
 
@@ -423,7 +429,7 @@ describe('createAgentServices', () => {
         },
       });
       const svc = createAgentServices(multiDeps);
-      const result = await svc['approval.updateConfig']({ mode: 'strict' }, ctx);
+      const result = await svc['approval.updateConfig']({ mode: 'balanced' }, ctx);
       expect(result).toEqual({ success: true });
     });
 
@@ -441,7 +447,7 @@ describe('createAgentServices', () => {
       });
       const svc = createAgentServices(multiDeps);
       // Should not throw when gate is null
-      const result = await svc['approval.updateConfig']({ mode: 'strict' }, ctx);
+      const result = await svc['approval.updateConfig']({ mode: 'balanced' }, ctx);
       expect(result).toEqual({ success: true });
     });
 
@@ -463,16 +469,54 @@ describe('createAgentServices', () => {
       });
       const svc = createAgentServices(multiDeps);
       await svc['approval.updateConfig'](
-        { mode: 'strict', trustedDomains: ['x.com'] },
+        { mode: 'balanced', trustedDomains: ['x.com'] },
         ctx,
       );
 
       const gate1 = agent1.getToolRegistry().getApprovalGate();
       const gate2 = agent2.getToolRegistry().getApprovalGate();
-      expect(gate1.setMode).toHaveBeenCalledWith('strict');
+      expect(gate1.setMode).toHaveBeenCalledWith('balanced');
       expect(gate1.setTrustedDomains).toHaveBeenCalledWith(['x.com']);
-      expect(gate2.setMode).toHaveBeenCalledWith('strict');
+      expect(gate2.setMode).toHaveBeenCalledWith('balanced');
       expect(gate2.setTrustedDomains).toHaveBeenCalledWith(['x.com']);
+    });
+
+    it('rejects malformed or unknown approval settings', async () => {
+      await expect(
+        services['approval.updateConfig']({ mode: 'strict' }, ctx),
+      ).rejects.toThrow('Invalid approval mode');
+      await expect(
+        services['approval.updateConfig']({ mode: 'balanced', surprise: true }, ctx),
+      ).rejects.toThrow('Unknown approval config field');
+      expect(deps.updateApprovalConfig).not.toHaveBeenCalled();
+    });
+
+    it('does not persist or apply managed approval fields', async () => {
+      registerPolicySources([{
+        origin: 'file',
+        load: async () => ({
+          values: { 'agent.approval.mode': 'high_speed' },
+          lockedKeys: ['agent.approval.mode'],
+          origin: 'file',
+        }),
+      }]);
+      await resolveActivePolicy();
+
+      const result = await services['approval.updateConfig'](
+        { mode: 'yolo', trustedDomains: ['allowed.example'] },
+        ctx,
+      );
+
+      expect(result).toEqual({
+        success: true,
+        ignoredLockedKeys: ['approval.mode'],
+      });
+      expect(deps.updateApprovalConfig).toHaveBeenCalledWith({
+        trustedDomains: ['allowed.example'],
+      });
+      const gate = deps.registry.getSession('s1').agent.getToolRegistry().getApprovalGate();
+      expect(gate.setMode).not.toHaveBeenCalled();
+      expect(gate.setTrustedDomains).toHaveBeenCalledWith(['allowed.example']);
     });
   });
 });

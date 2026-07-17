@@ -21,6 +21,11 @@ export interface ModelCapabilities {
   supportsReasoning?: boolean;
 }
 
+export interface BrowserPageContext {
+  currentUrl?: string;
+  currentDomain?: string;
+}
+
 export interface IConfigStorage {
   get(key: string): Promise<unknown>;
   set(key: string, value: unknown): Promise<void>;
@@ -82,6 +87,9 @@ export interface IPlatformAdapter {
    * setup (e.g., desktop MCP connection) do it here. Default: no-op.
    */
   ensureBrowserReady?(): Promise<void>;
+
+  /** Return the page currently targeted by browser tools, when available. */
+  getCurrentPageContext?(): Promise<BrowserPageContext>;
 
   /**
    * Set the tool registry and event emitter for lazy browser connection.

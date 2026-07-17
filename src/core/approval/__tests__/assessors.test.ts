@@ -573,37 +573,37 @@ describe('McpBrowserRiskAssessor', () => {
       expect(result.factors).toContain('Page navigation');
     });
 
-    it('scores browser__new_page as 20', () => {
+    it('scores browser__new_page as 35', () => {
       const result = assessor.assess('browser__new_page', {});
-      expect(result.score).toBe(20);
-      expect(result.level).toBe(RiskLevel.Low);
-      expect(result.action).toBe('auto_approve');
+      expect(result.score).toBe(35);
+      expect(result.level).toBe(RiskLevel.Medium);
+      expect(result.action).toBe('ask_user');
       expect(result.factors).toContain('Opening new page');
     });
 
-    it('scores browser__close_page as 30', () => {
+    it('scores browser__close_page as 40', () => {
       const result = assessor.assess('browser__close_page', {});
-      expect(result.score).toBe(30);
-      expect(result.level).toBe(RiskLevel.Low);
-      expect(result.action).toBe('auto_approve');
+      expect(result.score).toBe(40);
+      expect(result.level).toBe(RiskLevel.Medium);
+      expect(result.action).toBe('ask_user');
       expect(result.factors).toContain('Closing page');
     });
 
-    it('scores browser__keypress as 30', () => {
+    it('scores browser__keypress as 40', () => {
       const result = assessor.assess('browser__keypress', {});
-      expect(result.score).toBe(30);
-      expect(result.level).toBe(RiskLevel.Low);
-      expect(result.action).toBe('auto_approve');
+      expect(result.score).toBe(40);
+      expect(result.level).toBe(RiskLevel.Medium);
+      expect(result.action).toBe('ask_user');
       expect(result.factors).toContain('Keypress event');
     });
   });
 
   describe('click action', () => {
-    it('scores basic click as 10', () => {
+    it('scores basic click as 40', () => {
       const result = assessor.assess('browser__click', {});
-      expect(result.score).toBe(10);
-      expect(result.level).toBe(RiskLevel.None);
-      expect(result.action).toBe('auto_approve');
+      expect(result.score).toBe(40);
+      expect(result.level).toBe(RiskLevel.Medium);
+      expect(result.action).toBe('ask_user');
       expect(result.factors).toContain('Click action on page element');
     });
 
@@ -660,7 +660,7 @@ describe('McpBrowserRiskAssessor', () => {
 
     it('does not elevate click for non-matching metadata', () => {
       const result = assessor.assess('browser__click', { aria_label: 'Next Page' });
-      expect(result.score).toBe(10);
+      expect(result.score).toBe(40);
     });
 
     it('submit pattern is case-insensitive', () => {
@@ -676,17 +676,17 @@ describe('McpBrowserRiskAssessor', () => {
   });
 
   describe('type / fill action', () => {
-    it('scores browser__type as 40 (Medium)', () => {
+    it('scores browser__type as 50 (Medium)', () => {
       const result = assessor.assess('browser__type', { text: 'hello' });
-      expect(result.score).toBe(40);
+      expect(result.score).toBe(50);
       expect(result.level).toBe(RiskLevel.Medium);
       expect(result.action).toBe('ask_user');
       expect(result.factors).toContain('Typing into form field');
     });
 
-    it('scores browser__fill as 40 (Medium)', () => {
+    it('scores browser__fill as 50 (Medium)', () => {
       const result = assessor.assess('browser__fill', { text: 'hello' });
-      expect(result.score).toBe(40);
+      expect(result.score).toBe(50);
       expect(result.action).toBe('ask_user');
     });
 
@@ -718,7 +718,7 @@ describe('McpBrowserRiskAssessor', () => {
 
     it('does not elevate type for normal fields', () => {
       const result = assessor.assess('browser__type', { placeholder: 'Enter your name' });
-      expect(result.score).toBe(40);
+      expect(result.score).toBe(50);
     });
 
     it('sensitive field detection is case-insensitive', () => {
@@ -734,11 +734,11 @@ describe('McpBrowserRiskAssessor', () => {
   });
 
   describe('unknown MCP browser actions', () => {
-    it('scores an unknown action as 30 (Low)', () => {
+    it('scores an unknown action as 65 (High)', () => {
       const result = assessor.assess('browser__unknown_action', {});
-      expect(result.score).toBe(30);
-      expect(result.level).toBe(RiskLevel.Low);
-      expect(result.action).toBe('auto_approve');
+      expect(result.score).toBe(65);
+      expect(result.level).toBe(RiskLevel.High);
+      expect(result.action).toBe('ask_user');
     });
 
     it('includes action name in unknown factor', () => {
@@ -750,12 +750,12 @@ describe('McpBrowserRiskAssessor', () => {
   describe('tool name parsing', () => {
     it('extracts action from double-underscore prefixed name', () => {
       const result = assessor.assess('browser__click', {});
-      expect(result.score).toBe(10); // click
+      expect(result.score).toBe(40); // click
     });
 
     it('handles non-prefixed tool name by using entire name as action', () => {
       const result = assessor.assess('click', {});
-      expect(result.score).toBe(10);
+      expect(result.score).toBe(40);
     });
 
     it('handles triple-underscore separated name (takes last part)', () => {
@@ -767,7 +767,7 @@ describe('McpBrowserRiskAssessor', () => {
       const result = assessor.assess('', {});
       // '' split by __ => [''] => lastPart is '' => empty string
       // Not in risk map, not click, not type/fill => unknown action
-      expect(result.score).toBe(30);
+      expect(result.score).toBe(65);
     });
   });
 
@@ -780,8 +780,8 @@ describe('McpBrowserRiskAssessor', () => {
       });
       // "sub mit" contains "submit" only if concatenated without a separator that
       // breaks the pattern — but actually the fields are joined with space,
-      // so "sub mit" does not match /submit/. Should remain at 10.
-      expect(result.score).toBe(10);
+      // so "sub mit" does not match /submit/. Should remain at base click risk.
+      expect(result.score).toBe(40);
     });
 
     it('ignores non-string parameter values in element text extraction', () => {
@@ -792,7 +792,7 @@ describe('McpBrowserRiskAssessor', () => {
         role: true,
       });
       // All non-string values are filtered out, so no submit match
-      expect(result.score).toBe(10);
+      expect(result.score).toBe(40);
     });
   });
 
