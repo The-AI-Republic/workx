@@ -17,6 +17,8 @@ The model-facing surface is transport-neutral:
 
 The same `DataSourceRegistry` and `DataSourceConnector` contracts can register future native or MCP connectors without changing these tools or the context store. MCP execution itself remains outside this MVP.
 
+WorkX now also has a general on-demand managed component runtime under `~/.workx/components`, with DuckDB 1.5.4 as its first trusted component. It provides explicit installation consent, pinned platform artifacts, exact-size and SHA-256 verification, atomic install/repair, health checks, leases, bounded process execution, and ephemeral workspace lifecycle. This supplies the delivery foundation for future cross-source analysis; bounded staging and orchestration are still outside the SQL-query MVP.
+
 ## Implementation map
 
 - Core contracts, validation, persistence, secrets, registry, runtime, SQL policy, limits, and learning: `src/core/data-sources/`
@@ -25,6 +27,7 @@ The same `DataSourceRegistry` and `DataSourceConnector` contracts can register f
 - Runtime management services and desktop bootstrap: `src/core/services/data-sources-services.ts` and `src/desktop-runtime/`
 - Settings, context editor, query progress, notifications, View, and Undo: `src/webfront/settings/DataSourcesSettings.svelte` and `src/webfront/data-sources/`
 - Sidecar package verification: `scripts/build-desktop-runtime-sidecar.mjs`
+- Managed components, DuckDB catalog, runner, and workspaces: `src/core/components/`, `src/desktop-runtime/components/`, and `.ai_design/component_runtime/design.md`
 
 ## Safety properties
 

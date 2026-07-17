@@ -21,6 +21,7 @@
   import MemorySettings from '../../settings/MemorySettings.svelte';
   import KeyboardShortcutsSettings from '../../settings/KeyboardShortcutsSettings.svelte';
   import DataSourcesSettings from '../../settings/DataSourcesSettings.svelte';
+  import ComponentsSettings from '../../settings/ComponentsSettings.svelte';
   import { t } from '../../lib/i18n';
   import { uiTheme } from '../../stores/themeStore';
 
@@ -34,6 +35,7 @@
     | 'storage'
     | 'tools'
     | 'data-sources'
+    | 'components'
     | 'mcp-servers'
     | 'extension'
     | 'approval'
@@ -243,6 +245,8 @@
           initialSourceId={initialDataSourceId}
           initialTab={initialDataSourceTab}
         />
+      {:else if currentView === 'components'}
+        <ComponentsSettings onBack={handleBack} />
       {:else if currentView === 'mcp-servers'}
         <MCPSettings
           {settingsConfig}

@@ -553,7 +553,8 @@ export class ToolRegistry {
       // Approval gate check (if configured)
       if (this.approvalGate) {
         const isDataTool = request.toolName.startsWith('data_');
-        const dataTurnSnapshot = isDataTool
+        const hasDesktopTurnSnapshot = isDataTool || request.toolName.startsWith('component_');
+        const dataTurnSnapshot = hasDesktopTurnSnapshot
           ? (request.metadata?.dataTurnSnapshot as
               | import('@/core/data-sources').DataTurnSnapshot
               | undefined)
@@ -656,7 +657,8 @@ export class ToolRegistry {
       // other tool keeps the historical { tabId }-only metadata.
       const isFileTool = FILE_SEAM_TOOLS.has(request.toolName);
       const isDataTool = request.toolName.startsWith('data_');
-      const originalDataTurnSnapshot = isDataTool
+      const hasDesktopTurnSnapshot = isDataTool || request.toolName.startsWith('component_');
+      const originalDataTurnSnapshot = hasDesktopTurnSnapshot
         ? (request.metadata?.dataTurnSnapshot as
             | import('@/core/data-sources').DataTurnSnapshot
             | undefined)
@@ -678,7 +680,7 @@ export class ToolRegistry {
               ...(request.metadata ?? {}),
               tabId: request.tabId, // Pass tabId from request to tool via metadata
             }
-          : isDataTool
+          : hasDesktopTurnSnapshot
             ? {
                 tabId: request.tabId,
                 dataTurnSnapshot: dataTurnAccessSnapshot,

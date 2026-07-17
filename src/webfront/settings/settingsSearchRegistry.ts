@@ -25,6 +25,7 @@ export enum SettingsSection {
   STORAGE = 'storage',
   TOOLS = 'tools',
   DATA_SOURCES = 'data-sources',
+  COMPONENTS = 'components',
   MCP_SERVERS = 'mcp-servers',
   APPROVAL = 'approval',
   EXTENSION = 'extension',
@@ -45,11 +46,23 @@ export type NavigationView =
   | 'storage'
   | 'tools'
   | 'data-sources'
+  | 'components'
   | 'mcp-servers'
   | 'approval'
   | 'extension';
 
 export const settingsRegistry: SettingsSearchItem[] = [
+  {
+    id: 'components.manage',
+    labelKey: 'Components',
+    descriptionKey: 'Install optional local tools and runtimes privately for WorkX.',
+    section: SettingsSection.COMPONENTS,
+    sectionLabelKey: 'Components',
+    keywords: ['component', 'runtime', 'duckdb', 'install', 'local tool', 'python'],
+    navigationTarget: 'components',
+    elementId: 'components-title',
+    conditional: { type: 'platform', value: 'desktop' },
+  },
   {
     id: 'dataSources.manage',
     labelKey: 'Data Sources',

@@ -56,6 +56,10 @@ export interface RiskAssessment {
   factors: string[];
   /** Recommended action based on score */
   action: ApprovalDecision;
+  /** Require a fresh human response even when the session is in YOLO mode. */
+  requiresExplicitUserApproval?: boolean;
+  /** Trusted-context denial that policy rules and YOLO mode cannot weaken. */
+  hardDeny?: boolean;
 }
 
 /**

@@ -2140,6 +2140,18 @@
   "Connect_read_only_databases_for_AI_assis_fa3e": {
     "message": "Connect read-only databases for AI-assisted analysis"
   },
+  "Components": {
+    "message": "Components"
+  },
+  "Install_optional_local_capabilities_priv_04d3": {
+    "message": "Install optional local capabilities privately for WorkX."
+  },
+  "Install_optional_local_tools_and_runtime_fb71": {
+    "message": "Install optional local tools and runtimes for WorkX"
+  },
+  "Install_optional_local_tools_and_runtime_5aa4": {
+    "message": "Install optional local tools and runtimes privately for WorkX."
+  },
   "Data_context_saved": {
     "message": "Data context saved"
   },

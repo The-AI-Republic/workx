@@ -156,6 +156,9 @@ export class ServerAgentBootstrap {
   private runtimeState: RuntimeStateController | null = null;
   private dataSourceRuntimeHandle: import('@/core/data-sources').DataSourceRuntimeHandle | null =
     null;
+  private componentRuntimeHandle: import('@/core/components').ComponentRuntimeHandle | null = null;
+  private componentRuntime: import('@/desktop-runtime/components').DesktopComponentRuntime | null =
+    null;
   // FR-6 (server decoupling): headless A2A delegation endpoint. The tap lets
   // the A2A bridge observe the agent event stream; turns are serialized via the
   // chain so concurrent delegations don't collide on the shared primary session.
@@ -259,7 +262,6 @@ export class ServerAgentBootstrap {
       this.options.dataDir ??
       process.env.WORKX_DATA_DIR ??
       `${process.env.HOME ?? process.env.USERPROFILE ?? '/tmp'}/.workx-server/data`;
-
     try {
       // 0. Initialize StorageProvider (used by subsystems)
       const {
@@ -323,6 +325,21 @@ export class ServerAgentBootstrap {
       }
 
       if (profile === 'desktop-runtime') {
+        const { ComponentRuntimeHandle } = await import('@/core/components');
+        this.componentRuntimeHandle = new ComponentRuntimeHandle();
+        try {
+          const { createDesktopComponentRuntime } =
+            await import('@/desktop-runtime/components/createDesktopComponentRuntime');
+          this.componentRuntime = await createDesktopComponentRuntime();
+          this.componentRuntimeHandle.setReady(this.componentRuntime.manager);
+        } catch (error) {
+          console.warn(
+            '[ServerAgentBootstrap] Component runtime initialization failed (non-fatal):',
+            error instanceof Error ? error.message : String(error)
+          );
+          this.componentRuntimeHandle.setUnavailable('COMPONENTS_UNAVAILABLE');
+        }
+
         const { DataSourceRuntimeHandle, DataSourceError } = await import('@/core/data-sources');
         this.dataSourceRuntimeHandle = new DataSourceRuntimeHandle();
         try {
@@ -412,7 +429,8 @@ export class ServerAgentBootstrap {
               ? new (
                   await import('@/desktop-runtime/platform/DesktopRuntimePlatformAdapter')
                 ).DesktopRuntimePlatformAdapter(
-                  this.dataSourceRuntimeHandle?.getRuntime() ?? undefined
+                  this.dataSourceRuntimeHandle?.getRuntime() ?? undefined,
+                  this.componentRuntimeHandle?.getManager() ?? undefined
                 )
               : new (await import('../platform/ServerPlatformAdapter')).ServerPlatformAdapter();
           const services = await createSessionServices(
@@ -1015,7 +1033,6 @@ export class ServerAgentBootstrap {
     // follow-up; PluginRegistry surfaces them as capability gaps for now.
     let pluginsDeps: import('@/core/services').PluginsServiceDeps | undefined;
     try {
-      const os = await import('node:os');
       const path = await import('node:path');
       const { NodePluginProvider } = await import('@/server/storage/NodePluginProvider');
       const { nodeReadFile, nodeListDirs } = await import('@/server/storage/nodePluginFs');
@@ -1023,8 +1040,10 @@ export class ServerAgentBootstrap {
       const { SkillSlotLoader } = await import('@/core/plugins/loaders/SkillSlotLoader');
       const { McpSlotLoader } = await import('@/core/plugins/loaders/McpSlotLoader');
       const { AgentConfig } = await import('@/config/AgentConfig');
+      const { resolveWorkXHome } = await import('@/runtime/workxHome');
+      const workxHome = resolveWorkXHome();
 
-      const pluginsRoot = path.join(os.homedir(), '.workx', 'plugins');
+      const pluginsRoot = path.join(workxHome, 'plugins');
       const provider = new NodePluginProvider(pluginsRoot);
       await provider.initialize();
 
@@ -1192,7 +1211,7 @@ export class ServerAgentBootstrap {
           await fsmod.promises.mkdir(nodePath.dirname(p), { recursive: true });
           await fsmod.promises.writeFile(p, c, 'utf-8');
         },
-        filePath: nodePath.join(os.homedir(), '.workx', 'installed_plugins_v2.json'),
+        filePath: nodePath.join(workxHome, 'installed_plugins_v2.json'),
       });
 
       const fetchPlugin = createGitFetchPlugin(
@@ -1235,7 +1254,7 @@ export class ServerAgentBootstrap {
       // 7-day GC sweep removes dirs later. Wire a PluginCache over Node fs.
       const { PluginCache } = await import('@/core/plugins/PluginCache');
       const fsmod = await import('node:fs');
-      const pluginCache = new PluginCache(nodePath.join(os.homedir(), '.workx'), {
+      const pluginCache = new PluginCache(workxHome, {
         readText: async (p: string) => {
           try {
             return await fsmod.promises.readFile(p, 'utf-8');
@@ -1508,6 +1527,10 @@ export class ServerAgentBootstrap {
       dataSources:
         profile === 'desktop-runtime' && this.dataSourceRuntimeHandle
           ? { handle: this.dataSourceRuntimeHandle }
+          : undefined,
+      components:
+        profile === 'desktop-runtime' && this.componentRuntimeHandle
+          ? { handle: this.componentRuntimeHandle }
           : undefined,
     });
 
@@ -2158,6 +2181,8 @@ export class ServerAgentBootstrap {
   private async configurePrompt(): Promise<void> {
     const os = await import('node:os');
     const homeDir = os.homedir();
+    const { resolveWorkXHome } = await import('@/runtime/workxHome');
+    const workxHome = resolveWorkXHome();
 
     // Track 24.2: register filesystem persona overrides (user dir lowest,
     // project dir highest precedence; both overlay built-ins), then pin the
@@ -2167,10 +2192,7 @@ export class ServerAgentBootstrap {
       const { scanDiskPersonas } = await import('@/prompts/diskPersonas');
       const { registerExternalPersonas } = await import('@/prompts/PersonaLoader');
       registerExternalPersonas(
-        scanDiskPersonas([
-          join(homeDir, '.workx', 'styles'),
-          join(process.cwd(), '.workx', 'styles'),
-        ])
+        scanDiskPersonas([join(workxHome, 'styles'), join(process.cwd(), '.workx', 'styles')])
       );
     } catch (e) {
       console.warn('[ServerAgentBootstrap] Persona disk scan skipped:', e);
@@ -2648,6 +2670,15 @@ export class ServerAgentBootstrap {
           console.warn('[ServerAgentBootstrap] Data-source shutdown failed:', error);
         });
       this.dataSourceRuntimeHandle = null;
+    }
+
+    if (this.componentRuntimeHandle) {
+      this.componentRuntimeHandle.markStopping();
+      await this.componentRuntime?.dispose().catch((error) => {
+        console.warn('[ServerAgentBootstrap] Component runtime shutdown failed:', error);
+      });
+      this.componentRuntime = null;
+      this.componentRuntimeHandle = null;
     }
 
     // Shutdown channel manager (shuts down all channels including connector bridges)

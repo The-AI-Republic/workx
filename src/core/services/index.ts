@@ -24,6 +24,7 @@ import { createRuntimeServices, type RuntimeServiceDeps } from './runtime-servic
 import { createModelServices, type ModelsServiceDeps } from './models-services';
 import { createCredentialServices, type CredentialServiceDeps } from './credentials-services';
 import { createDataSourceServices, type DataSourceServiceDeps } from './data-sources-services';
+import { createComponentServices, type ComponentServiceDeps } from './components-services';
 
 /**
  * Dependencies for registering all services.
@@ -46,6 +47,7 @@ export interface AllServiceDeps {
   models?: ModelsServiceDeps;
   credentials?: CredentialServiceDeps;
   dataSources?: DataSourceServiceDeps;
+  components?: ComponentServiceDeps;
 }
 
 /**
@@ -73,6 +75,7 @@ export function registerAllServices(registry: ServiceRegistry, deps: AllServiceD
     ['models', createModelServices],
     ['credentials', createCredentialServices],
     ['dataSources', createDataSourceServices],
+    ['components', createComponentServices],
   ];
 
   for (const [key, factory] of factories) {
@@ -106,3 +109,4 @@ export { createRuntimeServices, type RuntimeServiceDeps } from './runtime-servic
 export { createModelServices, type ModelsServiceDeps } from './models-services';
 export { createCredentialServices, type CredentialServiceDeps } from './credentials-services';
 export { createDataSourceServices, type DataSourceServiceDeps } from './data-sources-services';
+export { createComponentServices, type ComponentServiceDeps } from './components-services';

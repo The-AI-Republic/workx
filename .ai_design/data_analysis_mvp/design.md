@@ -1797,7 +1797,7 @@ The design is implemented when all of the following are true:
 - MCP data-source profile and binding UI.
 - Snowflake, BigQuery, Redshift, Databricks, SQL Server, Oracle, SQLite, and NoSQL connectors.
 - Shared semantic profiles across production/staging/warehouse sources.
-- Local DuckDB/Arrow analysis for cross-source joins and larger datasets.
+- Local DuckDB/Arrow analysis for cross-source joins and larger datasets. The verified on-demand component delivery/runtime is now implemented; bounded staging and analysis orchestration remain deferred.
 - Charts, downloadable reports, notebooks, and scheduled analyses.
 - SSH tunnels, cloud IAM, OAuth, and client certificate authentication.
 - Fine-grained column masking/redaction rules.

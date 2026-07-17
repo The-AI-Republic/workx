@@ -111,6 +111,18 @@
       </svg>`,
     },
     {
+      id: 'components',
+      label: t('Components'),
+      description: t('Install optional local tools and runtimes for WorkX'),
+      desktopOnly: true,
+      icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2v6"></path>
+        <path d="m9 5 3 3 3-3"></path>
+        <rect x="4" y="10" width="16" height="10" rx="2"></rect>
+        <path d="M8 15h.01M12 15h4"></path>
+      </svg>`,
+    },
+    {
       id: 'mcp-servers',
       label: t('MCP Servers'),
       description: t('Connect to external MCP tool servers'),
