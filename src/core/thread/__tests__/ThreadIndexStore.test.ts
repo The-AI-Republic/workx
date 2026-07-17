@@ -92,6 +92,14 @@ describe('ThreadIndexStore', () => {
     expect(await store.undelete('undo')).toBeNull();
   });
 
+  it('retains soft-deleted threads for 30 days by default', async () => {
+    const now = 1_000;
+    const store = new ThreadIndexStore(new MemoryStorageAdapter(), () => now);
+    await store.createIfMissing(createThreadIndexEntry({ sessionId: 'retention' }));
+    const tombstone = await store.softDelete('retention');
+    expect(tombstone.purgeAfter).toBe(now + 30 * 24 * 60 * 60 * 1000);
+  });
+
   it('backfills rollout and legacy metadata repeatedly with deterministic merge rules', async () => {
     const adapter = new MemoryStorageAdapter();
     const store = new ThreadIndexStore(adapter, () => 999);

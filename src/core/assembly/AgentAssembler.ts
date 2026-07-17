@@ -55,11 +55,17 @@ export interface AssembledAgent {
   readonly agent: RepublicAgent;
   readonly subAgentRunner: SubAgentRunner | null;
   applyManagerActions(actions: ReadonlySet<ManagerAction>): Promise<void>;
+  applyConfigImpact?(
+    rebuild: ReadonlySet<RebuildReason>,
+    actions: ReadonlySet<ManagerAction>,
+  ): Promise<void>;
+  drainConfigImpact?(): Promise<void>;
   flushRollout(): Promise<void>;
   dispose(reason: AgentDisposeReason): Promise<DisposeReport>;
 }
 
 export interface AgentAssembler {
+  supportsMode?(mode: AgentMode): boolean;
   assemble(input: AssembleInput): Promise<AssembledAgent>;
 }
 
@@ -74,9 +80,10 @@ export interface CleanupStep {
  */
 export class AssembledAgentHandle implements AssembledAgent {
   private disposePromise: Promise<DisposeReport> | null = null;
+  private disposing = false;
   private readonly pendingManagerActions = new Set<ManagerAction>();
+  private readonly pendingRebuildReasons = new Set<RebuildReason>();
   private managerActionTail: Promise<void> = Promise.resolve();
-  private readonly workUnsubscribe: () => void;
 
   constructor(
     readonly agent: RepublicAgent,
@@ -86,14 +93,27 @@ export class AssembledAgentHandle implements AssembledAgent {
       actions: ReadonlySet<ManagerAction>,
     ) => Promise<void>,
   ) {
-    this.workUnsubscribe = this.agent.getSession().subscribeBackgroundWorkChanged((busy) => {
-      if (!busy) void this.drainManagerActions();
-    });
   }
 
   applyManagerActions(actions: ReadonlySet<ManagerAction>): Promise<void> {
+    return this.applyConfigImpact(new Set(), actions);
+  }
+
+  applyConfigImpact(
+    rebuild: ReadonlySet<RebuildReason>,
+    actions: ReadonlySet<ManagerAction>,
+  ): Promise<void> {
+    if (this.disposing) return Promise.resolve();
+    for (const reason of rebuild) this.pendingRebuildReasons.add(reason);
     for (const action of actions) this.pendingManagerActions.add(action);
     if (this.agent.getSession().hasLiveBackgroundWork()) return Promise.resolve();
+    return this.drainManagerActions();
+  }
+
+  drainConfigImpact(): Promise<void> {
+    if (this.disposing || this.agent.getSession().hasLiveBackgroundWork()) {
+      return Promise.resolve();
+    }
     return this.drainManagerActions();
   }
 
@@ -108,7 +128,10 @@ export class AssembledAgentHandle implements AssembledAgent {
   }
 
   private async disposeOnce(reason: AgentDisposeReason): Promise<DisposeReport> {
-    this.workUnsubscribe();
+    this.disposing = true;
+    this.pendingManagerActions.clear();
+    this.pendingRebuildReasons.clear();
+    await this.managerActionTail.catch(() => undefined);
     const steps: CleanupStep[] = [
       { id: 'agent', run: () => this.agent.dispose(reason) },
       ...this.cleanupSteps,
@@ -125,17 +148,30 @@ export class AssembledAgentHandle implements AssembledAgent {
   }
 
   private drainManagerActions(): Promise<void> {
-    this.managerActionTail = this.managerActionTail.then(async () => {
+    const drain = async () => {
       while (
-        this.pendingManagerActions.size > 0
+        !this.disposing
+        && (this.pendingManagerActions.size > 0 || this.pendingRebuildReasons.size > 0)
         && !this.agent.getSession().hasLiveBackgroundWork()
       ) {
         const actions = new Set(this.pendingManagerActions);
+        const rebuild = new Set(this.pendingRebuildReasons);
         this.pendingManagerActions.clear();
-        await this.agent.applyManagerActions(actions);
-        await this.managerActionHandler?.(actions);
+        this.pendingRebuildReasons.clear();
+        try {
+          await this.agent.applyManagerActions(actions);
+          await this.managerActionHandler?.(actions);
+          if (rebuild.size > 0) await this.agent.rebuildExecutionContext(rebuild);
+        } catch (error) {
+          // Nothing is silently lost. A later idle notification/config change
+          // can retry the coalesced action set, and the tail remains usable.
+          for (const action of actions) this.pendingManagerActions.add(action);
+          for (const reason of rebuild) this.pendingRebuildReasons.add(reason);
+          throw error;
+        }
       }
-    });
+    };
+    this.managerActionTail = this.managerActionTail.then(drain, drain);
     return this.managerActionTail;
   }
 }

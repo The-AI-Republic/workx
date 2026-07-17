@@ -16,7 +16,7 @@ import { createSessionServices } from '../session/state/SessionServices';
 import { SessionCacheManager } from '../../storage/SessionCacheManager';
 import { IndexedDBAdapter } from '../../storage/IndexedDBAdapter';
 import type { InitialHistory } from '../session/state/types';
-import type { AssembledAgent } from '../assembly/AgentAssembler';
+import type { AssembledAgent, ManagerAction } from '../assembly/AgentAssembler';
 import { TestAuthContext } from '../auth/AuthContext';
 import { RolloutRecorder, type RolloutItem } from '../../storage/rollout';
 import type { IConfigChangeEvent } from '../../config/types';
@@ -34,6 +34,9 @@ import type { SessionRuntimeState, SessionRuntimeView } from './types';
 import type { ForegroundGrant } from '../platform/IPlatformAdapter';
 import { PerKeyOperationQueue } from '../concurrency/PerKeyOperationQueue';
 import { SessionServiceError } from '../services/SessionServiceError';
+import { invalidateRolloutSnapshot } from '../thread/loadRolloutSnapshot';
+import type { RebuildReason } from '../RepublicAgent';
+import type { AgentMode } from '../../prompts/PromptComposer';
 import type {
   SessionConfig,
   SessionMetadata,
@@ -41,6 +44,15 @@ import type {
   SessionEventListener,
   RegistryConfig,
 } from './types';
+
+const RUNTIME_TRANSITIONS: Record<SessionRuntimeState, ReadonlySet<SessionRuntimeState>> = {
+  suspended: new Set(['suspended', 'hydrating', 'idle', 'deleting']),
+  hydrating: new Set(['hydrating', 'idle', 'suspended', 'deleting']),
+  idle: new Set(['idle', 'running', 'suspending', 'deleting']),
+  running: new Set(['running', 'idle', 'suspending', 'deleting']),
+  suspending: new Set(['suspending', 'suspended', 'idle', 'running', 'deleting']),
+  deleting: new Set(['deleting', 'suspended']),
+};
 
 function stableJson(value: unknown): string | undefined {
   if (value === undefined || typeof value === 'function' || typeof value === 'symbol') {
@@ -135,6 +147,8 @@ export class SessionManager {
     status: 'queued' | 'accepted' | 'failed';
     submissionId?: string;
   }>();
+  private readonly _recentDedupeKeys = new Map<string, string[]>();
+  private readonly _recentDedupeSessionOrder: string[] = [];
   private readonly _drainingSubmissions = new Set<string>();
   private readonly _runtimeViews = new Map<string, SessionRuntimeView>();
   private readonly _recoveryLoaded = new Set<string>();
@@ -148,6 +162,13 @@ export class SessionManager {
     timer: ReturnType<typeof setTimeout>;
   }>();
   private readonly _awaitingTokens = new Map<string, Map<string, 'approval' | 'foreground'>>();
+  private readonly _approvalOwnerByToken = new Map<string, Map<string, string>>();
+  private readonly _currentSubmissionBySession = new Map<string, string>();
+  private readonly _pendingModes = new Map<string, AgentMode>();
+  private readonly _assemblingImpacts = new Map<string, {
+    rebuild: Set<RebuildReason>;
+    actions: Set<ManagerAction>;
+  }>();
   private _threadIndexReconcileFlight: Promise<void> | null = null;
   private _threadIndexReconciled = false;
 
@@ -181,11 +202,16 @@ export class SessionManager {
     if (config.authContext) {
       this._authUnsubscribe = config.authContext.subscribe((event) => {
         if (event.reason === 'credentials-refreshed') return;
-        const agents = [...this._sessions.values()]
+        const sessionIds = [...this._sessions.values()]
           .filter((session) => session.state !== 'terminated' && session.agent)
-          .map((session) => session.agent!);
+          .map((session) => session.sessionId);
         void Promise.allSettled(
-          agents.map((agent) => agent.rebuildExecutionContext(new Set(['auth']))),
+          sessionIds.map((sessionId) => this._sessionOperations.run(sessionId, async () => {
+            const session = this._sessions.get(sessionId);
+            if (session?.state !== 'terminated' && session?.agent) {
+              await session.applyConfigImpact(new Set(['auth']), new Set());
+            }
+          })),
         ).then((results) => this.logSettledRejections('auth rebuild', results));
       });
     }
@@ -242,13 +268,19 @@ export class SessionManager {
     this._config = config;
     this._configChangeHandler = (event) => {
       const impact = getConfigImpact(event.section);
-      const sessions = [...this._sessions.values()]
-        .filter((session) => session.state !== 'terminated');
+      for (const pending of this._assemblingImpacts.values()) {
+        for (const reason of impact.rebuild) pending.rebuild.add(reason);
+        for (const action of impact.actions) pending.actions.add(action);
+      }
+      const sessionIds = [...this._sessions.values()]
+        .filter((session) => session.state !== 'terminated')
+        .map((session) => session.sessionId);
       void Promise.allSettled(
-        sessions.map((session) => session.applyConfigImpact(
-          new Set(impact.rebuild),
-          new Set(impact.actions),
-        )),
+        sessionIds.map((sessionId) => this._sessionOperations.run(sessionId, async () => {
+          const session = this._sessions.get(sessionId);
+          if (!session || session.state === 'terminated') return;
+          await session.applyConfigImpact(new Set(impact.rebuild), new Set(impact.actions));
+        })),
       ).then((results) => this.logSettledRejections(`config impact:${event.section}`, results));
     };
     config.on('config-changed', this._configChangeHandler);
@@ -303,6 +335,11 @@ export class SessionManager {
       ?? uuidv4();
     let observedConfigGeneration = this.configGeneration();
     let observedAuthGeneration = this._registryConfig.authContext?.generation() ?? 0;
+    const assemblyImpact = {
+      rebuild: new Set<RebuildReason>(),
+      actions: new Set<ManagerAction>(),
+    };
+    this._assemblingImpacts.set(reservedSessionId, assemblyImpact);
 
     // Every construction path receives the authoritative pre-reserved ID.
     const initialHistory: InitialHistory = sessionConfig.resume
@@ -320,7 +357,7 @@ export class SessionManager {
     const platformEventDispatcher = this._registryConfig.eventDispatcherFactory
       ? this._registryConfig.eventDispatcherFactory(reservedSessionId)
       : (event: import('../protocol/events').Event) => {
-          void getChannelManager()
+          return getChannelManager()
             .broadcastEvent({
               msg: event.msg,
               sessionId: reservedSessionId,
@@ -330,8 +367,8 @@ export class SessionManager {
             .catch(() => undefined);
         };
     const rawEventDispatcher: import('../RepublicAgent').EventDispatcher = (event) => {
-      this.trackAwaitingEvent(reservedSessionId, event.msg);
-      platformEventDispatcher(event);
+      this.trackAwaitingEvent(reservedSessionId, event);
+      return platformEventDispatcher(event);
     };
     const eventGate = new SwitchableEventGate(withTelemetry(rawEventDispatcher));
     const eventDispatcher = eventGate.dispatcher;
@@ -380,9 +417,9 @@ export class SessionManager {
         auth: this._registryConfig.authContext ?? TestAuthContext.none(),
         services,
         preferences: {
-          agentMode: sessionConfig.agentMode
+          agentMode: this.normalizeSessionMode(sessionConfig.agentMode
             ?? this._config.getConfig().preferences?.defaultMode
-            ?? 'general',
+            ?? 'general'),
         },
         metadata: {
           title: '',
@@ -407,11 +444,19 @@ export class SessionManager {
       while (true) {
         const configGeneration = this.configGeneration();
         const authGeneration = this._registryConfig.authContext?.generation() ?? 0;
-        const reasons = new Set<import('../RepublicAgent').RebuildReason>();
+        const reasons = new Set<RebuildReason>(assemblyImpact.rebuild);
+        const actions = new Set<ManagerAction>(assemblyImpact.actions);
+        assemblyImpact.rebuild.clear();
+        assemblyImpact.actions.clear();
         if (configGeneration !== observedConfigGeneration) reasons.add('full');
         if (authGeneration !== observedAuthGeneration) reasons.add('auth');
-        if (reasons.size === 0) break;
-        await agent.rebuildExecutionContext(reasons);
+        if (reasons.size === 0 && actions.size === 0) break;
+        if (assembledHandle.applyConfigImpact) {
+          await assembledHandle.applyConfigImpact(reasons, actions);
+        } else {
+          if (actions.size > 0) await assembledHandle.applyManagerActions(actions);
+          if (reasons.size > 0) await agent.rebuildExecutionContext(reasons);
+        }
         observedConfigGeneration = configGeneration;
         observedAuthGeneration = authGeneration;
       }
@@ -419,6 +464,7 @@ export class SessionManager {
         throw new Error(`Session deleted during assembly: ${reservedSessionId}`);
       }
     } catch (initError) {
+      this._assemblingImpacts.delete(reservedSessionId);
       eventGate.close();
       await assembledHandle?.dispose('assembly-failed').catch(() => undefined);
       // Agent initialization failed - clean up and emit error event
@@ -451,6 +497,7 @@ export class SessionManager {
     session.attachAgent(agent, assembledHandle);
 
     // Register session
+    this._assemblingImpacts.delete(reservedSessionId);
     this._sessions.set(session.sessionId, session);
     this._eventStreams.set(session.sessionId, eventGate);
     eventGate.activate();
@@ -527,7 +574,9 @@ export class SessionManager {
         createThreadIndexEntry({
           sessionId,
           title: options.title,
-          agentMode: options.agentMode ?? this._config?.getConfig().preferences?.defaultMode,
+          agentMode: this.normalizeSessionMode(
+            options.agentMode ?? this._config?.getConfig().preferences?.defaultMode,
+          ),
           origin: options.origin,
         }),
       ).then((entry) => {
@@ -594,7 +643,16 @@ export class SessionManager {
         reserved = true;
       }
       this.transitionRuntime(sessionId, 'hydrating');
-      const entry = await this._registryConfig.threadIndexStore?.require(sessionId);
+      let entry = await this._registryConfig.threadIndexStore?.require(sessionId);
+      if (entry) {
+        const normalizedMode = this.normalizeSessionMode(entry.agentMode);
+        if (normalizedMode !== entry.agentMode) {
+          entry = await this._registryConfig.threadIndexStore!.patch(sessionId, {
+            agentMode: normalizedMode,
+          });
+          this.emitIndexChanged(sessionId, 'upsert', entry);
+        }
+      }
       const snapshot = this._registryConfig.loadRolloutSnapshot
         ? await this._registryConfig.loadRolloutSnapshot(sessionId)
         : { sessionId, revision: 0, items: [] };
@@ -628,6 +686,7 @@ export class SessionManager {
         live_count: this.managedLiveCount(),
         queued_count: this.pendingSubmissionCount(),
       });
+      this._eventStreams.get(sessionId)?.setBaseRolloutRevision(snapshot.revision);
       return session;
     } catch (error) {
       if (error instanceof ManagedCapacityUnavailableError) {
@@ -758,11 +817,14 @@ export class SessionManager {
       throw error;
     }
     await session.finishCompatClose();
-    this._sessions.delete(sessionId);
-    this._eventStreams.get(sessionId)?.close();
-    this._eventStreams.delete(sessionId);
-    this._usedLetters.delete(session.sessionLetter);
     this.transitionRuntime(sessionId, 'suspended');
+    const stream = this._eventStreams.get(sessionId);
+    await stream?.flush();
+    stream?.close();
+    this._eventStreams.delete(sessionId);
+    this._sessions.delete(sessionId);
+    this._usedLetters.delete(session.sessionLetter);
+    invalidateRolloutSnapshot(sessionId);
     return true;
   }
 
@@ -782,11 +844,14 @@ export class SessionManager {
       this.transitionRuntime(sessionId, session.hasLiveBackgroundWork() ? 'running' : 'idle');
       throw error;
     }
-    this._sessions.delete(sessionId);
-    this._eventStreams.get(sessionId)?.close();
-    this._eventStreams.delete(sessionId);
-    this._usedLetters.delete(session.sessionLetter);
     this.transitionRuntime(sessionId, 'suspended', cause === 'evicted' ? 'evicted' : undefined);
+    const stream = this._eventStreams.get(sessionId);
+    await stream?.flush();
+    stream?.close();
+    this._eventStreams.delete(sessionId);
+    this._sessions.delete(sessionId);
+    this._usedLetters.delete(session.sessionLetter);
+    invalidateRolloutSnapshot(sessionId);
     logEvent('session_suspended', {
       duration_ms: Date.now() - startedAt,
       live_count: this.managedLiveCount(),
@@ -817,12 +882,16 @@ export class SessionManager {
   }
 
   async submitToSession(sessionId: string, op: Op): Promise<string> {
-    const session = await this.hydrateSession(sessionId);
-    const submissionId = await session.submit(op);
-    await this._registryConfig.threadIndexStore?.patch(sessionId, {
-      lastActiveAt: Date.now(),
+    await this.hydrateSession(sessionId);
+    return this._sessionOperations.run(sessionId, async () => {
+      const session = this._sessions.get(sessionId);
+      if (!session || session.state === 'terminated') {
+        throw new SessionServiceError('SESSION_NOT_LIVE', `Session not live: ${sessionId}`, true);
+      }
+      const submissionId = await session.submit(op);
+      await this.touchThread(sessionId);
+      return submissionId;
     });
-    return submissionId;
   }
 
   /** Dispatch an operation only against an already-live graph. */
@@ -936,23 +1005,75 @@ export class SessionManager {
     };
     const live = this._sessions.get(input.sessionId);
     const runtimeState = this.runtimeView(input.sessionId, live).state;
-    if (live && (runtimeState === 'running' || live.state === 'active' || live.hasLiveBackgroundWork())) {
+    if (live && runtimeState !== 'hydrating' && runtimeState !== 'suspending'
+      && runtimeState !== 'deleting') {
+      return this._sessionOperations.run(input.sessionId, () => this.submitLiveLocked(
+        input,
+        correlatedOp,
+        digest,
+      ));
+    }
+
+    return this.queueSubmission(input, correlatedOp, digest);
+  }
+
+  private async submitLiveLocked(
+    input: EnqueueSubmissionInput,
+    correlatedOp: Extract<Op, { type: 'UserInput' }>,
+    digest: string,
+  ): Promise<EnqueueSubmissionResult> {
+    if (this._deletionClaims.has(input.sessionId)) {
+      return { status: 'rejected', clientMessageId: input.clientMessageId, reason: 'deleted' };
+    }
+    const entry = await this._registryConfig.threadIndexStore?.get(input.sessionId, true);
+    if (this._registryConfig.threadIndexStore && !entry) {
+      return { status: 'rejected', clientMessageId: input.clientMessageId, reason: 'not-found' };
+    }
+    if (entry?.deletedAt !== null) {
+      return { status: 'rejected', clientMessageId: input.clientMessageId, reason: 'deleted' };
+    }
+    const live = this._sessions.get(input.sessionId);
+    const runtimeState = this.runtimeView(input.sessionId, live).state;
+    if (!live || runtimeState === 'hydrating' || runtimeState === 'suspending') {
+      return this.queueSubmission(input, correlatedOp, digest);
+    }
+    if (runtimeState === 'deleting') {
+      return { status: 'rejected', clientMessageId: input.clientMessageId, reason: 'deleted' };
+    }
+    if (runtimeState === 'running' || live.state === 'active' || live.hasLiveBackgroundWork()) {
       return { status: 'rejected', clientMessageId: input.clientMessageId, reason: 'busy' };
     }
-    if (live?.state === 'idle' && runtimeState === 'idle') {
-      try {
-        this.transitionRuntime(input.sessionId, 'running');
-        const submissionId = await live.submit(correlatedOp, {
-          tabId: input.tabId,
-          ...input.context,
-        });
-        this._submissionDedupe.set(key, { digest, status: 'accepted', submissionId });
-        this.emitSubmissionState(input.sessionId, input.clientMessageId, 'accepted', submissionId);
-        return { status: 'accepted', clientMessageId: input.clientMessageId, submissionId };
-      } catch {
-        this.transitionRuntime(input.sessionId, 'idle');
-        return { status: 'rejected', clientMessageId: input.clientMessageId, reason: 'submit-failed' };
-      }
+    try {
+      this.transitionRuntime(input.sessionId, 'running');
+      const submissionId = await live.submit(correlatedOp, {
+        tabId: input.tabId,
+        ...input.context,
+      });
+      this.rememberSubmissionDedupe(input.sessionId, input.clientMessageId, {
+        digest,
+        status: 'accepted',
+        submissionId,
+      });
+      await this.touchThread(input.sessionId);
+      this.emitSubmissionState(input.sessionId, input.clientMessageId, 'accepted', submissionId);
+      return { status: 'accepted', clientMessageId: input.clientMessageId, submissionId };
+    } catch {
+      this.transitionRuntime(input.sessionId, 'idle');
+      this.rememberSubmissionDedupe(input.sessionId, input.clientMessageId, {
+        digest,
+        status: 'failed',
+      });
+      return { status: 'rejected', clientMessageId: input.clientMessageId, reason: 'submit-failed' };
+    }
+  }
+
+  private queueSubmission(
+    input: EnqueueSubmissionInput,
+    correlatedOp: Extract<Op, { type: 'UserInput' }>,
+    digest: string,
+  ): EnqueueSubmissionResult {
+    if (this._deletionClaims.has(input.sessionId)) {
+      return { status: 'rejected', clientMessageId: input.clientMessageId, reason: 'deleted' };
     }
 
     const queue = this._pendingSubmissions.get(input.sessionId) ?? [];
@@ -969,7 +1090,10 @@ export class SessionManager {
       context: input.context,
     });
     this._pendingSubmissions.set(input.sessionId, queue);
-    this._submissionDedupe.set(key, { digest, status: 'queued' });
+    this._submissionDedupe.set(`${input.sessionId}:${input.clientMessageId}`, {
+      digest,
+      status: 'queued',
+    });
     logEvent('session_submission_queued', {
       session_depth: queue.length,
       global_depth: this.pendingSubmissionCount(),
@@ -1026,63 +1150,103 @@ export class SessionManager {
   }
 
   private async handleBackgroundWorkChanged(sessionId: string): Promise<void> {
+    const becameIdle = await this._sessionOperations.run(
+      sessionId,
+      () => this.handleBackgroundWorkChangedLocked(sessionId),
+    );
+    if (becameIdle) {
+      await this.drainSubmissionQueue(sessionId);
+      this.drainCapacityWaiters();
+    }
+  }
+
+  private async handleBackgroundWorkChangedLocked(sessionId: string): Promise<boolean> {
     const session = this._sessions.get(sessionId);
-    if (!session || session.state === 'terminated') return;
+    if (!session || session.state === 'terminated') return false;
     const busy = session.hasLiveBackgroundWork();
     if (busy && session.state === 'idle') session.markActive();
     if (!busy && session.state === 'active') session.markIdle();
     if (!busy) {
-      await this._registryConfig.refreshRolloutSnapshot?.(sessionId);
-      this._eventStreams.get(sessionId)?.clearReplay();
+      try {
+        const snapshot = await this._registryConfig.refreshRolloutSnapshot?.(sessionId);
+        this._eventStreams.get(sessionId)?.clearReplay(snapshot?.revision);
+      } catch (error) {
+        // Do not strand a completed graph in RUNNING when a cache refresh
+        // fails. Preserve replay so attach can recover output, and let the next
+        // snapshot read retry the durable provider.
+        console.warn(`[SessionManager] Failed to refresh rollout snapshot for ${sessionId}:`, error);
+      }
+      await session.drainConfigImpact().catch((error) => {
+        console.warn(`[SessionManager] Deferred config impact failed for ${sessionId}:`, error);
+      });
+      await this.touchThread(sessionId);
+      await this.applyPendingModeLocked(sessionId, session);
     }
     this.transitionRuntime(sessionId, busy ? 'running' : 'idle');
-    if (!busy) {
-      await this.drainSubmissionQueue(sessionId);
-      this.drainCapacityWaiters();
-    }
+    return !busy;
   }
 
   private async drainSubmissionQueue(sessionId: string): Promise<void> {
     if (this._drainingSubmissions.has(sessionId)) return;
     this._drainingSubmissions.add(sessionId);
     try {
-      let session: AgentSession;
       try {
-        session = await this.hydrateSession(sessionId);
+        await this.hydrateSession(sessionId);
       } catch (error) {
         if (error instanceof ManagedCapacityUnavailableError) return;
-        const failed = this._pendingSubmissions.get(sessionId) ?? [];
-        this._pendingSubmissions.delete(sessionId);
-        for (const item of failed) {
-          this._submissionDedupe.set(`${sessionId}:${item.clientMessageId}`, {
-            digest: item.digest,
-            status: 'failed',
-          });
-          this.emitSubmissionState(sessionId, item.clientMessageId, 'failed', undefined, 'hydration-failed');
-        }
+        await this._sessionOperations.run(sessionId, async () => {
+          const failed = this._pendingSubmissions.get(sessionId) ?? [];
+          this._pendingSubmissions.delete(sessionId);
+          for (const item of failed) {
+            this.rememberSubmissionDedupe(sessionId, item.clientMessageId, {
+              digest: item.digest,
+              status: 'failed',
+            });
+            this.emitSubmissionState(sessionId, item.clientMessageId, 'failed', undefined, 'hydration-failed');
+          }
+        });
         return;
       }
-      if (session.state !== 'idle' || session.hasLiveBackgroundWork()) return;
-      const queue = this._pendingSubmissions.get(sessionId);
-      const next = queue?.shift();
-      if (!next) return;
-      if (queue?.length === 0) this._pendingSubmissions.delete(sessionId);
-      const key = `${sessionId}:${next.clientMessageId}`;
-      try {
-        this.transitionRuntime(sessionId, 'running');
-        const submissionId = await session.submit(next.op, {
-          tabId: next.tabId,
-          ...next.context,
-        });
-        this._submissionDedupe.set(key, { digest: next.digest, status: 'accepted', submissionId });
-        this.emitSubmissionState(sessionId, next.clientMessageId, 'accepted', submissionId);
-      } catch {
-        this.transitionRuntime(sessionId, 'idle');
-        this._submissionDedupe.set(key, { digest: next.digest, status: 'failed' });
-        this.emitSubmissionState(sessionId, next.clientMessageId, 'failed', undefined, 'submit-failed');
-      }
+      await this._sessionOperations.run(sessionId, () => this.drainOneSubmissionLocked(sessionId));
     } finally {
       this._drainingSubmissions.delete(sessionId);
+      const live = this._sessions.get(sessionId);
+      if ((this._pendingSubmissions.get(sessionId)?.length ?? 0) > 0
+        && live?.state === 'idle'
+        && !live.hasLiveBackgroundWork()
+        && this.runtimeView(sessionId, live).state === 'idle') {
+        queueMicrotask(() => { void this.drainSubmissionQueue(sessionId); });
+      }
+    }
+  }
+
+  private async drainOneSubmissionLocked(sessionId: string): Promise<void> {
+    const session = this._sessions.get(sessionId);
+    if (!session || session.state !== 'idle' || session.hasLiveBackgroundWork()) return;
+    const queue = this._pendingSubmissions.get(sessionId);
+    const next = queue?.shift();
+    if (!next) return;
+    if (queue?.length === 0) this._pendingSubmissions.delete(sessionId);
+    try {
+      this.transitionRuntime(sessionId, 'running');
+      const submissionId = await session.submit(next.op, {
+        tabId: next.tabId,
+        ...next.context,
+      });
+      this.rememberSubmissionDedupe(sessionId, next.clientMessageId, {
+        digest: next.digest,
+        status: 'accepted',
+        submissionId,
+      });
+      await this.touchThread(sessionId);
+      this.emitSubmissionState(sessionId, next.clientMessageId, 'accepted', submissionId);
+    } catch {
+      this.transitionRuntime(sessionId, 'idle');
+      this.rememberSubmissionDedupe(sessionId, next.clientMessageId, {
+        digest: next.digest,
+        status: 'failed',
+      });
+      this.emitSubmissionState(sessionId, next.clientMessageId, 'failed', undefined, 'submit-failed');
     }
   }
 
@@ -1092,6 +1256,62 @@ export class SessionManager {
         void this.drainSubmissionQueue(sessionId);
         break;
       }
+    }
+  }
+
+  private rememberSubmissionDedupe(
+    sessionId: string,
+    clientMessageId: string,
+    value: { digest: string; status: 'accepted' | 'failed'; submissionId?: string },
+  ): void {
+    const key = `${sessionId}:${clientMessageId}`;
+    this._submissionDedupe.set(key, value);
+    const recent = this._recentDedupeKeys.get(sessionId) ?? [];
+    const priorIndex = recent.indexOf(key);
+    if (priorIndex >= 0) recent.splice(priorIndex, 1);
+    recent.push(key);
+    while (recent.length > 128) {
+      const evicted = recent.shift();
+      if (evicted && this._submissionDedupe.get(evicted)?.status !== 'queued') {
+        this._submissionDedupe.delete(evicted);
+      }
+    }
+    this._recentDedupeKeys.set(sessionId, recent);
+    const sessionIndex = this._recentDedupeSessionOrder.indexOf(sessionId);
+    if (sessionIndex >= 0) this._recentDedupeSessionOrder.splice(sessionIndex, 1);
+    this._recentDedupeSessionOrder.push(sessionId);
+    while (this._recentDedupeSessionOrder.length > 256) {
+      const evictedSession = this._recentDedupeSessionOrder.shift();
+      if (!evictedSession) break;
+      this.clearSubmissionDedupeSession(evictedSession, false);
+    }
+  }
+
+  private clearSubmissionDedupeSession(sessionId: string, removeOrder = true): void {
+    for (const key of this._recentDedupeKeys.get(sessionId) ?? []) {
+      if (this._submissionDedupe.get(key)?.status !== 'queued') this._submissionDedupe.delete(key);
+    }
+    this._recentDedupeKeys.delete(sessionId);
+    // A globally evicted session must lazily seed its recent durable ACKs again
+    // if it becomes active later; otherwise an old clientMessageId could be
+    // accepted twice merely because another 256 threads were touched.
+    this._recoveryLoaded.delete(sessionId);
+    if (removeOrder) {
+      const index = this._recentDedupeSessionOrder.indexOf(sessionId);
+      if (index >= 0) this._recentDedupeSessionOrder.splice(index, 1);
+    }
+  }
+
+  private async touchThread(sessionId: string): Promise<void> {
+    const index = this._registryConfig.threadIndexStore;
+    if (!index) return;
+    try {
+      const entry = await index.patch(sessionId, { lastActiveAt: Date.now() });
+      this.emitIndexChanged(sessionId, 'upsert', entry);
+    } catch (error) {
+      // Submission/turn success is authoritative. A routine recency write must
+      // not turn an accepted operation into a failed acknowledgement.
+      console.warn(`[SessionManager] Failed to update recency for ${sessionId}:`, error);
     }
   }
 
@@ -1139,48 +1359,52 @@ export class SessionManager {
   }
 
   async renameThread(sessionId: string, title: string) {
-    if (!this._registryConfig.threadIndexStore) throw new Error('Thread index is not configured');
-    const entry = await this._registryConfig.threadIndexStore.rename(sessionId, title);
-    this.emitIndexChanged(sessionId, 'upsert', entry);
-    try {
-      const provider = await RolloutRecorder.getProvider();
-      const metadata = await provider.getMetadata(sessionId);
-      if (metadata) {
-        metadata.sessionMeta.title = entry.title;
-        metadata.updated = Date.now();
-        await provider.putMetadata(metadata);
+    return this._sessionOperations.run(sessionId, async () => {
+      if (!this._registryConfig.threadIndexStore) throw new Error('Thread index is not configured');
+      const entry = await this._registryConfig.threadIndexStore.rename(sessionId, title);
+      this.emitIndexChanged(sessionId, 'upsert', entry);
+      try {
+        const provider = await RolloutRecorder.getProvider();
+        const metadata = await provider.getMetadata(sessionId);
+        if (metadata) {
+          metadata.sessionMeta.title = entry.title;
+          metadata.updated = Date.now();
+          await provider.putMetadata(metadata);
+        }
+      } catch (error) {
+        // ThreadIndex is authoritative for a manual rename. A later bootstrap
+        // reconciliation retries metadata convergence without rolling the UI back.
+        console.warn('[SessionManager] Rollout title repair deferred:', error);
       }
-    } catch (error) {
-      // ThreadIndex is authoritative for a manual rename. A later bootstrap
-      // reconciliation retries metadata convergence without rolling the UI back.
-      console.warn('[SessionManager] Rollout title repair deferred:', error);
-    }
-    return entry;
+      return entry;
+    });
   }
 
   async commitGeneratedTitle(sessionId: string, title: string): Promise<boolean> {
-    const index = this._registryConfig.threadIndexStore;
-    if (!index) return false;
-    const current = await index.get(sessionId, true);
-    if (!current || current.deletedAt !== null || current.titleSource === 'user') return false;
-    try {
-      const provider = await RolloutRecorder.getProvider();
-      const metadata = await provider.getMetadata(sessionId);
-      if (metadata) {
-        metadata.sessionMeta.title = title.trim();
-        metadata.updated = Date.now();
-        await provider.putMetadata(metadata);
+    return this._sessionOperations.run(sessionId, async () => {
+      const index = this._registryConfig.threadIndexStore;
+      if (!index) return false;
+      const current = await index.get(sessionId, true);
+      if (!current || current.deletedAt !== null || current.titleSource === 'user') return false;
+      try {
+        const provider = await RolloutRecorder.getProvider();
+        const metadata = await provider.getMetadata(sessionId);
+        if (metadata) {
+          metadata.sessionMeta.title = title.trim();
+          metadata.updated = Date.now();
+          await provider.putMetadata(metadata);
+        }
+        const committed = await index.commitGeneratedTitle(sessionId, title);
+        if (committed) {
+          const entry = await index.require(sessionId);
+          this.emitIndexChanged(sessionId, 'upsert', entry);
+        }
+        return committed;
+      } catch (error) {
+        console.warn('[SessionManager] Generated title commit failed:', error);
+        return false;
       }
-      const committed = await index.commitGeneratedTitle(sessionId, title);
-      if (committed) {
-        const entry = await index.require(sessionId);
-        this.emitIndexChanged(sessionId, 'upsert', entry);
-      }
-      return committed;
-    } catch (error) {
-      console.warn('[SessionManager] Generated title commit failed:', error);
-      return false;
-    }
+    });
   }
 
   pinThread(sessionId: string, pinned: boolean) {
@@ -1192,7 +1416,9 @@ export class SessionManager {
   }
 
   deleteThread(sessionId: string, abortRunning = false) {
-    this._deletionClaims.add(sessionId);
+    const live = this._sessions.get(sessionId);
+    const claimed = abortRunning || !live?.hasLiveBackgroundWork();
+    if (claimed) this._deletionClaims.add(sessionId);
     const operation = this._sessionOperations.run(
       sessionId,
       () => this.deleteThreadLocked(sessionId, abortRunning),
@@ -1208,11 +1434,12 @@ export class SessionManager {
     if (live?.hasLiveBackgroundWork() && !abortRunning) {
       return { status: 'requires-confirmation' as const, running: true as const };
     }
+    this._deletionClaims.add(sessionId);
     this.transitionRuntime(sessionId, 'deleting');
     const entry = await this._registryConfig.threadIndexStore.softDelete(sessionId);
     const queued = this._pendingSubmissions.get(sessionId) ?? [];
     for (const item of queued) {
-      this._submissionDedupe.set(`${sessionId}:${item.clientMessageId}`, {
+      this.rememberSubmissionDedupe(sessionId, item.clientMessageId, {
         digest: item.digest,
         status: 'failed',
       });
@@ -1222,12 +1449,17 @@ export class SessionManager {
     if (live) {
       this.cancelAttentionForSession(sessionId, 'Session deleted');
       await live.disposeForLifecycle('delete');
+      const stream = this._eventStreams.get(sessionId);
+      await stream?.flush();
+      stream?.close();
+      this._eventStreams.delete(sessionId);
       this._sessions.delete(sessionId);
       this._usedLetters.delete(live.sessionLetter);
-      this._eventStreams.get(sessionId)?.close();
-      this._eventStreams.delete(sessionId);
     }
-    this._runtimeViews.delete(sessionId);
+    invalidateRolloutSnapshot(sessionId);
+    this._pendingModes.delete(sessionId);
+    this._approvalOwnerByToken.delete(sessionId);
+    this._currentSubmissionBySession.delete(sessionId);
     this.emitIndexChanged(sessionId, 'soft-deleted', entry);
     return { status: 'deleted' as const, entry };
   }
@@ -1247,17 +1479,101 @@ export class SessionManager {
 
   async setThreadMode(
     sessionId: string,
-    mode: import('../../prompts/PromptComposer').AgentMode,
+    mode: AgentMode,
   ) {
-    return this._sessionOperations.run(sessionId, async () => {
-      if (!this._registryConfig.threadIndexStore) throw new Error('Thread index is not configured');
-      const entry = await this._registryConfig.threadIndexStore.patch(sessionId, { agentMode: mode });
-      const live = this._sessions.get(sessionId);
-      if (live?.agent) {
-        await live.agent.submitOperation({ type: 'SetSessionMode', mode });
-      }
+    return this._sessionOperations.run(sessionId, () => this.setThreadModeLocked(sessionId, mode));
+  }
+
+  private async setThreadModeLocked(sessionId: string, mode: AgentMode): Promise<ThreadIndexEntry> {
+    const index = this._registryConfig.threadIndexStore;
+    if (!index) throw new Error('Thread index is not configured');
+    const current = await index.require(sessionId);
+    if (!this.supportsSessionMode(mode)) {
+      throw new SessionServiceError('INVALID_ARGUMENT', `Unsupported session mode: ${mode}`);
+    }
+    const live = this._sessions.get(sessionId);
+    if (!live?.agent || live.state === 'terminated') {
+      const entry = current.agentMode === mode
+        ? current
+        : await index.patch(sessionId, { agentMode: mode });
+      this._pendingModes.delete(sessionId);
+      this.emitModeChanged(sessionId, mode, true);
+      if (entry !== current) this.emitIndexChanged(sessionId, 'upsert', entry);
       return entry;
+    }
+    if (!live.agent.supportsSessionMode(mode)) {
+      throw new SessionServiceError('INVALID_ARGUMENT', `Unsupported session mode: ${mode}`);
+    }
+    if (live.hasLiveBackgroundWork() || this.runtimeView(sessionId, live).state === 'running') {
+      this._pendingModes.set(sessionId, mode);
+      this.emitModeChanged(sessionId, mode, false);
+      return current;
+    }
+    return this.applyModeLocked(sessionId, live, current, mode);
+  }
+
+  private async applyPendingModeLocked(sessionId: string, live: AgentSession): Promise<void> {
+    const mode = this._pendingModes.get(sessionId);
+    if (!mode || !live.agent || live.hasLiveBackgroundWork()) return;
+    const index = this._registryConfig.threadIndexStore;
+    if (!index) return;
+    try {
+      const current = await index.require(sessionId);
+      await this.applyModeLocked(sessionId, live, current, mode);
+    } catch (error) {
+      console.warn(`[SessionManager] Deferred mode switch failed for ${sessionId}:`, error);
+      this.emitModeChanged(sessionId, mode, false);
+    }
+  }
+
+  private async applyModeLocked(
+    sessionId: string,
+    live: AgentSession,
+    current: ThreadIndexEntry,
+    mode: AgentMode,
+  ): Promise<ThreadIndexEntry> {
+    const agent = live.agent;
+    const index = this._registryConfig.threadIndexStore;
+    if (!agent || !index) throw new Error(`Session not live: ${sessionId}`);
+    if (current.agentMode === mode && agent.getSession().getAgentMode() === mode) {
+      this._pendingModes.delete(sessionId);
+      this.emitModeChanged(sessionId, mode, true);
+      return current;
+    }
+    const previousLiveMode = agent.getSession().getAgentMode();
+    await agent.applySessionMode(mode);
+    try {
+      const entry = current.agentMode === mode
+        ? current
+        : await index.patch(sessionId, { agentMode: mode });
+      this._pendingModes.delete(sessionId);
+      this.emitModeChanged(sessionId, mode, true);
+      if (entry !== current) this.emitIndexChanged(sessionId, 'upsert', entry);
+      return entry;
+    } catch (error) {
+      if (previousLiveMode !== mode) {
+        await agent.applySessionMode(previousLiveMode).catch((rollbackError) => {
+          console.error(`[SessionManager] Mode rollback failed for ${sessionId}:`, rollbackError);
+        });
+      }
+      throw error;
+    }
+  }
+
+  private emitModeChanged(sessionId: string, mode: AgentMode, applied: boolean): void {
+    this.dispatchLifecycleEvent(sessionId, {
+      type: 'ModeChanged',
+      data: { sessionId, mode, applied },
     });
+  }
+
+  private supportsSessionMode(mode: unknown): mode is AgentMode {
+    if (mode !== 'general' && mode !== 'code') return false;
+    return this._registryConfig.agentAssembler?.supportsMode?.(mode) ?? true;
+  }
+
+  private normalizeSessionMode(mode: unknown): AgentMode {
+    return this.supportsSessionMode(mode) ? mode : 'general';
   }
 
   async attachSession(sessionId: string, after?: ReplayCursor) {
@@ -1283,8 +1599,22 @@ export class SessionManager {
     });
   }
 
-  setViewed(surfaceId: string, sessionId: string) {
-    return this._surfaceLeases.setViewed(surfaceId, sessionId);
+  getRolloutSnapshot(sessionId: string) {
+    return this._sessionOperations.run(sessionId, async () => {
+      await this._registryConfig.threadIndexStore?.require(sessionId);
+      return this._registryConfig.loadRolloutSnapshot
+        ? this._registryConfig.loadRolloutSnapshot(sessionId)
+        : { sessionId, revision: 0, items: [] };
+    });
+  }
+
+  async setViewed(surfaceId: string, sessionId: string) {
+    return this._sessionOperations.run(sessionId, async () => {
+      await this._registryConfig.threadIndexStore?.require(sessionId);
+      const lease = await this._surfaceLeases.setViewed(surfaceId, sessionId);
+      await this.touchThread(sessionId);
+      return lease;
+    });
   }
 
   heartbeatSurface(surfaceId: string, leaseId: string) {
@@ -1431,15 +1761,55 @@ export class SessionManager {
     request.reject(error);
   }
 
-  private trackAwaitingEvent(sessionId: string, msg: import('../protocol/events').EventMsg): void {
+  private trackAwaitingEvent(
+    sessionId: string,
+    event: import('../protocol/events').Event,
+  ): void {
+    const { msg } = event;
+    if (msg.type === 'TaskStarted') {
+      const submissionId = msg.data.submission_id ?? event.id;
+      this._currentSubmissionBySession.set(sessionId, submissionId);
+      return;
+    }
     if (msg.type === 'ApprovalRequested'
       || msg.type === 'ExecApprovalRequest'
       || msg.type === 'ApplyPatchApprovalRequest') {
       this.addAwaitingInput(sessionId, 'approval', msg.data.id);
+      const owner = msg.data.submission_id
+        ? `submission:${msg.data.submission_id}`
+        : this._currentSubmissionBySession.has(sessionId)
+          ? `submission:${this._currentSubmissionBySession.get(sessionId)}`
+          : msg.data.turn_id
+            ? `turn:${msg.data.turn_id}`
+            : undefined;
+      if (owner) {
+        const owners = this._approvalOwnerByToken.get(sessionId) ?? new Map();
+        owners.set(msg.data.id, owner);
+        this._approvalOwnerByToken.set(sessionId, owners);
+      }
     } else if (msg.type === 'ApprovalGranted' || msg.type === 'ApprovalDenied') {
       this.removeAwaitingInput(sessionId, 'approval', msg.data.id);
+      this._approvalOwnerByToken.get(sessionId)?.delete(msg.data.id);
     } else if (msg.type === 'TurnAborted' || msg.type === 'TaskFailed' || msg.type === 'TaskComplete') {
-      this.removeAwaitingInput(sessionId, 'approval');
+      const submissionId = msg.data.submission_id ?? event.id;
+      const terminalOwners = new Set([
+        `submission:${submissionId}`,
+        ...(msg.type === 'TaskComplete' && msg.data.turn_id
+          ? [`turn:${msg.data.turn_id}`]
+          : []),
+      ]);
+      const owners = this._approvalOwnerByToken.get(sessionId);
+      if (owners) {
+        for (const [token, owner] of owners) {
+          if (!terminalOwners.has(owner)) continue;
+          owners.delete(token);
+          this.removeAwaitingInput(sessionId, 'approval', token);
+        }
+        if (owners.size === 0) this._approvalOwnerByToken.delete(sessionId);
+      }
+      if (this._currentSubmissionBySession.get(sessionId) === submissionId) {
+        this._currentSubmissionBySession.delete(sessionId);
+      }
     }
   }
 
@@ -1470,7 +1840,7 @@ export class SessionManager {
       .then((provider) => provider.getRecoveryMetadata(sessionId))
       .then((recovery) => {
         for (const item of recovery.recentAccepted) {
-          this._submissionDedupe.set(`${sessionId}:${item.clientMessageId}`, {
+          this.rememberSubmissionDedupe(sessionId, item.clientMessageId, {
             digest: item.inputDigest,
             status: 'accepted',
             submissionId: item.submissionId,
@@ -1517,6 +1887,11 @@ export class SessionManager {
     force = false,
   ): void {
     const previous = this.runtimeView(sessionId, this._sessions.get(sessionId));
+    if (!RUNTIME_TRANSITIONS[previous.state].has(state)) {
+      throw new Error(
+        `Illegal session runtime transition for ${sessionId}: ${previous.state} -> ${state}`,
+      );
+    }
     const next: SessionRuntimeView = {
       ...previous,
       state,
@@ -1600,7 +1975,12 @@ export class SessionManager {
   }
 
   notifyThreadPurged(sessionId: string): void {
+    invalidateRolloutSnapshot(sessionId);
+    this.clearSubmissionDedupeSession(sessionId);
     this._runtimeViews.delete(sessionId);
+    this._pendingModes.delete(sessionId);
+    this._approvalOwnerByToken.delete(sessionId);
+    this._currentSubmissionBySession.delete(sessionId);
     this.emitIndexChanged(sessionId, 'purged');
   }
 
@@ -1630,6 +2010,10 @@ export class SessionManager {
    * @param sessionId The session ID to remove
    */
   async removeSession(sessionId: string): Promise<void> {
+    return this._sessionOperations.run(sessionId, () => this.removeSessionLocked(sessionId));
+  }
+
+  private async removeSessionLocked(sessionId: string): Promise<void> {
     const session = this._sessions.get(sessionId);
     if (!session) {
       console.warn(`[SessionManager] Session not found for removal: ${sessionId}`);
@@ -1645,9 +2029,12 @@ export class SessionManager {
     this._usedLetters.delete(session.sessionLetter);
 
     // Remove from registry
-    this._sessions.delete(sessionId);
-    this._eventStreams.get(sessionId)?.close();
+    const stream = this._eventStreams.get(sessionId);
+    await stream?.flush();
+    stream?.close();
     this._eventStreams.delete(sessionId);
+    this._sessions.delete(sessionId);
+    invalidateRolloutSnapshot(sessionId);
 
     console.log(
       `[SessionManager] Removed session: ${sessionId} ` +
@@ -1930,11 +2317,13 @@ export class SessionManager {
     }
 
     await Promise.all(cleanupPromises);
+    await Promise.all([...this._eventStreams.values()].map((stream) => stream.flush()));
+    for (const sessionId of this._sessions.keys()) invalidateRolloutSnapshot(sessionId);
 
     this._sessions.clear();
     for (const [sessionId, queued] of this._pendingSubmissions) {
       for (const item of queued) {
-        this._submissionDedupe.set(`${sessionId}:${item.clientMessageId}`, {
+        this.rememberSubmissionDedupe(sessionId, item.clientMessageId, {
           digest: item.digest,
           status: 'failed',
         });
@@ -1949,10 +2338,16 @@ export class SessionManager {
     }
     this._pendingSubmissions.clear();
     this._submissionDedupe.clear();
+    this._recentDedupeKeys.clear();
+    this._recentDedupeSessionOrder.length = 0;
     for (const requestId of [...this._attentionRequests.keys()]) {
       this.cancelAttentionRequest(requestId, new Error('Session manager shutdown'));
     }
     this._runtimeViews.clear();
+    this._approvalOwnerByToken.clear();
+    this._currentSubmissionBySession.clear();
+    this._pendingModes.clear();
+    this._assemblingImpacts.clear();
     this._capacityReservations.clear();
     this._evictionClaims.clear();
     this._deletionClaims.clear();

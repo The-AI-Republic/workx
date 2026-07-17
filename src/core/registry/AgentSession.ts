@@ -8,7 +8,6 @@ import type { RepublicAgent } from '../RepublicAgent';
 import type { Op } from '../protocol/types';
 import type {
   SessionState,
-  SessionType,
   SessionConfig,
   SessionMetadata,
   SessionEvent,
@@ -106,29 +105,22 @@ export class AgentSession {
     actions: ReadonlySet<ManagerAction>,
   ): Promise<void> {
     if (!this._agent || this._state === 'terminated') return;
-    const work: Array<{ label: string; promise: Promise<unknown> }> = [];
-    if (rebuild.size > 0) {
-      work.push({
-        label: `rebuild:${[...rebuild].join(',')}`,
-        promise: this._agent.rebuildExecutionContext(rebuild),
-      });
+    if (this._assembledAgent?.applyConfigImpact) {
+      await this._assembledAgent.applyConfigImpact(rebuild, actions);
+      return;
     }
+    // Manager actions can replace hooks, approval policy, or plugin/tool
+    // bindings. Apply them before composing the prompt so the rebuild observes
+    // the new graph instead of racing it.
     if (actions.size > 0) {
-      work.push({
-        label: `actions:${[...actions].join(',')}`,
-        promise: this._assembledAgent?.applyManagerActions(actions)
-          ?? this._agent.applyManagerActions(actions),
-      });
+      await (this._assembledAgent?.applyManagerActions(actions)
+        ?? this._agent.applyManagerActions(actions));
     }
-    const results = await Promise.allSettled(work.map(({ promise }) => promise));
-    for (const [index, result] of results.entries()) {
-      if (result.status === 'rejected') {
-        console.warn(
-          `[AgentSession] Failed to apply config impact (${work[index]?.label ?? 'unknown'}):`,
-          result.reason,
-        );
-      }
-    }
+    if (rebuild.size > 0) await this._agent.rebuildExecutionContext(rebuild);
+  }
+
+  async drainConfigImpact(): Promise<void> {
+    await this._assembledAgent?.drainConfigImpact?.();
   }
 
   hasLiveBackgroundWork(): boolean {

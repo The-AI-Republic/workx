@@ -85,10 +85,11 @@ export class RepublicAgent {
   private eventDispatcher: EventDispatcher | null = null;
   private engine: RepublicAgentEngine | null = null;
   private readonly pendingRebuildReasons = new Set<RebuildReason>();
-  // Non-null signals a deferred per-session mode switch, applied at the next
-  // user submission (mirrors pendingModelKey). Set when SetSessionMode arrives
-  // while a task is running.
+  // Non-null signals a deferred per-session mode switch, applied on the next
+  // idle edge. Set when SetSessionMode arrives while a task is running.
   private pendingModeSwitch: AgentMode | null = null;
+  private pendingModeApply: Promise<void> | null = null;
+  private modeWorkUnsubscribe: () => void = () => undefined;
   // Hook system
   private hookRegistry: HookRegistry;
   private hookExecutor: HookExecutor;
@@ -159,6 +160,9 @@ export class RepublicAgent {
     // titles, suggestions) — resolution policy lives in the factory.
     // Optional call: mocked/legacy Session doubles may not implement it.
     this.session.setEfficientClientProvider?.(() => this.modelClientFactory.createEfficientClient());
+    this.modeWorkUnsubscribe = this.session.subscribeBackgroundWorkChanged?.((busy) => {
+      if (!busy) void this.applyPendingModeAtIdle();
+    }) ?? (() => undefined);
 
     // Initialize hook system
     this.hookRegistry = new HookRegistry();
@@ -309,7 +313,7 @@ export class RepublicAgent {
    * Handle a per-session agent persona mode switch.
    *
    * Preserves conversation history. If a task is running, the switch is
-   * deferred until the next user submission (mirrors pendingModelKey). The UI
+   * deferred until the current task reaches its idle boundary. The UI
    * commits the tab's mode on ModeChanged{applied:true} and shows a pending
    * state on {applied:false}.
    */
@@ -317,7 +321,7 @@ export class RepublicAgent {
     const requested = op.mode;
     const sessionId = this.session.getId();
 
-    if (!MODES[requested]) {
+    if (!this.supportsSessionMode(requested)) {
       console.warn(`[RepublicAgent] Ignoring unknown session mode: ${requested}`);
       return;
     }
@@ -340,7 +344,7 @@ export class RepublicAgent {
       return;
     }
 
-    await this.applyAgentMode(requested);
+    await this.applySessionMode(requested);
     this.emitEvent({ type: 'ModeChanged', data: { sessionId, mode: requested, applied: true } });
     this.emitEvent({
       type: 'BackgroundEvent',
@@ -352,19 +356,49 @@ export class RepublicAgent {
    * Apply a mode to the live session + turn context and recompose the system
    * prompt. Does not emit ModeChanged — callers decide the applied flag.
    */
-  private async applyAgentMode(mode: AgentMode): Promise<void> {
-    this.pendingModeSwitch = null;
-    this.session.setAgentMode(mode);
-    const turnCtx = this.session.getTurnContext();
-    if (turnCtx) {
-      turnCtx.setAgentMode(mode);
-      try {
-        const baseInstructions = await this.promptLoader.load(mode, this.getPromptRuntimeContext(turnCtx));
-        turnCtx.setBaseInstructions(baseInstructions);
-      } catch (error) {
-        console.error('[RepublicAgent] Failed to recompose prompt on mode switch:', error);
-      }
+  supportsSessionMode(mode: AgentMode): boolean {
+    return Boolean(MODES[mode]) && this.promptLoader.supportsMode(mode);
+  }
+
+  async applySessionMode(mode: AgentMode): Promise<void> {
+    if (!this.supportsSessionMode(mode)) {
+      throw new Error(`Unsupported session mode: ${mode}`);
     }
+    const turnCtx = this.session.getTurnContext();
+    // Compose first. No durable or live state is changed unless every
+    // fallible preparation step succeeds.
+    const baseInstructions = await this.promptLoader.load(
+      mode,
+      this.getPromptRuntimeContext(turnCtx, mode),
+    );
+    this.session.setAgentMode(mode);
+    turnCtx.setAgentMode(mode);
+    turnCtx.setBaseInstructions(baseInstructions);
+    this.pendingModeSwitch = null;
+  }
+
+  private applyPendingModeAtIdle(): Promise<void> {
+    if (this.pendingModeApply) return this.pendingModeApply;
+    const mode = this.pendingModeSwitch;
+    if (!mode || this.hasLiveBackgroundWork()) return Promise.resolve();
+    const sessionId = this.session.getId();
+    const applying = this.applySessionMode(mode)
+      .then(() => {
+        this.emitEvent({ type: 'ModeChanged', data: { sessionId, mode, applied: true } });
+        this.emitEvent({
+          type: 'BackgroundEvent',
+          data: { message: `Switched to ${MODES[mode].label} mode.`, level: 'info' },
+        });
+      })
+      .catch((error) => {
+        console.error('[RepublicAgent] Failed to apply deferred session mode:', error);
+        this.emitEvent({ type: 'ModeChanged', data: { sessionId, mode, applied: false } });
+      })
+      .finally(() => {
+        if (this.pendingModeApply === applying) this.pendingModeApply = null;
+      });
+    this.pendingModeApply = applying;
+    return applying;
   }
 
   /**
@@ -444,10 +478,13 @@ export class RepublicAgent {
     this.autoCompactHook.attach((fn) => this.session.registerPostTurnHook(fn));
   }
 
-  private getPromptRuntimeContext(turnContext?: TurnContext): PromptRuntimeContext {
+  private getPromptRuntimeContext(
+    turnContext?: TurnContext,
+    mode: AgentMode = this.session.getAgentMode(),
+  ): PromptRuntimeContext {
     return {
       sessionId: this.session.getSessionId(),
-      mode: this.session.getAgentMode(),
+      mode,
       toolRegistry: this.toolRegistry,
       turnContext: turnContext ?? this.session.getTurnContext(),
     };
@@ -886,19 +923,6 @@ export class RepublicAgent {
       await this.rebuildExecutionContext(new Set(this.pendingRebuildReasons));
     }
 
-    // Apply pending mode switch before processing the new submission
-    if (this.pendingModeSwitch !== null) {
-      const deferredMode = this.pendingModeSwitch;
-      await this.applyAgentMode(deferredMode);
-      this.emitEvent({
-        type: 'ModeChanged',
-        data: { sessionId: this.session.getId(), mode: deferredMode, applied: true },
-      });
-      this.emitEvent({
-        type: 'BackgroundEvent',
-        data: { message: `Switched to ${MODES[deferredMode].label} mode.`, level: 'info' },
-      });
-    }
     return true;
   }
 
@@ -1269,6 +1293,8 @@ export class RepublicAgent {
   }
 
   private async cleanupOnce(reason: AgentDisposeReason): Promise<void> {
+    this.modeWorkUnsubscribe();
+    this.modeWorkUnsubscribe = () => undefined;
     // Fire SessionEnd hooks with short timeout (1.5s) before tearing things down.
     // Failures here must not block shutdown.
     try {

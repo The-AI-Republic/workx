@@ -101,13 +101,15 @@ export class ThreadIndexStore {
   }
 
   async get(sessionId: string, includeDeleted = false): Promise<ThreadIndexEntry | null> {
-    await this.initialize();
-    const entry = await this.adapter.get<ThreadIndexEntry>(THREAD_INDEX_STORE, sessionId);
-    if (!entry) return null;
-    const repaired = this.repair(entry);
-    if (repaired !== entry) await this.adapter.put(THREAD_INDEX_STORE, repaired);
-    if (!includeDeleted && repaired.deletedAt !== null) return null;
-    return repaired;
+    return this.queue.run(sessionId, async () => {
+      await this.initialize();
+      const entry = await this.adapter.get<ThreadIndexEntry>(THREAD_INDEX_STORE, sessionId);
+      if (!entry) return null;
+      const repaired = this.repair(entry);
+      if (repaired !== entry) await this.adapter.put(THREAD_INDEX_STORE, repaired);
+      if (!includeDeleted && repaired.deletedAt !== null) return null;
+      return repaired;
+    });
   }
 
   async require(sessionId: string, includeDeleted = false): Promise<ThreadIndexEntry> {
@@ -213,7 +215,7 @@ export class ThreadIndexStore {
     });
   }
 
-  async softDelete(sessionId: string, retentionMs = 7 * 24 * 60 * 60 * 1000): Promise<ThreadIndexEntry> {
+  async softDelete(sessionId: string, retentionMs = 30 * 24 * 60 * 60 * 1000): Promise<ThreadIndexEntry> {
     return this.queue.run(sessionId, async () => {
       await this.initialize();
       const current = await this.requireStored(sessionId);
@@ -285,7 +287,10 @@ export class ThreadIndexStore {
     const repaired = raw.map((entry) => this.repair(entry));
     const repairs = repaired.filter((entry, index) => entry !== raw[index]);
     if (repairs.length > 0) {
-      await Promise.all(repairs.map((entry) => this.adapter.put(THREAD_INDEX_STORE, entry)));
+      // Re-read and repair in the same per-session lane as every other write.
+      // Persisting the stale row returned by getAll() could otherwise overwrite
+      // a rename or activity update that completed while list() was running.
+      await Promise.all(repairs.map((entry) => this.repairStored(entry.sessionId)));
     }
     const rows = repaired
       .filter((entry) => includeDeleted || entry.deletedAt === null)
@@ -311,6 +316,16 @@ export class ThreadIndexStore {
           })
         : null,
     };
+  }
+
+  private repairStored(sessionId: string): Promise<void> {
+    return this.queue.run(sessionId, async () => {
+      await this.initialize();
+      const current = await this.adapter.get<ThreadIndexEntry>(THREAD_INDEX_STORE, sessionId);
+      if (!current) return;
+      const repaired = this.repair(current);
+      if (repaired !== current) await this.adapter.put(THREAD_INDEX_STORE, repaired);
+    });
   }
 
   async backfill(input: {

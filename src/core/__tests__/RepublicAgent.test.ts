@@ -24,6 +24,7 @@ let mockPlatformAdapter: Record<string, any>;
 let mockEngineInstance: Record<string, any>;
 let mockPromptLoader: Record<string, any>;
 let uuidCounter: number;
+let backgroundWorkListener: ((busy: boolean) => void) | null;
 
 // ---------------------------------------------------------------------------
 // vi.mock() declarations
@@ -147,6 +148,7 @@ describe('RepublicAgent', () => {
 
   beforeEach(() => {
     uuidCounter = 0;
+    backgroundWorkListener = null;
 
     // Recreate shared mock instances before each test
     mockSessionInstance = {
@@ -182,6 +184,10 @@ describe('RepublicAgent', () => {
       hasRunningTask: vi.fn().mockReturnValue(false),
       getRunningTasks: vi.fn().mockReturnValue(new Map()),
       hasLiveBackgroundWork: vi.fn().mockReturnValue(false),
+      subscribeBackgroundWorkChanged: vi.fn((listener: (busy: boolean) => void) => {
+        backgroundWorkListener = listener;
+        return vi.fn();
+      }),
       beginLifecycleWork: vi.fn().mockReturnValue({
         token: 'lease-1',
         signal: new AbortController().signal,
@@ -531,7 +537,7 @@ describe('RepublicAgent', () => {
       expect(mockPromptLoader.load).not.toHaveBeenCalled();
     });
 
-    it('should defer SetSessionMode while a task is running and apply it on next user input', async () => {
+    it('should defer SetSessionMode while a task is running and apply it at the idle edge', async () => {
       await agent.initialize();
       const turnContext = mockSessionInstance.getTurnContext();
       mockPromptLoader.load.mockClear();
@@ -556,12 +562,8 @@ describe('RepublicAgent', () => {
       )).toBe(true);
 
       mockSessionInstance.hasLiveBackgroundWork.mockReturnValue(false);
-
-      await agent.submitOperation({
-        type: 'UserInput',
-        items: [{ type: 'text', text: 'apply the pending mode' }],
-      });
-      await new Promise(r => setTimeout(r, 0));
+      backgroundWorkListener?.(false);
+      await vi.waitFor(() => expect(mockSessionInstance.setAgentMode).toHaveBeenCalledWith('code'));
 
       expect(mockSessionInstance.setAgentMode).toHaveBeenCalledWith('code');
       expect(turnContext.setAgentMode).toHaveBeenCalledWith('code');
@@ -576,6 +578,20 @@ describe('RepublicAgent', () => {
           call[0]?.msg?.data?.mode === 'code' &&
           call[0]?.msg?.data?.applied === true
       )).toBe(true);
+    });
+
+    it('does not mutate live mode state when prompt preparation fails', async () => {
+      await agent.initialize();
+      const turnContext = mockSessionInstance.getTurnContext();
+      mockSessionInstance.setAgentMode.mockClear();
+      turnContext.setAgentMode.mockClear();
+      turnContext.setBaseInstructions.mockClear();
+      mockPromptLoader.load.mockRejectedValueOnce(new Error('compose failed'));
+
+      await expect(agent.applySessionMode('code')).rejects.toThrow('compose failed');
+      expect(mockSessionInstance.setAgentMode).not.toHaveBeenCalled();
+      expect(turnContext.setAgentMode).not.toHaveBeenCalled();
+      expect(turnContext.setBaseInstructions).not.toHaveBeenCalled();
     });
 
     it('should process an AddToHistory op and delegate to engine', async () => {

@@ -508,7 +508,6 @@
         } | null;
       }>('session.attach', {
         sessionId,
-        surfaceId,
         after: existing?.attach.cursor ?? undefined,
       });
       const buffered = attachBuffers.get(sessionId) ?? [];
@@ -1252,16 +1251,16 @@
    */
   async function setSessionMode(mode: AgentMode) {
     if (!activeSessionId || !client) return;
+    const sessionId = activeSessionId;
     if (($activeThread?.agentMode ?? DEFAULT_MODE) === mode && !$activeThread?.pendingMode) return;
     try {
-      threadStore.setThreadPendingMode(activeSessionId, mode);
-      const response = await client.serviceRequest<{ entry: ThreadIndexEntry }>('session.setMode', {
-        sessionId: activeSessionId,
+      threadStore.setThreadPendingMode(sessionId, mode);
+      await client.serviceRequest<{ entry: ThreadIndexEntry }>('session.setMode', {
+        sessionId,
         mode,
       });
-      threadStore.mergeThread(response.entry);
-      threadStore.setThreadMode(activeSessionId, mode);
     } catch (error) {
+      threadStore.setThreadPendingMode(sessionId, null);
       console.error('Failed to set session mode:', error);
     }
   }
@@ -1295,7 +1294,6 @@
   }
 
   async function setViewedAndAttach(sessionId: string): Promise<void> {
-    await releaseSurface();
     const c = await getInitializedUIClient();
     const response = await c.serviceRequest<{
       lease: { leaseId: string; sessionId: string };

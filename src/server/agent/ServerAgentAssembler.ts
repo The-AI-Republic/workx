@@ -10,7 +10,11 @@ import type {
 } from '../../core/assembly/AgentAssembler';
 import type { IPlatformAdapter } from '../../core/platform/IPlatformAdapter';
 import type { SubAgentRunner } from '../../tools/AgentTool/SubAgentRunner';
-import type { RuntimeContext } from '../../prompts/PromptComposer';
+import {
+  supportsAgentMode,
+  type AgentMode,
+  type RuntimeContext,
+} from '../../prompts/PromptComposer';
 
 export interface ServerAssemblyWiring {
   subAgentRunner: SubAgentRunner | null;
@@ -31,6 +35,10 @@ export interface ServerAgentAssemblerOptions {
 /** Construction owner shared by headless server and desktop runtime. */
 export class ServerAgentAssembler implements AgentAssembler {
   constructor(private readonly options: ServerAgentAssemblerOptions) {}
+
+  supportsMode(mode: AgentMode): boolean {
+    return supportsAgentMode(this.options.agentType, mode);
+  }
 
   async assemble(input: AssembleInput): Promise<AssembledAgent> {
     const platformAdapter = await this.options.createPlatformAdapter(input.sessionId);

@@ -45,6 +45,7 @@ export interface SessionServiceDeps {
     }): Promise<any>;
     listThreads?(request?: Record<string, unknown>): Promise<any>;
     getThread?(sessionId: string, includeDeleted?: boolean): Promise<any>;
+    getRolloutSnapshot?(sessionId: string): Promise<any>;
     renameThread?(sessionId: string, title: string): Promise<any>;
     pinThread?(sessionId: string, pinned: boolean): Promise<any>;
     deleteThread?(sessionId: string, abortRunning?: boolean): Promise<any>;
@@ -115,6 +116,7 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
     'session.getRollout': async (params) => {
       const { sessionId } = (params ?? {}) as { sessionId?: string };
       if (!sessionId) throw new Error('sessionId is required');
+      if (registry.getRolloutSnapshot) return registry.getRolloutSnapshot(sessionId);
       const provider = await RolloutRecorder.getProvider();
       const metadata = await provider.getMetadata(sessionId);
       const records = metadata ? await provider.getItemsByRolloutId(sessionId) : [];
@@ -156,9 +158,10 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
         cursor?: { runtimeEpoch: string; eventSeq: number };
       };
       if (!sessionId) throw new Error('sessionId is required');
-      if (surfaceId && registry.setViewed) await registry.setViewed(surfaceId, sessionId);
       if (!registry.attachSession) throw new Error('Session attach is unavailable');
-      return registry.attachSession(sessionId, after ?? cursor);
+      const attached = await registry.attachSession(sessionId, after ?? cursor);
+      if (surfaceId && registry.setViewed) await registry.setViewed(surfaceId, sessionId);
+      return attached;
     },
 
     /**
@@ -497,7 +500,6 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
       };
       if (!surfaceId || !sessionId) throw new Error('surfaceId and sessionId are required');
       if (!registry.setViewed) throw new Error('Surface leases are unavailable');
-      await registry.getThread?.(sessionId);
       return { lease: await registry.setViewed(surfaceId, sessionId) };
     },
 

@@ -441,12 +441,16 @@ export interface ExecCommandEndEvent {
 
 export interface ExecApprovalRequestEvent {
   id: string;
+  submission_id?: string;
+  turn_id?: string;
   command: string;
   explanation?: string;
 }
 
 export interface ApplyPatchApprovalRequestEvent {
   id: string;
+  submission_id?: string;
+  turn_id?: string;
   path: string;
   patch: string;
   num_files?: number;
@@ -637,6 +641,8 @@ export interface ApprovalAutoApprovedEvent {
  */
 export interface ApprovalRequestedEvent {
   id: string;
+  submission_id?: string;
+  turn_id?: string;
   tool_name: string;
   risk_score: number;
   risk_level: string;

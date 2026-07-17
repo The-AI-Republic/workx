@@ -21,6 +21,7 @@ import { SessionCacheManager } from '../../storage/SessionCacheManager';
 import { RolloutRecorder } from '../../storage/rollout';
 import { IndexedDBRolloutStorageProvider } from '../../storage/rollout/provider/IndexedDBRolloutStorageProvider';
 import { AgentConfig } from '../../config/AgentConfig';
+import { normalizeAgentMode } from '../../prompts/PromptComposer';
 import { STORAGE_KEYS } from '../../config/defaults';
 import { DEFAULT_APPROVAL_CONFIG } from '../../core/approval/types';
 import { LLM_API_URL } from '../../config/constants';
@@ -613,7 +614,10 @@ async function reconcileThreadIndex(): Promise<void> {
   await threadIndexStore.backfill({
     rollouts: await (await RolloutRecorder.getProvider()).getAllMetadata(),
     persistedSessions: await sessionStorage?.loadAllSessions() ?? [],
-    defaultMode: agentConfig?.getConfig().preferences?.defaultMode,
+    defaultMode: normalizeAgentMode(
+      'workx',
+      agentConfig?.getConfig().preferences?.defaultMode,
+    ),
   });
 }
 

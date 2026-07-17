@@ -14,6 +14,7 @@ export interface SequencedSessionEvent {
 
 export interface ReplayBatch {
   runtimeEpoch: string;
+  baseRolloutRevision: number;
   firstSeq: number;
   throughSeq: number;
   truncated: boolean;
@@ -31,6 +32,7 @@ export class SwitchableEventGate {
   private nextSeq = 1;
   private readonly ring: SequencedSessionEvent[] = [];
   private ringBytes = 0;
+  private baseRolloutRevision = 0;
   private outboundTail: Promise<void> = Promise.resolve();
 
   constructor(
@@ -67,6 +69,7 @@ export class SwitchableEventGate {
       : this.ring.filter((item) => item.eventSeq <= throughSeq);
     return {
       runtimeEpoch: this.runtimeEpoch,
+      baseRolloutRevision: this.baseRolloutRevision,
       firstSeq: events[0]?.eventSeq ?? this.nextSeq,
       throughSeq,
       truncated: cursor
@@ -80,7 +83,12 @@ export class SwitchableEventGate {
     await this.outboundTail;
   }
 
-  clearReplay(): void {
+  setBaseRolloutRevision(revision: number): void {
+    this.baseRolloutRevision = revision;
+  }
+
+  clearReplay(baseRolloutRevision = this.baseRolloutRevision): void {
+    this.baseRolloutRevision = baseRolloutRevision;
     this.ring.length = 0;
     this.ringBytes = 0;
     this.truncated = false;

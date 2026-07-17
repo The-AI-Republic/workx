@@ -17,6 +17,7 @@ import {
   setTelemetryGate,
   type TelemetryEvent,
 } from '../../telemetry';
+import type { AgentMode } from '../../../prompts/PromptComposer';
 
 function config() {
   return {
@@ -42,6 +43,7 @@ class FakeAssembler implements AgentAssembler {
   flushWaitFor: Promise<void> | null = null;
   flushFailure: Error | null = null;
   private submission = 0;
+  supportsMode = vi.fn((mode: AgentMode) => mode === 'general' || mode === 'code');
 
   async assemble(input: AssembleInput): Promise<AssembledAgent> {
     this.inputs.push(input);
@@ -58,11 +60,12 @@ class FakeAssembler implements AgentAssembler {
       throw error;
     }
     let busy = false;
+    let mode = input.preferences.agentMode;
     const workListeners = new Set<(value: boolean) => void>();
     const session = {
       sessionId: input.sessionId,
       initialize: vi.fn().mockResolvedValue(undefined),
-      getAgentMode: vi.fn(() => input.preferences.agentMode),
+      getAgentMode: vi.fn(() => mode),
       hasLiveBackgroundWork: vi.fn(() => busy),
       subscribeBackgroundWorkChanged: vi.fn((listener: (value: boolean) => void) => {
         workListeners.add(listener);
@@ -80,6 +83,8 @@ class FakeAssembler implements AgentAssembler {
     const agent = {
       getSession: vi.fn(() => session),
       submitOperation: submit,
+      supportsSessionMode: vi.fn(() => true),
+      applySessionMode: vi.fn(async (nextMode: 'general' | 'code') => { mode = nextMode; }),
       rebuildExecutionContext: vi.fn().mockResolvedValue(undefined),
       applyManagerActions: vi.fn().mockResolvedValue(undefined),
       getPlatformAdapter: vi.fn(() => ({})),
@@ -440,6 +445,219 @@ describe('SessionManager lifecycle manager', () => {
     ]);
   });
 
+  it('applies mode changes transactionally and commits deferred modes at the idle edge', async () => {
+    await registry.openSession({ sessionId: 'mode' });
+    const live = await registry.hydrateSession('mode');
+    const agent = assembler.handles.get('mode')!.agent;
+    const fakeSession = agent.getSession() as unknown as {
+      setBusy(value: boolean): void;
+      getAgentMode(): 'general' | 'code';
+    };
+    const applyMode = agent.applySessionMode as ReturnType<typeof vi.fn>;
+
+    await registry.setThreadMode('mode', 'code');
+    expect(applyMode).toHaveBeenCalledWith('code');
+    expect((await index.require('mode')).agentMode).toBe('code');
+
+    applyMode.mockRejectedValueOnce(new Error('prompt composition failed'));
+    await expect(registry.setThreadMode('mode', 'general'))
+      .rejects.toThrow('prompt composition failed');
+    expect((await index.require('mode')).agentMode).toBe('code');
+    expect(fakeSession.getAgentMode()).toBe('code');
+
+    fakeSession.setBusy(true);
+    live.markActive();
+    await registry.setThreadMode('mode', 'general');
+    expect((await index.require('mode')).agentMode).toBe('code');
+    expect((registry as unknown as { _pendingModes: Map<string, string> })
+      ._pendingModes.get('mode')).toBe('general');
+
+    fakeSession.setBusy(false);
+    await (registry as unknown as {
+      handleBackgroundWorkChanged(sessionId: string): Promise<void>;
+    }).handleBackgroundWorkChanged('mode');
+    expect((await index.require('mode')).agentMode).toBe('general');
+    expect(fakeSession.getAgentMode()).toBe('general');
+  });
+
+  it('rejects an unsupported mode while suspended without hydrating or persisting it', async () => {
+    assembler.supportsMode.mockImplementation((mode) => mode === 'general');
+    await registry.openSession({ sessionId: 'unsupported-mode' });
+
+    await expect(registry.setThreadMode('unsupported-mode', 'code'))
+      .rejects.toMatchObject({ errorCode: 'INVALID_ARGUMENT' });
+    expect((await index.require('unsupported-mode')).agentMode).toBe('general');
+    expect(assembler.inputs).toHaveLength(0);
+  });
+
+  it('keeps approval attention scoped to the submission that owns it', async () => {
+    await registry.openSession({ sessionId: 'approval-owner' });
+    await registry.hydrateSession('approval-owner');
+    const track = (registry as unknown as {
+      trackAwaitingEvent(sessionId: string, event: import('../../protocol/events').Event): void;
+    }).trackAwaitingEvent.bind(registry);
+    track('approval-owner', {
+      id: 'task-one-start',
+      msg: { type: 'TaskStarted', data: { submission_id: 'task-one' } },
+    });
+    track('approval-owner', {
+      id: 'approval-envelope',
+      msg: {
+        type: 'ApprovalRequested',
+        data: {
+          id: 'approval-one',
+          turn_id: 'tool-turn-one',
+          tool_name: 'test',
+          risk_score: 1,
+          risk_level: 'low',
+          risk_factors: [],
+          explanation: 'test',
+        },
+      },
+    });
+    const awaiting = () => (registry as unknown as {
+      _awaitingTokens: Map<string, Map<string, string>>;
+    })._awaitingTokens.get('approval-owner');
+    expect(awaiting()?.get('approval-one')).toBe('approval');
+    track('approval-owner', {
+      id: 'task-two-complete',
+      msg: { type: 'TaskComplete', data: { submission_id: 'task-two' } },
+    });
+    expect(awaiting()?.get('approval-one')).toBe('approval');
+
+    track('approval-owner', {
+      id: 'task-one-complete',
+      msg: { type: 'TaskComplete', data: { submission_id: 'task-one' } },
+    });
+    expect(awaiting()?.has('approval-one') ?? false).toBe(false);
+  });
+
+  it('does not let a stale background callback resurrect a suspended graph', async () => {
+    await registry.openSession({ sessionId: 'suspend-callback' });
+    await registry.hydrateSession('suspend-callback');
+    let release!: () => void;
+    assembler.flushWaitFor = new Promise<void>((resolve) => { release = resolve; });
+    const suspended = registry.suspendSession('suspend-callback');
+    await vi.waitFor(() => expect(
+      assembler.handles.get('suspend-callback')?.flushRollout,
+    ).toHaveBeenCalledOnce());
+    const callback = (registry as unknown as {
+      handleBackgroundWorkChanged(sessionId: string): Promise<void>;
+    }).handleBackgroundWorkChanged('suspend-callback');
+    release();
+    await suspended;
+    await callback;
+    expect((await registry.getThread('suspend-callback')).runtime.state).toBe('suspended');
+    expect(registry.getSession('suspend-callback')).toBeUndefined();
+  });
+
+  it('reaches idle when terminal snapshot refresh fails', async () => {
+    await registry.openSession({ sessionId: 'refresh-failure' });
+    await registry.hydrateSession('refresh-failure');
+    const fakeSession = assembler.handles.get('refresh-failure')!.agent.getSession() as unknown as {
+      setBusy(value: boolean): void;
+    };
+    const handleWorkChange = (registry as unknown as {
+      handleBackgroundWorkChanged(sessionId: string): Promise<void>;
+    }).handleBackgroundWorkChanged.bind(registry);
+    fakeSession.setBusy(true);
+    await handleWorkChange('refresh-failure');
+    (registry as unknown as {
+      _registryConfig: { refreshRolloutSnapshot: (sessionId: string) => Promise<never> };
+    })._registryConfig.refreshRolloutSnapshot = vi.fn().mockRejectedValue(new Error('snapshot read failed'));
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    fakeSession.setBusy(false);
+    await expect(handleWorkChange('refresh-failure')).resolves.toBeUndefined();
+    expect((await registry.getThread('refresh-failure')).runtime.state).toBe('idle');
+    expect(warning).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to refresh rollout snapshot'),
+      expect.any(Error),
+    );
+  });
+
+  it('flushes prior outbound events before completing suspension', async () => {
+    await registry.cleanup();
+    let release!: () => void;
+    const blocked = new Promise<void>((resolve) => { release = resolve; });
+    let deliveryStarted = false;
+    registry = new SessionManager({
+      lifecycleMode: 'client',
+      maxLive: 2,
+      hardMax: 3,
+      threadIndexStore: index,
+      agentAssembler: assembler,
+      authContext,
+      assemblyServicesFactory: async () => ({} as never),
+      loadRolloutSnapshot: async (sessionId) => ({ sessionId, revision: 0, items: [] }),
+      refreshRolloutSnapshot: async (sessionId) => ({ sessionId, revision: 0, items: [] }),
+      eventDispatcherFactory: () => async (event) => {
+        if (event.msg.type === 'BackgroundEvent' && event.msg.data.message === 'block') {
+          deliveryStarted = true;
+          await blocked;
+        }
+      },
+    });
+    registry.initialize(agentConfig as never);
+    await registry.openSession({ sessionId: 'ordered-suspend' });
+    await registry.hydrateSession('ordered-suspend');
+    assembler.inputs.find((input) => input.sessionId === 'ordered-suspend')!.eventDispatcher({
+      id: 'blocked-event',
+      msg: { type: 'BackgroundEvent', data: { message: 'block' } },
+    });
+    await vi.waitFor(() => expect(deliveryStarted).toBe(true));
+    let settled = false;
+    const suspend = registry.suspendSession('ordered-suspend').then(() => { settled = true; });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    release();
+    await suspend;
+    expect(settled).toBe(true);
+  });
+
+  it('does not claim deletion when an unconfirmed running delete is refused', async () => {
+    await registry.openSession({ sessionId: 'delete-confirmation' });
+    const live = await registry.hydrateSession('delete-confirmation');
+    const session = assembler.handles.get('delete-confirmation')!.agent.getSession() as unknown as {
+      setBusy(value: boolean): void;
+    };
+    session.setBusy(true);
+    live.markActive();
+    await expect(registry.deleteThread('delete-confirmation'))
+      .resolves.toEqual({ status: 'requires-confirmation', running: true });
+    expect((registry as unknown as { _deletionClaims: Set<string> })
+      ._deletionClaims.has('delete-confirmation')).toBe(false);
+    await expect(registry.enqueueSubmission({
+      sessionId: 'delete-confirmation',
+      clientMessageId: 'still-running',
+      op: { type: 'UserInput', items: [{ type: 'text', text: 'hello' }] },
+    })).resolves.toMatchObject({ status: 'rejected', reason: 'busy' });
+    session.setBusy(false);
+    live.markIdle();
+  });
+
+  it('bounds recent submission acknowledgements per session', () => {
+    const internals = registry as unknown as {
+      rememberSubmissionDedupe(
+        sessionId: string,
+        clientMessageId: string,
+        value: { digest: string; status: 'accepted'; submissionId: string },
+      ): void;
+      _submissionDedupe: Map<string, unknown>;
+    };
+    for (let index = 0; index < 140; index += 1) {
+      internals.rememberSubmissionDedupe('bounded', `client-${index}`, {
+        digest: `${index}`,
+        status: 'accepted',
+        submissionId: `submission-${index}`,
+      });
+    }
+    expect([...internals._submissionDedupe.keys()]
+      .filter((key) => key.startsWith('bounded:'))).toHaveLength(128);
+    expect(internals._submissionDedupe.has('bounded:client-0')).toBe(false);
+    expect(internals._submissionDedupe.has('bounded:client-139')).toBe(true);
+  });
+
   it('isolates config sweep failures and reconciles config changes during hydration', async () => {
     await registry.createSession({ type: 'scheduled', sessionId: 'config-a' });
     await registry.createSession({ type: 'scheduled', sessionId: 'config-b' });
@@ -462,10 +680,13 @@ describe('SessionManager lifecycle manager', () => {
       assembler.inputs[assembler.inputs.length - 1]?.sessionId,
     ).toBe('generation-race'));
     generation = 1;
+    handler({ section: 'enabledPlugins' } as never);
     release();
     await hydration;
     expect(assembler.handles.get('generation-race')!.agent.rebuildExecutionContext)
-      .toHaveBeenCalledWith(new Set(['full']));
+      .toHaveBeenCalledWith(new Set(['tools', 'prompt', 'full']));
+    expect(assembler.handles.get('generation-race')!.applyManagerActions)
+      .toHaveBeenCalledWith(new Set(['rebind-plugins']));
   });
 
   it('logs auth rebuild failures and continues rebuilding other live agents', async () => {
@@ -546,6 +767,9 @@ describe('SessionManager lifecycle manager', () => {
     await registry.openSession({ sessionId: 'delete' });
     await expect(registry.deleteThread('delete')).resolves.toMatchObject({ status: 'deleted' });
     await expect(registry.getThread('delete')).rejects.toMatchObject({ code: 'SESSION_DELETED' });
+    await expect(registry.getThread('delete', true)).resolves.toMatchObject({
+      runtime: { state: 'deleting' },
+    });
     await expect(registry.undeleteThread('delete')).resolves.toMatchObject({
       status: 'restored', entry: { sessionId: 'delete' },
     });
@@ -555,17 +779,22 @@ describe('SessionManager lifecycle manager', () => {
     });
   });
 
-  it('resolves surface-less actions from viewed lease, then newest index, then a new row', async () => {
+  it('replaces viewed leases atomically and records explicit navigation as recency', async () => {
     const openedA = await registry.openSession({ sessionId: 'older' });
     const openedB = await registry.openSession({ sessionId: 'newer' });
     await index.patch(openedA.sessionId, { lastActiveAt: 1 });
     await index.patch(openedB.sessionId, { lastActiveAt: 2 });
     const lease = await registry.setViewed('surface', 'older');
     await expect(registry.resolveSurfaceLessTarget()).resolves.toBe('older');
+    await expect(registry.setViewed('surface', 'missing')).rejects.toMatchObject({
+      code: 'SESSION_NOT_FOUND',
+    });
+    await expect(registry.resolveSurfaceLessTarget()).resolves.toBe('older');
     await registry.releaseSurface('surface', lease.leaseId);
-    await expect(registry.resolveSurfaceLessTarget()).resolves.toBe('newer');
+    await expect(registry.resolveSurfaceLessTarget()).resolves.toBe('older');
 
     await registry.deleteThread('older');
+    await expect(registry.resolveSurfaceLessTarget()).resolves.toBe('newer');
     await registry.deleteThread('newer');
     const created = await registry.resolveSurfaceLessTarget();
     expect(created).not.toBe('older');

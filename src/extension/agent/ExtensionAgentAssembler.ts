@@ -26,6 +26,7 @@ import type {
   ManagerAction,
 } from '../../core/assembly/AgentAssembler';
 import { AssembledAgentHandle } from '../../core/assembly/AgentAssembler';
+import { supportsAgentMode, type AgentMode } from '../../prompts/PromptComposer';
 
 export interface ExtensionAssemblyContribution {
   dispose?: () => Promise<void> | void;
@@ -43,6 +44,10 @@ export interface ExtensionAgentAssemblerOptions {
 /** Owns the complete extension runtime graph and its reverse-order teardown. */
 export class ExtensionAgentAssembler implements AgentAssembler {
   constructor(private readonly options: ExtensionAgentAssemblerOptions) {}
+
+  supportsMode(mode: AgentMode): boolean {
+    return supportsAgentMode('workx', mode);
+  }
 
   async assemble(input: AssembleInput): Promise<AssembledAgent> {
     const platformAdapter = this.options.platformAdapterFactory(input.sessionId);

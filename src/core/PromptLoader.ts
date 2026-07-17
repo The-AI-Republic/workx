@@ -13,7 +13,15 @@
 import defaultExtensionPrompt from '../prompts/default_workx_agent_prompt.md?raw';
 import defaultDesktopPrompt from '../prompts/default_workx_desktop_agent_prompt.md?raw';
 import userInstructions from '../prompts/user_instruction.md?raw';
-import { PromptComposer, type AgentType, type AgentMode, type RuntimeContext, DEFAULT_MODE, MODES } from '../prompts/PromptComposer';
+import {
+  PromptComposer,
+  type AgentType,
+  type AgentMode,
+  type RuntimeContext,
+  DEFAULT_MODE,
+  normalizeAgentMode,
+  supportsAgentMode,
+} from '../prompts/PromptComposer';
 import type { ToolRegistry } from '../tools/ToolRegistry';
 import type { TurnContext } from './TurnContext';
 
@@ -50,7 +58,8 @@ export function createPromptLoader(input: CreatePromptLoaderInput): AgentPromptL
   return {
     async load(mode: AgentMode = DEFAULT_MODE, runtime: PromptRuntimeContext = {}): Promise<string> {
       if (disposed) throw new Error('AgentPromptLoader is disposed');
-      const ctx = { ...runtime, mode };
+      const resolvedMode = normalizeAgentMode(input.agentType, mode);
+      const ctx = { ...runtime, mode: resolvedMode };
       let base: string;
       try {
         let dynamic: Partial<RuntimeContext> = {};
@@ -59,7 +68,7 @@ export function createPromptLoader(input: CreatePromptLoaderInput): AgentPromptL
         } catch (error) {
           console.warn('[AgentPromptLoader] dynamic context failed:', error);
         }
-        base = instanceComposer.composeMainInstruction(input.agentType, mode, {
+        base = instanceComposer.composeMainInstruction(input.agentType, resolvedMode, {
           ...staticSnapshot,
           ...dynamic,
           currentDateTime: new Date().toISOString(),
@@ -83,7 +92,7 @@ export function createPromptLoader(input: CreatePromptLoaderInput): AgentPromptL
       return extras.length > 0 ? `${base}\n\n${extras.join('\n\n')}` : base;
     },
     supportsMode(mode: AgentMode): boolean {
-      return Object.prototype.hasOwnProperty.call(MODES, mode);
+      return supportsAgentMode(input.agentType, mode);
     },
     registerExtension(name: string, extension: AgentPromptExtension): () => void {
       if (disposed) throw new Error('AgentPromptLoader is disposed');

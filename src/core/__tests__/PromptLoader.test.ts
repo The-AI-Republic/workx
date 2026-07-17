@@ -128,11 +128,13 @@ describe('AgentPromptLoader', () => {
   });
 
   it('reports supported modes and loads bundled user instructions', async () => {
-    const loader = createPromptLoader({ agentType: 'workx' });
+    const extensionLoader = createPromptLoader({ agentType: 'workx' });
+    const desktopLoader = createPromptLoader({ agentType: 'workx-desktop' });
 
-    expect(loader.supportsMode('general')).toBe(true);
-    expect(loader.supportsMode('code')).toBe(true);
-    expect(loader.supportsMode('not-a-mode' as never)).toBe(false);
+    expect(extensionLoader.supportsMode('general')).toBe(true);
+    expect(extensionLoader.supportsMode('code')).toBe(false);
+    expect(desktopLoader.supportsMode('code')).toBe(true);
+    expect(extensionLoader.supportsMode('not-a-mode' as never)).toBe(false);
     await expect(loadUserInstructions()).resolves.toEqual(expect.any(String));
   });
 });

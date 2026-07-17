@@ -38,12 +38,14 @@ describe('SwitchableEventGate', () => {
 
   it('bounds replay, reports only a real cursor gap, and closes without leaking buffered events', async () => {
     const gate = new SwitchableEventGate(() => undefined, 2, 100_000);
+    gate.setBaseRolloutRevision(7);
     gate.activate();
     gate.dispatcher(event('one'));
     gate.dispatcher(event('two'));
     gate.dispatcher(event('three'));
     await gate.flush();
     const epoch = gate.currentCursor().runtimeEpoch;
+    expect(gate.replay()?.baseRolloutRevision).toBe(7);
     expect(gate.replay({ runtimeEpoch: epoch, eventSeq: 0 })?.truncated).toBe(true);
     expect(gate.replay({ runtimeEpoch: epoch, eventSeq: 1 })?.events.map((row) => row.event.id))
       .toEqual(['two', 'three']);

@@ -22,7 +22,7 @@ import { AuthManager, type IAuthManager } from '@/core/models/types/Auth';
 import { createMutableAuthContext } from '@/core/auth/AuthContext';
 import type { AuthChangeReason } from '@/core/auth/AuthContext';
 import { FileConfigStorageProvider } from '../storage/FileConfigStorageProvider';
-import type { RuntimeContext } from '@/prompts/PromptComposer';
+import { normalizeAgentMode, type RuntimeContext } from '@/prompts/PromptComposer';
 import { ServerAgentAssembler } from './ServerAgentAssembler';
 import { ThreadIndexStore, loadRolloutSnapshot, refreshRolloutSnapshot } from '@/core/thread';
 import { SessionDeletionCoordinator } from '@/core/thread/SessionDeletionCoordinator';
@@ -324,9 +324,13 @@ export class ServerAgentBootstrap {
 
       // 2. Get agent config
       const agentConfig = await AgentConfig.getInstance();
+      const agentType = profile === 'desktop-runtime' ? 'workx-desktop' : 'workx-server';
       await this.threadIndexStore?.backfill({
         rollouts: await (await RolloutRecorder.getProvider()).getAllMetadata(),
-        defaultMode: agentConfig.getConfig().preferences?.defaultMode,
+        defaultMode: normalizeAgentMode(
+          agentType,
+          agentConfig.getConfig().preferences?.defaultMode,
+        ),
       });
 
       // 2b. Centralized telemetry: live privacy gate + the server sink
@@ -357,7 +361,10 @@ export class ServerAgentBootstrap {
         reconcileThreadIndex: async () => {
           await this.threadIndexStore?.backfill({
             rollouts: await (await RolloutRecorder.getProvider()).getAllMetadata(),
-            defaultMode: agentConfig.getConfig().preferences?.defaultMode,
+            defaultMode: normalizeAgentMode(
+              agentType,
+              agentConfig.getConfig().preferences?.defaultMode,
+            ),
           });
         },
         loadRolloutSnapshot,
@@ -366,7 +373,7 @@ export class ServerAgentBootstrap {
           createPlatformAdapter: async (sessionId) => profile === 'desktop-runtime'
             ? new (await import('@/desktop-runtime/platform/DesktopRuntimePlatformAdapter')).DesktopRuntimePlatformAdapter(sessionId)
             : new (await import('../platform/ServerPlatformAdapter')).ServerPlatformAdapter(),
-          agentType: profile === 'desktop-runtime' ? 'workx-desktop' : 'workx-server',
+          agentType,
           promptStaticContext: this.promptStaticContext,
           wireAgent: async (agent, input) => {
           const cfg = input.config;
@@ -558,16 +565,16 @@ export class ServerAgentBootstrap {
           // recorded owner (e.g. the initial primary session before any turn).
           const targetChannelId =
             this.sessionOwners.get(sessionId) ?? this.primaryChannelId ?? this.channel?.channelId;
-          if (targetChannelId) {
-            channelManager.dispatchEvent({
+          const delivery = targetChannelId
+            ? channelManager.dispatchEvent({
               msg: event.msg,
               sessionId,
               runtimeEpoch: event.runtimeEpoch,
               eventSeq: event.eventSeq,
             }, targetChannelId).catch((error) => {
               console.error('[ServerAgentBootstrap] Failed to dispatch event:', error);
-            });
-          }
+            })
+            : Promise.resolve();
 
           // FR-6: forward to the A2A bridge when a delegated turn is in flight.
           if (this.a2aEventTap.active) {
@@ -587,6 +594,7 @@ export class ServerAgentBootstrap {
 
           // Intercept completion events for scheduler
           this.handleSchedulerEventCompletion(event.msg);
+          return delivery;
         },
       });
       this.registry.initialize(agentConfig);

@@ -243,7 +243,7 @@ describe('AgentSession', () => {
   });
 
   describe('config impact', () => {
-    it('logs rejected rebuild and manager action work without throwing', async () => {
+    it('propagates manager-action failure and does not race a prompt rebuild past it', async () => {
       const session = new AgentSession({ type: 'primary' }, 0);
       const rebuildError = new Error('rebuild failed');
       const actionError = new Error('actions failed');
@@ -263,24 +263,11 @@ describe('AgentSession', () => {
         agent as unknown as RepublicAgent,
         assembledAgent as unknown as AssembledAgent,
       );
-      const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-
-      try {
-        await expect(session.applyConfigImpact(
-          new Set(['full']),
-          new Set(['reload-hooks']),
-        )).resolves.toBeUndefined();
-        expect(warning).toHaveBeenCalledWith(
-          expect.stringContaining('rebuild:full'),
-          rebuildError,
-        );
-        expect(warning).toHaveBeenCalledWith(
-          expect.stringContaining('actions:reload-hooks'),
-          actionError,
-        );
-      } finally {
-        warning.mockRestore();
-      }
+      await expect(session.applyConfigImpact(
+        new Set(['full']),
+        new Set(['reload-hooks']),
+      )).rejects.toBe(actionError);
+      expect(agent.rebuildExecutionContext).not.toHaveBeenCalled();
     });
   });
 
