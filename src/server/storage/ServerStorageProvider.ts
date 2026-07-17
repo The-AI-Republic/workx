@@ -34,6 +34,7 @@ const VALID_COLLECTIONS: ReadonlySet<string> = new Set([
   'data_source_catalog',
   'data_source_contexts',
   'data_source_context_revisions',
+  'data_source_secret_versions',
 ]);
 
 function validateCollection(collection: string): void {

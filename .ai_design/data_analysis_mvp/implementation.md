@@ -28,7 +28,7 @@ The same `DataSourceRegistry` and `DataSourceConnector` contracts can register f
 
 ## Safety properties
 
-- Passwords are stored only in versioned OS-keychain entries and are absent from source DTOs, prompts, query arguments, audit records, and tool results.
+- Passwords are stored only in versioned OS-keychain entries and are absent from source DTOs, prompts, query arguments, audit records, and tool results. A private SQLite index tracks only source IDs and version numbers so startup cleanup never depends on unsupported OS-keychain enumeration.
 - Only attended primary sessions owned by the local desktop runtime may use data tools or management services.
 - SQL passes dialect-aware AST validation twice, uses typed parameters, executes inside a read-only transaction, and is wrapped with a row sentinel limit.
 - Source allowlists are applied in policy validation, discovery SQL, and normalized discovery results.

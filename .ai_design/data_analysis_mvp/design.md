@@ -610,12 +610,12 @@ export interface DataSourceSecretStore {
   getPassword(sourceId: string, version: number): Promise<string | null>;
   setPassword(sourceId: string, version: number, value: string): Promise<void>;
   deletePassword(sourceId: string, version: number): Promise<void>;
-  deleteAllPasswordVersions(sourceId: string): Promise<void>;
+  deleteAllPasswordVersions(sourceId: string, referencedVersion?: number): Promise<void>;
   reconcileReferencedVersions(references: Map<string, number>): Promise<void>;
 }
 ```
 
-Versioned accounts make password replacement crash-safe without ever persisting an old password for compensation. Startup reconciliation may list account names for the private `data-source` service and delete versions not referenced by an active/tombstoned source; it never returns that list through a service or tool.
+Versioned accounts make password replacement crash-safe without ever persisting an old password for compensation. Most native OS keychains cannot enumerate accounts, so `data_source_secret_versions` stores a non-secret index of source IDs and version numbers in SQLite. Keychain writes happen outside the shared SQLite mutation mutex; index updates then run under that mutex. Startup reconciliation walks this private index and deletes versions not referenced by an active/tombstoned source. Neither account names nor the index are returned through a service or tool, and password values remain exclusively in the OS keychain. Credential-store enumeration is only a compatibility fallback for stores that support it.
 
 ### 9.3 Write ordering
 
@@ -648,7 +648,7 @@ Source delete:
 4. In one SQLite transaction, delete source/current/revision records and update the catalog.
 5. Remove the registry entry. If step 4 fails, the secretless tombstone remains safe and startup cleanup retries it.
 
-Startup first completes `deleting` tombstones, then reconciles unreferenced secret versions, then exposes active sources. Context update and revision creation occur in one `StorageProvider.transaction` under the shared mutation mutex.
+Startup first completes `deleting` tombstones, then reconciles the non-secret version index against referenced secret versions, then exposes active sources. Context update, revision creation, and secret-index metadata writes are serialized by the shared mutation mutex; network and keychain operations happen outside that mutex.
 
 Source names are case-insensitively unique in the MVP. At most one source is the default. Creating/updating a source with `isDefault=true` clears the flag on the previous default in the same storage transaction before refreshing the registry.
 

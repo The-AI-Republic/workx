@@ -86,6 +86,9 @@ describe('DataSourceRegistry and DataSourceRuntime', () => {
   it('reconciles orphan secret versions and resumes deletion tombstones before loading active sources', async () => {
     const storage = new MemoryStorage();
     const credentials = new MemoryCredentials();
+    credentials.listAccounts = async () => {
+      throw new Error('Native account listing not supported');
+    };
     const mutex = new DataSourceMutationMutex();
     const store = new DataSourceStore(storage, mutex);
     await store.initialize();
@@ -97,7 +100,7 @@ describe('DataSourceRegistry and DataSourceRuntime', () => {
     await store.create(active, createEmptyDataSourceContext(active.id));
     await store.create(deleting, createEmptyDataSourceContext(deleting.id));
     await store.markDeleting(deleting.id, deleting.revision);
-    const secrets = new DataSourceSecretStore(credentials);
+    const secrets = new DataSourceSecretStore(credentials, storage, mutex);
     await secrets.setPassword(active.id, 1, 'orphan');
     await secrets.setPassword(active.id, 2, 'current');
     await secrets.setPassword(deleting.id, 1, 'delete-me');

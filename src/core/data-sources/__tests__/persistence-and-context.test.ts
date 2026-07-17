@@ -394,4 +394,30 @@ describe('DataSourceSecretStore', () => {
     await secrets.deleteAllPasswordVersions(sourceId);
     expect(await secrets.getPassword(sourceId, 2)).toBeNull();
   });
+
+  it('uses a non-secret version index when the native keychain cannot enumerate accounts', async () => {
+    const storage = new MemoryStorage();
+    const credentials = new MemoryCredentials();
+    credentials.listAccounts = async () => {
+      throw new Error('Native account listing not supported');
+    };
+    const secrets = new DataSourceSecretStore(credentials, storage, new DataSourceMutationMutex());
+    const sourceId = sourceFixture().id;
+    await secrets.setPassword(sourceId, 1, 'old-password');
+    await secrets.setPassword(sourceId, 2, 'current-password');
+
+    await secrets.reconcileReferencedVersions(new Map([[sourceId, 2]]));
+
+    expect(await secrets.getPassword(sourceId, 1)).toBeNull();
+    expect(await secrets.getPassword(sourceId, 2)).toBe('current-password');
+    expect(await storage.get('data_source_secret_versions', sourceId)).toEqual({
+      version: 1,
+      sourceId,
+      versions: [2],
+    });
+
+    await secrets.deleteAllPasswordVersions(sourceId, 2);
+    expect(await secrets.getPassword(sourceId, 2)).toBeNull();
+    expect(await storage.get('data_source_secret_versions', sourceId)).toBeNull();
+  });
 });

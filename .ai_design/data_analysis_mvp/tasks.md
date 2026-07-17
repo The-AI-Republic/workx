@@ -81,7 +81,7 @@ This checklist implements `design.md`. The MVP is not complete until both Postgr
 ### DataSourceSecretStore
 
 - [ ] Create the narrow credential wrapper with service `data-source` and versioned account `<sourceId>:password:v<secretVersion>`.
-- [ ] Implement get/set/delete/delete-all plus private account-name reconciliation; never expose listing through tools/services.
+- [ ] Implement get/set/delete/delete-all plus a private SQLite version index because native keychains cannot enumerate accounts; never expose index/listing through tools/services.
 - [ ] Reconcile and delete unreferenced versions on startup after completing deletion tombstones.
 - [ ] Add tests for exact key naming and absence of secrets from returned public views.
 

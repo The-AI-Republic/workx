@@ -329,7 +329,7 @@ export class DataSourceRuntime {
     this.abortActiveQueries(sourceId);
     await this.deps.registry.getConnector(sourceId).invalidateSource(sourceId);
     try {
-      await this.deps.secretStore.deleteAllPasswordVersions(sourceId);
+      await this.deps.secretStore.deleteAllPasswordVersions(sourceId, tombstone.secretVersion);
       await this.deps.sourceStore.finalizeDelete(sourceId);
       await this.deps.registry.removeSource(sourceId);
       this.semaphores.delete(sourceId);
@@ -620,7 +620,7 @@ export class DataSourceRuntime {
     for (const source of await this.deps.sourceStore.list()) {
       if (source.lifecycleState !== 'deleting') continue;
       try {
-        await this.deps.secretStore.deleteAllPasswordVersions(source.id);
+        await this.deps.secretStore.deleteAllPasswordVersions(source.id, source.secretVersion);
         await this.deps.sourceStore.finalizeDelete(source.id);
       } catch {
         // Keep the tombstone; the next startup or explicit retry resumes it.

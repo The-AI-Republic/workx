@@ -27,7 +27,7 @@ export async function createDesktopDataSourceRuntime(
   const mutex = new DataSourceMutationMutex();
   const sourceStore = new DataSourceStore(options.storage, mutex);
   const contextStore = new DataContextStore(options.storage, mutex);
-  const secretStore = new DataSourceSecretStore(options.credentials);
+  const secretStore = new DataSourceSecretStore(options.credentials, options.storage, mutex);
   const registry = new DataSourceRegistry();
   registry.registerConnector(new PostgresNativeConnector());
   registry.registerConnector(new MySqlNativeConnector());
