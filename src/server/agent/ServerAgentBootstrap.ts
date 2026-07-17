@@ -1198,7 +1198,17 @@ export class ServerAgentBootstrap {
       plugins: pluginsDeps,
       scheduler: this.scheduler ? { scheduler: this.scheduler } : undefined,
       storage: { configStorage: getConfigStorage() },
-      session: this.registry ? { registry: this.registry } : undefined,
+      session: this.registry ? {
+        registry: this.registry,
+        // Resume-from-history support (parity with the extension service
+        // worker): without this dep, `session.resume` rejects with
+        // "Session resume not supported on this platform" on desktop/server.
+        loadRolloutHistory: async (sessionId: string) => {
+          const initialHistory = await RolloutRecorder.getRolloutHistory(sessionId);
+          if (initialHistory.type !== 'resumed' || !initialHistory.payload?.history) return null;
+          return { sessionId, rolloutItems: initialHistory.payload.history };
+        },
+      } : undefined,
       agent: this.registry ? {
         registry: this.registry,
         handleConfigUpdate: () => this.handleConfigUpdate(),

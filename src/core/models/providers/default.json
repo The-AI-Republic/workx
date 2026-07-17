@@ -5,6 +5,7 @@
     "apiKey": "",
     "organization": null,
     "baseUrl": "https://api.x.ai/v1",
+    "defaultEfficientModelKey": "grok-4-1-fast-reasoning",
     "version": null,
     "headers": {},
     "timeout": 30000,
@@ -49,6 +50,7 @@
     "apiKey": "",
     "organization": null,
     "baseUrl": "https://api.openai.com/v1",
+    "defaultEfficientModelKey": "gpt-5.4",
     "version": null,
     "headers": {},
     "timeout": 30000,
@@ -86,7 +88,7 @@
         "deprecated": false,
         "serviceTier": "default",
         "pricing": {
-          "inputToken": "Default: $5.00 / 1M tokens, Cached: $0.50 / 1M tokens (≤272K tokens; 2x input above)",
+          "inputToken": "Default: $5.00 / 1M tokens, Cached: $0.50 / 1M tokens (\u2264272K tokens; 2x input above)",
           "outputToken": "Default: $30.00 / 1M tokens (1.5x above 272K tokens)",
           "link": "https://openai.com/api/pricing/"
         },
@@ -132,6 +134,7 @@
     "apiKey": "",
     "organization": null,
     "baseUrl": "https://generativelanguage.googleapis.com",
+    "defaultEfficientModelKey": "gemini-3.1-pro",
     "version": null,
     "headers": {},
     "timeout": 30000,
@@ -157,8 +160,8 @@
         "releaseDate": "2026-05-01",
         "deprecated": false,
         "pricing": {
-          "inputToken": "≤200K tokens: $2.00 / 1M, >200K tokens: $4.00 / 1M, Cached: $0.20 / 1M",
-          "outputToken": "≤200K tokens: $12.00 / 1M, >200K tokens: $18.00 / 1M",
+          "inputToken": "\u2264200K tokens: $2.00 / 1M, >200K tokens: $4.00 / 1M, Cached: $0.20 / 1M",
+          "outputToken": "\u2264200K tokens: $12.00 / 1M, >200K tokens: $18.00 / 1M",
           "link": "https://ai.google.dev/gemini-api/docs/pricing"
         },
         "supportBackendMode": 3
@@ -171,6 +174,7 @@
     "apiKey": "",
     "organization": null,
     "baseUrl": "https://api.deepseek.com",
+    "defaultEfficientModelKey": "deepseek-v4-flash",
     "version": null,
     "headers": {},
     "timeout": 30000,
@@ -209,6 +213,7 @@
     "apiKey": "",
     "organization": null,
     "baseUrl": "https://api.anthropic.com",
+    "defaultEfficientModelKey": "claude-haiku-4-5-20251001",
     "version": null,
     "headers": {},
     "timeout": 30000,

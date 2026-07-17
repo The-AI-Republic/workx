@@ -306,6 +306,42 @@ export class AgentConfig implements IConfigService {
   }
 
   /**
+   * Set the efficient model (internal app-logistics tasks: title generation,
+   * tool-use summaries, prompt suggestions). Pass null to clear the selection
+   * and fall back to "same as task model".
+   *
+   * Provider policy is NOT enforced here — the config layer doesn't know the
+   * routing mode. In gateway routing (logged in, not using own API key) any
+   * backend-supported model is allowed; in own-API-key mode the efficient
+   * model must share the task model's provider, enforced by the settings UI
+   * (dropdown contents) and at call time by
+   * ModelClientFactory.createEfficientClient (fallback to the task model).
+   * @param compositeKey - Model key "providerId:modelKey", or null to clear
+   */
+  async setEfficientModel(compositeKey: string | null): Promise<void> {
+    this.ensureInitialized();
+    assertWritable('agent', 'efficientModelKey');
+
+    const oldKey = this.currentConfig.efficientModelKey;
+
+    if (compositeKey === null || compositeKey === '') {
+      delete this.currentConfig.efficientModelKey;
+    } else {
+      if (!compositeKey.includes(':')) {
+        throw new Error(`Invalid model key format: ${compositeKey}. Expected "providerId:modelKey".`);
+      }
+      const modelData = this.getModelByKey(compositeKey);
+      if (!modelData) {
+        throw new Error(`Model not found: ${compositeKey}`);
+      }
+      this.currentConfig.efficientModelKey = compositeKey;
+    }
+
+    await this.storage.set(extractStoredConfig(this.currentConfig));
+    this.emitChangeEvent('efficientModel', oldKey, compositeKey ?? undefined);
+  }
+
+  /**
    * Get current model configuration
    * @returns Model configuration for currently selected model
    * @example

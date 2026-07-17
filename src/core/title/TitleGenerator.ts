@@ -9,7 +9,7 @@ import type { TitleGenerationConfig, TitleGenerationResult } from './types';
 import { DEFAULT_TITLE_CONFIG, TITLE_GENERATION_PROMPT } from './constants';
 import type { ModelClient } from '../models/ModelClient';
 import { withModelRetry } from '../models/resilience/withRetry';
-import { isOutputTextDelta, isCompleted } from '../models/types/ResponseEvent';
+import { queryEfficientLLM } from '../models/efficientQuery';
 
 /**
  * Service for generating conversation titles using LLM
@@ -127,7 +127,9 @@ export class TitleGenerator {
   }
 
   /**
-   * Call the model to generate a title
+   * Call the model to generate a title.
+   * Routed through the shared efficient-LLM utility layer — the caller passes
+   * the efficient model's client (falling back to the task model's client).
    */
   private async callModelForTitle(
     userMessages: string[],
@@ -138,37 +140,10 @@ export class TitleGenerator {
       .map((msg, i) => `User message ${i + 1}: ${msg}`)
       .join('\n\n');
 
-    const input: ResponseItem[] = [
-      {
-        type: 'message' as const,
-        role: 'user',
-        content: [
-          {
-            type: 'input_text' as const,
-            text: `${messagesText}\n\n${TITLE_GENERATION_PROMPT}`,
-          },
-        ],
-      },
-    ];
-
-    // Stream the response and collect text
-    const stream = await modelClient.stream({
-      input,
-      tools: [], // No tools needed for title generation
+    return queryEfficientLLM(modelClient, {
+      instruction: TITLE_GENERATION_PROMPT,
+      input: messagesText,
     });
-
-    let titleText = '';
-
-    for await (const event of stream) {
-      if (isOutputTextDelta(event)) {
-        titleText += event.delta;
-      }
-      if (isCompleted(event)) {
-        break;
-      }
-    }
-
-    return titleText.trim();
   }
 
   /**

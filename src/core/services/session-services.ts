@@ -17,6 +17,7 @@ import {
   computeRewindSlice,
   buildSummarizedFork,
 } from '@/core/session/rewind';
+import { RolloutRecorder, type Cursor } from '@/storage/rollout';
 
 export interface SessionServiceDeps {
   /** Registry for multi-session management (required). */
@@ -180,6 +181,23 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
       }
       const history = newSession.agent.getSession().getConversationHistory();
       return { sessionId: rolloutData.sessionId, history: history?.items ?? [] };
+    },
+
+    /**
+     * List persisted conversations (rollouts) with cursor-based pagination.
+     * Rollout storage resolves per platform where this service runs: the
+     * extension service worker uses IndexedDB, the desktop runtime sidecar
+     * and server use SQLite. The desktop WebView cannot read rollout storage
+     * directly (it is owned by the runtime sidecar), so its chat-history UI
+     * reaches the data through this service.
+     * Params: { pageSize?: number; cursor?: { timestamp: number; id: string } }
+     */
+    'session.listConversations': async (params) => {
+      const { pageSize = 20, cursor } = (params ?? {}) as {
+        pageSize?: number;
+        cursor?: Cursor;
+      };
+      return await RolloutRecorder.listConversations(pageSize, cursor);
     },
 
     /**

@@ -36,10 +36,19 @@ export interface IAgentConfig {
   selectedModelKey: string;
 
   /**
-   * Model key for title generation (optional)
+   * Model key for internal app-logistics tasks (title generation, tool-use
+   * summaries, prompt suggestions, …) — the "efficient model".
    * Format: "providerId:modelKey" (e.g., "openai:gpt-4o-mini")
-   * If not specified, uses selectedModelKey
-   * Recommended: Use a fast/cheap model for title generation
+   * If not specified, uses selectedModelKey (same as task model).
+   * Must be from the same provider as selectedModelKey in API-key mode;
+   * gateway (logged-in) routing may supply a cross-provider default.
+   * Never used to run user-facing tasks.
+   */
+  efficientModelKey?: string;
+
+  /**
+   * @deprecated Legacy name for {@link efficientModelKey}; read as a fallback
+   * only. Use efficientModelKey.
    */
   modelForTitleGenerate?: string;
 
@@ -302,6 +311,16 @@ export interface IProviderConfig {
    * Provider-specific API version identifier
    */
   version?: string | null;
+
+  /**
+   * Default efficient model for this provider (optional).
+   * Bare model key (e.g. "gpt-4o-mini") of the provider's recommended cheap
+   * model for internal app-logistics tasks (titles, summaries). Used when the
+   * user hasn't explicitly chosen an efficient model and no gateway default
+   * applies; the model must exist in this provider's `models` list. Flows
+   * through the remote model catalog unchanged (same JSON shape).
+   */
+  defaultEfficientModelKey?: string | null;
 
   /**
    * Custom HTTP headers (optional)
@@ -629,7 +648,9 @@ export interface IStoredConfig {
   version: string;
   /** Currently selected model key (format: "providerId:modelKey") */
   selectedModelKey: string;
-  /** Model key for title generation (optional, defaults to selectedModelKey) */
+  /** Efficient model for internal app-logistics tasks (optional, defaults to selectedModelKey) */
+  efficientModelKey?: string;
+  /** @deprecated Legacy name for efficientModelKey; read as a fallback only */
   modelForTitleGenerate?: string;
   /** Provider API keys and organization IDs only */
   providerKeys: Record<string, IStoredProviderConfig>;
@@ -724,7 +745,7 @@ export interface IExportData {
 // Event interfaces for config changes
 export interface IConfigChangeEvent {
   type: 'config-changed';
-  section: 'model' | 'provider' | 'profile' | 'preferences' | 'cache' | 'extension' | 'security' | 'approval' | 'hooks' | 'tools' | 'policy' | 'enabledPlugins' | 'appServer';
+  section: 'model' | 'efficientModel' | 'provider' | 'profile' | 'preferences' | 'cache' | 'extension' | 'security' | 'approval' | 'hooks' | 'tools' | 'policy' | 'enabledPlugins' | 'appServer';
   oldValue?: any;
   newValue: any;
   timestamp: number;
