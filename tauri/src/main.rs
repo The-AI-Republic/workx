@@ -6,6 +6,7 @@ mod keychain_commands;
 mod ripgrep_commands;
 mod runtime_supervisor;
 mod scheduler_commands;
+mod voice_commands;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -385,6 +386,10 @@ fn main() {
             scheduler_commands::scheduler_list_os_jobs,
             scheduler_commands::scheduler_has_os_job,
             scheduler_commands::scheduler_clear_os_jobs,
+            // Local voice input: component install/status and transcript creation.
+            voice_commands::voice_stt_status,
+            voice_commands::install_voice_stt_component,
+            voice_commands::transcribe_voice_audio,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

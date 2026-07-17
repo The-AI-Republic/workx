@@ -18,6 +18,11 @@
   import { initBuiltinCommands, registerSkillCommands } from '../commands/builtinCommands';
   import type { InputItem } from '@/core/protocol/types';
   import { registerShortcut, registerShortcutContext } from '../shortcuts/useShortcut';
+  import {
+    canUseBrowserVoiceCapture,
+    preferredVoiceMimeType,
+    transcribeAudioBlob,
+  } from '../lib/voice/stt';
 
   let {
     value = $bindable(''),
@@ -54,6 +59,14 @@
   } = $props();
 
   let isFocused = $state(false);
+  let voiceSupported = $state(false);
+  let isRecordingVoice = $state(false);
+  let isTranscribingVoice = $state(false);
+  let voiceError: string | null = $state(null);
+  let mediaRecorder: MediaRecorder | null = null;
+  let voiceStream: MediaStream | null = null;
+  let voiceChunks: BlobPart[] = [];
+  let voiceDisposed = false;
 
   // Track 13: screenshots captured from the web clipboard, sent alongside
   // the prompt as `image` InputItems (the core funnel disk-backs them).
@@ -171,6 +184,13 @@
         ? $_t('Please type a valid command')
         : $_t('Long press to schedule task')
   );
+  let voiceTooltipContent = $derived(
+    isTranscribingVoice
+      ? $_t('Transcribing voice')
+      : isRecordingVoice
+        ? $_t('Stop recording')
+        : $_t('Voice input')
+  );
 
   function handleModelChanged(data: { modelId: string; modelName: string }) {
     onModelChanged?.(data);
@@ -199,6 +219,102 @@
       errorMessage = null;
       errorTimeout = null;
     }, 60000);
+  }
+
+  function stopVoiceTracks(): void {
+    voiceStream?.getTracks().forEach((track) => track.stop());
+    voiceStream = null;
+  }
+
+  function appendVoiceTranscript(text: string): void {
+    const transcript = text.trim();
+    if (!transcript) return;
+    value = value.trim()
+      ? `${value.trimEnd()} ${transcript}`
+      : transcript;
+    handleInput();
+  }
+
+  async function startVoiceRecording(): Promise<void> {
+    if (!voiceSupported || isRecordingVoice || isTranscribingVoice) return;
+    voiceError = null;
+    try {
+      voiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      voiceChunks = [];
+      const mimeType = preferredVoiceMimeType();
+      mediaRecorder = new MediaRecorder(
+        voiceStream,
+        mimeType ? { mimeType } : undefined,
+      );
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          voiceChunks = [...voiceChunks, event.data];
+        }
+      };
+      mediaRecorder.onerror = (event) => {
+        voiceError = event.error?.message || $_t('Voice recording failed');
+        isRecordingVoice = false;
+        isTranscribingVoice = false;
+        stopVoiceTracks();
+      };
+      mediaRecorder.onstop = () => {
+        if (voiceDisposed) {
+          voiceChunks = [];
+          stopVoiceTracks();
+          return;
+        }
+        const blob = new Blob(voiceChunks, {
+          type: mediaRecorder?.mimeType || 'audio/webm',
+        });
+        voiceChunks = [];
+        stopVoiceTracks();
+        if (blob.size === 0) {
+          isTranscribingVoice = false;
+          voiceError = $_t('No voice audio was recorded');
+          return;
+        }
+        void transcribeVoiceBlob(blob);
+      };
+      mediaRecorder.start();
+      isRecordingVoice = true;
+    } catch (err) {
+      stopVoiceTracks();
+      isRecordingVoice = false;
+      isTranscribingVoice = false;
+      voiceError = err instanceof Error ? err.message : String(err);
+    }
+  }
+
+  function stopVoiceRecording(): void {
+    if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
+    isRecordingVoice = false;
+    isTranscribingVoice = true;
+    mediaRecorder.stop();
+  }
+
+  async function transcribeVoiceBlob(blob: Blob): Promise<void> {
+    try {
+      const result = await transcribeAudioBlob(blob);
+      if (voiceDisposed) return;
+      appendVoiceTranscript(result.text);
+      voiceError = null;
+    } catch (err) {
+      if (voiceDisposed) return;
+      voiceError = err instanceof Error ? err.message : String(err);
+    } finally {
+      if (!voiceDisposed) {
+        isTranscribingVoice = false;
+        mediaRecorder = null;
+      }
+    }
+  }
+
+  function handleVoiceButtonClick(): void {
+    if (isRecordingVoice) {
+      stopVoiceRecording();
+      return;
+    }
+    void startVoiceRecording();
   }
 
   function updateFilter(): void {
@@ -458,12 +574,18 @@
   }
 
   onDestroy(() => {
+    voiceDisposed = true;
     if (errorTimeout) {
       clearTimeout(errorTimeout);
     }
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
+    stopVoiceTracks();
   });
 
   onMount(() => {
+    voiceSupported = canUseBrowserVoiceCapture();
     const unregisterChatContext = registerShortcutContext('Chat', { active: () => isFocused });
     const unregisterSlashContext = registerShortcutContext('SlashCommand', {
       active: () => isFocused && isCommandMode && showDropdown,
@@ -564,6 +686,12 @@
       </div>
     {/if}
 
+    {#if voiceError}
+      <div class="mb-1 text-xs {currentTheme === 'modern' ? 'text-chat-stop dark:text-chat-stop-dark' : 'text-term-red'}">
+        {voiceError}
+      </div>
+    {/if}
+
     <!-- Track 24.3: next-message suggestion chip (Tab to accept, × to dismiss).
          Visible exactly when Tab will accept: palette closed AND input empty
          OR the typed text is a live prefix of the suggestion. -->
@@ -600,7 +728,7 @@
             ? 'text-chat-text dark:text-chat-text-dark font-chat px-4 py-3 caret-chat-text dark:caret-white'
             : 'text-term-green font-terminal px-3 py-2'}"
         aria-label="Message input"
-      />
+      ></textarea>
       <div
         class="flex items-center justify-start gap-2
           {currentTheme === 'modern'
@@ -615,6 +743,38 @@
 
         <!-- Spacer to push button to the right -->
         <div class="flex-1"></div>
+
+        {#if voiceSupported}
+          <Tooltip content={voiceTooltipContent}>
+            <button
+              type="button"
+              class="flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-95
+                {currentTheme === 'modern'
+                  ? 'w-9 h-9 p-1.5 border-none rounded-full text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark'
+                  : 'w-9 h-9 p-1.5 border rounded border-term-green/60 text-term-green hover:border-term-bright-green hover:text-term-bright-green'}
+                {(isRecordingVoice || isTranscribingVoice)
+                  ? (currentTheme === 'modern'
+                    ? ' bg-chat-stop/15 dark:bg-chat-stop-dark/20 text-chat-stop dark:text-chat-stop-dark'
+                    : ' bg-term-red/10 border-term-red text-term-red')
+                  : ''}"
+              onclick={handleVoiceButtonClick}
+              disabled={isTranscribingVoice}
+              aria-label={isRecordingVoice ? $_t('Stop recording') : $_t('Voice input')}
+            >
+              {#if isTranscribingVoice}
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-[18px] h-[18px] animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 12a9 9 0 1 1-6.2-8.6" />
+                </svg>
+              {:else}
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <path d="M12 19v3" />
+                </svg>
+              {/if}
+            </button>
+          </Tooltip>
+        {/if}
 
         <!-- Send/Stop Button -->
         <div class="relative inline-flex">
