@@ -44,12 +44,20 @@ const MAX_SERVERS = 100;
 /** Builtin browser server ID — deterministic UUID for desktop.
  *  Must be a valid UUID to pass MCPServerConfigSchema validation. */
 const BUILTIN_BROWSER_SERVER_ID = '00000000-0000-4000-8000-000000000001';
-const BROWSER_MCP_AUTO_CONNECT_ARGS = ['--no-usage-statistics', '--autoConnect'];
+/**
+ * Fallback automation-browser args. Live-browser control moved to the
+ * extension bridge (see desktop-runtime/browser-bridge); this builtin server
+ * is only the no-extension fallback, so it launches chrome-devtools-mcp's
+ * own persistent-profile Chrome rather than `--autoConnect`ing to the user's
+ * browser — auto-connect required chrome://inspect setup plus a per-connection
+ * "Allow remote debugging" consent dialog (unsuppressible by design).
+ */
+const BROWSER_MCP_ARGS = ['--no-usage-statistics'];
 
 function createBrowserMcpArgs(includePackageName: boolean): string[] {
   return includePackageName
-    ? ['chrome-devtools-mcp', ...BROWSER_MCP_AUTO_CONNECT_ARGS]
-    : [...BROWSER_MCP_AUTO_CONNECT_ARGS];
+    ? ['chrome-devtools-mcp', ...BROWSER_MCP_ARGS]
+    : [...BROWSER_MCP_ARGS];
 }
 const BUILTIN_GATEWAY_SERVER_ID = '00000000-0000-4000-8000-000000000002';
 const BUILTIN_GATEWAY_SERVER_NAME = 'gateway';

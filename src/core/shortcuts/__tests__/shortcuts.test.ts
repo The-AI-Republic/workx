@@ -12,7 +12,6 @@ import {
   validateShortcutBlocks,
 } from '..';
 import manifest from '../../../../manifest.json';
-import extensionManifest from '../../../extension/manifest.json';
 
 describe('shortcut parser', () => {
   it('parses modifiers, aliases, and symbols', () => {
@@ -145,10 +144,12 @@ describe('extension command mapping', () => {
     expect(EXTENSION_COMMAND_ACTIONS['quick-action']).toBe('app:quickAction');
   });
 
-  it('keeps both manifests in sync with command defaults', () => {
+  it('keeps the manifest in sync with command defaults', () => {
+    // Root manifest.json is the single source manifest; the old
+    // src/extension/manifest.json duplicate was removed (no build consumer,
+    // and it had drifted).
     for (const [command, shortcut] of Object.entries(EXTENSION_COMMAND_DEFAULTS)) {
       expect((manifest.commands as Record<string, { suggested_key: { default: string } }>)[command].suggested_key.default).toBe(shortcut);
-      expect((extensionManifest.commands as Record<string, { suggested_key: { default: string } }>)[command].suggested_key.default).toBe(shortcut);
     }
   });
 });

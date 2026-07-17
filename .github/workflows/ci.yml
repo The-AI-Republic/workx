@@ -70,7 +70,6 @@ jobs:
           mkdir -p tauri/sidecar/desktop-runtime
           mkdir -p tauri/binaries
           touch tauri/binaries/windows-sandbox-x86_64-unknown-linux-gnu
-          touch tauri/binaries/chrome-devtools-mcp-x86_64-unknown-linux-gnu
           touch tauri/binaries/rg-x86_64-unknown-linux-gnu
       - name: Install cargo-tarpaulin
         uses: taiki-e/install-action@cargo-tarpaulin

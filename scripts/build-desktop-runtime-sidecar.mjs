@@ -158,6 +158,15 @@ step('4) copy better-sqlite3 native addon + lib + minimal runtime closure', () =
   info(`copied better-sqlite3 + runtime closure: ${BETTER_SQLITE3_RUNTIME_DEPS.join(', ')}`);
 });
 
+step('4b) copy ws (app-server WebSocket lib, kept external — see vite.config.desktop-runtime.mts)', () => {
+  // `ws` is externalized so its optional native `bufferutil` require throws at
+  // runtime and it uses its JS mask/unmask fallback. It's pure JS with no
+  // required deps, so copying the whole package is enough.
+  copyRuntimeDep('ws', []);
+  const wsPkg = path.join(sidecarDir, 'node_modules', 'ws', 'package.json');
+  if (!fs.existsSync(wsPkg)) throw new Error(`Expected bundled ws (missing ${wsPkg})`);
+});
+
 step('5) copy Node binary used for this build', () => {
   // Resolve symlinks (e.g. /opt/homebrew/bin/node → Cellar) so the shared-
   // library probe below inspects the real binary.
@@ -191,6 +200,18 @@ step('5) copy Node binary used for this build', () => {
   info(`bundled ${process.version} from ${realNode}`);
 });
 
+step('5b) copy native-messaging relay (Chrome browser bridge)', () => {
+  // relay.mjs is spawned by Chrome (via the desktop-written host manifest) as
+  // a standalone script — NOT bundled into index.mjs — so the wrapper can
+  // `exec <node> <sidecarDir>/relay.mjs`. It stays dependency-free (Node 22
+  // global WebSocket), so a verbatim copy next to the bundled node is enough.
+  const relaySrc = path.join(root, 'src/desktop-runtime/browser-bridge/native-host/relay.mjs');
+  if (!fs.existsSync(relaySrc)) {
+    throw new Error(`Expected native-messaging relay at ${relaySrc}, not found`);
+  }
+  copyFile(relaySrc, path.join(sidecarDir, 'relay.mjs'));
+});
+
 step('6) copy sqlite-vec native artifact (if installed)', () => {
   try {
     copyRuntimeDep('sqlite-vec', ['dist', 'src']);
@@ -211,6 +232,10 @@ step('7a) regression guard: bundled runtime files actually present on disk', () 
   }
   if (!fs.existsSync(bundledNodePath)) {
     throw new Error(`Expected bundled node binary (missing ${bundledNodePath})`);
+  }
+  const relayPath = path.join(sidecarDir, 'relay.mjs');
+  if (!fs.existsSync(relayPath)) {
+    throw new Error(`Expected bundled native-messaging relay (missing ${relayPath})`);
   }
 });
 

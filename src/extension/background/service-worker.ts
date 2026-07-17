@@ -94,6 +94,25 @@ import { DEFAULT_MAX_CONCURRENT } from '../../core/registry/types';
 import { PRIMARY_SESSION_ALIAS } from '../../core/models/types/SessionContracts';
 import { t } from '../../webfront/lib/i18n';
 import { getActionForExtensionCommand, type ShortcutAction } from '../../core/shortcuts';
+// Desktop browser bridge (static: dynamic import() is banned in SW, and the
+// keepalive alarm listener must be registered at module top level so the
+// alarm can wake a slept service worker).
+import { initializeBridge, getBridgeClient } from '../bridge/BridgeClient';
+import { BRIDGE_KEEPALIVE_ALARM } from '../bridge/bridgeSettings';
+// Static: the extension-default AgentRegistry path needs this adapter, and
+// dynamic import() is banned in the service worker. Injected via
+// RegistryConfig.platformAdapterFactory so shared core never imports it.
+import { ExtensionPlatformAdapter } from '../platform/ExtensionPlatformAdapter';
+
+// Desktop bridge keepalive: alarms fire even when the SW was terminated —
+// Chrome starts the worker to deliver them. Top-level registration is the
+// MV3 requirement for that wake path.
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name !== BRIDGE_KEEPALIVE_ALARM) return;
+  void getBridgeClient()
+    .reconcile()
+    .catch((err) => console.warn('[ServiceWorker] bridge keepalive reconcile failed:', err));
+});
 
 // Global instances
 let registry: AgentRegistry | null = null;
@@ -345,6 +364,7 @@ async function doInitialize(): Promise<void> {
   const maxConcurrentSessions = config.preferences?.maxConcurrentSessions ?? DEFAULT_MAX_CONCURRENT;
   registry = AgentRegistry.getInstance({
     maxConcurrent: maxConcurrentSessions,
+    platformAdapterFactory: () => new ExtensionPlatformAdapter(),
     // Track 10: bind enabled plugins' hooks + sub-agent types to each new
     // session. Reads module-level pluginRegistry/resolvers lazily — they're
     // set by initializePlugins() before real sessions are created.
@@ -411,37 +431,62 @@ async function doInitialize(): Promise<void> {
   // This ensures backend routing is set up correctly on service worker startup
   await initializeAuthFromConfig();
 
+  // Desktop browser bridge: serve as the WorkX desktop app's live-browser
+  // executor (mode:'node' connection to the local app-server). Runs BEFORE the
+  // dynamic-import-based subsystems below: MV3 service workers reject dynamic
+  // import() (TypeError: import() is disallowed on ServiceWorkerGlobalScope),
+  // and an uncaught rejection from one of those blocks used to abort
+  // initialize() before the bridge ever started. The bridge's module graph is
+  // fully static, so it must not be held hostage by them.
+  try {
+    await initializeBridge();
+  } catch (err) {
+    console.warn('[ServiceWorker] Desktop bridge initialization failed (non-fatal):', err);
+  }
+
   // Track 22: MCP gated behind the MCP compile-time flag. When OFF this
   // whole block is dead-code-eliminated and the dynamic import() chunk is
   // never emitted, so core/mcp leaves the extension bundle.
+  // Non-fatal: the dynamic import() below throws in an MV3 service worker
+  // (disallowed by spec); until MCP is refactored to static imports it must
+  // not take down the rest of service-worker init.
   if (MCP) {
-    // Initialize MCP manager
-    const { MCPManager } = await import('../../core/mcp/MCPManager');
-    mcpManager = await MCPManager.getInstance();
+    try {
+      // Initialize MCP manager
+      const { MCPManager } = await import('../../core/mcp/MCPManager');
+      mcpManager = await MCPManager.getInstance();
 
-    // Subscribe to MCP events for tool registration/unregistration
-    // (sync — handler attaches immediately, before any auto-connect)
-    setupMCPToolRegistration();
+      // Subscribe to MCP events for tool registration/unregistration
+      // (sync — handler attaches immediately, before any auto-connect)
+      setupMCPToolRegistration();
 
-    // Auto-connect enabled MCP servers (T064: service worker lifecycle handling)
-    await autoConnectEnabledMCPServers();
+      // Auto-connect enabled MCP servers (T064: service worker lifecycle handling)
+      await autoConnectEnabledMCPServers();
+    } catch (err) {
+      console.warn('[ServiceWorker] MCP initialization failed (non-fatal):', err);
+    }
   }
 
   // Setup message handlers
   setupMessageHandlers();
 
-  // Track 22: A2A gated behind the A2A compile-time flag (same DCE rationale).
+  // Track 22: A2A gated behind the A2A compile-time flag (same DCE rationale,
+  // same non-fatal rationale as MCP above).
   if (A2A) {
-    // Initialize A2A manager
-    const { A2AManager } = await import('../../core/a2a/A2AManager');
-    a2aManager = await A2AManager.getInstance();
+    try {
+      // Initialize A2A manager
+      const { A2AManager } = await import('../../core/a2a/A2AManager');
+      a2aManager = await A2AManager.getInstance();
 
-    // Subscribe to A2A events for tool registration/unregistration
-    // (sync — handler attaches immediately, before any auto-connect)
-    setupA2AToolRegistration();
+      // Subscribe to A2A events for tool registration/unregistration
+      // (sync — handler attaches immediately, before any auto-connect)
+      setupA2AToolRegistration();
 
-    // Auto-connect enabled A2A agents
-    await autoConnectEnabledA2AAgents();
+      // Auto-connect enabled A2A agents
+      await autoConnectEnabledA2AAgents();
+    } catch (err) {
+      console.warn('[ServiceWorker] A2A initialization failed (non-fatal):', err);
+    }
   }
 
   // Initialize Skills

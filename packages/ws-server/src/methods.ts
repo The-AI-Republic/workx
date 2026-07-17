@@ -76,6 +76,12 @@ export const METHOD_REGISTRY: Record<string, MethodSpec> = {
 
   // Execution approvals
   'exec.approval.resolve': { scope: 'operator.approvals' },
+
+  // Node bridge (mode: 'node' worker connections, e.g. the browser extension
+  // acting as the desktop's live-browser executor). See ./node.ts.
+  'node.advertise': { scope: 'node.event' },
+  'node.result': { scope: 'node.event' },
+  'node.heartbeat': { scope: 'node.event' },
 };
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -88,6 +94,7 @@ export const EVENT_SCOPE_MAP: Record<string, Scope> = {
   'exec.approval.requested': 'operator.approvals',
   'device.pair.requested': 'operator.pairing',
   'health': 'admin',
+  'node.invoke': 'node.invoke',
   // tick, shutdown, connect.* are sent to all authenticated connections
 };
 

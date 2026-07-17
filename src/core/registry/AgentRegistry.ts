@@ -176,8 +176,18 @@ export class AgentRegistry {
         // is cheap to construct (TabManager is a singleton, retrieved on init),
         // so per-session instances are inexpensive and remove the cross-session
         // dispose hazard if/when dispose() grows real cleanup logic.
-        const { ExtensionPlatformAdapter } = await import('../../extension/platform/ExtensionPlatformAdapter');
-        const platformAdapter = new ExtensionPlatformAdapter();
+        // Prefer the injected factory: the extension service worker provides
+        // it (dynamic import() is banned there). The dynamic-import fallback
+        // below is retained ONLY for non-SW contexts (jsdom tests, and any
+        // future non-worker extension host) and is never reached at runtime
+        // in the real service worker because the factory is always injected.
+        let platformAdapter;
+        if (this._registryConfig.platformAdapterFactory) {
+          platformAdapter = this._registryConfig.platformAdapterFactory();
+        } else {
+          const { ExtensionPlatformAdapter } = await import('../../extension/platform/ExtensionPlatformAdapter');
+          platformAdapter = new ExtensionPlatformAdapter();
+        }
         await platformAdapter.initialize();
         const services = await createSessionServices({
           sessionCache: new SessionCacheManager(new IndexedDBAdapter()),
