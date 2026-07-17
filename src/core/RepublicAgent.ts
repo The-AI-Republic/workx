@@ -202,6 +202,11 @@ export class RepublicAgent {
         (msg: { type: string; data: Record<string, unknown> }) => this.emitEvent(msg as EventMsg),
       );
     }
+    this.toolRegistry.setPageContextProvider?.(
+      this.platformAdapter.getCurrentPageContext
+        ? () => this.platformAdapter.getCurrentPageContext!()
+        : undefined,
+    );
 
     // Register/unregister memory tools based on current memory service state
     await this.syncMemoryTools();

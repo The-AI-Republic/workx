@@ -11,6 +11,7 @@ import type {
   IStorageProvider,
   IScheduler,
   IBrowserController,
+  BrowserPageContext,
 } from '../../core/platform/IPlatformAdapter';
 import type { ToolRegistry } from '../../tools/ToolRegistry';
 
@@ -92,6 +93,38 @@ export class DesktopPlatformAdapter implements IPlatformAdapter {
         data: { message: `Browser tools unavailable: ${errorMsg}`, level: 'warning' },
       });
       // Don't fail — tools will return errors to the LLM
+    }
+  }
+
+  async getCurrentPageContext(): Promise<BrowserPageContext> {
+    await this.ensureBrowserReady();
+    if (!this.browserConnected) return {};
+
+    try {
+      const { MCPManager } = await import('../../core/mcp/MCPManager');
+      const mcpManager = await MCPManager.getInstance('desktop');
+      const result = await mcpManager.executeTool('browser__list_pages', {});
+      const text = result.content
+        .filter((item): item is { type: 'text'; text: string } => item.type === 'text')
+        .map((item) => item.text)
+        .join('\n');
+      const selectedLine = text
+        .split('\n')
+        .find((line) => /^\d+:\s+.+\s+\[selected\]\s*$/.test(line.trim()));
+      const match = selectedLine?.trim().match(/^\d+:\s+(.+?)\s+\[selected\]\s*$/);
+      const currentUrl = match?.[1];
+      if (!currentUrl) return {};
+
+      let currentDomain: string | undefined;
+      try {
+        currentDomain = new URL(currentUrl).hostname || undefined;
+      } catch {
+        // Non-URL pages (for example chrome://) still provide useful URL context.
+      }
+      return { currentUrl, currentDomain };
+    } catch (error) {
+      console.warn('[DesktopPlatformAdapter] Failed to resolve current browser page:', error);
+      return {};
     }
   }
 

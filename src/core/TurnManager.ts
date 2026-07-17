@@ -1380,8 +1380,13 @@ export class TurnManager {
       // Build metadata for approval context
       let currentUrl: string | undefined;
       let currentDomain: string | undefined;
+      const requestedUrl = typeof parameters?.url === 'string' ? parameters.url : undefined;
+      if (requestedUrl) {
+        currentUrl = requestedUrl;
+        try { currentDomain = new URL(requestedUrl).hostname || undefined; } catch { /* ignore */ }
+      }
       try {
-        if (tabId && tabId > 0 && typeof chrome !== 'undefined' && chrome.tabs) {
+        if (!currentUrl && tabId && tabId > 0 && typeof chrome !== 'undefined' && chrome.tabs) {
           const tab = await chrome.tabs.get(tabId);
           currentUrl = tab.url;
           if (currentUrl) {
@@ -1389,6 +1394,13 @@ export class TurnManager {
           }
         }
       } catch { /* tab may not exist in desktop mode */ }
+      if (!currentUrl) {
+        try {
+          const pageContext = await this.toolRegistry.getCurrentPageContext();
+          currentUrl = pageContext.currentUrl;
+          currentDomain = pageContext.currentDomain;
+        } catch { /* page context is best-effort */ }
+      }
 
       // SubmitPlanForReview (Track 14) blocks on human plan approval, which
       // can take far longer than a tool call. Give it an effectively

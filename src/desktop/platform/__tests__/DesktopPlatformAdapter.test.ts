@@ -13,6 +13,7 @@ const { mockMcpManager } = vi.hoisted(() => ({
     getServerByName: vi.fn(),
     connect: vi.fn().mockResolvedValue(undefined),
     getConnection: vi.fn(),
+    executeTool: vi.fn(),
   },
 }));
 
@@ -40,9 +41,39 @@ describe('DesktopPlatformAdapter', () => {
     mockMcpManager.connect.mockClear().mockResolvedValue(undefined);
     mockMcpManager.getConnection.mockClear();
     mockMcpManager.getServerByName.mockClear();
+    mockMcpManager.executeTool.mockClear();
     // Re-establish return values after mockReset clears them
     vi.mocked(MCPManager.getInstance).mockResolvedValue(mockMcpManager as any);
     vi.mocked(registerMCPTools).mockResolvedValue(undefined);
+  });
+
+  describe('getCurrentPageContext()', () => {
+    it('returns the selected MCP page URL and domain', async () => {
+      mockMcpManager.getServerByName.mockReturnValue({ id: 'browser-id', name: 'browser' });
+      mockMcpManager.getConnection.mockReturnValue({ tools: [{ name: 'list_pages' }] });
+      mockMcpManager.executeTool.mockResolvedValue({
+        content: [{
+          type: 'text',
+          text: '## Pages\n0: https://other.example/\n1: https://checkout.example/cart [selected]',
+        }],
+      });
+      adapter.setToolContext({ getTool: vi.fn().mockReturnValue(undefined) } as any, vi.fn());
+
+      await expect(adapter.getCurrentPageContext()).resolves.toEqual({
+        currentUrl: 'https://checkout.example/cart',
+        currentDomain: 'checkout.example',
+      });
+      expect(mockMcpManager.executeTool).toHaveBeenCalledWith('browser__list_pages', {});
+    });
+
+    it('fails safely when MCP page context is unavailable', async () => {
+      mockMcpManager.getServerByName.mockReturnValue({ id: 'browser-id', name: 'browser' });
+      mockMcpManager.getConnection.mockReturnValue({ tools: [{ name: 'list_pages' }] });
+      mockMcpManager.executeTool.mockRejectedValue(new Error('browser closed'));
+      adapter.setToolContext({ getTool: vi.fn().mockReturnValue(undefined) } as any, vi.fn());
+
+      await expect(adapter.getCurrentPageContext()).resolves.toEqual({});
+    });
   });
 
   // ── Platform identity ─────────────────────────────────────────────────

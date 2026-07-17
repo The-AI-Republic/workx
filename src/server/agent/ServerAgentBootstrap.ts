@@ -351,7 +351,20 @@ export class ServerAgentBootstrap {
           }
 
           if (profile === 'desktop-runtime') {
-            await this.ensureDesktopRuntimeHubMcpConnected();
+            // Approval gate — desktop parity with the extension wiring in
+            // AgentRegistry. The webview already renders ApprovalRequested
+            // through the shared EventProcessor and returns ExecApproval ops
+            // over the stdio channel; constructing the gate here is what
+            // starts that round-trip. Deliberately NOT wrapped in try/catch:
+            // if the gate cannot be built, agent creation must fail loudly
+            // rather than run desktop tools ungated.
+            const { configureDesktopApprovalGate } = await import('@/desktop-runtime/approvalGate');
+            await configureDesktopApprovalGate(agent);
+
+            // The registry does not publish this agent until agentFactory
+            // returns, so register already-connected gateway tools directly
+            // on it as part of construction.
+            await this.ensureDesktopRuntimeHubMcpConnected(agent);
           }
 
           if (profile === 'server') {
@@ -1216,6 +1229,22 @@ export class ServerAgentBootstrap {
           this.currentAuthManager = authManager;
         } : undefined,
         runtimeState,
+        // Desktop runtime: persist approval config from the Settings picker
+        // (approval.updateConfig service) into the runtime's config storage,
+        // parity with the extension service worker. Live-session gates are
+        // updated by the shared handler in agent-services.
+        updateApprovalConfig: profile === 'desktop-runtime'
+          ? async (config: Record<string, unknown>) => {
+              const { STORAGE_KEYS } = await import('@/config/defaults');
+              const { DEFAULT_APPROVAL_CONFIG } = await import('@/core/approval/types');
+              const storage = getConfigStorage();
+              const agentConfig =
+                (await storage.get<Record<string, any>>(STORAGE_KEYS.CONFIG)) ?? {};
+              const existing = agentConfig.approval ?? { ...DEFAULT_APPROVAL_CONFIG };
+              agentConfig.approval = { ...existing, ...config };
+              await storage.set(STORAGE_KEYS.CONFIG, agentConfig);
+            }
+          : undefined,
       } : undefined,
       // Track 43: runtime-owned auth services (auth.completeLogin / getState /
       // logout + ChatGPT OAuth). Desktop runtime only — server mode handles
@@ -1418,7 +1447,7 @@ export class ServerAgentBootstrap {
     }
   }
 
-  private async ensureDesktopRuntimeHubMcpConnected(): Promise<void> {
+  private async ensureDesktopRuntimeHubMcpConnected(targetAgent?: RepublicAgent): Promise<void> {
     if ((this.options.profile ?? 'server') !== 'desktop-runtime' || !this.registry) return;
 
     try {
@@ -1452,7 +1481,12 @@ export class ServerAgentBootstrap {
 
       const connected = mcpManager.getConnection(hubServer.id);
       if (connected?.status === 'connected') {
-        await this.registerDesktopHubMcpTools(mcpManager, hubServer.name, connected.tools);
+        await this.registerDesktopHubMcpTools(
+          mcpManager,
+          hubServer.name,
+          connected.tools,
+          targetAgent,
+        );
       }
     } catch (error) {
       console.warn('[ServerAgentBootstrap] Gateway MCP connection unavailable:', error);
@@ -1463,26 +1497,44 @@ export class ServerAgentBootstrap {
     mcpManager: any,
     serverName: string,
     tools: IMCPTool[],
+    targetAgent?: RepublicAgent,
   ): Promise<void> {
     if (!this.registry) return;
     const { registerMCPTools, unregisterMCPTools } = await import('@/core/mcp/MCPToolAdapter');
+    // Hub tools are gateway/browser actions (click, type, navigate…); give
+    // them the MCP browser assessor so the approval gate scores them instead
+    // of falling back to the unassessed default (20 = silent auto-approve).
+    const { McpBrowserRiskAssessor } = await import('@/core/approval/assessors/McpBrowserRiskAssessor');
+    const hubRiskAssessor = new McpBrowserRiskAssessor();
 
+    const targets: Array<{ sessionId: string; agent: RepublicAgent }> = [];
     for (const meta of this.registry.listSessions()) {
       if (meta.state === 'terminated') continue;
       const agentSession = this.registry.getSession(meta.sessionId);
-      const registry = agentSession?.agent?.getToolRegistry?.();
-      if (!registry) continue;
+      if (agentSession?.agent) {
+        targets.push({ sessionId: meta.sessionId, agent: agentSession.agent });
+      }
+    }
+    if (targetAgent) {
+      const sessionId = targetAgent.getSession().sessionId;
+      if (!targets.some((target) => target.sessionId === sessionId)) {
+        targets.push({ sessionId, agent: targetAgent });
+      }
+    }
 
-      const previousTools = this.desktopHubRegisteredToolsBySession.get(meta.sessionId);
+    for (const target of targets) {
+      const toolRegistry = target.agent.getToolRegistry();
+
+      const previousTools = this.desktopHubRegisteredToolsBySession.get(target.sessionId);
       if (previousTools && previousTools.length > 0) {
-        await unregisterMCPTools(serverName, previousTools, registry);
+        await unregisterMCPTools(serverName, previousTools, toolRegistry);
       }
 
       if (tools.length > 0) {
-        await registerMCPTools(mcpManager, serverName, tools, registry);
-        this.desktopHubRegisteredToolsBySession.set(meta.sessionId, tools);
+        await registerMCPTools(mcpManager, serverName, tools, toolRegistry, hubRiskAssessor);
+        this.desktopHubRegisteredToolsBySession.set(target.sessionId, tools);
       } else {
-        this.desktopHubRegisteredToolsBySession.delete(meta.sessionId);
+        this.desktopHubRegisteredToolsBySession.delete(target.sessionId);
       }
     }
   }

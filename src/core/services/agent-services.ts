@@ -16,6 +16,60 @@ import {
   type AgentAccessState,
   type RuntimeStateController,
 } from './runtime-state';
+import { stripLockedWrites } from '@/core/config/policy/guards';
+import type { ApprovalMode } from '@/core/approval/types';
+
+const APPROVAL_MODES = new Set<ApprovalMode>(['balanced', 'high_speed', 'yolo']);
+const APPROVAL_CONFIG_KEYS = new Set([
+  'version',
+  'mode',
+  'userRules',
+  'trustedDomains',
+  'blockedDomains',
+  'timeouts',
+]);
+
+function validateApprovalConfigPatch(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Approval config must be an object');
+  }
+  const config = value as Record<string, unknown>;
+  const unknownKeys = Object.keys(config).filter((key) => !APPROVAL_CONFIG_KEYS.has(key));
+  if (unknownKeys.length > 0) {
+    throw new Error(`Unknown approval config field(s): ${unknownKeys.join(', ')}`);
+  }
+  if (config.version !== undefined && config.version !== '1.0.0') {
+    throw new Error('Unsupported approval config version');
+  }
+  if (config.mode !== undefined && !APPROVAL_MODES.has(config.mode as ApprovalMode)) {
+    throw new Error(`Invalid approval mode: ${String(config.mode)}`);
+  }
+  for (const field of ['trustedDomains', 'blockedDomains'] as const) {
+    const domains = config[field];
+    if (domains !== undefined && (
+      !Array.isArray(domains) || domains.some((domain) => typeof domain !== 'string')
+    )) {
+      throw new Error(`${field} must be an array of strings`);
+    }
+  }
+  if (config.userRules !== undefined && !Array.isArray(config.userRules)) {
+    throw new Error('userRules must be an array');
+  }
+  if (config.timeouts !== undefined) {
+    if (!config.timeouts || typeof config.timeouts !== 'object' || Array.isArray(config.timeouts)) {
+      throw new Error('timeouts must be an object');
+    }
+    for (const [level, timeout] of Object.entries(config.timeouts)) {
+      if (!['low', 'medium', 'high', 'critical'].includes(level)) {
+        throw new Error(`Unknown approval timeout: ${level}`);
+      }
+      if (typeof timeout !== 'number' || !Number.isFinite(timeout) || timeout < 0) {
+        throw new Error(`Invalid approval timeout for ${level}`);
+      }
+    }
+  }
+  return config;
+}
 
 export interface AgentServiceDeps {
   /** Registry for looking up sessions by ID */
@@ -204,7 +258,8 @@ export function createAgentServices(deps: AgentServiceDeps): Record<string, Serv
      * Update approval config — global, applies to all sessions.
      */
     'approval.updateConfig': async (params) => {
-      const config = params as Record<string, unknown>;
+      const validated = validateApprovalConfigPatch(params);
+      const { patch: config, stripped } = stripLockedWrites('agent', validated, 'approval');
       // Platform-specific storage update (if provided)
       if (deps.updateApprovalConfig) {
         await deps.updateApprovalConfig(config);
@@ -217,13 +272,16 @@ export function createAgentServices(deps: AgentServiceDeps): Record<string, Serv
         if (agentSession?.agent) {
           const gate = agentSession.agent.getToolRegistry().getApprovalGate();
           if (gate) {
-            if (config.mode) gate.setMode(config.mode as string);
+            if (config.mode) gate.setMode(config.mode as ApprovalMode);
             if (config.trustedDomains) gate.setTrustedDomains(config.trustedDomains as string[]);
             if (config.blockedDomains) gate.setBlockedDomains(config.blockedDomains as string[]);
           }
         }
       }
-      return { success: true };
+      return {
+        success: true,
+        ...(stripped.length > 0 && { ignoredLockedKeys: stripped }),
+      };
     },
   };
 }
