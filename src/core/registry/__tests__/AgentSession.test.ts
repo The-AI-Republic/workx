@@ -6,6 +6,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AgentSession } from '@/core/registry/AgentSession';
 import type { SessionConfig } from '@/core/registry/types';
+import type { RepublicAgent } from '@/core/RepublicAgent';
+import type { AssembledAgent } from '@/core/assembly/AgentAssembler';
 
 // Mock RepublicAgent session - shared object so spies work correctly
 const mockSession = {
@@ -237,6 +239,48 @@ describe('AgentSession', () => {
       unsubscribe();
       session.markActive();
       expect(listener).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('config impact', () => {
+    it('logs rejected rebuild and manager action work without throwing', async () => {
+      const session = new AgentSession({ type: 'primary' }, 0);
+      const rebuildError = new Error('rebuild failed');
+      const actionError = new Error('actions failed');
+      const agent = {
+        ...mockAgent,
+        rebuildExecutionContext: vi.fn().mockRejectedValue(rebuildError),
+        applyManagerActions: vi.fn().mockResolvedValue(undefined),
+      };
+      const assembledAgent = {
+        applyManagerActions: vi.fn().mockRejectedValue(actionError),
+        dispose: vi.fn().mockResolvedValue({ ok: true, failedSteps: [] }),
+        flushRollout: vi.fn().mockResolvedValue(undefined),
+        submit: vi.fn(),
+        subAgentRunner: null,
+      };
+      session.attachAgent(
+        agent as unknown as RepublicAgent,
+        assembledAgent as unknown as AssembledAgent,
+      );
+      const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      try {
+        await expect(session.applyConfigImpact(
+          new Set(['full']),
+          new Set(['reload-hooks']),
+        )).resolves.toBeUndefined();
+        expect(warning).toHaveBeenCalledWith(
+          expect.stringContaining('rebuild:full'),
+          rebuildError,
+        );
+        expect(warning).toHaveBeenCalledWith(
+          expect.stringContaining('actions:reload-hooks'),
+          actionError,
+        );
+      } finally {
+        warning.mockRestore();
+      }
     });
   });
 

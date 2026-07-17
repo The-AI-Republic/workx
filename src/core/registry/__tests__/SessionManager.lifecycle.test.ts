@@ -10,6 +10,7 @@ import type {
 import type { RepublicAgent } from '../../RepublicAgent';
 import { ThreadIndexStore } from '../../thread/ThreadIndexStore';
 import { MemoryStorageAdapter } from '../../thread/__tests__/MemoryStorageAdapter';
+import { createMutableAuthContext, type MutableAuthContext } from '../../auth';
 import {
   _resetForTesting as resetTelemetry,
   attachSink,
@@ -105,18 +106,21 @@ describe('SessionManager lifecycle manager', () => {
   let index: ThreadIndexStore;
   let registry: SessionManager;
   let agentConfig: ReturnType<typeof config>;
+  let authContext: MutableAuthContext;
 
   beforeEach(() => {
     resetTelemetry();
     assembler = new FakeAssembler();
     index = new ThreadIndexStore(new MemoryStorageAdapter());
     agentConfig = config();
+    authContext = createMutableAuthContext(null);
     registry = new SessionManager({
       lifecycleMode: 'client',
       maxLive: 2,
       hardMax: 3,
       threadIndexStore: index,
       agentAssembler: assembler,
+      authContext,
       assemblyServicesFactory: async () => ({} as never),
       loadRolloutSnapshot: async (sessionId) => ({ sessionId, revision: 0, items: [] }),
       refreshRolloutSnapshot: async (sessionId) => ({ sessionId, revision: 0, items: [] }),
@@ -462,6 +466,27 @@ describe('SessionManager lifecycle manager', () => {
     await hydration;
     expect(assembler.handles.get('generation-race')!.agent.rebuildExecutionContext)
       .toHaveBeenCalledWith(new Set(['full']));
+  });
+
+  it('logs auth rebuild failures and continues rebuilding other live agents', async () => {
+    await registry.createSession({ type: 'scheduled', sessionId: 'auth-a' });
+    await registry.createSession({ type: 'scheduled', sessionId: 'auth-b' });
+    const first = assembler.handles.get('auth-a')!.agent.rebuildExecutionContext as ReturnType<typeof vi.fn>;
+    const second = assembler.handles.get('auth-b')!.agent.rebuildExecutionContext as ReturnType<typeof vi.fn>;
+    const failure = new Error('auth graph failed');
+    first.mockRejectedValueOnce(failure);
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    try {
+      authContext.update(null, 'login');
+      await vi.waitFor(() => expect(second).toHaveBeenCalledWith(new Set(['auth'])));
+      await vi.waitFor(() => expect(warning).toHaveBeenCalledWith(
+        expect.stringContaining('auth rebuild'),
+        failure,
+      ));
+    } finally {
+      warning.mockRestore();
+    }
   });
 
   it('compat-close aborts and suspends while an arriving submit waits and then rehydrates', async () => {

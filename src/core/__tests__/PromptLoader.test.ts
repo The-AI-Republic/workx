@@ -80,6 +80,28 @@ describe('AgentPromptLoader', () => {
     );
   });
 
+  it('runs extensions concurrently while preserving registration order in the prompt', async () => {
+    const loader = createPromptLoader({ agentType: 'workx' });
+    const started: string[] = [];
+    let releaseFirst!: () => void;
+    loader.registerExtension('first', async () => {
+      started.push('first');
+      await new Promise<void>((resolve) => { releaseFirst = resolve; });
+      return 'FIRST_EXTENSION';
+    });
+    loader.registerExtension('second', async () => {
+      started.push('second');
+      return 'SECOND_EXTENSION';
+    });
+
+    const load = loader.load('general');
+    await vi.waitFor(() => expect(started).toEqual(['first', 'second']));
+    releaseFirst();
+    const prompt = await load;
+
+    expect(prompt.indexOf('FIRST_EXTENSION')).toBeLessThan(prompt.indexOf('SECOND_EXTENSION'));
+  });
+
   it('falls back to the correct bundled prompt if composition fails', async () => {
     vi.spyOn(PromptComposer.prototype, 'composeMainInstruction').mockImplementation(() => {
       throw new Error('fragment import failed');

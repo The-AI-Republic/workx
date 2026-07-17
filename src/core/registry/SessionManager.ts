@@ -67,6 +67,27 @@ import {
   SESSION_LETTERS,
 } from './types';
 
+interface PendingSubmission {
+  clientMessageId: string;
+  op: Extract<Op, { type: 'UserInput' }>;
+  digest: string;
+  tabId?: number;
+  context?: Omit<AgentSubmissionContext, 'tabId'>;
+}
+
+interface EnqueueSubmissionInput {
+  sessionId: string;
+  clientMessageId: string;
+  op: Extract<Op, { type: 'UserInput' }>;
+  tabId?: number;
+  context?: Omit<AgentSubmissionContext, 'tabId'>;
+}
+
+type EnqueueSubmissionResult =
+  | { status: 'accepted'; clientMessageId: string; submissionId: string }
+  | { status: 'queued'; clientMessageId: string; position: number; phase: 'capacity' | 'hydration' | 'suspension'; capacityPosition?: number }
+  | { status: 'rejected'; clientMessageId: string; reason: 'queue-full' | 'deleted' | 'busy' | 'not-found' | 'client-id-conflict' | 'submit-failed' };
+
 /**
  * SessionManager manages multiple RepublicAgent instances, each wrapped in an AgentSession.
  *
@@ -98,6 +119,7 @@ export class SessionManager {
   private readonly _surfaceLeases: SurfaceLeaseStore;
   private readonly _eventStreams = new Map<string, SwitchableEventGate>();
   private readonly _sessionOperations = new PerKeyOperationQueue();
+  private readonly _submissionEnqueueOperations = new PerKeyOperationQueue();
   private readonly _capacityOperations = new PerKeyOperationQueue();
   private readonly _capacityReservations = new Map<string, { replacing?: string }>();
   private readonly _evictionClaims = new Set<string>();
@@ -107,13 +129,7 @@ export class SessionManager {
   private readonly _hardMax: number;
   private readonly _maxPendingHydrations: number;
   private readonly _maxPendingPerSession: number;
-  private readonly _pendingSubmissions = new Map<string, Array<{
-    clientMessageId: string;
-    op: Extract<Op, { type: 'UserInput' }>;
-    digest: string;
-    tabId?: number;
-    context?: Omit<AgentSubmissionContext, 'tabId'>;
-  }>>();
+  private readonly _pendingSubmissions = new Map<string, PendingSubmission[]>();
   private readonly _submissionDedupe = new Map<string, {
     digest: string;
     status: 'queued' | 'accepted' | 'failed';
@@ -170,7 +186,7 @@ export class SessionManager {
           .map((session) => session.agent!);
         void Promise.allSettled(
           agents.map((agent) => agent.rebuildExecutionContext(new Set(['auth']))),
-        );
+        ).then((results) => this.logSettledRejections('auth rebuild', results));
       });
     }
   }
@@ -233,9 +249,17 @@ export class SessionManager {
           new Set(impact.rebuild),
           new Set(impact.actions),
         )),
-      );
+      ).then((results) => this.logSettledRejections(`config impact:${event.section}`, results));
     };
     config.on('config-changed', this._configChangeHandler);
+  }
+
+  private logSettledRejections(label: string, results: PromiseSettledResult<unknown>[]): void {
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        console.warn(`[SessionManager] Failed to apply ${label}:`, result.reason);
+      }
+    }
   }
 
   // ==========================================================================
@@ -851,17 +875,14 @@ export class SessionManager {
     });
   }
 
-  async enqueueSubmission(input: {
-    sessionId: string;
-    clientMessageId: string;
-    op: Extract<Op, { type: 'UserInput' }>;
-    tabId?: number;
-    context?: Omit<AgentSubmissionContext, 'tabId'>;
-  }): Promise<
-    | { status: 'accepted'; clientMessageId: string; submissionId: string }
-    | { status: 'queued'; clientMessageId: string; position: number; phase: 'capacity' | 'hydration' | 'suspension'; capacityPosition?: number }
-    | { status: 'rejected'; clientMessageId: string; reason: 'queue-full' | 'deleted' | 'busy' | 'not-found' | 'client-id-conflict' | 'submit-failed' }
-  > {
+  enqueueSubmission(input: EnqueueSubmissionInput): Promise<EnqueueSubmissionResult> {
+    return this._submissionEnqueueOperations.run(
+      input.sessionId,
+      () => this.enqueueSubmissionLocked(input),
+    );
+  }
+
+  private async enqueueSubmissionLocked(input: EnqueueSubmissionInput): Promise<EnqueueSubmissionResult> {
     await this.ensureRecoveryLoaded(input.sessionId);
     const key = `${input.sessionId}:${input.clientMessageId}`;
     const digest = await sha256(stableJson(input.op.items) ?? 'null');

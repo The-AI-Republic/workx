@@ -106,15 +106,29 @@ export class AgentSession {
     actions: ReadonlySet<ManagerAction>,
   ): Promise<void> {
     if (!this._agent || this._state === 'terminated') return;
-    const work: Promise<unknown>[] = [];
-    if (rebuild.size > 0) work.push(this._agent.rebuildExecutionContext(rebuild));
-    if (actions.size > 0) {
-      work.push(
-        this._assembledAgent?.applyManagerActions(actions)
-          ?? this._agent.applyManagerActions(actions),
-      );
+    const work: Array<{ label: string; promise: Promise<unknown> }> = [];
+    if (rebuild.size > 0) {
+      work.push({
+        label: `rebuild:${[...rebuild].join(',')}`,
+        promise: this._agent.rebuildExecutionContext(rebuild),
+      });
     }
-    await Promise.allSettled(work);
+    if (actions.size > 0) {
+      work.push({
+        label: `actions:${[...actions].join(',')}`,
+        promise: this._assembledAgent?.applyManagerActions(actions)
+          ?? this._agent.applyManagerActions(actions),
+      });
+    }
+    const results = await Promise.allSettled(work.map(({ promise }) => promise));
+    for (const [index, result] of results.entries()) {
+      if (result.status === 'rejected') {
+        console.warn(
+          `[AgentSession] Failed to apply config impact (${work[index]?.label ?? 'unknown'}):`,
+          result.reason,
+        );
+      }
+    }
   }
 
   hasLiveBackgroundWork(): boolean {

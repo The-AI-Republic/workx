@@ -69,15 +69,17 @@ export function createPromptLoader(input: CreatePromptLoaderInput): AgentPromptL
         base = input.agentType === 'workx' ? defaultExtensionPrompt : defaultDesktopPrompt;
       }
 
-      const extras: string[] = [];
-      for (const [name, extension] of extensions) {
-        try {
-          const value = await extension(ctx);
-          if (value) extras.push(value);
-        } catch (error) {
-          console.warn(`[AgentPromptLoader] extension '${name}' failed and was omitted:`, error);
-        }
-      }
+      const extensionResults = await Promise.all(
+        [...extensions.entries()].map(async ([name, extension]) => {
+          try {
+            return await extension(ctx);
+          } catch (error) {
+            console.warn(`[AgentPromptLoader] extension '${name}' failed and was omitted:`, error);
+            return undefined;
+          }
+        }),
+      );
+      const extras = extensionResults.filter((value): value is string => !!value);
       return extras.length > 0 ? `${base}\n\n${extras.join('\n\n')}` : base;
     },
     supportsMode(mode: AgentMode): boolean {

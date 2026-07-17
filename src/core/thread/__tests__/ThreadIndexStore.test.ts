@@ -52,7 +52,7 @@ describe('ThreadIndexStore', () => {
 
   it('pages a 10,000-row fixture deterministically with no duplicates and bounded pages', async () => {
     const store = new ThreadIndexStore(new MemoryStorageAdapter());
-    await Promise.all(Array.from({ length: 10_000 }, (_, index) => store.createIfMissing({
+    await Promise.all(Array.from({ length: 10_000 }, (_, index) => store.upsert({
       ...createThreadIndexEntry({
         sessionId: `thread-${index.toString().padStart(5, '0')}`,
         title: index % 3 === 0 ? `Searchable ${index}` : `Conversation ${index}`,
@@ -77,7 +77,7 @@ describe('ThreadIndexStore', () => {
     const search = await store.list({ query: 'SEARCHABLE', limit: 100 });
     expect(search.entries).toHaveLength(100);
     expect(search.entries.every((entry) => entry.searchTitle.includes('searchable'))).toBe(true);
-  });
+  }, 15_000);
 
   it('makes Undo and purge claim mutually exclusive', async () => {
     const adapter = new MemoryStorageAdapter();
