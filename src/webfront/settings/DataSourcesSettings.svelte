@@ -231,6 +231,10 @@
     testResult = null;
   }
 
+  function connectionTestFailure(result: DataSourceTestResult): string {
+    return result.warnings[0] ?? `Connection test failed (${result.errorCode ?? 'unknown error'}).`;
+  }
+
   async function testConnection() {
     clearMessages();
     busy = true;
@@ -242,17 +246,27 @@
         sources = sources.map((item) =>
           item.source.id === saved.source.source.id ? saved.source : item
         );
-        successMessage =
-          'Saved connection is reachable. Saving edited connection fields will test them again.';
+        if (testResult.status === 'reachable') {
+          successMessage =
+            'Saved connection is reachable. Saving edited connection fields will test them again.';
+        } else {
+          errorMessage = connectionTestFailure(testResult);
+        }
       } else {
         testResult = await dataSourcesClient.testCandidate({
           source: sourceFromForm(),
           password,
         });
-        successMessage = 'Candidate connection is reachable. Save will repeat this test.';
+        if (testResult.status === 'reachable') {
+          successMessage = 'Candidate connection is reachable. Save will repeat this test.';
+        } else {
+          errorMessage = connectionTestFailure(testResult);
+        }
       }
-      acknowledgeLeastPrivilege =
-        testResult.readOnlyAssessment.level === 'verified' ? true : acknowledgeLeastPrivilege;
+      if (testResult.status === 'reachable') {
+        acknowledgeLeastPrivilege =
+          testResult.readOnlyAssessment.level === 'verified' ? true : acknowledgeLeastPrivilege;
+      }
     } catch (error) {
       errorMessage = dataSourceUiError(error);
     } finally {
@@ -321,7 +335,11 @@
     try {
       const saved = await dataSourcesClient.test(source.source.id, source.source.revision);
       sources = sources.map((item) => (item.source.id === source.source.id ? saved.source : item));
-      successMessage = `${source.source.name} is reachable.`;
+      if (saved.test.status === 'reachable') {
+        successMessage = `${source.source.name} is reachable.`;
+      } else {
+        errorMessage = connectionTestFailure(saved.test);
+      }
     } catch (error) {
       errorMessage = dataSourceUiError(error);
       sources = await dataSourcesClient.list();
@@ -700,7 +718,7 @@
               >Business description<textarea rows="3" maxlength="2000" bind:value={form.description}
               ></textarea></label
             >
-            <div class="grid two">
+            <div class="allowlist-fields">
               <label
                 >Allowed namespaces <small>One per line; blank allows all visible namespaces.</small
                 ><textarea rows="4" bind:value={allowedNamespacesText}></textarea></label
@@ -1115,6 +1133,11 @@
   }
   .grid.three {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .allowlist-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.8rem;
   }
   label {
     display: grid;

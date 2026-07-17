@@ -138,4 +138,34 @@ describe('DataSourcesSettings', () => {
     expect(await screen.findByText(/Data Sources is unavailable/)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Retry initialization check' })).toBeTruthy();
   });
+
+  it('shows a failed candidate test as an error and places allowlists on separate rows', async () => {
+    client.testCandidate.mockResolvedValue({
+      status: 'error',
+      testedAt: '2026-07-17T00:00:00.000Z',
+      connectionRevision: 1,
+      latencyMs: 5,
+      readOnlyAssessment: {
+        level: 'unknown',
+        reasons: ['The connection failed.'],
+        userAcknowledgementRequired: true,
+      },
+      errorCode: 'TLS_FAILED',
+      connectorId: 'postgres-native',
+      warnings: ['Database TLS negotiation failed.'],
+    });
+
+    render(DataSourcesSettings);
+    expect(await screen.findByText('Production Sales')).toBeTruthy();
+    await fireEvent.click(screen.getByRole('button', { name: 'Add data source' }));
+
+    const namespaces = screen.getByLabelText(/Allowed namespaces/) as HTMLTextAreaElement;
+    const objects = screen.getByLabelText(/Allowed tables\/views/) as HTMLTextAreaElement;
+    expect(namespaces.closest('.allowlist-fields')).toBe(objects.closest('.allowlist-fields'));
+    expect(namespaces.closest('.allowlist-fields')?.classList.contains('grid')).toBe(false);
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Test connection' }));
+    expect(await screen.findByText('Database TLS negotiation failed.')).toBeTruthy();
+    expect(screen.queryByText(/Candidate connection is reachable/)).toBeNull();
+  });
 });
