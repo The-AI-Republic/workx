@@ -47,7 +47,16 @@ export const BRIDGE_SESSION_ID = 'bridge:desktop';
  * result must degrade into a truncated preview, not kill the bridge).
  */
 const MAX_RESULT_BYTES = 768 * 1024;
-const TRUNCATED_PREVIEW_BYTES = 64 * 1024;
+const TRUNCATED_PREVIEW_CODE_UNITS = 64 * 1024;
+
+function truncatedResult(preview: string, originalBytes: number | null, reason: string): unknown {
+  return {
+    truncated: true,
+    original_bytes: originalBytes,
+    preview: preview.slice(0, TRUNCATED_PREVIEW_CODE_UNITS),
+    note: reason,
+  };
+}
 
 /** Shrink oversized tool results to a truncated preview envelope. */
 export function capResultPayload(result: unknown): unknown {
@@ -55,17 +64,20 @@ export function capResultPayload(result: unknown): unknown {
   try {
     json = JSON.stringify(result) ?? 'null';
   } catch {
-    json = String(result);
+    return truncatedResult(
+      String(result),
+      null,
+      'Result was not JSON-serializable; this is a safe string preview. Narrow the request and try again.',
+    );
   }
-  if (json.length <= MAX_RESULT_BYTES) return result;
-  return {
-    truncated: true,
-    original_bytes: json.length,
-    preview: json.slice(0, TRUNCATED_PREVIEW_BYTES),
-    note:
-      `Result was ${json.length} bytes and exceeded the bridge payload limit; ` +
+  const byteLength = new TextEncoder().encode(json).byteLength;
+  if (byteLength <= MAX_RESULT_BYTES) return result;
+  return truncatedResult(
+    json,
+    byteLength,
+    `Result was ${byteLength} bytes and exceeded the bridge payload limit; ` +
       'this is a truncated JSON preview. Narrow the request (e.g. scrape a selector, paginate the extraction).',
-  };
+  );
 }
 
 /** The executor-implemented tab management tool. */

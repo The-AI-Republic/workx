@@ -207,14 +207,25 @@ export class NodeBridge {
       (timer as { unref?: () => void }).unref?.();
 
       this.pending.set(invokeId, { resolve, reject, timer, connectionId });
-      node.sendEvent(NODE_INVOKE_EVENT, {
-        invokeId,
-        toolName,
-        parameters,
-        // Give the executor a slightly smaller budget so its own timeout
-        // error (with real context) beats the server's generic one.
-        timeoutMs: Math.max(1_000, timeoutMs - 5_000),
-      });
+      try {
+        node.sendEvent(NODE_INVOKE_EVENT, {
+          invokeId,
+          toolName,
+          parameters,
+          // Give the executor a slightly smaller budget so its own timeout
+          // error (with real context) beats the server's generic one.
+          timeoutMs: Math.max(1_000, timeoutMs - 5_000),
+        });
+      } catch (err) {
+        clearTimeout(timer);
+        this.pending.delete(invokeId);
+        reject(
+          new NodeInvokeFailure({
+            code: 'SEND_ERROR',
+            message: err instanceof Error ? err.message : 'Failed to send browser invocation',
+          }),
+        );
+      }
     });
   }
 

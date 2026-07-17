@@ -48,6 +48,7 @@
   let bridgeStatusListener:
     | ((changes: Record<string, chrome.storage.StorageChange>, area: string) => void)
     | null = null;
+  let destroyed = false;
 
   async function loadBridgeCard() {
     if (!chromeAvailable) return;
@@ -60,6 +61,9 @@
 
       const raw = await chrome.storage.session.get(BRIDGE_STATUS_KEY);
       bridgeStatus = (raw?.[BRIDGE_STATUS_KEY] as typeof bridgeStatus) ?? null;
+      // The component may have unmounted while the async storage reads were
+      // pending. Do not attach a listener that onDestroy can no longer remove.
+      if (destroyed) return;
       bridgeStatusListener = (changes, area) => {
         if (area === 'session' && changes[BRIDGE_STATUS_KEY]) {
           bridgeStatus = (changes[BRIDGE_STATUS_KEY].newValue as typeof bridgeStatus) ?? null;
@@ -72,6 +76,7 @@
   }
 
   onDestroy(() => {
+    destroyed = true;
     if (bridgeStatusListener && chromeAvailable) {
       chrome.storage.onChanged.removeListener(bridgeStatusListener);
       bridgeStatusListener = null;
@@ -83,7 +88,16 @@
     try {
       bridgeSaving = true;
       const { setBridgeSettings } = await import('@/extension/bridge/bridgeSettings');
-      await setBridgeSettings({ enabled: bridgeEnabled, token: bridgeToken.trim(), url: bridgeUrl.trim() });
+      const token = bridgeToken.trim();
+      await setBridgeSettings({
+        enabled: bridgeEnabled,
+        token,
+        url: bridgeUrl.trim(),
+        // Native messaging is zero-pairing on macOS/Linux. Entering a token
+        // explicitly selects the direct-WS fallback, including on Windows
+        // where native-host registry installation is not bundled yet.
+        transport: token ? 'ws' : 'native',
+      });
       bridgeDirty = false;
       bridgeMessage = 'Desktop bridge settings saved';
       bridgeMessageType = 'success';
@@ -295,7 +309,7 @@
       <div class="section settings-card">
         <h3 class="section-title">{$_t("Desktop Bridge")}</h3>
         <div class="help-text" style="margin-bottom: 0.75rem;">
-          {$_t("Let the WorkX desktop app use this browser as its browser tool. Copy the pairing token from the desktop app's settings.")}
+          {$_t("Let the WorkX desktop app use this browser as its browser tool. Leave the token blank for automatic native connection on macOS/Linux; paste a desktop pairing token for the WebSocket fallback (including Windows).")}
         </div>
 
         <div class="form-group" data-setting-id="bridge-enabled">
@@ -321,6 +335,7 @@
             placeholder={$_t("Paste the token from WorkX Desktop → Settings → Tools")}
             autocomplete="off"
           />
+          <div class="help-text">{$_t("A non-empty token selects the direct WebSocket fallback; clearing it selects native messaging.")}</div>
         </div>
 
         <div class="form-group" data-setting-id="bridge-url">

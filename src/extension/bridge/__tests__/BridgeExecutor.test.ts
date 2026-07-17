@@ -28,6 +28,22 @@ describe('capResultPayload', () => {
   it('handles unserializable results without throwing', () => {
     const circular: Record<string, unknown> = {};
     circular.self = circular;
-    expect(() => capResultPayload(circular)).not.toThrow();
+    const capped = capResultPayload(circular) as { truncated: boolean; original_bytes: null; note: string };
+    expect(capped).toMatchObject({ truncated: true, original_bytes: null });
+    expect(capped.note).toContain('not JSON-serializable');
+    expect(() => JSON.stringify(capped)).not.toThrow();
+  });
+
+  it('caps multibyte results by encoded bytes rather than JavaScript string length', () => {
+    // 400 Ki code units, but 1.2 MiB in UTF-8 — above the 1 MiB WS frame cap.
+    const result = { text: '界'.repeat(400 * 1024) };
+    const capped = capResultPayload(result) as {
+      truncated: boolean;
+      original_bytes: number;
+      preview: string;
+    };
+    expect(capped.truncated).toBe(true);
+    expect(capped.original_bytes).toBeGreaterThan(1024 * 1024);
+    expect(new TextEncoder().encode(JSON.stringify(capped)).byteLength).toBeLessThan(768 * 1024);
   });
 });

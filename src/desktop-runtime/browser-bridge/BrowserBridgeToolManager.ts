@@ -54,9 +54,18 @@ export class BrowserBridgeToolManager implements BrowserBridgeHandle {
     });
   }
 
-  detach(): void {
+  async detach(): Promise<void> {
     this.unsubscribe?.();
     this.unsubscribe = null;
+    // Queue cleanup after any in-flight catalog sync. Otherwise an app-server
+    // restart can leave proxy tools registered with closures over the old,
+    // permanently disconnected NodeBridge.
+    this.syncing = this.syncing
+      .catch((err) => {
+        console.error('[BrowserBridgeToolManager] pending session sync failed during detach:', err);
+      })
+      .then(() => this.unregisterAllSessions());
+    await this.syncing;
   }
 
   hasActiveNode(): boolean {
@@ -122,6 +131,28 @@ export class BrowserBridgeToolManager implements BrowserBridgeHandle {
   /** Drop bookkeeping for a session that no longer exists. */
   forgetSession(sessionId: string): void {
     this.registeredBySession.delete(sessionId);
+  }
+
+  private async unregisterAllSessions(): Promise<void> {
+    const registry = this.deps.getRegistry();
+    if (!registry) {
+      this.registeredBySession.clear();
+      return;
+    }
+
+    for (const [sessionId, names] of this.registeredBySession) {
+      const toolRegistry = registry.getSession(sessionId)?.agent?.getToolRegistry?.();
+      if (toolRegistry) {
+        for (const name of names) {
+          try {
+            await toolRegistry.unregister(name);
+          } catch {
+            // Session/tool already disposed — bookkeeping can still be dropped.
+          }
+        }
+      }
+      this.registeredBySession.delete(sessionId);
+    }
   }
 
   private definitionFor(tool: NodeToolDescriptor): ToolDefinition {

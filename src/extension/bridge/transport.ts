@@ -72,8 +72,13 @@ export class WsBridgeTransport implements BridgeTransport {
 
   send(raw: string): boolean {
     if (this.ws?.readyState !== WebSocket.OPEN) return false;
-    this.ws.send(raw);
-    return true;
+    try {
+      this.ws.send(raw);
+      return true;
+    } catch {
+      // The socket can close between the readyState check and send().
+      return false;
+    }
   }
 
   close(reason: string): void {

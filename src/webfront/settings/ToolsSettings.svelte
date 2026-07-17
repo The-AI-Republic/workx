@@ -95,7 +95,7 @@
       await client.serviceRequest('agent.configUpdate');
       await client.serviceRequest('appServer.restart');
       await refreshBridgeStatus();
-      bridgeMessage = t('App server started. Now copy the pairing token into the extension.');
+      bridgeMessage = t('App server started. The extension should connect automatically on macOS/Linux; use the pairing token fallback if needed.');
     } catch (error) {
       bridgeMessage = `${t('Failed to start app server')}: ${error instanceof Error ? error.message : 'unknown'}`;
     } finally {
@@ -702,7 +702,7 @@
         </div>
         <div class="p-4 border-t {isModern ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
           <div class="mb-4 text-sm leading-relaxed {textSecondaryClasses}">
-            {$_t("Control your real Chrome browser through the WorkX extension instead of a separate automation browser. Install the extension, then pair it with the token below (Extension side panel → Settings → Extension → Desktop Bridge).")}
+            {$_t("Control your real Chrome browser through the WorkX extension instead of a separate automation browser. Native connection is automatic on macOS/Linux. For Windows or fallback pairing, copy the token below into Extension side panel → Settings → Extension → Desktop Bridge.")}
           </div>
 
           {#if bridgeView?.extensionConnected}

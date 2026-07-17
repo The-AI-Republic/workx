@@ -291,10 +291,16 @@ export class BridgeClient {
         reject(new Error(`request '${method}' timed out`));
       }, REQUEST_TIMEOUT_MS);
       this.pending.set(id, { resolve, reject, timer });
-      if (!transport.send(JSON.stringify({ type: 'req', id, method, params }))) {
+      try {
+        const sent = transport.send(JSON.stringify({ type: 'req', id, method, params }));
+        if (sent) return;
         clearTimeout(timer);
         this.pending.delete(id);
         reject(new Error('bridge transport is not open'));
+      } catch (err) {
+        clearTimeout(timer);
+        this.pending.delete(id);
+        reject(err instanceof Error ? err : new Error('bridge transport send failed'));
       }
     });
   }

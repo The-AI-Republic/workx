@@ -159,4 +159,24 @@ describe('BrowserBridgeToolManager', () => {
     await manager.applyToRegistry('s1', reg);
     expect(reg.listTools()).toHaveLength(0);
   });
+
+  it('unregisters proxy tools when detached so app-server restart cannot leave stale handlers', async () => {
+    const bridge = new NodeBridge();
+    const reg = new ToolRegistry();
+    const manager = new BrowserBridgeToolManager({
+      nodeBridge: bridge,
+      getRegistry: () => makeFakeAgentRegistry([{ sessionId: 's1', registry: reg }]),
+    });
+    manager.attach();
+
+    connectNode(bridge);
+    bridge.handleAdvertise('conn_1', CATALOG);
+    await flush();
+    expect(reg.getTool('dom_tool')).toBeTruthy();
+
+    await manager.detach();
+
+    expect(reg.getTool('dom_tool')).toBeNull();
+    expect(reg.getTool('browser_tabs')).toBeNull();
+  });
 });

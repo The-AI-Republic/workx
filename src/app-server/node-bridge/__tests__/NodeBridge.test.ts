@@ -135,4 +135,21 @@ describe('NodeBridge', () => {
       error: { code: 'DISCONNECTED' },
     });
   });
+
+  it('cleans up immediately when sending an invoke throws', async () => {
+    const bridge = new NodeBridge();
+    bridge.onNodeConnected({
+      connectionId: 'conn_1',
+      clientId: 'workx-extension',
+      sendEvent: () => {
+        throw new Error('socket closed during send');
+      },
+    });
+    bridge.handleAdvertise('conn_1', CATALOG);
+
+    await expect(bridge.invoke('conn_1', 'dom_tool', {})).rejects.toMatchObject({
+      error: { code: 'SEND_ERROR', message: 'socket closed during send' },
+    });
+    expect(vi.getTimerCount()).toBe(0);
+  });
 });

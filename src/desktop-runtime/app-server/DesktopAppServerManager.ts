@@ -102,25 +102,7 @@ export class DesktopAppServerManager {
       // loses the native path (the ws dev fallback still works) and must not
       // take down the app-server.
       if (status.url) {
-        try {
-          const nodePath = process.execPath;
-          await installNativeHost({
-            nodePath,
-            // relay.mjs ships next to the bundled node in the sidecar dir.
-            relayPath: path.join(path.dirname(nodePath), 'relay.mjs'),
-            appServerUrl: status.url,
-            token: (await this.manager.revealToken()) ?? '',
-            extensionId: WORKX_EXTENSION_ID,
-            dataDir: host.configDir,
-            home: os.homedir(),
-            platform: (host.platform as NodeJS.Platform) ?? process.platform,
-          });
-        } catch (err) {
-          console.warn(
-            '[DesktopAppServerManager] native-host install failed (bridge falls back to ws):',
-            err instanceof Error ? err.message : err,
-          );
-        }
+        await this.installNativeHost(status.url);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -133,7 +115,7 @@ export class DesktopAppServerManager {
   async stop(reason = 'shutdown'): Promise<void> {
     try {
       setBrowserBridgeHandle(null);
-      this.bridgeToolManager?.detach();
+      await this.bridgeToolManager?.detach();
       this.bridgeToolManager = null;
       await this.manager?.stop(reason);
       if (this.channelRegistered && this.manager) {
@@ -171,6 +153,8 @@ export class DesktopAppServerManager {
       'appServer.rotateToken': async () => {
         if (!this.manager) throw new Error('App-server not running');
         await this.manager.rotateToken();
+        const status = this.manager.getStatus();
+        if (status.url) await this.installNativeHost(status.url);
         return { rotated: true };
       },
       'appServer.revealToken': async () => {
@@ -202,6 +186,30 @@ export class DesktopAppServerManager {
     };
     for (const [name, handler] of Object.entries(handlers)) {
       registry.register(name, handler);
+    }
+  }
+
+  private async installNativeHost(appServerUrl: string): Promise<void> {
+    if (!this.manager) return;
+    try {
+      const host = getDesktopRuntimeHost();
+      const nodePath = process.execPath;
+      await installNativeHost({
+        nodePath,
+        // relay.mjs ships next to the bundled node in the sidecar dir.
+        relayPath: path.join(path.dirname(nodePath), 'relay.mjs'),
+        appServerUrl,
+        token: (await this.manager.revealToken()) ?? '',
+        extensionId: WORKX_EXTENSION_ID,
+        dataDir: host.configDir,
+        home: os.homedir(),
+        platform: (host.platform as NodeJS.Platform) ?? process.platform,
+      });
+    } catch (err) {
+      console.warn(
+        '[DesktopAppServerManager] native-host install failed (bridge falls back to token-paired ws):',
+        err instanceof Error ? err.message : err,
+      );
     }
   }
 }
