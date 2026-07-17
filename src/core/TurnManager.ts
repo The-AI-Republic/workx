@@ -1382,8 +1382,14 @@ export class TurnManager {
       let currentDomain: string | undefined;
       const requestedUrl = typeof parameters?.url === 'string' ? parameters.url : undefined;
       if (requestedUrl) {
-        currentUrl = requestedUrl;
-        try { currentDomain = new URL(requestedUrl).hostname || undefined; } catch { /* ignore */ }
+        try {
+          const parsedUrl = new URL(requestedUrl);
+          currentUrl = requestedUrl;
+          currentDomain = parsedUrl.hostname || undefined;
+        } catch {
+          // Relative/invalid URLs may resolve against the active page. Fall
+          // through so blocked/trusted-domain policy sees that real page.
+        }
       }
       try {
         if (!currentUrl && tabId && tabId > 0 && typeof chrome !== 'undefined' && chrome.tabs) {
@@ -1397,8 +1403,8 @@ export class TurnManager {
       if (!currentUrl) {
         try {
           const pageContext = await this.toolRegistry.getCurrentPageContext();
-          currentUrl = pageContext.currentUrl;
-          currentDomain = pageContext.currentDomain;
+          currentUrl = pageContext?.currentUrl;
+          currentDomain = pageContext?.currentDomain;
         } catch { /* page context is best-effort */ }
       }
 

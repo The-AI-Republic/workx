@@ -27,6 +27,37 @@ describe('ChromeManagedConfigSource', () => {
     });
   });
 
+  it('parses JSON-string values (the managed-schema wire format)', async () => {
+    (globalThis as any).chrome = {
+      storage: {
+        managed: {
+          get: async (_keys: string[]) => ({
+            values: '{"agent.approval.mode": "strict", "tools.web_search": false}',
+            lockedKeys: ['agent.approval.mode'],
+          }),
+        },
+      },
+    };
+    const p = await new ChromeManagedConfigSource().load();
+    expect(p).toEqual({
+      values: { 'agent.approval.mode': 'strict', 'tools.web_search': false },
+      lockedKeys: ['agent.approval.mode'],
+      origin: 'chrome-managed',
+    });
+  });
+
+  it('ignores malformed JSON-string values but keeps lockedKeys', async () => {
+    (globalThis as any).chrome = {
+      storage: {
+        managed: {
+          get: async () => ({ values: '{not json', lockedKeys: ['agent.approval.mode'] }),
+        },
+      },
+    };
+    const p = await new ChromeManagedConfigSource().load();
+    expect(p).toEqual({ values: {}, lockedKeys: ['agent.approval.mode'], origin: 'chrome-managed' });
+  });
+
   it('fails open when managed storage is unavailable', async () => {
     (globalThis as any).chrome = { storage: {} };
     expect(await new ChromeManagedConfigSource().load()).toBeNull();

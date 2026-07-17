@@ -166,6 +166,16 @@ export interface RegistryConfig {
     initialHistory?: import('../session/state/types').InitialHistory,
   ) => Promise<import('../RepublicAgent').RepublicAgent>;
 
+  /**
+   * Extension-path platform adapter constructor. The extension default path
+   * (no `agentFactory`) needs an ExtensionPlatformAdapter, but AgentRegistry
+   * is shared core and MUST NOT `import()` it — dynamic import is banned in
+   * the extension service worker, and a static import would pull chrome-only
+   * code into the server/desktop bundles. The service worker (which can
+   * statically import it) injects the constructor here instead.
+   */
+  platformAdapterFactory?: () => import('../platform/IPlatformAdapter').IPlatformAdapter;
+
   /** Optional factory to create event dispatchers per session (replaces chrome.runtime.sendMessage) */
   eventDispatcherFactory?: (sessionId: string) => ((event: { msg: import('../protocol/events').EventMsg }) => void);
 

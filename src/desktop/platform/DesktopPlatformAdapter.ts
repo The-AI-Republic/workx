@@ -104,6 +104,7 @@ export class DesktopPlatformAdapter implements IPlatformAdapter {
       const { MCPManager } = await import('../../core/mcp/MCPManager');
       const mcpManager = await MCPManager.getInstance('desktop');
       const result = await mcpManager.executeTool('browser__list_pages', {});
+      if (!Array.isArray(result?.content)) return {};
       const text = result.content
         .filter((item): item is { type: 'text'; text: string } => item.type === 'text')
         .map((item) => item.text)

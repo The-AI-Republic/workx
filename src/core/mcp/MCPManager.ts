@@ -44,12 +44,20 @@ const MAX_SERVERS = 100;
 /** Builtin browser server ID — deterministic UUID for desktop.
  *  Must be a valid UUID to pass MCPServerConfigSchema validation. */
 const BUILTIN_BROWSER_SERVER_ID = '00000000-0000-4000-8000-000000000001';
-const BROWSER_MCP_AUTO_CONNECT_ARGS = ['--no-usage-statistics', '--autoConnect'];
+/**
+ * Fallback automation-browser args. Live-browser control moved to the
+ * extension bridge (see desktop-runtime/browser-bridge); this builtin server
+ * is only the no-extension fallback, so it launches chrome-devtools-mcp's
+ * own persistent-profile Chrome rather than `--autoConnect`ing to the user's
+ * browser — auto-connect required chrome://inspect setup plus a per-connection
+ * "Allow remote debugging" consent dialog (unsuppressible by design).
+ */
+const BROWSER_MCP_ARGS = ['--no-usage-statistics'];
 
 function createBrowserMcpArgs(includePackageName: boolean): string[] {
   return includePackageName
-    ? ['chrome-devtools-mcp', ...BROWSER_MCP_AUTO_CONNECT_ARGS]
-    : [...BROWSER_MCP_AUTO_CONNECT_ARGS];
+    ? ['chrome-devtools-mcp', ...BROWSER_MCP_ARGS]
+    : [...BROWSER_MCP_ARGS];
 }
 const BUILTIN_GATEWAY_SERVER_ID = '00000000-0000-4000-8000-000000000002';
 const BUILTIN_GATEWAY_SERVER_NAME = 'gateway';
@@ -78,6 +86,7 @@ export class MCPManager implements IMCPManager {
   private servers: Map<string, IMCPServerConfig> = new Map();
   private clients: Map<string, IMCPClientAdapter> = new Map();
   private connections: Map<string, IMCPConnection> = new Map();
+  private connectionPromises: Map<string, Promise<void>> = new Map();
   private eventHandlers: Set<(event: MCPManagerEvent) => void> = new Set();
   private initialized: boolean = false;
   private platform: MCPPlatformScope;
@@ -333,44 +342,64 @@ export class MCPManager implements IMCPManager {
     }
 
     const connection = this.connections.get(id);
-    if (connection?.status === 'connected' || connection?.status === 'connecting') {
-      console.warn(`[MCPManager] Server ${config.name} is already connected or connecting`);
+    if (connection?.status === 'connected') {
+      console.warn(`[MCPManager] Server ${config.name} is already connected`);
       return;
     }
 
-    // Update status to connecting
-    this.updateConnectionStatus(id, 'connecting');
+    // All callers must await the same underlying attempt. Previously a second
+    // caller saw `connecting` and returned immediately, which let a session
+    // finish construction before the gateway tool catalog was available.
+    const inFlight = this.connectionPromises.get(id);
+    if (inFlight) {
+      await inFlight;
+      return;
+    }
 
-    try {
-      // Create the appropriate adapter based on transport type
-      const adapter = await this.createAdapter(config);
+    const connectPromise = (async () => {
+      // Update status synchronously before the first await so concurrent calls
+      // observe this attempt in connectionPromises.
+      this.updateConnectionStatus(id, 'connecting');
 
-      await adapter.connect();
+      try {
+        // Create the appropriate adapter based on transport type
+        const adapter = await this.createAdapter(config);
 
-      this.clients.set(id, adapter);
+        await adapter.connect();
 
-      // Update connection state
-      const conn = this.connections.get(id)!;
-      conn.status = 'connected';
-      conn.serverInfo = adapter.getServerInfo();
-      conn.capabilities = adapter.getCapabilities();
-      conn.protocolVersion = adapter.getProtocolVersion();
-      conn.tools = adapter.getTools();
-      conn.resources = adapter.getResources();
-      conn.lastConnected = Date.now();
-      conn.lastError = undefined;
+        this.clients.set(id, adapter);
 
-      this.emit({ type: 'connection-status-changed', configId: id, status: 'connected' });
-      this.emit({ type: 'tools-updated', configId: id, tools: conn.tools });
-      if (conn.resources.length > 0) {
-        this.emit({ type: 'resources-updated', configId: id, resources: conn.resources });
+        // Update connection state
+        const conn = this.connections.get(id)!;
+        conn.status = 'connected';
+        conn.serverInfo = adapter.getServerInfo();
+        conn.capabilities = adapter.getCapabilities();
+        conn.protocolVersion = adapter.getProtocolVersion();
+        conn.tools = adapter.getTools();
+        conn.resources = adapter.getResources();
+        conn.lastConnected = Date.now();
+        conn.lastError = undefined;
+
+        this.emit({ type: 'connection-status-changed', configId: id, status: 'connected' });
+        this.emit({ type: 'tools-updated', configId: id, tools: conn.tools });
+        if (conn.resources.length > 0) {
+          this.emit({ type: 'resources-updated', configId: id, resources: conn.resources });
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`[MCPManager] Connection to ${config.name} failed: ${errorMessage}`);
+        this.updateConnectionStatus(id, 'error', errorMessage);
+        throw error;
       }
+    })();
 
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error(`[MCPManager] Connection to ${config.name} failed: ${errorMessage}`);
-      this.updateConnectionStatus(id, 'error', errorMessage);
-      throw error;
+    this.connectionPromises.set(id, connectPromise);
+    try {
+      await connectPromise;
+    } finally {
+      if (this.connectionPromises.get(id) === connectPromise) {
+        this.connectionPromises.delete(id);
+      }
     }
   }
 

@@ -5,8 +5,8 @@
   "version": "../package.json",
   "identifier": "com.airepublic.workx",
   "build": {
-    "beforeBuildCommand": { "script": "npm run build:desktop && npm run build:desktop-runtime-sidecar && npm run build:sidecar && npm run build:ripgrep-sidecar", "cwd": ".." },
-    "beforeDevCommand": { "script": "npm run build:desktop-runtime-sidecar && npm run build:sidecar && npm run build:ripgrep-sidecar && npm run dev:desktop", "cwd": ".." },
+    "beforeBuildCommand": { "script": "npm run build:desktop && npm run build:desktop-runtime-sidecar && npm run build:ripgrep-sidecar", "cwd": ".." },
+    "beforeDevCommand": { "script": "npm run build:desktop-runtime-sidecar && npm run build:ripgrep-sidecar && npm run dev:desktop", "cwd": ".." },
     "devUrl": "http://localhost:5174",
     "frontendDist": "../dist/desktop"
   },
@@ -14,7 +14,7 @@
     "active": true,
     "category": "DeveloperTool",
     "copyright": "",
-    "externalBin": ["binaries/chrome-devtools-mcp", "binaries/rg"],
+    "externalBin": ["binaries/rg"],
     "resources": {
       "sidecar/desktop-runtime": "desktop-runtime"
     },

@@ -359,12 +359,25 @@ export class ServerAgentBootstrap {
             // if the gate cannot be built, agent creation must fail loudly
             // rather than run desktop tools ungated.
             const { configureDesktopApprovalGate } = await import('@/desktop-runtime/approvalGate');
-            await configureDesktopApprovalGate(agent);
+            await configureDesktopApprovalGate(agent, cfg.getConfig().approval);
 
             // The registry does not publish this agent until agentFactory
             // returns, so register already-connected gateway tools directly
             // on it as part of construction.
             await this.ensureDesktopRuntimeHubMcpConnected(agent);
+
+            // Browser bridge: mirror the connected extension node's tool
+            // catalog onto this new session (sessions created before the
+            // node connected are handled by the manager's nodes-changed sync).
+            try {
+              const { getBrowserBridgeHandle } = await import('@/tools/browserBridgeHandle');
+              const bridge = getBrowserBridgeHandle();
+              if (bridge?.hasActiveNode()) {
+                await bridge.applyToRegistry(agent.getSession().sessionId, agent.getToolRegistry());
+              }
+            } catch (err) {
+              console.warn('[ServerAgentBootstrap] browser bridge tool registration failed (non-fatal):', err);
+            }
           }
 
           if (profile === 'server') {
@@ -759,11 +772,19 @@ export class ServerAgentBootstrap {
     if (!this.registry) return;
     const config = await AgentConfig.getInstance();
     await config.reload();
+    const effectiveApprovalConfig = config.getConfig().approval;
+    const applyApprovalConfig = (this.options.profile ?? 'server') === 'desktop-runtime'
+      ? (await import('@/desktop-runtime/approvalGate')).applyDesktopApprovalConfig
+      : null;
     const sessions = this.registry.listSessions();
     for (const s of sessions) {
       if (s.state === 'terminated') continue;
       const agentSession = this.registry.getSession(s.sessionId);
       if (agentSession?.agent) {
+        const approvalGate = agentSession.agent.getToolRegistry().getApprovalGate();
+        if (applyApprovalConfig && approvalGate) {
+          applyApprovalConfig(approvalGate, effectiveApprovalConfig);
+        }
         await agentSession.agent.hotSwapModelClient();
       }
     }
@@ -1475,7 +1496,9 @@ export class ServerAgentBootstrap {
       }
 
       const connection = mcpManager.getConnection(hubServer.id);
-      if (connection?.status !== 'connected' && connection?.status !== 'connecting') {
+      if (connection?.status !== 'connected') {
+        // MCPManager coalesces concurrent connect calls, so this awaits an
+        // existing attempt instead of publishing targetAgent without tools.
         await mcpManager.connect(hubServer.id);
       }
 
@@ -1944,7 +1967,10 @@ export class ServerAgentBootstrap {
 
     const isDesktopRuntime = (this.options.profile ?? 'server') === 'desktop-runtime';
     const staticContext: Partial<RuntimeContext> = {
-      browserConnection: isDesktopRuntime ? 'mcp' : 'none',
+      // Desktop browser access is the WorkX-extension bridge (local_browser_tool),
+      // not the parked chrome-devtools-mcp path. The 'bridge' label spells out
+      // that the tool exists only while the extension is connected.
+      browserConnection: isDesktopRuntime ? 'bridge' : 'none',
       os: process.platform,
       arch: process.arch,
       shell: process.platform === 'win32' ? 'powershell' : 'bash',

@@ -74,6 +74,15 @@ describe('DesktopPlatformAdapter', () => {
 
       await expect(adapter.getCurrentPageContext()).resolves.toEqual({});
     });
+
+    it('fails safely when MCP returns malformed page content', async () => {
+      mockMcpManager.getServerByName.mockReturnValue({ id: 'browser-id', name: 'browser' });
+      mockMcpManager.getConnection.mockReturnValue({ tools: [{ name: 'list_pages' }] });
+      mockMcpManager.executeTool.mockResolvedValue({ content: null } as any);
+      adapter.setToolContext({ getTool: vi.fn().mockReturnValue(undefined) } as any, vi.fn());
+
+      await expect(adapter.getCurrentPageContext()).resolves.toEqual({});
+    });
   });
 
   // ── Platform identity ─────────────────────────────────────────────────

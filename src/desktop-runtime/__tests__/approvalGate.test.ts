@@ -11,7 +11,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { configureDesktopApprovalGate } from '../approvalGate';
+import { applyDesktopApprovalConfig, configureDesktopApprovalGate } from '../approvalGate';
 import { setConfigStorage } from '@/core/storage/ConfigStorageProvider';
 import type { ConfigStorageProvider } from '@/core/storage/ConfigStorageProvider';
 import { ApprovalManager } from '@/core/ApprovalManager';
@@ -74,6 +74,70 @@ describe('configureDesktopApprovalGate', () => {
     const gate = await configureDesktopApprovalGate(agent);
 
     expect(gate.getMode()).toBe('high_speed');
+  });
+
+  it('prefers effective managed config over stale persisted preferences', async () => {
+    setConfigStorage(
+      makeMemoryStorage({
+        [STORAGE_KEYS.CONFIG]: {
+          approval: {
+            mode: 'yolo',
+            trustedDomains: ['stale.example'],
+          },
+        },
+      }),
+    );
+    const { agent } = makeFakeAgent();
+    const gate = await configureDesktopApprovalGate(agent, {
+      mode: 'balanced',
+      trustedDomains: [],
+      blockedDomains: ['managed.example'],
+    });
+
+    expect(gate.getMode()).toBe('balanced');
+    await expect(gate.check(
+      'browser__click',
+      {},
+      undefined,
+      { currentDomain: 'managed.example' },
+    )).resolves.toBe('deny');
+  });
+
+  it('applies live effective config updates to an existing gate', async () => {
+    const { agent } = makeFakeAgent();
+    const gate = await configureDesktopApprovalGate(agent, { mode: 'yolo' });
+    expect(gate.getMode()).toBe('yolo');
+
+    applyDesktopApprovalConfig(gate, {
+      mode: 'balanced',
+      blockedDomains: ['newly-blocked.example'],
+    });
+
+    expect(gate.getMode()).toBe('balanced');
+    await expect(gate.check(
+      'browser__click',
+      {},
+      undefined,
+      { currentDomain: 'newly-blocked.example' },
+    )).resolves.toBe('deny');
+  });
+
+  it('keeps safe defaults when persisted approval fields are malformed', async () => {
+    setConfigStorage(
+      makeMemoryStorage({
+        [STORAGE_KEYS.CONFIG]: {
+          approval: {
+            mode: undefined,
+            trustedDomains: null,
+            blockedDomains: 'not-an-array',
+          },
+        },
+      }),
+    );
+    const { agent } = makeFakeAgent();
+    const gate = await configureDesktopApprovalGate(agent);
+
+    expect(gate.getMode()).toBe('balanced');
   });
 
   it('denies critical terminal commands via the desktop rule set', async () => {

@@ -15,6 +15,7 @@
  */
 
 import path from 'node:path';
+import os from 'node:os';
 import type { ServerAgentBootstrap } from '@/server/agent/ServerAgentBootstrap';
 import type { ServiceHandler } from '@/core/channels/ServiceRegistry';
 import { getChannelManager } from '@/core/channels/ChannelManager';
@@ -23,6 +24,9 @@ import { AppServerManager } from '@/app-server/AppServerManager';
 import { AppServerAuth } from '@/app-server/connection/AppServerAuth';
 import { normalizeAppServerConfig } from '@/app-server/appServerConfig';
 import type { AppServerStatusSnapshot } from '@/app-server/status/AppServerStatus';
+import { setBrowserBridgeHandle } from '@/tools/browserBridgeHandle';
+import { BrowserBridgeToolManager } from '../browser-bridge/BrowserBridgeToolManager';
+import { installNativeHost, WORKX_EXTENSION_ID } from '../browser-bridge/native-host/installNativeHost';
 import { getDesktopRuntimeHost } from '../host';
 import { getDesktopRuntimeControlBridge } from '../protocol/controlBridge';
 import { KeychainTokenStore } from './KeychainTokenStore';
@@ -34,6 +38,7 @@ export interface DesktopAppServerManagerOptions {
 export class DesktopAppServerManager {
   private manager: AppServerManager | null = null;
   private channelRegistered = false;
+  private bridgeToolManager: BrowserBridgeToolManager | null = null;
 
   constructor(private readonly opts: DesktopAppServerManagerOptions) {}
 
@@ -79,9 +84,26 @@ export class DesktopAppServerManager {
       await this.opts.bootstrap.registerChannel(this.manager.getChannel());
       this.channelRegistered = true;
 
+      // Browser bridge: mirror extension-node tool catalogs into agent
+      // sessions, and let generic tool registration consult bridge state.
+      this.bridgeToolManager = new BrowserBridgeToolManager({
+        nodeBridge: this.manager.nodeBridge,
+        getRegistry: () => this.opts.bootstrap.getRegistry(),
+      });
+      this.bridgeToolManager.attach();
+      setBrowserBridgeHandle(this.bridgeToolManager);
+
       await this.manager.start();
       const status = this.manager.getStatus();
       console.error(`[DesktopAppServerManager] app-server ready at ${status.url ?? '(unknown)'}`);
+
+      // Register the Chrome-family native-messaging host so the extension can
+      // connectNative() with zero pairing. Best-effort: a failure here only
+      // loses the native path (the ws dev fallback still works) and must not
+      // take down the app-server.
+      if (status.url) {
+        await this.installNativeHost(status.url);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.error('[DesktopAppServerManager] app-server start failed (runtime continues):', message);
@@ -92,6 +114,9 @@ export class DesktopAppServerManager {
   /** Stop the listener and unregister the channel. */
   async stop(reason = 'shutdown'): Promise<void> {
     try {
+      setBrowserBridgeHandle(null);
+      await this.bridgeToolManager?.detach();
+      this.bridgeToolManager = null;
       await this.manager?.stop(reason);
       if (this.channelRegistered && this.manager) {
         await this.opts.bootstrap.unregisterChannel(this.manager.getChannel().channelId);
@@ -128,11 +153,28 @@ export class DesktopAppServerManager {
       'appServer.rotateToken': async () => {
         if (!this.manager) throw new Error('App-server not running');
         await this.manager.rotateToken();
+        const status = this.manager.getStatus();
+        if (status.url) await this.installNativeHost(status.url);
         return { rotated: true };
       },
       'appServer.revealToken': async () => {
         if (!this.manager) throw new Error('App-server not running');
         return { token: await this.manager.revealToken() };
+      },
+      'browserBridge.getStatus': async () => {
+        const nodes = this.manager?.nodeBridge.getActiveNodes() ?? [];
+        return {
+          appServerEnabled: this.getStatus().enabled,
+          connected: nodes.length > 0,
+          nodes: nodes.map((n) => ({
+            clientId: n.clientId,
+            kind: n.kind,
+            displayName: n.displayName,
+            version: n.version,
+            toolCount: n.tools.length,
+            connectedAt: n.connectedAt,
+          })),
+        };
       },
       'appServer.setConfig': async () => {
         // Config is persisted via the normal config service; this just restarts
@@ -144,6 +186,30 @@ export class DesktopAppServerManager {
     };
     for (const [name, handler] of Object.entries(handlers)) {
       registry.register(name, handler);
+    }
+  }
+
+  private async installNativeHost(appServerUrl: string): Promise<void> {
+    if (!this.manager) return;
+    try {
+      const host = getDesktopRuntimeHost();
+      const nodePath = process.execPath;
+      await installNativeHost({
+        nodePath,
+        // relay.mjs ships next to the bundled node in the sidecar dir.
+        relayPath: path.join(path.dirname(nodePath), 'relay.mjs'),
+        appServerUrl,
+        token: (await this.manager.revealToken()) ?? '',
+        extensionId: WORKX_EXTENSION_ID,
+        dataDir: host.configDir,
+        home: os.homedir(),
+        platform: (host.platform as NodeJS.Platform) ?? process.platform,
+      });
+    } catch (err) {
+      console.warn(
+        '[DesktopAppServerManager] native-host install failed (bridge falls back to token-paired ws):',
+        err instanceof Error ? err.message : err,
+      );
     }
   }
 }
