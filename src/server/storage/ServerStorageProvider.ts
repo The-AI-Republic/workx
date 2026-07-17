@@ -30,6 +30,10 @@ const VALID_COLLECTIONS: ReadonlySet<string> = new Set([
   'credentials',
   'skills',
   'tasks',
+  'data_sources',
+  'data_source_catalog',
+  'data_source_contexts',
+  'data_source_context_revisions',
 ]);
 
 function validateCollection(collection: string): void {
@@ -77,7 +81,8 @@ export class ServerStorageProvider implements StorageProvider {
   }
 
   private getDb(): import('better-sqlite3').Database {
-    if (!this.db) throw new Error('ServerStorageProvider not initialized. Call initialize() first.');
+    if (!this.db)
+      throw new Error('ServerStorageProvider not initialized. Call initialize() first.');
     return this.db;
   }
 
@@ -99,9 +104,9 @@ export class ServerStorageProvider implements StorageProvider {
 
   async get<T>(collection: string, key: string): Promise<T | null> {
     this.ensureTable(collection);
-    const row = this.getDb()
-      .prepare(`SELECT value FROM "${collection}" WHERE key = ?`)
-      .get(key) as { value: string } | undefined;
+    const row = this.getDb().prepare(`SELECT value FROM "${collection}" WHERE key = ?`).get(key) as
+      | { value: string }
+      | undefined;
     return row ? JSON.parse(row.value) : null;
   }
 
@@ -119,9 +124,7 @@ export class ServerStorageProvider implements StorageProvider {
 
   async delete(collection: string, key: string): Promise<void> {
     this.ensureTable(collection);
-    this.getDb()
-      .prepare(`DELETE FROM "${collection}" WHERE key = ?`)
-      .run(key);
+    this.getDb().prepare(`DELETE FROM "${collection}" WHERE key = ?`).run(key);
   }
 
   async getMany<T>(collection: string, keys: string[]): Promise<Map<string, T>> {
@@ -170,8 +173,7 @@ export class ServerStorageProvider implements StorageProvider {
     for (let i = 0; i < keys.length; i += CHUNK_SIZE) {
       const chunk = keys.slice(i, i + CHUNK_SIZE);
       const placeholders = chunk.map(() => '?').join(', ');
-      db.prepare(`DELETE FROM "${collection}" WHERE key IN (${placeholders})`)
-        .run(...chunk);
+      db.prepare(`DELETE FROM "${collection}" WHERE key IN (${placeholders})`).run(...chunk);
     }
   }
 

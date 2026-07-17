@@ -182,10 +182,26 @@ export interface ExecutionContext {
 
 /** Operations handled by RepublicAgentEngine */
 export type EngineOp =
-  | { type: 'UserInput'; items: InputItem[]; context?: ExecutionContext; contextOverrides?: Record<string, unknown> }
-  | { type: 'UserTurn'; items: InputItem[]; context?: ExecutionContext; contextOverrides?: Record<string, unknown> }
+  | {
+      type: 'UserInput';
+      items: InputItem[];
+      context?: ExecutionContext;
+      contextOverrides?: Record<string, unknown>;
+    }
+  | {
+      type: 'UserTurn';
+      items: InputItem[];
+      context?: ExecutionContext;
+      contextOverrides?: Record<string, unknown>;
+    }
   | { type: 'Interrupt'; reason?: string }
-  | { type: 'ExecApproval'; callId: string; decision: ReviewDecision; remember?: boolean; alternativeText?: string }
+  | {
+      type: 'ExecApproval';
+      callId: string;
+      decision: ReviewDecision;
+      remember?: boolean;
+      alternativeText?: string;
+    }
   | { type: 'PatchApproval'; patchId: string; decision: ReviewDecision }
   | { type: 'Compact'; mode?: 'auto' | 'manual' }
   | { type: 'ManualCompact' }

@@ -663,6 +663,15 @@
   "Untrusted": "Untrusted",
   "Use your ChatGPT Plus/Pro subscription instead of an API key": "Use_your_ChatGPT_Plus_Pro_subscription_i_e8b8",
   "Vault Locked": "Vault_Locked",
+  "Back to settings": "Back_to_settings",
+  "Context change was undone as a new revision.": "Context_change_was_undone_as_a_new_revis_decd",
+  "Context changed; review it before reverting.": "Context_changed_review_it_before_reverti_2e9d",
+  "Connect read-only databases for AI-assisted analysis": "Connect_read_only_databases_for_AI_assis_fa3e",
+  "Data context saved": "Data_context_saved",
+  "Data query": "Data_query",
+  "Data Sources": "Data_Sources",
+  "Undo": "Undo",
+  "View": "View",
   "more results...": "more_results",
   "or": "or"
 }

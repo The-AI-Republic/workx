@@ -108,7 +108,7 @@ export interface ToolProgress<P extends ToolProgressData = ToolProgressData> {
  * Progress callback type. Optional — only invoked when provided.
  */
 export type ToolProgressCallback<P extends ToolProgressData = ToolProgressData> = (
-  progress: ToolProgress<P>,
+  progress: ToolProgress<P>
 ) => void;
 
 // =============================================================================
@@ -147,6 +147,32 @@ export interface PageVisionProgress extends ToolProgressData {
   type: 'vision_progress';
   status: 'capturing' | 'captured' | 'failed';
   screenshotSizeBytes?: number;
+}
+
+export interface DataQueryProgress extends ToolProgressData {
+  type: 'data_query';
+  status: 'started' | 'completed' | 'failed';
+  sourceName: string;
+  connectorId: string;
+  transport: 'native' | 'mcp';
+  purpose: string;
+  sql?: string;
+  parameterTypes: string[];
+  parameterCount: number;
+  durationMs?: number;
+  rowCount?: number;
+  truncated?: boolean;
+  errorCode?: string;
+}
+
+export interface DataContextLearnedProgress extends ToolProgressData {
+  type: 'data_context_learned';
+  status: 'completed';
+  sourceId: string;
+  sourceName: string;
+  summaries: string[];
+  priorRevision: number;
+  currentRevision: number;
 }
 
 export interface NetworkInterceptProgress extends ToolProgressData {

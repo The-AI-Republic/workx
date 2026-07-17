@@ -57,7 +57,9 @@ export class ChannelManager {
 
     // Set up submission routing
     channel.onSubmission(async (op, context) => {
-      console.log(`[ChannelManager] Received submission: op.type=${op.type} from channel ${channel.channelId}`);
+      console.log(
+        `[ChannelManager] Received submission: op.type=${op.type} from channel ${channel.channelId}`
+      );
       if (op.type === 'ServiceRequest') {
         await this.handleServiceRequest(op, context, channel);
       } else if (this.agentHandler) {
@@ -169,7 +171,9 @@ export class ChannelManager {
     context: SubmissionContext,
     channel: ChannelAdapter
   ): Promise<void> {
-    console.log(`[ChannelManager] handleServiceRequest: ${op.service} (${op.requestId}) via channel ${channel.channelId}`);
+    console.log(
+      `[ChannelManager] handleServiceRequest: ${op.service} (${op.requestId}) via channel ${channel.channelId}`
+    );
     try {
       const result = await this.serviceRegistry.handle(op.service, op.params, context);
       console.log(`[ChannelManager] ServiceRequest ${op.service} succeeded, sending response`);
@@ -199,6 +203,10 @@ export class ChannelManager {
                 service: op.service,
                 success: false,
                 error: error instanceof Error ? error.message : String(error),
+                errorCode:
+                  error && typeof error === 'object' && 'code' in error
+                    ? String((error as { code?: unknown }).code ?? '') || undefined
+                    : undefined,
               },
             },
             sessionId: context.sessionId,
@@ -206,7 +214,10 @@ export class ChannelManager {
           context.userId
         );
       } catch (sendError) {
-        console.error(`[ChannelManager] Failed to send error response for ${op.service}:`, sendError);
+        console.error(
+          `[ChannelManager] Failed to send error response for ${op.service}:`,
+          sendError
+        );
       }
     }
   }

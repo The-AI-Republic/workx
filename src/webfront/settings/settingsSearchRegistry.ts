@@ -24,6 +24,7 @@ export enum SettingsSection {
   MEMORY = 'memory',
   STORAGE = 'storage',
   TOOLS = 'tools',
+  DATA_SOURCES = 'data-sources',
   MCP_SERVERS = 'mcp-servers',
   APPROVAL = 'approval',
   EXTENSION = 'extension',
@@ -34,9 +35,32 @@ export interface ConditionalRule {
   value: string;
 }
 
-export type NavigationView = 'menu' | 'model-config' | 'advanced-model-config' | 'general' | 'keyboard-shortcuts' | 'memory' | 'storage' | 'tools' | 'mcp-servers' | 'approval' | 'extension';
+export type NavigationView =
+  | 'menu'
+  | 'model-config'
+  | 'advanced-model-config'
+  | 'general'
+  | 'keyboard-shortcuts'
+  | 'memory'
+  | 'storage'
+  | 'tools'
+  | 'data-sources'
+  | 'mcp-servers'
+  | 'approval'
+  | 'extension';
 
 export const settingsRegistry: SettingsSearchItem[] = [
+  {
+    id: 'dataSources.manage',
+    labelKey: 'Data Sources',
+    descriptionKey: 'Connect and manage read-only PostgreSQL and MySQL databases.',
+    section: SettingsSection.DATA_SOURCES,
+    sectionLabelKey: 'Data Sources',
+    keywords: ['database', 'postgres', 'postgresql', 'mysql', 'sql', 'analysis', 'context'],
+    navigationTarget: 'data-sources',
+    elementId: 'data-sources-title',
+    conditional: { type: 'platform', value: 'desktop' },
+  },
   // ── Model Config ──────────────────────────────────────────────────────
   {
     id: 'model.selection',
@@ -380,7 +404,8 @@ export const settingsRegistry: SettingsSearchItem[] = [
   {
     id: 'tools.executionMode',
     labelKey: 'Execution Mode',
-    descriptionKey: 'All commands run inside an OS-native sandbox. Writes restricted to workspace directory.',
+    descriptionKey:
+      'All commands run inside an OS-native sandbox. Writes restricted to workspace directory.',
     section: SettingsSection.TOOLS,
     sectionLabelKey: 'Tools',
     keywords: ['execution', 'mode', 'safe', 'power', 'auto', 'sandbox', 'terminal'],
@@ -426,7 +451,8 @@ export const settingsRegistry: SettingsSearchItem[] = [
   {
     id: 'mcp.servers',
     labelKey: 'Configured Servers',
-    descriptionKey: 'Connect to Model Context Protocol (MCP) servers to extend the agent with external tools.',
+    descriptionKey:
+      'Connect to Model Context Protocol (MCP) servers to extend the agent with external tools.',
     section: SettingsSection.MCP_SERVERS,
     sectionLabelKey: 'MCP Servers',
     keywords: ['mcp', 'server', 'connect', 'external', 'protocol', 'configure'],

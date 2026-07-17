@@ -23,6 +23,11 @@ import { t } from '../../lib/i18n';
 import { agentDisplayName } from '../../stores/platformStore';
 import { getInitializedUIClient } from '@/core/messaging';
 import { formatCost } from '@/core/models/cost/cost';
+import type {
+  DataContextLearnedProgress,
+  DataQueryProgress,
+  ToolProgressData,
+} from '@/tools/runtimeMetadata';
 
 /**
  * EventProcessor Implementation
@@ -31,6 +36,7 @@ export class EventProcessor {
   // State management
   private operationMetadata = new Map<string, OperationState>();
   private streamingStates = new Map<string, StreamingState>();
+  private dataQueryProgress = new Map<string, DataQueryProgress>();
 
   // Configuration
   private showReasoning: boolean = false;
@@ -82,6 +88,7 @@ export class EventProcessor {
   reset(): void {
     this.operationMetadata.clear();
     this.streamingStates.clear();
+    this.dataQueryProgress.clear();
   }
 
   /**
@@ -374,9 +381,13 @@ export class EventProcessor {
         costEstimated: msg.data.cost_estimated,
       };
 
-      let content = t('Task completed in $1$ turn(s)', { substitutions: [(msg.data.turn_count || 0).toString()] });
+      let content = t('Task completed in $1$ turn(s)', {
+        substitutions: [(msg.data.turn_count || 0).toString()],
+      });
       if (tokenUsage) {
-        content += '\n' + t('Tokens: $1$', { substitutions: [tokenUsage.total_tokens?.toLocaleString() || '0'] });
+        content +=
+          '\n' +
+          t('Tokens: $1$', { substitutions: [tokenUsage.total_tokens?.toLocaleString() || '0'] });
       }
       if (typeof msg.data.cost_usd === 'number') {
         const costStr = formatCost(msg.data.cost_usd) + (msg.data.cost_estimated ? ' ≈' : '');
@@ -477,8 +488,7 @@ export class EventProcessor {
           timestamp: new Date(),
           title: t('exec (unknown command)'),
           content: t('Command completed'),
-          style:
-            msg.data.exit_code === 0 ? STYLE_PRESETS.tool_success : STYLE_PRESETS.tool_error,
+          style: msg.data.exit_code === 0 ? STYLE_PRESETS.tool_success : STYLE_PRESETS.tool_error,
           status: msg.data.exit_code === 0 ? 'success' : 'error',
           collapsible: false,
         };
@@ -574,13 +584,16 @@ export class EventProcessor {
     }
 
     if (msg.type === 'ToolExecutionProgress') {
-      const data = msg.data.progress_data as unknown as Record<string, unknown>;
+      const progress = msg.data.progress_data as ToolProgressData;
+      if (progress.type === 'data_query' || progress.type === 'data_context_learned') {
+        return this.processDataProgress(event, progress);
+      }
+      const data = progress as unknown as Record<string, unknown>;
       const status = typeof data.status === 'string' ? data.status : 'running';
       const eventStatus: EventStatus =
         status === 'failed' ? 'error' : status === 'completed' ? 'success' : 'running';
-      const message = typeof data.message === 'string'
-        ? data.message
-        : `${data.type ?? 'progress'} ${status}`;
+      const message =
+        typeof data.message === 'string' ? data.message : `${data.type ?? 'progress'} ${status}`;
       return {
         id: event.id,
         category: 'tool',
@@ -597,6 +610,93 @@ export class EventProcessor {
     }
 
     return null;
+  }
+
+  private processDataProgress(event: Event, progress: ToolProgressData): ProcessedEvent {
+    const msg = event.msg;
+    if (msg.type !== 'ToolExecutionProgress') {
+      throw new Error('Data progress requires ToolExecutionProgress');
+    }
+    const callId = msg.data.call_id ?? event.id;
+
+    if (progress.type === 'data_context_learned') {
+      const learned = progress as DataContextLearnedProgress;
+      return {
+        id: `data-context:${callId}:${learned.currentRevision}`,
+        category: 'system',
+        timestamp: new Date(msg.data.timestamp),
+        title: t('Data context saved'),
+        content: `Saved ${learned.summaries.length} note${learned.summaries.length === 1 ? '' : 's'} to “${learned.sourceName}” context.`,
+        style: STYLE_PRESETS.tool_success,
+        status: 'success',
+        collapsible: false,
+        actions: [
+          {
+            id: 'view-context',
+            label: t('View'),
+            kind: 'navigate',
+            href: `/settings?view=data-sources&source=${encodeURIComponent(learned.sourceId)}&tab=context`,
+          },
+          {
+            id: 'undo-context',
+            label: t('Undo'),
+            kind: 'service',
+            service: 'dataSources.revertContext',
+            params: {
+              sourceId: learned.sourceId,
+              targetRevision: learned.priorRevision,
+              expectedCurrentRevision: learned.currentRevision,
+            },
+            successMessage: t('Context change was undone as a new revision.'),
+            conflictMessage: t('Context changed; review it before reverting.'),
+          },
+        ],
+      };
+    }
+
+    const update = progress as DataQueryProgress;
+    if (update.status === 'started') this.dataQueryProgress.set(callId, update);
+    const started = this.dataQueryProgress.get(callId);
+    const combined = { ...started, ...update } as DataQueryProgress;
+    if (update.status !== 'started') this.dataQueryProgress.delete(callId);
+    const status: EventStatus =
+      combined.status === 'failed'
+        ? 'error'
+        : combined.status === 'completed'
+          ? 'success'
+          : 'running';
+    const lines = [
+      `Source: ${combined.sourceName}`,
+      `Purpose: ${combined.purpose}`,
+      `Connector: ${combined.connectorId} (${combined.transport})`,
+      `Parameters: ${combined.parameterCount} (${combined.parameterTypes.join(', ') || 'none'})`,
+    ];
+    if (combined.sql) lines.push(`SQL:\n${combined.sql}`);
+    if (combined.durationMs !== undefined) lines.push(`Duration: ${combined.durationMs} ms`);
+    if (combined.rowCount !== undefined) lines.push(`Rows returned: ${combined.rowCount}`);
+    if (combined.truncated !== undefined)
+      lines.push(`Truncated: ${combined.truncated ? 'yes' : 'no'}`);
+    if (combined.errorCode) lines.push(`Error: ${combined.errorCode}`);
+    return {
+      id: `data-query:${callId}`,
+      category: 'system',
+      timestamp: new Date(msg.data.timestamp),
+      title: t('Data query'),
+      content: lines.join('\n'),
+      style:
+        status === 'error'
+          ? STYLE_PRESETS.tool_error
+          : status === 'success'
+            ? STYLE_PRESETS.tool_success
+            : STYLE_PRESETS.tool_call,
+      status,
+      metadata: {
+        toolName: msg.data.tool_name,
+        duration: combined.durationMs,
+      },
+      collapsible: true,
+      collapsed: status === 'success',
+    };
   }
 
   /**
@@ -745,7 +845,9 @@ export class EventProcessor {
         category: 'approval',
         timestamp: new Date(),
         title: t('Approval Required: Apply Patch'),
-        content: t('Patch for $1$ file(s)', { substitutions: [(msg.data.num_files || 0).toString()] }),
+        content: t('Patch for $1$ file(s)', {
+          substitutions: [(msg.data.num_files || 0).toString()],
+        }),
         style: { textColor: 'text-yellow-400' },
         requiresApproval: {
           id: event.id,
@@ -895,17 +997,29 @@ export class EventProcessor {
 
       const cumulativeCost = msg.data.cost;
       const pressure = msg.data.token_warning_state;
-      const content = t('Tokens: $1$', { substitutions: [usage.total_tokens?.toLocaleString() || '0'] }) +
-  '\n  ' + t('Input: $1$', { substitutions: [usage.input_tokens?.toLocaleString() || '0'] }) +
-    (usage.cached_input_tokens ? ` (${usage.cached_input_tokens.toLocaleString()} ${t('cached')})` : '') +
-  '\n  ' + t('Output: $1$', { substitutions: [usage.output_tokens?.toLocaleString() || '0'] }) +
-    (usage.reasoning_output_tokens ? '\n  ' + t('Reasoning: $1$', { substitutions: [usage.reasoning_output_tokens.toLocaleString()] }) : '') +
-    (pressure?.percent_used !== undefined
-      ? '\n  ' + t('Context: $1$ used', { substitutions: [`${pressure.percent_used.toFixed(0)}%`] })
-      : '') +
-    (typeof cumulativeCost === 'number'
-      ? '\n  ' + t('Cost: $1$', { substitutions: [formatCost(cumulativeCost) + (msg.data.cost_estimated ? ' ≈' : '')] })
-      : '');
+      const content =
+        t('Tokens: $1$', { substitutions: [usage.total_tokens?.toLocaleString() || '0'] }) +
+        '\n  ' +
+        t('Input: $1$', { substitutions: [usage.input_tokens?.toLocaleString() || '0'] }) +
+        (usage.cached_input_tokens
+          ? ` (${usage.cached_input_tokens.toLocaleString()} ${t('cached')})`
+          : '') +
+        '\n  ' +
+        t('Output: $1$', { substitutions: [usage.output_tokens?.toLocaleString() || '0'] }) +
+        (usage.reasoning_output_tokens
+          ? '\n  ' +
+            t('Reasoning: $1$', { substitutions: [usage.reasoning_output_tokens.toLocaleString()] })
+          : '') +
+        (pressure?.percent_used !== undefined
+          ? '\n  ' +
+            t('Context: $1$ used', { substitutions: [`${pressure.percent_used.toFixed(0)}%`] })
+          : '') +
+        (typeof cumulativeCost === 'number'
+          ? '\n  ' +
+            t('Cost: $1$', {
+              substitutions: [formatCost(cumulativeCost) + (msg.data.cost_estimated ? ' ≈' : '')],
+            })
+          : '');
 
       return {
         id: event.id,
