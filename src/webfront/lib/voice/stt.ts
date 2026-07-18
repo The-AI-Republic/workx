@@ -25,7 +25,7 @@ export function canUseBrowserVoiceCapture(): boolean {
     && '__TAURI_INTERNALS__' in window
     && typeof navigator !== 'undefined'
     && !!navigator.mediaDevices?.getUserMedia
-    && typeof MediaRecorder !== 'undefined';
+    && (typeof AudioContext !== 'undefined' || 'webkitAudioContext' in window);
 }
 
 async function invokeTauri<T>(command: string, args?: InvokeArgs): Promise<T> {
@@ -60,16 +60,6 @@ async function blobToBase64(blob: Blob): Promise<string> {
   });
   const commaIndex = dataUrl.indexOf(',');
   return commaIndex >= 0 ? dataUrl.slice(commaIndex + 1) : dataUrl;
-}
-
-export function preferredVoiceMimeType(): string | undefined {
-  const candidates = [
-    'audio/webm;codecs=opus',
-    'audio/webm',
-    'audio/mp4',
-    'audio/ogg;codecs=opus',
-  ];
-  return candidates.find((candidate) => MediaRecorder.isTypeSupported(candidate));
 }
 
 export async function transcribeAudioBlob(blob: Blob): Promise<VoiceTranscriptionResult> {

@@ -20,7 +20,6 @@
   import { registerShortcut, registerShortcutContext } from '../shortcuts/useShortcut';
   import {
     canUseBrowserVoiceCapture,
-    preferredVoiceMimeType,
     transcribeAudioBlob,
   } from '../lib/voice/stt';
 
@@ -63,9 +62,12 @@
   let isRecordingVoice = $state(false);
   let isTranscribingVoice = $state(false);
   let voiceError: string | null = $state(null);
-  let mediaRecorder: MediaRecorder | null = null;
   let voiceStream: MediaStream | null = null;
-  let voiceChunks: BlobPart[] = [];
+  let voiceAudioContext: AudioContext | null = null;
+  let voiceSource: MediaStreamAudioSourceNode | null = null;
+  let voiceProcessor: ScriptProcessorNode | null = null;
+  let voicePcmChunks: Float32Array[] = [];
+  let voiceSampleRate = 16000;
   let voiceDisposed = false;
 
   // Track 13: screenshots captured from the web clipboard, sent alongside
@@ -226,6 +228,53 @@
     voiceStream = null;
   }
 
+  function stopVoiceAudioGraph(): void {
+    voiceProcessor?.disconnect();
+    voiceSource?.disconnect();
+    void voiceAudioContext?.close();
+    voiceProcessor = null;
+    voiceSource = null;
+    voiceAudioContext = null;
+  }
+
+  function encodeWav(chunks: Float32Array[], sampleRate: number): Blob {
+    const totalSamples = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+    const dataBytes = totalSamples * 2;
+    const buffer = new ArrayBuffer(44 + dataBytes);
+    const view = new DataView(buffer);
+
+    function writeString(offset: number, value: string): void {
+      for (let idx = 0; idx < value.length; idx++) {
+        view.setUint8(offset + idx, value.charCodeAt(idx));
+      }
+    }
+
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + dataBytes, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeString(36, 'data');
+    view.setUint32(40, dataBytes, true);
+
+    let offset = 44;
+    for (const chunk of chunks) {
+      for (const sample of chunk) {
+        const clamped = Math.max(-1, Math.min(1, sample));
+        view.setInt16(offset, clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff, true);
+        offset += 2;
+      }
+    }
+
+    return new Blob([buffer], { type: 'audio/wav' });
+  }
+
   function appendVoiceTranscript(text: string): void {
     const transcript = text.trim();
     if (!transcript) return;
@@ -240,44 +289,31 @@
     voiceError = null;
     try {
       voiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      voiceChunks = [];
-      const mimeType = preferredVoiceMimeType();
-      mediaRecorder = new MediaRecorder(
-        voiceStream,
-        mimeType ? { mimeType } : undefined,
-      );
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          voiceChunks = [...voiceChunks, event.data];
-        }
+      const AudioContextCtor = window.AudioContext
+        || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextCtor) {
+        throw new Error('Audio recording is not supported in this desktop webview.');
+      }
+      voiceAudioContext = new AudioContextCtor();
+      voiceSampleRate = voiceAudioContext.sampleRate;
+      voicePcmChunks = [];
+      voiceSource = voiceAudioContext.createMediaStreamSource(voiceStream);
+      voiceProcessor = voiceAudioContext.createScriptProcessor(4096, 1, 1);
+      voiceProcessor.onaudioprocess = (event) => {
+        if (!isRecordingVoice) return;
+        const input = event.inputBuffer.getChannelData(0);
+        voicePcmChunks = [...voicePcmChunks, new Float32Array(input)];
+        const output = event.outputBuffer.getChannelData(0);
+        output.fill(0);
       };
-      mediaRecorder.onerror = (event) => {
-        voiceError = event.error?.message || $_t('Voice recording failed');
-        isRecordingVoice = false;
-        isTranscribingVoice = false;
-        stopVoiceTracks();
-      };
-      mediaRecorder.onstop = () => {
-        if (voiceDisposed) {
-          voiceChunks = [];
-          stopVoiceTracks();
-          return;
-        }
-        const blob = new Blob(voiceChunks, {
-          type: mediaRecorder?.mimeType || 'audio/webm',
-        });
-        voiceChunks = [];
-        stopVoiceTracks();
-        if (blob.size === 0) {
-          isTranscribingVoice = false;
-          voiceError = $_t('No voice audio was recorded');
-          return;
-        }
-        void transcribeVoiceBlob(blob);
-      };
-      mediaRecorder.start();
+      voiceSource.connect(voiceProcessor);
+      voiceProcessor.connect(voiceAudioContext.destination);
+      if (voiceAudioContext.state === 'suspended') {
+        await voiceAudioContext.resume();
+      }
       isRecordingVoice = true;
     } catch (err) {
+      stopVoiceAudioGraph();
       stopVoiceTracks();
       isRecordingVoice = false;
       isTranscribingVoice = false;
@@ -285,11 +321,23 @@
     }
   }
 
-  function stopVoiceRecording(): void {
-    if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
+  function stopVoiceRecording(shouldTranscribe = true): void {
+    if (!isRecordingVoice) return;
     isRecordingVoice = false;
+    const chunks = voicePcmChunks;
+    const sampleRate = voiceSampleRate;
+    voicePcmChunks = [];
+    stopVoiceAudioGraph();
+    stopVoiceTracks();
+
+    if (!shouldTranscribe || voiceDisposed) return;
+    const blob = encodeWav(chunks, sampleRate);
+    if (blob.size <= 44) {
+      voiceError = $_t('No voice audio was recorded');
+      return;
+    }
     isTranscribingVoice = true;
-    mediaRecorder.stop();
+    void transcribeVoiceBlob(blob);
   }
 
   async function transcribeVoiceBlob(blob: Blob): Promise<void> {
@@ -304,7 +352,6 @@
     } finally {
       if (!voiceDisposed) {
         isTranscribingVoice = false;
-        mediaRecorder = null;
       }
     }
   }
@@ -322,7 +369,6 @@
     filteredCommands = commandRegistry.filter(query, lastExecuted);
     selectedIndex = 0;
   }
-
   async function executeCommand(commandName: string, args?: string): Promise<void> {
     const now = Date.now();
     const lastTime = lastExecuted.get(commandName);
@@ -578,9 +624,8 @@
     if (errorTimeout) {
       clearTimeout(errorTimeout);
     }
-    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-      mediaRecorder.stop();
-    }
+    stopVoiceRecording(false);
+    stopVoiceAudioGraph();
     stopVoiceTracks();
   });
 
