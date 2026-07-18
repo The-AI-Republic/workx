@@ -187,6 +187,13 @@ describe('SessionManager lifecycle manager', () => {
     expect(assembler.inputs).toHaveLength(1);
     const attached = await registry.attachSession('hydrate');
     expect(attached.runtime.state).toBe('idle');
+    expect(attached.historyPage).toMatchObject({
+      sessionId: 'hydrate',
+      items: [],
+      nextCursor: null,
+    });
+    expect(attached.snapshot.items).toEqual([]);
+    expect((await registry.getThread('hydrate')).historyMode).toBe('paginated');
     expect(attached.replay?.events.map((row) => row.event.id)).toContain('init-hydrate');
   });
 

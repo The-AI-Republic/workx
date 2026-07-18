@@ -56,6 +56,13 @@ function createMockDeps(overrides: Partial<SessionServiceDeps> = {}): SessionSer
       removeSession: vi.fn().mockResolvedValue(undefined),
       getSession: vi.fn().mockImplementation((id: string) => sessionMocks[id]),
       setMaxConcurrent: vi.fn(),
+      getHistoryPage: vi.fn().mockResolvedValue({
+        sessionId: 's1',
+        revision: 11,
+        turns: [],
+        items: [],
+        nextCursor: 7,
+      }),
     },
     ...overrides,
   };
@@ -149,6 +156,28 @@ describe('session-services', () => {
         maxConcurrent: 5,
         canCreateSession: true,
       });
+    });
+  });
+
+  describe('session.history', () => {
+    it('routes an exclusive cursor and bounded page size to the canonical projection', async () => {
+      const result = await services['session.history']({
+        sessionId: 's1',
+        limit: 10,
+        beforeSequence: 42,
+      }, ctx);
+
+      expect(deps.registry.getHistoryPage).toHaveBeenCalledWith('s1', {
+        limit: 10,
+        beforeSequence: 42,
+      });
+      expect(result).toMatchObject({ sessionId: 's1', revision: 11, nextCursor: 7 });
+    });
+
+    it('rejects a history request without a session id', async () => {
+      await expect(services['session.history']({}, ctx)).rejects.toThrow(
+        'sessionId is required',
+      );
     });
   });
 

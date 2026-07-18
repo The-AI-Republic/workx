@@ -97,7 +97,13 @@ import { BRIDGE_KEEPALIVE_ALARM } from '../bridge/bridgeSettings';
 import { ExtensionPlatformAdapter } from '../platform/ExtensionPlatformAdapter';
 import { ExtensionAgentAssembler } from '../agent/ExtensionAgentAssembler';
 import { createSessionServices } from '../../core/session/state/SessionServices';
-import { ThreadIndexStore, loadRolloutSnapshot, refreshRolloutSnapshot } from '../../core/thread';
+import {
+  ThreadIndexStore,
+  loadModelContextSnapshot,
+  loadRolloutRevision,
+  loadRolloutSnapshot,
+  refreshRolloutSnapshot,
+} from '../../core/thread';
 import { SessionDeletionCoordinator } from '../../core/thread/SessionDeletionCoordinator';
 
 // Desktop bridge keepalive: alarms fire even when the SW was terminated —
@@ -285,6 +291,8 @@ async function doInitialize(): Promise<void> {
     threadIndexStore,
     reconcileThreadIndex: () => reconcileThreadIndex(),
     loadRolloutSnapshot,
+    loadModelContextSnapshot,
+    loadRolloutRevision,
     refreshRolloutSnapshot,
     assemblyServicesFactory: async () => createSessionServices({
       sessionCache: sessionCacheManager ?? new SessionCacheManager(new IndexedDBAdapter()),

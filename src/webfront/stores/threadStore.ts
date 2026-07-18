@@ -9,14 +9,16 @@
 import { derived, get, writable, type Writable } from 'svelte/store';
 import { getConfigStorage, isConfigStorageInitialized } from '@/core/storage/ConfigStorageProvider';
 import type { AgentMode } from '@/prompts/PromptComposer';
-import type { ProcessedEvent } from '@/types/ui';
 import type { EventProcessor } from '../components/event_display/EventProcessor';
 import type { ThreadIndexEntry } from '@/core/thread/ThreadIndexStore';
 import type { SessionRuntimeView, SubmitAck } from '@/core/registry/types';
+import {
+  emptyTimeline,
+  type ConversationTimeline,
+} from '../lib/conversationTimeline';
 
 export interface ThreadConversationState {
-  messages: Array<{ type: 'user' | 'agent'; content: string; timestamp: number }>;
-  processedEvents: ProcessedEvent[];
+  timeline: ConversationTimeline;
   inputText: string;
   isProcessing: boolean;
   currentTabId: number;
@@ -26,6 +28,7 @@ export interface ThreadConversationState {
 export interface ThreadAttachState {
   cursor: { runtimeEpoch: string; eventSeq: number } | null;
   snapshotRevision: number;
+  historyCursor: number | null;
   replayTruncated: boolean;
   error: { message: string; retryable: boolean } | null;
   attaching: boolean;
@@ -79,8 +82,7 @@ const DEFAULT_RUNTIME: SessionRuntimeView = {
 
 function emptyConversation(): ThreadConversationState {
   return {
-    messages: [],
-    processedEvents: [],
+    timeline: emptyTimeline(),
     inputText: '',
     isProcessing: false,
     currentTabId: -1,
@@ -91,6 +93,7 @@ function emptyAttach(): ThreadAttachState {
   return {
     cursor: null,
     snapshotRevision: 0,
+    historyCursor: null,
     replayTruncated: false,
     error: null,
     attaching: false,

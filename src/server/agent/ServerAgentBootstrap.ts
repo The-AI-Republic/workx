@@ -24,7 +24,13 @@ import type { AuthChangeReason } from '@/core/auth/AuthContext';
 import { FileConfigStorageProvider } from '../storage/FileConfigStorageProvider';
 import { normalizeAgentMode, type RuntimeContext } from '@/prompts/PromptComposer';
 import { ServerAgentAssembler } from './ServerAgentAssembler';
-import { ThreadIndexStore, loadRolloutSnapshot, refreshRolloutSnapshot } from '@/core/thread';
+import {
+  ThreadIndexStore,
+  loadModelContextSnapshot,
+  loadRolloutRevision,
+  loadRolloutSnapshot,
+  refreshRolloutSnapshot,
+} from '@/core/thread';
 import { SessionDeletionCoordinator } from '@/core/thread/SessionDeletionCoordinator';
 import type { Op } from '@/core/protocol/types';
 import type { SubmissionContext } from '@/core/channels/types';
@@ -66,9 +72,8 @@ import {
 } from '../handlers/health';
 import { setHandshakeSnapshotProviders } from '../connection/handshake';
 import { registerServerTools } from '../tools/registerServerTools';
-import { redactEventMsgSecrets } from '../security/eventRedaction';
 import { schedulePeriodicSweep } from '../maintenance/toolResultCleanup';
-import { RolloutRecorder } from '@/storage/rollout';
+import { loadHistoryPage, RolloutRecorder } from '@/storage/rollout';
 import { createSessionServices } from '@/core/session/state/SessionServices';
 import { registerUseSkillTool } from '@/core/skills/registerUseSkillTool';
 import { RuntimeStateController } from '@/core/services/runtime-state';
@@ -368,6 +373,8 @@ export class ServerAgentBootstrap {
           });
         },
         loadRolloutSnapshot,
+        loadModelContextSnapshot,
+        loadRolloutRevision,
         refreshRolloutSnapshot,
         agentAssembler: new ServerAgentAssembler({
           createPlatformAdapter: async (sessionId) => profile === 'desktop-runtime'
@@ -579,17 +586,6 @@ export class ServerAgentBootstrap {
           // FR-6: forward to the A2A bridge when a delegated turn is in flight.
           if (this.a2aEventTap.active) {
             this.a2aEventTap.emit(sessionId, event.msg);
-          }
-
-          // Also log to transcript store (Track 24.5: secret-redacted at rest —
-          // non-blocking, the entry is kept, only detected secrets become ***).
-          if (this.transcriptStore) {
-            const redactedMsg = redactEventMsgSecrets(event.msg);
-            this.transcriptStore.append('__active__', {
-              ts: Date.now(),
-              type: redactedMsg.type,
-              data: redactedMsg,
-            });
           }
 
           // Intercept completion events for scheduler
@@ -1853,9 +1849,23 @@ export class ServerAgentBootstrap {
           origin: deriveInputOrigin(context),
         });
       },
-      getHistory: async (sessionKey) => {
-        if (!this.transcriptStore) return [];
-        return this.transcriptStore.read(sessionKey);
+      getHistory: async (sessionKey, options) => {
+        if (!this.registry) throw new Error('SessionManager not initialized');
+        let targetSessionId: string | null = sessionKey;
+        try {
+          await this.registry.getThread(sessionKey);
+        } catch {
+          targetSessionId = this.defaultSessionId;
+        }
+        if (!targetSessionId) throw new Error(`Session not found: ${sessionKey}`);
+        const provider = await RolloutRecorder.getProvider();
+        const page = await loadHistoryPage(provider, targetSessionId, options);
+        return {
+          revision: page.revision,
+          items: page.items,
+          turns: page.turns,
+          nextCursor: page.nextCursor,
+        };
       },
     });
 

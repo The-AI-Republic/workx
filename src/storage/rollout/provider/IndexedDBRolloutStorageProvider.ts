@@ -15,6 +15,7 @@ import type {
   ConversationItem,
   Cursor,
   RolloutRecoveryMetadata,
+  RolloutItemRange,
 } from '../types';
 import {
   DB_NAME,
@@ -208,6 +209,41 @@ export class IndexedDBRolloutStorageProvider implements RolloutStorageProvider {
       request.onsuccess = () => resolve((request.result || []) as RolloutItemRecord[]);
       request.onerror = () =>
         reject(createDatabaseError('getItemsByRolloutId', request.error?.message || 'unknown error'));
+    });
+  }
+
+  async getItemsByRolloutIdRange(
+    rolloutId: ConversationId,
+    range: RolloutItemRange,
+  ): Promise<RolloutItemRecord[]> {
+    const limit = normalizeRangeLimit(range.limit);
+    const lower = Math.max(0, (range.afterSequence ?? -1) + 1);
+    const upper = range.beforeSequence === undefined
+      ? Number.MAX_SAFE_INTEGER
+      : Math.min(Number.MAX_SAFE_INTEGER, range.beforeSequence - 1);
+    if (lower > upper) return [];
+    const db = this.getDb();
+    return new Promise<RolloutItemRecord[]>((resolve, reject) => {
+      const tx = db.transaction(STORE_ROLLOUT_ITEMS, 'readonly');
+      const index = tx.objectStore(STORE_ROLLOUT_ITEMS).index('rolloutId_sequence');
+      const request = index.openCursor(
+        IDBKeyRange.bound([rolloutId, lower], [rolloutId, upper]),
+        range.direction === 'desc' ? 'prev' : 'next',
+      );
+      const records: RolloutItemRecord[] = [];
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor || records.length >= limit) {
+          resolve(records);
+          return;
+        }
+        records.push(cursor.value as RolloutItemRecord);
+        cursor.continue();
+      };
+      request.onerror = () => reject(createDatabaseError(
+        'getItemsByRolloutIdRange',
+        request.error?.message || 'unknown error',
+      ));
     });
   }
 
@@ -615,4 +651,11 @@ export class IndexedDBRolloutStorageProvider implements RolloutStorageProvider {
       }
     });
   }
+}
+
+function normalizeRangeLimit(limit: number): number {
+  if (!Number.isInteger(limit) || limit < 1 || limit > 1000) {
+    throw new Error('range limit must be an integer from 1 to 1000');
+  }
+  return limit;
 }

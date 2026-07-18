@@ -221,6 +221,8 @@ export type ResponseItem =
   | {
     type: 'message';
     id?: string;
+    /** Stable client-generated identity for optimistic user-message reconciliation. */
+    client_id?: string;
     role: string;
     content: ContentItem[];
     /** Reasoning/thinking content from models like Kimi K2, o1, o3 */

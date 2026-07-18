@@ -117,6 +117,33 @@ describe('Track 15 Phase 0 — forked-session correctness', () => {
     expect(system?.content).toBe('LEGACY-SUMMARY');
   });
 
+  it('replacement checkpoints discard the pre-compaction prefix during resume', async () => {
+    const replacement = [
+      { type: 'message', role: 'system', content: [{ type: 'input_text', text: 'summary' }] },
+      { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'recent' }] },
+    ];
+    const fork = new Session(undefined, true, undefined, undefined, {
+      mode: 'forked',
+      sessionId: crypto.randomUUID(),
+      rolloutItems: [
+        userItem('discarded'),
+        {
+          type: 'compacted',
+          payload: { message: 'checkpoint', replacementHistory: replacement, windowNumber: 1 },
+        } as RolloutItem,
+        assistantItem('suffix'),
+      ],
+      sourceConversationId: crypto.randomUUID(),
+      historyAlreadyPersisted: false,
+    });
+    await fork.initialize();
+
+    const items = fork.getConversationHistory().items as any[];
+    expect(JSON.stringify(items)).not.toContain('discarded');
+    expect(JSON.stringify(items)).toContain('summary');
+    expect(JSON.stringify(items)).toContain('suffix');
+  });
+
   it('0c: flushRollout() is callable and safe on a non-persistent session', async () => {
     const s = new Session(false);
     await s.initialize();

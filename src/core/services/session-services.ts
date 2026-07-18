@@ -58,6 +58,10 @@ export interface SessionServiceDeps {
     releaseSurface?(surfaceId: string, leaseId: string): Promise<boolean>;
     resolveAttention?(surfaceId: string, requestId: string): Promise<any>;
     attachSession?(sessionId: string, after?: { runtimeEpoch: string; eventSeq: number }): Promise<any>;
+    getHistoryPage?(
+      sessionId: string,
+      options?: { limit?: number; beforeSequence?: number },
+    ): Promise<any>;
   };
 
   /** Load rollout history for a session ID (platform-specific storage) */
@@ -162,6 +166,17 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
       const attached = await registry.attachSession(sessionId, after ?? cursor);
       if (surfaceId && registry.setViewed) await registry.setViewed(surfaceId, sessionId);
       return attached;
+    },
+
+    'session.history': async (params) => {
+      const { sessionId, limit, beforeSequence } = (params ?? {}) as {
+        sessionId?: string;
+        limit?: number;
+        beforeSequence?: number;
+      };
+      if (!sessionId) throw new Error('sessionId is required');
+      if (!registry.getHistoryPage) throw new Error('Paginated history is unavailable');
+      return registry.getHistoryPage(sessionId, { limit, beforeSequence });
     },
 
     /**

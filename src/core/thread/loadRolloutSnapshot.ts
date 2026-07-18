@@ -34,6 +34,60 @@ export function loadRolloutSnapshot(sessionId: string): Promise<RolloutSnapshot>
   return flight;
 }
 
+/**
+ * Hydration projection: load only records that can affect model context. A
+ * durable compaction checkpoint replaces everything before it, so reverse
+ * scanning stops there. Unlike the display snapshot this excludes events,
+ * markers and UI metadata entirely.
+ */
+export async function loadModelContextSnapshot(sessionId: string): Promise<RolloutSnapshot> {
+  const provider = await RolloutRecorder.getProvider();
+  const metadata = await provider.getMetadata(sessionId);
+  if (!metadata) return Object.freeze({ sessionId, revision: 0, items: Object.freeze([]) });
+
+  // Capture the same immutable sequence boundary used by display history.
+  // Records appended during this scan belong to the live runtime and must not
+  // appear in a snapshot whose replay base predates them.
+  const lastSequence = await provider.getLastSequenceNumber(sessionId);
+  const revision = lastSequence + 1;
+  const descending: Array<{ type: string; payload: unknown }> = [];
+  let beforeSequence = revision;
+  let reachedStart = false;
+  while (!reachedStart) {
+    const records = await provider.getItemsByRolloutIdRange(sessionId, {
+      beforeSequence,
+      limit: 256,
+      direction: 'desc',
+    });
+    if (records.length === 0) break;
+    for (const record of records) {
+      if (!isModelContextRecord(record.type)) continue;
+      descending.push({ type: record.type, payload: structuredClone(record.payload) });
+      if (record.type === 'compacted' && hasReplacementHistory(record.payload)) {
+        reachedStart = true;
+        break;
+      }
+    }
+    const oldest = records[records.length - 1];
+    beforeSequence = oldest?.sequence;
+    if (records.length < 256 || oldest?.sequence === 0) break;
+  }
+  const items = descending.reverse().map((record) => Object.freeze(record)) as readonly RolloutItem[];
+  return Object.freeze({
+    sessionId,
+    revision,
+    items: Object.freeze(items),
+  });
+}
+
+/** Lightweight committed boundary used to retire terminal replay inventory. */
+export async function loadRolloutRevision(sessionId: string): Promise<number> {
+  const provider = await RolloutRecorder.getProvider();
+  const metadata = await provider.getMetadata(sessionId);
+  if (!metadata) return 0;
+  return (await provider.getLastSequenceNumber(sessionId)) + 1;
+}
+
 export async function refreshRolloutSnapshot(sessionId: string): Promise<RolloutSnapshot> {
   const existing = flights.get(sessionId);
   if (existing) await existing.catch(() => undefined);
@@ -81,4 +135,16 @@ async function readSnapshot(sessionId: string): Promise<RolloutSnapshot> {
     items: Object.freeze(items),
   });
   return snapshot;
+}
+
+function isModelContextRecord(type: string): boolean {
+  return type === 'response_item' || type === 'compacted' || type === 'content_replacement';
+}
+
+function hasReplacementHistory(value: unknown): boolean {
+  return Boolean(
+    value
+    && typeof value === 'object'
+    && Array.isArray((value as { replacementHistory?: unknown }).replacementHistory),
+  );
 }

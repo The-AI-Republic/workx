@@ -18,7 +18,12 @@ import { IndexedDBAdapter } from '../../storage/IndexedDBAdapter';
 import type { InitialHistory } from '../session/state/types';
 import type { AssembledAgent, ManagerAction } from '../assembly/AgentAssembler';
 import { TestAuthContext } from '../auth/AuthContext';
-import { RolloutRecorder, type RolloutItem } from '../../storage/rollout';
+import {
+  RolloutRecorder,
+  loadHistoryPage,
+  type HistoryPage,
+  type RolloutItem,
+} from '../../storage/rollout';
 import type { IConfigChangeEvent } from '../../config/types';
 import { getConfigImpact } from './ConfigImpact';
 import {
@@ -653,9 +658,11 @@ export class SessionManager {
           this.emitIndexChanged(sessionId, 'upsert', entry);
         }
       }
-      const snapshot = this._registryConfig.loadRolloutSnapshot
-        ? await this._registryConfig.loadRolloutSnapshot(sessionId)
-        : { sessionId, revision: 0, items: [] };
+      const snapshot = this._registryConfig.loadModelContextSnapshot
+        ? await this._registryConfig.loadModelContextSnapshot(sessionId)
+        : this._registryConfig.loadRolloutSnapshot
+          ? await this._registryConfig.loadRolloutSnapshot(sessionId)
+          : { sessionId, revision: 0, items: [] };
       const items = structuredClone(snapshot.items) as unknown[];
       failureCode = 'assembly';
       let session: AgentSession;
@@ -1168,8 +1175,16 @@ export class SessionManager {
     if (!busy && session.state === 'active') session.markIdle();
     if (!busy) {
       try {
-        const snapshot = await this._registryConfig.refreshRolloutSnapshot?.(sessionId);
-        this._eventStreams.get(sessionId)?.clearReplay(snapshot?.revision);
+        let revision: number | undefined;
+        if (this._registryConfig.loadRolloutRevision) {
+          revision = await this._registryConfig.loadRolloutRevision(sessionId);
+          // Keep the explicit full-log compatibility API coherent without
+          // eagerly rebuilding that inventory on every terminal turn.
+          invalidateRolloutSnapshot(sessionId);
+        } else {
+          revision = (await this._registryConfig.refreshRolloutSnapshot?.(sessionId))?.revision;
+        }
+        this._eventStreams.get(sessionId)?.clearReplay(revision);
       } catch (error) {
         // Do not strand a completed graph in RUNNING when a cache refresh
         // fails. Preserve replay so attach can recover output, and let the next
@@ -1578,12 +1593,13 @@ export class SessionManager {
   async attachSession(sessionId: string, after?: ReplayCursor) {
     return this._sessionOperations.run(sessionId, async () => {
       await this.ensureRecoveryLoaded(sessionId);
-      const entry = await this.getThread(sessionId);
       const stream = this._eventStreams.get(sessionId);
+      const historyPage = await this.getHistoryPage(sessionId, { limit: 10 });
+      const entry = await this.getThread(sessionId);
+      // Capture the event boundary after the immutable rollout boundary. Any
+      // append racing the history scan is excluded by sequence and its event is
+      // therefore included in replay or the UI's post-boundary attach buffer.
       const boundary = stream?.currentCursor();
-      const snapshot = this._registryConfig.loadRolloutSnapshot
-        ? await this._registryConfig.loadRolloutSnapshot(sessionId)
-        : { sessionId, revision: 0, items: [] };
       const live = this._sessions.get(sessionId);
       let replay = boundary ? stream?.replay(after, boundary.eventSeq) ?? null : null;
       if (after && boundary && after.runtimeEpoch !== boundary.runtimeEpoch) {
@@ -1591,11 +1607,32 @@ export class SessionManager {
       }
       return {
         entry,
-        snapshot,
+        historyPage,
+        // Compatibility shell for older surfaces. It deliberately contains no
+        // raw rollout items; display consumers must use historyPage.
+        snapshot: { sessionId, revision: historyPage.revision, items: [] },
         runtime: this.runtimeView(sessionId, live),
         replay,
       };
     });
+  }
+
+  async getHistoryPage(
+    sessionId: string,
+    options: { limit?: number; beforeSequence?: number } = {},
+  ): Promise<HistoryPage> {
+    const entry = await this._registryConfig.threadIndexStore?.require(sessionId);
+    const provider = await RolloutRecorder.getProvider();
+    const page = await loadHistoryPage(provider, sessionId, options);
+    // Successful projection is the migration. It changes no recency and is
+    // safe to retry because the canonical rollout remains authoritative.
+    if (entry && entry.historyMode !== 'paginated') {
+      const promoted = await this._registryConfig.threadIndexStore!.patch(sessionId, {
+        historyMode: 'paginated',
+      });
+      this.emitIndexChanged(sessionId, 'upsert', promoted);
+    }
+    return page;
   }
 
   getRolloutSnapshot(sessionId: string) {
@@ -1823,7 +1860,7 @@ export class SessionManager {
     const rows = await new TurnRecoveryCoordinator(provider).recoverOpenTurns();
     for (const row of rows) {
       // Recovery changed the durable boundary; a future attach must reload it.
-      await this._registryConfig.refreshRolloutSnapshot?.(row.sessionId);
+      invalidateRolloutSnapshot(row.sessionId);
       this._runtimeViews.set(row.sessionId, this.runtimeView(row.sessionId));
     }
     return rows.reduce((total, row) => total + row.submissionIds.length, 0);

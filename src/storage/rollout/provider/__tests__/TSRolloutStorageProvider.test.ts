@@ -176,6 +176,27 @@ describe.skipIf(!hasBetterSqlite3)('TSRolloutStorageProvider', () => {
       expect(items[1].sequence).toBe(1);
     });
 
+    it('reads strict bounded sequence ranges in both directions', async () => {
+      await provider.putMetadata(makeMetadata('r-range'));
+      await provider.addItems('r-range', Array.from({ length: 6 }, (_, sequence) => ({
+        timestamp: new Date(sequence).toISOString(),
+        sequence,
+        type: 'response_item',
+        payload: { sequence },
+      })));
+      expect(await provider.getItemsByRolloutIdRange('r-range', {
+        afterSequence: 1,
+        beforeSequence: 5,
+        limit: 2,
+        direction: 'asc',
+      })).toMatchObject([{ sequence: 2 }, { sequence: 3 }]);
+      expect(await provider.getItemsByRolloutIdRange('r-range', {
+        beforeSequence: 5,
+        limit: 2,
+        direction: 'desc',
+      })).toMatchObject([{ sequence: 4 }, { sequence: 3 }]);
+    });
+
     it('returns items in sequence order', async () => {
       await provider.putMetadata(makeMetadata('r-order'));
       await provider.addItems('r-order', [

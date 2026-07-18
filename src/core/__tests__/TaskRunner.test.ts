@@ -185,7 +185,7 @@ describe('TaskRunner', () => {
       }).appendTaskOutputChunk('message', 'hello');
 
       expect(session.emitEvent).toHaveBeenCalledWith({
-        id: SUBMISSION_ID,
+        id: expect.any(String),
         msg: {
           type: 'BackgroundTaskOutputDelta',
           data: {
@@ -274,6 +274,65 @@ describe('TaskRunner', () => {
       expect(result.success).toBe(false);
       expect(result.error).toBe('boom');
       expect(runner.getTaskStatus(SUBMISSION_ID)).toBe('failed');
+    });
+
+    it('does not execute or accept input when the durable start marker fails', async () => {
+      const markerFailure = new Error('start marker unavailable');
+      (session.persistRolloutItems as Mock)
+        .mockRejectedValueOnce(markerFailure)
+        .mockResolvedValueOnce(undefined);
+      const input: InputItem[] = [{ type: 'text', text: 'do not run' }];
+      const runner = new TaskRunner(
+        session,
+        turnContext,
+        turnManager,
+        SUBMISSION_ID,
+        input,
+        { clientMessageId: 'client-1' },
+      );
+
+      const result = await runner.run_task();
+
+      expect(result).toMatchObject({ success: false, error: 'start marker unavailable' });
+      expect(turnManager.runTurn).not.toHaveBeenCalled();
+      expect(session.recordInputAndRolloutUsermsg).not.toHaveBeenCalled();
+      expect(session.persistRolloutItems).toHaveBeenNthCalledWith(
+        1,
+        [expect.objectContaining({ type: 'turn_start' })],
+        { required: true },
+      );
+      expect((session.emitEvent as Mock).mock.calls.some(
+        ([event]) => event.msg.type === 'TaskStarted',
+      )).toBe(false);
+      expect((session.emitEvent as Mock).mock.calls.some(
+        ([event]) => event.msg.type === 'TaskFailed',
+      )).toBe(true);
+    });
+
+    it('reports terminal marker failure without replacing a successful result', async () => {
+      const reportDurabilityDegraded = vi.fn();
+      session = createMockSession({ reportDurabilityDegraded });
+      (session.persistRolloutItems as Mock)
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error('terminal marker unavailable'));
+      (turnManager.runTurn as Mock).mockResolvedValueOnce(makeSingleTurnResult('done'));
+      const runner = new TaskRunner(
+        session,
+        turnContext,
+        turnManager,
+        SUBMISSION_ID,
+        [{ type: 'text', text: 'run' }],
+      );
+
+      const result = await runner.run_task();
+
+      expect(result).toMatchObject({ success: true, lastAgentMessage: 'done' });
+      expect(session.persistRolloutItems).toHaveBeenNthCalledWith(
+        2,
+        [expect.objectContaining({ type: 'turn_completion' })],
+        { required: true },
+      );
+      expect(reportDurabilityDegraded).toHaveBeenCalledWith('terminal-marker-write');
     });
   });
 
@@ -420,7 +479,8 @@ describe('TaskRunner', () => {
 
       // First emitEvent call should be TaskStarted
       const firstCall = (session.emitEvent as Mock).mock.calls[0][0];
-      expect(firstCall.id).toBe(SUBMISSION_ID);
+      expect(firstCall.id).not.toBe(SUBMISSION_ID);
+      expect(firstCall.id).toEqual(expect.any(String));
       expect(firstCall.msg.type).toBe('TaskStarted');
       expect(firstCall.msg.data.submission_id).toBe(SUBMISSION_ID);
       expect(firstCall.msg.data.model).toBe('gpt-4');
@@ -477,7 +537,35 @@ describe('TaskRunner', () => {
       );
 
       await runner.run_task();
-      expect(session.recordInputAndRolloutUsermsg).toHaveBeenCalledWith(input);
+      expect(session.recordInputAndRolloutUsermsg).toHaveBeenCalledWith(input, undefined);
+    });
+
+    it('awaits durable user recording and gives each emitted event a distinct identity', async () => {
+      let release!: () => void;
+      const durable = new Promise<void>((resolve) => { release = resolve; });
+      const gatedSession = createMockSession({
+        recordInputAndRolloutUsermsg: vi.fn(() => durable),
+      });
+      const input: InputItem[] = [{ type: 'text', text: 'test' }];
+      (turnManager.runTurn as Mock).mockResolvedValueOnce(makeSingleTurnResult('ok'));
+      const runner = new TaskRunner(
+        gatedSession,
+        turnContext,
+        turnManager,
+        SUBMISSION_ID,
+        input,
+        { clientMessageId: 'client-1' },
+      );
+      const running = runner.run_task();
+      await vi.waitFor(() => expect(gatedSession.recordInputAndRolloutUsermsg).toHaveBeenCalled());
+      expect(turnManager.runTurn).not.toHaveBeenCalled();
+      release();
+      await running;
+
+      const emitted = (gatedSession.emitEvent as unknown as Mock).mock.calls
+        .map(([event]) => event.id);
+      expect(new Set(emitted).size).toBe(emitted.length);
+      expect(gatedSession.recordInputAndRolloutUsermsg).toHaveBeenCalledWith(input, 'client-1');
     });
 
     it('should support an updated submissionId', async () => {

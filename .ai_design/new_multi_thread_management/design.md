@@ -601,7 +601,7 @@ chokepoints; terminal turn events clear orphan tokens.
 - **History pagination** loads 10 rows initially. Each **More** click appends 10 older rows
   inside the same fixed-height, scrollable panel list; loading more never makes the left-panel
   history section taller.
-- **Click** → `session.setViewed` + `session.attach`; render the immutable rollout snapshot
+- **Click** → `session.setViewed` + `session.attach`; render the bounded typed history page
   and replay in the attach response, then optionally call `session.open` to prewarm. Attach
   works while capacity is full because reading history does not construct an agent.
 - **Input stays enabled for SUSPENDED/IDLE/HYDRATING/SUSPENDING threads** when global access
@@ -630,8 +630,9 @@ Full title-gen extraction from `Session` stays in D12 follow-up scope.
 | RPC | Change |
 |---|---|
 | `session.open` (new) | Create index-only or request hydration/prewarm. Returns `{sessionId,state,capacityStatus,liveCount,maxLive,title}`. Never required merely to view history. |
-| `session.attach` (new) | `{surfaceId,sessionId,after?}` → ThreadIndex entry + immutable rollout snapshot + runtime state + replay cursor/ring (§7.5). Primary UI attach API. |
-| `session.getRollout` (new) | Lower-level read-only `{sessionId}` → `{revision,items}` using the same manager snapshot loader as attach/hydration. Empty new chat returns revision 0. |
+| `session.attach` (new) | `{surfaceId,sessionId,after?}` → ThreadIndex entry + newest typed history page + runtime state + replay cursor/ring (§7.5–7.6). Primary UI attach API. |
+| `session.history` (new) | `{sessionId,limit?,beforeSequence?}` → typed older turn/item page without agent hydration. |
+| `session.getRollout` (new) | Lower-level compatibility/diagnostic `{sessionId}` → full `{revision,items}`. Attach and hydration use bounded projections instead. Empty new chat returns revision 0. |
 | `session.list` | ThreadIndex entries (excl. soft-deleted) + runtime state + `awaitingInput`. |
 | `session.pin`/`unpin`, `session.rename` (new), `session.delete`/`undelete` (new) | Index mutations; delete soft. |
 | `session.setViewed` / `session.releaseSurface` | Explicit `surfaceId`; atomic replace of that surface's viewed session; 60 s lease expiry. Feeds only LRU ineligibility—the visual highlight stays UI-local. |
@@ -653,13 +654,13 @@ maps. The explicit contract is:
   event, broadcasts it, and stores it in a ring capped at 512 events or 1 MiB.
 - `runtimeEpoch` is a UUID per hydration attempt (safe across worker restarts); `eventSeq` starts at
   1. The epoch records its
-  `baseRolloutRevision`. On committed IDLE, the manager refreshes the snapshot and clears the
-  ring. A truncated ring is explicitly reported.
-- `session.attach({after})` returns `{snapshot:{revision,items}, replay:{runtimeEpoch,
-  firstSeq,throughSeq,truncated,events}}`. `loadSnapshot(sessionId)` is single-flight and is
-  shared by attach and hydration so both consume the same immutable object/revision.
+  `baseRolloutRevision`. On committed IDLE, the manager reads only the latest canonical
+  sequence/revision and clears the ring. A truncated ring is explicitly reported.
+- `session.attach({after})` returns `{historyPage:{revision,turns,items,nextCursor},
+  replay:{runtimeEpoch,baseRolloutRevision,firstSeq,throughSeq,truncated,events}}`. Display
+  projection and model-context hydration are separate bounded readers (§7.6).
 - While attach is in flight the UI buffers incoming target-session events. It applies the
-  snapshot, then replay, drops buffered events `<= throughSeq` in that epoch, then applies
+  page, then replay, drops buffered events `<= throughSeq` in that epoch, then applies
   the rest. Dedupe key is `(runtimeEpoch,eventSeq)`. If `truncated`, show a partial-output
   notice and refresh the committed rollout when the terminal event/IDLE arrives.
 - `threadStore` owns per-session conversation buffers, attach cursors, runtime state, and
@@ -669,6 +670,53 @@ maps. The explicit contract is:
 - The ring and pending queue are in-memory. Worker death loses uncommitted partial output;
   committed turns and client IDs come from rollout. Attach reconciles matching sends and
   marks unproven sends delivery-unknown; it never retries automatically (D27).
+
+### 7.6 Canonical conversation history projection (Codex research follow-up)
+
+The rollout is the only durable conversation authority. ThreadIndex stores metadata and
+recency only; the UI timeline and model context are independent read projections. Server
+transcripts are a legacy cleanup artifact and are no longer written or read as chat history.
+
+The identity domains are deliberately separate:
+
+| Domain | Source | Purpose |
+|---|---|---|
+| `clientMessageId` | UI, UUID | send idempotency and optimistic/durable user-row reconciliation |
+| `submissionId` | manager/task | turn lifecycle and terminal recovery |
+| history item ID | response `id`/`call_id`, or canonical sequence | stable visible ordering and snapshot replacement |
+| `{runtimeEpoch,eventSeq}` | event gate | delivery ordering/deduplication only |
+| rollout `sequence` | writer/provider | durable ordinal; captured last sequence + 1 is the projection revision |
+
+Every accepted UserInput persists one typed user `response_item`, not one JSON string per
+InputItem. Its `client_id` produces history ID `user:<clientMessageId>`. TaskRunner awaits that
+write before model execution. Every emitted event receives a distinct event ID; turn identity
+continues to travel in the event payload.
+
+Providers expose an exclusive bounded sequence-range read. `session.attach` and
+`session.history` reverse-scan turn markers, return 10 newest/older turns at a time, and expose
+an exclusive `nextCursor`. Rollouts predating turn markers use user-message boundaries. A
+ThreadIndex `historyMode:'legacy'|'paginated'` makes migration explicit: missing rows repair to
+legacy and promote after the first successful projection; new rows start paginated. Migration
+does not rewrite rollout data or update `lastActiveAt`. Display pages omit tool/encrypted/model-
+only fields and inline image bytes; the separate model-context reader retains canonical typed
+items for execution.
+
+The browser timeline is a reducer `{order,byId,observedDeliveryIds}`. Attach replaces only its
+persisted/replay projections, retains local rows and still-pending optimistic sends, upserts a
+durable user row over the same optimistic ID, reuses the thread's EventProcessor, and consumes
+matching durable/replay message copies once. Click selection never changes recency; accepted
+send remains the sole normal recency edge. Older message pages prepend inside the existing
+scroll viewport.
+
+Model hydration uses a separate reverse scan containing only `response_item`, `compacted`, and
+`content_replacement`. A new compacted record carries `replacementHistory` and `windowNumber`.
+Compaction must durably append that checkpoint before replacing in-memory context; failure
+leaves the old context intact. Resume starts at the newest replacement checkpoint and applies
+only its suffix. Legacy summary-only compacted records retain their prior append behavior.
+
+Attach returns `historyPage.revision` and replay `baseRolloutRevision`. A surface rejects a
+projection older than the replay base and retries instead of joining incompatible boundaries.
+Incoming events remain buffered during attach and are filtered by epoch/sequence afterward.
 
 ## 8. Session independence guarantees (goal 1)
 
@@ -703,7 +751,7 @@ finding: the map was self-asserted).
 
 | Interaction | Budget | How |
 |---|---|---|
-| Click suspended session → history visible | < 150 ms | `session.attach` snapshot render (no hydration) |
+| Click suspended session → history visible | < 150 ms | `session.attach` bounded page render (no hydration) |
 | Click suspended session → send enabled | < 1 s | Single-init hydration, auth pre-wired |
 | New chat → input ready | < 300 ms | Two-stage open: index write only (§3.6) |
 

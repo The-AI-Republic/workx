@@ -21,7 +21,15 @@ export interface ChatHandlerDeps {
    * callers (e.g. external app-server automation) get a stable identifier.
    */
   submitOp: (op: Op, context: SubmissionContext) => Promise<string | void>;
-  getHistory: (sessionKey: string) => Promise<unknown[]>;
+  getHistory: (
+    sessionKey: string,
+    options: { limit?: number; beforeSequence?: number },
+  ) => Promise<{
+    revision: number;
+    items: unknown[];
+    turns: unknown[];
+    nextCursor: number | null;
+  }>;
 }
 
 /**
@@ -128,8 +136,11 @@ async function handleChatHistory(
     throw invalidRequest('sessionKey is required');
   }
 
-  const history = await _deps.getHistory(sessionKey);
-  return { sessionKey, messages: history };
+  const history = await _deps.getHistory(sessionKey, {
+    limit: params?.limit as number | undefined,
+    beforeSequence: params?.beforeSequence as number | undefined,
+  });
+  return { sessionKey, ...history, messages: history.items };
 }
 
 // ─────────────────────────────────────────────────────────────────────────

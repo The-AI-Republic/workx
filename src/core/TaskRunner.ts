@@ -282,7 +282,12 @@ export class TaskRunner {
         });
         return { success: true };
       }
-      this.session.recordInputAndRolloutUsermsg(this.input);
+      // Await the durable user item before model execution so model memory and
+      // the canonical history projection cannot diverge on an accepted send.
+      await this.session.recordInputAndRolloutUsermsg(
+        this.input,
+        this.options.clientMessageId,
+      );
 
       const outcome = await this.runLoop(signal);
 
@@ -1080,7 +1085,10 @@ export class TaskRunner {
    */
   private async emitEvent(msg: EventMsg): Promise<void> {
     const event: Event = {
-      id: this.submissionId,
+      // Event identity is not turn identity. A task emits many snapshots and
+      // lifecycle events; reusing submissionId caused keyed UI rows to replace
+      // one another during replay and thread switches.
+      id: crypto.randomUUID(),
       msg,
     };
     await this.session.emitEvent(event);
@@ -1103,17 +1111,20 @@ export class TaskRunner {
 
   private async persistTurnStart(): Promise<void> {
     const inputDigest = this.options.inputDigest ?? await digestInput(this.input);
-    await this.session.persistRolloutItems([{
-      type: 'turn_start',
-      payload: {
-        markerVersion: 1,
-        submissionId: this.submissionId,
-        startedAt: Date.now(),
-        ...(this.options.clientMessageId
-          ? { clientMessageId: this.options.clientMessageId, inputDigest }
-          : {}),
-      },
-    }]);
+    await this.session.persistRolloutItems(
+      [{
+        type: 'turn_start',
+        payload: {
+          markerVersion: 1,
+          submissionId: this.submissionId,
+          startedAt: Date.now(),
+          ...(this.options.clientMessageId
+            ? { clientMessageId: this.options.clientMessageId, inputDigest }
+            : {}),
+        },
+      }],
+      { required: true },
+    );
   }
 
   private async persistTerminalMarker(
@@ -1121,15 +1132,18 @@ export class TaskRunner {
   ): Promise<void> {
     if (this.terminalMarkerWritten) return;
     try {
-      await this.session.persistRolloutItems([{
-        type: 'turn_completion',
-        payload: {
-          markerVersion: 1,
-          submissionId: this.submissionId,
-          outcome,
-          completedAt: Date.now(),
-        },
-      }]);
+      await this.session.persistRolloutItems(
+        [{
+          type: 'turn_completion',
+          payload: {
+            markerVersion: 1,
+            submissionId: this.submissionId,
+            outcome,
+            completedAt: Date.now(),
+          },
+        }],
+        { required: true },
+      );
       this.terminalMarkerWritten = true;
     } catch (error) {
       console.warn('[TaskRunner] terminal marker persistence failed:', error);

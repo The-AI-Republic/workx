@@ -8,7 +8,7 @@ Lifecycle/UI work is client-only; Phase 2 and centralized Phase 3b config propag
 all platform managers, including scheduled/api/internal sessions.
 
 Phase 4 is gated on Phase 2 + 3a + 3b + 3c. Every phase has explicit tests below and the
-cross-phase definition of done in spec §18.
+cross-phase definition of done in spec §19.
 
 The coordinated Phase 4/5 cutover is complete: client lifecycle/browser paths are now the
 only extension and desktop implementation, the temporary `MULTI_THREAD_LIFECYCLE` flag and
@@ -365,6 +365,23 @@ public `SessionManager` name.
 - [x] Update `.ai_design/architecture.md`, RPC docs, and support/doctor documentation
 - [x] Full typecheck, lint, unit/integration suites; diff review confirms no behavior change
 
+## Phase 6 — Canonical history projection and bounded restore
+
+- [x] Add strict bounded rollout sequence reads to IndexedDB and SQLite providers
+- [x] Add deterministic typed turn/item projection with stable snapshot IDs
+- [x] Add 10-turn `session.history` pages and canonical server chat.history routing
+- [x] Add explicit legacy/paginated ThreadIndex migration without recency mutation
+- [x] Persist one typed user item with clientMessageId and await it before execution
+- [x] Give each delivery event a distinct identity from its submission/turn
+- [x] Replace webfront message/event arrays with one normalized timeline reducer
+- [x] Preserve optimistic sends and transient processors across revision-safe attach
+- [x] Add fixed-viewport older-message pagination and durable/replay deduplication
+- [x] Split model-context hydration from display history and exclude event inventory
+- [x] Persist compaction replacement checkpoints before memory replacement
+- [x] Stop server TranscriptStore writes/reads from acting as a second chat authority
+- [x] Run focused/full tests, typecheck/lint/build variants, and final diff review;
+      record environment-owned blockers rather than terminating the user's live runtime
+
 ## Explicit non-goals
 
 - Session god-object decomposition beyond injected collaborators
@@ -383,3 +400,20 @@ public `SessionManager` name.
 - `npx eslint src --quiet`: passed with no errors
 - Extension, desktop, desktop-runtime, server SSR, and web production builds: passed
 - `git diff --check`: passed
+
+## Phase 6 verification (2026-07-18)
+
+- `npx vitest run --reporter=dot`: 495 files passed, one skipped; 9,556 tests passed,
+  eight skipped
+- Focused storage/history/session/attach/timeline suites: 247 tests passed; final bounded
+  history/model-context smoke: 14 tests passed
+- `npm run type-check`: passed
+- `npx eslint src --quiet`: passed with no errors (`npm run lint` reports only the existing
+  warning inventory)
+- `npm run build:server`: server SSR and web production builds passed with existing bundle,
+  CSS-target, and Svelte accessibility warnings
+- `npm run build`: environment-blocked because the existing `src/extension/.env` does not
+  define `VITE_VAULT_SECRET`; no secret was fabricated
+- Rust/Tauri rebuild remains environment-blocked while the user's live `tauri:dev` owns
+  `tauri/target/debug/desktop-runtime/node`; the running process was not terminated
+- `git diff --check` and final canonical-inventory search: passed
