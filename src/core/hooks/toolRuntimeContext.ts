@@ -15,6 +15,19 @@ interface RuntimeSessionLike {
   } | null;
 }
 
+export interface ToolPageContext {
+  tabId?: number;
+  currentUrl?: string;
+  currentDomain?: string;
+}
+
+export interface ToolRuntimeContextOptions {
+  /** Reuse the page snapshot already resolved for this tool call. */
+  pageContext?: ToolPageContext;
+  /** False prevents this helper from initiating its own browser read. */
+  resolvePageContext?: boolean;
+}
+
 function parseDomain(url: string | undefined): string | undefined {
   if (!url) return undefined;
   try {
@@ -44,6 +57,7 @@ function getCwd(): string | undefined {
  */
 export async function getToolRuntimeContext(
   session: RuntimeSessionLike,
+  options: ToolRuntimeContextOptions = {},
 ): Promise<ToolRuntimeContext> {
   const context: MutableToolRuntimeContext = {};
   const cwd = getCwd();
@@ -51,25 +65,30 @@ export async function getToolRuntimeContext(
 
   let tabId: number | undefined;
   try {
-    tabId = session.getTabId?.();
+    tabId = options.pageContext?.tabId ?? session.getTabId?.();
   } catch {
     tabId = undefined;
   }
   if (typeof tabId === 'number' && tabId >= 0) {
     context.tab_id = tabId;
-  } else {
-    return context;
   }
 
+  let page = options.pageContext;
+  if (!page && options.resolvePageContext !== false && context.tab_id !== undefined) {
+    try {
+      page = await session.getToolRegistry?.()?.getCurrentPageContext?.();
+    } catch {
+      // Missing permissions, closed tabs, and headless runtimes all degrade to
+      // stored tab/cwd context.
+    }
+  }
   try {
-    const page = await session.getToolRegistry?.()?.getCurrentPageContext?.();
     if (page?.currentUrl) {
       context.current_url = page.currentUrl;
       context.current_domain = page.currentDomain ?? parseDomain(page.currentUrl);
     }
   } catch {
-    // Missing permissions, closed tabs, and headless runtimes all degrade to
-    // tab_id-only context.
+    // Malformed optional page context must never break tool execution.
   }
 
   return context;

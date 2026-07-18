@@ -988,17 +988,21 @@ export class ServerAgentBootstrap {
 
   private async registerSkillsToolOnAgent(agent: RepublicAgent): Promise<void> {
     if (!this.skillRegistry) return;
-    const { SessionSkillView } = await import('@/core/skills/SessionSkillView');
-    const view = new SessionSkillView(this.skillRegistry, async () => {
-      const context = await agent.getPlatformAdapter().getCurrentPageContext?.();
-      return context?.currentDomain ?? null;
-    });
-    agent.getPromptLoader().registerExtension('skills', () => view.buildSystemPrompt());
+    // Desktop/server prompt composition must not contact the browser. Domain
+    // constraints are advertised statically and enforced when use_skill runs.
+    agent.getPromptLoader().registerExtension(
+      'skills',
+      () => this.skillRegistry!.buildSkillsSystemPrompt(),
+    );
     await registerUseSkillTool({
       toolRegistry: agent.getToolRegistry(),
       hookRegistry: agent.getHookRegistry(),
       skillRegistry: this.skillRegistry,
       getTurnContext: () => agent.getSession().getTurnContext(),
+      getCurrentDomain: async () => {
+        const context = await agent.getPlatformAdapter().getCurrentPageContext?.();
+        return context?.currentDomain ?? null;
+      },
     });
   }
 

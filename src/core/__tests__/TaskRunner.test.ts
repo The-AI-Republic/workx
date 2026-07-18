@@ -487,6 +487,33 @@ describe('TaskRunner', () => {
       expect(firstCall.msg.data.auto_compact).toBe(true);
     });
 
+    it('does not read browser context while starting a normal task', async () => {
+      const getCurrentPageContext = vi.fn().mockRejectedValue(
+        new Error('normal task must not contact browser'),
+      );
+      session = createMockSession({
+        getToolRegistry: vi.fn(() => ({ getCurrentPageContext })),
+      });
+      turnContext = createMockTurnContext({
+        getBrowserTabId: vi.fn(() => 17),
+      });
+      const runner = new TaskRunner(
+        session,
+        turnContext,
+        turnManager,
+        SUBMISSION_ID,
+        [],
+      );
+
+      await expect(runner.run_task()).resolves.toMatchObject({ success: true });
+
+      expect(getCurrentPageContext).not.toHaveBeenCalled();
+      const startEvent = (session.emitEvent as Mock).mock.calls.find(
+        (call: any[]) => call[0].msg.type === 'TaskStarted',
+      );
+      expect(startEvent![0].msg.data.tabId).toBe(17);
+    });
+
     it('should emit TaskComplete event on success', async () => {
       const input: InputItem[] = [{ type: 'message', role: 'user', content: [{ type: 'input_text', text: 'hi' }] } as any];
 

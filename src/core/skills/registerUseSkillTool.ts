@@ -4,6 +4,7 @@ import { SkillRiskAssessor } from '@/core/approval/assessors/SkillRiskAssessor';
 import type { SkillRegistry } from './SkillRegistry';
 import { SkillExecutor } from './SkillExecutor';
 import { buildSubAgentInvoker } from './buildSubAgentInvoker';
+import { matchesDomain } from './SkillDomainFilter';
 import type { ToolRegistry } from '@/tools/ToolRegistry';
 
 export interface RegisterUseSkillToolOptions {
@@ -11,10 +12,12 @@ export interface RegisterUseSkillToolOptions {
   hookRegistry: HookRegistry;
   skillRegistry: SkillRegistry;
   getTurnContext?: () => TurnContext;
+  /** Resolve browser state only after the model has selected use_skill. */
+  getCurrentDomain?: () => Promise<string | null>;
 }
 
 export async function registerUseSkillTool(options: RegisterUseSkillToolOptions): Promise<boolean> {
-  const { toolRegistry, hookRegistry, skillRegistry, getTurnContext } = options;
+  const { toolRegistry, hookRegistry, skillRegistry, getTurnContext, getCurrentDomain } = options;
 
   const allSkills = skillRegistry.getAllSkillMetas();
   if (allSkills.length === 0) return false;
@@ -40,6 +43,22 @@ export async function registerUseSkillTool(options: RegisterUseSkillToolOptions)
     async (params, ctx) => {
       const skillName = params.name as string;
       const args = params.arguments as string | undefined;
+      const meta = skillRegistry.getAllSkillMetas().find((skill) => skill.name === skillName);
+      const restrictedDomains = meta?.domains?.filter(
+        (domain) => domain !== '*' && domain !== '**',
+      ) ?? [];
+      if (restrictedDomains.length > 0) {
+        const currentDomain = await getCurrentDomain?.().catch(() => null) ?? null;
+        const allowed = currentDomain !== null
+          && restrictedDomains.some((pattern) => matchesDomain(currentDomain, pattern));
+        if (!allowed) {
+          return {
+            error: currentDomain
+              ? `Skill "${skillName}" is not available on ${currentDomain}. Allowed browser domains: ${restrictedDomains.join(', ')}.`
+              : `Skill "${skillName}" requires an active browser page on one of these domains: ${restrictedDomains.join(', ')}.`,
+          };
+        }
+      }
       const subAgentInvoker = buildSubAgentInvoker(toolRegistry, ctx);
       const executor = new SkillExecutor(skillRegistry, hookRegistry, subAgentInvoker);
       const result = await executor.execute(skillName, args);

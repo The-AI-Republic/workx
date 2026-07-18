@@ -118,7 +118,15 @@ export class SkillRegistry {
       (skill) => (skill.invocationMode === 'auto' || skill.invocationMode === 'hybrid') && skill.trusted,
     );
     if (autoSkills.length > 0) {
-      const lines = autoSkills.map((s) => `- ${s.name}: ${s.description}`);
+      const lines = autoSkills.map((s) => {
+        const restrictedDomains = s.domains?.filter(
+          (domain) => domain !== '*' && domain !== '**',
+        ) ?? [];
+        const domainHint = restrictedDomains.length > 0
+          ? ` (browser domains: ${restrictedDomains.join(', ')})`
+          : '';
+        return `- ${s.name}: ${s.description}${domainHint}`;
+      });
       parts.push(`\nAvailable skills for proactive use:\n${lines.join('\n')}`);
     }
 

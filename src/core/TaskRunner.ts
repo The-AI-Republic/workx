@@ -28,7 +28,6 @@ import {
 } from './compact/tokenPressure';
 import { TokenUsageStore } from '@/storage/TokenUsageStore';
 import type { TokenUsageRecord } from '@/storage/types';
-import type { BrowserPageContext } from './platform/IPlatformAdapter';
 import {
   finishResponseLatencyTrace,
   markResponseLatency,
@@ -623,20 +622,13 @@ export class TaskRunner {
       .map(([name]) => name)
       .sort();
 
-    const registry = this.session.getToolRegistry?.();
-    const pageContextStartedAt = Date.now();
-    const pageContext: BrowserPageContext = registry
-      ? await registry.getCurrentPageContext().catch((): BrowserPageContext => ({}))
-      : {};
-    this.markResponseLatency('task_page_context_loaded', {
-      duration_ms: Date.now() - pageContextStartedAt,
-      registry_available: registry !== undefined,
-    });
     const data: TaskStartedEvent = {
       submission_id: this.submissionId,
       model_context_window: contextWindow,
       model: this.turnContext.getModel(),
-      tabId: pageContext?.tabId ?? this.turnContext.getBrowserTabId?.() ?? -1,
+      // Task lifecycle is browser-independent. Browser state is resolved only
+      // if the model later invokes a browser-dependent tool.
+      tabId: this.turnContext.getBrowserTabId?.() ?? -1,
       approval_policy: this.turnContext.getApprovalPolicy(),
       sandbox_policy: this.turnContext.getSandboxPolicy(),
       auto_compact: this.options.autoCompact !== false,

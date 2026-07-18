@@ -295,6 +295,105 @@ describe('TurnManager - executeToolCall tool lookup order', () => {
     }));
   });
 
+  it('resolves browser context once for one browser tool call', async () => {
+    const browserToolDef = {
+      type: 'function' as const,
+      function: {
+        name: 'local_browser_tool',
+        description: 'Use the browser',
+        strict: false,
+        parameters: { type: 'object' as const, properties: {} },
+      },
+      metadata: { source: 'browser-bridge' },
+    };
+    const getCurrentPageContext = vi.fn().mockResolvedValue({
+      tabId: 9,
+      currentUrl: 'https://example.com/page',
+      currentDomain: 'example.com',
+    });
+    toolRegistry.setPageContextProvider(getCurrentPageContext);
+    await toolRegistry.register(browserToolDef, vi.fn().mockResolvedValue({ ok: true }));
+
+    await (turnManager as any).executeToolCall(
+      'local_browser_tool',
+      { action: 'snapshot' },
+      'call-browser',
+    );
+
+    expect(getCurrentPageContext).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not resolve browser context for a non-browser registry tool call', async () => {
+    const getCurrentPageContext = vi.fn().mockResolvedValue({
+      tabId: 9,
+      currentUrl: 'https://example.com/page',
+      currentDomain: 'example.com',
+    });
+    toolRegistry.setPageContextProvider(getCurrentPageContext);
+    await toolRegistry.register(
+      {
+        type: 'function',
+        function: {
+          name: 'planning_tool',
+          description: 'Update a plan',
+          strict: false,
+          parameters: { type: 'object', properties: {} },
+        },
+      },
+      vi.fn().mockResolvedValue({ ok: true }),
+    );
+
+    await (turnManager as any).executeToolCall(
+      'planning_tool',
+      { command: 'list' },
+      'call-plan',
+    );
+
+    expect(getCurrentPageContext).not.toHaveBeenCalled();
+  });
+
+  it('resolves browser context for an MCP browser tool call not in the registry', async () => {
+    const getCurrentPageContext = vi.fn().mockResolvedValue({
+      tabId: 9,
+      currentUrl: 'https://example.com/page',
+      currentDomain: 'example.com',
+    });
+    toolRegistry.setPageContextProvider(getCurrentPageContext);
+    vi.mocked(turnContext.getToolsConfig).mockReturnValue({
+      mcpTools: true,
+      enable_all_tools: false,
+    } as IToolsConfig);
+    vi.mocked((session as any).executeMcpTool).mockResolvedValue({ ok: true });
+
+    await (turnManager as any).executeToolCall(
+      'browser__click',
+      { uid: '42' },
+      'call-mcp-browser',
+    );
+
+    expect(getCurrentPageContext).toHaveBeenCalledTimes(1);
+    expect((session as any).executeMcpTool).toHaveBeenCalledWith(
+      'browser__click',
+      { uid: '42' },
+    );
+  });
+
+  it('persists stored turn context without reading the live browser', async () => {
+    const getCurrentPageContext = vi.fn().mockResolvedValue({ tabId: 99 });
+    toolRegistry.setPageContextProvider(getCurrentPageContext);
+    (turnContext as any).getBrowserTabId = vi.fn().mockReturnValue(7);
+    (turnContext as any).getSessionId = vi.fn().mockReturnValue('test-session');
+    (turnContext as any).getEffort = vi.fn();
+    (turnContext as any).getSummary = vi.fn();
+
+    await (turnManager as any).recordTurnContext();
+
+    expect(getCurrentPageContext).not.toHaveBeenCalled();
+    expect(session.recordTurnContext).toHaveBeenCalledWith(
+      expect.objectContaining({ tabId: 7, sessionId: 'test-session' }),
+    );
+  });
+
   it('should throw error when tool not found and MCP not supported', async () => {
     // Setup: Session without executeMcpTool method
     const sessionWithoutMcp = {

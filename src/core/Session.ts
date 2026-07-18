@@ -2721,7 +2721,9 @@ export class Session {
           task_type: task.task.constructor.name,
           stop_reason: reason,
           is_background: isBackground,
-          ...(await getToolRuntimeContext(this)),
+          // Stopping a task is session lifecycle, not a browser operation.
+          // Keep it independent from browser bridge availability/latency.
+          ...(await getToolRuntimeContext(this, { resolvePageContext: false })),
         },
         { timeoutOverride: 1 },
       );

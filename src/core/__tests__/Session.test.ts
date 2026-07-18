@@ -939,6 +939,11 @@ describe('Session', () => {
         return { shouldContinue: true };
       });
       session.setHookDispatcher({ fire } as any);
+      const getCurrentPageContext = vi.fn().mockRejectedValue(
+        new Error('stop must not access browser context'),
+      );
+      session.setToolRegistry({ getCurrentPageContext } as any);
+      (session as any).getTabId = vi.fn().mockReturnValue(42);
       const task = makeMockTask({
         run: vi.fn().mockImplementation(() => new Promise(() => {})),
       });
@@ -959,6 +964,7 @@ describe('Session', () => {
         }),
         expect.objectContaining({ timeoutOverride: 1 }),
       );
+      expect(getCurrentPageContext).not.toHaveBeenCalled();
     });
 
     it('shutdown aborts active typed tasks and clears the eviction timer', async () => {

@@ -1,7 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ToolRegistry } from '@/tools/ToolRegistry';
 import { NodeBridge } from '@/app-server/node-bridge/NodeBridge';
-import { BrowserBridgeToolManager } from '../BrowserBridgeToolManager';
+import {
+  BROWSER_CONTEXT_TIMEOUT_MS,
+  BROWSER_RELEASE_TIMEOUT_MS,
+  BrowserBridgeToolManager,
+} from '../BrowserBridgeToolManager';
 
 const CATALOG = {
   node: { kind: 'browser-extension', displayName: 'WorkX', version: '1.0.0' },
@@ -158,6 +162,45 @@ describe('BrowserBridgeToolManager', () => {
     });
     await manager.applyToRegistry('s1', reg);
     expect(reg.listTools()).toHaveLength(0);
+  });
+
+  it('uses short operation-specific budgets for context and cleanup RPCs', async () => {
+    const bridge = new NodeBridge();
+    const manager = new BrowserBridgeToolManager({
+      nodeBridge: bridge,
+      getRegistry: () => makeFakeAgentRegistry([]),
+    });
+    connectNode(bridge);
+    bridge.handleAdvertise('conn_1', CATALOG);
+    const invoke = vi.spyOn(bridge, 'invoke')
+      .mockResolvedValueOnce({ tabId: 3, url: 'https://example.com', hostname: 'example.com' })
+      .mockResolvedValueOnce({ released: true });
+
+    await expect(manager.getSessionBrowserContext('s1')).resolves.toMatchObject({ tabId: 3 });
+    await expect(manager.releaseSession('s1')).resolves.toBeUndefined();
+
+    expect(invoke).toHaveBeenNthCalledWith(
+      1,
+      'conn_1',
+      '',
+      {},
+      expect.objectContaining({
+        operation: 'browser-context',
+        sessionId: 's1',
+        timeoutMs: BROWSER_CONTEXT_TIMEOUT_MS,
+      }),
+    );
+    expect(invoke).toHaveBeenNthCalledWith(
+      2,
+      'conn_1',
+      '',
+      {},
+      expect.objectContaining({
+        operation: 'release-session',
+        sessionId: 's1',
+        timeoutMs: BROWSER_RELEASE_TIMEOUT_MS,
+      }),
+    );
   });
 
   it('unregisters proxy tools when detached so app-server restart cannot leave stale handlers', async () => {

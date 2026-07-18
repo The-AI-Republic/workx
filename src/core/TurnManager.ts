@@ -28,6 +28,7 @@ import type { Event } from './protocol/types';
 import type { Prompt as ModelPrompt } from './models/types/ResponsesAPI';
 import { v4 as uuidv4 } from 'uuid';
 import { ToolRegistry } from '../tools/ToolRegistry';
+import type { BrowserPageContext } from './platform/IPlatformAdapter';
 import type { IToolsConfig } from '../config/types';
 import { mapResponseItemToEventMessages } from './events/EventMapping';
 import type { ResponseItem } from './protocol/types';
@@ -40,7 +41,10 @@ import {
 } from './toolOrchestration';
 import type { HookDispatcher, HookExecutionSnapshot } from './hooks/HookDispatcher';
 import type { HookInput } from './hooks/types';
-import { getToolRuntimeContext } from './hooks/toolRuntimeContext';
+import {
+  getToolRuntimeContext,
+  type ToolRuntimeContext,
+} from './hooks/toolRuntimeContext';
 import { getPersistenceThreshold, MAX_TOOL_RESULTS_PER_MESSAGE_CHARS } from '../tools/toolLimits';
 import { buildPersistedOutputMessage, ToolResultTooLargeForStoreError } from '../tools/resultStore';
 import { enforceToolResultBudget, type FunctionCallOutputItem } from '../tools/resultBudget';
@@ -60,6 +64,20 @@ interface MCPCapableSession {
   getMcpTools(): Promise<ToolDefinition[]>;
   executeMcpTool(name: string, params: any): Promise<any>;
 }
+
+const BROWSER_PAGE_CONTEXT_TOOL_NAMES = new Set([
+  'local_browser_tool',
+  'browser_dom',
+  'browser_navigation',
+  'dom_tool',
+  'navigation_tool',
+  'web_scraping',
+  'form_automation',
+  'network_intercept',
+  'data_extraction',
+  'page_vision',
+  'viewport_tool',
+]);
 
 /**
  * Result of processing a single response item
@@ -1008,6 +1026,7 @@ export class TurnManager {
   ): Promise<any> {
     let hookSnapshot: HookExecutionSnapshot | undefined;
     let parsedParamsForFailure = parameters;
+    let runtimeContext: ToolRuntimeContext = {};
     try {
       // Parse parameters if they're a JSON string (common with OpenAI API)
       let parsedParams = parameters;
@@ -1041,7 +1060,18 @@ export class TurnManager {
         toolName,
         typeof parsedParams === 'object' ? parsedParams : {}
       );
-      const runtimeContext = await getToolRuntimeContext(this.session);
+      const registeredTool = this.toolRegistry.getTool(toolName);
+      const needsBrowserPageContext = this.requiresBrowserPageContext(
+        toolName,
+        registeredTool ?? undefined,
+      );
+      const browserPageContext: BrowserPageContext = needsBrowserPageContext
+        ? await this.toolRegistry.getCurrentPageContext().catch(() => ({}))
+        : {};
+      runtimeContext = await getToolRuntimeContext(this.session, {
+        pageContext: browserPageContext,
+        resolvePageContext: false,
+      });
 
       // ── PreToolUse hooks ──
       if (this.hookDispatcher) {
@@ -1077,14 +1107,14 @@ export class TurnManager {
 
         default: {
           // Check ToolRegistry for browser tools BEFORE falling back to MCP
-          const browserTool = this.toolRegistry.getTool(toolName);
-          if (browserTool) {
+          if (registeredTool) {
             result = await this.executeBrowserTool(
-              browserTool,
+              registeredTool,
               parsedParams,
               callId,
               hookSnapshot,
-              signal
+              signal,
+              browserPageContext,
             );
             break;
           }
@@ -1166,7 +1196,7 @@ export class TurnManager {
           tool_name: toolName,
           tool_input: typeof parsedParamsForFailure === 'object' ? parsedParamsForFailure : {},
           tool_error: errorMsg,
-          ...(await getToolRuntimeContext(this.session)),
+          ...runtimeContext,
         };
         this.hookDispatcher
           .fire('PostToolUseFailure', failHookInput, {
@@ -1472,15 +1502,20 @@ export class TurnManager {
     parameters: any,
     callId?: string,
     hookSnapshot?: HookExecutionSnapshot,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    resolvedPageContext?: BrowserPageContext,
   ): Promise<any> {
     const toolName = this.getToolNameFromDefinition(tool);
 
     try {
-      let pageContext: Awaited<ReturnType<ToolRegistry['getCurrentPageContext']>> = {};
-      try {
-        pageContext = await this.toolRegistry.getCurrentPageContext?.() ?? {};
-      } catch { /* page context is best-effort */ }
+      let pageContext = resolvedPageContext;
+      if (!pageContext) {
+        try {
+          pageContext = await this.toolRegistry.getCurrentPageContext?.() ?? {};
+        } catch {
+          pageContext = {};
+        }
+      }
       const tabId = pageContext.tabId ?? this.turnContext.getBrowserTabId?.() ?? -1;
 
       // Build metadata for approval context
@@ -1500,21 +1535,6 @@ export class TurnManager {
       if (!currentUrl) {
         currentUrl = pageContext.currentUrl;
         currentDomain = pageContext.currentDomain;
-      }
-      try {
-        if (!currentUrl && tabId && tabId > 0 && typeof chrome !== 'undefined' && chrome.tabs) {
-          const tab = await chrome.tabs.get(tabId);
-          currentUrl = tab.url;
-          if (currentUrl) {
-            try {
-              currentDomain = new URL(currentUrl).hostname;
-            } catch {
-              /* ignore */
-            }
-          }
-        }
-      } catch {
-        /* tab may not exist in desktop mode */
       }
 
       // SubmitPlanForReview (Track 14) blocks on human plan approval, which
@@ -1625,14 +1645,28 @@ export class TurnManager {
     return 'unknown_tool';
   }
 
+  /** Browser state is tool input, not ambient turn/session input. */
+  private requiresBrowserPageContext(
+    toolName: string,
+    tool?: ToolDefinition,
+  ): boolean {
+    if (
+      BROWSER_PAGE_CONTEXT_TOOL_NAMES.has(toolName)
+      || toolName.startsWith('browser__')
+    ) {
+      return true;
+    }
+    return tool?.type === 'function' && tool.metadata?.source === 'browser-bridge';
+  }
+
   /**
    * Record turn context for rollout/history
    */
   private async recordTurnContext(): Promise<void> {
-    const pageContext: Awaited<ReturnType<ToolRegistry['getCurrentPageContext']>> =
-      await this.toolRegistry.getCurrentPageContext?.().catch(() => ({})) ?? {};
     const turnContextItem = {
-      tabId: pageContext.tabId ?? this.turnContext.getBrowserTabId?.(),
+      // Persist only the context already owned by this turn. Reading the live
+      // browser here would put an external tool RPC on every model request.
+      tabId: this.turnContext.getBrowserTabId?.(),
       sessionId: this.turnContext.getSessionId(),
       approval_policy: this.turnContext.getApprovalPolicy(),
       sandbox_policy: this.turnContext.getSandboxPolicy(),
@@ -1686,42 +1720,6 @@ export class TurnManager {
       reasoning_output_tokens: usage.reasoning_tokens || 0,
       total_tokens: usage.total_tokens || 0,
     };
-  }
-
-  /**
-   * Get current browser tab ID
-   */
-  private async getCurrentTabId(): Promise<number | undefined> {
-    if (typeof chrome !== 'undefined' && chrome.tabs) {
-      try {
-        const [tab] = await chrome.tabs.query({
-          active: true,
-          currentWindow: true,
-        });
-        return tab?.id;
-      } catch (error) {
-        console.warn('Failed to get current tab ID:', error);
-      }
-    }
-    return undefined;
-  }
-
-  /**
-   * Get current page URL
-   */
-  private async getCurrentUrl(): Promise<string | undefined> {
-    if (typeof chrome !== 'undefined' && chrome.tabs) {
-      try {
-        const [tab] = await chrome.tabs.query({
-          active: true,
-          currentWindow: true,
-        });
-        return tab?.url;
-      } catch (error) {
-        console.warn('Failed to get current URL:', error);
-      }
-    }
-    return undefined;
   }
 
   /**

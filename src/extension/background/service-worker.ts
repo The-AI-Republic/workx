@@ -1289,6 +1289,10 @@ async function registerSkillsToolOnAgent(agent: RepublicAgent): Promise<void> {
     hookRegistry: agent.getHookRegistry(),
     skillRegistry,
     getTurnContext: () => agent.getSession().getTurnContext(),
+    getCurrentDomain: async () => {
+      const context = await agent.getPlatformAdapter().getCurrentPageContext?.();
+      return context?.currentDomain ?? null;
+    },
   });
 }
 
