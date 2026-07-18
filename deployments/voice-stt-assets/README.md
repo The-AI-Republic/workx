@@ -19,7 +19,7 @@ Expected object layout:
 ```text
 s3://workx-voice-stt-assets/
   stable.json
-  2026.07.17/
+  2026.07.17-whisper-v1.9.1-base.en-q5_1/
     models/
       ggml-base.en-q5_1.bin
     linux-x86_64/
@@ -36,3 +36,6 @@ buckets. The current desktop app can then set:
 ```text
 WORKX_VOICE_STT_MANIFEST_URL=https://workx-voice-stt-assets.s3.us-west-2.amazonaws.com/stable.json
 ```
+
+The initial published manifest contains the Linux x86_64 asset only. Add
+macOS and Windows entries after publishing matching platform runtimes.
