@@ -420,7 +420,9 @@ export class ServerAgentBootstrap {
 
       // 5. Create AgentRegistry with factories
       const { join } = await import('node:path');
+      const { homedir } = await import('node:os');
       const serverRootDir = join(dataDir, 'sessions');
+      const defaultWorkingDirectory = homedir();
       this.registry = new AgentRegistry({
         maxConcurrent: 3,
         agentFactory: async (cfg, initialHistory) => {
@@ -436,6 +438,7 @@ export class ServerAgentBootstrap {
           const services = await createSessionServices(
             {
               serverRootDir,
+              defaultWorkingDirectory,
             },
             false
           );

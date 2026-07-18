@@ -47,6 +47,7 @@ export interface SessionConfig {
   fork?: {
     sourceConversationId: string;
     rolloutItems: unknown[];
+    workingDirectory?: string;
   };
 
   /**

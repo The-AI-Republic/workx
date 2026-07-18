@@ -37,10 +37,9 @@ import type { BrowserPageContext } from '../core/platform/IPlatformAdapter';
 // desktop/server bundles).
 
 /**
- * Tools that receive the §4.5 per-session metadata seam (workspaceRoot +
- * the mutable FileStateCache + agentMode). Keep in sync with the tools
- * registered by registerFileSearchTools(). Every other tool gets only
- * { tabId } — the cache must NOT be reachable from arbitrary tool handlers.
+ * Tools that receive the mutable per-session FileStateCache. The immutable
+ * TurnExecutionContext is safe to provide to every tool, but the cache must
+ * remain restricted to these handlers so another tool cannot forge freshness.
  */
 const FILE_SEAM_TOOLS = new Set<string>(['read_file', 'edit_file', 'write_file', 'grep', 'glob']);
 
@@ -647,14 +646,8 @@ export class ToolRegistry {
           }
         : undefined;
 
-      // Create execution context.
-      // The §4.5 seam (workspaceRoot + the live, mutable per-session
-      // FileStateCache + agentMode) is forwarded ONLY to the file/search
-      // tools that consume it. Broadcasting the mutable cache handle to every
-      // MCP/browser/plugin tool would let any tool forge read-before-edit
-      // freshness entries and defeat the advisory edit gate — and would leak
-      // currentUrl/currentDomain that pre-§4.5 tools never received. Every
-      // other tool keeps the historical { tabId }-only metadata.
+      // The immutable executionContext is shared with every tool. Mutable
+      // FileStateCache remains restricted to file tools.
       const isFileTool = FILE_SEAM_TOOLS.has(request.toolName);
       const isDataTool = request.toolName.startsWith('data_');
       const hasDesktopTurnSnapshot = isDataTool || request.toolName.startsWith('component_');
@@ -675,6 +668,7 @@ export class ToolRegistry {
         turnId: request.turnId,
         toolName: request.toolName,
         callId: request.callId,
+        ...(request.executionContext ? { executionContext: request.executionContext } : {}),
         metadata: isFileTool
           ? {
               ...(request.metadata ?? {}),

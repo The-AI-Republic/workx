@@ -88,6 +88,9 @@ export interface SessionServices {
    * extension bundle.
    */
   serverRootDir?: string;
+
+  /** Platform-provided fallback for a new session (desktop/server: user home). */
+  defaultWorkingDirectory?: string;
 }
 
 /**
@@ -157,5 +160,6 @@ export async function createSessionServices(
     showRawAgentReasoning: config.showRawAgentReasoning ?? false,
     sessionCache: config.sessionCache,
     serverRootDir: config.serverRootDir,
+    defaultWorkingDirectory: config.defaultWorkingDirectory,
   };
 }

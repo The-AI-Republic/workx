@@ -1,5 +1,5 @@
 /**
- * Code-mode file tools: read_file / edit_file / write_file.
+ * Session-scoped file tools: read_file / edit_file / write_file.
  *
  * Sibling of FileSearchTool (grep/glob). The freshness gate + jail live in
  * Rust (fsExecutor → tauri/src/fs_commands.rs); this layer resolves the
@@ -19,7 +19,7 @@ import type { IRiskAssessor } from '../../core/approval/types';
 import type { FileState } from '../../core/files/FileStateCache';
 import { fsExecutor, FsUnsupportedPlatformError, FsTimeoutError } from './fsExecutor';
 import { lexicalPathCheck } from './pathPolicy';
-import { sessionScope, type SessionScope, NOT_CODE_MODE_MSG, NO_WORKSPACE_MSG } from './sessionScope';
+import { sessionScope, type SessionScope, NO_WORKSPACE_MSG } from './sessionScope';
 
 const MAX_READ_BYTES = 5 * 1024 * 1024; // pre-read hard reject (design §4.7)
 const MAX_OUT_LINES = 2000;
@@ -44,10 +44,8 @@ abstract class FileAccessTool {
   createHandler(): ToolHandler {
     return async (params: Record<string, any>, context: ToolContext): Promise<string> => {
       const h = sessionScope(context);
-      // §4.2: code-mode only. Gate by behavior, not registry mutation
-      // (consistent with the modes design). Undefined mode ⇒ session-less
-      // path ⇒ don't block on mode (workspace gate still applies).
-      if (h.agentMode !== undefined && h.agentMode !== 'code') return NOT_CODE_MODE_MSG;
+      // General and Code mode share file access. Mode only changes prompt
+      // emphasis; the session folder determines the project for these tools.
       if (!h.workspaceRoot) return NO_WORKSPACE_MSG; // R8 — never default to app cwd
       const lex = lexicalPathCheck(h.workspaceRoot, String(params.path ?? ''));
       if (!lex.ok) {

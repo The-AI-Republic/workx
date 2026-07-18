@@ -151,6 +151,7 @@ fn main() {
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec!["--autostarted"])))
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_dialog::init())
         // Single instance plugin handles deep links on Windows/Linux
         // When a second instance is launched with a deep link URL,
         // it forwards the URL to the existing instance

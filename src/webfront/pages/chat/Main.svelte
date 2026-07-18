@@ -62,6 +62,7 @@
   );
   let scrollContainer: HTMLDivElement;
   let currentTabId: number = $state(-1); // Track current session's bound tab
+  let currentWorkingDirectory: string | undefined = $state(undefined);
   let agentReady: boolean = $state(false);
   let healthStatus: {
     ready: boolean;
@@ -185,6 +186,7 @@
     inputText: string;
     isProcessing: boolean;
     currentTabId: number;
+    workingDirectory?: string;
     eventProcessor: EventProcessor;
   }
   let threadStates: Map<string, ThreadConversationState> = new Map();
@@ -458,12 +460,13 @@
       // Request current session state from backend (uses active session if available)
       const response = await (
         await getInitializedUIClient()
-      ).serviceRequest<{ tabId?: number }>(
+      ).serviceRequest<{ tabId?: number; workingDirectory?: string }>(
         'session.getState',
         activeSessionId ? { sessionId: activeSessionId } : undefined
       );
 
       const stateData = response || {};
+      currentWorkingDirectory = stateData.workingDirectory;
 
       if (stateData && typeof stateData.tabId === 'number') {
         const fetchedTabId = stateData.tabId;
@@ -568,6 +571,7 @@
       }
 
       if (!text.trim()) continue;
+      if (text.trim().startsWith('<workspace_context>')) continue;
 
       const event: ProcessedEvent = {
         id: `${idPrefix}_${i}_${Date.now()}`,
@@ -604,10 +608,12 @@
     const response = await c.serviceRequest<{
       sessionId?: string;
       tabId?: number;
+      workingDirectory?: string;
       history?: unknown[];
     }>('session.getState', { sessionId });
     const historyItems = response?.history as any[] | undefined;
     const tabId = response?.tabId ?? -1;
+    const workingDirectory = response?.workingDirectory;
 
     const { events, firstUserMessage } =
       historyItems && Array.isArray(historyItems)
@@ -628,6 +634,7 @@
       inputText: '',
       isProcessing: false,
       currentTabId: tabId,
+      workingDirectory,
       eventProcessor: new EventProcessor(sessionId),
     });
 
@@ -1391,6 +1398,7 @@
       const response = await c.serviceRequest<{
         success: boolean;
         sessionId?: string;
+        workingDirectory?: string;
         error?: string;
       }>('session.create');
 
@@ -1413,6 +1421,7 @@
         inputText: '',
         isProcessing: false,
         currentTabId: -1,
+        workingDirectory: response.workingDirectory,
         eventProcessor: new EventProcessor(sessionId),
       };
       threadStates.set(sessionId, newState);
@@ -1473,6 +1482,7 @@
       inputText,
       isProcessing,
       currentTabId,
+      workingDirectory: currentWorkingDirectory,
       eventProcessor: eventProcessor,
     };
     threadStates.set(sessionId, state);
@@ -1489,6 +1499,7 @@
       inputText = state.inputText;
       isProcessing = state.isProcessing;
       currentTabId = state.currentTabId;
+      currentWorkingDirectory = state.workingDirectory;
       eventProcessor = state.eventProcessor;
     } else {
       // Initialize fresh state
@@ -1497,6 +1508,7 @@
       inputText = '';
       isProcessing = false;
       currentTabId = -1;
+      currentWorkingDirectory = undefined;
       eventProcessor = new EventProcessor(sessionId);
     }
 
@@ -1509,6 +1521,35 @@
           scrollContainer.scrollTop = scrollContainer.scrollHeight;
         }
       }, 0);
+    }
+  }
+
+  async function chooseWorkingDirectory(): Promise<void> {
+    if (platform.platformName !== 'desktop' || !activeSessionId || isProcessing) return;
+    try {
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        defaultPath: currentWorkingDirectory,
+      });
+      if (typeof selected !== 'string' || !selected) return;
+
+      const c = await getInitializedUIClient();
+      const response = await c.serviceRequest<{
+        success: boolean;
+        workingDirectory?: string;
+      }>('session.setWorkingDirectory', {
+        sessionId: activeSessionId,
+        workingDirectory: selected,
+      });
+      if (response?.workingDirectory) {
+        currentWorkingDirectory = response.workingDirectory;
+        const state = threadStates.get(activeSessionId);
+        if (state) state.workingDirectory = response.workingDirectory;
+      }
+    } catch (error) {
+      console.error('[App] Failed to change working folder:', error);
     }
   }
 
@@ -1939,6 +1980,10 @@
           onTabSelected={handleTabSelected}
           onCommandOutput={handleCommandOutput}
           onOpenRewindSelector={() => (showRewindSelector = true)}
+          workingDirectory={currentWorkingDirectory}
+          onChooseWorkingDirectory={platform.platformName === 'desktop'
+            ? chooseWorkingDirectory
+            : undefined}
         />
       </div>
     </div>

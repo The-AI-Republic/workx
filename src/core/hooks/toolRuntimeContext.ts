@@ -10,6 +10,7 @@ type MutableToolRuntimeContext = {
 
 interface RuntimeSessionLike {
   getTabId?(): number;
+  getWorkingDirectory?(): string | undefined;
 }
 
 function parseDomain(url: string | undefined): string | undefined {
@@ -19,17 +20,6 @@ function parseDomain(url: string | undefined): string | undefined {
   } catch {
     return undefined;
   }
-}
-
-function getCwd(): string | undefined {
-  try {
-    if (typeof process !== 'undefined' && typeof process.cwd === 'function') {
-      return process.cwd();
-    }
-  } catch {
-    // Optional runtime context must never break tool execution.
-  }
-  return undefined;
 }
 
 /**
@@ -43,7 +33,12 @@ export async function getToolRuntimeContext(
   session: RuntimeSessionLike,
 ): Promise<ToolRuntimeContext> {
   const context: MutableToolRuntimeContext = {};
-  const cwd = getCwd();
+  let cwd: string | undefined;
+  try {
+    cwd = session.getWorkingDirectory?.();
+  } catch {
+    cwd = undefined;
+  }
   if (cwd) context.cwd = cwd;
 
   let tabId: number | undefined;

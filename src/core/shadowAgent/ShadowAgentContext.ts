@@ -13,6 +13,7 @@ export function buildShadowInitialHistory(
 ): ShadowInitialHistoryResult {
   const sourceConversationId =
     request.parentEngine.getSession()?.getSessionId?.() ?? request.parentEngine.engineId;
+  const workingDirectory = request.parentEngine.getSession()?.getWorkingDirectory?.();
   const selected = selectHistoryForPolicy(request);
 
   if (selected.length === 0) {
@@ -28,6 +29,9 @@ export function buildShadowInitialHistory(
     mode: 'forked',
     rolloutItems,
     sourceConversationId,
+    ...(workingDirectory
+      ? { workspace: { workingDirectory } }
+      : {}),
   };
 
   return { initialHistory, parentItemCount: selected.length };

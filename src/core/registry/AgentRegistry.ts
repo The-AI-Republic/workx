@@ -149,7 +149,14 @@ export class AgentRegistry {
     const initialHistory: InitialHistory | undefined = sessionConfig.resume
       ? { mode: 'resumed', sessionId: sessionConfig.resume.sessionId, rolloutItems: sessionConfig.resume.rolloutItems }
       : sessionConfig.fork
-      ? { mode: 'forked', rolloutItems: sessionConfig.fork.rolloutItems, sourceConversationId: sessionConfig.fork.sourceConversationId }
+      ? {
+          mode: 'forked',
+          rolloutItems: sessionConfig.fork.rolloutItems,
+          sourceConversationId: sessionConfig.fork.sourceConversationId,
+          ...(sessionConfig.fork.workingDirectory
+            ? { workspace: { workingDirectory: sessionConfig.fork.workingDirectory } }
+            : {}),
+        }
       : undefined;
 
     // T057: Wrap agent creation in try-catch for graceful error handling

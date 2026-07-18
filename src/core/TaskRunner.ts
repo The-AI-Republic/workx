@@ -802,9 +802,13 @@ export class TaskRunner {
    * Build turn input for normal mode
    */
   private async buildNormalTurnInput(pendingInput: ResponseItem[]): Promise<ResponseItem[]> {
-    const turnInput = await this.session.buildTurnInputWithHistory(pendingInput);
-    if (pendingInput.length > 0) {
-      await this.session.recordConversationItemsDual(pendingInput);
+    const workspaceContext = this.session.takeWorkspaceContextUpdate?.();
+    const effectivePendingInput = workspaceContext
+      ? [workspaceContext, ...pendingInput]
+      : pendingInput;
+    const turnInput = await this.session.buildTurnInputWithHistory(effectivePendingInput);
+    if (effectivePendingInput.length > 0) {
+      await this.session.recordConversationItemsDual(effectivePendingInput);
     }
     return turnInput as ResponseItem[];
   }

@@ -287,4 +287,35 @@ describe('MessageInput Component', () => {
       expect(textarea.tagName.toLowerCase()).toBe('textarea');
     });
   });
+
+  describe('Working folder chip', () => {
+    it('shows only the final folder and exposes the full path on hover', () => {
+      render(MessageInput, {
+        props: {
+          value: '',
+          workingDirectory: '/Users/rich/projects/workx',
+          onChooseWorkingDirectory: vi.fn(),
+        },
+      });
+
+      const chip = screen.getByRole('button', { name: /working folder/i });
+      expect(chip.textContent).toContain('.../workx');
+      expect(chip.textContent).not.toContain('/Users/rich/projects');
+      expect(chip.getAttribute('title')).toBe('/Users/rich/projects/workx');
+    });
+
+    it('opens the folder picker callback when clicked', async () => {
+      const onChooseWorkingDirectory = vi.fn();
+      render(MessageInput, {
+        props: {
+          value: '',
+          workingDirectory: '/home/rich',
+          onChooseWorkingDirectory,
+        },
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: /working folder/i }));
+      expect(onChooseWorkingDirectory).toHaveBeenCalledTimes(1);
+    });
+  });
 });

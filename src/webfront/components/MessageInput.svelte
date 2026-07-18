@@ -33,6 +33,8 @@
     onTabSelected,
     onCommandOutput,
     onOpenRewindSelector,
+    workingDirectory,
+    onChooseWorkingDirectory,
   }: {
     value?: string;
     /** Track 24.3: predicted next message; chip + Tab-accept. */
@@ -51,6 +53,9 @@
     onCommandOutput?: (data: { title: string; content: string }) => void;
     /** Track 15: open the rewind turn-selector overlay. */
     onOpenRewindSelector?: () => void;
+    /** Session-owned local folder shown above the composer (desktop). */
+    workingDirectory?: string;
+    onChooseWorkingDirectory?: () => void;
   } = $props();
 
   let isFocused = $state(false);
@@ -63,6 +68,13 @@
   let pendingReads: Promise<void>[] = [];
 
   let currentTheme = $derived($uiTheme);
+
+  function workingDirectoryLabel(path: string | undefined): string {
+    if (!path) return 'Select folder…';
+    const trimmed = path.replace(/[\\/]+$/, '');
+    const segments = trimmed.split(/[\\/]+/).filter(Boolean);
+    return `.../${segments.at(-1) ?? trimmed}`;
+  }
 
   function clearAttachments(): void {
     pendingAttachments = [];
@@ -577,6 +589,24 @@
           onclick={dismissSuggestion}
           aria-label={$_t('Dismiss suggestion')}
         >✕</button>
+      </div>
+    {/if}
+
+    {#if onChooseWorkingDirectory}
+      <div class="mb-1 flex min-w-0 items-center">
+        <button
+          type="button"
+          class="max-w-full truncate rounded-md border-none bg-transparent px-1.5 py-1 text-xs cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-50
+            {currentTheme === 'modern'
+              ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark'
+              : 'text-term-dim-green hover:bg-term-dim-green/10 hover:text-term-green'}"
+          title={workingDirectory ?? 'Select working folder'}
+          aria-label={workingDirectory
+            ? `Working folder: ${workingDirectory}. Click to change`
+            : 'Select working folder'}
+          onclick={onChooseWorkingDirectory}
+          disabled={isProcessing}
+        >📁 {workingDirectoryLabel(workingDirectory)} ▾</button>
       </div>
     {/if}
 

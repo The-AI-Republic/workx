@@ -64,6 +64,10 @@ function requireSession(deps: SessionServiceDeps, sessionId: string | undefined)
   return agentSession;
 }
 
+function isAbsoluteWorkingDirectory(path: string): boolean {
+  return path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path) || path.startsWith('\\\\');
+}
+
 export function createSessionServices(deps: SessionServiceDeps): Record<string, ServiceHandler> {
   const { registry, resetTabs } = deps;
 
@@ -180,7 +184,12 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
         throw new Error('Failed to create agent for resumed session');
       }
       const history = newSession.agent.getSession().getConversationHistory();
-      return { sessionId: rolloutData.sessionId, history: history?.items ?? [] };
+      const workingDirectory = newSession.agent.getSession().getWorkingDirectory?.();
+      return {
+        sessionId: rolloutData.sessionId,
+        ...(workingDirectory ? { workingDirectory } : {}),
+        history: history?.items ?? [],
+      };
     },
 
     /**
@@ -235,6 +244,9 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
         throw new Error('No active conversation to rewind');
       }
       const sourceConvId = primary.sessionId;
+      const sourceWorkingDirectory = registry
+        .getSession(sourceConvId)
+        ?.agent?.getSession()?.getWorkingDirectory?.();
 
       // D13: flush the live source session so the slice sees all turns.
       await registry.getSession(sourceConvId)?.agent?.getSession()?.flushRollout?.();
@@ -273,6 +285,7 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
         fork: {
           sourceConversationId: forked.sourceConversationId,
           rolloutItems: forked.rolloutItems,
+          ...(sourceWorkingDirectory ? { workingDirectory: sourceWorkingDirectory } : {}),
         },
       });
       if (!newSession.agent) {
@@ -326,11 +339,39 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
         }
       }
 
+      const workingDirectory = session.agent?.getSession().getWorkingDirectory?.();
       return {
         success: true,
         sessionId: session.sessionId,
         sessionLetter: session.sessionLetter,
+        ...(workingDirectory ? { workingDirectory } : {}),
       };
+    },
+
+    /**
+     * Change the working folder for future turns in one session. The picker
+     * supplies an absolute path; terminal command-level workdir overrides are
+     * resolved separately by the terminal tool.
+     */
+    'session.setWorkingDirectory': async (params) => {
+      const { sessionId, workingDirectory } = (params ?? {}) as {
+        sessionId?: string;
+        workingDirectory?: string;
+      };
+      const agentSession = requireSession(deps, sessionId);
+      if (typeof workingDirectory !== 'string' || !workingDirectory.trim()) {
+        throw new Error('workingDirectory is required');
+      }
+      if (!isAbsoluteWorkingDirectory(workingDirectory.trim())) {
+        throw new Error('workingDirectory must be an absolute path');
+      }
+      const session = agentSession.agent.getSession();
+      if (session.getRunningTasks().size > 0) {
+        throw new Error('Cannot change the working folder while a task is running');
+      }
+      session.setWorkingDirectory(workingDirectory);
+      await session.saveState();
+      return { success: true, workingDirectory: session.getWorkingDirectory() };
     },
 
     /**

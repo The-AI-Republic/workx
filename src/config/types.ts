@@ -441,11 +441,9 @@ export interface IUserPreferences {
    */
   defaultMode?: AgentMode;
   /**
-   * Absolute path to the user-selected project directory ("workspace root")
-   * for code mode (desktop only). All read/edit/write/grep/glob file tools
-   * operate inside this directory and treat it as the security jail anchor.
-   * Unset ⇒ code-mode file/search tools are disabled (never default to the
-   * app's own cwd). Selected via a folder picker; persisted here.
+   * Default working folder copied into each new desktop session. Existing
+   * sessions retain their own folder when this preference changes. If unset,
+   * new sessions start in the user's home directory.
    */
   workspaceRoot?: string;
   /**

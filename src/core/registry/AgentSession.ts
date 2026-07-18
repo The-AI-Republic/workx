@@ -209,7 +209,13 @@ export class AgentSession {
    * Registry-level aggregates (activeSessionCount, maxConcurrent) are added
    * by the service handler — they don't belong on a single session.
    */
-  getState(): { sessionId: string; isActiveTurn: boolean; tabId: number | null; history: unknown[] } {
+  getState(): {
+    sessionId: string;
+    isActiveTurn: boolean;
+    tabId: number | null;
+    workingDirectory?: string;
+    history: unknown[];
+  } {
     if (!this._agent) {
       return {
         sessionId: this._sessionId,
@@ -226,6 +232,7 @@ export class AgentSession {
       sessionId: this._sessionId,
       isActiveTurn: session.isActiveTurn(),
       tabId: session.getTabId(),
+      workingDirectory: session.getWorkingDirectory?.(),
       history: conversationHistory.items,
     };
   }

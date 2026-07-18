@@ -1,10 +1,9 @@
 /**
- * Shared per-session scope for the code-mode file/search tools.
+ * Shared per-session scope for the file/search tools.
  *
  * read/edit/write (FileAccessTool) AND grep/glob (FileSearchTool) must apply
- * the SAME gates — code-mode only (§4.2), workspace required (R8) — so the
- * jail anchor is identical and cannot drift between the two tool families.
- * This is the single place that reads the §4.5 metadata seam.
+ * the SAME workspace requirement so the root cannot drift between tool
+ * families. Mode is intentionally prompt emphasis, not a permission gate.
  */
 
 import type { ToolContext } from '../BaseTool';
@@ -15,22 +14,17 @@ export interface SessionScope {
   workspaceRoot?: string;
   /** Read-before-edit substrate. Only the file-access tools consume it. */
   cache?: FileStateCache;
-  /** Per-session persona mode (§4.2). Undefined ⇒ session-less path. */
-  agentMode?: string;
 }
 
-/** Pull the §4.5-seam handles out of ToolContext.metadata (any may be absent). */
+/** Pull trusted folder context plus the private cache handle from ToolContext. */
 export function sessionScope(context: ToolContext): SessionScope {
   const m = context.metadata ?? {};
+  const workingDirectory = context.executionContext?.workspace?.workingDirectory;
   return {
-    workspaceRoot: typeof m.workspaceRoot === 'string' && m.workspaceRoot.trim() ? m.workspaceRoot : undefined,
+    workspaceRoot: workingDirectory?.trim() || undefined,
     cache: (m.fileStateCache as FileStateCache | undefined) ?? undefined,
-    agentMode: typeof m.agentMode === 'string' ? m.agentMode : undefined,
   };
 }
 
-export const NOT_CODE_MODE_MSG =
-  'The file tools are available in Code mode only. Switch this session to Code mode to read/edit/write project files.';
-
 export const NO_WORKSPACE_MSG =
-  'No project folder is selected. Code-mode file tools are disabled until you choose a workspace folder in WorkX settings.';
+  'No working folder is selected. Choose one above the message input before using file tools.';

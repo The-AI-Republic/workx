@@ -9,6 +9,8 @@
  */
 
 import { exec as execCommand, type ExecException } from 'node:child_process';
+import { isAbsolute, resolve } from 'node:path';
+import type { ToolContext } from '../../../tools/BaseTool';
 import { SecurityFilter, type SecurityConfig, type FilterResult } from './SecurityFilter';
 import {
   SandboxManager,
@@ -91,7 +93,6 @@ const DEFAULT_OPTIONS: ExecuteOptions = {
  * and optional OS-native sandbox protection.
  */
 export class TerminalTool {
-  private defaultCwd: string | null = null;
   private securityFilter: SecurityFilter;
   private sandboxManager: SandboxManager;
 
@@ -176,7 +177,7 @@ export class TerminalTool {
     try {
       const result = await this.executeInRuntime({
         command,
-        cwd: opts.cwd || this.defaultCwd,
+        cwd: opts.cwd,
         env: opts.env,
         timeout: opts.timeout,
         captureStdout: opts.captureStdout,
@@ -244,13 +245,6 @@ export class TerminalTool {
   }
 
   /**
-   * Set default working directory
-   */
-  setDefaultCwd(cwd: string): void {
-    this.defaultCwd = cwd;
-  }
-
-  /**
    * Get the tool definition for agent integration.
    * Generates dynamic descriptions based on execution mode and sandbox status.
    */
@@ -267,9 +261,10 @@ export class TerminalTool {
         type: 'string',
         description: 'The command to execute',
       },
-      cwd: {
+      workdir: {
         type: 'string',
-        description: 'Working directory (optional)',
+        description:
+          'Optional directory for this command. Relative paths resolve from the session working folder; absolute paths apply to this command only.',
       },
       timeout: {
         type: 'number',
@@ -281,15 +276,9 @@ export class TerminalTool {
     if (mode === 'auto') {
       properties.sandboxed = {
         type: 'boolean',
-        description:
-          "Whether to run in a sandboxed environment. Only applicable in 'auto' mode. " +
-          'When sandboxed=true, the command runs inside an OS-native sandbox that enforces: ' +
-          '(1) file writes and deletes are RESTRICTED to the working directory (cwd), temp directories, ' +
-          'and package manager caches — any attempt to create, modify, or delete files outside these paths ' +
-          'will fail with a permission error; (2) file reads are allowed system-wide; (3) network access is allowed. ' +
-          'Set sandboxed=true for commands that modify files, install packages, delete content, or carry elevated risk. ' +
-          "Set sandboxed=false for read-only commands (ls, cat, git status, grep, find). " +
-          "Ignored in 'safe' mode (always sandboxed) and 'power' mode (never sandboxed).",
+        description: sandboxStatus?.status === 'available'
+          ? "Whether to run in the configured sandbox. Only applicable in 'auto' mode."
+          : 'Sandboxing is not available in the desktop runtime yet. sandboxed=true will be rejected; sandboxed=false runs on the host.',
       };
     }
 
@@ -316,6 +305,16 @@ export class TerminalTool {
     const statusStr = sandboxStatus
       ? `${sandboxStatus.status} (${sandboxStatus.runtime})`
       : 'unknown';
+
+    if (sandboxStatus?.status !== 'available') {
+      return (
+        `Execute terminal/shell commands on the local system. ${shellInfo}\n\n` +
+        'Commands start in the session working folder unless workdir selects another directory for that command. ' +
+        'The working folder is not a filesystem security boundary: host commands may access paths outside it. ' +
+        'Sandboxed terminal execution is not available in the desktop runtime yet, so sandboxed=true is rejected. ' +
+        `Sandbox status: ${statusStr}. Commands still pass through the terminal security filter and approval flow.`
+      );
+    }
 
     switch (mode) {
       case 'safe':
@@ -380,16 +379,33 @@ export class TerminalTool {
    */
   async handleInvocation(input: {
     command: string;
-    cwd?: string;
+    workdir?: string;
     timeout?: number;
     userConfirmed?: boolean;
     sandboxed?: boolean;
-  }): Promise<string> {
+  }, context?: ToolContext): Promise<string> {
     // Reload config so setting changes take effect without restart
     await this.sandboxManager.reloadConfig();
 
+    const sessionWorkingDirectory = context?.executionContext?.workspace?.workingDirectory;
+    let commandWorkingDirectory = sessionWorkingDirectory;
+    if (input.workdir?.trim()) {
+      const requested = input.workdir.trim();
+      if (isAbsolute(requested)) {
+        commandWorkingDirectory = requested;
+      } else if (sessionWorkingDirectory) {
+        commandWorkingDirectory = resolve(sessionWorkingDirectory, requested);
+      } else {
+        return 'Command failed: a relative workdir requires a session working folder.';
+      }
+    }
+
+    if (!commandWorkingDirectory) {
+      return 'Command failed: no working folder is available for this session.';
+    }
+
     const result = await this.execute(input.command, {
-      cwd: input.cwd,
+      cwd: commandWorkingDirectory,
       timeout: input.timeout,
       userConfirmed: input.userConfirmed,
       sandboxed: input.sandboxed,

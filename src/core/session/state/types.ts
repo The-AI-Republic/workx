@@ -6,6 +6,7 @@ import type { ReviewDecision } from '../../protocol/types';
 import type { SessionTask } from '../../tasks/SessionTask';
 import type { BackgroundAgentTaskState } from '../../tasks/types';
 import type { AgentContext } from '../../../tools/AgentTool/types';
+import type { SessionWorkspace } from '../../TurnExecutionContext';
 
 /**
  * Track 12: the real rate-limit snapshot shape is the percent-window model
@@ -177,7 +178,13 @@ export interface ConfigureSession {
 export type InitialHistory =
   | { mode: 'new' }
   | { mode: 'resumed'; sessionId: string; rolloutItems: any[] } // RolloutItem[] from rollout
-  | { mode: 'forked'; rolloutItems: any[]; sourceConversationId: string };
+  | {
+      mode: 'forked';
+      rolloutItems: any[];
+      sourceConversationId: string;
+      /** Forks (rewinds, sub-agents, shadow agents) inherit their parent folder. */
+      workspace?: SessionWorkspace;
+    };
 
 /**
  * Type guards for InitialHistory modes
@@ -190,6 +197,6 @@ export function isResumedHistory(history: InitialHistory): history is { mode: 'r
   return history.mode === 'resumed';
 }
 
-export function isForkedHistory(history: InitialHistory): history is { mode: 'forked'; rolloutItems: any[]; sourceConversationId: string } {
+export function isForkedHistory(history: InitialHistory): history is Extract<InitialHistory, { mode: 'forked' }> {
   return history.mode === 'forked';
 }

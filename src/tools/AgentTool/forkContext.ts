@@ -30,10 +30,14 @@ export function buildForkedSubAgentInitialHistory(
   const sourceItems = parentSession.getConversationHistory().items as ResponseItem[];
   const rolloutItems = responseItemsToRolloutItems(sourceItems);
   const trimmed = pairingTrim(rolloutItems);
+  const workingDirectory = parentSession.getWorkingDirectory?.();
 
   return {
     mode: 'forked',
     sourceConversationId: parentSession.getSessionId(),
+    ...(workingDirectory
+      ? { workspace: { workingDirectory } }
+      : {}),
     rolloutItems: [
       ...trimmed,
       {
