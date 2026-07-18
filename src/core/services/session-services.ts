@@ -20,6 +20,11 @@ import {
 import { RolloutRecorder, type Cursor } from '@/storage/rollout';
 import { RolloutForkWriter } from '@/core/thread/RolloutForkWriter';
 import { SessionServiceError } from './SessionServiceError';
+import {
+  finishResponseLatencyTrace,
+  markResponseLatency,
+  startResponseLatencyTrace,
+} from '@/core/diagnostics/responseLatency';
 
 export interface SessionServiceDeps {
   /** Registry for multi-session management (required). */
@@ -132,26 +137,54 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
     },
 
     'session.submit': async (params) => {
-      const { sessionId, clientMessageId, items, tabId } = (params ?? {}) as {
+      const { sessionId, clientMessageId, items, tabId, responseLatencyStartedAtMs } = (params ?? {}) as {
         sessionId?: string;
         clientMessageId?: string;
         items?: Extract<import('@/core/protocol/types').Op, { type: 'UserInput' }>['items'];
         tabId?: number;
+        responseLatencyStartedAtMs?: number;
       };
       if (!sessionId) throw new Error('sessionId is required');
       if (!clientMessageId) throw new Error('clientMessageId is required');
       if (!items) throw new Error('items are required');
-      if (registry.enqueueSubmission) {
-        return registry.enqueueSubmission({
-          sessionId,
+      startResponseLatencyTrace({
+        sessionId,
+        clientMessageId,
+        startedAtMs: responseLatencyStartedAtMs,
+      });
+      try {
+        if (registry.enqueueSubmission) {
+          const result = await registry.enqueueSubmission({
+            sessionId,
+            clientMessageId,
+            op: { type: 'UserInput', items },
+            tabId,
+          });
+          markResponseLatency(
+            clientMessageId,
+            result.status === 'accepted'
+              ? 'service_ack_accepted'
+              : result.status === 'queued'
+                ? 'service_ack_queued'
+                : 'service_ack_rejected',
+          );
+          if (result.status === 'rejected') {
+            finishResponseLatencyTrace(clientMessageId, 'submission_rejected');
+          }
+          return result;
+        }
+        if (!registry.submitToSession) throw new Error('Managed session submit is unavailable');
+        const submissionId = await registry.submitToSession(sessionId, {
+          type: 'UserInput',
+          items,
           clientMessageId,
-          op: { type: 'UserInput', items },
-          tabId,
         });
+        markResponseLatency(clientMessageId, 'service_ack_accepted');
+        return { status: 'accepted', clientMessageId, submissionId };
+      } catch (error) {
+        finishResponseLatencyTrace(clientMessageId, 'submission_failed');
+        throw error;
       }
-      if (!registry.submitToSession) throw new Error('Managed session submit is unavailable');
-      const submissionId = await registry.submitToSession(sessionId, { type: 'UserInput', items });
-      return { status: 'accepted', clientMessageId, submissionId };
     },
 
     'session.attach': async (params) => {

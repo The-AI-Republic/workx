@@ -810,6 +810,7 @@
 
     // Add user message to processedEvents for chronological ordering
     const clientMessageId = crypto.randomUUID();
+    const responseLatencyStartedAtMs = Date.now();
     const userEvent: ProcessedEvent = {
       id: `user:${clientMessageId}`,
       category: 'message',
@@ -825,7 +826,7 @@
       clientMessageId,
       status: 'sending',
       text,
-      createdAt: Date.now(),
+      createdAt: responseLatencyStartedAtMs,
     });
     saveThreadState(sessionId);
 
@@ -840,6 +841,7 @@
         clientMessageId,
         items,
         tabId: currentTabId,
+        responseLatencyStartedAtMs,
       });
       threadStore.applySubmitAck(sessionId, ack);
       if (ack.status === 'rejected') {

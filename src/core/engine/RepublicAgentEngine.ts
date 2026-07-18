@@ -17,6 +17,10 @@ import type {
 import { CommandQueue } from '../queue/CommandQueue';
 import { priorityForOp } from '../queue/priorityForOp';
 import { ShadowAgentScheduler } from '../shadowAgent/ShadowAgentScheduler';
+import {
+  finishResponseLatencyTrace,
+  markResponseLatency,
+} from '../diagnostics/responseLatency';
 
 export interface TrackedEngineSubmission {
   submissionId: string;
@@ -516,17 +520,29 @@ export class RepublicAgentEngine {
         const queued = this.submissionQueue.dequeue();
         if (!queued) break;
         const submission = queued.payload;
+        const responseLatencyId = submission.op.type === 'UserInput'
+          ? submission.op.clientMessageId
+          : undefined;
         const tracked = this.trackedSubmissions.get(submission.id);
         if (tracked?.controller.signal.aborted) {
+          finishResponseLatencyTrace(responseLatencyId, 'submission_cancelled');
           this.settleTracked(submission.id, 'cancelled');
           this.trackedSubmissions.delete(submission.id);
           continue;
         }
         if (tracked) tracked.started = true;
+        markResponseLatency(responseLatencyId, 'engine_submission_dequeued', {
+          queue_depth: this.submissionQueue.length,
+          queue_wait_ms: Date.now() - submission.timestamp,
+        });
         try {
           await this.handleSubmission(submission, tracked?.controller.signal);
           this.settleTracked(submission.id, 'completed');
         } catch (error) {
+          finishResponseLatencyTrace(
+            responseLatencyId,
+            tracked?.controller.signal.aborted ? 'submission_cancelled' : 'submission_failed',
+          );
           this.settleTracked(
             submission.id,
             tracked?.controller.signal.aborted ? 'cancelled' : 'failed',
@@ -649,9 +665,13 @@ export class RepublicAgentEngine {
       if (!turnContext) {
         throw new Error('Turn context not initialized');
       }
+      markResponseLatency(clientMessageId, 'engine_input_prepared', {
+        item_count: protocolItems.length,
+      });
 
       // Create RegularTask and delegate to Session.spawnTask()
       // Pass maxTurns from engine config so sub-agents enforce their turn limits.
+      const taskLoadStartedAt = Date.now();
       const { RegularTask } = await import('../tasks/RegularTask');
       const task = new RegularTask({
         maxTurns: this.config.maxTurns,
@@ -659,8 +679,12 @@ export class RepublicAgentEngine {
         clientMessageId,
         inputDigest,
       });
+      markResponseLatency(clientMessageId, 'regular_task_ready', {
+        duration_ms: Date.now() - taskLoadStartedAt,
+      });
 
       await this.session.spawnTask(task, turnContext, submissionId, protocolItems);
+      markResponseLatency(clientMessageId, 'task_spawn_requested');
 
       // Session.spawnTask() is fire-and-forget.
       // Task completion/abort events are emitted by Session via the event emitter

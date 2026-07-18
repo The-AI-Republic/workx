@@ -42,6 +42,11 @@ import { SessionServiceError } from '../services/SessionServiceError';
 import { invalidateRolloutSnapshot } from '../thread/loadRolloutSnapshot';
 import type { RebuildReason } from '../RepublicAgent';
 import type { AgentMode } from '../../prompts/PromptComposer';
+import {
+  finishResponseLatencyTrace,
+  markResponseLatency,
+  setResponseLatencySubmissionId,
+} from '../diagnostics/responseLatency';
 import type {
   SessionConfig,
   SessionMetadata,
@@ -104,6 +109,14 @@ type EnqueueSubmissionResult =
   | { status: 'accepted'; clientMessageId: string; submissionId: string }
   | { status: 'queued'; clientMessageId: string; position: number; phase: 'capacity' | 'hydration' | 'suspension'; capacityPosition?: number }
   | { status: 'rejected'; clientMessageId: string; reason: 'queue-full' | 'deleted' | 'busy' | 'not-found' | 'client-id-conflict' | 'submit-failed' };
+
+function rejectedSubmission(
+  clientMessageId: string,
+  reason: Extract<EnqueueSubmissionResult, { status: 'rejected' }>['reason'],
+): EnqueueSubmissionResult {
+  finishResponseLatencyTrace(clientMessageId, 'submission_rejected');
+  return { status: 'rejected', clientMessageId, reason };
+}
 
 /**
  * SessionManager manages multiple RepublicAgent instances, each wrapped in an AgentSession.
@@ -952,6 +965,7 @@ export class SessionManager {
   }
 
   enqueueSubmission(input: EnqueueSubmissionInput): Promise<EnqueueSubmissionResult> {
+    markResponseLatency(input.clientMessageId, 'manager_enqueue_requested');
     return this._submissionEnqueueOperations.run(
       input.sessionId,
       () => this.enqueueSubmissionLocked(input),
@@ -959,15 +973,27 @@ export class SessionManager {
   }
 
   private async enqueueSubmissionLocked(input: EnqueueSubmissionInput): Promise<EnqueueSubmissionResult> {
+    markResponseLatency(input.clientMessageId, 'manager_lock_acquired');
+    let phaseStartedAt = Date.now();
     await this.ensureRecoveryLoaded(input.sessionId);
+    markResponseLatency(input.clientMessageId, 'recovery_loaded', {
+      duration_ms: Date.now() - phaseStartedAt,
+    });
     const key = `${input.sessionId}:${input.clientMessageId}`;
+    phaseStartedAt = Date.now();
     const digest = await sha256(stableJson(input.op.items) ?? 'null');
+    markResponseLatency(input.clientMessageId, 'input_digest_computed', {
+      duration_ms: Date.now() - phaseStartedAt,
+      item_count: input.op.items.length,
+    });
     const prior = this._submissionDedupe.get(key);
     if (prior) {
       if (prior.digest !== digest) {
-        return { status: 'rejected', clientMessageId: input.clientMessageId, reason: 'client-id-conflict' };
+        return rejectedSubmission(input.clientMessageId, 'client-id-conflict');
       }
       if (prior.status === 'accepted' && prior.submissionId) {
+        setResponseLatencySubmissionId(input.clientMessageId, prior.submissionId);
+        finishResponseLatencyTrace(input.clientMessageId, 'submission_deduplicated');
         return {
           status: 'accepted',
           clientMessageId: input.clientMessageId,
@@ -975,11 +1001,7 @@ export class SessionManager {
         };
       }
       if (prior.status === 'failed') {
-        return {
-          status: 'rejected',
-          clientMessageId: input.clientMessageId,
-          reason: 'submit-failed',
-        };
+        return rejectedSubmission(input.clientMessageId, 'submit-failed');
       }
       const queue = this._pendingSubmissions.get(input.sessionId) ?? [];
       const phase = this.submissionQueuePhase(input.sessionId);
@@ -995,15 +1017,20 @@ export class SessionManager {
     }
 
     if (this._deletionClaims.has(input.sessionId)) {
-      return { status: 'rejected', clientMessageId: input.clientMessageId, reason: 'deleted' };
+      return rejectedSubmission(input.clientMessageId, 'deleted');
     }
 
+    phaseStartedAt = Date.now();
     const entry = await this._registryConfig.threadIndexStore?.get(input.sessionId, true);
+    markResponseLatency(input.clientMessageId, 'thread_index_checked', {
+      duration_ms: Date.now() - phaseStartedAt,
+      entry_found: entry !== undefined,
+    });
     if (this._registryConfig.threadIndexStore && !entry) {
-      return { status: 'rejected', clientMessageId: input.clientMessageId, reason: 'not-found' };
+      return rejectedSubmission(input.clientMessageId, 'not-found');
     }
     if (entry?.deletedAt !== null) {
-      return { status: 'rejected', clientMessageId: input.clientMessageId, reason: 'deleted' };
+      return rejectedSubmission(input.clientMessageId, 'deleted');
     }
     const correlatedOp = {
       ...input.op,
@@ -1014,6 +1041,7 @@ export class SessionManager {
     const runtimeState = this.runtimeView(input.sessionId, live).state;
     if (live && runtimeState !== 'hydrating' && runtimeState !== 'suspending'
       && runtimeState !== 'deleting') {
+      markResponseLatency(input.clientMessageId, 'manager_route_live');
       return this._sessionOperations.run(input.sessionId, () => this.submitLiveLocked(
         input,
         correlatedOp,
@@ -1021,6 +1049,15 @@ export class SessionManager {
       ));
     }
 
+    const queuePhase = this.submissionQueuePhase(input.sessionId);
+    markResponseLatency(
+      input.clientMessageId,
+      queuePhase === 'capacity'
+        ? 'manager_route_queued_capacity'
+        : queuePhase === 'suspension'
+          ? 'manager_route_queued_suspension'
+          : 'manager_route_queued_hydration',
+    );
     return this.queueSubmission(input, correlatedOp, digest);
   }
 
@@ -1030,14 +1067,18 @@ export class SessionManager {
     digest: string,
   ): Promise<EnqueueSubmissionResult> {
     if (this._deletionClaims.has(input.sessionId)) {
-      return { status: 'rejected', clientMessageId: input.clientMessageId, reason: 'deleted' };
+      return rejectedSubmission(input.clientMessageId, 'deleted');
     }
+    const indexStartedAt = Date.now();
     const entry = await this._registryConfig.threadIndexStore?.get(input.sessionId, true);
+    markResponseLatency(input.clientMessageId, 'live_thread_index_checked', {
+      duration_ms: Date.now() - indexStartedAt,
+    });
     if (this._registryConfig.threadIndexStore && !entry) {
-      return { status: 'rejected', clientMessageId: input.clientMessageId, reason: 'not-found' };
+      return rejectedSubmission(input.clientMessageId, 'not-found');
     }
     if (entry?.deletedAt !== null) {
-      return { status: 'rejected', clientMessageId: input.clientMessageId, reason: 'deleted' };
+      return rejectedSubmission(input.clientMessageId, 'deleted');
     }
     const live = this._sessions.get(input.sessionId);
     const runtimeState = this.runtimeView(input.sessionId, live).state;
@@ -1045,23 +1086,33 @@ export class SessionManager {
       return this.queueSubmission(input, correlatedOp, digest);
     }
     if (runtimeState === 'deleting') {
-      return { status: 'rejected', clientMessageId: input.clientMessageId, reason: 'deleted' };
+      return rejectedSubmission(input.clientMessageId, 'deleted');
     }
     if (runtimeState === 'running' || live.state === 'active' || live.hasLiveBackgroundWork()) {
-      return { status: 'rejected', clientMessageId: input.clientMessageId, reason: 'busy' };
+      return rejectedSubmission(input.clientMessageId, 'busy');
     }
     try {
       this.transitionRuntime(input.sessionId, 'running');
+      const submitStartedAt = Date.now();
+      markResponseLatency(input.clientMessageId, 'live_submit_started');
       const submissionId = await live.submit(correlatedOp, {
         tabId: input.tabId,
         ...input.context,
+      });
+      setResponseLatencySubmissionId(input.clientMessageId, submissionId);
+      markResponseLatency(input.clientMessageId, 'live_submit_returned', {
+        duration_ms: Date.now() - submitStartedAt,
       });
       this.rememberSubmissionDedupe(input.sessionId, input.clientMessageId, {
         digest,
         status: 'accepted',
         submissionId,
       });
+      const touchStartedAt = Date.now();
       await this.touchThread(input.sessionId);
+      markResponseLatency(input.clientMessageId, 'thread_index_touched', {
+        duration_ms: Date.now() - touchStartedAt,
+      });
       this.emitSubmissionState(input.sessionId, input.clientMessageId, 'accepted', submissionId);
       return { status: 'accepted', clientMessageId: input.clientMessageId, submissionId };
     } catch {
@@ -1070,7 +1121,7 @@ export class SessionManager {
         digest,
         status: 'failed',
       });
-      return { status: 'rejected', clientMessageId: input.clientMessageId, reason: 'submit-failed' };
+      return rejectedSubmission(input.clientMessageId, 'submit-failed');
     }
   }
 
@@ -1080,14 +1131,14 @@ export class SessionManager {
     digest: string,
   ): EnqueueSubmissionResult {
     if (this._deletionClaims.has(input.sessionId)) {
-      return { status: 'rejected', clientMessageId: input.clientMessageId, reason: 'deleted' };
+      return rejectedSubmission(input.clientMessageId, 'deleted');
     }
 
     const queue = this._pendingSubmissions.get(input.sessionId) ?? [];
     const waitingSessionCount = [...this._pendingSubmissions.values()].filter((items) => items.length > 0).length;
     if (queue.length >= this._maxPendingPerSession
       || (queue.length === 0 && waitingSessionCount >= this._maxPendingHydrations)) {
-      return { status: 'rejected', clientMessageId: input.clientMessageId, reason: 'queue-full' };
+      return rejectedSubmission(input.clientMessageId, 'queue-full');
     }
     queue.push({
       clientMessageId: input.clientMessageId,
@@ -1100,6 +1151,10 @@ export class SessionManager {
     this._submissionDedupe.set(`${input.sessionId}:${input.clientMessageId}`, {
       digest,
       status: 'queued',
+    });
+    markResponseLatency(input.clientMessageId, 'submission_queued', {
+      session_depth: queue.length,
+      global_depth: this.pendingSubmissionCount(),
     });
     logEvent('session_submission_queued', {
       session_depth: queue.length,
@@ -1205,7 +1260,16 @@ export class SessionManager {
     this._drainingSubmissions.add(sessionId);
     try {
       try {
+        const hydrateStartedAt = Date.now();
+        for (const item of this._pendingSubmissions.get(sessionId) ?? []) {
+          markResponseLatency(item.clientMessageId, 'hydration_started');
+        }
         await this.hydrateSession(sessionId);
+        for (const item of this._pendingSubmissions.get(sessionId) ?? []) {
+          markResponseLatency(item.clientMessageId, 'hydration_finished', {
+            duration_ms: Date.now() - hydrateStartedAt,
+          });
+        }
       } catch (error) {
         if (error instanceof ManagedCapacityUnavailableError) return;
         await this._sessionOperations.run(sessionId, async () => {
@@ -1216,6 +1280,7 @@ export class SessionManager {
               digest: item.digest,
               status: 'failed',
             });
+            finishResponseLatencyTrace(item.clientMessageId, 'submission_failed');
             this.emitSubmissionState(sessionId, item.clientMessageId, 'failed', undefined, 'hydration-failed');
           }
         });
@@ -1243,16 +1308,26 @@ export class SessionManager {
     if (queue?.length === 0) this._pendingSubmissions.delete(sessionId);
     try {
       this.transitionRuntime(sessionId, 'running');
+      const submitStartedAt = Date.now();
+      markResponseLatency(next.clientMessageId, 'queued_submit_started');
       const submissionId = await session.submit(next.op, {
         tabId: next.tabId,
         ...next.context,
+      });
+      setResponseLatencySubmissionId(next.clientMessageId, submissionId);
+      markResponseLatency(next.clientMessageId, 'queued_submit_returned', {
+        duration_ms: Date.now() - submitStartedAt,
       });
       this.rememberSubmissionDedupe(sessionId, next.clientMessageId, {
         digest: next.digest,
         status: 'accepted',
         submissionId,
       });
+      const touchStartedAt = Date.now();
       await this.touchThread(sessionId);
+      markResponseLatency(next.clientMessageId, 'thread_index_touched', {
+        duration_ms: Date.now() - touchStartedAt,
+      });
       this.emitSubmissionState(sessionId, next.clientMessageId, 'accepted', submissionId);
     } catch {
       this.transitionRuntime(sessionId, 'idle');
@@ -1260,6 +1335,7 @@ export class SessionManager {
         digest: next.digest,
         status: 'failed',
       });
+      finishResponseLatencyTrace(next.clientMessageId, 'submission_failed');
       this.emitSubmissionState(sessionId, next.clientMessageId, 'failed', undefined, 'submit-failed');
     }
   }

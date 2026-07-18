@@ -13,6 +13,11 @@ import { calculateUSDCost } from './models/cost/cost';
 import { AgentConfig } from '../config/AgentConfig';
 import type { PromptRuntimeContext } from './PromptLoader';
 import { DEFAULT_MODE, type AgentMode } from '../prompts/PromptComposer';
+import {
+  finishResponseLatencyTrace,
+  markResponseLatency,
+  markResponseLatencyOnce,
+} from './diagnostics/responseLatency';
 import type {
   CompactionCompletedEvent,
   EventMsg,
@@ -206,24 +211,36 @@ export class TurnManager {
   /**
    * Run a complete turn with retry logic
    */
-  async runTurn(input: any[]): Promise<TurnRunResult> {
+  async runTurn(input: any[], responseLatencyId?: string): Promise<TurnRunResult> {
     // Build tools list from turn context
+    let phaseStartedAt = Date.now();
     const tools = await this.buildToolsFromContext();
+    markResponseLatency(responseLatencyId, 'tools_ready', {
+      duration_ms: Date.now() - phaseStartedAt,
+      tool_count: tools.length,
+    });
 
     // Reload the system prompt per turn so dynamic prompt extensions (notably the
     // memory extension that injects core-memory.md) reflect the latest state.
     // loadPrompt() is in-memory templating with no I/O, so the cost is negligible.
     // Falls back to the value cached on TurnContext if reload throws.
     let baseInstructions: string | undefined;
+    let promptFallbackUsed = false;
+    phaseStartedAt = Date.now();
     try {
       const runtime = this.getPromptRuntimeContext();
       const promptLoader = this.session.getPromptLoader();
       if (!promptLoader) throw new Error('Session prompt loader is not configured');
       baseInstructions = await promptLoader.load(this.getAgentMode(), runtime);
     } catch (err) {
+      promptFallbackUsed = true;
       console.warn('[TurnManager] loadPrompt() failed, reusing cached base instructions:', err);
       baseInstructions = this.turnContext.getBaseInstructions();
     }
+    markResponseLatency(responseLatencyId, 'prompt_ready', {
+      duration_ms: Date.now() - phaseStartedAt,
+      fallback_used: promptFallbackUsed,
+    });
 
     let currentInput = input;
     let currentBaseInstructions = this.withToolExposureReminder(baseInstructions);
@@ -239,6 +256,7 @@ export class TurnManager {
     // Track 12: resolve the configured fallback model (composite key) once per
     // turn. On sustained provider overload the orchestrator swaps to it.
     let fallbackModelKey: string | undefined;
+    phaseStartedAt = Date.now();
     try {
       const agentConfig = await AgentConfig.getInstance();
       const currentKey = this.turnContext.getSelectedModelKey();
@@ -247,12 +265,16 @@ export class TurnManager {
     } catch {
       fallbackModelKey = undefined;
     }
+    markResponseLatency(responseLatencyId, 'retry_policy_ready', {
+      duration_ms: Date.now() - phaseStartedAt,
+      fallback_configured: fallbackModelKey !== undefined,
+    });
 
     // Track 12: a single retry orchestrator wraps the whole turn. Each retry
     // re-runs tryRunTurn from rebuilt clean history (workx records history
     // only on turn success — orphan-free by construction).
     try {
-      const result = await withModelRetry(() => this.tryRunTurn(buildPrompt()), {
+      const result = await withModelRetry(() => this.tryRunTurn(buildPrompt(), responseLatencyId), {
         maxRetries,
         unattended: this.turnContext.getUnattended(),
         resetCapMs: this.turnContext.getUnattendedResetCapMs(),
@@ -370,15 +392,27 @@ export class TurnManager {
   /**
    * Attempt to run a turn once (without retry logic)
    */
-  private async tryRunTurn(prompt: ModelPrompt): Promise<TurnRunResult> {
+  private async tryRunTurn(
+    prompt: ModelPrompt,
+    responseLatencyId?: string,
+  ): Promise<TurnRunResult> {
     // Record turn context
+    const turnContextStartedAt = Date.now();
     await this.recordTurnContext();
+    markResponseLatency(responseLatencyId, 'turn_context_persisted', {
+      duration_ms: Date.now() - turnContextStartedAt,
+    });
 
     // Process missing call IDs (calls that were interrupted)
     const processedPrompt = this.processMissingCalls(prompt);
 
     // Start model streaming (using new Prompt-based stream() API)
+    const streamStartedAt = Date.now();
+    markResponseLatency(responseLatencyId, 'provider_stream_requested');
     const stream = await this.turnContext.getModelClient().stream(processedPrompt);
+    markResponseLatency(responseLatencyId, 'provider_stream_opened', {
+      duration_ms: Date.now() - streamStartedAt,
+    });
 
     const processedItems: ProcessedResponseItem[] = [];
     let totalTokenUsage: TokenUsage | undefined;
@@ -420,6 +454,9 @@ export class TurnManager {
         if (!event) {
           throw new Error('stream closed before response.completed');
         }
+        markResponseLatencyOnce(responseLatencyId, 'first_provider_event', {
+          created_event: event.type === 'Created',
+        });
 
         // Process the event based on ResponseEvent type
         switch (event.type) {
@@ -453,6 +490,9 @@ export class TurnManager {
               item: event.item,
               response,
             });
+            finishResponseLatencyTrace(responseLatencyId, 'first_visible_response', {
+              output_item: true,
+            });
             break;
           }
 
@@ -461,6 +501,9 @@ export class TurnManager {
             await this.emitEvent({
               type: 'WebSearchBegin',
               data: { call_id: event.callId },
+            });
+            finishResponseLatencyTrace(responseLatencyId, 'first_visible_response', {
+              web_search: true,
             });
             break;
 
@@ -524,6 +567,7 @@ export class TurnManager {
                 p.item?.type === 'function_call' ||
                 p.item?.type === 'custom_tool_call',
             );
+            finishResponseLatencyTrace(responseLatencyId, 'completed_without_visible_response');
 
             return {
               processedItems,
@@ -540,6 +584,9 @@ export class TurnManager {
               type: 'AgentMessageDelta',
               data: { delta: event.delta },
             });
+            finishResponseLatencyTrace(responseLatencyId, 'first_visible_response', {
+              text_delta: true,
+            });
             break;
 
           case 'ReasoningSummaryDelta':
@@ -549,6 +596,9 @@ export class TurnManager {
               type: 'AgentReasoningDelta',
               data: { delta: event.delta },
             });
+            finishResponseLatencyTrace(responseLatencyId, 'first_visible_response', {
+              reasoning_delta: true,
+            });
             break;
 
           case 'ReasoningContentDelta':
@@ -557,6 +607,9 @@ export class TurnManager {
               type: 'AgentReasoningDelta',
               data: { delta: event.delta },
             });
+            finishResponseLatencyTrace(responseLatencyId, 'first_visible_response', {
+              reasoning_delta: true,
+            });
             break;
 
           case 'ReasoningSummaryPartAdded':
@@ -564,6 +617,9 @@ export class TurnManager {
             await this.emitEvent({
               type: 'AgentReasoningSectionBreak',
               data: {},
+            });
+            finishResponseLatencyTrace(responseLatencyId, 'first_visible_response', {
+              reasoning_delta: true,
             });
             break;
 

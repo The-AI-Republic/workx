@@ -29,6 +29,12 @@ import {
 import { TokenUsageStore } from '@/storage/TokenUsageStore';
 import type { TokenUsageRecord } from '@/storage/types';
 import type { BrowserPageContext } from './platform/IPlatformAdapter';
+import {
+  finishResponseLatencyTrace,
+  markResponseLatency,
+  type ResponseLatencyMetadata,
+  type ResponseLatencyPhase,
+} from './diagnostics/responseLatency';
 
 /**
  * Task state for tracking execution
@@ -268,8 +274,17 @@ export class TaskRunner {
       this.state.tokenUsageDetail = undefined;
       this.state.lastAgentMessage = undefined;
 
+      this.markResponseLatency('task_run_started');
+      let phaseStartedAt = Date.now();
       await this.persistTurnStart();
+      this.markResponseLatency('turn_start_persisted', {
+        duration_ms: Date.now() - phaseStartedAt,
+      });
+      phaseStartedAt = Date.now();
       await this.emitTaskStarted();
+      this.markResponseLatency('task_started_emitted', {
+        duration_ms: Date.now() - phaseStartedAt,
+      });
 
       // Early exit for empty input tasks
       if (this.input.length === 0) {
@@ -280,14 +295,19 @@ export class TaskRunner {
           turnCount: 0,
           tokenUsage: {},
         });
+        this.finishResponseLatency('completed_without_visible_response');
         return { success: true };
       }
       // Await the durable user item before model execution so model memory and
       // the canonical history projection cannot diverge on an accepted send.
+      phaseStartedAt = Date.now();
       await this.session.recordInputAndRolloutUsermsg(
         this.input,
         this.options.clientMessageId,
       );
+      this.markResponseLatency('user_message_persisted', {
+        duration_ms: Date.now() - phaseStartedAt,
+      });
 
       const outcome = await this.runLoop(signal);
 
@@ -310,6 +330,7 @@ export class TaskRunner {
           );
         }
         await this.emitAbortedEvent(outcome.abortedReason);
+        this.finishResponseLatency('submission_cancelled');
 
         // Fire-and-forget: persist partial token usage + cost for aborted tasks
         this.persistTokenUsage(
@@ -327,6 +348,7 @@ export class TaskRunner {
       }
 
       await this.emitTaskComplete(outcome);
+      this.finishResponseLatency('completed_without_visible_response');
 
       this.state.status = 'completed';
       return {
@@ -334,6 +356,7 @@ export class TaskRunner {
         lastAgentMessage: outcome.lastAgentMessage,
       };
     } catch (error) {
+      this.finishResponseLatency(this.cancelled ? 'submission_cancelled' : 'submission_failed');
       const err = error instanceof Error ? error : new Error(String(error));
       // A descriptive reason so the UI shows more than a bare "Task failed"
       // (covers errors thrown with an empty message — name/cause are surfaced).
@@ -434,11 +457,23 @@ export class TaskRunner {
 
       const pendingInput = (await this.session.getPendingInput()) as ResponseItem[];
 
+      const turnInputStartedAt = Date.now();
       let turnInput = await this.buildNormalTurnInput(pendingInput);
+      this.markResponseLatency('turn_input_ready', {
+        duration_ms: Date.now() - turnInputStartedAt,
+        history_item_count: turnInput.length,
+        pending_item_count: pendingInput.length,
+      });
 
       // Pre-request compaction check: estimate tokens and compact if needed
       if (this.options.autoCompact && this.shouldCompactBeforeRequest(turnInput)) {
+        const compactionStartedAt = Date.now();
+        this.markResponseLatency('pre_request_compaction_started');
         const compacted = await this.attemptAutoCompact(turnCount, totalTokenUsage);
+        this.markResponseLatency('pre_request_compaction_finished', {
+          duration_ms: Date.now() - compactionStartedAt,
+          compacted,
+        });
         if (compacted) {
           compactionPerformed = true;
           turnInput = await this.buildNormalTurnInput([]);
@@ -465,6 +500,7 @@ export class TaskRunner {
       }
 
       try {
+        this.markResponseLatency('model_turn_requested');
         const turnResult = await this.runTurnWithTimeout(turnInput, signal);
         const processResult = await this.processTurnResult(turnResult);
 
@@ -588,9 +624,14 @@ export class TaskRunner {
       .sort();
 
     const registry = this.session.getToolRegistry?.();
+    const pageContextStartedAt = Date.now();
     const pageContext: BrowserPageContext = registry
       ? await registry.getCurrentPageContext().catch((): BrowserPageContext => ({}))
       : {};
+    this.markResponseLatency('task_page_context_loaded', {
+      duration_ms: Date.now() - pageContextStartedAt,
+      registry_available: registry !== undefined,
+    });
     const data: TaskStartedEvent = {
       submission_id: this.submissionId,
       model_context_window: contextWindow,
@@ -761,7 +802,7 @@ export class TaskRunner {
   private async runTurnWithTimeout(turnInput: ResponseItem[], signal?: AbortSignal): Promise<TurnRunResult> {
     const timeout = this.options.timeoutMs;
     const racers: Array<Promise<TurnRunResult>> = [
-      this.turnManager.runTurn(turnInput),
+      this.turnManager.runTurn(turnInput, this.options.clientMessageId),
     ];
 
     const cleanups: Array<() => void> = [];
@@ -1125,6 +1166,20 @@ export class TaskRunner {
       }],
       { required: true },
     );
+  }
+
+  private markResponseLatency(
+    phase: ResponseLatencyPhase,
+    metadata: ResponseLatencyMetadata = {},
+  ): void {
+    markResponseLatency(this.options.clientMessageId, phase, metadata);
+  }
+
+  private finishResponseLatency(
+    phase: ResponseLatencyPhase,
+    metadata: ResponseLatencyMetadata = {},
+  ): void {
+    finishResponseLatencyTrace(this.options.clientMessageId, phase, metadata);
   }
 
   private async persistTerminalMarker(
