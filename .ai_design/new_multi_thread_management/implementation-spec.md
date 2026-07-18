@@ -863,8 +863,9 @@ missing rollout IDs, so an interrupted migration/import is recoverable.
 Every rename/generated-title transaction updates both fields; reads lazily repair imported
 rows. `session.list` excludes deleted entries by default and sorts pinned first, then
 `lastActiveAt` descending, then `sessionId` ascending. It also runs the title reconciliation
-rule above. `lastActiveAt` is updated on accepted UserInput, terminal turn, and explicit
-user-navigation selection—not on streaming deltas or viewed heartbeat.
+rule above. `lastActiveAt` is updated when UserInput is accepted. Selecting a conversation,
+attaching, viewed heartbeats, streaming deltas, and terminal-turn completion do not reorder
+the history list.
 
 Index mutation service shapes:
 
@@ -980,15 +981,14 @@ disconnect identity. The webfront owns it:
 ```ts
 type SurfaceId = string; // crypto.randomUUID(), one per document lifetime
 
-session.setViewed({ surfaceId, sessionId, visible: true, touch: true })
+session.setViewed({ surfaceId, sessionId })
   -> { leaseExpiresAt: number };
-session.setViewed({ surfaceId, sessionId: null, visible: false });
-session.releaseSurface({ surfaceId });
+session.releaseSurface({ surfaceId, leaseId });
 ```
 
 - Heartbeat every 20 s while visible; lease TTL 60 s.
-- Initial user navigation sends `touch:true`; heartbeats send `touch:false` so they do not
-  continuously reorder the recent list. Bootstrap restoration also uses `touch:false`.
+- Navigation and restoration update only the viewed lease; neither changes ThreadIndex
+  recency. Accepted UserInput is the sole interactive recency trigger.
 - Best-effort release on `visibilitychange` hidden and `pagehide`.
 - One map entry per surface; setting another session atomically replaces the old one.
 - Lease records keep `selectedAt` separate from `expiresAt`; heartbeats extend only expiry.

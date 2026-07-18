@@ -42,7 +42,6 @@
     documentSurfaceId,
     type ThreadConversationState,
   } from '../../stores/threadStore';
-  import { MODES, DEFAULT_MODE, type AgentMode } from '@/prompts/PromptComposer';
   import { ThreadEventRouter } from '../../routing/ThreadEventRouter';
   import { handleBackgroundTaskEvent, startBackgroundTaskPolling, stopBackgroundTaskPolling } from '../../stores/backgroundTaskStore';
   import { projectReplay, projectRollout } from '../../lib/rolloutProjection';
@@ -1119,7 +1118,7 @@
       const listResponse = await c.serviceRequest<{
         entries: ThreadListItem[];
         nextCursor: string | null;
-      }>('session.list', { limit: 50 });
+      }>('session.list', { limit: 10 });
       const persistedSelection = get(threadStore).activeSessionId;
       threadStore.mergePage(listResponse?.entries ?? [], listResponse?.nextCursor ?? null, { reset: true });
 
@@ -1240,29 +1239,6 @@
     const next = threadStore.getActiveThread();
     if (next) await switchToThread(next.sessionId);
     else await createNewThread();
-  }
-
-  /**
-   * Request a per-session persona mode switch for the active thread.
-   * Backend is the source of truth — we do NOT flip the UI optimistically.
-   * The tab commits its mode only when a ModeChanged{applied:true} event
-   * arrives (see threadRouter.onChannel). Deferred switches surface as a
-   * pending state until the running task completes.
-   */
-  async function setSessionMode(mode: AgentMode) {
-    if (!activeSessionId || !client) return;
-    const sessionId = activeSessionId;
-    if (($activeThread?.agentMode ?? DEFAULT_MODE) === mode && !$activeThread?.pendingMode) return;
-    try {
-      threadStore.setThreadPendingMode(sessionId, mode);
-      await client.serviceRequest<{ entry: ThreadIndexEntry }>('session.setMode', {
-        sessionId,
-        mode,
-      });
-    } catch (error) {
-      threadStore.setThreadPendingMode(sessionId, null);
-      console.error('Failed to set session mode:', error);
-    }
   }
 
   function handleEventForSession(event: Event, sessionId: string) {
@@ -1505,33 +1481,6 @@
           </div>
           <div class="flex items-center space-x-2">
             <BackgroundTasksBadge />
-            {#if platform.platformName !== 'extension' && activeSessionId}
-              {@const activeMode = $activeThread?.agentMode ?? DEFAULT_MODE}
-              {@const pendingMode = $activeThread?.pendingMode ?? null}
-              <div class="flex items-center gap-1" role="group" aria-label={$_t("Agent mode")}>
-                {#each Object.values(MODES).filter((m) => !m.agentTypes || m.agentTypes.includes('workx') || m.agentTypes.includes('workx-server')) as modeSpec (modeSpec.id)}
-                  {@const isActive = activeMode === modeSpec.id && !pendingMode}
-                  {@const isPending = pendingMode === modeSpec.id}
-                  <button
-                    type="button"
-                    onclick={() => setSessionMode(modeSpec.id)}
-                    title={isPending ? $_t("Switching after current task…") : $_t("Switch agent mode")}
-                    aria-pressed={isActive}
-                    class="text-xs px-2 py-0.5 rounded font-[inherit] cursor-pointer transition-opacity
-                      {isActive
-                        ? (currentTheme === 'modern'
-                            ? 'bg-chat-accent/15 text-chat-accent dark:text-chat-accent-dark font-semibold'
-                            : 'bg-[rgba(34,197,94,0.15)] border border-term-dim-green text-term-bright-green')
-                        : (currentTheme === 'modern'
-                            ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:opacity-100 opacity-70'
-                            : 'text-term-dim-green hover:text-term-green opacity-70 hover:opacity-100')}
-                      {isPending ? 'animate-pulse' : ''}"
-                  >
-                    {modeSpec.label}{#if isPending}…{/if}
-                  </button>
-                {/each}
-              </div>
-            {/if}
             {#if isProcessing}
               <TerminalMessage type="warning" content={$_t("[PROCESSING]")} />
             {/if}

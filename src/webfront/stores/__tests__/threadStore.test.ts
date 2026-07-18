@@ -91,6 +91,15 @@ describe('canonical threadStore projection', () => {
     expect(storage.set.mock.calls[storage.set.mock.calls.length - 1]?.[1]).not.toHaveProperty('threads');
   });
 
+  it('does not reorder rows when the active selection changes', () => {
+    threadStore.mergePage([
+      { ...entry('newer', { lastActiveAt: 20 }), runtime },
+      { ...entry('older', { lastActiveAt: 10 }), runtime },
+    ], null);
+    threadStore.setActiveThread('older');
+    expect(get(threadStore).threads.map((row) => row.sessionId)).toEqual(['newer', 'older']);
+  });
+
   it('restores only a selection and waits for session.list to restore rows', async () => {
     storage.get.mockResolvedValue({
       activeSessionId: 'outside-first-page',

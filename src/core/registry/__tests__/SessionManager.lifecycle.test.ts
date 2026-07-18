@@ -343,6 +343,7 @@ describe('SessionManager lifecycle manager', () => {
 
   it('dedupes accepted submissions and rejects a reused client ID with different content', async () => {
     await registry.openSession({ sessionId: 'submit' });
+    await index.patch('submit', { lastActiveAt: 1 });
     await registry.hydrateSession('submit');
     const input = {
       sessionId: 'submit',
@@ -351,6 +352,7 @@ describe('SessionManager lifecycle manager', () => {
     };
     const accepted = await registry.enqueueSubmission(input);
     expect(accepted).toMatchObject({ status: 'accepted', clientMessageId: 'client-1' });
+    expect((await registry.getThread('submit')).lastActiveAt).toBeGreaterThan(1);
     await expect(registry.enqueueSubmission(input)).resolves.toEqual(accepted);
     await expect(registry.enqueueSubmission({
       ...input,
@@ -553,6 +555,7 @@ describe('SessionManager lifecycle manager', () => {
 
   it('reaches idle when terminal snapshot refresh fails', async () => {
     await registry.openSession({ sessionId: 'refresh-failure' });
+    await index.patch('refresh-failure', { lastActiveAt: 123 });
     await registry.hydrateSession('refresh-failure');
     const fakeSession = assembler.handles.get('refresh-failure')!.agent.getSession() as unknown as {
       setBusy(value: boolean): void;
@@ -570,6 +573,7 @@ describe('SessionManager lifecycle manager', () => {
     fakeSession.setBusy(false);
     await expect(handleWorkChange('refresh-failure')).resolves.toBeUndefined();
     expect((await registry.getThread('refresh-failure')).runtime.state).toBe('idle');
+    expect((await registry.getThread('refresh-failure')).lastActiveAt).toBe(123);
     expect(warning).toHaveBeenCalledWith(
       expect.stringContaining('Failed to refresh rollout snapshot'),
       expect.any(Error),
@@ -779,23 +783,24 @@ describe('SessionManager lifecycle manager', () => {
     });
   });
 
-  it('replaces viewed leases atomically and records explicit navigation as recency', async () => {
+  it('replaces viewed leases atomically without changing history recency', async () => {
     const openedA = await registry.openSession({ sessionId: 'older' });
     const openedB = await registry.openSession({ sessionId: 'newer' });
     await index.patch(openedA.sessionId, { lastActiveAt: 1 });
     await index.patch(openedB.sessionId, { lastActiveAt: 2 });
     const lease = await registry.setViewed('surface', 'older');
+    expect((await registry.getThread('older')).lastActiveAt).toBe(1);
     await expect(registry.resolveSurfaceLessTarget()).resolves.toBe('older');
     await expect(registry.setViewed('surface', 'missing')).rejects.toMatchObject({
       code: 'SESSION_NOT_FOUND',
     });
     await expect(registry.resolveSurfaceLessTarget()).resolves.toBe('older');
     await registry.releaseSurface('surface', lease.leaseId);
-    await expect(registry.resolveSurfaceLessTarget()).resolves.toBe('older');
-
-    await registry.deleteThread('older');
     await expect(registry.resolveSurfaceLessTarget()).resolves.toBe('newer');
+
     await registry.deleteThread('newer');
+    await expect(registry.resolveSurfaceLessTarget()).resolves.toBe('older');
+    await registry.deleteThread('older');
     const created = await registry.resolveSurfaceLessTarget();
     expect(created).not.toBe('older');
     expect(created).not.toBe('newer');

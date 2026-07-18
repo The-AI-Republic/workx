@@ -598,8 +598,9 @@ chokepoints; terminal turn events clear orphan tokens.
 - **New Chat semantics** (round 2): the current conversation demotes to a background item
   (keeps running, keeps its badges); if it is `awaitingInput`, the aggregate affordance keeps
   it reachable.
-- **"more…" modal** is the same runtime-aware projection as the panel (badges, open-with-
-  hydration, search) — not a static history list.
+- **History pagination** loads 10 rows initially. Each **More** click appends 10 older rows
+  inside the same fixed-height, scrollable panel list; loading more never makes the left-panel
+  history section taller.
 - **Click** → `session.setViewed` + `session.attach`; render the immutable rollout snapshot
   and replay in the attach response, then optionally call `session.open` to prewarm. Attach
   works while capacity is full because reading history does not construct an agent.

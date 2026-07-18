@@ -7,6 +7,7 @@
   import NavTab from './NavTab.svelte';
   import LeftPanelSection from './LeftPanelSection.svelte';
   import ChatHistorySection from './ChatHistorySection.svelte';
+  import SessionModeSwitch from './SessionModeSwitch.svelte';
 
   // Settings is normally reached from UserLoginStatus's logged-in avatar menu.
   // Logged-out users have no avatar menu, so surface a dedicated Settings entry
@@ -42,6 +43,8 @@
   {currentTheme === 'modern'
     ? 'bg-chat-surface dark:bg-chat-surface-dark'
     : 'bg-term-bg'}">
+  <SessionModeSwitch />
+
   <LeftPanelSection>
     {#each NAV_ITEMS as item (item.id)}
       <NavTab

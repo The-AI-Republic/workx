@@ -1179,7 +1179,6 @@ export class SessionManager {
       await session.drainConfigImpact().catch((error) => {
         console.warn(`[SessionManager] Deferred config impact failed for ${sessionId}:`, error);
       });
-      await this.touchThread(sessionId);
       await this.applyPendingModeLocked(sessionId, session);
     }
     this.transitionRuntime(sessionId, busy ? 'running' : 'idle');
@@ -1611,9 +1610,7 @@ export class SessionManager {
   async setViewed(surfaceId: string, sessionId: string) {
     return this._sessionOperations.run(sessionId, async () => {
       await this._registryConfig.threadIndexStore?.require(sessionId);
-      const lease = await this._surfaceLeases.setViewed(surfaceId, sessionId);
-      await this.touchThread(sessionId);
-      return lease;
+      return this._surfaceLeases.setViewed(surfaceId, sessionId);
     });
   }
 

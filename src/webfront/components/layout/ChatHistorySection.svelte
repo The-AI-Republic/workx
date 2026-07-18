@@ -8,7 +8,7 @@
   import { _t } from '../../lib/i18n';
   import LeftPanelSection from './LeftPanelSection.svelte';
 
-  const PAGE_SIZE = 50;
+  const PAGE_SIZE = 10;
   const MS_PER_HOUR = 60 * 60 * 1000;
   let error: string | null = $state(null);
   let search = $state('');
@@ -195,50 +195,61 @@
   {:else if $threadStore.threads.length === 0}
     <div class="px-2 py-1.5 text-xs opacity-70">{$_t('No chat history yet')}</div>
   {:else}
-    {#each $threadStore.threads as item (item.sessionId)}
-      <div class="group flex items-center rounded-md
-        {$threadStore.activeSessionId === item.sessionId
-          ? (currentTheme === 'modern' ? 'bg-chat-button-hover dark:bg-chat-button-hover-dark' : 'bg-term-green/15')
-          : ''}">
-        <button
-          data-thread-history-select
-          class="min-w-0 flex-1 flex items-center gap-2 border-none bg-transparent px-2 py-1.5 text-left text-sm cursor-pointer"
-          onclick={() => selectConversation(item.sessionId)}
-          onkeydown={navigateHistory}
-          title={item.title || $_t('Untitled conversation')}
-        >
-          {#if item.runtime.awaitingInputCount > 0}
-            <span class="w-4 h-4 rounded-full shrink-0 inline-flex items-center justify-center bg-amber-400 text-black text-[10px] font-bold"
-              title={$_t('Waiting for your input')} aria-label={$_t('Waiting for your input')}>!</span>
-          {:else}
-            <span class="w-2 h-2 rounded-full shrink-0
-              {item.runtime.state === 'running' ? 'bg-emerald-400 animate-pulse'
-                : item.runtime.lastFailure ? 'bg-red-400' : 'bg-slate-400/40'}"
-              title={item.runtime.state === 'running' ? $_t('Running') : undefined}></span>
+    <div
+      class="max-h-80 overflow-y-auto overscroll-contain pr-0.5"
+      data-thread-history-list
+      aria-label={$_t('Chat History')}
+    >
+      {#each $threadStore.threads as item (item.sessionId)}
+        {@const isActive = $threadStore.activeSessionId === item.sessionId}
+        <div class="group flex items-center rounded-md transition-colors
+          {currentTheme === 'modern'
+            ? (isActive
+                ? 'bg-chat-button-hover dark:bg-chat-button-hover-dark text-chat-text dark:text-chat-text-dark'
+                : 'text-chat-text-secondary dark:text-chat-text-secondary-dark hover:bg-chat-button-hover/60 dark:hover:bg-chat-button-hover-dark/60')
+            : (isActive
+                ? 'bg-term-green/10 text-term-green'
+                : 'text-term-dim-green hover:bg-term-green/5 hover:text-term-green')}">
+          <button
+            data-thread-history-select
+            class="min-w-0 flex-1 flex items-center gap-2 border-none bg-transparent px-2 py-1.5 text-left text-sm text-inherit cursor-pointer"
+            onclick={() => selectConversation(item.sessionId)}
+            onkeydown={navigateHistory}
+            title={item.title || $_t('Untitled conversation')}
+          >
+            {#if item.runtime.awaitingInputCount > 0}
+              <span class="w-4 h-4 rounded-full shrink-0 inline-flex items-center justify-center bg-amber-400 text-black text-[10px] font-bold"
+                title={$_t('Waiting for your input')} aria-label={$_t('Waiting for your input')}>!</span>
+            {:else}
+              <span class="w-2 h-2 rounded-full shrink-0
+                {item.runtime.state === 'running' ? 'bg-emerald-400 animate-pulse'
+                  : item.runtime.lastFailure ? 'bg-red-400' : 'bg-slate-400/40'}"
+                title={item.runtime.state === 'running' ? $_t('Running') : undefined}></span>
+            {/if}
+            <span class="flex-1 truncate">{item.title || $_t('Untitled conversation')}</span>
+            {#if item.runtime.durability === 'degraded'}<span title={$_t('Durability degraded')}>⚠</span>{/if}
+            <span class="shrink-0 text-xs opacity-60">{formatTimeAgo(item.lastActiveAt)}</span>
+          </button>
+          {#if item.attentionRequest}
+            <button class="px-1 border-none bg-transparent text-inherit cursor-pointer" title={$_t('Continue browser action')}
+              onclick={() => void resolveAttention(item.sessionId, item.attentionRequest!.requestId)}>↗</button>
           {/if}
-          <span class="flex-1 truncate">{item.title || $_t('Untitled conversation')}</span>
-          {#if item.runtime.durability === 'degraded'}<span title={$_t('Durability degraded')}>⚠</span>{/if}
-          <span class="shrink-0 text-xs opacity-60">{formatTimeAgo(item.lastActiveAt)}</span>
-        </button>
-        {#if item.attentionRequest}
-          <button class="px-1 border-none bg-transparent cursor-pointer" title={$_t('Continue browser action')}
-            onclick={() => void resolveAttention(item.sessionId, item.attentionRequest!.requestId)}>↗</button>
-        {/if}
-        <button class="px-1 border-none bg-transparent cursor-pointer opacity-60 hover:opacity-100"
-          title={item.pinned ? $_t('Unpin') : $_t('Pin')}
-          onclick={() => void togglePin(item.sessionId, !item.pinned)}>{item.pinned ? '★' : '☆'}</button>
-        <button class="hidden lg:block px-1 border-none bg-transparent cursor-pointer opacity-0 group-hover:opacity-60 hover:!opacity-100"
-          title={$_t('Rename')} onclick={() => void rename(item.sessionId, item.title)}>✎</button>
-        <button class="px-1 pr-2 border-none bg-transparent cursor-pointer opacity-0 group-hover:opacity-60 hover:!opacity-100"
-          title={$_t('Delete')} onclick={() => void remove(item.sessionId, item.title)}>×</button>
-      </div>
-    {/each}
+          <button class="px-1 border-none bg-transparent text-inherit cursor-pointer opacity-60 hover:opacity-100"
+            title={item.pinned ? $_t('Unpin') : $_t('Pin')}
+            onclick={() => void togglePin(item.sessionId, !item.pinned)}>{item.pinned ? '★' : '☆'}</button>
+          <button class="hidden lg:block px-1 border-none bg-transparent text-inherit cursor-pointer opacity-0 group-hover:opacity-60 hover:!opacity-100"
+            title={$_t('Rename')} onclick={() => void rename(item.sessionId, item.title)}>✎</button>
+          <button class="px-1 pr-2 border-none bg-transparent text-inherit cursor-pointer opacity-0 group-hover:opacity-60 hover:!opacity-100"
+            title={$_t('Delete')} onclick={() => void remove(item.sessionId, item.title)}>×</button>
+        </div>
+      {/each}
+    </div>
   {/if}
 
   {#if $threadStore.nextCursor}
-    <button class="w-full px-2 py-1.5 text-left text-sm border-none bg-transparent cursor-pointer opacity-70 hover:opacity-100"
+    <button class="w-full px-2 py-1.5 text-center text-xs border-none bg-transparent cursor-pointer opacity-70 hover:opacity-100"
       onclick={() => void loadPage(false)} disabled={$threadStore.loading}>
-      {$threadStore.loading ? $_t('Loading history...') : $_t('more…')}
+      {$threadStore.loading ? $_t('Loading history...') : $_t('Load More')}
     </button>
   {/if}
 

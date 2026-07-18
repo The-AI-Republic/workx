@@ -323,11 +323,12 @@ public `SessionManager` name.
 
 ### 4.3 Product behavior
 
-- [x] Pinned-first paged recent list, debounced backend search across unloaded rows, selection,
+- [x] Pinned-first 10-row paged recent list with inline More loading in a fixed-height scroll
+      container, debounced backend search across unloaded rows, selection,
       rename, soft-delete undo
 - [x] Distinct RUNNING and awaiting-input badges; aggregate attention deep-links
 - [x] Coalesced session.get fills an unloaded row on runtime/attention events; purged stubs drop
-- [x] Runtime-aware more modal; New Chat demotes current session without stopping it
+- [x] Runtime-aware inline More pagination; New Chat demotes current session without stopping it
 - [x] Failure UI: hydration retry banner, capacity wait/queue-full retry, partial replay warning
 - [x] Delivery-unknown UI explains uncertainty; Resend is explicit, warns, and uses a new ID
 - [x] Durability-degraded runtime banner remains distinct from hydration/replay failures
