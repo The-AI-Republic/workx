@@ -74,7 +74,7 @@ export class RepublicAgentEngine {
     this.engineId = crypto.randomUUID();
     this.config = config;
     this.toolRegistry = config.toolRegistry;
-    this.ownsSession = config.ownsSession ?? (config.session == null);
+    this.ownsSession = config.ownsSession ?? config.session == null;
   }
 
   async initialize(): Promise<void> {
@@ -96,7 +96,7 @@ export class RepublicAgentEngine {
         this.config.persistent ?? false,
         undefined,
         this.toolRegistry,
-        this.config.initialHistory,
+        this.config.initialHistory
       );
       if (typeof this.session.initialize === 'function') {
         await this.session.initialize();
@@ -108,7 +108,7 @@ export class RepublicAgentEngine {
       // Use createClientForModelKey to honor model overrides (e.g., sub-agent configured
       // to use a different model than the parent's globally selected model).
       const modelClient = await this.config.modelClientFactory.createClientForModelKey(
-        this.config.model,
+        this.config.model
       );
       const { TurnContext } = await import('../TurnContext');
       const turnContext = new TurnContext(modelClient, {
@@ -147,14 +147,15 @@ export class RepublicAgentEngine {
     // Reuse any scheduler already handed out via getShadowAgentScheduler()
     // before initialize() ran, so the session is wired to the same instance
     // that dispose() shuts down (avoids a second, orphaned scheduler).
-    this.shadowAgentScheduler ??= new ShadowAgentScheduler({ parentEngine: this });
+    this.shadowAgentScheduler ??= new ShadowAgentScheduler({
+      parentEngine: this,
+    });
     this.session?.setShadowAgentScheduler?.(this.shadowAgentScheduler);
     const prefs = this.config.agentConfig.getConfig?.()?.preferences as
       | { shadowCompactPrepareEnabled?: boolean }
       | undefined;
     this.session?.setShadowCompactPreparationEnabled?.(
-      prefs?.shadowCompactPrepareEnabled === true &&
-        this.config.isShadowAgentChild !== true,
+      prefs?.shadowCompactPrepareEnabled === true && this.config.isShadowAgentChild !== true
     );
 
     this.initialized = true;
@@ -264,7 +265,12 @@ export class RepublicAgentEngine {
   // ---------------------------------------------------------------------------
 
   approveExecution(callId: string, remember?: boolean): void {
-    this.submitOperation({ type: 'ExecApproval', callId, decision: 'approve', remember });
+    this.submitOperation({
+      type: 'ExecApproval',
+      callId,
+      decision: 'approve',
+      remember,
+    });
   }
 
   rejectExecution(callId: string): void {
@@ -303,7 +309,7 @@ export class RepublicAgentEngine {
    */
   async getTaskOutput(
     taskId: string,
-    fromSeq: number = 0,
+    fromSeq: number = 0
   ): Promise<import('../tasks/TaskOutputStore').TaskOutputChunk[]> {
     const store = this.session?.getTaskOutputStore?.();
     if (!store) return [];
@@ -393,7 +399,9 @@ export class RepublicAgentEngine {
 
   getShadowAgentScheduler(): ShadowAgentScheduler {
     if (!this.shadowAgentScheduler) {
-      this.shadowAgentScheduler = new ShadowAgentScheduler({ parentEngine: this });
+      this.shadowAgentScheduler = new ShadowAgentScheduler({
+        parentEngine: this,
+      });
     }
     return this.shadowAgentScheduler;
   }
@@ -448,10 +456,7 @@ export class RepublicAgentEngine {
   private drainPendingNotificationsInto(input: InputItem[]): InputItem[] {
     if (this.pendingNotifications.length === 0) return input;
     const notifications = this.pendingNotifications.splice(0);
-    return [
-      ...notifications.map((text) => ({ type: 'text' as const, text })),
-      ...input,
-    ];
+    return [...notifications.map((text) => ({ type: 'text' as const, text })), ...input];
   }
 
   /**
@@ -489,7 +494,7 @@ export class RepublicAgentEngine {
       browserContext: childConfig.browserContext,
       eventRouter: childConfig.eventRouter,
       parentEngineId: this.engineId,
-      depth: childConfig.depth ?? (this.getDepth() + 1),
+      depth: childConfig.depth ?? this.getDepth() + 1,
       maxDepth: childConfig.maxDepth ?? this.getMaxDepth(),
       drainPendingMessages: childConfig.drainPendingMessages,
       initialHistory: childConfig.initialHistory,
@@ -634,12 +639,15 @@ export class RepublicAgentEngine {
       // Convert engine InputItem[] to protocol InputItem[] for Session compatibility.
       // Engine types: text/image(data,mimeType)/file(path)
       // Protocol types: text/image(image_url)/clipboard(content)/context(path)
-      const protocolItems: ProtocolInputItem[] = items.map(item => {
+      const protocolItems: ProtocolInputItem[] = items.map((item) => {
         switch (item.type) {
           case 'image': {
             const mimeType = item.mimeType ?? 'image/png';
             const data = item.data ?? '';
-            return { type: 'image' as const, image_url: `data:${mimeType};base64,${data}` };
+            return {
+              type: 'image' as const,
+              image_url: `data:${mimeType};base64,${data}`,
+            };
           }
           case 'file':
             return { type: 'context' as const, path: item.path };
@@ -678,6 +686,9 @@ export class RepublicAgentEngine {
         drainPendingMessages: this.config.drainPendingMessages,
         clientMessageId,
         inputDigest,
+        dataTurnSnapshot: _context?.metadata?.dataTurnSnapshot as
+          | import('@/core/data-sources').DataTurnSnapshot
+          | undefined,
       });
       markResponseLatency(clientMessageId, 'regular_task_ready', {
         duration_ms: Date.now() - taskLoadStartedAt,
@@ -781,7 +792,9 @@ export class RepublicAgentEngine {
         domain = pending.request?.metadata?.domain;
         riskScore = pending.request?.metadata?.riskScore;
       } else {
-        console.warn(`[RepublicAgentEngine] Cannot remember decision - no pending approval for id: ${callId}`);
+        console.warn(
+          `[RepublicAgentEngine] Cannot remember decision - no pending approval for id: ${callId}`
+        );
       }
     }
 
@@ -797,7 +810,10 @@ export class RepublicAgentEngine {
         });
         riskBasedResolved = true;
       } catch (error) {
-        console.warn(`[RepublicAgentEngine] ApprovalManager.handleDecision failed for ${callId}:`, error);
+        console.warn(
+          `[RepublicAgentEngine] ApprovalManager.handleDecision failed for ${callId}:`,
+          error
+        );
       }
     }
 
@@ -810,7 +826,9 @@ export class RepublicAgentEngine {
     }
 
     if (!riskBasedResolved && !protocolResolved) {
-      console.error(`[RepublicAgentEngine] Approval decision could not be routed for id: ${callId} — no pending request found in either subsystem`);
+      console.error(
+        `[RepublicAgentEngine] Approval decision could not be routed for id: ${callId} — no pending request found in either subsystem`
+      );
       // Emit TurnAborted so waitForCompletion() unblocks instead of hanging
       this.pushEvent({
         id: crypto.randomUUID(),
@@ -833,7 +851,7 @@ export class RepublicAgentEngine {
           params,
           decision === 'approve' ? 'auto_approve' : 'deny',
           domain,
-          riskScore,
+          riskScore
         );
       }
     }
@@ -854,7 +872,9 @@ export class RepublicAgentEngine {
   // Handler: PatchApproval — protocol-level only
   // ---------------------------------------------------------------------------
 
-  private async handlePatchApproval(op: Extract<EngineOp, { type: 'PatchApproval' }>): Promise<void> {
+  private async handlePatchApproval(
+    op: Extract<EngineOp, { type: 'PatchApproval' }>
+  ): Promise<void> {
     if (!this.session) return;
 
     this.session.notifyApproval(op.patchId, op.decision);
@@ -1012,7 +1032,7 @@ export class RepublicAgentEngine {
 
   private async waitForCompletion(
     submissionId: string,
-    options?: RunOptions,
+    options?: RunOptions
   ): Promise<EngineResult> {
     const abortController = new AbortController();
     const timeoutMs = options?.timeoutMs ?? 10 * 60 * 1000; // Default 10 minutes
@@ -1061,9 +1081,15 @@ export class RepublicAgentEngine {
 
       // Re-queue events targeted at a different submission so concurrent
       // waitForCompletion() callers don't lose their completion signals.
-      const eventSubmissionId = (event.msg.data as { submission_id?: string } | undefined)?.submission_id;
-      if (eventSubmissionId && eventSubmissionId !== submissionId &&
-          (event.msg.type === 'TaskComplete' || event.msg.type === 'TurnAborted' || event.msg.type === 'TaskFailed')) {
+      const eventSubmissionId = (event.msg.data as { submission_id?: string } | undefined)
+        ?.submission_id;
+      if (
+        eventSubmissionId &&
+        eventSubmissionId !== submissionId &&
+        (event.msg.type === 'TaskComplete' ||
+          event.msg.type === 'TurnAborted' ||
+          event.msg.type === 'TaskFailed')
+      ) {
         this.eventQueue.push(event);
         // Wake any other waiter blocked on getNextEvent()
         if (this.eventWaiters.length > 0) {
@@ -1077,16 +1103,21 @@ export class RepublicAgentEngine {
       // Protocol uses snake_case fields: submission_id, last_agent_message, turn_count, token_usage
       if (event.msg.type === 'TaskComplete' && event.msg.data?.submission_id === submissionId) {
         const data = event.msg.data;
-        const tokenUsage = data.token_usage as { total?: { input_tokens?: number; output_tokens?: number } } | undefined;
+        const tokenUsage = data.token_usage as
+          | { total?: { input_tokens?: number; output_tokens?: number } }
+          | undefined;
         return {
           success: true,
           response: (data.last_agent_message as string | null) ?? null,
           turnCount: (data.turn_count as number) ?? 0,
-          tokenUsage: tokenUsage?.total ? {
-            input_tokens: tokenUsage.total.input_tokens ?? 0,
-            output_tokens: tokenUsage.total.output_tokens ?? 0,
-            total_tokens: (tokenUsage.total.input_tokens ?? 0) + (tokenUsage.total.output_tokens ?? 0),
-          } : undefined,
+          tokenUsage: tokenUsage?.total
+            ? {
+                input_tokens: tokenUsage.total.input_tokens ?? 0,
+                output_tokens: tokenUsage.total.output_tokens ?? 0,
+                total_tokens:
+                  (tokenUsage.total.input_tokens ?? 0) + (tokenUsage.total.output_tokens ?? 0),
+              }
+            : undefined,
           stopReason: 'completed',
           engineId: this.engineId,
           submissionId,
@@ -1097,7 +1128,9 @@ export class RepublicAgentEngine {
       // (e.g. the gateway returns 402/401). Resolve the awaiter as a failure
       // carrying the reason, instead of hanging until interruption.
       if (event.msg.type === 'TaskFailed' && event.msg.data?.submission_id === submissionId) {
-        const data = event.msg.data as { message?: string; error?: string; reason?: string } | undefined;
+        const data = event.msg.data as
+          | { message?: string; error?: string; reason?: string }
+          | undefined;
         return {
           success: false,
           response: null,
@@ -1114,7 +1147,14 @@ export class RepublicAgentEngine {
       // Only match aborts for this submission (or aborts with no submission_id,
       // which are broadcast interrupts like user_interrupt that affect all awaiters).
       if (event.msg.type === 'TurnAborted') {
-        const data = event.msg.data as { reason?: string; submission_id?: string; message?: string; turn_count?: number } | undefined;
+        const data = event.msg.data as
+          | {
+              reason?: string;
+              submission_id?: string;
+              message?: string;
+              turn_count?: number;
+            }
+          | undefined;
         // Events for other submissions are already re-queued above
         if (data?.reason === 'error') {
           return {

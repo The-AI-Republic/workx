@@ -77,7 +77,13 @@
   let scrollContainer: HTMLDivElement;
   let currentTabId: number = $state(-1); // Track current session's bound tab
   let agentReady: boolean = $state(false);
-  let healthStatus: { ready: boolean; message?: string; provider?: string; model?: string; authMode?: 'login' | 'api_key' | 'none' } = $state({ ready: false, authMode: 'none' });
+  let healthStatus: {
+    ready: boolean;
+    message?: string;
+    provider?: string;
+    model?: string;
+    authMode?: 'login' | 'api_key' | 'none';
+  } = $state({ ready: false, authMode: 'none' });
   let zoomLevel: number = $state(parseInt(document.documentElement.style.fontSize) || 100);
   let loadingOlderHistory = $state(false);
 
@@ -121,10 +127,12 @@
     document.documentElement.style.fontSize = '100%';
     zoomLevel = 100;
     window.dispatchEvent(new CustomEvent('zoom-changed', { detail: 100 }));
-    AgentConfig.getInstance().then((config) => {
-      const agentConfig = config.getConfig();
-      config.updateConfig({ preferences: { ...agentConfig.preferences, zoomLevel: 100 } });
-    }).catch(() => {});
+    AgentConfig.getInstance()
+      .then((config) => {
+        const agentConfig = config.getConfig();
+        config.updateConfig({ preferences: { ...agentConfig.preferences, zoomLevel: 100 } });
+      })
+      .catch(() => {});
   }
 
   function requestLogin() {
@@ -137,7 +145,12 @@
       window.open(loginUrl, '_blank', 'noopener,noreferrer');
     }
   }
-  let compactionNotification: { show: boolean; tokensSaved: number; compactionCount: number; isWarning: boolean } = $state({
+  let compactionNotification: {
+    show: boolean;
+    tokensSaved: number;
+    compactionCount: number;
+    isWarning: boolean;
+  } = $state({
     show: false,
     tokensSaved: 0,
     compactionCount: 0,
@@ -208,7 +221,6 @@
     if (client && selected && selected !== activeSessionId) void switchToThread(selected);
   });
 
-
   onMount(async () => {
     // Listen for zoom level changes
     window.addEventListener('zoom-changed', onZoomChanged);
@@ -271,7 +283,11 @@
         const { msg } = channelEvent;
         if (msg.type === 'StateUpdate' && 'data' in msg) {
           const data = msg.data;
-          if (data?.scope === 'desktop-runtime' && data.kind === 'agent.accessChanged' && data.access) {
+          if (
+            data?.scope === 'desktop-runtime' &&
+            data.kind === 'agent.accessChanged' &&
+            data.access
+          ) {
             applyAccessState(data.access as AgentAccessState);
           } else if (data && 'tabId' in data) {
             currentTabId = data.tabId!;
@@ -304,24 +320,20 @@
       });
 
       // Single wildcard handler feeds the router
-      unsubscribers.push(
-        client.onEvent('*', (channelEvent) => threadRouter.route(channelEvent))
-      );
+      unsubscribers.push(client.onEvent('*', (channelEvent) => threadRouter.route(channelEvent)));
       startBackgroundTaskPolling(() => {
         if (!client || !activeSessionId) return null;
         return {
           async listTaskStates() {
-            const response = await client!.serviceRequest<{ tasks?: import('@/core/tasks/types').TaskState[] }>(
-              'session.listTaskStates',
-              { sessionId: activeSessionId },
-            );
+            const response = await client!.serviceRequest<{
+              tasks?: import('@/core/tasks/types').TaskState[];
+            }>('session.listTaskStates', { sessionId: activeSessionId });
             return response.tasks ?? [];
           },
           async getTaskOutput(taskId: string, fromSeq = 0) {
-            const response = await client!.serviceRequest<{ chunks?: import('@/core/tasks/TaskOutputStore').TaskOutputChunk[] }>(
-              'session.getTaskOutput',
-              { sessionId: activeSessionId, taskId, fromSeq },
-            );
+            const response = await client!.serviceRequest<{
+              chunks?: import('@/core/tasks/TaskOutputStore').TaskOutputChunk[];
+            }>('session.getTaskOutput', { sessionId: activeSessionId, taskId, fromSeq });
             return response.chunks ?? [];
           },
           retainTask(taskId: string, retain: boolean) {
@@ -413,9 +425,11 @@
 
       // Request agent to abort via message service
       if (client && activeSessionId) {
-        getInitializedUIClient().then(c => c.serviceRequest('agent.interrupt', { sessionId: activeSessionId })).catch((err) => {
-          console.warn('[App] Failed to send interrupt on cancel:', err);
-        });
+        getInitializedUIClient()
+          .then((c) => c.serviceRequest('agent.interrupt', { sessionId: activeSessionId }))
+          .catch((err) => {
+            console.warn('[App] Failed to send interrupt on cancel:', err);
+          });
       }
     }
   }
@@ -661,7 +675,11 @@
         console.warn('[App] checkConnection: no client available');
         isConnected = false;
         agentReady = false;
-        healthStatus = { ready: false, message: t('Message service not available'), authMode: 'none' };
+        healthStatus = {
+          ready: false,
+          message: t('Message service not available'),
+          authMode: 'none',
+        };
         return;
       }
 
@@ -715,7 +733,7 @@
           setTimeout(() => {
             scrollContainer.scrollTo({
               top: scrollContainer.scrollHeight,
-              behavior: 'smooth'
+              behavior: 'smooth',
             });
           }, 100);
         }
@@ -816,7 +834,8 @@
       category: 'message',
       timestamp: new Date(),
       title: 'user',
-      content: text || (attachments && attachments.length ? `[${attachments.length} image(s)]` : ''),
+      content:
+        text || (attachments && attachments.length ? `[${attachments.length} image(s)]` : ''),
       style: { textColor: 'text-cyan-400' },
       streaming: false,
       collapsible: false,
@@ -914,7 +933,9 @@
     try {
       if (!client) throw new Error('Message service not available');
       // Send stop message to backend
-      await (await getInitializedUIClient()).serviceRequest('agent.interrupt', { sessionId: activeSessionId });
+      await (
+        await getInitializedUIClient()
+      ).serviceRequest('agent.interrupt', { sessionId: activeSessionId });
       isProcessing = false;
       console.log('[App] Agent session stopped');
     } catch (error) {
@@ -996,10 +1017,12 @@
     try {
       if (success) {
         // Extract result summary from the processed events
-        const lastAgentEvent = processedEvents.filter(e => e.title === 'workx').pop();
+        const lastAgentEvent = processedEvents.filter((e) => e.title === 'workx').pop();
         const resultSummary = lastAgentEvent?.content?.slice(0, 500) || 'Job completed';
 
-        await (await getInitializedUIClient()).serviceRequest('scheduler.complete', {
+        await (
+          await getInitializedUIClient()
+        ).serviceRequest('scheduler.complete', {
           jobId: scheduledJobId,
           result: {
             summary: resultSummary,
@@ -1009,7 +1032,9 @@
         console.log('[App] Notified scheduler of job completion:', scheduledJobId);
       } else {
         const errorMessage = msg?.data?.message || 'Job failed';
-        await (await getInitializedUIClient()).serviceRequest('scheduler.fail', {
+        await (
+          await getInitializedUIClient()
+        ).serviceRequest('scheduler.fail', {
           jobId: scheduledJobId,
           error: errorMessage,
         });
@@ -1030,7 +1055,9 @@
     try {
       if (!client) throw new Error('Message service not available');
       // Fetch job details from scheduler
-      const response = await (await getInitializedUIClient()).serviceRequest<{ job?: { input: string; scheduledTime?: number } }>(
+      const response = await (
+        await getInitializedUIClient()
+      ).serviceRequest<{ job?: { input: string; scheduledTime?: number } }>(
         'scheduler.getJobDetails',
         { jobId }
       );
@@ -1094,7 +1121,9 @@
       // Notify scheduler of failure
       try {
         if (client) {
-          await (await getInitializedUIClient()).serviceRequest('scheduler.fail', {
+          await (
+            await getInitializedUIClient()
+          ).serviceRequest('scheduler.fail', {
             jobId,
             error: error instanceof Error ? error.message : 'Unknown error',
           });
@@ -1479,10 +1508,11 @@
 </script>
 
 <!-- Single UI with theme-aware styling -->
-<div class="flex flex-col overflow-hidden p-4 {currentTheme}
+<div
+  class="flex flex-col overflow-hidden p-4 {currentTheme}
     {currentTheme === 'modern'
-      ? 'font-chat bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
-      : 'font-terminal bg-term-bg text-term-green'}"
+    ? 'font-chat bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
+    : 'font-terminal bg-term-bg text-term-green'}"
   role="log"
   aria-label="Terminal output"
 >
@@ -1705,7 +1735,7 @@
 
         </div>
       </div>
-  </div>
+    </div>
 
   <!-- Track 15: rewind turn-selector overlay (command-invoked) -->
   <MessageSelector

@@ -11,7 +11,11 @@ import type { AgentReadyState } from './models/types/Auth';
 import type { AuthContext } from './auth/AuthContext';
 import type { InitialHistory } from './session/state/types';
 import type { SessionServices } from './session/state/SessionServices';
-import type { EngineEvent, EngineOp, InputItem as EngineInputItem } from './engine/RepublicAgentEngineConfig';
+import type {
+  EngineEvent,
+  EngineOp,
+  InputItem as EngineInputItem,
+} from './engine/RepublicAgentEngineConfig';
 import { AgentConfig } from '../config/AgentConfig';
 import { Session } from './Session';
 import { TurnContext } from './TurnContext';
@@ -46,6 +50,7 @@ import {
   markResponseLatency,
   setResponseLatencySubmissionId,
 } from './diagnostics/responseLatency';
+import { captureOriginalDataTurnSnapshot } from './data-sources';
 
 /** Marks an Op object that has already passed through the input funnel.
  *  Defensive only: it guards re-submission of the *same op object*, not a
@@ -212,21 +217,26 @@ export class RepublicAgent {
     }
 
     // Register platform tools via adapter (replaces __BUILD_MODE__-based detection)
-    await this.platformAdapter.registerPlatformTools(this.toolRegistry, this.config.getToolsConfig(), {
-      supportsImage: modelData.model.supportsImage ?? false
-    });
+    await this.platformAdapter.registerPlatformTools(
+      this.toolRegistry,
+      this.config.getToolsConfig(),
+      {
+        supportsImage: modelData.model.supportsImage ?? false,
+      },
+      this.promptLoader,
+    );
 
     // Wire tool context for adapters that need lazy browser connection (desktop MCP)
     if (this.platformAdapter.setToolContext) {
       this.platformAdapter.setToolContext(
         this.toolRegistry,
-        (msg: { type: string; data: Record<string, unknown> }) => this.emitEvent(msg as EventMsg),
+        (msg: { type: string; data: Record<string, unknown> }) => this.emitEvent(msg as EventMsg)
       );
     }
     this.toolRegistry.setPageContextProvider?.(
       this.platformAdapter.getCurrentPageContext
         ? () => this.platformAdapter.getCurrentPageContext!()
-        : undefined,
+        : undefined
     );
 
     // Register/unregister memory tools based on current memory service state
@@ -256,7 +266,7 @@ export class RepublicAgent {
     taskContext.setUserInstructions(userInstructions);
     const baseInstructions = await this.promptLoader.load(
       this.session.getAgentMode(),
-      this.getPromptRuntimeContext(taskContext),
+      this.getPromptRuntimeContext(taskContext)
     );
     taskContext.setBaseInstructions(baseInstructions);
 
@@ -300,8 +310,8 @@ export class RepublicAgent {
     await this.syncSessionSummaryHook().catch((err) =>
       console.warn(
         '[RepublicAgent] syncSessionSummaryHook failed:',
-        err instanceof Error ? err.message : String(err),
-      ),
+        err instanceof Error ? err.message : String(err)
+      )
     );
 
     // initialization complete
@@ -332,13 +342,19 @@ export class RepublicAgent {
     }
 
     if (this.session.getAgentMode() === requested && this.pendingModeSwitch === null) {
-      this.emitEvent({ type: 'ModeChanged', data: { sessionId, mode: requested, applied: true } });
+      this.emitEvent({
+        type: 'ModeChanged',
+        data: { sessionId, mode: requested, applied: true },
+      });
       return;
     }
 
     if (this.hasLiveBackgroundWork()) {
       this.pendingModeSwitch = requested;
-      this.emitEvent({ type: 'ModeChanged', data: { sessionId, mode: requested, applied: false } });
+      this.emitEvent({
+        type: 'ModeChanged',
+        data: { sessionId, mode: requested, applied: false },
+      });
       this.emitEvent({
         type: 'BackgroundEvent',
         data: {
@@ -353,7 +369,10 @@ export class RepublicAgent {
     this.emitEvent({ type: 'ModeChanged', data: { sessionId, mode: requested, applied: true } });
     this.emitEvent({
       type: 'BackgroundEvent',
-      data: { message: `Switched to ${MODES[requested].label} mode.`, level: 'info' },
+      data: {
+        message: `Switched to ${MODES[requested].label} mode.`,
+        level: 'info',
+      },
     });
   }
 
@@ -423,8 +442,7 @@ export class RepublicAgent {
    * silently skip in that case so the extension doesn't error at startup.
    */
   private async syncSessionSummaryHook(): Promise<void> {
-    const enabled =
-      this.config.getConfig().preferences?.sessionSummaryEnabled ?? false;
+    const enabled = this.config.getConfig().preferences?.sessionSummaryEnabled ?? false;
     const existing = this.session.getSessionSummaryHook();
 
     if (!enabled) {
@@ -464,7 +482,7 @@ export class RepublicAgent {
     } catch (err) {
       console.warn(
         '[SessionSummary] failed to construct hook:',
-        err instanceof Error ? err.message : String(err),
+        err instanceof Error ? err.message : String(err)
       );
     }
   }
@@ -659,7 +677,9 @@ export class RepublicAgent {
       // Guard: engine must be initialized before forwarding execution ops
       const requireEngine = () => {
         if (!this.engine) {
-          throw new Error('RepublicAgent not initialized. Call initialize() before submitOperation().');
+          throw new Error(
+            'RepublicAgent not initialized. Call initialize() before submitOperation().'
+          );
         }
         return this.engine;
       };
@@ -686,6 +706,7 @@ export class RepublicAgent {
         // Return the engine's submission ID so callers can correlate with lifecycle events
         case 'UserInput':
         case 'UserTurn': {
+          const dataTurnSnapshot = captureOriginalDataTurnSnapshot(op, context);
           // ── Track 13: input funnel runs ONCE, before hooks, so the
           //    UserPromptSubmit hook sees expanded/enriched input. One
           //    placement covers ext, desktop, and all server input
@@ -703,7 +724,10 @@ export class RepublicAgent {
                 this.buildFunnelContext(userOp, context)
               );
             } catch (funnelErr) {
-              console.error('[RepublicAgent] input funnel failed; proceeding with raw input:', funnelErr);
+              console.error(
+                '[RepublicAgent] input funnel failed; proceeding with raw input:',
+                funnelErr
+              );
               processed = null;
             }
             if (processed && !processed.shouldQuery) {
@@ -718,7 +742,10 @@ export class RepublicAgent {
                 const depth = (context?._chainDepth ?? 0) + 1;
                 if (depth <= 3) {
                   await this.submitOperation(
-                    { type: 'UserInput', items: [{ type: 'text', text: processed.nextInput }] },
+                    {
+                      type: 'UserInput',
+                      items: [{ type: 'text', text: processed.nextInput }],
+                    },
                     { ...context, _chainDepth: depth }
                   );
                 }
@@ -747,7 +774,9 @@ export class RepublicAgent {
             finishResponseLatencyTrace(responseLatencyId, 'submission_rejected');
             return id;
           }
-          const engineSubmissionId = requireEngine().submitOperation(this.toEngineOp(op));
+          const engineSubmissionId = requireEngine().submitOperation(
+            this.toEngineOp(op, dataTurnSnapshot),
+          );
           if (responseLatencyId) {
             setResponseLatencySubmissionId(responseLatencyId, engineSubmissionId);
             markResponseLatency(responseLatencyId, 'engine_submission_created');
@@ -779,7 +808,10 @@ export class RepublicAgent {
             'Task Interrupted',
             'The current task has been interrupted by user request'
           );
-          requireEngine().submitOperation({ type: 'Interrupt', reason: 'user_interrupt' });
+          requireEngine().submitOperation({
+            type: 'Interrupt',
+            reason: 'user_interrupt',
+          });
           break;
 
         case 'Compact':
@@ -791,7 +823,10 @@ export class RepublicAgent {
           break;
 
         case 'AddToHistory':
-          requireEngine().submitOperation({ type: 'AddToHistory', text: op.text });
+          requireEngine().submitOperation({
+            type: 'AddToHistory',
+            text: op.text,
+          });
           break;
 
         case 'Shutdown':
@@ -841,10 +876,7 @@ export class RepublicAgent {
     op: Extract<Op, { type: 'UserInput' | 'UserTurn' }>,
     context?: { tabId?: number; origin?: InputOrigin }
   ): FunnelContext {
-    const tabId =
-      op.type === 'UserTurn' && op.tabId !== undefined
-        ? op.tabId
-        : context?.tabId;
+    const tabId = op.type === 'UserTurn' && op.tabId !== undefined ? op.tabId : context?.tabId;
     return {
       sessionId: this.session.sessionId,
       origin: context?.origin ?? { channel: 'local' },
@@ -889,14 +921,11 @@ export class RepublicAgent {
       if (!hookResult.shouldContinue) {
         // claudy parity: a blocking hook erases the input; the user sees a
         // warning that embeds the original prompt (processUserInput.ts:194-209).
-        const reason =
-          hookResult.stopReason ?? 'UserPromptSubmit hook blocked this input';
+        const reason = hookResult.stopReason ?? 'UserPromptSubmit hook blocked this input';
         this.emitEvent({
           type: 'Error',
           data: {
-            message: applyHookTruncation(
-              `${reason}\n\nOriginal prompt: ${textContent}`
-            ),
+            message: applyHookTruncation(`${reason}\n\nOriginal prompt: ${textContent}`),
           },
         });
         return false;
@@ -915,9 +944,7 @@ export class RepublicAgent {
       // claudy parity: fold additionalContext in as a model-visible item
       // (createAttachmentMessage 'hook_additional_context'). Rides alongside
       // the prompt — the user's text item is untouched.
-      const extra = (hookResult.additionalContext ?? []).filter(
-        (c) => c && c.trim()
-      );
+      const extra = (hookResult.additionalContext ?? []).filter((c) => c && c.trim());
       if (extra.length > 0) {
         const joined = extra.map(applyHookTruncation).join('\n');
         op.items = [
@@ -990,13 +1017,17 @@ export class RepublicAgent {
   /**
    * Convert a RepublicAgent Op to an EngineOp for forwarding to the engine.
    */
-  private toEngineOp(op: Extract<Op, { type: 'UserInput' }> | Extract<Op, { type: 'UserTurn' }>): EngineOp {
+  private toEngineOp(
+    op: Extract<Op, { type: 'UserInput' }> | Extract<Op, { type: 'UserTurn' }>,
+    dataTurnSnapshot: import('./data-sources').DataTurnSnapshot
+  ): EngineOp {
     const items = op.items.map(RepublicAgent.convertInputItem);
 
     if (op.type === 'UserInput') {
       return {
         type: 'UserInput',
         items,
+        context: { metadata: { dataTurnSnapshot } },
         clientMessageId: op.clientMessageId,
         inputDigest: op.inputDigest,
       };
@@ -1013,10 +1044,10 @@ export class RepublicAgent {
     return {
       type: 'UserTurn',
       items,
+      context: { metadata: { dataTurnSnapshot } },
       contextOverrides: Object.keys(overrides).length > 0 ? overrides : undefined,
     };
   }
-
 
   /**
    * Handle tab binding/creation/switching based on session state and context
@@ -1044,7 +1075,8 @@ export class RepublicAgent {
           data: { sessionId: this.session.getId(), tabId: createdTabId },
         });
       } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error during tab creation';
+        const errorMsg =
+          error instanceof Error ? error.message : 'Unknown error during tab creation';
 
         this.emitEvent({
           type: 'Error',
@@ -1086,7 +1118,6 @@ export class RepublicAgent {
     });
   }
 
-
   /**
    * Cancel a running task by submission id.
    *
@@ -1119,7 +1150,6 @@ export class RepublicAgent {
     this.session.updateTurnContext(updates);
   }
 
-
   /**
    * Handle get path request
    */
@@ -1133,7 +1163,6 @@ export class RepublicAgent {
       },
     });
   }
-
 
   /**
    * Handle get history entry request
@@ -1171,7 +1200,6 @@ export class RepublicAgent {
     }
   }
 
-
   /**
    * Wire engine events to the RepublicAgent's eventDispatcher.
    * The engine emits EngineEvents; we convert and dispatch them to the UI.
@@ -1198,9 +1226,7 @@ export class RepublicAgent {
     if (!this.engine) return;
     this.engine.onEvent((engineEvent: EngineEvent) => {
       if (engineEvent.msg.type === 'CompactionCompleted') {
-        this.autoCompactHook?.handleCompactionCompleted(
-          engineEvent.msg.data?.success === true,
-        );
+        this.autoCompactHook?.handleCompactionCompleted(engineEvent.msg.data?.success === true);
       }
       // Session-originated events are already dispatched via the session's emitter
       // (wired in the constructor). Only forward engine-only events that don't
@@ -1335,7 +1361,7 @@ export class RepublicAgent {
           session_id: this.session.sessionId,
           session_end_reason: reason,
         },
-        { timeoutOverride: 1.5 },
+        { timeoutOverride: 1.5 }
       );
     } catch (err) {
       console.warn('[RepublicAgent] SessionEnd hook failed during cleanup:', err);
@@ -1401,21 +1427,20 @@ export class RepublicAgent {
 
     const approval = pendingApproval.request;
 
-    const reviewDecision: ReviewDecision = decision === 'approve'
-      ? 'approve'
-      : 'reject';
+    const reviewDecision: ReviewDecision = decision === 'approve' ? 'approve' : 'reject';
 
-    const op: Op = approval.type === 'command'
-      ? {
-        type: 'ExecApproval',
-        id: approvalId,
-        decision: reviewDecision,
-      }
-      : {
-        type: 'PatchApproval',
-        id: approvalId,
-        decision: reviewDecision,
-      };
+    const op: Op =
+      approval.type === 'command'
+        ? {
+            type: 'ExecApproval',
+            id: approvalId,
+            decision: reviewDecision,
+          }
+        : {
+            type: 'PatchApproval',
+            id: approvalId,
+            decision: reviewDecision,
+          };
 
     await this.submitOperation(op);
   }
@@ -1511,11 +1536,7 @@ export class RepublicAgent {
   /**
    * Update progress notification
    */
-  async updateProgress(
-    notificationId: string,
-    current: number,
-    total: number
-  ): Promise<void> {
+  async updateProgress(notificationId: string, current: number, total: number): Promise<void> {
     await this.userNotifier.updateProgress(notificationId, current, total);
   }
 }

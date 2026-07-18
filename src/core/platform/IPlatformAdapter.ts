@@ -2,6 +2,7 @@
 
 import type { ToolRegistry } from '../../tools/ToolRegistry';
 import type { IToolsConfig } from '../../config/types';
+import type { AgentPromptLoader } from '../PromptLoader';
 
 export type { IToolsConfig };
 
@@ -150,7 +151,8 @@ export interface IPlatformAdapter {
   registerPlatformTools(
     registry: ToolRegistry,
     toolsConfig: IToolsConfig,
-    capabilities: ModelCapabilities
+    capabilities: ModelCapabilities,
+    promptLoader?: AgentPromptLoader
   ): Promise<void>;
 
   // Storage
