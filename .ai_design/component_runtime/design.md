@@ -122,7 +122,7 @@ Managed components are persistent. Query data, generated scripts, local database
 
 Each workspace has a marker containing identity, kind, owner PID, creation time, and last activity. Consumers refresh activity while a job runs. Completed jobs are removed immediately. The manager checks every minute and removes same-process workspaces idle for five minutes; abandoned workspaces from dead processes are also removed. Live workspaces owned by another WorkX process are not deleted.
 
-The component runtime currently supplies this lifecycle API. The future multi-source analysis orchestrator will use it when it stages bounded PostgreSQL/MySQL results for DuckDB or Python processing.
+The component runtime currently supplies this lifecycle API. Future agent-facing staging and sandboxed-computation tools will use it for bounded PostgreSQL/MySQL results, DuckDB databases, scripts, and derived artifacts. Those tools remain composable so the model can choose a strategy rather than being forced through one analysis orchestrator.
 
 ## 9. DuckDB First Component
 
@@ -178,5 +178,5 @@ WORKX_TEST_COMPONENT_DOWNLOAD=true \
 - Per-component disk quotas and least-recently-used cleanup.
 - Multi-file archive extractors and platform code-signing/notarization validation.
 - Plugin-declared component capability dependencies.
-- The multi-source analysis orchestrator that stages bounded source data and invokes DuckDB.
+- Agent-facing bounded staging and sandboxed component-execution tools that can invoke DuckDB.
 - A separately downloadable, sandboxed Python analysis runtime.

@@ -102,7 +102,7 @@ export async function registerDataSourceTools(
       riskAssessor: new StaticRiskAssessor(0),
       exposure: exposure(
         'List Data Sources',
-        'database data source analytics sales tables warehouse'
+        'database data source multi source analysis analytics sales tables warehouse'
       ),
       runtime: readRuntime,
     }
@@ -183,7 +183,7 @@ export async function registerDataSourceTools(
       riskAssessor: new DataQueryRiskAssessor(runtime),
       exposure: exposure(
         'Query Data',
-        'run read only SQL database analysis aggregate sales metrics'
+        'run read only SQL database multi source analysis aggregate sales metrics'
       ),
       runtime: {
         concurrency: {

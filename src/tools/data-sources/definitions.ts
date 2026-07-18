@@ -57,7 +57,7 @@ export const DATA_DESCRIBE_TOOL = functionTool(
 
 export const DATA_QUERY_TOOL = functionTool(
   'data_query',
-  'Execute exactly one bounded read-only SQL query against a configured source. Prefer aggregates and parameters; never request raw credentials or write SQL.',
+  'Execute one bounded read-only SQL query per invocation against a configured source. Use multiple invocations when the analysis needs them. Prefer aggregates and parameters; never request raw credentials or write SQL.',
   {
     type: 'object',
     properties: {
@@ -65,7 +65,8 @@ export const DATA_QUERY_TOOL = functionTool(
       query_language: { type: 'string', enum: ['sql'] },
       query: {
         type: 'string',
-        description: 'One read-only SQL SELECT using PostgreSQL $1 or MySQL ? placeholders.',
+        description:
+          'One read-only SQL SELECT for this invocation, using PostgreSQL $1 or MySQL ? placeholders.',
       },
       parameters: {
         type: 'array',

@@ -19,6 +19,10 @@ The same `DataSourceRegistry` and `DataSourceConnector` contracts can register f
 
 WorkX now also has a general on-demand managed component runtime under `~/.workx/components`, with DuckDB 1.5.4 as its first trusted component. It provides explicit installation consent, pinned platform artifacts, exact-size and SHA-256 verification, atomic install/repair, health checks, leases, bounded process execution, and ephemeral workspace lifecycle. This supplies the delivery foundation for future cross-source analysis; bounded staging and orchestration are still outside the SQL-query MVP.
 
+The agent contract is capability-driven rather than a fixed query recipe. The model inspects visible tools and uses `tool_search` for deferred data, MCP, warehouse, component, staging, or computation capabilities. It may make multiple `data_query` calls and combine multiple sources when bounded complete results are small enough to reason over reliably. The one-statement rule applies to each `data_query` invocation, not to the whole request.
+
+Tool-reported provenance, truncation, errors, and resource limits are authoritative. If the available one-session capabilities cannot produce a complete result, the agent must stop rather than infer from partial data or pretend that installing a component creates an execution path. Its response identifies the unsupported requirement and, when useful, provides a concrete pipeline blueprint covering sources, filters, joins, transforms, scale, freshness, compute/storage, validation, security, and unresolved decisions.
+
 ## Implementation map
 
 - Core contracts, validation, persistence, secrets, registry, runtime, SQL policy, limits, and learning: `src/core/data-sources/`
@@ -44,17 +48,18 @@ WorkX now also has a general on-demand managed component runtime under `~/.workx
 - Supported databases: PostgreSQL 12+ and Oracle MySQL 8.0+ (MariaDB is rejected).
 - Desktop native runtime only. Extension, server, scheduler, connector, remote, unattended, and sub-agent access fail closed.
 - Read-only SQL only. No writes, generic SQL console, cross-source joins, notebooks, charting, or MCP data connector implementation.
+- The model can combine small, complete results from multiple bounded queries. Managed cross-source staging, DuckDB invocation, and a sandboxed Python execution tool are not yet exposed to the agent.
 - Results are bounded after driver decoding. One unusually large value can therefore allocate driver memory before truncation; cursor/streaming execution is a follow-up.
 - Query results sent to the active model remain in local conversation history under the current WorkX rollout behavior.
 
 ## Verification
 
-The committed suite covers configuration, validation, storage transactions, crash reconciliation, secret rotation/deletion, registry lifecycle, source concurrency, access/origin denial, SQL security corpora, parameter codecs, output limits, schema staleness, context learning and undo, PostgreSQL/MySQL driver behavior, runtime services, UI workflows, and sidecar packaging.
+The committed suite covers configuration, validation, storage transactions, crash reconciliation, secret rotation/deletion, registry lifecycle, source concurrency, access/origin denial, SQL security corpora, parameter codecs, output limits, schema staleness, context learning and undo, PostgreSQL/MySQL driver behavior, runtime services, UI workflows, sidecar packaging, and the capability-driven completeness/escalation prompt contract.
 
 Local completion evidence:
 
 - `npm run type-check` passes.
-- `npx vitest run` passes 9,856 tests; 10 tests are skipped, including the two opt-in live database cases.
+- `npx vitest run` passes 9,892 tests; 11 tests are skipped, including the two opt-in live database cases and the opt-in DuckDB download case.
 - `npm run lint` exits successfully with no errors; the new data-source paths have no lint warnings.
 - `npm run test:rust` passes 33 tests.
 - `npm run build:desktop` and `npm run build:server` pass.

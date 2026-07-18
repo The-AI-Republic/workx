@@ -60,7 +60,7 @@ export async function registerComponentTools(
         mode: 'deferred',
         source: 'builtin',
         displayName: 'List WorkX Components',
-        searchHint: 'optional local tools runtime duckdb install components',
+        searchHint: 'optional local data analysis compute python duckdb runtime install components',
       },
       runtime: {
         concurrency: {
@@ -92,7 +92,7 @@ export async function registerComponentTools(
         mode: 'deferred',
         source: 'builtin',
         displayName: 'Install WorkX Component',
-        searchHint: 'download install optional local tool duckdb runtime',
+        searchHint: 'download install optional local data analysis compute python duckdb runtime',
       },
       runtime: {
         concurrency: {

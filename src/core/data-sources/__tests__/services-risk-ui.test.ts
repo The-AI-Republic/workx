@@ -7,6 +7,7 @@ import { EventProcessor } from '@/webfront/components/event_display/EventProcess
 import { DataContextRiskAssessor } from '@/tools/data-sources/DataContextRiskAssessor';
 import { DataQueryRiskAssessor } from '@/tools/data-sources/DataQueryRiskAssessor';
 import { DATA_ANALYSIS_PROMPT } from '@/tools/data-sources/prompt';
+import { DATA_QUERY_TOOL } from '@/tools/data-sources/definitions';
 import type { ApprovalContext } from '@/core/approval/types';
 import type { Event } from '@/core/protocol/types';
 import type { StdioFrameCarrier } from '@/desktop-runtime/protocol/stdioCarrier';
@@ -403,13 +404,29 @@ describe('data progress UI and orchestration prompt', () => {
     });
   });
 
-  it('contains the required describe/query/context and retry rules without embedding schemas', () => {
+  it('gives the model a flexible capability-driven analysis contract', () => {
+    expect(DATA_ANALYSIS_PROMPT).toContain('tool_search');
+    expect(DATA_ANALYSIS_PROMPT).toContain('multiple calls');
+    expect(DATA_ANALYSIS_PROMPT).toContain('multiple sources');
     expect(DATA_ANALYSIS_PROMPT).toContain('data_describe');
+    expect(DATA_ANALYSIS_PROMPT).toContain('per-call safety boundary');
     expect(DATA_ANALYSIS_PROMPT).toContain('aggregate');
     expect(DATA_ANALYSIS_PROMPT).toContain('source timezone');
     expect(DATA_ANALYSIS_PROMPT).toContain('Do not retry a timeout');
     expect(DATA_ANALYSIS_PROMPT).toContain('at most two');
+    expect(DATA_ANALYSIS_PROMPT).toContain('truncation reasons');
+    expect(DATA_ANALYSIS_PROMPT).toContain('never present a sample or partial result as complete');
+    expect(DATA_ANALYSIS_PROMPT).toContain('Stop instead of guessing');
+    expect(DATA_ANALYSIS_PROMPT).toContain('concrete pipeline blueprint');
+    expect(DATA_ANALYSIS_PROMPT).toContain('Preserve unknowns as unknowns');
+    expect(DATA_ANALYSIS_PROMPT).toContain('available execution path');
     expect(DATA_ANALYSIS_PROMPT).toContain('data_learn_context');
     expect(DATA_ANALYSIS_PROMPT).not.toContain('CREATE TABLE');
+  });
+
+  it('describes the single-statement boundary as per invocation', () => {
+    if (DATA_QUERY_TOOL.type !== 'function') throw new Error('data_query must be a function tool');
+    expect(DATA_QUERY_TOOL.function.description).toContain('per invocation');
+    expect(DATA_QUERY_TOOL.function.description).toContain('multiple invocations');
   });
 });

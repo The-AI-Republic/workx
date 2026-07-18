@@ -3,8 +3,12 @@ import { ApprovalGate } from '@/core/approval/ApprovalGate';
 import { PolicyRulesEngine } from '@/core/approval/PolicyRulesEngine';
 import type { ComponentManager, ComponentView } from '@/core/components';
 import { ToolRegistry } from '@/tools/ToolRegistry';
+import { ToolExposureManager } from '@/tools/exposure/ToolExposureManager';
+import { ToolSearchIndex } from '@/tools/exposure/ToolSearchIndex';
+import { ToolSelectionStore } from '@/tools/exposure/ToolSelectionStore';
 import { ComponentInstallRiskAssessor } from '../ComponentInstallRiskAssessor';
 import { registerComponentTools } from '../register';
+import { MANAGED_COMPONENTS_PROMPT } from '../prompt';
 
 const installed: ComponentView = {
   id: 'duckdb',
@@ -45,6 +49,27 @@ const localSnapshot = {
 };
 
 describe('managed component agent tools', () => {
+  it('does not present installation as an analysis execution path', () => {
+    expect(MANAGED_COMPONENTS_PROMPT).toContain('capability inventory');
+    expect(MANAGED_COMPONENTS_PROMPT).toContain('actually invoke');
+    expect(MANAGED_COMPONENTS_PROMPT).toContain('missing integration');
+    expect(MANAGED_COMPONENTS_PROMPT).toContain('explicit user approval');
+  });
+
+  it('makes managed analysis capabilities discoverable by generic tool search', async () => {
+    const registry = new ToolRegistry();
+    await registerComponentTools(registry, manager());
+    const exposure = new ToolExposureManager(new ToolSelectionStore()).getSearchableDeferredTools({
+      entries: registry.entriesWithExposure(),
+      toolsConfig: { dynamicToolLoading: true },
+      sessionId: 'session-1',
+    });
+
+    expect(
+      new ToolSearchIndex(exposure).search('data analysis compute').matches.map(({ name }) => name)
+    ).toEqual(expect.arrayContaining(['component_list', 'component_install']));
+  });
+
   it('marks install as explicit consent and hard-denies remote origins', () => {
     const assessor = new ComponentInstallRiskAssessor();
     expect(

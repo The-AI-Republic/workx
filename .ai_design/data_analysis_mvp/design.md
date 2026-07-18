@@ -25,6 +25,7 @@ The key architectural decisions are:
 10. Treat user-provided business meaning as both immediate turn context and durable per-source semantic context. Clear durable facts are learned automatically by default through the normal model tool loop, with visible notification and conflict-safe undo.
 11. Keep semantic context attached to the logical data source, independent of whether access is native or through MCP.
 12. Make data-sharing behavior explicit: bounded query results are sent to the active model and, under the current WorkX rollout behavior, stored in local session history.
+13. Let the model choose and combine exposed analysis capabilities instead of prescribing a fixed workflow, while requiring honest escalation when bounded one-session analysis cannot produce a complete answer.
 
 The MVP is complete when one desktop installation can configure and use multiple PostgreSQL/MySQL sources concurrently, answer read-only analytical questions, retain user-provided semantic meaning, and enforce the safety and privacy rules in this document.
 
@@ -39,6 +40,8 @@ The MVP is complete when one desktop installation can configure and use multiple
 - Keep native connection pools shared across all live agent sessions.
 - Provide stable abstractions for future native and MCP-backed connectors.
 - Provide understandable query provenance in the UI: source, SQL, duration, returned rows, and truncation status.
+- Let the agent discover available data-analysis tools, make multiple bounded queries, and choose the simplest reliable analysis strategy.
+- Require the agent to treat truncation and runtime limits as authoritative, never present partial data as complete, and provide a concrete pipeline blueprint when the task exceeds available one-session capabilities.
 - Fail closed when SQL cannot be validated or source policy cannot be enforced.
 - Restrict source management and agent querying to authorized local desktop turns in the MVP; app-server, scheduler, connector, and sub-agent turns do not inherit database access.
 
@@ -48,6 +51,7 @@ The MVP is complete when one desktop installation can configure and use multiple
 - A user-approved escape hatch for write queries. The MVP has no write execution path.
 - Cross-server SQL joins.
 - Downloading entire tables or using WorkX as an ETL system.
+- A central planner that prescribes every analysis step. WorkX exposes composable bounded capabilities; the model selects the strategy.
 - Python, pandas, notebook execution, chart creation, or local statistical runtimes.
 - SSH tunnels, bastion hosts, VPN management, cloud IAM database authentication, OAuth database authentication, or rotating cloud tokens.
 - Client certificate authentication. Server CA configuration is supported; client cert/key authentication is deferred.
@@ -1299,17 +1303,36 @@ If only one agent-visible source exists, the model may select it automatically. 
 
 Queries against different sources can run independently across sessions. Queries against the same source are serialized by the runtime semaphore.
 
-### 16.5 Hybrid analysis in a future release
+### 16.5 Capability-driven and hybrid analysis
+
+Analysis is model-directed. WorkX constrains access, mutation, credentials, result size, execution time, and local resource use, but it does not impose a fixed sequence such as “query, stage, then run DuckDB.” The model inspects its visible tool definitions and uses `tool_search` to discover and select deferred data, warehouse, MCP, component, staging, or computation tools. It then chooses the simplest reliable combination for the request.
+
+The single-statement requirement is scoped to one `data_query` invocation. It prevents ambiguous execution and keeps validation, approval, cancellation, audit, and error handling atomic; it does not restrict a user request to one query. The model may make multiple calls and use multiple sources.
 
 ```text
 Question compares native PostgreSQL and MCP warehouse
   -> data_query(source_id=postgres-source)
   -> data_query(source_id=warehouse-mcp-source)
-  -> each connector returns normalized DataResult
-  -> agent combines small aggregates
+  -> each connector returns a bounded normalized DataResult
+  -> agent combines the complete small aggregates
 ```
 
-The MVP must not implement cross-source joins, but its result contract must not prevent this flow.
+The MVP supports this flow only when the bounded results are complete and small enough for reliable model-context reasoning. It does not expose raw cross-source staging, DuckDB execution, or managed Python to the agent. Installing DuckDB records a component capability; it does not create an analysis execution path.
+
+Future releases should add composable bounded primitives rather than a mandatory high-level orchestrator. Examples include job-scoped data staging, sandboxed computation, component invocation, warehouse-native jobs, artifact inspection, and cleanup. Those tools report their own capabilities, provenance, truncation, quotas, and lifecycle state so the model can select them without bypassing policy.
+
+#### One-session completion boundary
+
+Tool results are authoritative. The model narrows, aggregates, or safely pages a truncated query only when that can produce a complete result. It stops rather than guessing when a source or connector is missing, staging or compute execution is unavailable, cross-source data exceeds bounded results, the job requires durable/scheduled/incremental/distributed processing, or a tool reports a resource limit.
+
+An honest escalation contains:
+
+- The supported part of the request and any verified findings.
+- The exact unmet capability or scale constraint.
+- Known sources and objects, filters and time bounds, join keys, transforms or algorithms, and expected scale/freshness.
+- A suitable compute/storage approach, validation and reconciliation checks, read-only/security controls, and unresolved user decisions.
+
+Unknown details remain explicitly unknown. The agent must not fabricate output, silently extrapolate a sample, or describe a component as usable when no exposed execution path can invoke it.
 
 ## 17. MCP and Connector Extensibility
 
@@ -1780,6 +1803,8 @@ The design is implemented when all of the following are true:
 - DML, DDL, multiple statements, data-modifying CTEs, locks, and object-allowlist bypasses are rejected before execution.
 - Database-side read-only transactions, timeout/cancellation, row limit, result-character limit, and source concurrency limit are active.
 - Each connector executes the wrapped analytical statement exactly once per `data_query` call.
+- The agent may issue multiple `data_query` calls per request, inspect deferred capabilities through `tool_search`, and choose its own bounded analysis strategy.
+- Truncated or otherwise partial tool output is never represented as a complete result; an analysis beyond available capabilities stops with an explicit limitation and actionable pipeline blueprint.
 - A clear user statement such as “`st = 2` means paid and `amt` is cents” is used in the current query and, in automatic mode, saved with verified evidence and an Undo notification.
 - Temporary report instructions are used now but are not automatically saved.
 - Context conflicts are surfaced and never overwritten silently.
@@ -1797,7 +1822,7 @@ The design is implemented when all of the following are true:
 - MCP data-source profile and binding UI.
 - Snowflake, BigQuery, Redshift, Databricks, SQL Server, Oracle, SQLite, and NoSQL connectors.
 - Shared semantic profiles across production/staging/warehouse sources.
-- Local DuckDB/Arrow analysis for cross-source joins and larger datasets. The verified on-demand component delivery/runtime is now implemented; bounded staging and analysis orchestration remain deferred.
+- Composable bounded staging and sandboxed compute tools for cross-source joins and larger datasets. The verified on-demand component delivery/runtime is implemented; agent-facing DuckDB/Python execution remains deferred.
 - Charts, downloadable reports, notebooks, and scheduled analyses.
 - SSH tunnels, cloud IAM, OAuth, and client certificate authentication.
 - Fine-grained column masking/redaction rules.
