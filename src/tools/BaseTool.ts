@@ -9,12 +9,26 @@
  * JSON Schema definition for tool parameters
  */
 export type JsonSchema =
+  | {
+      anyOf: JsonSchema[];
+      description?: string;
+      type?: never;
+      properties?: never;
+      required?: never;
+      additionalProperties?: never;
+    }
   | { type: 'boolean'; description?: string }
   | { type: 'string'; description?: string; enum?: string[] }
   | { type: 'number'; description?: string }
   | { type: 'integer'; description?: string }
   | { type: 'array'; items: JsonSchema; description?: string }
-  | { type: 'object'; properties?: Record<string, JsonSchema>; required?: string[]; additionalProperties?: boolean; description?: string };
+  | {
+      type: 'object';
+      properties?: Record<string, JsonSchema>;
+      required?: string[];
+      additionalProperties?: boolean;
+      description?: string;
+    };
 
 /**
  * Response API tool definition
@@ -242,7 +256,7 @@ export abstract class BaseTool {
       if (!validationResult.valid) {
         return {
           success: false,
-          error: `Parameter validation failed: ${validationResult.errors.map(e => e.message).join(', ')}`,
+          error: `Parameter validation failed: ${validationResult.errors.map((e) => e.message).join(', ')}`,
           metadata: {
             validationErrors: validationResult.errors,
             duration: Date.now() - startTime,
@@ -256,9 +270,10 @@ export abstract class BaseTool {
       // Execute the tool-specific logic
       const result = await this.executeImpl(processedRequest, options);
 
-      const toolName = this.toolDefinition.type === 'function'
-        ? this.toolDefinition.function.name
-        : this.toolDefinition.type;
+      const toolName =
+        this.toolDefinition.type === 'function'
+          ? this.toolDefinition.function.name
+          : this.toolDefinition.type;
 
       return {
         success: true,
@@ -269,11 +284,11 @@ export abstract class BaseTool {
           ...options?.metadata,
         },
       };
-
     } catch (error: any) {
-      const toolName = this.toolDefinition.type === 'function'
-        ? this.toolDefinition.function.name
-        : this.toolDefinition.type;
+      const toolName =
+        this.toolDefinition.type === 'function'
+          ? this.toolDefinition.function.name
+          : this.toolDefinition.type;
 
       return {
         success: false,
@@ -291,15 +306,15 @@ export abstract class BaseTool {
   /**
    * Tool-specific implementation - must be implemented by subclasses
    */
-  protected abstract executeImpl(
-    request: BaseToolRequest,
-    options?: BaseToolOptions
-  ): Promise<any>;
+  protected abstract executeImpl(request: BaseToolRequest, options?: BaseToolOptions): Promise<any>;
 
   /**
    * Validate parameters against the tool's schema
    */
-  protected validateParameters(parameters: Record<string, any>): { valid: boolean; errors: ValidationError[] } {
+  protected validateParameters(parameters: Record<string, any>): {
+    valid: boolean;
+    errors: ValidationError[];
+  } {
     const errors: ValidationError[] = [];
 
     // Get the parameters schema from the tool definition
@@ -372,6 +387,22 @@ export abstract class BaseTool {
       return errors;
     }
 
+    if ('anyOf' in schema) {
+      const branchErrors = schema.anyOf.map((branch) =>
+        this.validateJsonSchemaValue(paramName, value, branch)
+      );
+      if (branchErrors.some((branch) => branch.length === 0)) {
+        return [];
+      }
+      return [
+        {
+          parameter: paramName,
+          message: `Parameter '${paramName}' does not match any allowed type`,
+          code: 'TYPE_MISMATCH',
+        },
+      ];
+    }
+
     // Type validation
     const typeError = this.validateJsonSchemaType(paramName, value, schema.type);
     if (typeError) {
@@ -382,17 +413,30 @@ export abstract class BaseTool {
     // Array item validation
     if (schema.type === 'array' && 'items' in schema && Array.isArray(value)) {
       for (let i = 0; i < value.length; i++) {
-        const itemErrors = this.validateJsonSchemaValue(`${paramName}[${i}]`, value[i], schema.items);
+        const itemErrors = this.validateJsonSchemaValue(
+          `${paramName}[${i}]`,
+          value[i],
+          schema.items
+        );
         errors.push(...itemErrors);
       }
     }
 
     // Object property validation
-    if (schema.type === 'object' && 'properties' in schema && typeof value === 'object' && !Array.isArray(value)) {
+    if (
+      schema.type === 'object' &&
+      'properties' in schema &&
+      typeof value === 'object' &&
+      !Array.isArray(value)
+    ) {
       for (const [propName, propValue] of Object.entries(value)) {
         const propSchema = schema.properties?.[propName];
         if (propSchema) {
-          const propErrors = this.validateJsonSchemaValue(`${paramName}.${propName}`, propValue, propSchema);
+          const propErrors = this.validateJsonSchemaValue(
+            `${paramName}.${propName}`,
+            propValue,
+            propSchema
+          );
           errors.push(...propErrors);
         }
       }
@@ -404,7 +448,11 @@ export abstract class BaseTool {
   /**
    * Validate value type against JsonSchema type
    */
-  protected validateJsonSchemaType(paramName: string, value: any, expectedType: string): ValidationError | null {
+  protected validateJsonSchemaType(
+    paramName: string,
+    value: any,
+    expectedType: string
+  ): ValidationError | null {
     const actualType = Array.isArray(value) ? 'array' : typeof value;
 
     switch (expectedType) {
@@ -557,7 +605,9 @@ export abstract class BaseTool {
 
     // Check if session has a tab attached
     if (tabId === -1) {
-      throw new Error(`No tab attached (tabId = -1)${sessionId ? ` for session ${sessionId}` : ''}`);
+      throw new Error(
+        `No tab attached (tabId = -1)${sessionId ? ` for session ${sessionId}` : ''}`
+      );
     }
 
     // Validate the tab exists
@@ -610,11 +660,13 @@ export abstract class BaseTool {
         }
 
         // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, delayMs * attempt));
+        await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
       }
     }
 
-    throw new Error(`Operation failed after ${maxRetries} attempts: ${lastError?.message || 'Unknown error'}`);
+    throw new Error(
+      `Operation failed after ${maxRetries} attempts: ${lastError?.message || 'Unknown error'}`
+    );
   }
 
   /**
@@ -636,9 +688,10 @@ export abstract class BaseTool {
    * Log debug information (can be overridden by subclasses)
    */
   protected log(level: 'debug' | 'info' | 'warn' | 'error', message: string, data?: any): void {
-    const toolName = this.toolDefinition.type === 'function'
-      ? this.toolDefinition.function.name
-      : this.toolDefinition.type;
+    const toolName =
+      this.toolDefinition.type === 'function'
+        ? this.toolDefinition.function.name
+        : this.toolDefinition.type;
 
     // Don't log data to avoid circular reference issues with DOM nodes
     if (data) {
@@ -652,9 +705,10 @@ export abstract class BaseTool {
    * Create execution context for the tool
    */
   protected createContext(sessionId: string, turnId: string): ToolContext {
-    const toolName = this.toolDefinition.type === 'function'
-      ? this.toolDefinition.function.name
-      : this.toolDefinition.type;
+    const toolName =
+      this.toolDefinition.type === 'function'
+        ? this.toolDefinition.function.name
+        : this.toolDefinition.type;
     return {
       sessionId,
       turnId,
@@ -686,15 +740,19 @@ export abstract class BaseTool {
   protected safeStringify(obj: any, maxDepth: number = 3): string {
     const seen = new WeakSet();
 
-    return JSON.stringify(obj, (key, val) => {
-      if (val != null && typeof val === 'object') {
-        if (seen.has(val)) {
-          return '[Circular]';
+    return JSON.stringify(
+      obj,
+      (key, val) => {
+        if (val != null && typeof val === 'object') {
+          if (seen.has(val)) {
+            return '[Circular]';
+          }
+          seen.add(val);
         }
-        seen.add(val);
-      }
-      return val;
-    }, 2);
+        return val;
+      },
+      2
+    );
   }
 }
 

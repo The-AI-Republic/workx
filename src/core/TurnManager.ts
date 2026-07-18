@@ -36,18 +36,9 @@ import {
 import type { HookDispatcher, HookExecutionSnapshot } from './hooks/HookDispatcher';
 import type { HookInput } from './hooks/types';
 import { getToolRuntimeContext } from './hooks/toolRuntimeContext';
-import {
-  getPersistenceThreshold,
-  MAX_TOOL_RESULTS_PER_MESSAGE_CHARS,
-} from '../tools/toolLimits';
-import {
-  buildPersistedOutputMessage,
-  ToolResultTooLargeForStoreError,
-} from '../tools/resultStore';
-import {
-  enforceToolResultBudget,
-  type FunctionCallOutputItem,
-} from '../tools/resultBudget';
+import { getPersistenceThreshold, MAX_TOOL_RESULTS_PER_MESSAGE_CHARS } from '../tools/toolLimits';
+import { buildPersistedOutputMessage, ToolResultTooLargeForStoreError } from '../tools/resultStore';
+import { enforceToolResultBudget, type FunctionCallOutputItem } from '../tools/resultBudget';
 import {
   ToolExposureManager,
   ensureToolSearchRegistered,
@@ -101,8 +92,9 @@ export interface TurnConfig {
   retryDelayMs?: number;
   /** Maximum delay between retries in milliseconds */
   maxRetryDelayMs?: number;
+  stableTurnId?: string;
+  dataTurnSnapshot?: import('./data-sources').DataTurnSnapshot;
 }
-
 
 /**
  * Prompt structure for model requests
@@ -216,10 +208,7 @@ export class TurnManager {
     // Falls back to the value cached on TurnContext if reload throws.
     let baseInstructions: string | undefined;
     try {
-      baseInstructions = await loadPrompt(
-        this.getAgentMode(),
-        this.getPromptRuntimeContext(),
-      );
+      baseInstructions = await loadPrompt(this.getAgentMode(), this.getPromptRuntimeContext());
     } catch (err) {
       console.warn('[TurnManager] loadPrompt() failed, reusing cached base instructions:', err);
       baseInstructions = this.turnContext.getBaseInstructions();
@@ -242,8 +231,7 @@ export class TurnManager {
     try {
       const agentConfig = await AgentConfig.getInstance();
       const currentKey = this.turnContext.getSelectedModelKey();
-      fallbackModelKey = agentConfig.getModelByKey(currentKey)?.model
-        .fallbackModelKey;
+      fallbackModelKey = agentConfig.getModelByKey(currentKey)?.model.fallbackModelKey;
     } catch {
       fallbackModelKey = undefined;
     }
@@ -263,8 +251,7 @@ export class TurnManager {
               // resolve returns undefined so the orchestrator falls through
               // to normal retry/persistent handling.
               resolveFallbackModel: () =>
-                fallbackModelKey &&
-                this.turnContext.getSelectedModelKey() !== fallbackModelKey
+                fallbackModelKey && this.turnContext.getSelectedModelKey() !== fallbackModelKey
                   ? fallbackModelKey
                   : undefined,
               applyFallbackModel: (model) => {
@@ -277,8 +264,7 @@ export class TurnManager {
                   data: {
                     from_model: from,
                     to_model: to,
-                    reason:
-                      'sustained provider overload (consecutive 529 responses)',
+                    reason: 'sustained provider overload (consecutive 529 responses)',
                   },
                 });
               },
@@ -286,8 +272,7 @@ export class TurnManager {
           : undefined,
         isCancelled: () => this.cancelled,
         isNonRetryable: (error) => this.isNonRetryableError(error),
-        computeBackoffMs: (attempt, error) =>
-          this.calculateRetryDelay(attempt, error),
+        computeBackoffMs: (attempt, error) => this.calculateRetryDelay(attempt, error),
         onRetryNotice: async (error, attempt, delayMs) => {
           const summary = this.extractStreamErrorSummary(error);
           await this.emitStreamError(
@@ -321,10 +306,12 @@ export class TurnManager {
           currentInput = (await this.session.buildTurnInputWithHistory([])) as any[];
           try {
             currentBaseInstructions = this.withToolExposureReminder(
-              await loadPrompt(this.getAgentMode(), this.getPromptRuntimeContext()),
+              await loadPrompt(this.getAgentMode(), this.getPromptRuntimeContext())
             );
           } catch {
-            currentBaseInstructions = this.withToolExposureReminder(this.turnContext.getBaseInstructions());
+            currentBaseInstructions = this.withToolExposureReminder(
+              this.turnContext.getBaseInstructions()
+            );
           }
           return true;
         },
@@ -480,7 +467,7 @@ export class TurnManager {
             if (totalTokenUsage) {
               const cost = calculateUSDCost(
                 this.turnContext.getSelectedModelKey(),
-                totalTokenUsage,
+                totalTokenUsage
               );
               turnCostUSD = cost.costUSD;
               turnCostEstimated = cost.estimated;
@@ -516,9 +503,7 @@ export class TurnManager {
             }
 
             const lastTurnHadToolCalls = processedItems.some(
-              (p) =>
-                p.item?.type === 'function_call' ||
-                p.item?.type === 'custom_tool_call',
+              (p) => p.item?.type === 'function_call' || p.item?.type === 'custom_tool_call'
             );
 
             return {
@@ -570,10 +555,12 @@ export class TurnManager {
 
       // If loop exits without Completed event, stream was closed prematurely
       throw new Error('stream closed before response.completed');
-
     } catch (error) {
       // Handle streaming errors
-      if (error instanceof Error && (error.message?.includes('stream closed') || error.name === 'StreamError')) {
+      if (
+        error instanceof Error &&
+        (error.message?.includes('stream closed') || error.name === 'StreamError')
+      ) {
         throw new Error(`Stream error: ${error.message}`);
       }
       throw error;
@@ -606,10 +593,14 @@ export class TurnManager {
 
     // Add agent execution tools based on config
     // Only add web_search if not already registered in ToolRegistry
-    const hasWebSearch = tools.some(t =>
-      (t.type === 'function' && t.function.name === 'web_search') || t.type === 'web_search'
+    const hasWebSearch = tools.some(
+      (t) => (t.type === 'function' && t.function.name === 'web_search') || t.type === 'web_search'
     );
-    if (!hasWebSearch && (enableAllTools || toolsConfig.webSearch) && this.isAllowedByActiveToolAllowList('web_search')) {
+    if (
+      !hasWebSearch &&
+      (enableAllTools || toolsConfig.webSearch) &&
+      this.isAllowedByActiveToolAllowList('web_search')
+    ) {
       const modelClient = this.turnContext.getModelClient();
       const useNative = toolsConfig.useNativeWebSearch !== false;
       this.nativeWebSearchEnabled = useNative && modelClient.supportsNativeWebSearch();
@@ -652,14 +643,20 @@ export class TurnManager {
       // Convert MCP tools to ModelClient format
       const convertedMcpTools = mcpTools
         .filter((tool: any) => this.isAllowedByActiveToolAllowList(tool.function.name))
-        .filter((tool: any) => !tools.some((existing) => this.getToolName(existing) === tool.function.name))
+        .filter(
+          (tool: any) =>
+            !tools.some((existing) => this.getToolName(existing) === tool.function.name)
+        )
         .map((tool: any) => ({
           type: 'function' as const,
           function: {
             name: tool.function.name,
             description: tool.function.description,
             strict: tool.function.strict ?? false,
-            parameters: tool.function.parameters || { type: 'object' as const, properties: {} },
+            parameters: tool.function.parameters || {
+              type: 'object' as const,
+              properties: {},
+            },
           },
         }));
       tools.push(...convertedMcpTools);
@@ -668,7 +665,7 @@ export class TurnManager {
     // Add custom tools if configured
     if (toolsConfig.customTools) {
       for (const [toolName, isEnabled] of Object.entries(toolsConfig.customTools)) {
-          if (isEnabled || enableAllTools) {
+        if (isEnabled || enableAllTools) {
           if (!this.isAllowedByActiveToolAllowList(toolName)) {
             continue;
           }
@@ -682,7 +679,10 @@ export class TurnManager {
                   name: customTool.function.name,
                   description: customTool.function.description,
                   strict: customTool.function.strict ?? false,
-                  parameters: customTool.function.parameters || { type: 'object' as const, properties: {} },
+                  parameters: customTool.function.parameters || {
+                    type: 'object' as const,
+                    properties: {},
+                  },
                 },
               });
             }
@@ -708,10 +708,11 @@ export class TurnManager {
         exposureManager: this.toolExposureManager,
         selectionStore: this.toolSelectionStore,
         getToolsConfig: () => this.turnContext.getToolsConfig() as IToolsConfig,
-        getSessionId: () => this.turnContext.getSessionId?.() ?? this.session.getSessionId?.() ?? '',
+        getSessionId: () =>
+          this.turnContext.getSessionId?.() ?? this.session.getSessionId?.() ?? '',
         getModelContextWindow: () => this.turnContext.getModelContextWindow?.(),
         isToolAllowed: (toolName) => this.isAllowedByActiveToolAllowList(toolName),
-      }),
+      })
     );
   }
 
@@ -730,7 +731,9 @@ export class TurnManager {
     return [baseInstructions, this.lastToolExposureReminder].filter(Boolean).join('\n\n');
   }
 
-  private async emitToolExposureDiagnostics(exposure: ReturnType<ToolExposureManager['buildExposure']>): Promise<void> {
+  private async emitToolExposureDiagnostics(
+    exposure: ReturnType<ToolExposureManager['buildExposure']>
+  ): Promise<void> {
     if (exposure.diagnostics.deferredCount === 0 && exposure.diagnostics.hiddenCount === 0) {
       return;
     }
@@ -781,14 +784,14 @@ export class TurnManager {
     }
 
     // Find missing calls
-    const missingCallIds = [...pendingCallIds].filter(id => !completedCallIds.has(id));
+    const missingCallIds = [...pendingCallIds].filter((id) => !completedCallIds.has(id));
 
     if (missingCallIds.length === 0) {
       return prompt;
     }
 
     // Add synthetic aborted responses for missing calls
-    const syntheticResponses = missingCallIds.map(callId => ({
+    const syntheticResponses = missingCallIds.map((callId) => ({
       type: 'function_call_output' as const,
       call_id: callId,
       output: 'aborted',
@@ -819,7 +822,11 @@ export class TurnManager {
           output: `Error: ${safeErrorMessage(error)}`,
         };
       }
-    } else if (item.type === 'message' || item.type === 'reasoning' || item.type === 'web_search_call') {
+    } else if (
+      item.type === 'message' ||
+      item.type === 'reasoning' ||
+      item.type === 'web_search_call'
+    ) {
       const showRawReasoning = this.session.showRawAgentReasoning() ?? false;
       const eventMsgs = mapResponseItemToEventMessages(item as ResponseItem, showRawReasoning);
 
@@ -835,11 +842,14 @@ export class TurnManager {
       // Handle tool_calls embedded in message items (unified format)
       // Gemini 3 may send parallel tool calls — we must execute ALL of them.
       // Safe calls run concurrently (bounded); unsafe calls run sequentially.
-      if (item.type === 'message' && item.tool_calls && Array.isArray(item.tool_calls) && item.tool_calls.length > 0) {
+      if (
+        item.type === 'message' &&
+        item.tool_calls &&
+        Array.isArray(item.tool_calls) &&
+        item.tool_calls.length > 0
+      ) {
         // Step 1: Prepare all calls (parse args once, classify concurrency)
-        const prepared = item.tool_calls.map((tc: any) =>
-          prepareToolCall(tc, this.toolRegistry)
-        );
+        const prepared = item.tool_calls.map((tc: any) => prepareToolCall(tc, this.toolRegistry));
 
         // Step 2: Partition into batches
         const batches = partitionToolCalls(prepared);
@@ -853,7 +863,7 @@ export class TurnManager {
                 call.name,
                 call.parsedArguments,
                 call.id,
-                options?.signal,
+                options?.signal
               );
             } catch (error) {
               return {
@@ -866,7 +876,7 @@ export class TurnManager {
           {
             shouldAbortOnResult: this.shouldAbortSafeSiblingBatch,
             makeCancelledResult: this.makeCancelledToolResult,
-          },
+          }
         );
 
         // Track 09: tier-2 aggregate budget. Tier-1 (in executeToolCall) has
@@ -931,7 +941,7 @@ export class TurnManager {
     toolName: string,
     parameters: any,
     callId: string,
-    signal?: AbortSignal,
+    signal?: AbortSignal
   ): Promise<any> {
     let hookSnapshot: HookExecutionSnapshot | undefined;
     let parsedParamsForFailure = parameters;
@@ -942,7 +952,9 @@ export class TurnManager {
         try {
           parsedParams = JSON.parse(parameters);
         } catch (error) {
-          throw new Error(`Failed to parse tool parameters: ${error instanceof Error ? error.message : String(error)}`);
+          throw new Error(
+            `Failed to parse tool parameters: ${error instanceof Error ? error.message : String(error)}`
+          );
         }
       }
       parsedParamsForFailure = parsedParams;
@@ -964,7 +976,7 @@ export class TurnManager {
 
       hookSnapshot = this.hookDispatcher?.createToolExecutionSnapshot(
         toolName,
-        typeof parsedParams === 'object' ? parsedParams : {},
+        typeof parsedParams === 'object' ? parsedParams : {}
       );
       const runtimeContext = await getToolRuntimeContext(this.session);
 
@@ -1004,7 +1016,13 @@ export class TurnManager {
           // Check ToolRegistry for browser tools BEFORE falling back to MCP
           const browserTool = this.toolRegistry.getTool(toolName);
           if (browserTool) {
-            result = await this.executeBrowserTool(browserTool, parsedParams, callId, hookSnapshot, signal);
+            result = await this.executeBrowserTool(
+              browserTool,
+              parsedParams,
+              callId,
+              hookSnapshot,
+              signal
+            );
             break;
           }
 
@@ -1057,7 +1075,6 @@ export class TurnManager {
         call_id: callId,
         output: persistedOutput,
       };
-
     } catch (error) {
       const errorMsg = safeErrorMessage(error);
 
@@ -1065,7 +1082,9 @@ export class TurnManager {
       // Check this first — denials are normal control flow, not tool failures.
       if (errorMsg.includes('denied by the approval system')) {
         const reason = (error as any).reason;
-        console.warn(`[TurnManager] executeToolCall ${toolName} denied by approval system${reason ? `: ${reason}` : ''}`);
+        console.warn(
+          `[TurnManager] executeToolCall ${toolName} denied by approval system${reason ? `: ${reason}` : ''}`
+        );
         const output = reason
           ? `Action denied: The user paused this action and said: "${reason}". Please respond to the user's message directly.`
           : `Action denied: The user's approval system blocked this ${toolName} call. The action was assessed as too risky or was explicitly denied by the user. Please inform the user and suggest an alternative approach.`;
@@ -1086,9 +1105,11 @@ export class TurnManager {
           tool_error: errorMsg,
           ...(await getToolRuntimeContext(this.session)),
         };
-        this.hookDispatcher.fire('PostToolUseFailure', failHookInput, {
-          snapshot: hookSnapshot,
-        }).catch(() => {});
+        this.hookDispatcher
+          .fire('PostToolUseFailure', failHookInput, {
+            snapshot: hookSnapshot,
+          })
+          .catch(() => {});
       }
 
       console.error(`[TurnManager] executeToolCall ${toolName} failed:`, errorMsg);
@@ -1100,7 +1121,6 @@ export class TurnManager {
       };
     }
   }
-
 
   /**
    * Tier-1 tool result persistence (track 09).
@@ -1115,7 +1135,7 @@ export class TurnManager {
   private async maybePersistToolResult(
     toolName: string,
     callId: string,
-    output: string,
+    output: string
   ): Promise<string> {
     const store = this.session.getToolResultStore?.();
     const state = this.session.getContentReplacementState?.();
@@ -1136,8 +1156,16 @@ export class TurnManager {
 
     try {
       const owner = this.session.isPersistentSession?.()
-        ? { kind: 'persistent_rollout' as const, sessionId: this.session.sessionId, callId }
-        : { kind: 'transient_session' as const, sessionId: this.session.sessionId, callId };
+        ? {
+            kind: 'persistent_rollout' as const,
+            sessionId: this.session.sessionId,
+            callId,
+          }
+        : {
+            kind: 'transient_session' as const,
+            sessionId: this.session.sessionId,
+            callId,
+          };
       const persisted = await store.persist(this.session.sessionId, callId, output, {
         owner,
       });
@@ -1156,7 +1184,7 @@ export class TurnManager {
             ? err.message
             : String(err);
       console.warn(
-        `[TurnManager] tier-1 persistence failed for ${toolName} (${callId}): ${reason}`,
+        `[TurnManager] tier-1 persistence failed for ${toolName} (${callId}): ${reason}`
       );
       return (
         output.slice(0, threshold) +
@@ -1176,9 +1204,12 @@ export class TurnManager {
       // tc.arguments may be a JSON string or an already-parsed object;
       // prepareToolCall handles both shapes.
       prepareToolCall(
-        { id: tc.call_id, function: { name: tc.name, arguments: tc.arguments } },
-        this.toolRegistry,
-      ),
+        {
+          id: tc.call_id,
+          function: { name: tc.name, arguments: tc.arguments },
+        },
+        this.toolRegistry
+      )
     );
     const batches = partitionToolCalls(prepared);
     const results = await executeToolCallBatches(
@@ -1189,7 +1220,7 @@ export class TurnManager {
             call.name,
             call.parsedArguments,
             call.id,
-            options?.signal,
+            options?.signal
           );
         } catch (error) {
           return {
@@ -1202,7 +1233,7 @@ export class TurnManager {
       {
         shouldAbortOnResult: this.shouldAbortSafeSiblingBatch,
         makeCancelledResult: this.makeCancelledToolResult,
-      },
+      }
     );
     return this.maybeEnforceTier2(results, prepared);
   }
@@ -1216,20 +1247,21 @@ export class TurnManager {
    * individually-small outputs can exceed the per-turn aggregate budget.
    */
   private async enforceImmediateLegacyTier2(
-    processedItems: ProcessedResponseItem[],
+    processedItems: ProcessedResponseItem[]
   ): Promise<void> {
     const entries = processedItems.filter(
-      (p) =>
-        p.item?.type === 'function_call' &&
-        p.response?.type === 'function_call_output',
+      (p) => p.item?.type === 'function_call' && p.response?.type === 'function_call_output'
     );
     if (entries.length === 0) return;
 
     const prepared = entries.map((p) =>
       prepareToolCall(
-        { id: p.item.call_id, function: { name: p.item.name, arguments: p.item.arguments } },
-        this.toolRegistry,
-      ),
+        {
+          id: p.item.call_id,
+          function: { name: p.item.name, arguments: p.item.arguments },
+        },
+        this.toolRegistry
+      )
     );
     const results = entries.map((p) => p.response);
     const enforced = await this.maybeEnforceTier2(results, prepared);
@@ -1246,7 +1278,7 @@ export class TurnManager {
    */
   private async maybeEnforceTier2(
     toolCallResults: any[],
-    prepared: PreparedToolCall[],
+    prepared: PreparedToolCall[]
   ): Promise<any[]> {
     const store = this.session.getToolResultStore?.();
     const state = this.session.getContentReplacementState?.();
@@ -1267,10 +1299,19 @@ export class TurnManager {
         limit: MAX_TOOL_RESULTS_PER_MESSAGE_CHARS,
         skipToolNames,
         toolNameByCallId: (id) => nameByCallId.get(id),
-        ownerByCallId: (callId) => this.session.isPersistentSession?.()
-          ? { kind: 'persistent_rollout', sessionId: this.session.sessionId, callId }
-          : { kind: 'transient_session', sessionId: this.session.sessionId, callId },
-      },
+        ownerByCallId: (callId) =>
+          this.session.isPersistentSession?.()
+            ? {
+                kind: 'persistent_rollout',
+                sessionId: this.session.sessionId,
+                callId,
+              }
+            : {
+                kind: 'transient_session',
+                sessionId: this.session.sessionId,
+                callId,
+              },
+      }
     );
     return enforced;
   }
@@ -1368,7 +1409,7 @@ export class TurnManager {
     parameters: any,
     callId?: string,
     hookSnapshot?: HookExecutionSnapshot,
-    signal?: AbortSignal,
+    signal?: AbortSignal
   ): Promise<any> {
     const toolName = this.getToolNameFromDefinition(tool);
 
@@ -1396,16 +1437,24 @@ export class TurnManager {
           const tab = await chrome.tabs.get(tabId);
           currentUrl = tab.url;
           if (currentUrl) {
-            try { currentDomain = new URL(currentUrl).hostname; } catch { /* ignore */ }
+            try {
+              currentDomain = new URL(currentUrl).hostname;
+            } catch {
+              /* ignore */
+            }
           }
         }
-      } catch { /* tab may not exist in desktop mode */ }
+      } catch {
+        /* tab may not exist in desktop mode */
+      }
       if (!currentUrl) {
         try {
           const pageContext = await this.toolRegistry.getCurrentPageContext();
           currentUrl = pageContext?.currentUrl;
           currentDomain = pageContext?.currentDomain;
-        } catch { /* page context is best-effort */ }
+        } catch {
+          /* page context is best-effort */
+        }
       }
 
       // SubmitPlanForReview (Track 14) blocks on human plan approval, which
@@ -1413,10 +1462,9 @@ export class TurnManager {
       // unbounded execution timeout so the registry's handler race does not
       // abort a pending review; everything else keeps the 5-min default
       // (MCP lazy connection + tool execution).
-      const executionTimeout =
-        toolName === SUBMIT_PLAN_TOOL_NAME ? 24 * 60 * 60 * 1000 : 300000;
+      const executionTimeout = toolName === SUBMIT_PLAN_TOOL_NAME ? 24 * 60 * 60 * 1000 : 300000;
 
-      const turnId = `turn_${Date.now()}`;
+      const turnId = this.config.stableTurnId ?? `turn_${Date.now()}`;
       const request = {
         toolName,
         parameters,
@@ -1449,6 +1497,7 @@ export class TurnManager {
           workspaceRoot: this.session.getWorkspaceRoot?.(),
           fileStateCache: this.session.getFileStateCache?.(),
           agentMode: this.session.getAgentMode?.(), // §4.2: file tools are code-mode only
+          dataTurnSnapshot: this.config.dataTurnSnapshot,
         },
       };
 
@@ -1583,7 +1632,10 @@ export class TurnManager {
   private async getCurrentTabId(): Promise<number | undefined> {
     if (typeof chrome !== 'undefined' && chrome.tabs) {
       try {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const [tab] = await chrome.tabs.query({
+          active: true,
+          currentWindow: true,
+        });
         return tab?.id;
       } catch (error) {
         console.warn('Failed to get current tab ID:', error);
@@ -1598,7 +1650,10 @@ export class TurnManager {
   private async getCurrentUrl(): Promise<string | undefined> {
     if (typeof chrome !== 'undefined' && chrome.tabs) {
       try {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const [tab] = await chrome.tabs.query({
+          active: true,
+          currentWindow: true,
+        });
         return tab?.url;
       } catch (error) {
         console.warn('Failed to get current URL:', error);
@@ -1724,6 +1779,6 @@ export class TurnManager {
    * Sleep utility for retry delays
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

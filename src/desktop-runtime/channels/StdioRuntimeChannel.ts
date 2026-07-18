@@ -83,14 +83,19 @@ export class StdioRuntimeChannel implements ChannelAdapter {
     // attaches. This channel only owns inbound agent submissions.
     if (frame.type === 'request') {
       if (!this.submissionHandler) {
-        this.carrier.send({ type: 'response', id: frame.id, ok: false, error: 'No submission handler registered' });
+        this.carrier.send({
+          type: 'response',
+          id: frame.id,
+          ok: false,
+          error: 'No submission handler registered',
+        });
         return;
       }
 
       const context: SubmissionContext = {
+        ...frame.context,
         channelId: this.channelId,
         channelType: this.channelType,
-        ...frame.context,
       };
 
       try {

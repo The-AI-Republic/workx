@@ -45,7 +45,9 @@ const sidecarDir = path.join(root, 'tauri/sidecar/desktop-runtime');
 const bundledNodeName = process.platform === 'win32' ? 'node.exe' : 'node';
 const bundledNodePath = path.join(sidecarDir, bundledNodeName);
 
-function info(msg) { console.log(`[build-desktop-runtime-sidecar] ${msg}`); }
+function info(msg) {
+  console.log(`[build-desktop-runtime-sidecar] ${msg}`);
+}
 
 function step(name, fn) {
   process.stdout.write(`[build-desktop-runtime-sidecar] ${name}… `);
@@ -100,7 +102,7 @@ step('3) copy runtime bundle (index.mjs + code-split chunks under assets/) + pac
   // Node treats `.js` chunks under `assets/` as ESM.
   fs.writeFileSync(
     path.join(sidecarDir, 'package.json'),
-    JSON.stringify({ name: 'workx-desktop-runtime', type: 'module', private: true }, null, 2),
+    JSON.stringify({ name: 'workx-desktop-runtime', type: 'module', private: true }, null, 2)
   );
 });
 
@@ -122,9 +124,10 @@ function copyRuntimeDep(name, picks) {
   copyFile(path.join(depRoot, 'package.json'), path.join(dst, 'package.json'));
   // Empty picks ⇒ copy the whole package (typical for tiny pure-JS deps like
   // `bindings`/`file-uri-to-path` where there's nothing worth pruning).
-  const items = picks.length > 0
-    ? picks
-    : fs.readdirSync(depRoot).filter((n) => n !== 'package.json' && n !== 'node_modules');
+  const items =
+    picks.length > 0
+      ? picks
+      : fs.readdirSync(depRoot).filter((n) => n !== 'package.json' && n !== 'node_modules');
   for (const rel of items) {
     const s = path.join(depRoot, rel);
     if (!fs.existsSync(s)) continue;
@@ -158,14 +161,17 @@ step('4) copy better-sqlite3 native addon + lib + minimal runtime closure', () =
   info(`copied better-sqlite3 + runtime closure: ${BETTER_SQLITE3_RUNTIME_DEPS.join(', ')}`);
 });
 
-step('4b) copy ws (app-server WebSocket lib, kept external — see vite.config.desktop-runtime.mts)', () => {
-  // `ws` is externalized so its optional native `bufferutil` require throws at
-  // runtime and it uses its JS mask/unmask fallback. It's pure JS with no
-  // required deps, so copying the whole package is enough.
-  copyRuntimeDep('ws', []);
-  const wsPkg = path.join(sidecarDir, 'node_modules', 'ws', 'package.json');
-  if (!fs.existsSync(wsPkg)) throw new Error(`Expected bundled ws (missing ${wsPkg})`);
-});
+step(
+  '4b) copy ws (app-server WebSocket lib, kept external — see vite.config.desktop-runtime.mts)',
+  () => {
+    // `ws` is externalized so its optional native `bufferutil` require throws at
+    // runtime and it uses its JS mask/unmask fallback. It's pure JS with no
+    // required deps, so copying the whole package is enough.
+    copyRuntimeDep('ws', []);
+    const wsPkg = path.join(sidecarDir, 'node_modules', 'ws', 'package.json');
+    if (!fs.existsSync(wsPkg)) throw new Error(`Expected bundled ws (missing ${wsPkg})`);
+  }
+);
 
 step('5) copy Node binary used for this build', () => {
   // Resolve symlinks (e.g. /opt/homebrew/bin/node → Cellar) so the shared-
@@ -190,7 +196,7 @@ step('5) copy Node binary used for this build', () => {
       if (!fs.existsSync(libPath)) {
         throw new Error(
           `node is linked against shared ${libName} but it was not found at ${libPath}. ` +
-          `Use an official Node build (nodejs.org / nvm) or fix the library path.`,
+            `Use an official Node build (nodejs.org / nvm) or fix the library path.`
         );
       }
       copyFile(libPath, path.join(sidecarDir, libName));
@@ -258,12 +264,15 @@ step('7b) self-test (instantiate the bundled native addon end-to-end)', () => {
     copyDir(sidecarDir, isolatedSidecar);
     execFileSync(
       isolatedNode,
-      ['-e', "const D=require('better-sqlite3'); const db=new D(':memory:'); db.exec('CREATE TABLE t(x)'); db.close(); console.log('addon-ok')"],
+      [
+        '-e',
+        "const D=require('better-sqlite3'); const db=new D(':memory:'); db.exec('CREATE TABLE t(x)'); db.close(); console.log('addon-ok')",
+      ],
       {
         cwd: isolatedSidecar,
         stdio: 'inherit',
         env: { ...process.env, NODE_PATH: '' },
-      },
+      }
     );
   } finally {
     fs.rmSync(isolatedTmp, { recursive: true, force: true });
@@ -307,25 +316,59 @@ step('7c) self-test (import the runtime entry — catches missing bundled deps)'
     // Spawn with stdin closed → carrier's read() hits EOF → main() exits.
     // Capture stderr so we can scan it for module-resolution errors that
     // happen during async initialization.
-    const child = childProcessOnce(
-      isolatedNode,
-      [path.join(isolatedSidecar, 'index.mjs')],
-      {
-        cwd: isolatedSidecar,
-        env: {
-          ...process.env,
-          NODE_PATH: '',
-          WORKX_RUNTIME_PROFILE: 'desktop-runtime',
-          WORKX_DESKTOP_RUNTIME_HOST: host,
-        },
-        timeout: 10_000,
+    const child = childProcessOnce(isolatedNode, [path.join(isolatedSidecar, 'index.mjs')], {
+      cwd: isolatedSidecar,
+      env: {
+        ...process.env,
+        NODE_PATH: '',
+        WORKX_RUNTIME_PROFILE: 'desktop-runtime',
+        WORKX_DESKTOP_RUNTIME_HOST: host,
       },
-    );
+      timeout: 10_000,
+    });
     if (/ERR_MODULE_NOT_FOUND/.test(child.stderr) || /ERR_MODULE_NOT_FOUND/.test(child.stdout)) {
       console.error('Runtime stderr:\n' + child.stderr);
       throw new Error('Bundled runtime has unresolved imports — see stderr above');
     }
     info('runtime imports resolve cleanly (no ERR_MODULE_NOT_FOUND in stderr)');
+  } finally {
+    fs.rmSync(isolatedTmp, { recursive: true, force: true });
+  }
+});
+
+step('7d) self-test (bundled SQL drivers and dialect placeholders)', () => {
+  const isolatedTmp = fs.mkdtempSync(path.join(root, 'tauri/sidecar/.datasourcetest-'));
+  try {
+    const isolatedSidecar = path.join(isolatedTmp, 'sidecar');
+    const isolatedNode = path.join(isolatedSidecar, bundledNodeName);
+    copyDir(sidecarDir, isolatedSidecar);
+    const child = childProcessOnce(isolatedNode, [path.join(isolatedSidecar, 'index.mjs')], {
+      cwd: isolatedSidecar,
+      env: {
+        ...process.env,
+        NODE_PATH: '',
+        WORKX_RUNTIME_PROFILE: 'desktop-runtime',
+        WORKX_DATA_SOURCE_PACKAGING_SELF_TEST: '1',
+      },
+      timeout: 10_000,
+    });
+    const output = `${child.stdout}\n${child.stderr}`;
+    if (child.status !== 0 || !output.includes('data-source-packaging-ok')) {
+      throw new Error(`Packaged data-source self-test failed:\n${output}`);
+    }
+    const forbidden = [];
+    const scan = (directory) => {
+      for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+        const full = path.join(directory, entry.name);
+        if (entry.isDirectory()) scan(full);
+        else if (/pg[-_]?native/i.test(entry.name)) forbidden.push(full);
+      }
+    };
+    scan(isolatedSidecar);
+    if (forbidden.length) {
+      throw new Error(`PostgreSQL native addon artifacts must not ship: ${forbidden.join(', ')}`);
+    }
+    info('pg, mysql2, and both SQL dialects work from the isolated packaged tree');
   } finally {
     fs.rmSync(isolatedTmp, { recursive: true, force: true });
   }

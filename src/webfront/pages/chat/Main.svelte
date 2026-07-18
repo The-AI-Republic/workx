@@ -37,7 +37,11 @@
   import { threadStore, activeThread } from '../../stores/threadStore';
   import { MODES, DEFAULT_MODE, type AgentMode } from '@/prompts/PromptComposer';
   import { ThreadEventRouter } from '../../routing/ThreadEventRouter';
-  import { handleBackgroundTaskEvent, startBackgroundTaskPolling, stopBackgroundTaskPolling } from '../../stores/backgroundTaskStore';
+  import {
+    handleBackgroundTaskEvent,
+    startBackgroundTaskPolling,
+    stopBackgroundTaskPolling,
+  } from '../../stores/backgroundTaskStore';
   // Resume-request bridge from the left-panel Chat History section.
   import { resumeRequest, clearResumeRequest } from '../../stores/chatHistoryStore';
   // UI channel client (platform-agnostic)
@@ -53,11 +57,19 @@
   let showRewindSelector: boolean = $state(false);
   let isConnected: boolean = $state(false);
   let isProcessing: boolean = $state(false);
-  let showWelcome = $derived(!isProcessing && processedEvents.length === 0 && messages.length === 0);
+  let showWelcome = $derived(
+    !isProcessing && processedEvents.length === 0 && messages.length === 0
+  );
   let scrollContainer: HTMLDivElement;
   let currentTabId: number = $state(-1); // Track current session's bound tab
   let agentReady: boolean = $state(false);
-  let healthStatus: { ready: boolean; message?: string; provider?: string; model?: string; authMode?: 'login' | 'api_key' | 'none' } = $state({ ready: false, authMode: 'none' });
+  let healthStatus: {
+    ready: boolean;
+    message?: string;
+    provider?: string;
+    model?: string;
+    authMode?: 'login' | 'api_key' | 'none';
+  } = $state({ ready: false, authMode: 'none' });
   let zoomLevel: number = $state(parseInt(document.documentElement.style.fontSize) || 100);
 
   // Handle "resume this conversation" requests published by the left-panel
@@ -130,10 +142,12 @@
     document.documentElement.style.fontSize = '100%';
     zoomLevel = 100;
     window.dispatchEvent(new CustomEvent('zoom-changed', { detail: 100 }));
-    AgentConfig.getInstance().then((config) => {
-      const agentConfig = config.getConfig();
-      config.updateConfig({ preferences: { ...agentConfig.preferences, zoomLevel: 100 } });
-    }).catch(() => {});
+    AgentConfig.getInstance()
+      .then((config) => {
+        const agentConfig = config.getConfig();
+        config.updateConfig({ preferences: { ...agentConfig.preferences, zoomLevel: 100 } });
+      })
+      .catch(() => {});
   }
 
   function requestLogin() {
@@ -146,7 +160,12 @@
       window.open(loginUrl, '_blank', 'noopener,noreferrer');
     }
   }
-  let compactionNotification: { show: boolean; tokensSaved: number; compactionCount: number; isWarning: boolean } = $state({
+  let compactionNotification: {
+    show: boolean;
+    tokensSaved: number;
+    compactionCount: number;
+    isWarning: boolean;
+  } = $state({
     show: false,
     tokensSaved: 0,
     compactionCount: 0,
@@ -173,7 +192,6 @@
   const threadRouter = new ThreadEventRouter();
   let canCreateThread: boolean = true;
   let maxSessionsReached: boolean = false;
-
 
   onMount(async () => {
     // Listen for zoom level changes
@@ -253,7 +271,11 @@
         const { msg } = channelEvent;
         if (msg.type === 'StateUpdate' && 'data' in msg) {
           const data = msg.data;
-          if (data?.scope === 'desktop-runtime' && data.kind === 'agent.accessChanged' && data.access) {
+          if (
+            data?.scope === 'desktop-runtime' &&
+            data.kind === 'agent.accessChanged' &&
+            data.access
+          ) {
             applyAccessState(data.access as AgentAccessState);
           } else if (data && 'tabId' in data) {
             currentTabId = data.tabId!;
@@ -284,24 +306,20 @@
       });
 
       // Single wildcard handler feeds the router
-      unsubscribers.push(
-        client.onEvent('*', (channelEvent) => threadRouter.route(channelEvent))
-      );
+      unsubscribers.push(client.onEvent('*', (channelEvent) => threadRouter.route(channelEvent)));
       startBackgroundTaskPolling(() => {
         if (!client || !activeSessionId) return null;
         return {
           async listTaskStates() {
-            const response = await client!.serviceRequest<{ tasks?: import('@/core/tasks/types').TaskState[] }>(
-              'session.listTaskStates',
-              { sessionId: activeSessionId },
-            );
+            const response = await client!.serviceRequest<{
+              tasks?: import('@/core/tasks/types').TaskState[];
+            }>('session.listTaskStates', { sessionId: activeSessionId });
             return response.tasks ?? [];
           },
           async getTaskOutput(taskId: string, fromSeq = 0) {
-            const response = await client!.serviceRequest<{ chunks?: import('@/core/tasks/TaskOutputStore').TaskOutputChunk[] }>(
-              'session.getTaskOutput',
-              { sessionId: activeSessionId, taskId, fromSeq },
-            );
+            const response = await client!.serviceRequest<{
+              chunks?: import('@/core/tasks/TaskOutputStore').TaskOutputChunk[];
+            }>('session.getTaskOutput', { sessionId: activeSessionId, taskId, fromSeq });
             return response.chunks ?? [];
           },
           retainTask(taskId: string, retain: boolean) {
@@ -404,9 +422,11 @@
 
       // Request agent to abort via message service
       if (client && activeSessionId) {
-        getInitializedUIClient().then(c => c.serviceRequest('agent.interrupt', { sessionId: activeSessionId })).catch((err) => {
-          console.warn('[App] Failed to send interrupt on cancel:', err);
-        });
+        getInitializedUIClient()
+          .then((c) => c.serviceRequest('agent.interrupt', { sessionId: activeSessionId }))
+          .catch((err) => {
+            console.warn('[App] Failed to send interrupt on cancel:', err);
+          });
       }
     }
   }
@@ -436,7 +456,9 @@
 
     try {
       // Request current session state from backend (uses active session if available)
-      const response = await (await getInitializedUIClient()).serviceRequest<{ tabId?: number }>(
+      const response = await (
+        await getInitializedUIClient()
+      ).serviceRequest<{ tabId?: number }>(
         'session.getState',
         activeSessionId ? { sessionId: activeSessionId } : undefined
       );
@@ -454,7 +476,9 @@
             const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
             const activeTab = tabs[0];
             if (activeTab?.id) {
-              console.log(`[App] Session has no tab, will suggest active tab ${activeTab.id} to agent`);
+              console.log(
+                `[App] Session has no tab, will suggest active tab ${activeTab.id} to agent`
+              );
               currentTabId = activeTab.id;
             } else {
               console.warn('[App] No active tab found');
@@ -497,7 +521,10 @@
    * Shared by restoreConversationHistory (single-thread) and
    * restoreAllThreadHistories (multi-thread).
    */
-  function parseHistoryItems(historyItems: any[], idPrefix: string = 'restored'): {
+  function parseHistoryItems(
+    historyItems: any[],
+    idPrefix: string = 'restored'
+  ): {
     events: ProcessedEvent[];
     firstUserMessage: string | null;
   } {
@@ -514,7 +541,11 @@
       // Extract text from content items
       if (Array.isArray(item.content)) {
         for (const content of item.content) {
-          if (content.type === 'input_text' || content.type === 'output_text' || content.type === 'text') {
+          if (
+            content.type === 'input_text' ||
+            content.type === 'output_text' ||
+            content.type === 'text'
+          ) {
             let contentText = content.text || '';
 
             // Handle JSON-stringified input items (e.g., '{"type":"text","text":"actual message"}')
@@ -578,14 +609,16 @@
     const historyItems = response?.history as any[] | undefined;
     const tabId = response?.tabId ?? -1;
 
-    const { events, firstUserMessage } = historyItems && Array.isArray(historyItems)
-      ? parseHistoryItems(historyItems, `restored_${sessionId}`)
-      : { events: [], firstUserMessage: null };
+    const { events, firstUserMessage } =
+      historyItems && Array.isArray(historyItems)
+        ? parseHistoryItems(historyItems, `restored_${sessionId}`)
+        : { events: [], firstUserMessage: null };
 
     // Update thread title from first user message if still default
-    const thread = get(threadStore).threads.find(t => t.sessionId === sessionId);
+    const thread = get(threadStore).threads.find((t) => t.sessionId === sessionId);
     if (thread?.title === 'New Thread' && firstUserMessage) {
-      const title = firstUserMessage.length > 30 ? firstUserMessage.substring(0, 30) + '...' : firstUserMessage;
+      const title =
+        firstUserMessage.length > 30 ? firstUserMessage.substring(0, 30) + '...' : firstUserMessage;
       threadStore.updateThreadTitle(sessionId, title);
     }
 
@@ -642,19 +675,27 @@
         console.warn('[App] checkConnection: no client available');
         isConnected = false;
         agentReady = false;
-        healthStatus = { ready: false, message: t('Message service not available'), authMode: 'none' };
+        healthStatus = {
+          ready: false,
+          message: t('Message service not available'),
+          authMode: 'none',
+        };
         return;
       }
 
       if (platform.platformName === 'desktop') {
         console.log('[App] Sending agent.getAccessState serviceRequest...');
-        const access = await (await getInitializedUIClient()).serviceRequest<AgentAccessState>('agent.getAccessState');
+        const access = await (
+          await getInitializedUIClient()
+        ).serviceRequest<AgentAccessState>('agent.getAccessState');
         applyAccessState(access);
         return;
       }
 
       console.log('[App] Sending agent.healthCheck serviceRequest...');
-      const response = await (await getInitializedUIClient()).serviceRequest<{
+      const response = await (
+        await getInitializedUIClient()
+      ).serviceRequest<{
         type?: string;
         ready?: boolean;
         message?: string;
@@ -686,7 +727,11 @@
         });
       } else {
         agentReady = false;
-        healthStatus = { ready: false, message: t('Unable to check agent status'), authMode: 'none' };
+        healthStatus = {
+          ready: false,
+          message: t('Unable to check agent status'),
+          authMode: 'none',
+        };
         agentStore.setNoAccess(t('Unable to check agent status'));
       }
     } catch (error) {
@@ -722,7 +767,11 @@
     const processed = eventProcessor.processEvent(event);
 
     if (processed) {
-      processedEvents = [...processedEvents, processed];
+      const existingIndex = processedEvents.findIndex((item) => item.id === processed.id);
+      processedEvents =
+        existingIndex < 0
+          ? [...processedEvents, processed]
+          : processedEvents.map((item, index) => (index === existingIndex ? processed : item));
 
       // Auto-scroll to bottom if user is at bottom
       if (scrollContainer) {
@@ -734,7 +783,7 @@
           setTimeout(() => {
             scrollContainer.scrollTo({
               top: scrollContainer.scrollHeight,
-              behavior: 'smooth'
+              behavior: 'smooth',
             });
           }, 100);
         }
@@ -768,11 +817,14 @@
         break;
       case 'Error':
         if ('data' in msg && msg.data && 'message' in msg.data) {
-          messages = [...messages, {
-            type: 'agent',
-            content: `Error: ${msg.data.message}`,
-            timestamp: Date.now(),
-          }];
+          messages = [
+            ...messages,
+            {
+              type: 'agent',
+              content: `Error: ${msg.data.message}`,
+              timestamp: Date.now(),
+            },
+          ];
         }
         break;
 
@@ -816,22 +868,31 @@
 
     // Check if connected
     if (!isConnected) {
-      messages = [...messages, {
-        type: 'agent',
-        content: t('Error: Not connected to agent. Please refresh the page.'),
-        timestamp: Date.now(),
-      }];
+      messages = [
+        ...messages,
+        {
+          type: 'agent',
+          content: t('Error: Not connected to agent. Please refresh the page.'),
+          timestamp: Date.now(),
+        },
+      ];
       return;
     }
 
     // Check if agent is ready (has API key)
     if (!agentReady) {
       const providerName = healthStatus.provider || 'the selected provider';
-      messages = [...messages, {
-        type: 'agent',
-        content: t('Cannot send message: No API key configured for $1$. Please click the Settings button and configure your API key.', { substitutions: [providerName] }),
-        timestamp: Date.now(),
-      }];
+      messages = [
+        ...messages,
+        {
+          type: 'agent',
+          content: t(
+            'Cannot send message: No API key configured for $1$. Please click the Settings button and configure your API key.',
+            { substitutions: [providerName] }
+          ),
+          timestamp: Date.now(),
+        },
+      ];
       return;
     }
 
@@ -843,7 +904,8 @@
       category: 'message',
       timestamp: new Date(),
       title: 'user',
-      content: text || (attachments && attachments.length ? `[${attachments.length} image(s)]` : ''),
+      content:
+        text || (attachments && attachments.length ? `[${attachments.length} image(s)]` : ''),
       style: { textColor: 'text-cyan-400' },
       streaming: false,
       collapsible: false,
@@ -864,9 +926,8 @@
         {
           tabId: currentTabId, // Include current tab selection in context
           sessionId: activeSessionId, // Route to correct agent session
-        },
+        }
       );
-
     } catch (error) {
       console.error('Failed to send message:', error);
 
@@ -875,11 +936,14 @@
         errorMessage = t('Backend not available. Please wait a moment and try again.');
       }
 
-      messages = [...messages, {
-        type: 'agent',
-        content: errorMessage,
-        timestamp: Date.now(),
-      }];
+      messages = [
+        ...messages,
+        {
+          type: 'agent',
+          content: errorMessage,
+          timestamp: Date.now(),
+        },
+      ];
     }
   }
 
@@ -897,7 +961,10 @@
     });
   }
 
-  function getMessageType(message: { type: 'user' | 'agent'; content: string }): 'default' | 'warning' | 'error' | 'input' | 'system' {
+  function getMessageType(message: {
+    type: 'user' | 'agent';
+    content: string;
+  }): 'default' | 'warning' | 'error' | 'input' | 'system' {
     if (message.type === 'user') return 'input';
     if (message.content.toLowerCase().startsWith('error:')) return 'error';
     if (message.content.toLowerCase().includes('warning')) return 'warning';
@@ -940,7 +1007,9 @@
     // Request session reset from backend
     try {
       if (!client) throw new Error('Message service not available');
-      await (await getInitializedUIClient()).serviceRequest('session.reset', { sessionId: activeSessionId });
+      await (
+        await getInitializedUIClient()
+      ).serviceRequest('session.reset', { sessionId: activeSessionId });
 
       // After session reset, auto-bind to the active tab
       // This ensures the new conversation starts with the current tab
@@ -950,11 +1019,14 @@
 
       let errorMessage = t('Failed to start new conversation. Please try again.');
 
-      messages = [...messages, {
-        type: 'agent',
-        content: errorMessage,
-        timestamp: Date.now(),
-      }];
+      messages = [
+        ...messages,
+        {
+          type: 'agent',
+          content: errorMessage,
+          timestamp: Date.now(),
+        },
+      ];
     }
   }
 
@@ -968,17 +1040,22 @@
     try {
       if (!client) throw new Error('Message service not available');
       // Send stop message to backend
-      await (await getInitializedUIClient()).serviceRequest('agent.interrupt', { sessionId: activeSessionId });
+      await (
+        await getInitializedUIClient()
+      ).serviceRequest('agent.interrupt', { sessionId: activeSessionId });
       isProcessing = false;
       console.log('[App] Agent session stopped');
     } catch (error) {
       console.error('[App] Failed to stop agent:', error);
 
-      messages = [...messages, {
-        type: 'agent',
-        content: t('Failed to stop the task. Please try again.'),
-        timestamp: Date.now(),
-      }];
+      messages = [
+        ...messages,
+        {
+          type: 'agent',
+          content: t('Failed to stop the task. Please try again.'),
+          timestamp: Date.now(),
+        },
+      ];
     }
   }
 
@@ -1001,7 +1078,9 @@
     try {
       if (!client) throw new Error('Message service not available');
       // Request session resume from backend
-      const response = await (await getInitializedUIClient()).serviceRequest<{ history?: unknown[] }>('session.resume', { sessionId });
+      const response = await (
+        await getInitializedUIClient()
+      ).serviceRequest<{ history?: unknown[] }>('session.resume', { sessionId });
 
       console.log('[App] Conversation resumed:', sessionId);
 
@@ -1010,11 +1089,14 @@
     } catch (error) {
       console.error('[App] Failed to resume conversation:', error);
 
-      messages = [...messages, {
-        type: 'agent',
-        content: t('Failed to load conversation. Please try again.'),
-        timestamp: Date.now(),
-      }];
+      messages = [
+        ...messages,
+        {
+          type: 'agent',
+          content: t('Failed to load conversation. Please try again.'),
+          timestamp: Date.now(),
+        },
+      ];
     }
   }
 
@@ -1079,10 +1161,12 @@
     try {
       if (success) {
         // Extract result summary from the processed events
-        const lastAgentEvent = processedEvents.filter(e => e.title === 'workx').pop();
+        const lastAgentEvent = processedEvents.filter((e) => e.title === 'workx').pop();
         const resultSummary = lastAgentEvent?.content?.slice(0, 500) || 'Job completed';
 
-        await (await getInitializedUIClient()).serviceRequest('scheduler.complete', {
+        await (
+          await getInitializedUIClient()
+        ).serviceRequest('scheduler.complete', {
           jobId: scheduledJobId,
           result: {
             summary: resultSummary,
@@ -1092,7 +1176,9 @@
         console.log('[App] Notified scheduler of job completion:', scheduledJobId);
       } else {
         const errorMessage = msg?.data?.message || 'Job failed';
-        await (await getInitializedUIClient()).serviceRequest('scheduler.fail', {
+        await (
+          await getInitializedUIClient()
+        ).serviceRequest('scheduler.fail', {
           jobId: scheduledJobId,
           error: errorMessage,
         });
@@ -1113,7 +1199,9 @@
     try {
       if (!client) throw new Error('Message service not available');
       // Fetch job details from scheduler
-      const response = await (await getInitializedUIClient()).serviceRequest<{ job?: { input: string; scheduledTime?: number } }>(
+      const response = await (
+        await getInitializedUIClient()
+      ).serviceRequest<{ job?: { input: string; scheduledTime?: number } }>(
         'scheduler.getJobDetails',
         { jobId }
       );
@@ -1169,16 +1257,17 @@
         {
           tabId: currentTabId,
           sessionId: sessionId, // Feature 015: Route to correct agent session
-        },
+        }
       );
-
     } catch (error) {
       console.error('[App] Failed to execute scheduled job:', error);
 
       // Notify scheduler of failure
       try {
         if (client) {
-          await (await getInitializedUIClient()).serviceRequest('scheduler.fail', {
+          await (
+            await getInitializedUIClient()
+          ).serviceRequest('scheduler.fail', {
             jobId,
             error: error instanceof Error ? error.message : 'Unknown error',
           });
@@ -1223,15 +1312,17 @@
         activeCount: number;
       }>('session.list');
 
-      const backendSessions = listResponse?.sessions?.filter(s => s.state !== 'terminated' && s.type !== 'scheduled') ?? [];
+      const backendSessions =
+        listResponse?.sessions?.filter((s) => s.state !== 'terminated' && s.type !== 'scheduled') ??
+        [];
 
       if (backendSessions.length > 0) {
         // Create threads for backend sessions that don't have one
         const currentState = get(threadStore);
-        const existingSessionIds = new Set(currentState.threads.map(t => t.sessionId));
+        const existingSessionIds = new Set(currentState.threads.map((t) => t.sessionId));
 
         // Also remove threads whose sessions no longer exist in the backend
-        const backendSessionIds = new Set(backendSessions.map(s => s.sessionId));
+        const backendSessionIds = new Set(backendSessions.map((s) => s.sessionId));
         for (const thread of currentState.threads) {
           if (!backendSessionIds.has(thread.sessionId)) {
             threadStore.closeThread(thread.sessionId);
@@ -1297,7 +1388,11 @@
   async function createNewThread() {
     try {
       const c = await getInitializedUIClient();
-      const response = await c.serviceRequest<{ success: boolean; sessionId?: string; error?: string }>('session.create');
+      const response = await c.serviceRequest<{
+        success: boolean;
+        sessionId?: string;
+        error?: string;
+      }>('session.create');
 
       if (!response?.success) {
         console.error('[App] Failed to create session:', response?.error);
@@ -1430,7 +1525,7 @@
    */
   async function closeThread(sessionId: string) {
     const state = get(threadStore);
-    const threadToClose = state.threads.find(t => t.sessionId === sessionId);
+    const threadToClose = state.threads.find((t) => t.sessionId === sessionId);
 
     if (!threadToClose) return;
 
@@ -1484,10 +1579,7 @@
     if (!activeSessionId || !client) return;
     if (($activeThread?.mode ?? DEFAULT_MODE) === mode && !$activeThread?.pendingMode) return;
     try {
-      await client.submitOp(
-        { type: 'SetSessionMode', mode },
-        { sessionId: activeSessionId },
-      );
+      await client.submitOp({ type: 'SetSessionMode', mode }, { sessionId: activeSessionId });
     } catch (error) {
       console.error('Failed to set session mode:', error);
     }
@@ -1526,7 +1618,13 @@
     // Process event for this thread's state
     const processed = state.eventProcessor.processEvent(event);
     if (processed) {
-      state.processedEvents = [...state.processedEvents, processed];
+      const existingIndex = state.processedEvents.findIndex((item) => item.id === processed.id);
+      state.processedEvents =
+        existingIndex < 0
+          ? [...state.processedEvents, processed]
+          : state.processedEvents.map((item, index) =>
+              index === existingIndex ? processed : item
+            );
     }
 
     // Update processing state
@@ -1569,7 +1667,9 @@
   async function updateSessionLimits() {
     try {
       const c = await getInitializedUIClient();
-      const response = await c.serviceRequest<{ canCreateSession?: boolean }>('session.getActiveCount');
+      const response = await c.serviceRequest<{ canCreateSession?: boolean }>(
+        'session.getActiveCount'
+      );
       canCreateThread = response?.canCreateSession ?? true;
       maxSessionsReached = !canCreateThread;
     } catch (error) {
@@ -1590,206 +1690,267 @@
 </script>
 
 <!-- Single UI with theme-aware styling -->
-<div class="flex flex-col overflow-hidden p-4 {currentTheme}
+<div
+  class="flex flex-col overflow-hidden p-4 {currentTheme}
     {currentTheme === 'modern'
-      ? 'font-chat bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
-      : 'font-terminal bg-term-bg text-term-green'}"
+    ? 'font-chat bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
+    : 'font-terminal bg-term-bg text-term-green'}"
   role="log"
   aria-label="Terminal output"
 >
-        <!-- Multi-Thread Bar -->
-        {#if !isScheduledJobMode}
-          <ThreadBar
-            {canCreateThread}
-            {maxSessionsReached}
-            on:threadSelect={handleThreadSelect}
-            on:threadClose={handleThreadClose}
-            on:newThread={handleNewThread}
-          />
+  <!-- Multi-Thread Bar -->
+  {#if !isScheduledJobMode}
+    <ThreadBar
+      {canCreateThread}
+      {maxSessionsReached}
+      on:threadSelect={handleThreadSelect}
+      on:threadClose={handleThreadClose}
+      on:newThread={handleNewThread}
+    />
+  {/if}
+
+  <div class="flex flex-col flex-1 min-h-0 max-w-[1500px] mx-auto w-full">
+    <!-- Status Line -->
+    <div class="shrink-0 flex justify-between mb-2">
+      <div class="flex items-center space-x-2">
+        <TerminalMessage
+          type="system"
+          content={platform.platformName === 'extension'
+            ? $_t('WorkX (Alpha)')
+            : $_t('WorkX: Your personal AI (Alpha)')}
+        />
+        {#if zoomLevel !== 100}
+          <button
+            onclick={resetZoom}
+            class="text-sm leading-relaxed font-[inherit] opacity-70 hover:opacity-100 cursor-pointer {currentTheme ===
+            'modern'
+              ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+              : 'text-term-dim-green'}"
+            title="Reset zoom to 100%"
+          >
+            [{zoomLevel}%] ✕
+          </button>
         {/if}
-
-    <div class="flex flex-col flex-1 min-h-0 max-w-[1500px] mx-auto w-full">
-        <!-- Status Line -->
-        <div class="shrink-0 flex justify-between mb-2">
-          <div class="flex items-center space-x-2">
-            <TerminalMessage type="system" content={platform.platformName === 'extension' ? $_t("WorkX (Alpha)") : $_t("WorkX: Your personal AI (Alpha)")} />
-            {#if zoomLevel !== 100}
-              <button onclick={resetZoom} class="text-sm leading-relaxed font-[inherit] opacity-70 hover:opacity-100 cursor-pointer {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}" title="Reset zoom to 100%">
-                [{zoomLevel}%] ✕
-              </button>
-            {/if}
-          </div>
-          <div class="flex items-center space-x-2">
-            <BackgroundTasksBadge />
-            {#if platform.platformName !== 'extension' && activeSessionId}
-              {@const activeMode = $activeThread?.mode ?? DEFAULT_MODE}
-              {@const pendingMode = $activeThread?.pendingMode ?? null}
-              <div class="flex items-center gap-1" role="group" aria-label={$_t("Agent mode")}>
-                {#each Object.values(MODES).filter((m) => !m.agentTypes || m.agentTypes.includes('workx') || m.agentTypes.includes('workx-server')) as modeSpec (modeSpec.id)}
-                  {@const isActive = activeMode === modeSpec.id && !pendingMode}
-                  {@const isPending = pendingMode === modeSpec.id}
-                  <button
-                    type="button"
-                    onclick={() => setSessionMode(modeSpec.id)}
-                    title={isPending ? $_t("Switching after current task…") : $_t("Switch agent mode")}
-                    aria-pressed={isActive}
-                    class="text-xs px-2 py-0.5 rounded font-[inherit] cursor-pointer transition-opacity
-                      {isActive
-                        ? (currentTheme === 'modern'
-                            ? 'bg-chat-accent/15 text-chat-accent dark:text-chat-accent-dark font-semibold'
-                            : 'bg-[rgba(34,197,94,0.15)] border border-term-dim-green text-term-bright-green')
-                        : (currentTheme === 'modern'
-                            ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:opacity-100 opacity-70'
-                            : 'text-term-dim-green hover:text-term-green opacity-70 hover:opacity-100')}
-                      {isPending ? 'animate-pulse' : ''}"
-                  >
-                    {modeSpec.label}{#if isPending}…{/if}
-                  </button>
-                {/each}
-              </div>
-            {/if}
-            {#if isProcessing}
-              <TerminalMessage type="warning" content={$_t("[PROCESSING]")} />
-            {/if}
-            {#if !isConnected}
-              <TerminalMessage type="error" content={$_t("[DISCONNECTED]")} />
-            {:else if !agentReady && $agentStore.authMode === 'none'}
-              <TerminalMessage type="warning" content={$_t("[NO ACCESS]")} />
-            {:else if !agentReady}
-              <TerminalMessage type="warning" content={$_t("[NO API KEY - CLICK SETTINGS]") + " ⚙️"} />
-            {/if}
-          </div>
-        </div>
-
-        <!-- Compaction Notification (T032, T033) -->
-        {#if compactionNotification.show}
-          <div class="flex items-center gap-2 rounded text-sm animate-slide-in mb-2
-            {currentTheme === 'modern'
-              ? (compactionNotification.isWarning
-                  ? 'mx-4 rounded-lg text-sm px-4 py-3 bg-[rgba(245,158,11,0.1)] text-chat-status-warning dark:text-chat-status-warning-dark'
-                  : 'mx-4 rounded-lg text-sm px-4 py-3 bg-[rgba(16,185,129,0.1)] text-chat-status-success dark:text-chat-status-success-dark')
-              : (compactionNotification.isWarning
-                  ? 'px-3 py-2 bg-[rgba(234,179,8,0.15)] border border-term-yellow text-term-yellow'
-                  : 'px-3 py-2 bg-[rgba(34,197,94,0.15)] border border-term-dim-green text-term-bright-green')}">
-            <span class="shrink-0">
-              {#if compactionNotification.isWarning}⚠️{:else}✓{/if}
-            </span>
-            <span class="flex-1">
-              {$_t("Context compacted: saved ~$1$k tokens", { substitutions: [Math.round(compactionNotification.tokensSaved / 1000)] })}
-              {#if compactionNotification.isWarning}
-                <span class="opacity-80 text-sm">
-                  {$_t("(#$1$ - accuracy may be reduced)", { substitutions: [compactionNotification.compactionCount] })}
-                </span>
-              {/if}
-            </span>
-            <button
-              class="shrink-0 bg-transparent border-none text-inherit cursor-pointer px-1 text-lg opacity-70 hover:opacity-100"
-              onclick={() => compactionNotification = { ...compactionNotification, show: false }}
-              aria-label={t("Dismiss notification")}
-            >×</button>
-          </div>
-        {/if}
-
-        <!-- No Access Warning Banner -->
-        {#if !agentReady && $agentStore.authMode === 'none' && isConnected}
-          <div class="animate-slide-in mb-3
-            {currentTheme === 'modern'
-              ? 'rounded-xl bg-[rgba(245,158,11,0.1)] p-5 border-none'
-              : 'rounded border border-term-yellow bg-[rgba(255,255,0,0.05)] p-4'}">
-            <div class="flex items-center gap-2 mb-2">
-              <span class="text-lg">⚠️</span>
-              <span class="font-semibold {currentTheme === 'modern' ? 'text-chat-status-warning dark:text-chat-status-warning-dark' : 'text-term-yellow'}">{$_t("No Access Configured")}</span>
-            </div>
-            <p class="m-0 mb-2 text-sm {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-dim-green'}">
-              {$_t("To use the AI agent, please either:")}
-            </p>
-            <ul class="m-0 pl-6 list-disc">
-              <li class="mb-1">
-                <button onclick={requestLogin}
-                  class="bg-none border-none p-0 underline cursor-pointer text-left text-[inherit] {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-bright-green hover:text-term-yellow'}">
-                  {$_t("Log in to your account")}
-                </button>
-              </li>
-              <li class="mb-1">
-                <button onclick={() => push('/settings')}
-                  class="bg-none border-none p-0 underline cursor-pointer text-[inherit] {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-bright-green hover:text-term-yellow'}">
-                  {$_t("Configure an API key in Settings")}
-                </button>
-              </li>
-            </ul>
-          </div>
-        {/if}
-
-        <!-- Messages - scrollable area -->
-        <div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-4" bind:this={scrollContainer}>
-          {#if showWelcome}
-            <div class="welcome-screen mb-6 max-w-full
-              {currentTheme === 'modern'
-                ? 'flex flex-col items-center justify-center text-center border-none bg-transparent min-h-[50vh] gap-3 p-6'
-                : 'flex flex-col items-start gap-3 p-6 border border-term-dim-green rounded bg-[rgba(0,0,0,0.6)]'}"
-              role="presentation"
-            >
-              {#if $userStore.isLoggedIn && ($userStore.userName || $userStore.userEmail)}
-                <p class="m-0 mb-2 font-semibold text-lg
-                  {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark text-xl' : 'text-term-bright-green'}">{$_t("Hello $NAME$", { substitutions: [$userStore.userName || $userStore.userEmail] })}</p>
-              {/if}
-              <pre class="welcome-ascii m-0 font-terminal text-[0.4rem] leading-none whitespace-pre">{#each welcomeAsciiLines as line, index (index)}<span class={line.color}>{line.text}</span>{/each}</pre>
-              <p class="m-0 text-[0.95rem] text-term-blue">
-                {platform.platformName === 'extension' ? $_t("General in-browser AI agent for work tasks") : $_t("Your personal AI assistant")}
-              </p>
-              <p class="m-0 text-[0.95rem] text-term-dim-green">
-                {$_t("Developed and supported by AI Republic")}
-              </p>
-              <a
-                class="underline {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-bright-green hover:text-term-yellow'}"
-                href="https://airepublic.com"
-                target="_blank"
-                rel="noreferrer noopener"
-              >
-                {$_t("Learn more")}
-              </a>
-            </div>
-          {/if}
-
-          {#each messages as message (message.timestamp)}
-            <TerminalMessage type={message.type === 'user' ? 'input' : getMessageType(message)} content={message.content} />
-          {/each}
-
-          {#each processedEvents as event (event.id)}
-            <EventDisplay {event} />
-          {/each}
-        </div>
-
-        <!-- Fixed bottom controls container -->
-        <div class="shrink-0 border-t {currentTheme === 'modern' ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
-          <!-- Input area -->
-          <div class="pr-2 py-2 pl-0">
-            <MessageInput
-              bind:value={inputText}
-              bind:suggestion={nextSuggestion}
-              onSubmit={sendMessage}
-              onStop={stopAgent}
-              onSelectConversation={resumeConversation}
-              onNewConversation={startNewConversation}
-              tabId={currentTabId}
-              {isProcessing}
-              placeholder={$_t(">> Enter command...")}
-              onTabSelected={handleTabSelected}
-              onCommandOutput={handleCommandOutput}
-              onOpenRewindSelector={() => showRewindSelector = true}
-            />
-          </div>
-
-        </div>
       </div>
-  </div>
+      <div class="flex items-center space-x-2">
+        <BackgroundTasksBadge />
+        {#if platform.platformName !== 'extension' && activeSessionId}
+          {@const activeMode = $activeThread?.mode ?? DEFAULT_MODE}
+          {@const pendingMode = $activeThread?.pendingMode ?? null}
+          <div class="flex items-center gap-1" role="group" aria-label={$_t('Agent mode')}>
+            {#each Object.values(MODES).filter((m) => !m.agentTypes || m.agentTypes.includes('workx') || m.agentTypes.includes('workx-server')) as modeSpec (modeSpec.id)}
+              {@const isActive = activeMode === modeSpec.id && !pendingMode}
+              {@const isPending = pendingMode === modeSpec.id}
+              <button
+                type="button"
+                onclick={() => setSessionMode(modeSpec.id)}
+                title={isPending ? $_t('Switching after current task…') : $_t('Switch agent mode')}
+                aria-pressed={isActive}
+                class="text-xs px-2 py-0.5 rounded font-[inherit] cursor-pointer transition-opacity
+                      {isActive
+                  ? currentTheme === 'modern'
+                    ? 'bg-chat-accent/15 text-chat-accent dark:text-chat-accent-dark font-semibold'
+                    : 'bg-[rgba(34,197,94,0.15)] border border-term-dim-green text-term-bright-green'
+                  : currentTheme === 'modern'
+                    ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:opacity-100 opacity-70'
+                    : 'text-term-dim-green hover:text-term-green opacity-70 hover:opacity-100'}
+                      {isPending ? 'animate-pulse' : ''}"
+              >
+                {modeSpec.label}{#if isPending}…{/if}
+              </button>
+            {/each}
+          </div>
+        {/if}
+        {#if isProcessing}
+          <TerminalMessage type="warning" content={$_t('[PROCESSING]')} />
+        {/if}
+        {#if !isConnected}
+          <TerminalMessage type="error" content={$_t('[DISCONNECTED]')} />
+        {:else if !agentReady && $agentStore.authMode === 'none'}
+          <TerminalMessage type="warning" content={$_t('[NO ACCESS]')} />
+        {:else if !agentReady}
+          <TerminalMessage type="warning" content={$_t('[NO API KEY - CLICK SETTINGS]') + ' ⚙️'} />
+        {/if}
+      </div>
+    </div>
 
-  <!-- Track 15: rewind turn-selector overlay (command-invoked) -->
-  <MessageSelector
-    show={showRewindSelector}
-    onClose={() => showRewindSelector = false}
-    onRewound={handleRewound}
-  />
+    <!-- Compaction Notification (T032, T033) -->
+    {#if compactionNotification.show}
+      <div
+        class="flex items-center gap-2 rounded text-sm animate-slide-in mb-2
+            {currentTheme === 'modern'
+          ? compactionNotification.isWarning
+            ? 'mx-4 rounded-lg text-sm px-4 py-3 bg-[rgba(245,158,11,0.1)] text-chat-status-warning dark:text-chat-status-warning-dark'
+            : 'mx-4 rounded-lg text-sm px-4 py-3 bg-[rgba(16,185,129,0.1)] text-chat-status-success dark:text-chat-status-success-dark'
+          : compactionNotification.isWarning
+            ? 'px-3 py-2 bg-[rgba(234,179,8,0.15)] border border-term-yellow text-term-yellow'
+            : 'px-3 py-2 bg-[rgba(34,197,94,0.15)] border border-term-dim-green text-term-bright-green'}"
+      >
+        <span class="shrink-0">
+          {#if compactionNotification.isWarning}⚠️{:else}✓{/if}
+        </span>
+        <span class="flex-1">
+          {$_t('Context compacted: saved ~$1$k tokens', {
+            substitutions: [Math.round(compactionNotification.tokensSaved / 1000)],
+          })}
+          {#if compactionNotification.isWarning}
+            <span class="opacity-80 text-sm">
+              {$_t('(#$1$ - accuracy may be reduced)', {
+                substitutions: [compactionNotification.compactionCount],
+              })}
+            </span>
+          {/if}
+        </span>
+        <button
+          class="shrink-0 bg-transparent border-none text-inherit cursor-pointer px-1 text-lg opacity-70 hover:opacity-100"
+          onclick={() => (compactionNotification = { ...compactionNotification, show: false })}
+          aria-label={t('Dismiss notification')}>×</button
+        >
+      </div>
+    {/if}
+
+    <!-- No Access Warning Banner -->
+    {#if !agentReady && $agentStore.authMode === 'none' && isConnected}
+      <div
+        class="animate-slide-in mb-3
+            {currentTheme === 'modern'
+          ? 'rounded-xl bg-[rgba(245,158,11,0.1)] p-5 border-none'
+          : 'rounded border border-term-yellow bg-[rgba(255,255,0,0.05)] p-4'}"
+      >
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-lg">⚠️</span>
+          <span
+            class="font-semibold {currentTheme === 'modern'
+              ? 'text-chat-status-warning dark:text-chat-status-warning-dark'
+              : 'text-term-yellow'}">{$_t('No Access Configured')}</span
+          >
+        </div>
+        <p
+          class="m-0 mb-2 text-sm {currentTheme === 'modern'
+            ? 'text-chat-text dark:text-chat-text-dark'
+            : 'text-term-dim-green'}"
+        >
+          {$_t('To use the AI agent, please either:')}
+        </p>
+        <ul class="m-0 pl-6 list-disc">
+          <li class="mb-1">
+            <button
+              onclick={requestLogin}
+              class="bg-none border-none p-0 underline cursor-pointer text-left text-[inherit] {currentTheme ===
+              'modern'
+                ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark'
+                : 'text-term-bright-green hover:text-term-yellow'}"
+            >
+              {$_t('Log in to your account')}
+            </button>
+          </li>
+          <li class="mb-1">
+            <button
+              onclick={() => push('/settings')}
+              class="bg-none border-none p-0 underline cursor-pointer text-[inherit] {currentTheme ===
+              'modern'
+                ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark'
+                : 'text-term-bright-green hover:text-term-yellow'}"
+            >
+              {$_t('Configure an API key in Settings')}
+            </button>
+          </li>
+        </ul>
+      </div>
+    {/if}
+
+    <!-- Messages - scrollable area -->
+    <div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-4" bind:this={scrollContainer}>
+      {#if showWelcome}
+        <div
+          class="welcome-screen mb-6 max-w-full
+              {currentTheme === 'modern'
+            ? 'flex flex-col items-center justify-center text-center border-none bg-transparent min-h-[50vh] gap-3 p-6'
+            : 'flex flex-col items-start gap-3 p-6 border border-term-dim-green rounded bg-[rgba(0,0,0,0.6)]'}"
+          role="presentation"
+        >
+          {#if $userStore.isLoggedIn && ($userStore.userName || $userStore.userEmail)}
+            <p
+              class="m-0 mb-2 font-semibold text-lg
+                  {currentTheme === 'modern'
+                ? 'text-chat-text dark:text-chat-text-dark text-xl'
+                : 'text-term-bright-green'}"
+            >
+              {$_t('Hello $NAME$', {
+                substitutions: [$userStore.userName || $userStore.userEmail],
+              })}
+            </p>
+          {/if}
+          <pre
+            class="welcome-ascii m-0 font-terminal text-[0.4rem] leading-none whitespace-pre">{#each welcomeAsciiLines as line, index (index)}<span
+                class={line.color}>{line.text}</span
+              >{/each}</pre>
+          <p class="m-0 text-[0.95rem] text-term-blue">
+            {platform.platformName === 'extension'
+              ? $_t('General in-browser AI agent for work tasks')
+              : $_t('Your personal AI assistant')}
+          </p>
+          <p class="m-0 text-[0.95rem] text-term-dim-green">
+            {$_t('Developed and supported by AI Republic')}
+          </p>
+          <a
+            class="underline {currentTheme === 'modern'
+              ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark'
+              : 'text-term-bright-green hover:text-term-yellow'}"
+            href="https://airepublic.com"
+            target="_blank"
+            rel="noreferrer noopener"
+          >
+            {$_t('Learn more')}
+          </a>
+        </div>
+      {/if}
+
+      {#each messages as message (message.timestamp)}
+        <TerminalMessage
+          type={message.type === 'user' ? 'input' : getMessageType(message)}
+          content={message.content}
+        />
+      {/each}
+
+      {#each processedEvents as event (event.id)}
+        <EventDisplay {event} />
+      {/each}
+    </div>
+
+    <!-- Fixed bottom controls container -->
+    <div
+      class="shrink-0 border-t {currentTheme === 'modern'
+        ? 'border-chat-border dark:border-chat-border-dark'
+        : 'border-term-dim-green'}"
+    >
+      <!-- Input area -->
+      <div class="pr-2 py-2 pl-0">
+        <MessageInput
+          bind:value={inputText}
+          bind:suggestion={nextSuggestion}
+          onSubmit={sendMessage}
+          onStop={stopAgent}
+          onSelectConversation={resumeConversation}
+          onNewConversation={startNewConversation}
+          tabId={currentTabId}
+          {isProcessing}
+          placeholder={$_t('>> Enter command...')}
+          onTabSelected={handleTabSelected}
+          onCommandOutput={handleCommandOutput}
+          onOpenRewindSelector={() => (showRewindSelector = true)}
+        />
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Track 15: rewind turn-selector overlay (command-invoked) -->
+<MessageSelector
+  show={showRewindSelector}
+  onClose={() => (showRewindSelector = false)}
+  onRewound={handleRewound}
+/>
 
 <style>
   /* Animations - kept as they use @keyframes */

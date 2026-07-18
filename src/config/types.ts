@@ -568,6 +568,8 @@ export interface IToolsConfig {
   // Agent execution tool toggles
   execCommand?: boolean;
   webSearch?: boolean;
+  /** Enable desktop data-source analysis tools. Management UI remains available when false. */
+  dataSources?: boolean;
   /**
    * Whether to use native provider web search when the model supports it.
    * - When true (default): Uses provider-side web search for capable models,
@@ -745,7 +747,21 @@ export interface IExportData {
 // Event interfaces for config changes
 export interface IConfigChangeEvent {
   type: 'config-changed';
-  section: 'model' | 'efficientModel' | 'provider' | 'profile' | 'preferences' | 'cache' | 'extension' | 'security' | 'approval' | 'hooks' | 'tools' | 'policy' | 'enabledPlugins' | 'appServer';
+  section:
+    | 'model'
+    | 'efficientModel'
+    | 'provider'
+    | 'profile'
+    | 'preferences'
+    | 'cache'
+    | 'extension'
+    | 'security'
+    | 'approval'
+    | 'hooks'
+    | 'tools'
+    | 'policy'
+    | 'enabledPlugins'
+    | 'appServer';
   oldValue?: any;
   newValue: any;
   timestamp: number;
