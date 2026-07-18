@@ -1,4 +1,7 @@
-import type { ResponseItem } from '../../core/protocol/types';
+import {
+  normalizeLegacyUserResponseItem,
+  type ResponseItem,
+} from '../../core/protocol/types';
 import type { RolloutStorageProvider } from './provider';
 import type { RolloutItemRecord } from './types';
 
@@ -296,17 +299,21 @@ function isDisplayResponseItem(
 function toDisplayResponseItem(value: unknown): ResponseItem | null {
   if (!isDisplayResponseItem(value)) return null;
   if (value.type === 'message') {
+    const normalized = normalizeLegacyUserResponseItem(value) as Extract<
+      ResponseItem,
+      { type: 'message' }
+    >;
     return {
       type: 'message',
-      ...(value.id ? { id: value.id } : {}),
-      ...(value.client_id ? { client_id: value.client_id } : {}),
-      role: value.role,
+      ...(normalized.id ? { id: normalized.id } : {}),
+      ...(normalized.client_id ? { client_id: normalized.client_id } : {}),
+      role: normalized.role,
       // The current history UI renders only an attachment count. Do not move
       // multi-megabyte data URLs through every attach/history response.
-      content: structuredClone(value.content.map((part) => part.type === 'input_image'
+      content: structuredClone(normalized.content.map((part) => part.type === 'input_image'
         ? { ...part, image_url: '' }
         : part)),
-      ...(value.modelKey ? { modelKey: value.modelKey } : {}),
+      ...(normalized.modelKey ? { modelKey: normalized.modelKey } : {}),
     };
   }
   return {

@@ -6,6 +6,7 @@
  * while maintaining full backward compatibility
  */
 
+import { normalizeLegacyUserResponseItem } from './protocol/types';
 import type { InputItem, AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSummaryConfig, Event, ResponseItem, ConversationHistory, ReviewDecision } from './protocol/types';
 import { FileStateCache } from './files/FileStateCache';
 import type { EventMsg } from './protocol/events';
@@ -3106,7 +3107,7 @@ export class Session {
     for (const rolloutItem of rolloutItems) {
       if (rolloutItem.type === 'response_item') {
         // Regular response item
-        responseItems.push(rolloutItem.payload as ResponseItem);
+        responseItems.push(normalizeLegacyUserResponseItem(rolloutItem.payload as ResponseItem));
         // Track 09: seed seenIds from any function_call_output we've seen.
         // This freezes "seen but unreplaced" decisions so tier-2 can't
         // retroactively persist an output that the model already observed
@@ -3126,7 +3127,7 @@ export class Session {
         if (Array.isArray(compactedData.replacementHistory)) {
           const replacementHistory = structuredClone(
             compactedData.replacementHistory,
-          ) as ResponseItem[];
+          ).map(normalizeLegacyUserResponseItem) as ResponseItem[];
           responseItems.splice(
             0,
             responseItems.length,

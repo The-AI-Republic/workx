@@ -130,6 +130,37 @@ describe('canonical rollout history projection', () => {
     expect(page.nextCursor).not.toBeNull();
   });
 
+  it('unwraps legacy JSON-serialized inputs without reinterpreting modern JSON text', () => {
+    const genuineJson = JSON.stringify({ type: 'text', text: 'keep this JSON' });
+    const projected = projectHistoryRecords([
+      record(1, 'response_item', message(
+        'user',
+        JSON.stringify({ type: 'text', text: 'legacy text' }),
+      )),
+      record(2, 'response_item', message(
+        'user',
+        JSON.stringify({ type: 'image', image_url: 'data:image/png;base64,legacy' }),
+      )),
+      record(3, 'turn_start', { submissionId: 'modern', clientMessageId: 'modern-client' }),
+      record(4, 'response_item', message('user', genuineJson, { client_id: 'modern-client' })),
+    ]);
+
+    const responses = projected.items.map((item) => item.response);
+    expect(responses[0]).toMatchObject({
+      role: 'user',
+      content: [{ type: 'input_text', text: 'legacy text' }],
+    });
+    expect(responses[1]).toMatchObject({
+      role: 'user',
+      content: [{ type: 'input_image', image_url: '' }],
+    });
+    expect(responses[2]).toMatchObject({
+      client_id: 'modern-client',
+      content: [{ type: 'input_text', text: genuineJson }],
+    });
+    expect(JSON.stringify(responses)).not.toContain('base64,legacy');
+  });
+
   it('fills a partially marked page from the older legacy segment', async () => {
     const records = [
       record(0, 'session_meta', {}),

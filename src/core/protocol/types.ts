@@ -334,6 +334,89 @@ export function getResponseItemContent(item: ResponseItem): string {
 }
 
 /**
+ * Decode the user-input wrapper emitted by WorkX versions that persisted each
+ * InputItem as JSON inside an input_text part. Modern correlated messages are
+ * deliberately excluded so genuine JSON entered by a user remains verbatim.
+ *
+ * This is a read-time compatibility projection: canonical rollout records are
+ * never rewritten, while display history and resumed model context see the
+ * typed content that the original submission represented.
+ */
+export function normalizeLegacyUserResponseItem(item: ResponseItem): ResponseItem {
+  if (
+    !item
+    || typeof item !== 'object'
+    || item.type !== 'message'
+    || item.role !== 'user'
+    || item.client_id
+    || !Array.isArray(item.content)
+    || item.content.length !== 1
+  ) {
+    return item;
+  }
+
+  const part = item.content[0];
+  if (
+    (part.type !== 'text' && part.type !== 'input_text')
+    || typeof part.text !== 'string'
+  ) {
+    return item;
+  }
+
+  const decoded = decodeLegacySerializedInputItem(part.text);
+  return decoded ? { ...item, content: [decoded] } : item;
+}
+
+function decodeLegacySerializedInputItem(value: string): ContentItem | null {
+  if (!value.startsWith('{') || !value.endsWith('}')) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+  const input = parsed as Record<string, unknown>;
+
+  if (
+    input.type === 'text'
+    && typeof input.text === 'string'
+    && hasExactKeys(input, ['type', 'text'])
+  ) {
+    return { type: 'input_text', text: input.text };
+  }
+  if (
+    input.type === 'image'
+    && typeof input.image_url === 'string'
+    && hasExactKeys(input, ['type', 'image_url'])
+  ) {
+    return { type: 'input_image', image_url: input.image_url };
+  }
+  if (
+    input.type === 'clipboard'
+    && (input.content === undefined || typeof input.content === 'string')
+    && hasExactKeys(input, input.content === undefined ? ['type'] : ['type', 'content'])
+  ) {
+    return { type: 'input_text', text: input.content ?? '[clipboard]' };
+  }
+  if (
+    input.type === 'context'
+    && (input.path === undefined || typeof input.path === 'string')
+    && hasExactKeys(input, input.path === undefined ? ['type'] : ['type', 'path'])
+  ) {
+    return { type: 'input_text', text: `[context: ${input.path ?? 'unknown'}]` };
+  }
+  return null;
+}
+
+function hasExactKeys(value: Record<string, unknown>, expected: string[]): boolean {
+  const actual = Object.keys(value).sort();
+  const normalizedExpected = [...expected].sort();
+  return actual.length === normalizedExpected.length
+    && actual.every((key, index) => key === normalizedExpected[index]);
+}
+
+/**
  * Helper function to get the role from a ResponseItem message
  * Returns undefined if the item is not a message
  */
