@@ -442,15 +442,8 @@ export class ServerAgentBootstrap {
       // 5. Create SessionManager with factories
       const { join } = await import('node:path');
       const serverRootDir = join(dataDir, 'sessions');
-      // Desktop conversations default to the OS home folder. Headless server
-      // sessions require an explicit workspace policy instead of silently
-      // inheriting the service account's home.
-      const defaultWorkingDirectory = profile === 'desktop-runtime'
-        ? (await import('node:os')).homedir()
-        : undefined;
       this.registry = new SessionManager({
         maxConcurrent: 3,
-        ...(defaultWorkingDirectory ? { defaultWorkingDirectory } : {}),
         authContext: this.authContext,
         lifecycleMode: profile === 'desktop-runtime' ? 'client' : 'eager',
         threadIndexStore: this.threadIndexStore ?? undefined,
@@ -683,7 +676,6 @@ export class ServerAgentBootstrap {
         }),
         assemblyServicesFactory: async () => createSessionServices({
           serverRootDir,
-          ...(defaultWorkingDirectory ? { defaultWorkingDirectory } : {}),
           commitGeneratedTitle: (sessionId, title) =>
             this.registry?.commitGeneratedTitle(sessionId, title) ?? Promise.resolve(false),
         }, false),

@@ -161,12 +161,10 @@
   }
 
   // Default working folder for NEW desktop sessions. Existing sessions retain
-  // their own captured folder; empty lets the runtime use the user's home.
+  // their own captured folder; empty leaves new sessions without a folder.
   function handleWorkspaceRootChange(event: Event) {
     const v = (event.target as HTMLInputElement).value.trim();
     currentPreferences.workspaceRoot = v.length ? v : undefined;
-    autoSave();
-
     autoSave();
   }
 
@@ -478,7 +476,7 @@
           {currentTheme === 'modern'
             ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
             : 'font-terminal text-term-dim-green'}"
-        >{$_t("Desktop only. New conversations start in this folder in both General and Code mode. Leave empty to use your home folder; existing conversations keep their own folder.")}</div>
+        >{$_t("Desktop only. New conversations start in this folder in both General and Code mode. Leave empty to start with no selected folder; existing conversations keep their own folder.")}</div>
       </div>
     </div>
 

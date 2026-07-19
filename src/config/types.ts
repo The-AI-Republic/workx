@@ -443,7 +443,7 @@ export interface IUserPreferences {
   /**
    * Default working folder copied into each new desktop session. Existing
    * sessions retain their own folder when this preference changes. If unset,
-   * new sessions start in the user's home directory.
+   * new sessions start without a selected working folder.
    */
   workspaceRoot?: string;
   /**

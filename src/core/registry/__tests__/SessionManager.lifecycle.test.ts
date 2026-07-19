@@ -167,6 +167,15 @@ describe('SessionManager lifecycle manager', () => {
     });
   });
 
+  it('leaves a new conversation without a workspace when none is selected', async () => {
+    await registry.openSession({ sessionId: 'no-workspace' });
+
+    expect((await registry.getThread('no-workspace'))?.workspace).toBeUndefined();
+
+    await registry.hydrateSession('no-workspace');
+    expect(assembler.inputs[assembler.inputs.length - 1]?.workspace).toBeUndefined();
+  });
+
   it('runs the lazy index reconciliation once before serving list pages', async () => {
     await registry.cleanup();
     const reconcile = vi.fn(async () => {

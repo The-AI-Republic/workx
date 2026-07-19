@@ -92,7 +92,7 @@ export interface SessionServices {
    */
   serverRootDir?: string;
 
-  /** Platform-provided fallback for a new session (desktop/server: user home). */
+  /** Optional platform-provided fallback for a new session. */
   defaultWorkingDirectory?: string;
 
   /** Internal lifecycle edge notification. Never sent over the wire. */

@@ -40,6 +40,13 @@ describe('TerminalTool session working directory', () => {
     expect(execute).toHaveBeenCalledWith('pwd', expect.objectContaining({ cwd: '/home/rich' }));
   });
 
+  it('requires a selected working folder before executing a command', async () => {
+    const result = await tool.handleInvocation({ command: 'pwd' }, context());
+
+    expect(result).toContain('no working folder is available');
+    expect(execute).not.toHaveBeenCalled();
+  });
+
   it('resolves a relative workdir from the session working folder', async () => {
     await tool.handleInvocation(
       { command: 'npm test', workdir: 'projects/workx' },
