@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { AgentConfig } from '@/config/AgentConfig';
+  import { AgentConfig } from '@/config/AgentConfig';
   import type { IUserPreferences } from '@/config/types';
   import { uiTheme, themePreference, type ThemePreference } from '../stores/themeStore';
   import { showTokenUsage } from '../stores/tokenUsageStore';
@@ -101,6 +101,18 @@
     try {
       isSaving = true;
       await settingsConfig.updateConfig({ preferences: currentPreferences });
+
+      // Settings uses an isolated AgentConfig instance, so saving here does not
+      // update the shared singleton that the chat/scheduler views read from
+      // (AgentConfig.getInstance()). Without this refresh those views re-run
+      // themePreference.initialize(...) with the STALE in-memory preferences on
+      // their next mount, making the theme "bounce back" when settings close.
+      try {
+        const shared = await AgentConfig.getInstance();
+        await shared.reload();
+      } catch (e) {
+        console.warn('[GeneralSettings] Failed to refresh shared config after save:', e);
+      }
 
       // Notify backend of config update
       getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(e => console.warn('[messaging] config update failed:', e));

@@ -16,8 +16,24 @@
   import type { TaskSummary } from '@/core/taskmanager/types';
   import { StepStatus } from '@/core/protocol/events';
   import { _t } from '../../lib/i18n';
+  import { uiTheme } from '../../stores/themeStore';
 
   let { event }: { event: ProcessedEvent } = $props();
+
+  // Theme-aware surfaces/text. Status marker colors below stay semantic
+  // (green/cyan/red) since they read correctly in both themes.
+  let containerClass = $derived($uiTheme === 'modern'
+    ? 'bg-chat-surface dark:bg-chat-surface-dark'
+    : 'bg-black/30');
+  let normalText = $derived($uiTheme === 'modern'
+    ? 'text-chat-text dark:text-chat-text-dark'
+    : 'text-term-green');
+  let mutedText = $derived($uiTheme === 'modern'
+    ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+    : 'text-term-dim-green');
+  let secondaryText = $derived($uiTheme === 'modern'
+    ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark'
+    : 'text-term-dim-green');
 
   // Detect format: TaskUpdateEvent has allTasks, PlanToolArgs has plan
   let rawData = $derived(event.content as unknown as (PlanToolArgs | TaskUpdateEvent));
@@ -94,7 +110,7 @@
   }
 </script>
 
-<div class="p-2 px-3 rounded-md bg-gray-800/50 font-sans text-base">
+<div class="p-2 px-3 rounded-md font-sans text-base {containerClass}">
   {#if isTaskFormat}
     <!-- New TaskUpdateEvent format -->
     {#if tasks.length > 0}
@@ -105,8 +121,8 @@
               <span class="font-bold w-4 text-center flex-shrink-0 {getTaskMarkerColor(task.status)}" class:spin-marker={isTaskInProgress(task.status)}>
                 {getTaskStatusMarker(task.status)}
               </span>
-              <span class="text-gray-400 text-sm flex-shrink-0">#{task.id}</span>
-              <span class="{task.status === 'pending' ? 'text-gray-500' : 'text-gray-200'}">
+              <span class="text-sm flex-shrink-0 {mutedText}">#{task.id}</span>
+              <span class={task.status === 'pending' ? mutedText : normalText}>
                 {task.subject}
               </span>
               {#if getBlockedByText(task)}
@@ -117,12 +133,12 @@
         {/each}
       </ul>
     {:else}
-      <p class="text-gray-500 italic">{$_t("No tasks in plan")}</p>
+      <p class="italic {mutedText}">{$_t("No tasks in plan")}</p>
     {/if}
   {:else}
     <!-- Legacy PlanToolArgs format -->
     {#if explanation}
-      <p class="mb-2 text-gray-400 italic">{explanation}</p>
+      <p class="mb-2 italic {secondaryText}">{explanation}</p>
     {/if}
 
     {#if legacyPlan.length > 0}
@@ -133,7 +149,7 @@
               <span class="font-bold w-4 text-center flex-shrink-0 {getLegacyMarkerColor(item.status)}" class:spin-marker={isLegacyInProgress(item.status)}>
                 {getLegacyStatusMarker(item.status)}
               </span>
-              <span class="{item.status === 'Pending' || item.status === StepStatus.Pending ? 'text-gray-500' : 'text-gray-200'}">
+              <span class={item.status === 'Pending' || item.status === StepStatus.Pending ? mutedText : normalText}>
                 {item.step}
               </span>
             </div>
@@ -141,7 +157,7 @@
         {/each}
       </ul>
     {:else}
-      <p class="text-gray-500 italic">{$_t("No steps in plan")}</p>
+      <p class="italic {mutedText}">{$_t("No steps in plan")}</p>
     {/if}
   {/if}
 </div>
