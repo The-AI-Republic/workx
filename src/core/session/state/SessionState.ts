@@ -5,6 +5,7 @@
 import type { ResponseItem, ConversationHistory } from '../../protocol/types';
 import type { TokenUsageInfo, RateLimitSnapshot } from './types';
 import { isDOMSnapshotOutput, compressSnapshot } from './SnapshotCompressor';
+import type { SessionWorkspace } from '../../TurnExecutionContext';
 
 /**
  * Export format for SessionState
@@ -23,6 +24,8 @@ export interface SessionStateExport {
   // items, not this export).
   cumulativeCostUSD?: number;
   hasUnknownModelCost?: boolean;
+  /** Working folder captured by this conversation. */
+  workspace?: SessionWorkspace;
 }
 
 /**
@@ -58,6 +61,9 @@ export class SessionState {
   /** Track 18: true if any cost was priced via the fallback rate. */
   private hasUnknownModelCost: boolean;
 
+  /** Local working folder owned by this session, not by global preferences. */
+  private workspace?: SessionWorkspace;
+
   constructor() {
     this.approvedCommands = new Set();
     this.history = [];
@@ -68,6 +74,7 @@ export class SessionState {
     this.lastCompactionTokensSaved = undefined;
     this.cumulativeCostUSD = 0;
     this.hasUnknownModelCost = false;
+    this.workspace = undefined;
   }
 
   // ===== History Management =====
@@ -235,6 +242,16 @@ export class SessionState {
     return this.approvedCommands.has(command);
   }
 
+  // ===== Session Workspace =====
+
+  getWorkspace(): SessionWorkspace | undefined {
+    return this.workspace ? { ...this.workspace } : undefined;
+  }
+
+  setWorkspace(workspace?: SessionWorkspace): void {
+    this.workspace = workspace ? { ...workspace } : undefined;
+  }
+
   // ===== Compaction State Management =====
 
   /**
@@ -304,6 +321,7 @@ export class SessionState {
       lastCompactionTokensSaved: this.lastCompactionTokensSaved,
       cumulativeCostUSD: this.cumulativeCostUSD,
       hasUnknownModelCost: this.hasUnknownModelCost,
+      workspace: this.getWorkspace(),
     };
   }
 
@@ -354,6 +372,9 @@ export class SessionState {
     }
     if (data.hasUnknownModelCost !== undefined) {
       state.hasUnknownModelCost = data.hasUnknownModelCost;
+    }
+    if (data.workspace?.workingDirectory) {
+      state.workspace = { ...data.workspace };
     }
 
     return state;

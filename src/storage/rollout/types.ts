@@ -5,6 +5,7 @@
 // Type-only import (erased at compile; no runtime/layering coupling) so the
 // plan_artifact payload shape stays single-sourced with the tool + UI.
 import type { PlanArtifactPayload } from '../../tools/planReview/types';
+import type { SessionWorkspace } from '../../core/TurnExecutionContext';
 
 // ============================================================================
 // Constants
@@ -145,8 +146,12 @@ export type ReasoningSummary = 'auto' | 'always' | 'never';
  * Context information about a conversation turn.
  */
 export interface TurnContextItem {
+  /** Typed session workspace snapshot used for this turn. */
+  workspace?: SessionWorkspace;
   /** Working directory for this turn (desktop mode) */
   cwd?: string;
+  /** Preferred name for the session-owned working directory. */
+  workingDirectory?: string;
   /** Browser tab ID for this turn (extension mode) */
   tabId?: number;
   /** Approval policy */

@@ -2,8 +2,8 @@
  * TurnContext implementation
  * Manages turn state, context switching, approval policies, and sandbox settings
  *
- * BREAKING CHANGE: Replaced cwd (current working directory) with tabId (current working tab)
- * for session-tab binding feature
+ * A turn carries both browser-tab and local-workspace context. They are
+ * independent: either, both, or neither may be present on a platform.
  */
 
 import { ModelClient } from './models/ModelClient';
@@ -11,6 +11,7 @@ import type { AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSum
 import type { IToolsConfig } from '../config/types';
 import { DEFAULT_TOOLS_CONFIG } from '../config/defaults';
 import { type AgentMode, DEFAULT_MODE } from '../prompts/PromptComposer';
+import type { SessionWorkspace } from './TurnExecutionContext';
 
 /**
  * browser environment policy for task execution
@@ -29,6 +30,8 @@ export interface TurnContextConfig {
   baseInstructions?: string;
   /** Agent persona mode for this session (drives prompt composition) */
   agentMode?: AgentMode;
+  /** Session-owned working folder captured for this turn. */
+  workspace?: SessionWorkspace;
   /** User instructions for this turn */
   userInstructions?: string;
   /** Approval policy for commands */
@@ -71,6 +74,7 @@ export class TurnContext {
   private browserTabId?: number;
   private baseInstructions?: string;
   private agentMode: AgentMode;
+  private workspace?: SessionWorkspace;
   private userInstructions?: string;
   private approvalPolicy: AskForApproval;
   private sandboxPolicy: SandboxPolicy;
@@ -93,6 +97,7 @@ export class TurnContext {
     this.browserTabId = config.browserTabId;
     this.baseInstructions = config.baseInstructions;
     this.agentMode = config.agentMode ?? DEFAULT_MODE;
+    this.workspace = config.workspace ? { ...config.workspace } : undefined;
     this.userInstructions = config.userInstructions;
     this.approvalPolicy = config.approvalPolicy || 'on-request';
     this.sandboxPolicy = config.sandboxPolicy || { mode: 'workspace-write' };
@@ -123,6 +128,9 @@ export class TurnContext {
     }
     if (config.agentMode !== undefined) {
       this.agentMode = config.agentMode;
+    }
+    if (config.workspace !== undefined) {
+      this.workspace = { ...config.workspace };
     }
     if (config.userInstructions !== undefined) {
       this.userInstructions = config.userInstructions;
@@ -192,6 +200,18 @@ export class TurnContext {
    */
   setAgentMode(mode: AgentMode): void {
     this.agentMode = mode;
+  }
+
+  getWorkingDirectory(): string | undefined {
+    return this.workspace?.workingDirectory;
+  }
+
+  getWorkspace(): SessionWorkspace | undefined {
+    return this.workspace ? { ...this.workspace } : undefined;
+  }
+
+  setWorkingDirectory(workingDirectory?: string): void {
+    this.workspace = workingDirectory ? { workingDirectory } : undefined;
   }
 
   /**
@@ -447,6 +467,7 @@ export class TurnContext {
       sessionId: this.sessionId,
       baseInstructions: this.baseInstructions,
       agentMode: this.agentMode,
+      workspace: this.getWorkspace(),
       userInstructions: this.userInstructions,
       approvalPolicy: this.approvalPolicy,
       sandboxPolicy: structuredClone(this.sandboxPolicy),
@@ -464,6 +485,7 @@ export class TurnContext {
   export(): {
     sessionId: string;
     baseInstructions?: string;
+    workspace?: SessionWorkspace;
     userInstructions?: string;
     approvalPolicy: AskForApproval;
     sandboxPolicy: SandboxPolicy;
@@ -477,6 +499,7 @@ export class TurnContext {
     return {
       sessionId: this.sessionId,
       baseInstructions: this.baseInstructions,
+      workspace: this.getWorkspace(),
       userInstructions: this.userInstructions,
       approvalPolicy: this.approvalPolicy,
       sandboxPolicy: structuredClone(this.sandboxPolicy),
@@ -497,6 +520,7 @@ export class TurnContext {
     data: {
       sessionId: string;
       baseInstructions?: string;
+      workspace?: SessionWorkspace;
       userInstructions?: string;
       approvalPolicy: AskForApproval;
       sandboxPolicy: SandboxPolicy;
@@ -518,6 +542,7 @@ export class TurnContext {
     return new TurnContext(modelClient, {
       sessionId: data.sessionId,
       baseInstructions: data.baseInstructions,
+      workspace: data.workspace,
       userInstructions: data.userInstructions,
       approvalPolicy: data.approvalPolicy,
       sandboxPolicy: data.sandboxPolicy,

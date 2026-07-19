@@ -138,7 +138,7 @@ async function jail(workspaceRoot: string, target: string): Promise<JailedPath> 
 function denyMsg(reason: string): string {
   switch (reason) {
     case 'no_workspace':
-      return 'No workspace selected; code-mode file tools are disabled.';
+      return 'No working folder is selected. Choose a folder before using local file tools.';
     case 'outside_workspace':
       return 'Path is outside the workspace and cannot be accessed.';
     case 'blocked':

@@ -56,6 +56,7 @@ export interface SessionServiceDeps {
     deleteThread?(sessionId: string, abortRunning?: boolean): Promise<any>;
     undeleteThread?(sessionId: string): Promise<any>;
     setThreadMode?(sessionId: string, mode: 'general' | 'code'): Promise<any>;
+    setThreadWorkingDirectory?(sessionId: string, workingDirectory: string): Promise<any>;
     suspendSession?(sessionId: string): Promise<boolean>;
     compatCloseSession?(sessionId: string): Promise<boolean>;
     setViewed?(surfaceId: string, sessionId: string): Promise<any>;
@@ -93,6 +94,10 @@ function requireSession(deps: SessionServiceDeps, sessionId: string | undefined)
     throw new SessionServiceError('SESSION_NOT_LIVE', `Session not live: ${sessionId}`, true);
   }
   return agentSession;
+}
+
+function isAbsoluteWorkingDirectory(path: string): boolean {
+  return path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path) || path.startsWith('\\\\');
 }
 
 export function createSessionServices(deps: SessionServiceDeps): Record<string, ServiceHandler> {
@@ -344,6 +349,10 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
       }
       if (!sessionId) throw new Error('sessionId is required');
       const sourceConvId = sessionId;
+      const sourceWorkingDirectory = registry
+        .getSession(sourceConvId)
+        ?.agent?.getSession()?.getWorkingDirectory?.()
+        ?? (await registry.getThread?.(sourceConvId))?.workspace?.workingDirectory;
 
       // D13: flush the live source session so the slice sees all turns.
       await registry.getSession(sourceConvId)?.agent?.getSession()?.flushRollout?.();
@@ -385,6 +394,9 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
         await registry.openSession({
           sessionId: reservedSessionId,
           origin: { kind: 'fork', sourceSessionId: forked.sourceConversationId },
+          ...(sourceWorkingDirectory
+            ? { workspace: { workingDirectory: sourceWorkingDirectory } }
+            : {}),
         });
         return {
           sessionId: reservedSessionId,
@@ -401,6 +413,7 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
           sessionId: reservedSessionId,
           sourceConversationId: forked.sourceConversationId,
           rolloutItems: forked.rolloutItems,
+          ...(sourceWorkingDirectory ? { workingDirectory: sourceWorkingDirectory } : {}),
         },
       });
       if (!newSession.agent) {
@@ -539,6 +552,36 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
       }
       if (!registry.setThreadMode) throw new Error('Thread index is unavailable');
       return { entry: await registry.setThreadMode(sessionId, mode) };
+    },
+
+    /** Change one conversation's local working folder without changing mode. */
+    'session.setWorkingDirectory': async (params) => {
+      const { sessionId, workingDirectory } = (params ?? {}) as {
+        sessionId?: string;
+        workingDirectory?: string;
+      };
+      if (!sessionId) throw new Error('sessionId is required');
+      if (typeof workingDirectory !== 'string' || !workingDirectory.trim()) {
+        throw new Error('workingDirectory is required');
+      }
+      const normalized = workingDirectory.trim();
+      if (!isAbsoluteWorkingDirectory(normalized)) {
+        throw new Error('workingDirectory must be an absolute path');
+      }
+      await registry.hydrateSession?.(sessionId);
+      const agentSession = requireSession(deps, sessionId);
+      const session = agentSession.agent.getSession();
+      if (session.getRunningTasks().size > 0) {
+        throw new Error('Cannot change the working folder while a task is running');
+      }
+      session.setWorkingDirectory(normalized);
+      await session.saveState();
+      const entry = await registry.setThreadWorkingDirectory?.(sessionId, normalized);
+      return {
+        success: true,
+        workingDirectory: session.getWorkingDirectory(),
+        ...(entry ? { entry } : {}),
+      };
     },
 
     'session.setViewed': async (params) => {

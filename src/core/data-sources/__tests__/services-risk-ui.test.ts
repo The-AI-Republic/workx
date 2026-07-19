@@ -90,6 +90,7 @@ describe('stdio channel identity', () => {
     const submission = vi.fn().mockResolvedValue(undefined);
     channel.onSubmission(submission);
     await channel.initialize();
+    await channel.activate();
     onFrame?.({
       type: 'request',
       id: 'request-1',

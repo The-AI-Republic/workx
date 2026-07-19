@@ -64,6 +64,12 @@ const RUNTIME_TRANSITIONS: Record<SessionRuntimeState, ReadonlySet<SessionRuntim
   deleting: new Set(['deleting', 'suspended']),
 };
 
+function isAbsoluteWorkingDirectory(path: string | undefined): path is string {
+  return typeof path === 'string' && (
+    path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path) || path.startsWith('\\\\')
+  );
+}
+
 function stableJson(value: unknown): string | undefined {
   if (value === undefined || typeof value === 'function' || typeof value === 'symbol') {
     return undefined;
@@ -360,8 +366,17 @@ export class SessionManager {
     this._assemblingImpacts.set(reservedSessionId, assemblyImpact);
 
     // Every construction path receives the authoritative pre-reserved ID.
+    const requestedWorkspace = sessionConfig.workspace
+      ?? (sessionConfig.fork?.workingDirectory
+        ? { workingDirectory: sessionConfig.fork.workingDirectory }
+        : undefined);
     const initialHistory: InitialHistory = sessionConfig.resume
-      ? { mode: 'resumed', sessionId: reservedSessionId, rolloutItems: sessionConfig.resume.rolloutItems }
+      ? {
+          mode: 'resumed',
+          sessionId: reservedSessionId,
+          rolloutItems: sessionConfig.resume.rolloutItems,
+          ...(requestedWorkspace ? { workspace: requestedWorkspace } : {}),
+        }
       : sessionConfig.fork
       ? {
           mode: 'forked',
@@ -369,8 +384,13 @@ export class SessionManager {
           rolloutItems: sessionConfig.fork.rolloutItems,
           sourceConversationId: sessionConfig.fork.sourceConversationId,
           historyAlreadyPersisted: sessionConfig.fork.historyAlreadyPersisted ?? false,
+          ...(requestedWorkspace ? { workspace: requestedWorkspace } : {}),
         }
-      : { mode: 'new', sessionId: reservedSessionId };
+      : {
+          mode: 'new',
+          sessionId: reservedSessionId,
+          ...(requestedWorkspace ? { workspace: requestedWorkspace } : {}),
+        };
 
     const platformEventDispatcher = this._registryConfig.eventDispatcherFactory
       ? this._registryConfig.eventDispatcherFactory(reservedSessionId)
@@ -431,6 +451,7 @@ export class SessionManager {
         sourceSessionId: initialHistory.mode === 'forked'
           ? initialHistory.sourceConversationId
           : undefined,
+        workspace: initialHistory.workspace,
         config: this._config,
         auth: this._registryConfig.authContext ?? TestAuthContext.none(),
         services,
@@ -465,6 +486,7 @@ export class SessionManager {
         createThreadIndexEntry({
           sessionId: reservedSessionId,
           agentMode: agent.getSession().getAgentMode(),
+          workspace: agent.getSession().getWorkspace?.(),
           origin: sessionConfig.fork
             ? { kind: 'fork', sourceSessionId: sessionConfig.fork.sourceConversationId }
             : { kind: 'new' },
@@ -585,6 +607,7 @@ export class SessionManager {
     sessionId?: string;
     title?: string;
     agentMode?: import('../../prompts/PromptComposer').AgentMode;
+    workspace?: import('../TurnExecutionContext').SessionWorkspace;
     origin?: ThreadIndexEntry['origin'];
   } = {}): Promise<{
     sessionId: string;
@@ -592,6 +615,14 @@ export class SessionManager {
     entry?: ThreadIndexEntry;
   }> {
     const sessionId = options.sessionId ?? uuidv4();
+    const configuredWorkingDirectory = this._config?.getConfig().preferences?.workspaceRoot?.trim();
+    const fallbackWorkingDirectory = this._registryConfig.defaultWorkingDirectory?.trim();
+    const selectedWorkingDirectory = options.workspace?.workingDirectory?.trim()
+      ?? configuredWorkingDirectory
+      ?? fallbackWorkingDirectory;
+    const workspace = isAbsoluteWorkingDirectory(selectedWorkingDirectory)
+      ? { workingDirectory: selectedWorkingDirectory }
+      : undefined;
     const existing = this._indexOpenFlights.get(sessionId);
     if (existing) return existing;
     let flight: Promise<{
@@ -600,7 +631,7 @@ export class SessionManager {
       entry?: ThreadIndexEntry;
     }>;
     if (this.lifecycleMode === 'eager' || !this._registryConfig.threadIndexStore) {
-      flight = this.createSession({ type: 'primary', sessionId })
+      flight = this.createSession({ type: 'primary', sessionId, ...(workspace ? { workspace } : {}) })
         .then(() => ({ sessionId, state: 'IDLE' as const }));
     } else {
       flight = this._registryConfig.threadIndexStore.createIfMissing(
@@ -610,6 +641,7 @@ export class SessionManager {
           agentMode: this.normalizeSessionMode(
             options.agentMode ?? this._config?.getConfig().preferences?.defaultMode,
           ),
+          workspace,
           origin: options.origin,
         }),
       ).then((entry) => {
@@ -705,6 +737,7 @@ export class SessionManager {
             historyAlreadyPersisted: true,
           },
           agentMode: entry.agentMode,
+          ...(entry.workspace ? { workspace: entry.workspace } : {}),
         });
       } else {
         session = await this.createSession({
@@ -714,7 +747,19 @@ export class SessionManager {
             ? { resume: { sessionId, rolloutItems: items } }
             : {}),
           agentMode: entry?.agentMode,
+          ...(entry?.workspace ? { workspace: entry.workspace } : {}),
         });
+      }
+      const hydratedWorkspace = session.agent?.getSession().getWorkspace?.();
+      if (
+        hydratedWorkspace
+        && hydratedWorkspace.workingDirectory !== entry?.workspace?.workingDirectory
+        && this._registryConfig.threadIndexStore
+      ) {
+        const updated = await this._registryConfig.threadIndexStore.patch(sessionId, {
+          workspace: hydratedWorkspace,
+        });
+        this.emitIndexChanged(sessionId, 'upsert', updated);
       }
       logEvent('session_hydrated', {
         duration_ms: Date.now() - startedAt,
@@ -1518,6 +1563,15 @@ export class SessionManager {
       this.emitIndexChanged(sessionId, 'upsert', entry);
       return entry;
     });
+  }
+
+  async setThreadWorkingDirectory(sessionId: string, workingDirectory: string) {
+    if (!this._registryConfig.threadIndexStore) return undefined;
+    const entry = await this._registryConfig.threadIndexStore.patch(sessionId, {
+      workspace: { workingDirectory },
+    });
+    this.emitIndexChanged(sessionId, 'upsert', entry);
+    return entry;
   }
 
   deleteThread(sessionId: string, abortRunning = false) {

@@ -56,12 +56,17 @@ export class ExtensionAgentAssembler implements AgentAssembler {
     try {
       await platformAdapter.initialize();
       const initialHistory = input.kind === 'new'
-        ? { mode: 'new' as const, sessionId: input.sessionId }
+        ? {
+            mode: 'new' as const,
+            sessionId: input.sessionId,
+            ...(input.workspace ? { workspace: input.workspace } : {}),
+          }
         : input.kind === 'resume'
           ? {
               mode: 'resumed' as const,
               sessionId: input.sessionId,
               rolloutItems: [...input.history.items],
+              ...(input.workspace ? { workspace: input.workspace } : {}),
             }
           : {
               mode: 'forked' as const,
@@ -70,6 +75,7 @@ export class ExtensionAgentAssembler implements AgentAssembler {
                 ?? (() => { throw new Error('Fork assembly requires sourceSessionId'); })(),
               rolloutItems: [...input.history.items],
               historyAlreadyPersisted: input.historyAlreadyPersisted,
+              ...(input.workspace ? { workspace: input.workspace } : {}),
             };
 
       agent = new RepublicAgent(

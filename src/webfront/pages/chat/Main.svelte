@@ -77,6 +77,9 @@
   let showWelcome = $derived(!isProcessing && processedEvents.length === 0);
   let scrollContainer: HTMLDivElement;
   let currentTabId: number = $state(-1); // Track current session's bound tab
+  let currentWorkingDirectory: string | undefined = $state(undefined);
+  let workingDirectoryError: string | null = $state(null);
+  let workingDirectoryErrorTimer: ReturnType<typeof setTimeout> | null = null;
   let agentReady: boolean = $state(false);
   let healthStatus: {
     ready: boolean;
@@ -462,6 +465,7 @@
       saveThreadState(activeSessionId);
     }
     if (keepAliveInterval) clearInterval(keepAliveInterval);
+    if (workingDirectoryErrorTimer) clearTimeout(workingDirectoryErrorTimer);
     stopSurfaceHeartbeat();
     void releaseSurface();
     document.removeEventListener('visibilitychange', handleSurfaceVisibility);
@@ -1260,7 +1264,9 @@
   }
 
   function loadThreadState(sessionId: string) {
-    const state = threadStore.getThread(sessionId)?.conversation;
+    const thread = threadStore.getThread(sessionId);
+    const state = thread?.conversation;
+    currentWorkingDirectory = thread?.workspace?.workingDirectory;
     if (state) {
       timeline = state.timeline;
       inputText = state.inputText;
@@ -1285,6 +1291,44 @@
           scrollContainer.scrollTop = scrollContainer.scrollHeight;
         }
       }, 0);
+    }
+  }
+
+  async function chooseWorkingDirectory(): Promise<void> {
+    if (platform.platformName !== 'desktop' || !activeSessionId || isProcessing) return;
+    const targetSessionId = activeSessionId;
+    workingDirectoryError = null;
+    try {
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        defaultPath: currentWorkingDirectory,
+      });
+      if (typeof selected !== 'string' || !selected) return;
+
+      const c = await getInitializedUIClient();
+      const response = await c.serviceRequest<{
+        success: boolean;
+        workingDirectory?: string;
+        entry?: ThreadIndexEntry;
+      }>('session.setWorkingDirectory', {
+        sessionId: targetSessionId,
+        workingDirectory: selected,
+      });
+      if (response.entry) threadStore.mergeThread(response.entry);
+      if (response.workingDirectory && activeSessionId === targetSessionId) {
+        currentWorkingDirectory = response.workingDirectory;
+      }
+    } catch (error) {
+      console.error('[App] Failed to change working folder:', error);
+      const detail = error instanceof Error ? error.message : String(error);
+      workingDirectoryError = `${t('Failed to change working folder')}: ${detail}`;
+      if (workingDirectoryErrorTimer) clearTimeout(workingDirectoryErrorTimer);
+      workingDirectoryErrorTimer = setTimeout(() => {
+        workingDirectoryError = null;
+        workingDirectoryErrorTimer = null;
+      }, 5000);
     }
   }
 
@@ -1509,6 +1553,9 @@
       const known = threadStore.getThread(data.sessionId);
       if (known || data.entry.pinned || data.sessionId === activeSessionId) {
         threadStore.mergeThread(data.entry);
+        if (data.sessionId === activeSessionId) {
+          currentWorkingDirectory = data.entry.workspace?.workingDirectory;
+        }
       } else {
         threadStore.markPageDirty();
       }
@@ -1738,6 +1785,15 @@
         <div class="shrink-0 border-t {currentTheme === 'modern' ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
           <!-- Input area -->
           <div class="pr-2 py-2 pl-0">
+            {#if workingDirectoryError}
+              <div
+                class="mb-2 ml-2 rounded-lg border px-3 py-2 text-sm
+                  {currentTheme === 'modern'
+                    ? 'border-chat-status-error/30 bg-chat-status-error/10 text-chat-status-error dark:border-chat-status-error-dark/30 dark:bg-chat-status-error-dark/10 dark:text-chat-status-error-dark'
+                    : 'border-term-red bg-[rgba(40,0,0,0.95)] text-term-red'}"
+                role="alert"
+              >{workingDirectoryError}</div>
+            {/if}
             <MessageInput
               bind:value={inputText}
               bind:suggestion={nextSuggestion}
@@ -1751,6 +1807,10 @@
               onTabSelected={handleTabSelected}
               onCommandOutput={handleCommandOutput}
               onOpenRewindSelector={() => showRewindSelector = true}
+              workingDirectory={currentWorkingDirectory}
+              onChooseWorkingDirectory={platform.platformName === 'desktop'
+                ? chooseWorkingDirectory
+                : undefined}
             />
           </div>
 

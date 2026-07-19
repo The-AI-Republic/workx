@@ -3,9 +3,8 @@
  *
  * Before the fix, resolveSearchRoot returned the model-supplied `path`
  * verbatim and fell back to process.cwd(), so the model could grep/glob
- * anywhere on disk. These pin: code-mode gate, R8 (no workspace ⇒ disabled,
- * never app cwd), and that an out-of-workspace `path` is refused before
- * ripgrep ever runs.
+ * anywhere on disk. These pin: mode-independent access, no workspace ⇒
+ * disabled (never app cwd), and refusal of out-of-workspace paths.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -23,9 +22,16 @@ import type { ToolContext } from '../../BaseTool';
 const WS = '/ws/project';
 
 function ctx(over: Record<string, any> = {}): ToolContext {
+  const hasWorkingDirectory = Object.prototype.hasOwnProperty.call(over, 'workingDirectory');
+  const workingDirectory = hasWorkingDirectory ? over.workingDirectory : WS;
+  const { workingDirectory: _workingDirectory, mode = 'code', ...metadata } = over;
   return {
     sessionId: 's', turnId: 't', toolName: 'grep',
-    metadata: { workspaceRoot: WS, agentMode: 'code', ...over },
+    executionContext: {
+      sessionId: 's', turnId: 't', mode,
+      ...(workingDirectory ? { workspace: { workingDirectory } } : {}),
+    },
+    metadata,
   } as ToolContext;
 }
 
@@ -39,15 +45,14 @@ describe.each([
   ['glob', () => new GlobTool(), { pattern: '**/*' }],
 ])('%s is jailed to the workspace', (_name, make, base) => {
   it('refuses when no workspace is selected (R8 — never app cwd)', async () => {
-    const out = await make().createHandler()(base, ctx({ workspaceRoot: undefined }));
-    expect(out).toMatch(/project folder/i);
+    const out = await make().createHandler()(base, ctx({ workingDirectory: undefined }));
+    expect(out).toMatch(/working folder/i);
     expect(runRipgrep).not.toHaveBeenCalled();
   });
 
-  it('refuses outside code mode', async () => {
-    const out = await make().createHandler()(base, ctx({ agentMode: 'general' }));
-    expect(out).toMatch(/Code mode only/i);
-    expect(runRipgrep).not.toHaveBeenCalled();
+  it('runs in general mode', async () => {
+    await make().createHandler()(base, ctx({ mode: 'general' }));
+    expect(runRipgrep).toHaveBeenCalledTimes(1);
   });
 
   it('refuses an out-of-workspace path before ripgrep runs', async () => {
@@ -80,8 +85,8 @@ describe.each([
     expect(runRipgrep.mock.calls[0][1]).toMatchObject({ cwd: `${WS}/src/app`, workspaceRoot: WS });
   });
 
-  it('session-less (undefined mode) is not mode-blocked but still needs a workspace', async () => {
-    await make().createHandler()(base, ctx({ agentMode: undefined }));
+  it('mode is not a workspace permission gate', async () => {
+    await make().createHandler()(base, ctx({ mode: 'general' }));
     expect(runRipgrep).toHaveBeenCalledTimes(1);
     expect(runRipgrep.mock.calls[0][1]).toMatchObject({ cwd: WS, workspaceRoot: WS });
   });

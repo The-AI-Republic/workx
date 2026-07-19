@@ -92,6 +92,9 @@ export interface SessionServices {
    */
   serverRootDir?: string;
 
+  /** Optional platform-provided fallback for a new session. */
+  defaultWorkingDirectory?: string;
+
   /** Internal lifecycle edge notification. Never sent over the wire. */
   onBackgroundWorkChanged?: (sessionId: string) => void | Promise<void>;
 
@@ -176,6 +179,7 @@ export async function createSessionServices(
     showRawAgentReasoning: config.showRawAgentReasoning ?? false,
     sessionCache: config.sessionCache,
     serverRootDir: config.serverRootDir,
+    defaultWorkingDirectory: config.defaultWorkingDirectory,
     onBackgroundWorkChanged: config.onBackgroundWorkChanged,
     commitGeneratedTitle: config.commitGeneratedTitle,
     onDurabilityChanged: config.onDurabilityChanged,

@@ -161,8 +161,8 @@ export const SECTIONS: Record<string, Section> = {
         },
       }),
       // Plain fields — no LLM access
-      // workspaceRoot is deliberately NOT llm_access: the agent must not be
-      // able to relocate its own filesystem jail. User-set via folder picker.
+      // Default working folder for NEW sessions. Deliberately not llm_access:
+      // changing an existing session's folder is an explicit UI action.
       workspaceRoot: configField(z.string().optional()),
       autoSync: configField(z.boolean().default(true)),
       telemetryEnabled: configField(z.boolean().default(false)),

@@ -32,6 +32,7 @@ import type { BrowserPageContext } from './platform/IPlatformAdapter';
 import type { IToolsConfig } from '../config/types';
 import { mapResponseItemToEventMessages } from './events/EventMapping';
 import type { ResponseItem } from './protocol/types';
+import type { TurnExecutionContext } from './TurnExecutionContext';
 import { WebSearchTool } from '../tools/WebSearchTool';
 import {
   prepareToolCall,
@@ -146,6 +147,7 @@ export class TurnManager {
   private readonly toolSelectionStore = getDefaultToolSelectionStore();
   private readonly toolExposureManager: ToolExposureManager;
   private lastToolExposureReminder?: string;
+  private executionContext?: TurnExecutionContext;
 
   constructor(
     session: Session,
@@ -218,10 +220,26 @@ export class TurnManager {
     return this.turnContext.getAgentMode?.() ?? this.session.getAgentMode?.() ?? DEFAULT_MODE;
   }
 
+  private createExecutionContext(): TurnExecutionContext {
+    const workingDirectory = this.session.getWorkingDirectory?.();
+    const tabId = this.turnContext.getBrowserTabId?.() ?? -1;
+    return Object.freeze({
+      sessionId: this.session.getSessionId(),
+      turnId: this.config.stableTurnId ?? uuidv4(),
+      mode: this.getAgentMode(),
+      ...(workingDirectory
+        ? { workspace: Object.freeze({ workingDirectory }) }
+        : {}),
+      ...(tabId >= 0 ? { tabId } : {}),
+    });
+  }
+
   /**
    * Run a complete turn with retry logic
    */
   async runTurn(input: any[], responseLatencyId?: string): Promise<TurnRunResult> {
+    // One immutable snapshot is shared by every tool call in this model turn.
+    this.executionContext = this.createExecutionContext();
     // Build tools list from turn context
     let phaseStartedAt = Date.now();
     const tools = await this.buildToolsFromContext();
@@ -1544,7 +1562,8 @@ export class TurnManager {
       // (MCP lazy connection + tool execution).
       const executionTimeout = toolName === SUBMIT_PLAN_TOOL_NAME ? 24 * 60 * 60 * 1000 : 300000;
 
-      const turnId = this.config.stableTurnId ?? `turn_${Date.now()}`;
+      const executionContext = this.executionContext ?? this.createExecutionContext();
+      const turnId = executionContext.turnId;
       const request = {
         toolName,
         parameters,
@@ -1552,6 +1571,7 @@ export class TurnManager {
         turnId,
         callId,
         tabId, // Pass tabId in request for tools that need it
+        executionContext,
         timeout: executionTimeout,
         signal,
         onProgress: (progress: { data: import('../tools/runtimeMetadata').ToolProgressData }) => {
@@ -1571,12 +1591,9 @@ export class TurnManager {
           currentUrl,
           currentDomain,
           hookSnapshot,
-          // Per-session handles for the file-access tools (design §4.5). Live
-          // in-process object refs; the session-less tools/index.ts path simply
-          // omits these and the tools degrade gracefully.
-          workspaceRoot: this.session.getWorkspaceRoot?.(),
+          // Mutable freshness state remains private to file tools in the
+          // registry. Folder and mode live in executionContext.
           fileStateCache: this.session.getFileStateCache?.(),
-          agentMode: this.session.getAgentMode?.(), // §4.2: file tools are code-mode only
           dataTurnSnapshot: this.config.dataTurnSnapshot,
         },
       };
@@ -1663,10 +1680,14 @@ export class TurnManager {
    * Record turn context for rollout/history
    */
   private async recordTurnContext(): Promise<void> {
+    const executionContext = this.executionContext ?? this.createExecutionContext();
     const turnContextItem = {
-      // Persist only the context already owned by this turn. Reading the live
-      // browser here would put an external tool RPC on every model request.
-      tabId: this.turnContext.getBrowserTabId?.(),
+      tabId: executionContext.tabId,
+      workspace: executionContext.workspace
+        ? { workingDirectory: executionContext.workspace.workingDirectory }
+        : undefined,
+      cwd: executionContext.workspace?.workingDirectory,
+      workingDirectory: executionContext.workspace?.workingDirectory,
       sessionId: this.turnContext.getSessionId(),
       approval_policy: this.turnContext.getApprovalPolicy(),
       sandbox_policy: this.turnContext.getSandboxPolicy(),
