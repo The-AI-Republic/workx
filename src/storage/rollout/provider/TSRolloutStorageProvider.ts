@@ -14,6 +14,7 @@ import type {
   ConversationsPage,
   Cursor,
   RolloutRecoveryMetadata,
+  RolloutItemRange,
 } from '../types';
 import { applyRecoveryMutations, emptyRecoveryMetadata } from './RolloutRecovery';
 
@@ -241,6 +242,39 @@ export class TSRolloutStorageProvider implements RolloutStorageProvider {
     }));
   }
 
+  async getItemsByRolloutIdRange(
+    rolloutId: ConversationId,
+    range: RolloutItemRange,
+  ): Promise<RolloutItemRecord[]> {
+    const limit = normalizeRangeLimit(range.limit);
+    const clauses = ['rollout_id = ?'];
+    const params: Array<string | number> = [rolloutId];
+    if (range.afterSequence !== undefined) {
+      clauses.push('sequence > ?');
+      params.push(range.afterSequence);
+    }
+    if (range.beforeSequence !== undefined) {
+      clauses.push('sequence < ?');
+      params.push(range.beforeSequence);
+    }
+    params.push(limit);
+    const rows = this.getDb().prepare(
+      `SELECT id, rollout_id, timestamp, sequence, type, payload
+       FROM rollout_items
+       WHERE ${clauses.join(' AND ')}
+       ORDER BY sequence ${range.direction === 'desc' ? 'DESC' : 'ASC'}
+       LIMIT ?`,
+    ).all(...params) as RawItemRow[];
+    return rows.map((row) => ({
+      id: row.id,
+      rolloutId: row.rollout_id,
+      timestamp: row.timestamp,
+      sequence: row.sequence,
+      type: row.type,
+      payload: this.parseJson(row.payload),
+    }));
+  }
+
   async getLastSequenceNumber(rolloutId: ConversationId): Promise<number> {
     const row = this.getDb().prepare(
       'SELECT MAX(sequence) as max_seq FROM rollout_items WHERE rollout_id = ?'
@@ -366,6 +400,13 @@ export class TSRolloutStorageProvider implements RolloutStorageProvider {
     }
     return value;
   }
+}
+
+function normalizeRangeLimit(limit: number): number {
+  if (!Number.isInteger(limit) || limit < 1 || limit > 1000) {
+    throw new Error('range limit must be an integer from 1 to 1000');
+  }
+  return limit;
 }
 
 // SQLite row types (snake_case column names)

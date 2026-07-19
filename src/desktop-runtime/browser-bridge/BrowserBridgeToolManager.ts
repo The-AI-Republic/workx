@@ -33,6 +33,11 @@ export interface BrowserBridgeToolManagerDeps {
   getRegistry: () => SessionManager | null;
 }
 
+/** Metadata reads must stay fast; the actual browser tool owns the long budget. */
+export const BROWSER_CONTEXT_TIMEOUT_MS = 3_000;
+/** Session cleanup is best-effort and must not stall suspension or shutdown. */
+export const BROWSER_RELEASE_TIMEOUT_MS = 1_000;
+
 export class BrowserBridgeToolManager implements BrowserBridgeHandle {
   /** Tool names this manager registered, per session (for clean unregister). */
   private registeredBySession = new Map<string, string[]>();
@@ -139,7 +144,11 @@ export class BrowserBridgeToolManager implements BrowserBridgeHandle {
   }
 
   async getSessionBrowserContext(sessionId: string): Promise<SessionBrowserContext | null> {
-    const result = await this.invokeOperation(sessionId, 'browser-context');
+    const result = await this.invokeOperation(
+      sessionId,
+      'browser-context',
+      BROWSER_CONTEXT_TIMEOUT_MS,
+    );
     if (!result || typeof result !== 'object') return null;
     const context = result as Partial<SessionBrowserContext>;
     return typeof context.tabId === 'number'
@@ -151,7 +160,7 @@ export class BrowserBridgeToolManager implements BrowserBridgeHandle {
 
   async releaseSession(sessionId: string): Promise<void> {
     try {
-      await this.invokeOperation(sessionId, 'release-session');
+      await this.invokeOperation(sessionId, 'release-session', BROWSER_RELEASE_TIMEOUT_MS);
     } finally {
       this.forgetSession(sessionId);
     }
@@ -247,9 +256,15 @@ export class BrowserBridgeToolManager implements BrowserBridgeHandle {
   private async invokeOperation(
     sessionId: string,
     operation: 'release-session' | 'browser-context',
+    timeoutMs: number,
   ): Promise<unknown> {
     const node = this.deps.nodeBridge.getPrimaryNode();
     if (!node) return null;
-    return this.deps.nodeBridge.invoke(node.connectionId, '', {}, { operation, sessionId });
+    return this.deps.nodeBridge.invoke(
+      node.connectionId,
+      '',
+      {},
+      { operation, sessionId, timeoutMs },
+    );
   }
 }

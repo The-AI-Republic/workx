@@ -322,6 +322,43 @@ describe('Session', () => {
       });
     });
 
+    it('records one typed multimodal user item with the stable client id', async () => {
+      const recordItems = vi.fn().mockResolvedValue(undefined);
+      const typed = new Session(undefined, false, makeMockServices({
+        rollout: { recordItems } as any,
+      }));
+      await typed.recordInputAndRolloutUsermsg([
+        { type: 'text', text: 'hello' },
+        { type: 'image', image_url: 'data:image/png;base64,abc' },
+      ], 'client-1');
+
+      const history = typed.getConversationHistory().items;
+      expect(history).toHaveLength(1);
+      expect(history[0]).toMatchObject({
+        type: 'message',
+        role: 'user',
+        client_id: 'client-1',
+        content: [
+          { type: 'input_text', text: 'hello' },
+          { type: 'input_image', image_url: 'data:image/png;base64,abc' },
+        ],
+      });
+      expect(JSON.stringify(history)).not.toContain('"type":"text","text"');
+    });
+
+    it('does not expose accepted input in memory when its durable write fails', async () => {
+      const typed = new Session(undefined, false, makeMockServices({
+        rollout: {
+          recordItems: vi.fn().mockRejectedValue(new Error('storage unavailable')),
+        } as any,
+      }));
+
+      await expect(typed.recordInputAndRolloutUsermsg([
+        { type: 'text', text: 'do not become a phantom' },
+      ], 'client-failed')).rejects.toThrow('storage unavailable');
+      expect(typed.getConversationHistory().items).toEqual([]);
+    });
+
     describe('getMessageCount()', () => {
       it('should reflect the number of history items', async () => {
         expect(session.getMessageCount()).toBe(0);
@@ -416,6 +453,20 @@ describe('Session', () => {
         const results = await session.searchMessages('zzz');
         expect(results).toEqual([]);
       });
+    });
+  });
+
+  describe('persistRolloutItems()', () => {
+    it('rethrows required lifecycle writes while auxiliary writes remain best-effort', async () => {
+      const recordItems = vi.fn().mockRejectedValue(new Error('disk full'));
+      const session = new Session(undefined, false, makeMockServices({
+        rollout: { recordItems } as any,
+      }));
+      const item = { type: 'turn_start', payload: {} } as any;
+
+      await expect(session.persistRolloutItems([item])).resolves.toBeUndefined();
+      await expect(session.persistRolloutItems([item], { required: true }))
+        .rejects.toThrow('disk full');
     });
   });
 
@@ -622,6 +673,52 @@ describe('Session', () => {
       it('should include trigger reason in result', async () => {
         const result = await session.compact('auto');
         expect(result.triggerReason).toBe('auto');
+      });
+
+      it('commits a durable replacement checkpoint before replacing model history', async () => {
+        const recordItems = vi.fn().mockResolvedValue(undefined);
+        const durableSession = new Session(undefined, false, makeMockServices({
+          rollout: { recordItems } as any,
+        }));
+        (durableSession as any).sessionState.recordItems([makeMessage('user', 'old')]);
+        (durableSession as any).compactService.compact = vi.fn().mockResolvedValue({
+          success: true,
+          tokensBefore: 100,
+          tokensAfter: 20,
+          itemsTrimmed: 1,
+          retriesUsed: 0,
+          triggerReason: 'manual',
+          newHistory: [makeMessage('system', 'summary')],
+        });
+
+        const result = await durableSession.compact('manual', {} as any);
+        expect(result.success).toBe(true);
+        expect(recordItems).toHaveBeenCalledWith([expect.objectContaining({
+          type: 'compacted',
+          payload: expect.objectContaining({ windowNumber: 1 }),
+        })]);
+        expect(durableSession.getConversationHistory().items).toEqual([makeMessage('system', 'summary')]);
+      });
+
+      it('does not replace model history when checkpoint persistence fails', async () => {
+        const durableSession = new Session(undefined, false, makeMockServices({
+          rollout: { recordItems: vi.fn().mockRejectedValue(new Error('disk full')) } as any,
+        }));
+        const old = makeMessage('user', 'old');
+        (durableSession as any).sessionState.recordItems([old]);
+        (durableSession as any).compactService.compact = vi.fn().mockResolvedValue({
+          success: true,
+          tokensBefore: 100,
+          tokensAfter: 20,
+          itemsTrimmed: 1,
+          retriesUsed: 0,
+          triggerReason: 'manual',
+          newHistory: [makeMessage('system', 'summary')],
+        });
+
+        const result = await durableSession.compact('manual', {} as any);
+        expect(result).toMatchObject({ success: false, error: expect.stringContaining('checkpoint') });
+        expect(durableSession.getConversationHistory().items).toEqual([old]);
       });
     });
 
@@ -842,6 +939,11 @@ describe('Session', () => {
         return { shouldContinue: true };
       });
       session.setHookDispatcher({ fire } as any);
+      const getCurrentPageContext = vi.fn().mockRejectedValue(
+        new Error('stop must not access browser context'),
+      );
+      session.setToolRegistry({ getCurrentPageContext } as any);
+      (session as any).getTabId = vi.fn().mockReturnValue(42);
       const task = makeMockTask({
         run: vi.fn().mockImplementation(() => new Promise(() => {})),
       });
@@ -862,6 +964,7 @@ describe('Session', () => {
         }),
         expect.objectContaining({ timeoutOverride: 1 }),
       );
+      expect(getCurrentPageContext).not.toHaveBeenCalled();
     });
 
     it('shutdown aborts active typed tasks and clears the eviction timer', async () => {

@@ -19,6 +19,8 @@ export interface ThreadIndexEntry {
   purgeState?: 'pending' | 'failed';
   agentMode: AgentMode;
   origin: { kind: 'new' } | { kind: 'fork'; sourceSessionId: string };
+  /** Legacy full-snapshot display or bounded canonical-log projection. */
+  historyMode?: 'legacy' | 'paginated';
   schemaVersion: typeof THREAD_INDEX_SCHEMA_VERSION;
 }
 
@@ -83,6 +85,7 @@ export function createThreadIndexEntry(input: {
     purgeAfter: null,
     agentMode: input.agentMode ?? 'general',
     origin: input.origin ?? { kind: 'new' },
+    historyMode: 'paginated',
     schemaVersion: THREAD_INDEX_SCHEMA_VERSION,
   };
 }
@@ -377,6 +380,7 @@ export class ThreadIndexStore {
           ? rollout!.updated!
           : createdAt,
         lastActiveAt: Math.max(...activeCandidates),
+        historyMode: 'legacy',
       };
       const current = await this.get(sessionId, true);
       if (!current) {
@@ -408,8 +412,17 @@ export class ThreadIndexStore {
 
   private repair(entry: ThreadIndexEntry): ThreadIndexEntry {
     const expected = normalizeSearchTitle(entry.title ?? '');
-    if (entry.searchTitle === expected && entry.schemaVersion === 1) return entry;
-    return { ...entry, searchTitle: expected, schemaVersion: 1 };
+    if (
+      entry.searchTitle === expected
+      && entry.schemaVersion === 1
+      && (entry.historyMode === 'legacy' || entry.historyMode === 'paginated')
+    ) return entry;
+    return {
+      ...entry,
+      searchTitle: expected,
+      historyMode: entry.historyMode === 'paginated' ? 'paginated' : 'legacy',
+      schemaVersion: 1,
+    };
   }
 
   private async requireStored(sessionId: string): Promise<ThreadIndexEntry> {

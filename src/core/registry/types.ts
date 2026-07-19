@@ -238,6 +238,12 @@ export interface RegistryConfig {
   loadRolloutSnapshot?: (
     sessionId: string,
   ) => Promise<import('../assembly/AgentAssembler').RolloutSnapshot>;
+  /** Bounded model-only resume projection, separate from display history. */
+  loadModelContextSnapshot?: (
+    sessionId: string,
+  ) => Promise<import('../assembly/AgentAssembler').RolloutSnapshot>;
+  /** Metadata/sequence-only boundary used when a turn becomes durably idle. */
+  loadRolloutRevision?: (sessionId: string) => Promise<number>;
   refreshRolloutSnapshot?: (
     sessionId: string,
   ) => Promise<import('../assembly/AgentAssembler').RolloutSnapshot>;

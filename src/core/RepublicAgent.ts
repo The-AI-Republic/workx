@@ -45,6 +45,11 @@ import type { IPlatformAdapter } from './platform/IPlatformAdapter';
 import { processUserInput } from './input/processUserInput';
 import type { FunnelContext, InputOrigin } from './input/types';
 import type { AgentDisposeReason, ManagerAction } from './assembly/AgentAssembler';
+import {
+  finishResponseLatencyTrace,
+  markResponseLatency,
+  setResponseLatencySubmissionId,
+} from './diagnostics/responseLatency';
 import { captureOriginalDataTurnSnapshot } from './data-sources';
 
 /** Marks an Op object that has already passed through the input funnel.
@@ -659,6 +664,7 @@ export class RepublicAgent {
     }
   ): Promise<string> {
     const id = `sub_${this.nextId++}`;
+    const responseLatencyId = op.type === 'UserInput' ? op.clientMessageId : undefined;
 
     // Track 12: a scheduler/connector driver can mark this submission
     // unattended; apply it to the live TurnContext before the turn runs
@@ -744,6 +750,7 @@ export class RepublicAgent {
                   );
                 }
               }
+              finishResponseLatencyTrace(responseLatencyId, 'submission_rejected');
               return id;
             }
             if (processed) {
@@ -758,14 +765,23 @@ export class RepublicAgent {
               (userOp as Record<symbol, unknown>)[FUNNELLED] = true;
             }
           }
+          markResponseLatency(responseLatencyId, 'agent_input_funnel_finished');
           op = userOp;
 
           const shouldContinue = await this.preSubmitHooks(op, context);
           if (!shouldContinue) {
             // UserPromptSubmit hook blocked — return local id without engine submission
+            finishResponseLatencyTrace(responseLatencyId, 'submission_rejected');
             return id;
           }
-          return requireEngine().submitOperation(this.toEngineOp(op, dataTurnSnapshot));
+          const engineSubmissionId = requireEngine().submitOperation(
+            this.toEngineOp(op, dataTurnSnapshot),
+          );
+          if (responseLatencyId) {
+            setResponseLatencySubmissionId(responseLatencyId, engineSubmissionId);
+            markResponseLatency(responseLatencyId, 'engine_submission_created');
+          }
+          return engineSubmissionId;
         }
 
         // === Forward execution ops to engine ===
@@ -830,6 +846,7 @@ export class RepublicAgent {
           });
       }
     } catch (error) {
+      finishResponseLatencyTrace(responseLatencyId, 'submission_failed');
       // Emit TurnAborted event on error
       this.emitEvent({
         type: 'TurnAborted',
@@ -886,6 +903,8 @@ export class RepublicAgent {
     op: Extract<Op, { type: 'UserInput' }> | Extract<Op, { type: 'UserTurn' }>,
     context?: { tabId?: number }
   ): Promise<boolean> {
+    const responseLatencyId = op.type === 'UserInput' ? op.clientMessageId : undefined;
+    const hookStartedAt = Date.now();
     // Fire UserPromptSubmit hooks before any work
     const textContent = (op.items ?? [])
       .filter((i: any) => i.type === 'text')
@@ -937,16 +956,29 @@ export class RepublicAgent {
         ];
       }
     }
+    markResponseLatency(responseLatencyId, 'user_prompt_hooks_finished', {
+      duration_ms: Date.now() - hookStartedAt,
+    });
 
     // Tab binding (platform adapter concern)
     const tabContext = op.type === 'UserTurn' && op.tabId !== undefined
       ? { tabId: op.tabId }
       : context;
+    const tabBindingStartedAt = Date.now();
     await this.handleTabBinding(tabContext);
+    markResponseLatency(responseLatencyId, 'tab_binding_finished', {
+      duration_ms: Date.now() - tabBindingStartedAt,
+    });
 
+    const rebuildStartedAt = Date.now();
+    const rebuildRequired = this.pendingRebuildReasons.size > 0;
     if (this.pendingRebuildReasons.size > 0) {
       await this.rebuildExecutionContext(new Set(this.pendingRebuildReasons));
     }
+    markResponseLatency(responseLatencyId, 'execution_context_ready', {
+      duration_ms: Date.now() - rebuildStartedAt,
+      rebuild_required: rebuildRequired,
+    });
 
     return true;
   }

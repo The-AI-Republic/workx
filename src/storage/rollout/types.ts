@@ -123,6 +123,14 @@ export interface RolloutRecoveryMetadata {
 export interface CompactedItem {
   /** Summary message */
   message: string;
+  /**
+   * Durable model-context checkpoint. New writers persist the exact compacted
+   * history so resume can replace the pre-checkpoint prefix instead of
+   * replaying it. Optional for backward compatibility with legacy summaries.
+   */
+  replacementHistory?: import('../../core/protocol/types').ResponseItem[];
+  /** Monotonic compaction number at the time the checkpoint was committed. */
+  windowNumber?: number;
 }
 
 /**
@@ -343,6 +351,14 @@ export interface RolloutItemRecord {
   type: string;
   /** Item payload */
   payload: any;
+}
+
+/** Exclusive sequence bounds used for bounded canonical-log scans. */
+export interface RolloutItemRange {
+  afterSequence?: number;
+  beforeSequence?: number;
+  limit: number;
+  direction: 'asc' | 'desc';
 }
 
 // ============================================================================

@@ -20,6 +20,7 @@ vi.mock('@/core/storage/ConfigStorageProvider', () => ({
 
 import ChatHistorySection from '../ChatHistorySection.svelte';
 import { threadStore } from '../../../stores/threadStore';
+import { themePreference } from '../../../stores/themeStore';
 
 function item(index: number): ThreadListItem {
   return {
@@ -45,11 +46,41 @@ function item(index: number): ThreadListItem {
   };
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
 describe('ChatHistorySection paging', () => {
   beforeEach(() => {
     threadStore.clear();
+    themePreference.setTheme('modern-light');
     mocks.serviceRequest.mockReset();
     mocks.push.mockReset();
+  });
+
+  it('applies modern and terminal theme colors to history controls', async () => {
+    mocks.serviceRequest.mockResolvedValue({ entries: [item(0)], nextCursor: 'page-2' });
+
+    render(ChatHistorySection);
+
+    const search = await screen.findByRole('textbox', { name: 'Search chats' });
+    await screen.findByText('Conversation 0');
+    const loadMore = screen.getByRole('button', { name: 'Load More' });
+    expect(search.classList.contains('text-chat-text')).toBe(true);
+    expect(search.classList.contains('placeholder:text-chat-text-muted')).toBe(true);
+    expect(loadMore.classList.contains('text-chat-text-secondary')).toBe(true);
+
+    themePreference.setTheme('terminal');
+
+    await waitFor(() => {
+      expect(search.classList.contains('text-term-green')).toBe(true);
+      expect(search.classList.contains('placeholder:text-term-dim-green')).toBe(true);
+      expect(loadMore.classList.contains('text-term-dim-green')).toBe(true);
+    });
   });
 
   it('loads ten rows at a time inside a fixed-height scroll container', async () => {
@@ -77,5 +108,38 @@ describe('ChatHistorySection paging', () => {
       cursor: 'page-2',
     }));
     expect(screen.queryByRole('button', { name: 'Load More' })).toBeNull();
+  });
+
+  it('lets a newer search replace an in-flight result and ignores the stale response', async () => {
+    threadStore.mergePage([item(99)], null, { reset: true });
+    const olderSearch = deferred<{ entries: ThreadListItem[]; nextCursor: null }>();
+    const newerSearch = deferred<{ entries: ThreadListItem[]; nextCursor: null }>();
+    mocks.serviceRequest.mockImplementation((_method, params: { query?: string }) => (
+      params.query === 'older' ? olderSearch.promise : newerSearch.promise
+    ));
+
+    render(ChatHistorySection);
+    const search = screen.getByRole('textbox', { name: 'Search chats' });
+    await fireEvent.input(search, { target: { value: 'older' } });
+    await waitFor(() => {
+      expect(mocks.serviceRequest).toHaveBeenCalledWith('session.list', expect.objectContaining({
+        query: 'older',
+      }));
+    });
+
+    await fireEvent.input(search, { target: { value: 'newer' } });
+    await waitFor(() => {
+      expect(mocks.serviceRequest).toHaveBeenCalledWith('session.list', expect.objectContaining({
+        query: 'newer',
+      }));
+    });
+
+    newerSearch.resolve({ entries: [item(200)], nextCursor: null });
+    await screen.findByText('Conversation 200');
+    olderSearch.resolve({ entries: [item(100)], nextCursor: null });
+    await waitFor(() => {
+      expect(screen.queryByText('Conversation 100')).toBeNull();
+      expect(screen.getByText('Conversation 200')).toBeTruthy();
+    });
   });
 });

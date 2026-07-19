@@ -8,6 +8,16 @@ import {
 import { MemoryStorageAdapter } from './MemoryStorageAdapter';
 
 describe('ThreadIndexStore', () => {
+  it('creates paginated threads and repairs pre-migration rows as explicit legacy', async () => {
+    const adapter = new MemoryStorageAdapter();
+    const store = new ThreadIndexStore(adapter);
+    expect(createThreadIndexEntry({ sessionId: 'new' }).historyMode).toBe('paginated');
+    const legacy = { ...createThreadIndexEntry({ sessionId: 'legacy' }) };
+    delete legacy.historyMode;
+    await adapter.put('thread_index', legacy);
+    expect(await store.require('legacy')).toMatchObject({ historyMode: 'legacy' });
+  });
+
   it('normalizes titles, preserves manual title precedence, and serializes mutations', async () => {
     let now = 100;
     const store = new ThreadIndexStore(new MemoryStorageAdapter(), () => ++now);

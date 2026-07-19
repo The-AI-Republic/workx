@@ -6,6 +6,7 @@
   import type { ChannelEvent } from '@/core/channels/types';
   import type { JobStatusChangedEvent } from '@/core/models/types/SchedulerContracts';
   import type { Event, InputItem } from '@/core/protocol/types';
+  import type { HistoryPage } from '@/storage/rollout';
   import type { AgentAccessState } from '@/core/services/runtime-state';
   import type { SessionRuntimeView, SubmitAck, ThreadListItem } from '@/core/registry/types';
   import type { ThreadIndexEntry } from '@/core/thread/ThreadIndexStore';
@@ -44,13 +45,28 @@
   } from '../../stores/threadStore';
   import { ThreadEventRouter } from '../../routing/ThreadEventRouter';
   import { handleBackgroundTaskEvent, startBackgroundTaskPolling, stopBackgroundTaskPolling } from '../../stores/backgroundTaskStore';
-  import { projectReplay, projectRollout } from '../../lib/rolloutProjection';
+  import { projectReplay } from '../../lib/rolloutProjection';
+  import {
+    consumeAttachMessageDuplicate,
+    createAttachMessageDedupeBudget,
+    emptyTimeline,
+    historyPageToEvents,
+    noteDelivery,
+    prependHistoryPage,
+    reconcileAttachedTimeline,
+    timelineEvents,
+    upsertTimelineEvent,
+    type ConversationTimeline,
+    type MessageDedupeBudget,
+    type TimelineSource,
+  } from '../../lib/conversationTimeline';
+  import { LatestViewedSession } from '../../lib/latestViewedSession';
   // UI channel client (platform-agnostic)
   let client: UIChannelClient | null = $state(null);
   let unsubscribers: Array<() => void> = $state([]);
   let eventProcessor: EventProcessor;
-  let messages: Array<{ type: 'user' | 'agent'; content: string; timestamp: number }> = $state([]);
-  let processedEvents: ProcessedEvent[] = $state([]);
+  let timeline: ConversationTimeline = $state(emptyTimeline());
+  let processedEvents = $derived(timelineEvents(timeline));
   let inputText: string = $state('');
   // Track 24.3: predicted next user message (bound into MessageInput).
   let nextSuggestion: string | null = $state(null);
@@ -58,7 +74,7 @@
   let showRewindSelector: boolean = $state(false);
   let isConnected: boolean = $state(false);
   let isProcessing: boolean = $state(false);
-  let showWelcome = $derived(!isProcessing && processedEvents.length === 0 && messages.length === 0);
+  let showWelcome = $derived(!isProcessing && processedEvents.length === 0);
   let scrollContainer: HTMLDivElement;
   let currentTabId: number = $state(-1); // Track current session's bound tab
   let agentReady: boolean = $state(false);
@@ -70,6 +86,7 @@
     authMode?: 'login' | 'api_key' | 'none';
   } = $state({ ready: false, authMode: 'none' });
   let zoomLevel: number = $state(parseInt(document.documentElement.style.fontSize) || 100);
+  let loadingOlderHistory = $state(false);
 
   // Guards the auto-relogin so an expired desktop session opens the login flow
   // exactly once per expiry (reset when access returns to ready), rather than
@@ -158,6 +175,67 @@
   const attachBuffers = new Map<string, ChannelEvent[]>();
   const attachBufferOverflow = new Set<string>();
   const MAX_ATTACH_BUFFER_EVENTS = 1024;
+  const viewedSession = new LatestViewedSession({
+    acquireLease: async (sessionId) => {
+      const c = await getInitializedUIClient();
+      const response = await c.serviceRequest<{
+        lease: { leaseId: string; sessionId: string };
+      }>('session.setViewed', { surfaceId, sessionId });
+      return { leaseId: response.lease.leaseId, sessionId };
+    },
+    releaseLease: async (lease) => {
+      if (!client) return;
+      await client.serviceRequest('session.releaseSurface', {
+        surfaceId,
+        leaseId: lease.leaseId,
+      });
+    },
+    attachSession: (sessionId) => restoreConversationHistory(sessionId),
+    onLeaseChange: (lease) => {
+      surfaceLease = lease;
+      if (lease) startSurfaceHeartbeat();
+      else stopSurfaceHeartbeat();
+    },
+  });
+
+  function appendProcessedEvent(
+    event: ProcessedEvent,
+    source: TimelineSource = 'live',
+  ): void {
+    timeline = upsertTimelineEvent(timeline, event, source);
+  }
+
+  function createStatusMessage(content: string): ProcessedEvent {
+    return {
+      id: `local_${crypto.randomUUID()}`,
+      category: 'message',
+      timestamp: new Date(),
+      title: 'workx',
+      content,
+      style: content.toLowerCase().startsWith('error:')
+        ? STYLE_PRESETS.error
+        : STYLE_PRESETS.agent_message,
+      streaming: false,
+      collapsible: false,
+    };
+  }
+
+  function appendStatusMessage(content: string): void {
+    appendProcessedEvent(createStatusMessage(content), 'local');
+  }
+
+  function appendStatusMessageForSession(sessionId: string, content: string): void {
+    const event = createStatusMessage(content);
+    if (sessionId === activeSessionId) {
+      appendProcessedEvent(event, 'local');
+      return;
+    }
+    const thread = threadStore.getThread(sessionId);
+    if (!thread) return;
+    threadStore.patchConversation(sessionId, {
+      timeline: upsertTimelineEvent(thread.conversation.timeline, event, 'local'),
+    });
+  }
 
   // The left history list is the only navigation control. React to its
   // selection without a second resume-request bridge.
@@ -170,9 +248,8 @@
     // Listen for zoom level changes
     window.addEventListener('zoom-changed', onZoomChanged);
 
-    // Clear messages from previous session
-    messages = [];
-    processedEvents = [];
+    // Start with one normalized visible timeline for this surface.
+    timeline = emptyTimeline();
 
     // Check if returning from a successful scheduling
     const scheduledResult = schedulerStore.getAndClearResult();
@@ -195,7 +272,7 @@
         streaming: false,
         collapsible: false,
       };
-      processedEvents = [confirmEvent];
+      appendProcessedEvent(confirmEvent, 'local');
     }
 
     // Initialize EventProcessor
@@ -367,7 +444,7 @@
         streaming: false,
         collapsible: false,
       };
-      processedEvents = [...processedEvents, cancelNotice];
+      appendProcessedEvent(cancelNotice, 'local');
 
       // Request agent to abort via message service
       if (client && activeSessionId) {
@@ -408,77 +485,6 @@
     }
   }
 
-  /**
-   * Parse history items into processedEvents and messages for display.
-   * Used by the per-thread snapshot/replay attach projection.
-   */
-  function parseHistoryItems(historyItems: any[], idPrefix: string = 'restored'): {
-    events: ProcessedEvent[];
-    firstUserMessage: string | null;
-  } {
-    const events: ProcessedEvent[] = [];
-    let firstUserMessage: string | null = null;
-
-    for (let i = 0; i < historyItems.length; i++) {
-      const item = historyItems[i];
-      if (item.type !== 'message') continue;
-
-      const isUser = item.role === 'user';
-      let text = '';
-
-      // Extract text from content items
-      if (Array.isArray(item.content)) {
-        for (const content of item.content) {
-          if (content.type === 'input_text' || content.type === 'output_text' || content.type === 'text') {
-            let contentText = content.text || '';
-
-            // Handle JSON-stringified input items (e.g., '{"type":"text","text":"actual message"}')
-            if (contentText.startsWith('{') && contentText.includes('"text"')) {
-              try {
-                const parsed = JSON.parse(contentText);
-                if (parsed.text) {
-                  contentText = parsed.text;
-                }
-              } catch {
-                // Not valid JSON, use as-is
-              }
-            }
-
-            text += contentText;
-          }
-        }
-      } else if (typeof item.content === 'string') {
-        text = item.content;
-      }
-
-      if (!text.trim()) continue;
-
-      const event: ProcessedEvent = {
-        id: `${idPrefix}_${i}`,
-        category: 'message',
-        timestamp: new Date(),
-        title: isUser ? 'user' : 'workx',
-        content: text,
-        style: isUser ? { textColor: 'text-cyan-400' } : STYLE_PRESETS.agent_message,
-        streaming: false,
-        collapsible: false,
-      };
-
-      // Carry modelKey from assistant messages for model indicator display
-      if (!isUser && item.modelKey) {
-        event.modelKey = item.modelKey;
-      }
-
-      events.push(event);
-
-      if (isUser && firstUserMessage === null) {
-        firstUserMessage = text;
-      }
-    }
-
-    return { events, firstUserMessage };
-  }
-
   /** Attach one thread from its immutable snapshot plus bounded live replay. */
   function restoreConversationHistory(sessionId: string): Promise<void> {
     const existingFlight = attachFlights.get(sessionId);
@@ -507,14 +513,16 @@
     const existing = threadStore.getThread(sessionId);
     attachBuffers.set(sessionId, []);
     attachBufferOverflow.delete(sessionId);
-    threadStore.setAttach(sessionId, { attaching: true, error: null });
+    threadStore.setAttach(sessionId, { attaching: true, error: null, historyError: null });
     try {
       const response = await c.serviceRequest<{
         entry: ThreadIndexEntry;
+        historyPage: HistoryPage;
         snapshot: { revision: number; items: unknown[] };
         runtime: SessionRuntimeView;
         replay: {
           runtimeEpoch: string;
+          baseRolloutRevision: number;
           throughSeq: number;
           truncated: boolean;
           events: Array<{ runtimeEpoch: string; eventSeq: number; event: Event }>;
@@ -525,22 +533,41 @@
       });
       const buffered = attachBuffers.get(sessionId) ?? [];
       const bufferTruncated = attachBufferOverflow.has(sessionId);
-      attachBuffers.delete(sessionId);
-      attachBufferOverflow.delete(sessionId);
       threadStore.mergeThread({ ...response.entry, runtime: response.runtime });
-      const projected = projectRollout(response.snapshot.items);
-      const parsed = parseHistoryItems(projected.responseItems, `snapshot_${sessionId}_${response.snapshot.revision}`);
-      const processor = new EventProcessor(sessionId);
+      if (
+        response.replay
+        && response.historyPage.revision < response.replay.baseRolloutRevision
+      ) {
+        throw new Error('History changed across the attach boundary; retrying is required');
+      }
+      const processor = existing?.conversation.eventProcessor ?? new EventProcessor(sessionId);
       const replay = projectReplay({
         previousCursor: existing?.attach.cursor,
         replay: response.replay,
+        observedEventIds: new Set(existing?.conversation.timeline.observedDeliveryIds ?? []),
       });
       const replayEvents = replay.events
         .map((event) => processor.processEvent(event))
         .filter((event): event is ProcessedEvent => event !== null);
+      const pendingIds = new Set(
+        existing?.pendingSubmissions
+          .filter((item) => item.status !== 'failed')
+          .map((item) => item.clientMessageId) ?? [],
+      );
+      const persistedEvents = historyPageToEvents(response.historyPage);
+      let attachedTimeline = reconcileAttachedTimeline(
+        existing?.conversation.timeline ?? emptyTimeline(),
+        persistedEvents,
+        replayEvents,
+        pendingIds,
+      );
+      const attachDedupeBudget = createAttachMessageDedupeBudget(
+        persistedEvents,
+        replayEvents,
+      );
+      for (const event of replay.events) attachedTimeline = noteDelivery(attachedTimeline, event.id);
       threadStore.setConversation(sessionId, {
-        messages: [],
-        processedEvents: [...parsed.events, ...replayEvents],
+        timeline: attachedTimeline,
         inputText: existing?.conversation.inputText ?? '',
         isProcessing: response.runtime.state === 'running',
         currentTabId: existing?.conversation.currentTabId ?? -1,
@@ -549,16 +576,21 @@
       threadStore.setAttach(sessionId, {
         attaching: false,
         cursor: replay.cursor,
-        snapshotRevision: response.snapshot.revision,
+        snapshotRevision: response.historyPage.revision,
+        historyCursor: response.historyPage.nextCursor,
         replayTruncated: replay.truncated || bufferTruncated,
         error: null,
+        historyError: null,
       });
       threadStore.reconcileSubmissions(
         sessionId,
-        projected.acceptedClientMessageIds,
-        projected.completedClientMessageIds,
+        new Set(response.historyPage.turns.flatMap((turn) => turn.clientMessageId ?? [])),
+        new Set(response.historyPage.turns.flatMap((turn) =>
+          turn.clientMessageId && turn.status !== 'in_progress' ? [turn.clientMessageId] : [])),
         replay.epochChanged,
       );
+      attachBuffers.delete(sessionId);
+      attachBufferOverflow.delete(sessionId);
       if (sessionId === activeSessionId) loadThreadState(sessionId);
       const replayEpoch = response.replay?.runtimeEpoch;
       const throughSeq = response.replay?.throughSeq ?? -1;
@@ -569,14 +601,18 @@
           && event.eventSeq !== undefined
           && event.eventSeq <= throughSeq
         ) continue;
-        processThreadChannelEvent(event);
+        processThreadChannelEvent(event, attachDedupeBudget);
       }
     } catch (error) {
       const buffered = attachBuffers.get(sessionId) ?? [];
+      const bufferTruncated = attachBufferOverflow.has(sessionId);
       attachBuffers.delete(sessionId);
       attachBufferOverflow.delete(sessionId);
       threadStore.setAttach(sessionId, {
         attaching: false,
+        replayTruncated: bufferTruncated
+          || threadStore.getThread(sessionId)?.attach.replayTruncated
+          || false,
         error: {
           message: error instanceof Error ? error.message : 'Failed to attach conversation',
           retryable: true,
@@ -584,6 +620,45 @@
       });
       for (const event of buffered) processThreadChannelEvent(event);
       throw error;
+    }
+  }
+
+  async function loadOlderHistory(): Promise<void> {
+    if (!client || !activeSessionId || loadingOlderHistory) return;
+    const sessionId = activeSessionId;
+    const thread = threadStore.getThread(sessionId);
+    const beforeSequence = thread?.attach.historyCursor;
+    if (beforeSequence == null) return;
+    loadingOlderHistory = true;
+    threadStore.setAttach(sessionId, { historyError: null });
+    try {
+      const page = await client.serviceRequest<HistoryPage>('session.history', {
+        sessionId,
+        limit: 10,
+        beforeSequence,
+      });
+      const current = threadStore.getThread(sessionId);
+      if (!current) return;
+      const nextTimeline = prependHistoryPage(
+        current.conversation.timeline,
+        historyPageToEvents(page),
+      );
+      threadStore.patchConversation(sessionId, { timeline: nextTimeline });
+      threadStore.setAttach(sessionId, {
+        historyCursor: page.nextCursor,
+        snapshotRevision: Math.max(current.attach.snapshotRevision, page.revision),
+      });
+      if (sessionId === activeSessionId) timeline = nextTimeline;
+    } catch (error) {
+      console.error('[App] Failed to load earlier history:', error);
+      threadStore.setAttach(sessionId, {
+        historyError: {
+          message: error instanceof Error ? error.message : 'Failed to load earlier history',
+          retryable: true,
+        },
+      });
+    } finally {
+      loadingOlderHistory = false;
     }
   }
 
@@ -661,14 +736,17 @@
     // and the service-worker will detect the context.tabId change and rebind then.
   }
 
-  function handleEvent(event: Event) {
+  function handleEvent(event: Event, attachDedupeBudget?: MessageDedupeBudget) {
     const msg = event.msg;
 
     // Process event through EventProcessor
     const processed = eventProcessor.processEvent(event);
 
     if (processed) {
-      processedEvents = [...processedEvents, processed];
+      if (!consumeAttachMessageDuplicate(attachDedupeBudget, processed)) {
+        appendProcessedEvent(processed);
+      }
+      timeline = noteDelivery(timeline, event.id);
 
       // Auto-scroll to bottom if user is at bottom
       if (scrollContainer) {
@@ -714,11 +792,7 @@
         break;
       case 'Error':
         if ('data' in msg && msg.data && 'message' in msg.data) {
-          messages = [...messages, {
-            type: 'agent',
-            content: `Error: ${msg.data.message}`,
-            timestamp: Date.now(),
-          }];
+          appendStatusMessage(`Error: ${msg.data.message}`);
         }
         break;
 
@@ -760,25 +834,18 @@
     // user pastes a screenshot and sends without typing).
     if (!text && !(attachments && attachments.length)) return;
     if (!activeSessionId) return;
+    const sessionId = activeSessionId;
 
     // Check if connected
     if (!isConnected) {
-      messages = [...messages, {
-        type: 'agent',
-        content: t('Error: Not connected to agent. Please refresh the page.'),
-        timestamp: Date.now(),
-      }];
+      appendStatusMessage(t('Error: Not connected to agent. Please refresh the page.'));
       return;
     }
 
     // Check if agent is ready (has API key)
     if (!agentReady) {
       const providerName = healthStatus.provider || 'the selected provider';
-      messages = [...messages, {
-        type: 'agent',
-        content: t('Cannot send message: No API key configured for $1$. Please click the Settings button and configure your API key.', { substitutions: [providerName] }),
-        timestamp: Date.now(),
-      }];
+      appendStatusMessage(t('Cannot send message: No API key configured for $1$. Please click the Settings button and configure your API key.', { substitutions: [providerName] }));
       return;
     }
 
@@ -786,8 +853,9 @@
 
     // Add user message to processedEvents for chronological ordering
     const clientMessageId = crypto.randomUUID();
+    const responseLatencyStartedAtMs = Date.now();
     const userEvent: ProcessedEvent = {
-      id: `user_${clientMessageId}`,
+      id: `user:${clientMessageId}`,
       category: 'message',
       timestamp: new Date(),
       title: 'user',
@@ -797,14 +865,14 @@
       streaming: false,
       collapsible: false,
     };
-    processedEvents = [...processedEvents, userEvent];
-    threadStore.beginSubmission(activeSessionId, {
+    appendProcessedEvent(userEvent, 'optimistic');
+    threadStore.beginSubmission(sessionId, {
       clientMessageId,
       status: 'sending',
       text,
-      createdAt: Date.now(),
+      createdAt: responseLatencyStartedAtMs,
     });
-    saveThreadState(activeSessionId);
+    saveThreadState(sessionId);
 
     // Send to agent with tab context
     try {
@@ -813,12 +881,13 @@
       if (text) items.push({ type: 'text', text });
       if (attachments && attachments.length) items.push(...attachments);
       const ack = await client.serviceRequest<SubmitAck>('session.submit', {
-        sessionId: activeSessionId,
+        sessionId,
         clientMessageId,
         items,
         tabId: currentTabId,
+        responseLatencyStartedAtMs,
       });
-      threadStore.applySubmitAck(activeSessionId, ack);
+      threadStore.applySubmitAck(sessionId, ack);
       if (ack.status === 'rejected') {
         throw new Error(ack.reason === 'queue-full'
           ? 'The send queue is full. Retry when another conversation finishes.'
@@ -827,7 +896,7 @@
 
     } catch (error) {
       console.error('Failed to send message:', error);
-      threadStore.settleSubmission(activeSessionId, clientMessageId, 'failed', undefined,
+      threadStore.settleSubmission(sessionId, clientMessageId, 'failed', undefined,
         error instanceof Error ? error.message : 'submit-failed');
 
       let errorMessage = t('Failed to send message. Please try again.');
@@ -835,11 +904,7 @@
         errorMessage = t('Backend not available. Please wait a moment and try again.');
       }
 
-      messages = [...messages, {
-        type: 'agent',
-        content: errorMessage,
-        timestamp: Date.now(),
-      }];
+      appendStatusMessageForSession(sessionId, errorMessage);
     }
   }
 
@@ -848,21 +913,6 @@
       e.preventDefault();
       sendMessage();
     }
-  }
-
-  function formatTime(timestamp: number): string {
-    return new Date(timestamp).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  }
-
-  function getMessageType(message: { type: 'user' | 'agent'; content: string }): 'default' | 'warning' | 'error' | 'input' | 'system' {
-    if (message.type === 'user') return 'input';
-    if (message.content.toLowerCase().startsWith('error:')) return 'error';
-    if (message.content.toLowerCase().includes('warning')) return 'warning';
-    if (message.content.toLowerCase().includes('system')) return 'system';
-    return 'default';
   }
 
   /**
@@ -881,7 +931,7 @@
       streaming: false,
       collapsible: false,
     };
-    processedEvents = [...processedEvents, cmdEvent];
+    appendProcessedEvent(cmdEvent, 'local');
   }
 
   async function startNewConversation() {
@@ -894,11 +944,7 @@
 
       let errorMessage = t('Failed to start new conversation. Please try again.');
 
-      messages = [...messages, {
-        type: 'agent',
-        content: errorMessage,
-        timestamp: Date.now(),
-      }];
+      appendStatusMessage(errorMessage);
     }
   }
 
@@ -920,11 +966,7 @@
     } catch (error) {
       console.error('[App] Failed to stop agent:', error);
 
-      messages = [...messages, {
-        type: 'agent',
-        content: t('Failed to stop the task. Please try again.'),
-        timestamp: Date.now(),
-      }];
+      appendStatusMessage(t('Failed to stop the task. Please try again.'));
     }
   }
 
@@ -943,11 +985,7 @@
     } catch (error) {
       console.error('[App] Failed to resume conversation:', error);
 
-      messages = [...messages, {
-        type: 'agent',
-        content: t('Failed to load conversation. Please try again.'),
-        timestamp: Date.now(),
-      }];
+      appendStatusMessage(t('Failed to load conversation. Please try again.'));
     }
   }
 
@@ -972,8 +1010,7 @@
       threadStore.createThread(newId, 'New Thread');
     }
     threadStore.setConversation(newId, {
-      messages: [],
-      processedEvents: [],
+      timeline: emptyTimeline(),
       inputText: '',
       isProcessing: false,
       currentTabId: -1,
@@ -1069,7 +1106,7 @@
         streaming: false,
         collapsible: false,
       };
-      processedEvents = [userEvent];
+      timeline = upsertTimelineEvent(emptyTimeline(), userEvent, 'optimistic');
 
       // Add a system notification showing this is a scheduled job
       const scheduleNotification: ProcessedEvent = {
@@ -1082,7 +1119,7 @@
         streaming: false,
         collapsible: false,
       };
-      processedEvents = [...processedEvents, scheduleNotification];
+      appendProcessedEvent(scheduleNotification, 'local');
 
       // Wait for agent to be ready
       await checkConnection();
@@ -1131,7 +1168,7 @@
         streaming: false,
         collapsible: false,
       };
-      processedEvents = [...processedEvents, errorEvent];
+      appendProcessedEvent(errorEvent, 'local');
       isProcessing = false;
     }
   }
@@ -1184,8 +1221,7 @@
       if (response.entry) threadStore.mergeThread(response.entry);
       else threadStore.createThread(sessionId);
       const newState: ThreadConversationState = {
-        messages: [],
-        processedEvents: [],
+        timeline: emptyTimeline(),
         inputText: '',
         isProcessing: false,
         currentTabId: -1,
@@ -1214,8 +1250,7 @@
 
   function saveThreadState(sessionId: string) {
     const state: ThreadConversationState = {
-      messages: [...messages],
-      processedEvents: [...processedEvents],
+      timeline,
       inputText,
       isProcessing,
       currentTabId,
@@ -1227,16 +1262,14 @@
   function loadThreadState(sessionId: string) {
     const state = threadStore.getThread(sessionId)?.conversation;
     if (state) {
-      messages = [...state.messages];
-      processedEvents = [...state.processedEvents];
+      timeline = state.timeline;
       inputText = state.inputText;
       isProcessing = state.isProcessing;
       currentTabId = state.currentTabId;
       eventProcessor = state.eventProcessor ?? new EventProcessor(sessionId);
     } else {
       // Initialize fresh state
-      messages = [];
-      processedEvents = [];
+      timeline = emptyTimeline();
       inputText = '';
       isProcessing = false;
       currentTabId = -1;
@@ -1246,7 +1279,7 @@
     // Reset scroll position after loading new thread state
     if (scrollContainer) {
       setTimeout(() => {
-        if (messages.length === 0 && processedEvents.length === 0) {
+        if (processedEvents.length === 0) {
           scrollContainer.scrollTop = 0;
         } else {
           scrollContainer.scrollTop = scrollContainer.scrollHeight;
@@ -1270,7 +1303,11 @@
     else await createNewThread();
   }
 
-  function handleEventForSession(event: Event, sessionId: string) {
+  function handleEventForSession(
+    event: Event,
+    sessionId: string,
+    attachDedupeBudget?: MessageDedupeBudget,
+  ) {
     const thread = threadStore.getThread(sessionId);
     if (!thread) return;
 
@@ -1279,7 +1316,10 @@
 
     const processed = processor.processEvent(event);
     if (processed) {
-      state.processedEvents = [...state.processedEvents, processed];
+      if (!consumeAttachMessageDuplicate(attachDedupeBudget, processed)) {
+        state.timeline = upsertTimelineEvent(state.timeline, processed, 'live');
+      }
+      state.timeline = noteDelivery(state.timeline, event.id);
     }
 
     // Update processing state
@@ -1299,13 +1339,7 @@
   }
 
   async function setViewedAndAttach(sessionId: string): Promise<void> {
-    const c = await getInitializedUIClient();
-    const response = await c.serviceRequest<{
-      lease: { leaseId: string; sessionId: string };
-    }>('session.setViewed', { surfaceId, sessionId });
-    surfaceLease = { leaseId: response.lease.leaseId, sessionId };
-    startSurfaceHeartbeat();
-    await restoreConversationHistory(sessionId);
+    await viewedSession.select(sessionId);
   }
 
   async function retryHydration(): Promise<void> {
@@ -1343,15 +1377,7 @@
   }
 
   async function releaseSurface(): Promise<void> {
-    const lease = surfaceLease;
-    surfaceLease = null;
-    stopSurfaceHeartbeat();
-    if (!lease || !client) return;
-    try {
-      await client.serviceRequest('session.releaseSurface', { surfaceId, leaseId: lease.leaseId });
-    } catch {
-      // TTL is the crash-safe fallback.
-    }
+    await viewedSession.clear();
   }
 
   function handleSurfaceVisibility(): void {
@@ -1369,7 +1395,10 @@
    * order. This is deliberately the one path used for active and background
    * conversations.
    */
-  function processThreadChannelEvent(channelEvent: ChannelEvent): void {
+  function processThreadChannelEvent(
+    channelEvent: ChannelEvent,
+    attachDedupeBudget?: MessageDedupeBudget,
+  ): void {
     const sessionId = channelEvent.sessionId;
     if (!sessionId) return;
     const buffer = attachBuffers.get(sessionId);
@@ -1392,8 +1421,8 @@
       runtimeEpoch: channelEvent.runtimeEpoch,
       eventSeq: channelEvent.eventSeq,
     };
-    if (sessionId === activeSessionId) handleEvent(event);
-    else handleEventForSession(event, sessionId);
+    if (sessionId === activeSessionId) handleEvent(event, attachDedupeBudget);
+    else handleEventForSession(event, sessionId, attachDedupeBudget);
     updateAttachCursor(channelEvent);
   }
 
@@ -1649,6 +1678,28 @@
 
         <!-- Messages - scrollable area -->
         <div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-4" bind:this={scrollContainer}>
+          {#if $activeThread?.attach.historyError}
+            <div class="mx-3 mt-2 rounded px-3 py-2 text-sm flex items-center justify-between gap-3 bg-red-500/10 text-red-600 dark:text-red-300" role="alert">
+              <span>{$activeThread.attach.historyError.message}</span>
+              {#if $activeThread.attach.historyError.retryable}
+                <button class="shrink-0 underline border-none bg-transparent text-inherit cursor-pointer" onclick={loadOlderHistory}>
+                  {$_t("Retry")}
+                </button>
+              {/if}
+            </div>
+          {/if}
+          {#if activeSessionId && $activeThread?.attach.historyCursor != null}
+            <div class="flex justify-center py-2">
+              <button
+                type="button"
+                class="text-xs opacity-70 hover:opacity-100 underline"
+                disabled={loadingOlderHistory}
+                onclick={loadOlderHistory}
+              >
+                {loadingOlderHistory ? $_t('Loading history...') : $_t('Load earlier messages')}
+              </button>
+            </div>
+          {/if}
           {#if showWelcome}
             <div class="welcome-screen mb-6 max-w-full
               {currentTheme === 'modern'
@@ -1677,10 +1728,6 @@
               </a>
             </div>
           {/if}
-
-          {#each messages as message (message.timestamp)}
-            <TerminalMessage type={message.type === 'user' ? 'input' : getMessageType(message)} content={message.content} />
-          {/each}
 
           {#each processedEvents as event (event.id)}
             <EventDisplay {event} />

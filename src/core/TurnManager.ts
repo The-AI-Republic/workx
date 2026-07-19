@@ -13,6 +13,11 @@ import { calculateUSDCost } from './models/cost/cost';
 import { AgentConfig } from '../config/AgentConfig';
 import type { PromptRuntimeContext } from './PromptLoader';
 import { DEFAULT_MODE, type AgentMode } from '../prompts/PromptComposer';
+import {
+  finishResponseLatencyTrace,
+  markResponseLatency,
+  markResponseLatencyOnce,
+} from './diagnostics/responseLatency';
 import type {
   CompactionCompletedEvent,
   EventMsg,
@@ -23,6 +28,7 @@ import type { Event } from './protocol/types';
 import type { Prompt as ModelPrompt } from './models/types/ResponsesAPI';
 import { v4 as uuidv4 } from 'uuid';
 import { ToolRegistry } from '../tools/ToolRegistry';
+import type { BrowserPageContext } from './platform/IPlatformAdapter';
 import type { IToolsConfig } from '../config/types';
 import { mapResponseItemToEventMessages } from './events/EventMapping';
 import type { ResponseItem } from './protocol/types';
@@ -35,7 +41,10 @@ import {
 } from './toolOrchestration';
 import type { HookDispatcher, HookExecutionSnapshot } from './hooks/HookDispatcher';
 import type { HookInput } from './hooks/types';
-import { getToolRuntimeContext } from './hooks/toolRuntimeContext';
+import {
+  getToolRuntimeContext,
+  type ToolRuntimeContext,
+} from './hooks/toolRuntimeContext';
 import { getPersistenceThreshold, MAX_TOOL_RESULTS_PER_MESSAGE_CHARS } from '../tools/toolLimits';
 import { buildPersistedOutputMessage, ToolResultTooLargeForStoreError } from '../tools/resultStore';
 import { enforceToolResultBudget, type FunctionCallOutputItem } from '../tools/resultBudget';
@@ -55,6 +64,20 @@ interface MCPCapableSession {
   getMcpTools(): Promise<ToolDefinition[]>;
   executeMcpTool(name: string, params: any): Promise<any>;
 }
+
+const BROWSER_PAGE_CONTEXT_TOOL_NAMES = new Set([
+  'local_browser_tool',
+  'browser_dom',
+  'browser_navigation',
+  'dom_tool',
+  'navigation_tool',
+  'web_scraping',
+  'form_automation',
+  'network_intercept',
+  'data_extraction',
+  'page_vision',
+  'viewport_tool',
+]);
 
 /**
  * Result of processing a single response item
@@ -198,24 +221,36 @@ export class TurnManager {
   /**
    * Run a complete turn with retry logic
    */
-  async runTurn(input: any[]): Promise<TurnRunResult> {
+  async runTurn(input: any[], responseLatencyId?: string): Promise<TurnRunResult> {
     // Build tools list from turn context
+    let phaseStartedAt = Date.now();
     const tools = await this.buildToolsFromContext();
+    markResponseLatency(responseLatencyId, 'tools_ready', {
+      duration_ms: Date.now() - phaseStartedAt,
+      tool_count: tools.length,
+    });
 
     // Reload the system prompt per turn so dynamic prompt extensions (notably the
     // memory extension that injects core-memory.md) reflect the latest state.
     // loadPrompt() is in-memory templating with no I/O, so the cost is negligible.
     // Falls back to the value cached on TurnContext if reload throws.
     let baseInstructions: string | undefined;
+    let promptFallbackUsed = false;
+    phaseStartedAt = Date.now();
     try {
       const runtime = this.getPromptRuntimeContext();
       const promptLoader = this.session.getPromptLoader();
       if (!promptLoader) throw new Error('Session prompt loader is not configured');
       baseInstructions = await promptLoader.load(this.getAgentMode(), runtime);
     } catch (err) {
+      promptFallbackUsed = true;
       console.warn('[TurnManager] loadPrompt() failed, reusing cached base instructions:', err);
       baseInstructions = this.turnContext.getBaseInstructions();
     }
+    markResponseLatency(responseLatencyId, 'prompt_ready', {
+      duration_ms: Date.now() - phaseStartedAt,
+      fallback_used: promptFallbackUsed,
+    });
 
     let currentInput = input;
     let currentBaseInstructions = this.withToolExposureReminder(baseInstructions);
@@ -231,6 +266,7 @@ export class TurnManager {
     // Track 12: resolve the configured fallback model (composite key) once per
     // turn. On sustained provider overload the orchestrator swaps to it.
     let fallbackModelKey: string | undefined;
+    phaseStartedAt = Date.now();
     try {
       const agentConfig = await AgentConfig.getInstance();
       const currentKey = this.turnContext.getSelectedModelKey();
@@ -238,12 +274,16 @@ export class TurnManager {
     } catch {
       fallbackModelKey = undefined;
     }
+    markResponseLatency(responseLatencyId, 'retry_policy_ready', {
+      duration_ms: Date.now() - phaseStartedAt,
+      fallback_configured: fallbackModelKey !== undefined,
+    });
 
     // Track 12: a single retry orchestrator wraps the whole turn. Each retry
     // re-runs tryRunTurn from rebuilt clean history (workx records history
     // only on turn success — orphan-free by construction).
     try {
-      const result = await withModelRetry(() => this.tryRunTurn(buildPrompt()), {
+      const result = await withModelRetry(() => this.tryRunTurn(buildPrompt(), responseLatencyId), {
         maxRetries,
         unattended: this.turnContext.getUnattended(),
         resetCapMs: this.turnContext.getUnattendedResetCapMs(),
@@ -360,15 +400,27 @@ export class TurnManager {
   /**
    * Attempt to run a turn once (without retry logic)
    */
-  private async tryRunTurn(prompt: ModelPrompt): Promise<TurnRunResult> {
+  private async tryRunTurn(
+    prompt: ModelPrompt,
+    responseLatencyId?: string,
+  ): Promise<TurnRunResult> {
     // Record turn context
+    const turnContextStartedAt = Date.now();
     await this.recordTurnContext();
+    markResponseLatency(responseLatencyId, 'turn_context_persisted', {
+      duration_ms: Date.now() - turnContextStartedAt,
+    });
 
     // Process missing call IDs (calls that were interrupted)
     const processedPrompt = this.processMissingCalls(prompt);
 
     // Start model streaming (using new Prompt-based stream() API)
+    const streamStartedAt = Date.now();
+    markResponseLatency(responseLatencyId, 'provider_stream_requested');
     const stream = await this.turnContext.getModelClient().stream(processedPrompt);
+    markResponseLatency(responseLatencyId, 'provider_stream_opened', {
+      duration_ms: Date.now() - streamStartedAt,
+    });
 
     const processedItems: ProcessedResponseItem[] = [];
     let totalTokenUsage: TokenUsage | undefined;
@@ -410,6 +462,9 @@ export class TurnManager {
         if (!event) {
           throw new Error('stream closed before response.completed');
         }
+        markResponseLatencyOnce(responseLatencyId, 'first_provider_event', {
+          created_event: event.type === 'Created',
+        });
 
         // Process the event based on ResponseEvent type
         switch (event.type) {
@@ -443,6 +498,9 @@ export class TurnManager {
               item: event.item,
               response,
             });
+            finishResponseLatencyTrace(responseLatencyId, 'first_visible_response', {
+              output_item: true,
+            });
             break;
           }
 
@@ -451,6 +509,9 @@ export class TurnManager {
             await this.emitEvent({
               type: 'WebSearchBegin',
               data: { call_id: event.callId },
+            });
+            finishResponseLatencyTrace(responseLatencyId, 'first_visible_response', {
+              web_search: true,
             });
             break;
 
@@ -512,6 +573,7 @@ export class TurnManager {
             const lastTurnHadToolCalls = processedItems.some(
               (p) => p.item?.type === 'function_call' || p.item?.type === 'custom_tool_call'
             );
+            finishResponseLatencyTrace(responseLatencyId, 'completed_without_visible_response');
 
             return {
               processedItems,
@@ -528,6 +590,9 @@ export class TurnManager {
               type: 'AgentMessageDelta',
               data: { delta: event.delta },
             });
+            finishResponseLatencyTrace(responseLatencyId, 'first_visible_response', {
+              text_delta: true,
+            });
             break;
 
           case 'ReasoningSummaryDelta':
@@ -537,6 +602,9 @@ export class TurnManager {
               type: 'AgentReasoningDelta',
               data: { delta: event.delta },
             });
+            finishResponseLatencyTrace(responseLatencyId, 'first_visible_response', {
+              reasoning_delta: true,
+            });
             break;
 
           case 'ReasoningContentDelta':
@@ -545,6 +613,9 @@ export class TurnManager {
               type: 'AgentReasoningDelta',
               data: { delta: event.delta },
             });
+            finishResponseLatencyTrace(responseLatencyId, 'first_visible_response', {
+              reasoning_delta: true,
+            });
             break;
 
           case 'ReasoningSummaryPartAdded':
@@ -552,6 +623,9 @@ export class TurnManager {
             await this.emitEvent({
               type: 'AgentReasoningSectionBreak',
               data: {},
+            });
+            finishResponseLatencyTrace(responseLatencyId, 'first_visible_response', {
+              reasoning_delta: true,
             });
             break;
 
@@ -952,6 +1026,7 @@ export class TurnManager {
   ): Promise<any> {
     let hookSnapshot: HookExecutionSnapshot | undefined;
     let parsedParamsForFailure = parameters;
+    let runtimeContext: ToolRuntimeContext = {};
     try {
       // Parse parameters if they're a JSON string (common with OpenAI API)
       let parsedParams = parameters;
@@ -985,7 +1060,18 @@ export class TurnManager {
         toolName,
         typeof parsedParams === 'object' ? parsedParams : {}
       );
-      const runtimeContext = await getToolRuntimeContext(this.session);
+      const registeredTool = this.toolRegistry.getTool(toolName);
+      const needsBrowserPageContext = this.requiresBrowserPageContext(
+        toolName,
+        registeredTool ?? undefined,
+      );
+      const browserPageContext: BrowserPageContext = needsBrowserPageContext
+        ? await this.toolRegistry.getCurrentPageContext().catch(() => ({}))
+        : {};
+      runtimeContext = await getToolRuntimeContext(this.session, {
+        pageContext: browserPageContext,
+        resolvePageContext: false,
+      });
 
       // ── PreToolUse hooks ──
       if (this.hookDispatcher) {
@@ -1021,14 +1107,14 @@ export class TurnManager {
 
         default: {
           // Check ToolRegistry for browser tools BEFORE falling back to MCP
-          const browserTool = this.toolRegistry.getTool(toolName);
-          if (browserTool) {
+          if (registeredTool) {
             result = await this.executeBrowserTool(
-              browserTool,
+              registeredTool,
               parsedParams,
               callId,
               hookSnapshot,
-              signal
+              signal,
+              browserPageContext,
             );
             break;
           }
@@ -1110,7 +1196,7 @@ export class TurnManager {
           tool_name: toolName,
           tool_input: typeof parsedParamsForFailure === 'object' ? parsedParamsForFailure : {},
           tool_error: errorMsg,
-          ...(await getToolRuntimeContext(this.session)),
+          ...runtimeContext,
         };
         this.hookDispatcher
           .fire('PostToolUseFailure', failHookInput, {
@@ -1416,15 +1502,20 @@ export class TurnManager {
     parameters: any,
     callId?: string,
     hookSnapshot?: HookExecutionSnapshot,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    resolvedPageContext?: BrowserPageContext,
   ): Promise<any> {
     const toolName = this.getToolNameFromDefinition(tool);
 
     try {
-      let pageContext: Awaited<ReturnType<ToolRegistry['getCurrentPageContext']>> = {};
-      try {
-        pageContext = await this.toolRegistry.getCurrentPageContext?.() ?? {};
-      } catch { /* page context is best-effort */ }
+      let pageContext = resolvedPageContext;
+      if (!pageContext) {
+        try {
+          pageContext = await this.toolRegistry.getCurrentPageContext?.() ?? {};
+        } catch {
+          pageContext = {};
+        }
+      }
       const tabId = pageContext.tabId ?? this.turnContext.getBrowserTabId?.() ?? -1;
 
       // Build metadata for approval context
@@ -1554,14 +1645,28 @@ export class TurnManager {
     return 'unknown_tool';
   }
 
+  /** Browser state is tool input, not ambient turn/session input. */
+  private requiresBrowserPageContext(
+    toolName: string,
+    tool?: ToolDefinition,
+  ): boolean {
+    if (
+      BROWSER_PAGE_CONTEXT_TOOL_NAMES.has(toolName)
+      || toolName.startsWith('browser__')
+    ) {
+      return true;
+    }
+    return tool?.type === 'function' && tool.metadata?.source === 'browser-bridge';
+  }
+
   /**
    * Record turn context for rollout/history
    */
   private async recordTurnContext(): Promise<void> {
-    const pageContext: Awaited<ReturnType<ToolRegistry['getCurrentPageContext']>> =
-      await this.toolRegistry.getCurrentPageContext?.().catch(() => ({})) ?? {};
     const turnContextItem = {
-      tabId: pageContext.tabId ?? this.turnContext.getBrowserTabId?.(),
+      // Persist only the context already owned by this turn. Reading the live
+      // browser here would put an external tool RPC on every model request.
+      tabId: this.turnContext.getBrowserTabId?.(),
       sessionId: this.turnContext.getSessionId(),
       approval_policy: this.turnContext.getApprovalPolicy(),
       sandbox_policy: this.turnContext.getSandboxPolicy(),

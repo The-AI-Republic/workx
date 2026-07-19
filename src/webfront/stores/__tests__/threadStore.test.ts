@@ -81,6 +81,18 @@ describe('canonical threadStore projection', () => {
     expect(row.attach.cursor).toEqual({ runtimeEpoch: 'epoch', eventSeq: 7 });
   });
 
+  it('keeps older-page failures separate from primary attach failures', () => {
+    threadStore.mergeThread({ ...entry('a'), runtime });
+    threadStore.setAttach('a', {
+      historyError: { message: 'Older page failed', retryable: true },
+    });
+
+    expect(threadStore.getThread('a')!.attach).toMatchObject({
+      error: null,
+      historyError: { message: 'Older page failed', retryable: true },
+    });
+  });
+
   it('persists only the local active selection', () => {
     threadStore.mergeThread({ ...entry('a'), runtime });
     threadStore.setActiveThread('a');

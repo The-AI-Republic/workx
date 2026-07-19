@@ -6,9 +6,9 @@
  * while maintaining full backward compatibility
  */
 
+import { normalizeLegacyUserResponseItem } from './protocol/types';
 import type { InputItem, AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSummaryConfig, Event, ResponseItem, ConversationHistory, ReviewDecision } from './protocol/types';
 import { FileStateCache } from './files/FileStateCache';
-import { mapResponseItemToEventMessages } from './events/EventMapping';
 import type { EventMsg } from './protocol/events';
 import { RolloutRecorder, type RolloutItem } from '../storage/rollout';
 import { v4 as uuidv4 } from 'uuid';
@@ -1023,6 +1023,30 @@ export class Session {
           ? signal.reason
           : new DOMException('Compaction cancelled before commit', 'AbortError');
       }
+      // Commit the replacement checkpoint before changing in-memory model
+      // context. Resume may lag behind memory, but it must never get ahead of
+      // durable state or resurrect the discarded prefix.
+      if (this.services?.rollout) {
+        try {
+          await this.services.rollout.recordItems([{
+            type: 'compacted',
+            payload: {
+              message: result.summaryText ?? 'Durable model-context replacement checkpoint',
+              replacementHistory: structuredClone(result.newHistory),
+              windowNumber: this.sessionState.getCompactionCount() + 1,
+            },
+          }]);
+        } catch (error) {
+          console.error('[Session] Failed to persist compaction checkpoint:', error);
+          return {
+            ...result,
+            success: false,
+            newHistory: undefined,
+            error: 'Failed to persist the compaction checkpoint',
+          };
+        }
+      }
+
       // Replace history with compacted version from CompactService
       this.sessionState.replaceHistory(result.newHistory);
 
@@ -1714,13 +1738,19 @@ export class Session {
   /**
    * Persist rollout items (replaces ConversationStore.addMessage)
    */
-  async persistRolloutItems(items: RolloutItem[]): Promise<void> {
+  async persistRolloutItems(
+    items: RolloutItem[],
+    options: { required?: boolean } = {},
+  ): Promise<void> {
     if (this.services?.rollout) {
       try {
         await this.services.rollout.recordItems(items);
       } catch (e) {
         console.error('Failed to record rollout items:', e);
-        // Don't throw - persistence failure should not stop execution
+        // Most auxiliary artifacts remain best-effort. Lifecycle markers pass
+        // required=true because execution must not cross an unrecorded start,
+        // and terminal-marker callers need to report degraded durability.
+        if (options.required) throw e;
       }
     }
   }
@@ -2691,7 +2721,9 @@ export class Session {
           task_type: task.task.constructor.name,
           stop_reason: reason,
           is_background: isBackground,
-          ...(await getToolRuntimeContext(this)),
+          // Stopping a task is session lifecycle, not a browser operation.
+          // Keep it independent from browser bridge availability/latency.
+          ...(await getToolRuntimeContext(this, { resolvePageContext: false })),
         },
         { timeoutOverride: 1 },
       );
@@ -2730,7 +2762,10 @@ export class Session {
    * @param items Response items to persist
    * @private
    */
-  private async persistRolloutResponseItems(items: ResponseItem[]): Promise<void> {
+  private async persistRolloutResponseItems(
+    items: ResponseItem[],
+    requireDurable = false,
+  ): Promise<void> {
     if (!this.services?.rollout) {
       return;
     }
@@ -2753,6 +2788,7 @@ export class Session {
       await this.services.rollout.recordItems(rolloutItems);
     } catch (error) {
       console.error('Failed to persist rollout items:', error);
+      if (requireDurable) throw error;
     }
   }
 
@@ -2764,7 +2800,10 @@ export class Session {
    * Concurrent callers are serialized through conversationCommitChain; callers
    * only need to await their own returned promise.
    */
-  async recordConversationItemsDual(items: ResponseItem[]): Promise<void> {
+  async recordConversationItemsDual(
+    items: ResponseItem[],
+    options: { requireDurable?: boolean } = {},
+  ): Promise<void> {
     const commit = this.conversationCommitChain.then(async () => {
       // If incoming items contain any DOM snapshot output, compress previous snapshots in history first
       // This keeps the latest snapshot fresh for LLM reasoning
@@ -2773,11 +2812,18 @@ export class Session {
         this.sessionState.compressPreviousDomSnapshot();
       }
 
-      // Record to SessionState (in-memory history)
-      this.sessionState.recordItems(items);
-
-      // Persist to rollout storage
-      await this.persistRolloutResponseItems(items);
+      if (options.requireDurable && this.services?.rollout) {
+        // Accepted user input is durable before it becomes model-visible. If
+        // storage fails, memory must not contain a phantom message that resume
+        // and the canonical history projection cannot reproduce.
+        await this.persistRolloutResponseItems(items, true);
+        this.sessionState.recordItems(items);
+      } else {
+        // Model output remains best-effort durable for compatibility with
+        // non-persistent sessions and existing response-stream semantics.
+        this.sessionState.recordItems(items);
+        await this.persistRolloutResponseItems(items, false);
+      }
     });
     this.conversationCommitChain = commit.catch(() => undefined);
     return commit;
@@ -2794,59 +2840,47 @@ export class Session {
   /**
    * Record input and rollout user message
    *
-   * Converts InputItems to ResponseItem, records to history, derives UserMessage event,
-   * and persists only the UserMessage to rollout (not the full ResponseItem).
+   * Converts one submission into one typed ResponseItem and commits that same
+   * item to durable rollout storage before exposing it to model memory.
    *
    * This is used when recording user input to the conversation.
    *
-   * @param subId Submission ID
    * @param input Input items from user
+   * @param clientMessageId Stable UI-generated send identity
    * @public
    */
   public async recordInputAndRolloutUsermsg(
-    input: InputItem[]
+    input: InputItem[],
+    clientMessageId?: string,
   ): Promise<void> {
-    // Convert input to ResponseItem (simplified - would need full protocol mapping)
-    const responseItems: ResponseItem[] = input.map((item) => ({
+    // One accepted submission becomes one durable user item. Preserve typed
+    // multimodal content; JSON-stringifying each InputItem created phantom
+    // messages and forced every display consumer to reverse-parse storage.
+    const responseItems: ResponseItem[] = [{
       type: 'message',
       role: 'user',
-      content: [{
-        type: 'input_text',
-        text: typeof item === 'string' ? item : JSON.stringify(item)
-      }]
-    }));
+      ...(clientMessageId ? { client_id: clientMessageId } : {}),
+      content: input.map((item) => {
+        if (typeof item === 'string') return { type: 'input_text' as const, text: item };
+        if (item.type === 'text') return { type: 'input_text' as const, text: item.text };
+        if (item.type === 'image') return { type: 'input_image' as const, image_url: item.image_url };
+        if (item.type === 'clipboard') {
+          return { type: 'input_text' as const, text: item.content ?? '[clipboard]' };
+        }
+        if (item.type === 'context') {
+          return { type: 'input_text' as const, text: `[context: ${item.path ?? 'unknown'}]` };
+        }
+        return { type: 'input_text' as const, text: '[unknown input]' };
+      }),
+    }];
 
     // Record to SessionState history
-    await this.recordConversationItemsDual(responseItems);
+    await this.recordConversationItemsDual(responseItems, { requireDurable: true });
 
-    // Derive user message events using event mapping
-    // This ensures proper handling of user_instructions and environment_context tags
-    if (this.services?.rollout && responseItems.length > 0) {
-      const showRawReasoning = false; // User messages don't have reasoning
-      const eventMsgs = mapResponseItemToEventMessages(responseItems[0], showRawReasoning);
-
-      // Filter and persist only UserMessage events to rollout
-      const userMsgEvents = eventMsgs.filter(msg => msg.type === 'UserMessage');
-
-      if (userMsgEvents.length > 0) {
-        const rolloutItems: RolloutItem[] = userMsgEvents.map(event => ({
-          type: 'event_msg',
-          payload: event,
-        }));
-
-        try {
-          await this.services.rollout.recordItems(rolloutItems);
-        } catch (error) {
-          // Failure to persist to rollout is non-fatal
-        }
-      }
-
-      // Title generation is NOT triggered here: it runs exclusively from the
-      // TaskRunner completion checkpoint (maybeGenerateTitle), after the AI
-      // response has landed. Firing on message-recording would race the
-      // in-flight task turn with a concurrent background model call on the
-      // same provider/key — and would title the chat before any response.
-    }
+    // Title generation is NOT triggered here: it runs exclusively from the
+    // TaskRunner completion checkpoint (maybeGenerateTitle), after the AI
+    // response has landed. The typed response_item above is the sole durable
+    // user-message representation; event_msg is delivery/debug inventory only.
   }
 
   /**
@@ -3075,7 +3109,7 @@ export class Session {
     for (const rolloutItem of rolloutItems) {
       if (rolloutItem.type === 'response_item') {
         // Regular response item
-        responseItems.push(rolloutItem.payload as ResponseItem);
+        responseItems.push(normalizeLegacyUserResponseItem(rolloutItem.payload as ResponseItem));
         // Track 09: seed seenIds from any function_call_output we've seen.
         // This freezes "seen but unreplaced" decisions so tier-2 can't
         // retroactively persist an output that the model already observed
@@ -3092,8 +3126,23 @@ export class Session {
         // notes referenced `summary`; read `message` first and fall back to
         // `summary` for forward/backward tolerance (Track 15, Phase 0b — this
         // is what summarize_up_to emits and what fork-replay reads back).
-        const compactedText = compactedData.message ?? compactedData.summary;
-        if (compactedText) {
+        if (Array.isArray(compactedData.replacementHistory)) {
+          const replacementHistory = structuredClone(
+            compactedData.replacementHistory,
+          ).map(normalizeLegacyUserResponseItem) as ResponseItem[];
+          responseItems.splice(
+            0,
+            responseItems.length,
+            ...replacementHistory,
+          );
+          for (const item of replacementHistory) {
+            if (item.type === 'function_call_output' && typeof item.call_id === 'string') {
+              this.replacementState?.freezeUnreplaced(item.call_id);
+            }
+          }
+        } else {
+          const compactedText = compactedData.message ?? compactedData.summary;
+          if (!compactedText) continue;
           // Add summary as a system message
           responseItems.push({
             role: 'system',

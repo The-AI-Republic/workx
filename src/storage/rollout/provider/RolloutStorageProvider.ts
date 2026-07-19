@@ -14,6 +14,7 @@ import type {
   ConversationsPage,
   Cursor,
   RolloutRecoveryMetadata,
+  RolloutItemRange,
 } from '../types';
 
 export interface StorageStats {
@@ -50,6 +51,11 @@ export interface RolloutStorageProvider {
     items: Array<{ timestamp: string; sequence: number; type: string; payload: unknown }>
   ): Promise<void>;
   getItemsByRolloutId(rolloutId: ConversationId): Promise<RolloutItemRecord[]>;
+  /** Read a bounded, sequence-ordered slice without hydrating the whole log. */
+  getItemsByRolloutIdRange(
+    rolloutId: ConversationId,
+    range: RolloutItemRange,
+  ): Promise<RolloutItemRecord[]>;
   getLastSequenceNumber(rolloutId: ConversationId): Promise<number>;
   deleteItemsByRolloutIds(rolloutIds: string[]): Promise<void>;
 

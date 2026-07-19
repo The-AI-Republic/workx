@@ -912,7 +912,7 @@ waits for terminal teardown, then soft-deletes. An initial delete of a RUNNING s
 tombstone synchronously before its first await, and then aborts; IDLE/SUSPENDED delete also
 sets it immediately. Any work that began during the confirmation UI is included in abort.
 
-### 7.3 Snapshot loader
+### 7.3 Snapshot loaders
 
 Replace the old `{sessionId,rolloutItems}` hook with:
 
@@ -920,10 +920,13 @@ Replace the old `{sessionId,rolloutItems}` hook with:
 loadRolloutSnapshot(sessionId: string): Promise<RolloutSnapshot>
 ```
 
-Revision is `RolloutMetadataRecord.itemCount`. Missing metadata for an existing ThreadIndex
+This is the full-log compatibility/diagnostic loader used by `session.getRollout` and rewind.
+Hydration uses `loadModelContextSnapshot`, attach uses
+`loadHistoryPage` as specified in §18. Revision is `RolloutMetadataRecord.itemCount`.
+Missing metadata for an existing ThreadIndex
 entry returns frozen `{sessionId,revision:0,items:[]}`. Unknown/deleted ID is typed
-`SESSION_NOT_FOUND`/`SESSION_DELETED`. SessionManager coalesces concurrent loads and caches
-the snapshot for the live epoch; hydration and attach share it.
+`SESSION_NOT_FOUND`/`SESSION_DELETED`. SessionManager coalesces concurrent compatibility
+loads and caches the snapshot for the live epoch.
 
 ### 7.4 Soft delete and hard purge
 
@@ -1045,22 +1048,24 @@ session.attach({
 }): Promise<SessionAttachResult>
 ```
 
-Under the session queue, capture one boundary `throughSeq`, then return the cached snapshot
-and ring events `(after, throughSeq]`. If epochs differ, return the entire retained current
+Under the session queue, capture one boundary `throughSeq`, then return the newest bounded
+HistoryPage and ring events `(after, throughSeq]`. If epochs differ, return the entire retained current
 epoch and its truncation flag. Attach is read-only and never waits for capacity.
 
 UI algorithm:
 
 1. Start buffering live events for sessionId before issuing attach.
-2. Apply snapshot via the shared pure rollout-to-conversation projection.
-3. Apply replay in sequence order; dedupe by `(runtimeEpoch,eventSeq)`.
+2. Require `historyPage.revision >= replay.baseRolloutRevision`, then reconcile the page into
+   the normalized timeline by stable history item ID. A mismatch aborts the attach commit.
+3. Apply replay through the existing per-thread EventProcessor in sequence order; dedupe by
+   `(runtimeEpoch,eventSeq)` and consume message copies already present durably.
 4. Drop buffered events in the returned epoch with seq <= throughSeq.
 5. Apply remaining buffered events in order and store the cursor.
-6. If truncated, show partial-output warning. On terminal runtime IDLE, refetch snapshot and
+6. If truncated, show partial-output warning. On terminal runtime IDLE, refetch the page and
    clear the warning.
 
-After TaskRunner terminal persistence and rollout flush, the manager loads a fresh snapshot,
-transitions to IDLE, and clears the finished epoch's ring. Snapshot refresh must precede the
+After TaskRunner terminal persistence and rollout flush, the manager records the current
+rollout revision, transitions to IDLE, and clears the finished epoch's ring. Revision refresh must precede the
 IDLE runtime event so an attach observing IDLE always gets committed history.
 
 Task completion alone does not imply IDLE. TaskRunner registers eligible post-turn lifecycle
@@ -1617,7 +1622,91 @@ an in-memory telemetry sink and explicitly enable the gate.
   coordinated cutover that migrates submit/health/history/close/reset UI calls. Phase 5 deletes
   the flag and eager client branch after one stable release; server eager mode remains.
 
-## 18. Phase acceptance gates
+## 18. Canonical history implementation contract
+
+### 18.1 Storage and pagination
+
+`RolloutStorageProvider.getItemsByRolloutIdRange(sessionId, range)` accepts strict exclusive
+`afterSequence`/`beforeSequence` bounds, `direction:'asc'|'desc'`, and limit 1–1000. Both
+IndexedDB (`rolloutId_sequence`) and SQLite (`idx_items_rollout_seq`) execute the bound and
+limit in storage. Full-log reads remain compatibility/diagnostic APIs, not attach/hydration.
+
+`loadHistoryPage(provider,sessionId,{limit,beforeSequence})` scans descending in chunks of
+256, stops at `limit` turn_start markers, reverses the selected slice, and projects:
+
+```ts
+interface HistoryPage {
+  sessionId: string;
+  revision: number;             // captured last canonical sequence + 1
+  turns: HistoryTurn[];         // chronological
+  items: HistoryItem[];         // chronological, stable IDs
+  nextCursor: number | null;    // exclusive sequence for older page
+}
+```
+
+For markerless legacy logs it scans to the start and trims at user-message boundaries. Mixed
+logs fill the page with marked turns first and then older legacy user boundaries. Repeated
+response IDs update the stored snapshot while retaining first sequence/order. Completion maps
+complete→completed, failed→failed, and abort/interruption→interrupted. A new turn implicitly
+interrupts an unmatched prior turn. The display projection includes only sanitized message and
+reasoning-summary items: it excludes tool outputs/model-only encrypted or reasoning fields and
+replaces inline image data with an attachment placeholder. The model-context projection retains
+the original typed items independently.
+
+### 18.2 Services and attach
+
+- `session.history{sessionId,limit?,beforeSequence?}` returns a HistoryPage without hydration.
+- `session.attach` returns `{entry,historyPage,runtime,replay}` plus an empty snapshot shell for
+  temporary old-surface compatibility; it never returns raw rollout items to the new surface.
+- The server `chat.history` resolves aliases to a real SessionManager ID and returns the same
+  canonical page (`messages` aliases `items` during compatibility). TranscriptStore receives
+  no new event writes and is not a history reader.
+- Successful first projection promotes ThreadIndex historyMode to paginated without touching
+  recency. A failed projection leaves legacy mode and is retryable.
+
+### 18.3 Timeline reducer
+
+`ThreadConversationState.timeline` replaces `messages[]` and `processedEvents[]`. Reducer
+operations are pure upsert, attach reconciliation, prepend older page, and delivery-note.
+EventProcessor remains a thread-local transient accumulator and must survive attach. Timeline
+entries record source (`persisted|live|optimistic|local`); source is not durable.
+
+Attach order is: capture/buffer → fetch page+replay → require
+`historyPage.revision >= replay.baseRolloutRevision` → project durable items → project replay
+through the existing processor → reconcile optimistic IDs → commit timeline/cursor → drain
+buffer entries after replay throughSeq. On mismatch, no projection is committed.
+
+### 18.4 Model context and compaction
+
+`loadModelContextSnapshot` captures last canonical sequence + 1, reverse-scans 256 records per
+request below that immutable boundary, excludes all event and turn-marker records, and stops
+after including the newest compacted payload with a `replacementHistory` array. Hydration uses
+this loader; attach never uses it. Terminal IDLE reads only the revision boundary and never
+refreshes a full-log snapshot.
+
+On successful CompactService output, Session appends:
+
+```ts
+{ type:'compacted', payload:{
+  message: string,
+  replacementHistory: ResponseItem[],
+  windowNumber: number
+}}
+```
+
+Only after that append resolves may SessionState.replaceHistory run. Append rejection returns
+a failed CompactionResult and preserves the old context/count. Reconstruction replaces its
+accumulator at each replacement checkpoint and then applies later response items.
+
+### 18.5 Required verification
+
+Provider range bounds in both directions; 21-turn two-page no-overlap; legacy pagination;
+snapshot update without reorder; typed multimodal user persistence; awaited user durability;
+unique delivery IDs; optimistic/durable reconciliation; pending user preservation; replay
+message dedupe; older-page prepend; reverse checkpoint scan; resume prefix replacement;
+checkpoint failure atomicity; new/premigration history modes; list recency unchanged on click.
+
+## 19. Phase acceptance gates
 
 Each phase is mergeable only when its gate passes:
 
@@ -1631,6 +1720,7 @@ Each phase is mergeable only when its gate passes:
 | 3c | two-session lease isolation; no tab-close termination; suspend leaves tabs open; background activation denied; attention resolve validates surface+ownership; domain-conditioned skill prompts use each session's browser context; repository guard finds no sessionless Chrome call in agent execution |
 | 4 | attach race/dedupe/epoch/truncation; two-surface switch/TTL; A↔B streaming; orphan reconciliation/delivery-unknown explicit resend; narrow/wide parity; New Chat never calls reset; no primary history path depends on live agent |
 | 5 | repo-wide no in-repo legacy calls, compatibility aliases retained, mechanical rename/typecheck, architecture docs updated |
+| 6 | provider range parity; bounded mixed legacy/marked paging; immutable attach/model boundaries; one canonical UI timeline; optimistic/durable reconciliation; compaction checkpoint atomicity; no transcript history reads/writes; full regression/typecheck/lint/build evidence |
 
 Run the focused unit/integration suites for touched packages plus repository typecheck and
 lint in every phase. Phase 3a-2 and Phase 4 additionally run deterministic fake-clock/fake-

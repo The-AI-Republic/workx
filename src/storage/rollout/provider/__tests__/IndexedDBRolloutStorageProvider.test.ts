@@ -42,4 +42,25 @@ describe('IndexedDBRolloutStorageProvider.createRollout', () => {
     expect((await provider.getItemsByRolloutId('fork')).map((item) => item.payload))
       .toEqual([{ text: 'first' }, { text: 'second' }]);
   });
+
+  it('reads strict bounded sequence ranges in both directions', async () => {
+    const items = Array.from({ length: 6 }, (_, sequence) => ({
+      timestamp: new Date(sequence).toISOString(),
+      sequence,
+      type: 'response_item',
+      payload: { sequence },
+    }));
+    await provider.createRollout(metadata('range'), items);
+    await expect(provider.getItemsByRolloutIdRange('range', {
+      afterSequence: 1,
+      beforeSequence: 5,
+      limit: 2,
+      direction: 'asc',
+    })).resolves.toMatchObject([{ sequence: 2 }, { sequence: 3 }]);
+    await expect(provider.getItemsByRolloutIdRange('range', {
+      beforeSequence: 5,
+      limit: 2,
+      direction: 'desc',
+    })).resolves.toMatchObject([{ sequence: 4 }, { sequence: 3 }]);
+  });
 });

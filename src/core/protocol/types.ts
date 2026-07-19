@@ -221,6 +221,8 @@ export type ResponseItem =
   | {
     type: 'message';
     id?: string;
+    /** Stable client-generated identity for optimistic user-message reconciliation. */
+    client_id?: string;
     role: string;
     content: ContentItem[];
     /** Reasoning/thinking content from models like Kimi K2, o1, o3 */
@@ -307,17 +309,24 @@ export function getResponseItemContent(item: ResponseItem): string {
         console.error('[getResponseItemContent] message.content is neither string nor array:', item);
         return '';
       }
-      return item.content.map(c => {
-        if (c.type === 'text' || c.type === 'input_text' || c.type === 'output_text') {
-          return c.text;
+      return (item.content as unknown[]).map(c => {
+        if (!c || typeof c !== 'object') return '';
+        const part = c as Record<string, unknown>;
+        if (part.type === 'text' || part.type === 'input_text' || part.type === 'output_text') {
+          return typeof part.text === 'string' ? part.text : '';
         }
-        if (c.type === 'refusal') {
-          return c.refusal;
+        if (part.type === 'refusal') {
+          return typeof part.refusal === 'string' ? part.refusal : '';
         }
         return '';
       }).join('');
     case 'reasoning':
-      return item.summary.map(s => s.text).join('\n');
+      if (!Array.isArray(item.summary)) return '';
+      return (item.summary as unknown[]).map(s => (
+        s && typeof s === 'object' && 'text' in s && typeof s.text === 'string'
+          ? s.text
+          : ''
+      )).join('\n');
     case 'function_call':
       return item.arguments;
     case 'function_call_output':
@@ -329,6 +338,91 @@ export function getResponseItemContent(item: ResponseItem): string {
     default:
       return '';
   }
+}
+
+/**
+ * Decode the user-input wrapper emitted by WorkX versions that persisted each
+ * InputItem as JSON inside an input_text part. Modern correlated messages are
+ * deliberately excluded so genuine JSON entered by a user remains verbatim.
+ *
+ * This is a read-time compatibility projection: canonical rollout records are
+ * never rewritten, while display history and resumed model context see the
+ * typed content that the original submission represented.
+ */
+export function normalizeLegacyUserResponseItem(item: ResponseItem): ResponseItem {
+  if (
+    !item
+    || typeof item !== 'object'
+    || item.type !== 'message'
+    || item.role !== 'user'
+    || item.client_id
+    || !Array.isArray(item.content)
+    || item.content.length !== 1
+  ) {
+    return item;
+  }
+
+  const part = item.content[0];
+  if (
+    !part
+    || typeof part !== 'object'
+    || (part.type !== 'text' && part.type !== 'input_text')
+    || typeof part.text !== 'string'
+  ) {
+    return item;
+  }
+
+  const decoded = decodeLegacySerializedInputItem(part.text);
+  return decoded ? { ...item, content: [decoded] } : item;
+}
+
+function decodeLegacySerializedInputItem(value: string): ContentItem | null {
+  if (!value.startsWith('{') || !value.endsWith('}')) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+  const input = parsed as Record<string, unknown>;
+
+  if (
+    input.type === 'text'
+    && typeof input.text === 'string'
+    && hasExactKeys(input, ['type', 'text'])
+  ) {
+    return { type: 'input_text', text: input.text };
+  }
+  if (
+    input.type === 'image'
+    && typeof input.image_url === 'string'
+    && hasExactKeys(input, ['type', 'image_url'])
+  ) {
+    return { type: 'input_image', image_url: input.image_url };
+  }
+  if (
+    input.type === 'clipboard'
+    && (input.content === undefined || typeof input.content === 'string')
+    && hasExactKeys(input, input.content === undefined ? ['type'] : ['type', 'content'])
+  ) {
+    return { type: 'input_text', text: input.content ?? '[clipboard]' };
+  }
+  if (
+    input.type === 'context'
+    && (input.path === undefined || typeof input.path === 'string')
+    && hasExactKeys(input, input.path === undefined ? ['type'] : ['type', 'path'])
+  ) {
+    return { type: 'input_text', text: `[context: ${input.path ?? 'unknown'}]` };
+  }
+  return null;
+}
+
+function hasExactKeys(value: Record<string, unknown>, expected: string[]): boolean {
+  const actual = Object.keys(value).sort();
+  const normalizedExpected = [...expected].sort();
+  return actual.length === normalizedExpected.length
+    && actual.every((key, index) => key === normalizedExpected[index]);
 }
 
 /**

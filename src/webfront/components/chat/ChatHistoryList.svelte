@@ -9,7 +9,7 @@
   let {
     onSelectConversation = () => {},
     onClose = () => {},
-    initialPageSize = 50,
+    initialPageSize = 10,
     morePageSize = 10,
   }: {
     onSelectConversation?: (sessionId: string) => void;

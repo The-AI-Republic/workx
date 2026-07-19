@@ -152,7 +152,7 @@ export interface IPlatformAdapter {
     registry: ToolRegistry,
     toolsConfig: IToolsConfig,
     capabilities: ModelCapabilities,
-    promptLoader?: AgentPromptLoader,
+    promptLoader?: AgentPromptLoader
   ): Promise<void>;
 
   // Storage
