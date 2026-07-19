@@ -310,8 +310,8 @@
     padding: 0.2em 0.4em;
     border-radius: 3px;
     font-family: var(--font-mono);
-    font-size: var(--text-sm);
-    line-height: var(--text-sm--line-height);
+    font-size: var(--text-code-inline);
+    line-height: var(--text-code-inline--line-height);
     word-break: break-word;
   }
 

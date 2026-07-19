@@ -27,6 +27,10 @@
 
   --text-2xs: 0.625rem;
   --text-2xs--line-height: 1.4;
+  --text-ascii: 0.4rem;
+  --text-ascii--line-height: 1;
+  --text-code-inline: 0.875em;
+  --text-code-inline--line-height: inherit;
   --text-xs: 0.75rem;
   --text-xs--line-height: 1.4;
   --text-meta: 0.8125rem;
