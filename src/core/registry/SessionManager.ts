@@ -458,6 +458,19 @@ export class SessionManager {
         );
       }
 
+      // The durable index is part of the publish boundary. Keep the graph
+      // private until this succeeds; the generation reconciliation below then
+      // covers config/auth changes that raced the storage operation as well.
+      await this._registryConfig.threadIndexStore?.createIfMissing(
+        createThreadIndexEntry({
+          sessionId: reservedSessionId,
+          agentMode: agent.getSession().getAgentMode(),
+          origin: sessionConfig.fork
+            ? { kind: 'fork', sourceSessionId: sessionConfig.fork.sourceConversationId }
+            : { kind: 'new' },
+        }),
+      );
+
       // Reconcile any config/auth changes captured during asynchronous construction.
       while (true) {
         const configGeneration = this.configGeneration();
@@ -484,7 +497,19 @@ export class SessionManager {
     } catch (initError) {
       this._assemblingImpacts.delete(reservedSessionId);
       eventGate.close();
-      await assembledHandle?.dispose('assembly-failed').catch(() => undefined);
+      const report = await assembledHandle?.dispose('assembly-failed').catch((disposeError) => {
+        console.warn(
+          `[SessionManager] Failed to dispose unpublished session ${reservedSessionId}:`,
+          disposeError,
+        );
+        return null;
+      });
+      if (report && !report.ok) {
+        console.warn(
+          `[SessionManager] Partial cleanup for unpublished session ${reservedSessionId}:`,
+          report.failedSteps,
+        );
+      }
       // Agent initialization failed - clean up and emit error event
       const tempId = `failed_${Date.now()}`;
       console.error(`[SessionManager] Failed to initialize agent:`, initError);
@@ -538,16 +563,6 @@ export class SessionManager {
       sessionType: sessionConfig.type,
       timestamp: Date.now(),
     });
-
-    await this._registryConfig.threadIndexStore?.createIfMissing(
-      createThreadIndexEntry({
-        sessionId: session.sessionId,
-        agentMode: agent.getSession().getAgentMode(),
-        origin: sessionConfig.fork
-          ? { kind: 'fork', sourceSessionId: sessionConfig.fork.sourceConversationId }
-          : { kind: 'new' },
-      }),
-    );
 
     console.log(
       `[SessionManager] Created ${sessionConfig.type} session: ${session.sessionId} ` +
@@ -1960,9 +1975,10 @@ export class SessionManager {
       })
       .catch((error) => {
         console.warn('[SessionManager] Failed to load submission recovery metadata:', error);
-        // Recovery is best-effort. Avoid retry/log storms for the lifetime of
-        // this manager; a later worker instance gets a fresh attempt.
-        this._recoveryLoaded.add(sessionId);
+        // Fail closed: without the durable clientMessageId map, accepting a
+        // retry could execute a turn whose ACK was lost before worker restart.
+        // Do not mark the session loaded so the next attach/submit can retry.
+        throw error;
       });
     this._recoveryFlights.set(sessionId, flight);
     const clearFlight = () => {

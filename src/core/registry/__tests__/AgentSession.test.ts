@@ -271,6 +271,32 @@ describe('AgentSession', () => {
     });
   });
 
+  describe('assembled graph cleanup', () => {
+    it('reports partial cleanup failures before terminating the wrapper', async () => {
+      const session = new AgentSession({ type: 'primary', sessionId: 'cleanup-report' }, 0);
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const assembledAgent = {
+        dispose: vi.fn().mockResolvedValue({ ok: false, failedSteps: ['browser-lease'] }),
+        flushRollout: vi.fn().mockResolvedValue(undefined),
+        submit: vi.fn(),
+        subAgentRunner: null,
+      };
+      session.attachAgent(
+        mockAgent as unknown as RepublicAgent,
+        assembledAgent as unknown as AssembledAgent,
+      );
+      session.markReady();
+
+      await session.suspend();
+
+      expect(session.state).toBe('terminated');
+      expect(warn).toHaveBeenCalledWith(
+        '[AgentSession] Partial cleanup for cleanup-report (suspend):',
+        ['browser-lease'],
+      );
+    });
+  });
+
   describe('unified sessionId', () => {
     it('uses provided sessionId from config', () => {
       const session = new AgentSession({ type: 'primary', sessionId: 'agent-abc-123' } as any, 0);

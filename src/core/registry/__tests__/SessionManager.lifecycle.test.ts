@@ -18,6 +18,7 @@ import {
   type TelemetryEvent,
 } from '../../telemetry';
 import type { AgentMode } from '../../../prompts/PromptComposer';
+import { RolloutRecorder } from '../../../storage/rollout/RolloutRecorder';
 
 function config() {
   return {
@@ -197,6 +198,18 @@ describe('SessionManager lifecycle manager', () => {
     expect(attached.replay?.events.map((row) => row.event.id)).toContain('init-hydrate');
   });
 
+  it('does not publish a live graph when durable index creation fails', async () => {
+    vi.spyOn(index, 'createIfMissing').mockRejectedValueOnce(new Error('index unavailable'));
+
+    await expect(registry.createSession({ type: 'scheduled', sessionId: 'unpublished' }))
+      .rejects.toThrow('Failed to create scheduled session: index unavailable');
+
+    expect(registry.getSession('unpublished')).toBeUndefined();
+    expect(registry.getLifecycleStatus().liveCount).toBe(0);
+    expect(assembler.handles.get('unpublished')?.dispose)
+      .toHaveBeenCalledWith('assembly-failed');
+  });
+
   it('rejects controls for suspended graphs and stale approvals without hydrating', async () => {
     await registry.openSession({ sessionId: 'controls' });
     await expect(registry.dispatchControl('controls', { type: 'ManualCompact' }))
@@ -366,6 +379,30 @@ describe('SessionManager lifecycle manager', () => {
       op: { type: 'UserInput', items: [{ type: 'text' as const, text: 'different' }] },
     })).resolves.toMatchObject({ status: 'rejected', reason: 'client-id-conflict' });
     expect(assembler.handles.get('submit')?.submit).toHaveBeenCalledOnce();
+  });
+
+  it('fails closed and retries recovery metadata before accepting a submission', async () => {
+    await registry.openSession({ sessionId: 'recovery-retry' });
+    await registry.hydrateSession('recovery-retry');
+    const getRecoveryMetadata = vi.fn()
+      .mockRejectedValueOnce(new Error('metadata temporarily unavailable'))
+      .mockResolvedValue({ openTurns: [], recentAccepted: [] });
+    vi.spyOn(RolloutRecorder, 'getProvider').mockResolvedValue({
+      getRecoveryMetadata,
+    } as never);
+    const input = {
+      sessionId: 'recovery-retry',
+      clientMessageId: 'client-retry',
+      op: { type: 'UserInput' as const, items: [{ type: 'text' as const, text: 'once' }] },
+    };
+
+    await expect(registry.enqueueSubmission(input))
+      .rejects.toThrow('metadata temporarily unavailable');
+    expect(assembler.handles.get('recovery-retry')?.submit).not.toHaveBeenCalled();
+
+    await expect(registry.enqueueSubmission(input)).resolves.toMatchObject({ status: 'accepted' });
+    expect(getRecoveryMetadata).toHaveBeenCalledTimes(2);
+    expect(assembler.handles.get('recovery-retry')?.submit).toHaveBeenCalledOnce();
   });
 
   it('dedupes semantically identical input whose object keys have a different order', async () => {
