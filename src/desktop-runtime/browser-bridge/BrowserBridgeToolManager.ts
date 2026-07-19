@@ -20,17 +20,23 @@
  */
 
 import type { NodeToolDescriptor } from '@workx/ws-server';
-import type { AgentRegistry } from '@/core/registry/AgentRegistry';
+import type { SessionManager } from '@/core/registry/SessionManager';
 import type { ToolRegistry } from '@/tools/ToolRegistry';
 import type { JsonSchema, ToolDefinition } from '@/tools/BaseTool';
 import type { BrowserBridgeHandle } from '@/tools/browserBridgeHandle';
 import { McpBrowserRiskAssessor } from '@/core/approval/assessors/McpBrowserRiskAssessor';
 import { NodeInvokeFailure, type NodeBridge } from '@/app-server/node-bridge/NodeBridge';
+import type { SessionBrowserContext } from '@/core/platform/IPlatformAdapter';
 
 export interface BrowserBridgeToolManagerDeps {
   nodeBridge: NodeBridge;
-  getRegistry: () => AgentRegistry | null;
+  getRegistry: () => SessionManager | null;
 }
+
+/** Metadata reads must stay fast; the actual browser tool owns the long budget. */
+export const BROWSER_CONTEXT_TIMEOUT_MS = 3_000;
+/** Session cleanup is best-effort and must not stall suspension or shutdown. */
+export const BROWSER_RELEASE_TIMEOUT_MS = 1_000;
 
 export class BrowserBridgeToolManager implements BrowserBridgeHandle {
   /** Tool names this manager registered, per session (for clean unregister). */
@@ -117,7 +123,11 @@ export class BrowserBridgeToolManager implements BrowserBridgeHandle {
     for (const tool of node.tools) {
       // Never clobber a natively registered tool of the same name.
       if (toolRegistry.getTool(tool.name)) continue;
-      await toolRegistry.register(this.definitionFor(tool), (params) => this.invoke(tool.name, params), assessor);
+      await toolRegistry.register(
+        this.definitionFor(tool),
+        (params) => this.invoke(sessionId, tool.name, params),
+        assessor,
+      );
       registered.push(tool.name);
     }
     if (registered.length > 0) {
@@ -131,6 +141,29 @@ export class BrowserBridgeToolManager implements BrowserBridgeHandle {
   /** Drop bookkeeping for a session that no longer exists. */
   forgetSession(sessionId: string): void {
     this.registeredBySession.delete(sessionId);
+  }
+
+  async getSessionBrowserContext(sessionId: string): Promise<SessionBrowserContext | null> {
+    const result = await this.invokeOperation(
+      sessionId,
+      'browser-context',
+      BROWSER_CONTEXT_TIMEOUT_MS,
+    );
+    if (!result || typeof result !== 'object') return null;
+    const context = result as Partial<SessionBrowserContext>;
+    return typeof context.tabId === 'number'
+      && typeof context.url === 'string'
+      && typeof context.hostname === 'string'
+      ? context as SessionBrowserContext
+      : null;
+  }
+
+  async releaseSession(sessionId: string): Promise<void> {
+    try {
+      await this.invokeOperation(sessionId, 'release-session', BROWSER_RELEASE_TIMEOUT_MS);
+    } finally {
+      this.forgetSession(sessionId);
+    }
   }
 
   private async unregisterAllSessions(): Promise<void> {
@@ -174,7 +207,11 @@ export class BrowserBridgeToolManager implements BrowserBridgeHandle {
     };
   }
 
-  private async invoke(toolName: string, params: Record<string, unknown>): Promise<unknown> {
+  private async invoke(
+    sessionId: string,
+    toolName: string,
+    params: Record<string, unknown>,
+  ): Promise<unknown> {
     // Resolve the node at call time — the connection may have cycled since
     // registration, and the proxy should follow the live one.
     const node = this.deps.nodeBridge.getPrimaryNode();
@@ -184,12 +221,50 @@ export class BrowserBridgeToolManager implements BrowserBridgeHandle {
       );
     }
     try {
-      return await this.deps.nodeBridge.invoke(node.connectionId, toolName, params);
+      return await this.deps.nodeBridge.invoke(node.connectionId, toolName, params, {
+        operation: 'tool',
+        sessionId,
+      });
     } catch (err) {
       if (err instanceof NodeInvokeFailure) {
+        if (err.error.code === 'FOREGROUND_REQUIRED') {
+          const details = err.error.details as { tabId?: unknown; reason?: unknown } | undefined;
+          const tabId = Number(details?.tabId);
+          const reason = details?.reason === 'login' || details?.reason === 'permission'
+            ? details.reason
+            : 'user-gesture';
+          if (!Number.isInteger(tabId)) {
+            throw new Error(`Browser tool '${toolName}' requested foreground without a valid tab`);
+          }
+          const registry = this.deps.getRegistry();
+          if (!registry) throw new Error('Session manager is unavailable for foreground approval');
+          const grant = await registry.requestForeground(sessionId, tabId, reason);
+          // Retry exactly once, and only because the executor guaranteed no
+          // tool side effects occurred before FOREGROUND_REQUIRED.
+          return this.deps.nodeBridge.invoke(node.connectionId, toolName, params, {
+            operation: 'tool',
+            sessionId,
+            focusGrantId: grant.grantId,
+          });
+        }
         throw new Error(`Browser tool '${toolName}' failed: ${err.error.message}`);
       }
       throw err;
     }
+  }
+
+  private async invokeOperation(
+    sessionId: string,
+    operation: 'release-session' | 'browser-context',
+    timeoutMs: number,
+  ): Promise<unknown> {
+    const node = this.deps.nodeBridge.getPrimaryNode();
+    if (!node) return null;
+    return this.deps.nodeBridge.invoke(
+      node.connectionId,
+      '',
+      {},
+      { operation, sessionId, timeoutMs },
+    );
   }
 }

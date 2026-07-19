@@ -57,7 +57,9 @@ describe('Session workspace', () => {
   it('inherits the saved folder when a conversation is forked', async () => {
     const session = new Session(undefined, false, services(), undefined, {
       mode: 'forked',
+      sessionId: 'forked-session',
       sourceConversationId: 'source',
+      historyAlreadyPersisted: false,
       workspace: { workingDirectory: '/home/rich/projects/source' },
       rolloutItems: [{
         type: 'turn_context',

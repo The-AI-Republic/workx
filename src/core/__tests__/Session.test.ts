@@ -153,16 +153,12 @@ describe('Session', () => {
       expect(session.sessionId).toBe('my-custom-id');
     });
 
-    it('should generate new sessionId for new mode', () => {
+    it('should retain the authoritative sessionId for new mode', () => {
       const session = new Session(undefined, false, undefined, undefined, {
         mode: 'new',
+        sessionId: 'reserved-new-id',
       });
-      expect(session.sessionId).toBe('test-uuid-1');
-    });
-
-    it('should set tabId to -1 initially', () => {
-      const session = new Session(undefined, false);
-      expect(session.getTabId()).toBe(-1);
+      expect(session.sessionId).toBe('reserved-new-id');
     });
 
     it('should store services when provided', () => {
@@ -221,8 +217,10 @@ describe('Session', () => {
       try {
         const session = new Session(undefined, false, undefined, undefined, {
           mode: 'forked',
+          sessionId: 'fork-session',
           sourceConversationId: 'parent-session',
           rolloutItems: [],
+          historyAlreadyPersisted: false,
         });
         await expect(session.initialize()).rejects.toThrow('forked reconstruct failed');
         expect(consoleErr).toHaveBeenCalled();
@@ -324,6 +322,43 @@ describe('Session', () => {
       });
     });
 
+    it('records one typed multimodal user item with the stable client id', async () => {
+      const recordItems = vi.fn().mockResolvedValue(undefined);
+      const typed = new Session(undefined, false, makeMockServices({
+        rollout: { recordItems } as any,
+      }));
+      await typed.recordInputAndRolloutUsermsg([
+        { type: 'text', text: 'hello' },
+        { type: 'image', image_url: 'data:image/png;base64,abc' },
+      ], 'client-1');
+
+      const history = typed.getConversationHistory().items;
+      expect(history).toHaveLength(1);
+      expect(history[0]).toMatchObject({
+        type: 'message',
+        role: 'user',
+        client_id: 'client-1',
+        content: [
+          { type: 'input_text', text: 'hello' },
+          { type: 'input_image', image_url: 'data:image/png;base64,abc' },
+        ],
+      });
+      expect(JSON.stringify(history)).not.toContain('"type":"text","text"');
+    });
+
+    it('does not expose accepted input in memory when its durable write fails', async () => {
+      const typed = new Session(undefined, false, makeMockServices({
+        rollout: {
+          recordItems: vi.fn().mockRejectedValue(new Error('storage unavailable')),
+        } as any,
+      }));
+
+      await expect(typed.recordInputAndRolloutUsermsg([
+        { type: 'text', text: 'do not become a phantom' },
+      ], 'client-failed')).rejects.toThrow('storage unavailable');
+      expect(typed.getConversationHistory().items).toEqual([]);
+    });
+
     describe('getMessageCount()', () => {
       it('should reflect the number of history items', async () => {
         expect(session.getMessageCount()).toBe(0);
@@ -418,6 +453,20 @@ describe('Session', () => {
         const results = await session.searchMessages('zzz');
         expect(results).toEqual([]);
       });
+    });
+  });
+
+  describe('persistRolloutItems()', () => {
+    it('rethrows required lifecycle writes while auxiliary writes remain best-effort', async () => {
+      const recordItems = vi.fn().mockRejectedValue(new Error('disk full'));
+      const session = new Session(undefined, false, makeMockServices({
+        rollout: { recordItems } as any,
+      }));
+      const item = { type: 'turn_start', payload: {} } as any;
+
+      await expect(session.persistRolloutItems([item])).resolves.toBeUndefined();
+      await expect(session.persistRolloutItems([item], { required: true }))
+        .rejects.toThrow('disk full');
     });
   });
 
@@ -625,6 +674,52 @@ describe('Session', () => {
         const result = await session.compact('auto');
         expect(result.triggerReason).toBe('auto');
       });
+
+      it('commits a durable replacement checkpoint before replacing model history', async () => {
+        const recordItems = vi.fn().mockResolvedValue(undefined);
+        const durableSession = new Session(undefined, false, makeMockServices({
+          rollout: { recordItems } as any,
+        }));
+        (durableSession as any).sessionState.recordItems([makeMessage('user', 'old')]);
+        (durableSession as any).compactService.compact = vi.fn().mockResolvedValue({
+          success: true,
+          tokensBefore: 100,
+          tokensAfter: 20,
+          itemsTrimmed: 1,
+          retriesUsed: 0,
+          triggerReason: 'manual',
+          newHistory: [makeMessage('system', 'summary')],
+        });
+
+        const result = await durableSession.compact('manual', {} as any);
+        expect(result.success).toBe(true);
+        expect(recordItems).toHaveBeenCalledWith([expect.objectContaining({
+          type: 'compacted',
+          payload: expect.objectContaining({ windowNumber: 1 }),
+        })]);
+        expect(durableSession.getConversationHistory().items).toEqual([makeMessage('system', 'summary')]);
+      });
+
+      it('does not replace model history when checkpoint persistence fails', async () => {
+        const durableSession = new Session(undefined, false, makeMockServices({
+          rollout: { recordItems: vi.fn().mockRejectedValue(new Error('disk full')) } as any,
+        }));
+        const old = makeMessage('user', 'old');
+        (durableSession as any).sessionState.recordItems([old]);
+        (durableSession as any).compactService.compact = vi.fn().mockResolvedValue({
+          success: true,
+          tokensBefore: 100,
+          tokensAfter: 20,
+          itemsTrimmed: 1,
+          retriesUsed: 0,
+          triggerReason: 'manual',
+          newHistory: [makeMessage('system', 'summary')],
+        });
+
+        const result = await durableSession.compact('manual', {} as any);
+        expect(result).toMatchObject({ success: false, error: expect.stringContaining('checkpoint') });
+        expect(durableSession.getConversationHistory().items).toEqual([old]);
+      });
     });
 
     describe('shouldCompact()', () => {
@@ -795,28 +890,6 @@ describe('Session', () => {
       expect(session.getTask('bg-c')).toBeDefined();
     });
 
-    it('abortTasksForTab aborts only tasks scoped to the closed tab', async () => {
-      const onTab42 = makeMockTask({ run: vi.fn().mockImplementation(() => new Promise(() => {})) });
-      const onTab99 = makeMockTask({ run: vi.fn().mockImplementation(() => new Promise(() => {})) });
-      const unscoped = makeMockTask({ run: vi.fn().mockImplementation(() => new Promise(() => {})) });
-
-      await session.spawnTask(onTab42, turnContext, 't42', [], {
-        background: true,
-        scopedTabIds: [42],
-      });
-      await session.spawnTask(onTab99, turnContext, 't99', [], {
-        background: true,
-        scopedTabIds: [99],
-      });
-      await session.spawnTask(unscoped, turnContext, 'tn', [], { background: true });
-
-      await session.abortTasksForTab(42, 'TabClosed');
-
-      expect(onTab42.abort).toHaveBeenCalled();
-      expect(onTab99.abort).not.toHaveBeenCalled();
-      expect(unscoped.abort).not.toHaveBeenCalled();
-    });
-
     it('listActiveTasks + listTaskStates project correctly', async () => {
       const fg = makeMockTask({ run: vi.fn().mockImplementation(() => new Promise(() => {})) });
       await session.spawnTask(fg, turnContext, 'fg-1', []);
@@ -866,6 +939,11 @@ describe('Session', () => {
         return { shouldContinue: true };
       });
       session.setHookDispatcher({ fire } as any);
+      const getCurrentPageContext = vi.fn().mockRejectedValue(
+        new Error('stop must not access browser context'),
+      );
+      session.setToolRegistry({ getCurrentPageContext } as any);
+      (session as any).getTabId = vi.fn().mockReturnValue(42);
       const task = makeMockTask({
         run: vi.fn().mockImplementation(() => new Promise(() => {})),
       });
@@ -886,6 +964,7 @@ describe('Session', () => {
         }),
         expect.objectContaining({ timeoutOverride: 1 }),
       );
+      expect(getCurrentPageContext).not.toHaveBeenCalled();
     });
 
     it('shutdown aborts active typed tasks and clears the eviction timer', async () => {
@@ -1056,32 +1135,6 @@ describe('Session', () => {
       expect(result).toHaveLength(2);
       expect((result[0] as any).role).toBe('user');
       expect((result[1] as any).role).toBe('assistant');
-    });
-  });
-
-  // =========================================================================
-  // Tab ID management
-  // =========================================================================
-  describe('Tab ID management', () => {
-    let session: Session;
-
-    beforeEach(() => {
-      session = new Session(undefined, false);
-    });
-
-    it('should start with tabId -1', () => {
-      expect(session.getTabId()).toBe(-1);
-    });
-
-    it('should update tabId via setTabId', () => {
-      session.setTabId(42);
-      expect(session.getTabId()).toBe(42);
-    });
-
-    it('should allow resetting tabId to -1', () => {
-      session.setTabId(10);
-      session.setTabId(-1);
-      expect(session.getTabId()).toBe(-1);
     });
   });
 
@@ -1343,21 +1396,22 @@ describe('Session', () => {
       session = new Session(undefined, false);
     });
 
-    it('should return system message with tab context', () => {
+    it('does not embed a caller-supplied raw tab id in core prompt context', () => {
       const context = session.buildInitialContext({ tabId: 5 });
       expect(context).toHaveLength(1);
       expect(context[0].role).toBe('system');
-      expect(context[0].content[0].text).toContain('Tab ID: 5');
+      expect(context[0].content[0].text).toContain("session's browser resources");
+      expect(context[0].content[0].text).not.toContain('Tab ID: 5');
     });
 
-    it('should indicate no tab bound when tabId is -1', () => {
+    it('uses the session-scoped browser resource contract for an unbound legacy tab', () => {
       const context = session.buildInitialContext({ tabId: -1 });
-      expect(context[0].content[0].text).toContain('No tab bound');
+      expect(context[0].content[0].text).toContain("session's browser resources");
     });
 
-    it('should default to no tab bound when no context provided', () => {
+    it('uses the session-scoped browser resource contract by default', () => {
       const context = session.buildInitialContext();
-      expect(context[0].content[0].text).toContain('No tab bound');
+      expect(context[0].content[0].text).toContain("session's browser resources");
     });
   });
 

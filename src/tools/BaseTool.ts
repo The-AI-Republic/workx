@@ -235,11 +235,74 @@ export interface ToolResult {
   metadata?: Record<string, any>;
 }
 
+export interface ScopedBrowserTab {
+  id: number;
+  url?: string;
+  title?: string;
+  status?: 'loading' | 'complete';
+}
+
 /**
  * Abstract base class for all browser tools
  */
 export abstract class BaseTool {
   protected abstract toolDefinition: ToolDefinition;
+  private browserResources?: import('../core/platform/IPlatformAdapter').SessionBrowserResources;
+
+  setBrowserResources(
+    resources: import('../core/platform/IPlatformAdapter').SessionBrowserResources,
+  ): void {
+    this.browserResources = resources;
+  }
+
+  protected requireBrowserResources(): import('../core/platform/IPlatformAdapter').SessionBrowserResources {
+    if (this.browserResources) return this.browserResources;
+    // Unit tests install an explicit capability adapter. Production never
+    // installs this symbol, so browser tools cannot fall back to process-global
+    // tabs and always require assembler-injected, session-scoped resources.
+    const testResources = (globalThis as typeof globalThis & {
+      __WORKX_TEST_BROWSER_RESOURCES__?: import('../core/platform/IPlatformAdapter').SessionBrowserResources;
+    }).__WORKX_TEST_BROWSER_RESOURCES__;
+    if (testResources) return testResources;
+    throw new Error('Session browser resources are unavailable');
+  }
+
+  protected async getOwnedTab(tabId: number): Promise<ScopedBrowserTab> {
+    return toScopedTab(await this.requireBrowserResources().getOwned(tabId));
+  }
+
+  protected async createOwnedTab(options: { url?: string; active?: boolean } = {}): Promise<ScopedBrowserTab> {
+    if (options.active === true) throw new Error('Foreground tab creation requires attention');
+    return toScopedTab(await this.requireBrowserResources().create({ url: options.url, active: false }));
+  }
+
+  protected async updateOwnedTab(
+    tabId: number,
+    properties: { url?: string; active?: boolean },
+  ): Promise<ScopedBrowserTab> {
+    if (properties.active === true) throw new Error('Foreground activation requires attention');
+    if (properties.url) return toScopedTab(await this.requireBrowserResources().navigate(tabId, properties.url));
+    await this.requireBrowserResources().setCurrent(tabId);
+    return this.getOwnedTab(tabId);
+  }
+
+  protected async reloadOwnedTab(
+    tabId: number,
+    properties?: { bypassCache?: boolean },
+  ): Promise<void> {
+    await this.requireBrowserResources().reload(tabId, properties);
+  }
+
+  protected async closeOwnedTab(tabId: number): Promise<void> {
+    await this.requireBrowserResources().close(tabId);
+  }
+
+  protected async captureOwnedTab(tabId?: number): Promise<string> {
+    const resources = this.requireBrowserResources();
+    const effectiveTabId = tabId ?? (await resources.current())?.tabId;
+    if (effectiveTabId === undefined) throw new Error('No session-owned tab is current');
+    return resources.captureVisible(effectiveTabId);
+  }
 
   /**
    * Get the tool definition
@@ -577,15 +640,9 @@ export abstract class BaseTool {
   /**
    * Validate that a tab ID is valid
    */
-  protected async validateTabId(tabId: number): Promise<chrome.tabs.Tab> {
-    this.validateChromeContext();
-
+  protected async validateTabId(tabId: number): Promise<ScopedBrowserTab> {
     try {
-      const tab = await chrome.tabs.get(tabId);
-      if (!tab) {
-        throw new Error(`Tab with ID ${tabId} not found`);
-      }
-      return tab;
+      return await this.getOwnedTab(tabId);
     } catch (error) {
       throw new Error(`Invalid tab ID ${tabId}: ${error}`);
     }
@@ -600,12 +657,9 @@ export abstract class BaseTool {
    * @returns The valid tab
    * @throws TabInvalidError if tab is invalid
    */
-  protected async validateSessionTab(tabId: number, sessionId?: string): Promise<chrome.tabs.Tab> {
-    // Import TabManager and TabInvalidError dynamically to avoid circular dependencies
-    const { TabManager } = await import('../core/TabManager');
+  protected async validateSessionTab(tabId: number, sessionId?: string): Promise<ScopedBrowserTab> {
     const { TabInvalidError } = await import('../types/errors');
-
-    const tabManager = TabManager.getInstance();
+    const { TabInvalidReason } = await import('../types/session');
 
     // Check if session has a tab attached
     if (tabId === -1) {
@@ -615,32 +669,22 @@ export abstract class BaseTool {
     }
 
     // Validate the tab exists
-    const validation = await tabManager.validateTab(tabId);
-
-    if (validation.status === 'invalid') {
-      // Throw TabInvalidError when validation fails
-      throw new TabInvalidError(tabId, validation.reason, sessionId || 'unknown');
+    try {
+      return await this.getOwnedTab(tabId);
+    } catch {
+      throw new TabInvalidError(tabId, TabInvalidReason.NOT_FOUND, sessionId || 'unknown');
     }
-
-    if (validation.status !== 'valid') {
-      throw new Error(`Tab ${tabId} validation returned unexpected status: ${validation.status}`);
-    }
-
-    return validation.tab;
   }
 
   /**
    * Get active tab
    */
-  protected async getActiveTab(): Promise<chrome.tabs.Tab> {
-    this.validateChromeContext();
-
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tabs.length === 0) {
+  protected async getActiveTab(): Promise<ScopedBrowserTab> {
+    const current = await this.requireBrowserResources().current();
+    if (!current) {
       throw new Error('No active tab found');
     }
-
-    return tabs[0];
+    return toScopedTab(current);
   }
 
   /**
@@ -758,6 +802,12 @@ export abstract class BaseTool {
       2
     );
   }
+}
+
+function toScopedTab(
+  tab: import('../core/platform/IPlatformAdapter').BrowserTabDescriptor,
+): ScopedBrowserTab {
+  return { id: tab.tabId, url: tab.url, title: tab.title, status: tab.status };
 }
 
 /**

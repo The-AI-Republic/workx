@@ -5,8 +5,8 @@
  * own self-contained ledger (ported in spirit from claudy). Unlike claudy
  * (single-process CLI), the workx **server runs concurrent sessions**, so
  * the ledger is keyed by `sessionId` — one session's spend never counts
- * against another's cap and `resetX402SessionPayments(sessionId)` (wired into
- * Session.reset()) clears only that conversation. A future Track 18 can
+ * against another's cap and `resetX402SessionPayments(sessionId)` clears only
+ * that conversation. A future Track 18 can
  * absorb this via `setX402PaymentSink` without signature churn.
  *
  * @module core/payments/x402/tracker
@@ -74,7 +74,7 @@ export function getX402PaymentCount(sessionId?: string): number {
   return n;
 }
 
-/** Reset a session's spend (wired into Session.reset()). */
+/** Reset a session's spend for explicit payment-test/admin flows. */
 export function resetX402SessionPayments(sessionId: string): void {
   ledgers.delete(sessionId);
 }

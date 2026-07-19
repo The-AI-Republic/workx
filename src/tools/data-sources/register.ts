@@ -22,7 +22,7 @@ import {
   DATA_QUERY_TOOL,
 } from './definitions';
 import { StaticRiskAssessor } from '@/core/approval/assessors/StaticRiskAssessor';
-import { registerPromptExtension } from '@/core/PromptLoader';
+import type { AgentPromptLoader } from '@/core/PromptLoader';
 import { DATA_ANALYSIS_PROMPT } from './prompt';
 
 function principalFromContext(context: ToolContext): {
@@ -68,9 +68,10 @@ function exposure(displayName: string, searchHint: string) {
 
 export async function registerDataSourceTools(
   registry: ToolRegistry,
-  runtime: DataSourceRuntime
+  runtime: DataSourceRuntime,
+  promptLoader?: AgentPromptLoader,
 ): Promise<void> {
-  registerPromptExtension('data-analysis', (context) =>
+  promptLoader?.registerExtension('data-analysis', (context) =>
     context.toolRegistry?.getTool('data_query') ? DATA_ANALYSIS_PROMPT : ''
   );
   const readRuntime = {

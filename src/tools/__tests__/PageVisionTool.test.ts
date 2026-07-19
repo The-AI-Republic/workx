@@ -364,7 +364,7 @@ describe('PageVisionTool', () => {
       try {
         const result = await tool.execute({ action: 'screenshot' }, withTab(1));
         expect(result.success).toBe(false);
-        expect(result.error).toContain('Chrome extension context required');
+        expect(result.error).toContain('Target tab 1 not found or inaccessible');
       } finally {
         (globalThis as any).chrome = original;
       }
@@ -376,7 +376,7 @@ describe('PageVisionTool', () => {
       try {
         const result = await tool.execute({ action: 'screenshot' }, withTab(1));
         expect(result.success).toBe(false);
-        expect(result.error).toContain('Chrome extension context required');
+        expect(result.error).toContain('Target tab 1 not found or inaccessible');
       } finally {
         (globalThis as any).chrome.tabs = originalTabs;
       }
@@ -1222,25 +1222,21 @@ describe('PageVisionTool', () => {
       expect(() => (tool as any).validateChromeContext()).not.toThrow();
     });
 
-    it('should throw when chrome is undefined', () => {
+    it('uses the injected browser capability when chrome is undefined', () => {
       const original = (globalThis as any).chrome;
       delete (globalThis as any).chrome;
       try {
-        expect(() => (tool as any).validateChromeContext()).toThrow(
-          'Chrome extension context required'
-        );
+        expect(() => (tool as any).validateChromeContext()).not.toThrow();
       } finally {
         (globalThis as any).chrome = original;
       }
     });
 
-    it('should throw when chrome.tabs is undefined', () => {
+    it('uses the injected browser capability when chrome.tabs is undefined', () => {
       const originalTabs = (globalThis as any).chrome.tabs;
       delete (globalThis as any).chrome.tabs;
       try {
-        expect(() => (tool as any).validateChromeContext()).toThrow(
-          'Chrome extension context required'
-        );
+        expect(() => (tool as any).validateChromeContext()).not.toThrow();
       } finally {
         (globalThis as any).chrome.tabs = originalTabs;
       }

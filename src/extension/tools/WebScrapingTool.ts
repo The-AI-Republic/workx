@@ -5,7 +5,7 @@
  * handles pagination, table extraction, and pattern-based scraping.
  */
 
-import { BaseTool, createToolDefinition, type BaseToolRequest, type BaseToolOptions, type ToolDefinition } from '../../tools/BaseTool';
+import { BaseTool, createToolDefinition, type BaseToolRequest, type BaseToolOptions, type ToolDefinition, type ScopedBrowserTab } from '../../tools/BaseTool';
 
 /**
  * Scraping pattern configuration
@@ -319,14 +319,14 @@ export class WebScrapingTool extends BaseTool {
   /**
    * Get or navigate to tab
    */
-  private async getTab(tabId?: number, url?: string): Promise<chrome.tabs.Tab> {
+  private async getTab(tabId?: number, url?: string): Promise<ScopedBrowserTab> {
     if (tabId !== undefined && tabId !== null && tabId !== -1) {
       return await this.validateTabId(tabId);
     }
 
     if (url) {
       // Create new tab with URL
-      const tab = await chrome.tabs.create({ url, active: false });
+      const tab = await this.createOwnedTab({ url, active: false });
 
       // Note: Tab will be added to group automatically when bound to session via TabManager
 
@@ -623,7 +623,7 @@ export class WebScrapingTool extends BaseTool {
    */
   private async captureScreenshot(tabId: number): Promise<string> {
     try {
-      const dataUrl = await chrome.tabs.captureVisibleTab();
+      const dataUrl = await this.captureOwnedTab();
       return dataUrl;
     } catch (error) {
       this.log('warn', 'Failed to capture screenshot', error);

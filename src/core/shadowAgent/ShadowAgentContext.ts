@@ -3,6 +3,7 @@ import type { InitialHistory } from '@/core/session/state/types';
 import { pairingTrim } from '@/core/session/rewind';
 import type { RolloutItem } from '@/storage/rollout';
 import { ShadowContextPolicy, type ShadowAgentResolvedRequest, type ShadowInitialHistoryResult } from './types';
+import { v4 as uuidv4 } from 'uuid';
 
 export function responseItemsToRolloutItems(items: ResponseItem[]): RolloutItem[] {
   return items.map((payload) => ({ type: 'response_item', payload }) as RolloutItem);
@@ -27,11 +28,13 @@ export function buildShadowInitialHistory(
 
   const initialHistory: InitialHistory = {
     mode: 'forked',
+    sessionId: uuidv4(),
     rolloutItems,
     sourceConversationId,
     ...(workingDirectory
       ? { workspace: { workingDirectory } }
       : {}),
+    historyAlreadyPersisted: false,
   };
 
   return { initialHistory, parentItemCount: selected.length };

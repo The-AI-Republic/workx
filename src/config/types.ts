@@ -763,6 +763,7 @@ export interface IConfigChangeEvent {
   oldValue?: any;
   newValue: any;
   timestamp: number;
+  generation: number;
 }
 
 export interface IConfigEventEmitter {

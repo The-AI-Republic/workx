@@ -2,6 +2,7 @@
 
 import type { ToolRegistry } from '../../tools/ToolRegistry';
 import type { IToolsConfig } from '../../config/types';
+import type { AgentPromptLoader } from '../PromptLoader';
 
 export type { IToolsConfig };
 
@@ -22,8 +23,43 @@ export interface ModelCapabilities {
 }
 
 export interface BrowserPageContext {
+  tabId?: number;
   currentUrl?: string;
   currentDomain?: string;
+}
+
+export interface SessionBrowserContext {
+  tabId: number;
+  url: string;
+  hostname: string;
+}
+
+export interface BrowserTabDescriptor extends SessionBrowserContext {
+  title?: string;
+  status?: 'loading' | 'complete';
+}
+
+export interface ForegroundGrant {
+  grantId: string;
+  sessionId: string;
+  tabId: number;
+  expiresAt: number;
+}
+
+export interface SessionBrowserResources {
+  readonly sessionId: string;
+  current(): Promise<SessionBrowserContext | null>;
+  listOwned(): Promise<BrowserTabDescriptor[]>;
+  claimExisting(tabId: number, origin: 'agent' | 'user'): Promise<BrowserTabDescriptor>;
+  create(options?: { url?: string; active?: false }): Promise<BrowserTabDescriptor>;
+  getOwned(tabId: number): Promise<BrowserTabDescriptor>;
+  setCurrent(tabId: number): Promise<void>;
+  navigate(tabId: number, url: string): Promise<BrowserTabDescriptor>;
+  reload(tabId: number, options?: { bypassCache?: boolean }): Promise<void>;
+  close(tabId: number): Promise<void>;
+  captureVisible(tabId: number, grant?: ForegroundGrant): Promise<string>;
+  controller(tabId: number): Promise<IBrowserController | null>;
+  releaseAll(): Promise<void>;
 }
 
 export interface IConfigStorage {
@@ -80,6 +116,8 @@ export interface IPlatformAdapter {
    * systemNote rather than an execution. (Extension has no shell.)
    */
   readonly hasShellExec: boolean;
+  readonly browserResources?: SessionBrowserResources;
+  subscribeTabClosed?(listener: (tabId: number) => void | Promise<void>): () => void;
 
   // Browser Readiness
   /**
@@ -106,15 +144,6 @@ export interface IPlatformAdapter {
   validateTab(tabId: number): Promise<TabValidationResult>;
   switchTab(fromTabId: number, toTabId: number): Promise<void>;
 
-  /**
-   * Record/clear tab ownership for a session (extension-only; optional). Used by
-   * the tab-lease system so a tab leased to one live session can't be claimed by
-   * another, and so leases are GC'd across service-worker restarts. Best-effort:
-   * callers ignore failures so lease bookkeeping never breaks tab binding.
-   */
-  claimTabLease?(tabId: number, sessionId: string, origin: 'agent' | 'user'): Promise<void>;
-  releaseTabLease?(tabId: number, sessionId: string): Promise<void>;
-
   // Browser Controller
   getBrowserController(tabId: number): Promise<IBrowserController | null>;
 
@@ -122,7 +151,8 @@ export interface IPlatformAdapter {
   registerPlatformTools(
     registry: ToolRegistry,
     toolsConfig: IToolsConfig,
-    capabilities: ModelCapabilities
+    capabilities: ModelCapabilities,
+    promptLoader?: AgentPromptLoader
   ): Promise<void>;
 
   // Storage

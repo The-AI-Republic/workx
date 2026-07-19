@@ -51,18 +51,22 @@ export class RolloutWriter {
 
     if (items.length === 0) return;
 
-    // Add write operation to the serialization queue
-    this.writeQueue = this.writeQueue.then(async () => {
+    // Add a write operation to the serialization queue. A failed append must
+    // reject that caller without poisoning every later append, and its
+    // sequence numbers must remain available for retry.
+    this.writeQueue = this.writeQueue.catch(() => undefined).then(async () => {
       if (this.closed) return;
 
-      const records = items.map((item) => ({
+      const startSequence = this.currentSequence;
+      const records = items.map((item, index) => ({
         timestamp: formatTimestamp(new Date()),
-        sequence: this.currentSequence++,
+        sequence: startSequence + index,
         type: item.type,
         payload: item.payload,
       }));
 
       await this.provider.addItems(rolloutId, records);
+      this.currentSequence = startSequence + records.length;
     });
 
     return this.writeQueue;

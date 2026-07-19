@@ -183,7 +183,12 @@ export class NodeBridge {
     connectionId: string,
     toolName: string,
     parameters: Record<string, unknown>,
-    opts?: { timeoutMs?: number },
+    opts?: {
+      timeoutMs?: number;
+      operation?: 'tool' | 'release-session' | 'browser-context';
+      sessionId?: string;
+      focusGrantId?: string;
+    },
   ): Promise<unknown> {
     const node = this.nodes.get(connectionId);
     if (!node) {
@@ -210,8 +215,11 @@ export class NodeBridge {
       try {
         node.sendEvent(NODE_INVOKE_EVENT, {
           invokeId,
-          toolName,
+          operation: opts?.operation ?? 'tool',
+          sessionId: opts?.sessionId ?? 'bridge:legacy',
+          ...(toolName ? { toolName } : {}),
           parameters,
+          ...(opts?.focusGrantId ? { focusGrantId: opts.focusGrantId } : {}),
           // Give the executor a slightly smaller budget so its own timeout
           // error (with real context) beats the server's generic one.
           timeoutMs: Math.max(1_000, timeoutMs - 5_000),

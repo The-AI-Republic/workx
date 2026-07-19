@@ -1,211 +1,140 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { createPromptLoader, loadUserInstructions } from '@/core/PromptLoader';
+import { PromptComposer } from '@/prompts/PromptComposer';
 
-/**
- * PromptLoader tests
- *
- * loadPrompt() uses Vite ?raw imports at build time. In the test environment,
- * Vitest handles these imports, so we can test the actual behavior.
- *
- * When PromptComposer is not configured (default), loadPrompt() returns
- * the default bundled prompt (default_workx_agent_prompt.md).
- *
- * When configured via configurePromptComposer(), loadPrompt() returns
- * a dynamically composed prompt.
- */
-
-// Reset module state between tests to clear PromptComposer configuration
-beforeEach(() => {
-  vi.resetModules();
-});
-
-describe('PromptLoader', () => {
-  it('returns default prompt when PromptComposer is not configured', async () => {
-    const { loadPrompt } = await import('@/core/PromptLoader');
-
-    const prompt = await loadPrompt();
-
-    // Default prompt is the renamed agent_prompt.md (workx-specific)
-    expect(prompt).toContain('WorkX');
-    expect(prompt).toContain('browser automation agent');
-    expect(prompt).toContain('Core Directive');
-  });
-
-  it('returns composed prompt after configurePromptComposer is called', async () => {
-    const { loadPrompt, configurePromptComposer } = await import('@/core/PromptLoader');
-
-    configurePromptComposer('workx', { browserConnection: 'extension' });
-
-    const prompt = await loadPrompt();
-
-    // Composed workx prompt includes intro, safety, tools, policies
-    expect(prompt).toContain('WorkX');
-    expect(prompt).toContain('Safety and Ethics');
-    expect(prompt).toContain('System Semantics');
-    expect(prompt).toContain('Action Risk and Approval');
-    expect(prompt).toContain('Work Loop');
-    expect(prompt).toContain('DOMTool');
-    expect(prompt).toContain('Communication');
-    expect(prompt).not.toContain('Task Execution Policies');
-  });
-
-  it('composes pi agent prompt with runtime context', async () => {
-    const { loadPrompt, configurePromptComposer } = await import('@/core/PromptLoader');
-
-    configurePromptComposer('workx-desktop', {
+describe('AgentPromptLoader', () => {
+  it('composes platform-specific prompts from an immutable context snapshot', async () => {
+    const context = {
       os: 'linux',
       arch: 'x86_64',
       shell: 'bash',
       homeDir: '/home/testuser',
-      browserConnection: 'mcp',
+      browserConnection: 'mcp' as const,
+    };
+    const loader = createPromptLoader({
+      agentType: 'workx-desktop',
+      staticPlatformContext: context,
     });
+    context.homeDir = '/mutated';
 
-    const prompt = await loadPrompt();
+    const prompt = await loader.load('general');
 
-    // WorkX-specific content
     expect(prompt).toContain('WorkX');
     expect(prompt).toContain('desktop automation agent');
-    expect(prompt).toContain('TerminalTool');
-
-    // Runtime metadata
-    expect(prompt).toContain('Linux');
-    expect(prompt).toContain('x86_64');
-    expect(prompt).toContain('bash');
     expect(prompt).toContain('/home/testuser');
-    expect(prompt).toContain('MCP browser automation server');
-
-    // Should NOT contain workx-specific tools
-    expect(prompt).not.toContain('DOMTool');
-    expect(prompt).not.toContain('PageVisionTool');
-  });
-
-  it('composes workx server prompt with server identity', async () => {
-    const { loadPrompt, configurePromptComposer } = await import('@/core/PromptLoader');
-
-    configurePromptComposer('workx-server', {
-      os: 'linux',
-      shell: 'bash',
-      cwd: '/srv/workx',
-      browserConnection: 'mcp',
-    });
-
-    const prompt = await loadPrompt();
-
-    expect(prompt).toContain('WorkX Server');
-    expect(prompt).toContain('headless automation agent');
-    expect(prompt).toContain('/srv/workx');
-    expect(prompt).toContain('TerminalTool');
+    expect(prompt).not.toContain('/mutated');
     expect(prompt).not.toContain('DOMTool');
   });
 
-  it('appends registered prompt extensions after the base prompt', async () => {
-    const { loadPrompt, configurePromptComposer, registerPromptExtension } = await import('@/core/PromptLoader');
-
-    configurePromptComposer('workx');
-    registerPromptExtension('test-memory', () => 'MEMORY_EXTENSION_MARKER');
-    registerPromptExtension('test-skills', () => 'SKILLS_EXTENSION_MARKER');
-
-    const prompt = await loadPrompt();
-
-    expect(prompt.indexOf('MEMORY_EXTENSION_MARKER')).toBeGreaterThan(prompt.indexOf('## Communication'));
-    expect(prompt.indexOf('SKILLS_EXTENSION_MARKER')).toBeGreaterThan(prompt.indexOf('MEMORY_EXTENSION_MARKER'));
-  });
-
-  it('isolates session-scoped prompt extensions by session id', async () => {
-    const {
-      loadPrompt,
-      configurePromptComposer,
-      registerPromptExtension,
-      unregisterSessionPromptExtensions,
-    } = await import('@/core/PromptLoader');
-
-    configurePromptComposer('workx');
-    registerPromptExtension('session-only', () => 'SESSION_A_MARKER', {
-      type: 'session',
-      sessionId: 'session-a',
+  it('keeps extensions and dynamic context isolated between simultaneous agents', async () => {
+    const loaderA = createPromptLoader({
+      agentType: 'workx',
+      staticPlatformContext: { browserConnection: 'extension' },
+      dynamicContext: () => ({ planReviewActive: true }),
     });
+    const loaderB = createPromptLoader({
+      agentType: 'workx-server',
+      staticPlatformContext: { cwd: '/srv/workx', browserConnection: 'mcp' },
+      dynamicContext: () => ({ planReviewActive: false }),
+    });
+    loaderA.registerExtension('memory', ({ sessionId }) => `MEMORY:${sessionId}`);
 
-    const promptA = await loadPrompt(undefined, { sessionId: 'session-a' });
-    const promptB = await loadPrompt(undefined, { sessionId: 'session-b' });
+    const [promptA, promptB] = await Promise.all([
+      loaderA.load('code', { sessionId: 'session-a' }),
+      loaderB.load('general', { sessionId: 'session-b' }),
+    ]);
 
-    expect(promptA).toContain('SESSION_A_MARKER');
-    expect(promptB).not.toContain('SESSION_A_MARKER');
-
-    unregisterSessionPromptExtensions('session-a');
-    const promptAfterCleanup = await loadPrompt(undefined, { sessionId: 'session-a' });
-    expect(promptAfterCleanup).not.toContain('SESSION_A_MARKER');
+    expect(promptA).toContain('MEMORY:session-a');
+    expect(promptB).toContain('WorkX Server');
+    expect(promptB).toContain('/srv/workx');
+    expect(promptB).not.toContain('MEMORY:session-a');
   });
 
-  it('includes fresh currentDateTime on each loadPrompt call', async () => {
-    const { loadPrompt, configurePromptComposer } = await import('@/core/PromptLoader');
+  it('unregisters only the exact extension registration', async () => {
+    const loader = createPromptLoader({ agentType: 'workx' });
+    const first = () => 'FIRST';
+    const unregisterFirst = loader.registerExtension('memory', first);
+    loader.registerExtension('memory', () => 'SECOND');
 
-    configurePromptComposer('workx');
+    unregisterFirst();
 
-    const prompt1 = await loadPrompt();
-    // Small delay to ensure different timestamp
-    await new Promise(resolve => setTimeout(resolve, 10));
-    const prompt2 = await loadPrompt();
-
-    // Both should contain date/time
-    expect(prompt1).toContain('Current date/time');
-    expect(prompt2).toContain('Current date/time');
+    const prompt = await loader.load('general');
+    expect(prompt).not.toContain('FIRST');
+    expect(prompt).toContain('SECOND');
   });
 
-  it('loads user instructions', async () => {
-    const { loadUserInstructions } = await import('@/core/PromptLoader');
+  it('omits a rejecting async extension without affecting later extensions', async () => {
+    const loader = createPromptLoader({ agentType: 'workx' });
+    loader.registerExtension('broken', async () => {
+      throw new Error('extension failed');
+    });
+    loader.registerExtension('healthy', async () => 'HEALTHY_EXTENSION');
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    const instructions = await loadUserInstructions();
+    const prompt = await loader.load('general');
 
-    // user_instruction.md exists but may be empty
-    expect(typeof instructions).toBe('string');
-  });
-
-  it('falls back to default prompt when composeMainInstruction throws', async () => {
-    const { loadPrompt, configurePromptComposer } = await import('@/core/PromptLoader');
-    const PromptComposerModule = await import('@/prompts/PromptComposer');
-
-    // Configure the composer, then sabotage its method to throw
-    configurePromptComposer('workx');
-    vi.spyOn(PromptComposerModule.PromptComposer.prototype, 'composeMainInstruction')
-      .mockImplementation(() => { throw new Error('fragment import failed'); });
-
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-    const prompt = await loadPrompt();
-
-    // Should fall back to default workx prompt
-    expect(prompt).toContain('WorkX');
-    expect(prompt).toContain('Core Directive');
-    expect(prompt).toContain('System Semantics');
-    expect(prompt).toContain('Action Risk and Approval');
-    expect(prompt).toContain('Work Loop');
-
-    // Should have logged the error
-    expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('composeMainInstruction failed'),
-      expect.any(Error)
+    expect(prompt).toContain('HEALTHY_EXTENSION');
+    expect(warning).toHaveBeenCalledWith(
+      expect.stringContaining("extension 'broken' failed"),
+      expect.any(Error),
     );
   });
 
-  it('isComposerConfigured returns false before config, true after', async () => {
-    const { isComposerConfigured, configurePromptComposer } = await import('@/core/PromptLoader');
+  it('runs extensions concurrently while preserving registration order in the prompt', async () => {
+    const loader = createPromptLoader({ agentType: 'workx' });
+    const started: string[] = [];
+    let releaseFirst!: () => void;
+    loader.registerExtension('first', async () => {
+      started.push('first');
+      await new Promise<void>((resolve) => { releaseFirst = resolve; });
+      return 'FIRST_EXTENSION';
+    });
+    loader.registerExtension('second', async () => {
+      started.push('second');
+      return 'SECOND_EXTENSION';
+    });
 
-    expect(isComposerConfigured()).toBe(false);
+    const load = loader.load('general');
+    await vi.waitFor(() => expect(started).toEqual(['first', 'second']));
+    releaseFirst();
+    const prompt = await load;
 
-    configurePromptComposer('workx');
-
-    expect(isComposerConfigured()).toBe(true);
+    expect(prompt.indexOf('FIRST_EXTENSION')).toBeLessThan(prompt.indexOf('SECOND_EXTENSION'));
   });
 
-  it('returns workx default prompt (not pi) when composer is not configured', async () => {
-    const { loadPrompt } = await import('@/core/PromptLoader');
+  it('falls back to the correct bundled prompt if composition fails', async () => {
+    vi.spyOn(PromptComposer.prototype, 'composeMainInstruction').mockImplementation(() => {
+      throw new Error('fragment import failed');
+    });
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const loader = createPromptLoader({ agentType: 'workx' });
 
-    const prompt = await loadPrompt();
+    const prompt = await loader.load('general');
 
-    // In test/extension mode (__BUILD_MODE__ is undefined), fallback should be workx
     expect(prompt).toContain('WorkX');
-    // Extension default: identifies as WorkX, no leftover "Pi", and is the
-    // browser (not desktop) prompt.
-    expect(prompt).not.toMatch(/\bPi\b/);
-    expect(prompt).not.toContain('desktop automation agent');
+    expect(prompt).toContain('Core Directive');
+    expect(warning).toHaveBeenCalled();
+  });
+
+  it('rejects use after disposal and disposal is idempotent', async () => {
+    const loader = createPromptLoader({ agentType: 'workx' });
+    loader.registerExtension('memory', () => 'MEMORY');
+
+    loader.dispose();
+    loader.dispose();
+
+    await expect(loader.load('general')).rejects.toThrow('disposed');
+    expect(() => loader.registerExtension('late', () => 'LATE')).toThrow('disposed');
+  });
+
+  it('reports supported modes and loads bundled user instructions', async () => {
+    const extensionLoader = createPromptLoader({ agentType: 'workx' });
+    const desktopLoader = createPromptLoader({ agentType: 'workx-desktop' });
+
+    expect(extensionLoader.supportsMode('general')).toBe(true);
+    expect(extensionLoader.supportsMode('code')).toBe(false);
+    expect(desktopLoader.supportsMode('code')).toBe(true);
+    expect(extensionLoader.supportsMode('not-a-mode' as never)).toBe(false);
+    await expect(loadUserInstructions()).resolves.toEqual(expect.any(String));
   });
 });

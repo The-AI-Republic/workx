@@ -154,7 +154,7 @@
     const value = parseInt(target.value, 10);
     currentPreferences.maxConcurrentSessions = value;
 
-    // Notify backend to update AgentRegistry limit
+    // Notify backend to update SessionManager limit
     getInitializedUIClient().then(c => c.serviceRequest('session.setMaxConcurrent', { maxConcurrent: value })).catch(() => {
       console.warn('[GeneralSettings] Failed to update max concurrent sessions');
     });

@@ -5,7 +5,7 @@
  * to DOM-based page operations.
  */
 
-import { BaseTool, createToolDefinition, type BaseToolRequest, type BaseToolOptions, type ToolDefinition } from '../../tools/BaseTool';
+import { BaseTool, createToolDefinition, type BaseToolRequest, type BaseToolOptions, type ToolDefinition, type ScopedBrowserTab } from '../../tools/BaseTool';
 import type {
   ScreenshotToolRequest,
   ScreenshotResponseData,
@@ -182,7 +182,7 @@ Simply provide coordinates based on visual analysis of the screenshot image.
 
     // Validate tab exists
     try {
-      const tab = await chrome.tabs.get(tabId);
+      const tab = await this.getOwnedTab(tabId);
     } catch (error) {
       throw new Error(`Target tab ${tabId} not found or inaccessible`);
     }
@@ -451,7 +451,9 @@ Simply provide coordinates based on visual analysis of the screenshot image.
    * Validate Chrome context
    */
   protected validateChromeContext(): void {
-    if (typeof chrome === 'undefined' || !chrome.tabs) {
+    try {
+      this.requireBrowserResources();
+    } catch {
       throw new Error('VALIDATION_ERROR: Chrome extension context required');
     }
   }

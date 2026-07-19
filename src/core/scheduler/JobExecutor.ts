@@ -14,7 +14,7 @@ import type {
 } from '../models/types/ScheduleEvent';
 import { createExecutionRecord } from '../models/types/ScheduleEvent';
 import type { JobResultRecord } from '../models/types/Scheduler';
-import type { AgentRegistry } from '../registry/AgentRegistry';
+import type { SessionManager } from '../registry/SessionManager';
 import { computeRewindSlice, findCheckpointSequence } from '../session/rewind';
 
 /**
@@ -82,7 +82,7 @@ export type ExecutionEventEmitter = (event: {
 }) => void;
 
 export class JobExecutor {
-  private registry: AgentRegistry | null = null;
+  private registry: SessionManager | null = null;
   private executionSessions: Map<string, string> = new Map(); // executionId → registrySessionId
   private notificationHandler: ExecutionNotificationHandler | null = null;
   private jobLauncher: ExecutionJobLauncher | null = null;
@@ -101,7 +101,7 @@ export class JobExecutor {
   // Configuration setters
   // ==========================================================================
 
-  setRegistry(registry: AgentRegistry): void {
+  setRegistry(registry: SessionManager): void {
     this.registry = registry;
   }
 

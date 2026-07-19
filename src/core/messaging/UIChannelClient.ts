@@ -22,6 +22,17 @@ interface PendingRequest {
   timeout: ReturnType<typeof setTimeout>;
 }
 
+export class ServiceRequestError extends Error {
+  constructor(
+    message: string,
+    readonly errorCode?: string,
+    readonly retryable = false,
+  ) {
+    super(message);
+    this.name = 'ServiceRequestError';
+  }
+}
+
 export class UIChannelClient {
   private transport: UIChannelTransport;
   private pendingRequests = new Map<string, PendingRequest>();
@@ -185,6 +196,8 @@ export class UIChannelClient {
         success: boolean;
         data?: unknown;
         error?: string;
+        errorCode?: string;
+        retryable?: boolean;
       };
 
       const pending = this.pendingRequests.get(data.requestId);
@@ -195,7 +208,11 @@ export class UIChannelClient {
         if (data.success) {
           pending.resolve(data.data);
         } else {
-          pending.reject(new Error(data.error || `Service '${data.service}' failed`));
+          pending.reject(new ServiceRequestError(
+            data.error || `Service '${data.service}' failed`,
+            data.errorCode,
+            data.retryable ?? false,
+          ));
         }
         return;
       }

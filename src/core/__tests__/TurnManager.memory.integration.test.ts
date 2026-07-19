@@ -2,19 +2,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { TurnManager } from '../TurnManager';
 import { setConfigStorage, type ConfigStorageProvider } from '../storage/ConfigStorageProvider';
 
-// Stub PromptLoader so the test does not depend on the bundled default prompt
-// and we can prove TurnManager pulls fresh base instructions per turn.
 vi.mock('../PromptLoader', () => ({
-    loadPrompt: vi.fn(),
     loadUserInstructions: vi.fn().mockResolvedValue('User instructions.'),
 }));
-
-import { loadPrompt } from '../PromptLoader';
 
 describe('TurnManager Memory Integration', () => {
     let mockTurnContext: any;
     let mockSession: any;
     let mockModelClient: any;
+    let mockPromptLoader: any;
     let turnManager: TurnManager;
 
     beforeEach(() => {
@@ -56,8 +52,9 @@ describe('TurnManager Memory Integration', () => {
         };
         setConfigStorage(configStorage);
 
-        (loadPrompt as any).mockReset();
-        (loadPrompt as any).mockResolvedValue('Base instructions.');
+        mockPromptLoader = {
+            load: vi.fn().mockResolvedValue('Base instructions.'),
+        };
 
         mockModelClient = {
             stream: vi.fn(),
@@ -82,6 +79,7 @@ describe('TurnManager Memory Integration', () => {
             getSessionId: vi.fn().mockReturnValue('test-session-id'),
             getMemoryService: vi.fn().mockReturnValue(null),
             getToolRegistry: vi.fn().mockReturnValue(null),
+            getPromptLoader: vi.fn().mockReturnValue(mockPromptLoader),
             showRawAgentReasoning: vi.fn().mockReturnValue(false),
         };
         const mockToolRegistry = { listTools: vi.fn().mockReturnValue([]) };
@@ -107,17 +105,17 @@ describe('TurnManager Memory Integration', () => {
 
         await turnManager.runTurn([]);
 
-        expect(loadPrompt).toHaveBeenCalledTimes(1);
+        expect(mockPromptLoader.load).toHaveBeenCalledTimes(1);
         expect(mockModelClient.stream).toHaveBeenCalledWith(
             expect.objectContaining({
-                // Comes from loadPrompt() — the cached value on TurnContext is ignored.
+                // Comes from the session-owned loader — cached instructions are ignored.
                 base_instructions_override: 'Base instructions.',
             })
         );
     });
 
-    it('falls back to TurnContext.getBaseInstructions when loadPrompt throws', async () => {
-        (loadPrompt as any).mockRejectedValueOnce(new Error('compose failure'));
+    it('falls back to TurnContext.getBaseInstructions when prompt composition throws', async () => {
+        mockPromptLoader.load.mockRejectedValueOnce(new Error('compose failure'));
         mockModelClient.stream.mockResolvedValue((async function* () {
             yield { type: 'Completed', tokenUsage: { inputTokens: 10, outputTokens: 10 } };
         })());

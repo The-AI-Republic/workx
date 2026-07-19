@@ -21,7 +21,7 @@ import type { StorageAdapter } from './StorageAdapter';
  * IndexedDB database constants
  */
 export const DB_NAME = 'workx_cache';
-export const DB_VERSION = 5;
+export const DB_VERSION = 6;
 
 /**
  * Object store names
@@ -49,6 +49,8 @@ export const STORE_NAMES = {
   EXECUTION_RECORDS: 'execution_records',
   /** Track 04: chunked output for background sub-agent tasks */
   TASK_OUTPUT_CHUNKS: 'task_output_chunks',
+  /** Durable multi-thread metadata, independent of live agent graphs. */
+  THREAD_INDEX: 'thread_index',
 } as const;
 
 /**
@@ -344,6 +346,14 @@ export class IndexedDBAdapter implements StorageAdapter {
             chunksStore.createIndex('by_task_seq', ['taskId', 'seq'], { unique: true });
             chunksStore.createIndex('by_created_at', 'createdAt', { unique: false });
           }
+        }
+
+        if (oldVersion < 6 && !db.objectStoreNames.contains(STORE_NAMES.THREAD_INDEX)) {
+          const threadStore = db.createObjectStore(STORE_NAMES.THREAD_INDEX, {
+            keyPath: 'sessionId',
+          });
+          threadStore.createIndex('by_last_active_at', 'lastActiveAt', { unique: false });
+          threadStore.createIndex('by_deleted_at', 'deletedAt', { unique: false });
         }
 
       };

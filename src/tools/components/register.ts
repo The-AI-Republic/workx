@@ -1,7 +1,7 @@
 import { ComponentError, type ComponentManager, type ComponentProgress } from '@/core/components';
 import type { DataTurnAccessSnapshot } from '@/core/data-sources';
 import { StaticRiskAssessor } from '@/core/approval/assessors/StaticRiskAssessor';
-import { registerPromptExtension } from '@/core/PromptLoader';
+import type { AgentPromptLoader } from '@/core/PromptLoader';
 import type { ToolContext } from '@/tools/BaseTool';
 import type { ToolRegistry } from '@/tools/ToolRegistry';
 import { ComponentInstallRiskAssessor } from './ComponentInstallRiskAssessor';
@@ -42,9 +42,10 @@ function emitProgress(context: ToolContext, progress: ComponentProgress): void {
 
 export async function registerComponentTools(
   registry: ToolRegistry,
-  manager: ComponentManager
+  manager: ComponentManager,
+  promptLoader?: AgentPromptLoader,
 ): Promise<void> {
-  registerPromptExtension('managed-components', (context) =>
+  promptLoader?.registerExtension('managed-components', (context) =>
     context.toolRegistry?.getTool('component_install') ? MANAGED_COMPONENTS_PROMPT : ''
   );
 
