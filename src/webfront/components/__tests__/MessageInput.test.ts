@@ -305,6 +305,11 @@ describe('MessageInput Component', () => {
       expect(chip.classList.contains('text-xs')).toBe(false);
       expect(chip.textContent).not.toContain('/Users/rich/projects');
       expect(chip.getAttribute('title')).toBe('/Users/rich/projects/workx');
+      const contextRow = chip.closest('.composer-context-row');
+      expect(contextRow).toBeTruthy();
+      expect(contextRow?.contains(
+        screen.getByRole('button', { name: /start new conversation/i }),
+      )).toBe(true);
     });
 
     it('opens the folder picker callback when clicked', async () => {
