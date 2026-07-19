@@ -136,9 +136,28 @@ async function handleChatHistory(
     throw invalidRequest('sessionKey is required');
   }
 
+  const limit = params?.limit;
+  if (
+    limit !== undefined
+    && (typeof limit !== 'number' || !Number.isInteger(limit) || limit < 1 || limit > 100)
+  ) {
+    throw invalidRequest('"limit" must be an integer from 1 to 100');
+  }
+  const beforeSequence = params?.beforeSequence;
+  if (
+    beforeSequence !== undefined
+    && (
+      typeof beforeSequence !== 'number'
+      || !Number.isSafeInteger(beforeSequence)
+      || beforeSequence < 0
+    )
+  ) {
+    throw invalidRequest('"beforeSequence" must be a non-negative safe integer');
+  }
+
   const history = await _deps.getHistory(sessionKey, {
-    limit: params?.limit as number | undefined,
-    beforeSequence: params?.beforeSequence as number | undefined,
+    limit,
+    beforeSequence,
   });
   return { sessionKey, ...history, messages: history.items };
 }

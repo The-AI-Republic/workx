@@ -94,6 +94,40 @@ describe('canonical rollout history projection', () => {
     expect(JSON.stringify(projected.items)).not.toContain('very-large');
   });
 
+  it('sanitizes malformed legacy content parts before returning a typed page', () => {
+    const projected = projectHistoryRecords([
+      record(1, 'response_item', {
+        type: 'message',
+        role: 'user',
+        content: [
+          null,
+          { type: 'input_text', text: 'visible' },
+          { type: 'input_image', image_url: 'data:image/png;base64,large' },
+          { type: 'output_text', text: 42 },
+        ],
+      }),
+      record(2, 'response_item', {
+        type: 'reasoning',
+        summary: [undefined, { type: 'summary_text', text: 'summary' }, { type: 'summary_text' }],
+      }),
+    ]);
+
+    expect(projected.items.map((item) => item.response)).toEqual([
+      {
+        type: 'message',
+        role: 'user',
+        content: [
+          { type: 'input_text', text: 'visible' },
+          { type: 'input_image', image_url: '' },
+        ],
+      },
+      {
+        type: 'reasoning',
+        summary: [{ type: 'summary_text', text: 'summary' }],
+      },
+    ]);
+  });
+
   it('returns ten newest turns and a cursor that loads the next ten without overlap', async () => {
     const records: RolloutItemRecord[] = [record(0, 'session_meta', {})];
     for (let turn = 1; turn <= 21; turn += 1) {

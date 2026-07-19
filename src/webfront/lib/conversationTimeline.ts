@@ -154,7 +154,11 @@ export function historyPageToEvents(page: HistoryPage): ProcessedEvent[] {
     if (response.type === 'message') {
       if (response.role === 'system') return [];
       const content = getResponseItemContent(response);
-      const imageCount = response.content.filter((part) => part.type === 'input_image').length;
+      const imageCount = Array.isArray(response.content)
+        ? response.content.filter((part) => (
+          part && typeof part === 'object' && 'type' in part && part.type === 'input_image'
+        )).length
+        : 0;
       const visible = content || (imageCount > 0 ? `[${imageCount} image(s)]` : '');
       if (!visible) return [];
       const user = response.role === 'user';

@@ -309,17 +309,24 @@ export function getResponseItemContent(item: ResponseItem): string {
         console.error('[getResponseItemContent] message.content is neither string nor array:', item);
         return '';
       }
-      return item.content.map(c => {
-        if (c.type === 'text' || c.type === 'input_text' || c.type === 'output_text') {
-          return c.text;
+      return (item.content as unknown[]).map(c => {
+        if (!c || typeof c !== 'object') return '';
+        const part = c as Record<string, unknown>;
+        if (part.type === 'text' || part.type === 'input_text' || part.type === 'output_text') {
+          return typeof part.text === 'string' ? part.text : '';
         }
-        if (c.type === 'refusal') {
-          return c.refusal;
+        if (part.type === 'refusal') {
+          return typeof part.refusal === 'string' ? part.refusal : '';
         }
         return '';
       }).join('');
     case 'reasoning':
-      return item.summary.map(s => s.text).join('\n');
+      if (!Array.isArray(item.summary)) return '';
+      return (item.summary as unknown[]).map(s => (
+        s && typeof s === 'object' && 'text' in s && typeof s.text === 'string'
+          ? s.text
+          : ''
+      )).join('\n');
     case 'function_call':
       return item.arguments;
     case 'function_call_output':
@@ -357,7 +364,9 @@ export function normalizeLegacyUserResponseItem(item: ResponseItem): ResponseIte
 
   const part = item.content[0];
   if (
-    (part.type !== 'text' && part.type !== 'input_text')
+    !part
+    || typeof part !== 'object'
+    || (part.type !== 'text' && part.type !== 'input_text')
     || typeof part.text !== 'string'
   ) {
     return item;

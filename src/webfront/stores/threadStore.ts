@@ -31,6 +31,7 @@ export interface ThreadAttachState {
   historyCursor: number | null;
   replayTruncated: boolean;
   error: { message: string; retryable: boolean } | null;
+  historyError: { message: string; retryable: boolean } | null;
   attaching: boolean;
 }
 
@@ -96,6 +97,7 @@ function emptyAttach(): ThreadAttachState {
     historyCursor: null,
     replayTruncated: false,
     error: null,
+    historyError: null,
     attaching: false,
   };
 }

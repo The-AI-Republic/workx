@@ -94,4 +94,26 @@ describe('conversation timeline reducer', () => {
     };
     expect(historyPageToEvents(page)).toMatchObject([{ id: 'user:m1', content: 'hello' }]);
   });
+
+  it('ignores malformed content parts received at the UI boundary', () => {
+    const page = {
+      sessionId: 's',
+      revision: 1,
+      turns: [],
+      nextCursor: null,
+      items: [{
+        id: 'user:m1',
+        turnId: 't1',
+        sequence: 1,
+        timestamp: 1000,
+        response: {
+          type: 'message',
+          role: 'user',
+          content: [null, { type: 'input_text', text: 'hello' }, { type: 'input_image', image_url: '' }],
+        },
+      }],
+    } as unknown as HistoryPage;
+
+    expect(historyPageToEvents(page)).toMatchObject([{ content: 'hello' }]);
+  });
 });

@@ -513,7 +513,7 @@
     const existing = threadStore.getThread(sessionId);
     attachBuffers.set(sessionId, []);
     attachBufferOverflow.delete(sessionId);
-    threadStore.setAttach(sessionId, { attaching: true, error: null });
+    threadStore.setAttach(sessionId, { attaching: true, error: null, historyError: null });
     try {
       const response = await c.serviceRequest<{
         entry: ThreadIndexEntry;
@@ -580,6 +580,7 @@
         historyCursor: response.historyPage.nextCursor,
         replayTruncated: replay.truncated || bufferTruncated,
         error: null,
+        historyError: null,
       });
       threadStore.reconcileSubmissions(
         sessionId,
@@ -629,6 +630,7 @@
     const beforeSequence = thread?.attach.historyCursor;
     if (beforeSequence == null) return;
     loadingOlderHistory = true;
+    threadStore.setAttach(sessionId, { historyError: null });
     try {
       const page = await client.serviceRequest<HistoryPage>('session.history', {
         sessionId,
@@ -650,7 +652,7 @@
     } catch (error) {
       console.error('[App] Failed to load earlier history:', error);
       threadStore.setAttach(sessionId, {
-        error: {
+        historyError: {
           message: error instanceof Error ? error.message : 'Failed to load earlier history',
           retryable: true,
         },
@@ -1676,6 +1678,16 @@
 
         <!-- Messages - scrollable area -->
         <div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-4" bind:this={scrollContainer}>
+          {#if $activeThread?.attach.historyError}
+            <div class="mx-3 mt-2 rounded px-3 py-2 text-sm flex items-center justify-between gap-3 bg-red-500/10 text-red-600 dark:text-red-300" role="alert">
+              <span>{$activeThread.attach.historyError.message}</span>
+              {#if $activeThread.attach.historyError.retryable}
+                <button class="shrink-0 underline border-none bg-transparent text-inherit cursor-pointer" onclick={loadOlderHistory}>
+                  {$_t("Retry")}
+                </button>
+              {/if}
+            </div>
+          {/if}
           {#if activeSessionId && $activeThread?.attach.historyCursor != null}
             <div class="flex justify-center py-2">
               <button

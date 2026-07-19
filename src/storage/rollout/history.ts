@@ -1,5 +1,7 @@
 import {
   normalizeLegacyUserResponseItem,
+  type ContentItem,
+  type ReasoningItemReasoningSummary,
   type ResponseItem,
 } from '../../core/protocol/types';
 import type { RolloutStorageProvider } from './provider';
@@ -329,7 +331,21 @@ function isDisplayResponseItem(
 function toDisplayResponseItem(value: unknown): ResponseItem | null {
   if (!isDisplayResponseItem(value)) return null;
   if (value.type === 'message') {
-    const normalized = normalizeLegacyUserResponseItem(value) as Extract<
+    const normalized = normalizeLegacyUserResponseItem({
+      type: 'message',
+      ...(typeof value.id === 'string' && value.id ? { id: value.id } : {}),
+      ...(typeof value.client_id === 'string' && value.client_id
+        ? { client_id: value.client_id }
+        : {}),
+      role: value.role,
+      content: value.content.flatMap((part) => {
+        const sanitized = sanitizeContentItem(part);
+        return sanitized ? [sanitized] : [];
+      }),
+      ...(typeof value.modelKey === 'string' && value.modelKey
+        ? { modelKey: value.modelKey }
+        : {}),
+    }) as Extract<
       ResponseItem,
       { type: 'message' }
     >;
@@ -348,9 +364,38 @@ function toDisplayResponseItem(value: unknown): ResponseItem | null {
   }
   return {
     type: 'reasoning',
-    ...(value.id ? { id: value.id } : {}),
-    summary: structuredClone(value.summary),
+    ...(typeof value.id === 'string' && value.id ? { id: value.id } : {}),
+    summary: structuredClone(value.summary.flatMap((part) => {
+      const sanitized = sanitizeReasoningSummary(part);
+      return sanitized ? [sanitized] : [];
+    })),
   };
+}
+
+function sanitizeContentItem(value: unknown): ContentItem | null {
+  if (!value || typeof value !== 'object') return null;
+  const part = value as Record<string, unknown>;
+  if (
+    (part.type === 'text' || part.type === 'input_text' || part.type === 'output_text')
+    && typeof part.text === 'string'
+  ) {
+    return { type: part.type, text: part.text };
+  }
+  if (part.type === 'input_image' && typeof part.image_url === 'string') {
+    return { type: 'input_image', image_url: part.image_url };
+  }
+  if (part.type === 'refusal' && typeof part.refusal === 'string') {
+    return { type: 'refusal', refusal: part.refusal };
+  }
+  return null;
+}
+
+function sanitizeReasoningSummary(value: unknown): ReasoningItemReasoningSummary | null {
+  if (!value || typeof value !== 'object') return null;
+  const part = value as Record<string, unknown>;
+  return part.type === 'summary_text' && typeof part.text === 'string'
+    ? { type: 'summary_text', text: part.text }
+    : null;
 }
 
 function asObject(value: unknown): Record<string, unknown> {
