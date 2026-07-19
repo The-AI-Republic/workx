@@ -133,11 +133,7 @@ export class AgentSession {
       throw new Error(`Cannot suspend busy session: ${this._sessionId}`);
     }
     await this._assembledAgent?.flushRollout();
-    if (this._assembledAgent) {
-      await this._assembledAgent.dispose('suspend');
-    } else if (this._agent) {
-      await this._agent.dispose('suspend');
-    }
+    await this.disposeAgent('suspend');
     this.setState('terminated');
     this._agent = null;
     this._assembledAgent = null;
@@ -158,8 +154,7 @@ export class AgentSession {
 
   async finishCompatClose(): Promise<void> {
     if (this._state === 'terminated') return;
-    if (this._assembledAgent) await this._assembledAgent.dispose('compat-close');
-    else if (this._agent) await this._agent.dispose('compat-close');
+    await this.disposeAgent('compat-close');
     this.setState('terminated');
     this._agent = null;
     this._assembledAgent = null;
@@ -167,11 +162,7 @@ export class AgentSession {
 
   async disposeForLifecycle(reason: AgentDisposeReason): Promise<void> {
     if (this._state === 'terminated') return;
-    if (this._assembledAgent) {
-      await this._assembledAgent.dispose(reason);
-    } else if (this._agent) {
-      await this._agent.dispose(reason);
-    }
+    await this.disposeAgent(reason);
     this.setState('terminated');
     this._agent = null;
     this._assembledAgent = null;
@@ -193,6 +184,21 @@ export class AgentSession {
     this._agent = agent;
     this._assembledAgent = assembledAgent ?? null;
     this._updateActivity();
+  }
+
+  /** Dispose the complete assembled graph and retain cleanup diagnostics. */
+  private async disposeAgent(reason: AgentDisposeReason): Promise<void> {
+    if (this._assembledAgent) {
+      const report = await this._assembledAgent.dispose(reason);
+      if (!report.ok) {
+        console.warn(
+          `[AgentSession] Partial cleanup for ${this._sessionId} (${reason}):`,
+          report.failedSteps,
+        );
+      }
+      return;
+    }
+    await this._agent?.dispose(reason);
   }
 
   /**
@@ -337,11 +343,7 @@ export class AgentSession {
         const lifecycleReason: AgentDisposeReason = reason === 'tabClosed'
           ? 'tab-closed'
           : reason;
-        if (this._assembledAgent) {
-          await this._assembledAgent.dispose(lifecycleReason);
-        } else {
-          await this._agent.dispose(lifecycleReason);
-        }
+        await this.disposeAgent(lifecycleReason);
       } catch (error) {
         console.error(`[AgentSession] Error during agent cleanup:`, error);
       }
