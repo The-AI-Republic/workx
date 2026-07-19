@@ -329,6 +329,11 @@
     showMenu = false;
   }
 
+  function openUsage() {
+    showMenu = false;
+    push('/usage');
+  }
+
   function openSettings() {
     showMenu = false;
     push('/settings');
@@ -462,6 +467,22 @@
           : 'h-px bg-term-dim-green/30'}"></div>
 
         <!-- Menu Items -->
+        <button
+          class="flex items-center gap-2.5 w-full py-2.5 px-3 bg-transparent border-none cursor-pointer text-sm text-left transition-colors duration-150
+            {$uiTheme === 'modern'
+              ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat rounded-md m-1 w-[calc(100%-8px)] hover:bg-white/10'
+              : 'text-term-green font-terminal hover:bg-term-green/10'}"
+          onclick={openUsage}
+          role="menuitem"
+        >
+          <svg class="w-[18px] h-[18px] shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="12" width="4" height="9" rx="1"></rect>
+            <rect x="10" y="7" width="4" height="14" rx="1"></rect>
+            <rect x="17" y="3" width="4" height="18" rx="1"></rect>
+          </svg>
+          <span>{$_t("Usage")}</span>
+        </button>
+
         <button
           class="flex items-center gap-2.5 w-full py-2.5 px-3 bg-transparent border-none cursor-pointer text-sm text-left transition-colors duration-150
             {$uiTheme === 'modern'

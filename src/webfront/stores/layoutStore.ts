@@ -83,12 +83,8 @@ export const NAV_ITEMS: NavItem[] = [
         },
       ]
     : []),
-  {
-    id: 'usage',
-    label: 'Usage',
-    route: '/usage',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="12" width="4" height="9" rx="1"></rect><rect x="10" y="7" width="4" height="14" rx="1"></rect><rect x="17" y="3" width="4" height="18" rx="1"></rect></svg>',
-  },
+  // Usage lives in the user center (avatar) menu, not the top-level nav —
+  // see UserLoginStatus.svelte (logged in) and LeftPanel's logged-out fallback.
 ];
 
 // ---------------------------------------------------------------------------
@@ -100,8 +96,8 @@ export const NAV_ITEMS: NavItem[] = [
  * The root route ('/') is treated as a catch-all: it's active when the
  * location doesn't match any other known nav route.
  */
-/** Routes that are valid pages but not shown in NAV_ITEMS (e.g. Settings is in user center). */
-const HIDDEN_ROUTES = ['/settings'];
+/** Routes that are valid pages but not shown in NAV_ITEMS (Settings and Usage live in the user center). */
+const HIDDEN_ROUTES = ['/settings', '/usage'];
 
 export function isNavActive(route: string, currentLocation: string): boolean {
   if (route === '/') {
