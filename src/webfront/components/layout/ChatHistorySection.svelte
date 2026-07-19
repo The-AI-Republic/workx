@@ -93,17 +93,6 @@
     }
   }
 
-  async function newConversation(): Promise<void> {
-    const client = await getInitializedUIClient();
-    const response = await client.serviceRequest<{
-      sessionId: string;
-      entry?: ThreadListItem;
-    }>('session.open', {});
-    if (response.entry) threadStore.mergeThread(response.entry);
-    else threadStore.createThread(response.sessionId);
-    selectConversation(response.sessionId);
-  }
-
   async function togglePin(sessionId: string, pinned: boolean): Promise<void> {
     const client = await getInitializedUIClient();
     const entry = await client.serviceRequest<ThreadListItem>('session.pin', { sessionId, pinned });
@@ -170,9 +159,9 @@
 </script>
 
 <LeftPanelSection title="Chat History">
-  <div class="px-2 pb-2 flex gap-1">
+  <div class="px-2 pb-2">
     <input
-      class="min-w-0 flex-1 rounded px-2 py-1 text-xs bg-transparent border
+      class="w-full min-w-0 rounded px-2 py-1 text-xs bg-transparent border
         {currentTheme === 'modern'
           ? 'border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark placeholder:text-chat-text-muted dark:placeholder:text-chat-text-muted-dark'
           : 'border-term-dim-green text-term-green placeholder:text-term-dim-green'}"
@@ -181,13 +170,6 @@
       placeholder={$_t('Search chats')}
       aria-label={$_t('Search chats')}
     />
-    <button
-      class="rounded px-2 text-sm cursor-pointer border-none
-        {currentTheme === 'modern' ? 'bg-chat-primary text-white' : 'bg-term-green/20 text-term-bright-green'}"
-      onclick={() => void newConversation()}
-      aria-label={$_t('New Chat')}
-      title={$_t('New Chat')}
-    >+</button>
   </div>
 
   {#if attentionThreads.length > 0}
@@ -212,13 +194,13 @@
     <div class="px-2 py-1.5 text-xs opacity-70">{$_t('No chat history yet')}</div>
   {:else}
     <div
-      class="max-h-80 overflow-y-auto overscroll-contain pr-0.5"
+      class="flex flex-col gap-0.5"
       data-thread-history-list
       aria-label={$_t('Chat History')}
     >
       {#each $threadStore.threads as item (item.sessionId)}
         {@const isActive = $threadStore.activeSessionId === item.sessionId}
-        <div class="group flex items-center rounded-md transition-colors
+        <div class="group relative flex items-center rounded-md transition-colors
           {currentTheme === 'modern'
             ? (isActive
                 ? 'bg-chat-button-hover dark:bg-chat-button-hover-dark text-chat-text dark:text-chat-text-dark'
@@ -243,20 +225,39 @@
                 title={item.runtime.state === 'running' ? $_t('Running') : undefined}></span>
             {/if}
             <span class="flex-1 truncate">{item.title || $_t('Untitled conversation')}</span>
-            {#if item.runtime.durability === 'degraded'}<span title={$_t('Durability degraded')}>⚠</span>{/if}
-            <span class="shrink-0 text-xs opacity-60">{formatTimeAgo(item.lastActiveAt)}</span>
+            {#if item.runtime.durability === 'degraded'}<span class="shrink-0" title={$_t('Durability degraded')}>⚠</span>{/if}
+            {#if item.pinned}
+              <!-- Persistent pin marker so pinned rows read as pinned at rest;
+                   the hover overlay's pin toggle fades in over it on hover. -->
+              <span class="shrink-0 text-xs opacity-70 group-hover:opacity-0 transition-opacity"
+                title={$_t('Pinned')} aria-hidden="true">★</span>
+            {/if}
           </button>
-          {#if item.attentionRequest}
-            <button class="px-1 border-none bg-transparent text-inherit cursor-pointer" title={$_t('Continue browser action')}
-              onclick={() => void resolveAttention(item.sessionId, item.attentionRequest!.requestId)}>↗</button>
-          {/if}
-          <button class="px-1 border-none bg-transparent text-inherit cursor-pointer opacity-60 hover:opacity-100"
-            title={item.pinned ? $_t('Unpin') : $_t('Pin')}
-            onclick={() => void togglePin(item.sessionId, !item.pinned)}>{item.pinned ? '★' : '☆'}</button>
-          <button class="hidden lg:block px-1 border-none bg-transparent text-inherit cursor-pointer opacity-0 group-hover:opacity-60 hover:!opacity-100"
-            title={$_t('Rename')} onclick={() => void rename(item.sessionId, item.title)}>✎</button>
-          <button class="px-1 pr-2 border-none bg-transparent text-inherit cursor-pointer opacity-0 group-hover:opacity-60 hover:!opacity-100"
-            title={$_t('Delete')} onclick={() => void remove(item.sessionId, item.title)}>×</button>
+
+          <!-- Hover overlay: floats above the row's right edge so the title text
+               can use the full width at rest. The row's controls (time, pin,
+               rename, delete) reveal only on hover or keyboard focus. -->
+          <div class="absolute inset-y-0 right-0 flex items-center gap-0.5 pl-8 pr-1 rounded-r-md
+            opacity-0 pointer-events-none transition-opacity
+            group-hover:opacity-100 group-hover:pointer-events-auto
+            group-focus-within:opacity-100 group-focus-within:pointer-events-auto
+            {currentTheme === 'modern'
+              ? 'bg-gradient-to-l from-chat-button-hover dark:from-chat-button-hover-dark via-chat-button-hover dark:via-chat-button-hover-dark via-60% to-transparent'
+              : 'bg-gradient-to-l from-term-bg via-term-bg via-60% to-transparent'}">
+            <span class="shrink-0 text-xs opacity-60">{formatTimeAgo(item.lastActiveAt)}</span>
+            {#if item.attentionRequest}
+              <button class="px-1 border-none bg-transparent text-inherit cursor-pointer opacity-70 hover:opacity-100"
+                title={$_t('Continue browser action')}
+                onclick={() => void resolveAttention(item.sessionId, item.attentionRequest!.requestId)}>↗</button>
+            {/if}
+            <button class="px-1 border-none bg-transparent text-inherit cursor-pointer opacity-70 hover:opacity-100"
+              title={item.pinned ? $_t('Unpin') : $_t('Pin')}
+              onclick={() => void togglePin(item.sessionId, !item.pinned)}>{item.pinned ? '★' : '☆'}</button>
+            <button class="px-1 border-none bg-transparent text-inherit cursor-pointer opacity-70 hover:opacity-100"
+              title={$_t('Rename')} onclick={() => void rename(item.sessionId, item.title)}>✎</button>
+            <button class="px-1 border-none bg-transparent text-inherit cursor-pointer opacity-70 hover:opacity-100"
+              title={$_t('Delete')} onclick={() => void remove(item.sessionId, item.title)}>×</button>
+          </div>
         </div>
       {/each}
     </div>

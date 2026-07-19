@@ -3,6 +3,7 @@
   import { location, push } from 'svelte-spa-router';
   import { uiTheme } from '../../stores/themeStore';
   import { userStore } from '../../stores/userStore';
+  import { overlayScroll } from '../../lib/actions/overlayScroll';
   import UserLoginStatus from '../common/UserLoginStatus.svelte';
   import NavTab from './NavTab.svelte';
   import LeftPanelSection from './LeftPanelSection.svelte';
@@ -39,7 +40,14 @@
   }
 </script>
 
-<div class="flex flex-col h-full w-full p-3 gap-2 overflow-y-auto
+<!-- Positioned, clipped host so the floating overlay scrollbar (see
+     lib/actions/overlayScroll.ts) can anchor to it without scrolling away or
+     reserving gutter width. The inner element is the sole scroll surface. -->
+<div class="relative h-full w-full overflow-hidden
+  {currentTheme === 'modern'
+    ? 'bg-chat-surface dark:bg-chat-surface-dark'
+    : 'bg-term-bg'}">
+<div use:overlayScroll class="flex flex-col h-full w-full p-3 gap-2 overflow-y-auto
   {currentTheme === 'modern'
     ? 'bg-chat-surface dark:bg-chat-surface-dark'
     : 'bg-term-bg'}">
@@ -71,4 +79,5 @@
     {/if}
     <UserLoginStatus />
   </div>
+</div>
 </div>

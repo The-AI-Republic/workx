@@ -83,7 +83,7 @@ describe('ChatHistorySection paging', () => {
     });
   });
 
-  it('loads ten rows at a time inside a fixed-height scroll container', async () => {
+  it('loads ten rows at a time appended into the panel, with no inner scroll container', async () => {
     mocks.serviceRequest
       .mockResolvedValueOnce({ entries: Array.from({ length: 10 }, (_, index) => item(index)), nextCursor: 'page-2' })
       .mockResolvedValueOnce({ entries: Array.from({ length: 10 }, (_, index) => item(index + 10)), nextCursor: null });
@@ -96,8 +96,10 @@ describe('ChatHistorySection paging', () => {
       cursor: undefined,
     }));
     expect(container.querySelectorAll('[data-thread-history-select]')).toHaveLength(10);
-    expect(container.querySelector('[data-thread-history-list]')?.className).toContain('max-h-80');
-    expect(container.querySelector('[data-thread-history-list]')?.className).toContain('overflow-y-auto');
+    // The chat-history list no longer owns a scrollbar; the whole left panel is
+    // the sole scroll surface, so the list must not clamp height or scroll.
+    expect(container.querySelector('[data-thread-history-list]')?.className).not.toContain('max-h-80');
+    expect(container.querySelector('[data-thread-history-list]')?.className).not.toContain('overflow-y-auto');
 
     await fireEvent.click(screen.getByRole('button', { name: 'Load More' }));
     await waitFor(() => {
@@ -108,6 +110,20 @@ describe('ChatHistorySection paging', () => {
       cursor: 'page-2',
     }));
     expect(screen.queryByRole('button', { name: 'Load More' })).toBeNull();
+  });
+
+  it('drops the header new-chat button and keeps per-row controls in the hover layer', async () => {
+    mocks.serviceRequest.mockResolvedValue({ entries: [item(0)], nextCursor: null });
+
+    render(ChatHistorySection);
+
+    await screen.findByText('Conversation 0');
+    expect(screen.queryByRole('button', { name: 'New Chat' })).toBeNull();
+    // Row controls still exist (rendered in the hover overlay), so pin/rename/
+    // delete remain reachable. They expose their label via `title`.
+    expect(screen.getByTitle('Pin')).toBeTruthy();
+    expect(screen.getByTitle('Rename')).toBeTruthy();
+    expect(screen.getByTitle('Delete')).toBeTruthy();
   });
 
   it('lets a newer search replace an in-flight result and ignores the stale response', async () => {
