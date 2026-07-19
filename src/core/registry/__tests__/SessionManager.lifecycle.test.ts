@@ -162,7 +162,7 @@ describe('SessionManager lifecycle manager', () => {
     });
 
     await registry.hydrateSession('workspace');
-    expect(assembler.inputs.at(-1)?.workspace).toEqual({
+    expect(assembler.inputs[assembler.inputs.length - 1]?.workspace).toEqual({
       workingDirectory: '/home/rich/projects/workx',
     });
   });
