@@ -24,17 +24,20 @@ export class RegularTask implements SessionTask {
   private drainPendingMessages?: () => string[];
   private clientMessageId?: string;
   private inputDigest?: string;
+  private dataTurnSnapshot?: import('../data-sources').DataTurnSnapshot;
 
   constructor(options?: {
     maxTurns?: number;
     drainPendingMessages?: () => string[];
     clientMessageId?: string;
     inputDigest?: string;
+    dataTurnSnapshot?: import('../data-sources').DataTurnSnapshot;
   }) {
     this.maxTurns = options?.maxTurns;
     this.drainPendingMessages = options?.drainPendingMessages;
     this.clientMessageId = options?.clientMessageId;
     this.inputDigest = options?.inputDigest;
+    this.dataTurnSnapshot = options?.dataTurnSnapshot;
   }
 
   /**
@@ -59,7 +62,8 @@ export class RegularTask implements SessionTask {
     const turnManager = new TurnManager(
       session,
       context,
-      session.getToolRegistry() as ToolRegistry // Tool registry is required
+      session.getToolRegistry() as ToolRegistry, // Tool registry is required
+      { stableTurnId: subId, dataTurnSnapshot: this.dataTurnSnapshot }
     );
 
     // Wire hook dispatcher if available
@@ -101,14 +105,18 @@ export class RegularTask implements SessionTask {
       // Extract final assistant message from session history
       const conversationHistory = session.getConversationHistory();
       const lastAgentMessage = conversationHistory.items
-        .filter((item): item is Extract<ResponseItem, { type: 'message' }> => 
-          item.type === 'message' && item.role === 'assistant')
-        .map(item => {
+        .filter(
+          (item): item is Extract<ResponseItem, { type: 'message' }> =>
+            item.type === 'message' && item.role === 'assistant'
+        )
+        .map((item) => {
           // Extract text content from ContentItem array
           return item.content
-            .filter((content): content is Extract<typeof content, { type: 'output_text' }> => 
-              content.type === 'output_text')
-            .map(content => content.text)
+            .filter(
+              (content): content is Extract<typeof content, { type: 'output_text' }> =>
+                content.type === 'output_text'
+            )
+            .map((content) => content.text)
             .join('');
         })
         .pop();
@@ -126,7 +134,7 @@ export class RegularTask implements SessionTask {
    * AgentTask expects ResponseItem[], but SessionTask.run() provides InputItem[]
    */
   private convertInput(input: InputItem[]): ResponseItem[] {
-    return input.map(item => {
+    return input.map((item) => {
       // Handle different InputItem types
       let text: string;
       if (item.type === 'text') {
@@ -136,14 +144,16 @@ export class RegularTask implements SessionTask {
       } else {
         text = JSON.stringify(item);
       }
-      
+
       return {
         type: 'message' as const,
         role: 'user' as const,
-        content: [{
-          type: 'text' as const,
-          text: text
-        }]
+        content: [
+          {
+            type: 'text' as const,
+            text: text,
+          },
+        ],
       };
     });
   }

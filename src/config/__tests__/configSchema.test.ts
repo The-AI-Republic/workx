@@ -225,12 +225,13 @@ describe('configSchema', () => {
       expect(paths).toContain('preferences.language');
       expect(paths).toContain('tools.dom_tool');
       expect(paths).toContain('tools.enable_all_tools');
+      expect(paths).toContain('tools.dataSources');
       expect(paths).toContain('approval.mode');
       expect(paths).toContain('approval.trustedDomains');
       expect(paths).toContain('approval.blockedDomains');
     });
 
-    it('includes all 16 tool toggle paths', () => {
+    it('includes all 17 tool toggle paths', () => {
       const fields = listAccessibleFields();
       const paths = fields.map((f) => f.path);
       const expectedToolPaths = [
@@ -248,6 +249,7 @@ describe('configSchema', () => {
         'tools.setting_tool',
         'tools.execCommand',
         'tools.webSearch',
+        'tools.dataSources',
         'tools.fileOperations',
         'tools.mcpTools',
       ];
@@ -430,6 +432,7 @@ describe('configSchema', () => {
         'page_vision_tool',
         'setting_tool',
         'webSearch',
+        'dataSources',
       ];
       for (const name of trueDefaults) {
         const field = SECTIONS.tools.fields[name];

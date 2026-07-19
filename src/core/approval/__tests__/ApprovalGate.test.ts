@@ -5,7 +5,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ApprovalGate } from '../ApprovalGate';
 import { PolicyRulesEngine } from '../PolicyRulesEngine';
-import type { IRiskAssessor, IContextEnhancer, RiskAssessment, ApprovalContext, PolicyRule } from '../types';
+import type {
+  IRiskAssessor,
+  IContextEnhancer,
+  RiskAssessment,
+  ApprovalContext,
+  PolicyRule,
+} from '../types';
 import { RiskLevel, scoreToRiskLevel } from '../types';
 
 // Mock ApprovalManager
@@ -38,7 +44,12 @@ function createAssessor(score: number): IRiskAssessor {
       score,
       level: scoreToRiskLevel(score),
       factors: [`Test score ${score}`],
-      action: score <= 30 ? 'auto_approve' as const : score <= 85 ? 'ask_user' as const : 'deny' as const,
+      action:
+        score <= 30
+          ? ('auto_approve' as const)
+          : score <= 85
+            ? ('ask_user' as const)
+            : ('deny' as const),
     }),
   };
 }
@@ -85,9 +96,59 @@ describe('ApprovalGate', () => {
       // Mock manager returns 'approve' by default
       expect(decision).toBe('auto_approve');
     });
+
+    it('honors trusted-context hard denials even in YOLO mode', async () => {
+      gate.setMode('yolo');
+      gate.setTrustedDomains(['trusted.example']);
+      const decision = await gate.check(
+        'component_install',
+        {},
+        {
+          assess: () => ({
+            score: 100,
+            level: RiskLevel.Critical,
+            factors: ['Remote install attempt'],
+            action: 'deny',
+            hardDeny: true,
+          }),
+        },
+        { currentDomain: 'trusted.example' }
+      );
+
+      expect(decision).toBe('deny');
+      expect(mockManager.requestApproval).not.toHaveBeenCalled();
+    });
   });
 
   describe('ask_user path', () => {
+    it('requires a fresh human response for explicit consent boundaries in YOLO mode', async () => {
+      gate.setMode('yolo');
+      gate.setTrustedDomains(['trusted.example']);
+      const assessor: IRiskAssessor = {
+        assess: () => ({
+          score: 70,
+          level: RiskLevel.High,
+          factors: ['Installs trusted executable code'],
+          action: 'ask_user',
+          requiresExplicitUserApproval: true,
+        }),
+      };
+
+      expect(
+        await gate.check('component_install', { component_id: 'duckdb' }, assessor, {
+          currentDomain: 'trusted.example',
+        })
+      ).toBe('auto_approve');
+      expect(mockManager.requestApproval).toHaveBeenCalledTimes(1);
+
+      // Session memory cannot suppress a fresh install consent decision.
+      gate.rememberDecision('component_install', { component_id: 'duckdb' }, 'auto_approve');
+      await gate.check('component_install', { component_id: 'duckdb' }, assessor, {
+        currentDomain: 'trusted.example',
+      });
+      expect(mockManager.requestApproval).toHaveBeenCalledTimes(2);
+    });
+
     it('should ask user for medium-risk tools and approve on user acceptance', async () => {
       const assessor = createAssessor(50);
       const decision = await gate.check('dom_tool', { action: 'click' }, assessor);
@@ -188,9 +249,7 @@ describe('ApprovalGate', () => {
      * HookDispatcher.fire signature). Tests previously returned plain objects
      * and tripped `.catch is not a function` in firePermissionDeniedHook.
      */
-    function makeDispatcherStub(
-      fireImpl: (event: string, input: any) => unknown,
-    ) {
+    function makeDispatcherStub(fireImpl: (event: string, input: any) => unknown) {
       const fire = vi.fn(async (event: string, input: any) => {
         const result = fireImpl(event, input);
         if (result instanceof Promise) return result;
@@ -204,9 +263,7 @@ describe('ApprovalGate', () => {
     }
 
     it('fires PermissionRequest hook on ask_user path and respects approve decision', async () => {
-      const dispatcher = makeDispatcherStub(() =>
-        emptyAgg({ permissionDecision: 'approve' }),
-      );
+      const dispatcher = makeDispatcherStub(() => emptyAgg({ permissionDecision: 'approve' }));
       gate.setHookDispatcher(dispatcher as any);
 
       const assessor = createAssessor(50);
@@ -219,7 +276,7 @@ describe('ApprovalGate', () => {
           tool_name: 'dom_tool',
           tool_input: { action: 'click' },
         }),
-        { snapshot: undefined },
+        { snapshot: undefined }
       );
       // Hook said 'approve' → bypass user prompt
       expect(decision).toBe('auto_approve');
@@ -301,10 +358,11 @@ describe('ApprovalGate', () => {
 
     it('collapses concurrent same-key checks into one hook fire and one prompt', async () => {
       let resolveApproval!: (value: any) => void;
-      mockManager.requestApproval.mockImplementation(() =>
-        new Promise((resolve) => {
-          resolveApproval = resolve;
-        })
+      mockManager.requestApproval.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveApproval = resolve;
+          })
       );
       const dispatcher = makeDispatcherStub();
       gate.setHookDispatcher(dispatcher as any);

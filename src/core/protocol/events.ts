@@ -41,8 +41,14 @@ export type EventMsg =
   | { type: 'AgentReasoning'; data: AgentReasoningEvent }
   | { type: 'AgentReasoningDelta'; data: AgentReasoningDeltaEvent }
   | { type: 'AgentReasoningRawContent'; data: AgentReasoningRawContentEvent }
-  | { type: 'AgentReasoningRawContentDelta'; data: AgentReasoningRawContentDeltaEvent }
-  | { type: 'AgentReasoningSectionBreak'; data: AgentReasoningSectionBreakEvent }
+  | {
+      type: 'AgentReasoningRawContentDelta';
+      data: AgentReasoningRawContentDeltaEvent;
+    }
+  | {
+      type: 'AgentReasoningSectionBreak';
+      data: AgentReasoningSectionBreakEvent;
+    }
   | { type: 'SessionConfigured'; data: SessionConfiguredEvent }
   | { type: 'McpToolCallBegin'; data: McpToolCallBeginEvent }
   | { type: 'McpToolCallEnd'; data: McpToolCallEndEvent }
@@ -145,9 +151,11 @@ export type EventMsg =
   // Track 04: typed-task layer events (background sub-agents only in v1)
   | { type: 'BackgroundTaskStarted'; data: BackgroundTaskStartedEvent }
   | { type: 'BackgroundTaskOutputDelta'; data: BackgroundTaskOutputDeltaEvent }
-  | { type: 'BackgroundTaskStateChanged'; data: BackgroundTaskStateChangedEvent }
-  | { type: 'BackgroundTaskTerminated'; data: BackgroundTaskTerminatedEvent }
-;
+  | {
+      type: 'BackgroundTaskStateChanged';
+      data: BackgroundTaskStateChangedEvent;
+    }
+  | { type: 'BackgroundTaskTerminated'; data: BackgroundTaskTerminatedEvent };
 
 // ─── Track 04 event payloads ──────────────────────────────────────────────
 
@@ -525,9 +533,9 @@ export interface CustomPrompt {
  * Step status for plan items
  */
 export enum StepStatus {
-  Pending = "Pending",
-  InProgress = "InProgress",
-  Completed = "Completed",
+  Pending = 'Pending',
+  InProgress = 'InProgress',
+  Completed = 'Completed',
 }
 
 /**
@@ -936,6 +944,7 @@ export interface ServiceResponseEvent {
   data?: unknown;
   /** Error message (on failure) */
   error?: string;
+  /** Stable machine-readable error code when the service provides one. */
   errorCode?: string;
   retryable?: boolean;
 }

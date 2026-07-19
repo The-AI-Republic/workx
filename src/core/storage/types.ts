@@ -78,7 +78,11 @@ export type CollectionName =
   | 'settings'
   | 'cache'
   | 'credentials'
-  | 'tasks';
+  | 'tasks'
+  | 'data_sources'
+  | 'data_source_catalog'
+  | 'data_source_contexts'
+  | 'data_source_context_revisions';
 
 /**
  * Storage provider factory options
