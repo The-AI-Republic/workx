@@ -187,6 +187,8 @@ export type EngineOp =
       items: InputItem[];
       context?: ExecutionContext;
       contextOverrides?: Record<string, unknown>;
+      clientMessageId?: string;
+      inputDigest?: string;
     }
   | {
       type: 'UserTurn';

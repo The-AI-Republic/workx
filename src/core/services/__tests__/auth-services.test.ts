@@ -1,8 +1,7 @@
 /**
  * Auth services unit tests. Asserts the runtime contract: tokens flow into
- * the credential store, the AuthManager is rebuilt on every transition,
- * sessions are walked to refresh their model clients, and logout clears
- * persisted tokens.
+ * the credential store, the bootstrap AuthContext is updated on every
+ * transition, and logout clears persisted tokens without direct agent sweeps.
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -34,7 +33,7 @@ function fakeSession() {
     state: 'active',
     agent: {
       getModelClientFactory: vi.fn(() => ({
-        setAuthManager: vi.fn(),
+        updateAuthContext: vi.fn(),
       })),
       refreshModelClient: vi.fn(async () => undefined),
     },
@@ -54,12 +53,12 @@ function buildDeps(overrides: Partial<AuthServiceDeps> = {}): AuthServiceDeps & 
   const createAuthManager = vi.fn((shouldUseBackend: boolean, base: string | null) => ({
     shouldUseBackend, base, kind: 'fake-auth-manager',
   }));
-  const setAuthManager = vi.fn();
+  const updateAuthContext = vi.fn();
   return {
     credentialStore,
     registry,
     createAuthManager,
-    setAuthManager,
+    updateAuthContext,
     getCredentialStore: () => credentialStore,
     fetchUserProfile: vi.fn(async (token: string) => ({ email: `u@test`, token })),
     ...overrides,
@@ -76,7 +75,7 @@ describe('createAuthServices', () => {
   });
 
   describe('auth.completeLogin', () => {
-    it('persists both tokens, rebuilds the AuthManager, and applies it to every active session', async () => {
+    it('persists both tokens and updates the bootstrap-owned AuthContext', async () => {
       const result = await svc['auth.completeLogin']!({
         accessToken: 'at-1',
         refreshToken: 'rt-1',
@@ -86,10 +85,10 @@ describe('createAuthServices', () => {
       expect(deps.credentialStore.set).toHaveBeenCalledWith('auth', 'access_token', 'at-1');
       expect(deps.credentialStore.set).toHaveBeenCalledWith('auth', 'refresh_token', 'rt-1');
       expect(deps.createAuthManager).toHaveBeenCalledWith(true, 'https://api.example.com');
-      expect(deps.setAuthManager).toHaveBeenCalled();
-      // Session refresh ran with the new auth manager.
+      expect(deps.updateAuthContext).toHaveBeenCalled();
       const session = deps.registry.getSession('s1');
-      expect(session.agent.refreshModelClient).toHaveBeenCalled();
+      expect(session.agent.refreshModelClient).not.toHaveBeenCalled();
+      expect(deps.registry.listSessions).not.toHaveBeenCalled();
       expect(result).toMatchObject({ success: true, user: { email: 'u@test' } });
     });
 
@@ -317,7 +316,7 @@ describe('createAuthServices', () => {
   });
 
   describe('auth.logout', () => {
-    it('deletes both tokens and switches sessions back to no-backend auth', async () => {
+    it('deletes both tokens and switches the bootstrap context to no-backend auth', async () => {
       await deps.credentialStore.set('auth', 'access_token', 'at');
       await deps.credentialStore.set('auth', 'refresh_token', 'rt');
 
@@ -327,7 +326,9 @@ describe('createAuthServices', () => {
       expect(deps.credentialStore.delete).toHaveBeenCalledWith('auth', 'refresh_token');
       expect(deps.createAuthManager).toHaveBeenCalledWith(false, null);
       const session = deps.registry.getSession('s1');
-      expect(session.agent.refreshModelClient).toHaveBeenCalled();
+      expect(session.agent.refreshModelClient).not.toHaveBeenCalled();
+      expect(deps.updateAuthContext).toHaveBeenCalled();
+      expect(deps.registry.listSessions).not.toHaveBeenCalled();
       expect(res).toMatchObject({ success: true });
     });
 

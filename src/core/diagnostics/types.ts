@@ -53,6 +53,9 @@ export interface DiagnosticContext {
       jobQueueCount: number;
     }>;
   };
+  lifecycle?: {
+    getLifecycleStatus(): import('../registry/types').SessionLifecycleStatus;
+  };
 }
 
 export interface DiagnosticCheck {

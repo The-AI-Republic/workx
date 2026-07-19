@@ -61,8 +61,10 @@ describe('Track 15 Phase 0 — forked-session correctness', () => {
 
     const fork = new Session(undefined, true, undefined, undefined, {
       mode: 'forked',
+      sessionId: crypto.randomUUID(),
       rolloutItems: sourceItems,
       sourceConversationId: sourceId,
+      historyAlreadyPersisted: false,
     });
     await fork.initialize();
 
@@ -87,8 +89,10 @@ describe('Track 15 Phase 0 — forked-session correctness', () => {
   it('0b: a compacted rollout item reconstructs into one system message via payload.message', async () => {
     const fork = new Session(undefined, true, undefined, undefined, {
       mode: 'forked',
+      sessionId: crypto.randomUUID(),
       rolloutItems: [{ type: 'compacted', payload: { message: 'SUMMARY-PHASE0B' } } as RolloutItem],
       sourceConversationId: crypto.randomUUID(),
+      historyAlreadyPersisted: false,
     });
     await fork.initialize();
 
@@ -101,8 +105,10 @@ describe('Track 15 Phase 0 — forked-session correctness', () => {
   it('0b: legacy compacted payload.summary still replays (backward tolerance)', async () => {
     const fork = new Session(undefined, true, undefined, undefined, {
       mode: 'forked',
+      sessionId: crypto.randomUUID(),
       rolloutItems: [{ type: 'compacted', payload: { summary: 'LEGACY-SUMMARY' } } as unknown as RolloutItem],
       sourceConversationId: crypto.randomUUID(),
+      historyAlreadyPersisted: false,
     });
     await fork.initialize();
 

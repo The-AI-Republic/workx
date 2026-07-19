@@ -18,6 +18,20 @@ import { CommandQueue } from '../queue/CommandQueue';
 import { priorityForOp } from '../queue/priorityForOp';
 import { ShadowAgentScheduler } from '../shadowAgent/ShadowAgentScheduler';
 
+export interface TrackedEngineSubmission {
+  submissionId: string;
+  settled: Promise<{ outcome: 'completed' | 'failed' | 'cancelled' }>;
+  cancel(reason: 'delete' | 'shutdown' | 'interrupt'): void;
+}
+
+interface TrackedSubmissionState {
+  controller: AbortController;
+  started: boolean;
+  done: boolean;
+  settled: Promise<{ outcome: 'completed' | 'failed' | 'cancelled' }>;
+  resolve: (value: { outcome: 'completed' | 'failed' | 'cancelled' }) => void;
+}
+
 export class RepublicAgentEngine {
   readonly engineId: string;
 
@@ -34,6 +48,7 @@ export class RepublicAgentEngine {
   private submissionQueue = new CommandQueue<Submission>();
   private eventQueue: EngineEvent[] = [];
   private processingSubmission = false;
+  private readonly trackedSubmissions = new Map<string, TrackedSubmissionState>();
   private eventWaiters: Array<(event: EngineEvent) => void> = [];
 
   // Lifecycle state
@@ -94,6 +109,7 @@ export class RepublicAgentEngine {
       const { TurnContext } = await import('../TurnContext');
       const turnContext = new TurnContext(modelClient, {
         sessionId: this.session.sessionId,
+        browserTabId: this.config.browserContext?.tabId,
         baseInstructions: this.config.systemPrompt,
         userInstructions: this.config.userInstructions,
         approvalPolicy: this.config.approvalPolicy,
@@ -102,10 +118,6 @@ export class RepublicAgentEngine {
         turnContext.setSelectedModelKey(this.config.model);
       }
       this.session.setTurnContext(turnContext);
-      if (this.config.browserContext) {
-        this.session.setTabId(this.config.browserContext.tabId);
-      }
-
       // Wire session events to the engine's event system (only for internally-owned sessions)
       this.session.setEventEmitter(async (event: AgentEvent) => {
         this.pushEvent({
@@ -159,6 +171,36 @@ export class RepublicAgentEngine {
     this.submissionQueue.enqueue(submission, { priority: priorityForOp(op) });
     this.processSubmissionQueue();
     return submission.id;
+  }
+
+  submitTrackedOperation(op: EngineOp): TrackedEngineSubmission {
+    this.ensureReady();
+    const submissionId = crypto.randomUUID();
+    let resolve!: TrackedSubmissionState['resolve'];
+    const settled = new Promise<{ outcome: 'completed' | 'failed' | 'cancelled' }>((res) => {
+      resolve = res;
+    });
+    const state: TrackedSubmissionState = {
+      controller: new AbortController(),
+      started: false,
+      done: false,
+      settled,
+      resolve,
+    };
+    this.trackedSubmissions.set(submissionId, state);
+    this.submissionQueue.enqueue(
+      { id: submissionId, op, timestamp: Date.now() },
+      { priority: priorityForOp(op) },
+    );
+    this.processSubmissionQueue();
+    return {
+      submissionId,
+      settled,
+      cancel: () => {
+        state.controller.abort();
+        if (!state.started) this.settleTracked(submissionId, 'cancelled');
+      },
+    };
   }
 
   async getNextEvent(): Promise<EngineEvent> {
@@ -245,6 +287,7 @@ export class RepublicAgentEngine {
     // or when their per-submission timeout fires. Notification buffer is
     // cleared so a subsequent run() doesn't pick up stale notifications from
     // a cancelled session.
+    this.cancelTrackedSubmissions();
     this.submissionQueue.clear();
     this.pendingNotifications.length = 0;
   }
@@ -293,6 +336,7 @@ export class RepublicAgentEngine {
     this.disposed = true;
     this.cancel();
     this.shadowAgentScheduler?.shutdown();
+    await Promise.allSettled([...this.trackedSubmissions.values()].map((item) => item.settled));
 
     // Shutdown session if we own it
     if (this.ownsSession && this.session) {
@@ -477,9 +521,21 @@ export class RepublicAgentEngine {
         const queued = this.submissionQueue.dequeue();
         if (!queued) break;
         const submission = queued.payload;
+        const tracked = this.trackedSubmissions.get(submission.id);
+        if (tracked?.controller.signal.aborted) {
+          this.settleTracked(submission.id, 'cancelled');
+          this.trackedSubmissions.delete(submission.id);
+          continue;
+        }
+        if (tracked) tracked.started = true;
         try {
-          await this.handleSubmission(submission);
+          await this.handleSubmission(submission, tracked?.controller.signal);
+          this.settleTracked(submission.id, 'completed');
         } catch (error) {
+          this.settleTracked(
+            submission.id,
+            tracked?.controller.signal.aborted ? 'cancelled' : 'failed',
+          );
           console.error('[RepublicAgentEngine] Error handling submission:', error);
           this.pushEvent({
             id: crypto.randomUUID(),
@@ -491,6 +547,8 @@ export class RepublicAgentEngine {
               },
             },
           });
+        } finally {
+          this.trackedSubmissions.delete(submission.id);
         }
       }
     } finally {
@@ -498,7 +556,7 @@ export class RepublicAgentEngine {
     }
   }
 
-  private async handleSubmission(submission: Submission): Promise<void> {
+  private async handleSubmission(submission: Submission, signal?: AbortSignal): Promise<void> {
     const { op } = submission;
 
     switch (op.type) {
@@ -509,7 +567,9 @@ export class RepublicAgentEngine {
           op.type,
           op.items,
           op.context,
-          op.contextOverrides
+          op.contextOverrides,
+          op.type === 'UserInput' ? op.clientMessageId : undefined,
+          op.type === 'UserInput' ? op.inputDigest : undefined,
         );
         break;
       case 'Interrupt':
@@ -522,10 +582,10 @@ export class RepublicAgentEngine {
         await this.handlePatchApproval(op);
         break;
       case 'Compact':
-        await this.handleCompact(op.mode ?? 'auto');
+        await this.handleCompact(op.mode ?? 'auto', signal);
         break;
       case 'ManualCompact':
-        await this.handleCompact('manual');
+        await this.handleCompact('manual', signal);
         break;
       case 'AddToHistory':
         await this.handleAddToHistory(op);
@@ -551,7 +611,9 @@ export class RepublicAgentEngine {
     opType: 'UserInput' | 'UserTurn',
     items: InputItem[],
     _context?: ExecutionContext,
-    contextOverrides?: Record<string, unknown>
+    contextOverrides?: Record<string, unknown>,
+    clientMessageId?: string,
+    inputDigest?: string,
   ): Promise<void> {
     if (!this.session) {
       throw new Error('Engine session not initialized');
@@ -602,6 +664,8 @@ export class RepublicAgentEngine {
       const task = new RegularTask({
         maxTurns: this.config.maxTurns,
         drainPendingMessages: this.config.drainPendingMessages,
+        clientMessageId,
+        inputDigest,
         dataTurnSnapshot: _context?.metadata?.dataTurnSnapshot as
           | import('@/core/data-sources').DataTurnSnapshot
           | undefined,
@@ -661,6 +725,7 @@ export class RepublicAgentEngine {
     this.session.requestInterrupt();
 
     // Clear pending submissions
+    this.cancelTrackedSubmissions();
     this.submissionQueue.clear();
 
     // Emit abort event
@@ -806,7 +871,7 @@ export class RepublicAgentEngine {
   // Handler: Compact — delegate to Session.compact()
   // ---------------------------------------------------------------------------
 
-  private async handleCompact(mode: 'auto' | 'manual'): Promise<void> {
+  private async handleCompact(mode: 'auto' | 'manual', signal?: AbortSignal): Promise<void> {
     if (!this.session) return;
 
     try {
@@ -825,7 +890,7 @@ export class RepublicAgentEngine {
 
       // Get model client for LLM-based summarization
       const modelClient = await this.config.modelClientFactory.createClientForCurrentModel();
-      const result = await this.session.compact(mode, modelClient);
+      const result = await this.session.compact(mode, modelClient, signal);
 
       const historyAfter = this.session.getConversationHistory().items.length;
 
@@ -888,6 +953,7 @@ export class RepublicAgentEngine {
   // ---------------------------------------------------------------------------
 
   private async handleShutdown(): Promise<void> {
+    this.cancelTrackedSubmissions();
     this.submissionQueue.clear();
     this.eventQueue.length = 0;
 
@@ -895,6 +961,23 @@ export class RepublicAgentEngine {
       id: crypto.randomUUID(),
       msg: { type: 'ShutdownComplete' },
     });
+  }
+
+  private settleTracked(
+    submissionId: string,
+    outcome: 'completed' | 'failed' | 'cancelled',
+  ): void {
+    const state = this.trackedSubmissions.get(submissionId);
+    if (!state || state.done) return;
+    state.done = true;
+    state.resolve({ outcome });
+  }
+
+  private cancelTrackedSubmissions(): void {
+    for (const [submissionId, state] of this.trackedSubmissions) {
+      state.controller.abort();
+      if (!state.started) this.settleTracked(submissionId, 'cancelled');
+    }
   }
 
   // ---------------------------------------------------------------------------

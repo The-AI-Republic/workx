@@ -152,6 +152,17 @@ describe.skipIf(!hasBetterSqlite3)('TSRolloutStorageProvider', () => {
   // ---------------------------------------------------------------------------
 
   describe('items', () => {
+    it('atomically creates metadata and an initial prefix exactly once', async () => {
+      const items = [
+        { timestamp: '2024-01-01T00:00:00Z', sequence: 0, type: 'response_item', payload: { text: 'first' } },
+        { timestamp: '2024-01-01T00:00:01Z', sequence: 1, type: 'response_item', payload: { text: 'second' } },
+      ];
+      await expect(provider.createRollout(makeMetadata('atomic'), items)).resolves.toBe(true);
+      await expect(provider.createRollout(makeMetadata('atomic'), [])).resolves.toBe(false);
+      expect((await provider.getMetadata('atomic'))?.itemCount).toBe(2);
+      expect(await provider.getItemsByRolloutId('atomic')).toHaveLength(2);
+    });
+
     it('add and get items', async () => {
       await provider.putMetadata(makeMetadata('r-items'));
       await provider.addItems('r-items', [

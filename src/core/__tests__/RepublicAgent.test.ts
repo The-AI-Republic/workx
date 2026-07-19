@@ -20,10 +20,11 @@ let mockModelClientFactoryInstance: Record<string, any>;
 let mockUserNotifierInstance: Record<string, any>;
 let mockApprovalManagerInstance: Record<string, any>;
 let mockDiffTrackerInstance: Record<string, any>;
-let mockTabManagerInstance: Record<string, any>;
 let mockPlatformAdapter: Record<string, any>;
 let mockEngineInstance: Record<string, any>;
+let mockPromptLoader: Record<string, any>;
 let uuidCounter: number;
+let backgroundWorkListener: ((busy: boolean) => void) | null;
 
 // ---------------------------------------------------------------------------
 // vi.mock() declarations
@@ -36,24 +37,14 @@ vi.mock('uuid', () => ({
 }));
 
 vi.mock('../PromptLoader', () => ({
-  loadPrompt: vi.fn(async () => 'base-instructions'),
+  createPromptLoader: vi.fn(() => mockPromptLoader),
   loadUserInstructions: vi.fn(async () => 'user-instructions'),
-  isComposerConfigured: vi.fn(() => false),
-  configurePromptComposer: vi.fn(),
-  registerPromptExtension: vi.fn(),
-  unregisterPromptExtension: vi.fn(),
-  unregisterSessionPromptExtensions: vi.fn(),
 }));
 
 vi.mock('../../tools/registerPlatformTools', () => ({
   registerPlatformTools: vi.fn(async () => undefined),
 }));
 
-vi.mock('../TabManager', () => ({
-  TabManager: {
-    getInstance: vi.fn(() => mockTabManagerInstance),
-  },
-}));
 
 vi.mock('../tasks/RegularTask', () => ({
   RegularTask: vi.fn(() => ({})),
@@ -111,10 +102,9 @@ declare const __BUILD_MODE__: string;
 
 import { RepublicAgent } from '../RepublicAgent';
 import { AgentConfig } from '../../config/AgentConfig';
+import { ModelClientFactory } from '../models/ModelClientFactory';
 import { Session } from '../Session';
 import type { Op } from '../protocol/types';
-import type { Event } from '../protocol/events';
-import { loadPrompt, unregisterSessionPromptExtensions } from '../PromptLoader';
 
 // ---------------------------------------------------------------------------
 // Helper: create mock AgentConfig (plain object, not through vi.mock)
@@ -140,6 +130,7 @@ function createMockConfig(): AgentConfig {
       },
     }),
     getProviderApiKey: vi.fn().mockResolvedValue('sk-test-key-123'),
+    getProvider: vi.fn().mockReturnValue({ id: 'openai', name: 'OpenAI' }),
     getToolsConfig: vi.fn().mockReturnValue({}),
     on: vi.fn(),
     off: vi.fn(),
@@ -157,10 +148,12 @@ describe('RepublicAgent', () => {
 
   beforeEach(() => {
     uuidCounter = 0;
+    backgroundWorkListener = null;
 
     // Recreate shared mock instances before each test
     mockSessionInstance = {
       sessionId: 'conv-123',
+      setPromptLoader: vi.fn(),
       setEventEmitter: vi.fn(),
       setHookDispatcher: vi.fn(),
       getHookDispatcher: vi.fn().mockReturnValue(null),
@@ -190,6 +183,17 @@ describe('RepublicAgent', () => {
       abortTask: vi.fn().mockResolvedValue(undefined),
       hasRunningTask: vi.fn().mockReturnValue(false),
       getRunningTasks: vi.fn().mockReturnValue(new Map()),
+      hasLiveBackgroundWork: vi.fn().mockReturnValue(false),
+      subscribeBackgroundWorkChanged: vi.fn((listener: (busy: boolean) => void) => {
+        backgroundWorkListener = listener;
+        return vi.fn();
+      }),
+      beginLifecycleWork: vi.fn().mockReturnValue({
+        token: 'lease-1',
+        signal: new AbortController().signal,
+        finish: vi.fn(),
+      }),
+      trackLifecycleWork: vi.fn((_lease, work) => work),
       addToHistory: vi.fn(),
       getHistoryEntry: vi.fn(),
       clearHistory: vi.fn(),
@@ -259,14 +263,6 @@ describe('RepublicAgent', () => {
       getChanges: vi.fn().mockReturnValue([]),
     };
 
-    mockTabManagerInstance = {
-      onTabClosure: vi.fn(),
-      createTab: vi.fn().mockResolvedValue(100),
-      validateTab: vi.fn().mockResolvedValue({ status: 'valid' }),
-      addTabToGroup: vi.fn().mockResolvedValue(undefined),
-      clearAllTabsFromGroup: vi.fn().mockResolvedValue(undefined),
-    };
-
     mockPlatformAdapter = {
       platformId: 'extension',
       hasRealTabs: true,
@@ -288,12 +284,24 @@ describe('RepublicAgent', () => {
     mockEngineInstance = {
       initialize: vi.fn().mockResolvedValue(undefined),
       submitOperation: vi.fn().mockReturnValue('engine-sub-1'),
+      submitTrackedOperation: vi.fn().mockReturnValue({
+        submissionId: 'engine-tracked-1',
+        settled: Promise.resolve({ outcome: 'completed' }),
+        cancel: vi.fn(),
+      }),
       onEvent: vi.fn(),
       dispose: vi.fn().mockResolvedValue(undefined),
       getSession: vi.fn().mockReturnValue(mockSessionInstance),
       getToolRegistry: vi.fn().mockReturnValue(mockToolRegistryInstance),
       isReady: vi.fn().mockReturnValue(true),
       isDisposed: vi.fn().mockReturnValue(false),
+    };
+
+    mockPromptLoader = {
+      load: vi.fn().mockResolvedValue('base-instructions'),
+      supportsMode: vi.fn().mockReturnValue(true),
+      registerExtension: vi.fn().mockReturnValue(vi.fn()),
+      dispose: vi.fn(),
     };
 
     config = createMockConfig();
@@ -375,60 +383,10 @@ describe('RepublicAgent', () => {
       expect(session.setEventEmitter).toHaveBeenCalledWith(expect.any(Function));
     });
 
-    it('should subscribe to config-changed events during construction', () => {
-      expect(config.on as Mock).toHaveBeenCalledWith('config-changed', expect.any(Function));
-    });
-  });
-
-  describe('config subscriptions', () => {
-    function configChangeHandler() {
-      return (config.on as Mock).mock.calls.find(
-        ([eventName]) => eventName === 'config-changed'
-      )![1] as Function;
-    }
-
-    it('refreshes the current model client when tools config changes outside a running task', async () => {
+    it('does not subscribe directly to config changes', async () => {
+      expect(config.on as Mock).not.toHaveBeenCalledWith('config-changed', expect.any(Function));
       await agent.initialize();
-      mockModelClientFactoryInstance.clearCache.mockClear();
-      mockModelClientFactoryInstance.createClientForCurrentModel.mockClear();
-
-      const newClient = { getModel: vi.fn().mockReturnValue('tools-refresh') };
-      mockModelClientFactoryInstance.createClientForCurrentModel.mockResolvedValueOnce(newClient);
-
-      configChangeHandler()({
-        type: 'config-changed',
-        section: 'tools',
-        oldValue: { parallelToolCalls: false },
-        newValue: { parallelToolCalls: true },
-        timestamp: Date.now(),
-      });
-
-      await vi.waitFor(() => {
-        expect(mockModelClientFactoryInstance.clearCache).toHaveBeenCalled();
-        expect(mockModelClientFactoryInstance.createClientForCurrentModel).toHaveBeenCalledTimes(1);
-      });
-      expect(mockSessionInstance.getTurnContext().setModelClient).toHaveBeenCalledWith(newClient);
-      expect(mockSessionInstance.getTurnContext().setSelectedModelKey).toHaveBeenCalledWith('openai:gpt-5');
-    });
-
-    it('defers tools config refresh while a task is running', async () => {
-      await agent.initialize();
-      mockModelClientFactoryInstance.clearCache.mockClear();
-      mockModelClientFactoryInstance.createClientForCurrentModel.mockClear();
-      mockSessionInstance.getRunningTasks.mockReturnValue(new Set(['task_1']));
-
-      configChangeHandler()({
-        type: 'config-changed',
-        section: 'tools',
-        oldValue: { parallelToolCalls: false },
-        newValue: { parallelToolCalls: true },
-        timestamp: Date.now(),
-      });
-
-      await vi.waitFor(() => {
-        expect(mockModelClientFactoryInstance.clearCache).toHaveBeenCalled();
-      });
-      expect(mockModelClientFactoryInstance.createClientForCurrentModel).not.toHaveBeenCalled();
+      expect(config.on as Mock).not.toHaveBeenCalledWith('config-changed', expect.any(Function));
     });
   });
 
@@ -447,12 +405,14 @@ describe('RepublicAgent', () => {
       await expect(agent.initialize()).rejects.toThrow('Selected model openai:gpt-5 not found');
     });
 
-    it('should emit a warning event when no API key is configured and not backend routing', async () => {
-      (config.getProviderApiKey as Mock).mockResolvedValue('');
+    it('routes the model factory missing-key callback through the agent dispatcher', async () => {
       const dispatcherSpy = vi.fn();
       agent.setEventDispatcher(dispatcherSpy);
-
-      await agent.initialize();
+      const factoryCalls = vi.mocked(ModelClientFactory).mock.calls;
+      const options = factoryCalls[factoryCalls.length - 1]?.[0] as {
+        onMissingKey?: (providerId: string) => void;
+      };
+      options.onMissingKey?.('openai');
 
       const warningEvent = dispatcherSpy.mock.calls.find(
         (call: any[]) => call[0]?.msg?.type === 'BackgroundEvent' &&
@@ -556,7 +516,7 @@ describe('RepublicAgent', () => {
 
     it('should no-op SetSessionMode when requested mode is already active', async () => {
       await agent.initialize();
-      vi.mocked(loadPrompt).mockClear();
+      mockPromptLoader.load.mockClear();
       mockSessionInstance.setAgentMode.mockClear();
 
       const dispatcherSpy = vi.fn();
@@ -574,13 +534,13 @@ describe('RepublicAgent', () => {
         applied: true,
       });
       expect(mockSessionInstance.setAgentMode).not.toHaveBeenCalled();
-      expect(loadPrompt).not.toHaveBeenCalled();
+      expect(mockPromptLoader.load).not.toHaveBeenCalled();
     });
 
-    it('should defer SetSessionMode while a task is running and apply it on next user input', async () => {
+    it('should defer SetSessionMode while a task is running and apply it at the idle edge', async () => {
       await agent.initialize();
       const turnContext = mockSessionInstance.getTurnContext();
-      vi.mocked(loadPrompt).mockClear();
+      mockPromptLoader.load.mockClear();
       mockSessionInstance.setAgentMode.mockClear();
       turnContext.setAgentMode.mockClear();
       turnContext.setBaseInstructions.mockClear();
@@ -588,7 +548,7 @@ describe('RepublicAgent', () => {
       const dispatcherSpy = vi.fn();
       agent.setEventDispatcher(dispatcherSpy);
 
-      mockSessionInstance.getRunningTasks.mockReturnValue(new Map([['task-1', { id: 'task-1' }]]));
+      mockSessionInstance.hasLiveBackgroundWork.mockReturnValue(true);
 
       await agent.submitOperation({ type: 'SetSessionMode', mode: 'code' });
       await new Promise(r => setTimeout(r, 0));
@@ -601,17 +561,13 @@ describe('RepublicAgent', () => {
           call[0]?.msg?.data?.applied === false
       )).toBe(true);
 
-      mockSessionInstance.getRunningTasks.mockReturnValue(new Map());
-
-      await agent.submitOperation({
-        type: 'UserInput',
-        items: [{ type: 'text', text: 'apply the pending mode' }],
-      });
-      await new Promise(r => setTimeout(r, 0));
+      mockSessionInstance.hasLiveBackgroundWork.mockReturnValue(false);
+      backgroundWorkListener?.(false);
+      await vi.waitFor(() => expect(mockSessionInstance.setAgentMode).toHaveBeenCalledWith('code'));
 
       expect(mockSessionInstance.setAgentMode).toHaveBeenCalledWith('code');
       expect(turnContext.setAgentMode).toHaveBeenCalledWith('code');
-      expect(loadPrompt).toHaveBeenCalledWith(
+      expect(mockPromptLoader.load).toHaveBeenCalledWith(
         'code',
         expect.objectContaining({ sessionId: 'conv-123' }),
       );
@@ -622,6 +578,20 @@ describe('RepublicAgent', () => {
           call[0]?.msg?.data?.mode === 'code' &&
           call[0]?.msg?.data?.applied === true
       )).toBe(true);
+    });
+
+    it('does not mutate live mode state when prompt preparation fails', async () => {
+      await agent.initialize();
+      const turnContext = mockSessionInstance.getTurnContext();
+      mockSessionInstance.setAgentMode.mockClear();
+      turnContext.setAgentMode.mockClear();
+      turnContext.setBaseInstructions.mockClear();
+      mockPromptLoader.load.mockRejectedValueOnce(new Error('compose failed'));
+
+      await expect(agent.applySessionMode('code')).rejects.toThrow('compose failed');
+      expect(mockSessionInstance.setAgentMode).not.toHaveBeenCalled();
+      expect(turnContext.setAgentMode).not.toHaveBeenCalled();
+      expect(turnContext.setBaseInstructions).not.toHaveBeenCalled();
     });
 
     it('should process an AddToHistory op and delegate to engine', async () => {
@@ -769,58 +739,6 @@ describe('RepublicAgent', () => {
   });
 
   // =========================================================================
-  // getNextEvent()
-  // =========================================================================
-
-  describe('getNextEvent()', () => {
-    it('should return null when the event queue is empty', async () => {
-      const event = await agent.getNextEvent();
-      expect(event).toBeNull();
-    });
-
-    it('should return events in FIFO order', async () => {
-      agent.setEventDispatcher(vi.fn());
-
-      await agent.submitOperation({ type: 'GetPath' });
-      await new Promise(r => setTimeout(r, 0));
-
-      const event1 = await agent.getNextEvent();
-      expect(event1).not.toBeNull();
-      expect(event1!.id).toMatch(/^evt_/);
-
-      // Pop events until exhausted
-      let count = 0;
-      while (await agent.getNextEvent() !== null) {
-        count++;
-        if (count > 20) break; // Safety guard
-      }
-
-      const eventAfterDrain = await agent.getNextEvent();
-      expect(eventAfterDrain).toBeNull();
-    });
-
-    it('should remove events from the queue once returned', async () => {
-      agent.setEventDispatcher(vi.fn());
-
-      // Use GetPath (orchestration op, no engine needed)
-      await agent.submitOperation({ type: 'GetPath' });
-      await new Promise(r => setTimeout(r, 0));
-
-      // Drain all events
-      const events: Event[] = [];
-      let evt: Event | null;
-      while ((evt = await agent.getNextEvent()) !== null) {
-        events.push(evt);
-      }
-
-      expect(events.length).toBeGreaterThan(0);
-
-      // Queue should now be empty
-      expect(await agent.getNextEvent()).toBeNull();
-    });
-  });
-
-  // =========================================================================
   // cancelTask()
   // =========================================================================
 
@@ -866,41 +784,23 @@ describe('RepublicAgent', () => {
       expect(mockUserNotifierInstance.clearAll).toHaveBeenCalled();
     });
 
-    it('removes session-scoped prompt extensions after disposing the session', async () => {
-      vi.mocked(unregisterSessionPromptExtensions).mockClear();
-
+    it('disposes the session graph before its prompt loader', async () => {
       await agent.cleanup();
 
-      expect(unregisterSessionPromptExtensions).toHaveBeenCalledWith('conv-123');
       expect(mockSessionInstance.dispose).toHaveBeenCalled();
       expect(mockSessionInstance.dispose.mock.invocationCallOrder[0]).toBeLessThan(
-        vi.mocked(unregisterSessionPromptExtensions).mock.invocationCallOrder[0],
+        mockPromptLoader.dispose.mock.invocationCallOrder[0],
       );
     });
 
-    it('unsubscribes config hook watcher and removes config hooks on cleanup', async () => {
+    it('removes config hooks without owning the manager config subscription', async () => {
       await agent.initialize();
       await agent.cleanup();
 
-      expect(config.off as Mock).toHaveBeenCalledWith('config-changed', expect.any(Function));
+      expect(config.off as Mock).not.toHaveBeenCalledWith('config-changed', expect.any(Function));
       expect(agent.getHookRegistry().getMatchingHooks('PreToolUse')).toHaveLength(0);
     });
 
-    it('should clear submission and event queues', async () => {
-      agent.setEventDispatcher(vi.fn());
-      await agent.submitOperation({ type: 'GetPath' });
-      await new Promise(r => setTimeout(r, 0));
-
-      // Verify events exist before cleanup
-      const beforeCleanup = await agent.getNextEvent();
-      expect(beforeCleanup).not.toBeNull();
-
-      await agent.cleanup();
-
-      // After cleanup, event queue should be empty
-      const afterCleanup = await agent.getNextEvent();
-      expect(afterCleanup).toBeNull();
-    });
   });
 
   // =========================================================================
@@ -1079,39 +979,7 @@ describe('RepublicAgent', () => {
     });
   });
 
-  // =========================================================================
-  // refreshModelClient()
-  // =========================================================================
-
-  describe('refreshModelClient()', () => {
-    it('should create a new model client and update the session turn context', async () => {
-      await agent.refreshModelClient();
-
-      expect(mockModelClientFactoryInstance.createClientForCurrentModel).toHaveBeenCalled();
-      expect(mockSessionInstance.setTurnContext).toHaveBeenCalled();
-    });
-
-    it('should refresh the memory service after replacing the model client', async () => {
-      await agent.refreshModelClient();
-
-      expect(mockSessionInstance.refreshMemoryService).toHaveBeenCalledWith(config);
-    });
-
-    it('should not throw if createClientForCurrentModel fails', async () => {
-      mockModelClientFactoryInstance.createClientForCurrentModel.mockRejectedValue(
-        new Error('network error')
-      );
-
-      // Should swallow the error
-      await expect(agent.refreshModelClient()).resolves.toBeUndefined();
-    });
-  });
-
-  // =========================================================================
-  // hotSwapModelClient()
-  // =========================================================================
-
-  describe('hotSwapModelClient()', () => {
+  describe('rebuildExecutionContext()', () => {
     it('should clear factory cache before creating new client', async () => {
       const callOrder: string[] = [];
       mockModelClientFactoryInstance.clearCache.mockImplementation(() => {
@@ -1122,13 +990,13 @@ describe('RepublicAgent', () => {
         return { getModel: vi.fn().mockReturnValue('new-model') };
       });
 
-      await agent.hotSwapModelClient();
+      await agent.rebuildExecutionContext(new Set(['full']));
 
       expect(callOrder).toEqual(['clearCache', 'createClientForCurrentModel']);
     });
 
     it('should create new client via createClientForCurrentModel', async () => {
-      await agent.hotSwapModelClient();
+      await agent.rebuildExecutionContext(new Set(['full']));
 
       expect(mockModelClientFactoryInstance.createClientForCurrentModel).toHaveBeenCalledTimes(1);
     });
@@ -1137,14 +1005,14 @@ describe('RepublicAgent', () => {
       const newMockClient = { getModel: vi.fn().mockReturnValue('swapped-model') };
       mockModelClientFactoryInstance.createClientForCurrentModel.mockResolvedValue(newMockClient);
 
-      await agent.hotSwapModelClient();
+      await agent.rebuildExecutionContext(new Set(['full']));
 
       const turnCtx = mockSessionInstance.getTurnContext();
       expect(turnCtx.setModelClient).toHaveBeenCalledWith(newMockClient);
     });
 
     it('should NOT call session.setTurnContext (no new TurnContext created)', async () => {
-      await agent.hotSwapModelClient();
+      await agent.rebuildExecutionContext(new Set(['full']));
 
       expect(mockSessionInstance.setTurnContext).not.toHaveBeenCalled();
     });
@@ -1155,7 +1023,7 @@ describe('RepublicAgent', () => {
         tools: {},
       });
 
-      await agent.hotSwapModelClient();
+      await agent.rebuildExecutionContext(new Set(['full']));
 
       const turnCtx = mockSessionInstance.getTurnContext();
       expect(turnCtx.setSelectedModelKey).toHaveBeenCalledWith('anthropic:claude-3-opus');
@@ -1163,7 +1031,7 @@ describe('RepublicAgent', () => {
 
     it('should read config at call time (not stale)', async () => {
       // First call with original config
-      await agent.hotSwapModelClient();
+      await agent.rebuildExecutionContext(new Set(['full']));
       const turnCtx = mockSessionInstance.getTurnContext();
       expect(turnCtx.setSelectedModelKey).toHaveBeenCalledWith('openai:gpt-5');
 
@@ -1173,7 +1041,7 @@ describe('RepublicAgent', () => {
         tools: {},
       });
 
-      await agent.hotSwapModelClient();
+      await agent.rebuildExecutionContext(new Set(['full']));
       expect(turnCtx.setSelectedModelKey).toHaveBeenCalledWith('google:gemini-2.0-flash');
     });
 
@@ -1182,57 +1050,50 @@ describe('RepublicAgent', () => {
         new Error('auth expired')
       );
 
-      await expect(agent.hotSwapModelClient()).rejects.toThrow('auth expired');
+      await expect(agent.rebuildExecutionContext(new Set(['full']))).rejects.toThrow('auth expired');
+      expect(mockSessionInstance.getTurnContext().setModelClient).not.toHaveBeenCalled();
     });
 
     it('should reload user instructions onto TurnContext', async () => {
-      await agent.hotSwapModelClient();
+      await agent.rebuildExecutionContext(new Set(['full']));
 
       const turnCtx = mockSessionInstance.getTurnContext();
       expect(turnCtx.setUserInstructions).toHaveBeenCalledWith('user-instructions');
     });
 
     it('should reload base instructions onto TurnContext', async () => {
-      await agent.hotSwapModelClient();
+      await agent.rebuildExecutionContext(new Set(['full']));
 
       const turnCtx = mockSessionInstance.getTurnContext();
       expect(turnCtx.setBaseInstructions).toHaveBeenCalledWith('base-instructions');
     });
 
     it('should refresh the memory service after hot-swapping the model client', async () => {
-      await agent.hotSwapModelClient();
+      await agent.rebuildExecutionContext(new Set(['full']));
 
       expect(mockSessionInstance.refreshMemoryService).toHaveBeenCalledWith(config);
     });
 
-    it('should reuse existing TurnContext unlike refreshModelClient which creates a new one', async () => {
-      // hotSwapModelClient: does NOT call session.setTurnContext
-      await agent.hotSwapModelClient();
+    it('should reuse the existing TurnContext', async () => {
+      await agent.rebuildExecutionContext(new Set(['full']));
       expect(mockSessionInstance.setTurnContext).not.toHaveBeenCalled();
       expect(mockSessionInstance.getTurnContext().setModelClient).toHaveBeenCalled();
-
-      // refreshModelClient: DOES call session.setTurnContext (creates new TurnContext)
-      await agent.refreshModelClient();
-      expect(mockSessionInstance.setTurnContext).toHaveBeenCalled();
     });
   });
 
   // =========================================================================
-  // Event queue behavior
+  // Event dispatch behavior
   // =========================================================================
 
-  describe('Event queue mechanics', () => {
+  describe('Event dispatch mechanics', () => {
     it('should assign unique, incrementing event IDs', async () => {
-      agent.setEventDispatcher(vi.fn());
+      const dispatcher = vi.fn();
+      agent.setEventDispatcher(dispatcher);
 
       await agent.submitOperation({ type: 'GetPath' });
       await new Promise(r => setTimeout(r, 0));
 
-      const events: Event[] = [];
-      let evt: Event | null;
-      while ((evt = await agent.getNextEvent()) !== null) {
-        events.push(evt);
-      }
+      const events = dispatcher.mock.calls.map(([event]) => event);
 
       const ids = events.map(e => e.id);
       const uniqueIds = new Set(ids);
@@ -1265,7 +1126,7 @@ describe('RepublicAgent', () => {
       await agent.submitOperation({ type: 'Compact' });
       await new Promise(r => setTimeout(r, 0));
 
-      expect(mockEngineInstance.submitOperation).toHaveBeenCalledWith({
+      expect(mockEngineInstance.submitTrackedOperation).toHaveBeenCalledWith({
         type: 'Compact',
         mode: 'auto',
       });
@@ -1277,7 +1138,7 @@ describe('RepublicAgent', () => {
       await agent.submitOperation({ type: 'ManualCompact' });
       await new Promise(r => setTimeout(r, 0));
 
-      expect(mockEngineInstance.submitOperation).toHaveBeenCalledWith({
+      expect(mockEngineInstance.submitTrackedOperation).toHaveBeenCalledWith({
         type: 'ManualCompact',
       });
     });

@@ -204,9 +204,14 @@ export class ChannelManager {
                 success: false,
                 error: error instanceof Error ? error.message : String(error),
                 errorCode:
-                  error && typeof error === 'object' && 'code' in error
-                    ? String((error as { code?: unknown }).code ?? '') || undefined
-                    : undefined,
+                  error && typeof error === 'object' && 'errorCode' in error
+                    ? String((error as { errorCode?: unknown }).errorCode ?? '') || undefined
+                    : error && typeof error === 'object' && 'code' in error
+                      ? String((error as { code?: unknown }).code ?? '') || undefined
+                      : undefined,
+                retryable: error && typeof error === 'object' && 'retryable' in error
+                  ? Boolean((error as { retryable?: unknown }).retryable)
+                  : undefined,
               },
             },
             sessionId: context.sessionId,

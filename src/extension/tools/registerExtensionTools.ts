@@ -42,7 +42,8 @@ import { getTaskStore } from '../../core/taskmanager';
 export async function registerExtensionTools(
   registry: ToolRegistry,
   toolsConfig: IToolsConfig,
-  modelConfig?: { name: string; supportsImage?: boolean }
+  modelConfig?: { name: string; supportsImage?: boolean },
+  browserResources?: import('../../core/platform/IPlatformAdapter').SessionBrowserResources,
 ): Promise<void> {
   try {
     console.log('[registerExtensionTools] Starting extension tool registration...');
@@ -94,6 +95,7 @@ export async function registerExtensionTools(
       toolInstance: BaseTool,
       optionsOrAssessor?: IRiskAssessor | ToolRegistrationOptions,
     ) => {
+      if (browserResources) toolInstance.setBrowserResources(browserResources);
       if (registry.getTool(toolName)) {
         console.log(`${toolName} already registered, skipping...`);
         return;

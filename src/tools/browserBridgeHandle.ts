@@ -14,12 +14,15 @@
  */
 
 import type { ToolRegistry } from './ToolRegistry';
+import type { SessionBrowserContext } from '../core/platform/IPlatformAdapter';
 
 export interface BrowserBridgeHandle {
   /** True when a paired browser extension is connected and has advertised tools. */
   hasActiveNode(): boolean;
   /** Register the current bridge tool set on a (new) session's registry. */
   applyToRegistry(sessionId: string, registry: ToolRegistry): Promise<void>;
+  getSessionBrowserContext(sessionId: string): Promise<SessionBrowserContext | null>;
+  releaseSession(sessionId: string): Promise<void>;
 }
 
 let handle: BrowserBridgeHandle | null = null;

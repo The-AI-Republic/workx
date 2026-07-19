@@ -11,7 +11,7 @@ import { TurnContext } from './TurnContext';
 import { withModelRetry } from './models/resilience/withRetry';
 import { calculateUSDCost } from './models/cost/cost';
 import { AgentConfig } from '../config/AgentConfig';
-import { loadPrompt, type PromptRuntimeContext } from './PromptLoader';
+import type { PromptRuntimeContext } from './PromptLoader';
 import { DEFAULT_MODE, type AgentMode } from '../prompts/PromptComposer';
 import type {
   CompactionCompletedEvent,
@@ -208,7 +208,10 @@ export class TurnManager {
     // Falls back to the value cached on TurnContext if reload throws.
     let baseInstructions: string | undefined;
     try {
-      baseInstructions = await loadPrompt(this.getAgentMode(), this.getPromptRuntimeContext());
+      const runtime = this.getPromptRuntimeContext();
+      const promptLoader = this.session.getPromptLoader();
+      if (!promptLoader) throw new Error('Session prompt loader is not configured');
+      baseInstructions = await promptLoader.load(this.getAgentMode(), runtime);
     } catch (err) {
       console.warn('[TurnManager] loadPrompt() failed, reusing cached base instructions:', err);
       baseInstructions = this.turnContext.getBaseInstructions();
@@ -306,7 +309,11 @@ export class TurnManager {
           currentInput = (await this.session.buildTurnInputWithHistory([])) as any[];
           try {
             currentBaseInstructions = this.withToolExposureReminder(
-              await loadPrompt(this.getAgentMode(), this.getPromptRuntimeContext())
+              await (() => {
+                const promptLoader = this.session.getPromptLoader();
+                if (!promptLoader) throw new Error('Session prompt loader is not configured');
+                return promptLoader.load(this.getAgentMode(), this.getPromptRuntimeContext());
+              })(),
             );
           } catch {
             currentBaseInstructions = this.withToolExposureReminder(
@@ -1414,9 +1421,11 @@ export class TurnManager {
     const toolName = this.getToolNameFromDefinition(tool);
 
     try {
-      // Execute tool via ToolRegistry
-      // Get tabId from Session to pass to tool execution
-      const tabId = this.session.getTabId();
+      let pageContext: Awaited<ReturnType<ToolRegistry['getCurrentPageContext']>> = {};
+      try {
+        pageContext = await this.toolRegistry.getCurrentPageContext?.() ?? {};
+      } catch { /* page context is best-effort */ }
+      const tabId = pageContext.tabId ?? this.turnContext.getBrowserTabId?.() ?? -1;
 
       // Build metadata for approval context
       let currentUrl: string | undefined;
@@ -1432,29 +1441,9 @@ export class TurnManager {
           // through so blocked/trusted-domain policy sees that real page.
         }
       }
-      try {
-        if (!currentUrl && tabId && tabId > 0 && typeof chrome !== 'undefined' && chrome.tabs) {
-          const tab = await chrome.tabs.get(tabId);
-          currentUrl = tab.url;
-          if (currentUrl) {
-            try {
-              currentDomain = new URL(currentUrl).hostname;
-            } catch {
-              /* ignore */
-            }
-          }
-        }
-      } catch {
-        /* tab may not exist in desktop mode */
-      }
       if (!currentUrl) {
-        try {
-          const pageContext = await this.toolRegistry.getCurrentPageContext();
-          currentUrl = pageContext?.currentUrl;
-          currentDomain = pageContext?.currentDomain;
-        } catch {
-          /* page context is best-effort */
-        }
+        currentUrl = pageContext.currentUrl;
+        currentDomain = pageContext.currentDomain;
       }
 
       // SubmitPlanForReview (Track 14) blocks on human plan approval, which
@@ -1569,8 +1558,10 @@ export class TurnManager {
    * Record turn context for rollout/history
    */
   private async recordTurnContext(): Promise<void> {
+    const pageContext: Awaited<ReturnType<ToolRegistry['getCurrentPageContext']>> =
+      await this.toolRegistry.getCurrentPageContext?.().catch(() => ({})) ?? {};
     const turnContextItem = {
-      tabId: this.session.getTabId(), // Get tabId from session (stored in SessionState)
+      tabId: pageContext.tabId ?? this.turnContext.getBrowserTabId?.(),
       sessionId: this.turnContext.getSessionId(),
       approval_policy: this.turnContext.getApprovalPolicy(),
       sandbox_policy: this.turnContext.getSandboxPolicy(),
@@ -1624,42 +1615,6 @@ export class TurnManager {
       reasoning_output_tokens: usage.reasoning_tokens || 0,
       total_tokens: usage.total_tokens || 0,
     };
-  }
-
-  /**
-   * Get current browser tab ID
-   */
-  private async getCurrentTabId(): Promise<number | undefined> {
-    if (typeof chrome !== 'undefined' && chrome.tabs) {
-      try {
-        const [tab] = await chrome.tabs.query({
-          active: true,
-          currentWindow: true,
-        });
-        return tab?.id;
-      } catch (error) {
-        console.warn('Failed to get current tab ID:', error);
-      }
-    }
-    return undefined;
-  }
-
-  /**
-   * Get current page URL
-   */
-  private async getCurrentUrl(): Promise<string | undefined> {
-    if (typeof chrome !== 'undefined' && chrome.tabs) {
-      try {
-        const [tab] = await chrome.tabs.query({
-          active: true,
-          currentWindow: true,
-        });
-        return tab?.url;
-      } catch (error) {
-        console.warn('Failed to get current URL:', error);
-      }
-    }
-    return undefined;
   }
 
   /**

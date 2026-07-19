@@ -27,6 +27,7 @@ function createMockSession(overrides: Record<string, any> = {}): Session {
     getPendingInput: vi.fn().mockResolvedValue([]),
     buildTurnInputWithHistory: vi.fn().mockResolvedValue([]),
     recordConversationItemsDual: vi.fn().mockResolvedValue(undefined),
+    persistRolloutItems: vi.fn().mockResolvedValue(undefined),
     getTabId: vi.fn().mockReturnValue(1),
     compact: vi.fn().mockResolvedValue({
       success: true,

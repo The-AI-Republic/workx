@@ -20,12 +20,10 @@
  */
 
 import type { RepublicAgentEngine } from '@/core/engine/RepublicAgentEngine';
+import type { LifecycleWorkLease } from '@/core/Session';
 import type { FileSystem } from '@/core/memory/types';
 import type { ResponseItem } from '@/core/protocol/types';
-import {
-  registerPromptExtension,
-  unregisterPromptExtension,
-} from '@/core/PromptLoader';
+import type { AgentPromptLoader } from '@/core/PromptLoader';
 import {
   ShadowAgentKind,
   ShadowContextPolicy,
@@ -60,6 +58,8 @@ export interface SessionSummaryHookOptions {
   memoryRoot: string;
   config?: SessionSummaryConfig;
   telemetry?: TelemetryEmitter;
+  beginLifecycleWork?: () => LifecycleWorkLease;
+  promptLoader?: AgentPromptLoader;
 }
 
 /**
@@ -82,6 +82,10 @@ export class SessionSummaryHook {
   private readonly fileStore: SessionSummaryFileStore;
   private readonly config: SessionSummaryConfig;
   private readonly telemetry: TelemetryEmitter;
+  private readonly beginLifecycleWork?: () => LifecycleWorkLease;
+  private extractionPromise: Promise<void> | null = null;
+  private readonly promptLoader?: AgentPromptLoader;
+  private unregisterPromptExtension?: () => void;
 
   private state: ExtractionState = createInitialExtractionState();
   private cachedSummary: string = '';
@@ -98,6 +102,8 @@ export class SessionSummaryHook {
     this.config = options.config ?? DEFAULT_SESSION_SUMMARY_CONFIG;
     this.telemetry =
       options.telemetry ?? createTelemetryEmitter(options.parentEngine, options.sessionId);
+    this.beginLifecycleWork = options.beginLifecycleWork;
+    this.promptLoader = options.promptLoader;
 
   }
 
@@ -137,10 +143,9 @@ export class SessionSummaryHook {
 
     // Register the sync prompt-extension callback. PromptLoader calls it on
     // every loadPrompt(); we return the truncated cached content.
-    registerPromptExtension(
+    this.unregisterPromptExtension = this.promptLoader?.registerExtension(
       PROMPT_EXTENSION_NAME,
       () => this.renderForPrompt(),
-      { type: 'session', sessionId: this.sessionId },
     );
 
     this.telemetry.emit('init', {
@@ -156,7 +161,7 @@ export class SessionSummaryHook {
    * don't write to an orphaned instance. The underlying sub-agent run may
    * continue briefly in the background but its result is discarded.
    */
-  detach(): void {
+  async detach(): Promise<void> {
     if (!this.attached) return;
     this.attached = false;
     this.lifetimeAbort.abort();
@@ -168,11 +173,14 @@ export class SessionSummaryHook {
     }
     this.unregisterPostTurn = undefined;
 
+    if (this.extractionPromise) {
+      await this.extractionPromise.catch(() => undefined);
+      this.extractionPromise = null;
+    }
+
     try {
-      unregisterPromptExtension(PROMPT_EXTENSION_NAME, {
-        type: 'session',
-        sessionId: this.sessionId,
-      });
+      this.unregisterPromptExtension?.();
+      this.unregisterPromptExtension = undefined;
     } catch (err) {
       console.warn('[SessionSummary] unregisterPromptExtension failed', err);
     }
@@ -210,8 +218,12 @@ export class SessionSummaryHook {
       return;
     }
 
-    // Fire-and-forget. `runExtraction` swallows errors internally.
-    void this.runExtraction(ctx.history, /*manual*/ false);
+    const lease = this.beginLifecycleWork?.();
+    this.extractionPromise = this.runExtraction(ctx.history, /*manual*/ false, lease)
+      .finally(() => {
+        this.extractionPromise = null;
+      });
+    void this.extractionPromise;
   }
 
   /**
@@ -224,7 +236,12 @@ export class SessionSummaryHook {
   async manuallyExtractSessionSummary(history: ResponseItem[]): Promise<void> {
     if (isExtractionInFlight(this.sessionId)) return;
     this.telemetry.emit('manual_extraction', { trigger: 'manual' });
-    await this.runExtraction(history, /*manual*/ true);
+    const lease = this.beginLifecycleWork?.();
+    this.extractionPromise = this.runExtraction(history, /*manual*/ true, lease)
+      .finally(() => {
+        this.extractionPromise = null;
+      });
+    await this.extractionPromise;
   }
 
   /**
@@ -260,6 +277,7 @@ export class SessionSummaryHook {
   private async runExtraction(
     history: ResponseItem[],
     manual: boolean,
+    lease?: LifecycleWorkLease,
   ): Promise<void> {
     markExtractionStarted(this.sessionId);
     const startedAt = Date.now();
@@ -313,6 +331,7 @@ export class SessionSummaryHook {
       console.warn('[SessionSummary] extraction failed', error);
     } finally {
       markExtractionCompleted(this.sessionId);
+      lease?.finish();
       // Telemetry emit is best-effort and tolerates a disposed engine.
       if (!this.lifetimeAbort.signal.aborted) {
         this.telemetry.emit('extraction', {

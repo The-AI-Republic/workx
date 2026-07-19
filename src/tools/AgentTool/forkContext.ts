@@ -6,6 +6,7 @@ import { pairingTrim } from '@/core/session/rewind';
 import type { ResponseItem } from '@/core/protocol/types';
 import type { RolloutItem } from '@/storage/rollout/types';
 import type { AgentType, SubAgentContextMode } from './agentTypes';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface ForkContextMetadata {
   runId: string;
@@ -33,7 +34,9 @@ export function buildForkedSubAgentInitialHistory(
 
   return {
     mode: 'forked',
+    sessionId: uuidv4(),
     sourceConversationId: parentSession.getSessionId(),
+    historyAlreadyPersisted: false,
     rolloutItems: [
       ...trimmed,
       {

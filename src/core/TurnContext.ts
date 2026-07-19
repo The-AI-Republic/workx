@@ -23,6 +23,8 @@ export type BrowserEnvironmentPolicy = 'preserve' | 'clean' | 'restricted';
 export interface TurnContextConfig {
   /** Parent session identifier */
   sessionId?: string;
+  /** Fixed browser target for a child execution context; top-level agents use resources. */
+  browserTabId?: number;
   /** Base instructions override */
   baseInstructions?: string;
   /** Agent persona mode for this session (drives prompt composition) */
@@ -66,6 +68,7 @@ export interface TurnContextConfig {
 export class TurnContext {
   private modelClient: ModelClient;
   private sessionId: string;
+  private browserTabId?: number;
   private baseInstructions?: string;
   private agentMode: AgentMode;
   private userInstructions?: string;
@@ -87,6 +90,7 @@ export class TurnContext {
 
     // Initialize with defaults or provided config
     this.sessionId = config.sessionId || ''; // Default to empty string
+    this.browserTabId = config.browserTabId;
     this.baseInstructions = config.baseInstructions;
     this.agentMode = config.agentMode ?? DEFAULT_MODE;
     this.userInstructions = config.userInstructions;
@@ -110,6 +114,9 @@ export class TurnContext {
   update(config: TurnContextConfig): void {
     if (config.sessionId !== undefined) {
       this.sessionId = config.sessionId;
+    }
+    if (config.browserTabId !== undefined) {
+      this.browserTabId = config.browserTabId;
     }
     if (config.baseInstructions !== undefined) {
       this.baseInstructions = config.baseInstructions;
@@ -159,6 +166,10 @@ export class TurnContext {
    */
   getSessionId(): string {
     return this.sessionId;
+  }
+
+  getBrowserTabId(): number | undefined {
+    return this.browserTabId;
   }
 
   /**

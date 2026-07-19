@@ -263,9 +263,12 @@ export class BridgeClient {
       return;
     }
     const invoke: NodeInvokePayload = parsed.data;
-    const outcome = await this.executor.execute(invoke.toolName, invoke.parameters, {
+    const outcome = await this.executor.execute(invoke.toolName ?? '', invoke.parameters, {
       invokeId: invoke.invokeId,
       timeoutMs: invoke.timeoutMs,
+      operation: invoke.operation,
+      sessionId: invoke.sessionId,
+      focusGrantId: invoke.focusGrantId,
     });
     try {
       await this.request('node.result', {

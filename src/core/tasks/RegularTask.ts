@@ -22,15 +22,21 @@ export class RegularTask implements SessionTask {
   private agentTask: AgentTask | null = null;
   private maxTurns?: number;
   private drainPendingMessages?: () => string[];
+  private clientMessageId?: string;
+  private inputDigest?: string;
   private dataTurnSnapshot?: import('../data-sources').DataTurnSnapshot;
 
   constructor(options?: {
     maxTurns?: number;
     drainPendingMessages?: () => string[];
+    clientMessageId?: string;
+    inputDigest?: string;
     dataTurnSnapshot?: import('../data-sources').DataTurnSnapshot;
   }) {
     this.maxTurns = options?.maxTurns;
     this.drainPendingMessages = options?.drainPendingMessages;
+    this.clientMessageId = options?.clientMessageId;
+    this.inputDigest = options?.inputDigest;
     this.dataTurnSnapshot = options?.dataTurnSnapshot;
   }
 
@@ -87,6 +93,8 @@ export class RegularTask implements SessionTask {
         drainPendingMessages: this.drainPendingMessages,
         taskOutputStore: taskOutputStore ?? undefined,
         taskId: taskOutputStore ? subId : undefined,
+        clientMessageId: this.clientMessageId,
+        inputDigest: this.inputDigest,
       }
     );
 

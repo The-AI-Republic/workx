@@ -94,6 +94,27 @@ export interface SessionMeta {
 export interface SessionMetaLine extends SessionMeta {
   /** Git repository information */
   git?: GitInfo;
+  /** Metadata-only restart recovery state; the original session_meta item is immutable. */
+  runtimeRecovery?: RolloutRecoveryMetadata;
+}
+
+export interface OpenTurnRecovery {
+  submissionId: string;
+  startedAt: number;
+  clientMessageId?: string;
+  inputDigest?: string;
+}
+
+export interface RecentAcceptedSubmission {
+  clientMessageId: string;
+  inputDigest: string;
+  submissionId: string;
+}
+
+export interface RolloutRecoveryMetadata {
+  openTurns: OpenTurnRecovery[];
+  /** Newest first and bounded by the writer/provider contract. */
+  recentAccepted: RecentAcceptedSubmission[];
 }
 
 /**
@@ -169,7 +190,27 @@ export type RolloutItem =
   | { type: 'compacted'; payload: CompactedItem }
   | { type: 'turn_context'; payload: TurnContextItem }
   | { type: 'event_msg'; payload: EventMsg }
-  | { type: 'turn_completion'; payload: { turnId: string; stats: any } }
+  | {
+      type: 'turn_start';
+      payload: {
+        markerVersion: 1;
+        submissionId: string;
+        startedAt: number;
+        clientMessageId?: string;
+        inputDigest?: string;
+      };
+    }
+  | {
+      type: 'turn_completion';
+      payload:
+        | { turnId: string; stats: any }
+        | {
+            markerVersion: 1;
+            submissionId: string;
+            outcome: 'complete' | 'failed' | 'aborted' | 'interrupted';
+            completedAt: number;
+          };
+    }
   | { type: 'content_replacement'; payload: ContentReplacementRecord }
   | { type: 'plan_artifact'; payload: PlanArtifactPayload };
 
@@ -181,7 +222,7 @@ export interface RolloutLine {
   /** ISO 8601 timestamp with milliseconds */
   timestamp: string;
   /** Discriminator for the item type */
-  type: 'session_meta' | 'response_item' | 'compacted' | 'turn_context' | 'event_msg' | 'turn_completion' | 'content_replacement' | 'plan_artifact';
+  type: 'session_meta' | 'response_item' | 'compacted' | 'turn_context' | 'event_msg' | 'turn_start' | 'turn_completion' | 'content_replacement' | 'plan_artifact';
   /** The actual rollout item data */
   payload: RolloutItem['payload'];
 }

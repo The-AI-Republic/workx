@@ -8,7 +8,7 @@
  * in favor of comprehensive DOM capture with selector_map for element lookup.
  */
 
-import { BaseTool, createToolDefinition, type BaseToolRequest, type BaseToolOptions, type ToolDefinition } from '../../tools/BaseTool';
+import { BaseTool, createToolDefinition, type BaseToolRequest, type BaseToolOptions, type ToolDefinition, type ScopedBrowserTab } from '../../tools/BaseTool';
 import type {
   SerializationOptions,
   SerializedDom,
@@ -277,7 +277,7 @@ Snapshots only return elements visible in the current viewport (inViewport: true
 
     // Validate tab exists
     try {
-      const tab = await chrome.tabs.get(tabId);
+      const tab = await this.getOwnedTab(tabId);
     } catch (error) {
       throw new Error(`Target tab ${tabId} not found or inaccessible`);
     }

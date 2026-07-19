@@ -68,26 +68,6 @@ export interface RunningTask {
    */
   context?: AgentContext;
 
-  /**
-   * Tab IDs this task actively uses. On chrome.tabs.onRemoved for a
-   * working tab, Session.abortTasksForTab walks activeTasks and aborts
-   * only those whose scopedTabIds includes the closing tab (Q9).
-   *
-   * ⚠️  Known limitation (Track 04 v1): set at spawn time from
-   * browserContext.tabId and NOT updated when a sub-agent's tools
-   * navigate it to a different tab mid-run. Two consequences:
-   *
-   *   - Closing the *new* tab won't abort the sub-agent that's actually
-   *     using it.
-   *   - Closing the *original* tab will abort a sub-agent that no longer
-   *     touches it.
-   *
-   * For v1 this is acceptable because sub-agents typically stay on the
-   * tab they started on. If sub-agents start switching tabs routinely,
-   * wire the tab-change tool path to call a yet-to-exist
-   * Session.updateScopedTabs(taskId, tabIds) method.
-   */
-  scopedTabIds?: number[];
 }
 
 /**
@@ -141,7 +121,7 @@ export interface SessionExport {
 /**
  * Reason for aborting a turn
  */
-export type TurnAbortReason = 'Replaced' | 'UserInterrupt' | 'Error' | 'Timeout' | 'TabClosed' | 'Shutdown';
+export type TurnAbortReason = 'Replaced' | 'UserInterrupt' | 'Error' | 'Timeout' | 'TabClosed' | 'Shutdown' | 'WorkerRestart';
 
 /**
  * Configuration for initializing a new Session
@@ -175,21 +155,27 @@ export interface ConfigureSession {
  * Initial history mode for session creation
  */
 export type InitialHistory =
-  | { mode: 'new' }
+  | { mode: 'new'; sessionId: string }
   | { mode: 'resumed'; sessionId: string; rolloutItems: any[] } // RolloutItem[] from rollout
-  | { mode: 'forked'; rolloutItems: any[]; sourceConversationId: string };
+  | {
+      mode: 'forked';
+      sessionId: string;
+      rolloutItems: any[];
+      sourceConversationId: string;
+      historyAlreadyPersisted: boolean;
+    };
 
 /**
  * Type guards for InitialHistory modes
  */
-export function isNewHistory(history: InitialHistory): history is { mode: 'new' } {
+export function isNewHistory(history: InitialHistory): history is Extract<InitialHistory, { mode: 'new' }> {
   return history.mode === 'new';
 }
 
-export function isResumedHistory(history: InitialHistory): history is { mode: 'resumed'; sessionId: string; rolloutItems: any[] } {
+export function isResumedHistory(history: InitialHistory): history is Extract<InitialHistory, { mode: 'resumed' }> {
   return history.mode === 'resumed';
 }
 
-export function isForkedHistory(history: InitialHistory): history is { mode: 'forked'; rolloutItems: any[]; sourceConversationId: string } {
+export function isForkedHistory(history: InitialHistory): history is Extract<InitialHistory, { mode: 'forked' }> {
   return history.mode === 'forked';
 }
