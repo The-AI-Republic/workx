@@ -597,7 +597,7 @@
       <div class="mb-1 flex min-w-0 items-center">
         <button
           type="button"
-          class="max-w-full truncate rounded-md border-none bg-transparent px-1.5 py-1 text-xs cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-50
+          class="max-w-full truncate rounded-md border-none bg-transparent px-1.5 py-1 text-sm cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-50
             {currentTheme === 'modern'
               ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark'
               : 'text-term-dim-green hover:bg-term-dim-green/10 hover:text-term-green'}"
@@ -607,7 +607,7 @@
             : 'Select working folder'}
           onclick={onChooseWorkingDirectory}
           disabled={isProcessing}
-        >📁 {workingDirectoryLabel(workingDirectory)} ▾</button>
+        >{workingDirectoryLabel(workingDirectory)} ▾</button>
       </div>
     {/if}
 

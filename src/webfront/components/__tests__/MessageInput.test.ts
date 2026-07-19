@@ -300,6 +300,9 @@ describe('MessageInput Component', () => {
 
       const chip = screen.getByRole('button', { name: /working folder/i });
       expect(chip.textContent).toContain('.../workx');
+      expect(chip.textContent).not.toContain('📁');
+      expect(chip.classList.contains('text-sm')).toBe(true);
+      expect(chip.classList.contains('text-xs')).toBe(false);
       expect(chip.textContent).not.toContain('/Users/rich/projects');
       expect(chip.getAttribute('title')).toBe('/Users/rich/projects/workx');
     });
