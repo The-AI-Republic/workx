@@ -2877,6 +2877,15 @@ export class Session {
     // Record to SessionState history
     await this.recordConversationItemsDual(responseItems, { requireDurable: true });
 
+    // Empty sessions are drafts, not history. Publish only after the exact
+    // user item above is durable; publication failure must not turn that
+    // already-persisted message into a failed model submission.
+    try {
+      await this.services?.onUserMessagePersisted?.(this.sessionId);
+    } catch (error) {
+      console.warn('[Session] Failed to publish persisted conversation:', error);
+    }
+
     // Title generation is NOT triggered here: it runs exclusively from the
     // TaskRunner completion checkpoint (maybeGenerateTitle), after the AI
     // response has landed. The typed response_item above is the sole durable

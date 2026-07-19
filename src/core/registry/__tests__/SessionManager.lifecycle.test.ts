@@ -148,8 +148,48 @@ describe('SessionManager lifecycle manager', () => {
     expect(assembler.inputs).toHaveLength(0);
     expect(await registry.getThread('thread')).toMatchObject({
       title: 'Draft',
+      publishedAt: null,
       runtime: { state: 'suspended' },
     });
+    expect((await registry.listThreads()).entries).toEqual([]);
+  });
+
+  it('publishes a draft only after the session reports a durable user message', async () => {
+    await registry.openSession({ sessionId: 'publish-after-user-message' });
+    await registry.hydrateSession('publish-after-user-message');
+
+    expect((await registry.listThreads()).entries).toEqual([]);
+    await assembler.inputs[0]?.services.onUserMessagePersisted?.('publish-after-user-message');
+
+    expect((await registry.listThreads()).entries).toMatchObject([
+      { sessionId: 'publish-after-user-message', publishedAt: expect.any(Number) },
+    ]);
+  });
+
+  it('repairs a draft whose durable user message outlived a failed publication write', async () => {
+    await registry.openSession({ sessionId: 'publication-recovery' });
+    await registry.cleanup();
+    registry = new SessionManager({
+      lifecycleMode: 'client',
+      threadIndexStore: index,
+      agentAssembler: assembler,
+      assemblyServicesFactory: async () => ({} as never),
+      loadModelContextSnapshot: async (sessionId) => ({
+        sessionId,
+        revision: 1,
+        items: [{
+          type: 'response_item',
+          payload: { type: 'message', role: 'user', content: [] },
+        }],
+      }),
+    });
+    registry.initialize(agentConfig as never);
+
+    await registry.hydrateSession('publication-recovery');
+
+    expect((await registry.listThreads()).entries).toMatchObject([
+      { sessionId: 'publication-recovery', publishedAt: expect.any(Number) },
+    ]);
   });
 
   it('runs the lazy index reconciliation once before serving list pages', async () => {

@@ -29,6 +29,7 @@ function entry(sessionId: string, overrides: Partial<ThreadIndexEntry> = {}): Th
     titleUpdatedAt: 1,
     createdAt: 1,
     lastActiveAt: 1,
+    publishedAt: 1,
     pinned: false,
     deletedAt: null,
     purgeAfter: null,

@@ -112,6 +112,7 @@ function placeholderEntry(sessionId: string, title = ''): ThreadIndexEntry {
     titleUpdatedAt: now,
     createdAt: now,
     lastActiveAt: now,
+    publishedAt: null,
     pinned: false,
     deletedAt: null,
     purgeAfter: null,

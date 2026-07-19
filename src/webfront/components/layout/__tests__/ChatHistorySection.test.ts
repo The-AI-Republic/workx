@@ -31,6 +31,7 @@ function item(index: number): ThreadListItem {
     titleUpdatedAt: index,
     createdAt: index,
     lastActiveAt: 100 - index,
+    publishedAt: index,
     pinned: false,
     deletedAt: null,
     purgeAfter: null,
@@ -81,6 +82,18 @@ describe('ChatHistorySection paging', () => {
       expect(search.classList.contains('placeholder:text-term-dim-green')).toBe(true);
       expect(loadMore.classList.contains('text-term-dim-green')).toBe(true);
     });
+  });
+
+  it('does not render an active empty draft as chat history', async () => {
+    const draft = { ...item(0), publishedAt: null };
+    threadStore.mergeThread(draft);
+    threadStore.setActiveThread(draft.sessionId);
+    mocks.serviceRequest.mockResolvedValue({ entries: [], nextCursor: null });
+
+    render(ChatHistorySection);
+
+    await screen.findByText('No chat history yet');
+    expect(screen.queryByText('Conversation 0')).toBeNull();
   });
 
   it('loads ten rows at a time inside a fixed-height scroll container', async () => {

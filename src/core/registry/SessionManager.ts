@@ -405,6 +405,7 @@ export class SessionManager {
       const services = {
         ...baseServices,
         onBackgroundWorkChanged: (sessionId: string) => this.handleBackgroundWorkChanged(sessionId),
+        onUserMessagePersisted: (sessionId: string) => this.publishThread(sessionId),
         onDurabilityChanged: (
           sessionId: string,
           durability: 'ok' | 'degraded',
@@ -468,6 +469,7 @@ export class SessionManager {
           origin: sessionConfig.fork
             ? { kind: 'fork', sourceSessionId: sessionConfig.fork.sourceConversationId }
             : { kind: 'new' },
+          publishedAt: initialHistory.mode === 'new' ? null : Date.now(),
         }),
       );
 
@@ -586,6 +588,7 @@ export class SessionManager {
     title?: string;
     agentMode?: import('../../prompts/PromptComposer').AgentMode;
     origin?: ThreadIndexEntry['origin'];
+    publishedAt?: number | null;
   } = {}): Promise<{
     sessionId: string;
     state: 'SUSPENDED' | 'IDLE';
@@ -611,6 +614,9 @@ export class SessionManager {
             options.agentMode ?? this._config?.getConfig().preferences?.defaultMode,
           ),
           origin: options.origin,
+          publishedAt: options.publishedAt === undefined
+            ? options.origin?.kind === 'fork' ? Date.now() : null
+            : options.publishedAt,
         }),
       ).then((entry) => {
         this.transitionRuntime(sessionId, 'suspended', 'opened');
@@ -692,6 +698,16 @@ export class SessionManager {
           ? await this._registryConfig.loadRolloutSnapshot(sessionId)
           : { sessionId, revision: 0, items: [] };
       const items = structuredClone(snapshot.items) as unknown[];
+      // A prior publication write may have failed after the user item became
+      // durable. Repair that narrow split-brain on the next hydration.
+      if (entry?.publishedAt === null && containsDurableUserMessage(items)) {
+        const now = Date.now();
+        entry = await this._registryConfig.threadIndexStore!.patch(sessionId, {
+          publishedAt: now,
+          lastActiveAt: Math.max(entry.lastActiveAt, now),
+        });
+        this.emitIndexChanged(sessionId, 'upsert', entry);
+      }
       failureCode = 'assembly';
       let session: AgentSession;
       if (entry?.origin.kind === 'fork') {
@@ -1420,6 +1436,18 @@ export class SessionManager {
     }
   }
 
+  private publishThread(sessionId: string): Promise<void> {
+    return this._sessionOperations.run(sessionId, async () => {
+      const index = this._registryConfig.threadIndexStore;
+      if (!index) return;
+      const current = await index.get(sessionId, true);
+      if (!current || current.deletedAt !== null || current.publishedAt !== null) return;
+      const now = Date.now();
+      const entry = await index.patch(sessionId, { publishedAt: now, lastActiveAt: now });
+      this.emitIndexChanged(sessionId, 'upsert', entry);
+    });
+  }
+
   async listThreads(request: ThreadListRequest = {}) {
     if (!this._registryConfig.threadIndexStore) {
       return { entries: [], nextCursor: null };
@@ -1766,7 +1794,10 @@ export class SessionManager {
       }
     }
     if (this._registryConfig.threadIndexStore) {
-      const newest = await this._registryConfig.threadIndexStore.list({ limit: 1 });
+      const newest = await this._registryConfig.threadIndexStore.list({
+        limit: 1,
+        includeDrafts: true,
+      });
       if (newest.entries[0]) return newest.entries[0].sessionId;
       return (await this.openSession()).sessionId;
     }
@@ -2499,6 +2530,18 @@ async function sha256(value: string): Promise<string> {
   return [...new Uint8Array(digest)]
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('');
+}
+
+function containsDurableUserMessage(items: readonly unknown[]): boolean {
+  return items.some((item) => {
+    if (!item || typeof item !== 'object') return false;
+    const rolloutItem = item as { type?: unknown; payload?: unknown };
+    if (rolloutItem.type !== 'response_item'
+      || !rolloutItem.payload
+      || typeof rolloutItem.payload !== 'object') return false;
+    const responseItem = rolloutItem.payload as { type?: unknown; role?: unknown };
+    return responseItem.type === 'message' && responseItem.role === 'user';
+  });
 }
 
 class ManagedCapacityUnavailableError extends Error {

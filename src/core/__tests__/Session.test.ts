@@ -324,8 +324,10 @@ describe('Session', () => {
 
     it('records one typed multimodal user item with the stable client id', async () => {
       const recordItems = vi.fn().mockResolvedValue(undefined);
+      const onUserMessagePersisted = vi.fn().mockResolvedValue(undefined);
       const typed = new Session(undefined, false, makeMockServices({
         rollout: { recordItems } as any,
+        onUserMessagePersisted,
       }));
       await typed.recordInputAndRolloutUsermsg([
         { type: 'text', text: 'hello' },
@@ -344,19 +346,24 @@ describe('Session', () => {
         ],
       });
       expect(JSON.stringify(history)).not.toContain('"type":"text","text"');
+      expect(onUserMessagePersisted).toHaveBeenCalledOnce();
+      expect(onUserMessagePersisted).toHaveBeenCalledWith(typed.sessionId);
     });
 
     it('does not expose accepted input in memory when its durable write fails', async () => {
+      const onUserMessagePersisted = vi.fn().mockResolvedValue(undefined);
       const typed = new Session(undefined, false, makeMockServices({
         rollout: {
           recordItems: vi.fn().mockRejectedValue(new Error('storage unavailable')),
         } as any,
+        onUserMessagePersisted,
       }));
 
       await expect(typed.recordInputAndRolloutUsermsg([
         { type: 'text', text: 'do not become a phantom' },
       ], 'client-failed')).rejects.toThrow('storage unavailable');
       expect(typed.getConversationHistory().items).toEqual([]);
+      expect(onUserMessagePersisted).not.toHaveBeenCalled();
     });
 
     describe('getMessageCount()', () => {

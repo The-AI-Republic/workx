@@ -273,7 +273,10 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
       }
 
       if (registry.openSession && registry.hydrateSession) {
-        await registry.openSession({ sessionId: rolloutData.sessionId });
+        await registry.openSession({
+          sessionId: rolloutData.sessionId,
+          publishedAt: Date.now(),
+        });
         const hydrated = await registry.hydrateSession(rolloutData.sessionId);
         const history = hydrated.agent?.getSession().getConversationHistory();
         return { sessionId: rolloutData.sessionId, history: history?.items ?? [] };
