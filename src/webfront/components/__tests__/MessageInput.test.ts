@@ -317,5 +317,19 @@ describe('MessageInput Component', () => {
       await fireEvent.click(screen.getByRole('button', { name: /working folder/i }));
       expect(onChooseWorkingDirectory).toHaveBeenCalledTimes(1);
     });
+
+    it.each(['/', 'C:\\'])('shows a root path without adding an ellipsis: %s', (root) => {
+      render(MessageInput, {
+        props: {
+          value: '',
+          workingDirectory: root,
+          onChooseWorkingDirectory: vi.fn(),
+        },
+      });
+
+      const chip = screen.getByRole('button', { name: /working folder/i });
+      expect(chip.textContent).toContain(root);
+      expect(chip.textContent).not.toContain('.../');
+    });
   });
 });

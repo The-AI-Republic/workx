@@ -59,7 +59,12 @@ describe('Session workspace', () => {
       mode: 'forked',
       sourceConversationId: 'source',
       workspace: { workingDirectory: '/home/rich/projects/source' },
-      rolloutItems: [],
+      rolloutItems: [{
+        type: 'turn_context',
+        payload: {
+          workspace: { workingDirectory: '/home/rich/projects/old-at-rewind-point' },
+        },
+      }],
     });
     await session.initialize();
     expect(session.getWorkingDirectory()).toBe('/home/rich/projects/source');

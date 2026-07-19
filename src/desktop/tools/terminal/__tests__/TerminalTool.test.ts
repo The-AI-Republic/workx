@@ -51,14 +51,21 @@ describe('TerminalTool session working directory', () => {
     );
   });
 
-  it('allows an absolute per-command workdir without mutating session context', async () => {
+  it('rejects an absolute per-command workdir', async () => {
     const ctx = context('/home/rich');
-    await tool.handleInvocation({ command: 'git status', workdir: '/tmp/other' }, ctx);
-    expect(execute).toHaveBeenCalledWith(
-      'git status',
-      expect.objectContaining({ cwd: '/tmp/other' }),
-    );
+    const result = await tool.handleInvocation({ command: 'git status', workdir: '/tmp/other' }, ctx);
+    expect(result).toContain('workdir must be relative');
+    expect(execute).not.toHaveBeenCalled();
     expect(ctx.executionContext?.workspace?.workingDirectory).toBe('/home/rich');
+  });
+
+  it('rejects a relative workdir that escapes the session folder', async () => {
+    const result = await tool.handleInvocation(
+      { command: 'git status', workdir: '../../tmp/other' },
+      context('/home/rich/projects/workx'),
+    );
+    expect(result).toContain('workdir must stay within');
+    expect(execute).not.toHaveBeenCalled();
   });
 
   it('exposes workdir rather than cwd to the model', () => {

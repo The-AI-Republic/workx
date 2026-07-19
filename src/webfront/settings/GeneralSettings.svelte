@@ -461,7 +461,7 @@
             {currentTheme === 'modern'
               ? 'font-chat text-chat-text dark:text-chat-text-dark'
               : 'font-terminal text-term-green'}"
-        >Default Working Folder</label>
+        >{$_t("Default Working Folder")}</label>
         <input
           id="workspaceRoot"
           type="text"
@@ -478,7 +478,7 @@
           {currentTheme === 'modern'
             ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
             : 'font-terminal text-term-dim-green'}"
-        >Desktop only. New conversations start in this folder in both General and Code mode. Leave empty to use your home folder; existing conversations keep their own folder.</div>
+        >{$_t("Desktop only. New conversations start in this folder in both General and Code mode. Leave empty to use your home folder; existing conversations keep their own folder.")}</div>
       </div>
     </div>
 

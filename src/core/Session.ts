@@ -3252,6 +3252,15 @@ export class Session {
       // Forked session - reconstruct and persist
       this.reconstructHistoryFromRollout(initialHistory.rolloutItems);
 
+      // A fork inherits the source session's CURRENT folder, even when its
+      // sliced rollout contains an older turn_context from before the source
+      // changed folders. Reconstruction restores historical state for resume;
+      // the explicit fork workspace is authoritative for the new session.
+      const inheritedWorkingDirectory = initialHistory.workspace?.workingDirectory?.trim();
+      if (isAbsoluteWorkingDirectory(inheritedWorkingDirectory)) {
+        this.setWorkingDirectory(inheritedWorkingDirectory);
+      }
+
       // Persist forked history to new rollout
       const history = this.sessionState.historySnapshot();
       await this.persistRolloutResponseItems(history);

@@ -9,7 +9,7 @@
  */
 
 import { exec as execCommand, type ExecException } from 'node:child_process';
-import { isAbsolute, resolve } from 'node:path';
+import { isAbsolute, relative, resolve, sep } from 'node:path';
 import type { ToolContext } from '../../../tools/BaseTool';
 import { SecurityFilter, type SecurityConfig, type FilterResult } from './SecurityFilter';
 import {
@@ -264,7 +264,7 @@ export class TerminalTool {
       workdir: {
         type: 'string',
         description:
-          'Optional directory for this command. Relative paths resolve from the session working folder; absolute paths apply to this command only.',
+          'Optional subdirectory for this command, relative to the session working folder.',
       },
       timeout: {
         type: 'number',
@@ -309,7 +309,7 @@ export class TerminalTool {
     if (sandboxStatus?.status !== 'available') {
       return (
         `Execute terminal/shell commands on the local system. ${shellInfo}\n\n` +
-        'Commands start in the session working folder unless workdir selects another directory for that command. ' +
+        'Commands start in the session working folder unless workdir selects a relative subdirectory for that command. ' +
         'The working folder is not a filesystem security boundary: host commands may access paths outside it. ' +
         'Sandboxed terminal execution is not available in the desktop runtime yet, so sandboxed=true is rejected. ' +
         `Sandbox status: ${statusStr}. Commands still pass through the terminal security filter and approval flow.`
@@ -392,12 +392,21 @@ export class TerminalTool {
     if (input.workdir?.trim()) {
       const requested = input.workdir.trim();
       if (isAbsolute(requested)) {
-        commandWorkingDirectory = requested;
-      } else if (sessionWorkingDirectory) {
-        commandWorkingDirectory = resolve(sessionWorkingDirectory, requested);
-      } else {
+        return 'Command failed: workdir must be relative to the session working folder.';
+      }
+      if (!sessionWorkingDirectory) {
         return 'Command failed: a relative workdir requires a session working folder.';
       }
+      const resolvedWorkdir = resolve(sessionWorkingDirectory, requested);
+      const relativeWorkdir = relative(sessionWorkingDirectory, resolvedWorkdir);
+      if (
+        relativeWorkdir === '..'
+        || relativeWorkdir.startsWith(`..${sep}`)
+        || isAbsolute(relativeWorkdir)
+      ) {
+        return 'Command failed: workdir must stay within the session working folder.';
+      }
+      commandWorkingDirectory = resolvedWorkdir;
     }
 
     if (!commandWorkingDirectory) {

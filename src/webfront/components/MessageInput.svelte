@@ -73,6 +73,7 @@
     if (!path) return 'Select folder…';
     const trimmed = path.replace(/[\\/]+$/, '');
     const segments = trimmed.split(/[\\/]+/).filter(Boolean);
+    if (segments.length <= 1) return path;
     return `.../${segments.at(-1) ?? trimmed}`;
   }
 

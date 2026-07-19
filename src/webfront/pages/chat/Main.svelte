@@ -63,6 +63,8 @@
   let scrollContainer: HTMLDivElement;
   let currentTabId: number = $state(-1); // Track current session's bound tab
   let currentWorkingDirectory: string | undefined = $state(undefined);
+  let workingDirectoryError: string | null = $state(null);
+  let workingDirectoryErrorTimer: ReturnType<typeof setTimeout> | null = null;
   let agentReady: boolean = $state(false);
   let healthStatus: {
     ready: boolean;
@@ -439,6 +441,9 @@
     // is the source of truth — restoreAllThreadHistories() handles remount recovery)
     if (activeSessionId) {
       saveThreadState(activeSessionId);
+    }
+    if (workingDirectoryErrorTimer) {
+      clearTimeout(workingDirectoryErrorTimer);
     }
     window.removeEventListener('zoom-changed', onZoomChanged);
   });
@@ -1526,12 +1531,15 @@
 
   async function chooseWorkingDirectory(): Promise<void> {
     if (platform.platformName !== 'desktop' || !activeSessionId || isProcessing) return;
+    const targetSessionId = activeSessionId;
+    const targetWorkingDirectory = currentWorkingDirectory;
+    workingDirectoryError = null;
     try {
       const { open } = await import('@tauri-apps/plugin-dialog');
       const selected = await open({
         directory: true,
         multiple: false,
-        defaultPath: currentWorkingDirectory,
+        defaultPath: targetWorkingDirectory,
       });
       if (typeof selected !== 'string' || !selected) return;
 
@@ -1540,16 +1548,25 @@
         success: boolean;
         workingDirectory?: string;
       }>('session.setWorkingDirectory', {
-        sessionId: activeSessionId,
+        sessionId: targetSessionId,
         workingDirectory: selected,
       });
       if (response?.workingDirectory) {
-        currentWorkingDirectory = response.workingDirectory;
-        const state = threadStates.get(activeSessionId);
+        const state = threadStates.get(targetSessionId);
         if (state) state.workingDirectory = response.workingDirectory;
+        if (activeSessionId === targetSessionId) {
+          currentWorkingDirectory = response.workingDirectory;
+        }
       }
     } catch (error) {
       console.error('[App] Failed to change working folder:', error);
+      const detail = error instanceof Error ? error.message : String(error);
+      workingDirectoryError = `${t('Failed to change working folder')}: ${detail}`;
+      if (workingDirectoryErrorTimer) clearTimeout(workingDirectoryErrorTimer);
+      workingDirectoryErrorTimer = setTimeout(() => {
+        workingDirectoryError = null;
+        workingDirectoryErrorTimer = null;
+      }, 5000);
     }
   }
 
@@ -1967,6 +1984,15 @@
     >
       <!-- Input area -->
       <div class="pr-2 py-2 pl-0">
+        {#if workingDirectoryError}
+          <div
+            class="mb-2 ml-2 rounded-lg border px-3 py-2 text-sm
+              {currentTheme === 'modern'
+                ? 'border-chat-status-error/30 bg-chat-status-error/10 text-chat-status-error dark:border-chat-status-error-dark/30 dark:bg-chat-status-error-dark/10 dark:text-chat-status-error-dark'
+                : 'border-term-red bg-[rgba(40,0,0,0.95)] text-term-red'}"
+            role="alert"
+          >{workingDirectoryError}</div>
+        {/if}
         <MessageInput
           bind:value={inputText}
           bind:suggestion={nextSuggestion}

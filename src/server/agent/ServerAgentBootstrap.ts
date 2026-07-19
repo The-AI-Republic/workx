@@ -420,9 +420,13 @@ export class ServerAgentBootstrap {
 
       // 5. Create AgentRegistry with factories
       const { join } = await import('node:path');
-      const { homedir } = await import('node:os');
       const serverRootDir = join(dataDir, 'sessions');
-      const defaultWorkingDirectory = homedir();
+      // Only WorkX Desktop defaults new chats to the OS home folder. A
+      // headless server session needs an explicit workspace policy; otherwise
+      // grep/glob would silently gain access to the service account's home.
+      const defaultWorkingDirectory = profile === 'desktop-runtime'
+        ? (await import('node:os')).homedir()
+        : undefined;
       this.registry = new AgentRegistry({
         maxConcurrent: 3,
         agentFactory: async (cfg, initialHistory) => {
@@ -438,7 +442,7 @@ export class ServerAgentBootstrap {
           const services = await createSessionServices(
             {
               serverRootDir,
-              defaultWorkingDirectory,
+              ...(defaultWorkingDirectory ? { defaultWorkingDirectory } : {}),
             },
             false
           );
