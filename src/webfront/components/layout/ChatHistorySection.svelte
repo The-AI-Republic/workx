@@ -173,7 +173,9 @@
   <div class="px-2 pb-2 flex gap-1">
     <input
       class="min-w-0 flex-1 rounded px-2 py-1 text-xs bg-transparent border
-        {currentTheme === 'modern' ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}"
+        {currentTheme === 'modern'
+          ? 'border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark placeholder:text-chat-text-muted dark:placeholder:text-chat-text-muted-dark'
+          : 'border-term-dim-green text-term-green placeholder:text-term-dim-green'}"
       bind:value={search}
       oninput={searchChanged}
       placeholder={$_t('Search chats')}
@@ -261,7 +263,10 @@
   {/if}
 
   {#if $threadStore.nextCursor}
-    <button class="w-full px-2 py-1.5 text-center text-xs border-none bg-transparent cursor-pointer opacity-70 hover:opacity-100"
+    <button class="w-full px-2 py-1.5 text-center text-xs border-none bg-transparent cursor-pointer opacity-70 hover:opacity-100
+      {currentTheme === 'modern'
+        ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark hover:text-chat-text dark:hover:text-chat-text-dark'
+        : 'text-term-dim-green hover:text-term-green'}"
       onclick={() => void loadPage(false)} disabled={$threadStore.loading}>
       {$threadStore.loading ? $_t('Loading history...') : $_t('Load More')}
     </button>

@@ -20,6 +20,7 @@ vi.mock('@/core/storage/ConfigStorageProvider', () => ({
 
 import ChatHistorySection from '../ChatHistorySection.svelte';
 import { threadStore } from '../../../stores/threadStore';
+import { themePreference } from '../../../stores/themeStore';
 
 function item(index: number): ThreadListItem {
   return {
@@ -56,8 +57,30 @@ function deferred<T>() {
 describe('ChatHistorySection paging', () => {
   beforeEach(() => {
     threadStore.clear();
+    themePreference.setTheme('modern-light');
     mocks.serviceRequest.mockReset();
     mocks.push.mockReset();
+  });
+
+  it('applies modern and terminal theme colors to history controls', async () => {
+    mocks.serviceRequest.mockResolvedValue({ entries: [item(0)], nextCursor: 'page-2' });
+
+    render(ChatHistorySection);
+
+    const search = await screen.findByRole('textbox', { name: 'Search chats' });
+    await screen.findByText('Conversation 0');
+    const loadMore = screen.getByRole('button', { name: 'Load More' });
+    expect(search.classList.contains('text-chat-text')).toBe(true);
+    expect(search.classList.contains('placeholder:text-chat-text-muted')).toBe(true);
+    expect(loadMore.classList.contains('text-chat-text-secondary')).toBe(true);
+
+    themePreference.setTheme('terminal');
+
+    await waitFor(() => {
+      expect(search.classList.contains('text-term-green')).toBe(true);
+      expect(search.classList.contains('placeholder:text-term-dim-green')).toBe(true);
+      expect(loadMore.classList.contains('text-term-dim-green')).toBe(true);
+    });
   });
 
   it('loads ten rows at a time inside a fixed-height scroll container', async () => {
