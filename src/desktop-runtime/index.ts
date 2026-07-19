@@ -38,6 +38,9 @@ async function main(): Promise<void> {
   const carrier = new StdioFrameCarrier();
   const controlBridge = new DesktopRuntimeControlBridge(carrier);
   setDesktopRuntimeControlBridge(controlBridge);
+  // Attach the request-buffering listener before stdin starts flowing. The
+  // supervisor may send application requests immediately after hello-ok.
+  const channel = new StdioRuntimeChannel(carrier);
 
   let bootstrap: WorkXRuntimeBootstrap | null = null;
   let appServer: DesktopAppServerManager | null = null;
@@ -105,9 +108,9 @@ async function main(): Promise<void> {
     }
   }, 2_000);
 
-  const channel = new StdioRuntimeChannel(carrier);
   bootstrap = new WorkXRuntimeBootstrap({ channel });
   await bootstrap.initialize();
+  await channel.activate();
 
   // Bring up the desktop app-server (the loopback WS listener the browser
   // bridge connects to) and register its UI-facing status/control services.
