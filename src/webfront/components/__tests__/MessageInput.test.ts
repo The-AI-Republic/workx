@@ -307,9 +307,14 @@ describe('MessageInput Component', () => {
       expect(chip.getAttribute('title')).toBe('/Users/rich/projects/workx');
       const contextRow = chip.closest('.composer-context-row');
       expect(contextRow).toBeTruthy();
-      expect(contextRow?.contains(
-        screen.getByRole('button', { name: /start new conversation/i }),
-      )).toBe(true);
+      const spacer = contextRow?.querySelector('.flex-1');
+      const newConversation = screen.getByRole('button', { name: /start new conversation/i });
+      expect(spacer).toBeTruthy();
+      expect(contextRow?.contains(newConversation)).toBe(true);
+      expect(chip.compareDocumentPosition(spacer!) & Node.DOCUMENT_POSITION_FOLLOWING)
+        .toBeTruthy();
+      expect(spacer!.compareDocumentPosition(newConversation) & Node.DOCUMENT_POSITION_FOLLOWING)
+        .toBeTruthy();
     });
 
     it('opens the folder picker callback when clicked', async () => {

@@ -518,6 +518,21 @@
 <div class="w-full">
   <!-- Tab Context Display -->
   <div class="composer-context-row mb-2 flex flex-wrap items-center gap-2">
+    {#if onChooseWorkingDirectory}
+      <button
+        type="button"
+        class="max-w-[min(20rem,55vw)] truncate rounded-md border-none bg-transparent px-1.5 py-1 text-sm cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-50
+          {currentTheme === 'modern'
+            ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark'
+            : 'text-term-dim-green hover:bg-term-dim-green/10 hover:text-term-green'}"
+        title={workingDirectory ?? 'Select working folder'}
+        aria-label={workingDirectory
+          ? `Working folder: ${workingDirectory}. Click to change`
+          : 'Select working folder'}
+        onclick={onChooseWorkingDirectory}
+        disabled={isProcessing}
+      >{workingDirectoryLabel(workingDirectory)} ▾</button>
+    {/if}
     {#if platform.hasTabSelection}
       <!-- Only apply mousedown preventDefault to TabContext area for drag behavior -->
       <div class="contents" onmousedown={(e) => e.preventDefault()}>
@@ -527,21 +542,6 @@
     <div class="flex-1 min-w-0"></div>
     <!-- Top Right Button Group - NOT inside mousedown preventDefault area -->
     <div class="flex items-center gap-2 shrink-0">
-      {#if onChooseWorkingDirectory}
-        <button
-          type="button"
-          class="max-w-[min(20rem,55vw)] truncate rounded-md border-none bg-transparent px-1.5 py-1 text-sm cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-50
-            {currentTheme === 'modern'
-              ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark'
-              : 'text-term-dim-green hover:bg-term-dim-green/10 hover:text-term-green'}"
-          title={workingDirectory ?? 'Select working folder'}
-          aria-label={workingDirectory
-            ? `Working folder: ${workingDirectory}. Click to change`
-            : 'Select working folder'}
-          onclick={onChooseWorkingDirectory}
-          disabled={isProcessing}
-        >{workingDirectoryLabel(workingDirectory)} ▾</button>
-      {/if}
       <!-- Wide mode relocates chat history to the left panel; keep the popup
            reachable in narrow mode (no left panel is rendered there). -->
       {#if !$isWideMode}
