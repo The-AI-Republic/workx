@@ -66,10 +66,13 @@ export async function loadHistoryPage(
   let beforeSequence = requestedBeforeSequence === undefined
     ? revision
     : requestedBeforeSequence;
-  let starts = 0;
+  let confirmedTurns = 0;
+  let boundarySequence: number | null = null;
+  let legacyPrefix = false;
+  let pendingUserBoundaries: RolloutItemRecord[] = [];
   let exhausted = false;
 
-  while (starts < limit && !exhausted) {
+  while (boundarySequence === null && !exhausted) {
     const chunk = await provider.getItemsByRolloutIdRange(sessionId, {
       beforeSequence,
       limit: SCAN_CHUNK_SIZE,
@@ -83,37 +86,64 @@ export async function loadHistoryPage(
       // Event/debug inventory is neither returned nor retained in projection
       // memory. The raw chunk's oldest sequence still advances the scan.
       if (isHistoryBearingRecord(record)) descending.push(record);
+
+      if (legacyPrefix && isLegacyUserBoundary(record)) {
+        confirmedTurns += 1;
+        if (confirmedTurns === limit) {
+          boundarySequence = record.sequence;
+          break;
+        }
+        continue;
+      }
+
       if (record.type === 'turn_start') {
-        starts += 1;
-        if (starts === limit) break;
+        // Canonical writers persist one user response after each turn_start.
+        // Seeing its marker confirms that the pending user item belongs to a
+        // marked turn rather than the older markerless prefix.
+        pendingUserBoundaries = [];
+        confirmedTurns += 1;
+        if (confirmedTurns === limit) {
+          boundarySequence = record.sequence;
+          break;
+        }
+        continue;
+      }
+
+      if (isLegacyUserBoundary(record)) {
+        pendingUserBoundaries.push(record);
+        // Two user items without an intervening turn_start cannot be one
+        // canonical marked turn. This identifies the monotonic legacy prefix
+        // without scanning that prefix all the way to sequence zero.
+        if (pendingUserBoundaries.length === 2) {
+          legacyPrefix = true;
+          const turnsNeeded = limit - confirmedTurns;
+          if (turnsNeeded <= pendingUserBoundaries.length) {
+            boundarySequence = pendingUserBoundaries[turnsNeeded - 1].sequence;
+            confirmedTurns = limit;
+            break;
+          }
+          confirmedTurns += pendingUserBoundaries.length;
+          pendingUserBoundaries = [];
+        }
       }
     }
     const oldestScanned = chunk[chunk.length - 1];
-    beforeSequence = starts === limit
-      ? descending[descending.length - 1]?.sequence
-      : oldestScanned?.sequence;
+    beforeSequence = boundarySequence ?? oldestScanned?.sequence;
     exhausted = chunk.length < SCAN_CHUNK_SIZE || oldestScanned?.sequence === 0;
   }
 
-  // Rollouts written before turn_start markers are the explicit legacy path.
-  // A rollout can contain both formats across the migration boundary, so use
-  // legacy user boundaries to fill only the portion of this page not already
-  // occupied by marked turns.
-  if (starts < limit) {
-    let oldestMarkedTurnIndex = -1;
-    for (let index = descending.length - 1; index >= 0; index -= 1) {
-      if (descending[index].type !== 'turn_start') continue;
-      oldestMarkedTurnIndex = index;
-      break;
+  // At end-of-rollout, even one unmatched user boundary is confirmed legacy.
+  if (boundarySequence === null && exhausted && pendingUserBoundaries.length > 0) {
+    const turnsNeeded = limit - confirmedTurns;
+    if (turnsNeeded <= pendingUserBoundaries.length) {
+      boundarySequence = pendingUserBoundaries[turnsNeeded - 1].sequence;
     }
-    const legacyStartIndex = oldestMarkedTurnIndex + 1;
-    let userStarts = 0;
-    const boundaryOffset = descending.slice(legacyStartIndex).findIndex((record) => {
-      if (!isLegacyUserBoundary(record)) return false;
-      userStarts += 1;
-      return userStarts === limit - starts;
-    });
-    const boundaryIndex = boundaryOffset < 0 ? -1 : legacyStartIndex + boundaryOffset;
+  }
+
+  if (boundarySequence !== null) {
+    const boundaryIndex = descending.findIndex(
+      (record) => record.sequence === boundarySequence,
+    );
     if (boundaryIndex >= 0) descending.splice(boundaryIndex + 1);
   }
 

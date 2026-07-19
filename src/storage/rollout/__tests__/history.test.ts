@@ -23,6 +23,12 @@ function message(
   };
 }
 
+function responseText(response: ResponseItem): string | undefined {
+  if (response.type !== 'message') return undefined;
+  const part = response.content[0];
+  return part && 'text' in part ? part.text : undefined;
+}
+
 function memoryProvider(records: RolloutItemRecord[]): RolloutStorageProvider {
   return {
     getMetadata: vi.fn().mockResolvedValue({ itemCount: records.length }),
@@ -130,6 +136,29 @@ describe('canonical rollout history projection', () => {
     expect(page.nextCursor).not.toBeNull();
   });
 
+  it('bounds reverse reads for large markerless rollouts', async () => {
+    const records = [record(0, 'session_meta', {})];
+    for (let turn = 1; turn <= 5_000; turn += 1) {
+      records.push(
+        record(turn * 2, 'response_item', message('user', `user ${turn}`)),
+        record(turn * 2 + 1, 'response_item', message('assistant', `agent ${turn}`)),
+      );
+    }
+    const provider = memoryProvider(records);
+
+    const page = await loadHistoryPage(provider, 'session', { limit: 10 });
+
+    expect(page.turns).toHaveLength(10);
+    expect(page.items.map((item) => responseText(item.response))).toEqual(
+      Array.from({ length: 10 }, (_, index) => [
+        `user ${4_991 + index}`,
+        `agent ${4_991 + index}`,
+      ]).flat(),
+    );
+    expect(provider.getItemsByRolloutIdRange).toHaveBeenCalledTimes(2);
+    expect(page.nextCursor).not.toBeNull();
+  });
+
   it('unwraps legacy JSON-serialized inputs without reinterpreting modern JSON text', () => {
     const genuineJson = JSON.stringify({ type: 'text', text: 'keep this JSON' });
     const projected = projectHistoryRecords([
@@ -181,7 +210,7 @@ describe('canonical rollout history projection', () => {
     const page = await loadHistoryPage(memoryProvider(records), 'session', { limit: 4 });
 
     expect(page.turns).toHaveLength(4);
-    expect(page.items.map((item) => (item.response as any).content[0].text)).toEqual([
+    expect(page.items.map((item) => responseText(item.response))).toEqual([
       'legacy 2',
       'legacy answer 2',
       'legacy 3',

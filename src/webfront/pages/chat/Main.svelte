@@ -60,6 +60,7 @@
     type MessageDedupeBudget,
     type TimelineSource,
   } from '../../lib/conversationTimeline';
+  import { LatestViewedSession } from '../../lib/latestViewedSession';
   // UI channel client (platform-agnostic)
   let client: UIChannelClient | null = $state(null);
   let unsubscribers: Array<() => void> = $state([]);
@@ -174,6 +175,28 @@
   const attachBuffers = new Map<string, ChannelEvent[]>();
   const attachBufferOverflow = new Set<string>();
   const MAX_ATTACH_BUFFER_EVENTS = 1024;
+  const viewedSession = new LatestViewedSession({
+    acquireLease: async (sessionId) => {
+      const c = await getInitializedUIClient();
+      const response = await c.serviceRequest<{
+        lease: { leaseId: string; sessionId: string };
+      }>('session.setViewed', { surfaceId, sessionId });
+      return { leaseId: response.lease.leaseId, sessionId };
+    },
+    releaseLease: async (lease) => {
+      if (!client) return;
+      await client.serviceRequest('session.releaseSurface', {
+        surfaceId,
+        leaseId: lease.leaseId,
+      });
+    },
+    attachSession: (sessionId) => restoreConversationHistory(sessionId),
+    onLeaseChange: (lease) => {
+      surfaceLease = lease;
+      if (lease) startSurfaceHeartbeat();
+      else stopSurfaceHeartbeat();
+    },
+  });
 
   function appendProcessedEvent(
     event: ProcessedEvent,
@@ -1314,13 +1337,7 @@
   }
 
   async function setViewedAndAttach(sessionId: string): Promise<void> {
-    const c = await getInitializedUIClient();
-    const response = await c.serviceRequest<{
-      lease: { leaseId: string; sessionId: string };
-    }>('session.setViewed', { surfaceId, sessionId });
-    surfaceLease = { leaseId: response.lease.leaseId, sessionId };
-    startSurfaceHeartbeat();
-    await restoreConversationHistory(sessionId);
+    await viewedSession.select(sessionId);
   }
 
   async function retryHydration(): Promise<void> {
@@ -1358,15 +1375,7 @@
   }
 
   async function releaseSurface(): Promise<void> {
-    const lease = surfaceLease;
-    surfaceLease = null;
-    stopSurfaceHeartbeat();
-    if (!lease || !client) return;
-    try {
-      await client.serviceRequest('session.releaseSurface', { surfaceId, leaseId: lease.leaseId });
-    } catch {
-      // TTL is the crash-safe fallback.
-    }
+    await viewedSession.clear();
   }
 
   function handleSurfaceVisibility(): void {

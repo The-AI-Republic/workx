@@ -45,6 +45,14 @@ function item(index: number): ThreadListItem {
   };
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
 describe('ChatHistorySection paging', () => {
   beforeEach(() => {
     threadStore.clear();
@@ -77,5 +85,38 @@ describe('ChatHistorySection paging', () => {
       cursor: 'page-2',
     }));
     expect(screen.queryByRole('button', { name: 'Load More' })).toBeNull();
+  });
+
+  it('lets a newer search replace an in-flight result and ignores the stale response', async () => {
+    threadStore.mergePage([item(99)], null, { reset: true });
+    const olderSearch = deferred<{ entries: ThreadListItem[]; nextCursor: null }>();
+    const newerSearch = deferred<{ entries: ThreadListItem[]; nextCursor: null }>();
+    mocks.serviceRequest.mockImplementation((_method, params: { query?: string }) => (
+      params.query === 'older' ? olderSearch.promise : newerSearch.promise
+    ));
+
+    render(ChatHistorySection);
+    const search = screen.getByRole('textbox', { name: 'Search chats' });
+    await fireEvent.input(search, { target: { value: 'older' } });
+    await waitFor(() => {
+      expect(mocks.serviceRequest).toHaveBeenCalledWith('session.list', expect.objectContaining({
+        query: 'older',
+      }));
+    });
+
+    await fireEvent.input(search, { target: { value: 'newer' } });
+    await waitFor(() => {
+      expect(mocks.serviceRequest).toHaveBeenCalledWith('session.list', expect.objectContaining({
+        query: 'newer',
+      }));
+    });
+
+    newerSearch.resolve({ entries: [item(200)], nextCursor: null });
+    await screen.findByText('Conversation 200');
+    olderSearch.resolve({ entries: [item(100)], nextCursor: null });
+    await waitFor(() => {
+      expect(screen.queryByText('Conversation 100')).toBeNull();
+      expect(screen.getByText('Conversation 200')).toBeTruthy();
+    });
   });
 });
