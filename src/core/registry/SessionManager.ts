@@ -622,6 +622,14 @@ export class SessionManager {
     state: 'SUSPENDED' | 'IDLE';
     entry?: ThreadIndexEntry;
   }> {
+    const configuredWorkingDirectory = this._config?.getConfig().preferences?.workspaceRoot?.trim();
+    const fallbackWorkingDirectory = this._registryConfig.defaultWorkingDirectory?.trim();
+    const selectedWorkingDirectory = options.workspace?.workingDirectory?.trim()
+      ?? configuredWorkingDirectory
+      ?? fallbackWorkingDirectory;
+    const workspace = isAbsoluteWorkingDirectory(selectedWorkingDirectory)
+      ? { workingDirectory: selectedWorkingDirectory }
+      : undefined;
     if (
       !options.sessionId
       && options.surfaceId
@@ -632,18 +640,13 @@ export class SessionManager {
     ) {
       return this._draftOpenOperations.run(
         'user-facing-draft',
-        () => this.openOrReuseSurfaceDraft(options.surfaceId!, options),
+        () => this.openOrReuseSurfaceDraft(options.surfaceId!, {
+          ...options,
+          ...(workspace ? { workspace } : {}),
+        }),
       );
     }
     const sessionId = options.sessionId ?? uuidv4();
-    const configuredWorkingDirectory = this._config?.getConfig().preferences?.workspaceRoot?.trim();
-    const fallbackWorkingDirectory = this._registryConfig.defaultWorkingDirectory?.trim();
-    const selectedWorkingDirectory = options.workspace?.workingDirectory?.trim()
-      ?? configuredWorkingDirectory
-      ?? fallbackWorkingDirectory;
-    const workspace = isAbsoluteWorkingDirectory(selectedWorkingDirectory)
-      ? { workingDirectory: selectedWorkingDirectory }
-      : undefined;
     const existing = this._indexOpenFlights.get(sessionId);
     if (existing) return existing;
     let flight: Promise<{
@@ -689,6 +692,7 @@ export class SessionManager {
     options: {
       title?: string;
       agentMode?: import('../../prompts/PromptComposer').AgentMode;
+      workspace?: import('../TurnExecutionContext').SessionWorkspace;
       surfaceId?: string;
     },
   ): Promise<{
@@ -708,6 +712,7 @@ export class SessionManager {
         - Number(left.sessionId === currentLease?.sessionId)
       ) || right.lastActiveAt - left.lastActiveAt || left.sessionId.localeCompare(right.sessionId));
       for (const draft of drafts) {
+        if (draft.workspace?.workingDirectory !== options.workspace?.workingDirectory) continue;
         if (this._sessions.has(draft.sessionId)) continue;
         const claimedByAnotherSurface = this._surfaceLeases
           .activeForSession(draft.sessionId)
