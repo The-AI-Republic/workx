@@ -1445,21 +1445,6 @@ export class TurnManager {
         currentUrl = pageContext.currentUrl;
         currentDomain = pageContext.currentDomain;
       }
-      try {
-        if (!currentUrl && tabId && tabId > 0 && typeof chrome !== 'undefined' && chrome.tabs) {
-          const tab = await chrome.tabs.get(tabId);
-          currentUrl = tab.url;
-          if (currentUrl) {
-            try {
-              currentDomain = new URL(currentUrl).hostname;
-            } catch {
-              /* ignore */
-            }
-          }
-        }
-      } catch {
-        /* tab may not exist in desktop mode */
-      }
 
       // SubmitPlanForReview (Track 14) blocks on human plan approval, which
       // can take far longer than a tool call. Give it an effectively
@@ -1630,42 +1615,6 @@ export class TurnManager {
       reasoning_output_tokens: usage.reasoning_tokens || 0,
       total_tokens: usage.total_tokens || 0,
     };
-  }
-
-  /**
-   * Get current browser tab ID
-   */
-  private async getCurrentTabId(): Promise<number | undefined> {
-    if (typeof chrome !== 'undefined' && chrome.tabs) {
-      try {
-        const [tab] = await chrome.tabs.query({
-          active: true,
-          currentWindow: true,
-        });
-        return tab?.id;
-      } catch (error) {
-        console.warn('Failed to get current tab ID:', error);
-      }
-    }
-    return undefined;
-  }
-
-  /**
-   * Get current page URL
-   */
-  private async getCurrentUrl(): Promise<string | undefined> {
-    if (typeof chrome !== 'undefined' && chrome.tabs) {
-      try {
-        const [tab] = await chrome.tabs.query({
-          active: true,
-          currentWindow: true,
-        });
-        return tab?.url;
-      } catch (error) {
-        console.warn('Failed to get current URL:', error);
-      }
-    }
-    return undefined;
   }
 
   /**
