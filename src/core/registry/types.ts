@@ -110,8 +110,12 @@ export interface SessionConfig {
     sessionId?: string;
     sourceConversationId: string;
     rolloutItems: unknown[];
+    workingDirectory?: string;
     historyAlreadyPersisted?: boolean;
   };
+
+  /** Session-owned workspace restored independently of the selected mode. */
+  workspace?: import('../TurnExecutionContext').SessionWorkspace;
 
   /**
    * Mark as an internal infrastructure session (e.g. bootstrap fallback agent).
@@ -230,6 +234,9 @@ export interface RegistryConfig {
   assemblyServicesFactory?: (
     sessionId: string,
   ) => Promise<import('../session/state/SessionServices').SessionServices>;
+
+  /** Platform fallback for new sessions (desktop: the OS user home). */
+  defaultWorkingDirectory?: string;
 
   lifecycleMode?: 'client' | 'eager';
   threadIndexStore?: import('../thread/ThreadIndexStore').ThreadIndexStore;

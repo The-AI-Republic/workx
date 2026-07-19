@@ -60,6 +60,19 @@ describe('ThreadIndexStore', () => {
     ]);
   });
 
+  it('persists the session workspace independently from agent mode', async () => {
+    const store = new ThreadIndexStore(new MemoryStorageAdapter());
+    await store.createIfMissing(createThreadIndexEntry({
+      sessionId: 'workspace',
+      agentMode: 'general',
+      workspace: { workingDirectory: '/home/rich/projects/workx' },
+    }));
+    expect(await store.require('workspace')).toMatchObject({
+      agentMode: 'general',
+      workspace: { workingDirectory: '/home/rich/projects/workx' },
+    });
+  });
+
   it('normalizes titles, preserves manual title precedence, and serializes mutations', async () => {
     let now = 100;
     const store = new ThreadIndexStore(new MemoryStorageAdapter(), () => ++now);

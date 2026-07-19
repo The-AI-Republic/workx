@@ -38,6 +38,7 @@ describe('TurnManager hook runtime context', () => {
       sessionId: 'session-1',
       getSessionId: vi.fn(() => 'session-1'),
       getTabId: vi.fn(() => 42),
+      getWorkingDirectory: vi.fn(() => '/home/rich/projects/workx'),
       getToolRegistry: vi.fn(),
       getToolResultStore: vi.fn(() => undefined),
       getContentReplacementState: vi.fn(() => undefined),
@@ -91,13 +92,13 @@ describe('TurnManager hook runtime context', () => {
       current_url: 'https://example.com/path?q=1',
       current_domain: 'example.com',
     });
-    expect(captured?.cwd).toBe(process.cwd());
+    expect(captured?.cwd).toBe('/home/rich/projects/workx');
   });
 
   it('degrades to optional runtime context in headless/no-tab sessions', async () => {
     const context = await getToolRuntimeContext({ getTabId: () => -1 });
 
-    expect(context).toEqual({ cwd: process.cwd() });
+    expect(context).toEqual({});
   });
 
   it('emits initial activity and tool progress events through the session', async () => {

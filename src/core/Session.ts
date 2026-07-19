@@ -17,6 +17,7 @@ import { type AgentMode, DEFAULT_MODE } from '../prompts/PromptComposer';
 import { AgentConfig } from '../config/AgentConfig';
 import type { SessionTask } from './tasks/SessionTask';
 import type { ToolRegistry } from '../tools/ToolRegistry';
+import type { SessionWorkspace } from './TurnExecutionContext';
 import type { AgentDisposeReason } from './assembly/AgentAssembler';
 
 // New state management imports
@@ -114,6 +115,41 @@ import {
   type ContentReplacementRecord,
 } from '../tools/replacementState';
 
+function escapeWorkspaceContext(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function unescapeWorkspaceContext(value: string): string {
+  return value
+    .replace(/&gt;/g, '>')
+    .replace(/&lt;/g, '<')
+    .replace(/&amp;/g, '&');
+}
+
+function isAbsoluteWorkingDirectory(path: string | undefined): path is string {
+  return !!path && (
+    path.startsWith('/')
+    || /^[A-Za-z]:[\\/]/.test(path)
+    || path.startsWith('\\\\')
+  );
+}
+
+function findLatestWorkspaceContext(items: ResponseItem[]): string | undefined {
+  for (let i = items.length - 1; i >= 0; i--) {
+    const item = items[i] as any;
+    if (item?.type !== 'message' || !Array.isArray(item.content)) continue;
+    const text = item.content
+      .map((part: any) => typeof part?.text === 'string' ? part.text : '')
+      .join('');
+    const match = text.match(/<workspace_context>\s*<working_directory>([^<]+)<\/working_directory>\s*<\/workspace_context>/);
+    if (match?.[1]) return unescapeWorkspaceContext(match[1].trim());
+  }
+  return undefined;
+}
+
 /**
  * Execution state of the session
  */
@@ -135,7 +171,6 @@ export class Session {
   private services: SessionServices | null = null; // Service collection
   private activeTurn: ActiveTurn | null = null; // Active turn management
   private turnContext: TurnContext;
-  private _mockCwd = '/'; // For backward compatibility in tests
   private eventEmitter: ((event: Event) => Promise<void>) | null = null;
   private isPersistent: boolean = true;
   private isForkedContext = false;
@@ -200,6 +235,8 @@ export class Session {
   private disposeState: 'active' | 'disposing' | 'disposed' = 'active';
   private disposePromise: Promise<void> | null = null;
   private conversationCommitChain: Promise<void> = Promise.resolve();
+  /** Last working directory communicated to the model through history. */
+  private modelVisibleWorkingDirectory?: string;
 
   // Track 05b: per-session post-turn callbacks (e.g. session-summary
   // extractor). TurnManager is created per-task; the callback list lives on
@@ -216,7 +253,7 @@ export class Session {
   // detects that and short-circuits persistence, falling back to passthrough.
   private toolResultStore: ToolResultStore | undefined;
   private replacementState: ContentReplacementState | undefined;
-  // Per-session read-before-edit freshness substrate (code mode). One per
+  // Per-session read-before-edit freshness substrate. One per
   // Session ⇒ sub-agents (own Session) auto-isolate. Always present (the
   // map is cheap); only meaningful when the file tools are used.
   private readonly fileStateCache: FileStateCache = new FileStateCache();
@@ -258,6 +295,17 @@ export class Session {
 
     // Initialize session state
     this.sessionState = new SessionState(); // Pure data state
+    const inheritedWorkingDirectory = initialHistory?.workspace?.workingDirectory?.trim();
+    const configuredWorkingDirectory = this.config?.getConfig().preferences?.workspaceRoot?.trim();
+    const platformDefaultWorkingDirectory = services?.defaultWorkingDirectory?.trim();
+    const initialWorkingDirectory = [
+      inheritedWorkingDirectory,
+      configuredWorkingDirectory,
+      platformDefaultWorkingDirectory,
+    ].find(isAbsoluteWorkingDirectory);
+    if (initialWorkingDirectory) {
+      this.sessionState.setWorkspace({ workingDirectory: initialWorkingDirectory });
+    }
     this.toolRegistry = toolRegistry ?? null; // Tool registry from RepublicAgent
     this.compactService = new CompactService(); // Initialize compaction service
     this.titleGenerator = new TitleGenerator(); // Initialize title generation service
@@ -285,6 +333,9 @@ export class Session {
     this.turnContext = new TurnContext(dummyClient, {
       sessionId: this.sessionId,
       agentMode: this.agentMode,
+      ...(initialWorkingDirectory
+        ? { workspace: { workingDirectory: initialWorkingDirectory } }
+        : {}),
       approvalPolicy: 'on-request',
       sandboxPolicy: { mode: 'workspace-write' },
     });
@@ -402,6 +453,7 @@ export class Session {
       payload: {
         id: this.sessionId,
         timestamp: new Date().toISOString(),
+        ...(this.getWorkingDirectory() ? { cwd: this.getWorkingDirectory() } : {}),
         originator: 'chrome-extension',
         cliVersion: '1.0.0'
       }
@@ -422,6 +474,7 @@ export class Session {
     if (context.getSessionId() !== this.sessionId) {
       context.update({ sessionId: this.sessionId });
     }
+    context.setWorkingDirectory?.(this.getWorkingDirectory());
     this.turnContext = context;
   }
 
@@ -431,8 +484,9 @@ export class Session {
   updateTurnContext(updates: any): void {
     if (this.turnContext && typeof this.turnContext.update === 'function') {
       this.turnContext.update(updates);
-      if (updates.cwd) {
-        this._mockCwd = updates.cwd;
+      if (updates.workingDirectory || updates.cwd) {
+        const workingDirectory = updates.workingDirectory ?? updates.cwd;
+        this.setWorkingDirectory(workingDirectory);
       }
     }
   }
@@ -485,7 +539,10 @@ export class Session {
    * Clear conversation history
    */
   clearHistory(): void {
+    const workspace = this.sessionState.getWorkspace();
     this.sessionState = new SessionState();
+    this.sessionState.setWorkspace(workspace);
+    this.modelVisibleWorkingDirectory = undefined;
   }
 
   /**
@@ -538,6 +595,7 @@ export class Session {
 
     // Import SessionState
     session.sessionState = SessionState.import(data.state);
+    session.turnContext.setWorkingDirectory(session.getWorkingDirectory());
 
     Object.assign(session, {
       sessionId: data.id,
@@ -1179,19 +1237,54 @@ export class Session {
     return this.toolResultStore;
   }
 
-  /**
-   * The user-selected code-mode workspace root (absolute path), or undefined
-   * if none is set. Resolved from preferences.workspaceRoot. The file/search
-   * tools operate inside this directory and use it as the security jail
-   * anchor; undefined ⇒ those tools are disabled (never the app cwd).
-   */
-  getWorkspaceRoot(): string | undefined {
-    const root = this.config?.getConfig().preferences?.workspaceRoot;
-    return root && root.trim() ? root : undefined;
+  getWorkspace(): SessionWorkspace | undefined {
+    return this.sessionState.getWorkspace();
+  }
+
+  getWorkingDirectory(): string | undefined {
+    return this.sessionState.getWorkspace()?.workingDirectory;
   }
 
   /**
-   * The per-session read-before-edit freshness cache (code mode). Populated
+   * Change the folder for future turns. The session service rejects changes
+   * while a turn is active, so a running turn's tool snapshot cannot drift.
+   */
+  setWorkingDirectory(workingDirectory: string): void {
+    const normalized = workingDirectory.trim();
+    if (!normalized) {
+      throw new Error('workingDirectory must be a non-empty path');
+    }
+    if (!isAbsoluteWorkingDirectory(normalized)) {
+      throw new Error('workingDirectory must be an absolute path');
+    }
+    if (normalized === this.getWorkingDirectory()) return;
+    this.sessionState.setWorkspace({ workingDirectory: normalized });
+    this.turnContext.setWorkingDirectory(normalized);
+    this.fileStateCache.clear();
+  }
+
+  /**
+   * Return a compact model-visible update only initially and after a folder
+   * change. The caller persists this item in conversation history.
+   */
+  takeWorkspaceContextUpdate(): ResponseItem | undefined {
+    const workingDirectory = this.getWorkingDirectory();
+    if (!workingDirectory || workingDirectory === this.modelVisibleWorkingDirectory) {
+      return undefined;
+    }
+    this.modelVisibleWorkingDirectory = workingDirectory;
+    return {
+      type: 'message',
+      role: 'system',
+      content: [{
+        type: 'input_text',
+        text: `<workspace_context>\n<working_directory>${escapeWorkspaceContext(workingDirectory)}</working_directory>\n</workspace_context>`,
+      }],
+    } as ResponseItem;
+  }
+
+  /**
+   * The per-session read-before-edit freshness cache. Populated
    * by read_file; gated/rewritten by edit_file/write_file. One per Session so
    * sub-agents are isolated (design R2/SC-10).
    */
@@ -1521,13 +1614,9 @@ export class Session {
     return 'gpt-5';
   }
 
-  /**
-   * Get default cwd from config or fallback
-   */
+  /** Legacy accessor retained for callers that still use the old name. */
   getDefaultCwd(): string {
-    // AgentConfig.getConfig() might return synchronously or via property
-    // For now, return default until config structure is clarified
-    return '/';
+    return this.getWorkingDirectory() ?? this.services?.defaultWorkingDirectory ?? '';
   }
 
   /**
@@ -1600,6 +1689,7 @@ export class Session {
         }
 
         this.services.rollout = rollout;
+        await this.saveState();
       } else {
         // Resume from existing rollout
         const rollout = await RolloutRecorder.create(
@@ -3183,12 +3273,22 @@ export class Session {
         } else {
           console.warn('[Session] Skipping malformed content_replacement rollout record');
         }
+      } else if (rolloutItem.type === 'turn_context' || rolloutItem.type === 'session_meta') {
+        const payload = rolloutItem.payload as any;
+        const workingDirectory = payload?.workspace?.workingDirectory
+          ?? payload?.workingDirectory
+          ?? payload?.cwd;
+        if (typeof workingDirectory === 'string' && isAbsoluteWorkingDirectory(workingDirectory.trim())) {
+          this.sessionState.setWorkspace({ workingDirectory: workingDirectory.trim() });
+          this.turnContext.setWorkingDirectory(workingDirectory.trim());
+        }
       }
       // Other rollout item types (event_msg, etc.) are not added to history
     }
 
     // Replace entire history with reconstructed items
     this.sessionState.replaceHistory(responseItems);
+    this.modelVisibleWorkingDirectory = findLatestWorkspaceContext(responseItems);
   }
 
   // ========================================================================
@@ -3360,9 +3460,24 @@ export class Session {
     } else if (initialHistory.mode === 'resumed') {
       // Resumed session - reconstruct from rollout
       this.reconstructHistoryFromRollout(initialHistory.rolloutItems);
+      // The thread index captures folder changes even while the agent graph is
+      // suspended, so its explicit workspace wins over an older rollout item.
+      const restoredWorkingDirectory = initialHistory.workspace?.workingDirectory?.trim();
+      if (isAbsoluteWorkingDirectory(restoredWorkingDirectory)) {
+        this.setWorkingDirectory(restoredWorkingDirectory);
+      }
     } else if (initialHistory.mode === 'forked') {
       // Forked session - reconstruct and persist
       this.reconstructHistoryFromRollout(initialHistory.rolloutItems);
+
+      // A fork inherits the source session's CURRENT folder, even when its
+      // sliced rollout contains an older turn_context from before the source
+      // changed folders. Reconstruction restores historical state for resume;
+      // the explicit fork workspace is authoritative for the new session.
+      const inheritedWorkingDirectory = initialHistory.workspace?.workingDirectory?.trim();
+      if (isAbsoluteWorkingDirectory(inheritedWorkingDirectory)) {
+        this.setWorkingDirectory(inheritedWorkingDirectory);
+      }
 
       if (!initialHistory.historyAlreadyPersisted) {
         // Immediate/ephemeral forks still copy their prefix during assembly.

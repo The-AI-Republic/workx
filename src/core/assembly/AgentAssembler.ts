@@ -3,6 +3,7 @@ import type { RepublicAgent, EventDispatcher, RebuildReason } from '../RepublicA
 import type { SessionServices } from '../session/state/SessionServices';
 import type { AuthContext } from '../auth/AuthContext';
 import type { AgentMode } from '../../prompts/PromptComposer';
+import type { SessionWorkspace } from '../TurnExecutionContext';
 import type { RolloutItem } from '../../storage/rollout/types';
 import type { SubAgentRunner } from '../../tools/AgentTool/SubAgentRunner';
 
@@ -23,6 +24,7 @@ export interface AssembleInput {
   history: RolloutSnapshot;
   historyAlreadyPersisted: boolean;
   sourceSessionId?: string;
+  workspace?: SessionWorkspace;
   config: AgentConfig;
   auth: AuthContext;
   services: SessionServices;

@@ -14,6 +14,7 @@ export function buildShadowInitialHistory(
 ): ShadowInitialHistoryResult {
   const sourceConversationId =
     request.parentEngine.getSession()?.getSessionId?.() ?? request.parentEngine.engineId;
+  const workingDirectory = request.parentEngine.getSession()?.getWorkingDirectory?.();
   const selected = selectHistoryForPolicy(request);
 
   if (selected.length === 0) {
@@ -30,6 +31,9 @@ export function buildShadowInitialHistory(
     sessionId: uuidv4(),
     rolloutItems,
     sourceConversationId,
+    ...(workingDirectory
+      ? { workspace: { workingDirectory } }
+      : {}),
     historyAlreadyPersisted: false,
   };
 

@@ -22,6 +22,10 @@ function createMockDeps(overrides: Partial<SessionServiceDeps> = {}): SessionSer
           abortAllTasks: vi.fn().mockResolvedValue(undefined),
           close: vi.fn().mockResolvedValue(undefined),
           getConversationHistory: vi.fn().mockReturnValue({ items: [{ role: 'user', content: 'hi' }] }),
+          getWorkingDirectory: vi.fn().mockReturnValue('/home/rich'),
+          getRunningTasks: vi.fn().mockReturnValue(new Map()),
+          setWorkingDirectory: vi.fn(),
+          saveState: vi.fn().mockResolvedValue(undefined),
         }),
       },
       getState: vi.fn().mockReturnValue({
@@ -230,6 +234,41 @@ describe('session-services', () => {
       await expect(
         services['session.setMaxConcurrent']({ maxConcurrent: 'five' }, ctx)
       ).rejects.toThrow('maxConcurrent must be a number');
+    });
+  });
+
+  describe('session.setWorkingDirectory', () => {
+    it('updates and persists one idle session', async () => {
+      const session = deps.registry.getSession('s1').agent.getSession();
+      session.getWorkingDirectory.mockReturnValue('/home/rich/projects/workx');
+
+      const result = await services['session.setWorkingDirectory']({
+        sessionId: 's1',
+        workingDirectory: '/home/rich/projects/workx',
+      }, ctx);
+
+      expect(session.setWorkingDirectory).toHaveBeenCalledWith('/home/rich/projects/workx');
+      expect(session.saveState).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({
+        success: true,
+        workingDirectory: '/home/rich/projects/workx',
+      });
+    });
+
+    it('rejects relative paths', async () => {
+      await expect(services['session.setWorkingDirectory']({
+        sessionId: 's1',
+        workingDirectory: 'projects/workx',
+      }, ctx)).rejects.toThrow('absolute path');
+    });
+
+    it('rejects changes while a task is running', async () => {
+      const session = deps.registry.getSession('s1').agent.getSession();
+      session.getRunningTasks.mockReturnValue(new Map([['task', {}]]));
+      await expect(services['session.setWorkingDirectory']({
+        sessionId: 's1',
+        workingDirectory: '/tmp/other',
+      }, ctx)).rejects.toThrow('task is running');
     });
   });
 

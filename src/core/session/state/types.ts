@@ -6,6 +6,7 @@ import type { ReviewDecision } from '../../protocol/types';
 import type { SessionTask } from '../../tasks/SessionTask';
 import type { BackgroundAgentTaskState } from '../../tasks/types';
 import type { AgentContext } from '../../../tools/AgentTool/types';
+import type { SessionWorkspace } from '../../TurnExecutionContext';
 
 /**
  * Track 12: the real rate-limit snapshot shape is the percent-window model
@@ -110,6 +111,7 @@ export interface SessionExport {
     approvedCommands: string[];
     tokenInfo?: TokenUsageInfo;
     latestRateLimits?: RateLimitSnapshot;
+    workspace?: SessionWorkspace;
   };
   metadata: {
     created: number;
@@ -155,14 +157,21 @@ export interface ConfigureSession {
  * Initial history mode for session creation
  */
 export type InitialHistory =
-  | { mode: 'new'; sessionId: string }
-  | { mode: 'resumed'; sessionId: string; rolloutItems: any[] } // RolloutItem[] from rollout
+  | { mode: 'new'; sessionId: string; workspace?: SessionWorkspace }
+  | {
+      mode: 'resumed';
+      sessionId: string;
+      rolloutItems: any[];
+      workspace?: SessionWorkspace;
+    } // RolloutItem[] from rollout
   | {
       mode: 'forked';
       sessionId: string;
       rolloutItems: any[];
       sourceConversationId: string;
       historyAlreadyPersisted: boolean;
+      /** Forks (rewinds, sub-agents, shadow agents) inherit their parent folder. */
+      workspace?: SessionWorkspace;
     };
 
 /**

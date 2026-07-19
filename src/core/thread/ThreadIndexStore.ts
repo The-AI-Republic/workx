@@ -1,6 +1,7 @@
 import type { AgentMode } from '../../prompts/PromptComposer';
 import type { StorageAdapter } from '../../storage/StorageAdapter';
 import { PerKeyOperationQueue } from '../concurrency/PerKeyOperationQueue';
+import type { SessionWorkspace } from '../TurnExecutionContext';
 
 export const THREAD_INDEX_STORE = 'thread_index';
 export const THREAD_INDEX_SCHEMA_VERSION = 1 as const;
@@ -20,6 +21,8 @@ export interface ThreadIndexEntry {
   purgeAfter: number | null;
   purgeState?: 'pending' | 'failed';
   agentMode: AgentMode;
+  /** Session-owned local workspace, independent of the agent mode. */
+  workspace?: SessionWorkspace;
   origin: { kind: 'new' } | { kind: 'fork'; sourceSessionId: string };
   /** Legacy full-snapshot display or bounded canonical-log projection. */
   historyMode?: 'legacy' | 'paginated';
@@ -73,6 +76,7 @@ export function createThreadIndexEntry(input: {
   title?: string;
   now?: number;
   agentMode?: AgentMode;
+  workspace?: SessionWorkspace;
   origin?: ThreadIndexEntry['origin'];
   publishedAt?: number | null;
 }): ThreadIndexEntry {
@@ -91,6 +95,7 @@ export function createThreadIndexEntry(input: {
     deletedAt: null,
     purgeAfter: null,
     agentMode: input.agentMode ?? 'general',
+    ...(input.workspace ? { workspace: { ...input.workspace } } : {}),
     origin: input.origin ?? { kind: 'new' },
     historyMode: 'paginated',
     schemaVersion: THREAD_INDEX_SCHEMA_VERSION,

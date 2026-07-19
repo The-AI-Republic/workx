@@ -113,6 +113,8 @@ export interface ToolExecutionRequest {
   turnId: string;
   callId?: string; // Original tool_call ID from the model response
   tabId?: number; // Current session's bound tab ID
+  /** Immutable, trusted settings snapshot for this turn. */
+  executionContext?: import('../core/TurnExecutionContext').TurnExecutionContext;
   timeout?: number;
   metadata?: Record<string, any>; // Additional context (currentUrl, currentDomain, cwd, etc.)
   onProgress?: import('./runtimeMetadata').ToolProgressCallback; // Optional progress callback
@@ -183,6 +185,8 @@ export interface ToolContext {
   turnId: string;
   toolName: string;
   callId?: string;
+  /** Immutable, trusted settings snapshot for this turn. */
+  executionContext?: import('../core/TurnExecutionContext').TurnExecutionContext;
   metadata?: Record<string, any>;
   onProgress?: import('./runtimeMetadata').ToolProgressCallback;
   signal?: AbortSignal;
