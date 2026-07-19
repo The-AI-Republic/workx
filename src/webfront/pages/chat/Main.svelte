@@ -21,6 +21,9 @@
   import { welcomeAsciiLines } from '../../constants/welcomeAscii';
   // Platform store
   import { platform } from '../../stores/platformStore';
+  // Layout store — used to indent the status-line title clear of the
+  // narrow-mode menu button (rendered by AppShell) so they don't overlap.
+  import { isWideMode } from '../../stores/layoutStore';
   // Theme store
   import { uiTheme, themePreference, type UITheme } from '../../stores/themeStore';
   // Token usage visibility store
@@ -1577,7 +1580,10 @@
     <div class="flex flex-col flex-1 min-h-0 max-w-[1500px] mx-auto w-full">
         <!-- Status Line -->
         <div class="shrink-0 flex justify-between mb-2">
-          <div class="flex items-center space-x-2">
+          <!-- In narrow mode AppShell renders a floating menu button at the
+               top-left; pad the title so it sits to the right of that button
+               instead of underneath it. -->
+          <div class="flex items-center space-x-2 {!$isWideMode ? 'pl-10' : ''}">
             <TerminalMessage type="system" content={platform.platformName === 'extension' ? $_t("WorkX (Alpha)") : $_t("WorkX: Your personal AI (Alpha)")} />
             {#if zoomLevel !== 100}
               <button onclick={resetZoom} class="text-sm leading-relaxed font-[inherit] opacity-70 hover:opacity-100 cursor-pointer {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}" title="Reset zoom to 100%">
