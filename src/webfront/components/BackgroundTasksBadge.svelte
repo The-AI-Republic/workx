@@ -117,7 +117,8 @@
     border: 1px solid var(--border-color, #ccc);
     background: var(--bg-secondary, #f5f5f5);
     color: var(--text-primary, #222);
-    font-size: 12px;
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
     cursor: pointer;
   }
   .badge-pill:hover,
@@ -157,7 +158,8 @@
     border: none;
     background: transparent;
     text-align: left;
-    font-size: 12px;
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
     cursor: pointer;
     color: inherit;
   }
@@ -165,7 +167,7 @@
     background: var(--bg-secondary, #f5f5f5);
   }
   .task-status {
-    font-family: monospace;
+    font-family: var(--font-mono);
   }
   .task-desc {
     overflow: hidden;
@@ -179,7 +181,8 @@
   .empty {
     padding: 12px;
     color: var(--text-secondary, #888);
-    font-size: 12px;
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
     text-align: center;
   }
 </style>

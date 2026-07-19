@@ -140,15 +140,16 @@
 
   .pin-dialog-title {
     margin: 0 0 0.5rem;
-    font-size: 1.1rem;
+    font-size: var(--text-lg);
+    line-height: var(--text-lg--line-height);
     color: var(--workx-text, #00ff00);
   }
 
   .pin-dialog-description {
     margin: 0 0 1rem;
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     color: var(--workx-text-secondary, #00cc00);
-    line-height: 1.4;
+    line-height: var(--leading-ui);
   }
 
   .pin-field {
@@ -157,7 +158,8 @@
 
   .pin-field label {
     display: block;
-    font-size: 0.8rem;
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
     margin-bottom: 0.25rem;
     color: var(--workx-text-secondary, #00cc00);
   }
@@ -165,8 +167,9 @@
   .pin-field input {
     width: 100%;
     padding: 0.5rem;
-    font-size: 1.2rem;
-    letter-spacing: 0.3em;
+    font-size: var(--text-xl);
+    line-height: var(--text-xl--line-height);
+    letter-spacing: var(--tracking-pin);
     text-align: center;
     background: var(--workx-surface, #0a0a0a);
     border: 1px solid var(--workx-border, #00cc00);
@@ -182,7 +185,8 @@
 
   .pin-error {
     color: var(--workx-error, #ff0000);
-    font-size: 0.8rem;
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
     margin-bottom: 0.75rem;
   }
 
@@ -196,7 +200,8 @@
   .btn-cancel, .btn-submit {
     padding: 0.5rem 1rem;
     border-radius: 0.375rem;
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     cursor: pointer;
     border: 1px solid var(--workx-border, #00cc00);
   }
@@ -209,7 +214,7 @@
   .btn-submit {
     background: var(--workx-primary, #00ff00);
     color: var(--workx-background, #000);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
   }
 
   .btn-submit:disabled {

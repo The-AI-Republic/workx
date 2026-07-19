@@ -490,13 +490,13 @@
                 </button>
               {/if}
               {#if app.auth?.accountHint && app.auth?.status === 'connected'}
-                <span class="text-[10px] truncate max-w-[120px]
+                <span class="text-2xs truncate max-w-[120px]
                   {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
                   {app.auth.accountHint}
                 </span>
               {/if}
               {#if app.version}
-                <span class="ml-auto text-[10px]
+                <span class="ml-auto text-2xs
                   {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
                   v{app.version}
                 </span>
@@ -549,7 +549,7 @@
                   </button>
                   {#if app.auth?.setupUrl}
                     <a href={app.auth.setupUrl} target="_blank" rel="noopener noreferrer"
-                      class="ml-auto text-[10px] underline
+                      class="ml-auto text-2xs underline
                         {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
                       {$_t('Where do I get this?')}
                     </a>

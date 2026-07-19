@@ -36,7 +36,7 @@
 </script>
 
 <div class="message-event {$uiTheme}" class:user-message={isUserMessage}>
-  <div class="markdown-content text-sm min-w-0 overflow-hidden {contentClasses}">
+  <div class="markdown-content text-base min-w-0 overflow-hidden {contentClasses}">
     {@html contentHtml}
   </div>
 
@@ -58,29 +58,32 @@
   .markdown-content :global(h6) {
     margin-top: 1em;
     margin-bottom: 0.5em;
-    font-weight: 600;
-    line-height: 1.25;
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--leading-tight);
   }
 
   .markdown-content :global(h1) {
-    font-size: 1.5em;
+    font-size: var(--text-2xl);
+    line-height: var(--text-2xl--line-height);
     border-bottom: 1px solid #e0e0e0;
     padding-bottom: 0.3em;
   }
 
   .markdown-content :global(h2) {
-    font-size: 1.3em;
+    font-size: var(--text-xl);
+    line-height: var(--text-xl--line-height);
     border-bottom: 1px solid #e0e0e0;
     padding-bottom: 0.3em;
   }
 
   .markdown-content :global(h3) {
-    font-size: 1.15em;
+    font-size: var(--text-lg);
+    line-height: var(--text-lg--line-height);
   }
 
   .markdown-content :global(p) {
     margin: 0.5em 0;
-    line-height: 1.6;
+    line-height: var(--text-base--line-height);
   }
 
   .markdown-content :global(ul),
@@ -97,8 +100,9 @@
     background: rgba(0, 0, 0, 0.05);
     padding: 0.2em 0.4em;
     border-radius: 3px;
-    font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
-    font-size: 0.9em;
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     word-break: break-word;
   }
 
@@ -118,7 +122,8 @@
     background: transparent;
     padding: 0;
     color: inherit;
-    font-size: 0.9em;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     white-space: pre-wrap;
     word-break: break-all;
     overflow: visible;
@@ -141,7 +146,7 @@
   }
 
   .markdown-content :global(strong) {
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
   }
 
   .markdown-content :global(em) {
@@ -169,7 +174,7 @@
 
   .markdown-content :global(th) {
     background: #f5f5f5;
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
   }
 
   .markdown-content :global(img) {

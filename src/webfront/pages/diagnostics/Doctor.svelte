@@ -102,7 +102,7 @@
     overflow-y: auto;
     background: var(--color-bg, #000);
     color: var(--color-fg, #e0e0e0);
-    font-family: var(--font-mono, monospace);
+    font-family: var(--font-mono);
   }
   .doctor-container {
     width: 100%;
@@ -118,7 +118,8 @@
     margin-bottom: 12px;
   }
   .doctor-title {
-    font-size: 16px;
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
     margin: 0;
   }
   .close-button {
@@ -144,13 +145,14 @@
     border: 1px solid var(--color-border, #333);
     border-radius: 4px;
     margin-bottom: 12px;
-    font-weight: bold;
+    font-weight: var(--font-weight-bold);
   }
   .overall .meta {
     margin-left: auto;
-    font-weight: normal;
+    font-weight: var(--font-weight-normal);
     opacity: 0.7;
-    font-size: 12px;
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
   }
   .check-list {
     list-style: none;
@@ -167,18 +169,19 @@
     flex: 1;
   }
   .check-title {
-    font-weight: bold;
+    font-weight: var(--font-weight-bold);
   }
   .check-detail {
     opacity: 0.8;
-    font-size: 12px;
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
     white-space: pre-wrap;
     word-break: break-word;
   }
   .badge {
     width: 1.2em;
     text-align: center;
-    font-weight: bold;
+    font-weight: var(--font-weight-bold);
     flex-shrink: 0;
   }
   .check-pass .badge,
@@ -207,6 +210,6 @@
     background: var(--color-border, #333);
   }
   .doctor-page.modern {
-    font-family: var(--font-sans, system-ui, sans-serif);
+    font-family: var(--font-chat);
   }
 </style>

@@ -124,16 +124,17 @@
 
   #dialog-title {
     margin: 0 0 0.75rem 0;
-    font-size: 1.25rem;
-    font-weight: 600;
+    font-size: var(--text-xl);
+    line-height: var(--text-xl--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
   .dialog-message {
     margin: 0 0 1.5rem 0;
-    font-size: 0.9375rem;
+    font-size: var(--text-sm);
     color: var(--workx-text-secondary);
-    line-height: 1.5;
+    line-height: var(--leading-normal);
   }
 
   .dialog-actions {
@@ -145,8 +146,9 @@
   .btn {
     padding: 0.625rem 1.25rem;
     border-radius: 0.375rem;
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     cursor: pointer;
     transition: all 0.2s;
     border: none;

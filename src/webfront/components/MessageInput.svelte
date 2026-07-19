@@ -623,7 +623,7 @@
         onfocus={() => isFocused = true}
         onblur={handleBlur}
         style="--textarea-py: {currentTheme === 'modern' ? '0.75rem' : '0.5rem'}"
-        class="terminal-textarea w-full bg-transparent border-none outline-none resize-none overflow-y-auto leading-relaxed text-sm
+        class="terminal-textarea w-full bg-transparent border-none outline-none resize-none overflow-y-auto text-base
           {currentTheme === 'modern'
             ? 'text-chat-text dark:text-chat-text-dark font-chat px-4 py-3 caret-chat-text dark:caret-white'
             : 'text-term-green font-terminal px-3 py-2'}"

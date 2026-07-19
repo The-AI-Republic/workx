@@ -234,7 +234,7 @@
             title={item.title || $_t('Untitled conversation')}
           >
             {#if item.runtime.awaitingInputCount > 0}
-              <span class="w-4 h-4 rounded-full shrink-0 inline-flex items-center justify-center bg-amber-400 text-black text-[10px] font-bold"
+              <span class="w-4 h-4 rounded-full shrink-0 inline-flex items-center justify-center bg-amber-400 text-black text-2xs font-bold"
                 title={$_t('Waiting for your input')} aria-label={$_t('Waiting for your input')}>!</span>
             {:else}
               <span class="w-2 h-2 rounded-full shrink-0
@@ -244,7 +244,7 @@
             {/if}
             <span class="flex-1 truncate">{item.title || $_t('Untitled conversation')}</span>
             {#if item.runtime.durability === 'degraded'}<span title={$_t('Durability degraded')}>⚠</span>{/if}
-            <span class="shrink-0 text-xs opacity-60">{formatTimeAgo(item.lastActiveAt)}</span>
+            <span class="shrink-0 text-meta font-normal opacity-60">{formatTimeAgo(item.lastActiveAt)}</span>
           </button>
           {#if item.attentionRequest}
             <button class="px-1 border-none bg-transparent text-inherit cursor-pointer" title={$_t('Continue browser action')}

@@ -210,7 +210,7 @@
 
 <div class="p-6">
   <button
-    class="bg-transparent border-none cursor-pointer text-[15px] font-medium py-2 px-0 mb-4 flex items-center gap-1 transition-opacity duration-200 hover:opacity-80
+    class="bg-transparent border-none cursor-pointer text-sm font-medium py-2 px-0 mb-4 flex items-center gap-1 transition-opacity duration-200 hover:opacity-80
       {currentTheme === 'modern'
         ? 'font-chat text-chat-primary dark:text-chat-primary-dark'
         : 'font-terminal text-term-green'}"
@@ -235,12 +235,12 @@
       <div>
         <div class="flex items-center justify-between gap-4">
           <div class="flex flex-col gap-1">
-            <span class="text-[15px] font-medium
+            <span class="text-sm font-medium
               {currentTheme === 'modern'
                 ? 'font-chat text-chat-text dark:text-chat-text-dark'
                 : 'font-terminal text-term-green'}"
             >{$_t("Agent Memory")}</span>
-            <span class="text-sm leading-relaxed
+            <span class="text-sm leading-ui
               {currentTheme === 'modern'
                 ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
                 : 'font-terminal text-term-dim-green'}"
@@ -266,7 +266,7 @@
                     ? 'font-chat text-chat-text dark:text-chat-text-dark'
                     : 'font-terminal text-term-green'}"
                 >{$_t("Use own OpenAI API key")}</span>
-                <span class="text-xs leading-relaxed
+                <span class="text-xs leading-ui
                   {currentTheme === 'modern'
                     ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
                     : 'font-terminal text-term-dim-green'}"
@@ -327,7 +327,7 @@
         data-setting-id="memory-current"
       >
         <div class="flex items-center justify-between gap-4 mb-3">
-          <span class="text-[15px] font-medium
+          <span class="text-sm font-medium
             {currentTheme === 'modern'
               ? 'font-chat text-chat-text dark:text-chat-text-dark'
               : 'font-terminal text-term-green'}"
@@ -412,12 +412,12 @@
           : 'bg-term-bg border-term-dim-green'}"
     >
       <div class="flex flex-col gap-2">
-        <span class="text-[15px] font-medium
+        <span class="text-sm font-medium
           {currentTheme === 'modern'
             ? 'font-chat text-chat-text dark:text-chat-text-dark'
             : 'font-terminal text-term-green'}"
         >{$_t("How it works")}</span>
-        <div class="text-sm leading-relaxed flex flex-col gap-1.5
+        <div class="text-sm leading-ui flex flex-col gap-1.5
           {currentTheme === 'modern'
             ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
             : 'font-terminal text-term-dim-green'}"

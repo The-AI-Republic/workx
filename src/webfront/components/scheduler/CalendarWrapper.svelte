@@ -107,7 +107,7 @@
     --ec-now-indicator-color: #00ff00;
     --ec-event-text-color: #000;
     --ec-list-day-bg-color: rgba(0, 255, 0, 0.05);
-    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-family: var(--font-terminal);
   }
 
   .calendar-terminal :global(.ec-toolbar) {
@@ -117,7 +117,7 @@
   .calendar-terminal :global(.ec-newEvent) {
     border-color: #00ff00;
     color: #00ff00;
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     margin-left: 0.5rem;
   }
 
@@ -141,7 +141,7 @@
     background-color: var(--color-chat-primary, #3b82f6);
     border-color: var(--color-chat-primary, #3b82f6);
     color: #fff;
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     margin-left: 0.5rem;
   }
 

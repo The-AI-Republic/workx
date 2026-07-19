@@ -643,7 +643,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
     cursor: pointer;
   }
 
@@ -741,9 +741,9 @@
 
   /* Tooltip line styling */
   .tooltip-line {
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
     color: rgb(209, 213, 219);
-    line-height: 1.3;
+    line-height: var(--leading-ui);
     word-wrap: break-word;
   }
 

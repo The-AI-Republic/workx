@@ -189,7 +189,7 @@
             {currentTheme === 'modern'
               ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
               : 'text-term-dim-green'}">{$_t('Task')}</span>
-          <p class="m-0 text-sm leading-relaxed break-words whitespace-pre-wrap
+          <p class="m-0 text-sm leading-ui break-words whitespace-pre-wrap
             {currentTheme === 'modern'
               ? 'text-chat-text dark:text-chat-text-dark font-chat'
               : 'text-term-bright-green font-terminal'}">{job.input}</p>
@@ -250,7 +250,7 @@
         {#if job.error}
           <div class="mb-4 p-3 rounded bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.3)]">
             <span class="block text-xs uppercase tracking-wider mb-1 text-red-400">{$_t('Error')}</span>
-            <p class="m-0 text-sm leading-relaxed break-words text-red-400">{job.error}</p>
+            <p class="m-0 text-sm leading-ui break-words text-red-400">{job.error}</p>
           </div>
         {/if}
       </div>

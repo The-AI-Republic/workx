@@ -36,9 +36,10 @@ body.desktop-mode .desktop-titlebar {
 }
 
 body.desktop-mode .desktop-titlebar-title {
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
   color: #888;
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 body.desktop-mode .desktop-titlebar-controls {
@@ -125,7 +126,8 @@ body.desktop-mode .desktop-statusbar {
   padding: 0 0.75rem;
   background: #1a1a1a;
   border-top: 1px solid #333;
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
   color: #666;
 }
 

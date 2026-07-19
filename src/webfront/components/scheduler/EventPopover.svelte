@@ -110,7 +110,7 @@
 
     <!-- Content -->
     <div class="px-3 py-2">
-      <p class="m-0 mb-2 text-sm leading-relaxed break-words
+      <p class="m-0 mb-2 text-sm leading-ui break-words
         {currentTheme === 'modern'
           ? 'text-chat-text dark:text-chat-text-dark font-chat'
           : 'text-term-green font-terminal'}">
@@ -122,19 +122,19 @@
       </p>
 
       {#if instance}
-        <div class="text-xs mb-1
+        <div class="text-meta font-normal mb-1
           {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
           {$_t('Scheduled')}: {formatTime(instance.instanceTime)}
         </div>
       {:else if job?.scheduledTime}
-        <div class="text-xs mb-1
+        <div class="text-meta font-normal mb-1
           {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
           {$_t('Scheduled')}: {formatTime(job.scheduledTime)}
         </div>
       {/if}
 
       {#if job}
-        <div class="text-xs
+        <div class="text-meta font-normal
           {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
           {$_t('Created')}: {formatTime(job.createdAt)}
         </div>

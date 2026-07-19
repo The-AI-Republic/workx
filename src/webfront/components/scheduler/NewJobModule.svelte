@@ -169,7 +169,7 @@
       <!-- Task Input -->
       <div>
         <textarea
-          class="w-full p-2 rounded text-sm leading-relaxed resize-y outline-none min-h-[60px]
+          class="w-full p-2 rounded text-sm leading-ui resize-y outline-none min-h-[60px]
             {currentTheme === 'modern'
               ? 'bg-chat-input dark:bg-chat-input-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat placeholder:text-chat-text-secondary/60 dark:placeholder:text-chat-text-secondary-dark/60 focus:border-chat-input-focus dark:focus:border-chat-input-focus-dark'
               : 'bg-black/50 border border-term-dim-green text-term-green font-terminal placeholder:text-term-dim-green/60 focus:border-term-green'}"

@@ -166,7 +166,7 @@
     {/if}
 
     <!-- Job Input Preview -->
-    <p class="m-0 text-sm leading-relaxed overflow-hidden text-ellipsis whitespace-nowrap
+    <p class="m-0 text-sm leading-ui overflow-hidden text-ellipsis whitespace-nowrap
       {currentTheme === 'modern'
         ? 'text-chat-text dark:text-chat-text-dark font-chat'
         : 'text-term-bright-green font-terminal'}"
