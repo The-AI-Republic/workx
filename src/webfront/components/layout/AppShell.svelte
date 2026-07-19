@@ -5,6 +5,7 @@
   import { isWideMode } from '../../stores/layoutStore';
   import { uiTheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
+  import { resizeHandle } from '../../lib/actions/resizeHandle';
   import LeftPanel from './LeftPanel.svelte';
 
   let { children }: {
@@ -12,6 +13,47 @@
   } = $props();
 
   let currentTheme = $derived($uiTheme);
+
+  // Docked-panel resizing (wide mode only). The base width mirrors the
+  // `--left-panel-width` design token; the splitter lets the user drag the panel
+  // wider, clamped to [base, 2× base]. The chosen width is persisted so it
+  // survives reloads.
+  const BASE_PANEL_WIDTH = 220;
+  const MIN_PANEL_WIDTH = BASE_PANEL_WIDTH;
+  const MAX_PANEL_WIDTH = BASE_PANEL_WIDTH * 2;
+  const PANEL_WIDTH_STORAGE_KEY = 'workx.leftPanelWidth';
+
+  const clampWidth = (w: number) =>
+    Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, w));
+
+  function loadStoredWidth(): number {
+    if (typeof localStorage === 'undefined') return BASE_PANEL_WIDTH;
+    const raw = Number(localStorage.getItem(PANEL_WIDTH_STORAGE_KEY));
+    return Number.isFinite(raw) && raw > 0 ? clampWidth(raw) : BASE_PANEL_WIDTH;
+  }
+
+  let panelWidth = $state(loadStoredWidth());
+  // Width captured at drag start; `onMove` deltas are applied relative to it.
+  let dragStartWidth = BASE_PANEL_WIDTH;
+
+  function persistWidth(): void {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(PANEL_WIDTH_STORAGE_KEY, String(panelWidth));
+  }
+
+  // Keyboard resize for the separator (a11y): arrows nudge, Home/End snap.
+  function handleSplitterKey(event: KeyboardEvent) {
+    const STEP = 16;
+    let next = panelWidth;
+    if (event.key === 'ArrowLeft') next = panelWidth - STEP;
+    else if (event.key === 'ArrowRight') next = panelWidth + STEP;
+    else if (event.key === 'Home') next = MIN_PANEL_WIDTH;
+    else if (event.key === 'End') next = MAX_PANEL_WIDTH;
+    else return;
+    event.preventDefault();
+    panelWidth = clampWidth(next);
+    persistWidth();
+  }
 
   // Narrow-mode slide-in drawer state. In wide mode the panel is docked and the
   // drawer is never used.
@@ -55,9 +97,32 @@
       {currentTheme === 'modern'
         ? 'border-r border-chat-border dark:border-chat-border-dark'
         : 'border-r border-term-dim-green'}"
-      style="width: var(--left-panel-width, 220px)"
+      style="width: {panelWidth}px"
     >
       <LeftPanel />
+      <!-- Splitter on the panel/main boundary. Drag to resize the left panel;
+           width is clamped to [BASE, 2×BASE]. Sits just past the right edge so
+           its hit area straddles the border. role="separator" + arrow keys make
+           it a focusable window-splitter (the a11y lint doesn't model that
+           pattern, hence the ignores). -->
+      <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+      <div
+        class="panel-splitter absolute inset-y-0 -right-1 w-2 z-10 cursor-col-resize"
+        use:resizeHandle={{
+          onStart: () => (dragStartWidth = panelWidth),
+          onMove: (deltaX) => (panelWidth = clampWidth(dragStartWidth + deltaX)),
+          onEnd: persistWidth,
+        }}
+        onkeydown={handleSplitterKey}
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={$_t('Resize sidebar')}
+        aria-valuenow={panelWidth}
+        aria-valuemin={MIN_PANEL_WIDTH}
+        aria-valuemax={MAX_PANEL_WIDTH}
+        tabindex="0"
+      ></div>
     </div>
   {/if}
   <div class="flex-1 flex flex-col min-h-0 overflow-hidden relative">
@@ -114,5 +179,26 @@
     flex: 1 1 0%;
     min-height: 0;
     overflow: hidden;
+  }
+
+  /* A thin, mostly-invisible grip that highlights on hover/drag so the
+     resize boundary is discoverable without adding a permanent visual seam. */
+  .panel-splitter::after {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    inset-inline: 50%;
+    width: 2px;
+    transform: translateX(-50%);
+    background: transparent;
+    transition: background-color 150ms ease;
+  }
+  .panel-splitter:hover::after,
+  .panel-splitter:focus-visible::after,
+  .panel-splitter:global(.is-dragging)::after {
+    background: color-mix(in srgb, currentColor 40%, transparent);
+  }
+  .panel-splitter:focus-visible {
+    outline: none;
   }
 </style>
