@@ -298,15 +298,7 @@ export class ThreadIndexStore {
       throw new ThreadIndexError('INVALID_ARGUMENT', 'Cursor does not match the list request');
     }
 
-    const raw = await this.adapter.getAll<ThreadIndexEntry>(THREAD_INDEX_STORE);
-    const repaired = raw.map((entry) => this.repair(entry));
-    const repairs = repaired.filter((entry, index) => entry !== raw[index]);
-    if (repairs.length > 0) {
-      // Re-read and repair in the same per-session lane as every other write.
-      // Persisting the stale row returned by getAll() could otherwise overwrite
-      // a rename or activity update that completed while list() was running.
-      await Promise.all(repairs.map((entry) => this.repairStored(entry.sessionId)));
-    }
+    const repaired = await this.readAllRepaired();
     const rows = repaired
       .filter((entry) => includeDeleted || entry.deletedAt === null)
       .filter((entry) => includeDrafts || entry.publishedAt !== null)
@@ -333,6 +325,27 @@ export class ThreadIndexStore {
           })
         : null,
     };
+  }
+
+  /** Internal recovery read for unpublished, non-deleted drafts. */
+  async listDrafts(): Promise<ThreadIndexEntry[]> {
+    await this.initialize();
+    return (await this.readAllRepaired())
+      .filter((entry) => entry.deletedAt === null && entry.publishedAt === null)
+      .sort(compareEntries);
+  }
+
+  private async readAllRepaired(): Promise<ThreadIndexEntry[]> {
+    const raw = await this.adapter.getAll<ThreadIndexEntry>(THREAD_INDEX_STORE);
+    const repaired = raw.map((entry) => this.repair(entry));
+    const repairs = repaired.filter((entry, index) => entry !== raw[index]);
+    if (repairs.length > 0) {
+      // Re-read and repair in the same per-session lane as every other write.
+      // Persisting the stale row returned by getAll() could otherwise overwrite
+      // a rename or activity update that completed while list() was running.
+      await Promise.all(repairs.map((entry) => this.repairStored(entry.sessionId)));
+    }
+    return repaired;
   }
 
   private repairStored(sessionId: string): Promise<void> {

@@ -95,11 +95,16 @@
   }
 
   async function newConversation(): Promise<void> {
+    const reusable = threadStore.reuseActiveEmptyDraft();
+    if (reusable) {
+      selectConversation(reusable.sessionId);
+      return;
+    }
     const client = await getInitializedUIClient();
     const response = await client.serviceRequest<{
       sessionId: string;
       entry?: ThreadListItem;
-    }>('session.open', {});
+    }>('session.open', { surfaceId: documentSurfaceId });
     if (response.entry) threadStore.mergeThread(response.entry);
     else threadStore.createThread(response.sessionId);
     selectConversation(response.sessionId);

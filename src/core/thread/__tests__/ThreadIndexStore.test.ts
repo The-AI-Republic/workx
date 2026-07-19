@@ -42,6 +42,24 @@ describe('ThreadIndexStore', () => {
     ]);
   });
 
+  it('returns only non-deleted unpublished rows for internal recovery', async () => {
+    const store = new ThreadIndexStore(new MemoryStorageAdapter());
+    await store.createIfMissing(createThreadIndexEntry({
+      sessionId: 'draft',
+      publishedAt: null,
+    }));
+    await store.createIfMissing(createThreadIndexEntry({ sessionId: 'published' }));
+    await store.createIfMissing(createThreadIndexEntry({
+      sessionId: 'deleted-draft',
+      publishedAt: null,
+    }));
+    await store.softDelete('deleted-draft');
+
+    expect(await store.listDrafts()).toMatchObject([
+      { sessionId: 'draft', publishedAt: null, deletedAt: null },
+    ]);
+  });
+
   it('normalizes titles, preserves manual title precedence, and serializes mutations', async () => {
     let now = 100;
     const store = new ThreadIndexStore(new MemoryStorageAdapter(), () => ++now);

@@ -96,6 +96,23 @@ describe('ChatHistorySection paging', () => {
     expect(screen.queryByText('Conversation 0')).toBeNull();
   });
 
+  it('reuses the active empty draft when New Chat is clicked', async () => {
+    const draft = { ...item(0), publishedAt: null };
+    threadStore.mergeThread(draft);
+    threadStore.setActiveThread(draft.sessionId);
+    mocks.serviceRequest.mockResolvedValue({ entries: [], nextCursor: null });
+
+    render(ChatHistorySection);
+    await screen.findByText('No chat history yet');
+    mocks.serviceRequest.mockClear();
+
+    await fireEvent.click(screen.getByRole('button', { name: 'New Chat' }));
+
+    expect(mocks.serviceRequest).not.toHaveBeenCalled();
+    expect(mocks.push).toHaveBeenCalledWith('/');
+    expect(threadStore.getActiveThread()?.sessionId).toBe(draft.sessionId);
+  });
+
   it('loads ten rows at a time inside a fixed-height scroll container', async () => {
     mocks.serviceRequest
       .mockResolvedValueOnce({ entries: Array.from({ length: 10 }, (_, index) => item(index)), nextCursor: 'page-2' })

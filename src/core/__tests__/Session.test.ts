@@ -366,6 +366,21 @@ describe('Session', () => {
       expect(onUserMessagePersisted).not.toHaveBeenCalled();
     });
 
+    it('does not publish memory-only input when rollout storage is unavailable', async () => {
+      const onUserMessagePersisted = vi.fn().mockResolvedValue(undefined);
+      const typed = new Session(undefined, false, makeMockServices({
+        rollout: null,
+        onUserMessagePersisted,
+      }));
+
+      await typed.recordInputAndRolloutUsermsg([
+        { type: 'text', text: 'memory only' },
+      ], 'client-memory-only');
+
+      expect(typed.getConversationHistory().items).toHaveLength(1);
+      expect(onUserMessagePersisted).not.toHaveBeenCalled();
+    });
+
     describe('getMessageCount()', () => {
       it('should reflect the number of history items', async () => {
         expect(session.getMessageCount()).toBe(0);

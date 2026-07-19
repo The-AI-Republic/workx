@@ -239,6 +239,36 @@ function createThreadStore() {
       return state.threads.find((thread) => thread.sessionId === state.activeSessionId);
     },
 
+    /** Reuse the selected, untouched draft instead of storing another one. */
+    reuseActiveEmptyDraft(): SidePanelThread | null {
+      let reusable: SidePanelThread | null = null;
+      update((state) => {
+        const current = state.threads.find(
+          (thread) => thread.sessionId === state.activeSessionId,
+        );
+        if (
+          !current
+          || current.publishedAt !== null
+          || current.conversation.inputText.length > 0
+          || current.conversation.timeline.order.length > 0
+          || current.conversation.isProcessing
+          || current.pendingSubmissions.length > 0
+          || current.runtime.awaitingInputCount > 0
+        ) return state;
+        reusable = {
+          ...current,
+          conversation: { ...current.conversation, inputText: '' },
+        };
+        return {
+          ...state,
+          threads: state.threads.map((thread) => (
+            thread.sessionId === current.sessionId ? reusable! : thread
+          )),
+        };
+      });
+      return reusable;
+    },
+
     setActiveThread(sessionId: string): void {
       update((state) => ({ ...state, activeSessionId: sessionId }));
       void persistSelection();

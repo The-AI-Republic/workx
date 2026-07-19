@@ -149,6 +149,7 @@ export class SessionManager {
   private readonly _surfaceLeases: SurfaceLeaseStore;
   private readonly _eventStreams = new Map<string, SwitchableEventGate>();
   private readonly _sessionOperations = new PerKeyOperationQueue();
+  private readonly _draftOpenOperations = new PerKeyOperationQueue();
   private readonly _submissionEnqueueOperations = new PerKeyOperationQueue();
   private readonly _capacityOperations = new PerKeyOperationQueue();
   private readonly _capacityReservations = new Map<string, { replacing?: string }>();
@@ -189,6 +190,9 @@ export class SessionManager {
   }>();
   private _threadIndexReconcileFlight: Promise<void> | null = null;
   private _threadIndexReconciled = false;
+  private readonly _pendingThreadPublications = new Set<string>();
+  private _draftPublicationRepairFlight: Promise<void> | null = null;
+  private _draftPublicationRepairCompleted = false;
 
   /**
    * Create a new SessionManager
@@ -589,11 +593,25 @@ export class SessionManager {
     agentMode?: import('../../prompts/PromptComposer').AgentMode;
     origin?: ThreadIndexEntry['origin'];
     publishedAt?: number | null;
+    surfaceId?: string;
   } = {}): Promise<{
     sessionId: string;
     state: 'SUSPENDED' | 'IDLE';
     entry?: ThreadIndexEntry;
   }> {
+    if (
+      !options.sessionId
+      && options.surfaceId
+      && options.origin === undefined
+      && options.publishedAt === undefined
+      && this.lifecycleMode === 'client'
+      && this._registryConfig.threadIndexStore
+    ) {
+      return this._draftOpenOperations.run(
+        'user-facing-draft',
+        () => this.openOrReuseSurfaceDraft(options.surfaceId!, options),
+      );
+    }
     const sessionId = options.sessionId ?? uuidv4();
     const existing = this._indexOpenFlights.get(sessionId);
     if (existing) return existing;
@@ -632,6 +650,66 @@ export class SessionManager {
     };
     void flight.then(clearFlight, clearFlight);
     return flight;
+  }
+
+  private async openOrReuseSurfaceDraft(
+    surfaceId: string,
+    options: {
+      title?: string;
+      agentMode?: import('../../prompts/PromptComposer').AgentMode;
+      surfaceId?: string;
+    },
+  ): Promise<{
+    sessionId: string;
+    state: 'SUSPENDED' | 'IDLE';
+    entry?: ThreadIndexEntry;
+  }> {
+    const index = this._registryConfig.threadIndexStore!;
+    const loadSnapshot = this._registryConfig.loadRolloutSnapshot
+      ?? this._registryConfig.loadModelContextSnapshot;
+    let reusableSessionId: string | undefined;
+    if (loadSnapshot) {
+      const currentLease = this._surfaceLeases.forSurface(surfaceId);
+      const drafts = await index.listDrafts();
+      drafts.sort((left, right) => (
+        Number(right.sessionId === currentLease?.sessionId)
+        - Number(left.sessionId === currentLease?.sessionId)
+      ) || right.lastActiveAt - left.lastActiveAt || left.sessionId.localeCompare(right.sessionId));
+      for (const draft of drafts) {
+        if (this._sessions.has(draft.sessionId)) continue;
+        const claimedByAnotherSurface = this._surfaceLeases
+          .activeForSession(draft.sessionId)
+          .some((lease) => lease.surfaceId !== surfaceId);
+        if (claimedByAnotherSurface) continue;
+        try {
+          const status = await this._sessionOperations.run(
+            draft.sessionId,
+            () => this.recoverDraftPublicationLocked(
+              draft.sessionId,
+              this._pendingThreadPublications.has(draft.sessionId),
+            ),
+          );
+          if (status === 'not-durable') {
+            reusableSessionId = draft.sessionId;
+            break;
+          }
+        } catch (error) {
+          // A draft cannot be proven empty while its rollout read is failing.
+          console.warn(
+            `[SessionManager] Skipping unverifiable draft ${draft.sessionId}:`,
+            error,
+          );
+        }
+      }
+    }
+    const opened = await this.openSession({
+      ...options,
+      sessionId: reusableSessionId ?? uuidv4(),
+    });
+    // Reserve the returned draft immediately so concurrent surfaces cannot
+    // reuse it before the caller completes its normal setViewed/attach flow.
+    await this._surfaceLeases.setViewed(surfaceId, opened.sessionId);
+    return opened;
   }
 
   hydrateSession(sessionId: string): Promise<AgentSession> {
@@ -1281,6 +1359,14 @@ export class SessionManager {
         console.warn(`[SessionManager] Deferred config impact failed for ${sessionId}:`, error);
       });
       await this.applyPendingModeLocked(sessionId, session);
+      if (this._pendingThreadPublications.has(sessionId)) {
+        try {
+          await this.publishThreadLocked(sessionId);
+          this._pendingThreadPublications.delete(sessionId);
+        } catch (error) {
+          console.warn(`[SessionManager] Draft publication retry failed for ${sessionId}:`, error);
+        }
+      }
     }
     this.transitionRuntime(sessionId, busy ? 'running' : 'idle');
     return !busy;
@@ -1437,15 +1523,27 @@ export class SessionManager {
   }
 
   private publishThread(sessionId: string): Promise<void> {
-    return this._sessionOperations.run(sessionId, async () => {
-      const index = this._registryConfig.threadIndexStore;
-      if (!index) return;
-      const current = await index.get(sessionId, true);
-      if (!current || current.deletedAt !== null || current.publishedAt !== null) return;
-      const now = Date.now();
-      const entry = await index.patch(sessionId, { publishedAt: now, lastActiveAt: now });
-      this.emitIndexChanged(sessionId, 'upsert', entry);
-    });
+    const publication = this._sessionOperations.run(
+      sessionId,
+      () => this.publishThreadLocked(sessionId),
+    );
+    return publication.then(
+      () => { this._pendingThreadPublications.delete(sessionId); },
+      (error) => {
+        this._pendingThreadPublications.add(sessionId);
+        throw error;
+      },
+    );
+  }
+
+  private async publishThreadLocked(sessionId: string): Promise<void> {
+    const index = this._registryConfig.threadIndexStore;
+    if (!index) return;
+    const current = await index.get(sessionId, true);
+    if (!current || current.deletedAt !== null || current.publishedAt !== null) return;
+    const now = Date.now();
+    const entry = await index.patch(sessionId, { publishedAt: now, lastActiveAt: now });
+    this.emitIndexChanged(sessionId, 'upsert', entry);
   }
 
   async listThreads(request: ThreadListRequest = {}) {
@@ -1453,6 +1551,7 @@ export class SessionManager {
       return { entries: [], nextCursor: null };
     }
     await this.ensureThreadIndexReconciled();
+    if (!(request.includeDrafts ?? false)) await this.reconcileDraftPublications();
     const page = await this._registryConfig.threadIndexStore.list(request);
     return {
       ...page,
@@ -1464,6 +1563,86 @@ export class SessionManager {
         };
       }),
     };
+  }
+
+  /**
+   * Repair drafts whose durable user item outlived a publication failure.
+   * The first user-facing list performs one startup scan; later scans are
+   * limited to publication attempts known to have failed in this process.
+   */
+  private reconcileDraftPublications(): Promise<void> {
+    const index = this._registryConfig.threadIndexStore;
+    if (!index || (
+      this._draftPublicationRepairCompleted
+      && this._pendingThreadPublications.size === 0
+    )) return Promise.resolve();
+    if (this._draftPublicationRepairFlight) return this._draftPublicationRepairFlight;
+
+    const scanAllDrafts = !this._draftPublicationRepairCompleted;
+    const flight = (async () => {
+      const candidates = new Set(this._pendingThreadPublications);
+      if (scanAllDrafts) {
+        for (const entry of await index.listDrafts()) candidates.add(entry.sessionId);
+      }
+      await Promise.all([...candidates].map((sessionId) => this._sessionOperations.run(
+        sessionId,
+        async () => {
+          const expectedDurable = this._pendingThreadPublications.has(sessionId);
+          try {
+            const status = await this.recoverDraftPublicationLocked(
+              sessionId,
+              expectedDurable,
+            );
+            if (status !== 'retry') this._pendingThreadPublications.delete(sessionId);
+          } catch (error) {
+            this._pendingThreadPublications.add(sessionId);
+            console.warn(
+              `[SessionManager] Failed to reconcile draft publication for ${sessionId}:`,
+              error,
+            );
+          }
+        },
+      )));
+      if (scanAllDrafts) this._draftPublicationRepairCompleted = true;
+    })().catch((error) => {
+      // History listing remains available while a best-effort recovery scan
+      // retries on the next request.
+      console.warn('[SessionManager] Failed to scan unpublished drafts:', error);
+    }).finally(() => {
+      if (this._draftPublicationRepairFlight === flight) {
+        this._draftPublicationRepairFlight = null;
+      }
+    });
+    this._draftPublicationRepairFlight = flight;
+    return flight;
+  }
+
+  private async recoverDraftPublicationLocked(
+    sessionId: string,
+    expectedDurable: boolean,
+  ): Promise<'published' | 'not-needed' | 'not-durable' | 'retry'> {
+    const index = this._registryConfig.threadIndexStore;
+    if (!index) return 'not-needed';
+    const current = await index.get(sessionId, true);
+    if (!current || current.deletedAt !== null || current.publishedAt !== null) {
+      return 'not-needed';
+    }
+    const loadSnapshot = this._registryConfig.loadRolloutSnapshot
+      ?? this._registryConfig.loadModelContextSnapshot;
+    if (!loadSnapshot) return expectedDurable ? 'retry' : 'not-durable';
+    const snapshot = await loadSnapshot(sessionId);
+    if (!containsDurableUserMessage(snapshot.items)) {
+      // A just-written rollout snapshot may remain cached until the terminal
+      // turn boundary invalidates it, so known failures stay queued.
+      return expectedDurable ? 'retry' : 'not-durable';
+    }
+    const now = Date.now();
+    const entry = await index.patch(sessionId, {
+      publishedAt: now,
+      lastActiveAt: Math.max(current.lastActiveAt, now),
+    });
+    this.emitIndexChanged(sessionId, 'upsert', entry);
+    return 'published';
   }
 
   private ensureThreadIndexReconciled(): Promise<void> {
@@ -2510,6 +2689,8 @@ export class SessionManager {
     this._deletionClaims.clear();
     this._forceSuspendClaims.clear();
     this._recoveryLoaded.clear();
+    this._pendingThreadPublications.clear();
+    this._draftPublicationRepairCompleted = false;
     for (const stream of this._eventStreams.values()) stream.close();
     this._eventStreams.clear();
     this._usedLetters.clear();
