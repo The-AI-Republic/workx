@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { PANEL_NAV_ITEMS, isNavActive } from '../../stores/layoutStore';
+  import { NAV_ITEMS, isNavActive } from '../../stores/layoutStore';
   import { location, push } from 'svelte-spa-router';
   import { AUTH_ROUTE_PATHS, HOME_PAGE_BASE_URL } from '../../lib/constants';
   import { uiTheme } from '../../stores/themeStore';
@@ -46,7 +46,7 @@
     <SessionModeSwitch />
 
     <LeftPanelSection>
-      {#each PANEL_NAV_ITEMS as item (item.id)}
+      {#each NAV_ITEMS as item (item.id)}
         <NavTab {item} active={isNavActive(item.route, $location)} onNavigate={handleNavigate} />
       {/each}
     </LeftPanelSection>
