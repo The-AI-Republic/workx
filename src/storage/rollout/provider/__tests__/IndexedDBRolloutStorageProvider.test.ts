@@ -63,4 +63,18 @@ describe('IndexedDBRolloutStorageProvider.createRollout', () => {
       direction: 'desc',
     })).resolves.toMatchObject([{ sequence: 4 }, { sequence: 3 }]);
   });
+
+  it('atomically deletes complete rollouts', async () => {
+    await provider.createRollout(metadata('delete'), [{
+      timestamp: new Date(0).toISOString(),
+      sequence: 0,
+      type: 'response_item',
+      payload: { text: 'message' },
+    }]);
+
+    await provider.deleteRollouts(['delete']);
+
+    expect(await provider.getMetadata('delete')).toBeNull();
+    expect(await provider.getItemsByRolloutId('delete')).toHaveLength(0);
+  });
 });

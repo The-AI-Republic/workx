@@ -37,6 +37,9 @@ export interface RolloutStorageProvider {
     metadata: RolloutMetadataRecord,
     items: Array<{ timestamp: string; sequence: number; type: string; payload: unknown }>,
   ): Promise<boolean>;
+  /** Atomically remove complete rollouts, including all owned items. */
+  deleteRollouts(rolloutIds: ConversationId[]): Promise<void>;
+  /** Delete metadata only; implementations may reject while owned items exist. */
   deleteMetadata(rolloutId: ConversationId): Promise<void>;
   getAllMetadata(): Promise<RolloutMetadataRecord[]>;
   getRecoveryMetadata(rolloutId: ConversationId): Promise<RolloutRecoveryMetadata>;
