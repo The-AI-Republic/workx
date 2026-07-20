@@ -187,6 +187,59 @@ describe('OpenAIChatCompletionClient', () => {
       expect(result.usage.totalTokens).toBe(8);
     });
 
+    it('should include a configured gateway provider in non-streaming requests', async () => {
+      const mockCreate = vi.fn().mockResolvedValue({
+        id: 'chatcmpl-123',
+        model: 'deepseek/deepseek-v4-flash',
+        choices: [{ message: { role: 'assistant', content: 'Hi there!' }, finish_reason: 'stop' }],
+        usage: { prompt_tokens: 5, completion_tokens: 3, total_tokens: 8 },
+      });
+      const pinnedClient = new OpenAIChatCompletionClient({
+        ...config,
+        providerRoutingSlug: 'deepseek',
+      });
+      (pinnedClient as any).client = { chat: { completions: { create: mockCreate } } };
+
+      await pinnedClient.complete({
+        model: 'deepseek/deepseek-v4-flash',
+        messages: [{ role: 'user', content: 'Hello' }],
+      });
+
+      expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({
+        model: 'deepseek/deepseek-v4-flash',
+        provider: 'deepseek',
+        stream: false,
+      }));
+    });
+
+    it('should include a configured gateway provider in streaming requests', async () => {
+      const mockCreate = vi.fn().mockResolvedValue({
+        async *[Symbol.asyncIterator]() {
+          // Empty stream is enough to verify the outgoing request.
+        },
+      });
+      const pinnedClient = new OpenAIChatCompletionClient({
+        ...config,
+        providerRoutingSlug: 'deepseek',
+      });
+      (pinnedClient as any).client = { chat: { completions: { create: mockCreate } } };
+
+      await (pinnedClient as any).makeChatCompletionsRequest({
+        input: [{
+          type: 'message',
+          role: 'user',
+          content: [{ type: 'input_text', text: 'Hello' }],
+        }],
+        tools: [],
+      });
+
+      expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({
+        model: 'gpt-4o',
+        provider: 'deepseek',
+        stream: true,
+      }));
+    });
+
     it('should validate empty prompt input', async () => {
       const prompt: Prompt = {
         input: [],
