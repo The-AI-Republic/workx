@@ -108,7 +108,10 @@
       <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <div
-        class="panel-splitter absolute inset-y-0 -right-1 w-2 z-10 cursor-col-resize"
+        class="panel-splitter absolute inset-y-0 -right-1 w-2 z-10 cursor-col-resize
+          {currentTheme === 'modern'
+            ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+            : 'text-term-green'}"
         use:resizeHandle={{
           onStart: () => (dragStartWidth = panelWidth),
           onMove: (deltaX) => (panelWidth = clampWidth(dragStartWidth + deltaX)),
