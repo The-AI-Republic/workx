@@ -108,9 +108,23 @@ describe('Track 20 — locked key survives all four write surfaces', () => {
     expect('policy' in stored).toBe(false);
   });
 
-  it('reload() emits a policy config-changed event', async () => {
+  it('reload() emits a policy event only when the policy marker changes', async () => {
     const events: IConfigChangeEvent[] = [];
     config.on('config-changed', (e) => events.push(e));
+
+    await config.reload();
+    expect(events.some((e) => e.section === 'policy')).toBe(false);
+
+    __resetPolicyResolverForTests();
+    registerPolicySources([{
+      origin: 'file',
+      load: async () => ({
+        values: { 'agent.approval.mode': 'yolo' },
+        lockedKeys: ['agent.approval.mode'],
+        origin: 'file',
+      }),
+    }]);
+    await resolveActivePolicy();
     await config.reload();
     expect(events.some((e) => e.section === 'policy')).toBe(true);
   });

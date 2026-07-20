@@ -87,7 +87,7 @@
       const current = settingsConfig.getConfig().appServer;
       // Partial shape is fine: normalizeAppServerConfig fills defaults at read.
       const appServer = { ...(current ?? {}), enabled: true } as IAppServerConfig;
-      await settingsConfig.updateConfig({ appServer });
+      await settingsConfig.updateConfigAndPersist({ appServer });
       const client = await getInitializedUIClient();
       // Push the config into the runtime's AgentConfig BEFORE restarting —
       // appServer.restart re-reads config in the sidecar process, which
@@ -247,7 +247,7 @@
 
     try {
       isSaving = true;
-      await settingsConfig.updateConfig({ tools: currentTools });
+      await settingsConfig.updateConfigAndPersist({ tools: currentTools });
 
       // Notify backend of config update
       getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(e => console.warn('[messaging] config update failed:', e));

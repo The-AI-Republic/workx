@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AgentConfig } from '@/config/AgentConfig';
 import type { IProfileConfig, IConfigChangeEvent } from '@/config/types';
+import { STORAGE_KEYS } from '@/config/defaults';
 
 // Mock CredentialStore (not initialized in tests)
 vi.mock('@/core/storage/CredentialStore', () => ({
@@ -10,11 +11,16 @@ vi.mock('@/core/storage/CredentialStore', () => ({
 
 // Provide an in-memory ConfigStorageProvider so ConfigStorage can read/write
 const _memStore: Record<string, unknown> = {};
+let _setBarrier: Promise<void> | null = null;
 vi.mock('@/core/storage/ConfigStorageProvider', () => ({
   isConfigStorageInitialized: vi.fn(() => true),
   getConfigStorage: vi.fn(() => ({
     get: async (key: string) => _memStore[key] ?? null,
-    set: async (key: string, value: unknown) => { _memStore[key] = value; },
+    set: async (key: string, value: unknown) => {
+      const barrier = _setBarrier;
+      if (barrier) await barrier;
+      _memStore[key] = value;
+    },
     remove: async (key: string) => { delete _memStore[key]; },
     getMany: async (keys: string[]) => {
       const result: Record<string, unknown> = {};
@@ -35,18 +41,30 @@ describe('AgentConfig', () => {
   beforeEach(async () => {
     // Reset singleton between tests
     (AgentConfig as any).instance = null;
+    (AgentConfig as any).initializationPromise = null;
     // Clear in-memory ConfigStorageProvider between tests
     for (const k of Object.keys(_memStore)) delete _memStore[k];
+    _setBarrier = null;
   });
 
   afterEach(() => {
     (AgentConfig as any).instance = null;
+    (AgentConfig as any).initializationPromise = null;
+    _setBarrier = null;
   });
 
   describe('Singleton Pattern', () => {
     it('should return the same instance when called multiple times', async () => {
       const config1 = await AgentConfig.getInstance();
       const config2 = await AgentConfig.getInstance();
+      expect(config1).toBe(config2);
+    });
+
+    it('should return the same instance to concurrent first callers', async () => {
+      const [config1, config2] = await Promise.all([
+        AgentConfig.getInstance(),
+        AgentConfig.getInstance(),
+      ]);
       expect(config1).toBe(config2);
     });
 
@@ -125,6 +143,44 @@ describe('AgentConfig', () => {
 
     it('should have a reload method', () => {
       expect(typeof config.reload).toBe('function');
+    });
+
+    it('waits for persistence before updateConfigAndPersist resolves', async () => {
+      let releaseWrite!: () => void;
+      _setBarrier = new Promise<void>((resolve) => { releaseWrite = resolve; });
+      let settled = false;
+
+      const save = config.updateConfigAndPersist({
+        preferences: { ...config.getConfig().preferences, language: 'fr' },
+      }).then((result) => {
+        settled = true;
+        return result;
+      });
+
+      await Promise.resolve();
+      expect(settled).toBe(false);
+      expect(config.getConfig().preferences.language).toBe('fr');
+      expect((_memStore[STORAGE_KEYS.CONFIG] as any).preferences.language).not.toBe('fr');
+
+      releaseWrite();
+      await save;
+      _setBarrier = null;
+      expect((_memStore[STORAGE_KEYS.CONFIG] as any).preferences.language).toBe('fr');
+    });
+
+    it('reload emits only sections whose persisted values changed', async () => {
+      const stored = _memStore[STORAGE_KEYS.CONFIG] as any;
+      _memStore[STORAGE_KEYS.CONFIG] = {
+        ...stored,
+        preferences: { ...stored.preferences, language: 'de' },
+      };
+      const events: IConfigChangeEvent[] = [];
+      config.on('config-changed', (event) => events.push(event));
+
+      await config.reload();
+
+      expect(events.map((event) => event.section)).toEqual(['preferences']);
+      expect(config.getConfig().preferences.language).toBe('de');
     });
   });
 

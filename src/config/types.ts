@@ -709,6 +709,7 @@ export interface IConfigService {
   // Core operations
   getConfig(): IAgentConfig;
   updateConfig(config: Partial<IAgentConfig>): IAgentConfig;
+  updateConfigAndPersist(config: Partial<IAgentConfig>): Promise<IAgentConfig>;
   resetConfig(preserveApiKeys?: boolean): IAgentConfig;
 
   // Model operations

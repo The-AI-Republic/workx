@@ -113,7 +113,7 @@
 
     try {
       isSaving = true;
-      await settingsConfig.updateConfig({ preferences: currentPreferences });
+      await settingsConfig.updateConfigAndPersist({ preferences: currentPreferences });
 
       getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(e => console.warn('[messaging] config update failed:', e));
 
