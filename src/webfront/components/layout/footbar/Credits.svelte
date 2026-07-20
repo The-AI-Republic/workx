@@ -183,7 +183,7 @@
         {/if}
 
         {#if hoursUntilRefresh > 0}
-          <div class="flex items-center gap-1.5 text-sm mt-1.5
+          <div class="flex items-center gap-1.5 text-meta font-normal mt-1.5
             {$uiTheme === 'modern' ? 'text-white/50' : 'text-term-dim-green'}">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"></circle>

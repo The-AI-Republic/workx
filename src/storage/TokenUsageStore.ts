@@ -64,6 +64,20 @@ export class TokenUsageStore {
     return adapter.queryByIndex<TokenUsageRecord>(STORE_NAME, 'by_session', sessionId);
   }
 
+  /** Delete every usage record owned by one durable session. */
+  async deleteSession(sessionId: string): Promise<void> {
+    const adapter = this.db();
+    if (!adapter) return;
+    const records = await adapter.queryByIndex<TokenUsageRecord>(
+      STORE_NAME,
+      'by_session',
+      sessionId,
+    );
+    if (records.length > 0) {
+      await adapter.batchDelete(STORE_NAME, records.map((record) => record.id));
+    }
+  }
+
   async getByDateRange(start: string, end: string): Promise<TokenUsageRecord[]> {
     const adapter = this.db();
     if (!adapter) return [];

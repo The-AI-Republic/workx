@@ -43,8 +43,8 @@ export interface AgentModeSpec {
   /** Display label for UI selectors */
   label: string;
   /**
-   * Platforms that offer this mode. Omitted = all non-workx platforms.
-   * WorkX never exposes modes (composer forces 'general' for it).
+   * Platforms that offer this mode. Omitted = every platform. WorkX only
+   * supports the general mode; platform-specific modes list their agent types.
    */
   agentTypes?: AgentType[];
 }
@@ -57,6 +57,16 @@ export const MODES: Record<AgentMode, AgentModeSpec> = {
   general: { id: 'general', label: 'General' },
   code: { id: 'code', label: 'Code', agentTypes: ['workx-desktop', 'workx-server'] },
 };
+
+export function supportsAgentMode(agentType: AgentType, mode: unknown): mode is AgentMode {
+  if (typeof mode !== 'string' || !Object.prototype.hasOwnProperty.call(MODES, mode)) return false;
+  const supportedTypes = MODES[mode as AgentMode].agentTypes;
+  return !supportedTypes || supportedTypes.includes(agentType);
+}
+
+export function normalizeAgentMode(agentType: AgentType, mode: unknown): AgentMode {
+  return supportsAgentMode(agentType, mode) ? mode : DEFAULT_MODE;
+}
 
 type FragmentContent = string | ((args: {
   agentType: AgentType;
@@ -245,6 +255,7 @@ export class PromptComposer {
         extension: 'Chrome Extension (direct tab access)',
         cdp: 'Chrome DevTools Protocol',
         mcp: 'MCP browser automation server',
+        bridge: 'WorkX Chrome extension bridge (local_browser_tool; present only while the extension is connected)',
       };
       lines.push(`- Browser connection: ${label[context.browserConnection] || context.browserConnection}`);
     }

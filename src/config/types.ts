@@ -36,10 +36,19 @@ export interface IAgentConfig {
   selectedModelKey: string;
 
   /**
-   * Model key for title generation (optional)
+   * Model key for internal app-logistics tasks (title generation, tool-use
+   * summaries, prompt suggestions, …) — the "efficient model".
    * Format: "providerId:modelKey" (e.g., "openai:gpt-4o-mini")
-   * If not specified, uses selectedModelKey
-   * Recommended: Use a fast/cheap model for title generation
+   * If not specified, uses selectedModelKey (same as task model).
+   * Must be from the same provider as selectedModelKey in API-key mode;
+   * gateway (logged-in) routing may supply a cross-provider default.
+   * Never used to run user-facing tasks.
+   */
+  efficientModelKey?: string;
+
+  /**
+   * @deprecated Legacy name for {@link efficientModelKey}; read as a fallback
+   * only. Use efficientModelKey.
    */
   modelForTitleGenerate?: string;
 
@@ -102,6 +111,13 @@ export interface IAppServerConfig {
   requireAuth: boolean;
   /** Reject any upgrade request carrying an Origin header. */
   rejectBrowserOrigins: boolean;
+  /**
+   * Origins exempt from `rejectBrowserOrigins`. Supports exact origins
+   * (`chrome-extension://<id>`) and the `chrome-extension://*` wildcard used
+   * by the extension browser bridge. Web (`http/https`) origins are never
+   * valid entries. The capability token remains the actual auth boundary.
+   */
+  allowedOrigins?: string[];
   /** Allow binding to a non-loopback host. */
   allowLan: boolean;
   /** Maximum concurrent connections. */
@@ -297,6 +313,16 @@ export interface IProviderConfig {
   version?: string | null;
 
   /**
+   * Default efficient model for this provider (optional).
+   * Bare model key (e.g. "gpt-4o-mini") of the provider's recommended cheap
+   * model for internal app-logistics tasks (titles, summaries). Used when the
+   * user hasn't explicitly chosen an efficient model and no gateway default
+   * applies; the model must exist in this provider's `models` list. Flows
+   * through the remote model catalog unchanged (same JSON shape).
+   */
+  defaultEfficientModelKey?: string | null;
+
+  /**
    * Custom HTTP headers (optional)
    * Additional headers to include in all API requests
    */
@@ -415,11 +441,9 @@ export interface IUserPreferences {
    */
   defaultMode?: AgentMode;
   /**
-   * Absolute path to the user-selected project directory ("workspace root")
-   * for code mode (desktop only). All read/edit/write/grep/glob file tools
-   * operate inside this directory and treat it as the security jail anchor.
-   * Unset ⇒ code-mode file/search tools are disabled (never default to the
-   * app's own cwd). Selected via a folder picker; persisted here.
+   * Default working folder copied into each new desktop session. Existing
+   * sessions retain their own folder when this preference changes. If unset,
+   * new sessions start without a selected working folder.
    */
   workspaceRoot?: string;
   /**
@@ -542,6 +566,8 @@ export interface IToolsConfig {
   // Agent execution tool toggles
   execCommand?: boolean;
   webSearch?: boolean;
+  /** Enable desktop data-source analysis tools. Management UI remains available when false. */
+  dataSources?: boolean;
   /**
    * Whether to use native provider web search when the model supports it.
    * - When true (default): Uses provider-side web search for capable models,
@@ -622,7 +648,9 @@ export interface IStoredConfig {
   version: string;
   /** Currently selected model key (format: "providerId:modelKey") */
   selectedModelKey: string;
-  /** Model key for title generation (optional, defaults to selectedModelKey) */
+  /** Efficient model for internal app-logistics tasks (optional, defaults to selectedModelKey) */
+  efficientModelKey?: string;
+  /** @deprecated Legacy name for efficientModelKey; read as a fallback only */
   modelForTitleGenerate?: string;
   /** Provider API keys and organization IDs only */
   providerKeys: Record<string, IStoredProviderConfig>;
@@ -717,10 +745,25 @@ export interface IExportData {
 // Event interfaces for config changes
 export interface IConfigChangeEvent {
   type: 'config-changed';
-  section: 'model' | 'provider' | 'profile' | 'preferences' | 'cache' | 'extension' | 'security' | 'approval' | 'hooks' | 'tools' | 'policy' | 'enabledPlugins' | 'appServer';
+  section:
+    | 'model'
+    | 'efficientModel'
+    | 'provider'
+    | 'profile'
+    | 'preferences'
+    | 'cache'
+    | 'extension'
+    | 'security'
+    | 'approval'
+    | 'hooks'
+    | 'tools'
+    | 'policy'
+    | 'enabledPlugins'
+    | 'appServer';
   oldValue?: any;
   newValue: any;
   timestamp: number;
+  generation: number;
 }
 
 export interface IConfigEventEmitter {

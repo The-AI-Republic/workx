@@ -23,6 +23,8 @@ export interface TaskOutputChunk {
   /** `${taskId}:${seq.toString().padStart(8, '0')}` — lex-sortable PK */
   chunkId: string;
   taskId: string;
+  /** Owning durable session. Optional only for rows written before lifecycle v5. */
+  sessionId?: string;
   /** Monotonic per-task; consecutive on split-payload writes */
   seq: number;
   createdAt: number;
@@ -72,19 +74,20 @@ export class TaskOutputStore {
     taskId: string,
     kind: TaskOutputChunkKind,
     data: string,
+    sessionId?: string,
   ): Promise<TaskOutputChunk> {
     // Split oversized payloads into adjacent chunks.
     if (utf8ByteLength(data) > TASK_OUTPUT_CHUNK_MAX_BYTES) {
       const parts = splitUtf8(data, TASK_OUTPUT_CHUNK_MAX_BYTES);
       let last: TaskOutputChunk | null = null;
       for (const part of parts) {
-        last = await this.enqueueOne(taskId, kind, part);
+        last = await this.enqueueOne(taskId, kind, part, sessionId);
       }
       // splitUtf8 guarantees parts.length >= 1 since data was non-empty enough
       // to exceed the threshold.
       return last!;
     }
-    return this.enqueueOne(taskId, kind, data);
+    return this.enqueueOne(taskId, kind, data, sessionId);
   }
 
   /** Get all chunks with `seq > fromSeq`, ordered. */
@@ -173,6 +176,22 @@ export class TaskOutputStore {
     await Promise.all(taskIds.map(id => this.cleanupTask(id)));
   }
 
+  /** Hard-purge every persisted chunk owned by a durable session. */
+  async deleteSession(sessionId: string): Promise<void> {
+    const rows = await this.adapter.getAll<TaskOutputChunk>(STORE_NAME);
+    const targets = rows.filter((row) => row.sessionId === sessionId);
+    if (targets.length === 0) return;
+    await Promise.allSettled(
+      [...new Set(targets.map((row) => row.taskId))].map((taskId) => this.flush(taskId)),
+    );
+    await this.adapter.batchDelete(STORE_NAME, targets.map((row) => row.chunkId));
+    for (const taskId of new Set(targets.map((row) => row.taskId))) {
+      this.lastSeq.delete(taskId);
+      this.lastReadAt.delete(taskId);
+      this.tails.delete(taskId);
+    }
+  }
+
   /**
    * Wait until every write enqueued for this task so far has settled.
    *
@@ -225,6 +244,7 @@ export class TaskOutputStore {
     taskId: string,
     kind: TaskOutputChunkKind,
     data: string,
+    sessionId?: string,
   ): Promise<TaskOutputChunk> {
     if (this.evicted.has(taskId)) {
       return Promise.reject(
@@ -248,7 +268,7 @@ export class TaskOutputStore {
         return;
       }
       try {
-        const chunk = await this.doWrite(taskId, kind, data);
+        const chunk = await this.doWrite(taskId, kind, data, sessionId);
         resolve(chunk);
       } catch (err) {
         reject(err instanceof Error ? err : new Error(String(err)));
@@ -266,6 +286,7 @@ export class TaskOutputStore {
     taskId: string,
     kind: TaskOutputChunkKind,
     data: string,
+    sessionId?: string,
   ): Promise<TaskOutputChunk> {
     let lastSeq = this.lastSeq.get(taskId);
     if (lastSeq === undefined) {
@@ -284,6 +305,7 @@ export class TaskOutputStore {
     const chunk: TaskOutputChunk = {
       chunkId: chunkIdFor(taskId, seq),
       taskId,
+      ...(sessionId ? { sessionId } : {}),
       seq,
       createdAt: Date.now(),
       kind,

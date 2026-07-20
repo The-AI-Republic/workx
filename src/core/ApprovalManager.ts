@@ -117,6 +117,7 @@ export class ApprovalManager {
         type: 'ApprovalRequested',
         data: {
           id: request.id,
+          turn_id: request.metadata?.turnId || undefined,
           tool_name: request.metadata?.toolName || request.type,
           risk_score: request.details.riskScore ?? this.riskLevelToScore(request.details.riskLevel),
           risk_level: request.details.riskLevel || 'medium',

@@ -155,25 +155,23 @@
   <!-- Simple left/right aligned messages with sender labels -->
   <div class={getContainerClasses()}>
     <!-- Header outside bubble for user messages in modern theme -->
-    <div class="flex items-center gap-2 mb-1 text-sm
+    <div class="flex items-center gap-2 mb-1 text-meta font-normal
       {event.title === 'user' ? 'justify-end gap-2' : ''}">
-      <span class="{currentTheme === 'modern'
+      <span class="font-medium {currentTheme === 'modern'
         ? (event.title === 'user'
-          ? 'font-medium text-chat-primary dark:text-chat-primary-dark'
-          : 'font-medium text-chat-text dark:text-chat-text-dark')
+          ? 'text-chat-primary dark:text-chat-primary-dark'
+          : 'text-chat-text dark:text-chat-text-dark')
         : (event.title === 'user'
-          ? 'font-semibold text-cyan-400'
-          : 'font-semibold text-violet-400')}">{event.title === 'user' ? t('You') : agentDisplayName}:</span>
+          ? 'text-cyan-400'
+          : 'text-violet-400')}">{event.title === 'user' ? t('You') : agentDisplayName}:</span>
       {#if event.title !== 'user' && event.modelKey}
-        <span class="text-sm italic
-          {currentTheme === 'modern'
-            ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
-            : 'text-gray-500'}">{event.modelKey.includes(':') ? event.modelKey.split(':').slice(1).join(':') : event.modelKey}</span>
-      {/if}
-      <span class="text-sm
-        {currentTheme === 'modern'
+        <span class="{currentTheme === 'modern'
           ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
-          : 'text-gray-400'}">{formatTime(event.timestamp, 'relative')}</span>
+          : 'text-gray-500'}">{event.modelKey.includes(':') ? event.modelKey.split(':').slice(1).join(':') : event.modelKey}</span>
+      {/if}
+      <span class="{currentTheme === 'modern'
+        ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+        : 'text-gray-400'}">{formatTime(event.timestamp, 'relative')}</span>
     </div>
     <div class="{event.title === 'user' ? 'w-fit max-w-[80%]' : 'w-full'}
       {currentTheme === 'modern' && event.title === 'user'
@@ -184,7 +182,7 @@
         : ''}">
         <MessageEvent {event} />
         {#if event.streaming}
-          <span class="text-cyan-400 text-sm animate-pulse ml-2" role="status" aria-live="polite">
+          <span class="text-cyan-400 text-meta animate-pulse ml-2" role="status" aria-live="polite">
             {$_t("streaming...")}
           </span>
         {/if}
@@ -246,7 +244,7 @@
 
         <!-- Timestamp -->
         <Tooltip content={formatTime(event.timestamp, 'absolute')}>
-          <span class="text-sm
+          <span class="text-meta font-normal
             {currentTheme === 'modern'
               ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
               : 'text-gray-500'}">
@@ -357,7 +355,7 @@
   /* Modern Chat user bubble paragraph spacing */
   :global(.user-bubble-content p) {
     margin: 0;
-    line-height: 1.4;
+    line-height: var(--text-base--line-height);
   }
 
   :global(.user-bubble-content p:not(:last-child)) {

@@ -13,6 +13,7 @@ import { skillsLoadedCheck } from './checks/skills-loaded';
 import { schedulerHealthCheck } from './checks/scheduler-health';
 import { policyOriginCheck } from './checks/policy-origin';
 import { shortcutsValidCheck } from './checks/shortcuts-valid';
+import { sessionLifecycleCheck } from './checks/session-lifecycle';
 
 export type {
   DiagnosticStatus,
@@ -49,4 +50,5 @@ export function registerCoreDiagnosticChecks(): void {
   registerDiagnosticCheck(schedulerHealthCheck);
   registerDiagnosticCheck(policyOriginCheck);
   registerDiagnosticCheck(shortcutsValidCheck);
+  registerDiagnosticCheck(sessionLifecycleCheck);
 }

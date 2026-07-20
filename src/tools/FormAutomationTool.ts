@@ -5,7 +5,7 @@
  * validation handling, and automated form submission.
  */
 
-import { BaseTool, createToolDefinition, type BaseToolRequest, type BaseToolOptions, type ToolDefinition } from './BaseTool';
+import { BaseTool, createToolDefinition, type BaseToolRequest, type BaseToolOptions, type ToolDefinition, type ScopedBrowserTab } from './BaseTool';
 
 /**
  * Form field types
@@ -247,7 +247,7 @@ export class FormAutomationTool extends BaseTool {
           }
 
           // Get final URL
-          const updatedTab = await chrome.tabs.get(tab.id!);
+          const updatedTab = await this.getOwnedTab(tab.id!);
           responseUrl = updatedTab.url;
         }
       }
@@ -276,13 +276,13 @@ export class FormAutomationTool extends BaseTool {
   /**
    * Get or navigate to tab
    */
-  private async getTab(tabId?: number, url?: string): Promise<chrome.tabs.Tab> {
+  private async getTab(tabId?: number, url?: string): Promise<ScopedBrowserTab> {
     if (tabId !== undefined && tabId !== null && tabId !== -1) {
       return await this.validateTabId(tabId);
     }
 
     if (url) {
-      const tab = await chrome.tabs.create({ url, active: false });
+      const tab = await this.createOwnedTab({ url, active: false });
 
       // Note: Tab will be added to group automatically when bound to session via TabManager
 

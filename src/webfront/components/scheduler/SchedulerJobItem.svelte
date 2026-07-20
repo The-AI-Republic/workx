@@ -145,12 +145,12 @@
 >
   <div class="flex-1 min-w-0">
     <!-- Status Badge -->
-    <span class="inline-block px-1.5 py-0.5 text-sm font-semibold uppercase rounded mb-1 {getStatusBadgeClasses(status)}">
+    <span class="inline-block px-1.5 py-0.5 text-xs font-semibold uppercase rounded mb-1 {getStatusBadgeClasses(status)}">
       {getStatusLabel(status)}
     </span>
     {#if recurrence}
       <span
-        class="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-sm rounded mb-1 ml-1
+        class="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded mb-1 ml-1
           {currentTheme === 'modern'
             ? 'bg-[rgba(96,165,250,0.15)] text-blue-400'
             : 'bg-[rgba(0,255,0,0.15)] text-term-dim-green'}"
@@ -166,14 +166,14 @@
     {/if}
 
     <!-- Job Input Preview -->
-    <p class="m-0 text-sm leading-relaxed overflow-hidden text-ellipsis whitespace-nowrap
+    <p class="m-0 text-sm leading-ui overflow-hidden text-ellipsis whitespace-nowrap
       {currentTheme === 'modern'
         ? 'text-chat-text dark:text-chat-text-dark font-chat'
         : 'text-term-bright-green font-terminal'}"
     >{input}</p>
 
     <!-- Time Info -->
-    <div class="mt-1 text-sm">
+    <div class="mt-1 text-meta font-normal">
       {#if scheduledTime}
         <span class="{currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{formatTime(scheduledTime)}</span>
         <span class="ml-1 {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark opacity-70' : 'text-[rgba(0,255,0,0.5)]'}">({getRelativeTime(scheduledTime)})</span>

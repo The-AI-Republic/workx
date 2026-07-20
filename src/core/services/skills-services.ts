@@ -17,7 +17,7 @@ export interface SkillsServiceDeps {
     getSkillMetas(): unknown;
     /**
      * Returns the full unfiltered skill catalog. Distinct from
-     * `getSkillMetas()` which is domain-filtered when a SkillDomainFilter
+     * `getSkillMetas()` which is the shared complete catalog
      * is attached. The typeahead UI uses this so the user always sees the
      * full set regardless of the active tab.
      */

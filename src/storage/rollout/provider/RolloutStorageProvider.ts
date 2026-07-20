@@ -13,6 +13,8 @@ import type {
   RolloutItemRecord,
   ConversationsPage,
   Cursor,
+  RolloutRecoveryMetadata,
+  RolloutItemRange,
 } from '../types';
 
 export interface StorageStats {
@@ -30,8 +32,18 @@ export interface RolloutStorageProvider {
   // Metadata
   getMetadata(rolloutId: ConversationId): Promise<RolloutMetadataRecord | null>;
   putMetadata(metadata: RolloutMetadataRecord): Promise<void>;
+  /** Atomically create metadata and its immutable initial item prefix. */
+  createRollout(
+    metadata: RolloutMetadataRecord,
+    items: Array<{ timestamp: string; sequence: number; type: string; payload: unknown }>,
+  ): Promise<boolean>;
   deleteMetadata(rolloutId: ConversationId): Promise<void>;
   getAllMetadata(): Promise<RolloutMetadataRecord[]>;
+  getRecoveryMetadata(rolloutId: ConversationId): Promise<RolloutRecoveryMetadata>;
+  listOpenTurnRecovery(): Promise<Array<{
+    sessionId: ConversationId;
+    recovery: RolloutRecoveryMetadata;
+  }>>;
 
   // Items (append-only log)
   addItems(
@@ -39,6 +51,11 @@ export interface RolloutStorageProvider {
     items: Array<{ timestamp: string; sequence: number; type: string; payload: unknown }>
   ): Promise<void>;
   getItemsByRolloutId(rolloutId: ConversationId): Promise<RolloutItemRecord[]>;
+  /** Read a bounded, sequence-ordered slice without hydrating the whole log. */
+  getItemsByRolloutIdRange(
+    rolloutId: ConversationId,
+    range: RolloutItemRange,
+  ): Promise<RolloutItemRecord[]>;
   getLastSequenceNumber(rolloutId: ConversationId): Promise<number>;
   deleteItemsByRolloutIds(rolloutIds: string[]): Promise<void>;
 

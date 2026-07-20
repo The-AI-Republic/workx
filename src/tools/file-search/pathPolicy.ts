@@ -1,5 +1,5 @@
 /**
- * Shared workspace path policy for the code-mode file/search tools.
+ * Shared workspace path policy for the local file/search tools.
  *
  * AUTHORITY MODEL (design §4.8 layer 1, invariant R5):
  *   - The AUTHORITATIVE jail (symlink-resolved containment + bypass-immune

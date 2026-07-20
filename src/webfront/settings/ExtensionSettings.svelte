@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { IExtensionSettings, IPermissionSettings } from '@/config/types';
-  import { _t } from '../lib/i18n';
+  import { _t, t } from '../lib/i18n';
   import { getInitializedUIClient } from '@/core/messaging';
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
@@ -35,6 +35,98 @@
   // For allowed origins input
   let allowedOriginsText = $state('');
 
+  // Desktop bridge card state (chrome.storage-backed, saved independently)
+  const chromeAvailable = typeof chrome !== 'undefined' && !!chrome.storage?.local;
+  let bridgeEnabled = $state(false);
+  let bridgeToken = $state('');
+  let bridgeUrl = $state('ws://127.0.0.1:18101');
+  let bridgeDirty = $state(false);
+  let bridgeSaving = $state(false);
+  let bridgeMessage = $state('');
+  let bridgeMessageType: 'success' | 'error' | '' = $state('');
+  let bridgeStatus = $state<{ status: string; lastError: string | null } | null>(null);
+  let bridgeStatusListener:
+    | ((changes: Record<string, chrome.storage.StorageChange>, area: string) => void)
+    | null = null;
+  let destroyed = false;
+
+  async function loadBridgeCard() {
+    if (!chromeAvailable) return;
+    try {
+      const { getBridgeSettings, BRIDGE_STATUS_KEY } = await import('@/extension/bridge/bridgeSettings');
+      const settings = await getBridgeSettings();
+      bridgeEnabled = settings.enabled;
+      bridgeToken = settings.token;
+      bridgeUrl = settings.url;
+
+      const raw = await chrome.storage.session.get(BRIDGE_STATUS_KEY);
+      bridgeStatus = (raw?.[BRIDGE_STATUS_KEY] as typeof bridgeStatus) ?? null;
+      // The component may have unmounted while the async storage reads were
+      // pending. Do not attach a listener that onDestroy can no longer remove.
+      if (destroyed) return;
+      bridgeStatusListener = (changes, area) => {
+        if (area === 'session' && changes[BRIDGE_STATUS_KEY]) {
+          bridgeStatus = (changes[BRIDGE_STATUS_KEY].newValue as typeof bridgeStatus) ?? null;
+        }
+      };
+      chrome.storage.onChanged.addListener(bridgeStatusListener);
+    } catch (error) {
+      console.warn('[ExtensionSettings] Failed to load desktop bridge settings:', error);
+    }
+  }
+
+  onDestroy(() => {
+    destroyed = true;
+    if (bridgeStatusListener && chromeAvailable) {
+      chrome.storage.onChanged.removeListener(bridgeStatusListener);
+      bridgeStatusListener = null;
+    }
+  });
+
+  async function handleBridgeSave() {
+    if (!chromeAvailable) return;
+    try {
+      bridgeSaving = true;
+      const { setBridgeSettings } = await import('@/extension/bridge/bridgeSettings');
+      const token = bridgeToken.trim();
+      await setBridgeSettings({
+        enabled: bridgeEnabled,
+        token,
+        url: bridgeUrl.trim(),
+        // Native messaging is zero-pairing on macOS/Linux. Entering a token
+        // explicitly selects the direct-WS fallback, including on Windows
+        // where native-host registry installation is not bundled yet.
+        transport: token ? 'ws' : 'native',
+      });
+      bridgeDirty = false;
+      bridgeMessage = 'Desktop bridge settings saved';
+      bridgeMessageType = 'success';
+      setTimeout(() => {
+        bridgeMessage = '';
+        bridgeMessageType = '';
+      }, 3000);
+    } catch (error) {
+      bridgeMessage = `Failed to save: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      bridgeMessageType = 'error';
+    } finally {
+      bridgeSaving = false;
+    }
+  }
+
+  // Returns already-translated text (static keys so extract-i18n finds them).
+  function bridgeStatusLabel(status: string | undefined): string {
+    switch (status) {
+      case 'connected':
+        return t('Connected to WorkX Desktop');
+      case 'connecting':
+        return t('Connecting…');
+      case 'error':
+        return t('Connection failed');
+      default:
+        return t('Not connected (bridge disabled)');
+    }
+  }
+
   $effect(() => {
     if (highlightSettingId) {
       highlightSetting(highlightSettingId);
@@ -44,6 +136,7 @@
 
   onMount(async () => {
     await loadSettings();
+    await loadBridgeCard();
   });
 
   async function loadSettings() {
@@ -211,6 +304,75 @@
       </div>
     </div>
 
+    <!-- Desktop Bridge Section -->
+    {#if chromeAvailable}
+      <div class="section settings-card">
+        <h3 class="section-title">{$_t("Desktop Bridge")}</h3>
+        <div class="help-text" style="margin-bottom: 0.75rem;">
+          {$_t("Let the WorkX desktop app use this browser as its browser tool. Leave the token blank for automatic native connection on macOS/Linux; paste a desktop pairing token for the WebSocket fallback (including Windows).")}
+        </div>
+
+        <div class="form-group" data-setting-id="bridge-enabled">
+          <label class="checkbox-label">
+            <input
+              type="checkbox"
+              bind:checked={bridgeEnabled}
+              oninput={() => (bridgeDirty = true)}
+              class="form-checkbox"
+            />
+            <span>{$_t("Enable Desktop Bridge")}</span>
+          </label>
+        </div>
+
+        <div class="form-group" data-setting-id="bridge-token">
+          <label for="bridge-token" class="form-label">{$_t("Pairing Token")}</label>
+          <input
+            id="bridge-token"
+            type="password"
+            bind:value={bridgeToken}
+            oninput={() => (bridgeDirty = true)}
+            class="form-input"
+            placeholder={$_t("Paste the token from WorkX Desktop → Settings → Tools")}
+            autocomplete="off"
+          />
+          <div class="help-text">{$_t("A non-empty token selects the direct WebSocket fallback; clearing it selects native messaging.")}</div>
+        </div>
+
+        <div class="form-group" data-setting-id="bridge-url">
+          <label for="bridge-url" class="form-label">{$_t("Desktop App URL")}</label>
+          <input
+            id="bridge-url"
+            type="text"
+            bind:value={bridgeUrl}
+            oninput={() => (bridgeDirty = true)}
+            class="form-input"
+            placeholder="ws://127.0.0.1:18101"
+          />
+          <div class="help-text">{$_t("Only change this if the desktop app-server uses a non-default port.")}</div>
+        </div>
+
+        <div class="form-group">
+          <div class="help-text">
+            <strong>{$_t("Status")}:</strong>
+            {bridgeStatusLabel(bridgeStatus?.status)}
+            {#if bridgeStatus?.status === 'error' && bridgeStatus?.lastError}
+              — {bridgeStatus.lastError}
+            {/if}
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button class="btn btn-primary" onclick={handleBridgeSave} disabled={!bridgeDirty || bridgeSaving}>
+            {bridgeSaving ? $_t('Saving...') : $_t('Save Bridge Settings')}
+          </button>
+        </div>
+
+        {#if bridgeMessage}
+          <div class="message {bridgeMessageType}">{bridgeMessage}</div>
+        {/if}
+      </div>
+    {/if}
+
     <!-- Save Button -->
     <div class="button-group">
       <button
@@ -252,8 +414,9 @@
     border: none;
     color: var(--workx-primary);
     cursor: pointer;
-    font-size: 0.9375rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     padding: 0.5rem 0;
     margin-bottom: 1rem;
     display: flex;
@@ -268,8 +431,9 @@
 
   .settings-title {
     margin: 0 0 1.5rem 0;
-    font-size: 1.5rem;
-    font-weight: 600;
+    font-size: var(--text-2xl);
+    line-height: var(--text-2xl--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
@@ -295,8 +459,9 @@
 
   .section-title {
     margin: 0 0 1rem 0;
-    font-size: 1.125rem;
-    font-weight: 600;
+    font-size: var(--text-lg);
+    line-height: var(--text-lg--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
@@ -307,8 +472,9 @@
   .form-label {
     display: block;
     margin-bottom: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     color: var(--workx-text);
   }
 
@@ -319,7 +485,8 @@
     border-radius: 0.375rem;
     background: var(--workx-surface);
     color: var(--workx-text);
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     transition: all 0.2s;
   }
 
@@ -336,8 +503,9 @@
     border-radius: 0.375rem;
     background: var(--workx-surface);
     color: var(--workx-text);
-    font-size: 0.875rem;
-    font-family: 'Courier New', Courier, monospace;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-family: var(--font-mono);
     resize: vertical;
     transition: all 0.2s;
   }
@@ -355,7 +523,8 @@
     border-radius: 0.375rem;
     background: var(--workx-surface);
     color: var(--workx-text);
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     transition: all 0.2s;
   }
 
@@ -370,7 +539,8 @@
     align-items: center;
     gap: 0.5rem;
     cursor: pointer;
-    font-size: 0.9375rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     color: var(--workx-text);
   }
 
@@ -383,9 +553,9 @@
 
   .help-text {
     margin-top: 0.375rem;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
     color: var(--workx-text-secondary);
-    line-height: 1.4;
+    line-height: var(--leading-ui);
   }
 
   .button-group {
@@ -395,8 +565,9 @@
   .btn {
     padding: 0.75rem 1.5rem;
     border-radius: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     cursor: pointer;
     transition: all 0.2s;
     border: 1px solid var(--workx-primary);
@@ -430,7 +601,8 @@
     gap: 0.5rem;
     padding: 0.75rem;
     border-radius: 0.5rem;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     margin-top: 1rem;
   }
 

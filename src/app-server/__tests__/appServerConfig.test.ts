@@ -14,7 +14,7 @@ describe('appServerConfig', () => {
 
   it('applies defaults for an empty config', () => {
     const cfg = normalizeAppServerConfig(undefined);
-    expect(cfg.enabled).toBe(false);
+    expect(cfg.enabled).toBe(true);
     expect(cfg.bindHost).toBe('127.0.0.1');
     expect(cfg.port).toBe(18101);
     expect(cfg.requireAuth).toBe(true);
@@ -73,9 +73,11 @@ describe('appServerConfig', () => {
     expect(cfg.port).toBe(0);
   });
 
-  it('is disabled by default in the shipped agent config', () => {
+  it('is enabled by default in the shipped agent config (loopback + token-gated)', () => {
     const cfg = getDefaultAgentConfig();
-    expect(cfg.appServer?.enabled).toBe(false);
+    // Enabled so the browser bridge works out-of-box; still loopback-bound and
+    // token-required so the exposure stays local + authenticated.
+    expect(cfg.appServer?.enabled).toBe(true);
     expect(cfg.appServer?.bindHost).toBe('127.0.0.1');
     expect(cfg.appServer?.requireAuth).toBe(true);
   });

@@ -192,6 +192,7 @@ export interface HookInput {
 
   // Session lifecycle
   readonly session_start_source?: 'startup' | 'resume';
+  readonly session_start_reason?: 'create' | 'hydrate';
   readonly session_end_reason?: string;
 
   // Approval (PermissionRequest, PermissionDenied)

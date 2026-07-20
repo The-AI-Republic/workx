@@ -52,6 +52,9 @@
 
   // Model configuration state - uses composite key format: "providerId:modelKey"
   let selectedModelKey = $state('');
+  // Efficient model for internal app-logistics tasks (titles, summaries).
+  // '' = same as task model. Constrained to the task model's provider.
+  let efficientModelKey = $state('');
   let configuredFeatures: ConfiguredFeatures = $state({});
   let modelValidationError = $state('');
   let serviceTier: 'default' | 'flex' | 'priority' | undefined = $state(undefined);
@@ -130,6 +133,29 @@
       // still be selectable in backend mode — they run on the user's own key.
       ? modelSelectionItems.filter(item => (item.supportBackendMode ?? 0) > 0 || item.isCustom)
       : modelSelectionItems
+  );
+
+  // Efficient-model candidates. Gateway routing (logged in, not using own
+  // API key) routes any catalog model through one credential, so the provider
+  // doesn't matter — offer everything the main selector offers. Own-API-key
+  // mode requires the efficient model to share the task model's provider
+  // (different providers mean different keys/endpoints).
+  let efficientModelOptions = $derived(
+    isUserLoggedIn && !useOwnApiKey
+      ? filteredModelItems
+      : filteredModelItems.filter(
+          (item) => item.providerId === selectedModelKey.split(':')[0]
+        )
+  );
+
+  // Displayed value: a stored selection that is no longer offered (e.g. a
+  // cross-provider pick after switching the task model's provider in
+  // own-API-key mode) renders as "Same as task model" — which matches the
+  // factory's runtime fallback.
+  let efficientModelDisplayValue = $derived(
+    efficientModelOptions.some((item) => item.modelId === efficientModelKey)
+      ? efficientModelKey
+      : ''
   );
 
   // Highlight setting effect
@@ -288,6 +314,7 @@
 
       const config = settingsConfig.getConfig();
       selectedModelKey = config.selectedModelKey;
+      efficientModelKey = config.efficientModelKey ?? '';
       console.log('[ModelSettings] loadSettings - selectedModelKey from config:', selectedModelKey);
 
       // Load useOwnApiKey preference (default false for logged-in users)
@@ -852,6 +879,23 @@
     showMessage(t('Cannot select model: $1$', { substitutions: [modelValidationError] }), 'error');
   }
 
+  async function handleEfficientModelChange(event: Event) {
+    if (!settingsConfig) return;
+
+    try {
+      const target = event.target as HTMLSelectElement;
+      const newKey = target.value; // '' = same as task model
+      await settingsConfig.setEfficientModel(newKey || null);
+      efficientModelKey = newKey;
+      getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(err => console.warn('[ModelSettings] Failed to send configUpdate:', err));
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      showMessage(t('Failed to change efficient model: $1$', { substitutions: [errorMessage] }), 'error');
+      // Restore the persisted value
+      efficientModelKey = settingsConfig.getConfig().efficientModelKey ?? '';
+    }
+  }
+
   async function handleServiceTierChange(event: Event) {
     if (!settingsConfig) return;
 
@@ -901,6 +945,32 @@
         onModelChange={handleModelChange}
       />
       <div class="help-text">{t("Select the AI model to use for conversations.")}</div>
+
+      <!-- Efficient model: cheap model for internal tasks (titles, summaries).
+           Gateway mode offers any model; own-API-key mode is same-provider
+           only. '' = same as the task model. -->
+      <div class="form-group" data-setting-id="efficient-model">
+        <label for="efficient-model" class="form-label">{t("Efficient Model")}</label>
+        <select
+          id="efficient-model"
+          value={efficientModelDisplayValue}
+          onchange={handleEfficientModelChange}
+          class="form-select"
+          disabled={isInitializing || isSaving}
+        >
+          <option value="">{$_t("Auto (provider default)")}</option>
+          {#each efficientModelOptions as item (item.modelId)}
+            <option value={item.modelId}>{item.modelName}</option>
+          {/each}
+        </select>
+        <div class="help-text">
+          {#if isUserLoggedIn && !useOwnApiKey}
+            {t("Lightweight model used for internal tasks like chat titles and summaries.")}
+          {:else}
+            {t("Lightweight model used for internal tasks like chat titles and summaries. Must be from the same provider as the task model.")}
+          {/if}
+        </div>
+      </div>
 
       {#if modelValidationError}
         <div class="message error">
@@ -990,7 +1060,7 @@
     </div>
 
     <!-- ChatGPT OAuth Section (OpenAI only, direct API mode) -->
-    {#if currentProvider === 'openai' && useOwnApiKey}
+    {#if currentProvider === 'openai' && (!isUserLoggedIn || useOwnApiKey)}
       <div class="form-group chatgpt-oauth-section">
         <label class="form-label">{t("ChatGPT Subscription")}</label>
         {#if chatgptOAuthConnected}
@@ -1433,8 +1503,9 @@
     border: none;
     color: var(--workx-primary);
     cursor: pointer;
-    font-size: 0.9375rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     padding: 0.5rem 0;
     display: flex;
     align-items: center;
@@ -1466,8 +1537,9 @@
 
   .section-title {
     margin: 0 0 1rem 0;
-    font-size: 1.125rem;
-    font-weight: 600;
+    font-size: var(--text-lg);
+    line-height: var(--text-lg--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
@@ -1479,10 +1551,11 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     padding: 0.25rem 0.75rem;
     border-radius: 9999px;
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
   }
 
   .auth-status.authenticated {
@@ -1502,8 +1575,9 @@
   .form-label {
     display: block;
     margin-bottom: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     color: var(--workx-text);
   }
 
@@ -1519,8 +1593,9 @@
     border-radius: 0.5rem;
     background: var(--workx-surface);
     color: var(--workx-text);
-    font-size: 0.875rem;
-    font-family: 'SF Mono', 'Monaco', monospace;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-family: var(--font-mono);
     transition: all 0.2s;
   }
 
@@ -1563,7 +1638,8 @@
     border-radius: 0.5rem;
     background: var(--workx-surface);
     color: var(--workx-text);
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     cursor: pointer;
     transition: all 0.2s;
   }
@@ -1581,7 +1657,8 @@
 
   .help-text {
     margin-top: 0.5rem;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     color: var(--workx-text-secondary);
   }
 
@@ -1597,8 +1674,9 @@
     gap: 0.5rem;
     padding: 0.75rem 1.5rem;
     border-radius: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     cursor: pointer;
     transition: all 0.2s;
     border: 1px solid var(--workx-primary);
@@ -1665,7 +1743,8 @@
     gap: 0.5rem;
     padding: 0.75rem;
     border-radius: 0.5rem;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     margin-top: 1rem;
   }
 
@@ -1707,15 +1786,15 @@
   }
 
   .security-title {
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     margin-bottom: 0.25rem;
     color: var(--workx-text);
   }
 
   .security-text {
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
     color: var(--workx-text-secondary);
-    line-height: 1.5;
+    line-height: var(--leading-normal);
   }
 
   /* Provider Information */
@@ -1747,15 +1826,17 @@
   }
 
   .provider-info-label {
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     color: var(--workx-text-secondary);
     flex-shrink: 0;
   }
 
   .provider-info-value {
-    font-size: 0.875rem;
-    font-weight: 600;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
     max-width: 150px;
     overflow: hidden;
@@ -1768,8 +1849,9 @@
     border: none;
     color: var(--workx-primary);
     cursor: pointer;
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     padding: 0.25rem 0.5rem;
     border-radius: 0.25rem;
     transition: all 0.2s;
@@ -1797,13 +1879,15 @@
   }
 
   .toggle-label {
-    font-size: 0.9375rem;
-    font-weight: 600;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
   .toggle-description {
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     color: var(--workx-text-secondary);
   }
 
@@ -1896,7 +1980,8 @@
 
   .chatgpt-oauth-status .btn-sm {
     padding: 0.25rem 0.5rem;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     margin-left: auto;
   }
 
@@ -1916,18 +2001,19 @@
   }
 
   .divider-text {
-    font-size: 0.8rem;
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-wider);
   }
 
   /* Custom endpoints (BYOK) */
   .custom-help {
     margin: 0 0 1rem 0;
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     color: var(--workx-text-secondary, var(--workx-text));
     opacity: 0.8;
-    line-height: 1.4;
+    line-height: var(--leading-ui);
   }
 
   .custom-list {
@@ -1953,13 +2039,15 @@
   }
 
   .custom-item-name {
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
   .custom-item-meta {
-    font-size: 0.75rem;
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
     color: var(--workx-text-secondary, var(--workx-text));
     opacity: 0.75;
     overflow: hidden;
@@ -1979,7 +2067,8 @@
 
   .btn-sm {
     padding: 0.35rem 0.7rem;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     flex-shrink: 0;
   }
 </style>

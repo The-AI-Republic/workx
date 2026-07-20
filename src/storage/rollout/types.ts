@@ -5,6 +5,7 @@
 // Type-only import (erased at compile; no runtime/layering coupling) so the
 // plan_artifact payload shape stays single-sourced with the tool + UI.
 import type { PlanArtifactPayload } from '../../tools/planReview/types';
+import type { SessionWorkspace } from '../../core/TurnExecutionContext';
 
 // ============================================================================
 // Constants
@@ -94,6 +95,27 @@ export interface SessionMeta {
 export interface SessionMetaLine extends SessionMeta {
   /** Git repository information */
   git?: GitInfo;
+  /** Metadata-only restart recovery state; the original session_meta item is immutable. */
+  runtimeRecovery?: RolloutRecoveryMetadata;
+}
+
+export interface OpenTurnRecovery {
+  submissionId: string;
+  startedAt: number;
+  clientMessageId?: string;
+  inputDigest?: string;
+}
+
+export interface RecentAcceptedSubmission {
+  clientMessageId: string;
+  inputDigest: string;
+  submissionId: string;
+}
+
+export interface RolloutRecoveryMetadata {
+  openTurns: OpenTurnRecovery[];
+  /** Newest first and bounded by the writer/provider contract. */
+  recentAccepted: RecentAcceptedSubmission[];
 }
 
 /**
@@ -102,6 +124,14 @@ export interface SessionMetaLine extends SessionMeta {
 export interface CompactedItem {
   /** Summary message */
   message: string;
+  /**
+   * Durable model-context checkpoint. New writers persist the exact compacted
+   * history so resume can replace the pre-checkpoint prefix instead of
+   * replaying it. Optional for backward compatibility with legacy summaries.
+   */
+  replacementHistory?: import('../../core/protocol/types').ResponseItem[];
+  /** Monotonic compaction number at the time the checkpoint was committed. */
+  windowNumber?: number;
 }
 
 /**
@@ -116,8 +146,12 @@ export type ReasoningSummary = 'auto' | 'always' | 'never';
  * Context information about a conversation turn.
  */
 export interface TurnContextItem {
+  /** Typed session workspace snapshot used for this turn. */
+  workspace?: SessionWorkspace;
   /** Working directory for this turn (desktop mode) */
   cwd?: string;
+  /** Preferred name for the session-owned working directory. */
+  workingDirectory?: string;
   /** Browser tab ID for this turn (extension mode) */
   tabId?: number;
   /** Approval policy */
@@ -169,7 +203,27 @@ export type RolloutItem =
   | { type: 'compacted'; payload: CompactedItem }
   | { type: 'turn_context'; payload: TurnContextItem }
   | { type: 'event_msg'; payload: EventMsg }
-  | { type: 'turn_completion'; payload: { turnId: string; stats: any } }
+  | {
+      type: 'turn_start';
+      payload: {
+        markerVersion: 1;
+        submissionId: string;
+        startedAt: number;
+        clientMessageId?: string;
+        inputDigest?: string;
+      };
+    }
+  | {
+      type: 'turn_completion';
+      payload:
+        | { turnId: string; stats: any }
+        | {
+            markerVersion: 1;
+            submissionId: string;
+            outcome: 'complete' | 'failed' | 'aborted' | 'interrupted';
+            completedAt: number;
+          };
+    }
   | { type: 'content_replacement'; payload: ContentReplacementRecord }
   | { type: 'plan_artifact'; payload: PlanArtifactPayload };
 
@@ -181,7 +235,7 @@ export interface RolloutLine {
   /** ISO 8601 timestamp with milliseconds */
   timestamp: string;
   /** Discriminator for the item type */
-  type: 'session_meta' | 'response_item' | 'compacted' | 'turn_context' | 'event_msg' | 'turn_completion' | 'content_replacement' | 'plan_artifact';
+  type: 'session_meta' | 'response_item' | 'compacted' | 'turn_context' | 'event_msg' | 'turn_start' | 'turn_completion' | 'content_replacement' | 'plan_artifact';
   /** The actual rollout item data */
   payload: RolloutItem['payload'];
 }
@@ -302,6 +356,14 @@ export interface RolloutItemRecord {
   type: string;
   /** Item payload */
   payload: any;
+}
+
+/** Exclusive sequence bounds used for bounded canonical-log scans. */
+export interface RolloutItemRange {
+  afterSequence?: number;
+  beforeSequence?: number;
+  limit: number;
+  direction: 'asc' | 'desc';
 }
 
 // ============================================================================

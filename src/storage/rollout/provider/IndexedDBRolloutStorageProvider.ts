@@ -14,6 +14,8 @@ import type {
   ConversationsPage,
   ConversationItem,
   Cursor,
+  RolloutRecoveryMetadata,
+  RolloutItemRange,
 } from '../types';
 import {
   DB_NAME,
@@ -22,6 +24,7 @@ import {
   STORE_ROLLOUT_ITEMS,
 } from '../types';
 import { createDatabaseError } from '../helpers';
+import { applyRecoveryMutations, emptyRecoveryMetadata } from './RolloutRecovery';
 
 export class IndexedDBRolloutStorageProvider implements RolloutStorageProvider {
   private db: IDBDatabase | null = null;
@@ -67,6 +70,40 @@ export class IndexedDBRolloutStorageProvider implements RolloutStorageProvider {
     });
   }
 
+  async createRollout(
+    metadata: RolloutMetadataRecord,
+    items: Array<{ timestamp: string; sequence: number; type: string; payload: unknown }>,
+  ): Promise<boolean> {
+    const db = this.getDb();
+    return new Promise<boolean>((resolve, reject) => {
+      const transaction = db.transaction([STORE_ROLLOUTS, STORE_ROLLOUT_ITEMS], 'readwrite');
+      const rolloutsStore = transaction.objectStore(STORE_ROLLOUTS);
+      const itemsStore = transaction.objectStore(STORE_ROLLOUT_ITEMS);
+      let created = false;
+      transaction.oncomplete = () => resolve(created);
+      transaction.onerror = () => reject(
+        createDatabaseError('createRollout', transaction.error?.message || 'transaction failed'),
+      );
+      transaction.onabort = () => reject(createDatabaseError('createRollout', 'transaction aborted'));
+      const getRequest = rolloutsStore.get(metadata.id);
+      getRequest.onerror = () => transaction.abort();
+      getRequest.onsuccess = () => {
+        if (getRequest.result) return;
+        created = true;
+        rolloutsStore.add({ ...metadata, itemCount: items.length });
+        for (const item of items) {
+          itemsStore.add({
+            rolloutId: metadata.id,
+            timestamp: item.timestamp,
+            sequence: item.sequence,
+            type: item.type,
+            payload: item.payload,
+          });
+        }
+      };
+    });
+  }
+
   async deleteMetadata(rolloutId: ConversationId): Promise<void> {
     const db = this.getDb();
     return new Promise<void>((resolve, reject) => {
@@ -88,6 +125,24 @@ export class IndexedDBRolloutStorageProvider implements RolloutStorageProvider {
       request.onsuccess = () => resolve((request.result || []) as RolloutMetadataRecord[]);
       request.onerror = () =>
         reject(createDatabaseError('getAllMetadata', request.error?.message || 'unknown error'));
+    });
+  }
+
+  async getRecoveryMetadata(rolloutId: ConversationId): Promise<RolloutRecoveryMetadata> {
+    const metadata = await this.getMetadata(rolloutId);
+    return structuredClone(metadata?.sessionMeta.runtimeRecovery ?? emptyRecoveryMetadata());
+  }
+
+  async listOpenTurnRecovery(): Promise<Array<{
+    sessionId: ConversationId;
+    recovery: RolloutRecoveryMetadata;
+  }>> {
+    const metadata = await this.getAllMetadata();
+    return metadata.flatMap((row) => {
+      const recovery = row.sessionMeta.runtimeRecovery;
+      return recovery?.openTurns.length
+        ? [{ sessionId: row.id, recovery: structuredClone(recovery) }]
+        : [];
     });
   }
 
@@ -130,6 +185,7 @@ export class IndexedDBRolloutStorageProvider implements RolloutStorageProvider {
           if (metadata) {
             metadata.itemCount += items.length;
             metadata.updated = Date.now();
+            metadata.sessionMeta = applyRecoveryMutations(metadata.sessionMeta, items);
             rolloutsStore.put(metadata);
           }
         };
@@ -153,6 +209,41 @@ export class IndexedDBRolloutStorageProvider implements RolloutStorageProvider {
       request.onsuccess = () => resolve((request.result || []) as RolloutItemRecord[]);
       request.onerror = () =>
         reject(createDatabaseError('getItemsByRolloutId', request.error?.message || 'unknown error'));
+    });
+  }
+
+  async getItemsByRolloutIdRange(
+    rolloutId: ConversationId,
+    range: RolloutItemRange,
+  ): Promise<RolloutItemRecord[]> {
+    const limit = normalizeRangeLimit(range.limit);
+    const lower = Math.max(0, (range.afterSequence ?? -1) + 1);
+    const upper = range.beforeSequence === undefined
+      ? Number.MAX_SAFE_INTEGER
+      : Math.min(Number.MAX_SAFE_INTEGER, range.beforeSequence - 1);
+    if (lower > upper) return [];
+    const db = this.getDb();
+    return new Promise<RolloutItemRecord[]>((resolve, reject) => {
+      const tx = db.transaction(STORE_ROLLOUT_ITEMS, 'readonly');
+      const index = tx.objectStore(STORE_ROLLOUT_ITEMS).index('rolloutId_sequence');
+      const request = index.openCursor(
+        IDBKeyRange.bound([rolloutId, lower], [rolloutId, upper]),
+        range.direction === 'desc' ? 'prev' : 'next',
+      );
+      const records: RolloutItemRecord[] = [];
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor || records.length >= limit) {
+          resolve(records);
+          return;
+        }
+        records.push(cursor.value as RolloutItemRecord);
+        cursor.continue();
+      };
+      request.onerror = () => reject(createDatabaseError(
+        'getItemsByRolloutIdRange',
+        request.error?.message || 'unknown error',
+      ));
     });
   }
 
@@ -560,4 +651,11 @@ export class IndexedDBRolloutStorageProvider implements RolloutStorageProvider {
       }
     });
   }
+}
+
+function normalizeRangeLimit(limit: number): number {
+  if (!Number.isInteger(limit) || limit < 1 || limit > 1000) {
+    throw new Error('range limit must be an integer from 1 to 1000');
+  }
+  return limit;
 }

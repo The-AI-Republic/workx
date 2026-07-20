@@ -16,10 +16,12 @@
 
   let {
     show = false,
+    sessionId,
     onClose = () => {},
     onRewound = (_r: { sessionId: string; history?: unknown[]; rewoundText?: string }) => {},
   }: {
     show?: boolean;
+    sessionId: string;
     onClose?: () => void;
     onRewound?: (r: { sessionId: string; history?: unknown[]; rewoundText?: string }) => void;
   } = $props();
@@ -55,7 +57,7 @@
     step = 'loading';
     try {
       const client = await getInitializedUIClient();
-      const res = await client.serviceRequest<{ turns?: RewindTurn[] }>('session.turns');
+      const res = await client.serviceRequest<{ turns?: RewindTurn[] }>('session.turns', { sessionId });
       turns = res?.turns ?? [];
       step = turns.length > 0 ? 'list' : 'error';
       if (turns.length === 0) errorMsg = $_t('Nothing to rewind to yet.');
@@ -81,7 +83,7 @@
         rewoundText?: string;
       }>(
         'session.rewind',
-        { targetSequence: selected.sequence, mode },
+        { sessionId, targetSequence: selected.sequence, mode },
         // `summarize_up_to` runs a synchronous model compaction server-side;
         // the default 30s cap would falsely reject a successful summarize and
         // orphan the already-created fork. Give it a generous ceiling (the
@@ -169,7 +171,7 @@
               onclick={() => doRewind('conversation')}
             >
               <div class="font-medium">{$_t('Rewind conversation')}</div>
-              <div class="opacity-60 text-xs">{$_t('Fork a new branch from this turn. Everything after is dropped.')}</div>
+              <div class="opacity-60 text-meta font-normal">{$_t('Fork a new branch from this turn. Everything after is dropped.')}</div>
             </button>
             <button
               class="px-3 py-2 rounded text-left cursor-pointer border
@@ -177,7 +179,7 @@
               onclick={() => doRewind('summarize_up_to')}
             >
               <div class="font-medium">{$_t('Summarize earlier turns')}</div>
-              <div class="opacity-60 text-xs">{$_t('Replace everything up to this turn with a single summary.')}</div>
+              <div class="opacity-60 text-meta font-normal">{$_t('Replace everything up to this turn with a single summary.')}</div>
             </button>
             <button
               class="px-3 py-2 rounded text-left cursor-pointer opacity-70 hover:opacity-100"

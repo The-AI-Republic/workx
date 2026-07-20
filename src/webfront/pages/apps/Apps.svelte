@@ -422,7 +422,7 @@
                   {app.name}
                 </h2>
                 {#if app.categories.length}
-                  <p class="m-0 text-xs truncate
+                  <p class="m-0 text-meta font-normal truncate
                     {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
                     {app.categories.join(' · ')}
                   </p>
@@ -431,7 +431,7 @@
             </div>
 
             {#if app.description}
-              <p class="m-0 text-xs line-clamp-3
+              <p class="m-0 text-meta font-normal line-clamp-3
                 {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
                 {app.description}
               </p>
@@ -442,7 +442,7 @@
                 <button
                   disabled={pendingId === app.appId}
                   onclick={() => handleInstall(app)}
-                  class="text-xs px-2.5 py-1 rounded cursor-pointer disabled:opacity-50
+                  class="text-sm px-2.5 py-1 rounded cursor-pointer disabled:opacity-50
                     {modern
                       ? 'bg-chat-primary dark:bg-chat-primary-dark text-white font-chat hover:opacity-90'
                       : 'border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
@@ -451,12 +451,12 @@
                 </button>
               {:else if appNeedsConnect(app)}
                 {#if isOauthPending(app.appId)}
-                  <span class="text-xs {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
+                  <span class="text-meta font-normal {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
                     {$_t('Connecting… finish in your browser')}
                   </span>
                   <button
                     onclick={() => cancelOAuth(app.appId)}
-                    class="text-xs px-2 py-1 rounded cursor-pointer
+                    class="text-sm px-2 py-1 rounded cursor-pointer
                       {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:underline' : 'text-term-dim-green hover:underline'}"
                   >
                     {$_t('Cancel')}
@@ -464,7 +464,7 @@
                 {:else}
                   <button
                     onclick={() => handleConnect(app)}
-                    class="text-xs px-2.5 py-1 rounded cursor-pointer
+                    class="text-sm px-2.5 py-1 rounded cursor-pointer
                       {modern
                         ? 'bg-chat-primary dark:bg-chat-primary-dark text-white font-chat hover:opacity-90'
                         : 'border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
@@ -481,7 +481,7 @@
                 <button
                   disabled={pendingId === app.appId}
                   onclick={() => handleActivate(app)}
-                  class="text-xs px-2.5 py-1 rounded cursor-pointer disabled:opacity-50
+                  class="text-sm px-2.5 py-1 rounded cursor-pointer disabled:opacity-50
                     {modern
                       ? 'bg-chat-button-hover dark:bg-chat-button-hover-dark text-chat-text dark:text-chat-text-dark font-chat'
                       : 'border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
@@ -490,13 +490,13 @@
                 </button>
               {/if}
               {#if app.auth?.accountHint && app.auth?.status === 'connected'}
-                <span class="text-[10px] truncate max-w-[120px]
+                <span class="text-meta font-normal truncate max-w-[120px]
                   {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
                   {app.auth.accountHint}
                 </span>
               {/if}
               {#if app.version}
-                <span class="ml-auto text-[10px]
+                <span class="ml-auto text-meta font-normal
                   {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
                   v{app.version}
                 </span>
@@ -504,14 +504,14 @@
             </div>
 
             {#if connectErrors[app.appId]}
-              <p class="m-0 text-xs text-red-500">{connectErrors[app.appId]}</p>
+              <p class="m-0 text-meta font-normal text-red-500">{connectErrors[app.appId]}</p>
             {/if}
 
             {#if apiKeyFormId === app.appId}
               <div class="flex flex-col gap-2 mt-1 p-2 rounded
                 {modern ? 'bg-chat-bg dark:bg-chat-bg-dark' : 'border border-term-dim-green'}">
                 {#each apiKeyFields as field (field.key)}
-                  <label class="flex flex-col gap-1 text-xs
+                  <label class="flex flex-col gap-1 text-sm
                     {modern ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-green'}">
                     <span>{field.label}{field.optional ? '' : ' *'}</span>
                     <input
@@ -519,7 +519,7 @@
                       bind:value={apiKeyValues[field.key]}
                       placeholder={field.placeholder ?? ''}
                       autocomplete="off"
-                      class="px-2 py-1 rounded text-xs
+                      class="px-2 py-1 rounded text-sm
                         {modern
                           ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark'
                           : 'bg-transparent border border-term-dim-green text-term-green'}"
@@ -527,13 +527,13 @@
                   </label>
                 {/each}
                 {#if apiKeyError}
-                  <p class="m-0 text-xs text-red-500">{apiKeyError}</p>
+                  <p class="m-0 text-meta font-normal text-red-500">{apiKeyError}</p>
                 {/if}
                 <div class="flex items-center gap-2">
                   <button
                     disabled={apiKeySubmitting}
                     onclick={() => submitApiKeyForm(app)}
-                    class="text-xs px-2.5 py-1 rounded cursor-pointer disabled:opacity-50
+                    class="text-sm px-2.5 py-1 rounded cursor-pointer disabled:opacity-50
                       {modern
                         ? 'bg-chat-primary dark:bg-chat-primary-dark text-white font-chat hover:opacity-90'
                         : 'border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
@@ -542,14 +542,14 @@
                   </button>
                   <button
                     onclick={closeApiKeyForm}
-                    class="text-xs px-2 py-1 rounded cursor-pointer
+                    class="text-sm px-2 py-1 rounded cursor-pointer
                       {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:underline' : 'text-term-dim-green hover:underline'}"
                   >
                     {$_t('Cancel')}
                   </button>
                   {#if app.auth?.setupUrl}
                     <a href={app.auth.setupUrl} target="_blank" rel="noopener noreferrer"
-                      class="ml-auto text-[10px] underline
+                      class="ml-auto text-meta font-normal underline
                         {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
                       {$_t('Where do I get this?')}
                     </a>
