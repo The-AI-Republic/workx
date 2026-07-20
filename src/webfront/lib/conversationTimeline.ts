@@ -92,10 +92,46 @@ export function reconcileAttachedTimeline(
       !next.byId[id]
       && (entry.source === 'local' || (entry.source === 'optimistic' && pending))
     ) {
-      next = upsertTimelineEvent(next, entry.event, entry.source);
+      next = insertRetainedTimelineEvent(next, entry.event, entry.source);
     }
   }
   return next;
+}
+
+/**
+ * Attach history is already in durable sequence order. Insert retained local
+ * rows at their event time without re-sorting that authoritative projection.
+ */
+function insertRetainedTimelineEvent(
+  timeline: ConversationTimeline,
+  event: ProcessedEvent,
+  source: TimelineSource,
+): ConversationTimeline {
+  if (timeline.byId[event.id]) {
+    return upsertTimelineEvent(timeline, event, source);
+  }
+  const timestamp = event.timestamp?.getTime?.() ?? Number.NaN;
+  if (!Number.isFinite(timestamp)) {
+    return upsertTimelineEvent(timeline, event, source);
+  }
+  const insertionIndex = timeline.order.findIndex((id) => {
+    const existingTimestamp = timeline.byId[id]?.event.timestamp?.getTime?.();
+    return existingTimestamp !== undefined
+      && Number.isFinite(existingTimestamp)
+      && existingTimestamp > timestamp;
+  });
+  if (insertionIndex < 0) {
+    return upsertTimelineEvent(timeline, event, source);
+  }
+  return {
+    ...timeline,
+    order: [
+      ...timeline.order.slice(0, insertionIndex),
+      event.id,
+      ...timeline.order.slice(insertionIndex),
+    ],
+    byId: { ...timeline.byId, [event.id]: { event, source } },
+  };
 }
 
 /**

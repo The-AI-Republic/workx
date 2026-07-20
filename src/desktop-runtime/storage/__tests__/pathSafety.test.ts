@@ -14,7 +14,11 @@ vi.mock('better-sqlite3', () => ({
   default: vi.fn((dbPath: string) => {
     openedDbPaths.push(dbPath);
     return {
-      pragma: vi.fn(),
+      pragma: vi.fn((statement: string) =>
+        statement === 'foreign_key_list(rollout_items)'
+          ? [{ table: 'rollout_metadata', from: 'rollout_id', on_delete: 'RESTRICT' }]
+          : undefined,
+      ),
       exec: vi.fn(),
       prepare: mockPrepare,
       close: vi.fn(),
