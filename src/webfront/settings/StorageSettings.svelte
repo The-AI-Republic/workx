@@ -108,7 +108,7 @@
         currentStorage.rolloutTTL = isNaN(numValue) ? 60 : numValue;
       }
 
-      await settingsConfig.updateConfig({
+      await settingsConfig.updateConfigAndPersist({
         cache: currentCache,
         storage: currentStorage,
       });

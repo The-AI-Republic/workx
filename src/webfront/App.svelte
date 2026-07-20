@@ -245,7 +245,7 @@
       if (profile) {
         if (useOwnApiKey === undefined) {
           useOwnApiKey = false;
-          await config.updateConfig({
+          await config.updateConfigAndPersist({
             preferences: { ...agentConfig.preferences, useOwnApiKey: false },
           });
           console.log('[App] User logged in and useOwnApiKey was undefined, setting to false');
@@ -294,7 +294,7 @@
     try {
       const config = await AgentConfig.getInstance();
       const agentConfig = config.getConfig();
-      await config.updateConfig({
+      await config.updateConfigAndPersist({
         preferences: { ...agentConfig.preferences, zoomLevel: clamped },
       });
     } catch (error) {
