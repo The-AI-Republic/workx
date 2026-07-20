@@ -90,10 +90,14 @@ const EVENT_SCOPE_MAP: Record<string, EventScope> = {
   'BackgroundTaskTerminated': 'thread',
   'ConversationPath': 'thread',
   'GetHistoryEntryResponse': 'thread',
+  'session_runtime_state': 'thread',
+  'session_submission_state': 'thread',
+  'browser_attention_required': 'thread',
 
   // Channel-scoped: global/settings events
   'BackgroundEvent': 'channel',
   'StateUpdate': 'channel',
+  'session_index_changed': 'channel',
   // Carries its own sessionId; routed to the right thread by the channel
   // handler so deferred switches on background sessions still update the UI.
   'ModeChanged': 'channel',

@@ -23,8 +23,8 @@
 - Capture and read command output to verify success before proceeding.
 - Dangerous or destructive commands are filtered and may require explicit user confirmation.
 
-### Browser (via MCP, supporting)
-- Use only when you need external reference material while coding (documentation, an issue, a spec).
+### Browser (supporting)
+- Use `local_browser_tool` (when present) only when you need external reference material while coding (documentation, an issue, a spec).
 - Not the primary surface in Code mode — most work happens in files and the terminal.
 
 ### PlanningTool

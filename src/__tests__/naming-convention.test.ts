@@ -85,12 +85,8 @@ describe('Internal identifiers use "workx"', () => {
     expect(VISUAL_EFFECT_EVENT_NAME).toBe('workx:visual-effect');
   });
 
-  it('TabManager groupTitle is "workx"', () => {
-    expect(readSource('src/core/TabManager.ts')).toMatch(/groupTitle\s*=\s*['"]workx['"]/);
-  });
-
-  it('AgentSession tab group uses "workx_s_" prefix', () => {
-    expect(readSource('src/core/registry/AgentSession.ts')).toContain('workx_s_');
+  it('TabGroupRegistry uses the workx session-group prefix', () => {
+    expect(readSource('src/extension/platform/TabGroupRegistry.ts')).toContain('workx_s_');
   });
 
   it('GoogleDocAddon uses "data-workx-injected" attribute', () => {

@@ -13,7 +13,7 @@
 import { createToolDefinition, type ToolDefinition, type ToolHandler, type ToolContext, type ParameterProperty, type Platform } from '../BaseTool';
 import { StaticRiskAssessor } from '../../core/approval/assessors/StaticRiskAssessor';
 import { runRipgrep, RipgrepTimeoutError, RipgrepNotFoundError, RipgrepOutsideWorkspaceError, type RipgrepResult } from './ripgrep';
-import { sessionScope, NOT_CODE_MODE_MSG, NO_WORKSPACE_MSG } from './sessionScope';
+import { sessionScope, NO_WORKSPACE_MSG } from './sessionScope';
 import { lexicalPathCheck } from './pathPolicy';
 
 export abstract class FileSearchTool {
@@ -42,12 +42,8 @@ export abstract class FileSearchTool {
   createHandler(): ToolHandler {
     return async (params: Record<string, any>, context: ToolContext): Promise<string> => {
       const scope = sessionScope(context);
-      // Same gates as the file-access tools (sessionScope.ts): grep/glob are
-      // code-mode-only (§4.2) and MUST stay jailed to the selected workspace
-      // (R5/R8). undefined mode ⇒ session-less path ⇒ don't block on mode;
-      // the workspace gate still applies. NEVER fall back to process.cwd()/
-      // the app's project root — that was an arbitrary-filesystem read hole.
-      if (scope.agentMode !== undefined && scope.agentMode !== 'code') return NOT_CODE_MODE_MSG;
+      // Mode is emphasis, not permission. A selected session folder is the
+      // availability requirement; never fall back to process.cwd().
       if (!scope.workspaceRoot) return NO_WORKSPACE_MSG;
 
       // Resolve the search root strictly inside the workspace. The lexical

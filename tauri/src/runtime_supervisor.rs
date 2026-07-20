@@ -190,18 +190,22 @@ struct DesktopRuntimeHost {
     arch: String,
 }
 
-fn desktop_host(app: &AppHandle) -> Result<DesktopRuntimeHost, String> {
+fn desktop_host(_app: &AppHandle) -> Result<DesktopRuntimeHost, String> {
     let project_dirs = ProjectDirs::from("com", "airepublic", "workx")
         .ok_or_else(|| "Failed to resolve desktop config dir".to_string())?;
     let config_dir = project_dirs.config_dir().to_path_buf();
     let cache_dir = project_dirs.cache_dir().to_path_buf();
     let log_dir = project_dirs.data_local_dir().join("logs");
 
-    let browser_mcp_sidecar_path = app
-        .path()
-        .resolve("binaries/chrome-devtools-mcp", tauri::path::BaseDirectory::Resource)
-        .ok()
-        .map(|p| p.to_string_lossy().to_string());
+    // Parked: the chrome-devtools-mcp sidecar is no longer bundled — desktop
+    // browser automation runs through the extension bridge (PR #325). The
+    // handshake field is kept as a placeholder so the runtime schema is
+    // unchanged; `None` makes MCPManager fall back to `npx` in dev if the
+    // parked MCP path is ever manually re-enabled. To re-bundle: restore
+    // `binaries/chrome-devtools-mcp` in tauri.conf.json externalBin + the
+    // `build:sidecar` build hooks, then resolve the resource path here again
+    // (`_app.path().resolve("binaries/chrome-devtools-mcp", BaseDirectory::Resource)`).
+    let browser_mcp_sidecar_path: Option<String> = None;
 
     let project_root = std::env::current_dir()
         .ok()

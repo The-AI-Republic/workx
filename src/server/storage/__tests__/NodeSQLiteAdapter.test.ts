@@ -65,16 +65,18 @@ describe('NodeSQLiteAdapter', () => {
 
     it('should create tables and indexes for all adapter stores', async () => {
       await adapter.initialize();
-      // 11 table creations + 15 index creations (Track 04 adds task_output_chunks
+      // 12 table creations + 17 index creations (lifecycle adds thread_index
+      // and its pinned/recent/search indexes; Track 04 adds task_output_chunks
       // with 3 indexes: by_task_id, by_task_seq, by_created_at).
       // - 3 for cache_items, 4 for scheduler_jobs, 2 for agent_sessions,
       //   3 for token_usage_records, 3 for task_output_chunks.
-      expect(mockExec).toHaveBeenCalledTimes(26);
+      expect(mockExec).toHaveBeenCalledTimes(29);
       expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('"cache_items"'));
       expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('"scheduler_jobs"'));
       expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('"agent_sessions"'));
       expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('"token_usage_records"'));
       expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('"task_output_chunks"'));
+      expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('"thread_index"'));
     });
 
     it('should be idempotent', async () => {

@@ -26,8 +26,8 @@ export async function registerFileSearchTools(
   registry: ToolRegistry,
   platforms: Platform[]
 ): Promise<void> {
-  // grep/glob are cross-platform (desktop + server). The code-mode file
-  // tools (read/edit/write) are DESKTOP ONLY by design — they require the
+  // grep/glob are cross-platform (desktop + server). The local file tools
+  // (read/edit/write) are DESKTOP ONLY by design — they require the
   // Tauri Rust fs commands; registering them on server would only expose
   // always-erroring tools. read_file auto-approves (StaticRiskAssessor 0);
   // edit_file/write_file carry FileWriteRiskAssessor → ASK (design §4.8).

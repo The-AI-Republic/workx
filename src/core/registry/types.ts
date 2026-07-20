@@ -2,6 +2,67 @@
  * Session types for multi-agent instance architecture
  * Feature: 015-multi-agent-instances
  */
+import type { ThreadIndexEntry } from '../thread/ThreadIndexStore';
+
+export type SessionRuntimeState =
+  | 'suspended'
+  | 'hydrating'
+  | 'idle'
+  | 'running'
+  | 'suspending'
+  | 'deleting';
+
+export type ManagedSessionKind = 'interactive';
+export type SessionCapacityClass = 'managed-interactive' | 'eager';
+export type ClientMessageId = string;
+export type SubmitInput = Extract<import('../protocol/types').Op, { type: 'UserInput' }>;
+
+export type SubmitAck =
+  | { status: 'accepted'; clientMessageId: ClientMessageId; submissionId: string }
+  | {
+      status: 'queued';
+      clientMessageId: ClientMessageId;
+      position: number;
+      capacityPosition?: number;
+      phase: 'capacity' | 'hydration' | 'suspension';
+    }
+  | {
+      status: 'rejected';
+      clientMessageId: ClientMessageId;
+      reason: 'queue-full' | 'deleted' | 'busy' | 'not-found'
+        | 'client-id-conflict' | 'submit-failed';
+    };
+
+export interface SessionRuntimeView {
+  state: SessionRuntimeState;
+  awaitingInputCount: number;
+  awaitingInputKinds: Array<'approval' | 'foreground'>;
+  durability: 'ok' | 'degraded';
+  durabilityReason?: 'terminal-marker-write';
+  lastFailure?: {
+    kind: 'hydration';
+    code: 'history' | 'assembly' | 'auth-reconcile' | 'unknown';
+    ts: number;
+    retryable: true;
+  };
+}
+
+export type ThreadListItem = ThreadIndexEntry & { runtime: SessionRuntimeView };
+
+/** Privacy-safe, local-only lifecycle counters exposed to the doctor report. */
+export interface SessionLifecycleStatus {
+  lifecycleMode: 'client' | 'eager';
+  liveCount: number;
+  managedLiveCount: number;
+  runningCount: number;
+  hydratingCount: number;
+  reservationCount: number;
+  queuedSessionCount: number;
+  queuedSubmissionCount: number;
+  maxLive: number;
+  hardMax: number;
+}
+
 
 /**
  * Session lifecycle states
@@ -30,8 +91,9 @@ export interface SessionConfig {
   /** Session type: primary (user) or scheduled (task) */
   type: SessionType;
 
-  /** Initial tab binding (optional) */
-  tabId?: number | null;
+  /** Authoritative ID reserved before any runtime graph is assembled. */
+  sessionId?: string;
+  agentMode?: import('../../prompts/PromptComposer').AgentMode;
 
   /** Resume data for restoring a previous session */
   resume?: {
@@ -45,9 +107,15 @@ export interface SessionConfig {
    * never mutated (append-only storage; fork = new rollout).
    */
   fork?: {
+    sessionId?: string;
     sourceConversationId: string;
     rolloutItems: unknown[];
+    workingDirectory?: string;
+    historyAlreadyPersisted?: boolean;
   };
+
+  /** Session-owned workspace restored independently of the selected mode. */
+  workspace?: import('../TurnExecutionContext').SessionWorkspace;
 
   /**
    * Mark as an internal infrastructure session (e.g. bootstrap fallback agent).
@@ -78,14 +146,6 @@ export interface SessionMetadata {
   /** Last activity timestamp (ms since epoch) */
   lastActivityAt: number;
 
-  /** Bound browser tab ID (if any) */
-  tabId: number | null;
-
-  /** Chrome tab group ID for this session */
-  tabGroupId: number | null;
-
-  /** Tab group name: workx_s_<letter> */
-  tabGroupName: string;
 }
 
 /**
@@ -159,33 +219,48 @@ export type SessionEventListener = (event: SessionEvent) => void;
 export interface RegistryConfig {
   /** Maximum number of concurrent sessions (default: 3) */
   maxConcurrent?: number;
+  /** Managed interactive graph targets (client lifecycle mode only). */
+  maxLive?: number;
+  hardMax?: number;
+  maxPendingHydrations?: number;
+  maxPendingPerSession?: number;
 
-  /** Optional factory to create RepublicAgent instances (replaces hardcoded extension logic) */
-  agentFactory?: (
-    config: import('../../config/AgentConfig').AgentConfig,
-    initialHistory?: import('../session/state/types').InitialHistory,
-  ) => Promise<import('../RepublicAgent').RepublicAgent>;
+  /** Platform-owned live authentication context shared by all assembled agents. */
+  authContext?: import('../auth/AuthContext').AuthContext;
+
+  /** Preferred construction path. Legacy factories remain test compatibility only. */
+  agentAssembler?: import('../assembly/AgentAssembler').AgentAssembler;
+
+  assemblyServicesFactory?: (
+    sessionId: string,
+  ) => Promise<import('../session/state/SessionServices').SessionServices>;
+
+  /** Platform fallback for new sessions (desktop: the OS user home). */
+  defaultWorkingDirectory?: string;
+
+  lifecycleMode?: 'client' | 'eager';
+  threadIndexStore?: import('../thread/ThreadIndexStore').ThreadIndexStore;
+  /** One-shot lazy repair used by session.list after interrupted/imported backfills. */
+  reconcileThreadIndex?: () => Promise<void>;
+  loadRolloutSnapshot?: (
+    sessionId: string,
+  ) => Promise<import('../assembly/AgentAssembler').RolloutSnapshot>;
+  /** Bounded model-only resume projection, separate from display history. */
+  loadModelContextSnapshot?: (
+    sessionId: string,
+  ) => Promise<import('../assembly/AgentAssembler').RolloutSnapshot>;
+  /** Metadata/sequence-only boundary used when a turn becomes durably idle. */
+  loadRolloutRevision?: (sessionId: string) => Promise<number>;
+  refreshRolloutSnapshot?: (
+    sessionId: string,
+  ) => Promise<import('../assembly/AgentAssembler').RolloutSnapshot>;
+  surfaceLeaseStore?: import('../thread/SurfaceLeaseStore').SurfaceLeaseStore;
 
   /** Optional factory to create event dispatchers per session (replaces chrome.runtime.sendMessage) */
-  eventDispatcherFactory?: (sessionId: string) => ((event: { msg: import('../protocol/events').EventMsg }) => void);
+  eventDispatcherFactory?: (
+    sessionId: string,
+  ) => import('../RepublicAgent').EventDispatcher;
 
-  /**
-   * Track 10: invoked after an agent is created AND its sub-agent tool is
-   * registered, for BOTH the agentFactory path and the extension default
-   * path. Lets the platform bootstrap bind per-session plugin
-   * contributions (hooks + sub-agent types) without each path
-   * re-implementing the wiring.
-   *
-   * `subAgentRunner` is the per-session runner (or null if registration
-   * failed) so a `PluginSessionBinder` can attach. Non-fatal: a thrown
-   * callback is logged, not propagated.
-   */
-  onAgentCreated?: (
-    agent: import('../RepublicAgent').RepublicAgent,
-    ctx: {
-      subAgentRunner: import('../../tools/AgentTool/SubAgentRunner').SubAgentRunner | null;
-    },
-  ) => Promise<void> | void;
 }
 
 /**

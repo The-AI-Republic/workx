@@ -55,7 +55,7 @@ describe('PromptComposer', () => {
       expect(prompt).toContain('PageVisionTool');
       expect(prompt).toContain('NavigationTool');
       expect(prompt).not.toContain('TerminalTool');
-      expect(prompt).not.toContain('Browser Tools via MCP');
+      expect(prompt).not.toContain('local_browser_tool');
     });
 
     it('includes pi-specific tool routing only for workx variants', () => {
@@ -63,7 +63,7 @@ describe('PromptComposer', () => {
         const prompt = composer.composeMainInstruction(agentType);
 
         expect(prompt).toContain('TerminalTool');
-        expect(prompt).toContain('Browser Tools via MCP');
+        expect(prompt).toContain('local_browser_tool');
         expect(prompt).toContain('inspect the relevant files first');
         expect(prompt).not.toContain('DOMTool');
         expect(prompt).not.toContain('PageVisionTool');

@@ -6,6 +6,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AgentSession } from '@/core/registry/AgentSession';
 import type { SessionConfig } from '@/core/registry/types';
+import type { RepublicAgent } from '@/core/RepublicAgent';
+import type { AssembledAgent } from '@/core/assembly/AgentAssembler';
 
 // Mock RepublicAgent session - shared object so spies work correctly
 const mockSession = {
@@ -13,27 +15,14 @@ const mockSession = {
   abortAllTasks: vi.fn(),
   close: vi.fn(),
   dispose: vi.fn(),
-  setTabId: vi.fn(),
 };
 
 // Mock RepublicAgent
 const mockAgent = {
   getSession: vi.fn(() => mockSession),
   submitOperation: vi.fn(() => Promise.resolve('sub_123')),
-  cleanup: vi.fn(),
+  dispose: vi.fn().mockResolvedValue(undefined),
 };
-
-// Mock chrome API for tab group operations
-global.chrome = {
-  tabs: {
-    group: vi.fn(() => Promise.resolve(1)),
-    ungroup: vi.fn(() => Promise.resolve()),
-    query: vi.fn(() => Promise.resolve([])),
-  },
-  tabGroups: {
-    update: vi.fn(() => Promise.resolve({})),
-  },
-} as any;
 
 describe('AgentSession', () => {
   beforeEach(() => {
@@ -50,7 +39,6 @@ describe('AgentSession', () => {
       expect(session.sessionLetter).toBe('a');
       expect(session.state).toBe('initializing');
       expect(session.metadata.type).toBe('primary');
-      expect(session.metadata.tabGroupName).toBe('workx_s_a');
     });
 
     it('creates session with scheduled type', () => {
@@ -61,14 +49,6 @@ describe('AgentSession', () => {
 
       expect(session.metadata.type).toBe('scheduled');
       expect(session.sessionLetter).toBe('b');
-      expect(session.metadata.tabGroupName).toBe('workx_s_b');
-    });
-
-    it('uses provided tabId', () => {
-      const config: SessionConfig = { type: 'primary', tabId: 42 };
-      const session = new AgentSession(config, 0);
-
-      expect(session.metadata.tabId).toBe(42);
     });
 
     it('wraps letter index for large values', () => {
@@ -202,38 +182,6 @@ describe('AgentSession', () => {
     });
   });
 
-  describe('tab binding', () => {
-    it('binds tab and updates metadata', async () => {
-      const session = new AgentSession({ type: 'primary' }, 0);
-      await session.bindTab(42, false); // false = don't create tab group
-
-      expect(session.metadata.tabId).toBe(42);
-    });
-
-    it('unbinds tab', async () => {
-      const session = new AgentSession({ type: 'primary', tabId: 42 }, 0);
-      await session.unbindTab();
-
-      expect(session.metadata.tabId).toBeNull();
-    });
-
-    it('updates agent session tabId when bound', async () => {
-      const session = new AgentSession({ type: 'primary' }, 0);
-      session.attachAgent(mockAgent as any);
-      await session.bindTab(42, false);
-
-      expect(mockSession.setTabId).toHaveBeenCalledWith(42);
-    });
-
-    it('throws when binding tab to terminated session', async () => {
-      const session = new AgentSession({ type: 'primary' }, 0);
-      session.markReady();
-      session.setState('terminated');
-
-      await expect(session.bindTab(42)).rejects.toThrow('is terminated');
-    });
-  });
-
   describe('terminate', () => {
     it('terminates session and emits event', async () => {
       const session = new AgentSession({ type: 'primary' }, 0);
@@ -262,13 +210,7 @@ describe('AgentSession', () => {
 
       await session.terminate('error');
 
-      expect(mockAgent.getSession().dispose).toHaveBeenCalledWith({
-        reason: 'Error',
-        recordCloseEvent: true,
-      });
-      expect(mockAgent.getSession().abortAllTasks).not.toHaveBeenCalled();
-      expect(mockAgent.getSession().close).not.toHaveBeenCalled();
-      expect(mockAgent.cleanup).toHaveBeenCalled();
+      expect(mockAgent.dispose).toHaveBeenCalledWith('error');
       expect(session.agent).toBeNull();
     });
 
@@ -300,6 +242,61 @@ describe('AgentSession', () => {
     });
   });
 
+  describe('config impact', () => {
+    it('propagates manager-action failure and does not race a prompt rebuild past it', async () => {
+      const session = new AgentSession({ type: 'primary' }, 0);
+      const rebuildError = new Error('rebuild failed');
+      const actionError = new Error('actions failed');
+      const agent = {
+        ...mockAgent,
+        rebuildExecutionContext: vi.fn().mockRejectedValue(rebuildError),
+        applyManagerActions: vi.fn().mockResolvedValue(undefined),
+      };
+      const assembledAgent = {
+        applyManagerActions: vi.fn().mockRejectedValue(actionError),
+        dispose: vi.fn().mockResolvedValue({ ok: true, failedSteps: [] }),
+        flushRollout: vi.fn().mockResolvedValue(undefined),
+        submit: vi.fn(),
+        subAgentRunner: null,
+      };
+      session.attachAgent(
+        agent as unknown as RepublicAgent,
+        assembledAgent as unknown as AssembledAgent,
+      );
+      await expect(session.applyConfigImpact(
+        new Set(['full']),
+        new Set(['reload-hooks']),
+      )).rejects.toBe(actionError);
+      expect(agent.rebuildExecutionContext).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('assembled graph cleanup', () => {
+    it('reports partial cleanup failures before terminating the wrapper', async () => {
+      const session = new AgentSession({ type: 'primary', sessionId: 'cleanup-report' }, 0);
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const assembledAgent = {
+        dispose: vi.fn().mockResolvedValue({ ok: false, failedSteps: ['browser-lease'] }),
+        flushRollout: vi.fn().mockResolvedValue(undefined),
+        submit: vi.fn(),
+        subAgentRunner: null,
+      };
+      session.attachAgent(
+        mockAgent as unknown as RepublicAgent,
+        assembledAgent as unknown as AssembledAgent,
+      );
+      session.markReady();
+
+      await session.suspend();
+
+      expect(session.state).toBe('terminated');
+      expect(warn).toHaveBeenCalledWith(
+        '[AgentSession] Partial cleanup for cleanup-report (suspend):',
+        ['browser-lease'],
+      );
+    });
+  });
+
   describe('unified sessionId', () => {
     it('uses provided sessionId from config', () => {
       const session = new AgentSession({ type: 'primary', sessionId: 'agent-abc-123' } as any, 0);
@@ -320,79 +317,6 @@ describe('AgentSession', () => {
 
       expect(session.sessionId).toBe(session.metadata.sessionId);
       expect(session.sessionId).toBe(session.getSessionId());
-    });
-  });
-
-  describe('getState', () => {
-    it('returns empty state when no agent attached', () => {
-      const session = new AgentSession({ type: 'primary', tabId: 10 }, 0);
-
-      const state = session.getState();
-
-      expect(state.sessionId).toBe(session.sessionId);
-      expect(state.isActiveTurn).toBe(false);
-      expect(state.tabId).toBe(10);
-      expect(state.history).toEqual([]);
-    });
-
-    it('delegates to agent session when agent attached', () => {
-      const agentSession = {
-        sessionId: 'test',
-        abortAllTasks: vi.fn(),
-        close: vi.fn(),
-        setTabId: vi.fn(),
-        getConversationHistory: vi.fn().mockReturnValue({ items: [{ role: 'user' }, { role: 'assistant' }] }),
-        isActiveTurn: vi.fn().mockReturnValue(true),
-        getTabId: vi.fn().mockReturnValue(42),
-        getAgentMode: vi.fn().mockReturnValue('code'),
-      };
-      const agent = {
-        getSession: vi.fn(() => agentSession),
-        submitOperation: vi.fn(),
-        cleanup: vi.fn(),
-      };
-
-      const session = new AgentSession({ type: 'primary' }, 0);
-      session.attachAgent(agent as any);
-
-      const state = session.getState();
-
-      expect(state.sessionId).toBe(session.sessionId);
-      expect(state.isActiveTurn).toBe(true);
-      expect(state.tabId).toBe(42);
-      expect(state.agentMode).toBe('code');
-      expect(state.history).toHaveLength(2);
-    });
-  });
-
-  describe('reset', () => {
-    it('aborts tasks and resets conversation', async () => {
-      const agentSession = {
-        sessionId: 'test',
-        abortAllTasks: vi.fn().mockResolvedValue(undefined),
-        close: vi.fn(),
-        setTabId: vi.fn(),
-        reset: vi.fn().mockResolvedValue(undefined),
-      };
-      const agent = {
-        getSession: vi.fn(() => agentSession),
-        submitOperation: vi.fn(),
-        cleanup: vi.fn(),
-      };
-
-      const session = new AgentSession({ type: 'primary' }, 0);
-      session.attachAgent(agent as any);
-
-      await session.reset();
-
-      expect(agentSession.abortAllTasks).toHaveBeenCalledWith('UserInterrupt');
-      expect(agentSession.reset).toHaveBeenCalled();
-    });
-
-    it('throws when no agent attached', async () => {
-      const session = new AgentSession({ type: 'primary' }, 0);
-
-      await expect(session.reset()).rejects.toThrow('has no agent attached');
     });
   });
 
@@ -464,16 +388,13 @@ describe('AgentSession', () => {
 
   describe('serialization', () => {
     it('toJSON returns metadata copy', () => {
-      const session = new AgentSession({ type: 'primary', tabId: 42 }, 0);
+      const session = new AgentSession({ type: 'primary' }, 0);
       const json = session.toJSON();
 
       expect(json.sessionId).toBe(session.sessionId);
       expect(json.type).toBe('primary');
-      expect(json.tabId).toBe(42);
-
-      // Ensure it's a copy
-      json.tabId = 999;
-      expect(session.metadata.tabId).toBe(42);
+      json.type = 'scheduled';
+      expect(session.metadata.type).toBe('primary');
     });
   });
 });

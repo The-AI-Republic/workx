@@ -7,11 +7,15 @@
 
 import type { Op, ReviewDecision, InputItem as ProtocolInputItem } from './protocol/types';
 import type { Event, EventMsg } from './protocol/events';
-import type { IConfigChangeEvent } from '../config/types';
 import type { AgentReadyState } from './models/types/Auth';
+import type { AuthContext } from './auth/AuthContext';
 import type { InitialHistory } from './session/state/types';
 import type { SessionServices } from './session/state/SessionServices';
-import type { EngineEvent, EngineOp, InputItem as EngineInputItem } from './engine/RepublicAgentEngineConfig';
+import type {
+  EngineEvent,
+  EngineOp,
+  InputItem as EngineInputItem,
+} from './engine/RepublicAgentEngineConfig';
 import { AgentConfig } from '../config/AgentConfig';
 import { Session } from './Session';
 import { TurnContext } from './TurnContext';
@@ -20,17 +24,14 @@ import { ApprovalManager } from './ApprovalManager';
 import { ToolRegistry } from '../tools/ToolRegistry';
 import { ModelClientFactory } from './models/ModelClientFactory';
 import { RepublicAgentEngine } from './engine/RepublicAgentEngine';
+import type { TrackedEngineSubmission } from './engine/RepublicAgentEngine';
 import { AutoCompactHook } from './compact/autoCompactHook';
 import { type IUserNotifier, NoOpNotifier } from './IUserNotifier';
 import { v4 as uuidv4 } from 'uuid';
 import {
-  loadPrompt,
   loadUserInstructions,
-  configurePromptComposer,
-  isComposerConfigured,
-  registerPromptExtension,
-  unregisterPromptExtension,
-  unregisterSessionPromptExtensions,
+  createPromptLoader,
+  type AgentPromptLoader,
   type PromptRuntimeContext,
 } from './PromptLoader';
 import type { AgentMode } from '../prompts/PromptComposer';
@@ -43,6 +44,13 @@ import type { HookInput } from './hooks/types';
 import type { IPlatformAdapter } from './platform/IPlatformAdapter';
 import { processUserInput } from './input/processUserInput';
 import type { FunnelContext, InputOrigin } from './input/types';
+import type { AgentDisposeReason, ManagerAction } from './assembly/AgentAssembler';
+import {
+  finishResponseLatencyTrace,
+  markResponseLatency,
+  setResponseLatencySubmissionId,
+} from './diagnostics/responseLatency';
+import { captureOriginalDataTurnSnapshot } from './data-sources';
 
 /** Marks an Op object that has already passed through the input funnel.
  *  Defensive only: it guards re-submission of the *same op object*, not a
@@ -65,6 +73,14 @@ function applyHookTruncation(content: string): string {
  * Used to route events to UI channels without hardcoding chrome.runtime
  */
 export type EventDispatcher = (event: Event) => void | Promise<void>;
+export type RebuildReason = 'auth' | 'model' | 'provider' | 'tools' | 'prompt' | 'full';
+
+export interface RepublicAgentOptions {
+  promptLoader?: AgentPromptLoader;
+  sessionStartReason?: 'create' | 'hydrate';
+  authContext?: AuthContext;
+  onMissingKey?: (providerId: string) => void;
+}
 
 export class RepublicAgent {
   private _agentId: string;
@@ -77,24 +93,22 @@ export class RepublicAgent {
   private platformAdapter: IPlatformAdapter;
   private userNotifier: IUserNotifier;
   private eventDispatcher: EventDispatcher | null = null;
-  private eventQueue: Event[] = [];
   private engine: RepublicAgentEngine | null = null;
-  // Non-null signals a deferred model switch. The actual model is resolved from
-  // AgentConfig.selectedModelKey (which is updated before the config-changed event
-  // fires), so the stored value is only used as a "switch pending" flag.
-  private pendingModelKey: string | null = null;
-  private pendingModelClientRefresh = false;
-  // Non-null signals a deferred per-session mode switch, applied at the next
-  // user submission (mirrors pendingModelKey). Set when SetSessionMode arrives
-  // while a task is running.
+  private readonly pendingRebuildReasons = new Set<RebuildReason>();
+  // Non-null signals a deferred per-session mode switch, applied on the next
+  // idle edge. Set when SetSessionMode arrives while a task is running.
   private pendingModeSwitch: AgentMode | null = null;
+  private pendingModeApply: Promise<void> | null = null;
+  private modeWorkUnsubscribe: () => void = () => undefined;
   // Hook system
   private hookRegistry: HookRegistry;
   private hookExecutor: HookExecutor;
   private hookDispatcher: HookDispatcher;
-  private configHookUnsubscribe: (() => void) | null = null;
   private autoCompactHook: AutoCompactHook | null = null;
   private cleanupPromise: Promise<void> | null = null;
+  private readonly promptLoader: AgentPromptLoader;
+  private memoryPromptUnregister: (() => void) | null = null;
+  private readonly sessionStartReason: 'create' | 'hydrate';
 
   constructor(
     config: AgentConfig,
@@ -103,6 +117,7 @@ export class RepublicAgent {
     agentId?: string,
     userNotifier?: IUserNotifier,
     services?: SessionServices,
+    options: RepublicAgentOptions = {},
   ) {
     // Generate or use provided agentId for multi-instance tracking (Feature 015)
     this._agentId = agentId ?? `agent_${uuidv4()}`;
@@ -112,15 +127,52 @@ export class RepublicAgent {
     this.platformAdapter = platformAdapter;
 
     // Initialize components with config
-    this.modelClientFactory = new ModelClientFactory();
+    this.modelClientFactory = new ModelClientFactory({
+      authContext: options.authContext,
+      onMissingKey: options.onMissingKey ?? ((providerId) => {
+        const providerName = this.config.getProvider(providerId)?.name ?? providerId;
+        const warningMsg = `No API key configured for provider: ${providerName}. Please configure API key in Settings.`;
+        console.warn('[RepublicAgent]', warningMsg);
+        this.emitEvent({
+          type: 'BackgroundEvent',
+          data: { message: warningMsg, level: 'warning' },
+        });
+      }),
+    });
     this.toolRegistry = new ToolRegistry();
     this.approvalManager = new ApprovalManager(this.config, (event) => this.emitEvent(event.msg));
     this.userNotifier = userNotifier ?? new NoOpNotifier();
+    this.sessionStartReason = options.sessionStartReason ?? 'create';
+    const promptAgentType = this.platformAdapter.platformId === 'extension'
+      ? 'workx' as const
+      : this.platformAdapter.platformId === 'server'
+        ? 'workx-server' as const
+        : 'workx-desktop' as const;
+    this.promptLoader = options.promptLoader ?? createPromptLoader({
+      agentType: promptAgentType,
+      staticPlatformContext: {
+        browserConnection: this.platformAdapter.platformId === 'extension' ? 'extension' : 'bridge',
+        personaName: this.config.getConfig().preferences?.personaName,
+      },
+      dynamicContext: (ctx) => ({
+        planReviewActive: ctx.toolRegistry?.isPlanReviewActive?.()
+          ?? this.toolRegistry.isPlanReviewActive?.()
+          ?? false,
+      }),
+    });
 
     // Initialize session with config and toolRegistry
     this.session = new Session(this.config, true, services, this.toolRegistry, initialHistory);
+    this.session.setPromptLoader(this.promptLoader);
     // Wire up session event emitter to RepublicAgent's event queue
     this.session.setEventEmitter(async (event: Event) => this.emitEvent(event.msg));
+    // Wire the efficient-model client (cheap model for app-logistics tasks:
+    // titles, suggestions) — resolution policy lives in the factory.
+    // Optional call: mocked/legacy Session doubles may not implement it.
+    this.session.setEfficientClientProvider?.(() => this.modelClientFactory.createEfficientClient());
+    this.modeWorkUnsubscribe = this.session.subscribeBackgroundWorkChanged?.((busy) => {
+      if (!busy) void this.applyPendingModeAtIdle();
+    }) ?? (() => undefined);
 
     // Initialize hook system
     this.hookRegistry = new HookRegistry();
@@ -132,8 +184,6 @@ export class RepublicAgent {
     // Setup event processing for notifications
     this.setupNotificationHandlers();
 
-    // Subscribe to config changes
-    this.setupConfigSubscriptions();
   }
 
   /**
@@ -166,38 +216,28 @@ export class RepublicAgent {
       throw new Error(errorMsg);
     }
 
-    // Skip API key validation if using backend routing (user is logged in)
-    if (!this.modelClientFactory.isBackendRouting()) {
-      const providerId = modelData.provider.id;
-      const apiKey = await this.config.getProviderApiKey(providerId);
-
-      if (!apiKey || !apiKey.trim()) {
-        const warningMsg = `No API key configured for provider: ${modelData.provider.name}. Please configure API key in Settings.`;
-        console.warn('[RepublicAgent]', warningMsg);
-
-        // Emit warning event for UI
-        this.emitEvent({
-          type: 'BackgroundEvent',
-          data: {
-            message: warningMsg,
-            level: 'warning',
-          },
-        });
-      }
-    }
-
     // Register platform tools via adapter (replaces __BUILD_MODE__-based detection)
-    await this.platformAdapter.registerPlatformTools(this.toolRegistry, this.config.getToolsConfig(), {
-      supportsImage: modelData.model.supportsImage ?? false
-    });
+    await this.platformAdapter.registerPlatformTools(
+      this.toolRegistry,
+      this.config.getToolsConfig(),
+      {
+        supportsImage: modelData.model.supportsImage ?? false,
+      },
+      this.promptLoader,
+    );
 
     // Wire tool context for adapters that need lazy browser connection (desktop MCP)
     if (this.platformAdapter.setToolContext) {
       this.platformAdapter.setToolContext(
         this.toolRegistry,
-        (msg: { type: string; data: Record<string, unknown> }) => this.emitEvent(msg as EventMsg),
+        (msg: { type: string; data: Record<string, unknown> }) => this.emitEvent(msg as EventMsg)
       );
     }
+    this.toolRegistry.setPageContextProvider?.(
+      this.platformAdapter.getCurrentPageContext
+        ? () => this.platformAdapter.getCurrentPageContext!()
+        : undefined
+    );
 
     // Register/unregister memory tools based on current memory service state
     await this.syncMemoryTools();
@@ -221,31 +261,27 @@ export class RepublicAgent {
           : undefined,
     });
 
-    // Configure PromptComposer for dynamic system prompt composition
-    await this.configurePromptComposition();
-
     // Load and set instructions
     const userInstructions = await loadUserInstructions();
     taskContext.setUserInstructions(userInstructions);
-    const baseInstructions = await loadPrompt(
+    const baseInstructions = await this.promptLoader.load(
       this.session.getAgentMode(),
-      this.getPromptRuntimeContext(taskContext),
+      this.getPromptRuntimeContext(taskContext)
     );
     taskContext.setBaseInstructions(baseInstructions);
 
     // Set the turn context on the session
     this.session.setTurnContext(taskContext);
 
-    // Load hooks from config and watch for changes
+    // Load hooks once. Platform registry owns live config propagation.
     ConfigHookLoader.load(this.config, this.hookRegistry);
-    this.configHookUnsubscribe?.();
-    this.configHookUnsubscribe = ConfigHookLoader.watch(this.config, this.hookRegistry);
 
     // Fire SessionStart hooks (non-blocking)
     this.hookDispatcher.fire('SessionStart', {
       hook_event_name: 'SessionStart',
       session_id: this.session.sessionId,
       session_start_source: 'startup',
+      session_start_reason: this.sessionStartReason,
     }).catch((err) => {
       console.warn('[RepublicAgent] SessionStart hook failed:', err);
     });
@@ -274,125 +310,11 @@ export class RepublicAgent {
     await this.syncSessionSummaryHook().catch((err) =>
       console.warn(
         '[RepublicAgent] syncSessionSummaryHook failed:',
-        err instanceof Error ? err.message : String(err),
-      ),
+        err instanceof Error ? err.message : String(err)
+      )
     );
 
     // initialization complete
-  }
-
-  /**
-   * Configure PromptComposer for dynamic system prompt composition.
-   * Detects agent type from build mode and sets basic context.
-   *
-   * In desktop mode, the runtime bootstrap calls configurePromptComposer()
-   * with full platform context (OS, arch, shell, homeDir) BEFORE
-   * agent.initialize(), so this method skips re-configuration.
-   *
-   * In extension mode, this configures the extension agent type.
-   */
-  private async configurePromptComposition(): Promise<void> {
-    // Skip if already configured (desktop bootstrap provides platform context)
-    if (isComposerConfigured()) {
-      return;
-    }
-
-    const agentType = this.platformAdapter.platformId === 'desktop'
-      ? 'workx-desktop' as const
-      : 'workx' as const;
-
-    configurePromptComposer(agentType, {
-      browserConnection: this.platformAdapter.platformId === 'extension' ? 'extension' : 'mcp',
-      // Track 24.2: user-selected output-style persona.
-      personaName: this.config.getConfig().preferences?.personaName,
-    });
-    // PromptComposer configured
-  }
-
-  /**
-   * Setup config change subscriptions
-   */
-  private setupConfigSubscriptions(): void {
-    this.config.on('config-changed', (event: IConfigChangeEvent) => {
-      if (event.section === 'model') {
-        this.handleModelConfigChange(event).catch((error) => {
-          console.error('[RepublicAgent] Failed to handle model config change:', error);
-        });
-        return;
-      }
-
-      if (this.isModelClientConstructionConfigSection(event.section)) {
-        this.handleModelClientConstructionConfigChange(event).catch((error) => {
-          console.error('[RepublicAgent] Failed to handle model-client config change:', error);
-        });
-      }
-    });
-  }
-
-  private isModelClientConstructionConfigSection(section: IConfigChangeEvent['section']): boolean {
-    return section === 'tools' || section === 'provider';
-  }
-
-  private async handleModelClientConstructionConfigChange(_event: IConfigChangeEvent): Promise<void> {
-    this.modelClientFactory.clearCache();
-
-    if (this.session.getRunningTasks().size > 0) {
-      this.pendingModelClientRefresh = true;
-      return;
-    }
-
-    await this.applyCurrentModelClient(this.config.getConfig().selectedModelKey);
-  }
-
-  /**
-   * Handle model configuration changes
-   * Preserves conversation history and updates the model client in-place.
-   * If a task is running, defers the switch until the next user submission.
-   */
-  private async handleModelConfigChange(event: IConfigChangeEvent): Promise<void> {
-    const oldModelId = event.oldValue;
-    const newModelId = event.newValue;
-
-    if (oldModelId === newModelId) return;
-
-    // Check if a task is currently running
-    if (this.session.getRunningTasks().size > 0) {
-      // Defer the model switch until the next user submission
-      this.pendingModelKey = newModelId;
-      this.pendingModelClientRefresh = true;
-      this.emitEvent({
-        type: 'BackgroundEvent',
-        data: {
-          message: `Model switch to ${newModelId} will take effect after the current task completes.`,
-          level: 'info',
-        },
-      });
-      return;
-    }
-
-    // No task running — apply model switch immediately
-    // Clear any stale pending key from a prior deferred switch
-    this.pendingModelKey = null;
-    this.pendingModelClientRefresh = false;
-    try {
-      this.modelClientFactory.clearCache();
-      await this.applyCurrentModelClient(newModelId);
-      this.emitEvent({
-        type: 'BackgroundEvent',
-        data: {
-          message: `Model switched to ${newModelId}. Conversation preserved.`,
-          level: 'info',
-        },
-      });
-    } catch (error) {
-      console.error('Failed to switch model:', error);
-      this.emitEvent({
-        type: 'Error',
-        data: {
-          message: `Failed to switch model: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        },
-      });
-    }
   }
 
   private async applyCurrentModelClient(selectedModelKey: string): Promise<void> {
@@ -406,7 +328,7 @@ export class RepublicAgent {
    * Handle a per-session agent persona mode switch.
    *
    * Preserves conversation history. If a task is running, the switch is
-   * deferred until the next user submission (mirrors pendingModelKey). The UI
+   * deferred until the current task reaches its idle boundary. The UI
    * commits the tab's mode on ModeChanged{applied:true} and shows a pending
    * state on {applied:false}.
    */
@@ -414,19 +336,25 @@ export class RepublicAgent {
     const requested = op.mode;
     const sessionId = this.session.getId();
 
-    if (!MODES[requested]) {
+    if (!this.supportsSessionMode(requested)) {
       console.warn(`[RepublicAgent] Ignoring unknown session mode: ${requested}`);
       return;
     }
 
     if (this.session.getAgentMode() === requested && this.pendingModeSwitch === null) {
-      this.emitEvent({ type: 'ModeChanged', data: { sessionId, mode: requested, applied: true } });
+      this.emitEvent({
+        type: 'ModeChanged',
+        data: { sessionId, mode: requested, applied: true },
+      });
       return;
     }
 
-    if (this.session.getRunningTasks().size > 0) {
+    if (this.hasLiveBackgroundWork()) {
       this.pendingModeSwitch = requested;
-      this.emitEvent({ type: 'ModeChanged', data: { sessionId, mode: requested, applied: false } });
+      this.emitEvent({
+        type: 'ModeChanged',
+        data: { sessionId, mode: requested, applied: false },
+      });
       this.emitEvent({
         type: 'BackgroundEvent',
         data: {
@@ -437,11 +365,14 @@ export class RepublicAgent {
       return;
     }
 
-    await this.applyAgentMode(requested);
+    await this.applySessionMode(requested);
     this.emitEvent({ type: 'ModeChanged', data: { sessionId, mode: requested, applied: true } });
     this.emitEvent({
       type: 'BackgroundEvent',
-      data: { message: `Switched to ${MODES[requested].label} mode.`, level: 'info' },
+      data: {
+        message: `Switched to ${MODES[requested].label} mode.`,
+        level: 'info',
+      },
     });
   }
 
@@ -449,19 +380,49 @@ export class RepublicAgent {
    * Apply a mode to the live session + turn context and recompose the system
    * prompt. Does not emit ModeChanged — callers decide the applied flag.
    */
-  private async applyAgentMode(mode: AgentMode): Promise<void> {
-    this.pendingModeSwitch = null;
-    this.session.setAgentMode(mode);
-    const turnCtx = this.session.getTurnContext();
-    if (turnCtx) {
-      turnCtx.setAgentMode(mode);
-      try {
-        const baseInstructions = await loadPrompt(mode, this.getPromptRuntimeContext(turnCtx));
-        turnCtx.setBaseInstructions(baseInstructions);
-      } catch (error) {
-        console.error('[RepublicAgent] Failed to recompose prompt on mode switch:', error);
-      }
+  supportsSessionMode(mode: AgentMode): boolean {
+    return Boolean(MODES[mode]) && this.promptLoader.supportsMode(mode);
+  }
+
+  async applySessionMode(mode: AgentMode): Promise<void> {
+    if (!this.supportsSessionMode(mode)) {
+      throw new Error(`Unsupported session mode: ${mode}`);
     }
+    const turnCtx = this.session.getTurnContext();
+    // Compose first. No durable or live state is changed unless every
+    // fallible preparation step succeeds.
+    const baseInstructions = await this.promptLoader.load(
+      mode,
+      this.getPromptRuntimeContext(turnCtx, mode),
+    );
+    this.session.setAgentMode(mode);
+    turnCtx.setAgentMode(mode);
+    turnCtx.setBaseInstructions(baseInstructions);
+    this.pendingModeSwitch = null;
+  }
+
+  private applyPendingModeAtIdle(): Promise<void> {
+    if (this.pendingModeApply) return this.pendingModeApply;
+    const mode = this.pendingModeSwitch;
+    if (!mode || this.hasLiveBackgroundWork()) return Promise.resolve();
+    const sessionId = this.session.getId();
+    const applying = this.applySessionMode(mode)
+      .then(() => {
+        this.emitEvent({ type: 'ModeChanged', data: { sessionId, mode, applied: true } });
+        this.emitEvent({
+          type: 'BackgroundEvent',
+          data: { message: `Switched to ${MODES[mode].label} mode.`, level: 'info' },
+        });
+      })
+      .catch((error) => {
+        console.error('[RepublicAgent] Failed to apply deferred session mode:', error);
+        this.emitEvent({ type: 'ModeChanged', data: { sessionId, mode, applied: false } });
+      })
+      .finally(() => {
+        if (this.pendingModeApply === applying) this.pendingModeApply = null;
+      });
+    this.pendingModeApply = applying;
+    return applying;
   }
 
   /**
@@ -481,13 +442,12 @@ export class RepublicAgent {
    * silently skip in that case so the extension doesn't error at startup.
    */
   private async syncSessionSummaryHook(): Promise<void> {
-    const enabled =
-      this.config.getConfig().preferences?.sessionSummaryEnabled ?? false;
+    const enabled = this.config.getConfig().preferences?.sessionSummaryEnabled ?? false;
     const existing = this.session.getSessionSummaryHook();
 
     if (!enabled) {
       if (existing) {
-        existing.detach();
+        await existing.detach();
         this.session.setSessionSummaryHook(null);
       }
       return;
@@ -511,6 +471,8 @@ export class RepublicAgent {
         parentEngine: this.engine,
         fs,
         memoryRoot: memoryDir,
+        beginLifecycleWork: () => this.session.beginLifecycleWork('session-summary'),
+        promptLoader: this.promptLoader,
       });
 
       // attach() takes the Session-provided registrar. Bind it so the hook
@@ -520,7 +482,7 @@ export class RepublicAgent {
     } catch (err) {
       console.warn(
         '[SessionSummary] failed to construct hook:',
-        err instanceof Error ? err.message : String(err),
+        err instanceof Error ? err.message : String(err)
       );
     }
   }
@@ -533,22 +495,55 @@ export class RepublicAgent {
       session: this.session,
       getModelClient: () => this.session.getTurnContext().getModelClient(),
       submitCompact: () => {
-        if (!this.engine) {
-          throw new Error('RepublicAgent engine is not initialized');
-        }
-        return this.engine.submitOperation({ type: 'Compact', mode: 'auto' });
+        return this.submitTrackedCompaction({ type: 'Compact', mode: 'auto' });
       },
     });
     this.autoCompactHook.attach((fn) => this.session.registerPostTurnHook(fn));
   }
 
-  private getPromptRuntimeContext(turnContext?: TurnContext): PromptRuntimeContext {
+  private getPromptRuntimeContext(
+    turnContext?: TurnContext,
+    mode: AgentMode = this.session.getAgentMode(),
+  ): PromptRuntimeContext {
     return {
       sessionId: this.session.getSessionId(),
-      mode: this.session.getAgentMode(),
+      mode,
       toolRegistry: this.toolRegistry,
       turnContext: turnContext ?? this.session.getTurnContext(),
     };
+  }
+
+  private submitTrackedCompaction(
+    op: Extract<EngineOp, { type: 'Compact' | 'ManualCompact' }>,
+  ): TrackedEngineSubmission {
+    if (!this.engine) throw new Error('RepublicAgent engine is not initialized');
+    const lease = this.session.beginLifecycleWork?.('compaction') ?? {
+      token: `compat-compaction:${crypto.randomUUID()}`,
+      signal: new AbortController().signal,
+      finish: () => undefined,
+    };
+    try {
+      const submitTracked = (this.engine as RepublicAgentEngine & {
+        submitTrackedOperation?: RepublicAgentEngine['submitTrackedOperation'];
+      }).submitTrackedOperation;
+      const candidate = submitTracked?.call(this.engine, op) as TrackedEngineSubmission | undefined;
+      const tracked = candidate
+        ? candidate
+        : {
+            submissionId: this.engine.submitOperation(op),
+            settled: Promise.resolve({ outcome: 'completed' as const }),
+            cancel: () => undefined,
+          };
+      if (this.session.trackLifecycleWork) {
+        void this.session.trackLifecycleWork(lease, tracked.settled);
+      } else {
+        void tracked.settled.then(() => lease.finish(), () => lease.finish());
+      }
+      return tracked;
+    } catch (error) {
+      lease.finish();
+      throw error;
+    }
   }
 
   private async syncMemoryTools(): Promise<void> {
@@ -563,10 +558,11 @@ export class RepublicAgent {
       }
 
       // Register prompt extension for core memory injection
-      registerPromptExtension(RepublicAgent.MEMORY_PROMPT_EXTENSION, () => {
+      this.memoryPromptUnregister?.();
+      this.memoryPromptUnregister = this.promptLoader.registerExtension(RepublicAgent.MEMORY_PROMPT_EXTENSION, () => {
         const svc = this.session.getMemoryService();
         return svc ? svc.getCachedGlobalContext() : '';
-      }, { type: 'session', sessionId: this.session.getSessionId() });
+      });
     } else {
       // Unregister tools
       for (const name of RepublicAgent.MEMORY_TOOL_NAMES) {
@@ -576,96 +572,78 @@ export class RepublicAgent {
       }
 
       // Unregister prompt extension
-      unregisterPromptExtension(RepublicAgent.MEMORY_PROMPT_EXTENSION, {
-        type: 'session',
-        sessionId: this.session.getSessionId(),
-      });
+      this.memoryPromptUnregister?.();
+      this.memoryPromptUnregister = null;
     }
   }
 
-  /**
-   * Refresh the model client when auth state changes
-   * Called when INIT_AUTH is received to update the client with new routing
-   */
-  async refreshModelClient(): Promise<void> {
+  /** Rebuild model/prompt/memory state without replacing TurnContext policy. */
+  async rebuildExecutionContext(reasons: ReadonlySet<RebuildReason>): Promise<void> {
+    for (const reason of reasons) this.pendingRebuildReasons.add(reason);
+    if (this.hasLiveBackgroundWork()) return;
+
+    const applying = new Set(this.pendingRebuildReasons);
+    this.pendingRebuildReasons.clear();
+    const needs = (reason: RebuildReason): boolean =>
+      applying.has(reason) || applying.has('full');
+    const rebuildClient = needs('auth') || needs('model') || needs('provider');
+    const rebuildPrompt = rebuildClient || needs('tools') || needs('prompt');
+
     try {
-      // Create new model client with current auth state
-      const modelClient = await this.modelClientFactory.createClientForCurrentModel();
+      const turnCtx = this.session.getTurnContext();
+      const candidateClient = rebuildClient
+        ? await (async () => {
+            this.modelClientFactory.clearCache();
+            return this.modelClientFactory.createClientForCurrentModel();
+          })()
+        : null;
+      const candidateInstructions = needs('prompt')
+        ? await loadUserInstructions()
+        : turnCtx.getUserInstructions?.();
 
-      // Create new TurnContext with updated model client, preserving the
-      // unattended posture across the auth-driven client refresh.
-      const prevUnattended = this.session.getTurnContext()?.getUnattended?.() ?? false;
-      const taskContext = new TurnContext(modelClient, {
-        agentMode: this.session.getAgentMode(),
-        unattended: prevUnattended,
-      });
-      const userInstructions = await loadUserInstructions();
-      taskContext.setUserInstructions(userInstructions);
-
-      // Update session with new turn context first so the memory service has
-      // a target to attach to.
-      this.session.setTurnContext(taskContext);
-
-      // Refresh memory state (service + tool registry + prompt extension) BEFORE
-      // loading the prompt, so the freshly composed prompt reflects the new state.
-      await this.session.refreshMemoryService(this.config);
+      if (rebuildClient || needs('prompt')) {
+        await this.session.refreshMemoryService(this.config);
+      }
       await this.syncMemoryTools();
-      await this.syncSessionSummaryHook().catch((err) =>
-        console.warn(
-          '[RepublicAgent] syncSessionSummaryHook (new-conversation) failed:',
-          err instanceof Error ? err.message : String(err),
-        ),
-      );
+      await this.syncSessionSummaryHook();
 
-      const baseInstructions = await loadPrompt(
-        this.session.getAgentMode(),
-        this.getPromptRuntimeContext(taskContext),
-      );
-      taskContext.setBaseInstructions(baseInstructions);
+      const candidatePrompt = rebuildPrompt
+        ? await this.promptLoader.load(
+            this.session.getAgentMode(),
+            this.getPromptRuntimeContext(turnCtx),
+          )
+        : turnCtx.getBaseInstructions?.();
+
+      if (candidateClient) {
+        turnCtx.setModelClient(candidateClient);
+        turnCtx.setSelectedModelKey(this.config.getConfig().selectedModelKey);
+      }
+      if (candidateInstructions !== undefined) turnCtx.setUserInstructions(candidateInstructions);
+      if (candidatePrompt !== undefined) turnCtx.setBaseInstructions(candidatePrompt);
     } catch (error) {
-      console.error('[RepublicAgent] Failed to refresh model client:', error);
+      for (const reason of applying) this.pendingRebuildReasons.add(reason);
+      throw error;
     }
   }
 
-  /**
-   * Hot-swap the model client in-place on the existing TurnContext.
-   * Preserves conversation history and agent run state.
-   * Used by desktop CONFIG_UPDATE to apply settings without reinitializing.
-   */
-  async hotSwapModelClient(): Promise<void> {
-    // Clear cached clients so the factory creates fresh ones with updated config
-    this.modelClientFactory.clearCache();
+  async applyManagerActions(actions: ReadonlySet<ManagerAction>): Promise<void> {
+    if (actions.has('reload-hooks')) {
+      ConfigHookLoader.load(this.config, this.hookRegistry);
+    }
+    if (actions.has('reload-approval')) {
+      const approval = this.config.getConfig().approval;
+      const gate = this.toolRegistry.getApprovalGate();
+      if (approval && gate) {
+        gate.setMode(approval.mode);
+        gate.setTrustedDomains(approval.trustedDomains ?? []);
+        gate.setBlockedDomains(approval.blockedDomains ?? []);
+      }
+    }
+  }
 
-    const modelClient = await this.modelClientFactory.createClientForCurrentModel();
-    const turnCtx = this.session.getTurnContext();
-    const newModelKey = this.config.getConfig().selectedModelKey;
-
-    turnCtx.setModelClient(modelClient);
-    turnCtx.setSelectedModelKey(newModelKey);
-
-    // Reload instructions so prompt-relevant config changes take effect
-    const userInstructions = await loadUserInstructions();
-    turnCtx.setUserInstructions(userInstructions);
-
-    // Refresh memory state (service + tool registry + prompt extension) BEFORE
-    // composing the prompt, otherwise enabling memory yields a prompt without
-    // the memory extension and disabling it leaves stale memory text behind.
-    await this.session.refreshMemoryService(this.config);
-    await this.syncMemoryTools();
-    // Track 05b: re-evaluate session-summary preference so flipping it via
-    // CONFIG_UPDATE attaches/detaches the hook without a full reinit.
-    await this.syncSessionSummaryHook().catch((err) =>
-      console.warn(
-        '[RepublicAgent] syncSessionSummaryHook (hotSwap) failed:',
-        err instanceof Error ? err.message : String(err),
-      ),
-    );
-
-    const baseInstructions = await loadPrompt(
-      this.session.getAgentMode(),
-      this.getPromptRuntimeContext(turnCtx),
-    );
-    turnCtx.setBaseInstructions(baseInstructions);
+  private hasLiveBackgroundWork(): boolean {
+    return this.session.hasLiveBackgroundWork?.()
+      ?? ((this.session.getRunningTasks?.().size ?? 0) > 0);
   }
 
   /**
@@ -686,6 +664,7 @@ export class RepublicAgent {
     }
   ): Promise<string> {
     const id = `sub_${this.nextId++}`;
+    const responseLatencyId = op.type === 'UserInput' ? op.clientMessageId : undefined;
 
     // Track 12: a scheduler/connector driver can mark this submission
     // unattended; apply it to the live TurnContext before the turn runs
@@ -698,7 +677,9 @@ export class RepublicAgent {
       // Guard: engine must be initialized before forwarding execution ops
       const requireEngine = () => {
         if (!this.engine) {
-          throw new Error('RepublicAgent not initialized. Call initialize() before submitOperation().');
+          throw new Error(
+            'RepublicAgent not initialized. Call initialize() before submitOperation().'
+          );
         }
         return this.engine;
       };
@@ -725,6 +706,7 @@ export class RepublicAgent {
         // Return the engine's submission ID so callers can correlate with lifecycle events
         case 'UserInput':
         case 'UserTurn': {
+          const dataTurnSnapshot = captureOriginalDataTurnSnapshot(op, context);
           // ── Track 13: input funnel runs ONCE, before hooks, so the
           //    UserPromptSubmit hook sees expanded/enriched input. One
           //    placement covers ext, desktop, and all server input
@@ -742,7 +724,10 @@ export class RepublicAgent {
                 this.buildFunnelContext(userOp, context)
               );
             } catch (funnelErr) {
-              console.error('[RepublicAgent] input funnel failed; proceeding with raw input:', funnelErr);
+              console.error(
+                '[RepublicAgent] input funnel failed; proceeding with raw input:',
+                funnelErr
+              );
               processed = null;
             }
             if (processed && !processed.shouldQuery) {
@@ -757,11 +742,15 @@ export class RepublicAgent {
                 const depth = (context?._chainDepth ?? 0) + 1;
                 if (depth <= 3) {
                   await this.submitOperation(
-                    { type: 'UserInput', items: [{ type: 'text', text: processed.nextInput }] },
+                    {
+                      type: 'UserInput',
+                      items: [{ type: 'text', text: processed.nextInput }],
+                    },
                     { ...context, _chainDepth: depth }
                   );
                 }
               }
+              finishResponseLatencyTrace(responseLatencyId, 'submission_rejected');
               return id;
             }
             if (processed) {
@@ -776,14 +765,23 @@ export class RepublicAgent {
               (userOp as Record<symbol, unknown>)[FUNNELLED] = true;
             }
           }
+          markResponseLatency(responseLatencyId, 'agent_input_funnel_finished');
           op = userOp;
 
           const shouldContinue = await this.preSubmitHooks(op, context);
           if (!shouldContinue) {
             // UserPromptSubmit hook blocked — return local id without engine submission
+            finishResponseLatencyTrace(responseLatencyId, 'submission_rejected');
             return id;
           }
-          return requireEngine().submitOperation(this.toEngineOp(op));
+          const engineSubmissionId = requireEngine().submitOperation(
+            this.toEngineOp(op, dataTurnSnapshot),
+          );
+          if (responseLatencyId) {
+            setResponseLatencySubmissionId(responseLatencyId, engineSubmissionId);
+            markResponseLatency(responseLatencyId, 'engine_submission_created');
+          }
+          return engineSubmissionId;
         }
 
         // === Forward execution ops to engine ===
@@ -810,19 +808,25 @@ export class RepublicAgent {
             'Task Interrupted',
             'The current task has been interrupted by user request'
           );
-          requireEngine().submitOperation({ type: 'Interrupt', reason: 'user_interrupt' });
+          requireEngine().submitOperation({
+            type: 'Interrupt',
+            reason: 'user_interrupt',
+          });
           break;
 
         case 'Compact':
-          requireEngine().submitOperation({ type: 'Compact', mode: 'auto' });
+          this.submitTrackedCompaction({ type: 'Compact', mode: 'auto' });
           break;
 
         case 'ManualCompact':
-          requireEngine().submitOperation({ type: 'ManualCompact' });
+          this.submitTrackedCompaction({ type: 'ManualCompact' });
           break;
 
         case 'AddToHistory':
-          requireEngine().submitOperation({ type: 'AddToHistory', text: op.text });
+          requireEngine().submitOperation({
+            type: 'AddToHistory',
+            text: op.text,
+          });
           break;
 
         case 'Shutdown':
@@ -842,6 +846,7 @@ export class RepublicAgent {
           });
       }
     } catch (error) {
+      finishResponseLatencyTrace(responseLatencyId, 'submission_failed');
       // Emit TurnAborted event on error
       this.emitEvent({
         type: 'TurnAborted',
@@ -871,10 +876,7 @@ export class RepublicAgent {
     op: Extract<Op, { type: 'UserInput' | 'UserTurn' }>,
     context?: { tabId?: number; origin?: InputOrigin }
   ): FunnelContext {
-    const tabId =
-      op.type === 'UserTurn' && op.tabId !== undefined
-        ? op.tabId
-        : context?.tabId;
+    const tabId = op.type === 'UserTurn' && op.tabId !== undefined ? op.tabId : context?.tabId;
     return {
       sessionId: this.session.sessionId,
       origin: context?.origin ?? { channel: 'local' },
@@ -901,6 +903,8 @@ export class RepublicAgent {
     op: Extract<Op, { type: 'UserInput' }> | Extract<Op, { type: 'UserTurn' }>,
     context?: { tabId?: number }
   ): Promise<boolean> {
+    const responseLatencyId = op.type === 'UserInput' ? op.clientMessageId : undefined;
+    const hookStartedAt = Date.now();
     // Fire UserPromptSubmit hooks before any work
     const textContent = (op.items ?? [])
       .filter((i: any) => i.type === 'text')
@@ -917,14 +921,11 @@ export class RepublicAgent {
       if (!hookResult.shouldContinue) {
         // claudy parity: a blocking hook erases the input; the user sees a
         // warning that embeds the original prompt (processUserInput.ts:194-209).
-        const reason =
-          hookResult.stopReason ?? 'UserPromptSubmit hook blocked this input';
+        const reason = hookResult.stopReason ?? 'UserPromptSubmit hook blocked this input';
         this.emitEvent({
           type: 'Error',
           data: {
-            message: applyHookTruncation(
-              `${reason}\n\nOriginal prompt: ${textContent}`
-            ),
+            message: applyHookTruncation(`${reason}\n\nOriginal prompt: ${textContent}`),
           },
         });
         return false;
@@ -943,9 +944,7 @@ export class RepublicAgent {
       // claudy parity: fold additionalContext in as a model-visible item
       // (createAttachmentMessage 'hook_additional_context'). Rides alongside
       // the prompt — the user's text item is untouched.
-      const extra = (hookResult.additionalContext ?? []).filter(
-        (c) => c && c.trim()
-      );
+      const extra = (hookResult.additionalContext ?? []).filter((c) => c && c.trim());
       if (extra.length > 0) {
         const joined = extra.map(applyHookTruncation).join('\n');
         op.items = [
@@ -957,39 +956,30 @@ export class RepublicAgent {
         ];
       }
     }
+    markResponseLatency(responseLatencyId, 'user_prompt_hooks_finished', {
+      duration_ms: Date.now() - hookStartedAt,
+    });
 
     // Tab binding (platform adapter concern)
     const tabContext = op.type === 'UserTurn' && op.tabId !== undefined
       ? { tabId: op.tabId }
       : context;
+    const tabBindingStartedAt = Date.now();
     await this.handleTabBinding(tabContext);
+    markResponseLatency(responseLatencyId, 'tab_binding_finished', {
+      duration_ms: Date.now() - tabBindingStartedAt,
+    });
 
-    // Apply pending model switch
-    if (this.pendingModelKey !== null || this.pendingModelClientRefresh) {
-      const deferredKey = this.pendingModelKey ?? this.config.getConfig().selectedModelKey;
-      this.pendingModelKey = null;
-      this.pendingModelClientRefresh = false;
-      try {
-        this.modelClientFactory.clearCache();
-        await this.applyCurrentModelClient(deferredKey);
-      } catch (error) {
-        console.error('Failed to apply pending model client refresh:', error);
-      }
+    const rebuildStartedAt = Date.now();
+    const rebuildRequired = this.pendingRebuildReasons.size > 0;
+    if (this.pendingRebuildReasons.size > 0) {
+      await this.rebuildExecutionContext(new Set(this.pendingRebuildReasons));
     }
+    markResponseLatency(responseLatencyId, 'execution_context_ready', {
+      duration_ms: Date.now() - rebuildStartedAt,
+      rebuild_required: rebuildRequired,
+    });
 
-    // Apply pending mode switch before processing the new submission
-    if (this.pendingModeSwitch !== null) {
-      const deferredMode = this.pendingModeSwitch;
-      await this.applyAgentMode(deferredMode);
-      this.emitEvent({
-        type: 'ModeChanged',
-        data: { sessionId: this.session.getId(), mode: deferredMode, applied: true },
-      });
-      this.emitEvent({
-        type: 'BackgroundEvent',
-        data: { message: `Switched to ${MODES[deferredMode].label} mode.`, level: 'info' },
-      });
-    }
     return true;
   }
 
@@ -1027,11 +1017,20 @@ export class RepublicAgent {
   /**
    * Convert a RepublicAgent Op to an EngineOp for forwarding to the engine.
    */
-  private toEngineOp(op: Extract<Op, { type: 'UserInput' }> | Extract<Op, { type: 'UserTurn' }>): EngineOp {
+  private toEngineOp(
+    op: Extract<Op, { type: 'UserInput' }> | Extract<Op, { type: 'UserTurn' }>,
+    dataTurnSnapshot: import('./data-sources').DataTurnSnapshot
+  ): EngineOp {
     const items = op.items.map(RepublicAgent.convertInputItem);
 
     if (op.type === 'UserInput') {
-      return { type: 'UserInput', items };
+      return {
+        type: 'UserInput',
+        items,
+        context: { metadata: { dataTurnSnapshot } },
+        clientMessageId: op.clientMessageId,
+        inputDigest: op.inputDigest,
+      };
     }
     // UserTurn with context overrides — only include defined values
     // to avoid overwriting existing context with undefined
@@ -1045,16 +1044,9 @@ export class RepublicAgent {
     return {
       type: 'UserTurn',
       items,
+      context: { metadata: { dataTurnSnapshot } },
       contextOverrides: Object.keys(overrides).length > 0 ? overrides : undefined,
     };
-  }
-
-
-  /**
-   * Get the next event from the event queue
-   */
-  async getNextEvent(): Promise<Event | null> {
-    return this.eventQueue.shift() || null;
   }
 
   /**
@@ -1062,7 +1054,9 @@ export class RepublicAgent {
    * @param submissionContext - Context containing optional tabId
    */
   private async handleTabBinding(submissionContext?: { tabId?: number }): Promise<void> {
-    const currentTabId = this.session.getTabId();
+    const resources = this.platformAdapter.browserResources;
+    if (!resources) return;
+    const currentTabId = (await resources.current())?.tabId ?? -1;
     const newTabId = submissionContext?.tabId ?? -1;
 
     // ================================================================
@@ -1073,26 +1067,16 @@ export class RepublicAgent {
         // Lazy browser setup (e.g., desktop MCP connection)
         await this.platformAdapter.ensureBrowserReady?.();
 
-        // Extension: clear old tab group before creating new tab
-        if (this.platformAdapter.hasRealTabs && currentTabId !== -1) {
-          await this.platformAdapter.switchTab(currentTabId, -1);
-        }
-
-        const createdTabId = await this.platformAdapter.createTab({
-          url: 'about:blank',
-          active: false,
-        });
-
-        this.session.setTabId(createdTabId);
-        // Record ownership: the agent created this tab (best-effort; extension-only).
-        void this.platformAdapter.claimTabLease?.(createdTabId, this.session.getId(), 'agent').catch(() => {});
+        const created = await resources.create({ url: 'about:blank', active: false });
+        const createdTabId = created.tabId;
 
         this.emitEvent({
           type: 'StateUpdate',
           data: { sessionId: this.session.getId(), tabId: createdTabId },
         });
       } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error during tab creation';
+        const errorMsg =
+          error instanceof Error ? error.message : 'Unknown error during tab creation';
 
         this.emitEvent({
           type: 'Error',
@@ -1106,76 +1090,33 @@ export class RepublicAgent {
     // CASE 2: newTabId === currentTabId → Check health, don't rebind
     // ================================================================
     else if (newTabId === currentTabId) {
-      if (this.platformAdapter.hasRealTabs) {
-        const validation = await this.platformAdapter.validateTab(currentTabId);
-
-        if (!validation.valid) {
-          const errorMsg = `Current tab ${currentTabId} is not healthy. Reason: ${validation.reason}`;
-
-          this.emitEvent({
-            type: 'Error',
-            data: {
-              message: `The current tab is not valid (${validation.reason}). Please select a valid tab.`,
-            },
-          });
-
-          throw new Error(errorMsg);
-        }
-      }
+      await resources.getOwned(currentTabId);
     }
     // ================================================================
     // CASE 3: newTabId !== currentTabId → Switch to new tab
     // ================================================================
     else {
-      if (!this.platformAdapter.hasRealTabs) {
-        // Desktop/server: just update session tabId
-        this.session.setTabId(newTabId);
-        void this.platformAdapter.claimTabLease?.(newTabId, this.session.getId(), 'user').catch(() => {});
-      } else {
-        // Extension: validate tab before switching
-        const validation = await this.platformAdapter.validateTab(newTabId);
-
-        if (!validation.valid) {
-          this.emitEvent({
-            type: 'Error',
-            data: {
-              message: `The selected tab (ID: ${newTabId}) is not valid (${validation.reason}). Please select a valid tab and try again.`,
-            },
-          });
-
-          throw new Error(`Tab ${newTabId} is not valid. Reason: ${validation.reason}`);
-        }
-
-        try {
-          await this.platformAdapter.switchTab(currentTabId, newTabId);
-          this.session.setTabId(newTabId);
-          // Release the previous tab's lease and claim the new one (user-origin).
-          if (currentTabId !== -1) {
-            void this.platformAdapter.releaseTabLease?.(currentTabId, this.session.getId()).catch(() => {});
-          }
-          void this.platformAdapter.claimTabLease?.(newTabId, this.session.getId(), 'user').catch(() => {});
-        } catch (error) {
-          const errorMsg = error instanceof Error ? error.message : 'Unknown error during tab switching';
-
-          this.emitEvent({
-            type: 'Error',
-            data: { message: `Failed to switch to tab ${newTabId}: ${errorMsg}` },
-          });
-
-          throw error;
-        }
+      try {
+        await resources.claimExisting(newTabId, 'user');
+        await resources.setCurrent(newTabId);
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error during tab switching';
+        this.emitEvent({
+          type: 'Error',
+          data: { message: `Failed to switch to tab ${newTabId}: ${errorMsg}` },
+        });
+        throw error;
       }
     }
 
     this.emitEvent({
       type: 'BackgroundEvent',
       data: {
-        message: `Tab binding updated: session ${this.session.getId()} now bound to tab ${this.session.getTabId()}`,
+        message: `Tab binding updated: session ${this.session.getId()} now bound to tab ${(await resources.current())?.tabId ?? -1}`,
         level: 'info',
       },
     });
   }
-
 
   /**
    * Cancel a running task by submission id.
@@ -1209,7 +1150,6 @@ export class RepublicAgent {
     this.session.updateTurnContext(updates);
   }
 
-
   /**
    * Handle get path request
    */
@@ -1223,7 +1163,6 @@ export class RepublicAgent {
       },
     });
   }
-
 
   /**
    * Handle get history entry request
@@ -1261,7 +1200,6 @@ export class RepublicAgent {
     }
   }
 
-
   /**
    * Wire engine events to the RepublicAgent's eventDispatcher.
    * The engine emits EngineEvents; we convert and dispatch them to the UI.
@@ -1288,9 +1226,7 @@ export class RepublicAgent {
     if (!this.engine) return;
     this.engine.onEvent((engineEvent: EngineEvent) => {
       if (engineEvent.msg.type === 'CompactionCompleted') {
-        this.autoCompactHook?.handleCompactionCompleted(
-          engineEvent.msg.data?.success === true,
-        );
+        this.autoCompactHook?.handleCompactionCompleted(engineEvent.msg.data?.success === true);
       }
       // Session-originated events are already dispatched via the session's emitter
       // (wired in the constructor). Only forward engine-only events that don't
@@ -1308,16 +1244,12 @@ export class RepublicAgent {
     this.eventDispatcher = dispatcher;
   }
 
-  /**
-   * Emit an event to the event queue and dispatch to UI
-   */
+  /** Emit an event through the single manager-owned dispatcher path. */
   private emitEvent(msg: EventMsg): void {
     const event: Event = {
       id: `evt_${this.nextId++}`,
       msg,
     };
-
-    this.eventQueue.push(event);
 
     // Process event for user notifications
     this.userNotifier.processEvent(event);
@@ -1346,6 +1278,10 @@ export class RepublicAgent {
    */
   getModelClientFactory(): ModelClientFactory {
     return this.modelClientFactory;
+  }
+
+  getPromptLoader(): AgentPromptLoader {
+    return this.promptLoader;
   }
 
   /**
@@ -1401,14 +1337,20 @@ export class RepublicAgent {
    * Cleanup resources
    */
   async cleanup(): Promise<void> {
+    return this.dispose('manual');
+  }
+
+  async dispose(reason: AgentDisposeReason): Promise<void> {
     if (this.cleanupPromise) {
       return this.cleanupPromise;
     }
-    this.cleanupPromise = this.cleanupOnce();
+    this.cleanupPromise = this.cleanupOnce(reason);
     return this.cleanupPromise;
   }
 
-  private async cleanupOnce(): Promise<void> {
+  private async cleanupOnce(reason: AgentDisposeReason): Promise<void> {
+    this.modeWorkUnsubscribe();
+    this.modeWorkUnsubscribe = () => undefined;
     // Fire SessionEnd hooks with short timeout (1.5s) before tearing things down.
     // Failures here must not block shutdown.
     try {
@@ -1417,15 +1359,13 @@ export class RepublicAgent {
         {
           hook_event_name: 'SessionEnd',
           session_id: this.session.sessionId,
-          session_end_reason: 'shutdown',
+          session_end_reason: reason,
         },
-        { timeoutOverride: 1.5 },
+        { timeoutOverride: 1.5 }
       );
     } catch (err) {
       console.warn('[RepublicAgent] SessionEnd hook failed during cleanup:', err);
     }
-    this.configHookUnsubscribe?.();
-    this.configHookUnsubscribe = null;
     this.hookRegistry.unregisterBySource('config');
     this.autoCompactHook?.detach();
     this.autoCompactHook = null;
@@ -1433,11 +1373,26 @@ export class RepublicAgent {
     if (this.engine) {
       await this.engine.dispose();
     }
-    await this.session.dispose({ reason: 'Shutdown' });
-    unregisterSessionPromptExtensions(this.session.getSessionId());
+    const abortReason = reason === 'tab-closed'
+      ? 'TabClosed'
+      : reason === 'error' || reason === 'assembly-failed'
+        ? 'Error'
+        : reason === 'shutdown'
+          ? 'Shutdown'
+          : 'UserInterrupt';
+    await this.session.dispose({
+      lifecycleReason: reason,
+      abortReason,
+      abortTasks: reason !== 'suspend',
+      recordCloseEvent: reason === 'delete',
+      flushRollout: true,
+      cleanupToolResults: reason !== 'suspend',
+    });
+    this.memoryPromptUnregister?.();
+    this.memoryPromptUnregister = null;
+    this.promptLoader.dispose();
     await this.toolRegistry.cleanup();
     this.toolRegistry.clear();
-    this.eventQueue = [];
     await this.userNotifier.clearAll();
     await this.platformAdapter.dispose();
   }
@@ -1472,21 +1427,20 @@ export class RepublicAgent {
 
     const approval = pendingApproval.request;
 
-    const reviewDecision: ReviewDecision = decision === 'approve'
-      ? 'approve'
-      : 'reject';
+    const reviewDecision: ReviewDecision = decision === 'approve' ? 'approve' : 'reject';
 
-    const op: Op = approval.type === 'command'
-      ? {
-        type: 'ExecApproval',
-        id: approvalId,
-        decision: reviewDecision,
-      }
-      : {
-        type: 'PatchApproval',
-        id: approvalId,
-        decision: reviewDecision,
-      };
+    const op: Op =
+      approval.type === 'command'
+        ? {
+            type: 'ExecApproval',
+            id: approvalId,
+            decision: reviewDecision,
+          }
+        : {
+            type: 'PatchApproval',
+            id: approvalId,
+            decision: reviewDecision,
+          };
 
     await this.submitOperation(op);
   }
@@ -1582,11 +1536,7 @@ export class RepublicAgent {
   /**
    * Update progress notification
    */
-  async updateProgress(
-    notificationId: string,
-    current: number,
-    total: number
-  ): Promise<void> {
+  async updateProgress(notificationId: string, current: number, total: number): Promise<void> {
     await this.userNotifier.updateProgress(notificationId, current, total);
   }
 }

@@ -438,6 +438,13 @@ export class RolloutRecorder {
     return cleanupExpiredImpl();
   }
 
+  /** Delete one complete rollout. Used only after the thread tombstone is due. */
+  static async deleteSession(sessionId: ConversationId): Promise<void> {
+    const provider = await RolloutRecorder.getProvider();
+    await provider.deleteItemsByRolloutIds([sessionId]);
+    await provider.deleteMetadata(sessionId);
+  }
+
   /**
    * Get storage statistics for all rollouts via provider.
    * @returns Promise resolving to storage stats

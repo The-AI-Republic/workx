@@ -195,7 +195,7 @@
             <span class="inline-block max-w-full overflow-hidden text-ellipsis whitespace-nowrap">{displayTitle}</span>
           {/if}
           {#if clickable}
-            <span class="text-[10px] transition-transform duration-200 shrink-0 {isDropdownOpen ? 'rotate-180' : ''}
+            <span class="text-2xs transition-transform duration-200 shrink-0 {isDropdownOpen ? 'rotate-180' : ''}
               {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : ''}">▼</span>
           {/if}
         </div>

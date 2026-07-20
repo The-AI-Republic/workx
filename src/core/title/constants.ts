@@ -17,7 +17,7 @@ export const DEFAULT_TITLE_CONFIG: TitleGenerationConfig = {
  * Prompt for generating conversation titles
  * Uses only user messages to generate a concise title
  */
-export const TITLE_GENERATION_PROMPT = `You are helping to generate chat conversation titles. Based on the user messages, generate a concise title ( words max) for this conversation.
+export const TITLE_GENERATION_PROMPT = `You are helping to generate chat conversation titles. Based on the user messages, generate a concise title (8 words max) for this conversation.
 
 Requirements:
 - Focus on the user's main goal or request

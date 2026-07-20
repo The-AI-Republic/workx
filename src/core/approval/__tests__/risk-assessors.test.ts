@@ -214,9 +214,10 @@ describe('McpBrowserRiskAssessor', () => {
     expect(assessor.assess('browser__scroll', {}).score).toBe(0);
   });
 
-  it('should score click as 10', () => {
+  it('should require approval for opaque click targets', () => {
     const result = assessor.assess('browser__click', { selector: '#btn' });
-    expect(result.score).toBe(10);
+    expect(result.score).toBe(40);
+    expect(result.action).toBe('ask_user');
   });
 
   it('should score click on submit/payment as 70', () => {
@@ -226,9 +227,10 @@ describe('McpBrowserRiskAssessor', () => {
     expect(result.score).toBe(70);
   });
 
-  it('should score type/fill as 40', () => {
-    expect(assessor.assess('browser__type', { text: 'hello' }).score).toBe(40);
-    expect(assessor.assess('browser__fill', { text: 'hello' }).score).toBe(40);
+  it('should require approval for type/fill actions', () => {
+    expect(assessor.assess('browser__type', { text: 'hello' }).score).toBe(50);
+    expect(assessor.assess('browser__fill', { text: 'hello' }).score).toBe(50);
+    expect(assessor.assess('browser__fill_form', { elements: [] }).score).toBe(50);
   });
 
   it('should score typing into password field as 65', () => {
@@ -243,12 +245,20 @@ describe('McpBrowserRiskAssessor', () => {
     expect(assessor.assess('browser__navigate_page', { url: 'https://example.com' }).score).toBe(35);
   });
 
-  it('should score unknown MCP browser actions as 30', () => {
-    expect(assessor.assess('browser__unknown_action', {}).score).toBe(30);
+  it('should fail closed for unknown MCP browser actions', () => {
+    const result = assessor.assess('browser__unknown_action', {});
+    expect(result.score).toBe(65);
+    expect(result.action).toBe('ask_user');
+  });
+
+  it('should classify high-impact browser actions', () => {
+    expect(assessor.assess('browser__click_at', {}).score).toBe(65);
+    expect(assessor.assess('browser__evaluate_script', {}).score).toBe(70);
+    expect(assessor.assess('browser__upload_file', {}).score).toBe(75);
   });
 
   it('should handle non-prefixed tool names', () => {
     const result = assessor.assess('click', {});
-    expect(result.score).toBe(10);
+    expect(result.score).toBe(40);
   });
 });

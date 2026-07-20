@@ -19,9 +19,6 @@ export interface PersistedSession {
   state: SessionState;
   createdAt: number;
   lastActivityAt: number;
-  tabId: number | null;
-  tabGroupId: number | null;
-  tabGroupName: string;
   /** Timestamp when session was persisted */
   persistedAt: number;
 }
@@ -43,9 +40,6 @@ export class SessionStorage {
       state: metadata.state,
       createdAt: metadata.createdAt,
       lastActivityAt: metadata.lastActivityAt,
-      tabId: metadata.tabId,
-      tabGroupId: metadata.tabGroupId,
-      tabGroupName: metadata.tabGroupName,
       persistedAt: Date.now(),
     };
 

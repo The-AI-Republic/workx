@@ -56,6 +56,10 @@ export interface RiskAssessment {
   factors: string[];
   /** Recommended action based on score */
   action: ApprovalDecision;
+  /** Require a fresh human response even when the session is in YOLO mode. */
+  requiresExplicitUserApproval?: boolean;
+  /** Trusted-context denial that policy rules and YOLO mode cannot weaken. */
+  hardDeny?: boolean;
 }
 
 /**
@@ -126,6 +130,10 @@ export interface ApprovalContext {
   currentDomain?: string;
   /** Current working directory (desktop) */
   cwd?: string;
+  /** Narrow immutable origin supplied only to built-in data tools. */
+  dataTurnSnapshot?: import('../data-sources').DataTurnAccessSnapshot;
+  /** Original user text, supplied only to data_learn_context. */
+  currentUserText?: string;
 }
 
 /**

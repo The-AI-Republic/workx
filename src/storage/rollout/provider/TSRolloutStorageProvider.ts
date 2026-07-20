@@ -13,7 +13,10 @@ import type {
   RolloutItemRecord,
   ConversationsPage,
   Cursor,
+  RolloutRecoveryMetadata,
+  RolloutItemRange,
 } from '../types';
+import { applyRecoveryMutations, emptyRecoveryMetadata } from './RolloutRecovery';
 
 export class TSRolloutStorageProvider implements RolloutStorageProvider {
   private db: import('better-sqlite3').Database | null = null;
@@ -114,6 +117,45 @@ export class TSRolloutStorageProvider implements RolloutStorageProvider {
     });
   }
 
+  async createRollout(
+    metadata: RolloutMetadataRecord,
+    items: Array<{ timestamp: string; sequence: number; type: string; payload: unknown }>,
+  ): Promise<boolean> {
+    const db = this.getDb();
+    const exists = db.prepare('SELECT 1 FROM rollout_metadata WHERE id = ?');
+    const insertMetadata = db.prepare(
+      `INSERT INTO rollout_metadata (id, created, updated, expires_at, session_meta, item_count, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertItem = db.prepare(
+      `INSERT INTO rollout_items (rollout_id, timestamp, sequence, type, payload)
+       VALUES (?, ?, ?, ?, ?)`,
+    );
+    const transaction = db.transaction(() => {
+      if (exists.get(metadata.id)) return false;
+      insertMetadata.run(
+        metadata.id,
+        metadata.created,
+        metadata.updated,
+        metadata.expiresAt ?? null,
+        JSON.stringify(metadata.sessionMeta),
+        items.length,
+        metadata.status,
+      );
+      for (const item of items) {
+        insertItem.run(
+          metadata.id,
+          item.timestamp,
+          item.sequence,
+          item.type,
+          typeof item.payload === 'string' ? item.payload : JSON.stringify(item.payload),
+        );
+      }
+      return true;
+    });
+    return transaction();
+  }
+
   async deleteMetadata(rolloutId: ConversationId): Promise<void> {
     this.getDb().prepare('DELETE FROM rollout_metadata WHERE id = ?').run(rolloutId);
   }
@@ -124,6 +166,26 @@ export class TSRolloutStorageProvider implements RolloutStorageProvider {
     ).all() as RawMetadataRow[];
 
     return rows.map((r) => this.toMetadataRecord(r));
+  }
+
+  async getRecoveryMetadata(rolloutId: ConversationId): Promise<RolloutRecoveryMetadata> {
+    const metadata = await this.getMetadata(rolloutId);
+    return structuredClone(metadata?.sessionMeta.runtimeRecovery ?? emptyRecoveryMetadata());
+  }
+
+  async listOpenTurnRecovery(): Promise<Array<{
+    sessionId: ConversationId;
+    recovery: RolloutRecoveryMetadata;
+  }>> {
+    const rows = this.getDb().prepare(
+      'SELECT id, session_meta FROM rollout_metadata WHERE session_meta IS NOT NULL',
+    ).all() as Array<{ id: string; session_meta: string }>;
+    return rows.flatMap((row) => {
+      const sessionMeta = this.parseJson(row.session_meta) as RolloutMetadataRecord['sessionMeta'];
+      return sessionMeta.runtimeRecovery?.openTurns.length
+        ? [{ sessionId: row.id, recovery: structuredClone(sessionMeta.runtimeRecovery) }]
+        : [];
+    });
   }
 
   // ==========================================================================
@@ -141,8 +203,13 @@ export class TSRolloutStorageProvider implements RolloutStorageProvider {
       `INSERT INTO rollout_items (rollout_id, timestamp, sequence, type, payload)
        VALUES (?, ?, ?, ?, ?)`
     );
+    const getMetadata = db.prepare(
+      'SELECT session_meta FROM rollout_metadata WHERE id = ?'
+    );
     const updateCount = db.prepare(
-      `UPDATE rollout_metadata SET item_count = item_count + ?, updated = ? WHERE id = ?`
+      `UPDATE rollout_metadata
+       SET item_count = item_count + ?, updated = ?, session_meta = ?
+       WHERE id = ?`
     );
 
     const tx = db.transaction(() => {
@@ -150,7 +217,11 @@ export class TSRolloutStorageProvider implements RolloutStorageProvider {
         const payload = typeof item.payload === 'string' ? item.payload : JSON.stringify(item.payload);
         insertItem.run(rolloutId, item.timestamp, item.sequence, item.type, payload);
       }
-      updateCount.run(items.length, Date.now(), rolloutId);
+      const row = getMetadata.get(rolloutId) as { session_meta: string } | undefined;
+      if (row) {
+        const sessionMeta = applyRecoveryMutations(this.parseJson(row.session_meta), items);
+        updateCount.run(items.length, Date.now(), JSON.stringify(sessionMeta), rolloutId);
+      }
     });
 
     tx();
@@ -168,6 +239,39 @@ export class TSRolloutStorageProvider implements RolloutStorageProvider {
       sequence: r.sequence,
       type: r.type,
       payload: this.parseJson(r.payload),
+    }));
+  }
+
+  async getItemsByRolloutIdRange(
+    rolloutId: ConversationId,
+    range: RolloutItemRange,
+  ): Promise<RolloutItemRecord[]> {
+    const limit = normalizeRangeLimit(range.limit);
+    const clauses = ['rollout_id = ?'];
+    const params: Array<string | number> = [rolloutId];
+    if (range.afterSequence !== undefined) {
+      clauses.push('sequence > ?');
+      params.push(range.afterSequence);
+    }
+    if (range.beforeSequence !== undefined) {
+      clauses.push('sequence < ?');
+      params.push(range.beforeSequence);
+    }
+    params.push(limit);
+    const rows = this.getDb().prepare(
+      `SELECT id, rollout_id, timestamp, sequence, type, payload
+       FROM rollout_items
+       WHERE ${clauses.join(' AND ')}
+       ORDER BY sequence ${range.direction === 'desc' ? 'DESC' : 'ASC'}
+       LIMIT ?`,
+    ).all(...params) as RawItemRow[];
+    return rows.map((row) => ({
+      id: row.id,
+      rolloutId: row.rollout_id,
+      timestamp: row.timestamp,
+      sequence: row.sequence,
+      type: row.type,
+      payload: this.parseJson(row.payload),
     }));
   }
 
@@ -296,6 +400,13 @@ export class TSRolloutStorageProvider implements RolloutStorageProvider {
     }
     return value;
   }
+}
+
+function normalizeRangeLimit(limit: number): number {
+  if (!Number.isInteger(limit) || limit < 1 || limit > 1000) {
+    throw new Error('range limit must be an integer from 1 to 1000');
+  }
+  return limit;
 }
 
 // SQLite row types (snake_case column names)

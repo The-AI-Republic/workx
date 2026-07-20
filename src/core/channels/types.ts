@@ -19,6 +19,8 @@ export interface ChannelEvent {
   msg: EventMsg;
   /** Session that produced this event (for multi-session routing) */
   sessionId?: string;
+  runtimeEpoch?: string;
+  eventSeq?: number;
 }
 
 /**

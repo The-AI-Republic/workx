@@ -2128,6 +2128,45 @@
   "exec_unknown_command": {
     "message": "exec (unknown command)"
   },
+  "Back_to_settings": {
+    "message": "Back to settings"
+  },
+  "Context_change_was_undone_as_a_new_revis_decd": {
+    "message": "Context change was undone as a new revision."
+  },
+  "Context_changed_review_it_before_reverti_2e9d": {
+    "message": "Context changed; review it before reverting."
+  },
+  "Connect_read_only_databases_for_AI_assis_fa3e": {
+    "message": "Connect read-only databases for AI-assisted analysis"
+  },
+  "Components": {
+    "message": "Components"
+  },
+  "Install_optional_local_capabilities_priv_04d3": {
+    "message": "Install optional local capabilities privately for WorkX."
+  },
+  "Install_optional_local_tools_and_runtime_fb71": {
+    "message": "Install optional local tools and runtimes for WorkX"
+  },
+  "Install_optional_local_tools_and_runtime_5aa4": {
+    "message": "Install optional local tools and runtimes privately for WorkX."
+  },
+  "Data_context_saved": {
+    "message": "Data context saved"
+  },
+  "Data_query": {
+    "message": "Data query"
+  },
+  "Data_Sources": {
+    "message": "Data Sources"
+  },
+  "Undo": {
+    "message": "Undo"
+  },
+  "View": {
+    "message": "View"
+  },
   "more_results": {
     "message": "more results..."
   },

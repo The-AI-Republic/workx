@@ -38,6 +38,13 @@ export interface AppServerWebSocketTransportOptions {
   maxPayloadBytes: number;
   maxBufferedBytes: number;
   rejectBrowserOrigins: boolean;
+  /**
+   * Origins exempt from `rejectBrowserOrigins`. Exact origins
+   * (`chrome-extension://<id>`) or the `chrome-extension://*` wildcard.
+   * Note: the Origin header only constrains *browser-initiated* connections
+   * (pages can't forge it); the capability token remains the auth boundary.
+   */
+  allowedOrigins: string[];
   processor: AppServerRequestProcessor;
   status: AppServerStatusController;
   profile: string;
@@ -67,7 +74,7 @@ export class AppServerWebSocketTransport {
         info: { origin?: string; req: IncomingMessage },
         cb: (ok: boolean, code?: number, message?: string) => void,
       ) => {
-        if (this.opts.rejectBrowserOrigins && info.origin) {
+        if (this.opts.rejectBrowserOrigins && info.origin && !this.isAllowedOrigin(info.origin)) {
           cb(false, 403, 'Origin not allowed');
           return;
         }
@@ -171,6 +178,14 @@ export class AppServerWebSocketTransport {
       await new Promise<void>((resolve) => this.httpServer!.close(() => resolve()));
       this.httpServer = null;
     }
+  }
+
+  private isAllowedOrigin(origin: string): boolean {
+    for (const allowed of this.opts.allowedOrigins) {
+      if (allowed === origin) return true;
+      if (allowed === 'chrome-extension://*' && origin.startsWith('chrome-extension://')) return true;
+    }
+    return false;
   }
 
   private handleHttp(req: IncomingMessage, res: ServerResponse): void {

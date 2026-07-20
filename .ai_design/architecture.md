@@ -1,84 +1,83 @@
-# Browserx Architecture Overview
+# WorkX Runtime Architecture
 
-This document outlines the "One Core, Two Shells" architecture used in the application.
+WorkX uses one shared agent core with extension, desktop-runtime, and headless-server
+shells. Platform bootstraps own storage, authentication, browser capabilities, channels,
+and graph assembly; the core owns session lifecycle and agent behavior.
 
-## High-Level Architecture
+## Session lifecycle
 
-The project is structured to share the core "brain" (agent logic) while using platform-specific "shells" for the environment (Chrome Extension vs. Desktop App).
+`SessionManager` is the only owner of live `RepublicAgent` graphs on every platform. It
+coordinates durable thread metadata, graph construction, config/auth propagation,
+capacity, submission ordering, event sequencing, attach/replay, suspension, and deletion.
+`AgentRegistry` remains only as a deprecated export alias for external consumers during
+the rename window.
 
-### Directory Structure
-
-- **`src/core`**: The shared brain. Contains the `BrowserxAgent`, `ModelClient`, and protocol definitions. This code is platform-agnostic.
-- **`src/extension`**: The Chrome Extension shell. Runs in a Background Service Worker context.
-- **`src/desktop`**: The Desktop shell (Tauri). Runs in a single WebView process.
-
-### System Diagram
-
-```mermaid
-graph TD
-    subgraph Core ["Shared Core (src/core)"]
-        style Core fill:#f9f9f9,stroke:#333,stroke-width:2px
-        Agent[BrowserxAgent]
-        Router[MessageRouter]
-        Models[ModelClientFactory]
-    end
-
-    subgraph Extension ["Chrome Extension (src/extension)"]
-        style Extension fill:#e1f5fe,stroke:#01579b
-        BG["Background Service Worker"]
-        ExtUI["SidePanel UI"]
-        ExtTools["Chrome API Tools"]
-    end
-
-    subgraph Desktop ["Desktop App (src/desktop)"]
-        style Desktop fill:#e8f5e9,stroke:#2e7d32
-        WebView["WebView (UI + Agent)"]
-        TauriChannel["TauriChannel"]
-        DeskTools["CDP Desktop Tools"]
-    end
-
-    %% Relationships
-    Agent --> Models
-    Agent --> Router
-    
-    BG --> Agent
-    ExtTools -.-> Agent
-    
-    WebView --> Agent
-    WebView --> TauriChannel
-    DeskTools -.-> Agent
-
-    classDef shared fill:#fff3e0,stroke:#e65100;
+```text
+webfront / scheduler / API
+           |
+       service RPC
+           |
+     SessionManager
+      |     |     |
+      |     |     +-- per-session event gate + replay ring -> ChannelManager
+      |     +-------- ThreadIndexStore + rollout snapshots
+      +-------------- platform AgentAssembler -> complete disposable graph
 ```
 
----
+Extension and desktop-runtime use client lifecycle mode. `session.open` creates only a
+durable `thread_index` row; the first correlated `session.submit` hydrates the graph.
+Idle eligible graphs are suspended by deterministic LRU when `maxLive` is reached, while
+`hardMax` bounds parallel bursts. Headless server remains eager. Scheduled/API capacity
+is independent from client-managed interactive capacity, and internal infrastructure
+sessions retain their bypass.
 
-## Desktop Architecture Specifics
+Runtime states are `suspended`, `hydrating`, `idle`, `running`, `suspending`, and
+`deleting`. Durable history and the thread index survive suspension; delete is
+tombstone-first and hard purge removes the index row last.
 
-The Desktop application is built using **Tauri v2**. Unlike the extension which is distributed across processes (background script vs. content script vs. popup), the desktop app runs primarily in a single **WebView** process context for the UI and the Agent.
+## Construction and identity
 
-### 1. Initialization Flow
-Located in `src/desktop/ui/main.ts`:
-1.  **Boot**: Svelte app initializes.
-2.  **Bootstrap**: Calls `initializeDesktopAgent()`.
-3.  **Agent Creation**: `DesktopAgentBootstrap` creates the `BrowserxAgent` instance directly in the UI memory space.
-4.  **Auth Sync**: `DesktopAuthService` checks the OS Keychain for tokens and signals the agent.
+`ExtensionAgentAssembler` and `ServerAgentAssembler` implement the shared
+`AgentAssembler` contract. The manager reserves the authoritative session ID before any
+await and rejects an assembled graph whose `Session.sessionId` differs. Each graph owns
+its prompt loader, platform adapter, tool registry, plugin bindings, and cleanup stack.
+Cleanup is reason-aware (`suspend`, `delete`, `shutdown`, or `assembly-failed`) and
+idempotent.
 
-### 2. The "In-Process" Agent
-*   **Location**: The Agent lives in the same memory space as the UI.
-*   **Communication**: Instead of `chrome.runtime.sendMessage`, we use `TauriChannel`. This acts as a local "loopback" to route messages, tricking the core agent into thinking it's communicating over a channel, preserving the message-passing architecture.
+Bootstraps own one `MutableAuthContext`. Model token closures read it at call time, while
+the manager subscribes once for identity rebuilds. Likewise, the manager is the sole
+`AgentConfig` subscriber and applies the exhaustive config-impact map with
+`Promise.allSettled` isolation. Hydration captures auth/config generations and rebuilds
+before publishing if either changed during assembly.
 
-### 3. Authentication (Deep Link Flow)
-*   **Login**: User clicks login -> Browser opens -> Redirects to `airepublic-pi://auth/callback`.
-*   **Deep Link**: OS wakes up the app.
-*   **Handler**: `DesktopAuthService` catches the URL, extracts tokens (`access_token`, `refresh_token`), and saves them to the **OS Keychain** using `keytar`.
-*   **Bootstrap**: Listens for the change and updates the agent's `AuthManager`.
+## Storage and attach
 
-### 4. Tool Differences
-| Feature | Chrome Extension | Desktop App |
-| :--- | :--- | :--- |
-| **DOM Access** | `chrome.tabs`, `chrome.scripting` | Chrome DevTools Protocol (CDP) |
-| **Storage** | `chrome.storage.local` | `window.localStorage` + OS File System |
-| **Navigation** | `chrome.tabs.update` | CDP Navigation |
+`ThreadIndexStore` is the bounded list/search source for the UI. IndexedDB and SQLite
+both expose `thread_index`; startup and the first `session.list` reconcile legacy session
+rows and rollout metadata. Rollout records remain the durable conversation source.
 
-The file `src/tools/registerPlatformTools.ts` is the traffic cop that decides which set of tools to load based on the `__BUILD_MODE__`.
+The UI acquires a surface lease, starts buffering live events, then calls
+`session.attach`. Attach returns an immutable rollout snapshot plus a bounded replay batch
+through one sequence boundary. The UI applies snapshot, replay, and the uncovered live
+tail in that order. A truncated replay is refreshed from the committed snapshot when the
+runtime reaches IDLE.
+
+## Browser isolation
+
+Core tools use `SessionBrowserResources`, never global Chrome tab state. Extension
+sessions own a `TabGroupRegistry` allocation through `ExtensionPlatformAdapter`; desktop
+bridge requests carry `sessionId` and keep per-session current-tab state. Background work
+cannot focus a page. Foreground-required work emits `browser_attention_required` and
+continues only after a matching viewed surface resolves the request.
+
+## Platform overview
+
+| Platform | Bootstrap | Lifecycle | Durable stores | Browser capability |
+|---|---|---|---|---|
+| Extension | `service-worker.ts` | client | IndexedDB | session-owned Chrome tab group |
+| Desktop | `ServerAgentBootstrap` desktop-runtime profile | client | SQLite | session-scoped desktop bridge |
+| Headless server | `ServerAgentBootstrap` server profile | eager | SQLite/files | server adapter / configured browser |
+
+See [SESSION_LIFECYCLE_RPC.md](../docs/SESSION_LIFECYCLE_RPC.md) and
+[SESSION_LIFECYCLE_SUPPORT.md](../docs/SESSION_LIFECYCLE_SUPPORT.md) for wire and
+operational contracts.

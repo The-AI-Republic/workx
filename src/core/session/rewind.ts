@@ -208,7 +208,10 @@ export async function computeRewindSlice(
 ): Promise<ForkedHistory> {
   const records = await readSortedRecords(sourceConversationId);
   const sliced = records
-    .filter((r) => r.sequence <= targetSequence && r.type !== 'session_meta')
+    .filter((r) => r.sequence <= targetSequence
+      && r.type !== 'session_meta'
+      && r.type !== 'turn_start'
+      && r.type !== 'turn_completion')
     .map((r) => ({ type: r.type, payload: r.payload }) as RolloutItem);
   return {
     mode: 'forked',

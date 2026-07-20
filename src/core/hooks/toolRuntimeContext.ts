@@ -10,6 +10,23 @@ type MutableToolRuntimeContext = {
 
 interface RuntimeSessionLike {
   getTabId?(): number;
+  getWorkingDirectory?(): string | undefined;
+  getToolRegistry?(): {
+    getCurrentPageContext?(): Promise<{ currentUrl?: string; currentDomain?: string }>;
+  } | null;
+}
+
+export interface ToolPageContext {
+  tabId?: number;
+  currentUrl?: string;
+  currentDomain?: string;
+}
+
+export interface ToolRuntimeContextOptions {
+  /** Reuse the page snapshot already resolved for this tool call. */
+  pageContext?: ToolPageContext;
+  /** False prevents this helper from initiating its own browser read. */
+  resolvePageContext?: boolean;
 }
 
 function parseDomain(url: string | undefined): string | undefined {
@@ -21,17 +38,6 @@ function parseDomain(url: string | undefined): string | undefined {
   }
 }
 
-function getCwd(): string | undefined {
-  try {
-    if (typeof process !== 'undefined' && typeof process.cwd === 'function') {
-      return process.cwd();
-    }
-  } catch {
-    // Optional runtime context must never break tool execution.
-  }
-  return undefined;
-}
-
 /**
  * Best-effort hook context for browser/runtime-aware tool hooks.
  *
@@ -41,35 +47,43 @@ function getCwd(): string | undefined {
  */
 export async function getToolRuntimeContext(
   session: RuntimeSessionLike,
+  options: ToolRuntimeContextOptions = {},
 ): Promise<ToolRuntimeContext> {
   const context: MutableToolRuntimeContext = {};
-  const cwd = getCwd();
+  let cwd: string | undefined;
+  try {
+    cwd = session.getWorkingDirectory?.();
+  } catch {
+    cwd = undefined;
+  }
   if (cwd) context.cwd = cwd;
 
   let tabId: number | undefined;
   try {
-    tabId = session.getTabId?.();
+    tabId = options.pageContext?.tabId ?? session.getTabId?.();
   } catch {
     tabId = undefined;
   }
   if (typeof tabId === 'number' && tabId >= 0) {
     context.tab_id = tabId;
-  } else {
-    return context;
   }
 
+  let page = options.pageContext;
+  if (!page && options.resolvePageContext !== false && context.tab_id !== undefined) {
+    try {
+      page = await session.getToolRegistry?.()?.getCurrentPageContext?.();
+    } catch {
+      // Missing permissions, closed tabs, and headless runtimes all degrade to
+      // stored tab/cwd context.
+    }
+  }
   try {
-    const chromeTabs = globalThis.chrome?.tabs;
-    if (chromeTabs?.get) {
-      const tab = await chromeTabs.get(tabId);
-      if (tab?.url) {
-        context.current_url = tab.url;
-        context.current_domain = parseDomain(tab.url);
-      }
+    if (page?.currentUrl) {
+      context.current_url = page.currentUrl;
+      context.current_domain = page.currentDomain ?? parseDomain(page.currentUrl);
     }
   } catch {
-    // Missing permissions, closed tabs, and headless runtimes all degrade to
-    // tab_id-only context.
+    // Malformed optional page context must never break tool execution.
   }
 
   return context;

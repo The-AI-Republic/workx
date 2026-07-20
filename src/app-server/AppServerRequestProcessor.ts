@@ -25,12 +25,18 @@ import {
   invalidRequest,
   unauthorized,
   WS_CLOSE,
+  NODE_SCOPES,
   type MethodContext,
   type ChallengePayload,
   type HelloOkPayload,
   type ErrorShape,
 } from '@workx/ws-server';
-import type { AppServerConnectionRegistry, ConnectionSocket } from './AppServerConnectionRegistry';
+import type { NodeBridge } from './node-bridge/NodeBridge';
+import type {
+  AppServerConnectionRegistry,
+  AppServerConnectionState,
+  ConnectionSocket,
+} from './AppServerConnectionRegistry';
 import type { AppServerAuth } from './connection/AppServerAuth';
 import type { RequestQueue } from './queue/RequestQueue';
 import { resolveSerialization } from './queue/requestSerialization';
@@ -69,6 +75,8 @@ export interface AppServerRequestProcessorDeps {
   sessionDisposer?: (sessionKey: string) => Promise<void>;
   /** Allowed scopes a connection may be granted (intersected with requested). */
   allowedScopes?: string[];
+  /** When set, `mode: 'node'` connections are accepted and routed here. */
+  nodeBridge?: NodeBridge;
   now?: () => number;
 }
 
@@ -152,6 +160,15 @@ export class AppServerRequestProcessor {
       return;
     }
 
+    // Node-bridge methods are handled inline (not via the global handler map)
+    // and bypass the rate limiter and queue: `node.result` is the completion
+    // of server-initiated work — queueing it behind other requests could
+    // deadlock an invoke awaiting its own result's turn in the queue.
+    if (req.method.startsWith('node.')) {
+      this.runNodeMethod(conn, req.id, req.method, req.params);
+      return;
+    }
+
     const handler = getMethodHandler(req.method);
     if (!handler) {
       conn.socket.send(JSON.stringify(makeErrorResponse(req.id, invalidRequest(`No handler: ${req.method}`))));
@@ -199,6 +216,9 @@ export class AppServerRequestProcessor {
   onClose(connectionId: string): void {
     const conn = this.deps.registry.get(connectionId);
     if (!conn) return;
+    if (conn.clientInfo?.mode === 'node') {
+      this.deps.nodeBridge?.onNodeDisconnected(connectionId);
+    }
     const sessionKey = conn.sessionKey;
     this.deps.watchdog.clearHandshakeTimeout(connectionId);
     this.deps.rateLimiter.clear(connectionId);
@@ -217,6 +237,51 @@ export class AppServerRequestProcessor {
   // ───────────────────────────────────────────────────────────────────────
   // Internals
   // ───────────────────────────────────────────────────────────────────────
+
+  /** Dispatch a node.* method inline against the NodeBridge. */
+  private runNodeMethod(
+    conn: AppServerConnectionState,
+    requestId: string,
+    method: string,
+    params: Record<string, unknown> | undefined,
+  ): void {
+    const bridge = this.deps.nodeBridge;
+    if (!bridge || conn.clientInfo?.mode !== 'node') {
+      conn.socket.send(
+        JSON.stringify(makeErrorResponse(requestId, unauthorized('node.* methods require a node connection'))),
+      );
+      return;
+    }
+    try {
+      let out: unknown;
+      switch (method) {
+        case 'node.advertise':
+          out = bridge.handleAdvertise(conn.connectionId, params);
+          break;
+        case 'node.result':
+          out = bridge.handleResult(conn.connectionId, params);
+          break;
+        case 'node.heartbeat':
+          out = { ok: true, ts: this.now() };
+          break;
+        default:
+          conn.socket.send(
+            JSON.stringify(makeErrorResponse(requestId, invalidRequest(`Unknown method: ${method}`))),
+          );
+          return;
+      }
+      conn.socket.send(JSON.stringify(makeResponse(requestId, out)));
+    } catch (err) {
+      conn.socket.send(
+        JSON.stringify(
+          makeErrorResponse(
+            requestId,
+            invalidRequest(err instanceof Error ? err.message : 'Invalid node request'),
+          ),
+        ),
+      );
+    }
+  }
 
   private async runHandler(
     connectionId: string,
@@ -294,27 +359,41 @@ export class AppServerRequestProcessor {
       return;
     }
 
+    const isNode = clientInfo.mode === 'node';
+    if (isNode && !this.deps.nodeBridge) {
+      conn.socket.send(
+        JSON.stringify(makeErrorResponse(req.id, invalidRequest('Node connections are not accepted here'))),
+      );
+      conn.socket.close(WS_CLOSE.POLICY_VIOLATION, 'Node mode unsupported');
+      this.onClose(connectionId);
+      return;
+    }
+
     // Resolve scopes: allowed ∩ requested (or all allowed if none requested).
-    const allowed = this.deps.allowedScopes ?? DEFAULT_APP_SERVER_SCOPES;
+    // Node connections get exactly the node scopes — never chat/config/admin.
+    const allowed = isNode ? [...NODE_SCOPES] : (this.deps.allowedScopes ?? DEFAULT_APP_SERVER_SCOPES);
     const requested = req.params.scopes;
     const scopes =
       requested && requested.length > 0 ? requested.filter((s) => allowed.includes(s)) : [...allowed];
 
-    // Create a dedicated session for this connection.
-    let sessionKey: string;
-    try {
-      sessionKey = await this.deps.sessionFactory();
-    } catch (err) {
-      conn.socket.send(
-        JSON.stringify(
-          makeErrorResponse(req.id, {
-            code: 'UNAVAILABLE',
-            message: `Failed to create session: ${err instanceof Error ? err.message : String(err)}`,
-            retryable: true,
-          }),
-        ),
-      );
-      return;
+    // Create a dedicated session for this connection. Node connections are
+    // tool executors, not chat clients — they get no agent session.
+    let sessionKey: string | undefined;
+    if (!isNode) {
+      try {
+        sessionKey = await this.deps.sessionFactory();
+      } catch (err) {
+        conn.socket.send(
+          JSON.stringify(
+            makeErrorResponse(req.id, {
+              code: 'UNAVAILABLE',
+              message: `Failed to create session: ${err instanceof Error ? err.message : String(err)}`,
+              retryable: true,
+            }),
+          ),
+        );
+        return;
+      }
     }
 
     conn.authenticated = true;
@@ -322,8 +401,16 @@ export class AppServerRequestProcessor {
     conn.scopes = scopes;
     conn.sessionKey = sessionKey;
     conn.clientInfo = { id: clientInfo.id, mode: clientInfo.mode };
-    conn.subscriptions.add(sessionKey);
+    if (sessionKey) conn.subscriptions.add(sessionKey);
     this.deps.watchdog.clearHandshakeTimeout(connectionId);
+
+    if (isNode) {
+      this.deps.nodeBridge!.onNodeConnected({
+        connectionId,
+        clientId: clientInfo.id,
+        sendEvent: (event, payload) => conn.socket.send(JSON.stringify(makeEvent(event, payload))),
+      });
+    }
 
     const helloOk: HelloOkPayload = {
       type: 'hello-ok',

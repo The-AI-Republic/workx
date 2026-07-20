@@ -284,7 +284,8 @@
     border: none;
     color: var(--workx-primary);
     cursor: pointer;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     padding: 0.25rem 0.5rem;
     border-radius: 0.375rem;
     transition: background 0.2s;
@@ -296,8 +297,9 @@
 
   .section-title {
     margin: 0;
-    font-size: 1.25rem;
-    font-weight: 600;
+    font-size: var(--text-xl);
+    line-height: var(--text-xl--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
@@ -316,14 +318,16 @@
 
   .subsection-title {
     margin: 0 0 0.25rem 0;
-    font-size: 0.9375rem;
-    font-weight: 600;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
   .subsection-description {
     margin: 0 0 0.75rem 0;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     color: var(--workx-text-secondary);
   }
 
@@ -370,13 +374,15 @@
   }
 
   .mode-label {
-    font-weight: 600;
-    font-size: 0.875rem;
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     color: var(--workx-text);
   }
 
   .mode-desc {
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     color: var(--workx-text-secondary);
   }
 
@@ -389,7 +395,8 @@
   .domain-input {
     flex: 1;
     padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     background: var(--workx-background);
     border: 1px solid var(--workx-border);
     border-radius: 0.375rem;
@@ -402,7 +409,8 @@
 
   .add-button {
     padding: 0.5rem 1rem;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     background: var(--workx-primary);
     color: white;
     border: none;
@@ -426,7 +434,8 @@
     align-items: center;
     gap: 0.375rem;
     padding: 0.25rem 0.5rem;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     border-radius: 0.25rem;
   }
 
@@ -445,7 +454,8 @@
     border: none;
     color: inherit;
     cursor: pointer;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     padding: 0;
     opacity: 0.6;
     transition: opacity 0.2s;
@@ -463,8 +473,9 @@
 
   .save-button {
     padding: 0.625rem 1.5rem;
-    font-size: 0.875rem;
-    font-weight: 600;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-semibold);
     background: var(--workx-primary);
     color: white;
     border: none;
@@ -479,7 +490,8 @@
   }
 
   .save-message {
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
   }
 
   .save-message.success {

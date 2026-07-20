@@ -59,7 +59,20 @@ Each platform provides concrete implementations of these interfaces:
 | **CredentialStore** | `ChromeCredentialStore` (chrome.storage) | `KeytarCredentialStore` (OS keychain) | config.json / env vars |
 | **IMCPClientAdapter** | `MCPClient` (SSE) | `RustMCPBridge` (Tauri stdio) | `NodeMCPBridge` (child_process) + `MCPClient` (SSE) |
 | **MessageRouter** | Default (chrome.runtime) | `DesktopMessageRouter` | `ServerMessageRouter` |
-| **Bootstrap** | `AgentRegistry` (multi-agent) | `DesktopAgentBootstrap` | `ServerAgentBootstrap` |
+| **Bootstrap** | `SessionManager` in service worker | `ServerAgentBootstrap` desktop-runtime profile | `ServerAgentBootstrap` |
+
+## Durable multi-thread lifecycle
+
+All platforms construct agents through `SessionManager` and a platform-owned
+`AgentAssembler`. Extension and desktop keep conversations durable while live graphs are
+hydrated and suspended on demand; headless server keeps eager construction. The
+`thread_index` store is the UI list/search source, while rollout storage is the durable
+conversation source. Agent events pass through the manager's per-session sequence/replay
+gate before `ChannelManager` broadcasts them.
+
+The webfront holds a single `threadStore` projection containing index metadata, runtime
+state, conversation buffers, replay cursors, pending correlated submissions, and browser
+attention. It persists only the selected session ID locally.
 
 ## Build System
 

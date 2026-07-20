@@ -573,6 +573,7 @@ describe('createConfigChangeNotification', () => {
   it('should create a CONFIG_CHANGE notification from an event', () => {
     const event: IConfigChangeEvent = {
       type: 'config-changed',
+      generation: 1,
       section: 'model',
       oldValue: 'gpt-4',
       newValue: 'gpt-5',
@@ -592,6 +593,7 @@ describe('createConfigChangeNotification', () => {
   it('should handle event without oldValue', () => {
     const event: IConfigChangeEvent = {
       type: 'config-changed',
+      generation: 2,
       section: 'provider',
       newValue: { id: 'openai' },
       timestamp: 2000,

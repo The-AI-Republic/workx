@@ -33,6 +33,7 @@ export const STORE_KEY_PATHS: Record<string, string> = {
    * in SQLite.
    */
   task_output_chunks: 'chunkId',
+  thread_index: 'sessionId',
 };
 
 /**
@@ -73,6 +74,8 @@ export const INDEX_FIELD_MAP: Record<string, string | string[]> = {
   // task_output_chunks (Track 04)
   by_task_id: 'taskId',
   by_task_seq: ['taskId', 'seq'],
+  by_last_active_at: 'lastActiveAt',
+  by_deleted_at: 'deletedAt',
 };
 
 /**

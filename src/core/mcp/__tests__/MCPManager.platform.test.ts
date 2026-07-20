@@ -213,7 +213,7 @@ describe('MCPManager Platform Features', () => {
       expect(browserServer?.transport).toBe('stdio');
       expect(browserServer?.platform).toBe('desktop');
       expect(browserServer?.command).toBe('npx');
-      expect(browserServer?.args).toEqual(['chrome-devtools-mcp', '--no-usage-statistics', '--autoConnect']);
+      expect(browserServer?.args).toEqual(['chrome-devtools-mcp', '--no-usage-statistics']);
       expect(browserServer?.timeout).toBe(180000);
     });
 

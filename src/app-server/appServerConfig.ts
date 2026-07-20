@@ -70,6 +70,22 @@ export function normalizeAppServerConfig(raw?: Partial<IAppServerConfig>): IAppS
     );
   }
 
+  // Origin allowlist: only extension origins may be exempted from
+  // rejectBrowserOrigins. Web origins would let any page attempt a token
+  // brute force from inside the browser — never allowed.
+  const origins = merged.allowedOrigins ?? [];
+  if (!Array.isArray(origins)) {
+    throw new AppServerConfigError('appServer.allowedOrigins must be an array of origins');
+  }
+  for (const origin of origins) {
+    if (typeof origin !== 'string' || !origin.startsWith('chrome-extension://')) {
+      throw new AppServerConfigError(
+        `appServer.allowedOrigins entry '${String(origin)}' must be a chrome-extension:// origin`,
+      );
+    }
+  }
+  merged.allowedOrigins = origins;
+
   // Non-loopback bind requires allowLan.
   if (
     merged.transport === 'websocket' &&

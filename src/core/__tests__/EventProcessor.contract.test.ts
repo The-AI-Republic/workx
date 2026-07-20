@@ -5,15 +5,54 @@
  * IEventProcessor contract defined in the specification.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EventProcessor } from '@/webfront/components/event_display/EventProcessor';
 import type { Event } from '@/core/protocol/types';
+import { getInitializedUIClient } from '@/core/messaging';
+
+vi.mock('@/core/messaging', () => ({
+  getInitializedUIClient: vi.fn(),
+}));
 
 describe('EventProcessor Contract Tests', () => {
   let processor: EventProcessor;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     processor = new EventProcessor();
+  });
+
+  it('routes approval decisions to the session that emitted the request', async () => {
+    const submitOp = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(getInitializedUIClient).mockResolvedValue({ submitOp } as any);
+    processor = new EventProcessor('session-origin');
+    const event = {
+      id: 'evt-approval',
+      msg: {
+        type: 'ApprovalRequested',
+        data: {
+          id: 'approval-123',
+          tool_name: 'browser__click',
+          explanation: 'Click a page element',
+          risk_score: 40,
+          risk_level: 'medium',
+        },
+      },
+    } as Event;
+
+    const result = processor.processEvent(event);
+    result?.requiresApproval?.onApprove();
+
+    await vi.waitFor(() => {
+      expect(submitOp).toHaveBeenCalledWith(
+        {
+          type: 'ExecApproval',
+          id: 'approval-123',
+          decision: 'approve',
+        },
+        { sessionId: 'session-origin' },
+      );
+    });
   });
 
   it('should transform AgentMessage to ProcessedEvent with category message', () => {

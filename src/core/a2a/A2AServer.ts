@@ -43,7 +43,7 @@ export interface A2ATurnResult {
  * Bridge between the A2A server and the local agent runtime.
  *
  * The bootstrap supplies the concrete implementation (backed by the
- * AgentRegistry + event tap); tests supply a mock.
+ * SessionManager + event tap); tests supply a mock.
  */
 export interface A2AAgentBridge {
   /**

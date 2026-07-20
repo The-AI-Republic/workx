@@ -11,11 +11,61 @@
 
 import type { ServiceHandler } from '@/core/channels/ServiceRegistry';
 import type { IAuthManager } from '@/core/models/types/Auth';
-import {
-  accessStateFromReadyState,
-  type AgentAccessState,
-  type RuntimeStateController,
-} from './runtime-state';
+import type { AgentAccessState, RuntimeStateController } from './runtime-state';
+import { stripLockedWrites } from '@/core/config/policy/guards';
+import type { ApprovalMode } from '@/core/approval/types';
+
+const APPROVAL_MODES = new Set<ApprovalMode>(['balanced', 'high_speed', 'yolo']);
+const APPROVAL_CONFIG_KEYS = new Set([
+  'version',
+  'mode',
+  'userRules',
+  'trustedDomains',
+  'blockedDomains',
+  'timeouts',
+]);
+
+function validateApprovalConfigPatch(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Approval config must be an object');
+  }
+  const config = value as Record<string, unknown>;
+  const unknownKeys = Object.keys(config).filter((key) => !APPROVAL_CONFIG_KEYS.has(key));
+  if (unknownKeys.length > 0) {
+    throw new Error(`Unknown approval config field(s): ${unknownKeys.join(', ')}`);
+  }
+  if (config.version !== undefined && config.version !== '1.0.0') {
+    throw new Error('Unsupported approval config version');
+  }
+  if (config.mode !== undefined && !APPROVAL_MODES.has(config.mode as ApprovalMode)) {
+    throw new Error(`Invalid approval mode: ${String(config.mode)}`);
+  }
+  for (const field of ['trustedDomains', 'blockedDomains'] as const) {
+    const domains = config[field];
+    if (domains !== undefined && (
+      !Array.isArray(domains) || domains.some((domain) => typeof domain !== 'string')
+    )) {
+      throw new Error(`${field} must be an array of strings`);
+    }
+  }
+  if (config.userRules !== undefined && !Array.isArray(config.userRules)) {
+    throw new Error('userRules must be an array');
+  }
+  if (config.timeouts !== undefined) {
+    if (!config.timeouts || typeof config.timeouts !== 'object' || Array.isArray(config.timeouts)) {
+      throw new Error('timeouts must be an object');
+    }
+    for (const [level, timeout] of Object.entries(config.timeouts)) {
+      if (!['low', 'medium', 'high', 'critical'].includes(level)) {
+        throw new Error(`Unknown approval timeout: ${level}`);
+      }
+      if (typeof timeout !== 'number' || !Number.isFinite(timeout) || timeout < 0) {
+        throw new Error(`Invalid approval timeout for ${level}`);
+      }
+    }
+  }
+  return config;
+}
 
 export interface AgentServiceDeps {
   /** Registry for looking up sessions by ID */
@@ -32,10 +82,13 @@ export interface AgentServiceDeps {
   createAuthManager?: (shouldUseBackend: boolean, backendBaseUrl: string | null) => IAuthManager;
 
   /** Preserve auth manager for agent recreation */
-  setAuthManager?: (authManager: IAuthManager | null) => void;
+  updateAuthContext?: (authManager: IAuthManager | null) => void;
 
   /** Runtime-owned desktop access state contract (Track 44). */
   runtimeState?: RuntimeStateController;
+
+  /** Bootstrap-owned readiness projection; never depends on a hydrated chat. */
+  getGlobalAccessState?: () => Promise<AgentAccessState> | AgentAccessState;
 
   /** Update approval config in storage and in-memory ApprovalGate */
   updateApprovalConfig?: (config: Record<string, unknown>) => Promise<void>;
@@ -44,32 +97,9 @@ export interface AgentServiceDeps {
 export function createAgentServices(deps: AgentServiceDeps): Record<string, ServiceHandler> {
   const { registry } = deps;
 
-  function isPrimarySessionId(sessionId: string): boolean {
-    const sessions = registry.listSessions() as Array<{
-      sessionId: string;
-      state: string;
-      sessionType?: string;
-      type?: string;
-    }>;
-    const activeSessions = sessions.filter((s) => s.state !== 'terminated');
-    const explicitlyPrimary = activeSessions.find((s) => s.sessionType === 'primary' || s.type === 'primary');
-    if (explicitlyPrimary) {
-      return explicitlyPrimary.sessionId === sessionId;
-    }
-    return activeSessions[0]?.sessionId === sessionId;
-  }
-
   async function computeAccessState(fallback?: Partial<AgentAccessState>): Promise<AgentAccessState> {
-    const sessions = registry.listSessions() as Array<{ sessionId: string; state: string; sessionType?: string; type?: string }>;
-    const active = sessions.find((s) => s.state !== 'terminated' && (s.sessionType === 'primary' || s.type === 'primary'))
-      ?? sessions.find((s) => s.state !== 'terminated');
-    if (active) {
-      const agentSession = registry.getSession(active.sessionId);
-      if (agentSession?.agent) {
-        const status = await agentSession.agent.isReady();
-        return accessStateFromReadyState(status);
-      }
-    }
+    if (deps.getGlobalAccessState) return deps.getGlobalAccessState();
+    if (deps.runtimeState) return deps.runtimeState.getAccessState();
     return {
       status: fallback?.status ?? 'initializing',
       mode: fallback?.mode ?? 'none',
@@ -106,9 +136,6 @@ export function createAgentServices(deps: AgentServiceDeps): Record<string, Serv
       }
 
       const status = await agentSession.agent.isReady();
-      if (deps.runtimeState && isPrimarySessionId(sessionId)) {
-        await deps.runtimeState.setAccessFromReadyState(status);
-      }
       return { ...status as object, timestamp: Date.now() };
     },
 
@@ -142,7 +169,7 @@ export function createAgentServices(deps: AgentServiceDeps): Record<string, Serv
 
       const agentSession = registry.getSession(sessionId);
       if (!agentSession?.agent) {
-        throw new Error(`Session not found: ${sessionId}`);
+        return { success: true, status: 'not-running' };
       }
 
       const session = agentSession.agent.getSession();
@@ -150,7 +177,7 @@ export function createAgentServices(deps: AgentServiceDeps): Record<string, Serv
       // background sub-agents survive. interruptTask() encapsulates the
       // foreground-only logic.
       await session.interruptTask();
-      return { success: true };
+      return { success: true, status: 'interrupted' };
     },
 
     /**
@@ -169,26 +196,14 @@ export function createAgentServices(deps: AgentServiceDeps): Record<string, Serv
         useOwnApiKey?: boolean;
       };
 
-      if (!deps.createAuthManager || !deps.setAuthManager) {
+      if (!deps.createAuthManager || !deps.updateAuthContext) {
         throw new Error('Auth initialization not supported on this platform');
       }
 
       const shouldUseBackend = useOwnApiKey === false;
       const authManager = deps.createAuthManager(shouldUseBackend, shouldUseBackend ? (backendBaseUrl ?? null) : null);
 
-      deps.setAuthManager(authManager);
-
-      // Apply auth manager to all active sessions
-      const sessions = registry.listSessions() as Array<{ sessionId: string; state: string }>;
-      for (const s of sessions) {
-        if (s.state === 'terminated') continue;
-        const agentSession = registry.getSession(s.sessionId);
-        if (agentSession?.agent) {
-          const factory = agentSession.agent.getModelClientFactory();
-          factory.setAuthManager(authManager);
-          await agentSession.agent.refreshModelClient();
-        }
-      }
+      deps.updateAuthContext(authManager);
 
       const access = await publishAccessState({
         status: shouldUseBackend ? 'ready' : 'needs_api_key',
@@ -204,7 +219,8 @@ export function createAgentServices(deps: AgentServiceDeps): Record<string, Serv
      * Update approval config — global, applies to all sessions.
      */
     'approval.updateConfig': async (params) => {
-      const config = params as Record<string, unknown>;
+      const validated = validateApprovalConfigPatch(params);
+      const { patch: config, stripped } = stripLockedWrites('agent', validated, 'approval');
       // Platform-specific storage update (if provided)
       if (deps.updateApprovalConfig) {
         await deps.updateApprovalConfig(config);
@@ -217,13 +233,16 @@ export function createAgentServices(deps: AgentServiceDeps): Record<string, Serv
         if (agentSession?.agent) {
           const gate = agentSession.agent.getToolRegistry().getApprovalGate();
           if (gate) {
-            if (config.mode) gate.setMode(config.mode as string);
+            if (config.mode) gate.setMode(config.mode as ApprovalMode);
             if (config.trustedDomains) gate.setTrustedDomains(config.trustedDomains as string[]);
             if (config.blockedDomains) gate.setBlockedDomains(config.blockedDomains as string[]);
           }
         }
       }
-      return { success: true };
+      return {
+        success: true,
+        ...(stripped.length > 0 && { ignoredLockedKeys: stripped }),
+      };
     },
   };
 }

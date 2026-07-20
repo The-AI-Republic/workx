@@ -40,7 +40,7 @@ export const FLAG_NAMES = ['MCP', 'A2A', 'REMOTE_BRIDGE', 'X402', 'VOICE'];
  */
 export const FLAG_DEFAULTS = {
   extension: { MCP: true,  A2A: true,  REMOTE_BRIDGE: false, X402: false, VOICE: false },
-  desktop:   { MCP: true,  A2A: true,  REMOTE_BRIDGE: true,  X402: false, VOICE: true  },
+  desktop:   { MCP: true,  A2A: true,  REMOTE_BRIDGE: true,  X402: false, VOICE: true },
   server:    { MCP: true,  A2A: false, REMOTE_BRIDGE: false, X402: false, VOICE: false },
 };
 

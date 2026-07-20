@@ -12,7 +12,7 @@
 
 {#if locked}
   <span
-    class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 align-middle"
+    class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 align-middle"
     title={tooltip}
     data-testid="managed-badge"
   >
