@@ -197,7 +197,7 @@
         const config = settingsConfig.getConfig();
         const providerConfig = config.providers?.openai;
         if (providerConfig) {
-          await settingsConfig.updateConfig({
+          await settingsConfig.updateConfigAndPersist({
             providers: {
               ...config.providers,
               openai: { ...providerConfig, authMethod: 'chatgpt_oauth' },
@@ -250,7 +250,7 @@
         const config = settingsConfig.getConfig();
         const providerConfig = config.providers?.openai;
         if (providerConfig) {
-          await settingsConfig.updateConfig({
+          await settingsConfig.updateConfigAndPersist({
             providers: {
               ...config.providers,
               openai: { ...providerConfig, authMethod: 'api_key' },
@@ -793,7 +793,7 @@
       // Persist the user's preference after the runtime confirms the effective
       // access state. The runtime remains the source of truth for display.
       const config = settingsConfig.getConfig();
-      await settingsConfig.updateConfig({
+      await settingsConfig.updateConfigAndPersist({
         preferences: {
           ...config.preferences,
           useOwnApiKey: newValue,

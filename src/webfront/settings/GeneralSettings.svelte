@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { AgentConfig } from '@/config/AgentConfig';
+  import type { AgentConfig } from '@/config/AgentConfig';
   import type { IUserPreferences } from '@/config/types';
   import { uiTheme, themePreference, type ThemePreference } from '../stores/themeStore';
   import { showTokenUsage } from '../stores/tokenUsageStore';
@@ -35,6 +35,8 @@
   let isSaving = $state(false);
   let saveMessage = $state('');
   let saveMessageType: 'success' | 'error' | '' = $state('');
+  let saveQueued = false;
+  let runtimeNotificationQueued = false;
 
   // Language state
   let selectedLanguage = $state(getCurrentLocale());
@@ -95,29 +97,34 @@
     }
   }
 
-  async function autoSave() {
+  async function autoSave(notifyRuntime = false) {
+    saveQueued = true;
+    runtimeNotificationQueued ||= notifyRuntime;
     if (isSaving) return;
 
     try {
       isSaving = true;
-      await settingsConfig.updateConfig({ preferences: currentPreferences });
+      while (saveQueued) {
+        saveQueued = false;
+        const shouldNotifyRuntime = runtimeNotificationQueued;
+        runtimeNotificationQueued = false;
+        const preferencesSnapshot = { ...currentPreferences };
 
-      // Settings uses an isolated AgentConfig instance, so saving here does not
-      // update the shared singleton that the chat/scheduler views read from
-      // (AgentConfig.getInstance()). Without this refresh those views re-run
-      // themePreference.initialize(...) with the STALE in-memory preferences on
-      // their next mount, making the theme "bounce back" when settings close.
-      try {
-        const shared = await AgentConfig.getInstance();
-        await shared.reload();
-      } catch (e) {
-        console.warn('[GeneralSettings] Failed to refresh shared config after save:', e);
+        await settingsConfig.updateConfigAndPersist({ preferences: preferencesSnapshot });
+
+        // Most general preferences are webfront-only. Runtime-relevant changes
+        // opt in so a theme or language change does not rebuild agent context.
+        if (shouldNotifyRuntime) {
+          try {
+            const client = await getInitializedUIClient();
+            await client.serviceRequest('agent.configUpdate');
+          } catch (error) {
+            console.warn('[messaging] config update failed:', error);
+          }
+        }
+
+        originalPreferences = preferencesSnapshot;
       }
-
-      // Notify backend of config update
-      getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(e => console.warn('[messaging] config update failed:', e));
-
-      originalPreferences = { ...currentPreferences };
       saveMessage = t('Settings saved successfully');
       saveMessageType = 'success';
 
@@ -129,6 +136,8 @@
         saveMessageType = '';
       }, 3000);
     } catch (error) {
+      saveQueued = false;
+      runtimeNotificationQueued = false;
       console.error('[GeneralSettings] Failed to save preferences:', error);
       const errorMsg = error instanceof Error ? error.message : t('Unknown error');
       saveMessage = t('Failed to save settings') + `: ${errorMsg}`;
@@ -165,6 +174,7 @@
     const target = event.target as HTMLSelectElement;
     const value = parseInt(target.value, 10);
     currentPreferences.maxConcurrentSessions = value;
+    autoSave();
 
     // Notify backend to update SessionManager limit
     getInitializedUIClient().then(c => c.serviceRequest('session.setMaxConcurrent', { maxConcurrent: value })).catch(() => {
@@ -177,7 +187,7 @@
   function handleWorkspaceRootChange(event: Event) {
     const v = (event.target as HTMLInputElement).value.trim();
     currentPreferences.workspaceRoot = v.length ? v : undefined;
-    autoSave();
+    autoSave(true);
   }
 
   function handleLanguageChange(event: Event) {

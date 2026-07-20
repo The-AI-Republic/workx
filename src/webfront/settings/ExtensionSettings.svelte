@@ -190,7 +190,7 @@
       // Update allowed origins from text area
       handleOriginsInput();
 
-      await settingsConfig.updateConfig({ extension: currentExtension });
+      await settingsConfig.updateConfigAndPersist({ extension: currentExtension });
 
       // Notify backend of config update
       getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(e => console.warn('[messaging] config update failed:', e));
