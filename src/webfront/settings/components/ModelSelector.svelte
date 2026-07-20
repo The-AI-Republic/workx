@@ -498,7 +498,7 @@
                     {/each}
                     {#if isSelectedModelName && !isLockedForFreeUser}
                       <span
-                        class="selected-tag px-2 py-0.5 text-sm bg-cyan-500/20 text-cyan-400 rounded border border-cyan-500/30"
+                        class="selected-tag px-2 py-0.5 text-xs bg-cyan-500/20 text-cyan-400 rounded border border-cyan-500/30"
                       >
                         {$_t('Selected')}
                       </span>
@@ -525,7 +525,7 @@
                   {/if}
                   {#if isSelectedModelName && !isLockedForFreeUser}
                     <span
-                      class="selected-tag px-2 py-0.5 text-sm bg-cyan-500/20 text-cyan-400 rounded border border-cyan-500/30"
+                      class="selected-tag px-2 py-0.5 text-xs bg-cyan-500/20 text-cyan-400 rounded border border-cyan-500/30"
                     >
                       {$_t('Selected')}
                     </span>
@@ -575,13 +575,13 @@
                       </a>
                     </div>
                   {:else}
-                    <div class="mt-1 text-sm text-gray-400">
+                    <div class="mt-1 text-meta font-normal text-gray-400">
                       {displayProvider.contextWindow.toLocaleString()} {$_t('tokens')}
                     </div>
                   {/if}
                 {:else if firstProvider.pricing}
                   <div class="mt-2 flex items-center justify-between gap-2">
-                    <div class="text-sm text-gray-400">
+                    <div class="text-meta font-normal text-gray-400">
                       <div>{$_t('Input:')} {firstProvider.pricing.inputToken}</div>
                       <div>{$_t('Output:')} {firstProvider.pricing.outputToken}</div>
                     </div>
@@ -604,7 +604,7 @@
                     </a>
                   </div>
                 {:else}
-                  <div class="mt-1 text-sm text-gray-400">
+                  <div class="mt-1 text-meta font-normal text-gray-400">
                     {firstProvider.contextWindow.toLocaleString()} {$_t('tokens')}
                   </div>
                 {/if}
@@ -643,7 +643,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
     cursor: pointer;
   }
 
@@ -741,9 +741,9 @@
 
   /* Tooltip line styling */
   .tooltip-line {
-    font-size: 0.875rem;
+    font-size: var(--text-meta);
     color: rgb(209, 213, 219);
-    line-height: 1.3;
+    line-height: var(--text-meta--line-height);
     word-wrap: break-word;
   }
 

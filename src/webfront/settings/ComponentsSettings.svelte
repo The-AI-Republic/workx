@@ -266,7 +266,8 @@
     background: transparent;
     color: var(--workx-text);
     padding: 0.2rem 0.4rem;
-    font-size: 1.25rem;
+    font-size: var(--text-xl);
+    line-height: var(--text-xl--line-height);
   }
 
   .privacy-note,
@@ -316,7 +317,8 @@
     border-radius: 999px;
     padding: 0.2rem 0.55rem;
     white-space: nowrap;
-    font-size: 0.8rem;
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
   }
 
   .state-badge.installed {

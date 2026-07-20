@@ -171,7 +171,7 @@
               onclick={() => doRewind('conversation')}
             >
               <div class="font-medium">{$_t('Rewind conversation')}</div>
-              <div class="opacity-60 text-xs">{$_t('Fork a new branch from this turn. Everything after is dropped.')}</div>
+              <div class="opacity-60 text-meta font-normal">{$_t('Fork a new branch from this turn. Everything after is dropped.')}</div>
             </button>
             <button
               class="px-3 py-2 rounded text-left cursor-pointer border
@@ -179,7 +179,7 @@
               onclick={() => doRewind('summarize_up_to')}
             >
               <div class="font-medium">{$_t('Summarize earlier turns')}</div>
-              <div class="opacity-60 text-xs">{$_t('Replace everything up to this turn with a single summary.')}</div>
+              <div class="opacity-60 text-meta font-normal">{$_t('Replace everything up to this turn with a single summary.')}</div>
             </button>
             <button
               class="px-3 py-2 rounded text-left cursor-pointer opacity-70 hover:opacity-100"

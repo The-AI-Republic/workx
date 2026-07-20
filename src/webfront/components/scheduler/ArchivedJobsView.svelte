@@ -134,7 +134,7 @@
                 showActions={false}
               />
               {#if job.completedAt}
-                <div class="absolute top-2 right-2 text-sm opacity-70
+                <div class="absolute top-2 right-2 text-meta font-normal opacity-70
                   {currentTheme === 'modern'
                     ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
                     : 'text-term-dim-green'}">

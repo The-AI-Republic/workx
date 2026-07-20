@@ -235,8 +235,9 @@
 
   .settings-view-title {
     margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
@@ -246,22 +247,24 @@
 
   .section-title {
     margin: 0 0 0.25rem;
-    font-size: 0.9rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     color: var(--workx-text);
   }
 
   .section-description {
     margin: 0 0 1rem;
-    font-size: 0.8rem;
+    font-size: var(--text-meta);
     color: var(--workx-text-secondary);
-    line-height: 1.4;
+    line-height: var(--text-meta--line-height);
   }
 
   .status-message {
     padding: 0.5rem;
     margin-bottom: 0.75rem;
     border-radius: 0.375rem;
-    font-size: 0.8rem;
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
     color: var(--workx-success, #00ff00);
     background: rgba(0, 255, 0, 0.1);
     border: 1px solid var(--workx-success, #00ff00);
@@ -282,12 +285,14 @@
   }
 
   .setting-label {
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     color: var(--workx-text);
   }
 
   .setting-value {
-    font-size: 0.75rem;
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
     color: var(--workx-text-secondary);
   }
 
@@ -299,12 +304,13 @@
   .btn-action {
     padding: 0.375rem 0.75rem;
     border-radius: 0.375rem;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     cursor: pointer;
     background: var(--workx-primary, #00ff00);
     color: var(--workx-background, #000);
     border: none;
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
   }
 
   .btn-action:disabled {
@@ -338,7 +344,8 @@
 
   .form-field label {
     display: block;
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     margin-bottom: 0.125rem;
     color: var(--workx-text-secondary);
   }
@@ -346,8 +353,9 @@
   .form-field input {
     width: 100%;
     padding: 0.375rem;
-    font-size: 1rem;
-    letter-spacing: 0.2em;
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+    letter-spacing: var(--tracking-pin);
     text-align: center;
     background: var(--workx-background);
     border: 1px solid var(--workx-border);
@@ -363,14 +371,15 @@
 
   .form-error {
     color: var(--workx-error, #ff0000);
-    font-size: 0.75rem;
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
     margin-bottom: 0.5rem;
   }
 
   .form-warning {
-    font-size: 0.8rem;
+    font-size: var(--text-meta);
     color: var(--workx-warning, #ffff00);
     margin: 0 0 0.5rem;
-    line-height: 1.3;
+    line-height: var(--text-meta--line-height);
   }
 </style>

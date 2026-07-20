@@ -45,7 +45,7 @@
             {theme === 'modern'
               ? 'text-chat-text dark:text-chat-text-dark font-chat'
               : 'text-term-green font-terminal'}">{model}</span>
-          <span class="text-xs
+          <span class="text-meta font-normal
             {theme === 'modern'
               ? 'text-chat-muted dark:text-chat-muted-dark font-chat'
               : 'text-term-dim-green font-terminal'}">{fmt(stats.total_tokens)} tokens &middot; {stats.taskCount} {$_t('tasks')}{#if stats.costUSD > 0} &middot; {formatCost(stats.costUSD)}{stats.costEstimated ? ' ≈' : ''}{/if}</span>
@@ -70,13 +70,13 @@
           : 'border border-term-dim-green bg-[rgba(0,255,0,0.03)]'}">
         <!-- Row 1: date/time, model, task count -->
         <div class="flex items-center justify-between mb-1">
-          <span class="text-sm
+          <span class="text-meta font-normal
             {theme === 'modern'
               ? 'text-chat-text dark:text-chat-text-dark font-chat'
               : 'text-term-green font-terminal'}">
             {formatDate(session.lastTimestamp)} {formatTime(session.lastTimestamp)}
           </span>
-          <span class="text-xs
+          <span class="text-meta font-normal
             {theme === 'modern'
               ? 'text-chat-muted dark:text-chat-muted-dark font-chat'
               : 'text-term-dim-green font-terminal'}">
@@ -84,7 +84,7 @@
           </span>
         </div>
         <!-- Row 2: token totals -->
-        <div class="text-xs
+        <div class="text-meta font-normal
           {theme === 'modern'
             ? 'text-chat-muted dark:text-chat-muted-dark font-chat'
             : 'text-term-dim-green font-terminal'}">

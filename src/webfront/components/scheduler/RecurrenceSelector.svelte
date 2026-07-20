@@ -86,7 +86,7 @@
 <div class="flex flex-col gap-2 {currentTheme === 'modern' ? 'recurrence-modern' : 'recurrence-terminal'}">
   <!-- Repeat Mode -->
   <div>
-    <span class="block text-xs mb-1 {labelClass(currentTheme)}">{$_t('Repeat')}</span>
+    <span class="block text-sm mb-1 {labelClass(currentTheme)}">{$_t('Repeat')}</span>
     <select
       class="w-full px-2 py-1.5 text-sm rounded {inputClass(currentTheme)}"
       bind:value={mode}
@@ -105,7 +105,7 @@
     {#if mode === 'custom'}
       <div class="flex gap-2 items-end">
         <div class="flex-1">
-          <span class="block text-xs mb-1 {labelClass(currentTheme)}">{$_t('Every')}</span>
+          <span class="block text-sm mb-1 {labelClass(currentTheme)}">{$_t('Every')}</span>
           <input
             type="number"
             min="1"
@@ -132,7 +132,7 @@
 
     <!-- End Condition -->
     <div>
-      <span class="block text-xs mb-1 {labelClass(currentTheme)}">{$_t('Ends')}</span>
+      <span class="block text-sm mb-1 {labelClass(currentTheme)}">{$_t('Ends')}</span>
       <select
         class="w-full px-2 py-1.5 text-sm rounded {inputClass(currentTheme)}"
         bind:value={endCondition}
@@ -146,7 +146,7 @@
 
     {#if endCondition === 'after'}
       <div>
-        <span class="block text-xs mb-1 {labelClass(currentTheme)}">{$_t('After')}</span>
+        <span class="block text-sm mb-1 {labelClass(currentTheme)}">{$_t('After')}</span>
         <div class="flex items-center gap-2">
           <input
             type="number"
@@ -163,7 +163,7 @@
 
     {#if endCondition === 'until'}
       <div>
-        <span class="block text-xs mb-1 {labelClass(currentTheme)}">{$_t('Until')}</span>
+        <span class="block text-sm mb-1 {labelClass(currentTheme)}">{$_t('Until')}</span>
         <input
           type="date"
           class="w-full px-2 py-1.5 text-sm rounded picker-input {inputClass(currentTheme)}"

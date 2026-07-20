@@ -132,7 +132,8 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 13px;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     overflow: hidden;
   }
   .desc {
@@ -141,7 +142,8 @@
     white-space: nowrap;
   }
   .status {
-    font-size: 10px;
+    font-size: var(--text-2xs);
+    line-height: var(--text-2xs--line-height);
     text-transform: uppercase;
     padding: 1px 6px;
     border-radius: 4px;
@@ -157,11 +159,12 @@
     padding: 8px 12px;
     background: var(--error-light, #fee2e2);
     color: var(--error-color, #b91c1c);
-    font-size: 12px;
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
     border-bottom: 1px solid var(--border-color, #eee);
   }
   .failure-label {
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     flex-shrink: 0;
   }
   .failure-message {
@@ -170,8 +173,8 @@
   .close {
     background: transparent;
     border: none;
-    font-size: 20px;
-    line-height: 1;
+    font-size: var(--text-xl);
+    line-height: var(--leading-none);
     cursor: pointer;
     color: var(--text-secondary, #888);
   }
@@ -180,15 +183,17 @@
     gap: 12px;
     padding: 6px 12px;
     color: var(--text-secondary, #888);
-    font-size: 11px;
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
     border-bottom: 1px solid var(--border-color, #eee);
   }
   .chunks {
     flex: 1;
     overflow-y: auto;
     padding: 8px 12px;
-    font-family: monospace;
-    font-size: 12px;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
   }
   .chunk {
     margin-bottom: 8px;
@@ -201,7 +206,8 @@
   .chunk-stderr { color: var(--error-color, #b91c1c); }
   .chunk-kind {
     display: inline-block;
-    font-size: 9px;
+    font-size: var(--text-2xs);
+    line-height: var(--text-2xs--line-height);
     text-transform: uppercase;
     color: var(--text-secondary, #888);
     margin-right: 6px;

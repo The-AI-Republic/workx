@@ -327,10 +327,14 @@
     border-radius: 12px; /* Capsule shape */
 
     /* Typography */
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 1.2;
+    font-family: var(
+      --font-chat,
+      ui-sans-serif, -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', Roboto,
+      sans-serif
+    );
+    font-size: var(--text-sm, 0.875rem);
+    font-weight: var(--font-weight-semibold, 600);
+    line-height: var(--leading-tight, 1.25);
     white-space: nowrap;
 
     /* Prevent drag/select */

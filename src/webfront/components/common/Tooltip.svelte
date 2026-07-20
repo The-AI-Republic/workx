@@ -155,8 +155,9 @@
     border: 1px solid #00cc00;
     border-radius: 4px;
     color: #00ff00;
-    font-family: 'Monaco', 'Courier New', monospace;
-    font-size: 14px;
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   }
 
@@ -190,8 +191,9 @@
     border: none;
     border-radius: 0.375rem;
     color: #ffffff;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-size: 14px;
+    font-family: var(--font-chat);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
 
