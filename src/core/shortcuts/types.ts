@@ -21,6 +21,8 @@ export type ShortcutAction =
   | 'app:quickAction'
   | 'chat:submit'
   | 'chat:newline'
+  | 'chat:historyPrevious'
+  | 'chat:historyNext'
   | 'slash:next'
   | 'slash:previous'
   | 'slash:accept'

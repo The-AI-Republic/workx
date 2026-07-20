@@ -151,6 +151,108 @@ describe('MessageInput Component', () => {
     });
   });
 
+  // Up/Down recall of recent sent messages
+  describe('Message recall (Up/Down history)', () => {
+    async function sendMessage(textarea: HTMLTextAreaElement, text: string) {
+      await fireEvent.input(textarea, { target: { value: text } });
+      await fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
+    }
+
+    async function clearField(textarea: HTMLTextAreaElement) {
+      await fireEvent.input(textarea, { target: { value: '' } });
+      textarea.selectionStart = textarea.selectionEnd = 0;
+    }
+
+    it('recalls the previous sent message on ArrowUp', async () => {
+      render(MessageInput, { props: { value: '', onSubmit: vi.fn() } });
+      const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+
+      await sendMessage(textarea, 'hello world');
+      await clearField(textarea);
+
+      await fireEvent.keyDown(textarea, { key: 'ArrowUp' });
+      expect(textarea.value).toBe('hello world');
+    });
+
+    it('walks older then newer through the last messages', async () => {
+      render(MessageInput, { props: { value: '', onSubmit: vi.fn() } });
+      const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+
+      await sendMessage(textarea, 'first');
+      await sendMessage(textarea, 'second');
+      await sendMessage(textarea, 'third');
+      await clearField(textarea);
+
+      await fireEvent.keyDown(textarea, { key: 'ArrowUp' });
+      expect(textarea.value).toBe('third');
+      textarea.selectionStart = textarea.selectionEnd = 0;
+      await fireEvent.keyDown(textarea, { key: 'ArrowUp' });
+      expect(textarea.value).toBe('second');
+      textarea.selectionStart = textarea.selectionEnd = 0;
+      await fireEvent.keyDown(textarea, { key: 'ArrowUp' });
+      expect(textarea.value).toBe('first');
+
+      // Down walks back toward newer entries.
+      await fireEvent.keyDown(textarea, { key: 'ArrowDown' });
+      expect(textarea.value).toBe('second');
+    });
+
+    it('restores the in-progress draft when Down returns to the bottom', async () => {
+      render(MessageInput, { props: { value: '', onSubmit: vi.fn() } });
+      const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+
+      await sendMessage(textarea, 'sent message');
+      // In-progress draft the user was typing.
+      await fireEvent.input(textarea, { target: { value: 'draft in progress' } });
+      textarea.selectionStart = textarea.selectionEnd = 0;
+
+      await fireEvent.keyDown(textarea, { key: 'ArrowUp' });
+      expect(textarea.value).toBe('sent message');
+
+      await fireEvent.keyDown(textarea, { key: 'ArrowDown' });
+      expect(textarea.value).toBe('draft in progress');
+    });
+
+    it('keeps only the 5 most recent messages', async () => {
+      render(MessageInput, { props: { value: '', onSubmit: vi.fn() } });
+      const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+
+      for (const msg of ['m1', 'm2', 'm3', 'm4', 'm5', 'm6']) {
+        await sendMessage(textarea, msg);
+      }
+      await clearField(textarea);
+
+      // Walk up 6 times: reaches m2 (oldest kept) and stays there — m1 was dropped.
+      for (let i = 0; i < 6; i++) {
+        await fireEvent.keyDown(textarea, { key: 'ArrowUp' });
+        textarea.selectionStart = textarea.selectionEnd = 0;
+      }
+      expect(textarea.value).toBe('m2');
+    });
+
+    it('does not recall when there is no history', async () => {
+      render(MessageInput, { props: { value: '', onSubmit: vi.fn() } });
+      const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+
+      await fireEvent.keyDown(textarea, { key: 'ArrowUp' });
+      expect(textarea.value).toBe('');
+    });
+
+    it('does not hijack ArrowUp when the caret is not on the first line', async () => {
+      render(MessageInput, { props: { value: '', onSubmit: vi.fn() } });
+      const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+
+      await sendMessage(textarea, 'recorded');
+      // Multi-line draft with the caret at the end (second line) → Up should
+      // move the cursor, not replace the text.
+      await fireEvent.input(textarea, { target: { value: 'line one\nline two' } });
+      textarea.selectionStart = textarea.selectionEnd = 'line one\nline two'.length;
+
+      await fireEvent.keyDown(textarea, { key: 'ArrowUp' });
+      expect(textarea.value).toBe('line one\nline two');
+    });
+  });
+
   // Value binding test
   describe('Value Binding', () => {
     it('should reflect value prop in textarea', () => {

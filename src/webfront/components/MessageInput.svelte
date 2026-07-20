@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
   import { push } from 'svelte-spa-router';
   import TabContext from './common/TabContext.svelte';
   import ModelSelection from './chat/ModelSelection.svelte';
@@ -60,6 +60,19 @@
 
   let isFocused = $state(false);
 
+  // Bound textarea element — used to read/reposition the caret for message recall.
+  let textareaEl = $state<HTMLTextAreaElement | undefined>();
+
+  // Recent-message recall (shell-style Up/Down history). We keep the last few
+  // messages the user actually sent so pressing Up in the composer walks back
+  // through them. `messageHistory[0]` is the most recent.
+  const MAX_MESSAGE_HISTORY = 5;
+  let messageHistory: string[] = [];
+  // -1 means "editing the live draft"; 0..len-1 indexes into messageHistory.
+  let historyIndex = -1;
+  // Stash of the in-progress draft, restored when Down walks back to the bottom.
+  let historyDraft = '';
+
   // Track 13: screenshots captured from the web clipboard, sent alongside
   // the prompt as `image` InputItems (the core funnel disk-backs them).
   let pendingAttachments: InputItem[] = $state([]);
@@ -87,9 +100,85 @@
     suggestion = null;
   }
 
+  /**
+   * Record a sent message into the rolling recall history. Empty inputs are
+   * ignored and a consecutive duplicate is not stored twice; either way the
+   * recall cursor is reset so the next Up starts from the most recent message.
+   */
+  function recordSentMessage(text: string): void {
+    const trimmed = text.trim();
+    if (trimmed && messageHistory[0] !== trimmed) {
+      messageHistory = [trimmed, ...messageHistory].slice(0, MAX_MESSAGE_HISTORY);
+    }
+    historyIndex = -1;
+    historyDraft = '';
+  }
+
+  /** True when the caret sits on the first visual line of the textarea. */
+  function caretOnFirstLine(): boolean {
+    const el = textareaEl;
+    if (!el) return true;
+    return value.slice(0, el.selectionStart ?? 0).indexOf('\n') === -1;
+  }
+
+  /** True when the caret sits on the last visual line of the textarea. */
+  function caretOnLastLine(): boolean {
+    const el = textareaEl;
+    if (!el) return true;
+    return value.slice(el.selectionEnd ?? value.length).indexOf('\n') === -1;
+  }
+
+  /** Place the caret at the very end once Svelte has flushed the new value. */
+  async function moveCaretToEnd(): Promise<void> {
+    await tick();
+    const el = textareaEl;
+    if (!el) return;
+    const end = el.value.length;
+    el.setSelectionRange(end, end);
+  }
+
+  /**
+   * Up: recall an older sent message. Only fires when the caret is on the first
+   * line (so normal multi-line cursor movement is preserved) and there is
+   * history to walk. Returns true when the key was consumed.
+   */
+  function recallPreviousMessage(): boolean {
+    if (isCommandMode || messageHistory.length === 0) return false;
+    if (!caretOnFirstLine()) return false;
+    if (historyIndex === -1) historyDraft = value;
+    if (historyIndex < messageHistory.length - 1) {
+      historyIndex += 1;
+      value = messageHistory[historyIndex];
+      void moveCaretToEnd();
+    }
+    // Consume even at the oldest entry so the caret doesn't jump unexpectedly.
+    return true;
+  }
+
+  /**
+   * Down: walk back toward newer messages and finally restore the live draft.
+   * Only fires while recalling and when the caret is on the last line. Returns
+   * true when the key was consumed.
+   */
+  function recallNextMessage(): boolean {
+    if (isCommandMode || historyIndex === -1) return false;
+    if (!caretOnLastLine()) return false;
+    if (historyIndex === 0) {
+      historyIndex = -1;
+      value = historyDraft;
+      historyDraft = '';
+    } else {
+      historyIndex -= 1;
+      value = messageHistory[historyIndex];
+    }
+    void moveCaretToEnd();
+    return true;
+  }
+
   /** Submit the current value plus any pending attachments, then reset. */
   async function submitWithAttachments(): Promise<void> {
     suggestion = null; // Track 24.3: a sent message invalidates the prediction.
+    recordSentMessage(value); // capture for Up/Down recall before the field clears
     if (pendingReads.length) {
       await Promise.all(pendingReads);
     }
@@ -286,6 +375,20 @@
       }
     }
 
+    // Up/Down recall recent sent messages (mirrors the registered
+    // chat:historyPrevious/Next shortcuts; kept here so the behavior also works
+    // without the global ShortcutProvider, e.g. in unit tests). Plain arrows
+    // only — Shift/Alt/Ctrl/Meta keep their native selection/word behavior.
+    const noMods = !event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey;
+    if (event.key === 'ArrowUp' && noMods && recallPreviousMessage()) {
+      event.preventDefault();
+      return;
+    }
+    if (event.key === 'ArrowDown' && noMods && recallNextMessage()) {
+      event.preventDefault();
+      return;
+    }
+
     // Track 24.3: Tab accepts the suggestion only when the command palette is
     // closed AND the input is empty OR the typed text is a prefix of the
     // suggestion. Guarantees Tab never hijacks the palette (handled above) or
@@ -344,6 +447,10 @@
 
   function handleInput(): void {
     ensureBuiltins();
+
+    // Typing diverges from a recalled message → leave recall mode; the edited
+    // text becomes the live draft again.
+    historyIndex = -1;
 
     // Clear error on input
     if (errorMessage) {
@@ -485,6 +592,12 @@
       submitCurrentInput();
     });
     const unregisterNewline = registerShortcut('chat:newline', 'Chat', () => false);
+    const unregisterHistoryPrevious = registerShortcut('chat:historyPrevious', 'Chat', () =>
+      recallPreviousMessage(),
+    );
+    const unregisterHistoryNext = registerShortcut('chat:historyNext', 'Chat', () =>
+      recallNextMessage(),
+    );
     const unregisterSlashNext = registerShortcut('slash:next', 'SlashCommand', () => {
       if (filteredCommands.length > 0) {
         selectedIndex = (selectedIndex + 1) % filteredCommands.length;
@@ -507,6 +620,8 @@
       unregisterSlashContext();
       unregisterSubmit();
       unregisterNewline();
+      unregisterHistoryPrevious();
+      unregisterHistoryNext();
       unregisterSlashNext();
       unregisterSlashPrevious();
       unregisterSlashDismiss();
@@ -615,6 +730,7 @@
           : 'border border-term-dim-green rounded bg-black/70 focus-within:border-term-bright-green focus-within:shadow-[0_0_0_1px_var(--color-term-bright-green)]'}"
     >
       <textarea
+        bind:this={textareaEl}
         bind:value
         {placeholder}
         onkeydown={handleKeyDown}
