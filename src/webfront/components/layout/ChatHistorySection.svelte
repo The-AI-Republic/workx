@@ -16,12 +16,13 @@
   let listRequestId = 0;
   let undo: { sessionId: string; title: string } | null = $state(null);
   let currentTheme = $derived($uiTheme);
-  let attentionThreads = $derived($threadStore.threads.filter((thread) =>
+  let historyThreads = $derived($threadStore.threads.filter((thread) => thread.publishedAt !== null));
+  let attentionThreads = $derived(historyThreads.filter((thread) =>
     thread.runtime.awaitingInputCount > 0 || thread.attentionRequest,
   ));
 
   onMount(() => {
-    if ($threadStore.threads.length === 0) void loadPage(true);
+    if (historyThreads.length === 0) void loadPage(true);
     return () => {
       listRequestId += 1;
       if (searchTimer) clearTimeout(searchTimer);
@@ -94,11 +95,16 @@
   }
 
   async function newConversation(): Promise<void> {
+    const reusable = threadStore.reuseActiveEmptyDraft();
+    if (reusable) {
+      selectConversation(reusable.sessionId);
+      return;
+    }
     const client = await getInitializedUIClient();
     const response = await client.serviceRequest<{
       sessionId: string;
       entry?: ThreadListItem;
-    }>('session.open', {});
+    }>('session.open', { surfaceId: documentSurfaceId });
     if (response.entry) threadStore.mergeThread(response.entry);
     else threadStore.createThread(response.sessionId);
     selectConversation(response.sessionId);
@@ -206,9 +212,9 @@
 
   {#if error}
     <div class="px-2 py-1.5 text-meta font-normal text-chat-error dark:text-chat-error-dark" role="alert">{error}</div>
-  {:else if $threadStore.loading && $threadStore.threads.length === 0}
+  {:else if $threadStore.loading && historyThreads.length === 0}
     <div class="px-2 py-1.5 text-meta font-normal opacity-70">{$_t('Loading history...')}</div>
-  {:else if $threadStore.threads.length === 0}
+  {:else if historyThreads.length === 0}
     <div class="px-2 py-1.5 text-meta font-normal opacity-70">{$_t('No chat history yet')}</div>
   {:else}
     <div
@@ -216,7 +222,7 @@
       data-thread-history-list
       aria-label={$_t('Chat History')}
     >
-      {#each $threadStore.threads as item (item.sessionId)}
+      {#each historyThreads as item (item.sessionId)}
         {@const isActive = $threadStore.activeSessionId === item.sessionId}
         <div class="group flex items-center rounded-md transition-colors
           {currentTheme === 'modern'

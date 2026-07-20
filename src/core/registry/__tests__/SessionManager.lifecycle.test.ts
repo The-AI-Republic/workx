@@ -107,6 +107,24 @@ class FakeAssembler implements AgentAssembler {
   }
 }
 
+class FailOncePublicationAdapter extends MemoryStorageAdapter {
+  failPublicationWrites = 0;
+
+  override async put<T>(storeName: string, value: T): Promise<void> {
+    const publishedAt = (value as { publishedAt?: unknown }).publishedAt;
+    if (
+      storeName === 'thread_index'
+      && publishedAt !== null
+      && publishedAt !== undefined
+      && this.failPublicationWrites > 0
+    ) {
+      this.failPublicationWrites -= 1;
+      throw new Error('publication unavailable');
+    }
+    await super.put(storeName, value);
+  }
+}
+
 describe('SessionManager lifecycle manager', () => {
   let assembler: FakeAssembler;
   let index: ThreadIndexStore;
@@ -148,8 +166,106 @@ describe('SessionManager lifecycle manager', () => {
     expect(assembler.inputs).toHaveLength(0);
     expect(await registry.getThread('thread')).toMatchObject({
       title: 'Draft',
+      publishedAt: null,
       runtime: { state: 'suspended' },
     });
+    expect((await registry.listThreads()).entries).toEqual([]);
+  });
+
+  it('reuses an unclaimed empty draft without sharing it across surfaces', async () => {
+    const first = await registry.openSession({ surfaceId: 'surface-a' });
+    await index.createIfMissing((await import('../../thread/ThreadIndexStore')).createThreadIndexEntry({
+      sessionId: 'published-selection',
+    }));
+    await registry.setViewed('surface-a', 'published-selection');
+
+    const reused = await registry.openSession({ surfaceId: 'surface-a' });
+    const otherSurface = await registry.openSession({ surfaceId: 'surface-b' });
+
+    expect(reused.sessionId).toBe(first.sessionId);
+    expect(otherSurface.sessionId).not.toBe(first.sessionId);
+    expect((await index.listDrafts()).map((entry) => entry.sessionId).sort()).toEqual(
+      [first.sessionId, otherSurface.sessionId].sort(),
+    );
+  });
+
+  it('publishes a draft only after the session reports a durable user message', async () => {
+    await registry.openSession({ sessionId: 'publish-after-user-message' });
+    await registry.hydrateSession('publish-after-user-message');
+
+    expect((await registry.listThreads()).entries).toEqual([]);
+    await assembler.inputs[0]?.services.onUserMessagePersisted?.('publish-after-user-message');
+
+    expect((await registry.listThreads()).entries).toMatchObject([
+      { sessionId: 'publish-after-user-message', publishedAt: expect.any(Number) },
+    ]);
+  });
+
+  it('repairs a draft whose durable user message outlived a failed publication write', async () => {
+    await registry.openSession({ sessionId: 'publication-recovery' });
+    await registry.cleanup();
+    registry = new SessionManager({
+      lifecycleMode: 'client',
+      threadIndexStore: index,
+      agentAssembler: assembler,
+      assemblyServicesFactory: async () => ({} as never),
+      loadModelContextSnapshot: async (sessionId) => ({
+        sessionId,
+        revision: 1,
+        items: [{
+          type: 'response_item',
+          payload: { type: 'message', role: 'user', content: [] },
+        }],
+      }),
+    });
+    registry.initialize(agentConfig as never);
+
+    await registry.hydrateSession('publication-recovery');
+
+    expect((await registry.listThreads()).entries).toMatchObject([
+      { sessionId: 'publication-recovery', publishedAt: expect.any(Number) },
+    ]);
+  });
+
+  it('recovers a failed publication through normal history listing while the graph is live', async () => {
+    await registry.cleanup();
+    const adapter = new FailOncePublicationAdapter();
+    let durableMessageAvailable = false;
+    index = new ThreadIndexStore(adapter);
+    registry = new SessionManager({
+      lifecycleMode: 'client',
+      threadIndexStore: index,
+      agentAssembler: assembler,
+      assemblyServicesFactory: async () => ({} as never),
+      loadRolloutSnapshot: async (sessionId) => ({
+        sessionId,
+        revision: durableMessageAvailable ? 1 : 0,
+        items: durableMessageAvailable
+          ? [{
+              type: 'response_item',
+              payload: { type: 'message', role: 'user', content: [] },
+            }]
+          : [],
+      }),
+    });
+    registry.initialize(agentConfig as never);
+
+    await registry.openSession({ sessionId: 'live-publication-recovery' });
+    const live = await registry.hydrateSession('live-publication-recovery');
+    durableMessageAvailable = true;
+    adapter.failPublicationWrites = 1;
+
+    await expect(
+      assembler.inputs[0]?.services.onUserMessagePersisted?.('live-publication-recovery'),
+    ).rejects.toThrow('publication unavailable');
+    expect(await index.require('live-publication-recovery')).toMatchObject({
+      publishedAt: null,
+    });
+    await expect(registry.hydrateSession('live-publication-recovery')).resolves.toBe(live);
+
+    expect((await registry.listThreads()).entries).toMatchObject([
+      { sessionId: 'live-publication-recovery', publishedAt: expect.any(Number) },
+    ]);
   });
 
   it('keeps an index-only workspace and passes it into later hydration', async () => {

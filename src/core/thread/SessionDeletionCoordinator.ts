@@ -34,7 +34,12 @@ export class SessionDeletionCoordinator {
     let cursor: string | undefined;
     let purged = 0;
     do {
-      const page = await this.deps.index.list({ includeDeleted: true, limit: 100, cursor });
+      const page = await this.deps.index.list({
+        includeDeleted: true,
+        includeDrafts: true,
+        limit: 100,
+        cursor,
+      });
       const due = page.entries.filter((entry) => (
         entry.deletedAt !== null && entry.purgeAfter !== null && entry.purgeAfter <= now
       ));
