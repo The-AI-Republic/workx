@@ -154,7 +154,7 @@ describe('ChatHistorySection paging', () => {
     // delete remain reachable. They expose their label via `title`.
     for (const title of ['Pin', 'Rename', 'Delete']) {
       const control = screen.getByTitle(title);
-      expect(control.classList.contains('text-[1.5em]')).toBe(true);
+      expect(control.classList.contains('text-xl')).toBe(true);
       expect(control.classList.contains('leading-none')).toBe(true);
     }
   });
