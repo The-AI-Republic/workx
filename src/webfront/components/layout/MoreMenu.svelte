@@ -1,6 +1,6 @@
 <script lang="ts">
   import { location, push } from 'svelte-spa-router';
-  import { MORE_ITEMS, isNavActive } from '../../stores/layoutStore';
+  import { FOLDED_NAV_ITEMS, isNavActive } from '../../stores/layoutStore';
   import { uiTheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
   import PopupCard from '../common/PopupCard.svelte';
@@ -69,7 +69,7 @@
     </div>{/snippet}
 
   {#snippet content()}<div class="min-w-[180px]" role="menu">
-      {#each MORE_ITEMS as item (item.id)}
+      {#each FOLDED_NAV_ITEMS as item (item.id)}
         {@const active = isNavActive(item.route, $location)}
         <button
           class="flex items-center gap-2.5 w-full py-2.5 px-3 bg-transparent border-none cursor-pointer text-sm text-left transition-colors duration-150

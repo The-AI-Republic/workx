@@ -13,7 +13,7 @@
     DESKTOP_OIDC_REDIRECT,
   } from '../../stores/userStore';
   import { uiTheme } from '../../stores/themeStore';
-  import { MORE_ITEMS, isNavActive, type NavItem } from '../../stores/layoutStore';
+  import { FOLDED_NAV_ITEMS, isNavActive, type NavItem } from '../../stores/layoutStore';
   import { platform } from '../../stores/platformStore';
   import { AUTH_ROUTE_PATHS, HOME_PAGE_BASE_URL, LLM_API_URL, buildHostedAuthUrl } from '../../lib/constants';
   import { generatePKCEChallenge, randomUrlToken } from '@/core/auth/PKCEHelper';
@@ -38,7 +38,6 @@
   let promoTooltipTimer: ReturnType<typeof setTimeout> | null = null;
   let hasShownPromoTooltip = $state(false);
   const hasHostedAuth = Boolean(HOME_PAGE_BASE_URL && AUTH_ROUTE_PATHS.login);
-  const userCenterNavItems = MORE_ITEMS.filter((item) => item.id !== 'settings');
 
   // Watch for user state changes to show promo tooltip when not logged in (only once)
   $effect(() => {
@@ -337,18 +336,6 @@
     showMenu = false;
   }
 
-  function openUsage() {
-    showMenu = false;
-    push('/usage');
-    onNavigate?.();
-  }
-
-  function openSettings() {
-    showMenu = false;
-    push('/settings');
-    onNavigate?.();
-  }
-
   function openFoldedNavItem(item: NavItem) {
     showMenu = false;
     push(item.route);
@@ -483,7 +470,7 @@
           : 'h-px bg-term-dim-green/30'}"></div>
 
         <!-- Menu Items -->
-        {#each userCenterNavItems as item (item.id)}
+        {#each FOLDED_NAV_ITEMS as item (item.id)}
           {@const active = isNavActive(item.route, $location)}
           <button
             class="flex items-center gap-2.5 w-full py-2.5 px-3 bg-transparent border-none cursor-pointer text-sm text-left transition-colors duration-150
@@ -502,37 +489,6 @@
             <span>{$_t(item.label)}</span>
           </button>
         {/each}
-
-        <button
-          class="flex items-center gap-2.5 w-full py-2.5 px-3 bg-transparent border-none cursor-pointer text-sm text-left transition-colors duration-150
-            {$uiTheme === 'modern'
-              ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat rounded-md m-1 w-[calc(100%-8px)] hover:bg-white/10'
-              : 'text-term-green font-terminal hover:bg-term-green/10'}"
-          onclick={openUsage}
-          role="menuitem"
-        >
-          <svg class="w-[18px] h-[18px] shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="12" width="4" height="9" rx="1"></rect>
-            <rect x="10" y="7" width="4" height="14" rx="1"></rect>
-            <rect x="17" y="3" width="4" height="18" rx="1"></rect>
-          </svg>
-          <span>{$_t("Usage")}</span>
-        </button>
-
-        <button
-          class="flex items-center gap-2.5 w-full py-2.5 px-3 bg-transparent border-none cursor-pointer text-sm text-left transition-colors duration-150
-            {$uiTheme === 'modern'
-              ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat rounded-md m-1 w-[calc(100%-8px)] hover:bg-white/10'
-              : 'text-term-green font-terminal hover:bg-term-green/10'}"
-          onclick={openSettings}
-          role="menuitem"
-        >
-          <svg class="w-[18px] h-[18px] shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <span>{$_t("Settings")}</span>
-        </button>
 
         <button
           class="flex items-center gap-2.5 w-full py-2.5 px-3 bg-transparent border-none cursor-pointer text-sm text-left transition-colors duration-150

@@ -48,7 +48,7 @@ export interface NavItem {
 }
 
 /**
- * Canonical list of top-level navigation destinations.
+ * Primary navigation destinations rendered inline in the left panel.
  * Icons are inline SVG strings (24x24 viewBox, stroke-based, currentColor)
  * matching the style used in NavTab.svelte.
  */
@@ -83,20 +83,15 @@ export const NAV_ITEMS: NavItem[] = [
         },
       ]
     : []),
-  // Usage lives in the user center (avatar) menu or MoreMenu, not the top-level nav.
 ];
 
 /**
- * Secondary destinations folded behind the "More" button at the bottom of the
- * left panel instead of being shown inline in the primary nav list. Usage lives
- * here (moved out of the inline list) alongside Settings, which otherwise has no
- * top-level nav entry.
- *
- * Note: these still reference routes present in {@link NAV_ITEMS} / {@link HIDDEN_ROUTES}
- * so {@link isNavActive} continues to resolve the active tab correctly.
+ * Secondary destinations shared by the OSS "More" menu and the hosted-auth
+ * user center. Keeping the collection independent from {@link NAV_ITEMS}
+ * guarantees each destination has exactly one navigation placement per build.
  */
-export const MORE_ITEMS: NavItem[] = [
-  NAV_ITEMS.find((item) => item.id === 'usage') ?? {
+export const FOLDED_NAV_ITEMS: NavItem[] = [
+  {
     id: 'usage',
     label: 'Usage',
     route: '/usage',
@@ -110,15 +105,9 @@ export const MORE_ITEMS: NavItem[] = [
   },
 ];
 
-/** Nav item ids folded into the "More" menu, hidden from the left panel's inline list. */
-export const MORE_FOLDED_IDS: ReadonlySet<string> = new Set(MORE_ITEMS.map((item) => item.id));
-
-/**
- * Primary nav items shown inline in the left panel — {@link NAV_ITEMS} minus any
- * item folded into the "More" menu. Used by {@link LeftPanel}. The narrow-mode
- * {@link FooterBar} still renders the full {@link NAV_ITEMS} list.
- */
-export const PANEL_NAV_ITEMS: NavItem[] = NAV_ITEMS.filter((item) => !MORE_FOLDED_IDS.has(item.id));
+const NAV_ROUTES = [...NAV_ITEMS, ...FOLDED_NAV_ITEMS]
+  .filter((item) => item.route !== '/')
+  .map((item) => item.route);
 
 // ---------------------------------------------------------------------------
 // Active route detection
@@ -129,16 +118,9 @@ export const PANEL_NAV_ITEMS: NavItem[] = NAV_ITEMS.filter((item) => !MORE_FOLDE
  * The root route ('/') is treated as a catch-all: it's active when the
  * location doesn't match any other known nav route.
  */
-/** Routes that are valid pages but not shown in NAV_ITEMS (Settings and Usage live in the user center). */
-const HIDDEN_ROUTES = ['/settings', '/usage'];
-
 export function isNavActive(route: string, currentLocation: string): boolean {
   if (route === '/') {
-    const allRoutes = [
-      ...NAV_ITEMS.filter((item) => item.route !== '/').map((item) => item.route),
-      ...HIDDEN_ROUTES,
-    ];
-    return !allRoutes.some((r) => currentLocation.startsWith(r));
+    return !NAV_ROUTES.some((knownRoute) => currentLocation.startsWith(knownRoute));
   }
   return currentLocation.startsWith(route);
 }
