@@ -31,6 +31,7 @@ describe('SessionModeSwitch', () => {
       titleUpdatedAt: 1,
       createdAt: 1,
       lastActiveAt: 1,
+      publishedAt: 1,
       pinned: false,
       deletedAt: null,
       purgeAfter: null,

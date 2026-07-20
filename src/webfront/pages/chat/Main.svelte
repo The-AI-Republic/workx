@@ -1215,12 +1215,17 @@
   /** Create an index-only chat. No agent graph is assembled here. */
   async function createNewThread() {
     try {
+      const reusable = threadStore.reuseActiveEmptyDraft();
+      if (reusable) {
+        await switchToThread(reusable.sessionId);
+        return;
+      }
       const c = await getInitializedUIClient();
       const response = await c.serviceRequest<{
         sessionId: string;
         state: 'SUSPENDED' | 'IDLE';
         entry?: ThreadIndexEntry;
-      }>('session.open', {});
+      }>('session.open', { surfaceId });
       const { sessionId } = response;
       if (response.entry) threadStore.mergeThread(response.entry);
       else threadStore.createThread(sessionId);

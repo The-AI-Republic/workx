@@ -98,6 +98,9 @@ export interface SessionServices {
   /** Internal lifecycle edge notification. Never sent over the wire. */
   onBackgroundWorkChanged?: (sessionId: string) => void | Promise<void>;
 
+  /** Publish an empty draft after its first user message is durably recorded. */
+  onUserMessagePersisted?: (sessionId: string) => void | Promise<void>;
+
   /**
    * Serialize a generated-title commit with the durable thread index. A false
    * result means a user rename won and the generated title must be discarded.
@@ -181,6 +184,7 @@ export async function createSessionServices(
     serverRootDir: config.serverRootDir,
     defaultWorkingDirectory: config.defaultWorkingDirectory,
     onBackgroundWorkChanged: config.onBackgroundWorkChanged,
+    onUserMessagePersisted: config.onUserMessagePersisted,
     commitGeneratedTitle: config.commitGeneratedTitle,
     onDurabilityChanged: config.onDurabilityChanged,
   };
