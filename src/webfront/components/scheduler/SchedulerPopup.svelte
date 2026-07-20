@@ -374,7 +374,7 @@
             ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
             : 'text-term-dim-green'}">
           <p>{$_t('No scheduled jobs')}</p>
-          <p class="text-sm opacity-70 mt-2">{$_t('Long-press the send button to schedule a job')}</p>
+          <p class="text-meta font-normal opacity-70 mt-2">{$_t('Long-press the send button to schedule a job')}</p>
         </div>
       {:else}
         {#if showSessionDetails}
@@ -386,7 +386,7 @@
               {currentTheme === 'modern'
                 ? 'bg-chat-bg dark:bg-chat-bg-dark border-b border-chat-border dark:border-chat-border-dark'
                 : 'bg-[rgba(0,255,0,0.05)] border-b border-term-dim-green'}">
-              <span class="text-sm font-semibold uppercase tracking-wider
+              <span class="text-xs font-semibold uppercase tracking-wider
                 {currentTheme === 'modern'
                   ? 'text-chat-text dark:text-chat-text-dark'
                   : 'text-term-bright-green'}"
@@ -428,7 +428,7 @@
                           ? 'text-chat-text dark:text-chat-text-dark'
                           : 'text-term-bright-green'}"
                       >{session.type === 'primary' ? $_t('User Session') : $_t('Scheduled Job')}</span>
-                      <span class="text-sm capitalize
+                      <span class="text-meta font-normal capitalize
                         {currentTheme === 'modern'
                           ? (session.state === 'active' ? 'text-chat-button dark:text-chat-button-dark' : session.state === 'initializing' ? 'text-amber-500' : 'text-chat-text-muted dark:text-chat-text-muted-dark')
                           : (session.state === 'active' ? 'text-term-bright-green' : session.state === 'initializing' ? 'text-term-yellow' : 'text-term-dim-green')}"
@@ -439,7 +439,7 @@
               </div>
             {/if}
             {#if sessionCount >= maxSessions}
-              <div class="flex items-center gap-1.5 py-2 px-2.5 text-sm
+              <div class="flex items-center gap-1.5 py-2 px-2.5 text-meta font-normal
                 {currentTheme === 'modern'
                   ? 'bg-[rgba(245,158,11,0.1)] border-t border-amber-500 text-amber-500'
                   : 'bg-[rgba(255,255,0,0.1)] border-t border-term-yellow text-term-yellow'}">
@@ -544,22 +544,22 @@
               </button>
             </div>
             <div class="p-3">
-              <div class="flex gap-2 mb-2 text-sm">
+              <div class="flex gap-2 mb-2 text-meta font-normal">
                 <span class="shrink-0 {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Status')}:</span>
                 <span class="break-words {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark' : (expandedJobDetails.status === 'running' ? 'text-term-bright-green' : expandedJobDetails.status === 'completed' ? 'text-[#00ffff]' : expandedJobDetails.status === 'failed' ? 'text-term-red' : expandedJobDetails.status === 'missed' ? 'text-term-yellow' : 'text-term-bright-green')}">{expandedJobDetails.status}</span>
               </div>
-              <div class="flex gap-2 mb-2 text-sm">
+              <div class="flex gap-2 mb-2 text-meta font-normal">
                 <span class="shrink-0 {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Created')}:</span>
                 <span class="break-words {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-bright-green'}">{new Date(expandedJobDetails.createdAt).toLocaleString()}</span>
               </div>
               {#if expandedJobDetails.scheduledTime}
-                <div class="flex gap-2 mb-2 text-sm">
+                <div class="flex gap-2 mb-2 text-meta font-normal">
                   <span class="shrink-0 {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Scheduled')}:</span>
                   <span class="break-words {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-bright-green'}">{new Date(expandedJobDetails.scheduledTime).toLocaleString()}</span>
                 </div>
               {/if}
               {#if expandedJobDetails.completedAt}
-                <div class="flex gap-2 mb-2 text-sm">
+                <div class="flex gap-2 mb-2 text-meta font-normal">
                   <span class="shrink-0 {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Completed')}:</span>
                   <span class="break-words {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-bright-green'}">{new Date(expandedJobDetails.completedAt).toLocaleString()}</span>
                 </div>
@@ -578,7 +578,7 @@
                 <div class="mt-3 pt-3 border-t border-dashed {currentTheme === 'modern' ? 'border-chat-border dark:border-chat-border-dark' : 'border-[rgba(0,255,0,0.2)]'}">
                   <span class="shrink-0 text-sm {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Result Summary')}:</span>
                   <pre class="mt-2 mb-0 p-2 rounded text-sm font-terminal whitespace-pre-wrap break-words max-h-[150px] overflow-y-auto {currentTheme === 'modern' ? 'bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark' : 'bg-[rgba(0,0,0,0.4)] text-term-bright-green'}">{expandedJobDetails.result.summary}</pre>
-                  <div class="flex gap-4 mt-2 text-sm {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
+                  <div class="flex gap-4 mt-2 text-meta font-normal {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
                     <span>{$_t('Tokens')}: {expandedJobDetails.result.tokenUsage.totalTokens}</span>
                     <span>{$_t('Duration')}: {(expandedJobDetails.result.duration / 1000).toFixed(1)}s</span>
                   </div>
@@ -605,7 +605,7 @@
         {:else}
           {#if runningJob}
             <div class="mb-4">
-              <h4 class="m-0 mb-2 text-sm uppercase tracking-wider {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Running')}</h4>
+              <h4 class="m-0 mb-2 text-xs uppercase tracking-wider {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Running')}</h4>
               <SchedulerJobItem
                 {...runningJob}
                 showActions={true}
@@ -617,7 +617,7 @@
 
           {#if missedJobs.length > 0}
             <div class="mb-4">
-              <h4 class="m-0 mb-2 text-sm uppercase tracking-wider {currentTheme === 'modern' ? 'text-amber-500' : 'text-term-yellow'}">{$_t('Missed')} ({missedJobs.length})</h4>
+              <h4 class="m-0 mb-2 text-xs uppercase tracking-wider {currentTheme === 'modern' ? 'text-amber-500' : 'text-term-yellow'}">{$_t('Missed')} ({missedJobs.length})</h4>
               {#each missedJobs as job (job.id)}
                 <SchedulerJobItem
                   {...job}
@@ -631,7 +631,7 @@
 
           {#if queuedJobs.length > 0}
             <div class="mb-4">
-              <h4 class="m-0 mb-2 text-sm uppercase tracking-wider {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Queued')} ({queuedJobs.length})</h4>
+              <h4 class="m-0 mb-2 text-xs uppercase tracking-wider {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Queued')} ({queuedJobs.length})</h4>
               {#each queuedJobs as job (job.id)}
                 <SchedulerJobItem
                   {...job}
@@ -645,7 +645,7 @@
 
           {#if scheduledJobs.length > 0}
             <div class="mb-4 last:mb-0">
-              <h4 class="m-0 mb-2 text-sm uppercase tracking-wider {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Upcoming')} ({scheduledJobs.length})</h4>
+              <h4 class="m-0 mb-2 text-xs uppercase tracking-wider {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Upcoming')} ({scheduledJobs.length})</h4>
               {#each scheduledJobs as job (job.id)}
                 <SchedulerJobItem
                   {...job}

@@ -176,7 +176,7 @@
         : 'text-term-green font-terminal'}">{$_t('Scheduler')}</h1>
     <div class="ml-auto">
       <button
-        class="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded cursor-pointer transition-all duration-200
+        class="flex items-center gap-1.5 px-2.5 py-1 text-sm rounded cursor-pointer transition-all duration-200
           {currentTheme === 'modern'
             ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
             : 'bg-transparent border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"

@@ -29,6 +29,7 @@ function entry(sessionId: string, overrides: Partial<ThreadIndexEntry> = {}): Th
     titleUpdatedAt: 1,
     createdAt: 1,
     lastActiveAt: 1,
+    publishedAt: 1,
     pinned: false,
     deletedAt: null,
     purgeAfter: null,
@@ -110,6 +111,23 @@ describe('canonical threadStore projection', () => {
     ], null);
     threadStore.setActiveThread('older');
     expect(get(threadStore).threads.map((row) => row.sessionId)).toEqual(['newer', 'older']);
+  });
+
+  it('reuses an untouched active draft instead of creating another row', () => {
+    threadStore.mergeThread({ ...entry('draft', { publishedAt: null }), runtime });
+    threadStore.setActiveThread('draft');
+
+    expect(threadStore.reuseActiveEmptyDraft()).toMatchObject({
+      sessionId: 'draft',
+      publishedAt: null,
+      conversation: { inputText: '' },
+    });
+    expect(get(threadStore).threads).toHaveLength(1);
+
+    threadStore.patchConversation('draft', { inputText: 'keep this unsent text' });
+    expect(threadStore.reuseActiveEmptyDraft()).toBeNull();
+    threadStore.patchConversation('draft', { inputText: '', isProcessing: true });
+    expect(threadStore.reuseActiveEmptyDraft()).toBeNull();
   });
 
   it('restores only a selection and waits for session.list to restore rows', async () => {

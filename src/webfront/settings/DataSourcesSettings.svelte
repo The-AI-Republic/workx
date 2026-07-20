@@ -938,7 +938,7 @@
               <div class="revisions">
                 {#each contextRevisions as revision (revision.revision)}
                   <div>
-                    <span
+                    <span class="revision-meta"
                       >Revision {revision.revision} · {revision.activeFactCount} facts · {new Date(
                         revision.createdAt
                       ).toLocaleString()}</span
@@ -988,7 +988,8 @@
     margin-bottom: 0.25rem;
   }
   .back {
-    font-size: 1.25rem;
+    font-size: var(--text-xl);
+    line-height: var(--text-xl--line-height);
   }
   button,
   input,
@@ -1011,7 +1012,7 @@
   button.primary {
     background: var(--workx-primary);
     color: var(--workx-background);
-    font-weight: 700;
+    font-weight: var(--font-weight-bold);
   }
   button.danger {
     color: var(--workx-error);
@@ -1023,7 +1024,7 @@
     padding: 1rem;
     margin: 1rem 0;
     background: color-mix(in srgb, var(--workx-primary) 7%, var(--workx-surface));
-    line-height: 1.45;
+    line-height: var(--leading-normal);
   }
   .message {
     border-radius: 0.4rem;
@@ -1072,7 +1073,8 @@
   }
   dt {
     color: var(--workx-text-secondary);
-    font-size: 0.8rem;
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
   }
   dd {
     margin: 0.2rem 0 0;
@@ -1083,7 +1085,8 @@
     border: 1px solid var(--workx-border);
     border-radius: 99px;
     padding: 0.2rem 0.5rem;
-    font-size: 0.75rem;
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
   }
   .badge.good {
     color: var(--workx-success);
@@ -1102,7 +1105,8 @@
   small,
   .help {
     color: var(--workx-text-secondary);
-    font-size: 0.82rem;
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
   }
   .editor-nav {
     justify-content: space-between;
@@ -1120,8 +1124,9 @@
     padding: 0;
   }
   legend {
-    font-size: 1.25rem;
-    font-weight: 700;
+    font-size: var(--text-xl);
+    line-height: var(--text-xl--line-height);
+    font-weight: var(--font-weight-bold);
     margin-bottom: 1rem;
   }
   .grid {
@@ -1192,6 +1197,11 @@
   }
   .revisions > div {
     justify-content: space-between;
+  }
+  .revision-meta {
+    color: var(--workx-text-secondary);
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
   }
   @media (max-width: 700px) {
     .grid.two,
