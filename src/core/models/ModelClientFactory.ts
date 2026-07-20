@@ -477,7 +477,8 @@ export class ModelClientFactory {
     }
 
     const parallelToolCalls = this.resolveParallelToolCalls();
-    const providerRoutingSlug = resolveRuntimeUrls().gatewayProviderSlug ?? undefined;
+    const configuredProviderRoutingSlug = resolveRuntimeUrls().gatewayProviderSlug ?? undefined;
+    let providerRoutingSlug: string | undefined;
     let modelConfig: any = undefined;
     let supportsReasoning = false;
     let supportsReasoningSummaries = false;
@@ -494,6 +495,12 @@ export class ModelClientFactory {
         // first-party catalog the provider id is the owner. (A catalog-driven
         // slug lookup would be the robust long-term form.)
         selectedModel = `${modelData.provider.id}/${modelData.model.modelKey}`;
+        // A gateway provider pin restricts the candidate endpoint set. Only
+        // forward the configured pin when it matches the canonical model owner;
+        // e.g. the current "deepseek" pin must not accompany OpenAI models.
+        if (configuredProviderRoutingSlug === modelData.provider.id) {
+          providerRoutingSlug = configuredProviderRoutingSlug;
+        }
       }
     }
 
