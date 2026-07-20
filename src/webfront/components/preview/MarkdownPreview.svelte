@@ -95,14 +95,13 @@
 {/if}
 
 <style>
-  .preview-markdown :global(h1), .preview-markdown :global(h2), .preview-markdown :global(h3) { font-weight: 650; margin: 1.2em 0 0.5em; }
-  .preview-markdown :global(h1) { font-size: 1.75rem; }
-  .preview-markdown :global(h2) { font-size: 1.4rem; }
-  .preview-markdown :global(h3) { font-size: 1.15rem; }
+  .preview-markdown :global(h1), .preview-markdown :global(h2), .preview-markdown :global(h3) { font-weight: var(--font-weight-semibold); margin: 1.2em 0 0.5em; }
+  .preview-markdown :global(h1) { font-size: var(--text-3xl); }
+  .preview-markdown :global(h2) { font-size: var(--text-2xl); }
+  .preview-markdown :global(h3) { font-size: var(--text-xl); }
   .preview-markdown :global(p), .preview-markdown :global(ul), .preview-markdown :global(ol) { margin: 0.75em 0; }
   .preview-markdown :global(ul), .preview-markdown :global(ol) { padding-left: 1.5rem; }
   .preview-markdown :global(pre) { overflow: auto; border-radius: 0.4rem; background: rgba(127, 127, 127, 0.14); padding: 0.8rem; }
-  .preview-markdown :global(code) { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .preview-markdown :global(blockquote) { border-left: 3px solid currentColor; margin-left: 0; padding-left: 1rem; opacity: 0.8; }
   .preview-markdown :global(a) { text-decoration: underline; cursor: pointer; }
   .preview-markdown :global(table) { border-collapse: collapse; }

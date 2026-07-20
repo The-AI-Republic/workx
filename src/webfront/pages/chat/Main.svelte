@@ -1675,7 +1675,7 @@
               <button
                 bind:this={previewToggleButton}
                 type="button"
-                class="relative rounded border px-2 py-1 text-xs opacity-80 hover:opacity-100
+                class="relative rounded border px-2 py-1 text-sm opacity-80 hover:opacity-100
                   {currentTheme === 'modern'
                     ? 'border-chat-border dark:border-chat-border-dark hover:bg-chat-card-hover dark:hover:bg-chat-card-hover-dark'
                     : 'border-term-dim-green hover:bg-term-green/10'}"
