@@ -198,34 +198,34 @@
         <!-- Time details -->
         <div class="flex flex-col gap-2 mb-4">
           {#if job.scheduledTime}
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 text-meta font-normal">
               <svg class="w-4 h-4 shrink-0 {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10"></circle>
                 <polyline points="12 6 12 12 16 14"></polyline>
               </svg>
-              <span class="text-sm {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Scheduled')}:</span>
-              <span class="text-sm {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-bright-green'}">{formatTime(job.scheduledTime)}</span>
+              <span class="{currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Scheduled')}:</span>
+              <span class="{currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-bright-green'}">{formatTime(job.scheduledTime)}</span>
             </div>
           {/if}
 
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 text-meta font-normal">
             <svg class="w-4 h-4 shrink-0 {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
               <line x1="16" y1="2" x2="16" y2="6"></line>
               <line x1="8" y1="2" x2="8" y2="6"></line>
               <line x1="3" y1="10" x2="21" y2="10"></line>
             </svg>
-            <span class="text-sm {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Created')}:</span>
-            <span class="text-sm {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-bright-green'}">{formatTime(job.createdAt)}</span>
+            <span class="{currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Created')}:</span>
+            <span class="{currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-bright-green'}">{formatTime(job.createdAt)}</span>
           </div>
 
           {#if job.completedAt}
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 text-meta font-normal">
               <svg class="w-4 h-4 shrink-0 {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="20 6 9 17 4 12"></polyline>
               </svg>
-              <span class="text-sm {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Completed')}:</span>
-              <span class="text-sm {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-bright-green'}">{formatTime(job.completedAt)}</span>
+              <span class="{currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Completed')}:</span>
+              <span class="{currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-bright-green'}">{formatTime(job.completedAt)}</span>
             </div>
           {/if}
         </div>

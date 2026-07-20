@@ -158,8 +158,8 @@
 
   .pin-field label {
     display: block;
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     margin-bottom: 0.25rem;
     color: var(--workx-text-secondary, #00cc00);
   }
@@ -185,8 +185,8 @@
 
   .pin-error {
     color: var(--workx-error, #ff0000);
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
     margin-bottom: 0.75rem;
   }
 

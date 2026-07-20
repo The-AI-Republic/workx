@@ -294,7 +294,7 @@
                       ? 'font-chat text-chat-text dark:text-chat-text-dark'
                       : 'font-terminal text-term-green'}"
                   >{option.label}</span>
-                  <span class="text-xs leading-ui
+                  <span class="text-meta font-normal
                     {currentTheme === 'modern'
                       ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
                       : 'font-terminal text-term-dim-green'}"

@@ -181,12 +181,12 @@
 
       <!-- Quick Schedule Buttons -->
       <div>
-        <span class="block text-xs mb-1.5
+        <span class="block text-sm mb-1.5
           {currentTheme === 'modern' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">{$_t('Quick Schedule')}:</span>
         <div class="flex gap-1.5 flex-wrap">
           {#each [{ label: '2m', min: 2 }, { label: '5m', min: 5 }, { label: '15m', min: 15 }, { label: '30m', min: 30 }, { label: '1h', min: 60 }, { label: '3h', min: 180 }, { label: '24h', min: 1440 }] as item}
             <button
-              class="px-2.5 py-1 text-xs rounded cursor-pointer transition-all duration-200
+              class="px-2.5 py-1 text-sm rounded cursor-pointer transition-all duration-200
                 {currentTheme === 'modern'
                   ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
                   : 'bg-transparent border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
@@ -199,7 +199,7 @@
       <!-- Date/Time Picker -->
       <div class="flex gap-2">
         <div class="flex-1">
-          <label for="new-job-date" class="block text-xs mb-1
+          <label for="new-job-date" class="block text-sm mb-1
             {currentTheme === 'modern' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">{$_t('Date')}</label>
           <input
             id="new-job-date"
@@ -213,7 +213,7 @@
           />
         </div>
         <div class="flex-1">
-          <label for="new-job-time" class="block text-xs mb-1
+          <label for="new-job-time" class="block text-sm mb-1
             {currentTheme === 'modern' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">{$_t('Time')}</label>
           <input
             id="new-job-time"

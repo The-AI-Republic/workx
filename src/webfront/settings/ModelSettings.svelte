@@ -1980,8 +1980,8 @@
 
   .chatgpt-oauth-status .btn-sm {
     padding: 0.25rem 0.5rem;
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     margin-left: auto;
   }
 
@@ -2046,8 +2046,8 @@
   }
 
   .custom-item-meta {
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
     color: var(--workx-text-secondary, var(--workx-text));
     opacity: 0.75;
     overflow: hidden;
@@ -2067,8 +2067,8 @@
 
   .btn-sm {
     padding: 0.35rem 0.7rem;
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     flex-shrink: 0;
   }
 </style>

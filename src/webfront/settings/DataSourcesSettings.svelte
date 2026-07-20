@@ -938,7 +938,7 @@
               <div class="revisions">
                 {#each contextRevisions as revision (revision.revision)}
                   <div>
-                    <span
+                    <span class="revision-meta"
                       >Revision {revision.revision} · {revision.activeFactCount} facts · {new Date(
                         revision.createdAt
                       ).toLocaleString()}</span
@@ -1073,8 +1073,8 @@
   }
   dt {
     color: var(--workx-text-secondary);
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
   }
   dd {
     margin: 0.2rem 0 0;
@@ -1105,8 +1105,8 @@
   small,
   .help {
     color: var(--workx-text-secondary);
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
   }
   .editor-nav {
     justify-content: space-between;
@@ -1197,6 +1197,11 @@
   }
   .revisions > div {
     justify-content: space-between;
+  }
+  .revision-meta {
+    color: var(--workx-text-secondary);
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
   }
   @media (max-width: 700px) {
     .grid.two,

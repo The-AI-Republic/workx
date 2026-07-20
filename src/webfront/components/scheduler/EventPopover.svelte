@@ -151,14 +151,14 @@
         {#if instance.status === 'upcoming'}
           <div class="flex gap-2">
             <button
-              class="flex-1 py-1.5 text-xs rounded cursor-pointer transition-all duration-200
+              class="flex-1 py-1.5 text-sm rounded cursor-pointer transition-all duration-200
                 {currentTheme === 'modern'
                   ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/20'
                   : 'bg-[rgba(0,255,0,0.1)] border border-term-dim-green text-term-green hover:bg-[rgba(0,255,0,0.2)]'}"
               onclick={() => oneditinstance?.({ scheduleEventId: instance.scheduleEventId, instanceTime: instance.instanceTime })}
             >{$_t('Edit Instance')}</button>
             <button
-              class="flex-1 py-1.5 text-xs rounded cursor-pointer transition-all duration-200
+              class="flex-1 py-1.5 text-sm rounded cursor-pointer transition-all duration-200
                 {currentTheme === 'modern'
                   ? 'bg-blue-500/10 border border-blue-500/30 text-blue-500 hover:bg-blue-500/20'
                   : 'bg-[rgba(0,255,255,0.1)] border border-[rgba(0,255,255,0.3)] text-[#00ffff] hover:bg-[rgba(0,255,255,0.2)]'}"
@@ -166,13 +166,13 @@
             >{$_t('Edit Series')}</button>
           </div>
           <button
-            class="w-full py-1.5 text-xs rounded cursor-pointer transition-all duration-200
+            class="w-full py-1.5 text-sm rounded cursor-pointer transition-all duration-200
               bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.3)] text-red-400 hover:bg-[rgba(239,68,68,0.2)]"
             onclick={() => ondeleteinstance?.({ scheduleEventId: instance.scheduleEventId, instanceTime: instance.instanceTime })}
           >{$_t('Delete Instance')}</button>
         {/if}
         {#if instance.rruleDescription}
-          <div class="text-xs mt-1
+          <div class="text-meta font-normal mt-1
             {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
             {instance.rruleDescription}
           </div>
@@ -182,20 +182,20 @@
         <div class="flex gap-2">
           {#if job.status === 'scheduled' || job.status === 'missed' || job.status === 'draft'}
             <button
-              class="flex-1 py-1.5 text-xs rounded cursor-pointer transition-all duration-200
+              class="flex-1 py-1.5 text-sm rounded cursor-pointer transition-all duration-200
                 {currentTheme === 'modern'
                   ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/20'
                   : 'bg-[rgba(0,255,0,0.1)] border border-term-dim-green text-term-green hover:bg-[rgba(0,255,0,0.2)]'}"
               onclick={() => ontrigger?.({ jobId: job.id })}
             >{$_t('Trigger')}</button>
             <button
-              class="flex-1 py-1.5 text-xs rounded cursor-pointer transition-all duration-200
+              class="flex-1 py-1.5 text-sm rounded cursor-pointer transition-all duration-200
                 bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.3)] text-red-400 hover:bg-[rgba(239,68,68,0.2)]"
               onclick={() => oncancel?.({ jobId: job.id })}
             >{$_t('Cancel')}</button>
           {:else if (job.status === 'completed' || job.status === 'failed') && job.sessionId}
             <a
-              class="flex-1 py-1.5 text-xs rounded text-center no-underline transition-all duration-200
+              class="flex-1 py-1.5 text-sm rounded text-center no-underline transition-all duration-200
                 {currentTheme === 'modern'
                   ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
                   : 'bg-[rgba(0,255,0,0.1)] border border-term-dim-green text-term-green hover:bg-[rgba(0,255,0,0.2)]'}"

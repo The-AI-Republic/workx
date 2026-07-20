@@ -244,7 +244,7 @@
       <!-- Sort + Filter row -->
       <div class="flex items-center gap-2 flex-wrap">
         <button
-          class="px-2 py-0.5 text-xs rounded cursor-pointer transition-all duration-200
+          class="px-2 py-0.5 text-sm rounded cursor-pointer transition-all duration-200
             {currentTheme === 'modern'
               ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
               : 'bg-transparent border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"

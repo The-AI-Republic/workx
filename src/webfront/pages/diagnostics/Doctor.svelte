@@ -151,8 +151,8 @@
     margin-left: auto;
     font-weight: var(--font-weight-normal);
     opacity: 0.7;
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
   }
   .check-list {
     list-style: none;
@@ -173,8 +173,8 @@
   }
   .check-detail {
     opacity: 0.8;
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
     white-space: pre-wrap;
     word-break: break-word;
   }

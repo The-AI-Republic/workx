@@ -1739,7 +1739,7 @@
             <div class="flex justify-center py-2">
               <button
                 type="button"
-                class="text-xs opacity-70 hover:opacity-100 underline"
+                class="text-sm opacity-70 hover:opacity-100 underline"
                 disabled={loadingOlderHistory}
                 onclick={loadOlderHistory}
               >

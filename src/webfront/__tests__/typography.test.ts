@@ -5,6 +5,10 @@ import { join, relative, resolve } from 'node:path';
 const srcRoot = resolve(__dirname, '../..');
 const typographyPath = join(srcRoot, 'styles/typography.css');
 
+function readSource(relativePath: string): string {
+  return readFileSync(join(srcRoot, relativePath), 'utf8');
+}
+
 function collectStyleFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = join(directory, entry.name);
@@ -73,19 +77,61 @@ describe('Workx typography system', () => {
   });
 
   it('uses the reading scale in chat and the interface scale for metadata', () => {
-    const message = readFileSync(
-      join(srcRoot, 'webfront/components/event_display/MessageEvent.svelte'),
-      'utf8'
-    );
-    const input = readFileSync(join(srcRoot, 'webfront/components/MessageInput.svelte'), 'utf8');
-    const eventDisplay = readFileSync(
-      join(srcRoot, 'webfront/components/event_display/EventDisplay.svelte'),
-      'utf8'
-    );
+    const message = readSource('webfront/components/event_display/MessageEvent.svelte');
+    const input = readSource('webfront/components/MessageInput.svelte');
+    const eventDisplay = readSource('webfront/components/event_display/EventDisplay.svelte');
 
     expect(message).toMatch(/markdown-content[^"\n]*text-base/);
     expect(input).toMatch(/terminal-textarea[^"\n]*text-base/);
     expect(eventDisplay).toMatch(/flex items-center gap-2 mb-1 text-meta font-normal/);
     expect(eventDisplay).not.toContain('text-xs italic');
+  });
+
+  it('does not shrink explicit action and form controls to microcopy sizes', () => {
+    const violations: string[] = [];
+    const interactiveTag = /<(button|input|select|textarea|label|a)\b[\s\S]*?>/g;
+    const microcopyUtility = /\btext-(?:2xs|xs)\b/;
+
+    for (const file of collectStyleFiles(join(srcRoot, 'webfront')).filter((path) =>
+      path.endsWith('.svelte')
+    )) {
+      const source = readFileSync(file, 'utf8');
+      for (const match of source.matchAll(interactiveTag)) {
+        if (microcopyUtility.test(match[0])) {
+          violations.push(`${relative(srcRoot, file)}: <${match[1]}> uses a microcopy size`);
+        }
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it('keeps active timestamps and secondary facts on the 13px metadata role', () => {
+    const history = readSource('webfront/components/chat/ChatHistoryList.svelte');
+    const usage = readSource('webfront/components/usage/UsageList.svelte');
+    const jobItem = readSource('webfront/components/scheduler/SchedulerJobItem.svelte');
+    const jobDetail = readSource('webfront/components/scheduler/JobDetailModal.svelte');
+    const schedulerPopup = readSource('webfront/components/scheduler/SchedulerPopup.svelte');
+    const dataSources = readSource('webfront/settings/DataSourcesSettings.svelte');
+
+    expect(history.match(/shrink-0 text-meta font-normal opacity-70/g)).toHaveLength(5);
+    expect(usage).toMatch(/text-meta font-normal[\s\S]*?formatDate\(session\.lastTimestamp\)/);
+    expect(usage).toMatch(/text-meta font-normal[\s\S]*?session\.models\[0\]/);
+    expect(jobItem).toMatch(/mt-1 text-meta font-normal/);
+    expect(jobDetail.match(/items-center gap-2 text-meta font-normal/g)).toHaveLength(3);
+    expect(schedulerPopup.match(/gap-2 mb-2 text-meta font-normal/g)).toHaveLength(4);
+    expect(dataSources).toMatch(/\.timestamp,[\s\S]*?font-size: var\(--text-meta\);/);
+    expect(dataSources).toMatch(/\.revision-meta[\s\S]*?font-size: var\(--text-meta\);/);
+  });
+
+  it('keeps legacy scoped control CSS on the 14px interface role', () => {
+    const modelSettings = readSource('webfront/settings/ModelSettings.svelte');
+    const securitySettings = readSource('webfront/settings/SecuritySettings.svelte');
+    const backgroundTasks = readSource('webfront/components/BackgroundTasksBadge.svelte');
+
+    expect(modelSettings).toMatch(/\.btn-sm[\s\S]*?font-size: var\(--text-sm\);/);
+    expect(securitySettings).toMatch(/\.btn-action[\s\S]*?font-size: var\(--text-sm\);/);
+    expect(securitySettings).toMatch(/\.form-field label[\s\S]*?font-size: var\(--text-sm\);/);
+    expect(backgroundTasks).toMatch(/\.task-row[\s\S]*?font-size: var\(--text-sm\);/);
   });
 });

@@ -249,8 +249,8 @@
 
   .unlock-error {
     color: var(--workx-error, #ff0000);
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
     margin-bottom: 0.75rem;
     text-align: center;
   }
@@ -293,8 +293,8 @@
     background: none;
     border: none;
     color: var(--workx-text-secondary, #00cc00);
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     cursor: pointer;
     margin-top: 1rem;
     padding: 0.25rem 0.5rem;

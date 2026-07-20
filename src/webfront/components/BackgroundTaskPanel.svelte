@@ -159,8 +159,8 @@
     padding: 8px 12px;
     background: var(--error-light, #fee2e2);
     color: var(--error-color, #b91c1c);
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
     border-bottom: 1px solid var(--border-color, #eee);
   }
   .failure-label {
@@ -183,8 +183,8 @@
     gap: 12px;
     padding: 6px 12px;
     color: var(--text-secondary, #888);
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
     border-bottom: 1px solid var(--border-color, #eee);
   }
   .chunks {

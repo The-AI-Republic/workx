@@ -59,7 +59,7 @@
           onclick={() => void setSessionMode(modeSpec.id)}
           title={isPending ? $_t('Switching after current task…') : $_t('Switch agent mode')}
           aria-pressed={isActive}
-          class="rounded-md border-none px-2 py-1.5 text-xs font-[inherit] cursor-pointer transition-colors
+          class="rounded-md border-none px-2 py-1.5 text-sm font-[inherit] cursor-pointer transition-colors
             {isActive
               ? (currentTheme === 'modern'
                   ? 'bg-chat-surface dark:bg-chat-surface-dark text-chat-text dark:text-chat-text-dark shadow-sm font-semibold'

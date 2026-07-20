@@ -85,8 +85,8 @@
 
   .action-message {
     margin: 0.5rem 0 0;
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
   }
 
   .action-message.error {

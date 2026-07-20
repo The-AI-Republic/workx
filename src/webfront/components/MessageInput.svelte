@@ -581,7 +581,7 @@
 
     <!-- Track 13: pasted-image attachment indicator -->
     {#if pendingAttachments.length > 0}
-      <div class="mb-1 flex items-center gap-2 text-xs {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
+      <div class="mb-1 flex items-center gap-2 text-meta font-normal {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
         <span>📎 {pendingAttachments.length} {pendingAttachments.length === 1 ? $_t('image attached') : $_t('images attached')}</span>
         <button
           type="button"
@@ -596,7 +596,7 @@
          Visible exactly when Tab will accept: palette closed AND input empty
          OR the typed text is a live prefix of the suggestion. -->
     {#if suggestion && !isCommandMode && (!value.trim() || suggestion.toLowerCase().startsWith(value.toLowerCase()))}
-      <div class="mb-1 flex items-center gap-2 text-xs {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
+      <div class="mb-1 flex items-center gap-2 text-meta font-normal {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
         <span class="opacity-70">Tab ↹</span>
         <span class="truncate">{suggestion}</span>
         <button

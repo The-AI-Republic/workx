@@ -254,17 +254,17 @@
 
   .section-description {
     margin: 0 0 1rem;
-    font-size: var(--text-xs);
+    font-size: var(--text-meta);
     color: var(--workx-text-secondary);
-    line-height: var(--leading-ui);
+    line-height: var(--text-meta--line-height);
   }
 
   .status-message {
     padding: 0.5rem;
     margin-bottom: 0.75rem;
     border-radius: 0.375rem;
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
     color: var(--workx-success, #00ff00);
     background: rgba(0, 255, 0, 0.1);
     border: 1px solid var(--workx-success, #00ff00);
@@ -291,8 +291,8 @@
   }
 
   .setting-value {
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
     color: var(--workx-text-secondary);
   }
 
@@ -304,8 +304,8 @@
   .btn-action {
     padding: 0.375rem 0.75rem;
     border-radius: 0.375rem;
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     cursor: pointer;
     background: var(--workx-primary, #00ff00);
     color: var(--workx-background, #000);
@@ -344,8 +344,8 @@
 
   .form-field label {
     display: block;
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     margin-bottom: 0.125rem;
     color: var(--workx-text-secondary);
   }
@@ -371,15 +371,15 @@
 
   .form-error {
     color: var(--workx-error, #ff0000);
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
     margin-bottom: 0.5rem;
   }
 
   .form-warning {
-    font-size: var(--text-xs);
+    font-size: var(--text-meta);
     color: var(--workx-warning, #ffff00);
     margin: 0 0 0.5rem;
-    line-height: var(--leading-ui);
+    line-height: var(--text-meta--line-height);
   }
 </style>

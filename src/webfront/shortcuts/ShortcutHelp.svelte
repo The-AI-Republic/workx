@@ -51,8 +51,8 @@
 
   .shortcut-description {
     margin-top: 2px;
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
     opacity: 0.72;
   }
 

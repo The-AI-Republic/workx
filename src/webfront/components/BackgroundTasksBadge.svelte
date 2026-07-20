@@ -117,8 +117,8 @@
     border: 1px solid var(--border-color, #ccc);
     background: var(--bg-secondary, #f5f5f5);
     color: var(--text-primary, #222);
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     cursor: pointer;
   }
   .badge-pill:hover,
@@ -158,8 +158,8 @@
     border: none;
     background: transparent;
     text-align: left;
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     cursor: pointer;
     color: inherit;
   }
@@ -176,13 +176,15 @@
   }
   .task-meta {
     color: var(--text-secondary, #888);
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
     font-variant-numeric: tabular-nums;
   }
   .empty {
     padding: 12px;
     color: var(--text-secondary, #888);
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
     text-align: center;
   }
 </style>

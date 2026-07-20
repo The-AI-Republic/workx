@@ -320,8 +320,8 @@
                 <polyline points="12 6 12 12 16 14"></polyline>
               </svg>
             </span>
-            <span class="text-sm {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark font-chat' : 'text-term-bright-green font-terminal'}">{getScheduledDateDisplay()}</span>
-            <span class="text-sm {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">({getRelativeTime()})</span>
+            <span class="text-meta font-normal {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark font-chat' : 'text-term-bright-green font-terminal'}">{getScheduledDateDisplay()}</span>
+            <span class="text-meta font-normal {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">({getRelativeTime()})</span>
           </div>
         {/if}
 
