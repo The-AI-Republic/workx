@@ -181,8 +181,6 @@ export class EditFileTool extends FileAccessTool {
       if (entry.isPartialView) return `The cached view of "${path}" is partial. read_file it (fully) before editing.`;
     }
 
-    const beforeStat = await fsExecutor.stat(h.workspaceRoot, path);
-
     const res = await fsExecutor.applyEdit({
       workspaceRoot: h.workspaceRoot,
       path,
@@ -201,9 +199,9 @@ export class EditFileTool extends FileAccessTool {
       context,
       workspaceRoot: h.workspaceRoot,
       path,
-      before: beforeStat.exists ? (entry?.content ?? '') : '',
+      before: res.previousContentLf,
       after: res.newContentLf,
-      operation: beforeStat.exists ? 'modified' : 'created',
+      operation: res.operation,
       size: res.size,
       mtimeMs: res.mtimeMs,
     });
@@ -254,19 +252,18 @@ export class WriteFileTool extends FileAccessTool {
     });
     if (res.written === 'false') return `Write not applied (${res.reason}): ${res.message}`;
 
-    const contentLf = content.replace(/\r\n/g, '\n');
-    h.cache?.set(key, { content: contentLf, mtimeFloorMs: res.mtimeMs, offset: undefined, limit: undefined });
+    h.cache?.set(key, { content: res.newContentLf, mtimeFloorMs: res.mtimeMs, offset: undefined, limit: undefined });
     await emitLocalFileChange({
       context,
       workspaceRoot: h.workspaceRoot,
       path,
-      before: st.exists ? (entry?.content ?? '') : '',
-      after: contentLf,
-      operation: st.exists ? 'modified' : 'created',
+      before: res.previousContentLf,
+      after: res.newContentLf,
+      operation: res.operation,
       size: res.size,
       mtimeMs: res.mtimeMs,
     });
-    return `${st.exists ? 'Overwrote' : 'Created'} ${path}.`;
+    return `${res.operation === 'modified' ? 'Overwrote' : 'Created'} ${path}.`;
   }
 }
 
