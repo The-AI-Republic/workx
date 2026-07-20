@@ -20,6 +20,11 @@
   import EventDisplay from '../../components/event_display/EventDisplay.svelte';
   import { EventProcessor } from '../../components/event_display/EventProcessor';
   import PreviewPanel from '../../components/preview/PreviewPanel.svelte';
+  import PreviewResizeHandle from '../../components/preview/PreviewResizeHandle.svelte';
+  import {
+    DEFAULT_CHAT_SPLIT_PERCENT,
+    clampChatSplitPercent,
+  } from '../../components/preview/splitModel';
   import { welcomeAsciiLines } from '../../constants/welcomeAscii';
   // Platform store
   import { platform } from '../../stores/platformStore';
@@ -96,6 +101,7 @@
   let loadingOlderHistory = $state(false);
   let previewDrawer: HTMLDivElement | null = $state(null);
   let previewToggleButton: HTMLButtonElement | null = $state(null);
+  let chatSplitPercent = $state(DEFAULT_CHAT_SPLIT_PERCENT);
 
   // Guards the auto-relogin so an expired desktop session opens the login flow
   // exactly once per expiry (reset when access returns to ready), rather than
@@ -177,6 +183,16 @@
   let activePreviewState = $derived(
     activeSessionId ? $previewStore.bySession[activeSessionId] : undefined,
   );
+  let showWidePreview = $derived(
+    platform.platformName === 'desktop'
+      && $isWideMode
+      && !!activeSessionId
+      && !!activePreviewState?.open,
+  );
+
+  function setChatSplitPercent(value: number): void {
+    chatSplitPercent = clampChatSplitPercent(value);
+  }
   const threadRouter = new ThreadEventRouter();
   const surfaceId = documentSurfaceId;
   let surfaceLease: { leaseId: string; sessionId: string } | null = null;
@@ -1658,7 +1674,12 @@
     ? 'font-chat bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
     : 'font-terminal bg-term-bg text-term-green'}"
 >
-  <div class="flex min-w-0 flex-1 flex-col overflow-hidden p-4" role="log" aria-label="Terminal output">
+  <div
+    class="flex min-w-0 basis-0 flex-col overflow-hidden p-4"
+    style:flex-grow={showWidePreview ? chatSplitPercent : 1}
+    role="log"
+    aria-label="Terminal output"
+  >
     <div class="flex flex-col flex-1 min-h-0 max-w-[1500px] mx-auto w-full">
         <!-- Status Line -->
         <div class="shrink-0 flex justify-between mb-2">
@@ -1921,13 +1942,15 @@
       </div>
   </div>
 
-  {#if platform.platformName === 'desktop' && $isWideMode && activeSessionId && activePreviewState?.open}
+  {#if showWidePreview && activeSessionId && activePreviewState}
+    <PreviewResizeHandle
+      value={chatSplitPercent}
+      theme={currentTheme}
+      onChange={setChatSplitPercent}
+    />
     <aside
-      class="shrink-0 border-l shadow-xl
-        {currentTheme === 'modern'
-          ? 'border-chat-border dark:border-chat-border-dark'
-          : 'border-term-dim-green'}"
-      style="width: clamp(400px, 34vw, 520px)"
+      class="min-w-0 basis-0 shrink-0 shadow-xl"
+      style:flex-grow={100 - chatSplitPercent}
     >
       <PreviewPanel
         state={activePreviewState}

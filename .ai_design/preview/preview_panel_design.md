@@ -44,7 +44,7 @@ The pre-implementation review resolved the following ambiguities in the earlier 
 | Unlimited diff/file payloads | Enforce explicit diff, source, item-count, and per-thread memory ceilings. |
 | Large diffs competing with normal replay events | Generate a diff only for at most 512 KiB of combined input and place at most 32 KiB in the event. The current replay ring is 1 MiB. |
 | “Sanitize Markdown” without a mechanism | Parse with `marked`, escape raw HTML, sanitize generated HTML with DOMPurify, suppress images, and intercept links. |
-| Optional resizable panel | Use a fixed responsive width in V1. Resizing and width persistence are deferred. |
+| Optional resizable panel | Use a draggable split within the chat-and-preview content area. Default to 60% chat / 40% preview and constrain chat to 40–80%. Persisting the chosen ratio across app reloads remains deferred. |
 
 There are no unresolved product or architecture questions blocking implementation.
 
@@ -171,7 +171,13 @@ Wide mode:
 
 - The preview is a sibling of the chat region inside `Main.svelte`, not a child of global
   `AppShell.svelte`.
-- Width is `clamp(400px, 34vw, 520px)` and is not user-resizable in V1.
+- Chat and preview divide the content area remaining after the left navigation. The default split is
+  60% chat / 40% preview.
+- A keyboard-accessible vertical separator can be dragged from 40% chat / 60% preview through 80%
+  chat / 20% preview. Arrow keys adjust the chat share by two percentage points; Home and End move
+  to the minimum and maximum; double-click resets to 60/40.
+- The split is surface-local and in memory. It applies across conversations while the chat surface
+  remains mounted, then returns to 60/40 after an app reload.
 - Chat and preview scroll independently.
 
 Narrow mode:
@@ -693,7 +699,7 @@ The first release is complete when all of the following are true:
 - Syntax highlighting, side-by-side diff, comments, editing, staging, and revert.
 - Images, PDFs, spreadsheets, HTML, and local dev-server previews.
 - Browser-session and connected-app previews.
-- User resizing and persisted panel width.
+- Persisting the user-selected split across app reloads.
 
 These additions should reuse the panel lifecycle and renderer registry. They do not require a
 generic app/browser payload contract in V1.
